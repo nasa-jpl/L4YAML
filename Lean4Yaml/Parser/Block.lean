@@ -91,7 +91,11 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
     if isSeq then
       return .matched (← blockSequence contentIndent)
     else
-      return .matched (← plainScalar (inFlow := false))
+      -- baseIndent for continuation is the parent structure's indent level.
+      -- contentIndent = parentIndent + 1, so baseIndent = contentIndent - 1.
+      -- For top-level (contentIndent = 0), baseIndent = 0 means col > 0 required.
+      let baseIndent := if contentIndent > 0 then contentIndent - 1 else 0
+      return .matched (← plainScalar (inFlow := false) (baseIndent := baseIndent))
   | _ => do
     -- Could be a block mapping or a plain scalar
     let isMap ← lookAhead do
@@ -99,7 +103,8 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
     if isMap then
       return .matched (← blockMapping contentIndent)
     else
-      return .matched (← plainScalar (inFlow := false))
+      let baseIndent := if contentIndent > 0 then contentIndent - 1 else 0
+      return .matched (← plainScalar (inFlow := false) (baseIndent := baseIndent))
 
 /--
 Parse any YAML value in block context.

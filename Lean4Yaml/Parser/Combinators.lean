@@ -211,6 +211,41 @@ def DispatchResult.toParser {α : Type} : DispatchResult α → YamlParser α
   | .noMatch => throwUnexpected
   | .invalid msg => withErrorMessage msg throwUnexpected
 
+/-! ## Plain Scalar Continuation Types
+
+Multi-line plain scalar support (YAML 1.2.2 §7.3.3,
+https://yaml.org/spec/1.2.2/#733-plain-style).
+
+Plain scalars in block context can span multiple lines. Continuation lines
+must be more indented than the parent structure's indentation level, and
+must not start with structural indicators (sequence `- ` or mapping `key: `).
+
+The continuation check is a pure `lookAhead` probe — it inspects the stream
+without consuming input. The caller then decides whether to consume based
+on the result. This check-then-consume separation makes termination proofs
+easier: checking is non-consuming, consuming provably advances position.
+
+See ANALYSIS.md §2.B.
+-/
+
+/--
+Result of checking whether a plain scalar continues onto the next line.
+
+Each variant describes what was found at the start of the next line:
+- `notContinuing`: dedent, end of input, or document boundary
+- `plainContinuation`: regular content continuation
+- `afterEmpty n`: continuation after n empty/blank lines (paragraph breaks)
+- `sequenceMarker`: line starts with `- ` (belongs to parent sequence)
+- `mappingEntry`: line contains `: ` (belongs to parent mapping)
+-/
+inductive ContinuationCheck where
+  | notContinuing
+  | plainContinuation
+  | afterEmpty (n : Nat)
+  | sequenceMarker
+  | mappingEntry
+  deriving Repr, BEq, Nonempty
+
 /-! ## Separator Detection -/
 
 /--
@@ -330,5 +365,85 @@ def validateNoWrongIndentMap (mapIndent : Nat) (col : Nat)
       withErrorMessage
         s!"mapping entry at column {col}, expected column {mapIndent} (wrong indentation)"
         throwUnexpected
+
+/-! ## Plain Scalar Continuation Check
+
+The check-then-consume continuation probe for multi-line plain scalars.
+Defined here (after `atDocumentBoundary`, `hasSequenceIndicator`) to
+avoid forward references.
+
+See ANALYSIS.md §2.B.
+-/
+
+/--
+Check whether a plain scalar continues onto the next line(s).
+
+This is a pure `lookAhead` probe — it does NOT consume any input.
+The `baseIndent` is the indentation level of the parent structure;
+continuation lines must be strictly more indented (`col > baseIndent`).
+
+Decision algorithm:
+1. Check for newline — if none, not continuing
+2. Count consecutive empty/blank lines
+3. Check indentation of next content line — must be > baseIndent
+4. Check for document boundaries (`---`, `...`) — stops continuation
+5. Check for sequence marker (`- `) — not a continuation
+6. Check for mapping entry (`key: `) — not a continuation
+7. Otherwise, it's a continuation (possibly after empty lines)
+-/
+partial def checkContinuation (baseIndent : Nat) : YamlParser ContinuationCheck :=
+  lookAhead do
+    -- Must be at a line break to continue
+    match ← option? newline with
+    | none => return .notContinuing
+    | some _ =>
+      -- Count empty/blank lines
+      let emptyCount ← countEmptyLines 0
+      -- Check indentation of the next content line
+      skipSpaces
+      let col ← currentCol
+      if col <= baseIndent then
+        return .notContinuing
+      -- Check for document boundaries
+      let atBoundary ← atDocumentBoundary
+      if atBoundary then
+        return .notContinuing
+      -- Check for sequence marker: `- ` or `-\n` or `-` at EOF
+      let hasSeq ← hasSequenceIndicator
+      if hasSeq then
+        return .sequenceMarker
+      -- Check for mapping entry: scan for `: ` pattern on this line
+      let hasMap ← scanForMappingSeparator
+      if hasMap then
+        return .mappingEntry
+      -- It's a continuation
+      if emptyCount > 0 then
+        return .afterEmpty emptyCount
+      else
+        return .plainContinuation
+where
+  /-- Count consecutive empty or blank lines (lines with only whitespace). -/
+  countEmptyLines (n : Nat) : YamlParser Nat := do
+    match ← option? (lookAhead (skipSpaces *> newline)) with
+    | some _ =>
+      skipSpaces
+      newline
+      countEmptyLines (n + 1)
+    | none => return n
+  /-- Scan the current line for a mapping separator (`: ` or `:\n` or `:` at EOF).
+      Does not cross line boundaries. -/
+  scanForMappingSeparator : YamlParser Bool := do
+    scanLoop
+  scanLoop : YamlParser Bool := do
+    match ← option? anyToken with
+    | none => return false
+    | some ':' =>
+      match ← option? anyToken with
+      | none => return true  -- `:` at EOF
+      | some c => return (isWhiteSpace c || isLineBreak c)
+    | some c =>
+      if isLineBreak c then return false
+      else if c == '"' || c == '\'' then return false  -- Don't scan through quotes
+      else scanLoop
 
 end Lean4Yaml.Parse
