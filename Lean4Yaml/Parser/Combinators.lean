@@ -215,4 +215,72 @@ def atDocumentBoundary : YamlParser Bool := do
   if start then return true
   atDocumentEnd
 
+/-! ## Indentation Validation
+
+These helpers detect structural indicators at wrong indentation levels.
+They support the "three-valued error recovery" pattern from the lean4-yaml
+cross-project analysis (ANALYSIS.md §2.A): instead of silently ending a
+collection when the indentation doesn't match, we check if the remaining
+content looks like a wrongly-indented indicator and raise a hard error.
+
+This prevents invalid YAML from being silently accepted when backtracking
+falls through to a plain scalar parser.
+-/
+
+/--
+Check if the current position has a sequence indicator (`- ` or `-\n` or `-` at EOF).
+
+Does not consume any input. Returns `true` if the content at the current
+position is a valid block sequence item indicator.
+-/
+def hasSequenceIndicator : YamlParser Bool :=
+  lookAhead do
+    match ← option? (token '-') with
+    | none => return false
+    | some _ =>
+        match ← option? anyToken with
+        | none => return true  -- `-` at EOF
+        | some c => return (isWhiteSpace c || isLineBreak c)
+
+/--
+Validate that there is no wrongly-indented block sequence indicator.
+
+When a block sequence loop terminates because `col ≠ seqIndent`, this
+check detects if there's a `- ` indicator at the wrong column. If found,
+it raises a hard error instead of silently ending the sequence.
+
+Only checks when `col > seqIndent` (over-indented). Under-indented
+indicators at `col < seqIndent` may belong to a parent-level sequence
+and are handled correctly by the parent's own loop.
+
+See: ANALYSIS.md §2.A "Three-Valued Error Recovery"
+-/
+def validateNoWrongIndentSeq (seqIndent : Nat) (col : Nat) : YamlParser Unit := do
+  if col > seqIndent then
+    let hasSeq ← hasSequenceIndicator
+    if hasSeq then
+      withErrorMessage
+        s!"sequence item at column {col}, expected column {seqIndent} (wrong indentation)"
+        throwUnexpected
+
+/--
+Validate that there is no wrongly-indented block mapping indicator.
+
+Similar to `validateNoWrongIndentSeq`, but checks for mapping key patterns
+(content followed by `: `).
+
+The `scanForColon` parameter is a parser that detects a mapping key pattern,
+passed in to avoid circular imports with Block.lean's `detectMappingKey`.
+
+See: ANALYSIS.md §2.A "Three-Valued Error Recovery"
+-/
+def validateNoWrongIndentMap (mapIndent : Nat) (col : Nat)
+    (scanForColon : YamlParser Bool) : YamlParser Unit := do
+  if col > mapIndent then
+    let hasMap ← lookAhead scanForColon
+    if hasMap then
+      withErrorMessage
+        s!"mapping entry at column {col}, expected column {mapIndent} (wrong indentation)"
+        throwUnexpected
+
 end Lean4Yaml.Parse

@@ -222,10 +222,10 @@ private def processListItem (st : ParseState) (rest : String) : ParseState :=
 /-- Process a single line of the test file. -/
 private partial def processLine (st : ParseState) (line : String) :
     ParseState :=
-  -- Skip document separator
-  if trim line == "---" then finalizeItem st
   -- If we're in a block scalar, check if this line continues it
-  else if st.field != .none then
+  -- (must check BEFORE the `---` separator check, because `---` can appear
+  -- as content inside a yaml block scalar)
+  if st.field != .none then
     let indent := countLeadingSpaces line
     let trimmed := trimLeft line
     if trimmed.isEmpty then
@@ -245,6 +245,9 @@ private partial def processLine (st : ParseState) (line : String) :
       let st := { st with field := .none, blockIndent := 0 }
       processLine st line
   else
+    -- Document separator (only checked when NOT inside a block scalar)
+    if trim line == "---" then finalizeItem st
+    else
     -- Check for list item start
     let trimmed := trimLeft line
     if trimmed.startsWith "- " then
