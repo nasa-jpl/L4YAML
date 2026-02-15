@@ -1,5 +1,6 @@
 import Lean4Yaml
 import Tests.SuiteRunner.Meta
+import Tests.SuiteRunner.HtmlReport
 
 /-!
 # yaml-test-suite Runner
@@ -7,6 +8,17 @@ import Tests.SuiteRunner.Meta
 Programmatic test runner that reads yaml-test-suite test files,
 parses each test's YAML input with our parser, and reports
 pass/fail results staged by feature coverage.
+
+## Usage
+
+```bash
+# Console output (default)
+.lake/build/bin/suiterunner [stage] [-v|--verbose]
+
+# Generate HTML reports
+.lake/build/bin/suiterunner --html docs/
+.lake/build/bin/suiterunner scalar --html docs/
+```
 
 ## References
 
@@ -145,15 +157,70 @@ def parseStageArg (arg : String) : Stage :=
   | "error" => .error
   | _ => .all
 
+/-- Run all test cases and collect ReportResults for HTML generation. -/
+def runAllForReport (testCases : Array TestCase) (stage : Stage)
+    (timeoutSec : Nat := 2) : IO (Array ReportResult) := do
+  let filtered := if stage == .all then testCases
+                  else testCases.filter (fun tc =>
+                    tc.stage == stage || (stage != .error && tc.inStage stage))
+  let mut results : Array ReportResult := #[]
+  let mut idx : Nat := 0
+  for tc in filtered do
+    idx := idx + 1
+    IO.print s!"  [{idx}/{filtered.size}] {tc.id} "
+    (← IO.getStdout).flush
+    let result ← runTest tc timeoutSec
+    let reportResult : ReportResult := match result with
+      | .pass =>
+        if tc.expectFail then
+          { testCase := tc, outcome := .unexpectedPass }
+        else
+          { testCase := tc, outcome := .pass }
+      | .fail reason =>
+        if reason.containsSubstr "timeout" then
+          { testCase := tc, outcome := .timeout, errorMsg := some reason }
+        else if reason.containsSubstr "expected parse failure but succeeded" then
+          { testCase := tc, outcome := .unexpectedPass, errorMsg := some reason }
+        else if tc.expectFail then
+          { testCase := tc, outcome := .expectedFail, errorMsg := some reason }
+        else
+          { testCase := tc, outcome := .fail, errorMsg := some reason }
+      | .skip reason =>
+        { testCase := tc, outcome := .skip reason }
+    -- Console output
+    match reportResult.outcome with
+    | .pass => IO.println "✓"
+    | .fail => IO.println s!"✗ {reportResult.errorMsg.getD ""}"
+    | .expectedFail => IO.println "✓ (expected fail)"
+    | .unexpectedPass => IO.println s!"⚠ unexpected pass"
+    | .skip reason => IO.println s!"○ {reason}"
+    | .timeout => IO.println s!"⏱ timeout"
+    results := results.push reportResult
+  return results
+
 def main (args : List String) : IO UInt32 := do
-  let stage := match args with
-    | [s] => parseStageArg s
-    | [s, _] => parseStageArg s
-    | _ => .all
-  let verbose := args.any (fun a => a == "-v" || a == "--verbose")
+  -- Parse arguments
+  let mut stageArg := "all"
+  let mut verbose := false
+  let mut htmlDir : Option String := none
+  let mut i : Nat := 0
+  let mut skipNext := false
+  for arg in args do
+    if skipNext then
+      skipNext := false
+    else if arg == "-v" || arg == "--verbose" then
+      verbose := true
+    else if arg == "--html" then
+      match args.drop (i + 1) with
+      | dir :: _ => htmlDir := some dir; skipNext := true
+      | [] => IO.eprintln "Error: --html requires a directory argument"; return 1
+    else
+      stageArg := arg
+    i := i + 1
+
+  let stage := parseStageArg stageArg
 
   -- Locate yaml-test-suite relative to executable
-  -- When run from project root: yaml-test-suite/
   let suiteDir := "yaml-test-suite"
   let srcPath : System.FilePath := suiteDir ++ "/src"
   let srcExists ← srcPath.pathExists
@@ -185,7 +252,21 @@ def main (args : List String) : IO UInt32 := do
     IO.println s!"  {s}: {count}"
   IO.println ""
 
-  -- Run the requested stage(s)
+  -- HTML report mode: run all tests and generate reports
+  match htmlDir with
+  | some dir =>
+    IO.println s!"Running all tests for HTML report..."
+    IO.println (String.ofList (List.replicate 60 '-'))
+    let results ← runAllForReport allCases .all
+    IO.println (String.ofList (List.replicate 60 '-'))
+    let stats := CoverageStats.fromResults results
+    IO.println s!"\nCorrect: {stats.correctCount}/{stats.total} ({stats.successRate.floor}%)"
+    IO.println s!"\nGenerating HTML reports..."
+    writeReports results dir
+    return 0
+  | none => pure ()
+
+  -- Console mode: run the requested stage(s)
   if stage == .all then
     let mut totalStats : TestStats := {}
     for s in stages do

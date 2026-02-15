@@ -1,0 +1,79 @@
+name: Generate Test Coverage Report
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  test-coverage:
+    runs-on: self-hosted
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Elan (Lean toolchain manager)
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+
+      - name: Install Lean toolchain
+        run: |
+          if [ -f lean-toolchain ]; then
+            echo "Installing Lean toolchain: $(cat lean-toolchain)"
+            elan toolchain install "$(cat lean-toolchain)"
+          fi
+          elan show
+
+      - name: Build parser and test tools
+        run: |
+          lake build Lean4Yaml
+          lake build suiterunner tryparse
+
+      - name: Create docs directory
+        run: mkdir -p docs
+
+      - name: Generate HTML coverage reports
+        run: |
+          ./.lake/build/bin/suiterunner --html docs/ | tee docs/coverage-console.txt
+
+      - name: Upload coverage reports as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: docs/
+          retention-days: 30
+
+      - name: Commit coverage reports to main branch
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/
+          git diff --staged --quiet || git commit -m "Update coverage reports: ${{ github.sha }}"
+          git push
+
+      - name: Comment on PR with coverage summary
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const coverage = fs.readFileSync('docs/coverage-console.txt', 'utf8');
+            // Extract the "Correct: X/Y (Z%)" line
+            const correctLine = coverage.match(/Correct: .*/)?.[0] || 'Statistics unavailable';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Test Coverage Report\n\n\`\`\`\n${correctLine}\n\`\`\`\n\nFull report: [Download artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`
+            });
