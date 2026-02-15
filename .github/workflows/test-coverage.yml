@@ -28,8 +28,9 @@ jobs:
       - name: Install Lean toolchain
         run: |
           if [ -f lean-toolchain ]; then
-            echo "Installing Lean toolchain: $(cat lean-toolchain)"
-            elan toolchain install "$(cat lean-toolchain)"
+            TOOLCHAIN="$(cat lean-toolchain)"
+            echo "Lean toolchain: $TOOLCHAIN"
+            elan toolchain install "$TOOLCHAIN" || true
           fi
           elan show
 
