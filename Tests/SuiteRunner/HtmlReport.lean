@@ -1,0 +1,597 @@
+import Tests.SuiteRunner.Meta
+
+/-!
+# HTML Coverage Report Generator
+
+Generates interactive HTML coverage reports for yaml-test-suite results,
+with filtering by stage/outcome, sortable tables, and summary statistics.
+
+Adapted from lean4-yaml's TestCoverageReport.lean for lean4-yaml-verified.
+-/
+
+namespace Tests.SuiteRunner
+
+/-! ## Test Result Data for Reports -/
+
+/-- Outcome of a single test case for reporting purposes. -/
+inductive TestOutcome where
+  | pass              -- parsed successfully (expected to pass)
+  | fail              -- parse error (expected to pass)
+  | expectedFail      -- parse error (expected to fail) → correct
+  | unexpectedPass    -- parsed successfully (expected to fail) → incorrect
+  | skip (reason : String)
+  | timeout           -- timed out (possible infinite loop)
+  deriving Repr, BEq
+
+/-- A test result with its case and outcome. -/
+structure ReportResult where
+  testCase : TestCase
+  outcome : TestOutcome
+  errorMsg : Option String := none
+  deriving Repr
+
+/-- Summary statistics for a group of results. -/
+structure CoverageStats where
+  total : Nat
+  passed : Nat
+  failed : Nat
+  expectedFail : Nat
+  unexpectedPass : Nat
+  skipped : Nat
+  timeout : Nat
+  deriving Repr
+
+def CoverageStats.fromResults (results : Array ReportResult) : CoverageStats :=
+  let passed := results.filter (fun r => r.outcome == .pass) |>.size
+  let failed := results.filter (fun r => r.outcome == .fail) |>.size
+  let expectedFail := results.filter (fun r => r.outcome == .expectedFail) |>.size
+  let unexpectedPass := results.filter (fun r => r.outcome == .unexpectedPass) |>.size
+  let skipped := results.filter (fun r => match r.outcome with | .skip _ => true | _ => false) |>.size
+  let timeout := results.filter (fun r => r.outcome == .timeout) |>.size
+  { total := results.size
+    passed := passed
+    failed := failed
+    expectedFail := expectedFail
+    unexpectedPass := unexpectedPass
+    skipped := skipped
+    timeout := timeout }
+
+def CoverageStats.correctCount (s : CoverageStats) : Nat :=
+  s.passed + s.expectedFail
+
+def CoverageStats.successRate (s : CoverageStats) : Float :=
+  if s.total == 0 then 0.0
+  else (s.correctCount.toFloat / s.total.toFloat) * 100.0
+
+/-! ## HTML Helpers -/
+
+private def escapeHtml (s : String) : String :=
+  s.replace "&" "&amp;"
+   |>.replace "<" "&lt;"
+   |>.replace ">" "&gt;"
+   |>.replace "\"" "&quot;"
+   |>.replace "'" "&#39;"
+
+private def outcomeClass : TestOutcome → String
+  | .pass => "pass"
+  | .fail => "fail"
+  | .expectedFail => "expected-fail"
+  | .unexpectedPass => "unexpected-pass"
+  | .skip _ => "skip"
+  | .timeout => "timeout"
+
+private def outcomeBadge : TestOutcome → String
+  | .pass => "<span class=\"badge badge-pass\">Pass</span>"
+  | .fail => "<span class=\"badge badge-fail\">Fail</span>"
+  | .expectedFail => "<span class=\"badge badge-expected-fail\">Expected Fail</span>"
+  | .unexpectedPass => "<span class=\"badge badge-unexpected-pass\">Unexpected Pass</span>"
+  | .skip reason => s!"<span class=\"badge badge-skip\" title=\"{escapeHtml reason}\">Skip</span>"
+  | .timeout => "<span class=\"badge badge-timeout\">Timeout</span>"
+
+/-! ## CSS -/
+
+private def reportCss : String :=
+  "    :root {
+      --color-pass: #4CAF50;
+      --color-fail: #f44336;
+      --color-expected-fail: #2196F3;
+      --color-unexpected-pass: #ff9800;
+      --color-skip: #9e9e9e;
+      --color-timeout: #9c27b0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0; padding: 20px; background: #f5f5f5;
+    }
+    .container {
+      max-width: 1400px; margin: 0 auto; background: white;
+      padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 8px;
+    }
+    h1 { color: #333; border-bottom: 3px solid var(--color-pass); padding-bottom: 10px; margin-top: 0; }
+    h2 { color: #4CAF50; margin-top: 30px; }
+    h3 { color: #555; }
+    .subtitle { color: #666; font-size: 16px; margin-bottom: 30px; }
+
+    /* Stats grid */
+    .stats {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 15px; margin: 25px 0;
+    }
+    .stat-box {
+      color: white; padding: 20px; border-radius: 8px; text-align: center;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .stat-box h3 { margin: 0 0 8px 0; font-size: 13px; opacity: 0.9; color: white; }
+    .stat-box .number { font-size: 32px; font-weight: bold; }
+    .stat-box .pct { font-size: 14px; margin-top: 4px; opacity: 0.9; }
+    .stat-total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .stat-pass { background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); }
+    .stat-fail { background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); }
+    .stat-expected { background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); }
+    .stat-unexpected { background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); }
+    .stat-skip { background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%); }
+    .stat-timeout { background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%); }
+    .stat-correct { background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%); }
+
+    /* Stage breakdown cards */
+    .stage-cards {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 15px; margin: 20px 0;
+    }
+    .stage-card {
+      background: #f8f9fa; padding: 18px; border-radius: 6px;
+      border-left: 4px solid var(--color-pass);
+    }
+    .stage-card-name { font-weight: 600; font-size: 16px; color: #333; margin-bottom: 8px; }
+    .stage-card-stats { color: #666; font-size: 14px; }
+    .stage-bar {
+      height: 8px; background: #e0e0e0; border-radius: 4px; margin-top: 10px; overflow: hidden;
+    }
+    .stage-bar-fill {
+      height: 100%; background: var(--color-pass); border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    /* Filters */
+    .filters {
+      background: #f8f9fa; padding: 15px; border-radius: 6px;
+      margin: 20px 0; display: flex; gap: 20px; flex-wrap: wrap; align-items: center;
+    }
+    .filter-group { display: flex; align-items: center; gap: 8px; }
+    .filter-group label { font-weight: 600; color: #555; font-size: 14px; }
+    .filter-btn {
+      padding: 6px 14px; border: 2px solid #ddd; background: white;
+      border-radius: 4px; cursor: pointer; transition: all 0.2s; font-size: 13px;
+    }
+    .filter-btn:hover { border-color: #4CAF50; }
+    .filter-btn.active { background: #4CAF50; color: white; border-color: #4CAF50; }
+    select {
+      padding: 6px 12px; border: 2px solid #ddd; border-radius: 4px; font-size: 13px;
+    }
+    .search-input {
+      padding: 6px 12px; border: 2px solid #ddd; border-radius: 4px;
+      font-size: 13px; width: 200px;
+    }
+    .search-input:focus { border-color: #4CAF50; outline: none; }
+
+    /* Table */
+    table {
+      width: 100%; border-collapse: collapse; margin: 20px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    th {
+      background: #4CAF50; color: white; padding: 10px 12px; text-align: left;
+      font-weight: 600; position: sticky; top: 0; cursor: pointer;
+      user-select: none; font-size: 13px;
+    }
+    th:hover { background: #45a049; }
+    th .sort-arrow { margin-left: 4px; opacity: 0.5; }
+    th.sorted .sort-arrow { opacity: 1; }
+    td { padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; }
+    tr:hover { background: #f5f5f5; }
+    tr.hidden { display: none; }
+
+    /* Badges */
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 12px;
+      font-size: 11px; font-weight: 600; color: white;
+    }
+    .badge-pass { background: var(--color-pass); }
+    .badge-fail { background: var(--color-fail); }
+    .badge-expected-fail { background: var(--color-expected-fail); }
+    .badge-unexpected-pass { background: var(--color-unexpected-pass); }
+    .badge-skip { background: var(--color-skip); }
+    .badge-timeout { background: var(--color-timeout); }
+
+    /* Tags */
+    .tag {
+      display: inline-block; background: #e3f2fd; color: #1565C0;
+      padding: 2px 8px; border-radius: 10px; font-size: 11px;
+      margin: 1px 2px; white-space: nowrap;
+    }
+
+    /* Error message */
+    .error-msg {
+      color: #d32f2f; font-size: 11px; font-family: 'Courier New', monospace;
+      max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .error-msg:hover { white-space: normal; word-break: break-all; }
+
+    /* Navigation */
+    .nav-link {
+      display: inline-block; margin-bottom: 20px; color: #2196F3;
+      text-decoration: none; font-size: 14px;
+    }
+    .nav-link:hover { text-decoration: underline; }
+
+    /* Footer */
+    footer {
+      margin-top: 40px; text-align: center; color: #999; font-size: 13px;
+      border-top: 1px solid #e0e0e0; padding-top: 20px;
+    }
+    footer a { color: #2196F3; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body { padding: 10px; }
+      .container { padding: 15px; }
+      .filters { flex-direction: column; gap: 10px; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+"
+
+/-! ## JavaScript -/
+
+private def reportJs : String :=
+  "
+    // State
+    let currentOutcomeFilter = 'all';
+    let currentStageFilter = 'all';
+    let currentSearchText = '';
+    let sortColumn = 0;
+    let sortAscending = true;
+
+    // Filter by outcome
+    function filterByOutcome(outcome) {
+      currentOutcomeFilter = outcome;
+      document.querySelectorAll('.filter-outcome .filter-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      applyFilters();
+    }
+
+    // Filter by stage
+    function filterByStage(stage) {
+      currentStageFilter = stage;
+      applyFilters();
+    }
+
+    // Search
+    function searchTests(text) {
+      currentSearchText = text.toLowerCase();
+      applyFilters();
+    }
+
+    // Apply all filters
+    function applyFilters() {
+      const rows = document.querySelectorAll('.test-row');
+      let visible = 0;
+      rows.forEach(row => {
+        const outcome = row.dataset.outcome;
+        const stage = row.dataset.stage;
+        const search = row.dataset.search;
+
+        const outcomeMatch = currentOutcomeFilter === 'all' || outcome === currentOutcomeFilter;
+        const stageMatch = currentStageFilter === 'all' || stage === currentStageFilter;
+        const searchMatch = currentSearchText === '' || search.includes(currentSearchText);
+
+        if (outcomeMatch && stageMatch && searchMatch) {
+          row.classList.remove('hidden');
+          visible++;
+        } else {
+          row.classList.add('hidden');
+        }
+      });
+      document.getElementById('visibleCount').textContent = visible;
+    }
+
+    // Sort table
+    function sortTable(colIdx) {
+      const table = document.getElementById('testTable');
+      const tbody = table.querySelector('tbody');
+      const rows = Array.from(tbody.querySelectorAll('.test-row'));
+
+      if (sortColumn === colIdx) {
+        sortAscending = !sortAscending;
+      } else {
+        sortColumn = colIdx;
+        sortAscending = true;
+      }
+
+      // Update header arrows
+      table.querySelectorAll('th').forEach((th, i) => {
+        th.classList.remove('sorted');
+        const arrow = th.querySelector('.sort-arrow');
+        if (arrow) arrow.textContent = '↕';
+      });
+      const th = table.querySelectorAll('th')[colIdx];
+      th.classList.add('sorted');
+      const arrow = th.querySelector('.sort-arrow');
+      if (arrow) arrow.textContent = sortAscending ? '↑' : '↓';
+
+      rows.sort((a, b) => {
+        let aVal = a.children[colIdx]?.textContent.trim() || '';
+        let bVal = b.children[colIdx]?.textContent.trim() || '';
+        // Try numeric sort
+        const aNum = parseFloat(aVal);
+        const bNum = parseFloat(bVal);
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+          return sortAscending ? aNum - bNum : bNum - aNum;
+        }
+        return sortAscending ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      });
+
+      rows.forEach(row => tbody.appendChild(row));
+    }
+  "
+
+/-! ## Report Generation -/
+
+/-- Generate the stats boxes HTML. -/
+private def generateStatsHtml (stats : CoverageStats) : String :=
+  let pct := stats.successRate
+  let pctStr := if pct == pct.floor then s!"{pct.floor}" else s!"{pct}"
+  String.join [
+    "  <div class=\"stats\">\n",
+    s!"    <div class=\"stat-box stat-total\"><h3>Total</h3><div class=\"number\">{stats.total}</div></div>\n",
+    s!"    <div class=\"stat-box stat-pass\"><h3>Passed</h3><div class=\"number\">{stats.passed}</div></div>\n",
+    s!"    <div class=\"stat-box stat-fail\"><h3>Failed</h3><div class=\"number\">{stats.failed}</div></div>\n",
+    s!"    <div class=\"stat-box stat-expected\"><h3>Expected Fail</h3><div class=\"number\">{stats.expectedFail}</div></div>\n",
+    s!"    <div class=\"stat-box stat-unexpected\"><h3>Unexpected Pass</h3><div class=\"number\">{stats.unexpectedPass}</div></div>\n",
+    s!"    <div class=\"stat-box stat-skip\"><h3>Skipped</h3><div class=\"number\">{stats.skipped}</div></div>\n",
+    s!"    <div class=\"stat-box stat-timeout\"><h3>Timeout</h3><div class=\"number\">{stats.timeout}</div></div>\n",
+    s!"    <div class=\"stat-box stat-correct\"><h3>Correct</h3><div class=\"number\">{stats.correctCount}/{stats.total}</div><div class=\"pct\">({pctStr}%)</div></div>\n",
+    "  </div>\n"
+  ]
+
+/-- Generate stage breakdown cards. -/
+private def generateStageCardsHtml (results : Array ReportResult) : String :=
+  let stages : Array Stage := #[.scalar, .flow, .block, .document, .advanced, .error]
+  let cards := stages.map fun stage =>
+    let stageResults := results.filter (fun r => r.testCase.stage == stage)
+    let stats := CoverageStats.fromResults stageResults
+    let pct := if stats.total == 0 then 0.0
+               else (stats.correctCount.toFloat / stats.total.toFloat) * 100.0
+    let pctStr := s!"{pct.floor}"
+    s!"    <div class=\"stage-card\">\n" ++
+    s!"      <div class=\"stage-card-name\">{stage}</div>\n" ++
+    s!"      <div class=\"stage-card-stats\">{stats.correctCount}/{stats.total} correct ({pctStr}%) · {stats.passed} pass, {stats.failed} fail, {stats.expectedFail} exp-fail, {stats.unexpectedPass} unexp-pass, {stats.skipped} skip, {stats.timeout} timeout</div>\n" ++
+    s!"      <div class=\"stage-bar\"><div class=\"stage-bar-fill\" style=\"width: {pctStr}%\"></div></div>\n" ++
+    s!"    </div>\n"
+  String.join [
+    "  <h3>Coverage by Stage</h3>\n",
+    "  <div class=\"stage-cards\">\n",
+    String.join cards.toList,
+    "  </div>\n"
+  ]
+
+/-- Generate the filter bar. -/
+private def generateFiltersHtml (totalCount : Nat) : String :=
+  String.join [
+    "  <div class=\"filters\">\n",
+    "    <div class=\"filter-group filter-outcome\">\n",
+    "      <label>Outcome:</label>\n",
+    "      <button class=\"filter-btn active\" onclick=\"filterByOutcome('all')\">All</button>\n",
+    "      <button class=\"filter-btn\" onclick=\"filterByOutcome('pass')\">Pass</button>\n",
+    "      <button class=\"filter-btn\" onclick=\"filterByOutcome('fail')\">Fail</button>\n",
+    "      <button class=\"filter-btn\" onclick=\"filterByOutcome('expected-fail')\">Exp Fail</button>\n",
+    "      <button class=\"filter-btn\" onclick=\"filterByOutcome('unexpected-pass')\">Unexp Pass</button>\n",
+    "      <button class=\"filter-btn\" onclick=\"filterByOutcome('skip')\">Skip</button>\n",
+    "      <button class=\"filter-btn\" onclick=\"filterByOutcome('timeout')\">Timeout</button>\n",
+    "    </div>\n",
+    "    <div class=\"filter-group\">\n",
+    "      <label>Stage:</label>\n",
+    "      <select onchange=\"filterByStage(this.value)\">\n",
+    "        <option value=\"all\">All Stages</option>\n",
+    "        <option value=\"scalar\">Scalar</option>\n",
+    "        <option value=\"flow\">Flow</option>\n",
+    "        <option value=\"block\">Block</option>\n",
+    "        <option value=\"document\">Document</option>\n",
+    "        <option value=\"advanced\">Advanced</option>\n",
+    "        <option value=\"error\">Error</option>\n",
+    "      </select>\n",
+    "    </div>\n",
+    "    <div class=\"filter-group\">\n",
+    "      <label>Search:</label>\n",
+    "      <input type=\"text\" class=\"search-input\" placeholder=\"ID, name, or tag...\" oninput=\"searchTests(this.value)\">\n",
+    "    </div>\n",
+    s!"    <div class=\"filter-group\"><span>Showing <strong id=\"visibleCount\">{totalCount}</strong> of {totalCount}</span></div>\n",
+    "  </div>\n"
+  ]
+
+/-- Generate a single test row. -/
+private def generateTestRow (r : ReportResult) : String :=
+  let tc := r.testCase
+  let oc := outcomeClass r.outcome
+  let badge := outcomeBadge r.outcome
+  let tagsHtml := String.join (tc.tags.map fun tag =>
+    s!"<span class=\"tag\">{escapeHtml tag}</span>")
+  let errorHtml := match r.errorMsg with
+    | some msg => s!"<span class=\"error-msg\" title=\"{escapeHtml msg}\">{escapeHtml msg}</span>"
+    | none => ""
+  let searchText := s!"{tc.id.toLower} {tc.name.toLower} {String.intercalate " " tc.tags |>.toLower}"
+  let stageStr := s!"{tc.stage}"
+  s!"      <tr class=\"test-row\" data-outcome=\"{oc}\" data-stage=\"{stageStr}\" data-search=\"{escapeHtml searchText}\">\n" ++
+  s!"        <td>{escapeHtml tc.id}</td>\n" ++
+  s!"        <td>{escapeHtml tc.name}</td>\n" ++
+  s!"        <td>{stageStr}</td>\n" ++
+  s!"        <td>{badge}</td>\n" ++
+  s!"        <td>{tagsHtml}</td>\n" ++
+  s!"        <td>{errorHtml}</td>\n" ++
+  s!"      </tr>\n"
+
+/-- Generate the full test table. -/
+private def generateTableHtml (results : Array ReportResult) : String :=
+  let rows := String.join (results.toList.map generateTestRow)
+  String.join [
+    "  <table id=\"testTable\">\n",
+    "    <thead>\n",
+    "      <tr>\n",
+    "        <th onclick=\"sortTable(0)\">ID <span class=\"sort-arrow\">↕</span></th>\n",
+    "        <th onclick=\"sortTable(1)\">Name <span class=\"sort-arrow\">↕</span></th>\n",
+    "        <th onclick=\"sortTable(2)\">Stage <span class=\"sort-arrow\">↕</span></th>\n",
+    "        <th onclick=\"sortTable(3)\">Outcome <span class=\"sort-arrow\">↕</span></th>\n",
+    "        <th onclick=\"sortTable(4)\">Tags <span class=\"sort-arrow\">↕</span></th>\n",
+    "        <th onclick=\"sortTable(5)\">Error <span class=\"sort-arrow\">↕</span></th>\n",
+    "      </tr>\n",
+    "    </thead>\n",
+    "    <tbody>\n",
+    rows,
+    "    </tbody>\n",
+    "  </table>\n"
+  ]
+
+/-- Generate a complete standalone HTML report page. -/
+def generateHtmlReport (results : Array ReportResult)
+    (title : String := "yaml-test-suite Coverage — lean4-yaml-verified")
+    (navLink : Option (String × String) := none) : String :=
+  let stats := CoverageStats.fromResults results
+  let navHtml := match navLink with
+    | some (href, label) => s!"  <a href=\"{href}\" class=\"nav-link\">← {label}</a>\n"
+    | none => ""
+  String.join [
+    "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n",
+    "  <meta charset=\"UTF-8\">\n",
+    "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
+    s!"  <title>{escapeHtml title}</title>\n",
+    "  <style>\n", reportCss, "  </style>\n",
+    "</head>\n<body>\n",
+    "<div class=\"container\">\n",
+    navHtml,
+    s!"  <h1>{escapeHtml title}</h1>\n",
+    "  <p class=\"subtitle\">YAML 1.2.2 parser compliance against the official yaml-test-suite</p>\n",
+    generateStatsHtml stats,
+    generateStageCardsHtml results,
+    generateFiltersHtml results.size,
+    generateTableHtml results,
+    "  <footer>\n",
+    "    Generated by <a href=\"https://github.com/yaml/yaml-test-suite\">yaml-test-suite</a> runner · ",
+    "    <a href=\"https://github.com/fgdorais/lean4-parser\">lean4-parser</a> · Lean 4\n",
+    "  </footer>\n",
+    "</div>\n\n",
+    "<script>\n", reportJs, "</script>\n",
+    "</body>\n</html>\n"
+  ]
+
+/-- Generate a stage-filtered HTML report. -/
+def generateStageReport (results : Array ReportResult) (stage : Stage) : String :=
+  let filtered := results.filter (fun r => r.testCase.stage == stage)
+  generateHtmlReport filtered
+    (title := s!"{stage} Tests — lean4-yaml-verified")
+    (navLink := some ("index.html", "Back to Coverage Index"))
+
+/-- Generate the index page linking to all reports. -/
+def generateIndexHtml (results : Array ReportResult) : String :=
+  let stats := CoverageStats.fromResults results
+  let pct := stats.successRate
+  let pctStr := if pct == pct.floor then s!"{pct.floor}" else s!"{pct}"
+
+  -- Per-stage summary for the index
+  let stages : Array Stage := #[.scalar, .flow, .block, .document, .advanced, .error]
+  let stageRows := String.join (stages.toList.map fun stage =>
+    let sr := results.filter (fun r => r.testCase.stage == stage)
+    let ss := CoverageStats.fromResults sr
+    let sp := if ss.total == 0 then "0"
+              else s!"{((ss.correctCount.toFloat / ss.total.toFloat) * 100.0).floor}"
+    s!"              <div class=\"link-box\">\n" ++
+    s!"                <a href=\"coverage-{stage}.html\">{stage}</a>\n" ++
+    s!"                <div class=\"description\">{ss.correctCount}/{ss.total} correct ({sp}%)</div>\n" ++
+    s!"              </div>\n")
+
+  String.join [
+    "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n",
+    "  <meta charset=\"UTF-8\">\n",
+    "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
+    "  <title>lean4-yaml-verified Test Coverage</title>\n",
+    "  <style>\n",
+    "    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background: #f5f5f5; }\n",
+    "    .container { max-width: 1000px; margin: 0 auto; background: white; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-radius: 8px; }\n",
+    "    h1 { color: #333; border-bottom: 3px solid #4CAF50; padding-bottom: 10px; }\n",
+    "    h2 { color: #555; margin-top: 30px; }\n",
+    "    .summary { background: #e8f5e9; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #4CAF50; }\n",
+    "    .summary h3 { margin-top: 0; color: #2e7d32; }\n",
+    "    .summary pre { margin: 0; font-family: 'Courier New', monospace; font-size: 14px; white-space: pre-wrap; }\n",
+    "    .links { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin: 25px 0; }\n",
+    "    .link-box { background: #f5f5f5; padding: 20px; border-radius: 6px; text-align: center; transition: all 0.2s; border: 2px solid #e0e0e0; }\n",
+    "    .link-box:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); border-color: #4CAF50; }\n",
+    "    .link-box a { text-decoration: none; color: #2196F3; font-weight: 600; font-size: 16px; }\n",
+    "    .link-box a:hover { color: #1565C0; }\n",
+    "    .description { color: #666; font-size: 13px; margin-top: 8px; }\n",
+    "    footer { margin-top: 40px; text-align: center; color: #999; font-size: 13px; border-top: 1px solid #e0e0e0; padding-top: 20px; }\n",
+    "    footer a { color: #2196F3; text-decoration: none; }\n",
+    "  </style>\n",
+    "</head>\n<body>\n",
+    "<div class=\"container\">\n",
+    "  <h1>lean4-yaml-verified Test Coverage</h1>\n",
+    "  <p style=\"color: #666; font-size: 16px;\">YAML 1.2.2 verified parser · Lean 4 + lean4-parser</p>\n\n",
+    "  <div class=\"summary\">\n",
+    "    <h3>yaml-test-suite Compliance</h3>\n",
+    "    <pre>\n",
+    s!"Total tests:      {stats.total}\n",
+    s!"Passed:           {stats.passed}\n",
+    s!"Failed:           {stats.failed}\n",
+    s!"Expected fail:    {stats.expectedFail}\n",
+    s!"Unexpected pass:  {stats.unexpectedPass}\n",
+    s!"Skipped:          {stats.skipped}\n",
+    s!"Timeout:          {stats.timeout}\n",
+    s!"\nCorrect: {stats.correctCount}/{stats.total} ({pctStr}%)\n",
+    "    </pre>\n",
+    "  </div>\n\n",
+    "  <h2>Reports</h2>\n",
+    "  <div class=\"links\">\n",
+    "    <div class=\"link-box\">\n",
+    "      <a href=\"coverage-all.html\">Full Coverage Report</a>\n",
+    s!"      <div class=\"description\">All {stats.total} tests with filtering &amp; sorting</div>\n",
+    "    </div>\n",
+    "  </div>\n\n",
+    "  <h2>Coverage by Stage</h2>\n",
+    "  <div class=\"links\">\n",
+    stageRows,
+    "  </div>\n\n",
+    "  <footer>\n",
+    "    Generated by <a href=\"https://github.com/yaml/yaml-test-suite\">yaml-test-suite</a> runner · ",
+    "    <a href=\"https://github.com/fgdorais/lean4-parser\">lean4-parser</a> · Lean 4\n",
+    "  </footer>\n",
+    "</div>\n",
+    "</body>\n</html>\n"
+  ]
+
+/-- Write all HTML reports to a directory. -/
+def writeReports (results : Array ReportResult) (outDir : String) : IO Unit := do
+  -- Normalize: strip trailing slash
+  let dir := if outDir.endsWith "/" then outDir.dropRight 1 else outDir
+  -- Ensure output directory exists
+  IO.FS.createDirAll dir
+
+  -- Write index
+  let indexHtml := generateIndexHtml results
+  IO.FS.writeFile s!"{dir}/index.html" indexHtml
+  IO.println s!"  wrote {dir}/index.html"
+
+  -- Write full report
+  let fullHtml := generateHtmlReport results
+    (navLink := some ("index.html", "Back to Coverage Index"))
+  IO.FS.writeFile s!"{dir}/coverage-all.html" fullHtml
+  IO.println s!"  wrote {dir}/coverage-all.html"
+
+  -- Write per-stage reports
+  let stages : Array Stage := #[.scalar, .flow, .block, .document, .advanced, .error]
+  for stage in stages do
+    let html := generateStageReport results stage
+    IO.FS.writeFile s!"{dir}/coverage-{stage}.html" html
+    IO.println s!"  wrote {dir}/coverage-{stage}.html"
+
+  IO.println s!"\nHTML reports written to {dir}/"
+
+end Tests.SuiteRunner

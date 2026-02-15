@@ -15,6 +15,9 @@ name = "Lean4Yaml"
 [[lean_lib]]
 name = "Tests.SuiteRunner.Meta"
 
+[[lean_lib]]
+name = "Tests.SuiteRunner.HtmlReport"
+
 [[lean_exe]]
 name = "tests"
 root = "Tests.Main"
