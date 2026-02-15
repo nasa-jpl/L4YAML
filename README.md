@@ -195,10 +195,11 @@ Immediate priorities for continuing Phase 2:
 1. ~~**Three-valued error recovery ([ANALYSIS.md](ANALYSIS.md) §2.A)**~~ — ✅ Done. Validation combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) built in `Combinators.lean` and integrated into `Block.lean`. Disabled with TODO comments because single-line scalar leaves continuation content unconsumed, causing false positives (e.g., AB8U). Also confirmed lean4-parser has no committed/fatal error mechanism — all errors backtrack unconditionally.
 2. **🔜 Add multi-line plain scalar support** — implement the check-then-consume pattern (`ContinuationCheck` from [ANALYSIS.md](ANALYSIS.md) §2.B). Separate non-consuming `lookAhead` checks from consuming advances for easier termination proofs. This is the **immediate next step** and prerequisite for re-enabling validation.
 3. **Re-enable validation combinators** — uncomment `validateNoWrongIndentSeq` / `validateNoWrongIndentMap` in `Block.lean` once multi-line scalars consume continuation content (addresses ~50 unexpected passes)
-4. **Investigate infinite loops** — analyze the 9 timeout cases (4CQQ, 4ZYM, 5GBF + 6 error-stage)
-5. **Fix multi-line quoted scalars** — handle line folding in double/single-quoted scalars
-6. **Add anchor/alias support** — enables the advanced stage (currently 1/81)
-7. **Iterate** — fix failures exposed by each stage, target 60%+ overall pass rate
+4. **Refactor `blockValue` dispatch to `DispatchResult`** — replace `throwUnexpected` with an explicit return type (`matched` / `noMatch` / `invalid`). Pure refactoring: same behavior, proof-friendly structure. Each variant maps to a lemma obligation, removing dependence on error propagation details. See [ANALYSIS.md](ANALYSIS.md) §2.A.
+5. **Investigate infinite loops** — analyze the 9 timeout cases (4CQQ, 4ZYM, 5GBF + 6 error-stage)
+6. **Fix multi-line quoted scalars** — handle line folding in double/single-quoted scalars
+7. **Add anchor/alias support** — enables the advanced stage (currently 1/81)
+8. **Iterate** — fix failures exposed by each stage, target 60%+ overall pass rate
 
 ## Building
 
