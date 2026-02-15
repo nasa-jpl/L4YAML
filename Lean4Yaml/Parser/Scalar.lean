@@ -245,13 +245,18 @@ Plain scalars are context-dependent. They end at:
 - ` #` (comment)
 - End of line (unless the next line is indented enough for continuation)
 
-This parser handles **single-line** plain scalars. Multi-line continuation
-is handled by the caller (the block/flow collection parsers).
+In block context, plain scalars can span multiple lines. Continuation
+lines must be more indented than `baseIndent` (the parent structure's
+indentation level). Line breaks between content lines are folded to
+spaces (§6.5). Empty lines produce paragraph breaks (`\n`).
+
+In flow context, scalars are single-line (stop at flow indicators).
 
 Parameters:
 - `inFlow`: whether we're inside a flow collection (`[...]` or `{...}`)
+- `baseIndent`: parent structure's indentation level (for continuation)
 -/
-partial def plainScalarSingleLine (inFlow : Bool) : YamlParser String :=
+partial def plainScalarContent (inFlow : Bool) (baseIndent : Nat) : YamlParser String :=
   withErrorMessage "expected plain scalar" do
     -- First character has stricter rules (§7.3.3)
     let first ← tokenFilter fun c =>
@@ -269,9 +274,16 @@ partial def plainScalarSingleLine (inFlow : Bool) : YamlParser String :=
       | none =>
         Parser.throwUnexpectedWithMessage (msg :=
           s!"'{first}' cannot start a plain scalar at end of input")
-    let rest ← collectPlain (String.ofList [first]) false
-    return rest.trimAsciiEnd.toString
+    -- Collect the first line
+    let firstLine ← collectPlain (String.ofList [first]) false
+    let firstLine := firstLine.trimAsciiEnd.toString
+    -- In flow context, no multi-line continuation
+    if inFlow then
+      return firstLine
+    -- In block context, check for multi-line continuation
+    collectLines firstLine
 where
+  /-- Collect characters on a single line of a plain scalar. -/
   collectPlain (acc : String) (lastWasSpace : Bool) : YamlParser String := do
     match ← option? (lookAhead anyToken) with
     | none => return acc
@@ -302,12 +314,110 @@ where
       else
         let _ ← anyToken  -- actually consume
         collectPlain (acc.push c) false
+  /-- Collect continuation lines, folding per YAML §6.5 line folding rules.
+      Adjacent non-empty lines are joined with a space.
+      Empty lines produce `\n` (paragraph breaks). -/
+  collectLines (acc : String) : YamlParser String := do
+    let check ← checkContinuation baseIndent
+    match check with
+    | .notContinuing => return acc
+    | .sequenceMarker => return acc
+    | .mappingEntry => return acc
+    | .plainContinuation =>
+      -- Consume the newline and leading whitespace
+      newline
+      skipHWhitespace
+      -- Collect the next line
+      let line ← collectPlain "" false
+      let line := line.trimAsciiEnd.toString
+      if line.isEmpty then
+        -- Degenerate: empty content line → treat as end
+        return acc
+      -- Space-fold: join with a single space
+      collectLines (acc ++ " " ++ line)
+    | .afterEmpty emptyCount =>
+      -- Consume the newline
+      newline
+      -- Skip the empty/blank lines (consume them)
+      consumeEmptyLines emptyCount
+      -- Consume indentation on the content line
+      skipHWhitespace
+      -- Collect the next line
+      let line ← collectPlain "" false
+      let line := line.trimAsciiEnd.toString
+      if line.isEmpty then
+        return acc
+      -- Paragraph break: each empty line produces a \n
+      let breaks := String.ofList (List.replicate emptyCount '\n')
+      collectLines (acc ++ breaks ++ line)
+  /-- Consume n empty/blank lines (newlines already counted by checkContinuation). -/
+  consumeEmptyLines (n : Nat) : YamlParser Unit := do
+    for _ in [:n] do
+      skipSpaces
+      let _ ← option? newline
+
+/--
+Parse a plain scalar (single-line only, for use as mapping key).
+
+Mapping keys must be single-line per YAML 1.2.2 §7.3.3.
+-/
+partial def plainScalarSingleLine (inFlow : Bool) : YamlParser String :=
+  withErrorMessage "expected plain scalar" do
+    let first ← tokenFilter fun c =>
+      isPlainSafe c inFlow && !isIndicator c ||
+      c == '-' || c == '?' || c == ':'
+    if first == '-' || first == '?' || first == ':' then
+      let nextChar ← lookAhead (option? anyToken)
+      match nextChar with
+      | some nc =>
+        if isWhiteSpace nc || isLineBreak nc then
+          Parser.throwUnexpectedWithMessage (msg :=
+            s!"'{first}' cannot start a plain scalar when followed by whitespace")
+      | none =>
+        Parser.throwUnexpectedWithMessage (msg :=
+          s!"'{first}' cannot start a plain scalar at end of input")
+    let rest ← collectPlain (String.ofList [first]) false
+    return rest.trimAsciiEnd.toString
+where
+  collectPlain (acc : String) (lastWasSpace : Bool) : YamlParser String := do
+    match ← option? (lookAhead anyToken) with
+    | none => return acc
+    | some c =>
+      if isLineBreak c then
+        return acc
+      else if c == '#' && lastWasSpace then
+        return acc
+      else if c == ':' then
+        let isMapSep ← lookAhead do
+          let _ ← anyToken
+          match ← option? anyToken with
+          | some nc => return (isWhiteSpace nc || isLineBreak nc)
+          | none => return true
+        if isMapSep then
+          return acc
+        else
+          let _ ← anyToken
+          collectPlain (acc.push c) false
+      else if inFlow && isFlowIndicator c then
+        return acc
+      else if isWhiteSpace c then
+        let _ ← anyToken
+        collectPlain (acc.push c) true
+      else
+        let _ ← anyToken
+        collectPlain (acc.push c) false
 
 /--
 Parse a plain scalar and wrap it as a YamlValue.
+
+In block context, supports multi-line continuation with line folding.
+The `baseIndent` parameter is the parent structure's indentation level;
+continuation lines must be strictly more indented.
+
+In flow context, scalars are single-line.
 -/
-def plainScalar (inFlow : Bool) : YamlParser YamlValue := do
-  let content ← plainScalarSingleLine inFlow
+partial def plainScalar (inFlow : Bool) (baseIndent : Nat := 0) : YamlParser YamlValue := do
+  let content ← plainScalarContent inFlow baseIndent
   if content.isEmpty then
     Parser.throwUnexpectedWithMessage (msg := "empty plain scalar")
   return .scalar { content, style := .plain }
