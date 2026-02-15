@@ -1,0 +1,447 @@
+══════════════════════════════════════════════════════════
+  yaml-test-suite Runner for lean4-yaml-verified
+══════════════════════════════════════════════════════════
+
+Loading test files... 416 test cases from 351 files
+
+Test distribution by stage:
+  scalar: 82
+  flow: 46
+  block: 109
+  document: 24
+  advanced: 81
+  error: 74
+
+Running all tests for HTML report...
+------------------------------------------------------------
+  [1/416] 229Q ✓
+  [2/416] 236B ⚠ unexpected pass
+  [3/416] 26DV ⏱ timeout
+  [4/416] 27NA ○ YAML 1.3 specific
+  [5/416] 2AUY ✗ parse error: unexpected token '!' at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected block sequence at { offset := 3, line := 0, col := 3 }; expected YAML value at { offset := 3, line := 0, col := 3 }
+  [6/416] 2CMS ⚠ unexpected pass
+  [7/416] 2EBW ✓
+  [8/416] 2G84 ⚠ unexpected pass
+  [9/416] 2G84 ⚠ unexpected pass
+  [10/416] 2G84 ✓
+  [11/416] 2G84 ✓
+  [12/416] 2JQS ✓
+  [13/416] 2LFX ○ YAML 1.3 specific
+  [14/416] 2SXE ○ YAML 1.3 specific
+  [15/416] 2XXW ✗ parse error: unexpected token '!' at { offset := 92, line := 3, col := 5 }; expected plain scalar at { offset := 92, line := 3, col := 5 }; expected YAML value at { offset := 92, line := 3, col := 5 }
+  [16/416] 33X3 ✗ parse error: unexpected token '!' at { offset := 7, line := 1, col := 3 }; expected plain scalar at { offset := 7, line := 1, col := 3 }; expected block sequence at { offset := 7, line := 1, col := 3 }; expected YAML value at { offset := 7, line := 1, col := 3 }
+  [17/416] 35KP ✗ parse error: unexpected token '!' at { offset := 5, line := 0, col := 5 }; expected plain scalar at { offset := 5, line := 0, col := 5 }; expected YAML value at { offset := 5, line := 0, col := 5 }
+  [18/416] 36F6 ✓
+  [19/416] 3ALJ ✓
+  [20/416] 3GZX ⏱ timeout
+  [21/416] 3HFZ ⚠ unexpected pass
+  [22/416] 3MYT ✗ parse error: unexpected token '&' at { offset := 13, line := 2, col := 2 }; expected plain scalar at { offset := 13, line := 2, col := 2 }; expected YAML value at { offset := 13, line := 2, col := 2 }
+  [23/416] 3R3P ✗ parse error: unexpected token '&' at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
+  [24/416] 3RLN ✗ parse error: unexpected token '\\' at { offset := 16, line := 1, col := 5 }; expected newline at { offset := 16, line := 1, col := 5 }; expected double-quoted scalar at { offset := 16, line := 1, col := 5 }; expected YAML value at { offset := 16, line := 1, col := 5 }
+  [25/416] 3RLN ✗ parse error: unexpected token '\\' at { offset := 16, line := 1, col := 5 }; expected newline at { offset := 16, line := 1, col := 5 }; expected double-quoted scalar at { offset := 16, line := 1, col := 5 }; expected YAML value at { offset := 16, line := 1, col := 5 }
+  [26/416] 3RLN ✗ parse error: unexpected token '—' at { offset := 18, line := 1, col := 5 }; expected newline at { offset := 18, line := 1, col := 5 }; expected double-quoted scalar at { offset := 18, line := 1, col := 5 }; expected YAML value at { offset := 18, line := 1, col := 5 }
+  [27/416] 3RLN ✗ parse error: unexpected token '\\' at { offset := 16, line := 1, col := 5 }; expected newline at { offset := 16, line := 1, col := 5 }; expected double-quoted scalar at { offset := 16, line := 1, col := 5 }; expected YAML value at { offset := 16, line := 1, col := 5 }
+  [28/416] 3RLN ✗ parse error: unexpected token '\\' at { offset := 16, line := 1, col := 5 }; expected newline at { offset := 16, line := 1, col := 5 }; expected double-quoted scalar at { offset := 16, line := 1, col := 5 }; expected YAML value at { offset := 16, line := 1, col := 5 }
+  [29/416] 3RLN ✗ parse error: unexpected token '—' at { offset := 18, line := 1, col := 5 }; expected newline at { offset := 18, line := 1, col := 5 }; expected double-quoted scalar at { offset := 18, line := 1, col := 5 }; expected YAML value at { offset := 18, line := 1, col := 5 }
+  [30/416] 3UYS ✓
+  [31/416] 4ABK ✓
+  [32/416] 4CQQ ⏱ timeout
+  [33/416] 4EJS ⏱ timeout
+  [34/416] 4FJ6 ✗ parse error: unexpected token '[' at { offset := 9, line := 2, col := 3 }; expected plain scalar at { offset := 9, line := 2, col := 3 }; expected flow value at { offset := 8, line := 2, col := 2 }; expected flow sequence at { offset := 8, line := 2, col := 2 }; expected YAML value at { offset := 8, line := 2, col := 2 }
+  [35/416] 4GC6 ○ YAML 1.3 specific
+  [36/416] 4H7K ⚠ unexpected pass
+  [37/416] 4HVU ⚠ unexpected pass
+  [38/416] 4JVG ⏱ timeout
+  [39/416] 4MUZ ✓
+  [40/416] 4MUZ ✓
+  [41/416] 4MUZ ✓
+  [42/416] 4Q9F ○ YAML 1.3 specific
+  [43/416] 4QFQ ○ YAML 1.3 specific
+  [44/416] 4QFQ ○ empty yaml input
+  [45/416] 4QFQ ○ empty yaml input
+  [46/416] 4QFQ ○ empty yaml input
+  [47/416] 4QFQ ○ empty yaml input
+  [48/416] 4RWC ✓
+  [49/416] 4UYU ○ YAML 1.3 specific
+  [50/416] 4V8U ✓
+  [51/416] 4WA9 ✓
+  [52/416] 4WA9 ○ empty yaml input
+  [53/416] 4ZYM ⏱ timeout
+  [54/416] 52DL ○ YAML 1.3 specific
+  [55/416] 54T7 ✓
+  [56/416] 55WF ⚠ unexpected pass
+  [57/416] 565N ⏱ timeout
+  [58/416] 57H4 ⏱ timeout
+  [59/416] 58MP ✓
+  [60/416] 5BVJ ✓
+  [61/416] 5C5M ✓
+  [62/416] 5GBF ⏱ timeout
+  [63/416] 5KJE ✓
+  [64/416] 5LLU ⚠ unexpected pass
+  [65/416] 5MUD ✓
+  [66/416] 5NYZ ⏱ timeout
+  [67/416] 5T43 ✓
+  [68/416] 5T43 ○ empty yaml input
+  [69/416] 5T43 ○ empty yaml input
+  [70/416] 5TRB ⚠ unexpected pass
+  [71/416] 5TYM ✗ parse error: unexpected token '!' at { offset := 31, line := 2, col := 1 }; expected plain scalar at { offset := 31, line := 2, col := 1 }; expected YAML value at { offset := 31, line := 2, col := 1 }
+  [72/416] 5U3A ⚠ unexpected pass
+  [73/416] 5WE3 ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
+  [74/416] 62EZ ⚠ unexpected pass
+  [75/416] 652Z ✓
+  [76/416] 65WH ✓
+  [77/416] 6BCT ✓
+  [78/416] 6BFJ ✗ parse error: unexpected token '&' at { offset := 5, line := 1, col := 1 }; expected plain scalar at { offset := 5, line := 1, col := 1 }; expected YAML value at { offset := 5, line := 1, col := 1 }
+  [79/416] 6CA3 ✓
+  [80/416] 6CK3 ✗ parse error: unexpected token '!' at { offset := 42, line := 2, col := 3 }; expected plain scalar at { offset := 42, line := 2, col := 3 }; expected block sequence at { offset := 42, line := 2, col := 3 }; expected YAML value at { offset := 42, line := 2, col := 3 }
+  [81/416] 6FWR ✓
+  [82/416] 6H3V ✓
+  [83/416] 6HB6 ✓
+  [84/416] 6JQW ✓
+  [85/416] 6JTT ⚠ unexpected pass
+  [86/416] 6JWB ⏱ timeout
+  [87/416] 6KGN ⏱ timeout
+  [88/416] 6LVF ○ YAML 1.3 specific
+  [89/416] 6M2F ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
+  [90/416] 6PBE ✗ parse error: unexpected token at { offset := 5, line := 1, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 5, line := 1, col := 1 }; expected plain scalar at { offset := 5, line := 1, col := 1 }; expected YAML value at { offset := 5, line := 1, col := 1 }
+  [91/416] 6PBE ○ empty yaml input
+  [92/416] 6PBE ○ empty yaml input
+  [93/416] 6S55 ⚠ unexpected pass
+  [94/416] 6SLA ✓
+  [95/416] 6VJK ○ YAML 1.3 specific
+  [96/416] 6WLZ ○ YAML 1.3 specific
+  [97/416] 6WPF ○ YAML 1.3 specific
+  [98/416] 6XDY ✓
+  [99/416] 6ZKB ○ YAML 1.3 specific
+  [100/416] 735Y ✗ parse error: unexpected token '!' at { offset := 41, line := 4, col := 3 }; expected plain scalar at { offset := 41, line := 4, col := 3 }; expected block sequence at { offset := 41, line := 4, col := 3 }; expected YAML value at { offset := 41, line := 4, col := 3 }
+  [101/416] 74H7 ⏱ timeout
+  [102/416] 753E ○ YAML 1.3 specific
+  [103/416] 7A4E ✗ parse error: unexpected token '—' at { offset := 36, line := 3, col := 1 }; expected newline at { offset := 36, line := 3, col := 1 }; expected double-quoted scalar at { offset := 36, line := 3, col := 1 }; expected YAML value at { offset := 36, line := 3, col := 1 }
+  [104/416] 7BMT ○ YAML 1.3 specific
+  [105/416] 7BUB ⏱ timeout
+  [106/416] 7FWL ✗ parse error: unexpected token '!' at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
+  [107/416] 7LBH ⚠ unexpected pass
+  [108/416] 7MNF ⚠ unexpected pass
+  [109/416] 7T8X ○ YAML 1.3 specific
+  [110/416] 7TMG ✓
+  [111/416] 7W2P ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
+  [112/416] 7Z25 ✓
+  [113/416] 7ZZ5 ⏱ timeout
+  [114/416] 82AN ○ YAML 1.3 specific
+  [115/416] 87E4 ⏱ timeout
+  [116/416] 8CWC ✓
+  [117/416] 8G76 ✓
+  [118/416] 8KB6 ✗ parse error: unexpected token at { offset := 40, line := 3, col := 3 }; expected ',' or '}}' in flow mapping, got 'l' at { offset := 40, line := 3, col := 3 }; expected flow mapping at { offset := 40, line := 3, col := 3 }; expected block sequence at { offset := 40, line := 3, col := 3 }; expected YAML value at { offset := 40, line := 3, col := 3 }
+  [119/416] 8MK2 ○ YAML 1.3 specific
+  [120/416] 8QBE ✓
+  [121/416] 8UDB ✗ parse error: unexpected token '\"' at { offset := 3, line := 1, col := 1 }; expected plain scalar at { offset := 3, line := 1, col := 1 }; expected flow value at { offset := 2, line := 1, col := 0 }; expected flow sequence at { offset := 2, line := 1, col := 0 }; expected YAML value at { offset := 2, line := 1, col := 0 }
+  [122/416] 8XDJ ⚠ unexpected pass
+  [123/416] 8XYN ✗ parse error: unexpected token '&' at { offset := 7, line := 1, col := 3 }; expected plain scalar at { offset := 7, line := 1, col := 3 }; expected block sequence at { offset := 7, line := 1, col := 3 }; expected YAML value at { offset := 7, line := 1, col := 3 }
+  [124/416] 93JH ✓
+  [125/416] 93WF ○ YAML 1.3 specific
+  [126/416] 96L6 ✓
+  [127/416] 96NN ✓
+  [128/416] 96NN ✓
+  [129/416] 98YD ✓
+  [130/416] 9BXH ✗ parse error: unexpected token '\"' at { offset := 34, line := 2, col := 5 }; expected plain scalar at { offset := 34, line := 2, col := 5 }; expected flow mapping at { offset := 33, line := 2, col := 4 }; expected block sequence at { offset := 33, line := 2, col := 4 }; expected YAML value at { offset := 33, line := 2, col := 4 }
+  [131/416] 9C9N ⚠ unexpected pass
+  [132/416] 9CWY ⚠ unexpected pass
+  [133/416] 9DXL ○ YAML 1.3 specific
+  [134/416] 9FMG ✓
+  [135/416] 9HCY ⚠ unexpected pass
+  [136/416] 9J7A ✓
+  [137/416] 9JBA ⚠ unexpected pass
+  [138/416] 9KAX ○ YAML 1.3 specific
+  [139/416] 9KBC ⚠ unexpected pass
+  [140/416] 9MAG ⚠ unexpected pass
+  [141/416] 9MMA ⚠ unexpected pass
+  [142/416] 9MMW ✗ parse error: unexpected token at { offset := 10, line := 0, col := 10 }; expected ',' or ']' in flow sequence, got ':' at { offset := 10, line := 0, col := 10 }; expected flow sequence at { offset := 10, line := 0, col := 10 }; expected block sequence at { offset := 10, line := 0, col := 10 }; expected YAML value at { offset := 10, line := 0, col := 10 }
+  [143/416] 9MQT ✗ parse error: unexpected token '.' at { offset := 8, line := 1, col := 1 }; expected newline at { offset := 8, line := 1, col := 1 }; expected double-quoted scalar at { offset := 8, line := 1, col := 1 }; expected YAML value at { offset := 8, line := 1, col := 1 }
+  [144/416] 9MQT ⚠ unexpected pass
+  [145/416] 9SA2 ✗ parse error: unexpected token '\"' at { offset := 35, line := 2, col := 5 }; expected plain scalar at { offset := 35, line := 2, col := 5 }; expected flow mapping at { offset := 34, line := 2, col := 4 }; expected block sequence at { offset := 34, line := 2, col := 4 }; expected YAML value at { offset := 34, line := 2, col := 4 }
+  [146/416] 9SHH ✓
+  [147/416] 9TFX ○ YAML 1.3 specific
+  [148/416] 9U5K ✓
+  [149/416] 9WXW ○ YAML 1.3 specific
+  [150/416] 9YRD ○ YAML 1.3 specific
+  [151/416] A2M4 ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
+  [152/416] A6F9 ✓
+  [153/416] A984 ✓
+  [154/416] AB8U ✓
+  [155/416] AVM7 ✓
+  [156/416] AZ63 ⏱ timeout
+  [157/416] AZW3 ✓
+  [158/416] B3HG ○ YAML 1.3 specific
+  [159/416] B63P ⚠ unexpected pass
+  [160/416] BD7L ⚠ unexpected pass
+  [161/416] BEC7 ✓
+  [162/416] BF9H ⚠ unexpected pass
+  [163/416] BS4K ⚠ unexpected pass
+  [164/416] BU8L ○ YAML 1.3 specific
+  [165/416] C2DT ✓
+  [166/416] C2SP ⚠ unexpected pass
+  [167/416] C4HZ ✗ parse error: unexpected token '!' at { offset := 37, line := 1, col := 5 }; expected plain scalar at { offset := 37, line := 1, col := 5 }; expected YAML value at { offset := 37, line := 1, col := 5 }
+  [168/416] CC74 ✗ parse error: unexpected token '!' at { offset := 40, line := 2, col := 1 }; expected plain scalar at { offset := 40, line := 2, col := 1 }; expected YAML value at { offset := 40, line := 2, col := 1 }
+  [169/416] CFD4 ✗ parse error: unexpected token at { offset := 5, line := 0, col := 5 }; ':' cannot start a plain scalar when followed by whitespace at { offset := 5, line := 0, col := 5 }; expected plain scalar at { offset := 5, line := 0, col := 5 }; expected flow value at { offset := 4, line := 0, col := 4 }; expected flow sequence at { offset := 4, line := 0, col := 4 }; expected block sequence at { offset := 4, line := 0, col := 4 }; expected YAML value at { offset := 4, line := 0, col := 4 }
+  [170/416] CML9 ⏱ timeout
+  [171/416] CN3R ✗ parse error: unexpected token '&' at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
+  [172/416] CPZ3 ✓
+  [173/416] CQ3W ⏱ timeout
+  [174/416] CT4Q ✗ parse error: unexpected token at { offset := 3, line := 1, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 3, line := 1, col := 1 }; expected plain scalar at { offset := 3, line := 1, col := 1 }; expected flow value at { offset := 2, line := 1, col := 0 }; expected flow sequence at { offset := 2, line := 1, col := 0 }; expected YAML value at { offset := 2, line := 1, col := 0 }
+  [175/416] CTN5 ⚠ unexpected pass
+  [176/416] CUP7 ⏱ timeout
+  [177/416] CVW2 ⚠ unexpected pass
+  [178/416] CXX2 ⚠ unexpected pass
+  [179/416] D49Q ⚠ unexpected pass
+  [180/416] D83L ✓
+  [181/416] D88J ✓
+  [182/416] D9TU ✓
+  [183/416] DBG4 ✓
+  [184/416] DC7X ✓
+  [185/416] DE56 ✗ parse error: unexpected token 't' at { offset := 19, line := 1, col := 5 }; expected newline at { offset := 19, line := 1, col := 5 }; expected double-quoted scalar at { offset := 19, line := 1, col := 5 }; expected YAML value at { offset := 19, line := 1, col := 5 }
+  [186/416] DE56 ✗ parse error: unexpected token 't' at { offset := 21, line := 1, col := 5 }; expected newline at { offset := 21, line := 1, col := 5 }; expected double-quoted scalar at { offset := 21, line := 1, col := 5 }; expected YAML value at { offset := 21, line := 1, col := 5 }
+  [187/416] DE56 ✗ parse error: unexpected token at { offset := 15, line := 0, col := 13 }; unknown escape: \— at { offset := 15, line := 0, col := 13 }; expected double-quoted scalar at { offset := 15, line := 0, col := 13 }; expected YAML value at { offset := 15, line := 0, col := 13 }
+  [188/416] DE56 ✗ parse error: unexpected token at { offset := 15, line := 0, col := 13 }; unknown escape: \— at { offset := 15, line := 0, col := 13 }; expected double-quoted scalar at { offset := 15, line := 0, col := 13 }; expected YAML value at { offset := 15, line := 0, col := 13 }
+  [189/416] DE56 ✗ parse error: unexpected token 't' at { offset := 18, line := 1, col := 5 }; expected newline at { offset := 18, line := 1, col := 5 }; expected double-quoted scalar at { offset := 18, line := 1, col := 5 }; expected YAML value at { offset := 18, line := 1, col := 5 }
+  [190/416] DE56 ✗ parse error: unexpected token 't' at { offset := 20, line := 1, col := 5 }; expected newline at { offset := 20, line := 1, col := 5 }; expected double-quoted scalar at { offset := 20, line := 1, col := 5 }; expected YAML value at { offset := 20, line := 1, col := 5 }
+  [191/416] DFF7 ✗ parse error: unexpected token '}' at { offset := 41, line := 4, col := 1 }; expected plain scalar at { offset := 41, line := 4, col := 1 }; expected flow value at { offset := 40, line := 4, col := 0 }; expected flow mapping at { offset := 40, line := 4, col := 0 }; expected YAML value at { offset := 40, line := 4, col := 0 }
+  [192/416] DHP8 ✓
+  [193/416] DK3J ✓
+  [194/416] DK4H ⚠ unexpected pass
+  [195/416] DK95 ✓
+  [196/416] DK95 ⏱ timeout
+  [197/416] DK95 ⏱ timeout
+  [198/416] DK95 ✓
+  [199/416] DK95 ✓
+  [200/416] DK95 ✓
+  [201/416] DK95 ⚠ unexpected pass
+  [202/416] DK95 ✓
+  [203/416] DK95 ⏱ timeout
+  [204/416] DMG6 ⚠ unexpected pass
+  [205/416] DWX9 ○ YAML 1.3 specific
+  [206/416] E76Z ⏱ timeout
+  [207/416] EB22 ⚠ unexpected pass
+  [208/416] EHF6 ✗ parse error: unexpected token '!' at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
+  [209/416] EW3V ⚠ unexpected pass
+  [210/416] EX5H ○ YAML 1.3 specific
+  [211/416] EXG3 ○ YAML 1.3 specific
+  [212/416] F2C7 ✗ parse error: unexpected token '&' at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected block sequence at { offset := 3, line := 0, col := 3 }; expected YAML value at { offset := 3, line := 0, col := 3 }
+  [213/416] F3CP ✓
+  [214/416] F6MC ✓
+  [215/416] F8F9 ✓
+  [216/416] FBC9 ✗ parse error: unexpected token '!' at { offset := 52, line := 1, col := 6 }; expected plain scalar at { offset := 52, line := 1, col := 6 }; expected YAML value at { offset := 52, line := 1, col := 6 }
+  [217/416] FH7J ✗ parse error: unexpected token '!' at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected block sequence at { offset := 3, line := 0, col := 3 }; expected YAML value at { offset := 3, line := 0, col := 3 }
+  [218/416] FP8R ✓
+  [219/416] FQ7F ✓
+  [220/416] FRK4 ✗ parse error: unexpected token at { offset := 16, line := 2, col := 3 }; ':' cannot start a plain scalar when followed by whitespace at { offset := 16, line := 2, col := 3 }; expected plain scalar at { offset := 16, line := 2, col := 3 }; expected flow mapping at { offset := 15, line := 2, col := 2 }; expected YAML value at { offset := 15, line := 2, col := 2 }
+  [221/416] FTA2 ✗ parse error: unexpected token '&' at { offset := 5, line := 0, col := 5 }; expected plain scalar at { offset := 5, line := 0, col := 5 }; expected YAML value at { offset := 5, line := 0, col := 5 }
+  [222/416] FUP4 ✓
+  [223/416] G4RS ✓
+  [224/416] G5U8 ⚠ unexpected pass
+  [225/416] G7JE ⚠ unexpected pass
+  [226/416] G992 ○ YAML 1.3 specific
+  [227/416] G9HC ⏱ timeout
+  [228/416] GDY7 ⏱ timeout
+  [229/416] GH63 ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
+  [230/416] GT5M ⚠ unexpected pass
+  [231/416] H2RW ✓
+  [232/416] H3Z8 ✓
+  [233/416] H7J7 ⏱ timeout
+  [234/416] H7TQ ⚠ unexpected pass
+  [235/416] HM87 ✓
+  [236/416] HM87 ✓
+  [237/416] HMK4 ✓
+  [238/416] HMQ5 ✗ parse error: unexpected token '!' at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
+  [239/416] HRE5 ⏱ timeout
+  [240/416] HS5T ✓
+  [241/416] HU3P ⚠ unexpected pass
+  [242/416] HWV9 ✓
+  [243/416] J3BT ✗ parse error: unexpected token '}' at { offset := 101, line := 5, col := 3 }; expected plain scalar at { offset := 101, line := 5, col := 3 }; expected YAML value at { offset := 101, line := 5, col := 3 }
+  [244/416] J5UC ✓
+  [245/416] J7PZ ✗ parse error: unexpected token '!' at { offset := 259, line := 7, col := 5 }; expected plain scalar at { offset := 259, line := 7, col := 5 }; expected YAML value at { offset := 259, line := 7, col := 5 }
+  [246/416] J7VC ✓
+  [247/416] J9HZ ⏱ timeout
+  [248/416] JEF9 ✓
+  [249/416] JEF9 ✓
+  [250/416] JEF9 ✓
+  [251/416] JHB9 ✓
+  [252/416] JKF3 ⚠ unexpected pass
+  [253/416] JQ4R ✓
+  [254/416] JR7V ✓
+  [255/416] JS2J ⏱ timeout
+  [256/416] JTV5 ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
+  [257/416] JY7Z ⚠ unexpected pass
+  [258/416] K3WX ✓
+  [259/416] K4SU ✓
+  [260/416] K527 ○ YAML 1.3 specific
+  [261/416] K54U ✓
+  [262/416] K858 ✓
+  [263/416] KH5V ✓
+  [264/416] KH5V ✗ parse error: unexpected token at { offset := 13, line := 0, col := 11 }; unknown escape: \— at { offset := 13, line := 0, col := 11 }; expected double-quoted scalar at { offset := 13, line := 0, col := 11 }; expected YAML value at { offset := 13, line := 0, col := 11 }
+  [265/416] KH5V ✓
+  [266/416] KK5P ⏱ timeout
+  [267/416] KMK3 ✓
+  [268/416] KS4U ⚠ unexpected pass
+  [269/416] KSS4 ○ YAML 1.3 specific
+  [270/416] L24T ✓
+  [271/416] L24T ✓
+  [272/416] L383 ✓
+  [273/416] L94M ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
+  [274/416] L9U5 ⏱ timeout
+  [275/416] LE5A ✗ parse error: unexpected token '!' at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected block sequence at { offset := 3, line := 0, col := 3 }; expected YAML value at { offset := 3, line := 0, col := 3 }
+  [276/416] LHL4 ⚠ unexpected pass
+  [277/416] LP6E ✓
+  [278/416] LQZ7 ⏱ timeout
+  [279/416] LX3P ○ YAML 1.3 specific
+  [280/416] M29M ✓
+  [281/416] M2N8 ⏱ timeout
+  [282/416] M2N8 ✓
+  [283/416] M5C3 ○ YAML 1.3 specific
+  [284/416] M5DY ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
+  [285/416] M6YH ✓
+  [286/416] M7A3 ○ YAML 1.3 specific
+  [287/416] M7NX ✓
+  [288/416] M9B4 ○ YAML 1.3 specific
+  [289/416] MJS9 ○ YAML 1.3 specific
+  [290/416] MUS6 ⚠ unexpected pass
+  [291/416] MUS6 ⚠ unexpected pass
+  [292/416] MUS6 ✓
+  [293/416] MUS6 ✓
+  [294/416] MUS6 ✓
+  [295/416] MUS6 ✓
+  [296/416] MUS6 ✓
+  [297/416] MXS3 ✓
+  [298/416] MYW6 ○ YAML 1.3 specific
+  [299/416] MZX3 ✓
+  [300/416] N4JP ⚠ unexpected pass
+  [301/416] N782 ⚠ unexpected pass
+  [302/416] NAT4 ⏱ timeout
+  [303/416] NB6Z ✗ parse error: unexpected token '\n' at { offset := 24, line := 4, col := 0 }; expected plain scalar at { offset := 24, line := 4, col := 0 }; expected YAML value at { offset := 24, line := 4, col := 0 }
+  [304/416] NHX8 ⏱ timeout
+  [305/416] NJ66 ✗ parse error: unexpected token at { offset := 41, line := 3, col := 3 }; expected ',' or '}}' in flow mapping, got 'l' at { offset := 41, line := 3, col := 3 }; expected flow mapping at { offset := 41, line := 3, col := 3 }; expected block sequence at { offset := 41, line := 3, col := 3 }; expected YAML value at { offset := 41, line := 3, col := 3 }
+  [306/416] NKF9 ✗ parse error: unexpected token at { offset := 47, line := 5, col := 14 }; ':' cannot start a plain scalar when followed by whitespace at { offset := 47, line := 5, col := 14 }; expected plain scalar at { offset := 47, line := 5, col := 14 }; expected flow mapping at { offset := 46, line := 5, col := 13 }; expected YAML value at { offset := 46, line := 5, col := 13 }
+  [307/416] NP9H ✗ parse error: unexpected token 't' at { offset := 10, line := 1, col := 1 }; expected newline at { offset := 10, line := 1, col := 1 }; expected double-quoted scalar at { offset := 10, line := 1, col := 1 }; expected YAML value at { offset := 10, line := 1, col := 1 }
+  [308/416] P2AD ✓
+  [309/416] P2EQ ⚠ unexpected pass
+  [310/416] P76L ✗ parse error: unexpected token '!' at { offset := 39, line := 2, col := 1 }; expected plain scalar at { offset := 39, line := 2, col := 1 }; expected YAML value at { offset := 39, line := 2, col := 1 }
+  [311/416] P94K ⏱ timeout
+  [312/416] PBJ2 ✓
+  [313/416] PRH3 ✗ parse error: unexpected token '—' at { offset := 36, line := 3, col := 1 }; expected newline at { offset := 36, line := 3, col := 1 }; expected single-quoted scalar at { offset := 36, line := 3, col := 1 }; expected YAML value at { offset := 36, line := 3, col := 1 }
+  [314/416] PUW8 ✓
+  [315/416] PW8X ✗ parse error: unexpected token '&' at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected block sequence at { offset := 3, line := 0, col := 3 }; expected YAML value at { offset := 3, line := 0, col := 3 }
+  [316/416] Q4CL ⚠ unexpected pass
+  [317/416] Q5MG ✓
+  [318/416] Q88A ✓
+  [319/416] Q8AD ○ YAML 1.3 specific
+  [320/416] Q9WF ○ YAML 1.3 specific
+  [321/416] QB6E ⏱ timeout
+  [322/416] QF4Y ✗ parse error: unexpected token at { offset := 6, line := 1, col := 4 }; expected ',' or ']' in flow sequence, got ':' at { offset := 6, line := 1, col := 4 }; expected flow sequence at { offset := 6, line := 1, col := 4 }; expected YAML value at { offset := 6, line := 1, col := 4 }
+  [323/416] QLJ7 ⚠ unexpected pass
+  [324/416] QT73 ✓
+  [325/416] R4YG ✓
+  [326/416] R52L ✓
+  [327/416] RHX7 ⚠ unexpected pass
+  [328/416] RLU9 ⏱ timeout
+  [329/416] RR7F ✓
+  [330/416] RTP8 ✓
+  [331/416] RXY3 ⚠ unexpected pass
+  [332/416] RZP5 ○ YAML 1.3 specific
+  [333/416] RZT7 ✓
+  [334/416] S3PD ⏱ timeout
+  [335/416] S3PD ○ empty yaml input
+  [336/416] S4GJ ⚠ unexpected pass
+  [337/416] S4JQ ✗ parse error: unexpected token '!' at { offset := 51, line := 3, col := 3 }; expected plain scalar at { offset := 51, line := 3, col := 3 }; expected block sequence at { offset := 51, line := 3, col := 3 }; expected YAML value at { offset := 51, line := 3, col := 3 }
+  [338/416] S4T7 ✓
+  [339/416] S7BG ✓
+  [340/416] S98Z ⚠ unexpected pass
+  [341/416] S9E8 ⏱ timeout
+  [342/416] SBG9 ✗ parse error: unexpected token '[' at { offset := 13, line := 0, col := 13 }; expected plain scalar at { offset := 13, line := 0, col := 13 }; expected flow mapping at { offset := 12, line := 0, col := 12 }; expected YAML value at { offset := 12, line := 0, col := 12 }
+  [343/416] SF5V ⚠ unexpected pass
+  [344/416] SKE5 ⏱ timeout
+  [345/416] SM9W ✓
+  [346/416] SM9W ✓
+  [347/416] SR86 ⏱ timeout
+  [348/416] SSW6 ○ YAML 1.3 specific
+  [349/416] SU5Z ⚠ unexpected pass
+  [350/416] SU74 ⏱ timeout
+  [351/416] SY6V ⚠ unexpected pass
+  [352/416] SYW4 ✓
+  [353/416] T26H ○ YAML 1.3 specific
+  [354/416] T4YY ○ YAML 1.3 specific
+  [355/416] T5N4 ○ YAML 1.3 specific
+  [356/416] T833 ⚠ unexpected pass
+  [357/416] TD5N ⚠ unexpected pass
+  [358/416] TE2A ✓
+  [359/416] TL85 ✗ parse error: unexpected token 'f' at { offset := 5, line := 1, col := 3 }; expected newline at { offset := 5, line := 1, col := 3 }; expected double-quoted scalar at { offset := 5, line := 1, col := 3 }; expected YAML value at { offset := 5, line := 1, col := 3 }
+  [360/416] TS54 ○ YAML 1.3 specific
+  [361/416] U3C3 ✗ parse error: unexpected token '!' at { offset := 36, line := 2, col := 1 }; expected plain scalar at { offset := 36, line := 2, col := 1 }; expected YAML value at { offset := 36, line := 2, col := 1 }
+  [362/416] U3XV ○ YAML 1.3 specific
+  [363/416] U44R ⚠ unexpected pass
+  [364/416] U99R ⚠ unexpected pass
+  [365/416] U9NS ✓
+  [366/416] UDM2 ✓
+  [367/416] UDR7 ✓
+  [368/416] UGM3 ✗ parse error: unexpected token '!' at { offset := 5, line := 0, col := 5 }; expected plain scalar at { offset := 5, line := 0, col := 5 }; expected YAML value at { offset := 5, line := 0, col := 5 }
+  [369/416] UKK6 ⏱ timeout
+  [370/416] UKK6 ⏱ timeout
+  [371/416] UKK6 ✗ parse error: unexpected token '!' at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
+  [372/416] UT92 ✗ parse error: unexpected token at { offset := 15, line := 2, col := 1 }; expected ',' or '}}' in flow mapping, got '%' at { offset := 15, line := 2, col := 1 }; expected flow mapping at { offset := 15, line := 2, col := 1 }; expected YAML value at { offset := 15, line := 2, col := 1 }
+  [373/416] UV7Q ✓
+  [374/416] V55R ✗ parse error: unexpected token '&' at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected block sequence at { offset := 3, line := 0, col := 3 }; expected YAML value at { offset := 3, line := 0, col := 3 }
+  [375/416] V9D5 ⏱ timeout
+  [376/416] VJP3 ⚠ unexpected pass
+  [377/416] VJP3 ✓
+  [378/416] W42U ✗ parse error: unexpected token '#' at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected block sequence at { offset := 3, line := 0, col := 3 }; expected YAML value at { offset := 3, line := 0, col := 3 }
+  [379/416] W4TN ○ YAML 1.3 specific
+  [380/416] W5VH ○ YAML 1.3 specific
+  [381/416] W9L4 ⚠ unexpected pass
+  [382/416] WZ62 ✗ parse error: unexpected token '!' at { offset := 11, line := 1, col := 9 }; expected plain scalar at { offset := 11, line := 1, col := 9 }; expected flow value at { offset := 10, line := 1, col := 8 }; expected flow mapping at { offset := 10, line := 1, col := 8 }; expected YAML value at { offset := 10, line := 1, col := 8 }
+  [383/416] X38W ✗ parse error: unexpected token '&' at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected flow mapping at { offset := 2, line := 0, col := 2 }; expected YAML value at { offset := 2, line := 0, col := 2 }
+  [384/416] X4QW ⚠ unexpected pass
+  [385/416] X8DW ✗ parse error: unexpected token at { offset := 5, line := 1, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 5, line := 1, col := 1 }; expected plain scalar at { offset := 5, line := 1, col := 1 }; expected YAML value at { offset := 5, line := 1, col := 1 }
+  [386/416] XLQ9 ✓
+  [387/416] XV9V ○ YAML 1.3 specific
+  [388/416] XW4D ○ YAML 1.3 specific
+  [389/416] Y2GN ⏱ timeout
+  [390/416] Y79Y ⚠ unexpected pass
+  [391/416] Y79Y ✓
+  [392/416] Y79Y ✗ parse error: unexpected token at { offset := 17, line := 2, col := 2 }; expected ',' or ']' in flow sequence, got 'f' at { offset := 17, line := 2, col := 2 }; expected flow sequence at { offset := 17, line := 2, col := 2 }; expected block sequence at { offset := 17, line := 2, col := 2 }; expected YAML value at { offset := 17, line := 2, col := 2 }
+  [393/416] Y79Y ⚠ unexpected pass
+  [394/416] Y79Y ⚠ unexpected pass
+  [395/416] Y79Y ⚠ unexpected pass
+  [396/416] Y79Y ⚠ unexpected pass
+  [397/416] Y79Y ⚠ unexpected pass
+  [398/416] Y79Y ⏱ timeout
+  [399/416] Y79Y ⏱ timeout
+  [400/416] Y79Y ✓
+  [401/416] YD5X ✓
+  [402/416] YJV2 ⚠ unexpected pass
+  [403/416] Z67P ○ YAML 1.3 specific
+  [404/416] Z9M4 ✗ parse error: unexpected token '!' at { offset := 42, line := 2, col := 3 }; expected plain scalar at { offset := 42, line := 2, col := 3 }; expected block sequence at { offset := 42, line := 2, col := 3 }; expected YAML value at { offset := 42, line := 2, col := 3 }
+  [405/416] ZCZ6 ⚠ unexpected pass
+  [406/416] ZF4X ✓
+  [407/416] ZH7C ⏱ timeout
+  [408/416] ZK9H ✓
+  [409/416] ZL4Z ⚠ unexpected pass
+  [410/416] ZVH3 ⚠ unexpected pass
+  [411/416] ZWK4 ✗ parse error: unexpected token at { offset := 10, line := 2, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 10, line := 2, col := 1 }; expected plain scalar at { offset := 10, line := 2, col := 1 }; expected YAML value at { offset := 10, line := 2, col := 1 }
+  [412/416] ZXT5 ⚠ unexpected pass
+  [413/416] ZYU8 ✓
+  [414/416] ZYU8 ✓
+  [415/416] ZYU8 ✓
+  [416/416] ZYU8 ✓
+------------------------------------------------------------
+
+Correct: 142/416 (34.000000%)
+
+Generating HTML reports...
+  wrote docs/index.html
+  wrote docs/coverage-all.html
+  wrote docs/coverage-scalar.html
+  wrote docs/coverage-flow.html
+  wrote docs/coverage-block.html
+  wrote docs/coverage-document.html
+  wrote docs/coverage-advanced.html
+  wrote docs/coverage-error.html
+
+HTML reports written to docs/

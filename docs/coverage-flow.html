@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>flow Tests — lean4-yaml-verified</title>
+  <style>
+    :root {
+      --color-pass: #4CAF50;
+      --color-fail: #f44336;
+      --color-expected-fail: #2196F3;
+      --color-unexpected-pass: #ff9800;
+      --color-skip: #9e9e9e;
+      --color-timeout: #9c27b0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0; padding: 20px; background: #f5f5f5;
+    }
+    .container {
+      max-width: 1400px; margin: 0 auto; background: white;
+      padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 8px;
+    }
+    h1 { color: #333; border-bottom: 3px solid var(--color-pass); padding-bottom: 10px; margin-top: 0; }
+    h2 { color: #4CAF50; margin-top: 30px; }
+    h3 { color: #555; }
+    .subtitle { color: #666; font-size: 16px; margin-bottom: 30px; }
+
+    /* Stats grid */
+    .stats {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 15px; margin: 25px 0;
+    }
+    .stat-box {
+      color: white; padding: 20px; border-radius: 8px; text-align: center;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .stat-box h3 { margin: 0 0 8px 0; font-size: 13px; opacity: 0.9; color: white; }
+    .stat-box .number { font-size: 32px; font-weight: bold; }
+    .stat-box .pct { font-size: 14px; margin-top: 4px; opacity: 0.9; }
+    .stat-total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .stat-pass { background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); }
+    .stat-fail { background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); }
+    .stat-expected { background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); }
+    .stat-unexpected { background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); }
+    .stat-skip { background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%); }
+    .stat-timeout { background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%); }
+    .stat-correct { background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%); }
+
+    /* Stage breakdown cards */
+    .stage-cards {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 15px; margin: 20px 0;
+    }
+    .stage-card {
+      background: #f8f9fa; padding: 18px; border-radius: 6px;
+      border-left: 4px solid var(--color-pass);
+    }
+    .stage-card-name { font-weight: 600; font-size: 16px; color: #333; margin-bottom: 8px; }
+    .stage-card-stats { color: #666; font-size: 14px; }
+    .stage-bar {
+      height: 8px; background: #e0e0e0; border-radius: 4px; margin-top: 10px; overflow: hidden;
+    }
+    .stage-bar-fill {
+      height: 100%; background: var(--color-pass); border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    /* Filters */
+    .filters {
+      background: #f8f9fa; padding: 15px; border-radius: 6px;
+      margin: 20px 0; display: flex; gap: 20px; flex-wrap: wrap; align-items: center;
+    }
+    .filter-group { display: flex; align-items: center; gap: 8px; }
+    .filter-group label { font-weight: 600; color: #555; font-size: 14px; }
+    .filter-btn {
+      padding: 6px 14px; border: 2px solid #ddd; background: white;
+      border-radius: 4px; cursor: pointer; transition: all 0.2s; font-size: 13px;
+    }
+    .filter-btn:hover { border-color: #4CAF50; }
+    .filter-btn.active { background: #4CAF50; color: white; border-color: #4CAF50; }
+    select {
+      padding: 6px 12px; border: 2px solid #ddd; border-radius: 4px; font-size: 13px;
+    }
+    .search-input {
+      padding: 6px 12px; border: 2px solid #ddd; border-radius: 4px;
+      font-size: 13px; width: 200px;
+    }
+    .search-input:focus { border-color: #4CAF50; outline: none; }
+
+    /* Table */
+    table {
+      width: 100%; border-collapse: collapse; margin: 20px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    th {
+      background: #4CAF50; color: white; padding: 10px 12px; text-align: left;
+      font-weight: 600; position: sticky; top: 0; cursor: pointer;
+      user-select: none; font-size: 13px;
+    }
+    th:hover { background: #45a049; }
+    th .sort-arrow { margin-left: 4px; opacity: 0.5; }
+    th.sorted .sort-arrow { opacity: 1; }
+    td { padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; }
+    tr:hover { background: #f5f5f5; }
+    tr.hidden { display: none; }
+
+    /* Badges */
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 12px;
+      font-size: 11px; font-weight: 600; color: white;
+    }
+    .badge-pass { background: var(--color-pass); }
+    .badge-fail { background: var(--color-fail); }
+    .badge-expected-fail { background: var(--color-expected-fail); }
+    .badge-unexpected-pass { background: var(--color-unexpected-pass); }
+    .badge-skip { background: var(--color-skip); }
+    .badge-timeout { background: var(--color-timeout); }
+
+    /* Tags */
+    .tag {
+      display: inline-block; background: #e3f2fd; color: #1565C0;
+      padding: 2px 8px; border-radius: 10px; font-size: 11px;
+      margin: 1px 2px; white-space: nowrap;
+    }
+
+    /* Error message */
+    .error-msg {
+      color: #d32f2f; font-size: 11px; font-family: 'Courier New', monospace;
+      max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .error-msg:hover { white-space: normal; word-break: break-all; }
+
+    /* Navigation */
+    .nav-link {
+      display: inline-block; margin-bottom: 20px; color: #2196F3;
+      text-decoration: none; font-size: 14px;
+    }
+    .nav-link:hover { text-decoration: underline; }
+
+    /* Footer */
+    footer {
+      margin-top: 40px; text-align: center; color: #999; font-size: 13px;
+      border-top: 1px solid #e0e0e0; padding-top: 20px;
+    }
+    footer a { color: #2196F3; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body { padding: 10px; }
+      .container { padding: 15px; }
+      .filters { flex-direction: column; gap: 10px; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <a href="index.html" class="nav-link">← Back to Coverage Index</a>
+  <h1>flow Tests — lean4-yaml-verified</h1>
+  <p class="subtitle">YAML 1.2.2 parser compliance against the official yaml-test-suite</p>
+  <div class="stats">
+    <div class="stat-box stat-total"><h3>Total</h3><div class="number">46</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">31</div></div>
+    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">8</div></div>
+    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">0</div></div>
+    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">3</div></div>
+    <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">0</div></div>
+    <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">4</div></div>
+    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">31/46</div><div class="pct">(67.391304%)</div></div>
+  </div>
+  <h3>Coverage by Stage</h3>
+  <div class="stage-cards">
+    <div class="stage-card">
+      <div class="stage-card-name">scalar</div>
+      <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+    </div>
+    <div class="stage-card">
+      <div class="stage-card-name">flow</div>
+      <div class="stage-card-stats">31/46 correct (67.000000%) · 31 pass, 8 fail, 0 exp-fail, 3 unexp-pass, 0 skip, 4 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 67.000000%"></div></div>
+    </div>
+    <div class="stage-card">
+      <div class="stage-card-name">block</div>
+      <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+    </div>
+    <div class="stage-card">
+      <div class="stage-card-name">document</div>
+      <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+    </div>
+    <div class="stage-card">
+      <div class="stage-card-name">advanced</div>
+      <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+    </div>
+    <div class="stage-card">
+      <div class="stage-card-name">error</div>
+      <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+    </div>
+  </div>
+  <div class="filters">
+    <div class="filter-group filter-outcome">
+      <label>Outcome:</label>
+      <button class="filter-btn active" onclick="filterByOutcome('all')">All</button>
+      <button class="filter-btn" onclick="filterByOutcome('pass')">Pass</button>
+      <button class="filter-btn" onclick="filterByOutcome('fail')">Fail</button>
+      <button class="filter-btn" onclick="filterByOutcome('expected-fail')">Exp Fail</button>
+      <button class="filter-btn" onclick="filterByOutcome('unexpected-pass')">Unexp Pass</button>
+      <button class="filter-btn" onclick="filterByOutcome('skip')">Skip</button>
+      <button class="filter-btn" onclick="filterByOutcome('timeout')">Timeout</button>
+    </div>
+    <div class="filter-group">
+      <label>Stage:</label>
+      <select onchange="filterByStage(this.value)">
+        <option value="all">All Stages</option>
+        <option value="scalar">Scalar</option>
+        <option value="flow">Flow</option>
+        <option value="block">Block</option>
+        <option value="document">Document</option>
+        <option value="advanced">Advanced</option>
+        <option value="error">Error</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Search:</label>
+      <input type="text" class="search-input" placeholder="ID, name, or tag..." oninput="searchTests(this.value)">
+    </div>
+    <div class="filter-group"><span>Showing <strong id="visibleCount">46</strong> of 46</span></div>
+  </div>
+  <table id="testTable">
+    <thead>
+      <tr>
+        <th onclick="sortTable(0)">ID <span class="sort-arrow">↕</span></th>
+        <th onclick="sortTable(1)">Name <span class="sort-arrow">↕</span></th>
+        <th onclick="sortTable(2)">Stage <span class="sort-arrow">↕</span></th>
+        <th onclick="sortTable(3)">Outcome <span class="sort-arrow">↕</span></th>
+        <th onclick="sortTable(4)">Tags <span class="sort-arrow">↕</span></th>
+        <th onclick="sortTable(5)">Error <span class="sort-arrow">↕</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="4abk flow mapping separate values flow mapping">
+        <td>4ABK</td>
+        <td>Flow Mapping Separate Values</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">mapping</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="4muz flow mapping colon on line after key flow mapping">
+        <td>4MUZ</td>
+        <td>Flow mapping colon on line after key</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">mapping</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="4rwc trailing spaces after flow collection flow whitespace">
+        <td>4RWC</td>
+        <td>Trailing spaces after flow collection</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">whitespace</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="54t7 flow mapping flow mapping">
+        <td>54T7</td>
+        <td>Flow Mapping</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">mapping</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="58mp flow mapping edge cases edge flow mapping">
+        <td>58MP</td>
+        <td>Flow mapping edge cases</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">edge</span><span class="tag">flow</span><span class="tag">mapping</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="5c5m spec example 7.15. flow mappings spec flow mapping">
+        <td>5C5M</td>
+        <td>Spec Example 7.15. Flow Mappings</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">spec</span><span class="tag">flow</span><span class="tag">mapping</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="5kje spec example 7.13. flow sequence spec flow sequence">
+        <td>5KJE</td>
+        <td>Spec Example 7.13. Flow Sequence</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">spec</span><span class="tag">flow</span><span class="tag">sequence</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="5mud colon and adjacent value on next line double flow mapping">
+        <td>5MUD</td>
+        <td>Colon and adjacent value on next line</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">double</span><span class="tag">flow</span><span class="tag">mapping</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="5t43 colon at the beginning of adjacent flow scalar flow mapping scalar">
+        <td>5T43</td>
+        <td>Colon at the beginning of adjacent flow scalar</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">scalar</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="652z question mark at start of flow key flow">
+        <td>652Z</td>
+        <td>Question mark at start of flow key</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">flow</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="6hb6 spec example 6.1. indentation spaces comment flow spec indent upto-1.2 whitespace">
+        <td>6HB6</td>
+        <td>Spec Example 6.1. Indentation Spaces</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">comment</span><span class="tag">flow</span><span class="tag">spec</span><span class="tag">indent</span><span class="tag">upto-1.2</span><span class="tag">whitespace</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="7tmg comment in flow sequence before comma comment flow sequence">
+        <td>7TMG</td>
+        <td>Comment in flow sequence before comma</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">comment</span><span class="tag">flow</span><span class="tag">sequence</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="timeout" data-stage="flow" data-search="7zz5 empty flow collections flow mapping sequence">
+        <td>7ZZ5</td>
+        <td>Empty flow collections</td>
+        <td>flow</td>
+        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
+        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="timeout" data-stage="flow" data-search="87e4 spec example 7.8. single quoted implicit keys spec flow sequence mapping">
+        <td>87E4</td>
+        <td>Spec Example 7.8. Single Quoted Implicit Keys</td>
+        <td>flow</td>
+        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="tag">spec</span><span class="tag">flow</span><span class="tag">sequence</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-stage="flow" data-search="8kb6 multiline plain flow mapping key without value flow mapping">
+        <td>8KB6</td>
+        <td>Multiline plain flow mapping key without value</td>
+        <td>flow</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="tag">flow</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token at { offset := 40, line := 3, col := 3 }; expected &#39;,&#39; or &#39;}}&#39; in flow mapping, got &#39;l&#39; at { offset := 40, line := 3, col := 3 }; expected flow mapping at { offset := 40, line := 3, col := 3 }; expected block sequence at { offset := 40, line := 3, col := 3 }; expected YAML value at { offset := 40, line := 3, col := 3 }">parse error: unexpected token at { offset := 40, line := 3, col := 3 }; expected &#39;,&#39; or &#39;}}&#39; in flow mapping, got &#39;l&#39; at { offset := 40, line := 3, col := 3 }; expected flow mapping at { offset := 40, line := 3, col := 3 }; expected block sequence at { offset := 40, line := 3, col := 3 }; expected YAML value at { offset := 40, line := 3, col := 3 }</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-stage="flow" data-search="8udb spec example 7.14. flow sequence entries spec flow sequence">
+        <td>8UDB</td>
+        <td>Spec Example 7.14. Flow Sequence Entries</td>
+        <td>flow</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="tag">spec</span><span class="tag">flow</span><span class="tag">sequence</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token &#39;\&quot;&#39; at { offset := 3, line := 1, col := 1 }; expected plain scalar at { offset := 3, line := 1, col := 1 }; expected flow value at { offset := 2, line := 1, col := 0 }; expected flow sequence at { offset := 2, line := 1, col := 0 }; expected YAML value at { offset := 2, line := 1, col := 0 }">parse error: unexpected token &#39;\&quot;&#39; at { offset := 3, line := 1, col := 1 }; expected plain scalar at { offset := 3, line := 1, col := 1 }; expected flow value at { offset := 2, line := 1, col := 0 }; expected flow sequence at { offset := 2, line := 1, col := 0 }; expected YAML value at { offset := 2, line := 1, col := 0 }</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-stage="flow" data-search="9bxh multiline doublequoted flow mapping key without value double flow mapping">
+        <td>9BXH</td>
+        <td>Multiline doublequoted flow mapping key without value</td>
+        <td>flow</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="tag">double</span><span class="tag">flow</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token &#39;\&quot;&#39; at { offset := 34, line := 2, col := 5 }; expected plain scalar at { offset := 34, line := 2, col := 5 }; expected flow mapping at { offset := 33, line := 2, col := 4 }; expected block sequence at { offset := 33, line := 2, col := 4 }; expected YAML value at { offset := 33, line := 2, col := 4 }">parse error: unexpected token &#39;\&quot;&#39; at { offset := 34, line := 2, col := 5 }; expected plain scalar at { offset := 34, line := 2, col := 5 }; expected flow mapping at { offset := 33, line := 2, col := 4 }; expected block sequence at { offset := 33, line := 2, col := 4 }; expected YAML value at { offset := 33, line := 2, col := 4 }</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-stage="flow" data-search="9mmw single pair implicit entries flow mapping sequence">
+        <td>9MMW</td>
+        <td>Single Pair Implicit Entries</td>
+        <td>flow</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token at { offset := 10, line := 0, col := 10 }; expected &#39;,&#39; or &#39;]&#39; in flow sequence, got &#39;:&#39; at { offset := 10, line := 0, col := 10 }; expected flow sequence at { offset := 10, line := 0, col := 10 }; expected block sequence at { offset := 10, line := 0, col := 10 }; expected YAML value at { offset := 10, line := 0, col := 10 }">parse error: unexpected token at { offset := 10, line := 0, col := 10 }; expected &#39;,&#39; or &#39;]&#39; in flow sequence, got &#39;:&#39; at { offset := 10, line := 0, col := 10 }; expected flow sequence at { offset := 10, line := 0, col := 10 }; expected block sequence at { offset := 10, line := 0, col := 10 }; expected YAML value at { offset := 10, line := 0, col := 10 }</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-stage="flow" data-search="9sa2 multiline double quoted flow mapping key double flow mapping">
+        <td>9SA2</td>
+        <td>Multiline double quoted flow mapping key</td>
+        <td>flow</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="tag">double</span><span class="tag">flow</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token &#39;\&quot;&#39; at { offset := 35, line := 2, col := 5 }; expected plain scalar at { offset := 35, line := 2, col := 5 }; expected flow mapping at { offset := 34, line := 2, col := 4 }; expected block sequence at { offset := 34, line := 2, col := 4 }; expected YAML value at { offset := 34, line := 2, col := 4 }">parse error: unexpected token &#39;\&quot;&#39; at { offset := 35, line := 2, col := 5 }; expected plain scalar at { offset := 35, line := 2, col := 5 }; expected flow mapping at { offset := 34, line := 2, col := 4 }; expected block sequence at { offset := 34, line := 2, col := 4 }; expected YAML value at { offset := 34, line := 2, col := 4 }</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="c2dt spec example 7.18. flow mapping adjacent values spec flow mapping">
+        <td>C2DT</td>
+        <td>Spec Example 7.18. Flow Mapping Adjacent Values</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">spec</span><span class="tag">flow</span><span class="tag">mapping</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-stage="flow" data-search="cfd4 empty implicit key in single pair flow sequences empty-key flow sequence">
+        <td>CFD4</td>
+        <td>Empty implicit key in single pair flow sequences</td>
+        <td>flow</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="tag">empty-key</span><span class="tag">flow</span><span class="tag">sequence</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token at { offset := 5, line := 0, col := 5 }; &#39;:&#39; cannot start a plain scalar when followed by whitespace at { offset := 5, line := 0, col := 5 }; expected plain scalar at { offset := 5, line := 0, col := 5 }; expected flow value at { offset := 4, line := 0, col := 4 }; expected flow sequence at { offset := 4, line := 0, col := 4 }; expected block sequence at { offset := 4, line := 0, col := 4 }; expected YAML value at { offset := 4, line := 0, col := 4 }">parse error: unexpected token at { offset := 5, line := 0, col := 5 }; &#39;:&#39; cannot start a plain scalar when followed by whitespace at { offset := 5, line := 0, col := 5 }; expected plain scalar at { offset := 5, line := 0, col := 5 }; expected flow value at { offset := 4, line := 0, col := 4 }; expected flow sequence at { offset := 4, line := 0, col := 4 }; expected block sequence at { offset := 4, line := 0, col := 4 }; expected YAML value at { offset := 4, line := 0, col := 4 }</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="d88j flow sequence in block mapping flow sequence mapping">
+        <td>D88J</td>
+        <td>Flow Sequence in Block Mapping</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">sequence</span><span class="tag">mapping</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="dbg4 spec example 7.10. plain characters spec flow sequence scalar">
+        <td>DBG4</td>
+        <td>Spec Example 7.10. Plain Characters</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">spec</span><span class="tag">flow</span><span class="tag">sequence</span><span class="tag">scalar</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="dhp8 flow sequence flow sequence">
+        <td>DHP8</td>
+        <td>Flow Sequence</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">sequence</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="f3cp nested flow collections on one line flow mapping sequence">
+        <td>F3CP</td>
+        <td>Nested flow collections on one line</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="fup4 flow sequence in flow sequence sequence flow">
+        <td>FUP4</td>
+        <td>Flow Sequence in Flow Sequence</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">sequence</span><span class="tag">flow</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="flow" data-search="g5u8 plain dashes in flow sequence flow sequence">
+        <td>G5U8</td>
+        <td>Plain dashes in flow sequence</td>
+        <td>flow</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">sequence</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="hm87 scalars in flow start with syntax char flow scalar">
+        <td>HM87</td>
+        <td>Scalars in flow start with syntax char</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">scalar</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="jr7v question marks in scalars flow scalar">
+        <td>JR7V</td>
+        <td>Question marks in scalars</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">scalar</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="k3wx colon and adjacent value after comment on next line comment flow mapping">
+        <td>K3WX</td>
+        <td>Colon and adjacent value after comment on next line</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">comment</span><span class="tag">flow</span><span class="tag">mapping</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="timeout" data-stage="flow" data-search="l9u5 spec example 7.11. plain implicit keys spec flow mapping">
+        <td>L9U5</td>
+        <td>Spec Example 7.11. Plain Implicit Keys</td>
+        <td>flow</td>
+        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="tag">spec</span><span class="tag">flow</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="lp6e whitespace after scalars in flow flow scalar whitespace">
+        <td>LP6E</td>
+        <td>Whitespace After Scalars in Flow</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">scalar</span><span class="tag">whitespace</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="timeout" data-stage="flow" data-search="lqz7 spec example 7.4. double quoted implicit keys spec scalar flow">
+        <td>LQZ7</td>
+        <td>Spec Example 7.4. Double Quoted Implicit Keys</td>
+        <td>flow</td>
+        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="tag">spec</span><span class="tag">scalar</span><span class="tag">flow</span></td>
+        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="m7nx nested flow collections flow mapping sequence">
+        <td>M7NX</td>
+        <td>Nested flow collections</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="mxs3 flow mapping in block sequence mapping sequence flow">
+        <td>MXS3</td>
+        <td>Flow Mapping in Block Sequence</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">mapping</span><span class="tag">sequence</span><span class="tag">flow</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-stage="flow" data-search="nj66 multiline plain flow mapping key flow mapping">
+        <td>NJ66</td>
+        <td>Multiline plain flow mapping key</td>
+        <td>flow</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="tag">flow</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token at { offset := 41, line := 3, col := 3 }; expected &#39;,&#39; or &#39;}}&#39; in flow mapping, got &#39;l&#39; at { offset := 41, line := 3, col := 3 }; expected flow mapping at { offset := 41, line := 3, col := 3 }; expected block sequence at { offset := 41, line := 3, col := 3 }; expected YAML value at { offset := 41, line := 3, col := 3 }">parse error: unexpected token at { offset := 41, line := 3, col := 3 }; expected &#39;,&#39; or &#39;}}&#39; in flow mapping, got &#39;l&#39; at { offset := 41, line := 3, col := 3 }; expected flow mapping at { offset := 41, line := 3, col := 3 }; expected block sequence at { offset := 41, line := 3, col := 3 }; expected YAML value at { offset := 41, line := 3, col := 3 }</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="q5mg tab at beginning of line followed by a flow mapping flow whitespace">
+        <td>Q5MG</td>
+        <td>Tab at beginning of line followed by a flow mapping</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">whitespace</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="q88a spec example 7.23. flow content spec flow sequence mapping">
+        <td>Q88A</td>
+        <td>Spec Example 7.23. Flow Content</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">spec</span><span class="tag">flow</span><span class="tag">sequence</span><span class="tag">mapping</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-stage="flow" data-search="qf4y spec example 7.19. single pair flow mappings spec flow mapping">
+        <td>QF4Y</td>
+        <td>Spec Example 7.19. Single Pair Flow Mappings</td>
+        <td>flow</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="tag">spec</span><span class="tag">flow</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token at { offset := 6, line := 1, col := 4 }; expected &#39;,&#39; or &#39;]&#39; in flow sequence, got &#39;:&#39; at { offset := 6, line := 1, col := 4 }; expected flow sequence at { offset := 6, line := 1, col := 4 }; expected YAML value at { offset := 6, line := 1, col := 4 }">parse error: unexpected token at { offset := 6, line := 1, col := 4 }; expected &#39;,&#39; or &#39;]&#39; in flow sequence, got &#39;:&#39; at { offset := 6, line := 1, col := 4 }; expected flow sequence at { offset := 6, line := 1, col := 4 }; expected YAML value at { offset := 6, line := 1, col := 4 }</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="r52l nested flow mapping sequence and mappings flow mapping sequence">
+        <td>R52L</td>
+        <td>Nested flow mapping sequence and mappings</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="udm2 plain url in flow mapping flow scalar">
+        <td>UDM2</td>
+        <td>Plain URL in flow mapping</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">scalar</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="udr7 spec example 5.4. flow collection indicators spec flow sequence mapping">
+        <td>UDR7</td>
+        <td>Spec Example 5.4. Flow Collection Indicators</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">spec</span><span class="tag">flow</span><span class="tag">sequence</span><span class="tag">mapping</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="flow" data-search="vjp3 flow collections over many lines flow indent">
+        <td>VJP3</td>
+        <td>Flow collections over many lines</td>
+        <td>flow</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">indent</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="flow" data-search="yjv2 dash in flow sequence flow sequence">
+        <td>YJV2</td>
+        <td>Dash in flow sequence</td>
+        <td>flow</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">sequence</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="zf4x spec example 2.6. mapping of mappings flow spec mapping">
+        <td>ZF4X</td>
+        <td>Spec Example 2.6. Mapping of Mappings</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">spec</span><span class="tag">mapping</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="zk9h nested top level flow mapping flow indent mapping sequence">
+        <td>ZK9H</td>
+        <td>Nested top level flow mapping</td>
+        <td>flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">indent</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <footer>
+    Generated by <a href="https://github.com/yaml/yaml-test-suite">yaml-test-suite</a> runner ·     <a href="https://github.com/fgdorais/lean4-parser">lean4-parser</a> · Lean 4
+  </footer>
+</div>
+
+<script>
+
+    // State
+    let currentOutcomeFilter = 'all';
+    let currentStageFilter = 'all';
+    let currentSearchText = '';
+    let sortColumn = 0;
+    let sortAscending = true;
+
+    // Filter by outcome
+    function filterByOutcome(outcome) {
+      currentOutcomeFilter = outcome;
+      document.querySelectorAll('.filter-outcome .filter-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      applyFilters();
+    }
+
+    // Filter by stage
+    function filterByStage(stage) {
+      currentStageFilter = stage;
+      applyFilters();
+    }
+
+    // Search
+    function searchTests(text) {
+      currentSearchText = text.toLowerCase();
+      applyFilters();
+    }
+
+    // Apply all filters
+    function applyFilters() {
+      const rows = document.querySelectorAll('.test-row');
+      let visible = 0;
+      rows.forEach(row => {
+        const outcome = row.dataset.outcome;
+        const stage = row.dataset.stage;
+        const search = row.dataset.search;
+
+        const outcomeMatch = currentOutcomeFilter === 'all' || outcome === currentOutcomeFilter;
+        const stageMatch = currentStageFilter === 'all' || stage === currentStageFilter;
+        const searchMatch = currentSearchText === '' || search.includes(currentSearchText);
+
+        if (outcomeMatch && stageMatch && searchMatch) {
+          row.classList.remove('hidden');
+          visible++;
+        } else {
+          row.classList.add('hidden');
+        }
+      });
+      document.getElementById('visibleCount').textContent = visible;
+    }
+
+    // Sort table
+    function sortTable(colIdx) {
+      const table = document.getElementById('testTable');
+      const tbody = table.querySelector('tbody');
+      const rows = Array.from(tbody.querySelectorAll('.test-row'));
+
+      if (sortColumn === colIdx) {
+        sortAscending = !sortAscending;
+      } else {
+        sortColumn = colIdx;
+        sortAscending = true;
+      }
+
+      // Update header arrows
+      table.querySelectorAll('th').forEach((th, i) => {
+        th.classList.remove('sorted');
+        const arrow = th.querySelector('.sort-arrow');
+        if (arrow) arrow.textContent = '↕';
+      });
+      const th = table.querySelectorAll('th')[colIdx];
+      th.classList.add('sorted');
+      const arrow = th.querySelector('.sort-arrow');
+      if (arrow) arrow.textContent = sortAscending ? '↑' : '↓';
+
+      rows.sort((a, b) => {
+        let aVal = a.children[colIdx]?.textContent.trim() || '';
+        let bVal = b.children[colIdx]?.textContent.trim() || '';
+        // Try numeric sort
+        const aNum = parseFloat(aVal);
+        const bNum = parseFloat(bVal);
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+          return sortAscending ? aNum - bNum : bNum - aNum;
+        }
+        return sortAscending ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      });
+
+      rows.forEach(row => tbody.appendChild(row));
+    }
+  </script>
+</body>
+</html>

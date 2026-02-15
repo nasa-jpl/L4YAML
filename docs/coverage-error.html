@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>error Tests — lean4-yaml-verified</title>
+  <style>
+    :root {
+      --color-pass: #4CAF50;
+      --color-fail: #f44336;
+      --color-expected-fail: #2196F3;
+      --color-unexpected-pass: #ff9800;
+      --color-skip: #9e9e9e;
+      --color-timeout: #9c27b0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0; padding: 20px; background: #f5f5f5;
+    }
+    .container {
+      max-width: 1400px; margin: 0 auto; background: white;
+      padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 8px;
+    }
+    h1 { color: #333; border-bottom: 3px solid var(--color-pass); padding-bottom: 10px; margin-top: 0; }
+    h2 { color: #4CAF50; margin-top: 30px; }
+    h3 { color: #555; }
+    .subtitle { color: #666; font-size: 16px; margin-bottom: 30px; }
+
+    /* Stats grid */
+    .stats {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 15px; margin: 25px 0;
+    }
+    .stat-box {
+      color: white; padding: 20px; border-radius: 8px; text-align: center;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .stat-box h3 { margin: 0 0 8px 0; font-size: 13px; opacity: 0.9; color: white; }
+    .stat-box .number { font-size: 32px; font-weight: bold; }
+    .stat-box .pct { font-size: 14px; margin-top: 4px; opacity: 0.9; }
+    .stat-total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .stat-pass { background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); }
+    .stat-fail { background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); }
+    .stat-expected { background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); }
+    .stat-unexpected { background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); }
+    .stat-skip { background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%); }
+    .stat-timeout { background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%); }
+    .stat-correct { background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%); }
+
+    /* Stage breakdown cards */
+    .stage-cards {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 15px; margin: 20px 0;
+    }
+    .stage-card {
+      background: #f8f9fa; padding: 18px; border-radius: 6px;
+      border-left: 4px solid var(--color-pass);
+    }
+    .stage-card-name { font-weight: 600; font-size: 16px; color: #333; margin-bottom: 8px; }
+    .stage-card-stats { color: #666; font-size: 14px; }
+    .stage-bar {
+      height: 8px; background: #e0e0e0; border-radius: 4px; margin-top: 10px; overflow: hidden;
+    }
+    .stage-bar-fill {
+      height: 100%; background: var(--color-pass); border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    /* Filters */
+    .filters {
+      background: #f8f9fa; padding: 15px; border-radius: 6px;
+      margin: 20px 0; display: flex; gap: 20px; flex-wrap: wrap; align-items: center;
+    }
+    .filter-group { display: flex; align-items: center; gap: 8px; }
+    .filter-group label { font-weight: 600; color: #555; font-size: 14px; }
+    .filter-btn {
+      padding: 6px 14px; border: 2px solid #ddd; background: white;
+      border-radius: 4px; cursor: pointer; transition: all 0.2s; font-size: 13px;
+    }
+    .filter-btn:hover { border-color: #4CAF50; }
+    .filter-btn.active { background: #4CAF50; color: white; border-color: #4CAF50; }
+    select {
+      padding: 6px 12px; border: 2px solid #ddd; border-radius: 4px; font-size: 13px;
+    }
+    .search-input {
+      padding: 6px 12px; border: 2px solid #ddd; border-radius: 4px;
+      font-size: 13px; width: 200px;
+    }
+    .search-input:focus { border-color: #4CAF50; outline: none; }
+
+    /* Table */
+    table {
+      width: 100%; border-collapse: collapse; margin: 20px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    th {
+      background: #4CAF50; color: white; padding: 10px 12px; text-align: left;
+      font-weight: 600; position: sticky; top: 0; cursor: pointer;
+      user-select: none; font-size: 13px;
+    }
+    th:hover { background: #45a049; }
+    th .sort-arrow { margin-left: 4px; opacity: 0.5; }
+    th.sorted .sort-arrow { opacity: 1; }
+    td { padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; }
+    tr:hover { background: #f5f5f5; }
+    tr.hidden { display: none; }
+
+    /* Badges */
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 12px;
+      font-size: 11px; font-weight: 600; color: white;
+    }
+    .badge-pass { background: var(--color-pass); }
+    .badge-fail { background: var(--color-fail); }
+    .badge-expected-fail { background: var(--color-expected-fail); }
+    .badge-unexpected-pass { background: var(--color-unexpected-pass); }
+    .badge-skip { background: var(--color-skip); }
+    .badge-timeout { background: var(--color-timeout); }
+
+    /* Tags */
+    .tag {
+      display: inline-block; background: #e3f2fd; color: #1565C0;
+      padding: 2px 8px; border-radius: 10px; font-size: 11px;
+      margin: 1px 2px; white-space: nowrap;
+    }
+
+    /* Error message */
+    .error-msg {
+      color: #d32f2f; font-size: 11px; font-family: 'Courier New', monospace;
+      max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .error-msg:hover { white-space: normal; word-break: break-all; }
+
+    /* Navigation */
+    .nav-link {
+      display: inline-block; margin-bottom: 20px; color: #2196F3;
+      text-decoration: none; font-size: 14px;
+    }
+    .nav-link:hover { text-decoration: underline; }
+
+    /* Footer */
+    footer {
+      margin-top: 40px; text-align: center; color: #999; font-size: 13px;
+      border-top: 1px solid #e0e0e0; padding-top: 20px;
+    }
+    footer a { color: #2196F3; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body { padding: 10px; }
+      .container { padding: 15px; }
+      .filters { flex-direction: column; gap: 10px; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <a href="index.html" class="nav-link">← Back to Coverage Index</a>
+  <h1>error Tests — lean4-yaml-verified</h1>
+  <p class="subtitle">YAML 1.2.2 parser compliance against the official yaml-test-suite</p>
+  <div class="stats">
+    <div class="stat-box stat-total"><h3>Total</h3><div class="number">74</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">0</div></div>
+    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
+    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">0</div></div>
+    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">63</div></div>
+    <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">0</div></div>
+    <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">11</div></div>
+    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">0/74</div><div class="pct">(0.000000%)</div></div>
+  </div>
+  <h3>Coverage by Stage</h3>
+  <div class="stage-cards">
+    <div class="stage-card">
+      <div class="stage-card-name">scalar</div>
+      <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+    </div>
+    <div class="stage-card">
+      <div class="stage-card-name">flow</div>
+      <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+    </div>
+    <div class="stage-card">
+      <div class="stage-card-name">block</div>
+      <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+    </div>
+    <div class="stage-card">
+      <div class="stage-card-name">document</div>
+      <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+    </div>
+    <div class="stage-card">
+      <div class="stage-card-name">advanced</div>
+      <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+    </div>
+    <div class="stage-card">
+      <div class="stage-card-name">error</div>
+      <div class="stage-card-stats">0/74 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 63 unexp-pass, 0 skip, 11 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+    </div>
+  </div>
+  <div class="filters">
+    <div class="filter-group filter-outcome">
+      <label>Outcome:</label>
+      <button class="filter-btn active" onclick="filterByOutcome('all')">All</button>
+      <button class="filter-btn" onclick="filterByOutcome('pass')">Pass</button>
+      <button class="filter-btn" onclick="filterByOutcome('fail')">Fail</button>
+      <button class="filter-btn" onclick="filterByOutcome('expected-fail')">Exp Fail</button>
+      <button class="filter-btn" onclick="filterByOutcome('unexpected-pass')">Unexp Pass</button>
+      <button class="filter-btn" onclick="filterByOutcome('skip')">Skip</button>
+      <button class="filter-btn" onclick="filterByOutcome('timeout')">Timeout</button>
+    </div>
+    <div class="filter-group">
+      <label>Stage:</label>
+      <select onchange="filterByStage(this.value)">
+        <option value="all">All Stages</option>
+        <option value="scalar">Scalar</option>
+        <option value="flow">Flow</option>
+        <option value="block">Block</option>
+        <option value="document">Document</option>
+        <option value="advanced">Advanced</option>
+        <option value="error">Error</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Search:</label>
+      <input type="text" class="search-input" placeholder="ID, name, or tag..." oninput="searchTests(this.value)">
+    </div>
+    <div class="filter-group"><span>Showing <strong id="visibleCount">74</strong> of 74</span></div>
+  </div>
+  <table id="testTable">
+    <thead>
+      <tr>
+        <th onclick="sortTable(0)">ID <span class="sort-arrow">↕</span></th>
+        <th onclick="sortTable(1)">Name <span class="sort-arrow">↕</span></th>
+        <th onclick="sortTable(2)">Stage <span class="sort-arrow">↕</span></th>
+        <th onclick="sortTable(3)">Outcome <span class="sort-arrow">↕</span></th>
+        <th onclick="sortTable(4)">Tags <span class="sort-arrow">↕</span></th>
+        <th onclick="sortTable(5)">Error <span class="sort-arrow">↕</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="236b invalid value after mapping error mapping">
+        <td>236B</td>
+        <td>Invalid value after mapping</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="2cms invalid mapping in plain multiline error mapping">
+        <td>2CMS</td>
+        <td>Invalid mapping in plain multiline</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="3hfz invalid content after document end marker error footer">
+        <td>3HFZ</td>
+        <td>Invalid content after document end marker</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">footer</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="4ejs invalid tabs as indendation in a mapping error mapping whitespace">
+        <td>4EJS</td>
+        <td>Invalid tabs as indendation in a mapping</td>
+        <td>error</td>
+        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">whitespace</span></td>
+        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="4h7k flow sequence with invalid extra closing bracket error flow sequence">
+        <td>4H7K</td>
+        <td>Flow sequence with invalid extra closing bracket</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">sequence</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="4hvu wrong indendation in sequence error sequence indent">
+        <td>4HVU</td>
+        <td>Wrong indendation in Sequence</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">sequence</span><span class="tag">indent</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="4jvg scalar value with two anchors anchor error mapping">
+        <td>4JVG</td>
+        <td>Scalar value with two anchors</td>
+        <td>error</td>
+        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="tag">anchor</span><span class="tag">error</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="55wf invalid escape in double quoted string error double">
+        <td>55WF</td>
+        <td>Invalid escape in double quoted string</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">double</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="5llu block scalar with wrong indented line after spaces only error folded whitespace">
+        <td>5LLU</td>
+        <td>Block scalar with wrong indented line after spaces only</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">folded</span><span class="tag">whitespace</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="5trb invalid document-start marker in doublequoted tring header double error">
+        <td>5TRB</td>
+        <td>Invalid document-start marker in doublequoted tring</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">header</span><span class="tag">double</span><span class="tag">error</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="5u3a sequence on same line as mapping key error sequence mapping">
+        <td>5U3A</td>
+        <td>Sequence on same Line as Mapping Key</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">sequence</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="62ez invalid block mapping key on same line as previous key error flow mapping">
+        <td>62EZ</td>
+        <td>Invalid block mapping key on same line as previous key</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="6jtt flow sequence without closing bracket error flow sequence">
+        <td>6JTT</td>
+        <td>Flow sequence without closing bracket</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">sequence</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="6s55 invalid scalar at the end of sequence error mapping sequence">
+        <td>6S55</td>
+        <td>Invalid scalar at the end of sequence</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="7lbh multiline double quoted implicit keys error double">
+        <td>7LBH</td>
+        <td>Multiline double quoted implicit keys</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">double</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="7mnf missing colon error mapping">
+        <td>7MNF</td>
+        <td>Missing colon</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="8xdj comment in plain multiline value error comment scalar">
+        <td>8XDJ</td>
+        <td>Comment in plain multiline value</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">comment</span><span class="tag">scalar</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="9c9n wrong indented flow sequence error flow indent sequence">
+        <td>9C9N</td>
+        <td>Wrong indented flow sequence</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">indent</span><span class="tag">sequence</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="9cwy invalid scalar at the end of mapping error mapping sequence">
+        <td>9CWY</td>
+        <td>Invalid scalar at the end of mapping</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="9hcy need document footer before directives directive error footer tag unknown-tag">
+        <td>9HCY</td>
+        <td>Need document footer before directives</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">directive</span><span class="tag">error</span><span class="tag">footer</span><span class="tag">tag</span><span class="tag">unknown-tag</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="9jba invalid comment after end of flow sequence comment error flow sequence">
+        <td>9JBA</td>
+        <td>Invalid comment after end of flow sequence</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">comment</span><span class="tag">error</span><span class="tag">flow</span><span class="tag">sequence</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="9kbc mapping starting at --- line error header mapping">
+        <td>9KBC</td>
+        <td>Mapping starting at --- line</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">header</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="9mag flow sequence with invalid comma at the beginning error flow sequence">
+        <td>9MAG</td>
+        <td>Flow sequence with invalid comma at the beginning</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">sequence</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="9mma directive by itself with no document error directive">
+        <td>9MMA</td>
+        <td>Directive by itself with no document</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">directive</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="b63p directive without document error directive document">
+        <td>B63P</td>
+        <td>Directive without document</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">directive</span><span class="tag">document</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="bd7l invalid mapping after sequence error mapping sequence">
+        <td>BD7L</td>
+        <td>Invalid mapping after sequence</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="bf9h trailing comment in multiline plain scalar comment error scalar">
+        <td>BF9H</td>
+        <td>Trailing comment in multiline plain scalar</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">comment</span><span class="tag">error</span><span class="tag">scalar</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="bs4k comment between plain scalar lines error scalar">
+        <td>BS4K</td>
+        <td>Comment between plain scalar lines</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">scalar</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="c2sp flow mapping key on two lines error flow mapping">
+        <td>C2SP</td>
+        <td>Flow Mapping Key on two lines</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="cml9 missing comma in flow error flow comment">
+        <td>CML9</td>
+        <td>Missing comma in flow</td>
+        <td>error</td>
+        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">comment</span></td>
+        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="cq3w double quoted string without closing quote error double">
+        <td>CQ3W</td>
+        <td>Double quoted string without closing quote</td>
+        <td>error</td>
+        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="tag">error</span><span class="tag">double</span></td>
+        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="ctn5 flow sequence with invalid extra comma error flow sequence">
+        <td>CTN5</td>
+        <td>Flow sequence with invalid extra comma</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">sequence</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="cvw2 invalid comment after comma comment error flow sequence">
+        <td>CVW2</td>
+        <td>Invalid comment after comma</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">comment</span><span class="tag">error</span><span class="tag">flow</span><span class="tag">sequence</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="cxx2 mapping with anchor on document start line anchor error header mapping">
+        <td>CXX2</td>
+        <td>Mapping with anchor on document start line</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">anchor</span><span class="tag">error</span><span class="tag">header</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="d49q multiline single quoted implicit keys error single mapping">
+        <td>D49Q</td>
+        <td>Multiline single quoted implicit keys</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">single</span><span class="tag">mapping</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="dk4h implicit key followed by newline error flow mapping sequence">
+        <td>DK4H</td>
+        <td>Implicit key followed by newline</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="dmg6 wrong indendation in map error mapping indent">
+        <td>DMG6</td>
+        <td>Wrong indendation in Map</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">indent</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="eb22 missing document-end marker before directive error directive footer">
+        <td>EB22</td>
+        <td>Missing document-end marker before directive</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">directive</span><span class="tag">footer</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="ew3v wrong indendation in mapping error mapping indent">
+        <td>EW3V</td>
+        <td>Wrong indendation in mapping</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">indent</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="g7je multiline implicit keys error mapping">
+        <td>G7JE</td>
+        <td>Multiline implicit keys</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="g9hc invalid anchor in zero indented sequence anchor error sequence">
+        <td>G9HC</td>
+        <td>Invalid anchor in zero indented sequence</td>
+        <td>error</td>
+        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="tag">anchor</span><span class="tag">error</span><span class="tag">sequence</span></td>
+        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="gdy7 comment that looks like a mapping key comment error mapping">
+        <td>GDY7</td>
+        <td>Comment that looks like a mapping key</td>
+        <td>error</td>
+        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="tag">comment</span><span class="tag">error</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="gt5m node anchor in sequence anchor error sequence">
+        <td>GT5M</td>
+        <td>Node anchor in sequence</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">anchor</span><span class="tag">error</span><span class="tag">sequence</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="h7j7 node anchor not indented anchor error indent tag">
+        <td>H7J7</td>
+        <td>Node anchor not indented</td>
+        <td>error</td>
+        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="tag">anchor</span><span class="tag">error</span><span class="tag">indent</span><span class="tag">tag</span></td>
+        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="hre5 double quoted scalar with escaped single quote double error single">
+        <td>HRE5</td>
+        <td>Double quoted scalar with escaped single quote</td>
+        <td>error</td>
+        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="tag">double</span><span class="tag">error</span><span class="tag">single</span></td>
+        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="hu3p invalid mapping in plain scalar error mapping scalar">
+        <td>HU3P</td>
+        <td>Invalid Mapping in plain scalar</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">scalar</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="jy7z trailing content that looks like a mapping error mapping double">
+        <td>JY7Z</td>
+        <td>Trailing content that looks like a mapping</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">double</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="ks4u invalid item after end of flow sequence error flow sequence">
+        <td>KS4U</td>
+        <td>Invalid item after end of flow sequence</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">sequence</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="lhl4 invalid tag error tag">
+        <td>LHL4</td>
+        <td>Invalid tag</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">tag</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="n4jp bad indentation in mapping error mapping indent double">
+        <td>N4JP</td>
+        <td>Bad indentation in mapping</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">indent</span><span class="tag">double</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="n782 invalid document markers in flow style flow edge header footer error">
+        <td>N782</td>
+        <td>Invalid document markers in flow style</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">flow</span><span class="tag">edge</span><span class="tag">header</span><span class="tag">footer</span><span class="tag">error</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="p2eq invalid sequene item on same line as previous item error flow mapping sequence">
+        <td>P2EQ</td>
+        <td>Invalid sequene item on same line as previous item</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="q4cl trailing content after quoted value error mapping double">
+        <td>Q4CL</td>
+        <td>Trailing content after quoted value</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">double</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="qb6e wrong indented multiline quoted scalar double error indent">
+        <td>QB6E</td>
+        <td>Wrong indented multiline quoted scalar</td>
+        <td>error</td>
+        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="tag">double</span><span class="tag">error</span><span class="tag">indent</span></td>
+        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="qlj7 tag shorthand used in documents but only defined in the first error directive tag">
+        <td>QLJ7</td>
+        <td>Tag shorthand used in documents but only defined in the first</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">directive</span><span class="tag">tag</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="rhx7 yaml directive without document end marker directive error">
+        <td>RHX7</td>
+        <td>YAML directive without document end marker</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">directive</span><span class="tag">error</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="rxy3 invalid document-end marker in single quoted string footer single error">
+        <td>RXY3</td>
+        <td>Invalid document-end marker in single quoted string</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">footer</span><span class="tag">single</span><span class="tag">error</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="s4gj invalid text after block scalar indicator error folded">
+        <td>S4GJ</td>
+        <td>Invalid text after block scalar indicator</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">folded</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="s98z block scalar with more spaces than first content line error folded comment scalar whitespace">
+        <td>S98Z</td>
+        <td>Block scalar with more spaces than first content line</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">folded</span><span class="tag">comment</span><span class="tag">scalar</span><span class="tag">whitespace</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="sf5v duplicate yaml directive directive error">
+        <td>SF5V</td>
+        <td>Duplicate YAML directive</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">directive</span><span class="tag">error</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="sr86 anchor plus alias alias error">
+        <td>SR86</td>
+        <td>Anchor plus Alias</td>
+        <td>error</td>
+        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="tag">alias</span><span class="tag">error</span></td>
+        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="su5z comment without whitespace after doublequoted scalar comment error double whitespace">
+        <td>SU5Z</td>
+        <td>Comment without whitespace after doublequoted scalar</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">comment</span><span class="tag">error</span><span class="tag">double</span><span class="tag">whitespace</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="su74 anchor and alias as mapping key error anchor alias mapping">
+        <td>SU74</td>
+        <td>Anchor and alias as mapping key</td>
+        <td>error</td>
+        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="tag">error</span><span class="tag">anchor</span><span class="tag">alias</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="sy6v anchor before sequence entry on same line anchor error sequence">
+        <td>SY6V</td>
+        <td>Anchor before sequence entry on same line</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">anchor</span><span class="tag">error</span><span class="tag">sequence</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="t833 flow mapping missing a separating comma error flow mapping">
+        <td>T833</td>
+        <td>Flow mapping missing a separating comma</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="td5n invalid scalar after sequence error sequence scalar">
+        <td>TD5N</td>
+        <td>Invalid scalar after sequence</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">sequence</span><span class="tag">scalar</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="u44r bad indentation in mapping (2) error mapping indent double">
+        <td>U44R</td>
+        <td>Bad indentation in mapping (2)</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">indent</span><span class="tag">double</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="u99r invalid comma in tag error tag">
+        <td>U99R</td>
+        <td>Invalid comma in tag</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">tag</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="w9l4 literal block scalar with more spaces in first line error literal whitespace">
+        <td>W9L4</td>
+        <td>Literal block scalar with more spaces in first line</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">literal</span><span class="tag">whitespace</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="x4qw comment without whitespace after block scalar indicator folded comment error whitespace">
+        <td>X4QW</td>
+        <td>Comment without whitespace after block scalar indicator</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">folded</span><span class="tag">comment</span><span class="tag">error</span><span class="tag">whitespace</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="zcz6 invalid mapping in plain single line value error mapping scalar">
+        <td>ZCZ6</td>
+        <td>Invalid mapping in plain single line value</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">scalar</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="zl4z invalid nested mapping error mapping">
+        <td>ZL4Z</td>
+        <td>Invalid nested mapping</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">mapping</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="zvh3 wrong indented sequence item error sequence indent">
+        <td>ZVH3</td>
+        <td>Wrong indented sequence item</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">sequence</span><span class="tag">indent</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="zxt5 implicit key followed by newline and adjacent value error flow mapping sequence">
+        <td>ZXT5</td>
+        <td>Implicit key followed by newline and adjacent value</td>
+        <td>error</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <footer>
+    Generated by <a href="https://github.com/yaml/yaml-test-suite">yaml-test-suite</a> runner ·     <a href="https://github.com/fgdorais/lean4-parser">lean4-parser</a> · Lean 4
+  </footer>
+</div>
+
+<script>
+
+    // State
+    let currentOutcomeFilter = 'all';
+    let currentStageFilter = 'all';
+    let currentSearchText = '';
+    let sortColumn = 0;
+    let sortAscending = true;
+
+    // Filter by outcome
+    function filterByOutcome(outcome) {
+      currentOutcomeFilter = outcome;
+      document.querySelectorAll('.filter-outcome .filter-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      applyFilters();
+    }
+
+    // Filter by stage
+    function filterByStage(stage) {
+      currentStageFilter = stage;
+      applyFilters();
+    }
+
+    // Search
+    function searchTests(text) {
+      currentSearchText = text.toLowerCase();
+      applyFilters();
+    }
+
+    // Apply all filters
+    function applyFilters() {
+      const rows = document.querySelectorAll('.test-row');
+      let visible = 0;
+      rows.forEach(row => {
+        const outcome = row.dataset.outcome;
+        const stage = row.dataset.stage;
+        const search = row.dataset.search;
+
+        const outcomeMatch = currentOutcomeFilter === 'all' || outcome === currentOutcomeFilter;
+        const stageMatch = currentStageFilter === 'all' || stage === currentStageFilter;
+        const searchMatch = currentSearchText === '' || search.includes(currentSearchText);
+
+        if (outcomeMatch && stageMatch && searchMatch) {
+          row.classList.remove('hidden');
+          visible++;
+        } else {
+          row.classList.add('hidden');
+        }
+      });
+      document.getElementById('visibleCount').textContent = visible;
+    }
+
+    // Sort table
+    function sortTable(colIdx) {
+      const table = document.getElementById('testTable');
+      const tbody = table.querySelector('tbody');
+      const rows = Array.from(tbody.querySelectorAll('.test-row'));
+
+      if (sortColumn === colIdx) {
+        sortAscending = !sortAscending;
+      } else {
+        sortColumn = colIdx;
+        sortAscending = true;
+      }
+
+      // Update header arrows
+      table.querySelectorAll('th').forEach((th, i) => {
+        th.classList.remove('sorted');
+        const arrow = th.querySelector('.sort-arrow');
+        if (arrow) arrow.textContent = '↕';
+      });
+      const th = table.querySelectorAll('th')[colIdx];
+      th.classList.add('sorted');
+      const arrow = th.querySelector('.sort-arrow');
+      if (arrow) arrow.textContent = sortAscending ? '↑' : '↓';
+
+      rows.sort((a, b) => {
+        let aVal = a.children[colIdx]?.textContent.trim() || '';
+        let bVal = b.children[colIdx]?.textContent.trim() || '';
+        // Try numeric sort
+        const aNum = parseFloat(aVal);
+        const bNum = parseFloat(bVal);
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+          return sortAscending ? aNum - bNum : bNum - aNum;
+        }
+        return sortAscending ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      });
+
+      rows.forEach(row => tbody.appendChild(row));
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>document Tests — lean4-yaml-verified</title>
+  <style>
+    :root {
+      --color-pass: #4CAF50;
+      --color-fail: #f44336;
+      --color-expected-fail: #2196F3;
+      --color-unexpected-pass: #ff9800;
+      --color-skip: #9e9e9e;
+      --color-timeout: #9c27b0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0; padding: 20px; background: #f5f5f5;
+    }
+    .container {
+      max-width: 1400px; margin: 0 auto; background: white;
+      padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 8px;
+    }
+    h1 { color: #333; border-bottom: 3px solid var(--color-pass); padding-bottom: 10px; margin-top: 0; }
+    h2 { color: #4CAF50; margin-top: 30px; }
+    h3 { color: #555; }
+    .subtitle { color: #666; font-size: 16px; margin-bottom: 30px; }
+
+    /* Stats grid */
+    .stats {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 15px; margin: 25px 0;
+    }
+    .stat-box {
+      color: white; padding: 20px; border-radius: 8px; text-align: center;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .stat-box h3 { margin: 0 0 8px 0; font-size: 13px; opacity: 0.9; color: white; }
+    .stat-box .number { font-size: 32px; font-weight: bold; }
+    .stat-box .pct { font-size: 14px; margin-top: 4px; opacity: 0.9; }
+    .stat-total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .stat-pass { background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); }
+    .stat-fail { background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); }
+    .stat-expected { background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); }
+    .stat-unexpected { background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); }
+    .stat-skip { background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%); }
+    .stat-timeout { background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%); }
+    .stat-correct { background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%); }
+
+    /* Stage breakdown cards */
+    .stage-cards {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 15px; margin: 20px 0;
+    }
+    .stage-card {
+      background: #f8f9fa; padding: 18px; border-radius: 6px;
+      border-left: 4px solid var(--color-pass);
+    }
+    .stage-card-name { font-weight: 600; font-size: 16px; color: #333; margin-bottom: 8px; }
+    .stage-card-stats { color: #666; font-size: 14px; }
+    .stage-bar {
+      height: 8px; background: #e0e0e0; border-radius: 4px; margin-top: 10px; overflow: hidden;
+    }
+    .stage-bar-fill {
+      height: 100%; background: var(--color-pass); border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    /* Filters */
+    .filters {
+      background: #f8f9fa; padding: 15px; border-radius: 6px;
+      margin: 20px 0; display: flex; gap: 20px; flex-wrap: wrap; align-items: center;
+    }
+    .filter-group { display: flex; align-items: center; gap: 8px; }
+    .filter-group label { font-weight: 600; color: #555; font-size: 14px; }
+    .filter-btn {
+      padding: 6px 14px; border: 2px solid #ddd; background: white;
+      border-radius: 4px; cursor: pointer; transition: all 0.2s; font-size: 13px;
+    }
+    .filter-btn:hover { border-color: #4CAF50; }
+    .filter-btn.active { background: #4CAF50; color: white; border-color: #4CAF50; }
+    select {
+      padding: 6px 12px; border: 2px solid #ddd; border-radius: 4px; font-size: 13px;
+    }
+    .search-input {
+      padding: 6px 12px; border: 2px solid #ddd; border-radius: 4px;
+      font-size: 13px; width: 200px;
+    }
+    .search-input:focus { border-color: #4CAF50; outline: none; }
+
+    /* Table */
+    table {
+      width: 100%; border-collapse: collapse; margin: 20px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    th {
+      background: #4CAF50; color: white; padding: 10px 12px; text-align: left;
+      font-weight: 600; position: sticky; top: 0; cursor: pointer;
+      user-select: none; font-size: 13px;
+    }
+    th:hover { background: #45a049; }
+    th .sort-arrow { margin-left: 4px; opacity: 0.5; }
+    th.sorted .sort-arrow { opacity: 1; }
+    td { padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; }
+    tr:hover { background: #f5f5f5; }
+    tr.hidden { display: none; }
+
+    /* Badges */
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 12px;
+      font-size: 11px; font-weight: 600; color: white;
+    }
+    .badge-pass { background: var(--color-pass); }
+    .badge-fail { background: var(--color-fail); }
+    .badge-expected-fail { background: var(--color-expected-fail); }
+    .badge-unexpected-pass { background: var(--color-unexpected-pass); }
+    .badge-skip { background: var(--color-skip); }
+    .badge-timeout { background: var(--color-timeout); }
+
+    /* Tags */
+    .tag {
+      display: inline-block; background: #e3f2fd; color: #1565C0;
+      padding: 2px 8px; border-radius: 10px; font-size: 11px;
+      margin: 1px 2px; white-space: nowrap;
+    }
+
+    /* Error message */
+    .error-msg {
+      color: #d32f2f; font-size: 11px; font-family: 'Courier New', monospace;
+      max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .error-msg:hover { white-space: normal; word-break: break-all; }
+
+    /* Navigation */
+    .nav-link {
+      display: inline-block; margin-bottom: 20px; color: #2196F3;
+      text-decoration: none; font-size: 14px;
+    }
+    .nav-link:hover { text-decoration: underline; }
+
+    /* Footer */
+    footer {
+      margin-top: 40px; text-align: center; color: #999; font-size: 13px;
+      border-top: 1px solid #e0e0e0; padding-top: 20px;
+    }
+    footer a { color: #2196F3; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body { padding: 10px; }
+      .container { padding: 15px; }
+      .filters { flex-direction: column; gap: 10px; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <a href="index.html" class="nav-link">← Back to Coverage Index</a>
+  <h1>document Tests — lean4-yaml-verified</h1>
+  <p class="subtitle">YAML 1.2.2 parser compliance against the official yaml-test-suite</p>
+  <div class="stats">
+    <div class="stat-box stat-total"><h3>Total</h3><div class="number">24</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">14</div></div>
+    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">1</div></div>
+    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">0</div></div>
+    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">2</div></div>
+    <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">7</div></div>
+    <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">0</div></div>
+    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">14/24</div><div class="pct">(58.333333%)</div></div>
+  </div>
+  <h3>Coverage by Stage</h3>
+  <div class="stage-cards">
+    <div class="stage-card">
+      <div class="stage-card-name">scalar</div>
+      <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+    </div>
+    <div class="stage-card">
+      <div class="stage-card-name">flow</div>
+      <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+    </div>
+    <div class="stage-card">
+      <div class="stage-card-name">block</div>
+      <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+    </div>
+    <div class="stage-card">
+      <div class="stage-card-name">document</div>
+      <div class="stage-card-stats">14/24 correct (58.000000%) · 14 pass, 1 fail, 0 exp-fail, 2 unexp-pass, 7 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 58.000000%"></div></div>
+    </div>
+    <div class="stage-card">
+      <div class="stage-card-name">advanced</div>
+      <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+    </div>
+    <div class="stage-card">
+      <div class="stage-card-name">error</div>
+      <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+    </div>
+  </div>
+  <div class="filters">
+    <div class="filter-group filter-outcome">
+      <label>Outcome:</label>
+      <button class="filter-btn active" onclick="filterByOutcome('all')">All</button>
+      <button class="filter-btn" onclick="filterByOutcome('pass')">Pass</button>
+      <button class="filter-btn" onclick="filterByOutcome('fail')">Fail</button>
+      <button class="filter-btn" onclick="filterByOutcome('expected-fail')">Exp Fail</button>
+      <button class="filter-btn" onclick="filterByOutcome('unexpected-pass')">Unexp Pass</button>
+      <button class="filter-btn" onclick="filterByOutcome('skip')">Skip</button>
+      <button class="filter-btn" onclick="filterByOutcome('timeout')">Timeout</button>
+    </div>
+    <div class="filter-group">
+      <label>Stage:</label>
+      <select onchange="filterByStage(this.value)">
+        <option value="all">All Stages</option>
+        <option value="scalar">Scalar</option>
+        <option value="flow">Flow</option>
+        <option value="block">Block</option>
+        <option value="document">Document</option>
+        <option value="advanced">Advanced</option>
+        <option value="error">Error</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Search:</label>
+      <input type="text" class="search-input" placeholder="ID, name, or tag..." oninput="searchTests(this.value)">
+    </div>
+    <div class="filter-group"><span>Showing <strong id="visibleCount">24</strong> of 24</span></div>
+  </div>
+  <table id="testTable">
+    <thead>
+      <tr>
+        <th onclick="sortTable(0)">ID <span class="sort-arrow">↕</span></th>
+        <th onclick="sortTable(1)">Name <span class="sort-arrow">↕</span></th>
+        <th onclick="sortTable(2)">Stage <span class="sort-arrow">↕</span></th>
+        <th onclick="sortTable(3)">Outcome <span class="sort-arrow">↕</span></th>
+        <th onclick="sortTable(4)">Tags <span class="sort-arrow">↕</span></th>
+        <th onclick="sortTable(5)">Error <span class="sort-arrow">↕</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="test-row" data-outcome="skip" data-stage="document" data-search="27na spec example 5.9. directive indicator spec directive 1.3-err">
+        <td>27NA</td>
+        <td>Spec Example 5.9. Directive Indicator</td>
+        <td>document</td>
+        <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
+        <td><span class="tag">spec</span><span class="tag">directive</span><span class="tag">1.3-err</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="skip" data-stage="document" data-search="2lfx spec example 6.13. reserved directives [1.3] spec directive header double 1.3-mod">
+        <td>2LFX</td>
+        <td>Spec Example 6.13. Reserved Directives [1.3]</td>
+        <td>document</td>
+        <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
+        <td><span class="tag">spec</span><span class="tag">directive</span><span class="tag">header</span><span class="tag">double</span><span class="tag">1.3-mod</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="skip" data-stage="document" data-search="6lvf spec example 6.13. reserved directives spec directive header double 1.3-err">
+        <td>6LVF</td>
+        <td>Spec Example 6.13. Reserved Directives</td>
+        <td>document</td>
+        <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
+        <td><span class="tag">spec</span><span class="tag">directive</span><span class="tag">header</span><span class="tag">double</span><span class="tag">1.3-err</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="document" data-search="6xdy two document start markers header">
+        <td>6XDY</td>
+        <td>Two document start markers</td>
+        <td>document</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">header</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="skip" data-stage="document" data-search="6zkb spec example 9.6. stream spec header 1.3-err">
+        <td>6ZKB</td>
+        <td>Spec Example 9.6. Stream</td>
+        <td>document</td>
+        <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
+        <td><span class="tag">spec</span><span class="tag">header</span><span class="tag">1.3-err</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="document" data-search="7z25 bare document after document end marker footer">
+        <td>7Z25</td>
+        <td>Bare document after document end marker</td>
+        <td>document</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">footer</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="skip" data-stage="document" data-search="9dxl spec example 9.6. stream [1.3] spec header 1.3-mod">
+        <td>9DXL</td>
+        <td>Spec Example 9.6. Stream [1.3]</td>
+        <td>document</td>
+        <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
+        <td><span class="tag">spec</span><span class="tag">header</span><span class="tag">1.3-mod</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="document" data-search="bec7 spec example 6.14. “yaml” directive spec directive">
+        <td>BEC7</td>
+        <td>Spec Example 6.14. “YAML” directive</td>
+        <td>document</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">spec</span><span class="tag">directive</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="document" data-search="h7tq extra words on %yaml directive directive">
+        <td>H7TQ</td>
+        <td>Extra words on %YAML directive</td>
+        <td>document</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">directive</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="document" data-search="hwv9 document-end marker footer">
+        <td>HWV9</td>
+        <td>Document-end marker</td>
+        <td>document</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">footer</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="document" data-search="jhb9 spec example 2.7. two documents in a stream spec header">
+        <td>JHB9</td>
+        <td>Spec Example 2.7. Two Documents in a Stream</td>
+        <td>document</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">spec</span><span class="tag">header</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="document" data-search="k54u tab after document header header whitespace">
+        <td>K54U</td>
+        <td>Tab after document header</td>
+        <td>document</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">header</span><span class="tag">whitespace</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="skip" data-stage="document" data-search="m7a3 spec example 9.3. bare documents spec footer 1.3-err">
+        <td>M7A3</td>
+        <td>Spec Example 9.3. Bare Documents</td>
+        <td>document</td>
+        <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
+        <td><span class="tag">spec</span><span class="tag">footer</span><span class="tag">1.3-err</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="document" data-search="mus6 directive variants directive">
+        <td>MUS6</td>
+        <td>Directive variants</td>
+        <td>document</td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="tag">directive</span></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="document" data-search="puw8 document start on last line header">
+        <td>PUW8</td>
+        <td>Document start on last line</td>
+        <td>document</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">header</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="document" data-search="qt73 comment and document-end marker comment footer">
+        <td>QT73</td>
+        <td>Comment and document-end marker</td>
+        <td>document</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">comment</span><span class="tag">footer</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="document" data-search="rtp8 spec example 9.2. document markers spec header footer">
+        <td>RTP8</td>
+        <td>Spec Example 9.2. Document Markers</td>
+        <td>document</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">spec</span><span class="tag">header</span><span class="tag">footer</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="document" data-search="rzt7 spec example 2.28. log file spec header literal mapping sequence">
+        <td>RZT7</td>
+        <td>Spec Example 2.28. Log File</td>
+        <td>document</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">spec</span><span class="tag">header</span><span class="tag">literal</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="document" data-search="s4t7 document with footer mapping footer">
+        <td>S4T7</td>
+        <td>Document with footer</td>
+        <td>document</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">mapping</span><span class="tag">footer</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="document" data-search="u9ns spec example 2.8. play by play feed from a game spec header">
+        <td>U9NS</td>
+        <td>Spec Example 2.8. Play by Play Feed from a Game</td>
+        <td>document</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">spec</span><span class="tag">header</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-stage="document" data-search="ut92 spec example 9.4. explicit documents flow spec header footer comment">
+        <td>UT92</td>
+        <td>Spec Example 9.4. Explicit Documents</td>
+        <td>document</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="tag">flow</span><span class="tag">spec</span><span class="tag">header</span><span class="tag">footer</span><span class="tag">comment</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token at { offset := 15, line := 2, col := 1 }; expected &#39;,&#39; or &#39;}}&#39; in flow mapping, got &#39;%&#39; at { offset := 15, line := 2, col := 1 }; expected flow mapping at { offset := 15, line := 2, col := 1 }; expected YAML value at { offset := 15, line := 2, col := 1 }">parse error: unexpected token at { offset := 15, line := 2, col := 1 }; expected &#39;,&#39; or &#39;}}&#39; in flow mapping, got &#39;%&#39; at { offset := 15, line := 2, col := 1 }; expected flow mapping at { offset := 15, line := 2, col := 1 }; expected YAML value at { offset := 15, line := 2, col := 1 }</span></td>
+      </tr>
+      <tr class="test-row" data-outcome="skip" data-stage="document" data-search="w4tn spec example 9.5. directives documents spec header footer 1.3-err">
+        <td>W4TN</td>
+        <td>Spec Example 9.5. Directives Documents</td>
+        <td>document</td>
+        <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
+        <td><span class="tag">spec</span><span class="tag">header</span><span class="tag">footer</span><span class="tag">1.3-err</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="document" data-search="xlq9 multiline scalar that looks like a yaml directive directive scalar">
+        <td>XLQ9</td>
+        <td>Multiline scalar that looks like a YAML directive</td>
+        <td>document</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">directive</span><span class="tag">scalar</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-stage="document" data-search="zyu8 directive variants directive">
+        <td>ZYU8</td>
+        <td>Directive variants</td>
+        <td>document</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="tag">directive</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  <footer>
+    Generated by <a href="https://github.com/yaml/yaml-test-suite">yaml-test-suite</a> runner ·     <a href="https://github.com/fgdorais/lean4-parser">lean4-parser</a> · Lean 4
+  </footer>
+</div>
+
+<script>
+
+    // State
+    let currentOutcomeFilter = 'all';
+    let currentStageFilter = 'all';
+    let currentSearchText = '';
+    let sortColumn = 0;
+    let sortAscending = true;
+
+    // Filter by outcome
+    function filterByOutcome(outcome) {
+      currentOutcomeFilter = outcome;
+      document.querySelectorAll('.filter-outcome .filter-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      applyFilters();
+    }
+
+    // Filter by stage
+    function filterByStage(stage) {
+      currentStageFilter = stage;
+      applyFilters();
+    }
+
+    // Search
+    function searchTests(text) {
+      currentSearchText = text.toLowerCase();
+      applyFilters();
+    }
+
+    // Apply all filters
+    function applyFilters() {
+      const rows = document.querySelectorAll('.test-row');
+      let visible = 0;
+      rows.forEach(row => {
+        const outcome = row.dataset.outcome;
+        const stage = row.dataset.stage;
+        const search = row.dataset.search;
+
+        const outcomeMatch = currentOutcomeFilter === 'all' || outcome === currentOutcomeFilter;
+        const stageMatch = currentStageFilter === 'all' || stage === currentStageFilter;
+        const searchMatch = currentSearchText === '' || search.includes(currentSearchText);
+
+        if (outcomeMatch && stageMatch && searchMatch) {
+          row.classList.remove('hidden');
+          visible++;
+        } else {
+          row.classList.add('hidden');
+        }
+      });
+      document.getElementById('visibleCount').textContent = visible;
+    }
+
+    // Sort table
+    function sortTable(colIdx) {
+      const table = document.getElementById('testTable');
+      const tbody = table.querySelector('tbody');
+      const rows = Array.from(tbody.querySelectorAll('.test-row'));
+
+      if (sortColumn === colIdx) {
+        sortAscending = !sortAscending;
+      } else {
+        sortColumn = colIdx;
+        sortAscending = true;
+      }
+
+      // Update header arrows
+      table.querySelectorAll('th').forEach((th, i) => {
+        th.classList.remove('sorted');
+        const arrow = th.querySelector('.sort-arrow');
+        if (arrow) arrow.textContent = '↕';
+      });
+      const th = table.querySelectorAll('th')[colIdx];
+      th.classList.add('sorted');
+      const arrow = th.querySelector('.sort-arrow');
+      if (arrow) arrow.textContent = sortAscending ? '↑' : '↓';
+
+      rows.sort((a, b) => {
+        let aVal = a.children[colIdx]?.textContent.trim() || '';
+        let bVal = b.children[colIdx]?.textContent.trim() || '';
+        // Try numeric sort
+        const aNum = parseFloat(aVal);
+        const bNum = parseFloat(bVal);
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+          return sortAscending ? aNum - bNum : bNum - aNum;
+        }
+        return sortAscending ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      });
+
+      rows.forEach(row => tbody.appendChild(row));
+    }
+  </script>
+</body>
+</html>
