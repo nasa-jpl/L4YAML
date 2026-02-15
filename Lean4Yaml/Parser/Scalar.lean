@@ -273,34 +273,34 @@ partial def plainScalarSingleLine (inFlow : Bool) : YamlParser String :=
     return rest.trimAsciiEnd.toString
 where
   collectPlain (acc : String) (lastWasSpace : Bool) : YamlParser String := do
-    match ← option? anyToken with
+    match ← option? (lookAhead anyToken) with
     | none => return acc
     | some c =>
       if isLineBreak c then
         return acc
       else if c == '#' && lastWasSpace then
         -- ` #` starts a comment → end of plain scalar
-        -- We need to "unconsume" the `#` but with lean4-parser we have
-        -- already consumed it. Instead, we need to restructure.
         return acc
       else if c == ':' then
-        -- Check if followed by whitespace (mapping separator)
-        match ← lookAhead (option? anyToken) with
-        | some nc =>
-          if isWhiteSpace nc || isLineBreak nc then
-            -- `: ` is a mapping separator → end of plain scalar
-            -- We consumed `:` but the caller expects it unconsumed
-            return acc
-          else
-            collectPlain (acc.push c) false
-        | none =>
-          -- `:` at end of input — mapping separator
+        -- Peek past `:` to check for mapping separator
+        let isMapSep ← lookAhead do
+          let _ ← anyToken  -- consume ':'
+          match ← option? anyToken with
+          | some nc => return (isWhiteSpace nc || isLineBreak nc)
+          | none => return true  -- `:` at EOF
+        if isMapSep then
           return acc
+        else
+          let _ ← anyToken  -- actually consume the ':'
+          collectPlain (acc.push c) false
       else if inFlow && isFlowIndicator c then
+        -- Don't consume the flow indicator — caller needs it
         return acc
       else if isWhiteSpace c then
+        let _ ← anyToken  -- actually consume
         collectPlain (acc.push c) true
       else
+        let _ ← anyToken  -- actually consume
         collectPlain (acc.push c) false
 
 /--

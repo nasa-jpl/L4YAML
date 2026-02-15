@@ -12,6 +12,9 @@ rev = "main"
 [[lean_lib]]
 name = "Lean4Yaml"
 
+[[lean_lib]]
+name = "Tests.SuiteRunner.Meta"
+
 [[lean_exe]]
 name = "tests"
 root = "Tests.Main"
@@ -19,3 +22,15 @@ root = "Tests.Main"
 [[lean_exe]]
 name = "demo"
 root = "Demo"
+
+[[lean_exe]]
+name = "parsetest"
+root = "Tests.ParseTest"
+
+[[lean_exe]]
+name = "suiterunner"
+root = "Tests.SuiteRunner.Main"
+
+[[lean_exe]]
+name = "tryparse"
+root = "Tests.TryParse"
