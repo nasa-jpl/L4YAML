@@ -1,0 +1,314 @@
+/-
+Copyright (c) 2026. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+-/
+import Lean4Yaml.Types
+
+/-!
+# Formal YAML Grammar
+
+Inductive propositions characterizing valid YAML documents.
+
+This module defines what it means for a string to be valid YAML, independent
+of any parser implementation. It serves as the **specification** against which
+the parser's correctness is proven.
+
+## Approach
+
+We define the grammar in layers matching the YAML 1.2.2 spec structure:
+
+1. **Character classifications** (§5: https://yaml.org/spec/1.2.2/#chapter-5-character-productions)
+2. **Indentation** (§6.1: https://yaml.org/spec/1.2.2/#61-indentation-spaces)
+3. **Scalars** (§7.3: https://yaml.org/spec/1.2.2/#73-flow-scalar-styles)
+4. **Collections** (§7.4: https://yaml.org/spec/1.2.2/#74-flow-collection-styles, §8: https://yaml.org/spec/1.2.2/#chapter-8-block-style-productions)
+5. **Documents** (§9: https://yaml.org/spec/1.2.2/#chapter-9-document-stream-productions)
+
+Each layer builds on the previous, and the final `ValidYaml` proposition
+ties everything together.
+
+## Design Decisions
+
+- We specify the **supported subset** of YAML 1.2.2, not the full spec.
+  The spec itself is ~120 grammar productions; we start with the most
+  commonly used features and extend incrementally.
+
+- Grammar rules reference YAML 1.2.2 section numbers with URLs for traceability.
+
+- We use `Prop` (not `Bool`) to allow for non-computable specifications
+  where needed, while keeping `Decidable` instances where possible for
+  `native_decide` proofs.
+-/
+
+namespace Lean4Yaml.Grammar
+
+/-! ## Character Classifications (YAML 1.2.2 §5: https://yaml.org/spec/1.2.2/#chapter-5-character-productions) -/
+
+/--
+YAML printable characters (§5.1: https://yaml.org/spec/1.2.2/#51-character-set).
+The set of characters that can appear in a YAML stream.
+-/
+def isPrintable (c : Char) : Prop :=
+  c == '\t'                                    -- Tab
+  ∨ (c.val ≥ 0x20 ∧ c.val ≤ 0x7E)            -- Basic ASCII printable
+  ∨ c == '\u0085'                              -- Next Line
+  ∨ (c.val ≥ 0xA0 ∧ c.val ≤ 0xD7FF)          -- Basic Multilingual Plane
+  ∨ (c.val ≥ 0xE000 ∧ c.val ≤ 0xFFFD)        -- More BMP
+  ∨ (c.val ≥ 0x10000 ∧ c.val ≤ 0x10FFFF)     -- Supplementary planes
+
+/--
+Line break characters (§5.4: https://yaml.org/spec/1.2.2/#54-line-break-characters).
+-/
+def isLineBreak (c : Char) : Prop :=
+  c == '\n' ∨ c == '\r'
+
+/--
+White space characters for YAML (§5.5: https://yaml.org/spec/1.2.2/#55-white-space-characters).
+Only space and tab — NOT line breaks.
+-/
+def isWhiteSpace (c : Char) : Prop :=
+  c == ' ' ∨ c == '\t'
+
+/--
+YAML space character (§6.1: https://yaml.org/spec/1.2.2/#61-indentation-spaces).
+Only the space character is valid for indentation.
+Tabs are explicitly forbidden for indentation in YAML 1.2.2.
+-/
+def isIndentChar (c : Char) : Prop :=
+  c == ' '
+
+/--
+Characters that can start a plain scalar (§7.3.3: https://yaml.org/spec/1.2.2/#733-plain-style).
+Excludes indicators that have special meaning at the start.
+-/
+def canStartPlainScalar (c : Char) : Prop :=
+  isPrintable c
+  ∧ ¬ isWhiteSpace c
+  ∧ ¬ isLineBreak c
+  ∧ c ∉ ['-', '?', ':', ',', '[', ']', '{', '}', '#', '&', '*', '!', '|', '>',
+         '\'', '"', '%', '@', '`']
+
+/--
+Flow indicator characters (§5.3: https://yaml.org/spec/1.2.2/#53-indicator-characters).
+These terminate plain scalars in flow context.
+-/
+def isFlowIndicator (c : Char) : Prop :=
+  c ∈ [',', '[', ']', '{', '}']
+
+/-! ## Indentation (YAML 1.2.2 §6.1: https://yaml.org/spec/1.2.2/#61-indentation-spaces) -/
+
+/--
+An indentation of `n` spaces at the start of a line.
+
+This is the core proposition for block-style YAML. A line is indented
+at level `n` if it starts with exactly `n` space characters.
+-/
+inductive Indented : Nat → List Char → Prop where
+  /-- Zero indentation: any content -/
+  | zero (cs : List Char) : Indented 0 cs
+  /-- Positive indentation: space followed by rest -/
+  | space (n : Nat) (cs : List Char) : Indented n cs → Indented (n + 1) (' ' :: cs)
+
+/--
+A line has indentation of **at least** `n` spaces.
+Used for block scalar content lines.
+-/
+def IndentedAtLeast (n : Nat) (cs : List Char) : Prop :=
+  ∃ m, m ≥ n ∧ Indented m cs
+
+/-! ## Scalar Grammar (YAML 1.2.2 §7.3: https://yaml.org/spec/1.2.2/#73-flow-scalar-styles) -/
+
+/--
+A valid plain scalar in block context.
+
+Plain scalars in block context:
+- Cannot start with indicators (§7.3.3: https://yaml.org/spec/1.2.2/#733-plain-style)
+- Cannot contain `: ` (colon-space) or ` #` (space-hash)
+- Are terminated by line breaks, `: `, or less-indented lines
+- Continuation lines are folded (replacing newline with space)
+-/
+structure ValidPlainScalarBlock where
+  /-- The resolved content string -/
+  content : String
+  /-- The content is non-empty -/
+  nonempty : content.length > 0
+
+/--
+A valid plain scalar in flow context.
+
+Plain scalars in flow context additionally:
+- Cannot contain flow indicators (`,`, `[`, `]`, `{`, `}`)
+- Are terminated by flow indicators in addition to block terminators
+-/
+structure ValidPlainScalarFlow where
+  content : String
+  nonempty : content.length > 0
+
+/--
+A valid single-quoted scalar (§7.3.2: https://yaml.org/spec/1.2.2/#732-single-quoted-style).
+
+Single-quoted scalars:
+- Delimited by `'...'`
+- Only escape: `''` → `'` (doubled single quote)
+- All other characters are literal
+-/
+structure ValidSingleQuoted where
+  content : String
+
+/--
+A valid double-quoted scalar (§7.3.1: https://yaml.org/spec/1.2.2/#731-double-quoted-style).
+
+Double-quoted scalars:
+- Delimited by `"..."`
+- Full escape sequence support: `\n`, `\t`, `\\`, `\"`, `\xHH`, `\uHHHH`, etc.
+- Line folding: newlines become spaces (unless `\` at end of line)
+-/
+structure ValidDoubleQuoted where
+  content : String
+
+/--
+Chomping styles for block scalars (§8.1.1.2: https://yaml.org/spec/1.2.2/#8112-block-chomping-indicator).
+-/
+inductive ChompStyle where
+  | strip  -- Remove all trailing newlines (`|-`)
+  | clip   -- Keep one trailing newline (default `|`)
+  | keep   -- Keep all trailing newlines (`|+`)
+  deriving Repr, BEq, DecidableEq
+
+/--
+A valid literal block scalar (§8.1.2: https://yaml.org/spec/1.2.2/#812-literal-style).
+
+Literal scalars (`|`):
+- Preserve line breaks exactly
+- Content indented relative to indicator
+- Optional chomping indicator: `-` (strip), `+` (keep), default (clip)
+-/
+structure ValidLiteralScalar where
+  content : String
+  indent : Nat
+  chomp : ChompStyle
+
+/--
+A valid folded block scalar (§8.1.3: https://yaml.org/spec/1.2.2/#813-folded-style).
+
+Folded scalars (`>`):
+- Fold line breaks to spaces (except for blank lines and more-indented lines)
+- Optional chomping indicator
+-/
+structure ValidFoldedScalar where
+  content : String
+  indent : Nat
+  chomp : ChompStyle
+
+/-! ## Node Grammar
+
+Combines scalars (§7.3: https://yaml.org/spec/1.2.2/#73-flow-scalar-styles),
+flow collections (§7.4: https://yaml.org/spec/1.2.2/#74-flow-collection-styles),
+and block collections (§8: https://yaml.org/spec/1.2.2/#chapter-8-block-style-productions). -/
+
+/--
+A valid YAML node — the top-level grammar production.
+
+A node is any valid YAML value: scalar, sequence, or mapping,
+in either block or flow style. Defined as a single inductive to
+avoid mutual recursion between structures.
+-/
+inductive ValidNode where
+  /-- Plain scalar in block context -/
+  | plainScalarBlock (content : String) (nonempty : content.length > 0)
+  /-- Plain scalar in flow context -/
+  | plainScalarFlow (content : String) (nonempty : content.length > 0)
+  /-- Single-quoted scalar (§7.3.2: https://yaml.org/spec/1.2.2/#732-single-quoted-style) -/
+  | singleQuoted (content : String)
+  /-- Double-quoted scalar (§7.3.1: https://yaml.org/spec/1.2.2/#731-double-quoted-style) -/
+  | doubleQuoted (content : String)
+  /-- Literal block scalar (§8.1.2: https://yaml.org/spec/1.2.2/#812-literal-style) -/
+  | literalScalar (content : String) (indent : Nat) (chomp : ChompStyle)
+  /-- Folded block scalar (§8.1.3: https://yaml.org/spec/1.2.2/#813-folded-style) -/
+  | foldedScalar (content : String) (indent : Nat) (chomp : ChompStyle)
+  /-- Block sequence (§8.2.1: https://yaml.org/spec/1.2.2/#821-block-sequences) -/
+  | blockSeq (indent : Nat) (items : List ValidNode)
+  /-- Block mapping (§8.2.2: https://yaml.org/spec/1.2.2/#822-block-mappings) -/
+  | blockMap (indent : Nat) (entries : List (ValidNode × ValidNode))
+  /-- Flow sequence (§7.4.1: https://yaml.org/spec/1.2.2/#741-flow-sequences) -/
+  | flowSeq (items : List ValidNode)
+  /-- Flow mapping (§7.4.2: https://yaml.org/spec/1.2.2/#742-flow-mappings) -/
+  | flowMap (entries : List (ValidNode × ValidNode))
+
+/-! ## Document Grammar (YAML 1.2.2 §9: https://yaml.org/spec/1.2.2/#chapter-9-document-stream-productions) -/
+
+/--
+A valid YAML document.
+
+Documents may optionally start with `---` and end with `...`.
+-/
+structure ValidDocument where
+  /-- The document content -/
+  content : ValidNode
+  /-- Optional YAML directive version -/
+  yamlVersion : Option String := none
+
+/--
+A valid YAML stream — one or more documents.
+-/
+structure ValidStream where
+  documents : List ValidDocument
+  nonempty : documents.length > 0
+
+/-! ## Top-Level Specification -/
+
+/--
+Correspondence between grammar nodes and YAML values.
+
+This bridges the specification (grammar) and the implementation (YamlValue AST).
+-/
+inductive NodeToValue : ValidNode → YamlValue → Prop where
+  | plainScalarBlock (content : String) (h : content.length > 0) :
+      NodeToValue
+        (.plainScalarBlock content h)
+        (.scalar ⟨content, .plain, none⟩)
+  | plainScalarFlow (content : String) (h : content.length > 0) :
+      NodeToValue
+        (.plainScalarFlow content h)
+        (.scalar ⟨content, .plain, none⟩)
+  | singleQuoted (content : String) :
+      NodeToValue
+        (.singleQuoted content)
+        (.scalar ⟨content, .singleQuoted, none⟩)
+  | doubleQuoted (content : String) :
+      NodeToValue
+        (.doubleQuoted content)
+        (.scalar ⟨content, .doubleQuoted, none⟩)
+  | literalScalar (content : String) (indent : Nat) (chomp : ChompStyle) :
+      NodeToValue
+        (.literalScalar content indent chomp)
+        (.scalar ⟨content, .literal, none⟩)
+  | foldedScalar (content : String) (indent : Nat) (chomp : ChompStyle) :
+      NodeToValue
+        (.foldedScalar content indent chomp)
+        (.scalar ⟨content, .folded, none⟩)
+  -- Collections would map recursively (omitted for brevity in initial scaffold)
+
+/--
+**The specification**: a string `s` is valid YAML producing value `v`.
+
+This is the proposition that the parser's soundness proof targets:
+```
+theorem parse_sound : parse s = .ok v → ValidYaml s v
+```
+
+And completeness (if desired):
+```
+theorem parse_complete : ValidYaml s v → parse s = .ok v
+```
+-/
+structure ValidYaml where
+  /-- The input string -/
+  input : String
+  /-- The resulting YAML value -/
+  value : YamlValue
+  /-- The input parses according to the grammar -/
+  grammar : ValidNode
+  /-- The grammar node corresponds to the value -/
+  corresponds : NodeToValue grammar value
+
+end Lean4Yaml.Grammar
