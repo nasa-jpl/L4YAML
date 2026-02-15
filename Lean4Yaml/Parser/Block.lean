@@ -70,6 +70,12 @@ partial def blockValue (minIndent : Nat) : YamlParser YamlValue :=
   withErrorMessage "expected YAML value" do
     -- Skip blank lines before the value
     skipBlankLines
+    -- Consume leading whitespace up to content
+    -- (indentation is the column where content starts)
+    skipHWhitespace
+    let col ← currentCol
+    if col < minIndent then
+      withErrorMessage s!"content at column {col} is less than minimum indent {minIndent}" throwUnexpected
     -- Peek at the first character to dispatch
     let c ← lookAhead anyToken
     match c with
@@ -130,6 +136,8 @@ Parse block sequence items at a fixed indentation level.
 partial def blockSequenceItems (seqIndent : Nat) (acc : Array YamlValue) :
     YamlParser (Array YamlValue) := do
   skipBlankLines
+  -- Consume leading indentation to reach content
+  skipHWhitespace
   -- Check if the next line starts at the sequence indentation
   let col ← currentCol
   if col != seqIndent then
@@ -229,6 +237,8 @@ partial def blockMappingEntries (mapIndent : Nat)
     (acc : Array (YamlValue × YamlValue)) :
     YamlParser (Array (YamlValue × YamlValue)) := do
   skipBlankLines
+  -- Consume leading indentation to reach content
+  skipHWhitespace
   -- Check if at the mapping indentation
   let col ← currentCol
   if col != mapIndent then
@@ -300,19 +310,20 @@ where
     let mut acc := ""
     let mut done := false
     while !done do
-      match ← option? anyToken with
+      match ← option? (lookAhead anyToken) with
       | none => done := true
       | some ':' =>
         -- Check if followed by whitespace (mapping separator)
-        match ← lookAhead (option? anyToken) with
-        | some c =>
-          if isWhiteSpace c || isLineBreak c then
-            done := true
-          else
-            acc := acc.push ':'
-        | none =>
-          -- End of input after `:` — it's a mapping separator
+        let isMapSep ← lookAhead do
+          let _ ← anyToken  -- consume ':'
+          match ← option? anyToken with
+          | some c => return (isWhiteSpace c || isLineBreak c)
+          | none => return true  -- `:` at EOF
+        if isMapSep then
           done := true
+        else
+          let _ ← anyToken  -- actually consume the ':'
+          acc := acc.push ':'
       | some c =>
         if isLineBreak c then
           done := true
@@ -320,6 +331,7 @@ where
           -- Comment
           done := true
         else
+          let _ ← anyToken  -- actually consume
           acc := acc.push c
     return acc.trimAsciiEnd.toString
 
