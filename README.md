@@ -167,7 +167,7 @@ Added [yaml-test-suite](https://github.com/yaml/yaml-test-suite) as a git submod
 4. **Meta parser `---` handling** — `processLine` checked for `---` separator before checking if inside a yaml block scalar, truncating test yaml content. Fixed by reordering to check block scalar state first.
 
 **Validation work (ANALYSIS.md §2.A):**
-Three-valued error recovery combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) were implemented and tested. They correctly catch wrongly-indented indicators (e.g., `- ` at col 1 when `seqIndent = 0`), but are **disabled** because the single-line plain scalar parser leaves multi-line continuation content unconsumed, making valid content like `" - sequence entry"` at col 1 look like a wrong-indent indicator (false positive on AB8U). Re-enable after multi-line plain scalar support.
+Three-valued error recovery combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) were implemented and tested. They correctly catch wrongly-indented indicators (e.g., `- ` at col 1 when `seqIndent = 0`), but are **currently disabled** (commented out with TODO) in `blockSequenceItems` and `blockMappingEntries`. The original blocker — single-line plain scalar leaving continuation content unconsumed, causing false positives (e.g., AB8U) — is **now resolved** by the multi-line `plainScalarContent` parser. **Next step: uncomment the validation calls in `Block.lean`** to address ~50 unexpected passes.
 
 ### Remaining Phases (Future)
 
@@ -207,10 +207,10 @@ Share the verified implementation with the existing lean4-yaml ecosystem.
 
 Immediate priorities for continuing Phase 2:
 
-1. ~~**Three-valued error recovery ([ANALYSIS.md](ANALYSIS.md) §2.A)**~~ — ✅ Done. Validation combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) built in `Combinators.lean` and integrated into `Block.lean`. Disabled with TODO comments because single-line scalar leaves continuation content unconsumed, causing false positives (e.g., AB8U). Also confirmed lean4-parser has no committed/fatal error mechanism — all errors backtrack unconditionally.
+1. ~~**Three-valued error recovery ([ANALYSIS.md](ANALYSIS.md) §2.A)**~~ — ✅ Done. Validation combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) built in `Combinators.lean` and integrated into `Block.lean`. Currently commented out with TODO — ready to re-enable now that multi-line scalar (§2.B) consumes continuation content. lean4-parser has no committed/fatal error mechanism — all errors backtrack unconditionally.
 2. ~~**Refactor `blockValue` dispatch to `DispatchResult`**~~ — ✅ Done. Defined `DispatchResult` inductive type (`matched`/`noMatch`/`invalid`) in `Combinators.lean`. Extracted shared `dispatchByChar` in `Block.lean`, eliminating duplicated match statements in `blockValue`/`blockValueSameLine`. See [ANALYSIS.md](ANALYSIS.md) §2.A.
 3. ~~**Add multi-line plain scalar support**~~ — ✅ Done. Defined `ContinuationCheck` inductive type in `Combinators.lean` with `checkContinuation` pure `lookAhead` probe. Replaced single-line parser with multi-line `plainScalarContent` in `Scalar.lean`. Line folding per YAML §6.5. See [ANALYSIS.md](ANALYSIS.md) §2.B.
-4. **Re-enable validation combinators** — uncomment `validateNoWrongIndentSeq` / `validateNoWrongIndentMap` in `Block.lean` once multi-line scalars consume continuation content (addresses ~50 unexpected passes)
+4. **🔜 Re-enable validation combinators** — prerequisite (multi-line scalar) is done. Uncomment `validateNoWrongIndentSeq` / `validateNoWrongIndentMap` in `Block.lean`'s `blockSequenceItems` and `blockMappingEntries` (addresses ~50 unexpected passes)
 5. **Investigate infinite loops** — analyze the 9 timeout cases (4CQQ, 4ZYM, 5GBF + 6 error-stage)
 6. **Fix multi-line quoted scalars** — handle line folding in double/single-quoted scalars
 7. **Add anchor/alias support** — enables the advanced stage (currently 1/81)

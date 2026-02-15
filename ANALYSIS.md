@@ -29,11 +29,11 @@ lean4-yaml-verified's `YamlStream` tracks `col` natively in every `next?` call, 
 
 ## 2. Actionable Insights to Port
 
-### A. Three-Valued Error Recovery (High Priority) — ✅ Built, Disabled Pending §2.B
+### A. Three-Valued Error Recovery (High Priority) — ✅ Built, Ready to Re-enable
 
 **Foundational principle:** Never use exceptions (parser errors) as a mechanism for making decisions. When processing any input — valid or invalid — the parser should produce explicit result values. Invalid YAML is an expected outcome, not an exceptional condition. Processing the entire yaml-test-suite should produce zero exceptions unless there is a genuine internal bug. See `LEAN4_STYLE.md` § "Parser Error Design: No Exceptions for Decisions".
 
-**Status (2026-02-15):** Validation combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) implemented in `Combinators.lean` and integrated into `Block.lean`. During testing, discovered that single-line plain scalar leaves multi-line continuation content unconsumed, causing false positives on valid tests (e.g., AB8U where `" - sequence entry"` looks like a wrong-indent indicator). Combinators are **commented out** with TODO in `blockSequenceItems` and `blockMappingEntries` until §2.B (multi-line plain scalar) is implemented. Also confirmed that lean4-parser has **no committed/fatal error mechanism** — all errors are backtrackable (`withBacktracking`, `option?`, `first`, `<|>` all catch every `Result.error` unconditionally), making `throwUnexpected` unreliable for validation: any enclosing combinator silently swallows it.
+**Status (2026-02-15):** Validation combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) implemented in `Combinators.lean` and integrated into `Block.lean`. During testing, discovered that single-line plain scalar leaves multi-line continuation content unconsumed, causing false positives on valid tests (e.g., AB8U where `" - sequence entry"` looks like a wrong-indent indicator). Combinators were **commented out** with TODO in `blockSequenceItems` and `blockMappingEntries` pending §2.B (multi-line plain scalar). **§2.B is now complete** — `plainScalarContent` consumes continuation lines, so the false-positive issue should be resolved. **Next step: uncomment the validation calls in `Block.lean`.** Also confirmed that lean4-parser has **no committed/fatal error mechanism** — all errors are backtrackable (`withBacktracking`, `option?`, `first`, `<|>` all catch every `Result.error` unconditionally), making `throwUnexpected` unreliable for validation: any enclosing combinator silently swallows it.
 
 lean4-yaml discovered that backtracking (`<|>` / `withBacktracking`) conflates **two semantically different failures**:
 - "No match, try another parser" (normal backtracking)
@@ -156,10 +156,10 @@ This prevents invalid YAML from being silently accepted by a fallback parser. Th
 
 ## 5. Recommended Priorities
 
-1. ~~**Three-valued error recovery (§2.A)**~~ — ✅ Done. Combinators built, disabled pending §2.B.
+1. ~~**Three-valued error recovery (§2.A)**~~ — ✅ Done. Combinators built, ready to re-enable now that §2.B is complete.
 2. ~~**Refactor `blockValue` dispatch to `DispatchResult` (§2.A)**~~ — ✅ Done. Defined `DispatchResult` inductive type (`matched`/`noMatch`/`invalid`) in `Combinators.lean`. Extracted shared dispatch logic into `dispatchByChar` in `Block.lean`, eliminating duplicated match statements in `blockValue` and `blockValueSameLine`. Pure refactoring: same behavior, proof-friendly structure. Each variant maps to a lemma obligation; removes dependence on error propagation details.
 3. ~~**Add multi-line plain scalar support (§2.B)**~~ — ✅ Done. Defined `ContinuationCheck` inductive type (`notContinuing`/`plainContinuation`/`afterEmpty n`/`sequenceMarker`/`mappingEntry`) in `Combinators.lean`. Implemented `checkContinuation` as a pure `lookAhead` probe (check-then-consume pattern). Replaced `plainScalarSingleLine` with multi-line `plainScalarContent` in `Scalar.lean` — handles line folding (adjacent lines → space, empty lines → paragraph breaks). `dispatchByChar` passes `baseIndent := contentIndent - 1` to track parent indent. Scalar suite: 41/82 passed (50%)
-4. **Re-enable validation combinators (§2.A)** once multi-line scalars consume continuation content (addresses ~50 unexpected passes)
+4. **🔜 Re-enable validation combinators (§2.A)** — prerequisite (§2.B multi-line scalar) is done. Uncomment `validateNoWrongIndentSeq` / `validateNoWrongIndentMap` in `Block.lean`'s `blockSequenceItems` and `blockMappingEntries`. Expected impact: addresses ~50 unexpected passes where invalid YAML is silently accepted
 5. **Investigate the 9 infinite loops** (4CQQ, 4ZYM, 5GBF + 6 error-stage)
 6. **Fix multi-line quoted scalars** — handle line folding in double/single-quoted scalars
 7. **Add anchor/alias support** — lean4-yaml's `anchorMap : HashMap String YamlValue` approach works
