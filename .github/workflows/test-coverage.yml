@@ -47,7 +47,7 @@ jobs:
           ./.lake/build/bin/suiterunner --html docs/ | tee docs/coverage-console.txt
 
       - name: Upload coverage reports as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: coverage-reports
           path: docs/
