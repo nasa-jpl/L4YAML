@@ -51,7 +51,18 @@ inductive ParseResult (α : Type) where
 
 With the key semantic: `orElse` propagates `validationError` immediately but retries on `noMatch`.
 
-**Recommendation**: Implement validation-aware error propagation at `blockValue` dispatch points. For the verified parser, encoding this as a combinator or explicit return type (rather than mutable state) will be more compatible with proofs.
+**Recommendation**: Refactor `blockValue` dispatch from `throwUnexpected` to an explicit `DispatchResult` return type:
+
+```lean
+inductive DispatchResult (α : Type) where
+  | matched (val : α)           -- parsed successfully
+  | noMatch                      -- try next alternative
+  | invalid (msg : String)       -- validation error, stop — don't backtrack
+```
+
+This makes three-valued semantics **structural** rather than depending on error propagation details. Each variant becomes a case in an inductive proof — `matched` carries the parse result, `noMatch` justifies trying the next alternative, and `invalid` is a provable dead-end. The current `throwUnexpected` approach works but is fragile: correct only if no `withBacktracking` wrapper catches it higher in the call stack. The `DispatchResult` encoding removes that dependency entirely.
+
+**Incremental plan**: This is a pure refactoring step — same behavior, better structure. Do it after re-enabling validation (§2.A) so correctness is established before restructuring.
 
 ### B. Multi-Line Plain Scalar Continuation (Medium Priority)
 
@@ -146,10 +157,11 @@ This prevents invalid YAML from being silently accepted by a fallback parser. Th
 1. ~~**Three-valued error recovery (§2.A)**~~ — ✅ Done. Combinators built, disabled pending §2.B.
 2. **🔜 Add multi-line plain scalar support (§2.B)** using the `ContinuationCheck` check-then-consume pattern — **immediate next step**, prerequisite for re-enabling validation
 3. **Re-enable validation combinators (§2.A)** once multi-line scalars consume continuation content (addresses ~50 unexpected passes)
-4. **Investigate the 9 infinite loops** (4CQQ, 4ZYM, 5GBF + 6 error-stage)
-5. **Fix multi-line quoted scalars** — handle line folding in double/single-quoted scalars
-6. **Add anchor/alias support** — lean4-yaml's `anchorMap : HashMap String YamlValue` approach works
-7. **Defer tags** — low coverage even in lean4-yaml, complex spec surface area
+4. **Refactor `blockValue` dispatch to `DispatchResult` (§2.A)** — replace `throwUnexpected` with explicit return type. Pure refactoring (same behavior, proof-friendly structure). Each variant maps to a lemma obligation; removes dependence on error propagation details.
+5. **Investigate the 9 infinite loops** (4CQQ, 4ZYM, 5GBF + 6 error-stage)
+6. **Fix multi-line quoted scalars** — handle line folding in double/single-quoted scalars
+7. **Add anchor/alias support** — lean4-yaml's `anchorMap : HashMap String YamlValue` approach works
+8. **Defer tags** — low coverage even in lean4-yaml, complex spec surface area
 
 ---
 
