@@ -58,6 +58,21 @@ theorem parse_sound :
 
 The `YamlValue` type is identical to lean4-yaml's, allowing the Schema/FromToYaml/Deriving/Emitter layers (~1500 lines) to be shared between implementations.
 
+### No Exceptions for Control Flow
+
+**Parser errors are never used as a decision-making mechanism.** When processing input — valid or invalid — the parser produces explicit result values describing what happened. Invalid YAML (wrong indentation, unexpected EOF, malformed structure) is an expected outcome, not an exceptional condition. The entire yaml-test-suite runs with zero exceptions unless there is a genuine internal bug.
+
+This principle is enforced by the `DispatchResult` type at block-value dispatch points:
+
+```lean
+inductive DispatchResult (α : Type) where
+  | matched (val : α)       -- parsed successfully
+  | noMatch                  -- this branch doesn't apply (a decision, not an error)
+  | invalid (msg : String)  -- input is definitively wrong (reported as a value)
+```
+
+This is critical because lean4-parser's error model has **no committed/fatal error distinction** — all `Result.error` values are caught unconditionally by `<|>`, `option?`, and `first`. Using `throwUnexpected` for input validation is unreliable since any enclosing combinator silently swallows it. The `DispatchResult` encoding works *above* the combinator level, making three-valued semantics structural and proof-friendly.
+
 ### OS-Level Process Isolation for Testing
 
 The yaml-test-suite runner uses OS-level process isolation (`timeout(1)` wrapping a `tryparse` subprocess) to handle infinite loops in `partial def` parsers. Lean's `IO.asTask` cannot preempt pure infinite loops regardless of thread priority, so subprocess isolation is the correct approach until termination proofs (Phase 3) eliminate infinite loops at the type level.
@@ -193,9 +208,9 @@ Share the verified implementation with the existing lean4-yaml ecosystem.
 Immediate priorities for continuing Phase 2:
 
 1. ~~**Three-valued error recovery ([ANALYSIS.md](ANALYSIS.md) §2.A)**~~ — ✅ Done. Validation combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) built in `Combinators.lean` and integrated into `Block.lean`. Disabled with TODO comments because single-line scalar leaves continuation content unconsumed, causing false positives (e.g., AB8U). Also confirmed lean4-parser has no committed/fatal error mechanism — all errors backtrack unconditionally.
-2. **🔜 Add multi-line plain scalar support** — implement the check-then-consume pattern (`ContinuationCheck` from [ANALYSIS.md](ANALYSIS.md) §2.B). Separate non-consuming `lookAhead` checks from consuming advances for easier termination proofs. This is the **immediate next step** and prerequisite for re-enabling validation.
-3. **Re-enable validation combinators** — uncomment `validateNoWrongIndentSeq` / `validateNoWrongIndentMap` in `Block.lean` once multi-line scalars consume continuation content (addresses ~50 unexpected passes)
-4. **Refactor `blockValue` dispatch to `DispatchResult`** — replace `throwUnexpected` with an explicit return type (`matched` / `noMatch` / `invalid`). Pure refactoring: same behavior, proof-friendly structure. Each variant maps to a lemma obligation, removing dependence on error propagation details. See [ANALYSIS.md](ANALYSIS.md) §2.A.
+2. ~~**Refactor `blockValue` dispatch to `DispatchResult`**~~ — ✅ Done. Defined `DispatchResult` inductive type (`matched`/`noMatch`/`invalid`) in `Combinators.lean`. Extracted shared `dispatchByChar` in `Block.lean`, eliminating duplicated match statements in `blockValue`/`blockValueSameLine`. See [ANALYSIS.md](ANALYSIS.md) §2.A.
+3. **🔜 Add multi-line plain scalar support** — implement the check-then-consume pattern (`ContinuationCheck` from [ANALYSIS.md](ANALYSIS.md) §2.B). Separate non-consuming `lookAhead` checks from consuming advances for easier termination proofs. Prerequisite for re-enabling validation.
+4. **Re-enable validation combinators** — uncomment `validateNoWrongIndentSeq` / `validateNoWrongIndentMap` in `Block.lean` once multi-line scalars consume continuation content (addresses ~50 unexpected passes)
 5. **Investigate infinite loops** — analyze the 9 timeout cases (4CQQ, 4ZYM, 5GBF + 6 error-stage)
 6. **Fix multi-line quoted scalars** — handle line folding in double/single-quoted scalars
 7. **Add anchor/alias support** — enables the advanced stage (currently 1/81)

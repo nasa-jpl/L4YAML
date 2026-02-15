@@ -53,18 +53,63 @@ open Lean4Yaml
 mutual
 
 /--
+Dispatch to the appropriate parser based on the first character.
+
+Returns `DispatchResult` to make three-valued semantics explicit
+(see ANALYSIS.md §2.A and LEAN4_STYLE.md § "Parser Error Design"):
+- `.matched val`: a parser consumed input and produced a value
+- `.noMatch`: no parser recognized the input (currently unreachable since
+  plain scalar is the fallback, but present for structural completeness)
+- `.invalid msg`: input was recognized but structurally invalid
+
+Dispatch order:
+1. Flow collections (`[`, `{`)
+2. Block scalar indicators (`|`, `>`)
+3. Quoted scalars (`"`, `'`)
+4. Block collections detected by structural indicators
+5. Plain scalars (fallback)
+
+This is the shared dispatch logic for both `blockValue` and
+`blockValueSameLine`, eliminating the duplicated match statement.
+-/
+partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult YamlValue) := do
+  let c ← lookAhead anyToken
+  match c with
+  | '[' => return .matched (← flowSequence)
+  | '{' => return .matched (← flowMapping)
+  | '|' => return .matched (← blockScalar contentIndent)
+  | '>' => return .matched (← blockScalar contentIndent)
+  | '"' => return .matched (← doubleQuotedScalar)
+  | '\'' => return .matched (← singleQuotedScalar)
+  | '-' => do
+    -- Could be a block sequence indicator or a plain scalar starting with `-`
+    let isSeq ← lookAhead do
+      let _ ← char '-'
+      match ← option? anyToken with
+      | some c => return isWhiteSpace c || isLineBreak c
+      | none => return true
+    if isSeq then
+      return .matched (← blockSequence contentIndent)
+    else
+      return .matched (← plainScalar (inFlow := false))
+  | _ => do
+    -- Could be a block mapping or a plain scalar
+    let isMap ← lookAhead do
+      detectMappingKey (inFlow := false)
+    if isMap then
+      return .matched (← blockMapping contentIndent)
+    else
+      return .matched (← plainScalar (inFlow := false))
+
+/--
 Parse any YAML value in block context.
 
 The `minIndent` parameter specifies the minimum indentation level
 for this value's content. Content at or below this level belongs
 to a parent structure.
 
-Dispatch order:
-1. Flow collections (`[`, `{`)
-2. Block scalar indicators (`|`, `>`)
-3. Quoted scalars (`"`, `'`)
-4. Block collections detected by indentation
-5. Plain scalars (fallback)
+Delegates character-based dispatch to `dispatchByChar` and converts
+the `DispatchResult` to a parser action.
 -/
 partial def blockValue (minIndent : Nat) : YamlParser YamlValue :=
   withErrorMessage "expected YAML value" do
@@ -75,36 +120,12 @@ partial def blockValue (minIndent : Nat) : YamlParser YamlValue :=
     skipHWhitespace
     let col ← currentCol
     if col < minIndent then
+      -- Structural boundary: content below required indent belongs to parent.
+      -- Semantically DispatchResult.noMatch, but blockValue returns
+      -- YamlParser YamlValue so we use throwUnexpected.
       withErrorMessage s!"content at column {col} is less than minimum indent {minIndent}" throwUnexpected
-    -- Peek at the first character to dispatch
-    let c ← lookAhead anyToken
-    match c with
-    | '[' => flowSequence
-    | '{' => flowMapping
-    | '|' => blockScalar minIndent
-    | '>' => blockScalar minIndent
-    | '"' => doubleQuotedScalar
-    | '\'' => singleQuotedScalar
-    | '-' => do
-      -- Could be a block sequence indicator or a plain scalar starting with `-`
-      let isSeq ← lookAhead do
-        let _ ← char '-'
-        match ← option? anyToken with
-        | some c => return isWhiteSpace c || isLineBreak c
-        | none => return true
-      if isSeq then
-        blockSequence minIndent
-      else
-        plainScalar (inFlow := false)
-    | _ => do
-      -- Could be a block mapping or a plain scalar
-      -- Try to detect mapping by looking for `: ` pattern
-      let isMap ← lookAhead do
-        detectMappingKey (inFlow := false)
-      if isMap then
-        blockMapping minIndent
-      else
-        plainScalar (inFlow := false)
+    let result ← dispatchByChar minIndent
+    result.toParser
 
 /--
 Parse a block sequence
@@ -185,33 +206,12 @@ key: value on same line
 
 The `startCol` is the column where the value starts.
 The `contentIndent` is the minimum indentation for continuation lines.
+
+Delegates to `dispatchByChar`, sharing the dispatch logic with `blockValue`.
 -/
 partial def blockValueSameLine (_startCol : Nat) (contentIndent : Nat) : YamlParser YamlValue := do
-  let c ← lookAhead anyToken
-  match c with
-  | '[' => flowSequence
-  | '{' => flowMapping
-  | '|' => blockScalar contentIndent
-  | '>' => blockScalar contentIndent
-  | '"' => doubleQuotedScalar
-  | '\'' => singleQuotedScalar
-  | '-' => do
-    let isSeq ← lookAhead do
-      let _ ← char '-'
-      match ← option? anyToken with
-      | some c => return isWhiteSpace c || isLineBreak c
-      | none => return true
-    if isSeq then
-      blockSequence contentIndent
-    else
-      plainScalar (inFlow := false)
-  | _ => do
-    let isMap ← lookAhead do
-      detectMappingKey (inFlow := false)
-    if isMap then
-      blockMapping contentIndent
-    else
-      plainScalar (inFlow := false)
+  let result ← dispatchByChar contentIndent
+  result.toParser
 
 /--
 Parse a block mapping
