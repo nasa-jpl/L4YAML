@@ -163,6 +163,54 @@ def consumeIndent (n : Nat) : YamlParser Unit :=
     | some _ => throwUnexpectedWithMessage (msg := "tabs are not allowed for indentation")
     | none => drop n (token ' ')
 
+/-! ## Dispatch Result
+
+Three-valued dispatch result for block value parsing.
+See ANALYSIS.md §2.A and LEAN4_STYLE.md § "Parser Error Design:
+No Exceptions for Decisions".
+
+Parser decisions are expressed as explicit return values, not exceptions:
+- `matched`: a parser consumed input and produced a value
+- `noMatch`: no parser recognized the input (try next alternative)
+- `invalid`: input is structurally invalid (do not backtrack)
+
+This works above lean4-parser's combinator level, where `<|>`, `option?`,
+and `first` catch all `Result.error` unconditionally.
+-/
+
+/--
+Three-valued result for dispatch decisions.
+
+Each variant maps to a proof obligation:
+- `matched val`: parser produced a result
+- `noMatch`: no parser matched (justifies trying alternatives)
+- `invalid msg`: input is invalid (provable dead-end, should not backtrack)
+-/
+inductive DispatchResult (α : Type) where
+  | matched (val : α)
+  | noMatch
+  | invalid (msg : String)
+  deriving Repr, Nonempty
+
+/--
+Convert a `DispatchResult` to a parser action.
+
+- `matched val` → returns the value
+- `noMatch` → throws (to be caught by caller's `option?` or `withErrorMessage`)
+- `invalid msg` → throws with message
+
+**Note**: Both `noMatch` and `invalid` currently produce `throwUnexpected`,
+meaning lean4-parser's error-catching combinators cannot distinguish them.
+This is a known limitation — future work will propagate `DispatchResult`
+through callers to avoid `option?`/`<|>` swallowing `.invalid` errors.
+The structural encoding still provides value: each dispatch point is
+explicitly classified, enabling targeted future changes.
+-/
+def DispatchResult.toParser {α : Type} : DispatchResult α → YamlParser α
+  | .matched val => return val
+  | .noMatch => throwUnexpected
+  | .invalid msg => withErrorMessage msg throwUnexpected
+
 /-! ## Separator Detection -/
 
 /--

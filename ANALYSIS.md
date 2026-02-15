@@ -31,7 +31,9 @@ lean4-yaml-verified's `YamlStream` tracks `col` natively in every `next?` call, 
 
 ### A. Three-Valued Error Recovery (High Priority) — ✅ Built, Disabled Pending §2.B
 
-**Status (2026-02-15):** Validation combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) implemented in `Combinators.lean` and integrated into `Block.lean`. During testing, discovered that single-line plain scalar leaves multi-line continuation content unconsumed, causing false positives on valid tests (e.g., AB8U where `" - sequence entry"` looks like a wrong-indent indicator). Combinators are **commented out** with TODO in `blockSequenceItems` and `blockMappingEntries` until §2.B (multi-line plain scalar) is implemented. Also confirmed that lean4-parser has **no committed/fatal error mechanism** — all errors are backtrackable (`withBacktracking`, `option?`, `first`, `<|>` all catch every `Result.error` unconditionally), so validation must use `throwUnexpected` at points where no backtracking wrapper will catch it.
+**Foundational principle:** Never use exceptions (parser errors) as a mechanism for making decisions. When processing any input — valid or invalid — the parser should produce explicit result values. Invalid YAML is an expected outcome, not an exceptional condition. Processing the entire yaml-test-suite should produce zero exceptions unless there is a genuine internal bug. See `LEAN4_STYLE.md` § "Parser Error Design: No Exceptions for Decisions".
+
+**Status (2026-02-15):** Validation combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) implemented in `Combinators.lean` and integrated into `Block.lean`. During testing, discovered that single-line plain scalar leaves multi-line continuation content unconsumed, causing false positives on valid tests (e.g., AB8U where `" - sequence entry"` looks like a wrong-indent indicator). Combinators are **commented out** with TODO in `blockSequenceItems` and `blockMappingEntries` until §2.B (multi-line plain scalar) is implemented. Also confirmed that lean4-parser has **no committed/fatal error mechanism** — all errors are backtrackable (`withBacktracking`, `option?`, `first`, `<|>` all catch every `Result.error` unconditionally), making `throwUnexpected` unreliable for validation: any enclosing combinator silently swallows it.
 
 lean4-yaml discovered that backtracking (`<|>` / `withBacktracking`) conflates **two semantically different failures**:
 - "No match, try another parser" (normal backtracking)
@@ -60,9 +62,9 @@ inductive DispatchResult (α : Type) where
   | invalid (msg : String)       -- validation error, stop — don't backtrack
 ```
 
-This makes three-valued semantics **structural** rather than depending on error propagation details. Each variant becomes a case in an inductive proof — `matched` carries the parse result, `noMatch` justifies trying the next alternative, and `invalid` is a provable dead-end. The current `throwUnexpected` approach works but is fragile: correct only if no `withBacktracking` wrapper catches it higher in the call stack. The `DispatchResult` encoding removes that dependency entirely.
+This makes three-valued semantics **structural** rather than depending on error propagation details. Each variant becomes a case in an inductive proof — `matched` carries the parse result, `noMatch` justifies trying the next alternative, and `invalid` is a provable dead-end. The current `throwUnexpected` approach violates the no-exceptions-for-decisions principle: it uses parser errors to signal both "this branch doesn't match" and "this input is invalid", and lean4-parser's unconditional error catching makes these indistinguishable. The `DispatchResult` encoding works above the combinator level, removing that dependency entirely.
 
-**Incremental plan**: This is a pure refactoring step — same behavior, better structure. Do it after re-enabling validation (§2.A) so correctness is established before restructuring.
+**Incremental plan**: Do this refactoring **before** §2.B (multi-line plain scalar) — building continuation logic on top of the fragile `throwUnexpected` mechanism would require rework later. Get the dispatch structure right first, then implement §2.B within the clean framework.
 
 ### B. Multi-Line Plain Scalar Continuation (Medium Priority)
 
@@ -155,9 +157,9 @@ This prevents invalid YAML from being silently accepted by a fallback parser. Th
 ## 5. Recommended Priorities
 
 1. ~~**Three-valued error recovery (§2.A)**~~ — ✅ Done. Combinators built, disabled pending §2.B.
-2. **🔜 Add multi-line plain scalar support (§2.B)** using the `ContinuationCheck` check-then-consume pattern — **immediate next step**, prerequisite for re-enabling validation
-3. **Re-enable validation combinators (§2.A)** once multi-line scalars consume continuation content (addresses ~50 unexpected passes)
-4. **Refactor `blockValue` dispatch to `DispatchResult` (§2.A)** — replace `throwUnexpected` with explicit return type. Pure refactoring (same behavior, proof-friendly structure). Each variant maps to a lemma obligation; removes dependence on error propagation details.
+2. ~~**Refactor `blockValue` dispatch to `DispatchResult` (§2.A)**~~ — ✅ Done. Defined `DispatchResult` inductive type (`matched`/`noMatch`/`invalid`) in `Combinators.lean`. Extracted shared dispatch logic into `dispatchByChar` in `Block.lean`, eliminating duplicated match statements in `blockValue` and `blockValueSameLine`. Pure refactoring: same behavior, proof-friendly structure. Each variant maps to a lemma obligation; removes dependence on error propagation details.
+3. **🔜 Add multi-line plain scalar support (§2.B)** using the `ContinuationCheck` check-then-consume pattern — prerequisite for re-enabling validation
+4. **Re-enable validation combinators (§2.A)** once multi-line scalars consume continuation content (addresses ~50 unexpected passes)
 5. **Investigate the 9 infinite loops** (4CQQ, 4ZYM, 5GBF + 6 error-stage)
 6. **Fix multi-line quoted scalars** — handle line folding in double/single-quoted scalars
 7. **Add anchor/alias support** — lean4-yaml's `anchorMap : HashMap String YamlValue` approach works
