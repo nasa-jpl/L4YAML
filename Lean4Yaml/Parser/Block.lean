@@ -141,6 +141,12 @@ partial def blockSequenceItems (seqIndent : Nat) (acc : Array YamlValue) :
   -- Check if the next line starts at the sequence indentation
   let col ← currentCol
   if col != seqIndent then
+    -- TODO: Re-enable after multi-line plain scalar support (ANALYSIS.md §2.B).
+    -- Currently disabled because single-line scalars leave continuation
+    -- content unconsumed, causing false positives (e.g., AB8U where
+    -- ` - sequence entry` at col 1 is valid scalar content, not a
+    -- wrongly-indented sequence indicator).
+    -- validateNoWrongIndentSeq seqIndent col
     -- No more items at this level
     return acc
   -- Check for the `-` indicator
@@ -242,6 +248,12 @@ partial def blockMappingEntries (mapIndent : Nat)
   -- Check if at the mapping indentation
   let col ← currentCol
   if col != mapIndent then
+    -- TODO: Re-enable after multi-line plain scalar support (ANALYSIS.md §2.B).
+    -- Same false-positive issue as blockSequenceItems: single-line scalars
+    -- leave continuation lines unconsumed, which can look like wrong-indent
+    -- indicators.
+    -- validateNoWrongIndentSeq mapIndent col
+    -- validateNoWrongIndentMap mapIndent col (detectMappingKey (inFlow := false))
     return acc
   -- Check if we're at a document boundary
   let atBoundary ← atDocumentBoundary

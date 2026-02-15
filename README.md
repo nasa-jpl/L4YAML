@@ -109,31 +109,50 @@ All 7 demo examples in `Demo.lean` pass, including deeply nested structures.
 Added [yaml-test-suite](https://github.com/yaml/yaml-test-suite) as a git submodule and built a programmatic test runner.
 
 **Infrastructure built:**
-- `Tests/SuiteRunner/Meta.lean` (280 lines) — line-based meta-parser for the yaml-test-suite file format (bootstrapping: can't use our own YAML parser to parse the test suite's YAML metadata)
+- `Tests/SuiteRunner/Meta.lean` (~280 lines) — line-based meta-parser for the yaml-test-suite file format (bootstrapping: can't use our own YAML parser to parse the test suite's YAML metadata)
 - `Tests/SuiteRunner/Main.lean` (~200 lines) — test runner with staged execution, progress output, and result reporting
 - `Tests/TryParse.lean` — minimal binary for subprocess-based parse testing with `timeout(1)` for infinite loop protection
+- `Lean4Yaml/Parser/Combinators.lean` — validation helpers (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`) for three-valued error recovery ([ANALYSIS.md](ANALYSIS.md) §2.A), currently disabled pending multi-line scalar support
 - Test classification by tags into stages: scalar → flow → block → document → advanced → error
 - Cumulative stage execution (e.g., `flow` stage runs both scalar and flow tests)
 
-**Scalar stage results (82 tests):**
+**Full yaml-test-suite results (416 test cases from 351 files):**
 
-| Result | Count |
-|--------|-------|
-| ✅ Passed | 31 |
-| ❌ Failed | 14 |
-| ○ Skipped | 37 |
+| Stage | Tests | Passed | Failed | Skipped | Pass Rate |
+|-------|-------|--------|--------|---------|-----------|
+| Scalar | 82 | 38 | 16 | 28 | 46.3% |
+| + Flow | 128 | 69 | 31 | 28 | 53.9% |
+| + Block | 237 | 131 | 68 | 38 | 55.3% |
+| + Document | 261 | 145 | 71 | 45 | 55.6% |
+| + Advanced | 342 | 146 | 134 | 62 | 42.7% |
+| Error | 74 | 18 | 56 | 0 | 24.3% |
+| **All unique** | **416** | **164** | **190** | **62** | **39.4%** |
 
-**Failure categories identified:**
-- **3 timeouts** (4CQQ, 4ZYM, 5GBF) — infinite loops in parser, root cause not yet investigated
-- **8 escape/multi-line failures** (3RLN, 7A4E, 9MQT, DE56, NP9H, PRH3, TL85, 2G84) — missing escape sequence handling (`\\`, tab in quotes, multi-line quoted scalars)
-- **1 tag failure** (FBC9) — `!` tag indicator not handled
-- **1 comment failure** (W42U) — `#` after `- ` not recognized as comment
-- **1 empty line failure** (NB6Z) — empty line in scalar context
+**Per-feature pass rates (non-cumulative):**
+
+| Feature | Tests | Passed | Rate |
+|---------|-------|--------|------|
+| Scalar | 82 | 38 | 46% |
+| Flow | 46 | 31 | 67% |
+| Block | 109 | 62 | 57% |
+| Document | 24 | 14 | 58% |
+| Advanced | 81 | 1 | 1% |
+| Error | 74 | 18 | 24% |
+
+**Key findings:**
+- **~50 unexpected passes** — parser is too permissive (accepts invalid YAML that should be rejected). Validation combinators built in Combinators.lean address this, but are disabled because single-line scalar parser leaves continuation content unconsumed, causing false positives on valid tests (e.g., AB8U).
+- **~9 infinite loops** — 3 in scalar stage (4CQQ, 4ZYM, 5GBF) + 6 in error stage
+- **Advanced stage near-zero** — anchors, aliases, tags, complex keys not implemented
+- **Meta parser bug fixed** — `---` inside yaml block scalar content was being treated as a test file separator, creating 103 phantom test cases with empty yaml (fixed by checking block scalar state before separator detection)
 
 **Key bugs found and fixed during Phase 2:**
 1. **Plain scalar consuming flow indicators** — `anyToken` in `collectPlain` consumed `,`, `]`, `}` before the check could reject them. Fixed with `lookAhead anyToken` (peek-before-consume pattern).
 2. **Block mapping key consuming `:`** — same peek-before-consume fix applied to `plainMappingKey`.
-3. **Missing indentation consumption** — block parsers didn't consume leading whitespace after line breaks before checking column position. Fixed by adding `skipHWhitespace` before `currentCol` checks in `blockSequenceItems`, `blockMappingEntries`, and `blockValue`.
+3. **Missing indentation consumption** — block parsers didn't consume leading whitespace after line breaks before checking column position. Fixed by adding `skipHWhitespace` before `currentCol` checks.
+4. **Meta parser `---` handling** — `processLine` checked for `---` separator before checking if inside a yaml block scalar, truncating test yaml content. Fixed by reordering to check block scalar state first.
+
+**Validation work (ANALYSIS.md §2.A):**
+Three-valued error recovery combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) were implemented and tested. They correctly catch wrongly-indented indicators (e.g., `- ` at col 1 when `seqIndent = 0`), but are **disabled** because the single-line plain scalar parser leaves multi-line continuation content unconsumed, making valid content like `" - sequence entry"` at col 1 look like a wrong-indent indicator (false positive on AB8U). Re-enable after multi-line plain scalar support.
 
 ### Remaining Phases (Future)
 
@@ -171,14 +190,15 @@ Share the verified implementation with the existing lean4-yaml ecosystem.
 
 ## Next Steps
 
-Immediate priorities for continuing Phase 2d:
+Immediate priorities for continuing Phase 2:
 
-1. **Investigate infinite loops** — analyze test cases 4CQQ, 4ZYM, 5GBF to find which parser combinators fail to make progress
-2. **Fix escape sequence handling** — implement `\\`, `\t`, `\n`, `\"` etc. in double-quoted scalar parser
-3. **Fix multi-line quoted scalars** — handle line folding in double/single-quoted scalars
-4. **Add comment handling** — recognize `#` as comment start after whitespace
-5. **Run remaining stages** — `flow`, `block`, `document`, `advanced`, `error`
-6. **Iterate on failures** — fix parser bugs exposed by each stage, re-run until pass rate stabilizes
+1. ~~**Three-valued error recovery ([ANALYSIS.md](ANALYSIS.md) §2.A)**~~ — ✅ Done. Validation combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) built in `Combinators.lean` and integrated into `Block.lean`. Disabled with TODO comments because single-line scalar leaves continuation content unconsumed, causing false positives (e.g., AB8U). Also confirmed lean4-parser has no committed/fatal error mechanism — all errors backtrack unconditionally.
+2. **🔜 Add multi-line plain scalar support** — implement the check-then-consume pattern (`ContinuationCheck` from [ANALYSIS.md](ANALYSIS.md) §2.B). Separate non-consuming `lookAhead` checks from consuming advances for easier termination proofs. This is the **immediate next step** and prerequisite for re-enabling validation.
+3. **Re-enable validation combinators** — uncomment `validateNoWrongIndentSeq` / `validateNoWrongIndentMap` in `Block.lean` once multi-line scalars consume continuation content (addresses ~50 unexpected passes)
+4. **Investigate infinite loops** — analyze the 9 timeout cases (4CQQ, 4ZYM, 5GBF + 6 error-stage)
+5. **Fix multi-line quoted scalars** — handle line folding in double/single-quoted scalars
+6. **Add anchor/alias support** — enables the advanced stage (currently 1/81)
+7. **Iterate** — fix failures exposed by each stage, target 60%+ overall pass rate
 
 ## Building
 

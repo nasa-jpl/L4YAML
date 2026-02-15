@@ -29,7 +29,9 @@ lean4-yaml-verified's `YamlStream` tracks `col` natively in every `next?` call, 
 
 ## 2. Actionable Insights to Port
 
-### A. Three-Valued Error Recovery (High Priority)
+### A. Three-Valued Error Recovery (High Priority) — ✅ Built, Disabled Pending §2.B
+
+**Status (2026-02-15):** Validation combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) implemented in `Combinators.lean` and integrated into `Block.lean`. During testing, discovered that single-line plain scalar leaves multi-line continuation content unconsumed, causing false positives on valid tests (e.g., AB8U where `" - sequence entry"` looks like a wrong-indent indicator). Combinators are **commented out** with TODO in `blockSequenceItems` and `blockMappingEntries` until §2.B (multi-line plain scalar) is implemented. Also confirmed that lean4-parser has **no committed/fatal error mechanism** — all errors are backtrackable (`withBacktracking`, `option?`, `first`, `<|>` all catch every `Result.error` unconditionally), so validation must use `throwUnexpected` at points where no backtracking wrapper will catch it.
 
 lean4-yaml discovered that backtracking (`<|>` / `withBacktracking`) conflates **two semantically different failures**:
 - "No match, try another parser" (normal backtracking)
@@ -123,27 +125,31 @@ This prevents invalid YAML from being silently accepted by a fallback parser. Th
 
 | Metric | lean4-yaml | lean4-yaml-verified |
 |--------|-----------|-------------------|
-| Total tests | 333 | 82 (scalar stage only) |
-| Correct | 210 (63%) | 31 (38%) |
-| Unexpected passes | 43 | Not yet measured |
+| Total tests | 333 | 416 |
+| Correct | 210 (63%) | 164 (39.4%) |
+| Unexpected passes | 43 | ~50 |
+| Infinite loops | 0 | 9 |
 | Internal tests | 112/113 (99%) | 41+ (all pass) |
 | Escape sequences | Full YAML 1.2 set | Full YAML 1.2 set |
 | Multi-line plain | ✅ (with edge cases) | ❌ (single-line only) |
 | Anchors/aliases | Partial (38%) | ❌ Not implemented |
 | Tags | Partial (30%) | ❌ Not implemented |
-| Flow collections | Partial (55%) | ✅ (untested vs suite) |
-| Block collections | Good (~70%) | ✅ (untested vs suite) |
+| Flow collections | Partial (55%) | 67% |
+| Block collections | Good (~70%) | 57% |
+| Document handling | — | 58% |
+| Error rejection | — | 24% (18/74) |
 
 ---
 
 ## 5. Recommended Priorities
 
-1. **Run flow/block/document stages** against yaml-test-suite — measure actual compliance
-2. **Add multi-line plain scalar support** using the `ContinuationCheck` check-then-consume pattern
-3. **Add validation error propagation** at `blockValue` dispatch to prevent wrong-indent acceptance
-4. **Investigate the 3 infinite loops** (4CQQ, 4ZYM, 5GBF) — likely same complex backtracking patterns lean4-yaml encountered
-5. **Add anchor/alias support** — lean4-yaml's `anchorMap : HashMap String YamlValue` approach works
-6. **Defer tags** — low coverage even in lean4-yaml, complex spec surface area
+1. ~~**Three-valued error recovery (§2.A)**~~ — ✅ Done. Combinators built, disabled pending §2.B.
+2. **🔜 Add multi-line plain scalar support (§2.B)** using the `ContinuationCheck` check-then-consume pattern — **immediate next step**, prerequisite for re-enabling validation
+3. **Re-enable validation combinators (§2.A)** once multi-line scalars consume continuation content (addresses ~50 unexpected passes)
+4. **Investigate the 9 infinite loops** (4CQQ, 4ZYM, 5GBF + 6 error-stage)
+5. **Fix multi-line quoted scalars** — handle line folding in double/single-quoted scalars
+6. **Add anchor/alias support** — lean4-yaml's `anchorMap : HashMap String YamlValue` approach works
+7. **Defer tags** — low coverage even in lean4-yaml, complex spec surface area
 
 ---
 
