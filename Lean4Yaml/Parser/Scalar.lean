@@ -85,6 +85,37 @@ where
     else
       Parser.throwUnexpectedWithMessage (msg := s!"invalid unicode code point: {code}")
 
+/-! ## Quoted Scalar Fold Result Type -/
+
+/--
+Result of folding newlines in a quoted scalar continuation line.
+
+YAML 1.2.2 §9.1.2 production [206] defines `c-forbidden`: the sequences
+`--- ` and `... ` at column 0 (start-of-line) followed by whitespace,
+line break, or end-of-input are document boundary markers that terminate
+document content. Inside a quoted scalar, encountering `c-forbidden` on
+a continuation line means the scalar was never closed — this is
+definitively invalid YAML.
+
+Without an explicit result type, backtracking would swallow the error
+and some enclosing combinator might silently accept part of the input.
+This follows the same explicit-result-type pattern as:
+- `DispatchResult`: three-valued dispatch (matched/noMatch/invalid)
+- `DocumentResult`: document parsing (parsed/endOfStream/stalled)
+- `ContinuationCheck`: plain scalar continuation classification
+
+See ANALYSIS.md §2.F and §6 table.
+-/
+inductive FoldResult where
+  /-- Successfully folded the continuation. `result` is the accumulated
+      string with the fold applied (space or preserved newlines). -/
+  | folded (result : String)
+  /-- Found a `c-forbidden` document boundary indicator (`---` or `...`)
+      at column 0 on a continuation line. The quoted scalar is unterminated.
+      This is definitively invalid — not a backtracking opportunity. -/
+  | forbidden (msg : String)
+  deriving Repr, Nonempty
+
 /--
 Fold newlines in a quoted scalar
 (§6.5, https://yaml.org/spec/1.2.2/#65-line-folding).
@@ -92,8 +123,20 @@ Fold newlines in a quoted scalar
 In quoted scalars, newlines surrounded only by whitespace fold:
 - Single newline + whitespace → single space
 - Empty line (additional newline) → preserved newline
+
+Before consuming whitespace on each continuation line, checks for
+`c-forbidden` (§9.1.2 [206]): `---` or `...` at column 0 followed by
+whitespace/newline/EOF. Returns `FoldResult.forbidden` if detected.
 -/
-partial def foldQuotedNewlines (acc : String) : YamlParser String := do
+partial def foldQuotedNewlines (acc : String) : YamlParser FoldResult := do
+  -- We're at the start of a continuation line (col 0 after newline).
+  -- Check for c-forbidden BEFORE consuming any whitespace.
+  let pos ← currentPos
+  if pos.col == 0 then
+    let boundary ← atDocumentBoundary
+    if boundary then
+      return .forbidden
+        s!"unterminated quoted scalar: document boundary at line {pos.line + 1}"
   -- Skip trailing whitespace on current line
   skipHWhitespace
   -- Consume the newline
@@ -105,7 +148,14 @@ partial def foldQuotedNewlines (acc : String) : YamlParser String := do
   let done ← loop result emptyLines
   return done
 where
-  loop (result : String) (emptyLines : Nat) : YamlParser String := do
+  loop (result : String) (emptyLines : Nat) : YamlParser FoldResult := do
+    -- Check for c-forbidden at the start of each continuation line
+    let pos ← currentPos
+    if pos.col == 0 then
+      let boundary ← atDocumentBoundary
+      if boundary then
+        return .forbidden
+          s!"unterminated quoted scalar: document boundary at line {pos.line + 1}"
     skipSpaces
     match ← option? newline with
     | some _ =>
@@ -117,10 +167,10 @@ where
         let mut r := result
         for _ in [:emptyLines] do
           r := r.push '\n'
-        return r
+        return .folded r
       else
         -- Single newline with no empty lines → space
-        return result.push ' '
+        return .folded (result.push ' ')
 
 /--
 Parse a double-quoted scalar
@@ -145,13 +195,15 @@ where
         let escaped ← processEscape c
         collectChars (acc.push escaped)
     | '\n' => do
-        -- Line folding
-        let folded ← foldQuotedNewlines acc
-        collectChars folded
+        -- Line folding (c-forbidden checked inside foldQuotedNewlines)
+        match ← foldQuotedNewlines acc with
+        | .folded result => collectChars result
+        | .forbidden msg => withErrorMessage msg throwUnexpected
     | '\r' => do
         let _ ← option? (token '\n')  -- CRLF
-        let folded ← foldQuotedNewlines acc
-        collectChars folded
+        match ← foldQuotedNewlines acc with
+        | .folded result => collectChars result
+        | .forbidden msg => withErrorMessage msg throwUnexpected
     | c => collectChars (acc.push c)
   processEscape (c : Char) : YamlParser Char := do
     match c with
@@ -209,12 +261,15 @@ where
         | some _ => collectChars (acc.push '\'')
         | none => return acc
     | '\n' => do
-        let folded ← foldQuotedNewlines acc
-        collectChars folded
+        -- Line folding (c-forbidden checked inside foldQuotedNewlines)
+        match ← foldQuotedNewlines acc with
+        | .folded result => collectChars result
+        | .forbidden msg => withErrorMessage msg throwUnexpected
     | '\r' => do
         let _ ← option? (token '\n')
-        let folded ← foldQuotedNewlines acc
-        collectChars folded
+        match ← foldQuotedNewlines acc with
+        | .folded result => collectChars result
+        | .forbidden msg => withErrorMessage msg throwUnexpected
     | c => collectChars (acc.push c)
 
 /-! ## Plain Scalars

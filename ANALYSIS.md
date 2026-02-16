@@ -203,7 +203,7 @@ Additionally, `collectChars` needs a `'\\' → '\n' | '\r'` arm for escaped line
    ```
    This moves the stall-detection invariant *inside* `document` — `yamlStream` now pattern-matches on the result instead of comparing positions externally. Follows the same explicit-result-type pattern as `DispatchResult` (dispatch) and `ContinuationCheck` (scalar continuation). The `stalled` variant carries position for error reporting and becomes a proof obligation target: `document` returns `stalled` iff no input was consumed and non-blank input remains. Impact: 0 timeouts (was 36), error rejection 38%→54% (28→40/74), overall suite 177→192 passed (42.5%→46.2%). The 36 timeouts fell into 9 root cause categories: anchor/alias `&`/`*` (9), tags `!`/`!!` (5), quoted scalar folding (4), comment before value (3), explicit key `?` (4), same-indent sequence (3), tab handling (2), empty key edge cases (3), flow implicit mapping (3).
 6. **Fix multi-line quoted scalars** — analysis revealed 5 algorithmic bugs in `foldQuotedNewlines` and one missing `c-forbidden` check (§2.F). Implementation plan:
-   - **6a.** Add explicit result type for `c-forbidden` detection on quoted scalar continuation lines (Group F — `--- ` or `... ` at start of continuation line must be rejected as definitively invalid, not swallowed by backtracking). Follows the `DispatchResult`/`DocumentResult` pattern.
+   - **6a.** ✅ Added `FoldResult` type (`folded`/`forbidden`) for `c-forbidden` detection on quoted scalar continuation lines (YAML §9.1.2 [206]). `foldQuotedNewlines` now checks `atDocumentBoundary` at column 0 before whitespace consumption on each continuation line. `collectChars` in both `doubleQuotedScalar` and `singleQuotedScalar` pattern-matches on the result, propagating `.forbidden` as a hard error. Suite results unchanged (structural preparation — algorithmic bugs in 6b prevent `foldQuotedNewlines` from reaching the check on most inputs).
    - **6b.** Fix algorithmic bugs in `foldQuotedNewlines` (Groups A–E): remove erroneous mandatory `newline`, fix off-by-one in empty line counting, trim trailing whitespace, handle tabs in continuation prefixes, add `\` + newline escape handling.
 7. **Add anchor/alias support** — lean4-yaml's `anchorMap : HashMap String YamlValue` approach works
 8. **Defer tags** — low coverage even in lean4-yaml, complex spec surface area
@@ -221,7 +221,7 @@ lean4-yaml's development log established a repeating pattern: **make implicit st
 | `ParseResult` | Error semantics → 3-valued type | Addresses 43 unexpected passes |
 | `DispatchResult` | Dispatch outcome → 3-valued type | Proof-friendly block value dispatch |
 | `DocumentResult` | Document parse outcome → 3-valued type | Eliminates 36 infinite loops |
-| `FoldResult` (planned) | Quoted fold + `c-forbidden` → explicit type | Prevents backtracking from swallowing `c-forbidden` violations |
+| `FoldResult` | Quoted fold + `c-forbidden` → explicit type | Prevents backtracking from swallowing `c-forbidden` violations |
 
 For the verified parser, this principle is even more powerful: explicit state becomes **proof targets**. Every enum variant maps to a lemma obligation, and every state transition becomes a provable invariant.
 
