@@ -44,6 +44,26 @@ instance : Repr (Parser.Stream.Position YamlStream) := inferInstanceAs (Repr Yam
 
 instance : Inhabited YamlDocument := ⟨{ value := .null, directives := #[] }⟩
 
+/--
+Result of attempting to parse one document from the stream.
+
+This makes the document parser's contract explicit — the caller can
+distinguish "parsed content" from "nothing left" from "input present
+but not parseable" without comparing stream positions externally.
+
+Follows the same explicit-result-type pattern as `DispatchResult`
+(three-valued dispatch) and `ContinuationCheck` (scalar continuation).
+-/
+inductive DocumentResult where
+  /-- Successfully parsed a document. Invariant: consumed input. -/
+  | parsed (doc : YamlDocument)
+  /-- No remaining input after blank lines. Stream is complete. -/
+  | endOfStream
+  /-- Non-blank input remains but could not be parsed as a document.
+      Carries the position where parsing stalled for error reporting. -/
+  | stalled (pos : YamlPos)
+  deriving Repr
+
 /-! ## Byte Order Mark -/
 
 /--
@@ -147,16 +167,30 @@ def documentEndMarker : YamlParser Unit :=
     let _ ← option? newline
 
 /--
-Parse a single YAML document.
+Parse a single YAML document, returning a `DocumentResult`.
 
 A document can be:
 1. An explicit document (preceded by `---`)
 2. A bare document (no preceding markers)
 
-The document content is a single block value.
+Returns:
+- `DocumentResult.parsed doc` — successfully parsed, consumed input
+- `DocumentResult.endOfStream` — no remaining input after blank lines
+- `DocumentResult.stalled pos` — input present but could not be parsed
+
+The `stalled` result eliminates the need for callers to compare stream
+positions before/after the call. The document parser itself knows whether
+it consumed content, and communicates this through the result type.
 -/
-partial def document : YamlParser YamlDocument := do
+partial def document : YamlParser DocumentResult := do
   skipBlankLines
+  -- Check for end of stream before attempting anything
+  let atEnd ← test endOfInput
+  if atEnd then return .endOfStream
+  -- Record position before content parsing begins.
+  -- This is used to detect whether blockValue consumed any input,
+  -- converting the implicit "no progress" state into an explicit result.
+  let posBefore ← currentPos
   -- Parse optional directives
   let dirs ← directives
   skipBlankLines
@@ -165,24 +199,33 @@ partial def document : YamlParser YamlDocument := do
   skipBlankLines
   -- Parse document content
   -- Check for immediate document end or empty document
-  let atEnd ← test endOfInput
-  if atEnd then
-    return { value := YamlValue.null, directives := dirs }
+  let atEnd' ← test endOfInput
+  if atEnd' then
+    return .parsed { value := YamlValue.null, directives := dirs }
   let atDocEnd ← atDocumentEnd
   if atDocEnd then
     let _ ← option? documentEndMarker
-    return { value := YamlValue.null, directives := dirs }
+    return .parsed { value := YamlValue.null, directives := dirs }
   let value ← blockValue 0
+  let posAfter ← currentPos
+  -- If no input was consumed, blockValue backtracked on an unrecognized
+  -- construct (anchor, tag, explicit key, etc.) and returned null.
+  -- Report this as stalled rather than returning a phantom document.
+  if posAfter == posBefore then
+    return .stalled posBefore
   skipBlankLines
   -- Optionally consume document end marker
   let _ ← option? documentEndMarker
-  return { value, directives := dirs }
+  return .parsed { value, directives := dirs }
 
 /--
 Parse a YAML stream: zero or more documents.
 
 YAML 1.2.2 §9 (https://yaml.org/spec/1.2.2/#chapter-9-document-stream-productions):
 A YAML stream consists of zero or more documents.
+
+Uses `DocumentResult` to distinguish successful parse from end-of-stream
+from stalled input, without needing external position comparison.
 -/
 partial def yamlStream : YamlParser (Array YamlDocument) := do
   skipBOM
@@ -190,28 +233,20 @@ partial def yamlStream : YamlParser (Array YamlDocument) := do
   let mut continue' := true
   while continue' do
     skipBlankLines
-    let atEnd ← test endOfInput
-    if atEnd then
-      continue' := false
-    else
-      -- Record position before parsing the document.
-      -- If the document consumes zero input, we have an unhandled construct
-      -- (e.g., anchor, tag, explicit key) that would loop forever.
-      let posBefore ← currentPos
-      let doc ← document
-      let posAfter ← currentPos
-      if posAfter == posBefore then
-        -- No progress — the document parsed but consumed nothing.
-        -- This happens when blockValue backtracks on unrecognized constructs
-        -- (anchors, tags, etc.) and returns an empty/null value.
-        -- Skip one character to avoid infinite loop, then report error.
-        let c ← option? anyToken
-        let msg := match c with
-          | some ch => s!"unhandled construct '{ch}' at line {posBefore.line}, column {posBefore.col}"
-          | none => s!"stuck at line {posBefore.line}, column {posBefore.col}"
-        withErrorMessage msg throwUnexpected
+    match ← document with
+    | .parsed doc =>
       docs := docs.push doc
       skipBlankLines
+    | .endOfStream =>
+      continue' := false
+    | .stalled pos =>
+      -- Input present but not parseable as a document.
+      -- Skip one character to avoid infinite loop, then report error.
+      let c ← option? anyToken
+      let msg := match c with
+        | some ch => s!"unhandled construct '{ch}' at line {pos.line}, column {pos.col}"
+        | none => s!"stuck at line {pos.line}, column {pos.col}"
+      withErrorMessage msg throwUnexpected
   return docs
 
 /-! ## Top-Level Parse Functions -/

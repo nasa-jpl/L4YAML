@@ -160,7 +160,14 @@ This prevents invalid YAML from being silently accepted by a fallback parser. Th
 2. ~~**Refactor `blockValue` dispatch to `DispatchResult` (§2.A)**~~ — ✅ Done. Defined `DispatchResult` inductive type (`matched`/`noMatch`/`invalid`) in `Combinators.lean`. Extracted shared dispatch logic into `dispatchByChar` in `Block.lean`, eliminating duplicated match statements in `blockValue` and `blockValueSameLine`. Pure refactoring: same behavior, proof-friendly structure. Each variant maps to a lemma obligation; removes dependence on error propagation details.
 3. ~~**Add multi-line plain scalar support (§2.B)**~~ — ✅ Done. Defined `ContinuationCheck` inductive type (`notContinuing`/`plainContinuation`/`afterEmpty n`/`sequenceMarker`/`mappingEntry`) in `Combinators.lean`. Implemented `checkContinuation` as a pure `lookAhead` probe (check-then-consume pattern). Replaced `plainScalarSingleLine` with multi-line `plainScalarContent` in `Scalar.lean` — handles line folding (adjacent lines → space, empty lines → paragraph breaks). `dispatchByChar` passes `baseIndent := contentIndent - 1` to track parent indent. Scalar suite: 41/82 passed (50%)
 4. ~~**Re-enable validation combinators (§2.A)**~~ — ✅ Done. Uncommented validators in `Block.lean`. Error rejection improved from 24% to 38%, overall suite from 164→177 passed (39.4%→42.5%).
-5. ~~**Eliminate infinite loops**~~ — ✅ Done. Discovered 36 timeout cases (not 9), all sharing one root cause: `yamlStream`'s while loop retries `document` at the same position when no input is consumed. Added position-advancement guard in `Document.lean` — saves `currentPos` before `document` parse, compares after, and if no progress was made, consumes one character and reports a descriptive error (e.g., "unhandled construct '&' at line 1, column 0"). Impact: 0 timeouts (was 36), error rejection 38%→54% (28→40/74), overall suite 177→192 passed (42.5%→46.2%). The 36 timeouts fell into 9 root cause categories: anchor/alias `&`/`*` (9), tags `!`/`!!` (5), quoted scalar folding (4), comment before value (3), explicit key `?` (4), same-indent sequence (3), tab handling (2), empty key edge cases (3), flow implicit mapping (3).
+5. ~~**Eliminate infinite loops**~~ — ✅ Done. Discovered 36 timeout cases (not 9), all sharing one root cause: `yamlStream`'s while loop retries `document` at the same position when no input is consumed. Initially fixed with position-advancement guard (compare `currentPos` before/after `document`). Analysis revealed this was an implicit assumption in `document`'s API — the caller was re-deriving information that `document` already had but discarded. Refactored `document` to return an explicit `DocumentResult` inductive type:
+   ```lean
+   inductive DocumentResult where
+     | parsed (doc : YamlDocument)  -- consumed input, produced a document
+     | endOfStream                   -- no remaining input
+     | stalled (pos : YamlPos)      -- input present, couldn't parse
+   ```
+   This moves the stall-detection invariant *inside* `document` — `yamlStream` now pattern-matches on the result instead of comparing positions externally. Follows the same explicit-result-type pattern as `DispatchResult` (dispatch) and `ContinuationCheck` (scalar continuation). The `stalled` variant carries position for error reporting and becomes a proof obligation target: `document` returns `stalled` iff no input was consumed and non-blank input remains. Impact: 0 timeouts (was 36), error rejection 38%→54% (28→40/74), overall suite 177→192 passed (42.5%→46.2%). The 36 timeouts fell into 9 root cause categories: anchor/alias `&`/`*` (9), tags `!`/`!!` (5), quoted scalar folding (4), comment before value (3), explicit key `?` (4), same-indent sequence (3), tab handling (2), empty key edge cases (3), flow implicit mapping (3).
 6. **Fix multi-line quoted scalars** — handle line folding in double/single-quoted scalars
 7. **Add anchor/alias support** — lean4-yaml's `anchorMap : HashMap String YamlValue` approach works
 8. **Defer tags** — low coverage even in lean4-yaml, complex spec surface area
@@ -176,6 +183,8 @@ lean4-yaml's development log established a repeating pattern: **make implicit st
 | `LineState` | Position assumptions → enum | Fixed 65% → 2% regression |
 | `ContinuationCheck` | Continuation logic → enum | 40% code reduction |
 | `ParseResult` | Error semantics → 3-valued type | Addresses 43 unexpected passes |
+| `DispatchResult` | Dispatch outcome → 3-valued type | Proof-friendly block value dispatch |
+| `DocumentResult` | Document parse outcome → 3-valued type | Eliminates 36 infinite loops |
 
 For the verified parser, this principle is even more powerful: explicit state becomes **proof targets**. Every enum variant maps to a lemma obligation, and every state transition becomes a provable invariant.
 

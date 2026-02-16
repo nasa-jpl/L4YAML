@@ -156,7 +156,7 @@ Added [yaml-test-suite](https://github.com/yaml/yaml-test-suite) as a git submod
 
 **Key findings:**
 - **~34 unexpected passes** — parser is still too permissive in some cases, but validation combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`) now catch wrongly-indented structural indicators, reducing this from ~50
-- **0 infinite loops** — position-advancement guard in `yamlStream` eliminates all timeouts by detecting when `document` consumes zero input and forcing progress
+- **0 infinite loops** — `DocumentResult` type in `document` makes parse-progress explicit; `yamlStream` pattern-matches on `parsed`/`endOfStream`/`stalled` instead of comparing positions externally
 - **Advanced stage near-zero** — anchors, aliases, tags, complex keys not implemented
 - **Meta parser bug fixed** — `---` inside yaml block scalar content was being treated as a test file separator, creating 103 phantom test cases with empty yaml (fixed by checking block scalar state before separator detection)
 
@@ -169,8 +169,8 @@ Added [yaml-test-suite](https://github.com/yaml/yaml-test-suite) as a git submod
 **Validation work (ANALYSIS.md §2.A):**
 Three-valued error recovery combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) are **active** in `blockSequenceItems` and `blockMappingEntries`. They detect wrongly-indented structural indicators (e.g., `- ` at col 1 when `seqIndent = 0`) and raise validation errors. Impact: error rejection improved from 24% to 54% (+22 tests), overall suite from 164→192 passed (39.4%→46.2%). Note: these validators still use `throwUnexpected`, which lean4-parser's `<|>` can swallow in some contexts — the `DispatchResult.invalid` path is not yet propagated through all callers.
 
-**Infinite loop elimination:**
-Added position-advancement guard in `yamlStream` (`Document.lean`): saves `currentPos` before parsing each document, compares after — if no progress, consumes one character and reports a descriptive error. Eliminated all 36 timeout cases across 9 root cause categories (anchors, tags, quoted scalar folding, comments, explicit keys, same-indent sequences, tabs, empty keys, flow implicit mappings).
+**Infinite loop elimination via `DocumentResult`:**
+Discovered 36 timeout cases (not 9), all sharing one root cause: `yamlStream`'s while loop retries `document` at the same position when no input is consumed. The initial fix (external position comparison) revealed an implicit assumption: `document` already knew whether it consumed input but didn't communicate this. Refactored `document` to return `DocumentResult` (`parsed`/`endOfStream`/`stalled`) — the same explicit-result-type pattern as `DispatchResult` and `ContinuationCheck`. Now `yamlStream` pattern-matches on the result instead of comparing positions externally. The `stalled` variant carries position for error reporting and becomes a proof obligation target in Phase 4. Eliminated all 36 timeout cases across 9 root cause categories (anchors, tags, quoted scalar folding, comments, explicit keys, same-indent sequences, tabs, empty keys, flow implicit mappings).
 
 ### Remaining Phases (Future)
 
@@ -214,7 +214,7 @@ Immediate priorities for continuing Phase 2:
 2. ~~**Refactor `blockValue` dispatch to `DispatchResult`**~~ — ✅ Done. Defined `DispatchResult` inductive type (`matched`/`noMatch`/`invalid`) in `Combinators.lean`. Extracted shared `dispatchByChar` in `Block.lean`, eliminating duplicated match statements in `blockValue`/`blockValueSameLine`. See [ANALYSIS.md](ANALYSIS.md) §2.A.
 3. ~~**Add multi-line plain scalar support**~~ — ✅ Done. Defined `ContinuationCheck` inductive type in `Combinators.lean` with `checkContinuation` pure `lookAhead` probe. Replaced single-line parser with multi-line `plainScalarContent` in `Scalar.lean`. Line folding per YAML §6.5. See [ANALYSIS.md](ANALYSIS.md) §2.B.
 4. ~~**Re-enable validation combinators**~~ — ✅ Done. Uncommented `validateNoWrongIndentSeq` / `validateNoWrongIndentMap` in `Block.lean`. Overall suite: 164→177 passed (39.4%→42.5%).
-5. ~~**Eliminate infinite loops**~~ — ✅ Done. Position-advancement guard in `yamlStream` detects when `document` consumes zero input, forces progress. All 36 timeouts (9 root cause categories) eliminated. Suite: 177→192 passed (42.5%→46.2%), error rejection: 38%→54%.
+5. ~~**Eliminate infinite loops**~~ — ✅ Done. Refactored `document` to return `DocumentResult` (`parsed`/`endOfStream`/`stalled`), making parse-progress an explicit result rather than an external position comparison. All 36 timeouts (9 root cause categories) eliminated. Suite: 177→192 passed (42.5%→46.2%), error rejection: 38%→54%. See [ANALYSIS.md](ANALYSIS.md) §5.
 6. **Fix multi-line quoted scalars** — handle line folding in double/single-quoted scalars
 7. **Add anchor/alias support** — enables the advanced stage (currently 1/81)
 8. **Iterate** — fix failures exposed by each stage, target 60%+ overall pass rate
