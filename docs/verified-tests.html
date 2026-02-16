@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verified Tests — lean4-yaml-verified</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background: #f5f5f5; }
+    .container { max-width: 1000px; margin: 0 auto; background: white; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-radius: 8px; }
+    h1 { color: #333; border-bottom: 3px solid #4CAF50; padding-bottom: 10px; }
+    .nav { margin-bottom: 20px; }
+    .nav a { color: #2196F3; text-decoration: none; }
+    .nav a:hover { text-decoration: underline; }
+    .output { background: #f8f8f8; padding: 20px; border-radius: 6px; border: 1px solid #e0e0e0; overflow-x: auto; }
+    .output pre { margin: 0; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+    .pass { color: #4CAF50; }
+    .fail { color: #f44336; }
+    footer { margin-top: 40px; text-align: center; color: #999; font-size: 13px; border-top: 1px solid #e0e0e0; padding-top: 20px; }
+    footer a { color: #2196F3; text-decoration: none; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="nav"><a href="index.html">← Back to Coverage Index</a></div>
+  <h1>✅ Verified Tests</h1>
+  <p style="color:#666">Unit tests, integration tests, quoted folding tests, Layer 1 verification tests, and demo tests — all must pass.</p>
+
+  <p><strong>Total: 189/189</strong></p>
+
+  <div class="output">
+    <pre>=== Unit Tests ===
+=== lean4-yaml-verified test suite ===
+
+--- ScalarStyle ---
+  ✓ All 5 scalar styles defined
+  ✓ BEq distinguishes styles
+--- YamlValue construction ---
+  ✓ Scalar content preserved
+  ✓ Sequence has 2 items
+  ✓ Mapping has 1 pair
+  ✓ Null value constructed
+--- YamlDocument ---
+  ✓ Document has 1 directive
+  ✓ YAML directive version correct
+--- YamlStream ---
+  ✓ Initial position (0,0)
+  ✓ First char is &#39;a&#39;
+  ✓ Column advances to 1
+  ✓ Newline resets col to 0, increments line to 1
+  ✓ After &#39;c&#39;: position (1,1)
+  ✓ peek? returns &#39;a&#39; without advancing
+  ✓ Empty stream has no next
+--- YamlPos ---
+  ✓ YamlPos BEq reflexive
+  ✓ YamlPos BEq distinguishes
+
+All tests complete.
+
+=== Parser Integration Tests ===
+=== Parser Integration Tests ===
+
+--- Double-quoted scalars ---
+  simple: OK → Lean4Yaml.YamlValue.scalar { content := &quot;hello&quot;, style := Lean4Yaml.ScalarStyle.doubleQuoted, tag := none }
+  with space: OK → Lean4Yaml.YamlValue.scalar { content := &quot;hello world&quot;, style := Lean4Yaml.ScalarStyle.doubleQuoted, tag := none }
+  with escape: OK → Lean4Yaml.YamlValue.scalar { content := &quot;hello\nworld&quot;, style := Lean4Yaml.ScalarStyle.doubleQuoted, tag := none }
+  empty: OK → Lean4Yaml.YamlValue.scalar { content := &quot;&quot;, style := Lean4Yaml.ScalarStyle.doubleQuoted, tag := none }
+
+--- Single-quoted scalars ---
+  simple: OK → Lean4Yaml.YamlValue.scalar { content := &quot;hello&quot;, style := Lean4Yaml.ScalarStyle.singleQuoted, tag := none }
+  with space: OK → Lean4Yaml.YamlValue.scalar { content := &quot;hello world&quot;, style := Lean4Yaml.ScalarStyle.singleQuoted, tag := none }
+  escaped quote: OK → Lean4Yaml.YamlValue.scalar { content := &quot;it&#39;s&quot;, style := Lean4Yaml.ScalarStyle.singleQuoted, tag := none }
+  empty: OK → Lean4Yaml.YamlValue.scalar { content := &quot;&quot;, style := Lean4Yaml.ScalarStyle.singleQuoted, tag := none }
+
+--- Plain scalars ---
+  word: OK → Lean4Yaml.YamlValue.scalar { content := &quot;hello&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }
+  multi-word: OK → Lean4Yaml.YamlValue.scalar { content := &quot;hello world&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }
+
+--- Flow sequences ---
+  simple: OK → Lean4Yaml.YamlValue.sequence
+  (Lean4Yaml.CollectionStyle.flow)
+  #[Lean4Yaml.YamlValue.scalar { content := &quot;a&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+    Lean4Yaml.YamlValue.scalar { content := &quot;b&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+    Lean4Yaml.YamlValue.scalar { content := &quot;c&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }]
+  none
+  nested: OK → Lean4Yaml.YamlValue.sequence
+  (Lean4Yaml.CollectionStyle.flow)
+  #[Lean4Yaml.YamlValue.sequence
+      (Lean4Yaml.CollectionStyle.flow)
+      #[Lean4Yaml.YamlValue.scalar { content := &quot;1&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+        Lean4Yaml.YamlValue.scalar { content := &quot;2&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }]
+      none,
+    Lean4Yaml.YamlValue.sequence
+      (Lean4Yaml.CollectionStyle.flow)
+      #[Lean4Yaml.YamlValue.scalar { content := &quot;3&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }]
+      none]
+  none
+  empty: OK → Lean4Yaml.YamlValue.sequence (Lean4Yaml.CollectionStyle.flow) #[] none
+
+--- Flow mappings ---
+  simple: OK → Lean4Yaml.YamlValue.mapping
+  (Lean4Yaml.CollectionStyle.flow)
+  #[(Lean4Yaml.YamlValue.scalar { content := &quot;a&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.scalar { content := &quot;1&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }),
+    (Lean4Yaml.YamlValue.scalar { content := &quot;b&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.scalar { content := &quot;2&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none })]
+  none
+  empty: OK → Lean4Yaml.YamlValue.mapping (Lean4Yaml.CollectionStyle.flow) #[] none
+
+--- Block sequences ---
+  simple: OK → Lean4Yaml.YamlValue.sequence
+  (Lean4Yaml.CollectionStyle.block)
+  #[Lean4Yaml.YamlValue.scalar { content := &quot;a&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+    Lean4Yaml.YamlValue.scalar { content := &quot;b&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }]
+  none
+  items: OK → Lean4Yaml.YamlValue.sequence
+  (Lean4Yaml.CollectionStyle.block)
+  #[Lean4Yaml.YamlValue.scalar { content := &quot;one&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+    Lean4Yaml.YamlValue.scalar { content := &quot;two&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+    Lean4Yaml.YamlValue.scalar { content := &quot;three&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }]
+  none
+
+--- Block mappings ---
+  simple: OK → Lean4Yaml.YamlValue.mapping
+  (Lean4Yaml.CollectionStyle.block)
+  #[(Lean4Yaml.YamlValue.scalar { content := &quot;a&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.scalar { content := &quot;1&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }),
+    (Lean4Yaml.YamlValue.scalar { content := &quot;b&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.scalar { content := &quot;2&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none })]
+  none
+
+--- Document parsing ---
+  empty: OK (0 docs)
+  just scalar: OK → Lean4Yaml.YamlValue.scalar { content := &quot;hello&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }
+  explicit doc: OK (1 docs)
+  multi doc: OK (2 docs)
+
+--- Nested block ---
+  map with seq value: OK → Lean4Yaml.YamlValue.mapping
+  (Lean4Yaml.CollectionStyle.block)
+  #[(Lean4Yaml.YamlValue.scalar { content := &quot;items&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.sequence
+       (Lean4Yaml.CollectionStyle.block)
+       #[Lean4Yaml.YamlValue.scalar { content := &quot;a&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+         Lean4Yaml.YamlValue.scalar { content := &quot;b&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }]
+       none)]
+  none
+  nested map: OK → Lean4Yaml.YamlValue.mapping
+  (Lean4Yaml.CollectionStyle.block)
+  #[(Lean4Yaml.YamlValue.scalar { content := &quot;outer&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.mapping
+       (Lean4Yaml.CollectionStyle.block)
+       #[(Lean4Yaml.YamlValue.scalar { content := &quot;inner&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+          Lean4Yaml.YamlValue.scalar { content := &quot;value&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none })]
+       none)]
+  none
+  seq of maps: OK → Lean4Yaml.YamlValue.sequence
+  (Lean4Yaml.CollectionStyle.block)
+  #[Lean4Yaml.YamlValue.mapping
+      (Lean4Yaml.CollectionStyle.block)
+      #[(Lean4Yaml.YamlValue.scalar { content := &quot;a&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+         Lean4Yaml.YamlValue.scalar { content := &quot;1&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none })]
+      none,
+    Lean4Yaml.YamlValue.mapping
+      (Lean4Yaml.CollectionStyle.block)
+      #[(Lean4Yaml.YamlValue.scalar { content := &quot;b&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+         Lean4Yaml.YamlValue.scalar { content := &quot;2&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none })]
+      none]
+  none
+
+=== Done ===
+
+=== Quoted Folding Tests ===
+=== Quoted Scalar Folding Tests ===
+
+--- Bug A: Simple fold (newline → space) ---
+  dq basic fold: ✓
+  dq no leading ws: ✓
+  sq basic fold: ✓
+  sq no leading ws: ✓
+
+--- Bug B: Empty line counting (preserved newlines) ---
+  dq one empty line: ✓
+  dq two empty lines: ✓
+  dq three empty lines: ✓
+  sq one empty line: ✓
+  sq two empty lines: ✓
+
+--- Bug C: Trailing whitespace trimming ---
+  dq trailing spaces: ✓
+  dq trailing tab: ✓
+  dq trailing mixed ws: ✓
+  sq trailing spaces: ✓
+
+--- Bug D: Tab handling on continuation lines ---
+  dq tab continuation: ✓
+  dq tab+space continuation: ✓
+  dq tab after blank: ✓
+  sq tab continuation: ✓
+
+--- Bug E: Escaped line breaks (line continuation) ---
+  dq escaped newline: ✓
+  dq escaped bare: ✓
+  dq escaped with trailing: ✓
+  dq double escaped: ✓
+
+--- Combined folding tests ---
+  dq multi-line fold: ✓
+  dq fold then blank: ✓
+  dq blank then fold: ✓
+  dq triple fold: ✓
+
+--- CRLF folding ---
+  dq CRLF fold: ✓
+  dq CRLF blank: ✓
+  sq CRLF fold: ✓
+
+--- Edge cases ---
+  dq no fold: ✓
+  sq no fold: ✓
+  dq empty: ✓
+  sq empty: ✓
+  dq fold at end: ✓
+  dq ws-only blank: ✓
+
+=== Done ===
+
+=== Layer 1 Verification Tests ===
+=== Layer 1 Verification Tests ===
+
+--- YamlStream.ofString ---
+  ✓ startPos is 0
+  ✓ line is 0
+  ✓ col is 0
+  ✓ hasNext on non-empty
+  ✓ empty stream: not hasNext
+--- YamlStream.next? basic ---
+  ✓ first char is &#39;h&#39;
+  ✓ col advances to 1
+  ✓ line stays 0
+  ✓ second char is &#39;i&#39;
+  ✓ col advances to 2
+  ✓ next? at end is none
+--- YamlStream.next? newline tracking ---
+  ✓ after &#39;a&#39;: line=0 col=1
+  ✓ after &#39;\n&#39;: line=1 col=0
+  ✓ after &#39;b&#39;: line=1 col=1
+--- YamlStream.next? multiple newlines ---
+  ✓ after first &#39;\n&#39;: line=1
+  ✓ after second &#39;\n&#39;: line=2
+  ✓ after second &#39;\n&#39;: col=0
+  ✓ after &#39;y&#39;: line=2 col=1
+--- YamlStream.peek? ---
+  ✓ peek? returns &#39;x&#39;
+  ✓ peek? again returns &#39;x&#39;
+  ✓ peek? on empty is none
+--- remainingLength ---
+  ✓ initial remainingLength is 3
+  ✓ after 1 char: remainingLength decreases
+  ✓ after 1 char: remainingLength is 2
+  ✓ after 2 chars: remainingLength is 1
+  ✓ after 3 chars: remainingLength is 0
+  ✓ at end: next? is none
+--- remainingLength empty ---
+  ✓ empty: remainingLength is 0
+--- remainingLength multibyte ---
+  ✓ é: remainingLength &gt; 1 (multibyte)
+  ✓ next? yields &#39;é&#39;
+  ✓ after &#39;é&#39;: remainingLength is 0
+  ✓ 日本: initial remainingLength is 6 (3+3)
+  ✓ after &#39;日&#39;: remainingLength is 3
+--- remainingLength strictly decreasing ---
+  ✓ remainingLength strictly decreases through all chars
+  ✓ final remainingLength is 0
+--- Grammar↔Combinators: isLineBreak ---
+  ✓ isLineBreak: all test chars agree
+  ✓ LF is line break (Grammar)
+  ✓ CR is line break (Grammar)
+  ✓ space is NOT line break
+  ✓ LF is line break (Combinators)
+  ✓ CR is line break (Combinators)
+  ✓ space is NOT line break (Combinators)
+--- Grammar↔Combinators: isWhiteSpace ---
+  ✓ isWhiteSpace: all test chars agree
+  ✓ space is whitespace
+  ✓ tab is whitespace
+  ✓ newline is NOT whitespace
+--- Grammar↔Combinators: isFlowIndicator ---
+  ✓ isFlowIndicator: all positive chars agree
+  ✓ &#39;,&#39; is flow indicator (Grammar)
+  ✓ &#39;,&#39; is flow indicator (Combinators)
+  ✓ &#39;[&#39; is flow indicator (Grammar)
+  ✓ &#39;[&#39; is flow indicator (Combinators)
+  ✓ &#39;]&#39; is flow indicator (Grammar)
+  ✓ &#39;]&#39; is flow indicator (Combinators)
+  ✓ &#39;{&#39; is flow indicator (Grammar)
+  ✓ &#39;{&#39; is flow indicator (Combinators)
+  ✓ &#39;}&#39; is flow indicator (Grammar)
+  ✓ &#39;}&#39; is flow indicator (Combinators)
+  ✓ &#39;-&#39; is NOT flow indicator
+  ✓ &#39;:&#39; is NOT flow indicator
+  ✓ &#39;?&#39; is NOT flow indicator
+  ✓ &#39;#&#39; is NOT flow indicator
+  ✓ &#39;a&#39; is NOT flow indicator
+  ✓ &#39; &#39; is NOT flow indicator
+  ✓ &#39;
+&#39; is NOT flow indicator
+--- Grammar↔Combinators: isIndentChar ---
+  ✓ space is indent char
+  ✓ tab is NOT indent char
+  ✓ space is not line break (indent requires space only)
+--- canStartPlainScalar ---
+  ✓ &#39;a&#39; starts plain scalar
+  ✓ &#39;Z&#39; starts plain scalar
+  ✓ &#39;0&#39; starts plain scalar
+  ✓ &#39;[&#39; cannot start plain
+  ✓ &#39;]&#39; cannot start plain
+  ✓ &#39;{&#39; cannot start plain
+  ✓ &#39;#&#39; cannot start plain
+  ✓ &#39;&quot;&#39; cannot start plain
+  ✓ &quot;&#39;&quot; cannot start plain
+  ✓ &#39;-&#39; + &#39;a&#39; starts plain
+  ✓ &#39;-&#39; + &#39; &#39; does NOT start plain
+  ✓ &#39;-&#39; + none does NOT start plain
+  ✓ &#39;:&#39; + &#39;x&#39; starts plain
+  ✓ &#39;:&#39; + &#39; &#39; does NOT start plain
+  ✓ &#39;?&#39; + &#39;!&#39; starts plain
+  ✓ &#39;?&#39; + &#39;\t&#39; does NOT start plain
+  ✓ space cannot start plain
+  ✓ tab cannot start plain
+  ✓ newline cannot start plain
+--- FoldResult ---
+  ✓ folded carries content
+  ✓ forbidden carries message
+  ✓ Repr instance works for folded
+  ✓ Repr instance works for forbidden
+--- trimTrailingWhitespace ---
+  ✓ trims trailing spaces
+  ✓ trims trailing tabs
+  ✓ trims mixed space+tab
+  ✓ no trailing ws: unchanged
+  ✓ empty string: unchanged
+  ✓ preserves leading spaces
+  ✓ preserves interior spaces
+  ✓ all spaces: empty result
+  ✓ all tabs: empty result
+  ✓ single char no ws
+  ✓ single space: empty
+  ✓ idempotent: trim∘trim = trim
+  ✓ result has no trailing space
+--- YamlPos ---
+  ✓ same pos is equal
+  ✓ different pos is not equal
+  ✓ p1 &lt; p2 by offset
+  ✓ p2 &gt; p1 by offset
+  ✓ p1 == p1 by comparison
+  ✓ DecidableEq: equal
+  ✓ DecidableEq: not equal
+  ✓ Inhabited: default exists
+--- YamlStream.getPos ---
+  ✓ initial pos: offset=0
+  ✓ initial pos: line=0
+  ✓ initial pos: col=0
+  ✓ after &#39;a&#39;: offset&gt;0
+  ✓ after &#39;a&#39;: col=1
+  ✓ after &#39;\n&#39;: line=1
+  ✓ after &#39;\n&#39;: col=0
+--- Grammar.Indented constructors ---
+  ✓ Indented 0 [&#39;a&#39;,&#39;b&#39;] via .zero
+  ✓ Indented 1 [&#39; &#39;,&#39;a&#39;] via .space
+  ✓ Indented 2 [&#39; &#39;,&#39; &#39;,&#39;a&#39;] via nested .space
+--- Grammar.ChompStyle ---
+  ✓ strip ≠ clip
+  ✓ clip ≠ keep
+  ✓ strip ≠ keep
+  ✓ strip = strip
+  ✓ DecidableEq works
+--- Grammar.NodeToValue ---
+  ✓ plainScalarBlock ↔ YamlValue.scalar (plain)
+  ✓ singleQuoted ↔ YamlValue.scalar (singleQuoted)
+  ✓ doubleQuoted ↔ YamlValue.scalar (doubleQuoted)
+--- Grammar.ValidYaml structure ---
+  ✓ ValidYaml: input matches
+  ✓ ValidYaml: grammar node constructed
+  ✓ ValidYaml: correspondence holds
+--- Stream exhaustive consumption ---
+  ✓ consumed 18 chars
+  ✓ final remainingLength is 0
+  ✓ remainingLength monotonically decreased
+--- Stream CRLF handling ---
+  ✓ CR: col advances (not reset)
+  ✓ CR: line unchanged
+  ✓ CRLF LF: line=1 col=0
+
+=== Results: 138/138 passed ===
+
+=== Demo ===
+=== Lean4Yaml Verified Parser Demo ===
+
+--- Example 1: Plain scalar ---
+  Parsed: Lean4Yaml.YamlValue.scalar { content := &quot;hello world&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }
+
+--- Example 2: Flow sequence ---
+  Parsed: Lean4Yaml.YamlValue.sequence
+  (Lean4Yaml.CollectionStyle.flow)
+  #[Lean4Yaml.YamlValue.scalar { content := &quot;a&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+    Lean4Yaml.YamlValue.scalar { content := &quot;b&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+    Lean4Yaml.YamlValue.scalar { content := &quot;c&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }]
+  none
+
+--- Example 3: Flow mapping ---
+  Parsed: Lean4Yaml.YamlValue.mapping
+  (Lean4Yaml.CollectionStyle.flow)
+  #[(Lean4Yaml.YamlValue.scalar { content := &quot;name&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.scalar { content := &quot;test&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }),
+    (Lean4Yaml.YamlValue.scalar { content := &quot;version&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.scalar { content := &quot;1&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none })]
+  none
+
+--- Example 4: Block mapping ---
+  Parsed: Lean4Yaml.YamlValue.mapping
+  (Lean4Yaml.CollectionStyle.block)
+  #[(Lean4Yaml.YamlValue.scalar { content := &quot;name&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.scalar { content := &quot;test&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }),
+    (Lean4Yaml.YamlValue.scalar { content := &quot;version&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.scalar { content := &quot;1&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none })]
+  none
+
+--- Example 5: Nested block structure ---
+  Parsed: Lean4Yaml.YamlValue.mapping
+  (Lean4Yaml.CollectionStyle.block)
+  #[(Lean4Yaml.YamlValue.scalar { content := &quot;server&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.mapping
+       (Lean4Yaml.CollectionStyle.block)
+       #[(Lean4Yaml.YamlValue.scalar { content := &quot;host&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+          Lean4Yaml.YamlValue.scalar { content := &quot;localhost&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }),
+         (Lean4Yaml.YamlValue.scalar { content := &quot;port&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+          Lean4Yaml.YamlValue.scalar { content := &quot;8080&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none })]
+       none),
+    (Lean4Yaml.YamlValue.scalar { content := &quot;clients&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.sequence
+       (Lean4Yaml.CollectionStyle.block)
+       #[Lean4Yaml.YamlValue.scalar { content := &quot;alice&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
+         Lean4Yaml.YamlValue.scalar { content := &quot;bob&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }]
+       none)]
+  none
+
+--- Example 6: Double-quoted scalar ---
+  Parsed: Lean4Yaml.YamlValue.scalar { content := &quot;hello\nworld&quot;, style := Lean4Yaml.ScalarStyle.doubleQuoted, tag := none }
+
+--- Example 7: Multi-document stream ---
+  2 documents parsed
+
+=== Done ===
+
+</pre>
+  </div>
+
+  <footer>
+    Generated by <a href="https://github.com/yaml/yaml-test-suite">yaml-test-suite</a> runner ·     <a href="https://github.com/fgdorais/lean4-parser">lean4-parser</a> · Lean 4
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,58 @@
+=== Demo ===
+=== Lean4Yaml Verified Parser Demo ===
+
+--- Example 1: Plain scalar ---
+  Parsed: Lean4Yaml.YamlValue.scalar { content := "hello world", style := Lean4Yaml.ScalarStyle.plain, tag := none }
+
+--- Example 2: Flow sequence ---
+  Parsed: Lean4Yaml.YamlValue.sequence
+  (Lean4Yaml.CollectionStyle.flow)
+  #[Lean4Yaml.YamlValue.scalar { content := "a", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+    Lean4Yaml.YamlValue.scalar { content := "b", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+    Lean4Yaml.YamlValue.scalar { content := "c", style := Lean4Yaml.ScalarStyle.plain, tag := none }]
+  none
+
+--- Example 3: Flow mapping ---
+  Parsed: Lean4Yaml.YamlValue.mapping
+  (Lean4Yaml.CollectionStyle.flow)
+  #[(Lean4Yaml.YamlValue.scalar { content := "name", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.scalar { content := "test", style := Lean4Yaml.ScalarStyle.plain, tag := none }),
+    (Lean4Yaml.YamlValue.scalar { content := "version", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.scalar { content := "1", style := Lean4Yaml.ScalarStyle.plain, tag := none })]
+  none
+
+--- Example 4: Block mapping ---
+  Parsed: Lean4Yaml.YamlValue.mapping
+  (Lean4Yaml.CollectionStyle.block)
+  #[(Lean4Yaml.YamlValue.scalar { content := "name", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.scalar { content := "test", style := Lean4Yaml.ScalarStyle.plain, tag := none }),
+    (Lean4Yaml.YamlValue.scalar { content := "version", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.scalar { content := "1", style := Lean4Yaml.ScalarStyle.plain, tag := none })]
+  none
+
+--- Example 5: Nested block structure ---
+  Parsed: Lean4Yaml.YamlValue.mapping
+  (Lean4Yaml.CollectionStyle.block)
+  #[(Lean4Yaml.YamlValue.scalar { content := "server", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.mapping
+       (Lean4Yaml.CollectionStyle.block)
+       #[(Lean4Yaml.YamlValue.scalar { content := "host", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+          Lean4Yaml.YamlValue.scalar { content := "localhost", style := Lean4Yaml.ScalarStyle.plain, tag := none }),
+         (Lean4Yaml.YamlValue.scalar { content := "port", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+          Lean4Yaml.YamlValue.scalar { content := "8080", style := Lean4Yaml.ScalarStyle.plain, tag := none })]
+       none),
+    (Lean4Yaml.YamlValue.scalar { content := "clients", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.sequence
+       (Lean4Yaml.CollectionStyle.block)
+       #[Lean4Yaml.YamlValue.scalar { content := "alice", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+         Lean4Yaml.YamlValue.scalar { content := "bob", style := Lean4Yaml.ScalarStyle.plain, tag := none }]
+       none)]
+  none
+
+--- Example 6: Double-quoted scalar ---
+  Parsed: Lean4Yaml.YamlValue.scalar { content := "hello\nworld", style := Lean4Yaml.ScalarStyle.doubleQuoted, tag := none }
+
+--- Example 7: Multi-document stream ---
+  2 documents parsed
+
+=== Done ===

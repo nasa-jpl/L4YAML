@@ -1,0 +1,168 @@
+=== Verification Tests ===
+=== Layer 1 Verification Tests ===
+
+--- YamlStream.ofString ---
+  ✓ startPos is 0
+  ✓ line is 0
+  ✓ col is 0
+  ✓ hasNext on non-empty
+  ✓ empty stream: not hasNext
+--- YamlStream.next? basic ---
+  ✓ first char is 'h'
+  ✓ col advances to 1
+  ✓ line stays 0
+  ✓ second char is 'i'
+  ✓ col advances to 2
+  ✓ next? at end is none
+--- YamlStream.next? newline tracking ---
+  ✓ after 'a': line=0 col=1
+  ✓ after '\n': line=1 col=0
+  ✓ after 'b': line=1 col=1
+--- YamlStream.next? multiple newlines ---
+  ✓ after first '\n': line=1
+  ✓ after second '\n': line=2
+  ✓ after second '\n': col=0
+  ✓ after 'y': line=2 col=1
+--- YamlStream.peek? ---
+  ✓ peek? returns 'x'
+  ✓ peek? again returns 'x'
+  ✓ peek? on empty is none
+--- remainingLength ---
+  ✓ initial remainingLength is 3
+  ✓ after 1 char: remainingLength decreases
+  ✓ after 1 char: remainingLength is 2
+  ✓ after 2 chars: remainingLength is 1
+  ✓ after 3 chars: remainingLength is 0
+  ✓ at end: next? is none
+--- remainingLength empty ---
+  ✓ empty: remainingLength is 0
+--- remainingLength multibyte ---
+  ✓ é: remainingLength > 1 (multibyte)
+  ✓ next? yields 'é'
+  ✓ after 'é': remainingLength is 0
+  ✓ 日本: initial remainingLength is 6 (3+3)
+  ✓ after '日': remainingLength is 3
+--- remainingLength strictly decreasing ---
+  ✓ remainingLength strictly decreases through all chars
+  ✓ final remainingLength is 0
+--- Grammar↔Combinators: isLineBreak ---
+  ✓ isLineBreak: all test chars agree
+  ✓ LF is line break (Grammar)
+  ✓ CR is line break (Grammar)
+  ✓ space is NOT line break
+  ✓ LF is line break (Combinators)
+  ✓ CR is line break (Combinators)
+  ✓ space is NOT line break (Combinators)
+--- Grammar↔Combinators: isWhiteSpace ---
+  ✓ isWhiteSpace: all test chars agree
+  ✓ space is whitespace
+  ✓ tab is whitespace
+  ✓ newline is NOT whitespace
+--- Grammar↔Combinators: isFlowIndicator ---
+  ✓ isFlowIndicator: all positive chars agree
+  ✓ ',' is flow indicator (Grammar)
+  ✓ ',' is flow indicator (Combinators)
+  ✓ '[' is flow indicator (Grammar)
+  ✓ '[' is flow indicator (Combinators)
+  ✓ ']' is flow indicator (Grammar)
+  ✓ ']' is flow indicator (Combinators)
+  ✓ '{' is flow indicator (Grammar)
+  ✓ '{' is flow indicator (Combinators)
+  ✓ '}' is flow indicator (Grammar)
+  ✓ '}' is flow indicator (Combinators)
+  ✓ '-' is NOT flow indicator
+  ✓ ':' is NOT flow indicator
+  ✓ '?' is NOT flow indicator
+  ✓ '#' is NOT flow indicator
+  ✓ 'a' is NOT flow indicator
+  ✓ ' ' is NOT flow indicator
+  ✓ '
+' is NOT flow indicator
+--- Grammar↔Combinators: isIndentChar ---
+  ✓ space is indent char
+  ✓ tab is NOT indent char
+  ✓ space is not line break (indent requires space only)
+--- canStartPlainScalar ---
+  ✓ 'a' starts plain scalar
+  ✓ 'Z' starts plain scalar
+  ✓ '0' starts plain scalar
+  ✓ '[' cannot start plain
+  ✓ ']' cannot start plain
+  ✓ '{' cannot start plain
+  ✓ '#' cannot start plain
+  ✓ '"' cannot start plain
+  ✓ "'" cannot start plain
+  ✓ '-' + 'a' starts plain
+  ✓ '-' + ' ' does NOT start plain
+  ✓ '-' + none does NOT start plain
+  ✓ ':' + 'x' starts plain
+  ✓ ':' + ' ' does NOT start plain
+  ✓ '?' + '!' starts plain
+  ✓ '?' + '\t' does NOT start plain
+  ✓ space cannot start plain
+  ✓ tab cannot start plain
+  ✓ newline cannot start plain
+--- FoldResult ---
+  ✓ folded carries content
+  ✓ forbidden carries message
+  ✓ Repr instance works for folded
+  ✓ Repr instance works for forbidden
+--- trimTrailingWhitespace ---
+  ✓ trims trailing spaces
+  ✓ trims trailing tabs
+  ✓ trims mixed space+tab
+  ✓ no trailing ws: unchanged
+  ✓ empty string: unchanged
+  ✓ preserves leading spaces
+  ✓ preserves interior spaces
+  ✓ all spaces: empty result
+  ✓ all tabs: empty result
+  ✓ single char no ws
+  ✓ single space: empty
+  ✓ idempotent: trim∘trim = trim
+  ✓ result has no trailing space
+--- YamlPos ---
+  ✓ same pos is equal
+  ✓ different pos is not equal
+  ✓ p1 < p2 by offset
+  ✓ p2 > p1 by offset
+  ✓ p1 == p1 by comparison
+  ✓ DecidableEq: equal
+  ✓ DecidableEq: not equal
+  ✓ Inhabited: default exists
+--- YamlStream.getPos ---
+  ✓ initial pos: offset=0
+  ✓ initial pos: line=0
+  ✓ initial pos: col=0
+  ✓ after 'a': offset>0
+  ✓ after 'a': col=1
+  ✓ after '\n': line=1
+  ✓ after '\n': col=0
+--- Grammar.Indented constructors ---
+  ✓ Indented 0 ['a','b'] via .zero
+  ✓ Indented 1 [' ','a'] via .space
+  ✓ Indented 2 [' ',' ','a'] via nested .space
+--- Grammar.ChompStyle ---
+  ✓ strip ≠ clip
+  ✓ clip ≠ keep
+  ✓ strip ≠ keep
+  ✓ strip = strip
+  ✓ DecidableEq works
+--- Grammar.NodeToValue ---
+  ✓ plainScalarBlock ↔ YamlValue.scalar (plain)
+  ✓ singleQuoted ↔ YamlValue.scalar (singleQuoted)
+  ✓ doubleQuoted ↔ YamlValue.scalar (doubleQuoted)
+--- Grammar.ValidYaml structure ---
+  ✓ ValidYaml: input matches
+  ✓ ValidYaml: grammar node constructed
+  ✓ ValidYaml: correspondence holds
+--- Stream exhaustive consumption ---
+  ✓ consumed 18 chars
+  ✓ final remainingLength is 0
+  ✓ remainingLength monotonically decreased
+--- Stream CRLF handling ---
+  ✓ CR: col advances (not reset)
+  ✓ CR: line unchanged
+  ✓ CRLF LF: line=1 col=0
+
+=== Results: 138/138 passed ===

@@ -1,0 +1,112 @@
+=== Parser Integration Tests ===
+=== Parser Integration Tests ===
+
+--- Double-quoted scalars ---
+  simple: OK → Lean4Yaml.YamlValue.scalar { content := "hello", style := Lean4Yaml.ScalarStyle.doubleQuoted, tag := none }
+  with space: OK → Lean4Yaml.YamlValue.scalar { content := "hello world", style := Lean4Yaml.ScalarStyle.doubleQuoted, tag := none }
+  with escape: OK → Lean4Yaml.YamlValue.scalar { content := "hello\nworld", style := Lean4Yaml.ScalarStyle.doubleQuoted, tag := none }
+  empty: OK → Lean4Yaml.YamlValue.scalar { content := "", style := Lean4Yaml.ScalarStyle.doubleQuoted, tag := none }
+
+--- Single-quoted scalars ---
+  simple: OK → Lean4Yaml.YamlValue.scalar { content := "hello", style := Lean4Yaml.ScalarStyle.singleQuoted, tag := none }
+  with space: OK → Lean4Yaml.YamlValue.scalar { content := "hello world", style := Lean4Yaml.ScalarStyle.singleQuoted, tag := none }
+  escaped quote: OK → Lean4Yaml.YamlValue.scalar { content := "it's", style := Lean4Yaml.ScalarStyle.singleQuoted, tag := none }
+  empty: OK → Lean4Yaml.YamlValue.scalar { content := "", style := Lean4Yaml.ScalarStyle.singleQuoted, tag := none }
+
+--- Plain scalars ---
+  word: OK → Lean4Yaml.YamlValue.scalar { content := "hello", style := Lean4Yaml.ScalarStyle.plain, tag := none }
+  multi-word: OK → Lean4Yaml.YamlValue.scalar { content := "hello world", style := Lean4Yaml.ScalarStyle.plain, tag := none }
+
+--- Flow sequences ---
+  simple: OK → Lean4Yaml.YamlValue.sequence
+  (Lean4Yaml.CollectionStyle.flow)
+  #[Lean4Yaml.YamlValue.scalar { content := "a", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+    Lean4Yaml.YamlValue.scalar { content := "b", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+    Lean4Yaml.YamlValue.scalar { content := "c", style := Lean4Yaml.ScalarStyle.plain, tag := none }]
+  none
+  nested: OK → Lean4Yaml.YamlValue.sequence
+  (Lean4Yaml.CollectionStyle.flow)
+  #[Lean4Yaml.YamlValue.sequence
+      (Lean4Yaml.CollectionStyle.flow)
+      #[Lean4Yaml.YamlValue.scalar { content := "1", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+        Lean4Yaml.YamlValue.scalar { content := "2", style := Lean4Yaml.ScalarStyle.plain, tag := none }]
+      none,
+    Lean4Yaml.YamlValue.sequence
+      (Lean4Yaml.CollectionStyle.flow)
+      #[Lean4Yaml.YamlValue.scalar { content := "3", style := Lean4Yaml.ScalarStyle.plain, tag := none }]
+      none]
+  none
+  empty: OK → Lean4Yaml.YamlValue.sequence (Lean4Yaml.CollectionStyle.flow) #[] none
+
+--- Flow mappings ---
+  simple: OK → Lean4Yaml.YamlValue.mapping
+  (Lean4Yaml.CollectionStyle.flow)
+  #[(Lean4Yaml.YamlValue.scalar { content := "a", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.scalar { content := "1", style := Lean4Yaml.ScalarStyle.plain, tag := none }),
+    (Lean4Yaml.YamlValue.scalar { content := "b", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.scalar { content := "2", style := Lean4Yaml.ScalarStyle.plain, tag := none })]
+  none
+  empty: OK → Lean4Yaml.YamlValue.mapping (Lean4Yaml.CollectionStyle.flow) #[] none
+
+--- Block sequences ---
+  simple: OK → Lean4Yaml.YamlValue.sequence
+  (Lean4Yaml.CollectionStyle.block)
+  #[Lean4Yaml.YamlValue.scalar { content := "a", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+    Lean4Yaml.YamlValue.scalar { content := "b", style := Lean4Yaml.ScalarStyle.plain, tag := none }]
+  none
+  items: OK → Lean4Yaml.YamlValue.sequence
+  (Lean4Yaml.CollectionStyle.block)
+  #[Lean4Yaml.YamlValue.scalar { content := "one", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+    Lean4Yaml.YamlValue.scalar { content := "two", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+    Lean4Yaml.YamlValue.scalar { content := "three", style := Lean4Yaml.ScalarStyle.plain, tag := none }]
+  none
+
+--- Block mappings ---
+  simple: OK → Lean4Yaml.YamlValue.mapping
+  (Lean4Yaml.CollectionStyle.block)
+  #[(Lean4Yaml.YamlValue.scalar { content := "a", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.scalar { content := "1", style := Lean4Yaml.ScalarStyle.plain, tag := none }),
+    (Lean4Yaml.YamlValue.scalar { content := "b", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.scalar { content := "2", style := Lean4Yaml.ScalarStyle.plain, tag := none })]
+  none
+
+--- Document parsing ---
+  empty: OK (0 docs)
+  just scalar: OK → Lean4Yaml.YamlValue.scalar { content := "hello", style := Lean4Yaml.ScalarStyle.plain, tag := none }
+  explicit doc: OK (1 docs)
+  multi doc: OK (2 docs)
+
+--- Nested block ---
+  map with seq value: OK → Lean4Yaml.YamlValue.mapping
+  (Lean4Yaml.CollectionStyle.block)
+  #[(Lean4Yaml.YamlValue.scalar { content := "items", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.sequence
+       (Lean4Yaml.CollectionStyle.block)
+       #[Lean4Yaml.YamlValue.scalar { content := "a", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+         Lean4Yaml.YamlValue.scalar { content := "b", style := Lean4Yaml.ScalarStyle.plain, tag := none }]
+       none)]
+  none
+  nested map: OK → Lean4Yaml.YamlValue.mapping
+  (Lean4Yaml.CollectionStyle.block)
+  #[(Lean4Yaml.YamlValue.scalar { content := "outer", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+     Lean4Yaml.YamlValue.mapping
+       (Lean4Yaml.CollectionStyle.block)
+       #[(Lean4Yaml.YamlValue.scalar { content := "inner", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+          Lean4Yaml.YamlValue.scalar { content := "value", style := Lean4Yaml.ScalarStyle.plain, tag := none })]
+       none)]
+  none
+  seq of maps: OK → Lean4Yaml.YamlValue.sequence
+  (Lean4Yaml.CollectionStyle.block)
+  #[Lean4Yaml.YamlValue.mapping
+      (Lean4Yaml.CollectionStyle.block)
+      #[(Lean4Yaml.YamlValue.scalar { content := "a", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+         Lean4Yaml.YamlValue.scalar { content := "1", style := Lean4Yaml.ScalarStyle.plain, tag := none })]
+      none,
+    Lean4Yaml.YamlValue.mapping
+      (Lean4Yaml.CollectionStyle.block)
+      #[(Lean4Yaml.YamlValue.scalar { content := "b", style := Lean4Yaml.ScalarStyle.plain, tag := none },
+         Lean4Yaml.YamlValue.scalar { content := "2", style := Lean4Yaml.ScalarStyle.plain, tag := none })]
+      none]
+  none
+
+=== Done ===

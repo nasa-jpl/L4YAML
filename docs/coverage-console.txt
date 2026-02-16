@@ -434,6 +434,15 @@ Running all tests for HTML report...
 
 Correct: 166/416 (39.000000%)
 
+Running verified test suites...
+  Running Unit Tests... ✓ 17/17
+  Running Parser Integration Tests... ✓ 0/0
+  Running Quoted Folding Tests... ✓ 34/34
+  Running Layer 1 Verification Tests... ✓ 138/138
+  Running Demo... ✓ 0/0
+
+Verified: 189/189
+
 Generating HTML reports...
   wrote docs/index.html
   wrote docs/coverage-all.html
@@ -443,5 +452,6 @@ Generating HTML reports...
   wrote docs/coverage-document.html
   wrote docs/coverage-advanced.html
   wrote docs/coverage-error.html
+  wrote docs/verified-tests.html
 
 HTML reports written to docs/
