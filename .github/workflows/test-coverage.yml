@@ -38,6 +38,24 @@ jobs:
         run: |
           lake build Lean4Yaml
           lake build suiterunner tryparse
+          lake build tests parsetest quotedfolding verification demo
+
+      - name: Run unit and integration tests
+        run: |
+          echo "=== Unit Tests ===" | tee docs/unit-tests.txt
+          ./.lake/build/bin/tests 2>&1 | tee -a docs/unit-tests.txt
+          echo ""
+          echo "=== Parser Integration Tests ===" | tee docs/parsetest.txt
+          ./.lake/build/bin/parsetest 2>&1 | tee -a docs/parsetest.txt
+          echo ""
+          echo "=== Quoted Folding Tests ===" | tee docs/quotedfolding.txt
+          ./.lake/build/bin/quotedfolding 2>&1 | tee -a docs/quotedfolding.txt
+          echo ""
+          echo "=== Verification Tests ===" | tee docs/verification.txt
+          ./.lake/build/bin/verification 2>&1 | tee -a docs/verification.txt
+          echo ""
+          echo "=== Demo ===" | tee docs/demo.txt
+          ./.lake/build/bin/demo 2>&1 | tee -a docs/demo.txt
 
       - name: Create docs directory
         run: mkdir -p docs
@@ -45,6 +63,10 @@ jobs:
       - name: Generate HTML coverage reports
         run: |
           ./.lake/build/bin/suiterunner --html docs/ | tee docs/coverage-console.txt
+
+      - name: Generate verified tests HTML page
+        run: |
+          cat docs/unit-tests.txt docs/parsetest.txt docs/quotedfolding.txt docs/verification.txt docs/demo.txt > docs/all-verified-tests.txt
 
       - name: Upload coverage reports as artifact
         uses: actions/upload-artifact@v3
