@@ -166,9 +166,9 @@
     <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">0</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
     <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">0</div></div>
-    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">62</div></div>
+    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">74</div></div>
     <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">0</div></div>
-    <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">12</div></div>
+    <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">0</div></div>
     <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">0/74</div><div class="pct">(0.000000%)</div></div>
   </div>
   <h3>Coverage by Stage</h3>
@@ -200,7 +200,7 @@
     </div>
     <div class="stage-card">
       <div class="stage-card-name">error</div>
-      <div class="stage-card-stats">0/74 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 62 unexp-pass, 0 skip, 12 timeout</div>
+      <div class="stage-card-stats">0/74 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 74 unexp-pass, 0 skip, 0 timeout</div>
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
     </div>
   </div>
@@ -269,13 +269,13 @@
         <td><span class="tag">error</span><span class="tag">footer</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="4ejs invalid tabs as indendation in a mapping error mapping whitespace">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="4ejs invalid tabs as indendation in a mapping error mapping whitespace">
         <td>4EJS</td>
         <td>Invalid tabs as indendation in a mapping</td>
         <td>error</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">whitespace</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="4h7k flow sequence with invalid extra closing bracket error flow sequence">
         <td>4H7K</td>
@@ -293,13 +293,13 @@
         <td><span class="tag">error</span><span class="tag">sequence</span><span class="tag">indent</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="4jvg scalar value with two anchors anchor error mapping">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="4jvg scalar value with two anchors anchor error mapping">
         <td>4JVG</td>
         <td>Scalar value with two anchors</td>
         <td>error</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">anchor</span><span class="tag">error</span><span class="tag">mapping</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="55wf invalid escape in double quoted string error double">
         <td>55WF</td>
@@ -477,21 +477,21 @@
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="cml9 missing comma in flow error flow comment">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="cml9 missing comma in flow error flow comment">
         <td>CML9</td>
         <td>Missing comma in flow</td>
         <td>error</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">comment</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="cq3w double quoted string without closing quote error double">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="cq3w double quoted string without closing quote error double">
         <td>CQ3W</td>
         <td>Double quoted string without closing quote</td>
         <td>error</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">double</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="ctn5 flow sequence with invalid extra comma error flow sequence">
         <td>CTN5</td>
@@ -565,21 +565,21 @@
         <td><span class="tag">error</span><span class="tag">mapping</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="g9hc invalid anchor in zero indented sequence anchor error sequence">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="g9hc invalid anchor in zero indented sequence anchor error sequence">
         <td>G9HC</td>
         <td>Invalid anchor in zero indented sequence</td>
         <td>error</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">anchor</span><span class="tag">error</span><span class="tag">sequence</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="gdy7 comment that looks like a mapping key comment error mapping">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="gdy7 comment that looks like a mapping key comment error mapping">
         <td>GDY7</td>
         <td>Comment that looks like a mapping key</td>
         <td>error</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">comment</span><span class="tag">error</span><span class="tag">mapping</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="gt5m node anchor in sequence anchor error sequence">
         <td>GT5M</td>
@@ -589,21 +589,21 @@
         <td><span class="tag">anchor</span><span class="tag">error</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="h7j7 node anchor not indented anchor error indent tag">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="h7j7 node anchor not indented anchor error indent tag">
         <td>H7J7</td>
         <td>Node anchor not indented</td>
         <td>error</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">anchor</span><span class="tag">error</span><span class="tag">indent</span><span class="tag">tag</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="hre5 double quoted scalar with escaped single quote double error single">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="hre5 double quoted scalar with escaped single quote double error single">
         <td>HRE5</td>
         <td>Double quoted scalar with escaped single quote</td>
         <td>error</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">double</span><span class="tag">error</span><span class="tag">single</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="hu3p invalid mapping in plain scalar error mapping scalar">
         <td>HU3P</td>
@@ -669,13 +669,13 @@
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">double</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="qb6e wrong indented multiline quoted scalar double error indent">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="qb6e wrong indented multiline quoted scalar double error indent">
         <td>QB6E</td>
         <td>Wrong indented multiline quoted scalar</td>
         <td>error</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">double</span><span class="tag">error</span><span class="tag">indent</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="qlj7 tag shorthand used in documents but only defined in the first error directive tag">
         <td>QLJ7</td>
@@ -725,13 +725,13 @@
         <td><span class="tag">directive</span><span class="tag">error</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="sr86 anchor plus alias alias error">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="sr86 anchor plus alias alias error">
         <td>SR86</td>
         <td>Anchor plus Alias</td>
         <td>error</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">alias</span><span class="tag">error</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="su5z comment without whitespace after doublequoted scalar comment error double whitespace">
         <td>SU5Z</td>
@@ -741,13 +741,13 @@
         <td><span class="tag">comment</span><span class="tag">error</span><span class="tag">double</span><span class="tag">whitespace</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="su74 anchor and alias as mapping key error anchor alias mapping">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="su74 anchor and alias as mapping key error anchor alias mapping">
         <td>SU74</td>
         <td>Anchor and alias as mapping key</td>
         <td>error</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">anchor</span><span class="tag">alias</span><span class="tag">mapping</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="sy6v anchor before sequence entry on same line anchor error sequence">
         <td>SY6V</td>
@@ -773,13 +773,13 @@
         <td><span class="tag">error</span><span class="tag">sequence</span><span class="tag">scalar</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="u44r bad indentation in mapping (2) error mapping indent double">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="u44r bad indentation in mapping (2) error mapping indent double">
         <td>U44R</td>
         <td>Bad indentation in mapping (2)</td>
         <td>error</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">indent</span><span class="tag">double</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="u99r invalid comma in tag error tag">
         <td>U99R</td>

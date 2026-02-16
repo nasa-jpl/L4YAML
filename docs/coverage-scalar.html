@@ -164,18 +164,18 @@
   <div class="stats">
     <div class="stat-box stat-total"><h3>Total</h3><div class="number">82</div></div>
     <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">40</div></div>
-    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">9</div></div>
+    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">13</div></div>
     <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">0</div></div>
     <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">1</div></div>
     <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">28</div></div>
-    <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">4</div></div>
+    <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">0</div></div>
     <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">40/82</div><div class="pct">(48.780488%)</div></div>
   </div>
   <h3>Coverage by Stage</h3>
   <div class="stage-cards">
     <div class="stage-card">
       <div class="stage-card-name">scalar</div>
-      <div class="stage-card-stats">40/82 correct (48.000000%) · 40 pass, 9 fail, 0 exp-fail, 1 unexp-pass, 28 skip, 4 timeout</div>
+      <div class="stage-card-stats">40/82 correct (48.000000%) · 40 pass, 13 fail, 0 exp-fail, 1 unexp-pass, 28 skip, 0 timeout</div>
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 48.000000%"></div></div>
     </div>
     <div class="stage-card">
@@ -293,13 +293,13 @@
         <td><span class="tag">double</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="scalar" data-search="4cqq spec example 2.18. multi-line flow scalars spec scalar">
+      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="4cqq spec example 2.18. multi-line flow scalars spec scalar">
         <td>4CQQ</td>
         <td>Spec Example 2.18. Multi-line Flow Scalars</td>
         <td>scalar</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">spec</span><span class="tag">scalar</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token at { offset := 52, line := 4, col := 1 }; unhandled construct &#39;q&#39; at line 4, column 0 at { offset := 52, line := 4, col := 1 }">parse error: unexpected token at { offset := 52, line := 4, col := 1 }; unhandled construct &#39;q&#39; at line 4, column 0 at { offset := 52, line := 4, col := 1 }</span></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="4gc6 spec example 7.7. single quoted characters spec scalar 1.3-err">
         <td>4GC6</td>
@@ -349,13 +349,13 @@
         <td><span class="tag">indent</span><span class="tag">literal</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="scalar" data-search="4zym spec example 6.4. line prefixes spec scalar literal double upto-1.2 whitespace">
+      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="4zym spec example 6.4. line prefixes spec scalar literal double upto-1.2 whitespace">
         <td>4ZYM</td>
         <td>Spec Example 6.4. Line Prefixes</td>
         <td>scalar</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">spec</span><span class="tag">scalar</span><span class="tag">literal</span><span class="tag">double</span><span class="tag">upto-1.2</span><span class="tag">whitespace</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token at { offset := 21, line := 2, col := 1 }; unhandled construct &#39;q&#39; at line 2, column 0 at { offset := 21, line := 2, col := 1 }">parse error: unexpected token at { offset := 21, line := 2, col := 1 }; unhandled construct &#39;q&#39; at line 2, column 0 at { offset := 21, line := 2, col := 1 }</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="5bvj spec example 5.7. block scalar indicators spec literal folded scalar">
         <td>5BVJ</td>
@@ -365,13 +365,13 @@
         <td><span class="tag">spec</span><span class="tag">literal</span><span class="tag">folded</span><span class="tag">scalar</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="scalar" data-search="5gbf spec example 6.5. empty lines double literal spec scalar upto-1.2 whitespace">
+      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="5gbf spec example 6.5. empty lines double literal spec scalar upto-1.2 whitespace">
         <td>5GBF</td>
         <td>Spec Example 6.5. Empty Lines</td>
         <td>scalar</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">double</span><span class="tag">literal</span><span class="tag">spec</span><span class="tag">scalar</span><span class="tag">upto-1.2</span><span class="tag">whitespace</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct &#39;F&#39; at line 0, column 0 at { offset := 1, line := 0, col := 1 }">parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct &#39;F&#39; at line 0, column 0 at { offset := 1, line := 0, col := 1 }</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="6fwr block scalar keep literal scalar whitespace">
         <td>6FWR</td>
@@ -765,13 +765,13 @@
         <td><span class="tag">folded</span><span class="tag">scalar</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="scalar" data-search="nat4 various empty or newline only quoted strings double scalar single whitespace">
+      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="nat4 various empty or newline only quoted strings double scalar single whitespace">
         <td>NAT4</td>
         <td>Various empty or newline only quoted strings</td>
         <td>scalar</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">double</span><span class="tag">scalar</span><span class="tag">single</span><span class="tag">whitespace</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token at { offset := 5, line := 1, col := 1 }; unhandled construct &#39;a&#39; at line 1, column 0 at { offset := 5, line := 1, col := 1 }">parse error: unexpected token at { offset := 5, line := 1, col := 1 }; unhandled construct &#39;a&#39; at line 1, column 0 at { offset := 5, line := 1, col := 1 }</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="nb6z multiline plain value with tabs on empty lines scalar whitespace">
         <td>NB6Z</td>

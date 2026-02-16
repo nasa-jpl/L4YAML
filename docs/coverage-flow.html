@@ -164,11 +164,11 @@
   <div class="stats">
     <div class="stat-box stat-total"><h3>Total</h3><div class="number">46</div></div>
     <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">31</div></div>
-    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">8</div></div>
+    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">12</div></div>
     <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">0</div></div>
     <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">3</div></div>
     <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">0</div></div>
-    <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">4</div></div>
+    <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">0</div></div>
     <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">31/46</div><div class="pct">(67.391304%)</div></div>
   </div>
   <h3>Coverage by Stage</h3>
@@ -180,7 +180,7 @@
     </div>
     <div class="stage-card">
       <div class="stage-card-name">flow</div>
-      <div class="stage-card-stats">31/46 correct (67.000000%) · 31 pass, 8 fail, 0 exp-fail, 3 unexp-pass, 0 skip, 4 timeout</div>
+      <div class="stage-card-stats">31/46 correct (67.000000%) · 31 pass, 12 fail, 0 exp-fail, 3 unexp-pass, 0 skip, 0 timeout</div>
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 67.000000%"></div></div>
     </div>
     <div class="stage-card">
@@ -341,21 +341,21 @@
         <td><span class="tag">comment</span><span class="tag">flow</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="flow" data-search="7zz5 empty flow collections flow mapping sequence">
+      <tr class="test-row" data-outcome="fail" data-stage="flow" data-search="7zz5 empty flow collections flow mapping sequence">
         <td>7ZZ5</td>
         <td>Empty flow collections</td>
         <td>flow</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token at { offset := 5, line := 1, col := 1 }; unhandled construct &#39;n&#39; at line 1, column 0 at { offset := 5, line := 1, col := 1 }">parse error: unexpected token at { offset := 5, line := 1, col := 1 }; unhandled construct &#39;n&#39; at line 1, column 0 at { offset := 5, line := 1, col := 1 }</span></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="flow" data-search="87e4 spec example 7.8. single quoted implicit keys spec flow sequence mapping">
+      <tr class="test-row" data-outcome="fail" data-stage="flow" data-search="87e4 spec example 7.8. single quoted implicit keys spec flow sequence mapping">
         <td>87E4</td>
         <td>Spec Example 7.8. Single Quoted Implicit Keys</td>
         <td>flow</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">spec</span><span class="tag">flow</span><span class="tag">sequence</span><span class="tag">mapping</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token at { offset := 22, line := 0, col := 22 }; unhandled construct &#39;:&#39; at line 0, column 21 at { offset := 22, line := 0, col := 22 }">parse error: unexpected token at { offset := 22, line := 0, col := 22 }; unhandled construct &#39;:&#39; at line 0, column 21 at { offset := 22, line := 0, col := 22 }</span></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="flow" data-search="8kb6 multiline plain flow mapping key without value flow mapping">
         <td>8KB6</td>
@@ -485,13 +485,13 @@
         <td><span class="tag">comment</span><span class="tag">flow</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="flow" data-search="l9u5 spec example 7.11. plain implicit keys spec flow mapping">
+      <tr class="test-row" data-outcome="fail" data-stage="flow" data-search="l9u5 spec example 7.11. plain implicit keys spec flow mapping">
         <td>L9U5</td>
         <td>Spec Example 7.11. Plain Implicit Keys</td>
         <td>flow</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">spec</span><span class="tag">flow</span><span class="tag">mapping</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct &#39;i&#39; at line 0, column 0 at { offset := 1, line := 0, col := 1 }">parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct &#39;i&#39; at line 0, column 0 at { offset := 1, line := 0, col := 1 }</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="lp6e whitespace after scalars in flow flow scalar whitespace">
         <td>LP6E</td>
@@ -501,13 +501,13 @@
         <td><span class="tag">flow</span><span class="tag">scalar</span><span class="tag">whitespace</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="timeout" data-stage="flow" data-search="lqz7 spec example 7.4. double quoted implicit keys spec scalar flow">
+      <tr class="test-row" data-outcome="fail" data-stage="flow" data-search="lqz7 spec example 7.4. double quoted implicit keys spec scalar flow">
         <td>LQZ7</td>
         <td>Spec Example 7.4. Double Quoted Implicit Keys</td>
         <td>flow</td>
-        <td><span class="badge badge-timeout">Timeout</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">spec</span><span class="tag">scalar</span><span class="tag">flow</span></td>
-        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token at { offset := 22, line := 0, col := 22 }; unhandled construct &#39;:&#39; at line 0, column 21 at { offset := 22, line := 0, col := 22 }">parse error: unexpected token at { offset := 22, line := 0, col := 22 }; unhandled construct &#39;:&#39; at line 0, column 21 at { offset := 22, line := 0, col := 22 }</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="m7nx nested flow collections flow mapping sequence">
         <td>M7NX</td>
