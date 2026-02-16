@@ -121,6 +121,40 @@ try primary_parser
 
 This prevents invalid YAML from being silently accepted by a fallback parser. The verified parser should implement this at the `blockValue` dispatch level where it tries block collections before falling back to plain scalars.
 
+### F. Quoted Scalar Line Folding & `c-forbidden` (High Priority)
+
+Analysis of 11 failing scalar tests revealed 5 algorithmic bugs in `foldQuotedNewlines` and one missing feature (`c-forbidden` detection). The failures fall into 6 groups:
+
+| Group | Root cause | Tests | Fix type |
+|-------|-----------|-------|----------|
+| **A** | `foldQuotedNewlines` requires a mandatory `newline` after `skipHWhitespace`, crashing on the simplest fold case (next line has content, not a blank line) | 4CQQ, 4ZYM, 9MQT, DE56 | Algorithmic |
+| **B** | Off-by-one in empty line counting — initial `newline` consumes one blank line before counting starts | 5GBF, 7A4E, NAT4, PRH3, TL85 | Algorithmic |
+| **C** | No trimming of trailing whitespace from `acc` before folding | 3RLN, DE56, 7A4E, NP9H, PRH3 | Algorithmic |
+| **D** | `skipSpaces` in folding loop only handles `' '`, not `'\t'` — tabs on continuation lines leak into output | 3RLN, 4ZYM, 5GBF, PRH3, TL85 | Algorithmic |
+| **E** | `\` + literal newline (escaped line break / line continuation) not handled in `processEscape` | NP9H | Algorithmic |
+| **F** | No `c-forbidden` check (YAML §9.1.3) — `--- ` or `... ` at start of continuation line inside quoted scalars should be rejected | 9MQT | **Result type** |
+
+**Group F requires an explicit result type.** When a quoted scalar's continuation line starts with `--- ` or `... `, the parser has successfully *recognized* a quoted scalar but discovered a *forbidden* document indicator. This is semantically identical to `DispatchResult.invalid` — "I matched the structure but the content is definitively ill-formed." Without an explicit error path, backtracking would swallow the rejection and some enclosing combinator might silently accept the input. This is the same class of problem as the validation combinators in `Block.lean`.
+
+**Groups A–E are purely algorithmic** — the `foldQuotedNewlines` function has wrong logic. The correct algorithm:
+
+```
+foldQuotedNewlines(acc) :=
+  1. Trim trailing whitespace (spaces+tabs) from acc
+  2. Count blank lines:
+     loop:
+       skip whitespace (spaces + tabs)
+       if newline → consume it, increment blankCount, repeat
+       else → done (leading whitespace on content line already consumed)
+  3. If blankCount == 0 → append ' ' to acc   (fold to space)
+     If blankCount > 0 → append blankCount × '\n' to acc   (preserved newlines)
+  4. Return acc
+```
+
+Additionally, `collectChars` needs a `'\\' → '\n' | '\r'` arm for escaped line breaks (line continuation — consumes the newline + leading whitespace, emits nothing).
+
+**Implementation plan**: Add/improve the explicit result type for `c-forbidden` detection first (following the `DispatchResult`/`DocumentResult` pattern of making validation structural), then fix the algorithmic bugs in `foldQuotedNewlines`.
+
 ---
 
 ## 3. What NOT to Port
@@ -168,7 +202,9 @@ This prevents invalid YAML from being silently accepted by a fallback parser. Th
      | stalled (pos : YamlPos)      -- input present, couldn't parse
    ```
    This moves the stall-detection invariant *inside* `document` — `yamlStream` now pattern-matches on the result instead of comparing positions externally. Follows the same explicit-result-type pattern as `DispatchResult` (dispatch) and `ContinuationCheck` (scalar continuation). The `stalled` variant carries position for error reporting and becomes a proof obligation target: `document` returns `stalled` iff no input was consumed and non-blank input remains. Impact: 0 timeouts (was 36), error rejection 38%→54% (28→40/74), overall suite 177→192 passed (42.5%→46.2%). The 36 timeouts fell into 9 root cause categories: anchor/alias `&`/`*` (9), tags `!`/`!!` (5), quoted scalar folding (4), comment before value (3), explicit key `?` (4), same-indent sequence (3), tab handling (2), empty key edge cases (3), flow implicit mapping (3).
-6. **Fix multi-line quoted scalars** — handle line folding in double/single-quoted scalars
+6. **Fix multi-line quoted scalars** — analysis revealed 5 algorithmic bugs in `foldQuotedNewlines` and one missing `c-forbidden` check (§2.F). Implementation plan:
+   - **6a.** Add explicit result type for `c-forbidden` detection on quoted scalar continuation lines (Group F — `--- ` or `... ` at start of continuation line must be rejected as definitively invalid, not swallowed by backtracking). Follows the `DispatchResult`/`DocumentResult` pattern.
+   - **6b.** Fix algorithmic bugs in `foldQuotedNewlines` (Groups A–E): remove erroneous mandatory `newline`, fix off-by-one in empty line counting, trim trailing whitespace, handle tabs in continuation prefixes, add `\` + newline escape handling.
 7. **Add anchor/alias support** — lean4-yaml's `anchorMap : HashMap String YamlValue` approach works
 8. **Defer tags** — low coverage even in lean4-yaml, complex spec surface area
 
@@ -185,6 +221,7 @@ lean4-yaml's development log established a repeating pattern: **make implicit st
 | `ParseResult` | Error semantics → 3-valued type | Addresses 43 unexpected passes |
 | `DispatchResult` | Dispatch outcome → 3-valued type | Proof-friendly block value dispatch |
 | `DocumentResult` | Document parse outcome → 3-valued type | Eliminates 36 infinite loops |
+| `FoldResult` (planned) | Quoted fold + `c-forbidden` → explicit type | Prevents backtracking from swallowing `c-forbidden` violations |
 
 For the verified parser, this principle is even more powerful: explicit state becomes **proof targets**. Every enum variant maps to a lemma obligation, and every state transition becomes a provable invariant.
 

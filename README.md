@@ -215,7 +215,9 @@ Immediate priorities for continuing Phase 2:
 3. ~~**Add multi-line plain scalar support**~~ — ✅ Done. Defined `ContinuationCheck` inductive type in `Combinators.lean` with `checkContinuation` pure `lookAhead` probe. Replaced single-line parser with multi-line `plainScalarContent` in `Scalar.lean`. Line folding per YAML §6.5. See [ANALYSIS.md](ANALYSIS.md) §2.B.
 4. ~~**Re-enable validation combinators**~~ — ✅ Done. Uncommented `validateNoWrongIndentSeq` / `validateNoWrongIndentMap` in `Block.lean`. Overall suite: 164→177 passed (39.4%→42.5%).
 5. ~~**Eliminate infinite loops**~~ — ✅ Done. Refactored `document` to return `DocumentResult` (`parsed`/`endOfStream`/`stalled`), making parse-progress an explicit result rather than an external position comparison. All 36 timeouts (9 root cause categories) eliminated. Suite: 177→192 passed (42.5%→46.2%), error rejection: 38%→54%. See [ANALYSIS.md](ANALYSIS.md) §5.
-6. **Fix multi-line quoted scalars** — handle line folding in double/single-quoted scalars
+6. **Fix multi-line quoted scalars** — analysis identified 5 algorithmic bugs in `foldQuotedNewlines` plus one missing `c-forbidden` check (see [ANALYSIS.md](ANALYSIS.md) §2.F). Two-phase plan:
+   - **6a.** Add explicit result type for `c-forbidden` detection — when `--- ` or `... ` appears at the start of a continuation line inside a quoted scalar, this is definitively invalid YAML, not a backtracking opportunity. Follows the `DispatchResult`/`DocumentResult` pattern.
+   - **6b.** Fix `foldQuotedNewlines` algorithmic bugs — remove erroneous mandatory `newline`, fix off-by-one empty line counting, trim trailing whitespace, handle tabs, add `\` + newline escape.
 7. **Add anchor/alias support** — enables the advanced stage (currently 1/81)
 8. **Iterate** — fix failures exposed by each stage, target 60%+ overall pass rate
 
