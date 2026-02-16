@@ -137,11 +137,11 @@ Added [yaml-test-suite](https://github.com/yaml/yaml-test-suite) as a git submod
 |-------|-------|--------|--------|---------|-----------|
 | Scalar | 82 | 40 | 14 | 28 | 48.8% |
 | + Flow | 128 | 71 | 29 | 28 | 55.5% |
-| + Block | 237 | 134 | 65 | 38 | 56.5% |
-| + Document | 261 | 148 | 68 | 45 | 56.7% |
-| + Advanced | 342 | 149 | 131 | 62 | 43.6% |
-| Error | 74 | 28 | 46 | 0 | 37.8% |
-| **All unique** | **416** | **177** | **177** | **62** | **42.5%** |
+| + Block | 237 | 137 | 62 | 38 | 57.8% |
+| + Document | 261 | 151 | 65 | 45 | 57.9% |
+| + Advanced | 342 | 152 | 128 | 62 | 44.4% |
+| Error | 74 | 40 | 34 | 0 | 54.1% |
+| **All unique** | **416** | **192** | **162** | **62** | **46.2%** |
 
 **Per-feature pass rates (non-cumulative):**
 
@@ -149,14 +149,14 @@ Added [yaml-test-suite](https://github.com/yaml/yaml-test-suite) as a git submod
 |---------|-------|--------|------|
 | Scalar | 82 | 40 | 49% |
 | Flow | 46 | 31 | 67% |
-| Block | 109 | 63 | 58% |
+| Block | 109 | 66 | 61% |
 | Document | 24 | 14 | 58% |
 | Advanced | 81 | 1 | 1% |
-| Error | 74 | 28 | 38% |
+| Error | 74 | 40 | 54% |
 
 **Key findings:**
-- **~37 unexpected passes** — parser is still too permissive in some cases, but validation combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`) now catch wrongly-indented structural indicators, reducing this from ~50
-- **~9 infinite loops** — 3 in scalar stage (4CQQ, 4ZYM, 5GBF) + 6 in error stage
+- **~34 unexpected passes** — parser is still too permissive in some cases, but validation combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`) now catch wrongly-indented structural indicators, reducing this from ~50
+- **0 infinite loops** — position-advancement guard in `yamlStream` eliminates all timeouts by detecting when `document` consumes zero input and forcing progress
 - **Advanced stage near-zero** — anchors, aliases, tags, complex keys not implemented
 - **Meta parser bug fixed** — `---` inside yaml block scalar content was being treated as a test file separator, creating 103 phantom test cases with empty yaml (fixed by checking block scalar state before separator detection)
 
@@ -167,7 +167,10 @@ Added [yaml-test-suite](https://github.com/yaml/yaml-test-suite) as a git submod
 4. **Meta parser `---` handling** — `processLine` checked for `---` separator before checking if inside a yaml block scalar, truncating test yaml content. Fixed by reordering to check block scalar state first.
 
 **Validation work (ANALYSIS.md §2.A):**
-Three-valued error recovery combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) are **active** in `blockSequenceItems` and `blockMappingEntries`. They detect wrongly-indented structural indicators (e.g., `- ` at col 1 when `seqIndent = 0`) and raise validation errors. Impact: error rejection improved from 24% to 38% (+10 tests), overall suite from 164→177 passed (39.4%→42.5%). Note: these validators still use `throwUnexpected`, which lean4-parser’s `<|>` can swallow in some contexts — the `DispatchResult.invalid` path is not yet propagated through all callers.
+Three-valued error recovery combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) are **active** in `blockSequenceItems` and `blockMappingEntries`. They detect wrongly-indented structural indicators (e.g., `- ` at col 1 when `seqIndent = 0`) and raise validation errors. Impact: error rejection improved from 24% to 54% (+22 tests), overall suite from 164→192 passed (39.4%→46.2%). Note: these validators still use `throwUnexpected`, which lean4-parser's `<|>` can swallow in some contexts — the `DispatchResult.invalid` path is not yet propagated through all callers.
+
+**Infinite loop elimination:**
+Added position-advancement guard in `yamlStream` (`Document.lean`): saves `currentPos` before parsing each document, compares after — if no progress, consumes one character and reports a descriptive error. Eliminated all 36 timeout cases across 9 root cause categories (anchors, tags, quoted scalar folding, comments, explicit keys, same-indent sequences, tabs, empty keys, flow implicit mappings).
 
 ### Remaining Phases (Future)
 
@@ -211,7 +214,7 @@ Immediate priorities for continuing Phase 2:
 2. ~~**Refactor `blockValue` dispatch to `DispatchResult`**~~ — ✅ Done. Defined `DispatchResult` inductive type (`matched`/`noMatch`/`invalid`) in `Combinators.lean`. Extracted shared `dispatchByChar` in `Block.lean`, eliminating duplicated match statements in `blockValue`/`blockValueSameLine`. See [ANALYSIS.md](ANALYSIS.md) §2.A.
 3. ~~**Add multi-line plain scalar support**~~ — ✅ Done. Defined `ContinuationCheck` inductive type in `Combinators.lean` with `checkContinuation` pure `lookAhead` probe. Replaced single-line parser with multi-line `plainScalarContent` in `Scalar.lean`. Line folding per YAML §6.5. See [ANALYSIS.md](ANALYSIS.md) §2.B.
 4. ~~**Re-enable validation combinators**~~ — ✅ Done. Uncommented `validateNoWrongIndentSeq` / `validateNoWrongIndentMap` in `Block.lean`. Overall suite: 164→177 passed (39.4%→42.5%).
-5. **Investigate infinite loops** — analyze the 9 timeout cases (4CQQ, 4ZYM, 5GBF + 6 error-stage)
+5. ~~**Eliminate infinite loops**~~ — ✅ Done. Position-advancement guard in `yamlStream` detects when `document` consumes zero input, forces progress. All 36 timeouts (9 root cause categories) eliminated. Suite: 177→192 passed (42.5%→46.2%), error rejection: 38%→54%.
 6. **Fix multi-line quoted scalars** — handle line folding in double/single-quoted scalars
 7. **Add anchor/alias support** — enables the advanced stage (currently 1/81)
 8. **Iterate** — fix failures exposed by each stage, target 60%+ overall pass rate

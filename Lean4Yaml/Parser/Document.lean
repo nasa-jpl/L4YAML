@@ -194,7 +194,22 @@ partial def yamlStream : YamlParser (Array YamlDocument) := do
     if atEnd then
       continue' := false
     else
+      -- Record position before parsing the document.
+      -- If the document consumes zero input, we have an unhandled construct
+      -- (e.g., anchor, tag, explicit key) that would loop forever.
+      let posBefore ← currentPos
       let doc ← document
+      let posAfter ← currentPos
+      if posAfter == posBefore then
+        -- No progress — the document parsed but consumed nothing.
+        -- This happens when blockValue backtracks on unrecognized constructs
+        -- (anchors, tags, etc.) and returns an empty/null value.
+        -- Skip one character to avoid infinite loop, then report error.
+        let c ← option? anyToken
+        let msg := match c with
+          | some ch => s!"unhandled construct '{ch}' at line {posBefore.line}, column {posBefore.col}"
+          | none => s!"stuck at line {posBefore.line}, column {posBefore.col}"
+        withErrorMessage msg throwUnexpected
       docs := docs.push doc
       skipBlankLines
   return docs
