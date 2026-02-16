@@ -37,3 +37,7 @@ root = "Tests.SuiteRunner.Main"
 [[lean_exe]]
 name = "tryparse"
 root = "Tests.TryParse"
+
+[[lean_exe]]
+name = "quotedfolding"
+root = "Tests.QuotedFolding"
