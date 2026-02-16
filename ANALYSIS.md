@@ -29,11 +29,11 @@ lean4-yaml-verified's `YamlStream` tracks `col` natively in every `next?` call, 
 
 ## 2. Actionable Insights to Port
 
-### A. Three-Valued Error Recovery (High Priority) — ✅ Built, Ready to Re-enable
+### A. Three-Valued Error Recovery (High Priority) — ✅ Built and Active
 
 **Foundational principle:** Never use exceptions (parser errors) as a mechanism for making decisions. When processing any input — valid or invalid — the parser should produce explicit result values. Invalid YAML is an expected outcome, not an exceptional condition. Processing the entire yaml-test-suite should produce zero exceptions unless there is a genuine internal bug. See `LEAN4_STYLE.md` § "Parser Error Design: No Exceptions for Decisions".
 
-**Status (2026-02-15):** Validation combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) implemented in `Combinators.lean` and integrated into `Block.lean`. During testing, discovered that single-line plain scalar leaves multi-line continuation content unconsumed, causing false positives on valid tests (e.g., AB8U where `" - sequence entry"` looks like a wrong-indent indicator). Combinators were **commented out** with TODO in `blockSequenceItems` and `blockMappingEntries` pending §2.B (multi-line plain scalar). **§2.B is now complete** — `plainScalarContent` consumes continuation lines, so the false-positive issue should be resolved. **Next step: uncomment the validation calls in `Block.lean`.** Also confirmed that lean4-parser has **no committed/fatal error mechanism** — all errors are backtrackable (`withBacktracking`, `option?`, `first`, `<|>` all catch every `Result.error` unconditionally), making `throwUnexpected` unreliable for validation: any enclosing combinator silently swallows it.
+**Status (2026-02-15):** Validation combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) implemented in `Combinators.lean` and **active** in `Block.lean`'s `blockSequenceItems` and `blockMappingEntries`. Originally disabled because single-line plain scalar left continuation content unconsumed, causing false positives (e.g., AB8U). After §2.B (multi-line `plainScalarContent`), the false-positive issue was resolved and validators were re-enabled. Impact: error rejection improved from 24% to 38% (+10 tests), overall suite from 164→177 passed (39.4%→42.5%). Also confirmed that lean4-parser has **no committed/fatal error mechanism** — all errors are backtrackable (`withBacktracking`, `option?`, `first`, `<|>` all catch every `Result.error` unconditionally), making `throwUnexpected` unreliable for validation: any enclosing combinator silently swallows it.
 
 lean4-yaml discovered that backtracking (`<|>` / `withBacktracking`) conflates **two semantically different failures**:
 - "No match, try another parser" (normal backtracking)
@@ -139,8 +139,8 @@ This prevents invalid YAML from being silently accepted by a fallback parser. Th
 | Metric | lean4-yaml | lean4-yaml-verified |
 |--------|-----------|-------------------|
 | Total tests | 333 | 416 |
-| Correct | 210 (63%) | 164 (39.4%) |
-| Unexpected passes | 43 | ~50 |
+| Correct | 210 (63%) | 177 (42.5%) |
+| Unexpected passes | 43 | ~37 |
 | Infinite loops | 0 | 9 |
 | Internal tests | 112/113 (99%) | 41+ (all pass) |
 | Escape sequences | Full YAML 1.2 set | Full YAML 1.2 set |
@@ -150,7 +150,7 @@ This prevents invalid YAML from being silently accepted by a fallback parser. Th
 | Flow collections | Partial (55%) | 67% |
 | Block collections | Good (~70%) | 57% |
 | Document handling | — | 58% |
-| Error rejection | — | 24% (18/74) |
+| Error rejection | — | 38% (28/74) |
 
 ---
 
