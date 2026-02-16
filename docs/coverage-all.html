@@ -163,20 +163,20 @@
   <p class="subtitle">YAML 1.2.2 parser compliance against the official yaml-test-suite</p>
   <div class="stats">
     <div class="stat-box stat-total"><h3>Total</h3><div class="number">416</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">146</div></div>
-    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">77</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">145</div></div>
+    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">78</div></div>
     <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">0</div></div>
-    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">80</div></div>
+    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">79</div></div>
     <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">62</div></div>
-    <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">51</div></div>
-    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">146/416</div><div class="pct">(35.096154%)</div></div>
+    <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">52</div></div>
+    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">145/416</div><div class="pct">(34.855769%)</div></div>
   </div>
   <h3>Coverage by Stage</h3>
   <div class="stage-cards">
     <div class="stage-card">
       <div class="stage-card-name">scalar</div>
-      <div class="stage-card-stats">41/82 correct (50.000000%) · 41 pass, 8 fail, 0 exp-fail, 1 unexp-pass, 28 skip, 4 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 50.000000%"></div></div>
+      <div class="stage-card-stats">40/82 correct (48.000000%) · 40 pass, 9 fail, 0 exp-fail, 1 unexp-pass, 28 skip, 4 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 48.000000%"></div></div>
     </div>
     <div class="stage-card">
       <div class="stage-card-name">flow</div>
@@ -200,7 +200,7 @@
     </div>
     <div class="stage-card">
       <div class="stage-card-name">error</div>
-      <div class="stage-card-stats">0/74 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 63 unexp-pass, 0 skip, 11 timeout</div>
+      <div class="stage-card-stats">0/74 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 62 unexp-pass, 0 skip, 12 timeout</div>
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
     </div>
   </div>
@@ -539,7 +539,7 @@
         <td>error</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">sequence</span><span class="tag">indent</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="4jvg scalar value with two anchors anchor error mapping">
         <td>4JVG</td>
@@ -835,7 +835,7 @@
         <td>error</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="652z question mark at start of flow key flow">
         <td>652Z</td>
@@ -1469,13 +1469,13 @@
         <td><span class="tag">scalar</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="ab8u sequence entry that looks like two with wrong indentation scalar sequence">
+      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="ab8u sequence entry that looks like two with wrong indentation scalar sequence">
         <td>AB8U</td>
         <td>Sequence entry that looks like two with wrong indentation</td>
         <td>scalar</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">scalar</span><span class="tag">sequence</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected token at { offset := 20, line := 1, col := 1 }; sequence item at column 1, expected column 0 (wrong indentation) at { offset := 20, line := 1, col := 1 }; expected block sequence at { offset := 20, line := 1, col := 1 }; expected YAML value at { offset := 20, line := 1, col := 1 }">parse error: unexpected token at { offset := 20, line := 1, col := 1 }; sequence item at column 1, expected column 0 (wrong indentation) at { offset := 20, line := 1, col := 1 }; expected block sequence at { offset := 20, line := 1, col := 1 }; expected YAML value at { offset := 20, line := 1, col := 1 }</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="block" data-search="avm7 empty stream edge">
         <td>AVM7</td>
@@ -1875,7 +1875,7 @@
         <td>error</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">indent</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="dwx9 spec example 8.8. literal content spec literal scalar comment whitespace 1.3-err">
         <td>DWX9</td>
@@ -1915,7 +1915,7 @@
         <td>error</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">indent</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="ex5h multiline scalar at top level [1.3] scalar whitespace 1.3-mod">
         <td>EX5H</td>
@@ -2171,7 +2171,7 @@
         <td>error</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">scalar</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="document" data-search="hwv9 document-end marker footer">
         <td>HWV9</td>
@@ -2299,7 +2299,7 @@
         <td>error</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">double</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="k3wx colon and adjacent value after comment on next line comment flow mapping">
         <td>K3WX</td>
@@ -2643,7 +2643,7 @@
         <td>error</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">indent</span><span class="tag">double</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="n782 invalid document markers in flow style flow edge header footer error">
         <td>N782</td>
@@ -2715,7 +2715,7 @@
         <td>error</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="p76l spec example 6.19. secondary tag handle spec header tag unknown-tag">
         <td>P76L</td>
@@ -3141,13 +3141,13 @@
         <td><span class="tag">anchor</span><span class="tag">comment</span><span class="tag">1.3-err</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="u44r bad indentation in mapping (2) error mapping indent double">
+      <tr class="test-row" data-outcome="timeout" data-stage="error" data-search="u44r bad indentation in mapping (2) error mapping indent double">
         <td>U44R</td>
         <td>Bad indentation in mapping (2)</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-timeout">Timeout</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">indent</span><span class="tag">double</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td><span class="error-msg" title="timeout (possible infinite loop)">timeout (possible infinite loop)</span></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="u99r invalid comma in tag error tag">
         <td>U99R</td>
@@ -3515,7 +3515,7 @@
         <td>error</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="zvh3 wrong indented sequence item error sequence indent">
         <td>ZVH3</td>
@@ -3523,7 +3523,7 @@
         <td>error</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">sequence</span><span class="tag">indent</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="zwk4 key with anchor after missing explicit mapping value anchor explicit-key mapping">
         <td>ZWK4</td>

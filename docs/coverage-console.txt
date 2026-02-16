@@ -167,7 +167,7 @@ Running all tests for HTML report...
   [151/416] A2M4 ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
   [152/416] A6F9 ✓
   [153/416] A984 ✓
-  [154/416] AB8U ✓
+  [154/416] AB8U ✗ parse error: unexpected token at { offset := 20, line := 1, col := 1 }; sequence item at column 1, expected column 0 (wrong indentation) at { offset := 20, line := 1, col := 1 }; expected block sequence at { offset := 20, line := 1, col := 1 }; expected YAML value at { offset := 20, line := 1, col := 1 }
   [155/416] AVM7 ✓
   [156/416] AZ63 ⏱ timeout
   [157/416] AZW3 ✓
@@ -376,7 +376,7 @@ Running all tests for HTML report...
   [360/416] TS54 ○ YAML 1.3 specific
   [361/416] U3C3 ✗ parse error: unexpected token '!' at { offset := 36, line := 2, col := 1 }; expected plain scalar at { offset := 36, line := 2, col := 1 }; expected YAML value at { offset := 36, line := 2, col := 1 }
   [362/416] U3XV ○ YAML 1.3 specific
-  [363/416] U44R ⚠ unexpected pass
+  [363/416] U44R ⏱ timeout
   [364/416] U99R ⚠ unexpected pass
   [365/416] U9NS ✓
   [366/416] UDM2 ✓
@@ -432,7 +432,7 @@ Running all tests for HTML report...
   [416/416] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 146/416 (35.000000%)
+Correct: 145/416 (34.000000%)
 
 Generating HTML reports...
   wrote docs/index.html
