@@ -118,37 +118,39 @@ inductive FoldResult where
 
 /--
 Fold newlines in a quoted scalar
-(§6.5, https://yaml.org/spec/1.2.2/#65-line-folding).
+(§6.5, https://yaml.org/spec/1.2.2/#65-line-folding;
+ §7.3.1 [112-113], https://yaml.org/spec/1.2.2/#731-double-quoted-style;
+ §7.3.2 [124], https://yaml.org/spec/1.2.2/#732-single-quoted-style).
 
-In quoted scalars, newlines surrounded only by whitespace fold:
-- Single newline + whitespace → single space
-- Empty line (additional newline) → preserved newline
+Called after `collectChars` has already consumed the line break character.
+At entry, the stream is at the beginning of the next line.
+
+YAML flow folding rules:
+- Trailing whitespace on the line before the break is trimmed from `acc`
+- A single line break not followed by an empty line folds to a space
+- Each empty (blank) line contributes a preserved newline
+- Leading whitespace on the continuation line is consumed (not content)
 
 Before consuming whitespace on each continuation line, checks for
 `c-forbidden` (§9.1.2 [206]): `---` or `...` at column 0 followed by
 whitespace/newline/EOF. Returns `FoldResult.forbidden` if detected.
 -/
 partial def foldQuotedNewlines (acc : String) : YamlParser FoldResult := do
-  -- We're at the start of a continuation line (col 0 after newline).
-  -- Check for c-forbidden BEFORE consuming any whitespace.
-  let pos ← currentPos
-  if pos.col == 0 then
-    let boundary ← atDocumentBoundary
-    if boundary then
-      return .forbidden
-        s!"unterminated quoted scalar: document boundary at line {pos.line + 1}"
-  -- Skip trailing whitespace on current line
-  skipHWhitespace
-  -- Consume the newline
-  newline
-  -- Count empty lines (each empty line → newline in output)
-  let mut result := acc
-  let mut emptyLines := 0
-  -- Skip leading whitespace on each line, counting empty lines
-  let done ← loop result emptyLines
-  return done
+  -- Step 1: Trim trailing whitespace (spaces + tabs) from acc
+  -- (YAML §7.3.1: "All leading and trailing white space characters
+  --  on each line are excluded from the content")
+  let trimmed := trimTrailingWhitespace acc
+  -- Step 2: Count blank lines by consuming whitespace + newlines
+  let result ← loop trimmed 0
+  return result
 where
-  loop (result : String) (emptyLines : Nat) : YamlParser FoldResult := do
+  /-- Remove trailing space and tab characters from a string. -/
+  trimTrailingWhitespace (s : String) : String :=
+    let chars := s.toList
+    let trimmed := chars.reverse.dropWhile (fun c => c == ' ' || c == '\t')
+    String.ofList trimmed.reverse
+  /-- Loop: skip whitespace, check for newline (blank line) or content. -/
+  loop (result : String) (blankCount : Nat) : YamlParser FoldResult := do
     -- Check for c-forbidden at the start of each continuation line
     let pos ← currentPos
     if pos.col == 0 then
@@ -156,20 +158,23 @@ where
       if boundary then
         return .forbidden
           s!"unterminated quoted scalar: document boundary at line {pos.line + 1}"
-    skipSpaces
+    -- Skip leading whitespace (spaces AND tabs) on this line
+    skipHWhitespace
+    -- Check if this line is blank (another newline follows)
     match ← option? newline with
     | some _ =>
-      loop result (emptyLines + 1)
+      -- This was a blank line → count it and continue
+      loop result (blankCount + 1)
     | none =>
-      -- Found a content line
-      if emptyLines > 0 then
-        -- Empty lines → preserved newlines
+      -- Found content on this line (leading whitespace already consumed)
+      if blankCount > 0 then
+        -- Blank lines present → preserved newlines (one per blank line)
         let mut r := result
-        for _ in [:emptyLines] do
+        for _ in [:blankCount] do
           r := r.push '\n'
         return .folded r
       else
-        -- Single newline with no empty lines → space
+        -- No blank lines → single line break folds to a space
         return .folded (result.push ' ')
 
 /--
@@ -189,11 +194,23 @@ where
     match ← anyToken with
     | '"' => return acc
     | '\\' => do
-        -- Put the backslash back by looking at what escape produces
-        -- Actually, we already consumed it, so we need to handle the escape char
         let c ← anyToken
-        let escaped ← processEscape c
-        collectChars (acc.push escaped)
+        match c with
+        | '\n' => do
+            -- Escaped line break (line continuation, §5.7 [112]):
+            -- backslash + newline → trim trailing ws, skip leading ws, emit nothing
+            let trimmed := trimTrailingWs acc
+            skipHWhitespace
+            collectChars trimmed
+        | '\r' => do
+            -- Escaped CRLF line break
+            let _ ← option? (token '\n')
+            let trimmed := trimTrailingWs acc
+            skipHWhitespace
+            collectChars trimmed
+        | _ => do
+            let escaped ← processEscape c
+            collectChars (acc.push escaped)
     | '\n' => do
         -- Line folding (c-forbidden checked inside foldQuotedNewlines)
         match ← foldQuotedNewlines acc with
@@ -236,6 +253,11 @@ where
       return ⟨code.toUInt32, h⟩
     else
       Parser.throwUnexpectedWithMessage (msg := s!"invalid unicode: {code}")
+  /-- Trim trailing whitespace (spaces and tabs) from a string. -/
+  trimTrailingWs (s : String) : String :=
+    let chars := s.toList
+    let trimmed := chars.reverse.dropWhile (fun c => c == ' ' || c == '\t')
+    String.ofList trimmed.reverse
 
 /-! ## Single-Quoted Scalars
   §7.3.2 (https://yaml.org/spec/1.2.2/#732-single-quoted-style) -/

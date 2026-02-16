@@ -23,6 +23,7 @@ Lean4Yaml/
 └── Tests/
     ├── Main.lean            # Unit test suite (17 tests)
     ├── ParseTest.lean       # Parser integration tests (24+ tests)
+    ├── QuotedFolding.lean   # Quoted scalar folding tests (33 tests)
     ├── TryParse.lean        # Single-file parse binary (subprocess isolation)
     ├── CheckStringPos.lean  # String position utility tests
     └── SuiteRunner/
@@ -93,12 +94,12 @@ Built the complete parser from scratch on Lean 4.28.0-rc1 / Lake v5.0.0:
 | `Stream.lean` | ~272 | Position-aware YamlStream with automatic line/col tracking |
 | `Grammar.lean` | ~315 | Formal YAML grammar encoded as Lean Props |
 | `Combinators.lean` | ~215 | Character classification, whitespace/indent handling |
-| `Scalar.lean` | ~524 | Plain, double-quoted, single-quoted, block scalar parsers |
+| `Scalar.lean` | ~710 | Plain, double-quoted, single-quoted, block scalar parsers |
 | `Flow.lean` | ~205 | Flow sequences `[...]` and mappings `{...}` (mutual recursion) |
 | `Block.lean` | ~352 | Block sequences and mappings with indentation tracking |
 | `Document.lean` | ~230 | Document markers `---`/`...`, directives, multi-document streams |
 
-**Total: ~2286 lines, 217 build jobs, 0 errors.**
+**Total: ~2472 lines, 217 build jobs, 0 errors.**
 
 ### Phase 2: Parser Validation (Current) ← **YOU ARE HERE**
 
@@ -217,7 +218,7 @@ Immediate priorities for continuing Phase 2:
 5. ~~**Eliminate infinite loops**~~ — ✅ Done. Refactored `document` to return `DocumentResult` (`parsed`/`endOfStream`/`stalled`), making parse-progress an explicit result rather than an external position comparison. All 36 timeouts (9 root cause categories) eliminated. Suite: 177→192 passed (42.5%→46.2%), error rejection: 38%→54%. See [ANALYSIS.md](ANALYSIS.md) §5.
 6. **Fix multi-line quoted scalars** — analysis identified 5 algorithmic bugs in `foldQuotedNewlines` plus one missing `c-forbidden` check (see [ANALYSIS.md](ANALYSIS.md) §2.F). Two-phase plan:
    - **6a.** ✅ Added `FoldResult` type (`folded`/`forbidden`) and `c-forbidden` detection (YAML §9.1.2 [206]). `foldQuotedNewlines` checks `atDocumentBoundary` at column 0 before whitespace consumption on each continuation line. Both `doubleQuotedScalar` and `singleQuotedScalar` pattern-match on the result.
-   - **6b.** Fix `foldQuotedNewlines` algorithmic bugs — remove erroneous mandatory `newline`, fix off-by-one empty line counting, trim trailing whitespace, handle tabs, add `\` + newline escape.
+   - **6b.** ✅ Fixed all 5 algorithmic bugs: (A) removed mandatory `newline` — already consumed by `collectChars`; (B) fixed off-by-one in empty line counting; (C) added trailing whitespace trimming; (D) `skipSpaces`→`skipHWhitespace` for tab handling; (E) added `\` + newline escaped line break in `doubleQuotedScalar`. 33 tests in `Tests/QuotedFolding.lean`.
 7. **Add anchor/alias support** — enables the advanced stage (currently 1/81)
 8. **Iterate** — fix failures exposed by each stage, target 60%+ overall pass rate
 
@@ -238,6 +239,9 @@ lake build parsetest && .lake/build/bin/parsetest
 
 # Demo examples
 lake build demo && .lake/build/bin/demo
+
+# Quoted scalar folding tests
+lake build quotedfolding && .lake/build/bin/quotedfolding
 
 # yaml-test-suite (by stage: scalar, flow, block, document, advanced, error, all)
 lake build suiterunner tryparse && .lake/build/bin/suiterunner scalar
