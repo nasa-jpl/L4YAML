@@ -173,37 +173,69 @@ Three-valued error recovery combinators (`validateNoWrongIndentSeq`, `validateNo
 **Infinite loop elimination via `DocumentResult`:**
 Discovered 36 timeout cases (not 9), all sharing one root cause: `yamlStream`'s while loop retries `document` at the same position when no input is consumed. The initial fix (external position comparison) revealed an implicit assumption: `document` already knew whether it consumed input but didn't communicate this. Refactored `document` to return `DocumentResult` (`parsed`/`endOfStream`/`stalled`) — the same explicit-result-type pattern as `DispatchResult` and `ContinuationCheck`. Now `yamlStream` pattern-matches on the result instead of comparing positions externally. The `stalled` variant carries position for error reporting and becomes a proof obligation target in Phase 4. Eliminated all 36 timeout cases across 9 root cause categories (anchors, tags, quoted scalar folding, comments, explicit keys, same-indent sequences, tabs, empty keys, flow implicit mappings).
 
+### Phase 3: Verification — Layered Approach
+
+Formal verification proceeds in three layers, ordered by feasibility and diagnostic impact.
+
+**Key constraint: lean4-parser `partial` dependency.** The lean4-parser library uses `private partial def efoldlPAux` in its core fold loop, which propagates through `dropMany`, `count`, and other combinators our parsers depend on. Since `#guard` requires kernel reduction and `partial def` blocks kernel reduction, compile-time `#guard` tests remain blocked until lean4-parser removes its internal `partial` annotations. Our verification focuses on what IS provable now: standalone theorems, pure function properties, and specification invariants.
+
+Our own parsers are `partial def` for two independent reasons:
+1. **Own recursion** — self-recursive loops (`foldQuotedNewlines.loop`, `blockSequenceItems`, etc.) need termination proofs to remove `partial`
+2. **lean4-parser dependency** — even if our recursion is proven total, `#guard` won't work because lean4-parser's kernel-opaque `partial` blocks reduction
+
+Layer 1 targets reason (1) and delivers property proofs independent of lean4-parser. Layer 3 targets the full soundness theorem.
+
+#### Layer 1: Foundation ← **YOU ARE HERE**
+
+Standalone proofs about the stream, pure helper functions, and character classifiers. These have zero lean4-parser dependency.
+
+| Item | Description | Status |
+|------|-------------|--------|
+| **1a** | `next_decreasing`: after `YamlStream.next?`, remaining input strictly decreases | |
+| **1b** | Properties of `trimTrailingWhitespace`, `trimTrailingWs` (idempotence, no trailing ws) | |
+| **1c** | `Grammar.lean` character Props match `Combinators.lean` implementations | |
+| **1d** | `FoldResult` type invariants | |
+
+Effort: ~2 sessions. Diagnostic value: catches bugs in pure helper functions at compile time.
+
+#### Layer 2: Key Invariants
+
+Property proofs about specific parser behaviors. Where proofs cross into lean4-parser territory, termination is `sorry`-admitted to focus on the invariant itself.
+
+| Item | Description | Status |
+|------|-------------|--------|
+| **2a** | `foldQuotedNewlines` output has no c-forbidden characters | |
+| **2b** | Escape sequence resolution produces valid Unicode in `doubleQuotedScalar` | |
+| **2c** | `consumeIndent n` advances column by exactly `n` | |
+| **2d** | Decidable instances for `Grammar.lean` propositions | |
+
+Effort: ~2 sessions. Diagnostic value: specification-level checks for scalar parsing.
+
+#### Layer 3: Full Termination & Soundness (After Anchors)
+
+Full termination proofs for block/flow/document mutual recursion + soundness composition into `parse_sound`. Deferred until parser structure stabilizes after anchors/aliases.
+
+| Item | Description | Status |
+|------|-------------|--------|
+| **3a** | Remove `partial` from leaf parsers (own recursion) | |
+| **3b** | Remove `partial` from block/flow/document mutual recursion groups | |
+| **3c** | Compose soundness proofs: each parser produces `Grammar.ValidNode` | |
+| **3d** | Top-level `parse_sound` theorem | |
+| **3e** | Convert `axiom`s in `Soundness.lean` to `theorem`s | |
+
+Effort: ~5+ sessions. Full `#guard` requires lean4-parser `partial` constraint resolved.
+
 ### Remaining Phases (Future)
 
-#### Phase 3: Termination Proofs
+#### Phase 4: yaml-test-suite Proofs
 
-Replace `partial def` with total functions by providing well-founded relations on stream position.
+Encode yaml-test-suite test cases as compile-time `#guard` / `theorem` checks (requires Layer 3 + total lean4-parser).
 
-- [ ] **3a.** Prove `next_decreasing`: after `next?`, remaining input strictly decreases
-- [ ] **3b.** Prove scalar parsers terminate (each iteration consumes ≥1 char)
-- [ ] **3c.** Prove flow collection parsers terminate (mutual recursion with strictly decreasing input)
-- [ ] **3d.** Prove block collection parsers terminate (decreasing input + strictly increasing indentation)
-- [ ] **3e.** Remove all `partial` annotations
-
-#### Phase 4: Soundness Proofs
-
-Prove that the parser only produces values conforming to `Grammar.lean`.
-
-- [ ] **4a.** Scalar soundness
-- [ ] **4b.** Indentation soundness (`consumeIndent n` prevents `skipToNextLine`-class bugs)
-- [ ] **4c.** Collection soundness
-- [ ] **4d.** Document soundness → `parse_sound` theorem
-- [ ] **4e.** Convert `axiom`s in `Soundness.lean` to `theorem`s
-
-#### Phase 5: yaml-test-suite Proofs
-
-Encode yaml-test-suite test cases as compile-time `#guard` / `theorem` checks (requires Phase 3).
-
-#### Phase 6: Round-Trip Proofs
+#### Phase 5: Round-Trip Proofs
 
 Prove `parse ∘ emit = id` for a canonical YAML subset.
 
-#### Phase 7: Integration with lean4-yaml
+#### Phase 6: Integration with lean4-yaml
 
 Share the verified implementation with the existing lean4-yaml ecosystem.
 
@@ -242,6 +274,9 @@ lake build demo && .lake/build/bin/demo
 
 # Quoted scalar folding tests
 lake build quotedfolding && .lake/build/bin/quotedfolding
+
+# Layer 1 verification tests (stream, grammar↔combinators, pure functions)
+lake build verification && .lake/build/bin/verification
 
 # yaml-test-suite (by stage: scalar, flow, block, document, advanced, error, all)
 lake build suiterunner tryparse && .lake/build/bin/suiterunner scalar

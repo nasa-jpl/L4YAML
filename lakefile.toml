@@ -41,3 +41,7 @@ root = "Tests.TryParse"
 [[lean_exe]]
 name = "quotedfolding"
 root = "Tests.QuotedFolding"
+
+[[lean_exe]]
+name = "verification"
+root = "Tests.Verification"

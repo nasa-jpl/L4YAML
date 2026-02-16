@@ -261,8 +261,41 @@ def main (args : List String) : IO UInt32 := do
     IO.println (String.ofList (List.replicate 60 '-'))
     let stats := CoverageStats.fromResults results
     IO.println s!"\nCorrect: {stats.correctCount}/{stats.total} ({stats.successRate.floor}%)"
+
+    -- Run verified test suites and capture output
+    IO.println "\nRunning verified test suites..."
+    let verifiedSuites := #[
+      ("tests", "Unit Tests"),
+      ("parsetest", "Parser Integration Tests"),
+      ("quotedfolding", "Quoted Folding Tests"),
+      ("verification", "Layer 1 Verification Tests"),
+      ("demo", "Demo")
+    ]
+    let mut allVerifiedOutput := ""
+    let mut suiteStats : Array VerifiedSuiteStats := #[]
+    for (exe, label) in verifiedSuites do
+      IO.print s!"  Running {label}... "
+      (← IO.getStdout).flush
+      let result ← IO.Process.output {
+        cmd := s!".lake/build/bin/{exe}"
+        args := #[]
+      }
+      let output := result.stdout
+      allVerifiedOutput := allVerifiedOutput ++ s!"=== {label} ===\n" ++ output ++ "\n"
+      let suiteStat := parseTestOutput label output
+      suiteStats := suiteStats.push suiteStat
+      if result.exitCode == 0 then
+        IO.println s!"✓ {suiteStat.passed}/{suiteStat.total}"
+      else
+        IO.println s!"✗ {suiteStat.passed}/{suiteStat.total}"
+        allVerifiedOutput := allVerifiedOutput ++ s!"STDERR: {result.stderr}\n"
+    let verifiedStats : VerifiedTestStats := { suites := suiteStats }
+    IO.println s!"\nVerified: {verifiedStats.totalPassed}/{verifiedStats.totalTests}"
+
     IO.println s!"\nGenerating HTML reports..."
     writeReports results dir
+      (verifiedStats := some verifiedStats)
+      (verifiedRawOutput := some allVerifiedOutput)
     return 0
   | none => pure ()
 
