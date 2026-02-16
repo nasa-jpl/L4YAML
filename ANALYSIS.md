@@ -139,18 +139,18 @@ This prevents invalid YAML from being silently accepted by a fallback parser. Th
 | Metric | lean4-yaml | lean4-yaml-verified |
 |--------|-----------|-------------------|
 | Total tests | 333 | 416 |
-| Correct | 210 (63%) | 177 (42.5%) |
-| Unexpected passes | 43 | ~37 |
-| Infinite loops | 0 | 9 |
-| Internal tests | 112/113 (99%) | 41+ (all pass) |
+| Correct | 210 (63%) | 192 (46.2%) |
+| Unexpected passes | 43 | ~34 |
+| Infinite loops | 0 | 0 |
+| Internal tests | 112/113 (99%) | 42+ (all pass) |
 | Escape sequences | Full YAML 1.2 set | Full YAML 1.2 set |
 | Multi-line plain | ✅ (with edge cases) | ✅ (ContinuationCheck pattern) |
 | Anchors/aliases | Partial (38%) | ❌ Not implemented |
 | Tags | Partial (30%) | ❌ Not implemented |
-| Flow collections | Partial (55%) | 67% |
-| Block collections | Good (~70%) | 57% |
+| Flow collections | Partial (55%) | 71% |
+| Block collections | Good (~70%) | 58% |
 | Document handling | — | 58% |
-| Error rejection | — | 38% (28/74) |
+| Error rejection | — | 54% (40/74) |
 
 ---
 
@@ -159,8 +159,8 @@ This prevents invalid YAML from being silently accepted by a fallback parser. Th
 1. ~~**Three-valued error recovery (§2.A)**~~ — ✅ Done. Combinators built, ready to re-enable now that §2.B is complete.
 2. ~~**Refactor `blockValue` dispatch to `DispatchResult` (§2.A)**~~ — ✅ Done. Defined `DispatchResult` inductive type (`matched`/`noMatch`/`invalid`) in `Combinators.lean`. Extracted shared dispatch logic into `dispatchByChar` in `Block.lean`, eliminating duplicated match statements in `blockValue` and `blockValueSameLine`. Pure refactoring: same behavior, proof-friendly structure. Each variant maps to a lemma obligation; removes dependence on error propagation details.
 3. ~~**Add multi-line plain scalar support (§2.B)**~~ — ✅ Done. Defined `ContinuationCheck` inductive type (`notContinuing`/`plainContinuation`/`afterEmpty n`/`sequenceMarker`/`mappingEntry`) in `Combinators.lean`. Implemented `checkContinuation` as a pure `lookAhead` probe (check-then-consume pattern). Replaced `plainScalarSingleLine` with multi-line `plainScalarContent` in `Scalar.lean` — handles line folding (adjacent lines → space, empty lines → paragraph breaks). `dispatchByChar` passes `baseIndent := contentIndent - 1` to track parent indent. Scalar suite: 41/82 passed (50%)
-4. **🔜 Re-enable validation combinators (§2.A)** — prerequisite (§2.B multi-line scalar) is done. Uncomment `validateNoWrongIndentSeq` / `validateNoWrongIndentMap` in `Block.lean`'s `blockSequenceItems` and `blockMappingEntries`. Expected impact: addresses ~50 unexpected passes where invalid YAML is silently accepted
-5. **Investigate the 9 infinite loops** (4CQQ, 4ZYM, 5GBF + 6 error-stage)
+4. ~~**Re-enable validation combinators (§2.A)**~~ — ✅ Done. Uncommented validators in `Block.lean`. Error rejection improved from 24% to 38%, overall suite from 164→177 passed (39.4%→42.5%).
+5. ~~**Eliminate infinite loops**~~ — ✅ Done. Discovered 36 timeout cases (not 9), all sharing one root cause: `yamlStream`'s while loop retries `document` at the same position when no input is consumed. Added position-advancement guard in `Document.lean` — saves `currentPos` before `document` parse, compares after, and if no progress was made, consumes one character and reports a descriptive error (e.g., "unhandled construct '&' at line 1, column 0"). Impact: 0 timeouts (was 36), error rejection 38%→54% (28→40/74), overall suite 177→192 passed (42.5%→46.2%). The 36 timeouts fell into 9 root cause categories: anchor/alias `&`/`*` (9), tags `!`/`!!` (5), quoted scalar folding (4), comment before value (3), explicit key `?` (4), same-indent sequence (3), tab handling (2), empty key edge cases (3), flow implicit mapping (3).
 6. **Fix multi-line quoted scalars** — handle line folding in double/single-quoted scalars
 7. **Add anchor/alias support** — lean4-yaml's `anchorMap : HashMap String YamlValue` approach works
 8. **Defer tags** — low coverage even in lean4-yaml, complex spec surface area
