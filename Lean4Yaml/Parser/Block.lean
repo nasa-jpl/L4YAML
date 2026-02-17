@@ -7,6 +7,7 @@ import Lean4Yaml.Stream
 import Lean4Yaml.Parser.Combinators
 import Lean4Yaml.Parser.Scalar
 import Lean4Yaml.Parser.Anchor
+import Lean4Yaml.Parser.Tag
 import Lean4Yaml.Parser.Flow
 
 /-!
@@ -86,6 +87,11 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
     -- Anchor prefix: parse name, then parse the following value.
     -- The value may be on the same line or the next line(s).
     let name ← parseAnchorPrefix
+    -- Check for tag after anchor: `&anchor !tag value` (§6.9)
+    let tagName ← do
+      match ← option? (lookAhead (token '!')) with
+      | some _ => pure (some (← parseTagPrefix))
+      | none => pure none
     -- Check if the actual value is on the next line
     match ← option? (lookAhead anyToken) with
     | some c =>
@@ -93,6 +99,7 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
         -- Value on next line: use blockValue which handles
         -- blank lines, indentation, and dispatching
         let val ← blockValue contentIndent
+        let val := match tagName with | some t => val.withTag t | none => val
         storeAnchor name val
         return .matched val
       else
@@ -100,17 +107,56 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
         let result ← dispatchByChar contentIndent
         match result with
         | .matched val =>
+          let val := match tagName with | some t => val.withTag t | none => val
           storeAnchor name val
           return .matched val
         | other => return other
     | none =>
       -- Anchor at end of input: the anchored node is null
-      storeAnchor name YamlValue.null
-      return .matched YamlValue.null
+      let val := match tagName with
+        | some t => YamlValue.null.withTag t
+        | none => YamlValue.null
+      storeAnchor name val
+      return .matched val
   | '*' => do
     -- Alias: resolve to previously anchored value
     let val ← parseAlias
     return .matched val
+  | '!' => do
+    -- Tag prefix: parse tag, then parse the following value.
+    -- Handles all forms: `!<uri>`, `!!type`, `!local`, `!handle!suffix`
+    let tag ← parseTagPrefix
+    -- Check for anchor after tag: `!tag &anchor value` (§6.9)
+    let anchorName ← do
+      match ← option? (lookAhead (token '&')) with
+      | some _ => pure (some (← parseAnchorPrefix))
+      | none => pure none
+    -- Check if the actual value is on the next line
+    match ← option? (lookAhead anyToken) with
+    | some c =>
+      if isLineBreak c then
+        let val ← blockValue contentIndent
+        let val := val.withTag tag
+        match anchorName with
+        | some name => storeAnchor name val
+        | none => pure ()
+        return .matched val
+      else
+        let result ← dispatchByChar contentIndent
+        match result with
+        | .matched val =>
+          let val := val.withTag tag
+          match anchorName with
+          | some name => storeAnchor name val
+          | none => pure ()
+          return .matched val
+        | other => return other
+    | none =>
+      let val := YamlValue.null.withTag tag
+      match anchorName with
+      | some name => storeAnchor name val
+      | none => pure ()
+      return .matched val
   | '-' => do
     -- Could be a block sequence indicator or a plain scalar starting with `-`
     let isSeq ← lookAhead do
@@ -343,10 +389,15 @@ partial def blockMappingKey : YamlParser YamlValue := do
   match ← option? (lookAhead (token '*')) with
   | some _ => parseAlias
   | none =>
-  -- Check for anchor on mapping key
-  match ← option? (lookAhead (token '&')) with
+  -- Check for tag on mapping key: `!tag key: value` (§6.9)
+  match ← option? (lookAhead (token '!')) with
   | some _ => do
-    let name ← parseAnchorPrefix
+    let tag ← parseTagPrefix
+    -- Check for anchor after tag: `!tag &anchor key: value`
+    let anchorName ← do
+      match ← option? (lookAhead (token '&')) with
+      | some _ => pure (some (← parseAnchorPrefix))
+      | none => pure none
     let key ← first [
       doubleQuotedScalar,
       singleQuotedScalar,
@@ -354,6 +405,29 @@ partial def blockMappingKey : YamlParser YamlValue := do
         let content ← plainMappingKey
         return YamlValue.plainScalar content
     ]
+    let key := key.withTag tag
+    match anchorName with
+    | some name => storeAnchor name key
+    | none => pure ()
+    return key
+  | none =>
+  -- Check for anchor on mapping key
+  match ← option? (lookAhead (token '&')) with
+  | some _ => do
+    let name ← parseAnchorPrefix
+    -- Check for tag after anchor: `&anchor !tag key: value`
+    let tagName ← do
+      match ← option? (lookAhead (token '!')) with
+      | some _ => pure (some (← parseTagPrefix))
+      | none => pure none
+    let key ← first [
+      doubleQuotedScalar,
+      singleQuotedScalar,
+      do
+        let content ← plainMappingKey
+        return YamlValue.plainScalar content
+    ]
+    let key := match tagName with | some t => key.withTag t | none => key
     storeAnchor name key
     return key
   | none =>

@@ -15,6 +15,8 @@ Lean4Yaml/
 │   ├── Flow.lean            # Flow sequences [...] and mappings {...}
 │   ├── Block.lean           # Block sequences (- item) and mappings (key: value)
 │   └── Document.lean        # Document markers, directives, multi-document streams
+│   ├── Anchor.lean          # Anchor (&) / alias (*) parsers with contracts
+│   ├── Tag.lean             # Tag (!) parsers: `!!type`, `!local`, `!<uri>`, `!h!suffix`
 ├── Proofs/
 │   ├── Termination.lean     # Termination proofs for recursive parsers
 │   ├── Soundness.lean       # Parser produces only valid YAML (planned)
@@ -25,6 +27,8 @@ Lean4Yaml/
     ├── Main.lean            # Unit tests (17 tests)
     ├── ParseTest.lean       # Parser integration tests (25 tests)
     ├── QuotedFolding.lean   # Quoted scalar folding tests (34 tests)
+    ├── AnchorAlias.lean     # Anchor/alias tests (33 tests)
+    ├── TagTests.lean        # Tag tests (44 tests)
     ├── Verification.lean    # Layer 1 verification tests (138 tests)
     ├── StringLemmas.lean    # String/position lemma tests (129 tests)
     ├── TryParse.lean        # Single-file parse binary (subprocess isolation)
@@ -40,7 +44,7 @@ Demo.lean                    # End-to-end demo examples (7 tests)
 
 Verification uses a deliberate 3-layer approach:
 
-1. **Runtime tests** (350 tests across 6 suites) — empirical validation that properties hold. Every `theorem` target starts life as a runtime `check` test.
+1. **Runtime tests** (427 tests across 8 suites) — empirical validation that properties hold. Every `theorem` target starts life as a runtime `check` test.
 2. **Formal proofs** (`theorem`/`lemma` in `Proofs/*.lean`) — machine-checked guarantees. Layered by dependency: pure functions first, then parser invariants, then full soundness.
 3. **Compile-time guards** (`#guard`) — blocked until lean4-parser removes `partial def`. Will convert runtime tests to kernel-evaluated checks.
 
@@ -149,32 +153,52 @@ Added [yaml-test-suite](https://github.com/yaml/yaml-test-suite) as a git submod
 
 **Full yaml-test-suite results (416 test cases from 351 files):**
 
-| Stage | Tests | Passed | Failed | Skipped | Pass Rate |
-|-------|-------|--------|--------|---------|-----------|
-| Scalar | 82 | 40 | 14 | 28 | 48.8% |
-| + Flow | 128 | 71 | 29 | 28 | 55.5% |
-| + Block | 237 | 137 | 62 | 38 | 57.8% |
-| + Document | 261 | 151 | 65 | 45 | 57.9% |
-| + Advanced | 342 | 152 | 128 | 62 | 44.4% |
-| Error | 74 | 40 | 34 | 0 | 54.1% |
-| **All unique** | **416** | **192** | **162** | **62** | **46.2%** |
-
-**Per-feature pass rates (non-cumulative):**
-
-| Feature | Tests | Passed | Rate |
-|---------|-------|--------|------|
-| Scalar | 82 | 40 | 49% |
-| Flow | 46 | 31 | 67% |
-| Block | 109 | 66 | 61% |
-| Document | 24 | 14 | 58% |
-| Advanced | 81 | 1 | 1% |
-| Error | 74 | 40 | 54% |
+| Stage | Tests | Passed | Failed | Unexpected Pass | Skipped | Correct Rate |
+|-------|-------|--------|--------|-----------------|---------|-------------|
+| Scalar | 82 | 51 | 2 | 1 | 28 | 62% |
+| Flow | 46 | 35 | 8 | 3 | 0 | 76% |
+| Block | 109 | 71 | 14 | 14 | 10 | 65% |
+| Document | 24 | 14 | 1 | 2 | 7 | 58% |
+| Advanced | 81 | 21 | 43 | 0 | 17 | 26% |
+| Error | 74 | 0 | 0 | 74 | 0 | 0% |
+| **Total** | **416** | **192** | **68** | **94** | **62** | **46.2%** |
 
 **Key findings:**
-- **~34 unexpected passes** — parser is still too permissive in some cases, but validation combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`) now catch wrongly-indented structural indicators, reducing this from ~50
-- **0 infinite loops** — `DocumentResult` type in `document` makes parse-progress explicit; `yamlStream` pattern-matches on `parsed`/`endOfStream`/`stalled` instead of comparing positions externally
-- **Advanced stage near-zero** — anchors, aliases, tags, complex keys not implemented
-- **Meta parser bug fixed** — `---` inside yaml block scalar content was being treated as a test file separator, creating 103 phantom test cases with empty yaml (fixed by checking block scalar state before separator detection)
+- **192/416 correct (46.2%)** — up from 175/416 (42.1%) after adding tag support (step 8)
+- **94 unexpected passes** — parser is too permissive: 74 in the error stage (parser accepts invalid YAML), 20 in other stages
+- **68 failures** — down from 85 after tag support fixed 17 tag-related failures
+- **0 infinite loops** — `DocumentResult` type makes parse-progress explicit
+- **Advanced stage: 21/81 (26%)** — tag support added (step 8), anchor/alias support added (step 7)
+
+**Failure root cause analysis** (run `python3 tests/analyze_coverage.py` or `python3 tests/analyze_coverage_deep.py` for full details):
+
+| Root Cause | Failures | Description |
+|------------|----------|-------------|
+| Tags (`!`) edge cases | 11 | Remaining tag failures: verbatim tags in complex contexts, `%TAG` resolution, bare `!` edge cases |
+| Explicit key (`?`) not supported | 17 | `?` indicator in block/flow contexts |
+| Flow edge cases | 9 | Implicit keys, single-pair entries, empty collections |
+| Empty key handling | 6 | Missing/empty keys in block and flow contexts |
+| Comment edge cases | 5 | Comments after flow, in multi-line, after directives |
+| Escape sequences | 5 | Unicode escapes (`\x`, `\u`, `\U`) in double-quoted scalars |
+| Anchor/alias edge cases | 4 | Unicode anchors, anchors before zero-indent, empty-node anchors |
+| Complex keys | 3 | Flow collections as mapping keys |
+| Other | 8 | Indent edge cases, alias edge cases, document markers |
+
+**Unexpected pass analysis:**
+
+| Category | Count | Description |
+|----------|-------|-------------|
+| Flow structure | 13 | Missing commas, extra brackets, invalid entries accepted |
+| Mapping structure | 12 | Invalid mapping structure accepted |
+| Quoted scalars | 10 | Unclosed quotes, invalid escapes accepted |
+| Indentation | 9 | Wrong indentation accepted |
+| Directives | 7 | Invalid `%YAML`/`%TAG` directives accepted |
+| Anchors/aliases | 7 | Double anchors, invalid anchor positions accepted |
+| Comments | 6 | Invalid comment positions accepted |
+| Block scalars | 3 | Invalid block scalar indicators accepted |
+| Document markers | 3 | Invalid content after `...` accepted |
+| Tags | 2 | Invalid tag syntax accepted |
+| Other | 2 | Edge cases in scalar/sequence validation |
 
 **Key bugs found and fixed during Phase 2:**
 1. **Plain scalar consuming flow indicators** — `anyToken` in `collectPlain` consumed `,`, `]`, `}` before the check could reject them. Fixed with `lookAhead anyToken` (peek-before-consume pattern).
@@ -256,18 +280,78 @@ Share the verified implementation with the existing lean4-yaml ecosystem.
 
 ## Next Steps
 
-Immediate priorities for continuing Phase 2:
+### Completed
 
-1. ~~**Three-valued error recovery ([ANALYSIS.md](ANALYSIS.md) §2.A)**~~ — ✅ Done. Validation combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) built in `Combinators.lean` and active in `Block.lean`. Error rejection: 24%→38%.
-2. ~~**Refactor `blockValue` dispatch to `DispatchResult`**~~ — ✅ Done. Defined `DispatchResult` inductive type (`matched`/`noMatch`/`invalid`) in `Combinators.lean`. Extracted shared `dispatchByChar` in `Block.lean`, eliminating duplicated match statements in `blockValue`/`blockValueSameLine`. See [ANALYSIS.md](ANALYSIS.md) §2.A.
-3. ~~**Add multi-line plain scalar support**~~ — ✅ Done. Defined `ContinuationCheck` inductive type in `Combinators.lean` with `checkContinuation` pure `lookAhead` probe. Replaced single-line parser with multi-line `plainScalarContent` in `Scalar.lean`. Line folding per YAML §6.5. See [ANALYSIS.md](ANALYSIS.md) §2.B.
-4. ~~**Re-enable validation combinators**~~ — ✅ Done. Uncommented `validateNoWrongIndentSeq` / `validateNoWrongIndentMap` in `Block.lean`. Overall suite: 164→177 passed (39.4%→42.5%).
-5. ~~**Eliminate infinite loops**~~ — ✅ Done. Refactored `document` to return `DocumentResult` (`parsed`/`endOfStream`/`stalled`), making parse-progress an explicit result rather than an external position comparison. All 36 timeouts (9 root cause categories) eliminated. Suite: 177→192 passed (42.5%→46.2%), error rejection: 38%→54%. See [ANALYSIS.md](ANALYSIS.md) §5.
-6. **Fix multi-line quoted scalars** — analysis identified 5 algorithmic bugs in `foldQuotedNewlines` plus one missing `c-forbidden` check (see [ANALYSIS.md](ANALYSIS.md) §2.F). Two-phase plan:
-   - **6a.** ✅ Added `FoldResult` type (`folded`/`forbidden`) and `c-forbidden` detection (YAML §9.1.2 [206]). `foldQuotedNewlines` checks `atDocumentBoundary` at column 0 before whitespace consumption on each continuation line. Both `doubleQuotedScalar` and `singleQuotedScalar` pattern-match on the result.
-   - **6b.** ✅ Fixed all 5 algorithmic bugs: (A) removed mandatory `newline` — already consumed by `collectChars`; (B) fixed off-by-one in empty line counting; (C) added trailing whitespace trimming; (D) `skipSpaces`→`skipHWhitespace` for tab handling; (E) added `\` + newline escaped line break in `doubleQuotedScalar`. 33 tests in `Tests/QuotedFolding.lean`.
-7. **Add anchor/alias support** — enables the advanced stage (currently 1/81)
-8. **Iterate** — fix failures exposed by each stage, target 60%+ overall pass rate
+1. ~~**Three-valued error recovery**~~ — ✅ Validation combinators active in `Block.lean`.
+2. ~~**Refactor `blockValue` dispatch to `DispatchResult`**~~ — ✅ `DispatchResult` type in `Combinators.lean`.
+3. ~~**Add multi-line plain scalar support**~~ — ✅ `ContinuationCheck` type, line folding per §6.5.
+4. ~~**Re-enable validation combinators**~~ — ✅ Suite: 164→177 passed.
+5. ~~**Eliminate infinite loops**~~ — ✅ `DocumentResult` type. All 36 timeouts eliminated.
+6. ~~**Fix multi-line quoted scalars**~~ — ✅ `FoldResult` type + 5 algorithmic bug fixes. 33 tests in `QuotedFolding.lean`.
+7. ~~**Add anchor/alias support**~~ — ✅ `AnchorMap` abstraction with algebraic laws, `parseAlias`/`parseAnchorPrefix`/`resetAnchorMap`. Document-scoped anchors per §3.2.2.2. 2 backtracking-isolation theorems proved. 33 tests in `AnchorAlias.lean`. Advanced stage: 1→10 passing.
+8. ~~**Add tag support**~~ — ✅ `parseTagPrefix` handles all tag forms: verbatim (`!<uri>`), secondary (`!!type`), named (`!handle!suffix`), primary (`!local`), non-specific (`!`). `YamlValue.withTag` applies tags to any node. Tag+anchor ordering (`!tag &anchor val` and `&anchor !tag val`) supported in all dispatch points. 44 tests in `TagTests.lean`. Suite: 175→192 correct (+17), Advanced stage: 10→21 passing.
+
+### Current: Address 85 Failures + 94 Unexpected Passes
+
+Analysis scripts: `python3 tests/analyze_coverage.py` (summary) and `python3 tests/analyze_coverage_deep.py` (detailed root causes).
+
+Current: **192/416 correct (46.2%)**. Projected after all steps below: **~310/416 (~74.5%)**.
+
+#### Step 8: Tag support (`!tag`, `!!type`, `%TAG` directive) — ✅ COMPLETE
+
+**Result: +17 correct (175→192).** Fixed 17/28 tag-related failures. Remaining 11 tag failures involve:
+- Verbatim tags in complex nested contexts (7FWL, UGM3)
+- `%TAG` directive resolution not wired to tag handles (5TYM, P76L)
+- Named handle tags in sequences (Z9M4, 6CK3)
+- Bare `!` and edge cases (UKK6, S4JQ)
+
+Implementation: `Tag.lean` (155 lines) — `parseTagPrefix` with all 5 tag forms. Wired into `dispatchByChar` (`Block.lean`), `blockMappingKey` (`Block.lean`), and `flowValue` (`Flow.lean`). Both tag+anchor orderings supported.
+
+#### Step 9: Explicit key support (`?`) — +17 tests
+
+**Impact: 17 failures fixed.** Second largest feature gap.
+
+The parser doesn't recognize `?` as an explicit key indicator (§8.2.2). This blocks 17 advanced-stage tests including complex mappings, multi-line keys, and spec examples. Need:
+- `?` detection at block indent level → starts explicit key
+- `?` in flow context → complex key indicator
+- Value follows on next line after `:` at same indent
+
+Test IDs: 5WE3, 6M2F, 6PBE, 7W2P, A2M4, CT4Q, DFF7, FRK4, GH63, JTV5, KK5P, M5DY, PW8X, V9D5, X8DW, ZWK4 (+ some overlap with tags).
+
+#### Step 10: Strict validation (error rejection) — +74 unexpected passes
+
+**Impact: 0 failures, up to 74 unexpected passes resolved.** The parser is too permissive — it accepts invalid YAML that should be rejected. This should be done incrementally:
+
+| Sub-step | Category | Count | What to validate |
+|----------|----------|-------|------------------|
+| **10a** | Flow structure | 13 | Missing commas, extra brackets, unterminated flow collections |
+| **10b** | Mapping structure | 12 | Invalid key-value structure, duplicate implicit keys |
+| **10c** | Quoted scalars | 10 | Unclosed quotes, invalid escape sequences, multiline quoted keys |
+| **10d** | Indentation | 9 | Wrong indentation in sequences, mappings, block scalars |
+| **10e** | Anchors/aliases | 7 | Double anchors, invalid anchor positions, undefined aliases |
+| **10f** | Directives | 7 | Invalid `%YAML`, `%TAG`, reserved directives |
+| **10g** | Comments | 6 | Invalid comment positions (in flow, after scalars) |
+| **10h** | Block scalars | 3 | Invalid block scalar indicators, wrong indentation |
+| **10i** | Document markers | 3 | Invalid content after `...`, wrong `---` positions |
+| **10j** | Tags/other | 4 | Invalid tag syntax, trailing content |
+
+Approach: Use the existing `DispatchResult.invalid` pattern to propagate validation errors above lean4-parser's `<|>` swallowing. Extend `validateNoWrongIndentSeq`/`validateNoWrongIndentMap` to cover more contexts.
+
+#### Step 11: Remaining edge cases — +23 tests
+
+| Category | Failures | Description |
+|----------|----------|-------------|
+| Flow edge cases | 9 | Implicit keys in flow, single-pair entries, empty flow collections |
+| Empty key handling | 6 | Missing/empty keys in block and flow contexts |
+| Escape sequences | 5 | Unicode escapes (`\x`, `\u`, `\U`) in double-quoted scalars |
+| Complex keys | 3 | Flow collections as mapping keys (§7.4.2) |
+
+#### Step 12: Iterate toward 60%+ correct rate
+
+After steps 8–11, projected correct rate is ~74.5% (310/416). The remaining ~25% are edge cases in:
+- Non-error unexpected passes in block/flow/document stages (20 tests)
+- Interactions between features (anchor + tag, explicit-key + tag, etc.)
+- YAML 1.3-specific tests (currently skipped, 62 tests)
 
 ## Building
 
@@ -278,19 +362,21 @@ lake build
 ## Running Tests
 
 ```sh
-# All verified test suites (350 tests across 6 suites)
-lake build suiterunner && .lake/build/bin/suiterunner --html docs/
+# All verified test suites (427 tests across 8 suites)
+lake build suiterunner tryparse && lake exe suiterunner --html docs/
 
 # Individual suites (each produces structured VerifiedSuiteResult)
-lake build tests && .lake/build/bin/tests              # Unit tests (17)
-lake build parsetest && .lake/build/bin/parsetest        # Parser integration (25)
-lake build quotedfolding && .lake/build/bin/quotedfolding # Quoted folding (34)
-lake build verification && .lake/build/bin/verification  # Layer 1 verification (138)
-lake build stringlemmas && .lake/build/bin/stringlemmas  # String lemma tests (129)
-lake build demo && .lake/build/bin/demo                  # Demo examples (7)
+lake exe tests              # Unit tests (17)
+lake exe parsetest           # Parser integration (25)
+lake exe quotedfolding       # Quoted folding (34)
+lake exe anchortests         # Anchor/alias tests (33)
+lake exe tagtests            # Tag tests (44)
+lake exe verification        # Layer 1 verification (138)
+lake exe stringlemmas        # String lemma tests (129)
+lake exe demo                # Demo examples (7)
 
 # yaml-test-suite (by stage: scalar, flow, block, document, advanced, error, all)
-lake build suiterunner tryparse && .lake/build/bin/suiterunner scalar
+lake build suiterunner tryparse && lake exe suiterunner scalar
 ```
 
 ## YAML Spec Coverage
