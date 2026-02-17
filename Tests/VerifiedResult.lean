@@ -1,3 +1,5 @@
+import Lean.Elab.Term
+
 /-
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
@@ -51,6 +53,7 @@ structure VerifiedTestCase where
   category : String
   name : String
   outcome : VerifiedOutcome
+  sourceLine : Nat := 0
   deriving Repr
 
 /-- Aggregate result from running a complete test suite. -/
@@ -93,14 +96,49 @@ structure TestCollector where
 def setCategory (ref : IO.Ref TestCollector) (cat : String) : IO Unit :=
   ref.modify fun tc => { tc with category := cat }
 
-/-- Record a test result. `cond = true` → pass, `false` → fail. -/
-def check (ref : IO.Ref TestCollector) (name : String) (cond : Bool)
-    (message : String := "") : IO Unit :=
+/-- Record a test result. Implementation; prefer the `check` elab for auto line capture. -/
+def checkImpl (ref : IO.Ref TestCollector) (name : String) (cond : Bool)
+    (message : String := "") (srcLine : Nat := 0) : IO Unit :=
   ref.modify fun tc =>
     let outcome := if cond then VerifiedOutcome.pass
                    else VerifiedOutcome.fail message
     { tc with results := tc.results.push {
-        category := tc.category, name := name, outcome := outcome } }
+        category := tc.category, name := name, outcome := outcome, sourceLine := srcLine } }
+
+/-! ## `check` / `checkM` — auto-capture source line number
+
+The `check` macro replaces the direct function call and automatically
+embeds the source line number into the test result at elaboration time.
+Use `checkM` when a `message` string is needed on failure.
+
+Note: macros can only capture byte offset, not true line number. We use
+`elab` with `MonadFileMap` to get accurate line numbers.
+-/
+
+end Tests
+
+open Lean Elab Term in
+/-- `check ref name cond` — records a test result, auto-capturing the
+    source line number for precise HTML hyperlinks. -/
+elab "check " ref:term:max name:term:max cond:term : term => do
+  let fm ← getFileMap
+  let pos := (← getRef).getPos?.getD 0
+  let line := fm.toPosition pos |>.line
+  let lineLit := Lean.Syntax.mkNumLit (toString line)
+  let newStx ← `(Tests.checkImpl $ref $name $cond (srcLine := $lineLit))
+  elabTerm newStx none
+
+open Lean Elab Term in
+/-- `checkM ref name cond msg` — like `check` but includes an error message. -/
+elab "checkM " ref:term:max name:term:max cond:term:max msg:term : term => do
+  let fm ← getFileMap
+  let pos := (← getRef).getPos?.getD 0
+  let line := fm.toPosition pos |>.line
+  let lineLit := Lean.Syntax.mkNumLit (toString line)
+  let newStx ← `(Tests.checkImpl $ref $name $cond (message := $msg) (srcLine := $lineLit))
+  elabTerm newStx none
+
+namespace Tests
 
 /-- Extract the accumulated test cases. -/
 def finish (ref : IO.Ref TestCollector) : IO (Array VerifiedTestCase) := do

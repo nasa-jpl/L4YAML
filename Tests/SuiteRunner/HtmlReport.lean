@@ -13,6 +13,10 @@ Adapted from lean4-yaml's TestCoverageReport.lean for lean4-yaml-verified.
 
 namespace Tests.SuiteRunner
 
+/-- GitHub blob base URL for source file links. -/
+def repoSourceUrl : String :=
+  "https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/"
+
 /-! ## Test Result Data for Reports -/
 
 /-- Outcome of a single test case for reporting purposes. -/
@@ -579,7 +583,7 @@ def generateIndexHtml (results : Array ReportResult)
       let suiteRows := String.join (suites.toList.map fun suite =>
         let icon := if suite.allPass then "✓" else "✗"
         let color := if suite.allPass then "#4CAF50" else "#f44336"
-        s!"    <tr><td><a href=\"../{escapeHtml suite.sourceFile}\" style=\"color:#2196F3;text-decoration:none\">{escapeHtml suite.label}</a></td>" ++
+        s!"    <tr><td><a href=\"{repoSourceUrl}{escapeHtml suite.sourceFile}\" target=\"_blank\" style=\"color:#2196F3;text-decoration:none\">{escapeHtml suite.label}</a></td>" ++
         s!"<td style=\"color:{color};font-weight:bold\">{icon} {suite.passed}/{suite.total}</td></tr>\n")
       String.join [
         s!"  <h2>Verified Tests</h2>\n",
@@ -634,7 +638,7 @@ def generateVerifiedTestsHtml (suites : Array Tests.VerifiedSuiteResult) : Strin
     s!"      <div class=\"stage-card-name\">{escapeHtml suite.label}</div>\n" ++
     s!"      <div class=\"stage-card-stats\">{suite.passed}/{suite.total} passed ({pct}%)</div>\n" ++
     s!"      <div class=\"stage-bar\"><div class=\"stage-bar-fill\" style=\"width: {pct}%\"></div></div>\n" ++
-    s!"      <div class=\"stage-card-source\"><a href=\"../{escapeHtml suite.sourceFile}\" class=\"source-link\">📄 {escapeHtml suite.sourceFile}</a></div>\n" ++
+    s!"      <div class=\"stage-card-source\"><a href=\"{repoSourceUrl}{escapeHtml suite.sourceFile}\" target=\"_blank\" class=\"source-link\">📄 {escapeHtml suite.sourceFile}</a></div>\n" ++
     s!"    </div>\n")
 
   -- Suite dropdown options
@@ -652,9 +656,10 @@ def generateVerifiedTestsHtml (suites : Array Tests.VerifiedSuiteResult) : Strin
         | .fail msg =>
           if msg.isEmpty then ""
           else s!"<span class=\"error-msg\" title=\"{escapeHtml msg}\">{escapeHtml msg}</span>"
+      let lineAnchor := if tc.sourceLine > 0 then s!"#L{tc.sourceLine}" else ""
       let searchData := (s!"{suite.name} {tc.category} {tc.name}").toLower
       s!"      <tr class=\"test-row\" data-outcome=\"{outcomeClass}\" data-suite=\"{escapeHtml suite.name}\" data-search=\"{escapeHtml searchData}\">\n" ++
-      s!"        <td><a href=\"../{escapeHtml suite.sourceFile}\" class=\"source-link\">{escapeHtml suite.label}</a></td>\n" ++
+      s!"        <td><a href=\"{repoSourceUrl}{escapeHtml suite.sourceFile}{lineAnchor}\" target=\"_blank\" class=\"source-link\">{escapeHtml suite.label}</a></td>\n" ++
       s!"        <td>{escapeHtml tc.category}</td>\n" ++
       s!"        <td>{escapeHtml tc.name}</td>\n" ++
       s!"        <td><span class=\"badge {badgeClass}\">{badgeLabel}</span></td>\n" ++

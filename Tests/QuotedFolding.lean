@@ -59,14 +59,14 @@ def expectContent (state : IO.Ref TestCollector) (label : String)
   match getContent (runParser p input) with
   | .ok content =>
     if content == expected then check state label true
-    else check state label false (message := s!"expected {repr expected}, got {repr content}")
-  | .error e => check state label false (message := s!"parse error: {e}")
+    else checkM state label false s!"expected {repr expected}, got {repr content}"
+  | .error e => checkM state label false s!"parse error: {e}"
 
 /-- Check that a parser fails on the given input. -/
 def expectFailure (state : IO.Ref TestCollector) (label : String)
     (p : YamlParser YamlValue) (input : String) : IO Unit := do
   match runParser p input with
-  | .ok v => check state label false (message := s!"expected failure, got {repr v}")
+  | .ok v => checkM state label false s!"expected failure, got {repr v}"
   | .error _ => check state label true
 
 /-! ## Bug A: Simple fold (single newline → space)
