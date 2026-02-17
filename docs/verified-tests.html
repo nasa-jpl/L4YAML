@@ -65,10 +65,10 @@
   <p class="subtitle">Unit tests, parser tests, verification tests, and string lemma tests — all must pass.</p>
 
   <div class="stats">
-    <div class="stat-box stat-total"><h3>Total</h3><div class="number">350</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">350</div></div>
+    <div class="stat-box stat-total"><h3>Total</h3><div class="number">383</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">383</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
-    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">6</div></div>
+    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">7</div></div>
   </div>
   <h3>Suites</h3>
   <div class="stage-cards">
@@ -103,6 +103,12 @@
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/StringLemmas.lean" target="_blank" class="source-link">📄 Tests/StringLemmas.lean</a></div>
     </div>
     <div class="stage-card" style="border-left-color:var(--color-pass)">
+      <div class="stage-card-name">Anchor &amp; Alias Tests</div>
+      <div class="stage-card-stats">33/33 passed (100%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
+      <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean" target="_blank" class="source-link">📄 Tests/AnchorAlias.lean</a></div>
+    </div>
+    <div class="stage-card" style="border-left-color:var(--color-pass)">
       <div class="stage-card-name">Demo</div>
       <div class="stage-card-stats">7/7 passed (100%)</div>
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
@@ -126,6 +132,7 @@
         <option value="quotedfolding">Quoted Folding Tests</option>
         <option value="verification">Layer 1 Verification Tests</option>
         <option value="stringlemmas">String Lemma Tests</option>
+        <option value="anchortests">Anchor &amp; Alias Tests</option>
         <option value="demo">Demo</option>
       </select>
     </div>
@@ -133,7 +140,7 @@
       <label>Search:</label>
       <input type="text" class="search-input" placeholder="Category, test name..." oninput="searchTests(this.value)">
     </div>
-    <div class="filter-group"><span>Showing <strong id="visibleCount">350</strong> of 350</span></div>
+    <div class="filter-group"><span>Showing <strong id="visibleCount">383</strong> of 383</span></div>
   </div>
 
   <table id="testTable">
@@ -2547,6 +2554,237 @@
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/StringLemmas.lean#L563" target="_blank" class="source-link">String Lemma Tests</a></td>
         <td>indentation column tracking</td>
         <td>2 spaces after newline: col == 2</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests anchor name parsing simple name">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L60" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Anchor name parsing</td>
+        <td>simple name</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests anchor name parsing name with hyphens">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L63" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Anchor name parsing</td>
+        <td>name with hyphens</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests anchor name parsing name with underscore and digit">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L66" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Anchor name parsing</td>
+        <td>name with underscore and digit</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests anchor name parsing single char name">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L69" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Anchor name parsing</td>
+        <td>single char name</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests basic block anchors anchor on plain scalar parses">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L78" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Basic block anchors</td>
+        <td>anchor on plain scalar parses</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests basic block anchors anchor on double-quoted scalar">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L84" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Basic block anchors</td>
+        <td>anchor on double-quoted scalar</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests basic block anchors anchor on single-quoted scalar">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L90" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Basic block anchors</td>
+        <td>anchor on single-quoted scalar</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests basic block aliases alias resolves to anchored value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L102" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Basic block aliases</td>
+        <td>alias resolves to anchored value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests basic block aliases alias value is correct">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L103" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Basic block aliases</td>
+        <td>alias value is correct</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests basic block aliases undefined alias fails">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L108" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Basic block aliases</td>
+        <td>undefined alias fails</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests block collection anchors anchor on block sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L120" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Block collection anchors</td>
+        <td>anchor on block sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests block collection anchors sequence has 2 items">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L123" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Block collection anchors</td>
+        <td>sequence has 2 items</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests block collection anchors anchor on block mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L130" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Block collection anchors</td>
+        <td>anchor on block mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests flow context anchors anchor on flow sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L140" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Flow context anchors</td>
+        <td>anchor on flow sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests flow context anchors anchor on flow mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L145" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Flow context anchors</td>
+        <td>anchor on flow mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests flow context anchors alias in block sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L152" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Flow context anchors</td>
+        <td>alias in block sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests flow context anchors alias equals anchor">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L153" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Flow context anchors</td>
+        <td>alias equals anchor</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests flow inline anchors anchors within flow seq">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L162" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Flow inline anchors</td>
+        <td>anchors within flow seq</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests flow inline anchors first alias matches">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L164" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Flow inline anchors</td>
+        <td>first alias matches</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests flow inline anchors second alias matches">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L165" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Flow inline anchors</td>
+        <td>second alias matches</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests flow inline anchors anchor in flow mapping value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L171" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Flow inline anchors</td>
+        <td>anchor in flow mapping value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests flow inline anchors flow mapping alias matches">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L174" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Flow inline anchors</td>
+        <td>flow mapping alias matches</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests value correctness anchor value preserved">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L184" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Value correctness</td>
+        <td>anchor value preserved</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests value correctness alias is exact copy">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L192" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Value correctness</td>
+        <td>alias is exact copy</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests anchor map behavior multiple anchors: *x">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L203" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Anchor map behavior</td>
+        <td>multiple anchors: *x</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests anchor map behavior multiple anchors: *y">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L204" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Anchor map behavior</td>
+        <td>multiple anchors: *y</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests anchor map behavior anchor redefinition uses latest">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L211" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Anchor map behavior</td>
+        <td>anchor redefinition uses latest</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests yaml spec examples ex 2.10: hr value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L226" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>YAML spec examples</td>
+        <td>Ex 2.10: hr value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests yaml spec examples ex 2.10: rbi value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L227" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>YAML spec examples</td>
+        <td>Ex 2.10: rbi value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests alias as mapping key alias in sequence resolves">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L238" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Alias as mapping key</td>
+        <td>alias in sequence resolves</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests alias as mapping key alias equals original">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L239" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Alias as mapping key</td>
+        <td>alias equals original</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests document scope (§3.2.2.2) first doc parses">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L265" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Document scope (§3.2.2.2)</td>
+        <td>first doc parses</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="anchortests" data-search="anchortests document scope (§3.2.2.2) anchor does not leak across docs">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AnchorAlias.lean#L266" target="_blank" class="source-link">Anchor &amp; Alias Tests</a></td>
+        <td>Document scope (§3.2.2.2)</td>
+        <td>anchor does not leak across docs</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>

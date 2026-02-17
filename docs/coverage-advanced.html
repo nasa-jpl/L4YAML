@@ -163,13 +163,13 @@
   <p class="subtitle">YAML 1.2.2 parser compliance against the official yaml-test-suite</p>
   <div class="stats">
     <div class="stat-box stat-total"><h3>Total</h3><div class="number">81</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">1</div></div>
-    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">63</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">10</div></div>
+    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">54</div></div>
     <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">0</div></div>
     <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">0</div></div>
     <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">17</div></div>
     <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">0</div></div>
-    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">1/81</div><div class="pct">(1.234568%)</div></div>
+    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">10/81</div><div class="pct">(12.345679%)</div></div>
   </div>
   <h3>Coverage by Stage</h3>
   <div class="stage-cards">
@@ -195,8 +195,8 @@
     </div>
     <div class="stage-card">
       <div class="stage-card-name">advanced</div>
-      <div class="stage-card-stats">1/81 correct (1.000000%) · 1 pass, 63 fail, 0 exp-fail, 0 unexp-pass, 17 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 1.000000%"></div></div>
+      <div class="stage-card-stats">10/81 correct (12.000000%) · 10 pass, 54 fail, 0 exp-fail, 0 unexp-pass, 17 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 12.000000%"></div></div>
     </div>
     <div class="stage-card">
       <div class="stage-card-name">error</div>
@@ -293,21 +293,21 @@
         <td><span class="tag">explicit-key</span><span class="tag">header</span><span class="tag">mapping</span><span class="tag">tag</span></td>
         <td><span class="error-msg" title="parse error: unexpected token &#39;!&#39; at { offset := 5, line := 0, col := 5 }; expected plain scalar at { offset := 5, line := 0, col := 5 }; expected YAML value at { offset := 5, line := 0, col := 5 }">parse error: unexpected token &#39;!&#39; at { offset := 5, line := 0, col := 5 }; expected plain scalar at { offset := 5, line := 0, col := 5 }; expected YAML value at { offset := 5, line := 0, col := 5 }</span></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="3gzx spec example 7.1. alias nodes mapping spec alias">
+      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="3gzx spec example 7.1. alias nodes mapping spec alias">
         <td>3GZX</td>
         <td>Spec Example 7.1. Alias Nodes</td>
         <td>advanced</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">mapping</span><span class="tag">spec</span><span class="tag">alias</span></td>
-        <td><span class="error-msg" title="parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct &#39;F&#39; at line 0, column 0 at { offset := 1, line := 0, col := 1 }">parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct &#39;F&#39; at line 0, column 0 at { offset := 1, line := 0, col := 1 }</span></td>
+        <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="3r3p single block sequence with anchor anchor sequence">
+      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="3r3p single block sequence with anchor anchor sequence">
         <td>3R3P</td>
         <td>Single block sequence with anchor</td>
         <td>advanced</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">anchor</span><span class="tag">sequence</span></td>
-        <td><span class="error-msg" title="parse error: unexpected token &#39;&amp;&#39; at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }">parse error: unexpected token &#39;&amp;&#39; at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="4fj6 nested implicit complex keys complex-key flow mapping sequence">
         <td>4FJ6</td>
@@ -357,13 +357,13 @@
         <td><span class="tag">explicit-key</span><span class="tag">spec</span><span class="tag">mapping</span><span class="tag">comment</span><span class="tag">literal</span><span class="tag">sequence</span></td>
         <td><span class="error-msg" title="parse error: unexpected token at { offset := 1, line := 0, col := 1 }; &#39;?&#39; cannot start a plain scalar when followed by whitespace at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }">parse error: unexpected token at { offset := 1, line := 0, col := 1 }; &#39;?&#39; cannot start a plain scalar when followed by whitespace at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }</span></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="6bfj mapping, key and flow sequence item anchors anchor complex-key flow mapping sequence">
+      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="6bfj mapping, key and flow sequence item anchors anchor complex-key flow mapping sequence">
         <td>6BFJ</td>
         <td>Mapping, key and flow sequence item anchors</td>
         <td>advanced</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">anchor</span><span class="tag">complex-key</span><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
-        <td><span class="error-msg" title="parse error: unexpected token &#39;&amp;&#39; at { offset := 5, line := 1, col := 1 }; expected plain scalar at { offset := 5, line := 1, col := 1 }; expected YAML value at { offset := 5, line := 1, col := 1 }">parse error: unexpected token &#39;&amp;&#39; at { offset := 5, line := 1, col := 1 }; expected plain scalar at { offset := 5, line := 1, col := 1 }; expected YAML value at { offset := 5, line := 1, col := 1 }</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="6ck3 spec example 6.26. tag shorthands spec tag local-tag">
         <td>6CK3</td>
@@ -437,13 +437,13 @@
         <td><span class="tag">anchor</span><span class="tag">comment</span><span class="tag">mapping</span><span class="tag">1.3-mod</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="7bub spec example 2.10. node for “sammy sosa” appears twice in this document mapping sequence spec alias">
+      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="7bub spec example 2.10. node for “sammy sosa” appears twice in this document mapping sequence spec alias">
         <td>7BUB</td>
         <td>Spec Example 2.10. Node for “Sammy Sosa” appears twice in this document</td>
         <td>advanced</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">mapping</span><span class="tag">sequence</span><span class="tag">spec</span><span class="tag">alias</span></td>
-        <td><span class="error-msg" title="parse error: unexpected token at { offset := 5, line := 1, col := 1 }; unhandled construct &#39;h&#39; at line 1, column 0 at { offset := 5, line := 1, col := 1 }">parse error: unexpected token at { offset := 5, line := 1, col := 1 }; unhandled construct &#39;h&#39; at line 1, column 0 at { offset := 5, line := 1, col := 1 }</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="7fwl spec example 6.24. verbatim tags mapping spec tag unknown-tag">
         <td>7FWL</td>
@@ -475,7 +475,7 @@
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">anchor</span></td>
-        <td><span class="error-msg" title="parse error: unexpected token &#39;&amp;&#39; at { offset := 7, line := 1, col := 3 }; expected plain scalar at { offset := 7, line := 1, col := 3 }; expected block sequence at { offset := 7, line := 1, col := 3 }; expected YAML value at { offset := 7, line := 1, col := 3 }">parse error: unexpected token &#39;&amp;&#39; at { offset := 7, line := 1, col := 3 }; expected plain scalar at { offset := 7, line := 1, col := 3 }; expected block sequence at { offset := 7, line := 1, col := 3 }; expected YAML value at { offset := 7, line := 1, col := 3 }</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token &#39;😁&#39; at { offset := 11, line := 1, col := 4 }; expected anchor name at { offset := 7, line := 1, col := 3 }; expected anchor (&amp;name) at { offset := 7, line := 1, col := 3 }; expected block sequence at { offset := 7, line := 1, col := 3 }; expected YAML value at { offset := 7, line := 1, col := 3 }">parse error: unexpected token &#39;😁&#39; at { offset := 11, line := 1, col := 4 }; expected anchor name at { offset := 7, line := 1, col := 3 }; expected anchor (&amp;name) at { offset := 7, line := 1, col := 3 }; expected block sequence at { offset := 7, line := 1, col := 3 }; expected YAML value at { offset := 7, line := 1, col := 3 }</span></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="9kax various combinations of tags and anchors anchor mapping 1.3-err tag">
         <td>9KAX</td>
@@ -531,7 +531,7 @@
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">anchor</span><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
-        <td><span class="error-msg" title="parse error: unexpected token &#39;&amp;&#39; at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }">parse error: unexpected token &#39;&amp;&#39; at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token at { offset := 14, line := 1, col := 3 }; expected &#39;,&#39; or &#39;]&#39; in flow sequence, got &#39;:&#39; at { offset := 14, line := 1, col := 3 }; expected flow sequence at { offset := 14, line := 1, col := 3 }; expected YAML value at { offset := 14, line := 1, col := 3 }">parse error: unexpected token at { offset := 14, line := 1, col := 3 }; expected &#39;,&#39; or &#39;]&#39; in flow sequence, got &#39;:&#39; at { offset := 14, line := 1, col := 3 }; expected flow sequence at { offset := 14, line := 1, col := 3 }; expected YAML value at { offset := 14, line := 1, col := 3 }</span></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="ct4q spec example 7.20. single pair explicit entry explicit-key spec flow mapping">
         <td>CT4Q</td>
@@ -563,7 +563,7 @@
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">mapping</span><span class="tag">alias</span></td>
-        <td><span class="error-msg" title="parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct &#39;&amp;&#39; at line 0, column 0 at { offset := 1, line := 0, col := 1 }">parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct &#39;&amp;&#39; at line 0, column 0 at { offset := 1, line := 0, col := 1 }</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token at { offset := 13, line := 1, col := 2 }; undefined anchor: *b at { offset := 13, line := 1, col := 2 }; expected alias (*name) at { offset := 13, line := 1, col := 2 }; expected YAML value at { offset := 13, line := 1, col := 2 }">parse error: unexpected token at { offset := 13, line := 1, col := 2 }; undefined anchor: *b at { offset := 13, line := 1, col := 2 }; expected alias (*name) at { offset := 13, line := 1, col := 2 }; expected YAML value at { offset := 13, line := 1, col := 2 }</span></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="ehf6 tags for flow objects tag flow mapping sequence">
         <td>EHF6</td>
@@ -579,7 +579,7 @@
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">anchor</span><span class="tag">tag</span></td>
-        <td><span class="error-msg" title="parse error: unexpected token &#39;&amp;&#39; at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected block sequence at { offset := 3, line := 0, col := 3 }; expected YAML value at { offset := 3, line := 0, col := 3 }">parse error: unexpected token &#39;&amp;&#39; at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected block sequence at { offset := 3, line := 0, col := 3 }; expected YAML value at { offset := 3, line := 0, col := 3 }</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token &#39;!&#39; at { offset := 6, line := 0, col := 6 }; expected plain scalar at { offset := 6, line := 0, col := 6 }; expected block sequence at { offset := 6, line := 0, col := 6 }; expected YAML value at { offset := 6, line := 0, col := 6 }">parse error: unexpected token &#39;!&#39; at { offset := 6, line := 0, col := 6 }; expected plain scalar at { offset := 6, line := 0, col := 6 }; expected block sequence at { offset := 6, line := 0, col := 6 }; expected YAML value at { offset := 6, line := 0, col := 6 }</span></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="fh7j tags on empty scalars tag scalar">
         <td>FH7J</td>
@@ -597,13 +597,13 @@
         <td><span class="tag">empty-key</span><span class="tag">explicit-key</span><span class="tag">spec</span><span class="tag">flow</span><span class="tag">mapping</span></td>
         <td><span class="error-msg" title="parse error: unexpected token at { offset := 16, line := 2, col := 3 }; &#39;:&#39; cannot start a plain scalar when followed by whitespace at { offset := 16, line := 2, col := 3 }; expected plain scalar at { offset := 16, line := 2, col := 3 }; expected flow mapping at { offset := 15, line := 2, col := 2 }; expected YAML value at { offset := 15, line := 2, col := 2 }">parse error: unexpected token at { offset := 16, line := 2, col := 3 }; &#39;:&#39; cannot start a plain scalar when followed by whitespace at { offset := 16, line := 2, col := 3 }; expected plain scalar at { offset := 16, line := 2, col := 3 }; expected flow mapping at { offset := 15, line := 2, col := 2 }; expected YAML value at { offset := 15, line := 2, col := 2 }</span></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="fta2 single block sequence with anchor and explicit document start anchor header sequence">
+      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="fta2 single block sequence with anchor and explicit document start anchor header sequence">
         <td>FTA2</td>
         <td>Single block sequence with anchor and explicit document start</td>
         <td>advanced</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">anchor</span><span class="tag">header</span><span class="tag">sequence</span></td>
-        <td><span class="error-msg" title="parse error: unexpected token &#39;&amp;&#39; at { offset := 5, line := 0, col := 5 }; expected plain scalar at { offset := 5, line := 0, col := 5 }; expected YAML value at { offset := 5, line := 0, col := 5 }">parse error: unexpected token &#39;&amp;&#39; at { offset := 5, line := 0, col := 5 }; expected plain scalar at { offset := 5, line := 0, col := 5 }; expected YAML value at { offset := 5, line := 0, col := 5 }</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="gh63 mixed block mapping (explicit to implicit) explicit-key mapping">
         <td>GH63</td>
@@ -629,13 +629,13 @@
         <td><span class="tag">spec</span><span class="tag">mapping</span><span class="tag">tag</span><span class="tag">unknown-tag</span></td>
         <td><span class="error-msg" title="parse error: unexpected token &#39;!&#39; at { offset := 259, line := 7, col := 5 }; expected plain scalar at { offset := 259, line := 7, col := 5 }; expected YAML value at { offset := 259, line := 7, col := 5 }">parse error: unexpected token &#39;!&#39; at { offset := 259, line := 7, col := 5 }; expected plain scalar at { offset := 259, line := 7, col := 5 }; expected YAML value at { offset := 259, line := 7, col := 5 }</span></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="js2j spec example 6.29. node anchors spec alias">
+      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="js2j spec example 6.29. node anchors spec alias">
         <td>JS2J</td>
         <td>Spec Example 6.29. Node Anchors</td>
         <td>advanced</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">spec</span><span class="tag">alias</span></td>
-        <td><span class="error-msg" title="parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct &#39;F&#39; at line 0, column 0 at { offset := 1, line := 0, col := 1 }">parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct &#39;F&#39; at line 0, column 0 at { offset := 1, line := 0, col := 1 }</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="jtv5 block mapping with multiline scalars explicit-key mapping scalar">
         <td>JTV5</td>
@@ -715,7 +715,7 @@
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">anchor</span><span class="tag">explicit-key</span></td>
-        <td><span class="error-msg" title="parse error: unexpected token &#39;&amp;&#39; at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected block sequence at { offset := 3, line := 0, col := 3 }; expected YAML value at { offset := 3, line := 0, col := 3 }">parse error: unexpected token &#39;&amp;&#39; at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected block sequence at { offset := 3, line := 0, col := 3 }; expected YAML value at { offset := 3, line := 0, col := 3 }</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token at { offset := 5, line := 1, col := 0 }; content at column 0 is less than minimum indent 1 at { offset := 5, line := 1, col := 0 }; expected YAML value at { offset := 5, line := 1, col := 0 }; expected block sequence at { offset := 5, line := 1, col := 0 }; expected YAML value at { offset := 5, line := 1, col := 0 }">parse error: unexpected token at { offset := 5, line := 1, col := 0 }; content at column 0 is less than minimum indent 1 at { offset := 5, line := 1, col := 0 }; expected YAML value at { offset := 5, line := 1, col := 0 }; expected block sequence at { offset := 5, line := 1, col := 0 }; expected YAML value at { offset := 5, line := 1, col := 0 }</span></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="q9wf spec example 6.12. separation spaces complex-key flow spec comment whitespace 1.3-err">
         <td>Q9WF</td>
@@ -797,13 +797,13 @@
         <td><span class="tag">spec</span><span class="tag">tag</span><span class="tag">literal</span><span class="tag">mapping</span><span class="tag">sequence</span><span class="tag">alias</span><span class="tag">unknown-tag</span></td>
         <td><span class="error-msg" title="parse error: unexpected token &#39;!&#39; at { offset := 5, line := 0, col := 5 }; expected plain scalar at { offset := 5, line := 0, col := 5 }; expected YAML value at { offset := 5, line := 0, col := 5 }">parse error: unexpected token &#39;!&#39; at { offset := 5, line := 0, col := 5 }; expected plain scalar at { offset := 5, line := 0, col := 5 }; expected YAML value at { offset := 5, line := 0, col := 5 }</span></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="v55r aliases in block sequence alias sequence">
+      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="v55r aliases in block sequence alias sequence">
         <td>V55R</td>
         <td>Aliases in Block Sequence</td>
         <td>advanced</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">alias</span><span class="tag">sequence</span></td>
-        <td><span class="error-msg" title="parse error: unexpected token &#39;&amp;&#39; at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected block sequence at { offset := 3, line := 0, col := 3 }; expected YAML value at { offset := 3, line := 0, col := 3 }">parse error: unexpected token &#39;&amp;&#39; at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected block sequence at { offset := 3, line := 0, col := 3 }; expected YAML value at { offset := 3, line := 0, col := 3 }</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="v9d5 spec example 8.19. compact block mappings complex-key explicit-key spec mapping">
         <td>V9D5</td>
@@ -853,13 +853,13 @@
         <td><span class="tag">comment</span><span class="tag">explicit-key</span><span class="tag">folded</span><span class="tag">1.3-err</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="y2gn anchor with colon in the middle anchor">
+      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="y2gn anchor with colon in the middle anchor">
         <td>Y2GN</td>
         <td>Anchor with colon in the middle</td>
         <td>advanced</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">anchor</span></td>
-        <td><span class="error-msg" title="parse error: unexpected token at { offset := 5, line := 1, col := 1 }; unhandled construct &#39;k&#39; at line 1, column 0 at { offset := 5, line := 1, col := 1 }">parse error: unexpected token at { offset := 5, line := 1, col := 1 }; unhandled construct &#39;k&#39; at line 1, column 0 at { offset := 5, line := 1, col := 1 }</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="z67p spec example 8.21. block scalar nodes [1.3] indent spec literal folded tag local-tag 1.3-mod">
         <td>Z67P</td>
@@ -877,13 +877,13 @@
         <td><span class="tag">spec</span><span class="tag">header</span><span class="tag">tag</span><span class="tag">unknown-tag</span></td>
         <td><span class="error-msg" title="parse error: unexpected token &#39;!&#39; at { offset := 42, line := 2, col := 3 }; expected plain scalar at { offset := 42, line := 2, col := 3 }; expected block sequence at { offset := 42, line := 2, col := 3 }; expected YAML value at { offset := 42, line := 2, col := 3 }">parse error: unexpected token &#39;!&#39; at { offset := 42, line := 2, col := 3 }; expected plain scalar at { offset := 42, line := 2, col := 3 }; expected block sequence at { offset := 42, line := 2, col := 3 }; expected YAML value at { offset := 42, line := 2, col := 3 }</span></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="zh7c anchors in mapping anchor mapping">
+      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="zh7c anchors in mapping anchor mapping">
         <td>ZH7C</td>
         <td>Anchors in Mapping</td>
         <td>advanced</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">anchor</span><span class="tag">mapping</span></td>
-        <td><span class="error-msg" title="parse error: unexpected token at { offset := 9, line := 1, col := 1 }; unhandled construct &#39;c&#39; at line 1, column 0 at { offset := 9, line := 1, col := 1 }">parse error: unexpected token at { offset := 9, line := 1, col := 1 }; unhandled construct &#39;c&#39; at line 1, column 0 at { offset := 9, line := 1, col := 1 }</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="zwk4 key with anchor after missing explicit mapping value anchor explicit-key mapping">
         <td>ZWK4</td>
