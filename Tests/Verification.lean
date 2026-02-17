@@ -4,6 +4,7 @@ import Lean4Yaml.Grammar
 import Lean4Yaml.Parser.Combinators
 import Lean4Yaml.Parser.Scalar
 import Lean4Yaml.Proofs.Termination
+import Tests.VerifiedResult
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -36,27 +37,14 @@ open Lean4Yaml
 open Lean4Yaml.Parse
 open Lean4Yaml.Grammar
 open Lean4Yaml.Proofs.Termination
+open Tests
 
 namespace Tests.Verification
 
-/-! ## Test Infrastructure -/
-
-structure TestState where
-  passed : Nat := 0
-  failed : Nat := 0
-
-def check (state : IO.Ref TestState) (name : String) (cond : Bool) : IO Unit := do
-  if cond then
-    IO.println s!"  ✓ {name}"
-    state.modify fun s => { s with passed := s.passed + 1 }
-  else
-    IO.println s!"  ✗ {name}"
-    state.modify fun s => { s with failed := s.failed + 1 }
-
 /-! ## 1. YamlStream Properties -/
 
-def testStreamOfString (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- YamlStream.ofString ---"
+def testStreamOfString (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "YamlStream.ofString"
   let s := YamlStream.ofString "abc"
   check state "startPos is 0" (s.startPos.byteIdx == 0)
   check state "line is 0" (s.line == 0)
@@ -66,8 +54,8 @@ def testStreamOfString (state : IO.Ref TestState) : IO Unit := do
   let empty := YamlStream.ofString ""
   check state "empty stream: not hasNext" (!empty.hasNext)
 
-def testStreamNextBasic (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- YamlStream.next? basic ---"
+def testStreamNextBasic (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "YamlStream.next? basic"
   let s := YamlStream.ofString "hi"
   match s.next? with
   | some (c, s') =>
@@ -84,8 +72,8 @@ def testStreamNextBasic (state : IO.Ref TestState) : IO Unit := do
   | none =>
     check state "first next? should succeed" false
 
-def testStreamNextNewline (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- YamlStream.next? newline tracking ---"
+def testStreamNextNewline (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "YamlStream.next? newline tracking"
   let s := YamlStream.ofString "a\nb"
   match s.next? with
   | some ('a', s1) =>
@@ -100,8 +88,8 @@ def testStreamNextNewline (state : IO.Ref TestState) : IO Unit := do
     | _ => check state "newline char" false
   | _ => check state "'a' first" false
 
-def testStreamMultipleNewlines (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- YamlStream.next? multiple newlines ---"
+def testStreamMultipleNewlines (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "YamlStream.next? multiple newlines"
   let s := YamlStream.ofString "x\n\ny"
   -- Consume 'x'
   let some ('x', s1) := s.next? | do check state "expect 'x'" false; return
@@ -116,8 +104,8 @@ def testStreamMultipleNewlines (state : IO.Ref TestState) : IO Unit := do
   let some ('y', s4) := s3.next? | do check state "expect 'y'" false; return
   check state "after 'y': line=2 col=1" (s4.line == 2 && s4.col == 1)
 
-def testStreamPeek (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- YamlStream.peek? ---"
+def testStreamPeek (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "YamlStream.peek?"
   let s := YamlStream.ofString "xy"
   check state "peek? returns 'x'" (s.peek? == some 'x')
   -- peek doesn't advance
@@ -128,8 +116,8 @@ def testStreamPeek (state : IO.Ref TestState) : IO Unit := do
 
 /-! ## 2. remainingLength Properties -/
 
-def testRemainingLength (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- remainingLength ---"
+def testRemainingLength (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "remainingLength"
   let s := YamlStream.ofString "abc"
   check state "initial remainingLength is 3" (remainingLength s == 3)
 
@@ -144,13 +132,13 @@ def testRemainingLength (state : IO.Ref TestState) : IO Unit := do
   check state "after 3 chars: remainingLength is 0" (remainingLength s''' == 0)
   check state "at end: next? is none" (s'''.next?.isNone)
 
-def testRemainingLengthEmpty (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- remainingLength empty ---"
+def testRemainingLengthEmpty (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "remainingLength empty"
   let s := YamlStream.ofString ""
   check state "empty: remainingLength is 0" (remainingLength s == 0)
 
-def testRemainingLengthMultibyte (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- remainingLength multibyte ---"
+def testRemainingLengthMultibyte (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "remainingLength multibyte"
   -- UTF-8: 'é' is 2 bytes, '日' is 3 bytes
   let s := YamlStream.ofString "é"
   check state "é: remainingLength > 1 (multibyte)" (remainingLength s > 1)
@@ -164,8 +152,8 @@ def testRemainingLengthMultibyte (state : IO.Ref TestState) : IO Unit := do
   let some (_, s2') := s2.next? | do check state "next? on 日" false; return
   check state "after '日': remainingLength is 3" (remainingLength s2' == 3)
 
-def testRemainingLengthStrictlyDecreasing (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- remainingLength strictly decreasing ---"
+def testRemainingLengthStrictlyDecreasing (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "remainingLength strictly decreasing"
   -- This is the runtime version of the next_decreasing theorem
   let s := YamlStream.ofString "hello"
   let mut current := s
@@ -202,8 +190,8 @@ def grammarIsFlowIndicator (c : Char) : Bool :=
 def grammarIsIndentChar (c : Char) : Bool :=
   c == ' '
 
-def testGrammarLineBreak (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- Grammar↔Combinators: isLineBreak ---"
+def testGrammarLineBreak (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Grammar↔Combinators: isLineBreak"
   let testChars : List Char := ['\n', '\r', ' ', '\t', 'a', '-', ':', '#']
   let mut allMatch := true
   for c in testChars do
@@ -221,8 +209,8 @@ def testGrammarLineBreak (state : IO.Ref TestState) : IO Unit := do
   check state "CR is line break (Combinators)" (Lean4Yaml.Parse.isLineBreak '\r')
   check state "space is NOT line break (Combinators)" (!Lean4Yaml.Parse.isLineBreak ' ')
 
-def testGrammarWhiteSpace (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- Grammar↔Combinators: isWhiteSpace ---"
+def testGrammarWhiteSpace (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Grammar↔Combinators: isWhiteSpace"
   let testChars : List Char := [' ', '\t', '\n', '\r', 'a', '-', '0']
   let mut allMatch := true
   for c in testChars do
@@ -236,8 +224,8 @@ def testGrammarWhiteSpace (state : IO.Ref TestState) : IO Unit := do
   check state "tab is whitespace" (grammarIsWhiteSpace '\t')
   check state "newline is NOT whitespace" (!grammarIsWhiteSpace '\n')
 
-def testGrammarFlowIndicator (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- Grammar↔Combinators: isFlowIndicator ---"
+def testGrammarFlowIndicator (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Grammar↔Combinators: isFlowIndicator"
   let flowChars : List Char := [',', '[', ']', '{', '}']
   let nonFlowChars : List Char := ['-', ':', '?', '#', 'a', ' ', '\n']
   let mut allMatch := true
@@ -261,16 +249,16 @@ def testGrammarFlowIndicator (state : IO.Ref TestState) : IO Unit := do
   for c in nonFlowChars do
     check state s!"'{c}' is NOT flow indicator" (!grammarIsFlowIndicator c)
 
-def testGrammarIndentChar (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- Grammar↔Combinators: isIndentChar ---"
+def testGrammarIndentChar (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Grammar↔Combinators: isIndentChar"
   check state "space is indent char" (grammarIsIndentChar ' ')
   check state "tab is NOT indent char" (!grammarIsIndentChar '\t')
   check state "space is not line break (indent requires space only)" (grammarIsIndentChar ' ' && !grammarIsLineBreak ' ')
 
 /-! ## 4. canStartPlainScalar -/
 
-def testCanStartPlainScalar (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- canStartPlainScalar ---"
+def testCanStartPlainScalar (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "canStartPlainScalar"
   -- Regular letters can start plain scalars
   check state "'a' starts plain scalar" (canStartPlainScalar 'a' none)
   check state "'Z' starts plain scalar" (canStartPlainScalar 'Z' none)
@@ -300,8 +288,8 @@ def testCanStartPlainScalar (state : IO.Ref TestState) : IO Unit := do
 
 /-! ## 5. FoldResult Type -/
 
-def testFoldResult (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- FoldResult ---"
+def testFoldResult (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "FoldResult"
   let folded := FoldResult.folded "hello world"
   let forbidden := FoldResult.forbidden "document boundary at line 3"
 
@@ -332,8 +320,8 @@ def trimTrailingWsTest (s : String) : String :=
   let trimmed := chars.reverse.dropWhile (fun c => c == ' ' || c == '\t')
   String.ofList trimmed.reverse
 
-def testTrimTrailingWhitespace (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- trimTrailingWhitespace ---"
+def testTrimTrailingWhitespace (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "trimTrailingWhitespace"
   -- Basic trimming
   check state "trims trailing spaces" (trimTrailingWsTest "hello   " == "hello")
   check state "trims trailing tabs" (trimTrailingWsTest "hello\t\t" == "hello")
@@ -359,8 +347,8 @@ def testTrimTrailingWhitespace (state : IO.Ref TestState) : IO Unit := do
 
 /-! ## 7. YamlPos properties -/
 
-def testYamlPos (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- YamlPos ---"
+def testYamlPos (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "YamlPos"
   let p1 : YamlPos := { offset := 0, line := 0, col := 0 }
   let p2 : YamlPos := { offset := 5, line := 1, col := 3 }
   -- BEq
@@ -379,8 +367,8 @@ def testYamlPos (state : IO.Ref TestState) : IO Unit := do
 
 /-! ## 8. YamlStream.getPos consistency -/
 
-def testStreamGetPos (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- YamlStream.getPos ---"
+def testStreamGetPos (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "YamlStream.getPos"
   let s := YamlStream.ofString "a\nb"
   let pos0 := s.getPos
   check state "initial pos: offset=0" (pos0.offset == 0)
@@ -399,8 +387,8 @@ def testStreamGetPos (state : IO.Ref TestState) : IO Unit := do
 
 /-! ## 9. Indented proposition (constructors) -/
 
-def testIndented (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- Grammar.Indented constructors ---"
+def testIndented (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Grammar.Indented constructors"
   -- Indented 0 accepts any content
   let _ : Indented 0 ['a', 'b'] := .zero ['a', 'b']
   check state "Indented 0 ['a','b'] via .zero" true
@@ -416,8 +404,8 @@ def testIndented (state : IO.Ref TestState) : IO Unit := do
 
 /-! ## 10. Grammar.ChompStyle -/
 
-def testChompStyle (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- Grammar.ChompStyle ---"
+def testChompStyle (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Grammar.ChompStyle"
   check state "strip ≠ clip" (ChompStyle.strip != ChompStyle.clip)
   check state "clip ≠ keep" (ChompStyle.clip != ChompStyle.keep)
   check state "strip ≠ keep" (ChompStyle.strip != ChompStyle.keep)
@@ -427,8 +415,8 @@ def testChompStyle (state : IO.Ref TestState) : IO Unit := do
 
 /-! ## 11. NodeToValue correspondence -/
 
-def testNodeToValue (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- Grammar.NodeToValue ---"
+def testNodeToValue (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Grammar.NodeToValue"
   -- Construct a plain scalar node with proof of nonempty
   let content := "hello"
   let h : content.length > 0 := by native_decide
@@ -452,8 +440,8 @@ def testNodeToValue (state : IO.Ref TestState) : IO Unit := do
 
 /-! ## 12. ValidYaml structure -/
 
-def testValidYaml (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- Grammar.ValidYaml structure ---"
+def testValidYaml (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Grammar.ValidYaml structure"
   let content := "world"
   let h : content.length > 0 := by native_decide
   let node := ValidNode.plainScalarBlock content h
@@ -471,8 +459,8 @@ def testValidYaml (state : IO.Ref TestState) : IO Unit := do
 
 /-! ## 13. Stream remaining consistent with next? -/
 
-def testStreamExhaustive (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- Stream exhaustive consumption ---"
+def testStreamExhaustive (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Stream exhaustive consumption"
   -- Ensure we can fully consume a stream and remainingLength goes to 0
   let testStr := "key: value\n- item\n"
   let s := YamlStream.ofString testStr
@@ -496,8 +484,8 @@ def testStreamExhaustive (state : IO.Ref TestState) : IO Unit := do
 
 /-! ## 14. CRLF handling in stream -/
 
-def testStreamCRLF (state : IO.Ref TestState) : IO Unit := do
-  IO.println "--- Stream CRLF handling ---"
+def testStreamCRLF (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Stream CRLF handling"
   -- CR doesn't increment line (only LF does in our stream)
   let s := YamlStream.ofString "a\rb"
   let some ('a', s1) := s.next? | do check state "expect 'a'" false; return
@@ -514,11 +502,11 @@ def testStreamCRLF (state : IO.Ref TestState) : IO Unit := do
   let some ('\n', s6) := s5.next? | do check state "expect LF" false; return
   check state "CRLF LF: line=1 col=0" (s6.line == 1 && s6.col == 0)
 
-/-! ## Runner -/
+/-! ## Collector -/
 
-def runTests : IO Unit := do
-  IO.println "=== Layer 1 Verification Tests ===\n"
-  let state ← IO.mkRef ({} : TestState)
+/-- Collect all Layer 1 verification test results as structured data. -/
+def collectTests : IO VerifiedSuiteResult := do
+  let state ← IO.mkRef ({} : TestCollector)
 
   -- 1. Stream properties
   testStreamOfString state
@@ -572,15 +560,7 @@ def runTests : IO Unit := do
   -- 14. CRLF
   testStreamCRLF state
 
-  -- Summary
-  IO.println ""
-  let final ← state.get
-  let total := final.passed + final.failed
-  IO.println s!"=== Results: {final.passed}/{total} passed ==="
-  if final.failed > 0 then
-    IO.println s!"    {final.failed} FAILED"
-    IO.Process.exit 1
+  let results ← finish state
+  return { name := "verification", label := "Layer 1 Verification Tests", sourceFile := "Tests/Verification.lean", tests := results }
 
 end Tests.Verification
-
-def main : IO Unit := Tests.Verification.runTests

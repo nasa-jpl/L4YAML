@@ -1,5 +1,6 @@
 import Batteries.Data.String.Matcher
 import Tests.SuiteRunner.Meta
+import Tests.VerifiedResult
 
 /-!
 # HTML Coverage Report Generator
@@ -64,28 +65,10 @@ def CoverageStats.successRate (s : CoverageStats) : Float :=
   if s.total == 0 then 0.0
   else (s.correctCount.toFloat / s.total.toFloat) * 100.0
 
-/-! ## Verified Test Suites -/
+/-! ## Verified Test Suites — types from Tests.VerifiedResult -/
 
-/-- Statistics from a single verified test suite (unit, parsetest, etc.) -/
-structure VerifiedSuiteStats where
-  name : String
-  passed : Nat
-  total : Nat
-  deriving Repr
-
-/-- Aggregate statistics from all verified test suites. -/
-structure VerifiedTestStats where
-  suites : Array VerifiedSuiteStats
-  deriving Repr
-
-def VerifiedTestStats.totalPassed (s : VerifiedTestStats) : Nat :=
-  s.suites.foldl (fun acc suite => acc + suite.passed) 0
-
-def VerifiedTestStats.totalTests (s : VerifiedTestStats) : Nat :=
-  s.suites.foldl (fun acc suite => acc + suite.total) 0
-
-def VerifiedTestStats.allPass (s : VerifiedTestStats) : Bool :=
-  s.totalPassed == s.totalTests
+-- Re-exported from Tests.VerifiedResult:
+-- VerifiedOutcome, VerifiedTestCase, VerifiedSuiteResult
 
 /-! ## HTML Helpers -/
 
@@ -517,7 +500,7 @@ def generateStageReport (results : Array ReportResult) (stage : Stage) : String 
 
 /-- Generate the index page linking to all reports. -/
 def generateIndexHtml (results : Array ReportResult)
-    (verifiedStats : Option VerifiedTestStats := none) : String :=
+    (verifiedSuites : Option (Array Tests.VerifiedSuiteResult) := none) : String :=
   let stats := CoverageStats.fromResults results
   let pct := stats.successRate
   let pctStr := if pct == pct.floor then s!"{pct.floor}" else s!"{pct}"
@@ -585,16 +568,18 @@ def generateIndexHtml (results : Array ReportResult)
     stageRows,
     "  </div>\n\n",
     -- Verified Tests section
-    match verifiedStats with
-    | some vs =>
-      let allPass := vs.allPass
+    match verifiedSuites with
+    | some suites =>
+      let totalPassed := suites.foldl (fun acc s => acc + s.passed) 0
+      let totalTests := suites.foldl (fun acc s => acc + s.total) 0
+      let allPass := suites.all (fun s => s.allPass)
       let borderColor := if allPass then "#4CAF50" else "#f44336"
       let bgColor := if allPass then "#e8f5e9" else "#ffebee"
       let statusIcon := if allPass then "✓" else "✗"
-      let suiteRows := String.join (vs.suites.toList.map fun suite =>
-        let icon := if suite.passed == suite.total then "✓" else "✗"
-        let color := if suite.passed == suite.total then "#4CAF50" else "#f44336"
-        s!"    <tr><td>{escapeHtml suite.name}</td>" ++
+      let suiteRows := String.join (suites.toList.map fun suite =>
+        let icon := if suite.allPass then "✓" else "✗"
+        let color := if suite.allPass then "#4CAF50" else "#f44336"
+        s!"    <tr><td><a href=\"../{escapeHtml suite.sourceFile}\" style=\"color:#2196F3;text-decoration:none\">{escapeHtml suite.label}</a></td>" ++
         s!"<td style=\"color:{color};font-weight:bold\">{icon} {suite.passed}/{suite.total}</td></tr>\n")
       String.join [
         s!"  <h2>Verified Tests</h2>\n",
@@ -603,13 +588,13 @@ def generateIndexHtml (results : Array ReportResult)
         s!"    <table style=\"width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:14px;\">\n",
         suiteRows,
         s!"    <tr style=\"border-top:2px solid #ccc;font-weight:bold\">" ++
-        s!"<td>Total</td><td>{vs.totalPassed}/{vs.totalTests}</td></tr>\n",
+        s!"<td>Total</td><td>{totalPassed}/{totalTests}</td></tr>\n",
         "    </table>\n",
         "  </div>\n",
         "  <div class=\"links\">\n",
         "    <div class=\"link-box\">\n",
         "      <a href=\"verified-tests.html\">Verified Tests Detail</a>\n",
-        s!"      <div class=\"description\">{vs.totalPassed}/{vs.totalTests} tests across {vs.suites.size} suites</div>\n",
+        s!"      <div class=\"description\">{totalPassed}/{totalTests} tests across {suites.size} suites</div>\n",
         "    </div>\n",
         "  </div>\n\n"
       ]
@@ -622,88 +607,245 @@ def generateIndexHtml (results : Array ReportResult)
     "</body>\n</html>\n"
   ]
 
-/-- Generate the verified tests detail HTML page from raw test output. -/
-def generateVerifiedTestsHtml (rawOutput : String)
-    (stats : VerifiedTestStats) : String :=
-  let allPass := stats.allPass
+/-- Generate the verified tests detail HTML page from structured test results. -/
+def generateVerifiedTestsHtml (suites : Array Tests.VerifiedSuiteResult) : String :=
+  let totalPassed := suites.foldl (fun acc s => acc + s.passed) 0
+  let totalTests := suites.foldl (fun acc s => acc + s.total) 0
+  let totalFailed := totalTests - totalPassed
+  let allPass := suites.all (fun s => s.allPass)
   let statusEmoji := if allPass then "✅" else "❌"
+
+  -- Stat cards
+  let statCards := String.join [
+    "  <div class=\"stats\">\n",
+    s!"    <div class=\"stat-box stat-total\"><h3>Total</h3><div class=\"number\">{totalTests}</div></div>\n",
+    s!"    <div class=\"stat-box stat-pass\"><h3>Passed</h3><div class=\"number\">{totalPassed}</div></div>\n",
+    s!"    <div class=\"stat-box stat-fail\"><h3>Failed</h3><div class=\"number\">{totalFailed}</div></div>\n",
+    s!"    <div class=\"stat-box stat-suites\"><h3>Suites</h3><div class=\"number\">{suites.size}</div></div>\n",
+    "  </div>\n"
+  ]
+
+  -- Per-suite breakdown cards
+  let suiteCards := String.join (suites.toList.map fun suite =>
+    let pct := if suite.total == 0 then "0"
+               else toString (suite.passed * 100 / suite.total)
+    let borderColor := if suite.allPass then "var(--color-pass)" else "var(--color-fail)"
+    s!"    <div class=\"stage-card\" style=\"border-left-color:{borderColor}\">\n" ++
+    s!"      <div class=\"stage-card-name\">{escapeHtml suite.label}</div>\n" ++
+    s!"      <div class=\"stage-card-stats\">{suite.passed}/{suite.total} passed ({pct}%)</div>\n" ++
+    s!"      <div class=\"stage-bar\"><div class=\"stage-bar-fill\" style=\"width: {pct}%\"></div></div>\n" ++
+    s!"      <div class=\"stage-card-source\"><a href=\"../{escapeHtml suite.sourceFile}\" class=\"source-link\">📄 {escapeHtml suite.sourceFile}</a></div>\n" ++
+    s!"    </div>\n")
+
+  -- Suite dropdown options
+  let suiteOptions := String.join (suites.toList.map fun suite =>
+    s!"        <option value=\"{escapeHtml suite.name}\">{escapeHtml suite.label}</option>\n")
+
+  -- Table rows — one per VerifiedTestCase
+  let tableRows := String.join (suites.toList.map fun suite =>
+    String.join (suite.tests.toList.map fun tc =>
+      let outcomeClass := if tc.outcome.isPass then "pass" else "fail"
+      let badgeClass := if tc.outcome.isPass then "badge-pass" else "badge-fail"
+      let badgeLabel := if tc.outcome.isPass then "Pass" else "Fail"
+      let errorCell := match tc.outcome with
+        | .pass => ""
+        | .fail msg =>
+          if msg.isEmpty then ""
+          else s!"<span class=\"error-msg\" title=\"{escapeHtml msg}\">{escapeHtml msg}</span>"
+      let searchData := (s!"{suite.name} {tc.category} {tc.name}").toLower
+      s!"      <tr class=\"test-row\" data-outcome=\"{outcomeClass}\" data-suite=\"{escapeHtml suite.name}\" data-search=\"{escapeHtml searchData}\">\n" ++
+      s!"        <td><a href=\"../{escapeHtml suite.sourceFile}\" class=\"source-link\">{escapeHtml suite.label}</a></td>\n" ++
+      s!"        <td>{escapeHtml tc.category}</td>\n" ++
+      s!"        <td>{escapeHtml tc.name}</td>\n" ++
+      s!"        <td><span class=\"badge {badgeClass}\">{badgeLabel}</span></td>\n" ++
+      s!"        <td>{errorCell}</td>\n" ++
+      s!"      </tr>\n"))
+
+  -- JavaScript
+  let js := String.join [
+    "    let currentOutcomeFilter = 'all';\n",
+    "    let currentSuiteFilter = 'all';\n",
+    "    let currentSearchText = '';\n",
+    "    let sortColumn = 0;\n",
+    "    let sortAscending = true;\n\n",
+    "    function filterByOutcome(outcome) {\n",
+    "      currentOutcomeFilter = outcome;\n",
+    "      document.querySelectorAll('.filter-outcome .filter-btn').forEach(btn => btn.classList.remove('active'));\n",
+    "      event.target.classList.add('active');\n",
+    "      applyFilters();\n",
+    "    }\n\n",
+    "    function filterBySuite(suite) {\n",
+    "      currentSuiteFilter = suite;\n",
+    "      applyFilters();\n",
+    "    }\n\n",
+    "    function searchTests(text) {\n",
+    "      currentSearchText = text.toLowerCase();\n",
+    "      applyFilters();\n",
+    "    }\n\n",
+    "    function applyFilters() {\n",
+    "      const rows = document.querySelectorAll('.test-row');\n",
+    "      let visible = 0;\n",
+    "      rows.forEach(row => {\n",
+    "        const outcome = row.dataset.outcome;\n",
+    "        const suite = row.dataset.suite;\n",
+    "        const search = row.dataset.search;\n",
+    "        const outcomeMatch = currentOutcomeFilter === 'all' || outcome === currentOutcomeFilter;\n",
+    "        const suiteMatch = currentSuiteFilter === 'all' || suite === currentSuiteFilter;\n",
+    "        const searchMatch = currentSearchText === '' || search.includes(currentSearchText);\n",
+    "        if (outcomeMatch && suiteMatch && searchMatch) {\n",
+    "          row.classList.remove('hidden');\n",
+    "          visible++;\n",
+    "        } else {\n",
+    "          row.classList.add('hidden');\n",
+    "        }\n",
+    "      });\n",
+    "      document.getElementById('visibleCount').textContent = visible;\n",
+    "    }\n\n",
+    "    function sortTable(colIdx) {\n",
+    "      const table = document.getElementById('testTable');\n",
+    "      const tbody = table.querySelector('tbody');\n",
+    "      const rows = Array.from(tbody.querySelectorAll('.test-row'));\n",
+    "      if (sortColumn === colIdx) { sortAscending = !sortAscending; }\n",
+    "      else { sortColumn = colIdx; sortAscending = true; }\n",
+    "      table.querySelectorAll('th').forEach((th, i) => {\n",
+    "        th.classList.remove('sorted');\n",
+    "        const arrow = th.querySelector('.sort-arrow');\n",
+    "        if (arrow) arrow.textContent = '↕';\n",
+    "      });\n",
+    "      const th = table.querySelectorAll('th')[colIdx];\n",
+    "      th.classList.add('sorted');\n",
+    "      const arrow = th.querySelector('.sort-arrow');\n",
+    "      if (arrow) arrow.textContent = sortAscending ? '↑' : '↓';\n",
+    "      rows.sort((a, b) => {\n",
+    "        let aVal = a.children[colIdx]?.textContent.trim() || '';\n",
+    "        let bVal = b.children[colIdx]?.textContent.trim() || '';\n",
+    "        return sortAscending ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);\n",
+    "      });\n",
+    "      rows.forEach(row => tbody.appendChild(row));\n",
+    "    }\n"
+  ]
+
   String.join [
     "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n",
     "  <meta charset=\"UTF-8\">\n",
     "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
     "  <title>Verified Tests — lean4-yaml-verified</title>\n",
     "  <style>\n",
-    "    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background: #f5f5f5; }\n",
-    "    .container { max-width: 1000px; margin: 0 auto; background: white; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-radius: 8px; }\n",
-    "    h1 { color: #333; border-bottom: 3px solid #4CAF50; padding-bottom: 10px; }\n",
-    "    .nav { margin-bottom: 20px; }\n",
-    "    .nav a { color: #2196F3; text-decoration: none; }\n",
-    "    .nav a:hover { text-decoration: underline; }\n",
-    "    .output { background: #f8f8f8; padding: 20px; border-radius: 6px; border: 1px solid #e0e0e0; overflow-x: auto; }\n",
-    "    .output pre { margin: 0; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }\n",
-    "    .pass { color: #4CAF50; }\n",
-    "    .fail { color: #f44336; }\n",
+    "    :root { --color-pass: #4CAF50; --color-fail: #f44336; }\n",
+    "    * { box-sizing: border-box; }\n",
+    "    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }\n",
+    "    .container { max-width: 1400px; margin: 0 auto; background: white; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 8px; }\n",
+    "    h1 { color: #333; border-bottom: 3px solid var(--color-pass); padding-bottom: 10px; margin-top: 0; }\n",
+    "    h3 { color: #555; }\n",
+    "    .subtitle { color: #666; font-size: 16px; margin-bottom: 30px; }\n",
+    "    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin: 25px 0; }\n",
+    "    .stat-box { color: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }\n",
+    "    .stat-box h3 { margin: 0 0 8px 0; font-size: 13px; opacity: 0.9; color: white; }\n",
+    "    .stat-box .number { font-size: 32px; font-weight: bold; }\n",
+    "    .stat-total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }\n",
+    "    .stat-pass { background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); }\n",
+    "    .stat-fail { background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); }\n",
+    "    .stat-suites { background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%); }\n",
+    "    .stage-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin: 20px 0; }\n",
+    "    .stage-card { background: #f8f9fa; padding: 18px; border-radius: 6px; border-left: 4px solid var(--color-pass); }\n",
+    "    .stage-card-name { font-weight: 600; font-size: 16px; color: #333; margin-bottom: 8px; }\n",
+    "    .stage-card-stats { color: #666; font-size: 14px; }\n",
+    "    .stage-card-source { margin-top: 8px; font-size: 12px; }\n",
+    "    .source-link { color: #2196F3; text-decoration: none; font-family: 'Courier New', monospace; }\n",
+    "    .source-link:hover { text-decoration: underline; }\n",
+    "    .stage-bar { height: 8px; background: #e0e0e0; border-radius: 4px; margin-top: 10px; overflow: hidden; }\n",
+    "    .stage-bar-fill { height: 100%; background: var(--color-pass); border-radius: 4px; transition: width 0.3s ease; }\n",
+    "    .filters { background: #f8f9fa; padding: 15px; border-radius: 6px; margin: 20px 0; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }\n",
+    "    .filter-group { display: flex; align-items: center; gap: 8px; }\n",
+    "    .filter-group label { font-weight: 600; color: #555; font-size: 14px; }\n",
+    "    .filter-btn { padding: 6px 14px; border: 2px solid #ddd; background: white; border-radius: 4px; cursor: pointer; transition: all 0.2s; font-size: 13px; }\n",
+    "    .filter-btn:hover { border-color: #4CAF50; }\n",
+    "    .filter-btn.active { background: #4CAF50; color: white; border-color: #4CAF50; }\n",
+    "    select { padding: 6px 12px; border: 2px solid #ddd; border-radius: 4px; font-size: 13px; }\n",
+    "    .search-input { padding: 6px 12px; border: 2px solid #ddd; border-radius: 4px; font-size: 13px; width: 200px; }\n",
+    "    .search-input:focus { border-color: #4CAF50; outline: none; }\n",
+    "    table { width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\n",
+    "    th { background: #4CAF50; color: white; padding: 10px 12px; text-align: left; font-weight: 600; position: sticky; top: 0; cursor: pointer; user-select: none; font-size: 13px; }\n",
+    "    th:hover { background: #45a049; }\n",
+    "    th .sort-arrow { margin-left: 4px; opacity: 0.5; }\n",
+    "    th.sorted .sort-arrow { opacity: 1; }\n",
+    "    td { padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; }\n",
+    "    tr:hover { background: #f5f5f5; }\n",
+    "    tr.hidden { display: none; }\n",
+    "    .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; color: white; }\n",
+    "    .badge-pass { background: var(--color-pass); }\n",
+    "    .badge-fail { background: var(--color-fail); }\n",
+    "    .error-msg { color: #d32f2f; font-size: 11px; font-family: 'Courier New', monospace; max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }\n",
+    "    .error-msg:hover { white-space: normal; word-break: break-all; }\n",
+    "    .nav-link { display: inline-block; margin-bottom: 20px; color: #2196F3; text-decoration: none; font-size: 14px; }\n",
+    "    .nav-link:hover { text-decoration: underline; }\n",
     "    footer { margin-top: 40px; text-align: center; color: #999; font-size: 13px; border-top: 1px solid #e0e0e0; padding-top: 20px; }\n",
     "    footer a { color: #2196F3; text-decoration: none; }\n",
+    "    @media (max-width: 768px) { body { padding: 10px; } .container { padding: 15px; } .filters { flex-direction: column; gap: 10px; } .stats { grid-template-columns: repeat(2, 1fr); } }\n",
     "  </style>\n",
     "</head>\n<body>\n",
     "<div class=\"container\">\n",
-    "  <div class=\"nav\"><a href=\"index.html\">← Back to Coverage Index</a></div>\n",
+    "  <a href=\"index.html\" class=\"nav-link\">← Back to Coverage Index</a>\n",
     s!"  <h1>{statusEmoji} Verified Tests</h1>\n",
-    s!"  <p style=\"color:#666\">Unit tests, integration tests, quoted folding tests, Layer 1 verification tests, and demo tests — all must pass.</p>\n\n",
-    s!"  <p><strong>Total: {stats.totalPassed}/{stats.totalTests}</strong></p>\n\n",
-    "  <div class=\"output\">\n",
-    "    <pre>",
-    escapeHtml rawOutput,
-    "</pre>\n",
+    "  <p class=\"subtitle\">Unit tests, parser tests, verification tests, and string lemma tests — all must pass.</p>\n\n",
+    statCards,
+    "  <h3>Suites</h3>\n",
+    "  <div class=\"stage-cards\">\n",
+    suiteCards,
     "  </div>\n\n",
+    "  <div class=\"filters\">\n",
+    "    <div class=\"filter-group filter-outcome\">\n",
+    "      <label>Outcome:</label>\n",
+    "      <button class=\"filter-btn active\" onclick=\"filterByOutcome('all')\">All</button>\n",
+    "      <button class=\"filter-btn\" onclick=\"filterByOutcome('pass')\">Pass</button>\n",
+    "      <button class=\"filter-btn\" onclick=\"filterByOutcome('fail')\">Fail</button>\n",
+    "    </div>\n",
+    "    <div class=\"filter-group\">\n",
+    "      <label>Suite:</label>\n",
+    "      <select onchange=\"filterBySuite(this.value)\">\n",
+    "        <option value=\"all\">All Suites</option>\n",
+    suiteOptions,
+    "      </select>\n",
+    "    </div>\n",
+    "    <div class=\"filter-group\">\n",
+    "      <label>Search:</label>\n",
+    "      <input type=\"text\" class=\"search-input\" placeholder=\"Category, test name...\" oninput=\"searchTests(this.value)\">\n",
+    "    </div>\n",
+    s!"    <div class=\"filter-group\"><span>Showing <strong id=\"visibleCount\">{totalTests}</strong> of {totalTests}</span></div>\n",
+    "  </div>\n\n",
+    "  <table id=\"testTable\">\n",
+    "    <thead>\n",
+    "      <tr>\n",
+    "        <th onclick=\"sortTable(0)\">Suite <span class=\"sort-arrow\">↕</span></th>\n",
+    "        <th onclick=\"sortTable(1)\">Category <span class=\"sort-arrow\">↕</span></th>\n",
+    "        <th onclick=\"sortTable(2)\">Test <span class=\"sort-arrow\">↕</span></th>\n",
+    "        <th onclick=\"sortTable(3)\">Outcome <span class=\"sort-arrow\">↕</span></th>\n",
+    "        <th onclick=\"sortTable(4)\">Error <span class=\"sort-arrow\">↕</span></th>\n",
+    "      </tr>\n",
+    "    </thead>\n",
+    "    <tbody>\n",
+    tableRows,
+    "    </tbody>\n",
+    "  </table>\n\n",
     "  <footer>\n",
     "    Generated by <a href=\"https://github.com/yaml/yaml-test-suite\">yaml-test-suite</a> runner · ",
     "    <a href=\"https://github.com/fgdorais/lean4-parser\">lean4-parser</a> · Lean 4\n",
     "  </footer>\n",
-    "</div>\n",
+    "</div>\n\n",
+    "<script>\n", js, "</script>\n",
     "</body>\n</html>\n"
   ]
 
-/-- Parse test output to extract passed/total counts.
-    Looks for "Results: N/M passed" or "All tests complete" patterns. -/
-def parseTestOutput (name : String) (output : String) : VerifiedSuiteStats :=
-  -- Look for "=== Results: N/M passed ==="
-  let lines := output.splitOn "\n"
-  let resultLine := lines.find? (fun l => l.containsSubstr "Results:" && l.containsSubstr "passed")
-  match resultLine with
-  | some line =>
-    -- Extract "N/M" from "Results: N/M passed"
-    let parts := line.splitOn "Results:"
-    match parts with
-    | [_, rest] =>
-      let rest := rest.trimAscii.toString
-      let nums := rest.splitOn " " |>.head!
-      let pair := nums.splitOn "/"
-      match pair with
-      | [p, t] =>
-        let passed := p.trimAscii.toString.toNat!
-        let total := t.trimAscii.toString.toNat!
-        { name, passed, total }
-      | _ => { name, passed := 0, total := 0 }
-    | _ => { name, passed := 0, total := 0 }
-  | none =>
-    -- Fallback: count ✓ and ✗ lines
-    let passCount := lines.filter (fun l => l.containsSubstr "✓") |>.length
-    let failCount := lines.filter (fun l => l.containsSubstr "✗") |>.length
-    { name, passed := passCount, total := passCount + failCount }
-
 /-- Write all HTML reports to a directory. -/
 def writeReports (results : Array ReportResult) (outDir : String)
-    (verifiedStats : Option VerifiedTestStats := none)
-    (verifiedRawOutput : Option String := none) : IO Unit := do
+    (verifiedSuites : Option (Array Tests.VerifiedSuiteResult) := none) : IO Unit := do
   -- Normalize: strip trailing slash
   let dir := if outDir.endsWith "/" then (outDir.toRawSubstring.dropRight 1).toString else outDir
   -- Ensure output directory exists
   IO.FS.createDirAll dir
 
   -- Write index
-  let indexHtml := generateIndexHtml results (verifiedStats := verifiedStats)
+  let indexHtml := generateIndexHtml results (verifiedSuites := verifiedSuites)
   IO.FS.writeFile s!"{dir}/index.html" indexHtml
   IO.println s!"  wrote {dir}/index.html"
 
@@ -721,12 +863,12 @@ def writeReports (results : Array ReportResult) (outDir : String)
     IO.println s!"  wrote {dir}/coverage-{stage}.html"
 
   -- Write verified tests detail page
-  match verifiedStats, verifiedRawOutput with
-  | some vs, some raw =>
-    let html := generateVerifiedTestsHtml raw vs
+  match verifiedSuites with
+  | some suites =>
+    let html := generateVerifiedTestsHtml suites
     IO.FS.writeFile s!"{dir}/verified-tests.html" html
     IO.println s!"  wrote {dir}/verified-tests.html"
-  | _, _ => pure ()
+  | none => pure ()
 
   IO.println s!"\nHTML reports written to {dir}/"
 

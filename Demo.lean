@@ -3,68 +3,64 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml
+import Tests.VerifiedResult
 
 /-!
 # Demo: Verified YAML Parser
 
 Simple demonstration of the lean4-yaml-verified parser.
+Each example becomes a pass/fail test: parse succeeds → pass.
+Produces a `VerifiedSuiteResult` for structured reporting.
 -/
 
 open Lean4Yaml
 open Lean4Yaml.Parse
+open Tests
 
-def main : IO Unit := do
-  IO.println "=== Lean4Yaml Verified Parser Demo ==="
-  IO.println ""
+namespace Demo
+
+/-- Collect all demo test results as structured data. -/
+def collectTests : IO VerifiedSuiteResult := do
+  let state ← IO.mkRef ({} : TestCollector)
+  setCategory state "Parser examples"
 
   -- Example 1: Simple scalar
-  IO.println "--- Example 1: Plain scalar ---"
   match parseYamlSingle "hello world" with
-  | .ok v => IO.println s!"  Parsed: {repr v}"
-  | .error e => IO.println s!"  Error: {e}"
-  IO.println ""
+  | .ok _ => check state "Plain scalar" true
+  | .error e => check state "Plain scalar" false (message := e)
 
   -- Example 2: Flow sequence
-  IO.println "--- Example 2: Flow sequence ---"
   match parseYamlSingle "[a, b, c]" with
-  | .ok v => IO.println s!"  Parsed: {repr v}"
-  | .error e => IO.println s!"  Error: {e}"
-  IO.println ""
+  | .ok _ => check state "Flow sequence" true
+  | .error e => check state "Flow sequence" false (message := e)
 
   -- Example 3: Flow mapping
-  IO.println "--- Example 3: Flow mapping ---"
   match parseYamlSingle "{name: test, version: 1}" with
-  | .ok v => IO.println s!"  Parsed: {repr v}"
-  | .error e => IO.println s!"  Error: {e}"
-  IO.println ""
+  | .ok _ => check state "Flow mapping" true
+  | .error e => check state "Flow mapping" false (message := e)
 
   -- Example 4: Block mapping
-  IO.println "--- Example 4: Block mapping ---"
   match parseYamlSingle "name: test\nversion: 1\n" with
-  | .ok v => IO.println s!"  Parsed: {repr v}"
-  | .error e => IO.println s!"  Error: {e}"
-  IO.println ""
+  | .ok _ => check state "Block mapping" true
+  | .error e => check state "Block mapping" false (message := e)
 
   -- Example 5: Nested structure
-  IO.println "--- Example 5: Nested block structure ---"
   let yaml := "server:\n  host: localhost\n  port: 8080\nclients:\n  - alice\n  - bob\n"
   match parseYamlSingle yaml with
-  | .ok v => IO.println s!"  Parsed: {repr v}"
-  | .error e => IO.println s!"  Error: {e}"
-  IO.println ""
+  | .ok _ => check state "Nested block structure" true
+  | .error e => check state "Nested block structure" false (message := e)
 
   -- Example 6: Double-quoted scalar with escapes
-  IO.println "--- Example 6: Double-quoted scalar ---"
   match parseYamlSingle "\"hello\\nworld\"" with
-  | .ok v => IO.println s!"  Parsed: {repr v}"
-  | .error e => IO.println s!"  Error: {e}"
-  IO.println ""
+  | .ok _ => check state "Double-quoted scalar" true
+  | .error e => check state "Double-quoted scalar" false (message := e)
 
   -- Example 7: Multi-document stream
-  IO.println "--- Example 7: Multi-document stream ---"
   match parseYaml "---\nfirst\n---\nsecond\n" with
-  | .ok docs => IO.println s!"  {docs.size} documents parsed"
-  | .error e => IO.println s!"  Error: {e}"
+  | .ok _ => check state "Multi-document stream" true
+  | .error e => check state "Multi-document stream" false (message := e)
 
-  IO.println ""
-  IO.println "=== Done ==="
+  let results ← finish state
+  return { name := "demo", label := "Demo", sourceFile := "Demo.lean", tests := results }
+
+end Demo

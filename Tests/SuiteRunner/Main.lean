@@ -1,6 +1,13 @@
 import Lean4Yaml
 import Tests.SuiteRunner.Meta
 import Tests.SuiteRunner.HtmlReport
+import Tests.VerifiedResult
+import Tests.Main
+import Tests.ParseTest
+import Tests.QuotedFolding
+import Tests.Verification
+import Tests.StringLemmas
+import Demo
 
 /-!
 # yaml-test-suite Runner
@@ -262,40 +269,29 @@ def main (args : List String) : IO UInt32 := do
     let stats := CoverageStats.fromResults results
     IO.println s!"\nCorrect: {stats.correctCount}/{stats.total} ({stats.successRate.floor}%)"
 
-    -- Run verified test suites and capture output
+    -- Run verified test suites directly (no subprocess)
     IO.println "\nRunning verified test suites..."
-    let verifiedSuites := #[
-      ("tests", "Unit Tests"),
-      ("parsetest", "Parser Integration Tests"),
-      ("quotedfolding", "Quoted Folding Tests"),
-      ("verification", "Layer 1 Verification Tests"),
-      ("demo", "Demo")
+    let collectors : Array (IO Tests.VerifiedSuiteResult) := #[
+      Tests.collectTests,
+      Tests.Parse.collectTests,
+      Tests.QuotedFolding.collectTests,
+      Tests.Verification.collectTests,
+      Tests.StringLemmas.collectTests,
+      Demo.collectTests
     ]
-    let mut allVerifiedOutput := ""
-    let mut suiteStats : Array VerifiedSuiteStats := #[]
-    for (exe, label) in verifiedSuites do
-      IO.print s!"  Running {label}... "
-      (← IO.getStdout).flush
-      let result ← IO.Process.output {
-        cmd := s!".lake/build/bin/{exe}"
-        args := #[]
-      }
-      let output := result.stdout
-      allVerifiedOutput := allVerifiedOutput ++ s!"=== {label} ===\n" ++ output ++ "\n"
-      let suiteStat := parseTestOutput label output
-      suiteStats := suiteStats.push suiteStat
-      if result.exitCode == 0 then
-        IO.println s!"✓ {suiteStat.passed}/{suiteStat.total}"
-      else
-        IO.println s!"✗ {suiteStat.passed}/{suiteStat.total}"
-        allVerifiedOutput := allVerifiedOutput ++ s!"STDERR: {result.stderr}\n"
-    let verifiedStats : VerifiedTestStats := { suites := suiteStats }
-    IO.println s!"\nVerified: {verifiedStats.totalPassed}/{verifiedStats.totalTests}"
+    let mut verifiedSuites : Array Tests.VerifiedSuiteResult := #[]
+    for collect in collectors do
+      let result ← collect
+      let icon := if result.allPass then "✓" else "✗"
+      IO.println s!"  {result.label}: {icon} {result.passed}/{result.total}"
+      verifiedSuites := verifiedSuites.push result
+    let totalVPassed := verifiedSuites.foldl (fun acc s => acc + s.passed) 0
+    let totalVTests := verifiedSuites.foldl (fun acc s => acc + s.total) 0
+    IO.println s!"\nVerified: {totalVPassed}/{totalVTests}"
 
     IO.println s!"\nGenerating HTML reports..."
     writeReports results dir
-      (verifiedStats := some verifiedStats)
-      (verifiedRawOutput := some allVerifiedOutput)
+      (verifiedSuites := some verifiedSuites)
     return 0
   | none => pure ()
 
