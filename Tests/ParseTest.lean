@@ -34,19 +34,19 @@ def checkParser (state : IO.Ref TestCollector) (label : String)
     (p : YamlParser YamlValue) (input : String) : IO Unit := do
   match runParser p input with
   | .ok _ => check state label true
-  | .error e => check state label false (message := e)
+  | .error e => checkM state label false e
 
 def checkParseYaml (state : IO.Ref TestCollector) (label : String)
     (input : String) : IO Unit := do
   match parseYaml input with
   | .ok _ => check state label true
-  | .error e => check state label false (message := e)
+  | .error e => checkM state label false e
 
 def checkParseSingle (state : IO.Ref TestCollector) (label : String)
     (input : String) : IO Unit := do
   match parseYamlSingle input with
   | .ok _ => check state label true
-  | .error e => check state label false (message := e)
+  | .error e => checkM state label false e
 
 /-! ## Tests -/
 

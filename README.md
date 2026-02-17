@@ -17,19 +17,34 @@ Lean4Yaml/
 │   └── Document.lean        # Document markers, directives, multi-document streams
 ├── Proofs/
 │   ├── Termination.lean     # Termination proofs for recursive parsers
-│   ├── Soundness.lean       # Parser produces only valid YAML
+│   ├── Soundness.lean       # Parser produces only valid YAML (planned)
 │   ├── RoundTrip.lean       # Parse ∘ emit = id (planned)
 │   └── TestSuite.lean       # yaml-test-suite as compile-time checks (blocked)
 └── Tests/
-    ├── Main.lean            # Unit test suite (17 tests)
-    ├── ParseTest.lean       # Parser integration tests (24+ tests)
-    ├── QuotedFolding.lean   # Quoted scalar folding tests (33 tests)
+    ├── VerifiedResult.lean  # Shared result types (VerifiedSuiteResult, TestCollector)
+    ├── Main.lean            # Unit tests (17 tests)
+    ├── ParseTest.lean       # Parser integration tests (25 tests)
+    ├── QuotedFolding.lean   # Quoted scalar folding tests (34 tests)
+    ├── Verification.lean    # Layer 1 verification tests (138 tests)
+    ├── StringLemmas.lean    # String/position lemma tests (129 tests)
     ├── TryParse.lean        # Single-file parse binary (subprocess isolation)
     ├── CheckStringPos.lean  # String position utility tests
     └── SuiteRunner/
         ├── Meta.lean        # Line-based yaml-test-suite file parser
-        └── Main.lean        # Programmatic yaml-test-suite runner
+        ├── Main.lean        # Programmatic yaml-test-suite runner
+        └── HtmlReport.lean  # Interactive HTML coverage reports
+Demo.lean                    # End-to-end demo examples (7 tests)
 ```
+
+### Three-Layer Verification Strategy
+
+Verification uses a deliberate 3-layer approach:
+
+1. **Runtime tests** (350 tests across 6 suites) — empirical validation that properties hold. Every `theorem` target starts life as a runtime `check` test.
+2. **Formal proofs** (`theorem`/`lemma` in `Proofs/*.lean`) — machine-checked guarantees. Layered by dependency: pure functions first, then parser invariants, then full soundness.
+3. **Compile-time guards** (`#guard`) — blocked until lean4-parser removes `partial def`. Will convert runtime tests to kernel-evaluated checks.
+
+The runtime tests serve as a proof roadmap: each `setCategory`/`check` group maps to a `theorem` target. When a proof is completed, the corresponding tests become redundant (but are kept as regression guards).
 
 ## Key Design Decisions
 
@@ -187,14 +202,14 @@ Layer 1 targets reason (1) and delivers property proofs independent of lean4-par
 
 #### Layer 1: Foundation ← **YOU ARE HERE**
 
-Standalone proofs about the stream, pure helper functions, and character classifiers. These have zero lean4-parser dependency.
+Standalone proofs about the stream, pure helper functions, and character classifiers. These have zero lean4-parser dependency. Each item has extensive runtime test coverage (350 tests across `Verification.lean` and `StringLemmas.lean`) that validates the properties empirically before they are proved formally.
 
-| Item | Description | Status |
-|------|-------------|--------|
-| **1a** | `next_decreasing`: after `YamlStream.next?`, remaining input strictly decreases | |
-| **1b** | Properties of `trimTrailingWhitespace`, `trimTrailingWs` (idempotence, no trailing ws) | |
-| **1c** | `Grammar.lean` character Props match `Combinators.lean` implementations | |
-| **1d** | `FoldResult` type invariants | |
+| Item | Description | Runtime Tests | Proof Status |
+|------|-------------|---------------|-------------|
+| **1a** | `next_decreasing`: after `YamlStream.next?`, remaining input strictly decreases | 38 tests (Verification: remainingLength, Stream exhaustive consumption; StringLemmas: advancement, strictly monotone) | 🔄 `theorem` declared, `sorry` on string arithmetic |
+| **1b** | Properties of `trimTrailingWhitespace`, `trimTrailingWs` (idempotence, no trailing ws) | 12 tests (Verification: trimTrailingWhitespace) | ⬜ Tests only |
+| **1c** | `Grammar.lean` character Props match `Combinators.lean` implementations | 32 tests (Verification: Grammar↔Combinators isLineBreak/isWhiteSpace/isFlowIndicator/isIndentChar, canStartPlainScalar) | ⬜ Tests only |
+| **1d** | `FoldResult` type invariants | 4 tests (Verification: FoldResult) | ⬜ Tests only |
 
 Effort: ~2 sessions. Diagnostic value: catches bugs in pure helper functions at compile time.
 
@@ -263,20 +278,16 @@ lake build
 ## Running Tests
 
 ```sh
-# Unit tests
-lake build tests && .lake/build/bin/tests
+# All verified test suites (350 tests across 6 suites)
+lake build suiterunner && .lake/build/bin/suiterunner --html docs/
 
-# Parser integration tests
-lake build parsetest && .lake/build/bin/parsetest
-
-# Demo examples
-lake build demo && .lake/build/bin/demo
-
-# Quoted scalar folding tests
-lake build quotedfolding && .lake/build/bin/quotedfolding
-
-# Layer 1 verification tests (stream, grammar↔combinators, pure functions)
-lake build verification && .lake/build/bin/verification
+# Individual suites (each produces structured VerifiedSuiteResult)
+lake build tests && .lake/build/bin/tests              # Unit tests (17)
+lake build parsetest && .lake/build/bin/parsetest        # Parser integration (25)
+lake build quotedfolding && .lake/build/bin/quotedfolding # Quoted folding (34)
+lake build verification && .lake/build/bin/verification  # Layer 1 verification (138)
+lake build stringlemmas && .lake/build/bin/stringlemmas  # String lemma tests (129)
+lake build demo && .lake/build/bin/demo                  # Demo examples (7)
 
 # yaml-test-suite (by stage: scalar, flow, block, document, advanced, error, all)
 lake build suiterunner tryparse && .lake/build/bin/suiterunner scalar
