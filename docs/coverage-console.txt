@@ -18,7 +18,7 @@ Running all tests for HTML report...
   [2/416] 236B ⚠ unexpected pass
   [3/416] 26DV ✗ parse error: unexpected token at { offset := 8, line := 0, col := 8 }; unhandled construct ':' at line 0, column 7 at { offset := 8, line := 0, col := 8 }
   [4/416] 27NA ○ YAML 1.3 specific
-  [5/416] 2AUY ✗ parse error: unexpected token '!' at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected block sequence at { offset := 3, line := 0, col := 3 }; expected YAML value at { offset := 3, line := 0, col := 3 }
+  [5/416] 2AUY ✓
   [6/416] 2CMS ⚠ unexpected pass
   [7/416] 2EBW ✓
   [8/416] 2G84 ⚠ unexpected pass
@@ -28,9 +28,9 @@ Running all tests for HTML report...
   [12/416] 2JQS ✓
   [13/416] 2LFX ○ YAML 1.3 specific
   [14/416] 2SXE ○ YAML 1.3 specific
-  [15/416] 2XXW ✗ parse error: unexpected token '!' at { offset := 92, line := 3, col := 5 }; expected plain scalar at { offset := 92, line := 3, col := 5 }; expected YAML value at { offset := 92, line := 3, col := 5 }
-  [16/416] 33X3 ✗ parse error: unexpected token '!' at { offset := 7, line := 1, col := 3 }; expected plain scalar at { offset := 7, line := 1, col := 3 }; expected block sequence at { offset := 7, line := 1, col := 3 }; expected YAML value at { offset := 7, line := 1, col := 3 }
-  [17/416] 35KP ✗ parse error: unexpected token '!' at { offset := 5, line := 0, col := 5 }; expected plain scalar at { offset := 5, line := 0, col := 5 }; expected YAML value at { offset := 5, line := 0, col := 5 }
+  [15/416] 2XXW ✗ parse error: unexpected token at { offset := 98, line := 4, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 98, line := 4, col := 1 }; expected plain scalar at { offset := 98, line := 4, col := 1 }; expected YAML value at { offset := 98, line := 4, col := 1 }; expected YAML value at { offset := 98, line := 4, col := 1 }
+  [16/416] 33X3 ✓
+  [17/416] 35KP ✗ parse error: unexpected token at { offset := 11, line := 1, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 11, line := 1, col := 1 }; expected plain scalar at { offset := 11, line := 1, col := 1 }; expected YAML value at { offset := 11, line := 1, col := 1 }; expected YAML value at { offset := 11, line := 1, col := 1 }
   [18/416] 36F6 ✓
   [19/416] 3ALJ ✓
   [20/416] 3GZX ✓
@@ -70,7 +70,7 @@ Running all tests for HTML report...
   [54/416] 52DL ○ YAML 1.3 specific
   [55/416] 54T7 ✓
   [56/416] 55WF ⚠ unexpected pass
-  [57/416] 565N ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct 'c' at line 0, column 0 at { offset := 1, line := 0, col := 1 }
+  [57/416] 565N ✓
   [58/416] 57H4 ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct 's' at line 0, column 0 at { offset := 1, line := 0, col := 1 }
   [59/416] 58MP ✓
   [60/416] 5BVJ ✓
@@ -84,7 +84,7 @@ Running all tests for HTML report...
   [68/416] 5T43 ○ empty yaml input
   [69/416] 5T43 ○ empty yaml input
   [70/416] 5TRB ⚠ unexpected pass
-  [71/416] 5TYM ✗ parse error: unexpected token '!' at { offset := 31, line := 2, col := 1 }; expected plain scalar at { offset := 31, line := 2, col := 1 }; expected YAML value at { offset := 31, line := 2, col := 1 }
+  [71/416] 5TYM ✓
   [72/416] 5U3A ⚠ unexpected pass
   [73/416] 5WE3 ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
   [74/416] 62EZ ⚠ unexpected pass
@@ -93,13 +93,13 @@ Running all tests for HTML report...
   [77/416] 6BCT ✓
   [78/416] 6BFJ ✓
   [79/416] 6CA3 ✓
-  [80/416] 6CK3 ✗ parse error: unexpected token '!' at { offset := 42, line := 2, col := 3 }; expected plain scalar at { offset := 42, line := 2, col := 3 }; expected block sequence at { offset := 42, line := 2, col := 3 }; expected YAML value at { offset := 42, line := 2, col := 3 }
+  [80/416] 6CK3 ✓
   [81/416] 6FWR ✓
   [82/416] 6H3V ✓
   [83/416] 6HB6 ✓
   [84/416] 6JQW ✓
   [85/416] 6JTT ⚠ unexpected pass
-  [86/416] 6JWB ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct 'f' at line 0, column 0 at { offset := 1, line := 0, col := 1 }
+  [86/416] 6JWB ✓
   [87/416] 6KGN ✗ parse error: unexpected token at { offset := 5, line := 1, col := 1 }; unhandled construct 'a' at line 1, column 0 at { offset := 5, line := 1, col := 1 }
   [88/416] 6LVF ○ YAML 1.3 specific
   [89/416] 6M2F ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
@@ -113,13 +113,13 @@ Running all tests for HTML report...
   [97/416] 6WPF ○ YAML 1.3 specific
   [98/416] 6XDY ✓
   [99/416] 6ZKB ○ YAML 1.3 specific
-  [100/416] 735Y ✗ parse error: unexpected token '!' at { offset := 41, line := 4, col := 3 }; expected plain scalar at { offset := 41, line := 4, col := 3 }; expected block sequence at { offset := 41, line := 4, col := 3 }; expected YAML value at { offset := 41, line := 4, col := 3 }
-  [101/416] 74H7 ✗ parse error: unexpected token at { offset := 12, line := 1, col := 1 }; unhandled construct 'c' at line 1, column 0 at { offset := 12, line := 1, col := 1 }
+  [100/416] 735Y ✗ parse error: unexpected token '#' at { offset := 47, line := 4, col := 9 }; expected plain scalar at { offset := 47, line := 4, col := 9 }; expected block sequence at { offset := 47, line := 4, col := 9 }; expected YAML value at { offset := 47, line := 4, col := 9 }
+  [101/416] 74H7 ✓
   [102/416] 753E ○ YAML 1.3 specific
   [103/416] 7A4E ✓
   [104/416] 7BMT ○ YAML 1.3 specific
   [105/416] 7BUB ✓
-  [106/416] 7FWL ✗ parse error: unexpected token '!' at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
+  [106/416] 7FWL ✗ parse error: unexpected token at { offset := 26, line := 0, col := 26 }; unhandled construct 'f' at line 0, column 25 at { offset := 26, line := 0, col := 26 }
   [107/416] 7LBH ⚠ unexpected pass
   [108/416] 7MNF ⚠ unexpected pass
   [109/416] 7T8X ○ YAML 1.3 specific
@@ -180,8 +180,8 @@ Running all tests for HTML report...
   [164/416] BU8L ○ YAML 1.3 specific
   [165/416] C2DT ✓
   [166/416] C2SP ⚠ unexpected pass
-  [167/416] C4HZ ✗ parse error: unexpected token '!' at { offset := 37, line := 1, col := 5 }; expected plain scalar at { offset := 37, line := 1, col := 5 }; expected YAML value at { offset := 37, line := 1, col := 5 }
-  [168/416] CC74 ✗ parse error: unexpected token '!' at { offset := 40, line := 2, col := 1 }; expected plain scalar at { offset := 40, line := 2, col := 1 }; expected YAML value at { offset := 40, line := 2, col := 1 }
+  [167/416] C4HZ ✓
+  [168/416] CC74 ✓
   [169/416] CFD4 ✗ parse error: unexpected token at { offset := 5, line := 0, col := 5 }; ':' cannot start a plain scalar when followed by whitespace at { offset := 5, line := 0, col := 5 }; expected plain scalar at { offset := 5, line := 0, col := 5 }; expected flow value at { offset := 4, line := 0, col := 4 }; expected flow sequence at { offset := 4, line := 0, col := 4 }; expected block sequence at { offset := 4, line := 0, col := 4 }; expected YAML value at { offset := 4, line := 0, col := 4 }
   [170/416] CML9 ⚠ unexpected pass
   [171/416] CN3R ✗ parse error: unexpected token at { offset := 14, line := 1, col := 3 }; expected ',' or ']' in flow sequence, got ':' at { offset := 14, line := 1, col := 3 }; expected flow sequence at { offset := 14, line := 1, col := 3 }; expected YAML value at { offset := 14, line := 1, col := 3 }
@@ -189,7 +189,7 @@ Running all tests for HTML report...
   [173/416] CQ3W ⚠ unexpected pass
   [174/416] CT4Q ✗ parse error: unexpected token at { offset := 3, line := 1, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 3, line := 1, col := 1 }; expected plain scalar at { offset := 3, line := 1, col := 1 }; expected flow value at { offset := 2, line := 1, col := 0 }; expected flow sequence at { offset := 2, line := 1, col := 0 }; expected YAML value at { offset := 2, line := 1, col := 0 }
   [175/416] CTN5 ⚠ unexpected pass
-  [176/416] CUP7 ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct 'a' at line 0, column 0 at { offset := 1, line := 0, col := 1 }
+  [176/416] CUP7 ✓
   [177/416] CVW2 ⚠ unexpected pass
   [178/416] CXX2 ⚠ unexpected pass
   [179/416] D49Q ⚠ unexpected pass
@@ -221,16 +221,16 @@ Running all tests for HTML report...
   [205/416] DWX9 ○ YAML 1.3 specific
   [206/416] E76Z ✗ parse error: unexpected token at { offset := 13, line := 1, col := 2 }; undefined anchor: *b at { offset := 13, line := 1, col := 2 }; expected alias (*name) at { offset := 13, line := 1, col := 2 }; expected YAML value at { offset := 13, line := 1, col := 2 }
   [207/416] EB22 ⚠ unexpected pass
-  [208/416] EHF6 ✗ parse error: unexpected token '!' at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
+  [208/416] EHF6 ✓
   [209/416] EW3V ⚠ unexpected pass
   [210/416] EX5H ○ YAML 1.3 specific
   [211/416] EXG3 ○ YAML 1.3 specific
-  [212/416] F2C7 ✗ parse error: unexpected token '!' at { offset := 6, line := 0, col := 6 }; expected plain scalar at { offset := 6, line := 0, col := 6 }; expected block sequence at { offset := 6, line := 0, col := 6 }; expected YAML value at { offset := 6, line := 0, col := 6 }
+  [212/416] F2C7 ✓
   [213/416] F3CP ✓
   [214/416] F6MC ✓
   [215/416] F8F9 ✓
   [216/416] FBC9 ✓
-  [217/416] FH7J ✗ parse error: unexpected token '!' at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected block sequence at { offset := 3, line := 0, col := 3 }; expected YAML value at { offset := 3, line := 0, col := 3 }
+  [217/416] FH7J ✗ parse error: unexpected token at { offset := 8, line := 1, col := 0 }; content at column 0 is less than minimum indent 1 at { offset := 8, line := 1, col := 0 }; expected YAML value at { offset := 8, line := 1, col := 0 }; expected block sequence at { offset := 8, line := 1, col := 0 }; expected YAML value at { offset := 8, line := 1, col := 0 }
   [218/416] FP8R ✓
   [219/416] FQ7F ✓
   [220/416] FRK4 ✗ parse error: unexpected token at { offset := 16, line := 2, col := 3 }; ':' cannot start a plain scalar when followed by whitespace at { offset := 16, line := 2, col := 3 }; expected plain scalar at { offset := 16, line := 2, col := 3 }; expected flow mapping at { offset := 15, line := 2, col := 2 }; expected YAML value at { offset := 15, line := 2, col := 2 }
@@ -251,14 +251,14 @@ Running all tests for HTML report...
   [235/416] HM87 ✓
   [236/416] HM87 ✓
   [237/416] HMK4 ✓
-  [238/416] HMQ5 ✗ parse error: unexpected token '!' at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
+  [238/416] HMQ5 ✗ parse error: unexpected token at { offset := 16, line := 0, col := 16 }; unhandled construct ':' at line 0, column 15 at { offset := 16, line := 0, col := 16 }
   [239/416] HRE5 ⚠ unexpected pass
   [240/416] HS5T ✓
   [241/416] HU3P ⚠ unexpected pass
   [242/416] HWV9 ✓
   [243/416] J3BT ✓
   [244/416] J5UC ✓
-  [245/416] J7PZ ✗ parse error: unexpected token '!' at { offset := 259, line := 7, col := 5 }; expected plain scalar at { offset := 259, line := 7, col := 5 }; expected YAML value at { offset := 259, line := 7, col := 5 }
+  [245/416] J7PZ ✓
   [246/416] J7VC ✓
   [247/416] J9HZ ✗ parse error: unexpected token at { offset := 5, line := 1, col := 1 }; unhandled construct 'h' at line 1, column 0 at { offset := 5, line := 1, col := 1 }
   [248/416] JEF9 ✓
@@ -288,7 +288,7 @@ Running all tests for HTML report...
   [272/416] L383 ✓
   [273/416] L94M ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
   [274/416] L9U5 ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct 'i' at line 0, column 0 at { offset := 1, line := 0, col := 1 }
-  [275/416] LE5A ✗ parse error: unexpected token '!' at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected block sequence at { offset := 3, line := 0, col := 3 }; expected YAML value at { offset := 3, line := 0, col := 3 }
+  [275/416] LE5A ✗ parse error: unexpected token at { offset := 50, line := 5, col := 0 }; content at column 0 is less than minimum indent 1 at { offset := 50, line := 5, col := 0 }; expected YAML value at { offset := 50, line := 5, col := 0 }; expected block sequence at { offset := 50, line := 5, col := 0 }; expected YAML value at { offset := 50, line := 5, col := 0 }
   [276/416] LHL4 ⚠ unexpected pass
   [277/416] LP6E ✓
   [278/416] LQZ7 ✗ parse error: unexpected token at { offset := 22, line := 0, col := 22 }; unhandled construct ':' at line 0, column 21 at { offset := 22, line := 0, col := 22 }
@@ -323,7 +323,7 @@ Running all tests for HTML report...
   [307/416] NP9H ✓
   [308/416] P2AD ✓
   [309/416] P2EQ ⚠ unexpected pass
-  [310/416] P76L ✗ parse error: unexpected token '!' at { offset := 39, line := 2, col := 1 }; expected plain scalar at { offset := 39, line := 2, col := 1 }; expected YAML value at { offset := 39, line := 2, col := 1 }
+  [310/416] P76L ✓
   [311/416] P94K ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct 'k' at line 0, column 0 at { offset := 1, line := 0, col := 1 }
   [312/416] PBJ2 ✓
   [313/416] PRH3 ✓
@@ -350,7 +350,7 @@ Running all tests for HTML report...
   [334/416] S3PD ✗ parse error: unexpected token at { offset := 26, line := 1, col := 1 }; unhandled construct ':' at line 1, column 0 at { offset := 26, line := 1, col := 1 }
   [335/416] S3PD ○ empty yaml input
   [336/416] S4GJ ⚠ unexpected pass
-  [337/416] S4JQ ✗ parse error: unexpected token '!' at { offset := 51, line := 3, col := 3 }; expected plain scalar at { offset := 51, line := 3, col := 3 }; expected block sequence at { offset := 51, line := 3, col := 3 }; expected YAML value at { offset := 51, line := 3, col := 3 }
+  [337/416] S4JQ ✓
   [338/416] S4T7 ✓
   [339/416] S7BG ✓
   [340/416] S98Z ⚠ unexpected pass
@@ -374,17 +374,17 @@ Running all tests for HTML report...
   [358/416] TE2A ✓
   [359/416] TL85 ✓
   [360/416] TS54 ○ YAML 1.3 specific
-  [361/416] U3C3 ✗ parse error: unexpected token '!' at { offset := 36, line := 2, col := 1 }; expected plain scalar at { offset := 36, line := 2, col := 1 }; expected YAML value at { offset := 36, line := 2, col := 1 }
+  [361/416] U3C3 ✓
   [362/416] U3XV ○ YAML 1.3 specific
   [363/416] U44R ⚠ unexpected pass
   [364/416] U99R ⚠ unexpected pass
   [365/416] U9NS ✓
   [366/416] UDM2 ✓
   [367/416] UDR7 ✓
-  [368/416] UGM3 ✗ parse error: unexpected token '!' at { offset := 5, line := 0, col := 5 }; expected plain scalar at { offset := 5, line := 0, col := 5 }; expected YAML value at { offset := 5, line := 0, col := 5 }
+  [368/416] UGM3 ✗ parse error: unexpected token at { offset := 284, line := 13, col := 1 }; unhandled construct 's' at line 13, column 0 at { offset := 284, line := 13, col := 1 }
   [369/416] UKK6 ✗ parse error: unexpected token at { offset := 3, line := 0, col := 3 }; unhandled construct ':' at line 0, column 2 at { offset := 3, line := 0, col := 3 }
   [370/416] UKK6 ✗ parse error: unexpected token at { offset := 2, line := 0, col := 2 }; unhandled construct ':' at line 0, column 1 at { offset := 2, line := 0, col := 2 }
-  [371/416] UKK6 ✗ parse error: unexpected token '!' at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }; expected YAML value at { offset := 1, line := 0, col := 1 }
+  [371/416] UKK6 ✗ parse error: unexpected token at { offset := 2, line := 1, col := 0 }; expected YAML value at { offset := 2, line := 1, col := 0 }; expected YAML value at { offset := 2, line := 1, col := 0 }
   [372/416] UT92 ✗ parse error: unexpected token at { offset := 15, line := 2, col := 1 }; expected ',' or '}}' in flow mapping, got '%' at { offset := 15, line := 2, col := 1 }; expected flow mapping at { offset := 15, line := 2, col := 1 }; expected YAML value at { offset := 15, line := 2, col := 1 }
   [373/416] UV7Q ✓
   [374/416] V55R ✓
@@ -395,7 +395,7 @@ Running all tests for HTML report...
   [379/416] W4TN ○ YAML 1.3 specific
   [380/416] W5VH ○ YAML 1.3 specific
   [381/416] W9L4 ⚠ unexpected pass
-  [382/416] WZ62 ✗ parse error: unexpected token '!' at { offset := 11, line := 1, col := 9 }; expected plain scalar at { offset := 11, line := 1, col := 9 }; expected flow value at { offset := 10, line := 1, col := 8 }; expected flow mapping at { offset := 10, line := 1, col := 8 }; expected YAML value at { offset := 10, line := 1, col := 8 }
+  [382/416] WZ62 ✗ parse error: unexpected token ',' at { offset := 16, line := 1, col := 14 }; expected plain scalar at { offset := 16, line := 1, col := 14 }; expected flow value at { offset := 15, line := 1, col := 13 }; expected flow mapping at { offset := 15, line := 1, col := 13 }; expected YAML value at { offset := 15, line := 1, col := 13 }
   [383/416] X38W ✗ parse error: unexpected token '&' at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected flow mapping at { offset := 2, line := 0, col := 2 }; expected YAML value at { offset := 2, line := 0, col := 2 }
   [384/416] X4QW ⚠ unexpected pass
   [385/416] X8DW ✗ parse error: unexpected token at { offset := 5, line := 1, col := 1 }; '?' cannot start a plain scalar when followed by whitespace at { offset := 5, line := 1, col := 1 }; expected plain scalar at { offset := 5, line := 1, col := 1 }; expected YAML value at { offset := 5, line := 1, col := 1 }
@@ -417,7 +417,7 @@ Running all tests for HTML report...
   [401/416] YD5X ✓
   [402/416] YJV2 ⚠ unexpected pass
   [403/416] Z67P ○ YAML 1.3 specific
-  [404/416] Z9M4 ✗ parse error: unexpected token '!' at { offset := 42, line := 2, col := 3 }; expected plain scalar at { offset := 42, line := 2, col := 3 }; expected block sequence at { offset := 42, line := 2, col := 3 }; expected YAML value at { offset := 42, line := 2, col := 3 }
+  [404/416] Z9M4 ✓
   [405/416] ZCZ6 ⚠ unexpected pass
   [406/416] ZF4X ✓
   [407/416] ZH7C ✓
@@ -432,7 +432,7 @@ Running all tests for HTML report...
   [416/416] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 175/416 (42.000000%)
+Correct: 192/416 (46.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 17/17
@@ -441,9 +441,10 @@ Running verified test suites...
   Layer 1 Verification Tests: ✓ 138/138
   String Lemma Tests: ✓ 129/129
   Anchor & Alias Tests: ✓ 33/33
+  Tag Tests: ✓ 44/44
   Demo: ✓ 7/7
 
-Verified: 383/383
+Verified: 427/427
 
 Generating HTML reports...
   wrote docs/index.html
