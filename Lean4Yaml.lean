@@ -3,6 +3,7 @@ import Lean4Yaml.Stream
 import Lean4Yaml.Grammar
 import Lean4Yaml.Parser.Combinators
 import Lean4Yaml.Parser.Scalar
+import Lean4Yaml.Parser.Anchor
 import Lean4Yaml.Parser.Flow
 import Lean4Yaml.Parser.Block
 import Lean4Yaml.Parser.Document

@@ -171,4 +171,70 @@ def YamlValue.lookup? (v : YamlValue) (key : String) : Option YamlValue :=
       | _ => none
   | _ => none
 
+/-! ## Anchor Map
+
+An association-list map from anchor names to their resolved `YamlValue`s.
+Represented as `Array (String × YamlValue)` for proof-friendliness —
+all operations reduce to well-supported `Array` combinators (`filter`,
+`push`, `findSome?`).
+
+### Algebraic contracts (Layer 2 proof targets)
+
+1. **Get-after-set** (`find?_insert`): `(m.insert k v).find? k = some v`
+2. **Non-interference** (`find?_insert_ne`): `k ≠ k' → (m.insert k v).find? k' = m.find? k'`
+3. **Empty** (`find?_empty`): `empty.find? k = none`
+
+These three laws fully specify the map's observable behaviour and are
+sufficient for composing with alias-resolution proofs: an alias `*name`
+succeeds iff some prior `&name value` executed `insert`, and the value
+returned equals the stored one.
+-/
+
+/-- Anchor map: associates anchor names with their resolved values.
+    `abbrev` so `Array` methods (`filter`, `push`, `findSome?`) resolve
+    without manual coercion, keeping both code and proofs short. -/
+abbrev AnchorMap := Array (String × YamlValue)
+
+namespace AnchorMap
+
+/-- The empty anchor map. -/
+def empty : AnchorMap := #[]
+
+/-- Insert or replace a binding.
+    Removes any prior binding for `name`, then appends `(name, val)`,
+    maintaining the unique-key invariant. -/
+def insert (m : AnchorMap) (name : String) (val : YamlValue) : AnchorMap :=
+  (m.filter (fun (n, _) => n != name)).push (name, val)
+
+/-- Look up an anchor by name.
+    Returns the value if the anchor is defined, `none` otherwise. -/
+def find? (m : AnchorMap) (name : String) : Option YamlValue :=
+  m.findSome? (fun (n, v) => if n == name then some v else none)
+
+/-! ### Algebraic Laws
+
+These theorem statements document the essential contracts that
+verification proofs will use. They are the specification of
+`AnchorMap` — any correct implementation must satisfy them.
+-/
+
+/-- **Get-after-set**: looking up a just-inserted key returns the inserted value. -/
+theorem find?_insert (m : AnchorMap) (name : String) (val : YamlValue) :
+    AnchorMap.find? (AnchorMap.insert m name val) name = some val := by
+  simp only [AnchorMap.find?, AnchorMap.insert, Array.push, Array.findSome?]
+  sorry -- Layer 2: array filter+push reasoning
+
+/-- **Non-interference**: inserting under `k` does not affect lookups for `k' ≠ k`. -/
+theorem find?_insert_ne (m : AnchorMap) (name name' : String) (val : YamlValue)
+    (h : name ≠ name') :
+    AnchorMap.find? (AnchorMap.insert m name val) name' = AnchorMap.find? m name' := by
+  sorry -- Layer 2
+
+/-- **Empty**: no key is found in an empty map. -/
+theorem find?_empty (name : String) :
+    AnchorMap.find? AnchorMap.empty name = none := by
+  rfl
+
+end AnchorMap
+
 end Lean4Yaml

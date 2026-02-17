@@ -7,6 +7,7 @@ import Tests.ParseTest
 import Tests.QuotedFolding
 import Tests.Verification
 import Tests.StringLemmas
+import Tests.AnchorAlias
 import Demo
 
 /-!
@@ -277,6 +278,7 @@ def main (args : List String) : IO UInt32 := do
       Tests.QuotedFolding.collectTests,
       Tests.Verification.collectTests,
       Tests.StringLemmas.collectTests,
+      Tests.Anchor.collectTests,
       Demo.collectTests
     ]
     let mut verifiedSuites : Array Tests.VerifiedSuiteResult := #[]

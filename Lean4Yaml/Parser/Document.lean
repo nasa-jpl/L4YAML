@@ -6,6 +6,7 @@ import Lean4Yaml.Types
 import Lean4Yaml.Stream
 import Lean4Yaml.Parser.Combinators
 import Lean4Yaml.Parser.Scalar
+import Lean4Yaml.Parser.Anchor
 import Lean4Yaml.Parser.Flow
 import Lean4Yaml.Parser.Block
 
@@ -183,6 +184,9 @@ positions before/after the call. The document parser itself knows whether
 it consumed content, and communicates this through the result type.
 -/
 partial def document : YamlParser DocumentResult := do
+  -- Reset anchor map for this document scope (§3.2.2.2).
+  -- Anchors from a previous document must not leak into the next one.
+  resetAnchorMap
   skipBlankLines
   -- Check for end of stream before attempting anything
   let atEnd ← test endOfInput
