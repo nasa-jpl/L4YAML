@@ -37,6 +37,9 @@ name = "Tests.Verification"
 name = "Tests.StringLemmas"
 
 [[lean_lib]]
+name = "Tests.AnchorAlias"
+
+[[lean_lib]]
 name = "Demo"
 
 [[lean_exe]]
@@ -70,3 +73,7 @@ root = "Tests.Verification.Runner"
 [[lean_exe]]
 name = "stringlemmas"
 root = "Tests.StringLemmas.Runner"
+
+[[lean_exe]]
+name = "anchortests"
+root = "Tests.AnchorAlias.Runner"

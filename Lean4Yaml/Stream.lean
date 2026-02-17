@@ -3,6 +3,7 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Parser
+import Lean4Yaml.Types
 
 /-!
 # YAML Parser Stream
@@ -87,6 +88,15 @@ structure YamlStream where
   line : Nat
   /-- Current column number (0-based) -/
   col : Nat
+  /-- Anchor name → resolved YamlValue map.
+      Stored in the stream so it accumulates through parsing
+      without being rolled back by `setPosition` (which only
+      restores offset/line/col).  §6.9.2 / §7.1.
+
+      Uses the `AnchorMap` abstraction from Types.lean, whose
+      algebraic laws (`find?_insert`, `find?_insert_ne`, `find?_empty`)
+      are the foundation for alias-resolution proofs. -/
+  anchorMap : AnchorMap := AnchorMap.empty
   deriving Repr
 
 /-! ## Stream Instance -/
@@ -118,10 +128,8 @@ def YamlStream.next? (s : YamlStream) : Option (Char × YamlStream) :=
     let (newLine, newCol) :=
       if c == '\n' then (s.line + 1, 0)
       else (s.line, s.col + 1)
-    some (c, {
-      str := s.str
+    some (c, { s with
       startPos := nextPos
-      stopPos := s.stopPos
       line := newLine
       col := newCol
     })
@@ -174,10 +182,43 @@ instance : Parser.Stream YamlStream Char where
   setPosition s p :=
     -- Restore to saved position. Since we have the byte offset,
     -- we can restore the stream state directly.
+    -- Note: `anchorMap` is NOT in `YamlPos`, so it is preserved.
+    -- This is the backtracking-isolation invariant.
     { s with
       startPos := ⟨p.offset⟩
       line := p.line
       col := p.col }
+
+/-! ## Backtracking Isolation
+
+The anchor map survives position-based backtracking because
+`setPosition` only restores `startPos`, `line`, `col` — it
+does NOT touch `anchorMap`. This means:
+
+- `option?`, `lookAhead`, `<|>`, `first`, and all lean4-parser
+  combinators that save/restore position preserve the anchor map.
+- An anchor defined inside a failed parse branch remains available.
+- This matches YAML semantics: anchors accumulate over a document.
+
+The following theorems make this invariant machine-checkable.
+-/
+
+/-- **Backtracking isolation**: `setPosition` preserves the anchor map.
+    This is the central correctness invariant for anchor/alias
+    interaction with parser backtracking. -/
+theorem setPosition_preserves_anchorMap (s : YamlStream) (p : YamlPos) :
+    (Parser.Stream.setPosition s p).anchorMap = s.anchorMap := by
+  rfl
+
+/-- **`next?` preservation**: reading a character preserves the anchor map. -/
+theorem next_preserves_anchorMap (s : YamlStream) (c : Char) (s' : YamlStream)
+    (h : s.next? = some (c, s')) :
+    s'.anchorMap = s.anchorMap := by
+  simp only [YamlStream.next?] at h
+  split at h
+  · simp only [Option.some.injEq, Prod.mk.injEq] at h
+    exact h.2 ▸ rfl
+  · exact absurd h (by simp)
 
 /-! ## YAML-Specific Position Utilities -/
 

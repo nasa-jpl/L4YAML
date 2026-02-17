@@ -6,6 +6,7 @@ import Lean4Yaml.Types
 import Lean4Yaml.Stream
 import Lean4Yaml.Parser.Combinators
 import Lean4Yaml.Parser.Scalar
+import Lean4Yaml.Parser.Anchor
 
 /-!
 # YAML Flow Collection Parsers
@@ -64,9 +65,11 @@ Parse a flow scalar value (used inside flow collections).
 
 This parses any scalar type: double-quoted, single-quoted, or plain.
 Plain scalars in flow context are terminated by `,`, `]`, `}`.
+Also handles aliases (`*name`) as values.
 -/
 def flowScalar : YamlParser YamlValue :=
   first [
+    parseAlias,
     doubleQuotedScalar,
     singleQuotedScalar,
     plainScalar (inFlow := true)
@@ -86,6 +89,19 @@ A flow value is either:
 partial def flowValue : YamlParser YamlValue :=
   withErrorMessage "expected flow value" do
     flowWhitespace
+    -- Check for anchor prefix (&name) on flow values
+    match ← option? (lookAhead (token '&')) with
+    | some _ => do
+      let name ← parseAnchorPrefix
+      flowWhitespace
+      let val ← first [
+        flowSequence,
+        flowMapping,
+        flowScalar
+      ]
+      storeAnchor name val
+      return val
+    | none =>
     first [
       flowSequence,
       flowMapping,

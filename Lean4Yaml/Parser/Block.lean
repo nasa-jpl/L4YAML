@@ -6,6 +6,7 @@ import Lean4Yaml.Types
 import Lean4Yaml.Stream
 import Lean4Yaml.Parser.Combinators
 import Lean4Yaml.Parser.Scalar
+import Lean4Yaml.Parser.Anchor
 import Lean4Yaml.Parser.Flow
 
 /-!
@@ -81,6 +82,35 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
   | '>' => return .matched (← blockScalar contentIndent)
   | '"' => return .matched (← doubleQuotedScalar)
   | '\'' => return .matched (← singleQuotedScalar)
+  | '&' => do
+    -- Anchor prefix: parse name, then parse the following value.
+    -- The value may be on the same line or the next line(s).
+    let name ← parseAnchorPrefix
+    -- Check if the actual value is on the next line
+    match ← option? (lookAhead anyToken) with
+    | some c =>
+      if isLineBreak c then
+        -- Value on next line: use blockValue which handles
+        -- blank lines, indentation, and dispatching
+        let val ← blockValue contentIndent
+        storeAnchor name val
+        return .matched val
+      else
+        -- Value on same line: dispatch normally
+        let result ← dispatchByChar contentIndent
+        match result with
+        | .matched val =>
+          storeAnchor name val
+          return .matched val
+        | other => return other
+    | none =>
+      -- Anchor at end of input: the anchored node is null
+      storeAnchor name YamlValue.null
+      return .matched YamlValue.null
+  | '*' => do
+    -- Alias: resolve to previously anchored value
+    let val ← parseAlias
+    return .matched val
   | '-' => do
     -- Could be a block sequence indicator or a plain scalar starting with `-`
     let isSeq ← lookAhead do
@@ -309,11 +339,28 @@ Simple keys are single-line and cannot contain certain indicators.
 They end at `: ` (mapping value indicator).
 -/
 partial def blockMappingKey : YamlParser YamlValue := do
+  -- Check for alias as mapping key
+  match ← option? (lookAhead (token '*')) with
+  | some _ => parseAlias
+  | none =>
+  -- Check for anchor on mapping key
+  match ← option? (lookAhead (token '&')) with
+  | some _ => do
+    let name ← parseAnchorPrefix
+    let key ← first [
+      doubleQuotedScalar,
+      singleQuotedScalar,
+      do
+        let content ← plainMappingKey
+        return YamlValue.plainScalar content
+    ]
+    storeAnchor name key
+    return key
+  | none =>
   first [
     doubleQuotedScalar,
     singleQuotedScalar,
     do
-      -- Plain key: collect until `:`
       let content ← plainMappingKey
       return YamlValue.plainScalar content
   ]
