@@ -435,13 +435,14 @@ Running all tests for HTML report...
 Correct: 166/416 (39.000000%)
 
 Running verified test suites...
-  Running Unit Tests... ✓ 17/17
-  Running Parser Integration Tests... ✓ 0/0
-  Running Quoted Folding Tests... ✓ 34/34
-  Running Layer 1 Verification Tests... ✓ 138/138
-  Running Demo... ✓ 0/0
+  Unit Tests: ✓ 17/17
+  Parser Integration Tests: ✓ 25/25
+  Quoted Folding Tests: ✓ 34/34
+  Layer 1 Verification Tests: ✓ 138/138
+  String Lemma Tests: ✓ 129/129
+  Demo: ✓ 7/7
 
-Verified: 189/189
+Verified: 350/350
 
 Generating HTML reports...
   wrote docs/index.html

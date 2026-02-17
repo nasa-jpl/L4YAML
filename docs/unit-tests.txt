@@ -1,17 +1,20 @@
 === Unit Tests ===
-=== lean4-yaml-verified test suite ===
+=== Unit Tests ===
 
 --- ScalarStyle ---
   ✓ All 5 scalar styles defined
   ✓ BEq distinguishes styles
+
 --- YamlValue construction ---
   ✓ Scalar content preserved
   ✓ Sequence has 2 items
   ✓ Mapping has 1 pair
   ✓ Null value constructed
+
 --- YamlDocument ---
   ✓ Document has 1 directive
   ✓ YAML directive version correct
+
 --- YamlStream ---
   ✓ Initial position (0,0)
   ✓ First char is 'a'
@@ -20,8 +23,9 @@
   ✓ After 'c': position (1,1)
   ✓ peek? returns 'a' without advancing
   ✓ Empty stream has no next
+
 --- YamlPos ---
   ✓ YamlPos BEq reflexive
   ✓ YamlPos BEq distinguishes
 
-All tests complete.
+=== Results: 17/17 passed ===

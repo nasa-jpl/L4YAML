@@ -5,459 +5,2674 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Verified Tests — lean4-yaml-verified</title>
   <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background: #f5f5f5; }
-    .container { max-width: 1000px; margin: 0 auto; background: white; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-radius: 8px; }
-    h1 { color: #333; border-bottom: 3px solid #4CAF50; padding-bottom: 10px; }
-    .nav { margin-bottom: 20px; }
-    .nav a { color: #2196F3; text-decoration: none; }
-    .nav a:hover { text-decoration: underline; }
-    .output { background: #f8f8f8; padding: 20px; border-radius: 6px; border: 1px solid #e0e0e0; overflow-x: auto; }
-    .output pre { margin: 0; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
-    .pass { color: #4CAF50; }
-    .fail { color: #f44336; }
+    :root { --color-pass: #4CAF50; --color-fail: #f44336; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+    .container { max-width: 1400px; margin: 0 auto; background: white; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 8px; }
+    h1 { color: #333; border-bottom: 3px solid var(--color-pass); padding-bottom: 10px; margin-top: 0; }
+    h3 { color: #555; }
+    .subtitle { color: #666; font-size: 16px; margin-bottom: 30px; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin: 25px 0; }
+    .stat-box { color: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .stat-box h3 { margin: 0 0 8px 0; font-size: 13px; opacity: 0.9; color: white; }
+    .stat-box .number { font-size: 32px; font-weight: bold; }
+    .stat-total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .stat-pass { background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); }
+    .stat-fail { background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%); }
+    .stat-suites { background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%); }
+    .stage-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin: 20px 0; }
+    .stage-card { background: #f8f9fa; padding: 18px; border-radius: 6px; border-left: 4px solid var(--color-pass); }
+    .stage-card-name { font-weight: 600; font-size: 16px; color: #333; margin-bottom: 8px; }
+    .stage-card-stats { color: #666; font-size: 14px; }
+    .stage-card-source { margin-top: 8px; font-size: 12px; }
+    .source-link { color: #2196F3; text-decoration: none; font-family: 'Courier New', monospace; }
+    .source-link:hover { text-decoration: underline; }
+    .stage-bar { height: 8px; background: #e0e0e0; border-radius: 4px; margin-top: 10px; overflow: hidden; }
+    .stage-bar-fill { height: 100%; background: var(--color-pass); border-radius: 4px; transition: width 0.3s ease; }
+    .filters { background: #f8f9fa; padding: 15px; border-radius: 6px; margin: 20px 0; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+    .filter-group { display: flex; align-items: center; gap: 8px; }
+    .filter-group label { font-weight: 600; color: #555; font-size: 14px; }
+    .filter-btn { padding: 6px 14px; border: 2px solid #ddd; background: white; border-radius: 4px; cursor: pointer; transition: all 0.2s; font-size: 13px; }
+    .filter-btn:hover { border-color: #4CAF50; }
+    .filter-btn.active { background: #4CAF50; color: white; border-color: #4CAF50; }
+    select { padding: 6px 12px; border: 2px solid #ddd; border-radius: 4px; font-size: 13px; }
+    .search-input { padding: 6px 12px; border: 2px solid #ddd; border-radius: 4px; font-size: 13px; width: 200px; }
+    .search-input:focus { border-color: #4CAF50; outline: none; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    th { background: #4CAF50; color: white; padding: 10px 12px; text-align: left; font-weight: 600; position: sticky; top: 0; cursor: pointer; user-select: none; font-size: 13px; }
+    th:hover { background: #45a049; }
+    th .sort-arrow { margin-left: 4px; opacity: 0.5; }
+    th.sorted .sort-arrow { opacity: 1; }
+    td { padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; }
+    tr:hover { background: #f5f5f5; }
+    tr.hidden { display: none; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; color: white; }
+    .badge-pass { background: var(--color-pass); }
+    .badge-fail { background: var(--color-fail); }
+    .error-msg { color: #d32f2f; font-size: 11px; font-family: 'Courier New', monospace; max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
+    .error-msg:hover { white-space: normal; word-break: break-all; }
+    .nav-link { display: inline-block; margin-bottom: 20px; color: #2196F3; text-decoration: none; font-size: 14px; }
+    .nav-link:hover { text-decoration: underline; }
     footer { margin-top: 40px; text-align: center; color: #999; font-size: 13px; border-top: 1px solid #e0e0e0; padding-top: 20px; }
     footer a { color: #2196F3; text-decoration: none; }
+    @media (max-width: 768px) { body { padding: 10px; } .container { padding: 15px; } .filters { flex-direction: column; gap: 10px; } .stats { grid-template-columns: repeat(2, 1fr); } }
   </style>
 </head>
 <body>
 <div class="container">
-  <div class="nav"><a href="index.html">← Back to Coverage Index</a></div>
+  <a href="index.html" class="nav-link">← Back to Coverage Index</a>
   <h1>✅ Verified Tests</h1>
-  <p style="color:#666">Unit tests, integration tests, quoted folding tests, Layer 1 verification tests, and demo tests — all must pass.</p>
+  <p class="subtitle">Unit tests, parser tests, verification tests, and string lemma tests — all must pass.</p>
 
-  <p><strong>Total: 189/189</strong></p>
-
-  <div class="output">
-    <pre>=== Unit Tests ===
-=== lean4-yaml-verified test suite ===
-
---- ScalarStyle ---
-  ✓ All 5 scalar styles defined
-  ✓ BEq distinguishes styles
---- YamlValue construction ---
-  ✓ Scalar content preserved
-  ✓ Sequence has 2 items
-  ✓ Mapping has 1 pair
-  ✓ Null value constructed
---- YamlDocument ---
-  ✓ Document has 1 directive
-  ✓ YAML directive version correct
---- YamlStream ---
-  ✓ Initial position (0,0)
-  ✓ First char is &#39;a&#39;
-  ✓ Column advances to 1
-  ✓ Newline resets col to 0, increments line to 1
-  ✓ After &#39;c&#39;: position (1,1)
-  ✓ peek? returns &#39;a&#39; without advancing
-  ✓ Empty stream has no next
---- YamlPos ---
-  ✓ YamlPos BEq reflexive
-  ✓ YamlPos BEq distinguishes
-
-All tests complete.
-
-=== Parser Integration Tests ===
-=== Parser Integration Tests ===
-
---- Double-quoted scalars ---
-  simple: OK → Lean4Yaml.YamlValue.scalar { content := &quot;hello&quot;, style := Lean4Yaml.ScalarStyle.doubleQuoted, tag := none }
-  with space: OK → Lean4Yaml.YamlValue.scalar { content := &quot;hello world&quot;, style := Lean4Yaml.ScalarStyle.doubleQuoted, tag := none }
-  with escape: OK → Lean4Yaml.YamlValue.scalar { content := &quot;hello\nworld&quot;, style := Lean4Yaml.ScalarStyle.doubleQuoted, tag := none }
-  empty: OK → Lean4Yaml.YamlValue.scalar { content := &quot;&quot;, style := Lean4Yaml.ScalarStyle.doubleQuoted, tag := none }
-
---- Single-quoted scalars ---
-  simple: OK → Lean4Yaml.YamlValue.scalar { content := &quot;hello&quot;, style := Lean4Yaml.ScalarStyle.singleQuoted, tag := none }
-  with space: OK → Lean4Yaml.YamlValue.scalar { content := &quot;hello world&quot;, style := Lean4Yaml.ScalarStyle.singleQuoted, tag := none }
-  escaped quote: OK → Lean4Yaml.YamlValue.scalar { content := &quot;it&#39;s&quot;, style := Lean4Yaml.ScalarStyle.singleQuoted, tag := none }
-  empty: OK → Lean4Yaml.YamlValue.scalar { content := &quot;&quot;, style := Lean4Yaml.ScalarStyle.singleQuoted, tag := none }
-
---- Plain scalars ---
-  word: OK → Lean4Yaml.YamlValue.scalar { content := &quot;hello&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }
-  multi-word: OK → Lean4Yaml.YamlValue.scalar { content := &quot;hello world&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }
-
---- Flow sequences ---
-  simple: OK → Lean4Yaml.YamlValue.sequence
-  (Lean4Yaml.CollectionStyle.flow)
-  #[Lean4Yaml.YamlValue.scalar { content := &quot;a&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-    Lean4Yaml.YamlValue.scalar { content := &quot;b&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-    Lean4Yaml.YamlValue.scalar { content := &quot;c&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }]
-  none
-  nested: OK → Lean4Yaml.YamlValue.sequence
-  (Lean4Yaml.CollectionStyle.flow)
-  #[Lean4Yaml.YamlValue.sequence
-      (Lean4Yaml.CollectionStyle.flow)
-      #[Lean4Yaml.YamlValue.scalar { content := &quot;1&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-        Lean4Yaml.YamlValue.scalar { content := &quot;2&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }]
-      none,
-    Lean4Yaml.YamlValue.sequence
-      (Lean4Yaml.CollectionStyle.flow)
-      #[Lean4Yaml.YamlValue.scalar { content := &quot;3&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }]
-      none]
-  none
-  empty: OK → Lean4Yaml.YamlValue.sequence (Lean4Yaml.CollectionStyle.flow) #[] none
-
---- Flow mappings ---
-  simple: OK → Lean4Yaml.YamlValue.mapping
-  (Lean4Yaml.CollectionStyle.flow)
-  #[(Lean4Yaml.YamlValue.scalar { content := &quot;a&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-     Lean4Yaml.YamlValue.scalar { content := &quot;1&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }),
-    (Lean4Yaml.YamlValue.scalar { content := &quot;b&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-     Lean4Yaml.YamlValue.scalar { content := &quot;2&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none })]
-  none
-  empty: OK → Lean4Yaml.YamlValue.mapping (Lean4Yaml.CollectionStyle.flow) #[] none
-
---- Block sequences ---
-  simple: OK → Lean4Yaml.YamlValue.sequence
-  (Lean4Yaml.CollectionStyle.block)
-  #[Lean4Yaml.YamlValue.scalar { content := &quot;a&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-    Lean4Yaml.YamlValue.scalar { content := &quot;b&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }]
-  none
-  items: OK → Lean4Yaml.YamlValue.sequence
-  (Lean4Yaml.CollectionStyle.block)
-  #[Lean4Yaml.YamlValue.scalar { content := &quot;one&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-    Lean4Yaml.YamlValue.scalar { content := &quot;two&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-    Lean4Yaml.YamlValue.scalar { content := &quot;three&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }]
-  none
-
---- Block mappings ---
-  simple: OK → Lean4Yaml.YamlValue.mapping
-  (Lean4Yaml.CollectionStyle.block)
-  #[(Lean4Yaml.YamlValue.scalar { content := &quot;a&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-     Lean4Yaml.YamlValue.scalar { content := &quot;1&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }),
-    (Lean4Yaml.YamlValue.scalar { content := &quot;b&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-     Lean4Yaml.YamlValue.scalar { content := &quot;2&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none })]
-  none
-
---- Document parsing ---
-  empty: OK (0 docs)
-  just scalar: OK → Lean4Yaml.YamlValue.scalar { content := &quot;hello&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }
-  explicit doc: OK (1 docs)
-  multi doc: OK (2 docs)
-
---- Nested block ---
-  map with seq value: OK → Lean4Yaml.YamlValue.mapping
-  (Lean4Yaml.CollectionStyle.block)
-  #[(Lean4Yaml.YamlValue.scalar { content := &quot;items&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-     Lean4Yaml.YamlValue.sequence
-       (Lean4Yaml.CollectionStyle.block)
-       #[Lean4Yaml.YamlValue.scalar { content := &quot;a&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-         Lean4Yaml.YamlValue.scalar { content := &quot;b&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }]
-       none)]
-  none
-  nested map: OK → Lean4Yaml.YamlValue.mapping
-  (Lean4Yaml.CollectionStyle.block)
-  #[(Lean4Yaml.YamlValue.scalar { content := &quot;outer&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-     Lean4Yaml.YamlValue.mapping
-       (Lean4Yaml.CollectionStyle.block)
-       #[(Lean4Yaml.YamlValue.scalar { content := &quot;inner&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-          Lean4Yaml.YamlValue.scalar { content := &quot;value&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none })]
-       none)]
-  none
-  seq of maps: OK → Lean4Yaml.YamlValue.sequence
-  (Lean4Yaml.CollectionStyle.block)
-  #[Lean4Yaml.YamlValue.mapping
-      (Lean4Yaml.CollectionStyle.block)
-      #[(Lean4Yaml.YamlValue.scalar { content := &quot;a&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-         Lean4Yaml.YamlValue.scalar { content := &quot;1&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none })]
-      none,
-    Lean4Yaml.YamlValue.mapping
-      (Lean4Yaml.CollectionStyle.block)
-      #[(Lean4Yaml.YamlValue.scalar { content := &quot;b&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-         Lean4Yaml.YamlValue.scalar { content := &quot;2&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none })]
-      none]
-  none
-
-=== Done ===
-
-=== Quoted Folding Tests ===
-=== Quoted Scalar Folding Tests ===
-
---- Bug A: Simple fold (newline → space) ---
-  dq basic fold: ✓
-  dq no leading ws: ✓
-  sq basic fold: ✓
-  sq no leading ws: ✓
-
---- Bug B: Empty line counting (preserved newlines) ---
-  dq one empty line: ✓
-  dq two empty lines: ✓
-  dq three empty lines: ✓
-  sq one empty line: ✓
-  sq two empty lines: ✓
-
---- Bug C: Trailing whitespace trimming ---
-  dq trailing spaces: ✓
-  dq trailing tab: ✓
-  dq trailing mixed ws: ✓
-  sq trailing spaces: ✓
-
---- Bug D: Tab handling on continuation lines ---
-  dq tab continuation: ✓
-  dq tab+space continuation: ✓
-  dq tab after blank: ✓
-  sq tab continuation: ✓
-
---- Bug E: Escaped line breaks (line continuation) ---
-  dq escaped newline: ✓
-  dq escaped bare: ✓
-  dq escaped with trailing: ✓
-  dq double escaped: ✓
-
---- Combined folding tests ---
-  dq multi-line fold: ✓
-  dq fold then blank: ✓
-  dq blank then fold: ✓
-  dq triple fold: ✓
-
---- CRLF folding ---
-  dq CRLF fold: ✓
-  dq CRLF blank: ✓
-  sq CRLF fold: ✓
-
---- Edge cases ---
-  dq no fold: ✓
-  sq no fold: ✓
-  dq empty: ✓
-  sq empty: ✓
-  dq fold at end: ✓
-  dq ws-only blank: ✓
-
-=== Done ===
-
-=== Layer 1 Verification Tests ===
-=== Layer 1 Verification Tests ===
-
---- YamlStream.ofString ---
-  ✓ startPos is 0
-  ✓ line is 0
-  ✓ col is 0
-  ✓ hasNext on non-empty
-  ✓ empty stream: not hasNext
---- YamlStream.next? basic ---
-  ✓ first char is &#39;h&#39;
-  ✓ col advances to 1
-  ✓ line stays 0
-  ✓ second char is &#39;i&#39;
-  ✓ col advances to 2
-  ✓ next? at end is none
---- YamlStream.next? newline tracking ---
-  ✓ after &#39;a&#39;: line=0 col=1
-  ✓ after &#39;\n&#39;: line=1 col=0
-  ✓ after &#39;b&#39;: line=1 col=1
---- YamlStream.next? multiple newlines ---
-  ✓ after first &#39;\n&#39;: line=1
-  ✓ after second &#39;\n&#39;: line=2
-  ✓ after second &#39;\n&#39;: col=0
-  ✓ after &#39;y&#39;: line=2 col=1
---- YamlStream.peek? ---
-  ✓ peek? returns &#39;x&#39;
-  ✓ peek? again returns &#39;x&#39;
-  ✓ peek? on empty is none
---- remainingLength ---
-  ✓ initial remainingLength is 3
-  ✓ after 1 char: remainingLength decreases
-  ✓ after 1 char: remainingLength is 2
-  ✓ after 2 chars: remainingLength is 1
-  ✓ after 3 chars: remainingLength is 0
-  ✓ at end: next? is none
---- remainingLength empty ---
-  ✓ empty: remainingLength is 0
---- remainingLength multibyte ---
-  ✓ é: remainingLength &gt; 1 (multibyte)
-  ✓ next? yields &#39;é&#39;
-  ✓ after &#39;é&#39;: remainingLength is 0
-  ✓ 日本: initial remainingLength is 6 (3+3)
-  ✓ after &#39;日&#39;: remainingLength is 3
---- remainingLength strictly decreasing ---
-  ✓ remainingLength strictly decreases through all chars
-  ✓ final remainingLength is 0
---- Grammar↔Combinators: isLineBreak ---
-  ✓ isLineBreak: all test chars agree
-  ✓ LF is line break (Grammar)
-  ✓ CR is line break (Grammar)
-  ✓ space is NOT line break
-  ✓ LF is line break (Combinators)
-  ✓ CR is line break (Combinators)
-  ✓ space is NOT line break (Combinators)
---- Grammar↔Combinators: isWhiteSpace ---
-  ✓ isWhiteSpace: all test chars agree
-  ✓ space is whitespace
-  ✓ tab is whitespace
-  ✓ newline is NOT whitespace
---- Grammar↔Combinators: isFlowIndicator ---
-  ✓ isFlowIndicator: all positive chars agree
-  ✓ &#39;,&#39; is flow indicator (Grammar)
-  ✓ &#39;,&#39; is flow indicator (Combinators)
-  ✓ &#39;[&#39; is flow indicator (Grammar)
-  ✓ &#39;[&#39; is flow indicator (Combinators)
-  ✓ &#39;]&#39; is flow indicator (Grammar)
-  ✓ &#39;]&#39; is flow indicator (Combinators)
-  ✓ &#39;{&#39; is flow indicator (Grammar)
-  ✓ &#39;{&#39; is flow indicator (Combinators)
-  ✓ &#39;}&#39; is flow indicator (Grammar)
-  ✓ &#39;}&#39; is flow indicator (Combinators)
-  ✓ &#39;-&#39; is NOT flow indicator
-  ✓ &#39;:&#39; is NOT flow indicator
-  ✓ &#39;?&#39; is NOT flow indicator
-  ✓ &#39;#&#39; is NOT flow indicator
-  ✓ &#39;a&#39; is NOT flow indicator
-  ✓ &#39; &#39; is NOT flow indicator
-  ✓ &#39;
-&#39; is NOT flow indicator
---- Grammar↔Combinators: isIndentChar ---
-  ✓ space is indent char
-  ✓ tab is NOT indent char
-  ✓ space is not line break (indent requires space only)
---- canStartPlainScalar ---
-  ✓ &#39;a&#39; starts plain scalar
-  ✓ &#39;Z&#39; starts plain scalar
-  ✓ &#39;0&#39; starts plain scalar
-  ✓ &#39;[&#39; cannot start plain
-  ✓ &#39;]&#39; cannot start plain
-  ✓ &#39;{&#39; cannot start plain
-  ✓ &#39;#&#39; cannot start plain
-  ✓ &#39;&quot;&#39; cannot start plain
-  ✓ &quot;&#39;&quot; cannot start plain
-  ✓ &#39;-&#39; + &#39;a&#39; starts plain
-  ✓ &#39;-&#39; + &#39; &#39; does NOT start plain
-  ✓ &#39;-&#39; + none does NOT start plain
-  ✓ &#39;:&#39; + &#39;x&#39; starts plain
-  ✓ &#39;:&#39; + &#39; &#39; does NOT start plain
-  ✓ &#39;?&#39; + &#39;!&#39; starts plain
-  ✓ &#39;?&#39; + &#39;\t&#39; does NOT start plain
-  ✓ space cannot start plain
-  ✓ tab cannot start plain
-  ✓ newline cannot start plain
---- FoldResult ---
-  ✓ folded carries content
-  ✓ forbidden carries message
-  ✓ Repr instance works for folded
-  ✓ Repr instance works for forbidden
---- trimTrailingWhitespace ---
-  ✓ trims trailing spaces
-  ✓ trims trailing tabs
-  ✓ trims mixed space+tab
-  ✓ no trailing ws: unchanged
-  ✓ empty string: unchanged
-  ✓ preserves leading spaces
-  ✓ preserves interior spaces
-  ✓ all spaces: empty result
-  ✓ all tabs: empty result
-  ✓ single char no ws
-  ✓ single space: empty
-  ✓ idempotent: trim∘trim = trim
-  ✓ result has no trailing space
---- YamlPos ---
-  ✓ same pos is equal
-  ✓ different pos is not equal
-  ✓ p1 &lt; p2 by offset
-  ✓ p2 &gt; p1 by offset
-  ✓ p1 == p1 by comparison
-  ✓ DecidableEq: equal
-  ✓ DecidableEq: not equal
-  ✓ Inhabited: default exists
---- YamlStream.getPos ---
-  ✓ initial pos: offset=0
-  ✓ initial pos: line=0
-  ✓ initial pos: col=0
-  ✓ after &#39;a&#39;: offset&gt;0
-  ✓ after &#39;a&#39;: col=1
-  ✓ after &#39;\n&#39;: line=1
-  ✓ after &#39;\n&#39;: col=0
---- Grammar.Indented constructors ---
-  ✓ Indented 0 [&#39;a&#39;,&#39;b&#39;] via .zero
-  ✓ Indented 1 [&#39; &#39;,&#39;a&#39;] via .space
-  ✓ Indented 2 [&#39; &#39;,&#39; &#39;,&#39;a&#39;] via nested .space
---- Grammar.ChompStyle ---
-  ✓ strip ≠ clip
-  ✓ clip ≠ keep
-  ✓ strip ≠ keep
-  ✓ strip = strip
-  ✓ DecidableEq works
---- Grammar.NodeToValue ---
-  ✓ plainScalarBlock ↔ YamlValue.scalar (plain)
-  ✓ singleQuoted ↔ YamlValue.scalar (singleQuoted)
-  ✓ doubleQuoted ↔ YamlValue.scalar (doubleQuoted)
---- Grammar.ValidYaml structure ---
-  ✓ ValidYaml: input matches
-  ✓ ValidYaml: grammar node constructed
-  ✓ ValidYaml: correspondence holds
---- Stream exhaustive consumption ---
-  ✓ consumed 18 chars
-  ✓ final remainingLength is 0
-  ✓ remainingLength monotonically decreased
---- Stream CRLF handling ---
-  ✓ CR: col advances (not reset)
-  ✓ CR: line unchanged
-  ✓ CRLF LF: line=1 col=0
-
-=== Results: 138/138 passed ===
-
-=== Demo ===
-=== Lean4Yaml Verified Parser Demo ===
-
---- Example 1: Plain scalar ---
-  Parsed: Lean4Yaml.YamlValue.scalar { content := &quot;hello world&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }
-
---- Example 2: Flow sequence ---
-  Parsed: Lean4Yaml.YamlValue.sequence
-  (Lean4Yaml.CollectionStyle.flow)
-  #[Lean4Yaml.YamlValue.scalar { content := &quot;a&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-    Lean4Yaml.YamlValue.scalar { content := &quot;b&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-    Lean4Yaml.YamlValue.scalar { content := &quot;c&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }]
-  none
-
---- Example 3: Flow mapping ---
-  Parsed: Lean4Yaml.YamlValue.mapping
-  (Lean4Yaml.CollectionStyle.flow)
-  #[(Lean4Yaml.YamlValue.scalar { content := &quot;name&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-     Lean4Yaml.YamlValue.scalar { content := &quot;test&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }),
-    (Lean4Yaml.YamlValue.scalar { content := &quot;version&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-     Lean4Yaml.YamlValue.scalar { content := &quot;1&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none })]
-  none
-
---- Example 4: Block mapping ---
-  Parsed: Lean4Yaml.YamlValue.mapping
-  (Lean4Yaml.CollectionStyle.block)
-  #[(Lean4Yaml.YamlValue.scalar { content := &quot;name&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-     Lean4Yaml.YamlValue.scalar { content := &quot;test&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }),
-    (Lean4Yaml.YamlValue.scalar { content := &quot;version&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-     Lean4Yaml.YamlValue.scalar { content := &quot;1&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none })]
-  none
-
---- Example 5: Nested block structure ---
-  Parsed: Lean4Yaml.YamlValue.mapping
-  (Lean4Yaml.CollectionStyle.block)
-  #[(Lean4Yaml.YamlValue.scalar { content := &quot;server&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-     Lean4Yaml.YamlValue.mapping
-       (Lean4Yaml.CollectionStyle.block)
-       #[(Lean4Yaml.YamlValue.scalar { content := &quot;host&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-          Lean4Yaml.YamlValue.scalar { content := &quot;localhost&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }),
-         (Lean4Yaml.YamlValue.scalar { content := &quot;port&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-          Lean4Yaml.YamlValue.scalar { content := &quot;8080&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none })]
-       none),
-    (Lean4Yaml.YamlValue.scalar { content := &quot;clients&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-     Lean4Yaml.YamlValue.sequence
-       (Lean4Yaml.CollectionStyle.block)
-       #[Lean4Yaml.YamlValue.scalar { content := &quot;alice&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none },
-         Lean4Yaml.YamlValue.scalar { content := &quot;bob&quot;, style := Lean4Yaml.ScalarStyle.plain, tag := none }]
-       none)]
-  none
-
---- Example 6: Double-quoted scalar ---
-  Parsed: Lean4Yaml.YamlValue.scalar { content := &quot;hello\nworld&quot;, style := Lean4Yaml.ScalarStyle.doubleQuoted, tag := none }
-
---- Example 7: Multi-document stream ---
-  2 documents parsed
-
-=== Done ===
-
-</pre>
+  <div class="stats">
+    <div class="stat-box stat-total"><h3>Total</h3><div class="number">350</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">350</div></div>
+    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
+    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">6</div></div>
   </div>
+  <h3>Suites</h3>
+  <div class="stage-cards">
+    <div class="stage-card" style="border-left-color:var(--color-pass)">
+      <div class="stage-card-name">Unit Tests</div>
+      <div class="stage-card-stats">17/17 passed (100%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
+      <div class="stage-card-source"><a href="../Tests/Main.lean" class="source-link">📄 Tests/Main.lean</a></div>
+    </div>
+    <div class="stage-card" style="border-left-color:var(--color-pass)">
+      <div class="stage-card-name">Parser Integration Tests</div>
+      <div class="stage-card-stats">25/25 passed (100%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
+      <div class="stage-card-source"><a href="../Tests/ParseTest.lean" class="source-link">📄 Tests/ParseTest.lean</a></div>
+    </div>
+    <div class="stage-card" style="border-left-color:var(--color-pass)">
+      <div class="stage-card-name">Quoted Folding Tests</div>
+      <div class="stage-card-stats">34/34 passed (100%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
+      <div class="stage-card-source"><a href="../Tests/QuotedFolding.lean" class="source-link">📄 Tests/QuotedFolding.lean</a></div>
+    </div>
+    <div class="stage-card" style="border-left-color:var(--color-pass)">
+      <div class="stage-card-name">Layer 1 Verification Tests</div>
+      <div class="stage-card-stats">138/138 passed (100%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
+      <div class="stage-card-source"><a href="../Tests/Verification.lean" class="source-link">📄 Tests/Verification.lean</a></div>
+    </div>
+    <div class="stage-card" style="border-left-color:var(--color-pass)">
+      <div class="stage-card-name">String Lemma Tests</div>
+      <div class="stage-card-stats">129/129 passed (100%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
+      <div class="stage-card-source"><a href="../Tests/StringLemmas.lean" class="source-link">📄 Tests/StringLemmas.lean</a></div>
+    </div>
+    <div class="stage-card" style="border-left-color:var(--color-pass)">
+      <div class="stage-card-name">Demo</div>
+      <div class="stage-card-stats">7/7 passed (100%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
+      <div class="stage-card-source"><a href="../Demo.lean" class="source-link">📄 Demo.lean</a></div>
+    </div>
+  </div>
+
+  <div class="filters">
+    <div class="filter-group filter-outcome">
+      <label>Outcome:</label>
+      <button class="filter-btn active" onclick="filterByOutcome('all')">All</button>
+      <button class="filter-btn" onclick="filterByOutcome('pass')">Pass</button>
+      <button class="filter-btn" onclick="filterByOutcome('fail')">Fail</button>
+    </div>
+    <div class="filter-group">
+      <label>Suite:</label>
+      <select onchange="filterBySuite(this.value)">
+        <option value="all">All Suites</option>
+        <option value="tests">Unit Tests</option>
+        <option value="parsetest">Parser Integration Tests</option>
+        <option value="quotedfolding">Quoted Folding Tests</option>
+        <option value="verification">Layer 1 Verification Tests</option>
+        <option value="stringlemmas">String Lemma Tests</option>
+        <option value="demo">Demo</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Search:</label>
+      <input type="text" class="search-input" placeholder="Category, test name..." oninput="searchTests(this.value)">
+    </div>
+    <div class="filter-group"><span>Showing <strong id="visibleCount">350</strong> of 350</span></div>
+  </div>
+
+  <table id="testTable">
+    <thead>
+      <tr>
+        <th onclick="sortTable(0)">Suite <span class="sort-arrow">↕</span></th>
+        <th onclick="sortTable(1)">Category <span class="sort-arrow">↕</span></th>
+        <th onclick="sortTable(2)">Test <span class="sort-arrow">↕</span></th>
+        <th onclick="sortTable(3)">Outcome <span class="sort-arrow">↕</span></th>
+        <th onclick="sortTable(4)">Error <span class="sort-arrow">↕</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="test-row" data-outcome="pass" data-suite="tests" data-search="tests scalarstyle all 5 scalar styles defined">
+        <td><a href="../Tests/Main.lean" class="source-link">Unit Tests</a></td>
+        <td>ScalarStyle</td>
+        <td>All 5 scalar styles defined</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="tests" data-search="tests scalarstyle beq distinguishes styles">
+        <td><a href="../Tests/Main.lean" class="source-link">Unit Tests</a></td>
+        <td>ScalarStyle</td>
+        <td>BEq distinguishes styles</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="tests" data-search="tests yamlvalue construction scalar content preserved">
+        <td><a href="../Tests/Main.lean" class="source-link">Unit Tests</a></td>
+        <td>YamlValue construction</td>
+        <td>Scalar content preserved</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="tests" data-search="tests yamlvalue construction sequence has 2 items">
+        <td><a href="../Tests/Main.lean" class="source-link">Unit Tests</a></td>
+        <td>YamlValue construction</td>
+        <td>Sequence has 2 items</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="tests" data-search="tests yamlvalue construction mapping has 1 pair">
+        <td><a href="../Tests/Main.lean" class="source-link">Unit Tests</a></td>
+        <td>YamlValue construction</td>
+        <td>Mapping has 1 pair</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="tests" data-search="tests yamlvalue construction null value constructed">
+        <td><a href="../Tests/Main.lean" class="source-link">Unit Tests</a></td>
+        <td>YamlValue construction</td>
+        <td>Null value constructed</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="tests" data-search="tests yamldocument document has 1 directive">
+        <td><a href="../Tests/Main.lean" class="source-link">Unit Tests</a></td>
+        <td>YamlDocument</td>
+        <td>Document has 1 directive</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="tests" data-search="tests yamldocument yaml directive version correct">
+        <td><a href="../Tests/Main.lean" class="source-link">Unit Tests</a></td>
+        <td>YamlDocument</td>
+        <td>YAML directive version correct</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="tests" data-search="tests yamlstream initial position (0,0)">
+        <td><a href="../Tests/Main.lean" class="source-link">Unit Tests</a></td>
+        <td>YamlStream</td>
+        <td>Initial position (0,0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="tests" data-search="tests yamlstream first char is &#39;a&#39;">
+        <td><a href="../Tests/Main.lean" class="source-link">Unit Tests</a></td>
+        <td>YamlStream</td>
+        <td>First char is &#39;a&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="tests" data-search="tests yamlstream column advances to 1">
+        <td><a href="../Tests/Main.lean" class="source-link">Unit Tests</a></td>
+        <td>YamlStream</td>
+        <td>Column advances to 1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="tests" data-search="tests yamlstream newline resets col to 0, increments line to 1">
+        <td><a href="../Tests/Main.lean" class="source-link">Unit Tests</a></td>
+        <td>YamlStream</td>
+        <td>Newline resets col to 0, increments line to 1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="tests" data-search="tests yamlstream after &#39;c&#39;: position (1,1)">
+        <td><a href="../Tests/Main.lean" class="source-link">Unit Tests</a></td>
+        <td>YamlStream</td>
+        <td>After &#39;c&#39;: position (1,1)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="tests" data-search="tests yamlstream peek? returns &#39;a&#39; without advancing">
+        <td><a href="../Tests/Main.lean" class="source-link">Unit Tests</a></td>
+        <td>YamlStream</td>
+        <td>peek? returns &#39;a&#39; without advancing</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="tests" data-search="tests yamlstream empty stream has no next">
+        <td><a href="../Tests/Main.lean" class="source-link">Unit Tests</a></td>
+        <td>YamlStream</td>
+        <td>Empty stream has no next</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="tests" data-search="tests yamlpos yamlpos beq reflexive">
+        <td><a href="../Tests/Main.lean" class="source-link">Unit Tests</a></td>
+        <td>YamlPos</td>
+        <td>YamlPos BEq reflexive</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="tests" data-search="tests yamlpos yamlpos beq distinguishes">
+        <td><a href="../Tests/Main.lean" class="source-link">Unit Tests</a></td>
+        <td>YamlPos</td>
+        <td>YamlPos BEq distinguishes</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest double-quoted scalars simple">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Double-quoted scalars</td>
+        <td>simple</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest double-quoted scalars with space">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Double-quoted scalars</td>
+        <td>with space</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest double-quoted scalars with escape">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Double-quoted scalars</td>
+        <td>with escape</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest double-quoted scalars empty">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Double-quoted scalars</td>
+        <td>empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest single-quoted scalars simple">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Single-quoted scalars</td>
+        <td>simple</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest single-quoted scalars with space">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Single-quoted scalars</td>
+        <td>with space</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest single-quoted scalars escaped quote">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Single-quoted scalars</td>
+        <td>escaped quote</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest single-quoted scalars empty">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Single-quoted scalars</td>
+        <td>empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest plain scalars word">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Plain scalars</td>
+        <td>word</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest plain scalars multi-word">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Plain scalars</td>
+        <td>multi-word</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest flow sequences simple">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Flow sequences</td>
+        <td>simple</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest flow sequences nested">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Flow sequences</td>
+        <td>nested</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest flow sequences empty">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Flow sequences</td>
+        <td>empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest flow mappings simple">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Flow mappings</td>
+        <td>simple</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest flow mappings empty">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Flow mappings</td>
+        <td>empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest block sequences simple">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Block sequences</td>
+        <td>simple</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest block sequences items">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Block sequences</td>
+        <td>items</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest block mappings simple">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Block mappings</td>
+        <td>simple</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest document parsing empty">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Document parsing</td>
+        <td>empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest document parsing just scalar">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Document parsing</td>
+        <td>just scalar</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest document parsing explicit doc">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Document parsing</td>
+        <td>explicit doc</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest document parsing multi doc">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Document parsing</td>
+        <td>multi doc</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest nested block map with seq value">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Nested block</td>
+        <td>map with seq value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest nested block nested map">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Nested block</td>
+        <td>nested map</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="parsetest" data-search="parsetest nested block seq of maps">
+        <td><a href="../Tests/ParseTest.lean" class="source-link">Parser Integration Tests</a></td>
+        <td>Nested block</td>
+        <td>seq of maps</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug a: simple fold (newline → space) dq basic fold">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug A: Simple fold (newline → space)</td>
+        <td>dq basic fold</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug a: simple fold (newline → space) dq no leading ws">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug A: Simple fold (newline → space)</td>
+        <td>dq no leading ws</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug a: simple fold (newline → space) sq basic fold">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug A: Simple fold (newline → space)</td>
+        <td>sq basic fold</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug a: simple fold (newline → space) sq no leading ws">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug A: Simple fold (newline → space)</td>
+        <td>sq no leading ws</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug b: empty line counting (preserved newlines) dq one empty line">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug B: Empty line counting (preserved newlines)</td>
+        <td>dq one empty line</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug b: empty line counting (preserved newlines) dq two empty lines">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug B: Empty line counting (preserved newlines)</td>
+        <td>dq two empty lines</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug b: empty line counting (preserved newlines) dq three empty lines">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug B: Empty line counting (preserved newlines)</td>
+        <td>dq three empty lines</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug b: empty line counting (preserved newlines) sq one empty line">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug B: Empty line counting (preserved newlines)</td>
+        <td>sq one empty line</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug b: empty line counting (preserved newlines) sq two empty lines">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug B: Empty line counting (preserved newlines)</td>
+        <td>sq two empty lines</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug c: trailing whitespace trimming dq trailing spaces">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug C: Trailing whitespace trimming</td>
+        <td>dq trailing spaces</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug c: trailing whitespace trimming dq trailing tab">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug C: Trailing whitespace trimming</td>
+        <td>dq trailing tab</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug c: trailing whitespace trimming dq trailing mixed ws">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug C: Trailing whitespace trimming</td>
+        <td>dq trailing mixed ws</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug c: trailing whitespace trimming sq trailing spaces">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug C: Trailing whitespace trimming</td>
+        <td>sq trailing spaces</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug d: tab handling on continuation lines dq tab continuation">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug D: Tab handling on continuation lines</td>
+        <td>dq tab continuation</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug d: tab handling on continuation lines dq tab+space continuation">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug D: Tab handling on continuation lines</td>
+        <td>dq tab+space continuation</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug d: tab handling on continuation lines dq tab after blank">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug D: Tab handling on continuation lines</td>
+        <td>dq tab after blank</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug d: tab handling on continuation lines sq tab continuation">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug D: Tab handling on continuation lines</td>
+        <td>sq tab continuation</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug e: escaped line breaks (line continuation) dq escaped newline">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug E: Escaped line breaks (line continuation)</td>
+        <td>dq escaped newline</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug e: escaped line breaks (line continuation) dq escaped bare">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug E: Escaped line breaks (line continuation)</td>
+        <td>dq escaped bare</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug e: escaped line breaks (line continuation) dq escaped with trailing">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug E: Escaped line breaks (line continuation)</td>
+        <td>dq escaped with trailing</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding bug e: escaped line breaks (line continuation) dq double escaped">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Bug E: Escaped line breaks (line continuation)</td>
+        <td>dq double escaped</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding combined folding tests dq multi-line fold">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Combined folding tests</td>
+        <td>dq multi-line fold</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding combined folding tests dq fold then blank">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Combined folding tests</td>
+        <td>dq fold then blank</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding combined folding tests dq blank then fold">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Combined folding tests</td>
+        <td>dq blank then fold</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding combined folding tests dq triple fold">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Combined folding tests</td>
+        <td>dq triple fold</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding crlf folding dq crlf fold">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>CRLF folding</td>
+        <td>dq CRLF fold</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding crlf folding dq crlf blank">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>CRLF folding</td>
+        <td>dq CRLF blank</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding crlf folding sq crlf fold">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>CRLF folding</td>
+        <td>sq CRLF fold</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding edge cases dq no fold">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Edge cases</td>
+        <td>dq no fold</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding edge cases sq no fold">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Edge cases</td>
+        <td>sq no fold</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding edge cases dq empty">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Edge cases</td>
+        <td>dq empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding edge cases sq empty">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Edge cases</td>
+        <td>sq empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding edge cases dq fold at end">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Edge cases</td>
+        <td>dq fold at end</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="quotedfolding" data-search="quotedfolding edge cases dq ws-only blank">
+        <td><a href="../Tests/QuotedFolding.lean" class="source-link">Quoted Folding Tests</a></td>
+        <td>Edge cases</td>
+        <td>dq ws-only blank</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.ofstring startpos is 0">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.ofString</td>
+        <td>startPos is 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.ofstring line is 0">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.ofString</td>
+        <td>line is 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.ofstring col is 0">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.ofString</td>
+        <td>col is 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.ofstring hasnext on non-empty">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.ofString</td>
+        <td>hasNext on non-empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.ofstring empty stream: not hasnext">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.ofString</td>
+        <td>empty stream: not hasNext</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.next? basic first char is &#39;h&#39;">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.next? basic</td>
+        <td>first char is &#39;h&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.next? basic col advances to 1">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.next? basic</td>
+        <td>col advances to 1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.next? basic line stays 0">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.next? basic</td>
+        <td>line stays 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.next? basic second char is &#39;i&#39;">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.next? basic</td>
+        <td>second char is &#39;i&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.next? basic col advances to 2">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.next? basic</td>
+        <td>col advances to 2</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.next? basic next? at end is none">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.next? basic</td>
+        <td>next? at end is none</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.next? newline tracking after &#39;a&#39;: line=0 col=1">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.next? newline tracking</td>
+        <td>after &#39;a&#39;: line=0 col=1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.next? newline tracking after &#39;\n&#39;: line=1 col=0">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.next? newline tracking</td>
+        <td>after &#39;\n&#39;: line=1 col=0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.next? newline tracking after &#39;b&#39;: line=1 col=1">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.next? newline tracking</td>
+        <td>after &#39;b&#39;: line=1 col=1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.next? multiple newlines after first &#39;\n&#39;: line=1">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.next? multiple newlines</td>
+        <td>after first &#39;\n&#39;: line=1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.next? multiple newlines after second &#39;\n&#39;: line=2">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.next? multiple newlines</td>
+        <td>after second &#39;\n&#39;: line=2</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.next? multiple newlines after second &#39;\n&#39;: col=0">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.next? multiple newlines</td>
+        <td>after second &#39;\n&#39;: col=0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.next? multiple newlines after &#39;y&#39;: line=2 col=1">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.next? multiple newlines</td>
+        <td>after &#39;y&#39;: line=2 col=1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.peek? peek? returns &#39;x&#39;">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.peek?</td>
+        <td>peek? returns &#39;x&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.peek? peek? again returns &#39;x&#39;">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.peek?</td>
+        <td>peek? again returns &#39;x&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.peek? peek? on empty is none">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.peek?</td>
+        <td>peek? on empty is none</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification remaininglength initial remaininglength is 3">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>remainingLength</td>
+        <td>initial remainingLength is 3</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification remaininglength after 1 char: remaininglength decreases">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>remainingLength</td>
+        <td>after 1 char: remainingLength decreases</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification remaininglength after 1 char: remaininglength is 2">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>remainingLength</td>
+        <td>after 1 char: remainingLength is 2</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification remaininglength after 2 chars: remaininglength is 1">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>remainingLength</td>
+        <td>after 2 chars: remainingLength is 1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification remaininglength after 3 chars: remaininglength is 0">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>remainingLength</td>
+        <td>after 3 chars: remainingLength is 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification remaininglength at end: next? is none">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>remainingLength</td>
+        <td>at end: next? is none</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification remaininglength empty empty: remaininglength is 0">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>remainingLength empty</td>
+        <td>empty: remainingLength is 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification remaininglength multibyte é: remaininglength &gt; 1 (multibyte)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>remainingLength multibyte</td>
+        <td>é: remainingLength &gt; 1 (multibyte)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification remaininglength multibyte next? yields &#39;é&#39;">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>remainingLength multibyte</td>
+        <td>next? yields &#39;é&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification remaininglength multibyte after &#39;é&#39;: remaininglength is 0">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>remainingLength multibyte</td>
+        <td>after &#39;é&#39;: remainingLength is 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification remaininglength multibyte 日本: initial remaininglength is 6 (3+3)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>remainingLength multibyte</td>
+        <td>日本: initial remainingLength is 6 (3+3)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification remaininglength multibyte after &#39;日&#39;: remaininglength is 3">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>remainingLength multibyte</td>
+        <td>after &#39;日&#39;: remainingLength is 3</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification remaininglength strictly decreasing remaininglength strictly decreases through all chars">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>remainingLength strictly decreasing</td>
+        <td>remainingLength strictly decreases through all chars</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification remaininglength strictly decreasing final remaininglength is 0">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>remainingLength strictly decreasing</td>
+        <td>final remainingLength is 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: islinebreak islinebreak: all test chars agree">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isLineBreak</td>
+        <td>isLineBreak: all test chars agree</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: islinebreak lf is line break (grammar)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isLineBreak</td>
+        <td>LF is line break (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: islinebreak cr is line break (grammar)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isLineBreak</td>
+        <td>CR is line break (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: islinebreak space is not line break">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isLineBreak</td>
+        <td>space is NOT line break</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: islinebreak lf is line break (combinators)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isLineBreak</td>
+        <td>LF is line break (Combinators)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: islinebreak cr is line break (combinators)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isLineBreak</td>
+        <td>CR is line break (Combinators)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: islinebreak space is not line break (combinators)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isLineBreak</td>
+        <td>space is NOT line break (Combinators)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: iswhitespace iswhitespace: all test chars agree">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isWhiteSpace</td>
+        <td>isWhiteSpace: all test chars agree</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: iswhitespace space is whitespace">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isWhiteSpace</td>
+        <td>space is whitespace</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: iswhitespace tab is whitespace">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isWhiteSpace</td>
+        <td>tab is whitespace</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: iswhitespace newline is not whitespace">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isWhiteSpace</td>
+        <td>newline is NOT whitespace</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isflowindicator isflowindicator: all positive chars agree">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isFlowIndicator</td>
+        <td>isFlowIndicator: all positive chars agree</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isflowindicator &#39;,&#39; is flow indicator (grammar)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isFlowIndicator</td>
+        <td>&#39;,&#39; is flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isflowindicator &#39;,&#39; is flow indicator (combinators)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isFlowIndicator</td>
+        <td>&#39;,&#39; is flow indicator (Combinators)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isflowindicator &#39;[&#39; is flow indicator (grammar)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isFlowIndicator</td>
+        <td>&#39;[&#39; is flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isflowindicator &#39;[&#39; is flow indicator (combinators)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isFlowIndicator</td>
+        <td>&#39;[&#39; is flow indicator (Combinators)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isflowindicator &#39;]&#39; is flow indicator (grammar)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isFlowIndicator</td>
+        <td>&#39;]&#39; is flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isflowindicator &#39;]&#39; is flow indicator (combinators)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isFlowIndicator</td>
+        <td>&#39;]&#39; is flow indicator (Combinators)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isflowindicator &#39;{&#39; is flow indicator (grammar)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isFlowIndicator</td>
+        <td>&#39;{&#39; is flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isflowindicator &#39;{&#39; is flow indicator (combinators)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isFlowIndicator</td>
+        <td>&#39;{&#39; is flow indicator (Combinators)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isflowindicator &#39;}&#39; is flow indicator (grammar)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isFlowIndicator</td>
+        <td>&#39;}&#39; is flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isflowindicator &#39;}&#39; is flow indicator (combinators)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isFlowIndicator</td>
+        <td>&#39;}&#39; is flow indicator (Combinators)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isflowindicator &#39;-&#39; is not flow indicator">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isFlowIndicator</td>
+        <td>&#39;-&#39; is NOT flow indicator</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isflowindicator &#39;:&#39; is not flow indicator">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isFlowIndicator</td>
+        <td>&#39;:&#39; is NOT flow indicator</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isflowindicator &#39;?&#39; is not flow indicator">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isFlowIndicator</td>
+        <td>&#39;?&#39; is NOT flow indicator</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isflowindicator &#39;#&#39; is not flow indicator">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isFlowIndicator</td>
+        <td>&#39;#&#39; is NOT flow indicator</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isflowindicator &#39;a&#39; is not flow indicator">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isFlowIndicator</td>
+        <td>&#39;a&#39; is NOT flow indicator</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isflowindicator &#39; &#39; is not flow indicator">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isFlowIndicator</td>
+        <td>&#39; &#39; is NOT flow indicator</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isflowindicator &#39;
+&#39; is not flow indicator">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isFlowIndicator</td>
+        <td>&#39;
+&#39; is NOT flow indicator</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isindentchar space is indent char">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isIndentChar</td>
+        <td>space is indent char</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isindentchar tab is not indent char">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isIndentChar</td>
+        <td>tab is NOT indent char</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar↔combinators: isindentchar space is not line break (indent requires space only)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar↔Combinators: isIndentChar</td>
+        <td>space is not line break (indent requires space only)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification canstartplainscalar &#39;a&#39; starts plain scalar">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>canStartPlainScalar</td>
+        <td>&#39;a&#39; starts plain scalar</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification canstartplainscalar &#39;z&#39; starts plain scalar">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>canStartPlainScalar</td>
+        <td>&#39;Z&#39; starts plain scalar</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification canstartplainscalar &#39;0&#39; starts plain scalar">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>canStartPlainScalar</td>
+        <td>&#39;0&#39; starts plain scalar</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification canstartplainscalar &#39;[&#39; cannot start plain">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>canStartPlainScalar</td>
+        <td>&#39;[&#39; cannot start plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification canstartplainscalar &#39;]&#39; cannot start plain">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>canStartPlainScalar</td>
+        <td>&#39;]&#39; cannot start plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification canstartplainscalar &#39;{&#39; cannot start plain">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>canStartPlainScalar</td>
+        <td>&#39;{&#39; cannot start plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification canstartplainscalar &#39;#&#39; cannot start plain">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>canStartPlainScalar</td>
+        <td>&#39;#&#39; cannot start plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification canstartplainscalar &#39;&quot;&#39; cannot start plain">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>canStartPlainScalar</td>
+        <td>&#39;&quot;&#39; cannot start plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification canstartplainscalar &quot;&#39;&quot; cannot start plain">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>canStartPlainScalar</td>
+        <td>&quot;&#39;&quot; cannot start plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification canstartplainscalar &#39;-&#39; + &#39;a&#39; starts plain">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>canStartPlainScalar</td>
+        <td>&#39;-&#39; + &#39;a&#39; starts plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification canstartplainscalar &#39;-&#39; + &#39; &#39; does not start plain">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>canStartPlainScalar</td>
+        <td>&#39;-&#39; + &#39; &#39; does NOT start plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification canstartplainscalar &#39;-&#39; + none does not start plain">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>canStartPlainScalar</td>
+        <td>&#39;-&#39; + none does NOT start plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification canstartplainscalar &#39;:&#39; + &#39;x&#39; starts plain">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>canStartPlainScalar</td>
+        <td>&#39;:&#39; + &#39;x&#39; starts plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification canstartplainscalar &#39;:&#39; + &#39; &#39; does not start plain">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>canStartPlainScalar</td>
+        <td>&#39;:&#39; + &#39; &#39; does NOT start plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification canstartplainscalar &#39;?&#39; + &#39;!&#39; starts plain">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>canStartPlainScalar</td>
+        <td>&#39;?&#39; + &#39;!&#39; starts plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification canstartplainscalar &#39;?&#39; + &#39;\t&#39; does not start plain">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>canStartPlainScalar</td>
+        <td>&#39;?&#39; + &#39;\t&#39; does NOT start plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification canstartplainscalar space cannot start plain">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>canStartPlainScalar</td>
+        <td>space cannot start plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification canstartplainscalar tab cannot start plain">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>canStartPlainScalar</td>
+        <td>tab cannot start plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification canstartplainscalar newline cannot start plain">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>canStartPlainScalar</td>
+        <td>newline cannot start plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification foldresult folded carries content">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>FoldResult</td>
+        <td>folded carries content</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification foldresult forbidden carries message">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>FoldResult</td>
+        <td>forbidden carries message</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification foldresult repr instance works for folded">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>FoldResult</td>
+        <td>Repr instance works for folded</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification foldresult repr instance works for forbidden">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>FoldResult</td>
+        <td>Repr instance works for forbidden</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification trimtrailingwhitespace trims trailing spaces">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>trimTrailingWhitespace</td>
+        <td>trims trailing spaces</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification trimtrailingwhitespace trims trailing tabs">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>trimTrailingWhitespace</td>
+        <td>trims trailing tabs</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification trimtrailingwhitespace trims mixed space+tab">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>trimTrailingWhitespace</td>
+        <td>trims mixed space+tab</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification trimtrailingwhitespace no trailing ws: unchanged">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>trimTrailingWhitespace</td>
+        <td>no trailing ws: unchanged</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification trimtrailingwhitespace empty string: unchanged">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>trimTrailingWhitespace</td>
+        <td>empty string: unchanged</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification trimtrailingwhitespace preserves leading spaces">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>trimTrailingWhitespace</td>
+        <td>preserves leading spaces</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification trimtrailingwhitespace preserves interior spaces">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>trimTrailingWhitespace</td>
+        <td>preserves interior spaces</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification trimtrailingwhitespace all spaces: empty result">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>trimTrailingWhitespace</td>
+        <td>all spaces: empty result</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification trimtrailingwhitespace all tabs: empty result">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>trimTrailingWhitespace</td>
+        <td>all tabs: empty result</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification trimtrailingwhitespace single char no ws">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>trimTrailingWhitespace</td>
+        <td>single char no ws</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification trimtrailingwhitespace single space: empty">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>trimTrailingWhitespace</td>
+        <td>single space: empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification trimtrailingwhitespace idempotent: trim∘trim = trim">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>trimTrailingWhitespace</td>
+        <td>idempotent: trim∘trim = trim</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification trimtrailingwhitespace result has no trailing space">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>trimTrailingWhitespace</td>
+        <td>result has no trailing space</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlpos same pos is equal">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlPos</td>
+        <td>same pos is equal</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlpos different pos is not equal">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlPos</td>
+        <td>different pos is not equal</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlpos p1 &lt; p2 by offset">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlPos</td>
+        <td>p1 &lt; p2 by offset</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlpos p2 &gt; p1 by offset">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlPos</td>
+        <td>p2 &gt; p1 by offset</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlpos p1 == p1 by comparison">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlPos</td>
+        <td>p1 == p1 by comparison</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlpos decidableeq: equal">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlPos</td>
+        <td>DecidableEq: equal</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlpos decidableeq: not equal">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlPos</td>
+        <td>DecidableEq: not equal</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlpos inhabited: default exists">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlPos</td>
+        <td>Inhabited: default exists</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.getpos initial pos: offset=0">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.getPos</td>
+        <td>initial pos: offset=0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.getpos initial pos: line=0">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.getPos</td>
+        <td>initial pos: line=0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.getpos initial pos: col=0">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.getPos</td>
+        <td>initial pos: col=0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.getpos after &#39;a&#39;: offset&gt;0">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.getPos</td>
+        <td>after &#39;a&#39;: offset&gt;0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.getpos after &#39;a&#39;: col=1">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.getPos</td>
+        <td>after &#39;a&#39;: col=1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.getpos after &#39;\n&#39;: line=1">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.getPos</td>
+        <td>after &#39;\n&#39;: line=1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification yamlstream.getpos after &#39;\n&#39;: col=0">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>YamlStream.getPos</td>
+        <td>after &#39;\n&#39;: col=0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar.indented constructors indented 0 [&#39;a&#39;,&#39;b&#39;] via .zero">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar.Indented constructors</td>
+        <td>Indented 0 [&#39;a&#39;,&#39;b&#39;] via .zero</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar.indented constructors indented 1 [&#39; &#39;,&#39;a&#39;] via .space">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar.Indented constructors</td>
+        <td>Indented 1 [&#39; &#39;,&#39;a&#39;] via .space</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar.indented constructors indented 2 [&#39; &#39;,&#39; &#39;,&#39;a&#39;] via nested .space">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar.Indented constructors</td>
+        <td>Indented 2 [&#39; &#39;,&#39; &#39;,&#39;a&#39;] via nested .space</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar.chompstyle strip ≠ clip">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar.ChompStyle</td>
+        <td>strip ≠ clip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar.chompstyle clip ≠ keep">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar.ChompStyle</td>
+        <td>clip ≠ keep</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar.chompstyle strip ≠ keep">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar.ChompStyle</td>
+        <td>strip ≠ keep</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar.chompstyle strip = strip">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar.ChompStyle</td>
+        <td>strip = strip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar.chompstyle decidableeq works">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar.ChompStyle</td>
+        <td>DecidableEq works</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar.nodetovalue plainscalarblock ↔ yamlvalue.scalar (plain)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar.NodeToValue</td>
+        <td>plainScalarBlock ↔ YamlValue.scalar (plain)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar.nodetovalue singlequoted ↔ yamlvalue.scalar (singlequoted)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar.NodeToValue</td>
+        <td>singleQuoted ↔ YamlValue.scalar (singleQuoted)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar.nodetovalue doublequoted ↔ yamlvalue.scalar (doublequoted)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar.NodeToValue</td>
+        <td>doubleQuoted ↔ YamlValue.scalar (doubleQuoted)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar.validyaml structure validyaml: input matches">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar.ValidYaml structure</td>
+        <td>ValidYaml: input matches</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar.validyaml structure validyaml: grammar node constructed">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar.ValidYaml structure</td>
+        <td>ValidYaml: grammar node constructed</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification grammar.validyaml structure validyaml: correspondence holds">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Grammar.ValidYaml structure</td>
+        <td>ValidYaml: correspondence holds</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification stream exhaustive consumption consumed 18 chars">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Stream exhaustive consumption</td>
+        <td>consumed 18 chars</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification stream exhaustive consumption final remaininglength is 0">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Stream exhaustive consumption</td>
+        <td>final remainingLength is 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification stream exhaustive consumption remaininglength monotonically decreased">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Stream exhaustive consumption</td>
+        <td>remainingLength monotonically decreased</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification stream crlf handling cr: col advances (not reset)">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Stream CRLF handling</td>
+        <td>CR: col advances (not reset)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification stream crlf handling cr: line unchanged">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Stream CRLF handling</td>
+        <td>CR: line unchanged</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="verification" data-search="verification stream crlf handling crlf lf: line=1 col=0">
+        <td><a href="../Tests/Verification.lean" class="source-link">Layer 1 Verification Tests</a></td>
+        <td>Stream CRLF handling</td>
+        <td>CRLF LF: line=1 col=0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas char.utf8size positivity utf8size &#39;a&#39; &gt; 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Char.utf8Size positivity</td>
+        <td>utf8Size &#39;a&#39; &gt; 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas char.utf8size positivity utf8size &#39;a&#39; == 1">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Char.utf8Size positivity</td>
+        <td>utf8Size &#39;a&#39; == 1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas char.utf8size positivity utf8size &#39;\n&#39; &gt; 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Char.utf8Size positivity</td>
+        <td>utf8Size &#39;\n&#39; &gt; 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas char.utf8size positivity utf8size &#39;\n&#39; == 1">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Char.utf8Size positivity</td>
+        <td>utf8Size &#39;\n&#39; == 1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas char.utf8size positivity utf8size &#39; &#39; &gt; 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Char.utf8Size positivity</td>
+        <td>utf8Size &#39; &#39; &gt; 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas char.utf8size positivity utf8size &#39;\t&#39; &gt; 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Char.utf8Size positivity</td>
+        <td>utf8Size &#39;\t&#39; &gt; 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas char.utf8size positivity utf8size &#39;:&#39; &gt; 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Char.utf8Size positivity</td>
+        <td>utf8Size &#39;:&#39; &gt; 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas char.utf8size positivity utf8size &#39;-&#39; &gt; 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Char.utf8Size positivity</td>
+        <td>utf8Size &#39;-&#39; &gt; 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas char.utf8size positivity utf8size &#39;{&#39; &gt; 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Char.utf8Size positivity</td>
+        <td>utf8Size &#39;{&#39; &gt; 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas char.utf8size positivity utf8size &#39;}&#39; &gt; 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Char.utf8Size positivity</td>
+        <td>utf8Size &#39;}&#39; &gt; 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas char.utf8size positivity utf8size &#39;[&#39; &gt; 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Char.utf8Size positivity</td>
+        <td>utf8Size &#39;[&#39; &gt; 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas char.utf8size positivity utf8size &#39;]&#39; &gt; 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Char.utf8Size positivity</td>
+        <td>utf8Size &#39;]&#39; &gt; 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas char.utf8size positivity utf8size &#39;€&#39; == 3 (3-byte)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Char.utf8Size positivity</td>
+        <td>utf8Size &#39;€&#39; == 3 (3-byte)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas char.utf8size positivity utf8size &#39;é&#39; == 2 (2-byte)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Char.utf8Size positivity</td>
+        <td>utf8Size &#39;é&#39; == 2 (2-byte)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas char.utf8size positivity utf8size &#39;日&#39; == 3 (3-byte cjk)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Char.utf8Size positivity</td>
+        <td>utf8Size &#39;日&#39; == 3 (3-byte CJK)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas char.utf8size positivity utf8size &#39;𐀀&#39; == 4 (4-byte)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Char.utf8Size positivity</td>
+        <td>utf8Size &#39;𐀀&#39; == 4 (4-byte)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas char.utf8size positivity utf8size_pos holds for nul">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Char.utf8Size positivity</td>
+        <td>utf8Size_pos holds for NUL</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas char.utf8size positivity utf8size_pos holds for del">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Char.utf8Size positivity</td>
+        <td>utf8Size_pos holds for DEL</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas char.utf8size positivity utf8size_pos holds for max bmp">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Char.utf8Size positivity</td>
+        <td>utf8Size_pos holds for max BMP</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas string.pos.raw advancement next advances past &#39;a&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>String.Pos.Raw advancement</td>
+        <td>next advances past &#39;a&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas string.pos.raw advancement next advances past &#39;b&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>String.Pos.Raw advancement</td>
+        <td>next advances past &#39;b&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas string.pos.raw advancement next advances past &#39;c&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>String.Pos.Raw advancement</td>
+        <td>next advances past &#39;c&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas string.pos.raw advancement p0 &lt; p1 (strict)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>String.Pos.Raw advancement</td>
+        <td>p0 &lt; p1 (strict)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas string.pos.raw advancement p1 &lt; p2 (strict)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>String.Pos.Raw advancement</td>
+        <td>p1 &lt; p2 (strict)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas string.pos.raw advancement p2 &lt; p3 (strict)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>String.Pos.Raw advancement</td>
+        <td>p2 &lt; p3 (strict)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas string.pos.raw advancement next past &#39;é&#39; (2-byte)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>String.Pos.Raw advancement</td>
+        <td>next past &#39;é&#39; (2-byte)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas string.pos.raw advancement next past &#39;€&#39; (3-byte)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>String.Pos.Raw advancement</td>
+        <td>next past &#39;€&#39; (3-byte)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas string.pos.raw advancement mp0 &lt; mp1 (multibyte strict)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>String.Pos.Raw advancement</td>
+        <td>mp0 &lt; mp1 (multibyte strict)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas string.pos.raw advancement mp1 &lt; mp2 (multibyte strict)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>String.Pos.Raw advancement</td>
+        <td>mp1 &lt; mp2 (multibyte strict)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas string.pos.raw advancement next strictly advances from 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>String.Pos.Raw advancement</td>
+        <td>next strictly advances from 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas pos.raw.get at valid positions get at 0 == &#39;h&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Pos.Raw.get at valid positions</td>
+        <td>get at 0 == &#39;h&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas pos.raw.get at valid positions get at 1 == &#39;e&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Pos.Raw.get at valid positions</td>
+        <td>get at 1 == &#39;e&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas pos.raw.get at valid positions get at 4 == &#39;o&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Pos.Raw.get at valid positions</td>
+        <td>get at 4 == &#39;o&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas pos.raw.get at valid positions get &#39;a&#39; at 0 (multibyte string)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Pos.Raw.get at valid positions</td>
+        <td>get &#39;a&#39; at 0 (multibyte string)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas pos.raw.get at valid positions get &#39;€&#39; at 1 (3-byte char)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Pos.Raw.get at valid positions</td>
+        <td>get &#39;€&#39; at 1 (3-byte char)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas pos.raw.get at valid positions get &#39;b&#39; at 4 (after 3-byte char)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Pos.Raw.get at valid positions</td>
+        <td>get &#39;b&#39; at 4 (after 3-byte char)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas pos.raw.get at valid positions get at 0 == &#39;x&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Pos.Raw.get at valid positions</td>
+        <td>get at 0 == &#39;x&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas pos.raw.get at valid positions next past &#39;x&#39; lands on &#39;y&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>Pos.Raw.get at valid positions</td>
+        <td>next past &#39;x&#39; lands on &#39;y&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas yamlstream ↔ pos.raw consistency next? char matches pos.raw.get">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>YamlStream ↔ Pos.Raw consistency</td>
+        <td>next? char matches Pos.Raw.get</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas yamlstream ↔ pos.raw consistency next? startpos matches pos.raw.next">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>YamlStream ↔ Pos.Raw consistency</td>
+        <td>next? startPos matches Pos.Raw.next</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas yamlstream ↔ pos.raw consistency stoppos unchanged">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>YamlStream ↔ Pos.Raw consistency</td>
+        <td>stopPos unchanged</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas yamlstream ↔ pos.raw consistency multibyte: next? char is &#39;日&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>YamlStream ↔ Pos.Raw consistency</td>
+        <td>multibyte: next? char is &#39;日&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas yamlstream ↔ pos.raw consistency multibyte: startpos advances by 3">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>YamlStream ↔ Pos.Raw consistency</td>
+        <td>multibyte: startPos advances by 3</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas yamlstream ↔ pos.raw consistency multibyte: startpos == 3">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>YamlStream ↔ Pos.Raw consistency</td>
+        <td>multibyte: startPos == 3</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas remaininglength strictly decreases single char: remaininglength &gt; 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>remainingLength strictly decreases</td>
+        <td>single char: remainingLength &gt; 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas remaininglength strictly decreases single char: remaining decreases">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>remainingLength strictly decreases</td>
+        <td>single char: remaining decreases</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas remaininglength strictly decreases single char: remaining == 0 after">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>remainingLength strictly decreases</td>
+        <td>single char: remaining == 0 after</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas remaininglength strictly decreases r0 &gt; r1 after &#39;a&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>remainingLength strictly decreases</td>
+        <td>r0 &gt; r1 after &#39;a&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas remaininglength strictly decreases r1 &gt; r2 after &#39;b&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>remainingLength strictly decreases</td>
+        <td>r1 &gt; r2 after &#39;b&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas remaininglength strictly decreases r2 &gt; r3 after &#39;c&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>remainingLength strictly decreases</td>
+        <td>r2 &gt; r3 after &#39;c&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas remaininglength strictly decreases r3 == 0 at end">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>remainingLength strictly decreases</td>
+        <td>r3 == 0 at end</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas remaininglength strictly decreases multibyte: drops by utf8size (3)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>remainingLength strictly decreases</td>
+        <td>multibyte: drops by utf8Size (3)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas remaininglength strictly decreases multibyte: still strictly decreases">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>remainingLength strictly decreases</td>
+        <td>multibyte: still strictly decreases</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas remaininglength strictly decreases empty: remaininglength == 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>remainingLength strictly decreases</td>
+        <td>empty: remainingLength == 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas remaininglength strictly decreases empty: next? is none">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>remainingLength strictly decreases</td>
+        <td>empty: next? is none</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas rawendpos / utf8bytesize rawendpos &#39;hello&#39; == 5">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>rawEndPos / utf8ByteSize</td>
+        <td>rawEndPos &#39;hello&#39; == 5</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas rawendpos / utf8bytesize utf8bytesize &#39;hello&#39; == 5">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>rawEndPos / utf8ByteSize</td>
+        <td>utf8ByteSize &#39;hello&#39; == 5</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas rawendpos / utf8bytesize rawendpos == utf8bytesize">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>rawEndPos / utf8ByteSize</td>
+        <td>rawEndPos == utf8ByteSize</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas rawendpos / utf8bytesize rawendpos &#39;aé€&#39; == 6">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>rawEndPos / utf8ByteSize</td>
+        <td>rawEndPos &#39;aé€&#39; == 6</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas rawendpos / utf8bytesize utf8bytesize &#39;aé€&#39; == 6">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>rawEndPos / utf8ByteSize</td>
+        <td>utf8ByteSize &#39;aé€&#39; == 6</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas rawendpos / utf8bytesize rawendpos &#39;&#39; == 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>rawEndPos / utf8ByteSize</td>
+        <td>rawEndPos &#39;&#39; == 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas rawendpos / utf8bytesize utf8bytesize &#39;&#39; == 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>rawEndPos / utf8ByteSize</td>
+        <td>utf8ByteSize &#39;&#39; == 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas rawendpos / utf8bytesize stream.stoppos == rawendpos">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>rawEndPos / utf8ByteSize</td>
+        <td>stream.stopPos == rawEndPos</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas rawendpos / utf8bytesize rawendpos 4-byte char == 4">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>rawEndPos / utf8ByteSize</td>
+        <td>rawEndPos 4-byte char == 4</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas position validity (character boundaries) pos 0 valid (start)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>position validity (character boundaries)</td>
+        <td>pos 0 valid (start)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas position validity (character boundaries) pos 1 valid (after &#39;a&#39;)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>position validity (character boundaries)</td>
+        <td>pos 1 valid (after &#39;a&#39;)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas position validity (character boundaries) pos 2 valid (after &#39;b&#39;)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>position validity (character boundaries)</td>
+        <td>pos 2 valid (after &#39;b&#39;)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas position validity (character boundaries) pos 0 → &#39;a&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>position validity (character boundaries)</td>
+        <td>pos 0 → &#39;a&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas position validity (character boundaries) pos 1 → &#39;é&#39; (valid boundary)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>position validity (character boundaries)</td>
+        <td>pos 1 → &#39;é&#39; (valid boundary)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas position validity (character boundaries) rawendpos is 3">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>position validity (character boundaries)</td>
+        <td>rawEndPos is 3</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas position validity (character boundaries) chain: p0=0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>position validity (character boundaries)</td>
+        <td>chain: p0=0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas position validity (character boundaries) chain: p1=1 (after &#39;x&#39;)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>position validity (character boundaries)</td>
+        <td>chain: p1=1 (after &#39;x&#39;)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas position validity (character boundaries) chain: p2=4 (after &#39;€&#39;)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>position validity (character boundaries)</td>
+        <td>chain: p2=4 (after &#39;€&#39;)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas position validity (character boundaries) chain: p3=5 (after &#39;y&#39;)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>position validity (character boundaries)</td>
+        <td>chain: p3=5 (after &#39;y&#39;)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas position validity (character boundaries) chain: p3 == rawendpos">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>position validity (character boundaries)</td>
+        <td>chain: p3 == rawEndPos</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas subtraction arithmetic stoppos == 6">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>subtraction arithmetic</td>
+        <td>stopPos == 6</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas subtraction arithmetic after &#39;a&#39;: start=1, remaining=5">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>subtraction arithmetic</td>
+        <td>after &#39;a&#39;: start=1, remaining=5</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas subtraction arithmetic remaining = stop - start">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>subtraction arithmetic</td>
+        <td>remaining = stop - start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas subtraction arithmetic after &#39;b&#39;: start=2, remaining=4">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>subtraction arithmetic</td>
+        <td>after &#39;b&#39;: start=2, remaining=4</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas subtraction arithmetic after &#39;€&#39;: start=5, remaining=1">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>subtraction arithmetic</td>
+        <td>after &#39;€&#39;: start=5, remaining=1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas subtraction arithmetic &#39;€&#39; consumed 3 bytes">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>subtraction arithmetic</td>
+        <td>&#39;€&#39; consumed 3 bytes</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas subtraction arithmetic after &#39;d&#39;: start=6, remaining=0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>subtraction arithmetic</td>
+        <td>after &#39;d&#39;: start=6, remaining=0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas subtraction arithmetic at end: next? is none">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>subtraction arithmetic</td>
+        <td>at end: next? is none</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas newline still advances position after &#39;a&#39;: remaining decreases">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>newline still advances position</td>
+        <td>after &#39;a&#39;: remaining decreases</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas newline still advances position after &#39;\n&#39;: remaining decreases">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>newline still advances position</td>
+        <td>after &#39;\n&#39;: remaining decreases</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas newline still advances position col resets to 0 on newline">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>newline still advances position</td>
+        <td>col resets to 0 on newline</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas newline still advances position line increments on newline">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>newline still advances position</td>
+        <td>line increments on newline</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas newline still advances position but byte position still advances">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>newline still advances position</td>
+        <td>but byte position still advances</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas newline still advances position after &#39;b&#39;: remaining decreases">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>newline still advances position</td>
+        <td>after &#39;b&#39;: remaining decreases</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas newline still advances position r3 == 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>newline still advances position</td>
+        <td>r3 == 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas strictly monotone consumption chain length == 5">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>strictly monotone consumption</td>
+        <td>chain length == 5</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas strictly monotone consumption chain starts at 4">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>strictly monotone consumption</td>
+        <td>chain starts at 4</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas strictly monotone consumption chain ends at 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>strictly monotone consumption</td>
+        <td>chain ends at 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas strictly monotone consumption all transitions strictly decrease">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>strictly monotone consumption</td>
+        <td>all transitions strictly decrease</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas strictly monotone consumption multibyte chain length == 4">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>strictly monotone consumption</td>
+        <td>multibyte chain length == 4</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas strictly monotone consumption multibyte starts at 9">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>strictly monotone consumption</td>
+        <td>multibyte starts at 9</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas strictly monotone consumption multibyte ends at 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>strictly monotone consumption</td>
+        <td>multibyte ends at 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas strictly monotone consumption multibyte: all transitions strictly decrease">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>strictly monotone consumption</td>
+        <td>multibyte: all transitions strictly decrease</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas stoppos invariance stoppos unchanged after 1st next?">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>stopPos invariance</td>
+        <td>stopPos unchanged after 1st next?</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas stoppos invariance stoppos unchanged after 2nd next?">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>stopPos invariance</td>
+        <td>stopPos unchanged after 2nd next?</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas stoppos invariance stoppos unchanged after 3rd next?">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>stopPos invariance</td>
+        <td>stopPos unchanged after 3rd next?</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas str invariance str unchanged after next?">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>str invariance</td>
+        <td>str unchanged after next?</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas str invariance str unchanged after 2nd next?">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>str invariance</td>
+        <td>str unchanged after 2nd next?</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas hasnext ↔ startpos &lt; stoppos initially: hasnext">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>hasNext ↔ startPos &lt; stopPos</td>
+        <td>initially: hasNext</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas hasnext ↔ startpos &lt; stoppos initially: start &lt; stop">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>hasNext ↔ startPos &lt; stopPos</td>
+        <td>initially: start &lt; stop</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas hasnext ↔ startpos &lt; stoppos after 1: hasnext">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>hasNext ↔ startPos &lt; stopPos</td>
+        <td>after 1: hasNext</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas hasnext ↔ startpos &lt; stoppos after 1: start &lt; stop">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>hasNext ↔ startPos &lt; stopPos</td>
+        <td>after 1: start &lt; stop</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas hasnext ↔ startpos &lt; stoppos after 2: not hasnext">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>hasNext ↔ startPos &lt; stopPos</td>
+        <td>after 2: not hasNext</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas hasnext ↔ startpos &lt; stoppos after 2: start == stop">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>hasNext ↔ startPos &lt; stopPos</td>
+        <td>after 2: start == stop</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas hasnext ↔ startpos &lt; stoppos after 2: next? is none">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>hasNext ↔ startPos &lt; stopPos</td>
+        <td>after 2: next? is none</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas hasnext ↔ startpos &lt; stoppos empty: not hasnext">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>hasNext ↔ startPos &lt; stopPos</td>
+        <td>empty: not hasNext</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas hasnext ↔ startpos &lt; stoppos empty: start == stop (both 0)">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>hasNext ↔ startPos &lt; stopPos</td>
+        <td>empty: start == stop (both 0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas decidable property checks parse.islinebreak &#39;\n&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>decidable property checks</td>
+        <td>Parse.isLineBreak &#39;\n&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas decidable property checks ¬parse.islinebreak &#39;a&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>decidable property checks</td>
+        <td>¬Parse.isLineBreak &#39;a&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas decidable property checks parse.iswhitespace &#39; &#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>decidable property checks</td>
+        <td>Parse.isWhiteSpace &#39; &#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas decidable property checks parse.iswhitespace &#39;\t&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>decidable property checks</td>
+        <td>Parse.isWhiteSpace &#39;\t&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas decidable property checks ¬parse.iswhitespace &#39;x&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>decidable property checks</td>
+        <td>¬Parse.isWhiteSpace &#39;x&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas decidable property checks parse.isflowindicator &#39;,&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>decidable property checks</td>
+        <td>Parse.isFlowIndicator &#39;,&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas decidable property checks parse.isflowindicator &#39;[&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>decidable property checks</td>
+        <td>Parse.isFlowIndicator &#39;[&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas decidable property checks ¬parse.isflowindicator &#39;a&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>decidable property checks</td>
+        <td>¬Parse.isFlowIndicator &#39;a&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas decidable property checks isindentchar &#39; &#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>decidable property checks</td>
+        <td>isIndentChar &#39; &#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas decidable property checks ¬isindentchar &#39;a&#39;">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>decidable property checks</td>
+        <td>¬isIndentChar &#39;a&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas indentation column tracking starts at col 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>indentation column tracking</td>
+        <td>starts at col 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas indentation column tracking after 2 spaces: col == 2">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>indentation column tracking</td>
+        <td>after 2 spaces: col == 2</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas indentation column tracking after 2 spaces: remaining decreases">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>indentation column tracking</td>
+        <td>after 2 spaces: remaining decreases</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas indentation column tracking 2 spaces = 2 bytes consumed">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>indentation column tracking</td>
+        <td>2 spaces = 2 bytes consumed</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas indentation column tracking after 4 spaces: col == 4">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>indentation column tracking</td>
+        <td>after 4 spaces: col == 4</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas indentation column tracking after newline: col == 0">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>indentation column tracking</td>
+        <td>after newline: col == 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="stringlemmas" data-search="stringlemmas indentation column tracking 2 spaces after newline: col == 2">
+        <td><a href="../Tests/StringLemmas.lean" class="source-link">String Lemma Tests</a></td>
+        <td>indentation column tracking</td>
+        <td>2 spaces after newline: col == 2</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="demo" data-search="demo parser examples plain scalar">
+        <td><a href="../Demo.lean" class="source-link">Demo</a></td>
+        <td>Parser examples</td>
+        <td>Plain scalar</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="demo" data-search="demo parser examples flow sequence">
+        <td><a href="../Demo.lean" class="source-link">Demo</a></td>
+        <td>Parser examples</td>
+        <td>Flow sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="demo" data-search="demo parser examples flow mapping">
+        <td><a href="../Demo.lean" class="source-link">Demo</a></td>
+        <td>Parser examples</td>
+        <td>Flow mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="demo" data-search="demo parser examples block mapping">
+        <td><a href="../Demo.lean" class="source-link">Demo</a></td>
+        <td>Parser examples</td>
+        <td>Block mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="demo" data-search="demo parser examples nested block structure">
+        <td><a href="../Demo.lean" class="source-link">Demo</a></td>
+        <td>Parser examples</td>
+        <td>Nested block structure</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="demo" data-search="demo parser examples double-quoted scalar">
+        <td><a href="../Demo.lean" class="source-link">Demo</a></td>
+        <td>Parser examples</td>
+        <td>Double-quoted scalar</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="demo" data-search="demo parser examples multi-document stream">
+        <td><a href="../Demo.lean" class="source-link">Demo</a></td>
+        <td>Parser examples</td>
+        <td>Multi-document stream</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
 
   <footer>
     Generated by <a href="https://github.com/yaml/yaml-test-suite">yaml-test-suite</a> runner ·     <a href="https://github.com/fgdorais/lean4-parser">lean4-parser</a> · Lean 4
   </footer>
 </div>
+
+<script>
+    let currentOutcomeFilter = 'all';
+    let currentSuiteFilter = 'all';
+    let currentSearchText = '';
+    let sortColumn = 0;
+    let sortAscending = true;
+
+    function filterByOutcome(outcome) {
+      currentOutcomeFilter = outcome;
+      document.querySelectorAll('.filter-outcome .filter-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      applyFilters();
+    }
+
+    function filterBySuite(suite) {
+      currentSuiteFilter = suite;
+      applyFilters();
+    }
+
+    function searchTests(text) {
+      currentSearchText = text.toLowerCase();
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const rows = document.querySelectorAll('.test-row');
+      let visible = 0;
+      rows.forEach(row => {
+        const outcome = row.dataset.outcome;
+        const suite = row.dataset.suite;
+        const search = row.dataset.search;
+        const outcomeMatch = currentOutcomeFilter === 'all' || outcome === currentOutcomeFilter;
+        const suiteMatch = currentSuiteFilter === 'all' || suite === currentSuiteFilter;
+        const searchMatch = currentSearchText === '' || search.includes(currentSearchText);
+        if (outcomeMatch && suiteMatch && searchMatch) {
+          row.classList.remove('hidden');
+          visible++;
+        } else {
+          row.classList.add('hidden');
+        }
+      });
+      document.getElementById('visibleCount').textContent = visible;
+    }
+
+    function sortTable(colIdx) {
+      const table = document.getElementById('testTable');
+      const tbody = table.querySelector('tbody');
+      const rows = Array.from(tbody.querySelectorAll('.test-row'));
+      if (sortColumn === colIdx) { sortAscending = !sortAscending; }
+      else { sortColumn = colIdx; sortAscending = true; }
+      table.querySelectorAll('th').forEach((th, i) => {
+        th.classList.remove('sorted');
+        const arrow = th.querySelector('.sort-arrow');
+        if (arrow) arrow.textContent = '↕';
+      });
+      const th = table.querySelectorAll('th')[colIdx];
+      th.classList.add('sorted');
+      const arrow = th.querySelector('.sort-arrow');
+      if (arrow) arrow.textContent = sortAscending ? '↑' : '↓';
+      rows.sort((a, b) => {
+        let aVal = a.children[colIdx]?.textContent.trim() || '';
+        let bVal = b.children[colIdx]?.textContent.trim() || '';
+        return sortAscending ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      });
+      rows.forEach(row => tbody.appendChild(row));
+    }
+</script>
 </body>
 </html>
