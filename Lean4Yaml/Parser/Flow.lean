@@ -7,6 +7,7 @@ import Lean4Yaml.Stream
 import Lean4Yaml.Parser.Combinators
 import Lean4Yaml.Parser.Scalar
 import Lean4Yaml.Parser.Anchor
+import Lean4Yaml.Parser.Tag
 
 /-!
 # YAML Flow Collection Parsers
@@ -89,16 +90,49 @@ A flow value is either:
 partial def flowValue : YamlParser YamlValue :=
   withErrorMessage "expected flow value" do
     flowWhitespace
-    -- Check for anchor prefix (&name) on flow values
-    match ← option? (lookAhead (token '&')) with
+    -- Check for tag prefix (!tag) on flow values (§6.9)
+    match ← option? (lookAhead (token '!')) with
     | some _ => do
-      let name ← parseAnchorPrefix
+      let tag ← parseTagPrefix
       flowWhitespace
+      -- Check for anchor after tag: `!tag &anchor value`
+      let anchorName ← do
+        match ← option? (lookAhead (token '&')) with
+        | some _ =>
+          let name ← parseAnchorPrefix
+          flowWhitespace
+          pure (some name)
+        | none => pure none
       let val ← first [
         flowSequence,
         flowMapping,
         flowScalar
       ]
+      let val := val.withTag tag
+      match anchorName with
+      | some name => storeAnchor name val
+      | none => pure ()
+      return val
+    | none =>
+    -- Check for anchor prefix (&name) on flow values
+    match ← option? (lookAhead (token '&')) with
+    | some _ => do
+      let name ← parseAnchorPrefix
+      flowWhitespace
+      -- Check for tag after anchor: `&anchor !tag value`
+      let tagName ← do
+        match ← option? (lookAhead (token '!')) with
+        | some _ =>
+          let tag ← parseTagPrefix
+          flowWhitespace
+          pure (some tag)
+        | none => pure none
+      let val ← first [
+        flowSequence,
+        flowMapping,
+        flowScalar
+      ]
+      let val := match tagName with | some t => val.withTag t | none => val
       storeAnchor name val
       return val
     | none =>

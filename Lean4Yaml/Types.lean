@@ -161,6 +161,18 @@ def YamlValue.asPairs? : YamlValue → Option (Array (YamlValue × YamlValue))
   | .mapping _ pairs _ => some pairs
   | _ => none
 
+/--
+Apply a tag to any YAML value.
+
+Sets the `tag` field on scalars, sequences, and mappings.
+Used by the tag parser to annotate parsed values.
+-/
+def YamlValue.withTag (v : YamlValue) (tag : String) : YamlValue :=
+  match v with
+  | .scalar s => .scalar { s with tag := some tag }
+  | .sequence style items _ => .sequence style items (some tag)
+  | .mapping style pairs _ => .mapping style pairs (some tag)
+
 /-- Look up a key in a mapping by string content -/
 def YamlValue.lookup? (v : YamlValue) (key : String) : Option YamlValue :=
   match v with

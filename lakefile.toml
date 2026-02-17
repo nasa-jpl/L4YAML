@@ -40,6 +40,9 @@ name = "Tests.StringLemmas"
 name = "Tests.AnchorAlias"
 
 [[lean_lib]]
+name = "Tests.TagTests"
+
+[[lean_lib]]
 name = "Demo"
 
 [[lean_exe]]
@@ -77,3 +80,7 @@ root = "Tests.StringLemmas.Runner"
 [[lean_exe]]
 name = "anchortests"
 root = "Tests.AnchorAlias.Runner"
+
+[[lean_exe]]
+name = "tagtests"
+root = "Tests.TagTests.Runner"
