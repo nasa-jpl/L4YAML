@@ -5,35 +5,24 @@ import Lean4Yaml.Parser.Scalar
 import Lean4Yaml.Parser.Flow
 import Lean4Yaml.Parser.Block
 import Lean4Yaml.Parser.Document
+import Tests.VerifiedResult
 
 /-!
 # Parser Integration Tests
 
 Focused tests for each parser component, used to isolate infinite loops
 and incorrect parse results during Phase 2 validation.
+Produces a `VerifiedSuiteResult` for structured reporting.
 -/
 
 open Lean4Yaml
 open Lean4Yaml.Parse
 open Parser
+open Tests
 
 namespace Tests.Parse
 
 /-! ## Helpers -/
-
-def testParseYaml (label : String) (input : String) : IO Unit := do
-  IO.print s!"  {label}: "
-  match parseYaml input with
-  | .ok docs => IO.println s!"OK ({docs.size} docs)"
-  | .error e => IO.println s!"ERR: {e}"
-
-def testParseSingle (label : String) (input : String) : IO Unit := do
-  IO.print s!"  {label}: "
-  match parseYamlSingle input with
-  | .ok v => IO.println s!"OK → {repr v}"
-  | .error e => IO.println s!"ERR: {e}"
-
-/-! ## Individual parser tests via Parser.run -/
 
 def runParser {α : Type} (p : YamlParser α) (input : String) : Except String α :=
   let stream := YamlStream.ofString input
@@ -41,85 +30,91 @@ def runParser {α : Type} (p : YamlParser α) (input : String) : Except String �
   | .ok _ v => .ok v
   | .error _ err => .error (toString err)
 
-def testScalarParser (label : String) (p : YamlParser YamlValue) (input : String) : IO Unit := do
-  IO.print s!"  {label}: "
+def checkParser (state : IO.Ref TestCollector) (label : String)
+    (p : YamlParser YamlValue) (input : String) : IO Unit := do
   match runParser p input with
-  | .ok v => IO.println s!"OK → {repr v}"
-  | .error e => IO.println s!"ERR: {e}"
+  | .ok _ => check state label true
+  | .error e => check state label false (message := e)
+
+def checkParseYaml (state : IO.Ref TestCollector) (label : String)
+    (input : String) : IO Unit := do
+  match parseYaml input with
+  | .ok _ => check state label true
+  | .error e => check state label false (message := e)
+
+def checkParseSingle (state : IO.Ref TestCollector) (label : String)
+    (input : String) : IO Unit := do
+  match parseYamlSingle input with
+  | .ok _ => check state label true
+  | .error e => check state label false (message := e)
 
 /-! ## Tests -/
 
-def testDoubleQuotedScalar : IO Unit := do
-  IO.println "--- Double-quoted scalars ---"
-  testScalarParser "simple" doubleQuotedScalar "\"hello\""
-  testScalarParser "with space" doubleQuotedScalar "\"hello world\""
-  testScalarParser "with escape" doubleQuotedScalar "\"hello\\nworld\""
-  testScalarParser "empty" doubleQuotedScalar "\"\""
+def testDoubleQuotedScalar (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Double-quoted scalars"
+  checkParser state "simple" doubleQuotedScalar "\"hello\""
+  checkParser state "with space" doubleQuotedScalar "\"hello world\""
+  checkParser state "with escape" doubleQuotedScalar "\"hello\\nworld\""
+  checkParser state "empty" doubleQuotedScalar "\"\""
 
-def testSingleQuotedScalar : IO Unit := do
-  IO.println "--- Single-quoted scalars ---"
-  testScalarParser "simple" singleQuotedScalar "'hello'"
-  testScalarParser "with space" singleQuotedScalar "'hello world'"
-  testScalarParser "escaped quote" singleQuotedScalar "'it''s'"
-  testScalarParser "empty" singleQuotedScalar "''"
+def testSingleQuotedScalar (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Single-quoted scalars"
+  checkParser state "simple" singleQuotedScalar "'hello'"
+  checkParser state "with space" singleQuotedScalar "'hello world'"
+  checkParser state "escaped quote" singleQuotedScalar "'it''s'"
+  checkParser state "empty" singleQuotedScalar "''"
 
-def testPlainScalar : IO Unit := do
-  IO.println "--- Plain scalars ---"
-  testScalarParser "word" (plainScalar (inFlow := false)) "hello"
-  testScalarParser "multi-word" (plainScalar (inFlow := false)) "hello world"
+def testPlainScalar (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Plain scalars"
+  checkParser state "word" (plainScalar (inFlow := false)) "hello"
+  checkParser state "multi-word" (plainScalar (inFlow := false)) "hello world"
 
-def testFlowSequence : IO Unit := do
-  IO.println "--- Flow sequences ---"
-  testScalarParser "simple" flowSequence "[a, b, c]"
-  testScalarParser "nested" flowSequence "[[1, 2], [3]]"
-  testScalarParser "empty" flowSequence "[]"
+def testFlowSequence (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Flow sequences"
+  checkParser state "simple" flowSequence "[a, b, c]"
+  checkParser state "nested" flowSequence "[[1, 2], [3]]"
+  checkParser state "empty" flowSequence "[]"
 
-def testFlowMapping : IO Unit := do
-  IO.println "--- Flow mappings ---"
-  testScalarParser "simple" flowMapping "{a: 1, b: 2}"
-  testScalarParser "empty" flowMapping "{}"
+def testFlowMapping (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Flow mappings"
+  checkParser state "simple" flowMapping "{a: 1, b: 2}"
+  checkParser state "empty" flowMapping "{}"
 
-def testBlockSequence : IO Unit := do
-  IO.println "--- Block sequences ---"
-  testScalarParser "simple" (blockSequence 0) "- a\n- b\n"
-  testScalarParser "items" (blockSequence 0) "- one\n- two\n- three\n"
+def testBlockSequence (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Block sequences"
+  checkParser state "simple" (blockSequence 0) "- a\n- b\n"
+  checkParser state "items" (blockSequence 0) "- one\n- two\n- three\n"
 
-def testBlockMapping : IO Unit := do
-  IO.println "--- Block mappings ---"
-  testScalarParser "simple" (blockMapping 0) "a: 1\nb: 2\n"
+def testBlockMapping (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Block mappings"
+  checkParser state "simple" (blockMapping 0) "a: 1\nb: 2\n"
 
-def testDocumentParsing : IO Unit := do
-  IO.println "--- Document parsing ---"
-  testParseYaml "empty" ""
-  testParseSingle "just scalar" "hello"
-  testParseYaml "explicit doc" "---\nhello\n"
-  testParseYaml "multi doc" "---\nfirst\n---\nsecond\n"
+def testDocumentParsing (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Document parsing"
+  checkParseYaml state "empty" ""
+  checkParseSingle state "just scalar" "hello"
+  checkParseYaml state "explicit doc" "---\nhello\n"
+  checkParseYaml state "multi doc" "---\nfirst\n---\nsecond\n"
 
-def testNestedBlock : IO Unit := do
-  IO.println "--- Nested block ---"
-  testParseSingle "map with seq value" "items:\n  - a\n  - b\n"
-  testParseSingle "nested map" "outer:\n  inner: value\n"
-  testParseSingle "seq of maps" "- a: 1\n- b: 2\n"
+def testNestedBlock (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Nested block"
+  checkParseSingle state "map with seq value" "items:\n  - a\n  - b\n"
+  checkParseSingle state "nested map" "outer:\n  inner: value\n"
+  checkParseSingle state "seq of maps" "- a: 1\n- b: 2\n"
+
+/-- Collect all parser integration test results as structured data. -/
+def collectTests : IO VerifiedSuiteResult := do
+  let state ← IO.mkRef ({} : TestCollector)
+  testDoubleQuotedScalar state
+  testSingleQuotedScalar state
+  testPlainScalar state
+  testFlowSequence state
+  testFlowMapping state
+  testBlockSequence state
+  testBlockMapping state
+  testDocumentParsing state
+  testNestedBlock state
+  let results ← finish state
+  return { name := "parsetest", label := "Parser Integration Tests", sourceFile := "Tests/ParseTest.lean", tests := results }
 
 end Tests.Parse
-
-def main : IO Unit := do
-  IO.println "=== Parser Integration Tests ===\n"
-  Tests.Parse.testDoubleQuotedScalar
-  IO.println ""
-  Tests.Parse.testSingleQuotedScalar
-  IO.println ""
-  Tests.Parse.testPlainScalar
-  IO.println ""
-  Tests.Parse.testFlowSequence
-  IO.println ""
-  Tests.Parse.testFlowMapping
-  IO.println ""
-  Tests.Parse.testBlockSequence
-  IO.println ""
-  Tests.Parse.testBlockMapping
-  IO.println ""
-  Tests.Parse.testDocumentParsing
-  IO.println ""
-  Tests.Parse.testNestedBlock
-  IO.println "\n=== Done ==="

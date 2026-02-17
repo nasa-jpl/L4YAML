@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml.Types
 import Lean4Yaml.Grammar
+import Lean4Yaml.Stream
 
 /-!
 # Soundness Proofs
@@ -56,14 +57,14 @@ namespace Lean4Yaml.Proofs.Soundness
 Plain scalar parser produces valid YAML scalars.
 -/
 axiom plainScalar_sound :
-  ∀ (input : String) (content : String),
+  ∀ (_input : String) (_content : String),
     True -- TODO: formal statement pending parser finalization
 
 /--
 Double-quoted scalar parser handles escape sequences correctly.
 -/
 axiom doubleQuoted_sound :
-  ∀ (input : String) (content : String),
+  ∀ (_input : String) (_content : String),
     True -- TODO: formal statement
 
 /--
@@ -73,7 +74,7 @@ This is the theorem that directly prevents the `skipToNextLine` class of bugs:
 the parser only accepts indentation that matches the stream's column state.
 -/
 axiom indentation_correct :
-  ∀ (s : Lean4Yaml.YamlStream) (n : Nat),
+  ∀ (_s : Lean4Yaml.YamlStream) (_n : Nat),
     True -- TODO: formal statement involving consumeIndent and currentCol
 
 end Lean4Yaml.Proofs.Soundness

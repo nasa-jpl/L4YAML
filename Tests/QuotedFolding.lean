@@ -5,6 +5,7 @@ import Lean4Yaml.Parser.Scalar
 import Lean4Yaml.Parser.Flow
 import Lean4Yaml.Parser.Block
 import Lean4Yaml.Parser.Document
+import Tests.VerifiedResult
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -23,11 +24,14 @@ Covers the 5 algorithmic bugs fixed in step 6b (ANALYSIS.md §2.F):
 - **Bug C**: Trailing whitespace trimming added
 - **Bug D**: `skipSpaces` → `skipHWhitespace` (tabs handled)
 - **Bug E**: `\` + newline (escaped line break / line continuation) added
+
+Produces a `VerifiedSuiteResult` for structured reporting.
 -/
 
 open Lean4Yaml
 open Lean4Yaml.Parse
 open Parser
+open Tests
 
 namespace Tests.QuotedFolding
 
@@ -49,24 +53,21 @@ def getContent (result : Except String YamlValue) : Except String String :=
     | none => .error s!"expected scalar, got {repr v}"
   | .error e => .error e
 
-/-- Test that a parser produces a specific scalar content string. -/
-def expectContent (label : String) (p : YamlParser YamlValue) (input : String)
-    (expected : String) : IO Unit := do
-  IO.print s!"  {label}: "
+/-- Check that a parser produces a specific scalar content string. -/
+def expectContent (state : IO.Ref TestCollector) (label : String)
+    (p : YamlParser YamlValue) (input : String) (expected : String) : IO Unit := do
   match getContent (runParser p input) with
   | .ok content =>
-    if content == expected then
-      IO.println "✓"
-    else
-      IO.println s!"✗ expected {repr expected}, got {repr content}"
-  | .error e => IO.println s!"✗ parse error: {e}"
+    if content == expected then check state label true
+    else check state label false (message := s!"expected {repr expected}, got {repr content}")
+  | .error e => check state label false (message := s!"parse error: {e}")
 
-/-- Test that a parser fails on the given input. -/
-def expectFailure (label : String) (p : YamlParser YamlValue) (input : String) : IO Unit := do
-  IO.print s!"  {label}: "
+/-- Check that a parser fails on the given input. -/
+def expectFailure (state : IO.Ref TestCollector) (label : String)
+    (p : YamlParser YamlValue) (input : String) : IO Unit := do
   match runParser p input with
-  | .ok v => IO.println s!"✗ expected failure, got {repr v}"
-  | .error _ => IO.println "✓"
+  | .ok v => check state label false (message := s!"expected failure, got {repr v}")
+  | .error _ => check state label true
 
 /-! ## Bug A: Simple fold (single newline → space)
 
@@ -78,18 +79,15 @@ YAML spec §6.5: A line break followed by content on the next line
 folds to a single space.
 -/
 
-def testBugA_SimpleFold : IO Unit := do
-  IO.println "--- Bug A: Simple fold (newline → space) ---"
-  -- "hello\n world" → "hello world"  (basic fold, content on next line)
-  expectContent "dq basic fold"
+def testBugA_SimpleFold (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Bug A: Simple fold (newline → space)"
+  expectContent state "dq basic fold"
     doubleQuotedScalar "\"hello\n world\"" "hello world"
-  -- "foo\nbar" → "foo bar"  (no leading whitespace on continuation)
-  expectContent "dq no leading ws"
+  expectContent state "dq no leading ws"
     doubleQuotedScalar "\"foo\nbar\"" "foo bar"
-  -- Single-quoted equivalent
-  expectContent "sq basic fold"
+  expectContent state "sq basic fold"
     singleQuotedScalar "'hello\n world'" "hello world"
-  expectContent "sq no leading ws"
+  expectContent state "sq no leading ws"
     singleQuotedScalar "'foo\nbar'" "foo bar"
 
 /-! ## Bug B: Empty line counting (preserved newlines)
@@ -100,21 +98,17 @@ followed by another line break) are preserved as literal newlines.
 One empty line = one `\n`, two empty lines = two `\n`s, etc.
 -/
 
-def testBugB_EmptyLines : IO Unit := do
-  IO.println "--- Bug B: Empty line counting (preserved newlines) ---"
-  -- "a\n\nb" → "a\nb"  (one empty line = one preserved newline)
-  expectContent "dq one empty line"
+def testBugB_EmptyLines (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Bug B: Empty line counting (preserved newlines)"
+  expectContent state "dq one empty line"
     doubleQuotedScalar "\"a\n\nb\"" "a\nb"
-  -- "a\n\n\nb" → "a\n\nb"  (two empty lines = two newlines)
-  expectContent "dq two empty lines"
+  expectContent state "dq two empty lines"
     doubleQuotedScalar "\"a\n\n\nb\"" "a\n\nb"
-  -- "a\n\n\n\nb" → "a\n\n\nb"  (three empty lines = three newlines)
-  expectContent "dq three empty lines"
+  expectContent state "dq three empty lines"
     doubleQuotedScalar "\"a\n\n\n\nb\"" "a\n\n\nb"
-  -- Single-quoted equivalents
-  expectContent "sq one empty line"
+  expectContent state "sq one empty line"
     singleQuotedScalar "'a\n\nb'" "a\nb"
-  expectContent "sq two empty lines"
+  expectContent state "sq two empty lines"
     singleQuotedScalar "'a\n\n\nb'" "a\n\nb"
 
 /-! ## Bug C: Trailing whitespace trimming
@@ -124,19 +118,15 @@ line are excluded from the content." Before folding, trailing spaces
 and tabs on the line before the break must be trimmed.
 -/
 
-def testBugC_TrailingWsTrim : IO Unit := do
-  IO.println "--- Bug C: Trailing whitespace trimming ---"
-  -- "hello   \n world" → "hello world"  (trailing spaces trimmed)
-  expectContent "dq trailing spaces"
+def testBugC_TrailingWsTrim (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Bug C: Trailing whitespace trimming"
+  expectContent state "dq trailing spaces"
     doubleQuotedScalar "\"hello   \n world\"" "hello world"
-  -- "hello\t\n world" → "hello world"  (trailing tab trimmed)
-  expectContent "dq trailing tab"
+  expectContent state "dq trailing tab"
     doubleQuotedScalar "\"hello\t\n world\"" "hello world"
-  -- "hello \t \n world" → "hello world"  (mixed trailing ws trimmed)
-  expectContent "dq trailing mixed ws"
+  expectContent state "dq trailing mixed ws"
     doubleQuotedScalar "\"hello \t \n world\"" "hello world"
-  -- Single-quoted equivalent
-  expectContent "sq trailing spaces"
+  expectContent state "sq trailing spaces"
     singleQuotedScalar "'hello   \n world'" "hello world"
 
 /-! ## Bug D: Tab handling on continuation lines
@@ -146,19 +136,15 @@ Tabs on continuation lines leaked into output. Now uses
 `skipHWhitespace` which handles both spaces and tabs.
 -/
 
-def testBugD_TabsOnContinuation : IO Unit := do
-  IO.println "--- Bug D: Tab handling on continuation lines ---"
-  -- "hello\n\tworld" → "hello world"  (tab on continuation = leading ws)
-  expectContent "dq tab continuation"
+def testBugD_TabsOnContinuation (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Bug D: Tab handling on continuation lines"
+  expectContent state "dq tab continuation"
     doubleQuotedScalar "\"hello\n\tworld\"" "hello world"
-  -- "hello\n\t world" → "hello world"  (tab+space on continuation)
-  expectContent "dq tab+space continuation"
+  expectContent state "dq tab+space continuation"
     doubleQuotedScalar "\"hello\n\t world\"" "hello world"
-  -- "a\n\n\tb" → "a\nb"  (tab on continuation after blank line)
-  expectContent "dq tab after blank"
+  expectContent state "dq tab after blank"
     doubleQuotedScalar "\"a\n\n\tb\"" "a\nb"
-  -- Single-quoted equivalent
-  expectContent "sq tab continuation"
+  expectContent state "sq tab continuation"
     singleQuotedScalar "'hello\n\tworld'" "hello world"
 
 /-! ## Bug E: Escaped line breaks (line continuation)
@@ -170,8 +156,8 @@ are all consumed, emitting nothing to the output. Trailing whitespace
 before the backslash is also trimmed.
 -/
 
-def testBugE_EscapedLineBreak : IO Unit := do
-  IO.println "--- Bug E: Escaped line breaks (line continuation) ---"
+def testBugE_EscapedLineBreak (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Bug E: Escaped line breaks (line continuation)"
   -- "hello \\\n  world" → "helloworld"  (line continuation)
   -- The \ is preceded by no trailing ws to trim (the space before \
   -- is before the backslash, which was already consumed by anyToken;
@@ -179,18 +165,13 @@ def testBugE_EscapedLineBreak : IO Unit := do
   -- trailing spaces before the escape consumes the newline)
   -- Actually, per YAML §5.7 [112]: "an escaped line break followed
   -- by whitespace" — the backslash consumes trailing ws from acc.
-  expectContent "dq escaped newline"
+  expectContent state "dq escaped newline"
     doubleQuotedScalar "\"hello \\\n  world\"" "helloworld"
-  -- "foo\\\nbar" → "foobar"  (no trailing ws, no leading ws)
-  expectContent "dq escaped bare"
+  expectContent state "dq escaped bare"
     doubleQuotedScalar "\"foo\\\nbar\"" "foobar"
-  -- "foo \\\n  bar" → "foobar"
-  -- Per YAML spec §5.7: escaped line break trims trailing ws from acc,
-  -- consumes newline + leading ws — emits nothing.
-  expectContent "dq escaped with trailing"
+  expectContent state "dq escaped with trailing"
     doubleQuotedScalar "\"foo \\\n  bar\"" "foobar"
-  -- "a\\\n\\\nb" → "ab"  (two consecutive escaped line breaks)
-  expectContent "dq double escaped"
+  expectContent state "dq double escaped"
     doubleQuotedScalar "\"a\\\n\\\nb\"" "ab"
 
 /-! ## Combined: Fold + trim + tabs together
@@ -199,27 +180,21 @@ These test multiple fixes working together, matching the YAML test
 suite cases that originally failed (4CQQ, 4ZYM, 5GBF, etc.).
 -/
 
-def testCombinedFolding : IO Unit := do
-  IO.println "--- Combined folding tests ---"
+def testCombinedFolding (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Combined folding tests"
   -- Multi-line double quoted with fold + trim + continuation whitespace
   -- " foo \n bar \n baz " → " foo bar baz "
   -- Leading ws on the opening line is content (part of the scalar).
   -- Trailing ws before each fold IS trimmed. Leading ws on continuation
   -- lines is consumed by foldQuotedNewlines. But leading/trailing content
   -- within quotes on the first/last lines is preserved.
-  expectContent "dq multi-line fold"
+  expectContent state "dq multi-line fold"
     doubleQuotedScalar "\" foo \n bar \n baz \"" " foo bar baz "
-  -- Fold then blank line
-  -- "a \n\n b" → "a\nb"  (trailing ws trimmed, blank = preserved newline)
-  expectContent "dq fold then blank"
+  expectContent state "dq fold then blank"
     doubleQuotedScalar "\"a \n\n b\"" "a\nb"
-  -- Blank line then fold
-  -- "a\n\nb\n c" → "a\nb c"  (blank preserved, then fold to space)
-  expectContent "dq blank then fold"
+  expectContent state "dq blank then fold"
     doubleQuotedScalar "\"a\n\nb\n c\"" "a\nb c"
-  -- Multiple folds in sequence
-  -- "a\nb\nc" → "a b c"
-  expectContent "dq triple fold"
+  expectContent state "dq triple fold"
     doubleQuotedScalar "\"a\nb\nc\"" "a b c"
 
 /-! ## CRLF handling
@@ -228,63 +203,44 @@ Ensure line folding works with CRLF (`\r\n`) line endings
 in addition to LF (`\n`).
 -/
 
-def testCRLFFolding : IO Unit := do
-  IO.println "--- CRLF folding ---"
-  -- "hello\r\n world" → "hello world"
-  expectContent "dq CRLF fold"
+def testCRLFFolding (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "CRLF folding"
+  expectContent state "dq CRLF fold"
     doubleQuotedScalar "\"hello\r\n world\"" "hello world"
-  -- "a\r\n\r\nb" → "a\nb"  (CRLF blank line)
-  expectContent "dq CRLF blank"
+  expectContent state "dq CRLF blank"
     doubleQuotedScalar "\"a\r\n\r\nb\"" "a\nb"
-  -- Single-quoted CRLF
-  expectContent "sq CRLF fold"
+  expectContent state "sq CRLF fold"
     singleQuotedScalar "'hello\r\n world'" "hello world"
 
 /-! ## Edge cases -/
 
-def testEdgeCases : IO Unit := do
-  IO.println "--- Edge cases ---"
-  -- No folding: single-line scalars unchanged
-  expectContent "dq no fold"
+def testEdgeCases (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Edge cases"
+  expectContent state "dq no fold"
     doubleQuotedScalar "\"hello world\"" "hello world"
-  expectContent "sq no fold"
+  expectContent state "sq no fold"
     singleQuotedScalar "'hello world'" "hello world"
-  -- Empty quoted scalars
-  expectContent "dq empty"
+  expectContent state "dq empty"
     doubleQuotedScalar "\"\"" ""
-  expectContent "sq empty"
+  expectContent state "sq empty"
     singleQuotedScalar "''" ""
-  -- Fold at end: "hello\n " → "hello "
-  -- (trailing fold produces trailing space)
-  expectContent "dq fold at end"
+  expectContent state "dq fold at end"
     doubleQuotedScalar "\"hello\n \"" "hello "
-  -- Only whitespace on continuation line after fold
-  -- "a\n   \nb" → "a\nb"  (whitespace-only line = blank line)
-  expectContent "dq ws-only blank"
+  expectContent state "dq ws-only blank"
     doubleQuotedScalar "\"a\n   \nb\"" "a\nb"
 
-/-! ## Test runner -/
-
-def runTests : IO Unit := do
-  IO.println "=== Quoted Scalar Folding Tests ===\n"
-  testBugA_SimpleFold
-  IO.println ""
-  testBugB_EmptyLines
-  IO.println ""
-  testBugC_TrailingWsTrim
-  IO.println ""
-  testBugD_TabsOnContinuation
-  IO.println ""
-  testBugE_EscapedLineBreak
-  IO.println ""
-  testCombinedFolding
-  IO.println ""
-  testCRLFFolding
-  IO.println ""
-  testEdgeCases
-  IO.println ""
-  IO.println "=== Done ==="
+/-- Collect all quoted folding test results as structured data. -/
+def collectTests : IO VerifiedSuiteResult := do
+  let state ← IO.mkRef ({} : TestCollector)
+  testBugA_SimpleFold state
+  testBugB_EmptyLines state
+  testBugC_TrailingWsTrim state
+  testBugD_TabsOnContinuation state
+  testBugE_EscapedLineBreak state
+  testCombinedFolding state
+  testCRLFFolding state
+  testEdgeCases state
+  let results ← finish state
+  return { name := "quotedfolding", label := "Quoted Folding Tests", sourceFile := "Tests/QuotedFolding.lean", tests := results }
 
 end Tests.QuotedFolding
-
-def main : IO Unit := Tests.QuotedFolding.runTests

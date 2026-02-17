@@ -13,22 +13,43 @@ rev = "main"
 name = "Lean4Yaml"
 
 [[lean_lib]]
+name = "Tests.VerifiedResult"
+
+[[lean_lib]]
 name = "Tests.SuiteRunner.Meta"
 
 [[lean_lib]]
 name = "Tests.SuiteRunner.HtmlReport"
 
+[[lean_lib]]
+name = "Tests.Main"
+
+[[lean_lib]]
+name = "Tests.ParseTest"
+
+[[lean_lib]]
+name = "Tests.QuotedFolding"
+
+[[lean_lib]]
+name = "Tests.Verification"
+
+[[lean_lib]]
+name = "Tests.StringLemmas"
+
+[[lean_lib]]
+name = "Demo"
+
 [[lean_exe]]
 name = "tests"
-root = "Tests.Main"
+root = "Tests.Main.Runner"
 
 [[lean_exe]]
 name = "demo"
-root = "Demo"
+root = "Demo.Runner"
 
 [[lean_exe]]
 name = "parsetest"
-root = "Tests.ParseTest"
+root = "Tests.ParseTest.Runner"
 
 [[lean_exe]]
 name = "suiterunner"
@@ -40,8 +61,12 @@ root = "Tests.TryParse"
 
 [[lean_exe]]
 name = "quotedfolding"
-root = "Tests.QuotedFolding"
+root = "Tests.QuotedFolding.Runner"
 
 [[lean_exe]]
 name = "verification"
-root = "Tests.Verification"
+root = "Tests.Verification.Runner"
+
+[[lean_exe]]
+name = "stringlemmas"
+root = "Tests.StringLemmas.Runner"
