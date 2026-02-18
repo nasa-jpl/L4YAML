@@ -61,14 +61,14 @@
 <body>
 <div class="container">
   <a href="index.html" class="nav-link">← Back to Coverage Index</a>
-  <h1>✅ Verified Tests</h1>
+  <h1>❌ Verified Tests</h1>
   <p class="subtitle">Unit tests, parser tests, verification tests, and string lemma tests — all must pass.</p>
 
   <div class="stats">
-    <div class="stat-box stat-total"><h3>Total</h3><div class="number">427</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">427</div></div>
-    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
-    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">8</div></div>
+    <div class="stat-box stat-total"><h3>Total</h3><div class="number">493</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">492</div></div>
+    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">1</div></div>
+    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">9</div></div>
   </div>
   <h3>Suites</h3>
   <div class="stage-cards">
@@ -114,6 +114,12 @@
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/TagTests.lean" target="_blank" class="source-link">📄 Tests/TagTests.lean</a></div>
     </div>
+    <div class="stage-card" style="border-left-color:var(--color-fail)">
+      <div class="stage-card-name">Explicit Key Tests</div>
+      <div class="stage-card-stats">65/66 passed (98%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 98%"></div></div>
+      <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean" target="_blank" class="source-link">📄 Tests/ExplicitKeyTests.lean</a></div>
+    </div>
     <div class="stage-card" style="border-left-color:var(--color-pass)">
       <div class="stage-card-name">Demo</div>
       <div class="stage-card-stats">7/7 passed (100%)</div>
@@ -140,6 +146,7 @@
         <option value="stringlemmas">String Lemma Tests</option>
         <option value="anchortests">Anchor &amp; Alias Tests</option>
         <option value="tagtests">Tag Tests</option>
+        <option value="explicittests">Explicit Key Tests</option>
         <option value="demo">Demo</option>
       </select>
     </div>
@@ -147,7 +154,7 @@
       <label>Search:</label>
       <input type="text" class="search-input" placeholder="Category, test name..." oninput="searchTests(this.value)">
     </div>
-    <div class="filter-group"><span>Showing <strong id="visibleCount">427</strong> of 427</span></div>
+    <div class="filter-group"><span>Showing <strong id="visibleCount">493</strong> of 493</span></div>
   </div>
 
   <table id="testTable">
@@ -3100,6 +3107,468 @@
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/TagTests.lean#L283" target="_blank" class="source-link">Tag Tests</a></td>
         <td>withTag helper</td>
         <td>withTag mapping pairs</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests basic explicit keys ? a : b parses as mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L87" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Basic explicit keys</td>
+        <td>? a : b parses as mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests basic explicit keys ? a : b key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L88" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Basic explicit keys</td>
+        <td>? a : b key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests basic explicit keys ? a : b value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L89" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Basic explicit keys</td>
+        <td>? a : b value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests basic explicit keys ? a : 1.3 key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L95" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Basic explicit keys</td>
+        <td>? a : 1.3 key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests basic explicit keys ? a : 1.3 value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L96" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Basic explicit keys</td>
+        <td>? a : 1.3 value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests basic explicit keys ? explicit key (no colon)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L102" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Basic explicit keys</td>
+        <td>? explicit key (no colon)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests basic explicit keys ? explicit key: key content">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L103" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Basic explicit keys</td>
+        <td>? explicit key: key content</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests missing value (null) ? a produces mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L114" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Missing value (null)</td>
+        <td>? a produces mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests missing value (null) ? a key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L115" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Missing value (null)</td>
+        <td>? a key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests missing value (null) ? a value is null">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L117" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Missing value (null)</td>
+        <td>? a value is null</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests missing value (null) ? a ? b key count">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L124" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Missing value (null)</td>
+        <td>? a ? b key count</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests missing value (null) ? a ? b first key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L125" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Missing value (null)</td>
+        <td>? a ? b first key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests missing value (null) ? a ? b second key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L126" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Missing value (null)</td>
+        <td>? a ? b second key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests next-line keys 6pbe key is sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L137" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Next-line keys</td>
+        <td>6PBE key is sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests next-line keys 6pbe value is sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L138" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Next-line keys</td>
+        <td>6PBE value is sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests next-line keys bare ? + : value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L144" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Next-line keys</td>
+        <td>bare ? + : value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests next-line keys bare ? key is null">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L147" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Next-line keys</td>
+        <td>bare ? key is null</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests next-line keys bare ? : value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L148" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Next-line keys</td>
+        <td>bare ? : value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests complex keys jtv5 multiline key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L160" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Complex keys</td>
+        <td>JTV5 multiline key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests complex keys jtv5 multiline value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L161" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Complex keys</td>
+        <td>JTV5 multiline value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests complex keys v9d5 parses">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L167" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Complex keys</td>
+        <td>V9D5 parses</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests complex keys v9d5 first item is mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L171" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Complex keys</td>
+        <td>V9D5 first item is mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests complex keys v9d5 second item is mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L172" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Complex keys</td>
+        <td>V9D5 second item is mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests complex keys m5dy key is sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L180" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Complex keys</td>
+        <td>M5DY key is sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests complex keys m5dy value is sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L181" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Complex keys</td>
+        <td>M5DY value is sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests explicit key + anchors 6m2f key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L192" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Explicit key + anchors</td>
+        <td>6M2F key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests explicit key + anchors 6m2f value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L193" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Explicit key + anchors</td>
+        <td>6M2F value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests explicit key + anchors ? &amp;d produces mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L200" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Explicit key + anchors</td>
+        <td>? &amp;d produces mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests explicit key + anchors ? &amp;e : &amp;a parses">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L206" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Explicit key + anchors</td>
+        <td>? &amp;e : &amp;a parses</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests mixed explicit/implicit keys gh63 pair count">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L217" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Mixed explicit/implicit keys</td>
+        <td>GH63 pair count</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests mixed explicit/implicit keys gh63 explicit key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L218" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Mixed explicit/implicit keys</td>
+        <td>GH63 explicit key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests mixed explicit/implicit keys gh63 explicit value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L219" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Mixed explicit/implicit keys</td>
+        <td>GH63 explicit value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests mixed explicit/implicit keys gh63 implicit key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L220" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Mixed explicit/implicit keys</td>
+        <td>GH63 implicit key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests mixed explicit/implicit keys gh63 implicit value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L221" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Mixed explicit/implicit keys</td>
+        <td>GH63 implicit value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests mixed explicit/implicit keys zwk4 pair count">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L227" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Mixed explicit/implicit keys</td>
+        <td>ZWK4 pair count</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests mixed explicit/implicit keys zwk4 first key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L228" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Mixed explicit/implicit keys</td>
+        <td>ZWK4 first key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests mixed explicit/implicit keys zwk4 first value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L229" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Mixed explicit/implicit keys</td>
+        <td>ZWK4 first value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests mixed explicit/implicit keys zwk4 explicit key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L230" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Mixed explicit/implicit keys</td>
+        <td>ZWK4 explicit key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests mixed explicit/implicit keys zwk4 third key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L231" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Mixed explicit/implicit keys</td>
+        <td>ZWK4 third key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests mixed explicit/implicit keys zwk4 third value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L232" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Mixed explicit/implicit keys</td>
+        <td>ZWK4 third value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests comments between key and value x8dw key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L243" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Comments between key and value</td>
+        <td>X8DW key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests comments between key and value x8dw value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L244" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Comments between key and value</td>
+        <td>X8DW value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests comments between key and value ? key # comment">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L250" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Comments between key and value</td>
+        <td>? key # comment</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests flow explicit keys dff7 parses as mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L261" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Flow explicit keys</td>
+        <td>DFF7 parses as mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests flow explicit keys dff7 pair count">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L262" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Flow explicit keys</td>
+        <td>DFF7 pair count</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests flow explicit keys dff7 explicit key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L263" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Flow explicit keys</td>
+        <td>DFF7 explicit key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests flow explicit keys dff7 explicit value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L264" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Flow explicit keys</td>
+        <td>DFF7 explicit value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests flow explicit keys dff7 implicit key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L265" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Flow explicit keys</td>
+        <td>DFF7 implicit key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests flow explicit keys dff7 bare ? null key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L266" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Flow explicit keys</td>
+        <td>DFF7 bare ? null key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests flow explicit keys frk4 parses">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L272" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Flow explicit keys</td>
+        <td>FRK4 parses</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests flow explicit keys frk4 pair count">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L273" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Flow explicit keys</td>
+        <td>FRK4 pair count</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="explicittests" data-search="explicittests flow explicit keys frk4 first key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L274" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Flow explicit keys</td>
+        <td>FRK4 first key</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests flow explicit keys frk4 first value is null">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L276" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Flow explicit keys</td>
+        <td>FRK4 first value is null</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests flow explicit keys frk4 empty key value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L278" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Flow explicit keys</td>
+        <td>FRK4 empty key value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests flow explicit keys {? a : b} key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L284" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Flow explicit keys</td>
+        <td>{? a : b} key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests flow explicit keys {? a : b} value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L285" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Flow explicit keys</td>
+        <td>{? a : b} value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests flow sequence explicit entries [? a : b] is sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L296" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Flow sequence explicit entries</td>
+        <td>[? a : b] is sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests flow sequence explicit entries [? a : b] item is mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L300" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Flow sequence explicit entries</td>
+        <td>[? a : b] item is mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests flow sequence explicit entries [?] is sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L308" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Flow sequence explicit entries</td>
+        <td>[?] is sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests flow sequence explicit entries [?] item is mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L312" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Flow sequence explicit entries</td>
+        <td>[?] item is mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests empty keys (flow) {: bar} parses">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L325" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Empty keys (flow)</td>
+        <td>{: bar} parses</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests empty keys (flow) {: bar} empty key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L328" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Empty keys (flow)</td>
+        <td>{: bar} empty key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests empty keys (flow) {: bar} value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L329" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Empty keys (flow)</td>
+        <td>{: bar} value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests empty keys (flow) {:} parses">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L336" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Empty keys (flow)</td>
+        <td>{:} parses</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests empty keys (flow) {:} empty key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L339" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Empty keys (flow)</td>
+        <td>{:} empty key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests empty keys (flow) {:} null value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L340" target="_blank" class="source-link">Explicit Key Tests</a></td>
+        <td>Empty keys (flow)</td>
+        <td>{:} null value</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
