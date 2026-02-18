@@ -442,10 +442,10 @@ Running verified test suites...
   String Lemma Tests: ✓ 129/129
   Anchor & Alias Tests: ✓ 33/33
   Tag Tests: ✓ 44/44
-  Explicit Key Tests: ✗ 65/66
+  Explicit Key Tests: ✓ 66/66
   Demo: ✓ 7/7
 
-Verified: 492/493
+Verified: 493/493
 
 Generating HTML reports...
   wrote docs/index.html
