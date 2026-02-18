@@ -91,3 +91,10 @@ name = "Tests.ExplicitKeyTests"
 [[lean_exe]]
 name = "explicitkeytests"
 root = "Tests.ExplicitKeyTests.Runner"
+
+[[lean_lib]]
+name = "Tests.FlowTests"
+
+[[lean_exe]]
+name = "flowtests"
+root = "Tests.FlowTests.Runner"

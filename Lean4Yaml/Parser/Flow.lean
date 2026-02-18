@@ -167,8 +167,17 @@ partial def flowSequence : YamlParser YamlValue :=
 /--
 Parse flow sequence items, separated by commas.
 
-Handles single-pair explicit entries: `[? key : value]` creates a
-flow sequence containing a single-pair mapping (§7.4, §7.5).
+Handles:
+- Regular flow values: `[a, b, c]`
+- Explicit key entries: `[? key : value]` (§7.4.2)
+- **Implicit single-pair mappings**: `[key : value]` (§7.5)
+- **Empty implicit keys**: `[: value]` (§7.4.2)
+
+Per §7.5, a flow sequence entry can be a single key:value pair
+without braces, creating an implicit single-pair flow mapping.
+
+**Pre-condition**: `[` already consumed; whitespace skipped.
+**Post-condition**: items collected up to and including `]`.
 -/
 partial def flowSequenceItems (acc : Array YamlValue) : YamlParser (Array YamlValue) := do
   -- Check for explicit key `?` in flow sequence — creates single-pair mapping
@@ -180,6 +189,14 @@ partial def flowSequenceItems (acc : Array YamlValue) : YamlParser (Array YamlVa
       match ← option? anyToken with
       | none => pure true
       | some c => pure (isWhiteSpace c || isLineBreak c)
+  -- Check for empty implicit key `: value` at start of entry (§7.4.2)
+  let isEmptyKey ← if isExplicitKey then pure false else lookAhead do
+    match ← option? (token ':') with
+    | none => pure false
+    | some _ =>
+      match ← option? anyToken with
+      | none => pure true
+      | some c => pure (isWhiteSpace c || isLineBreak c || isFlowIndicator c)
   let item ← if isExplicitKey then do
     -- Parse as single-pair mapping: `? key : value`
     let _ ← char '?'
@@ -196,8 +213,41 @@ partial def flowSequenceItems (acc : Array YamlValue) : YamlParser (Array YamlVa
       | none => flowValue
       pure (.mapping .flow #[(key, value)])
     | none => pure (.mapping .flow #[(key, YamlValue.null)])
-  else
-    flowValue
+  else if isEmptyKey then do
+    -- Empty implicit key: `: value` → mapping with null key
+    let _ ← char ':'
+    flowWhitespace
+    let value ← match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == ']')) with
+    | some _ => pure YamlValue.null
+    | none => flowValue
+    pure (.mapping .flow #[(YamlValue.null, value)])
+  else do
+    -- Parse a flow value, then check for implicit mapping `:` (§7.5)
+    let val ← flowValue
+    flowWhitespace
+    -- Check if this is an implicit single-pair mapping: `key : value`
+    -- Per §7.4, after a JSON-like key (flow collection, quoted scalar),
+    -- the `:` does NOT require trailing whitespace.
+    let isJsonLikeKey : Bool := match val with
+      | .sequence .. | .mapping .. => true  -- flow collection
+      | .scalar s => s.style == .doubleQuoted || s.style == .singleQuoted
+    let isImplicitMapping ← lookAhead do
+      match ← option? (token ':') with
+      | none => pure false
+      | some _ =>
+        if isJsonLikeKey then pure true  -- JSON-like: no whitespace needed
+        else match ← option? anyToken with
+        | none => pure true
+        | some c => pure (isWhiteSpace c || isLineBreak c || isFlowIndicator c)
+    if isImplicitMapping then do
+      let _ ← char ':'
+      flowWhitespace
+      let value ← match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == ']')) with
+      | some _ => pure YamlValue.null
+      | none => flowValue
+      pure (.mapping .flow #[(val, value)])
+    else
+      pure val
   flowWhitespace
   match ← anyToken with
   | ',' =>
@@ -306,28 +356,62 @@ partial def flowMappingEntry : YamlParser (YamlValue × YamlValue) := do
       -- `:` not a separator, parse as scalar key
       let key ← flowScalar
       flowWhitespace
-      match ← option? (char ':') with
-      | some _ =>
+      -- After a quoted scalar key, check for JSON-like `:` (no whitespace needed)
+      let isJsonKey : Bool := match key with
+        | .scalar s => s.style == .doubleQuoted || s.style == .singleQuoted
+        | _ => false
+      let hasColon ← if isJsonKey then do
+        match ← option? (lookAhead (token ':')) with
+        | some _ => pure true
+        | none => pure false
+      else
+        match ← option? (char ':') with
+        | some _ => pure true
+        | none => pure false
+      if hasColon then do
+        if isJsonKey then let _ ← char ':'  -- consume the `:` we only peeked
         flowWhitespace
         match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == '}')) with
         | some _ => return (key, YamlValue.null)
         | none =>
           let value ← flowValue
           return (key, value)
-      | none => return (key, YamlValue.null)
+      else return (key, YamlValue.null)
   | none =>
-  -- Normal implicit key
-  let key ← flowScalar
+  -- Normal implicit key — use flowValue so collections can be keys (§7.4.2)
+  let key ← first [
+    flowSequence,
+    flowMapping,
+    flowScalar
+  ]
   flowWhitespace
-  match ← option? (char ':') with
-  | some _ =>
+  -- After a JSON-like key (collection, quoted scalar), `:` doesn't need whitespace
+  let isJsonKey : Bool := match key with
+    | .sequence .. | .mapping .. => true
+    | .scalar s => s.style == .doubleQuoted || s.style == .singleQuoted
+  let hasColon ← if isJsonKey then do
+    match ← option? (lookAhead (token ':')) with
+    | some _ => pure true
+    | none => pure false
+  else do
+    -- Plain scalar key: `:` needs whitespace separation
+    let isSep ← lookAhead do
+      match ← option? (token ':') with
+      | none => pure false
+      | some _ =>
+        match ← option? anyToken with
+        | none => pure true
+        | some c => pure (isWhiteSpace c || isLineBreak c || isFlowIndicator c)
+    pure isSep
+  if hasColon then do
+    let _ ← char ':'
     flowWhitespace
     match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == '}')) with
     | some _ => return (key, YamlValue.null)
     | none =>
       let value ← flowValue
       return (key, value)
-  | none => return (key, YamlValue.null)
+  else return (key, YamlValue.null)
 
 end
 

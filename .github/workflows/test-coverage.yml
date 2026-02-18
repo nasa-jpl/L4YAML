@@ -39,6 +39,7 @@ jobs:
           lake build Lean4Yaml
           lake build suiterunner tryparse
           lake build tests parsetest quotedfolding verification demo
+          lake build stringlemmas anchortests tagtests explicitkeytests flowtests
 
       - name: Run unit and integration tests
         run: |
@@ -56,6 +57,21 @@ jobs:
           echo ""
           echo "=== Demo ===" | tee docs/demo.txt
           ./.lake/build/bin/demo 2>&1 | tee -a docs/demo.txt
+          echo ""
+          echo "=== String Lemma Tests ===" | tee docs/stringlemmas.txt
+          ./.lake/build/bin/stringlemmas 2>&1 | tee -a docs/stringlemmas.txt
+          echo ""
+          echo "=== Anchor/Alias Tests ===" | tee docs/anchortests.txt
+          ./.lake/build/bin/anchortests 2>&1 | tee -a docs/anchortests.txt
+          echo ""
+          echo "=== Tag Tests ===" | tee docs/tagtests.txt
+          ./.lake/build/bin/tagtests 2>&1 | tee -a docs/tagtests.txt
+          echo ""
+          echo "=== Explicit Key Tests ===" | tee docs/explicitkeytests.txt
+          ./.lake/build/bin/explicitkeytests 2>&1 | tee -a docs/explicitkeytests.txt
+          echo ""
+          echo "=== Flow Completeness Tests ===" | tee docs/flowtests.txt
+          ./.lake/build/bin/flowtests 2>&1 | tee -a docs/flowtests.txt
 
       - name: Create docs directory
         run: mkdir -p docs
@@ -66,7 +82,7 @@ jobs:
 
       - name: Generate verified tests HTML page
         run: |
-          cat docs/unit-tests.txt docs/parsetest.txt docs/quotedfolding.txt docs/verification.txt docs/demo.txt > docs/all-verified-tests.txt
+          cat docs/unit-tests.txt docs/parsetest.txt docs/quotedfolding.txt docs/verification.txt docs/demo.txt docs/stringlemmas.txt docs/anchortests.txt docs/tagtests.txt docs/explicitkeytests.txt docs/flowtests.txt > docs/all-verified-tests.txt
 
       - name: Upload coverage reports as artifact
         uses: actions/upload-artifact@v3
