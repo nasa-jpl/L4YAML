@@ -379,11 +379,13 @@ partial def plainScalarContent (inFlow : Bool) (baseIndent : Nat) : YamlParser S
     -- Collect the first line
     let firstLine ← collectPlain (String.ofList [first]) false
     let firstLine := firstLine.trimAsciiEnd.toString
-    -- In flow context, no multi-line continuation
+    -- In flow context, allow multi-line continuation (§7.3.3)
+    -- but with flow-specific termination rules
     if inFlow then
-      return firstLine
-    -- In block context, check for multi-line continuation
-    collectLines firstLine
+      collectFlowLines firstLine
+    else
+      -- In block context, check for multi-line continuation
+      collectLines firstLine
 where
   /-- Collect characters on a single line of a plain scalar. -/
   collectPlain (acc : String) (lastWasSpace : Bool) : YamlParser String := do
@@ -458,6 +460,61 @@ where
     for _ in [:n] do
       skipSpaces
       let _ ← option? newline
+  /-- Collect continuation lines in **flow** context (§7.3.3).
+      Flow plain scalars can span multiple lines.  Continuation rules are
+      simpler than block: no indentation threshold, but lines starting with
+      a flow indicator (`,`, `[`, `]`, `{`, `}`) terminate the scalar.
+      Lines are space-folded (joined with a single space). -/
+  collectFlowLines (acc : String) : YamlParser String := do
+    -- Must be at a line break to continue
+    match ← option? (lookAhead newline) with
+    | none => return acc
+    | some _ =>
+      -- Look ahead past the newline + whitespace to see what's on the next line
+      let continues ← lookAhead do
+        newline
+        -- Skip blank lines (flow continuation ignores them as space-fold)
+        let mut emptyLines := 0
+        let mut loop := true
+        while loop do
+          skipSpaces
+          match ← option? (lookAhead newline) with
+          | some _ => newline; emptyLines := emptyLines + 1
+          | none => loop := false
+        skipSpaces
+        -- Check what the first non-whitespace char on the content line is
+        match ← option? (lookAhead anyToken) with
+        | none => return false  -- EOF ends the scalar
+        | some c =>
+          -- Flow indicators end the scalar
+          if isFlowIndicator c then return false
+          -- Document boundaries end the scalar
+          if c == '-' || c == '.' then
+            let atBound ← atDocumentBoundary
+            if atBound then return false
+          return true
+      if !continues then return acc
+      -- Actually consume the newline + whitespace
+      newline
+      -- Consume any blank lines
+      let mut emptyLines := 0
+      let mut loop := true
+      while loop do
+        skipSpaces
+        match ← option? (lookAhead newline) with
+        | some _ => newline; emptyLines := emptyLines + 1
+        | none => loop := false
+      skipHWhitespace
+      -- Collect next line's content
+      let line ← collectPlain "" false
+      let line := line.trimAsciiEnd.toString
+      if line.isEmpty then return acc
+      -- Space-fold or paragraph-break
+      if emptyLines > 0 then
+        let breaks := String.ofList (List.replicate emptyLines '\n')
+        collectFlowLines (acc ++ breaks ++ line)
+      else
+        collectFlowLines (acc ++ " " ++ line)
 
 /--
 Parse a plain scalar (single-line only, for use as mapping key).
