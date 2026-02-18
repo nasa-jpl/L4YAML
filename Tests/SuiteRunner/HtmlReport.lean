@@ -17,6 +17,10 @@ namespace Tests.SuiteRunner
 def repoSourceUrl : String :=
   "https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/"
 
+/-- yaml-test-suite source file URL base (public GitHub). -/
+def yamlTestSuiteUrl : String :=
+  "https://github.com/yaml/yaml-test-suite/blob/main/src/"
+
 /-! ## Test Result Data for Reports -/
 
 /-- Outcome of a single test case for reporting purposes. -/
@@ -214,6 +218,12 @@ private def reportCss : String :=
     .badge-unexpected-pass { background: var(--color-unexpected-pass); }
     .badge-skip { background: var(--color-skip); }
     .badge-timeout { background: var(--color-timeout); }
+
+    /* Test ID links */
+    .test-id-link {
+      color: #1565C0; text-decoration: none; font-family: 'Courier New', monospace; font-weight: 600;
+    }
+    .test-id-link:hover { text-decoration: underline; }
 
     /* Tags */
     .tag {
@@ -433,8 +443,9 @@ private def generateTestRow (r : ReportResult) : String :=
     | none => ""
   let searchText := s!"{tc.id.toLower} {tc.name.toLower} {String.intercalate " " tc.tags |>.toLower}"
   let stageStr := s!"{tc.stage}"
+  let idLink := s!"<a href=\"{yamlTestSuiteUrl}{escapeHtml tc.id}.yaml\" target=\"_blank\" class=\"test-id-link\" title=\"View {escapeHtml tc.id} source in yaml-test-suite\">{escapeHtml tc.id}</a>"
   s!"      <tr class=\"test-row\" data-outcome=\"{oc}\" data-stage=\"{stageStr}\" data-search=\"{escapeHtml searchText}\">\n" ++
-  s!"        <td>{escapeHtml tc.id}</td>\n" ++
+  s!"        <td>{idLink}</td>\n" ++
   s!"        <td>{escapeHtml tc.name}</td>\n" ++
   s!"        <td>{stageStr}</td>\n" ++
   s!"        <td>{badge}</td>\n" ++
