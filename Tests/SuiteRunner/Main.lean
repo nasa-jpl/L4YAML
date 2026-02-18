@@ -9,6 +9,7 @@ import Tests.Verification
 import Tests.StringLemmas
 import Tests.AnchorAlias
 import Tests.TagTests
+import Tests.ExplicitKeyTests
 import Demo
 
 /-!
@@ -281,6 +282,7 @@ def main (args : List String) : IO UInt32 := do
       Tests.StringLemmas.collectTests,
       Tests.Anchor.collectTests,
       Tests.Tag.collectTests,
+      Tests.ExplicitKey.collectTests,
       Demo.collectTests
     ]
     let mut verifiedSuites : Array Tests.VerifiedSuiteResult := #[]
