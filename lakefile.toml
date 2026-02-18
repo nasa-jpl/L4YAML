@@ -98,3 +98,10 @@ name = "Tests.FlowTests"
 [[lean_exe]]
 name = "flowtests"
 root = "Tests.FlowTests.Runner"
+
+[[lean_lib]]
+name = "Tests.CharClassTests"
+
+[[lean_exe]]
+name = "charclass"
+root = "Tests.CharClassTests.Runner"

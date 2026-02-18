@@ -11,6 +11,7 @@ import Tests.AnchorAlias
 import Tests.TagTests
 import Tests.ExplicitKeyTests
 import Tests.FlowTests
+import Tests.CharClassTests
 import Demo
 
 /-!
@@ -285,6 +286,7 @@ def main (args : List String) : IO UInt32 := do
       Tests.Tag.collectTests,
       Tests.ExplicitKey.collectTests,
       Tests.Flow.collectTests,
+      Tests.CharClass.collectTests,
       Demo.collectTests
     ]
     let mut verifiedSuites : Array Tests.VerifiedSuiteResult := #[]
