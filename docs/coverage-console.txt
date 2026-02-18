@@ -16,7 +16,7 @@ Running all tests for HTML report...
 ------------------------------------------------------------
   [1/416] 229Q ✓
   [2/416] 236B ⚠ unexpected pass
-  [3/416] 26DV ✗ parse error: unexpected token at { offset := 8, line := 0, col := 8 }; unhandled construct ':' at line 0, column 7 at { offset := 8, line := 0, col := 8 }
+  [3/416] 26DV ✗ parse error: undefined anchor: *alias1
   [4/416] 27NA ○ YAML 1.3 specific
   [5/416] 2AUY ✓
   [6/416] 2CMS ⚠ unexpected pass
@@ -38,16 +38,16 @@ Running all tests for HTML report...
   [22/416] 3MYT ✓
   [23/416] 3R3P ✓
   [24/416] 3RLN ✓
-  [25/416] 3RLN ✗ parse error: unexpected token at { offset := 19, line := 1, col := 6 }; unknown escape: \— at { offset := 19, line := 1, col := 6 }; expected double-quoted scalar at { offset := 19, line := 1, col := 6 }; expected YAML value at { offset := 19, line := 1, col := 6 }
+  [25/416] 3RLN ✓
   [26/416] 3RLN ✓
   [27/416] 3RLN ✓
-  [28/416] 3RLN ✗ parse error: unexpected token at { offset := 19, line := 1, col := 6 }; unknown escape: \— at { offset := 19, line := 1, col := 6 }; expected double-quoted scalar at { offset := 19, line := 1, col := 6 }; expected YAML value at { offset := 19, line := 1, col := 6 }
+  [28/416] 3RLN ✓
   [29/416] 3RLN ✓
   [30/416] 3UYS ✓
   [31/416] 4ABK ✓
   [32/416] 4CQQ ✓
   [33/416] 4EJS ⚠ unexpected pass
-  [34/416] 4FJ6 ✗ parse error: unexpected token '[' at { offset := 9, line := 2, col := 3 }; expected plain scalar at { offset := 9, line := 2, col := 3 }; expected flow value at { offset := 8, line := 2, col := 2 }; expected flow sequence at { offset := 8, line := 2, col := 2 }; expected YAML value at { offset := 8, line := 2, col := 2 }
+  [34/416] 4FJ6 ✗ parse error: expected ',' or ']' in flow sequence, got ':'
   [35/416] 4GC6 ○ YAML 1.3 specific
   [36/416] 4H7K ⚠ unexpected pass
   [37/416] 4HVU ⚠ unexpected pass
@@ -79,7 +79,7 @@ Running all tests for HTML report...
   [63/416] 5KJE ✓
   [64/416] 5LLU ⚠ unexpected pass
   [65/416] 5MUD ✓
-  [66/416] 5NYZ ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct 'k' at line 0, column 0 at { offset := 1, line := 0, col := 1 }
+  [66/416] 5NYZ ✗ parse error: unhandled construct 'k' at line 0, column 0
   [67/416] 5T43 ✓
   [68/416] 5T43 ○ empty yaml input
   [69/416] 5T43 ○ empty yaml input
@@ -113,30 +113,30 @@ Running all tests for HTML report...
   [97/416] 6WPF ○ YAML 1.3 specific
   [98/416] 6XDY ✓
   [99/416] 6ZKB ○ YAML 1.3 specific
-  [100/416] 735Y ✗ parse error: unexpected token '#' at { offset := 47, line := 4, col := 9 }; expected plain scalar at { offset := 47, line := 4, col := 9 }; expected block sequence at { offset := 47, line := 4, col := 9 }; expected YAML value at { offset := 47, line := 4, col := 9 }
+  [100/416] 735Y ✗ parse error: unexpected token at { offset := 46, line := 4, col := 8 }; expected plain scalar at { offset := 46, line := 4, col := 8 }; expected block sequence at { offset := 46, line := 4, col := 8 }
   [101/416] 74H7 ✓
   [102/416] 753E ○ YAML 1.3 specific
   [103/416] 7A4E ✓
   [104/416] 7BMT ○ YAML 1.3 specific
   [105/416] 7BUB ✓
-  [106/416] 7FWL ✗ parse error: unexpected token at { offset := 26, line := 0, col := 26 }; unhandled construct 'f' at line 0, column 25 at { offset := 26, line := 0, col := 26 }
+  [106/416] 7FWL ✓
   [107/416] 7LBH ⚠ unexpected pass
   [108/416] 7MNF ⚠ unexpected pass
   [109/416] 7T8X ○ YAML 1.3 specific
   [110/416] 7TMG ✓
-  [111/416] 7W2P ✗ parse error: unexpected token at { offset := 9, line := 2, col := 1 }; unhandled construct 'c' at line 2, column 0 at { offset := 9, line := 2, col := 1 }
+  [111/416] 7W2P ✓
   [112/416] 7Z25 ✓
-  [113/416] 7ZZ5 ✗ parse error: unexpected token at { offset := 5, line := 1, col := 1 }; unhandled construct 'n' at line 1, column 0 at { offset := 5, line := 1, col := 1 }
+  [113/416] 7ZZ5 ✓
   [114/416] 82AN ○ YAML 1.3 specific
-  [115/416] 87E4 ✗ parse error: unexpected token at { offset := 22, line := 0, col := 22 }; unhandled construct ':' at line 0, column 21 at { offset := 22, line := 0, col := 22 }
+  [115/416] 87E4 ✗ parse error: expected ',' or ']' in flow sequence, got ':'
   [116/416] 8CWC ✓
   [117/416] 8G76 ✓
-  [118/416] 8KB6 ✗ parse error: unexpected token at { offset := 40, line := 3, col := 3 }; expected ',' or '}}' in flow mapping, got 'l' at { offset := 40, line := 3, col := 3 }; expected flow mapping at { offset := 40, line := 3, col := 3 }; expected block sequence at { offset := 40, line := 3, col := 3 }; expected YAML value at { offset := 40, line := 3, col := 3 }
+  [118/416] 8KB6 ✗ parse error: expected ',' or '}}' in flow mapping, got 'l'
   [119/416] 8MK2 ○ YAML 1.3 specific
   [120/416] 8QBE ✓
-  [121/416] 8UDB ✗ parse error: unexpected token at { offset := 56, line := 5, col := 2 }; expected ',' or ']' in flow sequence, got 't' at { offset := 56, line := 5, col := 2 }; expected flow sequence at { offset := 56, line := 5, col := 2 }; expected YAML value at { offset := 56, line := 5, col := 2 }
+  [121/416] 8UDB ✗ parse error: expected ',' or ']' in flow sequence, got 't'
   [122/416] 8XDJ ⚠ unexpected pass
-  [123/416] 8XYN ✗ parse error: unexpected token '😁' at { offset := 11, line := 1, col := 4 }; expected anchor name at { offset := 7, line := 1, col := 3 }; expected anchor (&name) at { offset := 7, line := 1, col := 3 }; expected block sequence at { offset := 7, line := 1, col := 3 }; expected YAML value at { offset := 7, line := 1, col := 3 }
+  [123/416] 8XYN ✗ parse error: unexpected token '😁' at { offset := 11, line := 1, col := 4 }; expected anchor name at { offset := 7, line := 1, col := 3 }; expected anchor (&name) at { offset := 7, line := 1, col := 3 }; expected block sequence at { offset := 7, line := 1, col := 3 }
   [124/416] 93JH ✓
   [125/416] 93WF ○ YAML 1.3 specific
   [126/416] 96L6 ✓
@@ -155,7 +155,7 @@ Running all tests for HTML report...
   [139/416] 9KBC ⚠ unexpected pass
   [140/416] 9MAG ⚠ unexpected pass
   [141/416] 9MMA ⚠ unexpected pass
-  [142/416] 9MMW ✗ parse error: unexpected token at { offset := 10, line := 0, col := 10 }; expected ',' or ']' in flow sequence, got ':' at { offset := 10, line := 0, col := 10 }; expected flow sequence at { offset := 10, line := 0, col := 10 }; expected block sequence at { offset := 10, line := 0, col := 10 }; expected YAML value at { offset := 10, line := 0, col := 10 }
+  [142/416] 9MMW ✗ parse error: expected ',' or ']' in flow sequence, got ':'
   [143/416] 9MQT ✓
   [144/416] 9MQT ⚠ unexpected pass
   [145/416] 9SA2 ✓
@@ -164,12 +164,12 @@ Running all tests for HTML report...
   [148/416] 9U5K ✓
   [149/416] 9WXW ○ YAML 1.3 specific
   [150/416] 9YRD ○ YAML 1.3 specific
-  [151/416] A2M4 ✗ parse error: unexpected token at { offset := 13, line := 2, col := 2 }; sequence item at column 2, expected column 0 (wrong indentation) at { offset := 13, line := 2, col := 2 }; expected block mapping at { offset := 13, line := 2, col := 2 }; expected YAML value at { offset := 13, line := 2, col := 2 }
+  [151/416] A2M4 ✓
   [152/416] A6F9 ✓
   [153/416] A984 ✓
-  [154/416] AB8U ✗ parse error: unexpected token at { offset := 20, line := 1, col := 1 }; sequence item at column 1, expected column 0 (wrong indentation) at { offset := 20, line := 1, col := 1 }; expected block sequence at { offset := 20, line := 1, col := 1 }; expected YAML value at { offset := 20, line := 1, col := 1 }
+  [154/416] AB8U ✗ parse error: sequence item at column 1, expected column 0 (wrong indentation)
   [155/416] AVM7 ✓
-  [156/416] AZ63 ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct 'o' at line 0, column 0 at { offset := 1, line := 0, col := 1 }
+  [156/416] AZ63 ✓
   [157/416] AZW3 ✓
   [158/416] B3HG ○ YAML 1.3 specific
   [159/416] B63P ⚠ unexpected pass
@@ -182,12 +182,12 @@ Running all tests for HTML report...
   [166/416] C2SP ⚠ unexpected pass
   [167/416] C4HZ ✓
   [168/416] CC74 ✓
-  [169/416] CFD4 ✗ parse error: unexpected token at { offset := 5, line := 0, col := 5 }; ':' cannot start a plain scalar when followed by whitespace at { offset := 5, line := 0, col := 5 }; expected plain scalar at { offset := 5, line := 0, col := 5 }; expected flow value at { offset := 4, line := 0, col := 4 }; expected flow sequence at { offset := 4, line := 0, col := 4 }; expected block sequence at { offset := 4, line := 0, col := 4 }; expected YAML value at { offset := 4, line := 0, col := 4 }
+  [169/416] CFD4 ✗ parse error: unexpected token at { offset := 4, line := 0, col := 4 }; expected plain scalar at { offset := 4, line := 0, col := 4 }; expected flow value at { offset := 4, line := 0, col := 4 }; expected flow sequence at { offset := 4, line := 0, col := 4 }; expected block sequence at { offset := 4, line := 0, col := 4 }
   [170/416] CML9 ⚠ unexpected pass
-  [171/416] CN3R ✗ parse error: unexpected token at { offset := 14, line := 1, col := 3 }; expected ',' or ']' in flow sequence, got ':' at { offset := 14, line := 1, col := 3 }; expected flow sequence at { offset := 14, line := 1, col := 3 }; expected YAML value at { offset := 14, line := 1, col := 3 }
+  [171/416] CN3R ✗ parse error: expected ',' or ']' in flow sequence, got ':'
   [172/416] CPZ3 ✓
   [173/416] CQ3W ⚠ unexpected pass
-  [174/416] CT4Q ✗ parse error: unexpected token at { offset := 10, line := 2, col := 2 }; expected ',' or ']' in flow sequence, got 'b' at { offset := 10, line := 2, col := 2 }; expected flow sequence at { offset := 10, line := 2, col := 2 }; expected YAML value at { offset := 10, line := 2, col := 2 }
+  [174/416] CT4Q ✗ parse error: expected ',' or ']' in flow sequence, got 'b'
   [175/416] CTN5 ⚠ unexpected pass
   [176/416] CUP7 ✓
   [177/416] CVW2 ⚠ unexpected pass
@@ -200,8 +200,8 @@ Running all tests for HTML report...
   [184/416] DC7X ✓
   [185/416] DE56 ✓
   [186/416] DE56 ✓
-  [187/416] DE56 ✗ parse error: unexpected token at { offset := 15, line := 0, col := 13 }; unknown escape: \— at { offset := 15, line := 0, col := 13 }; expected double-quoted scalar at { offset := 15, line := 0, col := 13 }; expected YAML value at { offset := 15, line := 0, col := 13 }
-  [188/416] DE56 ✗ parse error: unexpected token at { offset := 15, line := 0, col := 13 }; unknown escape: \— at { offset := 15, line := 0, col := 13 }; expected double-quoted scalar at { offset := 15, line := 0, col := 13 }; expected YAML value at { offset := 15, line := 0, col := 13 }
+  [187/416] DE56 ✓
+  [188/416] DE56 ✓
   [189/416] DE56 ✓
   [190/416] DE56 ✓
   [191/416] DFF7 ✓
@@ -211,15 +211,15 @@ Running all tests for HTML report...
   [195/416] DK95 ✓
   [196/416] DK95 ⚠ unexpected pass
   [197/416] DK95 ✓
-  [198/416] DK95 ✓
+  [198/416] DK95 ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }
   [199/416] DK95 ✓
   [200/416] DK95 ✓
   [201/416] DK95 ⚠ unexpected pass
-  [202/416] DK95 ✓
+  [202/416] DK95 ✗ parse error: unexpected token at { offset := 11, line := 1, col := 1 }; expected plain scalar at { offset := 11, line := 1, col := 1 }
   [203/416] DK95 ✓
   [204/416] DMG6 ⚠ unexpected pass
   [205/416] DWX9 ○ YAML 1.3 specific
-  [206/416] E76Z ✗ parse error: unexpected token at { offset := 13, line := 1, col := 2 }; undefined anchor: *b at { offset := 13, line := 1, col := 2 }; expected alias (*name) at { offset := 13, line := 1, col := 2 }; expected YAML value at { offset := 13, line := 1, col := 2 }
+  [206/416] E76Z ✗ parse error: undefined anchor: *b
   [207/416] EB22 ⚠ unexpected pass
   [208/416] EHF6 ✓
   [209/416] EW3V ⚠ unexpected pass
@@ -251,7 +251,7 @@ Running all tests for HTML report...
   [235/416] HM87 ✓
   [236/416] HM87 ✓
   [237/416] HMK4 ✓
-  [238/416] HMQ5 ✗ parse error: unexpected token at { offset := 16, line := 0, col := 16 }; unhandled construct ':' at line 0, column 15 at { offset := 16, line := 0, col := 16 }
+  [238/416] HMQ5 ✗ parse error: undefined anchor: *a1
   [239/416] HRE5 ⚠ unexpected pass
   [240/416] HS5T ✓
   [241/416] HU3P ⚠ unexpected pass
@@ -260,7 +260,7 @@ Running all tests for HTML report...
   [244/416] J5UC ✓
   [245/416] J7PZ ✓
   [246/416] J7VC ✓
-  [247/416] J9HZ ✗ parse error: unexpected token at { offset := 5, line := 1, col := 1 }; unhandled construct 'h' at line 1, column 0 at { offset := 5, line := 1, col := 1 }
+  [247/416] J9HZ ✗ parse error: unhandled construct 'h' at line 1, column 0
   [248/416] JEF9 ✓
   [249/416] JEF9 ✓
   [250/416] JEF9 ✓
@@ -277,9 +277,9 @@ Running all tests for HTML report...
   [261/416] K54U ✓
   [262/416] K858 ✓
   [263/416] KH5V ✓
-  [264/416] KH5V ✗ parse error: unexpected token at { offset := 13, line := 0, col := 11 }; unknown escape: \— at { offset := 13, line := 0, col := 11 }; expected double-quoted scalar at { offset := 13, line := 0, col := 11 }; expected YAML value at { offset := 13, line := 0, col := 11 }
+  [264/416] KH5V ✓
   [265/416] KH5V ✓
-  [266/416] KK5P ✗ parse error: unexpected token at { offset := 97, line := 12, col := 3 }; unhandled construct ':' at line 12, column 2 at { offset := 97, line := 12, col := 3 }
+  [266/416] KK5P ✓
   [267/416] KMK3 ✓
   [268/416] KS4U ⚠ unexpected pass
   [269/416] KSS4 ○ YAML 1.3 specific
@@ -287,15 +287,15 @@ Running all tests for HTML report...
   [271/416] L24T ✓
   [272/416] L383 ✓
   [273/416] L94M ✓
-  [274/416] L9U5 ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct 'i' at line 0, column 0 at { offset := 1, line := 0, col := 1 }
+  [274/416] L9U5 ✗ parse error: expected ',' or ']' in flow sequence, got ':'
   [275/416] LE5A ✓
   [276/416] LHL4 ⚠ unexpected pass
   [277/416] LP6E ✓
-  [278/416] LQZ7 ✗ parse error: unexpected token at { offset := 22, line := 0, col := 22 }; unhandled construct ':' at line 0, column 21 at { offset := 22, line := 0, col := 22 }
+  [278/416] LQZ7 ✗ parse error: expected ',' or ']' in flow sequence, got ':'
   [279/416] LX3P ○ YAML 1.3 specific
   [280/416] M29M ✓
   [281/416] M2N8 ✓
-  [282/416] M2N8 ✗ parse error: unexpected token at { offset := 4, line := 0, col := 4 }; mapping entry at column 4, expected column 0 (wrong indentation) at { offset := 4, line := 0, col := 4 }; expected block mapping at { offset := 4, line := 0, col := 4 }; expected YAML value at { offset := 4, line := 0, col := 4 }
+  [282/416] M2N8 ✗ parse error: mapping entry at column 4, expected column 0 (wrong indentation)
   [283/416] M5C3 ○ YAML 1.3 specific
   [284/416] M5DY ✓
   [285/416] M6YH ✓
@@ -317,14 +317,14 @@ Running all tests for HTML report...
   [301/416] N782 ⚠ unexpected pass
   [302/416] NAT4 ✓
   [303/416] NB6Z ✓
-  [304/416] NHX8 ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct ':' at line 0, column 0 at { offset := 1, line := 0, col := 1 }
-  [305/416] NJ66 ✗ parse error: unexpected token at { offset := 41, line := 3, col := 3 }; expected ',' or '}}' in flow mapping, got 'l' at { offset := 41, line := 3, col := 3 }; expected flow mapping at { offset := 41, line := 3, col := 3 }; expected block sequence at { offset := 41, line := 3, col := 3 }; expected YAML value at { offset := 41, line := 3, col := 3 }
-  [306/416] NKF9 ✗ parse error: unexpected token at { offset := 87, line := 9, col := 1 }; unhandled construct ':' at line 9, column 0 at { offset := 87, line := 9, col := 1 }
+  [304/416] NHX8 ✓
+  [305/416] NJ66 ✗ parse error: expected ',' or '}}' in flow mapping, got 'l'
+  [306/416] NKF9 ✓
   [307/416] NP9H ✓
   [308/416] P2AD ✓
   [309/416] P2EQ ⚠ unexpected pass
   [310/416] P76L ✓
-  [311/416] P94K ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct 'k' at line 0, column 0 at { offset := 1, line := 0, col := 1 }
+  [311/416] P94K ✗ parse error: unhandled construct 'k' at line 0, column 0
   [312/416] PBJ2 ✓
   [313/416] PRH3 ✓
   [314/416] PUW8 ✓
@@ -335,27 +335,27 @@ Running all tests for HTML report...
   [319/416] Q8AD ○ YAML 1.3 specific
   [320/416] Q9WF ○ YAML 1.3 specific
   [321/416] QB6E ⚠ unexpected pass
-  [322/416] QF4Y ✗ parse error: unexpected token at { offset := 6, line := 1, col := 4 }; expected ',' or ']' in flow sequence, got ':' at { offset := 6, line := 1, col := 4 }; expected flow sequence at { offset := 6, line := 1, col := 4 }; expected YAML value at { offset := 6, line := 1, col := 4 }
+  [322/416] QF4Y ✗ parse error: expected ',' or ']' in flow sequence, got ':'
   [323/416] QLJ7 ⚠ unexpected pass
   [324/416] QT73 ✓
   [325/416] R4YG ✓
   [326/416] R52L ✓
   [327/416] RHX7 ⚠ unexpected pass
-  [328/416] RLU9 ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct 'f' at line 0, column 0 at { offset := 1, line := 0, col := 1 }
+  [328/416] RLU9 ✓
   [329/416] RR7F ✓
   [330/416] RTP8 ✓
   [331/416] RXY3 ⚠ unexpected pass
   [332/416] RZP5 ○ YAML 1.3 specific
   [333/416] RZT7 ✓
-  [334/416] S3PD ✗ parse error: unexpected token at { offset := 26, line := 1, col := 1 }; unhandled construct ':' at line 1, column 0 at { offset := 26, line := 1, col := 1 }
+  [334/416] S3PD ✗ parse error: unhandled construct ':' at line 1, column 0
   [335/416] S3PD ○ empty yaml input
   [336/416] S4GJ ⚠ unexpected pass
   [337/416] S4JQ ✓
   [338/416] S4T7 ✓
   [339/416] S7BG ✓
   [340/416] S98Z ⚠ unexpected pass
-  [341/416] S9E8 ✗ parse error: unexpected token at { offset := 1, line := 0, col := 1 }; unhandled construct 's' at line 0, column 0 at { offset := 1, line := 0, col := 1 }
-  [342/416] SBG9 ✗ parse error: unexpected token '[' at { offset := 13, line := 0, col := 13 }; expected plain scalar at { offset := 13, line := 0, col := 13 }; expected flow mapping at { offset := 12, line := 0, col := 12 }; expected YAML value at { offset := 12, line := 0, col := 12 }
+  [341/416] S9E8 ✓
+  [342/416] SBG9 ✗ parse error: unexpected token at { offset := 12, line := 0, col := 12 }; expected plain scalar at { offset := 12, line := 0, col := 12 }; expected flow mapping at { offset := 12, line := 0, col := 12 }
   [343/416] SF5V ⚠ unexpected pass
   [344/416] SKE5 ✓
   [345/416] SM9W ✓
@@ -381,22 +381,22 @@ Running all tests for HTML report...
   [365/416] U9NS ✓
   [366/416] UDM2 ✓
   [367/416] UDR7 ✓
-  [368/416] UGM3 ✗ parse error: unexpected token at { offset := 284, line := 13, col := 1 }; unhandled construct 's' at line 13, column 0 at { offset := 284, line := 13, col := 1 }
-  [369/416] UKK6 ✗ parse error: unexpected token at { offset := 3, line := 0, col := 3 }; unhandled construct ':' at line 0, column 2 at { offset := 3, line := 0, col := 3 }
-  [370/416] UKK6 ✗ parse error: unexpected token at { offset := 2, line := 0, col := 2 }; unhandled construct ':' at line 0, column 1 at { offset := 2, line := 0, col := 2 }
-  [371/416] UKK6 ✓
-  [372/416] UT92 ✗ parse error: unexpected token at { offset := 15, line := 2, col := 1 }; expected ',' or '}}' in flow mapping, got '%' at { offset := 15, line := 2, col := 1 }; expected flow mapping at { offset := 15, line := 2, col := 1 }; expected YAML value at { offset := 15, line := 2, col := 1 }
+  [368/416] UGM3 ✗ parse error: undefined anchor: *id001
+  [369/416] UKK6 ✓
+  [370/416] UKK6 ✓
+  [371/416] UKK6 ✗ parse error: unexpected token at { offset := 2, line := 1, col := 0 }
+  [372/416] UT92 ✗ parse error: expected ',' or '}}' in flow mapping, got '%'
   [373/416] UV7Q ✓
   [374/416] V55R ✓
   [375/416] V9D5 ✓
   [376/416] VJP3 ⚠ unexpected pass
   [377/416] VJP3 ✓
-  [378/416] W42U ✗ parse error: unexpected token '#' at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected block sequence at { offset := 3, line := 0, col := 3 }; expected YAML value at { offset := 3, line := 0, col := 3 }
+  [378/416] W42U ✗ parse error: unexpected token at { offset := 2, line := 0, col := 2 }; expected plain scalar at { offset := 2, line := 0, col := 2 }; expected block sequence at { offset := 2, line := 0, col := 2 }
   [379/416] W4TN ○ YAML 1.3 specific
   [380/416] W5VH ○ YAML 1.3 specific
   [381/416] W9L4 ⚠ unexpected pass
-  [382/416] WZ62 ✗ parse error: unexpected token ',' at { offset := 16, line := 1, col := 14 }; expected plain scalar at { offset := 16, line := 1, col := 14 }; expected flow value at { offset := 15, line := 1, col := 13 }; expected flow mapping at { offset := 15, line := 1, col := 13 }; expected YAML value at { offset := 15, line := 1, col := 13 }
-  [383/416] X38W ✗ parse error: unexpected token '&' at { offset := 3, line := 0, col := 3 }; expected plain scalar at { offset := 3, line := 0, col := 3 }; expected flow mapping at { offset := 2, line := 0, col := 2 }; expected YAML value at { offset := 2, line := 0, col := 2 }
+  [382/416] WZ62 ✗ parse error: unexpected token at { offset := 15, line := 1, col := 13 }; expected plain scalar at { offset := 15, line := 1, col := 13 }; expected flow value at { offset := 15, line := 1, col := 13 }; expected flow mapping at { offset := 15, line := 1, col := 13 }
+  [383/416] X38W ✗ parse error: unexpected token at { offset := 2, line := 0, col := 2 }; expected plain scalar at { offset := 2, line := 0, col := 2 }; expected flow mapping at { offset := 2, line := 0, col := 2 }
   [384/416] X4QW ⚠ unexpected pass
   [385/416] X8DW ✓
   [386/416] XLQ9 ✓
@@ -405,7 +405,7 @@ Running all tests for HTML report...
   [389/416] Y2GN ✓
   [390/416] Y79Y ⚠ unexpected pass
   [391/416] Y79Y ✓
-  [392/416] Y79Y ✗ parse error: unexpected token at { offset := 17, line := 2, col := 2 }; expected ',' or ']' in flow sequence, got 'f' at { offset := 17, line := 2, col := 2 }; expected flow sequence at { offset := 17, line := 2, col := 2 }; expected block sequence at { offset := 17, line := 2, col := 2 }; expected YAML value at { offset := 17, line := 2, col := 2 }
+  [392/416] Y79Y ✓
   [393/416] Y79Y ⚠ unexpected pass
   [394/416] Y79Y ⚠ unexpected pass
   [395/416] Y79Y ⚠ unexpected pass
@@ -432,7 +432,7 @@ Running all tests for HTML report...
   [416/416] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 213/416 (51.000000%)
+Correct: 228/416 (54.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 17/17
