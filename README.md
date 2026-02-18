@@ -44,7 +44,7 @@ Demo.lean                    # End-to-end demo examples (7 tests)
 
 Verification uses a deliberate 3-layer approach:
 
-1. **Runtime tests** (427 tests across 8 suites) — empirical validation that properties hold. Every `theorem` target starts life as a runtime `check` test.
+1. **Runtime tests** (581 tests across 10 suites) — empirical validation that properties hold. Every `theorem` target starts life as a runtime `check` test.
 2. **Formal proofs** (`theorem`/`lemma` in `Proofs/*.lean`) — machine-checked guarantees. Layered by dependency: pure functions first, then parser invariants, then full soundness.
 3. **Compile-time guards** (`#guard`) — blocked until lean4-parser removes `partial def`. Will convert runtime tests to kernel-evaluated checks.
 
@@ -116,7 +116,7 @@ Built the complete parser from scratch on Lean 4.28.0-rc1 / Lake v5.0.0:
 | `Grammar.lean` | ~315 | Formal YAML grammar encoded as Lean Props |
 | `Combinators.lean` | ~215 | Character classification, whitespace/indent handling |
 | `Scalar.lean` | ~710 | Plain, double-quoted, single-quoted, block scalar parsers |
-| `Flow.lean` | ~205 | Flow sequences `[...]` and mappings `{...}` (mutual recursion) |
+| `Flow.lean` | ~420 | Flow sequences `[...]` and mappings `{...}` (mutual recursion, implicit single-pair entries §7.5, JSON-like key detection §7.4) |
 | `Block.lean` | ~352 | Block sequences and mappings with indentation tracking |
 | `Document.lean` | ~230 | Document markers `---`/`...`, directives, multi-document streams |
 
@@ -221,6 +221,15 @@ Files modified: `Stream.lean` (+validationError field, combinators, theorems), `
 
 Impact: **213→250 correct (+37)**, 51.2%→60.1%. Error stage: 0→26 correctly rejected (0%→35.1%). Parse failures: 47→20 (-27). All 494 internal tests pass. Trade-off: removing `throwUnexpected` made the parser more permissive in some non-error contexts where `<|>` previously accidentally propagated the error — non-error unexpected passes increased from 20→36. Further validation rules needed to close the remaining 48 error-stage and 36 non-error unexpected passes.
 
+**P2: Flow completeness (2026-02-18):**
+Flow stage improved from 34/46 (74%) to 43/46 (93.5%). Three changes to `Flow.lean` and one to `Scalar.lean`:
+
+1. **`flowSequenceItems`** — Added implicit single-pair mapping detection: after parsing a `flowValue`, checks for `:` separator (with §7.4 JSON-like rules: collections and quoted scalars don't require whitespace after `:`). Also added empty implicit key detection (`: value` → null-key mapping). ~60 lines added.
+2. **`flowMappingEntry`** — Changed normal key parsing from `flowScalar` to `first [flowSequence, flowMapping, flowScalar]` so flow collections can serve as mapping keys (§7.4.2). Added JSON-like `:` awareness using `Bool` pattern matching on `YamlValue` constructors.
+3. **`plainScalarContent` (Scalar.lean)** — Removed early `if inFlow then return firstLine` exit. Added `collectFlowLines` helper (~50 lines) for flow-specific multi-line continuation: stops at flow indicators, document boundaries; space-folds lines per §7.3.3.
+
+Suite IDs fixed: 87E4, 8KB6, 8UDB, L9U5, LQZ7, QF4Y, NJ66, CFD4 (all flow-stage). 88 new tests in `FlowTests.lean` covering 7 categories. Trade-off: more permissive flow parsing regressed error stage from 26→0; flow-specific validation rules needed to restore.
+
 **Infinite loop elimination via `DocumentResult`:**
 Discovered 36 timeout cases (not 9), all sharing one root cause: `yamlStream`'s while loop retries `document` at the same position when no input is consumed. The initial fix (external position comparison) revealed an implicit assumption: `document` already knew whether it consumed input but didn't communicate this. Refactored `document` to return `DocumentResult` (`parsed`/`endOfStream`/`stalled`) — the same explicit-result-type pattern as `DispatchResult` and `ContinuationCheck`. Now `yamlStream` pattern-matches on the result instead of comparing positions externally. The `stalled` variant carries position for error reporting and becomes a proof obligation target in Phase 4. Eliminated all 36 timeout cases across 9 root cause categories (anchors, tags, quoted scalar folding, comments, explicit keys, same-indent sequences, tabs, empty keys, flow implicit mappings).
 
@@ -302,12 +311,13 @@ Share the verified implementation with the existing lean4-yaml ecosystem.
 6. ~~**Fix multi-line quoted scalars**~~ — ✅ `FoldResult` type + 5 algorithmic bug fixes. 33 tests in `QuotedFolding.lean`.
 7. ~~**Add anchor/alias support**~~ — ✅ `AnchorMap` abstraction with algebraic laws, `parseAlias`/`parseAnchorPrefix`/`resetAnchorMap`. Document-scoped anchors per §3.2.2.2. 2 backtracking-isolation theorems proved. 33 tests in `AnchorAlias.lean`. Advanced stage: 1→10 passing.
 8. ~~**Add tag support**~~ — ✅ `parseTagPrefix` handles all tag forms: verbatim (`!<uri>`), secondary (`!!type`), named (`!handle!suffix`), primary (`!local`), non-specific (`!`). `YamlValue.withTag` applies tags to any node. Tag+anchor ordering (`!tag &anchor val` and `&anchor !tag val`) supported in all dispatch points. 44 tests in `TagTests.lean`. Suite: 175→192 correct (+17), Advanced stage: 10→21 passing.
+9. ~~**Flow completeness (P2)**~~ — ✅ Implicit single-pair entries (`[key: value]`, §7.5), JSON-like `:` detection (`["key":adjacent]`, §7.4), multi-line flow plain scalars (`{multi\nline: v}`, §7.3.3), flow mapping collection keys (`{[1,2]: v}`, §7.4.2), empty implicit keys (`[: value]`). 88 tests in `FlowTests.lean`. Flow stage: 34→43/46 (74%→93%).
 
 ### Current: Address Failures + Unexpected Passes
 
 Analysis scripts: `python3 tests/analyze_coverage.py` (summary) and `python3 tests/analyze_coverage_deep.py` (detailed root causes).
 
-Current: **250/416 correct (60.1%)**. Projected after all steps below: **~354/416 (~85.1%)**.
+Current: **241/416 correct (57.9%)**. Flow stage at 93.5% after P2. Projected after remaining steps: **~354/416 (~85.1%)**.
 
 #### Step 8: Tag support (`!tag`, `!!type`, `%TAG` directive) — ✅ COMPLETE
 
@@ -334,7 +344,7 @@ Test IDs: 5WE3, 6M2F, 6PBE, 7W2P, A2M4, CT4Q, DFF7, FRK4, GH63, JTV5, KK5P, M5DY
 
 **P1 phase 1 complete (2026-02-17).** Architectural change: eliminated all 29 `throwUnexpected` calls, replaced with `validationError` field in `YamlStream` (survives backtracking) + explicit `Option` return types.
 
-**Results so far:** Error stage: 0→26 correctly rejected (0%→35.1%). Overall: 213→250 correct (51.2%→60.1%). Parse failures reduced from 47→20.
+**Results so far:** Error stage: regressed to 0/74 after P2 flow changes made the parser more permissive in flow contexts. Overall: 241/416 correct (57.9%). Flow stage improved to 43/46 (93.5%).
 
 **Remaining work:** 48 error-stage + 36 non-error unexpected passes still need validation rules. Sub-steps below track what's done vs remaining:
 
@@ -351,14 +361,13 @@ Test IDs: 5WE3, 6M2F, 6PBE, 7W2P, A2M4, CT4Q, DFF7, FRK4, GH63, JTV5, KK5P, M5DY
 | **10i** | Document markers | 3 | ✅ Done | `---`/`...` not followed by whitespace now sets `validationError` |
 | **10j** | Tags/other | 4 | ❌ Not started | Invalid tag syntax not yet validated |
 
-#### Step 11: Remaining edge cases — +23 tests
+#### Step 11: Remaining edge cases — +14 tests
 
 | Category | Failures | Description |
 |----------|----------|-------------|
-| Flow edge cases | 9 | Implicit keys in flow, single-pair entries, empty flow collections |
-| Empty key handling | 6 | Missing/empty keys in block and flow contexts |
+| Empty key handling | 6 | Missing/empty keys in block contexts |
 | Escape sequences | 5 | Unicode escapes (`\x`, `\u`, `\U`) in double-quoted scalars |
-| Complex keys | 3 | Flow collections as mapping keys (§7.4.2) |
+| Complex keys | 3 | Flow collections as block mapping keys (§8.2.2) |
 
 #### Step 12: Iterate toward 60%+ correct rate
 
@@ -369,23 +378,25 @@ After steps 8–11, projected correct rate is ~74.5% (310/416). The remaining ~2
 
 ## Gap Analysis: YAML 1.2.2 Specification Coverage
 
-### Current State (2026-02-17)
+### Current State (2026-02-18)
 
-**yaml-test-suite: 250/416 correct (60.1%)** — up from 213/416 (51.2%) after P1 strict validation work.
+**yaml-test-suite: 241/416 correct (57.9%)** — flow stage at 93.5% after P2 flow completeness work.
 
 | Stage | Tests | Correct | Failed | Skipped | Correct Rate |
 |-------|-------|---------|--------|---------|-------------|
 | Scalar | 82 | 51 | 3 | 28 | 62% |
-| Flow | 46 | 34 | 12 | 0 | 74% |
-| Block | 109 | 75 | 24 | 10 | 69% |
-| Document | 24 | 13 | 4 | 7 | 54% |
-| Advanced | 81 | 51 | 13 | 17 | 63% |
-| Error | 74 | 26 | 48 | 0 | 35% |
-| **Total** | **416** | **250** | **104** | **62** | **60.1%** |
+| Flow | 46 | 43 | 3 | 0 | 93% |
+| Block | 109 | 77 | 22 | 10 | 71% |
+| Document | 24 | 15 | 2 | 7 | 63% |
+| Advanced | 81 | 55 | 9 | 17 | 68% |
+| Error | 74 | 0 | 74 | 0 | 0% |
+| **Total** | **416** | **241** | **113** | **62** | **57.9%** |
 
-"Failed" includes both parse errors on valid YAML (~20) and unexpected passes on invalid YAML (~84).
+"Failed" includes both parse errors on valid YAML and unexpected passes on invalid YAML.
 
-**Internal test suites: 494/494 (100%) across 8 suites** (includes `ExplicitKeyTests` with 66/66).
+Note: Error stage regressed from 26→0 after P2 flow changes — the more permissive flow parsing (accepting implicit mappings, JSON-like `:`) now also accepts some invalid flow constructs that P1's `validationError` was catching. Additional flow-specific validation rules needed.
+
+**Internal test suites: 581/581 (100%) across 10 suites** (includes `FlowTests` with 88/88).
 
 ### What's Implemented vs YAML 1.2.2 Spec
 
@@ -412,9 +423,9 @@ After steps 8–11, projected correct rate is ~74.5% (310/416). The remaining ~2
 | | §7.3.1 Double-quoted | ✅ | Full escape support + line folding + `c-forbidden` |
 | | §7.3.2 Single-quoted | ✅ | Folding + `''` escape |
 | | §7.3.3 Plain style | ✅ | Multi-line with `ContinuationCheck`, flow-aware termination |
-| | §7.4.1 Flow sequences | ✅ | Nested, trailing commas, explicit entries |
-| | §7.4.2 Flow mappings | ✅ | Explicit keys, empty keys, implicit keys |
-| | §7.5 Flow nodes | ⚠️ | Single-pair implicit entries partial (9 flow failures) |
+| | §7.4.1 Flow sequences | ✅ | Nested, trailing commas, explicit entries, implicit single-pair mapping entries (§7.5) |
+| | §7.4.2 Flow mappings | ✅ | Explicit keys, empty keys, implicit keys, collection keys, JSON-like `:` detection |
+| | §7.5 Flow nodes | ✅ | Single-pair implicit entries, JSON-like keys, multi-line flow plain scalars (P2 complete) |
 | **§8 Block Styles** | §8.1.1 Block scalar headers | ⚠️ | Literal `|` and folded `>` with indentation/chomping indicators |
 | | §8.1.2 Literal style | ✅ | `blockLiteralScalar` |
 | | §8.1.3 Folded style | ✅ | `blockFoldedScalar` |
@@ -439,7 +450,7 @@ Tests where the parser either fails to parse valid YAML or produces incorrect ou
 
 | Root Cause | Count | Spec Section | Description |
 |---|---|---|---|
-| Flow edge cases | 10 | §7.4, §7.5 | Implicit keys in flow, single-pair entries, multiline flow keys, empty flow collections |
+| Flow edge cases | 1 | §7.4 | 9MMW: flow mapping as implicit key with adjacent `:` (`[{JSON: like}:adjacent]`) |
 | Block edge cases | 17 | §8.2 | Same-indent sequences, aliases in block mappings, anchor edge cases, missing value handling |
 | Quoted scalar content | 4 | §7.3.1, §7.3.2 | Remaining line-folding edge cases (3RLN, DE56, KH5V, M2N8) |
 | Comments | 5 | §6.6 | Comments after flow collections, in multi-line scalars, after directives |
@@ -465,7 +476,7 @@ Tests where the parser accepts invalid YAML that should be rejected. The parser 
 | Document markers | 3 | Invalid content after `...` |
 | Other | 4 | Tag syntax, trailing content |
 
-The root cause was architectural: lean4-parser's `<|>` unconditionally catches all `Result.error` values, making `throwUnexpected` unreliable for validation. **P1 fix (2026-02-17):** All `throwUnexpected` calls eliminated and replaced with `validationError` field in `YamlStream` (survives backtracking). Error stage improved from 0/74 to 26/74 correctly rejected. Remaining 48 error-stage UP need additional validation rules (directive validation, comment position checks, block scalar indicator validation).
+The root cause was architectural: lean4-parser's `<|>` unconditionally catches all `Result.error` values, making `throwUnexpected` unreliable for validation. **P1 fix (2026-02-17):** All `throwUnexpected` calls eliminated and replaced with `validationError` field in `YamlStream` (survives backtracking). **P2 regression (2026-02-18):** Flow completeness changes (accepting implicit mappings in sequences, JSON-like `:`) made the parser more permissive, regressing error stage from 26/74 to 0/74. Flow-specific validation rules (e.g., rejecting unterminated flow collections, validating implicit key constraints) needed to restore error rejection while keeping the new flow features.
 
 #### Category 3: Skipped Tests (62 tests)
 
@@ -483,7 +494,7 @@ The root cause was architectural: lean4-parser's `<|>` unconditionally catches a
 | Phase | Work | Tests Fixed | Projected |
 |---|---|---|---|
 | **P1: Strict validation** | ⚠️ **Phase 1 complete.** Eliminated all `throwUnexpected`; `validationError` field in `YamlStream` + explicit `Option` returns. +37 correct so far; ~84 UP remain. | +37 done, ~57 remaining | 307/416 (73.8%) |
-| **P2: Flow completeness** | Single-pair implicit entries (§7.5), implicit flow mapping keys, empty flow nodes | +10 | 317/416 (76.2%) |
+| **P2: Flow completeness** | ✅ **Complete.** Implicit single-pair entries (§7.5), JSON-like `:` detection (§7.4), multi-line flow plain scalars (§7.3.3), flow mapping collection keys (§7.4.2), empty implicit keys. Flow stage: 34→43/46 (74%→93%). 88 new tests in `FlowTests.lean`. | +9 done | — |
 | **P3: Block completeness** | Same-indent sequence edge cases, alias interactions, missing value handling | +17 | 334/416 (80.3%) |
 | **P4: Content correctness** | Remaining quoted scalar folding, comment edge cases, `%TAG` resolution | +13 | 347/416 (83.4%) |
 | **P5: Advanced features** | Complex keys (flow collections as keys), Unicode anchors, directive edge cases | +7 | 354/416 (85.1%) |
@@ -495,7 +506,7 @@ The remaining 62 skipped tests are YAML 1.1/1.3 features or tests that require b
 | Section | Description | Difficulty | Dependency |
 |---|---|---|---|
 | §6.8.2 `%TAG` directive resolution | Map `!handle!suffix` → expanded URI using directive declarations | Medium | Wire `%TAG` declarations into parser state |
-| §7.5 Flow nodes (complete) | Implicit key width limit (1024 chars), all single-pair entry forms | Medium | Flow.lean refactoring |
+| §7.5 Flow nodes (complete) | ✅ Done (P2) | — | Implicit single-pair entries, JSON-like `:`, multi-line flow plain scalars |
 | §9.1.3 `c-forbidden` (complete) | Reject `---`/`...` inside block scalars at column 0 | Low | Already partial in `FoldResult` |
 | §10 Recommended Schemas | Failsafe, JSON, Core schema type resolution | High | **Separate schema layer** (see below) |
 
@@ -709,7 +720,7 @@ lake build
 ## Running Tests
 
 ```sh
-# All verified test suites (493 tests across 9 suites)
+# All verified test suites (581 tests across 10 suites)
 lake build suiterunner tryparse && lake exe suiterunner --html docs/
 
 # Individual suites (each produces structured VerifiedSuiteResult)
@@ -719,6 +730,7 @@ lake exe quotedfolding       # Quoted folding (34)
 lake exe anchortests         # Anchor/alias tests (33)
 lake exe tagtests            # Tag tests (44)
 lake exe explicitkeytests    # Explicit key tests (66)
+lake exe flowtests           # Flow completeness tests (88)
 lake exe verification        # Layer 1 verification (138)
 lake exe stringlemmas        # String lemma tests (129)
 lake exe demo                # Demo examples (7)
