@@ -372,10 +372,11 @@ where
         return acc
       else if c == ':' then
         -- Peek past `:` to check for mapping separator
+        -- In flow context, `:` followed by a flow indicator is also a separator (§7.3.3)
         let isMapSep ← lookAhead do
           let _ ← anyToken  -- consume ':'
           match ← option? anyToken with
-          | some nc => return (isWhiteSpace nc || isLineBreak nc)
+          | some nc => return (isWhiteSpace nc || isLineBreak nc || (inFlow && isFlowIndicator nc))
           | none => return true  -- `:` at EOF
         if isMapSep then
           return acc
@@ -465,10 +466,11 @@ where
       else if c == '#' && lastWasSpace then
         return acc
       else if c == ':' then
+        -- In flow context, `:` followed by a flow indicator is also a separator (§7.3.3)
         let isMapSep ← lookAhead do
           let _ ← anyToken
           match ← option? anyToken with
-          | some nc => return (isWhiteSpace nc || isLineBreak nc)
+          | some nc => return (isWhiteSpace nc || isLineBreak nc || (inFlow && isFlowIndicator nc))
           | none => return true
         if isMapSep then
           return acc
