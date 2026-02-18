@@ -118,6 +118,12 @@
     .badge-skip { background: var(--color-skip); }
     .badge-timeout { background: var(--color-timeout); }
 
+    /* Test ID links */
+    .test-id-link {
+      color: #1565C0; text-decoration: none; font-family: 'Courier New', monospace; font-weight: 600;
+    }
+    .test-id-link:hover { text-decoration: underline; }
+
     /* Tags */
     .tag {
       display: inline-block; background: #e3f2fd; color: #1565C0;
@@ -246,7 +252,7 @@
     </thead>
     <tbody>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="26dv whitespace around colon in mappings alias mapping whitespace">
-        <td>26DV</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/26DV.yaml" target="_blank" class="test-id-link" title="View 26DV source in yaml-test-suite">26DV</a></td>
         <td>Whitespace around colon in mappings</td>
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
@@ -254,7 +260,7 @@
         <td><span class="error-msg" title="parse error: undefined anchor: *alias1">parse error: undefined anchor: *alias1</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="2auy tags in block sequence tag sequence">
-        <td>2AUY</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/2AUY.yaml" target="_blank" class="test-id-link" title="View 2AUY source in yaml-test-suite">2AUY</a></td>
         <td>Tags in Block Sequence</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -262,7 +268,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="2sxe anchors with colon in name alias edge mapping 1.3-err">
-        <td>2SXE</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/2SXE.yaml" target="_blank" class="test-id-link" title="View 2SXE source in yaml-test-suite">2SXE</a></td>
         <td>Anchors With Colon in Name</td>
         <td>advanced</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -270,7 +276,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="2xxw spec example 2.25. unordered sets spec mapping unknown-tag explicit-key">
-        <td>2XXW</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/2XXW.yaml" target="_blank" class="test-id-link" title="View 2XXW source in yaml-test-suite">2XXW</a></td>
         <td>Spec Example 2.25. Unordered Sets</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -278,7 +284,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="33x3 three explicit integers in a block sequence sequence tag">
-        <td>33X3</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/33X3.yaml" target="_blank" class="test-id-link" title="View 33X3 source in yaml-test-suite">33X3</a></td>
         <td>Three explicit integers in a block sequence</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -286,7 +292,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="35kp tags for root objects explicit-key header mapping tag">
-        <td>35KP</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/35KP.yaml" target="_blank" class="test-id-link" title="View 35KP source in yaml-test-suite">35KP</a></td>
         <td>Tags for Root Objects</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -294,7 +300,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="3gzx spec example 7.1. alias nodes mapping spec alias">
-        <td>3GZX</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/3GZX.yaml" target="_blank" class="test-id-link" title="View 3GZX source in yaml-test-suite">3GZX</a></td>
         <td>Spec Example 7.1. Alias Nodes</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -302,7 +308,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="3r3p single block sequence with anchor anchor sequence">
-        <td>3R3P</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/3R3P.yaml" target="_blank" class="test-id-link" title="View 3R3P source in yaml-test-suite">3R3P</a></td>
         <td>Single block sequence with anchor</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -310,7 +316,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="4fj6 nested implicit complex keys complex-key flow mapping sequence">
-        <td>4FJ6</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/4FJ6.yaml" target="_blank" class="test-id-link" title="View 4FJ6 source in yaml-test-suite">4FJ6</a></td>
         <td>Nested implicit complex keys</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -318,7 +324,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="52dl explicit non-specific tag [1.3] tag 1.3-mod">
-        <td>52DL</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/52DL.yaml" target="_blank" class="test-id-link" title="View 52DL source in yaml-test-suite">52DL</a></td>
         <td>Explicit Non-Specific Tag [1.3]</td>
         <td>advanced</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -326,7 +332,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="565n construct binary tag unknown-tag">
-        <td>565N</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/565N.yaml" target="_blank" class="test-id-link" title="View 565N source in yaml-test-suite">565N</a></td>
         <td>Construct Binary</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -334,7 +340,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="57h4 spec example 8.22. block collection nodes sequence mapping tag">
-        <td>57H4</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/57H4.yaml" target="_blank" class="test-id-link" title="View 57H4 source in yaml-test-suite">57H4</a></td>
         <td>Spec Example 8.22. Block Collection Nodes</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -342,7 +348,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="5tym spec example 6.21. local tag prefix local-tag spec directive tag">
-        <td>5TYM</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/5TYM.yaml" target="_blank" class="test-id-link" title="View 5TYM source in yaml-test-suite">5TYM</a></td>
         <td>Spec Example 6.21. Local Tag Prefix</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -350,7 +356,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="5we3 spec example 8.17. explicit block mapping entries explicit-key spec mapping comment literal sequence">
-        <td>5WE3</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/5WE3.yaml" target="_blank" class="test-id-link" title="View 5WE3 source in yaml-test-suite">5WE3</a></td>
         <td>Spec Example 8.17. Explicit Block Mapping Entries</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -358,7 +364,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="6bfj mapping, key and flow sequence item anchors anchor complex-key flow mapping sequence">
-        <td>6BFJ</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6BFJ.yaml" target="_blank" class="test-id-link" title="View 6BFJ source in yaml-test-suite">6BFJ</a></td>
         <td>Mapping, key and flow sequence item anchors</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -366,7 +372,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="6ck3 spec example 6.26. tag shorthands spec tag local-tag">
-        <td>6CK3</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6CK3.yaml" target="_blank" class="test-id-link" title="View 6CK3 source in yaml-test-suite">6CK3</a></td>
         <td>Spec Example 6.26. Tag Shorthands</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -374,7 +380,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="6jwb tags for block objects mapping sequence tag">
-        <td>6JWB</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6JWB.yaml" target="_blank" class="test-id-link" title="View 6JWB source in yaml-test-suite">6JWB</a></td>
         <td>Tags for Block Objects</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -382,7 +388,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="6kgn anchor for empty node alias anchor">
-        <td>6KGN</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6KGN.yaml" target="_blank" class="test-id-link" title="View 6KGN source in yaml-test-suite">6KGN</a></td>
         <td>Anchor for empty node</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -390,7 +396,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="6m2f aliases in explicit block mapping alias explicit-key empty-key">
-        <td>6M2F</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6M2F.yaml" target="_blank" class="test-id-link" title="View 6M2F source in yaml-test-suite">6M2F</a></td>
         <td>Aliases in Explicit Block Mapping</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -398,7 +404,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="6pbe zero-indented sequences in explicit mapping keys explicit-key mapping sequence">
-        <td>6PBE</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6PBE.yaml" target="_blank" class="test-id-link" title="View 6PBE source in yaml-test-suite">6PBE</a></td>
         <td>Zero-indented sequences in explicit mapping keys</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -406,7 +412,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="6wlz spec example 6.18. primary tag handle [1.3] local-tag spec directive tag 1.3-mod">
-        <td>6WLZ</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6WLZ.yaml" target="_blank" class="test-id-link" title="View 6WLZ source in yaml-test-suite">6WLZ</a></td>
         <td>Spec Example 6.18. Primary Tag Handle [1.3]</td>
         <td>advanced</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -414,7 +420,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="735y spec example 8.20. block node types comment double spec folded tag">
-        <td>735Y</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/735Y.yaml" target="_blank" class="test-id-link" title="View 735Y source in yaml-test-suite">735Y</a></td>
         <td>Spec Example 8.20. Block Node Types</td>
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
@@ -422,7 +428,7 @@
         <td><span class="error-msg" title="parse error: unexpected token at { offset := 46, line := 4, col := 8 }; expected plain scalar at { offset := 46, line := 4, col := 8 }; expected block sequence at { offset := 46, line := 4, col := 8 }">parse error: unexpected token at { offset := 46, line := 4, col := 8 }; expected plain scalar at { offset := 46, line := 4, col := 8 }; expected block sequence at { offset := 46, line := 4, col := 8 }</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="74h7 tags in implicit mapping tag mapping">
-        <td>74H7</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/74H7.yaml" target="_blank" class="test-id-link" title="View 74H7 source in yaml-test-suite">74H7</a></td>
         <td>Tags in Implicit Mapping</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -430,7 +436,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="7bmt node and mapping key anchors [1.3] anchor comment mapping 1.3-mod">
-        <td>7BMT</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/7BMT.yaml" target="_blank" class="test-id-link" title="View 7BMT source in yaml-test-suite">7BMT</a></td>
         <td>Node and Mapping Key Anchors [1.3]</td>
         <td>advanced</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -438,7 +444,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="7bub spec example 2.10. node for “sammy sosa” appears twice in this document mapping sequence spec alias">
-        <td>7BUB</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/7BUB.yaml" target="_blank" class="test-id-link" title="View 7BUB source in yaml-test-suite">7BUB</a></td>
         <td>Spec Example 2.10. Node for “Sammy Sosa” appears twice in this document</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -446,7 +452,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="7fwl spec example 6.24. verbatim tags mapping spec tag unknown-tag">
-        <td>7FWL</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/7FWL.yaml" target="_blank" class="test-id-link" title="View 7FWL source in yaml-test-suite">7FWL</a></td>
         <td>Spec Example 6.24. Verbatim Tags</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -454,7 +460,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="7w2p block mapping with missing values explicit-key mapping">
-        <td>7W2P</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/7W2P.yaml" target="_blank" class="test-id-link" title="View 7W2P source in yaml-test-suite">7W2P</a></td>
         <td>Block Mapping with Missing Values</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -462,7 +468,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="8mk2 explicit non-specific tag tag 1.3-err">
-        <td>8MK2</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/8MK2.yaml" target="_blank" class="test-id-link" title="View 8MK2 source in yaml-test-suite">8MK2</a></td>
         <td>Explicit Non-Specific Tag</td>
         <td>advanced</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -470,7 +476,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="8xyn anchor with unicode character anchor">
-        <td>8XYN</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/8XYN.yaml" target="_blank" class="test-id-link" title="View 8XYN source in yaml-test-suite">8XYN</a></td>
         <td>Anchor with unicode character</td>
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
@@ -478,7 +484,7 @@
         <td><span class="error-msg" title="parse error: unexpected token &#39;😁&#39; at { offset := 11, line := 1, col := 4 }; expected anchor name at { offset := 7, line := 1, col := 3 }; expected anchor (&amp;name) at { offset := 7, line := 1, col := 3 }; expected block sequence at { offset := 7, line := 1, col := 3 }">parse error: unexpected token &#39;😁&#39; at { offset := 11, line := 1, col := 4 }; expected anchor name at { offset := 7, line := 1, col := 3 }; expected anchor (&amp;name) at { offset := 7, line := 1, col := 3 }; expected block sequence at { offset := 7, line := 1, col := 3 }</span></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="9kax various combinations of tags and anchors anchor mapping 1.3-err tag">
-        <td>9KAX</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/9KAX.yaml" target="_blank" class="test-id-link" title="View 9KAX source in yaml-test-suite">9KAX</a></td>
         <td>Various combinations of tags and anchors</td>
         <td>advanced</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -486,7 +492,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="9wxw spec example 6.18. primary tag handle local-tag spec directive tag unknown-tag 1.3-err">
-        <td>9WXW</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/9WXW.yaml" target="_blank" class="test-id-link" title="View 9WXW source in yaml-test-suite">9WXW</a></td>
         <td>Spec Example 6.18. Primary Tag Handle</td>
         <td>advanced</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -494,7 +500,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="a2m4 spec example 6.2. indentation indicators explicit-key spec libyaml-err indent whitespace sequence upto-1.2">
-        <td>A2M4</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/A2M4.yaml" target="_blank" class="test-id-link" title="View A2M4 source in yaml-test-suite">A2M4</a></td>
         <td>Spec Example 6.2. Indentation Indicators</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -502,7 +508,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="bu8l node anchor and tag on seperate lines anchor indent 1.3-err tag">
-        <td>BU8L</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/BU8L.yaml" target="_blank" class="test-id-link" title="View BU8L source in yaml-test-suite">BU8L</a></td>
         <td>Node Anchor and Tag on Seperate Lines</td>
         <td>advanced</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -510,7 +516,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="c4hz spec example 2.24. global tags spec tag alias directive local-tag">
-        <td>C4HZ</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/C4HZ.yaml" target="_blank" class="test-id-link" title="View C4HZ source in yaml-test-suite">C4HZ</a></td>
         <td>Spec Example 2.24. Global Tags</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -518,7 +524,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="cc74 spec example 6.20. tag handles spec directive tag unknown-tag">
-        <td>CC74</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/CC74.yaml" target="_blank" class="test-id-link" title="View CC74 source in yaml-test-suite">CC74</a></td>
         <td>Spec Example 6.20. Tag Handles</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -526,7 +532,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="cn3r various location of anchors in flow sequence anchor flow mapping sequence">
-        <td>CN3R</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/CN3R.yaml" target="_blank" class="test-id-link" title="View CN3R source in yaml-test-suite">CN3R</a></td>
         <td>Various location of anchors in flow sequence</td>
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
@@ -534,7 +540,7 @@
         <td><span class="error-msg" title="parse error: unexpected token at { offset := 29, line := 3, col := 1 }; expected plain scalar at { offset := 29, line := 3, col := 1 }; expected flow value at { offset := 29, line := 3, col := 1 }; expected flow sequence at { offset := 29, line := 3, col := 1 }">parse error: unexpected token at { offset := 29, line := 3, col := 1 }; expected plain scalar at { offset := 29, line := 3, col := 1 }; expected flow value at { offset := 29, line := 3, col := 1 }; expected flow sequence at { offset := 29, line := 3, col := 1 }</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="ct4q spec example 7.20. single pair explicit entry explicit-key spec flow mapping">
-        <td>CT4Q</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/CT4Q.yaml" target="_blank" class="test-id-link" title="View CT4Q source in yaml-test-suite">CT4Q</a></td>
         <td>Spec Example 7.20. Single Pair Explicit Entry</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -542,7 +548,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="cup7 spec example 5.6. node property indicators local-tag spec tag alias">
-        <td>CUP7</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/CUP7.yaml" target="_blank" class="test-id-link" title="View CUP7 source in yaml-test-suite">CUP7</a></td>
         <td>Spec Example 5.6. Node Property Indicators</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -550,7 +556,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="dff7 spec example 7.16. flow mapping entries explicit-key spec flow mapping">
-        <td>DFF7</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/DFF7.yaml" target="_blank" class="test-id-link" title="View DFF7 source in yaml-test-suite">DFF7</a></td>
         <td>Spec Example 7.16. Flow Mapping Entries</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -558,7 +564,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="e76z aliases in implicit block mapping mapping alias">
-        <td>E76Z</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/E76Z.yaml" target="_blank" class="test-id-link" title="View E76Z source in yaml-test-suite">E76Z</a></td>
         <td>Aliases in Implicit Block Mapping</td>
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
@@ -566,7 +572,7 @@
         <td><span class="error-msg" title="parse error: undefined anchor: *b">parse error: undefined anchor: *b</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="ehf6 tags for flow objects tag flow mapping sequence">
-        <td>EHF6</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/EHF6.yaml" target="_blank" class="test-id-link" title="View EHF6 source in yaml-test-suite">EHF6</a></td>
         <td>Tags for Flow Objects</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -574,7 +580,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="f2c7 anchors and tags anchor tag">
-        <td>F2C7</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/F2C7.yaml" target="_blank" class="test-id-link" title="View F2C7 source in yaml-test-suite">F2C7</a></td>
         <td>Anchors and Tags</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -582,7 +588,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="fh7j tags on empty scalars tag scalar">
-        <td>FH7J</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/FH7J.yaml" target="_blank" class="test-id-link" title="View FH7J source in yaml-test-suite">FH7J</a></td>
         <td>Tags on Empty Scalars</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -590,7 +596,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="frk4 spec example 7.3. completely empty flow nodes empty-key explicit-key spec flow mapping">
-        <td>FRK4</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/FRK4.yaml" target="_blank" class="test-id-link" title="View FRK4 source in yaml-test-suite">FRK4</a></td>
         <td>Spec Example 7.3. Completely Empty Flow Nodes</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -598,7 +604,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="fta2 single block sequence with anchor and explicit document start anchor header sequence">
-        <td>FTA2</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/FTA2.yaml" target="_blank" class="test-id-link" title="View FTA2 source in yaml-test-suite">FTA2</a></td>
         <td>Single block sequence with anchor and explicit document start</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -606,7 +612,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="gh63 mixed block mapping (explicit to implicit) explicit-key mapping">
-        <td>GH63</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/GH63.yaml" target="_blank" class="test-id-link" title="View GH63 source in yaml-test-suite">GH63</a></td>
         <td>Mixed Block Mapping (explicit to implicit)</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -614,7 +620,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="hmq5 spec example 6.23. node properties spec tag alias">
-        <td>HMQ5</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/HMQ5.yaml" target="_blank" class="test-id-link" title="View HMQ5 source in yaml-test-suite">HMQ5</a></td>
         <td>Spec Example 6.23. Node Properties</td>
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
@@ -622,7 +628,7 @@
         <td><span class="error-msg" title="parse error: undefined anchor: *a1">parse error: undefined anchor: *a1</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="j7pz spec example 2.26. ordered mappings spec mapping tag unknown-tag">
-        <td>J7PZ</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/J7PZ.yaml" target="_blank" class="test-id-link" title="View J7PZ source in yaml-test-suite">J7PZ</a></td>
         <td>Spec Example 2.26. Ordered Mappings</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -630,7 +636,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="js2j spec example 6.29. node anchors spec alias">
-        <td>JS2J</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/JS2J.yaml" target="_blank" class="test-id-link" title="View JS2J source in yaml-test-suite">JS2J</a></td>
         <td>Spec Example 6.29. Node Anchors</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -638,7 +644,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="jtv5 block mapping with multiline scalars explicit-key mapping scalar">
-        <td>JTV5</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/JTV5.yaml" target="_blank" class="test-id-link" title="View JTV5 source in yaml-test-suite">JTV5</a></td>
         <td>Block Mapping with Multiline Scalars</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -646,7 +652,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="kk5p various combinations of explicit block mappings explicit-key mapping sequence">
-        <td>KK5P</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/KK5P.yaml" target="_blank" class="test-id-link" title="View KK5P source in yaml-test-suite">KK5P</a></td>
         <td>Various combinations of explicit block mappings</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -654,7 +660,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="kss4 scalars on --- line anchor header scalar 1.3-err">
-        <td>KSS4</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/KSS4.yaml" target="_blank" class="test-id-link" title="View KSS4 source in yaml-test-suite">KSS4</a></td>
         <td>Scalars on --- line</td>
         <td>advanced</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -662,7 +668,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="l94m tags in explicit mapping explicit-key tag mapping">
-        <td>L94M</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/L94M.yaml" target="_blank" class="test-id-link" title="View L94M source in yaml-test-suite">L94M</a></td>
         <td>Tags in Explicit Mapping</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -670,7 +676,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="le5a spec example 7.24. flow nodes spec tag alias">
-        <td>LE5A</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/LE5A.yaml" target="_blank" class="test-id-link" title="View LE5A source in yaml-test-suite">LE5A</a></td>
         <td>Spec Example 7.24. Flow Nodes</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -678,7 +684,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="lx3p implicit flow mapping key on one line complex-key mapping flow sequence 1.3-err">
-        <td>LX3P</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/LX3P.yaml" target="_blank" class="test-id-link" title="View LX3P source in yaml-test-suite">LX3P</a></td>
         <td>Implicit Flow Mapping Key on one line</td>
         <td>advanced</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -686,7 +692,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="m5c3 spec example 8.21. block scalar nodes indent spec literal folded tag local-tag 1.3-err">
-        <td>M5C3</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/M5C3.yaml" target="_blank" class="test-id-link" title="View M5C3 source in yaml-test-suite">M5C3</a></td>
         <td>Spec Example 8.21. Block Scalar Nodes</td>
         <td>advanced</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -694,7 +700,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="m5dy spec example 2.11. mapping between sequences complex-key explicit-key spec mapping sequence">
-        <td>M5DY</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/M5DY.yaml" target="_blank" class="test-id-link" title="View M5DY source in yaml-test-suite">M5DY</a></td>
         <td>Spec Example 2.11. Mapping between Sequences</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -702,7 +708,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="p76l spec example 6.19. secondary tag handle spec header tag unknown-tag">
-        <td>P76L</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/P76L.yaml" target="_blank" class="test-id-link" title="View P76L source in yaml-test-suite">P76L</a></td>
         <td>Spec Example 6.19. Secondary Tag Handle</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -710,7 +716,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="pw8x anchors on empty scalars anchor explicit-key">
-        <td>PW8X</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/PW8X.yaml" target="_blank" class="test-id-link" title="View PW8X source in yaml-test-suite">PW8X</a></td>
         <td>Anchors on Empty Scalars</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -718,7 +724,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="q9wf spec example 6.12. separation spaces complex-key flow spec comment whitespace 1.3-err">
-        <td>Q9WF</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/Q9WF.yaml" target="_blank" class="test-id-link" title="View Q9WF source in yaml-test-suite">Q9WF</a></td>
         <td>Spec Example 6.12. Separation Spaces</td>
         <td>advanced</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -726,7 +732,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="rr7f mixed block mapping (implicit to explicit) explicit-key mapping">
-        <td>RR7F</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/RR7F.yaml" target="_blank" class="test-id-link" title="View RR7F source in yaml-test-suite">RR7F</a></td>
         <td>Mixed Block Mapping (implicit to explicit)</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -734,7 +740,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="rzp5 various trailing comments [1.3] anchor comment folded mapping 1.3-mod">
-        <td>RZP5</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/RZP5.yaml" target="_blank" class="test-id-link" title="View RZP5 source in yaml-test-suite">RZP5</a></td>
         <td>Various Trailing Comments [1.3]</td>
         <td>advanced</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -742,7 +748,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="s4jq spec example 6.28. non-specific tags spec tag">
-        <td>S4JQ</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/S4JQ.yaml" target="_blank" class="test-id-link" title="View S4JQ source in yaml-test-suite">S4JQ</a></td>
         <td>Spec Example 6.28. Non-Specific Tags</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -750,7 +756,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="s9e8 spec example 5.3. block structure indicators explicit-key spec mapping sequence">
-        <td>S9E8</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/S9E8.yaml" target="_blank" class="test-id-link" title="View S9E8 source in yaml-test-suite">S9E8</a></td>
         <td>Spec Example 5.3. Block Structure Indicators</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -758,7 +764,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="sbg9 flow sequence in flow mapping complex-key sequence mapping flow">
-        <td>SBG9</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/SBG9.yaml" target="_blank" class="test-id-link" title="View SBG9 source in yaml-test-suite">SBG9</a></td>
         <td>Flow Sequence in Flow Mapping</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -766,7 +772,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="ske5 anchor before zero indented sequence anchor indent sequence">
-        <td>SKE5</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/SKE5.yaml" target="_blank" class="test-id-link" title="View SKE5 source in yaml-test-suite">SKE5</a></td>
         <td>Anchor before zero indented sequence</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -774,7 +780,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="u3c3 spec example 6.16. “tag” directive spec header tag">
-        <td>U3C3</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/U3C3.yaml" target="_blank" class="test-id-link" title="View U3C3 source in yaml-test-suite">U3C3</a></td>
         <td>Spec Example 6.16. “TAG” directive</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -782,7 +788,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="u3xv node and mapping key anchors anchor comment 1.3-err">
-        <td>U3XV</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/U3XV.yaml" target="_blank" class="test-id-link" title="View U3XV source in yaml-test-suite">U3XV</a></td>
         <td>Node and Mapping Key Anchors</td>
         <td>advanced</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -790,7 +796,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="ugm3 spec example 2.27. invoice spec tag literal mapping sequence alias unknown-tag">
-        <td>UGM3</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/UGM3.yaml" target="_blank" class="test-id-link" title="View UGM3 source in yaml-test-suite">UGM3</a></td>
         <td>Spec Example 2.27. Invoice</td>
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
@@ -798,7 +804,7 @@
         <td><span class="error-msg" title="parse error: undefined anchor: *id001">parse error: undefined anchor: *id001</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="v55r aliases in block sequence alias sequence">
-        <td>V55R</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/V55R.yaml" target="_blank" class="test-id-link" title="View V55R source in yaml-test-suite">V55R</a></td>
         <td>Aliases in Block Sequence</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -806,7 +812,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="v9d5 spec example 8.19. compact block mappings complex-key explicit-key spec mapping">
-        <td>V9D5</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/V9D5.yaml" target="_blank" class="test-id-link" title="View V9D5 source in yaml-test-suite">V9D5</a></td>
         <td>Spec Example 8.19. Compact Block Mappings</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -814,7 +820,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="w5vh allowed characters in alias alias 1.3-err">
-        <td>W5VH</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/W5VH.yaml" target="_blank" class="test-id-link" title="View W5VH source in yaml-test-suite">W5VH</a></td>
         <td>Allowed characters in alias</td>
         <td>advanced</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -822,7 +828,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="wz62 spec example 7.2. empty content spec flow scalar tag">
-        <td>WZ62</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/WZ62.yaml" target="_blank" class="test-id-link" title="View WZ62 source in yaml-test-suite">WZ62</a></td>
         <td>Spec Example 7.2. Empty Content</td>
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
@@ -830,7 +836,7 @@
         <td><span class="error-msg" title="parse error: unexpected token at { offset := 15, line := 1, col := 13 }; expected plain scalar at { offset := 15, line := 1, col := 13 }; expected flow value at { offset := 15, line := 1, col := 13 }; expected flow mapping at { offset := 15, line := 1, col := 13 }">parse error: unexpected token at { offset := 15, line := 1, col := 13 }; expected plain scalar at { offset := 15, line := 1, col := 13 }; expected flow value at { offset := 15, line := 1, col := 13 }; expected flow mapping at { offset := 15, line := 1, col := 13 }</span></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="x38w aliases in flow objects alias complex-key flow">
-        <td>X38W</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/X38W.yaml" target="_blank" class="test-id-link" title="View X38W source in yaml-test-suite">X38W</a></td>
         <td>Aliases in Flow Objects</td>
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
@@ -838,7 +844,7 @@
         <td><span class="error-msg" title="parse error: unexpected token at { offset := 2, line := 0, col := 2 }; expected plain scalar at { offset := 2, line := 0, col := 2 }; expected flow mapping at { offset := 2, line := 0, col := 2 }">parse error: unexpected token at { offset := 2, line := 0, col := 2 }; expected plain scalar at { offset := 2, line := 0, col := 2 }; expected flow mapping at { offset := 2, line := 0, col := 2 }</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="x8dw explicit key and value seperated by comment comment explicit-key mapping">
-        <td>X8DW</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/X8DW.yaml" target="_blank" class="test-id-link" title="View X8DW source in yaml-test-suite">X8DW</a></td>
         <td>Explicit key and value seperated by comment</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -846,7 +852,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="xw4d various trailing comments comment explicit-key folded 1.3-err">
-        <td>XW4D</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/XW4D.yaml" target="_blank" class="test-id-link" title="View XW4D source in yaml-test-suite">XW4D</a></td>
         <td>Various Trailing Comments</td>
         <td>advanced</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -854,7 +860,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="y2gn anchor with colon in the middle anchor">
-        <td>Y2GN</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/Y2GN.yaml" target="_blank" class="test-id-link" title="View Y2GN source in yaml-test-suite">Y2GN</a></td>
         <td>Anchor with colon in the middle</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -862,7 +868,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="z67p spec example 8.21. block scalar nodes [1.3] indent spec literal folded tag local-tag 1.3-mod">
-        <td>Z67P</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/Z67P.yaml" target="_blank" class="test-id-link" title="View Z67P source in yaml-test-suite">Z67P</a></td>
         <td>Spec Example 8.21. Block Scalar Nodes [1.3]</td>
         <td>advanced</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -870,7 +876,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="z9m4 spec example 6.22. global tag prefix spec header tag unknown-tag">
-        <td>Z9M4</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/Z9M4.yaml" target="_blank" class="test-id-link" title="View Z9M4 source in yaml-test-suite">Z9M4</a></td>
         <td>Spec Example 6.22. Global Tag Prefix</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -878,7 +884,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="zh7c anchors in mapping anchor mapping">
-        <td>ZH7C</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/ZH7C.yaml" target="_blank" class="test-id-link" title="View ZH7C source in yaml-test-suite">ZH7C</a></td>
         <td>Anchors in Mapping</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -886,7 +892,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="zwk4 key with anchor after missing explicit mapping value anchor explicit-key mapping">
-        <td>ZWK4</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/ZWK4.yaml" target="_blank" class="test-id-link" title="View ZWK4 source in yaml-test-suite">ZWK4</a></td>
         <td>Key with anchor after missing explicit mapping value</td>
         <td>advanced</td>
         <td><span class="badge badge-pass">Pass</span></td>

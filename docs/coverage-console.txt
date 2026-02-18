@@ -444,9 +444,10 @@ Running verified test suites...
   Tag Tests: ✓ 44/44
   Explicit Key Tests: ✓ 66/66
   Flow Completeness Tests: ✓ 88/88
+  CharClass Correspondence Tests: ✓ 224/224
   Demo: ✓ 7/7
 
-Verified: 581/581
+Verified: 805/805
 
 Generating HTML reports...
   wrote docs/index.html

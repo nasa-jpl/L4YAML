@@ -118,6 +118,12 @@
     .badge-skip { background: var(--color-skip); }
     .badge-timeout { background: var(--color-timeout); }
 
+    /* Test ID links */
+    .test-id-link {
+      color: #1565C0; text-decoration: none; font-family: 'Courier New', monospace; font-weight: 600;
+    }
+    .test-id-link:hover { text-decoration: underline; }
+
     /* Tags */
     .tag {
       display: inline-block; background: #e3f2fd; color: #1565C0;
@@ -246,7 +252,7 @@
     </thead>
     <tbody>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="2ebw allowed characters in keys mapping scalar">
-        <td>2EBW</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/2EBW.yaml" target="_blank" class="test-id-link" title="View 2EBW source in yaml-test-suite">2EBW</a></td>
         <td>Allowed characters in keys</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -254,7 +260,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="scalar" data-search="2g84 literal modifers literal scalar">
-        <td>2G84</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/2G84.yaml" target="_blank" class="test-id-link" title="View 2G84 source in yaml-test-suite">2G84</a></td>
         <td>Literal modifers</td>
         <td>scalar</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
@@ -262,7 +268,7 @@
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="36f6 multiline plain scalar with empty line mapping scalar">
-        <td>36F6</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/36F6.yaml" target="_blank" class="test-id-link" title="View 36F6 source in yaml-test-suite">36F6</a></td>
         <td>Multiline plain scalar with empty line</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -270,7 +276,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="3myt plain scalar looking like key, comment, anchor and tag scalar">
-        <td>3MYT</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/3MYT.yaml" target="_blank" class="test-id-link" title="View 3MYT source in yaml-test-suite">3MYT</a></td>
         <td>Plain Scalar looking like key, comment, anchor and tag</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -278,7 +284,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="3rln leading tabs in double quoted double whitespace">
-        <td>3RLN</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/3RLN.yaml" target="_blank" class="test-id-link" title="View 3RLN source in yaml-test-suite">3RLN</a></td>
         <td>Leading tabs in double quoted</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -286,7 +292,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="3uys escaped slash in double quotes double">
-        <td>3UYS</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/3UYS.yaml" target="_blank" class="test-id-link" title="View 3UYS source in yaml-test-suite">3UYS</a></td>
         <td>Escaped slash in double quotes</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -294,7 +300,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="4cqq spec example 2.18. multi-line flow scalars spec scalar">
-        <td>4CQQ</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/4CQQ.yaml" target="_blank" class="test-id-link" title="View 4CQQ source in yaml-test-suite">4CQQ</a></td>
         <td>Spec Example 2.18. Multi-line Flow Scalars</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -302,7 +308,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="4gc6 spec example 7.7. single quoted characters spec scalar 1.3-err">
-        <td>4GC6</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/4GC6.yaml" target="_blank" class="test-id-link" title="View 4GC6 source in yaml-test-suite">4GC6</a></td>
         <td>Spec Example 7.7. Single Quoted Characters</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -310,7 +316,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="4q9f folded block scalar [1.3] folded scalar 1.3-mod whitespace">
-        <td>4Q9F</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/4Q9F.yaml" target="_blank" class="test-id-link" title="View 4Q9F source in yaml-test-suite">4Q9F</a></td>
         <td>Folded Block Scalar [1.3]</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -318,7 +324,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="4qfq spec example 8.2. block indentation indicator [1.3] spec literal folded scalar libyaml-err 1.3-mod whitespace">
-        <td>4QFQ</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/4QFQ.yaml" target="_blank" class="test-id-link" title="View 4QFQ source in yaml-test-suite">4QFQ</a></td>
         <td>Spec Example 8.2. Block Indentation Indicator [1.3]</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -326,7 +332,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="4uyu colon in double quoted string mapping scalar 1.3-err">
-        <td>4UYU</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/4UYU.yaml" target="_blank" class="test-id-link" title="View 4UYU source in yaml-test-suite">4UYU</a></td>
         <td>Colon in Double Quoted String</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -334,7 +340,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="4v8u plain scalar with backslashes scalar">
-        <td>4V8U</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/4V8U.yaml" target="_blank" class="test-id-link" title="View 4V8U source in yaml-test-suite">4V8U</a></td>
         <td>Plain scalar with backslashes</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -342,7 +348,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="4wa9 literal scalars indent literal">
-        <td>4WA9</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/4WA9.yaml" target="_blank" class="test-id-link" title="View 4WA9 source in yaml-test-suite">4WA9</a></td>
         <td>Literal scalars</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -350,7 +356,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="4zym spec example 6.4. line prefixes spec scalar literal double upto-1.2 whitespace">
-        <td>4ZYM</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/4ZYM.yaml" target="_blank" class="test-id-link" title="View 4ZYM source in yaml-test-suite">4ZYM</a></td>
         <td>Spec Example 6.4. Line Prefixes</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -358,7 +364,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="5bvj spec example 5.7. block scalar indicators spec literal folded scalar">
-        <td>5BVJ</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/5BVJ.yaml" target="_blank" class="test-id-link" title="View 5BVJ source in yaml-test-suite">5BVJ</a></td>
         <td>Spec Example 5.7. Block Scalar Indicators</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -366,7 +372,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="5gbf spec example 6.5. empty lines double literal spec scalar upto-1.2 whitespace">
-        <td>5GBF</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/5GBF.yaml" target="_blank" class="test-id-link" title="View 5GBF source in yaml-test-suite">5GBF</a></td>
         <td>Spec Example 6.5. Empty Lines</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -374,7 +380,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="6fwr block scalar keep literal scalar whitespace">
-        <td>6FWR</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6FWR.yaml" target="_blank" class="test-id-link" title="View 6FWR source in yaml-test-suite">6FWR</a></td>
         <td>Block Scalar Keep</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -382,7 +388,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="6h3v backslashes in singlequotes scalar single">
-        <td>6H3V</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6H3V.yaml" target="_blank" class="test-id-link" title="View 6H3V source in yaml-test-suite">6H3V</a></td>
         <td>Backslashes in singlequotes</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -390,7 +396,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="6jqw spec example 2.13. in literals, newlines are preserved spec scalar literal comment">
-        <td>6JQW</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6JQW.yaml" target="_blank" class="test-id-link" title="View 6JQW source in yaml-test-suite">6JQW</a></td>
         <td>Spec Example 2.13. In literals, newlines are preserved</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -398,7 +404,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="6sla allowed characters in quoted mapping key mapping single double">
-        <td>6SLA</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6SLA.yaml" target="_blank" class="test-id-link" title="View 6SLA source in yaml-test-suite">6SLA</a></td>
         <td>Allowed characters in quoted mapping key</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -406,7 +412,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="6vjk spec example 2.15. folded newlines are preserved for &quot;more indented&quot; and blank lines spec folded scalar 1.3-err">
-        <td>6VJK</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6VJK.yaml" target="_blank" class="test-id-link" title="View 6VJK source in yaml-test-suite">6VJK</a></td>
         <td>Spec Example 2.15. Folded newlines are preserved for &quot;more indented&quot; and blank lines</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -414,7 +420,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="6wpf spec example 6.8. flow folding [1.3] double spec whitespace scalar 1.3-mod">
-        <td>6WPF</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6WPF.yaml" target="_blank" class="test-id-link" title="View 6WPF source in yaml-test-suite">6WPF</a></td>
         <td>Spec Example 6.8. Flow Folding [1.3]</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -422,7 +428,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="753e block scalar strip [1.3] literal scalar 1.3-mod whitespace">
-        <td>753E</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/753E.yaml" target="_blank" class="test-id-link" title="View 753E source in yaml-test-suite">753E</a></td>
         <td>Block Scalar Strip [1.3]</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -430,7 +436,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="7a4e spec example 7.6. double quoted lines spec scalar upto-1.2 whitespace">
-        <td>7A4E</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/7A4E.yaml" target="_blank" class="test-id-link" title="View 7A4E source in yaml-test-suite">7A4E</a></td>
         <td>Spec Example 7.6. Double Quoted Lines</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -438,7 +444,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="7t8x spec example 8.10. folded lines - 8.13. final empty lines spec folded scalar comment 1.3-err">
-        <td>7T8X</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/7T8X.yaml" target="_blank" class="test-id-link" title="View 7T8X source in yaml-test-suite">7T8X</a></td>
         <td>Spec Example 8.10. Folded Lines - 8.13. Final Empty Lines</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -446,7 +452,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="82an three dashes and content without space scalar 1.3-err">
-        <td>82AN</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/82AN.yaml" target="_blank" class="test-id-link" title="View 82AN source in yaml-test-suite">82AN</a></td>
         <td>Three dashes and content without space</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -454,7 +460,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="8cwc plain mapping key ending with colon mapping scalar">
-        <td>8CWC</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/8CWC.yaml" target="_blank" class="test-id-link" title="View 8CWC source in yaml-test-suite">8CWC</a></td>
         <td>Plain mapping key ending with colon</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -462,7 +468,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="8g76 spec example 6.10. comment lines spec comment empty scalar whitespace">
-        <td>8G76</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/8G76.yaml" target="_blank" class="test-id-link" title="View 8G76 source in yaml-test-suite">8G76</a></td>
         <td>Spec Example 6.10. Comment Lines</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -470,7 +476,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="93wf spec example 6.6. line folding [1.3] folded spec whitespace scalar 1.3-mod">
-        <td>93WF</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/93WF.yaml" target="_blank" class="test-id-link" title="View 93WF source in yaml-test-suite">93WF</a></td>
         <td>Spec Example 6.6. Line Folding [1.3]</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -478,7 +484,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="96l6 spec example 2.14. in the folded scalars, newlines become spaces spec folded scalar">
-        <td>96L6</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/96L6.yaml" target="_blank" class="test-id-link" title="View 96L6 source in yaml-test-suite">96L6</a></td>
         <td>Spec Example 2.14. In the folded scalars, newlines become spaces</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -486,7 +492,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="96nn leading tab content in literals indent literal whitespace">
-        <td>96NN</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/96NN.yaml" target="_blank" class="test-id-link" title="View 96NN source in yaml-test-suite">96NN</a></td>
         <td>Leading tab content in literals</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -494,7 +500,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="9mqt scalar doc with &#39;...&#39; in content double scalar">
-        <td>9MQT</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/9MQT.yaml" target="_blank" class="test-id-link" title="View 9MQT source in yaml-test-suite">9MQT</a></td>
         <td>Scalar doc with &#39;...&#39; in content</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -502,7 +508,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="9shh spec example 5.8. quoted scalar indicators spec scalar">
-        <td>9SHH</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/9SHH.yaml" target="_blank" class="test-id-link" title="View 9SHH source in yaml-test-suite">9SHH</a></td>
         <td>Spec Example 5.8. Quoted Scalar Indicators</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -510,7 +516,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="9tfx spec example 7.6. double quoted lines [1.3] double spec scalar whitespace 1.3-mod">
-        <td>9TFX</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/9TFX.yaml" target="_blank" class="test-id-link" title="View 9TFX source in yaml-test-suite">9TFX</a></td>
         <td>Spec Example 7.6. Double Quoted Lines [1.3]</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -518,7 +524,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="9yrd multiline scalar at top level scalar whitespace 1.3-err">
-        <td>9YRD</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/9YRD.yaml" target="_blank" class="test-id-link" title="View 9YRD source in yaml-test-suite">9YRD</a></td>
         <td>Multiline Scalar at Top Level</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -526,7 +532,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="a6f9 spec example 8.4. chomping final line break spec literal scalar">
-        <td>A6F9</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/A6F9.yaml" target="_blank" class="test-id-link" title="View A6F9 source in yaml-test-suite">A6F9</a></td>
         <td>Spec Example 8.4. Chomping Final Line Break</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -534,7 +540,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="a984 multiline scalar in mapping scalar">
-        <td>A984</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/A984.yaml" target="_blank" class="test-id-link" title="View A984 source in yaml-test-suite">A984</a></td>
         <td>Multiline Scalar in Mapping</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -542,7 +548,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="ab8u sequence entry that looks like two with wrong indentation scalar sequence">
-        <td>AB8U</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/AB8U.yaml" target="_blank" class="test-id-link" title="View AB8U source in yaml-test-suite">AB8U</a></td>
         <td>Sequence entry that looks like two with wrong indentation</td>
         <td>scalar</td>
         <td><span class="badge badge-fail">Fail</span></td>
@@ -550,7 +556,7 @@
         <td><span class="error-msg" title="parse error: sequence item at column 1, expected column 0 (wrong indentation)">parse error: sequence item at column 1, expected column 0 (wrong indentation)</span></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="b3hg spec example 8.9. folded scalar [1.3] spec folded scalar 1.3-mod">
-        <td>B3HG</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/B3HG.yaml" target="_blank" class="test-id-link" title="View B3HG source in yaml-test-suite">B3HG</a></td>
         <td>Spec Example 8.9. Folded Scalar [1.3]</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -558,7 +564,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="cpz3 doublequoted scalar starting with a tab double scalar">
-        <td>CPZ3</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/CPZ3.yaml" target="_blank" class="test-id-link" title="View CPZ3 source in yaml-test-suite">CPZ3</a></td>
         <td>Doublequoted scalar starting with a tab</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -566,7 +572,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="d83l block scalar indicator order indent literal">
-        <td>D83L</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/D83L.yaml" target="_blank" class="test-id-link" title="View D83L source in yaml-test-suite">D83L</a></td>
         <td>Block scalar indicator order</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -574,7 +580,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="de56 trailing tabs in double quoted double whitespace">
-        <td>DE56</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/DE56.yaml" target="_blank" class="test-id-link" title="View DE56 source in yaml-test-suite">DE56</a></td>
         <td>Trailing tabs in double quoted</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -582,7 +588,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="dk3j zero indented block scalar with line that looks like a comment comment folded scalar">
-        <td>DK3J</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/DK3J.yaml" target="_blank" class="test-id-link" title="View DK3J source in yaml-test-suite">DK3J</a></td>
         <td>Zero indented block scalar with line that looks like a comment</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -590,7 +596,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="dwx9 spec example 8.8. literal content spec literal scalar comment whitespace 1.3-err">
-        <td>DWX9</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/DWX9.yaml" target="_blank" class="test-id-link" title="View DWX9 source in yaml-test-suite">DWX9</a></td>
         <td>Spec Example 8.8. Literal Content</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -598,7 +604,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="ex5h multiline scalar at top level [1.3] scalar whitespace 1.3-mod">
-        <td>EX5H</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/EX5H.yaml" target="_blank" class="test-id-link" title="View EX5H source in yaml-test-suite">EX5H</a></td>
         <td>Multiline Scalar at Top Level [1.3]</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -606,7 +612,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="exg3 three dashes and content without space [1.3] scalar 1.3-mod">
-        <td>EXG3</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/EXG3.yaml" target="_blank" class="test-id-link" title="View EXG3 source in yaml-test-suite">EXG3</a></td>
         <td>Three dashes and content without space [1.3]</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -614,7 +620,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="f6mc more indented lines at the beginning of folded block scalars folded indent">
-        <td>F6MC</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/F6MC.yaml" target="_blank" class="test-id-link" title="View F6MC source in yaml-test-suite">F6MC</a></td>
         <td>More indented lines at the beginning of folded block scalars</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -622,7 +628,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="f8f9 spec example 8.5. chomping trailing lines spec literal scalar comment">
-        <td>F8F9</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/F8F9.yaml" target="_blank" class="test-id-link" title="View F8F9 source in yaml-test-suite">F8F9</a></td>
         <td>Spec Example 8.5. Chomping Trailing Lines</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -630,7 +636,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="fbc9 allowed characters in plain scalars scalar">
-        <td>FBC9</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/FBC9.yaml" target="_blank" class="test-id-link" title="View FBC9 source in yaml-test-suite">FBC9</a></td>
         <td>Allowed characters in plain scalars</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -638,7 +644,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="fp8r zero indented block scalar folded indent scalar">
-        <td>FP8R</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/FP8R.yaml" target="_blank" class="test-id-link" title="View FP8R source in yaml-test-suite">FP8R</a></td>
         <td>Zero indented block scalar</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -646,7 +652,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="g4rs spec example 2.17. quoted scalars spec scalar">
-        <td>G4RS</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/G4RS.yaml" target="_blank" class="test-id-link" title="View G4RS source in yaml-test-suite">G4RS</a></td>
         <td>Spec Example 2.17. Quoted Scalars</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -654,7 +660,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="g992 spec example 8.9. folded scalar spec folded scalar 1.3-err">
-        <td>G992</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/G992.yaml" target="_blank" class="test-id-link" title="View G992 source in yaml-test-suite">G992</a></td>
         <td>Spec Example 8.9. Folded Scalar</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -662,7 +668,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="h2rw blank lines comment literal scalar whitespace">
-        <td>H2RW</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/H2RW.yaml" target="_blank" class="test-id-link" title="View H2RW source in yaml-test-suite">H2RW</a></td>
         <td>Blank lines</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -670,7 +676,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="h3z8 literal unicode scalar">
-        <td>H3Z8</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/H3Z8.yaml" target="_blank" class="test-id-link" title="View H3Z8 source in yaml-test-suite">H3Z8</a></td>
         <td>Literal unicode</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -678,7 +684,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="hmk4 spec example 2.16. indentation determines scope spec folded literal">
-        <td>HMK4</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/HMK4.yaml" target="_blank" class="test-id-link" title="View HMK4 source in yaml-test-suite">HMK4</a></td>
         <td>Spec Example 2.16. Indentation determines scope</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -686,7 +692,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="hs5t spec example 7.12. plain lines spec scalar whitespace upto-1.2">
-        <td>HS5T</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/HS5T.yaml" target="_blank" class="test-id-link" title="View HS5T source in yaml-test-suite">HS5T</a></td>
         <td>Spec Example 7.12. Plain Lines</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -694,7 +700,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="jef9 trailing whitespace in streams literal">
-        <td>JEF9</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/JEF9.yaml" target="_blank" class="test-id-link" title="View JEF9 source in yaml-test-suite">JEF9</a></td>
         <td>Trailing whitespace in streams</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -702,7 +708,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="k527 spec example 6.6. line folding folded spec whitespace scalar 1.3-err">
-        <td>K527</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/K527.yaml" target="_blank" class="test-id-link" title="View K527 source in yaml-test-suite">K527</a></td>
         <td>Spec Example 6.6. Line Folding</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -710,7 +716,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="k858 spec example 8.6. empty scalar chomping spec folded literal whitespace">
-        <td>K858</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/K858.yaml" target="_blank" class="test-id-link" title="View K858 source in yaml-test-suite">K858</a></td>
         <td>Spec Example 8.6. Empty Scalar Chomping</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -718,7 +724,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="kh5v inline tabs in double quoted double whitespace">
-        <td>KH5V</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/KH5V.yaml" target="_blank" class="test-id-link" title="View KH5V source in yaml-test-suite">KH5V</a></td>
         <td>Inline tabs in double quoted</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -726,7 +732,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="m29m literal block scalar literal scalar whitespace">
-        <td>M29M</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/M29M.yaml" target="_blank" class="test-id-link" title="View M29M source in yaml-test-suite">M29M</a></td>
         <td>Literal Block Scalar</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -734,7 +740,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="m9b4 spec example 8.7. literal scalar spec literal scalar whitespace 1.3-err">
-        <td>M9B4</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/M9B4.yaml" target="_blank" class="test-id-link" title="View M9B4 source in yaml-test-suite">M9B4</a></td>
         <td>Spec Example 8.7. Literal Scalar</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -742,7 +748,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="mjs9 spec example 6.7. block folding folded spec scalar whitespace 1.3-err">
-        <td>MJS9</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/MJS9.yaml" target="_blank" class="test-id-link" title="View MJS9 source in yaml-test-suite">MJS9</a></td>
         <td>Spec Example 6.7. Block Folding</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -750,7 +756,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="myw6 block scalar strip literal scalar whitespace 1.3-err">
-        <td>MYW6</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/MYW6.yaml" target="_blank" class="test-id-link" title="View MYW6 source in yaml-test-suite">MYW6</a></td>
         <td>Block Scalar Strip</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -758,7 +764,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="mzx3 non-specific tags on scalars folded scalar">
-        <td>MZX3</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/MZX3.yaml" target="_blank" class="test-id-link" title="View MZX3 source in yaml-test-suite">MZX3</a></td>
         <td>Non-Specific Tags on Scalars</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -766,7 +772,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="nat4 various empty or newline only quoted strings double scalar single whitespace">
-        <td>NAT4</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/NAT4.yaml" target="_blank" class="test-id-link" title="View NAT4 source in yaml-test-suite">NAT4</a></td>
         <td>Various empty or newline only quoted strings</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -774,7 +780,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="nb6z multiline plain value with tabs on empty lines scalar whitespace">
-        <td>NB6Z</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/NB6Z.yaml" target="_blank" class="test-id-link" title="View NB6Z source in yaml-test-suite">NB6Z</a></td>
         <td>Multiline plain value with tabs on empty lines</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -782,7 +788,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="np9h spec example 7.5. double quoted line breaks double spec scalar whitespace upto-1.2">
-        <td>NP9H</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/NP9H.yaml" target="_blank" class="test-id-link" title="View NP9H source in yaml-test-suite">NP9H</a></td>
         <td>Spec Example 7.5. Double Quoted Line Breaks</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -790,7 +796,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="p2ad spec example 8.1. block scalar header spec literal folded comment scalar">
-        <td>P2AD</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/P2AD.yaml" target="_blank" class="test-id-link" title="View P2AD source in yaml-test-suite">P2AD</a></td>
         <td>Spec Example 8.1. Block Scalar Header</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -798,7 +804,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="prh3 spec example 7.9. single quoted lines single spec scalar whitespace upto-1.2">
-        <td>PRH3</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/PRH3.yaml" target="_blank" class="test-id-link" title="View PRH3 source in yaml-test-suite">PRH3</a></td>
         <td>Spec Example 7.9. Single Quoted Lines</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -806,7 +812,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="q8ad spec example 7.5. double quoted line breaks [1.3] double spec scalar whitespace 1.3-mod">
-        <td>Q8AD</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/Q8AD.yaml" target="_blank" class="test-id-link" title="View Q8AD source in yaml-test-suite">Q8AD</a></td>
         <td>Spec Example 7.5. Double Quoted Line Breaks [1.3]</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -814,7 +820,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="r4yg spec example 8.2. block indentation indicator spec literal folded scalar whitespace libyaml-err upto-1.2">
-        <td>R4YG</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/R4YG.yaml" target="_blank" class="test-id-link" title="View R4YG source in yaml-test-suite">R4YG</a></td>
         <td>Spec Example 8.2. Block Indentation Indicator</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -822,7 +828,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="s7bg colon followed by comma scalar">
-        <td>S7BG</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/S7BG.yaml" target="_blank" class="test-id-link" title="View S7BG source in yaml-test-suite">S7BG</a></td>
         <td>Colon followed by comma</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -830,7 +836,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="ssw6 spec example 7.7. single quoted characters [1.3] spec scalar single 1.3-mod">
-        <td>SSW6</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/SSW6.yaml" target="_blank" class="test-id-link" title="View SSW6 source in yaml-test-suite">SSW6</a></td>
         <td>Spec Example 7.7. Single Quoted Characters [1.3]</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -838,7 +844,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="syw4 spec example 2.2. mapping scalars to scalars spec scalar comment">
-        <td>SYW4</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/SYW4.yaml" target="_blank" class="test-id-link" title="View SYW4 source in yaml-test-suite">SYW4</a></td>
         <td>Spec Example 2.2. Mapping Scalars to Scalars</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -846,7 +852,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="t26h spec example 8.8. literal content [1.3] spec literal scalar comment whitespace 1.3-mod">
-        <td>T26H</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/T26H.yaml" target="_blank" class="test-id-link" title="View T26H source in yaml-test-suite">T26H</a></td>
         <td>Spec Example 8.8. Literal Content [1.3]</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -854,7 +860,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="t4yy spec example 7.9. single quoted lines [1.3] single spec scalar whitespace 1.3-mod">
-        <td>T4YY</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/T4YY.yaml" target="_blank" class="test-id-link" title="View T4YY source in yaml-test-suite">T4YY</a></td>
         <td>Spec Example 7.9. Single Quoted Lines [1.3]</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -862,7 +868,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="t5n4 spec example 8.7. literal scalar [1.3] spec literal scalar whitespace 1.3-mod">
-        <td>T5N4</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/T5N4.yaml" target="_blank" class="test-id-link" title="View T5N4 source in yaml-test-suite">T5N4</a></td>
         <td>Spec Example 8.7. Literal Scalar [1.3]</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -870,7 +876,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="tl85 spec example 6.8. flow folding double spec whitespace scalar upto-1.2">
-        <td>TL85</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/TL85.yaml" target="_blank" class="test-id-link" title="View TL85 source in yaml-test-suite">TL85</a></td>
         <td>Spec Example 6.8. Flow Folding</td>
         <td>scalar</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -878,7 +884,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="ts54 folded block scalar folded scalar 1.3-err">
-        <td>TS54</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/TS54.yaml" target="_blank" class="test-id-link" title="View TS54 source in yaml-test-suite">TS54</a></td>
         <td>Folded Block Scalar</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -886,7 +892,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="w42u spec example 8.15. block sequence entry types comment spec literal sequence">
-        <td>W42U</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/W42U.yaml" target="_blank" class="test-id-link" title="View W42U source in yaml-test-suite">W42U</a></td>
         <td>Spec Example 8.15. Block Sequence Entry Types</td>
         <td>scalar</td>
         <td><span class="badge badge-fail">Fail</span></td>
@@ -894,7 +900,7 @@
         <td><span class="error-msg" title="parse error: unexpected token at { offset := 2, line := 0, col := 2 }; expected plain scalar at { offset := 2, line := 0, col := 2 }; expected block sequence at { offset := 2, line := 0, col := 2 }">parse error: unexpected token at { offset := 2, line := 0, col := 2 }; expected plain scalar at { offset := 2, line := 0, col := 2 }; expected block sequence at { offset := 2, line := 0, col := 2 }</span></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="xv9v spec example 6.5. empty lines [1.3] literal spec scalar 1.3-mod">
-        <td>XV9V</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/XV9V.yaml" target="_blank" class="test-id-link" title="View XV9V source in yaml-test-suite">XV9V</a></td>
         <td>Spec Example 6.5. Empty Lines [1.3]</td>
         <td>scalar</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>

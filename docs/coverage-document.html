@@ -118,6 +118,12 @@
     .badge-skip { background: var(--color-skip); }
     .badge-timeout { background: var(--color-timeout); }
 
+    /* Test ID links */
+    .test-id-link {
+      color: #1565C0; text-decoration: none; font-family: 'Courier New', monospace; font-weight: 600;
+    }
+    .test-id-link:hover { text-decoration: underline; }
+
     /* Tags */
     .tag {
       display: inline-block; background: #e3f2fd; color: #1565C0;
@@ -246,7 +252,7 @@
     </thead>
     <tbody>
       <tr class="test-row" data-outcome="skip" data-stage="document" data-search="27na spec example 5.9. directive indicator spec directive 1.3-err">
-        <td>27NA</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/27NA.yaml" target="_blank" class="test-id-link" title="View 27NA source in yaml-test-suite">27NA</a></td>
         <td>Spec Example 5.9. Directive Indicator</td>
         <td>document</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -254,7 +260,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="document" data-search="2lfx spec example 6.13. reserved directives [1.3] spec directive header double 1.3-mod">
-        <td>2LFX</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/2LFX.yaml" target="_blank" class="test-id-link" title="View 2LFX source in yaml-test-suite">2LFX</a></td>
         <td>Spec Example 6.13. Reserved Directives [1.3]</td>
         <td>document</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -262,7 +268,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="document" data-search="6lvf spec example 6.13. reserved directives spec directive header double 1.3-err">
-        <td>6LVF</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6LVF.yaml" target="_blank" class="test-id-link" title="View 6LVF source in yaml-test-suite">6LVF</a></td>
         <td>Spec Example 6.13. Reserved Directives</td>
         <td>document</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -270,7 +276,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="document" data-search="6xdy two document start markers header">
-        <td>6XDY</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6XDY.yaml" target="_blank" class="test-id-link" title="View 6XDY source in yaml-test-suite">6XDY</a></td>
         <td>Two document start markers</td>
         <td>document</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -278,7 +284,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="document" data-search="6zkb spec example 9.6. stream spec header 1.3-err">
-        <td>6ZKB</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6ZKB.yaml" target="_blank" class="test-id-link" title="View 6ZKB source in yaml-test-suite">6ZKB</a></td>
         <td>Spec Example 9.6. Stream</td>
         <td>document</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -286,7 +292,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="document" data-search="7z25 bare document after document end marker footer">
-        <td>7Z25</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/7Z25.yaml" target="_blank" class="test-id-link" title="View 7Z25 source in yaml-test-suite">7Z25</a></td>
         <td>Bare document after document end marker</td>
         <td>document</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -294,7 +300,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="document" data-search="9dxl spec example 9.6. stream [1.3] spec header 1.3-mod">
-        <td>9DXL</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/9DXL.yaml" target="_blank" class="test-id-link" title="View 9DXL source in yaml-test-suite">9DXL</a></td>
         <td>Spec Example 9.6. Stream [1.3]</td>
         <td>document</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -302,7 +308,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="document" data-search="bec7 spec example 6.14. “yaml” directive spec directive">
-        <td>BEC7</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/BEC7.yaml" target="_blank" class="test-id-link" title="View BEC7 source in yaml-test-suite">BEC7</a></td>
         <td>Spec Example 6.14. “YAML” directive</td>
         <td>document</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -310,7 +316,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="document" data-search="h7tq extra words on %yaml directive directive">
-        <td>H7TQ</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/H7TQ.yaml" target="_blank" class="test-id-link" title="View H7TQ source in yaml-test-suite">H7TQ</a></td>
         <td>Extra words on %YAML directive</td>
         <td>document</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
@@ -318,7 +324,7 @@
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="document" data-search="hwv9 document-end marker footer">
-        <td>HWV9</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/HWV9.yaml" target="_blank" class="test-id-link" title="View HWV9 source in yaml-test-suite">HWV9</a></td>
         <td>Document-end marker</td>
         <td>document</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -326,7 +332,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="document" data-search="jhb9 spec example 2.7. two documents in a stream spec header">
-        <td>JHB9</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/JHB9.yaml" target="_blank" class="test-id-link" title="View JHB9 source in yaml-test-suite">JHB9</a></td>
         <td>Spec Example 2.7. Two Documents in a Stream</td>
         <td>document</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -334,7 +340,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="document" data-search="k54u tab after document header header whitespace">
-        <td>K54U</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/K54U.yaml" target="_blank" class="test-id-link" title="View K54U source in yaml-test-suite">K54U</a></td>
         <td>Tab after document header</td>
         <td>document</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -342,7 +348,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="document" data-search="m7a3 spec example 9.3. bare documents spec footer 1.3-err">
-        <td>M7A3</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/M7A3.yaml" target="_blank" class="test-id-link" title="View M7A3 source in yaml-test-suite">M7A3</a></td>
         <td>Spec Example 9.3. Bare Documents</td>
         <td>document</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -350,7 +356,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="document" data-search="mus6 directive variants directive">
-        <td>MUS6</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/MUS6.yaml" target="_blank" class="test-id-link" title="View MUS6 source in yaml-test-suite">MUS6</a></td>
         <td>Directive variants</td>
         <td>document</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
@@ -358,7 +364,7 @@
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="document" data-search="puw8 document start on last line header">
-        <td>PUW8</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/PUW8.yaml" target="_blank" class="test-id-link" title="View PUW8 source in yaml-test-suite">PUW8</a></td>
         <td>Document start on last line</td>
         <td>document</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -366,7 +372,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="document" data-search="qt73 comment and document-end marker comment footer">
-        <td>QT73</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/QT73.yaml" target="_blank" class="test-id-link" title="View QT73 source in yaml-test-suite">QT73</a></td>
         <td>Comment and document-end marker</td>
         <td>document</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -374,7 +380,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="document" data-search="rtp8 spec example 9.2. document markers spec header footer">
-        <td>RTP8</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/RTP8.yaml" target="_blank" class="test-id-link" title="View RTP8 source in yaml-test-suite">RTP8</a></td>
         <td>Spec Example 9.2. Document Markers</td>
         <td>document</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -382,7 +388,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="document" data-search="rzt7 spec example 2.28. log file spec header literal mapping sequence">
-        <td>RZT7</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/RZT7.yaml" target="_blank" class="test-id-link" title="View RZT7 source in yaml-test-suite">RZT7</a></td>
         <td>Spec Example 2.28. Log File</td>
         <td>document</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -390,7 +396,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="document" data-search="s4t7 document with footer mapping footer">
-        <td>S4T7</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/S4T7.yaml" target="_blank" class="test-id-link" title="View S4T7 source in yaml-test-suite">S4T7</a></td>
         <td>Document with footer</td>
         <td>document</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -398,7 +404,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="document" data-search="u9ns spec example 2.8. play by play feed from a game spec header">
-        <td>U9NS</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/U9NS.yaml" target="_blank" class="test-id-link" title="View U9NS source in yaml-test-suite">U9NS</a></td>
         <td>Spec Example 2.8. Play by Play Feed from a Game</td>
         <td>document</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -406,7 +412,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="document" data-search="ut92 spec example 9.4. explicit documents flow spec header footer comment">
-        <td>UT92</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/UT92.yaml" target="_blank" class="test-id-link" title="View UT92 source in yaml-test-suite">UT92</a></td>
         <td>Spec Example 9.4. Explicit Documents</td>
         <td>document</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -414,7 +420,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="document" data-search="w4tn spec example 9.5. directives documents spec header footer 1.3-err">
-        <td>W4TN</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/W4TN.yaml" target="_blank" class="test-id-link" title="View W4TN source in yaml-test-suite">W4TN</a></td>
         <td>Spec Example 9.5. Directives Documents</td>
         <td>document</td>
         <td><span class="badge badge-skip" title="YAML 1.3 specific">Skip</span></td>
@@ -422,7 +428,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="document" data-search="xlq9 multiline scalar that looks like a yaml directive directive scalar">
-        <td>XLQ9</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/XLQ9.yaml" target="_blank" class="test-id-link" title="View XLQ9 source in yaml-test-suite">XLQ9</a></td>
         <td>Multiline scalar that looks like a YAML directive</td>
         <td>document</td>
         <td><span class="badge badge-pass">Pass</span></td>
@@ -430,7 +436,7 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="document" data-search="zyu8 directive variants directive">
-        <td>ZYU8</td>
+        <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/ZYU8.yaml" target="_blank" class="test-id-link" title="View ZYU8 source in yaml-test-suite">ZYU8</a></td>
         <td>Directive variants</td>
         <td>document</td>
         <td><span class="badge badge-pass">Pass</span></td>

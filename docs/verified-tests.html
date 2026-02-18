@@ -65,10 +65,10 @@
   <p class="subtitle">Unit tests, parser tests, verification tests, and string lemma tests — all must pass.</p>
 
   <div class="stats">
-    <div class="stat-box stat-total"><h3>Total</h3><div class="number">581</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">581</div></div>
+    <div class="stat-box stat-total"><h3>Total</h3><div class="number">805</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">805</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
-    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">10</div></div>
+    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">11</div></div>
   </div>
   <h3>Suites</h3>
   <div class="stage-cards">
@@ -127,6 +127,12 @@
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/FlowTests.lean" target="_blank" class="source-link">📄 Tests/FlowTests.lean</a></div>
     </div>
     <div class="stage-card" style="border-left-color:var(--color-pass)">
+      <div class="stage-card-name">CharClass Correspondence Tests</div>
+      <div class="stage-card-stats">224/224 passed (100%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
+      <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean" target="_blank" class="source-link">📄 Tests/CharClassTests.lean</a></div>
+    </div>
+    <div class="stage-card" style="border-left-color:var(--color-pass)">
       <div class="stage-card-name">Demo</div>
       <div class="stage-card-stats">7/7 passed (100%)</div>
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
@@ -154,6 +160,7 @@
         <option value="tagtests">Tag Tests</option>
         <option value="explicittests">Explicit Key Tests</option>
         <option value="flowtests">Flow Completeness Tests</option>
+        <option value="charclass">CharClass Correspondence Tests</option>
         <option value="demo">Demo</option>
       </select>
     </div>
@@ -161,7 +168,7 @@
       <label>Search:</label>
       <input type="text" class="search-input" placeholder="Category, test name..." oninput="searchTests(this.value)">
     </div>
-    <div class="filter-group"><span>Showing <strong id="visibleCount">581</strong> of 581</span></div>
+    <div class="filter-group"><span>Showing <strong id="visibleCount">805</strong> of 805</span></div>
   </div>
 
   <table id="testTable">
@@ -4192,6 +4199,1582 @@
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/FlowTests.lean#L397" target="_blank" class="source-link">Flow Completeness Tests</a></td>
         <td>Suite regressions</td>
         <td>CFD4 null key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass islinebreak correspondence all test chars agree">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L83" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isLineBreak correspondence</td>
+        <td>all test chars agree</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass islinebreak correspondence lf is line break (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L85" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isLineBreak correspondence</td>
+        <td>LF is line break (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass islinebreak correspondence cr is line break (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L86" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isLineBreak correspondence</td>
+        <td>CR is line break (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass islinebreak correspondence lf is line break (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L87" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isLineBreak correspondence</td>
+        <td>LF is line break (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass islinebreak correspondence cr is line break (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L88" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isLineBreak correspondence</td>
+        <td>CR is line break (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass islinebreak correspondence space is not line break">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L90" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isLineBreak correspondence</td>
+        <td>space is NOT line break</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass islinebreak correspondence tab is not line break">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L91" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isLineBreak correspondence</td>
+        <td>tab is NOT line break</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass islinebreak correspondence &#39;a&#39; is not line break">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L92" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isLineBreak correspondence</td>
+        <td>&#39;a&#39; is NOT line break</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass islinebreak correspondence nul is not line break">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L93" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isLineBreak correspondence</td>
+        <td>NUL is NOT line break</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass iswhitespace correspondence all test chars agree">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L105" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isWhiteSpace correspondence</td>
+        <td>all test chars agree</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass iswhitespace correspondence space is whitespace">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L107" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isWhiteSpace correspondence</td>
+        <td>space is whitespace</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass iswhitespace correspondence tab is whitespace">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L108" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isWhiteSpace correspondence</td>
+        <td>tab is whitespace</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass iswhitespace correspondence space is whitespace (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L109" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isWhiteSpace correspondence</td>
+        <td>space is whitespace (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass iswhitespace correspondence tab is whitespace (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L110" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isWhiteSpace correspondence</td>
+        <td>tab is whitespace (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass iswhitespace correspondence lf is not whitespace">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L112" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isWhiteSpace correspondence</td>
+        <td>LF is NOT whitespace</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass iswhitespace correspondence cr is not whitespace">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L113" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isWhiteSpace correspondence</td>
+        <td>CR is NOT whitespace</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass iswhitespace correspondence &#39;a&#39; is not whitespace">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L114" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isWhiteSpace correspondence</td>
+        <td>&#39;a&#39; is NOT whitespace</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass iswhitespace correspondence &#39;-&#39; is not whitespace">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L115" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isWhiteSpace correspondence</td>
+        <td>&#39;-&#39; is NOT whitespace</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindentchar correspondence space is indent char">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L122" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndentChar correspondence</td>
+        <td>space is indent char</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindentchar correspondence tab is not indent char">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L123" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndentChar correspondence</td>
+        <td>tab is NOT indent char</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindentchar correspondence lf is not indent char">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L124" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndentChar correspondence</td>
+        <td>LF is NOT indent char</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindentchar correspondence &#39;a&#39; is not indent char">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L125" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndentChar correspondence</td>
+        <td>&#39;a&#39; is NOT indent char</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindentchar correspondence indent ⊂ whitespace: space">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L127" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndentChar correspondence</td>
+        <td>indent ⊂ whitespace: space</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindentchar correspondence indent ⊄ tab (ws but not indent)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L128" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndentChar correspondence</td>
+        <td>indent ⊄ tab (ws but not indent)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence all flow chars agree">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L143" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>all flow chars agree</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;,&#39; is flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L145" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;,&#39; is flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;,&#39; is flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L146" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;,&#39; is flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;[&#39; is flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L145" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;[&#39; is flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;[&#39; is flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L146" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;[&#39; is flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;]&#39; is flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L145" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;]&#39; is flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;]&#39; is flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L146" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;]&#39; is flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;{&#39; is flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L145" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;{&#39; is flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;{&#39; is flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L146" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;{&#39; is flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;}&#39; is flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L145" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;}&#39; is flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;}&#39; is flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L146" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;}&#39; is flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;-&#39; is not flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L149" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;-&#39; is NOT flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;-&#39; is not flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L150" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;-&#39; is NOT flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;?&#39; is not flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L149" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;?&#39; is NOT flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;?&#39; is not flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L150" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;?&#39; is NOT flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;:&#39; is not flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L149" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;:&#39; is NOT flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;:&#39; is not flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L150" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;:&#39; is NOT flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;#&#39; is not flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L149" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;#&#39; is NOT flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;#&#39; is not flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L150" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;#&#39; is NOT flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;&amp;&#39; is not flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L149" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;&amp;&#39; is NOT flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;&amp;&#39; is not flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L150" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;&amp;&#39; is NOT flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;*&#39; is not flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L149" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;*&#39; is NOT flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;*&#39; is not flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L150" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;*&#39; is NOT flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;!&#39; is not flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L149" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;!&#39; is NOT flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;!&#39; is not flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L150" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;!&#39; is NOT flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;|&#39; is not flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L149" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;|&#39; is NOT flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;|&#39; is not flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L150" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;|&#39; is NOT flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;&gt;&#39; is not flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L149" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;&gt;&#39; is NOT flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;&gt;&#39; is not flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L150" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;&gt;&#39; is NOT flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;&#39;&#39; is not flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L149" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;&#39;&#39; is NOT flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;&#39;&#39; is not flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L150" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;&#39;&#39; is NOT flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;&quot;&#39; is not flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L149" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;&quot;&#39; is NOT flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;&quot;&#39; is not flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L150" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;&quot;&#39; is NOT flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;%&#39; is not flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L149" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;%&#39; is NOT flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;%&#39; is not flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L150" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;%&#39; is NOT flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;@&#39; is not flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L149" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;@&#39; is NOT flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;@&#39; is not flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L150" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;@&#39; is NOT flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;`&#39; is not flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L149" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;`&#39; is NOT flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;`&#39; is not flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L150" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;`&#39; is NOT flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;a&#39; is not flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L149" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;a&#39; is NOT flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;a&#39; is not flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L150" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;a&#39; is NOT flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39; &#39; is not flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L149" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39; &#39; is NOT flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39; &#39; is not flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L150" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39; &#39; is NOT flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;
+&#39; is not flow indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L149" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;
+&#39; is NOT flow indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isflowindicator correspondence &#39;
+&#39; is not flow indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L150" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isFlowIndicator correspondence</td>
+        <td>&#39;
+&#39; is NOT flow indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;-&#39; is indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L161" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;-&#39; is indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;-&#39; is indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L162" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;-&#39; is indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;?&#39; is indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L161" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;?&#39; is indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;?&#39; is indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L162" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;?&#39; is indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;:&#39; is indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L161" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;:&#39; is indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;:&#39; is indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L162" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;:&#39; is indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;,&#39; is indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L161" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;,&#39; is indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;,&#39; is indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L162" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;,&#39; is indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;[&#39; is indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L161" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;[&#39; is indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;[&#39; is indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L162" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;[&#39; is indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;]&#39; is indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L161" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;]&#39; is indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;]&#39; is indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L162" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;]&#39; is indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;{&#39; is indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L161" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;{&#39; is indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;{&#39; is indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L162" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;{&#39; is indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;}&#39; is indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L161" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;}&#39; is indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;}&#39; is indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L162" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;}&#39; is indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;#&#39; is indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L161" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;#&#39; is indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;#&#39; is indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L162" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;#&#39; is indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;&amp;&#39; is indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L161" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;&amp;&#39; is indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;&amp;&#39; is indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L162" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;&amp;&#39; is indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;*&#39; is indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L161" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;*&#39; is indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;*&#39; is indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L162" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;*&#39; is indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;!&#39; is indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L161" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;!&#39; is indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;!&#39; is indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L162" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;!&#39; is indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;|&#39; is indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L161" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;|&#39; is indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;|&#39; is indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L162" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;|&#39; is indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;&gt;&#39; is indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L161" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;&gt;&#39; is indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;&gt;&#39; is indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L162" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;&gt;&#39; is indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;&#39;&#39; is indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L161" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;&#39;&#39; is indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;&#39;&#39; is indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L162" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;&#39;&#39; is indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;&quot;&#39; is indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L161" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;&quot;&#39; is indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;&quot;&#39; is indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L162" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;&quot;&#39; is indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;%&#39; is indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L161" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;%&#39; is indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;%&#39; is indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L162" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;%&#39; is indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;@&#39; is indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L161" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;@&#39; is indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;@&#39; is indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L162" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;@&#39; is indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;`&#39; is indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L161" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;`&#39; is indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;`&#39; is indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L162" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;`&#39; is indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;a&#39; is not indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L165" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;a&#39; is NOT indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;a&#39; is not indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L166" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;a&#39; is NOT indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;z&#39; is not indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L165" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;z&#39; is NOT indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;z&#39; is not indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L166" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;z&#39; is NOT indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;0&#39; is not indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L165" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;0&#39; is NOT indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;0&#39; is not indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L166" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;0&#39; is NOT indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;9&#39; is not indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L165" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;9&#39; is NOT indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;9&#39; is not indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L166" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;9&#39; is NOT indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39; &#39; is not indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L165" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39; &#39; is NOT indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39; &#39; is not indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L166" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39; &#39; is NOT indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;
+&#39; is not indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L165" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;
+&#39; is NOT indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;
+&#39; is not indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L166" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;
+&#39; is NOT indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;	&#39; is not indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L165" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;	&#39; is NOT indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;	&#39; is not indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L166" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;	&#39; is NOT indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;.&#39; is not indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L165" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;.&#39; is NOT indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;.&#39; is not indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L166" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;.&#39; is NOT indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;/&#39; is not indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L165" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;/&#39; is NOT indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;/&#39; is not indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L166" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;/&#39; is NOT indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;(&#39; is not indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L165" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;(&#39; is NOT indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;(&#39; is not indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L166" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;(&#39; is NOT indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;)&#39; is not indicator (grammar)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L165" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;)&#39; is NOT indicator (Grammar)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence &#39;)&#39; is not indicator (parse)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L166" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>&#39;)&#39; is NOT indicator (Parse)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence flow &#39;,&#39; ⊆ indicator">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L170" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>flow &#39;,&#39; ⊆ indicator</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence flow &#39;[&#39; ⊆ indicator">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L170" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>flow &#39;[&#39; ⊆ indicator</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence flow &#39;]&#39; ⊆ indicator">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L170" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>flow &#39;]&#39; ⊆ indicator</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence flow &#39;{&#39; ⊆ indicator">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L170" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>flow &#39;{&#39; ⊆ indicator</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass isindicator correspondence flow &#39;}&#39; ⊆ indicator">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L170" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>isIndicator correspondence</td>
+        <td>flow &#39;}&#39; ⊆ indicator</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;a&#39; starts plain">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L177" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;a&#39; starts plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;z&#39; starts plain">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L178" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;Z&#39; starts plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;0&#39; starts plain">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L179" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;0&#39; starts plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;.&#39; starts plain">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L180" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;.&#39; starts plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;/&#39; starts plain">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L181" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;/&#39; starts plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;(&#39; starts plain">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L182" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;(&#39; starts plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;[&#39; cannot start">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L184" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;[&#39; cannot start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;]&#39; cannot start">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L185" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;]&#39; cannot start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;{&#39; cannot start">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L186" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;{&#39; cannot start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;}&#39; cannot start">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L187" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;}&#39; cannot start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;#&#39; cannot start">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L188" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;#&#39; cannot start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;&amp;&#39; cannot start">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L189" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;&amp;&#39; cannot start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;*&#39; cannot start">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L190" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;*&#39; cannot start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;!&#39; cannot start">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L191" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;!&#39; cannot start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;&quot;&#39; cannot start">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L192" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;&quot;&#39; cannot start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &quot;&#39;&quot; cannot start">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L193" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&quot;&#39;&quot; cannot start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;%&#39; cannot start">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L194" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;%&#39; cannot start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;@&#39; cannot start">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L195" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;@&#39; cannot start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;`&#39; cannot start">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L196" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;`&#39; cannot start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;|&#39; cannot start">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L197" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;|&#39; cannot start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;&gt;&#39; cannot start">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L198" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;&gt;&#39; cannot start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;-&#39; + &#39;a&#39; starts">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L200" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;-&#39; + &#39;a&#39; starts</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;-&#39; + &#39; &#39; fails">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L201" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;-&#39; + &#39; &#39; fails</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;-&#39; + none fails">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L202" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;-&#39; + none fails</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;-&#39; + &#39;\t&#39; fails">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L203" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;-&#39; + &#39;\t&#39; fails</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;-&#39; + &#39;\n&#39; fails">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L204" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;-&#39; + &#39;\n&#39; fails</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;?&#39; + &#39;!&#39; starts">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L205" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;?&#39; + &#39;!&#39; starts</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;?&#39; + &#39; &#39; fails">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L206" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;?&#39; + &#39; &#39; fails</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;?&#39; + none fails">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L207" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;?&#39; + none fails</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;:&#39; + &#39;x&#39; starts">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L208" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;:&#39; + &#39;x&#39; starts</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;:&#39; + &#39; &#39; fails">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L209" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;:&#39; + &#39; &#39; fails</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence &#39;:&#39; + &#39;\r&#39; fails">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L210" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>&#39;:&#39; + &#39;\r&#39; fails</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence space cannot start">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L212" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>space cannot start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence tab cannot start">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L213" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>tab cannot start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence lf cannot start">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L214" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>LF cannot start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass canstartplainscalar correspondence cr cannot start">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L215" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>canStartPlainScalar correspondence</td>
+        <td>CR cannot start</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;,&#39; ∈ flowlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L229" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;,&#39; ∈ flowList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;[&#39; ∈ flowlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L229" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;[&#39; ∈ flowList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;]&#39; ∈ flowlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L229" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;]&#39; ∈ flowList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;{&#39; ∈ flowlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L229" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;{&#39; ∈ flowList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;}&#39; ∈ flowlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L229" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;}&#39; ∈ flowList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;a&#39; ∉ flowlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L230" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;a&#39; ∉ flowList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;-&#39; ∉ flowlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L231" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;-&#39; ∉ flowList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;#&#39; ∉ flowlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L232" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;#&#39; ∉ flowList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;-&#39; ∈ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L236" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;-&#39; ∈ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;?&#39; ∈ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L236" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;?&#39; ∈ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;:&#39; ∈ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L236" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;:&#39; ∈ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;,&#39; ∈ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L236" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;,&#39; ∈ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;[&#39; ∈ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L236" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;[&#39; ∈ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;]&#39; ∈ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L236" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;]&#39; ∈ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;{&#39; ∈ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L236" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;{&#39; ∈ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;}&#39; ∈ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L236" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;}&#39; ∈ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;#&#39; ∈ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L236" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;#&#39; ∈ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;&amp;&#39; ∈ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L236" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;&amp;&#39; ∈ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;*&#39; ∈ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L236" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;*&#39; ∈ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;!&#39; ∈ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L236" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;!&#39; ∈ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;|&#39; ∈ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L236" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;|&#39; ∈ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;&gt;&#39; ∈ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L236" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;&gt;&#39; ∈ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;&#39;&#39; ∈ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L236" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;&#39;&#39; ∈ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;&quot;&#39; ∈ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L236" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;&quot;&#39; ∈ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;%&#39; ∈ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L236" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;%&#39; ∈ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;@&#39; ∈ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L236" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;@&#39; ∈ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;`&#39; ∈ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L236" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;`&#39; ∈ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;a&#39; ∉ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L237" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;a&#39; ∉ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39;.&#39; ∉ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L238" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39;.&#39; ∉ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge &#39; &#39; ∉ indicatorlist (elem)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L239" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>&#39; &#39; ∉ indicatorList (elem)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isflowindicator &#39;,&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L244" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isFlowIndicator &#39;,&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isflowindicator &#39;[&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L244" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isFlowIndicator &#39;[&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isflowindicator &#39;]&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L244" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isFlowIndicator &#39;]&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isflowindicator &#39;{&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L244" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isFlowIndicator &#39;{&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isflowindicator &#39;}&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L244" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isFlowIndicator &#39;}&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isindicator &#39;-&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isIndicator &#39;-&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isindicator &#39;?&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isIndicator &#39;?&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isindicator &#39;:&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isIndicator &#39;:&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isindicator &#39;,&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isIndicator &#39;,&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isindicator &#39;[&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isIndicator &#39;[&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isindicator &#39;]&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isIndicator &#39;]&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isindicator &#39;{&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isIndicator &#39;{&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isindicator &#39;}&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isIndicator &#39;}&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isindicator &#39;#&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isIndicator &#39;#&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isindicator &#39;&amp;&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isIndicator &#39;&amp;&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isindicator &#39;*&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isIndicator &#39;*&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isindicator &#39;!&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isIndicator &#39;!&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isindicator &#39;|&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isIndicator &#39;|&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isindicator &#39;&gt;&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isIndicator &#39;&gt;&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isindicator &#39;&#39;&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isIndicator &#39;&#39;&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isindicator &#39;&quot;&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isIndicator &#39;&quot;&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isindicator &#39;%&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isIndicator &#39;%&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isindicator &#39;@&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isIndicator &#39;@&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="charclass" data-search="charclass list.mem ↔ list.elem bridge isindicator &#39;`&#39; == elem">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
+        <td>List.Mem ↔ List.elem bridge</td>
+        <td>isIndicator &#39;`&#39; == elem</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
