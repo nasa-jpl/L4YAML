@@ -355,7 +355,7 @@ private def generateStatsHtml (stats : CoverageStats) : String :=
   let pctStr := if pct == pct.floor then s!"{pct.floor}" else s!"{pct}"
   String.join [
     "  <div class=\"stats\">\n",
-    s!"    <div class=\"stat-box stat-total\"><h3>Total</h3><div class=\"number\">{stats.total}</div></div>\n",
+    s!"    <div class=\"stat-box stat-total\"><h3>Unique Tests</h3><div class=\"number\">{stats.total}</div></div>\n",
     s!"    <div class=\"stat-box stat-pass\"><h3>Passed</h3><div class=\"number\">{stats.passed}</div></div>\n",
     s!"    <div class=\"stat-box stat-fail\"><h3>Failed</h3><div class=\"number\">{stats.failed}</div></div>\n",
     s!"    <div class=\"stat-box stat-expected\"><h3>Expected Fail</h3><div class=\"number\">{stats.expectedFail}</div></div>\n",
@@ -550,7 +550,7 @@ def generateIndexHtml (results : Array ReportResult)
     "  <div class=\"summary\">\n",
     "    <h3>yaml-test-suite Compliance</h3>\n",
     "    <pre>\n",
-    s!"Total tests:      {stats.total}\n",
+    s!"Total unique tests: {stats.total}\n",
     s!"Passed:           {stats.passed}\n",
     s!"Failed:           {stats.failed}\n",
     s!"Expected fail:    {stats.expectedFail}\n",
@@ -564,7 +564,7 @@ def generateIndexHtml (results : Array ReportResult)
     "  <div class=\"links\">\n",
     "    <div class=\"link-box\">\n",
     "      <a href=\"coverage-all.html\">Full Coverage Report</a>\n",
-    s!"      <div class=\"description\">All {stats.total} tests with filtering &amp; sorting</div>\n",
+    s!"      <div class=\"description\">All {stats.total} unique test cases with filtering &amp; sorting</div>\n",
     "    </div>\n",
     "  </div>\n\n",
     "  <h2>Coverage by Stage</h2>\n",
@@ -588,7 +588,7 @@ def generateIndexHtml (results : Array ReportResult)
       String.join [
         s!"  <h2>Verified Tests</h2>\n",
         s!"  <div class=\"summary\" style=\"border-left-color:{borderColor};background:{bgColor}\">\n",
-        s!"    <h3 style=\"color:{borderColor}\">{statusIcon} Verified Test Suites</h3>\n",
+        s!"    <h3 style=\"color:{borderColor}\">{statusIcon} Internal Verified Test Suites ({totalPassed}/{totalTests})</h3>\n",
         s!"    <table style=\"width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:14px;\">\n",
         suiteRows,
         s!"    <tr style=\"border-top:2px solid #ccc;font-weight:bold\">" ++
