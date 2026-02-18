@@ -334,3 +334,481 @@
   ✓ Multi-document stream
 
 === Results: 7/7 passed ===
+=== String Lemma Tests ===
+=== String Lemma Tests ===
+
+--- Char.utf8Size positivity ---
+  ✓ utf8Size 'a' > 0
+  ✓ utf8Size 'a' == 1
+  ✓ utf8Size '\n' > 0
+  ✓ utf8Size '\n' == 1
+  ✓ utf8Size ' ' > 0
+  ✓ utf8Size '\t' > 0
+  ✓ utf8Size ':' > 0
+  ✓ utf8Size '-' > 0
+  ✓ utf8Size '{' > 0
+  ✓ utf8Size '}' > 0
+  ✓ utf8Size '[' > 0
+  ✓ utf8Size ']' > 0
+  ✓ utf8Size '€' == 3 (3-byte)
+  ✓ utf8Size 'é' == 2 (2-byte)
+  ✓ utf8Size '日' == 3 (3-byte CJK)
+  ✓ utf8Size '𐀀' == 4 (4-byte)
+  ✓ utf8Size_pos holds for NUL
+  ✓ utf8Size_pos holds for DEL
+  ✓ utf8Size_pos holds for max BMP
+
+--- String.Pos.Raw advancement ---
+  ✓ next advances past 'a'
+  ✓ next advances past 'b'
+  ✓ next advances past 'c'
+  ✓ p0 < p1 (strict)
+  ✓ p1 < p2 (strict)
+  ✓ p2 < p3 (strict)
+  ✓ next past 'é' (2-byte)
+  ✓ next past '€' (3-byte)
+  ✓ mp0 < mp1 (multibyte strict)
+  ✓ mp1 < mp2 (multibyte strict)
+  ✓ next strictly advances from 0
+
+--- Pos.Raw.get at valid positions ---
+  ✓ get at 0 == 'h'
+  ✓ get at 1 == 'e'
+  ✓ get at 4 == 'o'
+  ✓ get 'a' at 0 (multibyte string)
+  ✓ get '€' at 1 (3-byte char)
+  ✓ get 'b' at 4 (after 3-byte char)
+  ✓ get at 0 == 'x'
+  ✓ next past 'x' lands on 'y'
+
+--- YamlStream ↔ Pos.Raw consistency ---
+  ✓ next? char matches Pos.Raw.get
+  ✓ next? startPos matches Pos.Raw.next
+  ✓ stopPos unchanged
+  ✓ multibyte: next? char is '日'
+  ✓ multibyte: startPos advances by 3
+  ✓ multibyte: startPos == 3
+
+--- remainingLength strictly decreases ---
+  ✓ single char: remainingLength > 0
+  ✓ single char: remaining decreases
+  ✓ single char: remaining == 0 after
+  ✓ r0 > r1 after 'a'
+  ✓ r1 > r2 after 'b'
+  ✓ r2 > r3 after 'c'
+  ✓ r3 == 0 at end
+  ✓ multibyte: drops by utf8Size (3)
+  ✓ multibyte: still strictly decreases
+  ✓ empty: remainingLength == 0
+  ✓ empty: next? is none
+
+--- rawEndPos / utf8ByteSize ---
+  ✓ rawEndPos 'hello' == 5
+  ✓ utf8ByteSize 'hello' == 5
+  ✓ rawEndPos == utf8ByteSize
+  ✓ rawEndPos 'aé€' == 6
+  ✓ utf8ByteSize 'aé€' == 6
+  ✓ rawEndPos '' == 0
+  ✓ utf8ByteSize '' == 0
+  ✓ stream.stopPos == rawEndPos
+  ✓ rawEndPos 4-byte char == 4
+
+--- position validity (character boundaries) ---
+  ✓ pos 0 valid (start)
+  ✓ pos 1 valid (after 'a')
+  ✓ pos 2 valid (after 'b')
+  ✓ pos 0 → 'a'
+  ✓ pos 1 → 'é' (valid boundary)
+  ✓ rawEndPos is 3
+  ✓ chain: p0=0
+  ✓ chain: p1=1 (after 'x')
+  ✓ chain: p2=4 (after '€')
+  ✓ chain: p3=5 (after 'y')
+  ✓ chain: p3 == rawEndPos
+
+--- subtraction arithmetic ---
+  ✓ stopPos == 6
+  ✓ after 'a': start=1, remaining=5
+  ✓ remaining = stop - start
+  ✓ after 'b': start=2, remaining=4
+  ✓ after '€': start=5, remaining=1
+  ✓ '€' consumed 3 bytes
+  ✓ after 'd': start=6, remaining=0
+  ✓ at end: next? is none
+
+--- newline still advances position ---
+  ✓ after 'a': remaining decreases
+  ✓ after '\n': remaining decreases
+  ✓ col resets to 0 on newline
+  ✓ line increments on newline
+  ✓ but byte position still advances
+  ✓ after 'b': remaining decreases
+  ✓ r3 == 0
+
+--- strictly monotone consumption ---
+  ✓ chain length == 5
+  ✓ chain starts at 4
+  ✓ chain ends at 0
+  ✓ all transitions strictly decrease
+  ✓ multibyte chain length == 4
+  ✓ multibyte starts at 9
+  ✓ multibyte ends at 0
+  ✓ multibyte: all transitions strictly decrease
+
+--- stopPos invariance ---
+  ✓ stopPos unchanged after 1st next?
+  ✓ stopPos unchanged after 2nd next?
+  ✓ stopPos unchanged after 3rd next?
+
+--- str invariance ---
+  ✓ str unchanged after next?
+  ✓ str unchanged after 2nd next?
+
+--- hasNext ↔ startPos < stopPos ---
+  ✓ initially: hasNext
+  ✓ initially: start < stop
+  ✓ after 1: hasNext
+  ✓ after 1: start < stop
+  ✓ after 2: not hasNext
+  ✓ after 2: start == stop
+  ✓ after 2: next? is none
+  ✓ empty: not hasNext
+  ✓ empty: start == stop (both 0)
+
+--- decidable property checks ---
+  ✓ Parse.isLineBreak '\n'
+  ✓ ¬Parse.isLineBreak 'a'
+  ✓ Parse.isWhiteSpace ' '
+  ✓ Parse.isWhiteSpace '\t'
+  ✓ ¬Parse.isWhiteSpace 'x'
+  ✓ Parse.isFlowIndicator ','
+  ✓ Parse.isFlowIndicator '['
+  ✓ ¬Parse.isFlowIndicator 'a'
+  ✓ isIndentChar ' '
+  ✓ ¬isIndentChar 'a'
+
+--- indentation column tracking ---
+  ✓ starts at col 0
+  ✓ after 2 spaces: col == 2
+  ✓ after 2 spaces: remaining decreases
+  ✓ 2 spaces = 2 bytes consumed
+  ✓ after 4 spaces: col == 4
+  ✓ after newline: col == 0
+  ✓ 2 spaces after newline: col == 2
+
+=== Results: 129/129 passed ===
+=== Anchor/Alias Tests ===
+=== Anchor & Alias Tests ===
+
+--- Anchor name parsing ---
+  ✓ simple name
+  ✓ name with hyphens
+  ✓ name with underscore and digit
+  ✓ single char name
+
+--- Basic block anchors ---
+  ✓ anchor on plain scalar parses
+  ✓ anchor on double-quoted scalar
+  ✓ anchor on single-quoted scalar
+
+--- Basic block aliases ---
+  ✓ alias resolves to anchored value
+  ✓ alias value is correct
+  ✓ undefined alias fails
+
+--- Block collection anchors ---
+  ✓ anchor on block sequence
+  ✓ sequence has 2 items
+  ✓ anchor on block mapping
+
+--- Flow context anchors ---
+  ✓ anchor on flow sequence
+  ✓ anchor on flow mapping
+  ✓ alias in block sequence
+  ✓ alias equals anchor
+
+--- Flow inline anchors ---
+  ✓ anchors within flow seq
+  ✓ first alias matches
+  ✓ second alias matches
+  ✓ anchor in flow mapping value
+  ✓ flow mapping alias matches
+
+--- Value correctness ---
+  ✓ anchor value preserved
+  ✓ alias is exact copy
+
+--- Anchor map behavior ---
+  ✓ multiple anchors: *x
+  ✓ multiple anchors: *y
+  ✓ anchor redefinition uses latest
+
+--- YAML spec examples ---
+  ✓ Ex 2.10: hr value
+  ✓ Ex 2.10: rbi value
+
+--- Alias as mapping key ---
+  ✓ alias in sequence resolves
+  ✓ alias equals original
+
+--- Document scope (§3.2.2.2) ---
+  ✓ first doc parses
+  ✓ anchor does not leak across docs
+
+=== Results: 33/33 passed ===
+=== Tag Tests ===
+=== Tag Tests ===
+
+--- Tag prefix parsing ---
+  ✓ non-specific tag
+  ✓ secondary handle !!str
+  ✓ secondary handle !!int
+  ✓ secondary handle !!map
+  ✓ secondary handle !!seq
+  ✓ primary local tag !local
+  ✓ verbatim tag
+  ✓ named handle !e!tag
+
+--- Block tags ---
+  ✓ !!str on plain scalar parses
+  ✓ !!str tag present
+  ✓ !!str on dquoted scalar
+  ✓ !!str tag on dquoted
+  ✓ !!str on squoted scalar
+  ✓ !!str tag on squoted
+  ✓ !!seq on block sequence
+  ✓ !!seq tag present
+  ✓ !!map on block mapping
+  ✓ !!map tag present
+  ✓ non-specific tag on scalar
+  ✓ non-specific tag value
+  ✓ tag on mapping value
+  ✓ tag on mapping value present
+  ✓ tag on seq item 0
+  ✓ tag on seq item 1
+
+--- Flow tags ---
+  ✓ !!seq on flow sequence
+  ✓ !!seq tag on flow seq
+  ✓ !!map on flow mapping
+  ✓ !!map tag on flow map
+  ✓ tag in flow mapping value
+  ✓ tag in flow value present
+
+--- Tag + anchor ordering ---
+  ✓ tag-then-anchor: value correct
+  ✓ tag-then-anchor: tag present
+  ✓ tag-then-anchor: alias resolves
+  ✓ anchor-then-tag: value correct
+  ✓ anchor-then-tag: tag present
+  ✓ anchor-then-tag: alias resolves
+
+--- Mapping key tags ---
+  ✓ tag on mapping key
+  ✓ mapping key content
+
+--- withTag helper ---
+  ✓ withTag scalar
+  ✓ withTag scalar content
+  ✓ withTag sequence
+  ✓ withTag sequence items
+  ✓ withTag mapping
+  ✓ withTag mapping pairs
+
+=== Results: 44/44 passed ===
+=== Explicit Key Tests ===
+=== Explicit Key Tests ===
+
+--- Basic explicit keys ---
+  ✓ ? a : b parses as mapping
+  ✓ ? a : b key
+  ✓ ? a : b value
+  ✓ ? a : 1.3 key
+  ✓ ? a : 1.3 value
+  ✓ ? explicit key (no colon)
+  ✓ ? explicit key: key content
+
+--- Missing value (null) ---
+  ✓ ? a produces mapping
+  ✓ ? a key
+  ✓ ? a value is null
+  ✓ ? a ? b key count
+  ✓ ? a ? b first key
+  ✓ ? a ? b second key
+
+--- Next-line keys ---
+  ✓ 6PBE key is sequence
+  ✓ 6PBE value is sequence
+  ✓ bare ? + : value
+  ✓ bare ? key is null
+  ✓ bare ? : value
+
+--- Complex keys ---
+  ✓ JTV5 multiline key
+  ✓ JTV5 multiline value
+  ✓ V9D5 parses
+  ✓ V9D5 first item is mapping
+  ✓ V9D5 second item is mapping
+  ✓ M5DY key is sequence
+  ✓ M5DY value is sequence
+
+--- Explicit key + anchors ---
+  ✓ 6M2F key
+  ✓ 6M2F value
+  ✓ ? &d produces mapping
+  ✓ ? &e : &a parses
+
+--- Mixed explicit/implicit keys ---
+  ✓ GH63 pair count
+  ✓ GH63 explicit key
+  ✓ GH63 explicit value
+  ✓ GH63 implicit key
+  ✓ GH63 implicit value
+  ✓ ZWK4 pair count
+  ✓ ZWK4 first key
+  ✓ ZWK4 first value
+  ✓ ZWK4 explicit key
+  ✓ ZWK4 third key
+  ✓ ZWK4 third value
+
+--- Comments between key and value ---
+  ✓ X8DW key
+  ✓ X8DW value
+  ✓ ? key # comment
+
+--- Flow explicit keys ---
+  ✓ DFF7 parses as mapping
+  ✓ DFF7 pair count
+  ✓ DFF7 explicit key
+  ✓ DFF7 explicit value
+  ✓ DFF7 implicit key
+  ✓ DFF7 bare ? null key
+  ✓ FRK4 parses
+  ✓ FRK4 pair count
+  ✓ FRK4 first key
+  ✓ FRK4 first value is null
+  ✓ FRK4 empty key value
+  ✓ {? a : b} key
+  ✓ {? a : b} value
+
+--- Flow sequence explicit entries ---
+  ✓ [? a : b] is sequence
+  ✓ [? a : b] item is mapping
+  ✓ [?] is sequence
+  ✓ [?] item is mapping
+
+--- Empty keys (flow) ---
+  ✓ {: bar} parses
+  ✓ {: bar} empty key
+  ✓ {: bar} value
+  ✓ {:} parses
+  ✓ {:} empty key
+  ✓ {:} null value
+
+=== Results: 66/66 passed ===
+=== Flow Completeness Tests ===
+=== Flow Completeness Tests ===
+
+--- Implicit single-pair entries ---
+  ✓ [a : b] is sequence
+  ✓ [a : b] item is mapping
+  ✓ [a : b] key
+  ✓ [a : b] value
+  ✓ [one:1, two:2] is sequence
+  ✓ [one:1, two:2] count
+  ✓ [one:1] key
+  ✓ [one:1] value
+  ✓ [two:2] key
+  ✓ [two:2] value
+  ✓ [key:] is sequence
+  ✓ [key:] item is mapping
+  ✓ [key:] key
+  ✓ [key:] null value
+  ✓ [YAML : separate] is sequence
+  ✓ [YAML : separate] key
+  ✓ [YAML : separate] value
+
+--- JSON-like key detection ---
+  ✓ ["JSON like":adjacent] is sequence
+  ✓ ["JSON like":adjacent] is mapping
+  ✓ ["JSON like":adjacent] key
+  ✓ ["JSON like":adjacent] value
+  ✓ ['single':val] is sequence
+  ✓ ['single':val] is mapping
+  ✓ ['single':val] key
+  ✓ ['single':val] value
+  ✓ {"key" :value} is mapping
+  ✓ {"key" :value} key
+  ✓ {"key" :value} value
+  ✓ {"key":value} is mapping
+  ✓ {"key":value} key
+  ✓ {"key":value} value
+
+--- Empty implicit keys ---
+  ✓ [: value] is sequence
+  ✓ [: value] is mapping
+  ✓ [: value] null key
+  ✓ [: value] value
+  ✓ [:, a] is sequence
+  ✓ [:, a] count
+  ✓ [:, a] first is mapping
+  ✓ [:] null key
+  ✓ [:] null value
+
+--- Multi-line flow scalars ---
+  ✓ {multi line: value} is mapping
+  ✓ {multi line: value} key
+  ✓ {multi line: value} value
+  ✓ {key: multi line} is mapping
+  ✓ {key: multi line} key
+  ✓ {key: multi line} value
+  ✓ [multi line] is sequence
+  ✓ [multi line] content
+
+--- Mixed flow sequence entries ---
+  ✓ [a, b:c, d] is sequence
+  ✓ [a, b:c, d] count
+  ✓ [a, b:c, d] first is scalar a
+  ✓ [a, b:c, d] second is mapping
+  ✓ [a, b:c, d] second key
+  ✓ [a, b:c, d] second value
+  ✓ [a, b:c, d] third is scalar d
+  ✓ [a, b:c,] is sequence
+  ✓ [a, b:c,] count
+
+--- Flow mapping collection keys ---
+  ✓ {[1,2]: pair} is mapping
+  ✓ {[1,2]: pair} key is sequence
+  ✓ {[1,2]: pair} value
+  ✓ {{a:b}: nested} is mapping
+  ✓ {{a:b}: nested} key is mapping
+  ✓ {{a:b}: nested} value
+
+--- Suite regressions ---
+  ✓ 87E4 is sequence
+  ✓ 87E4 item is mapping
+  ✓ 87E4 key
+  ✓ 87E4 value
+  ✓ L9U5 is sequence
+  ✓ L9U5 key
+  ✓ L9U5 value
+  ✓ LQZ7 is sequence
+  ✓ LQZ7 key
+  ✓ LQZ7 value
+  ✓ QF4Y is sequence
+  ✓ QF4Y item is mapping
+  ✓ QF4Y key
+  ✓ QF4Y value
+  ✓ 8UDB is sequence
+  ✓ 8UDB count
+  ✓ 8KB6 is mapping
+  ✓ 8KB6 key
+  ✓ NJ66 is mapping
+  ✓ NJ66 pair count
+  ✓ NJ66 first key
+  ✓ NJ66 second key
+  ✓ CFD4 is sequence
+  ✓ CFD4 is mapping
+  ✓ CFD4 null key
+
+=== Results: 88/88 passed ===

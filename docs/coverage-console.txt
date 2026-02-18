@@ -47,7 +47,7 @@ Running all tests for HTML report...
   [31/416] 4ABK ✓
   [32/416] 4CQQ ✓
   [33/416] 4EJS ⚠ unexpected pass
-  [34/416] 4FJ6 ✗ parse error: expected ',' or ']' in flow sequence, got ':'
+  [34/416] 4FJ6 ✓
   [35/416] 4GC6 ○ YAML 1.3 specific
   [36/416] 4H7K ⚠ unexpected pass
   [37/416] 4HVU ⚠ unexpected pass
@@ -128,13 +128,13 @@ Running all tests for HTML report...
   [112/416] 7Z25 ✓
   [113/416] 7ZZ5 ✓
   [114/416] 82AN ○ YAML 1.3 specific
-  [115/416] 87E4 ✗ parse error: expected ',' or ']' in flow sequence, got ':'
+  [115/416] 87E4 ✓
   [116/416] 8CWC ✓
   [117/416] 8G76 ✓
-  [118/416] 8KB6 ✗ parse error: expected ',' or '}}' in flow mapping, got 'l'
+  [118/416] 8KB6 ✓
   [119/416] 8MK2 ○ YAML 1.3 specific
   [120/416] 8QBE ✓
-  [121/416] 8UDB ✗ parse error: expected ',' or ']' in flow sequence, got 't'
+  [121/416] 8UDB ✓
   [122/416] 8XDJ ⚠ unexpected pass
   [123/416] 8XYN ✗ parse error: unexpected token '😁' at { offset := 11, line := 1, col := 4 }; expected anchor name at { offset := 7, line := 1, col := 3 }; expected anchor (&name) at { offset := 7, line := 1, col := 3 }; expected block sequence at { offset := 7, line := 1, col := 3 }
   [124/416] 93JH ✓
@@ -155,7 +155,7 @@ Running all tests for HTML report...
   [139/416] 9KBC ⚠ unexpected pass
   [140/416] 9MAG ⚠ unexpected pass
   [141/416] 9MMA ⚠ unexpected pass
-  [142/416] 9MMW ✗ parse error: expected ',' or ']' in flow sequence, got ':'
+  [142/416] 9MMW ✓
   [143/416] 9MQT ✓
   [144/416] 9MQT ⚠ unexpected pass
   [145/416] 9SA2 ✓
@@ -182,12 +182,12 @@ Running all tests for HTML report...
   [166/416] C2SP ⚠ unexpected pass
   [167/416] C4HZ ✓
   [168/416] CC74 ✓
-  [169/416] CFD4 ✗ parse error: unexpected token at { offset := 4, line := 0, col := 4 }; expected plain scalar at { offset := 4, line := 0, col := 4 }; expected flow value at { offset := 4, line := 0, col := 4 }; expected flow sequence at { offset := 4, line := 0, col := 4 }; expected block sequence at { offset := 4, line := 0, col := 4 }
+  [169/416] CFD4 ✓
   [170/416] CML9 ⚠ unexpected pass
-  [171/416] CN3R ✗ parse error: expected ',' or ']' in flow sequence, got ':'
+  [171/416] CN3R ✗ parse error: unexpected token at { offset := 29, line := 3, col := 1 }; expected plain scalar at { offset := 29, line := 3, col := 1 }; expected flow value at { offset := 29, line := 3, col := 1 }; expected flow sequence at { offset := 29, line := 3, col := 1 }
   [172/416] CPZ3 ✓
   [173/416] CQ3W ⚠ unexpected pass
-  [174/416] CT4Q ✗ parse error: expected ',' or ']' in flow sequence, got 'b'
+  [174/416] CT4Q ✓
   [175/416] CTN5 ⚠ unexpected pass
   [176/416] CUP7 ✓
   [177/416] CVW2 ⚠ unexpected pass
@@ -287,11 +287,11 @@ Running all tests for HTML report...
   [271/416] L24T ✓
   [272/416] L383 ✓
   [273/416] L94M ✓
-  [274/416] L9U5 ✗ parse error: expected ',' or ']' in flow sequence, got ':'
+  [274/416] L9U5 ✓
   [275/416] LE5A ✓
   [276/416] LHL4 ⚠ unexpected pass
   [277/416] LP6E ✓
-  [278/416] LQZ7 ✗ parse error: expected ',' or ']' in flow sequence, got ':'
+  [278/416] LQZ7 ✓
   [279/416] LX3P ○ YAML 1.3 specific
   [280/416] M29M ✓
   [281/416] M2N8 ✓
@@ -318,7 +318,7 @@ Running all tests for HTML report...
   [302/416] NAT4 ✓
   [303/416] NB6Z ✓
   [304/416] NHX8 ✓
-  [305/416] NJ66 ✗ parse error: expected ',' or '}}' in flow mapping, got 'l'
+  [305/416] NJ66 ✓
   [306/416] NKF9 ✓
   [307/416] NP9H ✓
   [308/416] P2AD ✓
@@ -335,7 +335,7 @@ Running all tests for HTML report...
   [319/416] Q8AD ○ YAML 1.3 specific
   [320/416] Q9WF ○ YAML 1.3 specific
   [321/416] QB6E ⚠ unexpected pass
-  [322/416] QF4Y ✗ parse error: expected ',' or ']' in flow sequence, got ':'
+  [322/416] QF4Y ✓
   [323/416] QLJ7 ⚠ unexpected pass
   [324/416] QT73 ✓
   [325/416] R4YG ✓
@@ -355,7 +355,7 @@ Running all tests for HTML report...
   [339/416] S7BG ✓
   [340/416] S98Z ⚠ unexpected pass
   [341/416] S9E8 ✓
-  [342/416] SBG9 ✗ parse error: unexpected token at { offset := 12, line := 0, col := 12 }; expected plain scalar at { offset := 12, line := 0, col := 12 }; expected flow mapping at { offset := 12, line := 0, col := 12 }
+  [342/416] SBG9 ✓
   [343/416] SF5V ⚠ unexpected pass
   [344/416] SKE5 ✓
   [345/416] SM9W ✓
@@ -385,7 +385,7 @@ Running all tests for HTML report...
   [369/416] UKK6 ✓
   [370/416] UKK6 ✓
   [371/416] UKK6 ✗ parse error: unexpected token at { offset := 2, line := 1, col := 0 }
-  [372/416] UT92 ✗ parse error: expected ',' or '}}' in flow mapping, got '%'
+  [372/416] UT92 ✓
   [373/416] UV7Q ✓
   [374/416] V55R ✓
   [375/416] V9D5 ✓
@@ -432,7 +432,7 @@ Running all tests for HTML report...
   [416/416] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 228/416 (54.000000%)
+Correct: 241/416 (57.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 17/17

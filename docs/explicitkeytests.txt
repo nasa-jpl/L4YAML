@@ -1,0 +1,90 @@
+=== Explicit Key Tests ===
+=== Explicit Key Tests ===
+
+--- Basic explicit keys ---
+  ✓ ? a : b parses as mapping
+  ✓ ? a : b key
+  ✓ ? a : b value
+  ✓ ? a : 1.3 key
+  ✓ ? a : 1.3 value
+  ✓ ? explicit key (no colon)
+  ✓ ? explicit key: key content
+
+--- Missing value (null) ---
+  ✓ ? a produces mapping
+  ✓ ? a key
+  ✓ ? a value is null
+  ✓ ? a ? b key count
+  ✓ ? a ? b first key
+  ✓ ? a ? b second key
+
+--- Next-line keys ---
+  ✓ 6PBE key is sequence
+  ✓ 6PBE value is sequence
+  ✓ bare ? + : value
+  ✓ bare ? key is null
+  ✓ bare ? : value
+
+--- Complex keys ---
+  ✓ JTV5 multiline key
+  ✓ JTV5 multiline value
+  ✓ V9D5 parses
+  ✓ V9D5 first item is mapping
+  ✓ V9D5 second item is mapping
+  ✓ M5DY key is sequence
+  ✓ M5DY value is sequence
+
+--- Explicit key + anchors ---
+  ✓ 6M2F key
+  ✓ 6M2F value
+  ✓ ? &d produces mapping
+  ✓ ? &e : &a parses
+
+--- Mixed explicit/implicit keys ---
+  ✓ GH63 pair count
+  ✓ GH63 explicit key
+  ✓ GH63 explicit value
+  ✓ GH63 implicit key
+  ✓ GH63 implicit value
+  ✓ ZWK4 pair count
+  ✓ ZWK4 first key
+  ✓ ZWK4 first value
+  ✓ ZWK4 explicit key
+  ✓ ZWK4 third key
+  ✓ ZWK4 third value
+
+--- Comments between key and value ---
+  ✓ X8DW key
+  ✓ X8DW value
+  ✓ ? key # comment
+
+--- Flow explicit keys ---
+  ✓ DFF7 parses as mapping
+  ✓ DFF7 pair count
+  ✓ DFF7 explicit key
+  ✓ DFF7 explicit value
+  ✓ DFF7 implicit key
+  ✓ DFF7 bare ? null key
+  ✓ FRK4 parses
+  ✓ FRK4 pair count
+  ✓ FRK4 first key
+  ✓ FRK4 first value is null
+  ✓ FRK4 empty key value
+  ✓ {? a : b} key
+  ✓ {? a : b} value
+
+--- Flow sequence explicit entries ---
+  ✓ [? a : b] is sequence
+  ✓ [? a : b] item is mapping
+  ✓ [?] is sequence
+  ✓ [?] item is mapping
+
+--- Empty keys (flow) ---
+  ✓ {: bar} parses
+  ✓ {: bar} empty key
+  ✓ {: bar} value
+  ✓ {:} parses
+  ✓ {:} empty key
+  ✓ {:} null value
+
+=== Results: 66/66 passed ===

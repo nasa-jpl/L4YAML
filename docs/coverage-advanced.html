@@ -163,13 +163,13 @@
   <p class="subtitle">YAML 1.2.2 parser compliance against the official yaml-test-suite</p>
   <div class="stats">
     <div class="stat-box stat-total"><h3>Total</h3><div class="number">81</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">52</div></div>
-    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">12</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">55</div></div>
+    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">9</div></div>
     <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">0</div></div>
     <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">0</div></div>
     <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">17</div></div>
     <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">0</div></div>
-    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">52/81</div><div class="pct">(64.197531%)</div></div>
+    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">55/81</div><div class="pct">(67.901235%)</div></div>
   </div>
   <h3>Coverage by Stage</h3>
   <div class="stage-cards">
@@ -195,8 +195,8 @@
     </div>
     <div class="stage-card">
       <div class="stage-card-name">advanced</div>
-      <div class="stage-card-stats">52/81 correct (64.000000%) · 52 pass, 12 fail, 0 exp-fail, 0 unexp-pass, 17 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 64.000000%"></div></div>
+      <div class="stage-card-stats">55/81 correct (67.000000%) · 55 pass, 9 fail, 0 exp-fail, 0 unexp-pass, 17 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 67.000000%"></div></div>
     </div>
     <div class="stage-card">
       <div class="stage-card-name">error</div>
@@ -309,13 +309,13 @@
         <td><span class="tag">anchor</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="4fj6 nested implicit complex keys complex-key flow mapping sequence">
+      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="4fj6 nested implicit complex keys complex-key flow mapping sequence">
         <td>4FJ6</td>
         <td>Nested implicit complex keys</td>
         <td>advanced</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">complex-key</span><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
-        <td><span class="error-msg" title="parse error: expected &#39;,&#39; or &#39;]&#39; in flow sequence, got &#39;:&#39;">parse error: expected &#39;,&#39; or &#39;]&#39; in flow sequence, got &#39;:&#39;</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="52dl explicit non-specific tag [1.3] tag 1.3-mod">
         <td>52DL</td>
@@ -531,15 +531,15 @@
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">anchor</span><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
-        <td><span class="error-msg" title="parse error: expected &#39;,&#39; or &#39;]&#39; in flow sequence, got &#39;:&#39;">parse error: expected &#39;,&#39; or &#39;]&#39; in flow sequence, got &#39;:&#39;</span></td>
+        <td><span class="error-msg" title="parse error: unexpected token at { offset := 29, line := 3, col := 1 }; expected plain scalar at { offset := 29, line := 3, col := 1 }; expected flow value at { offset := 29, line := 3, col := 1 }; expected flow sequence at { offset := 29, line := 3, col := 1 }">parse error: unexpected token at { offset := 29, line := 3, col := 1 }; expected plain scalar at { offset := 29, line := 3, col := 1 }; expected flow value at { offset := 29, line := 3, col := 1 }; expected flow sequence at { offset := 29, line := 3, col := 1 }</span></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="ct4q spec example 7.20. single pair explicit entry explicit-key spec flow mapping">
+      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="ct4q spec example 7.20. single pair explicit entry explicit-key spec flow mapping">
         <td>CT4Q</td>
         <td>Spec Example 7.20. Single Pair Explicit Entry</td>
         <td>advanced</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">explicit-key</span><span class="tag">spec</span><span class="tag">flow</span><span class="tag">mapping</span></td>
-        <td><span class="error-msg" title="parse error: expected &#39;,&#39; or &#39;]&#39; in flow sequence, got &#39;b&#39;">parse error: expected &#39;,&#39; or &#39;]&#39; in flow sequence, got &#39;b&#39;</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="cup7 spec example 5.6. node property indicators local-tag spec tag alias">
         <td>CUP7</td>
@@ -757,13 +757,13 @@
         <td><span class="tag">explicit-key</span><span class="tag">spec</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="sbg9 flow sequence in flow mapping complex-key sequence mapping flow">
+      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="sbg9 flow sequence in flow mapping complex-key sequence mapping flow">
         <td>SBG9</td>
         <td>Flow Sequence in Flow Mapping</td>
         <td>advanced</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">complex-key</span><span class="tag">sequence</span><span class="tag">mapping</span><span class="tag">flow</span></td>
-        <td><span class="error-msg" title="parse error: unexpected token at { offset := 12, line := 0, col := 12 }; expected plain scalar at { offset := 12, line := 0, col := 12 }; expected flow mapping at { offset := 12, line := 0, col := 12 }">parse error: unexpected token at { offset := 12, line := 0, col := 12 }; expected plain scalar at { offset := 12, line := 0, col := 12 }; expected flow mapping at { offset := 12, line := 0, col := 12 }</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="ske5 anchor before zero indented sequence anchor indent sequence">
         <td>SKE5</td>
