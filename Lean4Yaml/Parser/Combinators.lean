@@ -145,6 +145,13 @@ partial def skipBlankLines : YamlParser Unit := do
       skipBlankLines
   | none => return
 
+/-!
+## Indentation Consumption
+
+YAML 1.2.2 §6.1: tab characters must not be used in indentation.
+`consumeIndent` enforces this as a validation error, not an exception.
+-/
+
 /--
 Consume exactly `n` spaces of indentation, rejecting tabs.
 
@@ -155,13 +162,23 @@ To maintain portability, tab characters must not be used in indentation."
 This is the **only** way to consume indentation in the verified parser.
 There is no ambiguous `skipSpace` that might eat indentation — the verified
 architecture enforces that indentation is always consumed explicitly.
+
+**Pre-condition**: stream is at the start of an indented line.
+**Post-condition**: if tabs are detected, `validationError` is set.
+  The `drop n (token ' ')` will fail naturally (via lean4-parser),
+  causing caller to backtrack. The validation error persists through
+  backtracking and is checked at the top level.
 -/
 def consumeIndent (n : Nat) : YamlParser Unit :=
   withErrorMessage s!"expected {n} spaces of indentation (tabs not allowed)" do
     -- Check for tab at start (YAML 1.2.2 §6.1, https://yaml.org/spec/1.2.2/#61-indentation-spaces)
     match ← option? (lookAhead (token '\t')) with
-    | some _ => throwUnexpectedWithMessage (msg := "tabs are not allowed for indentation")
-    | none => drop n (token ' ')
+    | some _ =>
+      setValidationError "tabs are not allowed for indentation (YAML 1.2.2 §6.1)"
+      -- Let `drop n` below fail naturally: token ' ' won't match '\t',
+      -- causing lean4-parser to signal no-match to the caller.
+    | none => pure ()
+    drop n (token ' ')
 
 /-! ## Dispatch Result
 
@@ -185,31 +202,21 @@ Each variant maps to a proof obligation:
 - `matched val`: parser produced a result
 - `noMatch`: no parser matched (justifies trying alternatives)
 - `invalid msg`: input is invalid (provable dead-end, should not backtrack)
+
+Callers must pattern-match on the result directly.  There is no
+`.toParser` conversion — the "no exceptions for decisions" principle
+requires that each call site explicitly handles all three variants.
+
+**For `.invalid`**: callers must call `setValidationError msg` to
+record the error in the stream (where it survives backtracking),
+then return a fallback value.  The top-level parser checks the
+stream's `validationError` field and rejects the input.
 -/
 inductive DispatchResult (α : Type) where
   | matched (val : α)
   | noMatch
   | invalid (msg : String)
   deriving Repr, Nonempty
-
-/--
-Convert a `DispatchResult` to a parser action.
-
-- `matched val` → returns the value
-- `noMatch` → throws (to be caught by caller's `option?` or `withErrorMessage`)
-- `invalid msg` → throws with message
-
-**Note**: Both `noMatch` and `invalid` currently produce `throwUnexpected`,
-meaning lean4-parser's error-catching combinators cannot distinguish them.
-This is a known limitation — future work will propagate `DispatchResult`
-through callers to avoid `option?`/`<|>` swallowing `.invalid` errors.
-The structural encoding still provides value: each dispatch point is
-explicitly classified, enabling targeted future changes.
--/
-def DispatchResult.toParser {α : Type} : DispatchResult α → YamlParser α
-  | .matched val => return val
-  | .noMatch => throwUnexpected
-  | .invalid msg => withErrorMessage msg throwUnexpected
 
 /-! ## Plain Scalar Continuation Types
 
@@ -330,11 +337,15 @@ Validate that there is no wrongly-indented block sequence indicator.
 
 When a block sequence loop terminates because `col ≠ seqIndent`, this
 check detects if there's a `- ` indicator at the wrong column. If found,
-it raises a hard error instead of silently ending the sequence.
+it records a validation error in the stream (survives backtracking).
 
 Only checks when `col > seqIndent` (over-indented). Under-indented
 indicators at `col < seqIndent` may belong to a parent-level sequence
 and are handled correctly by the parent's own loop.
+
+**Pre-condition**: `col ≠ seqIndent`.
+**Post-condition**: if a wrongly-indented sequence indicator is found,
+  `stream'.validationError = some msg`.
 
 See: ANALYSIS.md §2.A "Three-Valued Error Recovery"
 -/
@@ -342,9 +353,8 @@ def validateNoWrongIndentSeq (seqIndent : Nat) (col : Nat) : YamlParser Unit := 
   if col > seqIndent then
     let hasSeq ← hasSequenceIndicator
     if hasSeq then
-      withErrorMessage
+      setValidationError
         s!"sequence item at column {col}, expected column {seqIndent} (wrong indentation)"
-        throwUnexpected
 
 /--
 Validate that there is no wrongly-indented block mapping indicator.
@@ -355,6 +365,10 @@ Similar to `validateNoWrongIndentSeq`, but checks for mapping key patterns
 The `scanForColon` parameter is a parser that detects a mapping key pattern,
 passed in to avoid circular imports with Block.lean's `detectMappingKey`.
 
+**Pre-condition**: `col ≠ mapIndent`.
+**Post-condition**: if a wrongly-indented mapping indicator is found,
+  `stream'.validationError = some msg`.
+
 See: ANALYSIS.md §2.A "Three-Valued Error Recovery"
 -/
 def validateNoWrongIndentMap (mapIndent : Nat) (col : Nat)
@@ -362,9 +376,8 @@ def validateNoWrongIndentMap (mapIndent : Nat) (col : Nat)
   if col > mapIndent then
     let hasMap ← lookAhead scanForColon
     if hasMap then
-      withErrorMessage
+      setValidationError
         s!"mapping entry at column {col}, expected column {mapIndent} (wrong indentation)"
-        throwUnexpected
 
 /-! ## Plain Scalar Continuation Check
 

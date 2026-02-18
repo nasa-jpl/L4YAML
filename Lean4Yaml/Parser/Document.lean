@@ -144,8 +144,10 @@ def documentStartMarker : YamlParser Unit :=
     match ← option? (lookAhead anyToken) with
     | some c =>
       if !isWhiteSpace c && !isLineBreak c && c != '#' then
-        Parser.throwUnexpectedWithMessage
-          (msg := s!"'---' must be followed by whitespace or newline, got '{c}'")
+        -- `---xxx` is not a valid document start marker.
+        -- Record validation error; the `---` is already consumed.
+        setValidationError
+          s!"'---' must be followed by whitespace or newline, got '{c}'"
     | none => pure ()  -- EOF is fine
     skipTrailing
     let _ ← option? newline
@@ -161,8 +163,8 @@ def documentEndMarker : YamlParser Unit :=
     match ← option? (lookAhead anyToken) with
     | some c =>
       if !isWhiteSpace c && !isLineBreak c && c != '#' then
-        Parser.throwUnexpectedWithMessage
-          (msg := s!"'...' must be followed by whitespace or newline, got '{c}'")
+        setValidationError
+          s!"'...' must be followed by whitespace or newline, got '{c}'"
     | none => pure ()
     skipTrailing
     let _ ← option? newline
@@ -210,12 +212,18 @@ partial def document : YamlParser DocumentResult := do
   if atDocEnd then
     let _ ← option? documentEndMarker
     return .parsed { value := YamlValue.null, directives := dirs }
-  let value ← blockValue 0
+  let bv ← blockValue 0
+  let value := bv.getD .null
   let posAfter ← currentPos
   -- If no input was consumed, blockValue backtracked on an unrecognized
   -- construct (anchor, tag, explicit key, etc.) and returned null.
   -- Report this as stalled rather than returning a phantom document.
   if posAfter == posBefore then
+    return .stalled posBefore
+  -- Check for validation errors detected during this document.
+  -- The error survives backtracking and is returned at the top level.
+  let valErr ← getValidationError
+  if valErr.isSome then
     return .stalled posBefore
   skipBlankLines
   -- Optionally consume document end marker
@@ -245,12 +253,13 @@ partial def yamlStream : YamlParser (Array YamlDocument) := do
       continue' := false
     | .stalled pos =>
       -- Input present but not parseable as a document.
-      -- Skip one character to avoid infinite loop, then report error.
+      -- Record validation error and stop the loop.
       let c ← option? anyToken
       let msg := match c with
         | some ch => s!"unhandled construct '{ch}' at line {pos.line}, column {pos.col}"
         | none => s!"stuck at line {pos.line}, column {pos.col}"
-      withErrorMessage msg throwUnexpected
+      setValidationError msg
+      continue' := false
   return docs
 
 /-! ## Top-Level Parse Functions -/
@@ -258,13 +267,28 @@ partial def yamlStream : YamlParser (Array YamlDocument) := do
 /--
 Parse a YAML string into an array of documents.
 
-This is the main entry point for the parser.
+This is the main entry point for the parser.  After parsing, checks
+the stream's `validationError` field — if set, the input was rejected
+even though individual sub-parsers may have produced partial results.
+
+**Post-condition**: returns `.ok docs` only if ALL of:
+  1. The parser produced a valid document array.
+  2. No validation error was recorded in the stream.
 -/
 def parseYaml (input : String) : Except String (Array YamlDocument) :=
   let stream := YamlStream.ofString input
   match Parser.run yamlStream stream with
-  | .ok _ docs => .ok docs
-  | .error _ err => .error (toString err)
+  | .ok stream' docs =>
+    -- Check for validation errors that survived backtracking.
+    match stream'.validationError with
+    | some msg => .error msg
+    | none => .ok docs
+  | .error stream' err =>
+    -- If both a parse error and a validation error exist,
+    -- prefer the validation error (more specific).
+    match stream'.validationError with
+    | some msg => .error msg
+    | none => .error (toString err)
 
 /--
 Parse a YAML string expecting exactly one document.

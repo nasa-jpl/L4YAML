@@ -98,11 +98,9 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
       if isLineBreak c then
         -- Value on next line: use blockValue which handles
         -- blank lines, indentation, and dispatching.
-        -- Use option? so that under-indented next-line content
-        -- correctly produces a null anchored node (e.g., `- &a\nnext`)
-        let val ← match ← option? (blockValue contentIndent) with
-          | some v => pure v
-          | none => pure YamlValue.null
+        -- blockValue returns Option — none means under-indented.
+        let bv ← blockValue contentIndent
+        let val := bv.getD .null
         let val := match tagName with | some t => val.withTag t | none => val
         storeAnchor name val
         return .matched val
@@ -139,10 +137,9 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
     match ← option? (lookAhead anyToken) with
     | some c =>
       if isLineBreak c then
-        -- Use option? so under-indented next-line content produces null
-        let val ← match ← option? (blockValue contentIndent) with
-          | some v => pure v
-          | none => pure YamlValue.null
+        -- blockValue returns Option — none means under-indented.
+        let bv ← blockValue contentIndent
+        let val := bv.getD .null
         let val := val.withTag tag
         match anchorName with
         | some name => storeAnchor name val
@@ -174,7 +171,9 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
       | some c => return isWhiteSpace c || isLineBreak c
       | none => return true
     if isExplicitKey then
-      return .matched (← blockMapping contentIndent)
+      match ← blockMapping contentIndent with
+      | some val => return .matched val
+      | none => return .noMatch
     else
       let baseIndent := if contentIndent > 0 then contentIndent - 1 else 0
       return .matched (← plainScalar (inFlow := false) (baseIndent := baseIndent))
@@ -186,7 +185,9 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
       | some c => return isWhiteSpace c || isLineBreak c
       | none => return true
     if isSeq then
-      return .matched (← blockSequence contentIndent)
+      match ← blockSequence contentIndent with
+      | some val => return .matched val
+      | none => return .noMatch
     else
       -- baseIndent for continuation is the parent structure's indent level.
       -- contentIndent = parentIndent + 1, so baseIndent = contentIndent - 1.
@@ -198,7 +199,9 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
     let isMap ← lookAhead do
       detectMappingKey (inFlow := false)
     if isMap then
-      return .matched (← blockMapping contentIndent)
+      match ← blockMapping contentIndent with
+      | some val => return .matched val
+      | none => return .noMatch
     else
       let baseIndent := if contentIndent > 0 then contentIndent - 1 else 0
       return .matched (← plainScalar (inFlow := false) (baseIndent := baseIndent))
@@ -210,24 +213,34 @@ The `minIndent` parameter specifies the minimum indentation level
 for this value's content. Content at or below this level belongs
 to a parent structure.
 
-Delegates character-based dispatch to `dispatchByChar` and converts
-the `DispatchResult` to a parser action.
+Returns `Option YamlValue`:
+- `some val`: successfully parsed a value
+- `none`: no value at this indentation level (content is under-indented
+  or absent — belongs to a parent structure)
+
+For `DispatchResult.invalid` from `dispatchByChar`, the validation error
+is recorded in the stream (survives backtracking) and `none` is returned.
+
+**Pre-condition**: stream is positioned after any leading structure indicators.
+**Post-condition**: if `some val`, input was consumed and `val` is the parsed
+  block value.  If `none`, no content was consumed at this indent level.
+  If `dispatchByChar` returned `.invalid`, `stream'.validationError ≠ none`.
 -/
-partial def blockValue (minIndent : Nat) : YamlParser YamlValue :=
-  withErrorMessage "expected YAML value" do
-    -- Skip blank lines before the value
-    skipBlankLines
-    -- Consume leading whitespace up to content
-    -- (indentation is the column where content starts)
-    skipHWhitespace
-    let col ← currentCol
-    if col < minIndent then
-      -- Structural boundary: content below required indent belongs to parent.
-      -- Semantically DispatchResult.noMatch, but blockValue returns
-      -- YamlParser YamlValue so we use throwUnexpected.
-      withErrorMessage s!"content at column {col} is less than minimum indent {minIndent}" throwUnexpected
-    let result ← dispatchByChar minIndent
-    result.toParser
+partial def blockValue (minIndent : Nat) : YamlParser (Option YamlValue) := do
+  skipBlankLines
+  skipHWhitespace
+  let col ← currentCol
+  -- Content below minimum indentation belongs to a parent structure.
+  -- This is a structural decision, not an error.
+  if col < minIndent then
+    return none
+  let result ← dispatchByChar col
+  match result with
+  | .matched val => return some val
+  | .noMatch => return none
+  | .invalid msg =>
+    setValidationError msg
+    return none
 
 /--
 Parse a block sequence
@@ -243,15 +256,15 @@ Parse a block sequence
 Each item starts with `- ` at the same indentation level.
 The content of each item is a block value indented relative to the `-`.
 -/
-partial def blockSequence (minIndent : Nat) : YamlParser YamlValue :=
+partial def blockSequence (minIndent : Nat) : YamlParser (Option YamlValue) :=
   withErrorMessage "expected block sequence" do
     -- Detect the indentation of the first `-`
     skipBlankLines
     let seqIndent ← currentCol
     if seqIndent < minIndent then
-      withErrorMessage s!"block sequence at column {seqIndent} is less than minimum indent {minIndent}" throwUnexpected
+      return none
     let items ← blockSequenceItems seqIndent #[]
-    return .sequence .block items
+    return some (.sequence .block items)
 
 /--
 Parse block sequence items at a fixed indentation level.
@@ -288,7 +301,8 @@ partial def blockSequenceItems (seqIndent : Nat) (acc : Array YamlValue) :
     -- Parse the item value (could be on same line or next line)
     let hasNewline ← test newline
     let item ← if hasNewline then do
-      blockValue contentIndent
+      let bv ← blockValue contentIndent
+      pure (bv.getD .null)
     else
       -- Value on same line as `-`
       let col' ← currentCol
@@ -308,33 +322,41 @@ The `startCol` is the column where the value starts.
 The `contentIndent` is the minimum indentation for continuation lines.
 
 Delegates to `dispatchByChar`, sharing the dispatch logic with `blockValue`.
+Handles `DispatchResult` directly — no `.toParser` conversion.
+
+**Post-condition**: always returns a `YamlValue` (`.null` for noMatch/invalid).
+  If `.invalid`, `stream'.validationError ≠ none`.
 -/
 partial def blockValueSameLine (_startCol : Nat) (contentIndent : Nat) : YamlParser YamlValue := do
   let result ← dispatchByChar contentIndent
-  result.toParser
+  match result with
+  | .matched val => return val
+  | .noMatch => return YamlValue.null
+  | .invalid msg =>
+    setValidationError msg
+    return YamlValue.null
 
 /--
 Parse a block mapping
 (§8.2.2, https://yaml.org/spec/1.2.2/#822-block-mappings).
 
-```yaml
-key1: value1
-key2: value2
-nested:
-  inner_key: inner_value
-```
+Returns `Option YamlValue`:
+- `some (.mapping .block pairs)`: successfully parsed
+- `none`: mapping found but at wrong indentation
+  (belongs to a parent structure)
 
-Each entry has a key and value separated by `: `.
-All keys at the same level must have the same indentation.
+**Pre-condition**: stream is at or near a mapping key.
+**Post-condition**: if `some`, consumed the mapping.  If `none`,
+  no input consumed at this indent level.
 -/
-partial def blockMapping (minIndent : Nat) : YamlParser YamlValue :=
+partial def blockMapping (minIndent : Nat) : YamlParser (Option YamlValue) :=
   withErrorMessage "expected block mapping" do
     skipBlankLines
     let mapIndent ← currentCol
     if mapIndent < minIndent then
-      withErrorMessage s!"block mapping at column {mapIndent} is less than minimum indent {minIndent}" throwUnexpected
+      return none
     let pairs ← blockMappingEntries mapIndent #[]
-    return .mapping .block pairs
+    return some (.mapping .block pairs)
 
 /--
 Parse block mapping entries at a fixed indentation level.
@@ -411,9 +433,8 @@ partial def blockMappingEntry (mapIndent : Nat) :
       else
         -- Key content on next line(s), use mapIndent to allow
         -- zero-indented sequences as keys (§8.2.2 BLOCK-OUT context)
-        match ← option? (blockValue mapIndent) with
-        | some v => pure v
-        | none => pure YamlValue.null
+        let bv ← blockValue mapIndent
+        pure (bv.getD .null)
     else do
       -- Key on same line as `?`: parse at mapIndent + 1
       match ← option? (lookAhead anyToken) with
@@ -441,12 +462,11 @@ partial def blockMappingEntry (mapIndent : Nat) :
       let _ ← char ':'
       skipHWhitespace
       let hasNewline ← test newline
-      let value ← if hasNewline then
+      let value ← if hasNewline then do
         -- Value on next line: use mapIndent (BLOCK-OUT context)
         -- allows sequences at mapIndent level
-        match ← option? (blockValue mapIndent) with
-        | some v => pure v
-        | none => pure YamlValue.null
+        let bv ← blockValue mapIndent
+        pure (bv.getD .null)
       else do
         let col' ← currentCol
         blockValueSameLine col' (mapIndent + 1)
@@ -462,7 +482,8 @@ partial def blockMappingEntry (mapIndent : Nat) :
     -- Value could be on the same line or the next line
     let hasNewline ← test newline
     let value ← if hasNewline then
-      blockValue (mapIndent + 1)
+      let bv ← blockValue (mapIndent + 1)
+      pure (bv.getD .null)
     else do
       let col ← currentCol
       blockValueSameLine col (mapIndent + 1)

@@ -134,9 +134,10 @@ a prior `storeAnchor name val` call in the same document scope.
 **Post-condition**: returns the exact `val` that was stored
 (by `AnchorMap.find?_insert`), with no AST transformation.
 
-**Failure mode**: if the anchor is undefined, parsing fails with
-`"undefined anchor: *{name}"`.  This is not a backtracking-safe
-error — it will propagate past `<|>` and `option?`.
+**Failure mode**: if the anchor is undefined, a validation error is
+recorded in the stream (survives backtracking) and `YamlValue.null`
+is returned.  The top-level parser checks the stream's
+`validationError` field and rejects the input.
 -/
 def parseAlias : YamlParser YamlValue :=
   withErrorMessage "expected alias (*name)" do
@@ -144,7 +145,10 @@ def parseAlias : YamlParser YamlValue :=
     let name ← anchorName
     match ← lookupAnchor name with
     | some val => return val
-    | none => throwUnexpectedWithMessage (msg := s!"undefined anchor: *{name}")
+    | none =>
+      -- Undefined anchor: record validation error, return null.
+      setValidationError s!"undefined anchor: *{name}"
+      return YamlValue.null
 
 /-! ## Anchor Prefix Parsing
 

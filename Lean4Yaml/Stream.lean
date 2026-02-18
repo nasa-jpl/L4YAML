@@ -97,6 +97,24 @@ structure YamlStream where
       algebraic laws (`find?_insert`, `find?_insert_ne`, `find?_empty`)
       are the foundation for alias-resolution proofs. -/
   anchorMap : AnchorMap := AnchorMap.empty
+  /-- Validation error detected during parsing.
+
+      This is the **backtracking-safe** channel for fatal error reporting.
+      Unlike `throwUnexpected` (which lean4-parser's `<|>`, `option?`, and
+      `first` catch unconditionally), validation errors are stored in the
+      stream state and survive position restore — exactly like `anchorMap`.
+
+      **Assume/Guarantee contract**:
+      - **Assume**: `validationError = none` at document start
+        (enforced by `clearValidationError` in `document`).
+      - **Guarantee**: if `validationError = some msg` after parsing,
+        the input at that point was structurally invalid YAML.
+      - **Invariant**: `setPosition` preserves `validationError`
+        (proved by `setPosition_preserves_validationError`).
+
+      First error wins: once set, subsequent `setValidationError` calls
+      are no-ops. This captures the root cause, not downstream symptoms. -/
+  validationError : Option String := none
   deriving Repr
 
 /-! ## Stream Instance -/
@@ -220,6 +238,24 @@ theorem next_preserves_anchorMap (s : YamlStream) (c : Char) (s' : YamlStream)
     exact h.2 ▸ rfl
   · exact absurd h (by simp)
 
+/-- **Backtracking isolation**: `setPosition` preserves validation errors.
+    Together with `setPosition_preserves_anchorMap`, this proves that
+    ALL stream-level state (anchor map + validation error) is orthogonal
+    to position state. -/
+theorem setPosition_preserves_validationError (s : YamlStream) (p : YamlPos) :
+    (Parser.Stream.setPosition s p).validationError = s.validationError := by
+  rfl
+
+/-- **`next?` preservation**: reading a character preserves validation errors. -/
+theorem next_preserves_validationError (s : YamlStream) (c : Char) (s' : YamlStream)
+    (h : s.next? = some (c, s')) :
+    s'.validationError = s.validationError := by
+  simp only [YamlStream.next?] at h
+  split at h
+  · simp only [Option.some.injEq, Prod.mk.injEq] at h
+    exact h.2 ▸ rfl
+  · exact absurd h (by simp)
+
 /-! ## YAML-Specific Position Utilities -/
 
 /--
@@ -284,29 +320,52 @@ Get the full current position without consuming any input.
 def currentPos : YamlParser YamlPos :=
   Parser.getPosition
 
-/--
-Assert that we are at a specific column.
+/-! ## Validation Error Combinators
 
-This is the foundation of verified indentation checking.
-If the column doesn't match, parsing fails with an informative error.
+The validation error mechanism provides a **backtracking-safe** channel
+for fatal error reporting.  Unlike `throwUnexpected` (which lean4-parser's
+`<|>`, `option?`, and `first` catch unconditionally), validation errors
+are stored in the stream state and survive position restore.
+
+This is the central mechanism for P1 strict validation — it enables
+the parser to reject structurally invalid YAML even when the error
+is detected inside a backtracking context.
+
+Design follows the same pattern as `anchorMap`:
+- Stored in `YamlStream`, not in `YamlPos`
+- `setPosition` preserves it (proved by `setPosition_preserves_validationError`)
+- `next?` preserves it (proved by `next_preserves_validationError`)
 -/
-def atColumn (expected : Nat) : YamlParser Unit := do
-  let pos ← Parser.getPosition
-  if pos.col != expected then
-    Parser.withErrorMessage
-      s!"expected column {expected}, found column {pos.col} at line {pos.line}"
-      Parser.throwUnexpected
 
 /--
-Assert that the current column is at least `minCol`.
+Set a validation error in the stream.  First error wins:
+subsequent calls are no-ops if an error is already set.
 
-Used for block scalar content and continuation lines.
+**Pre-condition**: none (safe to call at any point).
+**Post-condition**: `stream'.validationError ≠ none`.
 -/
-def atMinColumn (minCol : Nat) : YamlParser Unit := do
-  let pos ← Parser.getPosition
-  if pos.col < minCol then
-    Parser.withErrorMessage
-      s!"expected indentation ≥ {minCol}, found column {pos.col} at line {pos.line}"
-      Parser.throwUnexpected
+def setValidationError (msg : String) : YamlParser Unit := do
+  let s ← Parser.getStream
+  if s.validationError.isNone then
+    Parser.setStream { s with validationError := some msg }
+
+/--
+Read the current validation error (if any).
+
+**Contract**: pure read — does not consume input or modify state.
+-/
+def getValidationError : YamlParser (Option String) := do
+  let s ← Parser.getStream
+  return s.validationError
+
+/--
+Clear the validation error.  Used at document boundaries so that
+each document starts with a clean validation state.
+
+**Post-condition**: `stream'.validationError = none`.
+-/
+def clearValidationError : YamlParser Unit := do
+  let s ← Parser.getStream
+  Parser.setStream { s with validationError := none }
 
 end Lean4Yaml

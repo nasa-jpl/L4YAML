@@ -82,12 +82,12 @@ def testFlowMapping (state : IO.Ref TestCollector) : IO Unit := do
 
 def testBlockSequence (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Block sequences"
-  checkParser state "simple" (blockSequence 0) "- a\n- b\n"
-  checkParser state "items" (blockSequence 0) "- one\n- two\n- three\n"
+  checkParser state "simple" (do let r ← blockSequence 0; pure (r.getD .null)) "- a\n- b\n"
+  checkParser state "items" (do let r ← blockSequence 0; pure (r.getD .null)) "- one\n- two\n- three\n"
 
 def testBlockMapping (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Block mappings"
-  checkParser state "simple" (blockMapping 0) "a: 1\nb: 2\n"
+  checkParser state "simple" (do let r ← blockMapping 0; pure (r.getD .null)) "a: 1\nb: 2\n"
 
 def testDocumentParsing (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Document parsing"

@@ -268,15 +268,42 @@ def parseTestFile (testId : String) (content : String) : Array TestCase :=
   let finalState := finalizeItem finalState
   finalState.cases.map fun tc => { tc with id := testId }
 
-/-- Replace special characters from yaml-test-suite format. -/
+/-- Replace special characters from yaml-test-suite format.
+
+The yaml-test-suite uses special Unicode characters to make whitespace
+visible in its YAML descriptor files (see yaml-test-suite/ReadMe.md):
+
+- `␣` (U+2423) → space (trailing space characters)
+- Hard tabs (expanding to 4 spaces) are shown as one of:
+  - `———»` (3 em-dashes + ») — tab at column % 4 == 0
+  - `——»`  (2 em-dashes + ») — tab at column % 4 == 1
+  - `—»`   (1 em-dash + »)   — tab at column % 4 == 2
+  - `»`    (» alone)          — tab at column % 4 == 3
+- `→` (U+2192) → tab (alternative tab representation)
+- `←` (U+2190) → carriage return
+- `↵` (U+21B5) → removed (trailing newline marker, cosmetic)
+- `∎` (U+220E) → removed (end-without-newline marker, cosmetic)
+- `⇔` (U+21D4) → BOM (U+FEFF)
+
+Order matters: remove em-dash fill characters first, then replace `»` with tab.
+The em-dash (`—`, U+2014) is used ONLY as visual tab-fill in the
+yaml-test-suite format and can be safely removed entirely.
+-/
 def unescapeTestYaml (s : String) : String :=
-  -- The test suite uses ␣ (U+2423) for visible spaces and
-  -- —» (em-dash + ») for visible tabs
   let s := s.replace "␣" " "
-  let s := s.replace "—»" "\t"
+  -- Tabs: first remove em-dash tab-fill characters, then replace tab markers.
+  -- Em-dash is ONLY used as visual fill before `»` in the yaml-test-suite
+  -- format (e.g., `————»` for a tab spanning 5 columns at that position).
+  let s := s.replace "—" ""
+  let s := s.replace "»" "\t"
   let s := s.replace "→" "\t"
-  -- Handle ← (hard break marker) as newline
-  let s := s.replace "←" ""
+  -- Carriage return
+  let s := s.replace "←" "\r"
+  -- Cosmetic markers
+  let s := s.replace "↵" ""
+  let s := s.replace "∎" ""
+  -- BOM
+  let s := s.replace "⇔" "\uFEFF"
   s
 
 end Tests.SuiteRunner

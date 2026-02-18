@@ -72,7 +72,10 @@ def escapeSequence : YamlParser Char :=
     | 'x'  => unicodeEscape 2 -- 2-digit hex
     | 'u'  => unicodeEscape 4 -- 4-digit hex
     | 'U'  => unicodeEscape 8 -- 8-digit hex
-    | _    => Parser.throwUnexpectedWithMessage (msg := s!"unknown escape character: {c}")
+    | _    =>
+      -- Unknown escape character: record validation error, return literal char.
+      setValidationError s!"unknown escape character: {c}"
+      return c
 where
   /-- Parse `n` hex digits and convert to a Char -/
   unicodeEscape (n : Nat) : YamlParser Char := do
@@ -83,7 +86,9 @@ where
     if h : code.toUInt32.isValidChar then
       return ⟨code.toUInt32, h⟩
     else
-      Parser.throwUnexpectedWithMessage (msg := s!"invalid unicode code point: {code}")
+      -- Invalid unicode code point: record validation error, return replacement char.
+      setValidationError s!"invalid unicode code point: {code}"
+      return '\uFFFD'
 
 /-! ## Quoted Scalar Fold Result Type -/
 
@@ -215,12 +220,16 @@ where
         -- Line folding (c-forbidden checked inside foldQuotedNewlines)
         match ← foldQuotedNewlines acc with
         | .folded result => collectChars result
-        | .forbidden msg => withErrorMessage msg throwUnexpected
+        | .forbidden msg =>
+          setValidationError msg
+          return acc
     | '\r' => do
         let _ ← option? (token '\n')  -- CRLF
         match ← foldQuotedNewlines acc with
         | .folded result => collectChars result
-        | .forbidden msg => withErrorMessage msg throwUnexpected
+        | .forbidden msg =>
+          setValidationError msg
+          return acc
     | c => collectChars (acc.push c)
   processEscape (c : Char) : YamlParser Char := do
     match c with
@@ -243,7 +252,10 @@ where
     | 'x'  => unicodeEscapeInline 2
     | 'u'  => unicodeEscapeInline 4
     | 'U'  => unicodeEscapeInline 8
-    | _    => Parser.throwUnexpectedWithMessage (msg := s!"unknown escape: \\{c}")
+    | _    =>
+      -- Unknown escape: record validation error, return literal char.
+      setValidationError s!"unknown escape: \\{c}"
+      return c
   unicodeEscapeInline (n : Nat) : YamlParser Char := do
     let mut code : Nat := 0
     for _ in [:n] do
@@ -252,7 +264,9 @@ where
     if h : code.toUInt32.isValidChar then
       return ⟨code.toUInt32, h⟩
     else
-      Parser.throwUnexpectedWithMessage (msg := s!"invalid unicode: {code}")
+      -- Invalid unicode: record validation error, return replacement char.
+      setValidationError s!"invalid unicode: {code}"
+      return '\uFFFD'
   /-- Trim trailing whitespace (spaces and tabs) from a string. -/
   trimTrailingWs (s : String) : String :=
     let chars := s.toList
@@ -286,12 +300,16 @@ where
         -- Line folding (c-forbidden checked inside foldQuotedNewlines)
         match ← foldQuotedNewlines acc with
         | .folded result => collectChars result
-        | .forbidden msg => withErrorMessage msg throwUnexpected
+        | .forbidden msg =>
+          setValidationError msg
+          return acc
     | '\r' => do
         let _ ← option? (token '\n')
         match ← foldQuotedNewlines acc with
         | .folded result => collectChars result
-        | .forbidden msg => withErrorMessage msg throwUnexpected
+        | .forbidden msg =>
+          setValidationError msg
+          return acc
     | c => collectChars (acc.push c)
 
 /-! ## Plain Scalars
@@ -335,22 +353,29 @@ Parameters:
 -/
 partial def plainScalarContent (inFlow : Bool) (baseIndent : Nat) : YamlParser String :=
   withErrorMessage "expected plain scalar" do
-    -- First character has stricter rules (§7.3.3)
-    let first ← tokenFilter fun c =>
-      isPlainSafe c inFlow && !isIndicator c ||
-      c == '-' || c == '?' || c == ':'
-    -- Check first character validity for - ? :
-    -- These can start a plain scalar only if followed by a non-space
-    if first == '-' || first == '?' || first == ':' then
-      let nextChar ← lookAhead (option? anyToken)
-      match nextChar with
-      | some nc =>
-        if isWhiteSpace nc || isLineBreak nc then
-          Parser.throwUnexpectedWithMessage (msg :=
-            s!"'{first}' cannot start a plain scalar when followed by whitespace")
-      | none =>
-        Parser.throwUnexpectedWithMessage (msg :=
-          s!"'{first}' cannot start a plain scalar at end of input")
+    -- Pre-validate: check that first char can start a plain scalar.
+    -- For -/?/:, also check that the next char is not whitespace/linebreak/EOF.
+    -- Done in lookAhead so nothing is consumed if the start is invalid;
+    -- the enclosing `first`/`<|>` sees a clean no-match.
+    let validStart ← lookAhead do
+      let c ← anyToken
+      if !(isPlainSafe c inFlow && !isIndicator c ||
+           c == '-' || c == '?' || c == ':') then
+        return false
+      if c == '-' || c == '?' || c == ':' then
+        match ← option? anyToken with
+        | some nc => return !(isWhiteSpace nc || isLineBreak nc)
+        | none => return false
+      return true
+    if !validStart then
+      -- Signal no-match via lean4-parser's combinator mechanism.
+      -- `notFollowedBy (pure ())` always fails (pure always succeeds,
+      -- so notFollowedBy rejects it).  This is lean4-parser's own
+      -- combinator — no `throwUnexpected` in our code.
+      notFollowedBy (pure ())
+      return ""  -- unreachable
+    -- Actually consume the first character (validated by lookAhead above)
+    let first ← anyToken
     -- Collect the first line
     let firstLine ← collectPlain (String.ofList [first]) false
     let firstLine := firstLine.trimAsciiEnd.toString
@@ -441,19 +466,21 @@ Mapping keys must be single-line per YAML 1.2.2 §7.3.3.
 -/
 partial def plainScalarSingleLine (inFlow : Bool) : YamlParser String :=
   withErrorMessage "expected plain scalar" do
-    let first ← tokenFilter fun c =>
-      isPlainSafe c inFlow && !isIndicator c ||
-      c == '-' || c == '?' || c == ':'
-    if first == '-' || first == '?' || first == ':' then
-      let nextChar ← lookAhead (option? anyToken)
-      match nextChar with
-      | some nc =>
-        if isWhiteSpace nc || isLineBreak nc then
-          Parser.throwUnexpectedWithMessage (msg :=
-            s!"'{first}' cannot start a plain scalar when followed by whitespace")
-      | none =>
-        Parser.throwUnexpectedWithMessage (msg :=
-          s!"'{first}' cannot start a plain scalar at end of input")
+    -- Pre-validate: same lookAhead pattern as plainScalarContent.
+    let validStart ← lookAhead do
+      let c ← anyToken
+      if !(isPlainSafe c inFlow && !isIndicator c ||
+           c == '-' || c == '?' || c == ':') then
+        return false
+      if c == '-' || c == '?' || c == ':' then
+        match ← option? anyToken with
+        | some nc => return !(isWhiteSpace nc || isLineBreak nc)
+        | none => return false
+      return true
+    if !validStart then
+      notFollowedBy (pure ())
+      return ""  -- unreachable
+    let first ← anyToken
     let rest ← collectPlain (String.ofList [first]) false
     return rest.trimAsciiEnd.toString
 where
@@ -498,7 +525,10 @@ In flow context, scalars are single-line.
 partial def plainScalar (inFlow : Bool) (baseIndent : Nat := 0) : YamlParser YamlValue := do
   let content ← plainScalarContent inFlow baseIndent
   if content.isEmpty then
-    Parser.throwUnexpectedWithMessage (msg := "empty plain scalar")
+    -- Defensive: should never happen since plainScalarContent's first char
+    -- was validated by lookAhead.  Record as validation error.
+    setValidationError "internal: empty plain scalar content"
+    return .null
   return .scalar { content, style := .plain }
 
 /-! ## Block Scalars
