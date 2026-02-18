@@ -443,9 +443,10 @@ Running verified test suites...
   Anchor & Alias Tests: ✓ 33/33
   Tag Tests: ✓ 44/44
   Explicit Key Tests: ✓ 66/66
+  Flow Completeness Tests: ✓ 88/88
   Demo: ✓ 7/7
 
-Verified: 493/493
+Verified: 581/581
 
 Generating HTML reports...
   wrote docs/index.html
