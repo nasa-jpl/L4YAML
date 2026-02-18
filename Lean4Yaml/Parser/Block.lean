@@ -97,8 +97,12 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
     | some c =>
       if isLineBreak c then
         -- Value on next line: use blockValue which handles
-        -- blank lines, indentation, and dispatching
-        let val ← blockValue contentIndent
+        -- blank lines, indentation, and dispatching.
+        -- Use option? so that under-indented next-line content
+        -- correctly produces a null anchored node (e.g., `- &a\nnext`)
+        let val ← match ← option? (blockValue contentIndent) with
+          | some v => pure v
+          | none => pure YamlValue.null
         let val := match tagName with | some t => val.withTag t | none => val
         storeAnchor name val
         return .matched val
@@ -135,7 +139,10 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
     match ← option? (lookAhead anyToken) with
     | some c =>
       if isLineBreak c then
-        let val ← blockValue contentIndent
+        -- Use option? so under-indented next-line content produces null
+        let val ← match ← option? (blockValue contentIndent) with
+          | some v => pure v
+          | none => pure YamlValue.null
         let val := val.withTag tag
         match anchorName with
         | some name => storeAnchor name val
@@ -157,6 +164,20 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
       | some name => storeAnchor name val
       | none => pure ()
       return .matched val
+  | '?' => do
+    -- Explicit key indicator (§8.2.2, https://yaml.org/spec/1.2.2/#822-block-mappings)
+    -- `?` followed by whitespace/newline/EOF indicates an explicit mapping key.
+    -- `?` followed by non-whitespace is a plain scalar starting with `?`.
+    let isExplicitKey ← lookAhead do
+      let _ ← char '?'
+      match ← option? anyToken with
+      | some c => return isWhiteSpace c || isLineBreak c
+      | none => return true
+    if isExplicitKey then
+      return .matched (← blockMapping contentIndent)
+    else
+      let baseIndent := if contentIndent > 0 then contentIndent - 1 else 0
+      return .matched (← plainScalar (inFlow := false) (baseIndent := baseIndent))
   | '-' => do
     -- Could be a block sequence indicator or a plain scalar starting with `-`
     let isSeq ← lookAhead do
@@ -334,6 +355,21 @@ partial def blockMappingEntries (mapIndent : Nat)
   -- Check if we're at a document boundary
   let atBoundary ← atDocumentBoundary
   if atBoundary then return acc
+  -- Check for explicit key indicator `?` — this is always a valid entry start
+  -- even though detectMappingKey wouldn't find a `: ` on the `?` line.
+  let isExplicitKey ← lookAhead do
+    match ← option? (token '?') with
+    | none => pure false
+    | some _ =>
+      match ← option? anyToken with
+      | some c => pure (isWhiteSpace c || isLineBreak c)
+      | none => pure true
+  if isExplicitKey then
+    match ← option? (blockMappingEntry mapIndent) with
+    | none => return acc
+    | some entry =>
+      blockMappingEntries mapIndent (acc.push entry)
+  else
   -- Try to parse a mapping entry
   match ← option? (blockMappingEntry mapIndent) with
   | none => return acc
@@ -348,22 +384,76 @@ Handles both simple keys (`key: value`) and complex keys (`? key\n: value`).
 partial def blockMappingEntry (mapIndent : Nat) :
     YamlParser (YamlValue × YamlValue) := do
   -- Check for complex key indicator `?`
+  -- (§8.2.2, https://yaml.org/spec/1.2.2/#822-block-mappings)
   match ← option? (char '?') with
   | some _ =>
-    -- Complex key
+    -- Complex/explicit key
     skipHWhitespace
-    let key ← blockValue (mapIndent + 1)
-    skipBlankLines
-    consumeIndent mapIndent
-    let _ ← char ':'
-    skipHWhitespace
-    let hasNewline ← test newline
-    let value ← if hasNewline then
-      blockValue (mapIndent + 1)
+    -- Determine if key is on same line or next line
+    let hasNewlineAfterQ ← test newline
+    -- Parse the key, which may be null if `?` is alone or followed by `:`
+    let key ← if hasNewlineAfterQ then do
+      -- Key on next line(s): check for empty key (`:` at mapIndent) first
+      let isEmptyKey ← lookAhead do
+        skipBlankLines
+        skipHWhitespace
+        let col ← currentCol
+        if col != mapIndent then pure false
+        else do
+          match ← option? (token ':') with
+          | none => pure false
+          | some _ =>
+            match ← option? anyToken with
+            | none => pure true
+            | some c => pure (isWhiteSpace c || isLineBreak c)
+      if isEmptyKey then
+        pure YamlValue.null
+      else
+        -- Key content on next line(s), use mapIndent to allow
+        -- zero-indented sequences as keys (§8.2.2 BLOCK-OUT context)
+        match ← option? (blockValue mapIndent) with
+        | some v => pure v
+        | none => pure YamlValue.null
     else do
-      let col ← currentCol
-      blockValueSameLine col (mapIndent + 1)
-    return (key, value)
+      -- Key on same line as `?`: parse at mapIndent + 1
+      match ← option? (lookAhead anyToken) with
+      | none => pure YamlValue.null
+      | some _ =>
+        let col ← currentCol
+        match ← option? (blockValueSameLine col (mapIndent + 1)) with
+        | some v => pure v
+        | none => pure YamlValue.null
+    -- Look for optional `:` at mapIndent for the value
+    skipBlankLines
+    skipHWhitespace
+    let col ← currentCol
+    let hasColon ← if col == mapIndent then do
+      lookAhead do
+        match ← option? (token ':') with
+        | none => pure false
+        | some _ =>
+          match ← option? anyToken with
+          | none => pure true
+          | some c => pure (isWhiteSpace c || isLineBreak c)
+    else
+      pure false
+    if hasColon then do
+      let _ ← char ':'
+      skipHWhitespace
+      let hasNewline ← test newline
+      let value ← if hasNewline then
+        -- Value on next line: use mapIndent (BLOCK-OUT context)
+        -- allows sequences at mapIndent level
+        match ← option? (blockValue mapIndent) with
+        | some v => pure v
+        | none => pure YamlValue.null
+      else do
+        let col' ← currentCol
+        blockValueSameLine col' (mapIndent + 1)
+      return (key, value)
+    else
+      -- No `:` found — value is implicitly null
+      return (key, YamlValue.null)
   | none =>
     -- Simple key
     let key ← blockMappingKey

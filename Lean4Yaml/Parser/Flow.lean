@@ -166,9 +166,38 @@ partial def flowSequence : YamlParser YamlValue :=
 
 /--
 Parse flow sequence items, separated by commas.
+
+Handles single-pair explicit entries: `[? key : value]` creates a
+flow sequence containing a single-pair mapping (§7.4, §7.5).
 -/
 partial def flowSequenceItems (acc : Array YamlValue) : YamlParser (Array YamlValue) := do
-  let item ← flowValue
+  -- Check for explicit key `?` in flow sequence — creates single-pair mapping
+  -- (§7.4.2, https://yaml.org/spec/1.2.2/#742-flow-mappings)
+  let isExplicitKey ← lookAhead do
+    match ← option? (token '?') with
+    | none => pure false
+    | some _ =>
+      match ← option? anyToken with
+      | none => pure true
+      | some c => pure (isWhiteSpace c || isLineBreak c)
+  let item ← if isExplicitKey then do
+    -- Parse as single-pair mapping: `? key : value`
+    let _ ← char '?'
+    flowWhitespace
+    let key ← match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == ']' || c == ':')) with
+    | some _ => pure YamlValue.null
+    | none => flowValue
+    flowWhitespace
+    match ← option? (char ':') with
+    | some _ =>
+      flowWhitespace
+      let value ← match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == ']')) with
+      | some _ => pure YamlValue.null
+      | none => flowValue
+      pure (.mapping .flow #[(key, value)])
+    | none => pure (.mapping .flow #[(key, YamlValue.null)])
+  else
+    flowValue
   flowWhitespace
   match ← anyToken with
   | ',' =>
@@ -220,32 +249,78 @@ partial def flowMappingEntries (acc : Array (YamlValue × YamlValue)) :
 
 /--
 Parse a single flow mapping entry (`key: value` or `? key : value`).
+
+Handles:
+- `? key : value` — explicit key with value
+- `? key` — explicit key with null value  
+- `?` — bare explicit key indicator (null key, null value)
+- `key : value` — implicit key
+- `: value` — empty key with value (§7.4.2)
 -/
 partial def flowMappingEntry : YamlParser (YamlValue × YamlValue) := do
   flowWhitespace
   -- Check for explicit key indicator `?`
-  let key ← do
-    match ← option? (char '?') with
-    | some _ => flowWhitespace; flowValue
-    | none => flowScalar
+  match ← option? (char '?') with
+  | some _ =>
+    flowWhitespace
+    -- Check for bare `?` (null key) — next char is `,`, `}`, or `:`
+    let key ← match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == '}' || c == ':')) with
+    | some _ => pure YamlValue.null
+    | none => flowValue
+    flowWhitespace
+    match ← option? (char ':') with
+    | some _ =>
+      flowWhitespace
+      match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == '}')) with
+      | some _ => return (key, YamlValue.null)
+      | none =>
+        let value ← flowValue
+        return (key, value)
+    | none => return (key, YamlValue.null)
+  | none =>
+  -- Check for empty key: `:` at start means null key with a value
+  match ← option? (lookAhead (token ':')) with
+  | some _ =>
+    -- Verify it's a mapping separator (`:` followed by whitespace or flow indicator)
+    let isSep ← lookAhead do
+      let _ ← anyToken  -- consume ':'
+      match ← option? anyToken with
+      | none => return true
+      | some c => return (isWhiteSpace c || isLineBreak c || isFlowIndicator c)
+    if isSep then do
+      let _ ← char ':'
+      flowWhitespace
+      match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == '}')) with
+      | some _ => return (YamlValue.null, YamlValue.null)
+      | none =>
+        let value ← flowValue
+        return (YamlValue.null, value)
+    else do
+      -- `:` not a separator, parse as scalar key
+      let key ← flowScalar
+      flowWhitespace
+      match ← option? (char ':') with
+      | some _ =>
+        flowWhitespace
+        match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == '}')) with
+        | some _ => return (key, YamlValue.null)
+        | none =>
+          let value ← flowValue
+          return (key, value)
+      | none => return (key, YamlValue.null)
+  | none =>
+  -- Normal implicit key
+  let key ← flowScalar
   flowWhitespace
-  -- Parse the `: value` part (the value is optional — if missing, it's null)
   match ← option? (char ':') with
   | some _ =>
     flowWhitespace
-    -- Check if value follows or we hit a separator/closing bracket
     match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == '}')) with
-    | some _ =>
-      -- No value: `key:` with implicit null value
-      return (key, YamlValue.null)
+    | some _ => return (key, YamlValue.null)
     | none =>
       let value ← flowValue
       return (key, value)
-  | none =>
-    -- Implicit key in flow sequence context (e.g., `[a : b, c : d]`)
-    -- For now, treat as a bare value — the key is the value, with empty mapping
-    -- Actually, this shouldn't happen in a flow mapping entry
-    return (key, YamlValue.null)
+  | none => return (key, YamlValue.null)
 
 end
 

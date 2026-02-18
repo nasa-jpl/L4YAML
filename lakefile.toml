@@ -84,3 +84,10 @@ root = "Tests.AnchorAlias.Runner"
 [[lean_exe]]
 name = "tagtests"
 root = "Tests.TagTests.Runner"
+
+[[lean_lib]]
+name = "Tests.ExplicitKeyTests"
+
+[[lean_exe]]
+name = "explicitkeytests"
+root = "Tests.ExplicitKeyTests.Runner"
