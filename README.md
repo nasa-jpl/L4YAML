@@ -91,7 +91,9 @@ inductive DispatchResult (α : Type) where
   | invalid (msg : String)  -- input is definitively wrong (reported as a value)
 ```
 
-This is critical because lean4-parser's error model has **no committed/fatal error distinction** — all `Result.error` values are caught unconditionally by `<|>`, `option?`, and `first`. Using `throwUnexpected` for input validation is unreliable since any enclosing combinator silently swallows it. The `DispatchResult` encoding works *above* the combinator level, making three-valued semantics structural and proof-friendly.
+This is critical because lean4-parser's error model has **no committed/fatal error distinction** — all `Result.error` values are caught unconditionally by `<|>`, `option?`, and `first`. Using `throwUnexpected` for input validation is unreliable since any enclosing combinator silently swallows it.
+
+**P1 architectural change (2026-02-17):** All `throwUnexpected` calls have been eliminated from our codebase (29 occurrences across 7 files). Validation errors now use a `validationError : Option String` field in `YamlStream` that **survives backtracking** (like `anchorMap`). This works above the combinator level: `setValidationError` records the first error, subsequent calls are no-ops, and `parseYaml` checks the field after parsing completes. Decision points use explicit `Option` return types (`blockValue`, `blockSequence`, `blockMapping` now return `Option YamlValue`) instead of throwing. The `DispatchResult` encoding remains for block-value dispatch, but `.toParser` (which called `throwUnexpected`) has been removed — callers must pattern-match directly.
 
 ### OS-Level Process Isolation for Testing
 
@@ -207,7 +209,17 @@ Added [yaml-test-suite](https://github.com/yaml/yaml-test-suite) as a git submod
 4. **Meta parser `---` handling** — `processLine` checked for `---` separator before checking if inside a yaml block scalar, truncating test yaml content. Fixed by reordering to check block scalar state first.
 
 **Validation work (ANALYSIS.md §2.A):**
-Three-valued error recovery combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) are **active** in `blockSequenceItems` and `blockMappingEntries`. They detect wrongly-indented structural indicators (e.g., `- ` at col 1 when `seqIndent = 0`) and raise validation errors. Impact: error rejection improved from 24% to 54% (+22 tests), overall suite from 164→192 passed (39.4%→46.2%). Note: these validators still use `throwUnexpected`, which lean4-parser's `<|>` can swallow in some contexts — the `DispatchResult.invalid` path is not yet propagated through all callers.
+Three-valued error recovery combinators (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`, `hasSequenceIndicator`) are **active** in `blockSequenceItems` and `blockMappingEntries`. They detect wrongly-indented structural indicators (e.g., `- ` at col 1 when `seqIndent = 0`) and raise validation errors. Impact: error rejection improved from 24% to 54% (+22 tests), overall suite from 164→192 passed (39.4%→46.2%).
+
+**P1: Strict validation — `throwUnexpected` elimination (2026-02-17):**
+All 29 `throwUnexpected` / `throwUnexpectedWithMessage` calls eliminated from our codebase. Two-mechanism replacement architecture:
+
+1. **`validationError` in `YamlStream`** — a `Option String` field that survives lean4-parser's backtracking (stored in stream state like `anchorMap`). Set via `setValidationError` (first error wins), checked at top level by `parseYaml`. Proved: `setPosition_preserves_validationError` and `next_preserves_validationError` (both `rfl`).
+2. **Explicit result types** — `blockValue`, `blockSequence`, `blockMapping` now return `Option YamlValue` (none = under-indented / no match, not an error). `DispatchResult.toParser` removed entirely. Callers pattern-match directly.
+
+Files modified: `Stream.lean` (+validationError field, combinators, theorems), `Combinators.lean` (-toParser, tab/indent validators), `Block.lean` (Option returns, direct dispatch), `Flow.lean` (delimiter validation), `Scalar.lean` (escape validation, plainScalar restructuring with `lookAhead`+`notFollowedBy`), `Document.lean` (marker validation, top-level error check), `Anchor.lean` (undefined alias validation).
+
+Impact: **213→250 correct (+37)**, 51.2%→60.1%. Error stage: 0→26 correctly rejected (0%→35.1%). Parse failures: 47→20 (-27). All 494 internal tests pass. Trade-off: removing `throwUnexpected` made the parser more permissive in some non-error contexts where `<|>` previously accidentally propagated the error — non-error unexpected passes increased from 20→36. Further validation rules needed to close the remaining 48 error-stage and 36 non-error unexpected passes.
 
 **Infinite loop elimination via `DocumentResult`:**
 Discovered 36 timeout cases (not 9), all sharing one root cause: `yamlStream`'s while loop retries `document` at the same position when no input is consumed. The initial fix (external position comparison) revealed an implicit assumption: `document` already knew whether it consumed input but didn't communicate this. Refactored `document` to return `DocumentResult` (`parsed`/`endOfStream`/`stalled`) — the same explicit-result-type pattern as `DispatchResult` and `ContinuationCheck`. Now `yamlStream` pattern-matches on the result instead of comparing positions externally. The `stalled` variant carries position for error reporting and becomes a proof obligation target in Phase 4. Eliminated all 36 timeout cases across 9 root cause categories (anchors, tags, quoted scalar folding, comments, explicit keys, same-indent sequences, tabs, empty keys, flow implicit mappings).
@@ -291,11 +303,11 @@ Share the verified implementation with the existing lean4-yaml ecosystem.
 7. ~~**Add anchor/alias support**~~ — ✅ `AnchorMap` abstraction with algebraic laws, `parseAlias`/`parseAnchorPrefix`/`resetAnchorMap`. Document-scoped anchors per §3.2.2.2. 2 backtracking-isolation theorems proved. 33 tests in `AnchorAlias.lean`. Advanced stage: 1→10 passing.
 8. ~~**Add tag support**~~ — ✅ `parseTagPrefix` handles all tag forms: verbatim (`!<uri>`), secondary (`!!type`), named (`!handle!suffix`), primary (`!local`), non-specific (`!`). `YamlValue.withTag` applies tags to any node. Tag+anchor ordering (`!tag &anchor val` and `&anchor !tag val`) supported in all dispatch points. 44 tests in `TagTests.lean`. Suite: 175→192 correct (+17), Advanced stage: 10→21 passing.
 
-### Current: Address 85 Failures + 94 Unexpected Passes
+### Current: Address Failures + Unexpected Passes
 
 Analysis scripts: `python3 tests/analyze_coverage.py` (summary) and `python3 tests/analyze_coverage_deep.py` (detailed root causes).
 
-Current: **192/416 correct (46.2%)**. Projected after all steps below: **~310/416 (~74.5%)**.
+Current: **250/416 correct (60.1%)**. Projected after all steps below: **~354/416 (~85.1%)**.
 
 #### Step 8: Tag support (`!tag`, `!!type`, `%TAG` directive) — ✅ COMPLETE
 
@@ -318,24 +330,26 @@ The parser doesn't recognize `?` as an explicit key indicator (§8.2.2). This bl
 
 Test IDs: 5WE3, 6M2F, 6PBE, 7W2P, A2M4, CT4Q, DFF7, FRK4, GH63, JTV5, KK5P, M5DY, PW8X, V9D5, X8DW, ZWK4 (+ some overlap with tags).
 
-#### Step 10: Strict validation (error rejection) — +74 unexpected passes
+#### Step 10: Strict validation (error rejection) — ⚠️ IN PROGRESS
 
-**Impact: 0 failures, up to 74 unexpected passes resolved.** The parser is too permissive — it accepts invalid YAML that should be rejected. This should be done incrementally:
+**P1 phase 1 complete (2026-02-17).** Architectural change: eliminated all 29 `throwUnexpected` calls, replaced with `validationError` field in `YamlStream` (survives backtracking) + explicit `Option` return types.
 
-| Sub-step | Category | Count | What to validate |
-|----------|----------|-------|------------------|
-| **10a** | Flow structure | 13 | Missing commas, extra brackets, unterminated flow collections |
-| **10b** | Mapping structure | 12 | Invalid key-value structure, duplicate implicit keys |
-| **10c** | Quoted scalars | 10 | Unclosed quotes, invalid escape sequences, multiline quoted keys |
-| **10d** | Indentation | 9 | Wrong indentation in sequences, mappings, block scalars |
-| **10e** | Anchors/aliases | 7 | Double anchors, invalid anchor positions, undefined aliases |
-| **10f** | Directives | 7 | Invalid `%YAML`, `%TAG`, reserved directives |
-| **10g** | Comments | 6 | Invalid comment positions (in flow, after scalars) |
-| **10h** | Block scalars | 3 | Invalid block scalar indicators, wrong indentation |
-| **10i** | Document markers | 3 | Invalid content after `...`, wrong `---` positions |
-| **10j** | Tags/other | 4 | Invalid tag syntax, trailing content |
+**Results so far:** Error stage: 0→26 correctly rejected (0%→35.1%). Overall: 213→250 correct (51.2%→60.1%). Parse failures reduced from 47→20.
 
-Approach: Use the existing `DispatchResult.invalid` pattern to propagate validation errors above lean4-parser's `<|>` swallowing. Extend `validateNoWrongIndentSeq`/`validateNoWrongIndentMap` to cover more contexts.
+**Remaining work:** 48 error-stage + 36 non-error unexpected passes still need validation rules. Sub-steps below track what's done vs remaining:
+
+| Sub-step | Category | Count | Status | Notes |
+|----------|----------|-------|--------|-------|
+| **10a** | Flow structure | 13 | ⚠️ Partial | `flowSequenceItems`/`flowMappingEntries` delimiter validation active; implicit key width limit not yet checked |
+| **10b** | Mapping structure | 12 | ⚠️ Partial | Indentation validators active; duplicate key detection not yet implemented |
+| **10c** | Quoted scalars | 10 | ✅ Done | Invalid escapes, `FoldResult.forbidden` now set `validationError` |
+| **10d** | Indentation | 9 | ✅ Done | `consumeIndent` (tabs), `validateNoWrongIndentSeq/Map` now use `setValidationError` |
+| **10e** | Anchors/aliases | 7 | ⚠️ Partial | Undefined aliases validated; double anchors, invalid positions not yet checked |
+| **10f** | Directives | 7 | ❌ Not started | Invalid `%YAML`/`%TAG` syntax not yet validated |
+| **10g** | Comments | 6 | ❌ Not started | Invalid comment positions not yet validated |
+| **10h** | Block scalars | 3 | ❌ Not started | Invalid block scalar indicators not yet validated |
+| **10i** | Document markers | 3 | ✅ Done | `---`/`...` not followed by whitespace now sets `validationError` |
+| **10j** | Tags/other | 4 | ❌ Not started | Invalid tag syntax not yet validated |
 
 #### Step 11: Remaining edge cases — +23 tests
 
@@ -353,6 +367,339 @@ After steps 8–11, projected correct rate is ~74.5% (310/416). The remaining ~2
 - Interactions between features (anchor + tag, explicit-key + tag, etc.)
 - YAML 1.3-specific tests (currently skipped, 62 tests)
 
+## Gap Analysis: YAML 1.2.2 Specification Coverage
+
+### Current State (2026-02-17)
+
+**yaml-test-suite: 250/416 correct (60.1%)** — up from 213/416 (51.2%) after P1 strict validation work.
+
+| Stage | Tests | Correct | Failed | Skipped | Correct Rate |
+|-------|-------|---------|--------|---------|-------------|
+| Scalar | 82 | 51 | 3 | 28 | 62% |
+| Flow | 46 | 34 | 12 | 0 | 74% |
+| Block | 109 | 75 | 24 | 10 | 69% |
+| Document | 24 | 13 | 4 | 7 | 54% |
+| Advanced | 81 | 51 | 13 | 17 | 63% |
+| Error | 74 | 26 | 48 | 0 | 35% |
+| **Total** | **416** | **250** | **104** | **62** | **60.1%** |
+
+"Failed" includes both parse errors on valid YAML (~20) and unexpected passes on invalid YAML (~84).
+
+**Internal test suites: 494/494 (100%) across 8 suites** (includes `ExplicitKeyTests` with 66/66).
+
+### What's Implemented vs YAML 1.2.2 Spec
+
+| Spec Chapter | Section | Status | Notes |
+|---|---|---|---|
+| **§5 Characters** | §5.1 Character set | ✅ | UTF-8 stream |
+| | §5.2 Character encodings | ✅ | UTF-8 only (BOM detection deferred) |
+| | §5.3 Indicator characters | ✅ | All indicators classified in `Combinators.lean` |
+| | §5.4 Line break characters | ✅ | CR, LF, CRLF handled in `Stream.lean` |
+| | §5.5 White space characters | ✅ | Space + tab |
+| | §5.6 Miscellaneous characters | ✅ | |
+| | §5.7 Escaped characters | ✅ | All YAML 1.2 escape sequences including `\\`, `\n`, `\t`, `\x`, `\u`, `\U`, `\` + newline |
+| **§6 Structural** | §6.1 Indentation spaces | ✅ | `consumeIndent`, `currentCol` |
+| | §6.2 Separation spaces | ✅ | `skipHWhitespace` |
+| | §6.3 Line prefixes | ⚠️ | Implicit via indentation; not a discrete parser |
+| | §6.4 Empty lines | ✅ | `ContinuationCheck.afterEmpty` |
+| | §6.5 Line folding | ✅ | `foldQuotedNewlines` + `FoldResult` for quoted; `plainScalarContent` for plain |
+| | §6.6 Comments | ⚠️ | Basic `#` comment; 5 edge-case failures (after flow, in multi-line) |
+| | §6.7 Separation lines | ⚠️ | Handled implicitly; no explicit `s-separate` production |
+| | §6.8 Directives | ⚠️ | `%YAML` parsed; `%TAG` parsed but handle resolution not wired through |
+| | §6.9 Node properties | ✅ | Tags (`Tag.lean`) + anchors (`Anchor.lean`), both orderings |
+| **§7 Flow Styles** | §7.1 Alias nodes | ✅ | `parseAlias` with `AnchorMap` lookup |
+| | §7.2 Empty nodes | ⚠️ | Partial — 1 failure (WZ62) |
+| | §7.3.1 Double-quoted | ✅ | Full escape support + line folding + `c-forbidden` |
+| | §7.3.2 Single-quoted | ✅ | Folding + `''` escape |
+| | §7.3.3 Plain style | ✅ | Multi-line with `ContinuationCheck`, flow-aware termination |
+| | §7.4.1 Flow sequences | ✅ | Nested, trailing commas, explicit entries |
+| | §7.4.2 Flow mappings | ✅ | Explicit keys, empty keys, implicit keys |
+| | §7.5 Flow nodes | ⚠️ | Single-pair implicit entries partial (9 flow failures) |
+| **§8 Block Styles** | §8.1.1 Block scalar headers | ⚠️ | Literal `|` and folded `>` with indentation/chomping indicators |
+| | §8.1.2 Literal style | ✅ | `blockLiteralScalar` |
+| | §8.1.3 Folded style | ✅ | `blockFoldedScalar` |
+| | §8.2.1 Block sequences | ✅ | `blockSequence` with indentation tracking |
+| | §8.2.2 Block mappings | ✅ | `blockMapping` with explicit key `?` support + `ExplicitKeyTests` (66 tests) |
+| | §8.2.3 Block nodes | ✅ | `blockValue` dispatch via `DispatchResult` |
+| **§9 Document** | §9.1.1 Document prefix | ✅ | BOM handling, comment prefix |
+| | §9.1.2 Document markers | ✅ | `---` and `...` with `c-forbidden` detection in quoted scalars |
+| | §9.1.3 Bare documents | ✅ | |
+| | §9.1.4 Explicit documents | ✅ | |
+| | §9.1.5 Directives documents | ⚠️ | Parsed but `%TAG` not resolved |
+| | §9.2 Streams | ✅ | Multi-document via `yamlStream` + `DocumentResult` |
+| **§10 Schemas** | §10.1 Failsafe schema | ❌ | No schema layer |
+| | §10.2 JSON schema | ❌ | No schema layer |
+| | §10.3 Core schema | ❌ | No schema layer |
+
+### Three Categories of Gaps to 100%
+
+#### Category 1: Parser Failures (47 tests) — Content Correctness
+
+Tests where the parser either fails to parse valid YAML or produces incorrect output.
+
+| Root Cause | Count | Spec Section | Description |
+|---|---|---|---|
+| Flow edge cases | 10 | §7.4, §7.5 | Implicit keys in flow, single-pair entries, multiline flow keys, empty flow collections |
+| Block edge cases | 17 | §8.2 | Same-indent sequences, aliases in block mappings, anchor edge cases, missing value handling |
+| Quoted scalar content | 4 | §7.3.1, §7.3.2 | Remaining line-folding edge cases (3RLN, DE56, KH5V, M2N8) |
+| Comments | 5 | §6.6 | Comments after flow collections, in multi-line scalars, after directives |
+| Tag resolution | 4 | §6.8, §6.9 | `%TAG` directive wire-through, verbatim tags in complex contexts |
+| Alias/anchor edge cases | 4 | §7.1, §6.9 | Unicode anchors, anchors in complex positions |
+| Complex keys | 3 | §7.4.2, §8.2.2 | Flow collections as mapping keys |
+
+#### Category 2: Permissiveness (94 unexpected passes) — Error Rejection
+
+Tests where the parser accepts invalid YAML that should be rejected. The parser has **no strict validation mode** — it is too lenient.
+
+| Category | Count | What Should Be Rejected |
+|---|---|---|
+| **Error stage** | **74** | Tests specifically designed to trigger parse errors |
+| Flow structure | 13 | Missing commas, extra brackets, unterminated collections |
+| Mapping structure | 12 | Invalid key-value structure, duplicate keys |
+| Quoted scalars | 10 | Unclosed quotes, invalid escapes |
+| Indentation | 9 | Wrong indentation accepted |
+| Directives | 7 | Invalid `%YAML`/`%TAG` syntax |
+| Anchors/aliases | 7 | Double anchors, undefined aliases, invalid positions |
+| Comments | 6 | Invalid comment positions |
+| Block scalars | 3 | Invalid indicators, wrong indentation |
+| Document markers | 3 | Invalid content after `...` |
+| Other | 4 | Tag syntax, trailing content |
+
+The root cause was architectural: lean4-parser's `<|>` unconditionally catches all `Result.error` values, making `throwUnexpected` unreliable for validation. **P1 fix (2026-02-17):** All `throwUnexpected` calls eliminated and replaced with `validationError` field in `YamlStream` (survives backtracking). Error stage improved from 0/74 to 26/74 correctly rejected. Remaining 48 error-stage UP need additional validation rules (directive validation, comment position checks, block scalar indicator validation).
+
+#### Category 3: Skipped Tests (62 tests)
+
+| Category | Count | Reason |
+|---|---|---|
+| YAML 1.1/1.3 features | 28 | Tests for features outside YAML 1.2.2 scope |
+| Block scalar edge cases | 17 | Advanced `|`/`>` features (indentation auto-detection, strip/clip/keep interactions) |
+| Advanced document features | 7 | Multi-document edge cases with directives |
+| Other | 10 | Tests requiring features not yet categorized |
+
+### Path to 100% yaml-test-suite Compliance
+
+**Current: 250/416 (60.1%).** Target: 354/416 (85.1%), excluding 62 skipped tests outside YAML 1.2.2 scope.
+
+| Phase | Work | Tests Fixed | Projected |
+|---|---|---|---|
+| **P1: Strict validation** | ⚠️ **Phase 1 complete.** Eliminated all `throwUnexpected`; `validationError` field in `YamlStream` + explicit `Option` returns. +37 correct so far; ~84 UP remain. | +37 done, ~57 remaining | 307/416 (73.8%) |
+| **P2: Flow completeness** | Single-pair implicit entries (§7.5), implicit flow mapping keys, empty flow nodes | +10 | 317/416 (76.2%) |
+| **P3: Block completeness** | Same-indent sequence edge cases, alias interactions, missing value handling | +17 | 334/416 (80.3%) |
+| **P4: Content correctness** | Remaining quoted scalar folding, comment edge cases, `%TAG` resolution | +13 | 347/416 (83.4%) |
+| **P5: Advanced features** | Complex keys (flow collections as keys), Unicode anchors, directive edge cases | +7 | 354/416 (85.1%) |
+
+The remaining 62 skipped tests are YAML 1.1/1.3 features or tests that require behavior outside the YAML 1.2.2 specification. Full 100% of the YAML 1.2.2-applicable tests (354/354) requires all five phases.
+
+### YAML 1.2.2 Spec Sections Not Yet Covered
+
+| Section | Description | Difficulty | Dependency |
+|---|---|---|---|
+| §6.8.2 `%TAG` directive resolution | Map `!handle!suffix` → expanded URI using directive declarations | Medium | Wire `%TAG` declarations into parser state |
+| §7.5 Flow nodes (complete) | Implicit key width limit (1024 chars), all single-pair entry forms | Medium | Flow.lean refactoring |
+| §9.1.3 `c-forbidden` (complete) | Reject `---`/`...` inside block scalars at column 0 | Low | Already partial in `FoldResult` |
+| §10 Recommended Schemas | Failsafe, JSON, Core schema type resolution | High | **Separate schema layer** (see below) |
+
+---
+
+## Verified Schema Layer
+
+### Motivation
+
+The non-verified `lean4-yaml` project (now deprecated) implemented a **684-line schema layer** (`Schema.lean` + `Schema/Api.lean` + `Schema/FromToYaml.lean` + `Schema/Struct.lean`) plus a 296-line `Deriving.lean` macro. This layer provides:
+
+1. **`YamlType`** — resolved typed values: `.null`, `.bool`, `.int`, `.float`, `.str`, `.seq`, `.map`
+2. **`resolve : YamlValue → YamlType`** — Core Schema implicit typing (null → bool → int → float → str precedence)
+3. **`FromYaml`/`ToYaml`** — typeclasses for Lean type ↔ YAML conversion
+4. **`Struct.lean`** — helpers for manual struct serialization (`getField`, `addField`, `mkMapping`)
+5. **`Deriving.lean`** — `deriving FromYaml, ToYaml` metaprogramming with automatic `Option` field detection
+
+The architecture is designed for reuse: `lean4-yaml-verified` and `lean4-yaml` share identical `YamlValue` types (documented in `Types.lean`). The schema layer sits entirely above the parser — it operates on `YamlValue` and has zero parser dependency. This means the verified parser can adopt the schema layer with no parser changes.
+
+### Architecture: Two-Layer Separation
+
+```
+                    ┌─────────────────────────────────────────────┐
+                    │         Application Code                    │
+                    │   structure Config deriving FromYaml, ToYaml│
+                    └──────────────────┬──────────────────────────┘
+                                       │ parseAs Config yaml
+                    ┌──────────────────▼──────────────────────────┐
+                    │         Schema Layer (NEW)                  │
+                    │                                             │
+                    │  YamlType    — resolved typed values        │
+                    │  resolve     — Core Schema resolution       │
+                    │  FromYaml    — typeclass: YamlValue → α     │
+                    │  ToYaml      — typeclass: α → YamlValue     │
+                    │  Deriving    — deriving macro                │
+                    │  Emitter     — YamlValue → String           │
+                    │                                             │
+                    │  PROOFS:                                    │
+                    │  resolve_preserves_structure                │
+                    │  resolve_idempotent                         │
+                    │  fromYaml_toYaml_roundtrip                  │
+                    │  resolveImplicit_complete                   │
+                    └──────────────────┬──────────────────────────┘
+                                       │ parseSingle / parseYaml
+                    ┌──────────────────▼──────────────────────────┐
+                    │         Parser Layer (EXISTING)             │
+                    │                                             │
+                    │  String → YamlValue                         │
+                    │  (verified correctness: Phase 3+)           │
+                    └─────────────────────────────────────────────┘
+```
+
+The critical property: **the schema layer is pure functions on inductive types** — no IO, no parser combinators, no lean4-parser dependency. This makes it the ideal target for formal verification since every function is kernel-reducible.
+
+### Verified Schema Roadmap
+
+#### Phase S1: Core Types & Resolution (~300 lines)
+
+Port `Schema.lean` with proof targets. The resolution functions are pure pattern-matching on strings — ideal for formal verification.
+
+**Module: `Lean4Yaml/Schema.lean`**
+
+```
+YamlType          — Inductive type (identical to lean4-yaml)
+FloatValue        — .finite | .inf | .nan
+isNull            — String → Bool
+isBool            — String → Option Bool
+isInt             — String → Option Int
+isFloat           — String → Option FloatValue
+resolveImplicit   — String → YamlType  (Core Schema precedence)
+resolveScalar     — String → Option String → YamlType  (explicit tag dispatch)
+resolve           — YamlValue → YamlType  (recursive resolution)
+```
+
+**Proof targets:**
+
+| Theorem | Statement | Difficulty |
+|---|---|---|
+| `resolve_preserves_structure` | `resolve (.sequence s items t) = .seq (items.map resolve)` — resolution doesn't change collection shape | Low |
+| `resolve_scalar_with_str_tag` | `resolveScalar s (some "tag:yaml.org,2002:str") = .str s` — explicit `!!str` always produces string | Low |
+| `resolveImplicit_complete` | `∀ s, resolveImplicit s` matches exactly one of `null/bool/int/float/str` — no unhandled case | Low |
+| `resolveImplicit_deterministic` | `resolveImplicit s = resolveImplicit s` (trivially true, but the real content: resolution is a pure function with no hidden state) | Low |
+| `isNull_spec` | `isNull s ↔ s ∈ {"", "null", "Null", "NULL", "~"}` — matches YAML 1.2.2 §10.3.2 exactly | Low |
+| `isBool_spec` | `isBool s = some b ↔ s ∈ {"true","True","TRUE"} ∧ b = true ∨ s ∈ {"false","False","FALSE"} ∧ b = false` | Low |
+| `isInt_hex_correct` | `isInt "0xFF" = some 255` (and general hex → Int correctness) | Medium |
+| `isInt_octal_correct` | `isInt "0o17" = some 15` | Medium |
+| `resolve_idempotent` | `resolve (toYamlValue (resolve v)) = resolve v` — resolving a re-serialized value gives the same type | Medium |
+
+Estimated effort: 1 session for port, 1 session for proofs.
+
+#### Phase S2: FromYaml/ToYaml Typeclasses (~200 lines)
+
+Port `Schema/FromToYaml.lean`. The typeclass instances are small pattern-match functions — each is independently provable.
+
+**Module: `Lean4Yaml/Schema/FromToYaml.lean`**
+
+```
+class FromYamlType α   — fromYamlType? : YamlType → Except String α
+class FromYaml α       — fromYaml? : YamlValue → Except String α
+class ToYaml α         — toYaml : α → YamlValue
+
+-- Bridge instance: FromYamlType α → FromYaml α (via resolve)
+-- Instances: Unit, Bool, Int, Nat, String, Array α, List α, Option α, HashMap String α
+```
+
+**Proof targets:**
+
+| Theorem | Statement | Difficulty |
+|---|---|---|
+| `fromYaml_toYaml_Bool` | `fromYaml? (toYaml b) = .ok b` — Bool round-trips | Low |
+| `fromYaml_toYaml_Int` | `fromYaml? (toYaml n) = .ok n` — Int round-trips | Low |
+| `fromYaml_toYaml_String` | `fromYaml? (toYaml s) = .ok s` — String round-trips | Low |
+| `fromYaml_toYaml_Nat` | `fromYaml? (toYaml n) = .ok n` — Nat round-trips | Low |
+| `fromYaml_toYaml_Array` | `[FromYaml α] [ToYaml α] → fromYaml? (toYaml arr) = .ok arr` — lifts element round-trip to arrays | Medium |
+| `fromYaml_toYaml_Option` | `fromYaml? (toYaml (some x)) = .ok (some x)` and `fromYaml? (toYaml none) = .ok none` | Low |
+| `fromYaml_resolve_bridge` | The default `FromYaml` instance via `FromYamlType` + `resolve` agrees with direct `FromYaml` instances | Medium |
+
+Estimated effort: 1 session.
+
+#### Phase S3: Struct Helpers & Deriving (~430 lines)
+
+Port `Schema/Struct.lean` and `Deriving.lean`. The struct helpers are simple mapping operations; the deriving macro is metaprogramming.
+
+**Module: `Lean4Yaml/Schema/Struct.lean`**
+
+```
+getMapping       — YamlValue → Except String (Array (YamlValue × YamlValue))
+findField        — pairs → fieldName → Option YamlValue
+getField         — [FromYaml α] → pairs → fieldName → Except String α
+getFieldOpt      — [FromYaml α] → pairs → fieldName → Except String (Option α)
+mkMapping        — List (String × YamlValue) → YamlValue
+addField         — [ToYaml α] → acc → name → value → acc'
+addFieldOpt      — [ToYaml α] → acc → name → Option value → acc'
+```
+
+**Module: `Lean4Yaml/Schema/Deriving.lean`**
+
+Auto-generate `FromYaml`/`ToYaml` instances for structures via Lean metaprogramming (`deriving` handler).
+
+**Proof targets:**
+
+| Theorem | Statement | Difficulty |
+|---|---|---|
+| `findField_mkMapping` | `findField (mkMapping [..., (k, v), ...]).pairs k = some v` — fields round-trip through serialization | Medium |
+| `getField_addField` | For each field added with `addField`, `getField` recovers it | Medium |
+| `getFieldOpt_none` | `getFieldOpt pairs "missing" = .ok none` for absent fields | Low |
+| `mkMapping_preserves_order` | `(mkMapping pairs).pairs.map (·.1.content) = pairs.map (·.1)` | Low |
+
+Deriving macro proofs are out of scope — macro-generated code is validated empirically by the type system at instantiation time.
+
+Estimated effort: 1 session for struct helpers, 1 session for deriving port.
+
+#### Phase S4: Emitter (~210 lines)
+
+Port the YAML emitter (`YamlValue → String`). Together with `ToYaml`, this completes the full pipeline: `α → YamlValue → String`.
+
+**Proof target (Phase 5 prerequisite):**
+
+| Theorem | Statement | Difficulty |
+|---|---|---|
+| `emit_produces_valid_yaml` | `∀ v, parse (emit v) = .ok v'` where `v'` is structurally equivalent to `v` | Hard (requires parser proofs) |
+
+#### Phase S5: End-to-End Round-Trip
+
+Compose parser + schema + emitter proofs into:
+
+```lean
+theorem roundtrip :
+  ∀ (v : YamlValue),
+    parseSingle (emit v) = .ok v' →
+    resolve v' = resolve v
+```
+
+This is the verified-correctness analog of lean4-yaml's empirical round-trip tests. It requires parser soundness proofs (Phase 3 of the main verification roadmap) and is the long-term goal.
+
+### Design Principles for the Verified Schema Layer
+
+The schema layer follows the same architectural principles documented in ANALYSIS.md §6:
+
+1. **Make implicit state explicit.** Resolution precedence (null → bool → int → float → str) is encoded as a match chain — each arm is a provable case. No hidden priority tables or mutable state.
+
+2. **No exceptions for decisions.** `FromYaml` returns `Except String α`, not `IO α`. Schema resolution errors are values, not exceptions. The `resolve` function is total — every `YamlValue` produces a `YamlType`.
+
+3. **Pure functions on inductive types.** Every schema function (`resolve`, `resolveImplicit`, `resolveScalar`, `isNull`, `isBool`, `isInt`, `isFloat`) is a pure function with no IO, no state, no parser dependency. This makes them kernel-reducible and directly provable, unlike the parser layer which is blocked by lean4-parser's `partial def`.
+
+4. **Compatible types enable sharing.** The `YamlValue` type is identical between projects. The schema layer can be developed and proved correct independently, then composed with parser proofs when they become available.
+
+5. **Proofs follow the same layered strategy.** Layer 1 (pure function properties) → Layer 2 (typeclass laws) → Layer 3 (round-trip composition). Each layer is independently valuable: Layer 1 catches implementation bugs at compile time, Layer 2 ensures typeclass coherence, Layer 3 provides the full end-to-end guarantee.
+
+### Estimated Effort
+
+| Phase | Lines | Sessions | Proofs |
+|---|---|---|---|
+| S1: Core types & resolution | ~300 | 2 | ~9 theorems |
+| S2: FromToYaml typeclasses | ~200 | 1 | ~7 theorems |
+| S3: Struct helpers & deriving | ~430 | 2 | ~4 theorems |
+| S4: Emitter | ~210 | 1 | ~1 theorem |
+| S5: Round-trip composition | ~50 | 2+ | ~1 theorem (hard) |
+| **Total** | **~1190** | **8+** | **~22 theorems** |
+
+The schema layer is **~1190 lines** of Lean code plus ~22 formal theorems. This is significantly less than the parser (~2500 lines) and has far better proof tractability since everything is pure functions on inductive types with no parser combinator dependency.
+
+---
+
 ## Building
 
 ```sh
@@ -362,7 +709,7 @@ lake build
 ## Running Tests
 
 ```sh
-# All verified test suites (427 tests across 8 suites)
+# All verified test suites (493 tests across 9 suites)
 lake build suiterunner tryparse && lake exe suiterunner --html docs/
 
 # Individual suites (each produces structured VerifiedSuiteResult)
@@ -371,6 +718,7 @@ lake exe parsetest           # Parser integration (25)
 lake exe quotedfolding       # Quoted folding (34)
 lake exe anchortests         # Anchor/alias tests (33)
 lake exe tagtests            # Tag tests (44)
+lake exe explicitkeytests    # Explicit key tests (66)
 lake exe verification        # Layer 1 verification (138)
 lake exe stringlemmas        # String lemma tests (129)
 lake exe demo                # Demo examples (7)

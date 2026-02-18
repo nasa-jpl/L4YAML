@@ -207,7 +207,11 @@ partial def flowSequenceItems (acc : Array YamlValue) : YamlParser (Array YamlVa
     | some _ => return acc.push item
     | none => flowSequenceItems (acc.push item)
   | ']' => return acc.push item
-  | c => withErrorMessage s!"expected ',' or ']' in flow sequence, got '{c}'" throwUnexpected
+  | c =>
+    -- Invalid delimiter: record validation error and return what we have.
+    -- The error survives backtracking and is checked at the top level.
+    setValidationError s!"expected ',' or ']' in flow sequence, got '{c}'"
+    return acc.push item
 
 /--
 Parse a flow mapping
@@ -245,14 +249,17 @@ partial def flowMappingEntries (acc : Array (YamlValue × YamlValue)) :
     | some _ => return acc.push (k, v)
     | none => flowMappingEntries (acc.push (k, v))
   | '}' => return acc.push (k, v)
-  | c => withErrorMessage s!"expected ',' or '}}' in flow mapping, got '{c}'" throwUnexpected
+  | c =>
+    -- Invalid delimiter: record validation error and return what we have.
+    setValidationError s!"expected ',' or '}}' in flow mapping, got '{c}'"
+    return acc.push (k, v)
 
 /--
 Parse a single flow mapping entry (`key: value` or `? key : value`).
 
 Handles:
 - `? key : value` — explicit key with value
-- `? key` — explicit key with null value  
+- `? key` — explicit key with null value
 - `?` — bare explicit key indicator (null key, null value)
 - `key : value` — implicit key
 - `: value` — empty key with value (§7.4.2)
