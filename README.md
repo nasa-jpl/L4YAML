@@ -44,7 +44,7 @@ Demo.lean                    # End-to-end demo examples (7 tests)
 
 Verification uses a deliberate 3-layer approach:
 
-1. **Runtime tests** (581 tests across 10 suites) — empirical validation that properties hold. Every `theorem` target starts life as a runtime `check` test.
+1. **Internal runtime tests** (581 tests across 10 suites) — hand-written Lean tests validating parser properties. Every `theorem` target starts life as a runtime `check` test. These are _separate_ from the yaml-test-suite's 416 external test cases.
 2. **Formal proofs** (`theorem`/`lemma` in `Proofs/*.lean`) — machine-checked guarantees. Layered by dependency: pure functions first, then parser invariants, then full soundness.
 3. **Compile-time guards** (`#guard`) — blocked until lean4-parser removes `partial def`. Will convert runtime tests to kernel-evaluated checks.
 
@@ -396,7 +396,7 @@ After steps 8–11, projected correct rate is ~74.5% (310/416). The remaining ~2
 
 Note: Error stage regressed from 26→0 after P2 flow changes — the more permissive flow parsing (accepting implicit mappings, JSON-like `:`) now also accepts some invalid flow constructs that P1's `validationError` was catching. Additional flow-specific validation rules needed.
 
-**Internal test suites: 581/581 (100%) across 10 suites** (includes `FlowTests` with 88/88).
+**Internal test suites: 581/581 (100%) across 10 suites** (hand-written Lean tests; separate from the 416 yaml-test-suite cases above).
 
 ### What's Implemented vs YAML 1.2.2 Spec
 
@@ -720,10 +720,10 @@ lake build
 ## Running Tests
 
 ```sh
-# All verified test suites (581 tests across 10 suites)
+# yaml-test-suite coverage (416 unique test cases from 351 files)
 lake build suiterunner tryparse && lake exe suiterunner --html docs/
 
-# Individual suites (each produces structured VerifiedSuiteResult)
+# Internal test suites (581 hand-written tests across 10 suites)
 lake exe tests              # Unit tests (17)
 lake exe parsetest           # Parser integration (25)
 lake exe quotedfolding       # Quoted folding (34)
@@ -735,7 +735,9 @@ lake exe verification        # Layer 1 verification (138)
 lake exe stringlemmas        # String lemma tests (129)
 lake exe demo                # Demo examples (7)
 
-# yaml-test-suite (by stage: scalar, flow, block, document, advanced, error, all)
+# yaml-test-suite by stage (cumulative: each stage includes all prior stages)
+# Stages: scalar(82) → flow(+46=128) → block(+109=237) → document(+24=261) → advanced(+81=342)
+# The --html mode runs all 416 unique tests once (non-cumulative) and generates per-stage pages
 lake build suiterunner tryparse && lake exe suiterunner scalar
 ```
 
