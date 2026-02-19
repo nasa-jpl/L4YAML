@@ -12,6 +12,7 @@ import Lean4Yaml.Proofs.CharClass
 import Lean4Yaml.Proofs.Termination
 import Lean4Yaml.Proofs.Soundness
 import Lean4Yaml.Proofs.RoundTrip
+import Lean4Yaml.Proofs.BlockScalarContracts
 import Lean4Yaml.Proofs.TestSuite
 
 /-

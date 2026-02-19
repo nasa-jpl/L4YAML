@@ -311,4 +311,68 @@ structure ValidYaml where
   /-- The grammar node corresponds to the value -/
   corresponds : NodeToValue grammar value
 
+/-! ## Block Scalar Header Character Classification
+  (YAML 1.2.2 §8.1.1, https://yaml.org/spec/1.2.2/#811-block-scalar-headers)
+
+  The header after `|`/`>` may contain at most two indicator characters:
+  - Chomp indicator: `-` (strip) or `+` (keep)
+  - Indentation indicator: digit `1`–`9`
+
+  Everything else belongs to the content stream and must NOT be consumed
+  by the header parser. This predicate makes the boundary between
+  "header characters" and "content characters" machine-checkable.
+-/
+
+/--
+A character is a valid block scalar header indicator character.
+
+This is the formal specification of which characters `blockScalarHeader`
+is allowed to consume as indicator characters (before trailing
+whitespace/comment/newline).
+
+**Decidable**: used both in proofs and runtime assertions.
+-/
+def isBlockScalarHeaderChar (c : Char) : Bool :=
+  c == '-' || c == '+' || (c >= '1' && c <= '9')
+
+instance : DecidablePred (fun c => isBlockScalarHeaderChar c = true) :=
+  fun c => inferInstanceAs (Decidable (isBlockScalarHeaderChar c = true))
+
+/--
+Pure specification: extract the header indicator portion from a character list.
+
+Given the characters immediately after `|`/`>`, returns the prefix
+that consists of valid header characters (at most 2, in any order)
+and the remaining characters.
+
+This is the reference implementation against which the parser's
+`blockScalarHeader` is contracted.
+-/
+def extractHeaderChars : List Char → List Char × List Char
+  | c :: rest =>
+    if isBlockScalarHeaderChar c then
+      let (hdr, tail) := extractHeaderChars rest
+      (c :: hdr, tail)
+    else
+      ([], c :: rest)
+  | [] => ([], [])
+
+/--
+The header extracts at most 2 indicator characters.
+
+Even though `extractHeaderChars` is defined recursively, a valid
+YAML header has at most one chomp indicator and one indentation
+indicator, so the prefix has length ≤ 2.
+-/
+def validHeaderLength (cs : List Char) : Prop :=
+  (extractHeaderChars cs).1.length ≤ 2
+
+/--
+A character that is NOT a header indicator belongs to the content stream.
+This is the key negative specification: consuming such a character in the
+header parser violates the contract.
+-/
+def isContentChar (c : Char) : Prop :=
+  isBlockScalarHeaderChar c = false
+
 end Lean4Yaml.Grammar

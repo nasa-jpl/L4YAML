@@ -357,6 +357,66 @@ def testValidationIntegration (state : IO.Ref TestCollector) : IO Unit := do
   check state "reject: trailing content after flow map" (
     match parseYaml "{a: 1} extra" with | Except.ok _ => false | Except.error _ => true)
 
+/-! ## §9  Block Scalar Contract Tests -/
+
+def testBlockScalarContracts (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Block Scalar Contracts"
+
+  -- §1: Header character classification (Grammar.isBlockScalarHeaderChar)
+  check state "'-' is header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar '-' == true)
+  check state "'+' is header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar '+' == true)
+  check state "'1' is header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar '1' == true)
+  check state "'9' is header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar '9' == true)
+  check state "'5' is header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar '5' == true)
+  check state "'0' is NOT header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar '0' == false)
+  check state "'\\n' is NOT header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar '\n' == false)
+  check state "' ' is NOT header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar ' ' == false)
+  check state "'\\t' is NOT header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar '\t' == false)
+  check state "'a' is NOT header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar 'a' == false)
+  check state "'#' is NOT header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar '#' == false)
+
+  -- §2: extractHeaderChars specification
+  check state "extract empty = ([], [])" (Lean4Yaml.Grammar.extractHeaderChars [] == ([], []))
+  check state "extract '-' = (['-'], [])" (Lean4Yaml.Grammar.extractHeaderChars ['-'] == (['-'], []))
+  check state "extract '-2' = (['-','2'], [])" (
+    Lean4Yaml.Grammar.extractHeaderChars ['-', '2'] == (['-', '2'], []))
+  check state "extract '\\n' = ([], ['\\n'])" (
+    Lean4Yaml.Grammar.extractHeaderChars ['\n'] == ([], ['\n']))
+  check state "extract '\\nxy' preserves tail" (
+    Lean4Yaml.Grammar.extractHeaderChars ['\n', 'x', 'y'] == ([], ['\n', 'x', 'y']))
+  check state "extract '2-\\n' = (['2','-'], ['\\n'])" (
+    Lean4Yaml.Grammar.extractHeaderChars ['2', '-', '\n'] == (['2', '-'], ['\n']))
+
+  -- §3: Contract G2 — literal block scalar column invariant
+  -- These tests exercise the runtime assertion in blockScalarHeader.
+  -- If the contract is violated, parsing would produce a validation error.
+  check state "literal block: no contract violation" (
+    match parseYaml "data: |\n  line1\n  line2" with | .ok _ => true | .error _ => false)
+  check state "folded block: no contract violation" (
+    match parseYaml "data: >\n  line1\n  line2" with | .ok _ => true | .error _ => false)
+  check state "literal block with chomp strip" (
+    match parseYaml "data: |-\n  line1\n  line2" with | .ok _ => true | .error _ => false)
+  check state "literal block with chomp keep" (
+    match parseYaml "data: |+\n  line1\n  line2" with | .ok _ => true | .error _ => false)
+  check state "literal block with explicit indent" (
+    -- |1 means 1-space indent relative to parent; with 'data: ' the parent
+    -- indent is 0, so content needs 1 space of indentation (0 + 1 = 1)
+    match parseYaml "|1\n line1\n line2" with | .ok _ => true | .error _ => false)
+  check state "folded block with chomp+indent" (
+    -- >-1 means strip chomp + 1-space indent; standalone so parentIndent=0
+    match parseYaml ">-1\n line1\n line2" with | .ok _ => true | .error _ => false)
+  check state "literal block: plain header (no indicators)" (
+    match parseYaml "data: |\n  content" with | .ok _ => true | .error _ => false)
+
+  -- §4: Peek-before-consume discipline — non-header chars are not consumed
+  -- These are regression tests for the exact bug class that was fixed.
+  check state "peek-before-consume: newline not consumed by header loop" (
+    match parseYaml "|\n  hello" with | .ok _ => true | .error _ => false)
+  check state "peek-before-consume: space not consumed by header loop" (
+    match parseYaml "|  \n  hello" with | .ok _ => true | .error _ => false)
+  check state "peek-before-consume: comment after indicator" (
+    match parseYaml "| # comment\n  hello" with | .ok _ => true | .error _ => false)
+
 /-! ## Collect All Tests -/
 
 /-- Collect all validation test results as structured data. -/
@@ -370,6 +430,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testContinuationCheck state
   testValidNodeStructural state
   testValidationIntegration state
+  testBlockScalarContracts state
   let results ← finish state
   return { name := "validationtests", label := "Structural Validation Tests",
            sourceFile := "Tests/ValidationTests.lean", tests := results }

@@ -47,6 +47,6 @@ This is Phase 6 in the verification roadmap.
 namespace Lean4Yaml.Proofs.RoundTrip
 
 -- Placeholder
-axiom pep_placeholder : True
+theorem pep_placeholder : True := trivial
 
 end Lean4Yaml.Proofs.RoundTrip
