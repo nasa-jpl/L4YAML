@@ -171,18 +171,18 @@
     <div class="stat-box stat-total"><h3>Unique Tests</h3><div class="number">416</div></div>
     <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">193</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">67</div></div>
-    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">0</div></div>
-    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">94</div></div>
+    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">59</div></div>
+    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">35</div></div>
     <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">62</div></div>
     <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">0</div></div>
-    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">193/416</div><div class="pct">(46.394231%)</div></div>
+    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">252/416</div><div class="pct">(60.576923%)</div></div>
   </div>
   <h3>Coverage by Stage</h3>
   <div class="stage-cards">
     <div class="stage-card">
       <div class="stage-card-name">scalar</div>
-      <div class="stage-card-stats">33/82 correct (40.000000%) · 33 pass, 20 fail, 0 exp-fail, 1 unexp-pass, 28 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 40.000000%"></div></div>
+      <div class="stage-card-stats">34/82 correct (41.000000%) · 33 pass, 20 fail, 1 exp-fail, 0 unexp-pass, 28 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 41.000000%"></div></div>
     </div>
     <div class="stage-card">
       <div class="stage-card-name">flow</div>
@@ -191,8 +191,8 @@
     </div>
     <div class="stage-card">
       <div class="stage-card-name">block</div>
-      <div class="stage-card-stats">70/109 correct (64.000000%) · 70 pass, 15 fail, 0 exp-fail, 14 unexp-pass, 10 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 64.000000%"></div></div>
+      <div class="stage-card-stats">76/109 correct (69.000000%) · 70 pass, 15 fail, 6 exp-fail, 8 unexp-pass, 10 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 69.000000%"></div></div>
     </div>
     <div class="stage-card">
       <div class="stage-card-name">document</div>
@@ -206,8 +206,8 @@
     </div>
     <div class="stage-card">
       <div class="stage-card-name">error</div>
-      <div class="stage-card-stats">0/74 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 74 unexp-pass, 0 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+      <div class="stage-card-stats">52/74 correct (70.000000%) · 0 pass, 0 fail, 52 exp-fail, 22 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 70.000000%"></div></div>
     </div>
   </div>
   <div class="filters">
@@ -259,11 +259,11 @@
         <td><span class="tag">sequence</span><span class="tag">mapping</span><span class="tag">spec</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="236b invalid value after mapping error mapping">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="236b invalid value after mapping error mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/236B.yaml" target="_blank" class="test-id-link" title="View 236B source in yaml-test-suite">236B</a></td>
         <td>Invalid value after mapping</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
@@ -307,19 +307,19 @@
         <td><span class="tag">mapping</span><span class="tag">scalar</span></td>
         <td><span class="error-msg" title="parse error: unexpected trailing content &#39;:&#39; after document value">parse error: unexpected trailing content &#39;:&#39; after document value</span></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="scalar" data-search="2g84 literal modifers literal scalar">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="scalar" data-search="2g84 literal modifers literal scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/2G84.yaml" target="_blank" class="test-id-link" title="View 2G84 source in yaml-test-suite">2G84</a></td>
         <td>Literal modifers</td>
         <td>scalar</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">literal</span><span class="tag">scalar</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="block" data-search="2g84  ">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="block" data-search="2g84  ">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/2G84.yaml" target="_blank" class="test-id-link" title="View 2G84 source in yaml-test-suite">2G84</a></td>
         <td></td>
         <td>block</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td></td>
         <td></td>
       </tr>
@@ -411,11 +411,11 @@
         <td><span class="tag">mapping</span><span class="tag">spec</span><span class="tag">alias</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="3hfz invalid content after document end marker error footer">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="3hfz invalid content after document end marker error footer">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/3HFZ.yaml" target="_blank" class="test-id-link" title="View 3HFZ source in yaml-test-suite">3HFZ</a></td>
         <td>Invalid content after document end marker</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">footer</span></td>
         <td></td>
       </tr>
@@ -531,19 +531,19 @@
         <td><span class="tag">spec</span><span class="tag">scalar</span><span class="tag">1.3-err</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="4h7k flow sequence with invalid extra closing bracket error flow sequence">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="4h7k flow sequence with invalid extra closing bracket error flow sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/4H7K.yaml" target="_blank" class="test-id-link" title="View 4H7K source in yaml-test-suite">4H7K</a></td>
         <td>Flow sequence with invalid extra closing bracket</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="4hvu wrong indendation in sequence error sequence indent">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="4hvu wrong indendation in sequence error sequence indent">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/4HVU.yaml" target="_blank" class="test-id-link" title="View 4HVU source in yaml-test-suite">4HVU</a></td>
         <td>Wrong indendation in Sequence</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">sequence</span><span class="tag">indent</span></td>
         <td></td>
       </tr>
@@ -691,11 +691,11 @@
         <td><span class="tag">flow</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="55wf invalid escape in double quoted string error double">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="55wf invalid escape in double quoted string error double">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/55WF.yaml" target="_blank" class="test-id-link" title="View 55WF source in yaml-test-suite">55WF</a></td>
         <td>Invalid escape in double quoted string</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">double</span></td>
         <td></td>
       </tr>
@@ -755,11 +755,11 @@
         <td><span class="tag">spec</span><span class="tag">flow</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="5llu block scalar with wrong indented line after spaces only error folded whitespace">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="5llu block scalar with wrong indented line after spaces only error folded whitespace">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/5LLU.yaml" target="_blank" class="test-id-link" title="View 5LLU source in yaml-test-suite">5LLU</a></td>
         <td>Block scalar with wrong indented line after spaces only</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">folded</span><span class="tag">whitespace</span></td>
         <td></td>
       </tr>
@@ -803,11 +803,11 @@
         <td></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="5trb invalid document-start marker in doublequoted tring header double error">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="5trb invalid document-start marker in doublequoted tring header double error">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/5TRB.yaml" target="_blank" class="test-id-link" title="View 5TRB source in yaml-test-suite">5TRB</a></td>
         <td>Invalid document-start marker in doublequoted tring</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">header</span><span class="tag">double</span><span class="tag">error</span></td>
         <td></td>
       </tr>
@@ -835,11 +835,11 @@
         <td><span class="tag">explicit-key</span><span class="tag">spec</span><span class="tag">mapping</span><span class="tag">comment</span><span class="tag">literal</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="62ez invalid block mapping key on same line as previous key error flow mapping">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="62ez invalid block mapping key on same line as previous key error flow mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/62EZ.yaml" target="_blank" class="test-id-link" title="View 62EZ source in yaml-test-suite">62EZ</a></td>
         <td>Invalid block mapping key on same line as previous key</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
@@ -923,11 +923,11 @@
         <td><span class="tag">spec</span><span class="tag">scalar</span><span class="tag">literal</span><span class="tag">comment</span></td>
         <td><span class="error-msg" title="parse error: unexpected trailing content &#39;\&#39; after document value">parse error: unexpected trailing content &#39;\&#39; after document value</span></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="6jtt flow sequence without closing bracket error flow sequence">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="6jtt flow sequence without closing bracket error flow sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6JTT.yaml" target="_blank" class="test-id-link" title="View 6JTT source in yaml-test-suite">6JTT</a></td>
         <td>Flow sequence without closing bracket</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
@@ -987,11 +987,11 @@
         <td></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="6s55 invalid scalar at the end of sequence error mapping sequence">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="6s55 invalid scalar at the end of sequence error mapping sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6S55.yaml" target="_blank" class="test-id-link" title="View 6S55 source in yaml-test-suite">6S55</a></td>
         <td>Invalid scalar at the end of sequence</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
@@ -1099,19 +1099,19 @@
         <td><span class="tag">mapping</span><span class="tag">spec</span><span class="tag">tag</span><span class="tag">unknown-tag</span></td>
         <td><span class="error-msg" title="parse error: unexpected trailing content &#39;!&#39; after document value">parse error: unexpected trailing content &#39;!&#39; after document value</span></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="7lbh multiline double quoted implicit keys error double">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="7lbh multiline double quoted implicit keys error double">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/7LBH.yaml" target="_blank" class="test-id-link" title="View 7LBH source in yaml-test-suite">7LBH</a></td>
         <td>Multiline double quoted implicit keys</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">double</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="7mnf missing colon error mapping">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="7mnf missing colon error mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/7MNF.yaml" target="_blank" class="test-id-link" title="View 7MNF source in yaml-test-suite">7MNF</a></td>
         <td>Missing colon</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
@@ -1219,11 +1219,11 @@
         <td><span class="tag">spec</span><span class="tag">flow</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="8xdj comment in plain multiline value error comment scalar">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="8xdj comment in plain multiline value error comment scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/8XDJ.yaml" target="_blank" class="test-id-link" title="View 8XDJ source in yaml-test-suite">8XDJ</a></td>
         <td>Comment in plain multiline value</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">comment</span><span class="tag">scalar</span></td>
         <td></td>
       </tr>
@@ -1299,11 +1299,11 @@
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">indent</span><span class="tag">sequence</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="9cwy invalid scalar at the end of mapping error mapping sequence">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="9cwy invalid scalar at the end of mapping error mapping sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/9CWY.yaml" target="_blank" class="test-id-link" title="View 9CWY source in yaml-test-suite">9CWY</a></td>
         <td>Invalid scalar at the end of mapping</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
@@ -1339,11 +1339,11 @@
         <td><span class="tag">simple</span><span class="tag">mapping</span><span class="tag">indent</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="9jba invalid comment after end of flow sequence comment error flow sequence">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="9jba invalid comment after end of flow sequence comment error flow sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/9JBA.yaml" target="_blank" class="test-id-link" title="View 9JBA source in yaml-test-suite">9JBA</a></td>
         <td>Invalid comment after end of flow sequence</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">comment</span><span class="tag">error</span><span class="tag">flow</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
@@ -1363,11 +1363,11 @@
         <td><span class="tag">error</span><span class="tag">header</span><span class="tag">mapping</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="9mag flow sequence with invalid comma at the beginning error flow sequence">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="9mag flow sequence with invalid comma at the beginning error flow sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/9MAG.yaml" target="_blank" class="test-id-link" title="View 9MAG source in yaml-test-suite">9MAG</a></td>
         <td>Flow sequence with invalid comma at the beginning</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
@@ -1395,11 +1395,11 @@
         <td><span class="tag">double</span><span class="tag">scalar</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="block" data-search="9mqt  ">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="block" data-search="9mqt  ">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/9MQT.yaml" target="_blank" class="test-id-link" title="View 9MQT source in yaml-test-suite">9MQT</a></td>
         <td></td>
         <td>block</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td></td>
         <td></td>
       </tr>
@@ -1523,11 +1523,11 @@
         <td><span class="tag">error</span><span class="tag">directive</span><span class="tag">document</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="bd7l invalid mapping after sequence error mapping sequence">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="bd7l invalid mapping after sequence error mapping sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/BD7L.yaml" target="_blank" class="test-id-link" title="View BD7L source in yaml-test-suite">BD7L</a></td>
         <td>Invalid mapping after sequence</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
@@ -1539,19 +1539,19 @@
         <td><span class="tag">spec</span><span class="tag">directive</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="bf9h trailing comment in multiline plain scalar comment error scalar">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="bf9h trailing comment in multiline plain scalar comment error scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/BF9H.yaml" target="_blank" class="test-id-link" title="View BF9H source in yaml-test-suite">BF9H</a></td>
         <td>Trailing comment in multiline plain scalar</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">comment</span><span class="tag">error</span><span class="tag">scalar</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="bs4k comment between plain scalar lines error scalar">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="bs4k comment between plain scalar lines error scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/BS4K.yaml" target="_blank" class="test-id-link" title="View BS4K source in yaml-test-suite">BS4K</a></td>
         <td>Comment between plain scalar lines</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">scalar</span></td>
         <td></td>
       </tr>
@@ -1571,11 +1571,11 @@
         <td><span class="tag">spec</span><span class="tag">flow</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="c2sp flow mapping key on two lines error flow mapping">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="c2sp flow mapping key on two lines error flow mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/C2SP.yaml" target="_blank" class="test-id-link" title="View C2SP source in yaml-test-suite">C2SP</a></td>
         <td>Flow Mapping Key on two lines</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
@@ -1627,11 +1627,11 @@
         <td><span class="tag">double</span><span class="tag">scalar</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="cq3w double quoted string without closing quote error double">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="cq3w double quoted string without closing quote error double">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/CQ3W.yaml" target="_blank" class="test-id-link" title="View CQ3W source in yaml-test-suite">CQ3W</a></td>
         <td>Double quoted string without closing quote</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">double</span></td>
         <td></td>
       </tr>
@@ -1643,11 +1643,11 @@
         <td><span class="tag">explicit-key</span><span class="tag">spec</span><span class="tag">flow</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="ctn5 flow sequence with invalid extra comma error flow sequence">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="ctn5 flow sequence with invalid extra comma error flow sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/CTN5.yaml" target="_blank" class="test-id-link" title="View CTN5 source in yaml-test-suite">CTN5</a></td>
         <td>Flow sequence with invalid extra comma</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
@@ -1659,11 +1659,11 @@
         <td><span class="tag">local-tag</span><span class="tag">spec</span><span class="tag">tag</span><span class="tag">alias</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="cvw2 invalid comment after comma comment error flow sequence">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="cvw2 invalid comment after comma comment error flow sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/CVW2.yaml" target="_blank" class="test-id-link" title="View CVW2 source in yaml-test-suite">CVW2</a></td>
         <td>Invalid comment after comma</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">comment</span><span class="tag">error</span><span class="tag">flow</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
@@ -1675,11 +1675,11 @@
         <td><span class="tag">anchor</span><span class="tag">error</span><span class="tag">header</span><span class="tag">mapping</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="d49q multiline single quoted implicit keys error single mapping">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="d49q multiline single quoted implicit keys error single mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/D49Q.yaml" target="_blank" class="test-id-link" title="View D49Q source in yaml-test-suite">D49Q</a></td>
         <td>Multiline single quoted implicit keys</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">single</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
@@ -1795,11 +1795,11 @@
         <td><span class="tag">comment</span><span class="tag">folded</span><span class="tag">scalar</span></td>
         <td><span class="error-msg" title="parse error: unexpected trailing content &#39;l&#39; after document value">parse error: unexpected trailing content &#39;l&#39; after document value</span></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="dk4h implicit key followed by newline error flow mapping sequence">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="dk4h implicit key followed by newline error flow mapping sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/DK4H.yaml" target="_blank" class="test-id-link" title="View DK4H source in yaml-test-suite">DK4H</a></td>
         <td>Implicit key followed by newline</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
@@ -1851,11 +1851,11 @@
         <td></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="block" data-search="dk95  ">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="block" data-search="dk95  ">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/DK95.yaml" target="_blank" class="test-id-link" title="View DK95 source in yaml-test-suite">DK95</a></td>
         <td></td>
         <td>block</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td></td>
         <td></td>
       </tr>
@@ -1875,11 +1875,11 @@
         <td></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="dmg6 wrong indendation in map error mapping indent">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="dmg6 wrong indendation in map error mapping indent">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/DMG6.yaml" target="_blank" class="test-id-link" title="View DMG6 source in yaml-test-suite">DMG6</a></td>
         <td>Wrong indendation in Map</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">indent</span></td>
         <td></td>
       </tr>
@@ -1899,11 +1899,11 @@
         <td><span class="tag">mapping</span><span class="tag">alias</span></td>
         <td><span class="error-msg" title="parse error: unexpected trailing content &#39;*&#39; after document value">parse error: unexpected trailing content &#39;*&#39; after document value</span></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="eb22 missing document-end marker before directive error directive footer">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="eb22 missing document-end marker before directive error directive footer">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/EB22.yaml" target="_blank" class="test-id-link" title="View EB22 source in yaml-test-suite">EB22</a></td>
         <td>Missing document-end marker before directive</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">directive</span><span class="tag">footer</span></td>
         <td></td>
       </tr>
@@ -1915,11 +1915,11 @@
         <td><span class="tag">tag</span><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="ew3v wrong indendation in mapping error mapping indent">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="ew3v wrong indendation in mapping error mapping indent">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/EW3V.yaml" target="_blank" class="test-id-link" title="View EW3V source in yaml-test-suite">EW3V</a></td>
         <td>Wrong indendation in mapping</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">indent</span></td>
         <td></td>
       </tr>
@@ -2043,11 +2043,11 @@
         <td><span class="tag">flow</span><span class="tag">sequence</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="g7je multiline implicit keys error mapping">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="g7je multiline implicit keys error mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/G7JE.yaml" target="_blank" class="test-id-link" title="View G7JE source in yaml-test-suite">G7JE</a></td>
         <td>Multiline implicit keys</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
@@ -2059,19 +2059,19 @@
         <td><span class="tag">spec</span><span class="tag">folded</span><span class="tag">scalar</span><span class="tag">1.3-err</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="g9hc invalid anchor in zero indented sequence anchor error sequence">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="g9hc invalid anchor in zero indented sequence anchor error sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/G9HC.yaml" target="_blank" class="test-id-link" title="View G9HC source in yaml-test-suite">G9HC</a></td>
         <td>Invalid anchor in zero indented sequence</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">anchor</span><span class="tag">error</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="gdy7 comment that looks like a mapping key comment error mapping">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="gdy7 comment that looks like a mapping key comment error mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/GDY7.yaml" target="_blank" class="test-id-link" title="View GDY7 source in yaml-test-suite">GDY7</a></td>
         <td>Comment that looks like a mapping key</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">comment</span><span class="tag">error</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
@@ -2083,11 +2083,11 @@
         <td><span class="tag">explicit-key</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="gt5m node anchor in sequence anchor error sequence">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="gt5m node anchor in sequence anchor error sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/GT5M.yaml" target="_blank" class="test-id-link" title="View GT5M source in yaml-test-suite">GT5M</a></td>
         <td>Node anchor in sequence</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">anchor</span><span class="tag">error</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
@@ -2107,11 +2107,11 @@
         <td><span class="tag">scalar</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="h7j7 node anchor not indented anchor error indent tag">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="h7j7 node anchor not indented anchor error indent tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/H7J7.yaml" target="_blank" class="test-id-link" title="View H7J7 source in yaml-test-suite">H7J7</a></td>
         <td>Node anchor not indented</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">anchor</span><span class="tag">error</span><span class="tag">indent</span><span class="tag">tag</span></td>
         <td></td>
       </tr>
@@ -2155,11 +2155,11 @@
         <td><span class="tag">spec</span><span class="tag">tag</span><span class="tag">alias</span></td>
         <td><span class="error-msg" title="parse error: unexpected trailing content &#39;:&#39; after document value">parse error: unexpected trailing content &#39;:&#39; after document value</span></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="hre5 double quoted scalar with escaped single quote double error single">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="hre5 double quoted scalar with escaped single quote double error single">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/HRE5.yaml" target="_blank" class="test-id-link" title="View HRE5 source in yaml-test-suite">HRE5</a></td>
         <td>Double quoted scalar with escaped single quote</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">double</span><span class="tag">error</span><span class="tag">single</span></td>
         <td></td>
       </tr>
@@ -2171,11 +2171,11 @@
         <td><span class="tag">spec</span><span class="tag">scalar</span><span class="tag">whitespace</span><span class="tag">upto-1.2</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="hu3p invalid mapping in plain scalar error mapping scalar">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="hu3p invalid mapping in plain scalar error mapping scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/HU3P.yaml" target="_blank" class="test-id-link" title="View HU3P source in yaml-test-suite">HU3P</a></td>
         <td>Invalid Mapping in plain scalar</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">scalar</span></td>
         <td></td>
       </tr>
@@ -2259,11 +2259,11 @@
         <td><span class="tag">spec</span><span class="tag">header</span></td>
         <td><span class="error-msg" title="parse error: unexpected trailing content &#39;-&#39; after document value">parse error: unexpected trailing content &#39;-&#39; after document value</span></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="block" data-search="jkf3 multiline unidented double quoted block key indent">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="block" data-search="jkf3 multiline unidented double quoted block key indent">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/JKF3.yaml" target="_blank" class="test-id-link" title="View JKF3 source in yaml-test-suite">JKF3</a></td>
         <td>Multiline unidented double quoted block key</td>
         <td>block</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">indent</span></td>
         <td></td>
       </tr>
@@ -2299,11 +2299,11 @@
         <td><span class="tag">explicit-key</span><span class="tag">mapping</span><span class="tag">scalar</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="jy7z trailing content that looks like a mapping error mapping double">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="jy7z trailing content that looks like a mapping error mapping double">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/JY7Z.yaml" target="_blank" class="test-id-link" title="View JY7Z source in yaml-test-suite">JY7Z</a></td>
         <td>Trailing content that looks like a mapping</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">double</span></td>
         <td></td>
       </tr>
@@ -2387,11 +2387,11 @@
         <td><span class="tag">mapping</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="ks4u invalid item after end of flow sequence error flow sequence">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="ks4u invalid item after end of flow sequence error flow sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/KS4U.yaml" target="_blank" class="test-id-link" title="View KS4U source in yaml-test-suite">KS4U</a></td>
         <td>Invalid item after end of flow sequence</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
@@ -2451,11 +2451,11 @@
         <td><span class="tag">spec</span><span class="tag">tag</span><span class="tag">alias</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="lhl4 invalid tag error tag">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="lhl4 invalid tag error tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/LHL4.yaml" target="_blank" class="test-id-link" title="View LHL4 source in yaml-test-suite">LHL4</a></td>
         <td>Invalid tag</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">tag</span></td>
         <td></td>
       </tr>
@@ -2571,11 +2571,11 @@
         <td><span class="tag">directive</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="block" data-search="mus6  ">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="block" data-search="mus6  ">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/MUS6.yaml" target="_blank" class="test-id-link" title="View MUS6 source in yaml-test-suite">MUS6</a></td>
         <td></td>
         <td>block</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td></td>
         <td></td>
       </tr>
@@ -2643,11 +2643,11 @@
         <td><span class="tag">folded</span><span class="tag">scalar</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="n4jp bad indentation in mapping error mapping indent double">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="n4jp bad indentation in mapping error mapping indent double">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/N4JP.yaml" target="_blank" class="test-id-link" title="View N4JP source in yaml-test-suite">N4JP</a></td>
         <td>Bad indentation in mapping</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">indent</span><span class="tag">double</span></td>
         <td></td>
       </tr>
@@ -2715,11 +2715,11 @@
         <td><span class="tag">spec</span><span class="tag">literal</span><span class="tag">folded</span><span class="tag">comment</span><span class="tag">scalar</span></td>
         <td><span class="error-msg" title="parse error: unexpected trailing content &#39;l&#39; after document value">parse error: unexpected trailing content &#39;l&#39; after document value</span></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="p2eq invalid sequene item on same line as previous item error flow mapping sequence">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="p2eq invalid sequene item on same line as previous item error flow mapping sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/P2EQ.yaml" target="_blank" class="test-id-link" title="View P2EQ source in yaml-test-suite">P2EQ</a></td>
         <td>Invalid sequene item on same line as previous item</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
@@ -2771,11 +2771,11 @@
         <td><span class="tag">anchor</span><span class="tag">explicit-key</span></td>
         <td><span class="error-msg" title="parse error: unexpected trailing content &#39;b&#39; after document value">parse error: unexpected trailing content &#39;b&#39; after document value</span></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="q4cl trailing content after quoted value error mapping double">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="q4cl trailing content after quoted value error mapping double">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/Q4CL.yaml" target="_blank" class="test-id-link" title="View Q4CL source in yaml-test-suite">Q4CL</a></td>
         <td>Trailing content after quoted value</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">double</span></td>
         <td></td>
       </tr>
@@ -2827,11 +2827,11 @@
         <td><span class="tag">spec</span><span class="tag">flow</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="qlj7 tag shorthand used in documents but only defined in the first error directive tag">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="qlj7 tag shorthand used in documents but only defined in the first error directive tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/QLJ7.yaml" target="_blank" class="test-id-link" title="View QLJ7 source in yaml-test-suite">QLJ7</a></td>
         <td>Tag shorthand used in documents but only defined in the first</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">directive</span><span class="tag">tag</span></td>
         <td></td>
       </tr>
@@ -2859,11 +2859,11 @@
         <td><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="rhx7 yaml directive without document end marker directive error">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="rhx7 yaml directive without document end marker directive error">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/RHX7.yaml" target="_blank" class="test-id-link" title="View RHX7 source in yaml-test-suite">RHX7</a></td>
         <td>YAML directive without document end marker</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">directive</span><span class="tag">error</span></td>
         <td></td>
       </tr>
@@ -2891,11 +2891,11 @@
         <td><span class="tag">spec</span><span class="tag">header</span><span class="tag">footer</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="rxy3 invalid document-end marker in single quoted string footer single error">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="rxy3 invalid document-end marker in single quoted string footer single error">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/RXY3.yaml" target="_blank" class="test-id-link" title="View RXY3 source in yaml-test-suite">RXY3</a></td>
         <td>Invalid document-end marker in single quoted string</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">footer</span><span class="tag">single</span><span class="tag">error</span></td>
         <td></td>
       </tr>
@@ -2931,11 +2931,11 @@
         <td></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="s4gj invalid text after block scalar indicator error folded">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="s4gj invalid text after block scalar indicator error folded">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/S4GJ.yaml" target="_blank" class="test-id-link" title="View S4GJ source in yaml-test-suite">S4GJ</a></td>
         <td>Invalid text after block scalar indicator</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">folded</span></td>
         <td></td>
       </tr>
@@ -3091,19 +3091,19 @@
         <td><span class="tag">spec</span><span class="tag">literal</span><span class="tag">scalar</span><span class="tag">whitespace</span><span class="tag">1.3-mod</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="t833 flow mapping missing a separating comma error flow mapping">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="t833 flow mapping missing a separating comma error flow mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/T833.yaml" target="_blank" class="test-id-link" title="View T833 source in yaml-test-suite">T833</a></td>
         <td>Flow mapping missing a separating comma</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="td5n invalid scalar after sequence error sequence scalar">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="td5n invalid scalar after sequence error sequence scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/TD5N.yaml" target="_blank" class="test-id-link" title="View TD5N source in yaml-test-suite">TD5N</a></td>
         <td>Invalid scalar after sequence</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">sequence</span><span class="tag">scalar</span></td>
         <td></td>
       </tr>
@@ -3147,19 +3147,19 @@
         <td><span class="tag">anchor</span><span class="tag">comment</span><span class="tag">1.3-err</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="u44r bad indentation in mapping (2) error mapping indent double">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="u44r bad indentation in mapping (2) error mapping indent double">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/U44R.yaml" target="_blank" class="test-id-link" title="View U44R source in yaml-test-suite">U44R</a></td>
         <td>Bad indentation in mapping (2)</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">indent</span><span class="tag">double</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="u99r invalid comma in tag error tag">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="u99r invalid comma in tag error tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/U99R.yaml" target="_blank" class="test-id-link" title="View U99R source in yaml-test-suite">U99R</a></td>
         <td>Invalid comma in tag</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">tag</span></td>
         <td></td>
       </tr>
@@ -3363,11 +3363,11 @@
         <td><span class="tag">anchor</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="block" data-search="y79y tabs in various contexts whitespace">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="block" data-search="y79y tabs in various contexts whitespace">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/Y79Y.yaml" target="_blank" class="test-id-link" title="View Y79Y source in yaml-test-suite">Y79Y</a></td>
         <td>Tabs in various contexts</td>
         <td>block</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">whitespace</span></td>
         <td></td>
       </tr>
@@ -3515,19 +3515,19 @@
         <td><span class="tag">flow</span><span class="tag">indent</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="zl4z invalid nested mapping error mapping">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="zl4z invalid nested mapping error mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/ZL4Z.yaml" target="_blank" class="test-id-link" title="View ZL4Z source in yaml-test-suite">ZL4Z</a></td>
         <td>Invalid nested mapping</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="zvh3 wrong indented sequence item error sequence indent">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="zvh3 wrong indented sequence item error sequence indent">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/ZVH3.yaml" target="_blank" class="test-id-link" title="View ZVH3 source in yaml-test-suite">ZVH3</a></td>
         <td>Wrong indented sequence item</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">sequence</span><span class="tag">indent</span></td>
         <td></td>
       </tr>
@@ -3539,11 +3539,11 @@
         <td><span class="tag">anchor</span><span class="tag">explicit-key</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="zxt5 implicit key followed by newline and adjacent value error flow mapping sequence">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="zxt5 implicit key followed by newline and adjacent value error flow mapping sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/ZXT5.yaml" target="_blank" class="test-id-link" title="View ZXT5 source in yaml-test-suite">ZXT5</a></td>
         <td>Implicit key followed by newline and adjacent value</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
