@@ -169,13 +169,13 @@
   <p class="subtitle">YAML 1.2.2 parser compliance against the official yaml-test-suite</p>
   <div class="stats">
     <div class="stat-box stat-total"><h3>Unique Tests</h3><div class="number">81</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">55</div></div>
-    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">9</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">38</div></div>
+    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">26</div></div>
     <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">0</div></div>
     <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">0</div></div>
     <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">17</div></div>
     <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">0</div></div>
-    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">55/81</div><div class="pct">(67.901235%)</div></div>
+    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">38/81</div><div class="pct">(46.913580%)</div></div>
   </div>
   <h3>Coverage by Stage</h3>
   <div class="stage-cards">
@@ -201,8 +201,8 @@
     </div>
     <div class="stage-card">
       <div class="stage-card-name">advanced</div>
-      <div class="stage-card-stats">55/81 correct (67.000000%) · 55 pass, 9 fail, 0 exp-fail, 0 unexp-pass, 17 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 67.000000%"></div></div>
+      <div class="stage-card-stats">38/81 correct (46.000000%) · 38 pass, 26 fail, 0 exp-fail, 0 unexp-pass, 17 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 46.000000%"></div></div>
     </div>
     <div class="stage-card">
       <div class="stage-card-name">error</div>
@@ -257,7 +257,7 @@
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">alias</span><span class="tag">mapping</span><span class="tag">whitespace</span></td>
-        <td><span class="error-msg" title="parse error: undefined anchor: *alias1">parse error: undefined anchor: *alias1</span></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;:&#39; after document value">parse error: unexpected trailing content &#39;:&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="2auy tags in block sequence tag sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/2AUY.yaml" target="_blank" class="test-id-link" title="View 2AUY source in yaml-test-suite">2AUY</a></td>
@@ -275,13 +275,13 @@
         <td><span class="tag">alias</span><span class="tag">edge</span><span class="tag">mapping</span><span class="tag">1.3-err</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="2xxw spec example 2.25. unordered sets spec mapping unknown-tag explicit-key">
+      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="2xxw spec example 2.25. unordered sets spec mapping unknown-tag explicit-key">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/2XXW.yaml" target="_blank" class="test-id-link" title="View 2XXW source in yaml-test-suite">2XXW</a></td>
         <td>Spec Example 2.25. Unordered Sets</td>
         <td>advanced</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">spec</span><span class="tag">mapping</span><span class="tag">unknown-tag</span><span class="tag">explicit-key</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;?&#39; after document value">parse error: unexpected trailing content &#39;?&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="33x3 three explicit integers in a block sequence sequence tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/33X3.yaml" target="_blank" class="test-id-link" title="View 33X3 source in yaml-test-suite">33X3</a></td>
@@ -291,13 +291,13 @@
         <td><span class="tag">sequence</span><span class="tag">tag</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="35kp tags for root objects explicit-key header mapping tag">
+      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="35kp tags for root objects explicit-key header mapping tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/35KP.yaml" target="_blank" class="test-id-link" title="View 35KP source in yaml-test-suite">35KP</a></td>
         <td>Tags for Root Objects</td>
         <td>advanced</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">explicit-key</span><span class="tag">header</span><span class="tag">mapping</span><span class="tag">tag</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;?&#39; after document value">parse error: unexpected trailing content &#39;?&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="3gzx spec example 7.1. alias nodes mapping spec alias">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/3GZX.yaml" target="_blank" class="test-id-link" title="View 3GZX source in yaml-test-suite">3GZX</a></td>
@@ -331,21 +331,21 @@
         <td><span class="tag">tag</span><span class="tag">1.3-mod</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="565n construct binary tag unknown-tag">
+      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="565n construct binary tag unknown-tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/565N.yaml" target="_blank" class="test-id-link" title="View 565N source in yaml-test-suite">565N</a></td>
         <td>Construct Binary</td>
         <td>advanced</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">tag</span><span class="tag">unknown-tag</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;R&#39; after document value">parse error: unexpected trailing content &#39;R&#39; after document value</span></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="57h4 spec example 8.22. block collection nodes sequence mapping tag">
+      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="57h4 spec example 8.22. block collection nodes sequence mapping tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/57H4.yaml" target="_blank" class="test-id-link" title="View 57H4 source in yaml-test-suite">57H4</a></td>
         <td>Spec Example 8.22. Block Collection Nodes</td>
         <td>advanced</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">sequence</span><span class="tag">mapping</span><span class="tag">tag</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;-&#39; after document value">parse error: unexpected trailing content &#39;-&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="5tym spec example 6.21. local tag prefix local-tag spec directive tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/5TYM.yaml" target="_blank" class="test-id-link" title="View 5TYM source in yaml-test-suite">5TYM</a></td>
@@ -355,21 +355,21 @@
         <td><span class="tag">local-tag</span><span class="tag">spec</span><span class="tag">directive</span><span class="tag">tag</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="5we3 spec example 8.17. explicit block mapping entries explicit-key spec mapping comment literal sequence">
+      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="5we3 spec example 8.17. explicit block mapping entries explicit-key spec mapping comment literal sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/5WE3.yaml" target="_blank" class="test-id-link" title="View 5WE3 source in yaml-test-suite">5WE3</a></td>
         <td>Spec Example 8.17. Explicit Block Mapping Entries</td>
         <td>advanced</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">explicit-key</span><span class="tag">spec</span><span class="tag">mapping</span><span class="tag">comment</span><span class="tag">literal</span><span class="tag">sequence</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;b&#39; after document value">parse error: unexpected trailing content &#39;b&#39; after document value</span></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="6bfj mapping, key and flow sequence item anchors anchor complex-key flow mapping sequence">
+      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="6bfj mapping, key and flow sequence item anchors anchor complex-key flow mapping sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6BFJ.yaml" target="_blank" class="test-id-link" title="View 6BFJ source in yaml-test-suite">6BFJ</a></td>
         <td>Mapping, key and flow sequence item anchors</td>
         <td>advanced</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">anchor</span><span class="tag">complex-key</span><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;:&#39; after document value">parse error: unexpected trailing content &#39;:&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="6ck3 spec example 6.26. tag shorthands spec tag local-tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6CK3.yaml" target="_blank" class="test-id-link" title="View 6CK3 source in yaml-test-suite">6CK3</a></td>
@@ -425,15 +425,15 @@
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">comment</span><span class="tag">double</span><span class="tag">spec</span><span class="tag">folded</span><span class="tag">tag</span></td>
-        <td><span class="error-msg" title="parse error: unexpected token at { offset := 46, line := 4, col := 8 }; expected plain scalar at { offset := 46, line := 4, col := 8 }; expected block sequence at { offset := 46, line := 4, col := 8 }">parse error: unexpected token at { offset := 46, line := 4, col := 8 }; expected plain scalar at { offset := 46, line := 4, col := 8 }; expected block sequence at { offset := 46, line := 4, col := 8 }</span></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;B&#39; after document value">parse error: unexpected trailing content &#39;B&#39; after document value</span></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="74h7 tags in implicit mapping tag mapping">
+      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="74h7 tags in implicit mapping tag mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/74H7.yaml" target="_blank" class="test-id-link" title="View 74H7 source in yaml-test-suite">74H7</a></td>
         <td>Tags in Implicit Mapping</td>
         <td>advanced</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">tag</span><span class="tag">mapping</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;c&#39; after document value">parse error: unexpected trailing content &#39;c&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="7bmt node and mapping key anchors [1.3] anchor comment mapping 1.3-mod">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/7BMT.yaml" target="_blank" class="test-id-link" title="View 7BMT source in yaml-test-suite">7BMT</a></td>
@@ -451,13 +451,13 @@
         <td><span class="tag">mapping</span><span class="tag">sequence</span><span class="tag">spec</span><span class="tag">alias</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="7fwl spec example 6.24. verbatim tags mapping spec tag unknown-tag">
+      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="7fwl spec example 6.24. verbatim tags mapping spec tag unknown-tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/7FWL.yaml" target="_blank" class="test-id-link" title="View 7FWL source in yaml-test-suite">7FWL</a></td>
         <td>Spec Example 6.24. Verbatim Tags</td>
         <td>advanced</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">mapping</span><span class="tag">spec</span><span class="tag">tag</span><span class="tag">unknown-tag</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;!&#39; after document value">parse error: unexpected trailing content &#39;!&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="7w2p block mapping with missing values explicit-key mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/7W2P.yaml" target="_blank" class="test-id-link" title="View 7W2P source in yaml-test-suite">7W2P</a></td>
@@ -515,13 +515,13 @@
         <td><span class="tag">anchor</span><span class="tag">indent</span><span class="tag">1.3-err</span><span class="tag">tag</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="c4hz spec example 2.24. global tags spec tag alias directive local-tag">
+      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="c4hz spec example 2.24. global tags spec tag alias directive local-tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/C4HZ.yaml" target="_blank" class="test-id-link" title="View C4HZ source in yaml-test-suite">C4HZ</a></td>
         <td>Spec Example 2.24. Global Tags</td>
         <td>advanced</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">spec</span><span class="tag">tag</span><span class="tag">alias</span><span class="tag">directive</span><span class="tag">local-tag</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;-&#39; after document value">parse error: unexpected trailing content &#39;-&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="cc74 spec example 6.20. tag handles spec directive tag unknown-tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/CC74.yaml" target="_blank" class="test-id-link" title="View CC74 source in yaml-test-suite">CC74</a></td>
@@ -569,7 +569,7 @@
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">mapping</span><span class="tag">alias</span></td>
-        <td><span class="error-msg" title="parse error: undefined anchor: *b">parse error: undefined anchor: *b</span></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;*&#39; after document value">parse error: unexpected trailing content &#39;*&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="ehf6 tags for flow objects tag flow mapping sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/EHF6.yaml" target="_blank" class="test-id-link" title="View EHF6 source in yaml-test-suite">EHF6</a></td>
@@ -587,13 +587,13 @@
         <td><span class="tag">anchor</span><span class="tag">tag</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="fh7j tags on empty scalars tag scalar">
+      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="fh7j tags on empty scalars tag scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/FH7J.yaml" target="_blank" class="test-id-link" title="View FH7J source in yaml-test-suite">FH7J</a></td>
         <td>Tags on Empty Scalars</td>
         <td>advanced</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">tag</span><span class="tag">scalar</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;b&#39; after document value">parse error: unexpected trailing content &#39;b&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="frk4 spec example 7.3. completely empty flow nodes empty-key explicit-key spec flow mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/FRK4.yaml" target="_blank" class="test-id-link" title="View FRK4 source in yaml-test-suite">FRK4</a></td>
@@ -603,13 +603,13 @@
         <td><span class="tag">empty-key</span><span class="tag">explicit-key</span><span class="tag">spec</span><span class="tag">flow</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="fta2 single block sequence with anchor and explicit document start anchor header sequence">
+      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="fta2 single block sequence with anchor and explicit document start anchor header sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/FTA2.yaml" target="_blank" class="test-id-link" title="View FTA2 source in yaml-test-suite">FTA2</a></td>
         <td>Single block sequence with anchor and explicit document start</td>
         <td>advanced</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">anchor</span><span class="tag">header</span><span class="tag">sequence</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;-&#39; after document value">parse error: unexpected trailing content &#39;-&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="gh63 mixed block mapping (explicit to implicit) explicit-key mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/GH63.yaml" target="_blank" class="test-id-link" title="View GH63 source in yaml-test-suite">GH63</a></td>
@@ -625,15 +625,15 @@
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">spec</span><span class="tag">tag</span><span class="tag">alias</span></td>
-        <td><span class="error-msg" title="parse error: undefined anchor: *a1">parse error: undefined anchor: *a1</span></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;:&#39; after document value">parse error: unexpected trailing content &#39;:&#39; after document value</span></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="j7pz spec example 2.26. ordered mappings spec mapping tag unknown-tag">
+      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="j7pz spec example 2.26. ordered mappings spec mapping tag unknown-tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/J7PZ.yaml" target="_blank" class="test-id-link" title="View J7PZ source in yaml-test-suite">J7PZ</a></td>
         <td>Spec Example 2.26. Ordered Mappings</td>
         <td>advanced</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">spec</span><span class="tag">mapping</span><span class="tag">tag</span><span class="tag">unknown-tag</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;-&#39; after document value">parse error: unexpected trailing content &#39;-&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="js2j spec example 6.29. node anchors spec alias">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/JS2J.yaml" target="_blank" class="test-id-link" title="View JS2J source in yaml-test-suite">JS2J</a></td>
@@ -651,13 +651,13 @@
         <td><span class="tag">explicit-key</span><span class="tag">mapping</span><span class="tag">scalar</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="kk5p various combinations of explicit block mappings explicit-key mapping sequence">
+      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="kk5p various combinations of explicit block mappings explicit-key mapping sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/KK5P.yaml" target="_blank" class="test-id-link" title="View KK5P source in yaml-test-suite">KK5P</a></td>
         <td>Various combinations of explicit block mappings</td>
         <td>advanced</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">explicit-key</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;b&#39; after document value">parse error: unexpected trailing content &#39;b&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="kss4 scalars on --- line anchor header scalar 1.3-err">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/KSS4.yaml" target="_blank" class="test-id-link" title="View KSS4 source in yaml-test-suite">KSS4</a></td>
@@ -715,13 +715,13 @@
         <td><span class="tag">spec</span><span class="tag">header</span><span class="tag">tag</span><span class="tag">unknown-tag</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="pw8x anchors on empty scalars anchor explicit-key">
+      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="pw8x anchors on empty scalars anchor explicit-key">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/PW8X.yaml" target="_blank" class="test-id-link" title="View PW8X source in yaml-test-suite">PW8X</a></td>
         <td>Anchors on Empty Scalars</td>
         <td>advanced</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">anchor</span><span class="tag">explicit-key</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;b&#39; after document value">parse error: unexpected trailing content &#39;b&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="q9wf spec example 6.12. separation spaces complex-key flow spec comment whitespace 1.3-err">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/Q9WF.yaml" target="_blank" class="test-id-link" title="View Q9WF source in yaml-test-suite">Q9WF</a></td>
@@ -755,13 +755,13 @@
         <td><span class="tag">spec</span><span class="tag">tag</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="s9e8 spec example 5.3. block structure indicators explicit-key spec mapping sequence">
+      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="s9e8 spec example 5.3. block structure indicators explicit-key spec mapping sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/S9E8.yaml" target="_blank" class="test-id-link" title="View S9E8 source in yaml-test-suite">S9E8</a></td>
         <td>Spec Example 5.3. Block Structure Indicators</td>
         <td>advanced</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">explicit-key</span><span class="tag">spec</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;-&#39; after document value">parse error: unexpected trailing content &#39;-&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="sbg9 flow sequence in flow mapping complex-key sequence mapping flow">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/SBG9.yaml" target="_blank" class="test-id-link" title="View SBG9 source in yaml-test-suite">SBG9</a></td>
@@ -771,13 +771,13 @@
         <td><span class="tag">complex-key</span><span class="tag">sequence</span><span class="tag">mapping</span><span class="tag">flow</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="ske5 anchor before zero indented sequence anchor indent sequence">
+      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="ske5 anchor before zero indented sequence anchor indent sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/SKE5.yaml" target="_blank" class="test-id-link" title="View SKE5 source in yaml-test-suite">SKE5</a></td>
         <td>Anchor before zero indented sequence</td>
         <td>advanced</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">anchor</span><span class="tag">indent</span><span class="tag">sequence</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;-&#39; after document value">parse error: unexpected trailing content &#39;-&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="u3c3 spec example 6.16. “tag” directive spec header tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/U3C3.yaml" target="_blank" class="test-id-link" title="View U3C3 source in yaml-test-suite">U3C3</a></td>
@@ -801,7 +801,7 @@
         <td>advanced</td>
         <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">spec</span><span class="tag">tag</span><span class="tag">literal</span><span class="tag">mapping</span><span class="tag">sequence</span><span class="tag">alias</span><span class="tag">unknown-tag</span></td>
-        <td><span class="error-msg" title="parse error: undefined anchor: *id001">parse error: undefined anchor: *id001</span></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;i&#39; after document value">parse error: unexpected trailing content &#39;i&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="v55r aliases in block sequence alias sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/V55R.yaml" target="_blank" class="test-id-link" title="View V55R source in yaml-test-suite">V55R</a></td>
@@ -883,13 +883,13 @@
         <td><span class="tag">spec</span><span class="tag">header</span><span class="tag">tag</span><span class="tag">unknown-tag</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="zh7c anchors in mapping anchor mapping">
+      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="zh7c anchors in mapping anchor mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/ZH7C.yaml" target="_blank" class="test-id-link" title="View ZH7C source in yaml-test-suite">ZH7C</a></td>
         <td>Anchors in Mapping</td>
         <td>advanced</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">anchor</span><span class="tag">mapping</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;c&#39; after document value">parse error: unexpected trailing content &#39;c&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="zwk4 key with anchor after missing explicit mapping value anchor explicit-key mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/ZWK4.yaml" target="_blank" class="test-id-link" title="View ZWK4 source in yaml-test-suite">ZWK4</a></td>

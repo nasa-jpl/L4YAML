@@ -61,14 +61,14 @@
 <body>
 <div class="container">
   <a href="index.html" class="nav-link">← Back to Coverage Index</a>
-  <h1>✅ Verified Tests</h1>
+  <h1>❌ Verified Tests</h1>
   <p class="subtitle">Unit tests, parser tests, verification tests, and string lemma tests — all must pass.</p>
 
   <div class="stats">
-    <div class="stat-box stat-total"><h3>Total</h3><div class="number">805</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">805</div></div>
-    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
-    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">11</div></div>
+    <div class="stat-box stat-total"><h3>Total</h3><div class="number">900</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">899</div></div>
+    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">1</div></div>
+    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">12</div></div>
   </div>
   <h3>Suites</h3>
   <div class="stage-cards">
@@ -132,6 +132,12 @@
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean" target="_blank" class="source-link">📄 Tests/CharClassTests.lean</a></div>
     </div>
+    <div class="stage-card" style="border-left-color:var(--color-fail)">
+      <div class="stage-card-name">Structural Validation Tests</div>
+      <div class="stage-card-stats">94/95 passed (98%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 98%"></div></div>
+      <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean" target="_blank" class="source-link">📄 Tests/ValidationTests.lean</a></div>
+    </div>
     <div class="stage-card" style="border-left-color:var(--color-pass)">
       <div class="stage-card-name">Demo</div>
       <div class="stage-card-stats">7/7 passed (100%)</div>
@@ -161,6 +167,7 @@
         <option value="explicittests">Explicit Key Tests</option>
         <option value="flowtests">Flow Completeness Tests</option>
         <option value="charclass">CharClass Correspondence Tests</option>
+        <option value="validationtests">Structural Validation Tests</option>
         <option value="demo">Demo</option>
       </select>
     </div>
@@ -168,7 +175,7 @@
       <label>Search:</label>
       <input type="text" class="search-input" placeholder="Category, test name..." oninput="searchTests(this.value)">
     </div>
-    <div class="filter-group"><span>Showing <strong id="visibleCount">805</strong> of 805</span></div>
+    <div class="filter-group"><span>Showing <strong id="visibleCount">900</strong> of 900</span></div>
   </div>
 
   <table id="testTable">
@@ -5775,6 +5782,671 @@
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CharClassTests.lean#L246" target="_blank" class="source-link">CharClass Correspondence Tests</a></td>
         <td>List.Mem ↔ List.elem bridge</td>
         <td>isIndicator &#39;`&#39; == elem</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation error semantics set validationerror → some msg">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L50" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Error Semantics</td>
+        <td>set validationError → some msg</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation error semantics set validationerror different msg">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L54" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Error Semantics</td>
+        <td>set validationError different msg</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation error semantics clear validationerror → none">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L58" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Error Semantics</td>
+        <td>clear validationError → none</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation error semantics isnone guard: none → true">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L61" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Error Semantics</td>
+        <td>isNone guard: none → true</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation error semantics isnone guard: some → false">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L62" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Error Semantics</td>
+        <td>isNone guard: some → false</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation error semantics set validationerror preserves anchormap">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L65" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Error Semantics</td>
+        <td>set validationError preserves anchorMap</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation error semantics set validationerror preserves startpos">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L70" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Error Semantics</td>
+        <td>set validationError preserves startPos</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation error semantics clear validationerror preserves startpos">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L73" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Error Semantics</td>
+        <td>clear validationError preserves startPos</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation error semantics initial validationerror is none">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L76" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Error Semantics</td>
+        <td>initial validationError is none</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation error semantics first-error-wins: isnone false after set">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L82" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Error Semantics</td>
+        <td>first-error-wins: isNone false after set</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation error semantics clear then set yields new msg">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L87" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Error Semantics</td>
+        <td>clear then set yields new msg</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests indentation properties indented 0: preserves content">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L100" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Indentation Properties</td>
+        <td>Indented 0: preserves content</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests indentation properties indented 0: empty list">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L101" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Indentation Properties</td>
+        <td>Indented 0: empty list</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests indentation properties indent 3 + 2 chars: length ≥ 3">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L104" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Indentation Properties</td>
+        <td>indent 3 + 2 chars: length ≥ 3</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests indentation properties indent 5 + 0 chars: length ≥ 5">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L105" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Indentation Properties</td>
+        <td>indent 5 + 0 chars: length ≥ 5</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests indentation properties indent 10 + 0 chars: length ≥ 10">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L106" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Indentation Properties</td>
+        <td>indent 10 + 0 chars: length ≥ 10</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests indentation properties indent 1 + 3 chars: length = 4">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L107" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Indentation Properties</td>
+        <td>indent 1 + 3 chars: length = 4</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests indentation properties indent 1 head = &#39; &#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L110" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Indentation Properties</td>
+        <td>indent 1 head = &#39; &#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests indentation properties indent 4 head = &#39; &#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L111" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Indentation Properties</td>
+        <td>indent 4 head = &#39; &#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests indentation properties indent 0 head ≠ &#39; &#39; (content starts)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L112" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Indentation Properties</td>
+        <td>indent 0 head ≠ &#39; &#39; (content starts)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests indentation properties indent 3 prefix">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L115" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Indentation Properties</td>
+        <td>indent 3 prefix</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests indentation properties indent 5 prefix = replicate 5 &#39; &#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L116" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Indentation Properties</td>
+        <td>indent 5 prefix = replicate 5 &#39; &#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests indentation properties indent 4 satisfies atleast 2">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L119" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Indentation Properties</td>
+        <td>indent 4 satisfies atLeast 2</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests indentation properties indent 4 satisfies atleast 0">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L120" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Indentation Properties</td>
+        <td>indent 4 satisfies atLeast 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests indentation properties tab is not indent char">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L123" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Indentation Properties</td>
+        <td>tab is not indent char</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests indentation properties space is indent char">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L124" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Indentation Properties</td>
+        <td>space is indent char</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests indentation properties indent n adds exactly n chars">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L127" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Indentation Properties</td>
+        <td>indent n adds exactly n chars</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests indentation properties indent 0 adds no chars">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L128" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Indentation Properties</td>
+        <td>indent 0 adds no chars</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests dispatchresult discrimination invalid ≠ matched">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L136" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DispatchResult Discrimination</td>
+        <td>invalid ≠ matched</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests dispatchresult discrimination invalid ≠ nomatch">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L139" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DispatchResult Discrimination</td>
+        <td>invalid ≠ noMatch</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests dispatchresult discrimination matched ≠ nomatch">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L142" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DispatchResult Discrimination</td>
+        <td>matched ≠ noMatch</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests dispatchresult discrimination nomatch ≠ matched">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L145" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DispatchResult Discrimination</td>
+        <td>noMatch ≠ matched</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests dispatchresult discrimination nomatch ≠ invalid">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L148" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DispatchResult Discrimination</td>
+        <td>noMatch ≠ invalid</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests dispatchresult discrimination matched ≠ invalid">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L151" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DispatchResult Discrimination</td>
+        <td>matched ≠ invalid</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests dispatchresult discrimination exhaustive: matched">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L156" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DispatchResult Discrimination</td>
+        <td>exhaustive: matched</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests dispatchresult discrimination exhaustive: nomatch">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L159" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DispatchResult Discrimination</td>
+        <td>exhaustive: noMatch</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests dispatchresult discrimination exhaustive: invalid">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L162" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DispatchResult Discrimination</td>
+        <td>exhaustive: invalid</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests dispatchresult discrimination matched extracts value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L167" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DispatchResult Discrimination</td>
+        <td>matched extracts value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests dispatchresult discrimination invalid extracts message">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L170" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DispatchResult Discrimination</td>
+        <td>invalid extracts message</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests foldresult discrimination forbidden ≠ folded">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L179" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>FoldResult Discrimination</td>
+        <td>forbidden ≠ folded</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests foldresult discrimination folded ≠ forbidden">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L182" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>FoldResult Discrimination</td>
+        <td>folded ≠ forbidden</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests foldresult discrimination exhaustive: folded">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L185" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>FoldResult Discrimination</td>
+        <td>exhaustive: folded</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests foldresult discrimination exhaustive: forbidden">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L188" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>FoldResult Discrimination</td>
+        <td>exhaustive: forbidden</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests foldresult discrimination folded extracts string">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L191" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>FoldResult Discrimination</td>
+        <td>folded extracts string</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests foldresult discrimination forbidden extracts message">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L194" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>FoldResult Discrimination</td>
+        <td>forbidden extracts message</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests documentresult discrimination stalled ≠ parsed">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L203" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DocumentResult Discrimination</td>
+        <td>stalled ≠ parsed</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests documentresult discrimination stalled ≠ endofstream">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L206" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DocumentResult Discrimination</td>
+        <td>stalled ≠ endOfStream</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests documentresult discrimination endofstream ≠ parsed">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L209" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DocumentResult Discrimination</td>
+        <td>endOfStream ≠ parsed</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests documentresult discrimination endofstream ≠ stalled">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L212" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DocumentResult Discrimination</td>
+        <td>endOfStream ≠ stalled</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests documentresult discrimination parsed ≠ stalled">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L215" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DocumentResult Discrimination</td>
+        <td>parsed ≠ stalled</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests documentresult discrimination parsed ≠ endofstream">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L219" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DocumentResult Discrimination</td>
+        <td>parsed ≠ endOfStream</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests documentresult discrimination exhaustive: parsed">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L225" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DocumentResult Discrimination</td>
+        <td>exhaustive: parsed</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests documentresult discrimination exhaustive: endofstream">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L229" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DocumentResult Discrimination</td>
+        <td>exhaustive: endOfStream</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests documentresult discrimination exhaustive: stalled">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L232" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DocumentResult Discrimination</td>
+        <td>exhaustive: stalled</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests documentresult discrimination stalled preserves position">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L237" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>DocumentResult Discrimination</td>
+        <td>stalled preserves position</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests continuationcheck discrimination sequencemarker ≠ plaincontinuation">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L248" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ContinuationCheck Discrimination</td>
+        <td>sequenceMarker ≠ plainContinuation</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests continuationcheck discrimination mappingentry ≠ plaincontinuation">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L250" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ContinuationCheck Discrimination</td>
+        <td>mappingEntry ≠ plainContinuation</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests continuationcheck discrimination notcontinuing ≠ plaincontinuation">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L252" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ContinuationCheck Discrimination</td>
+        <td>notContinuing ≠ plainContinuation</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests continuationcheck discrimination notcontinuing ≠ sequencemarker">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L254" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ContinuationCheck Discrimination</td>
+        <td>notContinuing ≠ sequenceMarker</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests continuationcheck discrimination notcontinuing ≠ mappingentry">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L256" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ContinuationCheck Discrimination</td>
+        <td>notContinuing ≠ mappingEntry</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests continuationcheck discrimination sequencemarker ≠ mappingentry">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L258" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ContinuationCheck Discrimination</td>
+        <td>sequenceMarker ≠ mappingEntry</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests continuationcheck discrimination exhaustive: notcontinuing">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L262" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ContinuationCheck Discrimination</td>
+        <td>exhaustive: notContinuing</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests continuationcheck discrimination exhaustive: plaincontinuation">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L265" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ContinuationCheck Discrimination</td>
+        <td>exhaustive: plainContinuation</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests continuationcheck discrimination exhaustive: afterempty 3">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L268" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ContinuationCheck Discrimination</td>
+        <td>exhaustive: afterEmpty 3</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests continuationcheck discrimination exhaustive: sequencemarker">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L271" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ContinuationCheck Discrimination</td>
+        <td>exhaustive: sequenceMarker</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests continuationcheck discrimination exhaustive: mappingentry">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L274" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ContinuationCheck Discrimination</td>
+        <td>exhaustive: mappingEntry</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests continuationcheck discrimination afterempty extracts count">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L279" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ContinuationCheck Discrimination</td>
+        <td>afterEmpty extracts count</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests continuationcheck discrimination afterempty 0">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L282" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ContinuationCheck Discrimination</td>
+        <td>afterEmpty 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validnode &amp; chompstyle structural chompstyle strip ≠ clip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L292" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ValidNode &amp; ChompStyle Structural</td>
+        <td>ChompStyle strip ≠ clip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validnode &amp; chompstyle structural chompstyle strip ≠ keep">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L293" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ValidNode &amp; ChompStyle Structural</td>
+        <td>ChompStyle strip ≠ keep</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validnode &amp; chompstyle structural chompstyle clip ≠ keep">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L294" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ValidNode &amp; ChompStyle Structural</td>
+        <td>ChompStyle clip ≠ keep</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validnode &amp; chompstyle structural chompstyle exhaustive: strip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L295" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ValidNode &amp; ChompStyle Structural</td>
+        <td>ChompStyle exhaustive: strip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validnode &amp; chompstyle structural chompstyle exhaustive: clip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L297" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ValidNode &amp; ChompStyle Structural</td>
+        <td>ChompStyle exhaustive: clip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validnode &amp; chompstyle structural chompstyle exhaustive: keep">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L299" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ValidNode &amp; ChompStyle Structural</td>
+        <td>ChompStyle exhaustive: keep</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validnode &amp; chompstyle structural chompstyle decidable eq">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L301" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ValidNode &amp; ChompStyle Structural</td>
+        <td>ChompStyle decidable eq</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validnode &amp; chompstyle structural plain scalar → .plain style">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L304" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ValidNode &amp; ChompStyle Structural</td>
+        <td>plain scalar → .plain style</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validnode &amp; chompstyle structural double-quoted → .doublequoted style">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L307" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ValidNode &amp; ChompStyle Structural</td>
+        <td>double-quoted → .doubleQuoted style</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validnode &amp; chompstyle structural single-quoted → .singlequoted style">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L310" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ValidNode &amp; ChompStyle Structural</td>
+        <td>single-quoted → .singleQuoted style</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validnode &amp; chompstyle structural literal → .literal style">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L313" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ValidNode &amp; ChompStyle Structural</td>
+        <td>literal → .literal style</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validnode &amp; chompstyle structural folded → .folded style">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L316" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>ValidNode &amp; ChompStyle Structural</td>
+        <td>folded → .folded style</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation integration accept: simple scalar">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L326" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Integration</td>
+        <td>accept: simple scalar</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation integration accept: simple mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L328" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Integration</td>
+        <td>accept: simple mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation integration accept: simple sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L330" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Integration</td>
+        <td>accept: simple sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation integration accept: flow sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L332" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Integration</td>
+        <td>accept: flow sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation integration accept: flow mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L334" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Integration</td>
+        <td>accept: flow mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation integration accept: multi-doc">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L336" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Integration</td>
+        <td>accept: multi-doc</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation integration accept: document end marker">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L339" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Integration</td>
+        <td>accept: document end marker</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation integration accept: double-quoted scalar">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L341" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Integration</td>
+        <td>accept: double-quoted scalar</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation integration accept: single-quoted scalar">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L343" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Integration</td>
+        <td>accept: single-quoted scalar</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="fail" data-suite="validationtests" data-search="validationtests validation integration accept: literal block scalar">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L345" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Integration</td>
+        <td>accept: literal block scalar</td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation integration accept: nested mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L347" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Integration</td>
+        <td>accept: nested mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation integration accept: empty document">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L349" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Integration</td>
+        <td>accept: empty document</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation integration reject: tab in indentation">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L353" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Integration</td>
+        <td>reject: tab in indentation</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation integration reject: trailing content after flow seq">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L355" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Integration</td>
+        <td>reject: trailing content after flow seq</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation integration reject: trailing content after flow map">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L357" target="_blank" class="source-link">Structural Validation Tests</a></td>
+        <td>Validation Integration</td>
+        <td>reject: trailing content after flow map</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>

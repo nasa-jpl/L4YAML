@@ -16,11 +16,11 @@ Running all tests for HTML report...
 ------------------------------------------------------------
   [1/416] 229Q ✓
   [2/416] 236B ⚠ unexpected pass
-  [3/416] 26DV ✗ parse error: undefined anchor: *alias1
+  [3/416] 26DV ✗ parse error: unexpected trailing content ':' after document value
   [4/416] 27NA ○ YAML 1.3 specific
   [5/416] 2AUY ✓
   [6/416] 2CMS ⚠ unexpected pass
-  [7/416] 2EBW ✓
+  [7/416] 2EBW ✗ parse error: unexpected trailing content ':' after document value
   [8/416] 2G84 ⚠ unexpected pass
   [9/416] 2G84 ⚠ unexpected pass
   [10/416] 2G84 ✓
@@ -28,9 +28,9 @@ Running all tests for HTML report...
   [12/416] 2JQS ✓
   [13/416] 2LFX ○ YAML 1.3 specific
   [14/416] 2SXE ○ YAML 1.3 specific
-  [15/416] 2XXW ✓
+  [15/416] 2XXW ✗ parse error: unexpected trailing content '?' after document value
   [16/416] 33X3 ✓
-  [17/416] 35KP ✓
+  [17/416] 35KP ✗ parse error: unexpected trailing content '?' after document value
   [18/416] 36F6 ✓
   [19/416] 3ALJ ✓
   [20/416] 3GZX ✓
@@ -64,18 +64,18 @@ Running all tests for HTML report...
   [48/416] 4RWC ✓
   [49/416] 4UYU ○ YAML 1.3 specific
   [50/416] 4V8U ✓
-  [51/416] 4WA9 ✓
+  [51/416] 4WA9 ✗ parse error: unexpected trailing content 'x' after document value
   [52/416] 4WA9 ○ empty yaml input
-  [53/416] 4ZYM ✓
+  [53/416] 4ZYM ✗ parse error: unexpected trailing content 't' after document value
   [54/416] 52DL ○ YAML 1.3 specific
   [55/416] 54T7 ✓
   [56/416] 55WF ⚠ unexpected pass
-  [57/416] 565N ✓
-  [58/416] 57H4 ✓
+  [57/416] 565N ✗ parse error: unexpected trailing content 'R' after document value
+  [58/416] 57H4 ✗ parse error: unexpected trailing content '-' after document value
   [59/416] 58MP ✓
-  [60/416] 5BVJ ✓
+  [60/416] 5BVJ ✗ parse error: unexpected trailing content 's' after document value
   [61/416] 5C5M ✓
-  [62/416] 5GBF ✓
+  [62/416] 5GBF ✗ parse error: unexpected trailing content 'C' after document value
   [63/416] 5KJE ✓
   [64/416] 5LLU ⚠ unexpected pass
   [65/416] 5MUD ✓
@@ -86,18 +86,18 @@ Running all tests for HTML report...
   [70/416] 5TRB ⚠ unexpected pass
   [71/416] 5TYM ✓
   [72/416] 5U3A ⚠ unexpected pass
-  [73/416] 5WE3 ✓
+  [73/416] 5WE3 ✗ parse error: unexpected trailing content 'b' after document value
   [74/416] 62EZ ⚠ unexpected pass
   [75/416] 652Z ✓
   [76/416] 65WH ✓
   [77/416] 6BCT ✓
-  [78/416] 6BFJ ✓
+  [78/416] 6BFJ ✗ parse error: unexpected trailing content ':' after document value
   [79/416] 6CA3 ✓
   [80/416] 6CK3 ✓
-  [81/416] 6FWR ✓
-  [82/416] 6H3V ✓
+  [81/416] 6FWR ✗ parse error: unexpected trailing content 'a' after document value
+  [82/416] 6H3V ✗ parse error: unexpected trailing content ':' after document value
   [83/416] 6HB6 ✓
-  [84/416] 6JQW ✓
+  [84/416] 6JQW ✗ parse error: unexpected trailing content '\' after document value
   [85/416] 6JTT ⚠ unexpected pass
   [86/416] 6JWB ✓
   [87/416] 6KGN ✓
@@ -107,29 +107,29 @@ Running all tests for HTML report...
   [91/416] 6PBE ○ empty yaml input
   [92/416] 6PBE ○ empty yaml input
   [93/416] 6S55 ⚠ unexpected pass
-  [94/416] 6SLA ✓
+  [94/416] 6SLA ✗ parse error: unexpected trailing content ':' after document value
   [95/416] 6VJK ○ YAML 1.3 specific
   [96/416] 6WLZ ○ YAML 1.3 specific
   [97/416] 6WPF ○ YAML 1.3 specific
   [98/416] 6XDY ✓
   [99/416] 6ZKB ○ YAML 1.3 specific
-  [100/416] 735Y ✗ parse error: unexpected token at { offset := 46, line := 4, col := 8 }; expected plain scalar at { offset := 46, line := 4, col := 8 }; expected block sequence at { offset := 46, line := 4, col := 8 }
-  [101/416] 74H7 ✓
+  [100/416] 735Y ✗ parse error: unexpected trailing content 'B' after document value
+  [101/416] 74H7 ✗ parse error: unexpected trailing content 'c' after document value
   [102/416] 753E ○ YAML 1.3 specific
   [103/416] 7A4E ✓
   [104/416] 7BMT ○ YAML 1.3 specific
   [105/416] 7BUB ✓
-  [106/416] 7FWL ✓
+  [106/416] 7FWL ✗ parse error: unexpected trailing content '!' after document value
   [107/416] 7LBH ⚠ unexpected pass
   [108/416] 7MNF ⚠ unexpected pass
   [109/416] 7T8X ○ YAML 1.3 specific
   [110/416] 7TMG ✓
   [111/416] 7W2P ✓
   [112/416] 7Z25 ✓
-  [113/416] 7ZZ5 ✓
+  [113/416] 7ZZ5 ✗ parse error: unexpected trailing content '-' after document value
   [114/416] 82AN ○ YAML 1.3 specific
-  [115/416] 87E4 ✓
-  [116/416] 8CWC ✓
+  [115/416] 87E4 ✗ parse error: unexpected trailing content ':' after document value
+  [116/416] 8CWC ✗ parse error: unexpected trailing content ':' after document value
   [117/416] 8G76 ✓
   [118/416] 8KB6 ✓
   [119/416] 8MK2 ○ YAML 1.3 specific
@@ -139,9 +139,9 @@ Running all tests for HTML report...
   [123/416] 8XYN ✗ parse error: unexpected token '😁' at { offset := 11, line := 1, col := 4 }; expected anchor name at { offset := 7, line := 1, col := 3 }; expected anchor (&name) at { offset := 7, line := 1, col := 3 }; expected block sequence at { offset := 7, line := 1, col := 3 }
   [124/416] 93JH ✓
   [125/416] 93WF ○ YAML 1.3 specific
-  [126/416] 96L6 ✓
-  [127/416] 96NN ✓
-  [128/416] 96NN ✓
+  [126/416] 96L6 ✗ parse error: unexpected trailing content 'M' after document value
+  [127/416] 96NN ✗ parse error: unexpected trailing content 'b' after document value
+  [128/416] 96NN ✗ parse error: unexpected trailing content 'b' after document value
   [129/416] 98YD ✓
   [130/416] 9BXH ✓
   [131/416] 9C9N ⚠ unexpected pass
@@ -165,12 +165,12 @@ Running all tests for HTML report...
   [149/416] 9WXW ○ YAML 1.3 specific
   [150/416] 9YRD ○ YAML 1.3 specific
   [151/416] A2M4 ✓
-  [152/416] A6F9 ✓
+  [152/416] A6F9 ✗ parse error: unexpected trailing content 't' after document value
   [153/416] A984 ✓
   [154/416] AB8U ✗ parse error: sequence item at column 1, expected column 0 (wrong indentation)
   [155/416] AVM7 ✓
-  [156/416] AZ63 ✓
-  [157/416] AZW3 ✓
+  [156/416] AZ63 ✗ parse error: unexpected trailing content '-' after document value
+  [157/416] AZW3 ✗ parse error: unexpected trailing content ':' after document value
   [158/416] B3HG ○ YAML 1.3 specific
   [159/416] B63P ⚠ unexpected pass
   [160/416] BD7L ⚠ unexpected pass
@@ -180,7 +180,7 @@ Running all tests for HTML report...
   [164/416] BU8L ○ YAML 1.3 specific
   [165/416] C2DT ✓
   [166/416] C2SP ⚠ unexpected pass
-  [167/416] C4HZ ✓
+  [167/416] C4HZ ✗ parse error: unexpected trailing content '-' after document value
   [168/416] CC74 ✓
   [169/416] CFD4 ✓
   [170/416] CML9 ⚠ unexpected pass
@@ -193,7 +193,7 @@ Running all tests for HTML report...
   [177/416] CVW2 ⚠ unexpected pass
   [178/416] CXX2 ⚠ unexpected pass
   [179/416] D49Q ⚠ unexpected pass
-  [180/416] D83L ✓
+  [180/416] D83L ✗ parse error: unexpected trailing content 'e' after document value
   [181/416] D88J ✓
   [182/416] D9TU ✓
   [183/416] DBG4 ✓
@@ -206,7 +206,7 @@ Running all tests for HTML report...
   [190/416] DE56 ✓
   [191/416] DFF7 ✓
   [192/416] DHP8 ✓
-  [193/416] DK3J ✓
+  [193/416] DK3J ✗ parse error: unexpected trailing content 'l' after document value
   [194/416] DK4H ⚠ unexpected pass
   [195/416] DK95 ✓
   [196/416] DK95 ⚠ unexpected pass
@@ -219,7 +219,7 @@ Running all tests for HTML report...
   [203/416] DK95 ✓
   [204/416] DMG6 ⚠ unexpected pass
   [205/416] DWX9 ○ YAML 1.3 specific
-  [206/416] E76Z ✗ parse error: undefined anchor: *b
+  [206/416] E76Z ✗ parse error: unexpected trailing content '*' after document value
   [207/416] EB22 ⚠ unexpected pass
   [208/416] EHF6 ✓
   [209/416] EW3V ⚠ unexpected pass
@@ -227,14 +227,14 @@ Running all tests for HTML report...
   [211/416] EXG3 ○ YAML 1.3 specific
   [212/416] F2C7 ✓
   [213/416] F3CP ✓
-  [214/416] F6MC ✓
+  [214/416] F6MC ✗ parse error: unexpected trailing content 'm' after document value
   [215/416] F8F9 ✓
   [216/416] FBC9 ✓
-  [217/416] FH7J ✓
-  [218/416] FP8R ✓
+  [217/416] FH7J ✗ parse error: unexpected trailing content 'b' after document value
+  [218/416] FP8R ✗ parse error: unexpected trailing content 'l' after document value
   [219/416] FQ7F ✓
   [220/416] FRK4 ✓
-  [221/416] FTA2 ✓
+  [221/416] FTA2 ✗ parse error: unexpected trailing content '-' after document value
   [222/416] FUP4 ✓
   [223/416] G4RS ✓
   [224/416] G5U8 ⚠ unexpected pass
@@ -244,27 +244,27 @@ Running all tests for HTML report...
   [228/416] GDY7 ⚠ unexpected pass
   [229/416] GH63 ✓
   [230/416] GT5M ⚠ unexpected pass
-  [231/416] H2RW ✓
+  [231/416] H2RW ✗ parse error: unexpected trailing content 'a' after document value
   [232/416] H3Z8 ✓
   [233/416] H7J7 ⚠ unexpected pass
   [234/416] H7TQ ⚠ unexpected pass
   [235/416] HM87 ✓
   [236/416] HM87 ✓
-  [237/416] HMK4 ✓
-  [238/416] HMQ5 ✗ parse error: undefined anchor: *a1
+  [237/416] HMK4 ✗ parse error: unexpected trailing content 'M' after document value
+  [238/416] HMQ5 ✗ parse error: unexpected trailing content ':' after document value
   [239/416] HRE5 ⚠ unexpected pass
   [240/416] HS5T ✓
   [241/416] HU3P ⚠ unexpected pass
   [242/416] HWV9 ✓
-  [243/416] J3BT ✓
+  [243/416] J3BT ✗ parse error: unexpected trailing content 'v' after document value
   [244/416] J5UC ✓
-  [245/416] J7PZ ✓
+  [245/416] J7PZ ✗ parse error: unexpected trailing content '-' after document value
   [246/416] J7VC ✓
-  [247/416] J9HZ ✗ parse error: unhandled construct 'h' at line 1, column 0
+  [247/416] J9HZ ✗ parse error: unexpected trailing content 'h' after document value
   [248/416] JEF9 ✓
   [249/416] JEF9 ✓
   [250/416] JEF9 ✓
-  [251/416] JHB9 ✓
+  [251/416] JHB9 ✗ parse error: unexpected trailing content '-' after document value
   [252/416] JKF3 ⚠ unexpected pass
   [253/416] JQ4R ✓
   [254/416] JR7V ✓
@@ -279,26 +279,26 @@ Running all tests for HTML report...
   [263/416] KH5V ✓
   [264/416] KH5V ✓
   [265/416] KH5V ✓
-  [266/416] KK5P ✓
+  [266/416] KK5P ✗ parse error: unexpected trailing content 'b' after document value
   [267/416] KMK3 ✓
   [268/416] KS4U ⚠ unexpected pass
   [269/416] KSS4 ○ YAML 1.3 specific
-  [270/416] L24T ✓
-  [271/416] L24T ✓
+  [270/416] L24T ✗ parse error: unexpected trailing content 'x' after document value
+  [271/416] L24T ✗ parse error: unexpected trailing content 'x' after document value
   [272/416] L383 ✓
   [273/416] L94M ✓
   [274/416] L9U5 ✓
   [275/416] LE5A ✓
   [276/416] LHL4 ⚠ unexpected pass
   [277/416] LP6E ✓
-  [278/416] LQZ7 ✓
+  [278/416] LQZ7 ✗ parse error: unexpected trailing content ':' after document value
   [279/416] LX3P ○ YAML 1.3 specific
-  [280/416] M29M ✓
+  [280/416] M29M ✗ parse error: unexpected trailing content 'a' after document value
   [281/416] M2N8 ✓
   [282/416] M2N8 ✗ parse error: mapping entry at column 4, expected column 0 (wrong indentation)
   [283/416] M5C3 ○ YAML 1.3 specific
   [284/416] M5DY ✓
-  [285/416] M6YH ✓
+  [285/416] M6YH ✗ parse error: unexpected trailing content 'x' after document value
   [286/416] M7A3 ○ YAML 1.3 specific
   [287/416] M7NX ✓
   [288/416] M9B4 ○ YAML 1.3 specific
@@ -312,23 +312,23 @@ Running all tests for HTML report...
   [296/416] MUS6 ✓
   [297/416] MXS3 ✓
   [298/416] MYW6 ○ YAML 1.3 specific
-  [299/416] MZX3 ✓
+  [299/416] MZX3 ✗ parse error: unexpected trailing content 'b' after document value
   [300/416] N4JP ⚠ unexpected pass
   [301/416] N782 ⚠ unexpected pass
   [302/416] NAT4 ✓
-  [303/416] NB6Z ✓
+  [303/416] NB6Z ✗ parse error: unexpected trailing content 't' after document value
   [304/416] NHX8 ✓
   [305/416] NJ66 ✓
   [306/416] NKF9 ✓
   [307/416] NP9H ✓
-  [308/416] P2AD ✓
+  [308/416] P2AD ✗ parse error: unexpected trailing content 'l' after document value
   [309/416] P2EQ ⚠ unexpected pass
   [310/416] P76L ✓
   [311/416] P94K ✗ parse error: unhandled construct 'k' at line 0, column 0
   [312/416] PBJ2 ✓
   [313/416] PRH3 ✓
   [314/416] PUW8 ✓
-  [315/416] PW8X ✓
+  [315/416] PW8X ✗ parse error: unexpected trailing content 'b' after document value
   [316/416] Q4CL ⚠ unexpected pass
   [317/416] Q5MG ✓
   [318/416] Q88A ✓
@@ -338,26 +338,26 @@ Running all tests for HTML report...
   [322/416] QF4Y ✓
   [323/416] QLJ7 ⚠ unexpected pass
   [324/416] QT73 ✓
-  [325/416] R4YG ✓
+  [325/416] R4YG ✗ parse error: unexpected trailing content 'd' after document value
   [326/416] R52L ✓
   [327/416] RHX7 ⚠ unexpected pass
-  [328/416] RLU9 ✓
+  [328/416] RLU9 ✗ parse error: unexpected trailing content '-' after document value
   [329/416] RR7F ✓
   [330/416] RTP8 ✓
   [331/416] RXY3 ⚠ unexpected pass
   [332/416] RZP5 ○ YAML 1.3 specific
-  [333/416] RZT7 ✓
-  [334/416] S3PD ✗ parse error: unhandled construct ':' at line 1, column 0
+  [333/416] RZT7 ✗ parse error: unexpected trailing content 'x' after document value
+  [334/416] S3PD ✗ parse error: unexpected trailing content ':' after document value
   [335/416] S3PD ○ empty yaml input
   [336/416] S4GJ ⚠ unexpected pass
   [337/416] S4JQ ✓
   [338/416] S4T7 ✓
   [339/416] S7BG ✓
   [340/416] S98Z ⚠ unexpected pass
-  [341/416] S9E8 ✓
+  [341/416] S9E8 ✗ parse error: unexpected trailing content '-' after document value
   [342/416] SBG9 ✓
   [343/416] SF5V ⚠ unexpected pass
-  [344/416] SKE5 ✓
+  [344/416] SKE5 ✗ parse error: unexpected trailing content '-' after document value
   [345/416] SM9W ✓
   [346/416] SM9W ✓
   [347/416] SR86 ⚠ unexpected pass
@@ -381,9 +381,9 @@ Running all tests for HTML report...
   [365/416] U9NS ✓
   [366/416] UDM2 ✓
   [367/416] UDR7 ✓
-  [368/416] UGM3 ✗ parse error: undefined anchor: *id001
+  [368/416] UGM3 ✗ parse error: unexpected trailing content 'i' after document value
   [369/416] UKK6 ✓
-  [370/416] UKK6 ✓
+  [370/416] UKK6 ✗ parse error: unexpected trailing content ':' after document value
   [371/416] UKK6 ✗ parse error: unexpected token at { offset := 2, line := 1, col := 0 }
   [372/416] UT92 ✓
   [373/416] UV7Q ✓
@@ -420,7 +420,7 @@ Running all tests for HTML report...
   [404/416] Z9M4 ✓
   [405/416] ZCZ6 ⚠ unexpected pass
   [406/416] ZF4X ✓
-  [407/416] ZH7C ✓
+  [407/416] ZH7C ✗ parse error: unexpected trailing content 'c' after document value
   [408/416] ZK9H ✓
   [409/416] ZL4Z ⚠ unexpected pass
   [410/416] ZVH3 ⚠ unexpected pass
@@ -432,7 +432,7 @@ Running all tests for HTML report...
   [416/416] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 241/416 (57.000000%)
+Correct: 186/416 (44.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 17/17
@@ -445,9 +445,10 @@ Running verified test suites...
   Explicit Key Tests: ✓ 66/66
   Flow Completeness Tests: ✓ 88/88
   CharClass Correspondence Tests: ✓ 224/224
+  Structural Validation Tests: ✗ 94/95
   Demo: ✓ 7/7
 
-Verified: 805/805
+Verified: 899/900
 
 Generating HTML reports...
   wrote docs/index.html
