@@ -297,6 +297,242 @@ Follow the `BlockScalarContracts.lean` pattern:
 
 **This follows the §6 pattern**: implicit parser control flow (which branch is taken, what `hadExplicitStart` means) → explicit contract predicates (decidable, proved). The `hadExplicitStart` boolean is the code-level enforcement; the formal contracts are the proof-level enforcement.
 
+### I. Block Parser Tacit Assumptions: Indentation Semantics & Dispatch Completeness (Critical Insight)
+
+**Date discovered**: 2026-02-19
+**Status**: Analysis complete, from `ScalarStageDiag.lean` (20 failing tests, 4 root cause groups).
+**Impact**: 20 of 48 scalar-stage failures (42%), plus overlap with block-stage and structure failures.
+
+The scalar stage diagnostic (`Tests/ScalarStageDiag.lean`) revealed that the 20 scalar-stage failures trace to **five tacit assumptions** in the block parser's interactions with `Scalar.lean` and `Document.lean`. These fall into two classes:
+
+- **Class 1 — Indentation parameter confusion** (T1, T2): a single `contentIndent` parameter is used for two semantically distinct purposes, and an off-by-one compounds across call boundaries.
+- **Class 2 — Dispatch completeness** (T3, T4, T5): `dispatchByChar` short-circuits on certain first characters without checking for mapping key patterns, and `detectMappingKey` gives up prematurely on valid keys.
+
+Both classes are instances of the §6 meta-pattern: **implicit assumptions about what parameters mean and what conditions hold at each call site, never stated as contracts**.
+
+#### T1: `blockValue` conflates column position with parent indentation context
+
+**Where**: `blockValue` in `Block.lean`
+**Code**:
+```lean
+partial def blockValue (minIndent : Nat) : YamlParser (Option YamlValue) := do
+  skipBlankLines
+  skipHWhitespace
+  let col ← currentCol
+  if col < minIndent then return none
+  let result ← dispatchByChar col  -- ← col serves as parentIndent for sub-parsers
+```
+
+**Tacit assumption**: The column where a value's indicator sits (`col`) equals the indentation level of the enclosing structure. This is the parameter passed to `dispatchByChar`, which forwards it to `blockScalar` as `parentIndent`.
+
+**Why it's wrong**: After `documentStartMarker` consumes `---` and trailing whitespace, a block scalar indicator on the same line (e.g., `--- >`) sits at column 4. But the document-level indentation is 0 (spec's `n = -1`). The parameter `col = 4` is correct for the threshold check (`col >= minIndent`), but wrong as the indentation context for sub-parsers.
+
+**Precise spec production chain**: After `---`, the document value begins via `s-l+block-node(-1, BLOCK-IN)`, which leads to `c-l+folded(-1)`. Content is at `n + m` with `m >= 1`, so `(-1) + 1 = 0` — column 0 content is valid per the spec grammar. The space between `---` and `>` is consumed by `s-separate(n+1, c)`, which is purely separator whitespace and does NOT contribute to the indentation context `n`.
+
+**The specific mechanism**: `documentStartMarker` calls `skipTrailing`, which consumes the space after `---`, advancing the stream column to 4. Then `option? newline` does NOT match (the next character is `>`, not a newline), so the stream stays at column 4 where `>` sits. When `blockValue 0` reads `currentCol`, it gets 4 — a column position that reflects the *separator whitespace consumption*, not the document structure's indentation level.
+
+**Trace for `--- >\nline1\nline2\n`** (test FP8R):
+1. `documentStartMarker` consumes `--- ` via `chars "---"` + `skipTrailing`, stream at `>` column 4
+2. `blockValue 0` → `col = 4` → threshold OK (`4 >= 0`)
+3. `dispatchByChar 4` → `blockScalar 4`
+4. `autoDetectIndent(4+1=5)` → content `line1` at col 0, `0 < 5` → **returns fallback `minIndent = 5`** (NOT the actual content indent)
+5. `blockScalarContent(5)` → `consumeIndent 5` on `line1` → **fails** (0 spaces)
+6. Returns empty scalar, `line1` unconsumed → "unexpected trailing content 'l'"
+
+**`autoDetectIndent` fallback masking**: Step 4 is critical. When the actual content column (0) is below the inflated `minIndent` (5), `autoDetectIndent` doesn't return 0 — it returns the `minIndent` fallback. This means `blockScalarContent` is given an *impossible-to-satisfy* indent level, guaranteeing failure regardless of what the content lines look like. The fallback was designed to handle blank lines (returning a sane default when no content is visible), but here it masks the real problem: `minIndent` was wrong in the first place.
+
+**Contract that should be explicit**:
+- **Assume**: `blockValue(minIndent)` is called with `minIndent` = the minimum indentation for this value's content
+- **Guarantee (G-BV1)**: The indentation context passed to sub-parsers via `dispatchByChar` reflects the enclosing structure's indentation level (`minIndent`), NOT the column where the value's indicator happens to sit
+
+**Impact**: Affects all 12 block scalar content tests when block scalar appears after `---` on the same line: FP8R, DK3J, 4WA9, 6FWR, 6JQW, 96L6, 96NN, D83L, F6MC, M29M, P2AD, R4YG.
+
+#### T2: `dispatchByChar` double-counts indentation for block scalars
+
+**Where**: Callers of `dispatchByChar` in `Block.lean` + `blockScalar` in `Scalar.lean`
+**Code** (caller side in `blockSequenceItems`):
+```lean
+let contentIndent := seqIndent + 1   -- +1 from caller
+blockValueSameLine col' contentIndent
+```
+**Code** (callee side in `blockScalar`):
+```lean
+| none => autoDetectIndent (parentIndent + 1)  -- +1 from blockScalar
+```
+
+**Tacit assumption**: `contentIndent` passed to `blockScalar` is the YAML spec's `n` parameter (the current indentation level). But callers pass `structIndent + 1`, and `blockScalar` adds another `+1` internally, giving `structIndent + 2`. The YAML spec says content must be at `n + m` with `m >= 1`, so minimum is `n + 1` — not `n + 2`.
+
+**Trace for `- |\n hello\n`** (related to test W42U):
+1. `blockSequenceItems` → `seqIndent = 0`, `contentIndent = 0 + 1 = 1`
+2. `blockValueSameLine col' 1` → `dispatchByChar 1` → `blockScalar 1`
+3. `autoDetectIndent(1+1=2)` → content ` hello` has 1 space → `1 < 2` → **returns fallback 2** (not actual indent 1)
+4. `blockScalarContent(2)` → `consumeIndent 2` → **fails** (only 1 space)
+
+**Per YAML spec** (§8.1, §8.2.1): sequence at `n = -1` (document level), item content via `s-l+block-indented(n=0, BLOCK-IN)`, block scalar gets `n=0`, content at `0 + m` with `m=1` → column 1 is valid.
+
+**The double-count**: both the caller (+1 for child content) and `blockScalar` (+1 for content vs. parent) add an offset, netting `structIndent + 2` instead of the spec's `structIndent + 1`.
+
+**"Works by coincidence"**: The common case `x: |\n  hello\n` (2-space content in a mapping) passes because 2 spaces happens to satisfy the inflated indent requirement of 2 (from `mapIndent(0) + 1 + 1`). Only when content uses the minimum spec-legal indentation (1 space) does the bug surface. This masking effect explains why the double-count wasn't caught by the internal test suite — all hand-written tests used 2+ spaces of content indentation, which is the conventional style but not the minimum the spec allows.
+
+**Contract that should be explicit**:
+- **Assume (A-BS1)**: `blockScalar(parentIndent)` receives the spec's `n` parameter — the indentation of the enclosing structure, NOT `n+1`
+- **Guarantee (G-BS1)**: Auto-detected content is at column `parentIndent + m` with `m >= 1` (spec §8.1)
+- **Enforcement**: Either callers pass `structIndent` (not `structIndent + 1`) to block scalar dispatch, or `blockScalar` stops adding `+1` internally. One side must own the offset, not both.
+
+**Impact**: Block scalars with minimum valid indentation fail. Affects W42U directly, and compounds with T1 for all 12 block scalar content tests.
+
+#### T3: `dispatchByChar`'s `?`, `-`, `'`, `"` cases bypass mapping key detection
+
+**Where**: `dispatchByChar` in `Block.lean`
+**Code**:
+```lean
+| '?' => do
+    ...
+    if isExplicitKey then
+      match ← blockMapping contentIndent with ...
+    else
+      return .matched (← plainScalar ...)  -- No mapping check!
+| '-' => do
+    ...
+    if isSeq then
+      match ← blockSequence contentIndent with ...
+    else
+      return .matched (← plainScalar ...)  -- No mapping check!
+| '\'' => return .matched (← singleQuotedScalar)  -- No mapping check!
+| '"' => return .matched (← doubleQuotedScalar)   -- No mapping check!
+```
+
+Compare with the default case:
+```lean
+| _ => do
+    let isMap ← lookAhead do
+      detectMappingKey (inFlow := false)
+    if isMap then
+      match ← blockMapping contentIndent with ...  -- ✓ Checks for mapping!
+```
+
+**Tacit assumption**: Lines starting with `?`, `-`, `'`, or `"` are never mapping key/value entries (only explicit keys, sequences, or standalone scalars). This is false — YAML allows:
+- `?foo: value` — plain key starting with `?`
+- `-foo: value` — plain key starting with `-`
+- `:foo: value` — plain key starting with `:`
+- `'quoted key': value` — single-quoted mapping key
+- `"quoted key": value` — double-quoted mapping key
+
+**Trace for `?foo: safe\n`** (test 2EBW):
+1. `dispatchByChar 0` → `c = '?'`, `isExplicitKey = false` (`f` follows)
+2. Dispatches to `plainScalar(false, 0)`
+3. `plainScalar` consumes `?foo`, stops at `: ` → returns `"?foo"`
+4. Document trailing check finds `:` → "unexpected trailing content ':'"
+
+**Trace for `'foo: bar\': baz'`** (test 6H3V):
+1. `dispatchByChar 0` → `c = '\''`, dispatches to `singleQuotedScalar`
+2. Parses `'foo: bar\'` → returns scalar `"foo: bar\"`
+3. Document trailing check finds `:` → "unexpected trailing content ':'"
+
+**Contract that should be explicit**:
+- **Assume (A-DC1)**: `dispatchByChar` is called at the start of a block value
+- **Guarantee (G-DC1)**: If the current line contains a mapping key/value pattern — regardless of the first character — `dispatchByChar` dispatches to `blockMapping`, not a scalar parser
+- **Enforcement**: After parsing a scalar (plain, quoted, or indicator-prefixed), check for a following `: ` before committing. Alternatively, check for mapping patterns before dispatching special characters.
+
+**Impact**: 2EBW (`?foo:`, `-foo:`, `:foo:` as mapping keys), 6H3V (single-quoted mapping key), 8CWC (key ending with colons), 6SLA (quoted mapping key with special chars). Accounts for all 4 "plain/quoted key parsing" failures.
+
+#### T4: `detectMappingKey` gives false negatives on valid keys
+
+**Where**: `detectMappingKey` in `Block.lean`
+**Code**:
+```lean
+detectLoop : YamlParser Bool := do
+    match ← option? anyToken with
+    | some ':' =>
+      match ← option? anyToken with
+      | some c => return (isWhiteSpace c || isLineBreak c)  -- Returns immediately!
+    | some c =>
+      if c == '"' || c == '\'' then return false  -- Bails on quotes!
+      else detectLoop
+```
+
+**Two bugs, same tacit assumption** ("the first ambiguous character resolves the line's role"):
+
+1. **Early return on non-separator colons**: When `detectMappingKey` encounters `:` followed by a non-whitespace character (e.g., `::` in `key:::` value`), it returns `false` immediately instead of continuing to scan for a later `: `. The assumption that "the first `:` determines whether this is a mapping" is wrong — YAML plain keys can contain non-separator colons.
+
+2. **Bail on quote characters**: When `detectMappingKey` encounters `"` or `'` mid-scan, it returns `false`. The assumption that these always delimit quoted scalars is wrong — they can appear as literal characters inside plain keys (e.g., `a!"#$: value`).
+
+**Trace for `key ends with two colons::: value`** (test 8CWC):
+1. `dispatchByChar 0` → `| _ =>` → `detectMappingKey`
+2. Scans: `k,e,y,...,n,s,:`
+3. First `:` in `:::` → next char `:` → not whitespace → **returns false**
+4. Falls to plain scalar → consumes key, leaves `::: value` → trailing content error
+
+**Contract that should be explicit**:
+- **Assume (A-DM1)**: `detectMappingKey` attempts to determine if the current line is a mapping entry
+- **Guarantee (G-DM1)**: Returns `true` if ANY position on the line has `: ` or `:\n` or `:` at EOF — not just the first `:` encountered
+- **Guarantee (G-DM2)**: Quote characters (`'`, `"`) appearing outside of actual quoting contexts do not cause false negatives
+
+**Impact**: Part of 2EBW, all of 8CWC. Interacts with T3 — even if T3 is fixed so the `| _ =>` path is reached for more cases, T4 would still cause these cases to be misdetected.
+
+#### T5: `blockMappingKey.plainMappingKey` vs. `plainScalarContent` colon handling divergence
+
+**Where**: `blockMappingKey.plainMappingKey` in `Block.lean` vs. `collectPlain` in `Scalar.lean`
+**Tacit assumption**: Both parsers handle `:` identically. In practice, `plainMappingKey` correctly continues past non-separator colons (its loop checks `:` + next char and continues if not a separator), but `collectPlain` in `plainScalarContent` (lines 401–413 of `Scalar.lean`, omitted in the attachment) may have divergent behavior.
+
+**This is lower-risk** — `plainMappingKey` handles `:::` correctly when reached. The failures occur because T3 and T4 prevent the mapping path from being reached in the first place. However, the existence of two independent plain-key parsing implementations (`plainMappingKey` and `plainScalarContent`) with no shared contract about colon handling is itself an architectural risk.
+
+**Recommended contract**:
+- **Invariant (I-PK1)**: For any input string `s`, `plainMappingKey` and `plainScalarContent` (in single-line mode) must consume the same prefix when both are applied at the same position and stop at `: ` separators
+- **Enforcement**: Consider unifying the two implementations, or at minimum adding shared test coverage
+
+#### Root cause → contract mapping
+
+| Root cause group | Tests (20 total) | Tacit assumptions | Primary contract |
+|---|---|---|---|
+| Block scalar content (12) | 4WA9, 6FWR, 6JQW, 96L6, 96NN, D83L, DK3J, F6MC, FP8R, M29M, P2AD, R4YG | T1 + T2 | G-BV1, A-BS1/G-BS1 |
+| Plain/quoted key parsing (4) | 2EBW, 6H3V, 8CWC, 6SLA | T3 + T4 | G-DC1, G-DM1/G-DM2 |
+| Block content continuation (2) | AB8U, NB6Z | T1 (partial) | G-BV1 |
+| Block structure (2) | H2RW, W42U | T1 + T2 | G-BV1, A-BS1/G-BS1 |
+
+#### The YAML spec's `n` parameter — what our code is missing
+
+The YAML 1.2.2 spec threads an indentation parameter `n` through all block productions:
+
+```
+l+block-scalar(n,c) ::= s-separate(n+1,c) ( c-l+literal(n) | c-l+folded(n) )
+c-l+literal(n) ::= "|" c-b-block-header(m,t) l-literal-content(n+m,t)
+s-l+block-seq(n) ::= ( s-b-block-seq(n) )+
+  where s-b-block-seq(n) ::= s-indent(n+1) c-l-block-seq-entry(n+1)
+```
+
+Key: `n` is the **enclosing structure's** indentation, not the content's column. For document-level content, `n = -1`. For a sequence item's content, `n` = the sequence's own indentation. The `+1` offset for content vs. parent is applied exactly once, at the point where each production definition requires it.
+
+The critical subtlety: after `---`, `n = -1`. The spec allows this because `s-indent(n)` for `n < 0` is a no-op (zero spaces). But our code uses `Nat` (natural numbers), so `n = -1` is not representable. We implicitly encode it as `n = 0`, but then the `+1` offsets don't work correctly — `0 + 1 = 1` instead of the spec's `(-1) + 1 = 0`. The `Nat` encoding loses the distinction between "document level, no indentation required" (`n = -1`) and "top-level structure at column 0" (`n = 0`).
+
+Our code uses a single `contentIndent` parameter that conflates two concepts:
+1. **Threshold**: "content must be at this column or beyond" (correct for blocking under-indented content)
+2. **Context**: "the enclosing structure is at this indentation" (needed by `blockScalar` to compute minimum content indent)
+
+These differ by exactly 1. The fix is to either:
+- **(Option A)** Thread two parameters: `minIndent` (threshold) and `parentIndent` (context = `minIndent - 1`) through `dispatchByChar`
+- **(Option B)** Have `blockScalar` receive `contentIndent` and NOT add `+1` internally (treating the caller's `+1` as the sole offset)
+- **(Option C)** Have callers pass `structIndent` directly to block scalar dispatch, with `blockScalar` owning the `+1` offset
+
+Option A is the most explicit and proof-friendly — it makes the dual semantics visible in the type signature. Option B is the simplest code change but hides the semantic distinction. Option C matches the spec most closely.
+
+#### Implementation plan
+
+1. **Define explicit contracts** as decidable predicates in `Proofs/BlockParserContracts.lean`:
+   - `satisfiesIndentContext`: verifies that `parentIndent` passed to `blockScalar` matches the spec's `n`
+   - `satisfiesDispatchCompleteness`: verifies that mapping patterns are detected regardless of first character
+   - `satisfiesMappingDetection`: verifies that `detectMappingKey` scans past non-separator colons and embedded quotes
+
+2. **Fix T1 + T2** (indentation): Thread the spec's `n` parameter correctly through `blockValue` → `dispatchByChar` → `blockScalar`. Choose between Option A/B/C above.
+
+3. **Fix T3** (dispatch completeness): After parsing a scalar in `dispatchByChar`'s `?`/`-`/`'`/`"` cases, check for a following `: ` separator. If found, re-dispatch as a mapping entry. Alternatively, hoist the mapping detection check above the special-character dispatch.
+
+4. **Fix T4** (`detectMappingKey`): Make `detectLoop` continue scanning past non-separator colons (`:` followed by non-whitespace) and past quote characters when they appear mid-key (not at position 0 or after whitespace).
+
+5. **Run diagnostic**: After each fix, run `lake exe scalarstagediag` to track which test groups flip from fail to pass.
+
+**This follows the §6 pattern**: implicit parameter semantics (`contentIndent` serving dual purposes) → explicit contract predicates (decidable, proved). The parameter separation is the code-level enforcement; the formal contracts are the proof-level enforcement.
+
 ---
 
 ## 3. What NOT to Port
@@ -366,6 +602,7 @@ lean4-yaml's development log established a repeating pattern: **make implicit st
 | `FoldResult` | Quoted fold + `c-forbidden` → explicit type | Prevents backtracking from swallowing `c-forbidden` violations |
 | Block scalar contracts | Implicit consumption → decidable predicates | Prevents header parser from consuming content indentation |
 | Document parser contracts | Implicit boundary semantics → decidable predicates | Prevents bare content after explicit documents, enforces §6.7 comment rules |
+| Block parser contracts (§2.I) | Dual-purpose parameter → explicit A/G contracts | Prevents indentation double-count and dispatch bypass for 20 scalar-stage failures |
 
 For the verified parser, this principle is even more powerful: explicit state becomes **proof targets**. Every enum variant maps to a lemma obligation, and every state transition becomes a provable invariant.
 
