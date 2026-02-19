@@ -220,6 +220,28 @@ partial def document : YamlParser DocumentResult := do
   -- Report this as stalled rather than returning a phantom document.
   if posAfter == posBefore then
     return .stalled posBefore
+  -- Check for trailing non-whitespace content on the current line.
+  -- After blockValue, the only valid continuations on the same line are:
+  -- whitespace, comments (`#`), or end of line/input.
+  -- Any other content indicates invalid trailing material (e.g., extra `]`,
+  -- content after a flow collection, trailing text after a quoted scalar).
+  -- This catches tests: 4H7K, 62EZ, KS4U, P2EQ, JY7Z, Q4CL, SU5Z.
+  skipHWhitespace
+  match ← option? (lookAhead anyToken) with
+  | some c =>
+    if !isLineBreak c && c != '#' then
+      -- Check if it's a document end/start marker (which is valid)
+      let isDocMarker ← lookAhead do
+        match ← option? (chars "---" <|> chars "...") with
+        | some _ =>
+          match ← option? anyToken with
+          | some c' => pure (isWhiteSpace c' || isLineBreak c')
+          | none => pure true
+        | none => pure false
+      if !isDocMarker then
+        setValidationError
+          s!"unexpected trailing content '{c}' after document value"
+  | none => pure ()  -- EOF is fine
   -- Check for validation errors detected during this document.
   -- The error survives backtracking and is returned at the top level.
   let valErr ← getValidationError

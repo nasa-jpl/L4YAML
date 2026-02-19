@@ -253,7 +253,7 @@ Standalone proofs about the stream, pure helper functions, and character classif
 |------|-------------|---------------|-------------|
 | **1a** | `next_decreasing`: after `YamlStream.next?`, remaining input strictly decreases | 38 tests (Verification: remainingLength, Stream exhaustive consumption; StringLemmas: advancement, strictly monotone) | 🔄 `theorem` declared, `sorry` on string arithmetic |
 | **1b** | Properties of `trimTrailingWhitespace`, `trimTrailingWs` (idempotence, no trailing ws) | 12 tests (Verification: trimTrailingWhitespace) | ⬜ Tests only |
-| **1c** | `Grammar.lean` character Props match `Combinators.lean` implementations | 32 tests (Verification: Grammar↔Combinators isLineBreak/isWhiteSpace/isFlowIndicator/isIndentChar, canStartPlainScalar) | ⬜ Tests only |
+| **1c** | `Grammar.lean` character Props match `Combinators.lean` implementations | 224 tests (`CharClassTests.lean`) + 32 tests (Verification: Grammar↔Combinators) | ✅ 5/7 theorems proved (`Proofs/CharClass.lean`): `isLineBreak_correspondence`, `isWhiteSpace_correspondence`, `isIndentChar_iff`, `isFlowIndicator_correspondence`, `isIndicator_equiv`. `canStartPlainScalar_base` compiles. |
 | **1d** | `FoldResult` type invariants | 4 tests (Verification: FoldResult) | ⬜ Tests only |
 
 Effort: ~2 sessions. Diagnostic value: catches bugs in pure helper functions at compile time.
@@ -329,16 +329,9 @@ Current: **241/416 correct (57.9%)**. Flow stage at 93.5% after P2. Projected af
 
 Implementation: `Tag.lean` (155 lines) — `parseTagPrefix` with all 5 tag forms. Wired into `dispatchByChar` (`Block.lean`), `blockMappingKey` (`Block.lean`), and `flowValue` (`Flow.lean`). Both tag+anchor orderings supported.
 
-#### Step 9: Explicit key support (`?`) — +17 tests
+#### Step 9: Explicit key support (`?`) — ✅ COMPLETE
 
-**Impact: 17 failures fixed.** Second largest feature gap.
-
-The parser doesn't recognize `?` as an explicit key indicator (§8.2.2). This blocks 17 advanced-stage tests including complex mappings, multi-line keys, and spec examples. Need:
-- `?` detection at block indent level → starts explicit key
-- `?` in flow context → complex key indicator
-- Value follows on next line after `:` at same indent
-
-Test IDs: 5WE3, 6M2F, 6PBE, 7W2P, A2M4, CT4Q, DFF7, FRK4, GH63, JTV5, KK5P, M5DY, PW8X, V9D5, X8DW, ZWK4 (+ some overlap with tags).
+**All 16 test IDs pass.** Explicit key support was implemented as part of prior work (`ExplicitKeyTests.lean`, 66 tests). All 16 listed test IDs (5WE3, 6M2F, 6PBE, 7W2P, A2M4, CT4Q, DFF7, FRK4, GH63, JTV5, KK5P, M5DY, PW8X, V9D5, X8DW, ZWK4) now pass in the yaml-test-suite.
 
 #### Step 10: Strict validation (error rejection) — ⚠️ IN PROGRESS
 
@@ -346,7 +339,7 @@ Test IDs: 5WE3, 6M2F, 6PBE, 7W2P, A2M4, CT4Q, DFF7, FRK4, GH63, JTV5, KK5P, M5DY
 
 **Results so far:** Error stage: regressed to 0/74 after P2 flow changes made the parser more permissive in flow contexts. Overall: 241/416 correct (57.9%). Flow stage improved to 43/46 (93.5%).
 
-**Remaining work:** 48 error-stage + 36 non-error unexpected passes still need validation rules. Sub-steps below track what's done vs remaining:
+**Remaining work:** 74 error-stage + 20 non-error unexpected passes (94 total) still need validation rules. Sub-steps below track what's done vs remaining:
 
 | Sub-step | Category | Count | Status | Notes |
 |----------|----------|-------|--------|-------|
@@ -396,7 +389,7 @@ After steps 8–11, projected correct rate is ~74.5% (310/416). The remaining ~2
 
 Note: Error stage regressed from 26→0 after P2 flow changes — the more permissive flow parsing (accepting implicit mappings, JSON-like `:`) now also accepts some invalid flow constructs that P1's `validationError` was catching. Additional flow-specific validation rules needed.
 
-**Internal test suites: 581/581 (100%) across 10 suites** (hand-written Lean tests; separate from the 416 yaml-test-suite cases above).
+**Internal test suites: 805/805 (100%) across 11 suites** (hand-written Lean tests; separate from the 416 yaml-test-suite cases above).
 
 ### What's Implemented vs YAML 1.2.2 Spec
 
@@ -489,7 +482,7 @@ The root cause was architectural: lean4-parser's `<|>` unconditionally catches a
 
 ### Path to 100% yaml-test-suite Compliance
 
-**Current: 250/416 (60.1%).** Target: 354/416 (85.1%), excluding 62 skipped tests outside YAML 1.2.2 scope.
+**Current: 241/416 (57.9%).** Target: 354/416 (85.1%), excluding 62 skipped tests outside YAML 1.2.2 scope.
 
 | Phase | Work | Tests Fixed | Projected |
 |---|---|---|---|
@@ -723,7 +716,7 @@ lake build
 # yaml-test-suite coverage (416 unique test cases from 351 files)
 lake build suiterunner tryparse && lake exe suiterunner --html docs/
 
-# Internal test suites (581 hand-written tests across 10 suites)
+# Internal test suites (805 hand-written tests across 11 suites)
 lake exe tests              # Unit tests (17)
 lake exe parsetest           # Parser integration (25)
 lake exe quotedfolding       # Quoted folding (34)
@@ -731,6 +724,7 @@ lake exe anchortests         # Anchor/alias tests (33)
 lake exe tagtests            # Tag tests (44)
 lake exe explicitkeytests    # Explicit key tests (66)
 lake exe flowtests           # Flow completeness tests (88)
+lake exe charclass           # CharClass correspondence tests (224)
 lake exe verification        # Layer 1 verification (138)
 lake exe stringlemmas        # String lemma tests (129)
 lake exe demo                # Demo examples (7)
