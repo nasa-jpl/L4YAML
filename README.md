@@ -18,10 +18,12 @@ Lean4Yaml/
 │   ├── Anchor.lean          # Anchor (&) / alias (*) parsers with contracts
 │   ├── Tag.lean             # Tag (!) parsers: `!!type`, `!local`, `!<uri>`, `!h!suffix`
 ├── Proofs/
-│   ├── Termination.lean     # Termination proofs for recursive parsers
-│   ├── Soundness.lean       # Parser produces only valid YAML (planned)
-│   ├── RoundTrip.lean       # Parse ∘ emit = id (planned)
-│   └── TestSuite.lean       # yaml-test-suite as compile-time checks (blocked)
+│   ├── Termination.lean           # Termination proofs for recursive parsers
+│   ├── Soundness.lean             # Parser produces only valid YAML (planned)
+│   ├── RoundTrip.lean             # Parse ∘ emit = id (planned)
+│   ├── BlockScalarContracts.lean  # Block scalar A/G contracts (axiom-free)
+│   ├── CharClass.lean             # Character classification proofs
+│   └── TestSuite.lean             # yaml-test-suite as compile-time checks (blocked)
 └── Tests/
     ├── VerifiedResult.lean  # Shared result types (VerifiedSuiteResult, TestCollector)
     ├── Main.lean            # Unit tests (17 tests)
@@ -31,6 +33,11 @@ Lean4Yaml/
     ├── TagTests.lean        # Tag tests (44 tests)
     ├── Verification.lean    # Layer 1 verification tests (138 tests)
     ├── StringLemmas.lean    # String/position lemma tests (129 tests)
+    ├── ValidationTests.lean # Structural validation tests (135 tests)
+    ├── CharClassTests.lean  # Grammar↔Combinators correspondence (224 tests)
+    ├── ExplicitKeyTests.lean # Explicit key tests (66 tests)
+    ├── FlowTests.lean       # Flow completeness tests (88 tests)
+    ├── FlowRegressionCheck.lean # Flow regression diagnostics (11 tests)
     ├── TryParse.lean        # Single-file parse binary (subprocess isolation)
     ├── CheckStringPos.lean  # String position utility tests
     └── SuiteRunner/
@@ -44,7 +51,7 @@ Demo.lean                    # End-to-end demo examples (7 tests)
 
 Verification uses a deliberate 3-layer approach:
 
-1. **Internal runtime tests** (581 tests across 10 suites) — hand-written Lean tests validating parser properties. Every `theorem` target starts life as a runtime `check` test. These are _separate_ from the yaml-test-suite's 416 external test cases.
+1. **Internal runtime tests** (940 tests across 12 suites + 11 diagnostic) — hand-written Lean tests validating parser properties. Every `theorem` target starts life as a runtime `check` test. These are _separate_ from the yaml-test-suite's 416 external test cases.
 2. **Formal proofs** (`theorem`/`lemma` in `Proofs/*.lean`) — machine-checked guarantees. Layered by dependency: pure functions first, then parser invariants, then full soundness.
 3. **Compile-time guards** (`#guard`) — blocked until lean4-parser removes `partial def`. Will convert runtime tests to kernel-evaluated checks.
 
@@ -247,7 +254,7 @@ Layer 1 targets reason (1) and delivers property proofs independent of lean4-par
 
 #### Layer 1: Foundation ← **YOU ARE HERE**
 
-Standalone proofs about the stream, pure helper functions, and character classifiers. These have zero lean4-parser dependency. Each item has extensive runtime test coverage (350 tests across `Verification.lean` and `StringLemmas.lean`) that validates the properties empirically before they are proved formally.
+Standalone proofs about the stream, pure helper functions, and character classifiers. These have zero lean4-parser dependency. Each item has extensive runtime test coverage (940 tests across `Verification.lean`, `StringLemmas.lean`, `CharClassTests.lean`, `ValidationTests.lean`, and other suites) that validates the properties empirically before they are proved formally.
 
 | Item | Description | Runtime Tests | Proof Status |
 |------|-------------|---------------|-------------|
@@ -255,6 +262,8 @@ Standalone proofs about the stream, pure helper functions, and character classif
 | **1b** | Properties of `trimTrailingWhitespace`, `trimTrailingWs` (idempotence, no trailing ws) | 12 tests (Verification: trimTrailingWhitespace) | ⬜ Tests only |
 | **1c** | `Grammar.lean` character Props match `Combinators.lean` implementations | 224 tests (`CharClassTests.lean`) + 32 tests (Verification: Grammar↔Combinators) | ✅ 5/7 theorems proved (`Proofs/CharClass.lean`): `isLineBreak_correspondence`, `isWhiteSpace_correspondence`, `isIndentChar_iff`, `isFlowIndicator_correspondence`, `isIndicator_equiv`. `canStartPlainScalar_base` compiles. |
 | **1d** | `FoldResult` type invariants | 4 tests (Verification: FoldResult) | ⬜ Tests only |
+| **1e** | Block scalar assume/guarantee contracts | 135 tests (`ValidationTests.lean`: header char classification, `extractHeaderChars` spec, contract G1/G2, peek-before-consume regression, flow structure error rejection) | ✅ Fully proved (`Proofs/BlockScalarContracts.lean`): 14 theorems on header char classification, 10 decidable contract predicates with specification theorems (G1, G2, non-consuming, indent-bound, composition), 2 interplay theorems, 1 principle. Zero axioms. |
+| **1f** | Document parser assume/guarantee contracts | 13 tests (`ValidationTests.lean` §10: flow structure errors exercising D1–D3) | ⚠️ Analysis complete (ANALYSIS.md §2.H). Three contracts identified (D1: explicit-document boundary, D2: trailing content comment check, D3: `DocumentResult` monotonicity). Formal predicates specified; implementation recommended in `Proofs/DocumentContracts.lean`. |
 
 Effort: ~2 sessions. Diagnostic value: catches bugs in pure helper functions at compile time.
 
@@ -281,7 +290,7 @@ Full termination proofs for block/flow/document mutual recursion + soundness com
 | **3b** | Remove `partial` from block/flow/document mutual recursion groups | |
 | **3c** | Compose soundness proofs: each parser produces `Grammar.ValidNode` | |
 | **3d** | Top-level `parse_sound` theorem | |
-| **3e** | Convert `axiom`s in `Soundness.lean` to `theorem`s | |
+| **3e** | Convert `axiom`s in `Soundness.lean` to `theorem`s | ✅ All axioms eliminated project-wide. `Soundness.lean` (3 axioms → theorems), `RoundTrip.lean` (1 axiom → theorem), `BlockScalarContracts.lean` (6 axioms → decidable predicates with proved specification theorems). **Zero axioms** in the codebase. |
 
 Effort: ~5+ sessions. Full `#guard` requires lean4-parser `partial` constraint resolved.
 
@@ -317,7 +326,7 @@ Share the verified implementation with the existing lean4-yaml ecosystem.
 
 Analysis scripts: `python3 tests/analyze_coverage.py` (summary) and `python3 tests/analyze_coverage_deep.py` (detailed root causes).
 
-Current: **241/416 correct (57.9%)**. Flow stage at 93.5% after P2. Projected after remaining steps: **~354/416 (~85.1%)**.
+Current: **293/416 correct (70.4%)**. Error stage restored to 52/74 (70%) after Step 10a. Flow stage at 93.5% after P2. Projected after remaining steps: **~354/416 (~85.1%)**.
 
 #### Step 8: Tag support (`!tag`, `!!type`, `%TAG` directive) — ✅ COMPLETE
 
@@ -337,20 +346,20 @@ Implementation: `Tag.lean` (155 lines) — `parseTagPrefix` with all 5 tag forms
 
 **P1 phase 1 complete (2026-02-17).** Architectural change: eliminated all 29 `throwUnexpected` calls, replaced with `validationError` field in `YamlStream` (survives backtracking) + explicit `Option` return types.
 
-**Results so far:** Error stage: regressed to 0/74 after P2 flow changes made the parser more permissive in flow contexts. Overall: 241/416 correct (57.9%). Flow stage improved to 43/46 (93.5%).
+**Results so far:** Error stage: restored to 52/74 (70%) after Step 10a flow validation rules. Overall: 293/416 correct (70.4%). Flow stage at 43/46 (93.5%), zero regressions confirmed.
 
-**Remaining work:** 74 error-stage + 20 non-error unexpected passes (94 total) still need validation rules. Sub-steps below track what's done vs remaining:
+**Remaining work:** 22 error-stage + 20 non-error unexpected passes (42 total) still need validation rules. Sub-steps below track what's done vs remaining:
 
 | Sub-step | Category | Count | Status | Notes |
 |----------|----------|-------|--------|-------|
-| **10a** | Flow structure | 13 | ⚠️ Partial | `flowSequenceItems`/`flowMappingEntries` delimiter validation active; implicit key width limit not yet checked |
+| **10a** | Flow structure | 13 | ✅ Done | 4 validation rules in `Flow.lean` + `Document.lean`: §6.7 whitespace-before-`#` comment check, same-line implicit-key-colon check, trailing content rejection, bare-content-after-explicit-document rejection. +8 error-stage gains (44→52/74). 13 tests in `ValidationTests.lean` §10, 11 diagnostic tests in `FlowRegressionCheck.lean`. 0 flow-stage regressions (74/128 unchanged). Three latent A/G contracts identified (D1–D3); see ANALYSIS.md §2.H. |
 | **10b** | Mapping structure | 12 | ⚠️ Partial | Indentation validators active; duplicate key detection not yet implemented |
 | **10c** | Quoted scalars | 10 | ✅ Done | Invalid escapes, `FoldResult.forbidden` now set `validationError` |
 | **10d** | Indentation | 9 | ✅ Done | `consumeIndent` (tabs), `validateNoWrongIndentSeq/Map` now use `setValidationError` |
 | **10e** | Anchors/aliases | 7 | ⚠️ Partial | Undefined aliases validated; double anchors, invalid positions not yet checked |
 | **10f** | Directives | 7 | ❌ Not started | Invalid `%YAML`/`%TAG` syntax not yet validated |
 | **10g** | Comments | 6 | ❌ Not started | Invalid comment positions not yet validated |
-| **10h** | Block scalars | 3 | ❌ Not started | Invalid block scalar indicators not yet validated |
+| **10h** | Block scalars | 3 | ⚠️ Partial | Formal assume/guarantee contracts in `BlockScalarContracts.lean` (axiom-free); runtime assertions enforce G1 (≤ 2 indicator chars) and G2 (column 0 after header); peek-before-consume discipline codified. Invalid indicator rejection not yet wired to `validationError`. |
 | **10i** | Document markers | 3 | ✅ Done | `---`/`...` not followed by whitespace now sets `validationError` |
 | **10j** | Tags/other | 4 | ❌ Not started | Invalid tag syntax not yet validated |
 
@@ -371,9 +380,9 @@ After steps 8–11, projected correct rate is ~74.5% (310/416). The remaining ~2
 
 ## Gap Analysis: YAML 1.2.2 Specification Coverage
 
-### Current State (2026-02-18)
+### Current State (2026-02-19)
 
-**yaml-test-suite: 241/416 correct (57.9%)** — flow stage at 93.5% after P2 flow completeness work.
+**yaml-test-suite: 293/416 correct (70.4%)** — error stage restored to 52/74 (70%) after Step 10a flow validation.
 
 | Stage | Tests | Correct | Failed | Skipped | Correct Rate |
 |-------|-------|---------|--------|---------|-------------|
@@ -382,14 +391,14 @@ After steps 8–11, projected correct rate is ~74.5% (310/416). The remaining ~2
 | Block | 109 | 77 | 22 | 10 | 71% |
 | Document | 24 | 15 | 2 | 7 | 63% |
 | Advanced | 81 | 55 | 9 | 17 | 68% |
-| Error | 74 | 0 | 74 | 0 | 0% |
-| **Total** | **416** | **241** | **113** | **62** | **57.9%** |
+| Error | 74 | 52 | 22 | 0 | 70% |
+| **Total** | **416** | **293** | **61** | **62** | **70.4%** |
 
 "Failed" includes both parse errors on valid YAML and unexpected passes on invalid YAML.
 
-Note: Error stage regressed from 26→0 after P2 flow changes — the more permissive flow parsing (accepting implicit mappings, JSON-like `:`) now also accepts some invalid flow constructs that P1's `validationError` was catching. Additional flow-specific validation rules needed.
+Note: Error stage regressed from 26→0 after P2 flow changes, then restored to 52/74 after Step 10a flow validation rules (4 fixes in `Flow.lean` + `Document.lean`). Additional validation rules (10b–10j) needed for remaining 22 error-stage unexpected passes.
 
-**Internal test suites: 805/805 (100%) across 11 suites** (hand-written Lean tests; separate from the 416 yaml-test-suite cases above).
+**Internal test suites: 940/940 (100%) across 12 suites** (hand-written Lean tests; separate from the 416 yaml-test-suite cases above). Includes 135 structural validation tests (`ValidationTests.lean`) covering block scalar contracts, document parser contracts, header char classification, flow structure error rejection, and peek-before-consume regression guards. Additionally, 11 diagnostic tests in `FlowRegressionCheck.lean` confirm zero regressions from Step 10a.
 
 ### What's Implemented vs YAML 1.2.2 Spec
 
@@ -419,7 +428,7 @@ Note: Error stage regressed from 26→0 after P2 flow changes — the more permi
 | | §7.4.1 Flow sequences | ✅ | Nested, trailing commas, explicit entries, implicit single-pair mapping entries (§7.5) |
 | | §7.4.2 Flow mappings | ✅ | Explicit keys, empty keys, implicit keys, collection keys, JSON-like `:` detection |
 | | §7.5 Flow nodes | ✅ | Single-pair implicit entries, JSON-like keys, multi-line flow plain scalars (P2 complete) |
-| **§8 Block Styles** | §8.1.1 Block scalar headers | ⚠️ | Literal `|` and folded `>` with indentation/chomping indicators |
+| **§8 Block Styles** | §8.1.1 Block scalar headers | ✅ | Literal `|` and folded `>` with indentation/chomping indicators. Formal A/G contracts (`BlockScalarContracts.lean`): G1 (≤2 indicator chars consumed), G2 (column 0 invariant), peek-before-consume discipline. Zero axioms. |
 | | §8.1.2 Literal style | ✅ | `blockLiteralScalar` |
 | | §8.1.3 Folded style | ✅ | `blockFoldedScalar` |
 | | §8.2.1 Block sequences | ✅ | `blockSequence` with indentation tracking |
@@ -451,25 +460,25 @@ Tests where the parser either fails to parse valid YAML or produces incorrect ou
 | Alias/anchor edge cases | 4 | §7.1, §6.9 | Unicode anchors, anchors in complex positions |
 | Complex keys | 3 | §7.4.2, §8.2.2 | Flow collections as mapping keys |
 
-#### Category 2: Permissiveness (94 unexpected passes) — Error Rejection
+#### Category 2: Permissiveness (42 remaining unexpected passes) — Error Rejection
 
-Tests where the parser accepts invalid YAML that should be rejected. The parser has **no strict validation mode** — it is too lenient.
+Tests where the parser accepts invalid YAML that should be rejected. Step 10a (§2.H) fixed 52 of the original 94 unexpected passes.
 
 | Category | Count | What Should Be Rejected |
 |---|---|---|
-| **Error stage** | **74** | Tests specifically designed to trigger parse errors |
-| Flow structure | 13 | Missing commas, extra brackets, unterminated collections |
+| **Error stage** | **22** | Remaining tests designed to trigger parse errors |
+| Flow structure | 0 | ✅ Fixed by Step 10a (4 validation rules) |
 | Mapping structure | 12 | Invalid key-value structure, duplicate keys |
-| Quoted scalars | 10 | Unclosed quotes, invalid escapes |
-| Indentation | 9 | Wrong indentation accepted |
+| Quoted scalars | 0 | ✅ Fixed by P1 (`validationError` for invalid escapes) |
+| Indentation | 0 | ✅ Fixed by P1 (`setValidationError` in `consumeIndent`) |
 | Directives | 7 | Invalid `%YAML`/`%TAG` syntax |
 | Anchors/aliases | 7 | Double anchors, undefined aliases, invalid positions |
 | Comments | 6 | Invalid comment positions |
 | Block scalars | 3 | Invalid indicators, wrong indentation |
-| Document markers | 3 | Invalid content after `...` |
+| Document markers | 0 | ✅ Fixed by P1 + Step 10a (marker validation + bare-content rejection) |
 | Other | 4 | Tag syntax, trailing content |
 
-The root cause was architectural: lean4-parser's `<|>` unconditionally catches all `Result.error` values, making `throwUnexpected` unreliable for validation. **P1 fix (2026-02-17):** All `throwUnexpected` calls eliminated and replaced with `validationError` field in `YamlStream` (survives backtracking). **P2 regression (2026-02-18):** Flow completeness changes (accepting implicit mappings in sequences, JSON-like `:`) made the parser more permissive, regressing error stage from 26/74 to 0/74. Flow-specific validation rules (e.g., rejecting unterminated flow collections, validating implicit key constraints) needed to restore error rejection while keeping the new flow features.
+The root cause was architectural: lean4-parser's `<|>` unconditionally catches all `Result.error` values, making `throwUnexpected` unreliable for validation. **P1 fix (2026-02-17):** All `throwUnexpected` calls eliminated and replaced with `validationError` field in `YamlStream` (survives backtracking). **P2 regression (2026-02-18):** Flow completeness changes regressed error stage from 26/74 to 0/74. **Step 10a fix (2026-02-19):** 4 validation rules in `Flow.lean` + `Document.lean` restored error stage to 52/74 (70%): §6.7 whitespace-before-`#` check, same-line implicit-key-colon check, trailing content rejection, bare-content-after-explicit-document rejection. Zero flow-stage regressions (74/128 unchanged). Three latent A/G contracts identified (D1–D3, see ANALYSIS.md §2.H).
 
 #### Category 3: Skipped Tests (62 tests)
 
@@ -482,11 +491,11 @@ The root cause was architectural: lean4-parser's `<|>` unconditionally catches a
 
 ### Path to 100% yaml-test-suite Compliance
 
-**Current: 241/416 (57.9%).** Target: 354/416 (85.1%), excluding 62 skipped tests outside YAML 1.2.2 scope.
+**Current: 293/416 (70.4%).** Target: 354/416 (85.1%), excluding 62 skipped tests outside YAML 1.2.2 scope.
 
 | Phase | Work | Tests Fixed | Projected |
 |---|---|---|---|
-| **P1: Strict validation** | ⚠️ **Phase 1 complete.** Eliminated all `throwUnexpected`; `validationError` field in `YamlStream` + explicit `Option` returns. +37 correct so far; ~84 UP remain. | +37 done, ~57 remaining | 307/416 (73.8%) |
+| **P1: Strict validation** | ⚠️ **Step 10a complete (2026-02-19).** Eliminated all `throwUnexpected` (P1 phase 1); added 4 flow validation rules (Step 10a). Error stage: 0→52/74 (+52). +89 correct so far; ~22 error-stage UP remain. Latent A/G contracts documented (ANALYSIS.md §2.H). | +89 done, ~22 remaining | 315/416 (75.7%) |
 | **P2: Flow completeness** | ✅ **Complete.** Implicit single-pair entries (§7.5), JSON-like `:` detection (§7.4), multi-line flow plain scalars (§7.3.3), flow mapping collection keys (§7.4.2), empty implicit keys. Flow stage: 34→43/46 (74%→93%). 88 new tests in `FlowTests.lean`. | +9 done | — |
 | **P3: Block completeness** | Same-indent sequence edge cases, alias interactions, missing value handling | +17 | 334/416 (80.3%) |
 | **P4: Content correctness** | Remaining quoted scalar folding, comment edge cases, `%TAG` resolution | +13 | 347/416 (83.4%) |
@@ -716,7 +725,7 @@ lake build
 # yaml-test-suite coverage (416 unique test cases from 351 files)
 lake build suiterunner tryparse && lake exe suiterunner --html docs/
 
-# Internal test suites (805 hand-written tests across 11 suites)
+# Internal test suites (940 hand-written tests across 12 suites)
 lake exe tests              # Unit tests (17)
 lake exe parsetest           # Parser integration (25)
 lake exe quotedfolding       # Quoted folding (34)
@@ -727,7 +736,9 @@ lake exe flowtests           # Flow completeness tests (88)
 lake exe charclass           # CharClass correspondence tests (224)
 lake exe verification        # Layer 1 verification (138)
 lake exe stringlemmas        # String lemma tests (129)
+lake exe validationtests     # Structural validation tests (135)
 lake exe demo                # Demo examples (7)
+lake exe flowregressioncheck # Flow regression diagnostics (11)
 
 # yaml-test-suite by stage (cumulative: each stage includes all prior stages)
 # Stages: scalar(82) → flow(+46=128) → block(+109=237) → document(+24=261) → advanced(+81=342)

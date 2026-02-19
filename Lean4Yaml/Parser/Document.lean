@@ -201,7 +201,10 @@ partial def document : YamlParser DocumentResult := do
   let dirs ← directives
   skipBlankLines
   -- Check for explicit document start
-  let _ ← option? documentStartMarker
+  let hadExplicitStart ← do
+    match ← option? documentStartMarker with
+    | some _ => pure true
+    | none => pure false
   skipBlankLines
   -- Parse document content
   -- Check for immediate document end or empty document
@@ -226,10 +229,16 @@ partial def document : YamlParser DocumentResult := do
   -- Any other content indicates invalid trailing material (e.g., extra `]`,
   -- content after a flow collection, trailing text after a quoted scalar).
   -- This catches tests: 4H7K, 62EZ, KS4U, P2EQ, JY7Z, Q4CL, SU5Z.
+  let trailCol ← currentCol
   skipHWhitespace
+  let afterTrailCol ← currentCol
   match ← option? (lookAhead anyToken) with
   | some c =>
-    if !isLineBreak c && c != '#' then
+    -- §6.7: `#` is only a comment if preceded by whitespace.
+    -- If no horizontal whitespace was consumed before `#`, it is NOT
+    -- a valid comment start — it's invalid trailing content.
+    let isValidComment := c == '#' && (afterTrailCol != trailCol || afterTrailCol == 0)
+    if !isLineBreak c && !isValidComment then
       -- Check if it's a document end/start marker (which is valid)
       let isDocMarker ← lookAhead do
         match ← option? (chars "---" <|> chars "...") with
@@ -250,6 +259,28 @@ partial def document : YamlParser DocumentResult := do
   skipBlankLines
   -- Optionally consume document end marker
   let _ ← option? documentEndMarker
+  -- §9.1.4/§9.2: After an explicit document (`---`), subsequent content
+  -- must begin with `---` or `...`.  Bare content (not preceded by a
+  -- document marker) is invalid.  This catches test KS4U:
+  --   `---\n[\nsequence item\n]\ninvalid item\n`
+  -- where `invalid item` follows the closed flow sequence without a marker.
+  if hadExplicitStart then do
+    skipBlankLines
+    let atEnd'' ← test endOfInput
+    if !atEnd'' then do
+      let atNextDoc ← lookAhead do
+        match ← option? (chars "---" <|> chars "...") with
+        | some _ =>
+          match ← option? anyToken with
+          | some c' => pure (isWhiteSpace c' || isLineBreak c')
+          | none => pure true
+        | none => pure false
+      if !atNextDoc then do
+        let c ← option? (lookAhead anyToken)
+        let ch := match c with | some ch => s!"{ch}" | none => "EOF"
+        setValidationError
+          s!"unexpected content '{ch}' after explicit document; expected '---' or '...'"
+        return .stalled posBefore
   return .parsed { value, directives := dirs }
 
 /--
