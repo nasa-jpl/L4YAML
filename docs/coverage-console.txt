@@ -445,10 +445,10 @@ Running verified test suites...
   Explicit Key Tests: ✓ 66/66
   Flow Completeness Tests: ✓ 88/88
   CharClass Correspondence Tests: ✓ 224/224
-  Structural Validation Tests: ✓ 95/95
+  Structural Validation Tests: ✓ 122/122
   Demo: ✓ 7/7
 
-Verified: 900/900
+Verified: 927/927
 
 Generating HTML reports...
   wrote docs/index.html
