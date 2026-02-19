@@ -169,13 +169,13 @@
   <p class="subtitle">YAML 1.2.2 parser compliance against the official yaml-test-suite</p>
   <div class="stats">
     <div class="stat-box stat-total"><h3>Unique Tests</h3><div class="number">416</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">198</div></div>
-    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">62</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">193</div></div>
+    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">67</div></div>
     <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">0</div></div>
     <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">94</div></div>
     <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">62</div></div>
     <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">0</div></div>
-    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">198/416</div><div class="pct">(47.596154%)</div></div>
+    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">193/416</div><div class="pct">(46.394231%)</div></div>
   </div>
   <h3>Coverage by Stage</h3>
   <div class="stage-cards">
@@ -191,18 +191,18 @@
     </div>
     <div class="stage-card">
       <div class="stage-card-name">block</div>
-      <div class="stage-card-stats">71/109 correct (65.000000%) · 71 pass, 14 fail, 0 exp-fail, 14 unexp-pass, 10 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 65.000000%"></div></div>
+      <div class="stage-card-stats">70/109 correct (64.000000%) · 70 pass, 15 fail, 0 exp-fail, 14 unexp-pass, 10 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 64.000000%"></div></div>
     </div>
     <div class="stage-card">
       <div class="stage-card-name">document</div>
-      <div class="stage-card-stats">14/24 correct (58.000000%) · 14 pass, 1 fail, 0 exp-fail, 2 unexp-pass, 7 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 58.000000%"></div></div>
+      <div class="stage-card-stats">12/24 correct (50.000000%) · 12 pass, 3 fail, 0 exp-fail, 2 unexp-pass, 7 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 50.000000%"></div></div>
     </div>
     <div class="stage-card">
       <div class="stage-card-name">advanced</div>
-      <div class="stage-card-stats">40/81 correct (49.000000%) · 40 pass, 24 fail, 0 exp-fail, 0 unexp-pass, 17 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 49.000000%"></div></div>
+      <div class="stage-card-stats">38/81 correct (46.000000%) · 38 pass, 26 fail, 0 exp-fail, 0 unexp-pass, 17 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 46.000000%"></div></div>
     </div>
     <div class="stage-card">
       <div class="stage-card-name">error</div>
@@ -417,7 +417,7 @@
         <td>error</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">footer</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="3myt plain scalar looking like key, comment, anchor and tag scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/3MYT.yaml" target="_blank" class="test-id-link" title="View 3MYT source in yaml-test-suite">3MYT</a></td>
@@ -811,13 +811,13 @@
         <td><span class="tag">header</span><span class="tag">double</span><span class="tag">error</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="5tym spec example 6.21. local tag prefix local-tag spec directive tag">
+      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="5tym spec example 6.21. local tag prefix local-tag spec directive tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/5TYM.yaml" target="_blank" class="test-id-link" title="View 5TYM source in yaml-test-suite">5TYM</a></td>
         <td>Spec Example 6.21. Local Tag Prefix</td>
         <td>advanced</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">local-tag</span><span class="tag">spec</span><span class="tag">directive</span><span class="tag">tag</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected content &#39;%&#39; after explicit document; expected &#39;---&#39; or &#39;...&#39;">parse error: unexpected content &#39;%&#39; after explicit document; expected &#39;---&#39; or &#39;...&#39;</span></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="5u3a sequence on same line as mapping key error sequence mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/5U3A.yaml" target="_blank" class="test-id-link" title="View 5U3A source in yaml-test-suite">5U3A</a></td>
@@ -1139,13 +1139,13 @@
         <td><span class="tag">explicit-key</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="document" data-search="7z25 bare document after document end marker footer">
+      <tr class="test-row" data-outcome="fail" data-stage="document" data-search="7z25 bare document after document end marker footer">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/7Z25.yaml" target="_blank" class="test-id-link" title="View 7Z25 source in yaml-test-suite">7Z25</a></td>
         <td>Bare document after document end marker</td>
         <td>document</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">footer</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected content &#39;k&#39; after explicit document; expected &#39;---&#39; or &#39;...&#39;">parse error: unexpected content &#39;k&#39; after explicit document; expected &#39;---&#39; or &#39;...&#39;</span></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="flow" data-search="7zz5 empty flow collections flow mapping sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/7ZZ5.yaml" target="_blank" class="test-id-link" title="View 7ZZ5 source in yaml-test-suite">7ZZ5</a></td>
@@ -1345,7 +1345,7 @@
         <td>error</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">comment</span><span class="tag">error</span><span class="tag">flow</span><span class="tag">sequence</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="9kax various combinations of tags and anchors anchor mapping 1.3-err tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/9KAX.yaml" target="_blank" class="test-id-link" title="View 9KAX source in yaml-test-suite">9KAX</a></td>
@@ -1553,7 +1553,7 @@
         <td>error</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">scalar</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="bu8l node anchor and tag on seperate lines anchor indent 1.3-err tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/BU8L.yaml" target="_blank" class="test-id-link" title="View BU8L source in yaml-test-suite">BU8L</a></td>
@@ -1665,7 +1665,7 @@
         <td>error</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">comment</span><span class="tag">error</span><span class="tag">flow</span><span class="tag">sequence</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="cxx2 mapping with anchor on document start line anchor error header mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/CXX2.yaml" target="_blank" class="test-id-link" title="View CXX2 source in yaml-test-suite">CXX2</a></td>
@@ -1801,7 +1801,7 @@
         <td>error</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="block" data-search="dk95 tabs that look like indentation indent whitespace">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/DK95.yaml" target="_blank" class="test-id-link" title="View DK95 source in yaml-test-suite">DK95</a></td>
@@ -1905,7 +1905,7 @@
         <td>error</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">directive</span><span class="tag">footer</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="ehf6 tags for flow objects tag flow mapping sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/EHF6.yaml" target="_blank" class="test-id-link" title="View EHF6 source in yaml-test-suite">EHF6</a></td>
@@ -2393,7 +2393,7 @@
         <td>error</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">sequence</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="advanced" data-search="kss4 scalars on --- line anchor header scalar 1.3-err">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/KSS4.yaml" target="_blank" class="test-id-link" title="View KSS4 source in yaml-test-suite">KSS4</a></td>
@@ -2419,13 +2419,13 @@
         <td></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="block" data-search="l383 two scalar docs with trailing comments comment">
+      <tr class="test-row" data-outcome="fail" data-stage="block" data-search="l383 two scalar docs with trailing comments comment">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/L383.yaml" target="_blank" class="test-id-link" title="View L383 source in yaml-test-suite">L383</a></td>
         <td>Two scalar docs with trailing comments</td>
         <td>block</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">comment</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;#&#39; after document value">parse error: unexpected trailing content &#39;#&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="l94m tags in explicit mapping explicit-key tag mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/L94M.yaml" target="_blank" class="test-id-link" title="View L94M source in yaml-test-suite">L94M</a></td>
@@ -2723,13 +2723,13 @@
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="advanced" data-search="p76l spec example 6.19. secondary tag handle spec header tag unknown-tag">
+      <tr class="test-row" data-outcome="fail" data-stage="advanced" data-search="p76l spec example 6.19. secondary tag handle spec header tag unknown-tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/P76L.yaml" target="_blank" class="test-id-link" title="View P76L source in yaml-test-suite">P76L</a></td>
         <td>Spec Example 6.19. Secondary Tag Handle</td>
         <td>advanced</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">spec</span><span class="tag">header</span><span class="tag">tag</span><span class="tag">unknown-tag</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;#&#39; after document value">parse error: unexpected trailing content &#39;#&#39; after document value</span></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="block" data-search="p94k spec example 6.11. multi-line comments spec comment">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/P94K.yaml" target="_blank" class="test-id-link" title="View P94K source in yaml-test-suite">P94K</a></td>
@@ -3331,13 +3331,13 @@
         <td><span class="tag">comment</span><span class="tag">explicit-key</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="document" data-search="xlq9 multiline scalar that looks like a yaml directive directive scalar">
+      <tr class="test-row" data-outcome="fail" data-stage="document" data-search="xlq9 multiline scalar that looks like a yaml directive directive scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/XLQ9.yaml" target="_blank" class="test-id-link" title="View XLQ9 source in yaml-test-suite">XLQ9</a></td>
         <td>Multiline scalar that looks like a YAML directive</td>
         <td>document</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td><span class="tag">directive</span><span class="tag">scalar</span></td>
-        <td></td>
+        <td><span class="error-msg" title="parse error: unexpected content &#39;%&#39; after explicit document; expected &#39;---&#39; or &#39;...&#39;">parse error: unexpected content &#39;%&#39; after explicit document; expected &#39;---&#39; or &#39;...&#39;</span></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="xv9v spec example 6.5. empty lines [1.3] literal spec scalar 1.3-mod">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/XV9V.yaml" target="_blank" class="test-id-link" title="View XV9V source in yaml-test-suite">XV9V</a></td>
@@ -3545,7 +3545,7 @@
         <td>error</td>
         <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="document" data-search="zyu8 directive variants directive">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/ZYU8.yaml" target="_blank" class="test-id-link" title="View ZYU8 source in yaml-test-suite">ZYU8</a></td>

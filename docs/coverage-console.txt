@@ -84,7 +84,7 @@ Running all tests for HTML report...
   [68/416] 5T43 ○ empty yaml input
   [69/416] 5T43 ○ empty yaml input
   [70/416] 5TRB ⚠ unexpected pass
-  [71/416] 5TYM ✓
+  [71/416] 5TYM ✗ parse error: unexpected content '%' after explicit document; expected '---' or '...'
   [72/416] 5U3A ⚠ unexpected pass
   [73/416] 5WE3 ✓
   [74/416] 62EZ ⚠ unexpected pass
@@ -125,7 +125,7 @@ Running all tests for HTML report...
   [109/416] 7T8X ○ YAML 1.3 specific
   [110/416] 7TMG ✓
   [111/416] 7W2P ✓
-  [112/416] 7Z25 ✓
+  [112/416] 7Z25 ✗ parse error: unexpected content 'k' after explicit document; expected '---' or '...'
   [113/416] 7ZZ5 ✗ parse error: unexpected trailing content '-' after document value
   [114/416] 82AN ○ YAML 1.3 specific
   [115/416] 87E4 ✗ parse error: unexpected trailing content ':' after document value
@@ -285,7 +285,7 @@ Running all tests for HTML report...
   [269/416] KSS4 ○ YAML 1.3 specific
   [270/416] L24T ✓
   [271/416] L24T ✓
-  [272/416] L383 ✓
+  [272/416] L383 ✗ parse error: unexpected trailing content '#' after document value
   [273/416] L94M ✓
   [274/416] L9U5 ✓
   [275/416] LE5A ✓
@@ -323,7 +323,7 @@ Running all tests for HTML report...
   [307/416] NP9H ✓
   [308/416] P2AD ✗ parse error: unexpected trailing content 'l' after document value
   [309/416] P2EQ ⚠ unexpected pass
-  [310/416] P76L ✓
+  [310/416] P76L ✗ parse error: unexpected trailing content '#' after document value
   [311/416] P94K ✗ parse error: unhandled construct 'k' at line 0, column 0
   [312/416] PBJ2 ✓
   [313/416] PRH3 ✓
@@ -399,7 +399,7 @@ Running all tests for HTML report...
   [383/416] X38W ✗ parse error: unexpected token at { offset := 2, line := 0, col := 2 }; expected plain scalar at { offset := 2, line := 0, col := 2 }; expected flow mapping at { offset := 2, line := 0, col := 2 }
   [384/416] X4QW ⚠ unexpected pass
   [385/416] X8DW ✓
-  [386/416] XLQ9 ✓
+  [386/416] XLQ9 ✗ parse error: unexpected content '%' after explicit document; expected '---' or '...'
   [387/416] XV9V ○ YAML 1.3 specific
   [388/416] XW4D ○ YAML 1.3 specific
   [389/416] Y2GN ✓
@@ -432,7 +432,7 @@ Running all tests for HTML report...
   [416/416] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 198/416 (47.000000%)
+Correct: 193/416 (46.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 17/17
@@ -445,10 +445,10 @@ Running verified test suites...
   Explicit Key Tests: ✓ 66/66
   Flow Completeness Tests: ✓ 88/88
   CharClass Correspondence Tests: ✓ 224/224
-  Structural Validation Tests: ✓ 122/122
+  Structural Validation Tests: ✓ 135/135
   Demo: ✓ 7/7
 
-Verified: 927/927
+Verified: 940/940
 
 Generating HTML reports...
   wrote docs/index.html
