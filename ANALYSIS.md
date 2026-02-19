@@ -155,6 +155,65 @@ Additionally, `collectChars` needs a `'\\' → '\n' | '\r'` arm for escaped line
 
 **Implementation plan**: Add/improve the explicit result type for `c-forbidden` detection first (following the `DispatchResult`/`DocumentResult` pattern of making validation structural), then fix the algorithmic bugs in `foldQuotedNewlines`.
 
+### G. Block Scalar Header: Peek-Before-Consume Discipline (Critical Insight)
+
+**Date discovered**: 2026-02-19
+**Status**: ✅ Fixed. Root cause identified, fix applied, formal contracts built.
+
+**The bug**: `parseYaml "data: |\n  line1\n  line2"` returned `.error` instead of correctly parsing a literal block scalar. The test "accept: literal block scalar" was the only failure in the internal test suite.
+
+**Root cause**: In `blockScalarHeader`, the indicator-parsing loop used `option? anyToken` to peek at the next character:
+
+```lean
+-- BUGGY: option? anyToken CONSUMES the character
+for _ in [:2] do
+  match ← option? anyToken with
+  | some '-' => chomp := .strip
+  | some c => if c >= '1' && c <= '9' then indent := some (c.toNat - '0'.toNat) else break
+  | none => pure ()
+```
+
+When parsing `|\n  line1\n  line2`, the sequence was:
+1. `anyToken` reads `\n` (consumes it, advancing past the newline)
+2. The `\n` doesn't match any header pattern → `break`
+3. But the newline is already consumed
+4. `skipTrailing` now sees `  line1...` — two spaces that belong to the content
+5. `skipTrailing` consumes whitespace, eating the content indentation
+6. `autoDetectIndent` sees zero indentation (spaces already gone)
+7. `blockScalarContent` fails because the content doesn't match
+
+**The implicit contract violated**: `blockScalarHeader` must only consume characters that are header indicators (`-`, `+`, `1`–`9`), trailing whitespace/comment, and at most one newline. The `option? anyToken` pattern consumed a character *before* classifying it, so when the loop broke, the consumed character was lost to the wrong production.
+
+**The fix**: Replace `option? anyToken` with `option? (lookAhead anyToken)` — peek first, then consume only if the character is valid:
+
+```lean
+-- FIXED: lookAhead peeks without consuming; only anyToken for valid chars
+for _ in [:2] do
+  match ← option? (lookAhead anyToken) with
+  | some '-' => let _ ← anyToken; chomp := .strip
+  | some c => if c >= '1' && c <= '9' then let _ ← anyToken; indent := some (...) else break
+  | none => pure ()
+```
+
+Now when `lookAhead anyToken` peeks at `\n`, the stream position is unchanged. The `break` exits the loop with `\n` still unconsumed. `skipTrailing` has nothing to skip, `newline` consumes the `\n`, and the stream ends up at column 0 — exactly where `autoDetectIndent` expects it.
+
+**Generalization — the peek-before-consume discipline**: Any parsing loop where the next character might not belong to the current production MUST use `lookAhead` to inspect before consuming. The pattern is:
+
+```
+match ← option? (lookAhead anyToken) with
+| some c => if isValid c then let _ ← anyToken; ... else break
+| none => ...
+```
+
+The anti-pattern `option? anyToken` + `break` silently consumes one character from the next production on every exit. This is especially dangerous in YAML because the "stolen" character is typically a newline or space — invisible in output but critical for indentation tracking.
+
+**Formal contracts**: This insight was codified as machine-checked contracts in `Proofs/BlockScalarContracts.lean`:
+- **§1** (fully proved): Header character classification — `isBlockScalarHeaderChar` correctly distinguishes header chars from content chars. Properties like `newline_not_header_char`, `space_not_header_char`, and `extractHeaderChars_preserves_non_header` are proved by `native_decide` and structural induction.
+- **§2** (decidable predicates): Position contracts expressed as `Bool`-valued functions (`satisfiesG1`, `satisfiesG2`, `satisfiesNonConsuming`) with proved implications about what they mean. The parser's runtime assertions check these exact predicates.
+- **§3** (code pattern): The peek-before-consume principle documented as a structural code discipline.
+
+**This follows the §6 pattern**: implicit parser state (which characters are consumed) → explicit contract predicates (decidable, proved). The `lookAhead`-then-consume pattern is the code-level enforcement; the formal contracts are the proof-level enforcement.
+
 ---
 
 ## 3. What NOT to Port
@@ -222,6 +281,7 @@ lean4-yaml's development log established a repeating pattern: **make implicit st
 | `DispatchResult` | Dispatch outcome → 3-valued type | Proof-friendly block value dispatch |
 | `DocumentResult` | Document parse outcome → 3-valued type | Eliminates 36 infinite loops |
 | `FoldResult` | Quoted fold + `c-forbidden` → explicit type | Prevents backtracking from swallowing `c-forbidden` violations |
+| Block scalar contracts | Implicit consumption → decidable predicates | Prevents header parser from consuming content indentation |
 
 For the verified parser, this principle is even more powerful: explicit state becomes **proof targets**. Every enum variant maps to a lemma obligation, and every state transition becomes a provable invariant.
 
