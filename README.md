@@ -38,6 +38,7 @@ Lean4Yaml/
     ├── ExplicitKeyTests.lean # Explicit key tests (66 tests)
     ├── FlowTests.lean       # Flow completeness tests (88 tests)
     ├── FlowRegressionCheck.lean # Flow regression diagnostics (11 tests)
+    ├── ErrorStageDiag.lean  # Error-stage pipeline diagnostic (5 suite + 5 inline + 5 comparison)
     ├── TryParse.lean        # Single-file parse binary (subprocess isolation)
     ├── CheckStringPos.lean  # String position utility tests
     └── SuiteRunner/
@@ -326,7 +327,7 @@ Share the verified implementation with the existing lean4-yaml ecosystem.
 
 Analysis scripts: `python3 tests/analyze_coverage.py` (summary) and `python3 tests/analyze_coverage_deep.py` (detailed root causes).
 
-Current: **293/416 correct (70.4%)**. Error stage restored to 52/74 (70%) after Step 10a. Flow stage at 93.5% after P2. Projected after remaining steps: **~354/416 (~85.1%)**.
+Current: **252/416 correct (60.6%)** per HTML subprocess report. Error stage: 52/74 (70%) after Step 10a. Flow stage: 40/46 (87%) per subprocess. Projected after remaining steps: **~354/416 (~85.1%)**.
 
 #### Step 8: Tag support (`!tag`, `!!type`, `%TAG` directive) — ✅ COMPLETE
 
@@ -346,13 +347,13 @@ Implementation: `Tag.lean` (155 lines) — `parseTagPrefix` with all 5 tag forms
 
 **P1 phase 1 complete (2026-02-17).** Architectural change: eliminated all 29 `throwUnexpected` calls, replaced with `validationError` field in `YamlStream` (survives backtracking) + explicit `Option` return types.
 
-**Results so far:** Error stage: restored to 52/74 (70%) after Step 10a flow validation rules. Overall: 293/416 correct (70.4%). Flow stage at 43/46 (93.5%), zero regressions confirmed.
+**Results so far:** Error stage: restored to 52/74 (70%) after Step 10a flow validation rules. Overall: 252/416 correct (60.6%) per subprocess HTML report. Fixed `runAllForReport` mapping bug (`.unexpectedPass` → `.expectedFail` for correctly-rejected error tests). Diagnostic test in `ErrorStageDiag.lean` confirms pipeline correctness.
 
-**Remaining work:** 22 error-stage + 20 non-error unexpected passes (42 total) still need validation rules. Sub-steps below track what's done vs remaining:
+**Remaining work:** 22 error-stage + 13 non-error unexpected passes (35 total) still need validation rules. Sub-steps below track what's done vs remaining:
 
 | Sub-step | Category | Count | Status | Notes |
 |----------|----------|-------|--------|-------|
-| **10a** | Flow structure | 13 | ✅ Done | 4 validation rules in `Flow.lean` + `Document.lean`: §6.7 whitespace-before-`#` comment check, same-line implicit-key-colon check, trailing content rejection, bare-content-after-explicit-document rejection. +8 error-stage gains (44→52/74). 13 tests in `ValidationTests.lean` §10, 11 diagnostic tests in `FlowRegressionCheck.lean`. 0 flow-stage regressions (74/128 unchanged). Three latent A/G contracts identified (D1–D3); see ANALYSIS.md §2.H. |
+| **10a** | Flow structure | 13 | ✅ Done | 4 validation rules in `Flow.lean` + `Document.lean`: §6.7 whitespace-before-`#` comment check, same-line implicit-key-colon check, trailing content rejection, bare-content-after-explicit-document rejection. +8 error-stage gains (44→52/74). 13 tests in `ValidationTests.lean` §10, 11 diagnostic tests in `FlowRegressionCheck.lean`, 15 diagnostic tests in `ErrorStageDiag.lean`. Three latent A/G contracts identified (D1–D3); see ANALYSIS.md §2.H. Also fixed `runAllForReport` mapping bug in `SuiteRunner/Main.lean` that classified all correctly-rejected error tests as `.unexpectedPass` instead of `.expectedFail`, making the HTML report show 0/74 despite correct parser behavior. |
 | **10b** | Mapping structure | 12 | ⚠️ Partial | Indentation validators active; duplicate key detection not yet implemented |
 | **10c** | Quoted scalars | 10 | ✅ Done | Invalid escapes, `FoldResult.forbidden` now set `validationError` |
 | **10d** | Indentation | 9 | ✅ Done | `consumeIndent` (tabs), `validateNoWrongIndentSeq/Map` now use `setValidationError` |
@@ -371,10 +372,10 @@ Implementation: `Tag.lean` (155 lines) — `parseTagPrefix` with all 5 tag forms
 | Escape sequences | 5 | Unicode escapes (`\x`, `\u`, `\U`) in double-quoted scalars |
 | Complex keys | 3 | Flow collections as block mapping keys (§8.2.2) |
 
-#### Step 12: Iterate toward 60%+ correct rate
+#### Step 12: Iterate toward 75%+ correct rate
 
-After steps 8–11, projected correct rate is ~74.5% (310/416). The remaining ~25% are edge cases in:
-- Non-error unexpected passes in block/flow/document stages (20 tests)
+After steps 8–11, projected correct rate is ~75% (312/416). The remaining ~25% are edge cases in:
+- Non-error unexpected passes in block/flow/document stages (35 tests)
 - Interactions between features (anchor + tag, explicit-key + tag, etc.)
 - YAML 1.3-specific tests (currently skipped, 62 tests)
 
@@ -382,21 +383,21 @@ After steps 8–11, projected correct rate is ~74.5% (310/416). The remaining ~2
 
 ### Current State (2026-02-19)
 
-**yaml-test-suite: 293/416 correct (70.4%)** — error stage restored to 52/74 (70%) after Step 10a flow validation.
+**yaml-test-suite: 252/416 correct (60.6%)** per subprocess HTML report (`--html` mode). Error stage: 52/74 (70%) after Step 10a.
 
-| Stage | Tests | Correct | Failed | Skipped | Correct Rate |
-|-------|-------|---------|--------|---------|-------------|
-| Scalar | 82 | 51 | 3 | 28 | 62% |
-| Flow | 46 | 43 | 3 | 0 | 93% |
-| Block | 109 | 77 | 22 | 10 | 71% |
-| Document | 24 | 15 | 2 | 7 | 63% |
-| Advanced | 81 | 55 | 9 | 17 | 68% |
-| Error | 74 | 52 | 22 | 0 | 70% |
-| **Total** | **416** | **293** | **61** | **62** | **70.4%** |
+| Stage | Tests | Pass | Fail | Exp Fail | Unexp Pass | Skip | Correct | Rate |
+|-------|-------|------|------|----------|------------|------|---------|------|
+| Scalar | 82 | 33 | 20 | 1 | 0 | 28 | 34 | 41% |
+| Flow | 46 | 40 | 3 | 0 | 3 | 0 | 40 | 87% |
+| Block | 109 | 70 | 15 | 6 | 8 | 10 | 76 | 70% |
+| Document | 24 | 12 | 3 | 0 | 2 | 7 | 12 | 50% |
+| Advanced | 81 | 38 | 26 | 0 | 0 | 17 | 38 | 47% |
+| Error | 74 | 0 | 0 | 52 | 22 | 0 | 52 | 70% |
+| **Total** | **416** | **193** | **67** | **59** | **35** | **62** | **252** | **60.6%** |
 
-"Failed" includes both parse errors on valid YAML and unexpected passes on invalid YAML.
+"Correct" = Pass + Expected Fail. "Fail" includes parse errors on valid YAML. "Unexpected Pass" indicates the parser accepts invalid YAML.
 
-Note: Error stage regressed from 26→0 after P2 flow changes, then restored to 52/74 after Step 10a flow validation rules (4 fixes in `Flow.lean` + `Document.lean`). Additional validation rules (10b–10j) needed for remaining 22 error-stage unexpected passes.
+Note: Error stage regressed from 26→0 after P2 flow changes, then restored to 52/74 after Step 10a flow validation rules (4 fixes in `Flow.lean` + `Document.lean`). Also fixed `runAllForReport` mapping bug in `SuiteRunner/Main.lean` that classified correctly-rejected error tests as `.unexpectedPass` instead of `.expectedFail`. Additional validation rules (10b–10j) needed for remaining 22 error-stage unexpected passes.
 
 **Internal test suites: 940/940 (100%) across 12 suites** (hand-written Lean tests; separate from the 416 yaml-test-suite cases above). Includes 135 structural validation tests (`ValidationTests.lean`) covering block scalar contracts, document parser contracts, header char classification, flow structure error rejection, and peek-before-consume regression guards. Additionally, 11 diagnostic tests in `FlowRegressionCheck.lean` confirm zero regressions from Step 10a.
 
@@ -446,39 +447,29 @@ Note: Error stage regressed from 26→0 after P2 flow changes, then restored to 
 
 ### Three Categories of Gaps to 100%
 
-#### Category 1: Parser Failures (47 tests) — Content Correctness
+#### Category 1: Parser Failures (67 tests) — Content Correctness
 
-Tests where the parser either fails to parse valid YAML or produces incorrect output.
+Tests where the parser fails to parse valid YAML or produces incorrect output (from HTML subprocess report).
 
 | Root Cause | Count | Spec Section | Description |
 |---|---|---|---|
-| Flow edge cases | 1 | §7.4 | 9MMW: flow mapping as implicit key with adjacent `:` (`[{JSON: like}:adjacent]`) |
-| Block edge cases | 17 | §8.2 | Same-indent sequences, aliases in block mappings, anchor edge cases, missing value handling |
-| Quoted scalar content | 4 | §7.3.1, §7.3.2 | Remaining line-folding edge cases (3RLN, DE56, KH5V, M2N8) |
-| Comments | 5 | §6.6 | Comments after flow collections, in multi-line scalars, after directives |
-| Tag resolution | 4 | §6.8, §6.9 | `%TAG` directive wire-through, verbatim tags in complex contexts |
-| Alias/anchor edge cases | 4 | §7.1, §6.9 | Unicode anchors, anchors in complex positions |
-| Complex keys | 3 | §7.4.2, §8.2.2 | Flow collections as mapping keys |
+| Scalar failures | 20 | §7.3, §8.1 | Plain scalar edge cases, block scalar content, line folding |
+| Block edge cases | 15 | §8.2 | Same-indent sequences, aliases in block mappings, anchor edge cases, missing value handling |
+| Advanced failures | 26 | §6.9, §7.1 | Tags, anchors, complex keys, feature interactions |
+| Flow edge cases | 3 | §7.4 | Remaining flow failures |
+| Document edge cases | 3 | §9.1 | Document marker interactions |
 
-#### Category 2: Permissiveness (42 remaining unexpected passes) — Error Rejection
+#### Category 2: Permissiveness (35 remaining unexpected passes) — Error Rejection
 
-Tests where the parser accepts invalid YAML that should be rejected. Step 10a (§2.H) fixed 52 of the original 94 unexpected passes.
+Tests where the parser accepts invalid YAML that should be rejected. Step 10a fixed 52/74 error-stage tests; `runAllForReport` mapping bug fix made these visible in HTML.
 
 | Category | Count | What Should Be Rejected |
 |---|---|---|
 | **Error stage** | **22** | Remaining tests designed to trigger parse errors |
+| **Non-error stages** | **13** | Parser too permissive in block (8), flow (3), document (2) stages |
 | Flow structure | 0 | ✅ Fixed by Step 10a (4 validation rules) |
-| Mapping structure | 12 | Invalid key-value structure, duplicate keys |
-| Quoted scalars | 0 | ✅ Fixed by P1 (`validationError` for invalid escapes) |
-| Indentation | 0 | ✅ Fixed by P1 (`setValidationError` in `consumeIndent`) |
-| Directives | 7 | Invalid `%YAML`/`%TAG` syntax |
-| Anchors/aliases | 7 | Double anchors, undefined aliases, invalid positions |
-| Comments | 6 | Invalid comment positions |
-| Block scalars | 3 | Invalid indicators, wrong indentation |
-| Document markers | 0 | ✅ Fixed by P1 + Step 10a (marker validation + bare-content rejection) |
-| Other | 4 | Tag syntax, trailing content |
 
-The root cause was architectural: lean4-parser's `<|>` unconditionally catches all `Result.error` values, making `throwUnexpected` unreliable for validation. **P1 fix (2026-02-17):** All `throwUnexpected` calls eliminated and replaced with `validationError` field in `YamlStream` (survives backtracking). **P2 regression (2026-02-18):** Flow completeness changes regressed error stage from 26/74 to 0/74. **Step 10a fix (2026-02-19):** 4 validation rules in `Flow.lean` + `Document.lean` restored error stage to 52/74 (70%): §6.7 whitespace-before-`#` check, same-line implicit-key-colon check, trailing content rejection, bare-content-after-explicit-document rejection. Zero flow-stage regressions (74/128 unchanged). Three latent A/G contracts identified (D1–D3, see ANALYSIS.md §2.H).
+The root cause was architectural: lean4-parser's `<|>` unconditionally catches all `Result.error` values, making `throwUnexpected` unreliable for validation. **P1 fix (2026-02-17):** All `throwUnexpected` calls eliminated and replaced with `validationError` field in `YamlStream` (survives backtracking). **P2 regression (2026-02-18):** Flow completeness changes regressed error stage from 26/74 to 0/74. **Step 10a fix (2026-02-19):** 4 validation rules in `Flow.lean` + `Document.lean` restored error stage to 52/74 (70%): §6.7 whitespace-before-`#` check, same-line implicit-key-colon check, trailing content rejection, bare-content-after-explicit-document rejection. Three latent A/G contracts identified (D1–D3, see ANALYSIS.md §2.H). **Mapping bug fix (2026-02-19):** `runAllForReport` in `SuiteRunner/Main.lean` incorrectly classified `.pass` from `runTest` + `tc.expectFail` as `.unexpectedPass` instead of `.expectedFail`. This made the HTML report show 0/74 error-stage correct despite correct parser behavior. Diagnosed via `ErrorStageDiag.lean` (15 tests confirming both suite-file and inline pipelines agree). Fix: one-line `.unexpectedPass` → `.expectedFail`.
 
 #### Category 3: Skipped Tests (62 tests)
 
@@ -491,11 +482,11 @@ The root cause was architectural: lean4-parser's `<|>` unconditionally catches a
 
 ### Path to 100% yaml-test-suite Compliance
 
-**Current: 293/416 (70.4%).** Target: 354/416 (85.1%), excluding 62 skipped tests outside YAML 1.2.2 scope.
+**Current: 252/416 (60.6%).** Target: 354/416 (85.1%), excluding 62 skipped tests outside YAML 1.2.2 scope.
 
 | Phase | Work | Tests Fixed | Projected |
 |---|---|---|---|
-| **P1: Strict validation** | ⚠️ **Step 10a complete (2026-02-19).** Eliminated all `throwUnexpected` (P1 phase 1); added 4 flow validation rules (Step 10a). Error stage: 0→52/74 (+52). +89 correct so far; ~22 error-stage UP remain. Latent A/G contracts documented (ANALYSIS.md §2.H). | +89 done, ~22 remaining | 315/416 (75.7%) |
+| **P1: Strict validation** | ⚠️ **Step 10a complete (2026-02-19).** Eliminated all `throwUnexpected` (P1 phase 1); added 4 flow validation rules (Step 10a). Error stage: 0→52/74 (+52). Fixed `runAllForReport` mapping bug. ~22 error-stage UP remain + 35 non-error UP. Latent A/G contracts documented (ANALYSIS.md §2.H). | +52 error done, ~57 UP remaining | ~309/416 (74.3%) |
 | **P2: Flow completeness** | ✅ **Complete.** Implicit single-pair entries (§7.5), JSON-like `:` detection (§7.4), multi-line flow plain scalars (§7.3.3), flow mapping collection keys (§7.4.2), empty implicit keys. Flow stage: 34→43/46 (74%→93%). 88 new tests in `FlowTests.lean`. | +9 done | — |
 | **P3: Block completeness** | Same-indent sequence edge cases, alias interactions, missing value handling | +17 | 334/416 (80.3%) |
 | **P4: Content correctness** | Remaining quoted scalar folding, comment edge cases, `%TAG` resolution | +13 | 347/416 (83.4%) |

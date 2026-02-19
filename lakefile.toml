@@ -120,3 +120,7 @@ root = "Tests.FlowRegressionCheck"
 [[lean_exe]]
 name = "errorstagediag"
 root = "Tests.ErrorStageDiag"
+
+[[lean_exe]]
+name = "scalarstagediag"
+root = "Tests.ScalarStageDiag"
