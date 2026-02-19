@@ -616,18 +616,18 @@ Returns `(indentation, chomp)` where indentation is `none` for auto-detect.
 def blockScalarHeader : YamlParser (Option Nat × ChompIndicator) := do
   let mut indent : Option Nat := none
   let mut chomp := ChompIndicator.clip
-  -- Parse optional indentation indicator and chomp indicator (in any order)
+  -- Parse optional indentation indicator and chomp indicator (in any order).
+  -- Use lookAhead to peek without consuming, then consume only valid header chars.
   for _ in [:2] do
-    match ← option? anyToken with
-    | some '-' => chomp := .strip
-    | some '+' => chomp := .keep
+    match ← option? (lookAhead anyToken) with
+    | some '-' => let _ ← anyToken; chomp := .strip
+    | some '+' => let _ ← anyToken; chomp := .keep
     | some c =>
       if c >= '1' && c <= '9' then
+        let _ ← anyToken
         indent := some (c.toNat - '0'.toNat)
       else
-        -- Not a header character, put it back via backtracking
-        -- Actually we consumed it; need a different approach
-        -- Use lookAhead to not consume unexpected chars
+        -- Not a header character; lookAhead did not consume it
         break
     | none => pure ()
   -- Skip trailing whitespace and optional comment
