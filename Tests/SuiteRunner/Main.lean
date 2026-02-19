@@ -186,7 +186,7 @@ def runAllForReport (testCases : Array TestCase) (stage : Stage)
     let reportResult : ReportResult := match result with
       | .pass =>
         if tc.expectFail then
-          { testCase := tc, outcome := .unexpectedPass }
+          { testCase := tc, outcome := .expectedFail }
         else
           { testCase := tc, outcome := .pass }
       | .fail reason =>

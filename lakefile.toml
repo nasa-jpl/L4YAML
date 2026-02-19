@@ -116,3 +116,7 @@ root = "Tests.ValidationTests.Runner"
 [[lean_exe]]
 name = "flowregressioncheck"
 root = "Tests.FlowRegressionCheck"
+
+[[lean_exe]]
+name = "errorstagediag"
+root = "Tests.ErrorStageDiag"
