@@ -112,3 +112,7 @@ name = "Tests.ValidationTests"
 [[lean_exe]]
 name = "validationtests"
 root = "Tests.ValidationTests.Runner"
+
+[[lean_exe]]
+name = "flowregressioncheck"
+root = "Tests.FlowRegressionCheck"

@@ -417,6 +417,84 @@ def testBlockScalarContracts (state : IO.Ref TestCollector) : IO Unit := do
   check state "peek-before-consume: comment after indicator" (
     match parseYaml "| # comment\n  hello" with | .ok _ => true | .error _ => false)
 
+/-! ## §10  Flow Structure Error Tests (Step 10a)
+
+These tests correspond to the 13 yaml-test-suite error cases tagged with
+`flow` + (`sequence` or `mapping`) that the parser must reject.
+Each input is structurally invalid YAML that should produce a parse error.
+
+| Suite ID | Description                                     |
+|----------|-------------------------------------------------|
+| 4H7K     | Extra closing `]` after flow sequence            |
+| 62EZ     | Content after `}` without separator              |
+| 6JTT     | Unclosed outer bracket in nested sequence        |
+| 9JBA     | Comment `#` without space after `]`              |
+| 9MAG     | Leading comma `[ , ...]`                         |
+| C2SP     | Flow mapping key split across lines              |
+| CTN5     | Double comma `[ a, b, c, , ]`                    |
+| CVW2     | Comment `#` without space after `,`              |
+| DK4H     | Implicit key + `:` on separate line in flow      |
+| KS4U     | Content after closed flow sequence               |
+| P2EQ     | Block item after `}` on same line                |
+| T833     | Missing comma between flow mapping entries       |
+| ZXT5     | Quoted key + `:value` on next line in flow       |
+-/
+
+def testFlowStructureErrors (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Flow Structure Errors"
+
+  -- 4H7K: Extra closing bracket — `[ a, b, c ] ]`
+  check state "reject: extra closing bracket (4H7K)" (
+    match parseYaml "---\n[ a, b, c ] ]\n" with | .ok _ => false | .error _ => true)
+
+  -- 62EZ: Content after `}` without separator — `x: { y: z }in: valid`
+  check state "reject: content after closing brace (62EZ)" (
+    match parseYaml "---\nx: { y: z }in: valid\n" with | .ok _ => false | .error _ => true)
+
+  -- 6JTT: Unclosed bracket — `[ [ a, b, c ]` (outer `[` never closed)
+  check state "reject: unclosed flow sequence (6JTT)" (
+    match parseYaml "---\n[ [ a, b, c ]\n" with | .ok _ => false | .error _ => true)
+
+  -- 9JBA: Comment without space after `]` — `[ a, b, c, ]#invalid`
+  check state "reject: comment without space after ] (9JBA)" (
+    match parseYaml "---\n[ a, b, c, ]#invalid\n" with | .ok _ => false | .error _ => true)
+
+  -- 9MAG: Leading comma — `[ , a, b, c ]`
+  check state "reject: leading comma in flow seq (9MAG)" (
+    match parseYaml "---\n[ , a, b, c ]\n" with | .ok _ => false | .error _ => true)
+
+  -- C2SP: Multiline flow key — `[23\n]: 42`
+  check state "reject: multiline flow mapping key (C2SP)" (
+    match parseYaml "[23\n]: 42\n" with | .ok _ => false | .error _ => true)
+
+  -- CTN5: Double comma — `[ a, b, c, , ]`
+  check state "reject: double comma in flow seq (CTN5)" (
+    match parseYaml "---\n[ a, b, c, , ]\n" with | .ok _ => false | .error _ => true)
+
+  -- CVW2: Comment after comma without space — `[ a, b, c,#invalid\n]`
+  check state "reject: comment without space after comma (CVW2)" (
+    match parseYaml "---\n[ a, b, c,#invalid\n]\n" with | .ok _ => false | .error _ => true)
+
+  -- DK4H: Implicit key + `:` on separate line in flow — `[ key\n  : value ]`
+  check state "reject: implicit key colon on next line (DK4H)" (
+    match parseYaml "---\n[ key\n  : value ]\n" with | .ok _ => false | .error _ => true)
+
+  -- KS4U: Content after closed flow sequence — `[\nsequence item\n]\ninvalid item`
+  check state "reject: content after closed flow seq (KS4U)" (
+    match parseYaml "---\n[\nsequence item\n]\ninvalid item\n" with | .ok _ => false | .error _ => true)
+
+  -- P2EQ: Block item after `}` on same line — `- { y: z }- invalid`
+  check state "reject: block item after flow map (P2EQ)" (
+    match parseYaml "---\n- { y: z }- invalid\n" with | .ok _ => false | .error _ => true)
+
+  -- T833: Missing comma in flow mapping — `{\n foo: 1\n bar: 2 }`
+  check state "reject: missing comma in flow mapping (T833)" (
+    match parseYaml "---\n{\n foo: 1\n bar: 2 }\n" with | .ok _ => false | .error _ => true)
+
+  -- ZXT5: Quoted key + `:value` on next line — `[ "key"\n  :value ]`
+  check state "reject: colon-value on next line after quoted key (ZXT5)" (
+    match parseYaml "[ \"key\"\n  :value ]\n" with | .ok _ => false | .error _ => true)
+
 /-! ## Collect All Tests -/
 
 /-- Collect all validation test results as structured data. -/
@@ -431,6 +509,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testValidNodeStructural state
   testValidationIntegration state
   testBlockScalarContracts state
+  testFlowStructureErrors state
   let results ← finish state
   return { name := "validationtests", label := "Structural Validation Tests",
            sourceFile := "Tests/ValidationTests.lean", tests := results }

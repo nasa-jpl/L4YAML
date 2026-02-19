@@ -52,13 +52,31 @@ will be added in `Lean4Yaml.Proofs.Termination`.
 Skip whitespace that can appear between flow collection elements.
 
 In flow context, both spaces and newlines are allowed between elements.
+
+Per YAML §6.7, a comment `#` must be "separated from other tokens by
+white space characters."  We only treat `#` as a comment start if
+whitespace was consumed before it (or it appears at column 0, i.e.
+start of a line).
 -/
 partial def flowWhitespace : YamlParser Unit := do
+  let colBefore ← currentCol
   dropMany (tokenFilter fun c => isWhiteSpace c || isLineBreak c)
+  let colAfter ← currentCol
   match ← option? (lookAhead (token '#')) with
   | some _ =>
-    comment
-    flowWhitespace
+    -- §6.7: `#` is only a comment if preceded by whitespace.
+    -- If no whitespace was consumed AND we're not at column 0
+    -- (start of line), then `#` is not a valid comment.
+    let atLineStart := colAfter == 0
+    let wsConsumed := (colBefore != colAfter) || atLineStart
+    if wsConsumed then
+      comment
+      flowWhitespace
+    else
+      -- `#` without preceding whitespace — not a valid comment.
+      -- Let the caller handle it (will trigger a validation error
+      -- when the unexpected char is encountered).
+      return
   | none => return
 
 /--
@@ -223,6 +241,9 @@ partial def flowSequenceItems (acc : Array YamlValue) : YamlParser (Array YamlVa
     pure (.mapping .flow #[(YamlValue.null, value)])
   else do
     -- Parse a flow value, then check for implicit mapping `:` (§7.5)
+    -- Record the line where the key starts — per §7.4, in flow context
+    -- an implicit key and its `:` must be on the same line.
+    let keyLine ← currentLine
     let val ← flowValue
     flowWhitespace
     -- Check if this is an implicit single-pair mapping: `key : value`
@@ -231,6 +252,7 @@ partial def flowSequenceItems (acc : Array YamlValue) : YamlParser (Array YamlVa
     let isJsonLikeKey : Bool := match val with
       | .sequence .. | .mapping .. => true  -- flow collection
       | .scalar s => s.style == .doubleQuoted || s.style == .singleQuoted
+    let colonLine ← currentLine
     let isImplicitMapping ← lookAhead do
       match ← option? (token ':') with
       | none => pure false
@@ -239,7 +261,12 @@ partial def flowSequenceItems (acc : Array YamlValue) : YamlParser (Array YamlVa
         else match ← option? anyToken with
         | none => pure true
         | some c => pure (isWhiteSpace c || isLineBreak c || isFlowIndicator c)
-    if isImplicitMapping then do
+    -- §7.4: In flow context, an implicit key must not span multiple lines.
+    -- If the `:` is on a different line than the key, reject.
+    if isImplicitMapping && colonLine != keyLine then do
+      setValidationError "implicit flow key and ':' must be on the same line"
+      pure val
+    else if isImplicitMapping then do
       let _ ← char ':'
       flowWhitespace
       let value ← match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == ']')) with

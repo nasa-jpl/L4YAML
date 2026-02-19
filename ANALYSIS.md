@@ -214,6 +214,89 @@ The anti-pattern `option? anyToken` + `break` silently consumes one character fr
 
 **This follows the §6 pattern**: implicit parser state (which characters are consumed) → explicit contract predicates (decidable, proved). The `lookAhead`-then-consume pattern is the code-level enforcement; the formal contracts are the proof-level enforcement.
 
+### H. Document Parser Contracts: Explicit-Document Boundary Semantics (Critical Insight)
+
+**Date discovered**: 2026-02-19
+**Status**: Analysis complete. Three latent contracts identified; formal predicates recommended.
+
+**The gap**: The `document` parser in `Document.lean` tracks several implicit invariants about document boundaries, trailing content, and validation error propagation. The Step 10a flow validation work (fixing KS4U, 9JBA, CVW2, DK4H, ZXT5) revealed three contracts that are enforced by runtime `if` checks but have no formal specification. This is the same class of problem that `BlockScalarContracts.lean` solved for the block scalar pipeline — implicit state made explicit as decidable predicates.
+
+#### Contract D1: Explicit-Document Boundary (`hadExplicitStart` invariant)
+
+**Context**: YAML §9.1.4/§9.2 requires that after an explicit document (preceded by `---`), subsequent content must begin with `---` or `...`. Bare content is invalid.
+
+Previously, `document` used `let _ ← option? documentStartMarker` — silently discarding whether `---` was found. This meant the parser could not distinguish explicit from bare documents, and test KS4U (`---\n[\nsequence item\n]\ninvalid item\n`) was silently accepted.
+
+The fix introduced `hadExplicitStart : Bool`, tracking whether `---` was consumed. The implicit contract:
+
+- **Assume**: `hadExplicitStart = true` iff `documentStartMarker` succeeded
+- **Guarantee**: if `hadExplicitStart` and not at EOF, remaining content must begin with `---`, `...`, or whitespace-prefixed document marker. Otherwise, `setValidationError` is called.
+
+**Recommended predicate**:
+```lean
+def satisfiesExplicitBoundary (hadExplicit : Bool) (atEnd : Bool)
+    (nextIsDocMarker : Bool) : Bool :=
+  !hadExplicit || atEnd || nextIsDocMarker
+```
+
+With specification theorem:
+```lean
+theorem explicitBoundary_spec (hadExplicit atEnd nextIsDocMarker : Bool) :
+    satisfiesExplicitBoundary hadExplicit atEnd nextIsDocMarker = true →
+    hadExplicit = false ∨ atEnd = true ∨ nextIsDocMarker = true
+```
+
+#### Contract D2: Trailing Content Comment Check (§6.7 column invariant)
+
+**Context**: After `blockValue`, the only valid same-line continuations are whitespace, comments (`#`), or end of line/input. But §6.7 requires that `#` be preceded by whitespace to be a comment — `value#comment` is not valid.
+
+The fix tracks `trailCol`/`afterTrailCol` (column before/after `skipHWhitespace`) and rejects `#` when no whitespace was consumed (unless at column 0). This fixes test 9JBA.
+
+The implicit contract:
+
+- **Assume**: `trailCol` = column before horizontal whitespace skip, `afterTrailCol` = column after
+- **Guarantee**: `#` is only treated as a comment start if `afterTrailCol > trailCol` or `afterTrailCol == 0`
+
+**Recommended predicate**:
+```lean
+def satisfiesCommentPrecondition (colBefore colAfter : Nat) : Bool :=
+  colAfter != colBefore || colAfter == 0
+```
+
+This is subtle because the `colAfter == 0` edge case handles start-of-line comments — a refactoring could easily drop this guard and break the invariant.
+
+#### Contract D3: `DocumentResult` Monotonicity
+
+**Context**: `yamlStream` depends on `document` returning the correct `DocumentResult` variant. The critical safety property: **`.parsed` is never returned when `validationError` is `some`**.
+
+This is enforced by the `valErr` check in `document` (after parsing the value and trailing content), which converts a validation error into `.stalled`. Breaking this would cause `parseYaml` to reject a document that `yamlStream` thought was valid — the validation error check at the end of `parseYaml` is defense-in-depth, not the primary contract.
+
+- **Assume**: `document` has access to `getValidationError`
+- **Guarantee**: if `getValidationError` returns `some msg` at any point during document parsing, `document` returns `.stalled`, never `.parsed`
+
+**Recommended predicate**:
+```lean
+def satisfiesDocResultMonotonicity (hasValErr : Bool)
+    (result : DocumentResult) : Bool :=
+  !hasValErr || match result with | .stalled _ => true | _ => false
+```
+
+#### What does NOT need formalization
+
+- **`hadExplicitStart` faithfulness** (that it's `true` iff `---` was consumed): trivially correct by construction — direct pattern match on `option?` result.
+- **`yamlStream` loop termination**: follows directly from D3. If `document` returns `.stalled` or `.endOfStream`, the loop exits.
+
+#### Implementation plan
+
+Follow the `BlockScalarContracts.lean` pattern:
+
+1. Create `Lean4Yaml/Proofs/DocumentContracts.lean`
+2. Define `satisfiesExplicitBoundary`, `satisfiesCommentPrecondition`, `satisfiesDocResultMonotonicity` as decidable `Bool` predicates
+3. Prove specification theorems and interplay theorems (all via `native_decide` / `simp` — zero axioms)
+4. Runtime assertions already exist in the code (the `if` checks in `document`), so no new runtime guards needed
+
+**This follows the §6 pattern**: implicit parser control flow (which branch is taken, what `hadExplicitStart` means) → explicit contract predicates (decidable, proved). The `hadExplicitStart` boolean is the code-level enforcement; the formal contracts are the proof-level enforcement.
+
 ---
 
 ## 3. What NOT to Port
@@ -243,7 +326,7 @@ The anti-pattern `option? anyToken` + `break` silently consumes one character fr
 | Flow collections | Partial (55%) | 71% |
 | Block collections | Good (~70%) | 58% |
 | Document handling | — | 58% |
-| Error rejection | — | 54% (40/74) |
+| Error rejection | — | 70% (52/74) |
 
 ---
 
@@ -282,6 +365,7 @@ lean4-yaml's development log established a repeating pattern: **make implicit st
 | `DocumentResult` | Document parse outcome → 3-valued type | Eliminates 36 infinite loops |
 | `FoldResult` | Quoted fold + `c-forbidden` → explicit type | Prevents backtracking from swallowing `c-forbidden` violations |
 | Block scalar contracts | Implicit consumption → decidable predicates | Prevents header parser from consuming content indentation |
+| Document parser contracts | Implicit boundary semantics → decidable predicates | Prevents bare content after explicit documents, enforces §6.7 comment rules |
 
 For the verified parser, this principle is even more powerful: explicit state becomes **proof targets**. Every enum variant maps to a lemma obligation, and every state transition becomes a provable invariant.
 
