@@ -460,5 +460,6 @@ Generating HTML reports...
   wrote docs/coverage-advanced.html
   wrote docs/coverage-error.html
   wrote docs/verified-tests.html
+  wrote docs/coverage-summary.json
 
 HTML reports written to docs/
