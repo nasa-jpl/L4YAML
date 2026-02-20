@@ -294,11 +294,18 @@ private def reportCss : String :=
     .stage-card-stats { color: #666; font-size: 14px; }
     .stage-bar {
       height: 8px; background: #e0e0e0; border-radius: 4px; margin-top: 10px; overflow: hidden;
+      display: flex;
     }
     .stage-bar-fill {
       height: 100%; background: var(--color-pass); border-radius: 4px;
       transition: width 0.3s ease;
     }
+    .stage-bar-segment {
+      height: 100%; min-width: 4px; transition: flex-grow 0.3s ease;
+    }
+    .stage-bar-segment:first-child { border-radius: 4px 0 0 4px; }
+    .stage-bar-segment:last-child { border-radius: 0 4px 4px 0; }
+    .stage-bar-segment:only-child { border-radius: 4px; }
 
     /* Filters */
     .filters {
@@ -508,6 +515,25 @@ private def generateStatsHtml (stats : CoverageStats) : String :=
     "  </div>\n"
   ]
 
+/-- Generate a multi-segment bar for a stage, one segment per non-zero category.
+    Each segment uses `flex: count 0 0px` for proportional sizing with `min-width: 4px`
+    guaranteeing visibility even for count=1 categories. -/
+private def generateStageBarSegments (stats : CoverageStats) : String :=
+  -- Display order: pass (green), expected-fail (blue), fail (red),
+  --   unexpected-pass (orange), skip (gray), timeout (purple)
+  let categories : Array (String × String × Nat) := #[
+    ("pass",            "var(--color-pass)",            stats.passed),
+    ("expected fail",   "var(--color-expected-fail)",    stats.expectedFail),
+    ("fail",            "var(--color-fail)",             stats.failed),
+    ("unexpected pass", "var(--color-unexpected-pass)",  stats.unexpectedPass),
+    ("skip",            "var(--color-skip)",             stats.skipped),
+    ("timeout",         "var(--color-timeout)",          stats.timeout)
+  ]
+  let segments := categories.filter (fun (_, _, n) => n > 0)
+  let html := segments.map fun (label, color, count) =>
+    s!"<div class=\"stage-bar-segment\" style=\"flex: {count} 0 0px; background: {color}\" title=\"{count} {label}\"></div>"
+  String.join html.toList
+
 /-- Generate stage breakdown cards. -/
 private def generateStageCardsHtml (results : Array ReportResult) : String :=
   let stages : Array Stage := #[.scalar, .flow, .block, .document, .advanced, .error]
@@ -517,10 +543,11 @@ private def generateStageCardsHtml (results : Array ReportResult) : String :=
     let pct := if stats.total == 0 then 0.0
                else (stats.correctCount.toFloat / stats.total.toFloat) * 100.0
     let pctStr := s!"{pct.floor}"
+    let barSegments := generateStageBarSegments stats
     s!"    <div class=\"stage-card\">\n" ++
     s!"      <div class=\"stage-card-name\">{stage}</div>\n" ++
     s!"      <div class=\"stage-card-stats\">{stats.correctCount}/{stats.total} correct ({pctStr}%) · {stats.passed} pass, {stats.failed} fail, {stats.expectedFail} exp-fail, {stats.unexpectedPass} unexp-pass, {stats.skipped} skip, {stats.timeout} timeout</div>\n" ++
-    s!"      <div class=\"stage-bar\"><div class=\"stage-bar-fill\" style=\"width: {pctStr}%\"></div></div>\n" ++
+    s!"      <div class=\"stage-bar\">{barSegments}</div>\n" ++
     s!"    </div>\n"
   String.join [
     "  <h3>Coverage by Stage</h3>\n",
