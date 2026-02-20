@@ -81,8 +81,26 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
   | '{' => return .matched (← flowMapping)
   | '|' => return .matched (← blockScalar contentIndent)
   | '>' => return .matched (← blockScalar contentIndent)
-  | '"' => return .matched (← doubleQuotedScalar)
-  | '\'' => return .matched (← singleQuotedScalar)
+  | '"' => do
+    -- T3 fix (ANALYSIS.md §2.I): A line starting with `"` could be a quoted
+    -- mapping key (`"key": value`).  Check for mapping pattern first; only
+    -- fall back to standalone scalar if no `: ` follows the quoted string.
+    let isMap ← lookAhead do detectMappingKey (inFlow := false)
+    if isMap then
+      match ← blockMapping contentIndent with
+      | some val => return .matched val
+      | none => return .noMatch
+    else
+      return .matched (← doubleQuotedScalar)
+  | '\'' => do
+    -- T3 fix: same logic as `"` — single-quoted keys like `'key': value`.
+    let isMap ← lookAhead do detectMappingKey (inFlow := false)
+    if isMap then
+      match ← blockMapping contentIndent with
+      | some val => return .matched val
+      | none => return .noMatch
+    else
+      return .matched (← singleQuotedScalar)
   | '&' => do
     -- Anchor prefix: parse name, then parse the following value.
     -- The value may be on the same line or the next line(s).
@@ -175,8 +193,16 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
       | some val => return .matched val
       | none => return .noMatch
     else
-      let baseIndent := if contentIndent > 0 then contentIndent - 1 else 0
-      return .matched (← plainScalar (inFlow := false) (baseIndent := baseIndent))
+      -- T3 fix: `?foo: value` is a plain mapping key starting with `?`.
+      -- Check for mapping pattern before falling back to plain scalar.
+      let isMap ← lookAhead do detectMappingKey (inFlow := false)
+      if isMap then
+        match ← blockMapping contentIndent with
+        | some val => return .matched val
+        | none => return .noMatch
+      else
+        let baseIndent := if contentIndent > 0 then contentIndent - 1 else 0
+        return .matched (← plainScalar (inFlow := false) (baseIndent := baseIndent))
   | '-' => do
     -- Could be a block sequence indicator or a plain scalar starting with `-`
     let isSeq ← lookAhead do
@@ -189,11 +215,18 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
       | some val => return .matched val
       | none => return .noMatch
     else
-      -- baseIndent for continuation is the parent structure's indent level.
-      -- contentIndent = parentIndent + 1, so baseIndent = contentIndent - 1.
-      -- For top-level (contentIndent = 0), baseIndent = 0 means col > 0 required.
-      let baseIndent := if contentIndent > 0 then contentIndent - 1 else 0
-      return .matched (← plainScalar (inFlow := false) (baseIndent := baseIndent))
+      -- T3 fix: `-foo: value` is a plain mapping key starting with `-`.
+      let isMap ← lookAhead do detectMappingKey (inFlow := false)
+      if isMap then
+        match ← blockMapping contentIndent with
+        | some val => return .matched val
+        | none => return .noMatch
+      else
+        -- baseIndent for continuation is the parent structure's indent level.
+        -- contentIndent = parentIndent + 1, so baseIndent = contentIndent - 1.
+        -- For top-level (contentIndent = 0), baseIndent = 0 means col > 0 required.
+        let baseIndent := if contentIndent > 0 then contentIndent - 1 else 0
+        return .matched (← plainScalar (inFlow := false) (baseIndent := baseIndent))
   | _ => do
     -- Could be a block mapping or a plain scalar
     let isMap ← lookAhead do
@@ -465,7 +498,12 @@ partial def blockMappingEntry (mapIndent : Nat) :
     if hasColon then do
       let _ ← char ':'
       skipHWhitespace
-      let hasNewline ← test newline
+      -- A `#` comment after `:` means the value is on the next line (§6.7).
+      let hasComment ← do
+        match ← option? (lookAhead anyToken) with
+        | some '#' => optional comment *> return; pure true
+        | _ => pure false
+      let hasNewline := hasComment || (← test newline)
       let value ← if hasNewline then do
         -- Value on next line: use mapIndent (BLOCK-OUT context)
         -- allows sequences at mapIndent level
@@ -483,10 +521,18 @@ partial def blockMappingEntry (mapIndent : Nat) :
     let key ← blockMappingKey
     let _ ← char ':'
     skipHWhitespace
-    -- Value could be on the same line or the next line
-    let hasNewline ← test newline
+    -- Value could be on the same line or the next line.
+    -- A `#` comment after `:` means the value is on the next line (§6.7).
+    let hasComment ← do
+      match ← option? (lookAhead anyToken) with
+      | some '#' => optional comment *> return; pure true
+      | _ => pure false
+    let hasNewline := hasComment || (← test newline)
     let value ← if hasNewline then
-      let bv ← blockValue (mapIndent + 1)
+      -- BLOCK-OUT context (§8.2.2): next-line value allows sequences
+      -- at the mapping's own indentation level (mapIndent), not mapIndent + 1.
+      -- This handles `foo:\n- 42` where `-` is at mapIndent.
+      let bv ← blockValue mapIndent
       pure (bv.getD .null)
     else do
       let col ← currentCol
@@ -588,6 +634,11 @@ Detect if the current position is at a mapping key.
 
 Looks ahead for a `key: ` or `key:\n` pattern without consuming input.
 This helps disambiguate between plain scalars and block mappings.
+
+**T4 fix (ANALYSIS.md §2.I)**: Scans past non-separator colons (`:` followed
+by non-whitespace) and quote characters that appear mid-key.  The original
+implementation bailed on the first `:` whose successor was not whitespace and
+on any `'`/`"`, producing false negatives for keys like `a"b: v`, `key::: v`.
 -/
 partial def detectMappingKey (inFlow : Bool) : YamlParser Bool := do
   -- Try to find `: ` or `:\n` on this line
@@ -598,12 +649,16 @@ where
     | none => return false
     | some ':' =>
       match ← option? anyToken with
-      | none => return true  -- `:` at EOF
-      | some c => return (isWhiteSpace c || isLineBreak c)
+      | none => return true  -- `:` at EOF → mapping separator
+      | some c =>
+        if isWhiteSpace c || isLineBreak c then return true
+        -- T4 fix: non-separator colon (e.g. `::`) — keep scanning
+        else detectLoop
     | some c =>
       if isLineBreak c then return false
-      else if c == '"' || c == '\'' then return false  -- Don't scan through quotes
       else if inFlow && isFlowIndicator c then return false
+      -- T4 fix: do NOT bail on `"` or `'` mid-key — they are valid
+      -- plain-scalar characters when not at the start of a value.
       else detectLoop
 
 end
