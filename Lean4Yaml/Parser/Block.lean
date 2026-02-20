@@ -75,7 +75,11 @@ This is the shared dispatch logic for both `blockValue` and
 `blockValueSameLine`, eliminating the duplicated match statement.
 -/
 partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult YamlValue) := do
-  let c ← lookAhead anyToken
+  -- P5 fix: handle EOF gracefully instead of crashing on `lookAhead anyToken`.
+  -- At EOF, no value can be dispatched — return `.noMatch`.
+  match ← option? (lookAhead anyToken) with
+  | none => return .noMatch
+  | some c =>
   match c with
   | '[' => return .matched (← flowSequence)
   | '{' => return .matched (← flowMapping)
@@ -320,6 +324,11 @@ partial def blockSequenceItems (seqIndent : Nat) (acc : Array YamlValue) :
     validateNoWrongIndentSeq seqIndent col
     -- No more items at this level
     return acc
+  -- P5 fix: check for document boundary (`---` or `...`) before consuming
+  -- the `-` indicator.  Without this, `blockSequenceItems` consumes the
+  -- first `-` of `---`, corrupting the document start marker.
+  let atBoundary ← atDocumentBoundary
+  if atBoundary then return acc
   -- Check for the `-` indicator
   match ← option? (char '-') with
   | none => return acc
@@ -519,6 +528,10 @@ partial def blockMappingEntry (mapIndent : Nat) :
   | none =>
     -- Simple key
     let key ← blockMappingKey
+    -- P5 fix: allow optional whitespace between the key and the mapping
+    -- value indicator `:` (§7.3.2).  Quoted keys often have a space
+    -- before `:` (e.g., `"key" : value`, `'key' : value`).
+    skipHWhitespace
     let _ ← char ':'
     skipHWhitespace
     -- Value could be on the same line or the next line.

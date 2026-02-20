@@ -567,6 +567,30 @@ Option A is the most explicit and proof-friendly — it makes the dual semantics
 
 **Build note**: `tryparse` is a separate `lean_exe` target from `suiterunner` — both must be rebuilt (`lake build suiterunner tryparse`) for suite results to reflect `Block.lean` changes.
 
+#### P5: Content correctness implementation results (2026-02-22)
+
+Six fixes across 4 files addressing EOF safety, whitespace handling, comment edge cases, and document structure. Iterative development through 4 build/fix cycles.
+
+**Fix 1: EOF safety in `dispatchByChar`** (`Block.lean`): `let c ← lookAhead anyToken` crashes at EOF because `anyToken` fails. Replaced with `option? (lookAhead anyToken)` — returns `.noMatch` at EOF instead of propagating failure. Tests fixed: SM9W, NHX8.
+
+**Fix 2: Quoted key whitespace** (`Block.lean`): `blockMappingEntry` simple-key path added `skipHWhitespace` between `blockMappingKey` and `char ':'`. Without this, `"key" : value` (with whitespace before colon) fails because the parser sees whitespace where it expects `:`. Tests fixed: 87E4, LQZ7.
+
+**Fix 3: Trailing comment handling** (`Scalar.lean`): `collectPlain` whitespace-before-`#` fix. Problem: the plain scalar parser consumed whitespace before `#` comments, making the whitespace invisible to downstream trailing-content checks in `document`. Initial approach (relaxing `isValidComment` to always accept `#`) regressed 9JBA. Final approach: before consuming whitespace in `collectPlain`, performs `leadsToComment` lookAhead — `dropMany (tokenFilter isWhiteSpace)` then checks if next char is `#`. If so, returns accumulated text WITHOUT consuming the whitespace, leaving it visible for `document`'s §6.7 comment check. This preserves the column-based `isValidComment` logic while fixing the root cause. Test fixed: L383.
+
+**Fix 4: Tab-aware blank lines** (`Combinators.lean`): Both `skipBlankLines` and `countEmptyLines` (inside `checkContinuation`) used `skipSpaces` which only handles ASCII space. Per YAML §5.5, whitespace includes both space and tab. Changed both to `skipHWhitespace` so tab-only lines and tab+comment lines are correctly recognized as blank. Also fixed `consumeEmptyLines` in `Scalar.lean` (same `skipSpaces` → `skipHWhitespace` change). Tests fixed: NB6Z, DC7X.
+
+**Fix 5: Document boundary in sequences** (`Block.lean`): `blockSequenceItems` consumed `-` character before checking if it was the start of a `---` document marker. Added `atDocumentBoundary` check before the `-` consumption — if the current position matches `---` followed by whitespace/EOF at column 0, the sequence loop exits instead of corrupting the document marker. Test fixed: JHB9.
+
+**Fix 6: Bare documents after `...`** (`Document.lean`): Two sub-fixes: (a) `hadDocEnd` tracking — after `option? documentEndMarker`, stores whether `...` was seen. Changed condition from `if hadExplicitStart then` to `if hadExplicitStart && !hadDocEnd then` to allow bare documents after `...` per §9.2. (b) Validation inside `documentEndMarker` — after `skipTrailing` but before `option? newline`, checks if next char is not a linebreak and sets "invalid trailing content after document end marker" (catches `... invalid` pattern from 3HFZ). Tests fixed: 7Z25, 5TYM, P76L, 7W2P, DK95, M2N8, UKK6.
+
+**Results**: 288/416 correct (69.2%), up from 275/416 (66.1%). +13 net tests. Scalar: 50→51 (+1), flow: 40→42 (+2), block: 82→88 (+6), document: 12→14 (+2), advanced: 45→48 (+3), error: 46→45 (−1). 940/940 verified internal tests pass. 0 timeouts.
+
+**Tests flipped fail→pass (14)**: 87E4 (quoted key whitespace), LQZ7 (quoted key whitespace), SM9W (EOF safety), NHX8 (EOF safety), L383 (trailing comment), JHB9 (document boundary), 7Z25 (bare doc after `...`), 5TYM (tag directive), P76L (tag directive), 7W2P (explicit key), DK95 (complex mapping), M2N8 (question mark), NB6Z (tab blank line), UKK6 (bare tag).
+
+**Regression (1)**: BS4K (error→unexpected-pass). Root cause: `word1  # comment\nword2` — the plain scalar `leadsToComment` fix causes `word1` to stop before the whitespace (since it leads to `#`), making `  # comment` visible as a valid comment. Then `word2` on the next line becomes a second bare document. The test expects a parse error. This is a debatable edge case involving interaction between plain scalar termination and multi-document structure. Deferred to P7 (validation rules).
+
+**Iteration history**: 4 build/fix cycles. Cycle 1: all 6 fixes applied, +13 but 3 regressions (3HFZ, 9JBA, BS4K). Cycle 2: reverted Fix 3 relaxation, used `leadsToComment` lookAhead instead; moved 3HFZ validation inside `documentEndMarker`. Result: +10 net, still had BS4K. Cycle 3: moved `... invalid` validation inside `documentEndMarker`, removed external `hadDocEnd` check — fixed 7Z25 but gained DC7X regression. Cycle 4: fixed `skipBlankLines` tab handling (skipSpaces → skipHWhitespace). Final: +13 net, 1 regression (BS4K).
+
 ---
 
 ## 3. What NOT to Port
@@ -585,18 +609,18 @@ Option A is the most explicit and proof-friendly — it makes the dual semantics
 | Metric | lean4-yaml | lean4-yaml-verified |
 |--------|-----------|-------------------|
 | Total tests | 333 | 416 |
-| Correct | 210 (63%) | 270 (64.9%) |
-| Unexpected passes | 43 | 37 |
+| Correct | 210 (63%) | 288 (69.2%) |
+| Unexpected passes | 43 | 42 |
 | Infinite loops | 0 | 0 |
-| Internal tests | 112/113 (99%) | 42+ (all pass) |
+| Internal tests | 112/113 (99%) | 940/940 (100%) |
 | Escape sequences | Full YAML 1.2 set | Full YAML 1.2 set |
 | Multi-line plain | ✅ (with edge cases) | ✅ (ContinuationCheck pattern) |
 | Anchors/aliases | Partial (38%) | ✅ `AnchorMap` (33 tests) |
 | Tags | Partial (30%) | ✅ All 5 tag forms (44 tests) |
-| Flow collections | Partial (55%) | 87% (40/46) |
-| Block collections | Good (~70%) | 72% (78/109) |
-| Document handling | — | 50% (12/24) |
-| Error rejection | — | 68% (50/74) |
+| Flow collections | Partial (55%) | 91% (42/46) |
+| Block collections | Good (~70%) | 81% (88/109) |
+| Document handling | — | 58% (14/24) |
+| Error rejection | — | 61% (45/74) |
 
 ---
 

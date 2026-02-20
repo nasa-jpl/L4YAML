@@ -156,6 +156,8 @@ def documentStartMarker : YamlParser Unit :=
 Parse the document end marker `...`.
 
 The marker must be followed by whitespace, a newline, or EOF.
+P5 fix: also validate that no non-whitespace/non-comment content
+remains on the line after `...` (catches `... invalid` in 3HFZ).
 -/
 def documentEndMarker : YamlParser Unit :=
   withErrorMessage "expected '...'" do
@@ -167,6 +169,14 @@ def documentEndMarker : YamlParser Unit :=
           s!"'...' must be followed by whitespace or newline, got '{c}'"
     | none => pure ()
     skipTrailing
+    -- P5 fix: after consuming whitespace/comment, verify no content remains
+    -- on the same line.  `... invalid` leaves `invalid` here.
+    match ← option? (lookAhead anyToken) with
+    | some c =>
+      if !isLineBreak c then
+        setValidationError
+          s!"invalid trailing content '{c}' after document end marker"
+    | none => pure ()
     let _ ← option? newline
 
 /--
@@ -257,14 +267,21 @@ partial def document : YamlParser DocumentResult := do
   if valErr.isSome then
     return .stalled posBefore
   skipBlankLines
-  -- Optionally consume document end marker
-  let _ ← option? documentEndMarker
-  -- §9.1.4/§9.2: After an explicit document (`---`), subsequent content
-  -- must begin with `---` or `...`.  Bare content (not preceded by a
-  -- document marker) is invalid.  This catches test KS4U:
+  -- Optionally consume document end marker.
+  -- P5 fix: track whether `...` was consumed — after a document end marker,
+  -- bare content is valid (§9.2 `l-document-suffix+ l-any-document?`).
+  let hadDocEnd ← match ← option? documentEndMarker with
+    | some _ => pure true
+    | none => pure false
+
+  -- §9.1.4/§9.2: After an explicit document (`---`) WITHOUT a document end
+  -- marker (`...`), subsequent content must begin with `---` or `...`.
+  -- Bare content (not preceded by a document marker) is invalid.
+  -- This catches test KS4U:
   --   `---\n[\nsequence item\n]\ninvalid item\n`
   -- where `invalid item` follows the closed flow sequence without a marker.
-  if hadExplicitStart then do
+  -- With `...`, bare documents are allowed per §9.2.
+  if hadExplicitStart && !hadDocEnd then do
     skipBlankLines
     let atEnd'' ← test endOfInput
     if !atEnd'' then do
