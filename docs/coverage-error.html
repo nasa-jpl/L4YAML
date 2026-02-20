@@ -178,11 +178,11 @@
     <div class="stat-box stat-total"><h3>Unique Tests</h3><div class="number">74</div></div>
     <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">0</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
-    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">45</div></div>
-    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">29</div></div>
+    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">43</div></div>
+    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">31</div></div>
     <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">0</div></div>
     <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">0</div></div>
-    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">45/74</div><div class="pct">(60.810811%)</div></div>
+    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">43/74</div><div class="pct">(58.108108%)</div></div>
   </div>
   <h3>Coverage by Stage</h3>
   <div class="stage-cards">
@@ -213,8 +213,8 @@
     </div>
     <div class="stage-card">
       <div class="stage-card-name">error</div>
-      <div class="stage-card-stats">45/74 correct (60.000000%) · 0 pass, 0 fail, 45 exp-fail, 29 unexp-pass, 0 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-segment" style="flex: 45 0 0px; background: var(--color-expected-fail)" title="45 expected fail"></div><div class="stage-bar-segment" style="flex: 29 0 0px; background: var(--color-unexpected-pass)" title="29 unexpected pass"></div></div>
+      <div class="stage-card-stats">43/74 correct (58.000000%) · 0 pass, 0 fail, 43 exp-fail, 31 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-segment" style="flex: 43 0 0px; background: var(--color-expected-fail)" title="43 expected fail"></div><div class="stage-bar-segment" style="flex: 31 0 0px; background: var(--color-unexpected-pass)" title="31 unexpected pass"></div></div>
     </div>
   </div>
   <div class="filters">
@@ -258,13 +258,13 @@
       </tr>
     </thead>
     <tbody>
-      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="236b invalid value after mapping error mapping">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="236b invalid value after mapping error mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/236B.yaml" target="_blank" class="test-id-link" title="View 236B source in yaml-test-suite">236B</a></td>
         <td>Invalid value after mapping</td>
         <td>error</td>
-        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span></td>
-        <td></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="2cms invalid mapping in plain multiline error mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/2CMS.yaml" target="_blank" class="test-id-link" title="View 2CMS source in yaml-test-suite">2CMS</a></td>
@@ -482,13 +482,13 @@
         <td><span class="tag">error</span><span class="tag">scalar</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="c2sp flow mapping key on two lines error flow mapping">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="c2sp flow mapping key on two lines error flow mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/C2SP.yaml" target="_blank" class="test-id-link" title="View C2SP source in yaml-test-suite">C2SP</a></td>
         <td>Flow Mapping Key on two lines</td>
         <td>error</td>
-        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span></td>
-        <td></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="cml9 missing comma in flow error flow comment">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/CML9.yaml" target="_blank" class="test-id-link" title="View CML9 source in yaml-test-suite">CML9</a></td>

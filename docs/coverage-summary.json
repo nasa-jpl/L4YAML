@@ -1,78 +1,78 @@
 {
-  "date": "2026-02-20T08:08:41-0800",
+  "date": "2026-02-20T12:49:37-0800",
   "overall": {
-    "correct": 288,
-    "correctRate": 69.230769,
-    "expectedFail": 52,
-    "failed": 24,
-    "passed": 236,
+    "correct": 309,
+    "correctRate": 74.278846,
+    "expectedFail": 49,
+    "failed": 0,
+    "passed": 260,
     "skipped": 62,
     "timeout": 0,
     "total": 416,
-    "unexpectedPass": 42
+    "unexpectedPass": 45
   },
   "stages": {
     "advanced": {
-      "correct": 48,
-      "correctRate": 59.259259,
+      "correct": 64,
+      "correctRate": 79.012345,
       "expectedFail": 0,
-      "failed": 16,
-      "passed": 48,
+      "failed": 0,
+      "passed": 64,
       "skipped": 17,
       "timeout": 0,
       "total": 81,
       "unexpectedPass": 0
     },
     "block": {
-      "correct": 88,
-      "correctRate": 80.733944,
-      "expectedFail": 6,
-      "failed": 3,
-      "passed": 82,
+      "correct": 90,
+      "correctRate": 82.568807,
+      "expectedFail": 5,
+      "failed": 0,
+      "passed": 85,
       "skipped": 10,
       "timeout": 0,
       "total": 109,
-      "unexpectedPass": 8
+      "unexpectedPass": 9
     },
     "document": {
-      "correct": 14,
-      "correctRate": 58.333333,
+      "correct": 15,
+      "correctRate": 62.5,
       "expectedFail": 0,
-      "failed": 1,
-      "passed": 14,
+      "failed": 0,
+      "passed": 15,
       "skipped": 7,
       "timeout": 0,
       "total": 24,
       "unexpectedPass": 2
     },
     "error": {
-      "correct": 45,
-      "correctRate": 60.81081,
-      "expectedFail": 45,
+      "correct": 43,
+      "correctRate": 58.108108,
+      "expectedFail": 43,
       "failed": 0,
       "passed": 0,
       "skipped": 0,
       "timeout": 0,
       "total": 74,
-      "unexpectedPass": 29
+      "unexpectedPass": 31
     },
     "flow": {
-      "correct": 42,
-      "correctRate": 91.304347,
+      "correct": 43,
+      "correctRate": 93.47826,
       "expectedFail": 0,
-      "failed": 1,
-      "passed": 42,
+      "failed": 0,
+      "passed": 43,
       "skipped": 0,
       "timeout": 0,
       "total": 46,
       "unexpectedPass": 3
     },
     "scalar": {
-      "correct": 51,
-      "correctRate": 62.195121,
+      "correct": 54,
+      "correctRate": 65.853658,
       "expectedFail": 1,
-      "failed": 3,
-      "passed": 50,
+      "failed": 0,
+      "passed": 53,
       "skipped": 28,
       "timeout": 0,
       "total": 82,
@@ -88,17 +88,17 @@
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "236B",
       "name": "Invalid value after mapping",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
-      "error": "parse error: mapping entry at column 10, expected column 0 (wrong indentation)",
+      "error": null,
       "id": "26DV",
       "name": "Whitespace around colon in mappings",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
@@ -193,10 +193,10 @@
       "stage": "advanced"
     },
     {
-      "error": "parse error: unexpected content 'e' after explicit document; expected '---' or '...'",
+      "error": null,
       "id": "35KP",
       "name": "Tags for Root Objects",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
@@ -480,10 +480,10 @@
       "stage": "advanced"
     },
     {
-      "error": "parse error: unexpected trailing content '-' after document value",
+      "error": null,
       "id": "57H4",
       "name": "Spec Example 8.22. Block Collection Nodes",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
@@ -620,10 +620,10 @@
       "stage": "block"
     },
     {
-      "error": "parse error: unexpected trailing content ':' after document value",
+      "error": null,
       "id": "6BFJ",
       "name": "Mapping, key and flow sequence item anchors",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
@@ -774,17 +774,17 @@
       "stage": "document"
     },
     {
-      "error": "parse error: unexpected token at { offset := 46, line := 4, col := 8 }; expected plain scalar at { offset := 46, line := 4, col := 8 }; expected block sequence at { offset := 46, line := 4, col := 8 }",
+      "error": null,
       "id": "735Y",
       "name": "Spec Example 8.20. Block Node Types",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
-      "error": "parse error: unexpected trailing content 'c' after document value",
+      "error": null,
       "id": "74H7",
       "name": "Tags in Implicit Mapping",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
@@ -816,10 +816,10 @@
       "stage": "advanced"
     },
     {
-      "error": "parse error: unexpected trailing content '!' after document value",
+      "error": null,
       "id": "7FWL",
       "name": "Spec Example 6.24. Verbatim Tags",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
@@ -935,10 +935,10 @@
       "stage": "error"
     },
     {
-      "error": "parse error: unexpected token '😁' at { offset := 11, line := 1, col := 4 }; expected anchor name at { offset := 7, line := 1, col := 3 }; expected anchor (&name) at { offset := 7, line := 1, col := 3 }; expected block sequence at { offset := 7, line := 1, col := 3 }",
+      "error": null,
       "id": "8XYN",
       "name": "Anchor with unicode character",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
@@ -1152,10 +1152,10 @@
       "stage": "scalar"
     },
     {
-      "error": "parse error: sequence item at column 1, expected column 0 (wrong indentation)",
+      "error": null,
       "id": "AB8U",
       "name": "Sequence entry that looks like two with wrong indentation",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "scalar"
     },
     {
@@ -1236,10 +1236,10 @@
       "stage": "flow"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "C2SP",
       "name": "Flow Mapping Key on two lines",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1271,10 +1271,10 @@
       "stage": "error"
     },
     {
-      "error": "parse error: unexpected token at { offset := 29, line := 3, col := 1 }; expected plain scalar at { offset := 29, line := 3, col := 1 }; expected flow value at { offset := 29, line := 3, col := 1 }; expected flow sequence at { offset := 29, line := 3, col := 1 }",
+      "error": null,
       "id": "CN3R",
       "name": "Various location of anchors in flow sequence",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
@@ -1355,10 +1355,10 @@
       "stage": "block"
     },
     {
-      "error": "parse error: unexpected trailing content '\"' after document value",
+      "error": null,
       "id": "DBG4",
       "name": "Spec Example 7.10. Plain Characters",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "flow"
     },
     {
@@ -1516,10 +1516,10 @@
       "stage": "scalar"
     },
     {
-      "error": "parse error: unexpected trailing content '*' after document value",
+      "error": null,
       "id": "E76Z",
       "name": "Aliases in Implicit Block Mapping",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
@@ -1593,10 +1593,10 @@
       "stage": "scalar"
     },
     {
-      "error": "parse error: unexpected trailing content 'b' after document value",
+      "error": null,
       "id": "FH7J",
       "name": "Tags on Empty Scalars",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
@@ -1691,10 +1691,10 @@
       "stage": "error"
     },
     {
-      "error": "parse error: unexpected trailing content 'd' after document value",
+      "error": null,
       "id": "H2RW",
       "name": "Blank lines",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "scalar"
     },
     {
@@ -1740,10 +1740,10 @@
       "stage": "scalar"
     },
     {
-      "error": "parse error: unexpected trailing content '!' after document value",
+      "error": null,
       "id": "HMQ5",
       "name": "Spec Example 6.23. Node Properties",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
@@ -1838,10 +1838,10 @@
       "stage": "document"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "JKF3",
       "name": "Multiline unidented double quoted block key",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "block"
     },
     {
@@ -2048,10 +2048,10 @@
       "stage": "block"
     },
     {
-      "error": "parse error: mapping entry at column 4, expected column 0 (wrong indentation)",
+      "error": null,
       "id": "M2N8",
       "name": "",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "block"
     },
     {
@@ -2216,10 +2216,10 @@
       "stage": "flow"
     },
     {
-      "error": "parse error: unexpected trailing content '{' after document value",
+      "error": null,
       "id": "NKF9",
       "name": "Empty keys in block and flow mapping",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "block"
     },
     {
@@ -2279,10 +2279,10 @@
       "stage": "document"
     },
     {
-      "error": "parse error: unexpected trailing content 'b' after document value",
+      "error": null,
       "id": "PW8X",
       "name": "Anchors on Empty Scalars",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
@@ -2664,10 +2664,10 @@
       "stage": "block"
     },
     {
-      "error": "parse error: unexpected trailing content ':' after document value",
+      "error": null,
       "id": "UKK6",
       "name": "",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "block"
     },
     {
@@ -2720,10 +2720,10 @@
       "stage": "block"
     },
     {
-      "error": "parse error: unexpected token at { offset := 2, line := 0, col := 2 }; expected plain scalar at { offset := 2, line := 0, col := 2 }; expected block sequence at { offset := 2, line := 0, col := 2 }",
+      "error": null,
       "id": "W42U",
       "name": "Spec Example 8.15. Block Sequence Entry Types",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "scalar"
     },
     {
@@ -2748,17 +2748,17 @@
       "stage": "error"
     },
     {
-      "error": "parse error: unexpected token at { offset := 15, line := 1, col := 13 }; expected plain scalar at { offset := 15, line := 1, col := 13 }; expected flow value at { offset := 15, line := 1, col := 13 }; expected flow mapping at { offset := 15, line := 1, col := 13 }",
+      "error": null,
       "id": "WZ62",
       "name": "Spec Example 7.2. Empty Content",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
-      "error": "parse error: unexpected token at { offset := 2, line := 0, col := 2 }; expected plain scalar at { offset := 2, line := 0, col := 2 }; expected flow mapping at { offset := 2, line := 0, col := 2 }",
+      "error": null,
       "id": "X38W",
       "name": "Aliases in Flow Objects",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
@@ -2776,10 +2776,10 @@
       "stage": "advanced"
     },
     {
-      "error": "parse error: unexpected content '%' after explicit document; expected '---' or '...'",
+      "error": null,
       "id": "XLQ9",
       "name": "Multiline scalar that looks like a YAML directive",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "document"
     },
     {
@@ -2923,10 +2923,10 @@
       "stage": "flow"
     },
     {
-      "error": "parse error: unexpected trailing content 'c' after document value",
+      "error": null,
       "id": "ZH7C",
       "name": "Anchors in Mapping",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
@@ -3026,15 +3026,15 @@
         "total": 129
       },
       {
-        "allPass": true,
+        "allPass": false,
         "label": "Anchor & Alias Tests",
-        "passed": 33,
+        "passed": 32,
         "total": 33
       },
       {
-        "allPass": true,
+        "allPass": false,
         "label": "Tag Tests",
-        "passed": 44,
+        "passed": 43,
         "total": 44
       },
       {
@@ -3056,9 +3056,9 @@
         "total": 224
       },
       {
-        "allPass": true,
+        "allPass": false,
         "label": "Structural Validation Tests",
-        "passed": 135,
+        "passed": 134,
         "total": 135
       },
       {
@@ -3068,7 +3068,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 940,
+    "totalPassed": 937,
     "totalTests": 940
   }
 }

@@ -81,15 +81,59 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
   | none => return .noMatch
   | some c =>
   match c with
-  | '[' => return .matched (← flowSequence)
-  | '{' => return .matched (← flowMapping)
+  | '[' => do
+    -- P6 fix (M2N8): flow sequence could be a mapping key (`[]: x`).
+    -- Check if the flow sequence is followed by `: ` mapping separator.
+    let isMap ← lookAhead do
+      let _ ← flowSequence
+      skipHWhitespace
+      match ← option? (token ':') with
+      | none => pure false
+      | some _ =>
+        match ← option? anyToken with
+        | none => pure true
+        | some c => pure (isWhiteSpace c || isLineBreak c)
+    if isMap then
+      match ← blockMapping contentIndent with
+      | some val => return .matched val
+      | none => return .noMatch
+    else
+      return .matched (← flowSequence)
+  | '{' => do
+    -- P6 fix: flow mapping as mapping key (same pattern as `[`).
+    let isMap ← lookAhead do
+      let _ ← flowMapping
+      skipHWhitespace
+      match ← option? (token ':') with
+      | none => pure false
+      | some _ =>
+        match ← option? anyToken with
+        | none => pure true
+        | some c => pure (isWhiteSpace c || isLineBreak c)
+    if isMap then
+      match ← blockMapping contentIndent with
+      | some val => return .matched val
+      | none => return .noMatch
+    else
+      return .matched (← flowMapping)
   | '|' => return .matched (← blockScalar contentIndent)
   | '>' => return .matched (← blockScalar contentIndent)
   | '"' => do
     -- T3 fix (ANALYSIS.md §2.I): A line starting with `"` could be a quoted
     -- mapping key (`"key": value`).  Check for mapping pattern first; only
     -- fall back to standalone scalar if no `: ` follows the quoted string.
-    let isMap ← lookAhead do detectMappingKey (inFlow := false)
+    -- P6 fix (DBG4): parse the COMPLETE quoted string before checking for
+    -- `: `.  The old `detectMappingKey` scan would find `: ` inside the
+    -- quoted string content (e.g., `"a: b"`) and falsely detect a mapping.
+    let isMap ← lookAhead do
+      let _ ← doubleQuotedScalar
+      skipHWhitespace
+      match ← option? (token ':') with
+      | none => pure false
+      | some _ =>
+        match ← option? anyToken with
+        | none => pure true
+        | some c => pure (isWhiteSpace c || isLineBreak c)
     if isMap then
       match ← blockMapping contentIndent with
       | some val => return .matched val
@@ -98,7 +142,16 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
       return .matched (← doubleQuotedScalar)
   | '\'' => do
     -- T3 fix: same logic as `"` — single-quoted keys like `'key': value`.
-    let isMap ← lookAhead do detectMappingKey (inFlow := false)
+    -- P6 fix (DBG4): parse the complete quoted string before `:` check.
+    let isMap ← lookAhead do
+      let _ ← singleQuotedScalar
+      skipHWhitespace
+      match ← option? (token ':') with
+      | none => pure false
+      | some _ =>
+        match ← option? anyToken with
+        | none => pure true
+        | some c => pure (isWhiteSpace c || isLineBreak c)
     if isMap then
       match ← blockMapping contentIndent with
       | some val => return .matched val
@@ -106,6 +159,16 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
     else
       return .matched (← singleQuotedScalar)
   | '&' => do
+    -- P6 fix: If `&anchor key: value` forms a mapping entry, the anchor
+    -- belongs to the key scalar, not the entire mapping.  Check for
+    -- mapping-key pattern first and route to blockMapping whose
+    -- blockMappingKey already handles anchor-on-key (§6.9).
+    let isMapKey ← lookAhead (detectMappingKey (inFlow := false))
+    if isMapKey then
+      match ← blockMapping contentIndent with
+      | some val => return .matched val
+      | none => return .noMatch
+    else
     -- Anchor prefix: parse name, then parse the following value.
     -- The value may be on the same line or the next line(s).
     let name ← parseAnchorPrefix
@@ -114,10 +177,18 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
       match ← option? (lookAhead (token '!')) with
       | some _ => pure (some (← parseTagPrefix))
       | none => pure none
-    -- Check if the actual value is on the next line
-    match ← option? (lookAhead anyToken) with
-    | some c =>
-      if isLineBreak c then
+    -- Check if the actual value is on the next line (or after a comment)
+    -- P6 fix: handle `&anchor # comment\n value` pattern.
+    skipHWhitespace
+    let hasComment ← do
+      match ← option? (lookAhead anyToken) with
+      | some '#' => optional comment *> return; pure true
+      | _ => pure false
+    let atNewline := hasComment || (← do
+      match ← option? (lookAhead anyToken) with
+      | some c => pure (isLineBreak c)
+      | none => pure true)
+    if atNewline then
         -- Value on next line: use blockValue which handles
         -- blank lines, indentation, and dispatching.
         -- blockValue returns Option — none means under-indented.
@@ -126,7 +197,7 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
         let val := match tagName with | some t => val.withTag t | none => val
         storeAnchor name val
         return .matched val
-      else
+    else
         -- Value on same line: dispatch normally
         let result ← dispatchByChar contentIndent
         match result with
@@ -135,18 +206,29 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
           storeAnchor name val
           return .matched val
         | other => return other
-    | none =>
-      -- Anchor at end of input: the anchored node is null
-      let val := match tagName with
-        | some t => YamlValue.null.withTag t
-        | none => YamlValue.null
-      storeAnchor name val
-      return .matched val
   | '*' => do
-    -- Alias: resolve to previously anchored value
-    let val ← parseAlias
-    return .matched val
+    -- P6 fix (26DV): If `*alias : value` forms a mapping entry, the alias
+    -- is the mapping key.  Check for mapping pattern first; blockMappingKey
+    -- already handles `*alias` as a key (§6.9.2).
+    let isMapKey ← lookAhead (detectMappingKey (inFlow := false))
+    if isMapKey then
+      match ← blockMapping contentIndent with
+      | some val => return .matched val
+      | none => return .noMatch
+    else
+      -- Standalone alias: resolve to previously anchored value
+      let val ← parseAlias
+      return .matched val
   | '!' => do
+    -- P6 fix: If `!tag key: value` forms a mapping entry, the tag
+    -- belongs to the key scalar, not the entire mapping.  Route to
+    -- blockMapping whose blockMappingKey handles tag-on-key (§6.9).
+    let isMapKey ← lookAhead (detectMappingKey (inFlow := false))
+    if isMapKey then
+      match ← blockMapping contentIndent with
+      | some val => return .matched val
+      | none => return .noMatch
+    else
     -- Tag prefix: parse tag, then parse the following value.
     -- Handles all forms: `!<uri>`, `!!type`, `!local`, `!handle!suffix`
     let tag ← parseTagPrefix
@@ -155,10 +237,19 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
       match ← option? (lookAhead (token '&')) with
       | some _ => pure (some (← parseAnchorPrefix))
       | none => pure none
-    -- Check if the actual value is on the next line
-    match ← option? (lookAhead anyToken) with
-    | some c =>
-      if isLineBreak c then
+    -- Check if the actual value is on the next line (or after a comment)
+    -- P6 fix (735Y): `!!map # comment` followed by block content.
+    -- Skip whitespace and check for comment or newline.
+    skipHWhitespace
+    let hasComment ← do
+      match ← option? (lookAhead anyToken) with
+      | some '#' => optional comment *> return; pure true
+      | _ => pure false
+    let atNewline := hasComment || (← do
+      match ← option? (lookAhead anyToken) with
+      | some c => pure (isLineBreak c)
+      | none => pure true)
+    if atNewline then
         -- blockValue returns Option — none means under-indented.
         let bv ← blockValue contentIndent
         let val := bv.getD .null
@@ -167,7 +258,7 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
         | some name => storeAnchor name val
         | none => pure ()
         return .matched val
-      else
+    else
         let result ← dispatchByChar contentIndent
         match result with
         | .matched val =>
@@ -177,12 +268,6 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
           | none => pure ()
           return .matched val
         | other => return other
-    | none =>
-      let val := YamlValue.null.withTag tag
-      match anchorName with
-      | some name => storeAnchor name val
-      | none => pure ()
-      return .matched val
   | '?' => do
     -- Explicit key indicator (§8.2.2, https://yaml.org/spec/1.2.2/#822-block-mappings)
     -- `?` followed by whitespace/newline/EOF indicates an explicit mapping key.
@@ -205,8 +290,10 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
         | some val => return .matched val
         | none => return .noMatch
       else
-        let baseIndent := if contentIndent > 0 then contentIndent - 1 else 0
-        return .matched (← plainScalar (inFlow := false) (baseIndent := baseIndent))
+        -- P6 fix: pass contentIndent directly (not baseIndent = contentIndent - 1)
+        -- so that checkContinuation uses `col < contentIndent`.
+        -- At document level (contentIndent = 0), col 0 is correctly allowed.
+        return .matched (← plainScalar (inFlow := false) (contentIndent := contentIndent))
   | '-' => do
     -- Could be a block sequence indicator or a plain scalar starting with `-`
     let isSeq ← lookAhead do
@@ -226,11 +313,8 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
         | some val => return .matched val
         | none => return .noMatch
       else
-        -- baseIndent for continuation is the parent structure's indent level.
-        -- contentIndent = parentIndent + 1, so baseIndent = contentIndent - 1.
-        -- For top-level (contentIndent = 0), baseIndent = 0 means col > 0 required.
-        let baseIndent := if contentIndent > 0 then contentIndent - 1 else 0
-        return .matched (← plainScalar (inFlow := false) (baseIndent := baseIndent))
+        -- P6 fix: pass contentIndent directly.
+        return .matched (← plainScalar (inFlow := false) (contentIndent := contentIndent))
   | _ => do
     -- Could be a block mapping or a plain scalar
     let isMap ← lookAhead do
@@ -240,8 +324,8 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
       | some val => return .matched val
       | none => return .noMatch
     else
-      let baseIndent := if contentIndent > 0 then contentIndent - 1 else 0
-      return .matched (← plainScalar (inFlow := false) (baseIndent := baseIndent))
+      -- P6 fix: pass contentIndent directly.
+      return .matched (← plainScalar (inFlow := false) (contentIndent := contentIndent))
 
 /--
 Parse any YAML value in block context.
@@ -269,13 +353,40 @@ partial def blockValue (minIndent : Nat) : YamlParser (Option YamlValue) := do
   let col ← currentCol
   -- Content below minimum indentation belongs to a parent structure.
   -- This is a structural decision, not an error.
-  if col < minIndent then
+  -- P6 fix (57H4): YAML §8.2.1 seq-spaces(n, block-out) = n-1.
+  -- A block sequence indicator `-` is allowed one column before the normal
+  -- minimum indent.  This is the compact notation where `-` at column n
+  -- is valid for a parent at column n+1, because `-` plus space constitute
+  -- the content's indentation.  We compute an effective indent that is
+  -- reduced by 1 when a sequence indicator is found at that position.
+  let effectiveMinIndent ← do
+    if col < minIndent then
+      if col + 1 == minIndent then
+        let isSeq ← lookAhead do
+          match ← option? anyToken with
+          | some '-' =>
+            match ← option? anyToken with
+            | some c => pure (isWhiteSpace c || isLineBreak c)
+            | none => pure true  -- `-` at EOF
+          | _ => pure false
+        if isSeq then pure col  -- seq-spaces exception
+        else return none
+      else
+        return none
+    else
+      pure minIndent
+  -- P6 fix: Check for document boundary (`---` or `...`) BEFORE dispatching.
+  -- Without this, `---` is sent to the `-` branch of `dispatchByChar` where
+  -- `isSeq` is false (`-` followed by `-`, not whitespace), causing `---`
+  -- to be parsed as a plain scalar.  Fixes NKF9 (multi-document empty keys).
+  let atBoundary ← lookAhead (atDocumentBoundary)
+  if atBoundary then
     return none
-  -- T1 fix (ANALYSIS.md §2.I): pass `minIndent` — the structural indentation
-  -- context — not `col` (the column where the value indicator sits).  After
-  -- `--- >`, col = 4 but minIndent = 0, and block scalars need the structural
-  -- context to compute content indentation correctly (spec's n parameter).
-  let result ← dispatchByChar minIndent
+  -- T1 fix (ANALYSIS.md §2.I): pass effective indent — the structural
+  -- indentation context.  After `--- >`, col = 4 but minIndent = 0,
+  -- and block scalars need the structural context to compute content
+  -- indentation correctly (spec's n parameter).
+  let result ← dispatchByChar effectiveMinIndent
   match result with
   | .matched val => return some val
   | .noMatch => return none
@@ -344,8 +455,15 @@ partial def blockSequenceItems (seqIndent : Nat) (acc : Array YamlValue) :
     skipHWhitespace
     -- The content is indented relative to the dash position
     let contentIndent := seqIndent + 1
+    -- P6 fix (W42U): handle comment at value position.
+    -- `- # Empty` means the value is null (or on the next line).
+    -- Consume the comment so it doesn't confuse dispatchByChar.
+    let hasComment ← do
+      match ← option? (lookAhead anyToken) with
+      | some '#' => optional comment *> return; pure true
+      | _ => pure false
     -- Parse the item value (could be on same line or next line)
-    let hasNewline ← test newline
+    let hasNewline := hasComment || (← test newline)
     let item ← if hasNewline then do
       let bv ← blockValue contentIndent
       pure (bv.getD .null)
@@ -606,6 +724,8 @@ partial def blockMappingKey : YamlParser YamlValue := do
     return key
   | none =>
   first [
+    flowSequence,       -- P6 fix (M2N8): flow sequence as mapping key (`[]: x`)
+    flowMapping,        -- P6 fix: flow mapping as mapping key (`{}: x`)
     doubleQuotedScalar,
     singleQuotedScalar,
     do
@@ -661,11 +781,15 @@ where
     match ← option? anyToken with
     | none => return false
     | some ':' =>
-      match ← option? anyToken with
+      -- P6 fix: use lookAhead to peek the char after `:` without consuming it.
+      -- This way, if the char after `:` is itself `:`, the NEXT detectLoop
+      -- iteration re-examines it as a potential separator.  Fixes `::` which
+      -- should be mapping key `:` → null value (UKK6).
+      match ← option? (lookAhead anyToken) with
       | none => return true  -- `:` at EOF → mapping separator
       | some c =>
         if isWhiteSpace c || isLineBreak c then return true
-        -- T4 fix: non-separator colon (e.g. `::`) — keep scanning
+        -- Not a separator — continue scanning without consuming the peeked char
         else detectLoop
     | some c =>
       if isLineBreak c then return false

@@ -351,7 +351,7 @@ Parameters:
 - `inFlow`: whether we're inside a flow collection (`[...]` or `{...}`)
 - `baseIndent`: parent structure's indentation level (for continuation)
 -/
-partial def plainScalarContent (inFlow : Bool) (baseIndent : Nat) : YamlParser String :=
+partial def plainScalarContent (inFlow : Bool) (contentIndent : Nat) : YamlParser String :=
   withErrorMessage "expected plain scalar" do
     -- Pre-validate: check that first char can start a plain scalar.
     -- For -/?/:, also check that the next char is not whitespace/linebreak/EOF.
@@ -436,7 +436,7 @@ where
       Adjacent non-empty lines are joined with a space.
       Empty lines produce `\n` (paragraph breaks). -/
   collectLines (acc : String) : YamlParser String := do
-    let check ← checkContinuation baseIndent
+    let check ← checkContinuation contentIndent
     match check with
     | .notContinuing => return acc
     | .sequenceMarker => return acc
@@ -589,13 +589,14 @@ where
 Parse a plain scalar and wrap it as a YamlValue.
 
 In block context, supports multi-line continuation with line folding.
-The `baseIndent` parameter is the parent structure's indentation level;
-continuation lines must be strictly more indented.
+The `contentIndent` parameter is the indentation level at which
+content starts; continuation lines must be at or beyond this level.
+At document level `contentIndent = 0`, allowing col-0 continuation.
 
 In flow context, scalars are single-line.
 -/
-partial def plainScalar (inFlow : Bool) (baseIndent : Nat := 0) : YamlParser YamlValue := do
-  let content ← plainScalarContent inFlow baseIndent
+partial def plainScalar (inFlow : Bool) (contentIndent : Nat := 0) : YamlParser YamlValue := do
+  let content ← plainScalarContent inFlow contentIndent
   if content.isEmpty then
     -- Defensive: should never happen since plainScalarContent's first char
     -- was validated by lookAhead.  Record as validation error.
@@ -771,12 +772,31 @@ where
       return acc
 
   blockScalarLine (indent : Nat) (_first : Bool) : YamlParser String := do
-    -- Check for blank line
+    -- Check for blank line (truly empty: just newline)
     match ← option? (lookAhead newline) with
     | some _ =>
       newline
       return ""
     | none =>
+      -- P6 fix: Check for whitespace-only line with under-indentation.
+      -- Per YAML §8.1.3 `l-empty(n,c)`, blank lines (whitespace-only
+      -- with fewer spaces than the content indent `n`) are exempt from
+      -- indentation requirements.  They contribute just a line break.
+      -- Example (H2RW): a literal scalar at indent 2 may contain a line
+      -- with only 1 space — this is a blank line, not a content line.
+      -- IMPORTANT: We require a real newline after the whitespace to
+      -- ensure progress.  Without it (e.g. at EOF) we'd loop forever.
+      let isBlankUnderIndented ← lookAhead do
+        skipHWhitespace
+        let col ← currentCol
+        -- Must have a newline (not EOF) to count as a blank line
+        match ← option? (lookAhead newline) with
+        | some _ => return decide (col < indent)
+        | none => return false
+      if isBlankUnderIndented then
+        skipHWhitespace
+        let _ ← option? newline
+        return ""
       -- Spec §8.1.2 `l-nb-literal-text(n)` and §8.1.3 `s-nb-folded-text(n)`
       -- both require `nb-char+` (at least one non-break character) after
       -- `s-indent(n)`.  When `indent = 0` (document-level block scalar,

@@ -325,12 +325,13 @@ Share the verified implementation with the existing lean4-yaml ecosystem.
 10. ~~**Block scalar indentation (P3)**~~ — ✅ T1+T2 indentation fixes + EOF `nb-char+` guard. `blockValue` passes `minIndent` (not `col`) to `dispatchByChar`; `blockScalar` receives `contentIndent` without double-counting `+1`; `blockScalarLine` enforces spec §8.1.2 `nb-char+` via `lookAhead anyToken`. Fixed `consumeIndent(0)` infinite loop. +4 compiler warnings fixed, SuiteRunner debug output added. Suite: 252→270 correct (+18), scalar 34→46 (+12), advanced 38→44 (+6).
 11. ~~**Block completeness (P4)**~~ — ✅ T3+T4 dispatch completeness from ANALYSIS.md §2.I. `detectMappingKey` scans past non-separator colons and mid-key quotes (T4). `dispatchByChar` checks mapping pattern before `"`, `'`, `?`, `-` scalar dispatch (T3). Comment-after-colon fix (§6.7). BLOCK-OUT context fix (§8.2.2): `blockValue mapIndent` for next-line values. Suite: 270→275 correct (+5 net), block 78→82 (+4), scalar 46→50 (+4), error 50→46 (−4).
 12. ~~**Content correctness (P5)**~~ — ✅ EOF safety in `dispatchByChar` (option? lookAhead), quoted key whitespace (skipHWhitespace before `:`), trailing comment handling (collectPlain leadsToComment lookAhead), tab-aware blank lines (skipHWhitespace in skipBlankLines/countEmptyLines), document boundary in sequences (atDocumentBoundary check), bare docs after `...` (hadDocEnd tracking + documentEndMarker validation). Suite: 275→288 correct (+13 net), 14 tests fixed, 1 regression (BS4K).
+13. ~~**Advanced features (P6)**~~ — ✅ Complex keys, Unicode anchors, directive edge cases. Col-0 plain scalar continuation (`checkContinuation` contentIndent), document boundary in `blockValue`, blank lines in block scalars, tag on empty flow value, alias/anchor/tag as flow mapping keys, tag/anchor on block mapping keys via `lookAhead detectMappingKey`, Unicode anchor characters (`isAnchorChar`), comment at value position in sequences, comment after tag/anchor. Proper quoted-string mapping detection (skip through quotes before `: ` check), `detectMappingKey`/`scanForMappingSeparator` lookAhead for adjacent colons, seq-spaces(n, block-out) exception in `blockValue`, alias as block mapping key, flow collection as mapping key. Suite: 288→309 correct (+21 net), failures: 24→0.
 
 ### Current: Address Failures + Unexpected Passes
 
 Analysis scripts: `python3 tests/analyze_coverage.py` (summary) and `python3 tests/analyze_coverage_deep.py` (detailed root causes).
 
-Current: **288/416 correct (69.2%)** per HTML subprocess report. Error stage: 45/74 (61%). Scalar stage: 51/82 (62%). Block stage: 88/109 (81%). Document stage: 14/24 (58%). Advanced stage: 48/81 (59%). Projected after remaining steps: **~354/416 (~85.1%)**.
+Current: **309/416 correct (74.3%)** per HTML subprocess report. 0 failures, 0 timeouts. Error stage: 45/74 (61%). Scalar stage: 52/82 (63%). Block stage: 91/109 (83%). Document stage: 14/24 (58%). Advanced stage: 58/81 (72%). Failures eliminated from 24→0 via P6 fixes.
 
 #### Step 8: Tag support (`!tag`, `!!type`, `%TAG` directive) — ✅ COMPLETE
 
@@ -425,21 +426,21 @@ After steps 8–11 + P4 + P5, current correct rate is 69.2% (288/416). The remai
 
 ### Current State (2026-02-22)
 
-**yaml-test-suite: 288/416 correct (69.2%)** per subprocess HTML report (`--html` mode). Error stage: 45/74 (61%). Scalar stage: 51/82 (62%). Block stage: 88/109 (81%). Document stage: 14/24 (58%). Advanced stage: 48/81 (59%). 0 timeouts.
+**yaml-test-suite: 309/416 correct (74.3%)** per subprocess HTML report (`--html` mode). 0 failures, 0 timeouts. Scalar stage: 54/82 (65%). Flow stage: 43/46 (93%). Block stage: 90/109 (82%). Document stage: 15/24 (62%). Advanced stage: 64/81 (79%). Error stage: 43/74 (58%).
 
 | Stage | Tests | Pass | Fail | Exp Fail | Unexp Pass | Skip | Correct | Rate |
 |-------|-------|------|------|----------|------------|------|---------|------|
-| Scalar | 82 | 50 | 3 | 1 | 0 | 28 | 51 | 62% |
-| Flow | 46 | 42 | 1 | 0 | 3 | 0 | 42 | 91% |
-| Block | 109 | 82 | 3 | 6 | 8 | 10 | 88 | 81% |
-| Document | 24 | 14 | 1 | 0 | 2 | 7 | 14 | 58% |
-| Advanced | 81 | 48 | 16 | 0 | 0 | 17 | 48 | 59% |
-| Error | 74 | 0 | 0 | 45 | 29 | 0 | 45 | 61% |
-| **Total** | **416** | **236** | **24** | **52** | **42** | **62** | **288** | **69.2%** |
+| Scalar | 82 | 53 | 0 | 1 | 0 | 28 | 54 | 65% |
+| Flow | 46 | 43 | 0 | 0 | 3 | 0 | 43 | 93% |
+| Block | 109 | 85 | 0 | 5 | 9 | 10 | 90 | 82% |
+| Document | 24 | 15 | 0 | 0 | 2 | 7 | 15 | 62% |
+| Advanced | 81 | 64 | 0 | 0 | 0 | 17 | 64 | 79% |
+| Error | 74 | 0 | 0 | 43 | 31 | 0 | 43 | 58% |
+| **Total** | **416** | **260** | **0** | **49** | **45** | **62** | **309** | **74.3%** |
 
 "Correct" = Pass + Expected Fail. "Fail" includes parse errors on valid YAML. "Unexpected Pass" indicates the parser accepts invalid YAML.
 
-Note: Error stage regressed from 26→0 after P2 flow changes, then restored to 52/74 after Step 10a flow validation rules (4 fixes in `Flow.lean` + `Document.lean`), then slightly adjusted to 50/74 after P3 block scalar fixes, then to 46/74 after P4 block completeness (T3/T4 dispatch fixes make the parser more permissive, accepting 4 additional error-stage tests), then to 45/74 after P5 content correctness (BS4K regression: plain scalar comment fix makes parser accept `word1 # comment\nword2`). Also fixed `runAllForReport` mapping bug in `SuiteRunner/Main.lean` that classified correctly-rejected error tests as `.unexpectedPass` instead of `.expectedFail`. Additional validation rules (10b–10j) needed for remaining 29 error-stage unexpected passes.
+Note: Error stage regressed from 26→0 after P2 flow changes, then restored to 52/74 after Step 10a flow validation rules (4 fixes in `Flow.lean` + `Document.lean`), then slightly adjusted to 50/74 after P3 block scalar fixes, then to 46/74 after P4 block completeness (T3/T4 dispatch fixes make the parser more permissive, accepting 4 additional error-stage tests), then to 45/74 after P5 content correctness (BS4K regression: plain scalar comment fix makes parser accept `word1 # comment\nword2`), then to 43/74 after P6 advanced features (2 additional error tests now accepted due to more permissive flow-collection and alias handling). Also fixed `runAllForReport` mapping bug in `SuiteRunner/Main.lean` that classified correctly-rejected error tests as `.unexpectedPass` instead of `.expectedFail`. Additional validation rules (10b–10j) needed for remaining 31 error-stage unexpected passes.
 
 **Internal test suites: 940/940 (100%) across 12 suites** (hand-written Lean tests; separate from the 416 yaml-test-suite cases above). Includes 135 structural validation tests (`ValidationTests.lean`) covering block scalar contracts, document parser contracts, header char classification, flow structure error rejection, and peek-before-consume regression guards. Additionally, 11 diagnostic tests in `FlowRegressionCheck.lean` confirm zero regressions from Step 10a.
 
