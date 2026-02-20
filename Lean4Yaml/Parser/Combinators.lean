@@ -481,9 +481,21 @@ where
       countEmptyLines (n + 1)
     | none => return n
   /-- Scan the current line for a mapping separator (`: ` or `:\n` or `:` at EOF).
-      Does not cross line boundaries. -/
+      Does not cross line boundaries.  Flow-aware: skips balanced `{...}`/`[...]`
+      content to avoid false positives from `: ` inside flow collections. -/
   scanForMappingSeparator : YamlParser Bool := do
     scanLoop
+  /-- Skip over balanced flow brackets.  `depth` counts nesting level;
+      when it reaches 0, the matching close bracket has been consumed. -/
+  skipFlowBrackets (depth : Nat) : YamlParser Unit := do
+    if depth == 0 then return ()
+    match ← option? anyToken with
+    | none => return ()  -- unclosed collection at EOF, bail out
+    | some c =>
+      if c == '}' || c == ']' then skipFlowBrackets (depth - 1)
+      else if c == '{' || c == '[' then skipFlowBrackets (depth + 1)
+      else if isLineBreak c then return ()  -- unclosed collection at EOL
+      else skipFlowBrackets depth
   /-- P6 fix: use lookAhead for the char after `:` so that adjacent colons
       (`::`) are properly handled.  The second `:` is re-examined as a
       potential separator on the next iteration.  Mirrors the fix in
@@ -500,6 +512,10 @@ where
     | some c =>
       if isLineBreak c then return false
       else if c == '"' || c == '\'' then return false  -- Don't scan through quotes
+      -- Flow-aware: skip balanced flow collections
+      else if c == '{' || c == '[' then do
+        skipFlowBrackets 1
+        scanLoop
       else scanLoop
 
 end Lean4Yaml.Parse

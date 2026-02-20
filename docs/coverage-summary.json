@@ -1,15 +1,15 @@
 {
-  "date": "2026-02-20T13:02:46-0800",
+  "date": "2026-02-20T13:34:13-0800",
   "overall": {
-    "correct": 309,
-    "correctRate": 74.278846,
-    "expectedFail": 49,
+    "correct": 310,
+    "correctRate": 74.51923,
+    "expectedFail": 50,
     "failed": 0,
     "passed": 260,
     "skipped": 62,
     "timeout": 0,
     "total": 416,
-    "unexpectedPass": 45
+    "unexpectedPass": 44
   },
   "stages": {
     "advanced": {
@@ -46,15 +46,15 @@
       "unexpectedPass": 2
     },
     "error": {
-      "correct": 43,
-      "correctRate": 58.108108,
-      "expectedFail": 43,
+      "correct": 44,
+      "correctRate": 59.459459,
+      "expectedFail": 44,
       "failed": 0,
       "passed": 0,
       "skipped": 0,
       "timeout": 0,
       "total": 74,
-      "unexpectedPass": 31
+      "unexpectedPass": 30
     },
     "flow": {
       "correct": 43,
@@ -1236,10 +1236,10 @@
       "stage": "flow"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "C2SP",
       "name": "Flow Mapping Key on two lines",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "error"
     },
     {
@@ -3026,15 +3026,15 @@
         "total": 129
       },
       {
-        "allPass": false,
+        "allPass": true,
         "label": "Anchor & Alias Tests",
-        "passed": 32,
+        "passed": 33,
         "total": 33
       },
       {
-        "allPass": false,
+        "allPass": true,
         "label": "Tag Tests",
-        "passed": 43,
+        "passed": 44,
         "total": 44
       },
       {
@@ -3056,9 +3056,9 @@
         "total": 224
       },
       {
-        "allPass": false,
+        "allPass": true,
         "label": "Structural Validation Tests",
-        "passed": 134,
+        "passed": 135,
         "total": 135
       },
       {
@@ -3068,7 +3068,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 937,
+    "totalPassed": 940,
     "totalTests": 940
   }
 }

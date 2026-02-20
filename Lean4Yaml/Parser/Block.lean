@@ -84,8 +84,13 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
   | '[' => do
     -- P6 fix (M2N8): flow sequence could be a mapping key (`[]: x`).
     -- Check if the flow sequence is followed by `: ` mapping separator.
+    -- §7.4 / C2SP: implicit keys must not span multiple lines, so we also
+    -- verify the flow collection starts and ends on the same line.
     let isMap ← lookAhead do
+      let startLine ← currentLine
       let _ ← flowSequence
+      let endLine ← currentLine
+      if endLine != startLine then return false  -- multiline key rejected
       skipHWhitespace
       match ← option? (token ':') with
       | none => pure false
@@ -101,8 +106,12 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
       return .matched (← flowSequence)
   | '{' => do
     -- P6 fix: flow mapping as mapping key (same pattern as `[`).
+    -- §7.4 / C2SP: implicit keys must not span multiple lines.
     let isMap ← lookAhead do
+      let startLine ← currentLine
       let _ ← flowMapping
+      let endLine ← currentLine
+      if endLine != startLine then return false  -- multiline key rejected
       skipHWhitespace
       match ← option? (token ':') with
       | none => pure false
@@ -163,13 +172,16 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
     -- belongs to the key scalar, not the entire mapping.  Check for
     -- mapping-key pattern first and route to blockMapping whose
     -- blockMappingKey already handles anchor-on-key (§6.9).
+    --
+    -- Guarantee: `detectMappingKey` is flow-aware — it skips over balanced
+    -- `{...}` and `[...]` content, so `&map {a: 1, b: 2}` is correctly
+    -- classified as non-mapping (no `: ` outside flow braces).
     let isMapKey ← lookAhead (detectMappingKey (inFlow := false))
     if isMapKey then
       match ← blockMapping contentIndent with
       | some val => return .matched val
       | none => return .noMatch
     else
-    -- Anchor prefix: parse name, then parse the following value.
     -- The value may be on the same line or the next line(s).
     let name ← parseAnchorPrefix
     -- Check for tag after anchor: `&anchor !tag value` (§6.9)
@@ -223,13 +235,16 @@ partial def dispatchByChar (contentIndent : Nat) : YamlParser (DispatchResult Ya
     -- P6 fix: If `!tag key: value` forms a mapping entry, the tag
     -- belongs to the key scalar, not the entire mapping.  Route to
     -- blockMapping whose blockMappingKey handles tag-on-key (§6.9).
+    --
+    -- Guarantee: `detectMappingKey` is flow-aware — it skips over balanced
+    -- `{...}` and `[...]` content, so `!!map {a: 1}` is correctly
+    -- classified as non-mapping (no `: ` outside flow braces).
     let isMapKey ← lookAhead (detectMappingKey (inFlow := false))
     if isMapKey then
       match ← blockMapping contentIndent with
       | some val => return .matched val
       | none => return .noMatch
     else
-    -- Tag prefix: parse tag, then parse the following value.
     -- Handles all forms: `!<uri>`, `!!type`, `!local`, `!handle!suffix`
     let tag ← parseTagPrefix
     -- Check for anchor after tag: `!tag &anchor value` (§6.9)
@@ -772,11 +787,36 @@ This helps disambiguate between plain scalars and block mappings.
 by non-whitespace) and quote characters that appear mid-key.  The original
 implementation bailed on the first `:` whose successor was not whitespace and
 on any `'`/`"`, producing false negatives for keys like `a"b: v`, `key::: v`.
+
+**Flow-aware (P6 fix)**: When encountering `{` or `[`, skips to the matching
+close bracket (respecting nesting) instead of scanning character-by-character.
+This prevents false positives from `: ` inside flow collections such as
+`&map {a: 1, b: 2}` or `!!map {a: 1}`.  Without this, `detectMappingKey`
+would find `: 1` inside the braces and falsely classify the input as a mapping.
+
+### A/G Contract
+
+**Assume (A1)**: Called inside `lookAhead` — all input consumption is rolled back.
+
+**Guarantee (G1)**: Returns `true` iff a `: ` or `:\n` separator exists on the
+current line OUTSIDE any balanced flow brackets `{...}` / `[...]`.
+
+**Guarantee (G2)**: Does not consume input (enforced by `lookAhead` at call site).
 -/
 partial def detectMappingKey (inFlow : Bool) : YamlParser Bool := do
-  -- Try to find `: ` or `:\n` on this line
+  -- Try to find `: ` or `:\n` on this line (skipping flow content)
   detectLoop
 where
+  /-- Skip over balanced flow brackets.  `depth` counts nesting level;
+      when it reaches 0, the matching close bracket has been consumed. -/
+  skipFlowBrackets (depth : Nat) : YamlParser Unit := do
+    if depth == 0 then return ()
+    match ← option? anyToken with
+    | none => return ()  -- unclosed collection at EOF, bail out
+    | some c =>
+      if c == '}' || c == ']' then skipFlowBrackets (depth - 1)
+      else if c == '{' || c == '[' then skipFlowBrackets (depth + 1)
+      else skipFlowBrackets depth
   detectLoop : YamlParser Bool := do
     match ← option? anyToken with
     | none => return false
@@ -794,6 +834,11 @@ where
     | some c =>
       if isLineBreak c then return false
       else if inFlow && isFlowIndicator c then return false
+      -- Flow-aware: skip over balanced flow collections to avoid false
+      -- positives from `:` inside braces/brackets (e.g., `{a: 1}`).
+      else if c == '{' || c == '[' then do
+        skipFlowBrackets 1
+        detectLoop
       -- T4 fix: do NOT bail on `"` or `'` mid-key — they are valid
       -- plain-scalar characters when not at the start of a value.
       else detectLoop
