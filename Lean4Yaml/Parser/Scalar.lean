@@ -855,13 +855,24 @@ the sub-contracts of each phase composing correctly:
 4. **Content** (`blockScalarContent indent`): consumes only lines at the
    specified indentation level.
 
-- **Assume**: stream is positioned at `|` or `>` in a block context.
-  `parentIndent` reflects the indentation of the enclosing structure.
+- **Assume (A-BS1)**: stream is positioned at `|` or `>` in a block context.
+  `contentIndent` is the minimum column for content of the enclosing
+  structure — i.e., the YAML spec's `n + 1` where `n` is the parent
+  structure's indentation level.  For document-level block scalars
+  (after `---`), `contentIndent = 0` (spec's `n = -1`, so `n + 1 = 0`).
+  For block scalars inside a sequence at column `s`, `contentIndent = s + 1`.
+  Callers must NOT double-add `+1` — `blockScalar` derives the minimum
+  content indent directly from this parameter.
+- **Guarantee (G-BS1)**: auto-detected content is at column `>= contentIndent`
+  (i.e., `>= n + 1`, satisfying the spec's `m >= 1` constraint).
+  Explicit indent `m` gives content at column `contentIndent - 1 + m`
+  (i.e., `n + m`).  Since `m >= 1`, `contentIndent + m - 1 >= contentIndent + 0`
+  — no `Nat` underflow.
 - **Guarantee**: consumes exactly the block scalar (indicator + header + content).
   Does NOT consume characters belonging to the next structure.
   Leaves the stream positioned at the start of the next structure.
 -/
-partial def blockScalar (parentIndent : Nat) : YamlParser YamlValue :=
+partial def blockScalar (contentIndent : Nat) : YamlParser YamlValue :=
   withErrorMessage "expected block scalar" do
     -- Phase 1: Parse the indicator (consumes exactly 1 char)
     let indicator ← first [char '|', char '>']
@@ -869,9 +880,15 @@ partial def blockScalar (parentIndent : Nat) : YamlParser YamlValue :=
     -- Phase 2: Parse header (contract G1 + G2)
     let (explicitIndent, chomp) ← blockScalarHeader
     -- Phase 3: Determine actual indentation (non-consuming via lookAhead)
+    -- T2 fix (ANALYSIS.md §2.I): `contentIndent` already equals the spec's
+    -- `n + 1`.  Previously this code added another `+1`, double-counting
+    -- the offset and requiring `n + 2` spaces (one too many).
+    -- Explicit indent: spec says content at `n + m` = `contentIndent - 1 + m`.
+    -- Since `m >= 1` (spec §8.1.1), `contentIndent + m - 1 >= contentIndent`
+    -- — no Nat underflow.
     let indent ← match explicitIndent with
-      | some n => pure (parentIndent + n)
-      | none => autoDetectIndent (parentIndent + 1)
+      | some n => pure (contentIndent + n - 1)
+      | none => autoDetectIndent contentIndent
     -- Phase 4: Parse content (at specified indentation)
     let raw ← blockScalarContent indent
     -- Apply style-specific processing

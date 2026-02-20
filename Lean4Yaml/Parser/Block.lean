@@ -234,7 +234,11 @@ partial def blockValue (minIndent : Nat) : YamlParser (Option YamlValue) := do
   -- This is a structural decision, not an error.
   if col < minIndent then
     return none
-  let result ← dispatchByChar col
+  -- T1 fix (ANALYSIS.md §2.I): pass `minIndent` — the structural indentation
+  -- context — not `col` (the column where the value indicator sits).  After
+  -- `--- >`, col = 4 but minIndent = 0, and block scalars need the structural
+  -- context to compute content indentation correctly (spec's n parameter).
+  let result ← dispatchByChar minIndent
   match result with
   | .matched val => return some val
   | .noMatch => return none
