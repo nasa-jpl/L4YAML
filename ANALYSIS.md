@@ -300,7 +300,7 @@ Follow the `BlockScalarContracts.lean` pattern:
 ### I. Block Parser Tacit Assumptions: Indentation Semantics & Dispatch Completeness (Critical Insight)
 
 **Date discovered**: 2026-02-19
-**Status**: Analysis complete, from `ScalarStageDiag.lean` (20 failing tests, 4 root cause groups).
+**Status**: **T1+T2 implemented (2026-02-20), +18 correct tests (252→270, 60.6%→64.9%).** T3–T5 pending. EOF loop discovered and fixed during T1+T2 implementation (spec §8.1.2 `nb-char+` guard).
 **Impact**: 20 of 48 scalar-stage failures (42%), plus overlap with block-stage and structure failures.
 
 The scalar stage diagnostic (`Tests/ScalarStageDiag.lean`) revealed that the 20 scalar-stage failures trace to **five tacit assumptions** in the block parser's interactions with `Scalar.lean` and `Document.lean`. These fall into two classes:
@@ -533,6 +533,22 @@ Option A is the most explicit and proof-friendly — it makes the dual semantics
 
 **This follows the §6 pattern**: implicit parameter semantics (`contentIndent` serving dual purposes) → explicit contract predicates (decidable, proved). The parameter separation is the code-level enforcement; the formal contracts are the proof-level enforcement.
 
+#### Implementation results (2026-02-20)
+
+**T1 fix** (`Block.lean`): `blockValue` now passes `minIndent` (the enclosing structure's indentation) to `dispatchByChar`, instead of `col` (the column where the value's indicator sits). This ensures block scalars after `--- >` receive `parentIndent = 0`, not `parentIndent = 4`.
+
+**T2 fix** (`Scalar.lean`): `blockScalar`'s parameter renamed from `parentIndent` to `contentIndent`. The internal `autoDetectIndent (parentIndent + 1)` became `autoDetectIndent contentIndent` — callers already pass `structIndent + 1`, so the double-count is eliminated. For explicit indent indicators, `pure (parentIndent + n)` became `pure (contentIndent + n - 1)` to maintain the spec's `n + m` semantics.
+
+**EOF loop discovered**: T1+T2 exposed an infinite loop: `blockScalarLine` with `indent = 0` at EOF. `consumeIndent 0` is a no-op per YAML §6.1 (`s-indent(0)` matches the empty string), so `takeLineContent` returned `""` without advancing, and `option?` wrapped it as `Some ""` — infinite loop. This is NOT a precondition failure on `consumeIndent` (n=0 is spec-correct). The real issue: the spec's content productions `l-nb-literal-text(n)` (§8.1.2) and `s-nb-folded-text(n)` (§8.1.3) require `nb-char+` — at least one non-break content character — after `s-indent(n)`. Our parser lacked this guard.
+
+**EOF fix** (`Scalar.lean`): Added `let _ ← lookAhead anyToken` before `consumeIndent indent` in `blockScalarLine`. This enforces the spec's `nb-char+` requirement: if no content character exists (EOF or blank line), the line parser fails and the loop terminates cleanly via `option?`.
+
+**Results**: 270/416 correct (64.9%), up from 252/416 (60.6%). +18 tests. Scalar: 34→46 (+12), block: 76→78 (+2), advanced: 38→44 (+6), error: 52→50 (-2). 940/940 verified internal tests pass. 0 timeouts.
+
+**Also fixed in this session**:
+- **Compiler warnings**: Removed 4 of 7 warnings. Unused `List.elem` simp arguments in `CharClass.lean` (2 instances), unused `↓reduceIte` simp argument in `CharClass.lean`, deprecated `String.next` simp in `Termination.lean`. Remaining 3 are intentional `sorry` stubs.
+- **SuiteRunner debug output**: Added timestamped stderr logging (`dbg` helper), aggressive stdout flushing, and periodic progress every 25 tests. Ensures GitHub Actions can diagnose hangs — the infinite loop was caught because zero output appeared on both stdout and stderr despite the debug instrumentation.
+
 ---
 
 ## 3. What NOT to Port
@@ -551,18 +567,18 @@ Option A is the most explicit and proof-friendly — it makes the dual semantics
 | Metric | lean4-yaml | lean4-yaml-verified |
 |--------|-----------|-------------------|
 | Total tests | 333 | 416 |
-| Correct | 210 (63%) | 192 (46.2%) |
-| Unexpected passes | 43 | ~34 |
+| Correct | 210 (63%) | 270 (64.9%) |
+| Unexpected passes | 43 | 37 |
 | Infinite loops | 0 | 0 |
 | Internal tests | 112/113 (99%) | 42+ (all pass) |
 | Escape sequences | Full YAML 1.2 set | Full YAML 1.2 set |
 | Multi-line plain | ✅ (with edge cases) | ✅ (ContinuationCheck pattern) |
-| Anchors/aliases | Partial (38%) | ❌ Not implemented |
-| Tags | Partial (30%) | ❌ Not implemented |
-| Flow collections | Partial (55%) | 71% |
-| Block collections | Good (~70%) | 58% |
-| Document handling | — | 58% |
-| Error rejection | — | 70% (52/74) |
+| Anchors/aliases | Partial (38%) | ✅ `AnchorMap` (33 tests) |
+| Tags | Partial (30%) | ✅ All 5 tag forms (44 tests) |
+| Flow collections | Partial (55%) | 87% (40/46) |
+| Block collections | Good (~70%) | 72% (78/109) |
+| Document handling | — | 50% (12/24) |
+| Error rejection | — | 68% (50/74) |
 
 ---
 
@@ -603,6 +619,8 @@ lean4-yaml's development log established a repeating pattern: **make implicit st
 | Block scalar contracts | Implicit consumption → decidable predicates | Prevents header parser from consuming content indentation |
 | Document parser contracts | Implicit boundary semantics → decidable predicates | Prevents bare content after explicit documents, enforces §6.7 comment rules |
 | Block parser contracts (§2.I) | Dual-purpose parameter → explicit A/G contracts | Prevents indentation double-count and dispatch bypass for 20 scalar-stage failures |
+| T1+T2 indentation fix (§2.I) | Column position ≠ indentation context → separate `minIndent` vs `col` | +18 correct tests (252→270, 64.9%) |
+| EOF `nb-char+` guard (§2.I) | Implicit loop termination at EOF → explicit `lookAhead anyToken` per spec §8.1.2 | Prevents infinite loop when `consumeIndent(0)` is a no-op |
 
 For the verified parser, this principle is even more powerful: explicit state becomes **proof targets**. Every enum variant maps to a lemma obligation, and every state transition becomes a provable invariant.
 

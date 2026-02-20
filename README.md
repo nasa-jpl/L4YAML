@@ -322,12 +322,13 @@ Share the verified implementation with the existing lean4-yaml ecosystem.
 7. ~~**Add anchor/alias support**~~ — ✅ `AnchorMap` abstraction with algebraic laws, `parseAlias`/`parseAnchorPrefix`/`resetAnchorMap`. Document-scoped anchors per §3.2.2.2. 2 backtracking-isolation theorems proved. 33 tests in `AnchorAlias.lean`. Advanced stage: 1→10 passing.
 8. ~~**Add tag support**~~ — ✅ `parseTagPrefix` handles all tag forms: verbatim (`!<uri>`), secondary (`!!type`), named (`!handle!suffix`), primary (`!local`), non-specific (`!`). `YamlValue.withTag` applies tags to any node. Tag+anchor ordering (`!tag &anchor val` and `&anchor !tag val`) supported in all dispatch points. 44 tests in `TagTests.lean`. Suite: 175→192 correct (+17), Advanced stage: 10→21 passing.
 9. ~~**Flow completeness (P2)**~~ — ✅ Implicit single-pair entries (`[key: value]`, §7.5), JSON-like `:` detection (`["key":adjacent]`, §7.4), multi-line flow plain scalars (`{multi\nline: v}`, §7.3.3), flow mapping collection keys (`{[1,2]: v}`, §7.4.2), empty implicit keys (`[: value]`). 88 tests in `FlowTests.lean`. Flow stage: 34→43/46 (74%→93%).
+10. ~~**Block scalar indentation (P3)**~~ — ✅ T1+T2 indentation fixes + EOF `nb-char+` guard. `blockValue` passes `minIndent` (not `col`) to `dispatchByChar`; `blockScalar` receives `contentIndent` without double-counting `+1`; `blockScalarLine` enforces spec §8.1.2 `nb-char+` via `lookAhead anyToken`. Fixed `consumeIndent(0)` infinite loop. +4 compiler warnings fixed, SuiteRunner debug output added. Suite: 252→270 correct (+18), scalar 34→46 (+12), advanced 38→44 (+6).
 
 ### Current: Address Failures + Unexpected Passes
 
 Analysis scripts: `python3 tests/analyze_coverage.py` (summary) and `python3 tests/analyze_coverage_deep.py` (detailed root causes).
 
-Current: **252/416 correct (60.6%)** per HTML subprocess report. Error stage: 52/74 (70%) after Step 10a. Flow stage: 40/46 (87%) per subprocess. Projected after remaining steps: **~354/416 (~85.1%)**.
+Current: **270/416 correct (64.9%)** per HTML subprocess report. Error stage: 50/74 (68%). Scalar stage: 46/82 (56%). Block stage: 78/109 (72%). Advanced stage: 44/81 (54%). Projected after remaining steps: **~354/416 (~85.1%)**.
 
 #### Step 8: Tag support (`!tag`, `!!type`, `%TAG` directive) — ✅ COMPLETE
 
@@ -347,9 +348,9 @@ Implementation: `Tag.lean` (155 lines) — `parseTagPrefix` with all 5 tag forms
 
 **P1 phase 1 complete (2026-02-17).** Architectural change: eliminated all 29 `throwUnexpected` calls, replaced with `validationError` field in `YamlStream` (survives backtracking) + explicit `Option` return types.
 
-**Results so far:** Error stage: restored to 52/74 (70%) after Step 10a flow validation rules. Overall: 252/416 correct (60.6%) per subprocess HTML report. Fixed `runAllForReport` mapping bug (`.unexpectedPass` → `.expectedFail` for correctly-rejected error tests). Diagnostic test in `ErrorStageDiag.lean` confirms pipeline correctness.
+**Results so far:** Error stage: 50/74 (68%) after Step 10a flow validation rules + P3 block scalar fixes. Overall: 270/416 correct (64.9%) per subprocess HTML report. Fixed `runAllForReport` mapping bug (`.unexpectedPass` → `.expectedFail` for correctly-rejected error tests). Diagnostic test in `ErrorStageDiag.lean` confirms pipeline correctness.
 
-**Remaining work:** 22 error-stage + 13 non-error unexpected passes (35 total) still need validation rules. Sub-steps below track what's done vs remaining:
+**Remaining work:** 24 error-stage + 13 non-error unexpected passes (37 total) still need validation rules. Sub-steps below track what's done vs remaining:
 
 | Sub-step | Category | Count | Status | Notes |
 |----------|----------|-------|--------|-------|
@@ -372,32 +373,46 @@ Implementation: `Tag.lean` (155 lines) — `parseTagPrefix` with all 5 tag forms
 | Escape sequences | 5 | Unicode escapes (`\x`, `\u`, `\U`) in double-quoted scalars |
 | Complex keys | 3 | Flow collections as block mapping keys (§8.2.2) |
 
+#### Step 11: Block scalar indentation fix (P3) — ✅ COMPLETE
+
+**Result: +18 correct (252→270, 60.6%→64.9%).** Implemented T1+T2 from ANALYSIS.md §2.I and discovered/fixed an EOF infinite loop:
+
+- **T1** (`Block.lean`): `blockValue` passes `minIndent` (enclosing structure indentation) to `dispatchByChar`, not `col` (column where the indicator sits). Fixes block scalars after `--- >` receiving inflated `parentIndent = 4` instead of correct `0`.
+- **T2** (`Scalar.lean`): `blockScalar` parameter renamed `parentIndent` → `contentIndent`. Removed internal `+1` that double-counted with callers' existing `+1`. Auto-detection: `autoDetectIndent (parentIndent + 1)` → `autoDetectIndent contentIndent`. Explicit indent: `pure (parentIndent + n)` → `pure (contentIndent + n - 1)`.
+- **EOF infinite loop** (`Scalar.lean`): `blockScalarLine` with `indent = 0` at EOF caused infinite loop — `consumeIndent 0` is a no-op per YAML §6.1, `takeLineContent` returns `""` at EOF, `option?` wraps as `Some ""`, repeats forever. Fixed with `let _ ← lookAhead anyToken` guard enforcing spec §8.1.2's `nb-char+` requirement. The `consumeIndent(0)` call is spec-correct; the missing piece was the content production's non-empty character requirement.
+- **Compiler warnings**: Removed 4 of 7 warnings (unused simp args in `CharClass.lean`, deprecated `String.next` in `Termination.lean`). Remaining 3 are intentional `sorry` stubs.
+- **SuiteRunner debug output**: Added timestamped stderr logging (`dbg` helper), aggressive stdout flushing, periodic progress every 25 tests. Caught the infinite loop by observing zero output on both stdout and stderr in GitHub Actions.
+
+Stage breakdown: scalar 34→46 (+12), block 76→78 (+2), advanced 38→44 (+6), error 52→50 (-2). 940/940 verified internal tests pass. 0 timeouts.
+
 #### Step 12: Iterate toward 75%+ correct rate
 
-After steps 8–11, projected correct rate is ~75% (312/416). The remaining ~25% are edge cases in:
-- Non-error unexpected passes in block/flow/document stages (35 tests)
+After steps 8–11, current correct rate is 64.9% (270/416). The remaining gaps are:
+- Dispatch completeness: T3/T4 from ANALYSIS.md §2.I (plain/quoted key mapping dispatch) — ~4 tests
+- Non-error unexpected passes in block/flow/document stages (37 tests)
+- Remaining block/advanced edge cases (33 tests)
 - Interactions between features (anchor + tag, explicit-key + tag, etc.)
 - YAML 1.3-specific tests (currently skipped, 62 tests)
 
 ## Gap Analysis: YAML 1.2.2 Specification Coverage
 
-### Current State (2026-02-19)
+### Current State (2026-02-20)
 
-**yaml-test-suite: 252/416 correct (60.6%)** per subprocess HTML report (`--html` mode). Error stage: 52/74 (70%) after Step 10a.
+**yaml-test-suite: 270/416 correct (64.9%)** per subprocess HTML report (`--html` mode). Error stage: 50/74 (68%). Scalar stage: 46/82 (56%). Block stage: 78/109 (72%). 0 timeouts.
 
 | Stage | Tests | Pass | Fail | Exp Fail | Unexp Pass | Skip | Correct | Rate |
 |-------|-------|------|------|----------|------------|------|---------|------|
-| Scalar | 82 | 33 | 20 | 1 | 0 | 28 | 34 | 41% |
+| Scalar | 82 | 45 | 8 | 1 | 0 | 28 | 46 | 56% |
 | Flow | 46 | 40 | 3 | 0 | 3 | 0 | 40 | 87% |
-| Block | 109 | 70 | 15 | 6 | 8 | 10 | 76 | 70% |
+| Block | 109 | 72 | 13 | 6 | 8 | 10 | 78 | 72% |
 | Document | 24 | 12 | 3 | 0 | 2 | 7 | 12 | 50% |
-| Advanced | 81 | 38 | 26 | 0 | 0 | 17 | 38 | 47% |
-| Error | 74 | 0 | 0 | 52 | 22 | 0 | 52 | 70% |
-| **Total** | **416** | **193** | **67** | **59** | **35** | **62** | **252** | **60.6%** |
+| Advanced | 81 | 44 | 20 | 0 | 0 | 17 | 44 | 54% |
+| Error | 74 | 0 | 0 | 50 | 24 | 0 | 50 | 68% |
+| **Total** | **416** | **213** | **47** | **57** | **37** | **62** | **270** | **64.9%** |
 
 "Correct" = Pass + Expected Fail. "Fail" includes parse errors on valid YAML. "Unexpected Pass" indicates the parser accepts invalid YAML.
 
-Note: Error stage regressed from 26→0 after P2 flow changes, then restored to 52/74 after Step 10a flow validation rules (4 fixes in `Flow.lean` + `Document.lean`). Also fixed `runAllForReport` mapping bug in `SuiteRunner/Main.lean` that classified correctly-rejected error tests as `.unexpectedPass` instead of `.expectedFail`. Additional validation rules (10b–10j) needed for remaining 22 error-stage unexpected passes.
+Note: Error stage regressed from 26→0 after P2 flow changes, then restored to 52/74 after Step 10a flow validation rules (4 fixes in `Flow.lean` + `Document.lean`), then slightly adjusted to 50/74 after P3 block scalar fixes. Also fixed `runAllForReport` mapping bug in `SuiteRunner/Main.lean` that classified correctly-rejected error tests as `.unexpectedPass` instead of `.expectedFail`. Additional validation rules (10b–10j) needed for remaining 24 error-stage unexpected passes.
 
 **Internal test suites: 940/940 (100%) across 12 suites** (hand-written Lean tests; separate from the 416 yaml-test-suite cases above). Includes 135 structural validation tests (`ValidationTests.lean`) covering block scalar contracts, document parser contracts, header char classification, flow structure error rejection, and peek-before-consume regression guards. Additionally, 11 diagnostic tests in `FlowRegressionCheck.lean` confirm zero regressions from Step 10a.
 
@@ -429,9 +444,9 @@ Note: Error stage regressed from 26→0 after P2 flow changes, then restored to 
 | | §7.4.1 Flow sequences | ✅ | Nested, trailing commas, explicit entries, implicit single-pair mapping entries (§7.5) |
 | | §7.4.2 Flow mappings | ✅ | Explicit keys, empty keys, implicit keys, collection keys, JSON-like `:` detection |
 | | §7.5 Flow nodes | ✅ | Single-pair implicit entries, JSON-like keys, multi-line flow plain scalars (P2 complete) |
-| **§8 Block Styles** | §8.1.1 Block scalar headers | ✅ | Literal `|` and folded `>` with indentation/chomping indicators. Formal A/G contracts (`BlockScalarContracts.lean`): G1 (≤2 indicator chars consumed), G2 (column 0 invariant), peek-before-consume discipline. Zero axioms. |
-| | §8.1.2 Literal style | ✅ | `blockLiteralScalar` |
-| | §8.1.3 Folded style | ✅ | `blockFoldedScalar` |
+| **§8 Block Styles** | §8.1.1 Block scalar headers | ✅ | Literal `|` and folded `>` with indentation/chomping indicators. Formal A/G contracts (`BlockScalarContracts.lean`): G1 (≤2 indicator chars consumed), G2 (column 0 invariant), peek-before-consume discipline. Zero axioms. T1+T2 indentation fix: correct `n` parameter threading (ANALYSIS.md §2.I). |
+| | §8.1.2 Literal style | ✅ | `blockLiteralScalar`. EOF `nb-char+` guard via `lookAhead anyToken` (spec §8.1.2 `l-nb-literal-text`). |
+| | §8.1.3 Folded style | ✅ | `blockFoldedScalar`. Same `nb-char+` guard (spec §8.1.3 `s-nb-folded-text`). |
 | | §8.2.1 Block sequences | ✅ | `blockSequence` with indentation tracking |
 | | §8.2.2 Block mappings | ✅ | `blockMapping` with explicit key `?` support + `ExplicitKeyTests` (66 tests) |
 | | §8.2.3 Block nodes | ✅ | `blockValue` dispatch via `DispatchResult` |
@@ -447,25 +462,25 @@ Note: Error stage regressed from 26→0 after P2 flow changes, then restored to 
 
 ### Three Categories of Gaps to 100%
 
-#### Category 1: Parser Failures (67 tests) — Content Correctness
+#### Category 1: Parser Failures (47 tests) — Content Correctness
 
 Tests where the parser fails to parse valid YAML or produces incorrect output (from HTML subprocess report).
 
 | Root Cause | Count | Spec Section | Description |
 |---|---|---|---|
-| Scalar failures | 20 | §7.3, §8.1 | Plain scalar edge cases, block scalar content, line folding |
-| Block edge cases | 15 | §8.2 | Same-indent sequences, aliases in block mappings, anchor edge cases, missing value handling |
-| Advanced failures | 26 | §6.9, §7.1 | Tags, anchors, complex keys, feature interactions |
+| Scalar failures | 8 | §7.3, §8.1 | Plain scalar edge cases (quoted key mapping dispatch T3/T4), block scalar content |
+| Block edge cases | 13 | §8.2 | Same-indent sequences, aliases in block mappings, anchor edge cases, missing value handling |
+| Advanced failures | 20 | §6.9, §7.1 | Tags, anchors, complex keys, feature interactions |
 | Flow edge cases | 3 | §7.4 | Remaining flow failures |
 | Document edge cases | 3 | §9.1 | Document marker interactions |
 
-#### Category 2: Permissiveness (35 remaining unexpected passes) — Error Rejection
+#### Category 2: Permissiveness (37 remaining unexpected passes) — Error Rejection
 
-Tests where the parser accepts invalid YAML that should be rejected. Step 10a fixed 52/74 error-stage tests; `runAllForReport` mapping bug fix made these visible in HTML.
+Tests where the parser accepts invalid YAML that should be rejected. Step 10a fixed 50/74 error-stage tests; `runAllForReport` mapping bug fix made these visible in HTML.
 
 | Category | Count | What Should Be Rejected |
 |---|---|---|
-| **Error stage** | **22** | Remaining tests designed to trigger parse errors |
+| **Error stage** | **24** | Remaining tests designed to trigger parse errors |
 | **Non-error stages** | **13** | Parser too permissive in block (8), flow (3), document (2) stages |
 | Flow structure | 0 | ✅ Fixed by Step 10a (4 validation rules) |
 
@@ -482,17 +497,19 @@ The root cause was architectural: lean4-parser's `<|>` unconditionally catches a
 
 ### Path to 100% yaml-test-suite Compliance
 
-**Current: 252/416 (60.6%).** Target: 354/416 (85.1%), excluding 62 skipped tests outside YAML 1.2.2 scope.
+**Current: 270/416 (64.9%).** Target: 354/416 (85.1%), excluding 62 skipped tests outside YAML 1.2.2 scope.
 
 | Phase | Work | Tests Fixed | Projected |
 |---|---|---|---|
-| **P1: Strict validation** | ⚠️ **Step 10a complete (2026-02-19).** Eliminated all `throwUnexpected` (P1 phase 1); added 4 flow validation rules (Step 10a). Error stage: 0→52/74 (+52). Fixed `runAllForReport` mapping bug. ~22 error-stage UP remain + 35 non-error UP. Latent A/G contracts documented (ANALYSIS.md §2.H). | +52 error done, ~57 UP remaining | ~309/416 (74.3%) |
+| **P1: Strict validation** | ⚠️ **Step 10a complete (2026-02-19).** Eliminated all `throwUnexpected` (P1 phase 1); added 4 flow validation rules (Step 10a). Error stage: 0→52/74. Fixed `runAllForReport` mapping bug. ~24 error-stage UP remain + 13 non-error UP. Latent A/G contracts documented (ANALYSIS.md §2.H). | +52 error done, ~37 UP remaining | ~307/416 (73.8%) |
 | **P2: Flow completeness** | ✅ **Complete.** Implicit single-pair entries (§7.5), JSON-like `:` detection (§7.4), multi-line flow plain scalars (§7.3.3), flow mapping collection keys (§7.4.2), empty implicit keys. Flow stage: 34→43/46 (74%→93%). 88 new tests in `FlowTests.lean`. | +9 done | — |
-| **P3: Block completeness** | Same-indent sequence edge cases, alias interactions, missing value handling | +17 | 334/416 (80.3%) |
-| **P4: Content correctness** | Remaining quoted scalar folding, comment edge cases, `%TAG` resolution | +13 | 347/416 (83.4%) |
-| **P5: Advanced features** | Complex keys (flow collections as keys), Unicode anchors, directive edge cases | +7 | 354/416 (85.1%) |
+| **P3: Block scalar indentation** | ✅ **Complete (2026-02-20).** T1: `blockValue` passes `minIndent` (not `col`) to `dispatchByChar`. T2: `blockScalar` receives `contentIndent` without double-counting `+1`. EOF guard: `lookAhead anyToken` enforces spec §8.1.2 `nb-char+`. Fixed `consumeIndent(0)` infinite loop. Scalar: 34→46 (+12), advanced: 38→44 (+6). Also fixed 4 compiler warnings and added SuiteRunner debug output (timestamped stderr). See ANALYSIS.md §2.I. | +18 done | — |
+| **P4: Block completeness** | Same-indent sequence edge cases, alias interactions, missing value handling, dispatch completeness (T3/T4 from ANALYSIS.md §2.I) | ~15 | ~322/416 (77.4%) |
+| **P5: Content correctness** | Remaining quoted scalar folding, comment edge cases, `%TAG` resolution | ~13 | ~335/416 (80.5%) |
+| **P6: Advanced features** | Complex keys (flow collections as keys), Unicode anchors, directive edge cases | ~7 | ~342/416 (82.2%) |
+| **P7: Remaining validation** | Error-stage unexpected passes (10b–10j), non-error permissiveness | ~12 | ~354/416 (85.1%) |
 
-The remaining 62 skipped tests are YAML 1.1/1.3 features or tests that require behavior outside the YAML 1.2.2 specification. Full 100% of the YAML 1.2.2-applicable tests (354/354) requires all five phases.
+The remaining 62 skipped tests are YAML 1.1/1.3 features or tests that require behavior outside the YAML 1.2.2 specification. Full 100% of the YAML 1.2.2-applicable tests (354/354) requires all phases.
 
 ### YAML 1.2.2 Spec Sections Not Yet Covered
 
@@ -715,6 +732,8 @@ lake build
 ```sh
 # yaml-test-suite coverage (416 unique test cases from 351 files)
 lake build suiterunner tryparse && lake exe suiterunner --html docs/
+# → generates docs/index.html, per-stage coverage pages, and
+#   docs/coverage-summary.json (machine-readable per-test/per-stage results)
 
 # Internal test suites (940 hand-written tests across 12 suites)
 lake exe tests              # Unit tests (17)
