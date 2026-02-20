@@ -135,11 +135,15 @@ def skipToNextLine : YamlParser Unit := do
 /--
 Skip blank lines and comment-only lines.
 Stops at a line with actual content (or end of input).
+
+P5 fix: use `skipHWhitespace` instead of `skipSpaces` so that
+tab characters on blank/comment lines are handled correctly.
+YAML §5.5 defines whitespace as space or tab.
 -/
 partial def skipBlankLines : YamlParser Unit := do
-  match ← option? (lookAhead (skipSpaces *> (newline <|> (comment *> return)))) with
+  match ← option? (lookAhead (skipHWhitespace *> (newline <|> (comment *> return)))) with
   | some _ =>
-      skipSpaces
+      skipHWhitespace
       optional comment *> return
       optional newline *> return
       skipBlankLines
@@ -444,11 +448,15 @@ partial def checkContinuation (baseIndent : Nat) : YamlParser ContinuationCheck 
       else
         return .plainContinuation
 where
-  /-- Count consecutive empty or blank lines (lines with only whitespace). -/
+  /-- Count consecutive empty or blank lines (lines with only whitespace).
+      P5 fix: use `skipHWhitespace` instead of `skipSpaces` so that
+      tab-only lines (like NB6Z) are recognized as blank lines.
+      YAML §5.5 defines whitespace as space or tab; §6.5 line folding
+      treats lines with only whitespace as blank (paragraph separators). -/
   countEmptyLines (n : Nat) : YamlParser Nat := do
-    match ← option? (lookAhead (skipSpaces *> newline)) with
+    match ← option? (lookAhead (skipHWhitespace *> newline)) with
     | some _ =>
-      skipSpaces
+      skipHWhitespace
       newline
       countEmptyLines (n + 1)
     | none => return n

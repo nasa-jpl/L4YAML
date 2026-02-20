@@ -414,8 +414,21 @@ where
         -- Don't consume the flow indicator — caller needs it
         return acc
       else if isWhiteSpace c then
-        let _ ← anyToken  -- actually consume
-        collectPlain (acc.push c) true
+        -- P5 fix (L383): before consuming whitespace, check if it leads
+        -- directly to a `#` comment.  If so, stop WITHOUT consuming the
+        -- whitespace so it remains visible for downstream trailing-content
+        -- checks in `document`.  This prevents the scalar parser from
+        -- "eating" the comment separator whitespace.
+        let leadsToComment ← lookAhead do
+          dropMany (tokenFilter isWhiteSpace)
+          match ← option? anyToken with
+          | some '#' => return true
+          | _ => return false
+        if leadsToComment then
+          return acc
+        else
+          let _ ← anyToken  -- actually consume
+          collectPlain (acc.push c) true
       else
         let _ ← anyToken  -- actually consume
         collectPlain (acc.push c) false
@@ -455,10 +468,12 @@ where
       -- Paragraph break: each empty line produces a \n
       let breaks := String.ofList (List.replicate emptyCount '\n')
       collectLines (acc ++ breaks ++ line)
-  /-- Consume n empty/blank lines (newlines already counted by checkContinuation). -/
+  /-- Consume n empty/blank lines (newlines already counted by checkContinuation).
+      P5 fix: use `skipHWhitespace` instead of `skipSpaces` so that
+      blank lines containing tabs (like NB6Z) are fully consumed. -/
   consumeEmptyLines (n : Nat) : YamlParser Unit := do
     for _ in [:n] do
-      skipSpaces
+      skipHWhitespace
       let _ ← option? newline
   /-- Collect continuation lines in **flow** context (§7.3.3).
       Flow plain scalars can span multiple lines.  Continuation rules are
