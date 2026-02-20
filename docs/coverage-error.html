@@ -171,11 +171,11 @@
     <div class="stat-box stat-total"><h3>Unique Tests</h3><div class="number">74</div></div>
     <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">0</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
-    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">50</div></div>
-    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">24</div></div>
+    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">46</div></div>
+    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">28</div></div>
     <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">0</div></div>
     <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">0</div></div>
-    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">50/74</div><div class="pct">(67.567568%)</div></div>
+    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">46/74</div><div class="pct">(62.162162%)</div></div>
   </div>
   <h3>Coverage by Stage</h3>
   <div class="stage-cards">
@@ -206,8 +206,8 @@
     </div>
     <div class="stage-card">
       <div class="stage-card-name">error</div>
-      <div class="stage-card-stats">50/74 correct (67.000000%) · 0 pass, 0 fail, 50 exp-fail, 24 unexp-pass, 0 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 67.000000%"></div></div>
+      <div class="stage-card-stats">46/74 correct (62.000000%) · 0 pass, 0 fail, 46 exp-fail, 28 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 62.000000%"></div></div>
     </div>
   </div>
   <div class="filters">
@@ -363,13 +363,13 @@
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="7lbh multiline double quoted implicit keys error double">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="7lbh multiline double quoted implicit keys error double">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/7LBH.yaml" target="_blank" class="test-id-link" title="View 7LBH source in yaml-test-suite">7LBH</a></td>
         <td>Multiline double quoted implicit keys</td>
         <td>error</td>
-        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">double</span></td>
-        <td></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
       <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="7mnf missing colon error mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/7MNF.yaml" target="_blank" class="test-id-link" title="View 7MNF source in yaml-test-suite">7MNF</a></td>
@@ -523,13 +523,13 @@
         <td><span class="tag">anchor</span><span class="tag">error</span><span class="tag">header</span><span class="tag">mapping</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="d49q multiline single quoted implicit keys error single mapping">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="d49q multiline single quoted implicit keys error single mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/D49Q.yaml" target="_blank" class="test-id-link" title="View D49Q source in yaml-test-suite">D49Q</a></td>
         <td>Multiline single quoted implicit keys</td>
         <td>error</td>
-        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">single</span><span class="tag">mapping</span></td>
-        <td></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
       <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="dk4h implicit key followed by newline error flow mapping sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/DK4H.yaml" target="_blank" class="test-id-link" title="View DK4H source in yaml-test-suite">DK4H</a></td>
@@ -571,13 +571,13 @@
         <td><span class="tag">error</span><span class="tag">mapping</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="g9hc invalid anchor in zero indented sequence anchor error sequence">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="g9hc invalid anchor in zero indented sequence anchor error sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/G9HC.yaml" target="_blank" class="test-id-link" title="View G9HC source in yaml-test-suite">G9HC</a></td>
         <td>Invalid anchor in zero indented sequence</td>
         <td>error</td>
-        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">anchor</span><span class="tag">error</span><span class="tag">sequence</span></td>
-        <td></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
       <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="gdy7 comment that looks like a mapping key comment error mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/GDY7.yaml" target="_blank" class="test-id-link" title="View GDY7 source in yaml-test-suite">GDY7</a></td>
@@ -819,13 +819,13 @@
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">scalar</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="zl4z invalid nested mapping error mapping">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="zl4z invalid nested mapping error mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/ZL4Z.yaml" target="_blank" class="test-id-link" title="View ZL4Z source in yaml-test-suite">ZL4Z</a></td>
         <td>Invalid nested mapping</td>
         <td>error</td>
-        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">mapping</span></td>
-        <td></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
       <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="zvh3 wrong indented sequence item error sequence indent">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/ZVH3.yaml" target="_blank" class="test-id-link" title="View ZVH3 source in yaml-test-suite">ZVH3</a></td>

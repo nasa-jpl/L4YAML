@@ -16,11 +16,11 @@ Running all tests for HTML report...
 ------------------------------------------------------------
   [1/416] 229Q ✓
   [2/416] 236B ✓ (expected fail)
-  [3/416] 26DV ✗ parse error: unexpected trailing content ':' after document value
+  [3/416] 26DV ✗ parse error: unhandled construct '"' at line 0, column 0
   [4/416] 27NA ○ YAML 1.3 specific
   [5/416] 2AUY ✓
   [6/416] 2CMS ⚠ unexpected pass
-  [7/416] 2EBW ✗ parse error: unexpected trailing content ':' after document value
+  [7/416] 2EBW ✓
   [8/416] 2G84 ✓ (expected fail)
   [9/416] 2G84 ✓ (expected fail)
   [10/416] 2G84 ✓
@@ -79,7 +79,7 @@ Running all tests for HTML report...
   [63/416] 5KJE ✓
   [64/416] 5LLU ⚠ unexpected pass
   [65/416] 5MUD ✓
-  [66/416] 5NYZ ✗ parse error: unhandled construct 'k' at line 0, column 0
+  [66/416] 5NYZ ✓
   [67/416] 5T43 ✓
   [68/416] 5T43 ○ empty yaml input
   [69/416] 5T43 ○ empty yaml input
@@ -95,7 +95,7 @@ Running all tests for HTML report...
   [79/416] 6CA3 ✓
   [80/416] 6CK3 ✓
   [81/416] 6FWR ✓
-  [82/416] 6H3V ✗ parse error: unexpected trailing content ':' after document value
+  [82/416] 6H3V ✓
   [83/416] 6HB6 ✓
   [84/416] 6JQW ✓
   [85/416] 6JTT ✓ (expected fail)
@@ -107,7 +107,7 @@ Running all tests for HTML report...
   [91/416] 6PBE ○ empty yaml input
   [92/416] 6PBE ○ empty yaml input
   [93/416] 6S55 ✓ (expected fail)
-  [94/416] 6SLA ✗ parse error: unexpected trailing content ':' after document value
+  [94/416] 6SLA ✓
   [95/416] 6VJK ○ YAML 1.3 specific
   [96/416] 6WLZ ○ YAML 1.3 specific
   [97/416] 6WPF ○ YAML 1.3 specific
@@ -120,16 +120,16 @@ Running all tests for HTML report...
   [104/416] 7BMT ○ YAML 1.3 specific
   [105/416] 7BUB ✓
   [106/416] 7FWL ✗ parse error: unexpected trailing content '!' after document value
-  [107/416] 7LBH ✓ (expected fail)
+  [107/416] 7LBH ⚠ unexpected pass
   [108/416] 7MNF ✓ (expected fail)
   [109/416] 7T8X ○ YAML 1.3 specific
   [110/416] 7TMG ✓
-  [111/416] 7W2P ✓
+  [111/416] 7W2P ✗ parse error: unexpected trailing content 'c' after document value
   [112/416] 7Z25 ✗ parse error: unexpected content 'k' after explicit document; expected '---' or '...'
-  [113/416] 7ZZ5 ✗ parse error: unexpected trailing content '-' after document value
+  [113/416] 7ZZ5 ✓
   [114/416] 82AN ○ YAML 1.3 specific
-  [115/416] 87E4 ✗ parse error: unexpected trailing content ':' after document value
-  [116/416] 8CWC ✗ parse error: unexpected trailing content ':' after document value
+  [115/416] 87E4 ✗ parse error: unhandled construct ''' at line 0, column 0
+  [116/416] 8CWC ✓
   [117/416] 8G76 ✓
   [118/416] 8KB6 ✓
   [119/416] 8MK2 ○ YAML 1.3 specific
@@ -169,8 +169,8 @@ Running all tests for HTML report...
   [153/416] A984 ✓
   [154/416] AB8U ✗ parse error: sequence item at column 1, expected column 0 (wrong indentation)
   [155/416] AVM7 ✓
-  [156/416] AZ63 ✗ parse error: unexpected trailing content '-' after document value
-  [157/416] AZW3 ✗ parse error: unexpected trailing content ':' after document value
+  [156/416] AZ63 ✓
+  [157/416] AZW3 ✓
   [158/416] B3HG ○ YAML 1.3 specific
   [159/416] B63P ⚠ unexpected pass
   [160/416] BD7L ✓ (expected fail)
@@ -192,11 +192,11 @@ Running all tests for HTML report...
   [176/416] CUP7 ✓
   [177/416] CVW2 ✓ (expected fail)
   [178/416] CXX2 ⚠ unexpected pass
-  [179/416] D49Q ✓ (expected fail)
+  [179/416] D49Q ⚠ unexpected pass
   [180/416] D83L ✓
   [181/416] D88J ✓
   [182/416] D9TU ✓
-  [183/416] DBG4 ✓
+  [183/416] DBG4 ✗ parse error: unexpected trailing content '"' after document value
   [184/416] DC7X ✓
   [185/416] DE56 ✓
   [186/416] DE56 ✓
@@ -240,7 +240,7 @@ Running all tests for HTML report...
   [224/416] G5U8 ⚠ unexpected pass
   [225/416] G7JE ✓ (expected fail)
   [226/416] G992 ○ YAML 1.3 specific
-  [227/416] G9HC ✓ (expected fail)
+  [227/416] G9HC ⚠ unexpected pass
   [228/416] GDY7 ✓ (expected fail)
   [229/416] GH63 ✓
   [230/416] GT5M ✓ (expected fail)
@@ -251,7 +251,7 @@ Running all tests for HTML report...
   [235/416] HM87 ✓
   [236/416] HM87 ✓
   [237/416] HMK4 ✓
-  [238/416] HMQ5 ✗ parse error: unexpected trailing content ':' after document value
+  [238/416] HMQ5 ✗ parse error: unexpected trailing content '!' after document value
   [239/416] HRE5 ✓ (expected fail)
   [240/416] HS5T ✓
   [241/416] HU3P ✓ (expected fail)
@@ -260,7 +260,7 @@ Running all tests for HTML report...
   [244/416] J5UC ✓
   [245/416] J7PZ ✓
   [246/416] J7VC ✓
-  [247/416] J9HZ ✗ parse error: unexpected trailing content 'h' after document value
+  [247/416] J9HZ ✓
   [248/416] JEF9 ✓
   [249/416] JEF9 ✓
   [250/416] JEF9 ✓
@@ -291,7 +291,7 @@ Running all tests for HTML report...
   [275/416] LE5A ✓
   [276/416] LHL4 ✓ (expected fail)
   [277/416] LP6E ✓
-  [278/416] LQZ7 ✗ parse error: unexpected trailing content ':' after document value
+  [278/416] LQZ7 ✗ parse error: unhandled construct '"' at line 0, column 0
   [279/416] LX3P ○ YAML 1.3 specific
   [280/416] M29M ✓
   [281/416] M2N8 ✓
@@ -317,14 +317,14 @@ Running all tests for HTML report...
   [301/416] N782 ⚠ unexpected pass
   [302/416] NAT4 ✓
   [303/416] NB6Z ✗ parse error: unexpected trailing content 't' after document value
-  [304/416] NHX8 ✓
+  [304/416] NHX8 ✗ parse error: unhandled construct ':' at line 0, column 0
   [305/416] NJ66 ✓
-  [306/416] NKF9 ✓
+  [306/416] NKF9 ✗ parse error: unexpected trailing content '{' after document value
   [307/416] NP9H ✓
   [308/416] P2AD ✓
   [309/416] P2EQ ✓ (expected fail)
   [310/416] P76L ✗ parse error: unexpected trailing content '#' after document value
-  [311/416] P94K ✗ parse error: unhandled construct 'k' at line 0, column 0
+  [311/416] P94K ✓
   [312/416] PBJ2 ✓
   [313/416] PRH3 ✓
   [314/416] PUW8 ✓
@@ -341,25 +341,25 @@ Running all tests for HTML report...
   [325/416] R4YG ✓
   [326/416] R52L ✓
   [327/416] RHX7 ✓ (expected fail)
-  [328/416] RLU9 ✗ parse error: unexpected trailing content '-' after document value
+  [328/416] RLU9 ✓
   [329/416] RR7F ✓
   [330/416] RTP8 ✓
   [331/416] RXY3 ✓ (expected fail)
   [332/416] RZP5 ○ YAML 1.3 specific
   [333/416] RZT7 ✓
-  [334/416] S3PD ✗ parse error: unexpected trailing content ':' after document value
+  [334/416] S3PD ✓
   [335/416] S3PD ○ empty yaml input
   [336/416] S4GJ ✓ (expected fail)
   [337/416] S4JQ ✓
   [338/416] S4T7 ✓
   [339/416] S7BG ✓
   [340/416] S98Z ⚠ unexpected pass
-  [341/416] S9E8 ✗ parse error: unexpected trailing content '-' after document value
+  [341/416] S9E8 ✓
   [342/416] SBG9 ✓
   [343/416] SF5V ⚠ unexpected pass
-  [344/416] SKE5 ✗ parse error: unexpected trailing content '-' after document value
+  [344/416] SKE5 ✓
   [345/416] SM9W ✓
-  [346/416] SM9W ✓
+  [346/416] SM9W ✗ parse error: unhandled construct ':' at line 0, column 0
   [347/416] SR86 ⚠ unexpected pass
   [348/416] SSW6 ○ YAML 1.3 specific
   [349/416] SU5Z ⚠ unexpected pass
@@ -422,7 +422,7 @@ Running all tests for HTML report...
   [406/416] ZF4X ✓
   [407/416] ZH7C ✗ parse error: unexpected trailing content 'c' after document value
   [408/416] ZK9H ✓
-  [409/416] ZL4Z ✓ (expected fail)
+  [409/416] ZL4Z ⚠ unexpected pass
   [410/416] ZVH3 ✓ (expected fail)
   [411/416] ZWK4 ✓
   [412/416] ZXT5 ✓ (expected fail)
@@ -432,7 +432,7 @@ Running all tests for HTML report...
   [416/416] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 270/416 (64.000000%)
+Correct: 275/416 (66.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 17/17

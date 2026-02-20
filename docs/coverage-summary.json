@@ -1,34 +1,34 @@
 {
-  "date": "2026-02-19T20:53:39-0800",
+  "date": "2026-02-19T21:42:29-0800",
   "overall": {
-    "correct": 270,
-    "correctRate": 64.903846,
-    "expectedFail": 57,
-    "failed": 47,
-    "passed": 213,
+    "correct": 275,
+    "correctRate": 66.105769,
+    "expectedFail": 53,
+    "failed": 38,
+    "passed": 222,
     "skipped": 62,
     "timeout": 0,
     "total": 416,
-    "unexpectedPass": 37
+    "unexpectedPass": 41
   },
   "stages": {
     "advanced": {
-      "correct": 44,
-      "correctRate": 54.320987,
+      "correct": 45,
+      "correctRate": 55.555555,
       "expectedFail": 0,
-      "failed": 20,
-      "passed": 44,
+      "failed": 19,
+      "passed": 45,
       "skipped": 17,
       "timeout": 0,
       "total": 81,
       "unexpectedPass": 0
     },
     "block": {
-      "correct": 78,
-      "correctRate": 71.559633,
+      "correct": 82,
+      "correctRate": 75.229357,
       "expectedFail": 6,
-      "failed": 13,
-      "passed": 72,
+      "failed": 9,
+      "passed": 76,
       "skipped": 10,
       "timeout": 0,
       "total": 109,
@@ -46,15 +46,15 @@
       "unexpectedPass": 2
     },
     "error": {
-      "correct": 50,
-      "correctRate": 67.567567,
-      "expectedFail": 50,
+      "correct": 46,
+      "correctRate": 62.162162,
+      "expectedFail": 46,
       "failed": 0,
       "passed": 0,
       "skipped": 0,
       "timeout": 0,
       "total": 74,
-      "unexpectedPass": 24
+      "unexpectedPass": 28
     },
     "flow": {
       "correct": 40,
@@ -68,11 +68,11 @@
       "unexpectedPass": 3
     },
     "scalar": {
-      "correct": 46,
-      "correctRate": 56.09756,
+      "correct": 50,
+      "correctRate": 60.975609,
       "expectedFail": 1,
-      "failed": 8,
-      "passed": 45,
+      "failed": 4,
+      "passed": 49,
       "skipped": 28,
       "timeout": 0,
       "total": 82,
@@ -95,7 +95,7 @@
       "stage": "error"
     },
     {
-      "error": "parse error: unexpected trailing content ':' after document value",
+      "error": "parse error: unhandled construct '\"' at line 0, column 0",
       "id": "26DV",
       "name": "Whitespace around colon in mappings",
       "outcome": "fail",
@@ -123,10 +123,10 @@
       "stage": "error"
     },
     {
-      "error": "parse error: unexpected trailing content ':' after document value",
+      "error": null,
       "id": "2EBW",
       "name": "Allowed characters in keys",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "scalar"
     },
     {
@@ -536,10 +536,10 @@
       "stage": "flow"
     },
     {
-      "error": "parse error: unhandled construct 'k' at line 0, column 0",
+      "error": null,
       "id": "5NYZ",
       "name": "Spec Example 6.9. Separated Comment",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "block"
     },
     {
@@ -648,10 +648,10 @@
       "stage": "scalar"
     },
     {
-      "error": "parse error: unexpected trailing content ':' after document value",
+      "error": null,
       "id": "6H3V",
       "name": "Backslashes in singlequotes",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "scalar"
     },
     {
@@ -732,10 +732,10 @@
       "stage": "error"
     },
     {
-      "error": "parse error: unexpected trailing content ':' after document value",
+      "error": null,
       "id": "6SLA",
       "name": "Allowed characters in quoted mapping key",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "scalar"
     },
     {
@@ -823,10 +823,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "7LBH",
       "name": "Multiline double quoted implicit keys",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -851,10 +851,10 @@
       "stage": "flow"
     },
     {
-      "error": null,
+      "error": "parse error: unexpected trailing content 'c' after document value",
       "id": "7W2P",
       "name": "Block Mapping with Missing Values",
-      "outcome": "pass",
+      "outcome": "fail",
       "stage": "advanced"
     },
     {
@@ -865,10 +865,10 @@
       "stage": "document"
     },
     {
-      "error": "parse error: unexpected trailing content '-' after document value",
+      "error": null,
       "id": "7ZZ5",
       "name": "Empty flow collections",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "flow"
     },
     {
@@ -879,17 +879,17 @@
       "stage": "scalar"
     },
     {
-      "error": "parse error: unexpected trailing content ':' after document value",
+      "error": "parse error: unhandled construct ''' at line 0, column 0",
       "id": "87E4",
       "name": "Spec Example 7.8. Single Quoted Implicit Keys",
       "outcome": "fail",
       "stage": "flow"
     },
     {
-      "error": "parse error: unexpected trailing content ':' after document value",
+      "error": null,
       "id": "8CWC",
       "name": "Plain mapping key ending with colon",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "scalar"
     },
     {
@@ -1166,17 +1166,17 @@
       "stage": "block"
     },
     {
-      "error": "parse error: unexpected trailing content '-' after document value",
+      "error": null,
       "id": "AZ63",
       "name": "Sequence With Same Indentation as Parent Mapping",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "block"
     },
     {
-      "error": "parse error: unexpected trailing content ':' after document value",
+      "error": null,
       "id": "AZW3",
       "name": "Lookahead test cases",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "block"
     },
     {
@@ -1327,10 +1327,10 @@
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "D49Q",
       "name": "Multiline single quoted implicit keys",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1355,10 +1355,10 @@
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "parse error: unexpected trailing content '\"' after document value",
       "id": "DBG4",
       "name": "Spec Example 7.10. Plain Characters",
-      "outcome": "pass",
+      "outcome": "fail",
       "stage": "flow"
     },
     {
@@ -1663,10 +1663,10 @@
       "stage": "scalar"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "G9HC",
       "name": "Invalid anchor in zero indented sequence",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1740,7 +1740,7 @@
       "stage": "scalar"
     },
     {
-      "error": "parse error: unexpected trailing content ':' after document value",
+      "error": "parse error: unexpected trailing content '!' after document value",
       "id": "HMQ5",
       "name": "Spec Example 6.23. Node Properties",
       "outcome": "fail",
@@ -1803,10 +1803,10 @@
       "stage": "block"
     },
     {
-      "error": "parse error: unexpected trailing content 'h' after document value",
+      "error": null,
       "id": "J9HZ",
       "name": "Spec Example 2.9. Single Document with Two Comments",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "block"
     },
     {
@@ -2020,7 +2020,7 @@
       "stage": "flow"
     },
     {
-      "error": "parse error: unexpected trailing content ':' after document value",
+      "error": "parse error: unhandled construct '\"' at line 0, column 0",
       "id": "LQZ7",
       "name": "Spec Example 7.4. Double Quoted Implicit Keys",
       "outcome": "fail",
@@ -2202,10 +2202,10 @@
       "stage": "scalar"
     },
     {
-      "error": null,
+      "error": "parse error: unhandled construct ':' at line 0, column 0",
       "id": "NHX8",
       "name": "Empty Lines at End of Document",
-      "outcome": "pass",
+      "outcome": "fail",
       "stage": "block"
     },
     {
@@ -2216,10 +2216,10 @@
       "stage": "flow"
     },
     {
-      "error": null,
+      "error": "parse error: unexpected trailing content '{' after document value",
       "id": "NKF9",
       "name": "Empty keys in block and flow mapping",
-      "outcome": "pass",
+      "outcome": "fail",
       "stage": "block"
     },
     {
@@ -2251,10 +2251,10 @@
       "stage": "advanced"
     },
     {
-      "error": "parse error: unhandled construct 'k' at line 0, column 0",
+      "error": null,
       "id": "P94K",
       "name": "Spec Example 6.11. Multi-Line Comments",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "block"
     },
     {
@@ -2370,10 +2370,10 @@
       "stage": "error"
     },
     {
-      "error": "parse error: unexpected trailing content '-' after document value",
+      "error": null,
       "id": "RLU9",
       "name": "Sequence Indent",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "block"
     },
     {
@@ -2412,10 +2412,10 @@
       "stage": "document"
     },
     {
-      "error": "parse error: unexpected trailing content ':' after document value",
+      "error": null,
       "id": "S3PD",
       "name": "Spec Example 8.18. Implicit Block Mapping Entries",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "block"
     },
     {
@@ -2461,10 +2461,10 @@
       "stage": "error"
     },
     {
-      "error": "parse error: unexpected trailing content '-' after document value",
+      "error": null,
       "id": "S9E8",
       "name": "Spec Example 5.3. Block Structure Indicators",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
@@ -2482,10 +2482,10 @@
       "stage": "error"
     },
     {
-      "error": "parse error: unexpected trailing content '-' after document value",
+      "error": null,
       "id": "SKE5",
       "name": "Anchor before zero indented sequence",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
@@ -2496,10 +2496,10 @@
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "parse error: unhandled construct ':' at line 0, column 0",
       "id": "SM9W",
       "name": "",
-      "outcome": "pass",
+      "outcome": "fail",
       "stage": "block"
     },
     {
@@ -2937,10 +2937,10 @@
       "stage": "flow"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "ZL4Z",
       "name": "Invalid nested mapping",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {

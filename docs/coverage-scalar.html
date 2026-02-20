@@ -169,20 +169,20 @@
   <p class="subtitle">YAML 1.2.2 parser compliance against the official yaml-test-suite</p>
   <div class="stats">
     <div class="stat-box stat-total"><h3>Unique Tests</h3><div class="number">82</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">45</div></div>
-    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">8</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">49</div></div>
+    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">4</div></div>
     <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">1</div></div>
     <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">0</div></div>
     <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">28</div></div>
     <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">0</div></div>
-    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">46/82</div><div class="pct">(56.097561%)</div></div>
+    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">50/82</div><div class="pct">(60.975610%)</div></div>
   </div>
   <h3>Coverage by Stage</h3>
   <div class="stage-cards">
     <div class="stage-card">
       <div class="stage-card-name">scalar</div>
-      <div class="stage-card-stats">46/82 correct (56.000000%) · 45 pass, 8 fail, 1 exp-fail, 0 unexp-pass, 28 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 56.000000%"></div></div>
+      <div class="stage-card-stats">50/82 correct (60.000000%) · 49 pass, 4 fail, 1 exp-fail, 0 unexp-pass, 28 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 60.000000%"></div></div>
     </div>
     <div class="stage-card">
       <div class="stage-card-name">flow</div>
@@ -251,13 +251,13 @@
       </tr>
     </thead>
     <tbody>
-      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="2ebw allowed characters in keys mapping scalar">
+      <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="2ebw allowed characters in keys mapping scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/2EBW.yaml" target="_blank" class="test-id-link" title="View 2EBW source in yaml-test-suite">2EBW</a></td>
         <td>Allowed characters in keys</td>
         <td>scalar</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">mapping</span><span class="tag">scalar</span></td>
-        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;:&#39; after document value">parse error: unexpected trailing content &#39;:&#39; after document value</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="expected-fail" data-stage="scalar" data-search="2g84 literal modifers literal scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/2G84.yaml" target="_blank" class="test-id-link" title="View 2G84 source in yaml-test-suite">2G84</a></td>
@@ -387,13 +387,13 @@
         <td><span class="tag">literal</span><span class="tag">scalar</span><span class="tag">whitespace</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="6h3v backslashes in singlequotes scalar single">
+      <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="6h3v backslashes in singlequotes scalar single">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6H3V.yaml" target="_blank" class="test-id-link" title="View 6H3V source in yaml-test-suite">6H3V</a></td>
         <td>Backslashes in singlequotes</td>
         <td>scalar</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">scalar</span><span class="tag">single</span></td>
-        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;:&#39; after document value">parse error: unexpected trailing content &#39;:&#39; after document value</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="6jqw spec example 2.13. in literals, newlines are preserved spec scalar literal comment">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6JQW.yaml" target="_blank" class="test-id-link" title="View 6JQW source in yaml-test-suite">6JQW</a></td>
@@ -403,13 +403,13 @@
         <td><span class="tag">spec</span><span class="tag">scalar</span><span class="tag">literal</span><span class="tag">comment</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="6sla allowed characters in quoted mapping key mapping single double">
+      <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="6sla allowed characters in quoted mapping key mapping single double">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6SLA.yaml" target="_blank" class="test-id-link" title="View 6SLA source in yaml-test-suite">6SLA</a></td>
         <td>Allowed characters in quoted mapping key</td>
         <td>scalar</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">mapping</span><span class="tag">single</span><span class="tag">double</span></td>
-        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;:&#39; after document value">parse error: unexpected trailing content &#39;:&#39; after document value</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="6vjk spec example 2.15. folded newlines are preserved for &quot;more indented&quot; and blank lines spec folded scalar 1.3-err">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6VJK.yaml" target="_blank" class="test-id-link" title="View 6VJK source in yaml-test-suite">6VJK</a></td>
@@ -459,13 +459,13 @@
         <td><span class="tag">scalar</span><span class="tag">1.3-err</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="8cwc plain mapping key ending with colon mapping scalar">
+      <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="8cwc plain mapping key ending with colon mapping scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/8CWC.yaml" target="_blank" class="test-id-link" title="View 8CWC source in yaml-test-suite">8CWC</a></td>
         <td>Plain mapping key ending with colon</td>
         <td>scalar</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">mapping</span><span class="tag">scalar</span></td>
-        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;:&#39; after document value">parse error: unexpected trailing content &#39;:&#39; after document value</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="8g76 spec example 6.10. comment lines spec comment empty scalar whitespace">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/8G76.yaml" target="_blank" class="test-id-link" title="View 8G76 source in yaml-test-suite">8G76</a></td>
