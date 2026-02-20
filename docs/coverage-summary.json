@@ -1,78 +1,78 @@
 {
-  "date": "2026-02-19T21:42:29-0800",
+  "date": "2026-02-20T07:49:52-0800",
   "overall": {
-    "correct": 275,
-    "correctRate": 66.105769,
-    "expectedFail": 53,
-    "failed": 38,
-    "passed": 222,
+    "correct": 288,
+    "correctRate": 69.230769,
+    "expectedFail": 52,
+    "failed": 24,
+    "passed": 236,
     "skipped": 62,
     "timeout": 0,
     "total": 416,
-    "unexpectedPass": 41
+    "unexpectedPass": 42
   },
   "stages": {
     "advanced": {
-      "correct": 45,
-      "correctRate": 55.555555,
+      "correct": 48,
+      "correctRate": 59.259259,
       "expectedFail": 0,
-      "failed": 19,
-      "passed": 45,
+      "failed": 16,
+      "passed": 48,
       "skipped": 17,
       "timeout": 0,
       "total": 81,
       "unexpectedPass": 0
     },
     "block": {
-      "correct": 82,
-      "correctRate": 75.229357,
+      "correct": 88,
+      "correctRate": 80.733944,
       "expectedFail": 6,
-      "failed": 9,
-      "passed": 76,
+      "failed": 3,
+      "passed": 82,
       "skipped": 10,
       "timeout": 0,
       "total": 109,
       "unexpectedPass": 8
     },
     "document": {
-      "correct": 12,
-      "correctRate": 50,
+      "correct": 14,
+      "correctRate": 58.333333,
       "expectedFail": 0,
-      "failed": 3,
-      "passed": 12,
+      "failed": 1,
+      "passed": 14,
       "skipped": 7,
       "timeout": 0,
       "total": 24,
       "unexpectedPass": 2
     },
     "error": {
-      "correct": 46,
-      "correctRate": 62.162162,
-      "expectedFail": 46,
+      "correct": 45,
+      "correctRate": 60.81081,
+      "expectedFail": 45,
       "failed": 0,
       "passed": 0,
       "skipped": 0,
       "timeout": 0,
       "total": 74,
-      "unexpectedPass": 28
+      "unexpectedPass": 29
     },
     "flow": {
-      "correct": 40,
-      "correctRate": 86.956521,
+      "correct": 42,
+      "correctRate": 91.304347,
       "expectedFail": 0,
-      "failed": 3,
-      "passed": 40,
+      "failed": 1,
+      "passed": 42,
       "skipped": 0,
       "timeout": 0,
       "total": 46,
       "unexpectedPass": 3
     },
     "scalar": {
-      "correct": 50,
-      "correctRate": 60.975609,
+      "correct": 51,
+      "correctRate": 62.195121,
       "expectedFail": 1,
-      "failed": 4,
-      "passed": 49,
+      "failed": 3,
+      "passed": 50,
       "skipped": 28,
       "timeout": 0,
       "total": 82,
@@ -95,7 +95,7 @@
       "stage": "error"
     },
     {
-      "error": "parse error: unhandled construct '\"' at line 0, column 0",
+      "error": "parse error: mapping entry at column 10, expected column 0 (wrong indentation)",
       "id": "26DV",
       "name": "Whitespace around colon in mappings",
       "outcome": "fail",
@@ -193,7 +193,7 @@
       "stage": "advanced"
     },
     {
-      "error": "parse error: unexpected trailing content '-' after document value",
+      "error": "parse error: unexpected content 'e' after explicit document; expected '---' or '...'",
       "id": "35KP",
       "name": "Tags for Root Objects",
       "outcome": "fail",
@@ -571,10 +571,10 @@
       "stage": "error"
     },
     {
-      "error": "parse error: unexpected content '%' after explicit document; expected '---' or '...'",
+      "error": null,
       "id": "5TYM",
       "name": "Spec Example 6.21. Local Tag Prefix",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
@@ -851,17 +851,17 @@
       "stage": "flow"
     },
     {
-      "error": "parse error: unexpected trailing content 'c' after document value",
+      "error": null,
       "id": "7W2P",
       "name": "Block Mapping with Missing Values",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
-      "error": "parse error: unexpected content 'k' after explicit document; expected '---' or '...'",
+      "error": null,
       "id": "7Z25",
       "name": "Bare document after document end marker",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "document"
     },
     {
@@ -879,10 +879,10 @@
       "stage": "scalar"
     },
     {
-      "error": "parse error: unhandled construct ''' at line 0, column 0",
+      "error": null,
       "id": "87E4",
       "name": "Spec Example 7.8. Single Quoted Implicit Keys",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "flow"
     },
     {
@@ -1215,10 +1215,10 @@
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "BS4K",
       "name": "Comment between plain scalar lines",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1460,10 +1460,10 @@
       "stage": "block"
     },
     {
-      "error": "parse error: unexpected token at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }",
+      "error": null,
       "id": "DK95",
       "name": "",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "block"
     },
     {
@@ -1488,10 +1488,10 @@
       "stage": "block"
     },
     {
-      "error": "parse error: unexpected token at { offset := 11, line := 1, col := 1 }; expected plain scalar at { offset := 11, line := 1, col := 1 }",
+      "error": null,
       "id": "DK95",
       "name": "",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "block"
     },
     {
@@ -1831,10 +1831,10 @@
       "stage": "block"
     },
     {
-      "error": "parse error: unexpected trailing content '-' after document value",
+      "error": null,
       "id": "JHB9",
       "name": "Spec Example 2.7. Two Documents in a Stream",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "document"
     },
     {
@@ -1978,10 +1978,10 @@
       "stage": "block"
     },
     {
-      "error": "parse error: unexpected trailing content '#' after document value",
+      "error": null,
       "id": "L383",
       "name": "Two scalar docs with trailing comments",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "block"
     },
     {
@@ -2020,10 +2020,10 @@
       "stage": "flow"
     },
     {
-      "error": "parse error: unhandled construct '\"' at line 0, column 0",
+      "error": null,
       "id": "LQZ7",
       "name": "Spec Example 7.4. Double Quoted Implicit Keys",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "flow"
     },
     {
@@ -2195,17 +2195,17 @@
       "stage": "scalar"
     },
     {
-      "error": "parse error: unexpected trailing content 't' after document value",
+      "error": null,
       "id": "NB6Z",
       "name": "Multiline plain value with tabs on empty lines",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "scalar"
     },
     {
-      "error": "parse error: unhandled construct ':' at line 0, column 0",
+      "error": null,
       "id": "NHX8",
       "name": "Empty Lines at End of Document",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "block"
     },
     {
@@ -2244,10 +2244,10 @@
       "stage": "error"
     },
     {
-      "error": "parse error: unexpected trailing content '#' after document value",
+      "error": null,
       "id": "P76L",
       "name": "Spec Example 6.19. Secondary Tag Handle",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "advanced"
     },
     {
@@ -2496,10 +2496,10 @@
       "stage": "block"
     },
     {
-      "error": "parse error: unhandled construct ':' at line 0, column 0",
+      "error": null,
       "id": "SM9W",
       "name": "",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "block"
     },
     {
@@ -2671,10 +2671,10 @@
       "stage": "block"
     },
     {
-      "error": "parse error: unexpected token at { offset := 2, line := 1, col := 0 }",
+      "error": null,
       "id": "UKK6",
       "name": "",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "block"
     },
     {

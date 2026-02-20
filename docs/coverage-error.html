@@ -171,11 +171,11 @@
     <div class="stat-box stat-total"><h3>Unique Tests</h3><div class="number">74</div></div>
     <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">0</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
-    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">46</div></div>
-    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">28</div></div>
+    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">45</div></div>
+    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">29</div></div>
     <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">0</div></div>
     <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">0</div></div>
-    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">46/74</div><div class="pct">(62.162162%)</div></div>
+    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">45/74</div><div class="pct">(60.810811%)</div></div>
   </div>
   <h3>Coverage by Stage</h3>
   <div class="stage-cards">
@@ -206,8 +206,8 @@
     </div>
     <div class="stage-card">
       <div class="stage-card-name">error</div>
-      <div class="stage-card-stats">46/74 correct (62.000000%) · 0 pass, 0 fail, 46 exp-fail, 28 unexp-pass, 0 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 62.000000%"></div></div>
+      <div class="stage-card-stats">45/74 correct (60.000000%) · 0 pass, 0 fail, 45 exp-fail, 29 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 60.000000%"></div></div>
     </div>
   </div>
   <div class="filters">
@@ -467,13 +467,13 @@
         <td><span class="tag">comment</span><span class="tag">error</span><span class="tag">scalar</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="bs4k comment between plain scalar lines error scalar">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="bs4k comment between plain scalar lines error scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/BS4K.yaml" target="_blank" class="test-id-link" title="View BS4K source in yaml-test-suite">BS4K</a></td>
         <td>Comment between plain scalar lines</td>
         <td>error</td>
-        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">scalar</span></td>
-        <td></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
       <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="c2sp flow mapping key on two lines error flow mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/C2SP.yaml" target="_blank" class="test-id-link" title="View C2SP source in yaml-test-suite">C2SP</a></td>
