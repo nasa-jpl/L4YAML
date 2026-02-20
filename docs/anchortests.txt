@@ -24,7 +24,7 @@
 
 --- Flow context anchors ---
   ✓ anchor on flow sequence
-  ✗ anchor on flow mapping
+  ✓ anchor on flow mapping
   ✓ alias in block sequence
   ✓ alias equals anchor
 
@@ -56,5 +56,4 @@
   ✓ first doc parses
   ✓ anchor does not leak across docs
 
-=== Results: 32/33 passed ===
-    1 FAILED
+=== Results: 33/33 passed ===

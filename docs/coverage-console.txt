@@ -179,7 +179,7 @@ Running all tests for HTML report...
   [163/416] BS4K ⚠ unexpected pass
   [164/416] BU8L ○ YAML 1.3 specific
   [165/416] C2DT ✓
-  [166/416] C2SP ⚠ unexpected pass
+  [166/416] C2SP ✓ (expected fail)
   [167/416] C4HZ ✓
   [168/416] CC74 ✓
   [169/416] CFD4 ✓
@@ -432,7 +432,7 @@ Running all tests for HTML report...
   [416/416] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 309/416 (74.000000%)
+Correct: 310/416 (74.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 17/17
@@ -440,15 +440,15 @@ Running verified test suites...
   Quoted Folding Tests: ✓ 34/34
   Layer 1 Verification Tests: ✓ 138/138
   String Lemma Tests: ✓ 129/129
-  Anchor & Alias Tests: ✗ 32/33
-  Tag Tests: ✗ 43/44
+  Anchor & Alias Tests: ✓ 33/33
+  Tag Tests: ✓ 44/44
   Explicit Key Tests: ✓ 66/66
   Flow Completeness Tests: ✓ 88/88
   CharClass Correspondence Tests: ✓ 224/224
-  Structural Validation Tests: ✗ 134/135
+  Structural Validation Tests: ✓ 135/135
   Demo: ✓ 7/7
 
-Verified: 937/940
+Verified: 940/940
 
 Generating HTML reports...
   wrote docs/index.html

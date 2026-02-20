@@ -523,7 +523,7 @@
 
 --- Flow context anchors ---
   ✓ anchor on flow sequence
-  ✗ anchor on flow mapping
+  ✓ anchor on flow mapping
   ✓ alias in block sequence
   ✓ alias equals anchor
 
@@ -555,8 +555,7 @@
   ✓ first doc parses
   ✓ anchor does not leak across docs
 
-=== Results: 32/33 passed ===
-    1 FAILED
+=== Results: 33/33 passed ===
 === Tag Tests ===
 === Tag Tests ===
 
@@ -592,7 +591,7 @@
   ✓ !!seq on flow sequence
   ✓ !!seq tag on flow seq
   ✓ !!map on flow mapping
-  ✗ !!map tag on flow map
+  ✓ !!map tag on flow map
   ✓ tag in flow mapping value
   ✓ tag in flow value present
 
@@ -616,8 +615,7 @@
   ✓ withTag mapping
   ✓ withTag mapping pairs
 
-=== Results: 43/44 passed ===
-    1 FAILED
+=== Results: 44/44 passed ===
 === Explicit Key Tests ===
 === Explicit Key Tests ===
 

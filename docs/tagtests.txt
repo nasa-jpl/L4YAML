@@ -33,7 +33,7 @@
   ✓ !!seq on flow sequence
   ✓ !!seq tag on flow seq
   ✓ !!map on flow mapping
-  ✗ !!map tag on flow map
+  ✓ !!map tag on flow map
   ✓ tag in flow mapping value
   ✓ tag in flow value present
 
@@ -57,5 +57,4 @@
   ✓ withTag mapping
   ✓ withTag mapping pairs
 
-=== Results: 43/44 passed ===
-    1 FAILED
+=== Results: 44/44 passed ===
