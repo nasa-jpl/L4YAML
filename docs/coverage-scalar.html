@@ -169,20 +169,20 @@
   <p class="subtitle">YAML 1.2.2 parser compliance against the official yaml-test-suite</p>
   <div class="stats">
     <div class="stat-box stat-total"><h3>Unique Tests</h3><div class="number">82</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">33</div></div>
-    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">20</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">45</div></div>
+    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">8</div></div>
     <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">1</div></div>
     <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">0</div></div>
     <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">28</div></div>
     <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">0</div></div>
-    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">34/82</div><div class="pct">(41.463415%)</div></div>
+    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">46/82</div><div class="pct">(56.097561%)</div></div>
   </div>
   <h3>Coverage by Stage</h3>
   <div class="stage-cards">
     <div class="stage-card">
       <div class="stage-card-name">scalar</div>
-      <div class="stage-card-stats">34/82 correct (41.000000%) · 33 pass, 20 fail, 1 exp-fail, 0 unexp-pass, 28 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 41.000000%"></div></div>
+      <div class="stage-card-stats">46/82 correct (56.000000%) · 45 pass, 8 fail, 1 exp-fail, 0 unexp-pass, 28 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 56.000000%"></div></div>
     </div>
     <div class="stage-card">
       <div class="stage-card-name">flow</div>
@@ -347,13 +347,13 @@
         <td><span class="tag">scalar</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="4wa9 literal scalars indent literal">
+      <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="4wa9 literal scalars indent literal">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/4WA9.yaml" target="_blank" class="test-id-link" title="View 4WA9 source in yaml-test-suite">4WA9</a></td>
         <td>Literal scalars</td>
         <td>scalar</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">indent</span><span class="tag">literal</span></td>
-        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;x&#39; after document value">parse error: unexpected trailing content &#39;x&#39; after document value</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="4zym spec example 6.4. line prefixes spec scalar literal double upto-1.2 whitespace">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/4ZYM.yaml" target="_blank" class="test-id-link" title="View 4ZYM source in yaml-test-suite">4ZYM</a></td>
@@ -379,13 +379,13 @@
         <td><span class="tag">double</span><span class="tag">literal</span><span class="tag">spec</span><span class="tag">scalar</span><span class="tag">upto-1.2</span><span class="tag">whitespace</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="6fwr block scalar keep literal scalar whitespace">
+      <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="6fwr block scalar keep literal scalar whitespace">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6FWR.yaml" target="_blank" class="test-id-link" title="View 6FWR source in yaml-test-suite">6FWR</a></td>
         <td>Block Scalar Keep</td>
         <td>scalar</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">literal</span><span class="tag">scalar</span><span class="tag">whitespace</span></td>
-        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;a&#39; after document value">parse error: unexpected trailing content &#39;a&#39; after document value</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="6h3v backslashes in singlequotes scalar single">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6H3V.yaml" target="_blank" class="test-id-link" title="View 6H3V source in yaml-test-suite">6H3V</a></td>
@@ -395,13 +395,13 @@
         <td><span class="tag">scalar</span><span class="tag">single</span></td>
         <td><span class="error-msg" title="parse error: unexpected trailing content &#39;:&#39; after document value">parse error: unexpected trailing content &#39;:&#39; after document value</span></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="6jqw spec example 2.13. in literals, newlines are preserved spec scalar literal comment">
+      <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="6jqw spec example 2.13. in literals, newlines are preserved spec scalar literal comment">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6JQW.yaml" target="_blank" class="test-id-link" title="View 6JQW source in yaml-test-suite">6JQW</a></td>
         <td>Spec Example 2.13. In literals, newlines are preserved</td>
         <td>scalar</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">spec</span><span class="tag">scalar</span><span class="tag">literal</span><span class="tag">comment</span></td>
-        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;\&#39; after document value">parse error: unexpected trailing content &#39;\&#39; after document value</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="6sla allowed characters in quoted mapping key mapping single double">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/6SLA.yaml" target="_blank" class="test-id-link" title="View 6SLA source in yaml-test-suite">6SLA</a></td>
@@ -483,21 +483,21 @@
         <td><span class="tag">folded</span><span class="tag">spec</span><span class="tag">whitespace</span><span class="tag">scalar</span><span class="tag">1.3-mod</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="96l6 spec example 2.14. in the folded scalars, newlines become spaces spec folded scalar">
+      <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="96l6 spec example 2.14. in the folded scalars, newlines become spaces spec folded scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/96L6.yaml" target="_blank" class="test-id-link" title="View 96L6 source in yaml-test-suite">96L6</a></td>
         <td>Spec Example 2.14. In the folded scalars, newlines become spaces</td>
         <td>scalar</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">spec</span><span class="tag">folded</span><span class="tag">scalar</span></td>
-        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;M&#39; after document value">parse error: unexpected trailing content &#39;M&#39; after document value</span></td>
+        <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="96nn leading tab content in literals indent literal whitespace">
+      <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="96nn leading tab content in literals indent literal whitespace">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/96NN.yaml" target="_blank" class="test-id-link" title="View 96NN source in yaml-test-suite">96NN</a></td>
         <td>Leading tab content in literals</td>
         <td>scalar</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">indent</span><span class="tag">literal</span><span class="tag">whitespace</span></td>
-        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;b&#39; after document value">parse error: unexpected trailing content &#39;b&#39; after document value</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="9mqt scalar doc with &#39;...&#39; in content double scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/9MQT.yaml" target="_blank" class="test-id-link" title="View 9MQT source in yaml-test-suite">9MQT</a></td>
@@ -571,13 +571,13 @@
         <td><span class="tag">double</span><span class="tag">scalar</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="d83l block scalar indicator order indent literal">
+      <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="d83l block scalar indicator order indent literal">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/D83L.yaml" target="_blank" class="test-id-link" title="View D83L source in yaml-test-suite">D83L</a></td>
         <td>Block scalar indicator order</td>
         <td>scalar</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">indent</span><span class="tag">literal</span></td>
-        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;e&#39; after document value">parse error: unexpected trailing content &#39;e&#39; after document value</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="de56 trailing tabs in double quoted double whitespace">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/DE56.yaml" target="_blank" class="test-id-link" title="View DE56 source in yaml-test-suite">DE56</a></td>
@@ -587,13 +587,13 @@
         <td><span class="tag">double</span><span class="tag">whitespace</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="dk3j zero indented block scalar with line that looks like a comment comment folded scalar">
+      <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="dk3j zero indented block scalar with line that looks like a comment comment folded scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/DK3J.yaml" target="_blank" class="test-id-link" title="View DK3J source in yaml-test-suite">DK3J</a></td>
         <td>Zero indented block scalar with line that looks like a comment</td>
         <td>scalar</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">comment</span><span class="tag">folded</span><span class="tag">scalar</span></td>
-        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;l&#39; after document value">parse error: unexpected trailing content &#39;l&#39; after document value</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="dwx9 spec example 8.8. literal content spec literal scalar comment whitespace 1.3-err">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/DWX9.yaml" target="_blank" class="test-id-link" title="View DWX9 source in yaml-test-suite">DWX9</a></td>
@@ -619,13 +619,13 @@
         <td><span class="tag">scalar</span><span class="tag">1.3-mod</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="f6mc more indented lines at the beginning of folded block scalars folded indent">
+      <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="f6mc more indented lines at the beginning of folded block scalars folded indent">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/F6MC.yaml" target="_blank" class="test-id-link" title="View F6MC source in yaml-test-suite">F6MC</a></td>
         <td>More indented lines at the beginning of folded block scalars</td>
         <td>scalar</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">folded</span><span class="tag">indent</span></td>
-        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;r&#39; after document value">parse error: unexpected trailing content &#39;r&#39; after document value</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="f8f9 spec example 8.5. chomping trailing lines spec literal scalar comment">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/F8F9.yaml" target="_blank" class="test-id-link" title="View F8F9 source in yaml-test-suite">F8F9</a></td>
@@ -643,13 +643,13 @@
         <td><span class="tag">scalar</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="fp8r zero indented block scalar folded indent scalar">
+      <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="fp8r zero indented block scalar folded indent scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/FP8R.yaml" target="_blank" class="test-id-link" title="View FP8R source in yaml-test-suite">FP8R</a></td>
         <td>Zero indented block scalar</td>
         <td>scalar</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">folded</span><span class="tag">indent</span><span class="tag">scalar</span></td>
-        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;l&#39; after document value">parse error: unexpected trailing content &#39;l&#39; after document value</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="g4rs spec example 2.17. quoted scalars spec scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/G4RS.yaml" target="_blank" class="test-id-link" title="View G4RS source in yaml-test-suite">G4RS</a></td>
@@ -731,13 +731,13 @@
         <td><span class="tag">double</span><span class="tag">whitespace</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="m29m literal block scalar literal scalar whitespace">
+      <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="m29m literal block scalar literal scalar whitespace">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/M29M.yaml" target="_blank" class="test-id-link" title="View M29M source in yaml-test-suite">M29M</a></td>
         <td>Literal Block Scalar</td>
         <td>scalar</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">literal</span><span class="tag">scalar</span><span class="tag">whitespace</span></td>
-        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;a&#39; after document value">parse error: unexpected trailing content &#39;a&#39; after document value</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="skip" data-stage="scalar" data-search="m9b4 spec example 8.7. literal scalar spec literal scalar whitespace 1.3-err">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/M9B4.yaml" target="_blank" class="test-id-link" title="View M9B4 source in yaml-test-suite">M9B4</a></td>
@@ -795,13 +795,13 @@
         <td><span class="tag">double</span><span class="tag">spec</span><span class="tag">scalar</span><span class="tag">whitespace</span><span class="tag">upto-1.2</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="p2ad spec example 8.1. block scalar header spec literal folded comment scalar">
+      <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="p2ad spec example 8.1. block scalar header spec literal folded comment scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/P2AD.yaml" target="_blank" class="test-id-link" title="View P2AD source in yaml-test-suite">P2AD</a></td>
         <td>Spec Example 8.1. Block Scalar Header</td>
         <td>scalar</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">spec</span><span class="tag">literal</span><span class="tag">folded</span><span class="tag">comment</span><span class="tag">scalar</span></td>
-        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;l&#39; after document value">parse error: unexpected trailing content &#39;l&#39; after document value</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="prh3 spec example 7.9. single quoted lines single spec scalar whitespace upto-1.2">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/PRH3.yaml" target="_blank" class="test-id-link" title="View PRH3 source in yaml-test-suite">PRH3</a></td>
@@ -819,13 +819,13 @@
         <td><span class="tag">double</span><span class="tag">spec</span><span class="tag">scalar</span><span class="tag">whitespace</span><span class="tag">1.3-mod</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-stage="scalar" data-search="r4yg spec example 8.2. block indentation indicator spec literal folded scalar whitespace libyaml-err upto-1.2">
+      <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="r4yg spec example 8.2. block indentation indicator spec literal folded scalar whitespace libyaml-err upto-1.2">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/R4YG.yaml" target="_blank" class="test-id-link" title="View R4YG source in yaml-test-suite">R4YG</a></td>
         <td>Spec Example 8.2. Block Indentation Indicator</td>
         <td>scalar</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td><span class="tag">spec</span><span class="tag">literal</span><span class="tag">folded</span><span class="tag">scalar</span><span class="tag">whitespace</span><span class="tag">libyaml-err</span><span class="tag">upto-1.2</span></td>
-        <td><span class="error-msg" title="parse error: unexpected trailing content &#39;d&#39; after document value">parse error: unexpected trailing content &#39;d&#39; after document value</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="scalar" data-search="s7bg colon followed by comma scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/S7BG.yaml" target="_blank" class="test-id-link" title="View S7BG source in yaml-test-suite">S7BG</a></td>
