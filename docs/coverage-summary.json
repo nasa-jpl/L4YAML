@@ -1,0 +1,3074 @@
+{
+  "date": "2026-02-19T20:48:27-0800",
+  "overall": {
+    "correct": 270,
+    "correctRate": 64.903846,
+    "expectedFail": 57,
+    "failed": 47,
+    "passed": 213,
+    "skipped": 62,
+    "timeout": 0,
+    "total": 416,
+    "unexpectedPass": 37
+  },
+  "stages": {
+    "advanced": {
+      "correct": 44,
+      "correctRate": 54.320987,
+      "expectedFail": 0,
+      "failed": 20,
+      "passed": 44,
+      "skipped": 17,
+      "timeout": 0,
+      "total": 81,
+      "unexpectedPass": 0
+    },
+    "block": {
+      "correct": 78,
+      "correctRate": 71.559633,
+      "expectedFail": 6,
+      "failed": 13,
+      "passed": 72,
+      "skipped": 10,
+      "timeout": 0,
+      "total": 109,
+      "unexpectedPass": 8
+    },
+    "document": {
+      "correct": 12,
+      "correctRate": 50,
+      "expectedFail": 0,
+      "failed": 3,
+      "passed": 12,
+      "skipped": 7,
+      "timeout": 0,
+      "total": 24,
+      "unexpectedPass": 2
+    },
+    "error": {
+      "correct": 50,
+      "correctRate": 67.567567,
+      "expectedFail": 50,
+      "failed": 0,
+      "passed": 0,
+      "skipped": 0,
+      "timeout": 0,
+      "total": 74,
+      "unexpectedPass": 24
+    },
+    "flow": {
+      "correct": 40,
+      "correctRate": 86.956521,
+      "expectedFail": 0,
+      "failed": 3,
+      "passed": 40,
+      "skipped": 0,
+      "timeout": 0,
+      "total": 46,
+      "unexpectedPass": 3
+    },
+    "scalar": {
+      "correct": 46,
+      "correctRate": 56.09756,
+      "expectedFail": 1,
+      "failed": 8,
+      "passed": 45,
+      "skipped": 28,
+      "timeout": 0,
+      "total": 82,
+      "unexpectedPass": 0
+    }
+  },
+  "tests": [
+    {
+      "error": null,
+      "id": "229Q",
+      "name": "Spec Example 2.4. Sequence of Mappings",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "236B",
+      "name": "Invalid value after mapping",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": "parse error: unexpected trailing content ':' after document value",
+      "id": "26DV",
+      "name": "Whitespace around colon in mappings",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "27NA",
+      "name": "Spec Example 5.9. Directive Indicator",
+      "outcome": "skip",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "2AUY",
+      "name": "Tags in Block Sequence",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "2CMS",
+      "name": "Invalid mapping in plain multiline",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": "parse error: unexpected trailing content ':' after document value",
+      "id": "2EBW",
+      "name": "Allowed characters in keys",
+      "outcome": "fail",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "2G84",
+      "name": "Literal modifers",
+      "outcome": "expected-fail",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "2G84",
+      "name": "",
+      "outcome": "expected-fail",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "2G84",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "2G84",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "2JQS",
+      "name": "Block Mapping with Missing Keys",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "2LFX",
+      "name": "Spec Example 6.13. Reserved Directives [1.3]",
+      "outcome": "skip",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "2SXE",
+      "name": "Anchors With Colon in Name",
+      "outcome": "skip",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "2XXW",
+      "name": "Spec Example 2.25. Unordered Sets",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "33X3",
+      "name": "Three explicit integers in a block sequence",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": "parse error: unexpected trailing content '-' after document value",
+      "id": "35KP",
+      "name": "Tags for Root Objects",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "36F6",
+      "name": "Multiline plain scalar with empty line",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "3ALJ",
+      "name": "Block Sequence in Block Sequence",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "3GZX",
+      "name": "Spec Example 7.1. Alias Nodes",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "3HFZ",
+      "name": "Invalid content after document end marker",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "3MYT",
+      "name": "Plain Scalar looking like key, comment, anchor and tag",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "3R3P",
+      "name": "Single block sequence with anchor",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "3RLN",
+      "name": "Leading tabs in double quoted",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "3RLN",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "3RLN",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "3RLN",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "3RLN",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "3RLN",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "3UYS",
+      "name": "Escaped slash in double quotes",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "4ABK",
+      "name": "Flow Mapping Separate Values",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "4CQQ",
+      "name": "Spec Example 2.18. Multi-line Flow Scalars",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "4EJS",
+      "name": "Invalid tabs as indendation in a mapping",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "4FJ6",
+      "name": "Nested implicit complex keys",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "4GC6",
+      "name": "Spec Example 7.7. Single Quoted Characters",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "4H7K",
+      "name": "Flow sequence with invalid extra closing bracket",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "4HVU",
+      "name": "Wrong indendation in Sequence",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "4JVG",
+      "name": "Scalar value with two anchors",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "4MUZ",
+      "name": "Flow mapping colon on line after key",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "4MUZ",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "4MUZ",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "4Q9F",
+      "name": "Folded Block Scalar [1.3]",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "4QFQ",
+      "name": "Spec Example 8.2. Block Indentation Indicator [1.3]",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "4QFQ",
+      "name": "",
+      "outcome": "skip",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "4QFQ",
+      "name": "",
+      "outcome": "skip",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "4QFQ",
+      "name": "",
+      "outcome": "skip",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "4QFQ",
+      "name": "",
+      "outcome": "skip",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "4RWC",
+      "name": "Trailing spaces after flow collection",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "4UYU",
+      "name": "Colon in Double Quoted String",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "4V8U",
+      "name": "Plain scalar with backslashes",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "4WA9",
+      "name": "Literal scalars",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "4WA9",
+      "name": "",
+      "outcome": "skip",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "4ZYM",
+      "name": "Spec Example 6.4. Line Prefixes",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "52DL",
+      "name": "Explicit Non-Specific Tag [1.3]",
+      "outcome": "skip",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "54T7",
+      "name": "Flow Mapping",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "55WF",
+      "name": "Invalid escape in double quoted string",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "565N",
+      "name": "Construct Binary",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": "parse error: unexpected trailing content '-' after document value",
+      "id": "57H4",
+      "name": "Spec Example 8.22. Block Collection Nodes",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "58MP",
+      "name": "Flow mapping edge cases",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "5BVJ",
+      "name": "Spec Example 5.7. Block Scalar Indicators",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "5C5M",
+      "name": "Spec Example 7.15. Flow Mappings",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "5GBF",
+      "name": "Spec Example 6.5. Empty Lines",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "5KJE",
+      "name": "Spec Example 7.13. Flow Sequence",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "5LLU",
+      "name": "Block scalar with wrong indented line after spaces only",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "5MUD",
+      "name": "Colon and adjacent value on next line",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": "parse error: unhandled construct 'k' at line 0, column 0",
+      "id": "5NYZ",
+      "name": "Spec Example 6.9. Separated Comment",
+      "outcome": "fail",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "5T43",
+      "name": "Colon at the beginning of adjacent flow scalar",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "5T43",
+      "name": "",
+      "outcome": "skip",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "5T43",
+      "name": "",
+      "outcome": "skip",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "5TRB",
+      "name": "Invalid document-start marker in doublequoted tring",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": "parse error: unexpected content '%' after explicit document; expected '---' or '...'",
+      "id": "5TYM",
+      "name": "Spec Example 6.21. Local Tag Prefix",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "5U3A",
+      "name": "Sequence on same Line as Mapping Key",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "5WE3",
+      "name": "Spec Example 8.17. Explicit Block Mapping Entries",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "62EZ",
+      "name": "Invalid block mapping key on same line as previous key",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "652Z",
+      "name": "Question mark at start of flow key",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "65WH",
+      "name": "Single Entry Block Sequence",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "6BCT",
+      "name": "Spec Example 6.3. Separation Spaces",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": "parse error: unexpected trailing content ':' after document value",
+      "id": "6BFJ",
+      "name": "Mapping, key and flow sequence item anchors",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "6CA3",
+      "name": "Tab indented top flow",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "6CK3",
+      "name": "Spec Example 6.26. Tag Shorthands",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "6FWR",
+      "name": "Block Scalar Keep",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": "parse error: unexpected trailing content ':' after document value",
+      "id": "6H3V",
+      "name": "Backslashes in singlequotes",
+      "outcome": "fail",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "6HB6",
+      "name": "Spec Example 6.1. Indentation Spaces",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "6JQW",
+      "name": "Spec Example 2.13. In literals, newlines are preserved",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "6JTT",
+      "name": "Flow sequence without closing bracket",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "6JWB",
+      "name": "Tags for Block Objects",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "6KGN",
+      "name": "Anchor for empty node",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "6LVF",
+      "name": "Spec Example 6.13. Reserved Directives",
+      "outcome": "skip",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "6M2F",
+      "name": "Aliases in Explicit Block Mapping",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "6PBE",
+      "name": "Zero-indented sequences in explicit mapping keys",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "6PBE",
+      "name": "",
+      "outcome": "skip",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "6PBE",
+      "name": "",
+      "outcome": "skip",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "6S55",
+      "name": "Invalid scalar at the end of sequence",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": "parse error: unexpected trailing content ':' after document value",
+      "id": "6SLA",
+      "name": "Allowed characters in quoted mapping key",
+      "outcome": "fail",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "6VJK",
+      "name": "Spec Example 2.15. Folded newlines are preserved for \"more indented\" and blank lines",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "6WLZ",
+      "name": "Spec Example 6.18. Primary Tag Handle [1.3]",
+      "outcome": "skip",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "6WPF",
+      "name": "Spec Example 6.8. Flow Folding [1.3]",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "6XDY",
+      "name": "Two document start markers",
+      "outcome": "pass",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "6ZKB",
+      "name": "Spec Example 9.6. Stream",
+      "outcome": "skip",
+      "stage": "document"
+    },
+    {
+      "error": "parse error: unexpected token at { offset := 46, line := 4, col := 8 }; expected plain scalar at { offset := 46, line := 4, col := 8 }; expected block sequence at { offset := 46, line := 4, col := 8 }",
+      "id": "735Y",
+      "name": "Spec Example 8.20. Block Node Types",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": "parse error: unexpected trailing content 'c' after document value",
+      "id": "74H7",
+      "name": "Tags in Implicit Mapping",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "753E",
+      "name": "Block Scalar Strip [1.3]",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "7A4E",
+      "name": "Spec Example 7.6. Double Quoted Lines",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "7BMT",
+      "name": "Node and Mapping Key Anchors [1.3]",
+      "outcome": "skip",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "7BUB",
+      "name": "Spec Example 2.10. Node for “Sammy Sosa” appears twice in this document",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": "parse error: unexpected trailing content '!' after document value",
+      "id": "7FWL",
+      "name": "Spec Example 6.24. Verbatim Tags",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "7LBH",
+      "name": "Multiline double quoted implicit keys",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "7MNF",
+      "name": "Missing colon",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "7T8X",
+      "name": "Spec Example 8.10. Folded Lines - 8.13. Final Empty Lines",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "7TMG",
+      "name": "Comment in flow sequence before comma",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "7W2P",
+      "name": "Block Mapping with Missing Values",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": "parse error: unexpected content 'k' after explicit document; expected '---' or '...'",
+      "id": "7Z25",
+      "name": "Bare document after document end marker",
+      "outcome": "fail",
+      "stage": "document"
+    },
+    {
+      "error": "parse error: unexpected trailing content '-' after document value",
+      "id": "7ZZ5",
+      "name": "Empty flow collections",
+      "outcome": "fail",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "82AN",
+      "name": "Three dashes and content without space",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": "parse error: unexpected trailing content ':' after document value",
+      "id": "87E4",
+      "name": "Spec Example 7.8. Single Quoted Implicit Keys",
+      "outcome": "fail",
+      "stage": "flow"
+    },
+    {
+      "error": "parse error: unexpected trailing content ':' after document value",
+      "id": "8CWC",
+      "name": "Plain mapping key ending with colon",
+      "outcome": "fail",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "8G76",
+      "name": "Spec Example 6.10. Comment Lines",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "8KB6",
+      "name": "Multiline plain flow mapping key without value",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "8MK2",
+      "name": "Explicit Non-Specific Tag",
+      "outcome": "skip",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "8QBE",
+      "name": "Block Sequence in Block Mapping",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "8UDB",
+      "name": "Spec Example 7.14. Flow Sequence Entries",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "8XDJ",
+      "name": "Comment in plain multiline value",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": "parse error: unexpected token '😁' at { offset := 11, line := 1, col := 4 }; expected anchor name at { offset := 7, line := 1, col := 3 }; expected anchor (&name) at { offset := 7, line := 1, col := 3 }; expected block sequence at { offset := 7, line := 1, col := 3 }",
+      "id": "8XYN",
+      "name": "Anchor with unicode character",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "93JH",
+      "name": "Block Mappings in Block Sequence",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "93WF",
+      "name": "Spec Example 6.6. Line Folding [1.3]",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "96L6",
+      "name": "Spec Example 2.14. In the folded scalars, newlines become spaces",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "96NN",
+      "name": "Leading tab content in literals",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "96NN",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "98YD",
+      "name": "Spec Example 5.5. Comment Indicator",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "9BXH",
+      "name": "Multiline doublequoted flow mapping key without value",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "9C9N",
+      "name": "Wrong indented flow sequence",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "9CWY",
+      "name": "Invalid scalar at the end of mapping",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "9DXL",
+      "name": "Spec Example 9.6. Stream [1.3]",
+      "outcome": "skip",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "9FMG",
+      "name": "Multi-level Mapping Indent",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "9HCY",
+      "name": "Need document footer before directives",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "9J7A",
+      "name": "Simple Mapping Indent",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "9JBA",
+      "name": "Invalid comment after end of flow sequence",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "9KAX",
+      "name": "Various combinations of tags and anchors",
+      "outcome": "skip",
+      "stage": "advanced"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "9KBC",
+      "name": "Mapping starting at --- line",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "9MAG",
+      "name": "Flow sequence with invalid comma at the beginning",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "9MMA",
+      "name": "Directive by itself with no document",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "9MMW",
+      "name": "Single Pair Implicit Entries",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "9MQT",
+      "name": "Scalar doc with '...' in content",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "9MQT",
+      "name": "",
+      "outcome": "expected-fail",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "9SA2",
+      "name": "Multiline double quoted flow mapping key",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "9SHH",
+      "name": "Spec Example 5.8. Quoted Scalar Indicators",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "9TFX",
+      "name": "Spec Example 7.6. Double Quoted Lines [1.3]",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "9U5K",
+      "name": "Spec Example 2.12. Compact Nested Mapping",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "9WXW",
+      "name": "Spec Example 6.18. Primary Tag Handle",
+      "outcome": "skip",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "9YRD",
+      "name": "Multiline Scalar at Top Level",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "A2M4",
+      "name": "Spec Example 6.2. Indentation Indicators",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "A6F9",
+      "name": "Spec Example 8.4. Chomping Final Line Break",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "A984",
+      "name": "Multiline Scalar in Mapping",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": "parse error: sequence item at column 1, expected column 0 (wrong indentation)",
+      "id": "AB8U",
+      "name": "Sequence entry that looks like two with wrong indentation",
+      "outcome": "fail",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "AVM7",
+      "name": "Empty Stream",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": "parse error: unexpected trailing content '-' after document value",
+      "id": "AZ63",
+      "name": "Sequence With Same Indentation as Parent Mapping",
+      "outcome": "fail",
+      "stage": "block"
+    },
+    {
+      "error": "parse error: unexpected trailing content ':' after document value",
+      "id": "AZW3",
+      "name": "Lookahead test cases",
+      "outcome": "fail",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "B3HG",
+      "name": "Spec Example 8.9. Folded Scalar [1.3]",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "B63P",
+      "name": "Directive without document",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "BD7L",
+      "name": "Invalid mapping after sequence",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "BEC7",
+      "name": "Spec Example 6.14. “YAML” directive",
+      "outcome": "pass",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "BF9H",
+      "name": "Trailing comment in multiline plain scalar",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "BS4K",
+      "name": "Comment between plain scalar lines",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "BU8L",
+      "name": "Node Anchor and Tag on Seperate Lines",
+      "outcome": "skip",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "C2DT",
+      "name": "Spec Example 7.18. Flow Mapping Adjacent Values",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "C2SP",
+      "name": "Flow Mapping Key on two lines",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "C4HZ",
+      "name": "Spec Example 2.24. Global Tags",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "CC74",
+      "name": "Spec Example 6.20. Tag Handles",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "CFD4",
+      "name": "Empty implicit key in single pair flow sequences",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "CML9",
+      "name": "Missing comma in flow",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": "parse error: unexpected token at { offset := 29, line := 3, col := 1 }; expected plain scalar at { offset := 29, line := 3, col := 1 }; expected flow value at { offset := 29, line := 3, col := 1 }; expected flow sequence at { offset := 29, line := 3, col := 1 }",
+      "id": "CN3R",
+      "name": "Various location of anchors in flow sequence",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "CPZ3",
+      "name": "Doublequoted scalar starting with a tab",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "CQ3W",
+      "name": "Double quoted string without closing quote",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "CT4Q",
+      "name": "Spec Example 7.20. Single Pair Explicit Entry",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "CTN5",
+      "name": "Flow sequence with invalid extra comma",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "CUP7",
+      "name": "Spec Example 5.6. Node Property Indicators",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "CVW2",
+      "name": "Invalid comment after comma",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "CXX2",
+      "name": "Mapping with anchor on document start line",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "D49Q",
+      "name": "Multiline single quoted implicit keys",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "D83L",
+      "name": "Block scalar indicator order",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "D88J",
+      "name": "Flow Sequence in Block Mapping",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "D9TU",
+      "name": "Single Pair Block Mapping",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "DBG4",
+      "name": "Spec Example 7.10. Plain Characters",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "DC7X",
+      "name": "Various trailing tabs",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "DE56",
+      "name": "Trailing tabs in double quoted",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "DE56",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "DE56",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "DE56",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "DE56",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "DE56",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "DFF7",
+      "name": "Spec Example 7.16. Flow Mapping Entries",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "DHP8",
+      "name": "Flow Sequence",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "DK3J",
+      "name": "Zero indented block scalar with line that looks like a comment",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "DK4H",
+      "name": "Implicit key followed by newline",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "DK95",
+      "name": "Tabs that look like indentation",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "DK95",
+      "name": "",
+      "outcome": "unexpected-pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "DK95",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": "parse error: unexpected token at { offset := 1, line := 0, col := 1 }; expected plain scalar at { offset := 1, line := 0, col := 1 }",
+      "id": "DK95",
+      "name": "",
+      "outcome": "fail",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "DK95",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "DK95",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "DK95",
+      "name": "",
+      "outcome": "expected-fail",
+      "stage": "block"
+    },
+    {
+      "error": "parse error: unexpected token at { offset := 11, line := 1, col := 1 }; expected plain scalar at { offset := 11, line := 1, col := 1 }",
+      "id": "DK95",
+      "name": "",
+      "outcome": "fail",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "DK95",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "DMG6",
+      "name": "Wrong indendation in Map",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "DWX9",
+      "name": "Spec Example 8.8. Literal Content",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": "parse error: unexpected trailing content '*' after document value",
+      "id": "E76Z",
+      "name": "Aliases in Implicit Block Mapping",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "EB22",
+      "name": "Missing document-end marker before directive",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "EHF6",
+      "name": "Tags for Flow Objects",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "EW3V",
+      "name": "Wrong indendation in mapping",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "EX5H",
+      "name": "Multiline Scalar at Top Level [1.3]",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "EXG3",
+      "name": "Three dashes and content without space [1.3]",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "F2C7",
+      "name": "Anchors and Tags",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "F3CP",
+      "name": "Nested flow collections on one line",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "F6MC",
+      "name": "More indented lines at the beginning of folded block scalars",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "F8F9",
+      "name": "Spec Example 8.5. Chomping Trailing Lines",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "FBC9",
+      "name": "Allowed characters in plain scalars",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": "parse error: unexpected trailing content 'b' after document value",
+      "id": "FH7J",
+      "name": "Tags on Empty Scalars",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "FP8R",
+      "name": "Zero indented block scalar",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "FQ7F",
+      "name": "Spec Example 2.1. Sequence of Scalars",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "FRK4",
+      "name": "Spec Example 7.3. Completely Empty Flow Nodes",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "FTA2",
+      "name": "Single block sequence with anchor and explicit document start",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "FUP4",
+      "name": "Flow Sequence in Flow Sequence",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "G4RS",
+      "name": "Spec Example 2.17. Quoted Scalars",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "G5U8",
+      "name": "Plain dashes in flow sequence",
+      "outcome": "unexpected-pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "G7JE",
+      "name": "Multiline implicit keys",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "G992",
+      "name": "Spec Example 8.9. Folded Scalar",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "G9HC",
+      "name": "Invalid anchor in zero indented sequence",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "GDY7",
+      "name": "Comment that looks like a mapping key",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "GH63",
+      "name": "Mixed Block Mapping (explicit to implicit)",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "GT5M",
+      "name": "Node anchor in sequence",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": "parse error: unexpected trailing content 'd' after document value",
+      "id": "H2RW",
+      "name": "Blank lines",
+      "outcome": "fail",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "H3Z8",
+      "name": "Literal unicode",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "H7J7",
+      "name": "Node anchor not indented",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "H7TQ",
+      "name": "Extra words on %YAML directive",
+      "outcome": "unexpected-pass",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "HM87",
+      "name": "Scalars in flow start with syntax char",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "HM87",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "HMK4",
+      "name": "Spec Example 2.16. Indentation determines scope",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": "parse error: unexpected trailing content ':' after document value",
+      "id": "HMQ5",
+      "name": "Spec Example 6.23. Node Properties",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "HRE5",
+      "name": "Double quoted scalar with escaped single quote",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "HS5T",
+      "name": "Spec Example 7.12. Plain Lines",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "HU3P",
+      "name": "Invalid Mapping in plain scalar",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "HWV9",
+      "name": "Document-end marker",
+      "outcome": "pass",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "J3BT",
+      "name": "Spec Example 5.12. Tabs and Spaces",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "J5UC",
+      "name": "Multiple Pair Block Mapping",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "J7PZ",
+      "name": "Spec Example 2.26. Ordered Mappings",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "J7VC",
+      "name": "Empty Lines Between Mapping Elements",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": "parse error: unexpected trailing content 'h' after document value",
+      "id": "J9HZ",
+      "name": "Spec Example 2.9. Single Document with Two Comments",
+      "outcome": "fail",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "JEF9",
+      "name": "Trailing whitespace in streams",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "JEF9",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "JEF9",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": "parse error: unexpected trailing content '-' after document value",
+      "id": "JHB9",
+      "name": "Spec Example 2.7. Two Documents in a Stream",
+      "outcome": "fail",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "JKF3",
+      "name": "Multiline unidented double quoted block key",
+      "outcome": "expected-fail",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "JQ4R",
+      "name": "Spec Example 8.14. Block Sequence",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "JR7V",
+      "name": "Question marks in scalars",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "JS2J",
+      "name": "Spec Example 6.29. Node Anchors",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "JTV5",
+      "name": "Block Mapping with Multiline Scalars",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "JY7Z",
+      "name": "Trailing content that looks like a mapping",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "K3WX",
+      "name": "Colon and adjacent value after comment on next line",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "K4SU",
+      "name": "Multiple Entry Block Sequence",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "K527",
+      "name": "Spec Example 6.6. Line Folding",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "K54U",
+      "name": "Tab after document header",
+      "outcome": "pass",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "K858",
+      "name": "Spec Example 8.6. Empty Scalar Chomping",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "KH5V",
+      "name": "Inline tabs in double quoted",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "KH5V",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "KH5V",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "KK5P",
+      "name": "Various combinations of explicit block mappings",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "KMK3",
+      "name": "Block Submapping",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "KS4U",
+      "name": "Invalid item after end of flow sequence",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "KSS4",
+      "name": "Scalars on --- line",
+      "outcome": "skip",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "L24T",
+      "name": "Trailing line of spaces",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "L24T",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": "parse error: unexpected trailing content '#' after document value",
+      "id": "L383",
+      "name": "Two scalar docs with trailing comments",
+      "outcome": "fail",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "L94M",
+      "name": "Tags in Explicit Mapping",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "L9U5",
+      "name": "Spec Example 7.11. Plain Implicit Keys",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "LE5A",
+      "name": "Spec Example 7.24. Flow Nodes",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "LHL4",
+      "name": "Invalid tag",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "LP6E",
+      "name": "Whitespace After Scalars in Flow",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": "parse error: unexpected trailing content ':' after document value",
+      "id": "LQZ7",
+      "name": "Spec Example 7.4. Double Quoted Implicit Keys",
+      "outcome": "fail",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "LX3P",
+      "name": "Implicit Flow Mapping Key on one line",
+      "outcome": "skip",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "M29M",
+      "name": "Literal Block Scalar",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "M2N8",
+      "name": "Question mark edge cases",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": "parse error: mapping entry at column 4, expected column 0 (wrong indentation)",
+      "id": "M2N8",
+      "name": "",
+      "outcome": "fail",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "M5C3",
+      "name": "Spec Example 8.21. Block Scalar Nodes",
+      "outcome": "skip",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "M5DY",
+      "name": "Spec Example 2.11. Mapping between Sequences",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "M6YH",
+      "name": "Block sequence indentation",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "M7A3",
+      "name": "Spec Example 9.3. Bare Documents",
+      "outcome": "skip",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "M7NX",
+      "name": "Nested flow collections",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "M9B4",
+      "name": "Spec Example 8.7. Literal Scalar",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "MJS9",
+      "name": "Spec Example 6.7. Block Folding",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "MUS6",
+      "name": "Directive variants",
+      "outcome": "unexpected-pass",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "MUS6",
+      "name": "",
+      "outcome": "expected-fail",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "MUS6",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "MUS6",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "MUS6",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "MUS6",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "MUS6",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "MXS3",
+      "name": "Flow Mapping in Block Sequence",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "MYW6",
+      "name": "Block Scalar Strip",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "MZX3",
+      "name": "Non-Specific Tags on Scalars",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "N4JP",
+      "name": "Bad indentation in mapping",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "N782",
+      "name": "Invalid document markers in flow style",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "NAT4",
+      "name": "Various empty or newline only quoted strings",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": "parse error: unexpected trailing content 't' after document value",
+      "id": "NB6Z",
+      "name": "Multiline plain value with tabs on empty lines",
+      "outcome": "fail",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "NHX8",
+      "name": "Empty Lines at End of Document",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "NJ66",
+      "name": "Multiline plain flow mapping key",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "NKF9",
+      "name": "Empty keys in block and flow mapping",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "NP9H",
+      "name": "Spec Example 7.5. Double Quoted Line Breaks",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "P2AD",
+      "name": "Spec Example 8.1. Block Scalar Header",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "P2EQ",
+      "name": "Invalid sequene item on same line as previous item",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": "parse error: unexpected trailing content '#' after document value",
+      "id": "P76L",
+      "name": "Spec Example 6.19. Secondary Tag Handle",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": "parse error: unhandled construct 'k' at line 0, column 0",
+      "id": "P94K",
+      "name": "Spec Example 6.11. Multi-Line Comments",
+      "outcome": "fail",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "PBJ2",
+      "name": "Spec Example 2.3. Mapping Scalars to Sequences",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "PRH3",
+      "name": "Spec Example 7.9. Single Quoted Lines",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "PUW8",
+      "name": "Document start on last line",
+      "outcome": "pass",
+      "stage": "document"
+    },
+    {
+      "error": "parse error: unexpected trailing content 'b' after document value",
+      "id": "PW8X",
+      "name": "Anchors on Empty Scalars",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "Q4CL",
+      "name": "Trailing content after quoted value",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "Q5MG",
+      "name": "Tab at beginning of line followed by a flow mapping",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "Q88A",
+      "name": "Spec Example 7.23. Flow Content",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "Q8AD",
+      "name": "Spec Example 7.5. Double Quoted Line Breaks [1.3]",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "Q9WF",
+      "name": "Spec Example 6.12. Separation Spaces",
+      "outcome": "skip",
+      "stage": "advanced"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "QB6E",
+      "name": "Wrong indented multiline quoted scalar",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "QF4Y",
+      "name": "Spec Example 7.19. Single Pair Flow Mappings",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "QLJ7",
+      "name": "Tag shorthand used in documents but only defined in the first",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "QT73",
+      "name": "Comment and document-end marker",
+      "outcome": "pass",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "R4YG",
+      "name": "Spec Example 8.2. Block Indentation Indicator",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "R52L",
+      "name": "Nested flow mapping sequence and mappings",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "RHX7",
+      "name": "YAML directive without document end marker",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": "parse error: unexpected trailing content '-' after document value",
+      "id": "RLU9",
+      "name": "Sequence Indent",
+      "outcome": "fail",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "RR7F",
+      "name": "Mixed Block Mapping (implicit to explicit)",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "RTP8",
+      "name": "Spec Example 9.2. Document Markers",
+      "outcome": "pass",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "RXY3",
+      "name": "Invalid document-end marker in single quoted string",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "RZP5",
+      "name": "Various Trailing Comments [1.3]",
+      "outcome": "skip",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "RZT7",
+      "name": "Spec Example 2.28. Log File",
+      "outcome": "pass",
+      "stage": "document"
+    },
+    {
+      "error": "parse error: unexpected trailing content ':' after document value",
+      "id": "S3PD",
+      "name": "Spec Example 8.18. Implicit Block Mapping Entries",
+      "outcome": "fail",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "S3PD",
+      "name": "",
+      "outcome": "skip",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "S4GJ",
+      "name": "Invalid text after block scalar indicator",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "S4JQ",
+      "name": "Spec Example 6.28. Non-Specific Tags",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "S4T7",
+      "name": "Document with footer",
+      "outcome": "pass",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "S7BG",
+      "name": "Colon followed by comma",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "S98Z",
+      "name": "Block scalar with more spaces than first content line",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": "parse error: unexpected trailing content '-' after document value",
+      "id": "S9E8",
+      "name": "Spec Example 5.3. Block Structure Indicators",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "SBG9",
+      "name": "Flow Sequence in Flow Mapping",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "SF5V",
+      "name": "Duplicate YAML directive",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": "parse error: unexpected trailing content '-' after document value",
+      "id": "SKE5",
+      "name": "Anchor before zero indented sequence",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "SM9W",
+      "name": "Single character streams",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "SM9W",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "SR86",
+      "name": "Anchor plus Alias",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "SSW6",
+      "name": "Spec Example 7.7. Single Quoted Characters [1.3]",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "SU5Z",
+      "name": "Comment without whitespace after doublequoted scalar",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "SU74",
+      "name": "Anchor and alias as mapping key",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "SY6V",
+      "name": "Anchor before sequence entry on same line",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "SYW4",
+      "name": "Spec Example 2.2. Mapping Scalars to Scalars",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "T26H",
+      "name": "Spec Example 8.8. Literal Content [1.3]",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "T4YY",
+      "name": "Spec Example 7.9. Single Quoted Lines [1.3]",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "T5N4",
+      "name": "Spec Example 8.7. Literal Scalar [1.3]",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "T833",
+      "name": "Flow mapping missing a separating comma",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "TD5N",
+      "name": "Invalid scalar after sequence",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "TE2A",
+      "name": "Spec Example 8.16. Block Mappings",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "TL85",
+      "name": "Spec Example 6.8. Flow Folding",
+      "outcome": "pass",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "TS54",
+      "name": "Folded Block Scalar",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "U3C3",
+      "name": "Spec Example 6.16. “TAG” directive",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "U3XV",
+      "name": "Node and Mapping Key Anchors",
+      "outcome": "skip",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "U44R",
+      "name": "Bad indentation in mapping (2)",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "U99R",
+      "name": "Invalid comma in tag",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "U9NS",
+      "name": "Spec Example 2.8. Play by Play Feed from a Game",
+      "outcome": "pass",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "UDM2",
+      "name": "Plain URL in flow mapping",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "UDR7",
+      "name": "Spec Example 5.4. Flow Collection Indicators",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "UGM3",
+      "name": "Spec Example 2.27. Invoice",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "UKK6",
+      "name": "Syntax character edge cases",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": "parse error: unexpected trailing content ':' after document value",
+      "id": "UKK6",
+      "name": "",
+      "outcome": "fail",
+      "stage": "block"
+    },
+    {
+      "error": "parse error: unexpected token at { offset := 2, line := 1, col := 0 }",
+      "id": "UKK6",
+      "name": "",
+      "outcome": "fail",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "UT92",
+      "name": "Spec Example 9.4. Explicit Documents",
+      "outcome": "pass",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "UV7Q",
+      "name": "Legal tab after indentation",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "V55R",
+      "name": "Aliases in Block Sequence",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "V9D5",
+      "name": "Spec Example 8.19. Compact Block Mappings",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "VJP3",
+      "name": "Flow collections over many lines",
+      "outcome": "unexpected-pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "VJP3",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": "parse error: unexpected token at { offset := 2, line := 0, col := 2 }; expected plain scalar at { offset := 2, line := 0, col := 2 }; expected block sequence at { offset := 2, line := 0, col := 2 }",
+      "id": "W42U",
+      "name": "Spec Example 8.15. Block Sequence Entry Types",
+      "outcome": "fail",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "W4TN",
+      "name": "Spec Example 9.5. Directives Documents",
+      "outcome": "skip",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "W5VH",
+      "name": "Allowed characters in alias",
+      "outcome": "skip",
+      "stage": "advanced"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "W9L4",
+      "name": "Literal block scalar with more spaces in first line",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": "parse error: unexpected token at { offset := 15, line := 1, col := 13 }; expected plain scalar at { offset := 15, line := 1, col := 13 }; expected flow value at { offset := 15, line := 1, col := 13 }; expected flow mapping at { offset := 15, line := 1, col := 13 }",
+      "id": "WZ62",
+      "name": "Spec Example 7.2. Empty Content",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": "parse error: unexpected token at { offset := 2, line := 0, col := 2 }; expected plain scalar at { offset := 2, line := 0, col := 2 }; expected flow mapping at { offset := 2, line := 0, col := 2 }",
+      "id": "X38W",
+      "name": "Aliases in Flow Objects",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "X4QW",
+      "name": "Comment without whitespace after block scalar indicator",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "X8DW",
+      "name": "Explicit key and value seperated by comment",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": "parse error: unexpected content '%' after explicit document; expected '---' or '...'",
+      "id": "XLQ9",
+      "name": "Multiline scalar that looks like a YAML directive",
+      "outcome": "fail",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "XV9V",
+      "name": "Spec Example 6.5. Empty Lines [1.3]",
+      "outcome": "skip",
+      "stage": "scalar"
+    },
+    {
+      "error": null,
+      "id": "XW4D",
+      "name": "Various Trailing Comments",
+      "outcome": "skip",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "Y2GN",
+      "name": "Anchor with colon in the middle",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "Y79Y",
+      "name": "Tabs in various contexts",
+      "outcome": "expected-fail",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "Y79Y",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "Y79Y",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "Y79Y",
+      "name": "",
+      "outcome": "unexpected-pass",
+      "stage": "block"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "Y79Y",
+      "name": "",
+      "outcome": "unexpected-pass",
+      "stage": "block"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "Y79Y",
+      "name": "",
+      "outcome": "unexpected-pass",
+      "stage": "block"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "Y79Y",
+      "name": "",
+      "outcome": "unexpected-pass",
+      "stage": "block"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "Y79Y",
+      "name": "",
+      "outcome": "unexpected-pass",
+      "stage": "block"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "Y79Y",
+      "name": "",
+      "outcome": "unexpected-pass",
+      "stage": "block"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "Y79Y",
+      "name": "",
+      "outcome": "unexpected-pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "Y79Y",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "YD5X",
+      "name": "Spec Example 2.5. Sequence of Sequences",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "YJV2",
+      "name": "Dash in flow sequence",
+      "outcome": "unexpected-pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "Z67P",
+      "name": "Spec Example 8.21. Block Scalar Nodes [1.3]",
+      "outcome": "skip",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "Z9M4",
+      "name": "Spec Example 6.22. Global Tag Prefix",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": "expected parse failure but succeeded",
+      "id": "ZCZ6",
+      "name": "Invalid mapping in plain single line value",
+      "outcome": "unexpected-pass",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "ZF4X",
+      "name": "Spec Example 2.6. Mapping of Mappings",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": "parse error: unexpected trailing content 'c' after document value",
+      "id": "ZH7C",
+      "name": "Anchors in Mapping",
+      "outcome": "fail",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "ZK9H",
+      "name": "Nested top level flow mapping",
+      "outcome": "pass",
+      "stage": "flow"
+    },
+    {
+      "error": null,
+      "id": "ZL4Z",
+      "name": "Invalid nested mapping",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "ZVH3",
+      "name": "Wrong indented sequence item",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "ZWK4",
+      "name": "Key with anchor after missing explicit mapping value",
+      "outcome": "pass",
+      "stage": "advanced"
+    },
+    {
+      "error": null,
+      "id": "ZXT5",
+      "name": "Implicit key followed by newline and adjacent value",
+      "outcome": "expected-fail",
+      "stage": "error"
+    },
+    {
+      "error": null,
+      "id": "ZYU8",
+      "name": "Directive variants",
+      "outcome": "pass",
+      "stage": "document"
+    },
+    {
+      "error": null,
+      "id": "ZYU8",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "ZYU8",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    },
+    {
+      "error": null,
+      "id": "ZYU8",
+      "name": "",
+      "outcome": "pass",
+      "stage": "block"
+    }
+  ],
+  "verified": {
+    "suites": [
+      {
+        "allPass": true,
+        "label": "Unit Tests",
+        "passed": 17,
+        "total": 17
+      },
+      {
+        "allPass": true,
+        "label": "Parser Integration Tests",
+        "passed": 25,
+        "total": 25
+      },
+      {
+        "allPass": true,
+        "label": "Quoted Folding Tests",
+        "passed": 34,
+        "total": 34
+      },
+      {
+        "allPass": true,
+        "label": "Layer 1 Verification Tests",
+        "passed": 138,
+        "total": 138
+      },
+      {
+        "allPass": true,
+        "label": "String Lemma Tests",
+        "passed": 129,
+        "total": 129
+      },
+      {
+        "allPass": true,
+        "label": "Anchor & Alias Tests",
+        "passed": 33,
+        "total": 33
+      },
+      {
+        "allPass": true,
+        "label": "Tag Tests",
+        "passed": 44,
+        "total": 44
+      },
+      {
+        "allPass": true,
+        "label": "Explicit Key Tests",
+        "passed": 66,
+        "total": 66
+      },
+      {
+        "allPass": true,
+        "label": "Flow Completeness Tests",
+        "passed": 88,
+        "total": 88
+      },
+      {
+        "allPass": true,
+        "label": "CharClass Correspondence Tests",
+        "passed": 224,
+        "total": 224
+      },
+      {
+        "allPass": true,
+        "label": "Structural Validation Tests",
+        "passed": 135,
+        "total": 135
+      },
+      {
+        "allPass": true,
+        "label": "Demo",
+        "passed": 7,
+        "total": 7
+      }
+    ],
+    "totalPassed": 940,
+    "totalTests": 940
+  }
+}

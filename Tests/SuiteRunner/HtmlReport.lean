@@ -1,4 +1,6 @@
 import Batteries.Data.String.Matcher
+import Lean.Data.Json
+import Batteries.Lean.Json
 import Tests.SuiteRunner.Meta
 import Tests.VerifiedResult
 
@@ -72,6 +74,136 @@ def CoverageStats.correctCount (s : CoverageStats) : Nat :=
 def CoverageStats.successRate (s : CoverageStats) : Float :=
   if s.total == 0 then 0.0
   else (s.correctCount.toFloat / s.total.toFloat) * 100.0
+
+/-! ## JSON Summary — Lean.Data.Json serialization -/
+
+open Lean in
+instance : ToJson TestOutcome where
+  toJson
+    | .pass           => "pass"
+    | .fail           => "fail"
+    | .expectedFail   => "expected-fail"
+    | .unexpectedPass => "unexpected-pass"
+    | .skip _         => "skip"
+    | .timeout        => "timeout"
+
+open Lean in
+instance : ToJson Stage where
+  toJson
+    | .scalar   => "scalar"
+    | .flow     => "flow"
+    | .block    => "block"
+    | .document => "document"
+    | .advanced => "advanced"
+    | .error    => "error"
+    | .all      => "all"
+
+/-- Convert a ratio to a `JsonNumber` with fixed decimal precision.
+    `ratioPercent num denom scale` computes `(num / denom) × 100`
+    with `scale` decimal digits (default 6). -/
+private def ratioPercent (num denom : Nat) (scale : Nat := 6) : Lean.JsonNumber :=
+  if denom == 0 then { mantissa := 0, exponent := scale }
+  else { mantissa := (num * 100 * (10 ^ scale) / denom : Nat), exponent := scale }
+
+open Lean in
+instance : ToJson CoverageStats where
+  toJson s := Json.mkObj [
+    ("total",          toJson s.total),
+    ("passed",         toJson s.passed),
+    ("failed",         toJson s.failed),
+    ("expectedFail",   toJson s.expectedFail),
+    ("unexpectedPass", toJson s.unexpectedPass),
+    ("skipped",        toJson s.skipped),
+    ("timeout",        toJson s.timeout),
+    ("correct",        toJson s.correctCount),
+    ("correctRate",    Json.num (ratioPercent s.correctCount s.total))
+  ]
+
+/-- JSON-serializable per-test entry. -/
+structure JsonTestEntry where
+  id      : String
+  name    : String
+  stage   : Stage
+  outcome : TestOutcome
+  error   : Option String := none
+  deriving Lean.ToJson
+
+/-- JSON-serializable verified-suite summary row. -/
+structure JsonVerifiedSuite where
+  label   : String
+  passed  : Nat
+  total   : Nat
+  allPass : Bool
+  deriving Lean.ToJson
+
+/-- JSON-serializable verified section (aggregate + per-suite). -/
+structure JsonVerifiedSection where
+  totalPassed : Nat
+  totalTests  : Nat
+  suites      : Array JsonVerifiedSuite
+  deriving Lean.ToJson
+
+/-- Standard 2-space-indented JSON pretty printer.
+    Lean's built-in `Json.pretty` uses `Format` (width-based line breaking)
+    which produces non-standard indentation.  This gives conventional output
+    suitable for `jq`, `python -m json.tool`, etc. -/
+private partial def jsonPretty (j : Lean.Json) (indent : Nat := 0) : String :=
+  let pad  := "".pushn ' ' (indent * 2)
+  let pad1 := "".pushn ' ' ((indent + 1) * 2)
+  match j with
+  | .null   => "null"
+  | .bool b => if b then "true" else "false"
+  | .num n  => toString n
+  | .str s  => Lean.Json.renderString s
+  | .arr items =>
+    if items.isEmpty then "[]"
+    else
+      let elems := items.toList.map fun v => pad1 ++ jsonPretty v (indent + 1)
+      "[\n" ++ String.intercalate ",\n" elems ++ "\n" ++ pad ++ "]"
+  | .obj fields =>
+    if fields.isEmpty then "{}"
+    else
+      let entries := fields.toList.map fun (k, v) =>
+        pad1 ++ Lean.Json.renderString k ++ ": " ++ jsonPretty v (indent + 1)
+      "{\n" ++ String.intercalate ",\n" entries ++ "\n" ++ pad ++ "}"
+
+/-- Generate a machine-readable JSON summary of test results.
+    Includes per-stage breakdown, per-test outcomes, and verified suite totals.
+    Designed to be consumed by CI scripts, documentation updaters, and analysis
+    tools. -/
+def generateJsonSummary (results : Array ReportResult) (dateStamp : String)
+    (verifiedSuites : Option (Array Tests.VerifiedSuiteResult) := none) : String :=
+  open Lean in
+  -- Per-stage stats
+  let stages : List Stage := [.scalar, .flow, .block, .document, .advanced, .error]
+  let stageFields := stages.map fun stage =>
+    let stageResults := results.filter (fun r => r.testCase.stage == stage)
+    (toString stage, toJson (CoverageStats.fromResults stageResults))
+  -- Per-test entries
+  let testEntries := results.map fun r =>
+    toJson ({ id      := r.testCase.id
+              name    := r.testCase.name
+              stage   := r.testCase.stage
+              outcome := r.outcome
+              error   := r.errorMsg : JsonTestEntry })
+  -- Optional verified section
+  let verifiedField := match verifiedSuites with
+    | some suites =>
+      let totalPassed := suites.foldl (fun acc s => acc + s.passed) 0
+      let totalTests  := suites.foldl (fun acc s => acc + s.total) 0
+      let jsonSuites  := suites.map fun s =>
+        ({ label := s.label, passed := s.passed,
+           total := s.total, allPass := s.allPass : JsonVerifiedSuite })
+      [("verified", toJson ({ totalPassed, totalTests,
+                              suites := jsonSuites : JsonVerifiedSection }))]
+    | none => []
+  -- Assemble top-level object
+  let root := Json.mkObj <|
+    [ ("date",    toJson dateStamp),
+      ("overall", toJson (CoverageStats.fromResults results)),
+      ("stages",  Json.mkObj stageFields),
+      ("tests",   Json.arr testEntries) ] ++ verifiedField
+  jsonPretty root
 
 /-! ## Verified Test Suites — types from Tests.VerifiedResult -/
 
@@ -885,6 +1017,13 @@ def writeReports (results : Array ReportResult) (outDir : String)
     IO.FS.writeFile s!"{dir}/verified-tests.html" html
     IO.println s!"  wrote {dir}/verified-tests.html"
   | none => pure ()
+
+  -- Write machine-readable JSON summary
+  let dateResult ← IO.Process.output { cmd := "date", args := #["+%Y-%m-%dT%H:%M:%S%z"] }
+  let dateStr := dateResult.stdout.trimAscii.toString
+  let json := generateJsonSummary results dateStr (verifiedSuites := verifiedSuites)
+  IO.FS.writeFile s!"{dir}/coverage-summary.json" json
+  IO.println s!"  wrote {dir}/coverage-summary.json"
 
   IO.println s!"\nHTML reports written to {dir}/"
 
