@@ -75,7 +75,7 @@ after unfolding.
 theorem isFlowIndicator_correspondence (c : Char) :
     Grammar.isFlowIndicator c ↔ Parse.isFlowIndicator c = true := by
   unfold Grammar.isFlowIndicator Parse.isFlowIndicator
-  simp [List.mem_cons, List.elem, Bool.or_eq_true]
+  simp [List.mem_cons, Bool.or_eq_true]
 
 /-! ## isIndicator: Grammar indicators ↔ Parse.isIndicator -/
 
@@ -88,7 +88,7 @@ theorem isIndicator_equiv (c : Char) :
           '\'', '"', '%', '@', '`'] : Prop) ↔
     Parse.isIndicator c = true := by
   unfold Parse.isIndicator
-  simp [List.mem_cons, List.elem, Bool.or_eq_true]
+  simp [List.mem_cons, Bool.or_eq_true]
 
 /-! ## canStartPlainScalar (base condition)
 
@@ -110,7 +110,7 @@ theorem canStartPlainScalar_base (c : Char) (next : Option Char)
   have h1 : (c == '-') = false := Bool.eq_false_iff.mpr (by simpa using hDash)
   have h2 : (c == '?') = false := Bool.eq_false_iff.mpr (by simpa using hQ)
   have h3 : (c == ':') = false := Bool.eq_false_iff.mpr (by simpa using hColon)
-  simp only [h1, h2, h3, Bool.false_or, ↓reduceIte]
+  simp only [h1, h2, h3, Bool.false_or]
   -- Goal: (!Parse.isIndicator c && !Parse.isWhiteSpace c && !Parse.isLineBreak c) = true
   have hNotIndBool : Parse.isIndicator c = false := by
     rw [Bool.eq_false_iff]

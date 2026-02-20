@@ -42,6 +42,20 @@ pass/fail results staged by feature coverage.
 open Lean4Yaml
 open Tests.SuiteRunner
 
+/-! ## Debug Helpers -/
+
+/-- Flush stdout so piped output (e.g., `| tee`) appears immediately. -/
+private def flushStdout : IO Unit := do (← IO.getStdout).flush
+
+/-- Log a timestamped debug message to stderr.
+    Stderr is line-buffered even when stdout is piped, so these
+    always appear immediately. -/
+private def dbg (startMs : Nat) (msg : String) : IO Unit := do
+  let now ← IO.monoMsNow
+  let elapsed := now - startMs
+  IO.eprintln s!"[DBG +{elapsed}ms] {msg}"
+  (← IO.getStderr).flush
+
 /-! ## Test Execution -/
 
 /-- Result of running a single test case. -/
@@ -136,7 +150,7 @@ def runStage (stage : Stage) (testCases : Array TestCase)
     stats := { stats with total := stats.total + 1 }
     -- Show progress for every test so user can see we're not stuck
     IO.print s!"  [{idx}/{filtered.size}] {tc.id} "
-    (← IO.getStdout).flush
+    flushStdout
     let result ← runTest tc
     match result with
     | .pass =>
@@ -172,16 +186,17 @@ def parseStageArg (arg : String) : Stage :=
 
 /-- Run all test cases and collect ReportResults for HTML generation. -/
 def runAllForReport (testCases : Array TestCase) (stage : Stage)
-    (timeoutSec : Nat := 2) : IO (Array ReportResult) := do
+    (timeoutSec : Nat := 2) (startMs : Nat := 0) : IO (Array ReportResult) := do
   let filtered := if stage == .all then testCases
                   else testCases.filter (fun tc =>
                     tc.stage == stage || (stage != .error && tc.inStage stage))
+  dbg startMs s!"runAllForReport: {filtered.size} tests to run"
   let mut results : Array ReportResult := #[]
   let mut idx : Nat := 0
   for tc in filtered do
     idx := idx + 1
     IO.print s!"  [{idx}/{filtered.size}] {tc.id} "
-    (← IO.getStdout).flush
+    flushStdout
     let result ← runTest tc timeoutSec
     let reportResult : ReportResult := match result with
       | .pass =>
@@ -208,10 +223,18 @@ def runAllForReport (testCases : Array TestCase) (stage : Stage)
     | .unexpectedPass => IO.println s!"⚠ unexpected pass"
     | .skip reason => IO.println s!"○ {reason}"
     | .timeout => IO.println s!"⏱ timeout"
+    flushStdout
+    -- Periodic stderr progress (every 25 tests)
+    if idx % 25 == 0 then
+      dbg startMs s!"runAllForReport: completed {idx}/{filtered.size}"
     results := results.push reportResult
+  dbg startMs s!"runAllForReport: finished all {filtered.size} tests"
   return results
 
 def main (args : List String) : IO UInt32 := do
+  let t0 ← IO.monoMsNow
+  dbg t0 "suiterunner starting"
+
   -- Parse arguments
   let mut stageArg := "all"
   let mut verbose := false
@@ -246,16 +269,23 @@ def main (args : List String) : IO UInt32 := do
   IO.println "  yaml-test-suite Runner for lean4-yaml-verified"
   IO.println "══════════════════════════════════════════════════════════"
   IO.println ""
+  flushStdout
+  dbg t0 "banner printed"
 
   -- Read and parse all test files
   IO.print "Loading test files... "
+  flushStdout
+  dbg t0 "reading test files from yaml-test-suite/src"
   let files ← readTestFiles suiteDir
+  dbg t0 s!"read {files.size} files, parsing metadata"
   let mut allCases : Array TestCase := #[]
   for pair in files do
     let cases := parseTestFile pair.1 pair.2
     allCases := allCases ++ cases
+  dbg t0 s!"parsed {allCases.size} test cases"
   IO.println s!"{allCases.size} test cases from {files.size} files"
   IO.println ""
+  flushStdout
 
   -- Print stage distribution
   IO.println "Test distribution by stage:"
@@ -264,19 +294,27 @@ def main (args : List String) : IO UInt32 := do
     let count := allCases.filter (·.stage == s) |>.size
     IO.println s!"  {s}: {count}"
   IO.println ""
+  flushStdout
+  dbg t0 "distribution printed, entering main test loop"
 
   -- HTML report mode: run all tests and generate reports
   match htmlDir with
   | some dir =>
     IO.println s!"Running all tests for HTML report..."
     IO.println (String.ofList (List.replicate 60 '-'))
-    let results ← runAllForReport allCases .all
+    flushStdout
+    let results ← runAllForReport allCases .all (startMs := t0)
     IO.println (String.ofList (List.replicate 60 '-'))
+    flushStdout
+    dbg t0 "computing coverage stats"
     let stats := CoverageStats.fromResults results
     IO.println s!"\nCorrect: {stats.correctCount}/{stats.total} ({stats.successRate.floor}%)"
+    flushStdout
 
     -- Run verified test suites directly (no subprocess)
     IO.println "\nRunning verified test suites..."
+    flushStdout
+    dbg t0 "starting verified test suites"
     let collectors : Array (IO Tests.VerifiedSuiteResult) := #[
       Tests.collectTests,
       Tests.Parse.collectTests,
@@ -296,14 +334,20 @@ def main (args : List String) : IO UInt32 := do
       let result ← collect
       let icon := if result.allPass then "✓" else "✗"
       IO.println s!"  {result.label}: {icon} {result.passed}/{result.total}"
+      flushStdout
+      dbg t0 s!"verified suite: {result.label} {result.passed}/{result.total}"
       verifiedSuites := verifiedSuites.push result
     let totalVPassed := verifiedSuites.foldl (fun acc s => acc + s.passed) 0
     let totalVTests := verifiedSuites.foldl (fun acc s => acc + s.total) 0
     IO.println s!"\nVerified: {totalVPassed}/{totalVTests}"
+    flushStdout
 
+    dbg t0 "generating HTML reports"
     IO.println s!"\nGenerating HTML reports..."
+    flushStdout
     writeReports results dir
       (verifiedSuites := some verifiedSuites)
+    dbg t0 "done"
     return 0
   | none => pure ()
 
