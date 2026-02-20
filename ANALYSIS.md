@@ -549,6 +549,24 @@ Option A is the most explicit and proof-friendly — it makes the dual semantics
 - **Compiler warnings**: Removed 4 of 7 warnings. Unused `List.elem` simp arguments in `CharClass.lean` (2 instances), unused `↓reduceIte` simp argument in `CharClass.lean`, deprecated `String.next` simp in `Termination.lean`. Remaining 3 are intentional `sorry` stubs.
 - **SuiteRunner debug output**: Added timestamped stderr logging (`dbg` helper), aggressive stdout flushing, and periodic progress every 25 tests. Ensures GitHub Actions can diagnose hangs — the infinite loop was caught because zero output appeared on both stdout and stderr despite the debug instrumentation.
 
+#### T3+T4 implementation results (2026-02-21)
+
+**T4 fix** (`Block.lean`): `detectMappingKey.detectLoop` rewritten. Non-separator colons (`:` followed by non-whitespace, e.g., `::`) no longer cause early return `false` — the scanner continues to the next potential separator. Quote characters (`"`, `'`) mid-key no longer trigger a bail-out — they are valid plain-scalar characters when not at the start of a value. This eliminates false negatives for keys like `a"b: v`, `key::: v`.
+
+**T3 fix** (`Block.lean`): `dispatchByChar` now checks `detectMappingKey (inFlow := false)` via `lookAhead` before dispatching `"`, `'`, `?` (non-indicator), and `-` (non-indicator) to their default scalar parsers. If a mapping pattern (`key: ` or `key:\n`) is detected, dispatch goes to `blockMapping` instead. This ensures mapping keys starting with special characters are not misidentified as standalone scalars.
+
+**Comment-after-colon fix** (`Block.lean`): In both explicit-key and simple-key `blockMappingEntry` paths, after `:` + `skipHWhitespace`, a `#` character is now recognized as a comment start (§6.7). The comment is consumed and the parser treats the rest as a newline-separated value. Previously, `#` caused `blockValueSameLine` to fail on an unrecognized construct.
+
+**BLOCK-OUT context fix** (`Block.lean`): In simple-key `blockMappingEntry`, next-line values now use `blockValue mapIndent` instead of `blockValue (mapIndent + 1)`. Per §8.2.2, in BLOCK-OUT context, block sequences are permitted at the mapping's own indentation level (`n`, not `n+1`). This makes `foo:\n- 42` valid when `-` is at `mapIndent`.
+
+**Results**: 275/416 correct (66.1%), up from 270/416 (64.9%). +5 net tests. Block: 78→82 (+4), scalar: 46→50 (+4), advanced: 44→45 (+1), error: 50→46 (−4). 940/940 verified internal tests pass. 0 timeouts.
+
+**Tests flipped fail→pass**: AZ63 (same-indent sequence), AZW3 (quote-in-key), RLU9 (sequence indent), S3PD (implicit block mapping), 5NYZ (separated comment), J9HZ (mapping with comments), P94K (multi-line comments), M2N8 (question mark edge cases).
+
+**Error-stage regression** (−4): The more permissive `detectMappingKey` (no quote-bail) and T3 dispatch changes cause 4 error tests to be incorrectly accepted. Root cause: `'b': c` at a value position is now dispatched to `blockMapping` instead of `singleQuotedScalar` + trailing-content rejection (e.g., ZL4Z). This is the expected trade-off of dispatch completeness — the parser accepts a superset of valid YAML. Fixing this requires single-line key validation (§8.2.1 implicit key length/line restriction), which is out of scope for P4.
+
+**Build note**: `tryparse` is a separate `lean_exe` target from `suiterunner` — both must be rebuilt (`lake build suiterunner tryparse`) for suite results to reflect `Block.lean` changes.
+
 ---
 
 ## 3. What NOT to Port
