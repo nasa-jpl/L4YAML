@@ -61,11 +61,18 @@
     .stage-card-stats { color: #666; font-size: 14px; }
     .stage-bar {
       height: 8px; background: #e0e0e0; border-radius: 4px; margin-top: 10px; overflow: hidden;
+      display: flex;
     }
     .stage-bar-fill {
       height: 100%; background: var(--color-pass); border-radius: 4px;
       transition: width 0.3s ease;
     }
+    .stage-bar-segment {
+      height: 100%; min-width: 4px; transition: flex-grow 0.3s ease;
+    }
+    .stage-bar-segment:first-child { border-radius: 4px 0 0 4px; }
+    .stage-bar-segment:last-child { border-radius: 0 4px 4px 0; }
+    .stage-bar-segment:only-child { border-radius: 4px; }
 
     /* Filters */
     .filters {
@@ -182,32 +189,32 @@
     <div class="stage-card">
       <div class="stage-card-name">scalar</div>
       <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+      <div class="stage-bar"></div>
     </div>
     <div class="stage-card">
       <div class="stage-card-name">flow</div>
       <div class="stage-card-stats">42/46 correct (91.000000%) · 42 pass, 1 fail, 0 exp-fail, 3 unexp-pass, 0 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 91.000000%"></div></div>
+      <div class="stage-bar"><div class="stage-bar-segment" style="flex: 42 0 0px; background: var(--color-pass)" title="42 pass"></div><div class="stage-bar-segment" style="flex: 1 0 0px; background: var(--color-fail)" title="1 fail"></div><div class="stage-bar-segment" style="flex: 3 0 0px; background: var(--color-unexpected-pass)" title="3 unexpected pass"></div></div>
     </div>
     <div class="stage-card">
       <div class="stage-card-name">block</div>
       <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+      <div class="stage-bar"></div>
     </div>
     <div class="stage-card">
       <div class="stage-card-name">document</div>
       <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+      <div class="stage-bar"></div>
     </div>
     <div class="stage-card">
       <div class="stage-card-name">advanced</div>
       <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+      <div class="stage-bar"></div>
     </div>
     <div class="stage-card">
       <div class="stage-card-name">error</div>
       <div class="stage-card-stats">0/0 correct (0.000000%) · 0 pass, 0 fail, 0 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 0.000000%"></div></div>
+      <div class="stage-bar"></div>
     </div>
   </div>
   <div class="filters">
