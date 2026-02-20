@@ -762,9 +762,19 @@ where
       newline
       return ""
     | none =>
-      -- Must have at least `indent` spaces
+      -- Spec §8.1.2 `l-nb-literal-text(n)` and §8.1.3 `s-nb-folded-text(n)`
+      -- both require `nb-char+` (at least one non-break character) after
+      -- `s-indent(n)`.  When `indent = 0` (document-level block scalar,
+      -- spec `n = -1`, content at `n + m` with `m = 1`), `consumeIndent 0`
+      -- succeeds vacuously — including at EOF — so the `nb-char+`
+      -- requirement must be checked explicitly.  The `lookAhead anyToken`
+      -- ensures at least one character remains, matching the spec's
+      -- requirement and providing the progress guarantee that
+      -- `collectLines` needs to terminate.
+      let _ ← lookAhead anyToken
+      -- s-indent(n): consume exactly `indent` spaces
       consumeIndent indent
-      -- Collect the rest of the line
+      -- nb-char+: collect the rest of the line
       let content ← takeLineContent
       return content
 

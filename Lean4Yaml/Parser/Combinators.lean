@@ -168,6 +168,15 @@ architecture enforces that indentation is always consumed explicitly.
   The `drop n (token ' ')` will fail naturally (via lean4-parser),
   causing caller to backtrack. The validation error persists through
   backtracking and is checked at the top level.
+
+**Edge case `n = 0`**: per YAML 1.2.2 §6.1, `s-indent(n)` with `n = 0`
+matches the empty string — no spaces are consumed and the parser always
+succeeds.  This is spec-correct: at document level the indentation
+parameter is `n = -1`, so content lines require `s-indent(n+m)` where
+`m ≥ 1`, giving `s-indent(0)` for column-0 content.  Callers relying on
+`consumeIndent` for stream progress must independently verify that at
+least one content character follows (cf. the spec's `nb-char+`
+requirement in `l-nb-literal-text` and `s-nb-folded-text`).
 -/
 def consumeIndent (n : Nat) : YamlParser Unit :=
   withErrorMessage s!"expected {n} spaces of indentation (tabs not allowed)" do

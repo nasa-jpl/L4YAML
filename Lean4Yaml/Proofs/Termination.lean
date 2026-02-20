@@ -76,7 +76,6 @@ theorem next_decreasing (s : Lean4Yaml.YamlStream) (c : Char) (s' : Lean4Yaml.Ya
     obtain ⟨_, hs'⟩ := h
     unfold remainingLength
     rw [← hs']
-    simp [String.next]
     sorry -- TODO: string position arithmetic
   · contradiction
 
