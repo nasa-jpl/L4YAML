@@ -121,11 +121,16 @@ partial def flowValue : YamlParser YamlValue :=
           flowWhitespace
           pure (some name)
         | none => pure none
-      let val ← first [
-        flowSequence,
-        flowMapping,
-        flowScalar
-      ]
+      -- P6 fix (WZ62): After tag/anchor, the value may be empty in flow context.
+      -- E.g. `!!str,` → tag on null.  If next char is a flow delimiter,
+      -- return null with the tag/anchor applied.
+      let val ← match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == ']' || c == '}')) with
+      | some _ => pure YamlValue.null
+      | none => first [
+          flowSequence,
+          flowMapping,
+          flowScalar
+        ]
       let val := val.withTag tag
       match anchorName with
       | some name => storeAnchor name val
@@ -145,11 +150,14 @@ partial def flowValue : YamlParser YamlValue :=
           flowWhitespace
           pure (some tag)
         | none => pure none
-      let val ← first [
-        flowSequence,
-        flowMapping,
-        flowScalar
-      ]
+      -- P6 fix: anchor on empty flow value (e.g. `&a ,` → null with anchor)
+      let val ← match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == ']' || c == '}')) with
+      | some _ => pure YamlValue.null
+      | none => first [
+          flowSequence,
+          flowMapping,
+          flowScalar
+        ]
       let val := match tagName with | some t => val.withTag t | none => val
       storeAnchor name val
       return val
@@ -405,17 +413,57 @@ partial def flowMappingEntry : YamlParser (YamlValue × YamlValue) := do
           return (key, value)
       else return (key, YamlValue.null)
   | none =>
-  -- Normal implicit key — use flowValue so collections can be keys (§7.4.2)
-  let key ← first [
-    flowSequence,
-    flowMapping,
-    flowScalar
-  ]
+  -- Normal implicit key — collections can be keys (§7.4.2).
+  -- P6 fix: also handle anchored/aliased/tagged keys by checking for
+  -- `&`/`*`/`!` prefix.  X38W: `&a [...]` as key; CN3R: `&c c`;
+  -- WZ62: `!!str` as key.
+  let key ← do
+    -- Check for tag prefix on key
+    match ← option? (lookAhead (token '!')) with
+    | some _ =>
+      let tag ← parseTagPrefix
+      flowWhitespace
+      -- Tag may be followed by anchor
+      let anchorName ← do
+        match ← option? (lookAhead (token '&')) with
+        | some _ =>
+          let name ← parseAnchorPrefix
+          flowWhitespace
+          pure (some name)
+        | none => pure none
+      -- Tag on empty key: next is `:` or flow delimiter
+      let val ← match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == ']' || c == '}' || c == ':')) with
+      | some _ => pure YamlValue.null
+      | none => first [flowSequence, flowMapping, flowScalar]
+      let val := val.withTag tag
+      match anchorName with
+      | some name => storeAnchor name val
+      | none => pure ()
+      pure val
+    | none =>
+    -- Check for anchor prefix on key
+    match ← option? (lookAhead (token '&')) with
+    | some _ =>
+      let name ← parseAnchorPrefix
+      flowWhitespace
+      -- Anchor on empty key: next is `:` or flow delimiter
+      let val ← match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == ']' || c == '}' || c == ':')) with
+      | some _ => pure YamlValue.null
+      | none => first [flowSequence, flowMapping, flowScalar]
+      storeAnchor name val
+      pure val
+    | none =>
+    -- Check for alias as key
+    match ← option? (lookAhead (token '*')) with
+    | some _ => parseAlias
+    | none => first [flowSequence, flowMapping, flowScalar]
   flowWhitespace
-  -- After a JSON-like key (collection, quoted scalar), `:` doesn't need whitespace
+  -- After a JSON-like key (collection, quoted scalar, tagged, or null),
+  -- `:` doesn't need whitespace separation
   let isJsonKey : Bool := match key with
-    | .sequence .. | .mapping .. => true
+    | .sequence .. | .mapping .. | .null => true
     | .scalar s => s.style == .doubleQuoted || s.style == .singleQuoted
+                   || s.tag != none
   let hasColon ← if isJsonKey then do
     match ← option? (lookAhead (token ':')) with
     | some _ => pure true

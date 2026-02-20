@@ -46,9 +46,13 @@ def isIndicator (c : Char) : Bool :=
 def isFlowIndicator (c : Char) : Bool :=
   c ∈ [',', '[', ']', '{', '}']
 
-/-- Characters that can appear in anchor names -/
+/-- Characters that can appear in anchor names.
+    P6 fix (8XYN): YAML §6.9.2 defines anchor names as `ns-anchor-char+`
+    where `ns-anchor-char` is any character except flow indicators,
+    whitespace, and line breaks.  The previous restriction to ASCII
+    alphanumeric/hyphen/underscore was too narrow. -/
 def isAnchorChar (c : Char) : Bool :=
-  c.isAlphanum || c == '-' || c == '_'
+  !isFlowIndicator c && !isWhiteSpace c && !isLineBreak c
 
 /-- Characters forbidden at the start of a plain scalar -/
 def isForbiddenPlainStart (c : Char) : Bool :=
@@ -405,19 +409,28 @@ See ANALYSIS.md §2.B.
 Check whether a plain scalar continues onto the next line(s).
 
 This is a pure `lookAhead` probe — it does NOT consume any input.
-The `baseIndent` is the indentation level of the parent structure;
-continuation lines must be strictly more indented (`col > baseIndent`).
+`contentIndent` is the indentation level at which the scalar's content
+started; continuation lines must be at or beyond this level
+(`col >= contentIndent`, equivalently `col < contentIndent` → stop).
+
+**P6 fix (document-level continuation)**: Previously this function took
+`baseIndent` (= contentIndent − 1) and checked `col <= baseIndent`.
+At document level, YAML's indentation parameter is n = −1, so
+`contentIndent = 0` and `baseIndent` saturated at 0 (Nat), incorrectly
+blocking col-0 continuation.  Using `col < contentIndent` with
+`contentIndent : Nat` avoids the saturation: when `contentIndent = 0`,
+`col < 0` is always false for `Nat`, correctly allowing every column.
 
 Decision algorithm:
 1. Check for newline — if none, not continuing
 2. Count consecutive empty/blank lines
-3. Check indentation of next content line — must be > baseIndent
+3. Check indentation of next content line — must be ≥ contentIndent
 4. Check for document boundaries (`---`, `...`) — stops continuation
 5. Check for sequence marker (`- `) — not a continuation
 6. Check for mapping entry (`key: `) — not a continuation
 7. Otherwise, it's a continuation (possibly after empty lines)
 -/
-partial def checkContinuation (baseIndent : Nat) : YamlParser ContinuationCheck :=
+partial def checkContinuation (contentIndent : Nat) : YamlParser ContinuationCheck :=
   lookAhead do
     -- Must be at a line break to continue
     match ← option? newline with
@@ -428,16 +441,23 @@ partial def checkContinuation (baseIndent : Nat) : YamlParser ContinuationCheck 
       -- Check indentation of the next content line
       skipSpaces
       let col ← currentCol
-      if col <= baseIndent then
+      if col < contentIndent then
         return .notContinuing
       -- Check for document boundaries
       let atBoundary ← atDocumentBoundary
       if atBoundary then
         return .notContinuing
       -- Check for sequence marker: `- ` or `-\n` or `-` at EOF
-      let hasSeq ← hasSequenceIndicator
-      if hasSeq then
-        return .sequenceMarker
+      -- P6 fix (AB8U): only check when the continuation line is DEEPER than
+      -- the content indent.  At col == contentIndent, `-` is a valid
+      -- `ns-plain-char` per YAML §7.3.3 and the continuation line is part
+      -- of the plain scalar (e.g., `- single multiline\n - sequence entry`
+      -- where ` - sequence entry` at col 1 == contentIndent 1 is scalar
+      -- content, not a block indicator).
+      if col > contentIndent then
+        let hasSeq ← hasSequenceIndicator
+        if hasSeq then
+          return .sequenceMarker
       -- Check for mapping entry: scan for `: ` pattern on this line
       let hasMap ← scanForMappingSeparator
       if hasMap then
@@ -464,13 +484,19 @@ where
       Does not cross line boundaries. -/
   scanForMappingSeparator : YamlParser Bool := do
     scanLoop
+  /-- P6 fix: use lookAhead for the char after `:` so that adjacent colons
+      (`::`) are properly handled.  The second `:` is re-examined as a
+      potential separator on the next iteration.  Mirrors the fix in
+      `detectMappingKey`. -/
   scanLoop : YamlParser Bool := do
     match ← option? anyToken with
     | none => return false
     | some ':' =>
-      match ← option? anyToken with
+      match ← option? (lookAhead anyToken) with
       | none => return true  -- `:` at EOF
-      | some c => return (isWhiteSpace c || isLineBreak c)
+      | some c =>
+        if isWhiteSpace c || isLineBreak c then return true
+        else scanLoop  -- don't consume peeked char; next iteration handles it
     | some c =>
       if isLineBreak c then return false
       else if c == '"' || c == '\'' then return false  -- Don't scan through quotes
