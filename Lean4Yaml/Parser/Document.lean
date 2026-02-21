@@ -130,17 +130,17 @@ def directive : YamlParser Directive :=
 /--
 Parse all directives before a document.
 -/
-partial def directives : YamlParser (Array Directive) := do
+def directives : YamlParser (Array Directive) := do
+  let fuel := Stream.remaining (← getStream)
   let mut dirs := #[]
-  let mut continue' := true
-  while continue' do
+  for _ in [:fuel] do
     skipBlankLines
     match ← option? (lookAhead (char '%')) with
     | some _ =>
       let dir ← directive
       dirs := dirs.push dir
     | none =>
-      continue' := false
+      break
   -- P7 fix (SF5V): §6.8.1 — duplicate %YAML directives are forbidden.
   let yamlCount := dirs.filter (fun d => match d with | .yaml _ => true | .tag _ _ => false) |>.size
   if yamlCount > 1 then
@@ -214,7 +214,7 @@ The `stalled` result eliminates the need for callers to compare stream
 positions before/after the call. The document parser itself knows whether
 it consumed content, and communicates this through the result type.
 -/
-partial def document (prevHadDocEnd : Bool := true) : YamlParser DocumentResult := do
+def document (prevHadDocEnd : Bool := true) : YamlParser DocumentResult := do
   -- Reset anchor map for this document scope (§3.2.2.2).
   -- Anchors from a previous document must not leak into the next one.
   resetAnchorMap
@@ -370,12 +370,12 @@ A YAML stream consists of zero or more documents.
 Uses `DocumentResult` to distinguish successful parse from end-of-stream
 from stalled input, without needing external position comparison.
 -/
-partial def yamlStream : YamlParser (Array YamlDocument) := do
+def yamlStream : YamlParser (Array YamlDocument) := do
   skipBOM
+  let fuel := Stream.remaining (← getStream)
   let mut docs := #[]
-  let mut continue' := true
   let mut prevDocEnd := true  -- first document doesn't need `...` before it
-  while continue' do
+  for _ in [:fuel] do
     skipBlankLines
     match ← document (prevHadDocEnd := prevDocEnd) with
     | .parsed doc hadDocEnd =>
@@ -383,7 +383,7 @@ partial def yamlStream : YamlParser (Array YamlDocument) := do
       prevDocEnd := hadDocEnd
       skipBlankLines
     | .endOfStream =>
-      continue' := false
+      break
     | .stalled pos =>
       -- Input present but not parseable as a document.
       -- Record validation error and stop the loop.
@@ -392,7 +392,7 @@ partial def yamlStream : YamlParser (Array YamlDocument) := do
         | some ch => s!"unhandled construct '{ch}' at line {pos.line}, column {pos.col}"
         | none => s!"stuck at line {pos.line}, column {pos.col}"
       setValidationError msg
-      continue' := false
+      break
   return docs
 
 /-! ## Top-Level Parse Functions -/
