@@ -15,11 +15,11 @@ Test distribution by stage:
 Running all tests for HTML report...
 ------------------------------------------------------------
   [1/416] 229Q ✓
-  [2/416] 236B ⚠ unexpected pass
+  [2/416] 236B ✓ (expected fail)
   [3/416] 26DV ✓
   [4/416] 27NA ○ YAML 1.3 specific
   [5/416] 2AUY ✓
-  [6/416] 2CMS ⚠ unexpected pass
+  [6/416] 2CMS ✓ (expected fail)
   [7/416] 2EBW ✓
   [8/416] 2G84 ✓ (expected fail)
   [9/416] 2G84 ✓ (expected fail)
@@ -46,12 +46,12 @@ Running all tests for HTML report...
   [30/416] 3UYS ✓
   [31/416] 4ABK ✓
   [32/416] 4CQQ ✓
-  [33/416] 4EJS ⚠ unexpected pass
+  [33/416] 4EJS ✓ (expected fail)
   [34/416] 4FJ6 ✓
   [35/416] 4GC6 ○ YAML 1.3 specific
   [36/416] 4H7K ✓ (expected fail)
   [37/416] 4HVU ✓ (expected fail)
-  [38/416] 4JVG ⚠ unexpected pass
+  [38/416] 4JVG ✓ (expected fail)
   [39/416] 4MUZ ✓
   [40/416] 4MUZ ✓
   [41/416] 4MUZ ✓
@@ -77,7 +77,7 @@ Running all tests for HTML report...
   [61/416] 5C5M ✓
   [62/416] 5GBF ✓
   [63/416] 5KJE ✓
-  [64/416] 5LLU ⚠ unexpected pass
+  [64/416] 5LLU ✓ (expected fail)
   [65/416] 5MUD ✓
   [66/416] 5NYZ ✓
   [67/416] 5T43 ✓
@@ -85,7 +85,7 @@ Running all tests for HTML report...
   [69/416] 5T43 ○ empty yaml input
   [70/416] 5TRB ✓ (expected fail)
   [71/416] 5TYM ✓
-  [72/416] 5U3A ⚠ unexpected pass
+  [72/416] 5U3A ✓ (expected fail)
   [73/416] 5WE3 ✓
   [74/416] 62EZ ✓ (expected fail)
   [75/416] 652Z ✓
@@ -120,7 +120,7 @@ Running all tests for HTML report...
   [104/416] 7BMT ○ YAML 1.3 specific
   [105/416] 7BUB ✓
   [106/416] 7FWL ✓
-  [107/416] 7LBH ⚠ unexpected pass
+  [107/416] 7LBH ✓ (expected fail)
   [108/416] 7MNF ✓ (expected fail)
   [109/416] 7T8X ○ YAML 1.3 specific
   [110/416] 7TMG ✓
@@ -144,17 +144,17 @@ Running all tests for HTML report...
   [128/416] 96NN ✓
   [129/416] 98YD ✓
   [130/416] 9BXH ✓
-  [131/416] 9C9N ⚠ unexpected pass
+  [131/416] 9C9N ✓ (expected fail)
   [132/416] 9CWY ✓ (expected fail)
   [133/416] 9DXL ○ YAML 1.3 specific
   [134/416] 9FMG ✓
-  [135/416] 9HCY ⚠ unexpected pass
+  [135/416] 9HCY ✓ (expected fail)
   [136/416] 9J7A ✓
   [137/416] 9JBA ✓ (expected fail)
   [138/416] 9KAX ○ YAML 1.3 specific
-  [139/416] 9KBC ⚠ unexpected pass
+  [139/416] 9KBC ✓ (expected fail)
   [140/416] 9MAG ✓ (expected fail)
-  [141/416] 9MMA ⚠ unexpected pass
+  [141/416] 9MMA ✓ (expected fail)
   [142/416] 9MMW ✓
   [143/416] 9MQT ✓
   [144/416] 9MQT ✓ (expected fail)
@@ -172,18 +172,18 @@ Running all tests for HTML report...
   [156/416] AZ63 ✓
   [157/416] AZW3 ✓
   [158/416] B3HG ○ YAML 1.3 specific
-  [159/416] B63P ⚠ unexpected pass
+  [159/416] B63P ✓ (expected fail)
   [160/416] BD7L ✓ (expected fail)
   [161/416] BEC7 ✓
   [162/416] BF9H ✓ (expected fail)
-  [163/416] BS4K ⚠ unexpected pass
+  [163/416] BS4K ✓ (expected fail)
   [164/416] BU8L ○ YAML 1.3 specific
   [165/416] C2DT ✓
   [166/416] C2SP ✓ (expected fail)
   [167/416] C4HZ ✓
   [168/416] CC74 ✓
   [169/416] CFD4 ✓
-  [170/416] CML9 ⚠ unexpected pass
+  [170/416] CML9 ✓ (expected fail)
   [171/416] CN3R ✓
   [172/416] CPZ3 ✓
   [173/416] CQ3W ✓ (expected fail)
@@ -191,8 +191,8 @@ Running all tests for HTML report...
   [175/416] CTN5 ✓ (expected fail)
   [176/416] CUP7 ✓
   [177/416] CVW2 ✓ (expected fail)
-  [178/416] CXX2 ⚠ unexpected pass
-  [179/416] D49Q ⚠ unexpected pass
+  [178/416] CXX2 ✓ (expected fail)
+  [179/416] D49Q ✓ (expected fail)
   [180/416] D83L ✓
   [181/416] D88J ✓
   [182/416] D9TU ✓
@@ -209,7 +209,7 @@ Running all tests for HTML report...
   [193/416] DK3J ✓
   [194/416] DK4H ✓ (expected fail)
   [195/416] DK95 ✓
-  [196/416] DK95 ⚠ unexpected pass
+  [196/416] DK95 ✓ (expected fail)
   [197/416] DK95 ✓
   [198/416] DK95 ✓
   [199/416] DK95 ✓
@@ -237,10 +237,10 @@ Running all tests for HTML report...
   [221/416] FTA2 ✓
   [222/416] FUP4 ✓
   [223/416] G4RS ✓
-  [224/416] G5U8 ⚠ unexpected pass
+  [224/416] G5U8 ✓ (expected fail)
   [225/416] G7JE ✓ (expected fail)
   [226/416] G992 ○ YAML 1.3 specific
-  [227/416] G9HC ⚠ unexpected pass
+  [227/416] G9HC ✓ (expected fail)
   [228/416] GDY7 ✓ (expected fail)
   [229/416] GH63 ✓
   [230/416] GT5M ✓ (expected fail)
@@ -265,7 +265,7 @@ Running all tests for HTML report...
   [249/416] JEF9 ✓
   [250/416] JEF9 ✓
   [251/416] JHB9 ✓
-  [252/416] JKF3 ⚠ unexpected pass
+  [252/416] JKF3 ✓ (expected fail)
   [253/416] JQ4R ✓
   [254/416] JR7V ✓
   [255/416] JS2J ✓
@@ -303,7 +303,7 @@ Running all tests for HTML report...
   [287/416] M7NX ✓
   [288/416] M9B4 ○ YAML 1.3 specific
   [289/416] MJS9 ○ YAML 1.3 specific
-  [290/416] MUS6 ⚠ unexpected pass
+  [290/416] MUS6 ✓ (expected fail)
   [291/416] MUS6 ✓ (expected fail)
   [292/416] MUS6 ✓
   [293/416] MUS6 ✓
@@ -314,7 +314,7 @@ Running all tests for HTML report...
   [298/416] MYW6 ○ YAML 1.3 specific
   [299/416] MZX3 ✓
   [300/416] N4JP ✓ (expected fail)
-  [301/416] N782 ⚠ unexpected pass
+  [301/416] N782 ✓ (expected fail)
   [302/416] NAT4 ✓
   [303/416] NB6Z ✓
   [304/416] NHX8 ✓
@@ -334,9 +334,9 @@ Running all tests for HTML report...
   [318/416] Q88A ✓
   [319/416] Q8AD ○ YAML 1.3 specific
   [320/416] Q9WF ○ YAML 1.3 specific
-  [321/416] QB6E ⚠ unexpected pass
+  [321/416] QB6E ✓ (expected fail)
   [322/416] QF4Y ✓
-  [323/416] QLJ7 ⚠ unexpected pass
+  [323/416] QLJ7 ✓ (expected fail)
   [324/416] QT73 ✓
   [325/416] R4YG ✓
   [326/416] R52L ✓
@@ -353,18 +353,18 @@ Running all tests for HTML report...
   [337/416] S4JQ ✓
   [338/416] S4T7 ✓
   [339/416] S7BG ✓
-  [340/416] S98Z ⚠ unexpected pass
+  [340/416] S98Z ✓ (expected fail)
   [341/416] S9E8 ✓
   [342/416] SBG9 ✓
-  [343/416] SF5V ⚠ unexpected pass
+  [343/416] SF5V ✓ (expected fail)
   [344/416] SKE5 ✓
   [345/416] SM9W ✓
   [346/416] SM9W ✓
-  [347/416] SR86 ⚠ unexpected pass
+  [347/416] SR86 ✓ (expected fail)
   [348/416] SSW6 ○ YAML 1.3 specific
-  [349/416] SU5Z ⚠ unexpected pass
-  [350/416] SU74 ⚠ unexpected pass
-  [351/416] SY6V ⚠ unexpected pass
+  [349/416] SU5Z ✓ (expected fail)
+  [350/416] SU74 ✓ (expected fail)
+  [351/416] SY6V ✓ (expected fail)
   [352/416] SYW4 ✓
   [353/416] T26H ○ YAML 1.3 specific
   [354/416] T4YY ○ YAML 1.3 specific
@@ -389,15 +389,15 @@ Running all tests for HTML report...
   [373/416] UV7Q ✓
   [374/416] V55R ✓
   [375/416] V9D5 ✓
-  [376/416] VJP3 ⚠ unexpected pass
+  [376/416] VJP3 ✓ (expected fail)
   [377/416] VJP3 ✓
   [378/416] W42U ✓
   [379/416] W4TN ○ YAML 1.3 specific
   [380/416] W5VH ○ YAML 1.3 specific
-  [381/416] W9L4 ⚠ unexpected pass
+  [381/416] W9L4 ✓ (expected fail)
   [382/416] WZ62 ✓
   [383/416] X38W ✓
-  [384/416] X4QW ⚠ unexpected pass
+  [384/416] X4QW ✓ (expected fail)
   [385/416] X8DW ✓
   [386/416] XLQ9 ✓
   [387/416] XV9V ○ YAML 1.3 specific
@@ -406,23 +406,23 @@ Running all tests for HTML report...
   [390/416] Y79Y ✓ (expected fail)
   [391/416] Y79Y ✓
   [392/416] Y79Y ✓
-  [393/416] Y79Y ⚠ unexpected pass
-  [394/416] Y79Y ⚠ unexpected pass
-  [395/416] Y79Y ⚠ unexpected pass
-  [396/416] Y79Y ⚠ unexpected pass
-  [397/416] Y79Y ⚠ unexpected pass
-  [398/416] Y79Y ⚠ unexpected pass
-  [399/416] Y79Y ⚠ unexpected pass
+  [393/416] Y79Y ✓ (expected fail)
+  [394/416] Y79Y ✓ (expected fail)
+  [395/416] Y79Y ✓ (expected fail)
+  [396/416] Y79Y ✓ (expected fail)
+  [397/416] Y79Y ✓ (expected fail)
+  [398/416] Y79Y ✓ (expected fail)
+  [399/416] Y79Y ✓ (expected fail)
   [400/416] Y79Y ✓
   [401/416] YD5X ✓
-  [402/416] YJV2 ⚠ unexpected pass
+  [402/416] YJV2 ✓ (expected fail)
   [403/416] Z67P ○ YAML 1.3 specific
   [404/416] Z9M4 ✓
-  [405/416] ZCZ6 ⚠ unexpected pass
+  [405/416] ZCZ6 ✓ (expected fail)
   [406/416] ZF4X ✓
   [407/416] ZH7C ✓
   [408/416] ZK9H ✓
-  [409/416] ZL4Z ⚠ unexpected pass
+  [409/416] ZL4Z ✓ (expected fail)
   [410/416] ZVH3 ✓ (expected fail)
   [411/416] ZWK4 ✓
   [412/416] ZXT5 ✓ (expected fail)
@@ -432,7 +432,7 @@ Running all tests for HTML report...
   [416/416] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 310/416 (74.000000%)
+Correct: 353/416 (84.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 17/17
