@@ -71,10 +71,13 @@ Dispatch order:
 4. Block collections detected by structural indicators
 5. Plain scalars (fallback)
 
-This is the shared dispatch logic for both `blockValue` and
-`blockValueSameLine`, eliminating the duplicated match statement.
+This is the shared dispatch logic for both `blockValueImpl fuel` and
+`blockValueSameLineImpl fuel`, eliminating the duplicated match statement.
 -/
-partial def dispatchByChar (contentIndent : Nat) (scalarIndent : Nat := contentIndent) : YamlParser (DispatchResult YamlValue) := do
+def dispatchByCharImpl (fuel : Nat) (contentIndent : Nat) (scalarIndent : Nat := contentIndent) : YamlParser (DispatchResult YamlValue) :=
+  match fuel with
+  | 0 => pure .noMatch
+  | fuel + 1 => do
   -- P5 fix: handle EOF gracefully instead of crashing on `lookAhead anyToken`.
   -- At EOF, no value can be dispatched — return `.noMatch`.
   match ← option? (lookAhead anyToken) with
@@ -99,7 +102,7 @@ partial def dispatchByChar (contentIndent : Nat) (scalarIndent : Nat := contentI
         | none => pure true
         | some c => pure (isWhiteSpace c || isLineBreak c)
     if isMap then
-      match ← blockMapping contentIndent with
+      match ← blockMappingImpl fuel contentIndent with
       | some val => return .matched val
       | none => return .noMatch
     else
@@ -120,7 +123,7 @@ partial def dispatchByChar (contentIndent : Nat) (scalarIndent : Nat := contentI
         | none => pure true
         | some c => pure (isWhiteSpace c || isLineBreak c)
     if isMap then
-      match ← blockMapping contentIndent with
+      match ← blockMappingImpl fuel contentIndent with
       | some val => return .matched val
       | none => return .noMatch
     else
@@ -132,7 +135,7 @@ partial def dispatchByChar (contentIndent : Nat) (scalarIndent : Nat := contentI
     -- mapping key (`"key": value`).  Check for mapping pattern first; only
     -- fall back to standalone scalar if no `: ` follows the quoted string.
     -- P6 fix (DBG4): parse the COMPLETE quoted string before checking for
-    -- `: `.  The old `detectMappingKey` scan would find `: ` inside the
+    -- `: `.  The old `detectMappingKeyImpl fuel` scan would find `: ` inside the
     -- quoted string content (e.g., `"a: b"`) and falsely detect a mapping.
     let isMap ← lookAhead do
       let _ ← doubleQuotedScalar
@@ -144,7 +147,7 @@ partial def dispatchByChar (contentIndent : Nat) (scalarIndent : Nat := contentI
         | none => pure true
         | some c => pure (isWhiteSpace c || isLineBreak c)
     if isMap then
-      match ← blockMapping contentIndent with
+      match ← blockMappingImpl fuel contentIndent with
       | some val => return .matched val
       | none => return .noMatch
     else
@@ -162,7 +165,7 @@ partial def dispatchByChar (contentIndent : Nat) (scalarIndent : Nat := contentI
         | none => pure true
         | some c => pure (isWhiteSpace c || isLineBreak c)
     if isMap then
-      match ← blockMapping contentIndent with
+      match ← blockMappingImpl fuel contentIndent with
       | some val => return .matched val
       | none => return .noMatch
     else
@@ -170,15 +173,15 @@ partial def dispatchByChar (contentIndent : Nat) (scalarIndent : Nat := contentI
   | '&' => do
     -- P6 fix: If `&anchor key: value` forms a mapping entry, the anchor
     -- belongs to the key scalar, not the entire mapping.  Check for
-    -- mapping-key pattern first and route to blockMapping whose
-    -- blockMappingKey already handles anchor-on-key (§6.9).
+    -- mapping-key pattern first and route to blockMappingImpl fuel whose
+    -- blockMappingKeyImpl fuel already handles anchor-on-key (§6.9).
     --
-    -- Guarantee: `detectMappingKey` is flow-aware — it skips over balanced
+    -- Guarantee: `detectMappingKeyImpl fuel` is flow-aware — it skips over balanced
     -- `{...}` and `[...]` content, so `&map {a: 1, b: 2}` is correctly
     -- classified as non-mapping (no `: ` outside flow braces).
-    let isMapKey ← lookAhead (detectMappingKey (inFlow := false))
+    let isMapKey ← lookAhead (detectMappingKeyImpl fuel (inFlow := false))
     if isMapKey then
-      match ← blockMapping contentIndent with
+      match ← blockMappingImpl fuel contentIndent with
       | some val => return .matched val
       | none => return .noMatch
     else
@@ -224,22 +227,22 @@ partial def dispatchByChar (contentIndent : Nat) (scalarIndent : Nat := contentI
             skipHWhitespace
             -- If what follows is a mapping key, the inner anchor is on
             -- a different node (the key), so it's OK.
-            let isMK ← detectMappingKey (inFlow := false)
+            let isMK ← detectMappingKeyImpl fuel (inFlow := false)
             return !isMK
           | none => return false
         if doubleAnchor then
           setValidationError "a node can have at most one anchor"
-        -- Value on next line: use blockValue which handles
+        -- Value on next line: use blockValueImpl fuel which handles
         -- blank lines, indentation, and dispatching.
-        -- blockValue returns Option — none means under-indented.
-        let bv ← blockValue contentIndent
+        -- blockValueImpl fuel returns Option — none means under-indented.
+        let bv ← blockValueImpl fuel contentIndent
         let val := bv.getD .null
         let val := match tagName with | some t => val.withTag t | none => val
         storeAnchor name val
         return .matched val
     else
         -- Value on same line: dispatch normally
-        let result ← dispatchByChar contentIndent
+        let result ← dispatchByCharImpl fuel contentIndent
         match result with
         | .matched val =>
           -- P7 check (SY6V): §8.1 — block collections after node
@@ -256,11 +259,11 @@ partial def dispatchByChar (contentIndent : Nat) (scalarIndent : Nat := contentI
         | other => return other
   | '*' => do
     -- P6 fix (26DV): If `*alias : value` forms a mapping entry, the alias
-    -- is the mapping key.  Check for mapping pattern first; blockMappingKey
+    -- is the mapping key.  Check for mapping pattern first; blockMappingKeyImpl fuel
     -- already handles `*alias` as a key (§6.9.2).
-    let isMapKey ← lookAhead (detectMappingKey (inFlow := false))
+    let isMapKey ← lookAhead (detectMappingKeyImpl fuel (inFlow := false))
     if isMapKey then
-      match ← blockMapping contentIndent with
+      match ← blockMappingImpl fuel contentIndent with
       | some val => return .matched val
       | none => return .noMatch
     else
@@ -270,14 +273,14 @@ partial def dispatchByChar (contentIndent : Nat) (scalarIndent : Nat := contentI
   | '!' => do
     -- P6 fix: If `!tag key: value` forms a mapping entry, the tag
     -- belongs to the key scalar, not the entire mapping.  Route to
-    -- blockMapping whose blockMappingKey handles tag-on-key (§6.9).
+    -- blockMappingImpl fuel whose blockMappingKeyImpl fuel handles tag-on-key (§6.9).
     --
-    -- Guarantee: `detectMappingKey` is flow-aware — it skips over balanced
+    -- Guarantee: `detectMappingKeyImpl fuel` is flow-aware — it skips over balanced
     -- `{...}` and `[...]` content, so `!!map {a: 1}` is correctly
     -- classified as non-mapping (no `: ` outside flow braces).
-    let isMapKey ← lookAhead (detectMappingKey (inFlow := false))
+    let isMapKey ← lookAhead (detectMappingKeyImpl fuel (inFlow := false))
     if isMapKey then
-      match ← blockMapping contentIndent with
+      match ← blockMappingImpl fuel contentIndent with
       | some val => return .matched val
       | none => return .noMatch
     else
@@ -301,8 +304,8 @@ partial def dispatchByChar (contentIndent : Nat) (scalarIndent : Nat := contentI
       | some c => pure (isLineBreak c)
       | none => pure true)
     if atNewline then
-        -- blockValue returns Option — none means under-indented.
-        let bv ← blockValue contentIndent
+        -- blockValueImpl fuel returns Option — none means under-indented.
+        let bv ← blockValueImpl fuel contentIndent
         let val := bv.getD .null
         let val := val.withTag tag
         match anchorName with
@@ -310,7 +313,7 @@ partial def dispatchByChar (contentIndent : Nat) (scalarIndent : Nat := contentI
         | none => pure ()
         return .matched val
     else
-        let result ← dispatchByChar contentIndent
+        let result ← dispatchByCharImpl fuel contentIndent
         match result with
         | .matched val =>
           let val := val.withTag tag
@@ -329,19 +332,19 @@ partial def dispatchByChar (contentIndent : Nat) (scalarIndent : Nat := contentI
       | some c => return isWhiteSpace c || isLineBreak c
       | none => return true
     if isExplicitKey then
-      match ← blockMapping contentIndent with
+      match ← blockMappingImpl fuel contentIndent with
       | some val => return .matched val
       | none => return .noMatch
     else
       -- T3 fix: `?foo: value` is a plain mapping key starting with `?`.
       -- Check for mapping pattern before falling back to plain scalar.
-      let isMap ← lookAhead do detectMappingKey (inFlow := false)
+      let isMap ← lookAhead do detectMappingKeyImpl fuel (inFlow := false)
       if isMap then
-        match ← blockMapping contentIndent with
+        match ← blockMappingImpl fuel contentIndent with
         | some val => return .matched val
         | none => return .noMatch
       else
-        -- P7 fix (236B): use scalarIndent (= content column from blockValue)
+        -- P7 fix (236B): use scalarIndent (= content column from blockValueImpl fuel)
         -- for plain scalar continuation.  §8.1 flow-in-block uses n+1 for
         -- the indentation of continuation lines.
         return .matched (← plainScalar (inFlow := false) (contentIndent := scalarIndent))
@@ -353,14 +356,14 @@ partial def dispatchByChar (contentIndent : Nat) (scalarIndent : Nat := contentI
       | some c => return isWhiteSpace c || isLineBreak c
       | none => return true
     if isSeq then
-      match ← blockSequence contentIndent with
+      match ← blockSequenceImpl fuel contentIndent with
       | some val => return .matched val
       | none => return .noMatch
     else
       -- T3 fix: `-foo: value` is a plain mapping key starting with `-`.
-      let isMap ← lookAhead do detectMappingKey (inFlow := false)
+      let isMap ← lookAhead do detectMappingKeyImpl fuel (inFlow := false)
       if isMap then
-        match ← blockMapping contentIndent with
+        match ← blockMappingImpl fuel contentIndent with
         | some val => return .matched val
         | none => return .noMatch
       else
@@ -369,9 +372,9 @@ partial def dispatchByChar (contentIndent : Nat) (scalarIndent : Nat := contentI
   | _ => do
     -- Could be a block mapping or a plain scalar
     let isMap ← lookAhead do
-      detectMappingKey (inFlow := false)
+      detectMappingKeyImpl fuel (inFlow := false)
     if isMap then
-      match ← blockMapping contentIndent with
+      match ← blockMappingImpl fuel contentIndent with
       | some val => return .matched val
       | none => return .noMatch
     else
@@ -390,16 +393,19 @@ Returns `Option YamlValue`:
 - `none`: no value at this indentation level (content is under-indented
   or absent — belongs to a parent structure)
 
-For `DispatchResult.invalid` from `dispatchByChar`, the validation error
+For `DispatchResult.invalid` from `dispatchByCharImpl fuel`, the validation error
 is recorded in the stream (survives backtracking) and `none` is returned.
 
 **Pre-condition**: stream is positioned after any leading structure indicators.
 **Post-condition**: if `some val`, input was consumed and `val` is the parsed
   block value.  If `none`, no content was consumed at this indent level.
-  If `dispatchByChar` returned `.invalid`, `stream'.validationError ≠ none`.
+  If `dispatchByCharImpl fuel` returned `.invalid`, `stream'.validationError ≠ none`.
 -/
-partial def blockValue (minIndent : Nat) (propertyMinIndent : Nat := minIndent)
-    : YamlParser (Option YamlValue) := do
+def blockValueImpl (fuel : Nat) (minIndent : Nat) (propertyMinIndent : Nat := minIndent)
+    : YamlParser (Option YamlValue) :=
+  match fuel with
+  | 0 => pure none
+  | fuel + 1 => do
   skipBlankLines
   -- P10b: §6.1 — tabs are not allowed for indentation
   checkIndentForTabs minIndent
@@ -430,7 +436,7 @@ partial def blockValue (minIndent : Nat) (propertyMinIndent : Nat := minIndent)
     else
       pure minIndent
   -- P6 fix: Check for document boundary (`---` or `...`) BEFORE dispatching.
-  -- Without this, `---` is sent to the `-` branch of `dispatchByChar` where
+  -- Without this, `---` is sent to the `-` branch of `dispatchByCharImpl fuel` where
   -- `isSeq` is false (`-` followed by `-`, not whitespace), causing `---`
   -- to be parsed as a plain scalar.  Fixes NKF9 (multi-document empty keys).
   let atBoundary ← lookAhead (atDocumentBoundary)
@@ -455,7 +461,7 @@ partial def blockValue (minIndent : Nat) (propertyMinIndent : Nat := minIndent)
   -- indentation.  §8.1 `s-l-flow-in-block(n)` uses `n+1` which in
   -- practice means the content column.  This prevents `foo:\n  bar\ninvalid`
   -- from folding `invalid` (at col 0) into the scalar `bar` (at col 2).
-  let result ← dispatchByChar effectiveMinIndent (scalarIndent := col)
+  let result ← dispatchByCharImpl fuel effectiveMinIndent (scalarIndent := col)
   match result with
   | .matched val => return some val
   | .noMatch => return none
@@ -477,21 +483,27 @@ Parse a block sequence
 Each item starts with `- ` at the same indentation level.
 The content of each item is a block value indented relative to the `-`.
 -/
-partial def blockSequence (minIndent : Nat) : YamlParser (Option YamlValue) :=
+def blockSequenceImpl (fuel : Nat) (minIndent : Nat) : YamlParser (Option YamlValue) :=
+  match fuel with
+  | 0 => pure none
+  | fuel + 1 =>
   withErrorMessage "expected block sequence" do
     -- Detect the indentation of the first `-`
     skipBlankLines
     let seqIndent ← currentCol
     if seqIndent < minIndent then
       return none
-    let items ← blockSequenceItems seqIndent #[]
+    let items ← blockSequenceItemsImpl fuel seqIndent #[]
     return some (.sequence .block items)
 
 /--
 Parse block sequence items at a fixed indentation level.
 -/
-partial def blockSequenceItems (seqIndent : Nat) (acc : Array YamlValue) :
-    YamlParser (Array YamlValue) := do
+def blockSequenceItemsImpl (fuel : Nat) (seqIndent : Nat) (acc : Array YamlValue) :
+    YamlParser (Array YamlValue) :=
+  match fuel with
+  | 0 => pure acc
+  | fuel + 1 => do
   skipBlankLines
   -- P10b: §6.1 — tabs are not allowed for indentation
   checkIndentForTabs seqIndent
@@ -507,7 +519,7 @@ partial def blockSequenceItems (seqIndent : Nat) (acc : Array YamlValue) :
     -- No more items at this level
     return acc
   -- P5 fix: check for document boundary (`---` or `...`) before consuming
-  -- the `-` indicator.  Without this, `blockSequenceItems` consumes the
+  -- the `-` indicator.  Without this, `blockSequenceItemsImpl fuel` consumes the
   -- first `-` of `---`, corrupting the document start marker.
   let atBoundary ← atDocumentBoundary
   if atBoundary then return acc
@@ -537,14 +549,14 @@ partial def blockSequenceItems (seqIndent : Nat) (acc : Array YamlValue) :
           | none => pure true
           | some c => pure (isWhiteSpace c || isLineBreak c)
         | _ => pure false
-      let isMK ← lookAhead (detectMappingKey (inFlow := false))
+      let isMK ← lookAhead (detectMappingKeyImpl fuel (inFlow := false))
       if isBlockIndicator || isMK then
         setValidationError "tabs are not allowed for indentation (YAML 1.2.2 §6.1)"
     -- The content is indented relative to the dash position
     let contentIndent := seqIndent + 1
     -- P6 fix (W42U): handle comment at value position.
     -- `- # Empty` means the value is null (or on the next line).
-    -- Consume the comment so it doesn't confuse dispatchByChar.
+    -- Consume the comment so it doesn't confuse dispatchByCharImpl fuel.
     let hasComment ← do
       match ← option? (lookAhead anyToken) with
       | some '#' => optional comment *> return; pure true
@@ -552,13 +564,13 @@ partial def blockSequenceItems (seqIndent : Nat) (acc : Array YamlValue) :
     -- Parse the item value (could be on same line or next line)
     let hasNewline := hasComment || (← test newline)
     let item ← if hasNewline then do
-      let bv ← blockValue contentIndent
+      let bv ← blockValueImpl fuel contentIndent
       pure (bv.getD .null)
     else
       -- Value on same line as `-`
       let col' ← currentCol
-      blockValueSameLine col' contentIndent
-    blockSequenceItems seqIndent (acc.push item)
+      blockValueSameLineImpl fuel col' contentIndent
+    blockSequenceItemsImpl fuel seqIndent (acc.push item)
 
 /--
 Parse a block value that starts on the same line as its indicator.
@@ -572,14 +584,17 @@ key: value on same line
 The `startCol` is the column where the value starts.
 The `contentIndent` is the minimum indentation for continuation lines.
 
-Delegates to `dispatchByChar`, sharing the dispatch logic with `blockValue`.
+Delegates to `dispatchByCharImpl fuel`, sharing the dispatch logic with `blockValueImpl fuel`.
 Handles `DispatchResult` directly — no `.toParser` conversion.
 
 **Post-condition**: always returns a `YamlValue` (`.null` for noMatch/invalid).
   If `.invalid`, `stream'.validationError ≠ none`.
 -/
-partial def blockValueSameLine (_startCol : Nat) (contentIndent : Nat) : YamlParser YamlValue := do
-  let result ← dispatchByChar contentIndent
+def blockValueSameLineImpl (fuel : Nat) (_startCol : Nat) (contentIndent : Nat) : YamlParser YamlValue :=
+  match fuel with
+  | 0 => pure .null
+  | fuel + 1 => do
+  let result ← dispatchByCharImpl fuel contentIndent
   match result with
   | .matched val =>
     -- P7 fix (SU5Z): §6.7 — after a value on the same line, `#` must be
@@ -612,21 +627,27 @@ Returns `Option YamlValue`:
 **Post-condition**: if `some`, consumed the mapping.  If `none`,
   no input consumed at this indent level.
 -/
-partial def blockMapping (minIndent : Nat) : YamlParser (Option YamlValue) :=
+def blockMappingImpl (fuel : Nat) (minIndent : Nat) : YamlParser (Option YamlValue) :=
+  match fuel with
+  | 0 => pure none
+  | fuel + 1 =>
   withErrorMessage "expected block mapping" do
     skipBlankLines
     let mapIndent ← currentCol
     if mapIndent < minIndent then
       return none
-    let pairs ← blockMappingEntries mapIndent #[]
+    let pairs ← blockMappingEntriesImpl fuel mapIndent #[]
     return some (.mapping .block pairs)
 
 /--
 Parse block mapping entries at a fixed indentation level.
 -/
-partial def blockMappingEntries (mapIndent : Nat)
+def blockMappingEntriesImpl (fuel : Nat) (mapIndent : Nat)
     (acc : Array (YamlValue × YamlValue)) :
-    YamlParser (Array (YamlValue × YamlValue)) := do
+    YamlParser (Array (YamlValue × YamlValue)) :=
+  match fuel with
+  | 0 => pure acc
+  | fuel + 1 => do
   skipBlankLines
   -- P10b: §6.1 — tabs are not allowed for indentation
   checkIndentForTabs mapIndent
@@ -637,13 +658,13 @@ partial def blockMappingEntries (mapIndent : Nat)
   if col != mapIndent then
     -- Detect wrongly-indented structural indicators (ANALYSIS.md §2.A).
     validateNoWrongIndentSeq mapIndent col
-    validateNoWrongIndentMap mapIndent col (detectMappingKey (inFlow := false))
+    validateNoWrongIndentMap mapIndent col (detectMappingKeyImpl fuel (inFlow := false))
     return acc
   -- Check if we're at a document boundary
   let atBoundary ← atDocumentBoundary
   if atBoundary then return acc
   -- Check for explicit key indicator `?` — this is always a valid entry start
-  -- even though detectMappingKey wouldn't find a `: ` on the `?` line.
+  -- even though detectMappingKeyImpl fuel wouldn't find a `: ` on the `?` line.
   let isExplicitKey ← lookAhead do
     match ← option? (token '?') with
     | none => pure false
@@ -652,24 +673,27 @@ partial def blockMappingEntries (mapIndent : Nat)
       | some c => pure (isWhiteSpace c || isLineBreak c)
       | none => pure true
   if isExplicitKey then
-    match ← option? (blockMappingEntry mapIndent) with
+    match ← option? (blockMappingEntryImpl fuel mapIndent) with
     | none => return acc
     | some entry =>
-      blockMappingEntries mapIndent (acc.push entry)
+      blockMappingEntriesImpl fuel mapIndent (acc.push entry)
   else
   -- Try to parse a mapping entry
-  match ← option? (blockMappingEntry mapIndent) with
+  match ← option? (blockMappingEntryImpl fuel mapIndent) with
   | none => return acc
   | some entry =>
-    blockMappingEntries mapIndent (acc.push entry)
+    blockMappingEntriesImpl fuel mapIndent (acc.push entry)
 
 /--
 Parse a single block mapping entry.
 
 Handles both simple keys (`key: value`) and complex keys (`? key\n: value`).
 -/
-partial def blockMappingEntry (mapIndent : Nat) :
-    YamlParser (YamlValue × YamlValue) := do
+def blockMappingEntryImpl (fuel : Nat) (mapIndent : Nat) :
+    YamlParser (YamlValue × YamlValue) :=
+  match fuel with
+  | 0 => pure (.null, .null)
+  | fuel + 1 => do
   -- Check for complex key indicator `?`
   -- (§8.2.2, https://yaml.org/spec/1.2.2/#822-block-mappings)
   match ← option? (char '?') with
@@ -686,7 +710,7 @@ partial def blockMappingEntry (mapIndent : Nat) :
           | none => pure true
           | some c => pure (isWhiteSpace c || isLineBreak c)
         | _ => pure false
-      let isMK ← lookAhead (detectMappingKey (inFlow := false))
+      let isMK ← lookAhead (detectMappingKeyImpl fuel (inFlow := false))
       if isBlockIndicator || isMK then
         setValidationError "tabs are not allowed for indentation (YAML 1.2.2 §6.1)"
     -- Determine if key is on same line or next line
@@ -711,7 +735,7 @@ partial def blockMappingEntry (mapIndent : Nat) :
       else
         -- Key content on next line(s), use mapIndent to allow
         -- zero-indented sequences as keys (§8.2.2 BLOCK-OUT context)
-        let bv ← blockValue mapIndent (propertyMinIndent := mapIndent + 1)
+        let bv ← blockValueImpl fuel mapIndent (propertyMinIndent := mapIndent + 1)
         pure (bv.getD .null)
     else do
       -- Key on same line as `?`: parse at mapIndent + 1
@@ -719,7 +743,7 @@ partial def blockMappingEntry (mapIndent : Nat) :
       | none => pure YamlValue.null
       | some _ =>
         let col ← currentCol
-        match ← option? (blockValueSameLine col (mapIndent + 1)) with
+        match ← option? (blockValueSameLineImpl fuel col (mapIndent + 1)) with
         | some v => pure v
         | none => pure YamlValue.null
     -- Look for optional `:` at mapIndent for the value
@@ -749,7 +773,7 @@ partial def blockMappingEntry (mapIndent : Nat) :
             | none => pure true
             | some c => pure (isWhiteSpace c || isLineBreak c)
           | _ => pure false
-        let isMK ← lookAhead (detectMappingKey (inFlow := false))
+        let isMK ← lookAhead (detectMappingKeyImpl fuel (inFlow := false))
         if isBlockIndicator || isMK then
           setValidationError "tabs are not allowed for indentation (YAML 1.2.2 §6.1)"
       -- A `#` comment after `:` means the value is on the next line (§6.7).
@@ -761,18 +785,18 @@ partial def blockMappingEntry (mapIndent : Nat) :
       let value ← if hasNewline then do
         -- Value on next line: use mapIndent (BLOCK-OUT context)
         -- allows sequences at mapIndent level
-        let bv ← blockValue mapIndent (propertyMinIndent := mapIndent + 1)
+        let bv ← blockValueImpl fuel mapIndent (propertyMinIndent := mapIndent + 1)
         pure (bv.getD .null)
       else do
         let col' ← currentCol
-        blockValueSameLine col' (mapIndent + 1)
+        blockValueSameLineImpl fuel col' (mapIndent + 1)
       return (key, value)
     else
       -- No `:` found — value is implicitly null
       return (key, YamlValue.null)
   | none =>
     -- Simple key
-    let key ← blockMappingKey
+    let key ← blockMappingKeyImpl fuel
     -- P5 fix: allow optional whitespace between the key and the mapping
     -- value indicator `:` (§7.3.2).  Quoted keys often have a space
     -- before `:` (e.g., `"key" : value`, `'key' : value`).
@@ -789,7 +813,7 @@ partial def blockMappingEntry (mapIndent : Nat) :
           | none => pure true
           | some c => pure (isWhiteSpace c || isLineBreak c)
         | _ => pure false
-      let isMK ← lookAhead (detectMappingKey (inFlow := false))
+      let isMK ← lookAhead (detectMappingKeyImpl fuel (inFlow := false))
       if isBlockIndicator || isMK then
         setValidationError "tabs are not allowed for indentation (YAML 1.2.2 §6.1)"
     -- Value could be on the same line or the next line.
@@ -822,18 +846,18 @@ partial def blockMappingEntry (mapIndent : Nat) :
       -- be on the next line.  This is a PRE-check (before parsing) to
       -- correctly allow `key: &anchor\n  nested_key: val` where the
       -- anchor is on the same line but the mapping starts on the next.
-      let isMappingOnSameLine ← lookAhead (detectMappingKey (inFlow := false))
+      let isMappingOnSameLine ← lookAhead (detectMappingKeyImpl fuel (inFlow := false))
       if isMappingOnSameLine then
         setValidationError "block mapping cannot start on the same line as a mapping value"
     let value ← if hasNewline then
       -- BLOCK-OUT context (§8.2.2): next-line value allows sequences
       -- at the mapping's own indentation level (mapIndent), not mapIndent + 1.
       -- This handles `foo:\n- 42` where `-` is at mapIndent.
-      let bv ← blockValue mapIndent (propertyMinIndent := mapIndent + 1)
+      let bv ← blockValueImpl fuel mapIndent (propertyMinIndent := mapIndent + 1)
       pure (bv.getD .null)
     else do
       let col ← currentCol
-      blockValueSameLine col (mapIndent + 1)
+      blockValueSameLineImpl fuel col (mapIndent + 1)
     return (key, value)
 
 /--
@@ -842,7 +866,10 @@ Parse a simple block mapping key.
 Simple keys are single-line and cannot contain certain indicators.
 They end at `: ` (mapping value indicator).
 -/
-partial def blockMappingKey : YamlParser YamlValue := do
+def blockMappingKeyImpl (fuel : Nat) : YamlParser YamlValue :=
+  match fuel with
+  | 0 => pure .null
+  | fuel + 1 => do
   -- Check for alias as mapping key
   match ← option? (lookAhead (token '*')) with
   | some _ => parseAlias
@@ -860,7 +887,7 @@ partial def blockMappingKey : YamlParser YamlValue := do
       doubleQuotedScalar,
       singleQuotedScalar,
       do
-        let content ← plainMappingKey
+        let content ← plainMappingKey fuel
         return YamlValue.plainScalar content
     ]
     let key := key.withTag tag
@@ -891,7 +918,7 @@ partial def blockMappingKey : YamlParser YamlValue := do
       doubleQuotedScalar,
       singleQuotedScalar,
       do
-        let content ← plainMappingKey
+        let content ← plainMappingKey fuel
         return YamlValue.plainScalar content
     ]
     let key := match tagName with | some t => key.withTag t | none => key
@@ -917,16 +944,15 @@ partial def blockMappingKey : YamlParser YamlValue := do
         setValidationError "implicit block mapping key must not span multiple lines (§7.4)"
       return val,
     do
-      let content ← plainMappingKey
+      let content ← plainMappingKey fuel
       return YamlValue.plainScalar content
   ]
 where
-  plainMappingKey : YamlParser String := do
+  plainMappingKey (fuel : Nat) : YamlParser String := do
     let mut acc := ""
-    let mut done := false
-    while !done do
+    for _ in [:fuel] do
       match ← option? (lookAhead anyToken) with
-      | none => done := true
+      | none => break
       | some ':' =>
         -- Check if followed by whitespace (mapping separator)
         let isMapSep ← lookAhead do
@@ -935,16 +961,16 @@ where
           | some c => return (isWhiteSpace c || isLineBreak c)
           | none => return true  -- `:` at EOF
         if isMapSep then
-          done := true
+          break
         else
           let _ ← anyToken  -- actually consume the ':'
           acc := acc.push ':'
       | some c =>
         if isLineBreak c then
-          done := true
+          break
         else if c == '#' && acc.endsWith " " then
           -- Comment
-          done := true
+          break
         else
           let _ ← anyToken  -- actually consume
           acc := acc.push c
@@ -964,7 +990,7 @@ on any `'`/`"`, producing false negatives for keys like `a"b: v`, `key::: v`.
 **Flow-aware (P6 fix)**: When encountering `{` or `[`, skips to the matching
 close bracket (respecting nesting) instead of scanning character-by-character.
 This prevents false positives from `: ` inside flow collections such as
-`&map {a: 1, b: 2}` or `!!map {a: 1}`.  Without this, `detectMappingKey`
+`&map {a: 1, b: 2}` or `!!map {a: 1}`.  Without this, `detectMappingKeyImpl fuel`
 would find `: 1` inside the braces and falsely classify the input as a mapping.
 
 ### A/G Contract
@@ -976,46 +1002,103 @@ current line OUTSIDE any balanced flow brackets `{...}` / `[...]`.
 
 **Guarantee (G2)**: Does not consume input (enforced by `lookAhead` at call site).
 -/
-partial def detectMappingKey (inFlow : Bool) : YamlParser Bool := do
+def detectMappingKeyImpl (fuel : Nat) (inFlow : Bool) : YamlParser Bool :=
+  match fuel with
+  | 0 => pure false
+  | fuel + 1 => do
   -- Try to find `: ` or `:\n` on this line (skipping flow content)
-  detectLoop
+  detectLoop fuel
 where
   /-- Skip over balanced flow brackets.  `depth` counts nesting level;
       when it reaches 0, the matching close bracket has been consumed. -/
-  skipFlowBrackets (depth : Nat) : YamlParser Unit := do
-    if depth == 0 then return ()
-    match ← option? anyToken with
-    | none => return ()  -- unclosed collection at EOF, bail out
-    | some c =>
-      if c == '}' || c == ']' then skipFlowBrackets (depth - 1)
-      else if c == '{' || c == '[' then skipFlowBrackets (depth + 1)
-      else skipFlowBrackets depth
-  detectLoop : YamlParser Bool := do
-    match ← option? anyToken with
-    | none => return false
-    | some ':' =>
-      -- P6 fix: use lookAhead to peek the char after `:` without consuming it.
-      -- This way, if the char after `:` is itself `:`, the NEXT detectLoop
-      -- iteration re-examines it as a potential separator.  Fixes `::` which
-      -- should be mapping key `:` → null value (UKK6).
-      match ← option? (lookAhead anyToken) with
-      | none => return true  -- `:` at EOF → mapping separator
+  skipFlowBrackets : Nat → Nat → YamlParser Unit
+    | 0, _ => return ()
+    | fuel + 1, depth => do
+      if depth == 0 then return ()
+      match ← option? anyToken with
+      | none => return ()  -- unclosed collection at EOF, bail out
       | some c =>
-        if isWhiteSpace c || isLineBreak c then return true
-        -- Not a separator — continue scanning without consuming the peeked char
-        else detectLoop
-    | some c =>
-      if isLineBreak c then return false
-      else if inFlow && isFlowIndicator c then return false
-      -- Flow-aware: skip over balanced flow collections to avoid false
-      -- positives from `:` inside braces/brackets (e.g., `{a: 1}`).
-      else if c == '{' || c == '[' then do
-        skipFlowBrackets 1
-        detectLoop
-      -- T4 fix: do NOT bail on `"` or `'` mid-key — they are valid
-      -- plain-scalar characters when not at the start of a value.
-      else detectLoop
+        if c == '}' || c == ']' then skipFlowBrackets fuel (depth - 1)
+        else if c == '{' || c == '[' then skipFlowBrackets fuel (depth + 1)
+        else skipFlowBrackets fuel depth
+  detectLoop : Nat → YamlParser Bool
+    | 0 => return false
+    | fuel + 1 => do
+      match ← option? anyToken with
+      | none => return false
+      | some ':' =>
+        -- P6 fix: use lookAhead to peek the char after `:` without consuming it.
+        -- This way, if the char after `:` is itself `:`, the NEXT detectLoop
+        -- iteration re-examines it as a potential separator.  Fixes `::` which
+        -- should be mapping key `:` → null value (UKK6).
+        match ← option? (lookAhead anyToken) with
+        | none => return true  -- `:` at EOF → mapping separator
+        | some c =>
+          if isWhiteSpace c || isLineBreak c then return true
+          -- Not a separator — continue scanning without consuming the peeked char
+          else detectLoop fuel
+      | some c =>
+        if isLineBreak c then return false
+        else if inFlow && isFlowIndicator c then return false
+        -- Flow-aware: skip over balanced flow collections to avoid false
+        -- positives from `:` inside braces/brackets (e.g., `{a: 1}`).
+        else if c == '{' || c == '[' then do
+          skipFlowBrackets fuel 1
+          detectLoop fuel
+        -- T4 fix: do NOT bail on `"` or `'` mid-key — they are valid
+        -- plain-scalar characters when not at the start of a value.
+        else detectLoop fuel
 
 end
+
+/-- Dispatch to parser by character (wrapper with fuel). -/
+def dispatchByChar (contentIndent : Nat) (scalarIndent : Nat := contentIndent) : YamlParser (DispatchResult YamlValue) := do
+  let fuel := 4 * Stream.remaining (← getStream) + 4
+  dispatchByCharImpl fuel contentIndent scalarIndent
+
+/-- Parse a block value (wrapper with fuel). -/
+def blockValue (minIndent : Nat) (propertyMinIndent : Nat := minIndent) : YamlParser (Option YamlValue) := do
+  let fuel := 4 * Stream.remaining (← getStream) + 4
+  blockValueImpl fuel minIndent propertyMinIndent
+
+/-- Parse a block sequence (wrapper with fuel). -/
+def blockSequence (minIndent : Nat) : YamlParser (Option YamlValue) := do
+  let fuel := 4 * Stream.remaining (← getStream) + 4
+  blockSequenceImpl fuel minIndent
+
+/-- Parse a block mapping (wrapper with fuel). -/
+def blockMapping (minIndent : Nat) : YamlParser (Option YamlValue) := do
+  let fuel := 4 * Stream.remaining (← getStream) + 4
+  blockMappingImpl fuel minIndent
+
+/-- Parse block sequence items (wrapper with fuel). -/
+def blockSequenceItems (seqIndent : Nat) (acc : Array YamlValue) : YamlParser (Array YamlValue) := do
+  let fuel := 4 * Stream.remaining (← getStream) + 4
+  blockSequenceItemsImpl fuel seqIndent acc
+
+/-- Parse a block value on the same line (wrapper with fuel). -/
+def blockValueSameLine (startCol : Nat) (contentIndent : Nat) : YamlParser YamlValue := do
+  let fuel := 4 * Stream.remaining (← getStream) + 4
+  blockValueSameLineImpl fuel startCol contentIndent
+
+/-- Parse block mapping entries (wrapper with fuel). -/
+def blockMappingEntries (mapIndent : Nat) (acc : Array (YamlValue × YamlValue)) : YamlParser (Array (YamlValue × YamlValue)) := do
+  let fuel := 4 * Stream.remaining (← getStream) + 4
+  blockMappingEntriesImpl fuel mapIndent acc
+
+/-- Parse a block mapping entry (wrapper with fuel). -/
+def blockMappingEntry (mapIndent : Nat) : YamlParser (YamlValue × YamlValue) := do
+  let fuel := 4 * Stream.remaining (← getStream) + 4
+  blockMappingEntryImpl fuel mapIndent
+
+/-- Parse a block mapping key (wrapper with fuel). -/
+def blockMappingKey : YamlParser YamlValue := do
+  let fuel := 4 * Stream.remaining (← getStream) + 4
+  blockMappingKeyImpl fuel
+
+/-- Detect if current position is a mapping key (wrapper with fuel). -/
+def detectMappingKey (inFlow : Bool) : YamlParser Bool := do
+  let fuel := 4 * Stream.remaining (← getStream) + 4
+  detectMappingKeyImpl fuel inFlow
 
 end Lean4Yaml.Parse

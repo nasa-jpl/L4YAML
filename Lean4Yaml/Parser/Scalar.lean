@@ -140,13 +140,14 @@ Before consuming whitespace on each continuation line, checks for
 `c-forbidden` (§9.1.2 [206]): `---` or `...` at column 0 followed by
 whitespace/newline/EOF. Returns `FoldResult.forbidden` if detected.
 -/
-partial def foldQuotedNewlines (acc : String) (contentIndent : Nat := 0) : YamlParser FoldResult := do
+def foldQuotedNewlines (acc : String) (contentIndent : Nat := 0) : YamlParser FoldResult := do
   -- Step 1: Trim trailing whitespace (spaces + tabs) from acc
   -- (YAML §7.3.1: "All leading and trailing white space characters
   --  on each line are excluded from the content")
   let trimmed := trimTrailingWhitespace acc
   -- Step 2: Count blank lines by consuming whitespace + newlines
-  let result ← loop trimmed 0
+  let fuel := Stream.remaining (← getStream)
+  let result ← loop fuel trimmed 0
   return result
 where
   /-- Remove trailing space and tab characters from a string. -/
@@ -155,7 +156,9 @@ where
     let trimmed := chars.reverse.dropWhile (fun c => c == ' ' || c == '\t')
     String.ofList trimmed.reverse
   /-- Loop: skip whitespace, check for newline (blank line) or content. -/
-  loop (result : String) (blankCount : Nat) : YamlParser FoldResult := do
+  loop : Nat → String → Nat → YamlParser FoldResult
+    | 0, result, _ => return .folded result
+    | fuel + 1, result, blankCount => do
     -- Check for c-forbidden at the start of each continuation line
     let pos ← currentPos
     if pos.col == 0 then
@@ -171,7 +174,7 @@ where
     match ← option? newline with
     | some _ =>
       -- This was a blank line → count it and continue
-      loop result (blankCount + 1)
+      loop fuel result (blankCount + 1)
     | none =>
       -- Found content on this line (leading whitespace already consumed)
       -- P10 fix (QB6E): §7.3.1 — continuation lines in a quoted scalar
@@ -199,13 +202,16 @@ Parse a double-quoted scalar
 Double-quoted scalars support escape sequences and line folding.
 Returns the processed content.
 -/
-partial def doubleQuotedScalar (contentIndent : Nat := 0) : YamlParser YamlValue :=
+def doubleQuotedScalar (contentIndent : Nat := 0) : YamlParser YamlValue :=
   withErrorMessage "expected double-quoted scalar" do
     let _ ← char '"'
-    let content ← collectChars ""
+    let fuel := Stream.remaining (← getStream)
+    let content ← collectChars fuel ""
     return .scalar { content, style := .doubleQuoted }
 where
-  collectChars (acc : String) : YamlParser String := do
+  collectChars : Nat → String → YamlParser String
+    | 0, acc => return acc
+    | fuel + 1, acc => do
     match ← anyToken with
     | '"' => return acc
     | '\\' => do
@@ -216,31 +222,31 @@ where
             -- backslash + newline → trim trailing ws, skip leading ws, emit nothing
             let trimmed := trimTrailingWs acc
             skipHWhitespace
-            collectChars trimmed
+            collectChars fuel trimmed
         | '\r' => do
             -- Escaped CRLF line break
             let _ ← option? (token '\n')
             let trimmed := trimTrailingWs acc
             skipHWhitespace
-            collectChars trimmed
+            collectChars fuel trimmed
         | _ => do
             let escaped ← processEscape c
-            collectChars (acc.push escaped)
+            collectChars fuel (acc.push escaped)
     | '\n' => do
         -- Line folding (c-forbidden checked inside foldQuotedNewlines)
         match ← foldQuotedNewlines acc contentIndent with
-        | .folded result => collectChars result
+        | .folded result => collectChars fuel result
         | .forbidden msg =>
           setValidationError msg
           return acc
     | '\r' => do
         let _ ← option? (token '\n')  -- CRLF
         match ← foldQuotedNewlines acc contentIndent with
-        | .folded result => collectChars result
+        | .folded result => collectChars fuel result
         | .forbidden msg =>
           setValidationError msg
           return acc
-    | c => collectChars (acc.push c)
+    | c => collectChars fuel (acc.push c)
   processEscape (c : Char) : YamlParser Char := do
     match c with
     | '0'  => return '\x00'
@@ -293,34 +299,37 @@ Parse a single-quoted scalar
 The only escape in single-quoted scalars is `''` → `'`.
 Line folding follows the same rules as double-quoted scalars.
 -/
-partial def singleQuotedScalar (contentIndent : Nat := 0) : YamlParser YamlValue :=
+def singleQuotedScalar (contentIndent : Nat := 0) : YamlParser YamlValue :=
   withErrorMessage "expected single-quoted scalar" do
     let _ ← char '\''
-    let content ← collectChars ""
+    let fuel := Stream.remaining (← getStream)
+    let content ← collectChars fuel ""
     return .scalar { content, style := .singleQuoted }
 where
-  collectChars (acc : String) : YamlParser String := do
-    match ← anyToken with
-    | '\'' =>
-        -- Check for escaped quote ('')
-        match ← option? (char '\'') with
-        | some _ => collectChars (acc.push '\'')
-        | none => return acc
-    | '\n' => do
-        -- Line folding (c-forbidden checked inside foldQuotedNewlines)
-        match ← foldQuotedNewlines acc contentIndent with
-        | .folded result => collectChars result
-        | .forbidden msg =>
-          setValidationError msg
-          return acc
-    | '\r' => do
-        let _ ← option? (token '\n')
-        match ← foldQuotedNewlines acc contentIndent with
-        | .folded result => collectChars result
-        | .forbidden msg =>
-          setValidationError msg
-          return acc
-    | c => collectChars (acc.push c)
+  collectChars : Nat → String → YamlParser String
+    | 0, acc => return acc
+    | fuel + 1, acc => do
+      match ← anyToken with
+      | '\'' =>
+          -- Check for escaped quote ('')
+          match ← option? (char '\'') with
+          | some _ => collectChars fuel (acc.push '\'')
+          | none => return acc
+      | '\n' => do
+          -- Line folding (c-forbidden checked inside foldQuotedNewlines)
+          match ← foldQuotedNewlines acc contentIndent with
+          | .folded result => collectChars fuel result
+          | .forbidden msg =>
+            setValidationError msg
+            return acc
+      | '\r' => do
+          let _ ← option? (token '\n')
+          match ← foldQuotedNewlines acc contentIndent with
+          | .folded result => collectChars fuel result
+          | .forbidden msg =>
+            setValidationError msg
+            return acc
+      | c => collectChars fuel (acc.push c)
 
 /-! ## Plain Scalars
   §7.3.3 (https://yaml.org/spec/1.2.2/#733-plain-style) -/
@@ -361,7 +370,7 @@ Parameters:
 - `inFlow`: whether we're inside a flow collection (`[...]` or `{...}`)
 - `baseIndent`: parent structure's indentation level (for continuation)
 -/
-partial def plainScalarContent (inFlow : Bool) (contentIndent : Nat) : YamlParser String :=
+def plainScalarContent (inFlow : Bool) (contentIndent : Nat) : YamlParser String :=
   withErrorMessage "expected plain scalar" do
     -- Pre-validate: check that first char can start a plain scalar.
     -- For -/?/:, also check that the next char is not whitespace/linebreak/EOF.
@@ -392,97 +401,103 @@ partial def plainScalarContent (inFlow : Bool) (contentIndent : Nat) : YamlParse
     -- Actually consume the first character (validated by lookAhead above)
     let first ← anyToken
     -- Collect the first line
-    let firstLine ← collectPlain (String.ofList [first]) false
+    let fuel := Stream.remaining (← getStream)
+    let firstLine ← collectPlain fuel (String.ofList [first]) false
     let firstLine := firstLine.trimAsciiEnd.toString
     -- In flow context, allow multi-line continuation (§7.3.3)
     -- but with flow-specific termination rules
+    let fuel' := Stream.remaining (← getStream)
     if inFlow then
-      collectFlowLines firstLine
+      collectFlowLines fuel' firstLine
     else
       -- In block context, check for multi-line continuation
-      collectLines firstLine
+      collectLines fuel' firstLine
 where
   /-- Collect characters on a single line of a plain scalar. -/
-  collectPlain (acc : String) (lastWasSpace : Bool) : YamlParser String := do
-    match ← option? (lookAhead anyToken) with
-    | none => return acc
-    | some c =>
-      if isLineBreak c then
-        return acc
-      else if c == '#' && lastWasSpace then
-        -- ` #` starts a comment → end of plain scalar
-        return acc
-      else if c == ':' then
-        -- Peek past `:` to check for mapping separator
-        -- In flow context, `:` followed by a flow indicator is also a separator (§7.3.3)
-        let isMapSep ← lookAhead do
-          let _ ← anyToken  -- consume ':'
-          match ← option? anyToken with
-          | some nc => return (isWhiteSpace nc || isLineBreak nc || (inFlow && isFlowIndicator nc))
-          | none => return true  -- `:` at EOF
-        if isMapSep then
+  collectPlain : Nat → String → Bool → YamlParser String
+    | 0, acc, _ => return acc
+    | fuel + 1, acc, lastWasSpace => do
+      match ← option? (lookAhead anyToken) with
+      | none => return acc
+      | some c =>
+        if isLineBreak c then
           return acc
-        else
-          let _ ← anyToken  -- actually consume the ':'
-          collectPlain (acc.push c) false
-      else if inFlow && isFlowIndicator c then
-        -- Don't consume the flow indicator — caller needs it
-        return acc
-      else if isWhiteSpace c then
-        -- P5 fix (L383): before consuming whitespace, check if it leads
-        -- directly to a `#` comment.  If so, stop WITHOUT consuming the
-        -- whitespace so it remains visible for downstream trailing-content
-        -- checks in `document`.  This prevents the scalar parser from
-        -- "eating" the comment separator whitespace.
-        let leadsToComment ← lookAhead do
-          dropMany (tokenFilter isWhiteSpace)
-          match ← option? anyToken with
-          | some '#' => return true
-          | _ => return false
-        if leadsToComment then
+        else if c == '#' && lastWasSpace then
+          -- ` #` starts a comment → end of plain scalar
           return acc
+        else if c == ':' then
+          -- Peek past `:` to check for mapping separator
+          -- In flow context, `:` followed by a flow indicator is also a separator (§7.3.3)
+          let isMapSep ← lookAhead do
+            let _ ← anyToken  -- consume ':'
+            match ← option? anyToken with
+            | some nc => return (isWhiteSpace nc || isLineBreak nc || (inFlow && isFlowIndicator nc))
+            | none => return true  -- `:` at EOF
+          if isMapSep then
+            return acc
+          else
+            let _ ← anyToken  -- actually consume the ':'
+            collectPlain fuel (acc.push c) false
+        else if inFlow && isFlowIndicator c then
+          -- Don't consume the flow indicator — caller needs it
+          return acc
+        else if isWhiteSpace c then
+          -- P5 fix (L383): before consuming whitespace, check if it leads
+          -- directly to a `#` comment.  If so, stop WITHOUT consuming the
+          -- whitespace so it remains visible for downstream trailing-content
+          -- checks in `document`.  This prevents the scalar parser from
+          -- "eating" the comment separator whitespace.
+          let leadsToComment ← lookAhead do
+            dropMany (tokenFilter isWhiteSpace)
+            match ← option? anyToken with
+            | some '#' => return true
+            | _ => return false
+          if leadsToComment then
+            return acc
+          else
+            let _ ← anyToken  -- actually consume
+            collectPlain fuel (acc.push c) true
         else
           let _ ← anyToken  -- actually consume
-          collectPlain (acc.push c) true
-      else
-        let _ ← anyToken  -- actually consume
-        collectPlain (acc.push c) false
+          collectPlain fuel (acc.push c) false
   /-- Collect continuation lines, folding per YAML §6.5 line folding rules.
       Adjacent non-empty lines are joined with a space.
       Empty lines produce `\n` (paragraph breaks). -/
-  collectLines (acc : String) : YamlParser String := do
-    let check ← checkContinuation contentIndent
-    match check with
-    | .notContinuing => return acc
-    | .sequenceMarker => return acc
-    | .mappingEntry => return acc
-    | .plainContinuation =>
-      -- Consume the newline and leading whitespace
-      newline
-      skipHWhitespace
-      -- Collect the next line
-      let line ← collectPlain "" false
-      let line := line.trimAsciiEnd.toString
-      if line.isEmpty then
-        -- Degenerate: empty content line → treat as end
-        return acc
-      -- Space-fold: join with a single space
-      collectLines (acc ++ " " ++ line)
-    | .afterEmpty emptyCount =>
-      -- Consume the newline
-      newline
-      -- Skip the empty/blank lines (consume them)
-      consumeEmptyLines emptyCount
-      -- Consume indentation on the content line
-      skipHWhitespace
-      -- Collect the next line
-      let line ← collectPlain "" false
-      let line := line.trimAsciiEnd.toString
-      if line.isEmpty then
-        return acc
-      -- Paragraph break: each empty line produces a \n
-      let breaks := String.ofList (List.replicate emptyCount '\n')
-      collectLines (acc ++ breaks ++ line)
+  collectLines : Nat → String → YamlParser String
+    | 0, acc => return acc
+    | fuel + 1, acc => do
+      let check ← checkContinuation contentIndent
+      match check with
+      | .notContinuing => return acc
+      | .sequenceMarker => return acc
+      | .mappingEntry => return acc
+      | .plainContinuation =>
+        -- Consume the newline and leading whitespace
+        newline
+        skipHWhitespace
+        -- Collect the next line
+        let line ← collectPlain fuel "" false
+        let line := line.trimAsciiEnd.toString
+        if line.isEmpty then
+          -- Degenerate: empty content line → treat as end
+          return acc
+        -- Space-fold: join with a single space
+        collectLines fuel (acc ++ " " ++ line)
+      | .afterEmpty emptyCount =>
+        -- Consume the newline
+        newline
+        -- Skip the empty/blank lines (consume them)
+        consumeEmptyLines emptyCount
+        -- Consume indentation on the content line
+        skipHWhitespace
+        -- Collect the next line
+        let line ← collectPlain fuel "" false
+        let line := line.trimAsciiEnd.toString
+        if line.isEmpty then
+          return acc
+        -- Paragraph break: each empty line produces a \n
+        let breaks := String.ofList (List.replicate emptyCount '\n')
+        collectLines fuel (acc ++ breaks ++ line)
   /-- Consume n empty/blank lines (newlines already counted by checkContinuation).
       P5 fix: use `skipHWhitespace` instead of `skipSpaces` so that
       blank lines containing tabs (like NB6Z) are fully consumed. -/
@@ -495,70 +510,70 @@ where
       simpler than block: no indentation threshold, but lines starting with
       a flow indicator (`,`, `[`, `]`, `{`, `}`) terminate the scalar.
       Lines are space-folded (joined with a single space). -/
-  collectFlowLines (acc : String) : YamlParser String := do
-    -- Must be at a line break to continue
-    match ← option? (lookAhead newline) with
-    | none => return acc
-    | some _ =>
-      -- Look ahead past the newline + whitespace to see what's on the next line
-      let continues ← lookAhead do
+  collectFlowLines : Nat → String → YamlParser String
+    | 0, acc => return acc
+    | fuel + 1, acc => do
+      -- Must be at a line break to continue
+      match ← option? (lookAhead newline) with
+      | none => return acc
+      | some _ =>
+        -- Look ahead past the newline + whitespace to see what's on the next line
+        let continues ← lookAhead do
+          newline
+          -- Skip blank lines (flow continuation ignores them as space-fold)
+          let mut emptyLines := 0
+          for _ in [:fuel] do
+            skipSpaces
+            match ← option? (lookAhead newline) with
+            | some _ => newline; emptyLines := emptyLines + 1
+            | none => break
+          skipSpaces
+          -- Check what the first non-whitespace char on the content line is
+          match ← option? (lookAhead anyToken) with
+          | none => return false  -- EOF ends the scalar
+          | some c =>
+            -- Flow indicators end the scalar
+            if isFlowIndicator c then return false
+            -- P7 fix (CML9): §6.7 — `#` preceded by whitespace (or at line
+            -- start, which counts as s-separate-in-line) starts a comment.
+            -- After skipping spaces we are at the first non-ws char; if it's
+            -- `#`, this is a comment line and the plain scalar must stop.
+            -- Without this, `[ word1\n# xxx\n word2 ]` would fold the
+            -- comment into the scalar instead of being rejected.
+            if c == '#' then return false
+            -- Document boundaries end the scalar
+            if c == '-' || c == '.' then
+              let atBound ← atDocumentBoundary
+              if atBound then return false
+            return true
+        if !continues then return acc
+        -- Actually consume the newline + whitespace
         newline
-        -- Skip blank lines (flow continuation ignores them as space-fold)
+        -- Consume any blank lines
         let mut emptyLines := 0
-        let mut loop := true
-        while loop do
+        for _ in [:fuel] do
           skipSpaces
           match ← option? (lookAhead newline) with
           | some _ => newline; emptyLines := emptyLines + 1
-          | none => loop := false
-        skipSpaces
-        -- Check what the first non-whitespace char on the content line is
-        match ← option? (lookAhead anyToken) with
-        | none => return false  -- EOF ends the scalar
-        | some c =>
-          -- Flow indicators end the scalar
-          if isFlowIndicator c then return false
-          -- P7 fix (CML9): §6.7 — `#` preceded by whitespace (or at line
-          -- start, which counts as s-separate-in-line) starts a comment.
-          -- After skipping spaces we are at the first non-ws char; if it's
-          -- `#`, this is a comment line and the plain scalar must stop.
-          -- Without this, `[ word1\n# xxx\n word2 ]` would fold the
-          -- comment into the scalar instead of being rejected.
-          if c == '#' then return false
-          -- Document boundaries end the scalar
-          if c == '-' || c == '.' then
-            let atBound ← atDocumentBoundary
-            if atBound then return false
-          return true
-      if !continues then return acc
-      -- Actually consume the newline + whitespace
-      newline
-      -- Consume any blank lines
-      let mut emptyLines := 0
-      let mut loop := true
-      while loop do
-        skipSpaces
-        match ← option? (lookAhead newline) with
-        | some _ => newline; emptyLines := emptyLines + 1
-        | none => loop := false
-      skipHWhitespace
-      -- Collect next line's content
-      let line ← collectPlain "" false
-      let line := line.trimAsciiEnd.toString
-      if line.isEmpty then return acc
-      -- Space-fold or paragraph-break
-      if emptyLines > 0 then
-        let breaks := String.ofList (List.replicate emptyLines '\n')
-        collectFlowLines (acc ++ breaks ++ line)
-      else
-        collectFlowLines (acc ++ " " ++ line)
+          | none => break
+        skipHWhitespace
+        -- Collect next line's content
+        let line ← collectPlain fuel "" false
+        let line := line.trimAsciiEnd.toString
+        if line.isEmpty then return acc
+        -- Space-fold or paragraph-break
+        if emptyLines > 0 then
+          let breaks := String.ofList (List.replicate emptyLines '\n')
+          collectFlowLines fuel (acc ++ breaks ++ line)
+        else
+          collectFlowLines fuel (acc ++ " " ++ line)
 
 /--
 Parse a plain scalar (single-line only, for use as mapping key).
 
 Mapping keys must be single-line per YAML 1.2.2 §7.3.3.
 -/
-partial def plainScalarSingleLine (inFlow : Bool) : YamlParser String :=
+def plainScalarSingleLine (inFlow : Bool) : YamlParser String :=
   withErrorMessage "expected plain scalar" do
     -- Pre-validate: same lookAhead pattern as plainScalarContent.
     let validStart ← lookAhead do
@@ -577,10 +592,13 @@ partial def plainScalarSingleLine (inFlow : Bool) : YamlParser String :=
       notFollowedBy (pure ())
       return ""  -- unreachable
     let first ← anyToken
-    let rest ← collectPlain (String.ofList [first]) false
+    let fuel := Stream.remaining (← getStream)
+    let rest ← collectPlain fuel (String.ofList [first]) false
     return rest.trimAsciiEnd.toString
 where
-  collectPlain (acc : String) (lastWasSpace : Bool) : YamlParser String := do
+  collectPlain : Nat → String → Bool → YamlParser String
+    | 0, acc, _ => return acc
+    | fuel + 1, acc, lastWasSpace => do
     match ← option? (lookAhead anyToken) with
     | none => return acc
     | some c =>
@@ -599,15 +617,15 @@ where
           return acc
         else
           let _ ← anyToken
-          collectPlain (acc.push c) false
+          collectPlain fuel (acc.push c) false
       else if inFlow && isFlowIndicator c then
         return acc
       else if isWhiteSpace c then
         let _ ← anyToken
-        collectPlain (acc.push c) true
+        collectPlain fuel (acc.push c) true
       else
         let _ ← anyToken
-        collectPlain (acc.push c) false
+        collectPlain fuel (acc.push c) false
 
 /--
 Parse a plain scalar and wrap it as a YamlValue.
@@ -619,7 +637,7 @@ At document level `contentIndent = 0`, allowing col-0 continuation.
 
 In flow context, scalars are single-line.
 -/
-partial def plainScalar (inFlow : Bool) (contentIndent : Nat := 0) : YamlParser YamlValue := do
+def plainScalar (inFlow : Bool) (contentIndent : Nat := 0) : YamlParser YamlValue := do
   let content ← plainScalarContent inFlow contentIndent
   if content.isEmpty then
     -- Defensive: should never happen since plainScalarContent's first char
@@ -752,12 +770,15 @@ Returns the number of leading spaces on that line.
 - **Enforcement**: the entire body is wrapped in `lookAhead`.
   See `Proofs/BlockScalarContracts.lean` `contract_autoDetectIndent_non_consuming`.
 -/
-partial def autoDetectIndent (minIndent : Nat) : YamlParser Nat :=
+def autoDetectIndent (minIndent : Nat) : YamlParser Nat :=
   lookAhead do
     -- Skip blank lines, tracking max spaces in whitespace-only lines
-    loop 0
+    let fuel := Stream.remaining (← getStream)
+    loop fuel 0
 where
-  loop (maxBlankSpaces : Nat) : YamlParser Nat := do
+  loop : Nat → Nat → YamlParser Nat
+    | 0, _ => return minIndent
+    | fuel + 1, maxBlankSpaces => do
     let col ← currentCol
     -- Count spaces
     let spaces ← count (token ' ')
@@ -765,7 +786,7 @@ where
     match ← option? newline with
     | some _ =>
       -- Empty line, track max spaces and continue looking
-      loop (max maxBlankSpaces totalCol)
+      loop fuel (max maxBlankSpaces totalCol)
     | none =>
       -- Found content line (or EOF/non-space char)
       if totalCol >= minIndent then
@@ -802,17 +823,20 @@ Returns the raw content string.
 - **Enforcement**: uses `consumeIndent indent` which rejects tabs
   and requires exactly `indent` spaces.
 -/
-partial def blockScalarContent (indent : Nat) : YamlParser String := do
-  collectLines "" true
+def blockScalarContent (indent : Nat) : YamlParser String := do
+  let fuel := Stream.remaining (← getStream)
+  collectLines fuel "" true
 where
-  collectLines (acc : String) (first : Bool) : YamlParser String := do
-    -- Try to read the next line
-    match ← option? (blockScalarLine indent first) with
-    | some line =>
-      let acc' := if first then line else acc ++ "\n" ++ line
-      collectLines acc' false
-    | none =>
-      return acc
+  collectLines : Nat → String → Bool → YamlParser String
+    | 0, acc, _ => return acc
+    | fuel + 1, acc, first => do
+      -- Try to read the next line
+      match ← option? (blockScalarLine indent first) with
+      | some line =>
+        let acc' := if first then line else acc ++ "\n" ++ line
+        collectLines fuel acc' false
+      | none =>
+        return acc
 
   blockScalarLine (indent : Nat) (_first : Bool) : YamlParser String := do
     -- Check for blank line (truly empty: just newline)
@@ -857,16 +881,16 @@ where
       return content
 
   takeLineContent : YamlParser String := do
+    let fuel := Stream.remaining (← getStream)
     let mut acc := ""
-    let mut done := false
-    while !done do
+    for _ in [:fuel] do
       match ← option? anyToken with
       | some c =>
         if isLineBreak c then
-          done := true
+          break
         else
           acc := acc.push c
-      | none => done := true
+      | none => break
     return acc
 
 /--
@@ -960,7 +984,7 @@ the sub-contracts of each phase composing correctly:
   Does NOT consume characters belonging to the next structure.
   Leaves the stream positioned at the start of the next structure.
 -/
-partial def blockScalar (contentIndent : Nat) : YamlParser YamlValue :=
+def blockScalar (contentIndent : Nat) : YamlParser YamlValue :=
   withErrorMessage "expected block scalar" do
     -- Phase 1: Parse the indicator (consumes exactly 1 char)
     let indicator ← first [char '|', char '>']

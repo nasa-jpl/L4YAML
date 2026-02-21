@@ -144,14 +144,20 @@ P5 fix: use `skipHWhitespace` instead of `skipSpaces` so that
 tab characters on blank/comment lines are handled correctly.
 YAML §5.5 defines whitespace as space or tab.
 -/
-partial def skipBlankLines : YamlParser Unit := do
-  match ← option? (lookAhead (skipHWhitespace *> (newline <|> (comment *> return)))) with
-  | some _ =>
-      skipHWhitespace
-      optional comment *> return
-      optional newline *> return
-      skipBlankLines
-  | none => return
+def skipBlankLines : YamlParser Unit := do
+  let fuel := Stream.remaining (← getStream)
+  go fuel
+where
+  go : Nat → YamlParser Unit
+    | 0 => return ()
+    | fuel + 1 => do
+      match ← option? (lookAhead (skipHWhitespace *> (newline <|> (comment *> return)))) with
+      | some _ =>
+          skipHWhitespace
+          optional comment *> return
+          optional newline *> return
+          go fuel
+      | none => return
 
 /-!
 ## Indentation Consumption
@@ -491,14 +497,15 @@ Decision algorithm:
 6. Check for mapping entry (`key: `) — not a continuation
 7. Otherwise, it's a continuation (possibly after empty lines)
 -/
-partial def checkContinuation (contentIndent : Nat) : YamlParser ContinuationCheck :=
+def checkContinuation (contentIndent : Nat) : YamlParser ContinuationCheck :=
   lookAhead do
     -- Must be at a line break to continue
     match ← option? newline with
     | none => return .notContinuing
     | some _ =>
       -- Count empty/blank lines
-      let emptyCount ← countEmptyLines 0
+      let fuel ← Stream.remaining <$> getStream
+      let emptyCount ← countEmptyLines fuel 0
       -- Check indentation of the next content line
       skipSpaces
       let col ← currentCol
@@ -520,7 +527,8 @@ partial def checkContinuation (contentIndent : Nat) : YamlParser ContinuationChe
         if hasSeq then
           return .sequenceMarker
       -- Check for mapping entry: scan for `: ` pattern on this line
-      let hasMap ← scanForMappingSeparator
+      let fuel' ← Stream.remaining <$> getStream
+      let hasMap ← scanForMappingSeparator fuel'
       if hasMap then
         return .mappingEntry
       -- It's a continuation
@@ -534,49 +542,56 @@ where
       tab-only lines (like NB6Z) are recognized as blank lines.
       YAML §5.5 defines whitespace as space or tab; §6.5 line folding
       treats lines with only whitespace as blank (paragraph separators). -/
-  countEmptyLines (n : Nat) : YamlParser Nat := do
-    match ← option? (lookAhead (skipHWhitespace *> newline)) with
-    | some _ =>
-      skipHWhitespace
-      newline
-      countEmptyLines (n + 1)
-    | none => return n
-  /-- Scan the current line for a mapping separator (`: ` or `:\n` or `:` at EOF).
-      Does not cross line boundaries.  Flow-aware: skips balanced `{...}`/`[...]`
-      content to avoid false positives from `: ` inside flow collections. -/
-  scanForMappingSeparator : YamlParser Bool := do
-    scanLoop
+  countEmptyLines : Nat → Nat → YamlParser Nat
+    | 0, n => return n
+    | fuel + 1, n => do
+      match ← option? (lookAhead (skipHWhitespace *> newline)) with
+      | some _ =>
+        skipHWhitespace
+        newline
+        countEmptyLines fuel (n + 1)
+      | none => return n
   /-- Skip over balanced flow brackets.  `depth` counts nesting level;
-      when it reaches 0, the matching close bracket has been consumed. -/
-  skipFlowBrackets (depth : Nat) : YamlParser Unit := do
-    if depth == 0 then return ()
-    match ← option? anyToken with
-    | none => return ()  -- unclosed collection at EOF, bail out
-    | some c =>
-      if c == '}' || c == ']' then skipFlowBrackets (depth - 1)
-      else if c == '{' || c == '[' then skipFlowBrackets (depth + 1)
-      else if isLineBreak c then return ()  -- unclosed collection at EOL
-      else skipFlowBrackets depth
+      when it reaches 0, the matching close bracket has been consumed.
+      Uses fuel (stream remaining) for termination since depth can increase. -/
+  skipFlowBrackets : Nat → Nat → YamlParser Unit
+    | 0, _ => return ()
+    | _, 0 => return ()
+    | fuel + 1, depth => do
+      match ← option? anyToken with
+      | none => return ()  -- unclosed collection at EOF, bail out
+      | some c =>
+        if c == '}' || c == ']' then skipFlowBrackets fuel (depth - 1)
+        else if c == '{' || c == '[' then skipFlowBrackets fuel (depth + 1)
+        else if isLineBreak c then return ()  -- unclosed collection at EOL
+        else skipFlowBrackets fuel depth
   /-- P6 fix: use lookAhead for the char after `:` so that adjacent colons
       (`::`) are properly handled.  The second `:` is re-examined as a
       potential separator on the next iteration.  Mirrors the fix in
       `detectMappingKey`. -/
-  scanLoop : YamlParser Bool := do
-    match ← option? anyToken with
-    | none => return false
-    | some ':' =>
-      match ← option? (lookAhead anyToken) with
-      | none => return true  -- `:` at EOF
+  scanLoop : Nat → YamlParser Bool
+    | 0 => return false
+    | fuel + 1 => do
+      match ← option? anyToken with
+      | none => return false
+      | some ':' =>
+        match ← option? (lookAhead anyToken) with
+        | none => return true  -- `:` at EOF
+        | some c =>
+          if isWhiteSpace c || isLineBreak c then return true
+          else scanLoop fuel  -- don't consume peeked char; next iteration handles it
       | some c =>
-        if isWhiteSpace c || isLineBreak c then return true
-        else scanLoop  -- don't consume peeked char; next iteration handles it
-    | some c =>
-      if isLineBreak c then return false
-      else if c == '"' || c == '\'' then return false  -- Don't scan through quotes
-      -- Flow-aware: skip balanced flow collections
-      else if c == '{' || c == '[' then do
-        skipFlowBrackets 1
-        scanLoop
-      else scanLoop
+        if isLineBreak c then return false
+        else if c == '"' || c == '\'' then return false  -- Don't scan through quotes
+        -- Flow-aware: skip balanced flow collections
+        else if c == '{' || c == '[' then do
+          skipFlowBrackets fuel 1
+          scanLoop fuel
+        else scanLoop fuel
+  /-- Scan the current line for a mapping separator (`: ` or `:\n` or `:` at EOF).
+      Does not cross line boundaries.  Flow-aware: skips balanced `{...}`/`[...]`
+      content to avoid false positives from `: ` inside flow collections. -/
+  scanForMappingSeparator (fuel : Nat) : YamlParser Bool :=
+    scanLoop fuel
 
 end Lean4Yaml.Parse
