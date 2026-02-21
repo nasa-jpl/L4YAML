@@ -186,7 +186,7 @@ Running all tests for HTML report...
   [170/416] CML9 ✓ (expected fail)
   [171/416] CN3R ✓
   [172/416] CPZ3 ✓
-  [173/416] CQ3W ✓ (expected fail)
+  [173/416] CQ3W ⚠ unexpected pass
   [174/416] CT4Q ✓
   [175/416] CTN5 ✓ (expected fail)
   [176/416] CUP7 ✓
@@ -432,7 +432,7 @@ Running all tests for HTML report...
   [416/416] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 353/416 (84.000000%)
+Correct: 352/416 (84.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 17/17

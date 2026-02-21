@@ -1,15 +1,15 @@
 {
-  "date": "2026-02-21T11:44:23-0800",
+  "date": "2026-02-21T13:36:10-0800",
   "overall": {
-    "correct": 353,
-    "correctRate": 84.855769,
-    "expectedFail": 93,
+    "correct": 352,
+    "correctRate": 84.615384,
+    "expectedFail": 92,
     "failed": 0,
     "passed": 260,
     "skipped": 62,
     "timeout": 0,
     "total": 416,
-    "unexpectedPass": 1
+    "unexpectedPass": 2
   },
   "stages": {
     "advanced": {
@@ -46,15 +46,15 @@
       "unexpectedPass": 1
     },
     "error": {
-      "correct": 74,
-      "correctRate": 100,
-      "expectedFail": 74,
+      "correct": 73,
+      "correctRate": 98.648648,
+      "expectedFail": 73,
       "failed": 0,
       "passed": 0,
       "skipped": 0,
       "timeout": 0,
       "total": 74,
-      "unexpectedPass": 0
+      "unexpectedPass": 1
     },
     "flow": {
       "correct": 46,
@@ -1285,10 +1285,10 @@
       "stage": "scalar"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "CQ3W",
       "name": "Double quoted string without closing quote",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {

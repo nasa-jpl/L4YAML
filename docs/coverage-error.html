@@ -178,11 +178,11 @@
     <div class="stat-box stat-total"><h3>Unique Tests</h3><div class="number">74</div></div>
     <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">0</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
-    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">74</div></div>
-    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">0</div></div>
+    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">73</div></div>
+    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">1</div></div>
     <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">0</div></div>
     <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">0</div></div>
-    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">74/74</div><div class="pct">(100.000000%)</div></div>
+    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">73/74</div><div class="pct">(98.648649%)</div></div>
   </div>
   <h3>Coverage by Stage</h3>
   <div class="stage-cards">
@@ -213,8 +213,8 @@
     </div>
     <div class="stage-card">
       <div class="stage-card-name">error</div>
-      <div class="stage-card-stats">74/74 correct (100.000000%) · 0 pass, 0 fail, 74 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-segment" style="flex: 74 0 0px; background: var(--color-expected-fail)" title="74 expected fail"></div></div>
+      <div class="stage-card-stats">73/74 correct (98.000000%) · 0 pass, 0 fail, 73 exp-fail, 1 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-segment" style="flex: 73 0 0px; background: var(--color-expected-fail)" title="73 expected fail"></div><div class="stage-bar-segment" style="flex: 1 0 0px; background: var(--color-unexpected-pass)" title="1 unexpected pass"></div></div>
     </div>
   </div>
   <div class="filters">
@@ -498,13 +498,13 @@
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">comment</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="cq3w double quoted string without closing quote error double">
+      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="cq3w double quoted string without closing quote error double">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/CQ3W.yaml" target="_blank" class="test-id-link" title="View CQ3W source in yaml-test-suite">CQ3W</a></td>
         <td>Double quoted string without closing quote</td>
         <td>error</td>
-        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
+        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
         <td><span class="tag">error</span><span class="tag">double</span></td>
-        <td></td>
+        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
       <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="ctn5 flow sequence with invalid extra comma error flow sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/CTN5.yaml" target="_blank" class="test-id-link" title="View CTN5 source in yaml-test-suite">CTN5</a></td>
