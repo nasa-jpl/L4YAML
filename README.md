@@ -54,7 +54,7 @@ Verification uses a deliberate 3-layer approach:
 
 1. **Internal runtime tests** (940 tests across 12 suites + 11 diagnostic) — hand-written Lean tests validating parser properties. Every `theorem` target starts life as a runtime `check` test. These are _separate_ from the yaml-test-suite's 416 external test cases.
 2. **Formal proofs** (`theorem`/`lemma` in `Proofs/*.lean`) — machine-checked guarantees. Layered by dependency: pure functions first, then parser invariants, then full soundness.
-3. **Compile-time guards** (`#guard`) — blocked until lean4-parser removes `partial def`. Will convert runtime tests to kernel-evaluated checks.
+3. **Compile-time guards** (`#guard`) — unblocked now that lean4-parser fold combinators are total (via `total-fold` fork). Will convert runtime tests to kernel-evaluated checks once our parsers are made total (Layer 3 Steps 3.2–3.3).
 
 The runtime tests serve as a proof roadmap: each `setCategory`/`check` group maps to a `theorem` target. When a proof is completed, the corresponding tests become redundant (but are kept as regression guards).
 
@@ -145,9 +145,9 @@ Created 24+ integration tests in `Tests/ParseTest.lean` covering:
 
 All 7 demo examples in `Demo.lean` pass, including deeply nested structures.
 
-#### 2c. Compile-Time `#guard` Tests — Blocked
+#### 2c. Compile-Time `#guard` Tests — Unblocked (Layer 3 Step 3.4)
 
-`#guard` requires kernel reduction, which does not work with `partial def` parsers. This step is deferred until Phase 3 eliminates `partial` annotations.
+`#guard` requires kernel reduction, which does not work with `partial def` parsers. lean4-parser's fold combinators are now total (via `total-fold` fork). Once our own parsers are made total (Layer 3 Steps 3.2–3.3), `#guard` tests become available.
 
 #### 2d. yaml-test-suite — In Progress
 
@@ -245,13 +245,15 @@ Discovered 36 timeout cases (not 9), all sharing one root cause: `yamlStream`'s 
 
 Formal verification proceeds in three layers, ordered by feasibility and diagnostic impact.
 
-**Key constraint: lean4-parser `partial` dependency.** The lean4-parser library uses `private partial def efoldlPAux` in its core fold loop, which propagates through `dropMany`, `count`, and other combinators our parsers depend on. Since `#guard` requires kernel reduction and `partial def` blocks kernel reduction, compile-time `#guard` tests remain blocked until lean4-parser removes its internal `partial` annotations. Our verification focuses on what IS provable now: standalone theorems, pure function properties, and specification invariants.
+**lean4-parser `partial` constraint: RESOLVED.** The lean4-parser library previously used `private partial def efoldlPAux` in its core fold loop, propagating `partial` through `dropMany`, `count`, `takeMany1`, `tokenFilter`, `takeWhile`, and other combinators our parsers depend on. This blocked both termination proofs and compile-time `#guard` tests (which require kernel reduction).
 
-Our own parsers are `partial def` for two independent reasons:
-1. **Own recursion** — self-recursive loops (`foldQuotedNewlines.loop`, `blockSequenceItems`, etc.) need termination proofs to remove `partial`
-2. **lean4-parser dependency** — even if our recursion is proven total, `#guard` won't work because lean4-parser's kernel-opaque `partial` blocks reduction
+**Resolution:** We now use a fork ([NicolasRouquette/lean4-parser](https://github.com/NicolasRouquette/lean4-parser), branch `total-fold`) that makes all 6 fold combinators total via a fuel parameter: `fuel : Nat := Stream.remaining s`. The `efoldlPAux` loop uses structural recursion on `fuel` (`match fuel with | 0 => ... | fuel' + 1 => ...`), and the fuel is capped at `min fuel' (Stream.remaining s)` on each iteration. Our `YamlStream` already implements `remaining s := s.stopPos.byteIdx - s.startPos.byteIdx`. See [lean4-parser#95](https://github.com/fgdorais/lean4-parser/issues/95) and [lean4-parser#96](https://github.com/fgdorais/lean4-parser/pull/96) for the upstream proposal.
 
-Layer 1 targets reason (1) and delivers property proofs independent of lean4-parser. Layer 3 targets the full soundness theorem.
+**Impact on our 35 `partial def` parsers:**
+- **Group A (~6 leaf parsers)**: `partial` solely because lean4-parser was `partial` — no self-recursion. These become `def` immediately (e.g., `skipBlankLines`, `checkNoTabIndent`, `checkIndentForTabs`, `hasTabInWhitespace`, `checkContinuation`, `flowWhitespace`).
+- **Group B (~29 self-recursive parsers)**: Need `termination_by Stream.remaining s` + decreasing proofs. The key bridge lemma `next_decreasing` (proved in `Termination.lean`) shows `Stream.remaining` strictly decreases on `next?`, providing the fuel for `termination_by`.
+
+Layer 1 delivers property proofs independent of lean4-parser. Layer 3 now targets full parser totality and soundness via the 5-step plan below.
 
 #### Layer 1: Foundation ← **YOU ARE HERE**
 
@@ -259,18 +261,18 @@ Standalone proofs about the stream, pure helper functions, and character classif
 
 | Item | Description | Runtime Tests | Proof Status |
 |------|-------------|---------------|-------------|
-| **1a** | `next_decreasing`: after `YamlStream.next?`, remaining input strictly decreases | 38 tests (Verification: remainingLength, Stream exhaustive consumption; StringLemmas: advancement, strictly monotone) | 🔄 `theorem` declared, `sorry` on string arithmetic |
+| **1a** | `next_decreasing`: after `YamlStream.next?`, remaining input strictly decreases | 38 tests (Verification: remainingLength, Stream exhaustive consumption; StringLemmas: advancement, strictly monotone) | ✅ Fully proved (`Proofs/Termination.lean`): `next_decreasing`, `remaining_nonneg`, `remaining_lt_of_next`, `remaining_eq_zero_of_atEnd`. Uses `String.Pos.Raw.byteIdx_add_char` + `Char.utf8Size_pos` + `omega`. Zero sorry's. |
 | **1b** | Properties of `trimTrailingWhitespace`, `trimTrailingWs` (idempotence, no trailing ws) | 12 tests (Verification: trimTrailingWhitespace) | ⬜ Tests only |
 | **1c** | `Grammar.lean` character Props match `Combinators.lean` implementations | 224 tests (`CharClassTests.lean`) + 32 tests (Verification: Grammar↔Combinators) | ✅ 5/7 theorems proved (`Proofs/CharClass.lean`): `isLineBreak_correspondence`, `isWhiteSpace_correspondence`, `isIndentChar_iff`, `isFlowIndicator_correspondence`, `isIndicator_equiv`. `canStartPlainScalar_base` compiles. |
 | **1d** | `FoldResult` type invariants | 4 tests (Verification: FoldResult) | ⬜ Tests only |
 | **1e** | Block scalar assume/guarantee contracts | 135 tests (`ValidationTests.lean`: header char classification, `extractHeaderChars` spec, contract G1/G2, peek-before-consume regression, flow structure error rejection) | ✅ Fully proved (`Proofs/BlockScalarContracts.lean`): 14 theorems on header char classification, 10 decidable contract predicates with specification theorems (G1, G2, non-consuming, indent-bound, composition), 2 interplay theorems, 1 principle. Zero axioms. |
-| **1f** | Document parser assume/guarantee contracts | 13 tests (`ValidationTests.lean` §10: flow structure errors exercising D1–D3) | ⚠️ Analysis complete (ANALYSIS.md §2.H). Three contracts identified (D1: explicit-document boundary, D2: trailing content comment check, D3: `DocumentResult` monotonicity). Formal predicates specified; implementation recommended in `Proofs/DocumentContracts.lean`. |
+| **1f** | Document parser assume/guarantee contracts | 13 tests (`ValidationTests.lean` §10: flow structure errors exercising D1–D3) | ✅ Fully proved (`Proofs/DocumentContracts.lean`): 17 theorems covering document boundary predicates, comment validation, progress monotonicity, tag handle scope, directive uniqueness. Uses `native_decide` for concrete proofs. Zero sorry's. |
 
 Effort: ~2 sessions. Diagnostic value: catches bugs in pure helper functions at compile time.
 
 #### Layer 2: Key Invariants
 
-Property proofs about specific parser behaviors. Where proofs cross into lean4-parser territory, termination is `sorry`-admitted to focus on the invariant itself.
+Property proofs about specific parser behaviors. With lean4-parser fold combinators now total, these proofs can target parser invariants directly without `sorry`-admitting termination.
 
 | Item | Description | Status |
 |------|-------------|--------|
@@ -281,25 +283,26 @@ Property proofs about specific parser behaviors. Where proofs cross into lean4-p
 
 Effort: ~2 sessions. Diagnostic value: specification-level checks for scalar parsing.
 
-#### Layer 3: Full Termination & Soundness (After Anchors)
+#### Layer 3: Full Termination & Soundness — 5-Step Plan
 
-Full termination proofs for block/flow/document mutual recursion + soundness composition into `parse_sound`. Deferred until parser structure stabilizes after anchors/aliases.
+With lean4-parser fold combinators now total (via `Stream.remaining` fuel), the path to eliminating all 35 `partial def` parsers is clear. Parser structure is stable (353/416 yaml-test-suite, 0 failures). Work proceeds in five steps:
 
-| Item | Description | Status |
+| Step | Description | Status |
 |------|-------------|--------|
-| **3a** | Remove `partial` from leaf parsers (own recursion) | |
-| **3b** | Remove `partial` from block/flow/document mutual recursion groups | |
-| **3c** | Compose soundness proofs: each parser produces `Grammar.ValidNode` | |
-| **3d** | Top-level `parse_sound` theorem | |
+| **3.1** | **Link `remainingLength` to `Stream.remaining`** — Prove `remainingLength s = Parser.Stream.remaining s` (both equal `s.stopPos.byteIdx - s.startPos.byteIdx`). This bridges our existing termination infrastructure (`Proofs/Termination.lean`) to lean4-parser's fuel parameter. | ✅ `remainingLength_eq_stream_remaining` proved by `rfl` (definitionally equal). Corollary `stream_remaining_decreasing` lifts `next_decreasing` to `Parser.Stream.remaining`. |
+| **3.2** | **Convert Group A leaf parsers (~6) to `def`** — These are `partial` only because lean4-parser was `partial`; they have no self-recursion. With total fold combinators, they become `def` immediately: `skipBlankLines`, `checkNoTabIndent`, `checkIndentForTabs`, `hasTabInWhitespace`, `checkContinuation`, `flowWhitespace`. | ← **NEXT** |
+| **3.3** | **Convert Group B self-recursive parsers (~29) to `def`** — Each needs `termination_by Stream.remaining s` and a proof that `Stream.remaining` strictly decreases across recursive calls. Subgroups: Scalar (9: `foldQuotedNewlines`, `doubleQuotedScalar`, `singleQuotedScalar`, `plainScalarContent`, etc.), Flow (7: `flowValue`↔`flowSequence`↔`flowMapping` mutual recursion), Block (11: `blockValue`↔`blockSequence`↔`blockMapping` mutual recursion), Document (3: `directives`, `document`, `yamlStream`). The `next_decreasing` lemma (proved in `Termination.lean`) provides the core decreasing argument. | |
+| **3.4** | **`#guard` compile-time tests** — Convert runtime `check` tests to kernel-evaluated `#guard` guards. Previously blocked by lean4-parser `partial`; now unblocked once our parsers (Steps 3.2–3.3) are total. Validates parser behavior at compile time — any regression fails the build. | |
+| **3.5** | **Soundness proofs** — Compose per-parser `Grammar.ValidNode` proofs into the top-level `parse_sound` theorem. Each parser function gets a companion theorem showing its output satisfies the corresponding `Grammar.lean` predicate. Placeholder theorems in `Soundness.lean` and `RoundTrip.lean` provide the framework. | |
 | **3e** | Convert `axiom`s in `Soundness.lean` to `theorem`s | ✅ All axioms eliminated project-wide. `Soundness.lean` (3 axioms → theorems), `RoundTrip.lean` (1 axiom → theorem), `BlockScalarContracts.lean` (6 axioms → decidable predicates with proved specification theorems). **Zero axioms** in the codebase. |
 
-Effort: ~5+ sessions. Full `#guard` requires lean4-parser `partial` constraint resolved.
+Effort: ~5+ sessions. Step 3.2 is immediate; Step 3.3 is the main work; Steps 3.4–3.5 follow.
 
 ### Remaining Phases (Future)
 
 #### Phase 4: yaml-test-suite Proofs
 
-Encode yaml-test-suite test cases as compile-time `#guard` / `theorem` checks (requires Layer 3 + total lean4-parser).
+Encode yaml-test-suite test cases as compile-time `#guard` / `theorem` checks. Requires Layer 3 Steps 3.2–3.3 (our parsers total). lean4-parser's `partial` constraint is now resolved via the total-fold fork.
 
 #### Phase 5: Round-Trip Proofs
 
@@ -327,12 +330,21 @@ Share the verified implementation with the existing lean4-yaml ecosystem.
 12. ~~**Content correctness (P5)**~~ — ✅ EOF safety in `dispatchByChar` (option? lookAhead), quoted key whitespace (skipHWhitespace before `:`), trailing comment handling (collectPlain leadsToComment lookAhead), tab-aware blank lines (skipHWhitespace in skipBlankLines/countEmptyLines), document boundary in sequences (atDocumentBoundary check), bare docs after `...` (hadDocEnd tracking + documentEndMarker validation). Suite: 275→288 correct (+13 net), 14 tests fixed, 1 regression (BS4K).
 13. ~~**Advanced features (P6)**~~ — ✅ Complex keys, Unicode anchors, directive edge cases. Col-0 plain scalar continuation (`checkContinuation` contentIndent), document boundary in `blockValue`, blank lines in block scalars, tag on empty flow value, alias/anchor/tag as flow mapping keys, tag/anchor on block mapping keys via `lookAhead detectMappingKey`, Unicode anchor characters (`isAnchorChar`), comment at value position in sequences, comment after tag/anchor. Proper quoted-string mapping detection (skip through quotes before `: ` check), `detectMappingKey`/`scanForMappingSeparator` lookAhead for adjacent colons, seq-spaces(n, block-out) exception in `blockValue`, alias as block mapping key, flow collection as mapping key. **Flow-aware `detectMappingKey`**: skips balanced `{...}`/`[...]` during scanning so `: ` inside flow collections doesn't cause false-positive mapping detection (fixes `&map {a: 1}` and `!!map {a: 1}` regressions). **Single-line implicit key constraint** (§7.4): `[`/`{` branches check `currentLine` before/after parsing flow collection to reject multiline flow keys (C2SP). A/G contract documented on `detectMappingKey`. Suite: 288→310 correct (+22 net), failures: 24→0.
 14. ~~**Strict validation (P7)**~~ — ✅ Error-stage unexpected passes (10b–10j) systematically eliminated. 15 validation rules across `Block.lean`, `Flow.lean`, `Scalar.lean`, `Document.lean`, `Tag.lean`, `Combinators.lean`. Tab-as-indentation rejection (§6.1): `checkIndentForTabs` for block indent positions + post-indicator tab checks after `-`/`?`/`:` + flow continuation tab detection via position save/restore. Flow indent floor (§7.4): `minIndent` parameter threaded through all 7 mutual flow functions. Quoted scalar indent (§8.1): `contentIndent` parameter in `foldQuotedNewlines`/`doubleQuotedScalar`/`singleQuotedScalar`. Block scalar auto-detect (§8.1.3): whitespace-only lines exceeding detected content indent rejected. Document structure: directives require `...` before them (§9.2), bare-document-after-document rejection, tag shorthand handle scope validation (§6.8.2). Node property indent: `propertyMinIndent` parameter in `blockValue` rejects under-indented anchors/tags in mapping values (§8.2.2). Suite: 310→353 correct (+43 net), error stage: 44→74/74 (100%), flow: 43→46/46 (100%), block: 90→99/109 (91%). 1 unfixable UP remaining (H7TQ: extra words after `%YAML` version — conflicts with ZYU8).
+15. ~~**Phase 3 Layer 1 foundation proofs + total-fold analysis**~~ — ✅ Eliminated all 3 sorry's project-wide. `Proofs/Termination.lean`: `next_decreasing` fully proved via `String.Pos.Raw.byteIdx_add_char` + `Char.utf8Size_pos` + `omega`. `Proofs/Types.lean`: AnchorMap algebraic laws (`find?_insert`, `find?_insert_ne`) proved via `Array.findSome?_push` + list reasoning. `Proofs/StringProperties.lean`: 13 theorems (trim idempotence, FoldResult classification). `Proofs/DocumentContracts.lean`: 17 theorems (document boundaries, progress monotonicity, tag handle scope, directive uniqueness). `Proofs/CharClass.lean`: 7 character classification proofs. `Proofs/BlockScalarContracts.lean`: 27 theorems (A/G contracts, decidable predicates). **~135 proved theorems, 0 sorry's, 0 axioms.** Build: 227/227 library jobs, test suite: 847 passed / 2 failed (known H7TQ) / 201 skipped. **Total-fold analysis:** Updated lean4-parser dependency to fork ([NicolasRouquette/lean4-parser](https://github.com/NicolasRouquette/lean4-parser), branch `total-fold`) where all 6 fold combinators (`efoldlPAux`, `foldr`, `takeUntil`, `dropUntil`, `count`, `countUntil`) are total via `fuel : Nat := Stream.remaining s` structural recursion. Inventoried all 35 `partial def` parsers: Group A (~6 leaf parsers, no self-recursion) can become `def` immediately; Group B (~29 self-recursive parsers) need `termination_by Stream.remaining s` + decreasing proofs. The `next_decreasing` lemma bridges `remainingLength` to `Stream.remaining`, providing the core decreasing argument. This unblocks Layer 3 Steps 3.2–3.5 and `#guard` compile-time tests (Phase 4).
 
-### Current: Phase 3 Verification
+### Current: Phase 3 Verification — Total Parser Proofs
 
 Phase 2 (Parser Validation) is functionally complete. **353/416 correct (84.9%)** per HTML subprocess report. 0 failures, 0 timeouts, 940/940 internal tests verified, 1 unfixable UP (H7TQ). Error stage: 74/74 (100%). Flow stage: 46/46 (100%). Block stage: 99/109 (91%). Scalar stage: 54/82 (66%). Document stage: 16/24 (67%). Advanced stage: 64/81 (79%). The 62 skipped tests are YAML 1.1/1.3 features outside YAML 1.2.2 scope.
 
-Next work: Phase 3 verification (formal proofs), starting with Layer 1 foundation proofs. See [Phase 3: Verification](#phase-3-verification--layered-approach) below.
+**Layer 1 foundation complete:** ~135 proved theorems, 0 sorry's, 0 axioms. See `Proofs/Termination.lean`, `Proofs/StringProperties.lean`, `Proofs/DocumentContracts.lean`, `Proofs/CharClass.lean`, `Proofs/BlockScalarContracts.lean`, `Types.lean`.
+
+**Next work: Layer 3 total parser proofs (Steps 3.1–3.5).** With lean4-parser fold combinators now total via the `total-fold` fork, the primary task is eliminating `partial` from all 35 of our parser definitions:
+
+1. ~~**Step 3.1 — Link `remainingLength` to `Stream.remaining`**~~: ✅ `remainingLength_eq_stream_remaining` proved by `rfl` (definitionally equal). Corollary `stream_remaining_decreasing` lifts `next_decreasing` to `Parser.Stream.remaining` — the form needed for `termination_by` in recursive parsers. Build: 228/228 jobs.
+2. **Step 3.2 — Convert Group A leaf parsers (~6)** ← **NEXT**: Remove `partial` from `skipBlankLines`, `checkNoTabIndent`, `checkIndentForTabs`, `hasTabInWhitespace`, `checkContinuation`, `flowWhitespace`. No self-recursion — total lean4-parser combinators make these `def` immediately.
+3. **Step 3.3 — Convert Group B self-recursive parsers (~29)**: Add `termination_by Stream.remaining s` and prove `Stream.remaining` strictly decreases across recursive calls. Subgroups: Scalar (9), Flow (7, mutual recursion), Block (11, mutual recursion), Document (3). The `next_decreasing` lemma provides the core decreasing argument.
+4. **Step 3.4 — `#guard` compile-time tests**: Convert runtime `check` tests to kernel-evaluated `#guard` guards. Unblocked once parsers are total.
+5. **Step 3.5 — Soundness proofs**: Compose per-parser `Grammar.ValidNode` proofs into the top-level `parse_sound` theorem.
 
 #### Step 8: Tag support (`!tag`, `!!type`, `%TAG` directive) — ✅ COMPLETE
 
