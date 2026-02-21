@@ -72,11 +72,15 @@ theorem next_decreasing (s : Lean4Yaml.YamlStream) (c : Char) (s' : Lean4Yaml.Ya
   intro h
   unfold Lean4Yaml.YamlStream.next? at h
   split at h
-  · simp at h
+  · next hlt =>
+    simp only [Option.some.injEq, Prod.mk.injEq] at h
     obtain ⟨_, hs'⟩ := h
     unfold remainingLength
     rw [← hs']
-    sorry -- TODO: string position arithmetic
+    simp only [String.Pos.Raw.next, String.Pos.Raw.byteIdx_add_char]
+    have hSize := Char.utf8Size_pos (String.Pos.Raw.get s.str s.startPos)
+    have hltNat := String.Pos.Raw.lt_iff.mp hlt
+    omega
   · contradiction
 
 -- Future work: compose this into termination proofs for each recursive parser.

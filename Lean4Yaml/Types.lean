@@ -230,17 +230,63 @@ verification proofs will use. They are the specification of
 `AnchorMap` — any correct implementation must satisfy them.
 -/
 
+/-- Auxiliary: filtering by `n != name` preserves `findSome?` for `name' ≠ name`.
+    Elements removed by the filter have `n = name ≠ name'`, so `f` returns
+    `none` for them and the `findSome?` result is unchanged. -/
+private theorem list_findSome?_filter_preserves
+    (xs : List (String × YamlValue)) (name name' : String)
+    (hne : name ≠ name') :
+    List.findSome? (fun (n, v) => if n == name' then some v else none)
+      (xs.filter (fun (n, _) => n != name))
+    = List.findSome? (fun (n, v) => if n == name' then some v else none) xs := by
+  induction xs with
+  | nil => rfl
+  | cons x xs ih =>
+    obtain ⟨n, v⟩ := x
+    simp only [List.filter_cons]
+    split
+    · -- filter keeps element: (n != name) = true
+      simp only [List.findSome?_cons]
+      split
+      · rfl
+      · exact ih
+    · -- filter drops element: n = name
+      next hdrop =>
+      have hEqName : n = name := by
+        simp only [bne_iff_ne, ne_eq, Decidable.not_not] at hdrop; exact hdrop
+      have hNe : (n == name') = false := by
+        rw [hEqName]; exact beq_eq_false_iff_ne.mpr hne
+      simp only [List.findSome?_cons, hNe, Bool.false_eq_true, ↓reduceIte]
+      exact ih
+
 /-- **Get-after-set**: looking up a just-inserted key returns the inserted value. -/
 theorem find?_insert (m : AnchorMap) (name : String) (val : YamlValue) :
     AnchorMap.find? (AnchorMap.insert m name val) name = some val := by
-  simp only [AnchorMap.find?, AnchorMap.insert, Array.push, Array.findSome?]
-  sorry -- Layer 2: array filter+push reasoning
+  simp only [AnchorMap.find?, AnchorMap.insert]
+  rw [Array.findSome?_push]
+  simp only [beq_self_eq_true, ↓reduceIte]
+  -- Show filter part = none, then none.or (some val) = some val
+  suffices h : Array.findSome? _ (Array.filter _ m) = none by
+    rw [h, Option.none_or]
+  rw [← Array.findSome?_toList, Array.toList_filter, List.findSome?_eq_none_iff]
+  intro ⟨n, v⟩ hmem
+  have hfilt := (List.mem_filter.mp hmem).2
+  simp only [bne_iff_ne, ne_eq, beq_iff_eq] at hfilt ⊢
+  exact if_neg hfilt
 
 /-- **Non-interference**: inserting under `k` does not affect lookups for `k' ≠ k`. -/
 theorem find?_insert_ne (m : AnchorMap) (name name' : String) (val : YamlValue)
     (h : name ≠ name') :
     AnchorMap.find? (AnchorMap.insert m name val) name' = AnchorMap.find? m name' := by
-  sorry -- Layer 2
+  simp only [AnchorMap.find?, AnchorMap.insert]
+  rw [Array.findSome?_push]
+  -- The pushed element (name, val) doesn't match name'
+  have hpush : (fun (n, v) => if n == name' then some v else none) (name, val) = none := by
+    simp [beq_eq_false_iff_ne.mpr h]
+  simp only [hpush, Option.or_none]
+  -- Filtering by n != name preserves findSome? for name' ≠ name
+  rw [← Array.findSome?_toList, Array.toList_filter, ← Array.findSome?_toList]
+  exact list_findSome?_filter_preserves m.toList name name' h
 
 /-- **Empty**: no key is found in an empty map. -/
 theorem find?_empty (name : String) :
