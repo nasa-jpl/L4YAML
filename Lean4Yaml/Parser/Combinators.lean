@@ -210,14 +210,12 @@ Covers:
 - Post-indicator whitespace where indentation is implied
 - Flow continuation line prefixes (`s-flow-line-prefix(n)`)
 -/
-partial def checkNoTabIndent : YamlParser Unit := do
+def checkNoTabIndent : YamlParser Unit := do
   let hasTab ← lookAhead do
-    let rec scanForTab : YamlParser Bool := do
-      match ← option? anyToken with
-      | some '\t' => pure true
-      | some ' '  => scanForTab
-      | _         => pure false
-    scanForTab
+    dropMany (token ' ')
+    match ← option? anyToken with
+    | some '\t' => pure true
+    | _         => pure false
   if hasTab then
     setValidationError "tabs are not allowed for indentation (YAML 1.2.2 §6.1)"
 
@@ -234,16 +232,17 @@ are treated as separation whitespace — no error.
 
 This is a `lookAhead` — no input is consumed.
 -/
-partial def checkIndentForTabs (minIndent : Nat) : YamlParser Unit := do
+def checkIndentForTabs (minIndent : Nat) : YamlParser Unit := do
   if minIndent == 0 then return ()
   let hasTabInIndent ← lookAhead do
-    let rec scan (spacesConsumed : Nat) : YamlParser Bool := do
-      if spacesConsumed >= minIndent then return false
-      match ← option? anyToken with
-      | some ' '  => scan (spacesConsumed + 1)
-      | some '\t' => return true
-      | _         => return false
-    scan 0
+    let rec scan : Nat → YamlParser Bool
+      | 0 => return false
+      | remaining + 1 => do
+        match ← option? anyToken with
+        | some ' '  => scan remaining
+        | some '\t' => return true
+        | _         => return false
+    scan minIndent
   if hasTabInIndent then
     setValidationError "tabs are not allowed for indentation (YAML 1.2.2 §6.1)"
 
@@ -252,14 +251,12 @@ Scan leading whitespace for any tab character.  Returns `true` if a tab
 is found among leading spaces/tabs before the first non-whitespace character.
 This is a `lookAhead` — no input is consumed.
 -/
-partial def hasTabInWhitespace : YamlParser Bool :=
+def hasTabInWhitespace : YamlParser Bool :=
   lookAhead do
-    let rec scan : YamlParser Bool := do
-      match ← option? anyToken with
-      | some '\t' => pure true
-      | some ' '  => scan
-      | _         => pure false
-    scan
+    dropMany (token ' ')
+    match ← option? anyToken with
+    | some '\t' => pure true
+    | _         => pure false
 
 /-! ## Dispatch Result
 
