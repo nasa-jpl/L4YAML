@@ -83,6 +83,26 @@ theorem next_decreasing (s : Lean4Yaml.YamlStream) (c : Char) (s' : Lean4Yaml.Ya
     omega
   · contradiction
 
--- Future work: compose this into termination proofs for each recursive parser.
+/--
+Bridge lemma: `remainingLength` equals `Parser.Stream.remaining`.
+
+Both compute `s.stopPos.byteIdx - s.startPos.byteIdx`. This links our
+termination infrastructure to lean4-parser's fuel parameter used in
+total fold combinators (`efoldlPAux`, `foldr`, `takeUntil`, etc.).
+-/
+theorem remainingLength_eq_stream_remaining (s : Lean4Yaml.YamlStream) :
+    remainingLength s = Parser.Stream.remaining s := by
+  rfl
+
+/--
+Corollary: `Parser.Stream.remaining` strictly decreases after `next?`.
+This is the form needed for `termination_by Stream.remaining s` in
+recursive parsers.
+-/
+theorem stream_remaining_decreasing (s : Lean4Yaml.YamlStream) (c : Char) (s' : Lean4Yaml.YamlStream) :
+    s.next? = some (c, s') → Parser.Stream.remaining s' < Parser.Stream.remaining s := by
+  intro h
+  rw [← remainingLength_eq_stream_remaining, ← remainingLength_eq_stream_remaining]
+  exact next_decreasing s c s' h
 
 end Lean4Yaml.Proofs.Termination
