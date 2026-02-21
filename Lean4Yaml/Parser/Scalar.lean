@@ -140,7 +140,7 @@ Before consuming whitespace on each continuation line, checks for
 `c-forbidden` (§9.1.2 [206]): `---` or `...` at column 0 followed by
 whitespace/newline/EOF. Returns `FoldResult.forbidden` if detected.
 -/
-partial def foldQuotedNewlines (acc : String) : YamlParser FoldResult := do
+partial def foldQuotedNewlines (acc : String) (contentIndent : Nat := 0) : YamlParser FoldResult := do
   -- Step 1: Trim trailing whitespace (spaces + tabs) from acc
   -- (YAML §7.3.1: "All leading and trailing white space characters
   --  on each line are excluded from the content")
@@ -163,6 +163,8 @@ where
       if boundary then
         return .forbidden
           s!"unterminated quoted scalar: document boundary at line {pos.line + 1}"
+    -- P10b: §6.1 — tabs not allowed in indentation of continuation lines
+    checkIndentForTabs contentIndent
     -- Skip leading whitespace (spaces AND tabs) on this line
     skipHWhitespace
     -- Check if this line is blank (another newline follows)
@@ -172,6 +174,14 @@ where
       loop result (blankCount + 1)
     | none =>
       -- Found content on this line (leading whitespace already consumed)
+      -- P10 fix (QB6E): §7.3.1 — continuation lines in a quoted scalar
+      -- in block context use s-flow-line-prefix(n), requiring col ≥ n.
+      -- Continuation at col < contentIndent is invalid.
+      if contentIndent > 0 then
+        let col ← currentCol
+        if col < contentIndent then
+          return .forbidden
+            s!"quoted scalar continuation line at column {col} is less than required indent {contentIndent}"
       if blankCount > 0 then
         -- Blank lines present → preserved newlines (one per blank line)
         let mut r := result
@@ -189,7 +199,7 @@ Parse a double-quoted scalar
 Double-quoted scalars support escape sequences and line folding.
 Returns the processed content.
 -/
-partial def doubleQuotedScalar : YamlParser YamlValue :=
+partial def doubleQuotedScalar (contentIndent : Nat := 0) : YamlParser YamlValue :=
   withErrorMessage "expected double-quoted scalar" do
     let _ ← char '"'
     let content ← collectChars ""
@@ -218,14 +228,14 @@ where
             collectChars (acc.push escaped)
     | '\n' => do
         -- Line folding (c-forbidden checked inside foldQuotedNewlines)
-        match ← foldQuotedNewlines acc with
+        match ← foldQuotedNewlines acc contentIndent with
         | .folded result => collectChars result
         | .forbidden msg =>
           setValidationError msg
           return acc
     | '\r' => do
         let _ ← option? (token '\n')  -- CRLF
-        match ← foldQuotedNewlines acc with
+        match ← foldQuotedNewlines acc contentIndent with
         | .folded result => collectChars result
         | .forbidden msg =>
           setValidationError msg
@@ -283,7 +293,7 @@ Parse a single-quoted scalar
 The only escape in single-quoted scalars is `''` → `'`.
 Line folding follows the same rules as double-quoted scalars.
 -/
-partial def singleQuotedScalar : YamlParser YamlValue :=
+partial def singleQuotedScalar (contentIndent : Nat := 0) : YamlParser YamlValue :=
   withErrorMessage "expected single-quoted scalar" do
     let _ ← char '\''
     let content ← collectChars ""
@@ -298,14 +308,14 @@ where
         | none => return acc
     | '\n' => do
         -- Line folding (c-forbidden checked inside foldQuotedNewlines)
-        match ← foldQuotedNewlines acc with
+        match ← foldQuotedNewlines acc contentIndent with
         | .folded result => collectChars result
         | .forbidden msg =>
           setValidationError msg
           return acc
     | '\r' => do
         let _ ← option? (token '\n')
-        match ← foldQuotedNewlines acc with
+        match ← foldQuotedNewlines acc contentIndent with
         | .folded result => collectChars result
         | .forbidden msg =>
           setValidationError msg
@@ -364,7 +374,12 @@ partial def plainScalarContent (inFlow : Bool) (contentIndent : Nat) : YamlParse
         return false
       if c == '-' || c == '?' || c == ':' then
         match ← option? anyToken with
-        | some nc => return !(isWhiteSpace nc || isLineBreak nc)
+        -- P7 fix (G5U8, YJV2): §7.3.3 — in flow context, the char after
+        -- `-`/`?`/`:` must be ns-plain-safe(flow-in), which excludes flow
+        -- indicators.  `[-]` → `-` followed by `]` (flow indicator) is not
+        -- a valid plain scalar start.
+        | some nc => return !(isWhiteSpace nc || isLineBreak nc
+                              || (inFlow && isFlowIndicator nc))
         | none => return false
       return true
     if !validStart then
@@ -503,6 +518,13 @@ where
         | some c =>
           -- Flow indicators end the scalar
           if isFlowIndicator c then return false
+          -- P7 fix (CML9): §6.7 — `#` preceded by whitespace (or at line
+          -- start, which counts as s-separate-in-line) starts a comment.
+          -- After skipping spaces we are at the first non-ws char; if it's
+          -- `#`, this is a comment line and the plain scalar must stop.
+          -- Without this, `[ word1\n# xxx\n word2 ]` would fold the
+          -- comment into the scalar instead of being rejected.
+          if c == '#' then return false
           -- Document boundaries end the scalar
           if c == '-' || c == '.' then
             let atBound ← atDocumentBoundary
@@ -546,7 +568,9 @@ partial def plainScalarSingleLine (inFlow : Bool) : YamlParser String :=
         return false
       if c == '-' || c == '?' || c == ':' then
         match ← option? anyToken with
-        | some nc => return !(isWhiteSpace nc || isLineBreak nc)
+        -- P7 fix (G5U8, YJV2): same flow indicator check as plainScalarContent.
+        | some nc => return !(isWhiteSpace nc || isLineBreak nc
+                              || (inFlow && isFlowIndicator nc))
         | none => return false
       return true
     if !validStart then
@@ -678,8 +702,19 @@ def blockScalarHeader : YamlParser (Option Nat × ChompIndicator) := do
     -- This should be structurally impossible (loop runs at most 2 times),
     -- but the assertion documents the contract explicitly.
     setValidationError "internal: block scalar header consumed > 2 indicator chars"
-  -- Skip trailing whitespace and optional comment
-  skipTrailing
+  -- Skip trailing whitespace and optional comment.
+  -- P7 fix (X4QW): §6.7 — `#` after block scalar indicator/header must be
+  -- preceded by whitespace.  `>#` has no space between `>` and `#`.
+  -- Replace generic `skipTrailing` with inline logic that validates this.
+  let preWSCol ← currentCol
+  skipHWhitespace
+  let postWSCol ← currentCol
+  match ← option? (lookAhead anyToken) with
+  | some '#' =>
+    if postWSCol == preWSCol then
+      setValidationError "comment '#' must be preceded by whitespace (§6.7)"
+    comment
+  | _ => pure ()
   -- Must have a newline (or EOF) after header
   let _ ← option? newline
   -- ── Contract assertion G2: column invariant ──
@@ -719,21 +754,29 @@ Returns the number of leading spaces on that line.
 -/
 partial def autoDetectIndent (minIndent : Nat) : YamlParser Nat :=
   lookAhead do
-    -- Skip blank lines
-    loop
+    -- Skip blank lines, tracking max spaces in whitespace-only lines
+    loop 0
 where
-  loop : YamlParser Nat := do
+  loop (maxBlankSpaces : Nat) : YamlParser Nat := do
     let col ← currentCol
     -- Count spaces
     let spaces ← count (token ' ')
     let totalCol := col + spaces
     match ← option? newline with
     | some _ =>
-      -- Empty line, continue looking
-      loop
+      -- Empty line, track max spaces and continue looking
+      loop (max maxBlankSpaces totalCol)
     | none =>
-      -- Found content line
+      -- Found content line (or EOF/non-space char)
       if totalCol >= minIndent then
+        -- P10b: §8.1.3 — if any preceding whitespace-only line had more
+        -- leading spaces than the detected content indent, the indentation
+        -- is contradictory.  Those space-only lines imply content at a
+        -- higher indent, but the actual first content line is at a lower
+        -- indent.  (Tests: 5LLU, S98Z, W9L4)
+        if maxBlankSpaces > totalCol then
+          setValidationError
+            s!"block scalar has whitespace-only line ({maxBlankSpaces} spaces) exceeding content indent ({totalCol})"
         return totalCol
       else
         return minIndent

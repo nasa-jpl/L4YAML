@@ -115,6 +115,15 @@ structure YamlStream where
       First error wins: once set, subsequent `setValidationError` calls
       are no-ops. This captures the root cause, not downstream symptoms. -/
   validationError : Option String := none
+  /-- Tag handles defined for the current document context.
+
+      §6.8.2: Tag shorthand handles are scoped to the document where they
+      are declared via `%TAG` directives.  The default handles `!` and `!!`
+      are always available (§6.8.2.2, §6.8.2.3).
+
+      Reset per document in `yamlStream` before calling `document`.
+      Survives `setPosition` (only offset/line/col are restored). -/
+  tagHandles : Array String := #["!", "!!"]
   deriving Repr
 
 /-! ## Stream Instance -/
@@ -367,5 +376,26 @@ each document starts with a clean validation state.
 def clearValidationError : YamlParser Unit := do
   let s ← Parser.getStream
   Parser.setStream { s with validationError := none }
+
+/-! ## Tag Handle Registry -/
+
+/--
+Set the tag handles for the current document context.
+
+Called at the start of each document after parsing `%TAG` directives.
+Includes the default handles `!` and `!!` plus any custom handles.
+-/
+def setTagHandles (handles : Array String) : YamlParser Unit := do
+  let s ← Parser.getStream
+  Parser.setStream { s with tagHandles := handles }
+
+/--
+Check if a tag handle is defined in the current document context.
+
+Returns `true` if the handle is in the tag handle registry.
+-/
+def isTagHandleDefined (handle : String) : YamlParser Bool := do
+  let s ← Parser.getStream
+  return s.tagHandles.contains handle
 
 end Lean4Yaml

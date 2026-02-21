@@ -58,10 +58,48 @@ white space characters."  We only treat `#` as a comment start if
 whitespace was consumed before it (or it appears at column 0, i.e.
 start of a line).
 -/
-partial def flowWhitespace : YamlParser Unit := do
+partial def flowWhitespace (minIndent : Nat := 0) : YamlParser Unit := do
+  let lineBefore ← currentLine
   let colBefore ← currentCol
-  dropMany (tokenFilter fun c => isWhiteSpace c || isLineBreak c)
+  let posBefore ← currentPos
+  -- Consume whitespace + newlines.
+  let rec consumeWs : YamlParser Unit := do
+    match ← option? (tokenFilter fun c => isWhiteSpace c || isLineBreak c) with
+    | none => pure ()
+    | some _ => consumeWs
+  consumeWs
+  let lineAfter ← currentLine
   let colAfter ← currentCol
+  let posAfter ← currentPos
+  -- P10 fix (9C9N, VJP3): §7.4 / s-flow-line-prefix(n) — continuation
+  -- content in flow collections must respect block context indentation.
+  -- Only check when we've actually moved to a new line.
+  if minIndent > 0 && lineAfter > lineBefore then
+    if colAfter < minIndent then
+      setValidationError
+        s!"flow collection content at column {colAfter} is less than required indent {minIndent}"
+    else
+      -- P10b (Y79Y): §6.1 — tabs in the indent area of a continuation line
+      -- are illegal.  Only check when the content is NOT a flow closing
+      -- indicator (']' or '}'), since tabs before those are just
+      -- separation whitespace, not indentation.
+      let isFlowClose ← lookAhead do
+        match ← option? anyToken with
+        | some ']' | some '}' => pure true
+        | _ => pure false
+      if !isFlowClose then
+        -- Save current position, rewind to before whitespace, advance
+        -- to the start of the last line, check for tabs, then restore.
+        Parser.setPosition posBefore
+        let rec advanceToLine : YamlParser Unit := do
+          let l ← currentLine
+          if l >= lineAfter then return ()
+          match ← option? anyToken with
+          | none => return ()
+          | some _ => advanceToLine
+        advanceToLine
+        checkIndentForTabs minIndent
+        Parser.setPosition posAfter
   match ← option? (lookAhead (token '#')) with
   | some _ =>
     -- §6.7: `#` is only a comment if preceded by whitespace.
@@ -71,7 +109,7 @@ partial def flowWhitespace : YamlParser Unit := do
     let wsConsumed := (colBefore != colAfter) || atLineStart
     if wsConsumed then
       comment
-      flowWhitespace
+      flowWhitespace minIndent
     else
       -- `#` without preceding whitespace — not a valid comment.
       -- Let the caller handle it (will trigger a validation error
@@ -105,20 +143,29 @@ A flow value is either:
 - A flow sequence `[...]`
 - A flow mapping `{...}`
 -/
-partial def flowValue : YamlParser YamlValue :=
+partial def flowValue (minIndent : Nat := 0) : YamlParser YamlValue :=
   withErrorMessage "expected flow value" do
-    flowWhitespace
+    flowWhitespace minIndent
+    -- P7 fix (N782): §9.1.4/§7.4 — document markers (`---`/`...`) at the
+    -- start of a line are c-forbidden content inside flow collections.
+    -- They terminate the document, not continue the flow.
+    let col ← currentCol
+    if col == 0 then do
+      let atBound ← lookAhead atDocumentBoundary
+      if atBound then do
+        setValidationError "document markers ('---'/'...') are forbidden inside flow collections"
+        return .null
     -- Check for tag prefix (!tag) on flow values (§6.9)
     match ← option? (lookAhead (token '!')) with
     | some _ => do
       let tag ← parseTagPrefix
-      flowWhitespace
+      flowWhitespace minIndent
       -- Check for anchor after tag: `!tag &anchor value`
       let anchorName ← do
         match ← option? (lookAhead (token '&')) with
         | some _ =>
           let name ← parseAnchorPrefix
-          flowWhitespace
+          flowWhitespace minIndent
           pure (some name)
         | none => pure none
       -- P6 fix (WZ62): After tag/anchor, the value may be empty in flow context.
@@ -127,8 +174,8 @@ partial def flowValue : YamlParser YamlValue :=
       let val ← match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == ']' || c == '}')) with
       | some _ => pure YamlValue.null
       | none => first [
-          flowSequence,
-          flowMapping,
+          flowSequence minIndent,
+          flowMapping minIndent,
           flowScalar
         ]
       let val := val.withTag tag
@@ -141,21 +188,21 @@ partial def flowValue : YamlParser YamlValue :=
     match ← option? (lookAhead (token '&')) with
     | some _ => do
       let name ← parseAnchorPrefix
-      flowWhitespace
+      flowWhitespace minIndent
       -- Check for tag after anchor: `&anchor !tag value`
       let tagName ← do
         match ← option? (lookAhead (token '!')) with
         | some _ =>
           let tag ← parseTagPrefix
-          flowWhitespace
+          flowWhitespace minIndent
           pure (some tag)
         | none => pure none
       -- P6 fix: anchor on empty flow value (e.g. `&a ,` → null with anchor)
       let val ← match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == ']' || c == '}')) with
       | some _ => pure YamlValue.null
       | none => first [
-          flowSequence,
-          flowMapping,
+          flowSequence minIndent,
+          flowMapping minIndent,
           flowScalar
         ]
       let val := match tagName with | some t => val.withTag t | none => val
@@ -163,8 +210,8 @@ partial def flowValue : YamlParser YamlValue :=
       return val
     | none =>
     first [
-      flowSequence,
-      flowMapping,
+      flowSequence minIndent,
+      flowMapping minIndent,
       flowScalar
     ]
 
@@ -179,15 +226,15 @@ Parse a flow sequence
 Items are separated by commas with optional whitespace.
 Nested flow collections are supported.
 -/
-partial def flowSequence : YamlParser YamlValue :=
+partial def flowSequence (minIndent : Nat := 0) : YamlParser YamlValue :=
   withErrorMessage "expected flow sequence" do
     let _ ← char '['
-    flowWhitespace
+    flowWhitespace minIndent
     -- Check for empty sequence
     match ← option? (char ']') with
     | some _ => return .sequence .flow #[]
     | none =>
-      let items ← flowSequenceItems #[]
+      let items ← flowSequenceItems #[] minIndent
       return .sequence .flow items
 
 /--
@@ -205,7 +252,7 @@ without braces, creating an implicit single-pair flow mapping.
 **Pre-condition**: `[` already consumed; whitespace skipped.
 **Post-condition**: items collected up to and including `]`.
 -/
-partial def flowSequenceItems (acc : Array YamlValue) : YamlParser (Array YamlValue) := do
+partial def flowSequenceItems (acc : Array YamlValue) (minIndent : Nat := 0) : YamlParser (Array YamlValue) := do
   -- Check for explicit key `?` in flow sequence — creates single-pair mapping
   -- (§7.4.2, https://yaml.org/spec/1.2.2/#742-flow-mappings)
   let isExplicitKey ← lookAhead do
@@ -226,34 +273,34 @@ partial def flowSequenceItems (acc : Array YamlValue) : YamlParser (Array YamlVa
   let item ← if isExplicitKey then do
     -- Parse as single-pair mapping: `? key : value`
     let _ ← char '?'
-    flowWhitespace
+    flowWhitespace minIndent
     let key ← match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == ']' || c == ':')) with
     | some _ => pure YamlValue.null
-    | none => flowValue
-    flowWhitespace
+    | none => flowValue minIndent
+    flowWhitespace minIndent
     match ← option? (char ':') with
     | some _ =>
-      flowWhitespace
+      flowWhitespace minIndent
       let value ← match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == ']')) with
       | some _ => pure YamlValue.null
-      | none => flowValue
+      | none => flowValue minIndent
       pure (.mapping .flow #[(key, value)])
     | none => pure (.mapping .flow #[(key, YamlValue.null)])
   else if isEmptyKey then do
     -- Empty implicit key: `: value` → mapping with null key
     let _ ← char ':'
-    flowWhitespace
+    flowWhitespace minIndent
     let value ← match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == ']')) with
     | some _ => pure YamlValue.null
-    | none => flowValue
+    | none => flowValue minIndent
     pure (.mapping .flow #[(YamlValue.null, value)])
   else do
     -- Parse a flow value, then check for implicit mapping `:` (§7.5)
     -- Record the line where the key starts — per §7.4, in flow context
     -- an implicit key and its `:` must be on the same line.
     let keyLine ← currentLine
-    let val ← flowValue
-    flowWhitespace
+    let val ← flowValue minIndent
+    flowWhitespace minIndent
     -- Check if this is an implicit single-pair mapping: `key : value`
     -- Per §7.4, after a JSON-like key (flow collection, quoted scalar),
     -- the `:` does NOT require trailing whitespace.
@@ -276,21 +323,21 @@ partial def flowSequenceItems (acc : Array YamlValue) : YamlParser (Array YamlVa
       pure val
     else if isImplicitMapping then do
       let _ ← char ':'
-      flowWhitespace
+      flowWhitespace minIndent
       let value ← match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == ']')) with
       | some _ => pure YamlValue.null
-      | none => flowValue
+      | none => flowValue minIndent
       pure (.mapping .flow #[(val, value)])
     else
       pure val
-  flowWhitespace
+  flowWhitespace minIndent
   match ← anyToken with
   | ',' =>
-    flowWhitespace
+    flowWhitespace minIndent
     -- Check for trailing comma before `]`
     match ← option? (char ']') with
     | some _ => return acc.push item
-    | none => flowSequenceItems (acc.push item)
+    | none => flowSequenceItems (acc.push item) minIndent
   | ']' => return acc.push item
   | c =>
     -- Invalid delimiter: record validation error and return what we have.
@@ -308,31 +355,31 @@ Parse a flow mapping
 
 Keys can be scalars or complex keys (preceded by `?`).
 -/
-partial def flowMapping : YamlParser YamlValue :=
+partial def flowMapping (minIndent : Nat := 0) : YamlParser YamlValue :=
   withErrorMessage "expected flow mapping" do
     let _ ← char '{'
-    flowWhitespace
+    flowWhitespace minIndent
     -- Check for empty mapping
     match ← option? (char '}') with
     | some _ => return .mapping .flow #[]
     | none =>
-      let pairs ← flowMappingEntries #[]
+      let pairs ← flowMappingEntries #[] minIndent
       return .mapping .flow pairs
 
 /--
 Parse flow mapping entries, separated by commas.
 -/
-partial def flowMappingEntries (acc : Array (YamlValue × YamlValue)) :
+partial def flowMappingEntries (acc : Array (YamlValue × YamlValue)) (minIndent : Nat := 0) :
     YamlParser (Array (YamlValue × YamlValue)) := do
-  let (k, v) ← flowMappingEntry
-  flowWhitespace
+  let (k, v) ← flowMappingEntry minIndent
+  flowWhitespace minIndent
   match ← anyToken with
   | ',' =>
-    flowWhitespace
+    flowWhitespace minIndent
     -- Check for trailing comma before `}`
     match ← option? (char '}') with
     | some _ => return acc.push (k, v)
-    | none => flowMappingEntries (acc.push (k, v))
+    | none => flowMappingEntries (acc.push (k, v)) minIndent
   | '}' => return acc.push (k, v)
   | c =>
     -- Invalid delimiter: record validation error and return what we have.
@@ -349,24 +396,24 @@ Handles:
 - `key : value` — implicit key
 - `: value` — empty key with value (§7.4.2)
 -/
-partial def flowMappingEntry : YamlParser (YamlValue × YamlValue) := do
-  flowWhitespace
+partial def flowMappingEntry (minIndent : Nat := 0) : YamlParser (YamlValue × YamlValue) := do
+  flowWhitespace minIndent
   -- Check for explicit key indicator `?`
   match ← option? (char '?') with
   | some _ =>
-    flowWhitespace
+    flowWhitespace minIndent
     -- Check for bare `?` (null key) — next char is `,`, `}`, or `:`
     let key ← match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == '}' || c == ':')) with
     | some _ => pure YamlValue.null
-    | none => flowValue
-    flowWhitespace
+    | none => flowValue minIndent
+    flowWhitespace minIndent
     match ← option? (char ':') with
     | some _ =>
-      flowWhitespace
+      flowWhitespace minIndent
       match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == '}')) with
       | some _ => return (key, YamlValue.null)
       | none =>
-        let value ← flowValue
+        let value ← flowValue minIndent
         return (key, value)
     | none => return (key, YamlValue.null)
   | none =>
@@ -381,16 +428,16 @@ partial def flowMappingEntry : YamlParser (YamlValue × YamlValue) := do
       | some c => return (isWhiteSpace c || isLineBreak c || isFlowIndicator c)
     if isSep then do
       let _ ← char ':'
-      flowWhitespace
+      flowWhitespace minIndent
       match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == '}')) with
       | some _ => return (YamlValue.null, YamlValue.null)
       | none =>
-        let value ← flowValue
+        let value ← flowValue minIndent
         return (YamlValue.null, value)
     else do
       -- `:` not a separator, parse as scalar key
       let key ← flowScalar
-      flowWhitespace
+      flowWhitespace minIndent
       -- After a quoted scalar key, check for JSON-like `:` (no whitespace needed)
       let isJsonKey : Bool := match key with
         | .scalar s => s.style == .doubleQuoted || s.style == .singleQuoted
@@ -405,11 +452,11 @@ partial def flowMappingEntry : YamlParser (YamlValue × YamlValue) := do
         | none => pure false
       if hasColon then do
         if isJsonKey then let _ ← char ':'  -- consume the `:` we only peeked
-        flowWhitespace
+        flowWhitespace minIndent
         match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == '}')) with
         | some _ => return (key, YamlValue.null)
         | none =>
-          let value ← flowValue
+          let value ← flowValue minIndent
           return (key, value)
       else return (key, YamlValue.null)
   | none =>
@@ -422,19 +469,19 @@ partial def flowMappingEntry : YamlParser (YamlValue × YamlValue) := do
     match ← option? (lookAhead (token '!')) with
     | some _ =>
       let tag ← parseTagPrefix
-      flowWhitespace
+      flowWhitespace minIndent
       -- Tag may be followed by anchor
       let anchorName ← do
         match ← option? (lookAhead (token '&')) with
         | some _ =>
           let name ← parseAnchorPrefix
-          flowWhitespace
+          flowWhitespace minIndent
           pure (some name)
         | none => pure none
       -- Tag on empty key: next is `:` or flow delimiter
       let val ← match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == ']' || c == '}' || c == ':')) with
       | some _ => pure YamlValue.null
-      | none => first [flowSequence, flowMapping, flowScalar]
+      | none => first [flowSequence, flowMapping minIndent, flowScalar]
       let val := val.withTag tag
       match anchorName with
       | some name => storeAnchor name val
@@ -445,19 +492,19 @@ partial def flowMappingEntry : YamlParser (YamlValue × YamlValue) := do
     match ← option? (lookAhead (token '&')) with
     | some _ =>
       let name ← parseAnchorPrefix
-      flowWhitespace
+      flowWhitespace minIndent
       -- Anchor on empty key: next is `:` or flow delimiter
       let val ← match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == ']' || c == '}' || c == ':')) with
       | some _ => pure YamlValue.null
-      | none => first [flowSequence, flowMapping, flowScalar]
+      | none => first [flowSequence, flowMapping minIndent, flowScalar]
       storeAnchor name val
       pure val
     | none =>
     -- Check for alias as key
     match ← option? (lookAhead (token '*')) with
     | some _ => parseAlias
-    | none => first [flowSequence, flowMapping, flowScalar]
-  flowWhitespace
+    | none => first [flowSequence, flowMapping minIndent, flowScalar]
+  flowWhitespace minIndent
   -- After a JSON-like key (collection, quoted scalar, tagged, or null),
   -- `:` doesn't need whitespace separation
   let isJsonKey : Bool := match key with
@@ -480,11 +527,11 @@ partial def flowMappingEntry : YamlParser (YamlValue × YamlValue) := do
     pure isSep
   if hasColon then do
     let _ ← char ':'
-    flowWhitespace
+    flowWhitespace minIndent
     match ← option? (lookAhead (tokenFilter fun c => c == ',' || c == '}')) with
     | some _ => return (key, YamlValue.null)
     | none =>
-      let value ← flowValue
+      let value ← flowValue minIndent
       return (key, value)
   else return (key, YamlValue.null)
 

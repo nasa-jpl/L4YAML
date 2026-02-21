@@ -197,6 +197,70 @@ def consumeIndent (n : Nat) : YamlParser Unit :=
     | none => pure ()
     drop n (token ' ')
 
+/--
+Look ahead for tab characters in leading whitespace at the current position.
+
+YAML 1.2.2 §6.1: tab characters must not be used in indentation.
+This is a `lookAhead` — no input is consumed.  If a tab is found
+among leading space characters (before the first non-whitespace),
+a validation error is set.
+
+Covers:
+- Start-of-line indentation (`s-indent(n)`)
+- Post-indicator whitespace where indentation is implied
+- Flow continuation line prefixes (`s-flow-line-prefix(n)`)
+-/
+partial def checkNoTabIndent : YamlParser Unit := do
+  let hasTab ← lookAhead do
+    let rec scanForTab : YamlParser Bool := do
+      match ← option? anyToken with
+      | some '\t' => pure true
+      | some ' '  => scanForTab
+      | _         => pure false
+    scanForTab
+  if hasTab then
+    setValidationError "tabs are not allowed for indentation (YAML 1.2.2 §6.1)"
+
+/--
+Check for tabs within the required indentation prefix.
+
+YAML 1.2.2 §6.1: "Indentation is a zero or more space characters."
+Tabs are NOT allowed within the first `minIndent` columns (the
+s-indent(n) production).  Tabs appearing AFTER the required indentation
+(as separation whitespace) are fine.
+
+When `minIndent = 0`, no indentation is required and any leading tabs
+are treated as separation whitespace — no error.
+
+This is a `lookAhead` — no input is consumed.
+-/
+partial def checkIndentForTabs (minIndent : Nat) : YamlParser Unit := do
+  if minIndent == 0 then return ()
+  let hasTabInIndent ← lookAhead do
+    let rec scan (spacesConsumed : Nat) : YamlParser Bool := do
+      if spacesConsumed >= minIndent then return false
+      match ← option? anyToken with
+      | some ' '  => scan (spacesConsumed + 1)
+      | some '\t' => return true
+      | _         => return false
+    scan 0
+  if hasTabInIndent then
+    setValidationError "tabs are not allowed for indentation (YAML 1.2.2 §6.1)"
+
+/--
+Scan leading whitespace for any tab character.  Returns `true` if a tab
+is found among leading spaces/tabs before the first non-whitespace character.
+This is a `lookAhead` — no input is consumed.
+-/
+partial def hasTabInWhitespace : YamlParser Bool :=
+  lookAhead do
+    let rec scan : YamlParser Bool := do
+      match ← option? anyToken with
+      | some '\t' => pure true
+      | some ' '  => scan
+      | _         => pure false
+    scan
+
 /-! ## Dispatch Result
 
 Three-valued dispatch result for block value parsing.
