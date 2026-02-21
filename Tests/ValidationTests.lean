@@ -202,13 +202,13 @@ def testDocumentResult (state : IO.Ref TestCollector) : IO Unit := do
 
   check state "stalled ≠ parsed" (
     match DocumentResult.stalled ⟨0, 0, 0⟩ with
-    | .parsed _ => false | _ => true)
+    | .parsed _ _ => false | _ => true)
   check state "stalled ≠ endOfStream" (
     match DocumentResult.stalled ⟨5, 1, 3⟩ with
     | .endOfStream => false | _ => true)
   check state "endOfStream ≠ parsed" (
     match (DocumentResult.endOfStream : DocumentResult) with
-    | .parsed _ => false | _ => true)
+    | .parsed _ _ => false | _ => true)
   check state "endOfStream ≠ stalled" (
     match (DocumentResult.endOfStream : DocumentResult) with
     | .stalled _ => false | _ => true)
@@ -225,13 +225,13 @@ def testDocumentResult (state : IO.Ref TestCollector) : IO Unit := do
   check state "exhaustive: parsed" (
     let doc : YamlDocument := { value := .scalar ⟨"x", .plain, none⟩ }
     match DocumentResult.parsed doc with
-    | .parsed _ | .endOfStream | .stalled _ => true)
+    | .parsed _ _ | .endOfStream | .stalled _ => true)
   check state "exhaustive: endOfStream" (
     match (DocumentResult.endOfStream : DocumentResult) with
-    | .parsed _ | .endOfStream | .stalled _ => true)
+    | .parsed _ _ | .endOfStream | .stalled _ => true)
   check state "exhaustive: stalled" (
     match DocumentResult.stalled ⟨0, 0, 0⟩ with
-    | .parsed _ | .endOfStream | .stalled _ => true)
+    | .parsed _ _ | .endOfStream | .stalled _ => true)
 
   -- Position preservation in stalled
   check state "stalled preserves position" (

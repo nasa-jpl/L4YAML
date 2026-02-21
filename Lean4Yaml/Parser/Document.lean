@@ -56,8 +56,9 @@ Follows the same explicit-result-type pattern as `DispatchResult`
 (three-valued dispatch) and `ContinuationCheck` (scalar continuation).
 -/
 inductive DocumentResult where
-  /-- Successfully parsed a document. Invariant: consumed input. -/
-  | parsed (doc : YamlDocument)
+  /-- Successfully parsed a document. Invariant: consumed input.
+      `hadDocEnd` indicates whether a `...` document end marker was consumed. -/
+  | parsed (doc : YamlDocument) (hadDocEnd : Bool := false)
   /-- No remaining input after blank lines. Stream is complete. -/
   | endOfStream
   /-- Non-blank input remains but could not be parsed as a document.
@@ -94,7 +95,18 @@ def directive : YamlParser Directive :=
       skipHWhitespace
       let version ← takeMany1 (tokenFilter fun c => !isWhiteSpace c && !isLineBreak c)
       let versionStr := String.ofList version.toList
+      -- P7 fix (MUS6): §6.7 — `#` embedded in version string means the `#`
+      -- was not preceded by whitespace.  `%YAML 1.1#...` gives version
+      -- `1.1#...` (takeMany1 consumes `#` since it's not whitespace/linebreak).
+      if versionStr.any (· == '#') then
+        setValidationError "invalid '#' in %YAML version (§6.7)"
+      -- NOTE: H7TQ wants `%YAML 1.2 foo` to fail, but ZYU8 wants
+      -- `%YAML 1.1 1.2` to pass.  These conflict — leave as-is.
+      -- Consume rest of directive line: any extra parameters/content after the
+      -- version are silently consumed (ns-reserved-directive semantics).
+      -- This prevents leftover content from blocking `---` detection.
       skipTrailing
+      dropMany (tokenFilter (fun c => !isLineBreak c))
       let _ ← option? newline
       return .yaml versionStr
     | "TAG" =>
@@ -106,8 +118,11 @@ def directive : YamlParser Directive :=
       let _ ← option? newline
       return .tag (String.ofList handle.toList) (String.ofList tagPrefix.toList)
     | _ =>
-      -- Unknown directive: skip to end of line
+      -- Unknown/reserved directive: skip entire line to end of line.
+      -- P7 fix: consume all parameters, not just whitespace+comment,
+      -- so that `%YAM 1.1\n---` doesn't leave `1.1\n` in the stream.
       skipTrailing
+      dropMany (tokenFilter (fun c => !isLineBreak c))
       let _ ← option? newline
       -- Unknown directives are ignored per spec
       return .yaml "unknown"
@@ -126,6 +141,10 @@ partial def directives : YamlParser (Array Directive) := do
       dirs := dirs.push dir
     | none =>
       continue' := false
+  -- P7 fix (SF5V): §6.8.1 — duplicate %YAML directives are forbidden.
+  let yamlCount := dirs.filter (fun d => match d with | .yaml _ => true | .tag _ _ => false) |>.size
+  if yamlCount > 1 then
+    setValidationError "duplicate %YAML directive"
   return dirs
 
 /-! ## Document Structure
@@ -195,7 +214,7 @@ The `stalled` result eliminates the need for callers to compare stream
 positions before/after the call. The document parser itself knows whether
 it consumed content, and communicates this through the result type.
 -/
-partial def document : YamlParser DocumentResult := do
+partial def document (prevHadDocEnd : Bool := true) : YamlParser DocumentResult := do
   -- Reset anchor map for this document scope (§3.2.2.2).
   -- Anchors from a previous document must not leak into the next one.
   resetAnchorMap
@@ -211,20 +230,62 @@ partial def document : YamlParser DocumentResult := do
   let dirs ← directives
   skipBlankLines
   -- Check for explicit document start
+  let docStartLine ← currentLine
   let hadExplicitStart ← do
     match ← option? documentStartMarker with
     | some _ => pure true
     | none => pure false
+  -- P7 fix (9MMA, B63P, 9HCY): §6.8.1 — directives may only precede
+  -- a document that begins with a document start marker `---`.
+  -- If directives were parsed but no `---` follows, this is invalid.
+  if dirs.size > 0 && !hadExplicitStart then
+    setValidationError "directives must be followed by document start marker '---'"
+  -- P10 fix (9HCY): §9.2 — directives (`%TAG`, `%YAML`) before a document
+  -- require that the previous document ended with `...` (document end marker).
+  -- Without `...`, the stream is still "inside" the previous bare document,
+  -- so encountering a directive is invalid.
+  if dirs.size > 0 && !prevHadDocEnd then
+    setValidationError "directives require document end marker '...' before them"
+  -- P10 fix (QLJ7): §6.8.2 — tag shorthand handles are scoped to the
+  -- document where they are declared.  Build the handle registry from
+  -- this document's %TAG directives + the always-available defaults.
+  let mut handles := #["!", "!!"]  -- defaults: §6.8.2.2, §6.8.2.3
+  for d in dirs do
+    match d with
+    | .tag handle _ => handles := handles.push handle
+    | _ => pure ()
+  setTagHandles handles
   skipBlankLines
+  -- P7 pre-check (9KBC, CXX2): §9.1.2 — block collections cannot start
+  -- on the same line as the document start marker `---`.
+  -- `--- key: value` and `--- - item` are invalid; the block content must
+  -- start on the next line.  Scalars and flow collections are fine inline.
+  if hadExplicitStart then
+    let contentLine ← currentLine
+    if contentLine == docStartLine then
+      -- Content is on the `---` line; check for block collections
+      let isMK ← lookAhead (detectMappingKey (inFlow := false))
+      if isMK then
+        setValidationError "block mapping cannot start on the document start line"
+      else
+        let isSeqIndicator ← lookAhead do
+          match ← option? (char '-') with
+          | some _ =>
+            match ← option? anyToken with
+            | some c => return (isWhiteSpace c || isLineBreak c)
+            | none => return true
+          | none => return false
+        if isSeqIndicator then
+          setValidationError "block sequence cannot start on the document start line"
   -- Parse document content
   -- Check for immediate document end or empty document
   let atEnd' ← test endOfInput
   if atEnd' then
-    return .parsed { value := YamlValue.null, directives := dirs }
+    return .parsed (hadDocEnd := false) { value := YamlValue.null, directives := dirs }
   let atDocEnd ← atDocumentEnd
   if atDocEnd then
     let _ ← option? documentEndMarker
-    return .parsed { value := YamlValue.null, directives := dirs }
+    return .parsed (hadDocEnd := true) { value := YamlValue.null, directives := dirs }
   let bv ← blockValue 0
   let value := bv.getD .null
   let posAfter ← currentPos
@@ -274,14 +335,14 @@ partial def document : YamlParser DocumentResult := do
     | some _ => pure true
     | none => pure false
 
-  -- §9.1.4/§9.2: After an explicit document (`---`) WITHOUT a document end
-  -- marker (`...`), subsequent content must begin with `---` or `...`.
+  -- §9.1.4/§9.2: After a document WITHOUT a document end marker (`...`),
+  -- subsequent content must begin with `---` or `...`.
   -- Bare content (not preceded by a document marker) is invalid.
-  -- This catches test KS4U:
-  --   `---\n[\nsequence item\n]\ninvalid item\n`
-  -- where `invalid item` follows the closed flow sequence without a marker.
+  -- This catches:
+  --   KS4U: `---\n[\n...\n]\ninvalid item\n`
+  --   BS4K: `word1  # comment\nword2` (two consecutive bare documents)
   -- With `...`, bare documents are allowed per §9.2.
-  if hadExplicitStart && !hadDocEnd then do
+  if !hadDocEnd then do
     skipBlankLines
     let atEnd'' ← test endOfInput
     if !atEnd'' then do
@@ -298,7 +359,7 @@ partial def document : YamlParser DocumentResult := do
         setValidationError
           s!"unexpected content '{ch}' after explicit document; expected '---' or '...'"
         return .stalled posBefore
-  return .parsed { value, directives := dirs }
+  return .parsed (hadDocEnd := hadDocEnd) { value, directives := dirs }
 
 /--
 Parse a YAML stream: zero or more documents.
@@ -313,11 +374,13 @@ partial def yamlStream : YamlParser (Array YamlDocument) := do
   skipBOM
   let mut docs := #[]
   let mut continue' := true
+  let mut prevDocEnd := true  -- first document doesn't need `...` before it
   while continue' do
     skipBlankLines
-    match ← document with
-    | .parsed doc =>
+    match ← document (prevHadDocEnd := prevDocEnd) with
+    | .parsed doc hadDocEnd =>
       docs := docs.push doc
+      prevDocEnd := hadDocEnd
       skipBlankLines
     | .endOfStream =>
       continue' := false

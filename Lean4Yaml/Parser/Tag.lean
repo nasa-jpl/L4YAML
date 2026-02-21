@@ -134,15 +134,22 @@ def parseTagPrefix : YamlParser String :=
         match ← option? (char '!') with
         | some _ =>
           -- Named handle: `!handle!suffix`
+          let handle := s!"!{handleOrSuffix}!"
+          -- P10 fix (QLJ7): §6.8.2 — validate that the tag handle was
+          -- defined by a %TAG directive in the current document.
+          let defined ← isTagHandleDefined handle
+          if !defined then
+            setValidationError
+              s!"undefined tag handle '{handle}' (not declared by %TAG in this document)"
           match ← option? (takeMany1 (tokenFilter isTagChar)) with
           | some suffixChars =>
             let suffix := String.ofList suffixChars.toList
             skipHWhitespace
-            return s!"!{handleOrSuffix}!{suffix}"
+            return s!"{handle}{suffix}"
           | none =>
             -- `!handle!` with no suffix
             skipHWhitespace
-            return s!"!{handleOrSuffix}!"
+            return handle
         | none =>
           -- Primary local tag: `!suffix`
           skipHWhitespace
