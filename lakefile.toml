@@ -6,7 +6,8 @@ defaultTargets = ["Lean4Yaml"]
 
 [[require]]
 name = "Parser"
-path = "../lean4-parser"
+git = "https://github.com/NicolasRouquette/lean4-parser"
+rev = "total-fold"
 
 [[lean_lib]]
 name = "Lean4Yaml"
