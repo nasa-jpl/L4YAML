@@ -6,8 +6,7 @@ defaultTargets = ["Lean4Yaml"]
 
 [[require]]
 name = "Parser"
-git = "https://github.com/fgdorais/lean4-parser"
-rev = "main"
+path = "../lean4-parser"
 
 [[lean_lib]]
 name = "Lean4Yaml"

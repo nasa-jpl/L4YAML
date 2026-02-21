@@ -215,6 +215,7 @@ instance : Parser.Stream YamlStream Char where
       startPos := ⟨p.offset⟩
       line := p.line
       col := p.col }
+  remaining s := s.stopPos.byteIdx - s.startPos.byteIdx
 
 /-! ## Backtracking Isolation
 
