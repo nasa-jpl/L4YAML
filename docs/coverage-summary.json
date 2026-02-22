@@ -1,14 +1,14 @@
 {
-  "date": "2026-02-21T17:19:08-0800",
+  "date": "2026-02-21T20:30:11-0800",
   "overall": {
     "correct": 352,
-    "correctRate": 84.615384,
+    "correctRate": 86.699507,
     "expectedFail": 92,
     "failed": 0,
     "passed": 260,
-    "skipped": 62,
+    "skipped": 52,
     "timeout": 0,
-    "total": 416,
+    "total": 406,
     "unexpectedPass": 2
   },
   "stages": {
@@ -25,13 +25,13 @@
     },
     "block": {
       "correct": 99,
-      "correctRate": 90.825688,
+      "correctRate": 100,
       "expectedFail": 14,
       "failed": 0,
       "passed": 85,
-      "skipped": 10,
+      "skipped": 0,
       "timeout": 0,
-      "total": 109,
+      "total": 99,
       "unexpectedPass": 0
     },
     "document": {
@@ -383,34 +383,6 @@
     },
     {
       "error": null,
-      "id": "4QFQ",
-      "name": "",
-      "outcome": "skip",
-      "stage": "block"
-    },
-    {
-      "error": null,
-      "id": "4QFQ",
-      "name": "",
-      "outcome": "skip",
-      "stage": "block"
-    },
-    {
-      "error": null,
-      "id": "4QFQ",
-      "name": "",
-      "outcome": "skip",
-      "stage": "block"
-    },
-    {
-      "error": null,
-      "id": "4QFQ",
-      "name": "",
-      "outcome": "skip",
-      "stage": "block"
-    },
-    {
-      "error": null,
       "id": "4RWC",
       "name": "Trailing spaces after flow collection",
       "outcome": "pass",
@@ -436,13 +408,6 @@
       "name": "Literal scalars",
       "outcome": "pass",
       "stage": "scalar"
-    },
-    {
-      "error": null,
-      "id": "4WA9",
-      "name": "",
-      "outcome": "skip",
-      "stage": "block"
     },
     {
       "error": null,
@@ -548,20 +513,6 @@
       "name": "Colon at the beginning of adjacent flow scalar",
       "outcome": "pass",
       "stage": "flow"
-    },
-    {
-      "error": null,
-      "id": "5T43",
-      "name": "",
-      "outcome": "skip",
-      "stage": "block"
-    },
-    {
-      "error": null,
-      "id": "5T43",
-      "name": "",
-      "outcome": "skip",
-      "stage": "block"
     },
     {
       "error": null,
@@ -709,20 +660,6 @@
       "name": "Zero-indented sequences in explicit mapping keys",
       "outcome": "pass",
       "stage": "advanced"
-    },
-    {
-      "error": null,
-      "id": "6PBE",
-      "name": "",
-      "outcome": "skip",
-      "stage": "block"
-    },
-    {
-      "error": null,
-      "id": "6PBE",
-      "name": "",
-      "outcome": "skip",
-      "stage": "block"
     },
     {
       "error": null,
@@ -2416,13 +2353,6 @@
       "id": "S3PD",
       "name": "Spec Example 8.18. Implicit Block Mapping Entries",
       "outcome": "pass",
-      "stage": "block"
-    },
-    {
-      "error": null,
-      "id": "S3PD",
-      "name": "",
-      "outcome": "skip",
       "stage": "block"
     },
     {

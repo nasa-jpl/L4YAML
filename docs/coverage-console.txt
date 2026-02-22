@@ -2,437 +2,427 @@
   yaml-test-suite Runner for lean4-yaml-verified
 ══════════════════════════════════════════════════════════
 
-Loading test files... 416 test cases from 351 files
+Loading test files... 406 test cases from 351 files
 
 Test distribution by stage:
   scalar: 82
   flow: 46
-  block: 109
+  block: 99
   document: 24
   advanced: 81
   error: 74
 
 Running all tests for HTML report...
 ------------------------------------------------------------
-  [1/416] 229Q ✓
-  [2/416] 236B ✓ (expected fail)
-  [3/416] 26DV ✓
-  [4/416] 27NA ○ YAML 1.3 specific
-  [5/416] 2AUY ✓
-  [6/416] 2CMS ✓ (expected fail)
-  [7/416] 2EBW ✓
-  [8/416] 2G84 ✓ (expected fail)
-  [9/416] 2G84 ✓ (expected fail)
-  [10/416] 2G84 ✓
-  [11/416] 2G84 ✓
-  [12/416] 2JQS ✓
-  [13/416] 2LFX ○ YAML 1.3 specific
-  [14/416] 2SXE ○ YAML 1.3 specific
-  [15/416] 2XXW ✓
-  [16/416] 33X3 ✓
-  [17/416] 35KP ✓
-  [18/416] 36F6 ✓
-  [19/416] 3ALJ ✓
-  [20/416] 3GZX ✓
-  [21/416] 3HFZ ✓ (expected fail)
-  [22/416] 3MYT ✓
-  [23/416] 3R3P ✓
-  [24/416] 3RLN ✓
-  [25/416] 3RLN ✓
-  [26/416] 3RLN ✓
-  [27/416] 3RLN ✓
-  [28/416] 3RLN ✓
-  [29/416] 3RLN ✓
-  [30/416] 3UYS ✓
-  [31/416] 4ABK ✓
-  [32/416] 4CQQ ✓
-  [33/416] 4EJS ✓ (expected fail)
-  [34/416] 4FJ6 ✓
-  [35/416] 4GC6 ○ YAML 1.3 specific
-  [36/416] 4H7K ✓ (expected fail)
-  [37/416] 4HVU ✓ (expected fail)
-  [38/416] 4JVG ✓ (expected fail)
-  [39/416] 4MUZ ✓
-  [40/416] 4MUZ ✓
-  [41/416] 4MUZ ✓
-  [42/416] 4Q9F ○ YAML 1.3 specific
-  [43/416] 4QFQ ○ YAML 1.3 specific
-  [44/416] 4QFQ ○ empty yaml input
-  [45/416] 4QFQ ○ empty yaml input
-  [46/416] 4QFQ ○ empty yaml input
-  [47/416] 4QFQ ○ empty yaml input
-  [48/416] 4RWC ✓
-  [49/416] 4UYU ○ YAML 1.3 specific
-  [50/416] 4V8U ✓
-  [51/416] 4WA9 ✓
-  [52/416] 4WA9 ○ empty yaml input
-  [53/416] 4ZYM ✓
-  [54/416] 52DL ○ YAML 1.3 specific
-  [55/416] 54T7 ✓
-  [56/416] 55WF ✓ (expected fail)
-  [57/416] 565N ✓
-  [58/416] 57H4 ✓
-  [59/416] 58MP ✓
-  [60/416] 5BVJ ✓
-  [61/416] 5C5M ✓
-  [62/416] 5GBF ✓
-  [63/416] 5KJE ✓
-  [64/416] 5LLU ✓ (expected fail)
-  [65/416] 5MUD ✓
-  [66/416] 5NYZ ✓
-  [67/416] 5T43 ✓
-  [68/416] 5T43 ○ empty yaml input
-  [69/416] 5T43 ○ empty yaml input
-  [70/416] 5TRB ✓ (expected fail)
-  [71/416] 5TYM ✓
-  [72/416] 5U3A ✓ (expected fail)
-  [73/416] 5WE3 ✓
-  [74/416] 62EZ ✓ (expected fail)
-  [75/416] 652Z ✓
-  [76/416] 65WH ✓
-  [77/416] 6BCT ✓
-  [78/416] 6BFJ ✓
-  [79/416] 6CA3 ✓
-  [80/416] 6CK3 ✓
-  [81/416] 6FWR ✓
-  [82/416] 6H3V ✓
-  [83/416] 6HB6 ✓
-  [84/416] 6JQW ✓
-  [85/416] 6JTT ✓ (expected fail)
-  [86/416] 6JWB ✓
-  [87/416] 6KGN ✓
-  [88/416] 6LVF ○ YAML 1.3 specific
-  [89/416] 6M2F ✓
-  [90/416] 6PBE ✓
-  [91/416] 6PBE ○ empty yaml input
-  [92/416] 6PBE ○ empty yaml input
-  [93/416] 6S55 ✓ (expected fail)
-  [94/416] 6SLA ✓
-  [95/416] 6VJK ○ YAML 1.3 specific
-  [96/416] 6WLZ ○ YAML 1.3 specific
-  [97/416] 6WPF ○ YAML 1.3 specific
-  [98/416] 6XDY ✓
-  [99/416] 6ZKB ○ YAML 1.3 specific
-  [100/416] 735Y ✓
-  [101/416] 74H7 ✓
-  [102/416] 753E ○ YAML 1.3 specific
-  [103/416] 7A4E ✓
-  [104/416] 7BMT ○ YAML 1.3 specific
-  [105/416] 7BUB ✓
-  [106/416] 7FWL ✓
-  [107/416] 7LBH ✓ (expected fail)
-  [108/416] 7MNF ✓ (expected fail)
-  [109/416] 7T8X ○ YAML 1.3 specific
-  [110/416] 7TMG ✓
-  [111/416] 7W2P ✓
-  [112/416] 7Z25 ✓
-  [113/416] 7ZZ5 ✓
-  [114/416] 82AN ○ YAML 1.3 specific
-  [115/416] 87E4 ✓
-  [116/416] 8CWC ✓
-  [117/416] 8G76 ✓
-  [118/416] 8KB6 ✓
-  [119/416] 8MK2 ○ YAML 1.3 specific
-  [120/416] 8QBE ✓
-  [121/416] 8UDB ✓
-  [122/416] 8XDJ ✓ (expected fail)
-  [123/416] 8XYN ✓
-  [124/416] 93JH ✓
-  [125/416] 93WF ○ YAML 1.3 specific
-  [126/416] 96L6 ✓
-  [127/416] 96NN ✓
-  [128/416] 96NN ✓
-  [129/416] 98YD ✓
-  [130/416] 9BXH ✓
-  [131/416] 9C9N ✓ (expected fail)
-  [132/416] 9CWY ✓ (expected fail)
-  [133/416] 9DXL ○ YAML 1.3 specific
-  [134/416] 9FMG ✓
-  [135/416] 9HCY ✓ (expected fail)
-  [136/416] 9J7A ✓
-  [137/416] 9JBA ✓ (expected fail)
-  [138/416] 9KAX ○ YAML 1.3 specific
-  [139/416] 9KBC ✓ (expected fail)
-  [140/416] 9MAG ✓ (expected fail)
-  [141/416] 9MMA ✓ (expected fail)
-  [142/416] 9MMW ✓
-  [143/416] 9MQT ✓
-  [144/416] 9MQT ✓ (expected fail)
-  [145/416] 9SA2 ✓
-  [146/416] 9SHH ✓
-  [147/416] 9TFX ○ YAML 1.3 specific
-  [148/416] 9U5K ✓
-  [149/416] 9WXW ○ YAML 1.3 specific
-  [150/416] 9YRD ○ YAML 1.3 specific
-  [151/416] A2M4 ✓
-  [152/416] A6F9 ✓
-  [153/416] A984 ✓
-  [154/416] AB8U ✓
-  [155/416] AVM7 ✓
-  [156/416] AZ63 ✓
-  [157/416] AZW3 ✓
-  [158/416] B3HG ○ YAML 1.3 specific
-  [159/416] B63P ✓ (expected fail)
-  [160/416] BD7L ✓ (expected fail)
-  [161/416] BEC7 ✓
-  [162/416] BF9H ✓ (expected fail)
-  [163/416] BS4K ✓ (expected fail)
-  [164/416] BU8L ○ YAML 1.3 specific
-  [165/416] C2DT ✓
-  [166/416] C2SP ✓ (expected fail)
-  [167/416] C4HZ ✓
-  [168/416] CC74 ✓
-  [169/416] CFD4 ✓
-  [170/416] CML9 ✓ (expected fail)
-  [171/416] CN3R ✓
-  [172/416] CPZ3 ✓
-  [173/416] CQ3W ⚠ unexpected pass
-  [174/416] CT4Q ✓
-  [175/416] CTN5 ✓ (expected fail)
-  [176/416] CUP7 ✓
-  [177/416] CVW2 ✓ (expected fail)
-  [178/416] CXX2 ✓ (expected fail)
-  [179/416] D49Q ✓ (expected fail)
-  [180/416] D83L ✓
-  [181/416] D88J ✓
-  [182/416] D9TU ✓
-  [183/416] DBG4 ✓
-  [184/416] DC7X ✓
-  [185/416] DE56 ✓
-  [186/416] DE56 ✓
-  [187/416] DE56 ✓
-  [188/416] DE56 ✓
-  [189/416] DE56 ✓
-  [190/416] DE56 ✓
-  [191/416] DFF7 ✓
-  [192/416] DHP8 ✓
-  [193/416] DK3J ✓
-  [194/416] DK4H ✓ (expected fail)
-  [195/416] DK95 ✓
-  [196/416] DK95 ✓ (expected fail)
-  [197/416] DK95 ✓
-  [198/416] DK95 ✓
-  [199/416] DK95 ✓
-  [200/416] DK95 ✓
-  [201/416] DK95 ✓ (expected fail)
-  [202/416] DK95 ✓
-  [203/416] DK95 ✓
-  [204/416] DMG6 ✓ (expected fail)
-  [205/416] DWX9 ○ YAML 1.3 specific
-  [206/416] E76Z ✓
-  [207/416] EB22 ✓ (expected fail)
-  [208/416] EHF6 ✓
-  [209/416] EW3V ✓ (expected fail)
-  [210/416] EX5H ○ YAML 1.3 specific
-  [211/416] EXG3 ○ YAML 1.3 specific
-  [212/416] F2C7 ✓
-  [213/416] F3CP ✓
-  [214/416] F6MC ✓
-  [215/416] F8F9 ✓
-  [216/416] FBC9 ✓
-  [217/416] FH7J ✓
-  [218/416] FP8R ✓
-  [219/416] FQ7F ✓
-  [220/416] FRK4 ✓
-  [221/416] FTA2 ✓
-  [222/416] FUP4 ✓
-  [223/416] G4RS ✓
-  [224/416] G5U8 ✓ (expected fail)
-  [225/416] G7JE ✓ (expected fail)
-  [226/416] G992 ○ YAML 1.3 specific
-  [227/416] G9HC ✓ (expected fail)
-  [228/416] GDY7 ✓ (expected fail)
-  [229/416] GH63 ✓
-  [230/416] GT5M ✓ (expected fail)
-  [231/416] H2RW ✓
-  [232/416] H3Z8 ✓
-  [233/416] H7J7 ✓ (expected fail)
-  [234/416] H7TQ ⚠ unexpected pass
-  [235/416] HM87 ✓
-  [236/416] HM87 ✓
-  [237/416] HMK4 ✓
-  [238/416] HMQ5 ✓
-  [239/416] HRE5 ✓ (expected fail)
-  [240/416] HS5T ✓
-  [241/416] HU3P ✓ (expected fail)
-  [242/416] HWV9 ✓
-  [243/416] J3BT ✓
-  [244/416] J5UC ✓
-  [245/416] J7PZ ✓
-  [246/416] J7VC ✓
-  [247/416] J9HZ ✓
-  [248/416] JEF9 ✓
-  [249/416] JEF9 ✓
-  [250/416] JEF9 ✓
-  [251/416] JHB9 ✓
-  [252/416] JKF3 ✓ (expected fail)
-  [253/416] JQ4R ✓
-  [254/416] JR7V ✓
-  [255/416] JS2J ✓
-  [256/416] JTV5 ✓
-  [257/416] JY7Z ✓ (expected fail)
-  [258/416] K3WX ✓
-  [259/416] K4SU ✓
-  [260/416] K527 ○ YAML 1.3 specific
-  [261/416] K54U ✓
-  [262/416] K858 ✓
-  [263/416] KH5V ✓
-  [264/416] KH5V ✓
-  [265/416] KH5V ✓
-  [266/416] KK5P ✓
-  [267/416] KMK3 ✓
-  [268/416] KS4U ✓ (expected fail)
-  [269/416] KSS4 ○ YAML 1.3 specific
-  [270/416] L24T ✓
-  [271/416] L24T ✓
-  [272/416] L383 ✓
-  [273/416] L94M ✓
-  [274/416] L9U5 ✓
-  [275/416] LE5A ✓
-  [276/416] LHL4 ✓ (expected fail)
-  [277/416] LP6E ✓
-  [278/416] LQZ7 ✓
-  [279/416] LX3P ○ YAML 1.3 specific
-  [280/416] M29M ✓
-  [281/416] M2N8 ✓
-  [282/416] M2N8 ✓
-  [283/416] M5C3 ○ YAML 1.3 specific
-  [284/416] M5DY ✓
-  [285/416] M6YH ✓
-  [286/416] M7A3 ○ YAML 1.3 specific
-  [287/416] M7NX ✓
-  [288/416] M9B4 ○ YAML 1.3 specific
-  [289/416] MJS9 ○ YAML 1.3 specific
-  [290/416] MUS6 ✓ (expected fail)
-  [291/416] MUS6 ✓ (expected fail)
-  [292/416] MUS6 ✓
-  [293/416] MUS6 ✓
-  [294/416] MUS6 ✓
-  [295/416] MUS6 ✓
-  [296/416] MUS6 ✓
-  [297/416] MXS3 ✓
-  [298/416] MYW6 ○ YAML 1.3 specific
-  [299/416] MZX3 ✓
-  [300/416] N4JP ✓ (expected fail)
-  [301/416] N782 ✓ (expected fail)
-  [302/416] NAT4 ✓
-  [303/416] NB6Z ✓
-  [304/416] NHX8 ✓
-  [305/416] NJ66 ✓
-  [306/416] NKF9 ✓
-  [307/416] NP9H ✓
-  [308/416] P2AD ✓
-  [309/416] P2EQ ✓ (expected fail)
-  [310/416] P76L ✓
-  [311/416] P94K ✓
-  [312/416] PBJ2 ✓
-  [313/416] PRH3 ✓
-  [314/416] PUW8 ✓
-  [315/416] PW8X ✓
-  [316/416] Q4CL ✓ (expected fail)
-  [317/416] Q5MG ✓
-  [318/416] Q88A ✓
-  [319/416] Q8AD ○ YAML 1.3 specific
-  [320/416] Q9WF ○ YAML 1.3 specific
-  [321/416] QB6E ✓ (expected fail)
-  [322/416] QF4Y ✓
-  [323/416] QLJ7 ✓ (expected fail)
-  [324/416] QT73 ✓
-  [325/416] R4YG ✓
-  [326/416] R52L ✓
-  [327/416] RHX7 ✓ (expected fail)
-  [328/416] RLU9 ✓
-  [329/416] RR7F ✓
-  [330/416] RTP8 ✓
-  [331/416] RXY3 ✓ (expected fail)
-  [332/416] RZP5 ○ YAML 1.3 specific
-  [333/416] RZT7 ✓
-  [334/416] S3PD ✓
-  [335/416] S3PD ○ empty yaml input
-  [336/416] S4GJ ✓ (expected fail)
-  [337/416] S4JQ ✓
-  [338/416] S4T7 ✓
-  [339/416] S7BG ✓
-  [340/416] S98Z ✓ (expected fail)
-  [341/416] S9E8 ✓
-  [342/416] SBG9 ✓
-  [343/416] SF5V ✓ (expected fail)
-  [344/416] SKE5 ✓
-  [345/416] SM9W ✓
-  [346/416] SM9W ✓
-  [347/416] SR86 ✓ (expected fail)
-  [348/416] SSW6 ○ YAML 1.3 specific
-  [349/416] SU5Z ✓ (expected fail)
-  [350/416] SU74 ✓ (expected fail)
-  [351/416] SY6V ✓ (expected fail)
-  [352/416] SYW4 ✓
-  [353/416] T26H ○ YAML 1.3 specific
-  [354/416] T4YY ○ YAML 1.3 specific
-  [355/416] T5N4 ○ YAML 1.3 specific
-  [356/416] T833 ✓ (expected fail)
-  [357/416] TD5N ✓ (expected fail)
-  [358/416] TE2A ✓
-  [359/416] TL85 ✓
-  [360/416] TS54 ○ YAML 1.3 specific
-  [361/416] U3C3 ✓
-  [362/416] U3XV ○ YAML 1.3 specific
-  [363/416] U44R ✓ (expected fail)
-  [364/416] U99R ✓ (expected fail)
-  [365/416] U9NS ✓
-  [366/416] UDM2 ✓
-  [367/416] UDR7 ✓
-  [368/416] UGM3 ✓
-  [369/416] UKK6 ✓
-  [370/416] UKK6 ✓
-  [371/416] UKK6 ✓
-  [372/416] UT92 ✓
-  [373/416] UV7Q ✓
-  [374/416] V55R ✓
-  [375/416] V9D5 ✓
-  [376/416] VJP3 ✓ (expected fail)
-  [377/416] VJP3 ✓
-  [378/416] W42U ✓
-  [379/416] W4TN ○ YAML 1.3 specific
-  [380/416] W5VH ○ YAML 1.3 specific
-  [381/416] W9L4 ✓ (expected fail)
-  [382/416] WZ62 ✓
-  [383/416] X38W ✓
-  [384/416] X4QW ✓ (expected fail)
-  [385/416] X8DW ✓
-  [386/416] XLQ9 ✓
-  [387/416] XV9V ○ YAML 1.3 specific
-  [388/416] XW4D ○ YAML 1.3 specific
-  [389/416] Y2GN ✓
-  [390/416] Y79Y ✓ (expected fail)
-  [391/416] Y79Y ✓
-  [392/416] Y79Y ✓
-  [393/416] Y79Y ✓ (expected fail)
-  [394/416] Y79Y ✓ (expected fail)
-  [395/416] Y79Y ✓ (expected fail)
-  [396/416] Y79Y ✓ (expected fail)
-  [397/416] Y79Y ✓ (expected fail)
-  [398/416] Y79Y ✓ (expected fail)
-  [399/416] Y79Y ✓ (expected fail)
-  [400/416] Y79Y ✓
-  [401/416] YD5X ✓
-  [402/416] YJV2 ✓ (expected fail)
-  [403/416] Z67P ○ YAML 1.3 specific
-  [404/416] Z9M4 ✓
-  [405/416] ZCZ6 ✓ (expected fail)
-  [406/416] ZF4X ✓
-  [407/416] ZH7C ✓
-  [408/416] ZK9H ✓
-  [409/416] ZL4Z ✓ (expected fail)
-  [410/416] ZVH3 ✓ (expected fail)
-  [411/416] ZWK4 ✓
-  [412/416] ZXT5 ✓ (expected fail)
-  [413/416] ZYU8 ✓
-  [414/416] ZYU8 ✓
-  [415/416] ZYU8 ✓
-  [416/416] ZYU8 ✓
+  [1/406] 229Q ✓
+  [2/406] 236B ✓ (expected fail)
+  [3/406] 26DV ✓
+  [4/406] 27NA ○ YAML 1.3 specific
+  [5/406] 2AUY ✓
+  [6/406] 2CMS ✓ (expected fail)
+  [7/406] 2EBW ✓
+  [8/406] 2G84 ✓ (expected fail)
+  [9/406] 2G84 ✓ (expected fail)
+  [10/406] 2G84 ✓
+  [11/406] 2G84 ✓
+  [12/406] 2JQS ✓
+  [13/406] 2LFX ○ YAML 1.3 specific
+  [14/406] 2SXE ○ YAML 1.3 specific
+  [15/406] 2XXW ✓
+  [16/406] 33X3 ✓
+  [17/406] 35KP ✓
+  [18/406] 36F6 ✓
+  [19/406] 3ALJ ✓
+  [20/406] 3GZX ✓
+  [21/406] 3HFZ ✓ (expected fail)
+  [22/406] 3MYT ✓
+  [23/406] 3R3P ✓
+  [24/406] 3RLN ✓
+  [25/406] 3RLN ✓
+  [26/406] 3RLN ✓
+  [27/406] 3RLN ✓
+  [28/406] 3RLN ✓
+  [29/406] 3RLN ✓
+  [30/406] 3UYS ✓
+  [31/406] 4ABK ✓
+  [32/406] 4CQQ ✓
+  [33/406] 4EJS ✓ (expected fail)
+  [34/406] 4FJ6 ✓
+  [35/406] 4GC6 ○ YAML 1.3 specific
+  [36/406] 4H7K ✓ (expected fail)
+  [37/406] 4HVU ✓ (expected fail)
+  [38/406] 4JVG ✓ (expected fail)
+  [39/406] 4MUZ ✓
+  [40/406] 4MUZ ✓
+  [41/406] 4MUZ ✓
+  [42/406] 4Q9F ○ YAML 1.3 specific
+  [43/406] 4QFQ ○ YAML 1.3 specific
+  [44/406] 4RWC ✓
+  [45/406] 4UYU ○ YAML 1.3 specific
+  [46/406] 4V8U ✓
+  [47/406] 4WA9 ✓
+  [48/406] 4ZYM ✓
+  [49/406] 52DL ○ YAML 1.3 specific
+  [50/406] 54T7 ✓
+  [51/406] 55WF ✓ (expected fail)
+  [52/406] 565N ✓
+  [53/406] 57H4 ✓
+  [54/406] 58MP ✓
+  [55/406] 5BVJ ✓
+  [56/406] 5C5M ✓
+  [57/406] 5GBF ✓
+  [58/406] 5KJE ✓
+  [59/406] 5LLU ✓ (expected fail)
+  [60/406] 5MUD ✓
+  [61/406] 5NYZ ✓
+  [62/406] 5T43 ✓
+  [63/406] 5TRB ✓ (expected fail)
+  [64/406] 5TYM ✓
+  [65/406] 5U3A ✓ (expected fail)
+  [66/406] 5WE3 ✓
+  [67/406] 62EZ ✓ (expected fail)
+  [68/406] 652Z ✓
+  [69/406] 65WH ✓
+  [70/406] 6BCT ✓
+  [71/406] 6BFJ ✓
+  [72/406] 6CA3 ✓
+  [73/406] 6CK3 ✓
+  [74/406] 6FWR ✓
+  [75/406] 6H3V ✓
+  [76/406] 6HB6 ✓
+  [77/406] 6JQW ✓
+  [78/406] 6JTT ✓ (expected fail)
+  [79/406] 6JWB ✓
+  [80/406] 6KGN ✓
+  [81/406] 6LVF ○ YAML 1.3 specific
+  [82/406] 6M2F ✓
+  [83/406] 6PBE ✓
+  [84/406] 6S55 ✓ (expected fail)
+  [85/406] 6SLA ✓
+  [86/406] 6VJK ○ YAML 1.3 specific
+  [87/406] 6WLZ ○ YAML 1.3 specific
+  [88/406] 6WPF ○ YAML 1.3 specific
+  [89/406] 6XDY ✓
+  [90/406] 6ZKB ○ YAML 1.3 specific
+  [91/406] 735Y ✓
+  [92/406] 74H7 ✓
+  [93/406] 753E ○ YAML 1.3 specific
+  [94/406] 7A4E ✓
+  [95/406] 7BMT ○ YAML 1.3 specific
+  [96/406] 7BUB ✓
+  [97/406] 7FWL ✓
+  [98/406] 7LBH ✓ (expected fail)
+  [99/406] 7MNF ✓ (expected fail)
+  [100/406] 7T8X ○ YAML 1.3 specific
+  [101/406] 7TMG ✓
+  [102/406] 7W2P ✓
+  [103/406] 7Z25 ✓
+  [104/406] 7ZZ5 ✓
+  [105/406] 82AN ○ YAML 1.3 specific
+  [106/406] 87E4 ✓
+  [107/406] 8CWC ✓
+  [108/406] 8G76 ✓
+  [109/406] 8KB6 ✓
+  [110/406] 8MK2 ○ YAML 1.3 specific
+  [111/406] 8QBE ✓
+  [112/406] 8UDB ✓
+  [113/406] 8XDJ ✓ (expected fail)
+  [114/406] 8XYN ✓
+  [115/406] 93JH ✓
+  [116/406] 93WF ○ YAML 1.3 specific
+  [117/406] 96L6 ✓
+  [118/406] 96NN ✓
+  [119/406] 96NN ✓
+  [120/406] 98YD ✓
+  [121/406] 9BXH ✓
+  [122/406] 9C9N ✓ (expected fail)
+  [123/406] 9CWY ✓ (expected fail)
+  [124/406] 9DXL ○ YAML 1.3 specific
+  [125/406] 9FMG ✓
+  [126/406] 9HCY ✓ (expected fail)
+  [127/406] 9J7A ✓
+  [128/406] 9JBA ✓ (expected fail)
+  [129/406] 9KAX ○ YAML 1.3 specific
+  [130/406] 9KBC ✓ (expected fail)
+  [131/406] 9MAG ✓ (expected fail)
+  [132/406] 9MMA ✓ (expected fail)
+  [133/406] 9MMW ✓
+  [134/406] 9MQT ✓
+  [135/406] 9MQT ✓ (expected fail)
+  [136/406] 9SA2 ✓
+  [137/406] 9SHH ✓
+  [138/406] 9TFX ○ YAML 1.3 specific
+  [139/406] 9U5K ✓
+  [140/406] 9WXW ○ YAML 1.3 specific
+  [141/406] 9YRD ○ YAML 1.3 specific
+  [142/406] A2M4 ✓
+  [143/406] A6F9 ✓
+  [144/406] A984 ✓
+  [145/406] AB8U ✓
+  [146/406] AVM7 ✓
+  [147/406] AZ63 ✓
+  [148/406] AZW3 ✓
+  [149/406] B3HG ○ YAML 1.3 specific
+  [150/406] B63P ✓ (expected fail)
+  [151/406] BD7L ✓ (expected fail)
+  [152/406] BEC7 ✓
+  [153/406] BF9H ✓ (expected fail)
+  [154/406] BS4K ✓ (expected fail)
+  [155/406] BU8L ○ YAML 1.3 specific
+  [156/406] C2DT ✓
+  [157/406] C2SP ✓ (expected fail)
+  [158/406] C4HZ ✓
+  [159/406] CC74 ✓
+  [160/406] CFD4 ✓
+  [161/406] CML9 ✓ (expected fail)
+  [162/406] CN3R ✓
+  [163/406] CPZ3 ✓
+  [164/406] CQ3W ⚠ unexpected pass
+  [165/406] CT4Q ✓
+  [166/406] CTN5 ✓ (expected fail)
+  [167/406] CUP7 ✓
+  [168/406] CVW2 ✓ (expected fail)
+  [169/406] CXX2 ✓ (expected fail)
+  [170/406] D49Q ✓ (expected fail)
+  [171/406] D83L ✓
+  [172/406] D88J ✓
+  [173/406] D9TU ✓
+  [174/406] DBG4 ✓
+  [175/406] DC7X ✓
+  [176/406] DE56 ✓
+  [177/406] DE56 ✓
+  [178/406] DE56 ✓
+  [179/406] DE56 ✓
+  [180/406] DE56 ✓
+  [181/406] DE56 ✓
+  [182/406] DFF7 ✓
+  [183/406] DHP8 ✓
+  [184/406] DK3J ✓
+  [185/406] DK4H ✓ (expected fail)
+  [186/406] DK95 ✓
+  [187/406] DK95 ✓ (expected fail)
+  [188/406] DK95 ✓
+  [189/406] DK95 ✓
+  [190/406] DK95 ✓
+  [191/406] DK95 ✓
+  [192/406] DK95 ✓ (expected fail)
+  [193/406] DK95 ✓
+  [194/406] DK95 ✓
+  [195/406] DMG6 ✓ (expected fail)
+  [196/406] DWX9 ○ YAML 1.3 specific
+  [197/406] E76Z ✓
+  [198/406] EB22 ✓ (expected fail)
+  [199/406] EHF6 ✓
+  [200/406] EW3V ✓ (expected fail)
+  [201/406] EX5H ○ YAML 1.3 specific
+  [202/406] EXG3 ○ YAML 1.3 specific
+  [203/406] F2C7 ✓
+  [204/406] F3CP ✓
+  [205/406] F6MC ✓
+  [206/406] F8F9 ✓
+  [207/406] FBC9 ✓
+  [208/406] FH7J ✓
+  [209/406] FP8R ✓
+  [210/406] FQ7F ✓
+  [211/406] FRK4 ✓
+  [212/406] FTA2 ✓
+  [213/406] FUP4 ✓
+  [214/406] G4RS ✓
+  [215/406] G5U8 ✓ (expected fail)
+  [216/406] G7JE ✓ (expected fail)
+  [217/406] G992 ○ YAML 1.3 specific
+  [218/406] G9HC ✓ (expected fail)
+  [219/406] GDY7 ✓ (expected fail)
+  [220/406] GH63 ✓
+  [221/406] GT5M ✓ (expected fail)
+  [222/406] H2RW ✓
+  [223/406] H3Z8 ✓
+  [224/406] H7J7 ✓ (expected fail)
+  [225/406] H7TQ ⚠ unexpected pass
+  [226/406] HM87 ✓
+  [227/406] HM87 ✓
+  [228/406] HMK4 ✓
+  [229/406] HMQ5 ✓
+  [230/406] HRE5 ✓ (expected fail)
+  [231/406] HS5T ✓
+  [232/406] HU3P ✓ (expected fail)
+  [233/406] HWV9 ✓
+  [234/406] J3BT ✓
+  [235/406] J5UC ✓
+  [236/406] J7PZ ✓
+  [237/406] J7VC ✓
+  [238/406] J9HZ ✓
+  [239/406] JEF9 ✓
+  [240/406] JEF9 ✓
+  [241/406] JEF9 ✓
+  [242/406] JHB9 ✓
+  [243/406] JKF3 ✓ (expected fail)
+  [244/406] JQ4R ✓
+  [245/406] JR7V ✓
+  [246/406] JS2J ✓
+  [247/406] JTV5 ✓
+  [248/406] JY7Z ✓ (expected fail)
+  [249/406] K3WX ✓
+  [250/406] K4SU ✓
+  [251/406] K527 ○ YAML 1.3 specific
+  [252/406] K54U ✓
+  [253/406] K858 ✓
+  [254/406] KH5V ✓
+  [255/406] KH5V ✓
+  [256/406] KH5V ✓
+  [257/406] KK5P ✓
+  [258/406] KMK3 ✓
+  [259/406] KS4U ✓ (expected fail)
+  [260/406] KSS4 ○ YAML 1.3 specific
+  [261/406] L24T ✓
+  [262/406] L24T ✓
+  [263/406] L383 ✓
+  [264/406] L94M ✓
+  [265/406] L9U5 ✓
+  [266/406] LE5A ✓
+  [267/406] LHL4 ✓ (expected fail)
+  [268/406] LP6E ✓
+  [269/406] LQZ7 ✓
+  [270/406] LX3P ○ YAML 1.3 specific
+  [271/406] M29M ✓
+  [272/406] M2N8 ✓
+  [273/406] M2N8 ✓
+  [274/406] M5C3 ○ YAML 1.3 specific
+  [275/406] M5DY ✓
+  [276/406] M6YH ✓
+  [277/406] M7A3 ○ YAML 1.3 specific
+  [278/406] M7NX ✓
+  [279/406] M9B4 ○ YAML 1.3 specific
+  [280/406] MJS9 ○ YAML 1.3 specific
+  [281/406] MUS6 ✓ (expected fail)
+  [282/406] MUS6 ✓ (expected fail)
+  [283/406] MUS6 ✓
+  [284/406] MUS6 ✓
+  [285/406] MUS6 ✓
+  [286/406] MUS6 ✓
+  [287/406] MUS6 ✓
+  [288/406] MXS3 ✓
+  [289/406] MYW6 ○ YAML 1.3 specific
+  [290/406] MZX3 ✓
+  [291/406] N4JP ✓ (expected fail)
+  [292/406] N782 ✓ (expected fail)
+  [293/406] NAT4 ✓
+  [294/406] NB6Z ✓
+  [295/406] NHX8 ✓
+  [296/406] NJ66 ✓
+  [297/406] NKF9 ✓
+  [298/406] NP9H ✓
+  [299/406] P2AD ✓
+  [300/406] P2EQ ✓ (expected fail)
+  [301/406] P76L ✓
+  [302/406] P94K ✓
+  [303/406] PBJ2 ✓
+  [304/406] PRH3 ✓
+  [305/406] PUW8 ✓
+  [306/406] PW8X ✓
+  [307/406] Q4CL ✓ (expected fail)
+  [308/406] Q5MG ✓
+  [309/406] Q88A ✓
+  [310/406] Q8AD ○ YAML 1.3 specific
+  [311/406] Q9WF ○ YAML 1.3 specific
+  [312/406] QB6E ✓ (expected fail)
+  [313/406] QF4Y ✓
+  [314/406] QLJ7 ✓ (expected fail)
+  [315/406] QT73 ✓
+  [316/406] R4YG ✓
+  [317/406] R52L ✓
+  [318/406] RHX7 ✓ (expected fail)
+  [319/406] RLU9 ✓
+  [320/406] RR7F ✓
+  [321/406] RTP8 ✓
+  [322/406] RXY3 ✓ (expected fail)
+  [323/406] RZP5 ○ YAML 1.3 specific
+  [324/406] RZT7 ✓
+  [325/406] S3PD ✓
+  [326/406] S4GJ ✓ (expected fail)
+  [327/406] S4JQ ✓
+  [328/406] S4T7 ✓
+  [329/406] S7BG ✓
+  [330/406] S98Z ✓ (expected fail)
+  [331/406] S9E8 ✓
+  [332/406] SBG9 ✓
+  [333/406] SF5V ✓ (expected fail)
+  [334/406] SKE5 ✓
+  [335/406] SM9W ✓
+  [336/406] SM9W ✓
+  [337/406] SR86 ✓ (expected fail)
+  [338/406] SSW6 ○ YAML 1.3 specific
+  [339/406] SU5Z ✓ (expected fail)
+  [340/406] SU74 ✓ (expected fail)
+  [341/406] SY6V ✓ (expected fail)
+  [342/406] SYW4 ✓
+  [343/406] T26H ○ YAML 1.3 specific
+  [344/406] T4YY ○ YAML 1.3 specific
+  [345/406] T5N4 ○ YAML 1.3 specific
+  [346/406] T833 ✓ (expected fail)
+  [347/406] TD5N ✓ (expected fail)
+  [348/406] TE2A ✓
+  [349/406] TL85 ✓
+  [350/406] TS54 ○ YAML 1.3 specific
+  [351/406] U3C3 ✓
+  [352/406] U3XV ○ YAML 1.3 specific
+  [353/406] U44R ✓ (expected fail)
+  [354/406] U99R ✓ (expected fail)
+  [355/406] U9NS ✓
+  [356/406] UDM2 ✓
+  [357/406] UDR7 ✓
+  [358/406] UGM3 ✓
+  [359/406] UKK6 ✓
+  [360/406] UKK6 ✓
+  [361/406] UKK6 ✓
+  [362/406] UT92 ✓
+  [363/406] UV7Q ✓
+  [364/406] V55R ✓
+  [365/406] V9D5 ✓
+  [366/406] VJP3 ✓ (expected fail)
+  [367/406] VJP3 ✓
+  [368/406] W42U ✓
+  [369/406] W4TN ○ YAML 1.3 specific
+  [370/406] W5VH ○ YAML 1.3 specific
+  [371/406] W9L4 ✓ (expected fail)
+  [372/406] WZ62 ✓
+  [373/406] X38W ✓
+  [374/406] X4QW ✓ (expected fail)
+  [375/406] X8DW ✓
+  [376/406] XLQ9 ✓
+  [377/406] XV9V ○ YAML 1.3 specific
+  [378/406] XW4D ○ YAML 1.3 specific
+  [379/406] Y2GN ✓
+  [380/406] Y79Y ✓ (expected fail)
+  [381/406] Y79Y ✓
+  [382/406] Y79Y ✓
+  [383/406] Y79Y ✓ (expected fail)
+  [384/406] Y79Y ✓ (expected fail)
+  [385/406] Y79Y ✓ (expected fail)
+  [386/406] Y79Y ✓ (expected fail)
+  [387/406] Y79Y ✓ (expected fail)
+  [388/406] Y79Y ✓ (expected fail)
+  [389/406] Y79Y ✓ (expected fail)
+  [390/406] Y79Y ✓
+  [391/406] YD5X ✓
+  [392/406] YJV2 ✓ (expected fail)
+  [393/406] Z67P ○ YAML 1.3 specific
+  [394/406] Z9M4 ✓
+  [395/406] ZCZ6 ✓ (expected fail)
+  [396/406] ZF4X ✓
+  [397/406] ZH7C ✓
+  [398/406] ZK9H ✓
+  [399/406] ZL4Z ✓ (expected fail)
+  [400/406] ZVH3 ✓ (expected fail)
+  [401/406] ZWK4 ✓
+  [402/406] ZXT5 ✓ (expected fail)
+  [403/406] ZYU8 ✓
+  [404/406] ZYU8 ✓
+  [405/406] ZYU8 ✓
+  [406/406] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 352/416 (84.000000%)
+Correct: 352/406 (86.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 17/17
