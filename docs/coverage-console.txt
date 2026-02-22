@@ -436,9 +436,10 @@ Running verified test suites...
   Flow Completeness Tests: ✓ 88/88
   CharClass Correspondence Tests: ✓ 224/224
   Structural Validation Tests: ✓ 135/135
+  Completeness Tests: ✓ 66/66
   Demo: ✓ 7/7
 
-Verified: 940/940
+Verified: 1006/1006
 
 Generating HTML reports...
   wrote docs/index.html

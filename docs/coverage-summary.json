@@ -1,5 +1,5 @@
 {
-  "date": "2026-02-22T11:33:44-0800",
+  "date": "2026-02-22T12:36:59-0800",
   "overall": {
     "correct": 352,
     "correctRate": 86.699507,
@@ -2993,12 +2993,18 @@
       },
       {
         "allPass": true,
+        "label": "Completeness Tests",
+        "passed": 66,
+        "total": 66
+      },
+      {
+        "allPass": true,
         "label": "Demo",
         "passed": 7,
         "total": 7
       }
     ],
-    "totalPassed": 940,
-    "totalTests": 940
+    "totalPassed": 1006,
+    "totalTests": 1006
   }
 }

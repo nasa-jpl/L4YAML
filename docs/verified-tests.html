@@ -65,10 +65,10 @@
   <p class="subtitle">Unit tests, parser tests, verification tests, and string lemma tests — all must pass.</p>
 
   <div class="stats">
-    <div class="stat-box stat-total"><h3>Total</h3><div class="number">940</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">940</div></div>
+    <div class="stat-box stat-total"><h3>Total</h3><div class="number">1006</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">1006</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
-    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">12</div></div>
+    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">13</div></div>
   </div>
   <h3>Suites</h3>
   <div class="stage-cards">
@@ -139,6 +139,12 @@
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean" target="_blank" class="source-link">📄 Tests/ValidationTests.lean</a></div>
     </div>
     <div class="stage-card" style="border-left-color:var(--color-pass)">
+      <div class="stage-card-name">Completeness Tests</div>
+      <div class="stage-card-stats">66/66 passed (100%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
+      <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean" target="_blank" class="source-link">📄 Tests/CompletenessTests.lean</a></div>
+    </div>
+    <div class="stage-card" style="border-left-color:var(--color-pass)">
       <div class="stage-card-name">Demo</div>
       <div class="stage-card-stats">7/7 passed (100%)</div>
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
@@ -168,6 +174,7 @@
         <option value="flowtests">Flow Completeness Tests</option>
         <option value="charclass">CharClass Correspondence Tests</option>
         <option value="validationtests">Structural Validation Tests</option>
+        <option value="completeness">Completeness Tests</option>
         <option value="demo">Demo</option>
       </select>
     </div>
@@ -175,7 +182,7 @@
       <label>Search:</label>
       <input type="text" class="search-input" placeholder="Category, test name..." oninput="searchTests(this.value)">
     </div>
-    <div class="filter-group"><span>Showing <strong id="visibleCount">940</strong> of 940</span></div>
+    <div class="filter-group"><span>Showing <strong id="visibleCount">1006</strong> of 1006</span></div>
   </div>
 
   <table id="testTable">
@@ -6727,6 +6734,468 @@
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L495" target="_blank" class="source-link">Structural Validation Tests</a></td>
         <td>Flow Structure Errors</td>
         <td>reject: colon-value on next line after quoted key (ZXT5)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness plain scalars single char &#39;a&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L50" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Plain scalars</td>
+        <td>single char &#39;a&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness plain scalars word &#39;hello&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L50" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Plain scalars</td>
+        <td>word &#39;hello&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness plain scalars multi-word &#39;hello world&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L50" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Plain scalars</td>
+        <td>multi-word &#39;hello world&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness plain scalars numeric &#39;42&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L50" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Plain scalars</td>
+        <td>numeric &#39;42&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness plain scalars boolean-like &#39;true&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L50" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Plain scalars</td>
+        <td>boolean-like &#39;true&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness plain scalars boolean-like &#39;false&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L50" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Plain scalars</td>
+        <td>boolean-like &#39;false&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness plain scalars null-like &#39;null&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L50" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Plain scalars</td>
+        <td>null-like &#39;null&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness plain scalars tilde &#39;~&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L50" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Plain scalars</td>
+        <td>tilde &#39;~&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness quoted scalars double-quoted &#39;hello&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L50" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Quoted scalars</td>
+        <td>double-quoted &#39;hello&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness quoted scalars single-quoted &#39;hello&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L50" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Quoted scalars</td>
+        <td>single-quoted &#39;hello&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness quoted scalars double-quoted newline &#39;\n&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L50" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Quoted scalars</td>
+        <td>double-quoted newline &#39;\n&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness quoted scalars double-quoted tab &#39;\t&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L50" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Quoted scalars</td>
+        <td>double-quoted tab &#39;\t&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness quoted scalars empty double-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L50" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Quoted scalars</td>
+        <td>empty double-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness quoted scalars empty single-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L50" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Quoted scalars</td>
+        <td>empty single-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness quoted scalars single-quoted with &#39;&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L50" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Quoted scalars</td>
+        <td>single-quoted with &#39;&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness flow collections flow seq [1,2,3] is sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L107" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Flow collections</td>
+        <td>flow seq [1,2,3] is sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness flow collections flow seq [1,2,3] has 3 items">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L108" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Flow collections</td>
+        <td>flow seq [1,2,3] has 3 items</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness flow collections flow seq [1,2,3] first item">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L109" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Flow collections</td>
+        <td>flow seq [1,2,3] first item</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness flow collections flow seq [1,2,3] second item">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L110" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Flow collections</td>
+        <td>flow seq [1,2,3] second item</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness flow collections flow seq [1,2,3] third item">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L111" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Flow collections</td>
+        <td>flow seq [1,2,3] third item</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness flow collections empty flow seq">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L117" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Flow collections</td>
+        <td>empty flow seq</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness flow collections empty flow seq has 0 items">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L118" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Flow collections</td>
+        <td>empty flow seq has 0 items</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness flow collections flow map {a: b} is mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L124" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Flow collections</td>
+        <td>flow map {a: b} is mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness flow collections flow map {a: b} has 1 pair">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L125" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Flow collections</td>
+        <td>flow map {a: b} has 1 pair</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness flow collections flow map {a: b} key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L126" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Flow collections</td>
+        <td>flow map {a: b} key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness flow collections flow map {a: b} value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L127" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Flow collections</td>
+        <td>flow map {a: b} value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness flow collections empty flow map">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L133" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Flow collections</td>
+        <td>empty flow map</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness flow collections empty flow map has 0 pairs">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L134" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Flow collections</td>
+        <td>empty flow map has 0 pairs</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness flow collections nested flow seq has 2 items">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L140" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Flow collections</td>
+        <td>nested flow seq has 2 items</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness block collections block map &#39;key: value&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L50" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Block collections</td>
+        <td>block map &#39;key: value&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness block collections block map 2 keys is mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L155" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Block collections</td>
+        <td>block map 2 keys is mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness block collections block map 2 keys has 2 pairs">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L156" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Block collections</td>
+        <td>block map 2 keys has 2 pairs</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness block collections block map first key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L157" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Block collections</td>
+        <td>block map first key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness block collections block map first value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L158" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Block collections</td>
+        <td>block map first value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness block collections block map second key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L159" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Block collections</td>
+        <td>block map second key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness block collections block map second value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L160" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Block collections</td>
+        <td>block map second value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness block collections block seq 3 items is sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L166" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Block collections</td>
+        <td>block seq 3 items is sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness block collections block seq has 3 items">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L167" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Block collections</td>
+        <td>block seq has 3 items</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness block collections block seq first">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L168" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Block collections</td>
+        <td>block seq first</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness block collections block seq second">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L169" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Block collections</td>
+        <td>block seq second</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness block collections block seq third">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L170" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Block collections</td>
+        <td>block seq third</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness block collections seq with nested map has 1 item">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L176" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Block collections</td>
+        <td>seq with nested map has 1 item</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness block collections nested map has 1 pair">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L179" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Block collections</td>
+        <td>nested map has 1 pair</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness multi-document two docs with ---">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L191" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Multi-document</td>
+        <td>two docs with ---</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness multi-document first doc value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L192" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Multi-document</td>
+        <td>first doc value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness multi-document second doc value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L193" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Multi-document</td>
+        <td>second doc value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness multi-document single doc with ---">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L198" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Multi-document</td>
+        <td>single doc with ---</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness multi-document explicit start value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L199" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Multi-document</td>
+        <td>explicit start value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness multi-document doc with ... terminator">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L204" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Multi-document</td>
+        <td>doc with ... terminator</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness edge cases empty input">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L213" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Edge cases</td>
+        <td>empty input</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness edge cases whitespace-only parses">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L217" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Edge cases</td>
+        <td>whitespace-only parses</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness edge cases comment-only">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L221" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Edge cases</td>
+        <td>comment-only</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness edge cases trailing newline">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L50" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Edge cases</td>
+        <td>trailing newline</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness edge cases unicode scalar">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L50" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Edge cases</td>
+        <td>unicode scalar</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness edge cases extra space after colon">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L230" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Edge cases</td>
+        <td>extra space after colon</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness stream properties ofstring startpos == 0">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L240" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Stream properties</td>
+        <td>ofString startPos == 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness stream properties ofstring stoppos correct">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L241" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Stream properties</td>
+        <td>ofString stopPos correct</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness stream properties ofstring line == 0">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L242" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Stream properties</td>
+        <td>ofString line == 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness stream properties ofstring col == 0">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L243" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Stream properties</td>
+        <td>ofString col == 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness stream properties ofstring validationerror == none">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L244" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Stream properties</td>
+        <td>ofString validationError == none</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness stream properties ofstring anchormap empty">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L245" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Stream properties</td>
+        <td>ofString anchorMap empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness stream properties remaining == rawendpos.byteidx">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L247" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Stream properties</td>
+        <td>remaining == rawEndPos.byteIdx</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness stream properties empty remaining == 0">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L251" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Stream properties</td>
+        <td>empty remaining == 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness stream properties empty hasnext == false">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L252" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Stream properties</td>
+        <td>empty hasNext == false</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness stream properties 2-byte char remaining == 2">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L255" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Stream properties</td>
+        <td>2-byte char remaining == 2</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="completeness" data-search="completeness stream properties 3-byte char remaining == 3">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L257" target="_blank" class="source-link">Completeness Tests</a></td>
+        <td>Stream properties</td>
+        <td>3-byte char remaining == 3</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
