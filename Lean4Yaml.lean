@@ -17,6 +17,7 @@ import Lean4Yaml.Proofs.StringProperties
 import Lean4Yaml.Proofs.DocumentContracts
 import Lean4Yaml.Proofs.EscapeResolution
 import Lean4Yaml.Proofs.IndentConsumption
+import Lean4Yaml.Proofs.FoldNewlines
 import Lean4Yaml.Proofs.TestSuite
 import Lean4Yaml.Proofs.SuiteGuards.Scalar
 import Lean4Yaml.Proofs.SuiteGuards.Flow

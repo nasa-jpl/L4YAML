@@ -154,6 +154,48 @@ instance (n : Nat) (cs : List Char) : Decidable (IndentedAtLeast n cs) :=
   | .isTrue h => .isTrue ⟨n, Nat.le.refl, h⟩
   | .isFalse h => .isFalse (fun ⟨_, hge, hind⟩ => h (indented_weaken hind hge))
 
+/-! ## c-forbidden Content (YAML 1.2.2 §9.1.2: https://yaml.org/spec/1.2.2/#912-document-markers)
+
+Document markers `---` and `...` at column 0 followed by whitespace,
+line break, or end-of-input are c-forbidden content (production [206]).
+These terminate document content — encountering them inside a quoted
+scalar means the scalar was never closed. -/
+
+/--
+Check if a character list continues a document marker.
+
+A document marker (`---` or `...`) at column 0 is complete (c-forbidden)
+when followed by whitespace, line break, or end-of-input.
+-/
+def isMarkerFollower : List Char → Bool
+  | [] => true
+  | c :: _ => c == ' ' || c == '\t' || c == '\n' || c == '\r'
+
+/--
+c-forbidden content detection (§9.1.2 production [206]).
+
+A character sequence at column 0 is c-forbidden if it begins with
+`---` or `...` followed by whitespace, line break, or end-of-input.
+This is the pure specification of the parser's `atDocumentBoundary` check.
+-/
+def isCForbiddenPrefix : List Char → Bool
+  | '-' :: '-' :: '-' :: rest => isMarkerFollower rest
+  | '.' :: '.' :: '.' :: rest => isMarkerFollower rest
+  | _ => false
+
+/--
+Characters that the fold operation appends to the accumulator.
+
+YAML line folding (§6.5) replaces line breaks with either a single
+space (fold) or preserved newlines (blank lines). The fold operation
+only appends these two characters — it never introduces content characters.
+-/
+def isFoldAppendChar (c : Char) : Prop :=
+  c = ' ' ∨ c = '\n'
+
+instance (c : Char) : Decidable (isFoldAppendChar c) := by
+  unfold isFoldAppendChar; infer_instance
+
 /-! ## Scalar Grammar (YAML 1.2.2 §7.3: https://yaml.org/spec/1.2.2/#73-flow-scalar-styles) -/
 
 /-! ### Escape Sequences (YAML 1.2.2 §5.7: https://yaml.org/spec/1.2.2/#57-escaped-characters) -/

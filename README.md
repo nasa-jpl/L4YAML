@@ -277,18 +277,18 @@ Standalone proofs about the stream, pure helper functions, and character classif
 
 **All 6 items complete.** ~90 theorems across 5 proof files. 0 sorry, 0 axiom.
 
-#### Layer 2: Key Invariants ← **YOU ARE HERE**
+#### Layer 2: Key Invariants ✅
 
 Property proofs about specific parser behaviors. With lean4-parser fold combinators now total, these proofs can target parser invariants directly without `sorry`-admitting termination.
 
 | Item | Description | Status |
 |------|-------------|--------|
-| **2a** | `foldQuotedNewlines` output has no c-forbidden characters | |
+| **2a** | `foldQuotedNewlines` output has no c-forbidden characters | ✅ `isCForbiddenPrefix` + `isFoldAppendChar` specs in Grammar.lean. 10 positive/8 negative c-forbidden theorems, fold-char disjointness, `fold_append_not_cForbidden_start` key linking theorem, 8 `isMarkerFollower` proofs, 16 `#guard` parser round-trips. `FoldNewlines.lean`. |
 | **2b** | Escape sequence resolution produces valid Unicode in `doubleQuotedScalar` | ✅ `resolveNamedEscape` spec in Grammar.lean. 16 named-escape theorems, 9 printability proofs, 7 non-printability proofs, 20 `#guard` parser round-trips. `EscapeResolution.lean`. |
 | **2c** | `consumeIndent n` advances column by exactly `n` | ✅ `next_space_col`, `next_n_spaces_col` (iterated), `next_newline_col`/`_line`. `NextNSpaces` relation. 9 `#guard` parser round-trips. `IndentConsumption.lean`. |
 | **2d** | Decidable instances for `Grammar.lean` propositions | ✅ 10 char-level + 2 structural instances. `indented_weaken` monotonicity lemma. |
 
-Effort: ~2 sessions. Diagnostic value: specification-level checks for scalar parsing.
+**All 4 items complete.** ~30 theorems + 45 `#guard` checks across 3 proof files. 0 sorry, 0 axiom.
 
 #### Layer 3: Full Termination & Soundness — 5-Step Plan
 
