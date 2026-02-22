@@ -14,32 +14,47 @@ recovers the original content.
 
 ## Key Results
 
-1. **Emitter structural properties**: The canonical emitter produces
+1. **Emitter structural properties** (§1): The canonical emitter produces
    well-formed output — scalars are double-quoted, sequences are
    bracketed, mappings are braced.
 
-2. **Escape round-trip**: `escapeChar` is the left-inverse of
+2. **Escape round-trip** (§2): `escapeChar` is the left-inverse of
    `resolveNamedEscape` for all named escapes.
 
-3. **`contentEq` properties**: Reflexivity, symmetry, and the key
+3. **`contentEq` properties** (§3): Reflexivity and the key
    property that `contentEq` ignores style annotations.
 
-4. **Parse-Emit-Parse `#guard` checks**: Compile-time verification
+4. **Parse-Emit-Parse `#guard` checks** (§4): Compile-time verification
    that `parseYamlSingle (emit v)` produces a content-equivalent
    value for a comprehensive set of test values.
 
-5. **Proved round-trip theorems**: Structural properties about the
-   emitter's output that guarantee well-formedness.
+5. **Universal `contentEq` reflexivity** (§5): `contentEq v v = true`
+   for all `YamlValue` trees.
+
+6. **`contentEq` symmetry** (§6): `contentEq v₁ v₂ = true →
+   contentEq v₂ v₁ = true` for all `YamlValue` trees.
+
+7. **`contentEq` transitivity** (§7): `contentEq v₁ v₂ = true →
+   contentEq v₂ v₃ = true → contentEq v₁ v₃ = true` for all trees.
+   Together with §5–§6, this establishes `contentEq` as a full
+   equivalence relation.
+
+8. **Character-level escape round-trip** (§8): Universal theorem
+   connecting `escapeChar` to `resolveNamedEscape` via `escapeTag`.
+
+9. **Extended `#guard` coverage** (§9): Deeper nesting, wider collections,
+   Unicode, and whitespace edge cases.
 
 ## Strategy
 
 The full universal round-trip theorem
 `∀ v, contentEq v (parseYamlSingle (emit v)).get!`
-requires unfolding through the parser monad. We approach this
+requires unfolding through the parser monad (~8K lines). We approach this
 incrementally:
 
-- **This module**: Prove emitter properties, escape correspondence,
-  and verify round-trip via `#guard` for many concrete cases.
+- **This module**: Prove `contentEq` is an equivalence relation, prove
+  character-level escape invertibility, and verify round-trip via `#guard`
+  for many concrete cases.
 - **Future**: Compose with parser-level lemmas to prove the universal
   statement.
 
@@ -541,5 +556,312 @@ decreasing_by
     cases pairs; cases p; simp_all [Array.mk.sizeOf_spec, Prod.mk.sizeOf_spec]; omega
   · have := List.sizeOf_lt_of_mem hp
     cases pairs; cases p; simp_all [Array.mk.sizeOf_spec, Prod.mk.sizeOf_spec]; omega
+
+/-! ## §6: `contentEq` Symmetry
+
+Symmetry: if `v₁` is content-equivalent to `v₂`, then `v₂` is content-equivalent
+to `v₁`. Uses the same `show`-based proof technique as reflexivity, with helper
+lemmas for lists and pair-lists that take an inductive hypothesis from the caller.
+-/
+
+/-- `contentEqList` is symmetric given a symmetric IH on elements. -/
+private theorem contentEqList_symm (vs₁ vs₂ : List YamlValue)
+    (ih : ∀ v, v ∈ vs₁ → ∀ v₂, contentEq v v₂ = true → contentEq v₂ v = true)
+    (h : contentEq.contentEqList vs₁ vs₂ = true) :
+    contentEq.contentEqList vs₂ vs₁ = true := by
+  match vs₁, vs₂ with
+  | [], [] => exact h
+  | [], _ :: _ => simp [contentEq.contentEqList] at h
+  | _ :: _, [] => simp [contentEq.contentEqList] at h
+  | v₁ :: tl₁, v₂ :: tl₂ =>
+    simp only [contentEq.contentEqList, Bool.and_eq_true] at h ⊢
+    exact ⟨ih v₁ (.head _) v₂ h.1,
+           contentEqList_symm tl₁ tl₂ (fun v hv => ih v (.tail _ hv)) h.2⟩
+
+/-- `contentEqPairList` is symmetric given a symmetric IH on pairs. -/
+private theorem contentEqPairList_symm (ps₁ ps₂ : List (YamlValue × YamlValue))
+    (ih : ∀ p, p ∈ ps₁ →
+          (∀ v₂, contentEq p.1 v₂ = true → contentEq v₂ p.1 = true) ∧
+          (∀ v₂, contentEq p.2 v₂ = true → contentEq v₂ p.2 = true))
+    (h : contentEq.contentEqPairList ps₁ ps₂ = true) :
+    contentEq.contentEqPairList ps₂ ps₁ = true := by
+  match ps₁, ps₂ with
+  | [], [] => exact h
+  | [], _ :: _ => simp [contentEq.contentEqPairList] at h
+  | _ :: _, [] => simp [contentEq.contentEqPairList] at h
+  | (k₁, v₁) :: tl₁, (k₂, v₂) :: tl₂ =>
+    simp only [contentEq.contentEqPairList, Bool.and_eq_true] at h ⊢
+    have ihm := ih (k₁, v₁) (.head _)
+    exact ⟨⟨ihm.1 k₂ h.1.1, ihm.2 v₂ h.1.2⟩,
+           contentEqPairList_symm tl₁ tl₂ (fun p hp => ih p (.tail _ hp)) h.2⟩
+
+/-- **`contentEq` is symmetric**: if `v₁` is content-equivalent to `v₂`,
+    then `v₂` is content-equivalent to `v₁`.
+
+    Together with `contentEq_refl`, this establishes that `contentEq` is
+    at least a partial equivalence relation. -/
+theorem contentEq_symm (v₁ v₂ : YamlValue) (h : contentEq v₁ v₂ = true) :
+    contentEq v₂ v₁ = true := by
+  match v₁, v₂ with
+  | .scalar s₁, .scalar s₂ =>
+    show (s₂.content == s₁.content) = true
+    have hc : (s₁.content == s₂.content) = true := h
+    rw [beq_iff_eq] at hc ⊢
+    exact hc.symm
+  | .sequence _ items₁ _, .sequence _ items₂ _ =>
+    show (items₂.size == items₁.size && contentEq.contentEqList items₂.toList items₁.toList) = true
+    have hshow : (items₁.size == items₂.size && contentEq.contentEqList items₁.toList items₂.toList) = true := h
+    simp only [Bool.and_eq_true, beq_iff_eq] at hshow ⊢
+    exact ⟨hshow.1.symm, contentEqList_symm items₁.toList items₂.toList
+      (fun v hv v₂ h => contentEq_symm v v₂ h) hshow.2⟩
+  | .mapping _ pairs₁ _, .mapping _ pairs₂ _ =>
+    show (pairs₂.size == pairs₁.size && contentEq.contentEqPairList pairs₂.toList pairs₁.toList) = true
+    have hshow : (pairs₁.size == pairs₂.size && contentEq.contentEqPairList pairs₁.toList pairs₂.toList) = true := h
+    simp only [Bool.and_eq_true, beq_iff_eq] at hshow ⊢
+    exact ⟨hshow.1.symm, contentEqPairList_symm pairs₁.toList pairs₂.toList
+      (fun p hp => ⟨fun v₂ h => contentEq_symm p.1 v₂ h,
+                    fun v₂ h => contentEq_symm p.2 v₂ h⟩) hshow.2⟩
+  | .scalar _, .sequence _ _ _ =>
+    exact Bool.noConfusion (show false = true from h)
+  | .scalar _, .mapping _ _ _ =>
+    exact Bool.noConfusion (show false = true from h)
+  | .sequence _ _ _, .scalar _ =>
+    exact Bool.noConfusion (show false = true from h)
+  | .sequence _ _ _, .mapping _ _ _ =>
+    exact Bool.noConfusion (show false = true from h)
+  | .mapping _ _ _, .scalar _ =>
+    exact Bool.noConfusion (show false = true from h)
+  | .mapping _ _ _, .sequence _ _ _ =>
+    exact Bool.noConfusion (show false = true from h)
+termination_by v₁
+decreasing_by
+  all_goals simp_wf
+  · have := List.sizeOf_lt_of_mem hv
+    cases items₁; simp_all [Array.mk.sizeOf_spec]; omega
+  · have := List.sizeOf_lt_of_mem hp
+    cases pairs₁; cases p; simp_all [Array.mk.sizeOf_spec, Prod.mk.sizeOf_spec]; omega
+  · have := List.sizeOf_lt_of_mem hp
+    cases pairs₁; cases p; simp_all [Array.mk.sizeOf_spec, Prod.mk.sizeOf_spec]; omega
+
+/-! ## §7: `contentEq` Transitivity
+
+Transitivity: if `v₁ ≈ v₂` and `v₂ ≈ v₃`, then `v₁ ≈ v₃`. Together with
+reflexivity (§5) and symmetry (§6), this completes the proof that `contentEq`
+is a full equivalence relation on `YamlValue`.
+-/
+
+/-- `contentEqList` is transitive given a transitive IH on elements. -/
+private theorem contentEqList_trans (vs₁ vs₂ vs₃ : List YamlValue)
+    (ih : ∀ v, v ∈ vs₁ → ∀ v₂ v₃, contentEq v v₂ = true → contentEq v₂ v₃ = true →
+                                     contentEq v v₃ = true)
+    (h₁ : contentEq.contentEqList vs₁ vs₂ = true)
+    (h₂ : contentEq.contentEqList vs₂ vs₃ = true) :
+    contentEq.contentEqList vs₁ vs₃ = true := by
+  match vs₁, vs₂, vs₃ with
+  | [], [], [] => exact h₁
+  | [], [], _ :: _ => simp [contentEq.contentEqList] at h₂
+  | [], _ :: _, _ => simp [contentEq.contentEqList] at h₁
+  | _ :: _, [], _ => simp [contentEq.contentEqList] at h₁
+  | _ :: _, _ :: _, [] => simp [contentEq.contentEqList] at h₂
+  | v₁ :: tl₁, v₂ :: tl₂, v₃ :: tl₃ =>
+    simp only [contentEq.contentEqList, Bool.and_eq_true] at h₁ h₂ ⊢
+    exact ⟨ih v₁ (.head _) v₂ v₃ h₁.1 h₂.1,
+           contentEqList_trans tl₁ tl₂ tl₃ (fun v hv => ih v (.tail _ hv)) h₁.2 h₂.2⟩
+
+/-- `contentEqPairList` is transitive given a transitive IH on pairs. -/
+private theorem contentEqPairList_trans (ps₁ ps₂ ps₃ : List (YamlValue × YamlValue))
+    (ih : ∀ p, p ∈ ps₁ →
+          (∀ v₂ v₃, contentEq p.1 v₂ = true → contentEq v₂ v₃ = true → contentEq p.1 v₃ = true) ∧
+          (∀ v₂ v₃, contentEq p.2 v₂ = true → contentEq v₂ v₃ = true → contentEq p.2 v₃ = true))
+    (h₁ : contentEq.contentEqPairList ps₁ ps₂ = true)
+    (h₂ : contentEq.contentEqPairList ps₂ ps₃ = true) :
+    contentEq.contentEqPairList ps₁ ps₃ = true := by
+  match ps₁, ps₂, ps₃ with
+  | [], [], [] => exact h₁
+  | [], [], _ :: _ => simp [contentEq.contentEqPairList] at h₂
+  | [], _ :: _, _ => simp [contentEq.contentEqPairList] at h₁
+  | _ :: _, [], _ => simp [contentEq.contentEqPairList] at h₁
+  | _ :: _, _ :: _, [] => simp [contentEq.contentEqPairList] at h₂
+  | (k₁, v₁) :: tl₁, (k₂, v₂) :: tl₂, (k₃, v₃) :: tl₃ =>
+    simp only [contentEq.contentEqPairList, Bool.and_eq_true] at h₁ h₂ ⊢
+    have ihm := ih (k₁, v₁) (.head _)
+    exact ⟨⟨ihm.1 k₂ k₃ h₁.1.1 h₂.1.1, ihm.2 v₂ v₃ h₁.1.2 h₂.1.2⟩,
+           contentEqPairList_trans tl₁ tl₂ tl₃ (fun p hp => ih p (.tail _ hp)) h₁.2 h₂.2⟩
+
+/-- **`contentEq` is transitive**: for any `v₁`, `v₂`, `v₃`, if
+    `contentEq v₁ v₂` and `contentEq v₂ v₃`, then `contentEq v₁ v₃`.
+
+    Together with `contentEq_refl` and `contentEq_symm`, this establishes
+    that `contentEq` is a full equivalence relation on `YamlValue`. -/
+theorem contentEq_trans (v₁ v₂ v₃ : YamlValue)
+    (h₁ : contentEq v₁ v₂ = true) (h₂ : contentEq v₂ v₃ = true) :
+    contentEq v₁ v₃ = true := by
+  match v₁, v₂, v₃ with
+  | .scalar s₁, .scalar s₂, .scalar s₃ =>
+    show (s₁.content == s₃.content) = true
+    have hc₁ : (s₁.content == s₂.content) = true := h₁
+    have hc₂ : (s₂.content == s₃.content) = true := h₂
+    rw [beq_iff_eq] at hc₁ hc₂ ⊢
+    exact hc₁.trans hc₂
+  | .sequence _ items₁ _, .sequence _ items₂ _, .sequence _ items₃ _ =>
+    show (items₁.size == items₃.size && contentEq.contentEqList items₁.toList items₃.toList) = true
+    have hs₁ : (items₁.size == items₂.size && contentEq.contentEqList items₁.toList items₂.toList) = true := h₁
+    have hs₂ : (items₂.size == items₃.size && contentEq.contentEqList items₂.toList items₃.toList) = true := h₂
+    simp only [Bool.and_eq_true, beq_iff_eq] at hs₁ hs₂ ⊢
+    exact ⟨hs₁.1.trans hs₂.1,
+           contentEqList_trans items₁.toList items₂.toList items₃.toList
+             (fun v hv v₂ v₃ h₁ h₂ => contentEq_trans v v₂ v₃ h₁ h₂) hs₁.2 hs₂.2⟩
+  | .mapping _ pairs₁ _, .mapping _ pairs₂ _, .mapping _ pairs₃ _ =>
+    show (pairs₁.size == pairs₃.size && contentEq.contentEqPairList pairs₁.toList pairs₃.toList) = true
+    have hs₁ : (pairs₁.size == pairs₂.size && contentEq.contentEqPairList pairs₁.toList pairs₂.toList) = true := h₁
+    have hs₂ : (pairs₂.size == pairs₃.size && contentEq.contentEqPairList pairs₂.toList pairs₃.toList) = true := h₂
+    simp only [Bool.and_eq_true, beq_iff_eq] at hs₁ hs₂ ⊢
+    exact ⟨hs₁.1.trans hs₂.1,
+           contentEqPairList_trans pairs₁.toList pairs₂.toList pairs₃.toList
+             (fun p hp => ⟨fun v₂ v₃ h₁ h₂ => contentEq_trans p.1 v₂ v₃ h₁ h₂,
+                           fun v₂ v₃ h₁ h₂ => contentEq_trans p.2 v₂ v₃ h₁ h₂⟩) hs₁.2 hs₂.2⟩
+  -- Cross-type cases: h₁ or h₂ is a contradiction (false = true)
+  | .scalar _, .scalar _, .sequence _ _ _ => exact Bool.noConfusion (show false = true from h₂)
+  | .scalar _, .scalar _, .mapping _ _ _ => exact Bool.noConfusion (show false = true from h₂)
+  | .scalar _, .sequence _ _ _, _ => exact Bool.noConfusion (show false = true from h₁)
+  | .scalar _, .mapping _ _ _, _ => exact Bool.noConfusion (show false = true from h₁)
+  | .sequence _ _ _, .scalar _, _ => exact Bool.noConfusion (show false = true from h₁)
+  | .sequence _ _ _, .sequence _ _ _, .scalar _ => exact Bool.noConfusion (show false = true from h₂)
+  | .sequence _ _ _, .sequence _ _ _, .mapping _ _ _ => exact Bool.noConfusion (show false = true from h₂)
+  | .sequence _ _ _, .mapping _ _ _, _ => exact Bool.noConfusion (show false = true from h₁)
+  | .mapping _ _ _, .scalar _, _ => exact Bool.noConfusion (show false = true from h₁)
+  | .mapping _ _ _, .sequence _ _ _, _ => exact Bool.noConfusion (show false = true from h₁)
+  | .mapping _ _ _, .mapping _ _ _, .scalar _ => exact Bool.noConfusion (show false = true from h₂)
+  | .mapping _ _ _, .mapping _ _ _, .sequence _ _ _ => exact Bool.noConfusion (show false = true from h₂)
+termination_by v₁
+decreasing_by
+  all_goals simp_wf
+  · have := List.sizeOf_lt_of_mem hv
+    cases items₁; simp_all [Array.mk.sizeOf_spec]; omega
+  · have := List.sizeOf_lt_of_mem hp
+    cases pairs₁; cases p; simp_all [Array.mk.sizeOf_spec, Prod.mk.sizeOf_spec]; omega
+  · have := List.sizeOf_lt_of_mem hp
+    cases pairs₁; cases p; simp_all [Array.mk.sizeOf_spec, Prod.mk.sizeOf_spec]; omega
+
+/-! ## §8: Escape Character-Level Round-Trip
+
+The emitter's `escapeChar` and the grammar's `resolveNamedEscape` are inverses
+for all 11 escaped characters. This connects the emitter to the parser specification
+at the character level.
+-/
+
+/-- The set of characters that `escapeChar` escapes (produces a `\X` sequence). -/
+def isEscapedChar (c : Char) : Bool :=
+  match c with
+  | '\x00' | '\x07' | '\x08' | '\t' | '\n'
+  | '\x0b' | '\x0c' | '\r' | '\x1b' | '\\' | '"' => true
+  | _ => false
+
+/-- For non-escaped characters, `escapeChar c` is `c.toString`. -/
+theorem escapeChar_identity (c : Char) (h : isEscapedChar c = false) :
+    escapeChar c = c.toString := by
+  unfold escapeChar isEscapedChar at *
+  split <;> simp_all
+
+/-- The mapping from escaped characters to their YAML escape tags.
+
+This function witnesses the correspondence between `escapeChar` output
+and `resolveNamedEscape` input. `escapeTag c = some tag` means that
+`escapeChar c` produces `\tag` and `resolveNamedEscape tag` recovers `c`. -/
+def escapeTag (c : Char) : Option Char :=
+  match c with
+  | '\x00' => some '0'
+  | '\x07' => some 'a'
+  | '\x08' => some 'b'
+  | '\t'   => some 't'
+  | '\n'   => some 'n'
+  | '\x0b' => some 'v'
+  | '\x0c' => some 'f'
+  | '\r'   => some 'r'
+  | '\x1b' => some 'e'
+  | '\\'   => some '\\'
+  | '"'    => some '"'
+  | _      => none
+
+/-- **Character-level round-trip**: for every escaped character `c` with
+    escape tag `tag`, the emitter produces `\tag` and the grammar specification
+    `resolveNamedEscape` recovers the original character.
+
+    This is the foundational building block of the full round-trip proof,
+    connecting the emitter's escape logic to the parser's escape resolution. -/
+theorem escapeTag_roundtrip (c : Char) (tag : Char) (h : escapeTag c = some tag) :
+    escapeChar c = "\\" ++ tag.toString ∧ resolveNamedEscape tag = some c := by
+  unfold escapeTag at h
+  split at h
+  all_goals first
+    | (simp only [Option.some.injEq] at h; subst h; exact ⟨by native_decide, by native_decide⟩)
+    | simp at h
+
+/-! ## §9: Extended Round-Trip `#guard` Coverage
+
+Additional compile-time round-trip checks beyond §4. These expand the verified
+coverage to deeper nesting, wider collections, Unicode, and edge cases.
+
+Each `#guard` is kernel-evaluated at build time — these are invariants,
+not runtime tests.
+-/
+
+-- ═══════════════════════════════════════════════════════════════════
+-- §9a: Deep nesting (4 levels)
+-- ═══════════════════════════════════════════════════════════════════
+
+#guard roundTrips (.sequence .flow #[
+  .mapping .flow #[
+    (.scalar ⟨"a", .plain, none⟩,
+     .sequence .flow #[
+       .mapping .flow #[
+         (.scalar ⟨"deep", .plain, none⟩,
+          .scalar ⟨"value", .plain, none⟩)] none] none)] none] none)
+
+-- ═══════════════════════════════════════════════════════════════════
+-- §9b: Wide collections (8+ elements)
+-- ═══════════════════════════════════════════════════════════════════
+
+#guard roundTrips (.sequence .flow #[
+  .scalar ⟨"1", .plain, none⟩, .scalar ⟨"2", .plain, none⟩,
+  .scalar ⟨"3", .plain, none⟩, .scalar ⟨"4", .plain, none⟩,
+  .scalar ⟨"5", .plain, none⟩, .scalar ⟨"6", .plain, none⟩,
+  .scalar ⟨"7", .plain, none⟩, .scalar ⟨"8", .plain, none⟩] none)
+
+#guard roundTrips (.mapping .flow #[
+  (.scalar ⟨"k1", .plain, none⟩, .scalar ⟨"v1", .plain, none⟩),
+  (.scalar ⟨"k2", .plain, none⟩, .scalar ⟨"v2", .plain, none⟩),
+  (.scalar ⟨"k3", .plain, none⟩, .scalar ⟨"v3", .plain, none⟩),
+  (.scalar ⟨"k4", .plain, none⟩, .scalar ⟨"v4", .plain, none⟩)] none)
+
+-- ═══════════════════════════════════════════════════════════════════
+-- §9c: Mixed nesting patterns
+-- ═══════════════════════════════════════════════════════════════════
+
+#guard roundTrips (.mapping .flow #[
+  (.scalar ⟨"seq", .plain, none⟩,
+   .sequence .flow #[.scalar ⟨"a", .plain, none⟩, .scalar ⟨"b", .plain, none⟩] none),
+  (.scalar ⟨"map", .plain, none⟩,
+   .mapping .flow #[(.scalar ⟨"x", .plain, none⟩, .scalar ⟨"y", .plain, none⟩)] none),
+  (.scalar ⟨"scalar", .plain, none⟩,
+   .scalar ⟨"plain", .plain, none⟩)] none)
+
+-- ═══════════════════════════════════════════════════════════════════
+-- §9d: Unicode scalars
+-- ═══════════════════════════════════════════════════════════════════
+
+#guard roundTrips (.scalar ⟨"こんにちは世界", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"α β γ δ ε", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"🎉🎊🎈", .plain, none⟩)
+
+-- ═══════════════════════════════════════════════════════════════════
+-- §9e: Printable ASCII and whitespace
+-- ═══════════════════════════════════════════════════════════════════
+
+#guard roundTrips (.scalar ⟨"!@#$%^&*()_+-=[]{}|;':,./<>?`~", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"  leading", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"trailing  ", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"  both  ", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"multi  spaces", .plain, none⟩)
 
 end Lean4Yaml.Proofs.RoundTrip
