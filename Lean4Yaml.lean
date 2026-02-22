@@ -16,6 +16,12 @@ import Lean4Yaml.Proofs.BlockScalarContracts
 import Lean4Yaml.Proofs.StringProperties
 import Lean4Yaml.Proofs.DocumentContracts
 import Lean4Yaml.Proofs.TestSuite
+import Lean4Yaml.Proofs.SuiteGuards.Scalar
+import Lean4Yaml.Proofs.SuiteGuards.Flow
+import Lean4Yaml.Proofs.SuiteGuards.Block
+import Lean4Yaml.Proofs.SuiteGuards.Document
+import Lean4Yaml.Proofs.SuiteGuards.Advanced
+import Lean4Yaml.Proofs.SuiteGuards.Error
 
 /-
 Copyright (c) 2026. All rights reserved.
