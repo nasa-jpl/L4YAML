@@ -46,7 +46,7 @@ structure Scalar where
   content : String
   style : ScalarStyle
   tag : Option String := none
-  deriving Repr, BEq, Inhabited
+  deriving Repr, BEq, Inhabited, DecidableEq
 
 /-! ## Collection Styles -/
 
