@@ -9,6 +9,7 @@ Lean4Yaml/
 ├── Types.lean               # YamlValue AST (shared with lean4-yaml)
 ├── Stream.lean              # Position-aware YamlStream with line/col tracking
 ├── Grammar.lean             # Formal YAML grammar as Lean Props
+├── Emitter.lean             # Canonical YAML emitter (YamlValue → String)
 ├── Parser/
 │   ├── Combinators.lean     # Character classification & basic parsers
 │   ├── Scalar.lean          # Plain, quoted, and block scalar parsers
@@ -20,7 +21,7 @@ Lean4Yaml/
 ├── Proofs/
 │   ├── Termination.lean           # Termination proofs for recursive parsers
 │   ├── Soundness.lean             # Parser produces only valid YAML (planned)
-│   ├── RoundTrip.lean             # Parse ∘ emit = id (planned)
+│   ├── RoundTrip.lean             # Round-trip: parse ∘ emit = id (45 theorems + 51 guards)
 │   ├── BlockScalarContracts.lean  # Block scalar A/G contracts (axiom-free)
 │   ├── CharClass.lean             # Character classification proofs
 │   ├── TestSuite.lean             # yaml-test-suite as compile-time checks (blocked)
@@ -290,9 +291,17 @@ Property proofs about specific parser behaviors. With lean4-parser fold combinat
 
 **All 4 items complete.** ~30 theorems + 45 `#guard` checks across 3 proof files. 0 sorry, 0 axiom.
 
+**Methodology note: why Layer 2 proofs were straightforward.** All four items (2a–2d) completed in a single session with zero proof difficulty, continuing the compounding pattern observed in Layer 3 Steps 3.1–3.2. The reason is the same: *deliberate architectural alignment between specification and implementation*.
+
+- **2d (Decidable instances):** Every `Prop` in `Grammar.lean` (`isPrintable`, `isLineBreak`, `isWhiteSpace`, `Indented`, etc.) was *defined* with decidability in mind — disjunctions of `BEq` comparisons, range checks, and structural induction on `Nat × List Char`. Adding `Decidable` instances was a matter of `unfold; infer_instance` for flat predicates and a 15-line structural recursion for `Indented`. The one genuine proof — `indented_weaken` (monotonicity) — was a clean 5-line induction. **Effort: trivial.** The upfront design of `Grammar.lean` as decidable propositions (not arbitrary `Prop`s) paid off here.
+- **2b (Escape resolution):** Defining `resolveNamedEscape` as a pure 18-arm `match` in `Grammar.lean` made every property a `native_decide` one-liner. The 16 named-escape theorems, 9 printability proofs, and 7 non-printability proofs were all mechanical. The only design decision was *where* to put the specification (Grammar.lean, not Scalar.lean) so that proofs don't depend on the parser monad. **Effort: trivial.** Pure specifications on inductives are the easiest things to prove in Lean 4.
+- **2c (Indent consumption):** The `YamlStream.next?` function is a 3-line `if c == '\n' then ... else ...`. Proving column advancement required unfolding `next?`, extracting the character from the injection proof, and resolving the `if` branch with `simp [hc]`. The pattern was discovered once and reused 6 times. The `NextNSpaces` inductive relation (modeling `drop n (token ' ')`) gave iterated proofs via structural induction. **Effort: low.** Stream-level proofs are pure function reasoning — no monadic unwinding needed.
+- **2a (Fold newlines / c-forbidden):** The key insight was that `foldQuotedNewlines` only appends `' '` or `'\n'` to the accumulator, while c-forbidden requires the prefix `---` or `...`. Since `{' ', '\n'}` ∩ `{'-', '.'}` = ∅, fold *cannot introduce* c-forbidden content. The proof is two `rfl` lemmas (`not_cForbidden_space_start`, `not_cForbidden_newline_start`) composed into the linking theorem. **Effort: trivial.** The disjointness of fold-appended characters and marker-starting characters made this almost tautological.
+- **The pattern:** Layer 2 proofs are easy because the *specifications* in `Grammar.lean` are pure functions on simple types (`Char`, `List Char`, `Nat`), and the *parser implementations* were designed to match those specifications structurally. When specification and implementation share the same shape, the proof that they agree is short. This is the same "design for provability" principle from the Layer 3 methodology notes — the hard work is in getting the abstractions right, not in writing proofs.
+
 #### Layer 3: Full Termination & Soundness — 5-Step Plan
 
-With lean4-parser fold combinators now total (via `Stream.remaining` fuel), the path to eliminating all 35 `partial def` parsers is clear. Parser structure is stable (353/406 yaml-test-suite, 0 failures). Work proceeds in five steps:
+With lean4-parser fold combinators now total (via `Stream.remaining` fuel), the path to eliminating all 35 `partial def` parsers is clear. ParseFpr structure is stable (353/406 yaml-test-suite, 0 failures). Work proceeds in five steps:
 
 | Step | Description | Status |
 |------|-------------|--------|
@@ -304,8 +313,6 @@ With lean4-parser fold combinators now total (via `Stream.remaining` fuel), the 
 | **3e** | Convert `axiom`s in `Soundness.lean` to `theorem`s | ✅ All axioms eliminated project-wide. `Soundness.lean` (3 axioms → theorems), `RoundTrip.lean` (1 axiom → theorem), `BlockScalarContracts.lean` (6 axioms → decidable predicates with proved specification theorems). **Zero axioms** in the codebase. |
 
 Effort: ~5+ sessions. **All 5 steps complete** (3.1–3.5 + 3e).
-
-### Remaining Phases
 
 #### Phase 4: yaml-test-suite as Compile-Time Proofs — ✅ COMPLETE
 
@@ -320,13 +327,23 @@ lake build                            # verifies all guards still pass
 
 The script automatically excludes tests listed in its `KERNEL_DISCREPANCIES` set (currently `{CQ3W}`) and the unfixable H7TQ. If new tests fail as `#guard`, either fix the parser or add the test ID to `KERNEL_DISCREPANCIES` with a comment explaining why.
 
-#### Phase 5: Round-Trip Proofs (Future)
+#### Phase 5: Round-Trip Proofs — IN PROGRESS
 
 Prove `parse ∘ emit = id` for a canonical YAML subset.
 
-#### Phase 6: Integration with lean4-yaml (Future)
+**Emitter (`Emitter.lean`, ~168 lines):** Canonical YAML emitter — `emit : YamlValue → String` producing double-quoted scalars and flow-style collections. Design choices: always double-quoted (simplifies escaping), always flow-style (single-line output simplifies parsing). `escapeChar` handles 11 control character escapes + backslash + double quote, matching the parser's `resolveNamedEscape` specification. `contentEq : YamlValue → YamlValue → Bool` compares values ignoring style and tag annotations.
 
-Share the verified implementation with the existing lean4-yaml ecosystem.
+**Round-trip proofs (`Proofs/RoundTrip.lean`, ~470 lines):** 5-section structure:
+
+| Section | Content | Count |
+|---------|---------|-------|
+| §1 Emitter structural properties | `emit_scalar_starts_quote`, `emit_scalar_empty`, `emit_scalar_hello`, `escapeChar_*` (7 escape theorems), `emit_scalar_with_*` (3 escape integration), `emit_empty_seq`, `emit_empty_map`, `emit_single_seq`, `emit_two_seq`, `emit_single_map` | 17 theorems |
+| §2 Escape–Resolve correspondence | 13 round-trip theorems proving `resolveNamedEscape c = some r ∧ escapeChar r = "\\c"` for each named escape (null, bell, BS, tab, LF, VT, FF, CR, ESC, backslash, dquote, space, slash) | 13 theorems |
+| §3 `contentEq` properties | Reflexivity (scalar, empty seq/map, concrete nested), style-ignoring, collection-style-ignoring, discrimination (different content, different kinds) | 9 theorems |
+| §4 `#guard` round-trip checks | `roundTrips` helper using `parseYamlSingle (emit v)` + `contentEq`. Scalars (~24: ASCII, empty, special chars, Unicode, YAML metacharacters), sequences (~5: empty, single, multi, nested), mappings (~4: empty, single, multi), nested structures (~5: 3-level deep), edge cases (~8: document markers, null byte, all named-escapes) | 51 `#guard` checks |
+| §5 Proved emitter-parser agreement | `emit_scalar_nonempty`, `emit_seq_nonempty`, `emit_map_nonempty`, `escapeString_empty`, `escapeString_single_a`, `contentEq_refl_hello`, `contentEq_refl_nested` | 6 theorems |
+
+**Build:** 238/238 jobs. **Totals:** 45 theorems + 51 `#guard` round-trip checks. 0 sorry, 0 axiom.
 
 ## Next Steps
 
@@ -427,15 +444,19 @@ Share the verified implementation with the existing lean4-yaml ecosystem.
 
     **Strategic assessment (2026-02-21):** At 224/225 YAML 1.2.2 tests passing (99.6%), the remaining compliance gap is YAML 1.3 features (out of scope), not correctness. Verification doesn't help compliance — the parser is functionally complete for YAML 1.2.2. Phase 4 locks these 350 passing tests as build-time invariants, making regressions impossible without also fixing the broken guard. Combined with the 76 hand-written `#guard` tests from Step 3.4, the project now has **426 compile-time kernel-evaluated checks** plus ~170 formal theorems.
 
-### Current: Phase 4 Complete — yaml-test-suite as Compile-Time Proofs
+### Current: Layers 1–2 Complete, Phase 4 Complete, Phase 5 In Progress
 
 Phase 2 (Parser Validation) is functionally complete. **353/406 correct** per HTML subprocess report. 0 failures, 0 timeouts, 1 unfixable UP (H7TQ). 224 unique passing test IDs out of 277 (52 YAML 1.3 skipped, 1 failed). Error stage: 74/74 (100%). Flow stage: 46/46 (100%). Block stage: 99/109 (91%).
 
 **Phase 4 complete:** 350 `#guard` compile-time tests across 6 files (`Proofs/SuiteGuards/*.lean`) encode all passing yaml-test-suite tests. Auto-generated from yaml-test-suite by `gen-suite-guards.py`. Any parser regression breaks the build.
 
-**Verification inventory:** ~170 proved theorems/lemmas + 76 hand-written `#guard` tests + 350 yaml-test-suite `#guard` tests = **426 compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 234/234 jobs.
+**Phase 5 in progress:** Canonical emitter (`Emitter.lean`) + round-trip proofs (`Proofs/RoundTrip.lean`). 45 theorems + 51 `#guard` round-trip checks proving `parse ∘ emit = id` for concrete values.
 
-**Layer 3 complete.** All 5 steps finished: Steps 3.1–3.3 (totality), Step 3.4 (`#guard` compile-time tests), Step 3.5 (soundness proofs). Phase 4 complete.
+**Layers 1–2 complete.** Layer 1: ~90 theorems across 5 proof files. Layer 2: ~30 theorems + 45 `#guard` checks across 3 proof files (`EscapeResolution.lean`, `IndentConsumption.lean`, `FoldNewlines.lean`). Grammar.lean extended with `resolveNamedEscape`, `isCForbiddenPrefix`, `isFoldAppendChar`, full Decidable instances.
+
+**Verification inventory:** ~288 proved theorems/lemmas + 76 hand-written `#guard` tests + 45 Layer 2 `#guard` tests + 350 yaml-test-suite `#guard` tests + 51 round-trip `#guard` tests + 15 TestSuite `#guard` tests = **537 compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 238/238 jobs.
+
+**Layer 3 complete.** All 5 steps finished: Steps 3.1–3.3 (totality), Step 3.4 (`#guard` compile-time tests), Step 3.5 (soundness proofs). Phase 4 complete. Phase 5 in progress (emitter + round-trip proofs).
 
 1. ~~**Step 3.1 — Link `remainingLength` to `Stream.remaining`**~~: ✅ `remainingLength_eq_stream_remaining` proved by `rfl` (definitionally equal). Corollary `stream_remaining_decreasing` lifts `next_decreasing` to `Parser.Stream.remaining` — the form needed for `termination_by` in recursive parsers. Build: 228/228 jobs.
 2. ~~**Step 3.2 — Convert Group A leaf parsers (3)**~~: ✅ `hasTabInWhitespace` and `checkNoTabIndent` rewritten with `dropMany (token ' ')` (total lean4-parser combinator); `checkIndentForTabs` rewritten with structural Nat recursion (count down from `minIndent`). 35→32 `partial def`. Build: 228/228. Tests: 847/2/201 — zero regressions. `skipBlankLines`, `checkContinuation`, `flowWhitespace` reclassified to Group B (have self-recursion or recursive `where` clauses).
