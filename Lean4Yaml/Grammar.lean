@@ -286,7 +286,42 @@ inductive NodeToValue : ValidNode → YamlValue → Prop where
       NodeToValue
         (.foldedScalar content indent chomp)
         (.scalar ⟨content, .folded, none⟩)
-  -- Collections would map recursively (omitted for brevity in initial scaffold)
+  | blockSeq (indent : Nat) (nodes : List ValidNode) (vals : List YamlValue)
+      (hlen : nodes.length = vals.length)
+      (hcorr : ∀ i (hi : i < nodes.length),
+        NodeToValue (nodes.get ⟨i, hi⟩) (vals.get ⟨i, by omega⟩)) :
+      NodeToValue
+        (.blockSeq indent nodes)
+        (.sequence .block (vals.toArray) none)
+  | blockMap (indent : Nat)
+      (entries : List (ValidNode × ValidNode))
+      (pairs : List (YamlValue × YamlValue))
+      (hlen : entries.length = pairs.length)
+      (hkeys : ∀ i (hi : i < entries.length),
+        NodeToValue (entries.get ⟨i, hi⟩).1 (pairs.get ⟨i, by omega⟩).1)
+      (hvals : ∀ i (hi : i < entries.length),
+        NodeToValue (entries.get ⟨i, hi⟩).2 (pairs.get ⟨i, by omega⟩).2) :
+      NodeToValue
+        (.blockMap indent entries)
+        (.mapping .block (pairs.toArray) none)
+  | flowSeq (nodes : List ValidNode) (vals : List YamlValue)
+      (hlen : nodes.length = vals.length)
+      (hcorr : ∀ i (hi : i < nodes.length),
+        NodeToValue (nodes.get ⟨i, hi⟩) (vals.get ⟨i, by omega⟩)) :
+      NodeToValue
+        (.flowSeq nodes)
+        (.sequence .flow (vals.toArray) none)
+  | flowMap
+      (entries : List (ValidNode × ValidNode))
+      (pairs : List (YamlValue × YamlValue))
+      (hlen : entries.length = pairs.length)
+      (hkeys : ∀ i (hi : i < entries.length),
+        NodeToValue (entries.get ⟨i, hi⟩).1 (pairs.get ⟨i, by omega⟩).1)
+      (hvals : ∀ i (hi : i < entries.length),
+        NodeToValue (entries.get ⟨i, hi⟩).2 (pairs.get ⟨i, by omega⟩).2) :
+      NodeToValue
+        (.flowMap entries)
+        (.mapping .flow (pairs.toArray) none)
 
 /--
 **The specification**: a string `s` is valid YAML producing value `v`.
@@ -310,6 +345,43 @@ structure ValidYaml where
   grammar : ValidNode
   /-- The grammar node corresponds to the value -/
   corresponds : NodeToValue grammar value
+
+/-! ## Computable Specification Function
+
+`toYamlValue` is the computable witness of `NodeToValue`: it maps
+every `ValidNode` to the unique `YamlValue` prescribed by the relation.
+This makes the relation **total** and **deterministic** by construction.
+-/
+
+/--
+Compute the `YamlValue` corresponding to a `ValidNode`.
+
+This is the "specification function" that the parser's output must match.
+Structural recursion on `ValidNode` terminates because `List ValidNode`
+sub-lists are structurally smaller.
+-/
+def toYamlValue : ValidNode → YamlValue
+  | .plainScalarBlock content _ => .scalar ⟨content, .plain, none⟩
+  | .plainScalarFlow content _ => .scalar ⟨content, .plain, none⟩
+  | .singleQuoted content => .scalar ⟨content, .singleQuoted, none⟩
+  | .doubleQuoted content => .scalar ⟨content, .doubleQuoted, none⟩
+  | .literalScalar content _ _ => .scalar ⟨content, .literal, none⟩
+  | .foldedScalar content _ _ => .scalar ⟨content, .folded, none⟩
+  | .blockSeq _ items => .sequence .block (toYamlValueList items).toArray none
+  | .blockMap _ entries =>
+      .mapping .block (toYamlValuePairs entries).toArray none
+  | .flowSeq items => .sequence .flow (toYamlValueList items).toArray none
+  | .flowMap entries =>
+      .mapping .flow (toYamlValuePairs entries).toArray none
+where
+  /-- Map a list of nodes to a list of values. -/
+  toYamlValueList : List ValidNode → List YamlValue
+    | [] => []
+    | n :: ns => toYamlValue n :: toYamlValueList ns
+  /-- Map a list of node pairs to a list of value pairs. -/
+  toYamlValuePairs : List (ValidNode × ValidNode) → List (YamlValue × YamlValue)
+    | [] => []
+    | (k, v) :: rest => (toYamlValue k, toYamlValue v) :: toYamlValuePairs rest
 
 /-! ## Block Scalar Header Character Classification
   (YAML 1.2.2 §8.1.1, https://yaml.org/spec/1.2.2/#811-block-scalar-headers)
