@@ -156,6 +156,49 @@ instance (n : Nat) (cs : List Char) : Decidable (IndentedAtLeast n cs) :=
 
 /-! ## Scalar Grammar (YAML 1.2.2 §7.3: https://yaml.org/spec/1.2.2/#73-flow-scalar-styles) -/
 
+/-! ### Escape Sequences (YAML 1.2.2 §5.7: https://yaml.org/spec/1.2.2/#57-escaped-characters) -/
+
+/--
+Pure specification of YAML named escape sequence resolution.
+
+Maps the character *after* `\` to its resolved character value.
+Returns `none` for characters that are not named escapes (i.e.,
+characters that would require `\xHH`, `\uHHHH`, or `\UHHHHHHHH`
+hex escapes, or are unknown/invalid).
+
+This is the specification against which the parser's `processEscape`
+function (in `Parser/Scalar.lean`) is verified. The 18 named escapes
+follow YAML 1.2.2 §5.7 Table 5.13 exactly.
+-/
+def resolveNamedEscape : Char → Option Char
+  | '0'  => some '\x00'   -- [42] ns-esc-null
+  | 'a'  => some '\x07'   -- [43] ns-esc-bell
+  | 'b'  => some '\x08'   -- [44] ns-esc-backspace
+  | 't'  => some '\t'     -- [45] ns-esc-horizontal-tab
+  | '\t' => some '\t'     -- [46] ns-esc-horizontal-tab (literal)
+  | 'n'  => some '\n'     -- [47] ns-esc-line-feed
+  | 'v'  => some '\x0b'   -- [48] ns-esc-vertical-tab
+  | 'f'  => some '\x0c'   -- [49] ns-esc-form-feed
+  | 'r'  => some '\r'     -- [50] ns-esc-carriage-return
+  | 'e'  => some '\x1b'   -- [51] ns-esc-escape
+  | ' '  => some ' '      -- [52] ns-esc-space
+  | '"'  => some '"'      -- [53] ns-esc-double-quote
+  | '/'  => some '/'      -- [54] ns-esc-slash
+  | '\\' => some '\\'     -- [55] ns-esc-backslash
+  | 'N'  => some '\x85'   -- [56] ns-esc-next-line
+  | '_'  => some '\xa0'   -- [57] ns-esc-non-breaking-space
+  | 'x'  => none          -- [58] ns-esc-8-bit (hex, not named)
+  | 'u'  => none          -- [59] ns-esc-16-bit (hex, not named)
+  | 'U'  => none          -- [60] ns-esc-32-bit (hex, not named)
+  | _    => none           -- unknown escape
+
+/-- The set of named escape input characters (§5.7 Table 5.13). -/
+def isNamedEscapeChar (c : Char) : Prop :=
+  resolveNamedEscape c ≠ none
+
+instance (c : Char) : Decidable (isNamedEscapeChar c) := by
+  unfold isNamedEscapeChar; infer_instance
+
 /--
 A valid plain scalar in block context.
 

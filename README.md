@@ -284,7 +284,7 @@ Property proofs about specific parser behaviors. With lean4-parser fold combinat
 | Item | Description | Status |
 |------|-------------|--------|
 | **2a** | `foldQuotedNewlines` output has no c-forbidden characters | |
-| **2b** | Escape sequence resolution produces valid Unicode in `doubleQuotedScalar` | |
+| **2b** | Escape sequence resolution produces valid Unicode in `doubleQuotedScalar` | ✅ `resolveNamedEscape` spec in Grammar.lean. 16 named-escape theorems, 9 printability proofs, 7 non-printability proofs, 20 `#guard` parser round-trips. `EscapeResolution.lean`. |
 | **2c** | `consumeIndent n` advances column by exactly `n` | |
 | **2d** | Decidable instances for `Grammar.lean` propositions | ✅ 10 char-level + 2 structural instances. `indented_weaken` monotonicity lemma. |
 

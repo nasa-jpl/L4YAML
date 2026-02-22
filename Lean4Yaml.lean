@@ -15,6 +15,7 @@ import Lean4Yaml.Proofs.RoundTrip
 import Lean4Yaml.Proofs.BlockScalarContracts
 import Lean4Yaml.Proofs.StringProperties
 import Lean4Yaml.Proofs.DocumentContracts
+import Lean4Yaml.Proofs.EscapeResolution
 import Lean4Yaml.Proofs.TestSuite
 import Lean4Yaml.Proofs.SuiteGuards.Scalar
 import Lean4Yaml.Proofs.SuiteGuards.Flow
