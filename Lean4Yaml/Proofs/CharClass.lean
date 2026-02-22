@@ -93,8 +93,9 @@ theorem isIndicator_equiv (c : Char) :
 /-! ## canStartPlainScalar (base condition)
 
 The Grammar version captures the base exclusion rule. The Parser version
-adds the `-`/`?`/`:` exception with context. We prove the base case:
-when `c` is not one of the three exception characters, Grammar implies Parser.
+adds the `-`/`?`/`:` exception with context. We prove both cases:
+1. **Base**: non-exceptional characters — Grammar implies Parser.
+2. **Exception**: `-`/`?`/`:` followed by a safe character — Parser accepts.
 -/
 
 /--
@@ -125,5 +126,33 @@ theorem canStartPlainScalar_base (c : Char) (next : Option Char)
     intro h
     exact hNotLb ((isLineBreak_correspondence c).mpr h)
   simp [hNotIndBool, hNotWsBool, hNotLbBool]
+
+/-! ## canStartPlainScalar (exception for `-`, `?`, `:`)
+
+YAML §7.3.3: `-`, `?`, `:` can start plain scalars if followed by a
+non-whitespace, non-line-break character (`ns-plain-safe`).
+This is the Parser-side rule that extends beyond the Grammar's base condition.
+-/
+
+/--
+For the exception characters (`-`, `?`, `:`), `Parse.canStartPlainScalar c (some n) = true`
+when the following character `n` is not whitespace and not a line break.
+-/
+theorem canStartPlainScalar_exception (c : Char) (n : Char)
+    (hExc : c = '-' ∨ c = '?' ∨ c = ':')
+    (hNotWs : Parse.isWhiteSpace n = false)
+    (hNotLb : Parse.isLineBreak n = false) :
+    Parse.canStartPlainScalar c (some n) = true := by
+  unfold Parse.canStartPlainScalar
+  rcases hExc with rfl | rfl | rfl <;> simp [hNotWs, hNotLb]
+
+/--
+Exception characters with no following character are rejected.
+-/
+theorem canStartPlainScalar_exception_none (c : Char)
+    (hExc : c = '-' ∨ c = '?' ∨ c = ':') :
+    Parse.canStartPlainScalar c none = false := by
+  unfold Parse.canStartPlainScalar
+  rcases hExc with rfl | rfl | rfl <;> simp
 
 end Lean4Yaml.Proofs.CharClass

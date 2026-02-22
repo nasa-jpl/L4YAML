@@ -55,11 +55,15 @@ def isPrintable (c : Char) : Prop :=
   ∨ (c.val ≥ 0xE000 ∧ c.val ≤ 0xFFFD)        -- More BMP
   ∨ (c.val ≥ 0x10000 ∧ c.val ≤ 0x10FFFF)     -- Supplementary planes
 
+instance (c : Char) : Decidable (isPrintable c) := by unfold isPrintable; infer_instance
+
 /--
 Line break characters (§5.4: https://yaml.org/spec/1.2.2/#54-line-break-characters).
 -/
 def isLineBreak (c : Char) : Prop :=
   c == '\n' ∨ c == '\r'
+
+instance (c : Char) : Decidable (isLineBreak c) := by unfold isLineBreak; infer_instance
 
 /--
 White space characters for YAML (§5.5: https://yaml.org/spec/1.2.2/#55-white-space-characters).
@@ -68,6 +72,8 @@ Only space and tab — NOT line breaks.
 def isWhiteSpace (c : Char) : Prop :=
   c == ' ' ∨ c == '\t'
 
+instance (c : Char) : Decidable (isWhiteSpace c) := by unfold isWhiteSpace; infer_instance
+
 /--
 YAML space character (§6.1: https://yaml.org/spec/1.2.2/#61-indentation-spaces).
 Only the space character is valid for indentation.
@@ -75,6 +81,8 @@ Tabs are explicitly forbidden for indentation in YAML 1.2.2.
 -/
 def isIndentChar (c : Char) : Prop :=
   c == ' '
+
+instance (c : Char) : Decidable (isIndentChar c) := by unfold isIndentChar; infer_instance
 
 /--
 Characters that can start a plain scalar (§7.3.3: https://yaml.org/spec/1.2.2/#733-plain-style).
@@ -87,12 +95,17 @@ def canStartPlainScalar (c : Char) : Prop :=
   ∧ c ∉ ['-', '?', ':', ',', '[', ']', '{', '}', '#', '&', '*', '!', '|', '>',
          '\'', '"', '%', '@', '`']
 
+instance (c : Char) : Decidable (canStartPlainScalar c) := by
+  unfold canStartPlainScalar; infer_instance
+
 /--
 Flow indicator characters (§5.3: https://yaml.org/spec/1.2.2/#53-indicator-characters).
 These terminate plain scalars in flow context.
 -/
 def isFlowIndicator (c : Char) : Prop :=
   c ∈ [',', '[', ']', '{', '}']
+
+instance (c : Char) : Decidable (isFlowIndicator c) := by unfold isFlowIndicator; infer_instance
 
 /-! ## Indentation (YAML 1.2.2 §6.1: https://yaml.org/spec/1.2.2/#61-indentation-spaces) -/
 
@@ -108,12 +121,38 @@ inductive Indented : Nat → List Char → Prop where
   /-- Positive indentation: space followed by rest -/
   | space (n : Nat) (cs : List Char) : Indented n cs → Indented (n + 1) (' ' :: cs)
 
+instance decideIndented (n : Nat) (cs : List Char) : Decidable (Indented n cs) :=
+  match n, cs with
+  | 0, cs => .isTrue (.zero cs)
+  | _ + 1, [] => .isFalse (fun h => by cases h)
+  | n + 1, c :: rest =>
+    if hc : c = ' ' then
+      hc ▸ match decideIndented n rest with
+      | .isTrue h => .isTrue (.space n rest h)
+      | .isFalse h => .isFalse (fun | .space _ _ h' => h h')
+    else
+      .isFalse (fun h => by cases h; exact hc rfl)
+
 /--
 A line has indentation of **at least** `n` spaces.
 Used for block scalar content lines.
 -/
 def IndentedAtLeast (n : Nat) (cs : List Char) : Prop :=
   ∃ m, m ≥ n ∧ Indented m cs
+
+private theorem indented_weaken {n m : Nat} {cs : List Char}
+    (h : Indented m cs) (hle : n ≤ m) : Indented n cs := by
+  induction n generalizing m cs with
+  | zero => exact .zero cs
+  | succ k ih =>
+    cases h with
+    | zero => omega
+    | space m' rest h' => exact .space k rest (ih h' (by omega))
+
+instance (n : Nat) (cs : List Char) : Decidable (IndentedAtLeast n cs) :=
+  match decideIndented n cs with
+  | .isTrue h => .isTrue ⟨n, Nat.le.refl, h⟩
+  | .isFalse h => .isFalse (fun ⟨_, hge, hind⟩ => h (indented_weaken hind hge))
 
 /-! ## Scalar Grammar (YAML 1.2.2 §7.3: https://yaml.org/spec/1.2.2/#73-flow-scalar-styles) -/
 
@@ -439,6 +478,9 @@ indicator, so the prefix has length ≤ 2.
 def validHeaderLength (cs : List Char) : Prop :=
   (extractHeaderChars cs).1.length ≤ 2
 
+instance (cs : List Char) : Decidable (validHeaderLength cs) := by
+  unfold validHeaderLength; infer_instance
+
 /--
 A character that is NOT a header indicator belongs to the content stream.
 This is the key negative specification: consuming such a character in the
@@ -446,5 +488,8 @@ header parser violates the contract.
 -/
 def isContentChar (c : Char) : Prop :=
   isBlockScalarHeaderChar c = false
+
+instance (c : Char) : Decidable (isContentChar c) := by
+  unfold isContentChar; infer_instance
 
 end Lean4Yaml.Grammar
