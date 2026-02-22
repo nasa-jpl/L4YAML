@@ -366,7 +366,57 @@ Prove `parse ∘ emit = id` for a canonical YAML subset.
 | **5a** | **Universal `contentEq_refl`** — Proved `∀ v, contentEq v v = true` using `show` to bypass equation-generation limitation, `contentEqList_refl`/`contentEqPairList_refl` helper lemmas, and `simp_wf`+`omega` termination via `Array.mk.sizeOf_spec`/`Prod.mk.sizeOf_spec`. | Low–medium | ✅ **Complete** |
 | **5b** | **Block stage compliance** — Block stage is already at 99/99 = 100% correct. The earlier "99/109" figure was from a stale snapshot before test reclassification. All 52 skipped tests (across all stages) are genuinely YAML 1.3 specific (`1.3-err`/`1.3-mod` tags). Current overall: 352/406 correct (86.7%). Error: 73/74 (1 UP = H7TQ). Flow: 46/46. Block: 99/99. Scalar: 54/82 (28 YAML 1.3 skips). Advanced: 64/81 (17 skips). Document: 16/24 (7 skips). | N/A | ✅ **Already complete** |
 | **5c** | **`contentEq` equivalence relation + character-level round-trip** — Proved `contentEq_symm` (symmetry), `contentEq_trans` (transitivity), completing the proof that `contentEq` is a full equivalence relation (with §5 reflexivity). Proved `escapeTag_roundtrip`: universal theorem connecting `escapeChar` to `resolveNamedEscape` via the `escapeTag` witness function. Proved `escapeChar_identity` for non-escaped characters. Extended `#guard` coverage to 63 compile-time round-trip checks (deep nesting, wide collections, Unicode, whitespace). The full universal `∀ v, contentEq v (parseYamlSingle (emit v)).get! = true` requires unfolding ~8K lines of parser; the compositional building blocks (equivalence relation + character-level invertibility) are now in place. | Medium–High | ✅ **Complete** |
-| **5d** | **Completeness** — Prove `Grammar.ValidYaml input docs → parseYaml input = .ok docs`: every valid YAML parses successfully. The reverse of soundness. Requires constructive argument that the parser accepts all grammar-valid inputs. | Very high | Not started |
+| **5d** | **Completeness** — Prove per-parser specification lemmas bottom-up: each `ValidNode` constructor gets a correctness theorem for the corresponding leaf parser. Approach: `@[simp]` annotations on key combinators + fuel sufficiency lemma + per-parser specs composing into the full `ValidYaml input docs → parseYaml input = .ok docs`. See **Std.Iterators analysis** below. | Very high | **In progress** |
+
+#### Step 5d: Std.Iterators strategic analysis (2026-02-22)
+
+**Context.** PR [#97](https://github.com/fgdorais/lean4-parser/pull/97) on lean4-parser (`std-iterators` branch) replaces fuel-based fold combinators with well-founded recursion via `termination_by Stream.remaining s` and adds a `Std.Data.Iterators` bridge (`LawfulParserStream` typeclass + `StreamIterator` wrapper enabling provably-terminating `for` loops). The strategic question: should `lean4-yaml-verified` switch from the `total-fold` branch to `std-iterators`, and would this help with 5d completeness proofs?
+
+**Key finding: the YAML parser's fuel is independent of lean4-parser's folds.** The 16 mutual functions in `Block.lean` (10) and `Flow.lean` (6) implement their own `fuel : Nat` parameter with `match fuel with | 0 => ... | fuel + 1 => ...`. They do NOT use lean4-parser's `foldl`/`foldr`/`takeUntil`. The `for _ in [:fuel]` loops in `Document.lean` and `Scalar.lean` use Lean's built-in `List.range` iteration. Simply switching the dependency from `total-fold` to `std-iterators` changes nothing in the YAML parser — the API surface is identical.
+
+**Quantified fuel footprint in the YAML parser:**
+
+| Metric | Count |
+|--------|-------|
+| Total `fuel` references across parser files | 282 |
+| `match fuel with` entry points (Block) | 10 |
+| `match fuel with` entry points (Flow) | 6 |
+| `where`-clause fuel loops (Scalar) | ~8 |
+| `for _ in [:fuel]` loops (Document, Scalar) | ~6 |
+| Lines of parser code with fuel threading | 4,067 |
+
+**Assessment: switching to WF recursion in the YAML parser itself.**
+
+| Dimension | Current (manual fuel) | After WF refactoring |
+|-----------|----------------------|---------------------|
+| Termination | Structural on `fuel : Nat` | `termination_by Parser.Stream.remaining s` |
+| Function signatures | `blockValueImpl (fuel : Nat) (minIndent : Nat)` | `blockValueImpl (minIndent : Nat)` |
+| Proof obligation | Show "enough fuel exists" for valid inputs | Show `remaining` decreases at each recursive call |
+| Induction principle | `Nat.rec` on fuel | `WellFounded.recursion` on `remaining` |
+| `\| 0 =>` case | Returns default (none/noMatch) — must show unreachable | Eliminated entirely |
+| Completeness proof | `∃ fuel ≥ N, parser fuel input = .ok result` | `parser input = .ok result` (direct) |
+
+**Pros of WF + Std.Iterators:**
+1. Eliminates fuel dimension from all proofs — no fuel sufficiency quantifier
+2. Direct well-founded induction on `remaining` (the real invariant)
+3. `LawfulParserStream YamlStream Char` provides `remaining_decreases` — provable from current `next?` definition
+4. `for tok in StreamIterator.mk s` could replace some `for _ in [:fuel]` loops
+
+**Cons / risks:**
+1. **282 fuel references across 4,067 lines** — multi-day refactoring
+2. **Mutual WF recursion is fragile** — 10-function Block mutual block generates complex recursors; any function failing `termination_by` breaks the entire block
+3. **Must prove `remaining` decreases at every recursive call** — `lookAhead`/`option?` don't consume input, complicating proofs
+4. **3 `sorry` proofs in `LawfulParserStream`** instances for `String.Slice`/`Substring.Raw`/`ByteSlice` (stdlib gap)
+5. **Regression risk** — touching every recursive function in a parser passing 352/406 tests
+
+**Decision: proceed with fuel-based bottom-up approach (B).** Structural induction on `Nat` is one of Lean's best-supported proof patterns. For 5d, we keep the current fuel pattern and prove per-parser specification lemmas bottom-up:
+1. Add `@[simp]` annotations to key combinators (`skipBlankLines`, `skipHWhitespace`, `currentCol`, etc.)
+2. Prove `LawfulParserStream YamlStream Char` as a standalone foundation lemma
+3. Prove per-parser correctness for each `ValidNode` constructor (12 obligations)
+4. Prove fuel sufficiency once and reuse across all per-parser lemmas
+5. Compose into the full completeness theorem
+
+**The Std.Iterators switch is deferred** — if fuel threading becomes a bottleneck during per-parser proofs, targeted WF conversion of specific functions (not all 16) would be justified. The `LawfulParserStream` instance is worth proving regardless as it establishes the foundation for either path.
 
 ## Next Steps
 

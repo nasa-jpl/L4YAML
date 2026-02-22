@@ -124,3 +124,10 @@ root = "Tests.ErrorStageDiag"
 [[lean_exe]]
 name = "scalarstagediag"
 root = "Tests.ScalarStageDiag"
+
+[[lean_lib]]
+name = "Tests.CompletenessTests"
+
+[[lean_exe]]
+name = "completenesstests"
+root = "Tests.CompletenessTests.Runner"
