@@ -367,7 +367,9 @@ def main():
     # but the kernel evaluates parseYaml differently. Typically parser
     # recovery behaviors (e.g., unclosed quotes → plain scalar) where
     # validationError propagation differs between kernel and native code.
-    KERNEL_DISCREPANCIES = {'CQ3W'}
+    # NOTE: CQ3W was here but fixed by adding setValidationError to the
+    # fuel-exhaustion case of collectChars in doubleQuotedScalar.
+    KERNEL_DISCREPANCIES: set[str] = set()
 
     # Generate guards per stage
     generated_files = {}

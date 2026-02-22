@@ -305,11 +305,11 @@ def collStyle (input : String) : Option CollectionStyle :=
 -- Duplicate YAML directives (§6.8.1)
 #guard parseFails "%YAML 1.2\n%YAML 1.2\n---\nhello\n"
 
--- Unmatched single quote — parser recovers, treating as plain scalar
-#guard parseOk "'unclosed"
+-- Unmatched single quote — fuel exhaustion sets validationError
+#guard parseFails "'unclosed"
 
--- Unmatched double quote — parser recovers, treating as plain scalar
-#guard parseOk "\"unclosed"
+-- Unmatched double quote — fuel exhaustion sets validationError
+#guard parseFails "\"unclosed"
 
 /-! ## §10 Content Correctness -/
 
