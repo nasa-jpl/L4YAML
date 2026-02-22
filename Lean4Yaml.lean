@@ -8,6 +8,7 @@ import Lean4Yaml.Parser.Tag
 import Lean4Yaml.Parser.Flow
 import Lean4Yaml.Parser.Block
 import Lean4Yaml.Parser.Document
+import Lean4Yaml.Emitter
 import Lean4Yaml.Proofs.CharClass
 import Lean4Yaml.Proofs.Termination
 import Lean4Yaml.Proofs.Soundness
