@@ -62,7 +62,7 @@ Verification uses a deliberate 3-layer approach:
 
 1. **Internal runtime tests** (940 tests across 12 suites + 11 diagnostic) — hand-written Lean tests validating parser properties. Every `theorem` target starts life as a runtime `check` test. These are _separate_ from the yaml-test-suite's 406 external test cases.
 2. **Formal proofs** (`theorem`/`lemma` in `Proofs/*.lean`) — machine-checked guarantees. Layered by dependency: pure functions first, then parser invariants, then full soundness.
-3. **Compile-time guards** (`#guard`) — 76 hand-written + 350 auto-generated from yaml-test-suite (in `Proofs/SuiteGuards/*.lean`). All parsers are total (via `total-fold` fork + Layer 3 Steps 3.2–3.3), so `#guard` kernel evaluation works. Any parser regression breaks the build.
+3. **Compile-time guards** (`#guard`) — 76 hand-written + 350 auto-generated from yaml-test-suite (in `Proofs/SuiteGuards/*.lean`). All parsers are total (via `total-fold` fork + Steps 3.3.2–3.3.3), so `#guard` kernel evaluation works. Any parser regression breaks the build.
 
 The runtime tests serve as a proof roadmap: each `setCategory`/`check` group maps to a `theorem` target. When a proof is completed, the corresponding tests become redundant (but are kept as regression guards).
 
@@ -140,7 +140,7 @@ Built the complete parser from scratch on Lean 4.28.0-rc1 / Lake v5.0.0:
 
 ### Phase 2: Parser Validation ✅ (Complete — 353/416, 84.9%)
 
-#### 2a. Parser Integration Tests ✅
+#### 2.1 Parser Integration Tests ✅
 
 Created 24+ integration tests in `Tests/ParseTest.lean` covering:
 - Double-quoted, single-quoted, and plain scalars
@@ -149,15 +149,15 @@ Created 24+ integration tests in `Tests/ParseTest.lean` covering:
 - Multi-document streams
 - All tests pass.
 
-#### 2b. Demo End-to-End ✅
+#### 2.2 Demo End-to-End ✅
 
 All 7 demo examples in `Demo.lean` pass, including deeply nested structures.
 
-#### 2c. Compile-Time `#guard` Tests — Unblocked (Layer 3 Step 3.4)
+#### 2.3 Compile-Time `#guard` Tests — Unblocked (Step 3.3.4)
 
-`#guard` requires kernel reduction, which does not work with `partial def` parsers. lean4-parser's fold combinators are now total (via `total-fold` fork). Once our own parsers are made total (Layer 3 Steps 3.2–3.3), `#guard` tests become available.
+`#guard` requires kernel reduction, which does not work with `partial def` parsers. lean4-parser's fold combinators are now total (via `total-fold` fork). Once our own parsers are made total (Steps 3.3.2–3.3.3), `#guard` tests become available.
 
-#### 2d. yaml-test-suite — In Progress
+#### 2.4 yaml-test-suite — In Progress
 
 Added [yaml-test-suite](https://github.com/yaml/yaml-test-suite) as a git submodule and built a programmatic test runner.
 
@@ -261,60 +261,60 @@ Formal verification proceeds in three layers, ordered by feasibility and diagnos
 - **Group A (3 leaf parsers)**: `partial` solely because lean4-parser was `partial` — inner recursion rewritten with total combinators or structural Nat recursion. Now `def`: `checkNoTabIndent`, `checkIndentForTabs`, `hasTabInWhitespace`.
 - **Group B (~32 self-recursive parsers)**: Need `termination_by Stream.remaining s` + decreasing proofs. Includes `skipBlankLines`, `checkContinuation`, `flowWhitespace` (originally classified as Group A but have self-recursion or recursive `where` clauses consuming stream input). The key bridge lemma `next_decreasing` (proved in `Termination.lean`) shows `Stream.remaining` strictly decreases on `next?`, providing the fuel for `termination_by`.
 
-Layer 1 delivers property proofs independent of lean4-parser. Layer 3 now targets full parser totality and soundness via the 5-step plan below.
+3.1 (Foundation) delivers property proofs independent of lean4-parser. 3.3 (Termination & Soundness) targets full parser totality and soundness via the 6-step plan below.
 
-#### Layer 1: Foundation — ✅ COMPLETE
+#### 3.1 Foundation — ✅ COMPLETE
 
 Standalone proofs about the stream, pure helper functions, and character classifiers. These have zero lean4-parser dependency. Each item has extensive runtime test coverage (940 tests across `Verification.lean`, `StringLemmas.lean`, `CharClassTests.lean`, `ValidationTests.lean`, and other suites) that validates the properties empirically before they are proved formally.
 
 | Item | Description | Runtime Tests | Proof Status |
 |------|-------------|---------------|-------------|
-| **1a** | `next_decreasing`: after `YamlStream.next?`, remaining input strictly decreases | 38 tests (Verification: remainingLength, Stream exhaustive consumption; StringLemmas: advancement, strictly monotone) | ✅ Fully proved (`Proofs/Termination.lean`): `next_decreasing`, `remaining_nonneg`, `remaining_lt_of_next`, `remaining_eq_zero_of_atEnd`. Uses `String.Pos.Raw.byteIdx_add_char` + `Char.utf8Size_pos` + `omega`. Zero sorry's. |
-| **1b** | Properties of `trimTrailingWhitespace`, `trimTrailingWs` (idempotence, no trailing ws) | 12 tests (Verification: trimTrailingWhitespace) | ✅ Fully proved (`Proofs/StringProperties.lean` §1): 8 list-level theorems — `dropWhile_idempotent`, `reverse_dropWhile_reverse_idempotent`, `dropWhile_empty`, `reverse_dropWhile_reverse_all_ws`, `reverse_dropWhile_reverse_noop`, plus auxiliary lemmas. Covers the core algorithm (reverse + dropWhile + reverse) used by the parser's trim functions. |
-| **1c** | `Grammar.lean` character Props match `Combinators.lean` implementations | 224 tests (`CharClassTests.lean`) + 32 tests (Verification: Grammar↔Combinators) | ✅ 8 theorems proved (`Proofs/CharClass.lean`): `isLineBreak_correspondence`, `isWhiteSpace_correspondence`, `isIndentChar_iff`, `isFlowIndicator_correspondence`, `isIndicator_equiv`, `canStartPlainScalar_base` (non-exception chars), `canStartPlainScalar_exception` (`-`/`?`/`:` + safe next char), `canStartPlainScalar_exception_none` (exception chars at EOF rejected). Full correspondence proved. |
-| **1d** | `FoldResult` type invariants | 4 tests (Verification: FoldResult) | ✅ Fully proved (`Proofs/StringProperties.lean` §2): 6 theorems — `folded_payload`, `folded_content_roundtrip`, `forbidden_has_message`, `foldResult_classification`, `folded_injective`, `forbidden_injective`. Constructor injectivity, exhaustive classification, content round-trip. |
-| **1e** | Block scalar assume/guarantee contracts | 135 tests (`ValidationTests.lean`: header char classification, `extractHeaderChars` spec, contract G1/G2, peek-before-consume regression, flow structure error rejection) | ✅ Fully proved (`Proofs/BlockScalarContracts.lean`): 14 theorems on header char classification, 10 decidable contract predicates with specification theorems (G1, G2, non-consuming, indent-bound, composition), 2 interplay theorems, 1 principle. Zero axioms. |
-| **1f** | Document parser assume/guarantee contracts | 13 tests (`ValidationTests.lean` §10: flow structure errors exercising D1–D3) | ✅ Fully proved (`Proofs/DocumentContracts.lean`): 17 theorems covering document boundary predicates, comment validation, progress monotonicity, tag handle scope, directive uniqueness. Uses `native_decide` for concrete proofs. Zero sorry's. |
+| **3.1.1** | `next_decreasing`: after `YamlStream.next?`, remaining input strictly decreases | 38 tests (Verification: remainingLength, Stream exhaustive consumption; StringLemmas: advancement, strictly monotone) | ✅ Fully proved (`Proofs/Termination.lean`): `next_decreasing`, `remaining_nonneg`, `remaining_lt_of_next`, `remaining_eq_zero_of_atEnd`. Uses `String.Pos.Raw.byteIdx_add_char` + `Char.utf8Size_pos` + `omega`. Zero sorry's. |
+| **3.1.2** | Properties of `trimTrailingWhitespace`, `trimTrailingWs` (idempotence, no trailing ws) | 12 tests (Verification: trimTrailingWhitespace) | ✅ Fully proved (`Proofs/StringProperties.lean` §1): 8 list-level theorems — `dropWhile_idempotent`, `reverse_dropWhile_reverse_idempotent`, `dropWhile_empty`, `reverse_dropWhile_reverse_all_ws`, `reverse_dropWhile_reverse_noop`, plus auxiliary lemmas. Covers the core algorithm (reverse + dropWhile + reverse) used by the parser's trim functions. |
+| **3.1.3** | `Grammar.lean` character Props match `Combinators.lean` implementations | 224 tests (`CharClassTests.lean`) + 32 tests (Verification: Grammar↔Combinators) | ✅ 8 theorems proved (`Proofs/CharClass.lean`): `isLineBreak_correspondence`, `isWhiteSpace_correspondence`, `isIndentChar_iff`, `isFlowIndicator_correspondence`, `isIndicator_equiv`, `canStartPlainScalar_base` (non-exception chars), `canStartPlainScalar_exception` (`-`/`?`/`:` + safe next char), `canStartPlainScalar_exception_none` (exception chars at EOF rejected). Full correspondence proved. |
+| **3.1.4** | `FoldResult` type invariants | 4 tests (Verification: FoldResult) | ✅ Fully proved (`Proofs/StringProperties.lean` §2): 6 theorems — `folded_payload`, `folded_content_roundtrip`, `forbidden_has_message`, `foldResult_classification`, `folded_injective`, `forbidden_injective`. Constructor injectivity, exhaustive classification, content round-trip. |
+| **3.1.5** | Block scalar assume/guarantee contracts | 135 tests (`ValidationTests.lean`: header char classification, `extractHeaderChars` spec, contract G1/G2, peek-before-consume regression, flow structure error rejection) | ✅ Fully proved (`Proofs/BlockScalarContracts.lean`): 14 theorems on header char classification, 10 decidable contract predicates with specification theorems (G1, G2, non-consuming, indent-bound, composition), 2 interplay theorems, 1 principle. Zero axioms. |
+| **3.1.6** | Document parser assume/guarantee contracts | 13 tests (`ValidationTests.lean` §10: flow structure errors exercising D1–D3) | ✅ Fully proved (`Proofs/DocumentContracts.lean`): 17 theorems covering document boundary predicates, comment validation, progress monotonicity, tag handle scope, directive uniqueness. Uses `native_decide` for concrete proofs. Zero sorry's. |
 
 **All 6 items complete.** ~90 theorems across 5 proof files. 0 sorry, 0 axiom.
 
-#### Layer 2: Key Invariants ✅
+#### 3.2 Key Invariants — ✅ COMPLETE
 
 Property proofs about specific parser behaviors. With lean4-parser fold combinators now total, these proofs can target parser invariants directly without `sorry`-admitting termination.
 
 | Item | Description | Status |
 |------|-------------|--------|
-| **2a** | `foldQuotedNewlines` output has no c-forbidden characters | ✅ `isCForbiddenPrefix` + `isFoldAppendChar` specs in Grammar.lean. 10 positive/8 negative c-forbidden theorems, fold-char disjointness, `fold_append_not_cForbidden_start` key linking theorem, 8 `isMarkerFollower` proofs, 16 `#guard` parser round-trips. `FoldNewlines.lean`. |
-| **2b** | Escape sequence resolution produces valid Unicode in `doubleQuotedScalar` | ✅ `resolveNamedEscape` spec in Grammar.lean. 16 named-escape theorems, 9 printability proofs, 7 non-printability proofs, 20 `#guard` parser round-trips. `EscapeResolution.lean`. |
-| **2c** | `consumeIndent n` advances column by exactly `n` | ✅ `next_space_col`, `next_n_spaces_col` (iterated), `next_newline_col`/`_line`. `NextNSpaces` relation. 9 `#guard` parser round-trips. `IndentConsumption.lean`. |
-| **2d** | Decidable instances for `Grammar.lean` propositions | ✅ 10 char-level + 2 structural instances. `indented_weaken` monotonicity lemma. |
+| **3.2.1** | `foldQuotedNewlines` output has no c-forbidden characters | ✅ `isCForbiddenPrefix` + `isFoldAppendChar` specs in Grammar.lean. 10 positive/8 negative c-forbidden theorems, fold-char disjointness, `fold_append_not_cForbidden_start` key linking theorem, 8 `isMarkerFollower` proofs, 16 `#guard` parser round-trips. `FoldNewlines.lean`. |
+| **3.2.2** | Escape sequence resolution produces valid Unicode in `doubleQuotedScalar` | ✅ `resolveNamedEscape` spec in Grammar.lean. 16 named-escape theorems, 9 printability proofs, 7 non-printability proofs, 20 `#guard` parser round-trips. `EscapeResolution.lean`. |
+| **3.2.3** | `consumeIndent n` advances column by exactly `n` | ✅ `next_space_col`, `next_n_spaces_col` (iterated), `next_newline_col`/`_line`. `NextNSpaces` relation. 9 `#guard` parser round-trips. `IndentConsumption.lean`. |
+| **3.2.4** | Decidable instances for `Grammar.lean` propositions | ✅ 10 char-level + 2 structural instances. `indented_weaken` monotonicity lemma. |
 
 **All 4 items complete.** ~30 theorems + 45 `#guard` checks across 3 proof files. 0 sorry, 0 axiom.
 
-**Methodology note: why Layer 2 proofs were straightforward.** All four items (2a–2d) completed in a single session with zero proof difficulty, continuing the compounding pattern observed in Layer 3 Steps 3.1–3.2. The reason is the same: *deliberate architectural alignment between specification and implementation*.
+**Methodology note: why 3.2 proofs were straightforward.** All four items (3.2.1–3.2.4) completed in a single session with zero proof difficulty, continuing the compounding pattern observed in Steps 3.3.1–3.3.2. The reason is the same: *deliberate architectural alignment between specification and implementation*.
 
-- **2d (Decidable instances):** Every `Prop` in `Grammar.lean` (`isPrintable`, `isLineBreak`, `isWhiteSpace`, `Indented`, etc.) was *defined* with decidability in mind — disjunctions of `BEq` comparisons, range checks, and structural induction on `Nat × List Char`. Adding `Decidable` instances was a matter of `unfold; infer_instance` for flat predicates and a 15-line structural recursion for `Indented`. The one genuine proof — `indented_weaken` (monotonicity) — was a clean 5-line induction. **Effort: trivial.** The upfront design of `Grammar.lean` as decidable propositions (not arbitrary `Prop`s) paid off here.
-- **2b (Escape resolution):** Defining `resolveNamedEscape` as a pure 18-arm `match` in `Grammar.lean` made every property a `native_decide` one-liner. The 16 named-escape theorems, 9 printability proofs, and 7 non-printability proofs were all mechanical. The only design decision was *where* to put the specification (Grammar.lean, not Scalar.lean) so that proofs don't depend on the parser monad. **Effort: trivial.** Pure specifications on inductives are the easiest things to prove in Lean 4.
-- **2c (Indent consumption):** The `YamlStream.next?` function is a 3-line `if c == '\n' then ... else ...`. Proving column advancement required unfolding `next?`, extracting the character from the injection proof, and resolving the `if` branch with `simp [hc]`. The pattern was discovered once and reused 6 times. The `NextNSpaces` inductive relation (modeling `drop n (token ' ')`) gave iterated proofs via structural induction. **Effort: low.** Stream-level proofs are pure function reasoning — no monadic unwinding needed.
-- **2a (Fold newlines / c-forbidden):** The key insight was that `foldQuotedNewlines` only appends `' '` or `'\n'` to the accumulator, while c-forbidden requires the prefix `---` or `...`. Since `{' ', '\n'}` ∩ `{'-', '.'}` = ∅, fold *cannot introduce* c-forbidden content. The proof is two `rfl` lemmas (`not_cForbidden_space_start`, `not_cForbidden_newline_start`) composed into the linking theorem. **Effort: trivial.** The disjointness of fold-appended characters and marker-starting characters made this almost tautological.
-- **The pattern:** Layer 2 proofs are easy because the *specifications* in `Grammar.lean` are pure functions on simple types (`Char`, `List Char`, `Nat`), and the *parser implementations* were designed to match those specifications structurally. When specification and implementation share the same shape, the proof that they agree is short. This is the same "design for provability" principle from the Layer 3 methodology notes — the hard work is in getting the abstractions right, not in writing proofs.
+- **3.2.4 (Decidable instances):** Every `Prop` in `Grammar.lean` (`isPrintable`, `isLineBreak`, `isWhiteSpace`, `Indented`, etc.) was *defined* with decidability in mind — disjunctions of `BEq` comparisons, range checks, and structural induction on `Nat × List Char`. Adding `Decidable` instances was a matter of `unfold; infer_instance` for flat predicates and a 15-line structural recursion for `Indented`. The one genuine proof — `indented_weaken` (monotonicity) — was a clean 5-line induction. **Effort: trivial.** The upfront design of `Grammar.lean` as decidable propositions (not arbitrary `Prop`s) paid off here.
+- **3.2.2 (Escape resolution):** Defining `resolveNamedEscape` as a pure 18-arm `match` in `Grammar.lean` made every property a `native_decide` one-liner. The 16 named-escape theorems, 9 printability proofs, and 7 non-printability proofs were all mechanical. The only design decision was *where* to put the specification (Grammar.lean, not Scalar.lean) so that proofs don't depend on the parser monad. **Effort: trivial.** Pure specifications on inductives are the easiest things to prove in Lean 4.
+- **3.2.3 (Indent consumption):** The `YamlStream.next?` function is a 3-line `if c == '\n' then ... else ...`. Proving column advancement required unfolding `next?`, extracting the character from the injection proof, and resolving the `if` branch with `simp [hc]`. The pattern was discovered once and reused 6 times. The `NextNSpaces` inductive relation (modeling `drop n (token ' ')`) gave iterated proofs via structural induction. **Effort: low.** Stream-level proofs are pure function reasoning — no monadic unwinding needed.
+- **3.2.1 (Fold newlines / c-forbidden):** The key insight was that `foldQuotedNewlines` only appends `' '` or `'\n'` to the accumulator, while c-forbidden requires the prefix `---` or `...`. Since `{' ', '\n'}` ∩ `{'-', '.'}` = ∅, fold *cannot introduce* c-forbidden content. The proof is two `rfl` lemmas (`not_cForbidden_space_start`, `not_cForbidden_newline_start`) composed into the linking theorem. **Effort: trivial.** The disjointness of fold-appended characters and marker-starting characters made this almost tautological.
+- **The pattern:** 3.2 proofs are easy because the *specifications* in `Grammar.lean` are pure functions on simple types (`Char`, `List Char`, `Nat`), and the *parser implementations* were designed to match those specifications structurally. When specification and implementation share the same shape, the proof that they agree is short. This is the same "design for provability" principle from the 3.3 methodology notes — the hard work is in getting the abstractions right, not in writing proofs.
 
-#### Layer 3: Full Termination & Soundness — 5-Step Plan
+#### 3.3 Termination & Soundness
 
 With lean4-parser fold combinators now total (via `Stream.remaining` fuel), the path to eliminating all 35 `partial def` parsers is clear. ParseFpr structure is stable (353/406 yaml-test-suite, 0 failures). Work proceeds in five steps:
 
 | Step | Description | Status |
 |------|-------------|--------|
-| **3.1** | **Link `remainingLength` to `Stream.remaining`** — Prove `remainingLength s = Parser.Stream.remaining s` (both equal `s.stopPos.byteIdx - s.startPos.byteIdx`). This bridges our existing termination infrastructure (`Proofs/Termination.lean`) to lean4-parser's fuel parameter. | ✅ `remainingLength_eq_stream_remaining` proved by `rfl` (definitionally equal). Corollary `stream_remaining_decreasing` lifts `next_decreasing` to `Parser.Stream.remaining`. |
-| **3.2** | **Convert Group A leaf parsers (3) to `def`** — Inner recursion rewritten: `hasTabInWhitespace` and `checkNoTabIndent` use `dropMany (token ' ')` (total lean4-parser combinator) instead of `let rec scan`; `checkIndentForTabs` uses structural Nat recursion (count down from `minIndent`). | ✅ 3 parsers converted. 35→32 `partial def`. Build: 228/228. Tests: 847 passed / 2 failed (H7TQ) / 201 skipped — zero regressions. |
-| **3.3** | **Convert Group B self-recursive parsers (31) to `def`** — Fuel-based structural recursion: `(fuel : Nat)` + `match fuel`. Mutual blocks (Flow: 6, Block: 10) use `XImpl` + wrappers with `4 * Stream.remaining + 4`. | ✅ All 31 parsers converted. 0 `partial def`. Build: 228/228. Tests: 847/2/201. |
-| **3.4** | **`#guard` compile-time tests** — 76 kernel-evaluated guards covering scalars, collections, documents, anchors, tags, error rejection, content correctness. Build-time regression detection. | ✅ 76 guards. 0 sorry, 0 IO. Build: 228/228. |
-| **3.5** | **Soundness proofs** — Specification-layer proofs: `toYamlValue_correct` (biconditional), `nodeToValue_total`, `nodeToValue_deterministic`, scalar/collection style and content preservation, structural composition. Grammar.lean extended with collection `NodeToValue` constructors and computable `toYamlValue`. | ✅ 28 theorems proved. 0 sorry. 415 lines. |
-| **3e** | Convert `axiom`s in `Soundness.lean` to `theorem`s | ✅ All axioms eliminated project-wide. `Soundness.lean` (3 axioms → theorems), `RoundTrip.lean` (1 axiom → theorem), `BlockScalarContracts.lean` (6 axioms → decidable predicates with proved specification theorems). **Zero axioms** in the codebase. |
+| **3.3.1** | **Link `remainingLength` to `Stream.remaining`** — Prove `remainingLength s = Parser.Stream.remaining s` (both equal `s.stopPos.byteIdx - s.startPos.byteIdx`). This bridges our existing termination infrastructure (`Proofs/Termination.lean`) to lean4-parser's fuel parameter. | ✅ `remainingLength_eq_stream_remaining` proved by `rfl` (definitionally equal). Corollary `stream_remaining_decreasing` lifts `next_decreasing` to `Parser.Stream.remaining`. |
+| **3.3.2** | **Convert Group A leaf parsers (3) to `def`** — Inner recursion rewritten: `hasTabInWhitespace` and `checkNoTabIndent` use `dropMany (token ' ')` (total lean4-parser combinator) instead of `let rec scan`; `checkIndentForTabs` uses structural Nat recursion (count down from `minIndent`). | ✅ 3 parsers converted. 35→32 `partial def`. Build: 228/228. Tests: 847 passed / 2 failed (H7TQ) / 201 skipped — zero regressions. |
+| **3.3.3** | **Convert Group B self-recursive parsers (31) to `def`** — Fuel-based structural recursion: `(fuel : Nat)` + `match fuel`. Mutual blocks (Flow: 6, Block: 10) use `XImpl` + wrappers with `4 * Stream.remaining + 4`. | ✅ All 31 parsers converted. 0 `partial def`. Build: 228/228. Tests: 847/2/201. |
+| **3.3.4** | **`#guard` compile-time tests** — 76 kernel-evaluated guards covering scalars, collections, documents, anchors, tags, error rejection, content correctness. Build-time regression detection. | ✅ 76 guards. 0 sorry, 0 IO. Build: 228/228. |
+| **3.3.5** | **Soundness proofs** — Specification-layer proofs: `toYamlValue_correct` (biconditional), `nodeToValue_total`, `nodeToValue_deterministic`, scalar/collection style and content preservation, structural composition. Grammar.lean extended with collection `NodeToValue` constructors and computable `toYamlValue`. | ✅ 28 theorems proved. 0 sorry. 415 lines. |
+| **3.3.6** | Convert `axiom`s in `Soundness.lean` to `theorem`s | ✅ All axioms eliminated project-wide. `Soundness.lean` (3 axioms → theorems), `RoundTrip.lean` (1 axiom → theorem), `BlockScalarContracts.lean` (6 axioms → decidable predicates with proved specification theorems). **Zero axioms** in the codebase. |
 
-Effort: ~5+ sessions. **All 5 steps complete** (3.1–3.5 + 3e).
+Effort: ~5+ sessions. **All 6 steps complete** (3.3.1–3.3.6).
 
-#### Phase 4: yaml-test-suite as Compile-Time Proofs — ✅ COMPLETE
+### Phase 4: yaml-test-suite as Compile-Time Proofs — ✅ COMPLETE
 
 350 `#guard` compile-time tests across 6 stage-split files (`Proofs/SuiteGuards/*.lean`). Auto-generated from yaml-test-suite by `gen-suite-guards.py`. Each test inlines the YAML content as a string literal and verifies `parseYaml` produces the expected result. 2 exclusions: H7TQ (unfixable UP), CQ3W (kernel/compiled discrepancy). Any parser regression breaks the build.
 
@@ -327,7 +327,7 @@ lake build                            # verifies all guards still pass
 
 The script automatically excludes tests listed in its `KERNEL_DISCREPANCIES` set (currently `{CQ3W}`) and the unfixable H7TQ. If new tests fail as `#guard`, either fix the parser or add the test ID to `KERNEL_DISCREPANCIES` with a comment explaining why.
 
-#### Phase 5: Round-Trip Proofs — IN PROGRESS
+### Phase 5: Round-Trip Proofs — IN PROGRESS
 
 Prove `parse ∘ emit = id` for a canonical YAML subset.
 
@@ -353,24 +353,24 @@ Prove `parse ∘ emit = id` for a canonical YAML subset.
 **Methodology note: why Phase 5 proofs were easy.** The emitter, 45 theorems, and 51 `#guard` round-trip checks were completed in a single session. Three design decisions made this nearly mechanical:
 
 - **Canonical form eliminates style ambiguity.** The emitter always produces double-quoted scalars and flow-style collections — a single canonical form. This means the round-trip property is `contentEq v (parse (emit v))` rather than `v = parse (emit v)`, because the parser may annotate the result with `doubleQuoted` style while the input had `plain`. By defining `contentEq` to ignore style and tag annotations, every round-trip `#guard` reduces to "does the parser recover the same content string / same collection elements?" — a purely computational check. The alternative (style-preserving round-trip) would require proving the parser reconstructs the *exact* style annotation, which depends on parser internals. **Effort: zero proof difficulty** — the definition of `contentEq` sidesteps the hardest part.
-- **`escapeChar` is the pointwise inverse of `resolveNamedEscape`.** The 13 escape-resolve correspondence theorems (§2) each prove `resolveNamedEscape c = some r ∧ escapeChar r = "\\c"`. These are all `⟨by native_decide, by native_decide⟩` — two-line proofs, because both functions are pure `match` expressions in `Grammar.lean` and `Emitter.lean` respectively. The emitter was *designed* by reading `resolveNamedEscape` and writing the exact inverse. When two functions are written as inverses of each other by construction, proving they're inverses is trivial. **Effort: trivial** — the hard work was done when `resolveNamedEscape` was specified in Layer 2b.
-- **Total parsers make `#guard` the dominant proof technique.** The 51 round-trip `#guard` checks are the strongest results in this module — each one is a *kernel-evaluated proof* that `parse (emit v) = ok v'` with `contentEq v v' = true` for a specific `v`. These work because all parsers are total `def` (Layer 3 Step 3.3), so `#guard` can unfold the entire parser at compile time. No tactic proofs needed. Each guard is one line: `#guard roundTrips (.scalar ⟨"hello", .plain, none⟩)`. The universal theorem `∀ v, roundTrips v = true` would require unfolding the parser monad (substantially harder), but the 51 concrete instances cover the interesting cases — ASCII, empty, Unicode, all 11 named escapes, nested structures 3 levels deep, YAML metacharacters, document markers, null bytes. **Effort: trivial** — writing the test cases was the only work; the kernel does the proving.
-- **One genuine limitation — now resolved.** The universal `contentEq_refl` theorem (reflexivity for all `YamlValue`) initially could not be proved because Lean 4.28 fails to generate equational theorems for `contentEq` — the `where`-clause helpers (`contentEqList`, `contentEqPairList`) process `Array.toList` results, and the equation generator can't project through the recursive structure. The workaround was to use `show` to manually expose the computational form in each match branch (bypassing equation generation), combined with `contentEqList_refl`/`contentEqPairList_refl` helper lemmas and `simp_wf` + `omega` for the well-founded termination argument. The `Array.mk.sizeOf_spec` and `Prod.mk.sizeOf_spec` lemmas bridge the `sizeOf` gap between `Array.toList` and `Array` / between `Prod` components. **Step 5a is now complete.**
-- **The compounding pattern continues.** Phase 5 builds directly on three prior investments: (1) `resolveNamedEscape` from Layer 2b gave the emitter its escape table for free, (2) total parsers from Layer 3 Step 3.3 enabled `#guard` kernel evaluation, (3) `parseYamlSingle` from `Document.lean` provided the one-function entry point that `roundTrips` wraps. Each of these was built for other purposes; Phase 5 composed them into a new capability (round-trip verification) with minimal additional proof effort. This is the fourth instance of the compounding pattern: Layers 1→2→3→Phase 4→Phase 5, each building on the prior layer's vocabulary.
-- **Step 5c: equivalence relation + character-level invertibility.** The same `show` technique from `contentEq_refl` extends to symmetry and transitivity. For symmetry: match on `v₁, v₂` with `show` to expose the computational form, use `beq_iff_eq`+`.symm` for scalars, `contentEqList_symm`/`contentEqPairList_symm` helpers for collections, and `Bool.noConfusion` with `show false = true from h` for cross-type cases (definitional reduction of the catch-all). For transitivity: same pattern with three-argument match and `.trans` on `beq_iff_eq`. The `escapeTag` witness function makes the escape invertibility universal: `∀ c tag, escapeTag c = some tag → escapeChar c = "\\" ++ tag.toString ∧ resolveNamedEscape tag = some c`. Proof technique: `split at h` on `escapeTag` + injection + `subst` + `native_decide`. **Effort: low** — once the `show` technique was established in 5a, extending to symm/trans was mechanical.
+- **`escapeChar` is the pointwise inverse of `resolveNamedEscape`.** The 13 escape-resolve correspondence theorems (§2) each prove `resolveNamedEscape c = some r ∧ escapeChar r = "\\c"`. These are all `⟨by native_decide, by native_decide⟩` — two-line proofs, because both functions are pure `match` expressions in `Grammar.lean` and `Emitter.lean` respectively. The emitter was *designed* by reading `resolveNamedEscape` and writing the exact inverse. When two functions are written as inverses of each other by construction, proving they're inverses is trivial. **Effort: trivial** — the hard work was done when `resolveNamedEscape` was specified in 3.2.2.
+- **Total parsers make `#guard` the dominant proof technique.** The 51 round-trip `#guard` checks are the strongest results in this module — each one is a *kernel-evaluated proof* that `parse (emit v) = ok v'` with `contentEq v v' = true` for a specific `v`. These work because all parsers are total `def` (Step 3.3.3), so `#guard` can unfold the entire parser at compile time. No tactic proofs needed. Each guard is one line: `#guard roundTrips (.scalar ⟨"hello", .plain, none⟩)`. The universal theorem `∀ v, roundTrips v = true` would require unfolding the parser monad (substantially harder), but the 51 concrete instances cover the interesting cases — ASCII, empty, Unicode, all 11 named escapes, nested structures 3 levels deep, YAML metacharacters, document markers, null bytes. **Effort: trivial** — writing the test cases was the only work; the kernel does the proving.
+- **One genuine limitation — now resolved.** The universal `contentEq_refl` theorem (reflexivity for all `YamlValue`) initially could not be proved because Lean 4.28 fails to generate equational theorems for `contentEq` — the `where`-clause helpers (`contentEqList`, `contentEqPairList`) process `Array.toList` results, and the equation generator can't project through the recursive structure. The workaround was to use `show` to manually expose the computational form in each match branch (bypassing equation generation), combined with `contentEqList_refl`/`contentEqPairList_refl` helper lemmas and `simp_wf` + `omega` for the well-founded termination argument. The `Array.mk.sizeOf_spec` and `Prod.mk.sizeOf_spec` lemmas bridge the `sizeOf` gap between `Array.toList` and `Array` / between `Prod` components. **Step 5.1 is now complete.**
+- **The compounding pattern continues.** Phase 5 builds directly on three prior investments: (1) `resolveNamedEscape` from 3.2.2 gave the emitter its escape table for free, (2) total parsers from Step 3.3.3 enabled `#guard` kernel evaluation, (3) `parseYamlSingle` from `Document.lean` provided the one-function entry point that `roundTrips` wraps. Each of these was built for other purposes; Phase 5 composed them into a new capability (round-trip verification) with minimal additional proof effort. This is the fourth instance of the compounding pattern: 3.1→3.2→3.3→Phase 4→Phase 5, each building on the prior layer's vocabulary.
+- **Step 5.3: equivalence relation + character-level invertibility.** The same `show` technique from `contentEq_refl` extends to symmetry and transitivity. For symmetry: match on `v₁, v₂` with `show` to expose the computational form, use `beq_iff_eq`+`.symm` for scalars, `contentEqList_symm`/`contentEqPairList_symm` helpers for collections, and `Bool.noConfusion` with `show false = true from h` for cross-type cases (definitional reduction of the catch-all). For transitivity: same pattern with three-argument match and `.trans` on `beq_iff_eq`. The `escapeTag` witness function makes the escape invertibility universal: `∀ c tag, escapeTag c = some tag → escapeChar c = "\\" ++ tag.toString ∧ resolveNamedEscape tag = some c`. Proof technique: `split at h` on `escapeTag` + injection + `subst` + `native_decide`. **Effort: low** — once the `show` technique was established in 5.1, extending to symm/trans was mechanical.
 
 **Remaining Phase 5 work (ordered by priority):**
 
 | Step | Description | Difficulty | Status |
 |------|-------------|------------|--------|
-| **5a** | **Universal `contentEq_refl`** — Proved `∀ v, contentEq v v = true` using `show` to bypass equation-generation limitation, `contentEqList_refl`/`contentEqPairList_refl` helper lemmas, and `simp_wf`+`omega` termination via `Array.mk.sizeOf_spec`/`Prod.mk.sizeOf_spec`. | Low–medium | ✅ **Complete** |
-| **5b** | **Block stage compliance** — Block stage is already at 99/99 = 100% correct. The earlier "99/109" figure was from a stale snapshot before test reclassification. All 52 skipped tests (across all stages) are genuinely YAML 1.3 specific (`1.3-err`/`1.3-mod` tags). Current overall: 352/406 correct (86.7%). Error: 73/74 (1 UP = H7TQ). Flow: 46/46. Block: 99/99. Scalar: 54/82 (28 YAML 1.3 skips). Advanced: 64/81 (17 skips). Document: 16/24 (7 skips). | N/A | ✅ **Already complete** |
-| **5c** | **`contentEq` equivalence relation + character-level round-trip** — Proved `contentEq_symm` (symmetry), `contentEq_trans` (transitivity), completing the proof that `contentEq` is a full equivalence relation (with §5 reflexivity). Proved `escapeTag_roundtrip`: universal theorem connecting `escapeChar` to `resolveNamedEscape` via the `escapeTag` witness function. Proved `escapeChar_identity` for non-escaped characters. Extended `#guard` coverage to 63 compile-time round-trip checks (deep nesting, wide collections, Unicode, whitespace). The full universal `∀ v, contentEq v (parseYamlSingle (emit v)).get! = true` requires unfolding ~8K lines of parser; the compositional building blocks (equivalence relation + character-level invertibility) are now in place. | Medium–High | ✅ **Complete** |
-| **5d** | **Completeness** — Prove per-parser specification lemmas bottom-up: each `ValidNode` constructor gets a correctness theorem for the corresponding leaf parser. Approach: `@[simp]` annotations on key combinators + fuel sufficiency lemma + per-parser specs composing into the full `ValidYaml input docs → parseYaml input = .ok docs`. See **Std.Iterators analysis** below. | Very high | **In progress** |
+| **5.1** | **Universal `contentEq_refl`** — Proved `∀ v, contentEq v v = true` using `show` to bypass equation-generation limitation, `contentEqList_refl`/`contentEqPairList_refl` helper lemmas, and `simp_wf`+`omega` termination via `Array.mk.sizeOf_spec`/`Prod.mk.sizeOf_spec`. | Low–medium | ✅ **Complete** |
+| **5.2** | **Block stage compliance** — Block stage is already at 99/99 = 100% correct. The earlier "99/109" figure was from a stale snapshot before test reclassification. All 52 skipped tests (across all stages) are genuinely YAML 1.3 specific (`1.3-err`/`1.3-mod` tags). Current overall: 352/406 correct (86.7%). Error: 73/74 (1 UP = H7TQ). Flow: 46/46. Block: 99/99. Scalar: 54/82 (28 YAML 1.3 skips). Advanced: 64/81 (17 skips). Document: 16/24 (7 skips). | N/A | ✅ **Already complete** |
+| **5.3** | **`contentEq` equivalence relation + character-level round-trip** — Proved `contentEq_symm` (symmetry), `contentEq_trans` (transitivity), completing the proof that `contentEq` is a full equivalence relation (with §5 reflexivity). Proved `escapeTag_roundtrip`: universal theorem connecting `escapeChar` to `resolveNamedEscape` via the `escapeTag` witness function. Proved `escapeChar_identity` for non-escaped characters. Extended `#guard` coverage to 63 compile-time round-trip checks (deep nesting, wide collections, Unicode, whitespace). The full universal `∀ v, contentEq v (parseYamlSingle (emit v)).get! = true` requires unfolding ~8K lines of parser; the compositional building blocks (equivalence relation + character-level invertibility) are now in place. | Medium–High | ✅ **Complete** |
+| **5.4** | **Completeness** — Per-parser specification lemmas bottom-up. **Phase 1 complete**: `Proofs/Completeness.lean` with `LawfulParserStream YamlStream Char` typeclass + instance, `parseYaml_ok_iff` bridge theorem, 7 stream initialization lemmas (`ofString_*`), `parser_run_eq` simp lemma, 12 concrete completeness theorems via `native_decide` (plain/quoted/literal/folded scalars, flow/block sequences and mappings, multi-document streams, nested structures). `DecidableEq Scalar` added to Types.lean. 22 new proof artifacts (1 class instance + 21 theorems). **Phase 2** (combinator specs + universally quantified per-parser lemmas): requires `LawfulBEq YamlValue`, `@[simp]` annotations on lean4-parser combinators, fuel sufficiency lemma. See **Std.Iterators analysis** below. | Very high | **In progress** |
 
-#### Step 5d: Std.Iterators strategic analysis (2026-02-22)
+#### Step 5.4: Std.Iterators strategic analysis (2026-02-22)
 
-**Context.** PR [#97](https://github.com/fgdorais/lean4-parser/pull/97) on lean4-parser (`std-iterators` branch) replaces fuel-based fold combinators with well-founded recursion via `termination_by Stream.remaining s` and adds a `Std.Data.Iterators` bridge (`LawfulParserStream` typeclass + `StreamIterator` wrapper enabling provably-terminating `for` loops). The strategic question: should `lean4-yaml-verified` switch from the `total-fold` branch to `std-iterators`, and would this help with 5d completeness proofs?
+**Context.** PR [#97](https://github.com/fgdorais/lean4-parser/pull/97) on lean4-parser (`std-iterators` branch) replaces fuel-based fold combinators with well-founded recursion via `termination_by Stream.remaining s` and adds a `Std.Data.Iterators` bridge (`LawfulParserStream` typeclass + `StreamIterator` wrapper enabling provably-terminating `for` loops). The strategic question: should `lean4-yaml-verified` switch from the `total-fold` branch to `std-iterators`, and would this help with 5.4 completeness proofs?
 
 **Key finding: the YAML parser's fuel is independent of lean4-parser's folds.** The 16 mutual functions in `Block.lean` (10) and `Flow.lean` (6) implement their own `fuel : Nat` parameter with `match fuel with | 0 => ... | fuel + 1 => ...`. They do NOT use lean4-parser's `foldl`/`foldr`/`takeUntil`. The `for _ in [:fuel]` loops in `Document.lean` and `Scalar.lean` use Lean's built-in `List.range` iteration. Simply switching the dependency from `total-fold` to `std-iterators` changes nothing in the YAML parser — the API surface is identical.
 
@@ -409,7 +409,7 @@ Prove `parse ∘ emit = id` for a canonical YAML subset.
 4. **3 `sorry` proofs in `LawfulParserStream`** instances for `String.Slice`/`Substring.Raw`/`ByteSlice` (stdlib gap)
 5. **Regression risk** — touching every recursive function in a parser passing 352/406 tests
 
-**Decision: proceed with fuel-based bottom-up approach (B).** Structural induction on `Nat` is one of Lean's best-supported proof patterns. For 5d, we keep the current fuel pattern and prove per-parser specification lemmas bottom-up:
+**Decision: proceed with fuel-based bottom-up approach (B).** Structural induction on `Nat` is one of Lean's best-supported proof patterns. For 5.4, we keep the current fuel pattern and prove per-parser specification lemmas bottom-up:
 1. Add `@[simp]` annotations to key combinators (`skipBlankLines`, `skipHWhitespace`, `currentCol`, etc.)
 2. Prove `LawfulParserStream YamlStream Char` as a standalone foundation lemma
 3. Prove per-parser correctness for each `ValidNode` constructor (12 obligations)
@@ -436,22 +436,22 @@ Prove `parse ∘ emit = id` for a canonical YAML subset.
 12. ~~**Content correctness (P5)**~~ — ✅ EOF safety in `dispatchByChar` (option? lookAhead), quoted key whitespace (skipHWhitespace before `:`), trailing comment handling (collectPlain leadsToComment lookAhead), tab-aware blank lines (skipHWhitespace in skipBlankLines/countEmptyLines), document boundary in sequences (atDocumentBoundary check), bare docs after `...` (hadDocEnd tracking + documentEndMarker validation). Suite: 275→288 correct (+13 net), 14 tests fixed, 1 regression (BS4K).
 13. ~~**Advanced features (P6)**~~ — ✅ Complex keys, Unicode anchors, directive edge cases. Col-0 plain scalar continuation (`checkContinuation` contentIndent), document boundary in `blockValue`, blank lines in block scalars, tag on empty flow value, alias/anchor/tag as flow mapping keys, tag/anchor on block mapping keys via `lookAhead detectMappingKey`, Unicode anchor characters (`isAnchorChar`), comment at value position in sequences, comment after tag/anchor. Proper quoted-string mapping detection (skip through quotes before `: ` check), `detectMappingKey`/`scanForMappingSeparator` lookAhead for adjacent colons, seq-spaces(n, block-out) exception in `blockValue`, alias as block mapping key, flow collection as mapping key. **Flow-aware `detectMappingKey`**: skips balanced `{...}`/`[...]` during scanning so `: ` inside flow collections doesn't cause false-positive mapping detection (fixes `&map {a: 1}` and `!!map {a: 1}` regressions). **Single-line implicit key constraint** (§7.4): `[`/`{` branches check `currentLine` before/after parsing flow collection to reject multiline flow keys (C2SP). A/G contract documented on `detectMappingKey`. Suite: 288→310 correct (+22 net), failures: 24→0.
 14. ~~**Strict validation (P7)**~~ — ✅ Error-stage unexpected passes (10b–10j) systematically eliminated. 15 validation rules across `Block.lean`, `Flow.lean`, `Scalar.lean`, `Document.lean`, `Tag.lean`, `Combinators.lean`. Tab-as-indentation rejection (§6.1): `checkIndentForTabs` for block indent positions + post-indicator tab checks after `-`/`?`/`:` + flow continuation tab detection via position save/restore. Flow indent floor (§7.4): `minIndent` parameter threaded through all 7 mutual flow functions. Quoted scalar indent (§8.1): `contentIndent` parameter in `foldQuotedNewlines`/`doubleQuotedScalar`/`singleQuotedScalar`. Block scalar auto-detect (§8.1.3): whitespace-only lines exceeding detected content indent rejected. Document structure: directives require `...` before them (§9.2), bare-document-after-document rejection, tag shorthand handle scope validation (§6.8.2). Node property indent: `propertyMinIndent` parameter in `blockValue` rejects under-indented anchors/tags in mapping values (§8.2.2). Suite: 310→353 correct (+43 net), error stage: 44→74/74 (100%), flow: 43→46/46 (100%), block: 90→99/109 (91%). 1 unfixable UP remaining (H7TQ: extra words after `%YAML` version — conflicts with ZYU8).
-15. ~~**Phase 3 Layer 1 foundation proofs + total-fold analysis**~~ — ✅ Eliminated all 3 sorry's project-wide. `Proofs/Termination.lean`: `next_decreasing` fully proved via `String.Pos.Raw.byteIdx_add_char` + `Char.utf8Size_pos` + `omega`. `Proofs/Types.lean`: AnchorMap algebraic laws (`find?_insert`, `find?_insert_ne`) proved via `Array.findSome?_push` + list reasoning. `Proofs/StringProperties.lean`: 13 theorems (trim idempotence, FoldResult classification). `Proofs/DocumentContracts.lean`: 17 theorems (document boundaries, progress monotonicity, tag handle scope, directive uniqueness). `Proofs/CharClass.lean`: 7 character classification proofs. `Proofs/BlockScalarContracts.lean`: 27 theorems (A/G contracts, decidable predicates). **~135 proved theorems, 0 sorry's, 0 axioms.** Build: 227/227 library jobs, test suite: 847 passed / 2 failed (known H7TQ) / 201 skipped. **Total-fold analysis:** Updated lean4-parser dependency to fork ([NicolasRouquette/lean4-parser](https://github.com/NicolasRouquette/lean4-parser), branch `total-fold`) where all 6 fold combinators (`efoldlPAux`, `foldr`, `takeUntil`, `dropUntil`, `count`, `countUntil`) are total via `fuel : Nat := Stream.remaining s` structural recursion. Inventoried all 35 `partial def` parsers: Group A (~6 leaf parsers, no self-recursion) can become `def` immediately; Group B (~29 self-recursive parsers) need `termination_by Stream.remaining s` + decreasing proofs. The `next_decreasing` lemma bridges `remainingLength` to `Stream.remaining`, providing the core decreasing argument. This unblocks Layer 3 Steps 3.2–3.5 and `#guard` compile-time tests (Phase 4).
-16. ~~**Layer 3 Steps 3.1–3.2 — bridge lemma + Group A conversion**~~ — ✅ **Methodology note: why these proofs were fast.** Steps 3.1 and 3.2 completed in minutes with zero difficulty, which is unusual for verification work. The reason is *deliberate architectural alignment* across three layers:
-    - **Definitional equality by design (Step 3.1):** The bridge lemma `remainingLength_eq_stream_remaining` proved by `rfl` — a single word, the simplest possible proof. This wasn't luck: our `Parser.Stream` instance defines `remaining s := s.stopPos.byteIdx - s.startPos.byteIdx`, which is *literally the same expression* as `remainingLength`. The corollary `stream_remaining_decreasing` then composed with the existing `next_decreasing` lemma in one line. When two abstractions are designed to say the same thing, the proof that they agree is the identity.
-    - **Totality inheritance (Step 3.2):** Two of three Group A parsers (`hasTabInWhitespace`, `checkNoTabIndent`) were converted by replacing manual `let rec scan` loops with `dropMany (token ' ')` — a combinator that is *already total* in the `total-fold` fork. No termination proof was written; totality was inherited from the library. The third (`checkIndentForTabs`) needed only a mechanical rewrite from counting-up to counting-down on `Nat`, giving Lean's kernel a structurally decreasing argument for free.
-    - **The compounding effect:** Layer 1 invested ~135 theorems in building a vocabulary of proved facts (`next_decreasing`, character classification, stream properties). Layer 2 invested in architectural choices (`YamlStream` tracking `remaining`, the `total-fold` fork). Layer 3 now *composes* these — each new proof is a short composition of existing pieces rather than a from-scratch argument. This is the proof-engineering analogue of software's "design for testability": **design for provability** means the proofs write themselves when the abstractions are right.
+15. ~~**Phase 3 (3.1) foundation proofs + total-fold analysis**~~ — ✅ Eliminated all 3 sorry's project-wide. `Proofs/Termination.lean`: `next_decreasing` fully proved via `String.Pos.Raw.byteIdx_add_char` + `Char.utf8Size_pos` + `omega`. `Proofs/Types.lean`: AnchorMap algebraic laws (`find?_insert`, `find?_insert_ne`) proved via `Array.findSome?_push` + list reasoning. `Proofs/StringProperties.lean`: 13 theorems (trim idempotence, FoldResult classification). `Proofs/DocumentContracts.lean`: 17 theorems (document boundaries, progress monotonicity, tag handle scope, directive uniqueness). `Proofs/CharClass.lean`: 7 character classification proofs. `Proofs/BlockScalarContracts.lean`: 27 theorems (A/G contracts, decidable predicates). **~135 proved theorems, 0 sorry's, 0 axioms.** Build: 227/227 library jobs, test suite: 847 passed / 2 failed (known H7TQ) / 201 skipped. **Total-fold analysis:** Updated lean4-parser dependency to fork ([NicolasRouquette/lean4-parser](https://github.com/NicolasRouquette/lean4-parser), branch `total-fold`) where all 6 fold combinators (`efoldlPAux`, `foldr`, `takeUntil`, `dropUntil`, `count`, `countUntil`) are total via `fuel : Nat := Stream.remaining s` structural recursion. Inventoried all 35 `partial def` parsers: Group A (~6 leaf parsers, no self-recursion) can become `def` immediately; Group B (~29 self-recursive parsers) need `termination_by Stream.remaining s` + decreasing proofs. The `next_decreasing` lemma bridges `remainingLength` to `Stream.remaining`, providing the core decreasing argument. This unblocks Steps 3.3.2–3.3.5 and `#guard` compile-time tests (Phase 4).
+16. ~~**Steps 3.3.1–3.3.2 — bridge lemma + Group A conversion**~~ — ✅ **Methodology note: why these proofs were fast.** Steps 3.3.1 and 3.3.2 completed in minutes with zero difficulty, which is unusual for verification work. The reason is *deliberate architectural alignment* across three layers:
+    - **Definitional equality by design (Step 3.3.1):** The bridge lemma `remainingLength_eq_stream_remaining` proved by `rfl` — a single word, the simplest possible proof. This wasn't luck: our `Parser.Stream` instance defines `remaining s := s.stopPos.byteIdx - s.startPos.byteIdx`, which is *literally the same expression* as `remainingLength`. The corollary `stream_remaining_decreasing` then composed with the existing `next_decreasing` lemma in one line. When two abstractions are designed to say the same thing, the proof that they agree is the identity.
+    - **Totality inheritance (Step 3.3.2):** Two of three Group A parsers (`hasTabInWhitespace`, `checkNoTabIndent`) were converted by replacing manual `let rec scan` loops with `dropMany (token ' ')` — a combinator that is *already total* in the `total-fold` fork. No termination proof was written; totality was inherited from the library. The third (`checkIndentForTabs`) needed only a mechanical rewrite from counting-up to counting-down on `Nat`, giving Lean's kernel a structurally decreasing argument for free.
+    - **The compounding effect:** 3.1 (Foundation) invested ~135 theorems in building a vocabulary of proved facts (`next_decreasing`, character classification, stream properties). 3.2 (Key Invariants) invested in architectural choices (`YamlStream` tracking `remaining`, the `total-fold` fork). 3.3 now *composes* these — each new proof is a short composition of existing pieces rather than a from-scratch argument. This is the proof-engineering analogue of software's "design for testability": **design for provability** means the proofs write themselves when the abstractions are right.
 
-    **Takeaway:** The speed of Steps 3.1–3.2 is not despite the rigor but *because* of it. The upfront investment in Layers 1–2 (getting definitions to align definitionally, making upstream combinators total, building a lemma library) creates a compounding return: each subsequent proof step reuses prior work and becomes shorter. This pattern — hard architectural work followed by easy proof work — is characteristic of well-structured verified systems and contrasts with the common experience of proofs being laborious, which typically reflects misaligned abstractions rather than inherent proof difficulty.
-17. ~~**Layer 3 Step 3.3 — Convert all 31 Group B self-recursive parsers to total**~~ — ✅ **All `partial def` eliminated.** Systematic fuel-based structural recursion applied across 5 parser files. Zero test regressions (847/2/201). Zero `sorry`. Technique: each self-recursive or mutually-recursive parser gets `(fuel : Nat)` as first parameter with `match fuel with | 0 => default | fuel + 1 => body`. For `while` loops: `for _ in [:fuel] do ... break`. For mutual blocks (Flow: 6 functions, Block: 10 functions): renamed to `XImpl`, added fuel parameter, created public wrapper functions that capture `fuel := 4 * Stream.remaining (← getStream) + 4` (multiplied to handle dispatch-chain overhead: ≤3 mutual hops per nesting level, each consuming ≥1 character). For `where`-clause helpers (`skipFlowBrackets`, `detectLoop`, `plainMappingKey`): independent fuel parameter with structural recursion. **Result: 0 `partial def` across all parser files.** Combinators (2), Scalar (9), Flow (7), Block (10), Document (3) — all 31 parsers converted. Build: 228/228 jobs. This unblocks Step 3.4 (`#guard` compile-time tests) and Step 3.5 (soundness proofs).
+    **Takeaway:** The speed of Steps 3.3.1–3.3.2 is not despite the rigor but *because* of it. The upfront investment in 3.1–3.2 (getting definitions to align definitionally, making upstream combinators total, building a lemma library) creates a compounding return: each subsequent proof step reuses prior work and becomes shorter. This pattern — hard architectural work followed by easy proof work — is characteristic of well-structured verified systems and contrasts with the common experience of proofs being laborious, which typically reflects misaligned abstractions rather than inherent proof difficulty.
+17. ~~**Step 3.3.3 — Convert all 31 Group B self-recursive parsers to total**~~ — ✅ **All `partial def` eliminated.** Systematic fuel-based structural recursion applied across 5 parser files. Zero test regressions (847/2/201). Zero `sorry`. Technique: each self-recursive or mutually-recursive parser gets `(fuel : Nat)` as first parameter with `match fuel with | 0 => default | fuel + 1 => body`. For `while` loops: `for _ in [:fuel] do ... break`. For mutual blocks (Flow: 6 functions, Block: 10 functions): renamed to `XImpl`, added fuel parameter, created public wrapper functions that capture `fuel := 4 * Stream.remaining (← getStream) + 4` (multiplied to handle dispatch-chain overhead: ≤3 mutual hops per nesting level, each consuming ≥1 character). For `where`-clause helpers (`skipFlowBrackets`, `detectLoop`, `plainMappingKey`): independent fuel parameter with structural recursion. **Result: 0 `partial def` across all parser files.** Combinators (2), Scalar (9), Flow (7), Block (10), Document (3) — all 31 parsers converted. Build: 228/228 jobs. This unblocks Step 3.3.4 (`#guard` compile-time tests) and Step 3.3.5 (soundness proofs).
 
-    **Methodology note: extending entry 16's observations.** The same three patterns from Steps 3.1–3.2 apply at larger scale, but with a revealing twist:
+    **Methodology note: extending entry 16's observations.** The same three patterns from Steps 3.3.1–3.3.2 apply at larger scale, but with a revealing twist:
     - **Totality inheritance (dominant pattern):** Not a single termination proof was written. Every parser inherits totality from Lean's built-in structural recursion on `Nat` (`match fuel with | 0 => ... | fuel + 1 => ...`). The `for _ in [:fuel] do` loops inherit from `Fin.forIn`. Zero proof burden across all 31 conversions — the most laborious aspect was purely mechanical (renaming, inserting fuel parameters, fixing call sites).
     - **Compounding effect (template reuse):** The `total-fold` fork established fuel-based recursion as the project idiom. Having that template meant 31 parsers were converted mechanically. The mutual-block wrapper pattern (`XImpl` + public API with `4 * Stream.remaining + 4`) was designed once and applied uniformly to both Flow (6 functions) and Block (10 functions).
-    - **Deliberate engineering trade-off:** The original plan for Step 3.3 was `termination_by Stream.remaining s` + decreasing proofs using `next_decreasing` (the bridge lemma from Step 3.1). We never used any of that. Fuel-based totality **side-steps** the hard problem entirely — instead of proving "the stream shrinks across monadic parser calls" (which requires threading proofs through `do`-notation state), we converted it to "count down a natural number" which the kernel handles for free. This is a conscious choice: fuel-based totality proves the parser *always terminates* (no infinite loops), but doesn't prove it *makes progress on valid input* (it could exhaust fuel and return a default). The stronger progress property would require `termination_by` with the decreasing proofs we prepared. But for our immediate goals — eliminating `partial def`, enabling `#guard` kernel evaluation, removing the axiom of partial functions from the trusted code base — fuel-based totality is sufficient and was achieved in a fraction of the time.
-    - **Layer 1 investment not wasted:** The bridge lemmas (`next_decreasing`, `stream_remaining_decreasing`) remain available for Step 3.5 soundness proofs if we later need to prove the stronger progress property. The upfront Layer 1 work is banked, not discarded.
+    - **Deliberate engineering trade-off:** The original plan for Step 3.3.3 was `termination_by Stream.remaining s` + decreasing proofs using `next_decreasing` (the bridge lemma from Step 3.3.1). We never used any of that. Fuel-based totality **side-steps** the hard problem entirely — instead of proving "the stream shrinks across monadic parser calls" (which requires threading proofs through `do`-notation state), we converted it to "count down a natural number" which the kernel handles for free. This is a conscious choice: fuel-based totality proves the parser *always terminates* (no infinite loops), but doesn't prove it *makes progress on valid input* (it could exhaust fuel and return a default). The stronger progress property would require `termination_by` with the decreasing proofs we prepared. But for our immediate goals — eliminating `partial def`, enabling `#guard` kernel evaluation, removing the axiom of partial functions from the trusted code base — fuel-based totality is sufficient and was achieved in a fraction of the time.
+    - **3.1 investment not wasted:** The bridge lemmas (`next_decreasing`, `stream_remaining_decreasing`) remain available for Step 3.3.5 soundness proofs if we later need to prove the stronger progress property. The upfront 3.1 work is banked, not discarded.
 
-18. **Layer 3 Step 3.5 — Soundness proofs (NodeToValue totality, determinism, and structural composition)** — ✅ **28 theorems proved, 0 sorry.** Rewrote `Proofs/Soundness.lean` from skeleton (3 placeholder `True` theorems) to 415 lines of machine-checked proofs organized in 5 sections. Also completed `Grammar.lean` — added 4 collection constructors to `NodeToValue` inductive relation (blockSeq, blockMap, flowSeq, flowMap with recursive correspondence) and the computable specification function `toYamlValue` with explicit `where`-clause list/pair helpers to satisfy structural recursion on nested inductives.
+18. **Step 3.3.5 — Soundness proofs (NodeToValue totality, determinism, and structural composition)** — ✅ **28 theorems proved, 0 sorry.** Rewrote `Proofs/Soundness.lean` from skeleton (3 placeholder `True` theorems) to 415 lines of machine-checked proofs organized in 5 sections. Also completed `Grammar.lean` — added 4 collection constructors to `NodeToValue` inductive relation (blockSeq, blockMap, flowSeq, flowMap with recursive correspondence) and the computable specification function `toYamlValue` with explicit `where`-clause list/pair helpers to satisfy structural recursion on nested inductives.
 
     **Theorem inventory (Soundness.lean):**
     - **§1 Specification function correctness (3):** `toYamlValueList_eq_map`, `toYamlValuePairs_eq_map`, `toYamlValue_correct` (the key biconditional `toYamlValue n = v ↔ NodeToValue n v`)
@@ -466,12 +466,12 @@ Prove `parse ∘ emit = id` for a canonical YAML subset.
     **Build:** 228/228. **Tests:** 847/2/201 — zero regressions. **Project total: ~170 theorems/lemmas, 0 sorry, 0 axiom, 0 `partial def`.**
 
     **Methodology note: the specification-implementation gap.**
-    - **Computable specification functions are the bridge.** The central insight of Step 3.5 is that a *computable* function (`toYamlValue`) acting as a definitional witness for an *inductive relation* (`NodeToValue`) gives you both directions of correspondence essentially for free. The forward proof (`toYamlValue_nodeToValue`) is structural recursion that produces the relation's constructors; the reverse (`nodeToValue_implies_toYamlValue`) is induction on the relation itself. The biconditional `toYamlValue_correct` then composes them in two lines. This pattern — define an inductive relation for generality, then provide a computable witness for automation — is standard in verified systems but worth noting here because it made 22 of 28 theorems nearly trivial consequences of the specification design.
+    - **Computable specification functions are the bridge.** The central insight of Step 3.3.5 is that a *computable* function (`toYamlValue`) acting as a definitional witness for an *inductive relation* (`NodeToValue`) gives you both directions of correspondence essentially for free. The forward proof (`toYamlValue_nodeToValue`) is structural recursion that produces the relation's constructors; the reverse (`nodeToValue_implies_toYamlValue`) is induction on the relation itself. The biconditional `toYamlValue_correct` then composes them in two lines. This pattern — define an inductive relation for generality, then provide a computable witness for automation — is standard in verified systems but worth noting here because it made 22 of 28 theorems nearly trivial consequences of the specification design.
     - **Nested inductives: the one genuine proof challenge.** The `toYamlValue_nodeToValue` proof required well-founded recursion with explicit `decreasing_by` because `ValidNode` embeds `List ValidNode` and `List (ValidNode × ValidNode)`. Lean's `induction` tactic doesn't generate induction principles for nested inductives, so the proof must be a recursive `def` with `termination_by sizeOf`. The product-list case (mapping entries) required two custom size lemmas (`prod_fst_sizeOf_lt`, `prod_snd_sizeOf_lt`). This is the kind of friction that Lean 4's type theory makes tractable but not trivial — once the size lemmas exist, the proofs compose cleanly.
-    - **Compounding continues.** Step 3.5 builds directly on Step 3.3's fuel-based totality: because all parsers are now `def` (not `partial def`), `Grammar.lean`'s `toYamlValue` is also a `def`, which means `nodeToValue_total` is a direct consequence (just apply `toYamlValue`). Had the parsers remained `partial`, the specification function would also need to be `partial` or noncomputable, breaking the proof chain. The investment in totality (Step 3.3) pays a second dividend here.
-    - **Scope of soundness achieved vs. full `parse_sound`.** These 28 theorems prove the *specification layer* is sound: `NodeToValue` is a total, deterministic function from grammar nodes to values, styles and content are preserved, and `ValidYaml` can always be constructed. What remains is *parser-level* soundness: proving that `parseYaml s = .ok v` implies there exists a `ValidNode n` such that `NodeToValue n v`. That requires unfolding through `Parser.run`, the monadic parser chain, and composing per-parser lemmas — a substantially harder problem that would benefit from the bridge lemmas banked in Layer 1. The current theorems are the specification foundation on which parser-level soundness would be built.
+    - **Compounding continues.** Step 3.3.5 builds directly on Step 3.3.3's fuel-based totality: because all parsers are now `def` (not `partial def`), `Grammar.lean`'s `toYamlValue` is also a `def`, which means `nodeToValue_total` is a direct consequence (just apply `toYamlValue`). Had the parsers remained `partial`, the specification function would also need to be `partial` or noncomputable, breaking the proof chain. The investment in totality (Step 3.3.3) pays a second dividend here.
+    - **Scope of soundness achieved vs. full `parse_sound`.** These 28 theorems prove the *specification layer* is sound: `NodeToValue` is a total, deterministic function from grammar nodes to values, styles and content are preserved, and `ValidYaml` can always be constructed. What remains is *parser-level* soundness: proving that `parseYaml s = .ok v` implies there exists a `ValidNode n` such that `NodeToValue n v`. That requires unfolding through `Parser.run`, the monadic parser chain, and composing per-parser lemmas — a substantially harder problem that would benefit from the bridge lemmas banked in 3.1. The current theorems are the specification foundation on which parser-level soundness would be built.
 
-19. **Layer 3 Step 3.4 — `#guard` compile-time tests** — ✅ **76 kernel-evaluated guards, 0 failures.** Rewrote `Proofs/TestSuite.lean` from skeleton (all `#guard` commented out) to 340 lines of compile-time tests organized in 10 sections. Every `#guard` is evaluated by Lean's kernel during `lake build` — if any expression evaluates to `false`, the build fails immediately. No `IO`, no `native_decide`, no runtime execution.
+19. **Step 3.3.4 — `#guard` compile-time tests** — ✅ **76 kernel-evaluated guards, 0 failures.** Rewrote `Proofs/TestSuite.lean` from skeleton (all `#guard` commented out) to 340 lines of compile-time tests organized in 10 sections. Every `#guard` is evaluated by Lean's kernel during `lake build` — if any expression evaluates to `false`, the build fails immediately. No `IO`, no `native_decide`, no runtime execution.
 
     **Coverage by section:**
     | Section | Tests | What it checks |
@@ -492,9 +492,9 @@ Prove `parse ∘ emit = id` for a canonical YAML subset.
     **Build:** 228/228. **Tests:** 847/2/201 — zero regressions. **Project total: ~170 theorems/lemmas + 76 `#guard` compile-time tests, 0 sorry, 0 axiom, 0 `partial def`.**
 
     **Methodology note: the three-dividend sequence.**
-    - **Dividend 1 (Step 3.3):** Fuel-based totality eliminated `partial def`, removing the axiom of partial functions from the TCB.
-    - **Dividend 2 (Step 3.5):** Totality enabled computable `toYamlValue`, making `nodeToValue_total` trivial and unblocking 28 specification-layer proofs.
-    - **Dividend 3 (Step 3.4):** Totality enabled `#guard` kernel evaluation, giving 76 compile-time regression tests that catch parser behavior changes at build time — no test executable needed.
+    - **Dividend 1 (Step 3.3.3):** Fuel-based totality eliminated `partial def`, removing the axiom of partial functions from the TCB.
+    - **Dividend 2 (Step 3.3.5):** Totality enabled computable `toYamlValue`, making `nodeToValue_total` trivial and unblocking 28 specification-layer proofs.
+    - **Dividend 3 (Step 3.3.4):** Totality enabled `#guard` kernel evaluation, giving 76 compile-time regression tests that catch parser behavior changes at build time — no test executable needed.
     - All three dividends flow from a single investment: converting 31 `partial def` to `def`. This is the compounding pattern at its clearest — one architectural change enables three independent verification capabilities.
 
 20. **Phase 4 — yaml-test-suite as compile-time proofs + SuiteRunner `emit` field fix** — ✅ **350 kernel-evaluated `#guard` tests, 0 failures.** Auto-generated by `gen-suite-guards.py` from 351 yaml-test-suite files across 6 stage-split files (`Proofs/SuiteGuards/{Scalar,Flow,Block,Document,Advanced,Error}.lean`). Each guard inlines the unescaped YAML content as a Lean string literal and verifies `parseYaml` produces the expected result: `.ok` for valid YAML tests, `.error` for error tests. Any parser regression breaks the build at compile time.
@@ -509,33 +509,47 @@ Prove `parse ∘ emit = id` for a canonical YAML subset.
     | Advanced | 64 | Anchors, aliases, tags, complex keys |
     | Error | 92 | Invalid YAML correctly rejected |
 
+21. **Step 5.4 Phase 1 — Completeness infrastructure (2026-02-22)** — ✅ **22 new proof artifacts, 0 sorry.** Created `Proofs/Completeness.lean` (356 lines) establishing the foundation for per-parser specification lemmas.
+
+    **New proof artifacts:**
+    - **`LawfulParserStream` typeclass** — lean4-parser ships zero theorems; we define the contract that `Parser.Stream.remaining` strictly decreases when `next?` returns `some`. Instance proved for `YamlStream Char` via `Termination.stream_remaining_decreasing`.
+    - **`parseYaml_ok_iff`** — biconditional: `parseYaml input = .ok docs ↔ ∃ stream', Parser.run yamlStream (ofString input) = .ok stream' docs ∧ stream'.validationError = none`. Key structural lemma for lifting per-parser specs to the top-level API.
+    - **`parser_run_eq`** — `@[simp]` lemma: `Parser.run p s = p s` (function application).
+    - **7 stream initialization lemmas** — `ofString_no_validationError`, `ofString_startPos`, `ofString_stopPos`, `ofString_remaining`, `ofString_anchorMap`, `ofString_line`, `ofString_col` (all `rfl`).
+    - **12 concrete completeness theorems** via `native_decide` — covering all 5 scalar styles (plain, double-quoted, single-quoted, literal, folded), flow/block sequences and mappings, multi-document streams, nested structures.
+    - **`DecidableEq Scalar`** — added to `deriving` clause in `Types.lean`. Enables propositional equality on scalar values.
+
+    **Type-level infrastructure gap identified:** `YamlValue` has `BEq` but not `DecidableEq` — nested `Array YamlValue` / `Array (YamlValue × YamlValue)` blocks `deriving DecidableEq`. Phase 2 requires `LawfulBEq YamlValue` to bridge BEq to propositional equality for universally quantified theorems.
+
+    **Build:** 238/238 jobs. **Tests:** 66/66 completeness tests pass, plus 940/940 internal tests. **Project total: ~296 proved theorems/lemmas + 552 compile-time checks, 0 sorry, 0 axiom, 0 `partial def`.**
+
     **Exclusions (2):** H7TQ (unfixable UP: extra words after `%YAML` conflicts with ZYU8) and CQ3W (kernel vs. compiled discrepancy: unclosed double-quote recovery path differs in kernel evaluation). Both pass in the runtime suite runner but cannot be encoded as `#guard`.
 
     **SuiteRunner `emit` field fix:** The `Meta.lean` line-based parser was missing `emit` in its recognized-field list (`json | dump | from | tidy`). Block scalar content from `emit:` fields leaked into subsequent lines, creating phantom test case variants (e.g., 4QFQ had 5 variants instead of 1). Fixed by adding `| "emit"` to `processKeyValue`. Test count: 416→406 (10 phantom variants eliminated), skipped: 201→171 (all now YAML 1.3 specific, zero "empty yaml input").
 
     **Build:** 234/234 jobs. **Tests:** 847 passed / 2 failed (H7TQ) / 171 skipped (1020 total). **Unique test IDs:** 277 total, 224 passing, 52 YAML 1.3 skipped, 1 failed.
 
-    **Strategic assessment (2026-02-21):** At 224/225 YAML 1.2.2 tests passing (99.6%), the remaining compliance gap is YAML 1.3 features (out of scope), not correctness. Verification doesn't help compliance — the parser is functionally complete for YAML 1.2.2. Phase 4 locks these 350 passing tests as build-time invariants, making regressions impossible without also fixing the broken guard. Combined with the 76 hand-written `#guard` tests from Step 3.4, the project now has **426 compile-time kernel-evaluated checks** plus ~170 formal theorems.
+    **Strategic assessment (2026-02-21):** At 224/225 YAML 1.2.2 tests passing (99.6%), the remaining compliance gap is YAML 1.3 features (out of scope), not correctness. Verification doesn't help compliance — the parser is functionally complete for YAML 1.2.2. Phase 4 locks these 350 passing tests as build-time invariants, making regressions impossible without also fixing the broken guard. Combined with the 76 hand-written `#guard` tests from Step 3.3.4, the project now has **426 compile-time kernel-evaluated checks** plus ~170 formal theorems.
 
-### Current: Layers 1–2 Complete, Phase 4 Complete, Phase 5 In Progress
+### Current: Phase 3 Complete, Phase 4 Complete, Phase 5 In Progress
 
 Phase 2 (Parser Validation) is functionally complete. **352/406 correct** per HTML subprocess report. 0 failures, 0 timeouts, 2 UPs (H7TQ error + document). 52 YAML 1.3 skipped. Error stage: 73/74 (98.6%). Flow stage: 46/46 (100%). Block stage: 99/99 (100%). Scalar: 54/82 (65.9%). Advanced: 64/81 (79%). Document: 16/24 (66.7%).
 
 **Phase 4 complete:** 350 `#guard` compile-time tests across 6 files (`Proofs/SuiteGuards/*.lean`) encode all passing yaml-test-suite tests. Auto-generated from yaml-test-suite by `gen-suite-guards.py`. Any parser regression breaks the build.
 
-**Phase 5 in progress:** Canonical emitter (`Emitter.lean`) + round-trip proofs (`Proofs/RoundTrip.lean`). 58 theorems + 63 `#guard` round-trip checks proving `parse ∘ emit = id` for concrete values. Steps 5a–5c complete: `contentEq` proved to be a full equivalence relation (refl + symm + trans) for all `YamlValue` trees; character-level escape round-trip connecting `escapeChar` ↔ `resolveNamedEscape` via `escapeTag`.
+**Phase 5 in progress:** Canonical emitter (`Emitter.lean`) + round-trip proofs (`Proofs/RoundTrip.lean`). 58 theorems + 63 `#guard` round-trip checks proving `parse ∘ emit = id` for concrete values. Steps 5.1–5.3 complete: `contentEq` proved to be a full equivalence relation (refl + symm + trans) for all `YamlValue` trees; character-level escape round-trip connecting `escapeChar` ↔ `resolveNamedEscape` via `escapeTag`. Step 5.4 Phase 1 complete: `Proofs/Completeness.lean` with `LawfulParserStream YamlStream Char`, `parseYaml_ok_iff`, 7 stream lemmas, 12 concrete completeness theorems via `native_decide`.
 
-**Layers 1–2 complete.** Layer 1: ~90 theorems across 5 proof files. Layer 2: ~30 theorems + 45 `#guard` checks across 3 proof files (`EscapeResolution.lean`, `IndentConsumption.lean`, `FoldNewlines.lean`). Grammar.lean extended with `resolveNamedEscape`, `isCForbiddenPrefix`, `isFoldAppendChar`, full Decidable instances.
+**3.1–3.2 complete.** 3.1 (Foundation): ~90 theorems across 5 proof files. 3.2 (Key Invariants): ~30 theorems + 45 `#guard` checks across 3 proof files (`EscapeResolution.lean`, `IndentConsumption.lean`, `FoldNewlines.lean`). Grammar.lean extended with `resolveNamedEscape`, `isCForbiddenPrefix`, `isFoldAppendChar`, full Decidable instances.
 
-**Verification inventory:** ~296 proved theorems/lemmas + 76 hand-written `#guard` tests + 45 Layer 2 `#guard` tests + 350 yaml-test-suite `#guard` tests + 63 round-trip `#guard` tests + 15 TestSuite `#guard` tests = **549 compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 238/238 jobs.
+**Verification inventory:** ~296 proved theorems/lemmas + 76 hand-written `#guard` tests + 45 (3.2) `#guard` tests + 350 yaml-test-suite `#guard` tests + 63 round-trip `#guard` tests + 15 TestSuite `#guard` tests = **552 compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 238/238 jobs.
 
-**Layer 3 complete.** All 5 steps finished: Steps 3.1–3.3 (totality), Step 3.4 (`#guard` compile-time tests), Step 3.5 (soundness proofs). Phase 4 complete. Phase 5 in progress (emitter + round-trip proofs).
+**3.3 complete.** All 6 steps finished: Steps 3.3.1–3.3.3 (totality), Step 3.3.4 (`#guard` compile-time tests), Step 3.3.5 (soundness proofs). Phase 4 complete. Phase 5 in progress (emitter + round-trip proofs).
 
-1. ~~**Step 3.1 — Link `remainingLength` to `Stream.remaining`**~~: ✅ `remainingLength_eq_stream_remaining` proved by `rfl` (definitionally equal). Corollary `stream_remaining_decreasing` lifts `next_decreasing` to `Parser.Stream.remaining` — the form needed for `termination_by` in recursive parsers. Build: 228/228 jobs.
-2. ~~**Step 3.2 — Convert Group A leaf parsers (3)**~~: ✅ `hasTabInWhitespace` and `checkNoTabIndent` rewritten with `dropMany (token ' ')` (total lean4-parser combinator); `checkIndentForTabs` rewritten with structural Nat recursion (count down from `minIndent`). 35→32 `partial def`. Build: 228/228. Tests: 847/2/201 — zero regressions. `skipBlankLines`, `checkContinuation`, `flowWhitespace` reclassified to Group B (have self-recursion or recursive `where` clauses).
-3. ~~**Step 3.3 — Convert Group B self-recursive parsers (31)**~~: ✅ All 31 parsers converted via fuel-based structural recursion. Combinators (2), Scalar (9), Flow (7 mutual), Block (10 mutual), Document (3). 0 `partial def` remaining. Build: 228/228. Tests: 847/2/201 — zero regressions.
-4. ~~**Step 3.4 — `#guard` compile-time tests**~~: ✅ 76 kernel-evaluated guards covering all parser components (scalars, collections, documents, anchors, tags, error rejection, content correctness). Build-time regression detection — any parser behavior change breaks the build. 0 sorry, 0 IO, 0 `native_decide`.
-5. ~~**Step 3.5 — Soundness proofs**~~: ✅ 28 theorems proved. `toYamlValue_correct` (biconditional), `nodeToValue_total`, `nodeToValue_deterministic`, scalar/collection style and content preservation, structural composition (`validYaml_construct`, `validYaml_value_eq_toYamlValue`). 0 sorry. Grammar.lean extended with collection `NodeToValue` constructors and computable `toYamlValue`.
+1. ~~**Step 3.3.1 — Link `remainingLength` to `Stream.remaining`**~~: ✅ `remainingLength_eq_stream_remaining` proved by `rfl` (definitionally equal). Corollary `stream_remaining_decreasing` lifts `next_decreasing` to `Parser.Stream.remaining` — the form needed for `termination_by` in recursive parsers. Build: 228/228 jobs.
+2. ~~**Step 3.3.2 — Convert Group A leaf parsers (3)**~~: ✅ `hasTabInWhitespace` and `checkNoTabIndent` rewritten with `dropMany (token ' ')` (total lean4-parser combinator); `checkIndentForTabs` rewritten with structural Nat recursion (count down from `minIndent`). 35→32 `partial def`. Build: 228/228. Tests: 847/2/201 — zero regressions. `skipBlankLines`, `checkContinuation`, `flowWhitespace` reclassified to Group B (have self-recursion or recursive `where` clauses).
+3. ~~**Step 3.3.3 — Convert Group B self-recursive parsers (31)**~~: ✅ All 31 parsers converted via fuel-based structural recursion. Combinators (2), Scalar (9), Flow (7 mutual), Block (10 mutual), Document (3). 0 `partial def` remaining. Build: 228/228. Tests: 847/2/201 — zero regressions.
+4. ~~**Step 3.3.4 — `#guard` compile-time tests**~~: ✅ 76 kernel-evaluated guards covering all parser components (scalars, collections, documents, anchors, tags, error rejection, content correctness). Build-time regression detection — any parser behavior change breaks the build. 0 sorry, 0 IO, 0 `native_decide`.
+5. ~~**Step 3.3.5 — Soundness proofs**~~: ✅ 28 theorems proved. `toYamlValue_correct` (biconditional), `nodeToValue_total`, `nodeToValue_deterministic`, scalar/collection style and content preservation, structural composition (`validYaml_construct`, `validYaml_value_eq_toYamlValue`). 0 sorry. Grammar.lean extended with collection `NodeToValue` constructors and computable `toYamlValue`.
 
 #### Step 8: Tag support (`!tag`, `!!type`, `%TAG` directive) — ✅ COMPLETE
 
@@ -753,7 +767,56 @@ The remaining 52 skipped tests are YAML 1.1/1.3 features or tests that require b
 
 ---
 
-## Verified Schema Layer
+## Phase 6: Verified YAML Serializer
+
+### Motivation
+
+The current emitter (`Emitter.lean`) produces canonical YAML — double-quoted scalars, flow collections, single-line output. This is sufficient for round-trip proofs (`contentEq`) but not for producing human-readable YAML that leverages the full YAML 1.2.2 feature set. A proper **serializer** (also called "dumper" in YAML terminology) is needed before the schema layer because:
+
+1. **`ToYaml` requires a serializer.** The schema layer's `ToYaml α` typeclass maps `α → YamlValue`. The second half of the pipeline (`YamlValue → String`) needs a serializer that produces readable, style-aware output — not just canonical form.
+2. **Round-trip fidelity improves.** `parse (serialize v) = .ok v'` where `v' = v` (exact equality, not just `contentEq`) becomes achievable when the serializer preserves style annotations (`.plain`, `.block`, `.flow`).
+3. **Testing infrastructure benefits.** Golden-file testing, snapshot testing, and `#guard` checks become more readable when output is idiomatic YAML rather than canonical form.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Lean4Yaml/Serializer.lean                                     │
+│                                                                 │
+│  serialize : YamlValue → SerializerConfig → String              │
+│  serializeDocument : YamlDocument → SerializerConfig → String   │
+│  serializeDocuments : Array YamlDocument → SerializerConfig → …  │
+│                                                                 │
+│  SerializerConfig:                                              │
+│    indent : Nat := 2        -- indentation width                │
+│    defaultStyle : Style     -- block (default) | flow | auto    │
+│    scalarStyle : ScalarPref -- plain | doubleQuoted | auto      │
+│    lineWidth : Nat := 80    -- line width hint for flow→block   │
+│    sortKeys : Bool := false -- deterministic key ordering       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Serializer Roadmap
+
+| Step | Description | Difficulty | Status |
+|------|-------------|------------|--------|
+| **6.1** | **Core serializer** — `serialize : YamlValue → SerializerConfig → String`. Style-aware output: plain/quoted scalars based on content analysis, block sequences/mappings with configurable indentation, flow collections when compact. Multi-line string support via literal `\|` and folded `>` block scalars. | Medium | Not started |
+| **6.2** | **Document serializer** — Handle `---`/`...` markers, directives (`%YAML`, `%TAG`), multi-document streams. Integrate with `SerializerConfig` for document-level options. | Low | Not started |
+| **6.3** | **Serializer proofs** — (a) `serialize_produces_valid_yaml`: output of `serialize` is parseable by `parseYaml`. (b) `serialize_preserves_content`: `contentEq v (parseYamlSingle (serialize v cfg)).get!` for all `v`. (c) Style preservation: when `YamlValue` already has explicit style annotations, the serializer respects them. | High | Not started |
+| **6.4** | **Serializer tests** — `#guard` compile-time checks for serializer output across all value types and configurations. Golden-file comparisons for complex nested structures. | Low | Not started |
+
+### Design Principles
+
+1. **Style annotations are hints, not mandates.** If a plain scalar contains YAML metacharacters, the serializer auto-quotes regardless of the `ScalarStyle` annotation. Safety over fidelity.
+2. **Block is the default.** Human-readable YAML uses block style. Flow style is opt-in (per-value via `CollectionStyle` annotation or globally via `SerializerConfig`).
+3. **Content analysis drives scalar style.** Plain for simple strings. Double-quoted for strings with special characters. Literal block for multi-line strings with significant whitespace. The serializer inspects content, not just the style annotation.
+4. **Pure function, no IO.** Like the emitter, the serializer is `YamlValue → String` — kernel-reducible, `#guard`-testable, provably correct.
+
+Estimated effort: 2–3 sessions for implementation (6.1–6.2), 1–2 sessions for proofs (6.3), 1 session for tests (6.4).
+
+---
+
+## Phase 7: Verified Schema Layer
 
 ### Motivation
 
@@ -776,14 +839,13 @@ The architecture is designed for reuse: `lean4-yaml-verified` and `lean4-yaml` s
                     └──────────────────┬──────────────────────────┘
                                        │ parseAs Config yaml
                     ┌──────────────────▼──────────────────────────┐
-                    │         Schema Layer (NEW)                  │
+                    │         Schema Layer (Phase 7)              │
                     │                                             │
                     │  YamlType    — resolved typed values        │
                     │  resolve     — Core Schema resolution       │
                     │  FromYaml    — typeclass: YamlValue → α     │
                     │  ToYaml      — typeclass: α → YamlValue     │
                     │  Deriving    — deriving macro                │
-                    │  Emitter     — YamlValue → String           │
                     │                                             │
                     │  PROOFS:                                    │
                     │  resolve_preserves_structure                │
@@ -791,7 +853,18 @@ The architecture is designed for reuse: `lean4-yaml-verified` and `lean4-yaml` s
                     │  fromYaml_toYaml_roundtrip                  │
                     │  resolveImplicit_complete                   │
                     └──────────────────┬──────────────────────────┘
-                                       │ parseSingle / parseYaml
+                                       │ serialize / parseSingle
+                    ┌──────────────────▼──────────────────────────┐
+                    │         Serializer Layer (Phase 6)          │
+                    │                                             │
+                    │  serialize : YamlValue → Config → String    │
+                    │  (style-aware, human-readable output)       │
+                    │                                             │
+                    │  PROOFS:                                    │
+                    │  serialize_produces_valid_yaml               │
+                    │  serialize_preserves_content                │
+                    └──────────────────┬──────────────────────────┘
+                                       │ parseYaml / parseYamlSingle
                     ┌──────────────────▼──────────────────────────┐
                     │         Parser Layer (EXISTING)             │
                     │                                             │
@@ -804,7 +877,7 @@ The critical property: **the schema layer is pure functions on inductive types**
 
 ### Verified Schema Roadmap
 
-#### Phase S1: Core Types & Resolution (~300 lines)
+#### Phase 7.1: Core Types & Resolution (~300 lines)
 
 Port `Schema.lean` with proof targets. The resolution functions are pure pattern-matching on strings — ideal for formal verification.
 
@@ -838,7 +911,7 @@ resolve           — YamlValue → YamlType  (recursive resolution)
 
 Estimated effort: 1 session for port, 1 session for proofs.
 
-#### Phase S2: FromYaml/ToYaml Typeclasses (~200 lines)
+#### Phase 7.2: FromYaml/ToYaml Typeclasses (~200 lines)
 
 Port `Schema/FromToYaml.lean`. The typeclass instances are small pattern-match functions — each is independently provable.
 
@@ -867,7 +940,7 @@ class ToYaml α         — toYaml : α → YamlValue
 
 Estimated effort: 1 session.
 
-#### Phase S3: Struct Helpers & Deriving (~430 lines)
+#### Phase 7.3: Struct Helpers & Deriving (~430 lines)
 
 Port `Schema/Struct.lean` and `Deriving.lean`. The struct helpers are simple mapping operations; the deriving macro is metaprogramming.
 
@@ -900,28 +973,28 @@ Deriving macro proofs are out of scope — macro-generated code is validated emp
 
 Estimated effort: 1 session for struct helpers, 1 session for deriving port.
 
-#### Phase S4: Emitter (~210 lines)
+#### Phase 7.4: Schema ↔ Serializer Integration (~210 lines)
 
-Port the YAML emitter (`YamlValue → String`). Together with `ToYaml`, this completes the full pipeline: `α → YamlValue → String`.
+Connect `ToYaml` to the Phase 6 serializer for the full pipeline: `α → YamlValue → String`. The canonical emitter (`Emitter.lean`) remains for internal use; the serializer provides the user-facing output.
 
-**Proof target (Phase 5 prerequisite):**
+**Proof target:**
 
 | Theorem | Statement | Difficulty |
 |---|---|---|
-| `emit_produces_valid_yaml` | `∀ v, parse (emit v) = .ok v'` where `v'` is structurally equivalent to `v` | Hard (requires parser proofs) |
+| `serialize_toYaml_valid` | `∀ (a : α) [ToYaml α], parse (serialize (toYaml a) cfg) = .ok v'` where `v'` is structurally equivalent | Medium (builds on Phase 6 proofs) |
 
-#### Phase S5: End-to-End Round-Trip
+#### Phase 7.5: End-to-End Round-Trip
 
-Compose parser + schema + emitter proofs into:
+Compose parser + serializer + schema proofs into:
 
 ```lean
 theorem roundtrip :
   ∀ (v : YamlValue),
-    parseSingle (emit v) = .ok v' →
+    parseSingle (serialize v cfg) = .ok v' →
     resolve v' = resolve v
 ```
 
-This is the verified-correctness analog of lean4-yaml's empirical round-trip tests. It requires parser soundness proofs (Phase 3 of the main verification roadmap) and is the long-term goal.
+This is the verified-correctness analog of lean4-yaml's empirical round-trip tests. It requires parser soundness proofs (Phase 3 of the main verification roadmap) and Phase 6 serializer proofs, and is the long-term goal.
 
 ### Design Principles for the Verified Schema Layer
 
@@ -941,14 +1014,16 @@ The schema layer follows the same architectural principles documented in ANALYSI
 
 | Phase | Lines | Sessions | Proofs |
 |---|---|---|---|
-| S1: Core types & resolution | ~300 | 2 | ~9 theorems |
-| S2: FromToYaml typeclasses | ~200 | 1 | ~7 theorems |
-| S3: Struct helpers & deriving | ~430 | 2 | ~4 theorems |
-| S4: Emitter | ~210 | 1 | ~1 theorem |
-| S5: Round-trip composition | ~50 | 2+ | ~1 theorem (hard) |
+| 7.1: Core types & resolution | ~300 | 2 | ~9 theorems |
+| 7.2: FromToYaml typeclasses | ~200 | 1 | ~7 theorems |
+| 7.3: Struct helpers & deriving | ~430 | 2 | ~4 theorems |
+| 7.4: Schema ↔ serializer integration | ~210 | 1 | ~1 theorem |
+| 7.5: Round-trip composition | ~50 | 2+ | ~1 theorem (hard) |
 | **Total** | **~1190** | **8+** | **~22 theorems** |
 
 The schema layer is **~1190 lines** of Lean code plus ~22 formal theorems. This is significantly less than the parser (~2500 lines) and has far better proof tractability since everything is pure functions on inductive types with no parser combinator dependency.
+
+Note: Phase 6 (Serializer) is a prerequisite for Phase 7.4 and 7.5. Phases 7.1–7.3 can proceed in parallel with Phase 6.
 
 ---
 
