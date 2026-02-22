@@ -62,7 +62,7 @@ Verification uses a deliberate 3-layer approach:
 
 1. **Internal runtime tests** (940 tests across 12 suites + 11 diagnostic) — hand-written Lean tests validating parser properties. Every `theorem` target starts life as a runtime `check` test. These are _separate_ from the yaml-test-suite's 406 external test cases.
 2. **Formal proofs** (`theorem`/`lemma` in `Proofs/*.lean`) — machine-checked guarantees. Layered by dependency: pure functions first, then parser invariants, then full soundness.
-3. **Compile-time guards** (`#guard`) — 76 hand-written + 350 auto-generated from yaml-test-suite (in `Proofs/SuiteGuards/*.lean`). All parsers are total (via `total-fold` fork + Steps 3.3.2–3.3.3), so `#guard` kernel evaluation works. Any parser regression breaks the build.
+3. **Compile-time guards** (`#guard`) — 76 hand-written + 351 auto-generated from yaml-test-suite (in `Proofs/SuiteGuards/*.lean`). All parsers are total (via `total-fold` fork + Steps 3.3.2–3.3.3), so `#guard` kernel evaluation works. Any parser regression breaks the build.
 
 The runtime tests serve as a proof roadmap: each `setCategory`/`check` group maps to a `theorem` target. When a proof is completed, the corresponding tests become redundant (but are kept as regression guards).
 
@@ -341,10 +341,10 @@ Effort: ~5+ sessions. **All 6 steps complete** (3.3.1–3.3.6).
 
 <details>
 <summary>
-350 `#guard` compile-time tests, auto-generated from yaml-test-suite. 2 exclusions, 0 failures.
+351 `#guard` compile-time tests, auto-generated from yaml-test-suite. 1 exclusion (H7TQ), 0 failures.
 </summary>
 
-350 `#guard` compile-time tests across 6 stage-split files (`Proofs/SuiteGuards/*.lean`). Auto-generated from yaml-test-suite by `gen-suite-guards.py`. Each test inlines the YAML content as a string literal and verifies `parseYaml` produces the expected result. 2 exclusions: H7TQ (unfixable UP), CQ3W (kernel/compiled discrepancy). Any parser regression breaks the build.
+351 `#guard` compile-time tests across 6 stage-split files (`Proofs/SuiteGuards/*.lean`). Auto-generated from yaml-test-suite by `gen-suite-guards.py`. Each test inlines the YAML content as a string literal and verifies `parseYaml` produces the expected result. 1 exclusion: H7TQ (unfixable UP — conflicts with ZYU8). CQ3W was previously excluded due to a kernel/compiled discrepancy, now fixed by adding `setValidationError` to the fuel-exhaustion case of `collectChars` in `doubleQuotedScalar` and `singleQuotedScalar`. Any parser regression breaks the build.
 
 **Maintenance:** The `Proofs/SuiteGuards/*.lean` files are generated artifacts — do not edit them by hand. When the upstream [yaml-test-suite](https://github.com/yaml/yaml-test-suite) changes (new tests, updated expectations, or removed cases), regenerate with:
 
@@ -353,7 +353,7 @@ python3 gen-suite-guards.py          # reads ~/yaml-test-suite, writes Proofs/Su
 lake build                            # verifies all guards still pass
 ```
 
-The script automatically excludes tests listed in its `KERNEL_DISCREPANCIES` set (currently `{CQ3W}`) and the unfixable H7TQ. If new tests fail as `#guard`, either fix the parser or add the test ID to `KERNEL_DISCREPANCIES` with a comment explaining why.
+The script automatically excludes tests listed in its `KERNEL_DISCREPANCIES` set (currently empty) and the unfixable H7TQ. If new tests fail as `#guard`, either fix the parser or add the test ID to `KERNEL_DISCREPANCIES` with a comment explaining why.
 
 </details>
 
@@ -399,7 +399,7 @@ Prove `parse ∘ emit = id` for a canonical YAML subset.
 | Step | Description | Difficulty | Status |
 |------|-------------|------------|--------|
 | **5.1** | **Universal `contentEq_refl`** — Proved `∀ v, contentEq v v = true` using `show` to bypass equation-generation limitation, `contentEqList_refl`/`contentEqPairList_refl` helper lemmas, and `simp_wf`+`omega` termination via `Array.mk.sizeOf_spec`/`Prod.mk.sizeOf_spec`. | Low–medium | ✅ **Complete** |
-| **5.2** | **Block stage compliance** — Block stage is already at 99/99 = 100% correct. The earlier "99/109" figure was from a stale snapshot before test reclassification. All 52 skipped tests (across all stages) are genuinely YAML 1.3 specific (`1.3-err`/`1.3-mod` tags). Current overall: 352/406 correct (86.7%). Error: 73/74 (1 UP = H7TQ). Flow: 46/46. Block: 99/99. Scalar: 54/82 (28 YAML 1.3 skips). Advanced: 64/81 (17 skips). Document: 16/24 (7 skips). | N/A | ✅ **Already complete** |
+| **5.2** | **Block stage compliance** — Block stage is already at 99/99 = 100% correct. The earlier "99/109" figure was from a stale snapshot before test reclassification. All 52 skipped tests (across all stages) are genuinely YAML 1.3 specific (`1.3-err`/`1.3-mod` tags). Current overall: 353/406 correct (86.9%). Error: 74/74 (100%). Flow: 46/46. Block: 99/99. Scalar: 54/82 (28 YAML 1.3 skips). Advanced: 64/81 (17 skips). Document: 16/24 (7 skips). | N/A | ✅ **Already complete** |
 | **5.3** | **`contentEq` equivalence relation + character-level round-trip** — Proved `contentEq_symm` (symmetry), `contentEq_trans` (transitivity), completing the proof that `contentEq` is a full equivalence relation (with §5 reflexivity). Proved `escapeTag_roundtrip`: universal theorem connecting `escapeChar` to `resolveNamedEscape` via the `escapeTag` witness function. Proved `escapeChar_identity` for non-escaped characters. Extended `#guard` coverage to 63 compile-time round-trip checks (deep nesting, wide collections, Unicode, whitespace). The full universal `∀ v, contentEq v (parseYamlSingle (emit v)).get! = true` requires unfolding ~8K lines of parser; the compositional building blocks (equivalence relation + character-level invertibility) are now in place. | Medium–High | ✅ **Complete** |
 | **5.4** | **Completeness** — Per-parser specification lemmas bottom-up. **Phase 1 complete**: `Proofs/Completeness.lean` with `LawfulParserStream YamlStream Char` typeclass + instance, `parseYaml_ok_iff` bridge theorem, 7 stream initialization lemmas (`ofString_*`), `parser_run_eq` simp lemma, 12 concrete completeness theorems via `native_decide` (plain/quoted/literal/folded scalars, flow/block sequences and mappings, multi-document streams, nested structures). `DecidableEq Scalar` added to Types.lean. 22 new proof artifacts (1 class instance + 21 theorems). **Phase 2** (combinator specs + universally quantified per-parser lemmas): requires `LawfulBEq YamlValue`, `@[simp]` annotations on lean4-parser combinators, fuel sufficiency lemma. See **Std.Iterators analysis** below. | Very high | **In progress** |
 
@@ -442,7 +442,7 @@ Prove `parse ∘ emit = id` for a canonical YAML subset.
 2. **Mutual WF recursion is fragile** — 10-function Block mutual block generates complex recursors; any function failing `termination_by` breaks the entire block
 3. **Must prove `remaining` decreases at every recursive call** — `lookAhead`/`option?` don't consume input, complicating proofs
 4. **3 `sorry` proofs in `LawfulParserStream`** instances for `String.Slice`/`Substring.Raw`/`ByteSlice` (stdlib gap)
-5. **Regression risk** — touching every recursive function in a parser passing 352/406 tests
+5. **Regression risk** — touching every recursive function in a parser passing 353/406 tests
 
 **Decision: proceed with fuel-based bottom-up approach (B).** Structural induction on `Nat` is one of Lean's best-supported proof patterns. For 5.4, we keep the current fuel pattern and prove per-parser specification lemmas bottom-up:
 1. Add `@[simp]` annotations to key combinators (`skipBlankLines`, `skipHWhitespace`, `currentCol`, etc.)
@@ -579,18 +579,18 @@ Steps 1–21: parser features, totality, soundness, compile-time proofs, complet
 
 <details>
 <summary>
-~296 theorems + 552 compile-time checks. 352/406 correct. 0 sorry, 0 axiom, 0 `partial def`.
+~296 theorems + 553 compile-time checks. 353/406 correct. 0 sorry, 0 axiom, 0 `partial def`.
 </summary>
 
-Phase 2 (Parser Validation) is functionally complete. **352/406 correct** per HTML subprocess report. 0 failures, 0 timeouts, 2 UPs (H7TQ error + document). 52 YAML 1.3 skipped. Error stage: 73/74 (98.6%). Flow stage: 46/46 (100%). Block stage: 99/99 (100%). Scalar: 54/82 (65.9%). Advanced: 64/81 (79%). Document: 16/24 (66.7%).
+Phase 2 (Parser Validation) is functionally complete. **353/406 correct** per HTML subprocess report. 0 failures, 0 timeouts, 1 UP (H7TQ document stage only). 52 YAML 1.3 skipped. Error stage: 74/74 (100%). Flow stage: 46/46 (100%). Block stage: 99/99 (100%). Scalar: 54/82 (65.9%). Advanced: 64/81 (79%). Document: 16/24 (66.7%).
 
-**Phase 4 complete:** 350 `#guard` compile-time tests across 6 files (`Proofs/SuiteGuards/*.lean`) encode all passing yaml-test-suite tests. Auto-generated from yaml-test-suite by `gen-suite-guards.py`. Any parser regression breaks the build.
+**Phase 4 complete:** 351 `#guard` compile-time tests across 6 files (`Proofs/SuiteGuards/*.lean`) encode all passing yaml-test-suite tests. Auto-generated from yaml-test-suite by `gen-suite-guards.py`. Any parser regression breaks the build.
 
 **Phase 5 in progress:** Canonical emitter (`Emitter.lean`) + round-trip proofs (`Proofs/RoundTrip.lean`). 58 theorems + 63 `#guard` round-trip checks proving `parse ∘ emit = id` for concrete values. Steps 5.1–5.3 complete: `contentEq` proved to be a full equivalence relation (refl + symm + trans) for all `YamlValue` trees; character-level escape round-trip connecting `escapeChar` ↔ `resolveNamedEscape` via `escapeTag`. Step 5.4 Phase 1 complete: `Proofs/Completeness.lean` with `LawfulParserStream YamlStream Char`, `parseYaml_ok_iff`, 7 stream lemmas, 12 concrete completeness theorems via `native_decide`.
 
 **3.1–3.2 complete.** 3.1 (Foundation): ~90 theorems across 5 proof files. 3.2 (Key Invariants): ~30 theorems + 45 `#guard` checks across 3 proof files (`EscapeResolution.lean`, `IndentConsumption.lean`, `FoldNewlines.lean`). Grammar.lean extended with `resolveNamedEscape`, `isCForbiddenPrefix`, `isFoldAppendChar`, full Decidable instances.
 
-**Verification inventory:** ~296 proved theorems/lemmas + 76 hand-written `#guard` tests + 45 (3.2) `#guard` tests + 350 yaml-test-suite `#guard` tests + 63 round-trip `#guard` tests + 15 TestSuite `#guard` tests = **552 compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 238/238 jobs.
+**Verification inventory:** ~296 proved theorems/lemmas + 76 hand-written `#guard` tests + 45 (3.2) `#guard` tests + 351 yaml-test-suite `#guard` tests + 63 round-trip `#guard` tests + 15 TestSuite `#guard` tests = **553 compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 238/238 jobs.
 
 **3.3 complete.** All 6 steps finished: Steps 3.3.1–3.3.3 (totality), Step 3.3.4 (`#guard` compile-time tests), Step 3.3.5 (soundness proofs). Phase 4 complete. Phase 5 in progress (emitter + round-trip proofs).
 
@@ -750,7 +750,7 @@ After steps 8–11 + P4 + P5 + P6 + P7, current correct rate is 353/406 (86.9%).
 
 ### Current State (2026-02-21)
 
-**yaml-test-suite: 352/406 correct (86.7%)** per subprocess report. 0 failures, 0 timeouts. 224 unique passing test IDs out of 277 (99.6% of YAML 1.2.2-applicable). **350 `#guard` compile-time proofs** (Phase 4) lock in all passing tests. All 171 skips are YAML 1.3 specific.
+**yaml-test-suite: 353/406 correct (86.9%)** per subprocess report. 0 failures, 0 timeouts. 225 unique passing test IDs out of 277 (99.6% of YAML 1.2.2-applicable). **351 `#guard` compile-time proofs** (Phase 4) lock in all passing tests. All 171 skips are YAML 1.3 specific.
 
 | Stage | Tests | Pass | Fail | Exp Fail | Unexp Pass | Skip | Correct | Rate |
 |-------|-------|------|------|----------|------------|------|---------|------|
@@ -759,14 +759,14 @@ After steps 8–11 + P4 + P5 + P6 + P7, current correct rate is 353/406 (86.9%).
 | Block | 109 | 85 | 0 | 14 | 0 | 10 | 99 | 91% |
 | Document | 24 | 15 | 0 | 1 | 1 | 7 | 16 | 67% |
 | Advanced | 81 | 64 | 0 | 0 | 0 | 17 | 64 | 79% |
-| Error | 74 | 0 | 0 | 73 | 1 | 0 | 73 | 99% |
-| **Total** | **406** | **260** | **0** | **92** | **2** | **52** | **352** | **86.7%** |
+| Error | 74 | 0 | 0 | 74 | 0 | 0 | 74 | 100% |
+| **Total** | **406** | **260** | **0** | **93** | **1** | **52** | **353** | **86.9%** |
 
 "Correct" = Pass + Expected Fail. "Fail" includes parse errors on valid YAML. "Unexpected Pass" indicates the parser accepts invalid YAML.
 
-Two remaining unexpected passes: **H7TQ** (extra words after `%YAML` version directive — unfixable: rejecting extra words after `%YAML 1.2` would also break ZYU8 `%YAML 1.1 1.2`) and **CQ3W** (unclosed double-quote recovery — kernel/compiled discrepancy: the compiled parser accepts `"unclosed` as a plain scalar, but the kernel evaluator differs, so this cannot be a `#guard` test either). Error stage: 73/74 (98.6%). Flow stage: 46/46 (100%). Block stage improved from 83% to 91% through targeted validation. The 52 skipped tests are YAML 1.3 features outside YAML 1.2.2 scope (the SuiteRunner `emit` field fix eliminated 10 phantom variants, bringing total from 416 to 406).
+One remaining unexpected pass: **H7TQ** (extra words after `%YAML` version directive — unfixable: rejecting extra words after `%YAML 1.2` would also break ZYU8 `%YAML 1.1 1.2`). CQ3W (unclosed double-quote) was previously an UP but is now fixed: adding `setValidationError "unterminated double-quoted scalar"` to the fuel-exhaustion case of `collectChars` ensures both kernel and compiled code consistently reject unclosed quoted scalars. Error stage: 74/74 (100%). Flow stage: 46/46 (100%). Block stage improved from 83% to 91% through targeted validation. The 52 skipped tests are YAML 1.3 features outside YAML 1.2.2 scope (the SuiteRunner `emit` field fix eliminated 10 phantom variants, bringing total from 416 to 406).
 
-**Internal test suites: 940/940 (100%) across 12 suites** (hand-written Lean tests; separate from the yaml-test-suite cases above). Plus **426 compile-time `#guard` checks** (76 hand-written + 350 yaml-test-suite auto-generated).
+**Internal test suites: 940/940 (100%) across 12 suites** (hand-written Lean tests; separate from the yaml-test-suite cases above). Plus **427 compile-time `#guard` checks** (76 hand-written + 351 yaml-test-suite auto-generated).
 
 ### What's Implemented vs YAML 1.2.2 Spec
 
@@ -833,24 +833,24 @@ All parser failures have been resolved through P1–P7. No tests produce incorre
 
 </details>
 
-#### Category 2: Permissiveness (2 remaining unexpected passes) — Error Rejection
+#### Category 2: Permissiveness (1 remaining unexpected pass) — Error Rejection
 
 <details>
 <summary>
-2 unfixable UPs: H7TQ (document stage, conflicts with ZYU8) and CQ3W (error stage, kernel/compiled discrepancy).
+1 unfixable UP: H7TQ (document stage, conflicts with ZYU8). CQ3W fixed.
 </summary>
 
-Error stage: 73/74 (98.6%). All non-error-stage error tests resolved except H7TQ.
+Error stage: 74/74 (100%). All error-stage tests resolved. CQ3W fixed by adding `setValidationError` to fuel-exhaustion case in `doubleQuotedScalar.collectChars`.
 
 | Category | Count | What Should Be Rejected |
 |---|---|---|
-| **Error stage** | **1** | CQ3W — unclosed double-quote recovery differs between kernel and compiled evaluator |
 | **Non-error stages** | **1** | H7TQ (document stage) — unfixable conflict with ZYU8 |
+| ~~Error stage~~ | 0 | ✅ CQ3W fixed — `setValidationError "unterminated double-quoted scalar"` |
 | Flow structure | 0 | ✅ Fixed by Step 10a (4 validation rules) |
 
-**H7TQ** (extra words after `%YAML` version directive) is unfixable because rejecting extra words after `%YAML 1.2` would also break ZYU8 (`%YAML 1.1 1.2`, which must pass). **CQ3W** (unclosed double-quote) is a kernel/compiled discrepancy — the compiled parser accepts `"unclosed` as a plain scalar via error recovery, but the kernel evaluator takes a different path, so this cannot be encoded as a `#guard` test.
+**H7TQ** (extra words after `%YAML` version directive) is unfixable because rejecting extra words after `%YAML 1.2` would also break ZYU8 (`%YAML 1.1 1.2`, which must pass). **CQ3W** (unclosed double-quote) was a kernel/compiled discrepancy — the compiled parser accepted `"unclosed` as a plain scalar via error recovery while the kernel evaluator took a different path. **Fixed** by adding `setValidationError "unterminated double-quoted scalar"` (and the single-quote equivalent) to the `collectChars` fuel-exhaustion case in `Scalar.lean`. Both kernel and compiled code now consistently reject unclosed quoted scalars.
 
-The root cause was architectural: lean4-parser's `<|>` unconditionally catches all `Result.error` values, making `throwUnexpected` unreliable for validation. **P1 fix (2026-02-17):** All `throwUnexpected` calls eliminated and replaced with `validationError` field in `YamlStream` (survives backtracking). **Step 10a fix (2026-02-19):** 4 validation rules in `Flow.lean` + `Document.lean` restored error stage to 52/74 (70%). **Mapping bug fix (2026-02-19):** `runAllForReport` classification bug (`.unexpectedPass` → `.expectedFail`). **P7 completion (2026-02-24):** Post-indicator tab rejection (§6.1), block scalar auto-detect contradiction (§8.1), flow continuation tab detection, anchor indent validation, single-line implicit key constraints (§8.2.1), several additional error-rejection rules. Error stage: 0→52→73/74 (98.6%). All validation work complete.
+The root cause was architectural: lean4-parser's `<|>` unconditionally catches all `Result.error` values, making `throwUnexpected` unreliable for validation. **P1 fix (2026-02-17):** All `throwUnexpected` calls eliminated and replaced with `validationError` field in `YamlStream` (survives backtracking). **Step 10a fix (2026-02-19):** 4 validation rules in `Flow.lean` + `Document.lean` restored error stage to 52/74 (70%). **Mapping bug fix (2026-02-19):** `runAllForReport` classification bug (`.unexpectedPass` → `.expectedFail`). **P7 completion (2026-02-24):** Post-indicator tab rejection (§6.1), block scalar auto-detect contradiction (§8.1), flow continuation tab detection, anchor indent validation, single-line implicit key constraints (§8.2.1), several additional error-rejection rules. Error stage: 0→52→73→74/74 (100%). **CQ3W fix (2026-02-22):** `setValidationError` in `collectChars` fuel-exhaustion case eliminates kernel/compiled discrepancy.
 
 </details>
 
@@ -872,7 +872,7 @@ The root cause was architectural: lean4-parser's `<|>` unconditionally catches a
 
 ### Path to 100% yaml-test-suite Compliance
 
-**Current: 352/406 (86.7%).** Target: 354/406 (87.2%), excluding 52 skipped tests outside YAML 1.2.2 scope. 2 unfixable UPs remain (H7TQ + CQ3W).
+**Current: 353/406 (86.9%).** Target: 354/406 (87.2%), excluding 52 skipped tests outside YAML 1.2.2 scope. 1 unfixable UP remains (H7TQ).
 
 | Phase | Work | Tests Fixed | Projected |
 |---|---|---|---|
@@ -884,7 +884,7 @@ The root cause was architectural: lean4-parser's `<|>` unconditionally catches a
 | **P6: Advanced features** | ✅ **Complete (2026-02-23).** Complex keys (flow collections as keys), Unicode anchors, directive edge cases, tag handles. Scalar: 50→54, block: 82→90, advanced: 45→64. | +22 done | — |
 | **P7: Remaining validation** | ✅ **Complete (2026-02-24).** Post-indicator tab rejection (§6.1), block scalar auto-detect contradiction (§8.1), flow continuation tab detection (§6.1), anchor indent validation (§8.2.2). Error: 44→74/74 (100%), flow: 43→46/46 (100%), block: 90→99. 1 unfixable UP (H7TQ). | +43 done | — |
 
-The remaining 52 skipped tests are YAML 1.1/1.3 features or tests that require behavior outside the YAML 1.2.2 specification. All phases P1–P7 are now complete. The parser achieves 352/354 (99.4%) of YAML 1.2.2-applicable tests, with H7TQ and CQ3W unfixable. All 350 non-excluded passing tests are locked as compile-time `#guard` checks (Phase 4).
+The remaining 52 skipped tests are YAML 1.1/1.3 features or tests that require behavior outside the YAML 1.2.2 specification. All phases P1–P7 are now complete. The parser achieves 353/354 (99.7%) of YAML 1.2.2-applicable tests, with H7TQ as the sole unfixable UP. All 351 non-excluded passing tests are locked as compile-time `#guard` checks (Phase 4).
 
 ### YAML 1.2.2 Spec Sections Not Yet Covered
 

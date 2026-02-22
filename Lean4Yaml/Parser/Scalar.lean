@@ -210,7 +210,9 @@ def doubleQuotedScalar (contentIndent : Nat := 0) : YamlParser YamlValue :=
     return .scalar { content, style := .doubleQuoted }
 where
   collectChars : Nat → String → YamlParser String
-    | 0, acc => return acc
+    | 0, acc => do
+        setValidationError "unterminated double-quoted scalar"
+        return acc
     | fuel + 1, acc => do
     match ← anyToken with
     | '"' => return acc
@@ -307,7 +309,9 @@ def singleQuotedScalar (contentIndent : Nat := 0) : YamlParser YamlValue :=
     return .scalar { content, style := .singleQuoted }
 where
   collectChars : Nat → String → YamlParser String
-    | 0, acc => return acc
+    | 0, acc => do
+        setValidationError "unterminated single-quoted scalar"
+        return acc
     | fuel + 1, acc => do
       match ← anyToken with
       | '\'' =>

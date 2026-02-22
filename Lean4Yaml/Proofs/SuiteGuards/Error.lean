@@ -10,7 +10,7 @@ import Lean4Yaml.Parser.Document
 Auto-generated from yaml-test-suite test files by `gen-suite-guards.py`.
 Each `#guard` is evaluated by Lean's kernel during `lake build`.
 
-**92 guards** covering all passing error tests.
+**93 guards** covering all passing error tests.
 
 These are Phase 4 of the verification plan: yaml-test-suite as compile-time proofs.
 -/
@@ -181,6 +181,11 @@ open Lean4Yaml.Parse
 
 -- CML9:0 Missing comma in flow
 #guard match parseYaml "key: [ word1\n#  xxx\n  word2 ]\n" with
+  | .ok _ => false
+  | .error _ => true
+
+-- CQ3W:0 Double quoted string without closing quote
+#guard match parseYaml "---\nkey: \"missing closing quote\n" with
   | .ok _ => false
   | .error _ => true
 
