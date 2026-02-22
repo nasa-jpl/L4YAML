@@ -248,7 +248,7 @@ Suite IDs fixed: 87E4, 8KB6, 8UDB, L9U5, LQZ7, QF4Y, NJ66, CFD4 (all flow-stage)
 **Infinite loop elimination via `DocumentResult`:**
 Discovered 36 timeout cases (not 9), all sharing one root cause: `yamlStream`'s while loop retries `document` at the same position when no input is consumed. The initial fix (external position comparison) revealed an implicit assumption: `document` already knew whether it consumed input but didn't communicate this. Refactored `document` to return `DocumentResult` (`parsed`/`endOfStream`/`stalled`) — the same explicit-result-type pattern as `DispatchResult` and `ContinuationCheck`. Now `yamlStream` pattern-matches on the result instead of comparing positions externally. The `stalled` variant carries position for error reporting and becomes a proof obligation target in Phase 4. Eliminated all 36 timeout cases across 9 root cause categories (anchors, tags, quoted scalar folding, comments, explicit keys, same-indent sequences, tabs, empty keys, flow implicit mappings).
 
-### Phase 3: Verification — Layered Approach ← **YOU ARE HERE**
+### Phase 3: Verification — Layered Approach
 
 Formal verification proceeds in three layers, ordered by feasibility and diagnostic impact.
 
@@ -262,22 +262,22 @@ Formal verification proceeds in three layers, ordered by feasibility and diagnos
 
 Layer 1 delivers property proofs independent of lean4-parser. Layer 3 now targets full parser totality and soundness via the 5-step plan below.
 
-#### Layer 1: Foundation ← **YOU ARE HERE**
+#### Layer 1: Foundation — ✅ COMPLETE
 
 Standalone proofs about the stream, pure helper functions, and character classifiers. These have zero lean4-parser dependency. Each item has extensive runtime test coverage (940 tests across `Verification.lean`, `StringLemmas.lean`, `CharClassTests.lean`, `ValidationTests.lean`, and other suites) that validates the properties empirically before they are proved formally.
 
 | Item | Description | Runtime Tests | Proof Status |
 |------|-------------|---------------|-------------|
 | **1a** | `next_decreasing`: after `YamlStream.next?`, remaining input strictly decreases | 38 tests (Verification: remainingLength, Stream exhaustive consumption; StringLemmas: advancement, strictly monotone) | ✅ Fully proved (`Proofs/Termination.lean`): `next_decreasing`, `remaining_nonneg`, `remaining_lt_of_next`, `remaining_eq_zero_of_atEnd`. Uses `String.Pos.Raw.byteIdx_add_char` + `Char.utf8Size_pos` + `omega`. Zero sorry's. |
-| **1b** | Properties of `trimTrailingWhitespace`, `trimTrailingWs` (idempotence, no trailing ws) | 12 tests (Verification: trimTrailingWhitespace) | ⬜ Tests only |
-| **1c** | `Grammar.lean` character Props match `Combinators.lean` implementations | 224 tests (`CharClassTests.lean`) + 32 tests (Verification: Grammar↔Combinators) | ✅ 5/7 theorems proved (`Proofs/CharClass.lean`): `isLineBreak_correspondence`, `isWhiteSpace_correspondence`, `isIndentChar_iff`, `isFlowIndicator_correspondence`, `isIndicator_equiv`. `canStartPlainScalar_base` compiles. |
-| **1d** | `FoldResult` type invariants | 4 tests (Verification: FoldResult) | ⬜ Tests only |
+| **1b** | Properties of `trimTrailingWhitespace`, `trimTrailingWs` (idempotence, no trailing ws) | 12 tests (Verification: trimTrailingWhitespace) | ✅ Fully proved (`Proofs/StringProperties.lean` §1): 8 list-level theorems — `dropWhile_idempotent`, `reverse_dropWhile_reverse_idempotent`, `dropWhile_empty`, `reverse_dropWhile_reverse_all_ws`, `reverse_dropWhile_reverse_noop`, plus auxiliary lemmas. Covers the core algorithm (reverse + dropWhile + reverse) used by the parser's trim functions. |
+| **1c** | `Grammar.lean` character Props match `Combinators.lean` implementations | 224 tests (`CharClassTests.lean`) + 32 tests (Verification: Grammar↔Combinators) | ✅ 8 theorems proved (`Proofs/CharClass.lean`): `isLineBreak_correspondence`, `isWhiteSpace_correspondence`, `isIndentChar_iff`, `isFlowIndicator_correspondence`, `isIndicator_equiv`, `canStartPlainScalar_base` (non-exception chars), `canStartPlainScalar_exception` (`-`/`?`/`:` + safe next char), `canStartPlainScalar_exception_none` (exception chars at EOF rejected). Full correspondence proved. |
+| **1d** | `FoldResult` type invariants | 4 tests (Verification: FoldResult) | ✅ Fully proved (`Proofs/StringProperties.lean` §2): 6 theorems — `folded_payload`, `folded_content_roundtrip`, `forbidden_has_message`, `foldResult_classification`, `folded_injective`, `forbidden_injective`. Constructor injectivity, exhaustive classification, content round-trip. |
 | **1e** | Block scalar assume/guarantee contracts | 135 tests (`ValidationTests.lean`: header char classification, `extractHeaderChars` spec, contract G1/G2, peek-before-consume regression, flow structure error rejection) | ✅ Fully proved (`Proofs/BlockScalarContracts.lean`): 14 theorems on header char classification, 10 decidable contract predicates with specification theorems (G1, G2, non-consuming, indent-bound, composition), 2 interplay theorems, 1 principle. Zero axioms. |
 | **1f** | Document parser assume/guarantee contracts | 13 tests (`ValidationTests.lean` §10: flow structure errors exercising D1–D3) | ✅ Fully proved (`Proofs/DocumentContracts.lean`): 17 theorems covering document boundary predicates, comment validation, progress monotonicity, tag handle scope, directive uniqueness. Uses `native_decide` for concrete proofs. Zero sorry's. |
 
-Effort: ~2 sessions. Diagnostic value: catches bugs in pure helper functions at compile time.
+**All 6 items complete.** ~90 theorems across 5 proof files. 0 sorry, 0 axiom.
 
-#### Layer 2: Key Invariants
+#### Layer 2: Key Invariants ← **YOU ARE HERE**
 
 Property proofs about specific parser behaviors. With lean4-parser fold combinators now total, these proofs can target parser invariants directly without `sorry`-admitting termination.
 
@@ -286,7 +286,7 @@ Property proofs about specific parser behaviors. With lean4-parser fold combinat
 | **2a** | `foldQuotedNewlines` output has no c-forbidden characters | |
 | **2b** | Escape sequence resolution produces valid Unicode in `doubleQuotedScalar` | |
 | **2c** | `consumeIndent n` advances column by exactly `n` | |
-| **2d** | Decidable instances for `Grammar.lean` propositions | |
+| **2d** | Decidable instances for `Grammar.lean` propositions | ✅ 10 char-level + 2 structural instances. `indented_weaken` monotonicity lemma. |
 
 Effort: ~2 sessions. Diagnostic value: specification-level checks for scalar parsing.
 
