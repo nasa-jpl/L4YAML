@@ -199,7 +199,7 @@ private def processKeyValue (st : ParseState) (key : String)
       { st with field := .tree, current := cur, blockIndent := 0 }
     else
       { st with current := { cur with tree := val } }
-  | "json" | "dump" | "from" | "tidy" =>
+  | "json" | "dump" | "from" | "tidy" | "emit" =>
     if val.startsWith "|" then
       { st with field := .other, blockIndent := 0 }
     else st
