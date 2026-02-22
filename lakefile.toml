@@ -66,6 +66,10 @@ name = "tryparse"
 root = "Tests.TryParse"
 
 [[lean_exe]]
+name = "tryroundtrip"
+root = "Tests.TryRoundTrip"
+
+[[lean_exe]]
 name = "quotedfolding"
 root = "Tests.QuotedFolding.Runner"
 

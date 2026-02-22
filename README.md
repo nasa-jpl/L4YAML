@@ -401,9 +401,11 @@ Prove `parse ∘ emit = id` for a canonical YAML subset.
 | **5.1** | **Universal `contentEq_refl`** — Proved `∀ v, contentEq v v = true` using `show` to bypass equation-generation limitation, `contentEqList_refl`/`contentEqPairList_refl` helper lemmas, and `simp_wf`+`omega` termination via `Array.mk.sizeOf_spec`/`Prod.mk.sizeOf_spec`. | Low–medium | ✅ **Complete** |
 | **5.2** | **Block stage compliance** — Block stage is already at 99/99 = 100% correct. The earlier "99/109" figure was from a stale snapshot before test reclassification. All 52 skipped tests (across all stages) are genuinely YAML 1.3 specific (`1.3-err`/`1.3-mod` tags). Current overall: 353/406 correct (86.9%). Error: 74/74 (100%). Flow: 46/46. Block: 99/99. Scalar: 54/82 (28 YAML 1.3 skips). Advanced: 64/81 (17 skips). Document: 16/24 (7 skips). | N/A | ✅ **Already complete** |
 | **5.3** | **`contentEq` equivalence relation + character-level round-trip** — Proved `contentEq_symm` (symmetry), `contentEq_trans` (transitivity), completing the proof that `contentEq` is a full equivalence relation (with §5 reflexivity). Proved `escapeTag_roundtrip`: universal theorem connecting `escapeChar` to `resolveNamedEscape` via the `escapeTag` witness function. Proved `escapeChar_identity` for non-escaped characters. Extended `#guard` coverage to 63 compile-time round-trip checks (deep nesting, wide collections, Unicode, whitespace). The full universal `∀ v, contentEq v (parseYamlSingle (emit v)).get! = true` requires unfolding ~8K lines of parser; the compositional building blocks (equivalence relation + character-level invertibility) are now in place. | Medium–High | ✅ **Complete** |
-| **5.4** | **Completeness** — Per-parser specification lemmas bottom-up. **Phase 1 complete**: `Proofs/Completeness.lean` with `LawfulParserStream YamlStream Char` typeclass + instance, `parseYaml_ok_iff` bridge theorem, 7 stream initialization lemmas (`ofString_*`), `parser_run_eq` simp lemma, 12 concrete completeness theorems via `native_decide` (plain/quoted/literal/folded scalars, flow/block sequences and mappings, multi-document streams, nested structures). `DecidableEq Scalar` added to Types.lean. 22 new proof artifacts (1 class instance + 21 theorems). **Phase 2** (combinator specs + universally quantified per-parser lemmas): requires `LawfulBEq YamlValue`, `@[simp]` annotations on lean4-parser combinators, fuel sufficiency lemma. See **Std.Iterators analysis** below. | Very high | **In progress** |
+| **5.4** | **Completeness** — Per-parser specification lemmas bottom-up toward `∀ input docs, ValidYaml input docs → parseYaml input = .ok docs`. 5 sub-phases: 5.4.1 infrastructure (✅), 5.4.2 combinator specs, 5.4.3 per-parser specs, 5.4.4 fuel sufficiency, 5.4.5 composition. See **completeness roadmap** and **Std.Iterators analysis** below. | Very high | **In progress** |
 
 #### Step 5.4: Std.Iterators strategic analysis (2026-02-22)
+
+<details>
 
 **Context.** PR [#97](https://github.com/fgdorais/lean4-parser/pull/97) on lean4-parser (`std-iterators` branch) replaces fuel-based fold combinators with well-founded recursion via `termination_by Stream.remaining s` and adds a `Std.Data.Iterators` bridge (`LawfulParserStream` typeclass + `StreamIterator` wrapper enabling provably-terminating `for` loops). The strategic question: should `lean4-yaml-verified` switch from the `total-fold` branch to `std-iterators`, and would this help with 5.4 completeness proofs?
 
@@ -452,6 +454,77 @@ Prove `parse ∘ emit = id` for a canonical YAML subset.
 5. Compose into the full completeness theorem
 
 **The Std.Iterators switch is deferred** — if fuel threading becomes a bottleneck during per-parser proofs, targeted WF conversion of specific functions (not all 16) would be justified. The `LawfulParserStream` instance is worth proving regardless as it establishes the foundation for either path.
+
+</details>
+
+#### Step 5.4: Completeness roadmap (2026-02-22)
+
+<details>
+
+**Goal:** `∀ input docs, ValidYaml input docs → parseYaml input = .ok docs`
+
+##### 5.4.1 — Type-level infrastructure (✅ complete)
+
+`Proofs/Completeness.lean`: `LawfulParserStream YamlStream Char` typeclass + instance, `parseYaml_ok_iff` bridge theorem, 7 stream initialization lemmas (`ofString_*`), `parser_run_eq` simp lemma, 12 concrete completeness theorems via `native_decide` (plain/quoted/literal/folded scalars, flow/block sequences and mappings, multi-document streams, nested structures). `DecidableEq Scalar` added to `Types.lean`. 22 proof artifacts (1 class instance + 21 theorems).
+
+##### 5.4.2 — Combinator specifications (next)
+
+lean4-parser ships **zero** theorems or `@[simp]` lemmas. All combinator specifications must be proved from first principles by unfolding definitions. However, the definitions are structurally simple — `Parser ε σ τ α` is just `σ → Result ε σ α` (a raw function type via `abbrev`), and the `Monad` instance fields are 1-line lambdas (`pure x s := .ok s x`, `bind x f s := match x s with ...`). Since our parser uses `m = Id`, there is no monadic lifting.
+
+The plan is to create `Proofs/ParserSpecs.lean` with ~15 foundation lemmas, each proving a direct-evaluation characterization of one combinator:
+
+| Lemma | Unfold depth | Difficulty |
+|-------|:---:|---|
+| `ParserT.pure_eq` | 1 | trivial |
+| `ParserT.bind_eq` | 1 | trivial |
+| `getStream_eq` | 2 | easy |
+| `setStream_eq` | 2 | easy |
+| `getPosition_eq` | 3 | easy |
+| `setPosition_eq` | 4 | medium |
+| `throwUnexpected_eq` | 4 | medium |
+| `tokenCore_eq` | 6 | medium |
+| `anyToken_eq` | 1 (given `tokenCore`) | trivial |
+| `option?_eq` | 5 | medium |
+| `withBacktracking_eq` | 7 | medium |
+| `lookAhead_eq` | 8 | medium |
+| `orElse_eq` | 3 | easy |
+| `tryCatch_eq` | 2 | easy |
+| `throw_eq` | 1 | trivial |
+
+**Key insight:** `eoption` (the workhorse behind `option?`) is defined as a direct `fun s =>` lambda that bypasses the `Monad` instance entirely — making it the most proof-friendly combinator. All `option*` and backtracking proofs should route through `eoption`.
+
+**Prerequisite:** `LawfulBEq YamlValue` — needed for universally quantified theorems (not just `native_decide`). Requires proving the derived `BEq` agrees with propositional equality through mutual recursion on `Array YamlValue` / `Array (YamlValue × YamlValue)`. Also need `DecidableEq YamlValue` (currently blocked by nested `Array` in the recursive type).
+
+##### 5.4.3 — Per-parser specification lemmas
+
+One correctness theorem per `ValidNode` constructor (12 obligations):
+
+| Constructor | Parser | Key challenge |
+|-------------|--------|---------------|
+| `plainScalarBlock` | `plainScalarSingleLine false` | safe-char predicate |
+| `plainScalarFlow` | `plainScalarSingleLine true` | flow indicator exclusion |
+| `singleQuoted` | `singleQuotedScalar` | matched quotes, `''` escapes |
+| `doubleQuoted` | `doubleQuotedScalar` | matched quotes, `\` escapes |
+| `literalScalar` | `blockScalar` (literal) | `\|` header + indented lines |
+| `foldedScalar` | `blockScalar` (folded) | `>` header + indented lines |
+| `blockSeq` | `blockSequence` | `- ` entries, consistent indent |
+| `blockMap` | `blockMapping` | `key: value` entries |
+| `flowSeq` | `flowSequence` | `[` items `,` `]` |
+| `flowMap` | `flowMapping` | `{` entries `,` `}` |
+| `null` | (empty input / `~`) | trivial |
+| `alias` | `anchorAlias` | `*name` reference |
+
+Each lemma takes the form: `ValidNode n → ∃ fuel, parser fuel input = .ok (stream', value)`
+
+##### 5.4.4 — Fuel sufficiency
+
+One lemma per parser bounding the fuel needed as a function of input length. Structural induction on `Nat` composes these — this is one of Lean's best-supported proof patterns.
+
+##### 5.4.5 — Full composition
+
+Compose per-parser specs + fuel sufficiency + `parseYaml_ok_iff` bridge into the top-level completeness theorem.
+
+</details>
 
 </details>
 
