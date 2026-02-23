@@ -244,8 +244,8 @@ We build bottom-up:
 |-------------|--------|
 | `singleQuoted` | WIP — loop lemma needed |
 | `doubleQuoted` | WIP — escape resolution |
-| `plainScalarBlock` | WIP — safe-char predicate |
-| `plainScalarFlow` | WIP — flow indicator exclusion |
+| `plainScalarBlock` | ✓ — `plainScalarSingleLine_block` |
+| `plainScalarFlow` | ✓ — `plainScalarSingleLine_flow` |
 | `literalScalar` | planned |
 | `foldedScalar` | planned |
 | `blockSeq` | planned — mutual recursion |
@@ -478,6 +478,240 @@ theorem plainScalar_empty
     String.isEmpty]
   simp only [ite_true, ParserSpecs.bind_eq, h_seterr, ParserSpecs.pure_eq]
 
+/-! ### §8.2.1  collectPlain Loop Specifications
+
+The `collectPlain` `where`-clause loop appears in both `plainScalarContent`
+and `plainScalarSingleLine`.  These lemmas characterize its termination
+conditions: fuel exhaustion, EOF, line break, and flow indicator.
+-/
+
+/--
+**collectPlain — fuel-zero base case.**
+
+When fuel is exhausted, `collectPlain` returns the accumulator unchanged.
+-/
+@[simp]
+theorem collectPlain_zero (inFlow : Bool) (acc : String) (lws : Bool)
+    (s : YamlStream) :
+    plainScalarContent.collectPlain inFlow 0 acc lws s = .ok s acc := by
+  unfold plainScalarContent.collectPlain
+  simp only [ParserSpecs.pure_eq]
+
+/--
+**collectPlain (singleLine) — fuel-zero base case.**
+-/
+@[simp]
+theorem collectPlain_singleLine_zero (inFlow : Bool) (acc : String) (lws : Bool)
+    (s : YamlStream) :
+    plainScalarSingleLine.collectPlain inFlow 0 acc lws s = .ok s acc := by
+  unfold plainScalarSingleLine.collectPlain
+  simp only [ParserSpecs.pure_eq]
+
+/--
+**collectPlain — EOF termination.**
+
+When `option? (lookAhead anyToken)` returns `none` (no input left),
+`collectPlain` returns the accumulator.
+-/
+theorem collectPlain_eof (inFlow : Bool) (fuel : Nat) (acc : String)
+    (lws : Bool) (s : YamlStream)
+    (h_look : (option? (lookAhead (anyToken (m := Id) : YamlParser Char))) s =
+      .ok s none) :
+    plainScalarContent.collectPlain inFlow (fuel + 1) acc lws s = .ok s acc := by
+  unfold plainScalarContent.collectPlain
+  simp only [ParserSpecs.bind_eq, h_look, ParserSpecs.pure_eq]
+
+/--
+**collectPlain (singleLine) — EOF termination.**
+-/
+theorem collectPlain_singleLine_eof (inFlow : Bool) (fuel : Nat)
+    (acc : String) (lws : Bool) (s : YamlStream)
+    (h_look : (option? (lookAhead (anyToken (m := Id) : YamlParser Char))) s =
+      .ok s none) :
+    plainScalarSingleLine.collectPlain inFlow (fuel + 1) acc lws s =
+      .ok s acc := by
+  unfold plainScalarSingleLine.collectPlain
+  simp only [ParserSpecs.bind_eq, h_look, ParserSpecs.pure_eq]
+
+/--
+**collectPlain — line break termination.**
+
+When lookAhead sees a line break character, `collectPlain` returns
+the current accumulator without consuming.
+-/
+theorem collectPlain_linebreak (inFlow : Bool) (fuel : Nat) (acc : String)
+    (lws : Bool) (s : YamlStream) (c : Char)
+    (h_look : (option? (lookAhead (anyToken (m := Id) : YamlParser Char))) s =
+      .ok s (some c))
+    (h_lb : Parse.isLineBreak c = true) :
+    plainScalarContent.collectPlain inFlow (fuel + 1) acc lws s = .ok s acc := by
+  unfold plainScalarContent.collectPlain
+  simp only [ParserSpecs.bind_eq, h_look, h_lb]
+  simp [ParserSpecs.pure_eq]
+
+/--
+**collectPlain (singleLine) — line break termination.**
+-/
+theorem collectPlain_singleLine_linebreak (inFlow : Bool) (fuel : Nat)
+    (acc : String) (lws : Bool) (s : YamlStream) (c : Char)
+    (h_look : (option? (lookAhead (anyToken (m := Id) : YamlParser Char))) s =
+      .ok s (some c))
+    (h_lb : Parse.isLineBreak c = true) :
+    plainScalarSingleLine.collectPlain inFlow (fuel + 1) acc lws s =
+      .ok s acc := by
+  unfold plainScalarSingleLine.collectPlain
+  simp only [ParserSpecs.bind_eq, h_look, h_lb]
+  simp [ParserSpecs.pure_eq]
+
+/--
+**collectPlain — flow indicator termination.**
+
+In flow context (`inFlow = true`), when the lookahead character is a
+flow indicator (`,`, `[`, `]`, `{`, `}`), and it is not a line break,
+comment-after-space, or colon, `collectPlain` returns the accumulator
+without consuming the indicator.  This is the key §7.3.3 behavior.
+-/
+theorem collectPlain_flow_indicator (fuel : Nat) (acc : String)
+    (lws : Bool) (s : YamlStream) (c : Char)
+    (h_look : (option? (lookAhead (anyToken (m := Id) : YamlParser Char))) s =
+      .ok s (some c))
+    (h_not_lb : Parse.isLineBreak c = false)
+    (h_not_comment : (c == '#' && lws) = false)
+    (h_not_colon : (c == ':') = false)
+    (h_flow : Parse.isFlowIndicator c = true) :
+    plainScalarContent.collectPlain true (fuel + 1) acc lws s = .ok s acc := by
+  unfold plainScalarContent.collectPlain
+  simp only [ParserSpecs.bind_eq, h_look, h_not_lb]
+  simp [h_not_comment, h_not_colon, h_flow, ParserSpecs.pure_eq]
+
+/--
+**collectPlain (singleLine) — flow indicator termination.**
+-/
+theorem collectPlain_singleLine_flow_indicator (fuel : Nat) (acc : String)
+    (lws : Bool) (s : YamlStream) (c : Char)
+    (h_look : (option? (lookAhead (anyToken (m := Id) : YamlParser Char))) s =
+      .ok s (some c))
+    (h_not_lb : Parse.isLineBreak c = false)
+    (h_not_comment : (c == '#' && lws) = false)
+    (h_not_colon : (c == ':') = false)
+    (h_flow : Parse.isFlowIndicator c = true) :
+    plainScalarSingleLine.collectPlain true (fuel + 1) acc lws s =
+      .ok s acc := by
+  unfold plainScalarSingleLine.collectPlain
+  simp only [ParserSpecs.bind_eq, h_look, h_not_lb]
+  simp [h_not_comment, h_not_colon, h_flow, ParserSpecs.pure_eq]
+
+/-! ### §8.2.2  collectLines / collectFlowLines Zero Cases -/
+
+/--
+**collectLines — fuel-zero base case.**
+-/
+@[simp]
+theorem collectLines_zero (inFlow : Bool) (contentIndent : Nat)
+    (acc : String) (s : YamlStream) :
+    plainScalarContent.collectLines inFlow contentIndent 0 acc s =
+      .ok s acc := by
+  unfold plainScalarContent.collectLines
+  simp only [ParserSpecs.pure_eq]
+
+/--
+**collectFlowLines — fuel-zero base case.**
+-/
+@[simp]
+theorem collectFlowLines_zero (inFlow : Bool) (acc : String)
+    (s : YamlStream) :
+    plainScalarContent.collectFlowLines inFlow 0 acc s = .ok s acc := by
+  unfold plainScalarContent.collectFlowLines
+  simp only [ParserSpecs.pure_eq]
+
+/-! ### §8.2.3  plainScalarSingleLine Auxiliary Lemmas -/
+
+/--
+**Position roundtrip for `anyToken`.**
+
+`anyToken` only advances position fields (`startPos`, `line`, `col`) of
+`YamlStream`, leaving `str`, `stopPos`, `anchorMap`, `validationError`,
+and `tagHandles` unchanged.  Therefore `setPosition/getPosition` roundtrips
+back to the original stream.  This is needed because `lookAhead` restores
+position via `Stream.setPosition s' (Stream.getPosition s)`, which is not
+definitionally `s`.
+-/
+theorem anyToken_setPosition_roundtrip (s s₁ : YamlStream) (c : Char)
+    (h : (anyToken (m := Id) : YamlParser Char) s = .ok s₁ c) :
+    Stream.setPosition s₁ (Stream.getPosition s) = s := by
+  simp only [ParserSpecs.anyToken_eq] at h
+  split at h
+  case h_1 c' s' h_next =>
+    have hs : s' = s₁ := by injection h
+    subst hs
+    simp only [stream_next?_eq] at h_next
+    unfold YamlStream.next? at h_next
+    split at h_next
+    case isTrue =>
+      simp only [Option.some.injEq, Prod.mk.injEq] at h_next
+      obtain ⟨_, rfl⟩ := h_next
+      simp only [Parser.Stream.setPosition, Parser.Stream.getPosition,
+                 YamlStream.getPos]
+    case isFalse =>
+      exact absurd h_next (by simp)
+  case h_2 =>
+    exact absurd h (by simp)
+
+/--
+**Indicator characters include `-`, `?`, `:`.**
+
+When `isIndicator c = false`, the character cannot be any of the
+special plain-scalar start characters.  This lets the lookAhead
+validation skip the second `if` branch entirely.
+-/
+theorem isIndicator_not_special (c : Char)
+    (h : Parse.isIndicator c = false) :
+    (c == '-' || c == '?' || c == ':') = false := by
+  unfold Parse.isIndicator at h
+  simp only [decide_eq_false_iff_not, List.mem_cons,
+             not_or, List.mem_nil_iff] at h
+  obtain ⟨h1, h2, h3, _⟩ := h
+  simp only [Bool.or_eq_false_iff]
+  exact ⟨⟨by simp [h1], by simp [h2]⟩, by simp [h3]⟩
+
+/-! ### §8.2.4  plainScalarSingleLine Relational Specification -/
+
+/--
+**plainScalarSingleLine — normal-start relational spec.**
+
+When the first character is plain-safe and not an indicator (covers the
+common case of alphanumeric/special characters), `plainScalarSingleLine`
+decomposes into `anyToken` + `collectPlain` with trimmed-end result.
+
+The lookAhead validation body cannot be named in a hypothesis because
+`do` notation inside `lookAhead` creates a monad application that fails
+type inference outside the parser context.  Instead, we derive success
+of the lookAhead from the character properties `h_safe` and `h_not_ind`.
+
+**Coverage**: handles all first characters EXCEPT `-`, `?`, `:` which
+require additional next-character validation.  A separate theorem for
+those special-start characters is a §5.4.5 obligation.
+-/
+theorem plainScalarSingleLine_normal_start
+    (inFlow : Bool) (s s₁ s₂ : YamlStream) (first : Char) (rest : String)
+    (h_safe : Parse.isPlainSafe first inFlow = true)
+    (h_not_ind : Parse.isIndicator first = false)
+    (h_first : (anyToken (m := Id) : YamlParser Char) s = .ok s₁ first)
+    (h_collect : plainScalarSingleLine.collectPlain inFlow
+        (Stream.remaining s₁) (String.ofList [first]) false s₁ =
+        .ok s₂ rest) :
+    plainScalarSingleLine inFlow s =
+      .ok s₂ (rest.trimAsciiEnd.toString) := by
+  have h_roundtrip := anyToken_setPosition_roundtrip s s₁ first h_first
+  have h_not_special := isIndicator_not_special first h_not_ind
+  unfold plainScalarSingleLine
+  simp only [withErrorMessage_eq, ParserSpecs.bind_eq, ParserSpecs.lookAhead_eq,
+             h_first, h_safe, h_not_ind, h_not_special,
+             Bool.not_false, Bool.and_true, Bool.true_or,
+             Bool.not_true, ite_false, Bool.false_eq_true,
+             ParserSpecs.pure_eq, ParserSpecs.getStream_eq,
+             h_collect, h_roundtrip]
+
 /-! ### §8.3  Block Scalar Specification -/
 
 /--
@@ -671,20 +905,34 @@ theorem flowMappingImpl_empty
 | 31 | `flowMapping_spec` | §8.5 | Fuel wrapper transparency |
 | 32 | `flowSequenceImpl_empty` | §8.6 | Empty-case: token only |
 | 33 | `flowMappingImpl_empty` | §8.6 | Empty-case: token only |
+| 34 | `collectPlain_zero` | §8.2.1 | Loop: fuel=0 → acc |
+| 35 | `collectPlain_singleLine_zero` | §8.2.1 | Loop: fuel=0 → acc |
+| 36 | `collectPlain_eof` | §8.2.1 | Loop: EOF → acc |
+| 37 | `collectPlain_singleLine_eof` | §8.2.1 | Loop: EOF → acc |
+| 38 | `collectPlain_linebreak` | §8.2.1 | Loop: linebreak → acc |
+| 39 | `collectPlain_singleLine_linebreak` | §8.2.1 | Loop: linebreak → acc |
+| 40 | `collectPlain_flow_indicator` | §8.2.1 | Loop: flow indicator → acc |
+| 41 | `collectPlain_singleLine_flow_indicator` | §8.2.1 | Loop: flow indicator → acc |
+| 42 | `collectLines_zero` | §8.2.2 | Loop: fuel=0 → acc |
+| 43 | `collectFlowLines_zero` | §8.2.2 | Loop: fuel=0 → acc |
+| 44 | `anyToken_setPosition_roundtrip` | §8.2.3 | Position roundtrip |
+| 45 | `isIndicator_not_special` | §8.2.3 | Indicator → not special |
+| 46 | `plainScalarSingleLine_normal_start` | §8.2.4 | Relational: normal start |
 
-### Remaining Obligations (deferred to §5.4.4)
+### Remaining Obligations (deferred to §5.4.5)
 
 The relational specs above reduce per-parser correctness to sub-parser
 correctness.  The remaining obligations are:
 
-1. **Fuel-bounded loop specs** — `collectChars` (quoted), `collectPlain` (plain),
+1. **Special-start plain scalar** — `plainScalarSingleLine` when the
+   first character is `-`, `?`, or `:` (requires next-character validation
+   in the lookAhead body).
+
+2. **Fuel-bounded loop induction** — `collectChars` (quoted),
    `blockScalarContent`, `blockSequenceItemsImpl`, `flowSequenceItemsImpl`, etc.
    Each requires structural induction on the fuel parameter.
 
-2. **Fuel sufficiency** — bounding the fuel needed as a function of input length.
-   The `4 * Stream.remaining + 4` factor for collections needs justification.
-
-3. **Mutual recursion** — `blockValueImpl` dispatches to `blockSequence`,
+2. **Mutual recursion** — `blockValueImpl` dispatches to `blockSequence`,
    `blockMapping`, scalars; similarly `flowValueImpl`.  These form the
    cross-cutting obligations that connect all per-parser specs.
 -/
