@@ -457,6 +457,77 @@ Prove `parse ∘ emit = id` for a canonical YAML subset.
 
 </details>
 
+#### Step 5.4: Std.Iterators reassessment (2026-02-23)
+
+<details>
+
+**Context.** Phase 5 is complete. All proof goals are achieved: ~426 theorems, 553 compile-time checks, 0 sorry, 0 axiom, 246/246 build jobs. The question is no longer "would PR#97 help with completeness proofs?" (answered: no — fuel-based proofs are done) but rather: **should we switch from PR#96 (`total-fold`) to PR#97 (`std-iterators`) for long-term maintainability?**
+
+**What changed since the initial analysis (2026-02-22):**
+
+| Dimension | At initial analysis | Now |
+|-----------|-------------------|-----|
+| Completeness proofs | Not started | ✅ Complete (5.4.1–5.4.5) |
+| Fuel sufficiency proofs | Not started | ✅ 35 theorems in `FuelSufficiency.lean` |
+| Per-parser specs | Not started | ✅ 46 theorems in `PerParserSpecs.lean` |
+| Composition proofs | Not started | ✅ 21 theorems in `Composition.lean` |
+| `LawfulParserStream` | Defined in our codebase | Defined in both our codebase AND PR#97 |
+| Dump / round-trip | Not started | ✅ Complete (`Dump.lean`, `DumpRoundTrip.lean`) |
+| Build jobs | 238 | 246 |
+
+**PR#96 vs PR#97 — concrete diff:**
+
+| Dimension | PR#96 (`total-fold`) — current | PR#97 (`std-iterators`) |
+|-----------|-------------------------------|------------------------|
+| Files changed | 3 (+90/−38) | 5 (+308/−33) |
+| `partial def` eliminated | 6 (`efoldlPAux`, `foldr`, `takeUntil`, `dropUntil`, `countUntil`, `count`) | Same 6 |
+| Termination mechanism | Fuel parameter: `fuel := Stream.remaining (← getStream)` | WF recursion: `termination_by Stream.remaining s₀` |
+| New types | None | `LawfulParserStream` class, `StreamIterator` wrapper |
+| New files | None | `Parser/Iterators.lean` (150 lines) |
+| `sorry` count | 0 | 3 (`String.Slice`, `Substring.Raw`, `ByteSlice` instances) |
+| `Std.Data.Iterators` dep | No | Yes |
+| `for tok in iter` support | No | Yes (requires `LawfulParserStream`) |
+
+**Impact on our proof inventory (2,738 lines across 6 files):**
+
+| File | Lines | Fuel refs | Impact of switching to PR#97 |
+|------|-------|-----------|------------------------------|
+| `Termination.lean` | 108 | 1 | **None.** `stream_remaining_decreasing` proved from `next?` — independent of lean4-parser internals. |
+| `ParserSpecs.lean` | 424 | 0 | **Needs update.** 20 `@[simp]` lemmas unfold lean4-parser combinators. PR#97 changes `foldr`, `takeUntil`, `dropUntil`, `countUntil` signatures (add `s₀ : σ` parameter, `termination_by`). Lemmas for these 4 combinators must be re-proved. Monad/stream/error/token lemmas (§1–§3, §6–§7) are unchanged. |
+| `PerParserSpecs.lean` | 941 | 34 | **Needs audit.** 8 theorems in §8.2.1–§8.2.2 reference fuel-zero base cases of `collectPlain`, `collectLines`, `collectFlowLines`. These are YAML-level fuel (our code), NOT lean4-parser fuel — **no change needed**. 4 theorems in §8.4–§8.5 reference `blockSequenceImpl`/`blockMappingImpl`/`flowSequenceImpl`/`flowMappingImpl` which use our `4 * remaining + 4` fuel — **no change needed**. |
+| `FuelSufficiency.lean` | 545 | 78 | **None.** All 35 theorems are about our YAML parser's fuel arithmetic (`4 * remaining + 4`), not lean4-parser's fold fuel. |
+| `Composition.lean` | 338 | 12 | **None.** All 21 theorems compose wrapper-to-Impl transparency for our fuel pattern. |
+| `Completeness.lean` | 382 | 3 | **Minor.** `LawfulParserStream` class is defined here; PR#97 provides its own. Would need to import PR#97's class instead of defining our own, or keep ours as a downstream wrapper. The `YamlStream` instance proof is identical either way. |
+
+**Summary: switching to PR#97 requires re-proving ~4 combinator spec lemmas in `ParserSpecs.lean`.** Everything else is either unchanged or trivially adapted.
+
+**Revised assessment:**
+
+| Factor | PR#96 | PR#97 | Winner |
+|--------|-------|-------|--------|
+| Proof stability | ✅ All proofs done, all pass | ⚠️ ~4 combinator lemmas need re-proof | PR#96 |
+| `sorry`-freedom | ✅ 0 sorry | ❌ 3 sorry in lean4-parser itself | PR#96 |
+| API surface for downstream | Fuel parameter exposed | Cleaner (no fuel param in fold signatures) | PR#97 |
+| `LawfulParserStream` upstream | Not provided | ✅ Provided (with sorry) | PR#97 |
+| `Std.Iterators` bridge | Not available | ✅ `StreamIterator`, `Finite`, `IteratorLoop` | PR#97 |
+| Future WF refactoring | Independent | Enables `for tok in iter` loops | PR#97 |
+| Dependency weight | lean4-parser only | lean4-parser + Std.Data.Iterators | PR#96 |
+
+**Decision: stay on PR#96 (`total-fold`).** Three reasons:
+
+1. **Sorry-freedom is non-negotiable.** The project's value proposition is "0 sorry, 0 axiom." PR#97 introduces 3 sorry proofs in lean4-parser's `LawfulParserStream` instances for `String.Slice`, `Substring.Raw`, and `ByteSlice`. Even though we don't use those instances (we use `YamlStream`), the sorry warnings would appear in the build output and the dependency itself would not be sorry-free. This matters for publication and for the project's integrity claim.
+
+2. **All proof work is done.** The 2,738 lines of proof infrastructure are complete and passing. Switching to PR#97 requires re-proving ~4 combinator spec lemmas in `ParserSpecs.lean` — low effort, but any churn risks regressions in the 46 dependent theorems in `PerParserSpecs.lean` for zero functional benefit.
+
+3. **The Std.Iterators bridge is not needed.** Our YAML parser implements its own fuel via `match fuel with | 0 => ... | fuel + 1 => ...` in 16 mutual functions (282 fuel references, 4,067 lines). The lean4-parser fold combinators (`foldl`, `foldr`, `takeUntil`) are only used in `Combinators.lean` for leaf-level iteration (`dropMany`, `count`, `drop`). The `StreamIterator`/`for tok in iter` pattern would replace at most ~6 `for _ in [:fuel]` loops — a marginal improvement that doesn't justify the transition cost.
+
+**When to reconsider:**
+- If PR#97's 3 sorry proofs are resolved upstream (stdlib `simp` lemmas for byte-index arithmetic)
+- If a future phase requires proving properties *about* lean4-parser's fold combinators (currently unnecessary — our proofs are about our own parsers)
+- If lean4-parser `main` merges PR#97 but not PR#96, making `total-fold` a dead branch
+
+</details>
+
 #### Step 5.4: Completeness roadmap (2026-02-22)
 
 <details>
