@@ -146,3 +146,10 @@ name = "Tests.DumpRoundTrip"
 [[lean_exe]]
 name = "dumproundtrip"
 root = "Tests.DumpRoundTrip.Runner"
+
+[[lean_lib]]
+name = "Tests.RawParseTests"
+
+[[lean_exe]]
+name = "rawparsetests"
+root = "Tests.RawParseTests.Runner"

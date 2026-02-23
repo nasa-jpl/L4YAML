@@ -15,6 +15,7 @@ import Tests.CharClassTests
 import Tests.ValidationTests
 import Tests.CompletenessTests
 import Tests.DumpRoundTrip
+import Tests.RawParseTests
 import Demo
 
 /-!
@@ -331,6 +332,7 @@ def main (args : List String) : IO UInt32 := do
       Tests.Validation.collectTests,
       Tests.Completeness.collectTests,
       Tests.DumpRoundTrip.collectTests,
+      Tests.RawParse.collectTests,
       Demo.collectTests
     ]
     let mut verifiedSuites : Array Tests.VerifiedSuiteResult := #[]
