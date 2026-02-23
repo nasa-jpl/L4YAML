@@ -309,13 +309,14 @@ theorem lookupAnchor_eq (name : String) (s : YamlStream) :
 **parseAlias — success, anchor found.**
 
 When `char '*'` succeeds, `anchorName` parses the name, and the anchor
-IS in the stream's anchor map, `parseAlias` returns the stored value.
+IS in the stream's anchor map, `parseAlias` returns `.alias name`
+(the serialization-tree form). The anchor `val` witnesses existence.
 -/
 theorem parseAlias_found (s s₁ s₂ : YamlStream) (name : String) (val : YamlValue)
     (h_star : (Parser.Char.char (ε := YamlError) (m := Id) '*') s = .ok s₁ '*')
     (h_name : anchorName s₁ = .ok s₂ name)
     (h_find : AnchorMap.find? s₂.anchorMap name = some val) :
-    parseAlias s = .ok s₂ val := by
+    parseAlias s = .ok s₂ (.alias name) := by
   unfold parseAlias
   simp only [withErrorMessage_eq, ParserSpecs.bind_eq,
              h_star, h_name, lookupAnchor_eq, h_find, ParserSpecs.pure_eq]
@@ -324,7 +325,7 @@ theorem parseAlias_found (s s₁ s₂ : YamlStream) (name : String) (val : YamlV
 **parseAlias — success, anchor undefined.**
 
 When `char '*'` succeeds, `anchorName` parses the name, but the anchor
-is NOT in the map, `parseAlias` returns `YamlValue.null` and sets a
+is NOT in the map, `parseAlias` returns `.alias name` and sets a
 validation error.
 -/
 theorem parseAlias_not_found (s s₁ s₂ : YamlStream) (name : String)
@@ -334,7 +335,7 @@ theorem parseAlias_not_found (s s₁ s₂ : YamlStream) (name : String)
     -- setValidationError post-condition:
     (s₃ : YamlStream)
     (h_seterr : setValidationError s!"undefined anchor: *{name}" s₂ = .ok s₃ ()) :
-    parseAlias s = .ok s₃ YamlValue.null := by
+    parseAlias s = .ok s₃ (.alias name) := by
   unfold parseAlias
   simp only [withErrorMessage_eq, ParserSpecs.bind_eq,
              h_star, h_name, lookupAnchor_eq, h_find, h_seterr,
