@@ -1111,6 +1111,20 @@ Presentation layer: style-aware dump per YAML 1.2.2 §3.1.1. Renamed from "YAML 
 
 Updated `Grammar.lean` (NodeToValue propagates `BlockScalarMeta`), `Emitter.lean` (`.alias` branch in `emit`/`contentEq`), `Parser/Flow.lean` (`.alias` exhaustiveness), and all proof + test files (Soundness, RoundTrip, Completeness, Verification, TagTests, CompletenessTests, ValidationTests). All 503 build jobs pass, all test suites green (232/232).
 
+**Core dump function (2026-02-22).** Implemented `Lean4Yaml/Dump.lean` — the style-aware dump: `dump : YamlValue → DumpConfig → String`.
+
+| Component | Description |
+|-----------|-------------|
+| `DefaultStyle` | Collection style preference: `.block` (default) / `.flow` / `.auto` |
+| `ScalarPref` | Scalar quoting preference: `.plain` / `.doubleQuoted` / `.singleQuoted` / `.auto` |
+| `DumpConfig` | Configuration: `indent` (Nat := 2), `defaultStyle`, `scalarStyle`, `lineWidth` (Nat := 80), `sortKeys` (Bool := false) |
+| `dump` | Main function with 5 `where`-clause helpers for structural recursion: `dumpValue`, `dumpFlowList`, `dumpFlowPairs`, `dumpBlockList`, `dumpBlockPairs` |
+| Content analysis | `isPlainSafe` checks indicators (§5.3), flow chars, `: `, ` #`, reserved words, leading/trailing whitespace. `chooseScalarStyle` selects plain/quoted/literal/folded based on content + config |
+| Block scalars | Literal (`\|`) and folded (`>`) with chomp indicators (`-`/`+`). Content indented at `max(1, depth) × indentWidth` for spec compliance |
+| 42 `#guard` tests | Compile-time checks: plain/auto-quoted/reserved-word/block/folded/flow/nested/anchor/tag/alias/config-override scenarios |
+
+Pure function (no IO), kernel-reducible, `#guard`-testable. Registered in `Lean4Yaml.lean` barrel file. All 244 build jobs pass.
+
 </details>
 
 ---
@@ -1119,7 +1133,7 @@ Updated `Grammar.lean` (NodeToValue propagates `BlockScalarMeta`), `Emitter.lean
 
 <details>
 <summary>
-Style-aware dump: YamlValue → DumpConfig → String. 4 sub-steps (core, documents, proofs, tests).
+Style-aware dump: YamlValue → DumpConfig → String. 5 sub-steps (prerequisites, core, documents, proofs, tests).
 </summary>
 
 ### Motivation
@@ -1134,11 +1148,11 @@ The current emitter (`Emitter.lean`) produces canonical YAML — double-quoted s
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  Lean4Yaml/Dump.lean                                           │
+│  Lean4Yaml/Dump.lean                                            │
 │                                                                 │
-│  dump : YamlValue → DumpConfig → String                        │
-│  dumpDocument : YamlDocument → DumpConfig → String             │
-│  dumpDocuments : Array YamlDocument → DumpConfig → String      │
+│  dump : YamlValue → DumpConfig → String                         │
+│  dumpDocument : YamlDocument → DumpConfig → String              │
+│  dumpDocuments : Array YamlDocument → DumpConfig → String       │
 │                                                                 │
 │  DumpConfig:                                                    │
 │    indent : Nat := 2        -- indentation width                │
@@ -1153,7 +1167,8 @@ The current emitter (`Emitter.lean`) produces canonical YAML — double-quoted s
 
 | Step | Description | Difficulty | Status |
 |------|-------------|------------|--------|
-| **6.1** | **Core dump** — `dump : YamlValue → DumpConfig → String`. Style-aware output: plain/quoted scalars based on content analysis, block sequences/mappings with configurable indentation, flow collections when compact. Multi-line string support via literal `\|` and folded `>` block scalars. | Medium | Not started |
+| **6.0** | **Presentation metadata** — Round-trip types in `Types.lean`: `ChompStyle`, `BlockScalarMeta`, `CommentPosition`/`Comment`, `Scalar.anchor`/`blockMeta`, `YamlValue.alias` constructor, anchor fields on `.sequence`/`.mapping`, `resolveAliases`. Updated Grammar, Emitter, Flow, all proofs and tests. | Low | ✅ Complete |
+| **6.1** | **Core dump** — `dump : YamlValue → DumpConfig → String`. Style-aware output: plain/quoted scalars based on content analysis, block sequences/mappings with configurable indentation, flow collections when compact. Multi-line string support via literal `\|` and folded `>` block scalars. 42 `#guard` compile-time tests. | Medium | ✅ Complete |
 | **6.2** | **Document dump** — Handle `---`/`...` markers, directives (`%YAML`, `%TAG`), multi-document streams. Integrate with `DumpConfig` for document-level options. | Low | Not started |
 | **6.3** | **Dump proofs** — (a) `dump_produces_valid_yaml`: output of `dump` is parseable by `parseYaml`. (b) `dump_preserves_content`: `contentEq v (parseYamlSingle (dump v cfg)).get!` for all `v`. (c) Style preservation: when `YamlValue` already has explicit style annotations, the dump function respects them. | High | Not started |
 | **6.4** | **Dump tests** — `#guard` compile-time checks for dump output across all value types and configurations. Golden-file comparisons for complex nested structures. | Low | Not started |
