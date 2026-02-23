@@ -241,7 +241,7 @@ def dispatchByCharImpl (fuel : Nat) (contentIndent : Nat) (scalarIndent : Nat :=
         let val := bv.getD .null
         let val := match tagName with | some t => val.withTag t | none => val
         storeAnchor name val
-        return .matched val
+        return .matched (val.withAnchor name)
     else
         -- Value on same line: dispatch normally
         let result ← dispatchByCharImpl fuel contentIndent
@@ -257,7 +257,7 @@ def dispatchByCharImpl (fuel : Nat) (contentIndent : Nat) (scalarIndent : Nat :=
           | _ => pure ()
           let val := match tagName with | some t => val.withTag t | none => val
           storeAnchor name val
-          return .matched val
+          return .matched (val.withAnchor name)
         | other => return other
   | '*' => do
     -- P6 fix (26DV): If `*alias : value` forms a mapping entry, the alias
@@ -313,6 +313,7 @@ def dispatchByCharImpl (fuel : Nat) (contentIndent : Nat) (scalarIndent : Nat :=
         match anchorName with
         | some name => storeAnchor name val
         | none => pure ()
+        let val := match anchorName with | some name => val.withAnchor name | none => val
         return .matched val
     else
         let result ← dispatchByCharImpl fuel contentIndent
@@ -322,6 +323,7 @@ def dispatchByCharImpl (fuel : Nat) (contentIndent : Nat) (scalarIndent : Nat :=
           match anchorName with
           | some name => storeAnchor name val
           | none => pure ()
+          let val := match anchorName with | some name => val.withAnchor name | none => val
           return .matched val
         | other => return other
   | '?' => do
@@ -918,6 +920,7 @@ def blockMappingKeyImpl (fuel : Nat) : YamlParser YamlValue :=
     match anchorName with
     | some name => storeAnchor name key
     | none => pure ()
+    let key := match anchorName with | some name => key.withAnchor name | none => key
     return key
   | none =>
   -- Check for anchor on mapping key
@@ -947,7 +950,7 @@ def blockMappingKeyImpl (fuel : Nat) : YamlParser YamlValue :=
     ]
     let key := match tagName with | some t => key.withTag t | none => key
     storeAnchor name key
-    return key
+    return (key.withAnchor name)
   | none =>
   first [
     flowSequence,       -- P6 fix (M2N8): flow sequence as mapping key (`[]: x`)

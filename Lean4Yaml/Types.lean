@@ -163,13 +163,17 @@ inductive Directive where
 /-! ## Documents -/
 
 /--
-A YAML document with optional directives.
+A YAML document with optional directives and anchor map.
 
 YAML streams can contain multiple documents separated by `---` markers.
+
+The `anchors` field captures the document's anchor map from the parse phase.
+This enables the **Compose** step (YAML 1.2.2 §3.1) to resolve alias nodes.
 -/
 structure YamlDocument where
   value : YamlValue
   directives : Array Directive := #[]
+  anchors : Array (String × YamlValue) := #[]
   deriving Repr, BEq
 
 /-! ## Convenience Constructors -/
@@ -303,6 +307,51 @@ where
     | [], _ => []
     | (k, v) :: rest, anchors =>
       (k.resolveAliases anchors, v.resolveAliases anchors) :: resolvePairs rest anchors
+
+/--
+Strip all anchor annotations from a `YamlValue` tree.
+
+Clears the `anchor` field on scalars, sequences, and mappings.
+Alias nodes are left unchanged (they have no anchor field).
+
+This converts serialization-level anchor metadata into the clean
+representation graph form expected by YAML 1.2.2 §3.1.
+-/
+def YamlValue.stripAnchors (v : YamlValue) : YamlValue :=
+  match v with
+  | .scalar s => .scalar { s with anchor := none }
+  | .sequence style items tag _ =>
+    .sequence style (stripList items.toList).toArray tag none
+  | .mapping style pairs tag _ =>
+    .mapping style (stripPairs pairs.toList).toArray tag none
+  | .alias _ => v
+where
+  /-- Strip anchors in a list of values. -/
+  stripList : List YamlValue → List YamlValue
+    | [] => []
+    | v :: vs => v.stripAnchors :: stripList vs
+  /-- Strip anchors in a list of key-value pairs. -/
+  stripPairs : List (YamlValue × YamlValue) → List (YamlValue × YamlValue)
+    | [] => []
+    | (k, v) :: rest =>
+      (k.stripAnchors, v.stripAnchors) :: stripPairs rest
+
+/--
+**Compose**: resolve aliases and strip anchor annotations.
+
+This is the "Compose" step from YAML 1.2.2 §3.1
+(https://yaml.org/spec/1.2.2/#31-processes).
+
+Takes a serialization tree (with `.alias` nodes and `anchor` fields)
+and produces a representation graph (all aliases resolved, no anchors).
+
+The `anchors` parameter is the document's anchor map, captured during
+the Parse phase.
+-/
+def YamlDocument.compose (doc : YamlDocument) : YamlDocument :=
+  { doc with
+    value := (doc.value.resolveAliases doc.anchors).stripAnchors
+    anchors := #[] }
 
 /-! ## Anchor Map
 

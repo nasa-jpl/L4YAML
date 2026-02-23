@@ -382,7 +382,8 @@ def document (prevHadDocEnd : Bool := true) : YamlParser DocumentResult := do
         setValidationError
           s!"unexpected content '{ch}' after explicit document; expected '---' or '...'"
         return .stalled posBefore
-  return .parsed (hadDocEnd := hadDocEnd) { value, directives := dirs }
+  let anchors ← getAnchorMap
+  return .parsed (hadDocEnd := hadDocEnd) { value, directives := dirs, anchors }
 
 /--
 Parse a YAML stream: zero or more documents.
@@ -423,18 +424,30 @@ def yamlStream : YamlParser (Array YamlDocument) := do
 
 /-! ## Top-Level Parse Functions -/
 
-/--
-Parse a YAML string into an array of documents.
+/-! ## Top-Level Parse Functions
 
-This is the main entry point for the parser.  After parsing, checks
-the stream's `validationError` field — if set, the input was rejected
-even though individual sub-parsers may have produced partial results.
+YAML 1.2.2 §3.1 defines **Load** as the composition of two processes:
+- **Parse**: character stream → serialization event tree
+- **Compose**: serialization event tree → representation node graph
+
+The *Raw* variants return the serialization tree (anchors + aliases preserved).
+The standard variants apply Compose for backward compatibility.
+-/
+
+/--
+Parse a YAML string into an array of documents (**serialization tree**).
+
+Returns documents with `.alias name` nodes and `anchor` fields preserved.
+This is the **Parse** step from YAML 1.2.2 §3.1.
+
+Each `YamlDocument` includes an `anchors` map that can be used by
+`YamlDocument.compose` to resolve aliases.
 
 **Post-condition**: returns `.ok docs` only if ALL of:
   1. The parser produced a valid document array.
   2. No validation error was recorded in the stream.
 -/
-def parseYaml (input : String) : Except String (Array YamlDocument) :=
+def parseYamlRaw (input : String) : Except String (Array YamlDocument) :=
   let stream := YamlStream.ofString input
   match Parser.run yamlStream stream with
   | .ok stream' docs =>
@@ -450,10 +463,37 @@ def parseYaml (input : String) : Except String (Array YamlDocument) :=
     | none => .error (toString err)
 
 /--
-Parse a YAML string expecting exactly one document.
+Parse a YAML string into an array of documents (**representation graph**).
 
-Returns the value of the single document, or an error if
-there are zero or more than one documents.
+This is the full **Load** step from YAML 1.2.2 §3.1:
+Parse (→ serialization tree) + Compose (→ representation graph).
+
+Aliases are resolved and anchor annotations are stripped.
+This is the main entry point for most use cases.
+-/
+def parseYaml (input : String) : Except String (Array YamlDocument) :=
+  match parseYamlRaw input with
+  | .ok docs => .ok (docs.map YamlDocument.compose)
+  | .error e => .error e
+
+/--
+Parse a YAML string expecting exactly one document (**serialization tree**).
+
+Returns the raw document with `.alias` nodes and `anchor` fields preserved.
+-/
+def parseYamlSingleRaw (input : String) : Except String YamlDocument :=
+  match parseYamlRaw input with
+  | .ok docs =>
+    if docs.size == 0 then .ok { value := YamlValue.null }
+    else if docs.size == 1 then .ok docs[0]!
+    else .error s!"expected single document, found {docs.size}"
+  | .error e => .error e
+
+/--
+Parse a YAML string expecting exactly one document (**representation graph**).
+
+Returns the value of the single document with aliases resolved and
+anchor annotations stripped.
 -/
 def parseYamlSingle (input : String) : Except String YamlValue :=
   match parseYaml input with

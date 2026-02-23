@@ -323,23 +323,23 @@ def testDocumentDump (state : IO.Ref TestCollector) : IO Unit := do
     (dumpDirective (.tag "!!" "tag:yaml.org,2002:") ==
       "%TAG !! tag:yaml.org,2002:")
   check state "document no directives"
-    (dumpDocument ⟨.plainScalar "hello", #[]⟩ == "hello")
+    (dumpDocument ⟨.plainScalar "hello", #[], #[]⟩ == "hello")
   check state "document with YAML directive"
-    (dumpDocument ⟨.plainScalar "hello", #[.yaml "1.2"]⟩ ==
+    (dumpDocument ⟨.plainScalar "hello", #[.yaml "1.2"], #[]⟩ ==
       "%YAML 1.2\n---\nhello")
   check state "document multiple directives"
-    (dumpDocument ⟨.plainScalar "v", #[.yaml "1.2", .tag "!e!" "tag:e.com,2000:"]⟩ ==
+    (dumpDocument ⟨.plainScalar "v", #[.yaml "1.2", .tag "!e!" "tag:e.com,2000:"], #[]⟩ ==
       "%YAML 1.2\n%TAG !e! tag:e.com,2000:\n---\nv")
   check state "dumpDocuments empty"
     (dumpDocuments #[] == "")
   check state "dumpDocuments single"
-    (dumpDocuments #[⟨.plainScalar "hello", #[]⟩] == "hello")
+    (dumpDocuments #[⟨.plainScalar "hello", #[], #[]⟩] == "hello")
   check state "dumpDocuments two → ---/..."
-    (dumpDocuments #[⟨.plainScalar "a", #[]⟩, ⟨.plainScalar "b", #[]⟩] ==
+    (dumpDocuments #[⟨.plainScalar "a", #[], #[]⟩, ⟨.plainScalar "b", #[], #[]⟩] ==
       "a\n---\nb\n...")
   check state "dumpDocuments three"
-    (dumpDocuments #[⟨.plainScalar "a", #[]⟩, ⟨.plainScalar "b", #[]⟩,
-                     ⟨.plainScalar "c", #[]⟩] ==
+    (dumpDocuments #[⟨.plainScalar "a", #[], #[]⟩, ⟨.plainScalar "b", #[], #[]⟩,
+                     ⟨.plainScalar "c", #[], #[]⟩] ==
       "a\n---\nb\n---\nc\n...")
 
 /-- Collect all dump round-trip test results. -/

@@ -92,15 +92,20 @@ orthogonal to position state — a clean separation for proofs.
 /--
 Store an anchor binding in the stream's anchor map.
 
+Before storing, any alias nodes within `val` are resolved against the
+current anchor map.  This ensures the map always contains fully-resolved
+values — a prerequisite for the single-pass **Compose** step (§3.1).
+
 **Post-condition** (from `AnchorMap.find?_insert`):
-  `AnchorMap.find? (updated map) name = some val`
+  `AnchorMap.find? (updated map) name = some resolved`
 
 Replaces any existing binding for the same name (YAML allows
 anchor name reuse within a document, §3.2.2.2).
 -/
 def storeAnchor (name : String) (val : YamlValue) : YamlParser Unit := do
   let s ← getStream
-  setStream { s with anchorMap := AnchorMap.insert s.anchorMap name val }
+  let resolved := val.resolveAliases s.anchorMap
+  setStream { s with anchorMap := AnchorMap.insert s.anchorMap name resolved }
 
 /--
 Look up an anchor in the stream's anchor map.
@@ -125,6 +130,19 @@ def resetAnchorMap : YamlParser Unit := do
   let s ← getStream
   setStream { s with anchorMap := AnchorMap.empty }
 
+/--
+Retrieve the current anchor map from the stream.
+
+**Contract**: pure read — does not consume input, does not
+modify position or anchor map.
+
+Used by `document` to capture the anchor map into `YamlDocument.anchors`
+before returning, enabling the **Compose** step (§3.1) to resolve aliases.
+-/
+def getAnchorMap : YamlParser AnchorMap := do
+  let s ← getStream
+  return s.anchorMap
+
 /-! ## Alias Parsing
 
 **YAML 1.2.2**: [103] c-ns-alias-node (§7.1, https://yaml.org/spec/1.2.2/#71-alias-nodes)
@@ -140,29 +158,22 @@ Parse an alias node: `*name`.
 **YAML 1.2.2**: [103] c-ns-alias-node (§7.1)
 - [14] c-alias (`*`) + [101] ns-anchor-name
 
-Resolves immediately by looking up the anchor map.
+Returns `.alias name` — the serialization-tree form.
+The **Compose** step (§3.1) later resolves this to the anchored value.
 
-**Pre-condition**: the anchor `name` must have been stored via
-a prior `storeAnchor name val` call in the same document scope.
-
-**Post-condition**: returns the exact `val` that was stored
-(by `AnchorMap.find?_insert`), with no AST transformation.
-
-**Failure mode**: if the anchor is undefined, a validation error is
-recorded in the stream (survives backtracking) and `YamlValue.null`
-is returned.  The top-level parser checks the stream's
-`validationError` field and rejects the input.
+**Validation**: if the anchor is undefined, a validation error is recorded
+in the stream (survives backtracking). The alias node is still returned.
+The top-level parser checks `validationError` and rejects the input.
 -/
 def parseAlias : YamlParser YamlValue :=
   withErrorMessage "expected alias (*name)" do
     let _ ← char '*'
     let name ← anchorName
+    -- Validate: anchor must be defined before use (§7.1).
     match ← lookupAnchor name with
-    | some val => return val
-    | none =>
-      -- Undefined anchor: record validation error, return null.
-      setValidationError s!"undefined anchor: *{name}"
-      return YamlValue.null
+    | some _ => pure ()
+    | none => setValidationError s!"undefined anchor: *{name}"
+    return .alias name
 
 /-! ## Anchor Prefix Parsing
 

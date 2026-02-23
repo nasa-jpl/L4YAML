@@ -192,6 +192,7 @@ def flowValueImpl (fuel : Nat) (minIndent : Nat := 0) : YamlParser YamlValue :=
       match anchorName with
       | some name => storeAnchor name val
       | none => pure ()
+      let val := match anchorName with | some name => val.withAnchor name | none => val
       return val
     | none =>
     -- Check for anchor prefix (&name) on flow values
@@ -217,7 +218,7 @@ def flowValueImpl (fuel : Nat) (minIndent : Nat := 0) : YamlParser YamlValue :=
         ]
       let val := match tagName with | some t => val.withTag t | none => val
       storeAnchor name val
-      return val
+      return (val.withAnchor name)
     | none =>
     first [
       flowSequenceImpl fuel minIndent,
@@ -527,6 +528,7 @@ def flowMappingEntryImpl (fuel : Nat) (minIndent : Nat := 0) : YamlParser (YamlV
       match anchorName with
       | some name => storeAnchor name val
       | none => pure ()
+      let val := match anchorName with | some name => val.withAnchor name | none => val
       pure val
     | none =>
     -- Check for anchor prefix on key
@@ -539,7 +541,7 @@ def flowMappingEntryImpl (fuel : Nat) (minIndent : Nat := 0) : YamlParser (YamlV
       | some _ => pure YamlValue.null
       | none => first [flowSequenceImpl fuel, flowMappingImpl fuel minIndent, flowScalar]
       storeAnchor name val
-      pure val
+      pure (val.withAnchor name)
     | none =>
     -- Check for alias as key
     match ← option? (lookAhead (token '*')) with

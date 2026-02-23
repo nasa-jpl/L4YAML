@@ -141,20 +141,33 @@ theorem skipBOM_noop (s : YamlStream)
     have h_eq := anyToken_setPosition_roundtrip s s' c h_at
     simp [h_eq]
 
-/-! ## §3  `parseYaml` → `yamlStream` Bridge (convenience form) -/
+/-! ## §3  `parseYaml` → `yamlStream` Bridge (convenience forms) -/
 
 /-- If `yamlStream` succeeds on `ofString input` with no validation error,
-    then `parseYaml input = .ok docs`.
+    then `parseYamlRaw input = .ok docs`.
 
-    This is the forward direction of `parseYaml_ok_iff`, packaged for
+    This is the forward direction of `parseYamlRaw_ok_iff`, packaged for
     direct use in composition chains. -/
+theorem parseYamlRaw_of_yamlStream_ok (input : String) (docs : Array YamlDocument)
+    (s' : YamlStream)
+    (h_ys : yamlStream (YamlStream.ofString input) = .ok s' docs)
+    (h_val : s'.validationError = none) :
+    parseYamlRaw input = .ok docs := by
+  rw [parseYamlRaw_ok_iff]
+  exact ⟨s', by simp [parser_run_eq, h_ys], h_val⟩
+
+/-- If `yamlStream` succeeds on `ofString input` with no validation error,
+    then `parseYaml input = .ok (docs.map YamlDocument.compose)`.
+
+    This is the forward direction of `parseYaml_ok_iff` composed with
+    `parseYamlRaw_ok_iff`, applying the Compose step (§3.1). -/
 theorem parseYaml_of_yamlStream_ok (input : String) (docs : Array YamlDocument)
     (s' : YamlStream)
     (h_ys : yamlStream (YamlStream.ofString input) = .ok s' docs)
     (h_val : s'.validationError = none) :
-    parseYaml input = .ok docs := by
+    parseYaml input = .ok (docs.map YamlDocument.compose) := by
   rw [parseYaml_ok_iff]
-  exact ⟨s', by simp [parser_run_eq, h_ys], h_val⟩
+  exact ⟨docs, parseYamlRaw_of_yamlStream_ok input docs s' h_ys h_val, rfl⟩
 
 /-! ## §4  Fuel Wrapper Unfolding
 
