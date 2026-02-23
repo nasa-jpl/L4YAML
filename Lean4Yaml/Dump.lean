@@ -1,3 +1,4 @@
+import Lean.Data.Json
 import Lean4Yaml.Types
 
 /-
@@ -36,7 +37,7 @@ and respects YAML 1.2.2 presentation details:
 
 namespace Lean4Yaml.Dump
 
-open Lean4Yaml
+open Lean Lean4Yaml
 
 /-! ## Style Preferences -/
 
@@ -51,7 +52,7 @@ inductive DefaultStyle where
   | block
   | flow
   | auto
-  deriving Repr, BEq, Inhabited, DecidableEq
+  deriving Repr, BEq, Inhabited, DecidableEq, ToJson, FromJson
 
 /--
 Scalar style preference for the dump function.
@@ -66,7 +67,7 @@ inductive ScalarPref where
   | doubleQuoted
   | singleQuoted
   | auto
-  deriving Repr, BEq, Inhabited, DecidableEq
+  deriving Repr, BEq, Inhabited, DecidableEq, ToJson, FromJson
 
 /-! ## Configuration -/
 
@@ -88,7 +89,23 @@ structure DumpConfig where
   /-- Sort mapping keys alphabetically for deterministic output.
       **Not yet implemented** — reserved for a future enhancement. -/
   sortKeys : Bool := false
-  deriving Repr, BEq, Inhabited
+  deriving Repr, BEq, Inhabited, ToJson
+
+/-- Manual `FromJson` instance for `DumpConfig` that uses structure defaults
+    for any missing JSON field, enabling partial config like `{"indent": 4}`. -/
+instance : Lean.FromJson DumpConfig where
+  fromJson? json := do
+    let indent := match json.getObjValAs? Nat "indent" with
+      | .ok v => v | _ => 2
+    let defaultStyle := match json.getObjValAs? DefaultStyle "defaultStyle" with
+      | .ok v => v | _ => .block
+    let scalarStyle := match json.getObjValAs? ScalarPref "scalarStyle" with
+      | .ok v => v | _ => .auto
+    let lineWidth := match json.getObjValAs? Nat "lineWidth" with
+      | .ok v => v | _ => 80
+    let sortKeys := match json.getObjValAs? Bool "sortKeys" with
+      | .ok v => v | _ => false
+    .ok { indent, defaultStyle, scalarStyle, lineWidth, sortKeys }
 
 /-! ## Private Helpers -/
 
