@@ -485,9 +485,27 @@ Prove `parse ∘ emit = id` for a canonical YAML subset.
 | §6 Lookahead | `notFollowedBy_eq` | `simp only + cases` |
 | §7 Token | `tokenCore_eq`, `anyToken_eq`, `tokenFilter_eq` | `simp only + cases + split` |
 
-##### 5.4.3 — Per-parser specification lemmas (next)
+##### 5.4.3 — Per-parser specification lemmas (in progress)
 
-One correctness theorem per `ValidNode` constructor (12 obligations):
+**File:** `Proofs/PerParserSpecs.lean` — **18 proved theorems, 0 sorry.**
+
+Bridges the generic combinator specs (5.4.2) to YAML-parser-level correctness.  Organized in layers:
+
+| Section | Lemmas | Technique |
+|---------|--------|-----------|
+| §1 Wrapper transparency | `withErrorMessage_eq`, `withErrorMessage_of_ok`, `throwErrorWithMessage_eq` | `dsimp + cases` on success/error |
+| §2 YamlStream.next? | `stream_next?_eq`, `YamlStream_next?_some`, `YamlStream_next?_none` | Unfold `next?` on concrete stream type |
+| §3 Concrete tokens | `yamlAnyToken_some/none`, `yamlTokenFilter_ok/fail`, `yamlToken_ok`, `yamlChar_ok` | Compose §2 with 5.4.2 lemmas |
+| §4 Derived combinators | `yamlOption?_some/none`, `yamlLookAhead_ok` | Direct application of 5.4.2 specs |
+| §5 Anchor parser | `lookupAnchor_eq`, `parseAlias_found`, `parseAlias_not_found` | First complete YAML parser proofs; compose `bind_eq + getStream_eq + pure_eq + withErrorMessage_eq` |
+
+**Key proof pattern (demonstrated on `parseAlias`):**
+1. `unfold parseAlias` to expose `withErrorMessage (do ...)` structure
+2. `simp only [withErrorMessage_eq, bind_eq, ...]` chains through the monadic pipeline
+3. Hypotheses about sub-parser success (`char '*'`, `anchorName`) drive the match reductions
+4. `lookupAnchor_eq` eliminates the anchor-map lookup in one step
+
+**Remaining per-parser obligations (10 `ValidNode` constructors):**
 
 | Constructor | Parser | Key challenge |
 |-------------|--------|---------------|
@@ -501,8 +519,8 @@ One correctness theorem per `ValidNode` constructor (12 obligations):
 | `blockMap` | `blockMapping` | `key: value` entries |
 | `flowSeq` | `flowSequence` | `[` items `,` `]` |
 | `flowMap` | `flowMapping` | `{` entries `,` `}` |
-| `null` | (empty input / `~`) | trivial |
-| `alias` | `anchorAlias` | `*name` reference |
+
+All require fuel-sufficiency reasoning (§5.4.4) and loop unrolling through the `foldl → efoldlPAux` chain.  The intermediate lemmas above are prerequisites for all 10.
 
 Each lemma takes the form: `ValidNode n → ∃ fuel, parser fuel input = .ok (stream', value)`
 
@@ -642,18 +660,18 @@ Steps 1–21: parser features, totality, soundness, compile-time proofs, complet
 
 <details>
 <summary>
-~296 theorems + 553 compile-time checks. 353/406 correct. 0 sorry, 0 axiom, 0 `partial def`.
+~334 theorems + 553 compile-time checks. 353/406 correct. 0 sorry, 0 axiom, 0 `partial def`.
 </summary>
 
 Phase 2 (Parser Validation) is functionally complete. **353/406 correct** per HTML subprocess report. 0 failures, 0 timeouts, 1 UP (H7TQ document stage only). 52 YAML 1.3 skipped. Error stage: 74/74 (100%). Flow stage: 46/46 (100%). Block stage: 99/99 (100%). Scalar: 54/82 (65.9%). Advanced: 64/81 (79%). Document: 16/24 (66.7%).
 
 **Phase 4 complete:** 351 `#guard` compile-time tests across 6 files (`Proofs/SuiteGuards/*.lean`) encode all passing yaml-test-suite tests. Auto-generated from yaml-test-suite by `gen-suite-guards.py`. Any parser regression breaks the build.
 
-**Phase 5 in progress:** Canonical emitter (`Emitter.lean`) + round-trip proofs (`Proofs/RoundTrip.lean`). 58 theorems + 63 `#guard` round-trip checks proving `parse ∘ emit = id` for concrete values. Steps 5.1–5.3 complete: `contentEq` proved to be a full equivalence relation (refl + symm + trans) for all `YamlValue` trees; character-level escape round-trip connecting `escapeChar` ↔ `resolveNamedEscape` via `escapeTag`. Step 5.4 Phase 1 complete: `Proofs/Completeness.lean` with `LawfulParserStream YamlStream Char`, `parseYaml_ok_iff`, 7 stream lemmas, 12 concrete completeness theorems via `native_decide`.
+**Phase 5 in progress:** Canonical emitter (`Emitter.lean`) + round-trip proofs (`Proofs/RoundTrip.lean`). 58 theorems + 63 `#guard` round-trip checks proving `parse ∘ emit = id` for concrete values. Steps 5.1–5.3 complete: `contentEq` proved to be a full equivalence relation (refl + symm + trans) for all `YamlValue` trees; character-level escape round-trip connecting `escapeChar` ↔ `resolveNamedEscape` via `escapeTag`. Step 5.4 Phase 1 complete: `Proofs/Completeness.lean` with `LawfulParserStream YamlStream Char`, `parseYaml_ok_iff`, 7 stream lemmas, 12 concrete completeness theorems via `native_decide`. Step 5.4.2 complete: 20 `@[simp]` combinator specs in `ParserSpecs.lean`. Step 5.4.3 in progress: 18 YAML-specific intermediate specs + first complete parser proofs (`parseAlias`) in `PerParserSpecs.lean`.
 
 **3.1–3.2 complete.** 3.1 (Foundation): ~90 theorems across 5 proof files. 3.2 (Key Invariants): ~30 theorems + 45 `#guard` checks across 3 proof files (`EscapeResolution.lean`, `IndentConsumption.lean`, `FoldNewlines.lean`). Grammar.lean extended with `resolveNamedEscape`, `isCForbiddenPrefix`, `isFoldAppendChar`, full Decidable instances.
 
-**Verification inventory:** ~296 proved theorems/lemmas + 76 hand-written `#guard` tests + 45 (3.2) `#guard` tests + 351 yaml-test-suite `#guard` tests + 63 round-trip `#guard` tests + 15 TestSuite `#guard` tests = **553 compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 238/238 jobs.
+**Verification inventory:** ~334 proved theorems/lemmas + 76 hand-written `#guard` tests + 45 (3.2) `#guard` tests + 351 yaml-test-suite `#guard` tests + 63 round-trip `#guard` tests + 15 TestSuite `#guard` tests = **553 compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 241/241 jobs.
 
 **3.3 complete.** All 6 steps finished: Steps 3.3.1–3.3.3 (totality), Step 3.3.4 (`#guard` compile-time tests), Step 3.3.5 (soundness proofs). Phase 4 complete. Phase 5 in progress (emitter + round-trip proofs).
 

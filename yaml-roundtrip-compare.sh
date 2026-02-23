@@ -15,10 +15,16 @@ set -euo pipefail
 #                        normalizing style indicators.
 #
 # Usage:
-#   ./yaml-roundtrip-compare.sh <input.yaml> [output.yaml]
-#   ./yaml-roundtrip-compare.sh --suite <yaml-dir> [--timeout N]
+#   ./yaml-roundtrip-compare.sh <input.yaml> <output-dir>
+#   ./yaml-roundtrip-compare.sh --suite <yaml-dir> <output-dir> [--timeout N]
 #
-# If output.yaml is omitted, a temp file is used and cleaned up.
+# For a single file <input.yaml>, the output directory will contain:
+#   <stem>.canonical.yaml   — canonical emitter output
+#   <stem>.events.input     — normalized ref-parser events for input
+#   <stem>.events.canonical — normalized ref-parser events for canonical
+#   <stem>.events.diff      — diff of the two event streams (if they differ)
+#
+# For --suite mode, the same layout is produced per test file.
 #
 # Requirements:
 #   - .lake/build/bin/tryroundtrip  (built via `lake build tryroundtrip`)
@@ -52,14 +58,20 @@ fi
 usage() {
   cat <<'EOF'
 Usage:
-  yaml-roundtrip-compare.sh <input.yaml> [output.yaml]
-  yaml-roundtrip-compare.sh --suite <yaml-dir> [--timeout N]
+  yaml-roundtrip-compare.sh <input.yaml> <output-dir>
+  yaml-roundtrip-compare.sh --suite <yaml-dir> <output-dir> [--timeout N]
 
 Options:
   --suite <dir>    Run against all .yaml files in <dir>
   --timeout N      Per-file timeout in seconds (default: 10)
   --skip-external  Skip Docker-based external comparison
   -h, --help       Show this help
+
+Output directory layout (per input file <stem>.yaml):
+  <stem>.canonical.yaml    Canonical emitter output
+  <stem>.events.input      Normalized events for input
+  <stem>.events.canonical  Normalized events for canonical output
+  <stem>.events.diff       Diff (only when events differ)
 EOF
   exit 0
 }
@@ -93,31 +105,33 @@ run_internal() {
 #
 # Runs perl-refparser-event on both files via Docker,
 # normalizes the event streams, and diffs them.
+# All artefacts are written to <outdir>/<stem>.events.{input,canonical,diff}.
 #
 # Returns: 0 if events match, 1 if they differ, 2 if refparser fails
 run_external() {
-  local input="$1" output="$2" tmpdir="$3"
+  local input="$1" canonical="$2" outdir="$3" stem="$4"
 
-  local events_in="${tmpdir}/events.input"
-  local events_out="${tmpdir}/events.canonical"
+  local events_in="${outdir}/${stem}.events.input"
+  local events_out="${outdir}/${stem}.events.canonical"
+  local events_diff="${outdir}/${stem}.events.diff"
 
   # Parse input through reference parser
   if ! docker run -i --rm "${DOCKER_IMAGE}" "${REFPARSER_CMD}" \
        < "${input}" 2>/dev/null | normalize_events > "${events_in}"; then
-    # Reference parser may legitimately reject some inputs
-    echo "refparser-reject" > "${tmpdir}/external_status"
+    echo "refparser-reject" > "${outdir}/${stem}.external_status"
     return 2
   fi
 
   # Parse canonical output through reference parser
   if ! docker run -i --rm "${DOCKER_IMAGE}" "${REFPARSER_CMD}" \
-       < "${output}" 2>/dev/null | normalize_events > "${events_out}"; then
-    echo "refparser-canonical-fail" > "${tmpdir}/external_status"
+       < "${canonical}" 2>/dev/null | normalize_events > "${events_out}"; then
+    echo "refparser-canonical-fail" > "${outdir}/${stem}.external_status"
     return 2
   fi
 
   # Compare normalized event streams
-  if diff -u "${events_in}" "${events_out}" > "${tmpdir}/events.diff" 2>&1; then
+  if diff -u "${events_in}" "${events_out}" > "${events_diff}" 2>&1; then
+    rm -f "${events_diff}"  # clean diff means no diff file
     return 0
   else
     return 1
@@ -127,23 +141,20 @@ run_external() {
 # ──────────────── Single-file test ────────────────
 run_single() {
   local input="$1"
-  local output="${2:-}"
-  local cleanup_output=0
+  local outdir="$2"
 
-  if [[ -z "${output}" ]]; then
-    output="$(mktemp /tmp/yaml-roundtrip-XXXXXX.yaml)"
-    cleanup_output=1
-  fi
+  local basename
+  basename="$(basename "${input}")"
+  local stem="${basename%.yaml}"
 
-  local tmpdir
-  tmpdir="$(mktemp -d /tmp/yaml-rt-XXXXXX)"
+  local canonical="${outdir}/${stem}.canonical.yaml"
 
   local result="PASS"
   local detail=""
 
   # Layer 1: Internal
   local rc=0
-  run_internal "${input}" "${output}" || rc=$?
+  run_internal "${input}" "${canonical}" || rc=$?
   case ${rc} in
     0) detail="internal:pass" ;;
     1) result="FAIL"; detail="internal:parse-error" ;;
@@ -154,9 +165,9 @@ run_single() {
   esac
 
   # Layer 2: External (only if layer 1 produced output and not skipped)
-  if [[ "${SKIP_EXTERNAL}" != "1" ]] && [[ -s "${output}" ]]; then
+  if [[ "${SKIP_EXTERNAL}" != "1" ]] && [[ -s "${canonical}" ]]; then
     local erc=0
-    run_external "${input}" "${output}" "${tmpdir}" || erc=$?
+    run_external "${input}" "${canonical}" "${outdir}" "${stem}" || erc=$?
     case ${erc} in
       0) detail="${detail} external:pass" ;;
       1)
@@ -166,7 +177,7 @@ run_single() {
         detail="${detail} external:events-differ"
         ;;
       2)
-        detail="${detail} external:$(cat "${tmpdir}/external_status" 2>/dev/null || echo 'error')"
+        detail="${detail} external:$(cat "${outdir}/${stem}.external_status" 2>/dev/null || echo 'error')"
         ;;
     esac
   elif [[ "${SKIP_EXTERNAL}" == "1" ]]; then
@@ -174,19 +185,11 @@ run_single() {
   fi
 
   # Report
-  local basename
-  basename="$(basename "${input}")"
   case "${result}" in
     PASS)    printf "${GREEN}PASS${RESET}  %s  (%s)\n" "${basename}" "${detail}" ;;
     FAIL)    printf "${RED}FAIL${RESET}  %s  (%s)\n"   "${basename}" "${detail}" ;;
     TIMEOUT) printf "${YELLOW}TMOUT${RESET} %s  (%s)\n" "${basename}" "${detail}" ;;
   esac
-
-  # Cleanup
-  rm -rf "${tmpdir}"
-  if [[ ${cleanup_output} -eq 1 ]]; then
-    rm -f "${output}"
-  fi
 
   [[ "${result}" == "PASS" ]]
 }
@@ -194,17 +197,19 @@ run_single() {
 # ──────────────── Suite mode ────────────────
 run_suite() {
   local yaml_dir="$1"
+  local outdir="$2"
   local pass=0 fail=0 timeout=0 total=0
 
   printf "${CYAN}=== YAML Round-Trip Suite ===${RESET}\n"
   printf "Directory: %s\n" "${yaml_dir}"
+  printf "Output:    %s\n" "${outdir}"
   printf "Timeout:   %ss per file\n" "${TIMEOUT}"
   printf "External:  %s\n\n" "$( [[ "${SKIP_EXTERNAL}" == "1" ]] && echo "skipped" || echo "${DOCKER_IMAGE}" )"
 
   for f in "${yaml_dir}"/*.yaml; do
     [[ -f "$f" ]] || continue
     ((total++)) || true
-    if run_single "$f"; then
+    if run_single "$f" "${outdir}"; then
       ((pass++)) || true
     else
       case $? in
@@ -224,7 +229,7 @@ run_suite() {
 # ──────────────── CLI ────────────────
 main() {
   local suite_dir=""
-  local input="" output=""
+  local input="" outdir=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -240,8 +245,8 @@ main() {
       *)
         if [[ -z "${input}" ]]; then
           input="$1"
-        elif [[ -z "${output}" ]]; then
-          output="$1"
+        elif [[ -z "${outdir}" ]]; then
+          outdir="$1"
         else
           echo "Too many arguments" >&2; exit 1
         fi
@@ -257,9 +262,24 @@ main() {
   fi
 
   if [[ -n "${suite_dir}" ]]; then
-    run_suite "${suite_dir}"
+    # Suite mode: first positional arg is the output directory
+    if [[ -z "${input}" ]]; then
+      echo "Error: --suite requires an output directory argument" >&2
+      echo "Usage: $0 --suite <yaml-dir> <output-dir>" >&2
+      exit 1
+    fi
+    outdir="${input}"
+    mkdir -p "${outdir}"
+    run_suite "${suite_dir}" "${outdir}"
   elif [[ -n "${input}" ]]; then
-    run_single "${input}" "${output}"
+    # Single-file mode
+    if [[ -z "${outdir}" ]]; then
+      echo "Error: output directory is required" >&2
+      echo "Usage: $0 <input.yaml> <output-dir>" >&2
+      exit 1
+    fi
+    mkdir -p "${outdir}"
+    run_single "${input}" "${outdir}"
   else
     usage
   fi
