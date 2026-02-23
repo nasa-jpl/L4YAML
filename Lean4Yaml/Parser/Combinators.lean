@@ -25,46 +25,58 @@ open Parser.Char
 /-! ## Character Classification
   YAML 1.2.2 §5 (https://yaml.org/spec/1.2.2/#chapter-5-character-productions) -/
 
-/-- YAML line break characters
-(§5.4, https://yaml.org/spec/1.2.2/#54-line-break-characters): LF or CR -/
+/-- YAML line break characters.
+
+**YAML 1.2.2**: [26] b-char (§5.4, https://yaml.org/spec/1.2.2/#54-line-break-characters)
+- [24] b-line-feed (LF) | [25] b-carriage-return (CR) -/
 def isLineBreak (c : Char) : Bool :=
   c == '\n' || c == '\r'
 
-/-- YAML white space
-(§5.5, https://yaml.org/spec/1.2.2/#55-white-space-characters): space or tab -/
+/-- YAML white space.
+
+**YAML 1.2.2**: [33] s-white (§5.5, https://yaml.org/spec/1.2.2/#55-white-space-characters)
+- [31] s-space | [32] s-tab -/
 def isWhiteSpace (c : Char) : Bool :=
   c == ' ' || c == '\t'
 
-/-- YAML indicator characters
-(§5.3, https://yaml.org/spec/1.2.2/#53-indicator-characters) -/
+/-- YAML indicator characters.
+
+**YAML 1.2.2**: [22] c-indicator (§5.3, https://yaml.org/spec/1.2.2/#53-indicator-characters) -/
 def isIndicator (c : Char) : Bool :=
   c ∈ ['-', '?', ':', ',', '[', ']', '{', '}', '#', '&', '*', '!', '|', '>',
        '\'', '"', '%', '@', '`']
 
-/-- Flow indicator characters
-(§5.3, https://yaml.org/spec/1.2.2/#53-indicator-characters) -/
+/-- Flow indicator characters.
+
+**YAML 1.2.2**: [23] c-flow-indicator (§5.3, https://yaml.org/spec/1.2.2/#53-indicator-characters) -/
 def isFlowIndicator (c : Char) : Bool :=
   c ∈ [',', '[', ']', '{', '}']
 
 /-- Characters that can appear in anchor names.
-    P6 fix (8XYN): YAML §6.9.2 defines anchor names as `ns-anchor-char+`
+
+**YAML 1.2.2**: [102] ns-anchor-char (§6.9.2, https://yaml.org/spec/1.2.2/#692-node-anchors)
+
+P6 fix (8XYN): YAML §6.9.2 defines anchor names as `ns-anchor-char+`
     where `ns-anchor-char` is any character except flow indicators,
     whitespace, and line breaks.  The previous restriction to ASCII
     alphanumeric/hyphen/underscore was too narrow. -/
 def isAnchorChar (c : Char) : Bool :=
   !isFlowIndicator c && !isWhiteSpace c && !isLineBreak c
 
-/-- Characters forbidden at the start of a plain scalar -/
+/-- Characters forbidden at the start of a plain scalar.
+
+**YAML 1.2.2**: [22] c-indicator (§5.3) — used as the exclusion set for [123] ns-plain-first(c). -/
 def isForbiddenPlainStart (c : Char) : Bool :=
   isIndicator c
 
 /--
 Check if a character can start a plain scalar.
 
-YAML 1.2.2 §7.3.3 (https://yaml.org/spec/1.2.2/#733-plain-style):
-Plain scalars cannot start with most indicators.
+**YAML 1.2.2**: [123] ns-plain-first(c) (§7.3.3, https://yaml.org/spec/1.2.2/#733-plain-style)
+
+Plain scalars cannot start with most indicators ([22] c-indicator).
 Exception: `-`, `?`, `:` can start plain scalars if followed by a
-non-space character.
+non-space character ([34] ns-char).
 -/
 def canStartPlainScalar (c : Char) (next : Option Char) : Bool :=
   if c == '-' || c == '?' || c == ':' then
@@ -80,7 +92,7 @@ def canStartPlainScalar (c : Char) (next : Option Char) : Bool :=
 def space : YamlParser Char :=
   withErrorMessage "expected space" <| token ' '
 
-/-- Parse a newline (LF, CR, or CRLF) -/
+/-- Parse a newline ([28] b-break): LF, CR, or CRLF -/
 def newline : YamlParser Unit :=
   withErrorMessage "expected newline" do
     let c ← tokenFilter isLineBreak
@@ -120,18 +132,24 @@ def peekIndent : YamlParser Nat :=
     let n ← count (token ' ')
     return n
 
-/-- Parse a YAML comment: `#` to end of line -/
+/-- Parse a YAML comment: `#` to end of line.
+
+**YAML 1.2.2**: [75] c-nb-comment-text (§6.7, https://yaml.org/spec/1.2.2/#67-comments) -/
 def comment : YamlParser Unit :=
   withErrorMessage "expected comment" do
     let _ ← token '#'
     dropMany (tokenFilter (fun c => !isLineBreak c))
 
-/-- Skip optional horizontal whitespace and an optional comment -/
+/-- Skip optional horizontal whitespace and an optional comment.
+
+**YAML 1.2.2**: [77] s-b-comment (§6.7) -/
 def skipTrailing : YamlParser Unit := do
   skipHWhitespace
   optional comment *> return
 
-/-- Skip trailing whitespace, optional comment, and the newline -/
+/-- Skip trailing whitespace, optional comment, and the newline.
+
+**YAML 1.2.2**: [77] s-b-comment + [76] b-comment (§6.7) -/
 def skipToNextLine : YamlParser Unit := do
   skipTrailing
   newline
@@ -169,7 +187,7 @@ YAML 1.2.2 §6.1: tab characters must not be used in indentation.
 /--
 Consume exactly `n` spaces of indentation, rejecting tabs.
 
-YAML 1.2.2 §6.1 (https://yaml.org/spec/1.2.2/#61-indentation-spaces):
+**YAML 1.2.2**: [63] s-indent(n) (§6.1, https://yaml.org/spec/1.2.2/#61-indentation-spaces)
 "In YAML block styles, structure is determined by indentation. ...
 To maintain portability, tab characters must not be used in indentation."
 
@@ -356,6 +374,8 @@ def atMappingSeparator : YamlParser Bool :=
 /--
 Check if we're at a document start marker (`---` followed by whitespace/newline/EOF).
 
+**YAML 1.2.2**: [197] c-directives-end (§9.1.2)
+
 Does not consume any input.
 -/
 def atDocumentStart : YamlParser Bool :=
@@ -369,6 +389,8 @@ def atDocumentStart : YamlParser Bool :=
 
 /--
 Check if we're at a document end marker (`...` followed by whitespace/newline/EOF).
+
+**YAML 1.2.2**: [198] c-document-end (§9.1.3)
 
 Does not consume any input.
 -/
@@ -496,6 +518,8 @@ Decision algorithm:
 5. Check for sequence marker (`- `) — not a continuation
 6. Check for mapping entry (`key: `) — not a continuation
 7. Otherwise, it's a continuation (possibly after empty lines)
+
+**YAML 1.2.2**: [131] s-ns-plain-next-line(n,c) look-ahead (§7.3.3)
 -/
 def checkContinuation (contentIndent : Nat) : YamlParser ContinuationCheck :=
   lookAhead do

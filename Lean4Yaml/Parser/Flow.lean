@@ -12,10 +12,11 @@ import Lean4Yaml.Parser.Tag
 /-!
 # YAML Flow Collection Parsers
 
-Parsers for YAML flow-style collections
-(§7.4, https://yaml.org/spec/1.2.2/#74-flow-collection-styles):
-- Flow sequences: `[item1, item2, ...]`
-- Flow mappings: `{key1: value1, key2: value2, ...}`
+Parsers for YAML flow-style collections.
+
+**YAML 1.2.2**: [134]-[157] (§7.4, https://yaml.org/spec/1.2.2/#74-flow-collection-styles)
+- [134] c-flow-sequence(n,c) / [137] c-flow-mapping(n,c)
+- [148]-[157] flow nodes and pairs
 
 Flow collections use explicit brackets and commas for structure,
 similar to JSON syntax. They can be nested and can contain any
@@ -50,6 +51,8 @@ will be added in `Lean4Yaml.Proofs.Termination`.
 
 /--
 Skip whitespace that can appear between flow collection elements.
+
+**YAML 1.2.2**: [73] s-flow-line-prefix(n) / [69] s-separate-in-line (§6.5, §6.4)
 
 In flow context, both spaces and newlines are allowed between elements.
 
@@ -137,8 +140,10 @@ def flowScalar : YamlParser YamlValue :=
 mutual
 
 /--
-Parse a flow value
-(§7.4, https://yaml.org/spec/1.2.2/#74-flow-collection-styles).
+Parse a flow value.
+
+**YAML 1.2.2**: [157] c-ns-flow-map-json-key-entry(n,c) / [148]-[152] flow nodes
+(§7.4, https://yaml.org/spec/1.2.2/#74-flow-collection-styles)
 
 A flow value is either:
 - A scalar (plain, single-quoted, or double-quoted)
@@ -221,8 +226,10 @@ def flowValueImpl (fuel : Nat) (minIndent : Nat := 0) : YamlParser YamlValue :=
     ]
 
 /--
-Parse a flow sequence
-(§7.4.1, https://yaml.org/spec/1.2.2/#741-flow-sequences).
+Parse a flow sequence.
+
+**YAML 1.2.2**: [134] c-flow-sequence(n,c) (§7.4.1, https://yaml.org/spec/1.2.2/#741-flow-sequences)
+- [135] ns-s-flow-seq-entries(n,c)
 
 ```yaml
 [item1, item2, item3]
@@ -247,6 +254,10 @@ def flowSequenceImpl (fuel : Nat) (minIndent : Nat := 0) : YamlParser YamlValue 
 
 /--
 Parse flow sequence items, separated by commas.
+
+**YAML 1.2.2**: [135] ns-s-flow-seq-entries(n,c) (§7.4.1)
+- [136] ns-flow-seq-entry(n,c)
+- [143] ns-flow-pair(n,c): implicit single-pair flow mapping (§7.5)
 
 Handles:
 - Regular flow values: `[a, b, c]`
@@ -357,8 +368,10 @@ def flowSequenceItemsImpl (fuel : Nat) (acc : Array YamlValue) (minIndent : Nat 
     return acc.push item
 
 /--
-Parse a flow mapping
-(§7.4.2, https://yaml.org/spec/1.2.2/#742-flow-mappings).
+Parse a flow mapping.
+
+**YAML 1.2.2**: [137] c-flow-mapping(n,c) (§7.4.2, https://yaml.org/spec/1.2.2/#742-flow-mappings)
+- [138] ns-s-flow-map-entries(n,c)
 
 ```yaml
 {key1: value1, key2: value2}
@@ -382,7 +395,8 @@ def flowMappingImpl (fuel : Nat) (minIndent : Nat := 0) : YamlParser YamlValue :
 
 /--
 Parse flow mapping entries, separated by commas.
--/
+
+**YAML 1.2.2**: [138] ns-s-flow-map-entries(n,c) (§7.4.2) -/
 def flowMappingEntriesImpl (fuel : Nat) (acc : Array (YamlValue × YamlValue)) (minIndent : Nat := 0) :
     YamlParser (Array (YamlValue × YamlValue)) :=
   match fuel with
@@ -405,6 +419,12 @@ def flowMappingEntriesImpl (fuel : Nat) (acc : Array (YamlValue × YamlValue)) (
 
 /--
 Parse a single flow mapping entry (`key: value` or `? key : value`).
+
+**YAML 1.2.2**: [139] ns-flow-map-entry(n,c) (§7.4.2)
+- [140] ns-flow-map-explicit-entry(n,c): `? key : value`
+- [141]/[142] ns-flow-map-implicit-entry(n,c): implicit key
+- [152] ns-flow-map-yaml-key-entry(n,c)
+- [155] c-ns-flow-map-empty-key-entry(n,c)
 
 Handles:
 - `? key : value` — explicit key with value

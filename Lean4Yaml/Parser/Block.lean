@@ -13,10 +13,12 @@ import Lean4Yaml.Parser.Flow
 /-!
 # YAML Block Collection Parsers
 
-Parsers for YAML block-style collections
-(§8.2, https://yaml.org/spec/1.2.2/#82-block-collection-styles):
-- Block sequences (§8.2.1, https://yaml.org/spec/1.2.2/#821-block-sequences): lines starting with `- `
-- Block mappings (§8.2.2, https://yaml.org/spec/1.2.2/#822-block-mappings): lines with `key: value`
+Parsers for YAML block-style collections.
+
+**YAML 1.2.2**: [180]-[196] (§8.2, https://yaml.org/spec/1.2.2/#82-block-collection-styles)
+- [180] c-l-block-seq(n) / [183] l+block-sequence(n) (§8.2.1)
+- [184] l+block-mapping(n) (§8.2.2)
+- [196] l-bare-document (§9.1.4)
 
 ## Indentation-Based Parsing
 
@@ -384,6 +386,11 @@ def dispatchByCharImpl (fuel : Nat) (contentIndent : Nat) (scalarIndent : Nat :=
 /--
 Parse any YAML value in block context.
 
+**YAML 1.2.2**: [192] s-l+block-node(n,c) / [196] l-bare-document (§8.2/§9.1.4)
+- [193] s-l+block-in-block(n,c)
+- [194] s-l+flow-in-block(n)
+- [159] s-b-block-scalar(n,c)
+
 The `minIndent` parameter specifies the minimum indentation level
 for this value's content. Content at or below this level belongs
 to a parent structure.
@@ -470,8 +477,11 @@ def blockValueImpl (fuel : Nat) (minIndent : Nat) (propertyMinIndent : Nat := mi
     return none
 
 /--
-Parse a block sequence
-(§8.2.1, https://yaml.org/spec/1.2.2/#821-block-sequences).
+Parse a block sequence.
+
+**YAML 1.2.2**: [183] l+block-sequence(n) (§8.2.1, https://yaml.org/spec/1.2.2/#821-block-sequences)
+- [180] c-l-block-seq-entry(n)
+- [181] s-b-block-seq(n): seq-spaces(n,c) = n-1 for BLOCK-OUT, n for BLOCK-IN
 
 ```yaml
 - item1
@@ -498,6 +508,8 @@ def blockSequenceImpl (fuel : Nat) (minIndent : Nat) : YamlParser (Option YamlVa
 
 /--
 Parse block sequence items at a fixed indentation level.
+
+**YAML 1.2.2**: [180] c-l-block-seq-entry(n) (§8.2.1)
 -/
 def blockSequenceItemsImpl (fuel : Nat) (seqIndent : Nat) (acc : Array YamlValue) :
     YamlParser (Array YamlValue) :=
@@ -615,8 +627,10 @@ def blockValueSameLineImpl (fuel : Nat) (_startCol : Nat) (contentIndent : Nat) 
     return YamlValue.null
 
 /--
-Parse a block mapping
-(§8.2.2, https://yaml.org/spec/1.2.2/#822-block-mappings).
+Parse a block mapping.
+
+**YAML 1.2.2**: [184] l+block-mapping(n) (§8.2.2, https://yaml.org/spec/1.2.2/#822-block-mappings)
+- [185] ns-l-block-map-entry(n)
 
 Returns `Option YamlValue`:
 - `some (.mapping .block pairs)`: successfully parsed
@@ -641,6 +655,8 @@ def blockMappingImpl (fuel : Nat) (minIndent : Nat) : YamlParser (Option YamlVal
 
 /--
 Parse block mapping entries at a fixed indentation level.
+
+**YAML 1.2.2**: [185] ns-l-block-map-entry(n) (§8.2.2)
 -/
 def blockMappingEntriesImpl (fuel : Nat) (mapIndent : Nat)
     (acc : Array (YamlValue × YamlValue)) :
@@ -686,6 +702,11 @@ def blockMappingEntriesImpl (fuel : Nat) (mapIndent : Nat)
 
 /--
 Parse a single block mapping entry.
+
+**YAML 1.2.2**: [185] ns-l-block-map-entry(n) (§8.2.2)
+- [186] ns-l-block-map-explicit-entry(n): `? key\n: value`
+- [188] ns-l-block-map-implicit-entry(n): `key: value`
+- [189] ns-s-block-map-implicit-key
 
 Handles both simple keys (`key: value`) and complex keys (`? key\n: value`).
 -/
@@ -862,6 +883,9 @@ def blockMappingEntryImpl (fuel : Nat) (mapIndent : Nat) :
 
 /--
 Parse a simple block mapping key.
+
+**YAML 1.2.2**: [189] ns-s-block-map-implicit-key (§8.2.2)
+- Uses [128] ns-plain(n,BLOCK-KEY) for implicit keys
 
 Simple keys are single-line and cannot contain certain indicators.
 They end at `: ` (mapping value indicator).

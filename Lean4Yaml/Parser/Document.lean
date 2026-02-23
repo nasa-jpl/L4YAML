@@ -13,8 +13,14 @@ import Lean4Yaml.Parser.Block
 /-!
 # YAML Document Parsers
 
-Parsers for YAML documents and multi-document streams
-(§9, https://yaml.org/spec/1.2.2/#chapter-9-document-stream-productions).
+Parsers for YAML documents and multi-document streams.
+
+**YAML 1.2.2**: [197]-[205] (§9, https://yaml.org/spec/1.2.2/#chapter-9-document-stream-productions)
+- [197] c-directives-end (`---`)
+- [198] c-document-end (`...`)
+- [199]-[200] l-document-prefix / c-forbidden
+- [201] l-bare-document / [202] l-explicit-document / [203] l-directive-document
+- [204] l-any-document / [205] l-yaml-stream
 
 ## Structure
 
@@ -71,17 +77,25 @@ inductive DocumentResult where
 /--
 Skip an optional BOM (byte order mark) at the start of input.
 
-YAML 1.2.2 §5.2 (https://yaml.org/spec/1.2.2/#52-character-encodings):
+**YAML 1.2.2**: [3] c-byte-order-mark (§5.2, https://yaml.org/spec/1.2.2/#52-character-encodings)
+
 The BOM (U+FEFF) is allowed at the start of a stream.
 -/
 def skipBOM : YamlParser Unit := do
   let _ ← option? (token '\uFEFF')
 
 /-! ## Directives
-  §6.8 (https://yaml.org/spec/1.2.2/#68-directives) -/
+  **YAML 1.2.2**: [82] l-directive (§6.8, https://yaml.org/spec/1.2.2/#68-directives)
+  - [83] ns-yaml-directive / [84] ns-yaml-version
+  - [85] ns-tag-directive / [86]-[88] tag handles -/
 
 /--
 Parse a YAML directive.
+
+**YAML 1.2.2**: [82] l-directive (§6.8)
+- [83] ns-yaml-directive: `%YAML 1.2`
+- [85] ns-tag-directive: `%TAG !handle! prefix`
+- [81] ns-reserved-directive: unknown directives
 
 Directives start with `%` and end at the next line break.
 -/
@@ -148,10 +162,12 @@ def directives : YamlParser (Array Directive) := do
   return dirs
 
 /-! ## Document Structure
-  §9 (https://yaml.org/spec/1.2.2/#chapter-9-document-stream-productions) -/
+  **YAML 1.2.2**: [197]-[205] (§9, https://yaml.org/spec/1.2.2/#chapter-9-document-stream-productions) -/
 
 /--
 Parse the document start marker `---`.
+
+**YAML 1.2.2**: [197] c-directives-end (§9.1.2)
 
 The marker must be followed by whitespace, a newline, or EOF.
 Returns `true` if the marker was found.
@@ -173,6 +189,8 @@ def documentStartMarker : YamlParser Unit :=
 
 /--
 Parse the document end marker `...`.
+
+**YAML 1.2.2**: [198] c-document-end (§9.1.3)
 
 The marker must be followed by whitespace, a newline, or EOF.
 P5 fix: also validate that no non-whitespace/non-comment content
@@ -200,6 +218,11 @@ def documentEndMarker : YamlParser Unit :=
 
 /--
 Parse a single YAML document, returning a `DocumentResult`.
+
+**YAML 1.2.2**: [204] l-any-document (§9.2)
+- [201] l-bare-document: no markers
+- [202] l-explicit-document: preceded by `---`
+- [203] l-directive-document: preceded by directives + `---`
 
 A document can be:
 1. An explicit document (preceded by `---`)
@@ -364,7 +387,10 @@ def document (prevHadDocEnd : Bool := true) : YamlParser DocumentResult := do
 /--
 Parse a YAML stream: zero or more documents.
 
-YAML 1.2.2 §9 (https://yaml.org/spec/1.2.2/#chapter-9-document-stream-productions):
+**YAML 1.2.2**: [205] l-yaml-stream (§9.2, https://yaml.org/spec/1.2.2/#chapter-9-document-stream-productions)
+- [199] l-document-prefix
+- [204] l-any-document
+
 A YAML stream consists of zero or more documents.
 
 Uses `DocumentResult` to distinguish successful parse from end-of-stream

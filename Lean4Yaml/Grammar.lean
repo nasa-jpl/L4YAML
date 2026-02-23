@@ -44,7 +44,10 @@ namespace Lean4Yaml.Grammar
 /-! ## Character Classifications (YAML 1.2.2 §5: https://yaml.org/spec/1.2.2/#chapter-5-character-productions) -/
 
 /--
-YAML printable characters (§5.1: https://yaml.org/spec/1.2.2/#51-character-set).
+YAML printable characters.
+
+**YAML 1.2.2**: [1] c-printable (§5.1, https://yaml.org/spec/1.2.2/#51-character-set)
+
 The set of characters that can appear in a YAML stream.
 -/
 def isPrintable (c : Char) : Prop :=
@@ -58,7 +61,10 @@ def isPrintable (c : Char) : Prop :=
 instance (c : Char) : Decidable (isPrintable c) := by unfold isPrintable; infer_instance
 
 /--
-Line break characters (§5.4: https://yaml.org/spec/1.2.2/#54-line-break-characters).
+Line break characters.
+
+**YAML 1.2.2**: [24] b-line-feed, [25] b-carriage-return, [26] b-char
+(§5.4, https://yaml.org/spec/1.2.2/#54-line-break-characters)
 -/
 def isLineBreak (c : Char) : Prop :=
   c == '\n' ∨ c == '\r'
@@ -66,7 +72,12 @@ def isLineBreak (c : Char) : Prop :=
 instance (c : Char) : Decidable (isLineBreak c) := by unfold isLineBreak; infer_instance
 
 /--
-White space characters for YAML (§5.5: https://yaml.org/spec/1.2.2/#55-white-space-characters).
+White space characters for YAML.
+
+**YAML 1.2.2**: [33] s-white (§5.5, https://yaml.org/spec/1.2.2/#55-white-space-characters)
+- [31] s-space: the space character
+- [32] s-tab: the tab character
+
 Only space and tab — NOT line breaks.
 -/
 def isWhiteSpace (c : Char) : Prop :=
@@ -75,7 +86,10 @@ def isWhiteSpace (c : Char) : Prop :=
 instance (c : Char) : Decidable (isWhiteSpace c) := by unfold isWhiteSpace; infer_instance
 
 /--
-YAML space character (§6.1: https://yaml.org/spec/1.2.2/#61-indentation-spaces).
+YAML space character for indentation.
+
+**YAML 1.2.2**: [31] s-space (§6.1, https://yaml.org/spec/1.2.2/#61-indentation-spaces)
+
 Only the space character is valid for indentation.
 Tabs are explicitly forbidden for indentation in YAML 1.2.2.
 -/
@@ -85,8 +99,11 @@ def isIndentChar (c : Char) : Prop :=
 instance (c : Char) : Decidable (isIndentChar c) := by unfold isIndentChar; infer_instance
 
 /--
-Characters that can start a plain scalar (§7.3.3: https://yaml.org/spec/1.2.2/#733-plain-style).
-Excludes indicators that have special meaning at the start.
+Characters that can start a plain scalar.
+
+**YAML 1.2.2**: [123] ns-plain-first(c) (§7.3.3, https://yaml.org/spec/1.2.2/#733-plain-style)
+
+Excludes indicators ([22] c-indicator) that have special meaning at the start.
 -/
 def canStartPlainScalar (c : Char) : Prop :=
   isPrintable c
@@ -99,7 +116,10 @@ instance (c : Char) : Decidable (canStartPlainScalar c) := by
   unfold canStartPlainScalar; infer_instance
 
 /--
-Flow indicator characters (§5.3: https://yaml.org/spec/1.2.2/#53-indicator-characters).
+Flow indicator characters.
+
+**YAML 1.2.2**: [23] c-flow-indicator (§5.3, https://yaml.org/spec/1.2.2/#53-indicator-characters)
+
 These terminate plain scalars in flow context.
 -/
 def isFlowIndicator (c : Char) : Prop :=
@@ -111,6 +131,8 @@ instance (c : Char) : Decidable (isFlowIndicator c) := by unfold isFlowIndicator
 
 /--
 An indentation of `n` spaces at the start of a line.
+
+**YAML 1.2.2**: [63] s-indent(n) (§6.1, https://yaml.org/spec/1.2.2/#61-indentation-spaces)
 
 This is the core proposition for block-style YAML. A line is indented
 at level `n` if it starts with exactly `n` space characters.
@@ -135,6 +157,9 @@ instance decideIndented (n : Nat) (cs : List Char) : Decidable (Indented n cs) :
 
 /--
 A line has indentation of **at least** `n` spaces.
+
+**YAML 1.2.2**: [65] s-indent(≤n) (§6.1, https://yaml.org/spec/1.2.2/#61-indentation-spaces)
+
 Used for block scalar content lines.
 -/
 def IndentedAtLeast (n : Nat) (cs : List Char) : Prop :=
@@ -172,10 +197,13 @@ def isMarkerFollower : List Char → Bool
   | c :: _ => c == ' ' || c == '\t' || c == '\n' || c == '\r'
 
 /--
-c-forbidden content detection (§9.1.2 production [206]).
+c-forbidden content detection.
+
+**YAML 1.2.2**: [200] c-forbidden (§9.1.2, https://yaml.org/spec/1.2.2/#912-document-markers)
 
 A character sequence at column 0 is c-forbidden if it begins with
-`---` or `...` followed by whitespace, line break, or end-of-input.
+`---` ([197] c-directives-end) or `...` ([198] c-document-end) followed
+by whitespace, line break, or end-of-input.
 This is the pure specification of the parser's `atDocumentBoundary` check.
 -/
 def isCForbiddenPrefix : List Char → Bool
@@ -244,8 +272,14 @@ instance (c : Char) : Decidable (isNamedEscapeChar c) := by
 /--
 A valid plain scalar in block context.
 
+**YAML 1.2.2**: [128] ns-plain(n,BLOCK-KEY/BLOCK-OUT)
+(§7.3.3, https://yaml.org/spec/1.2.2/#733-plain-style)
+- [123] ns-plain-first(c): first character constraint
+- [127] ns-plain-char(c): subsequent character constraint
+- [132] ns-plain-multi-line(n,c): multi-line continuation with folding
+
 Plain scalars in block context:
-- Cannot start with indicators (§7.3.3: https://yaml.org/spec/1.2.2/#733-plain-style)
+- Cannot start with indicators
 - Cannot contain `: ` (colon-space) or ` #` (space-hash)
 - Are terminated by line breaks, `: `, or less-indented lines
 - Continuation lines are folded (replacing newline with space)
@@ -259,8 +293,12 @@ structure ValidPlainScalarBlock where
 /--
 A valid plain scalar in flow context.
 
+**YAML 1.2.2**: [128] ns-plain(n,FLOW-OUT/FLOW-IN)
+(§7.3.3, https://yaml.org/spec/1.2.2/#733-plain-style)
+- [126] ns-plain-safe-in: flow-context safe characters
+
 Plain scalars in flow context additionally:
-- Cannot contain flow indicators (`,`, `[`, `]`, `{`, `}`)
+- Cannot contain flow indicators ([23] c-flow-indicator: `,`, `[`, `]`, `{`, `}`)
 - Are terminated by flow indicators in addition to block terminators
 -/
 structure ValidPlainScalarFlow where
@@ -268,7 +306,12 @@ structure ValidPlainScalarFlow where
   nonempty : content.length > 0
 
 /--
-A valid single-quoted scalar (§7.3.2: https://yaml.org/spec/1.2.2/#732-single-quoted-style).
+A valid single-quoted scalar.
+
+**YAML 1.2.2**: [118] c-single-quoted(n,c) (§7.3.2, https://yaml.org/spec/1.2.2/#732-single-quoted-style)
+- [18] c-single-quote: the `'` delimiter
+- [115] c-quoted-quote: `''` → `'` (doubled single quote)
+- [116] nb-single-char: content characters
 
 Single-quoted scalars:
 - Delimited by `'...'`
@@ -279,7 +322,13 @@ structure ValidSingleQuoted where
   content : String
 
 /--
-A valid double-quoted scalar (§7.3.1: https://yaml.org/spec/1.2.2/#731-double-quoted-style).
+A valid double-quoted scalar.
+
+**YAML 1.2.2**: [107] c-double-quoted(n,c) (§7.3.1, https://yaml.org/spec/1.2.2/#731-double-quoted-style)
+- [19] c-double-quote: the `"` delimiter
+- [61] c-ns-esc-char: escape sequences ([42]–[60])
+- [106] ns-double-char: content characters
+- [114] nb-double-multi-line(n): multi-line with folding
 
 Double-quoted scalars:
 - Delimited by `"..."`
@@ -290,7 +339,10 @@ structure ValidDoubleQuoted where
   content : String
 
 /--
-Chomping styles for block scalars (§8.1.1.2: https://yaml.org/spec/1.2.2/#8112-block-chomping-indicator).
+Chomping styles for block scalars.
+
+**YAML 1.2.2**: [160] c-chomping-indicator(t)
+(§8.1.1.2, https://yaml.org/spec/1.2.2/#8112-block-chomping-indicator)
 -/
 inductive ChompStyle where
   | strip  -- Remove all trailing newlines (`|-`)
@@ -299,7 +351,12 @@ inductive ChompStyle where
   deriving Repr, BEq, DecidableEq
 
 /--
-A valid literal block scalar (§8.1.2: https://yaml.org/spec/1.2.2/#812-literal-style).
+A valid literal block scalar.
+
+**YAML 1.2.2**: [170] c-l+literal(n) (§8.1.2, https://yaml.org/spec/1.2.2/#812-literal-style)
+- [16] c-literal: the `|` indicator
+- [158] c-b-block-header(m,t): header with indent/chomp indicators
+- [166] l-literal-content(n,t): content lines
 
 Literal scalars (`|`):
 - Preserve line breaks exactly
@@ -312,7 +369,13 @@ structure ValidLiteralScalar where
   chomp : ChompStyle
 
 /--
-A valid folded block scalar (§8.1.3: https://yaml.org/spec/1.2.2/#813-folded-style).
+A valid folded block scalar.
+
+**YAML 1.2.2**: [175] c-l+folded(n) (§8.1.3, https://yaml.org/spec/1.2.2/#813-folded-style)
+- [17] c-folded: the `>` indicator
+- [158] c-b-block-header(m,t): header with indent/chomp indicators
+- [174] l-folded-content(n,t): content lines with fold semantics
+- [173] s-b-folded(n,c): line folding rules
 
 Folded scalars (`>`):
 - Fold line breaks to spaces (except for blank lines and more-indented lines)
@@ -332,36 +395,43 @@ and block collections (§8: https://yaml.org/spec/1.2.2/#chapter-8-block-style-p
 /--
 A valid YAML node — the top-level grammar production.
 
+**YAML 1.2.2**: [192] s-l+block-node(n,c) / [157] ns-flow-node(n,c)
+
 A node is any valid YAML value: scalar, sequence, or mapping,
 in either block or flow style. Defined as a single inductive to
 avoid mutual recursion between structures.
 -/
 inductive ValidNode where
-  /-- Plain scalar in block context -/
+  /-- [128] ns-plain(n,BLOCK-KEY/BLOCK-OUT) — Plain scalar in block context -/
   | plainScalarBlock (content : String) (nonempty : content.length > 0)
-  /-- Plain scalar in flow context -/
+  /-- [128] ns-plain(n,FLOW-OUT/FLOW-IN) — Plain scalar in flow context -/
   | plainScalarFlow (content : String) (nonempty : content.length > 0)
-  /-- Single-quoted scalar (§7.3.2: https://yaml.org/spec/1.2.2/#732-single-quoted-style) -/
+  /-- [118] c-single-quoted(n,c) (§7.3.2) — Single-quoted scalar -/
   | singleQuoted (content : String)
-  /-- Double-quoted scalar (§7.3.1: https://yaml.org/spec/1.2.2/#731-double-quoted-style) -/
+  /-- [107] c-double-quoted(n,c) (§7.3.1) — Double-quoted scalar -/
   | doubleQuoted (content : String)
-  /-- Literal block scalar (§8.1.2: https://yaml.org/spec/1.2.2/#812-literal-style) -/
+  /-- [170] c-l+literal(n) (§8.1.2) — Literal block scalar -/
   | literalScalar (content : String) (indent : Nat) (chomp : ChompStyle)
-  /-- Folded block scalar (§8.1.3: https://yaml.org/spec/1.2.2/#813-folded-style) -/
+  /-- [175] c-l+folded(n) (§8.1.3) — Folded block scalar -/
   | foldedScalar (content : String) (indent : Nat) (chomp : ChompStyle)
-  /-- Block sequence (§8.2.1: https://yaml.org/spec/1.2.2/#821-block-sequences) -/
+  /-- [180] l+block-sequence(n) (§8.2.1) — Block sequence -/
   | blockSeq (indent : Nat) (items : List ValidNode)
-  /-- Block mapping (§8.2.2: https://yaml.org/spec/1.2.2/#822-block-mappings) -/
+  /-- [184] l+block-mapping(n) (§8.2.2) — Block mapping -/
   | blockMap (indent : Nat) (entries : List (ValidNode × ValidNode))
-  /-- Flow sequence (§7.4.1: https://yaml.org/spec/1.2.2/#741-flow-sequences) -/
+  /-- [134] c-flow-sequence(n,c) (§7.4.1) — Flow sequence -/
   | flowSeq (items : List ValidNode)
-  /-- Flow mapping (§7.4.2: https://yaml.org/spec/1.2.2/#742-flow-mappings) -/
+  /-- [137] c-flow-mapping(n,c) (§7.4.2) — Flow mapping -/
   | flowMap (entries : List (ValidNode × ValidNode))
 
 /-! ## Document Grammar (YAML 1.2.2 §9: https://yaml.org/spec/1.2.2/#chapter-9-document-stream-productions) -/
 
 /--
 A valid YAML document.
+
+**YAML 1.2.2**: [204] l-any-document (§9, https://yaml.org/spec/1.2.2/#chapter-9-document-stream-productions)
+- [201] l-bare-document: implicit document
+- [202] l-explicit-document: `---` prefixed document
+- [203] l-directive-document: directives + `---` prefixed document
 
 Documents may optionally start with `---` and end with `...`.
 -/
@@ -373,6 +443,8 @@ structure ValidDocument where
 
 /--
 A valid YAML stream — one or more documents.
+
+**YAML 1.2.2**: [205] l-yaml-stream (§9, https://yaml.org/spec/1.2.2/#chapter-9-document-stream-productions)
 -/
 structure ValidStream where
   documents : List ValidDocument
@@ -521,6 +593,10 @@ where
 
 /--
 A character is a valid block scalar header indicator character.
+
+**YAML 1.2.2**: [158] c-b-block-header(m,t) (§8.1.1, https://yaml.org/spec/1.2.2/#811-block-scalar-headers)
+- [159] c-indentation-indicator(m): digit `1`–`9`
+- [160] c-chomping-indicator(t): `-` (strip) or `+` (keep)
 
 This is the formal specification of which characters `blockScalarHeader`
 is allowed to consume as indicator characters (before trailing

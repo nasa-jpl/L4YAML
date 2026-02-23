@@ -9,9 +9,15 @@ import Lean4Yaml.Parser.Combinators
 /-!
 # YAML Anchor & Alias Parsers
 
-Parsers for YAML anchors (`&name`) and aliases (`*name`)
-(YAML 1.2.2 §6.9.2, https://yaml.org/spec/1.2.2/#692-node-anchors and
-§7.1, https://yaml.org/spec/1.2.2/#71-alias-nodes).
+Parsers for YAML anchors (`&name`) and aliases (`*name`).
+
+**YAML 1.2.2**:
+- [99] c-ns-anchor-property / [100] c-anchor / [101] ns-anchor-name / [102] ns-anchor-char (§6.9.2)
+- [103] c-ns-alias-node / [14] c-alias (§7.1)
+
+References:
+- §6.9.2 Node Anchors: https://yaml.org/spec/1.2.2/#692-node-anchors
+- §7.1 Alias Nodes: https://yaml.org/spec/1.2.2/#71-alias-nodes
 
 ## Design
 
@@ -52,15 +58,18 @@ open Lean4Yaml
 
 /-! ## Anchor Name Parsing
 
-YAML 1.2.2 §6.9.2: Anchor names consist of non-empty sequences of
+**YAML 1.2.2**: [101] ns-anchor-name = [102] ns-anchor-char+ (§6.9.2)
+
+Anchor names consist of non-empty sequences of
 characters that are not flow indicators, whitespace, or line breaks.
 In practice, most implementations restrict to `[a-zA-Z0-9_-]`.
 -/
 
 /--
-Parse an anchor name: one or more alphanumeric / `-` / `_` characters.
+Parse an anchor name: one or more `ns-anchor-char` characters.
 
-YAML 1.2.2 §6.9.2 (https://yaml.org/spec/1.2.2/#692-node-anchors).
+**YAML 1.2.2**: [101] ns-anchor-name (§6.9.2, https://yaml.org/spec/1.2.2/#692-node-anchors)
+- [102] ns-anchor-char: `ns-char - c-flow-indicator`
 -/
 def anchorName : YamlParser String :=
   withErrorMessage "expected anchor name" do
@@ -118,13 +127,18 @@ def resetAnchorMap : YamlParser Unit := do
 
 /-! ## Alias Parsing
 
-§7.1 (https://yaml.org/spec/1.2.2/#71-alias-nodes):
+**YAML 1.2.2**: [103] c-ns-alias-node (§7.1, https://yaml.org/spec/1.2.2/#71-alias-nodes)
+- [14] c-alias (`*`) + [101] ns-anchor-name
+
 An alias node is denoted by `*anchor-name`. It refers to the most
 recent node with the corresponding anchor.
 -/
 
 /--
 Parse an alias node: `*name`.
+
+**YAML 1.2.2**: [103] c-ns-alias-node (§7.1)
+- [14] c-alias (`*`) + [101] ns-anchor-name
 
 Resolves immediately by looking up the anchor map.
 
@@ -152,7 +166,9 @@ def parseAlias : YamlParser YamlValue :=
 
 /-! ## Anchor Prefix Parsing
 
-§6.9.2 (https://yaml.org/spec/1.2.2/#692-node-anchors):
+**YAML 1.2.2**: [99] c-ns-anchor-property (§6.9.2, https://yaml.org/spec/1.2.2/#692-node-anchors)
+- [100] c-anchor (`&`) + [101] ns-anchor-name
+
 `&name` followed by whitespace, then the content node.
 
 The anchor name is parsed and returned. The caller is responsible
@@ -161,6 +177,9 @@ for parsing the following value and calling `storeAnchor`.
 
 /--
 Parse an anchor prefix: `&name` followed by optional whitespace.
+
+**YAML 1.2.2**: [99] c-ns-anchor-property (§6.9.2)
+- [100] c-anchor (`&`) + [101] ns-anchor-name
 
 Returns the anchor name. Does not store anything — the caller
 must parse the value and call `storeAnchor name value`.
