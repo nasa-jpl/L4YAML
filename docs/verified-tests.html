@@ -65,10 +65,10 @@
   <p class="subtitle">Unit tests, parser tests, verification tests, and string lemma tests — all must pass.</p>
 
   <div class="stats">
-    <div class="stat-box stat-total"><h3>Total</h3><div class="number">1006</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">1006</div></div>
+    <div class="stat-box stat-total"><h3>Total</h3><div class="number">1108</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">1108</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
-    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">13</div></div>
+    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">14</div></div>
   </div>
   <h3>Suites</h3>
   <div class="stage-cards">
@@ -145,6 +145,12 @@
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean" target="_blank" class="source-link">📄 Tests/CompletenessTests.lean</a></div>
     </div>
     <div class="stage-card" style="border-left-color:var(--color-pass)">
+      <div class="stage-card-name">Dump Round-Trip Tests</div>
+      <div class="stage-card-stats">102/102 passed (100%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
+      <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean" target="_blank" class="source-link">📄 Tests/DumpRoundTrip.lean</a></div>
+    </div>
+    <div class="stage-card" style="border-left-color:var(--color-pass)">
       <div class="stage-card-name">Demo</div>
       <div class="stage-card-stats">7/7 passed (100%)</div>
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
@@ -175,6 +181,7 @@
         <option value="charclass">CharClass Correspondence Tests</option>
         <option value="validationtests">Structural Validation Tests</option>
         <option value="completeness">Completeness Tests</option>
+        <option value="dumproundtrip">Dump Round-Trip Tests</option>
         <option value="demo">Demo</option>
       </select>
     </div>
@@ -182,7 +189,7 @@
       <label>Search:</label>
       <input type="text" class="search-input" placeholder="Category, test name..." oninput="searchTests(this.value)">
     </div>
-    <div class="filter-group"><span>Showing <strong id="visibleCount">1006</strong> of 1006</span></div>
+    <div class="filter-group"><span>Showing <strong id="visibleCount">1108</strong> of 1108</span></div>
   </div>
 
   <table id="testTable">
@@ -7196,6 +7203,720 @@
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/CompletenessTests.lean#L257" target="_blank" class="source-link">Completeness Tests</a></td>
         <td>Stream properties</td>
         <td>3-byte char remaining == 3</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip structural properties plain scalar → content itself">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L51" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Structural properties</td>
+        <td>plain scalar → content itself</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip structural properties empty string → double-quoted &quot;&quot;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L53" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Structural properties</td>
+        <td>empty string → double-quoted &quot;&quot;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip structural properties reserved &#39;true&#39; → auto-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L55" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Structural properties</td>
+        <td>reserved &#39;true&#39; → auto-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip structural properties reserved &#39;null&#39; → auto-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L57" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Structural properties</td>
+        <td>reserved &#39;null&#39; → auto-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip structural properties reserved &#39;yes&#39; → auto-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L59" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Structural properties</td>
+        <td>reserved &#39;yes&#39; → auto-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip structural properties empty flow sequence → []">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L61" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Structural properties</td>
+        <td>empty flow sequence → []</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip structural properties empty flow mapping → {}">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L63" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Structural properties</td>
+        <td>empty flow mapping → {}</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip structural properties empty block sequence → [] (degenerate)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L65" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Structural properties</td>
+        <td>empty block sequence → [] (degenerate)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip structural properties empty block mapping → {} (degenerate)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L67" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Structural properties</td>
+        <td>empty block mapping → {} (degenerate)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip structural properties alias → *name">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L69" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Structural properties</td>
+        <td>alias → *name</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip structural properties plain scalar output non-empty">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L73" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Structural properties</td>
+        <td>plain scalar output non-empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip structural properties empty scalar output non-empty (quotes)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L75" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Structural properties</td>
+        <td>empty scalar output non-empty (quotes)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip structural properties flow sequence output non-empty">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L77" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Structural properties</td>
+        <td>flow sequence output non-empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip structural properties flow mapping output non-empty">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L79" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Structural properties</td>
+        <td>flow mapping output non-empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) simple word is plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L88" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>simple word is plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) number is plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L90" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>number is plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) mixed alphanum is plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L92" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>mixed alphanum is plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) interior space is plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L94" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>interior space is plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) empty string not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L98" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>empty string not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) leading space not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L100" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>leading space not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) trailing space not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L102" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>trailing space not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) newline not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L104" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>newline not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;: &#39; (colon-space) not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L106" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;: &#39; (colon-space) not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39; #&#39; (space-hash) not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L108" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39; #&#39; (space-hash) not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;{&#39; not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L112" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;{&#39; not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;[&#39; not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L114" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;[&#39; not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;true&#39; not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L118" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;true&#39; not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;false&#39; not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L120" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;false&#39; not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;null&#39; not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L122" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;null&#39; not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;~&#39; not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L124" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;~&#39; not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;yes&#39; not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L126" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;Yes&#39; not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;no&#39; not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L128" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;NO&#39; not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;-item&#39; not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L132" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;-item&#39; not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;?key&#39; not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L134" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;?key&#39; not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;:val&#39; not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L136" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;:val&#39; not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;&amp;anchor&#39; not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L138" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;&amp;anchor&#39; not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;*alias&#39; not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L140" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;*alias&#39; not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;!tag&#39; not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L142" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;!tag&#39; not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;|literal&#39; not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L144" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;|literal&#39; not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;&gt;folded&#39; not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L146" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;&gt;folded&#39; not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) single-quote leader not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L148" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>single-quote leader not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) double-quote leader not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L150" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>double-quote leader not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;%directive&#39; not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L152" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;%directive&#39; not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;@reserved&#39; not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L154" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;@reserved&#39; not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip content analysis (isplainsafe) &#39;`reserved&#39; not plain-safe">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L156" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Content analysis (isPlainSafe)</td>
+        <td>&#39;`reserved&#39; not plain-safe</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip style preservation config doublequoted forces quoting">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L165" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Style preservation</td>
+        <td>config doubleQuoted forces quoting</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip style preservation config singlequoted forces quoting">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L167" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Style preservation</td>
+        <td>config singleQuoted forces quoting</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip style preservation singlequoted falls back to double for newlines">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L169" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Style preservation</td>
+        <td>singleQuoted falls back to double for newlines</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip style preservation literal block scalar honored">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L174" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Style preservation</td>
+        <td>literal block scalar honored</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip style preservation folded block scalar honored">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L177" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Style preservation</td>
+        <td>folded block scalar honored</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip style preservation literal strip chomp (|-)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L180" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Style preservation</td>
+        <td>literal strip chomp (|-)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip style preservation literal keep chomp (|+)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L183" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Style preservation</td>
+        <td>literal keep chomp (|+)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip style preservation config flow overrides block sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L188" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Style preservation</td>
+        <td>config flow overrides block sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip style preservation config flow overrides block mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L191" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Style preservation</td>
+        <td>config flow overrides block mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip style preservation flow annotation preserved with block config">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L194" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Style preservation</td>
+        <td>flow annotation preserved with block config</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip style preservation anchor emitted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L199" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Style preservation</td>
+        <td>anchor emitted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip style preservation tag emitted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L201" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Style preservation</td>
+        <td>tag emitted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip style preservation tag + anchor both emitted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L203" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Style preservation</td>
+        <td>tag + anchor both emitted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip plain &#39;hello&#39; round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L213" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>plain &#39;hello&#39; round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip plain &#39;two words&#39; round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L215" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>plain &#39;two words&#39; round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip plain &#39;123&#39; round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L217" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>plain &#39;123&#39; round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip reserved &#39;true&#39; round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L221" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>reserved &#39;true&#39; round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip reserved &#39;false&#39; round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L223" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>reserved &#39;false&#39; round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip reserved &#39;null&#39; round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L225" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>reserved &#39;null&#39; round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip reserved &#39;yes&#39; round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L227" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>reserved &#39;yes&#39; round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip reserved &#39;~&#39; round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L229" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>reserved &#39;~&#39; round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip empty string round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L233" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>empty string round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip &#39;key: value&#39; round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L235" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>&#39;key: value&#39; round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip &#39;has #comment&#39; round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L237" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>&#39;has #comment&#39; round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip &#39;{flow}&#39; round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L239" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>&#39;{flow}&#39; round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip &#39;[array]&#39; round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L241" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>&#39;[array]&#39; round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip double-quoted config round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L245" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>double-quoted config round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip single-quoted config round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L247" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>single-quoted config round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip empty flow seq round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L251" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>empty flow seq round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip flow seq [a] round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L253" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>flow seq [a] round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip flow seq [a, b] round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L255" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>flow seq [a, b] round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip empty flow map round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L257" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>empty flow map round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip flow map {k: v} round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L259" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>flow map {k: v} round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip flow map 2 pairs round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L262" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>flow map 2 pairs round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip block seq [a] round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L268" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>block seq [a] round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip block seq [a, b] round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L270" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>block seq [a, b] round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip block map {key: val} round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L272" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>block map {key: val} round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip block map 2 pairs round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L275" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>block map 2 pairs round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip mapping with seq value round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L281" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>mapping with seq value round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip nested mapping round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L285" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>nested mapping round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip mixed block/flow round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L289" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>mixed block/flow round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip nested flow round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L292" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>nested flow round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip tab escape round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L298" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>tab escape round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip backslash round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L300" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>backslash round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip embedded quotes round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L302" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>embedded quotes round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip flow config on block seq round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L306" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>flow config on block seq round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip flow config on block map round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L308" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>flow config on block map round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip dump→parse round-trip custom indent round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L311" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Dump→Parse round-trip</td>
+        <td>custom indent round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip document dump dumpdirective yaml">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L320" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Document dump</td>
+        <td>dumpDirective YAML</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip document dump dumpdirective tag">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L322" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Document dump</td>
+        <td>dumpDirective TAG</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip document dump document no directives">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L325" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Document dump</td>
+        <td>document no directives</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip document dump document with yaml directive">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L327" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Document dump</td>
+        <td>document with YAML directive</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip document dump document multiple directives">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L330" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Document dump</td>
+        <td>document multiple directives</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip document dump dumpdocuments empty">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L333" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Document dump</td>
+        <td>dumpDocuments empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip document dump dumpdocuments single">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L335" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Document dump</td>
+        <td>dumpDocuments single</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip document dump dumpdocuments two → ---/...">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L337" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Document dump</td>
+        <td>dumpDocuments two → ---/...</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip document dump dumpdocuments three">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L340" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Document dump</td>
+        <td>dumpDocuments three</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>

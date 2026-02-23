@@ -437,9 +437,10 @@ Running verified test suites...
   CharClass Correspondence Tests: ✓ 224/224
   Structural Validation Tests: ✓ 135/135
   Completeness Tests: ✓ 66/66
+  Dump Round-Trip Tests: ✓ 102/102
   Demo: ✓ 7/7
 
-Verified: 1006/1006
+Verified: 1108/1108
 
 Generating HTML reports...
   wrote docs/index.html
