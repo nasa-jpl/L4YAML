@@ -9,8 +9,13 @@ import Lean4Yaml.Parser.Combinators
 /-!
 # YAML Tag Parsers
 
-Parsers for YAML tags as node properties
-(YAML 1.2.2 §6.9.2, https://yaml.org/spec/1.2.2/#692-node-tags).
+Parsers for YAML tags as node properties.
+
+**YAML 1.2.2**: [95]-[98] c-ns-tag-property (§6.9.1, https://yaml.org/spec/1.2.2/#691-node-tags)
+- [95] c-ns-tag-property
+- [96] c-verbatim-tag: `!<uri>`
+- [97] c-ns-shorthand-tag: `!suffix`, `!!suffix`, `!handle!suffix`
+- [98] c-non-specific-tag: `!`
 
 ## Tag Forms
 
@@ -60,6 +65,8 @@ open Lean4Yaml
 /--
 Characters allowed in tag suffixes.
 
+**YAML 1.2.2**: [40] ns-tag-char (§6.8.2)
+
 Per YAML §6.8.2, tag characters include URI characters (alphanumeric,
 `-`, `.`, `_`, `~`, `/`, `:`, `@`, `!`, `$`, `&`, `*`, `+`, `=`, etc.)
 but exclude flow indicators and whitespace.
@@ -71,6 +78,9 @@ def isTagChar (c : Char) : Bool :=
 /--
 Characters allowed in tag handle names (the part between `!` delimiters).
 
+**YAML 1.2.2**: [86] c-tag-handle (§6.8.2)
+- [88] c-named-tag-handle: `!` word-char+ `!`
+
 Handle names are word characters: `[a-zA-Z0-9-]`.
 -/
 def isTagHandleChar (c : Char) : Bool :=
@@ -78,6 +88,8 @@ def isTagHandleChar (c : Char) : Bool :=
 
 /--
 Characters allowed inside verbatim tag URIs (`!<...>`).
+
+**YAML 1.2.2**: [96] c-verbatim-tag (§6.9.1)
 
 All printable non-whitespace characters except `>`.
 -/
@@ -88,6 +100,11 @@ def isVerbatimTagChar (c : Char) : Bool :=
 
 /--
 Parse a YAML tag prefix starting with `!`.
+
+**YAML 1.2.2**: [95] c-ns-tag-property (§6.9.1, https://yaml.org/spec/1.2.2/#691-node-tags)
+- [96] c-verbatim-tag: `!<uri>`
+- [97] c-ns-shorthand-tag: `!!suffix`, `!handle!suffix`, `!suffix`
+- [98] c-non-specific-tag: `!` alone
 
 Handles all tag forms:
 - `!<uri>` — verbatim tag

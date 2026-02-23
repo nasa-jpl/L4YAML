@@ -39,12 +39,13 @@ open Parser.Char
 open Lean4Yaml
 
 /-! ## Double-Quoted Scalars
-  §7.3.1 (https://yaml.org/spec/1.2.2/#731-double-quoted-style) -/
+  **YAML 1.2.2**: [107] c-double-quoted(n,c) (§7.3.1, https://yaml.org/spec/1.2.2/#731-double-quoted-style) -/
 
 /--
 Parse a YAML escape sequence inside a double-quoted scalar.
 
-YAML 1.2.2 §5.7 (https://yaml.org/spec/1.2.2/#57-escaped-characters):
+**YAML 1.2.2**: [61] c-ns-esc-char (§5.7, https://yaml.org/spec/1.2.2/#57-escaped-characters)
+
 Escape sequences start with `\` followed by an
 escape character. Returns the character the sequence represents.
 -/
@@ -196,8 +197,12 @@ where
         return .folded (result.push ' ')
 
 /--
-Parse a double-quoted scalar
-(§7.3.1, https://yaml.org/spec/1.2.2/#731-double-quoted-style).
+Parse a double-quoted scalar.
+
+**YAML 1.2.2**: [107] c-double-quoted(n,c) (§7.3.1, https://yaml.org/spec/1.2.2/#731-double-quoted-style)
+- [108] nb-double-text(n,c)
+- [109]/[110] s-double-escaped(n) / s-double-break(n)
+- [114] nb-ns-double-in-line
 
 Double-quoted scalars support escape sequences and line folding.
 Returns the processed content.
@@ -292,11 +297,14 @@ where
     String.ofList trimmed.reverse
 
 /-! ## Single-Quoted Scalars
-  §7.3.2 (https://yaml.org/spec/1.2.2/#732-single-quoted-style) -/
+  **YAML 1.2.2**: [118] c-single-quoted(n,c) (§7.3.2, https://yaml.org/spec/1.2.2/#732-single-quoted-style) -/
 
 /--
-Parse a single-quoted scalar
-(§7.3.2, https://yaml.org/spec/1.2.2/#732-single-quoted-style).
+Parse a single-quoted scalar.
+
+**YAML 1.2.2**: [118] c-single-quoted(n,c) (§7.3.2, https://yaml.org/spec/1.2.2/#732-single-quoted-style)
+- [115] c-quoted-quote: `''` → `'`
+- [116] nb-single-text(n,c) / [117] nb-single-multi-line(n)
 
 The only escape in single-quoted scalars is `''` → `'`.
 Line folding follows the same rules as double-quoted scalars.
@@ -341,7 +349,9 @@ where
 /--
 Check if a character can appear in a plain scalar at this position.
 
-YAML 1.2.2 §7.3.3 (https://yaml.org/spec/1.2.2/#733-plain-style):
+**YAML 1.2.2**: [125] ns-plain-safe(c) (§7.3.3, https://yaml.org/spec/1.2.2/#733-plain-style)
+- [126] ns-plain-safe(flow-out) / [127] ns-plain-safe(block-key)
+
 Plain scalars cannot contain certain indicator
 characters. In flow context, flow indicators are also forbidden.
 
@@ -354,8 +364,13 @@ def isPlainSafe (c : Char) (inFlow : Bool) : Bool :=
   else true
 
 /--
-Parse a plain (unquoted) scalar
-(§7.3.3, https://yaml.org/spec/1.2.2/#733-plain-style).
+Parse a plain (unquoted) scalar.
+
+**YAML 1.2.2**: [128] ns-plain(n,c) (§7.3.3, https://yaml.org/spec/1.2.2/#733-plain-style)
+- [123] ns-plain-first(c)
+- [130] ns-plain-char(c): inline content characters
+- [131] s-ns-plain-next-line(n,c): multi-line continuation
+- [132] nb-ns-plain-in-line(c)
 
 Plain scalars are context-dependent. They end at:
 - Flow indicators (in flow context)
@@ -634,6 +649,8 @@ where
 /--
 Parse a plain scalar and wrap it as a YamlValue.
 
+**YAML 1.2.2**: [128] ns-plain(n,c) (§7.3.3)
+
 In block context, supports multi-line continuation with line folding.
 The `contentIndent` parameter is the indentation level at which
 content starts; continuation lines must be at or beyond this level.
@@ -651,9 +668,11 @@ def plainScalar (inFlow : Bool) (contentIndent : Nat := 0) : YamlParser YamlValu
   return .scalar { content, style := .plain }
 
 /-! ## Block Scalars
-  §8.1 (https://yaml.org/spec/1.2.2/#81-block-scalar-styles) -/
+  **YAML 1.2.2**: [170] c-l+literal(n) / [175] c-l+folded(n) (§8.1, https://yaml.org/spec/1.2.2/#81-block-scalar-styles) -/
 
-/-- Chomping behavior for block scalars -/
+/-- Chomping behavior for block scalars.
+
+**YAML 1.2.2**: [160] c-chomping-indicator(t) (§8.1.1.2) -/
 inductive ChompIndicator where
   | strip  -- `-`: remove all trailing newlines
   | clip   -- default: single trailing newline
@@ -661,8 +680,11 @@ inductive ChompIndicator where
   deriving Repr, BEq
 
 /--
-Parse the block scalar header
-(§8.1.1, https://yaml.org/spec/1.2.2/#811-block-scalar-headers).
+Parse the block scalar header.
+
+**YAML 1.2.2**: [158] c-b-block-header(m,t) (§8.1.1, https://yaml.org/spec/1.2.2/#811-block-scalar-headers)
+- [159] c-indentation-indicator(m)
+- [160] c-chomping-indicator(t)
 
 The header follows the `|` or `>` indicator:
 ```
@@ -758,7 +780,8 @@ def blockScalarHeader : YamlParser (Option Nat × ChompIndicator) := do
 /--
 Auto-detect the indentation level of a block scalar.
 
-YAML 1.2.2 §8.1.3 (https://yaml.org/spec/1.2.2/#813-folded-style):
+**YAML 1.2.2**: [163] b-chomped-last(t) / auto-detect per §8.1.3
+(https://yaml.org/spec/1.2.2/#813-folded-style)
 The indentation is determined by the first non-empty line.
 Skip blank lines to find the first content line.
 Returns the number of leading spaces on that line.
@@ -808,6 +831,8 @@ where
 
 /--
 Parse block scalar content lines.
+
+**YAML 1.2.2**: [166] l-nb-literal-text(n) / [173] s-nb-folded-text(n) (§8.1.2/§8.1.3)
 
 Each content line must be indented at exactly `indent` spaces
 (relative to the start of the block).
@@ -921,8 +946,11 @@ Literal scalars preserve line breaks as-is.
 def processLiteral (raw : String) : String := raw
 
 /--
-Process folded block scalar content
-(§8.1.3, https://yaml.org/spec/1.2.2/#813-folded-style).
+Process folded block scalar content.
+
+**YAML 1.2.2**: [175] c-l+folded(n) (§8.1.3, https://yaml.org/spec/1.2.2/#813-folded-style)
+- [174] b-l-folded-any(n,c): line folding rules
+- [171] b-nb-literal-next(n) vs [174] b-l-folded-any(n,c)
 
 Folded scalars replace single line breaks between content lines with spaces.
 Empty lines (producing double newlines) are preserved.
@@ -954,7 +982,12 @@ where
 /--
 Parse a block scalar (literal `|` or folded `>`).
 
-YAML 1.2.2 §8.1 (https://yaml.org/spec/1.2.2/#81-block-scalar-styles):
+**YAML 1.2.2**: [170] c-l+literal(n) / [175] c-l+folded(n)
+(§8.1, https://yaml.org/spec/1.2.2/#81-block-scalar-styles)
+- [158] c-b-block-header(m,t)
+- [166] l-nb-literal-text(n) / [173] s-nb-folded-text(n)
+- [162]-[164] chomping: b-chomped-last(t), l-chomped-empty(n,t)
+
 Block scalars begin with a `|` (literal) or `>`
 (folded) indicator, followed by an optional header specifying
 indentation and chomping behavior.
