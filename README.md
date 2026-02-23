@@ -526,7 +526,26 @@ Each lemma takes the form: `ValidNode n → ∃ fuel, parser fuel input = .ok (s
 
 ##### 5.4.4 — Fuel sufficiency
 
-One lemma per parser bounding the fuel needed as a function of input length. Structural induction on `Nat` composes these — this is one of Lean's best-supported proof patterns.
+**File:** `Proofs/FuelSufficiency.lean` — **35 proved theorems, 0 sorry.**
+
+Structural properties of fuel-based recursion establishing that the fuel
+allocated by wrapper functions is always sufficient for parsers to complete
+without hitting fuel-exhaustion base cases.
+
+| Section | Lemmas | Technique |
+|---------|--------|-----------|
+| §1 Progress | `anyToken_consumes`, `tokenFilter_consumes`, `token_consumes`, `next?_consumes` | Token consumption → `Stream.remaining` strict decrease |
+| §2 Fuel-zero (leaf) | `skipBlankLines_go_zero`, `flowWhitespace_go_zero` | `| 0 => pure ()` characterization |
+| §2 Fuel-zero (block) | `dispatchByCharImpl_zero`, `blockValueImpl_zero`, `blockSequenceImpl_zero`, `blockSequenceItemsImpl_zero`, `blockValueSameLineImpl_zero`, `blockMappingImpl_zero`, `blockMappingEntriesImpl_zero`, `blockMappingEntryImpl_zero`, `blockMappingKeyImpl_zero`, `detectMappingKeyImpl_zero` | `| 0 => pure <default>` for all 10 block Impl functions |
+| §2 Fuel-zero (flow) | `flowValueImpl_zero`, `flowSequenceImpl_zero`, `flowSequenceItemsImpl_zero`, `flowMappingImpl_zero`, `flowMappingEntriesImpl_zero`, `flowMappingEntryImpl_zero` | `| 0 => pure <default>` for all 6 flow Impl functions |
+| §3 Fuel arithmetic | `fuel_4x_pos`, `fuel_4x_succ`, `fuel_4x_dominates`, `fuel_4x_after_consume`, `fuel_4x_descent`, `fuel_4x_non_consuming_step` | Positivity, dominance, and descent for `4 * remaining + 4` |
+| §4 Saturation | `fuel_invariant_preserved`, `remaining_zero_next?_none`, `anyToken_fails_on_empty` | Invariant preservation, exhaustion characterization |
+| §5 Wrapper sufficiency | `leaf_fuel_pos`, `mutual_wrapper_enters_succ`, `mutual_wrapper_fuel_pos`, `mutual_subcall_fuel` | Wrapper fuel always enters `| fuel + 1 =>` branch |
+
+**Key insights:**
+- All `*Impl 0` base cases return `.ok s <default>` — never `.error`. This means fuel exhaustion is silent, returning incomplete-but-valid partial results.
+- The `4 * remaining + 4` multiplier allows up to 4 fuel decrements per byte position in the mutual recursion chain (`blockValue → dispatchByChar → blockSequenceItems → blockMappingEntry`), with `+4` handling the empty-input edge case.
+- `mutual_subcall_fuel` is the key descent lemma: after consuming 1 byte, `4 * remaining(s) + 3 ≥ 4 * remaining(s') + 4`.
 
 ##### 5.4.5 — Full composition
 
@@ -660,6 +679,20 @@ Steps 1–21: parser features, totality, soundness, compile-time proofs, complet
 
     **SuiteRunner `emit` field fix:** The `Meta.lean` line-based parser was missing `emit` in its recognized-field list (`json | dump | from | tidy`). Block scalar content from `emit:` fields leaked into subsequent lines, creating phantom test case variants (e.g., 4QFQ had 5 variants instead of 1). Fixed by adding `| "emit"` to `processKeyValue`. Test count: 416→406 (10 phantom variants eliminated), skipped: 201→171 (all now YAML 1.3 specific, zero "empty yaml input").
 
+23. **Step 5.4.3 completion + 5.4.4 — Per-Parser Specs (33 theorems) + Fuel Sufficiency (35 theorems) (2026-02-22)** — **68 new theorems, 0 sorry.**
+
+    Expanded `PerParserSpecs.lean` from 18 to 33 theorems, covering all major parser categories: `setValidationError` (fresh/already patterns), pure helpers (`processLiteral`, `applyChomp`), quoted scalars (single/double-quoted relational specs), plain scalars (nonempty/empty paths with `content.isEmpty` branching), block scalar 5-phase pipeline (indicator → header → indent → content → chomp), block/flow collection fuel wrapper transparency, and flow empty-case concrete specs (`[]`/`{}`).
+
+    Created `Proofs/FuelSufficiency.lean` (35 theorems) establishing the structural foundation for fuel-based recursion: progress lemmas proving `anyToken`/`tokenFilter`/`char` consume ≥1 byte, fuel-zero characterization for all 18 mutual `*Impl` functions (10 block + 6 flow + 2 leaf loops), fuel arithmetic for the `4 * remaining + 4` wrapper expression (positivity, dominance, descent), and wrapper sufficiency theorems.
+
+    **Key proof techniques discovered:**
+    - `simp (config := { decide := true })` evaluates constant expressions like `"".utf8ByteSize == 0` that normal `simp` cannot reduce, followed by `ite_true` to collapse conditional branches.
+    - `cases explicitIndent` handles `match` on `Option` distributing continuations into branches, which prevents `simp only` from rewriting across the pattern match.
+    - `generalize htf : <expr> = r; cases r` for extracting inner success from `withErrorMessage` wrappers without syntactic unfolding issues.
+    - After `obtain ⟨rfl, rfl⟩`, destructured variables from `cases p with | mk tok s'' =>` are replaced by the original names — use `c`/`s'` instead of `tok`/`s''`.
+
+    **Build:** 242/242 jobs. **Project total: ~384 proved theorems + 553 compile-time checks.**
+
     **Build:** 234/234 jobs. **Tests:** 847 passed / 2 failed (H7TQ) / 171 skipped (1020 total). **Unique test IDs:** 277 total, 224 passing, 52 YAML 1.3 skipped, 1 failed.
 
     **Strategic assessment (2026-02-21):** At 224/225 YAML 1.2.2 tests passing (99.6%), the remaining compliance gap is YAML 1.3 features (out of scope), not correctness. Verification doesn't help compliance — the parser is functionally complete for YAML 1.2.2. Phase 4 locks these 350 passing tests as build-time invariants, making regressions impossible without also fixing the broken guard. Combined with the 76 hand-written `#guard` tests from Step 3.3.4, the project now has **426 compile-time kernel-evaluated checks** plus ~170 formal theorems.
@@ -670,18 +703,18 @@ Steps 1–21: parser features, totality, soundness, compile-time proofs, complet
 
 <details>
 <summary>
-~334 theorems + 553 compile-time checks. 353/406 correct. 0 sorry, 0 axiom, 0 `partial def`.
+~384 theorems + 553 compile-time checks. 353/406 correct. 0 sorry, 0 axiom, 0 `partial def`.
 </summary>
 
 Phase 2 (Parser Validation) is functionally complete. **353/406 correct** per HTML subprocess report. 0 failures, 0 timeouts, 1 UP (H7TQ document stage only). 52 YAML 1.3 skipped. Error stage: 74/74 (100%). Flow stage: 46/46 (100%). Block stage: 99/99 (100%). Scalar: 54/82 (65.9%). Advanced: 64/81 (79%). Document: 16/24 (66.7%).
 
 **Phase 4 complete:** 351 `#guard` compile-time tests across 6 files (`Proofs/SuiteGuards/*.lean`) encode all passing yaml-test-suite tests. Auto-generated from yaml-test-suite by `gen-suite-guards.py`. Any parser regression breaks the build.
 
-**Phase 5 in progress:** Canonical emitter (`Emitter.lean`) + round-trip proofs (`Proofs/RoundTrip.lean`). 58 theorems + 63 `#guard` round-trip checks proving `parse ∘ emit = id` for concrete values. Steps 5.1–5.3 complete: `contentEq` proved to be a full equivalence relation (refl + symm + trans) for all `YamlValue` trees; character-level escape round-trip connecting `escapeChar` ↔ `resolveNamedEscape` via `escapeTag`. Step 5.4 Phase 1 complete: `Proofs/Completeness.lean` with `LawfulParserStream YamlStream Char`, `parseYaml_ok_iff`, 7 stream lemmas, 12 concrete completeness theorems via `native_decide`. Step 5.4.2 complete: 20 `@[simp]` combinator specs in `ParserSpecs.lean`. Step 5.4.3 in progress: 33 YAML-specific intermediate specs covering all major parser categories (scalars, collections, validation state, pure helpers) + first complete parser proofs (`parseAlias`) in `PerParserSpecs.lean`.
+**Phase 5 in progress:** Canonical emitter (`Emitter.lean`) + round-trip proofs (`Proofs/RoundTrip.lean`). 58 theorems + 63 `#guard` round-trip checks proving `parse ∘ emit = id` for concrete values. Steps 5.1–5.3 complete: `contentEq` proved to be a full equivalence relation (refl + symm + trans) for all `YamlValue` trees; character-level escape round-trip connecting `escapeChar` ↔ `resolveNamedEscape` via `escapeTag`. Step 5.4 Phase 1 complete: `Proofs/Completeness.lean` with `LawfulParserStream YamlStream Char`, `parseYaml_ok_iff`, 7 stream lemmas, 12 concrete completeness theorems via `native_decide`. Step 5.4.2 complete: 20 `@[simp]` combinator specs in `ParserSpecs.lean`. Step 5.4.3 in progress: 33 YAML-specific intermediate specs covering all major parser categories (scalars, collections, validation state, pure helpers) + first complete parser proofs (`parseAlias`) in `PerParserSpecs.lean`. Step 5.4.4 complete: 35 fuel sufficiency theorems in `FuelSufficiency.lean` — progress lemmas, fuel-zero characterization for all 18 `*Impl` functions, fuel arithmetic for `4 * remaining + 4`, and wrapper sufficiency.
 
 **3.1–3.2 complete.** 3.1 (Foundation): ~90 theorems across 5 proof files. 3.2 (Key Invariants): ~30 theorems + 45 `#guard` checks across 3 proof files (`EscapeResolution.lean`, `IndentConsumption.lean`, `FoldNewlines.lean`). Grammar.lean extended with `resolveNamedEscape`, `isCForbiddenPrefix`, `isFoldAppendChar`, full Decidable instances.
 
-**Verification inventory:** ~349 proved theorems/lemmas + 76 hand-written `#guard` tests + 45 (3.2) `#guard` tests + 351 yaml-test-suite `#guard` tests + 63 round-trip `#guard` tests + 15 TestSuite `#guard` tests = **553 compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 241/241 jobs.
+**Verification inventory:** ~384 proved theorems/lemmas + 76 hand-written `#guard` tests + 45 (3.2) `#guard` tests + 351 yaml-test-suite `#guard` tests + 63 round-trip `#guard` tests + 15 TestSuite `#guard` tests = **553 compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 242/242 jobs.
 
 **3.3 complete.** All 6 steps finished: Steps 3.3.1–3.3.3 (totality), Step 3.3.4 (`#guard` compile-time tests), Step 3.3.5 (soundness proofs). Phase 4 complete. Phase 5 in progress (emitter + round-trip proofs).
 
