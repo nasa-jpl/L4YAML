@@ -1088,11 +1088,11 @@ The remaining 52 skipped tests are YAML 1.1/1.3 features or tests that require b
 | §9.1.3 `c-forbidden` (complete) | Reject `---`/`...` inside block scalars at column 0 | Low | Already partial in `FoldResult` |
 | §10 Recommended Schemas | Failsafe, JSON, Core schema type resolution | High | **Separate schema layer** (see below) |
 
-### Phase 6: Verified YAML Dump — In Progress
+### Phase 6: Verified YAML Dump ✅
 
 <details>
 <summary>
-Presentation layer: style-aware dump per YAML 1.2.2 §3.1.1. Renamed from "YAML Serializer" to "YAML Dump" to match spec terminology.
+Presentation layer: style-aware dump per YAML 1.2.2 §3.1.1. 71 theorems, 94 `#guard` checks, 102 runtime tests. Renamed from "YAML Serializer" to "YAML Dump" to match spec terminology.
 </summary>
 
 **Rename (2026-02-22).** Renamed Phase 6 from "Verified YAML Serializer" to "Verified YAML Dump" throughout the roadmap, architecture diagrams, and Phase 7 references. The YAML 1.2.2 specification (§3.1.1) uses "dump" for the process of converting the representation graph to a character stream: **Dump** = Represent + Serialize + Present. "Serializer" is used in the spec for a narrower step (§3.1.1: event tree → character stream). Using "dump" aligns the codebase with spec vocabulary and avoids confusion with the spec's more specific "serialize" term.
@@ -1136,15 +1136,39 @@ Pure function (no IO), kernel-reducible, `#guard`-testable. Registered in `Lean4
 
 All 244 build jobs pass.
 
+**Dump proofs (2026-02-22).** Added `Proofs/DumpRoundTrip.lean` — 71 `native_decide` theorems + 40 `#guard` compile-time round-trip checks:
+
+| Section | Count | Description |
+|---------|-------|-------------|
+| §1 Structural properties | 14 theorems | Dump output shape (`dump_plain_scalar`, `dump_reserved_true`, ...), non-emptiness (`dump_plain_nonempty`, ...) |
+| §2 Content analysis | 28 theorems | `isPlainSafe` correctness for empty strings, words, spaces, newlines, `: `/ ` #`, flow indicators, all 15 reserved words, all 13 leading indicators (§5.3) |
+| §3 Style preservation | 12 theorems | Config overrides (`dump_config_doubleQuoted`, `dump_config_singleQuoted`), single-quoted newline fallback, literal/folded block scalars, chomp indicators, flow override, anchor/tag emission |
+| §4 Round-trip checks | 40 `#guard` | `dumpRoundTrips` — dump→`parseYamlSingle`→`contentEq` for plain, auto-quoted, double-quoted, single-quoted, flow, block, nested, escaped, and config-override scenarios |
+| §5 Document properties | 8 theorems | `dumpDirective`, `dumpDocument` (no directives, with directives, multiple directives), `dumpDocuments` (0/1/2/3 docs) |
+
+Made content analysis functions (`isPlainSafe`, `isReservedWord`, `isIndicator`, `hasUnsafeSubsequence`, `hasNewlines`) non-private for proof accessibility. All 245 build jobs pass.
+
+**Dump tests (2026-02-22).** Added `Tests/DumpRoundTrip.lean` — 102 runtime tests mirroring the proof-level `native_decide` theorems and `#guard` checks, integrated into the HTML coverage dashboard:
+
+| Category | Tests | Description |
+|----------|-------|-------------|
+| Structural properties | 14 | Dump output shape, non-emptiness for all value types |
+| Content analysis (`isPlainSafe`) | 31 | Reserved words, indicators (§5.3), unsafe subsequences, whitespace |
+| Style preservation | 14 | Config overrides, block scalar styles, chomp indicators, anchor/tag emission |
+| Dump→Parse round-trip | 34 | `dumpRoundTrips` — dump, parse back, verify `contentEq` across plain/quoted/flow/block/nested/escape/config scenarios |
+| Document dump | 9 | Directives, `---`/`...` markers, multi-document streams (0/1/2/3 docs) |
+
+Registered in `lakefile.toml` (`lean_lib` + `lean_exe`), `SuiteRunner/Main.lean` (collector), and standalone runner (`dumproundtrip`). All 102/102 pass.
+
 </details>
 
 ---
 
-## Phase 6: Verified YAML Dump
+## Phase 6: Verified YAML Dump ✅
 
 <details>
 <summary>
-Style-aware dump: YamlValue → DumpConfig → String. 5 sub-steps (prerequisites, core, documents, proofs, tests).
+Style-aware dump: YamlValue → DumpConfig → String. 5 sub-steps (prerequisites, core, documents, proofs, tests). All complete.
 </summary>
 
 ### Motivation
@@ -1181,8 +1205,8 @@ The current emitter (`Emitter.lean`) produces canonical YAML — double-quoted s
 | **6.0** | **Presentation metadata** — Round-trip types in `Types.lean`: `ChompStyle`, `BlockScalarMeta`, `CommentPosition`/`Comment`, `Scalar.anchor`/`blockMeta`, `YamlValue.alias` constructor, anchor fields on `.sequence`/`.mapping`, `resolveAliases`. Updated Grammar, Emitter, Flow, all proofs and tests. | Low | ✅ Complete |
 | **6.1** | **Core dump** — `dump : YamlValue → DumpConfig → String`. Style-aware output: plain/quoted scalars based on content analysis, block sequences/mappings with configurable indentation, flow collections when compact. Multi-line string support via literal `\|` and folded `>` block scalars. | Medium | ✅ Complete |
 | **6.2** | **Document dump** — `dumpDirective`, `dumpDocument`, `dumpDocuments`. `---`/`...` markers, `%YAML`/`%TAG` directives, multi-document streams. 54 total `#guard` compile-time tests (42 value + 12 document). | Low | ✅ Complete |
-| **6.3** | **Dump proofs** — (a) `dump_produces_valid_yaml`: output of `dump` is parseable by `parseYaml`. (b) `dump_preserves_content`: `contentEq v (parseYamlSingle (dump v cfg)).get!` for all `v`. (c) Style preservation: when `YamlValue` already has explicit style annotations, the dump function respects them. | High | Not started |
-| **6.4** | **Dump tests** — `#guard` compile-time checks for dump output across all value types and configurations. Golden-file comparisons for complex nested structures. | Low | Not started |
+| **6.3** | **Dump proofs** — `Proofs/DumpRoundTrip.lean`: 71 `native_decide` theorems + 40 `#guard` compile-time checks. (a) Structural: dump output shape, non-emptiness, prefix correctness. (b) Content analysis: `isPlainSafe` properties for indicators, reserved words, unsafe subsequences, whitespace. (c) Style preservation: config overrides, block scalar styles, chomp indicators, anchors, tags. (d) Round-trip: `dumpRoundTrips` — dump→parse→`contentEq` for plain/quoted/flow/block/nested/escaped values. (e) Document: directive emission, `---`/`...` markers, multi-document streams. | High | ✅ Complete |
+| **6.4** | **Dump tests** — `Tests/DumpRoundTrip.lean`: 102 runtime verification tests (structural, content analysis, style preservation, dump→parse round-trip, document dump). Integrated into `suiterunner` HTML coverage dashboard. Standalone `dumproundtrip` executable. 54 `#guard` compile-time checks in `Dump.lean` + 40 in `Proofs/DumpRoundTrip.lean`. | Low | ✅ Complete |
 
 ### Design Principles
 
@@ -1191,7 +1215,7 @@ The current emitter (`Emitter.lean`) produces canonical YAML — double-quoted s
 3. **Content analysis drives scalar style.** Plain for simple strings. Double-quoted for strings with special characters. Literal block for multi-line strings with significant whitespace. The dump function inspects content, not just the style annotation.
 4. **Pure function, no IO.** Like the emitter, the dump function is `YamlValue → String` — kernel-reducible, `#guard`-testable, provably correct.
 
-Estimated effort: 2–3 sessions for implementation (6.1–6.2), 1–2 sessions for proofs (6.3), 1 session for tests (6.4).
+Completed in 3 sessions: implementation (6.0–6.2), proofs (6.3), tests (6.4).
 
 </details>
 

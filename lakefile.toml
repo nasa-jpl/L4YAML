@@ -135,3 +135,10 @@ name = "Tests.CompletenessTests"
 [[lean_exe]]
 name = "completenesstests"
 root = "Tests.CompletenessTests.Runner"
+
+[[lean_lib]]
+name = "Tests.DumpRoundTrip"
+
+[[lean_exe]]
+name = "dumproundtrip"
+root = "Tests.DumpRoundTrip.Runner"

@@ -130,7 +130,7 @@ private def dumpSingleQuoted (s : String) : String :=
   "'" ++ s.foldl (fun acc c => acc ++ if c == '\'' then "''" else c.toString) "" ++ "'"
 
 /-- Check if string is a YAML reserved word (boolean, null). -/
-private def isReservedWord (s : String) : Bool :=
+def isReservedWord (s : String) : Bool :=
   s == "true" || s == "false" || s == "null" ||
   s == "True" || s == "False" || s == "Null" ||
   s == "TRUE" || s == "FALSE" || s == "NULL" ||
@@ -138,7 +138,7 @@ private def isReservedWord (s : String) : Bool :=
   s == "YES" || s == "NO" || s == "~"
 
 /-- Check if a character is a YAML indicator (§5.3). -/
-private def isIndicator (c : Char) : Bool :=
+def isIndicator (c : Char) : Bool :=
   c == '-' || c == '?' || c == ':' || c == ',' ||
   c == '[' || c == ']' || c == '{' || c == '}' ||
   c == '#' || c == '&' || c == '*' || c == '!' ||
@@ -146,7 +146,7 @@ private def isIndicator (c : Char) : Bool :=
   c == '%' || c == '@' || c == '`'
 
 /-- Check if string contains `: ` or ` #` (unsafe in plain scalars). -/
-private def hasUnsafeSubsequence (s : String) : Bool :=
+def hasUnsafeSubsequence (s : String) : Bool :=
   go s.toList
 where
   go : List Char → Bool
@@ -158,7 +158,7 @@ where
       go (c₂ :: rest)
 
 /-- Determine if string content is safe for plain scalar style. -/
-private def isPlainSafe (s : String) : Bool :=
+def isPlainSafe (s : String) : Bool :=
   if s.isEmpty then false
   else
     let chars := s.toList
@@ -181,7 +181,7 @@ private def isPlainSafe (s : String) : Bool :=
       !isReservedWord s
 
 /-- Check if string contains newlines. -/
-private def hasNewlines (s : String) : Bool :=
+def hasNewlines (s : String) : Bool :=
   s.any (· == '\n')
 
 /-- Choose effective scalar style based on content and config. -/

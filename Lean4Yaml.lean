@@ -32,6 +32,7 @@ import Lean4Yaml.Proofs.SuiteGuards.Block
 import Lean4Yaml.Proofs.SuiteGuards.Document
 import Lean4Yaml.Proofs.SuiteGuards.Advanced
 import Lean4Yaml.Proofs.SuiteGuards.Error
+import Lean4Yaml.Proofs.DumpRoundTrip
 
 /-
 Copyright (c) 2026. All rights reserved.
