@@ -467,35 +467,25 @@ Prove `parse ∘ emit = id` for a canonical YAML subset.
 
 `Proofs/Completeness.lean`: `LawfulParserStream YamlStream Char` typeclass + instance, `parseYaml_ok_iff` bridge theorem, 7 stream initialization lemmas (`ofString_*`), `parser_run_eq` simp lemma, 12 concrete completeness theorems via `native_decide` (plain/quoted/literal/folded scalars, flow/block sequences and mappings, multi-document streams, nested structures). `DecidableEq Scalar` added to `Types.lean`. 22 proof artifacts (1 class instance + 21 theorems).
 
-##### 5.4.2 — Combinator specifications (next)
+##### 5.4.2 — Combinator specifications (✅ complete)
 
-lean4-parser ships **zero** theorems or `@[simp]` lemmas. All combinator specifications must be proved from first principles by unfolding definitions. However, the definitions are structurally simple — `Parser ε σ τ α` is just `σ → Result ε σ α` (a raw function type via `abbrev`), and the `Monad` instance fields are 1-line lambdas (`pure x s := .ok s x`, `bind x f s := match x s with ...`). Since our parser uses `m = Id`, there is no monadic lifting.
+`Proofs/ParserSpecs.lean`: 20 `@[simp]` lemmas unfolding every lean4-parser combinator into concrete `Result` expressions. lean4-parser ships zero theorems, so all proofs are from first principles.
 
-The plan is to create `Proofs/ParserSpecs.lean` with ~15 foundation lemmas, each proving a direct-evaluation characterization of one combinator:
+**Proof technique:** Type class instances generate internal `match` auxiliary functions that differ from those in theorem statements, making `rfl` fail even when both sides look identical. The solution: `simp only [...]` / `dsimp only [...]` to unfold via equation lemmas, then `cases <discriminant> <;> rfl` to eliminate the match.
 
-| Lemma | Unfold depth | Difficulty |
-|-------|:---:|---|
-| `ParserT.pure_eq` | 1 | trivial |
-| `ParserT.bind_eq` | 1 | trivial |
-| `getStream_eq` | 2 | easy |
-| `setStream_eq` | 2 | easy |
-| `getPosition_eq` | 3 | easy |
-| `setPosition_eq` | 4 | medium |
-| `throwUnexpected_eq` | 4 | medium |
-| `tokenCore_eq` | 6 | medium |
-| `anyToken_eq` | 1 (given `tokenCore`) | trivial |
-| `option?_eq` | 5 | medium |
-| `withBacktracking_eq` | 7 | medium |
-| `lookAhead_eq` | 8 | medium |
-| `orElse_eq` | 3 | easy |
-| `tryCatch_eq` | 2 | easy |
-| `throw_eq` | 1 | trivial |
+**Stream semantics discovery:** `setPosition` in error-recovery paths receives the *post-parser* stream `s'` (not the original `s`), because `do`-notation threads the stream through `getPosition` → parser → `setPosition`. This affects `withBacktracking`, `orElse`, `lookAhead`, `option?`, `eoption`, and `notFollowedBy`.
 
-**Key insight:** `eoption` (the workhorse behind `option?`) is defined as a direct `fun s =>` lambda that bypasses the `Monad` instance entirely — making it the most proof-friendly combinator. All `option*` and backtracking proofs should route through `eoption`.
+| §  | Lemmas | Proof |
+|----|--------|-------|
+| §1 Monad | `pure_eq`, `bind_eq`, `map_eq` | `rfl` / `simp only + cases` |
+| §2 Stream | `getStream_eq`, `setStream_eq`, `getPosition_eq`, `setPosition_eq` | `rfl` / `simp only` |
+| §3 Error | `throw_eq`, `tryCatch_eq`, `throwUnexpected_eq`, `throwUnexpected_some_eq` | `rfl` / `dsimp only + cases` |
+| §4 Backtracking | `withBacktracking_eq`, `orElse_eq`, `lookAhead_eq` | `dsimp only + cases` / `simp only + cases` |
+| §5 Option | `eoption_eq`, `option_question_eq` | `simp only + cases` |
+| §6 Lookahead | `notFollowedBy_eq` | `simp only + cases` |
+| §7 Token | `tokenCore_eq`, `anyToken_eq`, `tokenFilter_eq` | `simp only + cases + split` |
 
-**Prerequisite:** `LawfulBEq YamlValue` — needed for universally quantified theorems (not just `native_decide`). Requires proving the derived `BEq` agrees with propositional equality through mutual recursion on `Array YamlValue` / `Array (YamlValue × YamlValue)`. Also need `DecidableEq YamlValue` (currently blocked by nested `Array` in the recursive type).
-
-##### 5.4.3 — Per-parser specification lemmas
+##### 5.4.3 — Per-parser specification lemmas (next)
 
 One correctness theorem per `ValidNode` constructor (12 obligations):
 
