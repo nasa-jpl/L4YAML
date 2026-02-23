@@ -224,7 +224,7 @@ theorem parseYaml_a_ok :
 theorem parseYaml_a_value :
     (match parseYaml "a" with
      | .ok docs => docs.size == 1
-       && docs[0]!.value == .scalar ⟨"a", .plain, none⟩
+       && docs[0]!.value == .scalar ⟨"a", .plain, none, none, none⟩
      | .error _ => false) = true := by
   native_decide
 
@@ -232,7 +232,7 @@ theorem parseYaml_a_value :
 theorem parseYaml_dq_hello :
     (match parseYaml "\"hello\"" with
      | .ok docs => docs.size == 1
-       && docs[0]!.value == .scalar ⟨"hello", .doubleQuoted, none⟩
+       && docs[0]!.value == .scalar ⟨"hello", .doubleQuoted, none, none, none⟩
      | .error _ => false) = true := by
   native_decide
 
@@ -240,7 +240,7 @@ theorem parseYaml_dq_hello :
 theorem parseYaml_sq_hello :
     (match parseYaml "'hello'" with
      | .ok docs => docs.size == 1
-       && docs[0]!.value == .scalar ⟨"hello", .singleQuoted, none⟩
+       && docs[0]!.value == .scalar ⟨"hello", .singleQuoted, none, none, none⟩
      | .error _ => false) = true := by
   native_decide
 
@@ -256,14 +256,14 @@ theorem parseYaml_block_map :
     (match parseYaml "key: value" with
      | .ok docs => docs.size == 1
        && docs[0]!.value == .mapping .block
-           #[(.scalar ⟨"key", .plain, none⟩,
-              .scalar ⟨"value", .plain, none⟩)] none
+           #[(.scalar ⟨"key", .plain, none, none, none⟩,
+              .scalar ⟨"value", .plain, none, none, none⟩)] none
      | .error _ => false) = true := by
   native_decide
 
 /-- `parseYamlEq` check for plain scalar `"a"`. -/
 theorem parseYaml_a_eq :
-    parseYamlEq "a" #[{ value := .scalar ⟨"a", .plain, none⟩,
+    parseYamlEq "a" #[{ value := .scalar ⟨"a", .plain, none, none, none⟩,
                          directives := #[] }] = true := by
   native_decide
 
@@ -293,8 +293,8 @@ theorem parseYaml_flow_map :
     (match parseYaml "{a: b, c: d}" with
      | .ok docs => docs.size == 1
        && docs[0]!.value == .mapping .flow
-           #[(.scalar ⟨"a", .plain, none⟩, .scalar ⟨"b", .plain, none⟩),
-             (.scalar ⟨"c", .plain, none⟩, .scalar ⟨"d", .plain, none⟩)] none
+           #[(.scalar ⟨"a", .plain, none, none, none⟩, .scalar ⟨"b", .plain, none, none, none⟩),
+             (.scalar ⟨"c", .plain, none, none, none⟩, .scalar ⟨"d", .plain, none, none, none⟩)] none
      | .error _ => false) = true := by
   native_decide
 

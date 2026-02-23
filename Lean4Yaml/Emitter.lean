@@ -108,8 +108,9 @@ which simplifies both parsing and proof.
 -/
 def emit : YamlValue → String
   | .scalar s => emitScalar s.content
-  | .sequence _ items _ => "[" ++ emitList items.toList ++ "]"
-  | .mapping _ pairs _ => "{" ++ emitPairList pairs.toList ++ "}"
+  | .sequence _ items .. => "[" ++ emitList items.toList ++ "]"
+  | .mapping _ pairs .. => "{" ++ emitPairList pairs.toList ++ "}"
+  | .alias name => emitScalar ("*" ++ name)
 where
   /-- Emit a list of values as comma-separated items. -/
   emitList : List YamlValue → String
@@ -139,12 +140,13 @@ Two values are content-equivalent if:
 -/
 def contentEq : YamlValue → YamlValue → Bool
   | .scalar s₁, .scalar s₂ => s₁.content == s₂.content
-  | .sequence _ items₁ _, .sequence _ items₂ _ =>
+  | .sequence _ items₁ .., .sequence _ items₂ .. =>
     items₁.size == items₂.size &&
     contentEqList items₁.toList items₂.toList
-  | .mapping _ pairs₁ _, .mapping _ pairs₂ _ =>
+  | .mapping _ pairs₁ .., .mapping _ pairs₂ .. =>
     pairs₁.size == pairs₂.size &&
     contentEqPairList pairs₁.toList pairs₂.toList
+  | .alias n₁, .alias n₂ => n₁ == n₂
   | _, _ => false
 where
   /-- Pairwise content equivalence of value lists. -/

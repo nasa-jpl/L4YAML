@@ -52,15 +52,17 @@ def parseSingle (input : String) : Except String YamlValue :=
 def hasTag (v : YamlValue) (tag : String) : Bool :=
   match v with
   | .scalar s => s.tag == some tag
-  | .sequence _ _ t => t == some tag
-  | .mapping _ _ t => t == some tag
+  | .sequence _ _ t .. => t == some tag
+  | .mapping _ _ t .. => t == some tag
+  | .alias _ => false
 
 /-- Extract the tag from a YamlValue -/
 def getTag (v : YamlValue) : Option String :=
   match v with
   | .scalar s => s.tag
-  | .sequence _ _ t => t
-  | .mapping _ _ t => t
+  | .sequence _ _ t .. => t
+  | .mapping _ _ t .. => t
+  | .alias _ => none
 
 /-- Extract scalar content regardless of tag -/
 def content (v : YamlValue) : Option String :=

@@ -213,17 +213,17 @@ def testDocumentResult (state : IO.Ref TestCollector) : IO Unit := do
     match (DocumentResult.endOfStream : DocumentResult) with
     | .stalled _ => false | _ => true)
   check state "parsed ≠ stalled" (
-    let doc : YamlDocument := { value := .scalar ⟨"hi", .plain, none⟩ }
+    let doc : YamlDocument := { value := .scalar ⟨"hi", .plain, none, none, none⟩ }
     match DocumentResult.parsed doc with
     | .stalled _ => false | _ => true)
   check state "parsed ≠ endOfStream" (
-    let doc : YamlDocument := { value := .scalar ⟨"hi", .plain, none⟩ }
+    let doc : YamlDocument := { value := .scalar ⟨"hi", .plain, none, none, none⟩ }
     match DocumentResult.parsed doc with
     | .endOfStream => false | _ => true)
 
   -- Exhaustiveness
   check state "exhaustive: parsed" (
-    let doc : YamlDocument := { value := .scalar ⟨"x", .plain, none⟩ }
+    let doc : YamlDocument := { value := .scalar ⟨"x", .plain, none, none, none⟩ }
     match DocumentResult.parsed doc with
     | .parsed _ _ | .endOfStream | .stalled _ => true)
   check state "exhaustive: endOfStream" (
@@ -302,19 +302,19 @@ def testValidNodeStructural (state : IO.Ref TestCollector) : IO Unit := do
 
   -- NodeToValue preserves style
   check state "plain scalar → .plain style" (
-    let val : YamlValue := .scalar ⟨"hello", .plain, none⟩
+    let val : YamlValue := .scalar ⟨"hello", .plain, none, none, none⟩
     match val with | .scalar s => s.style == .plain | _ => false)
   check state "double-quoted → .doubleQuoted style" (
-    let val : YamlValue := .scalar ⟨"world", .doubleQuoted, none⟩
+    let val : YamlValue := .scalar ⟨"world", .doubleQuoted, none, none, none⟩
     match val with | .scalar s => s.style == .doubleQuoted | _ => false)
   check state "single-quoted → .singleQuoted style" (
-    let val : YamlValue := .scalar ⟨"test", .singleQuoted, none⟩
+    let val : YamlValue := .scalar ⟨"test", .singleQuoted, none, none, none⟩
     match val with | .scalar s => s.style == .singleQuoted | _ => false)
   check state "literal → .literal style" (
-    let val : YamlValue := .scalar ⟨"line1\nline2\n", .literal, none⟩
+    let val : YamlValue := .scalar ⟨"line1\nline2\n", .literal, none, none, none⟩
     match val with | .scalar s => s.style == .literal | _ => false)
   check state "folded → .folded style" (
-    let val : YamlValue := .scalar ⟨"folded text\n", .folded, none⟩
+    let val : YamlValue := .scalar ⟨"folded text\n", .folded, none, none, none⟩
     match val with | .scalar s => s.style == .folded | _ => false)
 
 /-! ## §8  Validation Integration -/

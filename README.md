@@ -1088,34 +1088,59 @@ The remaining 52 skipped tests are YAML 1.1/1.3 features or tests that require b
 | §9.1.3 `c-forbidden` (complete) | Reject `---`/`...` inside block scalars at column 0 | Low | Already partial in `FoldResult` |
 | §10 Recommended Schemas | Failsafe, JSON, Core schema type resolution | High | **Separate schema layer** (see below) |
 
----
-
-## Phase 6: Verified YAML Serializer
+### Phase 6: Verified YAML Dump — In Progress
 
 <details>
 <summary>
-Style-aware serializer: YamlValue → SerializerConfig → String. 4 sub-steps (core, documents, proofs, tests).
+Presentation layer: style-aware dump per YAML 1.2.2 §3.1.1. Renamed from "YAML Serializer" to "YAML Dump" to match spec terminology.
+</summary>
+
+**Rename (2026-02-22).** Renamed Phase 6 from "Verified YAML Serializer" to "Verified YAML Dump" throughout the roadmap, architecture diagrams, and Phase 7 references. The YAML 1.2.2 specification (§3.1.1) uses "dump" for the process of converting the representation graph to a character stream: **Dump** = Represent + Serialize + Present. "Serializer" is used in the spec for a narrower step (§3.1.1: event tree → character stream). Using "dump" aligns the codebase with spec vocabulary and avoids confusion with the spec's more specific "serialize" term.
+
+**Presentation metadata (2026-02-22).** Added round-trip presentation types to `Types.lean` in preparation for the dump layer:
+
+| Change | Description |
+|--------|-------------|
+| `ChompStyle` | Moved to `Types.lean` as canonical definition (`.strip \| .clip \| .keep`), eliminating duplicates in `Grammar.lean` and `Scalar.lean` |
+| `BlockScalarMeta` | New structure: `chomp : ChompStyle`, `explicitIndent : Option Nat` |
+| `CommentPosition` / `Comment` | New types for future comment round-trip preservation |
+| `Scalar` | Extended with `anchor : Option String` and `blockMeta : Option BlockScalarMeta` |
+| `YamlValue.alias` | New constructor for lazy alias resolution (complements eager `parseAlias`) |
+| `YamlValue.sequence`/`.mapping` | Added `anchor : Option String` field |
+| `resolveAliases` | Utility to expand alias nodes from an anchor map |
+
+Updated `Grammar.lean` (NodeToValue propagates `BlockScalarMeta`), `Emitter.lean` (`.alias` branch in `emit`/`contentEq`), `Parser/Flow.lean` (`.alias` exhaustiveness), and all proof + test files (Soundness, RoundTrip, Completeness, Verification, TagTests, CompletenessTests, ValidationTests). All 503 build jobs pass, all test suites green (232/232).
+
+</details>
+
+---
+
+## Phase 6: Verified YAML Dump
+
+<details>
+<summary>
+Style-aware dump: YamlValue → DumpConfig → String. 4 sub-steps (core, documents, proofs, tests).
 </summary>
 
 ### Motivation
 
-The current emitter (`Emitter.lean`) produces canonical YAML — double-quoted scalars, flow collections, single-line output. This is sufficient for round-trip proofs (`contentEq`) but not for producing human-readable YAML that leverages the full YAML 1.2.2 feature set. A proper **serializer** (also called "dumper" in YAML terminology) is needed before the schema layer because:
+The current emitter (`Emitter.lean`) produces canonical YAML — double-quoted scalars, flow collections, single-line output. This is sufficient for round-trip proofs (`contentEq`) but not for producing human-readable YAML that leverages the full YAML 1.2.2 feature set. A proper **dump** function (YAML 1.2.2 §3.1 terminology) is needed before the schema layer because:
 
-1. **`ToYaml` requires a serializer.** The schema layer's `ToYaml α` typeclass maps `α → YamlValue`. The second half of the pipeline (`YamlValue → String`) needs a serializer that produces readable, style-aware output — not just canonical form.
-2. **Round-trip fidelity improves.** `parse (serialize v) = .ok v'` where `v' = v` (exact equality, not just `contentEq`) becomes achievable when the serializer preserves style annotations (`.plain`, `.block`, `.flow`).
+1. **`ToYaml` requires a dump function.** The schema layer's `ToYaml α` typeclass maps `α → YamlValue`. The second half of the pipeline (`YamlValue → String`) needs a dump function that produces readable, style-aware output — not just canonical form.
+2. **Round-trip fidelity improves.** `parse (dump v) = .ok v'` where `v' = v` (exact equality, not just `contentEq`) becomes achievable when the dump function preserves style annotations (`.plain`, `.block`, `.flow`).
 3. **Testing infrastructure benefits.** Golden-file testing, snapshot testing, and `#guard` checks become more readable when output is idiomatic YAML rather than canonical form.
 
 ### Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  Lean4Yaml/Serializer.lean                                     │
+│  Lean4Yaml/Dump.lean                                           │
 │                                                                 │
-│  serialize : YamlValue → SerializerConfig → String              │
-│  serializeDocument : YamlDocument → SerializerConfig → String   │
-│  serializeDocuments : Array YamlDocument → SerializerConfig → …  │
+│  dump : YamlValue → DumpConfig → String                        │
+│  dumpDocument : YamlDocument → DumpConfig → String             │
+│  dumpDocuments : Array YamlDocument → DumpConfig → String      │
 │                                                                 │
-│  SerializerConfig:                                              │
+│  DumpConfig:                                                    │
 │    indent : Nat := 2        -- indentation width                │
 │    defaultStyle : Style     -- block (default) | flow | auto    │
 │    scalarStyle : ScalarPref -- plain | doubleQuoted | auto      │
@@ -1124,21 +1149,21 @@ The current emitter (`Emitter.lean`) produces canonical YAML — double-quoted s
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Serializer Roadmap
+### Dump Roadmap
 
 | Step | Description | Difficulty | Status |
 |------|-------------|------------|--------|
-| **6.1** | **Core serializer** — `serialize : YamlValue → SerializerConfig → String`. Style-aware output: plain/quoted scalars based on content analysis, block sequences/mappings with configurable indentation, flow collections when compact. Multi-line string support via literal `\|` and folded `>` block scalars. | Medium | Not started |
-| **6.2** | **Document serializer** — Handle `---`/`...` markers, directives (`%YAML`, `%TAG`), multi-document streams. Integrate with `SerializerConfig` for document-level options. | Low | Not started |
-| **6.3** | **Serializer proofs** — (a) `serialize_produces_valid_yaml`: output of `serialize` is parseable by `parseYaml`. (b) `serialize_preserves_content`: `contentEq v (parseYamlSingle (serialize v cfg)).get!` for all `v`. (c) Style preservation: when `YamlValue` already has explicit style annotations, the serializer respects them. | High | Not started |
-| **6.4** | **Serializer tests** — `#guard` compile-time checks for serializer output across all value types and configurations. Golden-file comparisons for complex nested structures. | Low | Not started |
+| **6.1** | **Core dump** — `dump : YamlValue → DumpConfig → String`. Style-aware output: plain/quoted scalars based on content analysis, block sequences/mappings with configurable indentation, flow collections when compact. Multi-line string support via literal `\|` and folded `>` block scalars. | Medium | Not started |
+| **6.2** | **Document dump** — Handle `---`/`...` markers, directives (`%YAML`, `%TAG`), multi-document streams. Integrate with `DumpConfig` for document-level options. | Low | Not started |
+| **6.3** | **Dump proofs** — (a) `dump_produces_valid_yaml`: output of `dump` is parseable by `parseYaml`. (b) `dump_preserves_content`: `contentEq v (parseYamlSingle (dump v cfg)).get!` for all `v`. (c) Style preservation: when `YamlValue` already has explicit style annotations, the dump function respects them. | High | Not started |
+| **6.4** | **Dump tests** — `#guard` compile-time checks for dump output across all value types and configurations. Golden-file comparisons for complex nested structures. | Low | Not started |
 
 ### Design Principles
 
-1. **Style annotations are hints, not mandates.** If a plain scalar contains YAML metacharacters, the serializer auto-quotes regardless of the `ScalarStyle` annotation. Safety over fidelity.
-2. **Block is the default.** Human-readable YAML uses block style. Flow style is opt-in (per-value via `CollectionStyle` annotation or globally via `SerializerConfig`).
-3. **Content analysis drives scalar style.** Plain for simple strings. Double-quoted for strings with special characters. Literal block for multi-line strings with significant whitespace. The serializer inspects content, not just the style annotation.
-4. **Pure function, no IO.** Like the emitter, the serializer is `YamlValue → String` — kernel-reducible, `#guard`-testable, provably correct.
+1. **Style annotations are hints, not mandates.** If a plain scalar contains YAML metacharacters, the dump function auto-quotes regardless of the `ScalarStyle` annotation. Safety over fidelity.
+2. **Block is the default.** Human-readable YAML uses block style. Flow style is opt-in (per-value via `CollectionStyle` annotation or globally via `DumpConfig`).
+3. **Content analysis drives scalar style.** Plain for simple strings. Double-quoted for strings with special characters. Literal block for multi-line strings with significant whitespace. The dump function inspects content, not just the style annotation.
+4. **Pure function, no IO.** Like the emitter, the dump function is `YamlValue → String` — kernel-reducible, `#guard`-testable, provably correct.
 
 Estimated effort: 2–3 sessions for implementation (6.1–6.2), 1–2 sessions for proofs (6.3), 1 session for tests (6.4).
 
@@ -1150,7 +1175,7 @@ Estimated effort: 2–3 sessions for implementation (6.1–6.2), 1–2 sessions 
 
 <details>
 <summary>
-Port schema layer from lean4-yaml: ~1190 lines, ~22 theorems. 5 sub-phases (types, typeclasses, deriving, serializer integration, round-trip).
+Port schema layer from lean4-yaml: ~1190 lines, ~22 theorems. 5 sub-phases (types, typeclasses, deriving, dump integration, round-trip).
 </summary>
 
 ### Motivation
@@ -1188,16 +1213,16 @@ The architecture is designed for reuse: `lean4-yaml-verified` and `lean4-yaml` s
                     │  fromYaml_toYaml_roundtrip                  │
                     │  resolveImplicit_complete                   │
                     └──────────────────┬──────────────────────────┘
-                                       │ serialize / parseSingle
+                                       │ dump / parseSingle
                     ┌──────────────────▼──────────────────────────┐
-                    │         Serializer Layer (Phase 6)          │
+                    │         Dump Layer (Phase 6)                │
                     │                                             │
-                    │  serialize : YamlValue → Config → String    │
+                    │  dump : YamlValue → Config → String         │
                     │  (style-aware, human-readable output)       │
                     │                                             │
                     │  PROOFS:                                    │
-                    │  serialize_produces_valid_yaml               │
-                    │  serialize_preserves_content                │
+                    │  dump_produces_valid_yaml                   │
+                    │  dump_preserves_content                     │
                     └──────────────────┬──────────────────────────┘
                                        │ parseYaml / parseYamlSingle
                     ┌──────────────────▼──────────────────────────┐
@@ -1242,7 +1267,7 @@ resolve           — YamlValue → YamlType  (recursive resolution)
 | `isBool_spec` | `isBool s = some b ↔ s ∈ {"true","True","TRUE"} ∧ b = true ∨ s ∈ {"false","False","FALSE"} ∧ b = false` | Low |
 | `isInt_hex_correct` | `isInt "0xFF" = some 255` (and general hex → Int correctness) | Medium |
 | `isInt_octal_correct` | `isInt "0o17" = some 15` | Medium |
-| `resolve_idempotent` | `resolve (toYamlValue (resolve v)) = resolve v` — resolving a re-serialized value gives the same type | Medium |
+| `resolve_idempotent` | `resolve (toYamlValue (resolve v)) = resolve v` — resolving a re-dumped value gives the same type | Medium |
 
 Estimated effort: 1 session for port, 1 session for proofs.
 
@@ -1308,28 +1333,28 @@ Deriving macro proofs are out of scope — macro-generated code is validated emp
 
 Estimated effort: 1 session for struct helpers, 1 session for deriving port.
 
-#### Phase 7.4: Schema ↔ Serializer Integration (~210 lines)
+#### Phase 7.4: Schema ↔ Dump Integration (~210 lines)
 
-Connect `ToYaml` to the Phase 6 serializer for the full pipeline: `α → YamlValue → String`. The canonical emitter (`Emitter.lean`) remains for internal use; the serializer provides the user-facing output.
+Connect `ToYaml` to the Phase 6 dump function for the full pipeline: `α → YamlValue → String`. The canonical emitter (`Emitter.lean`) remains for internal use; the dump function provides the user-facing output.
 
 **Proof target:**
 
 | Theorem | Statement | Difficulty |
 |---|---|---|
-| `serialize_toYaml_valid` | `∀ (a : α) [ToYaml α], parse (serialize (toYaml a) cfg) = .ok v'` where `v'` is structurally equivalent | Medium (builds on Phase 6 proofs) |
+| `dump_toYaml_valid` | `∀ (a : α) [ToYaml α], parse (dump (toYaml a) cfg) = .ok v'` where `v'` is structurally equivalent | Medium (builds on Phase 6 proofs) |
 
 #### Phase 7.5: End-to-End Round-Trip
 
-Compose parser + serializer + schema proofs into:
+Compose parser + dump + schema proofs into:
 
 ```lean
 theorem roundtrip :
   ∀ (v : YamlValue),
-    parseSingle (serialize v cfg) = .ok v' →
+    parseSingle (dump v cfg) = .ok v' →
     resolve v' = resolve v
 ```
 
-This is the verified-correctness analog of lean4-yaml's empirical round-trip tests. It requires parser soundness proofs (Phase 3 of the main verification roadmap) and Phase 6 serializer proofs, and is the long-term goal.
+This is the verified-correctness analog of lean4-yaml's empirical round-trip tests. It requires parser soundness proofs (Phase 3 of the main verification roadmap) and Phase 6 dump proofs, and is the long-term goal.
 
 ### Design Principles for the Verified Schema Layer
 
@@ -1352,13 +1377,13 @@ The schema layer follows the same architectural principles documented in ANALYSI
 | 7.1: Core types & resolution | ~300 | 2 | ~9 theorems |
 | 7.2: FromToYaml typeclasses | ~200 | 1 | ~7 theorems |
 | 7.3: Struct helpers & deriving | ~430 | 2 | ~4 theorems |
-| 7.4: Schema ↔ serializer integration | ~210 | 1 | ~1 theorem |
+| 7.4: Schema ↔ dump integration | ~210 | 1 | ~1 theorem |
 | 7.5: Round-trip composition | ~50 | 2+ | ~1 theorem (hard) |
 | **Total** | **~1190** | **8+** | **~22 theorems** |
 
 The schema layer is **~1190 lines** of Lean code plus ~22 formal theorems. This is significantly less than the parser (~2500 lines) and has far better proof tractability since everything is pure functions on inductive types with no parser combinator dependency.
 
-Note: Phase 6 (Serializer) is a prerequisite for Phase 7.4 and 7.5. Phases 7.1–7.3 can proceed in parallel with Phase 6.
+Note: Phase 6 (Dump) is a prerequisite for Phase 7.4 and 7.5. Phases 7.1–7.3 can proceed in parallel with Phase 6.
 
 </details>
 

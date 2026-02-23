@@ -127,19 +127,19 @@ theorem emit_empty_map :
 
 /-- Emitting a single-element sequence. -/
 theorem emit_single_seq :
-    emit (.sequence .flow #[.scalar ⟨"a", .plain, none⟩] none)
+    emit (.sequence .flow #[.scalar ⟨"a", .plain, none, none, none⟩] none)
     = "[\"a\"]" := by native_decide
 
 /-- Emitting a two-element sequence. -/
 theorem emit_two_seq :
-    emit (.sequence .flow #[.scalar ⟨"a", .plain, none⟩,
-                            .scalar ⟨"b", .plain, none⟩] none)
+    emit (.sequence .flow #[.scalar ⟨"a", .plain, none, none, none⟩,
+                            .scalar ⟨"b", .plain, none, none, none⟩] none)
     = "[\"a\", \"b\"]" := by native_decide
 
 /-- Emitting a single-entry mapping. -/
 theorem emit_single_map :
-    emit (.mapping .flow #[(.scalar ⟨"key", .plain, none⟩,
-                            .scalar ⟨"value", .plain, none⟩)] none)
+    emit (.mapping .flow #[(.scalar ⟨"key", .plain, none, none, none⟩,
+                            .scalar ⟨"value", .plain, none, none, none⟩)] none)
     = "{\"key\": \"value\"}" := by native_decide
 
 /-! ## §2: Escape–Resolve Correspondence
@@ -233,7 +233,7 @@ theorem contentEq_refl_scalar (s : Scalar) :
 /-- `contentEq` ignores scalar style. -/
 theorem contentEq_ignores_style (content : String)
     (s₁ s₂ : ScalarStyle) (t₁ t₂ : Option String) :
-    contentEq (.scalar ⟨content, s₁, t₁⟩) (.scalar ⟨content, s₂, t₂⟩) = true := by
+    contentEq (.scalar ⟨content, s₁, t₁, none, none⟩) (.scalar ⟨content, s₂, t₂, none, none⟩) = true := by
   show (content == content) = true
   exact beq_self_eq_true content
 
@@ -254,12 +254,12 @@ theorem contentEq_refl_empty_map :
 
 /-- `contentEq` distinguishes different scalar content. -/
 theorem contentEq_diff_content :
-    contentEq (.scalar ⟨"a", .plain, none⟩) (.scalar ⟨"b", .plain, none⟩) = false := by
+    contentEq (.scalar ⟨"a", .plain, none, none, none⟩) (.scalar ⟨"b", .plain, none, none, none⟩) = false := by
   native_decide
 
 /-- `contentEq` distinguishes scalars from sequences. -/
 theorem contentEq_scalar_ne_seq :
-    contentEq (.scalar ⟨"a", .plain, none⟩) (.sequence .flow #[] none) = false := by
+    contentEq (.scalar ⟨"a", .plain, none, none, none⟩) (.sequence .flow #[] none) = false := by
   native_decide
 
 /-! ## §4: Parse-Emit-Parse `#guard` Round-Trip Checks
@@ -285,45 +285,45 @@ private def roundTrips (v : YamlValue) : Bool :=
 -- ═══════════════════════════════════════════════════════════════════
 
 -- Simple ASCII words
-#guard roundTrips (.scalar ⟨"hello", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"hello", .doubleQuoted, none⟩)
-#guard roundTrips (.scalar ⟨"hello", .singleQuoted, none⟩)
-#guard roundTrips (.scalar ⟨"world", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"hello", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"hello", .doubleQuoted, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"hello", .singleQuoted, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"world", .plain, none, none, none⟩)
 
 -- Empty scalar
-#guard roundTrips (.scalar ⟨"", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"", .plain, none, none, none⟩)
 
 -- Single character
-#guard roundTrips (.scalar ⟨"x", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"x", .plain, none, none, none⟩)
 
 -- Spaces and punctuation
-#guard roundTrips (.scalar ⟨"hello world", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"a b c", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"foo-bar_baz", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"123", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"hello world", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"a b c", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"foo-bar_baz", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"123", .plain, none, none, none⟩)
 
 -- Special characters requiring escaping
-#guard roundTrips (.scalar ⟨"line1\nline2", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"tab\there", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"back\\slash", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"say \"hi\"", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"cr\rhere", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"line1\nline2", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"tab\there", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"back\\slash", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"say \"hi\"", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"cr\rhere", .plain, none, none, none⟩)
 
 -- Multiple special characters
-#guard roundTrips (.scalar ⟨"a\nb\nc", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"\"\\\"", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"a\nb\nc", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"\"\\\"", .plain, none, none, none⟩)
 
 -- Unicode
-#guard roundTrips (.scalar ⟨"α", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"日本語", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"emoji: 🎉", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"α", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"日本語", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"emoji: 🎉", .plain, none, none, none⟩)
 
 -- YAML special characters (safe inside double quotes)
-#guard roundTrips (.scalar ⟨"key: value", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"- item", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"# not a comment", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"[a, b]", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"{k: v}", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"key: value", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"- item", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"# not a comment", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"[a, b]", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"{k: v}", .plain, none, none, none⟩)
 
 -- ═══════════════════════════════════════════════════════════════════
 -- §4b: Flow sequence round-trips
@@ -333,25 +333,25 @@ private def roundTrips (v : YamlValue) : Bool :=
 #guard roundTrips (.sequence .flow #[] none)
 
 -- Single element
-#guard roundTrips (.sequence .flow #[.scalar ⟨"a", .plain, none⟩] none)
+#guard roundTrips (.sequence .flow #[.scalar ⟨"a", .plain, none, none, none⟩] none)
 
 -- Multiple elements
 #guard roundTrips (.sequence .flow #[
-  .scalar ⟨"a", .plain, none⟩,
-  .scalar ⟨"b", .plain, none⟩,
-  .scalar ⟨"c", .plain, none⟩
+  .scalar ⟨"a", .plain, none, none, none⟩,
+  .scalar ⟨"b", .plain, none, none, none⟩,
+  .scalar ⟨"c", .plain, none, none, none⟩
 ] none)
 
 -- Elements with special characters
 #guard roundTrips (.sequence .flow #[
-  .scalar ⟨"hello world", .plain, none⟩,
-  .scalar ⟨"line\nbreak", .plain, none⟩
+  .scalar ⟨"hello world", .plain, none, none, none⟩,
+  .scalar ⟨"line\nbreak", .plain, none, none, none⟩
 ] none)
 
 -- Block-style sequence (emitter converts to flow, content preserved)
 #guard roundTrips (.sequence .block #[
-  .scalar ⟨"x", .plain, none⟩,
-  .scalar ⟨"y", .plain, none⟩
+  .scalar ⟨"x", .plain, none, none, none⟩,
+  .scalar ⟨"y", .plain, none, none, none⟩
 ] none)
 
 -- ═══════════════════════════════════════════════════════════════════
@@ -363,18 +363,18 @@ private def roundTrips (v : YamlValue) : Bool :=
 
 -- Single entry
 #guard roundTrips (.mapping .flow #[
-  (.scalar ⟨"key", .plain, none⟩, .scalar ⟨"value", .plain, none⟩)
+  (.scalar ⟨"key", .plain, none, none, none⟩, .scalar ⟨"value", .plain, none, none, none⟩)
 ] none)
 
 -- Multiple entries
 #guard roundTrips (.mapping .flow #[
-  (.scalar ⟨"name", .plain, none⟩, .scalar ⟨"Alice", .plain, none⟩),
-  (.scalar ⟨"age", .plain, none⟩, .scalar ⟨"30", .plain, none⟩)
+  (.scalar ⟨"name", .plain, none, none, none⟩, .scalar ⟨"Alice", .plain, none, none, none⟩),
+  (.scalar ⟨"age", .plain, none, none, none⟩, .scalar ⟨"30", .plain, none, none, none⟩)
 ] none)
 
 -- Block-style mapping (emitter converts to flow, content preserved)
 #guard roundTrips (.mapping .block #[
-  (.scalar ⟨"a", .plain, none⟩, .scalar ⟨"1", .plain, none⟩)
+  (.scalar ⟨"a", .plain, none, none, none⟩, .scalar ⟨"1", .plain, none, none, none⟩)
 ] none)
 
 -- ═══════════════════════════════════════════════════════════════════
@@ -383,38 +383,38 @@ private def roundTrips (v : YamlValue) : Bool :=
 
 -- Sequence of sequences
 #guard roundTrips (.sequence .flow #[
-  .sequence .flow #[.scalar ⟨"a", .plain, none⟩] none,
-  .sequence .flow #[.scalar ⟨"b", .plain, none⟩] none
+  .sequence .flow #[.scalar ⟨"a", .plain, none, none, none⟩] none,
+  .sequence .flow #[.scalar ⟨"b", .plain, none, none, none⟩] none
 ] none)
 
 -- Mapping with sequence value
 #guard roundTrips (.mapping .flow #[
-  (.scalar ⟨"items", .plain, none⟩,
-   .sequence .flow #[.scalar ⟨"x", .plain, none⟩,
-                     .scalar ⟨"y", .plain, none⟩] none)
+  (.scalar ⟨"items", .plain, none, none, none⟩,
+   .sequence .flow #[.scalar ⟨"x", .plain, none, none, none⟩,
+                     .scalar ⟨"y", .plain, none, none, none⟩] none)
 ] none)
 
 -- Mapping with mapping value
 #guard roundTrips (.mapping .flow #[
-  (.scalar ⟨"outer", .plain, none⟩,
+  (.scalar ⟨"outer", .plain, none, none, none⟩,
    .mapping .flow #[
-     (.scalar ⟨"inner", .plain, none⟩, .scalar ⟨"val", .plain, none⟩)
+     (.scalar ⟨"inner", .plain, none, none, none⟩, .scalar ⟨"val", .plain, none, none, none⟩)
    ] none)
 ] none)
 
 -- Sequence containing a mapping
 #guard roundTrips (.sequence .flow #[
   .mapping .flow #[
-    (.scalar ⟨"k", .plain, none⟩, .scalar ⟨"v", .plain, none⟩)
+    (.scalar ⟨"k", .plain, none, none, none⟩, .scalar ⟨"v", .plain, none, none, none⟩)
   ] none
 ] none)
 
 -- Three levels deep
 #guard roundTrips (.mapping .flow #[
-  (.scalar ⟨"a", .plain, none⟩,
+  (.scalar ⟨"a", .plain, none, none, none⟩,
    .mapping .flow #[
-     (.scalar ⟨"b", .plain, none⟩,
-      .sequence .flow #[.scalar ⟨"c", .plain, none⟩] none)
+     (.scalar ⟨"b", .plain, none, none, none⟩,
+      .sequence .flow #[.scalar ⟨"c", .plain, none, none, none⟩] none)
    ] none)
 ] none)
 
@@ -423,22 +423,22 @@ private def roundTrips (v : YamlValue) : Bool :=
 -- ═══════════════════════════════════════════════════════════════════
 
 -- Scalar containing YAML document markers (safe inside double quotes)
-#guard roundTrips (.scalar ⟨"---", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"...", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"---", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"...", .plain, none, none, none⟩)
 
 -- Scalar containing colons and dashes
-#guard roundTrips (.scalar ⟨"a: b: c", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"- - -", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"a: b: c", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"- - -", .plain, none, none, none⟩)
 
 -- Scalar containing brackets and braces
-#guard roundTrips (.scalar ⟨"[1, 2, 3]", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"{key: val}", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"[1, 2, 3]", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"{key: val}", .plain, none, none, none⟩)
 
 -- Scalar with null byte
-#guard roundTrips (.scalar ⟨"\x00", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"\x00", .plain, none, none, none⟩)
 
 -- Scalar with all named-escape characters
-#guard roundTrips (.scalar ⟨"\x00\x07\x08\t\n\x0b\x0c\r\x1b", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"\x00\x07\x08\t\n\x0b\x0c\r\x1b", .plain, none, none, none⟩)
 
 /-! ## §5: Proved Emitter–Parser Agreement
 
@@ -449,7 +449,7 @@ Structural theorems about the emitter that connect to parser behavior.
 The emitter produces non-empty output on any scalar.
 -/
 theorem emit_scalar_nonempty :
-    (emit (.scalar ⟨"", .plain, none⟩)).length > 0 := by native_decide
+    (emit (.scalar ⟨"", .plain, none, none, none⟩)).length > 0 := by native_decide
 
 /--
 The emitter produces non-empty output on any empty sequence.
@@ -477,7 +477,7 @@ theorem escapeString_single_a : escapeString "a" = "a" := by native_decide
 `contentEq` is reflexive for concrete scalars.
 -/
 theorem contentEq_refl_hello :
-    contentEq (.scalar ⟨"hello", .plain, none⟩) (.scalar ⟨"hello", .plain, none⟩) = true := by
+    contentEq (.scalar ⟨"hello", .plain, none, none, none⟩) (.scalar ⟨"hello", .plain, none, none, none⟩) = true := by
   native_decide
 
 /--
@@ -485,10 +485,10 @@ theorem contentEq_refl_hello :
 -/
 theorem contentEq_refl_nested :
     contentEq
-      (.mapping .flow #[(.scalar ⟨"k", .plain, none⟩,
-                         .sequence .flow #[.scalar ⟨"v", .plain, none⟩] none)] none)
-      (.mapping .flow #[(.scalar ⟨"k", .plain, none⟩,
-                         .sequence .flow #[.scalar ⟨"v", .plain, none⟩] none)] none)
+      (.mapping .flow #[(.scalar ⟨"k", .plain, none, none, none⟩,
+                         .sequence .flow #[.scalar ⟨"v", .plain, none, none, none⟩] none)] none)
+      (.mapping .flow #[(.scalar ⟨"k", .plain, none, none, none⟩,
+                         .sequence .flow #[.scalar ⟨"v", .plain, none, none, none⟩] none)] none)
       = true := by native_decide
 
 /-! ### Universal `contentEq` Reflexivity
@@ -538,15 +538,18 @@ theorem contentEq_refl (v : YamlValue) : contentEq v v = true := by
   | .scalar s =>
     show (s.content == s.content) = true
     exact beq_self_eq_true s.content
-  | .sequence style items tag =>
+  | .sequence _ items .. =>
     show (items.size == items.size && contentEq.contentEqList items.toList items.toList) = true
     simp only [beq_self_eq_true, Bool.true_and]
     exact contentEqList_refl items.toList (fun v hv => contentEq_refl v)
-  | .mapping style pairs tag =>
+  | .mapping _ pairs .. =>
     show (pairs.size == pairs.size && contentEq.contentEqPairList pairs.toList pairs.toList) = true
     simp only [beq_self_eq_true, Bool.true_and]
     exact contentEqPairList_refl pairs.toList (fun p hp =>
       ⟨contentEq_refl p.1, contentEq_refl p.2⟩)
+  | .alias name =>
+    show (name == name) = true
+    exact beq_self_eq_true name
 termination_by v
 decreasing_by
   all_goals simp_wf
@@ -608,30 +611,47 @@ theorem contentEq_symm (v₁ v₂ : YamlValue) (h : contentEq v₁ v₂ = true) 
     have hc : (s₁.content == s₂.content) = true := h
     rw [beq_iff_eq] at hc ⊢
     exact hc.symm
-  | .sequence _ items₁ _, .sequence _ items₂ _ =>
+  | .sequence _ items₁ .., .sequence _ items₂ .. =>
     show (items₂.size == items₁.size && contentEq.contentEqList items₂.toList items₁.toList) = true
     have hshow : (items₁.size == items₂.size && contentEq.contentEqList items₁.toList items₂.toList) = true := h
     simp only [Bool.and_eq_true, beq_iff_eq] at hshow ⊢
     exact ⟨hshow.1.symm, contentEqList_symm items₁.toList items₂.toList
       (fun v hv v₂ h => contentEq_symm v v₂ h) hshow.2⟩
-  | .mapping _ pairs₁ _, .mapping _ pairs₂ _ =>
+  | .mapping _ pairs₁ .., .mapping _ pairs₂ .. =>
     show (pairs₂.size == pairs₁.size && contentEq.contentEqPairList pairs₂.toList pairs₁.toList) = true
     have hshow : (pairs₁.size == pairs₂.size && contentEq.contentEqPairList pairs₁.toList pairs₂.toList) = true := h
     simp only [Bool.and_eq_true, beq_iff_eq] at hshow ⊢
     exact ⟨hshow.1.symm, contentEqPairList_symm pairs₁.toList pairs₂.toList
       (fun p hp => ⟨fun v₂ h => contentEq_symm p.1 v₂ h,
                     fun v₂ h => contentEq_symm p.2 v₂ h⟩) hshow.2⟩
-  | .scalar _, .sequence _ _ _ =>
+  | .alias n₁, .alias n₂ =>
+    show (n₂ == n₁) = true
+    have hc : (n₁ == n₂) = true := h
+    rw [beq_iff_eq] at hc ⊢
+    exact hc.symm
+  | .scalar _, .sequence .. =>
     exact Bool.noConfusion (show false = true from h)
-  | .scalar _, .mapping _ _ _ =>
+  | .scalar _, .mapping .. =>
     exact Bool.noConfusion (show false = true from h)
-  | .sequence _ _ _, .scalar _ =>
+  | .scalar _, .alias _ =>
     exact Bool.noConfusion (show false = true from h)
-  | .sequence _ _ _, .mapping _ _ _ =>
+  | .sequence .., .scalar _ =>
     exact Bool.noConfusion (show false = true from h)
-  | .mapping _ _ _, .scalar _ =>
+  | .sequence .., .mapping .. =>
     exact Bool.noConfusion (show false = true from h)
-  | .mapping _ _ _, .sequence _ _ _ =>
+  | .sequence .., .alias _ =>
+    exact Bool.noConfusion (show false = true from h)
+  | .mapping .., .scalar _ =>
+    exact Bool.noConfusion (show false = true from h)
+  | .mapping .., .sequence .. =>
+    exact Bool.noConfusion (show false = true from h)
+  | .mapping .., .alias _ =>
+    exact Bool.noConfusion (show false = true from h)
+  | .alias _, .scalar _ =>
+    exact Bool.noConfusion (show false = true from h)
+  | .alias _, .sequence .. =>
+    exact Bool.noConfusion (show false = true from h)
+  | .alias _, .mapping .. =>
     exact Bool.noConfusion (show false = true from h)
 termination_by v₁
 decreasing_by
@@ -703,7 +723,7 @@ theorem contentEq_trans (v₁ v₂ v₃ : YamlValue)
     have hc₂ : (s₂.content == s₃.content) = true := h₂
     rw [beq_iff_eq] at hc₁ hc₂ ⊢
     exact hc₁.trans hc₂
-  | .sequence _ items₁ _, .sequence _ items₂ _, .sequence _ items₃ _ =>
+  | .sequence _ items₁ .., .sequence _ items₂ .., .sequence _ items₃ .. =>
     show (items₁.size == items₃.size && contentEq.contentEqList items₁.toList items₃.toList) = true
     have hs₁ : (items₁.size == items₂.size && contentEq.contentEqList items₁.toList items₂.toList) = true := h₁
     have hs₂ : (items₂.size == items₃.size && contentEq.contentEqList items₂.toList items₃.toList) = true := h₂
@@ -711,7 +731,7 @@ theorem contentEq_trans (v₁ v₂ v₃ : YamlValue)
     exact ⟨hs₁.1.trans hs₂.1,
            contentEqList_trans items₁.toList items₂.toList items₃.toList
              (fun v hv v₂ v₃ h₁ h₂ => contentEq_trans v v₂ v₃ h₁ h₂) hs₁.2 hs₂.2⟩
-  | .mapping _ pairs₁ _, .mapping _ pairs₂ _, .mapping _ pairs₃ _ =>
+  | .mapping _ pairs₁ .., .mapping _ pairs₂ .., .mapping _ pairs₃ .. =>
     show (pairs₁.size == pairs₃.size && contentEq.contentEqPairList pairs₁.toList pairs₃.toList) = true
     have hs₁ : (pairs₁.size == pairs₂.size && contentEq.contentEqPairList pairs₁.toList pairs₂.toList) = true := h₁
     have hs₂ : (pairs₂.size == pairs₃.size && contentEq.contentEqPairList pairs₂.toList pairs₃.toList) = true := h₂
@@ -720,19 +740,37 @@ theorem contentEq_trans (v₁ v₂ v₃ : YamlValue)
            contentEqPairList_trans pairs₁.toList pairs₂.toList pairs₃.toList
              (fun p hp => ⟨fun v₂ v₃ h₁ h₂ => contentEq_trans p.1 v₂ v₃ h₁ h₂,
                            fun v₂ v₃ h₁ h₂ => contentEq_trans p.2 v₂ v₃ h₁ h₂⟩) hs₁.2 hs₂.2⟩
+  | .alias n₁, .alias n₂, .alias n₃ =>
+    show (n₁ == n₃) = true
+    have hc₁ : (n₁ == n₂) = true := h₁
+    have hc₂ : (n₂ == n₃) = true := h₂
+    rw [beq_iff_eq] at hc₁ hc₂ ⊢
+    exact hc₁.trans hc₂
   -- Cross-type cases: h₁ or h₂ is a contradiction (false = true)
-  | .scalar _, .scalar _, .sequence _ _ _ => exact Bool.noConfusion (show false = true from h₂)
-  | .scalar _, .scalar _, .mapping _ _ _ => exact Bool.noConfusion (show false = true from h₂)
-  | .scalar _, .sequence _ _ _, _ => exact Bool.noConfusion (show false = true from h₁)
-  | .scalar _, .mapping _ _ _, _ => exact Bool.noConfusion (show false = true from h₁)
-  | .sequence _ _ _, .scalar _, _ => exact Bool.noConfusion (show false = true from h₁)
-  | .sequence _ _ _, .sequence _ _ _, .scalar _ => exact Bool.noConfusion (show false = true from h₂)
-  | .sequence _ _ _, .sequence _ _ _, .mapping _ _ _ => exact Bool.noConfusion (show false = true from h₂)
-  | .sequence _ _ _, .mapping _ _ _, _ => exact Bool.noConfusion (show false = true from h₁)
-  | .mapping _ _ _, .scalar _, _ => exact Bool.noConfusion (show false = true from h₁)
-  | .mapping _ _ _, .sequence _ _ _, _ => exact Bool.noConfusion (show false = true from h₁)
-  | .mapping _ _ _, .mapping _ _ _, .scalar _ => exact Bool.noConfusion (show false = true from h₂)
-  | .mapping _ _ _, .mapping _ _ _, .sequence _ _ _ => exact Bool.noConfusion (show false = true from h₂)
+  | .scalar _, .scalar _, .sequence .. => exact Bool.noConfusion (show false = true from h₂)
+  | .scalar _, .scalar _, .mapping .. => exact Bool.noConfusion (show false = true from h₂)
+  | .scalar _, .scalar _, .alias _ => exact Bool.noConfusion (show false = true from h₂)
+  | .scalar _, .sequence .., _ => exact Bool.noConfusion (show false = true from h₁)
+  | .scalar _, .mapping .., _ => exact Bool.noConfusion (show false = true from h₁)
+  | .scalar _, .alias _, _ => exact Bool.noConfusion (show false = true from h₁)
+  | .sequence .., .scalar _, _ => exact Bool.noConfusion (show false = true from h₁)
+  | .sequence .., .sequence .., .scalar _ => exact Bool.noConfusion (show false = true from h₂)
+  | .sequence .., .sequence .., .mapping .. => exact Bool.noConfusion (show false = true from h₂)
+  | .sequence .., .sequence .., .alias _ => exact Bool.noConfusion (show false = true from h₂)
+  | .sequence .., .mapping .., _ => exact Bool.noConfusion (show false = true from h₁)
+  | .sequence .., .alias _, _ => exact Bool.noConfusion (show false = true from h₁)
+  | .mapping .., .scalar _, _ => exact Bool.noConfusion (show false = true from h₁)
+  | .mapping .., .sequence .., _ => exact Bool.noConfusion (show false = true from h₁)
+  | .mapping .., .mapping .., .scalar _ => exact Bool.noConfusion (show false = true from h₂)
+  | .mapping .., .mapping .., .sequence .. => exact Bool.noConfusion (show false = true from h₂)
+  | .mapping .., .mapping .., .alias _ => exact Bool.noConfusion (show false = true from h₂)
+  | .mapping .., .alias _, _ => exact Bool.noConfusion (show false = true from h₁)
+  | .alias _, .scalar _, _ => exact Bool.noConfusion (show false = true from h₁)
+  | .alias _, .sequence .., _ => exact Bool.noConfusion (show false = true from h₁)
+  | .alias _, .mapping .., _ => exact Bool.noConfusion (show false = true from h₁)
+  | .alias _, .alias _, .scalar _ => exact Bool.noConfusion (show false = true from h₂)
+  | .alias _, .alias _, .sequence .. => exact Bool.noConfusion (show false = true from h₂)
+  | .alias _, .alias _, .mapping .. => exact Bool.noConfusion (show false = true from h₂)
 termination_by v₁
 decreasing_by
   all_goals simp_wf
@@ -812,56 +850,56 @@ not runtime tests.
 
 #guard roundTrips (.sequence .flow #[
   .mapping .flow #[
-    (.scalar ⟨"a", .plain, none⟩,
+    (.scalar ⟨"a", .plain, none, none, none⟩,
      .sequence .flow #[
        .mapping .flow #[
-         (.scalar ⟨"deep", .plain, none⟩,
-          .scalar ⟨"value", .plain, none⟩)] none] none)] none] none)
+         (.scalar ⟨"deep", .plain, none, none, none⟩,
+          .scalar ⟨"value", .plain, none, none, none⟩)] none] none)] none] none)
 
 -- ═══════════════════════════════════════════════════════════════════
 -- §9b: Wide collections (8+ elements)
 -- ═══════════════════════════════════════════════════════════════════
 
 #guard roundTrips (.sequence .flow #[
-  .scalar ⟨"1", .plain, none⟩, .scalar ⟨"2", .plain, none⟩,
-  .scalar ⟨"3", .plain, none⟩, .scalar ⟨"4", .plain, none⟩,
-  .scalar ⟨"5", .plain, none⟩, .scalar ⟨"6", .plain, none⟩,
-  .scalar ⟨"7", .plain, none⟩, .scalar ⟨"8", .plain, none⟩] none)
+  .scalar ⟨"1", .plain, none, none, none⟩, .scalar ⟨"2", .plain, none, none, none⟩,
+  .scalar ⟨"3", .plain, none, none, none⟩, .scalar ⟨"4", .plain, none, none, none⟩,
+  .scalar ⟨"5", .plain, none, none, none⟩, .scalar ⟨"6", .plain, none, none, none⟩,
+  .scalar ⟨"7", .plain, none, none, none⟩, .scalar ⟨"8", .plain, none, none, none⟩] none)
 
 #guard roundTrips (.mapping .flow #[
-  (.scalar ⟨"k1", .plain, none⟩, .scalar ⟨"v1", .plain, none⟩),
-  (.scalar ⟨"k2", .plain, none⟩, .scalar ⟨"v2", .plain, none⟩),
-  (.scalar ⟨"k3", .plain, none⟩, .scalar ⟨"v3", .plain, none⟩),
-  (.scalar ⟨"k4", .plain, none⟩, .scalar ⟨"v4", .plain, none⟩)] none)
+  (.scalar ⟨"k1", .plain, none, none, none⟩, .scalar ⟨"v1", .plain, none, none, none⟩),
+  (.scalar ⟨"k2", .plain, none, none, none⟩, .scalar ⟨"v2", .plain, none, none, none⟩),
+  (.scalar ⟨"k3", .plain, none, none, none⟩, .scalar ⟨"v3", .plain, none, none, none⟩),
+  (.scalar ⟨"k4", .plain, none, none, none⟩, .scalar ⟨"v4", .plain, none, none, none⟩)] none)
 
 -- ═══════════════════════════════════════════════════════════════════
 -- §9c: Mixed nesting patterns
 -- ═══════════════════════════════════════════════════════════════════
 
 #guard roundTrips (.mapping .flow #[
-  (.scalar ⟨"seq", .plain, none⟩,
-   .sequence .flow #[.scalar ⟨"a", .plain, none⟩, .scalar ⟨"b", .plain, none⟩] none),
-  (.scalar ⟨"map", .plain, none⟩,
-   .mapping .flow #[(.scalar ⟨"x", .plain, none⟩, .scalar ⟨"y", .plain, none⟩)] none),
-  (.scalar ⟨"scalar", .plain, none⟩,
-   .scalar ⟨"plain", .plain, none⟩)] none)
+  (.scalar ⟨"seq", .plain, none, none, none⟩,
+   .sequence .flow #[.scalar ⟨"a", .plain, none, none, none⟩, .scalar ⟨"b", .plain, none, none, none⟩] none),
+  (.scalar ⟨"map", .plain, none, none, none⟩,
+   .mapping .flow #[(.scalar ⟨"x", .plain, none, none, none⟩, .scalar ⟨"y", .plain, none, none, none⟩)] none),
+  (.scalar ⟨"scalar", .plain, none, none, none⟩,
+   .scalar ⟨"plain", .plain, none, none, none⟩)] none)
 
 -- ═══════════════════════════════════════════════════════════════════
 -- §9d: Unicode scalars
 -- ═══════════════════════════════════════════════════════════════════
 
-#guard roundTrips (.scalar ⟨"こんにちは世界", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"α β γ δ ε", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"🎉🎊🎈", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"こんにちは世界", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"α β γ δ ε", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"🎉🎊🎈", .plain, none, none, none⟩)
 
 -- ═══════════════════════════════════════════════════════════════════
 -- §9e: Printable ASCII and whitespace
 -- ═══════════════════════════════════════════════════════════════════
 
-#guard roundTrips (.scalar ⟨"!@#$%^&*()_+-=[]{}|;':,./<>?`~", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"  leading", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"trailing  ", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"  both  ", .plain, none⟩)
-#guard roundTrips (.scalar ⟨"multi  spaces", .plain, none⟩)
+#guard roundTrips (.scalar ⟨"!@#$%^&*()_+-=[]{}|;':,./<>?`~", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"  leading", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"trailing  ", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"  both  ", .plain, none, none, none⟩)
+#guard roundTrips (.scalar ⟨"multi  spaces", .plain, none, none, none⟩)
 
 end Lean4Yaml.Proofs.RoundTrip

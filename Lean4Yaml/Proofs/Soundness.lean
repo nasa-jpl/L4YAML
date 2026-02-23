@@ -252,34 +252,34 @@ lemmas: they guarantee the parser cannot mis-label scalar styles.
 /-- Plain scalars (block context) produce `.plain` style. -/
 theorem plainScalar_block_style_sound (content : String) (h : content.length > 0) :
     ∃ s, toYamlValue (.plainScalarBlock content h) = .scalar s ∧ s.style = .plain := by
-  exact ⟨⟨content, .plain, none⟩, rfl, rfl⟩
+  exact ⟨⟨content, .plain, none, none, none⟩, rfl, rfl⟩
 
 /-- Plain scalars (flow context) produce `.plain` style. -/
 theorem plainScalar_flow_style_sound (content : String) (h : content.length > 0) :
     ∃ s, toYamlValue (.plainScalarFlow content h) = .scalar s ∧ s.style = .plain := by
-  exact ⟨⟨content, .plain, none⟩, rfl, rfl⟩
+  exact ⟨⟨content, .plain, none, none, none⟩, rfl, rfl⟩
 
 /-- Single-quoted scalars produce `.singleQuoted` style. -/
 theorem singleQuoted_style_sound (content : String) :
     ∃ s, toYamlValue (.singleQuoted content) = .scalar s ∧ s.style = .singleQuoted := by
-  exact ⟨⟨content, .singleQuoted, none⟩, rfl, rfl⟩
+  exact ⟨⟨content, .singleQuoted, none, none, none⟩, rfl, rfl⟩
 
 /-- Double-quoted scalars produce `.doubleQuoted` style. -/
 theorem doubleQuoted_style_sound (content : String) :
     ∃ s, toYamlValue (.doubleQuoted content) = .scalar s ∧ s.style = .doubleQuoted := by
-  exact ⟨⟨content, .doubleQuoted, none⟩, rfl, rfl⟩
+  exact ⟨⟨content, .doubleQuoted, none, none, none⟩, rfl, rfl⟩
 
 /-- Literal block scalars produce `.literal` style. -/
 theorem literal_style_sound (content : String) (indent : Nat) (chomp : ChompStyle) :
     ∃ s, toYamlValue (.literalScalar content indent chomp) = .scalar s
     ∧ s.style = .literal := by
-  exact ⟨⟨content, .literal, none⟩, rfl, rfl⟩
+  exact ⟨⟨content, .literal, none, none, some ⟨chomp, some indent⟩⟩, rfl, rfl⟩
 
 /-- Folded block scalars produce `.folded` style. -/
 theorem folded_style_sound (content : String) (indent : Nat) (chomp : ChompStyle) :
     ∃ s, toYamlValue (.foldedScalar content indent chomp) = .scalar s
     ∧ s.style = .folded := by
-  exact ⟨⟨content, .folded, none⟩, rfl, rfl⟩
+  exact ⟨⟨content, .folded, none, none, some ⟨chomp, some indent⟩⟩, rfl, rfl⟩
 
 /--
 **Scalar content preservation**: the content string in a scalar `ValidNode`

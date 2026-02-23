@@ -50,22 +50,22 @@ Check that specific inputs compute to expected results at compile time.
 
 -- The simplest possible case: single ASCII character
 #guard match parseYaml "a" with
-  | .ok docs => docs.size == 1 && docs[0]!.value == .scalar ⟨"a", .plain, none⟩
+  | .ok docs => docs.size == 1 && docs[0]!.value == .scalar ⟨"a", .plain, none, none, none⟩
   | _ => false
 
 -- Simple word
 #guard match parseYaml "hello" with
-  | .ok docs => docs.size == 1 && docs[0]!.value == .scalar ⟨"hello", .plain, none⟩
+  | .ok docs => docs.size == 1 && docs[0]!.value == .scalar ⟨"hello", .plain, none, none, none⟩
   | _ => false
 
 -- Double-quoted scalar
 #guard match parseYaml "\"hello\"" with
-  | .ok docs => docs.size == 1 && docs[0]!.value == .scalar ⟨"hello", .doubleQuoted, none⟩
+  | .ok docs => docs.size == 1 && docs[0]!.value == .scalar ⟨"hello", .doubleQuoted, none, none, none⟩
   | _ => false
 
 -- Single-quoted scalar
 #guard match parseYaml "'hello'" with
-  | .ok docs => docs.size == 1 && docs[0]!.value == .scalar ⟨"hello", .singleQuoted, none⟩
+  | .ok docs => docs.size == 1 && docs[0]!.value == .scalar ⟨"hello", .singleQuoted, none, none, none⟩
   | _ => false
 
 /-! ## §3 Unfolding depth exploration
@@ -74,15 +74,15 @@ Try to understand what `simp` and `unfold` can do with parser definitions.
 -/
 
 -- Can we state a basic theorem?
--- theorem parseYaml_plain_a : parseYaml "a" = .ok #[{ value := .scalar ⟨"a", .plain, none⟩, directives := #[] }] := by
+-- theorem parseYaml_plain_a : parseYaml "a" = .ok #[{ value := .scalar ⟨"a", .plain, none, none, none⟩, directives := #[] }] := by
 --   native_decide
 
 -- Try with decide (will likely fail due to DecidableEq on YamlValue)
--- theorem parseYaml_plain_a' : parseYaml "a" = .ok #[{ value := .scalar ⟨"a", .plain, none⟩, directives := #[] }] := by
+-- theorem parseYaml_plain_a' : parseYaml "a" = .ok #[{ value := .scalar ⟨"a", .plain, none, none, none⟩, directives := #[] }] := by
 --   decide
 
 -- Try with rfl (will likely fail — too much computation)
--- theorem parseYaml_plain_a'' : parseYaml "a" = .ok #[{ value := .scalar ⟨"a", .plain, none⟩, directives := #[] }] := by
+-- theorem parseYaml_plain_a'' : parseYaml "a" = .ok #[{ value := .scalar ⟨"a", .plain, none, none, none⟩, directives := #[] }] := by
 --   rfl
 
 /-! ## §4 Stream lemmas
@@ -189,21 +189,21 @@ theorem parseYaml_a_ok :
 -- Can we go further and check the specific value?
 theorem parseYaml_a_value :
     (match parseYaml "a" with
-     | .ok docs => docs.size == 1 && docs[0]!.value == .scalar ⟨"a", .plain, none⟩
+     | .ok docs => docs.size == 1 && docs[0]!.value == .scalar ⟨"a", .plain, none, none, none⟩
      | .error _ => false) = true := by
   native_decide
 
 -- Can we check double-quoted?
 theorem parseYaml_dq_hello :
     (match parseYaml "\"hello\"" with
-     | .ok docs => docs.size == 1 && docs[0]!.value == .scalar ⟨"hello", .doubleQuoted, none⟩
+     | .ok docs => docs.size == 1 && docs[0]!.value == .scalar ⟨"hello", .doubleQuoted, none, none, none⟩
      | .error _ => false) = true := by
   native_decide
 
 -- Can we check single-quoted?
 theorem parseYaml_sq_hello :
     (match parseYaml "'hello'" with
-     | .ok docs => docs.size == 1 && docs[0]!.value == .scalar ⟨"hello", .singleQuoted, none⟩
+     | .ok docs => docs.size == 1 && docs[0]!.value == .scalar ⟨"hello", .singleQuoted, none, none, none⟩
      | .error _ => false) = true := by
   native_decide
 
@@ -217,7 +217,7 @@ theorem parseYaml_flow_seq :
 -- Can we check a block mapping?
 theorem parseYaml_block_map :
     (match parseYaml "key: value" with
-     | .ok docs => docs.size == 1 && docs[0]!.value == .mapping .block #[(.scalar ⟨"key", .plain, none⟩, .scalar ⟨"value", .plain, none⟩)] none
+     | .ok docs => docs.size == 1 && docs[0]!.value == .mapping .block #[(.scalar ⟨"key", .plain, none, none, none⟩, .scalar ⟨"value", .plain, none, none, none⟩)] none
      | .error _ => false) = true := by
   native_decide
 
@@ -260,7 +260,7 @@ def parseYamlEq (input : String) (expected : Array YamlDocument) : Bool :=
   | .error _ => false
 
 -- Now try native_decide on the Prop version
-theorem parseYaml_a_eq : parseYamlEq "a" #[{ value := .scalar ⟨"a", .plain, none⟩, directives := #[] }] = true := by
+theorem parseYaml_a_eq : parseYamlEq "a" #[{ value := .scalar ⟨"a", .plain, none, none, none⟩, directives := #[] }] = true := by
   native_decide
 
 -- Can we go from parseYamlEq = true to parseYaml = .ok?
@@ -277,11 +277,11 @@ theorem parseYaml_a_eq : parseYamlEq "a" #[{ value := .scalar ⟨"a", .plain, no
 -- using the BEq instance.
 
 -- Test: can we get Decidable (a = b) for concrete values?
--- example : (.scalar ⟨"a", .plain, none⟩ : YamlValue) = .scalar ⟨"a", .plain, none⟩ := by rfl
+-- example : (.scalar ⟨"a", .plain, none, none, none⟩ : YamlValue) = .scalar ⟨"a", .plain, none, none, none⟩ := by rfl
 
 -- Actually this works because it's definitionally equal!
 -- The question is whether we can do:
--- example : Decidable ((.scalar ⟨"a", .plain, none⟩ : YamlValue) = .scalar ⟨"b", .plain, none⟩) := by
+-- example : Decidable ((.scalar ⟨"a", .plain, none, none, none⟩ : YamlValue) = .scalar ⟨"b", .plain, none, none, none⟩) := by
 --   exact isFalse (by intro h; injection h; ...)
 
 -- For completeness proofs, the real question is:

@@ -55,21 +55,21 @@ def checkParse (state : IO.Ref TestCollector) (name : String)
 def testPlainScalars (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Plain scalars"
   -- Single ASCII character
-  checkParse state "single char 'a'" "a" (.scalar ⟨"a", .plain, none⟩)
+  checkParse state "single char 'a'" "a" (.scalar ⟨"a", .plain, none, none, none⟩)
   -- Simple word
-  checkParse state "word 'hello'" "hello" (.scalar ⟨"hello", .plain, none⟩)
+  checkParse state "word 'hello'" "hello" (.scalar ⟨"hello", .plain, none, none, none⟩)
   -- Multi-word (space in plain scalar)
   checkParse state "multi-word 'hello world'" "hello world"
-    (.scalar ⟨"hello world", .plain, none⟩)
+    (.scalar ⟨"hello world", .plain, none, none, none⟩)
   -- Numeric-looking plain scalar
-  checkParse state "numeric '42'" "42" (.scalar ⟨"42", .plain, none⟩)
+  checkParse state "numeric '42'" "42" (.scalar ⟨"42", .plain, none, none, none⟩)
   -- Boolean-looking plain scalar
-  checkParse state "boolean-like 'true'" "true" (.scalar ⟨"true", .plain, none⟩)
-  checkParse state "boolean-like 'false'" "false" (.scalar ⟨"false", .plain, none⟩)
+  checkParse state "boolean-like 'true'" "true" (.scalar ⟨"true", .plain, none, none, none⟩)
+  checkParse state "boolean-like 'false'" "false" (.scalar ⟨"false", .plain, none, none, none⟩)
   -- Null-looking plain scalar
-  checkParse state "null-like 'null'" "null" (.scalar ⟨"null", .plain, none⟩)
+  checkParse state "null-like 'null'" "null" (.scalar ⟨"null", .plain, none, none, none⟩)
   -- Tilde (also null in some schemas)
-  checkParse state "tilde '~'" "~" (.scalar ⟨"~", .plain, none⟩)
+  checkParse state "tilde '~'" "~" (.scalar ⟨"~", .plain, none, none, none⟩)
 
 /-! ## §2 Quoted Scalars -/
 
@@ -77,25 +77,25 @@ def testQuotedScalars (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Quoted scalars"
   -- Double-quoted
   checkParse state "double-quoted 'hello'" "\"hello\""
-    (.scalar ⟨"hello", .doubleQuoted, none⟩)
+    (.scalar ⟨"hello", .doubleQuoted, none, none, none⟩)
   -- Single-quoted
   checkParse state "single-quoted 'hello'" "'hello'"
-    (.scalar ⟨"hello", .singleQuoted, none⟩)
+    (.scalar ⟨"hello", .singleQuoted, none, none, none⟩)
   -- Double-quoted with escape
   checkParse state "double-quoted newline '\\n'" "\"line1\\nline2\""
-    (.scalar ⟨"line1\nline2", .doubleQuoted, none⟩)
+    (.scalar ⟨"line1\nline2", .doubleQuoted, none, none, none⟩)
   -- Double-quoted with tab escape
   checkParse state "double-quoted tab '\\t'" "\"col1\\tcol2\""
-    (.scalar ⟨"col1\tcol2", .doubleQuoted, none⟩)
+    (.scalar ⟨"col1\tcol2", .doubleQuoted, none, none, none⟩)
   -- Empty double-quoted
   checkParse state "empty double-quoted" "\"\""
-    (.scalar ⟨"", .doubleQuoted, none⟩)
+    (.scalar ⟨"", .doubleQuoted, none, none, none⟩)
   -- Empty single-quoted
   checkParse state "empty single-quoted" "''"
-    (.scalar ⟨"", .singleQuoted, none⟩)
+    (.scalar ⟨"", .singleQuoted, none, none, none⟩)
   -- Single-quoted with escaped quote
   checkParse state "single-quoted with ''" "'it''s'"
-    (.scalar ⟨"it's", .singleQuoted, none⟩)
+    (.scalar ⟨"it's", .singleQuoted, none, none, none⟩)
 
 /-! ## §3 Flow Collections -/
 
@@ -106,9 +106,9 @@ def testFlowCollections (state : IO.Ref TestCollector) : IO Unit := do
   | .ok (.sequence .flow items _) =>
     check state "flow seq [1,2,3] is sequence" true
     check state "flow seq [1,2,3] has 3 items" (items.size == 3)
-    check state "flow seq [1,2,3] first item" (items[0]! == .scalar ⟨"1", .plain, none⟩)
-    check state "flow seq [1,2,3] second item" (items[1]! == .scalar ⟨"2", .plain, none⟩)
-    check state "flow seq [1,2,3] third item" (items[2]! == .scalar ⟨"3", .plain, none⟩)
+    check state "flow seq [1,2,3] first item" (items[0]! == .scalar ⟨"1", .plain, none, none, none⟩)
+    check state "flow seq [1,2,3] second item" (items[1]! == .scalar ⟨"2", .plain, none, none, none⟩)
+    check state "flow seq [1,2,3] third item" (items[2]! == .scalar ⟨"3", .plain, none, none, none⟩)
   | .ok _ => check state "flow seq [1,2,3] is sequence" false
   | .error e => checkM state "flow seq [1,2,3] is sequence" false e
   -- Empty flow sequence
@@ -123,8 +123,8 @@ def testFlowCollections (state : IO.Ref TestCollector) : IO Unit := do
   | .ok (.mapping .flow pairs _) =>
     check state "flow map {a: b} is mapping" true
     check state "flow map {a: b} has 1 pair" (pairs.size == 1)
-    check state "flow map {a: b} key" (pairs[0]!.1 == .scalar ⟨"a", .plain, none⟩)
-    check state "flow map {a: b} value" (pairs[0]!.2 == .scalar ⟨"b", .plain, none⟩)
+    check state "flow map {a: b} key" (pairs[0]!.1 == .scalar ⟨"a", .plain, none, none, none⟩)
+    check state "flow map {a: b} value" (pairs[0]!.2 == .scalar ⟨"b", .plain, none, none, none⟩)
   | .ok _ => check state "flow map {a: b} is mapping" false
   | .error e => checkM state "flow map {a: b} is mapping" false e
   -- Empty flow mapping
@@ -147,17 +147,17 @@ def testBlockCollections (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Block collections"
   -- Block mapping: key: value
   checkParse state "block map 'key: value'" "key: value"
-    (.mapping .block #[(.scalar ⟨"key", .plain, none⟩,
-                         .scalar ⟨"value", .plain, none⟩)] none)
+    (.mapping .block #[(.scalar ⟨"key", .plain, none, none, none⟩,
+                         .scalar ⟨"value", .plain, none, none, none⟩)] none)
   -- Block mapping: multiple keys
   match parseSingle "a: 1\nb: 2" with
   | .ok (.mapping .block pairs _) =>
     check state "block map 2 keys is mapping" true
     check state "block map 2 keys has 2 pairs" (pairs.size == 2)
-    check state "block map first key" (pairs[0]!.1 == .scalar ⟨"a", .plain, none⟩)
-    check state "block map first value" (pairs[0]!.2 == .scalar ⟨"1", .plain, none⟩)
-    check state "block map second key" (pairs[1]!.1 == .scalar ⟨"b", .plain, none⟩)
-    check state "block map second value" (pairs[1]!.2 == .scalar ⟨"2", .plain, none⟩)
+    check state "block map first key" (pairs[0]!.1 == .scalar ⟨"a", .plain, none, none, none⟩)
+    check state "block map first value" (pairs[0]!.2 == .scalar ⟨"1", .plain, none, none, none⟩)
+    check state "block map second key" (pairs[1]!.1 == .scalar ⟨"b", .plain, none, none, none⟩)
+    check state "block map second value" (pairs[1]!.2 == .scalar ⟨"2", .plain, none, none, none⟩)
   | .ok _ => check state "block map 2 keys is mapping" false
   | .error e => checkM state "block map 2 keys is mapping" false e
   -- Block sequence
@@ -165,9 +165,9 @@ def testBlockCollections (state : IO.Ref TestCollector) : IO Unit := do
   | .ok (.sequence .block items _) =>
     check state "block seq 3 items is sequence" true
     check state "block seq has 3 items" (items.size == 3)
-    check state "block seq first" (items[0]! == .scalar ⟨"a", .plain, none⟩)
-    check state "block seq second" (items[1]! == .scalar ⟨"b", .plain, none⟩)
-    check state "block seq third" (items[2]! == .scalar ⟨"c", .plain, none⟩)
+    check state "block seq first" (items[0]! == .scalar ⟨"a", .plain, none, none, none⟩)
+    check state "block seq second" (items[1]! == .scalar ⟨"b", .plain, none, none, none⟩)
+    check state "block seq third" (items[2]! == .scalar ⟨"c", .plain, none, none, none⟩)
   | .ok _ => check state "block seq 3 items is sequence" false
   | .error e => checkM state "block seq 3 items is sequence" false e
   -- Nested block mapping in sequence
@@ -189,14 +189,14 @@ def testMultiDocument (state : IO.Ref TestCollector) : IO Unit := do
   match parseMulti "---\na\n---\nb" with
   | .ok docs =>
     check state "two docs with ---" (docs.size == 2)
-    check state "first doc value" (docs[0]!.value == .scalar ⟨"a", .plain, none⟩)
-    check state "second doc value" (docs[1]!.value == .scalar ⟨"b", .plain, none⟩)
+    check state "first doc value" (docs[0]!.value == .scalar ⟨"a", .plain, none, none, none⟩)
+    check state "second doc value" (docs[1]!.value == .scalar ⟨"b", .plain, none, none, none⟩)
   | .error e => checkM state "two docs with ---" false e
   -- Single document with explicit start
   match parseMulti "---\nhello" with
   | .ok docs =>
     check state "single doc with ---" (docs.size == 1)
-    check state "explicit start value" (docs[0]!.value == .scalar ⟨"hello", .plain, none⟩)
+    check state "explicit start value" (docs[0]!.value == .scalar ⟨"hello", .plain, none, none, none⟩)
   | .error e => checkM state "single doc with ---" false e
   -- Document with terminator
   match parseMulti "hello\n..." with
@@ -221,13 +221,13 @@ def testEdgeCases (state : IO.Ref TestCollector) : IO Unit := do
   | .ok docs => check state "comment-only" (docs.size == 0)
   | .error _ => check state "comment-only" true
   -- Trailing newline
-  checkParse state "trailing newline" "hello\n" (.scalar ⟨"hello", .plain, none⟩)
+  checkParse state "trailing newline" "hello\n" (.scalar ⟨"hello", .plain, none, none, none⟩)
   -- Unicode scalar
-  checkParse state "unicode scalar" "日本語" (.scalar ⟨"日本語", .plain, none⟩)
+  checkParse state "unicode scalar" "日本語" (.scalar ⟨"日本語", .plain, none, none, none⟩)
   -- Leading whitespace in value
   match parseSingle "key:  spaced" with
   | .ok (.mapping .block pairs _) =>
-    check state "extra space after colon" (pairs[0]!.2 == .scalar ⟨"spaced", .plain, none⟩)
+    check state "extra space after colon" (pairs[0]!.2 == .scalar ⟨"spaced", .plain, none, none, none⟩)
   | .ok _ => check state "extra space after colon" false
   | .error e => checkM state "extra space after colon" false e
 
