@@ -487,7 +487,7 @@ Prove `parse ∘ emit = id` for a canonical YAML subset.
 
 ##### 5.4.3 — Per-parser specification lemmas (in progress)
 
-**File:** `Proofs/PerParserSpecs.lean` — **33 proved theorems, 0 sorry.**
+**File:** `Proofs/PerParserSpecs.lean` — **46 proved theorems, 0 sorry.**
 
 Bridges the generic combinator specs (5.4.2) to YAML-parser-level correctness.  Organized in layers:
 
@@ -502,6 +502,10 @@ Bridges the generic combinator specs (5.4.2) to YAML-parser-level correctness.  
 | §7 Pure helpers | `processLiteral_eq`, `applyChomp_keep` | `rfl` — identity/match reduction |
 | §8.1 Quoted scalars | `singleQuotedScalar_spec`, `doubleQuotedScalar_spec` | Relational spec via `unfold + simp only [bind_eq, ...]` |
 | §8.2 Plain scalars | `plainScalar_nonempty`, `plainScalar_empty` | Branch on `content.isEmpty`; `decide := true` for constant eval |
+| §8.2.1 collectPlain loops | 8 theorems: fuel-zero, EOF, linebreak, flow-indicator (×2 variants) | Loop termination via `unfold + simp only [bind_eq, ...]` |
+| §8.2.2 collectLines/FlowLines | `collectLines_zero`, `collectFlowLines_zero` | Fuel-zero base cases |
+| §8.2.3 Position roundtrip | `anyToken_setPosition_roundtrip`, `isIndicator_not_special` | Stream-level: `anyToken` preserves non-position fields |
+| §8.2.4 plainScalarSingleLine | `plainScalarSingleLine_normal_start` | Relational: derives lookAhead success from character properties |
 | §8.3 Block scalar | `blockScalar_spec` | 5-phase pipeline; `cases explicitIndent` for indent dispatch |
 | §8.4 Block collections | `blockSequence_spec`, `blockMapping_spec` | Fuel wrapper transparency (`4 * remaining + 4`) |
 | §8.5 Flow collections | `flowSequence_spec`, `flowMapping_spec` | Same fuel wrapper pattern |
@@ -512,13 +516,13 @@ Bridges the generic combinator specs (5.4.2) to YAML-parser-level correctness.  
 2. `simp only [withErrorMessage_eq, bind_eq, ...]` chains through the monadic pipeline
 3. Hypotheses about sub-parser success drive match reductions
 4. `cases` on `Option`/`Bool` when `match` distributes continuations into branches
+5. **Position roundtrip**: `lookAhead` restores position via `Stream.setPosition s' (Stream.getPosition s)`, which is NOT definitionally `s` — requires `anyToken_setPosition_roundtrip` to establish equality
 
 **Remaining per-parser obligations:**
 
 | Constructor | Parser | Key challenge |
 |-------------|--------|---------------|
-| `plainScalarBlock` | `plainScalarSingleLine false` | safe-char predicate |
-| `plainScalarFlow` | `plainScalarSingleLine true` | flow indicator exclusion |
+| `plainScalarSpecial` | `plainScalarSingleLine` with `-`/`?`/`:` | Next-character lookAhead validation |
 
 All require fuel-sufficiency reasoning (§5.4.4) and loop unrolling through the `foldl → efoldlPAux` chain.
 
@@ -693,6 +697,26 @@ Steps 1–21: parser features, totality, soundness, compile-time proofs, complet
 
     **Build:** 242/242 jobs. **Project total: ~384 proved theorems + 553 compile-time checks.**
 
+24. **Step 5.4.3 — plainScalarSingleLine relational spec + auxiliary lemmas (2026-02-22)** — **13 new theorems (46 total in PerParserSpecs), 0 sorry.**
+
+    Extended `PerParserSpecs.lean` from 33 to 46 theorems. Main achievement: proved `plainScalarSingleLine_normal_start`, the first relational specification for the plain scalar single-line parser covering all common (non-indicator) first characters.
+
+    **New theorem groups:**
+    - §8.2.1: 8 `collectPlain` loop termination specs (fuel-zero, EOF, linebreak, flow-indicator × 2 function variants — `plainScalarContent.collectPlain` and `plainScalarSingleLine.collectPlain`)
+    - §8.2.2: 2 loop zero cases (`collectLines_zero`, `collectFlowLines_zero`)
+    - §8.2.3: 2 auxiliary lemmas (`anyToken_setPosition_roundtrip`, `isIndicator_not_special`)
+    - §8.2.4: 1 relational spec (`plainScalarSingleLine_normal_start`)
+
+    **Key proof discoveries:**
+    - **Position roundtrip problem**: `lookAhead` restores stream position via `Stream.setPosition s' (Stream.getPosition s)`, which is NOT definitionally `s`. Required proving `anyToken_setPosition_roundtrip`: `anyToken` only advances `startPos`/`line`/`col` in `YamlStream`, preserving `str`/`stopPos`/`anchorMap`/`validationError`/`tagHandles`, so `setPosition` after `getPosition` roundtrips exactly.
+    - **do-notation blockage**: The `lookAhead` body in `plainScalarSingleLine` uses inline `do` notation that cannot be expressed as a standalone hypothesis — Lean's monad type inference fails outside the parser context. Solution: derive lookAhead success from character properties (`isPlainSafe`, `isIndicator`) rather than naming the lookAhead body.
+    - **Indicator membership derivation**: `isIndicator c = false` unfolds to `decide (c ∈ ['-', '?', ...]) = false`, from which `(c == '-' || c == '?' || c == ':') = false` is derived via `decide_eq_false_iff_not` + `List.mem_cons` + `not_or` decomposition.
+    - **Ambiguous identifiers**: `Grammar.isLineBreak : Char → Prop` vs `Parse.isLineBreak : Char → Bool` both in scope — must use `Parse.` prefix in proof hypotheses.
+
+    **Remaining obligation**: `plainScalarSingleLine` with special-start characters (`-`, `?`, `:`) which require next-character validation in the lookAhead body — deferred to §5.4.5.
+
+    **Build:** 242/242 jobs.
+
     **Build:** 234/234 jobs. **Tests:** 847 passed / 2 failed (H7TQ) / 171 skipped (1020 total). **Unique test IDs:** 277 total, 224 passing, 52 YAML 1.3 skipped, 1 failed.
 
     **Strategic assessment (2026-02-21):** At 224/225 YAML 1.2.2 tests passing (99.6%), the remaining compliance gap is YAML 1.3 features (out of scope), not correctness. Verification doesn't help compliance — the parser is functionally complete for YAML 1.2.2. Phase 4 locks these 350 passing tests as build-time invariants, making regressions impossible without also fixing the broken guard. Combined with the 76 hand-written `#guard` tests from Step 3.3.4, the project now has **426 compile-time kernel-evaluated checks** plus ~170 formal theorems.
@@ -710,7 +734,7 @@ Phase 2 (Parser Validation) is functionally complete. **353/406 correct** per HT
 
 **Phase 4 complete:** 351 `#guard` compile-time tests across 6 files (`Proofs/SuiteGuards/*.lean`) encode all passing yaml-test-suite tests. Auto-generated from yaml-test-suite by `gen-suite-guards.py`. Any parser regression breaks the build.
 
-**Phase 5 in progress:** Canonical emitter (`Emitter.lean`) + round-trip proofs (`Proofs/RoundTrip.lean`). 58 theorems + 63 `#guard` round-trip checks proving `parse ∘ emit = id` for concrete values. Steps 5.1–5.3 complete: `contentEq` proved to be a full equivalence relation (refl + symm + trans) for all `YamlValue` trees; character-level escape round-trip connecting `escapeChar` ↔ `resolveNamedEscape` via `escapeTag`. Step 5.4 Phase 1 complete: `Proofs/Completeness.lean` with `LawfulParserStream YamlStream Char`, `parseYaml_ok_iff`, 7 stream lemmas, 12 concrete completeness theorems via `native_decide`. Step 5.4.2 complete: 20 `@[simp]` combinator specs in `ParserSpecs.lean`. Step 5.4.3 in progress: 33 YAML-specific intermediate specs covering all major parser categories (scalars, collections, validation state, pure helpers) + first complete parser proofs (`parseAlias`) in `PerParserSpecs.lean`. Step 5.4.4 complete: 35 fuel sufficiency theorems in `FuelSufficiency.lean` — progress lemmas, fuel-zero characterization for all 18 `*Impl` functions, fuel arithmetic for `4 * remaining + 4`, and wrapper sufficiency.
+**Phase 5 in progress:** Canonical emitter (`Emitter.lean`) + round-trip proofs (`Proofs/RoundTrip.lean`). 58 theorems + 63 `#guard` round-trip checks proving `parse ∘ emit = id` for concrete values. Steps 5.1–5.3 complete: `contentEq` proved to be a full equivalence relation (refl + symm + trans) for all `YamlValue` trees; character-level escape round-trip connecting `escapeChar` ↔ `resolveNamedEscape` via `escapeTag`. Step 5.4 Phase 1 complete: `Proofs/Completeness.lean` with `LawfulParserStream YamlStream Char`, `parseYaml_ok_iff`, 7 stream lemmas, 12 concrete completeness theorems via `native_decide`. Step 5.4.2 complete: 20 `@[simp]` combinator specs in `ParserSpecs.lean`. Step 5.4.3 in progress: 46 YAML-specific intermediate specs covering all major parser categories (scalars, collections, validation state, pure helpers, collectPlain loop specs, position roundtrip, plainScalarSingleLine relational spec) + first complete parser proofs (`parseAlias`) in `PerParserSpecs.lean`. Step 5.4.4 complete: 35 fuel sufficiency theorems in `FuelSufficiency.lean` — progress lemmas, fuel-zero characterization for all 18 `*Impl` functions, fuel arithmetic for `4 * remaining + 4`, and wrapper sufficiency.
 
 **3.1–3.2 complete.** 3.1 (Foundation): ~90 theorems across 5 proof files. 3.2 (Key Invariants): ~30 theorems + 45 `#guard` checks across 3 proof files (`EscapeResolution.lean`, `IndentConsumption.lean`, `FoldNewlines.lean`). Grammar.lean extended with `resolveNamedEscape`, `isCForbiddenPrefix`, `isFoldAppendChar`, full Decidable instances.
 
