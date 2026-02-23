@@ -23,6 +23,7 @@ import Lean4Yaml.Proofs.Completeness
 import Lean4Yaml.Proofs.ParserSpecs
 import Lean4Yaml.Proofs.PerParserSpecs
 import Lean4Yaml.Proofs.FuelSufficiency
+import Lean4Yaml.Proofs.Composition
 import Lean4Yaml.Proofs.TestSuite
 import Lean4Yaml.Proofs.SuiteGuards.Scalar
 import Lean4Yaml.Proofs.SuiteGuards.Flow
