@@ -1,5 +1,5 @@
 {
-  "date": "2026-02-23T08:43:28-0800",
+  "date": "2026-02-23T08:58:41-0800",
   "overall": {
     "correct": 353,
     "correctRate": 86.945812,
@@ -3005,12 +3005,18 @@
       },
       {
         "allPass": true,
+        "label": "Raw Parse / Compose Tests",
+        "passed": 29,
+        "total": 29
+      },
+      {
+        "allPass": true,
         "label": "Demo",
         "passed": 7,
         "total": 7
       }
     ],
-    "totalPassed": 1108,
-    "totalTests": 1108
+    "totalPassed": 1137,
+    "totalTests": 1137
   }
 }

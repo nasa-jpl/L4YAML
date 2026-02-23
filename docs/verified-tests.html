@@ -65,10 +65,10 @@
   <p class="subtitle">Unit tests, parser tests, verification tests, and string lemma tests — all must pass.</p>
 
   <div class="stats">
-    <div class="stat-box stat-total"><h3>Total</h3><div class="number">1108</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">1108</div></div>
+    <div class="stat-box stat-total"><h3>Total</h3><div class="number">1137</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">1137</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
-    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">14</div></div>
+    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">15</div></div>
   </div>
   <h3>Suites</h3>
   <div class="stage-cards">
@@ -151,6 +151,12 @@
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean" target="_blank" class="source-link">📄 Tests/DumpRoundTrip.lean</a></div>
     </div>
     <div class="stage-card" style="border-left-color:var(--color-pass)">
+      <div class="stage-card-name">Raw Parse / Compose Tests</div>
+      <div class="stage-card-stats">29/29 passed (100%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
+      <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean" target="_blank" class="source-link">📄 Tests/RawParseTests.lean</a></div>
+    </div>
+    <div class="stage-card" style="border-left-color:var(--color-pass)">
       <div class="stage-card-name">Demo</div>
       <div class="stage-card-stats">7/7 passed (100%)</div>
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
@@ -182,6 +188,7 @@
         <option value="validationtests">Structural Validation Tests</option>
         <option value="completeness">Completeness Tests</option>
         <option value="dumproundtrip">Dump Round-Trip Tests</option>
+        <option value="rawparsetests">Raw Parse / Compose Tests</option>
         <option value="demo">Demo</option>
       </select>
     </div>
@@ -189,7 +196,7 @@
       <label>Search:</label>
       <input type="text" class="search-input" placeholder="Category, test name..." oninput="searchTests(this.value)">
     </div>
-    <div class="filter-group"><span>Showing <strong id="visibleCount">1108</strong> of 1108</span></div>
+    <div class="filter-group"><span>Showing <strong id="visibleCount">1137</strong> of 1137</span></div>
   </div>
 
   <table id="testTable">
@@ -7917,6 +7924,209 @@
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L340" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
         <td>Document dump</td>
         <td>dumpDocuments three</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests raw parse preserves aliases alias node preserved in raw">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L96" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Raw parse preserves aliases</td>
+        <td>alias node preserved in raw</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests raw parse preserves aliases alias name is &#39;val&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L97" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Raw parse preserves aliases</td>
+        <td>alias name is &#39;val&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests raw parse preserves aliases alias in sequence preserved">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L107" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Raw parse preserves aliases</td>
+        <td>alias in sequence preserved</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests raw parse preserves aliases second element is alias">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L108" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Raw parse preserves aliases</td>
+        <td>second element is alias</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests raw parse preserves aliases flow alias preserved">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L117" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Raw parse preserves aliases</td>
+        <td>flow alias preserved</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests raw parse preserves anchor fields scalar anchor field set">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L128" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Raw parse preserves anchor fields</td>
+        <td>scalar anchor field set</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests raw parse preserves anchor fields sequence anchor field set">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L136" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Raw parse preserves anchor fields</td>
+        <td>sequence anchor field set</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests raw parse preserves anchor fields flow mapping anchor field set">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L144" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Raw parse preserves anchor fields</td>
+        <td>flow mapping anchor field set</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests raw parse captures anchor map anchor map non-empty">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L155" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Raw parse captures anchor map</td>
+        <td>anchor map non-empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests raw parse captures anchor map anchor map has &#39;anchor&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L157" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Raw parse captures anchor map</td>
+        <td>anchor map has &#39;anchor&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests raw parse captures anchor map anchor map has 2+ entries">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L164" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Raw parse captures anchor map</td>
+        <td>anchor map has 2+ entries</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests raw parse captures anchor map anchor map has &#39;x&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L167" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Raw parse captures anchor map</td>
+        <td>anchor map has &#39;x&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests raw parse captures anchor map anchor map has &#39;y&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L168" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Raw parse captures anchor map</td>
+        <td>anchor map has &#39;y&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests raw parse captures anchor map anchor map value has no aliases">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L178" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Raw parse captures anchor map</td>
+        <td>anchor map value has no aliases</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests compose resolves aliases composed has no aliases">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L191" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Compose resolves aliases</td>
+        <td>composed has no aliases</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests compose resolves aliases alias resolved to value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L193" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Compose resolves aliases</td>
+        <td>alias resolved to value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests compose resolves aliases compose matches parseyamlsingle">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L199" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Compose resolves aliases</td>
+        <td>compose matches parseYamlSingle</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests compose strips anchors raw tree has anchor fields">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L210" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Compose strips anchors</td>
+        <td>raw tree has anchor fields</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests compose strips anchors composed tree has no anchor fields">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L213" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Compose strips anchors</td>
+        <td>composed tree has no anchor fields</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests compose strips anchors composed anchor map is empty">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L214" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Compose strips anchors</td>
+        <td>composed anchor map is empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests raw dump preserves anchors/aliases dump contains &amp;val">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L226" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Raw dump preserves anchors/aliases</td>
+        <td>dump contains &amp;val</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests raw dump preserves anchors/aliases dump contains *val">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L227" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Raw dump preserves anchors/aliases</td>
+        <td>dump contains *val</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests raw dump preserves anchors/aliases dump contains &amp;seq">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L235" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Raw dump preserves anchors/aliases</td>
+        <td>dump contains &amp;seq</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests composed dump is clean composed dump has no &amp;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L247" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Composed dump is clean</td>
+        <td>composed dump has no &amp;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests composed dump is clean composed dump has no *">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L248" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Composed dump is clean</td>
+        <td>composed dump has no *</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests composed dump is clean composed dump has &#39;hello&#39; twice">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L250" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Composed dump is clean</td>
+        <td>composed dump has &#39;hello&#39; twice</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests multi-doc anchor scoping (raw) two documents parsed">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L262" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Multi-doc anchor scoping (raw)</td>
+        <td>two documents parsed</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests multi-doc anchor scoping (raw) doc0 anchor &#39;a&#39; = hello">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L269" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Multi-doc anchor scoping (raw)</td>
+        <td>doc0 anchor &#39;a&#39; = hello</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="rawparsetests" data-search="rawparsetests multi-doc anchor scoping (raw) doc1 anchor &#39;a&#39; = world">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean#L271" target="_blank" class="source-link">Raw Parse / Compose Tests</a></td>
+        <td>Multi-doc anchor scoping (raw)</td>
+        <td>doc1 anchor &#39;a&#39; = world</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>

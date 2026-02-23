@@ -438,9 +438,10 @@ Running verified test suites...
   Structural Validation Tests: ✓ 135/135
   Completeness Tests: ✓ 66/66
   Dump Round-Trip Tests: ✓ 102/102
+  Raw Parse / Compose Tests: ✓ 29/29
   Demo: ✓ 7/7
 
-Verified: 1108/1108
+Verified: 1137/1137
 
 Generating HTML reports...
   wrote docs/index.html
