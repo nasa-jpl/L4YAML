@@ -1092,7 +1092,7 @@ The remaining 52 skipped tests are YAML 1.1/1.3 features or tests that require b
 
 <details>
 <summary>
-Presentation layer: style-aware dump per YAML 1.2.2 §3.1.1. 71 theorems, 94 `#guard` checks, 102 runtime tests. Renamed from "YAML Serializer" to "YAML Dump" to match spec terminology.
+Presentation layer: style-aware dump per YAML 1.2.2 §3.1.1. 71 theorems, 94 <code>#guard</code> checks, 131 runtime tests. Includes §3.1 Parse/Compose split for anchor/alias preservation (step 6.5).
 </summary>
 
 **Rename (2026-02-22).** Renamed Phase 6 from "Verified YAML Serializer" to "Verified YAML Dump" throughout the roadmap, architecture diagrams, and Phase 7 references. The YAML 1.2.2 specification (§3.1.1) uses "dump" for the process of converting the representation graph to a character stream: **Dump** = Represent + Serialize + Present. "Serializer" is used in the spec for a narrower step (§3.1.1: event tree → character stream). Using "dump" aligns the codebase with spec vocabulary and avoids confusion with the spec's more specific "serialize" term.
@@ -1160,6 +1160,46 @@ Made content analysis functions (`isPlainSafe`, `isReservedWord`, `isIndicator`,
 
 Registered in `lakefile.toml` (`lean_lib` + `lean_exe`), `SuiteRunner/Main.lean` (collector), and standalone runner (`dumproundtrip`). All 102/102 pass.
 
+**Anchor/alias preservation — §3.1 Parse/Compose split (2026-02-23).** Implemented the YAML 1.2.2 §3.1 processing model as two distinct layers: **Parse** (serialization event tree, preserving anchors and aliases) and **Compose** (representation graph, all aliases resolved). Previously the parser eagerly resolved aliases in `parseAlias`, making round-trip anchor preservation impossible.
+
+| Layer | API | Description |
+|-------|-----|-------------|
+| Parse (serialization tree) | `parseYamlRaw`, `parseYamlSingleRaw` | `.alias name` nodes preserved, `anchor` fields set, `YamlDocument.anchors` map captured |
+| Compose (representation graph) | `YamlDocument.compose` | `resolveAliases` + `stripAnchors` — clean representation graph |
+| Load (backward-compatible) | `parseYaml`, `parseYamlSingle` | Delegates to `parseYamlRaw` + `compose` — identical behavior to before |
+
+Files changed (10):
+
+| File | Changes |
+|------|---------|
+| `Types.lean` | `YamlDocument.anchors` field, `stripAnchors`, `YamlDocument.compose` |
+| `Parser/Anchor.lean` | `getAnchorMap`, `storeAnchor` pre-resolves aliases, `parseAlias` returns `.alias name` |
+| `Parser/Block.lean` | `withAnchor` at 8 anchor sites (6 actual changes) |
+| `Parser/Flow.lean` | `withAnchor` at 4 anchor sites |
+| `Parser/Document.lean` | Anchor map capture in `document`, `parseYamlRaw`/`parseYamlSingleRaw`, `parseYaml` via compose |
+| `Proofs/PerParserSpecs.lean` | `parseAlias_found`, `parseAlias_not_found` theorem conclusions updated |
+| `Proofs/Completeness.lean` | New `parseYamlRaw_ok_iff`, rewritten `parseYaml_ok_iff` (via compose) |
+| `Proofs/Composition.lean` | New `parseYamlRaw_of_yamlStream_ok`, updated `parseYaml_of_yamlStream_ok` |
+| `Proofs/DumpRoundTrip.lean` | 3 anonymous constructors updated (new `anchors` field) |
+| `Tests/DumpRoundTrip.lean` | 9 anonymous constructors updated |
+
+New test suite: `Tests/RawParseTests.lean` — 29 runtime tests across 8 categories (raw alias preservation, raw anchor fields, anchor map capture, compose resolves aliases, compose strips anchors, raw→dump preserves `&`/`*`, composed→dump is clean, multi-document anchor scoping). Registered in `lakefile.toml`, `SuiteRunner/Main.lean`, standalone runner (`rawparsetests`). All 29/29 pass.
+
+Build verification: 475 rawparsetests jobs, 507 suiterunner jobs — all pass. Suite runner totals: 876 passed, 2 failed (known H7TQ), 171 skipped — zero regressions.
+
+*Unexpected positives:*
+
+- **`withAnchor` and `resolveAliases` were already implemented** in `Types.lean` from Phase 6.0 (presentation metadata) but were never wired into the parser. The anchor/alias preservation feature was largely a matter of calling existing functions at the right sites rather than designing new algorithms.
+- **`storeAnchor` pre-resolution elegantly eliminates nested alias chains.** By resolving aliases in the value *before* storing it in the anchor map (e.g., `&b [*a]` resolves `*a` inside the stored value of `b`), single-pass compose works correctly without a fixpoint loop. This was not an obvious design choice but fell out naturally from the constraint that anchor map values must be self-contained.
+- **Backward compatibility was free.** Because `parseYaml` simply delegates to `parseYamlRaw` + `compose`, every existing test, proof, and downstream consumer sees identical behavior. The 847 existing suite runner tests passed without modification.
+- **Proof changes were minimal.** Only two theorems (`parseAlias_found`, `parseAlias_not_found`) needed their conclusions changed. The proof *tactics* were unchanged — `simp` handled the new structure automatically. The completeness bridge theorems required a straightforward factoring into raw + compose layers.
+
+*Unexpected negatives:*
+
+- **`YamlDocument` constructor breakage was tedious.** Adding the `anchors` field (with default `#[]`) broke every anonymous constructor `⟨val, directives⟩` in proof and test files because Lean requires all positional fields. This caused 12 scattered fixes across `DumpRoundTrip.lean` (proofs) and `Tests/DumpRoundTrip.lean` (tests). Named-field syntax (`{ value := ..., directives := ... }`) was immune. Lesson: prefer named-field construction for structures that may gain fields.
+- **Structural recursion on `Array` is fragile.** The `hasAlias` and `hasAnchorField` recursive test helpers failed termination checking when using `Array.any` with a recursive predicate. Converting to `List`-based `where` clauses (matching the pattern in `resolveAliases` / `stripAnchors`) resolved it immediately, but this is a recurring friction point with `YamlValue`'s `Array`-based children.
+- **`Completeness.lean` proof direction subtleties.** The `parseYaml_ok_iff` rewrite required careful handling of equality direction (`h.symm` / `hcomp.symm`) and the impossible case (`Except.error = Except.ok`) needed `contradiction` instead of the original `simp only at h`. These are small but non-obvious tactic changes that cost debugging time.
+
 </details>
 
 ---
@@ -1168,7 +1208,7 @@ Registered in `lakefile.toml` (`lean_lib` + `lean_exe`), `SuiteRunner/Main.lean`
 
 <details>
 <summary>
-Style-aware dump: YamlValue → DumpConfig → String. 5 sub-steps (prerequisites, core, documents, proofs, tests). All complete.
+Style-aware dump: YamlValue → DumpConfig → String. 6 sub-steps (prerequisites, core, documents, proofs, tests, §3.1 anchor preservation). All complete.
 </summary>
 
 ### Motivation
@@ -1207,6 +1247,7 @@ The current emitter (`Emitter.lean`) produces canonical YAML — double-quoted s
 | **6.2** | **Document dump** — `dumpDirective`, `dumpDocument`, `dumpDocuments`. `---`/`...` markers, `%YAML`/`%TAG` directives, multi-document streams. 54 total `#guard` compile-time tests (42 value + 12 document). | Low | ✅ Complete |
 | **6.3** | **Dump proofs** — `Proofs/DumpRoundTrip.lean`: 71 `native_decide` theorems + 40 `#guard` compile-time checks. (a) Structural: dump output shape, non-emptiness, prefix correctness. (b) Content analysis: `isPlainSafe` properties for indicators, reserved words, unsafe subsequences, whitespace. (c) Style preservation: config overrides, block scalar styles, chomp indicators, anchors, tags. (d) Round-trip: `dumpRoundTrips` — dump→parse→`contentEq` for plain/quoted/flow/block/nested/escaped values. (e) Document: directive emission, `---`/`...` markers, multi-document streams. | High | ✅ Complete |
 | **6.4** | **Dump tests** — `Tests/DumpRoundTrip.lean`: 102 runtime verification tests (structural, content analysis, style preservation, dump→parse round-trip, document dump). Integrated into `suiterunner` HTML coverage dashboard. Standalone `dumproundtrip` executable. 54 `#guard` compile-time checks in `Dump.lean` + 40 in `Proofs/DumpRoundTrip.lean`. | Low | ✅ Complete |
+| **6.5** | **Anchor/alias preservation (§3.1 Parse/Compose)** — Split parser into Parse (serialization tree with `.alias` nodes and `anchor` fields) and Compose (`resolveAliases` + `stripAnchors`). New API: `parseYamlRaw`, `parseYamlSingleRaw`, `YamlDocument.compose`. 10 files changed, 2 theorems updated, 3 new bridge theorems. `Tests/RawParseTests.lean`: 29 runtime tests (8 categories). Zero regressions on existing 847 tests. | Medium | ✅ Complete |
 
 ### Design Principles
 
@@ -1215,7 +1256,7 @@ The current emitter (`Emitter.lean`) produces canonical YAML — double-quoted s
 3. **Content analysis drives scalar style.** Plain for simple strings. Double-quoted for strings with special characters. Literal block for multi-line strings with significant whitespace. The dump function inspects content, not just the style annotation.
 4. **Pure function, no IO.** Like the emitter, the dump function is `YamlValue → String` — kernel-reducible, `#guard`-testable, provably correct.
 
-Completed in 3 sessions: implementation (6.0–6.2), proofs (6.3), tests (6.4).
+Completed in 4 sessions: implementation (6.0–6.2), proofs (6.3), tests (6.4), anchor/alias preservation (6.5).
 
 </details>
 
