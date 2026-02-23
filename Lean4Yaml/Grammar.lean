@@ -339,18 +339,6 @@ structure ValidDoubleQuoted where
   content : String
 
 /--
-Chomping styles for block scalars.
-
-**YAML 1.2.2**: [160] c-chomping-indicator(t)
-(§8.1.1.2, https://yaml.org/spec/1.2.2/#8112-block-chomping-indicator)
--/
-inductive ChompStyle where
-  | strip  -- Remove all trailing newlines (`|-`)
-  | clip   -- Keep one trailing newline (default `|`)
-  | keep   -- Keep all trailing newlines (`|+`)
-  deriving Repr, BEq, DecidableEq
-
-/--
 A valid literal block scalar.
 
 **YAML 1.2.2**: [170] c-l+literal(n) (§8.1.2, https://yaml.org/spec/1.2.2/#812-literal-style)
@@ -461,27 +449,27 @@ inductive NodeToValue : ValidNode → YamlValue → Prop where
   | plainScalarBlock (content : String) (h : content.length > 0) :
       NodeToValue
         (.plainScalarBlock content h)
-        (.scalar ⟨content, .plain, none⟩)
+        (.scalar ⟨content, .plain, none, none, none⟩)
   | plainScalarFlow (content : String) (h : content.length > 0) :
       NodeToValue
         (.plainScalarFlow content h)
-        (.scalar ⟨content, .plain, none⟩)
+        (.scalar ⟨content, .plain, none, none, none⟩)
   | singleQuoted (content : String) :
       NodeToValue
         (.singleQuoted content)
-        (.scalar ⟨content, .singleQuoted, none⟩)
+        (.scalar ⟨content, .singleQuoted, none, none, none⟩)
   | doubleQuoted (content : String) :
       NodeToValue
         (.doubleQuoted content)
-        (.scalar ⟨content, .doubleQuoted, none⟩)
+        (.scalar ⟨content, .doubleQuoted, none, none, none⟩)
   | literalScalar (content : String) (indent : Nat) (chomp : ChompStyle) :
       NodeToValue
         (.literalScalar content indent chomp)
-        (.scalar ⟨content, .literal, none⟩)
+        (.scalar ⟨content, .literal, none, none, some ⟨chomp, some indent⟩⟩)
   | foldedScalar (content : String) (indent : Nat) (chomp : ChompStyle) :
       NodeToValue
         (.foldedScalar content indent chomp)
-        (.scalar ⟨content, .folded, none⟩)
+        (.scalar ⟨content, .folded, none, none, some ⟨chomp, some indent⟩⟩)
   | blockSeq (indent : Nat) (nodes : List ValidNode) (vals : List YamlValue)
       (hlen : nodes.length = vals.length)
       (hcorr : ∀ i (hi : i < nodes.length),
@@ -557,12 +545,14 @@ Structural recursion on `ValidNode` terminates because `List ValidNode`
 sub-lists are structurally smaller.
 -/
 def toYamlValue : ValidNode → YamlValue
-  | .plainScalarBlock content _ => .scalar ⟨content, .plain, none⟩
-  | .plainScalarFlow content _ => .scalar ⟨content, .plain, none⟩
-  | .singleQuoted content => .scalar ⟨content, .singleQuoted, none⟩
-  | .doubleQuoted content => .scalar ⟨content, .doubleQuoted, none⟩
-  | .literalScalar content _ _ => .scalar ⟨content, .literal, none⟩
-  | .foldedScalar content _ _ => .scalar ⟨content, .folded, none⟩
+  | .plainScalarBlock content _ => .scalar ⟨content, .plain, none, none, none⟩
+  | .plainScalarFlow content _ => .scalar ⟨content, .plain, none, none, none⟩
+  | .singleQuoted content => .scalar ⟨content, .singleQuoted, none, none, none⟩
+  | .doubleQuoted content => .scalar ⟨content, .doubleQuoted, none, none, none⟩
+  | .literalScalar content indent chomp =>
+      .scalar ⟨content, .literal, none, none, some ⟨chomp, some indent⟩⟩
+  | .foldedScalar content indent chomp =>
+      .scalar ⟨content, .folded, none, none, some ⟨chomp, some indent⟩⟩
   | .blockSeq _ items => .sequence .block (toYamlValueList items).toArray none
   | .blockMap _ entries =>
       .mapping .block (toYamlValuePairs entries).toArray none

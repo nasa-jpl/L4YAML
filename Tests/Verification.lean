@@ -421,20 +421,20 @@ def testNodeToValue (state : IO.Ref TestCollector) : IO Unit := do
   let content := "hello"
   let h : content.length > 0 := by native_decide
   let node := ValidNode.plainScalarBlock content h
-  let value := YamlValue.scalar ⟨content, .plain, none⟩
+  let value := YamlValue.scalar ⟨content, .plain, none, none, none⟩
   -- The correspondence can be constructed
   let _ : NodeToValue node value := .plainScalarBlock content h
   check state "plainScalarBlock ↔ YamlValue.scalar (plain)" true
 
   -- Single quoted
   let sqNode := ValidNode.singleQuoted "test"
-  let sqVal := YamlValue.scalar ⟨"test", .singleQuoted, none⟩
+  let sqVal := YamlValue.scalar ⟨"test", .singleQuoted, none, none, none⟩
   let _ : NodeToValue sqNode sqVal := .singleQuoted "test"
   check state "singleQuoted ↔ YamlValue.scalar (singleQuoted)" true
 
   -- Double quoted
   let dqNode := ValidNode.doubleQuoted "escaped\"content"
-  let dqVal := YamlValue.scalar ⟨"escaped\"content", .doubleQuoted, none⟩
+  let dqVal := YamlValue.scalar ⟨"escaped\"content", .doubleQuoted, none, none, none⟩
   let _ : NodeToValue dqNode dqVal := .doubleQuoted "escaped\"content"
   check state "doubleQuoted ↔ YamlValue.scalar (doubleQuoted)" true
 
@@ -445,7 +445,7 @@ def testValidYaml (state : IO.Ref TestCollector) : IO Unit := do
   let content := "world"
   let h : content.length > 0 := by native_decide
   let node := ValidNode.plainScalarBlock content h
-  let value := YamlValue.scalar ⟨content, .plain, none⟩
+  let value := YamlValue.scalar ⟨content, .plain, none, none, none⟩
   let corr := NodeToValue.plainScalarBlock content h
   let vy : ValidYaml := {
     input := "world"

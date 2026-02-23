@@ -36,16 +36,86 @@ inductive ScalarStyle where
   | folded
   deriving Repr, BEq, Hashable, Inhabited, DecidableEq
 
+/-! ## Chomp Style -/
+
+/--
+Chomping behavior for block scalars.
+
+**YAML 1.2.2**: [160] c-chomping-indicator(t)
+(§8.1.1.2, https://yaml.org/spec/1.2.2/#8112-block-chomping-indicator)
+
+- **Strip** (`-`): remove all trailing newlines
+- **Clip** (default): keep one trailing newline
+- **Keep** (`+`): keep all trailing newlines
+
+Canonical definition — imported by both `Grammar.lean` and `Parser/Scalar.lean`.
+-/
+inductive ChompStyle where
+  | strip
+  | clip
+  | keep
+  deriving Repr, BEq, Hashable, Inhabited, DecidableEq
+
+/--
+Block scalar header metadata, preserved for round-trip serialization.
+
+Stores the chomping indicator and optional explicit indentation level
+from the block scalar header (`|2-`, `>+`, etc.).
+Only meaningful when `ScalarStyle` is `.literal` or `.folded`.
+-/
+structure BlockScalarMeta where
+  /-- Chomping behavior: strip, clip (default), or keep -/
+  chomp : ChompStyle := .clip
+  /-- Explicit indentation indicator (`1`–`9`), or `none` for auto-detect -/
+  explicitIndent : Option Nat := none
+  deriving Repr, BEq, Inhabited, DecidableEq
+
+/-! ## Comments -/
+
+/--
+Relative position of a comment with respect to its associated node.
+
+Used for round-trip preservation — the serializer emits comments
+at the same relative position where they were parsed.
+-/
+inductive CommentPosition where
+  /-- Comment on a line before the node -/
+  | before
+  /-- Comment at the end of the same line as the node -/
+  | inline
+  /-- Comment on a line after the node -/
+  | after
+  deriving Repr, BEq, Inhabited, DecidableEq
+
+/--
+A YAML comment captured during parsing.
+
+YAML 1.2.2 §6.6 / §3.2.3.3: comments are presentation details with
+no effect on the serialization tree. We preserve them for round-trip
+fidelity: `parse → serialize` can reconstruct comments at their
+original positions.
+-/
+structure Comment where
+  /-- The comment text (excluding the leading `#` and any whitespace) -/
+  text : String
+  /-- Where the comment appeared relative to the associated node -/
+  position : CommentPosition
+  deriving Repr, BEq, Inhabited, DecidableEq
+
 /--
 A YAML scalar with style information.
 
 We preserve style to support round-trip serialization.
 The `tag` field supports explicit typing (e.g., `!!str`, `!!int`).
+The `anchor` field preserves the anchor name (`&name`) for round-trip.
+The `blockMeta` field preserves chomp/indent for literal/folded scalars.
 -/
 structure Scalar where
   content : String
   style : ScalarStyle
   tag : Option String := none
+  anchor : Option String := none
+  blockMeta : Option BlockScalarMeta := none
   deriving Repr, BEq, Inhabited, DecidableEq
 
 /-! ## Collection Styles -/
@@ -75,8 +145,11 @@ Each node can carry an optional tag for explicit type annotation.
 -/
 inductive YamlValue where
   | scalar (s : Scalar)
-  | sequence (style : CollectionStyle) (items : Array YamlValue) (tag : Option String := none)
-  | mapping (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue)) (tag : Option String := none)
+  | sequence (style : CollectionStyle) (items : Array YamlValue)
+      (tag : Option String := none) (anchor : Option String := none)
+  | mapping (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
+      (tag : Option String := none) (anchor : Option String := none)
+  | alias (name : String)
   deriving Repr, BEq, Inhabited
 
 /-! ## Directives -/
@@ -146,6 +219,11 @@ def YamlValue.isMapping : YamlValue → Bool
   | .mapping .. => true
   | _ => false
 
+/-- Check if a value is an alias -/
+def YamlValue.isAlias : YamlValue → Bool
+  | .alias _ => true
+  | _ => false
+
 /-- Extract scalar content if value is a scalar -/
 def YamlValue.asString? : YamlValue → Option String
   | .scalar s => some s.content
@@ -153,12 +231,12 @@ def YamlValue.asString? : YamlValue → Option String
 
 /-- Extract sequence items if value is a sequence -/
 def YamlValue.asArray? : YamlValue → Option (Array YamlValue)
-  | .sequence _ items _ => some items
+  | .sequence _ items .. => some items
   | _ => none
 
 /-- Extract mapping pairs if value is a mapping -/
 def YamlValue.asPairs? : YamlValue → Option (Array (YamlValue × YamlValue))
-  | .mapping _ pairs _ => some pairs
+  | .mapping _ pairs .. => some pairs
   | _ => none
 
 /--
@@ -170,18 +248,61 @@ Used by the tag parser to annotate parsed values.
 def YamlValue.withTag (v : YamlValue) (tag : String) : YamlValue :=
   match v with
   | .scalar s => .scalar { s with tag := some tag }
-  | .sequence style items _ => .sequence style items (some tag)
-  | .mapping style pairs _ => .mapping style pairs (some tag)
+  | .sequence style items _ anchor => .sequence style items (some tag) anchor
+  | .mapping style pairs _ anchor => .mapping style pairs (some tag) anchor
+  | .alias name => .alias name  -- aliases refer to anchored node; tag is on that node
+
+/--
+Attach an anchor name to any YAML value.
+
+Sets the `anchor` field on scalars, sequences, and mappings.
+Used by the parser to preserve `&name` annotations for round-trip.
+-/
+def YamlValue.withAnchor (v : YamlValue) (name : String) : YamlValue :=
+  match v with
+  | .scalar s => .scalar { s with anchor := some name }
+  | .sequence style items tag _ => .sequence style items tag (some name)
+  | .mapping style pairs tag _ => .mapping style pairs tag (some name)
+  | .alias n => .alias n  -- aliases don't carry their own anchor
 
 /-- Look up a key in a mapping by string content -/
 def YamlValue.lookup? (v : YamlValue) (key : String) : Option YamlValue :=
   match v with
-  | .mapping _ pairs _ =>
+  | .mapping _ pairs .. =>
     pairs.findSome? fun (k, v) =>
       match k with
       | .scalar s => if s.content == key then some v else none
       | _ => none
   | _ => none
+
+/--
+Resolve all alias nodes by substituting the anchored value.
+
+Walks the tree, replacing each `.alias name` with the corresponding
+value from the anchor map. Unresolved aliases are left as-is.
+-/
+def YamlValue.resolveAliases (v : YamlValue) (anchors : Array (String × YamlValue)) : YamlValue :=
+  match v with
+  | .scalar _ => v
+  | .sequence style items tag anchor =>
+    .sequence style (resolveList items.toList anchors).toArray tag anchor
+  | .mapping style pairs tag anchor =>
+    .mapping style (resolvePairs pairs.toList anchors).toArray tag anchor
+  | .alias name =>
+    match anchors.findSome? (fun (n, val) => if n == name then some val else none) with
+    | some val => val
+    | none => v  -- unresolved alias: preserve as-is
+where
+  /-- Resolve aliases in a list of values. -/
+  resolveList : List YamlValue → Array (String × YamlValue) → List YamlValue
+    | [], _ => []
+    | v :: vs, anchors => v.resolveAliases anchors :: resolveList vs anchors
+  /-- Resolve aliases in a list of key-value pairs. -/
+  resolvePairs : List (YamlValue × YamlValue) → Array (String × YamlValue)
+      → List (YamlValue × YamlValue)
+    | [], _ => []
+    | (k, v) :: rest, anchors =>
+      (k.resolveAliases anchors, v.resolveAliases anchors) :: resolvePairs rest anchors
 
 /-! ## Anchor Map
 

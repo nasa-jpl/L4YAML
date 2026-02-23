@@ -329,6 +329,7 @@ def flowSequenceItemsImpl (fuel : Nat) (acc : Array YamlValue) (minIndent : Nat 
     let isJsonLikeKey : Bool := match val with
       | .sequence .. | .mapping .. => true  -- flow collection
       | .scalar s => s.style == .doubleQuoted || s.style == .singleQuoted
+      | .alias _ => false
     let colonLine ← currentLine
     let isImplicitMapping ← lookAhead do
       match ← option? (token ':') with
@@ -551,6 +552,7 @@ def flowMappingEntryImpl (fuel : Nat) (minIndent : Nat := 0) : YamlParser (YamlV
     | .sequence .. | .mapping .. | .null => true
     | .scalar s => s.style == .doubleQuoted || s.style == .singleQuoted
                    || s.tag != none
+    | .alias _ => false
   let hasColon ← if isJsonKey then do
     match ← option? (lookAhead (token ':')) with
     | some _ => pure true
