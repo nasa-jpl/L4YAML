@@ -371,6 +371,71 @@ where
             makeIndent (depth + 1) cfg.indent ++ dumpValue v cfg (depth + 1)
       pair ++ "\n" ++ dumpBlockPairs rest cfg depth false
 
+/-! ## Directive Serialization -/
+
+/--
+Dump a single YAML directive.
+
+- `%YAML 1.2` for version directives
+- `%TAG !handle! prefix` for tag directives
+-/
+def dumpDirective : Directive → String
+  | .yaml version => "%YAML " ++ version
+  | .tag handle tagPrefix => "%TAG " ++ handle ++ " " ++ tagPrefix
+
+/--
+Dump a single YAML document.
+
+Produces:
+- Directive lines (if any), each on its own line
+- `---` document-start marker (always emitted when directives are present;
+  also emitted when the document value starts with an ambiguous character)
+- The document value via `dump`
+- No trailing `...` (document-end marker) — callers add it when needed
+
+## Examples
+
+```
+dumpDocument { value := .plainScalar "hello" } == "hello"
+dumpDocument { value := .plainScalar "hello", directives := #[.yaml "1.2"] }
+  == "%YAML 1.2\n---\nhello"
+```
+-/
+def dumpDocument (doc : YamlDocument) (cfg : DumpConfig := {}) : String :=
+  let body := dump doc.value cfg
+  if doc.directives.isEmpty then
+    -- No directives: emit bare value (omit `---` for minimal output)
+    body
+  else
+    let dirs := doc.directives.toList.map dumpDirective
+    String.intercalate "\n" dirs ++ "\n---\n" ++ body
+
+/--
+Dump multiple YAML documents as a stream.
+
+Documents are separated by `---` markers. The first document
+omits `---` when it has no directives (matching common YAML style).
+A trailing `...` is emitted after the last document only when there
+are multiple documents (signals end-of-stream clearly).
+
+## Examples
+
+```
+dumpDocuments #[{ value := .plainScalar "a" }]
+  == "a"
+dumpDocuments #[{ value := .plainScalar "a" }, { value := .plainScalar "b" }]
+  == "a\n---\nb\n..."
+```
+-/
+def dumpDocuments (docs : Array YamlDocument) (cfg : DumpConfig := {}) : String :=
+  match docs.toList with
+  | [] => ""
+  | [doc] => dumpDocument doc cfg
+  | doc :: rest =>
+    let first := dumpDocument doc cfg
+    let others := rest.map (fun d => "---\n" ++ dumpDocument d cfg)
+    first ++ "\n" ++ String.intercalate "\n" others ++ "\n..."
+
 end Lean4Yaml.Dump
 
 /-! ## Compile-Time Tests -/
@@ -506,5 +571,52 @@ open Lean4Yaml Lean4Yaml.Dump
 #guard dump (.mapping .block #[
     (.plainScalar "key", .sequence .block #[.plainScalar "a"])
   ]) { indent := 4 } == "key:\n    - a"
+
+/-! ### Document dump -/
+
+private def doc1 : YamlDocument := { value := .plainScalar "hello" }
+private def doc2 : YamlDocument :=
+  { value := .plainScalar "hello", directives := #[.yaml "1.2"] }
+private def doc3 : YamlDocument :=
+  { value := .mapping .block #[(.plainScalar "k", .plainScalar "v")],
+    directives := #[.yaml "1.2"] }
+private def doc4 : YamlDocument :=
+  { value := .plainScalar "val",
+    directives := #[.yaml "1.2", .tag "!e!" "tag:example.com,2000:"] }
+private def docA : YamlDocument := { value := .plainScalar "a" }
+private def docB : YamlDocument := { value := .plainScalar "b" }
+private def docC : YamlDocument := { value := .plainScalar "c" }
+private def docOnly : YamlDocument := { value := .plainScalar "only" }
+private def docMap : YamlDocument :=
+  { value := .mapping .block #[(.plainScalar "x", .plainScalar "1")] }
+private def docSeq : YamlDocument :=
+  { value := .sequence .block #[.plainScalar "y"] }
+private def docADir : YamlDocument :=
+  { value := .plainScalar "a", directives := #[.yaml "1.2"] }
+
+#guard dumpDocument doc1 == "hello"
+#guard dumpDocument doc2 == "%YAML 1.2\n---\nhello"
+#guard dumpDocument doc3 == "%YAML 1.2\n---\nk: v"
+#guard dumpDocument doc4 ==
+  "%YAML 1.2\n%TAG !e! tag:example.com,2000:\n---\nval"
+
+/-! ### Multi-document dump -/
+
+#guard dumpDocuments #[] == ""
+#guard dumpDocuments #[docOnly] == "only"
+#guard dumpDocuments #[docA, docB] == "a\n---\nb\n..."
+#guard dumpDocuments #[docA, docB, docC] == "a\n---\nb\n---\nc\n..."
+#guard dumpDocuments #[docMap, docSeq] == "x: 1\n---\n- y\n..."
+
+/-! ### Multi-document with directives -/
+
+#guard dumpDocuments #[docADir, docB] ==
+  "%YAML 1.2\n---\na\n---\nb\n..."
+
+/-! ### Directive dump -/
+
+#guard dumpDirective (.yaml "1.2") == "%YAML 1.2"
+#guard dumpDirective (.tag "!!" "tag:yaml.org,2002:") ==
+  "%TAG !! tag:yaml.org,2002:"
 
 end DumpGuards

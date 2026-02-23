@@ -1111,7 +1111,7 @@ Presentation layer: style-aware dump per YAML 1.2.2 §3.1.1. Renamed from "YAML 
 
 Updated `Grammar.lean` (NodeToValue propagates `BlockScalarMeta`), `Emitter.lean` (`.alias` branch in `emit`/`contentEq`), `Parser/Flow.lean` (`.alias` exhaustiveness), and all proof + test files (Soundness, RoundTrip, Completeness, Verification, TagTests, CompletenessTests, ValidationTests). All 503 build jobs pass, all test suites green (232/232).
 
-**Core dump function (2026-02-22).** Implemented `Lean4Yaml/Dump.lean` — the style-aware dump: `dump : YamlValue → DumpConfig → String`.
+**Core dump function (2026-02-22).** Implemented `Lean4Yaml/Dump.lean` — the style-aware dump: `dump : YamlValue → DumpConfig → String`. Registered in `Lean4Yaml.lean` barrel file.
 
 | Component | Description |
 |-----------|-------------|
@@ -1124,6 +1124,17 @@ Updated `Grammar.lean` (NodeToValue propagates `BlockScalarMeta`), `Emitter.lean
 | 42 `#guard` tests | Compile-time checks: plain/auto-quoted/reserved-word/block/folded/flow/nested/anchor/tag/alias/config-override scenarios |
 
 Pure function (no IO), kernel-reducible, `#guard`-testable. Registered in `Lean4Yaml.lean` barrel file. All 244 build jobs pass.
+
+**Document dump (2026-02-22).** Added `dumpDirective`, `dumpDocument`, `dumpDocuments` to `Dump.lean`:
+
+| Function | Description |
+|----------|-------------|
+| `dumpDirective` | Serializes `%YAML version` and `%TAG handle prefix` directives |
+| `dumpDocument` | Single document: directive lines + `---` marker (when directives present) + value body |
+| `dumpDocuments` | Multi-document stream: `---` separators between documents, trailing `...` when >1 doc |
+| 12 new `#guard` tests | Document/directive/multi-doc scenarios (54 total `#guard` tests in `Dump.lean`) |
+
+All 244 build jobs pass.
 
 </details>
 
@@ -1168,8 +1179,8 @@ The current emitter (`Emitter.lean`) produces canonical YAML — double-quoted s
 | Step | Description | Difficulty | Status |
 |------|-------------|------------|--------|
 | **6.0** | **Presentation metadata** — Round-trip types in `Types.lean`: `ChompStyle`, `BlockScalarMeta`, `CommentPosition`/`Comment`, `Scalar.anchor`/`blockMeta`, `YamlValue.alias` constructor, anchor fields on `.sequence`/`.mapping`, `resolveAliases`. Updated Grammar, Emitter, Flow, all proofs and tests. | Low | ✅ Complete |
-| **6.1** | **Core dump** — `dump : YamlValue → DumpConfig → String`. Style-aware output: plain/quoted scalars based on content analysis, block sequences/mappings with configurable indentation, flow collections when compact. Multi-line string support via literal `\|` and folded `>` block scalars. 42 `#guard` compile-time tests. | Medium | ✅ Complete |
-| **6.2** | **Document dump** — Handle `---`/`...` markers, directives (`%YAML`, `%TAG`), multi-document streams. Integrate with `DumpConfig` for document-level options. | Low | Not started |
+| **6.1** | **Core dump** — `dump : YamlValue → DumpConfig → String`. Style-aware output: plain/quoted scalars based on content analysis, block sequences/mappings with configurable indentation, flow collections when compact. Multi-line string support via literal `\|` and folded `>` block scalars. | Medium | ✅ Complete |
+| **6.2** | **Document dump** — `dumpDirective`, `dumpDocument`, `dumpDocuments`. `---`/`...` markers, `%YAML`/`%TAG` directives, multi-document streams. 54 total `#guard` compile-time tests (42 value + 12 document). | Low | ✅ Complete |
 | **6.3** | **Dump proofs** — (a) `dump_produces_valid_yaml`: output of `dump` is parseable by `parseYaml`. (b) `dump_preserves_content`: `contentEq v (parseYamlSingle (dump v cfg)).get!` for all `v`. (c) Style preservation: when `YamlValue` already has explicit style annotations, the dump function respects them. | High | Not started |
 | **6.4** | **Dump tests** — `#guard` compile-time checks for dump output across all value types and configurations. Golden-file comparisons for complex nested structures. | Low | Not started |
 
