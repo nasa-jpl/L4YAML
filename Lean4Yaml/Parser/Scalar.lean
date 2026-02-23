@@ -5,6 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import Lean4Yaml.Types
 import Lean4Yaml.Stream
 import Lean4Yaml.Parser.Combinators
+import Lean4Yaml.YamlSpec
 
 /-!
 # YAML Scalar Parsers
@@ -49,6 +50,7 @@ Parse a YAML escape sequence inside a double-quoted scalar.
 Escape sequences start with `\` followed by an
 escape character. Returns the character the sequence represents.
 -/
+@[yaml_spec "7.3.1" 107 "c-double-quoted(n,c)", yaml_spec "5.7" 61 "c-ns-esc-char"]
 def escapeSequence : YamlParser Char :=
   withErrorMessage "expected escape sequence" do
     let _ ← char '\\'
@@ -207,6 +209,7 @@ Parse a double-quoted scalar.
 Double-quoted scalars support escape sequences and line folding.
 Returns the processed content.
 -/
+@[yaml_spec "7.3.1" 107 "c-double-quoted(n,c)"]
 def doubleQuotedScalar (contentIndent : Nat := 0) : YamlParser YamlValue :=
   withErrorMessage "expected double-quoted scalar" do
     let _ ← char '"'
@@ -309,6 +312,7 @@ Parse a single-quoted scalar.
 The only escape in single-quoted scalars is `''` → `'`.
 Line folding follows the same rules as double-quoted scalars.
 -/
+@[yaml_spec "7.3.2" 118 "c-single-quoted(n,c)"]
 def singleQuotedScalar (contentIndent : Nat := 0) : YamlParser YamlValue :=
   withErrorMessage "expected single-quoted scalar" do
     let _ ← char '\''
@@ -358,6 +362,7 @@ characters. In flow context, flow indicators are also forbidden.
 The `#` character is only allowed if preceded by a non-space.
 The `:` character is only allowed if followed by a non-space.
 -/
+@[yaml_spec "7.3.3" 125 "ns-plain-safe(c)"]
 def isPlainSafe (c : Char) (inFlow : Bool) : Bool :=
   if isLineBreak c || isWhiteSpace c then false
   else if inFlow && isFlowIndicator c then false
@@ -389,6 +394,7 @@ Parameters:
 - `inFlow`: whether we're inside a flow collection (`[...]` or `{...}`)
 - `baseIndent`: parent structure's indentation level (for continuation)
 -/
+@[yaml_spec "7.3.3" 128 "ns-plain(n,c)"]
 def plainScalarContent (inFlow : Bool) (contentIndent : Nat) : YamlParser String :=
   withErrorMessage "expected plain scalar" do
     -- Pre-validate: check that first char can start a plain scalar.
@@ -658,6 +664,7 @@ At document level `contentIndent = 0`, allowing col-0 continuation.
 
 In flow context, scalars are single-line.
 -/
+@[yaml_spec "7.3.3" 128 "ns-plain(n,c)"]
 def plainScalar (inFlow : Bool) (contentIndent : Nat := 0) : YamlParser YamlValue := do
   let content ← plainScalarContent inFlow contentIndent
   if content.isEmpty then
@@ -673,6 +680,7 @@ def plainScalar (inFlow : Bool) (contentIndent : Nat := 0) : YamlParser YamlValu
 /-- Chomping behavior for block scalars.
 
 **YAML 1.2.2**: [160] c-chomping-indicator(t) (§8.1.1.2) -/
+@[yaml_spec "8.1" 170 "c-l+literal(n)", yaml_spec "8.1.1.2" 160 "c-chomping-indicator(t)"]
 inductive ChompIndicator where
   | strip  -- `-`: remove all trailing newlines
   | clip   -- default: single trailing newline
@@ -797,6 +805,7 @@ Returns the number of leading spaces on that line.
 - **Enforcement**: the entire body is wrapped in `lookAhead`.
   See `Proofs/BlockScalarContracts.lean` `contract_autoDetectIndent_non_consuming`.
 -/
+@[yaml_spec "8.1.3" 163 "b-chomped-last(t)"]
 def autoDetectIndent (minIndent : Nat) : YamlParser Nat :=
   lookAhead do
     -- Skip blank lines, tracking max spaces in whitespace-only lines
@@ -852,6 +861,7 @@ Returns the raw content string.
 - **Enforcement**: uses `consumeIndent indent` which rejects tabs
   and requires exactly `indent` spaces.
 -/
+@[yaml_spec "8.1.2" 166 "l-nb-literal-text(n)"]
 def blockScalarContent (indent : Nat) : YamlParser String := do
   let fuel := Stream.remaining (← getStream)
   collectLines fuel "" true
@@ -956,6 +966,7 @@ Folded scalars replace single line breaks between content lines with spaces.
 Empty lines (producing double newlines) are preserved.
 Lines with extra indentation (more-indented) preserve their line break.
 -/
+@[yaml_spec "8.1.3" 175 "c-l+folded(n)"]
 def processFolded (raw : String) : String :=
   let lines := raw.splitOn "\n"
   go lines "" true

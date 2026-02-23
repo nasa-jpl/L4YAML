@@ -8,6 +8,7 @@ import Lean4Yaml.Parser.Combinators
 import Lean4Yaml.Parser.Scalar
 import Lean4Yaml.Parser.Anchor
 import Lean4Yaml.Parser.Tag
+import Lean4Yaml.YamlSpec
 
 /-!
 # YAML Flow Collection Parsers
@@ -61,6 +62,7 @@ white space characters."  We only treat `#` as a comment start if
 whitespace was consumed before it (or it appears at column 0, i.e.
 start of a line).
 -/
+@[yaml_spec "6.5" 73 "s-flow-line-prefix(n)"]
 def flowWhitespace (minIndent : Nat := 0) : YamlParser Unit := do
   let fuel := Stream.remaining (← getStream)
   go fuel
@@ -239,6 +241,7 @@ Parse a flow sequence.
 Items are separated by commas with optional whitespace.
 Nested flow collections are supported.
 -/
+@[yaml_spec "7.4.1" 134 "c-flow-sequence(n,c)"]
 def flowSequenceImpl (fuel : Nat) (minIndent : Nat := 0) : YamlParser YamlValue :=
   match fuel with
   | 0 => pure (.sequence .flow #[])
@@ -272,6 +275,7 @@ without braces, creating an implicit single-pair flow mapping.
 **Pre-condition**: `[` already consumed; whitespace skipped.
 **Post-condition**: items collected up to and including `]`.
 -/
+@[yaml_spec "7.4.1" 135 "ns-s-flow-seq-entries(n,c)"]
 def flowSequenceItemsImpl (fuel : Nat) (acc : Array YamlValue) (minIndent : Nat := 0) : YamlParser (Array YamlValue) :=
   match fuel with
   | 0 => pure acc
@@ -381,6 +385,7 @@ Parse a flow mapping.
 
 Keys can be scalars or complex keys (preceded by `?`).
 -/
+@[yaml_spec "7.4.2" 137 "c-flow-mapping(n,c)"]
 def flowMappingImpl (fuel : Nat) (minIndent : Nat := 0) : YamlParser YamlValue :=
   match fuel with
   | 0 => pure (.mapping .flow #[])
@@ -399,6 +404,7 @@ def flowMappingImpl (fuel : Nat) (minIndent : Nat := 0) : YamlParser YamlValue :
 Parse flow mapping entries, separated by commas.
 
 **YAML 1.2.2**: [138] ns-s-flow-map-entries(n,c) (§7.4.2) -/
+@[yaml_spec "7.4.2" 138 "ns-s-flow-map-entries(n,c)"]
 def flowMappingEntriesImpl (fuel : Nat) (acc : Array (YamlValue × YamlValue)) (minIndent : Nat := 0) :
     YamlParser (Array (YamlValue × YamlValue)) :=
   match fuel with
@@ -435,6 +441,7 @@ Handles:
 - `key : value` — implicit key
 - `: value` — empty key with value (§7.4.2)
 -/
+@[yaml_spec "7.4.2" 139 "ns-flow-map-entry(n,c)"]
 def flowMappingEntryImpl (fuel : Nat) (minIndent : Nat := 0) : YamlParser (YamlValue × YamlValue) :=
   match fuel with
   | 0 => pure (.null, .null)

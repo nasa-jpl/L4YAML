@@ -5,6 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import Lean4Yaml.Types
 import Lean4Yaml.Stream
 import Lean4Yaml.Parser.Combinators
+import Lean4Yaml.YamlSpec
 
 /-!
 # YAML Anchor & Alias Parsers
@@ -71,6 +72,7 @@ Parse an anchor name: one or more `ns-anchor-char` characters.
 **YAML 1.2.2**: [101] ns-anchor-name (§6.9.2, https://yaml.org/spec/1.2.2/#692-node-anchors)
 - [102] ns-anchor-char: `ns-char - c-flow-indicator`
 -/
+@[yaml_spec "6.9.2" 101 "ns-anchor-name"]
 def anchorName : YamlParser String :=
   withErrorMessage "expected anchor name" do
     let chars ← takeMany1 (tokenFilter isAnchorChar)
@@ -165,6 +167,7 @@ The **Compose** step (§3.1) later resolves this to the anchored value.
 in the stream (survives backtracking). The alias node is still returned.
 The top-level parser checks `validationError` and rejects the input.
 -/
+@[yaml_spec "7.1" 103 "c-ns-alias-node"]
 def parseAlias : YamlParser YamlValue :=
   withErrorMessage "expected alias (*name)" do
     let _ ← char '*'
@@ -195,6 +198,7 @@ Parse an anchor prefix: `&name` followed by optional whitespace.
 Returns the anchor name. Does not store anything — the caller
 must parse the value and call `storeAnchor name value`.
 -/
+@[yaml_spec "6.9.2" 99 "c-ns-anchor-property"]
 def parseAnchorPrefix : YamlParser String :=
   withErrorMessage "expected anchor (&name)" do
     let _ ← char '&'

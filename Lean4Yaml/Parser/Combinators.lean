@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Parser
 import Lean4Yaml.Stream
+import Lean4Yaml.YamlSpec
 
 /-!
 # YAML Character Classification & Basic Combinators
@@ -29,6 +30,7 @@ open Parser.Char
 
 **YAML 1.2.2**: [26] b-char (§5.4, https://yaml.org/spec/1.2.2/#54-line-break-characters)
 - [24] b-line-feed (LF) | [25] b-carriage-return (CR) -/
+@[yaml_spec "5.4" 26 "b-char"]
 def isLineBreak (c : Char) : Bool :=
   c == '\n' || c == '\r'
 
@@ -36,12 +38,14 @@ def isLineBreak (c : Char) : Bool :=
 
 **YAML 1.2.2**: [33] s-white (§5.5, https://yaml.org/spec/1.2.2/#55-white-space-characters)
 - [31] s-space | [32] s-tab -/
+@[yaml_spec "5.5" 33 "s-white"]
 def isWhiteSpace (c : Char) : Bool :=
   c == ' ' || c == '\t'
 
 /-- YAML indicator characters.
 
 **YAML 1.2.2**: [22] c-indicator (§5.3, https://yaml.org/spec/1.2.2/#53-indicator-characters) -/
+@[yaml_spec "5.3" 22 "c-indicator"]
 def isIndicator (c : Char) : Bool :=
   c ∈ ['-', '?', ':', ',', '[', ']', '{', '}', '#', '&', '*', '!', '|', '>',
        '\'', '"', '%', '@', '`']
@@ -49,6 +53,7 @@ def isIndicator (c : Char) : Bool :=
 /-- Flow indicator characters.
 
 **YAML 1.2.2**: [23] c-flow-indicator (§5.3, https://yaml.org/spec/1.2.2/#53-indicator-characters) -/
+@[yaml_spec "5.3" 23 "c-flow-indicator"]
 def isFlowIndicator (c : Char) : Bool :=
   c ∈ [',', '[', ']', '{', '}']
 
@@ -60,12 +65,14 @@ P6 fix (8XYN): YAML §6.9.2 defines anchor names as `ns-anchor-char+`
     where `ns-anchor-char` is any character except flow indicators,
     whitespace, and line breaks.  The previous restriction to ASCII
     alphanumeric/hyphen/underscore was too narrow. -/
+@[yaml_spec "6.9.2" 102 "ns-anchor-char"]
 def isAnchorChar (c : Char) : Bool :=
   !isFlowIndicator c && !isWhiteSpace c && !isLineBreak c
 
 /-- Characters forbidden at the start of a plain scalar.
 
 **YAML 1.2.2**: [22] c-indicator (§5.3) — used as the exclusion set for [123] ns-plain-first(c). -/
+@[yaml_spec "5.3" 22 "c-indicator"]
 def isForbiddenPlainStart (c : Char) : Bool :=
   isIndicator c
 
@@ -78,6 +85,7 @@ Plain scalars cannot start with most indicators ([22] c-indicator).
 Exception: `-`, `?`, `:` can start plain scalars if followed by a
 non-space character ([34] ns-char).
 -/
+@[yaml_spec "7.3.3" 123 "ns-plain-first(c)"]
 def canStartPlainScalar (c : Char) (next : Option Char) : Bool :=
   if c == '-' || c == '?' || c == ':' then
     match next with
@@ -135,6 +143,7 @@ def peekIndent : YamlParser Nat :=
 /-- Parse a YAML comment: `#` to end of line.
 
 **YAML 1.2.2**: [75] c-nb-comment-text (§6.7, https://yaml.org/spec/1.2.2/#67-comments) -/
+@[yaml_spec "6.7" 75 "c-nb-comment-text"]
 def comment : YamlParser Unit :=
   withErrorMessage "expected comment" do
     let _ ← token '#'
@@ -143,6 +152,7 @@ def comment : YamlParser Unit :=
 /-- Skip optional horizontal whitespace and an optional comment.
 
 **YAML 1.2.2**: [77] s-b-comment (§6.7) -/
+@[yaml_spec "6.7" 77 "s-b-comment"]
 def skipTrailing : YamlParser Unit := do
   skipHWhitespace
   optional comment *> return
@@ -150,6 +160,7 @@ def skipTrailing : YamlParser Unit := do
 /-- Skip trailing whitespace, optional comment, and the newline.
 
 **YAML 1.2.2**: [77] s-b-comment + [76] b-comment (§6.7) -/
+@[yaml_spec "6.7" 77 "s-b-comment"]
 def skipToNextLine : YamlParser Unit := do
   skipTrailing
   newline
@@ -210,6 +221,7 @@ parameter is `n = -1`, so content lines require `s-indent(n+m)` where
 least one content character follows (cf. the spec's `nb-char+`
 requirement in `l-nb-literal-text` and `s-nb-folded-text`).
 -/
+@[yaml_spec "6.1" 63 "s-indent(n)"]
 def consumeIndent (n : Nat) : YamlParser Unit :=
   withErrorMessage s!"expected {n} spaces of indentation (tabs not allowed)" do
     -- Check for tab at start (YAML 1.2.2 §6.1, https://yaml.org/spec/1.2.2/#61-indentation-spaces)
@@ -378,6 +390,7 @@ Check if we're at a document start marker (`---` followed by whitespace/newline/
 
 Does not consume any input.
 -/
+@[yaml_spec "9.1.2" 197 "c-directives-end"]
 def atDocumentStart : YamlParser Bool :=
   lookAhead do
     match ← option? (chars "---") with
@@ -394,6 +407,7 @@ Check if we're at a document end marker (`...` followed by whitespace/newline/EO
 
 Does not consume any input.
 -/
+@[yaml_spec "9.1.3" 198 "c-document-end"]
 def atDocumentEnd : YamlParser Bool :=
   lookAhead do
     match ← option? (chars "...") with
@@ -521,6 +535,7 @@ Decision algorithm:
 
 **YAML 1.2.2**: [131] s-ns-plain-next-line(n,c) look-ahead (§7.3.3)
 -/
+@[yaml_spec "7.3.3" 131 "s-ns-plain-next-line(n,c)"]
 def checkContinuation (contentIndent : Nat) : YamlParser ContinuationCheck :=
   lookAhead do
     -- Must be at a line break to continue

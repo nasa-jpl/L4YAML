@@ -9,6 +9,7 @@ import Lean4Yaml.Parser.Scalar
 import Lean4Yaml.Parser.Anchor
 import Lean4Yaml.Parser.Flow
 import Lean4Yaml.Parser.Block
+import Lean4Yaml.YamlSpec
 
 /-!
 # YAML Document Parsers
@@ -81,6 +82,7 @@ Skip an optional BOM (byte order mark) at the start of input.
 
 The BOM (U+FEFF) is allowed at the start of a stream.
 -/
+@[yaml_spec "5.2" 3 "c-byte-order-mark"]
 def skipBOM : YamlParser Unit := do
   let _ ← option? (token '\uFEFF')
 
@@ -99,6 +101,7 @@ Parse a YAML directive.
 
 Directives start with `%` and end at the next line break.
 -/
+@[yaml_spec "6.8" 82 "l-directive"]
 def directive : YamlParser Directive :=
   withErrorMessage "expected directive" do
     let _ ← char '%'
@@ -172,6 +175,7 @@ Parse the document start marker `---`.
 The marker must be followed by whitespace, a newline, or EOF.
 Returns `true` if the marker was found.
 -/
+@[yaml_spec "9" 197 "-", yaml_spec "9.1.2" 197 "c-directives-end"]
 def documentStartMarker : YamlParser Unit :=
   withErrorMessage "expected '---'" do
     let _ ← chars "---"
@@ -196,6 +200,7 @@ The marker must be followed by whitespace, a newline, or EOF.
 P5 fix: also validate that no non-whitespace/non-comment content
 remains on the line after `...` (catches `... invalid` in 3HFZ).
 -/
+@[yaml_spec "9.1.3" 198 "c-document-end"]
 def documentEndMarker : YamlParser Unit :=
   withErrorMessage "expected '...'" do
     let _ ← chars "..."
@@ -237,6 +242,7 @@ The `stalled` result eliminates the need for callers to compare stream
 positions before/after the call. The document parser itself knows whether
 it consumed content, and communicates this through the result type.
 -/
+@[yaml_spec "9.2" 204 "l-any-document"]
 def document (prevHadDocEnd : Bool := true) : YamlParser DocumentResult := do
   -- Reset anchor map for this document scope (§3.2.2.2).
   -- Anchors from a previous document must not leak into the next one.
@@ -397,6 +403,7 @@ A YAML stream consists of zero or more documents.
 Uses `DocumentResult` to distinguish successful parse from end-of-stream
 from stalled input, without needing external position comparison.
 -/
+@[yaml_spec "9.2" 205 "l-yaml-stream"]
 def yamlStream : YamlParser (Array YamlDocument) := do
   skipBOM
   let fuel := Stream.remaining (← getStream)
