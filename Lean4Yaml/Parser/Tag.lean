@@ -5,6 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import Lean4Yaml.Types
 import Lean4Yaml.Stream
 import Lean4Yaml.Parser.Combinators
+import Lean4Yaml.YamlSpec
 
 /-!
 # YAML Tag Parsers
@@ -30,6 +31,7 @@ YAML tags come in several forms:
 ## Design
 
 **Tags are metadata**: Tags annotate the node but don't change the AST
+@[yaml_spec "6.9.1" 95 "-"]
 structure. After parsing a tag prefix, the caller parses the value normally
 and applies the tag to the result using `YamlValue.withTag`.
 
@@ -71,6 +73,7 @@ Per YAML §6.8.2, tag characters include URI characters (alphanumeric,
 `-`, `.`, `_`, `~`, `/`, `:`, `@`, `!`, `$`, `&`, `*`, `+`, `=`, etc.)
 but exclude flow indicators and whitespace.
 -/
+@[yaml_spec "6.8.2" 40 "ns-tag-char"]
 def isTagChar (c : Char) : Bool :=
   c.isAlphanum || c ∈ ['-', '.', '_', '~', '/', ':', '@', '!', '$',
                          '&', '*', '+', '=', '%', '^', '(', ')']
@@ -83,6 +86,7 @@ Characters allowed in tag handle names (the part between `!` delimiters).
 
 Handle names are word characters: `[a-zA-Z0-9-]`.
 -/
+@[yaml_spec "6.8.2" 86 "c-tag-handle"]
 def isTagHandleChar (c : Char) : Bool :=
   c.isAlphanum || c == '-'
 
@@ -93,6 +97,7 @@ Characters allowed inside verbatim tag URIs (`!<...>`).
 
 All printable non-whitespace characters except `>`.
 -/
+@[yaml_spec "6.9.1" 96 "c-verbatim-tag"]
 def isVerbatimTagChar (c : Char) : Bool :=
   c != '>' && !isWhiteSpace c && !isLineBreak c && c.val >= 0x20
 
@@ -117,6 +122,7 @@ Returns the tag string as-is.
 
 §6.9.1 (https://yaml.org/spec/1.2.2/#691-node-tags)
 -/
+@[yaml_spec "6.9.1" 95 "c-ns-tag-property"]
 def parseTagPrefix : YamlParser String :=
   withErrorMessage "expected tag (!...)" do
     let _ ← char '!'

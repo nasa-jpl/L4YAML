@@ -9,6 +9,7 @@ import Lean4Yaml.Parser.Scalar
 import Lean4Yaml.Parser.Anchor
 import Lean4Yaml.Parser.Tag
 import Lean4Yaml.Parser.Flow
+import Lean4Yaml.YamlSpec
 
 /-!
 # YAML Block Collection Parsers
@@ -410,6 +411,7 @@ is recorded in the stream (survives backtracking) and `none` is returned.
   block value.  If `none`, no content was consumed at this indent level.
   If `dispatchByCharImpl fuel` returned `.invalid`, `stream'.validationError ≠ none`.
 -/
+@[yaml_spec "8.2" 192 "s-l+block-node(n,c)"]
 def blockValueImpl (fuel : Nat) (minIndent : Nat) (propertyMinIndent : Nat := minIndent)
     : YamlParser (Option YamlValue) :=
   match fuel with
@@ -495,6 +497,7 @@ Parse a block sequence.
 Each item starts with `- ` at the same indentation level.
 The content of each item is a block value indented relative to the `-`.
 -/
+@[yaml_spec "8.2.1" 183 "l+block-sequence(n)"]
 def blockSequenceImpl (fuel : Nat) (minIndent : Nat) : YamlParser (Option YamlValue) :=
   match fuel with
   | 0 => pure none
@@ -513,6 +516,7 @@ Parse block sequence items at a fixed indentation level.
 
 **YAML 1.2.2**: [180] c-l-block-seq-entry(n) (§8.2.1)
 -/
+@[yaml_spec "8.2.1" 180 "c-l-block-seq-entry(n)"]
 def blockSequenceItemsImpl (fuel : Nat) (seqIndent : Nat) (acc : Array YamlValue) :
     YamlParser (Array YamlValue) :=
   match fuel with
@@ -643,6 +647,7 @@ Returns `Option YamlValue`:
 **Post-condition**: if `some`, consumed the mapping.  If `none`,
   no input consumed at this indent level.
 -/
+@[yaml_spec "8.2.2" 184 "l+block-mapping(n)"]
 def blockMappingImpl (fuel : Nat) (minIndent : Nat) : YamlParser (Option YamlValue) :=
   match fuel with
   | 0 => pure none
@@ -660,6 +665,7 @@ Parse block mapping entries at a fixed indentation level.
 
 **YAML 1.2.2**: [185] ns-l-block-map-entry(n) (§8.2.2)
 -/
+@[yaml_spec "8.2.2" 185 "ns-l-block-map-entry(n)"]
 def blockMappingEntriesImpl (fuel : Nat) (mapIndent : Nat)
     (acc : Array (YamlValue × YamlValue)) :
     YamlParser (Array (YamlValue × YamlValue)) :=
@@ -712,6 +718,7 @@ Parse a single block mapping entry.
 
 Handles both simple keys (`key: value`) and complex keys (`? key\n: value`).
 -/
+@[yaml_spec "8.2.2" 185 "ns-l-block-map-entry(n)"]
 def blockMappingEntryImpl (fuel : Nat) (mapIndent : Nat) :
     YamlParser (YamlValue × YamlValue) :=
   match fuel with
@@ -892,6 +899,7 @@ Parse a simple block mapping key.
 Simple keys are single-line and cannot contain certain indicators.
 They end at `: ` (mapping value indicator).
 -/
+@[yaml_spec "8.2.2" 189 "ns-s-block-map-implicit-key"]
 def blockMappingKeyImpl (fuel : Nat) : YamlParser YamlValue :=
   match fuel with
   | 0 => pure .null

@@ -1,4 +1,5 @@
 import Lean4Yaml.Types
+import Lean4Yaml.YamlSpec
 import Lean4Yaml.Stream
 import Lean4Yaml.Grammar
 import Lean4Yaml.Parser.Combinators

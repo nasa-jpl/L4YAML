@@ -3,6 +3,7 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml.Types
+import Lean4Yaml.YamlSpec
 
 /-!
 # Formal YAML Grammar
@@ -50,6 +51,7 @@ YAML printable characters.
 
 The set of characters that can appear in a YAML stream.
 -/
+@[yaml_spec "5.1" 1 "c-printable"]
 def isPrintable (c : Char) : Prop :=
   c == '\t'                                    -- Tab
   ∨ (c.val ≥ 0x20 ∧ c.val ≤ 0x7E)            -- Basic ASCII printable
@@ -66,6 +68,7 @@ Line break characters.
 **YAML 1.2.2**: [24] b-line-feed, [25] b-carriage-return, [26] b-char
 (§5.4, https://yaml.org/spec/1.2.2/#54-line-break-characters)
 -/
+@[yaml_spec "5.4" 26 "b-char"]
 def isLineBreak (c : Char) : Prop :=
   c == '\n' ∨ c == '\r'
 
@@ -80,6 +83,7 @@ White space characters for YAML.
 
 Only space and tab — NOT line breaks.
 -/
+@[yaml_spec "5.5" 33 "s-white"]
 def isWhiteSpace (c : Char) : Prop :=
   c == ' ' ∨ c == '\t'
 
@@ -93,6 +97,7 @@ YAML space character for indentation.
 Only the space character is valid for indentation.
 Tabs are explicitly forbidden for indentation in YAML 1.2.2.
 -/
+@[yaml_spec "6.1" 31 "s-space"]
 def isIndentChar (c : Char) : Prop :=
   c == ' '
 
@@ -105,6 +110,7 @@ Characters that can start a plain scalar.
 
 Excludes indicators ([22] c-indicator) that have special meaning at the start.
 -/
+@[yaml_spec "7.3.3" 123 "ns-plain-first(c)"]
 def canStartPlainScalar (c : Char) : Prop :=
   isPrintable c
   ∧ ¬ isWhiteSpace c
@@ -122,6 +128,7 @@ Flow indicator characters.
 
 These terminate plain scalars in flow context.
 -/
+@[yaml_spec "5.3" 23 "c-flow-indicator"]
 def isFlowIndicator (c : Char) : Prop :=
   c ∈ [',', '[', ']', '{', '}']
 
@@ -137,6 +144,7 @@ An indentation of `n` spaces at the start of a line.
 This is the core proposition for block-style YAML. A line is indented
 at level `n` if it starts with exactly `n` space characters.
 -/
+@[yaml_spec "6.1" 63 "s-indent(n)"]
 inductive Indented : Nat → List Char → Prop where
   /-- Zero indentation: any content -/
   | zero (cs : List Char) : Indented 0 cs
@@ -162,6 +170,7 @@ A line has indentation of **at least** `n` spaces.
 
 Used for block scalar content lines.
 -/
+@[yaml_spec "6.1" 65 "s-indent(≤n)"]
 def IndentedAtLeast (n : Nat) (cs : List Char) : Prop :=
   ∃ m, m ≥ n ∧ Indented m cs
 
@@ -206,6 +215,7 @@ A character sequence at column 0 is c-forbidden if it begins with
 by whitespace, line break, or end-of-input.
 This is the pure specification of the parser's `atDocumentBoundary` check.
 -/
+@[yaml_spec "9.1.2" 200 "c-forbidden"]
 def isCForbiddenPrefix : List Char → Bool
   | '-' :: '-' :: '-' :: rest => isMarkerFollower rest
   | '.' :: '.' :: '.' :: rest => isMarkerFollower rest
@@ -240,6 +250,7 @@ This is the specification against which the parser's `processEscape`
 function (in `Parser/Scalar.lean`) is verified. The 18 named escapes
 follow YAML 1.2.2 §5.7 Table 5.13 exactly.
 -/
+@[yaml_spec "5.7" 61 "c-ns-esc-char"]
 def resolveNamedEscape : Char → Option Char
   | '0'  => some '\x00'   -- [42] ns-esc-null
   | 'a'  => some '\x07'   -- [43] ns-esc-bell
@@ -284,6 +295,7 @@ Plain scalars in block context:
 - Are terminated by line breaks, `: `, or less-indented lines
 - Continuation lines are folded (replacing newline with space)
 -/
+@[yaml_spec "7.3.3" 128 "ns-plain(n,c)"]
 structure ValidPlainScalarBlock where
   /-- The resolved content string -/
   content : String
@@ -301,6 +313,7 @@ Plain scalars in flow context additionally:
 - Cannot contain flow indicators ([23] c-flow-indicator: `,`, `[`, `]`, `{`, `}`)
 - Are terminated by flow indicators in addition to block terminators
 -/
+@[yaml_spec "7.3.3" 128 "ns-plain(n,c)"]
 structure ValidPlainScalarFlow where
   content : String
   nonempty : content.length > 0
@@ -318,6 +331,7 @@ Single-quoted scalars:
 - Only escape: `''` → `'` (doubled single quote)
 - All other characters are literal
 -/
+@[yaml_spec "7.3.2" 118 "c-single-quoted(n,c)"]
 structure ValidSingleQuoted where
   content : String
 
@@ -335,6 +349,7 @@ Double-quoted scalars:
 - Full escape sequence support: `\n`, `\t`, `\\`, `\"`, `\xHH`, `\uHHHH`, etc.
 - Line folding: newlines become spaces (unless `\` at end of line)
 -/
+@[yaml_spec "7.3.1" 107 "c-double-quoted(n,c)"]
 structure ValidDoubleQuoted where
   content : String
 
@@ -351,6 +366,7 @@ Literal scalars (`|`):
 - Content indented relative to indicator
 - Optional chomping indicator: `-` (strip), `+` (keep), default (clip)
 -/
+@[yaml_spec "8.1.2" 170 "c-l+literal(n)"]
 structure ValidLiteralScalar where
   content : String
   indent : Nat
@@ -369,6 +385,7 @@ Folded scalars (`>`):
 - Fold line breaks to spaces (except for blank lines and more-indented lines)
 - Optional chomping indicator
 -/
+@[yaml_spec "8.1.3" 175 "c-l+folded(n)"]
 structure ValidFoldedScalar where
   content : String
   indent : Nat
@@ -389,6 +406,7 @@ A node is any valid YAML value: scalar, sequence, or mapping,
 in either block or flow style. Defined as a single inductive to
 avoid mutual recursion between structures.
 -/
+@[yaml_spec "8.2.3" 196 "s-l+block-node(n,c)", yaml_spec "7.5" 157 "ns-flow-node(n,c)"]
 inductive ValidNode where
   /-- [128] ns-plain(n,BLOCK-KEY/BLOCK-OUT) — Plain scalar in block context -/
   | plainScalarBlock (content : String) (nonempty : content.length > 0)
@@ -423,6 +441,7 @@ A valid YAML document.
 
 Documents may optionally start with `---` and end with `...`.
 -/
+@[yaml_spec "9" 204 "l-any-document"]
 structure ValidDocument where
   /-- The document content -/
   content : ValidNode
@@ -434,6 +453,7 @@ A valid YAML stream — one or more documents.
 
 **YAML 1.2.2**: [205] l-yaml-stream (§9, https://yaml.org/spec/1.2.2/#chapter-9-document-stream-productions)
 -/
+@[yaml_spec "9" 205 "l-yaml-stream"]
 structure ValidStream where
   documents : List ValidDocument
   nonempty : documents.length > 0
@@ -594,6 +614,7 @@ whitespace/comment/newline).
 
 **Decidable**: used both in proofs and runtime assertions.
 -/
+@[yaml_spec "8.1.1" 158 "c-b-block-header(m,t)"]
 def isBlockScalarHeaderChar (c : Char) : Bool :=
   c == '-' || c == '+' || (c >= '1' && c <= '9')
 
