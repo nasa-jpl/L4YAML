@@ -1,0 +1,4 @@
+First occurrence: &<mark class="legend-2">anchor</mark> Foo
+Second occurrence: <mark class="legend-1">*<mark class="legend-2">anchor</mark></mark>
+Override anchor: &<mark class="legend-2">anchor</mark> Bar
+Reuse anchor: <mark class="legend-1">*<mark class="legend-2">anchor</mark></mark>

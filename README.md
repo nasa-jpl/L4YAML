@@ -57,10 +57,21 @@ Lean4Yaml/
     ├── ErrorStageDiag.lean  # Error-stage pipeline diagnostic (5 suite + 5 inline + 5 comparison)
     ├── TryParse.lean        # Single-file parse binary (subprocess isolation)
     ├── CheckStringPos.lean  # String position utility tests
+    ├── SpecExamples.lean    # YAML 1.2.2 spec example parse tests (132 examples)
     └── SuiteRunner/
         ├── Meta.lean        # Line-based yaml-test-suite file parser
         ├── Main.lean        # Programmatic yaml-test-suite runner
         └── HtmlReport.lean  # Interactive HTML coverage reports
+tools/
+└── ExtractSpecExamples.lean  # Scrape yaml.org/spec/1.2.2 → examples/ directory
+examples/                        # YAML 1.2.2 spec examples (§2–§10, 132 files)
+├── 2/                           # §2 Preview (28 examples)
+├── 5/                           # §5 Characters (14 examples)
+├── 6/                           # §6 Basic Structures (29 examples)
+├── 7/                           # §7 Flow Styles (24 examples)
+├── 8/                           # §8 Block Styles (22 examples)
+├── 9/                           # §9 Document Stream (6 examples)
+└── 10/                          # §10 Schemas (9 examples)
 Demo.lean                    # End-to-end demo examples (7 tests)
 ```
 
@@ -68,7 +79,7 @@ Demo.lean                    # End-to-end demo examples (7 tests)
 
 Verification uses a deliberate 3-layer approach:
 
-1. **Internal runtime tests** (940 tests across 12 suites + 11 diagnostic) — hand-written Lean tests validating parser properties. Every `theorem` target starts life as a runtime `check` test. These are _separate_ from the yaml-test-suite's 406 external test cases.
+1. **Internal runtime tests** (940 tests across 12 suites + 11 diagnostic + 132 spec examples) — hand-written Lean tests validating parser properties. Every `theorem` target starts life as a runtime `check` test. These are _separate_ from the yaml-test-suite's 406 external test cases. Additionally, 132 examples extracted from the YAML 1.2.2 specification (§2–§10) are parsed as an extra conformance layer.
 2. **Formal proofs** (`theorem`/`lemma` in `Proofs/*.lean`) — machine-checked guarantees. Layered by dependency: pure functions first, then parser invariants, then full soundness.
 3. **Compile-time guards** (`#guard`) — 76 hand-written + 351 auto-generated from yaml-test-suite (in `Proofs/SuiteGuards/*.lean`). All parsers are total (via `total-fold` fork + Steps 3.3.2–3.3.3), so `#guard` kernel evaluation works. Any parser regression breaks the build.
 
@@ -1379,6 +1390,43 @@ Ported and adapted the schema layer from lean4-yaml (2026-02-24). 6 new files im
 
 </details>
 
+### Spec Example Test Suite (2026-02-24)
+
+<details>
+<summary>
+<b>Migrated ExtractSpecExamples tool + 132 spec examples from lean-yaml. New test suite: 119/132 pass (90.2%).</b>
+</summary>
+
+Migrated the `ExtractSpecExamples.lean` tool from the lean-yaml project to lean4-yaml-verified. Key change: replaced `leanCurl` library dependency (which required `libcurl` C linking) with a subprocess call to `curl` via `IO.Process.output` — zero additional Lake dependencies.
+
+Additionally improved the extractor to strip `<mark>` HTML annotation tags and replace spec annotation symbols (`·`→space, `→`→tab, `↓`→newline) that the YAML 1.2.2 spec page uses for character class visualization.
+
+**New files:**
+
+| File | Lines | Description |
+|------|-------|-------------|
+| `tools/ExtractSpecExamples.lean` | 266 | Spec example extractor (curl subprocess) |
+| `Tests/SpecExamples.lean` | 183 | Parse test suite for §2–§10 examples |
+| `Tests/SpecExamples/Runner.lean` | 8 | Standalone runner (→ `specexamples` exe) |
+| `examples/{2,5,6,7,8,9,10}/` | 132 files | Extracted YAML examples |
+
+**Parse results by section:**
+
+| Section | Pass | Total | Rate | Notes |
+|---------|------|-------|------|-------|
+| §2 Preview | 28 | 28 | 100% | Clean YAML, no annotations |
+| §5 Characters | 10 | 14 | 71% | 4 failures: HTML artifacts, rare escapes (`\L`, `\c`) |
+| §6 Basic Structures | 26 | 29 | 90% | 3 failures: deliberate error examples (dup directives, undefined tag) |
+| §7 Flow Styles | 23 | 24 | 96% | 1 failure: implicit flow key edge case |
+| §8 Block Styles | 18 | 22 | 82% | 4 failures: annotation artifacts, error example |
+| §9 Document Stream | 6 | 6 | 100% | |
+| §10 Schemas | 8 | 9 | 89% | 1 failure: block mapping edge case |
+| **Total** | **119** | **132** | **90.2%** | |
+
+Registered in `lakefile.toml` (`lean_lib Tests.SpecExamples` + `lean_exe specexamples` + `lean_exe extractSpecExamples`).
+
+</details>
+
 ---
 
 ## Phase 7: Verified Schema Layer — In Progress
@@ -1627,6 +1675,10 @@ lake exe stringlemmas        # String lemma tests (129)
 lake exe validationtests     # Structural validation tests (135)
 lake exe demo                # Demo examples (7)
 lake exe flowregressioncheck # Flow regression diagnostics (11)
+lake exe specexamples        # YAML 1.2.2 spec examples (132 from §2–§10)
+
+# Re-extract spec examples from yaml.org (requires curl)
+lake build extractSpecExamples && ./.lake/build/bin/extractSpecExamples
 
 # yaml-test-suite by stage (cumulative: each stage includes all prior stages)
 # Stages: scalar(82) → flow(+46=128) → block(+109=237) → document(+24=261) → advanced(+81=342)

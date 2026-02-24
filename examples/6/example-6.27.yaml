@@ -1,0 +1,4 @@
+%TAG !e! tag:example,2000:app/
+---
+- <mark class="legend-1">!e!</mark> foo
+- <mark class="legend-2">!h!</mark>bar baz

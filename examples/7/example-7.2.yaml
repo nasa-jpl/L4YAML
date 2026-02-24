@@ -1,0 +1,4 @@
+{
+  foo : !!str<mark class="legend-1">°</mark>,
+  !!str<mark class="legend-1">°</mark> : bar,
+}

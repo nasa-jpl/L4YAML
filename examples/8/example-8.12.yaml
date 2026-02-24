@@ -1,0 +1,16 @@
+>
+<mark class="legend-2">↓</mark>
+ folded
+ line<mark class="legend-1">↓</mark>
+<mark class="legend-2">↓</mark>
+ next
+ line<mark class="legend-1">↓</mark>
+   * bullet
+
+   * list
+   * lines<mark class="legend-1">↓</mark>
+<mark class="legend-2">↓</mark>
+ last
+ line
+
+# Comment

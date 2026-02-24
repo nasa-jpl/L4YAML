@@ -1,0 +1,4 @@
+<mark class="legend-1">plain key</mark><mark class="legend-2">: in-line value</mark>
+<mark class="legend-1">°</mark><mark class="legend-2">:° # Both empty</mark>
+<mark class="legend-1">"quoted key"</mark><mark class="legend-2">:</mark>
+<mark class="legend-2">- entry</mark>
