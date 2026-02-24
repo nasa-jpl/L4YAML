@@ -439,9 +439,10 @@ Running verified test suites...
   Completeness Tests: ✓ 66/66
   Dump Round-Trip Tests: ✓ 102/102
   Raw Parse / Compose Tests: ✓ 29/29
+  YAML 1.2.2 Spec Examples: ✗ 119/132
   Demo: ✓ 7/7
 
-Verified: 1137/1137
+Verified: 1256/1269
 
 Generating HTML reports...
   wrote docs/index.html
