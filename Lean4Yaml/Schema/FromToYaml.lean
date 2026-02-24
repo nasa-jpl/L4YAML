@@ -140,6 +140,25 @@ instance {α : Type u} [FromYamlType α] : FromYamlType (List α) where
 instance {α : Type u} [ToYaml α] : ToYaml (List α) where
   toYaml list := toYaml list.toArray
 
+/-- Direct `FromYaml` instance for `List α` when `α` has `FromYaml` (not requiring `FromYamlType`).
+    This allows derived `FromYaml` instances for structures to contain `List` fields. -/
+instance {α : Type u} [FromYaml α] : FromYaml (List α) where
+  fromYaml?
+    | .sequence _ items _ _ => do
+        let mut result : List α := []
+        for item in items.reverse do
+          let val ← fromYaml? item
+          result := val :: result
+        pure result
+    | v => .error s!"expected sequence, got {repr v}"
+
+/-- Direct `FromYaml` instance for `Array α` when `α` has `FromYaml` (not requiring `FromYamlType`).
+    This allows derived `FromYaml` instances for structures to contain `Array` fields. -/
+instance {α : Type u} [FromYaml α] : FromYaml (Array α) where
+  fromYaml?
+    | .sequence _ items _ _ => items.mapM fromYaml?
+    | v => .error s!"expected sequence, got {repr v}"
+
 instance {α : Type u} [FromYamlType α] : FromYamlType (Option α) where
   fromYamlType? | .null => .ok none
                 | v => some <$> fromYamlType? v
@@ -147,6 +166,24 @@ instance {α : Type u} [FromYamlType α] : FromYamlType (Option α) where
 instance {α : Type u} [ToYaml α] : ToYaml (Option α) where
   toYaml | none => YamlValue.scalar { content := "null", style := .plain }
          | some a => toYaml a
+
+/-! ## Tuple (Pair) Instances -/
+
+/-- FromYaml instance for pairs represented as 2-element sequences. -/
+instance {α β : Type} [FromYaml α] [FromYaml β] : FromYaml (α × β) where
+  fromYaml?
+    | .sequence _ items _ _ =>
+        if items.size == 2 then do
+          let fst ← fromYaml? items[0]!
+          let snd ← fromYaml? items[1]!
+          pure (fst, snd)
+        else
+          .error s!"expected 2-element sequence for pair, got {items.size} elements"
+    | v => .error s!"expected sequence for pair, got {repr v}"
+
+/-- ToYaml instance for pairs as 2-element sequences. -/
+instance {α β : Type} [ToYaml α] [ToYaml β] : ToYaml (α × β) where
+  toYaml pair := YamlValue.sequence .block #[toYaml pair.1, toYaml pair.2]
 
 /-! ## HashMap Instances -/
 
