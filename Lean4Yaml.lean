@@ -16,6 +16,7 @@ import Lean4Yaml.Schema.FromToYaml
 import Lean4Yaml.Schema.Struct
 import Lean4Yaml.Schema.Deriving
 import Lean4Yaml.Schema.Api
+import Lean4Yaml.Schema.Dump
 import Lean4Yaml.Proofs.CharClass
 import Lean4Yaml.Proofs.Termination
 import Lean4Yaml.Proofs.Soundness
@@ -40,6 +41,7 @@ import Lean4Yaml.Proofs.SuiteGuards.Advanced
 import Lean4Yaml.Proofs.SuiteGuards.Error
 import Lean4Yaml.Proofs.DumpRoundTrip
 import Lean4Yaml.Proofs.SchemaResolution
+import Lean4Yaml.Proofs.SchemaDump
 
 /-
 Copyright (c) 2026. All rights reserved.
