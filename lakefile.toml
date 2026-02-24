@@ -165,3 +165,10 @@ root = "Tests.SpecExamples.Runner"
 name = "extractSpecExamples"
 root = "ExtractSpecExamples"
 srcDir = "tools"
+
+[[lean_lib]]
+name = "Tests.SchemaDump"
+
+[[lean_exe]]
+name = "schemadump"
+root = "Tests.SchemaDump.Runner"
