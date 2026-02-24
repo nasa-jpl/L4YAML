@@ -129,8 +129,8 @@ private def listYamlFiles (dir : System.FilePath) : IO (Array System.FilePath) :
 /-- Extract example number from filename like "example-2.7.yaml". -/
 private def exampleLabel (path : System.FilePath) : String :=
   let name := path.fileName.getD "unknown"
-  let name := name.stripSuffix ".yaml" |>.stripSuffix ".yml"
-  name.stripPrefix "example-"
+  let name := name.dropSuffix ".yaml" |>.dropSuffix ".yml" |>.copy
+  name.dropSuffix "example-" |>.copy
 
 /-! ## Parse Testing -/
 
