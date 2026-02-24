@@ -1,0 +1,6 @@
+-<mark class="legend-1">↓</mark>
+<mark class="legend-1">··"flow in block"↓</mark>
+-·<mark class="legend-2">></mark>
+<mark class="legend-2"> Block scalar↓</mark>
+-·<mark class="legend-2">!!map # Block collection</mark>
+<mark class="legend-2">  foo : bar↓</mark>

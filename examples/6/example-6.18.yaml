@@ -1,0 +1,7 @@
+# Private
+<mark class="legend-1">!</mark>foo "bar"
+...
+# Global
+%TAG <mark class="legend-1">!</mark> tag:example.com,2000:app/
+---
+<mark class="legend-1">!</mark>foo "bar"

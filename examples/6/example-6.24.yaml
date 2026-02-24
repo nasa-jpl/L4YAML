@@ -1,0 +1,2 @@
+<mark class="legend-1">!<tag:yaml.org,2002:str></mark> foo :
+  <mark class="legend-1">!<!bar></mark> baz

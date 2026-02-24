@@ -153,3 +153,15 @@ name = "Tests.RawParseTests"
 [[lean_exe]]
 name = "rawparsetests"
 root = "Tests.RawParseTests.Runner"
+
+[[lean_lib]]
+name = "Tests.SpecExamples"
+
+[[lean_exe]]
+name = "specexamples"
+root = "Tests.SpecExamples.Runner"
+
+[[lean_exe]]
+name = "extractSpecExamples"
+root = "ExtractSpecExamples"
+srcDir = "tools"

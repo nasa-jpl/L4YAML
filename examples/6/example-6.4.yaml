@@ -1,0 +1,7 @@
+plain: text
+<mark class="legend-1"><mark class="legend-3">·</mark>·</mark>lines
+quoted: "text
+<mark class="legend-1"><mark class="legend-3">·</mark>·→</mark>lines"
+block: |
+<mark class="legend-2"><mark class="legend-3">··</mark></mark>text
+<mark class="legend-2"><mark class="legend-3">··</mark></mark>·→lines
