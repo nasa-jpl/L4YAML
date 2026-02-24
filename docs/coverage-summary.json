@@ -1,5 +1,5 @@
 {
-  "date": "2026-02-24T10:53:57-0800",
+  "date": "2026-02-24T11:47:19-0800",
   "overall": {
     "correct": 353,
     "correctRate": 86.945812,
@@ -3017,12 +3017,18 @@
       },
       {
         "allPass": true,
+        "label": "Schema ↔ Dump Integration",
+        "passed": 68,
+        "total": 68
+      },
+      {
+        "allPass": true,
         "label": "Demo",
         "passed": 7,
         "total": 7
       }
     ],
-    "totalPassed": 1256,
-    "totalTests": 1269
+    "totalPassed": 1324,
+    "totalTests": 1337
   }
 }

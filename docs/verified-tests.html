@@ -65,10 +65,10 @@
   <p class="subtitle">Unit tests, parser tests, verification tests, and string lemma tests — all must pass.</p>
 
   <div class="stats">
-    <div class="stat-box stat-total"><h3>Total</h3><div class="number">1269</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">1256</div></div>
+    <div class="stat-box stat-total"><h3>Total</h3><div class="number">1337</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">1324</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">13</div></div>
-    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">16</div></div>
+    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">17</div></div>
   </div>
   <h3>Suites</h3>
   <div class="stage-cards">
@@ -163,6 +163,12 @@
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SpecExamples.lean" target="_blank" class="source-link">📄 Tests/SpecExamples.lean</a></div>
     </div>
     <div class="stage-card" style="border-left-color:var(--color-pass)">
+      <div class="stage-card-name">Schema ↔ Dump Integration</div>
+      <div class="stage-card-stats">68/68 passed (100%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
+      <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean" target="_blank" class="source-link">📄 Tests/SchemaDump.lean</a></div>
+    </div>
+    <div class="stage-card" style="border-left-color:var(--color-pass)">
       <div class="stage-card-name">Demo</div>
       <div class="stage-card-stats">7/7 passed (100%)</div>
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 100%"></div></div>
@@ -196,6 +202,7 @@
         <option value="dumproundtrip">Dump Round-Trip Tests</option>
         <option value="rawparsetests">Raw Parse / Compose Tests</option>
         <option value="specexamples">YAML 1.2.2 Spec Examples</option>
+        <option value="schemadump">Schema ↔ Dump Integration</option>
         <option value="demo">Demo</option>
       </select>
     </div>
@@ -203,7 +210,7 @@
       <label>Search:</label>
       <input type="text" class="search-input" placeholder="Category, test name..." oninput="searchTests(this.value)">
     </div>
-    <div class="filter-group"><span>Showing <strong id="visibleCount">1269</strong> of 1269</span></div>
+    <div class="filter-group"><span>Showing <strong id="visibleCount">1337</strong> of 1337</span></div>
   </div>
 
   <table id="testTable">
@@ -9058,6 +9065,482 @@
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SpecExamples.lean" target="_blank" class="source-link">YAML 1.2.2 Spec Examples</a></td>
         <td>§10 Spec Examples</td>
         <td>Example example-10.9</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump primitive serialization bool true → &quot;true&quot; (auto-quoted)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L49" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Primitive serialization</td>
+        <td>Bool true → &quot;true&quot; (auto-quoted)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump primitive serialization bool false → &quot;false&quot; (auto-quoted)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L51" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Primitive serialization</td>
+        <td>Bool false → &quot;false&quot; (auto-quoted)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump primitive serialization nat 0 → 0">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L53" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Primitive serialization</td>
+        <td>Nat 0 → 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump primitive serialization nat 42 → 42">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L55" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Primitive serialization</td>
+        <td>Nat 42 → 42</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump primitive serialization nat 999 → 999">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L57" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Primitive serialization</td>
+        <td>Nat 999 → 999</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump primitive serialization int -7 → &quot;-7&quot; (auto-quoted)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L59" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Primitive serialization</td>
+        <td>Int -7 → &quot;-7&quot; (auto-quoted)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump primitive serialization int 100 → 100">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L61" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Primitive serialization</td>
+        <td>Int 100 → 100</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump primitive serialization int 0 → 0">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L63" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Primitive serialization</td>
+        <td>Int 0 → 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump primitive serialization string simple → plain">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L65" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Primitive serialization</td>
+        <td>String simple → plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump primitive serialization string with space → plain">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L67" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Primitive serialization</td>
+        <td>String with space → plain</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump primitive serialization string empty → &quot;&quot;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L69" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Primitive serialization</td>
+        <td>String empty → &quot;&quot;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump primitive serialization string colon-space → quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L71" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Primitive serialization</td>
+        <td>String colon-space → quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump primitive serialization unit → &quot;null&quot; (auto-quoted)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L73" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Primitive serialization</td>
+        <td>Unit → &quot;null&quot; (auto-quoted)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump collection serialization array string [a,b] → block sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L81" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Collection serialization</td>
+        <td>Array String [a,b] → block sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump collection serialization array string [x] → singleton block">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L83" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Collection serialization</td>
+        <td>Array String [x] → singleton block</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump collection serialization array string [] → []">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L85" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Collection serialization</td>
+        <td>Array String [] → []</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump collection serialization list string [a,b] → block sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L87" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Collection serialization</td>
+        <td>List String [a,b] → block sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump collection serialization nested array → nested block">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L89" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Collection serialization</td>
+        <td>Nested Array → nested block</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump collection serialization array nat [1,2,3] → block sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L92" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Collection serialization</td>
+        <td>Array Nat [1,2,3] → block sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump collection serialization array bool → block with auto-quoting">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L94" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Collection serialization</td>
+        <td>Array Bool → block with auto-quoting</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump option serialization some string → plain scalar">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L102" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Option serialization</td>
+        <td>some String → plain scalar</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump option serialization none string → &quot;null&quot; (auto-quoted)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L104" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Option serialization</td>
+        <td>none String → &quot;null&quot; (auto-quoted)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump option serialization some nat → plain scalar">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L106" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Option serialization</td>
+        <td>some Nat → plain scalar</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump option serialization none nat → &quot;null&quot; (auto-quoted)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L108" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Option serialization</td>
+        <td>none Nat → &quot;null&quot; (auto-quoted)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump option serialization some bool → auto-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L110" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Option serialization</td>
+        <td>some Bool → auto-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) bool true round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L119" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>Bool true round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) bool false round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L121" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>Bool false round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) nat 0 round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L123" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>Nat 0 round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) nat 42 round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L125" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>Nat 42 round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) nat 999 round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L127" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>Nat 999 round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) int -7 round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L129" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>Int -7 round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) int 100 round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L131" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>Int 100 round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) string simple round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L133" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>String simple round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) string with space round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L135" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>String with space round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) string empty round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L137" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>String empty round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) string colon-space round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L139" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>String colon-space round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) string has #comment round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L141" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>String has #comment round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) string {flow} round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L143" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>String {flow} round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) string [array] round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L145" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>String [array] round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) unit round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L147" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>Unit round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) array [a,b] round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L151" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>Array [a,b] round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) array [x] round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L153" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>Array [x] round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) array [] round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L155" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>Array [] round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) list [a,b] round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L157" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>List [a,b] round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) nested arrays round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L159" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>Nested arrays round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) option some string round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L163" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>Option some String round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump content round-trip (dump→parse→contenteq) option some nat round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L165" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Content round-trip (dump→parse→contentEq)</td>
+        <td>Option some Nat round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump typed round-trip (α→string→α) bool true → string → bool">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L180" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Typed round-trip (α→String→α)</td>
+        <td>Bool true → String → Bool</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump typed round-trip (α→string→α) bool false → string → bool">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L182" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Typed round-trip (α→String→α)</td>
+        <td>Bool false → String → Bool</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump typed round-trip (α→string→α) nat 42 → string → nat">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L184" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Typed round-trip (α→String→α)</td>
+        <td>Nat 42 → String → Nat</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump typed round-trip (α→string→α) nat 0 → string → nat">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L186" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Typed round-trip (α→String→α)</td>
+        <td>Nat 0 → String → Nat</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump typed round-trip (α→string→α) int 100 → string → int">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L188" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Typed round-trip (α→String→α)</td>
+        <td>Int 100 → String → Int</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump typed round-trip (α→string→α) int -7 → string → int">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L190" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Typed round-trip (α→String→α)</td>
+        <td>Int -7 → String → Int</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump typed round-trip (α→string→α) string hello → string → string">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L192" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Typed round-trip (α→String→α)</td>
+        <td>String hello → String → String</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump typed round-trip (α→string→α) string colon-space → string → string">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L196" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Typed round-trip (α→String→α)</td>
+        <td>String colon-space → String → String</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump typed round-trip (α→string→α) unit → string → unit">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L198" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Typed round-trip (α→String→α)</td>
+        <td>Unit → String → Unit</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump document serialization dumptypeddocument nat no directives">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L206" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Document serialization</td>
+        <td>dumpTypedDocument Nat no directives</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump document serialization dumptypeddocument nat with yaml directive">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L208" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Document serialization</td>
+        <td>dumpTypedDocument Nat with YAML directive</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump document serialization dumptypeddocument string with directive">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L211" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Document serialization</td>
+        <td>dumpTypedDocument String with directive</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump document serialization dumptypeddocuments empty">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L214" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Document serialization</td>
+        <td>dumpTypedDocuments empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump document serialization dumptypeddocuments single">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L216" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Document serialization</td>
+        <td>dumpTypedDocuments single</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump document serialization dumptypeddocuments two">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L218" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Document serialization</td>
+        <td>dumpTypedDocuments two</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump config variations double-quoted config">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L226" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Config variations</td>
+        <td>double-quoted config</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump config variations single-quoted config">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L228" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Config variations</td>
+        <td>single-quoted config</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump config variations custom indent array">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L230" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Config variations</td>
+        <td>custom indent array</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump config variations double-quoted round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L234" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Config variations</td>
+        <td>double-quoted round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump config variations single-quoted round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L236" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Config variations</td>
+        <td>single-quoted round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="schemadump" data-search="schemadump config variations indent 4 array round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean#L238" target="_blank" class="source-link">Schema ↔ Dump Integration</a></td>
+        <td>Config variations</td>
+        <td>indent 4 array round-trips</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
