@@ -10,6 +10,13 @@ Lean4Yaml/
 ├── Stream.lean              # Position-aware YamlStream with line/col tracking
 ├── Grammar.lean             # Formal YAML grammar as Lean Props
 ├── Emitter.lean             # Canonical YAML emitter (YamlValue → String)
+├── Dump.lean                # Style-aware dump: YamlValue → DumpConfig → String
+├── Schema.lean              # Core Schema §10.3: YamlType, resolve, resolveImplicit
+├── Schema/
+│   ├── FromToYaml.lean      # FromYaml/ToYaml/FromYamlType typeclasses + instances
+│   ├── Struct.lean          # Mapping helpers: getField, addField, mkMapping
+│   ├── Deriving.lean        # deriving FromYaml, ToYaml macro handlers
+│   └── Api.lean             # Convenience: parseAs, toYaml, parseTyped
 ├── Parser/
 │   ├── Combinators.lean     # Character classification & basic parsers
 │   ├── Scalar.lean          # Plain, quoted, and block scalar parsers
@@ -24,6 +31,7 @@ Lean4Yaml/
 │   ├── RoundTrip.lean             # Round-trip: parse ∘ emit = id (58 theorems + 63 guards)
 │   ├── BlockScalarContracts.lean  # Block scalar A/G contracts (axiom-free)
 │   ├── CharClass.lean             # Character classification proofs
+│   ├── SchemaResolution.lean      # Schema resolution proofs (35 theorems + 31 guards)
 │   ├── TestSuite.lean             # yaml-test-suite as compile-time checks (blocked)
 │   └── SuiteGuards/               # Auto-generated #guard tests (350 tests, 6 files)
 │       ├── Scalar.lean            # 53 scalar stage guards
@@ -1072,9 +1080,9 @@ One remaining unexpected pass: **H7TQ** (extra words after `%YAML` version direc
 | | §9.1.4 Explicit documents | ✅ | |
 | | §9.1.5 Directives documents | ⚠️ | Parsed but `%TAG` not resolved |
 | | §9.2 Streams | ✅ | Multi-document via `yamlStream` + `DocumentResult` |
-| **§10 Schemas** | §10.1 Failsafe schema | ❌ | No schema layer |
-| | §10.2 JSON schema | ❌ | No schema layer |
-| | §10.3 Core schema | ❌ | No schema layer |
+| **§10 Schemas** | §10.1 Failsafe schema | ⚠️ | Implicit via `resolve` fallback to `.str` (all scalars remain strings) |
+| | §10.2 JSON schema | ⚠️ | Subset of Core schema; no explicit JSON-only mode |
+| | §10.3 Core schema | ✅ | `Schema.lean`: `resolve`, `resolveImplicit`, `resolveScalar` — null/bool/int/float/str resolution with 35 proofs |
 
 ### Three Categories of Gaps to 100%
 
@@ -1157,7 +1165,7 @@ The remaining 52 skipped tests are YAML 1.1/1.3 features or tests that require b
 | §6.8.2 `%TAG` directive resolution | Map `!handle!suffix` → expanded URI using directive declarations | Medium | Wire `%TAG` declarations into parser state |
 | §7.5 Flow nodes (complete) | ✅ Done (P2) | — | Implicit single-pair entries, JSON-like `:`, multi-line flow plain scalars |
 | §9.1.3 `c-forbidden` (complete) | Reject `---`/`...` inside block scalars at column 0 | Low | Already partial in `FoldResult` |
-| §10 Recommended Schemas | Failsafe, JSON, Core schema type resolution | High | **Separate schema layer** (see below) |
+| §10 Recommended Schemas | ✅ Core schema (Phase 7.1–7.3 complete). Failsafe/JSON implicit. | — | Phase 7.4 (dump integration) and 7.5 (round-trip) remaining |
 
 ### Phase 6: Verified YAML Dump ✅
 
@@ -1331,13 +1339,53 @@ Completed in 4 sessions: implementation (6.0–6.2), proofs (6.3), tests (6.4), 
 
 </details>
 
----
-
-## Phase 7: Verified Schema Layer
+### Phase 7: Schema Layer — In Progress (7.1–7.3 ✅)
 
 <details>
 <summary>
-Port schema layer from lean4-yaml: ~1190 lines, ~22 theorems. 5 sub-phases (types, typeclasses, deriving, dump integration, round-trip).
+<b>Total: 1248 lines, 35 theorems, 31 <code>#guard</code> checks. 252 build jobs, 0 errors, 0 sorry, 0 partial def.</b>
+</summary>
+
+Ported and adapted the schema layer from lean4-yaml (2026-02-24). 6 new files implementing Core Schema resolution (YAML 1.2.2 §10.3), typed conversion typeclasses, struct helpers, deriving macro, convenience API, and formal proofs.
+
+**Key adaptation:** The source lean4-yaml `resolve` was `partial def` (recursive on `Array YamlValue` children). Rewritten as total `def` using `where`-clause structural recursion on `List` (converting via `Array.toList`), following the same pattern as `resolveAliases`/`stripAnchors` in `Types.lean`. This maintains the project's zero-`partial def` invariant.
+
+| Module | Lines | Description |
+|--------|-------|-------------|
+| `Schema.lean` | 326 | `YamlType` inductive, `FloatValue`, `isNull`/`isBool`/`isInt`/`isFloat` resolution functions, `resolveImplicit` (Core Schema §10.3.2 precedence: null→bool→int→float→str), `resolveScalar` (tag-aware dispatch), `resolve` (recursive, total), `parseHex`/`parseOctal`/`parseFloat?` (total via structural recursion on `List Char`), `YamlType` convenience accessors |
+| `Schema/FromToYaml.lean` | 208 | `FromYamlType`/`FromYaml`/`ToYaml` typeclasses. Default bridge: `FromYamlType → FromYaml` via `resolve`. Instances for `Unit`, `Bool`, `Int`, `Nat`, `String`, `Float`, `Array α`, `List α`, `Option α`, `Std.HashMap String α` |
+| `Schema/Struct.lean` | 132 | Mapping helpers: `getMapping`, `getScalarContent`, `getString`, `findField`, `getField`, `getFieldOpt`, `mkMapping`, `addField`, `addFieldOpt` |
+| `Schema/Deriving.lean` | 267 | `deriving FromYaml, ToYaml` macro handlers. Auto-detects `Option α` fields via projection type inspection (`isOptionField`). Supports both structs (field-by-field serialization) and enums (string-based matching). Registers handlers via `registerDerivingHandler` |
+| `Schema/Api.lean` | 48 | Convenience API: `parseAs α s` (parse + `FromYaml`), `toYaml value` (Lean → `YamlValue`), `parseTyped s` (parse + `resolve`) |
+| `Proofs/SchemaResolution.lean` | 267 | **35 theorems + 31 `#guard` checks** across 5 sections (see below) |
+
+**Proof inventory (35 theorems):**
+
+| Section | Count | Description |
+|---------|-------|-------------|
+| §1 Resolution function specs | 20 | `isNull_empty`, `isNull_null`, ..., `isFloat_nan` — concrete correctness for all Core Schema recognition functions |
+| §2 `resolveImplicit` properties | 4 | `resolveImplicit_complete` (exhaustive coverage), `resolveImplicit_null_precedence` (null wins), concrete: `resolveImplicit_null`, `resolveImplicit_true` |
+| §3 `resolve` structural preservation | 5 | `resolve_sequence_is_seq`, `resolve_mapping_is_map`, `resolveScalar_not_seq`, `resolveScalar_not_map`, `resolve_scalar_is_leaf` |
+| §4 Explicit tag dispatch | 3 | `resolveScalar_str_tag`, `resolveScalar_null_tag`, `resolveScalar_no_tag` — tag overrides implicit resolution |
+| §5 Compile-time checks | 31 `#guard` | Null/bool/int/float/str resolution, explicit tag override, `resolve` on `YamlValue` nodes |
+| YAML 1.2.2 `yes`≠bool | 1 | `isBool_yes : isBool "yes" = none` — confirms 1.1→1.2.2 breaking change |
+
+**Design notes:**
+
+- Zero `sorry`, zero `axiom`, zero `partial def` — project invariants maintained.
+- `YamlType` derives `BEq` but not `DecidableEq` (due to `Float`). Concrete equality proofs use `rfl` (kernel reduction) or `#guard` (BEq). The `native_decide` tactic requires `DecidableEq`, so it's used only for `Bool`/`Int`/`Option` return types.
+- `Std.Data.HashMap` import in `FromToYaml.lean` is the first `Std` import in the project — available in Lean 4.28.0 core, no additional dependency needed.
+- `resolve` equational lemma generation fails in Lean 4.28.0 due to a known `YamlValue.rec_1` projection issue with `where`-clause mutual recursion on arrays-converted-to-lists. Proofs for `resolve` on sequences/mappings use `rfl` (definitional reduction succeeds despite missing equational lemma). Proofs for `resolve` on scalars route through `resolveScalar` instead.
+
+</details>
+
+---
+
+## Phase 7: Verified Schema Layer — In Progress
+
+<details>
+<summary>
+Phase 7.1–7.3 complete: 1248 lines, 35 theorems, 31 <code>#guard</code> checks. 252 build jobs, 0 errors, 0 sorry, 0 partial def. Phases 7.4 (dump integration) and 7.5 (round-trip) remaining.
 </summary>
 
 ### Motivation
@@ -1367,7 +1415,7 @@ The architecture is designed for reuse: `lean4-yaml-verified` and `lean4-yaml` s
                     │  resolve     — Core Schema resolution       │
                     │  FromYaml    — typeclass: YamlValue → α     │
                     │  ToYaml      — typeclass: α → YamlValue     │
-                    │  Deriving    — deriving macro                │
+                    │  Deriving    — deriving macro               │
                     │                                             │
                     │  PROOFS:                                    │
                     │  resolve_preserves_structure                │
@@ -1399,7 +1447,7 @@ The critical property: **the schema layer is pure functions on inductive types**
 
 ### Verified Schema Roadmap
 
-#### Phase 7.1: Core Types & Resolution (~300 lines)
+#### Phase 7.1: Core Types & Resolution — ✅ Complete (326 lines)
 
 Port `Schema.lean` with proof targets. The resolution functions are pure pattern-matching on strings — ideal for formal verification.
 
@@ -1433,7 +1481,7 @@ resolve           — YamlValue → YamlType  (recursive resolution)
 
 Estimated effort: 1 session for port, 1 session for proofs.
 
-#### Phase 7.2: FromYaml/ToYaml Typeclasses (~200 lines)
+#### Phase 7.2: FromYaml/ToYaml Typeclasses — ✅ Complete (208 lines)
 
 Port `Schema/FromToYaml.lean`. The typeclass instances are small pattern-match functions — each is independently provable.
 
@@ -1462,7 +1510,7 @@ class ToYaml α         — toYaml : α → YamlValue
 
 Estimated effort: 1 session.
 
-#### Phase 7.3: Struct Helpers & Deriving (~430 lines)
+#### Phase 7.3: Struct Helpers & Deriving — ✅ Complete (399+267 lines)
 
 Port `Schema/Struct.lean` and `Deriving.lean`. The struct helpers are simple mapping operations; the deriving macro is metaprogramming.
 
@@ -1534,18 +1582,18 @@ The schema layer follows the same architectural principles documented in ANALYSI
 
 ### Estimated Effort
 
-| Phase | Lines | Sessions | Proofs |
-|---|---|---|---|
-| 7.1: Core types & resolution | ~300 | 2 | ~9 theorems |
-| 7.2: FromToYaml typeclasses | ~200 | 1 | ~7 theorems |
-| 7.3: Struct helpers & deriving | ~430 | 2 | ~4 theorems |
-| 7.4: Schema ↔ dump integration | ~210 | 1 | ~1 theorem |
-| 7.5: Round-trip composition | ~50 | 2+ | ~1 theorem (hard) |
-| **Total** | **~1190** | **8+** | **~22 theorems** |
+| Phase | Lines | Sessions | Proofs | Status |
+|---|---|---|---|---|
+| 7.1: Core types & resolution | 326 + 267 proofs | 1 | 35 theorems + 31 `#guard` | ✅ Complete |
+| 7.2: FromToYaml typeclasses | 208 | 1 | — (runtime tests TBD) | ✅ Complete |
+| 7.3: Struct helpers & deriving | 132 + 267 + 48 | 1 | — (macro validation by type system) | ✅ Complete |
+| 7.4: Schema ↔ dump integration | ~210 | 1 | ~1 theorem | Not started |
+| 7.5: Round-trip composition | ~50 | 2+ | ~1 theorem (hard) | Not started |
+| **Total** | **1248 done + ~260 remaining** | **3 done + 3+** | **35 theorems + 31 guards** | **7.1–7.3 ✅** |
 
-The schema layer is **~1190 lines** of Lean code plus ~22 formal theorems. This is significantly less than the parser (~2500 lines) and has far better proof tractability since everything is pure functions on inductive types with no parser combinator dependency.
+The schema layer is **1248 lines** (so far) of Lean code plus 35 formal theorems and 31 compile-time `#guard` checks. This is significantly less than the parser (~2500 lines) and has far better proof tractability since everything is pure functions on inductive types with no parser combinator dependency.
 
-Note: Phase 6 (Dump) is a prerequisite for Phase 7.4 and 7.5. Phases 7.1–7.3 can proceed in parallel with Phase 6.
+Note: Phase 6 (Dump) is a prerequisite for Phase 7.4 and 7.5. Phases 7.1–7.3 are complete.
 
 </details>
 
