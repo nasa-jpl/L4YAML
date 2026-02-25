@@ -30,12 +30,27 @@ examples/
 
 Some spec examples (§5–§10) contain `<mark>` HTML annotation tags from
 the spec page, used to highlight character classes:
-- `·` → space
-- `→` → tab
-- `↓` → newline
+- `·` (U+00B7) → space
+- `→` (U+2192) → tab
+- `↓` (U+2193) → newline
+- `°` (U+00B0) → empty string (denotes "nothing here" in the spec)
+- `⇔` (U+21D4) → BOM (U+FEFF, byte-order mark placeholder)
 
 The test suite strips these annotations before parsing so that the
 examples reflect actual YAML content.
+
+## Expected-Error Examples
+
+Some spec examples are intentionally invalid YAML — the spec uses them
+to demonstrate what parsers SHOULD reject. These are identified by the
+"Invalid" prefix in the spec's example title. When the parser
+correctly rejects such an example, the test counts it as a pass
+(expected error).
+
+Known error examples:
+- 5.2  (Invalid BOM), 5.10 (Invalid Characters), 5.14 (Invalid Escapes)
+- 6.15 (Duplicate %YAML), 6.17 (Duplicate %TAG), 6.27 (Invalid Tag Shorthand)
+- 7.22 (Invalid Implicit Keys), 8.3 (Invalid Block Scalar Indentation)
 
 ## Usage
 
@@ -84,11 +99,20 @@ private def stripMarkTags (s : String) : String :=
   let noOpen := go s 30
   String.join (noOpen.splitOn "</mark>")
 
-/-- Replace spec annotation symbols with actual characters. -/
+/-- Replace spec annotation symbols with actual characters.
+    The YAML 1.2.2 spec HTML page uses these Unicode symbols to
+    make whitespace and control characters visible in examples:
+    - `·` (U+00B7 MIDDLE DOT)        → space
+    - `→` (U+2192 RIGHTWARDS ARROW)   → tab
+    - `↓` (U+2193 DOWNWARDS ARROW)    → newline
+    - `°` (U+00B0 DEGREE SIGN)        → empty (marks absent content)
+    - `⇔` (U+21D4 LEFT RIGHT ARROW)   → BOM (U+FEFF) -/
 private def replaceAnnotationSymbols (s : String) : String :=
   let s := s.replace "·" " "
   let s := s.replace "→" "\t"
   let s := s.replace "↓" "\n"
+  let s := s.replace "°" ""
+  let s := s.replace "⇔" "\uFEFF"
   s
 
 /-- Decode common HTML entities. -/
@@ -103,8 +127,10 @@ private def decodeHtmlEntities (s : String) : String :=
 /-- Full cleanup pipeline for a raw spec example file. -/
 private def cleanupExample (s : String) : String :=
   -- Only apply HTML stripping if the content has HTML artifacts
+  -- or Unicode annotation symbols (°, ⇔) that need replacement
   if stringContains s "<mark" || stringContains s "&gt;" ||
-     stringContains s "&lt;" || stringContains s "&amp;" then
+     stringContains s "&lt;" || stringContains s "&amp;" ||
+     stringContains s "°" || stringContains s "⇔" then
     decodeHtmlEntities (replaceAnnotationSymbols (stripMarkTags s))
   else
     s
@@ -131,6 +157,42 @@ private def exampleLabel (path : System.FilePath) : String :=
   let name := path.fileName.getD "unknown"
   let name := name.dropSuffix ".yaml" |>.dropSuffix ".yml" |>.copy
   name.dropSuffix "example-" |>.copy
+
+/-! ## Expected-Error Examples -/
+
+/-- Spec examples that are intentionally invalid YAML.
+    The YAML 1.2.2 spec marks these with "Invalid" in the title.
+    When the parser correctly rejects them, we count it as a pass. -/
+private def expectedErrorExamples : Array String :=
+  #[ "example-5.2"   -- Invalid Use of BOM Inside a Document
+   , "example-5.10"  -- Invalid Characters (@ and `)
+   , "example-5.14"  -- Invalid Escaped Characters (\c, \xq-)
+   , "example-6.15"  -- Invalid Repeated YAML Directive
+   , "example-6.17"  -- Invalid Repeated TAG Directive
+   , "example-6.27"  -- Invalid Tag Shorthands (undeclared !h!)
+   , "example-7.22"  -- Invalid Implicit Keys (multi-line, > 1024 chars)
+   , "example-8.3"   -- Invalid Block Scalar Indentation Indicators
+   ]
+
+/-- Check whether a given example label is an expected-error test. -/
+private def isExpectedError (exId : String) : Bool :=
+  expectedErrorExamples.any (· == exId)
+
+/-! ## Known Parser Gaps -/
+
+/-- Spec examples that are valid YAML but expose known parser
+    limitations. Tracked here so the test suite can distinguish
+    "not yet implemented" from genuine regressions.
+    - 5.13: \L (U+2028) and \P (U+2029) escape sequences
+    - 10.3: !!str tag immediately before block scalar indicator (|-) -/
+private def knownParserGaps : Array String :=
+  #[ "example-5.13"  -- \L / \P escapes not yet implemented
+   , "example-10.3"  -- !!str + block scalar indicator
+   ]
+
+/-- Check whether a given example label is a known parser gap. -/
+private def isKnownGap (exId : String) : Bool :=
+  knownParserGaps.any (· == exId)
 
 /-! ## Parse Testing -/
 
@@ -166,6 +228,14 @@ def collectTests : IO VerifiedSuiteResult := do
         let label := s!"Example {exId}"
         if parsed then
           checkImpl state label true
+        else if isExpectedError exId then
+          -- Parser correctly rejected intentionally-invalid YAML
+          checkImpl state label true
+            (message := s!"expected error: {errMsg}")
+        else if isKnownGap exId then
+          -- Valid YAML that exposes a known parser limitation
+          checkImpl state label false
+            (message := s!"known parser gap: {errMsg}")
         else
           checkImpl state label false (message := errMsg)
     else
