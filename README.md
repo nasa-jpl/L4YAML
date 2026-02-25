@@ -1375,6 +1375,71 @@ Ported and adapted the schema layer from lean4-yaml (2026-02-24). 8 new files im
 
 </details>
 
+### Spec Example Failure Diagnosis & Fix (2026-02-25)
+
+<details>
+<summary>
+<b>Diagnosed all 13 spec example failures (119→130/132 pass, 97.0%). Three root causes identified and fixed.</b>
+</summary>
+
+The YAML 1.2.2 Spec Examples suite (132 examples from §2–§10) had 13 failures at 119/132 (90.2%). Root cause analysis revealed three distinct categories:
+
+**Category 1 — Incomplete annotation stripping (3 examples → now pass)**
+
+Examples 8.15, 8.17, and 8.18 use `°` (U+00B0 DEGREE SIGN) to denote "empty/absent content" in the spec's HTML page. The `replaceAnnotationSymbols` function handled `·`→space, `→`→tab, `↓`→newline but missed two additional symbols:
+
+| Symbol | Unicode | Meaning | Affected Examples |
+|--------|---------|---------|-------------------|
+| `°` | U+00B0 | Empty/absent content | 8.15, 8.17, 8.18 |
+| `⇔` | U+21D4 | BOM (U+FEFF) placeholder | 5.2 |
+
+Fix: added `s.replace "°" ""` and `s.replace "⇔" "\uFEFF"` to `replaceAnnotationSymbols`, plus expanded the `cleanupExample` trigger condition to detect files containing these symbols even without `<mark>` tags.
+
+**Category 2 — Expected-error examples miscounted as failures (8 examples → now pass)**
+
+Eight spec examples are **intentionally invalid YAML** — the spec uses them to demonstrate what conforming parsers MUST reject (all titled "Invalid …" in the spec). The parser correctly rejected them, but the test suite counted the rejections as failures.
+
+| Example | Spec Title | Parser Error (correct) |
+|---------|------------|----------------------|
+| 5.2 | Invalid Use of BOM Inside a Document | trailing content `⇔` / BOM |
+| 5.10 | Invalid Characters (`@`, `` ` ``) | unhandled construct at pos 0 |
+| 5.14 | Invalid Escaped Characters (`\c`, `\xq-`) | unknown escape: `\c` |
+| 6.15 | Invalid Repeated YAML Directive | duplicate `%YAML` directive |
+| 6.17 | Invalid Repeated TAG Directive | directives must be followed by `---` |
+| 6.27 | Invalid Tag Shorthands | undefined tag handle `!h!` |
+| 7.22 | Invalid Implicit Keys | flow key and `:` must be on same line |
+| 8.3 | Invalid Block Scalar Indentation Indicators | trailing content after value |
+
+Fix: added `expectedErrorExamples` list and `isExpectedError` check — when the parser rejects an expected-error example, the test now records a pass with "expected error: …" annotation.
+
+**Category 3 — Genuine parser gaps (2 examples → tracked as known gaps)**
+
+Two valid YAML examples fail due to parser features not yet implemented:
+
+| Example | Issue | YAML Feature |
+|---------|-------|-------------|
+| 5.13 | `unknown escape: \L` | `\L` (U+2028 LINE SEPARATOR) and `\P` (U+2029 PARAGRAPH SEPARATOR) escapes |
+| 10.3 | `block mapping cannot start on same line` | `!!str |-` — explicit tag immediately before block scalar indicator |
+
+Fix: added `knownParserGaps` list and `isKnownGap` check — these are reported with "known parser gap: …" so they're distinguishable from regressions.
+
+**Updated results:**
+
+| Section | Pass | Total | Rate | Delta |
+|---------|------|-------|------|-------|
+| §2 Preview | 28 | 28 | 100% | — |
+| §5 Characters | 13 | 14 | 93% | +3 (5.2, 5.10, 5.14 → expected error) |
+| §6 Basic Structures | 29 | 29 | 100% | +3 (6.15, 6.17, 6.27 → expected error) |
+| §7 Flow Styles | 24 | 24 | 100% | +1 (7.22 → expected error) |
+| §8 Block Styles | 22 | 22 | 100% | +4 (8.3 → expected error; 8.15, 8.17, 8.18 → annotation fix) |
+| §9 Document Stream | 6 | 6 | 100% | — |
+| §10 Schemas | 8 | 9 | 89% | — |
+| **Total** | **130** | **132** | **98.5%** | **+11** |
+
+Remaining 2 failures (5.13, 10.3) are tracked as known parser gaps.
+
+</details>
+
 ### Spec Example Test Suite (2026-02-24)
 
 <details>
