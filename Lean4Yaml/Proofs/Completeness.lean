@@ -363,9 +363,16 @@ stream initialization lemmas, `parseYaml_ok_iff` bridge, concrete completeness
 via `native_decide`.  The `StreamIterator` / `Std.Data.Iterators` bridge is
 also available for provably terminating `for` loops over stream tokens.
 
-Phase 2 (combinator specifications) and Phase 3 (per-parser specs) are
-deferred to follow-up sessions.  The combinator specs require unfolding
-lean4-parser definitions which currently lack `@[simp]` annotations.
+Phase 2 (combinator specifications) is complete: `ParserSpecs.lean` provides
+20 universal `@[simp]` lemmas covering monad, stream, error, token,
+backtracking, option, and lookahead combinators.  Note: fold-based
+combinators (`dropMany`, `count`, `drop`) do NOT yet have `@[simp]` lemmas;
+these are exercised only computationally via `#guard` and `native_decide`.
+
+Phase 3 (per-parser specs) is partially complete: `PerParserSpecs.lean`
+has 49 theorems covering `plainScalarBlock` and `plainScalarFlow`.
+Remaining constructors: `singleQuoted` (WIP), `doubleQuoted` (WIP),
+`literalScalar`, `foldedScalar`, `blockSeq`, `blockMap`, `flowSeq`, `flowMap`.
 -/
 
 end Lean4Yaml.Proofs.Completeness

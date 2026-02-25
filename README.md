@@ -88,6 +88,8 @@ Verification uses a deliberate 3-layer approach:
 
 The runtime tests serve as a proof roadmap: each `setCategory`/`check` group maps to a `theorem` target. When a proof is completed, the corresponding tests become redundant (but are kept as regression guards).
 
+For more details, see [Proofs/README](./Lean4Yaml/Proofs/README.md).
+
 ## Key Design Decisions
 
 ### Built on lean4-parser
@@ -474,7 +476,7 @@ Note: this table describes the trade-offs of converting the YAML parser's *own* 
 | "3 `sorry` warnings violate sorry-freedom" | **Our code has 0 sorry.** The 3 `sorry` warnings come from lean4-parser's own `LawfulParserStream` instances for `String.Slice`, `Substring.Raw`, and `ByteSlice` — stream types we do not use. Our `LawfulParserStream YamlStream Char` instance in `Stream.lean` is proved without sorry. The project's "0 sorry, 0 axiom" claim applies to *our code*, not transitive dependencies. |
 | "Regression risk from touching parser code" | **Zero parser code touched.** PR#97's external API is backwards-compatible. The YAML parser source files are byte-for-byte identical. |
 
-**Why the risks were overstated.** The initial analysis correctly identified that PR#97 changes the internal implementation of `foldr`, `takeUntil`, `dropUntil`, and `countUntil` (adding `s₀ : σ` parameter, replacing fuel with `termination_by Stream.remaining s₀`). The error was assuming that our proof files unfold these combinators' internals. In fact, `ParserSpecs.lean` only has `@[simp]` lemmas for combinators at the monad/stream/error/token/backtracking level — **none of the changed fold combinators appear in any proof file**. The YAML parser uses lean4-parser's fold combinators (via `dropMany`, `count`, `drop` in `Combinators.lean`) at the *call site* level, but our proofs reason about the YAML parser's own fuel pattern, not lean4-parser's fold internals.
+**Why the risks were overstated.** The initial analysis correctly identified that PR#97 changes the internal implementation of `foldr`, `takeUntil`, `dropUntil`, and `countUntil` (adding `s₀ : σ` parameter, replacing fuel with `termination_by Stream.remaining s₀`). The error was assuming that our proof files unfold these combinators' internals. In fact, `ParserSpecs.lean` only has `@[simp]` lemmas for combinators at the monad/stream/error/token/backtracking level — **none of the changed fold combinators appear in any proof file**. The YAML parser uses lean4-parser's fold combinators (via `dropMany`, `count`, `drop` in `Combinators.lean`) at the *call site* level, and our proofs depend on their correctness *transitively* — the 652 `#guard` checks and 12 `native_decide` completeness theorems exercise the full parser code path including `dropMany`, so a bug in any lean4-parser combinator would break the build. However, no proof *universally unfolds* the fold combinators' definitions, which is why changing their internals (from fuel to WF recursion) required zero proof updates.
 
 **Empirical verification of zero impact:**
 
