@@ -40,7 +40,6 @@ One correctness theorem per `ValidNode` constructor.
 ## Zero Axioms
 
 All proved lemmas are machine-checked.  No `sorry`, no `axiom`, no `partial`.
-Theorems marked `sorry` are explicitly labeled as work-in-progress.
 -/
 
 namespace Lean4Yaml.Proofs.PerParserSpecs
