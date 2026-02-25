@@ -88,33 +88,20 @@ suffice.  For universally quantified completeness (§6+), the full
 
 /-! ## §2  Lawful Parser Stream
 
-lean4-parser does not provide any proof infrastructure.  We define
-`LawfulParserStream` as the contract that `Parser.Stream.remaining`
-strictly decreases when `next?` returns `some`.
+PR#97 of lean4-parser provides `LawfulParserStream` as the contract that
+`Parser.Stream.remaining` strictly decreases when `next?` returns `some`.
+The `YamlStream` instance is proved in `Stream.lean` (imported transitively)
+from the byte-offset arithmetic of `YamlStream.next?`.
+
+The instance enables:
+- `Finite (StreamIterator YamlStream Char) Id` — well-founded iteration
+- `IteratorLoop` — provably terminating `for` loops over stream tokens
+- `StreamIterator.mk` / `.iter` / `.iterM` for `Std.Data.Iterators` consumers
 -/
 
-/--
-A `Parser.Stream` is *lawful* when consuming a token via `next?`
-strictly decreases `remaining`.
-
-This is the sole axiom needed for well-founded induction on
-`Parser.Stream.remaining` — i.e., for proving that total-fold
-combinators terminate and that the parser visits every character exactly once.
--/
-class LawfulParserStream (σ : Type _) (τ : outParam (Type _))
-    [Parser.Stream σ τ] : Prop where
-  /-- Consuming a token strictly decreases `remaining`. -/
-  remaining_decreases :
-    ∀ (s : σ) (c : τ) (s' : σ),
-      Stream.next? s = some (c, s') →
-      Parser.Stream.remaining s' < Parser.Stream.remaining s
-
-/--
-`YamlStream` is a lawful parser stream: `remaining` strictly decreases
-after each `next?` call.  Delegates to `Termination.stream_remaining_decreasing`.
--/
-instance : LawfulParserStream YamlStream Char where
-  remaining_decreases := Termination.stream_remaining_decreasing
+-- Re-export: `LawfulParserStream YamlStream Char` is available from `Stream.lean`.
+-- Previously defined locally; now provided by lean4-parser PR#97 and instantiated
+-- in `Stream.lean`.
 
 /-! ## §3  Stream Initialization
 
@@ -370,13 +357,22 @@ establishing that the corresponding parser succeeds on valid inputs.
 
 ### Current status
 
-Phase 1 (infrastructure) is complete: `LawfulParserStream YamlStream Char`,
+Phase 1 (infrastructure) is complete: `LawfulParserStream YamlStream Char`
+(now from lean4-parser PR#97 + `Stream.lean` instance),
 stream initialization lemmas, `parseYaml_ok_iff` bridge, concrete completeness
-via `native_decide`.
+via `native_decide`.  The `StreamIterator` / `Std.Data.Iterators` bridge is
+also available for provably terminating `for` loops over stream tokens.
 
-Phase 2 (combinator specifications) and Phase 3 (per-parser specs) are
-deferred to follow-up sessions.  The combinator specs require unfolding
-lean4-parser definitions which currently lack `@[simp]` annotations.
+Phase 2 (combinator specifications) is complete: `ParserSpecs.lean` provides
+20 universal `@[simp]` lemmas covering monad, stream, error, token,
+backtracking, option, and lookahead combinators.  Note: fold-based
+combinators (`dropMany`, `count`, `drop`) do NOT yet have `@[simp]` lemmas;
+these are exercised only computationally via `#guard` and `native_decide`.
+
+Phase 3 (per-parser specs) is partially complete: `PerParserSpecs.lean`
+has 49 theorems covering `plainScalarBlock` and `plainScalarFlow`.
+Remaining constructors: `singleQuoted` (WIP), `doubleQuoted` (WIP),
+`literalScalar`, `foldedScalar`, `blockSeq`, `blockMap`, `flowSeq`, `flowMap`.
 -/
 
 end Lean4Yaml.Proofs.Completeness
