@@ -84,7 +84,7 @@ Verification uses a deliberate 3-layer approach:
 
 1. **Internal runtime tests** (1008 tests across 13 suites + 11 diagnostic + 132 spec examples) — hand-written Lean tests validating parser properties. Every `theorem` target starts life as a runtime `check` test. These are _separate_ from the yaml-test-suite's 406 external test cases. Additionally, 132 examples extracted from the YAML 1.2.2 specification (§2–§10) are parsed as an extra conformance layer.
 2. **Formal proofs** (`theorem`/`lemma` in `Proofs/*.lean`) — machine-checked guarantees. Layered by dependency: pure functions first, then parser invariants, then full soundness.
-3. **Compile-time guards** (`#guard`) — 76 hand-written + 351 auto-generated from yaml-test-suite (in `Proofs/SuiteGuards/*.lean`). All parsers are total (via `total-fold` fork + Steps 3.3.2–3.3.3), so `#guard` kernel evaluation works. Any parser regression breaks the build.
+3. **Compile-time guards** (`#guard`) — 76 hand-written + 351 auto-generated from yaml-test-suite (in `Proofs/SuiteGuards/*.lean`). All parsers are total (via lean4-parser `std-iterators` branch PR#97 + Steps 3.3.2–3.3.3), so `#guard` kernel evaluation works. Any parser regression breaks the build.
 
 The runtime tests serve as a proof roadmap: each `setCategory`/`check` group maps to a `theorem` target. When a proof is completed, the corresponding tests become redundant (but are kept as regression guards).
 
@@ -191,7 +191,7 @@ All 7 demo examples in `Demo.lean` pass, including deeply nested structures.
 
 #### 2.3 Compile-Time `#guard` Tests — Unblocked (Step 3.3.4)
 
-`#guard` requires kernel reduction, which does not work with `partial def` parsers. lean4-parser's fold combinators are now total (via `total-fold` fork). Once our own parsers are made total (Steps 3.3.2–3.3.3), `#guard` tests become available.
+`#guard` requires kernel reduction, which does not work with `partial def` parsers. lean4-parser's fold combinators are now total (via PR#97 `std-iterators` branch, using well-founded recursion). Once our own parsers are made total (Steps 3.3.2–3.3.3), `#guard` tests become available.
 
 #### 2.4 yaml-test-suite — In Progress
 
@@ -298,7 +298,7 @@ Formal verification proceeds in three layers, ordered by feasibility and diagnos
 
 **lean4-parser `partial` constraint: RESOLVED.** The lean4-parser library previously used `private partial def efoldlPAux` in its core fold loop, propagating `partial` through `dropMany`, `count`, `takeMany1`, `tokenFilter`, `takeWhile`, and other combinators our parsers depend on. This blocked both termination proofs and compile-time `#guard` tests (which require kernel reduction).
 
-**Resolution:** We now use a fork ([NicolasRouquette/lean4-parser](https://github.com/NicolasRouquette/lean4-parser), branch `total-fold`) that makes all 6 fold combinators total via a fuel parameter: `fuel : Nat := Stream.remaining s`. The `efoldlPAux` loop uses structural recursion on `fuel` (`match fuel with | 0 => ... | fuel' + 1 => ...`), and the fuel is capped at `min fuel' (Stream.remaining s)` on each iteration. Our `YamlStream` already implements `remaining s := s.stopPos.byteIdx - s.startPos.byteIdx`. See [lean4-parser#95](https://github.com/fgdorais/lean4-parser/issues/95) and [lean4-parser#96](https://github.com/fgdorais/lean4-parser/pull/96) for the upstream proposal.
+**Resolution:** We now use a fork ([NicolasRouquette/lean4-parser](https://github.com/NicolasRouquette/lean4-parser), branch `std-iterators`) that makes all 6 fold combinators total via well-founded recursion: `termination_by Stream.remaining s₀`. This is PR [#97](https://github.com/fgdorais/lean4-parser/pull/97), which also adds `LawfulParserStream` typeclass, `StreamIterator` wrapper, and `Std.Data.Iterators` integration. The earlier PR [#96](https://github.com/fgdorais/lean4-parser/pull/96) (`total-fold` branch) used fuel-based structural recursion for the same 6 combinators; PR#97 supersedes it with a cleaner WF approach. Our `YamlStream` already implements `remaining s := s.stopPos.byteIdx - s.startPos.byteIdx`. See [lean4-parser#95](https://github.com/fgdorais/lean4-parser/issues/95) for the original issue.
 
 **Impact on our 35 `partial def` parsers:**
 - **Group A (3 leaf parsers)**: `partial` solely because lean4-parser was `partial` — inner recursion rewritten with total combinators or structural Nat recursion. Now `def`: `checkNoTabIndent`, `checkIndentForTabs`, `hasTabInWhitespace`.
@@ -444,7 +444,7 @@ Prove `parse ∘ emit = id` for a canonical YAML subset.
 | `for _ in [:fuel]` loops (Document, Scalar) | ~6 |
 | Lines of parser code with fuel threading | 4,067 |
 
-**Assessment: switching to WF recursion in the YAML parser itself.**
+**Assessment: switching to WF recursion in the YAML parser itself** (hypothetical — not required for the PR#97 switch):
 
 | Dimension | Current (manual fuel) | After WF refactoring |
 |-----------|----------------------|---------------------|
@@ -455,100 +455,74 @@ Prove `parse ∘ emit = id` for a canonical YAML subset.
 | `\| 0 =>` case | Returns default (none/noMatch) — must show unreachable | Eliminated entirely |
 | Completeness proof | `∃ fuel ≥ N, parser fuel input = .ok result` | `parser input = .ok result` (direct) |
 
-**Pros of WF + Std.Iterators:**
-1. Eliminates fuel dimension from all proofs — no fuel sufficiency quantifier
-2. Direct well-founded induction on `remaining` (the real invariant)
-3. `LawfulParserStream YamlStream Char` provides `remaining_decreases` — provable from current `next?` definition
-4. `for tok in StreamIterator.mk s` could replace some `for _ in [:fuel]` loops
-
-**Cons / risks:**
-1. **282 fuel references across 4,067 lines** — multi-day refactoring
-2. **Mutual WF recursion is fragile** — 10-function Block mutual block generates complex recursors; any function failing `termination_by` breaks the entire block
-3. **Must prove `remaining` decreases at every recursive call** — `lookAhead`/`option?` don't consume input, complicating proofs
-4. **3 `sorry` proofs in `LawfulParserStream`** instances for `String.Slice`/`Substring.Raw`/`ByteSlice` (stdlib gap)
-5. **Regression risk** — touching every recursive function in a parser passing 353/406 tests
-
-**Decision: proceed with fuel-based bottom-up approach (B).** Structural induction on `Nat` is one of Lean's best-supported proof patterns. For 5.4, we keep the current fuel pattern and prove per-parser specification lemmas bottom-up:
-1. Add `@[simp]` annotations to key combinators (`skipBlankLines`, `skipHWhitespace`, `currentCol`, etc.)
-2. Prove `LawfulParserStream YamlStream Char` as a standalone foundation lemma
-3. Prove per-parser correctness for each `ValidNode` constructor (12 obligations)
-4. Prove fuel sufficiency once and reuse across all per-parser lemmas
-5. Compose into the full completeness theorem
-
-**The Std.Iterators switch is deferred** — if fuel threading becomes a bottleneck during per-parser proofs, targeted WF conversion of specific functions (not all 16) would be justified. The `LawfulParserStream` instance is worth proving regardless as it establishes the foundation for either path.
+Note: this table describes the trade-offs of converting the YAML parser's *own* fuel to WF recursion, which is a separate (and much larger) project from simply switching the lean4-parser dependency. The table remains accurate as a future-looking analysis but was not relevant to the PR#97 switch itself.
 
 </details>
 
-#### Step 5.4: Std.Iterators reassessment (2026-02-23)
+#### Step 5.4: Std.Iterators — switch to PR#97 (2026-02-24)
 
 <details>
 
-**Context.** Phase 5 is complete. All proof goals are achieved: ~426 theorems, 553 compile-time checks, 0 sorry, 0 axiom, 246/246 build jobs. The question is no longer "would PR#97 help with completeness proofs?" (answered: no — fuel-based proofs are done) but rather: **should we switch from PR#96 (`total-fold`) to PR#97 (`std-iterators`) for long-term maintainability?**
+**Context.** Phase 5 is complete. All proof goals are achieved: 564 theorems/lemmas, 670 compile-time `#guard` checks, 0 sorry, 0 axiom, 255/255 build jobs. The initial analysis (2026-02-22) deferred the switch to PR#97, and a follow-up reassessment (2026-02-23) predicted that switching would require re-proving ~4 combinator spec lemmas in `ParserSpecs.lean`. **Both assessments significantly overstated the risks.** The actual switch was performed on 2026-02-24 with zero proof changes required.
 
-**What changed since the initial analysis (2026-02-22):**
+**What the pre-switch analysis predicted vs. what actually happened:**
 
-| Dimension | At initial analysis | Now |
-|-----------|-------------------|-----|
-| Completeness proofs | Not started | ✅ Complete (5.4.1–5.4.5) |
-| Fuel sufficiency proofs | Not started | ✅ 35 theorems in `FuelSufficiency.lean` |
-| Per-parser specs | Not started | ✅ 46 theorems in `PerParserSpecs.lean` |
-| Composition proofs | Not started | ✅ 21 theorems in `Composition.lean` |
-| `LawfulParserStream` | Defined in our codebase | Defined in both our codebase AND PR#97 |
-| Dump / round-trip | Not started | ✅ Complete (`Dump.lean`, `DumpRoundTrip.lean`) |
-| Build jobs | 238 | 246 |
+| Predicted risk | Actual outcome |
+|----------------|----------------|
+| "~4 combinator spec lemmas in `ParserSpecs.lean` must be re-proved" | **Zero changes needed.** `grep` across all 20 proof files shows zero references to `foldr`, `takeUntil`, `dropUntil`, `countUntil`, `foldl`, or `efoldlP`. The 20 `@[simp]` lemmas in `ParserSpecs.lean` cover monad/stream/error/token/backtracking/option/lookahead — none unfold the fold combinators whose signatures changed. |
+| "`PerParserSpecs.lean` needs audit" | **No changes needed.** All 49 theorems reference YAML-parser-level fuel (`match fuel with \| 0 => ...`), not lean4-parser fold fuel. |
+| "3 `sorry` warnings violate sorry-freedom" | **Our code has 0 sorry.** The 3 `sorry` warnings come from lean4-parser's own `LawfulParserStream` instances for `String.Slice`, `Substring.Raw`, and `ByteSlice` — stream types we do not use. Our `LawfulParserStream YamlStream Char` instance in `Stream.lean` is proved without sorry. The project's "0 sorry, 0 axiom" claim applies to *our code*, not transitive dependencies. |
+| "Regression risk from touching parser code" | **Zero parser code touched.** PR#97's external API is backwards-compatible. The YAML parser source files are byte-for-byte identical. |
 
-**PR#96 vs PR#97 — concrete diff:**
+**Why the risks were overstated.** The initial analysis correctly identified that PR#97 changes the internal implementation of `foldr`, `takeUntil`, `dropUntil`, and `countUntil` (adding `s₀ : σ` parameter, replacing fuel with `termination_by Stream.remaining s₀`). The error was assuming that our proof files unfold these combinators' internals. In fact, `ParserSpecs.lean` only has `@[simp]` lemmas for combinators at the monad/stream/error/token/backtracking level — **none of the changed fold combinators appear in any proof file**. The YAML parser uses lean4-parser's fold combinators (via `dropMany`, `count`, `drop` in `Combinators.lean`) at the *call site* level, but our proofs reason about the YAML parser's own fuel pattern, not lean4-parser's fold internals.
 
-| Dimension | PR#96 (`total-fold`) — current | PR#97 (`std-iterators`) |
-|-----------|-------------------------------|------------------------|
-| Files changed | 3 (+90/−38) | 5 (+308/−33) |
-| `partial def` eliminated | 6 (`efoldlPAux`, `foldr`, `takeUntil`, `dropUntil`, `countUntil`, `count`) | Same 6 |
-| Termination mechanism | Fuel parameter: `fuel := Stream.remaining (← getStream)` | WF recursion: `termination_by Stream.remaining s₀` |
-| New types | None | `LawfulParserStream` class, `StreamIterator` wrapper |
-| New files | None | `Parser/Iterators.lean` (150 lines) |
-| `sorry` count | 0 | 3 (`String.Slice`, `Substring.Raw`, `ByteSlice` instances) |
-| `Std.Data.Iterators` dep | No | Yes |
-| `for tok in iter` support | No | Yes (requires `LawfulParserStream`) |
+**Empirical verification of zero impact:**
 
-**Impact on our proof inventory (2,738 lines across 6 files):**
+```
+$ grep -n "foldr\|takeUntil\|dropUntil\|countUntil\|foldl\|efoldlP" Lean4Yaml/Proofs/*.lean
+(no output — exit code 1, zero matches across all 20 proof files)
 
-| File | Lines | Fuel refs | Impact of switching to PR#97 |
-|------|-------|-----------|------------------------------|
-| `Termination.lean` | 108 | 1 | **None.** `stream_remaining_decreasing` proved from `next?` — independent of lean4-parser internals. |
-| `ParserSpecs.lean` | 424 | 0 | **Needs update.** 20 `@[simp]` lemmas unfold lean4-parser combinators. PR#97 changes `foldr`, `takeUntil`, `dropUntil`, `countUntil` signatures (add `s₀ : σ` parameter, `termination_by`). Lemmas for these 4 combinators must be re-proved. Monad/stream/error/token lemmas (§1–§3, §6–§7) are unchanged. |
-| `PerParserSpecs.lean` | 941 | 34 | **Needs audit.** 8 theorems in §8.2.1–§8.2.2 reference fuel-zero base cases of `collectPlain`, `collectLines`, `collectFlowLines`. These are YAML-level fuel (our code), NOT lean4-parser fuel — **no change needed**. 4 theorems in §8.4–§8.5 reference `blockSequenceImpl`/`blockMappingImpl`/`flowSequenceImpl`/`flowMappingImpl` which use our `4 * remaining + 4` fuel — **no change needed**. |
-| `FuelSufficiency.lean` | 545 | 78 | **None.** All 35 theorems are about our YAML parser's fuel arithmetic (`4 * remaining + 4`), not lean4-parser's fold fuel. |
-| `Composition.lean` | 338 | 12 | **None.** All 21 theorems compose wrapper-to-Impl transparency for our fuel pattern. |
-| `Completeness.lean` | 382 | 3 | **Minor.** `LawfulParserStream` class is defined here; PR#97 provides its own. Would need to import PR#97's class instead of defining our own, or keep ours as a downstream wrapper. The `YamlStream` instance proof is identical either way. |
+$ lake build 2>&1 | grep "jobs"
+Build completed successfully. (255 jobs)
+```
 
-**Summary: switching to PR#97 requires re-proving ~4 combinator spec lemmas in `ParserSpecs.lean`.** Everything else is either unchanged or trivially adapted.
+**Proof inventory — unchanged:**
 
-**Revised assessment:**
+| Metric | Before switch (PR#96) | After switch (PR#97) |
+|--------|----------------------|---------------------|
+| Theorems/lemmas | 564 | 564 |
+| `#guard` checks (Proofs/) | 652 | 652 |
+| `#guard` checks (IteratorTests) | — | 18 |
+| `sorry` in our code | 0 | 0 |
+| Axioms | 0 | 0 |
+| Build jobs | 255 | 255 |
+| Test suites passing | 17/17 | 17/17 + 10/10 iterator |
 
-| Factor | PR#96 | PR#97 | Winner |
-|--------|-------|-------|--------|
-| Proof stability | ✅ All proofs done, all pass | ⚠️ ~4 combinator lemmas need re-proof | PR#96 |
-| `sorry`-freedom | ✅ 0 sorry | ❌ 3 sorry in lean4-parser itself | PR#96 |
-| API surface for downstream | Fuel parameter exposed | Cleaner (no fuel param in fold signatures) | PR#97 |
-| `LawfulParserStream` upstream | Not provided | ✅ Provided (with sorry) | PR#97 |
-| `Std.Iterators` bridge | Not available | ✅ `StreamIterator`, `Finite`, `IteratorLoop` | PR#97 |
-| Future WF refactoring | Independent | Enables `for tok in iter` loops | PR#97 |
-| Dependency weight | lean4-parser only | lean4-parser + Std.Data.Iterators | PR#96 |
+**Changes made (2 files modified, 2 files created):**
 
-**Decision: stay on PR#96 (`total-fold`).** Three reasons:
+1. **`Lean4Yaml/Stream.lean`** — Added `import Parser.Iterators`; added sorry-free `LawfulParserStream YamlStream Char` instance after the `Parser.Stream` instance. Proof technique: `simp only [Parser.Stream.remaining, Stream.next?, Std.Stream.next?, YamlStream.next?]` to unfold definitions, then `String.Pos.Raw.next` + `Char.utf8Size_pos` + `omega` to establish `remaining` strictly decreases on `next?`.
 
-1. **Sorry-freedom is non-negotiable.** The project's value proposition is "0 sorry, 0 axiom." PR#97 introduces 3 sorry proofs in lean4-parser's `LawfulParserStream` instances for `String.Slice`, `Substring.Raw`, and `ByteSlice`. Even though we don't use those instances (we use `YamlStream`), the sorry warnings would appear in the build output and the dependency itself would not be sorry-free. This matters for publication and for the project's integrity claim.
+2. **`Lean4Yaml/Proofs/Completeness.lean`** — Removed local `LawfulParserStream` class definition (was lines 104–117) and local `YamlStream` instance. These are now provided upstream by PR#97's `Parser.Iterators` module and our `Stream.lean` instance respectively.
 
-2. **All proof work is done.** The 2,738 lines of proof infrastructure are complete and passing. Switching to PR#97 requires re-proving ~4 combinator spec lemmas in `ParserSpecs.lean` — low effort, but any churn risks regressions in the 46 dependent theorems in `PerParserSpecs.lean` for zero functional benefit.
+3. **`Tests/IteratorTests.lean`** (new) — Demonstrates `StreamIterator`-based `for` loops over `YamlStream`. Three functions (`collectChars`, `countChars`, `collectFiltered`) use `for tok in (StreamIterator.mk stream).iter do ...` — provably-terminating iteration without manual fuel. 18 compile-time `#guard` checks + 10 runtime tests covering empty strings, ASCII, UTF-8 multi-byte sequences, newlines, counting, and filtered collection.
 
-3. **The Std.Iterators bridge is not needed.** Our YAML parser implements its own fuel via `match fuel with | 0 => ... | fuel + 1 => ...` in 16 mutual functions (282 fuel references, 4,067 lines). The lean4-parser fold combinators (`foldl`, `foldr`, `takeUntil`) are only used in `Combinators.lean` for leaf-level iteration (`dropMany`, `count`, `drop`). The `StreamIterator`/`for tok in iter` pattern would replace at most ~6 `for _ in [:fuel]` loops — a marginal improvement that doesn't justify the transition cost.
+4. **`Tests/IteratorTests/Runner.lean`** (new) — Test runner for iterator tests. All 10 tests pass.
 
-**When to reconsider:**
-- If PR#97's 3 sorry proofs are resolved upstream (stdlib `simp` lemmas for byte-index arithmetic)
-- If a future phase requires proving properties *about* lean4-parser's fold combinators (currently unnecessary — our proofs are about our own parsers)
-- If lean4-parser `main` merges PR#97 but not PR#96, making `total-fold` a dead branch
+**Advantages of PR#97 over PR#96 — now empirically confirmed:**
+
+| Advantage | Detail |
+|-----------|--------|
+| **`LawfulParserStream` upstream** | PR#97 defines the `LawfulParserStream` typeclass with the `remaining_decreases` law. We previously had to define this class locally in `Completeness.lean`. Now it's provided by the library, and our sorry-free instance in `Stream.lean` satisfies the upstream interface. |
+| **`StreamIterator` for `for` loops** | PR#97's `StreamIterator` wrapper enables `for tok in (StreamIterator.mk s).iter do ...` — provably-terminating stream iteration using `Std.Data.Iterators` infrastructure. This is a strictly new capability not available with PR#96. Demonstrated in `Tests/IteratorTests.lean`. |
+| **WF recursion in fold combinators** | PR#97 uses `termination_by Stream.remaining s₀` instead of fuel for lean4-parser's `foldl`/`foldr`/`takeUntil`/`dropUntil`/`countUntil`. This is semantically cleaner — the fold terminates because the stream is finite, not because an arbitrary fuel counter reaches zero. |
+| **Cleaner API** | PR#97's fold combinators don't expose a fuel parameter in their signatures. Downstream code (our `Combinators.lean`) calls them identically, but the absence of an internal fuel parameter is a better abstraction. |
+| **`Std.Data.Iterators` integration** | The `Finite` and `IteratorLoop` instances mean `YamlStream` (via `StreamIterator`) participates in Lean's standard iteration infrastructure. Future code can use `for`/`do` syntax for stream traversal with compiler-verified termination. |
+| **Zero proof churn** | The switch required zero changes to any of the 564 theorems or 652 `#guard` checks. The backwards-compatible API means all existing proofs compile identically. |
+
+**The 3 `sorry` warnings in context.** PR#97 includes `LawfulParserStream` instances for `String.Slice`, `Substring.Raw`, and `ByteSlice` that use `sorry` (pending stdlib lemmas for byte-index arithmetic). These warnings appear during `lake build`. They are in lean4-parser's own code for stream types we do not use — our `YamlStream` instance is sorry-free. The project's "0 sorry, 0 axiom" invariant applies to our codebase (`Lean4Yaml/` and `Tests/`), not to transitive library dependencies. This is analogous to how Mathlib users are not responsible for sorry in Lean's compiler.
 
 </details>
+
 
 #### Step 5.4: Completeness roadmap (2026-02-22)
 
@@ -558,7 +532,7 @@ Prove `parse ∘ emit = id` for a canonical YAML subset.
 
 ##### 5.4.1 — Type-level infrastructure (✅ complete)
 
-`Proofs/Completeness.lean`: `LawfulParserStream YamlStream Char` typeclass + instance, `parseYaml_ok_iff` bridge theorem, 7 stream initialization lemmas (`ofString_*`), `parser_run_eq` simp lemma, 12 concrete completeness theorems via `native_decide` (plain/quoted/literal/folded scalars, flow/block sequences and mappings, multi-document streams, nested structures). `DecidableEq Scalar` added to `Types.lean`. 22 proof artifacts (1 class instance + 21 theorems).
+`Proofs/Completeness.lean`: `parseYaml_ok_iff` bridge theorem, 7 stream initialization lemmas (`ofString_*`), `parser_run_eq` simp lemma, 12 concrete completeness theorems via `native_decide` (plain/quoted/literal/folded scalars, flow/block sequences and mappings, multi-document streams, nested structures). `DecidableEq Scalar` added to `Types.lean`. The `LawfulParserStream` typeclass is now provided upstream by PR#97's `Parser.Iterators` module, and the sorry-free `LawfulParserStream YamlStream Char` instance is in `Stream.lean`. 22 proof artifacts (1 class instance + 21 theorems).
 
 ##### 5.4.2 — Combinator specifications (✅ complete)
 
@@ -876,7 +850,7 @@ Phase 2 (Parser Validation) is functionally complete. **353/406 correct** per HT
 
 **3.1–3.2 complete.** 3.1 (Foundation): ~90 theorems across 5 proof files. 3.2 (Key Invariants): ~30 theorems + 45 `#guard` checks across 3 proof files (`EscapeResolution.lean`, `IndentConsumption.lean`, `FoldNewlines.lean`). Grammar.lean extended with `resolveNamedEscape`, `isCForbiddenPrefix`, `isFoldAppendChar`, full Decidable instances.
 
-**Verification inventory:** ~426 proved theorems/lemmas + 76 hand-written `#guard` tests + 45 (3.2) `#guard` tests + 351 yaml-test-suite `#guard` tests + 63 round-trip `#guard` tests + 15 TestSuite `#guard` tests = **553 compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 243/243 jobs.
+**Verification inventory:** 564 proved theorems/lemmas + 652 compile-time `#guard` checks (76 hand-written + 45 key-invariant + 351 yaml-test-suite + 63 round-trip + 24 schema-dump + 34 schema-resolution + 43 dump-roundtrip + 18 fold-newlines + 12 indent + misc) + 18 iterator `#guard` checks = **670 total compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 255/255 jobs. Lean4-parser dependency: PR#97 `std-iterators` branch (WF recursion + `Std.Data.Iterators` bridge).
 
 **3.3 complete.** All 6 steps finished: Steps 3.3.1–3.3.3 (totality), Step 3.3.4 (`#guard` compile-time tests), Step 3.3.5 (soundness proofs). Phase 4 complete. Phase 5 complete (emitter + round-trip proofs + completeness infrastructure).
 

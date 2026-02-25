@@ -7,7 +7,7 @@ defaultTargets = ["Lean4Yaml"]
 [[require]]
 name = "Parser"
 git = "https://github.com/NicolasRouquette/lean4-parser"
-rev = "total-fold"
+rev = "std-iterators"
 
 [[lean_lib]]
 name = "Lean4Yaml"
@@ -172,3 +172,10 @@ name = "Tests.SchemaDump"
 [[lean_exe]]
 name = "schemadump"
 root = "Tests.SchemaDump.Runner"
+
+[[lean_lib]]
+name = "Tests.IteratorTests"
+
+[[lean_exe]]
+name = "iteratortests"
+root = "Tests.IteratorTests.Runner"
