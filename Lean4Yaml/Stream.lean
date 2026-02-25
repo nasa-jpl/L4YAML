@@ -3,6 +3,7 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Parser
+import Parser.Iterators
 import Lean4Yaml.Types
 
 /-!
@@ -216,6 +217,30 @@ instance : Parser.Stream YamlStream Char where
       line := p.line
       col := p.col }
   remaining s := s.stopPos.byteIdx - s.startPos.byteIdx
+
+/--
+`YamlStream` is a lawful parser stream: consuming a token via `next?`
+strictly decreases `Parser.Stream.remaining`.
+
+This enables sorry-free `Finite` and `IteratorLoop` instances for
+`StreamIterator`, supporting provably terminating `for` loops over
+`YamlStream` tokens via `Std.Data.Iterators`.
+-/
+instance : LawfulParserStream YamlStream Char where
+  remaining_decreases s c s' h := by
+    simp only [Parser.Stream.remaining]
+    -- `Stream.next?` resolves to `YamlStream.next?`
+    simp only [Stream.next?, Std.Stream.next?, YamlStream.next?] at h
+    split at h
+    · next hlt =>
+      simp only [Option.some.injEq, Prod.mk.injEq] at h
+      obtain ⟨_, hs'⟩ := h
+      rw [← hs']
+      simp only [String.Pos.Raw.next, String.Pos.Raw.byteIdx_add_char]
+      have hSize := Char.utf8Size_pos (String.Pos.Raw.get s.str s.startPos)
+      have hltNat := String.Pos.Raw.lt_iff.mp hlt
+      omega
+    · contradiction
 
 /-! ## Backtracking Isolation
 
