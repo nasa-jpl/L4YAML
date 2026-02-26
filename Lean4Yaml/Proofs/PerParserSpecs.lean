@@ -1055,6 +1055,177 @@ theorem autoDetectIndent_loop_zero (minIndent : Nat) (maxBlank : Nat) (s : YamlS
     autoDetectIndent.loop minIndent 0 maxBlank s = .ok s minIndent := by
   rfl
 
+/--
+**currentCol — specification.**
+Returns the column number from the stream position without consuming input.
+-/
+@[simp]
+theorem currentCol_eq (s : YamlStream) :
+    currentCol s = .ok s s.col := by
+  unfold currentCol
+  simp only [ParserSpecs.bind_eq, ParserSpecs.getPosition_eq, ParserSpecs.pure_eq,
+             Parser.Stream.getPosition, YamlStream.getPos]
+
+section AutoDetectIndentLoopSpecs
+
+/--
+**autoDetectIndent.loop — blank line step.**
+When `currentCol` returns `col`, `count (token ' ')` returns `spaces`,
+and `option? newline` succeeds, the loop recurses with
+`max maxBlankSpaces (col + spaces)`.
+-/
+theorem autoDetectIndent_loop_blank_line (minIndent fuel : Nat)
+    (maxBlankSpaces col spaces : Nat)
+    (s s₁ s₂ : YamlStream)
+    (h_col : s.col = col)
+    (h_count : (Parser.count (Parser.token (ε := YamlError) (m := Id) ' ') :
+        YamlParser Nat) s = .ok s₁ spaces)
+    (h_newline : (Parser.option? newline) s₁ = .ok s₂ (some ())) :
+    autoDetectIndent.loop minIndent (fuel + 1) maxBlankSpaces s =
+      autoDetectIndent.loop minIndent fuel (max maxBlankSpaces (col + spaces)) s₂ := by
+  show (do
+    let col ← currentCol
+    let spaces ← count (token ' ')
+    let totalCol := col + spaces
+    match ← option? newline with
+    | some _ =>
+      autoDetectIndent.loop minIndent fuel (max maxBlankSpaces totalCol)
+    | none =>
+      if totalCol >= minIndent then
+        if maxBlankSpaces > totalCol then
+          setValidationError
+            s!"block scalar has whitespace-only line ({maxBlankSpaces} spaces) exceeding content indent ({totalCol})"
+        return totalCol
+      else
+        return minIndent) s = _
+  simp only [ParserSpecs.bind_eq, currentCol_eq, h_col, h_count, h_newline]
+
+/--
+**autoDetectIndent.loop — content line at or above minIndent, no warning.**
+When `option? newline` fails (content found), `totalCol >= minIndent`,
+and `maxBlankSpaces <= totalCol`, returns `totalCol`.
+-/
+theorem autoDetectIndent_loop_content_ge (minIndent fuel : Nat)
+    (maxBlankSpaces col spaces : Nat)
+    (s s₁ s₂ : YamlStream)
+    (h_col : s.col = col)
+    (h_count : (Parser.count (Parser.token (ε := YamlError) (m := Id) ' ') :
+        YamlParser Nat) s = .ok s₁ spaces)
+    (h_newline : (Parser.option? newline) s₁ = .ok s₂ none)
+    (h_ge : (col + spaces >= minIndent) = true)
+    (h_no_warn : (maxBlankSpaces > col + spaces) = false) :
+    autoDetectIndent.loop minIndent (fuel + 1) maxBlankSpaces s =
+      .ok s₂ (col + spaces) := by
+  show (do
+    let col ← currentCol
+    let spaces ← count (token ' ')
+    let totalCol := col + spaces
+    match ← option? newline with
+    | some _ =>
+      autoDetectIndent.loop minIndent fuel (max maxBlankSpaces totalCol)
+    | none =>
+      if totalCol >= minIndent then
+        if maxBlankSpaces > totalCol then
+          setValidationError
+            s!"block scalar has whitespace-only line ({maxBlankSpaces} spaces) exceeding content indent ({totalCol})"
+        return totalCol
+      else
+        return minIndent) s = _
+  simp only [ParserSpecs.bind_eq, currentCol_eq, h_col, h_count, h_newline,
+             h_ge, ite_true, h_no_warn]
+  rfl
+
+/--
+**autoDetectIndent.loop — content line below minIndent.**
+When `option? newline` fails and `totalCol < minIndent`, returns `minIndent`.
+-/
+theorem autoDetectIndent_loop_content_lt (minIndent fuel : Nat)
+    (maxBlankSpaces col spaces : Nat)
+    (s s₁ s₂ : YamlStream)
+    (h_col : s.col = col)
+    (h_count : (Parser.count (Parser.token (ε := YamlError) (m := Id) ' ') :
+        YamlParser Nat) s = .ok s₁ spaces)
+    (h_newline : (Parser.option? newline) s₁ = .ok s₂ none)
+    (h_lt : (col + spaces >= minIndent) = false) :
+    autoDetectIndent.loop minIndent (fuel + 1) maxBlankSpaces s =
+      .ok s₂ minIndent := by
+  show (do
+    let col ← currentCol
+    let spaces ← count (token ' ')
+    let totalCol := col + spaces
+    match ← option? newline with
+    | some _ =>
+      autoDetectIndent.loop minIndent fuel (max maxBlankSpaces totalCol)
+    | none =>
+      if totalCol >= minIndent then
+        if maxBlankSpaces > totalCol then
+          setValidationError
+            s!"block scalar has whitespace-only line ({maxBlankSpaces} spaces) exceeding content indent ({totalCol})"
+        return totalCol
+      else
+        return minIndent) s = _
+  simp only [ParserSpecs.bind_eq, currentCol_eq, h_col, h_count, h_newline,
+             h_lt]
+  rfl
+
+end AutoDetectIndentLoopSpecs
+
+/-! ### §8.3.3  `consumeIndent` Specification
+
+`consumeIndent n` checks for a leading tab (setting a validation error
+if found), then consumes exactly `n` spaces via `drop n (token ' ')`.
+-/
+
+/--
+**consumeIndent — no tab, drop succeeds.**
+When `option? (lookAhead (token '\t'))` returns `none` (no tab at start)
+and `drop n (token ' ')` succeeds, `consumeIndent` succeeds.
+-/
+theorem consumeIndent_no_tab (n : Nat) (s s₁ s₂ : YamlStream)
+    (h_no_tab : (Parser.option? (Parser.lookAhead
+        (Parser.token (ε := YamlError) (m := Id) '\t'))) s = .ok s₁ none)
+    (h_drop : (Parser.drop (m := Id) n
+        (Parser.token (ε := YamlError) (m := Id) ' ') : YamlParser PUnit) s₁ =
+        .ok s₂ PUnit.unit) :
+    consumeIndent n s = .ok s₂ () := by
+  unfold consumeIndent
+  simp only [withErrorMessage_eq, ParserSpecs.bind_eq, h_no_tab, h_drop]
+
+/--
+**consumeIndent — tab detected.**
+When `option? (lookAhead (token '\t'))` returns `some '\t'`,
+a validation error is set, then `drop n (token ' ')` determines
+the final result.  If `drop` fails (tab ≠ space), the wrapped
+`withErrorMessage` catches the error.
+-/
+theorem consumeIndent_tab_drop_ok (n : Nat) (s s₁ s₂ s₃ : YamlStream)
+    (h_tab : (Parser.option? (Parser.lookAhead
+        (Parser.token (ε := YamlError) (m := Id) '\t'))) s = .ok s₁ (some '\t'))
+    (h_seterr : setValidationError
+        "tabs are not allowed for indentation (YAML 1.2.2 §6.1)" s₁ = .ok s₂ ())
+    (h_drop : (Parser.drop (m := Id) n
+        (Parser.token (ε := YamlError) (m := Id) ' ') : YamlParser PUnit) s₂ =
+        .ok s₃ PUnit.unit) :
+    consumeIndent n s = .ok s₃ () := by
+  unfold consumeIndent
+  simp only [withErrorMessage_eq, ParserSpecs.bind_eq, h_tab, h_seterr, h_drop]
+
+/-! ### §8.3.4  `blockScalarContent` Top-Level Specification
+
+`blockScalarContent` wraps `getStream` (to read fuel) + `collectLines`.
+-/
+
+/--
+**blockScalarContent — relational spec.**
+Decomposes into `getStream` for fuel, then `collectLines` with
+`fuel = Stream.remaining s`.
+-/
+theorem blockScalarContent_eq (indent : Nat) (s : YamlStream) :
+    blockScalarContent indent s =
+      blockScalarContent.collectLines indent (Stream.remaining s) "" true s := by
+  unfold blockScalarContent
+  simp only [ParserSpecs.bind_eq, ParserSpecs.getStream_eq]
+
 /-! ### §8.4  Block Collection Specifications -/
 
 /--
@@ -1205,6 +1376,24 @@ theorem flowMappingImpl_empty
 | 44 | `anyToken_setPosition_roundtrip` | §8.2.3 | Position roundtrip |
 | 45 | `isIndicator_not_special` | §8.2.3 | Indicator → not special |
 | 46 | `plainScalarSingleLine_normal_start` | §8.2.4 | Relational: normal start |
+| 47 | `applyChomp_strip` | §7 | `rfl` |
+| 48 | `applyChomp_clip` | §7 | `rfl` |
+| 49 | `processFolded_go_nil` | §7.1 | `unfold; rfl` |
+| 50 | `processFolded_go_singleton_first` | §7.1 | `unfold; simp` |
+| 51 | `processFolded_go_singleton_nonempty` | §7.1 | `unfold; simp [h]` |
+| 52 | `processFolded_go_singleton_empty` | §7.1 | `unfold; simp [String.isEmpty]` |
+| 53 | `blockCollectLines_zero` | §8.3.1 | `rfl` |
+| 54 | `blockCollectLines_no_match` | §8.3.1 | `show` + `simp` |
+| 55 | `blockCollectLines_first_step` | §8.3.1 | `show` + `simp [ite_true]` |
+| 56 | `blockCollectLines_cont_step` | §8.3.1 | `show` + `simp` + `rfl` |
+| 57 | `autoDetectIndent_loop_zero` | §8.3.2 | `rfl` |
+| 58 | `currentCol_eq` | §8.3.2 | `unfold; simp` |
+| 59 | `autoDetectIndent_loop_blank_line` | §8.3.2 | `show` + `simp` |
+| 60 | `autoDetectIndent_loop_content_ge` | §8.3.2 | `show` + `simp` + `rfl` |
+| 61 | `autoDetectIndent_loop_content_lt` | §8.3.2 | `show` + `simp` + `rfl` |
+| 62 | `consumeIndent_no_tab` | §8.3.3 | `unfold; simp` |
+| 63 | `consumeIndent_tab_drop_ok` | §8.3.3 | `unfold; simp` |
+| 64 | `blockScalarContent_eq` | §8.3.4 | `unfold; simp` |
 
 ### Remaining Obligations (deferred to §5.4.5)
 
