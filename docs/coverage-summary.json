@@ -1,5 +1,5 @@
 {
-  "date": "2026-02-26T14:30:25-0800",
+  "date": "2026-02-26T15:00:36-0800",
   "overall": {
     "correct": 353,
     "correctRate": 86.945812,
@@ -3010,9 +3010,9 @@
         "total": 29
       },
       {
-        "allPass": false,
+        "allPass": true,
         "label": "YAML 1.2.2 Spec Examples",
-        "passed": 130,
+        "passed": 132,
         "total": 132
       },
       {
@@ -3028,7 +3028,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 1335,
+    "totalPassed": 1337,
     "totalTests": 1337
   }
 }
