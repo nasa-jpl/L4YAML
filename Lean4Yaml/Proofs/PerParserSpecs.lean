@@ -434,6 +434,51 @@ theorem processFolded_go_singleton_empty (acc : String) :
   unfold Lean4Yaml.Parse.processFolded.go
   simp [String.isEmpty]
 
+/-- `processFolded.go` on `line :: next :: rest` with `first = true`
+    recurses with `acc := line`. -/
+@[simp]
+theorem processFolded_go_cons_first (line : String) (next : String) (rest : List String)
+    (acc : String) :
+    Lean4Yaml.Parse.processFolded.go (line :: next :: rest) acc true =
+      Lean4Yaml.Parse.processFolded.go (next :: rest) line false := by
+  show Lean4Yaml.Parse.processFolded.go (line :: next :: rest) acc true = _
+  rw [Lean4Yaml.Parse.processFolded.go]
+  · simp
+  · exact fun h => absurd h (List.cons_ne_nil _ _)
+
+/-- `processFolded.go` on an empty line with `first = false` preserves a newline. -/
+@[simp]
+theorem processFolded_go_cons_empty (next : String) (rest : List String)
+    (acc : String) :
+    Lean4Yaml.Parse.processFolded.go ("" :: next :: rest) acc false =
+      Lean4Yaml.Parse.processFolded.go (next :: rest) (acc.push '\n') false := by
+  show Lean4Yaml.Parse.processFolded.go ("" :: next :: rest) acc false = _
+  rw [Lean4Yaml.Parse.processFolded.go]
+  · simp [String.isEmpty]
+  · exact fun h => absurd h (List.cons_ne_nil _ _)
+
+/-- `processFolded.go` on a more-indented line (starts with space) preserves newline. -/
+theorem processFolded_go_cons_more_indented (line : String) (next : String)
+    (rest : List String) (acc : String)
+    (h_ne : line.isEmpty = false) (h_sp : (line.front == ' ') = true) :
+    Lean4Yaml.Parse.processFolded.go (line :: next :: rest) acc false =
+      Lean4Yaml.Parse.processFolded.go (next :: rest) (acc ++ "\n" ++ line) false := by
+  show Lean4Yaml.Parse.processFolded.go (line :: next :: rest) acc false = _
+  rw [Lean4Yaml.Parse.processFolded.go]
+  · simp [h_ne, h_sp]
+  · exact fun h => absurd h (List.cons_ne_nil _ _)
+
+/-- `processFolded.go` on a normal (non-empty, non-space-leading) line folds to space. -/
+theorem processFolded_go_cons_fold (line : String) (next : String)
+    (rest : List String) (acc : String)
+    (h_ne : line.isEmpty = false) (h_nsp : (line.front == ' ') = false) :
+    Lean4Yaml.Parse.processFolded.go (line :: next :: rest) acc false =
+      Lean4Yaml.Parse.processFolded.go (next :: rest) (acc ++ " " ++ line) false := by
+  show Lean4Yaml.Parse.processFolded.go (line :: next :: rest) acc false = _
+  rw [Lean4Yaml.Parse.processFolded.go]
+  · simp [h_ne, h_nsp]
+  · exact fun h => absurd h (List.cons_ne_nil _ _)
+
 /-! ## §8  Per-Parser Relational Specifications
 
 One correctness theorem per `ValidNode` constructor.  Each takes the
@@ -1171,6 +1216,40 @@ theorem blockScalarLine_under_indented_blank (indent : Nat) (first : Bool)
 
 end BlockScalarLineSpecs
 
+/-! ### §8.3.1b  `takeLineContent` Specification
+
+`takeLineContent` is a fuel-bounded loop collecting non-linebreak characters.
+It uses `for _ in [:fuel]` with `option? anyToken`, breaking on linebreak
+or EOF.  The `for` desugars to `Range.forIn` with `ForInStep`.
+
+We state relational specs rather than unfolding the `forIn` machinery.
+-/
+
+section TakeLineContentSpecs
+
+/--
+**takeLineContent — relational spec.**
+Decomposes into `getStream` for fuel, then the for-loop body.
+The result is a string of non-linebreak characters consumed from the stream.
+-/
+theorem takeLineContent_eq (s : YamlStream) :
+    blockScalarContent.takeLineContent s =
+      (do
+        let fuel := Stream.remaining (← getStream)
+        let mut acc := ""
+        for _ in [:fuel] do
+          match ← option? anyToken with
+          | some c =>
+            if Parse.isLineBreak c then
+              break
+            else
+              acc := acc.push c
+          | none => break
+        return acc : YamlParser String) s := by
+  rfl
+
+end TakeLineContentSpecs
+
 /-! ### §8.3.2  `autoDetectIndent` Specification
 
 `autoDetectIndent` is wrapped in `lookAhead`, so it is non-consuming.
@@ -1384,6 +1463,41 @@ theorem processFolded_single_line (s : String)
     processFolded s = s := by
   unfold processFolded
   simp only [h_split, processFolded.go, ite_true]
+
+/--
+**processFolded — decomposition.**
+`processFolded raw` delegates to `processFolded.go (raw.splitOn "\n") "" true`.
+-/
+theorem processFolded_eq (raw : String) :
+    processFolded raw = processFolded.go (raw.splitOn "\n") "" true := by
+  unfold processFolded
+  rfl
+
+/-! ### §8.3.7  `blockScalar` Style-Dispatch Specifications -/
+
+/--
+**blockScalar — literal style processing identity.**
+When the indicator is `|`, `processLiteral raw = raw`.  Combined with
+`blockScalar_spec`, this shows the literal pipeline preserves raw content
+before chomping.
+-/
+theorem blockScalar_literal_processing (raw : String) :
+    (match ScalarStyle.literal with
+     | .literal => processLiteral raw
+     | .folded => processFolded raw
+     | _ => raw) = raw := by
+  rfl
+
+/--
+**blockScalar — folded style processing.**
+When the indicator is `>`, `processFolded raw` is applied.
+-/
+theorem blockScalar_folded_processing (raw : String) :
+    (match ScalarStyle.folded with
+     | .literal => processLiteral raw
+     | .folded => processFolded raw
+     | _ => raw) = processFolded raw := by
+  rfl
 
 /-! ### §8.4  Block Collection Specifications -/
 
