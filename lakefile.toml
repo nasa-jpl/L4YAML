@@ -179,3 +179,10 @@ name = "Tests.IteratorTests"
 [[lean_exe]]
 name = "iteratortests"
 root = "Tests.IteratorTests.Runner"
+
+[[lean_lib]]
+name = "Tests.ScannerTests"
+
+[[lean_exe]]
+name = "scannertests"
+root = "Tests.ScannerTests.Runner"
