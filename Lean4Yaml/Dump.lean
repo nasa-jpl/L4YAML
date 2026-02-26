@@ -89,6 +89,16 @@ structure DumpConfig where
   /-- Sort mapping keys alphabetically for deterministic output.
       **Not yet implemented** — reserved for a future enhancement. -/
   sortKeys : Bool := false
+  /-- Allow YAML reserved words (`true`, `false`, `null`, `yes`, `no`, `~`)
+      to be emitted as plain scalars without quoting.
+      When `false` (default), reserved words are double-quoted for safety.
+      Set to `true` when the consumer (e.g., YAML 1.2 core schema) can
+      distinguish booleans/nulls from strings by context. -/
+  allowReservedPlain : Bool := false
+  /-- Omit mapping fields whose values are empty sequences (`[]`) or
+      empty mappings (`{}`). Useful for producing minimal YAML output
+      that omits default-valued collection fields. -/
+  omitEmpty : Bool := false
   deriving Repr, BEq, Inhabited, ToJson
 
 /-- Manual `FromJson` instance for `DumpConfig` that uses structure defaults
@@ -105,7 +115,12 @@ instance : Lean.FromJson DumpConfig where
       | .ok v => v | _ => 80
     let sortKeys := match json.getObjValAs? Bool "sortKeys" with
       | .ok v => v | _ => false
-    .ok { indent, defaultStyle, scalarStyle, lineWidth, sortKeys }
+    let allowReservedPlain := match json.getObjValAs? Bool "allowReservedPlain" with
+      | .ok v => v | _ => false
+    let omitEmpty := match json.getObjValAs? Bool "omitEmpty" with
+      | .ok v => v | _ => false
+    .ok { indent, defaultStyle, scalarStyle, lineWidth, sortKeys,
+          allowReservedPlain, omitEmpty }
 
 /-! ## Private Helpers -/
 
@@ -174,8 +189,11 @@ where
       (c₁ == ' ' && c₂ == '#') ||
       go (c₂ :: rest)
 
-/-- Determine if string content is safe for plain scalar style. -/
-def isPlainSafe (s : String) : Bool :=
+/-- Determine if string content is safe for plain scalar style.
+    When `allowReserved` is `true`, reserved words like `true`, `false`, `null`
+    are treated as plain-safe (useful for boolean/null values that should
+    not be quoted). -/
+def isPlainSafe (s : String) (allowReserved : Bool := false) : Bool :=
   if s.isEmpty then false
   else
     let chars := s.toList
@@ -194,8 +212,8 @@ def isPlainSafe (s : String) : Bool :=
       (match chars.getLast? with
        | some last => last != ' ' && last != '\t'
        | none => true) &&
-      -- Must not be a reserved word
-      !isReservedWord s
+      -- Must not be a reserved word (unless allowed)
+      (allowReserved || !isReservedWord s)
 
 /-- Check if string contains newlines. -/
 def hasNewlines (s : String) : Bool :=
@@ -212,13 +230,13 @@ private def chooseScalarStyle (s : Scalar) (cfg : DumpConfig) : ScalarStyle :=
       -- Single-quoted cannot represent newlines
       if hasNewlines s.content then .doubleQuoted else .singleQuoted
     | .plain =>
-      if isPlainSafe s.content then .plain else .doubleQuoted
+      if isPlainSafe s.content cfg.allowReservedPlain then .plain else .doubleQuoted
     | .auto =>
       if s.content.isEmpty then .doubleQuoted
       else if hasNewlines s.content then
         -- Multi-line: use block scalar style from annotation, or default to literal
         if s.style == .literal || s.style == .folded then s.style else .literal
-      else if isPlainSafe s.content then .plain
+      else if isPlainSafe s.content cfg.allowReservedPlain then .plain
       else .doubleQuoted
 
 /-- Resolve collection style from node annotation and config. -/
@@ -256,6 +274,12 @@ private def nodePrefix (tag : Option String) (anchor : Option String) : String :
   | true, false => a
   | false, true => t
   | false, false => t ++ " " ++ a
+
+/-- Check if a value is an empty collection (sequence or mapping with no items). -/
+def isEmptyCollection : YamlValue → Bool
+  | .sequence _ items .. => items.isEmpty
+  | .mapping _ pairs .. => pairs.isEmpty
+  | _ => false
 
 /-- Check if a value renders as a single line (can follow `- ` or `key: `). -/
 private def isInlineValue : YamlValue → Bool
@@ -331,11 +355,15 @@ where
       | .block =>
         if pairs.isEmpty then
           (if npfx.isEmpty then "" else npfx ++ " ") ++ "{}"
-        else if npfx.isEmpty then
-          dumpBlockPairs pairs.toList cfg depth true
         else
-          npfx ++ "\n" ++ makeIndent depth cfg.indent ++
-            dumpBlockPairs pairs.toList cfg depth true
+          let result := dumpBlockPairs pairs.toList cfg depth true
+          -- When omitEmpty filters out all pairs, emit empty mapping
+          if result.isEmpty then
+            (if npfx.isEmpty then "" else npfx ++ " ") ++ "{}"
+          else if npfx.isEmpty then
+            result
+          else
+            npfx ++ "\n" ++ makeIndent depth cfg.indent ++ result
   /-- Comma-separated flow list items. -/
   dumpFlowList : List YamlValue → DumpConfig → Nat → String
     | [], _, _ => ""
@@ -368,25 +396,34 @@ where
           ind ++ "-\n" ++ makeIndent (depth + 1) cfg.indent ++
             dumpValue v cfg (depth + 1)
       item ++ "\n" ++ dumpBlockList vs cfg depth false
-  /-- Block mapping pairs. `first = true` suppresses indent on first line. -/
+  /-- Block mapping pairs. `first = true` suppresses indent on first line.
+      When `cfg.omitEmpty` is true, pairs whose value is an empty collection
+      are silently skipped. -/
   dumpBlockPairs : List (YamlValue × YamlValue) → DumpConfig → Nat → Bool → String
     | [], _, _, _ => ""
     | [(k, v)], cfg, depth, first =>
-      let ind := if first then "" else makeIndent depth cfg.indent
-      if isInlineValue v then
-        ind ++ dumpValue k cfg depth ++ ": " ++ dumpValue v cfg (depth + 1)
+      if cfg.omitEmpty && isEmptyCollection v then ""
       else
-        ind ++ dumpValue k cfg depth ++ ":\n" ++
-          makeIndent (depth + 1) cfg.indent ++ dumpValue v cfg (depth + 1)
-    | (k, v) :: rest, cfg, depth, first =>
-      let ind := if first then "" else makeIndent depth cfg.indent
-      let pair :=
+        let ind := if first then "" else makeIndent depth cfg.indent
         if isInlineValue v then
           ind ++ dumpValue k cfg depth ++ ": " ++ dumpValue v cfg (depth + 1)
         else
           ind ++ dumpValue k cfg depth ++ ":\n" ++
             makeIndent (depth + 1) cfg.indent ++ dumpValue v cfg (depth + 1)
-      pair ++ "\n" ++ dumpBlockPairs rest cfg depth false
+    | (k, v) :: rest, cfg, depth, first =>
+      if cfg.omitEmpty && isEmptyCollection v then
+        dumpBlockPairs rest cfg depth first
+      else
+        let ind := if first then "" else makeIndent depth cfg.indent
+        let pair :=
+          if isInlineValue v then
+            ind ++ dumpValue k cfg depth ++ ": " ++ dumpValue v cfg (depth + 1)
+          else
+            ind ++ dumpValue k cfg depth ++ ":\n" ++
+              makeIndent (depth + 1) cfg.indent ++ dumpValue v cfg (depth + 1)
+        let tail := dumpBlockPairs rest cfg depth false
+        if tail.isEmpty then pair
+        else pair ++ "\n" ++ tail
 
 /-! ## Directive Serialization -/
 
@@ -480,6 +517,17 @@ open Lean4Yaml Lean4Yaml.Dump
 #guard dump (.plainScalar "{flow}") == "\"{flow}\""
 #guard dump (.plainScalar "[array]") == "\"[array]\""
 
+/-! ### allowReservedPlain: reserved words emitted unquoted -/
+
+#guard dump (.plainScalar "true") { allowReservedPlain := true } == "true"
+#guard dump (.plainScalar "false") { allowReservedPlain := true } == "false"
+#guard dump (.plainScalar "null") { allowReservedPlain := true } == "null"
+#guard dump (.plainScalar "yes") { allowReservedPlain := true } == "yes"
+#guard dump (.plainScalar "~") { allowReservedPlain := true } == "~"
+-- Non-reserved special chars are still quoted even with allowReservedPlain
+#guard dump (.plainScalar "key: value") { allowReservedPlain := true } == "\"key: value\""
+#guard dump (.plainScalar "{flow}") { allowReservedPlain := true } == "\"{flow}\""
+
 /-! ### Explicit double-quoted: auto mode uses content analysis, not annotation -/
 
 #guard dump (.quotedScalar "hello" .doubleQuoted) == "hello"
@@ -571,6 +619,34 @@ open Lean4Yaml Lean4Yaml.Dump
 
 #guard dump (.sequence .block #[]) == "[]"
 #guard dump (.mapping .block #[]) == "{}"
+
+/-! ### omitEmpty: empty collection fields are omitted -/
+
+-- Mapping with mix of empty and non-empty values
+#guard dump (.mapping .block #[
+    (.plainScalar "name", .plainScalar "test"),
+    (.plainScalar "items", .sequence .block #[]),
+    (.plainScalar "meta", .mapping .block #[])
+  ]) { omitEmpty := true } == "name: test"
+
+-- All fields empty → renders as empty mapping
+#guard dump (.mapping .block #[
+    (.plainScalar "items", .sequence .block #[]),
+    (.plainScalar "meta", .mapping .block #[])
+  ]) { omitEmpty := true } == "{}"
+
+-- Without omitEmpty, empty fields are preserved
+#guard dump (.mapping .block #[
+    (.plainScalar "name", .plainScalar "test"),
+    (.plainScalar "items", .sequence .block #[])
+  ]) == "name: test\nitems:\n  []"
+
+-- Non-empty collections are preserved with omitEmpty
+#guard dump (.mapping .block #[
+    (.plainScalar "a", .plainScalar "v1"),
+    (.plainScalar "b", .sequence .block #[.plainScalar "x"]),
+    (.plainScalar "c", .sequence .block #[])
+  ]) { omitEmpty := true } == "a: v1\nb:\n  - x"
 
 /-! ### Nested flow inside block -/
 
