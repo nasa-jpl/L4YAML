@@ -1040,6 +1040,137 @@ theorem blockCollectLines_cont_step (indent : Nat) (fuel : Nat)
 
 end BlockScalarContentLoopSpecs
 
+/-! ### §8.3.1a  `blockScalarLine` Branch Specifications
+
+`blockScalarLine indent first` has three main branches:
+
+1. **Blank line**: `option? (lookAhead newline)` succeeds → consume newline, return `""`
+2. **Under-indented blank**: `isBlankUnderIndented = true` → skip whitespace,
+   optional newline, return `""`
+3. **Content line**: lookAhead anyToken succeeds → `consumeIndent indent` →
+   `takeLineContent` → return content
+-/
+
+section BlockScalarLineSpecs
+
+/--
+**blockScalarLine — blank line.**
+When `option? (lookAhead newline)` succeeds, consumes the newline and
+returns the empty string.
+-/
+theorem blockScalarLine_blank (indent : Nat) (first : Bool)
+    (s s₁ s₂ : YamlStream)
+    (h_look : (option? (lookAhead newline)) s = .ok s₁ (some ()))
+    (h_newline : newline s₁ = .ok s₂ ()) :
+    blockScalarContent.blockScalarLine indent first s = .ok s₂ "" := by
+  show (do
+    match ← option? (lookAhead newline) with
+    | some _ =>
+      newline
+      return ""
+    | none =>
+      let isBlankUnderIndented ← lookAhead do
+        skipHWhitespace
+        let col ← currentCol
+        match ← option? (lookAhead newline) with
+        | some _ => return decide (col < indent)
+        | none => return false
+      if isBlankUnderIndented then
+        skipHWhitespace
+        let _ ← option? newline
+        return ""
+      let _ ← lookAhead anyToken
+      consumeIndent indent
+      let content ← blockScalarContent.takeLineContent
+      return content) s = _
+  simp only [ParserSpecs.bind_eq, h_look, h_newline, ParserSpecs.pure_eq]
+
+/--
+**blockScalarLine — content line.**
+When the blank-line lookAhead fails, the `isBlankUnderIndented` lookAhead
+returns `false`, `lookAhead anyToken` succeeds, `consumeIndent` succeeds,
+and `takeLineContent` returns `content`, the result is `content`.
+-/
+theorem blockScalarLine_content (indent : Nat) (first : Bool)
+    (s s₁ s₂ s₃ s₄ s₅ : YamlStream)
+    (content : String) (ch : Char)
+    (h_no_blank : (option? (lookAhead newline)) s = .ok s₁ none)
+    (h_not_under : (lookAhead ((do
+        skipHWhitespace
+        let col ← currentCol
+        match ← option? (lookAhead newline) with
+        | some _ => return decide (col < indent)
+        | none => return false) : YamlParser Bool)) s₁ = .ok s₂ false)
+    (h_lookahead : (lookAhead (anyToken : YamlParser Char)) s₂ = .ok s₃ ch)
+    (h_indent : consumeIndent indent s₃ = .ok s₄ ())
+    (h_content : blockScalarContent.takeLineContent s₄ = .ok s₅ content) :
+    blockScalarContent.blockScalarLine indent first s = .ok s₅ content := by
+  show (do
+    match ← option? (lookAhead newline) with
+    | some _ =>
+      newline
+      return ""
+    | none =>
+      let isBlankUnderIndented ← lookAhead do
+        skipHWhitespace
+        let col ← currentCol
+        match ← option? (lookAhead newline) with
+        | some _ => return decide (col < indent)
+        | none => return false
+      if isBlankUnderIndented then
+        skipHWhitespace
+        let _ ← option? newline
+        return ""
+      let _ ← lookAhead anyToken
+      consumeIndent indent
+      let content ← blockScalarContent.takeLineContent
+      return content) s = _
+  simp only [ParserSpecs.bind_eq, h_no_blank, h_not_under,
+             Bool.false_eq_true, ite_false,
+             h_lookahead, h_indent, h_content, ParserSpecs.pure_eq]
+
+/--
+**blockScalarLine — under-indented blank line.**
+When the blank-line lookAhead fails but `isBlankUnderIndented` is `true`,
+skips horizontal whitespace + optional newline and returns `""`.
+-/
+theorem blockScalarLine_under_indented_blank (indent : Nat) (first : Bool)
+    (s s₁ s₂ s₃ s₄ : YamlStream) (nlOpt : Option Unit)
+    (h_no_blank : (option? (lookAhead newline)) s = .ok s₁ none)
+    (h_under : (lookAhead ((do
+        skipHWhitespace
+        let col ← currentCol
+        match ← option? (lookAhead newline) with
+        | some _ => return decide (col < indent)
+        | none => return false) : YamlParser Bool)) s₁ = .ok s₂ true)
+    (h_skip : skipHWhitespace s₂ = .ok s₃ ())
+    (h_opt_nl : (option? newline) s₃ = .ok s₄ nlOpt) :
+    blockScalarContent.blockScalarLine indent first s = .ok s₄ "" := by
+  show (do
+    match ← option? (lookAhead newline) with
+    | some _ =>
+      newline
+      return ""
+    | none =>
+      let isBlankUnderIndented ← lookAhead do
+        skipHWhitespace
+        let col ← currentCol
+        match ← option? (lookAhead newline) with
+        | some _ => return decide (col < indent)
+        | none => return false
+      if isBlankUnderIndented then
+        skipHWhitespace
+        let _ ← option? newline
+        return ""
+      let _ ← lookAhead anyToken
+      consumeIndent indent
+      let content ← blockScalarContent.takeLineContent
+      return content) s = _
+  simp only [ParserSpecs.bind_eq, h_no_blank, h_under,
+             ite_true, h_skip, h_opt_nl, ParserSpecs.pure_eq]
+
+end BlockScalarLineSpecs
+
 /-! ### §8.3.2  `autoDetectIndent` Specification
 
 `autoDetectIndent` is wrapped in `lookAhead`, so it is non-consuming.
@@ -1226,6 +1357,34 @@ theorem blockScalarContent_eq (indent : Nat) (s : YamlStream) :
   unfold blockScalarContent
   simp only [ParserSpecs.bind_eq, ParserSpecs.getStream_eq]
 
+/-! ### §8.3.5  `autoDetectIndent` Top-Level Specification
+
+`autoDetectIndent minIndent` wraps `lookAhead` around `getStream` + `loop`.
+-/
+
+/--
+**autoDetectIndent — relational spec.**
+Decomposes into `lookAhead` wrapping `getStream` for fuel, then `loop fuel 0`.
+-/
+theorem autoDetectIndent_eq (minIndent : Nat) (s : YamlStream) :
+    autoDetectIndent minIndent s =
+      (lookAhead (getStream >>= fun stream =>
+        autoDetectIndent.loop minIndent (Stream.remaining stream) 0)) s := by
+  unfold autoDetectIndent
+  rfl
+
+/-! ### §8.3.6  `processFolded` Extra Specifications -/
+
+/--
+**processFolded — single line.**
+A raw string with no newline is returned as-is (the `first = true` base case).
+-/
+theorem processFolded_single_line (s : String)
+    (h_split : s.splitOn "\n" = [s]) :
+    processFolded s = s := by
+  unfold processFolded
+  simp only [h_split, processFolded.go, ite_true]
+
 /-! ### §8.4  Block Collection Specifications -/
 
 /--
@@ -1394,6 +1553,11 @@ theorem flowMappingImpl_empty
 | 62 | `consumeIndent_no_tab` | §8.3.3 | `unfold; simp` |
 | 63 | `consumeIndent_tab_drop_ok` | §8.3.3 | `unfold; simp` |
 | 64 | `blockScalarContent_eq` | §8.3.4 | `unfold; simp` |
+| 65 | `blockScalarLine_blank` | §8.3.1a | `show` + `simp` |
+| 66 | `blockScalarLine_content` | §8.3.1a | `show` + `simp [Bool.false_eq_true]` |
+| 67 | `blockScalarLine_under_indented_blank` | §8.3.1a | `show` + `simp [ite_true]` |
+| 68 | `autoDetectIndent_eq` | §8.3.5 | `unfold; rfl` |
+| 69 | `processFolded_single_line` | §8.3.6 | `unfold; simp` |
 
 ### Remaining Obligations (deferred to §5.4.5)
 
