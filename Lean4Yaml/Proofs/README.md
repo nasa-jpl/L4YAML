@@ -100,7 +100,7 @@ The deductive gap is:
 | `FuelSufficiency.lean` | 545 | 35 | — | Fuel `4 * remaining + 4` is always sufficient; no fuel exhaustion |
 | `IndentConsumption.lean` | 250 | 11 | 12 | Consuming indentation advances column by exactly the right amount |
 | `ParserSpecs.lean` | 424 | 20 | — | Foundation `@[simp]` lemmas unfolding lean4-parser combinators |
-| `PerParserSpecs.lean` | 1977 | 134 | — | Per-parser correctness: combinators, scalars, block/flow collections |
+| `PerParserSpecs.lean` | 2309 | 161 | — | Per-parser correctness: combinators, scalars, block/flow collections |
 | `RoundTrip.lean` | 905 | 56 | 66 | Parse-emit-parse round-trip preserves content |
 | `SchemaDump.lean` | 311 | 40 | 22 | `ToYaml` + dump pipeline content round-trip |
 | `SchemaResolution.lean` | 267 | 35 | 34 | Core Schema (§10.3) resolution: null/bool/int/float determinism |
@@ -940,6 +940,47 @@ sequence/mapping return `none` immediately:
 `isIndicator` (6 chars), `isForbiddenPlainStart_eq` (refl with
 `isIndicator`), `isAnchorChar` (4 chars).
 
+### 4i. Batch 7: deeper B2 escape/fold specs (21 lemmas) — COMPLETED
+
+Commit `44a083d`.
+
+**§8.1.2 — Escape processing (16 theorems):** Concrete evaluation of
+`doubleQuotedScalar.processEscape` for all 16 simple escape characters:
+`\n`, `\t`, `\\`, `\"`, `\0`, `\r`, `\ `, `\/`, `\a`, `\b`, `\v`,
+`\f`, `\e`, `\N`, `\_`, and literal tab.  Each proved via
+`unfold; simp [pure_eq]`.
+
+**§8.1.3 — Backslash escape relay (1 theorem):**
+`doubleQuoted_collectChars_backslash_escape` — when `\` + non-linebreak
+char, delegates to `processEscape` and recurses.  Proved via
+`split <;> simp_all [bind_eq]` to handle the 3-way char match.
+
+**§8.1.4 — Fold loop base (1 theorem):**
+`foldQuotedNewlines_loop_zero` — fuel-zero returns `.folded result`.
+
+**§8.1.6–§8.1.7 — Line fold relay specs (3 theorems):**
+`doubleQuoted_collectChars_linefold_lf`, `singleQuoted_collectChars_linefold_lf`,
+`singleQuoted_collectChars_escape_pair` — relay specs for `\n` line fold
+and `''` escape pair in quoted scalars.
+
+### 4j. Batch 8: forbidden fold + flow ws + collection dispatch (6 lemmas) — COMPLETED
+
+Commit `b3287d5`.
+
+**§8.1.8 — Forbidden fold paths (2 theorems):**
+`doubleQuoted_collectChars_linefold_forbidden`,
+`singleQuoted_collectChars_linefold_forbidden` — when `foldQuotedNewlines`
+returns `.forbidden msg`, the loop records a validation error and returns.
+
+**§8.1.10 — Flow whitespace base (1 theorem):**
+`flowWhitespace_go_zero` — fuel-zero returns immediately.
+
+**§8.10.2 — Collection dispatch at-indent (3 theorems):**
+`dispatchByCharImpl_eof` — EOF → `.noMatch`.
+`blockSequenceImpl_dispatch` — at-indent → items + `.sequence .block` wrap.
+`blockMappingImpl_dispatch` — at-indent → entries + `.mapping .block` wrap.
+Uses `if_neg h_ge` as complement of the under-indented specs.
+
 ---
 
 ## 5. Roadmap to Fully Deductive Correctness
@@ -1011,7 +1052,7 @@ used by the YAML parser are now deductively transparent for `m = Id`.
 | Phase | Items | Difficulty | Prerequisite | Status |
 |---|---|---|---|---|
 | A | `dropMany_eq`, `count_eq` | Moderate | — | ✅ Done |
-| B | 8 per-parser specs | Moderate–Hard | A | WIP (134 specs in PerParserSpecs: B1–B4) |
+| B | 8 per-parser specs | Moderate–Hard | A | WIP (161 specs in PerParserSpecs: B1–B4) |
 | C | `DecidableEq YamlValue` | Moderate | — | ✅ Done |
 | C' | `LawfulBEq YamlValue` | Moderate | C | Deferred (non-blocking) |
 | D | Universal completeness | Hard | A, B, C | Planned |

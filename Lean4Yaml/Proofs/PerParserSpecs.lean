@@ -2275,6 +2275,18 @@ theorem isForbiddenPlainStart_eq (c : Char) :
 | 116 | `blockMappingImpl_under_indented` | §8.10 | `unfold; simp [h_lt]` |
 | 117–127 | `isIndicator_*`, `isAnchorChar_*`, etc. | §8.11 | `native_decide` |
 | 128 | `isForbiddenPlainStart_eq` | §8.11 | `unfold; rfl` |
+| 129–144 | `doubleQuoted_processEscape_*` (16 chars) | §8.1.2 | `unfold; simp [pure_eq]` |
+| 145 | `doubleQuoted_collectChars_backslash_escape` | §8.1.3 | `split <;> simp_all [bind_eq]` |
+| 146 | `foldQuotedNewlines_loop_zero` | §8.1.4 | `unfold; simp [pure_eq]` |
+| 147 | `doubleQuoted_collectChars_linefold_lf` | §8.1.6 | `simp only [bind_eq, ...]` |
+| 148 | `singleQuoted_collectChars_escape_pair` | §8.1.7 | `simp only [bind_eq, ...]` |
+| 149 | `singleQuoted_collectChars_linefold_lf` | §8.1.7 | `simp only [bind_eq, ...]` |
+| 150 | `doubleQuoted_collectChars_linefold_forbidden` | §8.1.8 | `simp only [bind_eq, ...]` |
+| 151 | `singleQuoted_collectChars_linefold_forbidden` | §8.1.8 | `simp only [bind_eq, ...]` |
+| 152 | `flowWhitespace_go_zero` | §8.1.10 | `unfold; simp [pure_eq]` |
+| 153 | `dispatchByCharImpl_eof` | §8.10.2 | `simp only [bind_eq, h_eof, pure_eq]` |
+| 154 | `blockSequenceImpl_dispatch` | §8.10.2 | `simp [if_neg, bind_eq, pure_eq]` |
+| 155 | `blockMappingImpl_dispatch` | §8.10.2 | `simp [if_neg, bind_eq, pure_eq]` |
 
 ### Remaining Obligations (deferred to §5.4.5)
 
