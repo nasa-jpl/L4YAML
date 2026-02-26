@@ -1375,6 +1375,50 @@ Ported and adapted the schema layer from lean4-yaml (2026-02-24). 8 new files im
 
 </details>
 
+### Token–Grammar Layer Analysis (2026-02-26)
+
+<details>
+<summary>
+<b>Identified root cause of <code>detectMappingKeyImpl</code> false positives: lack of explicit tokenization layer. Classified all 205 YAML 1.2.2 productions into Character class (18), Lexical/Token (132), and Syntactic/Grammar (54) layers. Proposed two-pass scanner/parser architecture.</b>
+</summary>
+
+**Motivation.** While diagnosing the spec example 10.3 failure (`block mapping cannot start on the same line as a mapping value`), we discovered that the root cause is broader than the specific test case. The minimal reproduction is:
+
+```yaml
+b: x: y
+```
+
+This is valid YAML (key `b`, value `x: y`) but our parser rejects it. The `detectMappingKeyImpl` function scans forward through raw characters looking for `: ` and finds it inside the *value* content, producing a false positive. The same false positive occurs for any mapping entry whose plain scalar value contains `: `.
+
+**Root cause.** The YAML 1.2.2 specification defines all 205 productions as character-level rules in a single PEG-like grammar. There is no explicit distinction between lexical (tokenization) and syntactic (grammar) layers. Our parser inherits this conflation: grammar-level decisions require character-level lookahead through content that a tokenizer would have already consumed as a single token.
+
+**Analysis.** We classified all 205 YAML 1.2.2 productions into three layers:
+
+| Layer | Count | % | Description |
+|-------|-------|---|-------------|
+| Character class (C) | 18 | 8.8% | Char predicates — `c-printable`, `c-flow-indicator`, etc. |
+| Lexical/Token (L) | 132 | 64.4% | Character → token: indicators, scalars, escapes, directives, whitespace |
+| Syntactic/Grammar (S) | 54 | 26.3% | Token → AST: collections, nodes, documents, stream |
+
+Nearly two-thirds of the spec is lexical. Only about a quarter is syntactic. The spec presents them as a flat characterlevel grammar, but the natural layering is overwhelmingly lexical.
+
+**Proposed architecture.** Split the current single-pass character-level parser into a two-pass design:
+
+```
+Char Stream ──→ [Scanner] ──→ Token Stream ──→ [Parser] ──→ YamlValue AST
+                (132 L prods)                  (54 S prods)
+```
+
+This follows the libyaml reference implementation, which already makes this split internally (scanner.c ~2800 lines, parser.c ~900 lines). The scanner handles indentation tracking, scalar content collection, escape resolution, implicit key detection, and virtual token generation (BLOCK-SEQUENCE-START, BLOCK-MAPPING-START, BLOCK-END).
+
+**Impact on proofs.** ~40% of existing proofs (escape resolution, fold newlines, block scalar contracts, scalar per-parser specs) move cleanly to the scanner layer — they already reason about character-level operations. ~30% (round-trip, composition, fuel sufficiency) require restructuring into two-layer proofs. ~30% (char class, document contracts, suite guards) are unaffected. Net effect: more proofs but simpler proofs, following the compounding pattern from Phases 3–5.
+
+**Upstream observation.** The YAML spec would benefit from explicitly differentiating token-level and grammar-level productions. libyaml already makes this distinction; formalizing it in the spec would help all implementations.
+
+Full analysis in [YAML_PRODUCTIONS.md](Lean4Yaml/YAML_PRODUCTIONS.md) §Token–Grammar Layer Analysis.
+
+</details>
+
 ### Spec Example Failure Diagnosis & Fix (2026-02-25)
 
 <details>
@@ -2044,6 +2088,127 @@ Complete section-by-section coverage of YAML 1.2.2 Chapters 5–9.
 **All 36 sections of YAML 1.2.2 Chapters 5–9 are implemented.** 28 sections have explicit `§`-citations in code; 8 sections (§5.6, §6.2, §6.3, §6.6, §7.2, §8.1.2, §9.1.1, §9.1.5) are implemented without explicit citations. 16 sections have formal proof coverage in `Proofs/*.lean`.
 
 **§6.6 limitation:** Comment text is parsed and discarded — productions [75]–[79] are recognized but comment content is not preserved in the AST. [Phase 8](#phase-8-comment-preservation--planned) plans AST-level comment preservation for round-trip fidelity.
+
+</details>
+
+## Phase 9: Explicit Tokenization Layer — Planned
+
+<details>
+<summary>
+Refactor the parser into a two-pass scanner/parser architecture with explicit YAML tokens, following the libyaml model. Motivated by <code>detectMappingKeyImpl</code> false positives from character-level lookahead at grammar decision points.
+</summary>
+
+### Motivation
+
+The current parser implements all 205 YAML 1.2.2 productions as interleaved character-level parsers in a single pass. This works for most cases, but produces false positives when grammar-level decisions require scanning through content that should have been tokenized:
+
+```yaml
+# Valid YAML, rejected by current parser:
+b: x: y          # plain value containing `: `
+a: |-
+  hello
+b: x: y          # block literal followed by entry with `: ` in value
+```
+
+The `detectMappingKeyImpl` pre-check (Block.lean line 879) scans forward through raw characters looking for `: ` to determine whether the current line contains a nested mapping. It cannot distinguish a VALUE indicator token from `: ` inside a scalar token because no tokenization has occurred.
+
+This is the classical compiler-architecture motivation for separating tokenization from parsing: **grammar rules should operate on tokens, not characters**.
+
+### Architecture
+
+```
+Character Stream ──→ [ Scanner ] ──→ [YamlToken] ──→ [ Parser ] ──→ YamlValue AST
+                     132 L-layer                     54 S-layer
+                     productions                     productions
+```
+
+See [YAML_PRODUCTIONS.md](Lean4Yaml/YAML_PRODUCTIONS.md) §Token–Grammar Layer Analysis for the full production classification.
+
+### Proposed Modules
+
+| Module | Lines (est.) | Description |
+|--------|-------------|-------------|
+| `Token.lean` | ~50 | `YamlToken` inductive type + `ScalarStyle` |
+| `Scanner.lean` | ~1200 | Character → Token: indicators, scalars, escapes, indentation stack, virtual tokens |
+| `Scanner/Indent.lean` | ~300 | Indentation stack management, BLOCK-START/BLOCK-END generation |
+| `Scanner/Scalar.lean` | ~600 | Scalar content collection: plain, quoted, block (escape resolution, folding) |
+| `TokenParser.lean` | ~500 | Token → AST: collections, nodes, documents using `ParserT` over token stream |
+| `Proofs/ScannerSpecs.lean` | ~400 | Scanner correctness: token classification, scalar content resolution |
+| `Proofs/TokenRoundTrip.lean` | ~200 | Emit → scan → parse round-trip at token level |
+
+**Estimated total:** ~3250 new lines, replacing ~2800 existing lines in Block.lean + Flow.lean + Scalar.lean + Document.lean.
+
+### Token Type
+
+```lean
+inductive YamlToken where
+  | streamStart | streamEnd
+  | versionDirective (major minor : Nat)
+  | tagDirective (handle prefix : String)
+  | documentStart | documentEnd               -- --- / ...
+  | blockSequenceStart | blockMappingStart     -- virtual (indentation-generated)
+  | blockEnd                                   -- virtual (de-indentation)
+  | blockEntry | key | value                   -- - / ? / :
+  | flowSequenceStart | flowSequenceEnd        -- [ / ]
+  | flowMappingStart | flowMappingEnd          -- { / }
+  | flowEntry                                  -- ,
+  | anchor (name : String)                     -- &name
+  | alias (name : String)                      -- *name
+  | tag (handle suffix : String)               -- !tag
+  | scalar (value : String) (style : ScalarStyle) -- content resolved
+  | comment (text : String)                    -- # text (for Phase 8)
+```
+
+The three **virtual tokens** (`blockSequenceStart`, `blockMappingStart`, `blockEnd`) have no character representation. They are generated by the scanner tracking an indentation stack, analogous to Python's `INDENT`/`DEDENT`.
+
+### Proof Strategy
+
+**Layer 1 — Scanner proofs:**
+- Character class correspondence (reuse existing `CharClass.lean`)
+- Escape resolution correctness (migrate from `EscapeResolution.lean`)
+- Block scalar contracts (migrate from `BlockScalarContracts.lean`)
+- Fold newline properties (migrate from `FoldNewlines.lean`)
+- Indentation stack invariants (new)
+- Virtual token generation correctness (new)
+- Scanner termination via `Stream.remaining` (reuse `next_decreasing`)
+
+**Layer 2 — Token parser proofs:**
+- Collection nesting correctness (simplify from current `PerParserSpecs.lean`)
+- Document structure (migrate from `DocumentContracts.lean`)
+- Fuel sufficiency at token level (simpler than char level)
+
+**Layer 3 — Composition:**
+- End-to-end: `scan ∘ parse = current_parser` (bridge theorem)
+- Round-trip: `emit → scan → parse = id` (restructure from `RoundTrip.lean`)
+- Suite guards: unchanged (end-to-end, scanner+parser compose transparently)
+
+### Impact Assessment
+
+| Category | Impact | Effort |
+|----------|--------|--------|
+| Existing 351 `#guard` suite tests | **None** — end-to-end, transparent | — |
+| Existing 76 hand-written `#guard` | **None** — end-to-end | — |
+| `detectMappingKeyImpl` false positives | **Eliminated** — grammar sees VALUE tokens, not raw `: ` | High (scanner design) |
+| Escape proofs (16+9+7 theorems) | Move to scanner layer | Low (repackage) |
+| Block scalar proofs (14+10+2) | Move to scanner layer | Low (repackage) |
+| Round-trip proofs (58 theorems) | Restructure: emit↔scan + scan↔parse | Medium |
+| Composition proofs (21 theorems) | Restructure for two-layer bridge | Medium |
+| Fuel sufficiency (35 theorems) | Split into scanner + parser fuel | Medium |
+| Per-parser specs (46 theorems) | Split: scalar→scanner, collection→parser | Medium |
+
+**Net:** ~40% of proofs move cleanly, ~30% restructure, ~30% unaffected.
+
+### Dependencies
+
+- **Phase 8 (Comment Preservation):** The scanner should produce COMMENT tokens. Phase 9 and Phase 8 are complementary — both benefit from the scanner capturing comment text as tokens rather than discarding it in `dropMany`.
+- **lean4-parser:** The token-level parser would use `ParserT` over a new `TokenStream` type (array of positioned tokens). This requires implementing `Parser.Stream` for `TokenStream`. Alternatively, the token parser could be hand-written pattern matching over `Array YamlToken` without lean4-parser, which would be simpler to verify.
+
+### Open Questions
+
+1. **Incremental vs. batch scanning.** libyaml scans lazily (one token at a time, on demand). An alternative is batch scanning (full input → token array → parse). Batch is simpler to verify (scanner is a pure function `String → Array YamlToken`) but uses more memory.
+2. **Scanner state.** The indentation stack and flow level are scanner state. Should this be modeled as a state monad (like the current `YamlStream`) or as explicit parameters?
+3. **Backward compatibility.** The `parseYaml : String → Except String (Array YamlDocument)` API must be preserved. Internally it would become `scan ∘ parse` instead of the current single-pass.
+4. **Upstream YAML spec.** Should we propose a production classification (C/L/S) to the YAML specification project? The analysis in `YAML_PRODUCTIONS.md` could serve as a starting point.
 
 </details>
 

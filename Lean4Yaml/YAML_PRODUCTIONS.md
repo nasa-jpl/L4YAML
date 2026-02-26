@@ -259,3 +259,366 @@ for spec coverage.
 > specification numbering. Some numbers are absent from the spec itself
 > (gaps in the sequence). The [62] production (`c-ns-esc-char`) is listed
 > as [61] above per the consolidated numbering in the spec document.
+
+---
+
+## Token–Grammar Layer Analysis (2026-02-26)
+
+### Motivation
+
+The YAML 1.2.2 specification defines all 205 productions as character-level
+rules in a single PEG-like grammar. Unlike most programming language
+specifications, there is **no explicit distinction between lexical
+(tokenization) and syntactic (grammar) layers**. Every production — from
+single-character classifications to full document streams — operates on raw
+characters.
+
+This design choice in the specification has a direct consequence for parser
+implementations: **the parser must do character-level lookahead at grammar
+decision points where a tokenizer would have already resolved the ambiguity.**
+
+**Concrete example — the `detectMappingKeyImpl` false positive:**
+
+Our parser's `detectMappingKeyImpl` (Block.lean line 1040) scans forward
+through raw characters looking for `: ` (mapping value indicator) to determine
+whether the current position starts a block mapping. This produces false
+positives when `: ` appears inside a scalar value:
+
+```yaml
+# Parser incorrectly rejects this valid YAML:
+b: x: y
+# Error: "block mapping cannot start on the same line as a mapping value"
+```
+
+The scanner sees `b`, `: `, `x`, `: `, `y` as a flat character stream and
+finds two `: ` occurrences. It cannot distinguish the first `: ` (which is a
+mapping value indicator **token**) from the second `: ` (which is literal
+content inside a plain scalar **token**).
+
+With an explicit tokenization step, the tokenizer would produce:
+```
+KEY("b") VALUE SCALAR("x: y")
+```
+and the grammar rule would never see the `: ` inside the scalar.
+
+This is not a YAML-specific problem — it's the classical motivation for
+separating tokenization from parsing in compiler architecture. The YAML
+specification's conflation of these layers makes every YAML parser
+implementation prone to exactly this class of bugs.
+
+> **Upstream observation.** The YAML 1.2.2 specification would benefit from
+> explicitly differentiating token-level productions from grammar-level
+> productions. The libyaml reference implementation already makes this
+> distinction internally via its scanner/parser split. Formalizing it in
+> the specification would help all implementations.
+
+### Classification Criteria
+
+We classify each YAML 1.2.2 production into one of three layers:
+
+| Layer | Abbrev | Description |
+|-------|--------|-------------|
+| **Character class** | **C** | Defines a set of characters. Not a production in the traditional sense — a predicate on individual characters. Used by lexical productions. |
+| **Lexical** | **L** | Defines how characters form **tokens**. Operates on the character stream, produces tokens. Includes indicator recognition, scalar content collection, escape resolution, whitespace/indentation handling, comment scanning, and directive parsing. |
+| **Syntactic** | **S** | Defines how tokens form **valid YAML structures**. Operates on tokens (or would, with an explicit tokenizer), produces AST nodes. Includes collection nesting, node properties, document structure. |
+
+**Context sensitivity.** YAML's lexer is inherently context-sensitive:
+indentation level, flow/block context, and scalar style all affect
+tokenization. This is why most YAML implementations (including ours) don't
+have a clean lexer/parser split. The classification below describes the
+*logical* layer each production belongs to, not necessarily the implementation
+architecture.
+
+### Chapter 5: Character Productions — Layer Classification
+
+| # | Production | Layer | Rationale |
+|---|-----------|-------|-----------|
+| [1] | `c-printable` | C | Character set definition |
+| [2] | `nb-json` | C | Character set definition |
+| [3] | `c-byte-order-mark` | L | Produces BOM token |
+| [4]–[6] | `c-sequence-entry`, `c-mapping-key`, `c-mapping-value` | L | Block indicator tokens (`-`, `?`, `:`) |
+| [7] | `c-collect-entry` | L | Flow entry token (`,`) |
+| [8]–[11] | `c-sequence-start/end`, `c-mapping-start/end` | L | Flow delimiter tokens (`[`, `]`, `{`, `}`) |
+| [12] | `c-comment` | L | Comment introducer (`#`) |
+| [13]–[15] | `c-anchor`, `c-alias`, `c-tag` | L | Node property token introducers (`&`, `*`, `!`) |
+| [16]–[17] | `c-literal`, `c-folded` | L | Block scalar indicator tokens (`\|`, `>`) |
+| [18]–[19] | `c-single-quote`, `c-double-quote` | L | Quoted scalar delimiters (`'`, `"`) |
+| [20] | `c-directive` | L | Directive introducer (`%`) |
+| [21] | `c-reserved` | L | Reserved indicators (`@`, `` ` ``) |
+| [22]–[23] | `c-indicator`, `c-flow-indicator` | C | Character set definitions |
+| [24]–[27] | `b-line-feed` through `nb-char` | C | Character set definitions |
+| [28]–[30] | `b-break`, `b-as-line-feed`, `b-non-content` | L | Line break handling (within/between tokens) |
+| [31]–[34] | `s-space` through `ns-char` | C | Character set definitions |
+| [35]–[40] | `ns-dec-digit` through `ns-tag-char` | C | Character set definitions |
+| [41] | `c-escape` | L | Escape introducer (`\`) — sub-token |
+| [42]–[60] | `ns-esc-null` through `ns-esc-32-bit` | L | Individual escape sequences — sub-token rules within double-quoted scalar token |
+| [61] | `c-ns-esc-char` | L | Escape sequence dispatch — sub-token |
+
+**Summary:** 18 character classes (C), 43 lexical (L), 0 syntactic (S).
+
+### Chapter 6: Basic Structures — Layer Classification
+
+| # | Production | Layer | Rationale |
+|---|-----------|-------|-----------|
+| [63]–[65] | `s-indent(n)`, `s-indent(<n)`, `s-indent(≤n)` | L | Indentation consumption — generates virtual BLOCK-START/BLOCK-END tokens |
+| [66]–[68] | `s-separate-in-line`, `s-line-prefix`, `l-empty` | L | Whitespace handling within/between tokens |
+| [69]–[72] | `b-l-trimmed` through `s-flow-folded` | L | Line folding — sub-token processing within scalar content |
+| [73] | `s-flow-line-prefix(n)` | L | Flow-context whitespace |
+| [74]–[79] | `l-comment` through `s-l-comments` | L | Comment tokens |
+| [80]–[81] | `s-separate`, `s-separate-lines` | L | Inter-token separation |
+| [82]–[86] | `l-directive` through `ns-tag-directive` | L | Directive tokens (VERSION-DIRECTIVE, TAG-DIRECTIVE) |
+| [87]–[93] | `c-tag-handle` through `ns-global-tag-prefix` | L | Sub-token rules within directive and tag tokens |
+| [94] | `c-ns-properties(n,c)` | **S** | **Composes** TAG + ANCHOR tokens (either order). This is the first syntactic production. |
+| [95]–[98] | `c-ns-tag-property` through `c-non-specific-tag` | L | Tag token formation |
+| [99]–[102] | `c-ns-anchor-property` through `ns-anchor-char` | L | Anchor/alias token formation |
+
+**Summary:** 0 character classes, 39 lexical (L), 1 syntactic (S).
+
+### Chapter 7: Flow Style Productions — Layer Classification
+
+| # | Production | Layer | Rationale |
+|---|-----------|-------|-----------|
+| [103] | `c-ns-alias-node` | **S** | Alias node — composes ALIAS token into AST node |
+| [104]–[105] | `e-scalar`, `e-node` | **S** | Empty/implicit nodes in AST |
+| [106] | `ns-double-char` | L | Character within double-quoted content — sub-token |
+| [107] | `c-double-quoted(n,c)` | L | Complete double-quoted SCALAR token (open-quote + content + close-quote) |
+| [108]–[114] | `nb-double-text` through `nb-double-multi-line` | L | Sub-token rules within double-quoted scalar |
+| [115]–[117] | `c-quoted-quote` through `ns-single-char` | L | Sub-token rules within single-quoted scalar |
+| [118] | `c-single-quoted(n,c)` | L | Complete single-quoted SCALAR token |
+| [119]–[122] | `nb-single-text` through `nb-single-multi-line` | L | Sub-token rules within single-quoted scalar |
+| [123] | `ns-plain-first(c)` | L | Plain scalar start detection |
+| [124]–[127] | `ns-plain-safe` through `ns-plain-char` | L | Plain scalar character rules |
+| [128] | `ns-plain(n,c)` | L | Complete plain SCALAR token |
+| [129]–[132] | `nb-ns-plain-in-line` through `ns-plain-multi-line` | L | Sub-token rules within plain scalar |
+| [133] | `in-flow(c)` | **S** | Context parameter — syntactic dispatch |
+| [134] | `c-flow-sequence(n,c)` | **S** | Flow sequence structure: FLOW-SEQ-START + entries + FLOW-SEQ-END |
+| [135]–[136] | `ns-s-flow-seq-entries`, `ns-flow-seq-entry` | **S** | Sequence entry composition |
+| [137] | `c-flow-mapping(n,c)` | **S** | Flow mapping structure: FLOW-MAP-START + entries + FLOW-MAP-END |
+| [138]–[145] | `ns-s-flow-map-entries` through `c-ns-flow-map-adjacent-value` | **S** | Mapping entry composition, key-value pairing |
+| [146]–[151] | `ns-flow-pair` through `c-s-implicit-json-key` | **S** | Implicit key detection, single-pair entries |
+| [152]–[157] | `c-flow-json-node` through `ns-flow-node` | **S** | Flow node composition (properties + content) |
+
+**Summary:** 0 character classes, 27 lexical (L), 28 syntactic (S).
+
+### Chapter 8: Block Style Productions — Layer Classification
+
+| # | Production | Layer | Rationale |
+|---|-----------|-------|-----------|
+| [158]–[160] | `c-b-block-header`, `c-indentation-indicator`, `c-chomping-indicator` | L | Block scalar header token components |
+| [161]–[165] | `b-chomped-last` through `l-trail-comments` | L | Block scalar content processing (chomp, trailing) |
+| [166]–[169] | `l-literal-content` through `l-literal-content` | L | Literal block scalar content — SCALAR token |
+| [170] | `c-l+literal(n)` | L | Complete literal SCALAR token (`\|` + header + content) |
+| [171]–[174] | `s-nb-folded-text` through `l-folded-content` | L | Folded block scalar content — SCALAR token |
+| [175] | `c-l+folded(n)` | L | Complete folded SCALAR token (`>` + header + content) |
+| [176]–[179] | `s-l+block-in-block` through `seq-spaces` | **S** | Block node dispatch and context handling |
+| [180] | `l+block-sequence(n)` | **S** | Block sequence structure (indentation-delimited) |
+| [181]–[183] | `c-l-block-seq-entry` through `ns-l-compact-sequence` | **S** | Sequence entry and compact notation |
+| [184] | `l+block-mapping(n)` | **S** | Block mapping structure (indentation-delimited) |
+| [185]–[191] | `ns-l-block-map-entry` through `ns-l-compact-mapping` | **S** | Mapping entries, explicit/implicit keys, compact notation |
+| [192]–[195] | `s-l+block-node` through `s-l+block-scalar` | **S** | Block node composition, flow-in-block |
+
+**Summary:** 0 character classes, 18 lexical (L), 20 syntactic (S).
+
+### Chapter 9: Document Stream Productions — Layer Classification
+
+| # | Production | Layer | Rationale |
+|---|-----------|-------|-----------|
+| [196] | `l-document-prefix` | L | Document prefix handling (BOM + comments) |
+| [197] | `c-directives-end` | L | DOCUMENT-START token (`---`) |
+| [198] | `c-document-end` | L | DOCUMENT-END token (`...`) |
+| [199] | `l-document-suffix` | L | Document suffix (DOCUMENT-END + trailing) |
+| [200] | `c-forbidden` | L | Lexical constraint: `---`/`...` at column 0 terminates scalars |
+| [201]–[204] | `l-bare-document` through `l-any-document` | **S** | Document structure composition |
+| [205] | `l-yaml-stream` | **S** | Top-level stream: sequence of documents |
+
+**Summary:** 0 character classes, 5 lexical (L), 5 syntactic (S).
+
+### Aggregate Layer Distribution
+
+| Layer | Ch.5 | Ch.6 | Ch.7 | Ch.8 | Ch.9 | **Total** | **%** |
+|-------|------|------|------|------|------|-----------|-------|
+| **C** Character class | 18 | 0 | 0 | 0 | 0 | **18** | 8.8% |
+| **L** Lexical/Token | 43 | 39 | 27 | 18 | 5 | **132** | 64.4% |
+| **S** Syntactic/Grammar | 0 | 1 | 28 | 20 | 5 | **54** | 26.3% |
+| **Total** | 61 | 40 | 55 | 38 | 10 | **205** | |
+
+**Key observation:** Nearly two-thirds (64.4%) of YAML 1.2.2 productions are
+lexical — they define how characters form tokens. Only about a quarter (26.3%)
+are syntactic. The spec presents all 205 as a single flat grammar, but the
+natural layering is overwhelmingly lexical.
+
+### Proposed YAML Token Types
+
+Based on the layer analysis, the following token types cover all lexical
+productions. This follows the libyaml scanner model (`yaml_token_type_e`)
+which already makes this distinction internally.
+
+```lean
+/-- YAML 1.2.2 Token types.
+    Based on the layer analysis of all 205 spec productions.
+    Follows the libyaml scanner model (yaml_token_type_e).
+
+    Productions [1]–[40] (character classes) are predicates on Char,
+    not tokens. Productions [41]–[200] (lexical) produce these tokens.
+    Productions [94], [103]–[105], [133]–[157], [176]–[195], [201]–[205]
+    (syntactic) compose tokens into the AST. -/
+inductive YamlToken where
+  -- Stream boundary markers (implicit — no character representation)
+  | streamStart                          -- beginning of input
+  | streamEnd                            -- end of input
+
+  -- Directive tokens (§6.8, productions [82]–[93])
+  | versionDirective (major minor : Nat) -- %YAML 1.2
+  | tagDirective (handle prefix : String) -- %TAG !handle! prefix
+
+  -- Document markers (§9.1.2, productions [197]–[198])
+  | documentStart                        -- ---
+  | documentEnd                          -- ...
+
+  -- Block structure tokens (implicit — generated by indentation changes)
+  -- These have NO character representation in the input.  The scanner
+  -- generates them by tracking an indentation stack, analogous to
+  -- Python's INDENT/DEDENT tokens.
+  | blockSequenceStart                   -- indentation increase before `-`
+  | blockMappingStart                    -- indentation increase before key
+  | blockEnd                             -- indentation decrease
+
+  -- Block indicator tokens (§5.3, productions [4]–[6])
+  | blockEntry                           -- `-` + whitespace/break
+  | key                                  -- `?` + whitespace/break
+  | value                                -- `:` + whitespace/break
+
+  -- Flow indicator tokens (§5.3, productions [7]–[11])
+  | flowSequenceStart                    -- [
+  | flowSequenceEnd                      -- ]
+  | flowMappingStart                     -- {
+  | flowMappingEnd                       -- }
+  | flowEntry                            -- ,
+
+  -- Node property tokens (§6.9, productions [95]–[102])
+  | anchor (name : String)               -- &name
+  | alias (name : String)                -- *name
+  | tag (handle suffix : String)         -- !tag, !!type, !<uri>
+
+  -- Scalar tokens (§7.3, §8.1, productions [107]–[175])
+  -- Content is fully resolved: escapes expanded, lines folded, chomp applied.
+  | scalar (value : String) (style : ScalarStyle)
+
+  -- Whitespace tokens (when preserved)
+  | comment (text : String)              -- # text (§6.6, productions [74]–[79])
+
+/-- Scalar presentation style, carried with SCALAR tokens. -/
+inductive ScalarStyle where
+  | plain | singleQuoted | doubleQuoted | literal | folded
+```
+
+**Virtual tokens.** Three token types — `blockSequenceStart`,
+`blockMappingStart`, and `blockEnd` — have no character representation in the
+input. They are generated by the scanner based on indentation changes,
+analogous to Python's `INDENT`/`DEDENT` tokens. This is the primary source of
+YAML's lexer complexity: the scanner must maintain an indentation stack to
+generate these tokens correctly.
+
+**Scalar resolution.** The SCALAR token carries fully-resolved content:
+escape sequences expanded, line folding applied, chomp style applied. This
+means all of productions [41]–[61] (escapes), [69]–[72] (folding),
+[106]–[132] (scalar content rules), and [158]–[175] (block scalar processing)
+are internal to the scanner's scalar tokenization logic.
+
+### Architectural Implications for Our Parser
+
+#### Current architecture (single-pass, character-level)
+
+```
+Character Stream ──→ [ Combined Parser ] ──→ YamlValue AST
+                     (Block.lean, Flow.lean, Scalar.lean, Document.lean)
+```
+
+All 205 productions are implemented as interleaved character-level parsers.
+Grammar-level decisions (e.g., "is this a mapping value indicator?") require
+character-level lookahead (`detectMappingKeyImpl`) that scans through content
+that should have already been tokenized.
+
+#### Proposed architecture (two-pass, token-level)
+
+```
+Character Stream ──→ [ Scanner/Tokenizer ] ──→ Token Stream ──→ [ Grammar Parser ] ──→ YamlValue AST
+                     (132 lexical productions)                   (54 syntactic productions)
+```
+
+**Scanner responsibilities (L layer):**
+- Character classification (18 C-layer predicates)
+- Indicator recognition ([4]–[21])
+- Scalar content collection and resolution ([107]–[175])
+- Escape sequence processing ([41]–[61])
+- Line folding ([69]–[72])
+- Comment scanning ([74]–[79])
+- Directive parsing ([82]–[93])
+- Indentation tracking → virtual BLOCK-START/BLOCK-END generation
+- Implicit key detection (currently `detectMappingKeyImpl`)
+- `c-forbidden` detection ([200]) — terminates scalars at `---`/`...`
+
+**Grammar parser responsibilities (S layer):**
+- Flow collection nesting ([134]–[157])
+- Block collection nesting ([176]–[195])
+- Node property attachment ([94])
+- Document structure ([201]–[205])
+- Empty node insertion ([104]–[105])
+
+#### Why this fixes the `detectMappingKeyImpl` problem
+
+With a tokenizer, the input `b: x: y` would be scanned as:
+
+```
+BLOCK-MAPPING-START  KEY  SCALAR("b")  VALUE  SCALAR("x: y")  BLOCK-END
+```
+
+The scanner recognizes that `b` is followed by `: ` (mapping value indicator),
+so `b` becomes a SCALAR token and `: ` becomes a VALUE token. The remaining
+`x: y` is then collected as a plain scalar — the `: ` inside it is **not** at
+the top level, so it's literal content, not a value indicator.
+
+The grammar parser never sees raw `: ` characters — it sees VALUE tokens.
+There is no ambiguity to resolve at the grammar level.
+
+#### YAML's context-sensitive scanning
+
+Unlike most languages, YAML's scanner is context-sensitive. The same character
+sequence may tokenize differently depending on:
+
+1. **Indentation level** — determines block structure boundaries
+2. **Flow/block context** — plain scalars terminate at `,`, `]`, `}` in flow
+3. **Scalar style** — inside `"..."`, `: ` is literal content
+4. **Key position** — implicit keys have a 1024-character limit (§7.4)
+
+This means the scanner cannot be a simple regex-based lexer. It must maintain
+state (indentation stack, flow level, key position). libyaml's scanner
+(`scanner.c`, ~2800 lines) is roughly 3× the size of its parser (`parser.c`,
+~900 lines), reflecting the complexity distribution.
+
+#### Impact on verification proofs
+
+Introducing an explicit tokenization layer would affect the proof architecture:
+
+| Proof area | Current state | Impact |
+|------------|--------------|--------|
+| **Character classification** (`CharClass.lean`) | 8 theorems on char predicates | **Unchanged** — C-layer predicates are independent |
+| **Escape resolution** (`EscapeResolution.lean`) | 16 + 9 + 7 theorems | **Moves to scanner proofs** — escape resolution becomes a scanner property |
+| **Block scalar contracts** (`BlockScalarContracts.lean`) | 14 + 10 + 2 theorems | **Moves to scanner proofs** — block scalar processing is entirely lexical |
+| **Fold newlines** (`FoldNewlines.lean`) | 10 + 8 + 16 theorems | **Moves to scanner proofs** — fold processing is sub-token |
+| **Round-trip** (`RoundTrip.lean`) | 58 theorems + 63 guards | **Restructured** — emit/parse correspondence becomes emit/scan + scan/parse |
+| **Per-parser specs** (`PerParserSpecs.lean`) | 46 theorems | **Split** — scalar specs move to scanner, collection specs stay in parser |
+| **Fuel sufficiency** (`FuelSufficiency.lean`) | 35 theorems | **Split** — scanner and parser each need independent fuel/termination proofs |
+| **Completeness** (`Completeness.lean`, `Composition.lean`) | 21 + 21 theorems | **Restructured** — composition proofs bridge scanner↔parser via token stream |
+| **Suite guards** (`SuiteGuards/*.lean`) | 351 guards | **Unchanged** — end-to-end; scanner+parser compose transparently |
+
+**Estimated proof impact:** ~40% of existing proofs (escape, fold, block scalar,
+scalar per-parser specs) move cleanly into the scanner proof layer with minimal
+rewriting — they already reason about character-level operations. ~30% (round-trip,
+composition, fuel) require restructuring into two-layer proofs. ~30% (char class,
+document contracts, suite guards) are unaffected.
+
+The net effect is **more proofs, but simpler proofs**: each layer's properties
+are stated and proved independently, then composed. This mirrors the
+compounding pattern observed in Phases 3–5 where layered specifications made
+each subsequent proof phase easier.
