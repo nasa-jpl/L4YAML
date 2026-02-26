@@ -678,6 +678,204 @@ theorem singleQuoted_collectChars_char_step
   · exact absurd rfl hne_cr   -- c = '\r': contradiction
   · exact h_recurse            -- default: recursive call
 
+/-! ### §8.1.2  Double-Quoted Escape Processing Specifications
+
+Concrete evaluation lemmas for `doubleQuotedScalar.processEscape` —
+the escape-sequence dispatcher inside double-quoted scalar parsing.
+Each theorem shows that for a specific escape character, the function
+emits the correct character without consuming any stream tokens.
+-/
+
+/-- Escape `\n` produces line feed. -/
+theorem doubleQuoted_processEscape_n (s : YamlStream) :
+    doubleQuotedScalar.processEscape 'n' s = .ok s '\n' := by
+  unfold doubleQuotedScalar.processEscape
+  simp [ParserSpecs.pure_eq]
+
+/-- Escape `\t` produces tab. -/
+theorem doubleQuoted_processEscape_t (s : YamlStream) :
+    doubleQuotedScalar.processEscape 't' s = .ok s '\t' := by
+  unfold doubleQuotedScalar.processEscape
+  simp [ParserSpecs.pure_eq]
+
+/-- Escape `\\` produces backslash. -/
+theorem doubleQuoted_processEscape_backslash (s : YamlStream) :
+    doubleQuotedScalar.processEscape '\\' s = .ok s '\\' := by
+  unfold doubleQuotedScalar.processEscape
+  simp [ParserSpecs.pure_eq]
+
+/-- Escape `\"` produces double quote. -/
+theorem doubleQuoted_processEscape_dquote (s : YamlStream) :
+    doubleQuotedScalar.processEscape '"' s = .ok s '"' := by
+  unfold doubleQuotedScalar.processEscape
+  simp [ParserSpecs.pure_eq]
+
+/-- Escape `\0` produces null. -/
+theorem doubleQuoted_processEscape_null (s : YamlStream) :
+    doubleQuotedScalar.processEscape '0' s = .ok s '\x00' := by
+  unfold doubleQuotedScalar.processEscape
+  simp [ParserSpecs.pure_eq]
+
+/-- Escape `\r` produces carriage return. -/
+theorem doubleQuoted_processEscape_r (s : YamlStream) :
+    doubleQuotedScalar.processEscape 'r' s = .ok s '\r' := by
+  unfold doubleQuotedScalar.processEscape
+  simp [ParserSpecs.pure_eq]
+
+/-- Escape `\ ` produces space. -/
+theorem doubleQuoted_processEscape_space (s : YamlStream) :
+    doubleQuotedScalar.processEscape ' ' s = .ok s ' ' := by
+  unfold doubleQuotedScalar.processEscape
+  simp [ParserSpecs.pure_eq]
+
+/-- Escape `\/` produces slash. -/
+theorem doubleQuoted_processEscape_slash (s : YamlStream) :
+    doubleQuotedScalar.processEscape '/' s = .ok s '/' := by
+  unfold doubleQuotedScalar.processEscape
+  simp [ParserSpecs.pure_eq]
+
+/-! ### §8.1.3  Double-Quoted Backslash Escape Relay
+
+When `collectChars` encounters `\\` followed by a non-linebreak character,
+it delegates to `processEscape` and recursively continues.
+-/
+
+/--
+**doubleQuotedScalar.collectChars — backslash + simple escape step.**
+
+When `\\` is consumed, then `c` (not `\n`/`\r`), the loop calls
+`processEscape c` and continues with the escaped character appended.
+-/
+theorem doubleQuoted_collectChars_backslash_escape
+    (contentIndent fuel : Nat) (acc result : String) (c escaped : Char)
+    (s s₁ s₂ s₃ s₄ : YamlStream)
+    (h_bs : (Parser.anyToken (m := Id) : YamlParser Char) s = .ok s₁ '\\')
+    (h_c : (Parser.anyToken (m := Id) : YamlParser Char) s₁ = .ok s₂ c)
+    (hc_not_lf : (c == '\n') = false)
+    (hc_not_cr : (c == '\r') = false)
+    (h_escape : doubleQuotedScalar.processEscape c s₂ = .ok s₃ escaped)
+    (h_recurse : doubleQuotedScalar.collectChars contentIndent fuel
+        (acc.push escaped) s₃ = .ok s₄ result) :
+    doubleQuotedScalar.collectChars contentIndent (fuel + 1) acc s = .ok s₄ result := by
+  unfold doubleQuotedScalar.collectChars
+  simp only [ParserSpecs.bind_eq, h_bs, h_c]
+  split <;> simp_all [ParserSpecs.bind_eq]
+
+/-! ### §8.1.4  Quoted Scalar Line Fold Loop Specifications -/
+
+/-- `foldQuotedNewlines.loop` fuel-zero returns `.folded result` immediately. -/
+@[simp]
+theorem foldQuotedNewlines_loop_zero (contentIndent : Nat)
+    (result : String) (blankCount : Nat) (s : YamlStream) :
+    foldQuotedNewlines.loop contentIndent 0 result blankCount s =
+      .ok s (.folded result) := by
+  unfold foldQuotedNewlines.loop
+  simp [ParserSpecs.pure_eq]
+
+/-! ### §8.1.5  Additional Escape Character Specifications -/
+
+/-- Escape `\a` produces bell (U+0007). -/
+theorem doubleQuoted_processEscape_a (s : YamlStream) :
+    doubleQuotedScalar.processEscape 'a' s = .ok s '\x07' := by
+  unfold doubleQuotedScalar.processEscape; simp [ParserSpecs.pure_eq]
+
+/-- Escape `\b` produces backspace (U+0008). -/
+theorem doubleQuoted_processEscape_b (s : YamlStream) :
+    doubleQuotedScalar.processEscape 'b' s = .ok s '\x08' := by
+  unfold doubleQuotedScalar.processEscape; simp [ParserSpecs.pure_eq]
+
+/-- Escape `\v` produces vertical tab (U+000B). -/
+theorem doubleQuoted_processEscape_v (s : YamlStream) :
+    doubleQuotedScalar.processEscape 'v' s = .ok s '\x0b' := by
+  unfold doubleQuotedScalar.processEscape; simp [ParserSpecs.pure_eq]
+
+/-- Escape `\f` produces form feed (U+000C). -/
+theorem doubleQuoted_processEscape_f (s : YamlStream) :
+    doubleQuotedScalar.processEscape 'f' s = .ok s '\x0c' := by
+  unfold doubleQuotedScalar.processEscape; simp [ParserSpecs.pure_eq]
+
+/-- Escape `\e` produces escape (U+001B). -/
+theorem doubleQuoted_processEscape_e (s : YamlStream) :
+    doubleQuotedScalar.processEscape 'e' s = .ok s '\x1b' := by
+  unfold doubleQuotedScalar.processEscape; simp [ParserSpecs.pure_eq]
+
+/-- Escape `\N` produces next line (U+0085). -/
+theorem doubleQuoted_processEscape_N (s : YamlStream) :
+    doubleQuotedScalar.processEscape 'N' s = .ok s '\x85' := by
+  unfold doubleQuotedScalar.processEscape; simp [ParserSpecs.pure_eq]
+
+/-- Escape `\_` produces non-breaking space (U+00A0). -/
+theorem doubleQuoted_processEscape_underscore (s : YamlStream) :
+    doubleQuotedScalar.processEscape '_' s = .ok s '\xa0' := by
+  unfold doubleQuotedScalar.processEscape; simp [ParserSpecs.pure_eq]
+
+/-- Escape with literal tab character `\<TAB>` produces tab. -/
+theorem doubleQuoted_processEscape_tab_literal (s : YamlStream) :
+    doubleQuotedScalar.processEscape '\t' s = .ok s '\t' := by
+  unfold doubleQuotedScalar.processEscape; simp [ParserSpecs.pure_eq]
+
+/-! ### §8.1.6  Double-Quoted Line Fold Relay
+
+When `collectChars` encounters a bare newline (`\n`), it delegates to
+`foldQuotedNewlines` for line-fold processing and continues.
+-/
+
+/--
+**doubleQuotedScalar.collectChars — line fold on `\n`.**
+
+When `\n` is the current token (bare newline, not preceded by `\\`),
+the loop delegates to `foldQuotedNewlines` and recurses with the folded result.
+-/
+theorem doubleQuoted_collectChars_linefold_lf
+    (contentIndent fuel : Nat) (acc result newAcc : String)
+    (s s₁ s₂ s₃ : YamlStream)
+    (h_lf : (Parser.anyToken (m := Id) : YamlParser Char) s = .ok s₁ '\n')
+    (h_fold : foldQuotedNewlines acc contentIndent s₁ = .ok s₂ (.folded newAcc))
+    (h_recurse : doubleQuotedScalar.collectChars contentIndent fuel
+        newAcc s₂ = .ok s₃ result) :
+    doubleQuotedScalar.collectChars contentIndent (fuel + 1) acc s = .ok s₃ result := by
+  unfold doubleQuotedScalar.collectChars
+  simp only [ParserSpecs.bind_eq, h_lf, h_fold, h_recurse]
+
+/-! ### §8.1.7  Single-Quoted Escape Pair and Line Fold Relay
+
+Single-quoted scalars only have one escape: `''` → `'`.
+Line folding follows the same `foldQuotedNewlines` path.
+-/
+
+/--
+**singleQuotedScalar.collectChars — escape pair `''` → `'`.**
+
+When the first `'` is consumed and `option? (char '\'')` succeeds
+(finding a second `'`), the loop pushes `'` and continues.
+-/
+theorem singleQuoted_collectChars_escape_pair
+    (contentIndent fuel : Nat) (acc result : String)
+    (s s₁ s₂ s₃ : YamlStream)
+    (h_sq : (Parser.anyToken (m := Id) : YamlParser Char) s = .ok s₁ '\'')
+    (h_opt : (option? (Parser.Char.char '\'') : YamlParser (Option Char)) s₁ = .ok s₂ (some '\''))
+    (h_recurse : singleQuotedScalar.collectChars contentIndent fuel
+        (acc.push '\'') s₂ = .ok s₃ result) :
+    singleQuotedScalar.collectChars contentIndent (fuel + 1) acc s = .ok s₃ result := by
+  unfold singleQuotedScalar.collectChars
+  simp only [ParserSpecs.bind_eq, h_sq, h_opt, h_recurse]
+
+/--
+**singleQuotedScalar.collectChars — line fold on `\n`.**
+
+Bare newline delegates to `foldQuotedNewlines` and continues.
+-/
+theorem singleQuoted_collectChars_linefold_lf
+    (contentIndent fuel : Nat) (acc result newAcc : String)
+    (s s₁ s₂ s₃ : YamlStream)
+    (h_lf : (Parser.anyToken (m := Id) : YamlParser Char) s = .ok s₁ '\n')
+    (h_fold : foldQuotedNewlines acc contentIndent s₁ = .ok s₂ (.folded newAcc))
+    (h_recurse : singleQuotedScalar.collectChars contentIndent fuel
+        newAcc s₂ = .ok s₃ result) :
+    singleQuotedScalar.collectChars contentIndent (fuel + 1) acc s = .ok s₃ result := by
+  unfold singleQuotedScalar.collectChars
+  simp only [ParserSpecs.bind_eq, h_lf, h_fold, h_recurse]
+
 /-! ### §8.2  Plain Scalar Specifications -/
 
 /--
@@ -1820,7 +2018,7 @@ theorem blockSequenceImpl_under_indented
     blockSequenceImpl (fuel + 1) minIndent s = .ok s₁ none := by
   unfold blockSequenceImpl
   simp only [withErrorMessage_eq, ParserSpecs.bind_eq,
-             h_skip, currentCol_eq, ParserSpecs.pure_eq]
+             h_skip, currentCol_eq]
   simp [h_lt]
 
 /--
@@ -1836,7 +2034,7 @@ theorem blockMappingImpl_under_indented
     blockMappingImpl (fuel + 1) minIndent s = .ok s₁ none := by
   unfold blockMappingImpl
   simp only [withErrorMessage_eq, ParserSpecs.bind_eq,
-             h_skip, currentCol_eq, ParserSpecs.pure_eq]
+             h_skip, currentCol_eq]
   simp [h_lt]
 
 /-! ### §8.11  Additional Character Predicate Specifications -/
