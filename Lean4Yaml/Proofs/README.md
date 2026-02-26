@@ -314,47 +314,243 @@ fuel-sufficiency approach already in `FuelSufficiency.lean`.
   that `omega` solves in <1ms, because the actual stream arithmetic
   is already encapsulated by the existing `remaining` abstraction.
 
-### 4b. Closing the fold-combinator gap (ParserSpecs.lean)
+### 4b. Closing the fold-combinator gap — COMPLETED
 
-Adding universal `@[simp]` lemmas for `dropMany` and `count` would
-close the deductive gap described in §2.  The required lemmas:
+The fold-combinator gap described in §2 has been **closed** by adding
+upstream lemmas to [lean4-parser](https://github.com/NicolasRouquette/lean4-parser)
+(commit `8cfc6ac`, branch `std-iterators`).  The key challenge was that
+`efoldlPAux` — the WF-recursive loop backing `foldl`/`dropMany`/`count`
+— is a `private def`, making it inaccessible from downstream code.
 
-```lean
--- dropMany: zero-or-more fold
-@[simp]
-theorem dropMany_eq (p : Parser ε σ τ α) (s : σ) :
-    (dropMany p).run s = <concrete expression> := by
-  unfold dropMany foldl efoldl efoldlM efoldlP efoldlPAux
-  ...
+#### Lemmas added to `Parser/Parser.lean`
 
--- count: counting fold
-@[simp]
-theorem count_eq (p : Parser ε σ τ α) (s : σ) :
-    (count p).run s = <concrete expression> := by
-  unfold count foldl efoldl efoldlM efoldlP efoldlPAux
-  ...
+| Lemma | Purpose |
+|---|---|
+| `efoldlPAux_eq` | One-step unfolding of the private WF loop for `m = Id` |
+| `efoldlPAux_inhabited_irrel` | `Inhabited` instances don't affect computation |
+| `foldl_eq` | One-step recursive equation for `foldl` (pure fold) |
+
+The `efoldlPAux_inhabited_irrel` lemma was the crucial innovation:
+`efoldlP` creates fresh `[Inhabited ε] [Inhabited σ] [Inhabited β]`
+instances at each call via `have`, but `efoldlPAux` is WF-recursive
+and preserves the *original* instances throughout.  Reconnecting
+a recursive `foldl` call (which creates new instances) to the
+in-flight `efoldlPAux` (which has old instances) required proving
+that `efoldlPAux` is independent of which `Inhabited` instances are
+supplied.  The proof is by WF induction using `split`-based case
+analysis on `p s` / `f y x s'` / `if consuming`.
+
+#### Lemmas added to `Parser/Basic.lean`
+
+| Lemma | Purpose |
+|---|---|
+| `dropMany_eq` | One-step equation: `dropMany p s = match p s with ...` |
+| `count_eq` | One-step equation: `count p s = match p s with ...` |
+
+Both are direct corollaries of `foldl_eq` composed with the
+definition (`dropMany = foldl (const α) .unit p`,
+`count = foldl (fun n _ => n+1) 0 p`).
+
+#### Proof structure for `foldl_eq`
+
+```
+foldl → efoldl → efoldlM → efoldlP → efoldlPAux
+                                       ↓ (one-step via efoldlPAux_eq)
+                           match p s with
+                           | ok s' x → if consuming then efoldlPAux(old_inst) ... else .ok
+                           | error → .ok (backtrack)
+                                       ↓ (efoldlPAux_inhabited_irrel)
+                           match p s with
+                           | ok s' x → if consuming then foldl(new_inst) ... else .ok
+                           | error → .ok (backtrack)
 ```
 
-The challenge is that `efoldlPAux` is a well-founded recursive function
-whose unfolding depends on `Stream.remaining`.  The `@[simp]` lemma
-would need to express the result as an inductive/recursive
-characterization rather than a closed-form expression.  Possible
-approaches:
+The `foldl_eq` proof uses `by_cases` on the consuming condition with
+`simp only [dif_pos h]` / `simp only [dif_neg h]` to reduce the `dite`,
+followed by `congr 1; congr 1; exact efoldlPAux_inhabited_irrel ..`
+in the consuming branch.
 
-1. **One-step unfolding**: Express `dropMany p s` as a case split on
-   `p.run s` (success → check remaining → recurse / stop; failure → stop).
-   This gives `simp` enough to reason step-by-step.
+### 4b′. Reflections on §4b — proof idioms, challenges, simplifications
 
-2. **Characterization lemma**: Prove a specification like
-   `dropMany_spec`: `(dropMany p).run s = .ok s' ()` ↔
-   `∃ n, after applying p exactly n times from s we reach s', and
-   applying p once more from s' fails`.
+#### New proof idioms introduced in §4b
 
-3. **Inductive predicate**: Define `DropManyResult p s s'` as an
-   inductive proposition and prove that `(dropMany p).run s = .ok s' ()`
-   iff `DropManyResult p s s'`.
+1. **`rw [f]` for one-step WF unfolding (vs. `unfold f`).**
+   The WF-recursive `efoldlPAux` cannot be unfolded with `unfold`
+   from inside the same file — `unfold efoldlPAux` expands *all*
+   recursive calls, leaving an unsolvable mess.  The `rw [efoldlPAux]`
+   tactic rewrites exactly one occurrence (the outermost call) because
+   `rw` applies the equation lemma that Lean generates for WF
+   definitions.  This single-step rewrite is the foundation of every
+   fold lemma.  The distinction `rw` (one occurrence) vs. `unfold`
+   (all occurrences) was not needed in §4a proofs, which only dealt
+   with non-recursive combinator definitions.
 
-These lemmas would ideally live in lean4-parser itself (upstream PR).
+2. **Explicit `@`-applied Inhabited instances for `rw`.**
+   The `efoldlPAux_eq` theorem requires `[Inhabited ε] [Inhabited σ]
+   [Inhabited β]`, but inside `foldl_eq` these instances don't exist
+   in the tactic context — they are created locally inside `efoldlP`
+   via `have`.  The workaround is to supply them explicitly:
+   ```
+   rw [@efoldlPAux_eq _ _ _ _ _ _ _
+       ⟨Error.unexpected (Stream.getPosition s) none⟩ ⟨s⟩ ⟨init⟩]
+   ```
+   This "@-with-anonymous-constructor" pattern — threading freshly
+   constructed typeclass instances through `@` — does not appear in
+   any §4a proof.  It arises because `efoldlP`'s `have` bindings
+   create instances that are invisible to downstream tactics.
+
+3. **Instance-irrelevance by WF recursion + `split` cascade.**
+   The `efoldlPAux_inhabited_irrel` proof shows that `efoldlPAux`
+   computes the same result regardless of which `Inhabited` instances
+   are supplied.  The proof is by `termination_by Stream.remaining s`
+   with a body that `rw`s both sides to their one-step expansions,
+   then uses a cascade of `split` (three levels: match `p s`, match
+   `f y x s'`, if consuming) to align the branches.  In the
+   recursive (consuming) branch, the inductive hypothesis closes the
+   gap; all other branches are `rfl`.  This "parallel split cascade"
+   pattern — rewriting two sides of an equation to matching case trees
+   and closing leaf-by-leaf — is new to §4b.
+
+4. **`congr 1; congr 1; exact irrel ..` to bridge nested wrappers.**
+   After unfolding `foldl` on both sides, the LHS and RHS agree
+   everywhere except deep inside a `match`-of-`match` chain where
+   `efoldlPAux` appears with different `Inhabited` instances.
+   Rather than deconstructing the entire chain, `congr 1` peels off
+   one layer of `match` / `Prod.fst <$>` at a time until the
+   `efoldlPAux` terms are exposed, then `exact irrel ..` finishes.
+   This telescoping `congr` approach avoids `simp` entirely in the
+   recursive branch.
+
+5. **`show (foldl ...) s = _; rw [foldl_eq]` for corollary lemmas.**
+   The `dropMany_eq` and `count_eq` proofs use `show` to restate the
+   goal with the definition inlined, then `rw [foldl_eq]` to apply
+   the one-step equation.  This is necessary because `simp only
+   [dropMany, foldl_eq]` would loop — `foldl_eq` is a recursive
+   equation, so `simp` keeps rewriting indefinitely.  The pattern
+   `show ⟨defn inlined⟩; rw [recursive_eq]; simp [reduce]; cases <;> rfl`
+   is a reusable template for any combinator defined as
+   `foldl f init p`.
+
+6. **`by_cases h : ...; simp only [dif_pos h]` / `[dif_neg h]` for
+   decidable `if`.**
+   The `foldl_eq` proof encounters `if _h : remaining s' < remaining s`
+   — a `dite` (decidable if-then-else).  Neither `split` nor `cases`
+   cleanly handles `dite` when the branches contain further matches.
+   The `by_cases` + `dif_pos`/`dif_neg` pair provides surgical control:
+   `by_cases` introduces the proposition as a hypothesis, then
+   `dif_pos`/`dif_neg` reduces the `dite` in the goal.  This is
+   cleaner than the `split`-based approach used in §4a for `ite`,
+   because `dite` binds the proof term in the branch body.
+
+7. **`cases hp : p s <;> rfl` to close match-mismatch after `rw`.**
+   After `rw [foldl_eq]`, both sides of `dropMany_eq` and `count_eq`
+   contain `match p s with ...` but with structurally different
+   `casesOn` encodings (`rw` introduces one `match`; the goal's RHS
+   has another from the theorem statement).  `rfl` alone fails because
+   the two `match` expressions are not definitionally equal.
+   `cases hp : p s` substitutes `p s` in *both* sides simultaneously,
+   collapsing each `match` to its concrete branch, after which `rfl`
+   succeeds.  The ` <;> ` combinator applies `rfl` to all branches.
+
+#### Unexpected challenges
+
+- **`private def` is an absolute barrier from downstream.**
+  `efoldlPAux` is `private def` in `Parser/Parser.lean`, meaning
+  `unfold Parser.efoldlPAux`, `simp only [Parser.efoldlPAux]`, and
+  even `rw [Parser.efoldlPAux]` all fail from any other file.  The
+  name is not exported, period.  This forced the entire §4b effort
+  to be implemented *upstream* in the lean4-parser fork rather than
+  in lean4-yaml-verified.  An exploration file (`FoldSpecs_explore.lean`)
+  was used to confirm the barrier before committing to the upstream
+  approach.
+
+- **`unfold efoldlPAux` expands all recursive calls, not just the outermost.**
+  Even from *within* `Parser.lean`, `unfold efoldlPAux` expands
+  every occurrence — including recursive calls inside the `if consuming`
+  branch — producing a goal with nested `efoldlPAux._unary` applications
+  that `rfl` cannot close.  The fix was `rw [efoldlPAux]`, which rewrites
+  exactly one occurrence using the WF equation lemma.  This `rw` vs.
+  `unfold` distinction for WF-recursive functions was not documented
+  anywhere and was discovered experimentally.
+
+- **`Inhabited` instances created by `have` in `efoldlP` are invisible
+  to downstream tactics.**
+  `efoldlP` wraps `efoldlPAux` with three `have` bindings:
+  ```lean
+  have : Inhabited β := ⟨init⟩
+  have : Inhabited σ := ⟨s⟩
+  have : Inhabited ε := ⟨Error.unexpected (Stream.getPosition s) none⟩
+  efoldlPAux f p init s
+  ```
+  After `simp` unfolds `efoldlP`, the tactic state contains
+  `efoldlPAux` applied with these three anonymous instances.  But
+  `rw [efoldlPAux_eq]` fails because it tries to synthesize
+  `[Inhabited ε]` etc. from the tactic context, where they don't
+  exist.  The workaround — passing explicit instances via `@` — was
+  the most time-consuming discovery of §4b.
+
+- **Recursive branch of `foldl_eq` has mismatched Inhabited instances.**
+  After one step of unfolding, the LHS contains `efoldlPAux` with
+  instances from the *outer* call (`init`, `s`), while the RHS
+  (after expanding `foldl (f init x) s'`) contains `efoldlPAux` with
+  instances from the *inner* call (`f init x`, `s'`).  These are
+  syntactically different terms, so `rfl` fails.  The
+  `efoldlPAux_inhabited_irrel` lemma was invented specifically to
+  bridge this gap — it was not anticipated at the outset.
+
+- **`norm_num` is not available in lean4-parser.**
+  The `count_eq` proof needs to reduce `0 + 1` to `1`.  The natural
+  choice `norm_num` is not imported in lean4-parser (it lives in
+  Mathlib/Batteries).  The fix was `simp only [Nat.zero_add]`.
+
+- **`split` on `match` doesn't substitute in both sides of an equation.**
+  After `rw [foldl_eq]`, the LHS has one `match p s` encoding and
+  the RHS has another.  `split` case-splits only the LHS match,
+  leaving the RHS match intact, so `rfl` fails.  Using
+  `cases hp : p s` instead substitutes `p s = .ok s' x` in both
+  sides, making both matches reduce.
+
+#### Unexpected simplifications
+
+- **`dropMany_eq` and `count_eq` are three-liners.**
+  Once `foldl_eq` was proved, the corollary lemmas required only
+  `show; rw [foldl_eq]; simp [...]; cases <;> rfl`.  The entire
+  §4b effort reduced to proving **one** hard theorem (`foldl_eq`)
+  plus one supporting lemma (`efoldlPAux_inhabited_irrel`);
+  everything else composed trivially.
+
+- **`simp only []` (empty argument list) reduces iota-redexes.**
+  In `efoldlPAux_eq`, after `cases hp : p s | ok s' x =>`,
+  the goal contains `match .ok s' x with | .ok s' x => ...`
+  which is a known-constructor match (iota-redex).  `simp only []`
+  — with no arguments — reduces it.  This is lighter than `simp`
+  (which might loop) or `rfl` (which requires full definitional
+  equality).  The same trick was discovered independently in §4a
+  for `collectChars` proofs.
+
+- **`efoldlPAux_inhabited_irrel` proof is structurally identical to
+  `efoldlPAux_eq`.**  Both use `rw [efoldlPAux_eq]; split; split;
+  split; <recursive-or-rfl>`.  The irrel proof just does this on
+  both sides simultaneously.  The structural parallel made the proof
+  straightforward once the approach was identified.
+
+- **The 5-layer fold chain (`foldl → efoldl → efoldlM → efoldlP →
+  efoldlPAux`) collapses in one `simp only` call.**
+  All intermediate definitions (`efoldl`, `efoldlM`, `efoldlP`) are
+  `@[inline]` and consist of pure monadic plumbing.  A single
+  `simp only [foldl, efoldl, efoldlM, efoldlP, Functor.map, bind,
+  Bind.bind, pure, Pure.pure, monadLift, MonadLift.monadLift]`
+  collapses all five layers to a bare `efoldlPAux` call.  The feared
+  complexity of reasoning through five levels of abstraction turned
+  out to be a non-issue for `m = Id`.
+
+- **`termination_by Stream.remaining s` suffices for
+  `efoldlPAux_inhabited_irrel`.**
+  The irrel lemma is proved by structural recursion that mirrors
+  `efoldlPAux` itself.  Lean 4 accepts the same `termination_by`
+  clause because the recursive call occurs in the `split` branch
+  where `remaining s'' < remaining s` is in scope as a hypothesis
+  (`‹_›` or the `split` discriminant).
 
 ---
 
@@ -368,16 +564,11 @@ A fully deductive end-to-end proof of
 
 requires the following steps, roughly in dependency order:
 
-### Phase A — Close the fold-combinator gap
+### Phase A — Close the fold-combinator gap ✅ DONE
 
-1. **Add `dropMany_eq` / `count_eq` to `ParserSpecs.lean`** (or upstream
-   to lean4-parser).  This eliminates the computational-only dependency
-   on `efoldlPAux` and makes all lean4-parser combinators used by the
-   YAML parser deductively transparent.
-
-   Estimated effort: moderate.  The WF recursion in `efoldlPAux` is
-   straightforward (decrease on `Stream.remaining`), but expressing the
-   result as a simp-friendly equation requires care.
+The `foldl_eq`, `dropMany_eq`, and `count_eq` lemmas have been added
+upstream to lean4-parser (§4b above).  All lean4-parser combinators
+used by the YAML parser are now deductively transparent for `m = Id`.
 
 ### Phase B — Complete per-parser specifications
 
