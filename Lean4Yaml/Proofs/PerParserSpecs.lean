@@ -1745,6 +1745,62 @@ branching on specific characters.
 @[simp] theorem canStartPlainScalar_dash_space :
     Parse.canStartPlainScalar '-' (some ' ') = false := by native_decide
 
+/-! ### §8.9  Remaining Fuel-Zero Specifications
+
+Additional fuel-exhaustion base cases for block/flow parser functions
+not covered in §8.7.
+-/
+
+/-- `dispatchByCharImpl 0` returns `.noMatch` without consuming input. -/
+@[simp]
+theorem dispatchByCharImpl_zero (contentIndent scalarIndent : Nat) (s : YamlStream) :
+    dispatchByCharImpl 0 contentIndent scalarIndent s =
+      .ok s .noMatch := by
+  unfold dispatchByCharImpl
+  simp [ParserSpecs.pure_eq]
+
+/-- `blockValueImpl 0` returns `none` without consuming input. -/
+@[simp]
+theorem blockValueImpl_zero (minIndent propertyMinIndent : Nat) (s : YamlStream) :
+    blockValueImpl 0 minIndent propertyMinIndent s = .ok s none := by
+  unfold blockValueImpl
+  simp [ParserSpecs.pure_eq]
+
+/-- `blockValueSameLineImpl 0` returns `.null` without consuming input. -/
+@[simp]
+theorem blockValueSameLineImpl_zero (startCol contentIndent : Nat) (s : YamlStream) :
+    blockValueSameLineImpl 0 startCol contentIndent s = .ok s .null := by
+  unfold blockValueSameLineImpl
+  simp [ParserSpecs.pure_eq]
+
+/-- `blockMappingEntryImpl 0` returns `(.null, .null)`. -/
+@[simp]
+theorem blockMappingEntryImpl_zero (mapIndent : Nat) (s : YamlStream) :
+    blockMappingEntryImpl 0 mapIndent s = .ok s (.null, .null) := by
+  unfold blockMappingEntryImpl
+  simp [ParserSpecs.pure_eq]
+
+/-- `blockMappingKeyImpl 0` returns `.null` without consuming input. -/
+@[simp]
+theorem blockMappingKeyImpl_zero (s : YamlStream) :
+    blockMappingKeyImpl 0 s = .ok s .null := by
+  unfold blockMappingKeyImpl
+  simp [ParserSpecs.pure_eq]
+
+/-- `detectMappingKeyImpl 0` returns `false` without consuming input. -/
+@[simp]
+theorem detectMappingKeyImpl_zero (inFlow : Bool) (s : YamlStream) :
+    detectMappingKeyImpl 0 inFlow s = .ok s false := by
+  unfold detectMappingKeyImpl
+  simp [ParserSpecs.pure_eq]
+
+/-- `flowValueImpl 0` returns `.null` without consuming input. -/
+@[simp]
+theorem flowValueImpl_zero (minIndent : Nat) (s : YamlStream) :
+    flowValueImpl 0 minIndent s = .ok s .null := by
+  unfold flowValueImpl
+  simp [ParserSpecs.pure_eq]
+
 /-! ## §9  Summary
 
 ### Proved Specifications
