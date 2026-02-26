@@ -159,8 +159,8 @@ Status per constructor:
 | `plainScalarFlow` | `plainScalar` (flow ctx) | ✅ Complete |
 | `singleQuoted` | `singleQuotedScalar` | 🔧 WIP — relational spec + loop lemmas (8) |
 | `doubleQuoted` | `doubleQuotedScalar` | 🔧 WIP — relational spec + loop lemmas (8) |
-| `literalScalar` | `literalBlockScalar` | � WIP — 11 lemmas (applyChomp, processFolded.go, collectLines loop, autoDetectIndent) |
-| `foldedScalar` | `foldedBlockScalar` | 🔧 WIP — 11 lemmas (applyChomp, processFolded.go, collectLines loop, autoDetectIndent) |
+| `literalScalar` | `literalBlockScalar` | 🔧 WIP — 23 lemmas (applyChomp, processFolded.go, collectLines loop, autoDetectIndent, blockScalarLine, consumeIndent, blockScalarContent) |
+| `foldedScalar` | `foldedBlockScalar` | 🔧 WIP — 23 lemmas (applyChomp, processFolded.go, collectLines loop, autoDetectIndent, blockScalarLine, consumeIndent, blockScalarContent) |
 | `blockSeq` | `blockSequence` | ✅ Relational spec complete |
 | `blockMap` | `blockMapping` | ✅ Relational spec complete |
 | `flowSeq` | `flowSequence` | ✅ Relational spec + empty-case complete |
@@ -696,6 +696,192 @@ and `foldedScalar` block scalar pipeline (commit `07e05f8`).
   This is a minor footgun but consistent: `String.isEmpty` is not
   a `@[simp]` lemma in core Lean 4.
 
+### 4d. B3 block scalar specs — second batch (7 lemmas) — COMPLETED
+
+Added 7 sorry-free specification theorems for the block scalar
+pipeline's indentation detection and content machinery (commit `3cc6569`).
+
+#### `currentCol` and `autoDetectIndent.loop` step specs (§8.3.2)
+
+| Lemma | Technique |
+|---|---|
+| `currentCol_eq` | `unfold; simp` |
+| `autoDetectIndent_loop_blank_line` | `show` + `simp` |
+| `autoDetectIndent_loop_content_ge` | `show` + `simp` + `rfl` |
+| `autoDetectIndent_loop_content_lt` | `show` + `simp` + `rfl` |
+
+#### `consumeIndent` specs (§8.3.3)
+
+| Lemma | Technique |
+|---|---|
+| `consumeIndent_no_tab` | `unfold; simp` |
+| `consumeIndent_tab_drop_ok` | `unfold; simp` |
+
+#### `blockScalarContent` top-level (§8.3.4)
+
+| Lemma | Technique |
+|---|---|
+| `blockScalarContent_eq` | `unfold; simp` |
+
+### 4e. B3 block scalar specs — third batch (5 lemmas) — COMPLETED
+
+Added 5 sorry-free specification theorems completing all three
+`blockScalarLine` branches plus the `autoDetectIndent` top-level
+decomposition and a `processFolded` identity case (commit `55869c0`).
+
+#### `blockScalarLine` branch specs (§8.3.1a)
+
+| Lemma | Technique |
+|---|---|
+| `blockScalarLine_blank` | `show` + `simp` |
+| `blockScalarLine_content` | `show` + `simp [Bool.false_eq_true]` |
+| `blockScalarLine_under_indented_blank` | `show` + `simp [ite_true]` |
+
+#### `autoDetectIndent` top-level (§8.3.5)
+
+| Lemma | Technique |
+|---|---|
+| `autoDetectIndent_eq` | `unfold; rfl` |
+
+#### `processFolded` additional case (§8.3.6)
+
+| Lemma | Technique |
+|---|---|
+| `processFolded_single_line` | `unfold; simp` |
+
+### 4e′. Reflections on §4d–§4e — proof idioms, challenges, simplifications
+
+#### New proof idioms introduced in §4d–§4e
+
+1. **`Bool.false_eq_true` + `ite_false` for Bool-to-Prop `if` on
+   false branch.**
+   In §4c we discovered that `if true then ...` needs `ite_true`.
+   In §4e we found the *symmetric* case: after `simp` resolves a
+   `lookAhead` returning `false`, the goal contains
+   `if false = true then ... else ...`.  Lean *does not* reduce
+   `false = true` to `False` automatically — it stays as a
+   propositional equality.  The two-lemma combination
+   `Bool.false_eq_true` (rewrites `false = true` to `False`) +
+   `ite_false` (reduces `@ite _ False _ a b` to `b`) is needed.
+   However, when the `if` condition is literally `true = true`
+   (not `false = true`), mere `ite_true` suffices because `simp`
+   can handle `true = true ↔ True` internally.  This asymmetry
+   extends the §4c observation: the full picture is:
+
+   | Condition | Needed simp lemmas |
+   |---|---|
+   | `if true then a else b` | `ite_true` |
+   | `if false then a else b` | `Bool.false_eq_true` + `ite_false` |
+
+   In practice, the false branch often *doesn't* need these lemmas
+   because subsequent `simp` arguments (e.g., a hypothesis binding
+   the lookAhead result) consume it first.  But when the `ite`
+   is the outermost term in the goal, both are required.
+
+2. **Type annotations for `do` blocks in hypotheses:
+   `(lookAhead ((do ...) : YamlParser Bool))`.**
+   When a theorem's hypothesis involves `lookAhead` applied to a
+   `do` block, Lean cannot infer the monad because the hypothesis
+   is outside any monadic context.  The fix:
+   ```lean
+   (h : (lookAhead ((do
+       skipHWhitespace
+       let col ← currentCol
+       ...) : YamlParser Bool)) s = .ok s' result)
+   ```
+   The `: YamlParser Bool` annotation inside the parentheses gives
+   Lean the monad (`ParserT ...`) and the return type (`Bool`).
+   Without it, Lean emits `invalid 'do' notation, expected type
+   is not a monad application`.  This issue does *not* arise inside
+   the `show (do ...) s = _` proof body because there the expected
+   type is already `YamlParser _ s = _`.
+
+3. **Named wildcards for `_` in theorem parameters.**
+   Lean resolves all parameter types (including holes `_`) *before*
+   entering the proof body.  A hypothesis like
+   `(h : lookAhead anyToken s = .ok s' _)` fails with "don't know
+   how to synthesize placeholder" because `_` in the theorem
+   statement is elaborated at declaration time, not proof time.
+   The fix is to name the wildcard:
+   ```lean
+   (ch : Char)
+   (h : lookAhead anyToken s = .ok s' ch)
+   ```
+   This was already known for value-level `_` but had not been
+   triggered in §4c because all earlier hypotheses used concrete
+   types (`()`, `none`, `some ()`).
+
+4. **`autoDetectIndent_eq` via `unfold; rfl` — no `show` needed.**
+   Unlike the where-clause functions (`collectLines`, `blockScalarLine`)
+   that trigger the 200k heartbeat whnf limit, `autoDetectIndent` is a
+   top-level `def` whose body is just `lookAhead do ...`.
+   `unfold autoDetectIndent` generates the equation lemma without
+   any heartbeat issue, and `rfl` closes the goal.  The `show`
+   technique is only needed for *where-clause functions* inside
+   large parser definitions.  Top-level definitions, even when they
+   contain `do` blocks and `lookAhead`, unfold normally.
+
+#### Unexpected challenges
+
+- **`simp` argument ordering matters for Bool-to-Prop `ite` goals.**
+  For `blockScalarLine_content`, the goal after `show` contains
+  `if false = true then ...`.  Supplying `Bool.false_eq_true` and
+  `ite_false` in the simp argument list works, but the order must
+  be: `Bool.false_eq_true` first (to rewrite the condition to `False`),
+  then `ite_false` (to reduce `@ite _ False`).  If `ite_false` comes
+  first, `simp` doesn't see `False` in the condition and the lemma
+  is unused.  In practice, `simp` resolves the order automatically,
+  but the linter reports "unused simp argument" if `ite_false` is
+  listed without `Bool.false_eq_true`.
+
+- **Unused simp args in `blockScalarLine_under_indented_blank`.**
+  Early versions included `h_skip`, `h_opt_nl`, and `ite_true` as
+  simp args.  After `simp` resolves `h_under` (which establishes
+  `true = true` in the lookAhead result), the remaining bind/pure
+  chain is consumed by `h_no_blank` + `h_under` alone — the
+  subsequent hypotheses for `skipHWhitespace` and `option? newline`
+  are not needed by `simp`.  This suggests the Bool condition
+  reduction "short-circuits" the remainder of the goal.  The final
+  proof uses only `[ParserSpecs.bind_eq, h_no_blank, h_under,
+  ite_true, h_skip, h_opt_nl, ParserSpecs.pure_eq]`.
+
+#### Unexpected simplifications
+
+- **`autoDetectIndent.loop` step cases reuse the `show` template exactly.**
+  All three step cases (`blank_line`, `content_ge`, `content_lt`)
+  use the identical proof skeleton:
+  ```lean
+  show (do
+    let col ← currentCol
+    let spaces ← count (token ' ')
+    let totalCol := col + spaces
+    match ← option? newline with
+    | some _ => autoDetectIndent.loop minIndent fuel (max maxBlankSpaces totalCol)
+    | none =>
+      if totalCol >= minIndent then ...
+      else return minIndent) s = _
+  simp only [ParserSpecs.bind_eq, h₁, h₂, ...]
+  ```
+  The template from §4c for `collectLines` transferred with zero
+  modification.  The three cases differ only in which hypotheses
+  appear in the `simp only` argument list.
+
+- **`consumeIndent` unfolds cleanly despite being a `where`-clause.**
+  Unlike `collectLines` and `blockScalarLine`, `consumeIndent` is
+  defined at the top level in `Scalar.lean` (not nested inside
+  another parser), so its equation lemma generates without hitting
+  heartbeat limits.  Plain `unfold consumeIndent; simp only [...]`
+  works.  The whnf heartbeat issue is specific to where-clause
+  functions inside large enclosing definitions where the equation
+  lemma generator must traverse the entire parent definition body.
+
+- **`blockScalarContent_eq` is a two-liner.**
+  The top-level decomposition of `blockScalarContent` into
+  `getStream` + `collectLines` required only
+  `unfold blockScalarContent; simp only [bind_eq, getStream_eq]`.
+  The `getStream` → fuel extraction is structurally identical to the
+  pattern in `blockSequence_spec` and `blockMapping_spec`.
+
 ---
 
 ## 5. Roadmap to Fully Deductive Correctness
@@ -767,7 +953,7 @@ used by the YAML parser are now deductively transparent for `m = Id`.
 | Phase | Items | Difficulty | Prerequisite | Status |
 |---|---|---|---|---|
 | A | `dropMany_eq`, `count_eq` | Moderate | — | ✅ Done |
-| B | 8 per-parser specs | Moderate–Hard | A | WIP (4 relational + loops) |
+| B | 8 per-parser specs | Moderate–Hard | A | WIP (4 relational + 23 B3 loop specs) |
 | C | `DecidableEq YamlValue` | Moderate | — | ✅ Done |
 | C' | `LawfulBEq YamlValue` | Moderate | C | Deferred (non-blocking) |
 | D | Universal completeness | Hard | A, B, C | Planned |
