@@ -11,6 +11,7 @@ for spec coverage.
 | ✓ G | Specified in `Grammar.lean` (formal proposition) |
 | ✓ P | Implemented in `Parser/*.lean` |
 | ✓ GP | Both specified and implemented |
+| ✓ P† | Implemented but with **known limitation** (see notes in Implementation column) |
 | ⊘ | Out of scope (intentionally not supported) |
 | ◌ | TODO (planned but not yet implemented) |
 
@@ -96,11 +97,11 @@ for spec coverage.
 | [72](https://yaml.org/spec/1.2.2/#rule-s-flow-folded) | `s-flow-folded(n)` | ✓ P | `Scalar.foldQuotedNewlines` |
 | [73](https://yaml.org/spec/1.2.2/#rule-s-flow-line-prefix) | `s-flow-line-prefix(n)` | ✓ P | `Flow.flowWhitespace` |
 | [74](https://yaml.org/spec/1.2.2/#rule-l-comment) | `l-comment` | ✓ P | `Combinators.comment` + `Combinators.newline` |
-| [75](https://yaml.org/spec/1.2.2/#rule-c-nb-comment-text) | `c-nb-comment-text` | ✓ P | `Combinators.comment` |
-| [76](https://yaml.org/spec/1.2.2/#rule-b-comment) | `b-comment` | ✓ P | `Combinators.newline` (at end of comment) |
-| [77](https://yaml.org/spec/1.2.2/#rule-s-b-comment) | `s-b-comment` | ✓ P | `Combinators.skipTrailing` |
-| [78](https://yaml.org/spec/1.2.2/#rule-l-comment) | `l-comment` | ✓ P | `Combinators.skipBlankLines` (comment-only lines) |
-| [79](https://yaml.org/spec/1.2.2/#rule-s-l-comments) | `s-l-comments` | ✓ P | `Combinators.skipTrailing` + `Combinators.skipBlankLines` |
+| [75](https://yaml.org/spec/1.2.2/#rule-c-nb-comment-text) | `c-nb-comment-text` | ✓ P† | `Combinators.comment` — **comment text discarded** (`dropMany`); Phase 8 will capture via `commentText` |
+| [76](https://yaml.org/spec/1.2.2/#rule-b-comment) | `b-comment` | ✓ P | `Combinators.newline` (at end of comment) — structural, no text to capture |
+| [77](https://yaml.org/spec/1.2.2/#rule-s-b-comment) | `s-b-comment` | ✓ P† | `Combinators.skipTrailing` — delegates to [75]; **comment text discarded** |
+| [78](https://yaml.org/spec/1.2.2/#rule-l-comment) | `l-comment` | ✓ P† | `Combinators.skipBlankLines` (comment-only lines) — delegates to [75]; **comment text discarded** |
+| [79](https://yaml.org/spec/1.2.2/#rule-s-l-comments) | `s-l-comments` | ✓ P† | `Combinators.skipTrailing` + `Combinators.skipBlankLines` — delegates to [75]; **comment text discarded** |
 | [80](https://yaml.org/spec/1.2.2/#rule-s-separate) | `s-separate(n,c)` | ✓ P | `Flow.flowWhitespace`, `Combinators.skipHWhitespace` |
 | [81](https://yaml.org/spec/1.2.2/#rule-s-separate-lines) | `s-separate-lines(n)` | ✓ P | `Combinators.skipToNextLine` + `Combinators.consumeIndent` |
 | [82](https://yaml.org/spec/1.2.2/#rule-l-directive) | `l-directive` | ✓ P | `Document.directive` |

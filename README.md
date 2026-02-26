@@ -1723,6 +1723,203 @@ Note: Phase 6 (Dump) is a prerequisite for Phase 7.4 and 7.5. Phases 7.1–7.4 a
 
 </details>
 
+## Phase 8: Comment Preservation — Planned
+
+YAML 1.2.2 §3.2.3.3 states that comments are a **presentation detail** with no effect on the serialization tree. Our parser currently conforms to this by discarding comment text during parsing. However, for **round-trip fidelity** — the ability to parse a YAML file and re-emit it with comments intact — the AST must carry comments as metadata.
+
+This section documents the plan for AST-level comment preservation (Approach 1).
+
+### Motivation
+
+The lean4-calm-bringup config files contain documentation comments (e.g., explaining mode parameters, group membership rationale, stack topology). When the config round-trips through `parse → modify → dump`, these comments are lost. Preserving them enables:
+
+1. **Non-destructive config editing** — programmatic changes don't strip human documentation
+2. **Config diffing** — `dump` output matches the original source, making diffs meaningful
+3. **Spec completeness** — full coverage of YAML 1.2.2 §6.6 comment productions in the AST
+
+### Current State
+
+**Types exist but are unwired.** `Types.lean` already defines:
+
+```lean
+inductive CommentPosition where
+  | before   -- Comment on a line before the node
+  | inline   -- Comment at the end of the same line as the node
+  | after    -- Comment on a line after the node
+
+structure Comment where
+  text : String               -- Excluding leading `#` and whitespace
+  position : CommentPosition
+```
+
+**Parser discards comment text.** `Combinators.comment` (line 147) matches `#` then calls `dropMany`:
+
+```lean
+def comment : YamlParser Unit :=
+  withErrorMessage "expected comment" do
+    let _ ← token '#'
+    dropMany (tokenFilter (fun c => !isLineBreak c))
+```
+
+The `skipTrailing`, `skipToNextLine`, and `skipBlankLines` combinators all call `comment` — none capture the text.
+
+**YAML_PRODUCTIONS.md maps §6.6 productions to discarding parsers.** Productions [75]–[79] are listed as implemented (✓ P) but all map to parsers that silently consume comment content without recording it.
+
+### YAML 1.2.2 §6.6 Productions
+
+The five comment productions that must be traced through the implementation:
+
+| Production | Name | Spec | Current Implementation | Comment Text |
+|------------|------|------|----------------------|--------------|
+| [75](https://yaml.org/spec/1.2.2/#rule-c-nb-comment-text) | `c-nb-comment-text` | `"#" nb-char*` | `Combinators.comment` | ❌ Discarded via `dropMany` |
+| [76](https://yaml.org/spec/1.2.2/#rule-b-comment) | `b-comment` | `b-non-content \| end-of-input` | `Combinators.newline` | N/A (structural) |
+| [77](https://yaml.org/spec/1.2.2/#rule-s-b-comment) | `s-b-comment` | `( s-separate-in-line c-nb-comment-text? )? b-comment` | `Combinators.skipTrailing` | ❌ Delegates to `comment` |
+| [78](https://yaml.org/spec/1.2.2/#rule-l-comment) | `l-comment` | `s-separate-in-line c-nb-comment-text? b-comment` | `Combinators.skipBlankLines` | ❌ Delegates to `comment` |
+| [79](https://yaml.org/spec/1.2.2/#rule-s-l-comments) | `s-l-comments` | `( s-b-comment \| start-of-line ) l-comment*` | `skipTrailing` + `skipBlankLines` | ❌ Delegates to `comment` |
+
+Production [76] (`b-comment`) is structural (line break or EOF) and carries no text. Productions [75], [77], [78], [79] all flow through `Combinators.comment` where text is discarded.
+
+### Plan
+
+#### 8.1: AST Changes — Add `comments` to `YamlValue`
+
+Add an optional comments field to the three content-bearing `YamlValue` variants:
+
+```lean
+inductive YamlValue where
+  | scalar (s : Scalar) (comments : Array Comment := #[])
+  | sequence (style : CollectionStyle) (items : Array YamlValue)
+      (tag : Option String := none) (anchor : Option String := none)
+      (comments : Array Comment := #[])
+  | mapping (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
+      (tag : Option String := none) (anchor : Option String := none)
+      (comments : Array Comment := #[])
+  | alias (name : String)
+```
+
+**Design decisions:**
+
+- Default `#[]` preserves backward compatibility — all existing code continues to work unchanged.
+- `alias` nodes do not carry comments (they resolve to the anchored node which does).
+- `Scalar` could alternatively carry comments in its own struct; placing them on the `YamlValue` variant keeps the comment layer uniform across all node types.
+- `BEq` on `YamlValue` should **ignore** comments (presentation detail per §3.2.3.3). This may require a custom `BEq` instance instead of `deriving BEq`.
+
+#### 8.2: Parser Changes — Collect Comment Text
+
+Modify `Combinators.comment` to return the comment text instead of discarding it:
+
+```lean
+def commentText : YamlParser String :=
+  withErrorMessage "expected comment" do
+    let _ ← token '#'
+    -- Skip optional leading space after #
+    optional (token ' ')
+    takeMany (tokenFilter (fun c => !isLineBreak c))
+```
+
+Introduce a comment accumulator in `YamlStream`:
+
+```lean
+structure YamlStream where
+  ...
+  pendingComments : Array Comment := #[]
+```
+
+The parser workflow becomes:
+1. `commentText` captures the text and pushes `{ text, position := .inline }` to `pendingComments`
+2. `skipTrailing` / `skipBlankLines` call `commentText` instead of `comment`
+3. When a node is constructed (in `blockValue`, `flowValue`, `blockSequenceItems`, etc.), the accumulated `pendingComments` are attached to the node and the accumulator is cleared
+
+**Comment position assignment:**
+- Comments on the same line as a node → `.inline`
+- Comments on lines between nodes → `.before` (attached to the next node)
+- Comments after the last node in a collection → `.after` (attached to the collection)
+
+#### 8.3: Grammar Formalization
+
+Extend `Grammar.lean` with comment-aware grammar predicates:
+
+```lean
+/-- A comment is presentation detail (§3.2.3.3) — it does not affect
+    the serialization tree but is preserved for round-trip fidelity. -/
+structure CommentedNode where
+  node : ValidNode
+  comments : Array Comment
+
+/-- CommentedNode preserves the node's semantic content. -/
+theorem commentedNode_semantic_eq (cn : CommentedNode) :
+    toYamlValue cn.node = toYamlValue cn.node := rfl
+```
+
+The key invariant: **comments are invisible to `NodeToValue`**. The existing soundness proofs (`toYamlValue_correct`, `nodeToValue_deterministic`) remain valid because comments don't participate in the `NodeToValue` relation.
+
+#### 8.4: Dump Changes — Emit Comments
+
+Extend `DumpConfig` and the dump functions to emit comments at their recorded positions:
+
+```lean
+structure DumpConfig where
+  ...
+  preserveComments : Bool := false
+```
+
+When `preserveComments` is true:
+- `.before` comments are emitted as `# text\n` lines before the node's own line
+- `.inline` comments are emitted as ` # text` appended after the node's value on the same line
+- `.after` comments are emitted as `# text\n` lines after the last child in a collection
+
+#### 8.5: YAML_PRODUCTIONS.md Updates
+
+Update the status column for productions [75]–[79] to distinguish between "parsed" and "preserved":
+
+| Production | Current Status | New Status |
+|------------|---------------|------------|
+| [75] `c-nb-comment-text` | ✓ P (parsed, text discarded) | ✓ P+C (parsed, text captured) |
+| [76] `b-comment` | ✓ P | ✓ P (unchanged — structural) |
+| [77] `s-b-comment` | ✓ P | ✓ P+C (captures via commentText) |
+| [78] `l-comment` | ✓ P | ✓ P+C (captures via commentText) |
+| [79] `s-l-comments` | ✓ P | ✓ P+C (captures via commentText) |
+
+#### 8.6: Schema Layer — Transparent Pass-Through
+
+Comments ride along in `YamlValue` transparently. The schema layer (`FromYaml`, `ToYaml`, `resolve`) ignores them:
+
+- `FromYaml` extracts data from `YamlValue` — comments are not in the extraction path
+- `ToYaml` constructs `YamlValue` — comments default to `#[]`
+- `resolve` operates on scalar content — comments are orthogonal
+
+This means the schema proofs (Phase 7) are unaffected, provided `BEq` on `YamlValue` ignores comments.
+
+#### 8.7: Proof Obligations
+
+| Theorem | Statement | Difficulty |
+|---------|-----------|-----------|
+| `comments_semantic_transparent` | `∀ v v', stripComments v = stripComments v' → toYamlValue v = toYamlValue v'` | Easy |
+| `comment_roundtrip` | `∀ (input : String), hasComments input → dump (parse input) cfg = input` (modulo whitespace) | Hard |
+| `comment_preservation` | `∀ (v : YamlValue), comments (parse (dump v cfg)) = comments v` when `preserveComments = true` | Medium |
+
+### Estimated Effort
+
+| Sub-phase | Lines (est.) | Sessions | Status |
+|-----------|-------------|----------|--------|
+| 8.1: AST changes | ~30 | <1 | Not started |
+| 8.2: Parser changes | ~100 | 1 | Not started |
+| 8.3: Grammar formalization | ~50 | <1 | Not started |
+| 8.4: Dump changes | ~80 | 1 | Not started |
+| 8.5: YAML_PRODUCTIONS.md | ~10 | <1 | Not started |
+| 8.6: Schema pass-through | ~20 (test updates) | <1 | Not started |
+| 8.7: Proof obligations | ~150 | 1–2 | Not started |
+| **Total** | **~440** | **3–4** | **Planned** |
+
+### Dependencies
+
+- Phase 8.1 (AST) must come first — all other sub-phases depend on the `comments` field existing.
+- Phase 8.2 (Parser) depends on 8.1 and is the core implementation work.
+- Phase 8.4 (Dump) depends on 8.1 and can proceed in parallel with 8.2.
+- Phase 8.7 (Proofs) depends on all of 8.1–8.6.
+- Phases 7.1–7.4 proofs are **not affected** (comments are invisible to schema resolution).
+- Phase 7.5 (round-trip theorem) should be extended to account for comments once 8.7 is complete.
+
 ---
 
 ## Building
@@ -1794,7 +1991,7 @@ Complete section-by-section coverage of YAML 1.2.2 Chapters 5–9.
 | [§6.3](https://yaml.org/spec/1.2.2/#63-line-prefixes) | Line Prefixes | [68]–[70] [s-line-prefix(n,c)](https://yaml.org/spec/1.2.2/#rule-s-line-prefix) | [`Combinators.consumeIndent`](Lean4Yaml/Parser/Combinators.lean) (block), [`Scalar.foldQuotedNewlines`](Lean4Yaml/Parser/Scalar.lean) (flow) | — | ✅ Impl |
 | [§6.4](https://yaml.org/spec/1.2.2/#64-empty-lines) | Empty Lines | [71] [l-empty(n,c)](https://yaml.org/spec/1.2.2/#rule-l-empty) | [`Flow.lean`](Lean4Yaml/Parser/Flow.lean) (flow whitespace), [`Combinators.skipBlankLines`](Lean4Yaml/Parser/Combinators.lean), [`Combinators.countEmptyLines`](Lean4Yaml/Parser/Combinators.lean) | — | ✅ Impl |
 | [§6.5](https://yaml.org/spec/1.2.2/#65-line-folding) | Line Folding | [72]–[74] [b-l-trimmed](https://yaml.org/spec/1.2.2/#rule-b-l-trimmed), [b-as-space](https://yaml.org/spec/1.2.2/#rule-b-as-space), [b-l-folded(n,c)](https://yaml.org/spec/1.2.2/#rule-b-l-folded) | [`Combinators.checkContinuation`](Lean4Yaml/Parser/Combinators.lean), [`Scalar.foldQuotedNewlines`](Lean4Yaml/Parser/Scalar.lean) | [`FoldNewlines.lean`](Lean4Yaml/Proofs/FoldNewlines.lean) (18 theorems) | ✅ |
-| [§6.6](https://yaml.org/spec/1.2.2/#66-comments) | Comments | [75]–[78] [c-nb-comment-text](https://yaml.org/spec/1.2.2/#rule-c-nb-comment-text), [b-comment](https://yaml.org/spec/1.2.2/#rule-b-comment), [s-b-comment](https://yaml.org/spec/1.2.2/#rule-s-b-comment), [l-comment](https://yaml.org/spec/1.2.2/#rule-l-comment) | [`Combinators.comment`](Lean4Yaml/Parser/Combinators.lean), [`Combinators.skipTrailing`](Lean4Yaml/Parser/Combinators.lean) | — | ✅ Impl |
+| [§6.6](https://yaml.org/spec/1.2.2/#66-comments) | Comments | [75]–[79] [c-nb-comment-text](https://yaml.org/spec/1.2.2/#rule-c-nb-comment-text), [b-comment](https://yaml.org/spec/1.2.2/#rule-b-comment), [s-b-comment](https://yaml.org/spec/1.2.2/#rule-s-b-comment), [l-comment](https://yaml.org/spec/1.2.2/#rule-l-comment), [s-l-comments](https://yaml.org/spec/1.2.2/#rule-s-l-comments) | [`Combinators.comment`](Lean4Yaml/Parser/Combinators.lean), [`Combinators.skipTrailing`](Lean4Yaml/Parser/Combinators.lean) | — | ✅ Impl (text discarded — see [Phase 8](#phase-8-comment-preservation--planned)) |
 | [§6.7](https://yaml.org/spec/1.2.2/#67-separation-lines) | Separation Lines | [79]–[81] [s-separate-in-line](https://yaml.org/spec/1.2.2/#rule-s-separate-in-line), [s-l-comments](https://yaml.org/spec/1.2.2/#rule-s-l-comments), [s-separate(n,c)](https://yaml.org/spec/1.2.2/#rule-s-separate) | [`Combinators.skipTrailing`](Lean4Yaml/Parser/Combinators.lean), [`Scalar.lean`](Lean4Yaml/Parser/Scalar.lean), [`Flow.lean`](Lean4Yaml/Parser/Flow.lean), [`Block.lean`](Lean4Yaml/Parser/Block.lean), [`Document.lean`](Lean4Yaml/Parser/Document.lean) | [`DocumentContracts.lean`](Lean4Yaml/Proofs/DocumentContracts.lean) | ✅ |
 | [§6.8](https://yaml.org/spec/1.2.2/#68-directives) | Directives | [82]–[88] [l-directive](https://yaml.org/spec/1.2.2/#rule-l-directive), [ns-yaml-directive](https://yaml.org/spec/1.2.2/#rule-ns-yaml-directive), [ns-tag-directive](https://yaml.org/spec/1.2.2/#rule-ns-tag-directive) | [`Document.parseDirective`](Lean4Yaml/Parser/Document.lean) | [`DocumentContracts.lean`](Lean4Yaml/Proofs/DocumentContracts.lean) | ✅ |
 | [§6.8.1](https://yaml.org/spec/1.2.2/#681-tag-directives) | Tag Directives | [85] [ns-tag-directive](https://yaml.org/spec/1.2.2/#rule-ns-tag-directive) | [`Document.parseDirective`](Lean4Yaml/Parser/Document.lean), [`Tag.parseTagHandle`](Lean4Yaml/Parser/Tag.lean) | [`DocumentContracts.lean`](Lean4Yaml/Proofs/DocumentContracts.lean) | ✅ |
@@ -1845,6 +2042,8 @@ Complete section-by-section coverage of YAML 1.2.2 Chapters 5–9.
 ### Coverage Summary
 
 **All 36 sections of YAML 1.2.2 Chapters 5–9 are implemented.** 28 sections have explicit `§`-citations in code; 8 sections (§5.6, §6.2, §6.3, §6.6, §7.2, §8.1.2, §9.1.1, §9.1.5) are implemented without explicit citations. 16 sections have formal proof coverage in `Proofs/*.lean`.
+
+**§6.6 limitation:** Comment text is parsed and discarded — productions [75]–[79] are recognized but comment content is not preserved in the AST. [Phase 8](#phase-8-comment-preservation--planned) plans AST-level comment preservation for round-trip fidelity.
 
 </details>
 
