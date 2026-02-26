@@ -1,5 +1,5 @@
 {
-? <mark class="legend-1">explicit: entry</mark>,
-<mark class="legend-2">implicit: entry</mark>,
-?<mark class="legend-3">°</mark><mark class="legend-3">°</mark>
+? explicit: entry,
+implicit: entry,
+?°°
 }

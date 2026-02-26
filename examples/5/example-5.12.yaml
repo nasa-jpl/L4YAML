@@ -1,6 +1,6 @@
 # Tabs and spaces
-quoted:<mark class="legend-1">·</mark>"Quoted <mark class="legend-2">→</mark>"
-block:<mark class="legend-2">→</mark>|
-<mark class="legend-1">··</mark>void main() {
-<mark class="legend-1">··</mark><mark class="legend-2">→</mark>printf("Hello, world!\n");
-<mark class="legend-1">··</mark>}
+quoted: "Quoted 	"
+block:	|
+  void main() {
+  	printf("Hello, world!\n");
+  }

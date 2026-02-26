@@ -1,5 +1,5 @@
-- <mark class="legend-1">!!str "a"</mark>
-- <mark class="legend-1">'b'</mark>
-- <mark class="legend-1">&anchor "c"</mark>
-- <mark class="legend-2">*anchor</mark>
-- <mark class="legend-2">!!str°</mark>
+- !!str "a"
+- 'b'
+- &anchor "c"
+- *anchor
+- !!str°

@@ -1,8 +1,8 @@
-<mark class="legend-1">%YAML 1.2</mark>
-<mark class="legend-1">--- |</mark>
-<mark class="legend-1">%!PS-Adobe-2.0</mark>
+%YAML 1.2
+--- |
+%!PS-Adobe-2.0
 ...
-<mark class="legend-1">%YAML 1.2</mark>
-<mark class="legend-1">---</mark>
-<mark class="legend-1"># Empty</mark>
+%YAML 1.2
+---
+# Empty
 ...

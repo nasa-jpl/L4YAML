@@ -1,2 +1,2 @@
-key:<mark class="legend-3">····<mark class="legend-1"># Comment</mark><mark class="legend-2">↓</mark></mark>
-  value<mark class="legend-2"><mark class="legend-3"><i>eof</i></mark></mark>
+key:    # Comment
+  value<i>eof</i>

@@ -1,8 +1,8 @@
 [
-<mark class="legend-1">"double</mark>
-<mark class="legend-1"> quoted"</mark>, <mark class="legend-1">'single</mark>
-<mark class="legend-1">           quoted'</mark>,
-<mark class="legend-1">plain</mark>
-<mark class="legend-1"> text</mark>, <mark class="legend-1">[ nested ]</mark>,
-<mark class="legend-2">single: pair</mark>,
+"double
+ quoted", 'single
+           quoted',
+plain
+ text, [ nested ],
+single: pair,
 ]

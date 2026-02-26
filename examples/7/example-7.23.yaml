@@ -1,5 +1,5 @@
-- <mark class="legend-1">[ a, b ]</mark>
-- <mark class="legend-1">{ a: b }</mark>
-- <mark class="legend-1">"a"</mark>
-- <mark class="legend-1">'b'</mark>
-- <mark class="legend-2">c</mark>
+- [ a, b ]
+- { a: b }
+- "a"
+- 'b'
+- c

@@ -1,6 +1,6 @@
--<mark class="legend-1">° # Empty</mark>
--<mark class="legend-2"> |</mark>
- <mark class="legend-2">block node</mark>
--<mark class="legend-3">·- one # Compact</mark>
-<mark class="legend-3">··- two # sequence</mark>
--<mark class="legend-4"> one: two # Compact mapping</mark>
+-° # Empty
+- |
+ block node
+- - one # Compact
+  - two # sequence
+- one: two # Compact mapping

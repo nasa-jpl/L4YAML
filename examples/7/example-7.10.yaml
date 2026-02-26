@@ -1,12 +1,12 @@
 # Outside flow collection:
-- <mark class="legend-1">:</mark><mark class="legend-2">:</mark>vector
-- "<mark class="legend-3">:</mark> - ()"
-- Up<mark class="legend-2">,</mark> up, and away!
-- <mark class="legend-1">-</mark>123
-- http<mark class="legend-2">s</mark>://example.com/fo<mark class="legend-2">o</mark>#bar
+- ::vector
+- ": - ()"
+- Up, up, and away!
+- -123
+- https://example.com/foo#bar
 # Inside flow collection:
-- [ <mark class="legend-1">:</mark><mark class="legend-2">:</mark>vector,
-  "<mark class="legend-3">:</mark> - ()",
-  "Up<mark class="legend-4">,</mark> up and away!",
-  <mark class="legend-1">-</mark>123,
-  http<mark class="legend-2">s</mark>://example.com/fo<mark class="legend-2">o</mark>#bar ]
+- [ ::vector,
+  ": - ()",
+  "Up, up and away!",
+  -123,
+  https://example.com/foo#bar ]

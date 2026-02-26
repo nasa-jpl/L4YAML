@@ -1,4 +1,4 @@
-%<mark class="legend-1">YAML <mark class="legend-2">1.3</mark></mark> # Attempt parsing
+%YAML 1.3 # Attempt parsing
            # with a warning
 ---
 "foo"

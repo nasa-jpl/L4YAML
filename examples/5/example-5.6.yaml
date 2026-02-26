@@ -1,2 +1,2 @@
-anchored: <mark class="legend-1">!</mark>local <mark class="legend-2">&</mark>anchor value
-alias: <mark class="legend-3">*</mark>anchor
+anchored: !local &anchor value
+alias: *anchor

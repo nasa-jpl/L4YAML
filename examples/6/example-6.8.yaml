@@ -1,6 +1,6 @@
-"<mark class="legend-1">↓</mark>
-<mark class="legend-1"><mark class="legend-2">··</mark></mark>foo<mark class="legend-1"><mark class="legend-2">·</mark>↓</mark>
-<mark class="legend-1"><mark class="legend-2">·</mark>↓</mark>
-<mark class="legend-1"><mark class="legend-2">··→·</mark></mark>bar<mark class="legend-1">↓</mark>
-<mark class="legend-1">↓</mark>
-<mark class="legend-1"><mark class="legend-2">··</mark></mark>baz<mark class="legend-1">↓</mark> "
+"
+  foo 
+ 
+  	 bar
+
+  baz "

@@ -1,6 +1,6 @@
-literal: <mark class="legend-1">|2</mark>
-<mark class="legend-1">··value</mark>
-folded:<mark class="legend-2">↓</mark>
-<mark class="legend-2">···!foo</mark>
-<mark class="legend-2">··>1</mark>
-<mark class="legend-2">·value</mark>
+literal: |2
+  value
+folded:
+   !foo
+  >1
+ value

@@ -98,11 +98,15 @@ private def stripMarkTags (s : String) : String :=
   String.join parts
 
 /-- Replace YAML spec annotation symbols with actual characters.
-    The spec uses `·` for space, `→` for tab, `↓` for newline. -/
+    The spec uses `·` for space, `→` for tab, `↓` for newline.
+    Note: `·` and `→` substitute for the actual character (no space/tab byte in
+    the HTML), while `↓` merely annotates an already-present newline (the line
+    break byte is already in the `<pre>` content), so it is removed rather than
+    doubled. -/
 private def replaceAnnotationSymbols (s : String) : String :=
   let s := s.replace "·" " "     -- visible space → actual space
   let s := s.replace "→" "\t"    -- visible tab → actual tab
-  let s := s.replace "↓" "\n"    -- visible newline → actual newline
+  let s := s.replace "↓" ""      -- visible newline → remove (newline already present)
   s
 
 /-- Decode HTML entities. -/

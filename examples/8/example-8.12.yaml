@@ -1,15 +1,15 @@
 >
-<mark class="legend-2">↓</mark>
+
  folded
- line<mark class="legend-1">↓</mark>
-<mark class="legend-2">↓</mark>
+ line
+
  next
- line<mark class="legend-1">↓</mark>
+ line
    * bullet
 
    * list
-   * lines<mark class="legend-1">↓</mark>
-<mark class="legend-2">↓</mark>
+   * lines
+
  last
  line
 
