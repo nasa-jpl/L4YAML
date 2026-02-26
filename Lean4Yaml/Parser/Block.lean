@@ -1056,9 +1056,42 @@ where
         if c == '}' || c == ']' then skipFlowBrackets fuel (depth - 1)
         else if c == '{' || c == '[' then skipFlowBrackets fuel (depth + 1)
         else skipFlowBrackets fuel depth
+  /-- Skip over a double-quoted string (after opening `"` consumed).
+      Handles `\\` escape sequences so `\"` doesn't terminate early. -/
+  skipDoubleQuoted : Nat → YamlParser Unit
+    | 0 => return ()
+    | fuel + 1 => do
+      match ← option? anyToken with
+      | none => return ()       -- unclosed quote at EOF
+      | some '"' => return ()   -- closing quote
+      | some '\\' =>            -- escape: skip next char
+        let _ ← option? anyToken
+        skipDoubleQuoted fuel
+      | some _ => skipDoubleQuoted fuel
+  /-- Skip over a single-quoted string (after opening `'` consumed).
+      Handles `''` escape (the only escape in single-quoted scalars). -/
+  skipSingleQuoted : Nat → YamlParser Unit
+    | 0 => return ()
+    | fuel + 1 => do
+      match ← option? anyToken with
+      | none => return ()       -- unclosed quote at EOF
+      | some '\'' =>
+        -- Check for '' escape (two consecutive single quotes)
+        match ← option? (lookAhead (char '\'')) with
+        | some _ => let _ ← anyToken; skipSingleQuoted fuel
+        | none => return ()     -- closing quote
+      | some _ => skipSingleQuoted fuel
   detectLoop : Nat → YamlParser Bool
     | 0 => return false
     | fuel + 1 => do
+      -- `afterWs` tracks whether the previous character was whitespace
+      -- (or this is the start of the scan). Quotes are only treated as
+      -- string-start when preceded by whitespace; mid-word quotes like
+      -- `a!"` are plain-scalar characters (T4).
+      detectLoopWs fuel true
+  detectLoopWs : Nat → Bool → YamlParser Bool
+    | 0, _ => return false
+    | fuel + 1, afterWs => do
       match ← option? anyToken with
       | none => return false
       | some ':' =>
@@ -1071,7 +1104,7 @@ where
         | some c =>
           if isWhiteSpace c || isLineBreak c then return true
           -- Not a separator — continue scanning without consuming the peeked char
-          else detectLoop fuel
+          else detectLoopWs fuel false
       | some c =>
         if isLineBreak c then return false
         else if inFlow && isFlowIndicator c then return false
@@ -1079,10 +1112,19 @@ where
         -- positives from `:` inside braces/brackets (e.g., `{a: 1}`).
         else if c == '{' || c == '[' then do
           skipFlowBrackets fuel 1
-          detectLoop fuel
-        -- T4 fix: do NOT bail on `"` or `'` mid-key — they are valid
-        -- plain-scalar characters when not at the start of a value.
-        else detectLoop fuel
+          detectLoopWs fuel true
+        -- Quote-aware (P8 fix): skip over quoted strings to avoid false
+        -- positives from `: ` inside quoted scalars (e.g., `!!str "a: b"`).
+        -- Only activate when the quote follows whitespace (afterWs), so
+        -- mid-word quotes in plain scalars (e.g., `a!"#$...`) are not
+        -- misinterpreted as string delimiters.
+        else if afterWs && c == '"' then do
+          skipDoubleQuoted fuel
+          detectLoopWs fuel true
+        else if afterWs && c == '\'' then do
+          skipSingleQuoted fuel
+          detectLoopWs fuel true
+        else detectLoopWs fuel (isWhiteSpace c)
 
 end
 

@@ -1423,6 +1423,65 @@ Full analysis in [YAML_PRODUCTIONS.md](Lean4Yaml/YAML_PRODUCTIONS.md) §Token–
 
 </details>
 
+### Spec Example 100% — Final Two Gaps Closed (2026-02-26)
+
+<details>
+<summary>
+<b>Fixed the last 2 spec example failures (5.13, 10.3). Spec examples now 132/132 (100%). Three targeted fixes: <code>\L</code>/<code>\P</code> escape support in old parser, quote-aware <code>detectMappingKeyImpl</code> (P8 fix). Full build clean (255 jobs), zero regressions across all test suites.</b>
+</summary>
+
+**Context.** After the Phase 9 scanner/parser implementation and the earlier spec example triage (119→130/132), two genuine parser gaps remained:
+- **5.13**: `\L` (U+2028 LINE SEPARATOR) and `\P` (U+2029 PARAGRAPH SEPARATOR) escape sequences — old parser's `escapeSequence` and `processEscape` in `Scalar.lean` lacked these two arms
+- **10.3**: `!!str "String: just a theory."` — `detectMappingKeyImpl` in `Block.lean` found `: ` inside the double-quoted string value, producing a false positive
+
+#### Fix 1 — `\L`/`\P` escapes in old parser (Scalar.lean)
+
+The Phase 9 scanner (`Scanner.lean`) already handled all YAML 1.2.2 escape sequences including `\L` and `\P` (lines ~547). The old parser had two separate escape handlers — the standalone `escapeSequence` function (§5.7 production) and the inline `processEscape` helper inside `doubleQuotedScalar` — both missing the same two arms.
+
+Fix: added `| 'L' => return (Char.ofNat 0x2028)` and `| 'P' => return (Char.ofNat 0x2029)` to both handlers. Two lines each, four lines total.
+
+#### Fix 2 — Quote-aware `detectMappingKeyImpl` (Block.lean, P8 fix)
+
+The `detectMappingKeyImpl` function scans forward on the current line looking for `: ` (mapping value indicator). It was already flow-bracket-aware (P6 fix: skips balanced `{...}`/`[...]`), but not quote-aware. The spec example 10.3 input:
+
+```yaml
+Flow style: !!str "String: just a theory."
+```
+
+has `: ` inside the double-quoted value `"String: just a theory."`. The scanner finds `String: just` and incorrectly classifies the line as containing a nested mapping.
+
+Fix: added `skipDoubleQuoted` and `skipSingleQuoted` helper functions to `detectMappingKeyImpl`'s `where` clause. These consume quoted string content (handling `\"` escapes and `''` escapes respectively) so the `: ` scanner skips over quoted regions.
+
+**Critical subtlety:** The initial fix unconditionally treated `"` and `'` as string delimiters. This broke the 2EBW yaml-test-suite guard — the test `a!"#$%&'()*+,-./09:;...` has `"` mid-word as a plain scalar character, not a string delimiter. The fix: track an `afterWs` flag in the detect loop. Quotes are only treated as string delimiters when preceded by whitespace. Mid-word quotes (`a!"...`) are just plain scalar characters. This required splitting `detectLoop` into `detectLoopWs` with a `Bool` parameter.
+
+#### Fix 3 — Clear `knownParserGaps` (SpecExamples.lean)
+
+Removed 5.13 and 10.3 from the `knownParserGaps` list (now empty array `#[]`).
+
+#### Verification
+
+| Test Suite | Result |
+|------------|--------|
+| Spec examples | 132/132 (100%) |
+| Scanner tests | 33/33 |
+| Unit tests | 17/17 |
+| Iterator tests | 10/10 |
+| Suite guards (compile-time) | All pass (255 build jobs) |
+
+Zero regressions. The `SuiteGuards/Scalar.lean` and `SuiteGuards/Block.lean` compile-time guards (which exercise `detectMappingKeyImpl` via the full parser pipeline) served as an immediate regression check — the first iteration of the P8 fix broke them, revealing the mid-word quote problem before any manual test run.
+
+#### Reflections
+
+**Layered architecture pays off for maintenance.** The `\L`/`\P` fix was trivial because the old parser's escape handling is structurally identical to the new scanner's — a match arm per escape character, same function shape. The new scanner already had the fix; backporting was mechanical. This validates the Phase 9 design: having two implementations of the same spec makes gaps in either one immediately visible.
+
+**`detectMappingKeyImpl` keeps accumulating special cases.** This function now has four layers of awareness: basic `: ` detection, flow-bracket skipping (P6), `::` handling (UKK6), and quote skipping (P8). Each layer was a response to a specific false positive. The Phase 9 scanner eliminates all of these by design — it never needs to ask "is this a mapping key?" because the indentation-tracking and simple-key mechanism makes that determination during scanning. This reinforces the case for eventually retiring the old parser pipeline in favor of the scanner-based one.
+
+**Compile-time guards as a safety net.** The 351 auto-generated `#guard` checks in `SuiteGuards/*.lean` caught the `afterWs` regression within seconds of the first build attempt. Without them, the quote-skipping fix would have appeared correct (spec examples pass, scanner tests pass) and the regression on plain scalars containing mid-word quotes would have been latent. This is exactly the value proposition of Phase 4's compile-time guard investment.
+
+**Two-line fix vs. forty-line fix.** The `\L`/`\P` fix was 4 lines total (2 arms × 2 handlers). The quote-aware `detectMappingKeyImpl` was ~40 lines (`skipDoubleQuoted`, `skipSingleQuoted`, `afterWs` tracking, `detectLoopWs`). The asymmetry reflects the difference between "add a missing case to an exhaustive match" and "add a new dimension of awareness to a scanning heuristic." The former is mechanical; the latter requires understanding the invariants well enough to know where the new dimension interacts with existing ones.
+
+</details>
+
 ### Phase 9 Implementation: Two-Pass Scanner/Parser (2026-02-26)
 
 <details>
@@ -1445,7 +1504,7 @@ The `b: x: y` regression is fixed: the scanner produces `KEY "b" VALUE KEY "x" V
 
 <details>
 <summary>
-<b>Diagnosed all 13 spec example failures (119→130/132 pass, 97.0%). Three root causes identified and fixed.</b>
+<b>Diagnosed all 13 spec example failures (119→130/132 pass, 97.0%). Three root causes identified and fixed. (The remaining 2 gaps — 5.13 and 10.3 — were subsequently closed; see "Spec Example 100%" entry above.)</b>
 </summary>
 
 The YAML 1.2.2 Spec Examples suite (132 examples from §2–§10) had 13 failures at 119/132 (90.2%). Root cause analysis revealed three distinct categories:
@@ -1494,15 +1553,15 @@ Fix: added `knownParserGaps` list and `isKnownGap` check — these are reported 
 | Section | Pass | Total | Rate | Delta |
 |---------|------|-------|------|-------|
 | §2 Preview | 28 | 28 | 100% | — |
-| §5 Characters | 13 | 14 | 93% | +3 (5.2, 5.10, 5.14 → expected error) |
+| §5 Characters | 14 | 14 | 100% | +3 (5.2, 5.10, 5.14 → expected error); +1 (5.13 → `\L`/`\P` fix) |
 | §6 Basic Structures | 29 | 29 | 100% | +3 (6.15, 6.17, 6.27 → expected error) |
 | §7 Flow Styles | 24 | 24 | 100% | +1 (7.22 → expected error) |
 | §8 Block Styles | 22 | 22 | 100% | +4 (8.3 → expected error; 8.15, 8.17, 8.18 → annotation fix) |
 | §9 Document Stream | 6 | 6 | 100% | — |
-| §10 Schemas | 8 | 9 | 89% | — |
-| **Total** | **130** | **132** | **98.5%** | **+11** |
+| §10 Schemas | 9 | 9 | 100% | +1 (10.3 → quote-aware `detectMappingKeyImpl`, P8 fix) |
+| **Total** | **132** | **132** | **100%** | **+13** |
 
-Remaining 2 failures (5.13, 10.3) are tracked as known parser gaps.
+All 132 spec examples pass. The final 2 gaps (5.13, 10.3) were closed on 2026-02-26 — see "Spec Example 100%" dev log entry.
 
 </details>
 
