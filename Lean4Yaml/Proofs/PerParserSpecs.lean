@@ -876,6 +876,48 @@ theorem singleQuoted_collectChars_linefold_lf
   unfold singleQuotedScalar.collectChars
   simp only [ParserSpecs.bind_eq, h_lf, h_fold, h_recurse]
 
+/-! ### §8.1.8  Line Fold Forbidden Cases
+
+When `foldQuotedNewlines` returns `.forbidden msg` (a document boundary
+was detected at column 0), `collectChars` records a validation error
+and returns the accumulated string.
+-/
+
+/--
+**doubleQuotedScalar.collectChars — forbidden boundary on `\n`.**
+-/
+theorem doubleQuoted_collectChars_linefold_forbidden
+    (contentIndent fuel : Nat) (acc : String) (msg : String)
+    (s s₁ s₂ s₃ : YamlStream)
+    (h_lf : (Parser.anyToken (m := Id) : YamlParser Char) s = .ok s₁ '\n')
+    (h_fold : foldQuotedNewlines acc contentIndent s₁ = .ok s₂ (.forbidden msg))
+    (h_err : setValidationError msg s₂ = .ok s₃ ()) :
+    doubleQuotedScalar.collectChars contentIndent (fuel + 1) acc s = .ok s₃ acc := by
+  unfold doubleQuotedScalar.collectChars
+  simp only [ParserSpecs.bind_eq, h_lf, h_fold, h_err, ParserSpecs.pure_eq]
+
+/--
+**singleQuotedScalar.collectChars — forbidden boundary on `\n`.**
+-/
+theorem singleQuoted_collectChars_linefold_forbidden
+    (contentIndent fuel : Nat) (acc : String) (msg : String)
+    (s s₁ s₂ s₃ : YamlStream)
+    (h_lf : (Parser.anyToken (m := Id) : YamlParser Char) s = .ok s₁ '\n')
+    (h_fold : foldQuotedNewlines acc contentIndent s₁ = .ok s₂ (.forbidden msg))
+    (h_err : setValidationError msg s₂ = .ok s₃ ()) :
+    singleQuotedScalar.collectChars contentIndent (fuel + 1) acc s = .ok s₃ acc := by
+  unfold singleQuotedScalar.collectChars
+  simp only [ParserSpecs.bind_eq, h_lf, h_fold, h_err, ParserSpecs.pure_eq]
+
+/-! ### §8.1.10  Flow Whitespace Base Case -/
+
+/-- `flowWhitespace.go` fuel-zero returns immediately. -/
+@[simp]
+theorem flowWhitespace_go_zero (minIndent : Nat) (s : YamlStream) :
+    flowWhitespace.go minIndent 0 s = .ok s () := by
+  unfold flowWhitespace.go
+  simp [ParserSpecs.pure_eq]
+
 /-! ### §8.2  Plain Scalar Specifications -/
 
 /--
@@ -2036,6 +2078,60 @@ theorem blockMappingImpl_under_indented
   simp only [withErrorMessage_eq, ParserSpecs.bind_eq,
              h_skip, currentCol_eq]
   simp [h_lt]
+
+/-! ### §8.10.2  Block Collection Dispatch Specifications -/
+
+/--
+**dispatchByCharImpl — EOF returns `.noMatch`.**
+
+At end-of-file, `option? (lookAhead anyToken)` returns `none`,
+and the dispatcher returns `.noMatch` without consuming input.
+-/
+theorem dispatchByCharImpl_eof
+    (fuel contentIndent : Nat) (s s₁ : YamlStream)
+    (h_eof : (option? (lookAhead (Parser.anyToken (m := Id))) : YamlParser (Option Char)) s = .ok s₁ none) :
+    dispatchByCharImpl (fuel + 1) contentIndent contentIndent s =
+      .ok s₁ (DispatchResult.noMatch : DispatchResult YamlValue) := by
+  unfold dispatchByCharImpl
+  simp only [ParserSpecs.bind_eq, h_eof, ParserSpecs.pure_eq]
+
+/--
+**blockSequenceImpl — at-indent dispatch to items.**
+
+When blank lines are skipped and the detected indentation (`seqIndent`)
+is at or above `minIndent`, the parser delegates to `blockSequenceItemsImpl`
+and wraps the result in `.sequence .block`.
+-/
+theorem blockSequenceImpl_dispatch
+    (fuel minIndent : Nat) (items : Array YamlValue)
+    (s s₁ s₂ : YamlStream)
+    (h_skip : skipBlankLines s = .ok s₁ ())
+    (h_ge : ¬ (s₁.col < minIndent))
+    (h_items : blockSequenceItemsImpl fuel s₁.col #[] s₁ = .ok s₂ items) :
+    blockSequenceImpl (fuel + 1) minIndent s =
+      .ok s₂ (some (.sequence .block items)) := by
+  unfold blockSequenceImpl
+  simp only [withErrorMessage_eq, ParserSpecs.bind_eq,
+             h_skip, currentCol_eq, if_neg h_ge, h_items, ParserSpecs.pure_eq]
+
+/--
+**blockMappingImpl — at-indent dispatch to entries.**
+
+When blank lines are skipped and the detected indentation is
+at or above `minIndent`, the parser delegates to `blockMappingEntriesImpl`
+and wraps the result in `.mapping .block`.
+-/
+theorem blockMappingImpl_dispatch
+    (fuel minIndent : Nat) (entries : Array (YamlValue × YamlValue))
+    (s s₁ s₂ : YamlStream)
+    (h_skip : skipBlankLines s = .ok s₁ ())
+    (h_ge : ¬ (s₁.col < minIndent))
+    (h_entries : blockMappingEntriesImpl fuel s₁.col #[] s₁ = .ok s₂ entries) :
+    blockMappingImpl (fuel + 1) minIndent s =
+      .ok s₂ (some (.mapping .block entries)) := by
+  unfold blockMappingImpl
+  simp only [withErrorMessage_eq, ParserSpecs.bind_eq,
+             h_skip, currentCol_eq, if_neg h_ge, h_entries, ParserSpecs.pure_eq]
 
 /-! ### §8.11  Additional Character Predicate Specifications -/
 
