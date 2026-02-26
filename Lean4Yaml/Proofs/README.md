@@ -552,6 +552,150 @@ in the consuming branch.
   where `remaining s'' < remaining s` is in scope as a hypothesis
   (`‹_›` or the `split` discriminant).
 
+### 4c. B3 block scalar specs — first batch (11 lemmas) — COMPLETED
+
+Added 11 sorry-free specification theorems for the `literalScalar`
+and `foldedScalar` block scalar pipeline (commit `07e05f8`).
+
+#### Pure function specs (§7)
+
+| Lemma | Technique |
+|---|---|
+| `applyChomp_strip` | `rfl` |
+| `applyChomp_clip` | `rfl` |
+
+#### `processFolded.go` case analysis (§7.1)
+
+| Lemma | Technique |
+|---|---|
+| `processFolded_go_nil` | `unfold; rfl` |
+| `processFolded_go_singleton_first` | `unfold; simp` |
+| `processFolded_go_singleton_nonempty` | `unfold; simp [h]` |
+| `processFolded_go_singleton_empty` | `unfold; simp [String.isEmpty]` |
+
+#### `blockScalarContent.collectLines` loop specs (§8.3.1)
+
+| Lemma | Technique |
+|---|---|
+| `blockCollectLines_zero` | `rfl` |
+| `blockCollectLines_no_match` | `show` + `simp only [bind_eq, h, pure_eq]` |
+| `blockCollectLines_first_step` | `show` + `simp only [bind_eq, h, ite_true]` |
+| `blockCollectLines_cont_step` | `show` + `simp only [bind_eq, h]` + `rfl` |
+
+#### `autoDetectIndent` base case (§8.3.2)
+
+| Lemma | Technique |
+|---|---|
+| `autoDetectIndent_loop_zero` | `rfl` |
+
+### 4c′. Reflections on §4c — proof idioms, challenges, simplifications
+
+#### New proof idioms introduced in §4c
+
+1. **`show (do ...) s = _` to bypass equation lemma generation for
+   where-clause functions.**
+   The `collectLines` where-clause function in `blockScalarContent`
+   triggers a hard 200,000-heartbeat whnf limit when `unfold` attempts
+   to generate its equation lemma.  Unlike the `maxHeartbeats` option
+   (which controls the tactic timeout), this whnf limit is
+   non-configurable in Lean 4.28.  The workaround:
+   ```lean
+   show (do
+     match ← Parser.option? (...) with
+     | some line => ...
+     | none => return acc) s = _
+   ```
+   converts the LHS to the expanded do-notation body by **definitional
+   equality** — no equation lemma is generated because `show` merely
+   changes the expected type.  After `show`, ordinary `simp only`
+   closes the goal.  This is the single most important technique
+   discovered in §4c and is expected to be the standard approach for
+   all fuel-bounded where-clause loop proofs going forward.
+
+2. **`ite_true` / `ite_false` simp lemmas for Boolean-to-Prop `if`.**
+   In Lean 4, `if true then a else b` elaborates to
+   `if (true = true) then a else b`, i.e., `@ite _ (True) _ a b`.
+   Plain `rfl` cannot reduce this (it is not a definitional equality).
+   The `ite_true` simp lemma from Mathlib/core reduces
+   `@ite _ True _ a b` to `a`.  Similarly `if false then ...` elaborates
+   to `if (false = true) then ...` which is `@ite _ False _ a b` —
+   but this *is* definitionally `b` in Lean 4.28, so `rfl` suffices.
+   The asymmetry (`ite_true` needed, `rfl` works for false) was
+   unexpected.
+
+3. **`rfl` for fuel-zero base cases of where-clause loops.**
+   For simple where-clause functions whose fuel-zero branch is
+   `| 0, acc, _ => return acc`, the entire theorem
+   `collectLines indent 0 acc first s = .ok s acc` is provable by
+   plain `rfl`.  No `unfold` is needed — the fuel-zero branch is
+   a definitional equality.  This was discovered for
+   `blockCollectLines_zero` and `autoDetectIndent_loop_zero`, both
+   of which had initially used `unfold; simp` before being simplified.
+
+#### Unexpected challenges
+
+- **`unfold blockScalarContent.collectLines` exceeds 200,000 heartbeat
+  whnf limit — `set_option maxHeartbeats` does NOT help.**
+  The equation lemma generation for `collectLines` (a where-clause
+  function inside `blockScalarContent`, which itself contains
+  `blockScalarLine` and `takeLineContent` where-clauses) triggers a
+  hard whnf limit.  Setting `set_option maxHeartbeats 800000` does
+  not override this — the 200,000 limit is in the kernel's whnf
+  reduction, not the tactic heartbeat counter.  This was the single
+  biggest obstacle in §4c and forced the invention of the `show`
+  technique (idiom #1 above).
+
+- **`delta` expands through `Nat.brecOn.go` / `Nat.rec`.**
+  An early attempt used `delta blockScalarContent.collectLines` to
+  avoid the equation lemma.  While `delta` doesn't trigger equation
+  lemma generation, it expands the definition to its core-level
+  encoding, which includes `Nat.brecOn.go`, `Nat.rec`, and
+  `PSigma.casesOn` terms.  `simp` cannot reduce these back to the
+  user-facing `match` form, making the approach unusable for
+  fuel+1 cases (fuel-zero works because the result is definitional).
+
+- **`option?` position-restoration semantics.**
+  `option?` on failure returns `Stream.setPosition s' (Stream.getPosition s)`,
+  where `s'` is the stream state after the sub-parser ran (and failed).
+  For `YamlStream`, `setPosition` only restores `startPos`/`line`/`col`
+  from the position — it does **not** restore `str`, `stopPos`,
+  `anchorMap`, `validationError`, or `tagHandles`.  Therefore
+  `setPosition s' (getPosition s) ≠ s` if the sub-parser modified
+  non-position state (e.g., set a validation error).  The initial
+  `blockCollectLines_no_match` theorem hypothesized `blockScalarLine`
+  failure directly, but the correct approach is to hypothesize on the
+  `option?` result `s_out`, which correctly captures the post-restoration
+  state.
+
+#### Unexpected simplifications
+
+- **`processFolded.go` unfolds cleanly (unlike `collectLines`).**
+  `processFolded.go` is a structurally recursive function on `List String`
+  (not fuel-bounded), and its equation lemma generates without hitting
+  any heartbeat limit.  Plain `unfold Lean4Yaml.Parse.processFolded.go`
+  works, followed by `rfl` or `simp`.  The heartbeat issue is specific
+  to fuel-bounded where-clause functions in large parser definitions.
+
+- **`applyChomp` cases are definitional (`rfl`).**
+  All three `applyChomp` cases (`.keep`, `.strip`, `.clip`) are closed
+  by `rfl` — no `unfold` needed.  This is because `applyChomp` is a
+  simple `match` on an inductive type with no recursive structure.
+
+- **`blockCollectLines_cont_step` closes with `simp + rfl`.**
+  `if false then line else acc ++ "\n" ++ line` elaborates to
+  `if (false = true) then ...` which is `@ite _ False _ ...` —
+  definitionally equal to the `else` branch.  So after `simp only`
+  eliminates the monadic plumbing, `rfl` closes the remaining
+  `@ite _ False _ line (acc ++ "\n" ++ line) = acc ++ "\n" ++ line`.
+  No `ite_false` simp lemma is needed (unlike the `ite_true` case).
+
+- **`String.isEmpty` needs explicit `simp [String.isEmpty]`.**
+  In `processFolded_go_singleton_empty`, the hypothesis is the
+  concrete string `""`.  Plain `simp` cannot reduce `"".isEmpty` to
+  `true` — it needs `simp [String.isEmpty]` to unfold the definition.
+  This is a minor footgun but consistent: `String.isEmpty` is not
+  a `@[simp]` lemma in core Lean 4.
+
 ---
 
 ## 5. Roadmap to Fully Deductive Correctness
