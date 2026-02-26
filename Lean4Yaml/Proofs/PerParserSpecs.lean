@@ -1597,6 +1597,154 @@ theorem flowMappingImpl_empty
   simp only [withErrorMessage_eq, ParserSpecs.bind_eq,
              h_open, h_ws, h_close, ParserSpecs.pure_eq]
 
+/-! ### §8.7  Collection Fuel-Zero Specifications
+
+When fuel is exhausted, every fuel-bounded collection parser returns its
+default value without consuming input (pure `none` / `acc` / `#[]`).
+These provide uniform base-case coverage for fuel induction.
+-/
+
+/-- `flowSequenceImpl 0` returns an empty sequence without consuming input. -/
+@[simp]
+theorem flowSequenceImpl_zero (minIndent : Nat) (s : YamlStream) :
+    flowSequenceImpl 0 minIndent s = .ok s (.sequence .flow #[]) := by
+  unfold flowSequenceImpl
+  simp [ParserSpecs.pure_eq]
+
+/-- `flowMappingImpl 0` returns an empty mapping without consuming input. -/
+@[simp]
+theorem flowMappingImpl_zero (minIndent : Nat) (s : YamlStream) :
+    flowMappingImpl 0 minIndent s = .ok s (.mapping .flow #[]) := by
+  unfold flowMappingImpl
+  simp [ParserSpecs.pure_eq]
+
+/-- `flowSequenceItemsImpl 0` returns the accumulator. -/
+@[simp]
+theorem flowSequenceItemsImpl_zero (acc : Array YamlValue) (minIndent : Nat)
+    (s : YamlStream) :
+    flowSequenceItemsImpl 0 acc minIndent s = .ok s acc := by
+  unfold flowSequenceItemsImpl
+  simp [ParserSpecs.pure_eq]
+
+/-- `flowMappingEntriesImpl 0` returns the accumulator. -/
+@[simp]
+theorem flowMappingEntriesImpl_zero
+    (acc : Array (YamlValue × YamlValue)) (minIndent : Nat) (s : YamlStream) :
+    flowMappingEntriesImpl 0 acc minIndent s = .ok s acc := by
+  unfold flowMappingEntriesImpl
+  simp [ParserSpecs.pure_eq]
+
+/-- `flowMappingEntryImpl 0` returns `(.null, .null)`. -/
+@[simp]
+theorem flowMappingEntryImpl_zero (minIndent : Nat) (s : YamlStream) :
+    flowMappingEntryImpl 0 minIndent s = .ok s (.null, .null) := by
+  unfold flowMappingEntryImpl
+  simp [ParserSpecs.pure_eq]
+
+/-- `blockSequenceImpl 0` returns `none` without consuming input. -/
+@[simp]
+theorem blockSequenceImpl_zero (minIndent : Nat) (s : YamlStream) :
+    blockSequenceImpl 0 minIndent s = .ok s none := by
+  unfold blockSequenceImpl
+  simp [ParserSpecs.pure_eq]
+
+/-- `blockMappingImpl 0` returns `none` without consuming input. -/
+@[simp]
+theorem blockMappingImpl_zero (minIndent : Nat) (s : YamlStream) :
+    blockMappingImpl 0 minIndent s = .ok s none := by
+  unfold blockMappingImpl
+  simp [ParserSpecs.pure_eq]
+
+/-- `blockSequenceItemsImpl 0` returns the accumulator. -/
+@[simp]
+theorem blockSequenceItemsImpl_zero (seqIndent : Nat)
+    (acc : Array YamlValue) (s : YamlStream) :
+    blockSequenceItemsImpl 0 seqIndent acc s = .ok s acc := by
+  unfold blockSequenceItemsImpl
+  simp [ParserSpecs.pure_eq]
+
+/-- `blockMappingEntriesImpl 0` returns the accumulator. -/
+@[simp]
+theorem blockMappingEntriesImpl_zero (mapIndent : Nat)
+    (acc : Array (YamlValue × YamlValue)) (s : YamlStream) :
+    blockMappingEntriesImpl 0 mapIndent acc s = .ok s acc := by
+  unfold blockMappingEntriesImpl
+  simp [ParserSpecs.pure_eq]
+
+/-! ### §8.8  Character Predicate Specifications
+
+Concrete evaluation lemmas for the pure `Bool`-valued character
+predicates.  These serve as `simp` fuel when reasoning about parser
+branching on specific characters.
+-/
+
+/-- Line feed is a line break. -/
+@[simp] theorem isLineBreak_lf : Parse.isLineBreak '\n' = true := by native_decide
+
+/-- Carriage return is a line break. -/
+@[simp] theorem isLineBreak_cr : Parse.isLineBreak '\r' = true := by native_decide
+
+/-- A normal letter is not a line break. -/
+@[simp] theorem isLineBreak_letter : Parse.isLineBreak 'a' = false := by native_decide
+
+/-- Space is whitespace. -/
+@[simp] theorem isWhiteSpace_space : Parse.isWhiteSpace ' ' = true := by native_decide
+
+/-- Tab is whitespace. -/
+@[simp] theorem isWhiteSpace_tab : Parse.isWhiteSpace '\t' = true := by native_decide
+
+/-- A normal letter is not whitespace. -/
+@[simp] theorem isWhiteSpace_letter : Parse.isWhiteSpace 'a' = false := by native_decide
+
+/-- Comma is a flow indicator. -/
+@[simp] theorem isFlowIndicator_comma : Parse.isFlowIndicator ',' = true := by native_decide
+
+/-- Open bracket is a flow indicator. -/
+@[simp] theorem isFlowIndicator_lbracket : Parse.isFlowIndicator '[' = true := by native_decide
+
+/-- Close bracket is a flow indicator. -/
+@[simp] theorem isFlowIndicator_rbracket : Parse.isFlowIndicator ']' = true := by native_decide
+
+/-- Open brace is a flow indicator. -/
+@[simp] theorem isFlowIndicator_lbrace : Parse.isFlowIndicator '{' = true := by native_decide
+
+/-- Close brace is a flow indicator. -/
+@[simp] theorem isFlowIndicator_rbrace : Parse.isFlowIndicator '}' = true := by native_decide
+
+/-- A normal letter is not a flow indicator. -/
+@[simp] theorem isFlowIndicator_letter : Parse.isFlowIndicator 'a' = false := by native_decide
+
+/-- A normal letter is plain-safe in block context. -/
+@[simp] theorem isPlainSafe_letter_block : Parse.isPlainSafe 'a' false = true := by native_decide
+
+/-- A normal letter is plain-safe in flow context. -/
+@[simp] theorem isPlainSafe_letter_flow : Parse.isPlainSafe 'a' true = true := by native_decide
+
+/-- A newline is not plain-safe. -/
+@[simp] theorem isPlainSafe_newline : Parse.isPlainSafe '\n' false = false := by native_decide
+
+/-- A comma is not plain-safe in flow context. -/
+@[simp] theorem isPlainSafe_comma_flow : Parse.isPlainSafe ',' true = false := by native_decide
+
+/-- A comma IS plain-safe in block context. -/
+@[simp] theorem isPlainSafe_comma_block : Parse.isPlainSafe ',' false = true := by native_decide
+
+/-- A normal letter can start a plain scalar (with or without next char). -/
+@[simp] theorem canStartPlainScalar_letter :
+    Parse.canStartPlainScalar 'a' none = true := by native_decide
+
+/-- '-' can start a plain scalar when followed by a non-space char. -/
+@[simp] theorem canStartPlainScalar_dash_alpha :
+    Parse.canStartPlainScalar '-' (some 'a') = true := by native_decide
+
+/-- '-' cannot start a plain scalar when followed by nothing. -/
+@[simp] theorem canStartPlainScalar_dash_none :
+    Parse.canStartPlainScalar '-' none = false := by native_decide
+
+/-- '-' cannot start a plain scalar when followed by a space. -/
+@[simp] theorem canStartPlainScalar_dash_space :
+    Parse.canStartPlainScalar '-' (some ' ') = false := by native_decide
+
 /-! ## §9  Summary
 
 ### Proved Specifications
