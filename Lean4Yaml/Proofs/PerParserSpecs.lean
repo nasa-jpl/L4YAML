@@ -245,8 +245,8 @@ We build bottom-up:
 | `doubleQuoted` | WIP — escape resolution |
 | `plainScalarBlock` | ✓ — `plainScalarSingleLine_block` |
 | `plainScalarFlow` | ✓ — `plainScalarSingleLine_flow` |
-| `literalScalar` | planned |
-| `foldedScalar` | planned |
+| `literalScalar` | WIP — applyChomp, processFolded.go, collectLines loop, autoDetectIndent (11 lemmas) |
+| `foldedScalar` | WIP — applyChomp, processFolded.go, collectLines loop, autoDetectIndent (11 lemmas) |
 | `blockSeq` | planned — mutual recursion |
 | `blockMap` | planned — mutual recursion |
 | `flowSeq` | planned — mutual recursion |
@@ -384,6 +384,55 @@ theorem processLiteral_eq (raw : String) :
 @[simp]
 theorem applyChomp_keep (content : String) :
     Lean4Yaml.Parse.applyChomp content .keep = content := rfl
+
+/-- `applyChomp .strip` trims trailing ASCII whitespace. -/
+@[simp]
+theorem applyChomp_strip (content : String) :
+    Lean4Yaml.Parse.applyChomp content .strip = content.trimAsciiEnd.toString := rfl
+
+/-- `applyChomp .clip` trims then appends one newline (or empty if all whitespace). -/
+@[simp]
+theorem applyChomp_clip (content : String) :
+    Lean4Yaml.Parse.applyChomp content .clip =
+      let trimmed := content.trimAsciiEnd.toString
+      if trimmed.isEmpty then "" else trimmed.push '\n' := rfl
+
+/-! ### §7.1  `processFolded` Lemmas
+
+`processFolded` splits on `"\n"` and folds lines into the result.
+Its `where`-clause helper `go` is specified by structural induction
+on the line list.
+-/
+
+/-- `processFolded.go` on an empty list returns the accumulator. -/
+@[simp]
+theorem processFolded_go_nil (acc : String) (first : Bool) :
+    Lean4Yaml.Parse.processFolded.go [] acc first = acc := by
+  unfold Lean4Yaml.Parse.processFolded.go
+  rfl
+
+/-- `processFolded.go` on a singleton list with `first = true` returns that line. -/
+@[simp]
+theorem processFolded_go_singleton_first (line : String) (acc : String) :
+    Lean4Yaml.Parse.processFolded.go [line] acc true = line := by
+  unfold Lean4Yaml.Parse.processFolded.go
+  simp
+
+/-- `processFolded.go` on a singleton non-empty line with `first = false`
+    joins with space. -/
+theorem processFolded_go_singleton_nonempty (line : String) (acc : String)
+    (h : line.isEmpty = false) :
+    Lean4Yaml.Parse.processFolded.go [line] acc false = acc ++ " " ++ line := by
+  unfold Lean4Yaml.Parse.processFolded.go
+  simp [h]
+
+/-- `processFolded.go` on a singleton empty line with `first = false`
+    returns the accumulator unchanged. -/
+@[simp]
+theorem processFolded_go_singleton_empty (acc : String) :
+    Lean4Yaml.Parse.processFolded.go [""] acc false = acc := by
+  unfold Lean4Yaml.Parse.processFolded.go
+  simp [String.isEmpty]
 
 /-! ## §8  Per-Parser Relational Specifications
 
@@ -907,6 +956,104 @@ theorem blockScalar_spec
     simp only [ParserSpecs.bind_eq, h_indicator, h_header,
                h_indent, h_raw, ParserSpecs.pure_eq]
     rfl
+
+/-! ### §8.3.1  `blockScalarContent.collectLines` Loop Specifications
+
+The `collectLines` `where`-clause loop in `blockScalarContent` is
+fuel-bounded.  These lemmas characterize its termination and
+step behavior.
+-/
+
+/--
+**collectLines — fuel-zero base case.**
+When fuel is exhausted, `collectLines` returns the accumulator unchanged.
+-/
+@[simp]
+theorem blockCollectLines_zero (indent : Nat) (acc : String) (first : Bool)
+    (s : YamlStream) :
+    blockScalarContent.collectLines indent 0 acc first s = .ok s acc := by
+  rfl
+
+section BlockScalarContentLoopSpecs
+
+/--
+**collectLines — no line matches.**
+When `option? (blockScalarLine indent first)` returns `none`,
+`collectLines` returns the accumulator unchanged.  The result
+stream `s_out` is whatever `option?` produces (position-restored).
+-/
+theorem blockCollectLines_no_match (indent : Nat) (fuel : Nat)
+    (acc : String) (first : Bool) (s s_out : YamlStream)
+    (h : (Parser.option? (blockScalarContent.blockScalarLine indent first)) s =
+           .ok s_out none) :
+    blockScalarContent.collectLines indent (fuel + 1) acc first s =
+      .ok s_out acc := by
+  show (do
+    match ← Parser.option? (blockScalarContent.blockScalarLine indent first) with
+    | some line =>
+      let acc' := if first then line else acc ++ "\n" ++ line
+      blockScalarContent.collectLines indent fuel acc' false
+    | none =>
+      return acc) s = _
+  simp only [ParserSpecs.bind_eq, h, ParserSpecs.pure_eq]
+
+/--
+**collectLines — first-line step.**
+When `option? (blockScalarLine)` returns `some line` and `first = true`,
+the line becomes the new accumulator (no separator prepended).
+-/
+theorem blockCollectLines_first_step (indent : Nat) (fuel : Nat)
+    (acc : String) (line : String) (s s₁ : YamlStream)
+    (h : (Parser.option? (blockScalarContent.blockScalarLine indent true)) s =
+           .ok s₁ (some line)) :
+    blockScalarContent.collectLines indent (fuel + 1) acc true s =
+      blockScalarContent.collectLines indent fuel line false s₁ := by
+  show (do
+    match ← Parser.option? (blockScalarContent.blockScalarLine indent true) with
+    | some line =>
+      let acc' := if true then line else acc ++ "\n" ++ line
+      blockScalarContent.collectLines indent fuel acc' false
+    | none =>
+      return acc) s = _
+  simp only [ParserSpecs.bind_eq, h, ite_true]
+
+/--
+**collectLines — continuation step.**
+When `option? (blockScalarLine)` returns `some line` and `first = false`,
+the line is concatenated with a newline separator.
+-/
+theorem blockCollectLines_cont_step (indent : Nat) (fuel : Nat)
+    (acc : String) (line : String) (s s₁ : YamlStream)
+    (h : (Parser.option? (blockScalarContent.blockScalarLine indent false)) s =
+           .ok s₁ (some line)) :
+    blockScalarContent.collectLines indent (fuel + 1) acc false s =
+      blockScalarContent.collectLines indent fuel (acc ++ "\n" ++ line) false s₁ := by
+  show (do
+    match ← Parser.option? (blockScalarContent.blockScalarLine indent false) with
+    | some line =>
+      let acc' := if false then line else acc ++ "\n" ++ line
+      blockScalarContent.collectLines indent fuel acc' false
+    | none =>
+      return acc) s = _
+  simp only [ParserSpecs.bind_eq, h]
+  rfl
+
+end BlockScalarContentLoopSpecs
+
+/-! ### §8.3.2  `autoDetectIndent` Specification
+
+`autoDetectIndent` is wrapped in `lookAhead`, so it is non-consuming.
+Its inner loop uses `count (token ' ')` to count leading spaces.
+-/
+
+/--
+**autoDetectIndent.loop — fuel-zero base case.**
+When fuel is exhausted, returns the minimum indent.
+-/
+@[simp]
+theorem autoDetectIndent_loop_zero (minIndent : Nat) (maxBlank : Nat) (s : YamlStream) :
+    autoDetectIndent.loop minIndent 0 maxBlank s = .ok s minIndent := by
+  rfl
 
 /-! ### §8.4  Block Collection Specifications -/
 

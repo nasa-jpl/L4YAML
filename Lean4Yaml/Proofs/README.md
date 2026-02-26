@@ -159,8 +159,8 @@ Status per constructor:
 | `plainScalarFlow` | `plainScalar` (flow ctx) | ✅ Complete |
 | `singleQuoted` | `singleQuotedScalar` | 🔧 WIP — relational spec + loop lemmas (8) |
 | `doubleQuoted` | `doubleQuotedScalar` | 🔧 WIP — relational spec + loop lemmas (8) |
-| `literalScalar` | `literalBlockScalar` | 📋 Planned |
-| `foldedScalar` | `foldedBlockScalar` | 📋 Planned |
+| `literalScalar` | `literalBlockScalar` | � WIP — 11 lemmas (applyChomp, processFolded.go, collectLines loop, autoDetectIndent) |
+| `foldedScalar` | `foldedBlockScalar` | 🔧 WIP — 11 lemmas (applyChomp, processFolded.go, collectLines loop, autoDetectIndent) |
 | `blockSeq` | `blockSequence` | ✅ Relational spec complete |
 | `blockMap` | `blockMapping` | ✅ Relational spec complete |
 | `flowSeq` | `flowSequence` | ✅ Relational spec + empty-case complete |
@@ -622,7 +622,7 @@ used by the YAML parser are now deductively transparent for `m = Id`.
 
 | Phase | Items | Difficulty | Prerequisite | Status |
 |---|---|---|---|---|
-| A | `dropMany_eq`, `count_eq` | Moderate | — | Planned |
+| A | `dropMany_eq`, `count_eq` | Moderate | — | ✅ Done |
 | B | 8 per-parser specs | Moderate–Hard | A | WIP (4 relational + loops) |
 | C | `DecidableEq YamlValue` | Moderate | — | ✅ Done |
 | C' | `LawfulBEq YamlValue` | Moderate | C | Deferred (non-blocking) |
