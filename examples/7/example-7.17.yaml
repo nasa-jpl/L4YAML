@@ -1,6 +1,6 @@
 {
-<mark class="legend-1">unquoted</mark>·<mark class="legend-2">:·"separate"</mark>,
-<mark class="legend-1">https://foo.com</mark>,
-<mark class="legend-1">omitted value</mark><mark class="legend-2">:<mark class="legend-3">°</mark></mark>,
-<mark class="legend-3">°</mark><mark class="legend-2">:·omitted key</mark>,
+unquoted : "separate",
+https://foo.com,
+omitted value:°,
+°: omitted key,
 }

@@ -1,6 +1,6 @@
-sequence:<mark class="legend-1"> !!seq</mark>
-<mark class="legend-1"><mark class="legend-2">- entry</mark></mark>
-<mark class="legend-1"><mark class="legend-2">- !!seq</mark></mark>
-<mark class="legend-1"><mark class="legend-2"> - nested</mark></mark>
-mapping:<mark class="legend-1"> !!map</mark>
-<mark class="legend-1"><mark class="legend-3"> foo: bar</mark></mark>
+sequence: !!seq
+- entry
+- !!seq
+ - nested
+mapping: !!map
+ foo: bar

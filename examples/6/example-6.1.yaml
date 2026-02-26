@@ -1,12 +1,12 @@
-<mark class="legend-3">··</mark># Leading comment line spaces are
-<mark class="legend-3">···</mark># neither content nor indentation.
-<mark class="legend-3">····</mark>
+  # Leading comment line spaces are
+   # neither content nor indentation.
+    
 Not indented:
-<mark class="legend-1">·</mark>By one space: |
-<mark class="legend-1">····</mark>By four
-<mark class="legend-1">····</mark><mark class="legend-2">··</mark>spaces
-<mark class="legend-1">·</mark>Flow style: [    # Leading spaces
-<mark class="legend-1">··</mark><mark class="legend-3">·</mark>By two,        # in flow style
-<mark class="legend-1">··</mark>Also by two,    # are neither
-<mark class="legend-1">··</mark>→Still by two   # content nor
-<mark class="legend-1">··</mark><mark class="legend-3">··</mark>]             # indentation.
+ By one space: |
+    By four
+      spaces
+ Flow style: [    # Leading spaces
+   By two,        # in flow style
+  Also by two,    # are neither
+  	Still by two   # content nor
+    ]             # indentation.

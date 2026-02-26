@@ -5,10 +5,10 @@
 
  next
  line
-<mark class="legend-1"><mark class="legend-2">···* bullet</mark>↓</mark>
-<mark class="legend-1">↓</mark>
-<mark class="legend-1"><mark class="legend-2">···* list</mark>↓</mark>
-<mark class="legend-1"><mark class="legend-2">···* lines</mark></mark>↓
+   * bullet
+
+   * list
+   * lines
 
  last
  line
