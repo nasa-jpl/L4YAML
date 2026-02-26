@@ -1801,6 +1801,82 @@ theorem flowValueImpl_zero (minIndent : Nat) (s : YamlStream) :
   unfold flowValueImpl
   simp [ParserSpecs.pure_eq]
 
+/-! ### §8.10  Block Collection Under-Indented Specifications
+
+When the detected indentation is below `minIndent`, block sequence/mapping
+return `none` immediately — the content belongs to a parent structure.
+-/
+
+/--
+**blockSequenceImpl — under-indented termination.**
+
+After consuming blank lines, if the current column is less than
+`minIndent`, the sequence returns `none`.
+-/
+theorem blockSequenceImpl_under_indented
+    (fuel minIndent : Nat) (s s₁ : YamlStream)
+    (h_skip : skipBlankLines s = .ok s₁ ())
+    (h_lt : s₁.col < minIndent) :
+    blockSequenceImpl (fuel + 1) minIndent s = .ok s₁ none := by
+  unfold blockSequenceImpl
+  simp only [withErrorMessage_eq, ParserSpecs.bind_eq,
+             h_skip, currentCol_eq, ParserSpecs.pure_eq]
+  simp [h_lt]
+
+/--
+**blockMappingImpl — under-indented termination.**
+
+After consuming blank lines, if the current column is less than
+`minIndent`, the mapping returns `none`.
+-/
+theorem blockMappingImpl_under_indented
+    (fuel minIndent : Nat) (s s₁ : YamlStream)
+    (h_skip : skipBlankLines s = .ok s₁ ())
+    (h_lt : s₁.col < minIndent) :
+    blockMappingImpl (fuel + 1) minIndent s = .ok s₁ none := by
+  unfold blockMappingImpl
+  simp only [withErrorMessage_eq, ParserSpecs.bind_eq,
+             h_skip, currentCol_eq, ParserSpecs.pure_eq]
+  simp [h_lt]
+
+/-! ### §8.11  Additional Character Predicate Specifications -/
+
+/-- Dash is an indicator. -/
+@[simp] theorem isIndicator_dash : Parse.isIndicator '-' = true := by native_decide
+
+/-- Question mark is an indicator. -/
+@[simp] theorem isIndicator_question : Parse.isIndicator '?' = true := by native_decide
+
+/-- Colon is an indicator. -/
+@[simp] theorem isIndicator_colon : Parse.isIndicator ':' = true := by native_decide
+
+/-- Hash is an indicator. -/
+@[simp] theorem isIndicator_hash : Parse.isIndicator '#' = true := by native_decide
+
+/-- A normal letter is not an indicator. -/
+@[simp] theorem isIndicator_letter : Parse.isIndicator 'a' = false := by native_decide
+
+/-- A digit is not an indicator. -/
+@[simp] theorem isIndicator_digit : Parse.isIndicator '0' = false := by native_decide
+
+/-- `isForbiddenPlainStart` equals `isIndicator`. -/
+theorem isForbiddenPlainStart_eq (c : Char) :
+    Parse.isForbiddenPlainStart c = Parse.isIndicator c := by
+  unfold Parse.isForbiddenPlainStart
+  rfl
+
+/-- A letter is a valid anchor character. -/
+@[simp] theorem isAnchorChar_letter : Parse.isAnchorChar 'a' = true := by native_decide
+
+/-- A digit is a valid anchor character. -/
+@[simp] theorem isAnchorChar_digit : Parse.isAnchorChar '0' = true := by native_decide
+
+/-- A comma is not a valid anchor character (flow indicator). -/
+@[simp] theorem isAnchorChar_comma : Parse.isAnchorChar ',' = false := by native_decide
+
+/-- Space is not a valid anchor character. -/
+@[simp] theorem isAnchorChar_space : Parse.isAnchorChar ' ' = false := by native_decide
+
 /-! ## §9  Summary
 
 ### Proved Specifications
