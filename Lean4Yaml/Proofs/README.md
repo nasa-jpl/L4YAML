@@ -981,6 +981,147 @@ returns `.forbidden msg`, the loop records a validation error and returns.
 `blockMappingImpl_dispatch` — at-indent → entries + `.mapping .block` wrap.
 Uses `if_neg h_ge` as complement of the under-indented specs.
 
+### 4j′. Reflections on §4i–§4j — proof idioms, challenges, simplifications
+
+#### New proof idioms introduced in §4i–§4j
+
+1. **`split <;> simp_all [ParserSpecs.bind_eq]` for char-match with
+   `Bool` contradiction cases.**
+   The `doubleQuoted_collectChars_backslash_escape` relay theorem
+   requires handling a 3-way split after `unfold` + `simp only [bind_eq]`:
+   the `'\n'` and `'\r'` branches are impossible (contradicted by
+   `hc_not_lf`/`hc_not_cr` hypotheses), and the default branch needs
+   further `simp` with the `h_escape`/`h_recurse` hypotheses.
+   Early attempts used `rename_i h; subst h; simp at hc_not_lf` but
+   this failed because `subst` requires the hypothesis to be `c = '\n'`
+   (an equality), not a match discriminant.  `Bool.noConfusion` also
+   failed because the hypothesis form after substitution is
+   `('\r' == '\r') = false` which reduces to `true = false`, not
+   a `Bool` constructor mismatch at the top level.
+   The solution `split <;> simp_all [ParserSpecs.bind_eq]` lets
+   `simp_all` handle all three branches simultaneously — it
+   discovers the `Bool` contradictions in the impossible branches
+   and resolves the `bind` chain in the default branch.
+
+2. **`if_neg h_ge` for at-indent dispatch (complement of under-indented).**
+   The under-indented specs (§8.10) use `h_lt : s₁.col < minIndent`
+   with `simp [h_lt]` to reduce the `if col < minIndent then return none`
+   branch.  The at-indent dispatch specs need the *opposite*: when
+   `¬ (s₁.col < minIndent)`, the `if` takes the `else` branch.
+   The hypothesis `h_ge : ¬ (s₁.col < minIndent)` combined with
+   `if_neg h_ge` in the `simp only` list resolves this cleanly.
+   This is the natural dual: `if_pos` / `simp [h_lt]` for the
+   true branch; `if_neg h_ge` for the false branch.
+
+3. **Explicit `DispatchResult.noMatch` type annotation for dot notation.**
+   `dispatchByCharImpl` returns `YamlParser (DispatchResult YamlValue)`.
+   In the theorem statement, writing `.noMatch` triggers "Invalid
+   dotted identifier notation: expected type could not be determined"
+   because the `.ok` wrapper hides the inner type.  The fix:
+   ```lean
+   .ok s₁ (DispatchResult.noMatch : DispatchResult YamlValue)
+   ```
+   This is a recurring Lean 4 pattern: when dot notation's type
+   inference is blocked by an outer constructor (here `Result.ok`),
+   the fully qualified name with an explicit type annotation is needed.
+
+4. **`processEscape` does NOT capture `contentIndent`.**
+   The `doubleQuotedScalar` definition has multiple where-clause
+   functions: `collectChars`, `processEscape`, `unicodeEscapeInline`,
+   `trimTrailingWs`.  While `collectChars` captures `contentIndent`
+   from the enclosing `doubleQuotedScalar` definition, `processEscape`
+   does not — Lean 4 only captures *free variables actually used* in
+   the where-clause body.  Since `processEscape` only pattern-matches
+   on the escape character and returns a result, it has no reference
+   to `contentIndent`.  Initial theorems incorrectly included
+   `contentIndent` as a parameter, causing "application type mismatch"
+   errors.  The fix was to remove it from all 16 escape specs.
+
+5. **Default parameters must be supplied explicitly in theorem statements.**
+   `dispatchByCharImpl` has signature:
+   ```lean
+   def dispatchByCharImpl (fuel : Nat) (contentIndent : Nat)
+       (scalarIndent : Nat := contentIndent) : YamlParser (DispatchResult YamlValue)
+   ```
+   In proof mode, writing `dispatchByCharImpl (fuel + 1) contentIndent s`
+   causes `s : YamlStream` to be matched against `scalarIndent : Nat`,
+   producing "expected type `optParam Nat contentIndent`".  The fix:
+   supply the default explicitly:
+   ```lean
+   dispatchByCharImpl (fuel + 1) contentIndent contentIndent s
+   ```
+   This is a general Lean 4 gotcha: `optParam` defaults are not
+   applied when the function is used in a theorem conclusion that
+   also takes a trailing stream argument.
+
+#### Unexpected challenges
+
+- **Char match branches in `collectChars` are ordered differently
+  than expected.**
+  After `unfold doubleQuotedScalar.collectChars; simp only [bind_eq, h_bs]`,
+  the first `split` dispatches on the top-level token match
+  (`'"'`, `'\\'`, `'\n'`, `'\r'`, default `c`).  The backslash
+  branch then nests a *second* match on the next token.
+  Early proof attempts tried `simp only [bind_eq, h_bs, h_c]` to
+  resolve both binds at once, but this produced a goal where the
+  `split` found 3 cases (`'\n'`, `'\r'`, default) rather than 5
+  (the outer match was already resolved by `h_bs = .ok s₁ '\\'`
+  selecting the `'\\'` arm).  The insight: `simp only [bind_eq, h_bs]`
+  resolves the outer bind + match, then `simp only [bind_eq, h_c]`
+  (or `split <;> simp_all [bind_eq]`) resolves the inner match.
+
+- **`FoldResult` as a return type in line fold relay specs.**
+  `foldQuotedNewlines` returns `YamlParser FoldResult` where
+  `FoldResult` is an inductive with `.folded result` and
+  `.forbidden msg`.  The relay specs need separate theorems for
+  each constructor: the `.folded` case recurses, while `.forbidden`
+  records a validation error and returns.  This two-constructor
+  split is cleanly expressed as two theorems
+  (`*_linefold_lf` and `*_linefold_forbidden`) rather than one
+  theorem with a match on the result.
+
+#### Unexpected simplifications
+
+- **All 16 escape specs share the exact same proof.**
+  Every `doubleQuoted_processEscape_*` theorem is proved by
+  `unfold doubleQuotedScalar.processEscape; simp [ParserSpecs.pure_eq]`.
+  The `match c with | 'n' => return '\n'` reduces to `pure '\n'`
+  for concrete characters, and `simp [pure_eq]` rewrites `pure` to
+  `.ok s`.  No case analysis, split, or native_decide needed.
+
+- **Line fold relay specs are one-liners.**
+  Both `doubleQuoted_collectChars_linefold_lf` and
+  `singleQuoted_collectChars_linefold_lf` are proved by a single
+  `simp only [ParserSpecs.bind_eq, h_lf, h_fold, h_recurse]`.
+  After `unfold`, the `'\n'` branch of `collectChars` is selected
+  by `h_lf`, then `foldQuotedNewlines` is resolved by `h_fold`,
+  and the recursive call by `h_recurse`.  The entire multi-level
+  bind chain collapses in one `simp only` invocation.  This is
+  the simplest proof pattern for any relay spec.
+
+- **`flowWhitespace.go` zero case is identical to collection fuel-zero.**
+  Despite `flowWhitespace.go` being in a different file (Flow.lean)
+  with a different structure (whitespace + comment loop), its
+  fuel-zero base case follows the exact same `unfold; simp [pure_eq]`
+  pattern as all 16 collection parser fuel-zero specs.
+
+#### Emerging proof architecture patterns
+
+At 161 specs, several meta-patterns are now clear:
+
+| Pattern | Count | Examples |
+|---|---|---|
+| `unfold; simp [pure_eq]` (fuel-zero / base case) | 17 | all `*_zero` specs, `processEscape_*` |
+| `unfold; simp only [bind_eq, ...]` (relay / one-step) | ~30 | `collectChars` steps, fold relays |
+| `native_decide` (concrete Bool evaluation) | 32 | `isLineBreak_*`, `isIndicator_*`, `isAnchorChar_*` |
+| `unfold; rfl` (definitional equality) | ~5 | `takeLineContent_eq`, `isForbiddenPlainStart_eq` |
+| `show LHS = _; rw/simp [...]` (where-clause) | ~8 | `processFolded.go` cases, `blockScalarLine` cases |
+
+The `bind_eq` + hypotheses chaining is the workhorse: it converts
+monadic `do` blocks into sequential hypothesis resolution, making
+each theorem essentially a witness that the parser follows a
+specific execution path.
+
 ---
 
 ## 5. Roadmap to Fully Deductive Correctness
