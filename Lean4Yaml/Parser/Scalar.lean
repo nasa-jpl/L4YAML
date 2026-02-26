@@ -72,6 +72,8 @@ def escapeSequence : YamlParser Char :=
     | '\\' => return '\\'    -- backslash
     | 'N'  => return '\x85'  -- next line (NEL)
     | '_'  => return '\xa0'  -- non-breaking space
+    | 'L'  => return (Char.ofNat 0x2028)  -- line separator
+    | 'P'  => return (Char.ofNat 0x2029)  -- paragraph separator
     | 'x'  => unicodeEscape 2 -- 2-digit hex
     | 'u'  => unicodeEscape 4 -- 4-digit hex
     | 'U'  => unicodeEscape 8 -- 8-digit hex
@@ -275,6 +277,8 @@ where
     | '\\' => return '\\'
     | 'N'  => return '\x85'
     | '_'  => return '\xa0'
+    | 'L'  => return (Char.ofNat 0x2028)  -- line separator
+    | 'P'  => return (Char.ofNat 0x2029)  -- paragraph separator
     | 'x'  => unicodeEscapeInline 2
     | 'u'  => unicodeEscapeInline 4
     | 'U'  => unicodeEscapeInline 8

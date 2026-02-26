@@ -182,13 +182,9 @@ private def isExpectedError (exId : String) : Bool :=
 
 /-- Spec examples that are valid YAML but expose known parser
     limitations. Tracked here so the test suite can distinguish
-    "not yet implemented" from genuine regressions.
-    - 5.13: \L (U+2028) and \P (U+2029) escape sequences
-    - 10.3: !!str tag immediately before block scalar indicator (|-) -/
+    "not yet implemented" from genuine regressions. -/
 private def knownParserGaps : Array String :=
-  #[ "example-5.13"  -- \L / \P escapes not yet implemented
-   , "example-10.3"  -- !!str + block scalar indicator
-   ]
+  #[]
 
 /-- Check whether a given example label is a known parser gap. -/
 private def isKnownGap (exId : String) : Bool :=
