@@ -444,6 +444,146 @@ theorem doubleQuotedScalar_spec
   simp only [withErrorMessage_eq, ParserSpecs.bind_eq, h_quote,
              ParserSpecs.getStream_eq, h_collect, ParserSpecs.pure_eq]
 
+/-! ### §8.1.1  `collectChars` Loop Specifications (Quoted Scalars)
+
+The `collectChars` `where`-clause loops in `singleQuotedScalar` and
+`doubleQuotedScalar` are fuel-bounded.  These lemmas characterize
+their fuel-zero base cases and closing-quote termination conditions,
+following the same pattern as the `collectPlain` loop specs in §8.2.1.
+-/
+
+/--
+**singleQuotedScalar.collectChars — fuel-zero base case.**
+
+When fuel is exhausted, `collectChars` sets a validation error and
+returns the current accumulator.
+-/
+theorem singleQuoted_collectChars_zero (contentIndent : Nat) (acc : String)
+    (s s' : YamlStream)
+    (h_seterr : setValidationError "unterminated single-quoted scalar" s = .ok s' ()) :
+    singleQuotedScalar.collectChars contentIndent 0 acc s = .ok s' acc := by
+  unfold singleQuotedScalar.collectChars
+  simp only [ParserSpecs.bind_eq, h_seterr, ParserSpecs.pure_eq]
+
+/--
+**doubleQuotedScalar.collectChars — fuel-zero base case.**
+
+When fuel is exhausted, `collectChars` sets a validation error and
+returns the current accumulator.
+-/
+theorem doubleQuoted_collectChars_zero (contentIndent : Nat) (acc : String)
+    (s s' : YamlStream)
+    (h_seterr : setValidationError "unterminated double-quoted scalar" s = .ok s' ()) :
+    doubleQuotedScalar.collectChars contentIndent 0 acc s = .ok s' acc := by
+  unfold doubleQuotedScalar.collectChars
+  simp only [ParserSpecs.bind_eq, h_seterr, ParserSpecs.pure_eq]
+
+/--
+**singleQuotedScalar.collectChars — closing quote termination.**
+
+When the next character is a single quote `'` and the following character
+is NOT another `'` (i.e., not an escaped quote `''`), the loop returns
+the accumulator.
+-/
+theorem singleQuoted_collectChars_close
+    (contentIndent fuel : Nat) (acc : String)
+    (s s₁ s₂ : YamlStream)
+    (h_anytoken : (Parser.anyToken (m := Id) : YamlParser Char) s = .ok s₁ '\'')
+    (h_no_escape : (option? (Parser.Char.char (ε := YamlError) (m := Id) '\'')) s₁ =
+      .ok s₂ none) :
+    singleQuotedScalar.collectChars contentIndent (fuel + 1) acc s = .ok s₂ acc := by
+  unfold singleQuotedScalar.collectChars
+  simp only [ParserSpecs.bind_eq, h_anytoken, h_no_escape, ParserSpecs.pure_eq]
+
+/--
+**doubleQuotedScalar.collectChars — closing quote termination.**
+
+When the next character is a double quote `"`, the loop returns the
+accumulator immediately.
+-/
+theorem doubleQuoted_collectChars_close
+    (contentIndent fuel : Nat) (acc : String)
+    (s s₁ : YamlStream)
+    (h_anytoken : (Parser.anyToken (m := Id) : YamlParser Char) s = .ok s₁ '"') :
+    doubleQuotedScalar.collectChars contentIndent (fuel + 1) acc s = .ok s₁ acc := by
+  unfold doubleQuotedScalar.collectChars
+  simp only [ParserSpecs.bind_eq, h_anytoken, ParserSpecs.pure_eq]
+
+/--
+**singleQuotedScalar.collectChars — escaped quote step.**
+
+When the next character is `'` followed by another `'` (escaped quote `''`),
+the loop appends `'` to the accumulator and continues with decremented fuel.
+-/
+theorem singleQuoted_collectChars_escape
+    (contentIndent fuel : Nat) (acc result : String)
+    (s s₁ s₂ s₃ : YamlStream)
+    (h_anytoken : (Parser.anyToken (m := Id) : YamlParser Char) s = .ok s₁ '\'')
+    (h_escape : (option? (Parser.Char.char (ε := YamlError) (m := Id) '\'')) s₁ =
+      .ok s₂ (some '\''))
+    (h_recurse : singleQuotedScalar.collectChars contentIndent fuel
+        (acc.push '\'') s₂ = .ok s₃ result) :
+    singleQuotedScalar.collectChars contentIndent (fuel + 1) acc s = .ok s₃ result := by
+  unfold singleQuotedScalar.collectChars
+  simp only [ParserSpecs.bind_eq, h_anytoken, h_escape, h_recurse]
+
+/--
+**doubleQuotedScalar.collectChars — normal character step.**
+
+When the next character `c` is not `"`, `\`, `\n`, or `\r`, it is
+appended to the accumulator and the loop continues.
+-/
+theorem doubleQuoted_collectChars_char_step
+    (contentIndent fuel : Nat) (acc result : String) (c : Char)
+    (s s₁ s₂ : YamlStream)
+    (h_anytoken : (Parser.anyToken (m := Id) : YamlParser Char) s = .ok s₁ c)
+    (hc_not_dq : (c == '"') = false)
+    (hc_not_bs : (c == '\\') = false)
+    (hc_not_lf : (c == '\n') = false)
+    (hc_not_cr : (c == '\r') = false)
+    (h_recurse : doubleQuotedScalar.collectChars contentIndent fuel
+        (acc.push c) s₁ = .ok s₂ result) :
+    doubleQuotedScalar.collectChars contentIndent (fuel + 1) acc s = .ok s₂ result := by
+  unfold doubleQuotedScalar.collectChars
+  simp only [ParserSpecs.bind_eq, h_anytoken]
+  have hne_dq : c ≠ '"' := by intro h; subst h; simp at hc_not_dq
+  have hne_bs : c ≠ '\\' := by intro h; subst h; simp at hc_not_bs
+  have hne_lf : c ≠ '\n' := by intro h; subst h; simp at hc_not_lf
+  have hne_cr : c ≠ '\r' := by intro h; subst h; simp at hc_not_cr
+  split
+  · exact absurd rfl hne_dq   -- c = '"': contradiction
+  · exact absurd rfl hne_bs   -- c = '\\': contradiction
+  · exact absurd rfl hne_lf   -- c = '\n': contradiction
+  · exact absurd rfl hne_cr   -- c = '\r': contradiction
+  · exact h_recurse            -- default: recursive call
+
+/--
+**singleQuotedScalar.collectChars — normal character step.**
+
+When the next character `c` is not `'`, `\n`, or `\r`, it is appended
+to the accumulator and the loop continues.
+-/
+theorem singleQuoted_collectChars_char_step
+    (contentIndent fuel : Nat) (acc result : String) (c : Char)
+    (s s₁ s₂ : YamlStream)
+    (h_anytoken : (Parser.anyToken (m := Id) : YamlParser Char) s = .ok s₁ c)
+    (hc_not_sq : (c == '\'') = false)
+    (hc_not_lf : (c == '\n') = false)
+    (hc_not_cr : (c == '\r') = false)
+    (h_recurse : singleQuotedScalar.collectChars contentIndent fuel
+        (acc.push c) s₁ = .ok s₂ result) :
+    singleQuotedScalar.collectChars contentIndent (fuel + 1) acc s = .ok s₂ result := by
+  unfold singleQuotedScalar.collectChars
+  simp only [ParserSpecs.bind_eq, h_anytoken]
+  have hne_sq : c ≠ '\'' := by intro h; subst h; simp at hc_not_sq
+  have hne_lf : c ≠ '\n' := by intro h; subst h; simp at hc_not_lf
+  have hne_cr : c ≠ '\r' := by intro h; subst h; simp at hc_not_cr
+  split
+  · exact absurd rfl hne_sq   -- c = '\'': contradiction
+  · exact absurd rfl hne_lf   -- c = '\n': contradiction
+  · exact absurd rfl hne_cr   -- c = '\r': contradiction
+  · exact h_recurse            -- default: recursive call
+
 /-! ### §8.2  Plain Scalar Specifications -/
 
 /--
