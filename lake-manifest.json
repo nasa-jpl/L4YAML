@@ -5,7 +5,7 @@
    "type": "git",
    "subDir": null,
    "scope": "",
-   "rev": "86363f866a105d906299fb9438a6550f89442c98",
+   "rev": "8cfc6ac93d436f145f767a58b8e22cf540f94795",
    "name": "Parser",
    "manifestFile": "lake-manifest.json",
    "inputRev": "std-iterators",
