@@ -99,6 +99,12 @@ structure DumpConfig where
       empty mappings (`{}`). Useful for producing minimal YAML output
       that omits default-valued collection fields. -/
   omitEmpty : Bool := false
+  /-- Use compact block collection notation for sequences of mappings.
+      When `true`, a block mapping item in a block sequence is rendered
+      as `- key: value` (compact) instead of the expanded form with `-`
+      on its own line.  The compact form is the conventional YAML style
+      used by most serializers and config files. -/
+  compactSequenceMap : Bool := false
   deriving Repr, BEq, Inhabited, ToJson
 
 /-- Manual `FromJson` instance for `DumpConfig` that uses structure defaults
@@ -119,8 +125,10 @@ instance : Lean.FromJson DumpConfig where
       | .ok v => v | _ => false
     let omitEmpty := match json.getObjValAs? Bool "omitEmpty" with
       | .ok v => v | _ => false
+    let compactSequenceMap := match json.getObjValAs? Bool "compactSequenceMap" with
+      | .ok v => v | _ => false
     .ok { indent, defaultStyle, scalarStyle, lineWidth, sortKeys,
-          allowReservedPlain, omitEmpty }
+          allowReservedPlain, omitEmpty, compactSequenceMap }
 
 /-! ## Private Helpers -/
 
@@ -289,6 +297,12 @@ private def isInlineValue : YamlValue → Bool
   | .mapping .flow _ .. => true
   | _ => false
 
+/-- Check if a value is a block mapping (eligible for compact
+    sequence notation where the first key shares the `- ` line). -/
+private def isCompactableMapping : YamlValue → Bool
+  | .mapping .block _ _ _ => true
+  | _ => false
+
 /-! ## Main Dump Function -/
 
 /--
@@ -377,12 +391,15 @@ where
     | (k, v) :: rest, cfg, depth =>
       dumpValue k cfg depth ++ ": " ++ dumpValue v cfg depth ++ ", " ++
         dumpFlowPairs rest cfg depth
-  /-- Block sequence items. `first = true` suppresses indent on first line. -/
+  /-- Block sequence items. `first = true` suppresses indent on first line.
+      When `cfg.compactSequenceMap` is true, non-empty block mapping items
+      share the `- ` line with their first key (compact notation). -/
   dumpBlockList : List YamlValue → DumpConfig → Nat → Bool → String
     | [], _, _, _ => ""
     | [v], cfg, depth, first =>
       let ind := if first then "" else makeIndent depth cfg.indent
-      if isInlineValue v then
+      if isInlineValue v ||
+          (cfg.compactSequenceMap && isCompactableMapping v) then
         ind ++ "- " ++ dumpValue v cfg (depth + 1)
       else
         ind ++ "-\n" ++ makeIndent (depth + 1) cfg.indent ++
@@ -390,7 +407,8 @@ where
     | v :: vs, cfg, depth, first =>
       let ind := if first then "" else makeIndent depth cfg.indent
       let item :=
-        if isInlineValue v then
+        if isInlineValue v ||
+            (cfg.compactSequenceMap && isCompactableMapping v) then
           ind ++ "- " ++ dumpValue v cfg (depth + 1)
         else
           ind ++ "-\n" ++ makeIndent (depth + 1) cfg.indent ++
@@ -711,5 +729,52 @@ private def docADir : YamlDocument :=
 #guard dumpDirective (.yaml "1.2") == "%YAML 1.2"
 #guard dumpDirective (.tag "!!" "tag:yaml.org,2002:") ==
   "%TAG !! tag:yaml.org,2002:"
+
+/-! ### compactSequenceMap: block mapping items share the `- ` line -/
+
+-- Single mapping in sequence: compact
+#guard dump (.sequence .block #[
+    .mapping .block #[(.plainScalar "name", .plainScalar "first")]
+  ]) { compactSequenceMap := true } == "- name: first"
+
+-- Without compactSequenceMap: newline after dash
+#guard dump (.sequence .block #[
+    .mapping .block #[(.plainScalar "name", .plainScalar "first")]
+  ]) == "-\n  name: first"
+
+-- Two mappings in sequence: compact
+#guard dump (.sequence .block #[
+    .mapping .block #[(.plainScalar "name", .plainScalar "a")],
+    .mapping .block #[(.plainScalar "name", .plainScalar "b")]
+  ]) { compactSequenceMap := true } == "- name: a\n- name: b"
+
+-- Multi-key mapping: first key shares `-`, second key aligns
+#guard dump (.sequence .block #[
+    .mapping .block #[
+      (.plainScalar "name", .plainScalar "mobility"),
+      (.plainScalar "groups", .sequence .block #[.plainScalar "x", .plainScalar "y"])
+    ]
+  ]) { compactSequenceMap := true } ==
+  "- name: mobility\n  groups:\n    - x\n    - y"
+
+-- Empty mapping still renders as `- {}`
+#guard dump (.sequence .block #[
+    .mapping .block #[]
+  ]) { compactSequenceMap := true } == "- {}"
+
+-- Nested: mapping key whose value is a compact sequence
+#guard dump (.mapping .block #[
+    (.plainScalar "stacks", .sequence .block #[
+      .mapping .block #[
+        (.plainScalar "name", .plainScalar "mobility"),
+        (.plainScalar "groups", .sequence .block #[.plainScalar "a"])
+      ]
+    ])
+  ]) { compactSequenceMap := true } ==
+  "stacks:\n  - name: mobility\n    groups:\n      - a"
+
+-- Scalar items in sequence are unaffected by compactSequenceMap
+#guard dump (.sequence .block #[.plainScalar "a", .plainScalar "b"])
+  { compactSequenceMap := true } == "- a\n- b"
 
 end DumpGuards
