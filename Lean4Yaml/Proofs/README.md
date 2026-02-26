@@ -100,7 +100,7 @@ The deductive gap is:
 | `FuelSufficiency.lean` | 545 | 35 | — | Fuel `4 * remaining + 4` is always sufficient; no fuel exhaustion |
 | `IndentConsumption.lean` | 250 | 11 | 12 | Consuming indentation advances column by exactly the right amount |
 | `ParserSpecs.lean` | 424 | 20 | — | Foundation `@[simp]` lemmas unfolding lean4-parser combinators |
-| `PerParserSpecs.lean` | 1080 | 56 | — | Per-parser correctness + `collectChars` loop lemmas (partial) |
+| `PerParserSpecs.lean` | 1977 | 134 | — | Per-parser correctness: combinators, scalars, block/flow collections |
 | `RoundTrip.lean` | 905 | 56 | 66 | Parse-emit-parse round-trip preserves content |
 | `SchemaDump.lean` | 311 | 40 | 22 | `ToYaml` + dump pipeline content round-trip |
 | `SchemaResolution.lean` | 267 | 35 | 34 | Core Schema (§10.3) resolution: null/bool/int/float determinism |
@@ -155,21 +155,21 @@ Status per constructor:
 
 | Constructor | Parser | Status |
 |---|---|---|
-| `plainScalarBlock` | `plainScalar` (block ctx) | ✅ Complete |
-| `plainScalarFlow` | `plainScalar` (flow ctx) | ✅ Complete |
-| `singleQuoted` | `singleQuotedScalar` | 🔧 WIP — relational spec + loop lemmas (8) |
-| `doubleQuoted` | `doubleQuotedScalar` | 🔧 WIP — relational spec + loop lemmas (8) |
-| `literalScalar` | `literalBlockScalar` | 🔧 WIP — 23 lemmas (applyChomp, processFolded.go, collectLines loop, autoDetectIndent, blockScalarLine, consumeIndent, blockScalarContent) |
-| `foldedScalar` | `foldedBlockScalar` | 🔧 WIP — 23 lemmas (applyChomp, processFolded.go, collectLines loop, autoDetectIndent, blockScalarLine, consumeIndent, blockScalarContent) |
-| `blockSeq` | `blockSequence` | ✅ Relational spec complete |
-| `blockMap` | `blockMapping` | ✅ Relational spec complete |
-| `flowSeq` | `flowSequence` | ✅ Relational spec + empty-case complete |
-| `flowMap` | `flowMapping` | ✅ Relational spec + empty-case complete |
+| `plainScalarBlock` | `plainScalar` (block ctx) | ✅ Complete (11 specs) |
+| `plainScalarFlow` | `plainScalar` (flow ctx) | ✅ Complete (11 specs) |
+| `singleQuoted` | `singleQuotedScalar` | ✅ Relational + loop lemmas (9 specs) |
+| `doubleQuoted` | `doubleQuotedScalar` | ✅ Relational + loop lemmas (9 specs) |
+| `literalScalar` | `literalBlockScalar` | ✅ 31 B3 specs (applyChomp through processFolded pipeline) |
+| `foldedScalar` | `foldedBlockScalar` | ✅ 31 B3 specs (shared with literal) |
+| `blockSeq` | `blockSequence` | ✅ Relational + fuel-zero + under-indented (4 specs) |
+| `blockMap` | `blockMapping` | ✅ Relational + fuel-zero + under-indented (4 specs) |
+| `flowSeq` | `flowSequence` | ✅ Relational + empty + fuel-zero (4 specs) |
+| `flowMap` | `flowMapping` | ✅ Relational + empty + fuel-zero (5 specs) |
 
-Remaining technical obligations:
-- Special-start plain scalar (initial char restriction for `-`, `?`, `:`)
-- Fuel-bounded loop induction for `takeWhileFuel`
-- Mutual recursion between `blockValue`/`dispatchByChar`/`blockSequence`/`blockMapping`
+Additionally: 16 fuel-zero base cases for all fuel-bounded parsers,
+32 character predicate evaluation lemmas (`isLineBreak`, `isWhiteSpace`,
+`isFlowIndicator`, `isIndicator`, `isPlainSafe`, `canStartPlainScalar`,
+`isAnchorChar`), and 1 `isForbiddenPlainStart_eq` definitional equality.
 
 #### `RoundTrip.lean` / `DumpRoundTrip.lean` — universal round-trip
 
@@ -882,6 +882,64 @@ decomposition and a `processFolded` identity case (commit `55869c0`).
   The `getStream` → fuel extraction is structurally identical to the
   pattern in `blockSequence_spec` and `blockMapping_spec`.
 
+### 4f. B3 batch 4: processFolded.go cons-cases + pipeline (8 lemmas) — COMPLETED
+
+Commit `4adba9e`.  Extends the `processFolded.go` structural recursion
+specs with the multi-element (cons–cons) cases:
+
+| Theorem | Description |
+|---|---|
+| `processFolded_go_cons_first` | first=true cons → recurse with acc:=line |
+| `processFolded_go_cons_empty` | empty line → push newline to acc |
+| `processFolded_go_cons_more_indented` | space-leading → preserve newline |
+| `processFolded_go_cons_fold` | normal line → fold with space |
+| `takeLineContent_eq` | relational spec via rfl |
+| `processFolded_eq` | decomposition (splitOn + go) |
+| `blockScalar_literal_processing` | style dispatch literal → identity |
+| `blockScalar_folded_processing` | style dispatch folded → processFolded |
+
+**Key proof technique:** `show LHS = _; rw [processFolded.go]` with
+focused goals (`· simp; · exact fun h => absurd h (List.cons_ne_nil _ _)`)
+to close side conditions from the equation lemma's structural recursion
+case split.
+
+### 4g. B4 + B1 batch 5: fuel-zero + character predicates (30 lemmas) — COMPLETED
+
+Commit `3ee4aef`.  Systematic coverage of two new fronts:
+
+**§8.7 — Collection fuel-zero (9 theorems):** Every fuel-bounded
+collection parser now has a proved fuel-zero base case:
+`flowSequenceImpl_zero`, `flowMappingImpl_zero`,
+`flowSequenceItemsImpl_zero`, `flowMappingEntriesImpl_zero`,
+`flowMappingEntryImpl_zero`, `blockSequenceImpl_zero`,
+`blockMappingImpl_zero`, `blockSequenceItemsImpl_zero`,
+`blockMappingEntriesImpl_zero`.
+
+**§8.8 — Character predicate specs (21 theorems):** Concrete
+evaluation lemmas for `isLineBreak`, `isWhiteSpace`,
+`isFlowIndicator`, `isPlainSafe`, and `canStartPlainScalar`
+on representative characters, all via `native_decide`.
+
+### 4h. Batch 5b + 6: remaining fuel-zero + under-indented + more predicates (20 lemmas) — COMPLETED
+
+Commits `f458ff0`, `55dcb55`.
+
+**§8.9 — Remaining fuel-zero (7 theorems):** Completes the fuel-zero
+coverage for all 16 fuel-bounded parser functions:
+`dispatchByCharImpl_zero`, `blockValueImpl_zero`,
+`blockValueSameLineImpl_zero`, `blockMappingEntryImpl_zero`,
+`blockMappingKeyImpl_zero`, `detectMappingKeyImpl_zero`,
+`flowValueImpl_zero`.
+
+**§8.10 — Block collection under-indented (2 theorems):**
+When the detected indentation is below `minIndent`, block
+sequence/mapping return `none` immediately:
+`blockSequenceImpl_under_indented`, `blockMappingImpl_under_indented`.
+
+**§8.11 — Additional character predicates (11 theorems):**
+`isIndicator` (6 chars), `isForbiddenPlainStart_eq` (refl with
+`isIndicator`), `isAnchorChar` (4 chars).
+
 ---
 
 ## 5. Roadmap to Fully Deductive Correctness
@@ -953,7 +1011,7 @@ used by the YAML parser are now deductively transparent for `m = Id`.
 | Phase | Items | Difficulty | Prerequisite | Status |
 |---|---|---|---|---|
 | A | `dropMany_eq`, `count_eq` | Moderate | — | ✅ Done |
-| B | 8 per-parser specs | Moderate–Hard | A | WIP (4 relational + 23 B3 loop specs) |
+| B | 8 per-parser specs | Moderate–Hard | A | WIP (134 specs in PerParserSpecs: B1–B4) |
 | C | `DecidableEq YamlValue` | Moderate | — | ✅ Done |
 | C' | `LawfulBEq YamlValue` | Moderate | C | Deferred (non-blocking) |
 | D | Universal completeness | Hard | A, B, C | Planned |

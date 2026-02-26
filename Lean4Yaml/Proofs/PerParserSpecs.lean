@@ -1952,6 +1952,35 @@ theorem isForbiddenPlainStart_eq (c : Char) :
 | 67 | `blockScalarLine_under_indented_blank` | §8.3.1a | `show` + `simp [ite_true]` |
 | 68 | `autoDetectIndent_eq` | §8.3.5 | `unfold; rfl` |
 | 69 | `processFolded_single_line` | §8.3.6 | `unfold; simp` |
+| 70 | `processFolded_go_cons_first` | §7.1 | `show/rw` + cons_ne_nil |
+| 71 | `processFolded_go_cons_empty` | §7.1 | `show/rw` + cons_ne_nil |
+| 72 | `processFolded_go_cons_more_indented` | §7.1 | `show/rw` + cons_ne_nil |
+| 73 | `processFolded_go_cons_fold` | §7.1 | `show/rw` + cons_ne_nil |
+| 74 | `takeLineContent_eq` | §8.3.1b | `rfl` |
+| 75 | `processFolded_eq` | §8.3.6 | `rfl` |
+| 76 | `blockScalar_literal_processing` | §8.3.7 | `rfl` |
+| 77 | `blockScalar_folded_processing` | §8.3.7 | `rfl` |
+| 78 | `flowSequenceImpl_zero` | §8.7 | `unfold; simp [pure_eq]` |
+| 79 | `flowMappingImpl_zero` | §8.7 | `unfold; simp [pure_eq]` |
+| 80 | `flowSequenceItemsImpl_zero` | §8.7 | `unfold; simp [pure_eq]` |
+| 81 | `flowMappingEntriesImpl_zero` | §8.7 | `unfold; simp [pure_eq]` |
+| 82 | `flowMappingEntryImpl_zero` | §8.7 | `unfold; simp [pure_eq]` |
+| 83 | `blockSequenceImpl_zero` | §8.7 | `unfold; simp [pure_eq]` |
+| 84 | `blockMappingImpl_zero` | §8.7 | `unfold; simp [pure_eq]` |
+| 85 | `blockSequenceItemsImpl_zero` | §8.7 | `unfold; simp [pure_eq]` |
+| 86 | `blockMappingEntriesImpl_zero` | §8.7 | `unfold; simp [pure_eq]` |
+| 87–107 | `isLineBreak_*`, `isWhiteSpace_*`, etc. | §8.8 | `native_decide` |
+| 108 | `dispatchByCharImpl_zero` | §8.9 | `unfold; simp [pure_eq]` |
+| 109 | `blockValueImpl_zero` | §8.9 | `unfold; simp [pure_eq]` |
+| 110 | `blockValueSameLineImpl_zero` | §8.9 | `unfold; simp [pure_eq]` |
+| 111 | `blockMappingEntryImpl_zero` | §8.9 | `unfold; simp [pure_eq]` |
+| 112 | `blockMappingKeyImpl_zero` | §8.9 | `unfold; simp [pure_eq]` |
+| 113 | `detectMappingKeyImpl_zero` | §8.9 | `unfold; simp [pure_eq]` |
+| 114 | `flowValueImpl_zero` | §8.9 | `unfold; simp [pure_eq]` |
+| 115 | `blockSequenceImpl_under_indented` | §8.10 | `unfold; simp [h_lt]` |
+| 116 | `blockMappingImpl_under_indented` | §8.10 | `unfold; simp [h_lt]` |
+| 117–127 | `isIndicator_*`, `isAnchorChar_*`, etc. | §8.11 | `native_decide` |
+| 128 | `isForbiddenPlainStart_eq` | §8.11 | `unfold; rfl` |
 
 ### Remaining Obligations (deferred to §5.4.5)
 
@@ -1966,7 +1995,7 @@ correctness.  The remaining obligations are:
    `blockScalarContent`, `blockSequenceItemsImpl`, `flowSequenceItemsImpl`, etc.
    Each requires structural induction on the fuel parameter.
 
-2. **Mutual recursion** — `blockValueImpl` dispatches to `blockSequence`,
+3. **Mutual recursion** — `blockValueImpl` dispatches to `blockSequence`,
    `blockMapping`, scalars; similarly `flowValueImpl`.  These form the
    cross-cutting obligations that connect all per-parser specs.
 -/
