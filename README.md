@@ -127,7 +127,7 @@ This principle is enforced by the `DispatchResult` type at block-value dispatch 
 ```lean
 inductive DispatchResult (α : Type) where
   | matched (val : α)       -- parsed successfully
-  | noMatch                  -- this branch doesn't apply (a decision, not an error)
+  | noMatch                 -- this branch doesn't apply (a decision, not an error)
   | invalid (msg : String)  -- input is definitively wrong (reported as a value)
 ```
 
