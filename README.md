@@ -309,7 +309,7 @@ Discovered 36 timeout cases (not 9), all sharing one root cause: `yamlStream`'s 
 
 </details>
 
-### Development Log
+## Development Log
 
 <details>
 <summary>Steps 1–14, 30: parser features, validation, edge cases.</summary>
@@ -333,7 +333,7 @@ Discovered 36 timeout cases (not 9), all sharing one root cause: `yamlStream`'s 
 
 </details>
 
-### Step 8: Tag support (`!tag`, `!!type`, `%TAG` directive) — ✅ COMPLETE
+## Step 8: Tag support (`!tag`, `!!type`, `%TAG` directive) — ✅ COMPLETE
 
 <details>
 <summary>
@@ -350,7 +350,7 @@ Implementation: `Tag.lean` (155 lines) — `parseTagPrefix` with all 5 tag forms
 
 </details>
 
-### Step 9: Explicit key support (`?`) — ✅ COMPLETE
+## Step 9: Explicit key support (`?`) — ✅ COMPLETE
 
 <details>
 <summary>
@@ -361,7 +361,7 @@ All 16 test IDs pass. ExplicitKeyTests.lean, 66 tests.
 
 </details>
 
-### Step 10: Strict validation (error rejection) — ✅ COMPLETE
+## Step 10: Strict validation (error rejection) — ✅ COMPLETE
 
 <details>
 <summary>
@@ -389,7 +389,7 @@ All 16 test IDs pass. ExplicitKeyTests.lean, 66 tests.
 
 </details>
 
-### Step 11: Remaining edge cases — +14 tests
+## Step 11: Remaining edge cases — +14 tests
 
 <details>
 <summary>
@@ -404,7 +404,7 @@ Empty keys, escape sequences, complex keys.
 
 </details>
 
-### Step 11: Block scalar indentation fix (P3) — ✅ COMPLETE
+## Step 11: Block scalar indentation fix (P3) — ✅ COMPLETE
 
 <details>
 <summary>
@@ -423,7 +423,7 @@ Stage breakdown: scalar 34→46 (+12), block 76→78 (+2), advanced 38→44 (+6)
 
 </details>
 
-### Step 11b: Block completeness (P4) — ✅ COMPLETE
+## Step 11b: Block completeness (P4) — ✅ COMPLETE
 
 <details>
 <summary>
@@ -443,7 +443,7 @@ Tests flipped fail→pass: AZ63, AZW3, RLU9, S3PD, 5NYZ, J9HZ, P94K, M2N8. Error
 
 </details>
 
-### Step 11c: Content correctness (P5) — ✅ COMPLETE
+## Step 11c: Content correctness (P5) — ✅ COMPLETE
 
 <details>
 <summary>
@@ -463,7 +463,7 @@ Tests flipped fail→pass (14): 87E4, LQZ7, SM9W, NHX8, L383, JHB9, 7Z25, 5TYM, 
 
 </details>
 
-### Step 12: Iterate toward 75%+ correct rate
+## Step 12: Iterate toward 75%+ correct rate
 
 <details>
 <summary>
@@ -477,7 +477,7 @@ After steps 8–11 + P4 + P5 + P6 + P7, current correct rate is 354/406 (87.2%).
 
 </details>
 
-### Spec Example Test Suite (2026-02-24)
+## Spec Example Test Suite (2026-02-24)
 
 <details>
 <summary>
@@ -514,7 +514,7 @@ Registered in `lakefile.toml` (`lean_lib Tests.SpecExamples` + `lean_exe specexa
 
 </details>
 
-### Spec Example Failure Diagnosis & Fix (2026-02-25)
+## Spec Example Failure Diagnosis & Fix (2026-02-25)
 
 <details>
 <summary>
@@ -579,7 +579,7 @@ All 132 spec examples pass. The final 2 gaps (5.13, 10.3) were closed on 2026-02
 
 </details>
 
-### Spec Example 100% — Final Two Gaps Closed (2026-02-26)
+## Spec Example 100% — Final Two Gaps Closed (2026-02-26)
 
 <details>
 <summary>
@@ -659,6 +659,8 @@ Formal verification proceeds in three layers, ordered by feasibility and diagnos
 
 ### 3.1 Foundation — ✅ COMPLETE
 
+<details>
+
 Standalone proofs about the stream, pure helper functions, and character classifiers. These have zero lean4-parser dependency. Each item has extensive runtime test coverage (940 tests across `Verification.lean`, `StringLemmas.lean`, `CharClassTests.lean`, `ValidationTests.lean`, and other suites) that validates the properties empirically before they are proved formally.
 
 | Item | Description | Runtime Tests | Proof Status |
@@ -672,7 +674,11 @@ Standalone proofs about the stream, pure helper functions, and character classif
 
 **All 6 items complete.** ~90 theorems across 5 proof files. 0 sorry, 0 axiom.
 
+</details>
+
 ### 3.2 Key Invariants — ✅ COMPLETE
+
+<details>
 
 Property proofs about specific parser behaviors. With lean4-parser fold combinators now total, these proofs can target parser invariants directly without `sorry`-admitting termination.
 
@@ -693,7 +699,11 @@ Property proofs about specific parser behaviors. With lean4-parser fold combinat
 - **3.2.1 (Fold newlines / c-forbidden):** The key insight was that `foldQuotedNewlines` only appends `' '` or `'\n'` to the accumulator, while c-forbidden requires the prefix `---` or `...`. Since `{' ', '\n'}` ∩ `{'-', '.'}` = ∅, fold *cannot introduce* c-forbidden content. The proof is two `rfl` lemmas (`not_cForbidden_space_start`, `not_cForbidden_newline_start`) composed into the linking theorem. **Effort: trivial.** The disjointness of fold-appended characters and marker-starting characters made this almost tautological.
 - **The pattern:** 3.2 proofs are easy because the *specifications* in `Grammar.lean` are pure functions on simple types (`Char`, `List Char`, `Nat`), and the *parser implementations* were designed to match those specifications structurally. When specification and implementation share the same shape, the proof that they agree is short. This is the same "design for provability" principle from the 3.3 methodology notes — the hard work is in getting the abstractions right, not in writing proofs.
 
+</details>
+
 ### 3.3 Termination & Soundness
+
+<details>
 
 With lean4-parser fold combinators now total (via `Stream.remaining` fuel), the path to eliminating all 35 `partial def` parsers is clear. Parser structure is stable (354/406 yaml-test-suite, 0 failures). Work proceeds in five steps:
 
@@ -786,6 +796,8 @@ Effort: ~5+ sessions. **All 6 steps complete** (3.3.1–3.3.6).
 </details>
 
 ### Step 3.5: `well-founded-streams` Branch — Batteries PR#1331 as lean4-parser Component
+
+<details>
 
 **Date:** 2026-02-26
 **Branch:** [`well-founded-streams`](https://github.com/NicolasRouquette/lean4-parser/tree/well-founded-streams) (based on `main` at `d8428e2`)
@@ -967,6 +979,8 @@ Both `lake build WellFoundedStreams` and `lake build Parser` succeed cleanly.
    a different approach (fuel or well-founded recursion on the
    regex structure).
 
+</details>
+
 ### Verification Summary: Phases 3,4,5 Complete
 
 <details>
@@ -994,6 +1008,8 @@ Phase 2 (Parser Validation) is functionally complete. **354/406 correct** per HT
 
 </details>
 
+</details>
+
 ## Phase 4: yaml-test-suite as Compile-Time Proofs — ✅ COMPLETE
 
 <details>
@@ -1012,7 +1028,6 @@ lake build                            # verifies all guards still pass
 
 The script automatically excludes tests listed in its `KERNEL_DISCREPANCIES` set (currently empty). If new tests fail as `#guard`, either fix the parser or add the test ID to `KERNEL_DISCREPANCIES` with a comment explaining why.
 
-</details>
 
 ### Development Log
 
@@ -1031,6 +1046,8 @@ The script automatically excludes tests listed in its `KERNEL_DISCREPANCIES` set
     | Advanced | 64 | Anchors, aliases, tags, complex keys |
     | Error | 92 | Invalid YAML correctly rejected |
 
+
+</details>
 
 </details>
 
@@ -1390,8 +1407,6 @@ Compose per-parser specs + fuel sufficiency + `parseYaml_ok_iff` bridge into the
 
 </details>
 
-</details>
-
 ### Development Log
 
 <details>
@@ -1500,6 +1515,7 @@ Compose per-parser specs + fuel sufficiency + `parseYaml_ok_iff` bridge into the
 
     **Phase 5 final inventory:** ~180 theorems across 6 proof files (`RoundTrip.lean`: 58, `Completeness.lean`: 21, `ParserSpecs.lean`: 20, `PerParserSpecs.lean`: 46, `FuelSufficiency.lean`: 35, `Composition.lean`: 21) + 63 `#guard` round-trip checks. Build: 243/243 jobs. 0 sorry, 0 axiom.
 
+</details>
 
 </details>
 
@@ -1556,8 +1572,6 @@ The current emitter (`Emitter.lean`) produces canonical YAML — double-quoted s
 4. **Pure function, no IO.** Like the emitter, the dump function is `YamlValue → String` — kernel-reducible, `#guard`-testable, provably correct.
 
 Completed in 4 sessions: implementation (6.0–6.2), proofs (6.3), tests (6.4), anchor/alias preservation (6.5).
-
-</details>
 
 ### Development Log
 
@@ -1673,6 +1687,8 @@ Build verification: 475 rawparsetests jobs, 507 suiterunner jobs — all pass. S
 
 </details>
 
+</details>
+
 ## Phase 7: Verified Schema Layer — In Progress
 
 <details>
@@ -1738,6 +1754,8 @@ The architecture is designed for reuse: `lean4-yaml-verified` and `lean4-yaml` s
 The critical property: **the schema layer is pure functions on inductive types** — no IO, no parser combinators, no lean4-parser dependency. This makes it the ideal target for formal verification since every function is kernel-reducible.
 
 ### Verified Schema Roadmap
+
+<details>
 
 #### Phase 7.1: Core Types & Resolution — ✅ Complete (326 lines)
 
@@ -1886,7 +1904,12 @@ theorem roundtrip :
 
 This is the verified-correctness analog of lean4-yaml's empirical round-trip tests. It requires parser soundness proofs (Phase 3 of the main verification roadmap) and Phase 6 dump proofs, and is the long-term goal.
 
+
+</details>
+
 ### Design Principles for the Verified Schema Layer
+
+<details>
 
 The schema layer follows the same architectural principles documented in ANALYSIS.md §6:
 
@@ -1901,6 +1924,8 @@ The schema layer follows the same architectural principles documented in ANALYSI
 5. **Proofs follow the same layered strategy.** Layer 1 (pure function properties) → Layer 2 (typeclass laws) → Layer 3 (round-trip composition). Each layer is independently valuable: Layer 1 catches implementation bugs at compile time, Layer 2 ensures typeclass coherence, Layer 3 provides the full end-to-end guarantee.
 
 ### Estimated Effort
+
+<details>
 
 | Phase | Lines | Sessions | Proofs | Status |
 |---|---|---|---|---|
@@ -1960,6 +1985,10 @@ Ported and adapted the schema layer from lean4-yaml (2026-02-24). 8 new files im
 - `YamlValue` has `BEq` but not `DecidableEq` (recursive inductive with `Array` children). SchemaDump proofs use `#guard` with `==` for `YamlValue` comparisons and a `roundTripsTo` Bool helper for typed round-trips returning `Except String α`.
 - `Std.Data.HashMap` import in `FromToYaml.lean` is the first `Std` import in the project — available in Lean 4.28.0 core, no additional dependency needed.
 - `resolve` equational lemma generation fails in Lean 4.28.0 due to a known `YamlValue.rec_1` projection issue with `where`-clause mutual recursion on arrays-converted-to-lists. Proofs for `resolve` on sequences/mappings use `rfl` (definitional reduction succeeds despite missing equational lemma). Proofs for `resolve` on scalars route through `resolveScalar` instead.
+
+</details>
+
+</details>
 
 </details>
 
@@ -2168,7 +2197,7 @@ This means the schema proofs (Phase 7) are unaffected, provided `BEq` on `YamlVa
 
 #### 8.7: Proof Obligations
 
-</details>
+<details>
 
 | Theorem | Statement | Difficulty |
 |---------|-----------|-----------|
@@ -2202,6 +2231,8 @@ This means the schema proofs (Phase 7) are unaffected, provided `BEq` on `YamlVa
 - Phase 8.7 (Proofs) depends on all of 8.1–8.6.
 - Phases 7.1–7.4 proofs are **not affected** (comments are invisible to schema resolution).
 - Phase 7.5 (round-trip theorem) should be extended to account for comments once 8.7 is complete.
+
+</details>
 
 </details>
 
