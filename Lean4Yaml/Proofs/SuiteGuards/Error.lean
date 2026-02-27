@@ -10,7 +10,7 @@ import Lean4Yaml.Parser.Document
 Auto-generated from yaml-test-suite test files by `gen-suite-guards.py`.
 Each `#guard` is evaluated by Lean's kernel during `lake build`.
 
-**93 guards** covering all passing error tests.
+**95 guards** covering all passing error tests.
 
 These are Phase 4 of the verification plan: yaml-test-suite as compile-time proofs.
 -/
@@ -34,7 +34,7 @@ open Lean4Yaml.Parse
   | .ok _ => false
   | .error _ => true
 
--- 2G84:1 
+-- 2G84:1
 #guard match parseYaml "--- |10\n\n" with
   | .ok _ => false
   | .error _ => true
@@ -149,7 +149,7 @@ open Lean4Yaml.Parse
   | .ok _ => false
   | .error _ => true
 
--- 9MQT:1 
+-- 9MQT:1
 #guard match parseYaml "--- \"a\n... x\nb\"\n" with
   | .ok _ => false
   | .error _ => true
@@ -214,12 +214,12 @@ open Lean4Yaml.Parse
   | .ok _ => false
   | .error _ => true
 
--- DK95:1 
+-- DK95:1
 #guard match parseYaml "foo: \"bar\n\tbaz\"\n" with
   | .ok _ => false
   | .error _ => true
 
--- DK95:6 
+-- DK95:6
 #guard match parseYaml "foo:\n  a: 1\n  \tb: 2\n" with
   | .ok _ => false
   | .error _ => true
@@ -269,6 +269,11 @@ open Lean4Yaml.Parse
   | .ok _ => false
   | .error _ => true
 
+-- H7TQ:0 Extra words on %YAML directive (§6.8 [82]+[86])
+#guard match parseYaml "%YAML 1.2 foo\n---\n" with
+  | .ok _ => false
+  | .error _ => true
+
 -- HRE5:0 Double quoted scalar with escaped single quote
 #guard match parseYaml "---\ndouble: \"quoted \\' scalar\"\n" with
   | .ok _ => false
@@ -304,7 +309,7 @@ open Lean4Yaml.Parse
   | .ok _ => false
   | .error _ => true
 
--- MUS6:1 
+-- MUS6:1
 #guard match parseYaml "%YAML 1.2\n---\n%YAML 1.2\n---\n" with
   | .ok _ => false
   | .error _ => true
@@ -424,37 +429,37 @@ open Lean4Yaml.Parse
   | .ok _ => false
   | .error _ => true
 
--- Y79Y:3 
+-- Y79Y:3
 #guard match parseYaml "- [\n\tfoo,\n foo\n ]\n" with
   | .ok _ => false
   | .error _ => true
 
--- Y79Y:4 
+-- Y79Y:4
 #guard match parseYaml "-\t-\n\n" with
   | .ok _ => false
   | .error _ => true
 
--- Y79Y:5 
+-- Y79Y:5
 #guard match parseYaml "- \t-\n\n" with
   | .ok _ => false
   | .error _ => true
 
--- Y79Y:6 
+-- Y79Y:6
 #guard match parseYaml "?\t-\n\n" with
   | .ok _ => false
   | .error _ => true
 
--- Y79Y:7 
+-- Y79Y:7
 #guard match parseYaml "? -\n:\t-\n\n" with
   | .ok _ => false
   | .error _ => true
 
--- Y79Y:8 
+-- Y79Y:8
 #guard match parseYaml "?\tkey:\n\n" with
   | .ok _ => false
   | .error _ => true
 
--- Y79Y:9 
+-- Y79Y:9
 #guard match parseYaml "? key:\n:\tkey:\n\n" with
   | .ok _ => false
   | .error _ => true

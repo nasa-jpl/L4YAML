@@ -117,12 +117,19 @@ def directive : YamlParser Directive :=
       -- `1.1#...` (takeMany1 consumes `#` since it's not whitespace/linebreak).
       if versionStr.any (· == '#') then
         setValidationError "invalid '#' in %YAML version (§6.7)"
-      -- NOTE: H7TQ wants `%YAML 1.2 foo` to fail, but ZYU8 wants
-      -- `%YAML 1.1 1.2` to pass.  These conflict — leave as-is.
-      -- Consume rest of directive line: any extra parameters/content after the
-      -- version are silently consumed (ns-reserved-directive semantics).
-      -- This prevents leftover content from blocking `---` detection.
-      skipTrailing
+      -- §6.8 [82]+[86]: after ns-yaml-version, only s-l-comments is allowed
+      -- (optional whitespace + optional comment + newline/EOF).
+      -- Extra content like `foo` or `1.2` violates the grammar.
+      -- This fixes H7TQ (`%YAML 1.2 foo`) and ZYU8 variant 3 (`%YAML 1.1 1.2`).
+      skipHWhitespace
+      match ← option? (lookAhead anyToken) with
+      | some c =>
+        if !isLineBreak c && c != '#' then
+          setValidationError
+            s!"extra content after %YAML version: expected comment or newline, got '{c}' (§6.8 [82])"
+      | none => pure ()
+      -- Consume rest of directive line regardless, so leftover content
+      -- doesn't block `---` detection.
       dropMany (tokenFilter (fun c => !isLineBreak c))
       let _ ← option? newline
       return .yaml versionStr
