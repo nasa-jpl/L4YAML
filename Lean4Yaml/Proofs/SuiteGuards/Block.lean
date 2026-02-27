@@ -2,7 +2,7 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Lean4Yaml.Parser.Document
+import Lean4Yaml.TokenParser
 
 /-!
 # yaml-test-suite Compile-Time Guards — Block Stage
@@ -17,7 +17,7 @@ These are Phase 4 of the verification plan: yaml-test-suite as compile-time proo
 
 namespace Lean4Yaml.Proofs.SuiteGuards.Block
 
-open Lean4Yaml.Parse
+open Lean4Yaml.TokenParser
 
 -- 229Q:0 Spec Example 2.4. Sequence of Mappings
 #guard match parseYaml "-\n  name: Mark McGwire\n  hr:   65\n  avg:  0.278\n-\n  name: Sammy Sosa\n  hr:   63\n  avg:  0.288\n" with

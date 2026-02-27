@@ -31,7 +31,7 @@ the composed output matches the legacy `parseYaml` / `parseYamlSingle`.
 -/
 
 open Lean4Yaml
-open Lean4Yaml.Parse
+open Lean4Yaml.TokenParser
 open Tests
 
 namespace Tests.RawParse

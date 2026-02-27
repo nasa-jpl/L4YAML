@@ -1,6 +1,6 @@
 import Lean4Yaml.Dump
 import Lean4Yaml.Emitter
-import Lean4Yaml.Parser.Document
+import Lean4Yaml.TokenParser
 import Lean4Yaml.Proofs.DumpRoundTrip
 import Tests.VerifiedResult
 
@@ -29,7 +29,7 @@ in the HTML dashboard.
 open Lean4Yaml
 open Lean4Yaml.Dump
 open Lean4Yaml.Emit
-open Lean4Yaml.Parse
+open Lean4Yaml.TokenParser
 open Tests
 
 namespace Tests.DumpRoundTrip

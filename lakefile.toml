@@ -41,9 +41,6 @@ name = "Tests.ParseTest"
 name = "Tests.QuotedFolding"
 
 [[lean_lib]]
-name = "Tests.Verification"
-
-[[lean_lib]]
 name = "Tests.StringLemmas"
 
 [[lean_lib]]
@@ -86,10 +83,6 @@ root = "Tests.TryDump"
 [[lean_exe]]
 name = "quotedfolding"
 root = "Tests.QuotedFolding.Runner"
-
-[[lean_exe]]
-name = "verification"
-root = "Tests.Verification.Runner"
 
 [[lean_exe]]
 name = "stringlemmas"

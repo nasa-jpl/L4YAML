@@ -2837,7 +2837,7 @@ Phase 9 introduced a two-pass scanner/parser (`Token.lean`, `Scanner.lean`, `Tok
 
 **Validation gate**: All existing `#guard` checks and `lake exe suiterunner` pass with the shim.
 
-**Status**: ✅ Complete (2026-02-27). Non-breaking facade: `*Tokenized` aliases in `Parse` namespace, tokenized parser imports added to `Lean4Yaml.lean`, comparison tool (`ParserCompare.lean`) validates 354 test cases. Final numbers: 134 match, 125 content diffs (old parser bugs), 8 both fail, 0 regressions, 87 improvements, 52 skipped. Suite runner baseline unchanged: 849 passed, 0 failed, 171 skipped.
+**Status**: ✅ Complete (2026-02-27). Non-breaking facade: `*Tokenized` aliases in `Parse` namespace, tokenized parser imports added to `Lean4Yaml.lean`, comparison tool (`ParserCompare.lean`) validates 354 test cases. Final numbers: 134 match, 125 content diffs (old parser bugs), 8 both fail, 0 regressions, 87 improvements, 52 skipped. Suite runner baseline unchanged: 849 passed, 0 failed, 171 skipped. **P10.2 cleanup**: `*Tokenized` aliases removed — redundant after public API switch.
 
 ##### Reflections — unexpected challenges, simplifications, and idioms
 
@@ -2898,7 +2898,19 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 
 **Validation gate**: 1,041/1,041 internal tests, 354/406 suite tests, 434 `#guard` checks — all green.
 
-**Status**: ✅ Complete (2026-02-27). Public API (`parseYaml`, `parseYamlRaw`, `parseYamlSingle`, `parseYamlSingleRaw`) switched from old char-level parser to tokenized pipeline in `Parser/Document.lean`. Four scanner/parser bugs fixed during migration. Build: 260/260 jobs (2 expected `sorry` in `Composition.lean` for P10.5). yaml-test-suite: 849 passed, 0 failed, 171 skipped. parsercompare: 346 match, 0 regressions. Spec examples: 132/132.
+**Status**: ✅ Complete (2026-02-27). 
+
+- Public API (`parseYaml`, `parseYamlRaw`, `parseYamlSingle`, `parseYamlSingleRaw`) switched from old char-level parser to tokenized pipeline in `Parser/Document.lean`. 
+- Four scanner/parser bugs fixed during migration. 
+- Import migration: 6 test files + 6 SuiteGuards + `TestSuite.lean` switched from `import Lean4Yaml.Parser.Document` / `open Lean4Yaml.Parse` to `import Lean4Yaml.TokenParser` / `open Lean4Yaml.TokenParser`. `ValidationTests.lean` cleaned — 4 old-parser dispatch type sections (§3–§6: `DispatchResult`, `FoldResult`, `DocumentResult`, `ContinuationCheck`) removed; remaining sections use tokenized parser. 
+- 5 exploratory files deleted (`Verification.lean`, `CompletenessExplore.lean`, `CompositionExplore.lean`, `CollectPlainExplore.lean`, `ContentEqExplore.lean`). 
+- `gen-suite-guards.py` template updated to emit `import Lean4Yaml.TokenParser` / `open Lean4Yaml.TokenParser`. 
+- `*Tokenized` aliases removed from `Document.lean`. 
+- Build: 
+  - 260/260 jobs (2 expected `sorry` in `Composition.lean` for P10.5). 
+  - yaml-test-suite: 849/0/171. 
+  - parsercompare: 346/0. 
+  - Spec examples: 132/132.
 
 ##### Reflections — unexpected challenges, simplifications, and idioms
 

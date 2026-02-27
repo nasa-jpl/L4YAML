@@ -273,7 +273,7 @@ def generate_lean_file(stage: str, guards: list[str], total: int) -> str:
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Lean4Yaml.Parser.Document
+import Lean4Yaml.TokenParser
 
 /-!
 # yaml-test-suite Compile-Time Guards \u2014 {stage_cap} Stage
@@ -288,7 +288,7 @@ These are Phase 4 of the verification plan: yaml-test-suite as compile-time proo
 
 namespace Lean4Yaml.Proofs.SuiteGuards.{stage_cap}
 
-open Lean4Yaml.Parse
+open Lean4Yaml.TokenParser
 
 """
     footer = f"\nend Lean4Yaml.Proofs.SuiteGuards.{stage_cap}\n"

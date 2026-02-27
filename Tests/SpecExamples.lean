@@ -1,4 +1,4 @@
-import Lean4Yaml.Parser.Document
+import Lean4Yaml.TokenParser
 import Tests.VerifiedResult
 
 /-
@@ -60,7 +60,7 @@ lake build specexamples && ./.lake/build/bin/specexamples
 -/
 
 open Lean4Yaml
-open Lean4Yaml.Parse
+open Lean4Yaml.TokenParser
 open Tests
 
 namespace Tests.SpecExamples
