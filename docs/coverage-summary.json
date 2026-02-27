@@ -1,15 +1,15 @@
 {
-  "date": "2026-02-26T21:45:27-0800",
+  "date": "2026-02-26T22:16:19-0800",
   "overall": {
-    "correct": 353,
-    "correctRate": 86.945812,
-    "expectedFail": 93,
+    "correct": 354,
+    "correctRate": 87.192118,
+    "expectedFail": 95,
     "failed": 0,
-    "passed": 260,
+    "passed": 259,
     "skipped": 52,
     "timeout": 0,
     "total": 406,
-    "unexpectedPass": 1
+    "unexpectedPass": 0
   },
   "stages": {
     "advanced": {
@@ -26,24 +26,24 @@
     "block": {
       "correct": 99,
       "correctRate": 100,
-      "expectedFail": 14,
+      "expectedFail": 15,
       "failed": 0,
-      "passed": 85,
+      "passed": 84,
       "skipped": 0,
       "timeout": 0,
       "total": 99,
       "unexpectedPass": 0
     },
     "document": {
-      "correct": 16,
-      "correctRate": 66.666666,
-      "expectedFail": 1,
+      "correct": 17,
+      "correctRate": 70.833333,
+      "expectedFail": 2,
       "failed": 0,
       "passed": 15,
       "skipped": 7,
       "timeout": 0,
       "total": 24,
-      "unexpectedPass": 1
+      "unexpectedPass": 0
     },
     "error": {
       "correct": 74,
@@ -1649,10 +1649,10 @@
       "stage": "error"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "H7TQ",
       "name": "Extra words on %YAML directive",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "document"
     },
     {
@@ -2912,7 +2912,7 @@
       "error": null,
       "id": "ZYU8",
       "name": "",
-      "outcome": "pass",
+      "outcome": "expected-fail",
       "stage": "block"
     },
     {

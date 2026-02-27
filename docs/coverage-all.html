@@ -176,13 +176,13 @@
   <p class="subtitle">YAML 1.2.2 parser compliance against the official yaml-test-suite</p>
   <div class="stats">
     <div class="stat-box stat-total"><h3>Unique Tests</h3><div class="number">406</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">260</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">259</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
-    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">93</div></div>
-    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">1</div></div>
+    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">95</div></div>
+    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">0</div></div>
     <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">52</div></div>
     <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">0</div></div>
-    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">353/406</div><div class="pct">(86.945813%)</div></div>
+    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">354/406</div><div class="pct">(87.192118%)</div></div>
   </div>
   <h3>Coverage by Stage</h3>
   <div class="stage-cards">
@@ -198,13 +198,13 @@
     </div>
     <div class="stage-card">
       <div class="stage-card-name">block</div>
-      <div class="stage-card-stats">99/99 correct (100.000000%) · 85 pass, 0 fail, 14 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-segment" style="flex: 85 0 0px; background: var(--color-pass)" title="85 pass"></div><div class="stage-bar-segment" style="flex: 14 0 0px; background: var(--color-expected-fail)" title="14 expected fail"></div></div>
+      <div class="stage-card-stats">99/99 correct (100.000000%) · 84 pass, 0 fail, 15 exp-fail, 0 unexp-pass, 0 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-segment" style="flex: 84 0 0px; background: var(--color-pass)" title="84 pass"></div><div class="stage-bar-segment" style="flex: 15 0 0px; background: var(--color-expected-fail)" title="15 expected fail"></div></div>
     </div>
     <div class="stage-card">
       <div class="stage-card-name">document</div>
-      <div class="stage-card-stats">16/24 correct (66.000000%) · 15 pass, 0 fail, 1 exp-fail, 1 unexp-pass, 7 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-segment" style="flex: 15 0 0px; background: var(--color-pass)" title="15 pass"></div><div class="stage-bar-segment" style="flex: 1 0 0px; background: var(--color-expected-fail)" title="1 expected fail"></div><div class="stage-bar-segment" style="flex: 1 0 0px; background: var(--color-unexpected-pass)" title="1 unexpected pass"></div><div class="stage-bar-segment" style="flex: 7 0 0px; background: var(--color-skip)" title="7 skip"></div></div>
+      <div class="stage-card-stats">17/24 correct (70.000000%) · 15 pass, 0 fail, 2 exp-fail, 0 unexp-pass, 7 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-segment" style="flex: 15 0 0px; background: var(--color-pass)" title="15 pass"></div><div class="stage-bar-segment" style="flex: 2 0 0px; background: var(--color-expected-fail)" title="2 expected fail"></div><div class="stage-bar-segment" style="flex: 7 0 0px; background: var(--color-skip)" title="7 skip"></div></div>
     </div>
     <div class="stage-card">
       <div class="stage-card-name">advanced</div>
@@ -2050,13 +2050,13 @@
         <td><span class="tag">anchor</span><span class="tag">error</span><span class="tag">indent</span><span class="tag">tag</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="document" data-search="h7tq extra words on %yaml directive directive">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="document" data-search="h7tq extra words on %yaml directive directive">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/H7TQ.yaml" target="_blank" class="test-id-link" title="View H7TQ source in yaml-test-suite">H7TQ</a></td>
         <td>Extra words on %YAML directive</td>
         <td>document</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">directive</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="flow" data-search="hm87 scalars in flow start with syntax char flow scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/HM87.yaml" target="_blank" class="test-id-link" title="View HM87 source in yaml-test-suite">HM87</a></td>
@@ -3490,11 +3490,11 @@
         <td></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-stage="block" data-search="zyu8  ">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="block" data-search="zyu8  ">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/ZYU8.yaml" target="_blank" class="test-id-link" title="View ZYU8 source in yaml-test-suite">ZYU8</a></td>
         <td></td>
         <td>block</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td></td>
         <td></td>
       </tr>

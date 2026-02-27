@@ -178,11 +178,11 @@
     <div class="stat-box stat-total"><h3>Unique Tests</h3><div class="number">24</div></div>
     <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">15</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
-    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">1</div></div>
-    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">1</div></div>
+    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">2</div></div>
+    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">0</div></div>
     <div class="stat-box stat-skip"><h3>Skipped</h3><div class="number">7</div></div>
     <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">0</div></div>
-    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">16/24</div><div class="pct">(66.666667%)</div></div>
+    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">17/24</div><div class="pct">(70.833333%)</div></div>
   </div>
   <h3>Coverage by Stage</h3>
   <div class="stage-cards">
@@ -203,8 +203,8 @@
     </div>
     <div class="stage-card">
       <div class="stage-card-name">document</div>
-      <div class="stage-card-stats">16/24 correct (66.000000%) · 15 pass, 0 fail, 1 exp-fail, 1 unexp-pass, 7 skip, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-segment" style="flex: 15 0 0px; background: var(--color-pass)" title="15 pass"></div><div class="stage-bar-segment" style="flex: 1 0 0px; background: var(--color-expected-fail)" title="1 expected fail"></div><div class="stage-bar-segment" style="flex: 1 0 0px; background: var(--color-unexpected-pass)" title="1 unexpected pass"></div><div class="stage-bar-segment" style="flex: 7 0 0px; background: var(--color-skip)" title="7 skip"></div></div>
+      <div class="stage-card-stats">17/24 correct (70.000000%) · 15 pass, 0 fail, 2 exp-fail, 0 unexp-pass, 7 skip, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-segment" style="flex: 15 0 0px; background: var(--color-pass)" title="15 pass"></div><div class="stage-bar-segment" style="flex: 2 0 0px; background: var(--color-expected-fail)" title="2 expected fail"></div><div class="stage-bar-segment" style="flex: 7 0 0px; background: var(--color-skip)" title="7 skip"></div></div>
     </div>
     <div class="stage-card">
       <div class="stage-card-name">advanced</div>
@@ -322,13 +322,13 @@
         <td><span class="tag">spec</span><span class="tag">directive</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="document" data-search="h7tq extra words on %yaml directive directive">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="document" data-search="h7tq extra words on %yaml directive directive">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/H7TQ.yaml" target="_blank" class="test-id-link" title="View H7TQ source in yaml-test-suite">H7TQ</a></td>
         <td>Extra words on %YAML directive</td>
         <td>document</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">directive</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-stage="document" data-search="hwv9 document-end marker footer">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/HWV9.yaml" target="_blank" class="test-id-link" title="View HWV9 source in yaml-test-suite">HWV9</a></td>

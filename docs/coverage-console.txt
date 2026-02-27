@@ -238,7 +238,7 @@ Running all tests for HTML report...
   [222/406] H2RW ✓
   [223/406] H3Z8 ✓
   [224/406] H7J7 ✓ (expected fail)
-  [225/406] H7TQ ⚠ unexpected pass
+  [225/406] H7TQ ✓ (expected fail)
   [226/406] HM87 ✓
   [227/406] HM87 ✓
   [228/406] HMK4 ✓
@@ -418,11 +418,11 @@ Running all tests for HTML report...
   [402/406] ZXT5 ✓ (expected fail)
   [403/406] ZYU8 ✓
   [404/406] ZYU8 ✓
-  [405/406] ZYU8 ✓
+  [405/406] ZYU8 ✓ (expected fail)
   [406/406] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 353/406 (86.000000%)
+Correct: 354/406 (87.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 17/17
