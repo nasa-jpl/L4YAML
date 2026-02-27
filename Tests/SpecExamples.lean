@@ -68,11 +68,11 @@ namespace Tests.SpecExamples
 /-! ## Annotation / HTML Stripping -/
 
 /-- Check if `s` contains substring `sub`. -/
-private def stringContains (s : String) (sub : String) : Bool :=
+def stringContains (s : String) (sub : String) : Bool :=
   (s.splitOn sub).length > 1
 
 /-- Strip `<mark ...>...</mark>` tags, keeping inner text. -/
-private def stripMarkTags (s : String) : String :=
+def stripMarkTags (s : String) : String :=
   let rec go (input : String) (fuel : Nat) : String :=
     match fuel with
     | 0 => input
@@ -107,7 +107,7 @@ private def stripMarkTags (s : String) : String :=
     - `↓` (U+2193 DOWNWARDS ARROW)    → newline
     - `°` (U+00B0 DEGREE SIGN)        → empty (marks absent content)
     - `⇔` (U+21D4 LEFT RIGHT ARROW)   → BOM (U+FEFF) -/
-private def replaceAnnotationSymbols (s : String) : String :=
+def replaceAnnotationSymbols (s : String) : String :=
   let s := s.replace "·" " "
   let s := s.replace "→" "\t"
   let s := s.replace "↓" "\n"
@@ -116,7 +116,7 @@ private def replaceAnnotationSymbols (s : String) : String :=
   s
 
 /-- Decode common HTML entities. -/
-private def decodeHtmlEntities (s : String) : String :=
+def decodeHtmlEntities (s : String) : String :=
   let s := s.replace "&gt;" ">"
   let s := s.replace "&lt;" "<"
   let s := s.replace "&amp;" "&"
@@ -125,7 +125,7 @@ private def decodeHtmlEntities (s : String) : String :=
   s
 
 /-- Full cleanup pipeline for a raw spec example file. -/
-private def cleanupExample (s : String) : String :=
+def cleanupExample (s : String) : String :=
   -- Only apply HTML stripping if the content has HTML artifacts
   -- or Unicode annotation symbols (°, ⇔) that need replacement
   if stringContains s "<mark" || stringContains s "&gt;" ||

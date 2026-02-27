@@ -186,3 +186,10 @@ name = "Tests.ScannerTests"
 [[lean_exe]]
 name = "scannertests"
 root = "Tests.ScannerTests.Runner"
+
+[[lean_lib]]
+name = "Tests.ScannerSpecExamples"
+
+[[lean_exe]]
+name = "scannerspecexamples"
+root = "Tests.ScannerSpecExamples.Runner"

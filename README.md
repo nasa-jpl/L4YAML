@@ -63,6 +63,7 @@ Lean4Yaml/
     ├── TryParse.lean        # Single-file parse binary (subprocess isolation)
     ├── CheckStringPos.lean  # String position utility tests
     ├── SpecExamples.lean    # YAML 1.2.2 spec example parse tests (132 examples)
+    ├── ScannerSpecExamples.lean # Phase 9: spec examples via scanner/parser pipeline (132 examples)
     ├── ScannerTests.lean    # Phase 9: scanner/parser pipeline tests (33 tests)
     ├── SchemaDump.lean      # Schema↔Dump integration tests (68 tests)
     └── SuiteRunner/
@@ -86,7 +87,7 @@ Demo.lean                    # End-to-end demo examples (7 tests)
 
 Verification uses a deliberate 3-layer approach:
 
-1. **Internal runtime tests** (1041 tests across 14 suites + 11 diagnostic + 132 spec examples) — hand-written Lean tests validating parser properties. Every `theorem` target starts life as a runtime `check` test. These are _separate_ from the yaml-test-suite's 406 external test cases. Additionally, 132 examples extracted from the YAML 1.2.2 specification (§2–§10) are parsed as an extra conformance layer.
+1. **Internal runtime tests** (1041 tests across 14 suites + 11 diagnostic + 2×132 spec examples) — hand-written Lean tests validating parser properties. Every `theorem` target starts life as a runtime `check` test. These are _separate_ from the yaml-test-suite's 406 external test cases. Additionally, 132 examples extracted from the YAML 1.2.2 specification (§2–§10) are parsed as an extra conformance layer — both the old parser pipeline and the Phase 9 scanner/parser pipeline achieve 132/132 (100%).
 2. **Formal proofs** (`theorem`/`lemma` in `Proofs/*.lean`) — machine-checked guarantees. Layered by dependency: pure functions first, then parser invariants, then full soundness.
 3. **Compile-time guards** (`#guard`) — 76 hand-written + 351 auto-generated from yaml-test-suite (in `Proofs/SuiteGuards/*.lean`). All parsers are total (via lean4-parser `std-iterators` branch PR#97 + Steps 3.3.2–3.3.3), so `#guard` kernel evaluation works. Any parser regression breaks the build.
 
@@ -1423,6 +1424,71 @@ Full analysis in [YAML_PRODUCTIONS.md](Lean4Yaml/YAML_PRODUCTIONS.md) §Token–
 
 </details>
 
+### Phase 9 Spec Example Validation: Scanner Pipeline 132/132 (2026-02-26)
+
+<details>
+<summary>
+<b>Ran all 132 YAML 1.2.2 spec examples against the Phase 9 scanner/parser pipeline (<code>TokenParser.parseYaml</code>). Initial result: 129/132. One scanner fix (explicit key <code>?</code> in flow context) brought it to 132/132. Both pipelines now achieve 100% spec coverage.</b>
+</summary>
+
+**Context.** The 132 spec examples (§2–§10) previously only tested the old parser pipeline (`Parser.Document.parseYaml`). This validation runs them against the new Phase 9 two-pass scanner/parser (`TokenParser.parseYaml`) to confirm the scanner correctly tokenizes the full YAML 1.2.2 spec corpus.
+
+#### New Files
+
+| File | Lines | Description |
+|------|-------|-------------|
+| `Tests/ScannerSpecExamples.lean` | 119 | Spec example tests using `TokenParser.parseYaml` |
+| `Tests/ScannerSpecExamples/Runner.lean` | 8 | Standalone runner (→ `scannerspecexamples` exe) |
+
+Reuses `cleanupExample`, `expectedErrorExamples`, and `isExpectedError` from `Tests/SpecExamples.lean` (made non-private to enable sharing).
+
+#### Initial Results: 129/132
+
+Three failures, all in §7 (Flow Styles), all with the same error:
+
+| Example | Input | Error |
+|---------|-------|-------|
+| 7.3 | `{ ? foo :, : bar, }` | `unexpected character '?' at line 1, column 2` |
+| 7.16 | `{ ? explicit: entry, implicit: entry, ? }` | `unexpected character '?' at line 1, column 0` |
+| 7.20 | `[ ? foo bar : baz ]` | `unexpected character '?' at line 1, column 0` |
+
+**Root cause:** The scanner's main dispatch had `if c == '?' && !s.inFlow` — it only recognized `?` as an explicit key indicator in block context. YAML 1.2.2 §7.2 allows `?` as an explicit key indicator in flow mappings and flow sequences (single-pair entries).
+
+**Fix (Scanner.lean, 2 lines):** Removed the `!s.inFlow` guard and extended the "followed by blank" check to also accept flow indicators (`}`, `]`, `,`, etc.) after `?` in flow context — matching the `:` value indicator's existing logic:
+
+```lean
+-- Before:  if c == '?' && !s.inFlow then
+--            let isKey := match next with | some n => isBlank n | none => true
+-- After:
+if c == '?' then
+  let isKey := match next with
+    | some n => isBlank n || (s.inFlow && isFlowIndicator n)
+    | none => true
+```
+
+This allows `?}` and `?,` to be recognized as key indicators in flow context (e.g., the empty explicit key `? }` in example 7.16).
+
+#### Final Results: 132/132
+
+After the fix, both pipelines achieve identical 100% spec coverage:
+
+| Pipeline | Result |
+|----------|--------|
+| Old parser (`Parser.Document.parseYaml`) | 132/132 |
+| Scanner/parser (`TokenParser.parseYaml`) | 132/132 |
+
+All other test suites remain green (33/33 scanner tests, 17/17 unit tests, 10/10 iterator tests, 255 build jobs clean).
+
+#### Reflections
+
+**Spec examples as a scanner validation tool.** The 132 spec examples exercise YAML features (explicit keys, multi-document streams, BOM handling, all escape sequences, block scalars, flow nested structures) that the 33 hand-written scanner tests don't cover. Running them against the scanner pipeline immediately revealed the `?`-in-flow gap — a feature that none of the hand-written tests happened to exercise.
+
+**The `!s.inFlow` guard pattern.** The block entry (`-`) correctly uses `!s.inFlow` because block sequences cannot start inside flow collections. But the explicit key indicator (`?`) is valid in both block and flow contexts — the scanner was overly conservative. This is exactly the kind of subtle spec compliance issue that systematic testing catches.
+
+**Two-line fix for a spec gap.** Removing the `!s.inFlow` guard and extending the next-character check to include flow indicators was a minimal, targeted fix. The `scanKey` function already handled both flow and block contexts correctly (it conditionally pushes indent only when `!s.inFlow`), so the dispatch was the only place that needed changing.
+
+</details>
+
 ### Spec Example 100% — Final Two Gaps Closed (2026-02-26)
 
 <details>
@@ -2076,6 +2142,7 @@ lake exe validationtests     # Structural validation tests (135)
 lake exe demo                # Demo examples (7)
 lake exe flowregressioncheck # Flow regression diagnostics (11)
 lake exe specexamples        # YAML 1.2.2 spec examples (132 from §2–§10)
+lake exe scannerspecexamples  # Same 132 examples via Phase 9 scanner/parser
 
 # Re-extract spec examples from yaml.org (requires curl)
 lake build extractSpecExamples && ./.lake/build/bin/extractSpecExamples
@@ -2216,7 +2283,9 @@ Both passes are **pure functions** with no monadic state — the scanner uses
 | `TokenParser.lean` | 426 | Token → AST: `ParseState`, recursive descent via `mutual ... end` block (6 mutually recursive `partial def`s: `parseNode`, `parseBlockSequence`, `parseBlockMapping`, `parseFlowSequence`, `parseFlowMapping`, `parseSinglePairMapping`), directives, documents, `parseYaml : String → Except String (Array YamlDocument)` |
 | `Tests/ScannerTests.lean` | 213 | 33 end-to-end tests across 8 categories (scanner basics, plain/quoted scalars, block sequences/mappings, flow collections, document markers, anchors/aliases, `b: x: y` regression, escape sequences) |
 | `Tests/ScannerTests/Runner.lean` | 6 | Standalone test runner |
-| **Total** | **1825** | |
+| `Tests/ScannerSpecExamples.lean` | 119 | 132 YAML 1.2.2 spec examples via scanner/parser pipeline (mirrors `SpecExamples.lean`, uses `TokenParser.parseYaml`) |
+| `Tests/ScannerSpecExamples/Runner.lean` | 8 | Standalone test runner |
+| **Total** | **1952** | |
 
 **Original estimate was 3250 lines.** Actual implementation is 44% smaller because:
 - Token type, stream, and classification fit in one file (not three)
