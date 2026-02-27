@@ -15,7 +15,7 @@
 --- Basic block aliases ---
   ✓ alias resolves to anchored value
   ✓ alias value is correct
-  ✓ undefined alias fails
+  ✗ undefined alias fails
 
 --- Block collection anchors ---
   ✓ anchor on block sequence
@@ -42,7 +42,7 @@
 --- Anchor map behavior ---
   ✓ multiple anchors: *x
   ✓ multiple anchors: *y
-  ✓ anchor redefinition uses latest
+  ✗ anchor redefinition uses latest
 
 --- YAML spec examples ---
   ✓ Ex 2.10: hr value
@@ -54,6 +54,7 @@
 
 --- Document scope (§3.2.2.2) ---
   ✓ first doc parses
-  ✓ anchor does not leak across docs
+  ✗ anchor does not leak across docs: expected 1 doc (second should fail), got 2
 
-=== Results: 33/33 passed ===
+=== Results: 30/33 passed ===
+    3 FAILED

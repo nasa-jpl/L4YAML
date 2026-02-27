@@ -15,11 +15,11 @@ Test distribution by stage:
 Running all tests for HTML report...
 ------------------------------------------------------------
   [1/406] 229Q ✓
-  [2/406] 236B ✓ (expected fail)
+  [2/406] 236B ⚠ unexpected pass
   [3/406] 26DV ✓
   [4/406] 27NA ○ YAML 1.3 specific
   [5/406] 2AUY ✓
-  [6/406] 2CMS ✓ (expected fail)
+  [6/406] 2CMS ⚠ unexpected pass
   [7/406] 2EBW ✓
   [8/406] 2G84 ✓ (expected fail)
   [9/406] 2G84 ✓ (expected fail)
@@ -34,7 +34,7 @@ Running all tests for HTML report...
   [18/406] 36F6 ✓
   [19/406] 3ALJ ✓
   [20/406] 3GZX ✓
-  [21/406] 3HFZ ✓ (expected fail)
+  [21/406] 3HFZ ⚠ unexpected pass
   [22/406] 3MYT ✓
   [23/406] 3R3P ✓
   [24/406] 3RLN ✓
@@ -46,12 +46,12 @@ Running all tests for HTML report...
   [30/406] 3UYS ✓
   [31/406] 4ABK ✓
   [32/406] 4CQQ ✓
-  [33/406] 4EJS ✓ (expected fail)
+  [33/406] 4EJS ⚠ unexpected pass
   [34/406] 4FJ6 ✓
   [35/406] 4GC6 ○ YAML 1.3 specific
-  [36/406] 4H7K ✓ (expected fail)
-  [37/406] 4HVU ✓ (expected fail)
-  [38/406] 4JVG ✓ (expected fail)
+  [36/406] 4H7K ⚠ unexpected pass
+  [37/406] 4HVU ⚠ unexpected pass
+  [38/406] 4JVG ⚠ unexpected pass
   [39/406] 4MUZ ✓
   [40/406] 4MUZ ✓
   [41/406] 4MUZ ✓
@@ -72,15 +72,15 @@ Running all tests for HTML report...
   [56/406] 5C5M ✓
   [57/406] 5GBF ✓
   [58/406] 5KJE ✓
-  [59/406] 5LLU ✓ (expected fail)
+  [59/406] 5LLU ⚠ unexpected pass
   [60/406] 5MUD ✓
   [61/406] 5NYZ ✓
   [62/406] 5T43 ✓
-  [63/406] 5TRB ✓ (expected fail)
+  [63/406] 5TRB ⚠ unexpected pass
   [64/406] 5TYM ✓
-  [65/406] 5U3A ✓ (expected fail)
+  [65/406] 5U3A ⚠ unexpected pass
   [66/406] 5WE3 ✓
-  [67/406] 62EZ ✓ (expected fail)
+  [67/406] 62EZ ⚠ unexpected pass
   [68/406] 652Z ✓
   [69/406] 65WH ✓
   [70/406] 6BCT ✓
@@ -91,13 +91,13 @@ Running all tests for HTML report...
   [75/406] 6H3V ✓
   [76/406] 6HB6 ✓
   [77/406] 6JQW ✓
-  [78/406] 6JTT ✓ (expected fail)
+  [78/406] 6JTT ⚠ unexpected pass
   [79/406] 6JWB ✓
   [80/406] 6KGN ✓
   [81/406] 6LVF ○ YAML 1.3 specific
   [82/406] 6M2F ✓
   [83/406] 6PBE ✓
-  [84/406] 6S55 ✓ (expected fail)
+  [84/406] 6S55 ⚠ unexpected pass
   [85/406] 6SLA ✓
   [86/406] 6VJK ○ YAML 1.3 specific
   [87/406] 6WLZ ○ YAML 1.3 specific
@@ -111,8 +111,8 @@ Running all tests for HTML report...
   [95/406] 7BMT ○ YAML 1.3 specific
   [96/406] 7BUB ✓
   [97/406] 7FWL ✓
-  [98/406] 7LBH ✓ (expected fail)
-  [99/406] 7MNF ✓ (expected fail)
+  [98/406] 7LBH ⚠ unexpected pass
+  [99/406] 7MNF ⚠ unexpected pass
   [100/406] 7T8X ○ YAML 1.3 specific
   [101/406] 7TMG ✓
   [102/406] 7W2P ✓
@@ -126,7 +126,7 @@ Running all tests for HTML report...
   [110/406] 8MK2 ○ YAML 1.3 specific
   [111/406] 8QBE ✓
   [112/406] 8UDB ✓
-  [113/406] 8XDJ ✓ (expected fail)
+  [113/406] 8XDJ ⚠ unexpected pass
   [114/406] 8XYN ✓
   [115/406] 93JH ✓
   [116/406] 93WF ○ YAML 1.3 specific
@@ -135,20 +135,20 @@ Running all tests for HTML report...
   [119/406] 96NN ✓
   [120/406] 98YD ✓
   [121/406] 9BXH ✓
-  [122/406] 9C9N ✓ (expected fail)
-  [123/406] 9CWY ✓ (expected fail)
+  [122/406] 9C9N ⚠ unexpected pass
+  [123/406] 9CWY ⚠ unexpected pass
   [124/406] 9DXL ○ YAML 1.3 specific
   [125/406] 9FMG ✓
-  [126/406] 9HCY ✓ (expected fail)
+  [126/406] 9HCY ⚠ unexpected pass
   [127/406] 9J7A ✓
-  [128/406] 9JBA ✓ (expected fail)
+  [128/406] 9JBA ⚠ unexpected pass
   [129/406] 9KAX ○ YAML 1.3 specific
-  [130/406] 9KBC ✓ (expected fail)
-  [131/406] 9MAG ✓ (expected fail)
-  [132/406] 9MMA ✓ (expected fail)
+  [130/406] 9KBC ⚠ unexpected pass
+  [131/406] 9MAG ⚠ unexpected pass
+  [132/406] 9MMA ⚠ unexpected pass
   [133/406] 9MMW ✓
   [134/406] 9MQT ✓
-  [135/406] 9MQT ✓ (expected fail)
+  [135/406] 9MQT ⚠ unexpected pass
   [136/406] 9SA2 ✓
   [137/406] 9SHH ✓
   [138/406] 9TFX ○ YAML 1.3 specific
@@ -163,27 +163,27 @@ Running all tests for HTML report...
   [147/406] AZ63 ✓
   [148/406] AZW3 ✓
   [149/406] B3HG ○ YAML 1.3 specific
-  [150/406] B63P ✓ (expected fail)
-  [151/406] BD7L ✓ (expected fail)
+  [150/406] B63P ⚠ unexpected pass
+  [151/406] BD7L ⚠ unexpected pass
   [152/406] BEC7 ✓
-  [153/406] BF9H ✓ (expected fail)
-  [154/406] BS4K ✓ (expected fail)
+  [153/406] BF9H ⚠ unexpected pass
+  [154/406] BS4K ⚠ unexpected pass
   [155/406] BU8L ○ YAML 1.3 specific
   [156/406] C2DT ✓
-  [157/406] C2SP ✓ (expected fail)
+  [157/406] C2SP ⚠ unexpected pass
   [158/406] C4HZ ✓
   [159/406] CC74 ✓
   [160/406] CFD4 ✓
-  [161/406] CML9 ✓ (expected fail)
+  [161/406] CML9 ⚠ unexpected pass
   [162/406] CN3R ✓
   [163/406] CPZ3 ✓
   [164/406] CQ3W ✓ (expected fail)
   [165/406] CT4Q ✓
-  [166/406] CTN5 ✓ (expected fail)
+  [166/406] CTN5 ⚠ unexpected pass
   [167/406] CUP7 ✓
-  [168/406] CVW2 ✓ (expected fail)
-  [169/406] CXX2 ✓ (expected fail)
-  [170/406] D49Q ✓ (expected fail)
+  [168/406] CVW2 ⚠ unexpected pass
+  [169/406] CXX2 ⚠ unexpected pass
+  [170/406] D49Q ⚠ unexpected pass
   [171/406] D83L ✓
   [172/406] D88J ✓
   [173/406] D9TU ✓
@@ -198,22 +198,22 @@ Running all tests for HTML report...
   [182/406] DFF7 ✓
   [183/406] DHP8 ✓
   [184/406] DK3J ✓
-  [185/406] DK4H ✓ (expected fail)
+  [185/406] DK4H ⚠ unexpected pass
   [186/406] DK95 ✓
-  [187/406] DK95 ✓ (expected fail)
+  [187/406] DK95 ⚠ unexpected pass
   [188/406] DK95 ✓
   [189/406] DK95 ✓
   [190/406] DK95 ✓
   [191/406] DK95 ✓
-  [192/406] DK95 ✓ (expected fail)
+  [192/406] DK95 ⚠ unexpected pass
   [193/406] DK95 ✓
   [194/406] DK95 ✓
-  [195/406] DMG6 ✓ (expected fail)
+  [195/406] DMG6 ⚠ unexpected pass
   [196/406] DWX9 ○ YAML 1.3 specific
   [197/406] E76Z ✓
-  [198/406] EB22 ✓ (expected fail)
+  [198/406] EB22 ⚠ unexpected pass
   [199/406] EHF6 ✓
-  [200/406] EW3V ✓ (expected fail)
+  [200/406] EW3V ⚠ unexpected pass
   [201/406] EX5H ○ YAML 1.3 specific
   [202/406] EXG3 ○ YAML 1.3 specific
   [203/406] F2C7 ✓
@@ -229,23 +229,23 @@ Running all tests for HTML report...
   [213/406] FUP4 ✓
   [214/406] G4RS ✓
   [215/406] G5U8 ✓ (expected fail)
-  [216/406] G7JE ✓ (expected fail)
+  [216/406] G7JE ⚠ unexpected pass
   [217/406] G992 ○ YAML 1.3 specific
-  [218/406] G9HC ✓ (expected fail)
-  [219/406] GDY7 ✓ (expected fail)
+  [218/406] G9HC ⚠ unexpected pass
+  [219/406] GDY7 ⚠ unexpected pass
   [220/406] GH63 ✓
-  [221/406] GT5M ✓ (expected fail)
+  [221/406] GT5M ⚠ unexpected pass
   [222/406] H2RW ✓
   [223/406] H3Z8 ✓
-  [224/406] H7J7 ✓ (expected fail)
-  [225/406] H7TQ ✓ (expected fail)
+  [224/406] H7J7 ⚠ unexpected pass
+  [225/406] H7TQ ⚠ unexpected pass
   [226/406] HM87 ✓
   [227/406] HM87 ✓
   [228/406] HMK4 ✓
   [229/406] HMQ5 ✓
   [230/406] HRE5 ✓ (expected fail)
   [231/406] HS5T ✓
-  [232/406] HU3P ✓ (expected fail)
+  [232/406] HU3P ⚠ unexpected pass
   [233/406] HWV9 ✓
   [234/406] J3BT ✓
   [235/406] J5UC ✓
@@ -256,12 +256,12 @@ Running all tests for HTML report...
   [240/406] JEF9 ✓
   [241/406] JEF9 ✓
   [242/406] JHB9 ✓
-  [243/406] JKF3 ✓ (expected fail)
+  [243/406] JKF3 ⚠ unexpected pass
   [244/406] JQ4R ✓
   [245/406] JR7V ✓
   [246/406] JS2J ✓
   [247/406] JTV5 ✓
-  [248/406] JY7Z ✓ (expected fail)
+  [248/406] JY7Z ⚠ unexpected pass
   [249/406] K3WX ✓
   [250/406] K4SU ✓
   [251/406] K527 ○ YAML 1.3 specific
@@ -272,7 +272,7 @@ Running all tests for HTML report...
   [256/406] KH5V ✓
   [257/406] KK5P ✓
   [258/406] KMK3 ✓
-  [259/406] KS4U ✓ (expected fail)
+  [259/406] KS4U ⚠ unexpected pass
   [260/406] KSS4 ○ YAML 1.3 specific
   [261/406] L24T ✓
   [262/406] L24T ✓
@@ -280,7 +280,7 @@ Running all tests for HTML report...
   [264/406] L94M ✓
   [265/406] L9U5 ✓
   [266/406] LE5A ✓
-  [267/406] LHL4 ✓ (expected fail)
+  [267/406] LHL4 ⚠ unexpected pass
   [268/406] LP6E ✓
   [269/406] LQZ7 ✓
   [270/406] LX3P ○ YAML 1.3 specific
@@ -294,8 +294,8 @@ Running all tests for HTML report...
   [278/406] M7NX ✓
   [279/406] M9B4 ○ YAML 1.3 specific
   [280/406] MJS9 ○ YAML 1.3 specific
-  [281/406] MUS6 ✓ (expected fail)
-  [282/406] MUS6 ✓ (expected fail)
+  [281/406] MUS6 ⚠ unexpected pass
+  [282/406] MUS6 ⚠ unexpected pass
   [283/406] MUS6 ✓
   [284/406] MUS6 ✓
   [285/406] MUS6 ✓
@@ -304,8 +304,8 @@ Running all tests for HTML report...
   [288/406] MXS3 ✓
   [289/406] MYW6 ○ YAML 1.3 specific
   [290/406] MZX3 ✓
-  [291/406] N4JP ✓ (expected fail)
-  [292/406] N782 ✓ (expected fail)
+  [291/406] N4JP ⚠ unexpected pass
+  [292/406] N782 ⚠ unexpected pass
   [293/406] NAT4 ✓
   [294/406] NB6Z ✓
   [295/406] NHX8 ✓
@@ -313,29 +313,29 @@ Running all tests for HTML report...
   [297/406] NKF9 ✓
   [298/406] NP9H ✓
   [299/406] P2AD ✓
-  [300/406] P2EQ ✓ (expected fail)
+  [300/406] P2EQ ⚠ unexpected pass
   [301/406] P76L ✓
   [302/406] P94K ✓
   [303/406] PBJ2 ✓
   [304/406] PRH3 ✓
   [305/406] PUW8 ✓
   [306/406] PW8X ✓
-  [307/406] Q4CL ✓ (expected fail)
+  [307/406] Q4CL ⚠ unexpected pass
   [308/406] Q5MG ✓
   [309/406] Q88A ✓
   [310/406] Q8AD ○ YAML 1.3 specific
   [311/406] Q9WF ○ YAML 1.3 specific
-  [312/406] QB6E ✓ (expected fail)
+  [312/406] QB6E ⚠ unexpected pass
   [313/406] QF4Y ✓
-  [314/406] QLJ7 ✓ (expected fail)
+  [314/406] QLJ7 ⚠ unexpected pass
   [315/406] QT73 ✓
   [316/406] R4YG ✓
   [317/406] R52L ✓
-  [318/406] RHX7 ✓ (expected fail)
+  [318/406] RHX7 ⚠ unexpected pass
   [319/406] RLU9 ✓
   [320/406] RR7F ✓
   [321/406] RTP8 ✓
-  [322/406] RXY3 ✓ (expected fail)
+  [322/406] RXY3 ⚠ unexpected pass
   [323/406] RZP5 ○ YAML 1.3 specific
   [324/406] RZT7 ✓
   [325/406] S3PD ✓
@@ -343,31 +343,31 @@ Running all tests for HTML report...
   [327/406] S4JQ ✓
   [328/406] S4T7 ✓
   [329/406] S7BG ✓
-  [330/406] S98Z ✓ (expected fail)
+  [330/406] S98Z ⚠ unexpected pass
   [331/406] S9E8 ✓
   [332/406] SBG9 ✓
-  [333/406] SF5V ✓ (expected fail)
+  [333/406] SF5V ⚠ unexpected pass
   [334/406] SKE5 ✓
   [335/406] SM9W ✓
   [336/406] SM9W ✓
-  [337/406] SR86 ✓ (expected fail)
+  [337/406] SR86 ⚠ unexpected pass
   [338/406] SSW6 ○ YAML 1.3 specific
-  [339/406] SU5Z ✓ (expected fail)
-  [340/406] SU74 ✓ (expected fail)
-  [341/406] SY6V ✓ (expected fail)
+  [339/406] SU5Z ⚠ unexpected pass
+  [340/406] SU74 ⚠ unexpected pass
+  [341/406] SY6V ⚠ unexpected pass
   [342/406] SYW4 ✓
   [343/406] T26H ○ YAML 1.3 specific
   [344/406] T4YY ○ YAML 1.3 specific
   [345/406] T5N4 ○ YAML 1.3 specific
-  [346/406] T833 ✓ (expected fail)
-  [347/406] TD5N ✓ (expected fail)
+  [346/406] T833 ⚠ unexpected pass
+  [347/406] TD5N ⚠ unexpected pass
   [348/406] TE2A ✓
   [349/406] TL85 ✓
   [350/406] TS54 ○ YAML 1.3 specific
   [351/406] U3C3 ✓
   [352/406] U3XV ○ YAML 1.3 specific
-  [353/406] U44R ✓ (expected fail)
-  [354/406] U99R ✓ (expected fail)
+  [353/406] U44R ⚠ unexpected pass
+  [354/406] U99R ⚠ unexpected pass
   [355/406] U9NS ✓
   [356/406] UDM2 ✓
   [357/406] UDR7 ✓
@@ -379,50 +379,50 @@ Running all tests for HTML report...
   [363/406] UV7Q ✓
   [364/406] V55R ✓
   [365/406] V9D5 ✓
-  [366/406] VJP3 ✓ (expected fail)
+  [366/406] VJP3 ⚠ unexpected pass
   [367/406] VJP3 ✓
   [368/406] W42U ✓
   [369/406] W4TN ○ YAML 1.3 specific
   [370/406] W5VH ○ YAML 1.3 specific
-  [371/406] W9L4 ✓ (expected fail)
+  [371/406] W9L4 ⚠ unexpected pass
   [372/406] WZ62 ✓
   [373/406] X38W ✓
-  [374/406] X4QW ✓ (expected fail)
+  [374/406] X4QW ⚠ unexpected pass
   [375/406] X8DW ✓
   [376/406] XLQ9 ✓
   [377/406] XV9V ○ YAML 1.3 specific
   [378/406] XW4D ○ YAML 1.3 specific
   [379/406] Y2GN ✓
-  [380/406] Y79Y ✓ (expected fail)
+  [380/406] Y79Y ⚠ unexpected pass
   [381/406] Y79Y ✓
   [382/406] Y79Y ✓
-  [383/406] Y79Y ✓ (expected fail)
-  [384/406] Y79Y ✓ (expected fail)
-  [385/406] Y79Y ✓ (expected fail)
-  [386/406] Y79Y ✓ (expected fail)
-  [387/406] Y79Y ✓ (expected fail)
-  [388/406] Y79Y ✓ (expected fail)
-  [389/406] Y79Y ✓ (expected fail)
+  [383/406] Y79Y ⚠ unexpected pass
+  [384/406] Y79Y ⚠ unexpected pass
+  [385/406] Y79Y ⚠ unexpected pass
+  [386/406] Y79Y ⚠ unexpected pass
+  [387/406] Y79Y ⚠ unexpected pass
+  [388/406] Y79Y ⚠ unexpected pass
+  [389/406] Y79Y ⚠ unexpected pass
   [390/406] Y79Y ✓
   [391/406] YD5X ✓
   [392/406] YJV2 ✓ (expected fail)
   [393/406] Z67P ○ YAML 1.3 specific
   [394/406] Z9M4 ✓
-  [395/406] ZCZ6 ✓ (expected fail)
+  [395/406] ZCZ6 ⚠ unexpected pass
   [396/406] ZF4X ✓
   [397/406] ZH7C ✓
   [398/406] ZK9H ✓
-  [399/406] ZL4Z ✓ (expected fail)
-  [400/406] ZVH3 ✓ (expected fail)
+  [399/406] ZL4Z ⚠ unexpected pass
+  [400/406] ZVH3 ⚠ unexpected pass
   [401/406] ZWK4 ✓
-  [402/406] ZXT5 ✓ (expected fail)
+  [402/406] ZXT5 ⚠ unexpected pass
   [403/406] ZYU8 ✓
   [404/406] ZYU8 ✓
-  [405/406] ZYU8 ✓ (expected fail)
+  [405/406] ZYU8 ⚠ unexpected pass
   [406/406] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 354/406 (87.000000%)
+Correct: 267/406 (65.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 17/17
@@ -430,20 +430,20 @@ Running verified test suites...
   Quoted Folding Tests: ✓ 34/34
   Layer 1 Verification Tests: ✓ 138/138
   String Lemma Tests: ✓ 129/129
-  Anchor & Alias Tests: ✓ 33/33
+  Anchor & Alias Tests: ✗ 30/33
   Tag Tests: ✓ 44/44
-  Explicit Key Tests: ✓ 66/66
-  Flow Completeness Tests: ✓ 88/88
+  Explicit Key Tests: ✗ 39/55
+  Flow Completeness Tests: ✗ 85/86
   CharClass Correspondence Tests: ✓ 224/224
-  Structural Validation Tests: ✓ 135/135
+  Structural Validation Tests: ✗ 119/135
   Completeness Tests: ✓ 66/66
   Dump Round-Trip Tests: ✓ 102/102
-  Raw Parse / Compose Tests: ✓ 29/29
+  Raw Parse / Compose Tests: ✗ 26/29
   YAML 1.2.2 Spec Examples: ✓ 132/132
   Schema ↔ Dump Integration: ✓ 68/68
   Demo: ✓ 7/7
 
-Verified: 1337/1337
+Verified: 1285/1324
 
 Generating HTML reports...
   wrote docs/index.html

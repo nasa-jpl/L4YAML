@@ -1,15 +1,15 @@
 {
-  "date": "2026-02-27T12:50:12-0800",
+  "date": "2026-02-27T14:56:50-0800",
   "overall": {
-    "correct": 354,
-    "correctRate": 87.192118,
-    "expectedFail": 95,
+    "correct": 267,
+    "correctRate": 65.763546,
+    "expectedFail": 8,
     "failed": 0,
     "passed": 259,
     "skipped": 52,
     "timeout": 0,
     "total": 406,
-    "unexpectedPass": 0
+    "unexpectedPass": 87
   },
   "stages": {
     "advanced": {
@@ -24,48 +24,48 @@
       "unexpectedPass": 0
     },
     "block": {
-      "correct": 99,
-      "correctRate": 100,
-      "expectedFail": 15,
+      "correct": 85,
+      "correctRate": 85.858585,
+      "expectedFail": 1,
       "failed": 0,
       "passed": 84,
       "skipped": 0,
       "timeout": 0,
       "total": 99,
-      "unexpectedPass": 0
+      "unexpectedPass": 14
     },
     "document": {
-      "correct": 17,
-      "correctRate": 70.833333,
-      "expectedFail": 2,
+      "correct": 15,
+      "correctRate": 62.5,
+      "expectedFail": 0,
       "failed": 0,
       "passed": 15,
       "skipped": 7,
       "timeout": 0,
       "total": 24,
-      "unexpectedPass": 0
+      "unexpectedPass": 2
     },
     "error": {
-      "correct": 74,
-      "correctRate": 100,
-      "expectedFail": 74,
+      "correct": 4,
+      "correctRate": 5.405405,
+      "expectedFail": 4,
       "failed": 0,
       "passed": 0,
       "skipped": 0,
       "timeout": 0,
       "total": 74,
-      "unexpectedPass": 0
+      "unexpectedPass": 70
     },
     "flow": {
-      "correct": 46,
-      "correctRate": 100,
-      "expectedFail": 3,
+      "correct": 45,
+      "correctRate": 97.826086,
+      "expectedFail": 2,
       "failed": 0,
       "passed": 43,
       "skipped": 0,
       "timeout": 0,
       "total": 46,
-      "unexpectedPass": 0
+      "unexpectedPass": 1
     },
     "scalar": {
       "correct": 54,
@@ -88,10 +88,10 @@
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "236B",
       "name": "Invalid value after mapping",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -116,10 +116,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "2CMS",
       "name": "Invalid mapping in plain multiline",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -221,10 +221,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "3HFZ",
       "name": "Invalid content after document end marker",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -305,10 +305,10 @@
       "stage": "scalar"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "4EJS",
       "name": "Invalid tabs as indendation in a mapping",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -326,24 +326,24 @@
       "stage": "scalar"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "4H7K",
       "name": "Flow sequence with invalid extra closing bracket",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "4HVU",
       "name": "Wrong indendation in Sequence",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "4JVG",
       "name": "Scalar value with two anchors",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -487,10 +487,10 @@
       "stage": "flow"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "5LLU",
       "name": "Block scalar with wrong indented line after spaces only",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -515,10 +515,10 @@
       "stage": "flow"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "5TRB",
       "name": "Invalid document-start marker in doublequoted tring",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -529,10 +529,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "5U3A",
       "name": "Sequence on same Line as Mapping Key",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -543,10 +543,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "62EZ",
       "name": "Invalid block mapping key on same line as previous key",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -620,10 +620,10 @@
       "stage": "scalar"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "6JTT",
       "name": "Flow sequence without closing bracket",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -662,10 +662,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "6S55",
       "name": "Invalid scalar at the end of sequence",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -760,17 +760,17 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "7LBH",
       "name": "Multiline double quoted implicit keys",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "7MNF",
       "name": "Missing colon",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -865,10 +865,10 @@
       "stage": "flow"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "8XDJ",
       "name": "Comment in plain multiline value",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -928,17 +928,17 @@
       "stage": "flow"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "9C9N",
       "name": "Wrong indented flow sequence",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "9CWY",
       "name": "Invalid scalar at the end of mapping",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -956,10 +956,10 @@
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "9HCY",
       "name": "Need document footer before directives",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -970,10 +970,10 @@
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "9JBA",
       "name": "Invalid comment after end of flow sequence",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -984,24 +984,24 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "9KBC",
       "name": "Mapping starting at --- line",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "9MAG",
       "name": "Flow sequence with invalid comma at the beginning",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "9MMA",
       "name": "Directive by itself with no document",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1019,10 +1019,10 @@
       "stage": "scalar"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "9MQT",
       "name": "",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "block"
     },
     {
@@ -1124,17 +1124,17 @@
       "stage": "scalar"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "B63P",
       "name": "Directive without document",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "BD7L",
       "name": "Invalid mapping after sequence",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1145,17 +1145,17 @@
       "stage": "document"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "BF9H",
       "name": "Trailing comment in multiline plain scalar",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "BS4K",
       "name": "Comment between plain scalar lines",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1173,10 +1173,10 @@
       "stage": "flow"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "C2SP",
       "name": "Flow Mapping Key on two lines",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1201,10 +1201,10 @@
       "stage": "flow"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "CML9",
       "name": "Missing comma in flow",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1236,10 +1236,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "CTN5",
       "name": "Flow sequence with invalid extra comma",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1250,24 +1250,24 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "CVW2",
       "name": "Invalid comment after comma",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "CXX2",
       "name": "Mapping with anchor on document start line",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "D49Q",
       "name": "Multiline single quoted implicit keys",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1369,10 +1369,10 @@
       "stage": "scalar"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "DK4H",
       "name": "Implicit key followed by newline",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1383,10 +1383,10 @@
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "DK95",
       "name": "",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "block"
     },
     {
@@ -1418,10 +1418,10 @@
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "DK95",
       "name": "",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "block"
     },
     {
@@ -1439,10 +1439,10 @@
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "DMG6",
       "name": "Wrong indendation in Map",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1460,10 +1460,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "EB22",
       "name": "Missing document-end marker before directive",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1474,10 +1474,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "EW3V",
       "name": "Wrong indendation in mapping",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1586,10 +1586,10 @@
       "stage": "flow"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "G7JE",
       "name": "Multiline implicit keys",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1600,17 +1600,17 @@
       "stage": "scalar"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "G9HC",
       "name": "Invalid anchor in zero indented sequence",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "GDY7",
       "name": "Comment that looks like a mapping key",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1621,10 +1621,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "GT5M",
       "name": "Node anchor in sequence",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1642,17 +1642,17 @@
       "stage": "scalar"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "H7J7",
       "name": "Node anchor not indented",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "H7TQ",
       "name": "Extra words on %YAML directive",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "document"
     },
     {
@@ -1698,10 +1698,10 @@
       "stage": "scalar"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "HU3P",
       "name": "Invalid Mapping in plain scalar",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1775,10 +1775,10 @@
       "stage": "document"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "JKF3",
       "name": "Multiline unidented double quoted block key",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "block"
     },
     {
@@ -1810,10 +1810,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "JY7Z",
       "name": "Trailing content that looks like a mapping",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1887,10 +1887,10 @@
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "KS4U",
       "name": "Invalid item after end of flow sequence",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -1943,10 +1943,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "LHL4",
       "name": "Invalid tag",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -2041,17 +2041,17 @@
       "stage": "scalar"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "MUS6",
       "name": "Directive variants",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "document"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "MUS6",
       "name": "",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "block"
     },
     {
@@ -2111,17 +2111,17 @@
       "stage": "scalar"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "N4JP",
       "name": "Bad indentation in mapping",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "N782",
       "name": "Invalid document markers in flow style",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -2174,10 +2174,10 @@
       "stage": "scalar"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "P2EQ",
       "name": "Invalid sequene item on same line as previous item",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -2223,10 +2223,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "Q4CL",
       "name": "Trailing content after quoted value",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -2258,10 +2258,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "QB6E",
       "name": "Wrong indented multiline quoted scalar",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -2272,10 +2272,10 @@
       "stage": "flow"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "QLJ7",
       "name": "Tag shorthand used in documents but only defined in the first",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -2300,10 +2300,10 @@
       "stage": "flow"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "RHX7",
       "name": "YAML directive without document end marker",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -2328,10 +2328,10 @@
       "stage": "document"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "RXY3",
       "name": "Invalid document-end marker in single quoted string",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -2384,10 +2384,10 @@
       "stage": "scalar"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "S98Z",
       "name": "Block scalar with more spaces than first content line",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -2405,10 +2405,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "SF5V",
       "name": "Duplicate YAML directive",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -2433,10 +2433,10 @@
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "SR86",
       "name": "Anchor plus Alias",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -2447,24 +2447,24 @@
       "stage": "scalar"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "SU5Z",
       "name": "Comment without whitespace after doublequoted scalar",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "SU74",
       "name": "Anchor and alias as mapping key",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "SY6V",
       "name": "Anchor before sequence entry on same line",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -2496,17 +2496,17 @@
       "stage": "scalar"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "T833",
       "name": "Flow mapping missing a separating comma",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "TD5N",
       "name": "Invalid scalar after sequence",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -2545,17 +2545,17 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "U44R",
       "name": "Bad indentation in mapping (2)",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "U99R",
       "name": "Invalid comma in tag",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -2636,10 +2636,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "VJP3",
       "name": "Flow collections over many lines",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "flow"
     },
     {
@@ -2671,10 +2671,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "W9L4",
       "name": "Literal block scalar with more spaces in first line",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -2692,10 +2692,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "X4QW",
       "name": "Comment without whitespace after block scalar indicator",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -2734,10 +2734,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "Y79Y",
       "name": "Tabs in various contexts",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "block"
     },
     {
@@ -2755,52 +2755,52 @@
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "Y79Y",
       "name": "",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "Y79Y",
       "name": "",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "Y79Y",
       "name": "",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "Y79Y",
       "name": "",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "Y79Y",
       "name": "",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "Y79Y",
       "name": "",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "Y79Y",
       "name": "",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "block"
     },
     {
@@ -2839,10 +2839,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "ZCZ6",
       "name": "Invalid mapping in plain single line value",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -2867,17 +2867,17 @@
       "stage": "flow"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "ZL4Z",
       "name": "Invalid nested mapping",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "ZVH3",
       "name": "Wrong indented sequence item",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -2888,10 +2888,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "ZXT5",
       "name": "Implicit key followed by newline and adjacent value",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "error"
     },
     {
@@ -2909,10 +2909,10 @@
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "expected parse failure but succeeded",
       "id": "ZYU8",
       "name": "",
-      "outcome": "expected-fail",
+      "outcome": "unexpected-pass",
       "stage": "block"
     },
     {
@@ -2956,9 +2956,9 @@
         "total": 129
       },
       {
-        "allPass": true,
+        "allPass": false,
         "label": "Anchor & Alias Tests",
-        "passed": 33,
+        "passed": 30,
         "total": 33
       },
       {
@@ -2968,16 +2968,16 @@
         "total": 44
       },
       {
-        "allPass": true,
+        "allPass": false,
         "label": "Explicit Key Tests",
-        "passed": 66,
-        "total": 66
+        "passed": 39,
+        "total": 55
       },
       {
-        "allPass": true,
+        "allPass": false,
         "label": "Flow Completeness Tests",
-        "passed": 88,
-        "total": 88
+        "passed": 85,
+        "total": 86
       },
       {
         "allPass": true,
@@ -2986,9 +2986,9 @@
         "total": 224
       },
       {
-        "allPass": true,
+        "allPass": false,
         "label": "Structural Validation Tests",
-        "passed": 135,
+        "passed": 119,
         "total": 135
       },
       {
@@ -3004,9 +3004,9 @@
         "total": 102
       },
       {
-        "allPass": true,
+        "allPass": false,
         "label": "Raw Parse / Compose Tests",
-        "passed": 29,
+        "passed": 26,
         "total": 29
       },
       {
@@ -3028,7 +3028,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 1337,
-    "totalTests": 1337
+    "totalPassed": 1285,
+    "totalTests": 1324
   }
 }
