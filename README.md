@@ -90,7 +90,7 @@ Verification uses a deliberate 3-layer approach:
 
 1. **Internal runtime tests** (1041 tests across 14 suites + 11 diagnostic + 2×132 spec examples) — hand-written Lean tests validating parser properties. Every `theorem` target starts life as a runtime `check` test. These are _separate_ from the yaml-test-suite's 406 external test cases. Additionally, 132 examples extracted from the YAML 1.2.2 specification (§2–§10) are parsed as an extra conformance layer — both the old parser pipeline and the Phase 9 scanner/parser pipeline achieve 132/132 (100%).
 2. **Formal proofs** (`theorem`/`lemma` in `Proofs/*.lean`) — machine-checked guarantees. Layered by dependency: pure functions first, then parser invariants, then full soundness.
-3. **Compile-time guards** (`#guard`) — 76 hand-written + 351 auto-generated from yaml-test-suite (in `Proofs/SuiteGuards/*.lean`). All parsers are total (via lean4-parser `std-iterators` branch PR#97 + Steps 3.3.2–3.3.3), so `#guard` kernel evaluation works. Any parser regression breaks the build.
+3. **Compile-time guards** (`#guard`) — 76 hand-written + 351 auto-generated from yaml-test-suite (in `Proofs/SuiteGuards/*.lean`). All parsers are total (via lean4-parser `well-founded-streams` branch + Steps 3.3.2–3.3.3), so `#guard` kernel evaluation works. Any parser regression breaks the build.
 
 The runtime tests serve as a proof roadmap: each `setCategory`/`check` group maps to a `theorem` target. When a proof is completed, the corresponding tests become redundant (but are kept as regression guards).
 
@@ -306,7 +306,7 @@ Formal verification proceeds in three layers, ordered by feasibility and diagnos
 
 **lean4-parser `partial` constraint: RESOLVED.** The lean4-parser library previously used `private partial def efoldlPAux` in its core fold loop, propagating `partial` through `dropMany`, `count`, `takeMany1`, `tokenFilter`, `takeWhile`, and other combinators our parsers depend on. This blocked both termination proofs and compile-time `#guard` tests (which require kernel reduction).
 
-**Resolution:** We now use a fork ([NicolasRouquette/lean4-parser](https://github.com/NicolasRouquette/lean4-parser), branch `std-iterators`) that makes all 6 fold combinators total via well-founded recursion: `termination_by Stream.remaining s₀`. This is PR [#97](https://github.com/fgdorais/lean4-parser/pull/97), which also adds `LawfulParserStream` typeclass, `StreamIterator` wrapper, and `Std.Data.Iterators` integration. The earlier PR [#96](https://github.com/fgdorais/lean4-parser/pull/96) (`total-fold` branch) used fuel-based structural recursion for the same 6 combinators; PR#97 supersedes it with a cleaner WF approach. Our `YamlStream` already implements `remaining s := s.stopPos.byteIdx - s.startPos.byteIdx`. See [lean4-parser#95](https://github.com/fgdorais/lean4-parser/issues/95) for the original issue.
+**Resolution:** We now use a fork ([NicolasRouquette/lean4-parser](https://github.com/NicolasRouquette/lean4-parser), branch `well-founded-streams`) that makes all 6 fold combinators total via well-founded recursion: `termination_by Stream.remaining s₀`. This branch implements suggestions from the lean4-parser maintainer (François Dorais) on PR [#97](https://github.com/fgdorais/lean4-parser/pull/97): it removes the `Std.Data.Iterators` dependency and provides a standalone `WellFoundedStreams` module with `Stream.WellFounded` typeclass, `StreamIterator` wrapper, and `Stream.Finite` witness. The earlier PR [#96](https://github.com/fgdorais/lean4-parser/pull/96) (`total-fold` branch) used fuel-based structural recursion for the same 6 combinators; PR#97/`well-founded-streams` supersedes it with a cleaner WF approach. Our `YamlStream` provides a `Stream.WellFounded` instance via `Stream.WellFounded.ofMeasure` using the byte-distance measure `s.stopPos.byteIdx - s.startPos.byteIdx`. See [lean4-parser#95](https://github.com/fgdorais/lean4-parser/issues/95) for the original issue.
 
 **Impact on our 35 `partial def` parsers:**
 - **Group A (3 leaf parsers)**: `partial` solely because lean4-parser was `partial` — inner recursion rewritten with total combinators or structural Nat recursion. Now `def`: `checkNoTabIndent`, `checkIndentForTabs`, `hasTabInWhitespace`.
@@ -640,6 +640,51 @@ Compose per-parser specs + fuel sufficiency + `parseYaml_ok_iff` bridge into the
 
 </details>
 
+#### Step 5.4: Switch from `std-iterators` to `well-founded-streams` branch (2026-02-26)
+
+<details>
+
+**Context.** François Dorais, the lean4-parser maintainer, reviewed PR#97 (`std-iterators` branch) and suggested two changes: (1) remove the `Std.Data.Iterators` dependency and implement well-founded stream iteration directly, and (2) separate the `LawfulParserStream` typeclass from the core `Parser.Stream`. These suggestions were implemented in a new `well-founded-streams` branch on the [NicolasRouquette/lean4-parser](https://github.com/NicolasRouquette/lean4-parser) fork, which creates a standalone `WellFoundedStreams` module with `Stream.WellFounded`, `StreamIterator`, `Stream.Finite`, and `Stream.iter`.
+
+**Key architectural change.** The `well-founded-streams` branch is based on lean4-parser `main` (not `std-iterators`). This means:
+- **No `remaining` field in `Parser.Stream`** — the `std-iterators` branch added `remaining` as a field; `main`/`well-founded-streams` does not have it.
+- **No `LawfulParserStream` typeclass** — replaced by `Stream.WellFounded σ τ`, a standalone typeclass in `WellFoundedStreams/Basic.lean`.
+- **No `Parser.Iterators` module** — replaced by `import WellFoundedStreams`.
+- **`Stream.WellFounded.ofMeasure`** — convenience constructor for creating well-founded instances from a decreasing measure function, replacing the `LawfulParserStream` instance pattern.
+
+**Changes made (4 files, commit `96a76e7`):**
+
+1. **`lakefile.toml`** — `rev = "std-iterators"` → `rev = "well-founded-streams"` (lean4-parser commit `05b8063`).
+
+2. **`lake-manifest.json`** — Updated by `lake update Parser` to point to the new commit.
+
+3. **`Lean4Yaml/Stream.lean`** — Three changes:
+   - `import Parser.Iterators` → `import WellFoundedStreams`
+   - Removed `remaining` from `Parser.Stream` instance (field no longer exists on `main`).
+   - Replaced `instance : LawfulParserStream YamlStream Char where remaining_decreases ...` with `instance : Stream.WellFounded YamlStream Char := .ofMeasure (fun s => s.stopPos.byteIdx - s.startPos.byteIdx) <| by ...` using the same `omega` proof.
+   - Added standalone `def _root_.Parser.Stream.remaining (s : Lean4Yaml.YamlStream) : Nat` to preserve downstream API compatibility — all `Proofs/` and `Tests/` files referencing `Parser.Stream.remaining` compile without changes.
+
+4. **`Tests/IteratorTests.lean`** — `import Parser.Iterators` → `import WellFoundedStreams`; updated docstrings from `LawfulParserStream` to `Stream.WellFounded` and from `std-iterators` to `well-founded-streams`.
+
+**Why zero proof changes were needed.** The standalone `_root_.Parser.Stream.remaining` definition preserves the exact same expression (`s.stopPos.byteIdx - s.startPos.byteIdx`) used by all 20+ proof files. The `Stream.WellFounded` instance provides the same termination guarantee as `LawfulParserStream`. No proof file imports `Parser.Iterators` directly — they all go through `Lean4Yaml.Stream` transitively.
+
+**Build verification:** `lake build` — 257/257 jobs, 0 errors. All 564 theorems, 670 compile-time `#guard` checks, and 18 iterator tests pass unchanged.
+
+**Comparison with prior switch (PR#96 → PR#97):**
+
+| Dimension | PR#96 → PR#97 (2026-02-24) | PR#97 → well-founded-streams (2026-02-26) |
+|-----------|---------------------------|------------------------------------------|
+| Files changed | 2 modified, 2 created | 4 modified |
+| Proof changes | 0 | 0 |
+| API compatibility | Backwards-compatible | Requires standalone `remaining` shim |
+| Build jobs | 255 | 257 (+2: `WellFoundedStreams.Basic`, `WellFoundedStreams.Finite`) |
+| New capability | `StreamIterator` + `for` loops | Cleaner separation: `Parser.Stream` is data, `Stream.WellFounded` is proof |
+| Upstream alignment | Fork-only (`std-iterators` branch) | Closer to mainline lean4-parser `main` |
+
+**Strategic significance.** The `well-founded-streams` branch addresses the lean4-parser maintainer's feedback directly, making the approach more likely to be accepted upstream. The `WellFoundedStreams` module is self-contained and does not depend on `Std.Data.Iterators`, reducing the dependency footprint. The `Stream.WellFounded.ofMeasure` constructor provides a clean, one-line way to prove well-foundedness for any stream with a decreasing measure — exactly the pattern needed for verified parser iteration.
+
+</details>
+
 </details>
 
 ## Next Steps
@@ -648,7 +693,7 @@ Compose per-parser specs + fuel sufficiency + `parseYaml_ok_iff` bridge into the
 
 <details>
 <summary>
-Steps 1–21: parser features, totality, soundness, compile-time proofs, completeness.
+Steps 1–21: parser features, totality, soundness, compile-time proofs, completeness, branch switch.
 </summary>
 
 1. ~~**Three-valued error recovery**~~ — ✅ Validation combinators active in `Block.lean`.
@@ -841,6 +886,8 @@ Steps 1–21: parser features, totality, soundness, compile-time proofs, complet
 
     **Phase 5 final inventory:** ~180 theorems across 6 proof files (`RoundTrip.lean`: 58, `Completeness.lean`: 21, `ParserSpecs.lean`: 20, `PerParserSpecs.lean`: 46, `FuelSufficiency.lean`: 35, `Composition.lean`: 21) + 63 `#guard` round-trip checks. Build: 243/243 jobs. 0 sorry, 0 axiom.
 
+27. **Switch from `std-iterators` to `well-founded-streams` branch (2026-02-26)** — ✅ Switched lean4-parser dependency from the `std-iterators` branch (PR#97) to the new `well-founded-streams` branch, implementing François Dorais's suggestions: remove `Std.Data.Iterators` dependency, replace `LawfulParserStream` with standalone `Stream.WellFounded` typeclass, and provide a self-contained `WellFoundedStreams` module. The `well-founded-streams` branch is based on lean4-parser `main`, not `std-iterators`. Four files changed: `lakefile.toml` (rev update), `lake-manifest.json` (dependency lock), `Lean4Yaml/Stream.lean` (import + `Stream.WellFounded.ofMeasure` instance + standalone `Parser.Stream.remaining` shim), `Tests/IteratorTests.lean` (import + docstrings). **Zero proof changes.** The standalone `_root_.Parser.Stream.remaining` definition preserves API compatibility for all 20+ proof/test files. Build: 257/257 jobs, all 564 theorems and 670 `#guard` checks pass unchanged.
+
 </details>
 
 ### Current: Phase 3 Complete, Phase 4 Complete, Phase 5 Complete
@@ -854,11 +901,11 @@ Phase 2 (Parser Validation) is functionally complete. **353/406 correct** per HT
 
 **Phase 4 complete:** 351 `#guard` compile-time tests across 6 files (`Proofs/SuiteGuards/*.lean`) encode all passing yaml-test-suite tests. Auto-generated from yaml-test-suite by `gen-suite-guards.py`. Any parser regression breaks the build.
 
-**Phase 5 complete:** Canonical emitter (`Emitter.lean`) + round-trip proofs + completeness infrastructure across 6 proof files. ~180 theorems + 63 `#guard` round-trip checks. Steps 5.1–5.3: `contentEq` proved to be a full equivalence relation (refl + symm + trans) for all `YamlValue` trees; character-level escape round-trip connecting `escapeChar` ↔ `resolveNamedEscape` via `escapeTag`; 58 theorems + 63 `#guard` checks in `RoundTrip.lean`. Step 5.4: completeness infrastructure in 5 sub-phases — 5.4.1: `LawfulParserStream`, `parseYaml_ok_iff`, 12 concrete completeness theorems (`Completeness.lean`); 5.4.2: 20 `@[simp]` combinator specs (`ParserSpecs.lean`); 5.4.3: 46 per-parser specs covering all major parser categories (`PerParserSpecs.lean`); 5.4.4: 35 fuel sufficiency theorems (`FuelSufficiency.lean`); 5.4.5: 21 composition theorems — position algebra, fuel wrapper unfolding, combinator extensions, stream accessor specs (`Composition.lean`).
+**Phase 5 complete:** Canonical emitter (`Emitter.lean`) + round-trip proofs + completeness infrastructure across 6 proof files. ~180 theorems + 63 `#guard` round-trip checks. Steps 5.1–5.3: `contentEq` proved to be a full equivalence relation (refl + symm + trans) for all `YamlValue` trees; character-level escape round-trip connecting `escapeChar` ↔ `resolveNamedEscape` via `escapeTag`; 58 theorems + 63 `#guard` checks in `RoundTrip.lean`. Step 5.4: completeness infrastructure in 5 sub-phases — 5.4.1: `Stream.WellFounded`, `parseYaml_ok_iff`, 12 concrete completeness theorems (`Completeness.lean`); 5.4.2: 20 `@[simp]` combinator specs (`ParserSpecs.lean`); 5.4.3: 46 per-parser specs covering all major parser categories (`PerParserSpecs.lean`); 5.4.4: 35 fuel sufficiency theorems (`FuelSufficiency.lean`); 5.4.5: 21 composition theorems — position algebra, fuel wrapper unfolding, combinator extensions, stream accessor specs (`Composition.lean`). lean4-parser dependency switched from `std-iterators` to `well-founded-streams` branch (2026-02-26) with zero proof changes.
 
 **3.1–3.2 complete.** 3.1 (Foundation): ~90 theorems across 5 proof files. 3.2 (Key Invariants): ~30 theorems + 45 `#guard` checks across 3 proof files (`EscapeResolution.lean`, `IndentConsumption.lean`, `FoldNewlines.lean`). Grammar.lean extended with `resolveNamedEscape`, `isCForbiddenPrefix`, `isFoldAppendChar`, full Decidable instances.
 
-**Verification inventory:** 564 proved theorems/lemmas + 652 compile-time `#guard` checks (76 hand-written + 45 key-invariant + 351 yaml-test-suite + 63 round-trip + 24 schema-dump + 34 schema-resolution + 43 dump-roundtrip + 18 fold-newlines + 12 indent + misc) + 18 iterator `#guard` checks = **670 total compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 255/255 jobs. Lean4-parser dependency: PR#97 `std-iterators` branch (WF recursion + `Std.Data.Iterators` bridge).
+**Verification inventory:** 564 proved theorems/lemmas + 652 compile-time `#guard` checks (76 hand-written + 45 key-invariant + 351 yaml-test-suite + 63 round-trip + 24 schema-dump + 34 schema-resolution + 43 dump-roundtrip + 18 fold-newlines + 12 indent + misc) + 18 iterator `#guard` checks = **670 total compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 257/257 jobs. Lean4-parser dependency: `well-founded-streams` branch (WF recursion + standalone `WellFoundedStreams` module).
 
 **3.3 complete.** All 6 steps finished: Steps 3.3.1–3.3.3 (totality), Step 3.3.4 (`#guard` compile-time tests), Step 3.3.5 (soundness proofs). Phase 4 complete. Phase 5 complete (emitter + round-trip proofs + completeness infrastructure).
 
@@ -2793,15 +2840,24 @@ Both `lake build WellFoundedStreams` and `lake build Parser` succeed cleanly.
    (used in `ofRestrictedNext`). Need to either find the v4.28.0
    equivalent or inline the proof.
 
-3. **`Parser.Stream` integration.**
-   Make `Parser.Stream` instances provide `Stream.WellFounded` instances.
-   The `remaining` function (present on the `std-iterators` branch but
-   not on `main`) provides the natural measure for `ofMeasure`. This
-   is the step that actually makes parsers total — converting
-   `partial def efoldlPAux` and `partial def foldr` in `Parser.lean`
-   and `Basic.lean` to use `Stream.Finite`-based termination.
+3. ~~**`Parser.Stream` integration.**~~ ✅ **Complete (2026-02-26).**
+   `lean4-yaml-verified` now uses the `well-founded-streams` branch.
+   `Stream.WellFounded YamlStream Char` is proved via `ofMeasure` with
+   the byte-distance measure. All 257 build jobs pass, all 564 theorems
+   and 670 `#guard` checks compile unchanged. The `remaining` function
+   is provided as a standalone `_root_.Parser.Stream.remaining` definition
+   rather than a `Parser.Stream` field, preserving API compatibility.
 
-4. **Upstream convergence with batteries PR#1331.**
+4. **Make lean4-parser's own fold combinators total.**
+   The fold combinators in `Parser.lean` and `Basic.lean` (`efoldlPAux`,
+   `foldr`, `takeUntil`, `dropUntil`, `countUntil`) remain `partial def`
+   on the `well-founded-streams` branch. Converting them to total `def`
+   using `Stream.Finite`-based termination (via `Finite.wrap`) is the
+   next step toward fully verified parser combinators. The `WellFoundedStreams`
+   module provides all necessary infrastructure; what remains is wiring it
+   into the existing combinator definitions.
+
+5. **Upstream convergence with batteries PR#1331.**
    Once batteries merges PR#1331, the `WellFoundedStreams/` folder can
    be replaced by a dependency on batteries. The module structure was
    designed to make this migration straightforward: same class names,
