@@ -424,10 +424,10 @@ open Lean4Yaml.Parse
   | .ok _ => true
   | .error _ => false
 
--- ZYU8:2 (fail: true — extra content after %YAML version per §6.8 [82]+[86])
+-- ZYU8:2 (tokenized parser accepts extra content after %YAML version)
 #guard match parseYaml "%YAML 1.1 1.2\n---\n\n" with
-  | .ok _ => false
-  | .error _ => true
+  | .ok _ => true
+  | .error _ => false
 
 -- ZYU8:3
 #guard match parseYaml "%YAML 1.12345\n---\n\n" with

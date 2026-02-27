@@ -146,28 +146,31 @@ theorem skipBOM_noop (s : YamlStream)
 /-- If `yamlStream` succeeds on `ofString input` with no validation error,
     then `parseYamlRaw input = .ok docs`.
 
-    This is the forward direction of `parseYamlRaw_ok_iff`, packaged for
-    direct use in composition chains. -/
+    **P10.2**: This theorem linked the old `yamlStream` char-level parser to the
+    public API.  Now that `parseYamlRaw` delegates to `TokenParser.parseYamlRaw`,
+    the link between the old parser internals and the public API no longer holds.
+    This theorem will be removed or rewritten in P10.5 (Proof Migration — Rewrites).
+    -/
 theorem parseYamlRaw_of_yamlStream_ok (input : String) (docs : Array YamlDocument)
     (s' : YamlStream)
     (h_ys : yamlStream (YamlStream.ofString input) = .ok s' docs)
     (h_val : s'.validationError = none) :
     parseYamlRaw input = .ok docs := by
-  rw [parseYamlRaw_ok_iff]
-  exact ⟨s', by simp [parser_run_eq, h_ys], h_val⟩
+  sorry
 
 /-- If `yamlStream` succeeds on `ofString input` with no validation error,
     then `parseYaml input = .ok (docs.map YamlDocument.compose)`.
 
-    This is the forward direction of `parseYaml_ok_iff` composed with
-    `parseYamlRaw_ok_iff`, applying the Compose step (§3.1). -/
+    **P10.2**: Same as `parseYamlRaw_of_yamlStream_ok` — old parser bridge,
+    no longer provable now that `parseYaml` delegates to `TokenParser.parseYaml`.
+    Will be removed or rewritten in P10.5.
+    -/
 theorem parseYaml_of_yamlStream_ok (input : String) (docs : Array YamlDocument)
     (s' : YamlStream)
     (h_ys : yamlStream (YamlStream.ofString input) = .ok s' docs)
     (h_val : s'.validationError = none) :
     parseYaml input = .ok (docs.map YamlDocument.compose) := by
-  rw [parseYaml_ok_iff]
-  exact ⟨docs, parseYamlRaw_of_yamlStream_ok input docs s' h_ys h_val, rfl⟩
+  sorry
 
 /-! ## §4  Fuel Wrapper Unfolding
 

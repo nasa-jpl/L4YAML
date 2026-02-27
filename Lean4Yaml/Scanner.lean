@@ -547,6 +547,10 @@ def processEscape (s : ScannerState) : Except String (Char × ScannerState) := d
 
 /-! ## Scalar Scanning -/
 
+/-- Trim trailing space/tab characters (YAML §6.5 flow line folding). -/
+private def trimTrailingWS (s : String) : String :=
+  String.ofList ((s.toList.reverse.dropWhile (fun c => c == ' ' || c == '\t')).reverse)
+
 def foldQuotedNewlines (s : ScannerState) : (String × ScannerState) := Id.run do
   let s' := consumeNewline s
   let mut s' := s'
@@ -594,6 +598,7 @@ def scanDoubleQuoted (s : ScannerState) : Except String ScannerState := do
       | none => return ← .error s!"unterminated escape at end of input"
     | some c =>
       if isLineBreak c then
+        content := trimTrailingWS content  -- YAML §6.5: trim trailing WS before fold
         let (folded, s'') := foldQuotedNewlines s'
         content := content ++ folded
         s' := s''
@@ -619,6 +624,7 @@ def scanSingleQuoted (s : ScannerState) : Except String ScannerState := do
       | _ => return { s'.emitAt startPos (.scalar content .singleQuoted) with simpleKeyAllowed := false }
     | some c =>
       if isLineBreak c then
+        content := trimTrailingWS content  -- YAML §6.5: trim trailing WS before fold
         let (folded, s'') := foldQuotedNewlines s'
         content := content ++ folded
         s' := s''
@@ -670,7 +676,7 @@ def scanPlainScalar (s : ScannerState) : ScannerState := Id.run do
       if isLineBreak c then
         if inFlow then
           let (folded, s'') := foldQuotedNewlines s'
-          content := content ++ spaces ++ folded
+          content := content ++ folded  -- drop trailing `spaces` per YAML §6.5
           spaces := ""
           s' := s''
         else
@@ -701,7 +707,7 @@ def scanPlainScalar (s : ScannerState) : ScannerState := Id.run do
           if emptyCount > 0 then
             content := content ++ String.ofList (List.replicate emptyCount '\n')
           else
-            content := content ++ spaces ++ " "
+            content := content ++ " "  -- drop trailing `spaces` per YAML §6.5
           spaces := ""
           s' := s''
         continue
@@ -714,6 +720,8 @@ def scanPlainScalar (s : ScannerState) : ScannerState := Id.run do
       spaces := ""
       content := content.push c
       s' := s'.advance
+  -- Trim trailing whitespace: plain scalars never have trailing WS per §7.3.3
+  content := trimTrailingWS content
   return { s'.emitAt startPos (.scalar content .plain) with simpleKeyAllowed := false }
 
 private def foldBlockContent (raw : String) : String :=
@@ -875,8 +883,16 @@ def scanNextToken (s : ScannerState) : Except String (Option ScannerState) := do
         | none => true
       if isKey then return some (scanKey s)
     if c == ':' then
-      let next := s.peekAt? 1
-      let isValue := match next with
+      -- YAML §7.4 / libyaml: In flow context, `:` is a value indicator
+      -- whenever a simple key is possible (e.g., after a quoted scalar),
+      -- regardless of the character that follows.
+      -- In block context (or flow without a simple key), `:` requires
+      -- a trailing blank or flow indicator.
+      let isValue := if s.inFlow && s.simpleKey.possible then
+        true
+      else
+        let next := s.peekAt? 1
+        match next with
         | some n => isBlank n || (s.inFlow && isFlowIndicator n)
         | none => true
       if isValue then return some (scanValue s)

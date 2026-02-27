@@ -475,7 +475,7 @@ def parseYamlSingleRawTokenized (input : String) : Except String YamlDocument :=
 def parseYamlSingleTokenized (input : String) : Except String YamlValue :=
   TokenParser.parseYamlSingle input
 
-/-! ### Public API (char-level parser — switches to tokenized in P10.2) -/
+/-! ### Public API (tokenized parser — switched in P10.2) -/
 
 /--
 Parse a YAML string into an array of documents (**serialization tree**).
@@ -485,25 +485,9 @@ This is the **Parse** step from YAML 1.2.2 §3.1.
 
 Each `YamlDocument` includes an `anchors` map that can be used by
 `YamlDocument.compose` to resolve aliases.
-
-**Post-condition**: returns `.ok docs` only if ALL of:
-  1. The parser produced a valid document array.
-  2. No validation error was recorded in the stream.
 -/
 def parseYamlRaw (input : String) : Except String (Array YamlDocument) :=
-  let stream := YamlStream.ofString input
-  match Parser.run yamlStream stream with
-  | .ok stream' docs =>
-    -- Check for validation errors that survived backtracking.
-    match stream'.validationError with
-    | some msg => .error msg
-    | none => .ok docs
-  | .error stream' err =>
-    -- If both a parse error and a validation error exist,
-    -- prefer the validation error (more specific).
-    match stream'.validationError with
-    | some msg => .error msg
-    | none => .error (toString err)
+  TokenParser.parseYamlRaw input
 
 /--
 Parse a YAML string into an array of documents (**representation graph**).
@@ -515,9 +499,7 @@ Aliases are resolved and anchor annotations are stripped.
 This is the main entry point for most use cases.
 -/
 def parseYaml (input : String) : Except String (Array YamlDocument) :=
-  match parseYamlRaw input with
-  | .ok docs => .ok (docs.map YamlDocument.compose)
-  | .error e => .error e
+  TokenParser.parseYaml input
 
 /--
 Parse a YAML string expecting exactly one document (**serialization tree**).
@@ -525,12 +507,7 @@ Parse a YAML string expecting exactly one document (**serialization tree**).
 Returns the raw document with `.alias` nodes and `anchor` fields preserved.
 -/
 def parseYamlSingleRaw (input : String) : Except String YamlDocument :=
-  match parseYamlRaw input with
-  | .ok docs =>
-    if docs.size == 0 then .ok { value := YamlValue.null }
-    else if docs.size == 1 then .ok docs[0]!
-    else .error s!"expected single document, found {docs.size}"
-  | .error e => .error e
+  TokenParser.parseYamlSingleRaw input
 
 /--
 Parse a YAML string expecting exactly one document (**representation graph**).
@@ -539,11 +516,6 @@ Returns the value of the single document with aliases resolved and
 anchor annotations stripped.
 -/
 def parseYamlSingle (input : String) : Except String YamlValue :=
-  match parseYaml input with
-  | .ok docs =>
-    if docs.size == 0 then .ok YamlValue.null
-    else if docs.size == 1 then .ok docs[0]!.value
-    else .error s!"expected single document, found {docs.size}"
-  | .error e => .error e
+  TokenParser.parseYamlSingle input
 
 end Lean4Yaml.Parse
