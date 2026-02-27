@@ -685,6 +685,44 @@ Compose per-parser specs + fuel sufficiency + `parseYaml_ok_iff` bridge into the
 
 </details>
 
+#### Step 5.4: Make lean4-parser fold combinators total via `remaining`-based termination (2026-02-26)
+
+<details>
+
+**Context.** The `well-founded-streams` branch (PR#99) separated well-founded iteration from `Parser.Stream`, but the core fold combinators in `Parser/Parser.lean` and `Parser/Basic.lean` were still `partial def`. This step makes them total by adding a `remaining : σ → Nat` field to the `Parser.Stream` class and using it as the termination measure for all fold-based combinators.
+
+**Design.** Rather than using the `Finite.wrap` machinery from `WellFoundedStreams/Finite.lean`, we took a simpler approach: add `remaining` directly to `Parser.Stream` so every stream type provides a computable bound on how many elements remain. Each fold iteration checks `if h : Stream.remaining s'' < Stream.remaining s` at runtime — the `true` branch gives Lean's termination checker the evidence it needs (via `termination_by Stream.remaining s`), and the `false` branch gracefully stops the fold. This prevents non-termination even with parsers that succeed without consuming input.
+
+**Changes made (3 files, commit `deb6e2e`):**
+
+1. **`Parser/Stream.lean`** — Added `remaining : σ → Nat` field to the `Parser.Stream` class with docstring. Implemented for all 6 stream instances:
+   - `String.Slice` → `s.utf8ByteSize`
+   - `Substring.Raw` → `s.bsize`
+   - `Subarray τ` → `s.stop - s.start`
+   - `ByteSlice` → `s.size`
+   - `OfList τ` → `s.next.length`
+   - `mkDefault` → `0` (trivial stream with no elements)
+
+2. **`Parser/Parser.lean`** — Converted `efoldlPAux` from `private partial def` to `private def` with `termination_by Stream.remaining s`. Added runtime `Stream.remaining` decrease check. All downstream wrappers (`foldlP`, `foldlM`, `foldl`, `efoldlP`, `efoldlM`, `efoldl`) are now total transitively.
+
+3. **`Parser/Basic.lean`** — Converted 5 combinators:
+   - `foldr` → rewritten with explicit `where foldrAux (s : σ)` helper + remaining check
+   - `takeUntil` → rewritten with explicit `where rest (acc : Array α) (s : σ)` loop
+   - `dropUntil` → rewritten with explicit `where loop (s : σ)`
+   - `count` → simply removed `partial` keyword (total via `foldl`)
+   - `countUntil` → rewritten with explicit `where loop (ct : Nat) (s : σ)`
+   All with `termination_by Stream.remaining s`. Downstream wrappers (`takeMany`, `dropMany`, `takeMany1`, `dropMany1`, `takeManyN`, `dropManyN`) are total transitively.
+
+**Error handling for non-decreasing parsers.** When `Stream.remaining` doesn't decrease between iterations, the fold stops with `Error.unexpected (Stream.getPosition s) none` — always available via the `[Parser.Error ε σ τ]` constraint. This is the correct behavior: a parser that matches without advancing the stream would cause an infinite fold, so we report an error rather than loop forever.
+
+**Remaining `partial def`s.** Six `partial def`s remain in `Parser/RegEx/Basic.lean` (2: `RegEx.foldr`, `RegEx.match`) and `Parser/RegEx/Compile.lean` (4: `re0`–`re3`). These are a separate concern: the regex compiler functions are mutually recursive on the regex structure, not on the stream.
+
+**Relationship to `WellFoundedStreams` module.** The `WellFoundedStreams/Finite.lean` module provides the type-theoretic infrastructure (`Stream.Finite`, `Finite.wrap`, `foldlM`/`foldrM` with built-in WF recursion). The `remaining` field on `Parser.Stream` provides the practical runtime measure. These are complementary: downstream projects can use `Stream.WellFounded.ofMeasure` with `remaining` to prove well-foundedness, while the fold combinators use `remaining` directly for termination. A future step will update lean4-yaml-verified to use the new `remaining` field (replacing the standalone shim).
+
+**Build:** `lake build` — 208/208 jobs, 0 errors. +88, −31 lines across 3 files.
+
+</details>
+
 </details>
 
 ## Next Steps
@@ -693,7 +731,7 @@ Compose per-parser specs + fuel sufficiency + `parseYaml_ok_iff` bridge into the
 
 <details>
 <summary>
-Steps 1–21: parser features, totality, soundness, compile-time proofs, completeness, branch switch.
+Steps 1–28: parser features, totality, soundness, compile-time proofs, completeness, branch switch, total fold combinators.
 </summary>
 
 1. ~~**Three-valued error recovery**~~ — ✅ Validation combinators active in `Block.lean`.
@@ -888,6 +926,8 @@ Steps 1–21: parser features, totality, soundness, compile-time proofs, complet
 
 27. **Switch from `std-iterators` to `well-founded-streams` branch (2026-02-26)** — ✅ Switched lean4-parser dependency from the `std-iterators` branch (PR#97) to the new `well-founded-streams` branch, implementing François Dorais's suggestions: remove `Std.Data.Iterators` dependency, replace `LawfulParserStream` with standalone `Stream.WellFounded` typeclass, and provide a self-contained `WellFoundedStreams` module. The `well-founded-streams` branch is based on lean4-parser `main`, not `std-iterators`. Four files changed: `lakefile.toml` (rev update), `lake-manifest.json` (dependency lock), `Lean4Yaml/Stream.lean` (import + `Stream.WellFounded.ofMeasure` instance + standalone `Parser.Stream.remaining` shim), `Tests/IteratorTests.lean` (import + docstrings). **Zero proof changes.** The standalone `_root_.Parser.Stream.remaining` definition preserves API compatibility for all 20+ proof/test files. Build: 257/257 jobs, all 564 theorems and 670 `#guard` checks pass unchanged.
 
+28. **Make lean4-parser fold combinators total via `remaining`-based termination (2026-02-26)** — ✅ Added `remaining : σ → Nat` field to the `Parser.Stream` class in lean4-parser's `well-founded-streams` branch. Converted all 6 `partial def` fold combinators in `Parser/Parser.lean` and `Parser/Basic.lean` to total `def` with `termination_by Stream.remaining s`. Commit `deb6e2e`. Three files changed (+88, −31 lines): `Parser/Stream.lean` (new `remaining` field + implementations for all 6 stream instances), `Parser/Parser.lean` (`efoldlPAux` → total), `Parser/Basic.lean` (`foldr`, `takeUntil`, `dropUntil`, `count`, `countUntil` → total). Design: each fold iteration checks `if h : Stream.remaining s'' < Stream.remaining s` at runtime — the `true` branch provides evidence for Lean's termination checker, the `false` branch stops the fold (preventing non-termination even with parsers that succeed without consuming input). Stream `remaining` implementations: `String.Slice` → `utf8ByteSize`, `Substring.Raw` → `bsize`, `Subarray` → `stop - start`, `ByteSlice` → `size`, `OfList` → `next.length`, `mkDefault` → `0`. Six RegEx `partial def`s (separate concern) left as-is. Build: 208/208 jobs.
+
 </details>
 
 ### Current: Phase 3 Complete, Phase 4 Complete, Phase 5 Complete
@@ -905,7 +945,7 @@ Phase 2 (Parser Validation) is functionally complete. **353/406 correct** per HT
 
 **3.1–3.2 complete.** 3.1 (Foundation): ~90 theorems across 5 proof files. 3.2 (Key Invariants): ~30 theorems + 45 `#guard` checks across 3 proof files (`EscapeResolution.lean`, `IndentConsumption.lean`, `FoldNewlines.lean`). Grammar.lean extended with `resolveNamedEscape`, `isCForbiddenPrefix`, `isFoldAppendChar`, full Decidable instances.
 
-**Verification inventory:** 564 proved theorems/lemmas + 652 compile-time `#guard` checks (76 hand-written + 45 key-invariant + 351 yaml-test-suite + 63 round-trip + 24 schema-dump + 34 schema-resolution + 43 dump-roundtrip + 18 fold-newlines + 12 indent + misc) + 18 iterator `#guard` checks = **670 total compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 257/257 jobs. Lean4-parser dependency: PR#99 `well-founded-streams` branch (WF recursion + standalone `WellFoundedStreams` module).
+**Verification inventory:** 564 proved theorems/lemmas + 652 compile-time `#guard` checks (76 hand-written + 45 key-invariant + 351 yaml-test-suite + 63 round-trip + 24 schema-dump + 34 schema-resolution + 43 dump-roundtrip + 18 fold-newlines + 12 indent + misc) + 18 iterator `#guard` checks = **670 total compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 257/257 jobs. Lean4-parser dependency: PR#99 `well-founded-streams` branch (WF recursion + standalone `WellFoundedStreams` module + total fold combinators via `remaining`-based termination).
 
 **3.3 complete.** All 6 steps finished: Steps 3.3.1–3.3.3 (totality), Step 3.3.4 (`#guard` compile-time tests), Step 3.3.5 (soundness proofs). Phase 4 complete. Phase 5 complete (emitter + round-trip proofs + completeness infrastructure).
 
@@ -2848,14 +2888,12 @@ Both `lake build WellFoundedStreams` and `lake build Parser` succeed cleanly.
    is provided as a standalone `_root_.Parser.Stream.remaining` definition
    rather than a `Parser.Stream` field, preserving API compatibility.
 
-4. **Make lean4-parser's own fold combinators total.**
-   The fold combinators in `Parser.lean` and `Basic.lean` (`efoldlPAux`,
-   `foldr`, `takeUntil`, `dropUntil`, `countUntil`) remain `partial def`
-   on the `well-founded-streams` branch. Converting them to total `def`
-   using `Stream.Finite`-based termination (via `Finite.wrap`) is the
-   next step toward fully verified parser combinators. The `WellFoundedStreams`
-   module provides all necessary infrastructure; what remains is wiring it
-   into the existing combinator definitions.
+4. ~~**Make lean4-parser's own fold combinators total.**~~ ✅ **Complete (2026-02-26).**
+   Added `remaining : σ → Nat` field to `Parser.Stream` class and
+   converted all 6 `partial def` fold combinators in `Parser/Parser.lean`
+   and `Parser/Basic.lean` to total `def` with `termination_by
+   Stream.remaining s`. Commit `deb6e2e` on `well-founded-streams` branch.
+   Build: 208/208 jobs. See Step 3.5 step 4 dev log below.
 
 5. **Upstream convergence with batteries PR#1331.**
    Once batteries merges PR#1331, the `WellFoundedStreams/` folder can
@@ -2863,6 +2901,22 @@ Both `lake build WellFoundedStreams` and `lake build Parser` succeed cleanly.
    designed to make this migration straightforward: same class names,
    same theorem names, same API surface. The only change would be
    removing the local files and adding an `import Batteries.Data.Stream`.
+
+6. **Update lean4-yaml-verified to use the new `remaining` field.**
+   The lean4-parser `well-founded-streams` branch now has `remaining`
+   as a `Parser.Stream` field (not a standalone function). The
+   `_root_.Parser.Stream.remaining` shim in `Lean4Yaml/Stream.lean`
+   must be updated to use the new field, and the `YamlStream` instance
+   needs to provide `remaining` directly. This should be a straightforward
+   change with zero proof impact since the expression is identical.
+
+7. **Remove RegEx `partial def`s in lean4-parser.**
+   Six `partial def`s remain in `Parser/RegEx/Basic.lean` (2) and
+   `Parser/RegEx/Compile.lean` (4). The RegEx `foldr` and `match`
+   can use the same `remaining`-based termination; the compiler
+   functions (`re0`–`re3`) are mutually recursive and may require
+   a different approach (fuel or well-founded recursion on the
+   regex structure).
 
 ## License
 
