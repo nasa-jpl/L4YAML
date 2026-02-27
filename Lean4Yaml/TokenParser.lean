@@ -169,6 +169,10 @@ partial def parseNode (ps : ParseState) (depth : Nat := 0) : Except String (Yaml
       .ok (YamlValue.scalar { content, style, tag := props.tag, anchor := props.anchor }, ps.advance)
     | some .blockSequenceStart => parseBlockSequence ps depth
     | some .blockMappingStart => parseBlockMapping ps depth
+    | some .blockEntry =>
+      -- Implicit block sequence: libyaml/our scanner omits BLOCK-SEQUENCE-START
+      -- when block entries sit at the same indent as the containing mapping key.
+      parseImplicitBlockSequence ps depth
     | some .flowSequenceStart => parseFlowSequence ps depth
     | some .flowMappingStart => parseFlowMapping ps depth
     | _ =>
@@ -208,6 +212,32 @@ partial def parseBlockSequence (ps : ParseState) (depth : Nat) : Except String (
   match ps.peek? with
   | some .blockEnd => ps := ps.advance
   | _ => pure ()
+  .ok (YamlValue.sequence .block items, ps)
+
+/-- Parse an implicit block sequence (no `BLOCK-SEQUENCE-START` token).
+
+    The scanner omits `BLOCK-SEQUENCE-START` when block entries sit at the
+    same indent level as the containing mapping key — matching libyaml
+    behaviour.  There is no corresponding `BLOCK-END` for this sequence;
+    the entries are terminated by a `key`, `blockEnd`, or `streamEnd`
+    token belonging to the parent structure. -/
+partial def parseImplicitBlockSequence (ps : ParseState) (depth : Nat) : Except String (YamlValue × ParseState) := do
+  let mut ps := ps
+  let mut items : Array YamlValue := #[]
+  let fuel := ps.tokens.size - ps.pos
+  for _ in [:fuel] do
+    match ps.peek? with
+    | some .blockEntry =>
+      ps := ps.advance
+      match ps.peek? with
+      | some .blockEntry | some .blockEnd | some .key | none =>
+        items := items.push emptyNode
+      | _ =>
+        let (val, ps') ← parseNode ps (depth + 1)
+        items := items.push val
+        ps := ps'
+    | _ => break
+  -- No blockEnd to consume — the parent mapping owns it.
   .ok (YamlValue.sequence .block items, ps)
 
 /-- Parse a block mapping: `BLOCK-MAP-START (KEY node? VALUE node?)* BLOCK-END` -/

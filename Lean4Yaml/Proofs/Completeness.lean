@@ -265,42 +265,23 @@ theorem ofString_col (s : String) :
 
 /-! ## §4  Parse Bridge
 
-`parseYamlRaw` is a thin wrapper around `Parser.run yamlStream` that
-checks the stream's `validationError` after parsing.  `parseYaml`
+`parseYamlRaw` and `parseYaml` delegate to `TokenParser.parseYamlRaw`
+and `TokenParser.parseYaml` respectively (P10.2 API switch).  `parseYaml`
 applies the **Compose** step (§3.1) to resolve aliases and strip
 anchor annotations.
 -/
 
 /--
-`parseYamlRaw input = .ok docs` if and only if `Parser.run yamlStream`
-succeeds **and** no validation error was recorded.
-
-This is the key structural lemma for lifting per-parser specs to the
-top-level `parseYamlRaw` function.  It has the same structure as the
-former `parseYaml_ok_iff` prior to the serialization/compose split.
+`Parse.parseYamlRaw` is `TokenParser.parseYamlRaw` (definitional equality).
 -/
-theorem parseYamlRaw_ok_iff (input : String) (docs : Array YamlDocument) :
-    parseYamlRaw input = .ok docs ↔
-    ∃ stream' : YamlStream,
-      Parser.run yamlStream (YamlStream.ofString input) = .ok stream' docs ∧
-      stream'.validationError = none := by
-  constructor
-  · intro h
-    simp only [parseYamlRaw] at h
-    split at h
-    · next stream' docs' heq =>
-      split at h
-      · contradiction
-      · next hnone =>
-        simp only [Except.ok.injEq] at h
-        subst h
-        exact ⟨stream', heq, hnone⟩
-    · next stream' err heq =>
-      split at h <;> contradiction
-  · intro ⟨stream', hrun, hval⟩
-    simp only [parseYamlRaw]
-    rw [hrun]
-    simp [hval]
+theorem parseYamlRaw_eq (input : String) :
+    parseYamlRaw input = TokenParser.parseYamlRaw input := rfl
+
+/--
+`Parse.parseYaml` is `TokenParser.parseYaml` (definitional equality).
+-/
+theorem parseYaml_eq (input : String) :
+    parseYaml input = TokenParser.parseYaml input := rfl
 
 /--
 `parseYaml input = .ok docs` if and only if there exist raw documents
@@ -316,15 +297,18 @@ theorem parseYaml_ok_iff (input : String) (docs : Array YamlDocument) :
       docs = rawDocs.map YamlDocument.compose := by
   constructor
   · intro h
-    simp only [parseYaml] at h
+    -- parseYaml = TokenParser.parseYaml = match TokenParser.parseYamlRaw input with ...
+    -- parseYamlRaw = TokenParser.parseYamlRaw
+    simp only [parseYaml, TokenParser.parseYaml] at h
     split at h
     · next rawDocs heq =>
       simp only [Except.ok.injEq] at h
       exact ⟨rawDocs, heq, h.symm⟩
-    · next err heq =>
-      contradiction
+    · contradiction
   · intro ⟨rawDocs, hraw, hcomp⟩
-    simp only [parseYaml, hraw]
+    simp only [parseYaml, TokenParser.parseYaml]
+    simp only [parseYamlRaw] at hraw
+    rw [hraw]
     exact congrArg Except.ok hcomp.symm
 
 /--
