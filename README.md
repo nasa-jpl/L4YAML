@@ -37,6 +37,7 @@ Lean4Yaml/
 │   ├── CharClass.lean             # Character classification proofs
 │   ├── SchemaResolution.lean      # Schema resolution proofs (35 theorems + 31 guards)
 │   ├── SchemaDump.lean            # Schema↔Dump proofs (40 theorems + 24 guards)
+│   ├── ScannerProofs.lean         # Phase 9 scanner proofs (53 theorems + 55 guards)
 │   ├── TestSuite.lean             # yaml-test-suite as compile-time checks (blocked)
 │   └── SuiteGuards/               # Auto-generated #guard tests (350 tests, 6 files)
 │       ├── Scalar.lean            # 53 scalar stage guards
@@ -1424,6 +1425,62 @@ Full analysis in [YAML_PRODUCTIONS.md](Lean4Yaml/YAML_PRODUCTIONS.md) §Token–
 
 </details>
 
+### Phase 9 Scanner Proofs: 53 Theorems + 55 Guards (2026-02-26)
+
+<details>
+<summary>
+<b>Machine-checked properties of the Phase 9 scanner and token stream. 408 lines in <code>Proofs/ScannerProofs.lean</code>: 53 theorems (all <code>rfl</code>, <code>native_decide</code>, <code>simp</code>, or <code>omega</code> — zero <code>sorry</code>) + 55 compile-time <code>#guard</code> checks. Covers character classification, token classification, escape correctness, state accessors, indentation invariants, token stream properties, and stream envelope.</b>
+</summary>
+
+**Context.** The Phase 9 scanner is a pure function `String → Except String (Array (Positioned YamlToken))` using `Id.run do` with mutable locals. This makes it significantly more amenable to formal verification than the old lean4-parser-based pipeline: no monadic state to unwind, no combinator specifications needed.
+
+#### Proof Inventory (7 sections)
+
+| Section | Theorems | Guards | Key Results |
+|---------|----------|--------|-------------|
+| §1 Character Classification | 16 | — | `isBlank_def` (rfl), `isLineBreak_iff`/`isWhiteSpace_iff`/`isBlank_iff` (universal characterizations), `isFlowIndicator_implies_isIndicator` (subset) |
+| §2 Token Classification | 10 | — | Virtual/flow-indicator disjointness, `canStartNode` for each node-starting token, `isVirtual` for all 5 virtual tokens |
+| §3 Escape Correctness | 1 | 21 | All 18 YAML 1.2.2 §5.13 named escapes verified including `\L` (U+2028) and `\P` (U+2029), determinism theorem |
+| §4 State Accessors | 10 | 8 | `mk'` defaults (rfl), `emit_tokens_size` (simp), `hasMore_def`/`inFlow_def`, advance position tracking |
+| §5 Indentation Stack | 4 | 4 | `mk'_indents_size = 1`, `mk'_currentIndent = -1`, push grows stack (simp) |
+| §6 Token Stream | 4 | — | `ofTokens_pos = 0`, `remaining_ofTokens`, `remaining_decreases` (key termination measure), `peek_some_iff` |
+| §7 Stream Envelope | — | 22 | `scan` succeeds on 6 diverse inputs; first token always `streamStart`, last always `streamEnd`; empty input produces exactly 2 tokens |
+| **Total** | **53** | **55** | **108 verified properties** |
+
+#### Proof Techniques
+
+| Technique | Count | Usage |
+|-----------|-------|-------|
+| `rfl` | 17 | Definitional equalities (struct defaults, function unfolding) |
+| `native_decide` | 24 | Concrete character/token properties |
+| `simp` + `omega` | 6 | Structural properties, Nat arithmetic |
+| `cases` | 2 | Case analysis on `YamlToken` constructors |
+| `rcases` + `eq_of_beq` | 4 | Universal `iff` characterizations decomposing `Bool.or_eq_true` |
+| `#guard` | 55 | Compile-time evaluation on concrete scanner runs |
+
+#### Key Theorems
+
+```lean
+-- §1: Flow indicators are a subset of general indicators
+theorem isFlowIndicator_implies_isIndicator (c : Char)
+    (h : isFlowIndicator c = true) : isIndicator c = true
+
+-- §6: Token stream remaining strictly decreases after next? (grammar parser termination)
+theorem TokenStream_remaining_decreases
+    (s : TokenStream) (tok : Positioned YamlToken) (s' : TokenStream)
+    (h : s.next? = some (tok, s')) : s'.remaining < s.remaining
+```
+
+#### Reflections
+
+**Pure functions make proofs easy.** The scanner's `rfl`-provable properties (17 theorems) are possible because `ScannerState.mk'` and its projections are transparent pure functions. The old parser pipeline's monadic state means similar properties require unwinding `ParserT` instances. Phase 9's architecture choice to avoid monadic abstractions in the scanner directly translates to simpler proofs.
+
+**`native_decide` handles the concrete domain well.** 24 of 53 theorems use `native_decide`, which compiles and evaluates concrete `Char`/`Bool` expressions. This is reliable for character classification and token dispatch — exactly the scanner's domain.
+
+**`TokenStream_remaining_decreases` is the most downstream-impactful theorem.** The grammar parser's mutual recursion needs a termination measure. This theorem proves that consuming a token via `next?` strictly decreases `remaining`, providing that measure for future grammar-parser totality proofs.
+
+</details>
+
 ### Phase 9 Spec Example Validation: Scanner Pipeline 132/132 (2026-02-26)
 
 <details>
@@ -2285,7 +2342,8 @@ Both passes are **pure functions** with no monadic state — the scanner uses
 | `Tests/ScannerTests/Runner.lean` | 6 | Standalone test runner |
 | `Tests/ScannerSpecExamples.lean` | 119 | 132 YAML 1.2.2 spec examples via scanner/parser pipeline (mirrors `SpecExamples.lean`, uses `TokenParser.parseYaml`) |
 | `Tests/ScannerSpecExamples/Runner.lean` | 8 | Standalone test runner |
-| **Total** | **1952** | |
+| `Proofs/ScannerProofs.lean` | 408 | 53 theorems + 55 `#guard` checks: character classification, token classification, escape correctness, state accessors, indentation invariants, token stream, stream envelope. Zero `sorry`. |
+| **Total** | **2360** | |
 
 **Original estimate was 3250 lines.** Actual implementation is 44% smaller because:
 - Token type, stream, and classification fit in one file (not three)
@@ -2590,6 +2648,165 @@ with concrete module targets now known:
 | Composition: end-to-end | `TokenParser.parseYaml ∘ id = Parser.Document.parseYaml` (behavioural equivalence on test inputs) | High |
 
 </details>
+
+## Step 3.5: `well-founded-streams` Branch — Batteries PR#1331 as lean4-parser Component
+
+**Date:** 2026-02-26
+**Branch:** [`well-founded-streams`](https://github.com/NicolasRouquette/lean4-parser/tree/well-founded-streams) (based on `main` at `d8428e2`)
+**Commit:** `05b8063` — 523 lines added across 4 files
+**Context:** [lean4-parser PR#97](https://github.com/fgdorais/lean4-parser/pull/97) review feedback from François Dorais
+
+### What was done
+
+François Dorais made two suggestions on PR#97 (the `std-iterators` branch that makes lean4-parser's parsers total via `Std.Data.Iterators`):
+
+1. **Reverse the architecture**: add iterators *before* streams — define well-founded stream abstractions first, then build `Parser.Stream` on top (rather than retrofitting streams onto iterators).
+2. **Include batteries PR#1331** (`Stream.WellFounded` / `Stream.Finite`) as a self-contained component in lean4-parser, "perhaps in a folder: `WellFoundedStreams`."
+
+We created a new `well-founded-streams` branch from `main` (not `std-iterators`) and implemented:
+
+| File | Lines | Contents |
+|------|------:|----------|
+| `WellFoundedStreams/Basic.lean` | 187 | `Stream.drop`, `Stream.take` with tail-recursive variant + `@[csimp]` proof; `StreamIterator` bridge giving any `Std.Stream` a productive pure `Std.Iterator` instance |
+| `WellFoundedStreams/Finite.lean` | 322 | `Stream.WithNextRelation`, `Stream.WellFounded`, `Stream.Finite` classes; `WellFounded` instance for `List`; total fold combinators (`foldlM`, `foldrM`, `foldl`, `foldr`); collection operations (`length`, `toList`, `toArray`); correctness theorems for all operations |
+| `WellFoundedStreams.lean` | 11 | Root import file |
+| `lakefile.toml` | +3 | `[[lean_lib]] name = "WellFoundedStreams"` |
+
+Both `lake build WellFoundedStreams` and `lake build Parser` succeed cleanly.
+
+### Reflections — unexpected challenges, simplifications, and idioms
+
+#### Unexpected challenges
+
+1. **`Stream` → `Std.Stream` deprecation (Lean 4.28.0).**
+   The core `Stream` typeclass has been deprecated in favour of `Std.Stream`.
+   Every use of `[Stream σ α]` had to be rewritten to `[Std.Stream σ α]`,
+   and `Stream.next?` to `Std.Stream.next?`. The tricky part: writing
+   `open Std` causes *ambiguity* between `_root_.Stream` and `Std.Stream`,
+   so we could not simply open the `Std` namespace — we had to either
+   fully qualify `Std.Stream` or use `open Std.Iterators` selectively.
+   This was the single biggest source of compilation errors.
+
+2. **`Std.Iterators` API naming is not what you'd expect.**
+   The iterator types live at `Std.Iterator`, `Std.IterM`, `Std.Iter`,
+   `Std.IterStep` — *not* under `Std.Iterators.*`. Writing
+   `Std.Iterators.Iterator` fails; it must be `Std.Iterator`. The
+   `Std.Iterators` namespace contains the *typeclasses* (`Productive`,
+   `Finite`, `ProductivenessRelation`, `FinitenessRelation`) but not the
+   core types. This had to be discovered empirically via `#check` probing
+   since documentation for the v4.28.0 iterator API is sparse.
+
+3. **`IsPlausibleStep` requires a standalone function + `.deflate` pattern.**
+   The `Std.Iterator` instance needs an `IsPlausibleStep` predicate.
+   Defining it inline as a lambda or directly in the `where` clause does
+   not work — `simp` and `unfold` cannot reduce it. The working pattern
+   is: define a standalone `def isPlausibleStreamStep`, prove obligations
+   via `unfold isPlausibleStreamStep; simp; exact h`, and wrap `IterStep`
+   values in `.deflate ⟨step, proof⟩`. This `.deflate` idiom is not
+   documented anywhere and was found by studying the existing
+   `std-iterators` branch.
+
+4. **`ProductivenessRelation` field is `Rel` (capital R), not `rel`.**
+   The `ProductivenessRelation` structure has a field named `Rel` and
+   a field named `wf`, both with capital-sensitive names that don't
+   follow the usual Lean naming convention. Simple typos here produce
+   cryptic "unknown identifier" errors that don't hint at the casing issue.
+
+5. **`Substring` and `Subarray` have been refactored in v4.28.0.**
+   `Substring` is deprecated in favour of `Substring.Raw`; `Subarray`
+   has a new internal representation (`Std.Slice.Internal.SubarrayData`).
+   The `simp [next?]` + `split` proof strategy that works for `List`
+   fails for these types because `unfold Std.Stream.next?` normalises
+   to a form that `split` cannot decompose. The `WellFounded` instances
+   for `Substring` and `Subarray` were deferred rather than using `sorry`.
+
+6. **`Acc.restriction` does not exist in v4.28.0.**
+   The batteries PR#1331 code uses `Acc.restriction` in the
+   `ofRestrictedNext` proof. This function is not in the v4.28.0 stdlib.
+   The `ofRestrictedNext` theorem was deferred along with the iterator
+   bridge section.
+
+#### Simplifications
+
+1. **Branching from `main` rather than `std-iterators` was correct.**
+   The `std-iterators` branch adds ~1600 lines of changes to `Parser/`,
+   all predicated on the "streams-before-iterators" architecture. Since
+   the goal is to *reverse* that architecture, starting from `main`
+   avoided any need to untangle existing refactoring and kept the diff
+   clean (523 net new lines, zero changes to existing `Parser/` code).
+
+2. **`Stream.WellFounded.ofMeasure` eliminates boilerplate.**
+   Instead of manually constructing `WellFoundedRelation` instances,
+   `ofMeasure f proof` only requires a natural-number measure function
+   and a proof that it strictly decreases on `next?`. The `List` instance
+   is 5 lines. This pattern will directly apply to `Parser.Stream` types
+   where `remaining` provides a natural measure.
+
+3. **`@[csimp]` bridges specification and performance.**
+   `Stream.take` is defined recursively for ease of reasoning, and
+   `Stream.takeTR` is defined with an accumulator for performance.
+   The `@[csimp]` attribute (`take_eq_takeTR`) tells the compiler to
+   use the tail-recursive version while proofs reason about the
+   structural version. This is a standard Lean idiom (used in
+   `List.map`/`List.mapTR` in core) but was new to this project.
+
+4. **The `Finite.wrap` pattern for termination hints is elegant.**
+   Per-instance finiteness (`Stream.Finite s`) is more general than
+   type-level well-foundedness (`Stream.WellFounded σ α`) but harder
+   to use in `termination_by`. The `Finite.wrap` function packages the
+   stream with its `Acc` proof into a subtype, giving Lean's termination
+   checker a `WellFoundedRelation` to work with. All fold combinators
+   use `termination_by Finite.wrap s`.
+
+#### Idioms
+
+- **`match s, h with | constructor, h => ...`** for case-splitting on a
+  stream while retaining the hypothesis. Used in the `List` `WellFounded`
+  proof where `simp [Std.Stream.next?]` + `split` doesn't work but
+  pattern-matching on the list constructor does.
+
+- **`have : Stream.Finite t := .ofSome h`** as a one-line "inheritance"
+  step in recursive fold definitions. Each recursive call needs to prove
+  the tail is finite; this `have` line is the entire proof.
+
+- **Selective namespace opening**: `open Std.Iterators` for typeclasses
+  (`Productive`, `Finite`, `ProductivenessRelation`) while keeping
+  `Std.Iterator`, `Std.IterM`, `Std.Iter` fully qualified to avoid
+  ambiguity with `_root_.Stream`. This is a Lean 4.28.0–specific idiom
+  that may not be needed in future versions once the deprecation settles.
+
+### Next steps — incremental follow-up
+
+1. **`WellFounded` instances for `Substring` and `Subarray`.**
+   These require adapting to the v4.28.0 representation changes
+   (`Substring.Raw`, `Std.Slice.Internal.SubarrayData`). The proof
+   strategy needs updating: the `simp [next?] + split` pattern that
+   works for `List` doesn't work for these types. Likely approach:
+   find the new lemma names (e.g., `Substring.lt_bsize_of_next?` or
+   equivalent) or prove the measure decrease directly from the
+   destructured representation.
+
+2. **Iterator bridge section** (`Stream.WellFounded` ↔ `Std.Iterators.Finite`).
+   The APIs exist (`IterM.IsPlausibleSuccessorOf`,
+   `IterM.IsPlausibleNthOutputStep`, `IterM.TerminationMeasures.Finite.Rel`)
+   but the proofs need adaptation. Key missing piece: `Acc.restriction`
+   (used in `ofRestrictedNext`). Need to either find the v4.28.0
+   equivalent or inline the proof.
+
+3. **`Parser.Stream` integration.**
+   Make `Parser.Stream` instances provide `Stream.WellFounded` instances.
+   The `remaining` function (present on the `std-iterators` branch but
+   not on `main`) provides the natural measure for `ofMeasure`. This
+   is the step that actually makes parsers total — converting
+   `partial def efoldlPAux` and `partial def foldr` in `Parser.lean`
+   and `Basic.lean` to use `Stream.Finite`-based termination.
+
+4. **Upstream convergence with batteries PR#1331.**
+   Once batteries merges PR#1331, the `WellFoundedStreams/` folder can
+   be replaced by a dependency on batteries. The module structure was
+   designed to make this migration straightforward: same class names,
+   same theorem names, same API surface. The only change would be
+   removing the local files and adding an `import Batteries.Data.Stream`.
 
 ## License
 

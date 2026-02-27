@@ -2,9 +2,9 @@
 
 ## 1. Overview
 
-The `Proofs/` directory contains 26 Lean 4 files (20 proof modules +
-6 SuiteGuards test suites) totaling ~9,500 lines, 572 theorems/lemmas,
-and 653 `#guard` compile-time checks.  Every file compiles with
+The `Proofs/` directory contains 27 Lean 4 files (21 proof modules +
+6 SuiteGuards test suites) totaling ~9,900 lines, 625 theorems/lemmas,
+and 708 `#guard` compile-time checks.  Every file compiles with
 **zero `sorry`, zero `axiom`, zero `partial def`** in our code.
 
 The proofs establish soundness, completeness (concrete and partial
@@ -85,7 +85,7 @@ The deductive gap is:
 
 ## 3. File Inventory
 
-### Proof Modules (20 files)
+### Proof Modules (21 files)
 
 | File | Lines | Thms | Guards | Description |
 |---|---|---|---|---|
@@ -102,6 +102,7 @@ The deductive gap is:
 | `ParserSpecs.lean` | 424 | 20 | — | Foundation `@[simp]` lemmas unfolding lean4-parser combinators |
 | `PerParserSpecs.lean` | 2309 | 161 | — | Per-parser correctness: combinators, scalars, block/flow collections |
 | `RoundTrip.lean` | 905 | 56 | 66 | Parse-emit-parse round-trip preserves content |
+| `ScannerProofs.lean` | 408 | 53 | 55 | Phase 9 scanner: char classification, token classification, escape correctness, state accessors, indentation invariants, token stream, stream envelope |
 | `SchemaDump.lean` | 311 | 40 | 22 | `ToYaml` + dump pipeline content round-trip |
 | `SchemaResolution.lean` | 267 | 35 | 34 | Core Schema (§10.3) resolution: null/bool/int/float determinism |
 | `Soundness.lean` | 414 | 27 | — | `NodeToValue` totality, determinism, faithful implementation |
@@ -123,8 +124,8 @@ The deductive gap is:
 
 ### Totals
 
-- **597** theorems/lemmas (all machine-checked)
-- **653** `#guard` compile-time checks (Proofs/ + SuiteGuards/)
+- **650** theorems/lemmas (all machine-checked)
+- **708** `#guard` compile-time checks (Proofs/ + SuiteGuards/)
 - **18** additional `#guard` checks in `Tests/IteratorTests.lean`
 - **0** `sorry`, **0** `axiom`, **0** `partial def`
 
