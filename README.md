@@ -199,7 +199,7 @@ All 7 demo examples in `Demo.lean` pass, including deeply nested structures.
 
 #### 2.3 Compile-Time `#guard` Tests — Unblocked (Step 3.3.4)
 
-`#guard` requires kernel reduction, which does not work with `partial def` parsers. lean4-parser's fold combinators are now total (via PR#97 `std-iterators` branch, using well-founded recursion). Once our own parsers are made total (Steps 3.3.2–3.3.3), `#guard` tests become available.
+`#guard` requires kernel reduction, which does not work with `partial def` parsers. lean4-parser's fold combinators are now total (via PR#99 `well-founded-streams` branch, using well-founded recursion). Once our own parsers are made total (Steps 3.3.2–3.3.3), `#guard` tests become available.
 
 #### 2.4 yaml-test-suite — In Progress
 
@@ -306,7 +306,7 @@ Formal verification proceeds in three layers, ordered by feasibility and diagnos
 
 **lean4-parser `partial` constraint: RESOLVED.** The lean4-parser library previously used `private partial def efoldlPAux` in its core fold loop, propagating `partial` through `dropMany`, `count`, `takeMany1`, `tokenFilter`, `takeWhile`, and other combinators our parsers depend on. This blocked both termination proofs and compile-time `#guard` tests (which require kernel reduction).
 
-**Resolution:** We now use a fork ([NicolasRouquette/lean4-parser](https://github.com/NicolasRouquette/lean4-parser), branch `well-founded-streams`) that makes all 6 fold combinators total via well-founded recursion: `termination_by Stream.remaining s₀`. This branch implements suggestions from the lean4-parser maintainer (François Dorais) on PR [#97](https://github.com/fgdorais/lean4-parser/pull/97): it removes the `Std.Data.Iterators` dependency and provides a standalone `WellFoundedStreams` module with `Stream.WellFounded` typeclass, `StreamIterator` wrapper, and `Stream.Finite` witness. The earlier PR [#96](https://github.com/fgdorais/lean4-parser/pull/96) (`total-fold` branch) used fuel-based structural recursion for the same 6 combinators; PR#97/`well-founded-streams` supersedes it with a cleaner WF approach. Our `YamlStream` provides a `Stream.WellFounded` instance via `Stream.WellFounded.ofMeasure` using the byte-distance measure `s.stopPos.byteIdx - s.startPos.byteIdx`. See [lean4-parser#95](https://github.com/fgdorais/lean4-parser/issues/95) for the original issue.
+**Resolution:** We now use a fork ([NicolasRouquette/lean4-parser](https://github.com/NicolasRouquette/lean4-parser), branch `well-founded-streams`) that makes all 6 fold combinators total via well-founded recursion: `termination_by Stream.remaining s₀`. This is PR [#99](https://github.com/fgdorais/lean4-parser/pull/99), implementing suggestions from the lean4-parser maintainer (François Dorais) on PR [#97](https://github.com/fgdorais/lean4-parser/pull/97): it removes the `Std.Data.Iterators` dependency and provides a standalone `WellFoundedStreams` module with `Stream.WellFounded` typeclass, `StreamIterator` wrapper, and `Stream.Finite` witness. The earlier PR [#96](https://github.com/fgdorais/lean4-parser/pull/96) (`total-fold` branch) used fuel-based structural recursion for the same 6 combinators; PR#99 (`well-founded-streams`) supersedes both with a cleaner WF approach. Our `YamlStream` provides a `Stream.WellFounded` instance via `Stream.WellFounded.ofMeasure` using the byte-distance measure `s.stopPos.byteIdx - s.startPos.byteIdx`. See [lean4-parser#95](https://github.com/fgdorais/lean4-parser/issues/95) for the original issue.
 
 **Impact on our 35 `partial def` parsers:**
 - **Group A (3 leaf parsers)**: `partial` solely because lean4-parser was `partial` — inner recursion rewritten with total combinators or structural Nat recursion. Now `def`: `checkNoTabIndent`, `checkIndentForTabs`, `hasTabInWhitespace`.
@@ -644,7 +644,7 @@ Compose per-parser specs + fuel sufficiency + `parseYaml_ok_iff` bridge into the
 
 <details>
 
-**Context.** François Dorais, the lean4-parser maintainer, reviewed PR#97 (`std-iterators` branch) and suggested two changes: (1) remove the `Std.Data.Iterators` dependency and implement well-founded stream iteration directly, and (2) separate the `LawfulParserStream` typeclass from the core `Parser.Stream`. These suggestions were implemented in a new `well-founded-streams` branch on the [NicolasRouquette/lean4-parser](https://github.com/NicolasRouquette/lean4-parser) fork, which creates a standalone `WellFoundedStreams` module with `Stream.WellFounded`, `StreamIterator`, `Stream.Finite`, and `Stream.iter`.
+**Context.** François Dorais, the lean4-parser maintainer, reviewed PR [#97](https://github.com/fgdorais/lean4-parser/pull/97) (`std-iterators` branch) and suggested two changes: (1) remove the `Std.Data.Iterators` dependency and implement well-founded stream iteration directly, and (2) separate the `LawfulParserStream` typeclass from the core `Parser.Stream`. These suggestions were implemented as PR [#99](https://github.com/fgdorais/lean4-parser/pull/99) on a new `well-founded-streams` branch of the [NicolasRouquette/lean4-parser](https://github.com/NicolasRouquette/lean4-parser) fork, which creates a standalone `WellFoundedStreams` module with `Stream.WellFounded`, `StreamIterator`, `Stream.Finite`, and `Stream.iter`.
 
 **Key architectural change.** The `well-founded-streams` branch is based on lean4-parser `main` (not `std-iterators`). This means:
 - **No `remaining` field in `Parser.Stream`** — the `std-iterators` branch added `remaining` as a field; `main`/`well-founded-streams` does not have it.
@@ -672,7 +672,7 @@ Compose per-parser specs + fuel sufficiency + `parseYaml_ok_iff` bridge into the
 
 **Comparison with prior switch (PR#96 → PR#97):**
 
-| Dimension | PR#96 → PR#97 (2026-02-24) | PR#97 → well-founded-streams (2026-02-26) |
+| Dimension | PR#96 → PR#97 (2026-02-24) | PR#97 → PR#99 (2026-02-26) |
 |-----------|---------------------------|------------------------------------------|
 | Files changed | 2 modified, 2 created | 4 modified |
 | Proof changes | 0 | 0 |
@@ -905,7 +905,7 @@ Phase 2 (Parser Validation) is functionally complete. **353/406 correct** per HT
 
 **3.1–3.2 complete.** 3.1 (Foundation): ~90 theorems across 5 proof files. 3.2 (Key Invariants): ~30 theorems + 45 `#guard` checks across 3 proof files (`EscapeResolution.lean`, `IndentConsumption.lean`, `FoldNewlines.lean`). Grammar.lean extended with `resolveNamedEscape`, `isCForbiddenPrefix`, `isFoldAppendChar`, full Decidable instances.
 
-**Verification inventory:** 564 proved theorems/lemmas + 652 compile-time `#guard` checks (76 hand-written + 45 key-invariant + 351 yaml-test-suite + 63 round-trip + 24 schema-dump + 34 schema-resolution + 43 dump-roundtrip + 18 fold-newlines + 12 indent + misc) + 18 iterator `#guard` checks = **670 total compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 257/257 jobs. Lean4-parser dependency: `well-founded-streams` branch (WF recursion + standalone `WellFoundedStreams` module).
+**Verification inventory:** 564 proved theorems/lemmas + 652 compile-time `#guard` checks (76 hand-written + 45 key-invariant + 351 yaml-test-suite + 63 round-trip + 24 schema-dump + 34 schema-resolution + 43 dump-roundtrip + 18 fold-newlines + 12 indent + misc) + 18 iterator `#guard` checks = **670 total compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 257/257 jobs. Lean4-parser dependency: PR#99 `well-founded-streams` branch (WF recursion + standalone `WellFoundedStreams` module).
 
 **3.3 complete.** All 6 steps finished: Steps 3.3.1–3.3.3 (totality), Step 3.3.4 (`#guard` compile-time tests), Step 3.3.5 (soundness proofs). Phase 4 complete. Phase 5 complete (emitter + round-trip proofs + completeness infrastructure).
 
@@ -2701,7 +2701,7 @@ with concrete module targets now known:
 **Date:** 2026-02-26
 **Branch:** [`well-founded-streams`](https://github.com/NicolasRouquette/lean4-parser/tree/well-founded-streams) (based on `main` at `d8428e2`)
 **Commit:** `05b8063` — 523 lines added across 4 files
-**Context:** [lean4-parser PR#97](https://github.com/fgdorais/lean4-parser/pull/97) review feedback from François Dorais
+**Context:** [lean4-parser PR#99](https://github.com/fgdorais/lean4-parser/pull/99), implementing [PR#97](https://github.com/fgdorais/lean4-parser/pull/97) review feedback from François Dorais
 
 ### What was done
 
