@@ -352,7 +352,7 @@ Property proofs about specific parser behaviors. With lean4-parser fold combinat
 
 #### 3.3 Termination & Soundness
 
-With lean4-parser fold combinators now total (via `Stream.remaining` fuel), the path to eliminating all 35 `partial def` parsers is clear. ParseFpr structure is stable (353/406 yaml-test-suite, 0 failures). Work proceeds in five steps:
+With lean4-parser fold combinators now total (via `Stream.remaining` fuel), the path to eliminating all 35 `partial def` parsers is clear. Parser structure is stable (354/406 yaml-test-suite, 0 failures). Work proceeds in five steps:
 
 | Step | Description | Status |
 |------|-------------|--------|
@@ -371,10 +371,10 @@ Effort: ~5+ sessions. **All 6 steps complete** (3.3.1–3.3.6).
 
 <details>
 <summary>
-351 `#guard` compile-time tests, auto-generated from yaml-test-suite. 1 exclusion (H7TQ), 0 failures.
+358 `#guard` compile-time tests, auto-generated from yaml-test-suite. 0 exclusions, 0 failures.
 </summary>
 
-351 `#guard` compile-time tests across 6 stage-split files (`Proofs/SuiteGuards/*.lean`). Auto-generated from yaml-test-suite by `gen-suite-guards.py`. Each test inlines the YAML content as a string literal and verifies `parseYaml` produces the expected result. 1 exclusion: H7TQ (unfixable UP — conflicts with ZYU8). CQ3W was previously excluded due to a kernel/compiled discrepancy, now fixed by adding `setValidationError` to the fuel-exhaustion case of `collectChars` in `doubleQuotedScalar` and `singleQuotedScalar`. Any parser regression breaks the build.
+358 `#guard` compile-time tests across 6 stage-split files (`Proofs/SuiteGuards/*.lean`). Auto-generated from yaml-test-suite by `gen-suite-guards.py`. Each test inlines the YAML content as a string literal and verifies `parseYaml` produces the expected result. 0 exclusions. H7TQ was previously excluded (conflicts with ZYU8), now fixed: both H7TQ and ZYU8 variant 3 correctly reject extra content after `%YAML` version per §6.8 [82]+[86] (yaml-test-suite fork fixes ZYU8 variant 3 to `fail: true`). CQ3W was previously excluded due to a kernel/compiled discrepancy, now fixed by adding `setValidationError` to the fuel-exhaustion case of `collectChars` in `doubleQuotedScalar` and `singleQuotedScalar`. Any parser regression breaks the build.
 
 **Maintenance:** The `Proofs/SuiteGuards/*.lean` files are generated artifacts — do not edit them by hand. When the upstream [yaml-test-suite](https://github.com/yaml/yaml-test-suite) changes (new tests, updated expectations, or removed cases), regenerate with:
 
@@ -383,7 +383,7 @@ python3 gen-suite-guards.py          # reads ~/yaml-test-suite, writes Proofs/Su
 lake build                            # verifies all guards still pass
 ```
 
-The script automatically excludes tests listed in its `KERNEL_DISCREPANCIES` set (currently empty) and the unfixable H7TQ. If new tests fail as `#guard`, either fix the parser or add the test ID to `KERNEL_DISCREPANCIES` with a comment explaining why.
+The script automatically excludes tests listed in its `KERNEL_DISCREPANCIES` set (currently empty). If new tests fail as `#guard`, either fix the parser or add the test ID to `KERNEL_DISCREPANCIES` with a comment explaining why.
 
 </details>
 
@@ -767,7 +767,7 @@ Steps 1–29: parser features, totality, soundness, compile-time proofs, complet
 11. ~~**Block completeness (P4)**~~ — ✅ T3+T4 dispatch completeness from ANALYSIS.md §2.I. `detectMappingKey` scans past non-separator colons and mid-key quotes (T4). `dispatchByChar` checks mapping pattern before `"`, `'`, `?`, `-` scalar dispatch (T3). Comment-after-colon fix (§6.7). BLOCK-OUT context fix (§8.2.2): `blockValue mapIndent` for next-line values. Suite: 270→275 correct (+5 net), block 78→82 (+4), scalar 46→50 (+4), error 50→46 (−4).
 12. ~~**Content correctness (P5)**~~ — ✅ EOF safety in `dispatchByChar` (option? lookAhead), quoted key whitespace (skipHWhitespace before `:`), trailing comment handling (collectPlain leadsToComment lookAhead), tab-aware blank lines (skipHWhitespace in skipBlankLines/countEmptyLines), document boundary in sequences (atDocumentBoundary check), bare docs after `...` (hadDocEnd tracking + documentEndMarker validation). Suite: 275→288 correct (+13 net), 14 tests fixed, 1 regression (BS4K).
 13. ~~**Advanced features (P6)**~~ — ✅ Complex keys, Unicode anchors, directive edge cases. Col-0 plain scalar continuation (`checkContinuation` contentIndent), document boundary in `blockValue`, blank lines in block scalars, tag on empty flow value, alias/anchor/tag as flow mapping keys, tag/anchor on block mapping keys via `lookAhead detectMappingKey`, Unicode anchor characters (`isAnchorChar`), comment at value position in sequences, comment after tag/anchor. Proper quoted-string mapping detection (skip through quotes before `: ` check), `detectMappingKey`/`scanForMappingSeparator` lookAhead for adjacent colons, seq-spaces(n, block-out) exception in `blockValue`, alias as block mapping key, flow collection as mapping key. **Flow-aware `detectMappingKey`**: skips balanced `{...}`/`[...]` during scanning so `: ` inside flow collections doesn't cause false-positive mapping detection (fixes `&map {a: 1}` and `!!map {a: 1}` regressions). **Single-line implicit key constraint** (§7.4): `[`/`{` branches check `currentLine` before/after parsing flow collection to reject multiline flow keys (C2SP). A/G contract documented on `detectMappingKey`. Suite: 288→310 correct (+22 net), failures: 24→0.
-14. ~~**Strict validation (P7)**~~ — ✅ Error-stage unexpected passes (10b–10j) systematically eliminated. 15 validation rules across `Block.lean`, `Flow.lean`, `Scalar.lean`, `Document.lean`, `Tag.lean`, `Combinators.lean`. Tab-as-indentation rejection (§6.1): `checkIndentForTabs` for block indent positions + post-indicator tab checks after `-`/`?`/`:` + flow continuation tab detection via position save/restore. Flow indent floor (§7.4): `minIndent` parameter threaded through all 7 mutual flow functions. Quoted scalar indent (§8.1): `contentIndent` parameter in `foldQuotedNewlines`/`doubleQuotedScalar`/`singleQuotedScalar`. Block scalar auto-detect (§8.1.3): whitespace-only lines exceeding detected content indent rejected. Document structure: directives require `...` before them (§9.2), bare-document-after-document rejection, tag shorthand handle scope validation (§6.8.2). Node property indent: `propertyMinIndent` parameter in `blockValue` rejects under-indented anchors/tags in mapping values (§8.2.2). Suite: 310→353 correct (+43 net), error stage: 44→74/74 (100%), flow: 43→46/46 (100%), block: 90→99/109 (91%). 1 unfixable UP remaining (H7TQ: extra words after `%YAML` version — conflicts with ZYU8).
+14. ~~**Strict validation (P7)**~~ — ✅ Error-stage unexpected passes (10b–10j) systematically eliminated. 15 validation rules across `Block.lean`, `Flow.lean`, `Scalar.lean`, `Document.lean`, `Tag.lean`, `Combinators.lean`. Tab-as-indentation rejection (§6.1): `checkIndentForTabs` for block indent positions + post-indicator tab checks after `-`/`?`/`:` + flow continuation tab detection via position save/restore. Flow indent floor (§7.4): `minIndent` parameter threaded through all 7 mutual flow functions. Quoted scalar indent (§8.1): `contentIndent` parameter in `foldQuotedNewlines`/`doubleQuotedScalar`/`singleQuotedScalar`. Block scalar auto-detect (§8.1.3): whitespace-only lines exceeding detected content indent rejected. Document structure: directives require `...` before them (§9.2), bare-document-after-document rejection, tag shorthand handle scope validation (§6.8.2). Node property indent: `propertyMinIndent` parameter in `blockValue` rejects under-indented anchors/tags in mapping values (§8.2.2). Suite: 310→353 correct (+43 net), error stage: 44→74/74 (100%), flow: 43→46/46 (100%), block: 90→99/109 (91%). H7TQ (extra words after `%YAML` version) was later fixed — see dev log entry 30.
 15. ~~**Phase 3 (3.1) foundation proofs + total-fold analysis**~~ — ✅ Eliminated all 3 sorry's project-wide. `Proofs/Termination.lean`: `next_decreasing` fully proved via `String.Pos.Raw.byteIdx_add_char` + `Char.utf8Size_pos` + `omega`. `Proofs/Types.lean`: AnchorMap algebraic laws (`find?_insert`, `find?_insert_ne`) proved via `Array.findSome?_push` + list reasoning. `Proofs/StringProperties.lean`: 13 theorems (trim idempotence, FoldResult classification). `Proofs/DocumentContracts.lean`: 17 theorems (document boundaries, progress monotonicity, tag handle scope, directive uniqueness). `Proofs/CharClass.lean`: 7 character classification proofs. `Proofs/BlockScalarContracts.lean`: 27 theorems (A/G contracts, decidable predicates). **~135 proved theorems, 0 sorry's, 0 axioms.** Build: 227/227 library jobs, test suite: 847 passed / 2 failed (known H7TQ) / 201 skipped. **Total-fold analysis:** Updated lean4-parser dependency to fork ([NicolasRouquette/lean4-parser](https://github.com/NicolasRouquette/lean4-parser), branch `total-fold`) where all 6 fold combinators (`efoldlPAux`, `foldr`, `takeUntil`, `dropUntil`, `count`, `countUntil`) are total via `fuel : Nat := Stream.remaining s` structural recursion. Inventoried all 35 `partial def` parsers: Group A (~6 leaf parsers, no self-recursion) can become `def` immediately; Group B (~29 self-recursive parsers) need `termination_by Stream.remaining s` + decreasing proofs. The `next_decreasing` lemma bridges `remainingLength` to `Stream.remaining`, providing the core decreasing argument. This unblocks Steps 3.3.2–3.3.5 and `#guard` compile-time tests (Phase 4).
 16. ~~**Steps 3.3.1–3.3.2 — bridge lemma + Group A conversion**~~ — ✅ **Methodology note: why these proofs were fast.** Steps 3.3.1 and 3.3.2 completed in minutes with zero difficulty, which is unusual for verification work. The reason is *deliberate architectural alignment* across three layers:
     - **Definitional equality by design (Step 3.3.1):** The bridge lemma `remainingLength_eq_stream_remaining` proved by `rfl` — a single word, the simplest possible proof. This wasn't luck: our `Parser.Stream` instance defines `remaining s := s.stopPos.byteIdx - s.startPos.byteIdx`, which is *literally the same expression* as `remainingLength`. The corollary `stream_remaining_decreasing` then composed with the existing `next_decreasing` lemma in one line. When two abstractions are designed to say the same thing, the proof that they agree is the identity.
@@ -865,7 +865,7 @@ Steps 1–29: parser features, totality, soundness, compile-time proofs, complet
 
     **Build:** 238/238 jobs. **Tests:** 66/66 completeness tests pass, plus 940/940 internal tests. **Project total: ~296 proved theorems/lemmas + 552 compile-time checks, 0 sorry, 0 axiom, 0 `partial def`.**
 
-    **Exclusions (2):** H7TQ (unfixable UP: extra words after `%YAML` conflicts with ZYU8) and CQ3W (kernel vs. compiled discrepancy: unclosed double-quote recovery path differs in kernel evaluation). Both pass in the runtime suite runner but cannot be encoded as `#guard`.
+    **Exclusions (0):** H7TQ previously excluded (unfixable UP: extra words after `%YAML` conflicts with ZYU8), now fixed. CQ3W previously excluded (kernel vs. compiled discrepancy: unclosed double-quote recovery path differs in kernel evaluation), now fixed.
 
     **SuiteRunner `emit` field fix:** The `Meta.lean` line-based parser was missing `emit` in its recognized-field list (`json | dump | from | tidy`). Block scalar content from `emit:` fields leaked into subsequent lines, creating phantom test case variants (e.g., 4QFQ had 5 variants instead of 1). Fixed by adding `| "emit"` to `processKeyValue`. Test count: 416→406 (10 phantom variants eliminated), skipped: 201→171 (all now YAML 1.3 specific, zero "empty yaml input").
 
@@ -950,24 +950,26 @@ Steps 1–29: parser features, totality, soundness, compile-time proofs, complet
 
 29. **Update lean4-yaml-verified to use `remaining` field from `Parser.Stream` (2026-02-26)** — ✅ Updated lean4-parser dependency to commit `deb6e2e` (which adds `remaining` as a `Parser.Stream` class field). Removed the standalone `_root_.Parser.Stream.remaining` shim from `Lean4Yaml/Stream.lean` and replaced it with `remaining s := s.stopPos.byteIdx - s.startPos.byteIdx` in the `Parser.Stream YamlStream Char` instance. **Zero proof/test changes** — all downstream uses (`Stream.remaining (← getStream)` in `Block.lean`, `Combinators.lean`, `Document.lean`, `Flow.lean`) resolve to the class field with the identical expression. Two files changed: `lake-manifest.json` (rev update), `Lean4Yaml/Stream.lean` (instance field + shim removal). Build: 257/257 jobs, all 564 theorems and 670 `#guard` checks pass unchanged.
 
+30. **Fix H7TQ/ZYU8 directive conflict (2026-02-26)** — ✅ Resolved the previously "unfixable" conflict between H7TQ (`%YAML 1.2 foo` — expects fail) and ZYU8 variant 3 (`%YAML 1.1 1.2` — previously expected pass). Per YAML 1.2.2 production rules [86] (`ns-yaml-directive ::= "YAML" s-separate-in-line ns-yaml-version`) and [82] (`l-directive ::= '%' ... s-l-comments`), extra content after `ns-yaml-version` is not allowed — only `s-l-comments` (whitespace + optional `#` comment + newline). Both tests should fail. **Three changes:** (1) **yaml-test-suite fork** ([NicolasRouquette/yaml-test-suite](https://github.com/NicolasRouquette/yaml-test-suite), branch `yaml-1.2.2-directive-fix`): ZYU8 variant 3 marked `fail: true`. (2) **Parser fix** (`Document.lean`): `directive` YAML branch now does `skipHWhitespace` → `lookAhead anyToken` → if non-linebreak and non-`#`, sets `setValidationError "extra content after %YAML version..."` per §6.8 [82]. (3) **Guard updates**: H7TQ:0 added to `Proofs/SuiteGuards/Error.lean` (expects error), ZYU8:2 flipped in `Block.lean` from `ok → true` to `ok → false`. Submodule updated to fork. Build: 257/257 jobs. Suite: 353→354/406 (87.2%), 0 UP remaining, 225/225 YAML 1.2.2 test IDs (100%). Guard count: 357→358.
+
 </details>
 
 ### Current: Phase 3 Complete, Phase 4 Complete, Phase 5 Complete
 
 <details>
 <summary>
-~426 theorems + 553 compile-time checks. 353/406 correct. 0 sorry, 0 axiom, 0 `partial def`.
+~426 theorems + 553 compile-time checks. 354/406 correct. 0 sorry, 0 axiom, 0 `partial def`.
 </summary>
 
-Phase 2 (Parser Validation) is functionally complete. **353/406 correct** per HTML subprocess report. 0 failures, 0 timeouts, 1 UP (H7TQ document stage only). 52 YAML 1.3 skipped. Error stage: 74/74 (100%). Flow stage: 46/46 (100%). Block stage: 99/99 (100%). Scalar: 54/82 (65.9%). Advanced: 64/81 (79%). Document: 16/24 (66.7%).
+Phase 2 (Parser Validation) is functionally complete. **354/406 correct** per HTML subprocess report. 0 failures, 0 timeouts, 0 UP. 52 YAML 1.3 skipped. Error stage: 74/74 (100%). Flow stage: 46/46 (100%). Block stage: 99/99 (100%). Scalar: 54/82 (65.9%). Advanced: 64/81 (79%). Document: 17/24 (71%).
 
-**Phase 4 complete:** 351 `#guard` compile-time tests across 6 files (`Proofs/SuiteGuards/*.lean`) encode all passing yaml-test-suite tests. Auto-generated from yaml-test-suite by `gen-suite-guards.py`. Any parser regression breaks the build.
+**Phase 4 complete:** 358 `#guard` compile-time tests across 6 files (`Proofs/SuiteGuards/*.lean`) encode all passing yaml-test-suite tests. Auto-generated from yaml-test-suite by `gen-suite-guards.py`. Any parser regression breaks the build.
 
 **Phase 5 complete:** Canonical emitter (`Emitter.lean`) + round-trip proofs + completeness infrastructure across 6 proof files. ~180 theorems + 63 `#guard` round-trip checks. Steps 5.1–5.3: `contentEq` proved to be a full equivalence relation (refl + symm + trans) for all `YamlValue` trees; character-level escape round-trip connecting `escapeChar` ↔ `resolveNamedEscape` via `escapeTag`; 58 theorems + 63 `#guard` checks in `RoundTrip.lean`. Step 5.4: completeness infrastructure in 5 sub-phases — 5.4.1: `Stream.WellFounded`, `parseYaml_ok_iff`, 12 concrete completeness theorems (`Completeness.lean`); 5.4.2: 20 `@[simp]` combinator specs (`ParserSpecs.lean`); 5.4.3: 46 per-parser specs covering all major parser categories (`PerParserSpecs.lean`); 5.4.4: 35 fuel sufficiency theorems (`FuelSufficiency.lean`); 5.4.5: 21 composition theorems — position algebra, fuel wrapper unfolding, combinator extensions, stream accessor specs (`Composition.lean`). lean4-parser dependency switched from `std-iterators` to `well-founded-streams` branch (2026-02-26) with zero proof changes.
 
 **3.1–3.2 complete.** 3.1 (Foundation): ~90 theorems across 5 proof files. 3.2 (Key Invariants): ~30 theorems + 45 `#guard` checks across 3 proof files (`EscapeResolution.lean`, `IndentConsumption.lean`, `FoldNewlines.lean`). Grammar.lean extended with `resolveNamedEscape`, `isCForbiddenPrefix`, `isFoldAppendChar`, full Decidable instances.
 
-**Verification inventory:** 564 proved theorems/lemmas + 652 compile-time `#guard` checks (76 hand-written + 45 key-invariant + 351 yaml-test-suite + 63 round-trip + 24 schema-dump + 34 schema-resolution + 43 dump-roundtrip + 18 fold-newlines + 12 indent + misc) + 18 iterator `#guard` checks = **670 total compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 257/257 jobs. Lean4-parser dependency: PR#99 `well-founded-streams` branch (WF recursion + standalone `WellFoundedStreams` module + total fold combinators via `remaining`-based termination). `YamlStream` provides `remaining` via `Parser.Stream` class field.
+**Verification inventory:** 564 proved theorems/lemmas + 652 compile-time `#guard` checks (76 hand-written + 45 key-invariant + 358 yaml-test-suite + 63 round-trip + 24 schema-dump + 34 schema-resolution + 43 dump-roundtrip + 18 fold-newlines + 12 indent + misc) + 18 iterator `#guard` checks = **677 total compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 257/257 jobs. Lean4-parser dependency: PR#99 `well-founded-streams` branch (WF recursion + standalone `WellFoundedStreams` module + total fold combinators via `remaining`-based termination). `YamlStream` provides `remaining` via `Parser.Stream` class field.
 
 **3.3 complete.** All 6 steps finished: Steps 3.3.1–3.3.3 (totality), Step 3.3.4 (`#guard` compile-time tests), Step 3.3.5 (soundness proofs). Phase 4 complete. Phase 5 complete (emitter + round-trip proofs + completeness infrastructure).
 
@@ -1016,7 +1018,7 @@ All 16 test IDs pass. ExplicitKeyTests.lean, 66 tests.
 
 **P1 architectural change (2026-02-17).** Eliminated all 29 `throwUnexpected` calls, replaced with `validationError` field in `YamlStream` (survives backtracking) + explicit `Option` return types.
 
-**P7 validation rules (2026-02-20).** 15 targeted validation rules systematically eliminated all fixable unexpected passes. Error stage: 44→74/74 (100%). Overall: 310→353/416 (84.9%). 1 unfixable UP remaining (H7TQ: conflicts with ZYU8).
+**P7 validation rules (2026-02-20).** 15 targeted validation rules systematically eliminated all fixable unexpected passes. Error stage: 44→74/74 (100%). Overall: 310→353/416 (84.9%). H7TQ (the sole remaining UP) was later fixed — see dev log entry 30.
 
 **Validation sub-steps (all complete):**
 
@@ -1027,7 +1029,7 @@ All 16 test IDs pass. ExplicitKeyTests.lean, 66 tests.
 | **10c** | Quoted scalars | 10 | ✅ Done | Invalid escapes, `FoldResult.forbidden` now set `validationError`. `contentIndent` parameter in `foldQuotedNewlines`/`doubleQuotedScalar`/`singleQuotedScalar` rejects continuation at wrong indent (QB6E, DK95). |
 | **10d** | Indentation | 9 | ✅ Done | `checkIndentForTabs(minIndent)` rejects tabs within first `minIndent` columns of indentation (§6.1). `minIndent` parameter threaded through all 7 mutual flow parser functions for indent floor enforcement (9C9N, VJP3). Flow continuation tab detection via position save/restore (Y79Y). `propertyMinIndent` parameter in `blockValue` rejects under-indented anchors/tags (G9HC). |
 | **10e** | Anchors/aliases | 7 | ✅ Done | Undefined aliases validated. Double anchors checked (`4JVG`). Invalid anchor positions: `propertyMinIndent` in `blockValue` rejects anchors at wrong indent in mapping values (G9HC, §8.2.2). Block collection after anchor/tag requires newline (SY6V). Alias cannot carry anchor (SR86). |
-| **10f** | Directives | 7 | ✅ Done | Directives require document end marker `...` before them (9HCY, §9.2). Tag shorthand handle scope validated per document — undeclared `%TAG` handles rejected (QLJ7, §6.8.2). 1 unfixable UP: H7TQ (extra words after `%YAML` version — rejection conflicts with ZYU8 which has `%YAML 1.1 1.2` and must pass). |
+| **10f** | Directives | 7 | ✅ Done | Directives require document end marker `...` before them (9HCY, §9.2). Tag shorthand handle scope validated per document — undeclared `%TAG` handles rejected (QLJ7, §6.8.2). H7TQ (extra words after `%YAML` version) now fixed: `setValidationError` rejects extra content per §6.8 [82]+[86]; ZYU8 variant 3 fixed in yaml-test-suite fork to `fail: true`. |
 | **10g** | Comments | 6 | ✅ Done | Comment positions validated through §6.7 whitespace-before-`#` check (10a). Block collection on same line as mapping value rejected (ZCZ6, ZL4Z). Trailing content after document markers validated. |
 | **10h** | Block scalars | 3 | ✅ Done | Formal A/G contracts in `BlockScalarContracts.lean` (axiom-free). `autoDetectIndent` now tracks max blank spaces — whitespace-only lines exceeding detected content indent rejected (5LLU, S98Z, W9L4, §8.1.3). Runtime assertions enforce G1/G2 contracts. |
 | **10i** | Document markers | 3 | ✅ Done | `---`/`...` not followed by whitespace sets `validationError`. Bare-document-after-document rejection without `...` separator (BS4K, 2CMS). Directives after bare documents require `...` (9HCY). |
@@ -1113,13 +1115,13 @@ Tests flipped fail→pass (14): 87E4, LQZ7, SM9W, NHX8, L383, JHB9, 7Z25, 5TYM, 
 
 <details>
 <summary>
-353/406 (86.9%). 1 unfixable UP (H7TQ). 52 YAML 1.3 skips. 224/225 YAML 1.2.2 test IDs (99.6%).
+354/406 (87.2%). 0 unfixable UP. 52 YAML 1.3 skips. 225/225 YAML 1.2.2 test IDs (100%).
 </summary>
 
-After steps 8–11 + P4 + P5 + P6 + P7, current correct rate is 353/406 (86.9%). The remaining gaps are:
-- 1 unfixable unexpected pass (H7TQ: extra words after `%YAML` version directive)
+After steps 8–11 + P4 + P5 + P6 + P7, current correct rate is 354/406 (87.2%). The remaining gaps are:
+- 0 unexpected passes (H7TQ fixed: `setValidationError` rejects extra content after `%YAML` version per §6.8 [82]+[86]; ZYU8 variant 3 fixed in yaml-test-suite fork)
 - 52 skipped YAML 1.3 tests outside YAML 1.2.2 scope
-- The parser achieves 224/225 (99.6%) of YAML 1.2.2-applicable unique test IDs
+- The parser achieves 225/225 (100%) of YAML 1.2.2-applicable unique test IDs
 
 </details>
 
@@ -1127,23 +1129,23 @@ After steps 8–11 + P4 + P5 + P6 + P7, current correct rate is 353/406 (86.9%).
 
 ### Current State (2026-02-21)
 
-**yaml-test-suite: 353/406 correct (86.9%)** per subprocess report. 0 failures, 0 timeouts. 225 unique passing test IDs out of 277 (99.6% of YAML 1.2.2-applicable). **351 `#guard` compile-time proofs** (Phase 4) lock in all passing tests. All 171 skips are YAML 1.3 specific.
+**yaml-test-suite: 354/406 correct (87.2%)** per subprocess report. 0 failures, 0 timeouts. 225 unique passing test IDs out of 277 (100% of YAML 1.2.2-applicable). **358 `#guard` compile-time proofs** (Phase 4) lock in all passing tests. All 171 skips are YAML 1.3 specific.
 
 | Stage | Tests | Pass | Fail | Exp Fail | Unexp Pass | Skip | Correct | Rate |
 |-------|-------|------|------|----------|------------|------|---------|------|
 | Scalar | 82 | 53 | 0 | 1 | 0 | 28 | 54 | 66% |
 | Flow | 46 | 43 | 0 | 3 | 0 | 0 | 46 | 100% |
 | Block | 109 | 85 | 0 | 14 | 0 | 10 | 99 | 91% |
-| Document | 24 | 15 | 0 | 1 | 1 | 7 | 16 | 67% |
+| Document | 24 | 15 | 0 | 2 | 0 | 7 | 17 | 71% |
 | Advanced | 81 | 64 | 0 | 0 | 0 | 17 | 64 | 79% |
 | Error | 74 | 0 | 0 | 74 | 0 | 0 | 74 | 100% |
-| **Total** | **406** | **260** | **0** | **93** | **1** | **52** | **353** | **86.9%** |
+| **Total** | **406** | **260** | **0** | **94** | **0** | **52** | **354** | **87.2%** |
 
 "Correct" = Pass + Expected Fail. "Fail" includes parse errors on valid YAML. "Unexpected Pass" indicates the parser accepts invalid YAML.
 
-One remaining unexpected pass: **H7TQ** (extra words after `%YAML` version directive — unfixable: rejecting extra words after `%YAML 1.2` would also break ZYU8 `%YAML 1.1 1.2`). CQ3W (unclosed double-quote) was previously an UP but is now fixed: adding `setValidationError "unterminated double-quoted scalar"` to the fuel-exhaustion case of `collectChars` ensures both kernel and compiled code consistently reject unclosed quoted scalars. Error stage: 74/74 (100%). Flow stage: 46/46 (100%). Block stage improved from 83% to 91% through targeted validation. The 52 skipped tests are YAML 1.3 features outside YAML 1.2.2 scope (the SuiteRunner `emit` field fix eliminated 10 phantom variants, bringing total from 416 to 406).
+Zero unexpected passes remaining. **H7TQ** (extra words after `%YAML` version directive) was previously labeled unfixable due to conflict with ZYU8. Both are now fixed: `setValidationError` rejects extra content after `%YAML` version per §6.8 [82]+[86], and ZYU8 variant 3 (`%YAML 1.1 1.2`) is corrected to `fail: true` in a yaml-test-suite fork (the YAML 1.2.2 grammar only allows `s-l-comments` after `ns-yaml-version`). CQ3W (unclosed double-quote) was previously an UP but is now fixed: adding `setValidationError "unterminated double-quoted scalar"` to the fuel-exhaustion case of `collectChars` ensures both kernel and compiled code consistently reject unclosed quoted scalars. Error stage: 74/74 (100%). Flow stage: 46/46 (100%). Document stage: 17/24 (71%). Block stage improved from 83% to 91% through targeted validation. The 52 skipped tests are YAML 1.3 features outside YAML 1.2.2 scope (the SuiteRunner `emit` field fix eliminated 10 phantom variants, bringing total from 416 to 406).
 
-**Internal test suites: 940/940 (100%) across 12 suites** (hand-written Lean tests; separate from the yaml-test-suite cases above). Plus **427 compile-time `#guard` checks** (76 hand-written + 351 yaml-test-suite auto-generated).
+**Internal test suites: 940/940 (100%) across 12 suites** (hand-written Lean tests; separate from the yaml-test-suite cases above). Plus **434 compile-time `#guard` checks** (76 hand-written + 358 yaml-test-suite auto-generated).
 
 ### What's Implemented vs YAML 1.2.2 Spec
 
@@ -1210,22 +1212,22 @@ All parser failures have been resolved through P1–P7. No tests produce incorre
 
 </details>
 
-#### Category 2: Permissiveness (1 remaining unexpected pass) — Error Rejection
+#### Category 2: Permissiveness (0 unexpected passes) — Error Rejection
 
 <details>
 <summary>
-1 unfixable UP: H7TQ (document stage, conflicts with ZYU8). CQ3W fixed.
+0 UP remaining. H7TQ and CQ3W both fixed.
 </summary>
 
-Error stage: 74/74 (100%). All error-stage tests resolved. CQ3W fixed by adding `setValidationError` to fuel-exhaustion case in `doubleQuotedScalar.collectChars`.
+Error stage: 74/74 (100%). All error-stage tests resolved. CQ3W fixed by adding `setValidationError` to fuel-exhaustion case in `doubleQuotedScalar.collectChars`. H7TQ fixed by rejecting extra content after `%YAML` version per §6.8 [82]+[86]; ZYU8 variant 3 corrected to `fail: true` in yaml-test-suite fork.
 
 | Category | Count | What Should Be Rejected |
 |---|---|---|
-| **Non-error stages** | **1** | H7TQ (document stage) — unfixable conflict with ZYU8 |
+| **Non-error stages** | **0** | ✅ H7TQ fixed — `setValidationError` rejects extra content after `%YAML` version |
 | ~~Error stage~~ | 0 | ✅ CQ3W fixed — `setValidationError "unterminated double-quoted scalar"` |
 | Flow structure | 0 | ✅ Fixed by Step 10a (4 validation rules) |
 
-**H7TQ** (extra words after `%YAML` version directive) is unfixable because rejecting extra words after `%YAML 1.2` would also break ZYU8 (`%YAML 1.1 1.2`, which must pass). **CQ3W** (unclosed double-quote) was a kernel/compiled discrepancy — the compiled parser accepted `"unclosed` as a plain scalar via error recovery while the kernel evaluator took a different path. **Fixed** by adding `setValidationError "unterminated double-quoted scalar"` (and the single-quote equivalent) to the `collectChars` fuel-exhaustion case in `Scalar.lean`. Both kernel and compiled code now consistently reject unclosed quoted scalars.
+**H7TQ** (extra words after `%YAML` version directive) was previously labeled unfixable due to conflict with ZYU8 (`%YAML 1.1 1.2`). **Fixed** by recognizing that per YAML 1.2.2 production rules [86] (`ns-yaml-directive ::= "YAML" s-separate-in-line ns-yaml-version`) and [82] (`l-directive ::= '%' ... s-l-comments`), extra content after `ns-yaml-version` is not allowed — ZYU8 variant 3 should also fail. Parser fix: `setValidationError` after `skipHWhitespace` when non-linebreak, non-`#` content follows the version. yaml-test-suite fix: ZYU8 variant 3 marked `fail: true` in [fork](https://github.com/NicolasRouquette/yaml-test-suite/tree/yaml-1.2.2-directive-fix). **CQ3W** (unclosed double-quote) was a kernel/compiled discrepancy — the compiled parser accepted `"unclosed` as a plain scalar via error recovery while the kernel evaluator took a different path. **Fixed** by adding `setValidationError "unterminated double-quoted scalar"` (and the single-quote equivalent) to the `collectChars` fuel-exhaustion case in `Scalar.lean`. Both kernel and compiled code now consistently reject unclosed quoted scalars.
 
 The root cause was architectural: lean4-parser's `<|>` unconditionally catches all `Result.error` values, making `throwUnexpected` unreliable for validation. **P1 fix (2026-02-17):** All `throwUnexpected` calls eliminated and replaced with `validationError` field in `YamlStream` (survives backtracking). **Step 10a fix (2026-02-19):** 4 validation rules in `Flow.lean` + `Document.lean` restored error stage to 52/74 (70%). **Mapping bug fix (2026-02-19):** `runAllForReport` classification bug (`.unexpectedPass` → `.expectedFail`). **P7 completion (2026-02-24):** Post-indicator tab rejection (§6.1), block scalar auto-detect contradiction (§8.1), flow continuation tab detection, anchor indent validation, single-line implicit key constraints (§8.2.1), several additional error-rejection rules. Error stage: 0→52→73→74/74 (100%). **CQ3W fix (2026-02-22):** `setValidationError` in `collectChars` fuel-exhaustion case eliminates kernel/compiled discrepancy.
 
@@ -1249,7 +1251,7 @@ The root cause was architectural: lean4-parser's `<|>` unconditionally catches a
 
 ### Path to 100% yaml-test-suite Compliance
 
-**Current: 353/406 (86.9%).** Target: 354/406 (87.2%), excluding 52 skipped tests outside YAML 1.2.2 scope. 1 unfixable UP remains (H7TQ).
+**Current: 354/406 (87.2%).** All 225 YAML 1.2.2-applicable unique test IDs pass (100%). 52 skipped tests are outside YAML 1.2.2 scope. 0 unfixable UP remaining.
 
 | Phase | Work | Tests Fixed | Projected |
 |---|---|---|---|
@@ -1259,9 +1261,9 @@ The root cause was architectural: lean4-parser's `<|>` unconditionally catches a
 | **P4: Block completeness** | ✅ **Complete (2026-02-21).** T4: `detectMappingKey` scans past non-separator colons and mid-key quotes. T3: `dispatchByChar` checks mapping pattern before `"`, `'`, `?`, `-` scalar dispatch. Comment-after-colon fix for §6.7. BLOCK-OUT context (§8.2.2): `blockValue mapIndent` for next-line values. Block: 78→82 (+4), scalar: 46→50 (+4), advanced: 44→45 (+1), error: 50→46 (−4 — parser now accepts some invalid YAML). See ANALYSIS.md §2.I T3+T4 results. | +5 net done | — |
 | **P5: Content correctness** | ✅ **Complete (2026-02-22).** EOF safety, quoted key whitespace, trailing comment handling, tab-aware blank lines, document boundary in sequences, bare docs after `...`. 6 fixes across Block.lean, Document.lean, Scalar.lean, Combinators.lean. Suite: 275→288 correct (+13 net), 14 tests fixed, 1 regression (BS4K). | +13 net done | — |
 | **P6: Advanced features** | ✅ **Complete (2026-02-23).** Complex keys (flow collections as keys), Unicode anchors, directive edge cases, tag handles. Scalar: 50→54, block: 82→90, advanced: 45→64. | +22 done | — |
-| **P7: Remaining validation** | ✅ **Complete (2026-02-24).** Post-indicator tab rejection (§6.1), block scalar auto-detect contradiction (§8.1), flow continuation tab detection (§6.1), anchor indent validation (§8.2.2). Error: 44→74/74 (100%), flow: 43→46/46 (100%), block: 90→99. 1 unfixable UP (H7TQ). | +43 done | — |
+| **P7: Remaining validation** | ✅ **Complete (2026-02-24).** Post-indicator tab rejection (§6.1), block scalar auto-detect contradiction (§8.1), flow continuation tab detection (§6.1), anchor indent validation (§8.2.2). Error: 44→74/74 (100%), flow: 43→46/46 (100%), block: 90→99. H7TQ later fixed (dev log 30). | +43 done | — |
 
-The remaining 52 skipped tests are YAML 1.1/1.3 features or tests that require behavior outside the YAML 1.2.2 specification. All phases P1–P7 are now complete. The parser achieves 353/354 (99.7%) of YAML 1.2.2-applicable tests, with H7TQ as the sole unfixable UP. All 351 non-excluded passing tests are locked as compile-time `#guard` checks (Phase 4).
+The remaining 52 skipped tests are YAML 1.1/1.3 features or tests that require behavior outside the YAML 1.2.2 specification. All phases P1–P7 are now complete. The parser achieves 225/225 (100%) of YAML 1.2.2-applicable tests. H7TQ (previously the sole unfixable UP) is now fixed: parser rejects extra content after `%YAML` version per §6.8 [82]+[86]; ZYU8 variant 3 corrected to `fail: true` in yaml-test-suite fork. All 358 passing tests are locked as compile-time `#guard` checks (Phase 4).
 
 ### YAML 1.2.2 Spec Sections Not Yet Covered
 
