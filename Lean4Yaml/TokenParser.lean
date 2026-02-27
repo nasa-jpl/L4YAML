@@ -129,8 +129,10 @@ def parseNodeProperties (ps : ParseState) : (NodeProperties × ParseState) := Id
       props := { props with anchor := some name }
       ps := ps.advance
     | some (.tag handle suffix) =>
+      -- Store tags in shorthand form to match the old parser's convention.
+      -- `!!suffix` stays as `!!suffix`; verbatim/named handles pass through.
       let fullTag := if handle == "" && suffix != "" then suffix
-                     else if handle == "!!" then "tag:yaml.org,2002:" ++ suffix
+                     else if handle == "!!" then "!!" ++ suffix
                      else handle ++ suffix
       props := { props with tag := some fullTag }
       ps := ps.advance
@@ -408,18 +410,68 @@ def parseStream (tokens : Array (Positioned YamlToken)) : Except String (Array Y
       ps := ps'
   .ok docs
 
-/-! ## Convenience: Full Pipeline -/
+/-! ## Convenience: Full Pipeline
 
-/-- Parse a YAML string into documents (scan + parse). -/
-def parseYaml (input : String) : Except String (Array YamlDocument) := do
+YAML 1.2.2 §3.1 defines **Load** as the composition of two processes:
+- **Parse**: character stream → serialization event tree
+- **Compose**: serialization event tree → representation node graph
+
+The *Raw* variants return the serialization tree (anchors + aliases preserved).
+The standard variants apply Compose for backward compatibility.
+-/
+
+/--
+Parse a YAML string into an array of documents (**serialization tree**).
+
+Returns documents with `.alias name` nodes and `anchor` fields preserved.
+This is the **Parse** step from YAML 1.2.2 §3.1.
+
+Each `YamlDocument` includes an `anchors` map that can be used by
+`YamlDocument.compose` to resolve aliases.
+-/
+def parseYamlRaw (input : String) : Except String (Array YamlDocument) := do
   let tokens ← Scanner.scan input
   parseStream tokens
 
-/-- Parse a YAML string, returning just the first document's value. -/
-def parseYamlSingle (input : String) : Except String YamlValue := do
-  let docs ← parseYaml input
-  match docs[0]? with
-  | some doc => .ok doc.value
-  | none => .ok emptyNode
+/--
+Parse a YAML string into an array of documents (**representation graph**).
+
+This is the full **Load** step from YAML 1.2.2 §3.1:
+Parse (→ serialization tree) + Compose (→ representation graph).
+
+Aliases are resolved and anchor annotations are stripped.
+This is the main entry point for most use cases.
+-/
+def parseYaml (input : String) : Except String (Array YamlDocument) :=
+  match parseYamlRaw input with
+  | .ok docs => .ok (docs.map YamlDocument.compose)
+  | .error e => .error e
+
+/--
+Parse a YAML string expecting exactly one document (**serialization tree**).
+
+Returns the raw document with `.alias` nodes and `anchor` fields preserved.
+-/
+def parseYamlSingleRaw (input : String) : Except String YamlDocument :=
+  match parseYamlRaw input with
+  | .ok docs =>
+    if docs.size == 0 then .ok { value := YamlValue.null }
+    else if docs.size == 1 then .ok docs[0]!
+    else .error s!"expected single document, found {docs.size}"
+  | .error e => .error e
+
+/--
+Parse a YAML string expecting exactly one document (**representation graph**).
+
+Returns the value of the single document with aliases resolved and
+anchor annotations stripped.
+-/
+def parseYamlSingle (input : String) : Except String YamlValue :=
+  match parseYaml input with
+  | .ok docs =>
+    if docs.size == 0 then .ok YamlValue.null
+    else if docs.size == 1 then .ok docs[0]!.value
+    else .error s!"expected single document, found {docs.size}"
+  | .error e => .error e
 
 end Lean4Yaml.TokenParser

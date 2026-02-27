@@ -10,6 +10,7 @@ import Lean4Yaml.Parser.Anchor
 import Lean4Yaml.Parser.Flow
 import Lean4Yaml.Parser.Block
 import Lean4Yaml.YamlSpec
+import Lean4Yaml.TokenParser
 
 /-!
 # YAML Document Parsers
@@ -49,8 +50,6 @@ open Lean4Yaml
 
 -- Bridge instance: help Lean reduce Parser.Stream.Position YamlStream to YamlPos
 instance : Repr (Parser.Stream.Position YamlStream) := inferInstanceAs (Repr YamlPos)
-
-instance : Inhabited YamlDocument := ⟨{ value := .null, directives := #[] }⟩
 
 /--
 Result of attempting to parse one document from the stream.
@@ -446,7 +445,37 @@ YAML 1.2.2 §3.1 defines **Load** as the composition of two processes:
 
 The *Raw* variants return the serialization tree (anchors + aliases preserved).
 The standard variants apply Compose for backward compatibility.
+
+**Phase 10 status**: The tokenized parser (`Lean4Yaml.TokenParser`) is
+available with full API parity. The `*Tokenized` aliases below provide
+direct access. The public API currently uses the char-level parser for
+backward compatibility; switching to the tokenized parser is P10.2.
 -/
+
+/-! ### Tokenized parser aliases
+
+These provide `Parse.parseYamlTokenized` etc. in the same namespace as
+the legacy API, making it easy for callers to opt in to the new parser
+without changing their import.
+-/
+
+/-- Parse via the two-pass tokenized parser (scan → parse). Raw variant. -/
+def parseYamlRawTokenized (input : String) : Except String (Array YamlDocument) :=
+  TokenParser.parseYamlRaw input
+
+/-- Parse via the two-pass tokenized parser (scan → parse → compose). -/
+def parseYamlTokenized (input : String) : Except String (Array YamlDocument) :=
+  TokenParser.parseYaml input
+
+/-- Single-document parse via tokenized parser (raw). -/
+def parseYamlSingleRawTokenized (input : String) : Except String YamlDocument :=
+  TokenParser.parseYamlSingleRaw input
+
+/-- Single-document parse via tokenized parser (composed). -/
+def parseYamlSingleTokenized (input : String) : Except String YamlValue :=
+  TokenParser.parseYamlSingle input
+
+/-! ### Public API (char-level parser — switches to tokenized in P10.2) -/
 
 /--
 Parse a YAML string into an array of documents (**serialization tree**).

@@ -174,7 +174,7 @@ structure YamlDocument where
   value : YamlValue
   directives : Array Directive := #[]
   anchors : Array (String × YamlValue) := #[]
-  deriving Repr, BEq
+  deriving Repr, BEq, Inhabited
 
 /-! ## Convenience Constructors -/
 
