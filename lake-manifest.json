@@ -5,7 +5,7 @@
    "type": "git",
    "subDir": null,
    "scope": "",
-   "rev": "05b8063fb99a9a249783adb8cb1a349c5ddac4d2",
+   "rev": "deb6e2e0e73164e93fcbaad506d380988c41e68a",
    "name": "Parser",
    "manifestFile": "lake-manifest.json",
    "inputRev": "well-founded-streams",

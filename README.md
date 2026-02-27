@@ -723,6 +723,26 @@ Compose per-parser specs + fuel sufficiency + `parseYaml_ok_iff` bridge into the
 
 </details>
 
+#### Step 5.4: Update lean4-yaml-verified to use `remaining` field from `Parser.Stream` (2026-02-26)
+
+<details>
+
+**Context.** The previous step (commit `deb6e2e`) added `remaining : σ → Nat` as a field on `Parser.Stream` in lean4-parser. However, lean4-yaml-verified was still using a standalone `_root_.Parser.Stream.remaining` shim defined in `Lean4Yaml/Stream.lean`, because `remaining` didn't exist as a class field when the well-founded-streams branch was first adopted. Now that it does, the shim can be replaced by the class field.
+
+**Changes made (2 files):**
+
+1. **`lake-manifest.json`** — Updated by `lake update Parser` to point to lean4-parser commit `deb6e2e` (was `05b8063`).
+
+2. **`Lean4Yaml/Stream.lean`** — Two changes:
+   - Added `remaining s := s.stopPos.byteIdx - s.startPos.byteIdx` to the `Parser.Stream YamlStream Char` instance definition.
+   - Removed the standalone `def _root_.Parser.Stream.remaining (s : Lean4Yaml.YamlStream) : Nat` shim and its docstring (11 lines).
+
+**Why zero downstream changes were needed.** All parser files (`Block.lean`, `Combinators.lean`, `Document.lean`, `Flow.lean`) use `Stream.remaining (← getStream)` which resolves to `Parser.Stream.remaining`. Previously this resolved to the standalone shim; now it resolves to the class field. Both evaluate to the same expression (`s.stopPos.byteIdx - s.startPos.byteIdx`), so all proofs, `#guard` checks, and runtime behavior are identical.
+
+**Build:** `lake build` — 257/257 jobs, 0 errors. All 564 theorems and 670 `#guard` checks pass unchanged.
+
+</details>
+
 </details>
 
 ## Next Steps
@@ -731,7 +751,7 @@ Compose per-parser specs + fuel sufficiency + `parseYaml_ok_iff` bridge into the
 
 <details>
 <summary>
-Steps 1–28: parser features, totality, soundness, compile-time proofs, completeness, branch switch, total fold combinators.
+Steps 1–29: parser features, totality, soundness, compile-time proofs, completeness, branch switch, total fold combinators, remaining field integration.
 </summary>
 
 1. ~~**Three-valued error recovery**~~ — ✅ Validation combinators active in `Block.lean`.
@@ -928,6 +948,8 @@ Steps 1–28: parser features, totality, soundness, compile-time proofs, complet
 
 28. **Make lean4-parser fold combinators total via `remaining`-based termination (2026-02-26)** — ✅ Added `remaining : σ → Nat` field to the `Parser.Stream` class in lean4-parser's `well-founded-streams` branch. Converted all 6 `partial def` fold combinators in `Parser/Parser.lean` and `Parser/Basic.lean` to total `def` with `termination_by Stream.remaining s`. Commit `deb6e2e`. Three files changed (+88, −31 lines): `Parser/Stream.lean` (new `remaining` field + implementations for all 6 stream instances), `Parser/Parser.lean` (`efoldlPAux` → total), `Parser/Basic.lean` (`foldr`, `takeUntil`, `dropUntil`, `count`, `countUntil` → total). Design: each fold iteration checks `if h : Stream.remaining s'' < Stream.remaining s` at runtime — the `true` branch provides evidence for Lean's termination checker, the `false` branch stops the fold (preventing non-termination even with parsers that succeed without consuming input). Stream `remaining` implementations: `String.Slice` → `utf8ByteSize`, `Substring.Raw` → `bsize`, `Subarray` → `stop - start`, `ByteSlice` → `size`, `OfList` → `next.length`, `mkDefault` → `0`. Six RegEx `partial def`s (separate concern) left as-is. Build: 208/208 jobs.
 
+29. **Update lean4-yaml-verified to use `remaining` field from `Parser.Stream` (2026-02-26)** — ✅ Updated lean4-parser dependency to commit `deb6e2e` (which adds `remaining` as a `Parser.Stream` class field). Removed the standalone `_root_.Parser.Stream.remaining` shim from `Lean4Yaml/Stream.lean` and replaced it with `remaining s := s.stopPos.byteIdx - s.startPos.byteIdx` in the `Parser.Stream YamlStream Char` instance. **Zero proof/test changes** — all downstream uses (`Stream.remaining (← getStream)` in `Block.lean`, `Combinators.lean`, `Document.lean`, `Flow.lean`) resolve to the class field with the identical expression. Two files changed: `lake-manifest.json` (rev update), `Lean4Yaml/Stream.lean` (instance field + shim removal). Build: 257/257 jobs, all 564 theorems and 670 `#guard` checks pass unchanged.
+
 </details>
 
 ### Current: Phase 3 Complete, Phase 4 Complete, Phase 5 Complete
@@ -945,7 +967,7 @@ Phase 2 (Parser Validation) is functionally complete. **353/406 correct** per HT
 
 **3.1–3.2 complete.** 3.1 (Foundation): ~90 theorems across 5 proof files. 3.2 (Key Invariants): ~30 theorems + 45 `#guard` checks across 3 proof files (`EscapeResolution.lean`, `IndentConsumption.lean`, `FoldNewlines.lean`). Grammar.lean extended with `resolveNamedEscape`, `isCForbiddenPrefix`, `isFoldAppendChar`, full Decidable instances.
 
-**Verification inventory:** 564 proved theorems/lemmas + 652 compile-time `#guard` checks (76 hand-written + 45 key-invariant + 351 yaml-test-suite + 63 round-trip + 24 schema-dump + 34 schema-resolution + 43 dump-roundtrip + 18 fold-newlines + 12 indent + misc) + 18 iterator `#guard` checks = **670 total compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 257/257 jobs. Lean4-parser dependency: PR#99 `well-founded-streams` branch (WF recursion + standalone `WellFoundedStreams` module + total fold combinators via `remaining`-based termination).
+**Verification inventory:** 564 proved theorems/lemmas + 652 compile-time `#guard` checks (76 hand-written + 45 key-invariant + 351 yaml-test-suite + 63 round-trip + 24 schema-dump + 34 schema-resolution + 43 dump-roundtrip + 18 fold-newlines + 12 indent + misc) + 18 iterator `#guard` checks = **670 total compile-time checks**. 0 sorry, 0 axiom, 0 `partial def`. Build: 257/257 jobs. Lean4-parser dependency: PR#99 `well-founded-streams` branch (WF recursion + standalone `WellFoundedStreams` module + total fold combinators via `remaining`-based termination). `YamlStream` provides `remaining` via `Parser.Stream` class field.
 
 **3.3 complete.** All 6 steps finished: Steps 3.3.1–3.3.3 (totality), Step 3.3.4 (`#guard` compile-time tests), Step 3.3.5 (soundness proofs). Phase 4 complete. Phase 5 complete (emitter + round-trip proofs + completeness infrastructure).
 
@@ -2884,9 +2906,9 @@ Both `lake build WellFoundedStreams` and `lake build Parser` succeed cleanly.
    `lean4-yaml-verified` now uses the `well-founded-streams` branch.
    `Stream.WellFounded YamlStream Char` is proved via `ofMeasure` with
    the byte-distance measure. All 257 build jobs pass, all 564 theorems
-   and 670 `#guard` checks compile unchanged. The `remaining` function
-   is provided as a standalone `_root_.Parser.Stream.remaining` definition
-   rather than a `Parser.Stream` field, preserving API compatibility.
+   and 670 `#guard` checks compile unchanged. The `remaining` measure
+   is provided via the `Parser.Stream` class field (lean4-parser commit
+   `deb6e2e`) in the `YamlStream` instance.
 
 4. ~~**Make lean4-parser's own fold combinators total.**~~ ✅ **Complete (2026-02-26).**
    Added `remaining : σ → Nat` field to `Parser.Stream` class and
@@ -2902,13 +2924,13 @@ Both `lake build WellFoundedStreams` and `lake build Parser` succeed cleanly.
    same theorem names, same API surface. The only change would be
    removing the local files and adding an `import Batteries.Data.Stream`.
 
-6. **Update lean4-yaml-verified to use the new `remaining` field.**
-   The lean4-parser `well-founded-streams` branch now has `remaining`
-   as a `Parser.Stream` field (not a standalone function). The
-   `_root_.Parser.Stream.remaining` shim in `Lean4Yaml/Stream.lean`
-   must be updated to use the new field, and the `YamlStream` instance
-   needs to provide `remaining` directly. This should be a straightforward
-   change with zero proof impact since the expression is identical.
+6. ~~**Update lean4-yaml-verified to use the new `remaining` field.**~~ ✅ **Complete (2026-02-26).**
+   Updated lean4-parser dependency to commit `deb6e2e`. Removed the
+   standalone `_root_.Parser.Stream.remaining` shim and replaced it with
+   `remaining s := s.stopPos.byteIdx - s.startPos.byteIdx` in the
+   `Parser.Stream YamlStream Char` instance. Zero proof/test changes —
+   all downstream uses resolve to the class field with the identical
+   expression. Build: 257/257 jobs.
 
 7. **Remove RegEx `partial def`s in lean4-parser.**
    Six `partial def`s remain in `Parser/RegEx/Basic.lean` (2) and

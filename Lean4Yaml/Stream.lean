@@ -216,17 +216,7 @@ instance : Parser.Stream YamlStream Char where
       startPos := ⟨p.offset⟩
       line := p.line
       col := p.col }
-
-/--
-Remaining bytes in the stream. This is the natural measure for
-termination proofs: it strictly decreases when `next?` returns `some`.
-
-Defined as a standalone function (rather than a `Parser.Stream` field)
-because the `well-founded-streams` branch of lean4-parser does not
-include a `remaining` field in `Parser.Stream`.
--/
-def _root_.Parser.Stream.remaining (s : Lean4Yaml.YamlStream) : Nat :=
-  s.stopPos.byteIdx - s.startPos.byteIdx
+  remaining s := s.stopPos.byteIdx - s.startPos.byteIdx
 
 /--
 `YamlStream` is a well-founded stream: consuming a token via `Std.Stream.next?`
