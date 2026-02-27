@@ -868,10 +868,10 @@ def scanNextToken (s : ScannerState) : Except String (Option ScannerState) := do
         | some n => isBlank n
         | none => true
       if isEntry then return some (scanBlockEntry s)
-    if c == '?' && !s.inFlow then
+    if c == '?' then
       let next := s.peekAt? 1
       let isKey := match next with
-        | some n => isBlank n
+        | some n => isBlank n || (s.inFlow && isFlowIndicator n)
         | none => true
       if isKey then return some (scanKey s)
     if c == ':' then
