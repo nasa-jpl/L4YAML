@@ -3,7 +3,7 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Parser
-import Parser.Iterators
+import WellFoundedStreams
 import Lean4Yaml.Types
 
 /-!
@@ -216,21 +216,32 @@ instance : Parser.Stream YamlStream Char where
       startPos := ⟨p.offset⟩
       line := p.line
       col := p.col }
-  remaining s := s.stopPos.byteIdx - s.startPos.byteIdx
 
 /--
-`YamlStream` is a lawful parser stream: consuming a token via `next?`
-strictly decreases `Parser.Stream.remaining`.
+Remaining bytes in the stream. This is the natural measure for
+termination proofs: it strictly decreases when `next?` returns `some`.
 
-This enables sorry-free `Finite` and `IteratorLoop` instances for
-`StreamIterator`, supporting provably terminating `for` loops over
-`YamlStream` tokens via `Std.Data.Iterators`.
+Defined as a standalone function (rather than a `Parser.Stream` field)
+because the `well-founded-streams` branch of lean4-parser does not
+include a `remaining` field in `Parser.Stream`.
 -/
-instance : LawfulParserStream YamlStream Char where
-  remaining_decreases s c s' h := by
-    simp only [Parser.Stream.remaining]
-    -- `Stream.next?` resolves to `YamlStream.next?`
-    simp only [Stream.next?, Std.Stream.next?, YamlStream.next?] at h
+def _root_.Parser.Stream.remaining (s : Lean4Yaml.YamlStream) : Nat :=
+  s.stopPos.byteIdx - s.startPos.byteIdx
+
+/--
+`YamlStream` is a well-founded stream: consuming a token via `Std.Stream.next?`
+strictly decreases the byte-distance measure.
+
+This enables sorry-free termination for folds over `YamlStream` tokens:
+- `Stream.Finite` witnesses per-stream finiteness
+- `StreamIterator` provides `Productive` and `IteratorLoop` instances
+  for provably terminating `for` loops via `Std.Data.Iterators`
+-/
+instance : Stream.WellFounded YamlStream Char :=
+  .ofMeasure (fun s => s.stopPos.byteIdx - s.startPos.byteIdx) <| by
+    intro s t x h
+    -- `Std.Stream.next?` resolves to `YamlStream.next?`
+    simp only [Std.Stream.next?, YamlStream.next?] at h
     split at h
     · next hlt =>
       simp only [Option.some.injEq, Prod.mk.injEq] at h

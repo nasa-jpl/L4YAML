@@ -7,7 +7,7 @@ defaultTargets = ["Lean4Yaml"]
 [[require]]
 name = "Parser"
 git = "https://github.com/NicolasRouquette/lean4-parser"
-rev = "std-iterators"
+rev = "well-founded-streams"
 
 [[lean_lib]]
 name = "Lean4Yaml"
