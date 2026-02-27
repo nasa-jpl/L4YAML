@@ -5,6 +5,16 @@ defaultTargets = ["Lean4Yaml"]
 "autoImplicit" = false
 
 [[require]]
+name = "importGraph"
+git = "https://github.com/leanprover-community/import-graph"
+rev = "v4.28.0"
+
+[[require]]
+name = "DocGen4"
+git = "https://github.com/leanprover/doc-gen4"
+rev = "v4.28.0"
+
+[[require]]
 name = "Parser"
 git = "https://github.com/NicolasRouquette/lean4-parser"
 rev = "well-founded-streams"
