@@ -2587,7 +2587,6 @@ with concrete module targets now known:
 | Parser: collection nesting | Simplify from `PerParserSpecs.lean` — structural matching only | Low |
 | Composition: end-to-end | `TokenParser.parseYaml ∘ id = Parser.Document.parseYaml` (behavioural equivalence on test inputs) | High |
 
-</details>
 
 ### Token–Grammar Layer Analysis (2026-02-26)
 
@@ -2769,6 +2768,215 @@ Resolved all four open questions from the original plan:
 4. **API compatible** — `TokenParser.parseYaml` has the same `String → Except String (Array YamlDocument)` signature. Both old and new parsers coexist.
 
 The `b: x: y` regression is fixed: the scanner produces `KEY "b" VALUE KEY "x" VALUE "y"` tokens, and the parser builds `{b: {x: y}}` — the correct YAML 1.2.2 nested mapping interpretation.
+
+</details>
+
+</details>
+
+## Phase 10: Old Parser Removal & Proof Migration — Planned
+
+<details>
+<summary>
+<b>Remove the single-pass character-level parser (<code>Lean4Yaml/Parser/</code>, 7 files, 4,403 lines) and the <code>lean4-parser</code> dependency. Migrate all proofs and tests to use the Phase 9 tokenized pipeline (<code>Scanner.lean</code> + <code>TokenParser.lean</code>). Estimated: ~2,850 lines preserved/adapted, ~3,950 lines rewritten or dropped across 15 proof files.</b>
+</summary>
+
+### Motivation
+
+Phase 9 introduced a two-pass scanner/parser (`Token.lean`, `Scanner.lean`, `TokenParser.lean`) that is completely independent of the `lean4-parser` library. Both parsers currently coexist: the old parser is the default (`Lean4Yaml.Parse.parseYaml`), while the tokenized parser lives in `Lean4Yaml.TokenParser.parseYaml`. Maintaining two full YAML parsers doubles the surface area for bugs, increases build times, and causes confusion about which API to use. The tokenized parser is architecturally superior — it eliminates `detectMappingKeyImpl` false positives, removes the fuel parameter, and separates lexical from syntactic concerns.
+
+### Scope
+
+**Delete**: `Lean4Yaml/Parser/` directory (7 files, 4,403 lines):
+- `Combinators.lean` (636 lines) — `YamlParser` monad, character classifiers, indent tracking
+- `Scalar.lean` (1,067 lines) — quoted/plain/block scalar parsers, `FoldResult`
+- `Anchor.lean` (209 lines) — anchor/alias handling
+- `Tag.lean` (184 lines) — tag parsing
+- `Flow.lean` (606 lines) — flow collection parsers
+- `Block.lean` (1,181 lines) — block collection parsers, `detectMappingKey`
+- `Document.lean` (520 lines) — document/stream parsers, top-level API
+
+**Remove dependency**: `lean4-parser` (`Parser` package from `lakefile.toml`). Only `Parser/Combinators.lean` imports it.
+
+**Promote**: `TokenParser.parseYaml` becomes the sole `parseYaml` implementation in the `Lean4Yaml.Parse` namespace.
+
+### Inventory: What Depends on the Old Parser
+
+#### Library layer (2 files)
+- **`Schema/Api.lean`** — calls `Parse.parseYamlSingle` in `parseAs`, `parseTyped`
+- **`Schema/Dump.lean`** — calls `parseYamlSingle` in `roundTripTyped`, `contentRoundTrips`
+
+#### Proof layer (15 of 21 files)
+
+| Classification | Files | Lines | Migration |
+|---|---|---|---|
+| **REUSABLE** (no changes needed) | `StringProperties` (172), `DocumentContracts` (190), `Validation` (324) | 686 | Import path only |
+| **ADAPTABLE** (import swap + mechanical edits) | `CharClass` (158), `RoundTrip` (905), `EscapeResolution` (291), `FoldNewlines` (313), `TestSuite` (389), `DumpRoundTrip` (453), `SchemaDump` (311) | 2,820 | Replace `Parse.X` → `Scanner.X` or `TokenParser.X`; swap `#guard` imports |
+| **REWRITE** (architecture changed) | `IndentConsumption` (250), `Completeness` (504), `PerParserSpecs` (2,309), `Composition` (338) | 3,401 | Rebuild from scratch against `TokenStream`/`ParseState` |
+| **DROP** (no analogue in new arch) | `FuelSufficiency` (545), `ParserSpecs` (424) | 969 | Delete — fuel model eliminated |
+
+#### Test layer (19 files)
+- All test suites (`Tests/*.lean`) call `Lean4Yaml.Parse.parseYaml[Single]`
+- `SuiteRunner/Main.lean` — coverage runner
+- `SuiteGuards/*.lean` (6 files) — 358 auto-generated `#guard` checks
+- Only 2 files (`ScannerTests`, `ScannerSpecExamples`) already use the tokenized parser
+
+#### Types to relocate
+- `FoldResult` (defined in `Parser/Scalar.lean`) — used by `Proofs/StringProperties.lean` and `Proofs/FoldNewlines.lean`. Move to `Types.lean` or `Grammar.lean`.
+
+### Phased Execution Plan
+
+#### P10.1: API Facade (non-breaking)
+
+**Goal**: Make `TokenParser.parseYaml` the implementation behind `Lean4Yaml.Parse.parseYaml` while keeping the old parser importable.
+
+1. Add `Token.lean`, `Scanner.lean`, `TokenParser.lean` to `Lean4Yaml.lean` imports
+2. Create a compatibility shim: `Lean4Yaml.Parse.parseYaml` delegates to `TokenParser.parseYaml`
+3. Add `parseYamlRaw` to `TokenParser` (scan + parseStream without alias composition) — parity with old API
+4. Run all 1,041 internal tests + 406 suite tests against the shim
+5. Fix any behavioral differences (the tokenized parser should produce identical `YamlValue` output)
+
+**Validation gate**: All existing `#guard` checks and `lake exe suiterunner` pass with the shim.
+
+#### P10.2: Test Migration
+
+**Goal**: All 19 test files use the tokenized parser directly.
+
+1. For each test file, replace `import Lean4Yaml.Parser.Document` / `import Lean4Yaml.Parser.*` with `import Lean4Yaml.TokenParser`
+2. Replace `open Lean4Yaml.Parse` with `open Lean4Yaml.TokenParser` (or keep `open Lean4Yaml.Parse` if the shim namespace is retained)
+3. For `ValidationTests.lean` — the internal types `ContinuationCheck`, `DispatchResult`, `FoldResult`, `DocumentResult` are old-parser-specific. These tests verify old-parser dispatch logic and need rewriting or deletion
+4. For `Verification.lean`, `CompletenessExplore.lean`, `CompositionExplore.lean`, `CollectPlainExplore.lean` — exploratory files that probe old parser internals. Archive or delete
+5. Re-run `gen-suite-guards.py` to regenerate `SuiteGuards/*.lean` against the tokenized parser
+6. Run all tests: `lake build && lake exe suiterunner --html docs/`
+
+**Validation gate**: 1,041/1,041 internal tests, 354/406 suite tests, 434 `#guard` checks — all green.
+
+#### P10.3: Type Relocation
+
+**Goal**: Move parser-internal types that are used by proofs to spec-level modules.
+
+1. Move `FoldResult` from `Parser/Scalar.lean` to `Grammar.lean` (it's a two-constructor enum used by fold proofs)
+2. Move `BlockScalarHeader`, `ChompStyle`, `BlockScalarMeta` if they're only in `Parser/` — check if `Grammar.lean` already has them (it does: `Grammar.BlockScalarHeader`)
+3. Remove `DispatchResult`, `ContinuationCheck`, `DocumentResult` — these are old-parser dispatch types with no external consumers
+
+#### P10.4: Proof Migration — Reusable & Adaptable (8 files, ~3,500 lines)
+
+**Goal**: Migrate the 3 reusable + 7 adaptable proof files.
+
+**Reusable (import fix only)**:
+1. `StringProperties.lean` — change `open Lean4Yaml.Parse (FoldResult)` to new location
+2. `DocumentContracts.lean` — remove `import Lean4Yaml.Parser.Document` (predicates are self-contained)
+3. `Validation.lean` — update imports for relocated types
+
+**Adaptable (mechanical edits)**:
+4. `CharClass.lean` — replace `Parse.isLineBreak` → `Scanner.isLineBreak` etc. in 6 correspondence theorems. ScannerProofs.lean §1 already has the Scanner-side proofs
+5. `RoundTrip.lean` — §1-§3, §5-§8 unchanged (~700 lines). §4, §9 `#guard` checks: swap `parseYamlSingle` import
+6. `EscapeResolution.lean` — §1, §2, §4 unchanged (~200 lines). §3 already superseded by `ScannerProofs.lean` §3
+7. `FoldNewlines.lean` — §1-§3 unchanged (~200 lines spec predicates). §4 `#guard` checks: rewrite against scanner's fold
+8. `TestSuite.lean` — swap import, all 72 `#guard` checks should pass as-is
+9. `DumpRoundTrip.lean` — §1-§3, §5 unchanged (~300 lines). §4 `#guard` checks: swap import
+10. `SchemaDump.lean` — swap import for `parseYamlSingle` invocations
+
+**Validation gate**: `lake build` succeeds with zero `sorry`. All `#guard` checks pass.
+
+#### P10.5: Proof Migration — Rewrites (4 files, ~3,400 lines)
+
+**Goal**: Rewrite the 4 fundamentally architecture-dependent proof files against the tokenized parser.
+
+**IndentConsumption.lean** (250 lines → new `ScannerIndent.lean`):
+- Old: proves `YamlStream.next?` column tracking character-by-character
+- New: prove `ScannerState.advance` column tracking, `ScannerState.consumeSpaces` advances by n
+- ScannerProofs.lean §4-§5 already provides the foundation (`pushSequenceIndent`/`pushMappingIndent` growth)
+- Estimated: ~150 lines (simpler because scanner state is explicit `Nat` fields, not `Parser.Stream` typeclass)
+
+**PerParserSpecs.lean** (2,309 lines → new `TokenParserSpecs.lean`):
+- Old: per-combinator specs for `anyToken`, `char`, `token`, `tokenFilter`, `withErrorMessage`, `tryCatch` on `YamlStream`
+- New: per-function specs for `TokenParser.parseNode`, `parseBlockSequence`, `parseBlockMapping`, `parseFlowSequence`, `parseFlowMapping`, `parseSinglePairMapping`
+- The tokenized parser is **much simpler** (425 lines vs 4,403 for old parser) — direct pattern matching on token variants instead of combinator chains. Per-function specs should be correspondingly shorter
+- Estimated: ~800–1,200 lines (significant reduction from 2,309 because the token parser has 6 core functions vs the old parser's ~30 combinators)
+
+**Completeness.lean** (504 lines → new `TokenCompleteness.lean`):
+- Old: `ValidYaml input docs → parseYaml input = .ok docs` via fuel sufficiency
+- New: `ValidYaml input docs → TokenParser.parseYaml input = .ok docs`
+- Structure changes from fuel-based induction to structural induction on `TokenStream.remaining`
+- §1 (`DecidableEq YamlValue`, `LawfulBEq`) reusable (~100 lines)
+- The completeness proof may split into two parts: scanner completeness (`scan` produces correct tokens) and parser completeness (`parseStream` builds correct AST from tokens)
+- Estimated: ~400 lines
+
+**Composition.lean** (338 lines → new `TokenComposition.lean`):
+- Old: composes PerParserSpecs + FuelSufficiency into top-level bridge
+- New: composes scanner correctness + TokenParserSpecs into top-level bridge
+- Estimated: ~200 lines
+
+**FuelSufficiency.lean** (545 lines) and **ParserSpecs.lean** (424 lines): **DELETE**. The tokenized parser has no fuel parameter and doesn't use `lean4-parser` combinators.
+
+**Validation gate**: All proof files compile. Zero `sorry` in merged proof set. `lake build` succeeds.
+
+#### P10.6: Old Parser Deletion
+
+**Goal**: Remove the old parser and `lean4-parser` dependency.
+
+1. Delete `Lean4Yaml/Parser/` directory (7 files)
+2. Remove `import Lean4Yaml.Parser.*` lines from `Lean4Yaml.lean`
+3. Remove `[[require]] name = "Parser"` from `lakefile.toml`
+4. Remove `lean4-parser` entry from `lake-manifest.json`
+5. Delete `Proofs/FuelSufficiency.lean` and `Proofs/ParserSpecs.lean`
+6. Clean up any remaining references in documentation, comments, README
+7. `lake clean && lake build` — full rebuild from scratch
+
+**Validation gate**: Clean build with zero warnings. All tests pass. No references to `lean4-parser` or `Lean4Yaml.Parser.*` in any `.lean` file.
+
+#### P10.7: Documentation & Spec Table Update
+
+**Goal**: Update README spec coverage table to reference tokenized parser files.
+
+1. Update the "YAML Spec Coverage" table: replace all `Parser/X.lean` → `Scanner.lean` or `TokenParser.lean` implementation references
+2. Update the "Architecture" section file tree
+3. Update the "Building" and "Running Tests" sections if any executable names changed
+4. Archive Phase 9's "both parsers coexist" language — the tokenized parser is now the sole implementation
+5. Update proof file descriptions in `Proofs/README.md`
+
+### Risk Analysis
+
+| Risk | Likelihood | Impact | Mitigation |
+|---|---|---|---|
+| Behavioral difference between old and new parser | Medium | High | P10.1 shim catches differences before any code deletion. Run full suite comparison |
+| `#guard` checks fail after parser swap | Low | Medium | Both parsers already pass 132/132 spec examples. Address failures individually in P10.2 |
+| Proof rewrite takes longer than estimated | High | Medium | PerParserSpecs is the critical path. Start with the smallest rewrite (IndentConsumption) to calibrate effort |
+| `parseYamlRaw` consumers appear | Low | Low | grep confirms zero current usages outside Parser/ itself |
+| `FoldResult` relocation breaks proofs | Low | Low | It's a simple 2-constructor inductive; move is mechanical |
+
+### Line Count Summary
+
+| Category | Old Parser Era | After P10 | Change |
+|---|---|---|---|
+| **Parser implementation** | 4,403 (Parser/) + 1,606 (Token+Scanner+TokenParser) = 6,009 | 1,606 | −4,403 |
+| **Proofs preserved** | 9,561 | ~6,200 (est.) | −3,361 |
+| **Proofs new** | — | ~2,550 (est.) | +2,550 |
+| **lean4-parser dependency** | Yes | No | Removed |
+| **Net proof coverage** | 21 files | ~19 files | FuelSufficiency + ParserSpecs deleted; 4 new files replace 4 old |
+
+### Dependencies
+
+- **P10.1–P10.2** can start immediately — no other phase dependency
+- **P10.3** is trivial and can run in parallel with P10.2
+- **P10.4** depends on P10.3 (type relocation) for `FoldResult` imports
+- **P10.5** depends on P10.4 (adaptable proofs compile) and is the critical path
+- **P10.6** depends on all of P10.1–P10.5
+- **P10.7** depends on P10.6
+- **Phase 8** (comment preservation) should target the tokenized parser only — if P10 completes first, Phase 8 has a single implementation target
+
+### Estimated Effort
+
+| Sub-phase | Effort | Description |
+|---|---|---|
+| P10.1 | 1 day | API facade + shim + full test validation |
+| P10.2 | 1–2 days | 19 test files + `gen-suite-guards.py` rerun |
+| P10.3 | 0.5 day | `FoldResult` relocation |
+| P10.4 | 2–3 days | 10 proof files, mostly mechanical |
+| P10.5 | 5–8 days | 4 proof rewrites (PerParserSpecs dominates) |
+| P10.6 | 0.5 day | Deletion + clean build |
+| P10.7 | 0.5 day | Documentation update |
+| **Total** | **10–15 days** | — |
 
 </details>
 
