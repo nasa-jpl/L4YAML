@@ -1,8 +1,5 @@
 import Lean4Yaml
 import Lean4Yaml.Grammar
-import Lean4Yaml.Parser.Combinators
-import Lean4Yaml.Parser.Scalar
-import Lean4Yaml.Parser.Document
 import Tests.VerifiedResult
 
 /-
@@ -24,17 +21,13 @@ These are the runtime counterparts of the formal proofs in
 
 1. **Validation error semantics** — first-error-wins, clear, orthogonality
 2. **Indentation properties** — length bound, head space, zero, atLeast
-3. **DispatchResult discrimination** — constructor disjointness
-4. **FoldResult discrimination** — constructor disjointness
-5. **DocumentResult discrimination** — constructor disjointness
-6. **ContinuationCheck discrimination** — constructor disjointness
-7. **ValidNode structural** — injectivity, empty collections, chomp
-8. **Validation integration** — parser rejects invalid, accepts valid
+3. **ValidNode structural** — injectivity, empty collections, chomp
+4. **Validation integration** — parser rejects invalid, accepts valid
 -/
 
 open Lean4Yaml
 open Lean4Yaml.Grammar
-open Lean4Yaml.Parse (ContinuationCheck DispatchResult FoldResult DocumentResult parseYaml)
+open Lean4Yaml.TokenParser
 open Tests
 
 namespace Tests.Validation
@@ -127,163 +120,7 @@ def testIndentationProperties (state : IO.Ref TestCollector) : IO Unit := do
   check state "indent n adds exactly n chars" ((mkIndented 7 []).length == 7)
   check state "indent 0 adds no chars" ((mkIndented 0 ['a']).length == 1)
 
-/-! ## §3  DispatchResult Discrimination -/
-
-def testDispatchResult (state : IO.Ref TestCollector) : IO Unit := do
-  setCategory state "DispatchResult Discrimination"
-
-  -- Constructor disjointness
-  check state "invalid ≠ matched" (
-    match (DispatchResult.invalid "err" : DispatchResult Nat) with
-    | .matched _ => false | _ => true)
-  check state "invalid ≠ noMatch" (
-    match (DispatchResult.invalid "err" : DispatchResult Nat) with
-    | .noMatch => false | _ => true)
-  check state "matched ≠ noMatch" (
-    match (DispatchResult.matched 42 : DispatchResult Nat) with
-    | .noMatch => false | _ => true)
-  check state "noMatch ≠ matched" (
-    match (DispatchResult.noMatch : DispatchResult Nat) with
-    | .matched _ => false | _ => true)
-  check state "noMatch ≠ invalid" (
-    match (DispatchResult.noMatch : DispatchResult Nat) with
-    | .invalid _ => false | _ => true)
-  check state "matched ≠ invalid" (
-    match (DispatchResult.matched 1 : DispatchResult Nat) with
-    | .invalid _ => false | _ => true)
-
-  -- Exhaustiveness
-  check state "exhaustive: matched" (
-    match (DispatchResult.matched "hi" : DispatchResult String) with
-    | .matched _ | .noMatch | .invalid _ => true)
-  check state "exhaustive: noMatch" (
-    match (DispatchResult.noMatch : DispatchResult String) with
-    | .matched _ | .noMatch | .invalid _ => true)
-  check state "exhaustive: invalid" (
-    match (DispatchResult.invalid "bad" : DispatchResult String) with
-    | .matched _ | .noMatch | .invalid _ => true)
-
-  -- Value extraction
-  check state "matched extracts value" (
-    match (DispatchResult.matched 99 : DispatchResult Nat) with
-    | .matched v => v == 99 | _ => false)
-  check state "invalid extracts message" (
-    match (DispatchResult.invalid "tab in indent" : DispatchResult Nat) with
-    | .invalid msg => msg == "tab in indent" | _ => false)
-
-/-! ## §4  FoldResult Discrimination -/
-
-def testFoldResult (state : IO.Ref TestCollector) : IO Unit := do
-  setCategory state "FoldResult Discrimination"
-
-  check state "forbidden ≠ folded" (
-    match FoldResult.forbidden "c-forbidden" with
-    | .folded _ => false | _ => true)
-  check state "folded ≠ forbidden" (
-    match FoldResult.folded "hello " with
-    | .forbidden _ => false | _ => true)
-  check state "exhaustive: folded" (
-    match FoldResult.folded "ok" with
-    | .folded _ | .forbidden _ => true)
-  check state "exhaustive: forbidden" (
-    match FoldResult.forbidden "---" with
-    | .folded _ | .forbidden _ => true)
-  check state "folded extracts string" (
-    match FoldResult.folded "abc " with
-    | .folded s => s == "abc " | _ => false)
-  check state "forbidden extracts message" (
-    match FoldResult.forbidden "document boundary" with
-    | .forbidden msg => msg == "document boundary" | _ => false)
-
-/-! ## §5  DocumentResult Discrimination -/
-
-def testDocumentResult (state : IO.Ref TestCollector) : IO Unit := do
-  setCategory state "DocumentResult Discrimination"
-
-  check state "stalled ≠ parsed" (
-    match DocumentResult.stalled ⟨0, 0, 0⟩ with
-    | .parsed _ _ => false | _ => true)
-  check state "stalled ≠ endOfStream" (
-    match DocumentResult.stalled ⟨5, 1, 3⟩ with
-    | .endOfStream => false | _ => true)
-  check state "endOfStream ≠ parsed" (
-    match (DocumentResult.endOfStream : DocumentResult) with
-    | .parsed _ _ => false | _ => true)
-  check state "endOfStream ≠ stalled" (
-    match (DocumentResult.endOfStream : DocumentResult) with
-    | .stalled _ => false | _ => true)
-  check state "parsed ≠ stalled" (
-    let doc : YamlDocument := { value := .scalar ⟨"hi", .plain, none, none, none⟩ }
-    match DocumentResult.parsed doc with
-    | .stalled _ => false | _ => true)
-  check state "parsed ≠ endOfStream" (
-    let doc : YamlDocument := { value := .scalar ⟨"hi", .plain, none, none, none⟩ }
-    match DocumentResult.parsed doc with
-    | .endOfStream => false | _ => true)
-
-  -- Exhaustiveness
-  check state "exhaustive: parsed" (
-    let doc : YamlDocument := { value := .scalar ⟨"x", .plain, none, none, none⟩ }
-    match DocumentResult.parsed doc with
-    | .parsed _ _ | .endOfStream | .stalled _ => true)
-  check state "exhaustive: endOfStream" (
-    match (DocumentResult.endOfStream : DocumentResult) with
-    | .parsed _ _ | .endOfStream | .stalled _ => true)
-  check state "exhaustive: stalled" (
-    match DocumentResult.stalled ⟨0, 0, 0⟩ with
-    | .parsed _ _ | .endOfStream | .stalled _ => true)
-
-  -- Position preservation in stalled
-  check state "stalled preserves position" (
-    let pos : YamlPos := ⟨42, 7, 3⟩
-    match DocumentResult.stalled pos with
-    | .stalled p => p.offset == 42 && p.line == 7 && p.col == 3
-    | _ => false)
-
-/-! ## §6  ContinuationCheck Discrimination -/
-
-def testContinuationCheck (state : IO.Ref TestCollector) : IO Unit := do
-  setCategory state "ContinuationCheck Discrimination"
-
-  check state "sequenceMarker ≠ plainContinuation"
-    (ContinuationCheck.sequenceMarker != ContinuationCheck.plainContinuation)
-  check state "mappingEntry ≠ plainContinuation"
-    (ContinuationCheck.mappingEntry != ContinuationCheck.plainContinuation)
-  check state "notContinuing ≠ plainContinuation"
-    (ContinuationCheck.notContinuing != ContinuationCheck.plainContinuation)
-  check state "notContinuing ≠ sequenceMarker"
-    (ContinuationCheck.notContinuing != ContinuationCheck.sequenceMarker)
-  check state "notContinuing ≠ mappingEntry"
-    (ContinuationCheck.notContinuing != ContinuationCheck.mappingEntry)
-  check state "sequenceMarker ≠ mappingEntry"
-    (ContinuationCheck.sequenceMarker != ContinuationCheck.mappingEntry)
-
-  -- Exhaustiveness
-  check state "exhaustive: notContinuing" (
-    match (ContinuationCheck.notContinuing : ContinuationCheck) with
-    | .notContinuing | .plainContinuation | .afterEmpty _ | .sequenceMarker | .mappingEntry => true)
-  check state "exhaustive: plainContinuation" (
-    match (ContinuationCheck.plainContinuation : ContinuationCheck) with
-    | .notContinuing | .plainContinuation | .afterEmpty _ | .sequenceMarker | .mappingEntry => true)
-  check state "exhaustive: afterEmpty 3" (
-    match (ContinuationCheck.afterEmpty 3 : ContinuationCheck) with
-    | .notContinuing | .plainContinuation | .afterEmpty _ | .sequenceMarker | .mappingEntry => true)
-  check state "exhaustive: sequenceMarker" (
-    match (ContinuationCheck.sequenceMarker : ContinuationCheck) with
-    | .notContinuing | .plainContinuation | .afterEmpty _ | .sequenceMarker | .mappingEntry => true)
-  check state "exhaustive: mappingEntry" (
-    match (ContinuationCheck.mappingEntry : ContinuationCheck) with
-    | .notContinuing | .plainContinuation | .afterEmpty _ | .sequenceMarker | .mappingEntry => true)
-
-  -- Value extraction
-  check state "afterEmpty extracts count" (
-    match (ContinuationCheck.afterEmpty 5 : ContinuationCheck) with
-    | .afterEmpty n => n == 5 | _ => false)
-  check state "afterEmpty 0" (
-    match (ContinuationCheck.afterEmpty 0 : ContinuationCheck) with
-    | .afterEmpty n => n == 0 | _ => false)
-
-/-! ## §7  ValidNode/ChompStyle Structural -/
+/-! ## §3  ValidNode/ChompStyle Structural -/
 
 def testValidNodeStructural (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "ValidNode & ChompStyle Structural"
@@ -317,7 +154,7 @@ def testValidNodeStructural (state : IO.Ref TestCollector) : IO Unit := do
     let val : YamlValue := .scalar ⟨"folded text\n", .folded, none, none, none⟩
     match val with | .scalar s => s.style == .folded | _ => false)
 
-/-! ## §8  Validation Integration -/
+/-! ## §4  Validation Integration -/
 
 def testValidationIntegration (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Validation Integration"
@@ -357,7 +194,7 @@ def testValidationIntegration (state : IO.Ref TestCollector) : IO Unit := do
   check state "reject: trailing content after flow map" (
     match parseYaml "{a: 1} extra" with | Except.ok _ => false | Except.error _ => true)
 
-/-! ## §9  Block Scalar Contract Tests -/
+/-! ## §5  Block Scalar Contract Tests -/
 
 def testBlockScalarContracts (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Block Scalar Contracts"
@@ -417,7 +254,7 @@ def testBlockScalarContracts (state : IO.Ref TestCollector) : IO Unit := do
   check state "peek-before-consume: comment after indicator" (
     match parseYaml "| # comment\n  hello" with | .ok _ => true | .error _ => false)
 
-/-! ## §10  Flow Structure Error Tests (Step 10a)
+/-! ## §6  Flow Structure Error Tests (Step 10a)
 
 These tests correspond to the 13 yaml-test-suite error cases tagged with
 `flow` + (`sequence` or `mapping`) that the parser must reject.
@@ -502,10 +339,6 @@ def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   testValidationErrorSemantics state
   testIndentationProperties state
-  testDispatchResult state
-  testFoldResult state
-  testDocumentResult state
-  testContinuationCheck state
   testValidNodeStructural state
   testValidationIntegration state
   testBlockScalarContracts state

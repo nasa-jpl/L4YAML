@@ -17,7 +17,7 @@ These are Phase 4 of the verification plan: yaml-test-suite as compile-time proo
 
 namespace Lean4Yaml.Proofs.SuiteGuards.Error
 
-open Lean4Yaml.Parse
+open Lean4Yaml.TokenParser
 
 -- 236B:0 Invalid value after mapping
 #guard match parseYaml "foo:\n  bar\ninvalid\n" with

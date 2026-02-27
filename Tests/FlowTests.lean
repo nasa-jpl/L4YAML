@@ -1,12 +1,4 @@
-import Lean4Yaml.Types
-import Lean4Yaml.Stream
-import Lean4Yaml.Parser.Combinators
-import Lean4Yaml.Parser.Scalar
-import Lean4Yaml.Parser.Anchor
-import Lean4Yaml.Parser.Tag
-import Lean4Yaml.Parser.Flow
-import Lean4Yaml.Parser.Block
-import Lean4Yaml.Parser.Document
+import Lean4Yaml.TokenParser
 import Tests.VerifiedResult
 
 /-
@@ -32,8 +24,7 @@ Runtime verification tests for YAML flow collection features
 -/
 
 open Lean4Yaml
-open Lean4Yaml.Parse
-open Parser
+open Lean4Yaml.TokenParser
 open Tests
 
 namespace Tests.Flow

@@ -3,7 +3,7 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml.Types
-import Lean4Yaml.Parser.Document
+import Lean4Yaml.TokenParser
 
 /-!
 # Compile-Time Parser Tests (`#guard`)
@@ -46,7 +46,7 @@ no `axiom`, no IO.
 namespace Lean4Yaml.Tests.Suite
 
 open Lean4Yaml
-open Lean4Yaml.Parse
+open Lean4Yaml.TokenParser
 
 /-! ## Helpers -/
 
