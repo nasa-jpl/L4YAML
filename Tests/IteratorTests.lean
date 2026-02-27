@@ -3,15 +3,15 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml.Stream
-import Parser.Iterators
+import WellFoundedStreams
 import Tests.VerifiedResult
 
 /-!
 # StreamIterator Tests
 
 Demonstrates the `Std.Data.Iterators` integration enabled by lean4-parser
-PR#97 (`std-iterators` branch).  Since `YamlStream` has a
-`LawfulParserStream` instance (proved in `Stream.lean`), we can use
+(`well-founded-streams` branch).  Since `YamlStream` has a
+`Stream.WellFounded` instance (proved in `Stream.lean`), we can use
 `StreamIterator` for provably terminating `for` loops over stream tokens.
 
 ## What this enables
@@ -35,8 +35,8 @@ Collect all characters from a `YamlStream` using a `for` loop over
 `StreamIterator`.  This is the canonical usage pattern enabled by PR#97.
 
 The `for` loop terminates because:
-1. `LawfulParserStream YamlStream Char` proves `remaining` decreases
-2. `Finite (StreamIterator YamlStream Char) Id` witnesses well-foundedness
+1. `Stream.WellFounded YamlStream Char` proves the measure decreases
+2. `Productive (StreamIterator YamlStream Char) Id` enables iteration
 3. `IteratorLoop` provides the `for` loop instance
 -/
 def collectChars (input : String) : Array Char := Id.run do
