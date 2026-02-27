@@ -203,3 +203,7 @@ name = "Tests.ScannerSpecExamples"
 [[lean_exe]]
 name = "scannerspecexamples"
 root = "Tests.ScannerSpecExamples.Runner"
+
+[[lean_exe]]
+name = "parsercompare"
+root = "Tests.ParserCompare"

@@ -2,6 +2,9 @@ import Lean4Yaml.Types
 import Lean4Yaml.YamlSpec
 import Lean4Yaml.Stream
 import Lean4Yaml.Grammar
+import Lean4Yaml.Token
+import Lean4Yaml.Scanner
+import Lean4Yaml.TokenParser
 import Lean4Yaml.Parser.Combinators
 import Lean4Yaml.Parser.Scalar
 import Lean4Yaml.Parser.Anchor

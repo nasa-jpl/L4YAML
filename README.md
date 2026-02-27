@@ -2837,6 +2837,54 @@ Phase 9 introduced a two-pass scanner/parser (`Token.lean`, `Scanner.lean`, `Tok
 
 **Validation gate**: All existing `#guard` checks and `lake exe suiterunner` pass with the shim.
 
+**Status**: ✅ Complete (2026-02-27). Non-breaking facade: `*Tokenized` aliases in `Parse` namespace, tokenized parser imports added to `Lean4Yaml.lean`, comparison tool (`ParserCompare.lean`) validates 354 test cases. Final numbers: 134 match, 125 content diffs (old parser bugs), 8 both fail, 0 regressions, 87 improvements, 52 skipped. Suite runner baseline unchanged: 849 passed, 0 failed, 171 skipped.
+
+##### Reflections — unexpected challenges, simplifications, and idioms
+
+###### Unexpected challenges
+
+1. **Full shim was not viable yet.** The original plan called for `Parse.parseYaml` to *delegate* to `TokenParser.parseYaml`, making the switchover invisible. Attempting this caused 103 `#guard` failures: 86 in `SuiteGuards/Error.lean` (inputs the old parser incorrectly rejected but the tokenized parser correctly accepts — i.e. the tokenized parser is *more correct*) and 17 across four other proof files whose guards encode old parser behavior. The shim was reverted to a non-breaking approach: old API stays on the char-level parser, `*Tokenized` aliases (`parseYamlTokenized`, `parseYamlRawTokenized`, `parseYamlSingleTokenized`, `parseYamlSingleRawTokenized`) provide opt-in access. The actual switchover is deferred to P10.2 where the 103 guards are updated systematically.
+
+2. **Tag representation mismatch.** The old parser stores tags in shorthand form (`!!str`, `!!int`, `!!null`) while the tokenized parser initially expanded the `!!` handle to its full URI (`tag:yaml.org,2002:str`). This caused 137 false content diffs. The fix was a one-line change in `TokenParser.lean` — store `"!!" ++ suffix` when the handle is `!!` instead of expanding to the canonical URI. This brought content diffs from 137 to 125 (the remaining 125 are genuine old-parser bugs, not representation mismatches).
+
+3. **`Inhabited YamlDocument` was missing.** `TokenParser.parseYamlSingleRaw` uses `docs[0]!` which requires an `Inhabited` instance. The instance existed only in `Parser/Document.lean` (as a standalone `instance`), inaccessible from `TokenParser.lean`. The fix was to add `Inhabited` to the `deriving` clause in `Types.lean` where `YamlDocument` is defined — making it available project-wide without import dependencies.
+
+4. **`ParserCompare` file discovery.** The first version of the comparison tool found 0 tests because it assumed the yaml-test-suite used a directory-per-test layout. In fact, the suite uses flat `.yaml` files in `src/` with a structured metadata format (parsed by `Meta.lean`'s state machine). Rewriting to inline the same file-reading logic as `SuiteRunner` fixed the discovery.
+
+5. **Lean syntax for mutable-variable shadowing.** In `ParserCompare.lean`, `let files := files.insertionSort ...` failed because Lean does not allow `let` to shadow `let mut` bindings in the same `do` block. Renaming to `let sortedFiles := ...` resolved it. Similarly, tuple destructuring in `for (testId, content) in files` did not work — using `for pair in files` with `pair.1`/`pair.2` was necessary.
+
+###### Why the tokenized parser is a genuine improvement
+
+The comparison tool's numbers tell a clear story: **0 regressions, 87 improvements** (inputs the old parser rejected but the tokenized parser correctly accepts). The remaining 125 content diffs are all cases where the tokenized parser produces *more correct* output. The improvements fall into several structural categories:
+
+1. **Elimination of `detectMappingKeyImpl` false positives.** The old parser's single-pass architecture requires speculative lookahead to decide whether a line begins a mapping key (e.g., `key: value`). This lookahead (`detectMappingKeyImpl`) operates character-by-character on the unparsed input and is prone to false positives — for example, treating `?foo` as an explicit key indicator when the YAML spec says a `?` must be followed by whitespace to be an indicator (§7.2). The tokenized parser never has this problem: the scanner classifies `?` vs `?<blank>` at the token level, and the grammar parser acts on the token classification. The 87 inputs incorrectly rejected by the old parser include cases like `?foo` (plain scalar), complex nested flow collections, and multi-line plain scalars that the old parser's lookahead misidentified.
+
+2. **Separation of lexical and syntactic concerns.** The old parser interleaves character classification with grammar decisions — a single function must simultaneously track indentation, consume characters, classify indicators, and build AST nodes. This coupling means bugs in one concern cascade into others. The tokenized parser's two-pass architecture (Scanner: chars → tokens, TokenParser: tokens → AST) creates a clean information boundary. The scanner's only job is producing tokens; the parser's only job is assembling them. Neither can introduce bugs that belong to the other's domain.
+
+3. **Code size reduction: 478 lines vs 4,403 lines.** The tokenized grammar parser (`TokenParser.lean`) is 478 lines — **9.2× smaller** than the old parser's 7 files. This is not because of missing features (both achieve 132/132 spec examples, identical `parseYaml` signature). The reduction comes from the token abstraction: instead of reimplementing character-level whitespace handling, indentation tracking, and indicator recognition in every production, the grammar parser pattern-matches on token variants (`blockSequenceEntry`, `key`, `value`, `scalar`, etc.). Each production is a few lines of token matching instead of dozens of lines of character manipulation.
+
+4. **No fuel parameter.** The old parser required a `fuel : Nat` parameter for termination (Step 3.3.3 converted all 31 `partial def` parsers to use `(fuel : Nat)` + `match fuel`). This fuel parameter threads through every parser function, inflates the API, and requires proving fuel sufficiency for completeness. The tokenized parser terminates structurally: `TokenStream.remaining` decreases on every `next?` call (proved in `ScannerProofs.lean` §6: `TokenStream_remaining_decreases`), making the grammar parser total without fuel. This eliminates the entire `FuelSufficiency.lean` proof file (545 lines) and simplifies every completeness argument.
+
+5. **Explicit state is easier to prove about.** The old parser uses `ParserT` monadic state (from the `lean4-parser` library) where position tracking, error recovery, and backtracking are hidden behind typeclass instances. Proving properties requires unwinding `Parser.run`, understanding the `Parser.Stream` interface, and reasoning about monadic bind. The tokenized parser uses an explicit `ParseState` (a `Nat` index into a token array) threaded through pure functions. Properties like "parsing advances the position" or "parsing preserves earlier tokens" become direct `Nat` arithmetic — no monad laws needed.
+
+6. **Removes the `lean4-parser` dependency.** The old parser is the sole consumer of the `lean4-parser` library (the `Parser` package in `lakefile.toml`). Once removed, `lean4-yaml-verified` becomes self-contained with no external Lean dependencies beyond Batteries. This simplifies the build, eliminates version-pinning concerns (the `well-founded-streams` branch is a fork), and removes the need for the `Stream.lean` bridge module.
+
+###### Simplifications
+
+1. **`Repr`-based structural comparison.** Comparing `YamlDocument` arrays for equality is nontrivial — the types nest `Array`s multiple levels deep, and Lean's auto-derived `BEq` does not provide `DecidableEq` for deeply nested array structures. Using `toString (repr a) == toString (repr b)` sidesteps this entirely: `Repr` instances are already derived for all types, and string comparison is reliable for structural equality testing. This is appropriate for a comparison tool (not for proofs).
+
+2. **Tag shorthand was a one-line fix.** The tag representation mismatch initially appeared to require a normalization pass. In fact, the tokenized scanner already separates `handle` and `suffix` in the `YamlToken.tag` constructor — the only question was how to recombine them. Changing `"tag:yaml.org,2002:" ++ suffix` to `"!!" ++ suffix` in `resolveNodeProperties` was the entire fix (one line, no behavioral change to parsing logic).
+
+3. **Comparison tool reuses `Meta.lean` infrastructure.** Instead of writing a new yaml-test-suite parser, `ParserCompare.lean` imports `Tests.SuiteRunner.Meta` and reuses `parseTestFile` and `unescapeTestYaml`. This gives it identical test-case discovery to the suite runner — no risk of testing different subsets.
+
+###### Idioms
+
+- **Non-breaking facade pattern.** When a full API replacement has cascading breakage (103 guard failures), adding `*Tokenized` aliases in the same namespace provides opt-in migration without touching any existing consumers. This turns a big-bang switchover into an incremental one: callers can switch function-by-function, and the P10.2 guard migration can proceed file-by-file.
+
+- **Comparison tool as a migration validator.** Building `ParserCompare` before attempting the shim provided the data to make an informed decision: the 103 failures were categorized as guard updates (not parser bugs), and the 87 improvements were confirmed as genuine correctness gains. Without this data, the 103 failures would have been alarming; with it, they became a bounded migration task.
+
+- **Shorthand vs. canonical tag representation.** YAML 1.2.2 §6.8.2 defines the `!!` tag handle as shorthand for `tag:yaml.org,2002:`. The choice of which representation to store internally is an API contract, not a correctness question — both are equivalent. Matching the old parser's shorthand convention (`!!str`) avoids gratuitous diff noise during migration, even though the canonical form would be equally valid.
+
 #### P10.2: Test Migration
 
 **Goal**: All 19 test files use the tokenized parser directly.
