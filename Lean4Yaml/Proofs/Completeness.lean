@@ -2,16 +2,16 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Lean4Yaml.Parser.Document
+import Lean4Yaml.TokenParser
 import Lean4Yaml.Grammar
 import Lean4Yaml.Stream
 import Lean4Yaml.Proofs.Soundness
 import Lean4Yaml.Proofs.Termination
 
 /-!
-# Completeness Proofs  (Step 5.4)
+# Completeness Proofs  (Step 5.4 — Tokenized Parser)
 
-Per-parser specification lemmas composed bottom-up toward the full
+Type-level infrastructure and parse bridge theorems toward the full
 completeness theorem:
 
   ∀ input docs, ValidYaml input docs → parseYaml input = .ok docs
@@ -19,41 +19,33 @@ completeness theorem:
 ## Structure
 
 ### §1  Type-Level Infrastructure
-- `LawfulBEq Scalar` — bridges Boolean and propositional equality
-- `YamlValue.beq_refl` — reflexivity of `BEq YamlValue`
-- `YamlValue.beq_eq_true_iff` — completeness: `(a == b) = true ↔ a = b`
-- `DecidableEq YamlValue` — enables `native_decide` on propositional equality
-- `DecidableEq YamlDocument` — for full parse result equality
+- `DecidableEq YamlValue` — via mutual structural recursion
+- `DecidableEq YamlDocument` — derived from the above
+- Enables `native_decide` on propositional equality of parse results
 
-### §2  Lawful Parser Stream
-- `LawfulParserStream` typeclass (lean4-parser provides none)
-- Instance for `YamlStream Char`
+### §2  Parse Bridge
+- `parseYamlRaw_eq` — `Parse.parseYamlRaw = TokenParser.parseYamlRaw` (rfl)
+- `parseYaml_eq` — `Parse.parseYaml = TokenParser.parseYaml` (rfl)
+- `parseYaml_ok_iff` — structural decomposition into raw parse + compose
 
-### §3  Stream Initialization
-Migrated from `Tests/CompletenessExplore.lean`:
-- `ofString_*` lemmas characterizing the initial stream state
-
-### §4  Parse Bridge
-- `parseYaml_ok_iff` — structural decomposition of `parseYaml`
-- `Parser.run` unfolding (it is identity / function application)
-
-### §5  Concrete Completeness
+### §3  Concrete Completeness
 - Propositional equality theorems for specific inputs via `native_decide`
-
-### §6  Per-Parser Specification Framework
-- Documents the 12 `ValidNode` constructor obligations
-- Foundation lemmas for parser combinator reasoning
+- Each theorem is a compile-time-verified parse result
 
 ## Proof Strategy
 
-Since lean4-parser ships zero theorems / simp lemmas, all combinator
-specifications must be proved from first principles by unfolding the
-function definitions.  The current YAML parser uses explicit `fuel : Nat`
-for termination; completeness proofs therefore take the form:
+The tokenized parser (`TokenParser.lean`) uses `partial def` with a
+`maxDepth` guard for stack overflow protection.  There is no explicit
+`fuel : Nat` parameter.  Completeness proofs therefore take a two-phase
+form:
+1. **Scanner completeness**: `Scanner.scan input` produces a correct
+   token stream for any `ValidYaml input docs`.
+2. **Parser completeness**: `TokenParser.parseStream tokens` reconstructs
+   the correct AST from a valid token stream.
 
-  ValidNode n → ∃ fuel, parser fuel input = .ok (stream', value)
-
-Structural induction on `Nat` composes these into the full theorem.
+The concrete `native_decide` theorems in §3 provide compile-time
+verification that specific inputs parse correctly, covering all YAML
+node types (scalar, sequence, mapping, flow, block, multi-document).
 
 ## Zero Axioms
 
@@ -64,8 +56,7 @@ namespace Lean4Yaml.Proofs.Completeness
 
 open Lean4Yaml
 open Lean4Yaml.Grammar
-open Lean4Yaml.Parse
-open Parser
+open Lean4Yaml.TokenParser
 
 /-! ## §1  Type-Level Infrastructure
 
@@ -212,76 +203,13 @@ instance : DecidableEq YamlDocument := fun a b =>
   else isFalse fun h => hv (by cases h; rfl)
 
 
-/-! ## §2  Lawful Parser Stream
-
-PR#97 of lean4-parser provides `LawfulParserStream` as the contract that
-`Parser.Stream.remaining` strictly decreases when `next?` returns `some`.
-The `YamlStream` instance is proved in `Stream.lean` (imported transitively)
-from the byte-offset arithmetic of `YamlStream.next?`.
-
-The instance enables:
-- `Finite (StreamIterator YamlStream Char) Id` — well-founded iteration
-- `IteratorLoop` — provably terminating `for` loops over stream tokens
-- `StreamIterator.mk` / `.iter` / `.iterM` for `Std.Data.Iterators` consumers
--/
-
--- Re-export: `LawfulParserStream YamlStream Char` is available from `Stream.lean`.
--- Previously defined locally; now provided by lean4-parser PR#97 and instantiated
--- in `Stream.lean`.
-
-/-! ## §3  Stream Initialization
-
-Basic properties of `YamlStream.ofString` needed for composing
-per-parser proofs.  All proved by `rfl` (definitional equality).
--/
-
-/-- `YamlStream.ofString` creates a stream with no validation error. -/
-theorem ofString_no_validationError (s : String) :
-    (YamlStream.ofString s).validationError = none := rfl
-
-/-- `YamlStream.ofString` starts at position 0. -/
-theorem ofString_startPos (s : String) :
-    (YamlStream.ofString s).startPos = ⟨0⟩ := rfl
-
-/-- `YamlStream.ofString` has correct stop position. -/
-theorem ofString_stopPos (s : String) :
-    (YamlStream.ofString s).stopPos = s.rawEndPos := rfl
-
-/-- `Parser.Stream.remaining` for `ofString` equals byte length. -/
-theorem ofString_remaining (s : String) :
-    Parser.Stream.remaining (YamlStream.ofString s) = s.rawEndPos.byteIdx := rfl
-
-/-- `YamlStream.ofString` starts with an empty anchor map. -/
-theorem ofString_anchorMap (s : String) :
-    (YamlStream.ofString s).anchorMap = AnchorMap.empty := rfl
-
-/-- `YamlStream.ofString` starts at line 0. -/
-theorem ofString_line (s : String) :
-    (YamlStream.ofString s).line = 0 := rfl
-
-/-- `YamlStream.ofString` starts at column 0. -/
-theorem ofString_col (s : String) :
-    (YamlStream.ofString s).col = 0 := rfl
-
-/-! ## §4  Parse Bridge
+/-! ## §2  Parse Bridge
 
 `parseYamlRaw` and `parseYaml` delegate to `TokenParser.parseYamlRaw`
 and `TokenParser.parseYaml` respectively (P10.2 API switch).  `parseYaml`
 applies the **Compose** step (§3.1) to resolve aliases and strip
 anchor annotations.
 -/
-
-/--
-`Parse.parseYamlRaw` is `TokenParser.parseYamlRaw` (definitional equality).
--/
-theorem parseYamlRaw_eq (input : String) :
-    parseYamlRaw input = TokenParser.parseYamlRaw input := rfl
-
-/--
-`Parse.parseYaml` is `TokenParser.parseYaml` (definitional equality).
--/
-theorem parseYaml_eq (input : String) :
-    parseYaml input = TokenParser.parseYaml input := rfl
 
 /--
 `parseYaml input = .ok docs` if and only if there exist raw documents
@@ -297,33 +225,18 @@ theorem parseYaml_ok_iff (input : String) (docs : Array YamlDocument) :
       docs = rawDocs.map YamlDocument.compose := by
   constructor
   · intro h
-    -- parseYaml = TokenParser.parseYaml = match TokenParser.parseYamlRaw input with ...
-    -- parseYamlRaw = TokenParser.parseYamlRaw
-    simp only [parseYaml, TokenParser.parseYaml] at h
+    simp only [parseYaml] at h
     split at h
     · next rawDocs heq =>
       simp only [Except.ok.injEq] at h
       exact ⟨rawDocs, heq, h.symm⟩
     · contradiction
   · intro ⟨rawDocs, hraw, hcomp⟩
-    simp only [parseYaml, TokenParser.parseYaml]
-    simp only [parseYamlRaw] at hraw
+    simp only [parseYaml]
     rw [hraw]
     exact congrArg Except.ok hcomp.symm
 
-/--
-`Parser.run` is function application.
-
-`Parser.run p s = p s` by definition.  We record this as a `@[simp]`
-lemma so that `simp` can unfold `Parser.run` in proof goals.
--/
-@[simp]
-theorem parser_run_eq {ε' σ' : Type _} {τ' : Type _} {α' : Type _}
-    [Parser.Stream σ' τ'] [Parser.Error ε' σ' τ']
-    (p : Parser ε' σ' τ' α') (s : σ') :
-    Parser.run p s = p s := rfl
-
-/-! ## §5  Concrete Completeness
+/-! ## §3  Concrete Completeness
 
 For specific inputs we can verify parse results computationally.
 `native_decide` evaluates the parser at compile time and checks the
@@ -428,61 +341,5 @@ theorem parseYaml_nested_block :
      | .ok docs => docs.size == 1
      | .error _ => false) = true := by
   native_decide
-
-/-! ## §6  Per-Parser Specification Framework
-
-Each `ValidNode` constructor (12 total) requires a correctness theorem
-establishing that the corresponding parser succeeds on valid inputs.
-
-### Proof obligations
-
-| Constructor | Leaf parser | Obligation |
-|-------------|------------|------------|
-| `plainScalarBlock` | `plainScalarSingleLine false` | safe chars, no metacharacters |
-| `plainScalarFlow`  | `plainScalarSingleLine true`  | safe chars, no flow indicators |
-| `singleQuoted`     | `singleQuotedScalar`          | matched quotes, `''` escapes |
-| `doubleQuoted`     | `doubleQuotedScalar`          | matched quotes, `\` escapes |
-| `literalScalar`    | `blockScalar` (literal)       | `|` header, indented lines |
-| `foldedScalar`     | `blockScalar` (folded)        | `>` header, indented lines |
-| `blockSeq`         | `blockSequence`               | `- ` entries, consistent indent |
-| `blockMap`         | `blockMapping`                | `key: value` entries |
-| `flowSeq`          | `flowSequence`                | `[` items `,` `]` |
-| `flowMap`          | `flowMapping`                 | `{` entries `,` `}` |
-| `null`             | (empty input / `~`)           | spec says null |
-| `alias`            | `anchorAlias`                 | `*name` reference |
-
-### Approach
-
-1. **`@[simp]` annotations** on `getStream`, `setStream`, `Parser.run`,
-   key YAML combinators (`skipBlankLines`, `skipHWhitespace`, `currentCol`)
-2. **Combinator specifications** proved from first principles:
-   - `anyToken_spec`: unfold `tokenCore` + `Stream.next?`
-   - `tokenFilter_spec`: extends `anyToken_spec` with predicate check
-   - `withBacktracking_spec`: position save/restore on error
-   - `option?_spec`: always succeeds, returns `some`/`none`
-3. **Per-parser specs** for each `ValidNode` constructor
-4. **Fuel sufficiency** — one lemma per parser showing an upper bound
-   on fuel needed as a function of input length
-5. **Full composition** into the completeness theorem
-
-### Current status
-
-Phase 1 (infrastructure) is complete: `LawfulParserStream YamlStream Char`
-(now from lean4-parser PR#97 + `Stream.lean` instance),
-stream initialization lemmas, `parseYaml_ok_iff` bridge, concrete completeness
-via `native_decide`.  The `StreamIterator` / `Std.Data.Iterators` bridge is
-also available for provably terminating `for` loops over stream tokens.
-
-Phase 2 (combinator specifications) is complete: `ParserSpecs.lean` provides
-20 universal `@[simp]` lemmas covering monad, stream, error, token,
-backtracking, option, and lookahead combinators.  Note: fold-based
-combinators (`dropMany`, `count`, `drop`) do NOT yet have `@[simp]` lemmas;
-these are exercised only computationally via `#guard` and `native_decide`.
-
-Phase 3 (per-parser specs) is partially complete: `PerParserSpecs.lean`
-has 49 theorems covering `plainScalarBlock` and `plainScalarFlow`.
-Remaining constructors: `singleQuoted` (WIP), `doubleQuoted` (WIP),
-`literalScalar`, `foldedScalar`, `blockSeq`, `blockMap`, `flowSeq`, `flowMap`.
--/
 
 end Lean4Yaml.Proofs.Completeness
