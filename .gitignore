@@ -39,4 +39,5 @@
 *.synctex.gz(busy)
 *.pdfsync
 # Python
+__pycache__/
 .venv
