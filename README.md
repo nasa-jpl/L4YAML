@@ -2932,10 +2932,15 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 - The tokenized parser uses an explicit `ParseState` (a `Nat` index into a token array) threaded through pure functions.
 - Properties like "parsing advances the position" or "parsing preserves earlier tokens" become direct `Nat` arithmetic — no monad laws needed.
 
-6. **Removes the `lean4-parser` dependency.** (TODO: revisit)
+6. **Removes the `lean4-parser` dependency.**
 - The old parser is the sole consumer of the `lean4-parser` library (the `Parser` package in `lakefile.toml`).
 - Once removed, `lean4-yaml-verified` becomes self-contained with no external Lean dependencies beyond Batteries.
 - This simplifies the build, eliminates version-pinning concerns (the `well-founded-streams` branch is a fork), and removes the need for the `Stream.lean` bridge module.
+- **Is the scanner/parser separation fundamentally incompatible with parser combinators?** No. One *could* feed the scanner's token array into a `ParserT`-based grammar parser over a `TokenStream`. The removal is pragmatic, not structural:
+  - (a) The scanner handles all character-level complexity (indentation, escapes, block scalar collection), leaving the grammar layer so simple (~30 lines per collection parser) that a combinator framework adds abstraction overhead with no corresponding benefit.
+  - (b) Proof difficulty scales with abstraction: Phase 5 documented that lean4-parser ships zero theorems, `*>` ≠ `>>=` for proofs, `Id` monad is opaque to tactics, and `Sum` match auxiliaries resist simplification. The hand-rolled `ParseState → Except String (YamlValue × ParseState)` pattern yields properties via direct `Nat` arithmetic — no monad laws needed.
+  - (c) The scanner uses `Except ScanError α` (a pure sum type, not imperative exceptions) for short-circuiting errors. Lean 4's `throw` in `Except` `do` blocks is syntactic sugar for `Except.error` — pure value construction, no side effects. The real issue is that lean4-parser's `<|>` catches *all* `Result.error` values uniformly, with no way to mark certain errors as unrecoverable. The scanner's error channel is already a proper `Except` result type; lean4-parser's combinator model simply cannot distinguish "try the next alternative" from "the input is invalid."
+  - (d) The P10.6d experience (see Reflections) confirms this: strengthening spec compliance required the scanner to carry semantic state (`currentIndent`) and return structured errors (tab-as-indentation, unterminated scalar, invalid escape). These are values in a sum type that callers must handle — not exceptions that need catching. lean4-parser's combinator model works against both: backtracking erases error distinctions, and monadic state hides the invariants that P10.6d needs explicit. The current `Except String` should be replaced with `Except ScanError` (a structured ADT) in P10.6e.
 
 ###### Simplifications
 
@@ -4010,6 +4015,14 @@ Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
    - The separation of layers was the right move, but it's only sound when each layer's contracts are strong enough that the other layer can assume them.
    - Without explicit contracts, the separation creates a gap where spec violations fall through — which is exactly what the 87 UPs represent.
 
+4. **The lean4-parser removal was a consequence of separation, not an independent decision.**
+   - At first glance, dropping lean4-parser (Phase 10.6) seems orthogonal to the scanner/grammar split (Phase 9). In retrospect, the two are logically coupled.
+   - The scanner returns structured errors via `Except` (a pure sum type — `throw` in Lean 4 is syntactic sugar for `Except.error`, not an imperative exception). The real incompatibility: lean4-parser's `<|>` catches *all* `Result.error` values uniformly, erasing the distinction between "try the next alternative" and "the input is structurally invalid." The scanner needs errors that *cannot be swallowed* — not because they use exception semantics, but because they represent spec violations (tab-as-indentation, unterminated scalar) that no alternative production can recover from. `Except ScanError α` encodes this as a value; lean4-parser's combinator model erases it. (The current `Except String` is a code smell — `String` provides no machine-inspectable error taxonomy; see P10.6e for the `ScanError` ADT refactoring.)
+   - The scanner must carry semantic state (`currentIndent`, `flowLevel`, `indents` stack) that participates in character-level decisions. Parser combinator architectures abstract state behind monadic interfaces (`ParserT`, `getStream`/`setStream`), making the state implicit. But P10.6d showed that correctness requires *explicit* reasoning about the relationship between state fields (e.g., `col ≤ currentIndent` means indentation zone). Monadic abstraction hides exactly the invariants that need to be visible.
+   - The grammar layer, once separated, is so simple (pattern matching on token variants, ~30 lines per collection parser) that combinator abstraction provides no leverage. Phase 5's proof difficulties — `*>` ≠ `>>=`, `Id` monad opacity, `Sum` match auxiliary resistance, zero library theorems — were the cost of abstraction over a domain too simple to benefit from it.
+   - In short: the scanner/grammar separation made the scanner *more* stateful and *more* error-aware than a combinator pipeline supports, while simultaneously making the grammar parser *less* complex than a combinator framework is designed for. Both layers moved away from the combinator sweet spot.
+   - **Note on `Except` vs. exceptions**: Lean 4's `throw`/`Except` is a pure functional sum type (`Either ε α`), not imperative exception semantics. Using `Except ScanError α` with `throw` is the idiomatic Lean 4 way to express short-circuiting computations — it constructs `Except.error val` as a value, with no side effects or stack unwinding. The actual code smell in the current scanner is `Except String` — the unstructured error type, not the `throw` mechanism. P10.6e will replace `String` with a structured `ScanError` ADT that makes error categories machine-inspectable and pattern-matchable.
+
 **Status**: In progress (85 UPs remaining, 2 fixed).
 
 </details>
@@ -4027,7 +4040,56 @@ Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
 - Numeric variables (`parentIndent`, `contentIndent`, `detected`, `spacesConsumed`) lack semantic classification — it's unclear which are positions (absolute columns), distances (character counts), or have other roles.
 - Pre/post-conditions are implicit, making it difficult to verify that a function's callers satisfy its requirements.
 
+These are not isolated issues. The evidence trail below documents 10 events across 11 months of development where the same three root causes — (a) unstructured error types, (b) ambiguous numeric variable roles, (c) implicit contracts — manifested as bugs, proof difficulties, or wasted analysis time. P10.6e addresses all three systematically.
+
 The `scanBlockScalar` annotations added during P10.6d (variable classification table, production references, pre/post contracts) serve as the template for this phase.
+
+**Evidence trail** — events across the project that, in hindsight, argued for contracts and type strengthening:
+
+<details>
+
+Each event below was resolved locally at the time. In aggregate, they form a pattern: the codebase repeatedly suffered from (a) unstructured error types swallowing failure information, (b) numeric variables whose roles were ambiguous, and (c) implicit contracts that only manifested as bugs when violated. P10.6e addresses all three root causes.
+
+1. **P1 — `throwUnexpected` elimination reveals error-model inadequacy (2026-02-17).**
+   All 29 `throwUnexpected` calls eliminated across 7 files because lean4-parser's `<|>` unconditionally swallows `Result.error` values. The replacement — `validationError : Option String` in `YamlStream` — was a *workaround* for lacking a structured error channel. It survived backtracking only because it was stored in stream state (like `anchorMap`), bypassing the combinator error model entirely. With `Except ScanError`, error categories are first-class values that callers must handle — no workaround needed.
+   *(README: P1 architectural change, line ~142; Progress log P1, line ~280)*
+
+2. **P3 — `blockValue` passes `col` instead of `minIndent` (2026-02-20).**
+   `blockValue` was passing `col` (the column where the block indicator sits) to `dispatchByChar`, instead of `minIndent` (the enclosing structure's indentation). This inflated `parentIndent` for block scalars after `--- >` (receiving 4 instead of correct 0). The root cause: both `col` and `minIndent` are `Nat`, and nothing in the type system or comments distinguished their semantic roles. A subtype contract `{minIndent : Nat // minIndent = s.currentIndent}` would have made the confusion a type error.
+   *(README: P3 progress, line ~318; T1 fix detail, line ~408)*
+
+3. **P3 — `blockScalar` receives `contentIndent` with double-counted `+1` (2026-02-20).**
+   Callers already computed `parentIndent + 1` before passing to `blockScalar`, which then internally added another `+1`. The parameter was named `parentIndent` but received `contentIndent` — a Position+Distance confusion. Renaming the parameter and removing the internal `+1` fixed it. A subtype `{contentIndent : Nat // contentIndent ≥ parentIndent + 1}` with an explicit derivation from `parentIndent` would have prevented the double-counting.
+   *(README: T2 fix detail, line ~409)*
+
+4. **P6/P8 — `detectMappingKeyImpl` accumulates four layers of special cases.**
+   Basic `: ` detection (initial), flow-bracket skipping (P6), `::` handling (UKK6), quote skipping (P8 — 40 lines for `skipDoubleQuoted`/`skipSingleQuoted`). Each layer was a response to a false positive that violated an unstated contract: "the scanner must be aware of all quoting/nesting contexts when searching for mapping indicators." Without explicit contracts, each fix was a patch on previous patches. The Phase 9 scanner eliminated the function entirely — but the *pattern* of accumulating special cases is what happens when contracts are implicit.
+   *(README: detectMappingKeyImpl reflection, line ~625; P8 fix, line ~591)*
+
+5. **Phase 5 — proof difficulties are the cost of abstraction without contracts (2026-02-23).**
+   Seven "surprises" documented: `*>` ≠ `>>=` for proofs, `Sum` match auxiliary opacity, `Id` monad opaque to tactics, lean4-parser ships zero theorems, position algebra as hidden backbone, compounding pattern, `show` as universal workaround. The common thread: lean4-parser provides abstraction *without* specification. Each combinator has operational semantics but no declared contracts, forcing all proofs from first principles (20 `@[simp]` lemmas in `ParserSpecs.lean` that the library should have shipped). P10.6e applies the lesson: abstraction must come *with* contracts, or proofs become archaeology.
+   *(README: Phase 5 surprises 1–7, lines ~1494–1507)*
+
+6. **P7 — `minIndent` threaded through 7 mutual flow functions (2026-02-24).**
+   Implementing flow indent floor (§7.4) required threading `minIndent` through `flowSequence`, `flowMapping`, `flowMappingEntry`, `flowScalar`, `flowNode`, `flowCollection`, and `flowMappingContent`. Each function gained a new `Nat` parameter with no type-level annotation of its meaning or range. Tab rejection (`checkIndentForTabs(minIndent)`) further consumed this parameter. A subtype `{minIndent : Nat // minIndent ≥ enclosingBlockIndent + 1}` would have documented the invariant once instead of requiring manual verification at 7 call sites.
+   *(README: P7 progress, line ~322; 10b detail, line ~374)*
+
+7. **Y79Y analysis — manual production rule trace required (2026-02-28).**
+   Analyzing 11 tab-related test cases required manually tracing each input through YAML 1.2.2 productions (`s-indent(n)` [63], `s-separate-in-line` [66], `l-nb-literal-text(n)` [170], `s-l+block-indented(n,c)` [185]) because no function carries its production rule reference. The analysis took a full session that would have been minutes with traceability annotations.
+   *(README: Y79Y analysis table, lines ~3887–3897)*
+
+8. **P10.6d — `currentIndent` tab check discovers hidden boundary semantics (2026-02-28).**
+   The tab rejection fix in `skipToContent` required discovering that `col ≤ currentIndent` means "indentation zone" and `col > currentIndent` means "separation zone." This boundary was always implicit in `ScannerState` — the indentation stack already encoded it — but no contract stated it. The fix worked because of this hidden invariant; the next developer modifying `skipToContent` would have to rediscover it. A `have : col ≤ s.currentIndent → inIndentationZone` would make it permanent.
+   *(README: P10.6d reflections — simplification #1 and idiom #2, lines ~3991–4007)*
+
+9. **`detected` variable conflates two roles in `scanBlockScalar` (identified 2026-02-28).**
+   The `detected` variable in `scanBlockScalar`'s auto-detection loop serves as both "minimum required indent" (`parentIndent + 1`) and "actual detected indent" (`probe.col`). These are semantically distinct (the minimum is a Distance from `parentIndent`, the detected is a Position). The variable classification table added during P10.6d annotations exposed this conflation. Separating them into `{minRequired : Nat // minRequired = parentIndent + 1}` and `{detectedIndent : Nat // detectedIndent ≥ minRequired}` would prevent future confusion.
+   *(README: Y79Y scanner defects, line ~3905; scanBlockScalar annotations in Scanner.lean)*
+
+10. **All 18 error sites use `Except String` — the universal code smell.**
+    Every `throw s!"..."` in Scanner.lean (13 sites) and `.error s!"..."` in TokenParser.lean (5 sites) constructs an unstructured string. The caller receives `Except String α` and can only pattern-match on the error case by string content — brittle, untestable, and invisible to the type system. This is the single refactoring that touches every error path and motivates P10.6e.2.
+
+</details>
 
 ##### P10.6e.1 — Production rule annotation (documentation only)
 
@@ -4044,7 +4106,49 @@ This is pure documentation — no behavioral changes, no type signature changes.
 
 </details>
 
-##### P10.6e.2 — Subtype contracts (type-enforced invariants)
+##### P10.6e.2 — Structured error types (`ScanError` ADT)
+
+<details>
+
+Replace `Except String α` throughout `Scanner.lean` and `TokenParser.lean` with `Except ScanError α`, where `ScanError` is a structured inductive type. This separates error detection from error formatting and makes error categories machine-inspectable.
+
+**Current** (code smell — `String` errors, formatting mixed with detection):
+```lean
+throw s!"tab character in indentation at line {s'.line}, column {s'.col}"
+.error s!"unterminated double-quoted scalar at line {startPos.line}"
+```
+
+**Proposed** (`ScanError` ADT — structured, pattern-matchable):
+```lean
+inductive ScanError where
+  -- Character-level (Scanner.lean) — 9 constructors
+  | tabInIndentation     (line col : Nat)
+  | unexpectedChar       (c : Char) (line col : Nat)
+  | unterminatedScalar   (style : ScalarStyle) (line : Nat)
+  | unterminatedEscape   (line : Nat)
+  | unknownEscape        (c : Char) (line : Nat)
+  | invalidHexEscape     (expected found : Nat) (line : Nat)
+  | unicodeOutOfRange    (line : Nat)
+  | expectedNewline      (line : Nat)
+  | fuelExhausted        (line col : Nat)
+  -- Grammar-level (TokenParser.lean) — 3 constructors
+  | expectedToken        (desc : String) (line : Nat) (got : Option String)
+  | nestingDepthExceeded (line : Nat)
+  | multipleDocuments    (count : Nat)
+  deriving Repr, BEq, Inhabited
+
+/-- Human-readable formatting, separated from error construction. -/
+def ScanError.toString : ScanError → String
+  | .tabInIndentation l c   => s!"tab character in indentation at line {l}, column {c}"
+  | .unexpectedChar c l col => s!"unexpected character '{c}' at line {l}, column {col}"
+  | ...
+```
+
+**Impact**: 18 error sites across 2 files (13 in Scanner.lean, 5 in TokenParser.lean). Each `s!"..."` string construction becomes a single ADT constructor application. `parseYaml`'s `Except String YamlValue` return type changes to `Except ScanError YamlValue` (or keeps `String` by calling `ScanError.toString` at the API boundary).
+
+</details>
+
+##### P10.6e.3 — Subtype contracts (type-enforced invariants)
 
 <details>
 
@@ -4071,9 +4175,10 @@ Each `have` serves as a machine-checked comment: if the invariant doesn't hold, 
 - Build: all jobs pass, zero `sorry`, zero warnings
 - All existing `#guard` proofs still pass (no behavioral change)
 - Every function in `Scanner.lean` and `TokenParser.lean` has an `Implements` docstring
+- All error sites use `ScanError` constructors (zero `s!"..."` string errors in scanner/parser)
 - Subtype obligations discharge without `sorry` (or are explicitly marked as future proof targets)
 
-**Estimated effort**: P10.6e.1: 2–3 days. P10.6e.2: 3–5 days.
+**Estimated effort**: P10.6e.1: 2–3 days. P10.6e.2: 1–2 days. P10.6e.3: 3–5 days.
 
 **Status**: Not started.
 
