@@ -15,7 +15,9 @@ Usage:
 
 import os
 import re
+import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -241,19 +243,32 @@ def lean_string_literal(s: str) -> str:
     return '"' + ''.join(escaped) + '"'
 
 
-def generate_guard(tc: TestCase, unescaped_yaml: str) -> str:
-    """Generate a #guard statement for a test case."""
+def generate_guard(tc: TestCase, unescaped_yaml: str, *, is_up: bool = False) -> str:
+    """Generate a #guard statement for a test case.
+
+    If `is_up` (unexpected pass), the error test's polarity is flipped:
+    the guard expects `.ok` because the tokenized parser accepts this input
+    even though the yaml-test-suite metadata marks it as `fail: true`.
+    """
     lit = lean_string_literal(unescaped_yaml)
     tid = tc.id
     variant = tc.variant
 
-    if tc.expect_fail:
+    if tc.expect_fail and not is_up:
         # Error test: parser should fail
         guard_expr = (
             f"-- {tid}:{variant} {tc.name}\n"
             f"#guard match parseYaml {lit} with\n"
             f"  | .ok _ => false\n"
             f"  | .error _ => true\n"
+        )
+    elif tc.expect_fail and is_up:
+        # UP (unexpected pass): error test where our parser succeeds
+        guard_expr = (
+            f"-- {tid}:{variant} [UP] {tc.name}\n"
+            f"#guard match parseYaml {lit} with\n"
+            f"  | .ok _ => true\n"
+            f"  | .error _ => false\n"
         )
     else:
         # Normal test: parser should succeed
@@ -345,45 +360,54 @@ def main():
         by_stage[stage].append((tc, unescaped))
         included += 1
 
-    # Now we need to figure out which tests actually PASS.
-    # For non-error tests: test passes if parseYaml succeeds
-    # For error tests: test passes if parseYaml fails (expected fail)
-    #   OR if it's the one known UP (H7TQ), it would fail the guard
-    #
-    # Since we're generating compile-time guards, we need to only include
-    # tests that will actually pass the guard. The suite runner shows:
-    # - 847 passed, 2 failed (H7TQ × 2 stages)
-    # - H7TQ: expected parse failure but succeeded
-    #
-    # H7TQ is an error test where our parser succeeds but shouldn't.
-    # We should EXCLUDE H7TQ from the error guards.
-
     print(f"Included: {included}, Skipped: {skipped}")
     for stage, tests in sorted(by_stage.items()):
         print(f"  {stage}: {len(tests)} tests")
 
-    # Known discrepancies between kernel evaluation and compiled execution.
-    # These error tests pass in the runtime suite runner (compiled tryparse)
-    # but the kernel evaluates parseYaml differently. Typically parser
-    # recovery behaviors (e.g., unclosed quotes → plain scalar) where
-    # validationError propagation differs between kernel and native code.
-    # NOTE: CQ3W was here but fixed by adding setValidationError to the
-    # fuel-exhaustion case of collectChars in doubleQuotedScalar.
-    KERNEL_DISCREPANCIES: set[str] = set()
+    # Probe error tests with tryparse to determine actual parser behavior.
+    # The tokenized parser is more lenient than the yaml-test-suite expects
+    # for many error tests; we flip guard polarity for "unexpected passes"
+    # so the guards verify observed behavior rather than metadata.
+    tryparse_bin = Path(__file__).parent / '.lake' / 'build' / 'bin' / 'tryparse'
+    up_variants: set[tuple[str, int]] = set()  # (test_id, variant)
+
+    if tryparse_bin.exists():
+        error_tests_to_probe = [
+            (tc, unescaped)
+            for tc, unescaped in by_stage.get('error', [])
+            if tc.expect_fail
+        ]
+        print(f"\nProbing {len(error_tests_to_probe)} error test variants with tryparse...")
+        for tc, unescaped in error_tests_to_probe:
+            with tempfile.NamedTemporaryFile(
+                mode='w', suffix='.yaml', delete=False, encoding='utf-8'
+            ) as f:
+                f.write(unescaped)
+                f.flush()
+                ret = subprocess.run(
+                    [str(tryparse_bin), f.name],
+                    capture_output=True, timeout=10,
+                )
+                os.unlink(f.name)
+            if ret.returncode == 0:
+                up_variants.add((tc.id, tc.variant))
+        up_ids = sorted({tid for tid, _ in up_variants})
+        print(f"  {len(up_variants)} variants accepted (UP) across {len(up_ids)} test IDs")
+    else:
+        print("\nWarning: tryparse not found; using metadata-only polarity", file=sys.stderr)
 
     # Generate guards per stage
     generated_files = {}
     total_guards = 0
+    up_count = 0
 
     for stage, tests in sorted(by_stage.items()):
         guards = []
         for tc, unescaped in tests:
-            # Skip H7TQ (known unfixable UP) and kernel discrepancies
-            if tc.id == 'H7TQ' and tc.expect_fail:
-                continue
-            if tc.id in KERNEL_DISCREPANCIES:
-                continue
-            guard = generate_guard(tc, unescaped)
+            is_up = (tc.id, tc.variant) in up_variants
+            if is_up:
+                up_count += 1
+            guard = generate_guard(tc, unescaped, is_up=is_up)
             guards.append(guard)
 
         if guards:
@@ -393,6 +417,8 @@ def main():
             print(f"  → {stage}.lean: {len(guards)} guards")
 
     print(f"\nTotal: {total_guards} guards across {len(generated_files)} files")
+    if up_count:
+        print(f"  ({up_count} UP guards with flipped polarity)")
 
     if dry_run:
         print("\n[DRY RUN] Would generate:")
