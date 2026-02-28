@@ -37,38 +37,46 @@ jobs:
       - name: Build parser and test tools
         run: |
           lake build Lean4Yaml
-          lake build suiterunner tryparse
-          lake build tests parsetest quotedfolding demo
-          lake build stringlemmas anchortests tagtests explicitkeytests flowtests
+          lake build suiterunner tryparse tryroundtrip trydump
+          lake build tests demo explicitkeytests flowtests
+          lake build validationtests dumproundtrip rawparsetests
+          lake build specexamples schemadump scannertests scannerspecexamples
+          lake build flowregressioncheck errorstagediag scalarstagediag
 
       - name: Run unit and integration tests
         run: |
           echo "=== Unit Tests ===" | tee docs/unit-tests.txt
           ./.lake/build/bin/tests 2>&1 | tee -a docs/unit-tests.txt
           echo ""
-          echo "=== Parser Integration Tests ===" | tee docs/parsetest.txt
-          ./.lake/build/bin/parsetest 2>&1 | tee -a docs/parsetest.txt
-          echo ""
-          echo "=== Quoted Folding Tests ===" | tee docs/quotedfolding.txt
-          ./.lake/build/bin/quotedfolding 2>&1 | tee -a docs/quotedfolding.txt
-          echo ""
           echo "=== Demo ===" | tee docs/demo.txt
           ./.lake/build/bin/demo 2>&1 | tee -a docs/demo.txt
-          echo ""
-          echo "=== String Lemma Tests ===" | tee docs/stringlemmas.txt
-          ./.lake/build/bin/stringlemmas 2>&1 | tee -a docs/stringlemmas.txt
-          echo ""
-          echo "=== Anchor/Alias Tests ===" | tee docs/anchortests.txt
-          ./.lake/build/bin/anchortests 2>&1 | tee -a docs/anchortests.txt
-          echo ""
-          echo "=== Tag Tests ===" | tee docs/tagtests.txt
-          ./.lake/build/bin/tagtests 2>&1 | tee -a docs/tagtests.txt
           echo ""
           echo "=== Explicit Key Tests ===" | tee docs/explicitkeytests.txt
           ./.lake/build/bin/explicitkeytests 2>&1 | tee -a docs/explicitkeytests.txt
           echo ""
           echo "=== Flow Completeness Tests ===" | tee docs/flowtests.txt
           ./.lake/build/bin/flowtests 2>&1 | tee -a docs/flowtests.txt
+          echo ""
+          echo "=== Validation Tests ===" | tee docs/validationtests.txt
+          ./.lake/build/bin/validationtests 2>&1 | tee -a docs/validationtests.txt
+          echo ""
+          echo "=== Dump Round-Trip Tests ===" | tee docs/dumproundtrip.txt
+          ./.lake/build/bin/dumproundtrip 2>&1 | tee -a docs/dumproundtrip.txt
+          echo ""
+          echo "=== Raw Parse Tests ===" | tee docs/rawparsetests.txt
+          ./.lake/build/bin/rawparsetests 2>&1 | tee -a docs/rawparsetests.txt
+          echo ""
+          echo "=== Spec Examples ===" | tee docs/specexamples.txt
+          ./.lake/build/bin/specexamples 2>&1 | tee -a docs/specexamples.txt
+          echo ""
+          echo "=== Schema Dump Tests ===" | tee docs/schemadump.txt
+          ./.lake/build/bin/schemadump 2>&1 | tee -a docs/schemadump.txt
+          echo ""
+          echo "=== Scanner Tests ===" | tee docs/scannertests.txt
+          ./.lake/build/bin/scannertests 2>&1 | tee -a docs/scannertests.txt
+          echo ""
+          echo "=== Scanner Spec Examples ===" | tee docs/scannerspecexamples.txt
+          ./.lake/build/bin/scannerspecexamples 2>&1 | tee -a docs/scannerspecexamples.txt
 
       - name: Create docs directory
         run: mkdir -p docs
@@ -79,7 +87,7 @@ jobs:
 
       - name: Generate verified tests HTML page
         run: |
-          cat docs/unit-tests.txt docs/parsetest.txt docs/quotedfolding.txt docs/demo.txt docs/stringlemmas.txt docs/anchortests.txt docs/tagtests.txt docs/explicitkeytests.txt docs/flowtests.txt > docs/all-verified-tests.txt
+          cat docs/unit-tests.txt docs/demo.txt docs/explicitkeytests.txt docs/flowtests.txt docs/validationtests.txt docs/dumproundtrip.txt docs/rawparsetests.txt docs/specexamples.txt docs/schemadump.txt docs/scannertests.txt docs/scannerspecexamples.txt > docs/all-verified-tests.txt
 
       - name: Upload coverage reports as artifact
         uses: actions/upload-artifact@v3
