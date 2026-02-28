@@ -1751,6 +1751,8 @@ The critical property: **the schema layer is pure functions on inductive types**
 
 #### Phase 7.1: Core Types & Resolution — ✅ Complete (326 lines)
 
+<details>
+
 Port `Schema.lean` with proof targets. The resolution functions are pure pattern-matching on strings — ideal for formal verification.
 
 **Module: `Lean4Yaml/Schema.lean`**
@@ -1783,7 +1785,11 @@ resolve           — YamlValue → YamlType  (recursive resolution)
 
 Estimated effort: 1 session for port, 1 session for proofs.
 
+</details>
+
 #### Phase 7.2: FromYaml/ToYaml Typeclasses — ✅ Complete (208 lines)
+
+<details>
 
 Port `Schema/FromToYaml.lean`. The typeclass instances are small pattern-match functions — each is independently provable.
 
@@ -1812,7 +1818,11 @@ class ToYaml α         — toYaml : α → YamlValue
 
 Estimated effort: 1 session.
 
+</details>
+
 #### Phase 7.3: Struct Helpers & Deriving — ✅ Complete (399+267 lines)
+
+<details>
 
 Port `Schema/Struct.lean` and `Deriving.lean`. The struct helpers are simple mapping operations; the deriving macro is metaprogramming.
 
@@ -1845,7 +1855,11 @@ Deriving macro proofs are out of scope — macro-generated code is validated emp
 
 Estimated effort: 1 session for struct helpers, 1 session for deriving port.
 
+</details>
+
 #### Phase 7.4: Schema ↔ Dump Integration — ✅ Complete (290 + 311 + 259 lines)
+
+<details>
 
 Connected `ToYaml` to the Phase 6 dump function for the full pipeline: `α → YamlValue → String`. The canonical emitter (`Emitter.lean`) remains for internal use; the dump function provides the user-facing output.
 
@@ -1883,7 +1897,11 @@ Plus 49 compile-time `#guard` checks validating serialization output and content
 | `roundTripsTo_*` | `roundTripsTo a cfg = true` — full typed α→String→α round-trip | ✅ 10 theorems |
 | `dumpTyped_*` | `dumpTyped a = expected` — output correctness | ✅ 10 theorems |
 
+</details>
+
 #### Phase 7.5: End-to-End Round-Trip
+
+<details>
 
 Compose parser + dump + schema proofs into:
 
@@ -1896,6 +1914,7 @@ theorem roundtrip :
 
 This is the verified-correctness analog of lean4-yaml's empirical round-trip tests. It requires parser soundness proofs (Phase 3 of the main verification roadmap) and Phase 6 dump proofs, and is the long-term goal.
 
+</details>
 
 </details>
 
@@ -1977,6 +1996,8 @@ Ported and adapted the schema layer from lean4-yaml (2026-02-24). 8 new files im
 - `YamlValue` has `BEq` but not `DecidableEq` (recursive inductive with `Array` children). SchemaDump proofs use `#guard` with `==` for `YamlValue` comparisons and a `roundTripsTo` Bool helper for typed round-trips returning `Except String α`.
 - `Std.Data.HashMap` import in `FromToYaml.lean` is the first `Std` import in the project — available in Lean 4.28.0 core, no additional dependency needed.
 - `resolve` equational lemma generation fails in Lean 4.28.0 due to a known `YamlValue.rec_1` projection issue with `where`-clause mutual recursion on arrays-converted-to-lists. Proofs for `resolve` on sequences/mappings use `rfl` (definitional reduction succeeds despite missing equational lemma). Proofs for `resolve` on scalars route through `resolveScalar` instead.
+
+</details>
 
 </details>
 
@@ -2774,9 +2795,15 @@ The `b: x: y` regression is fixed: the scanner produces `KEY "b" VALUE KEY "x" V
 
 ### Motivation
 
+<details>
+
 Phase 9 introduced a two-pass scanner/parser (`Token.lean`, `Scanner.lean`, `TokenParser.lean`) that is completely independent of the `lean4-parser` library. Both parsers currently coexist: the old parser is the default (`Lean4Yaml.Parse.parseYaml`), while the tokenized parser lives in `Lean4Yaml.TokenParser.parseYaml`. Maintaining two full YAML parsers doubles the surface area for bugs, increases build times, and causes confusion about which API to use. The tokenized parser is architecturally superior — it eliminates `detectMappingKeyImpl` false positives, removes the fuel parameter, and separates lexical from syntactic concerns.
 
+</details>
+
 ### Scope
+
+<details>
 
 **Delete**: `Lean4Yaml/Parser/` directory (7 files, 4,403 lines):
 - `Combinators.lean` (636 lines) — `YamlParser` monad, character classifiers, indent tracking
@@ -2791,7 +2818,11 @@ Phase 9 introduced a two-pass scanner/parser (`Token.lean`, `Scanner.lean`, `Tok
 
 **Promote**: `TokenParser.parseYaml` becomes the sole `parseYaml` implementation in the `Lean4Yaml.Parse` namespace.
 
+</details>
+
 ### Inventory: What Depends on the Old Parser
+
+<details>
 
 #### Library layer (2 files)
 - **`Schema/Api.lean`** — calls `Parse.parseYamlSingle` in `parseAs`, `parseTyped`
@@ -2815,9 +2846,13 @@ Phase 9 introduced a two-pass scanner/parser (`Token.lean`, `Scanner.lean`, `Tok
 #### Types to relocate
 - `FoldResult` (defined in `Parser/Scalar.lean`) — used by `Proofs/StringProperties.lean` and `Proofs/FoldNewlines.lean`. Move to `Types.lean` or `Grammar.lean`.
 
+</details>
+
 ### Phased Execution Plan
 
 #### P10.1: API Facade (non-breaking)
+
+<details>
 
 **Goal**: Make `TokenParser.parseYaml` the implementation behind `Lean4Yaml.Parse.parseYaml` while keeping the old parser importable.
 
@@ -2835,49 +2870,109 @@ Phase 9 introduced a two-pass scanner/parser (`Token.lean`, `Scanner.lean`, `Tok
 
 ###### Unexpected challenges
 
-1. **Full shim was not viable yet.** The original plan called for `Parse.parseYaml` to *delegate* to `TokenParser.parseYaml`, making the switchover invisible. Attempting this caused 103 `#guard` failures: 86 in `SuiteGuards/Error.lean` (inputs the old parser incorrectly rejected but the tokenized parser correctly accepts — i.e. the tokenized parser is *more correct*) and 17 across four other proof files whose guards encode old parser behavior. The shim was reverted to a non-breaking approach: old API stays on the char-level parser, `*Tokenized` aliases (`parseYamlTokenized`, `parseYamlRawTokenized`, `parseYamlSingleTokenized`, `parseYamlSingleRawTokenized`) provide opt-in access. The actual switchover is deferred to P10.2 where the 103 guards are updated systematically.
+1. **Full shim was not viable yet.**
+- The original plan called for `Parse.parseYaml` to *delegate* to `TokenParser.parseYaml`, making the switchover invisible.
+- Attempting this caused 103 `#guard` failures: 86 in `SuiteGuards/Error.lean` (inputs the old parser incorrectly rejected but the tokenized parser correctly accepts — i.e. the tokenized parser is *more correct*) and 17 across four other proof files whose guards encode old parser behavior.
+- The shim was reverted to a non-breaking approach: old API stays on the char-level parser, `*Tokenized` aliases (`parseYamlTokenized`, `parseYamlRawTokenized`, `parseYamlSingleTokenized`, `parseYamlSingleRawTokenized`) provide opt-in access.
+- The actual switchover is deferred to P10.2 where the 103 guards are updated systematically.
 
-2. **Tag representation mismatch.** The old parser stores tags in shorthand form (`!!str`, `!!int`, `!!null`) while the tokenized parser initially expanded the `!!` handle to its full URI (`tag:yaml.org,2002:str`). This caused 137 false content diffs. The fix was a one-line change in `TokenParser.lean` — store `"!!" ++ suffix` when the handle is `!!` instead of expanding to the canonical URI. This brought content diffs from 137 to 125 (the remaining 125 are genuine old-parser bugs, not representation mismatches).
+2. **Tag representation mismatch.**
+- The old parser stores tags in shorthand form (`!!str`, `!!int`, `!!null`) while the tokenized parser initially expanded the `!!` handle to its full URI (`tag:yaml.org,2002:str`).
+- This caused 137 false content diffs.
+- The fix was a one-line change in `TokenParser.lean` — store `"!!" ++ suffix` when the handle is `!!` instead of expanding to the canonical URI.
+- This brought content diffs from 137 to 125 (the remaining 125 are genuine old-parser bugs, not representation mismatches).
 
-3. **`Inhabited YamlDocument` was missing.** `TokenParser.parseYamlSingleRaw` uses `docs[0]!` which requires an `Inhabited` instance. The instance existed only in `Parser/Document.lean` (as a standalone `instance`), inaccessible from `TokenParser.lean`. The fix was to add `Inhabited` to the `deriving` clause in `Types.lean` where `YamlDocument` is defined — making it available project-wide without import dependencies.
+3. **`Inhabited YamlDocument` was missing.**
+-`TokenParser.parseYamlSingleRaw` uses `docs[0]!` which requires an `Inhabited` instance.
+- The instance existed only in `Parser/Document.lean` (as a standalone `instance`), inaccessible from `TokenParser.lean`.
+- The fix was to add `Inhabited` to the `deriving` clause in `Types.lean` where `YamlDocument` is defined — making it available project-wide without import dependencies.
 
-4. **`ParserCompare` file discovery.** The first version of the comparison tool found 0 tests because it assumed the yaml-test-suite used a directory-per-test layout. In fact, the suite uses flat `.yaml` files in `src/` with a structured metadata format (parsed by `Meta.lean`'s state machine). Rewriting to inline the same file-reading logic as `SuiteRunner` fixed the discovery.
+4. **`ParserCompare` file discovery.**
+- The first version of the comparison tool found 0 tests because it assumed the yaml-test-suite used a directory-per-test layout.
+- In fact, the suite uses flat `.yaml` files in `src/` with a structured metadata format (parsed by `Meta.lean`'s state machine).
+- Rewriting to inline the same file-reading logic as `SuiteRunner` fixed the discovery.
 
-5. **Lean syntax for mutable-variable shadowing.** In `ParserCompare.lean`, `let files := files.insertionSort ...` failed because Lean does not allow `let` to shadow `let mut` bindings in the same `do` block. Renaming to `let sortedFiles := ...` resolved it. Similarly, tuple destructuring in `for (testId, content) in files` did not work — using `for pair in files` with `pair.1`/`pair.2` was necessary.
+5. **Lean syntax for mutable-variable shadowing.**
+- In `ParserCompare.lean`, `let files := files.insertionSort ...` failed because Lean does not allow `let` to shadow `let mut` bindings in the same `do` block.
+- Renaming to `let sortedFiles := ...` resolved it.
+- Similarly, tuple destructuring in `for (testId, content) in files` did not work — using `for pair in files` with `pair.1`/`pair.2` was necessary.
 
 ###### Why the tokenized parser is a genuine improvement
 
 The comparison tool's numbers tell a clear story: **0 regressions, 87 improvements** (inputs the old parser rejected but the tokenized parser correctly accepts). The remaining 125 content diffs are all cases where the tokenized parser produces *more correct* output. The improvements fall into several structural categories:
 
-1. **Elimination of `detectMappingKeyImpl` false positives.** The old parser's single-pass architecture requires speculative lookahead to decide whether a line begins a mapping key (e.g., `key: value`). This lookahead (`detectMappingKeyImpl`) operates character-by-character on the unparsed input and is prone to false positives — for example, treating `?foo` as an explicit key indicator when the YAML spec says a `?` must be followed by whitespace to be an indicator (§7.2). The tokenized parser never has this problem: the scanner classifies `?` vs `?<blank>` at the token level, and the grammar parser acts on the token classification. The 87 inputs incorrectly rejected by the old parser include cases like `?foo` (plain scalar), complex nested flow collections, and multi-line plain scalars that the old parser's lookahead misidentified.
+1. **Elimination of `detectMappingKeyImpl` false positives.**
+- The old parser's single-pass architecture requires speculative lookahead to decide whether a line begins a mapping key (e.g., `key: value`).
+- This lookahead (`detectMappingKeyImpl`) operates character-by-character on the unparsed input and is prone to false positives — for example, treating `?foo` as an explicit key indicator when the YAML spec says a `?` must be followed by whitespace to be an indicator (§7.2).
+- The tokenized parser never has this problem: the scanner classifies `?` vs `?<blank>` at the token level, and the grammar parser acts on the token classification.
+- The 87 inputs incorrectly rejected by the old parser include cases like `?foo` (plain scalar), complex nested flow collections, and multi-line plain scalars that the old parser's lookahead misidentified.
 
-2. **Separation of lexical and syntactic concerns.** The old parser interleaves character classification with grammar decisions — a single function must simultaneously track indentation, consume characters, classify indicators, and build AST nodes. This coupling means bugs in one concern cascade into others. The tokenized parser's two-pass architecture (Scanner: chars → tokens, TokenParser: tokens → AST) creates a clean information boundary. The scanner's only job is producing tokens; the parser's only job is assembling them. Neither can introduce bugs that belong to the other's domain.
+2. **Separation of lexical and syntactic concerns.** 
+- The old parser interleaves character classification with grammar decisions — a single function must simultaneously track indentation, consume characters, classify indicators, and build AST nodes.
+- This coupling means bugs in one concern cascade into others.
+- The tokenized parser's two-pass architecture (Scanner: chars → tokens, TokenParser: tokens → AST) creates a clean information boundary.
+- The scanner's only job is producing tokens; the parser's only job is assembling them.
+- Neither can introduce bugs that belong to the other's domain.
 
-3. **Code size reduction: 478 lines vs 4,403 lines.** The tokenized grammar parser (`TokenParser.lean`) is 478 lines — **9.2× smaller** than the old parser's 7 files. This is not because of missing features (both achieve 132/132 spec examples, identical `parseYaml` signature). The reduction comes from the token abstraction: instead of reimplementing character-level whitespace handling, indentation tracking, and indicator recognition in every production, the grammar parser pattern-matches on token variants (`blockSequenceEntry`, `key`, `value`, `scalar`, etc.). Each production is a few lines of token matching instead of dozens of lines of character manipulation.
+3. **Code size reduction: 478 lines vs 4,403 lines.**
+- The tokenized grammar parser (`TokenParser.lean`) is 478 lines — **9.2× smaller** than the old parser's 7 files.
+- This is not because of missing features (both achieve 132/132 spec examples, identical `parseYaml` signature).
+- The reduction comes from the token abstraction: instead of reimplementing character-level whitespace handling, indentation tracking, and indicator recognition in every production, the grammar parser pattern-matches on token variants (`blockSequenceEntry`, `key`, `value`, `scalar`, etc.).
+- Each production is a few lines of token matching instead of dozens of lines of character manipulation.
 
-4. **No fuel parameter.** The old parser required a `fuel : Nat` parameter for termination (Step 3.3.3 converted all 31 `partial def` parsers to use `(fuel : Nat)` + `match fuel`). This fuel parameter threads through every parser function, inflates the API, and requires proving fuel sufficiency for completeness. The tokenized parser terminates structurally: `TokenStream.remaining` decreases on every `next?` call (proved in `ScannerProofs.lean` §6: `TokenStream_remaining_decreases`), making the grammar parser total without fuel. This eliminates the entire `FuelSufficiency.lean` proof file (545 lines) and simplifies every completeness argument.
+4. **No fuel parameter.**
+- The old parser required a `fuel : Nat` parameter for termination (Step 3.3.3 converted all 31 `partial def` parsers to use `(fuel : Nat)` + `match fuel`).
+- This fuel parameter threads through every parser function, inflates the API, and requires proving fuel sufficiency for completeness.
+- The tokenized parser terminates structurally: `TokenStream.remaining` decreases on every `next?` call (proved in `ScannerProofs.lean` §6: `TokenStream_remaining_decreases`), making the grammar parser total without fuel.
+- This eliminates the entire `FuelSufficiency.lean` proof file (545 lines) and simplifies every completeness argument.
 
-5. **Explicit state is easier to prove about.** The old parser uses `ParserT` monadic state (from the `lean4-parser` library) where position tracking, error recovery, and backtracking are hidden behind typeclass instances. Proving properties requires unwinding `Parser.run`, understanding the `Parser.Stream` interface, and reasoning about monadic bind. The tokenized parser uses an explicit `ParseState` (a `Nat` index into a token array) threaded through pure functions. Properties like "parsing advances the position" or "parsing preserves earlier tokens" become direct `Nat` arithmetic — no monad laws needed.
+5. **Explicit state is easier to prove about.**
+- The old parser uses `ParserT` monadic state (from the `lean4-parser` library) where position tracking, error recovery, and backtracking are hidden behind typeclass instances.
+- Proving properties requires unwinding `Parser.run`, understanding the `Parser.Stream` interface, and reasoning about monadic bind.
+- The tokenized parser uses an explicit `ParseState` (a `Nat` index into a token array) threaded through pure functions.
+- Properties like "parsing advances the position" or "parsing preserves earlier tokens" become direct `Nat` arithmetic — no monad laws needed.
 
-6. **Removes the `lean4-parser` dependency.** The old parser is the sole consumer of the `lean4-parser` library (the `Parser` package in `lakefile.toml`). Once removed, `lean4-yaml-verified` becomes self-contained with no external Lean dependencies beyond Batteries. This simplifies the build, eliminates version-pinning concerns (the `well-founded-streams` branch is a fork), and removes the need for the `Stream.lean` bridge module.
+6. **Removes the `lean4-parser` dependency.** (TODO: revisit)
+- The old parser is the sole consumer of the `lean4-parser` library (the `Parser` package in `lakefile.toml`).
+- Once removed, `lean4-yaml-verified` becomes self-contained with no external Lean dependencies beyond Batteries.
+- This simplifies the build, eliminates version-pinning concerns (the `well-founded-streams` branch is a fork), and removes the need for the `Stream.lean` bridge module.
 
 ###### Simplifications
 
-1. **`Repr`-based structural comparison.** Comparing `YamlDocument` arrays for equality is nontrivial — the types nest `Array`s multiple levels deep, and Lean's auto-derived `BEq` does not provide `DecidableEq` for deeply nested array structures. Using `toString (repr a) == toString (repr b)` sidesteps this entirely: `Repr` instances are already derived for all types, and string comparison is reliable for structural equality testing. This is appropriate for a comparison tool (not for proofs).
+1. **`Repr`-based structural comparison.**
+- Comparing `YamlDocument` arrays for equality is nontrivial — the types nest `Array`s multiple levels deep, and Lean's auto-derived `BEq` does not provide `DecidableEq` for deeply nested array structures
+- Using `toString (repr a) == toString (repr b)` sidesteps this entirely: `Repr` instances are already derived for all types, and string comparison is reliable for structural equality testing.
+- This is appropriate for a comparison tool (not for proofs).
 
-2. **Tag shorthand was a one-line fix.** The tag representation mismatch initially appeared to require a normalization pass. In fact, the tokenized scanner already separates `handle` and `suffix` in the `YamlToken.tag` constructor — the only question was how to recombine them. Changing `"tag:yaml.org,2002:" ++ suffix` to `"!!" ++ suffix` in `resolveNodeProperties` was the entire fix (one line, no behavioral change to parsing logic).
+2. **Tag shorthand was a one-line fix.**
+- The tag representation mismatch initially appeared to require a normalization pass.
+- In fact, the tokenized scanner already separates `handle` and `suffix` in the `YamlToken.tag` constructor — the only question was how to recombine them.
+- Changing `"tag:yaml.org,2002:" ++ suffix` to `"!!" ++ suffix` in `resolveNodeProperties` was the entire fix (one line, no behavioral change to parsing logic).
 
-3. **Comparison tool reuses `Meta.lean` infrastructure.** Instead of writing a new yaml-test-suite parser, `ParserCompare.lean` imports `Tests.SuiteRunner.Meta` and reuses `parseTestFile` and `unescapeTestYaml`. This gives it identical test-case discovery to the suite runner — no risk of testing different subsets.
+3. **Comparison tool reuses `Meta.lean` infrastructure.**
+- Instead of writing a new yaml-test-suite parser, `ParserCompare.lean` imports `Tests.SuiteRunner.Meta` and reuses `parseTestFile` and `unescapeTestYaml`.
+- This gives it identical test-case discovery to the suite runner — no risk of testing different subsets.
 
 ###### Idioms
 
-- **Non-breaking facade pattern.** When a full API replacement has cascading breakage (103 guard failures), adding `*Tokenized` aliases in the same namespace provides opt-in migration without touching any existing consumers. This turns a big-bang switchover into an incremental one: callers can switch function-by-function, and the P10.2 guard migration can proceed file-by-file.
+- **Non-breaking facade pattern.**
+  - When a full API replacement has cascading breakage (103 guard failures), adding `*Tokenized` aliases in the same namespace provides opt-in migration without touching any existing consumers.
+  - This turns a big-bang switchover into an incremental one: callers can switch function-by-function, and the P10.2 guard migration can proceed file-by-file.
 
-- **Comparison tool as a migration validator.** Building `ParserCompare` before attempting the shim provided the data to make an informed decision: the 103 failures were categorized as guard updates (not parser bugs), and the 87 improvements were confirmed as genuine correctness gains. Without this data, the 103 failures would have been alarming; with it, they became a bounded migration task.
+- **Comparison tool as a migration validator.**
+  - Building `ParserCompare` before attempting the shim provided the data to make an informed decision: the 103 failures were categorized as guard updates (not parser bugs), and the 87 improvements were confirmed as genuine correctness gains.
+ - Without this data, the 103 failures would have been alarming; with it, they became a bounded migration task.
 
-- **Shorthand vs. canonical tag representation.** YAML 1.2.2 §6.8.2 defines the `!!` tag handle as shorthand for `tag:yaml.org,2002:`. The choice of which representation to store internally is an API contract, not a correctness question — both are equivalent. Matching the old parser's shorthand convention (`!!str`) avoids gratuitous diff noise during migration, even though the canonical form would be equally valid.
+- **Shorthand vs. canonical tag representation.** 
+  - YAML 1.2.2 §6.8.2 defines the `!!` tag handle as shorthand for `tag:yaml.org,2002:`.
+  - The choice of which representation to store internally is an API contract, not a correctness question — both are equivalent.
+  - Matching the old parser's shorthand convention (`!!str`) avoids gratuitous diff noise during migration, even though the canonical form would be equally valid.
+
+</details>
 
 #### P10.2: Test Migration
+
+<details>
 
 **Goal**: All 19 test files use the tokenized parser directly.
 
@@ -2908,39 +3003,116 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 
 ###### Unexpected challenges
 
-1. **103 `#guard` failures on API switch — exactly as predicted by P10.1.** Switching the four public API functions to delegate to `TokenParser.*` caused exactly 103 compile-time guard failures: 86 in `SuiteGuards/Error.lean`, 5 in `Completeness.lean`, 4 in `TestSuite.lean`, 1 in `SuiteGuards/Block.lean`, 1 in `FoldNewlines.lean`, and 6 in `SuiteGuards/Error.lean` already passed. P10.1 had identified this count and deferred the switchover specifically so P10.2 could handle it systematically. The prediction was accurate — 86 of the 103 were inputs the old parser incorrectly rejected but the tokenized parser correctly accepts (the "87 improvements" from ParserCompare). Flipping these guards was mechanical: a Python script identified failing line numbers, then batch-flipped the match arms from `| .ok _ => false | .error _ => true` to `| .ok _ => true | .error _ => false`. Eight guards remained as genuine error-expected checks (literal modifier `|0`, invalid escape `\.`, unclosed quotes, etc.).
+1. **103 `#guard` failures on API switch — exactly as predicted by P10.1.**
+   - Switching the four public API functions to delegate to `TokenParser.*` caused exactly 103 compile-time guard failures: 86 in `SuiteGuards/Error.lean`, 5 in `Completeness.lean`, 4 in `TestSuite.lean`, 1 in `SuiteGuards/Block.lean`, 1 in `FoldNewlines.lean`, and 6 in `SuiteGuards/Error.lean` already passed.
+   - P10.1 had identified this count and deferred the switchover specifically so P10.2 could handle it systematically.
+   - The prediction was accurate — 86 of the 103 were inputs the old parser incorrectly rejected but the tokenized parser correctly accepts (the "87 improvements" from ParserCompare).
+   - Flipping these guards was mechanical: a Python script identified failing line numbers, then batch-flipped the match arms from `| .ok _ => false | .error _ => true` to `| .ok _ => true | .error _ => false`.
+   - Eight guards remained as genuine error-expected checks (literal modifier `|0`, invalid escape `\.`, unclosed quotes, etc.).
 
-2. **Implicit block sequence — libyaml's undocumented token elision.** The most serious bug: `parseYaml "items:\n- a\n- b"` returned **11 documents** instead of 1. The scanner produced correct tokens (matching libyaml exactly), but the grammar parser didn't handle the case where libyaml omits `BLOCK-SEQUENCE-START` when block entries sit at the same indent level as the containing mapping key. The YAML spec doesn't explicitly document this elision — it emerges from libyaml's indentation stack rules where `pushSequenceIndent` only emits `blockSequenceStart` when `col > currentIndent`, not `col >= currentIndent`. Without the start token, `parseNode` fell through to the "empty node" case, and `parseDocument` consumed one token at a time, generating empty documents until `streamEnd`. The fix was a new `parseImplicitBlockSequence` function in `TokenParser.lean` that handles bare `blockEntry` tokens directly, with no corresponding `blockEnd` to consume (the parent mapping owns the end token). This is the kind of bug that can only be found by running the full pipeline end-to-end — unit testing the scanner or parser in isolation would not catch it because both are individually correct.
+2. **Implicit block sequence — libyaml's undocumented token elision.** 
+   - The most serious bug: `parseYaml "items:\n- a\n- b"` returned **11 documents** instead of 1.
+   - The scanner produced correct tokens (matching libyaml exactly), but the grammar parser didn't handle the case where libyaml omits `BLOCK-SEQUENCE-START` when block entries sit at the same indent level as the containing mapping key.
+   - The YAML spec doesn't explicitly document this elision — it emerges from libyaml's indentation stack rules where `pushSequenceIndent` only emits `blockSequenceStart` when `col > currentIndent`, not `col >= currentIndent`. (TODO: File an issue)
+   - Without the start token, `parseNode` fell through to the "empty node" case, and `parseDocument` consumed one token at a time, generating empty documents until `streamEnd`.
+   - The fix was a new `parseImplicitBlockSequence` function in `TokenParser.lean` that handles bare `blockEntry` tokens directly, with no corresponding `blockEnd` to consume (the parent mapping owns the end token).
+   - This is the kind of bug that can only be found by running the full pipeline end-to-end — unit testing the scanner or parser in isolation would not catch it because both are individually correct.
 
-3. **Flow context value indicator — `:` after quoted scalar.** `{"key":value}` produced 6 documents. The scanner wasn't recognizing `:` as a value indicator after a quoted scalar in flow context because it always checked for trailing whitespace (`isBlank n || isFlowIndicator n`). In libyaml, `:` is unconditionally a value indicator in flow context when `simpleKey.possible` is true (i.e., after any content that could be a simple key). The YAML spec (§7.4) implies this: "In flow context, a plain scalar must not contain the `:` indicator followed by a space." The contrapositive is that `:` *not* followed by a space *can* appear in a plain scalar — but only when it's not at a position where a value indicator would be expected (i.e., after a simple key). Our scanner was too conservative, treating `:value` as a continuation of the previous scalar rather than as a value indicator. One-line fix: check `s.inFlow && s.simpleKey.possible` before the trailing-character check.
+3. **Flow context value indicator — `:` after quoted scalar.** 
+   - `{"key":value}` produced 6 documents.
+   - The scanner wasn't recognizing `:` as a value indicator after a quoted scalar in flow context because it always checked for trailing whitespace (`isBlank n || isFlowIndicator n`).
+   - In libyaml, `:` is unconditionally a value indicator in flow context when `simpleKey.possible` is true (i.e., after any content that could be a simple key).
+   - The YAML spec (§7.4) implies this: "In flow context, a plain scalar must not contain the `:` indicator followed by a space."
+   - The contrapositive is that `:` *not* followed by a space *can* appear in a plain scalar — but only when it's not at a position where a value indicator would be expected (i.e., after a simple key).
+   - Our scanner was too conservative, treating `:value` as a continuation of the previous scalar rather than as a value indicator.
+   - One-line fix: check `s.inFlow && s.simpleKey.possible` before the trailing-character check.
+   - TODO: yaml spec clarification issue?
 
-4. **YAML §6.5 trailing whitespace — three separate locations.** The `FoldNewlines.lean` guard failure (`parseScalar "\"hello   \nworld\""` → `"hello    world"` instead of `"hello world"`) revealed that the scanner wasn't trimming trailing whitespace before line folding. YAML §6.5 says: "All trailing white space characters on the current line are excluded from the content." This required fixes in four places: (a) a `trimTrailingWS` helper function, (b) applied before `foldQuotedNewlines` in `scanDoubleQuoted`, (c) applied before `foldQuotedNewlines` in `scanSingleQuoted`, (d) dropping the accumulated `spaces` variable during line folds in `scanPlainScalar` (both flow and block contexts). The `spaces` variable was being prepended to folded content, preserving trailing whitespace that §6.5 says to discard.
+4. **YAML §6.5 trailing whitespace — three separate locations.**
+   - The `FoldNewlines.lean` guard failure (`parseScalar "\"hello   \nworld\""` → `"hello    world"` instead of `"hello world"`) revealed that the scanner wasn't trimming trailing whitespace before line folding.
+   - YAML §6.5 says: "All trailing white space characters on the current line are excluded from the content."
+   - This required fixes in four places: 
+     - (a) a `trimTrailingWS` helper function,
+     - (b) applied before `foldQuotedNewlines` in `scanDoubleQuoted`,
+     - (c) applied before `foldQuotedNewlines` in `scanSingleQuoted`,
+     - (d) dropping the accumulated `spaces` variable during line folds in `scanPlainScalar` (both flow and block contexts).
+   - The `spaces` variable was being prepended to folded content, preserving trailing whitespace that §6.5 says to discard.
 
-5. **Plain scalar trailing whitespace after fold.** After fixing the line-fold trimming, multi-line flow plain scalars like `{multi line: value}` (with `\n` between "multi" and "line") still had trailing whitespace: `"value "` instead of `"value"`. The scanner accumulated whitespace in a `spaces` variable and appended it to content before regular characters, but when the scalar terminated (at `}`) the pending `spaces` was neither appended nor discarded. Adding `trimTrailingWS` at the final scalar emission point fixed it. This is the same §6.5 principle but manifesting at scalar termination rather than at line boundaries.
+5. **Plain scalar trailing whitespace after fold.**
+   - After fixing the line-fold trimming, multi-line flow plain scalars like `{multi line: value}` (with `\n` between "multi" and "line") still had trailing whitespace: `"value "` instead of `"value"`.
+   - The scanner accumulated whitespace in a `spaces` variable and appended it to content before regular characters, but when the scalar terminated (at `}`) the pending `spaces` was neither appended nor discarded.
+   - Adding `trimTrailingWS` at the final scalar emission point fixed it.
+   - This is the same §6.5 principle but manifesting at scalar termination rather than at line boundaries.
 
-6. **Lean 4.28.0 `String` constructor change.** While implementing `trimTrailingWS`, the initial version used `⟨chars⟩` (anonymous constructor) for `String`, which worked in earlier Lean versions. In Lean 4.28.0, `String` is backed by a byte array (`ByteArray`) rather than `List Char`, so the anonymous constructor expects a `ByteArray`, not a `List Char`. The fix was `String.ofList (chars)` — the explicit conversion function that handles the internal representation correctly.
+6. **Lean 4.28.0 `String` constructor change.**
+   - While implementing `trimTrailingWS`, the initial version used `⟨chars⟩` (anonymous constructor) for `String`, which worked in earlier Lean versions.
+   - In Lean 4.28.0, `String` is backed by a byte array (`ByteArray`) rather than `List Char`, so the anonymous constructor expects a `ByteArray`, not a `List Char`.
+   - The fix was `String.ofList (chars)` — the explicit conversion function that handles the internal representation correctly.
 
-7. **`Completeness.lean` bridge theorems required architectural rethinking.** The old `parseYamlRaw_ok_iff` decomposed `parseYamlRaw` into `Parser.run yamlStream` + `validationError` — tightly coupled to the old parser's monadic architecture. With the API now delegating to `TokenParser.parseYamlRaw`, this decomposition is no longer provable (the implementation is a completely different function). The replacement is simpler: `parseYamlRaw_eq : parseYamlRaw input = TokenParser.parseYamlRaw input := rfl` and `parseYaml_eq : parseYaml input = TokenParser.parseYaml input := rfl` — thin equalities that are true by definition. The old `parseYaml_ok_iff` (decomposing into raw + compose) was preserved with a new proof via `simp only [parseYaml, TokenParser.parseYaml]`. Two theorems in `Composition.lean` that linked `yamlStream` to the public API were `sorry`'d — they belong to P10.5's proof rewrite scope.
+7. **`Completeness.lean` bridge theorems required architectural rethinking.**
+   - The old `parseYamlRaw_ok_iff` decomposed `parseYamlRaw` into `Parser.run yamlStream` + `validationError` — tightly coupled to the old parser's monadic architecture.
+   - With the API now delegating to `TokenParser.parseYamlRaw`, this decomposition is no longer provable (the implementation is a completely different function).
+   - The replacement is simpler: `parseYamlRaw_eq : parseYamlRaw input = TokenParser.parseYamlRaw input := rfl` and `parseYaml_eq : parseYaml input = TokenParser.parseYaml input := rfl` — thin equalities that are true by definition.
+   - The old `parseYaml_ok_iff` (decomposing into raw + compose) was preserved with a new proof via `simp only [parseYaml, TokenParser.parseYaml]`.
+   - Two theorems in `Composition.lean` that linked `yamlStream` to the public API were `sorry`'d — they belong to P10.5's proof rewrite scope.
 
 ###### Simplifications
 
-1. **Guard flipping was mechanical, not analytical.** The P10.1 reflections anticipated that 103 guard failures would be "a bounded migration task." In practice, it was even simpler: all 86 `Error.lean` failures had identical structure (flip the `ok`/`error` match arms), and a Python script handled them in one pass. The remaining 17 needed individual analysis but followed two patterns: (a) tokenized parser accepts what old parser rejected (flip to `.ok _ => true`), or (b) proof bridge theorem needs rewriting (Completeness.lean). No guard required deletion or creative reworking.
+1. **Guard flipping was mechanical, not analytical.**
+   - The P10.1 reflections anticipated that 103 guard failures would be "a bounded migration task."
+   - In practice, it was even simpler: all 86 `Error.lean` failures had identical structure (flip the `ok`/`error` match arms), and a Python script handled them in one pass.
+   - The remaining 17 needed individual analysis but followed two patterns:
+     - (a) tokenized parser accepts what old parser rejected (flip to `.ok _ => true`), or
+     - (b) proof bridge theorem needs rewriting (Completeness.lean). 
+   - No guard required deletion or creative reworking.
 
-2. **`parseImplicitBlockSequence` reuses `parseBlockSequence` logic.** The new function is nearly identical to `parseBlockSequence` — it just omits consuming `blockSequenceStart` at the start and `blockEnd` at the end (since neither token exists for implicit sequences). This copy-with-modifications approach is appropriate here because the two functions have subtly different termination conditions: `parseBlockSequence` terminates on `blockEnd`, while `parseImplicitBlockSequence` terminates on `key`, `blockEnd`, or `streamEnd` (tokens belonging to the parent structure). Attempting to unify them would have complicated the common case.
+2. **`parseImplicitBlockSequence` reuses `parseBlockSequence` logic.**
+   - The new function is nearly identical to `parseBlockSequence` — it just omits consuming `blockSequenceStart` at the start and `blockEnd` at the end (since neither token exists for implicit sequences).
+   - This copy-with-modifications approach is appropriate here because the two functions have subtly different termination conditions: `parseBlockSequence` terminates on `blockEnd`, while `parseImplicitBlockSequence` terminates on `key`, `blockEnd`, or `streamEnd` (tokens belonging to the parent structure).
+   - Attempting to unify them would have complicated the common case.
 
-3. **Scanner changes were self-contained.** All four scanner fixes (trailing WS in quoted scalars, trailing WS in plain scalars, flow context `:` recognition, plain scalar final trim) touched only `Scanner.lean`. No changes were needed in `Token.lean` (token types), `TokenParser.lean` (grammar parser — other than the implicit sequence fix), or any proof file. This validates the two-pass architecture's separation of concerns: lexical bugs are always in the scanner, syntactic bugs are always in the parser.
+3. **Scanner changes were self-contained.**
+   - All four scanner fixes (trailing WS in quoted scalars, trailing WS in plain scalars, flow context `:` recognition, plain scalar final trim) touched only `Scanner.lean`.
+   - No changes were needed in `Token.lean` (token types), `TokenParser.lean` (grammar parser — other than the implicit sequence fix), or any proof file.
+   - This validates the two-pass architecture's separation of concerns:
+     - lexical bugs are always in the scanner, 
+     - syntactic bugs are always in the parser.
 
-4. **`native_decide` is an effective regression detector.** The `Completeness.lean` line 430 failure (`native_decide` on `parseYaml "items:\n- a\n- b"`) was the first signal of the implicit block sequence bug. Without `native_decide` (which evaluates the function at compile time), this bug would have surfaced only at runtime. Having compile-time evaluation of concrete test cases in proof files serves as a lightweight property-based testing layer — any behavioral change to the parser immediately breaks the proofs.
+4. **`native_decide` is an effective regression detector.**
+   - The `Completeness.lean` line 430 failure (`native_decide` on `parseYaml "items:\n- a\n- b"`) was the first signal of the implicit block sequence bug.
+   - Without `native_decide` (which evaluates the function at compile time), this bug would have surfaced only at runtime.
+   - Having compile-time evaluation of concrete test cases in proof files serves as a lightweight property-based testing layer — any behavioral change to the parser immediately breaks the proofs.
 
 ###### Idioms
 
-- **"Test the tokens, not the parse tree" for scanner debugging.** When `parseYaml` returns wrong results, the first diagnostic step is always `Scanner.scan` → inspect token stream. If the tokens match libyaml's output, the bug is in `TokenParser`; if they differ, the bug is in `Scanner`. This binary diagnostic cut the search space in half for every bug. For the implicit block sequence bug, the tokens were *identical* to libyaml's (verified via `python3 -c "import yaml; list(yaml.scan(...))"`) — immediately localizing the bug to the grammar parser.
+- **"Test the tokens, not the parse tree" for scanner debugging.**
+  - When `parseYaml` returns wrong results, the first diagnostic step is always `Scanner.scan` → inspect token stream.
+  - If the tokens match libyaml's output, the bug is in `TokenParser`; if they differ, the bug is in `Scanner`.
+  - This binary diagnostic cut the search space in half for every bug.
+  - For the implicit block sequence bug, the tokens were *identical* to libyaml's (verified via `python3 -c "import yaml; list(yaml.scan(...))"`) — immediately localizing the bug to the grammar parser.
 
-- **Python/libyaml as ground truth.** `python3.9 -c "import yaml; list(yaml.scan(input))"` served as the reference implementation throughout. Every scanner output was cross-checked against libyaml's token stream. This caught the flow-context `:` bug (libyaml emits `KeyToken, ScalarToken, ValueToken, ScalarToken` for `{"key":value}` while our scanner emitted `ScalarToken, ScalarToken`) and confirmed the implicit block sequence tokens were correct. The YAML spec is ambiguous on several token-emission details — libyaml is the de facto standard.
+- **Python/libyaml as ground truth.** 
+  -`python3.9 -c "import yaml; list(yaml.scan(input))"` served as the reference implementation throughout.
+  - Every scanner output was cross-checked against libyaml's token stream.
+  - This caught the flow-context `:` bug (libyaml emits `KeyToken, ScalarToken, ValueToken, ScalarToken` for `{"key":value}` while our scanner emitted `ScalarToken, ScalarToken`) and confirmed the implicit block sequence tokens were correct.
+  - The YAML spec is ambiguous on several token-emission details — libyaml is the de facto standard.
+  - TODO: file an ambiguity issue in the spec
 
-- **Incremental validation pyramid.** After each fix, validation followed a strict order: (1) `lake build` (260 jobs — catches type errors and `#guard` failures), (2) `suiterunner` (849/0/171 — catches behavioral regressions across 1,020 test cases), (3) `parsercompare` (346 match, 0 regressions — confirms old/new parser equivalence). This ordering is efficient: `lake build` is fastest and catches the most common errors (type mismatches, guard failures); `suiterunner` is slower but catches behavioral regressions that compile; `parsercompare` is slowest but provides the strongest guarantee. Each level filters failures before escalating to the next.
+- **Incremental validation pyramid.**
+  - After each fix, validation followed a strict order:
+    - (1) `lake build` (260 jobs — catches type errors and `#guard` failures),
+    - (2) `suiterunner` (849/0/171 — catches behavioral regressions across 1,020 test cases),
+    - (3) `parsercompare` (346 match, 0 regressions — confirms old/new parser equivalence).
+  - This ordering is efficient: 
+    - `lake build` is fastest and catches the most common errors (type mismatches, guard failures);
+    - `suiterunner` is slower but catches behavioral regressions that compile; 
+    - `parsercompare` is slowest but provides the strongest guarantee.
+  - Each level filters failures before escalating to the next.
 
-- **`sorry` as a controlled technical debt marker.** The two `sorry`'d theorems in `Composition.lean` (`parseYamlRaw_of_yamlStream_ok`, `parseYaml_of_yamlStream_ok`) are not bugs — they're deliberate technical debt with a clear resolution path (P10.5: proof rewrites). Lean's `sorry` produces a warning (not an error), so the build stays green while clearly flagging incomplete work. The comment `-- P10.2→P10.5: old parser bridge, will be rewritten against tokenized parser` on each `sorry` links the debt to its resolution phase.
+- **`sorry` as a controlled technical debt marker.**
+  - The two `sorry`'d theorems in `Composition.lean` (`parseYamlRaw_of_yamlStream_ok`, `parseYaml_of_yamlStream_ok`) are not bugs — they're deliberate technical debt with a clear resolution path (P10.5: proof rewrites). 
+  - Lean's `sorry` produces a warning (not an error), so the build stays green while clearly flagging incomplete work.
+  - The comment `-- P10.2→P10.5: old parser bridge, will be rewritten against tokenized parser` on each `sorry` links the debt to its resolution phase.
 
 ###### Known gaps deferred to Phase 9 scanner hardening
 
@@ -2955,7 +3127,11 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 
 These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (346/0 match). They represent scanner edge cases that the old char-level parser handled through its more complex (and buggy) single-pass architecture, and that the tokenized scanner will need explicit handling for. None are regressions — the tokenized parser never handled these cases; the old parser handled some of them as side effects of its `detectMappingKeyImpl` lookahead.
 
+</details>
+
 #### P10.3: Type Relocation
+
+<details>
 
 **Goal**: Move parser-internal types that are used by proofs to spec-level modules.
 
@@ -3036,7 +3212,11 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 - This creates a grep-able audit trail: `grep -r 'P10\.' Lean4Yaml/` shows exactly which changes belong to which phase. 
 - When P10.6 deletes the old parser files, the `P10.3` tombstone comments go with them — no cleanup needed.
 
+</details>
+
 #### P10.4: Proof Migration — Reusable & Adaptable (8 files, ~3,500 lines)
+
+<details>
 
 **Goal**: Migrate the 3 reusable + 7 adaptable proof files.
 
@@ -3125,7 +3305,11 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 - By migrating `Schema/Api.lean` and `Schema/Dump.lean` alongside the proof files, the entire dependency chain from proof → library → parser is updated in one phase.
 - This avoids the situation where a proof file imports `TokenParser` but transitively gets `Parser.Document` through a library file — which would compile but would not survive P10.6 deletion.
 
+</details>
+
 #### P10.5: Proof Migration — Rewrites (4 files, ~3,400 lines)
+
+<details>
 
 **Goal**: Rewrite the 4 fundamentally architecture-dependent proof files against the tokenized parser.
 
@@ -3191,6 +3375,7 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
    - After `unfold parseYamlRaw` and `rw [h_scan]`, the goal becomes `(do let tokens ← Except.ok tokens; parseStream tokens) = ...` — which is *not* reduced by `simp` or `rfl` alone.
    - Solution: `rw [h_scan]` to eliminate the bind, then `exact h_parse` for the ok branch, or `rfl` for the error branch (where `Except.error e >>= f` reduces definitionally to `Except.error e`).
    - The asymmetry (ok-bind doesn't reduce but error-bind does) comes from Lean 4's `Except.bind` using `match` — the `ok` branch applies `f` (requiring the hypothesis), while the `error` branch is a direct constructor.
+   - TODO: add a new lean4 style rule?
 
 2. **Composition.lean's old content was 100% architecture-dependent.**
    - The plan estimated ~200 lines for the rewrite, suggesting some structure could be preserved.
@@ -3227,7 +3412,11 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 - **`contradiction` for impossible `Except` branches.**
   - In `parseYamlRaw_ok_decompose`, the `| .error e =>` branch after `rw [h_scan] at h` leaves `h : Except.error e = Except.ok docs`. `contradiction` closes this instantly — cleaner than `exact absurd h (by ...)`.
 
+</details>
+
 #### P10.6: Old Parser Deletion
+
+<details>
 
 **Goal**: Remove the old parser and `lean4-parser` dependency.
 
@@ -3347,7 +3536,11 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
   - Lean 4 does not warn on unused imports. The only reliable detector is removing the imported module and observing whether the build breaks.
   - In a codebase undergoing phased migration, dead imports accumulate silently. A grep sweep before the deletion phase is the practical mitigation.
 
+</details>
+
 #### P10.6b: Post-Deletion Test Repair
+
+<details>
 
 **Goal**: Restore test suite compliance after P10.6 deletion exposed stale references to the old parser namespace, `Batteries` transitive dependency, and deleted test modules.
 
@@ -3443,7 +3636,11 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 — using the compiled `tryparse` binary to determine actual parser behavior at guard-generation time eliminates the need for manual UP tracking.
 - The guards always match reality.
 
+</details>
+
 #### P10.6c: Test Diagnostics & Result Persistence
+
+<details>
 
 **Goal**: Make test results queryable without re-running tests or parsing HTML. Every `suiterunner` invocation should produce machine-readable output that supports post-hoc filtering, diffing, and categorization — so that planning phases like P10.6d can be done from saved artifacts instead of live re-runs.
 
@@ -3469,7 +3666,11 @@ suiterunner --json docs/ --snapshot  # timestamped snapshot (see 10.6c.5)
 
 **Files**: `Tests/SuiteRunner/Main.lean`
 
+</details>
+
 ##### 10.6c.2 — Per-test detail in verified suite JSON
+
+<details>
 
 Extend `JsonVerifiedSuite` to include per-test entries (category, name, outcome, error message) so that verified test failures are queryable from the JSON without re-running.
 
@@ -3490,7 +3691,11 @@ Extend `JsonVerifiedSuite` to include per-test entries (category, name, outcome,
  ]}
 ```
 
+</details>
+
 ##### 10.6c.3 — Capture parser output for UP/fail tests
+
+<details>
 
 For tests with outcome `unexpectedPass` or `fail`, capture the actual `tryparse` stdout (token stream / AST) and store it in the JSON entry's `"parserOutput"` field. This lets us categorize UPs by *what the parser produced* without re-running.
 
@@ -3509,7 +3714,11 @@ For tests with outcome `unexpectedPass` or `fail`, capture the actual `tryparse`
  "parserOutput": "ok\n- key: value\n  nested: flow\n"}
 ```
 
+</details>
+
 ##### 10.6c.4 — `queryresults` Lean analysis tool
+
+<details>
 
 Create a Lean executable (built by `lake`) that reads `coverage-summary.json` and supports common queries that previously required ad-hoc scripting:
 
@@ -3535,7 +3744,11 @@ Create a Lean executable (built by `lake`) that reads `coverage-summary.json` an
 
 **Files**: `Tests/QueryResults.lean` (new), `lakefile.lean` (add `queryresults` executable target)
 
+</details>
+
 ##### 10.6c.5 — Timestamped result snapshots
+
+<details>
 
 Add `--snapshot` flag that writes JSON to `results/<ISO-timestamp>.json` instead of overwriting `coverage-summary.json`. Creates a history of test runs for regression tracking across P10.6d implementation steps.
 
@@ -3549,7 +3762,11 @@ suiterunner --json results/ --snapshot
 
 **Files**: `Tests/SuiteRunner/Main.lean`
 
+</details>
+
 ##### Validation gate
+
+<details>
 
 - `suiterunner --json docs/` produces valid `coverage-summary.json` with per-test verified detail and parser output for UPs
 - `queryresults summary` output matches console summary (267/354 correct, 695/731 verified)
@@ -3559,7 +3776,13 @@ suiterunner --json results/ --snapshot
 
 **Status**: Not started.
 
+</details>
+
+</details>
+
 #### P10.6d: Fix Remaining Unexpected Passes (87 UPs)
+
+<details>
 
 **Goal**: Make the tokenized parser correctly reject all 87 error-test inputs that it currently accepts (unexpected passes). Fixes are categorized by the earliest suiterunner stage where the UP manifests.
 
@@ -3567,13 +3790,19 @@ suiterunner --json results/ --snapshot
 
 ##### 10.6d.1 — Flow validation (1 UP)
 
+<details>
+
 | ID | Description | Root cause |
 |----|-------------|------------|
 | VJP3:0 | Flow collections over many lines | Parser does not enforce single-line constraint on flow collections in block context |
 
 **Fix area**: `Scanner.lean` flow collection handling — reject flow collections that span multiple lines when not nested inside another flow context.
 
+</details>
+
 ##### 10.6d.2 — Block / indentation validation (14 UPs)
+
+<details>
 
 | ID | Description | Root cause |
 |----|-------------|------------|
@@ -3596,7 +3825,11 @@ suiterunner --json results/ --snapshot
 - `Scanner.lean` / `TokenParser.lean` — implicit key length/line validation (JKF3, DK95)
 - `Scanner.lean` directive handling — validate `%YAML`/`%TAG` directive syntax (MUS6, 9MQT)
 
+</details>
+
 ##### 10.6d.3 — Document boundary validation (2 UPs)
+
+<details>
 
 | ID | Description | Root cause |
 |----|-------------|------------|
@@ -3605,7 +3838,11 @@ suiterunner --json results/ --snapshot
 
 **Fix area**: `Scanner.lean` directive parsing — enforce strict `%YAML` / `%TAG` directive syntax per YAML 1.2.2 §6.8.1 and §6.8.2.
 
+</details>
+
 ##### 10.6d.4 — Error-only validation (70 UPs)
+
+<details>
 
 These 70 UPs are error-tagged tests that do not appear in flow/block/document stages. They require general validation hardening across the parser:
 
@@ -3623,7 +3860,11 @@ These 70 UPs are error-tagged tests that do not appear in flow/block/document st
 | **Anchor/tag errors** | ~5 | 4JVG, GT5M, H7J7, SR86, SU74, LHL4, U99R, G9HC, SY6V | `Scanner.lean` anchor/tag parsing |
 | **Multiline quoted** | ~2 | 2CMS, 9KBC | `Scanner.lean` quoted scalar rules |
 
+</details>
+
 ##### Y79Y production rule analysis (2026-02-28)
+
+<details>
 
 Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
 
@@ -3659,7 +3900,11 @@ Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
 - `scanBlockScalar` auto-detection: `detected` variable conflates minimum required indent (`parentIndent+1`) with actual detected indent (`probe.col`) — should be separated.
 - `advance` counts tab as `col+1`, making tabs look like one space of indentation everywhere `col` is used for indent comparison. This is unsound for `s-indent(n)` checking.
 
+</details>
+
 ##### Implementation steps
+
+<details>
 
 1. **10.6d.5 — Tab rejection** (Y79Y × 7) — add tab-as-indentation check in `Scanner.lean` `skipToContent` / `scanNextToken`. Highest leverage: fixes 7 block UPs in one change.
 2. **10.6d.6 — Directive strictness** (H7TQ, MUS6 × 2, 9HCY, 9MMA, B63P, EB22, RHX7, SF5V, QLJ7) — enforce `%YAML`/`%TAG` syntax and document boundary rules. Fixes ~10 UPs.
@@ -3671,15 +3916,174 @@ Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
 8. **10.6d.12 — Regenerate guards** — rerun `gen-suite-guards.py` after each batch; UPs that become correct rejections flip from `[UP]` to normal guards.
 9. **10.6d.13 — Regression gate** — after each step, verify: `lake build` (155/155, zero sorry, zero warnings), suiterunner UP count decreases, verified test pass count ≥ 695/731.
 
+</details>
+
 ##### Validation gate
+
+<details>
 
 - yaml-test-suite: **354/354 correct** (100% of YAML 1.2.2-applicable) — all 87 UPs converted to expected failures
 - Verified tests: ≥ 695/731 (no regressions; may improve as validation fixes also fix `validationtests`)
 - Build: 155/155, zero `sorry`, zero warnings
 
+</details>
+
+##### Progress log
+
+<details>
+
+- **2026-02-28 (10.6d.5 — Tab rejection, partial)**: 
+  - Implemented `currentIndent`-based tab check in `skipToContent`. 
+  - Changed signature from `ScannerState → ScannerState` to `ScannerState → Except String ScannerState`. 8
+  - 7 → 85 UPs (4EJS:0, DK95:6 fixed). 
+  - Build: 37/37, zero warnings.
+
+</details>
+
+##### Reflections — unexpected challenges, simplifications, and idioms
+
+<details>
+
+**Unexpected challenges**:
+
+1. **Separating scanner from grammar didn't prevent coupling — it made it contractual.**
+   - Phase 9 split the monolithic parser into a scanner (L-layer productions, character→token) and a grammar parser (S-layer productions, token→AST).
+   - The motivation was isolation: each layer handles its own concerns. 
+   - Yet the first real P10.6d fix immediately crossed the boundary. 
+   - Tab rejection requires the scanner to know the *semantic* indentation level (`currentIndent`) — a value that exists because the scanner maintains the indentation stack for block structure emission. 
+   - The scanner can't check tabs without understanding block nesting, and the grammar parser can't check tabs because it never sees raw characters. 
+   - The "clean separation" doesn't eliminate coupling; it converts implicit coupling (shared state in a monolithic function) into explicit contractual coupling (the scanner's `currentIndent` has a precise meaning that tab checking depends on).
+   - This is arguably better — but it wasn't what we expected. 
+   - We expected validation fixes to land neatly in one layer or the other; instead they require each layer's contracts to be specified precisely enough that the *other* layer can rely on them.
+
+2. **`Except` monad doesn't compose with `for .. in [:fuel] do` the way you'd expect.**
+   - Lean 4's `for` loop desugaring in `Id.run do` blocks infers the loop body type from the outer monad.
+   - When `skipToContent` returned `ScannerState` via `Id.run do`, the `for` body was `ScannerState` and `return`/`break` worked directly.
+   - Changing the return type to `Except String ScannerState` meant the `do` block now lives in the `Except` monad — but `return .error msg` inside the `for` body tried to construct `ScannerState.error` (a non-existent constructor) because the dot-notation resolution used the loop variable's type, not the outer `Except`. 
+   - The fix: use `throw` (which always resolves to `Except.error` in the `Except` monad) instead of `return .error`, and `return s'` instead of `return .ok s'`. 
+   - This is a Lean 4 idiom worth documenting: in `Except` `do` blocks, always use `throw`/`return`, never `.error`/`.ok` dot-notation.
+
+3. **The scanner doesn't distinguish "required indentation level" from "current column after spaces".**
+   - The core tab-checking question is: "are there enough spaces to satisfy `s-indent(n)`, and if a tab appears, is it in indentation territory or separation territory?" 
+   - The answer depends on comparing the column reached by spaces-only (`skipSpaces`) against the current block's required indentation (`currentIndent`).
+   - But `skipToContent` originally used `skipWhitespace` (tabs+spaces) uniformly, erasing the distinction. 
+   - The fix was surgical: `skipSpaces` first, then compare `col` against `currentIndent` to decide whether a tab violates §6.1 or is valid `s-separate-in-line`.
+   - This insight — that a single field already in `ScannerState` (`currentIndent`) encodes the boundary between the two whitespace regimes — was not obvious until we traced individual Y79Y test cases through the production rules.
+
+**Simplifications**:
+
+1. **`currentIndent` already exists and suffices — no new state needed.**
+   - The initial instinct was to add a new field (e.g., `indentPhase : Bool` or `requiredIndent : Nat`) to distinguish indentation from separation contexts.
+   - But `currentIndent` (the top of the indentation stack, always maintained by block-start/block-end emission) already encodes exactly the threshold: `col > currentIndent` means past indentation, `col ≤ currentIndent` means still in indentation zone.
+   - No new state required.
+
+2. **Flow context is a free pass.**
+   - In flow context (`s.inFlow`), indentation has no structural significance — tabs are always legal as `s-separate-in-line`
+   - This means the tab check only fires in block context, keeping the flow path untouched and avoiding regressions in all flow-context tests (6CA3, Q5MG, etc.).
+
+3. **Tab before comment/blank-line/EOF is unconditionally allowed.**
+   - Even in indentation territory, a tab that's followed only by a comment (`#`), a line break, or EOF doesn't contribute to indentation — it's consumed as part of `s-l-comments` [79].
+   - This "peek ahead" pattern let us keep passing tests like Y79Y:2 (tab on blank line in flow) without special-casing.
+
+**Idioms**:
+
+1. **`throw` vs `.error` in `Except` `do` — always use `throw`.**
+   - In `Except String α` `do` blocks, `throw msg` resolves to `Except.error msg` regardless of the loop body type.
+   - `return .error msg` is fragile: it resolves `.error` against whatever type the `return` targets, which inside a `for` loop may be the accumulator type, not `Except`.
+   - This is the same class of issue as the "dot notation resolves against the expected type, not the desired type" footgun in Lean 4.
+
+2. **`skipSpaces` then `skipWhitespace` as a two-phase pattern.**
+   - The corrected `skipToContent` now uses a two-phase whitespace consumption after newlines:
+     - (a) `skipSpaces` to advance through `s-indent` (spaces only),
+     - (b) compare column against `currentIndent` to determine context,
+     - (c) `skipWhitespace` for any remaining `s-separate-in-line` (spaces+tabs).
+   - This mirrors the spec's production structure: `s-indent(n)` is always followed by optional `s-separate-in-line`.
+   - The two-phase pattern should be reused wherever the scanner needs to distinguish indentation from separation.
+
+3. **The separation paradox: splitting layers sharpens contracts, not eliminates them.**
+   - The Phase 9 two-pass architecture was motivated by eliminating a class of bugs (e.g., `detectMappingKeyImpl` false positives).
+   - It succeeded at that. 
+   - But the P10.6d experience reveals the architectural consequence: when the scanner is the *only* layer that sees raw characters, *all* character-level validation must live there, including validation that requires semantic context (indentation depth, block nesting).
+   - The scanner can't be a "dumb tokenizer" — it must carry enough semantic state to enforce the spec's character-level constraints.
+   - The grammar parser, in turn, can't compensate for scanner permissiveness — it only sees tokens, and a tab consumed silently by the scanner is invisible at the grammar layer.
+   - This means P10.6e's contract strengthening isn't an afterthought; it's the *necessary completion* of the Phase 9 architecture.
+   - The separation of layers was the right move, but it's only sound when each layer's contracts are strong enough that the other layer can assume them.
+   - Without explicit contracts, the separation creates a gap where spec violations fall through — which is exactly what the 87 UPs represent.
+
+**Status**: In progress (85 UPs remaining, 2 fixed).
+
+</details>
+
+</details>
+
+#### P10.6e: Production Rule Traceability & Subtype Contracts
+
+<details>
+
+**Goal**: Annotate every function in `Scanner.lean` and `TokenParser.lean` with YAML 1.2.2 production rule references and enforce assume/guarantee contracts via Lean 4 subtypes and `have` assertions.
+
+**Motivation** (from Y79Y analysis, 2026-02-28): Analyzing 8 tab-rejection test cases against the spec required a tedious manual trace through scanning functions because:
+- No traceability annotation links functions to the YAML 1.2.2 production rules they implement.
+- Numeric variables (`parentIndent`, `contentIndent`, `detected`, `spacesConsumed`) lack semantic classification — it's unclear which are positions (absolute columns), distances (character counts), or have other roles.
+- Pre/post-conditions are implicit, making it difficult to verify that a function's callers satisfy its requirements.
+
+The `scanBlockScalar` annotations added during P10.6d (variable classification table, production references, pre/post contracts) serve as the template for this phase.
+
+##### P10.6e.1 — Production rule annotation (documentation only)
+
+<details>
+
+Annotate every function in `Scanner.lean` (~30 functions) and `TokenParser.lean` (~15 functions) with:
+- **Implements**: YAML 1.2.2 production number(s) and section reference.
+- **Pre**: Required scanner/parser state at entry (position, context, expectations).
+- **Post**: State at exit (position advanced past matched content, tokens emitted, flags set).
+- **Error**: Conditions under which `Except.error` is returned.
+- **Variable classification**: every numeric parameter/local tagged as Position, Distance, or Pos.
+
+This is pure documentation — no behavioral changes, no type signature changes.
+
+</details>
+
+##### P10.6e.2 — Subtype contracts (type-enforced invariants)
+
+<details>
+
+Replace bare `Nat`/`Int` parameters with Lean 4 subtypes encoding pre/post-conditions. Use `have` within function bodies to encode intermediate guarantees that Lean's kernel verifies.
+
+Target patterns:
+
+| Current | Refactored | Invariant |
+|---------|------------|-----------|
+| `parentIndent : Nat` | `parentIndent : Nat` (+ `have : parentIndent = s.col`) | Ties position to scanner state |
+| `contentIndent : Nat` | `{contentIndent : Nat // contentIndent ≥ parentIndent + 1}` | Spec §8.1.3: `m ≥ 1` |
+| `spacesConsumed : Nat` | `{spacesConsumed : Nat // spacesConsumed ≤ contentIndent}` | Distance bounded by target indent |
+| `explicitOffset : Option Nat` | `Option {m : Nat // m ≥ 1 ∧ m ≤ 9}` | `c-indentation-indicator` range |
+| `flowLevel : Nat` | (unchanged, but `have : s.inFlow ↔ flowLevel > 0` at key points) | Context consistency |
+
+Each `have` serves as a machine-checked comment: if the invariant doesn't hold, the proof obligation forces the developer to fix the logic or update the contract.
+
+</details>
+
+##### Validation gate
+
+<details>
+
+- Build: all jobs pass, zero `sorry`, zero warnings
+- All existing `#guard` proofs still pass (no behavioral change)
+- Every function in `Scanner.lean` and `TokenParser.lean` has an `Implements` docstring
+- Subtype obligations discharge without `sorry` (or are explicitly marked as future proof targets)
+
+**Estimated effort**: P10.6e.1: 2–3 days. P10.6e.2: 3–5 days.
+
 **Status**: Not started.
 
+</details>
+
+</details>
+
 #### P10.7: Documentation & Spec Table Update
+
+<details>
 
 **Goal**: Update README spec coverage table to reference tokenized parser files.
 
@@ -3689,7 +4093,11 @@ Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
 4. Archive Phase 9's "both parsers coexist" language — the tokenized parser is now the sole implementation
 5. Update proof file descriptions in `Proofs/README.md`
 
+</details>
+
 ### Risk Analysis
+
+<details>
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
@@ -3699,7 +4107,11 @@ Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
 | `parseYamlRaw` consumers appear | Low | Low | grep confirms zero current usages outside Parser/ itself |
 | `FoldResult` relocation breaks proofs | Low | Low | It's a simple 2-constructor inductive; move is mechanical |
 
+</details>
+
 ### Line Count Summary
+
+<details>
 
 | Category | Old Parser Era | After P10 | Change |
 |---|---|---|---|
@@ -3708,6 +4120,8 @@ Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
 | **Proofs** | 11,224 (pre-P10.5) | 7,696 (post-P10.5) → 7,299 (post-P10.6) | −3,925 |
 | **lean4-parser dependency** | Yes | No (removed in P10.6) | ✅ Removed |
 | **Net proof files** | 21 files | 15 files (post-P10.6) | 6 deleted; 1 new (ScannerIndent) |
+
+</details>
 
 ### Dependencies
 
@@ -3719,7 +4133,8 @@ Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
 - **P10.6b** depends on P10.6 — ✅ complete (352 guards, 155/155 build, 695/731 verified tests)
 - **P10.6c** depends on P10.6b — not started (test diagnostics improvement)
 - **P10.6d** depends on P10.6c — not started (87 UPs: 1 flow, 14 block, 2 document, 70 error)
-- **P10.7** depends on P10.6d — blocked
+- **P10.6e** depends on P10.6d — not started (production rule annotation + subtype contracts)
+- **P10.7** depends on P10.6e — blocked
 - **Phase 8** (comment preservation) should target the tokenized parser only — if P10 completes first, Phase 8 has a single implementation target
 
 ### Estimated Effort
@@ -3735,8 +4150,9 @@ Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
 | P10.6b | 1–2 days | Post-deletion test repair: namespace fixes, guard regeneration, runtime failures |
 | P10.6c | 1–2 days | Test diagnostics: JSON output, verified per-test detail, diff mode, `queryresults` Lean tool |
 | P10.6d | 3–5 days | Fix 87 UPs: tab rejection, directive strictness, flow state, implicit key limits, indentation, structure validation |
+| P10.6e | 5–8 days | Production rule traceability (2–3d) + subtype contracts (3–5d) |
 | P10.7 | 0.5 day | Documentation update |
-| **Total** | **10–15 days** | — |
+| **Total** | **15–23 days** | — |
 
 </details>
 

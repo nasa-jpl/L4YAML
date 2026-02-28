@@ -34,7 +34,7 @@ open Lean4Yaml.TokenParser
   | .ok _ => false
   | .error _ => true
 
--- 2G84:1 
+-- 2G84:1
 #guard match parseYaml "--- |10\n\n" with
   | .ok _ => false
   | .error _ => true
@@ -44,10 +44,10 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- 4EJS:0 [UP] Invalid tabs as indendation in a mapping
+-- 4EJS:0 Invalid tabs as indendation in a mapping
 #guard match parseYaml "---\na:\n\tb:\n\t\tc: value\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- 4H7K:0 [UP] Flow sequence with invalid extra closing bracket
 #guard match parseYaml "---\n[ a, b, c ] ]\n" with
@@ -149,7 +149,7 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- 9MQT:1 [UP] 
+-- 9MQT:1 [UP]
 #guard match parseYaml "--- \"a\n... x\nb\"\n" with
   | .ok _ => true
   | .error _ => false
@@ -214,15 +214,15 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- DK95:1 [UP] 
+-- DK95:1 [UP]
 #guard match parseYaml "foo: \"bar\n\tbaz\"\n" with
   | .ok _ => true
   | .error _ => false
 
--- DK95:6 [UP] 
+-- DK95:6
 #guard match parseYaml "foo:\n  a: 1\n  \tb: 2\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- DMG6:0 [UP] Wrong indendation in Map
 #guard match parseYaml "key:\n  ok: 1\n wrong: 2\n" with
@@ -309,7 +309,7 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- MUS6:1 [UP] 
+-- MUS6:1 [UP]
 #guard match parseYaml "%YAML 1.2\n---\n%YAML 1.2\n---\n" with
   | .ok _ => true
   | .error _ => false
@@ -429,37 +429,37 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- Y79Y:3 [UP] 
+-- Y79Y:3 [UP]
 #guard match parseYaml "- [\n\tfoo,\n foo\n ]\n" with
   | .ok _ => true
   | .error _ => false
 
--- Y79Y:4 [UP] 
+-- Y79Y:4 [UP]
 #guard match parseYaml "-\t-\n\n" with
   | .ok _ => true
   | .error _ => false
 
--- Y79Y:5 [UP] 
+-- Y79Y:5 [UP]
 #guard match parseYaml "- \t-\n\n" with
   | .ok _ => true
   | .error _ => false
 
--- Y79Y:6 [UP] 
+-- Y79Y:6 [UP]
 #guard match parseYaml "?\t-\n\n" with
   | .ok _ => true
   | .error _ => false
 
--- Y79Y:7 [UP] 
+-- Y79Y:7 [UP]
 #guard match parseYaml "? -\n:\t-\n\n" with
   | .ok _ => true
   | .error _ => false
 
--- Y79Y:8 [UP] 
+-- Y79Y:8 [UP]
 #guard match parseYaml "?\tkey:\n\n" with
   | .ok _ => true
   | .error _ => false
 
--- Y79Y:9 [UP] 
+-- Y79Y:9 [UP]
 #guard match parseYaml "? key:\n:\tkey:\n\n" with
   | .ok _ => true
   | .error _ => false
@@ -489,7 +489,7 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- ZYU8:2 [UP] 
+-- ZYU8:2 [UP]
 #guard match parseYaml "%YAML 1.1 1.2\n---\n" with
   | .ok _ => true
   | .error _ => false
