@@ -59,7 +59,7 @@ def testAccept (label : String) (input : String) : IO (Bool × Option String) :=
   if input.isEmpty then
     IO.println s!"  ○ {label} — empty input (skipped)"
     return (true, none)
-  match Parse.parseYaml input with
+  match TokenParser.parseYaml input with
   | .ok _docs =>
     IO.println s!"  ✓ {label}"
     return (true, none)
@@ -159,7 +159,7 @@ def runTests : IO Unit := do
         if expectFail || yaml.isEmpty then
           gPass := gPass + 1
         else
-          match Parse.parseYaml yaml with
+          match TokenParser.parseYaml yaml with
           | .ok _ => gPass := gPass + 1
           | .error _ => gFail := gFail + 1
     IO.println s!"  {groupName}: {gPass}/{gPass + gFail} pass ({gFail} fail)"

@@ -14,7 +14,7 @@ def main (args : List String) : IO UInt32 := do
   match args with
   | [path] =>
     let content ← IO.FS.readFile path
-    match Parse.parseYaml content with
+    match TokenParser.parseYaml content with
     | .ok _ => return 0
     | .error e =>
       IO.eprintln e

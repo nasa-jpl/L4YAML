@@ -26,13 +26,13 @@ namespace Tests.FlowRegressionCheck
 
 /-- Test a YAML input that should parse successfully. -/
 def expectAccept (label : String) (input : String) : IO Unit := do
-  match Parse.parseYaml input with
+  match TokenParser.parseYaml input with
   | .ok _ => IO.println s!"  ✓ accept: {label}"
   | .error e => IO.println s!"  ✗ accept: {label} — {e}"
 
 /-- Test a YAML input that should be rejected. -/
 def expectReject (label : String) (input : String) : IO Unit := do
-  match Parse.parseYaml input with
+  match TokenParser.parseYaml input with
   | .ok _ => IO.println s!"  ✗ reject: {label} — unexpectedly accepted"
   | .error _ => IO.println s!"  ✓ reject: {label}"
 

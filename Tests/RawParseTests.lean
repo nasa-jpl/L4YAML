@@ -6,6 +6,10 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
+/-- Check whether `s` contains `sub` as a substring. -/
+private def _root_.String.containsSubstr (s sub : String) : Bool :=
+  (s.splitOn sub).length > 1
+
 /-!
 # Raw Parse / Compose Smoke Tests
 

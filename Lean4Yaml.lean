@@ -51,10 +51,10 @@ import Lean4Yaml
 open Lean4Yaml
 
 -- Parse a YAML string
-#eval Parse.parseYaml "key: value\nlist:\n  - a\n  - b"
+#eval TokenParser.parseYaml "key: value\nlist:\n  - a\n  - b"
 
 -- Parse expecting a single document
-#eval Parse.parseYamlSingle "hello: world"
+#eval TokenParser.parseYamlSingle "hello: world"
 ```
 
 ## Architecture

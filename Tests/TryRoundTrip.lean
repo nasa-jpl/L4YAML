@@ -53,7 +53,7 @@ def main (args : List String) : IO UInt32 := do
   | [inputPath, outputPath] =>
     -- Step 1: Read and parse original YAML
     let content ← IO.FS.readFile inputPath
-    let docs ← match Parse.parseYaml content with
+    let docs ← match TokenParser.parseYaml content with
       | .ok docs => pure docs
       | .error e =>
         IO.eprintln s!"parse error (input): {e}"
@@ -64,7 +64,7 @@ def main (args : List String) : IO UInt32 := do
     IO.FS.writeFile outputPath canonical
 
     -- Step 3: Re-parse canonical output
-    let docs' ← match Parse.parseYaml canonical with
+    let docs' ← match TokenParser.parseYaml canonical with
       | .ok docs' => pure docs'
       | .error e =>
         IO.eprintln s!"parse error (canonical output): {e}"
