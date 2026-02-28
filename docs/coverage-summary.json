@@ -1,8 +1,9 @@
 {
-  "date": "2026-02-27T21:14:52-0800",
+  "date": "2026-02-27T21:57:08-0800",
   "overall": {
+    "applicable": 354,
     "correct": 267,
-    "correctRate": 65.763546,
+    "correctRate": 75.4,
     "expectedFail": 8,
     "failed": 0,
     "passed": 259,
@@ -13,8 +14,9 @@
   },
   "stages": {
     "advanced": {
+      "applicable": 64,
       "correct": 64,
-      "correctRate": 79.012345,
+      "correctRate": 100,
       "expectedFail": 0,
       "failed": 0,
       "passed": 64,
@@ -24,8 +26,9 @@
       "unexpectedPass": 0
     },
     "block": {
+      "applicable": 99,
       "correct": 85,
-      "correctRate": 85.858585,
+      "correctRate": 85.8,
       "expectedFail": 1,
       "failed": 0,
       "passed": 84,
@@ -35,8 +38,9 @@
       "unexpectedPass": 14
     },
     "document": {
+      "applicable": 17,
       "correct": 15,
-      "correctRate": 62.5,
+      "correctRate": 88.2,
       "expectedFail": 0,
       "failed": 0,
       "passed": 15,
@@ -46,8 +50,9 @@
       "unexpectedPass": 2
     },
     "error": {
+      "applicable": 74,
       "correct": 4,
-      "correctRate": 5.405405,
+      "correctRate": 5.4,
       "expectedFail": 4,
       "failed": 0,
       "passed": 0,
@@ -57,8 +62,9 @@
       "unexpectedPass": 70
     },
     "flow": {
+      "applicable": 46,
       "correct": 45,
-      "correctRate": 97.826086,
+      "correctRate": 97.8,
       "expectedFail": 2,
       "failed": 0,
       "passed": 43,
@@ -68,8 +74,9 @@
       "unexpectedPass": 1
     },
     "scalar": {
+      "applicable": 54,
       "correct": 54,
-      "correctRate": 65.853658,
+      "correctRate": 100,
       "expectedFail": 1,
       "failed": 0,
       "passed": 53,

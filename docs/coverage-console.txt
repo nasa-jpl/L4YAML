@@ -422,7 +422,7 @@ Running all tests for HTML report...
   [406/406] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 267/406 (65.000000%)
+Correct: 267/406 (75.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 10/10
