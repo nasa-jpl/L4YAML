@@ -90,44 +90,33 @@ theorem isIndicator_equiv (c : Char) :
   unfold Scanner.isIndicator
   simp [List.mem_cons, Bool.or_eq_true]
 
-/-! ## canStartPlainScalar (base condition)
+/-! ## canStartPlainScalar: Grammar.canStartPlainScalar ↔ Scanner.canStartPlainScalar
 
-The Grammar version captures the base exclusion rule. The Scanner version
-uses the same character checks in its plain scalar scanning logic.
-We prove both cases:
-1. **Base**: non-exceptional characters — Grammar implies Scanner.
-2. **Exception**: `-`/`?`/`:` followed by a safe character — Scanner accepts.
+The Grammar Prop captures the base exclusion rule (YAML §7.3.3 [123]).
+The Scanner Bool `canStartPlainScalar` captures the full rule including
+the exception for `-`/`?`/`:` followed by a safe character, and the
+flow-context restriction on flow indicators.
 
-Note: The scanner does not expose a standalone `canStartPlainScalar` function;
-it inlines this logic in `scanPlainScalar`. We define a local Bool predicate
-`canStartPlainScalarBool` matching the scanner's inline logic to state the
-correspondence theorems.
+We prove:
+1. **Base**: non-exceptional characters — Grammar implies Scanner (universal over `inFlow`).
+2. **Exception (block)**: `-`/`?`/`:` followed by non-blank → Scanner accepts.
+3. **Exception (flow)**: same, but additionally requires non-flow-indicator.
+4. **Exception (none)**: no following character → Scanner rejects (universal over `inFlow`).
 -/
-
-/--
-Bool predicate matching the scanner's inline plain scalar start logic.
-A character can start a plain scalar if:
-- It is not an indicator, not whitespace, not a line break, OR
-- It is `-`, `?`, or `:` followed by a non-blank character.
--/
-def canStartPlainScalarBool (c : Char) (next : Option Char) : Bool :=
-  if c == '-' || c == '?' || c == ':' then
-    match next with
-    | some n => !Scanner.isWhiteSpace n && !Scanner.isLineBreak n
-    | none => false
-  else
-    !Scanner.isIndicator c && !Scanner.isWhiteSpace c && !Scanner.isLineBreak c
 
 /--
 For non-exceptional characters (not `-`, `?`, `:`), `Grammar.canStartPlainScalar`
-implies `canStartPlainScalarBool c next = true` for any `next`.
+implies `Scanner.canStartPlainScalar c next inFlow = true` for any `next` and `inFlow`.
+
+The `else` branch of `Scanner.canStartPlainScalar` is context-independent:
+`!isIndicator c && !isWhiteSpace c && !isLineBreak c`.
 -/
-theorem canStartPlainScalar_base (c : Char) (next : Option Char)
+theorem canStartPlainScalar_base (c : Char) (next : Option Char) (inFlow : Bool)
     (hDash : c ≠ '-') (hQ : c ≠ '?') (hColon : c ≠ ':') :
     Grammar.canStartPlainScalar c →
-    canStartPlainScalarBool c next = true := by
+    Scanner.canStartPlainScalar c next inFlow = true := by
   intro ⟨_, hNotWs, hNotLb, hNotInd⟩
-  unfold canStartPlainScalarBool
+  unfold Scanner.canStartPlainScalar
   have h1 : (c == '-') = false := Bool.eq_false_iff.mpr (by simpa using hDash)
   have h2 : (c == '?') = false := Bool.eq_false_iff.mpr (by simpa using hQ)
   have h3 : (c == ':') = false := Bool.eq_false_iff.mpr (by simpa using hColon)
@@ -151,28 +140,41 @@ theorem canStartPlainScalar_base (c : Char) (next : Option Char)
 
 YAML §7.3.3: `-`, `?`, `:` can start plain scalars if followed by a
 non-whitespace, non-line-break character (`ns-plain-safe`).
-This is the Parser-side rule that extends beyond the Grammar's base condition.
+In flow context, the following character must also not be a flow indicator.
 -/
 
 /--
-For the exception characters (`-`, `?`, `:`), `canStartPlainScalarBool c (some n) = true`
-when the following character `n` is not whitespace and not a line break.
+Exception characters in block context: accepted when the following character
+is not whitespace and not a line break.
 -/
 theorem canStartPlainScalar_exception (c : Char) (n : Char)
     (hExc : c = '-' ∨ c = '?' ∨ c = ':')
     (hNotWs : Scanner.isWhiteSpace n = false)
     (hNotLb : Scanner.isLineBreak n = false) :
-    canStartPlainScalarBool c (some n) = true := by
-  unfold canStartPlainScalarBool
+    Scanner.canStartPlainScalar c (some n) false = true := by
+  unfold Scanner.canStartPlainScalar
   rcases hExc with rfl | rfl | rfl <;> simp [hNotWs, hNotLb]
 
 /--
-Exception characters with no following character are rejected.
+Exception characters in flow context: additionally requires the following
+character is not a flow indicator.
 -/
-theorem canStartPlainScalar_exception_none (c : Char)
+theorem canStartPlainScalar_exception_flow (c : Char) (n : Char)
+    (hExc : c = '-' ∨ c = '?' ∨ c = ':')
+    (hNotWs : Scanner.isWhiteSpace n = false)
+    (hNotLb : Scanner.isLineBreak n = false)
+    (hNotFlow : Scanner.isFlowIndicator n = false) :
+    Scanner.canStartPlainScalar c (some n) true = true := by
+  unfold Scanner.canStartPlainScalar
+  rcases hExc with rfl | rfl | rfl <;> simp [hNotWs, hNotLb, hNotFlow]
+
+/--
+Exception characters with no following character are rejected in any context.
+-/
+theorem canStartPlainScalar_exception_none (c : Char) (inFlow : Bool)
     (hExc : c = '-' ∨ c = '?' ∨ c = ':') :
-    canStartPlainScalarBool c none = false := by
-  unfold canStartPlainScalarBool
+    Scanner.canStartPlainScalar c none inFlow = false := by
+  unfold Scanner.canStartPlainScalar
   rcases hExc with rfl | rfl | rfl <;> simp
 
 end Lean4Yaml.Proofs.CharClass

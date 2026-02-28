@@ -633,7 +633,16 @@ def scanSingleQuoted (s : ScannerState) : Except String ScannerState := do
         s' := s'.advance
   .error s!"unterminated single-quoted scalar at line {startPos.line}"
 
-def canStartPlain (c : Char) (next : Option Char) (inFlow : Bool) : Bool :=
+/--
+Can character `c` start a plain scalar, given the next character and flow context?
+
+**YAML 1.2.2**: [123] ns-plain-first(c) (§7.3.3)
+
+Base rule: excludes indicators, whitespace, and line breaks.
+Exception: `-`, `?`, `:` are allowed if followed by a safe character
+(`ns-plain-safe` — non-blank, and in flow context, non-flow-indicator).
+-/
+def canStartPlainScalar (c : Char) (next : Option Char) (inFlow : Bool) : Bool :=
   if c == '-' || c == '?' || c == ':' then
     match next with
     | some n => !isWhiteSpace n && !isLineBreak n && !(inFlow && isFlowIndicator n)
@@ -908,7 +917,7 @@ def scanNextToken (s : ScannerState) : Except String (Option ScannerState) := do
     if c == '\'' then
       let s' ← scanSingleQuoted s
       return some s'
-    if canStartPlain c (s.peekAt? 1) s.inFlow then
+    if canStartPlainScalar c (s.peekAt? 1) s.inFlow then
       return some (scanPlainScalar s)
     .error s!"unexpected character '{c}' at line {s.line}, column {s.col}"
 

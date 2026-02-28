@@ -150,7 +150,7 @@ for spec coverage.
 | [120](https://yaml.org/spec/1.2.2/#rule-nb-single-one-line) | `nb-single-one-line` | ✓ P | `Scalar.singleQuotedScalar.collectChars` (single-line path) |
 | [121](https://yaml.org/spec/1.2.2/#rule-s-single-next-line) | `s-single-next-line(n)` | ✓ P | `Scalar.foldQuotedNewlines` |
 | [122](https://yaml.org/spec/1.2.2/#rule-nb-single-multi-line) | `nb-single-multi-line(n)` | ✓ P | `Scalar.singleQuotedScalar` (multi-line path) |
-| [123](https://yaml.org/spec/1.2.2/#rule-ns-plain-first) | `ns-plain-first(c)` | ✓ GP | `Grammar.canStartPlainScalar`, `Combinators.canStartPlainScalar` |
+| [123](https://yaml.org/spec/1.2.2/#rule-ns-plain-first) | `ns-plain-first(c)` | ✓ GPS | `Grammar.canStartPlainScalar`, `Scanner.canStartPlainScalar`, `Combinators.canStartPlainScalar` |
 | [124](https://yaml.org/spec/1.2.2/#rule-ns-plain-safe) | `ns-plain-safe(c)` | ✓ P | `Scalar.isPlainSafe` |
 | [125](https://yaml.org/spec/1.2.2/#rule-ns-plain-safe-out) | `ns-plain-safe-out` | ✓ P | `Scalar.isPlainSafe` (inFlow=false) |
 | [126](https://yaml.org/spec/1.2.2/#rule-ns-plain-safe-in) | `ns-plain-safe-in` | ✓ P | `Scalar.isPlainSafe` (inFlow=true) |
