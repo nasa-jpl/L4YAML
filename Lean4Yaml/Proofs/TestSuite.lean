@@ -291,9 +291,9 @@ def collStyle (input : String) : Option CollectionStyle :=
 -- Unmatched flow brace (tokenized parser accepts partial input)
 #guard parseOk "{unclosed"
 
--- Tab in indentation — parser accepts but sets validationError (P7 validation)
--- Tab rejection is via validationError field, not parse failure
-#guard parseOk "a:\n\t  bad\n"
+-- Tab in indentation — scanner rejects tabs in indentation zone (§6.1)
+-- col 0 ≤ currentIndent 0: tab before content is an indentation error
+#guard parseFails "a:\n\t  bad\n"
 
 -- Invalid escape sequence
 #guard parseFails "\"\\z\""

@@ -278,22 +278,50 @@ def consumeNewline (s : ScannerState) : ScannerState :=
     **Implements**: `s-l-comments` ([79]) and parts of `l-comment` ([78]).
 
     Each iteration of the outer loop handles one "line" of skippable content:
-    1. Skip `s-separate-in-line` ([66]): `s-white*` (spaces + tabs) via `skipWhitespace`.
-    2. Skip optional comment: if `#`, consume to end of line.
-    3. If line break: consume it, set `simpleKeyAllowed`, continue to next line.
-    4. Otherwise: we've reached content — stop.
+    1. Skip indentation spaces (`s-indent`, [63]): `s-space*` via `skipSpaces`.
+    2. Tab-as-indentation check (§6.1), guarded by `currentIndent`:
+       - `col > currentIndent` → past indentation → tabs are `s-separate-in-line` [66] (legal)
+       - `col ≤ currentIndent` → in indentation zone → tabs before content are an error
+       - Flow context → no indentation significance → tabs always legal
+    3. Skip remaining `s-separate-in-line` whitespace (spaces + tabs) via `skipWhitespace`.
+    4. Skip optional comment: if `#`, consume to end of line.
+    5. If line break: consume it, set `simpleKeyAllowed`, continue to next line.
+    6. Otherwise: we've reached content — stop.
 
-    **Note on tabs**: This function uses `skipWhitespace` (spaces+tabs) which is
-    correct for `s-separate-in-line` within comments and trailing whitespace.
-    However, the resulting `s'.col` may include tab-inflated columns.
-    The caller (`scanNextToken`) uses `s'.col` for indentation comparison —
-    `s-indent(n)` requires spaces only. Tab rejection in indentation contexts
-    must be handled separately. See TODO(P10.6d.5). -/
-def skipToContent (s : ScannerState) : ScannerState := Id.run do
-  let mut s' := s
+    **Error**: Tab character used as indentation (before content on a new line). -/
+def skipToContent (s : ScannerState) : Except String ScannerState := do
   let fuel := s.inputEnd - s.offset + 1
+  let mut s' := s
   for _ in [:fuel] do
-    s' := skipWhitespace s'
+    -- After a newline, use skipSpaces for indentation (s-indent [63]: spaces only).
+    -- Then check for tab-as-indentation, using currentIndent to determine the
+    -- boundary between indentation territory and separation territory.
+    if s'.needIndentCheck then
+      s' := skipSpaces s'
+      -- Key insight: once col > currentIndent, we've consumed enough spaces
+      -- to be inside the current block's content area. Any tabs here are
+      -- s-separate-in-line [66] (legal separation), not indentation.
+      if !s'.inFlow && (s'.col : Int) ≤ s'.currentIndent then
+        -- Still at or below the current block's indent level.
+        -- A tab here would extend into indentation territory — §6.1 violation.
+        match s'.peek? with
+        | some '\t' =>
+          -- Peek past tabs/spaces to see what follows
+          let probe := skipWhitespace s'
+          match probe.peek? with
+          | some '#' => s' := skipWhitespace s'   -- tab before comment: allowed
+          | some c =>
+            if isLineBreak c then s' := skipWhitespace s'  -- tab on blank line: allowed
+            else
+              -- Tab followed by content: tab used as indentation — forbidden §6.1
+              throw s!"tab character in indentation at line {s'.line}, column {s'.col}"
+          | none => s' := skipWhitespace s'        -- tab before EOF: allowed
+        | _ => pure ()
+      else
+        -- Past indentation boundary or in flow context: tabs are legal separation
+        s' := skipWhitespace s'
+    else
+      s' := skipWhitespace s'
     match s'.peek? with
     | some '#' => s' := skipToEndOfLine s'
     | _ => pure ()
@@ -983,11 +1011,10 @@ def saveSimpleKey (st : ScannerState) : ScannerState :=
     **Error**: Unexpected character at current position. -/
 def scanNextToken (s : ScannerState) : Except String (Option ScannerState) := do
   -- Step 1: Skip to content — s-l-comments [79]
-  let s := skipToContent s
+  let s ← skipToContent s
   if !s.hasMore then
     return none
   -- Step 2: Indent check — unwind block collections when de-indented
-  -- Note: s.col here may include tab-inflated columns (see skipToContent note)
   let s := if !s.inFlow && s.needIndentCheck then
     let s := unwindIndents s s.col
     { s with needIndentCheck := false }
