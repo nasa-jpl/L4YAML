@@ -3166,6 +3166,75 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 
 **Validation gate**: All proof files compile. Zero `sorry` in merged proof set. `lake build` succeeds.
 
+**Status**: ✅ Complete (2026-02-28).
+
+- **IndentConsumption.lean** (250 lines) → **ScannerIndent.lean** (215 lines): complete rewrite.
+  - §1: Single-character column/line advancement theorems for `ScannerState.advance` — 7 theorems (`advance_space_col`, `advance_space_line`, `advance_nonNewline_col`, `advance_nonNewline_line`, `advance_newline_col`, `advance_newline_line`, `advance_at_end`).
+  - §2: Iterated space consumption via `AdvancedNSpaces` inductive — proves `advanceN_spaces_col` (column advances by n) and `advanceN_spaces_line` (line unchanged).
+  - §3: 9 `#guard` checks validating `skipSpaces` on concrete inputs.
+  - All proofs operate on explicit `ScannerState` `Nat` fields — no `Parser.Stream` typeclass indirection.
+- **Completeness.lean** (488 → 345 lines): in-place rewrite.
+  - Removed §2 (LawfulParserStream — old lean4-parser typeclass), §3 (YamlStream.ofString lemmas), `parser_run_eq` simp lemma (lean4-parser internal), §6 (old per-parser specification framework roadmap).
+  - Changed import from `Parser.Document` to `TokenParser`. Removed `open Lean4Yaml.Parse` and `open Parser`.
+  - Preserved: §1 (`DecidableEq YamlValue/YamlDocument` — 215 lines of mutual structural recursion), §2 (now `parseYaml_ok_iff` — Load decomposition: raw + compose), §3 (11 `native_decide` concrete completeness theorems).
+  - Removed bridge theorems `parseYamlRaw_eq` / `parseYaml_eq` — these asserted `Parse.f = TokenParser.f` which became trivial self-equalities after removing the old parser import.
+- **Composition.lean** (342 → 133 lines): complete rewrite.
+  - Old: position algebra, skipBOM spec, 2 sorry'd bridge theorems, fuel wrapper unfolding, endOfInput/test combinator specs, stream accessor specs — all deeply coupled to old `YamlStream` + lean4-parser architecture.
+  - New: Scanner–TokenParser pipeline composition. §1: `parseYamlRaw_pipeline`, `parseYamlRaw_ok_decompose`, `parseYamlRaw_scan_error`, `parseYamlRaw_parse_error`. §2: `parseYaml_of_parseYamlRaw_ok`, `parseYaml_of_parseYamlRaw_error`, `parseYaml_pipeline` (full three-stage composition).
+  - The 2 `sorry`'d theorems (`parseYamlRaw_of_yamlStream_ok`, `parseYaml_of_yamlStream_ok`) are **eliminated** — they linked the old `yamlStream` parser to the public API, which is no longer relevant since the public API delegates to `TokenParser`.
+- **FuelSufficiency.lean** (545 lines): **DELETED**. The tokenized parser uses `partial def` with `maxDepth` guard, not fuel-based recursion.
+- **ParserSpecs.lean** (424 lines): **DELETED**. lean4-parser combinator specs (`pure_eq`, `bind_eq`, `anyToken_eq`, `tokenFilter_eq`, etc.) — exclusively for `Parser ε σ τ α` monad.
+- **PerParserSpecs.lean** (2,309 lines): **DELETED**. Per-combinator specs for old parser functions. These imported 5 old parser modules.
+- **IndentConsumption.lean** (250 lines): **DELETED** (replaced by ScannerIndent.lean).
+- Updated `Lean4Yaml.lean` root imports: removed `IndentConsumption`, `ParserSpecs`, `PerParserSpecs`, `FuelSufficiency`; added `ScannerIndent`.
+- Build: **257/257 jobs**. Zero `sorry`. Zero warnings. Proof files: 7,696 lines total.
+- Net line change: −3,528 removed, +215 added (ScannerIndent.lean) = **−3,313 lines of proof code**.
+
+##### Reflections — unexpected challenges, simplifications, and idioms
+
+###### Unexpected challenges
+
+1. **`do`-notation for `Except` doesn't auto-reduce in Lean 4 proofs.**
+   - The pipeline theorems in Composition.lean unfold `parseYamlRaw` which is `do let tokens ← Scanner.scan input; parseStream tokens`.
+   - After `unfold parseYamlRaw` and `rw [h_scan]`, the goal becomes `(do let tokens ← Except.ok tokens; parseStream tokens) = ...` — which is *not* reduced by `simp` or `rfl` alone.
+   - Solution: `rw [h_scan]` to eliminate the bind, then `exact h_parse` for the ok branch, or `rfl` for the error branch (where `Except.error e >>= f` reduces definitionally to `Except.error e`).
+   - The asymmetry (ok-bind doesn't reduce but error-bind does) comes from Lean 4's `Except.bind` using `match` — the `ok` branch applies `f` (requiring the hypothesis), while the `error` branch is a direct constructor.
+
+2. **Composition.lean's old content was 100% architecture-dependent.**
+   - The plan estimated ~200 lines for the rewrite, suggesting some structure could be preserved.
+   - In practice, *every section* (position algebra, skipBOM, fuel wrappers, combinator extensions, stream accessors) was coupled to `YamlStream`, `Parser.Stream` typeclass, or lean4-parser combinators.
+   - The new file is only 133 lines because the Scanner→TokenParser pipeline is architecturally simpler: no position save/restore algebra, no fuel computation, no combinator chain decomposition.
+
+###### Simplifications
+
+1. **ScannerIndent.lean is dramatically simpler than IndentConsumption.lean.**
+   - Old: proved column tracking through `YamlStream.next?` — which wraps `Parser.Stream.next?`, requiring typeclass unfolding, position extraction from `YamlPos`, and `remaining` calculations.
+   - New: proves properties of `ScannerState.advance` — which is a pure function on explicit `Nat` fields (`col`, `line`, `offset`). A simple `if c == '\n'` branch.
+   - The column advancement proof is `simp only [ScannerState.advance, hBounds]` — one line.
+
+2. **Deleting 3,528 lines of old-parser proofs had zero downstream impact.**
+   - All 6 deleted/rewritten files were leaf nodes: no other proof file imported them.
+   - The dependency audit (confirmed before deletion) meant the root import update was the only coordination needed.
+   - This validates the P10.3 architectural decision to keep old-parser proofs isolated from reusable proofs.
+
+3. **`parseYaml_ok_iff` required only a 3-line proof change.**
+   - Old proof: `simp only [parseYaml, TokenParser.parseYaml]` (with both namespaces open).
+   - New proof: `simp only [parseYaml]` (only `TokenParser` open — `parseYaml` *is* `TokenParser.parseYaml`).
+   - The theorem statement and structure are identical; the simplification comes from removing the redundant namespace indirection.
+
+###### Idioms
+
+- **`unfold` + `rw` for `do`-notation decomposition.**
+  - When a function uses `do`-notation with `Except` (like `parseYamlRaw`), the proof pattern is: `unfold f; rw [h_hypothesis]` to substitute the intermediate result, then close with the next hypothesis or `rfl`.
+  - This is more robust than `simp` for `Except.bind` because `simp` doesn't always reduce `do` blocks to their bind form.
+
+- **Pipeline composition as theorem composition.**
+  - `parseYaml_pipeline` is defined as `parseYaml_of_parseYamlRaw_ok ... (parseYamlRaw_pipeline ...)` — no tactic proof needed, just term-mode function composition.
+  - This mirrors the runtime pipeline structure: `parseYaml = compose ∘ parseYamlRaw = compose ∘ parseStream ∘ scan`.
+
+- **`contradiction` for impossible `Except` branches.**
+  - In `parseYamlRaw_ok_decompose`, the `| .error e =>` branch after `rw [h_scan] at h` leaves `h : Except.error e = Except.ok docs`. `contradiction` closes this instantly — cleaner than `exact absurd h (by ...)`.
+
 #### P10.6: Old Parser Deletion
 
 **Goal**: Remove the old parser and `lean4-parser` dependency.
@@ -3174,9 +3243,8 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 2. Remove `import Lean4Yaml.Parser.*` lines from `Lean4Yaml.lean`
 3. Remove `[[require]] name = "Parser"` from `lakefile.toml`
 4. Remove `lean4-parser` entry from `lake-manifest.json`
-5. Delete `Proofs/FuelSufficiency.lean` and `Proofs/ParserSpecs.lean`
-6. Clean up any remaining references in documentation, comments, README
-7. `lake clean && lake build` — full rebuild from scratch
+5. Clean up any remaining references in documentation, comments, README
+6. `lake clean && lake build` — full rebuild from scratch
 
 **Validation gate**: Clean build with zero warnings. All tests pass. No references to `lean4-parser` or `Lean4Yaml.Parser.*` in any `.lean` file.
 
@@ -3205,18 +3273,17 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 | Category | Old Parser Era | After P10 | Change |
 |---|---|---|---|
 | **Parser implementation** | 4,403 (Parser/) + 1,606 (Token+Scanner+TokenParser) = 6,009 | 1,606 | −4,403 |
-| **Proofs preserved** | 9,561 | ~6,200 (est.) | −3,361 |
-| **Proofs new** | — | ~2,550 (est.) | +2,550 |
-| **lean4-parser dependency** | Yes | No | Removed |
-| **Net proof coverage** | 21 files | ~19 files | FuelSufficiency + ParserSpecs deleted; 4 new files replace 4 old |
+| **Proofs** | 11,224 (pre-P10.5) | 7,696 (post-P10.5) | −3,528 deleted, +215 new = −3,313 |
+| **lean4-parser dependency** | Yes | No (after P10.6) | Removed |
+| **Net proof files** | 21 files | 17 files | 4 deleted (ParserSpecs, PerParserSpecs, FuelSufficiency, IndentConsumption); 1 new (ScannerIndent) |
 
 ### Dependencies
 
 - **P10.1–P10.2** can start immediately — no other phase dependency
 - **P10.3** is trivial and can run in parallel with P10.2
 - **P10.4** depends on P10.3 (type relocation) for `FoldResult` imports
-- **P10.5** depends on P10.4 (adaptable proofs compile) and is the critical path
-- **P10.6** depends on all of P10.1–P10.5
+- **P10.5** depends on P10.4 (adaptable proofs compile) and is the critical path — ✅ complete
+- **P10.6** depends on all of P10.1–P10.5 — ready to start
 - **P10.7** depends on P10.6
 - **Phase 8** (comment preservation) should target the tokenized parser only — if P10 completes first, Phase 8 has a single implementation target
 
@@ -3228,7 +3295,7 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 | P10.2 | 1–2 days | 19 test files + `gen-suite-guards.py` rerun |
 | P10.3 | 0.5 day | `FoldResult` relocation |
 | P10.4 | 2–3 days | 10 proof files, mostly mechanical |
-| P10.5 | 5–8 days | 4 proof rewrites (PerParserSpecs dominates) |
+| P10.5 | 5–8 days (est.) / <1 day (actual) | 4 proof rewrites — PerParserSpecs deleted, not rewritten |
 | P10.6 | 0.5 day | Deletion + clean build |
 | P10.7 | 0.5 day | Documentation update |
 | **Total** | **10–15 days** | — |
