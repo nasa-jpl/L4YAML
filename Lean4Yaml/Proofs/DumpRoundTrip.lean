@@ -1,6 +1,6 @@
 import Lean4Yaml.Dump
 import Lean4Yaml.Emitter
-import Lean4Yaml.Parser.Document
+import Lean4Yaml.TokenParser
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -273,7 +273,7 @@ function produces block-style YAML with plain scalars, testing the
 parser's ability to handle human-readable format.
 -/
 
-open Lean4Yaml.Parse in
+open Lean4Yaml.TokenParser in
 /-- Helper: dump a value, parse it back, check content equivalence. -/
 private def dumpRoundTrips (v : YamlValue) (cfg : DumpConfig := {}) : Bool :=
   match parseYamlSingle (dump v cfg) with

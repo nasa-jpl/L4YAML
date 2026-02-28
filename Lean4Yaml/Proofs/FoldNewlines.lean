@@ -1,5 +1,5 @@
 import Lean4Yaml.Grammar
-import Lean4Yaml.Parser.Document
+import Lean4Yaml.TokenParser
 
 /-!
 # Fold Newlines & c-forbidden Properties (Layer 2a)
@@ -256,7 +256,7 @@ Compile-time verification that `foldQuotedNewlines` correctly:
 These exercise the full parser pipeline end-to-end.
 -/
 
-open Lean4Yaml.Parse in
+open Lean4Yaml.TokenParser in
 open Lean4Yaml in
 /-- Parse a YAML value and extract its scalar content. -/
 private def parseScalar (s : String) : Option String :=

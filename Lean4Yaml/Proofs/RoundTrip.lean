@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml.Emitter
 import Lean4Yaml.Grammar
-import Lean4Yaml.Parser.Document
+import Lean4Yaml.TokenParser
 
 /-!
 # Round-Trip Proofs (Phase 5)
@@ -273,7 +273,7 @@ Style may differ (emitter always uses double-quoted/flow; parser may
 annotate differently), but content is preserved.
 -/
 
-open Lean4Yaml.Parse in
+open Lean4Yaml.TokenParser in
 /-- Helper: emit a value, parse it back, check content equivalence. -/
 private def roundTrips (v : YamlValue) : Bool :=
   match parseYamlSingle (emit v) with

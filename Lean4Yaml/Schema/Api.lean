@@ -1,6 +1,6 @@
 import Lean4Yaml.Schema
 import Lean4Yaml.Schema.FromToYaml
-import Lean4Yaml.Parser.Document
+import Lean4Yaml.TokenParser
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -33,7 +33,7 @@ namespace Lean4Yaml
 /-- Parse YAML string and convert to a specific Lean type.
     Combines `parseYamlSingle` with `FromYaml` conversion. -/
 def parseAs (α : Type) [Schema.FromYaml α] (s : String) : Except String α := do
-  let yaml ← Parse.parseYamlSingle s
+  let yaml ← TokenParser.parseYamlSingle s
   Schema.fromYaml? yaml
 
 /-- Convert a Lean value to a `YamlValue` for serialization. -/
@@ -42,7 +42,7 @@ def toYaml {α : Type} [Schema.ToYaml α] (value : α) : YamlValue :=
 
 /-- Parse YAML string with automatic schema resolution to `YamlType`. -/
 def parseTyped (s : String) : Except String Schema.YamlType := do
-  let yaml ← Parse.parseYamlSingle s
+  let yaml ← TokenParser.parseYamlSingle s
   pure (Schema.resolve yaml)
 
 end Lean4Yaml
