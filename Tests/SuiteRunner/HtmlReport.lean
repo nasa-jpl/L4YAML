@@ -43,6 +43,7 @@ structure ReportResult where
 /-- Summary statistics for a group of results. -/
 structure CoverageStats where
   total : Nat
+  applicable : Nat
   passed : Nat
   failed : Nat
   expectedFail : Nat
@@ -59,6 +60,7 @@ def CoverageStats.fromResults (results : Array ReportResult) : CoverageStats :=
   let skipped := results.filter (fun r => match r.outcome with | .skip _ => true | _ => false) |>.size
   let timeout := results.filter (fun r => r.outcome == .timeout) |>.size
   { total := results.size
+    applicable := results.size - skipped
     passed := passed
     failed := failed
     expectedFail := expectedFail
@@ -70,8 +72,16 @@ def CoverageStats.correctCount (s : CoverageStats) : Nat :=
   s.passed + s.expectedFail
 
 def CoverageStats.successRate (s : CoverageStats) : Float :=
-  if s.total == 0 then 0.0
-  else (s.correctCount.toFloat / s.total.toFloat) * 100.0
+  if s.applicable == 0 then 0.0
+  else (s.correctCount.toFloat / s.applicable.toFloat) * 100.0
+
+/-- Format a percentage to 1 decimal place.  Returns e.g. "75.4" or "100.0". -/
+private def formatPct (pct : Float) : String :=
+  -- Multiply by 10, round, then format as "integer.digit"
+  let scaled := (pct * 10.0 + 0.5).floor.toUInt64.toNat
+  let whole := scaled / 10
+  let frac  := scaled % 10
+  s!"{whole}.{frac}"
 
 /-! ## JSON Summary — Lean.Data.Json serialization -/
 
@@ -99,7 +109,7 @@ instance : ToJson Stage where
 /-- Convert a ratio to a `JsonNumber` with fixed decimal precision.
     `ratioPercent num denom scale` computes `(num / denom) × 100`
     with `scale` decimal digits (default 6). -/
-private def ratioPercent (num denom : Nat) (scale : Nat := 6) : Lean.JsonNumber :=
+private def ratioPercent (num denom : Nat) (scale : Nat := 1) : Lean.JsonNumber :=
   if denom == 0 then { mantissa := 0, exponent := scale }
   else { mantissa := (num * 100 * (10 ^ scale) / denom : Nat), exponent := scale }
 
@@ -107,6 +117,7 @@ open Lean in
 instance : ToJson CoverageStats where
   toJson s := Json.mkObj [
     ("total",          toJson s.total),
+    ("applicable",     toJson s.applicable),
     ("passed",         toJson s.passed),
     ("failed",         toJson s.failed),
     ("expectedFail",   toJson s.expectedFail),
@@ -114,7 +125,7 @@ instance : ToJson CoverageStats where
     ("skipped",        toJson s.skipped),
     ("timeout",        toJson s.timeout),
     ("correct",        toJson s.correctCount),
-    ("correctRate",    Json.num (ratioPercent s.correctCount s.total))
+    ("correctRate",    Json.num (ratioPercent s.correctCount s.applicable))
   ]
 
 /-- JSON-serializable per-test entry. -/
@@ -498,8 +509,7 @@ private def reportJs : String :=
 
 /-- Generate the stats boxes HTML. -/
 private def generateStatsHtml (stats : CoverageStats) : String :=
-  let pct := stats.successRate
-  let pctStr := if pct == pct.floor then s!"{pct.floor}" else s!"{pct}"
+  let pctStr := formatPct stats.successRate
   String.join [
     "  <div class=\"stats\">\n",
     s!"    <div class=\"stat-box stat-total\"><h3>Unique Tests</h3><div class=\"number\">{stats.total}</div></div>\n",
@@ -507,9 +517,9 @@ private def generateStatsHtml (stats : CoverageStats) : String :=
     s!"    <div class=\"stat-box stat-fail\"><h3>Failed</h3><div class=\"number\">{stats.failed}</div></div>\n",
     s!"    <div class=\"stat-box stat-expected\"><h3>Expected Fail</h3><div class=\"number\">{stats.expectedFail}</div></div>\n",
     s!"    <div class=\"stat-box stat-unexpected\"><h3>Unexpected Pass</h3><div class=\"number\">{stats.unexpectedPass}</div></div>\n",
-    s!"    <div class=\"stat-box stat-skip\"><h3>Skipped</h3><div class=\"number\">{stats.skipped}</div></div>\n",
+    s!"    <div class=\"stat-box stat-skip\"><h3>Skipped (1.3)</h3><div class=\"number\">{stats.skipped}</div></div>\n",
     s!"    <div class=\"stat-box stat-timeout\"><h3>Timeout</h3><div class=\"number\">{stats.timeout}</div></div>\n",
-    s!"    <div class=\"stat-box stat-correct\"><h3>Correct</h3><div class=\"number\">{stats.correctCount}/{stats.total}</div><div class=\"pct\">({pctStr}%)</div></div>\n",
+    s!"    <div class=\"stat-box stat-correct\"><h3>Correct</h3><div class=\"number\">{stats.correctCount}/{stats.applicable}</div><div class=\"pct\">({pctStr}%)</div></div>\n",
     "  </div>\n"
   ]
 
@@ -538,13 +548,14 @@ private def generateStageCardsHtml (results : Array ReportResult) : String :=
   let cards := stages.map fun stage =>
     let stageResults := results.filter (fun r => r.testCase.stage == stage)
     let stats := CoverageStats.fromResults stageResults
-    let pct := if stats.total == 0 then 0.0
-               else (stats.correctCount.toFloat / stats.total.toFloat) * 100.0
-    let pctStr := s!"{pct.floor}"
+    let pct := if stats.applicable == 0 then 0.0
+               else (stats.correctCount.toFloat / stats.applicable.toFloat) * 100.0
+    let pctStr := formatPct pct
     let barSegments := generateStageBarSegments stats
+    let skipNote := if stats.skipped > 0 then s!" · {stats.skipped} YAML 1.3 skipped" else ""
     s!"    <div class=\"stage-card\">\n" ++
     s!"      <div class=\"stage-card-name\">{stage}</div>\n" ++
-    s!"      <div class=\"stage-card-stats\">{stats.correctCount}/{stats.total} correct ({pctStr}%) · {stats.passed} pass, {stats.failed} fail, {stats.expectedFail} exp-fail, {stats.unexpectedPass} unexp-pass, {stats.skipped} skip, {stats.timeout} timeout</div>\n" ++
+    s!"      <div class=\"stage-card-stats\">{stats.correctCount}/{stats.applicable} correct ({pctStr}%) · {stats.passed} pass, {stats.failed} fail, {stats.expectedFail} exp-fail, {stats.unexpectedPass} unexp-pass{skipNote}, {stats.timeout} timeout</div>\n" ++
     s!"      <div class=\"stage-bar\">{barSegments}</div>\n" ++
     s!"    </div>\n"
   String.join [
@@ -655,8 +666,7 @@ def generateHtmlReport (results : Array ReportResult)
     generateFiltersHtml results.size,
     generateTableHtml results,
     "  <footer>\n",
-    "    Generated by <a href=\"https://github.com/yaml/yaml-test-suite\">yaml-test-suite</a> runner · ",
-    "    <a href=\"https://github.com/fgdorais/lean4-parser\">lean4-parser</a> · Lean 4\n",
+    "    Generated by <a href=\"https://github.com/yaml/yaml-test-suite\">yaml-test-suite</a> runner · Lean 4\n",
     "  </footer>\n",
     "</div>\n\n",
     "<script>\n", reportJs, "</script>\n",
@@ -664,6 +674,7 @@ def generateHtmlReport (results : Array ReportResult)
   ]
 
 /-- Generate a stage-filtered HTML report. -/
+
 def generateStageReport (results : Array ReportResult) (stage : Stage) : String :=
   let filtered := results.filter (fun r => r.testCase.stage == stage)
   generateHtmlReport filtered
@@ -674,19 +685,19 @@ def generateStageReport (results : Array ReportResult) (stage : Stage) : String 
 def generateIndexHtml (results : Array ReportResult)
     (verifiedSuites : Option (Array Tests.VerifiedSuiteResult) := none) : String :=
   let stats := CoverageStats.fromResults results
-  let pct := stats.successRate
-  let pctStr := if pct == pct.floor then s!"{pct.floor}" else s!"{pct}"
+  let pctStr := formatPct stats.successRate
 
   -- Per-stage summary for the index
   let stages : Array Stage := #[.scalar, .flow, .block, .document, .advanced, .error]
   let stageRows := String.join (stages.toList.map fun stage =>
     let sr := results.filter (fun r => r.testCase.stage == stage)
     let ss := CoverageStats.fromResults sr
-    let sp := if ss.total == 0 then "0"
-              else s!"{((ss.correctCount.toFloat / ss.total.toFloat) * 100.0).floor}"
+    let sp := if ss.applicable == 0 then "0.0"
+              else formatPct ((ss.correctCount.toFloat / ss.applicable.toFloat) * 100.0)
+    let skipNote := if ss.skipped > 0 then s!" · {ss.skipped} YAML 1.3 skipped" else ""
     s!"              <div class=\"link-box\">\n" ++
     s!"                <a href=\"coverage-{stage}.html\">{stage}</a>\n" ++
-    s!"                <div class=\"description\">{ss.correctCount}/{ss.total} correct ({sp}%)</div>\n" ++
+    s!"                <div class=\"description\">{ss.correctCount}/{ss.applicable} correct ({sp}%){skipNote}</div>\n" ++
     s!"              </div>\n")
 
   String.join [
@@ -714,18 +725,18 @@ def generateIndexHtml (results : Array ReportResult)
     "</head>\n<body>\n",
     "<div class=\"container\">\n",
     "  <h1>lean4-yaml-verified Test Coverage</h1>\n",
-    "  <p style=\"color: #666; font-size: 16px;\">YAML 1.2.2 verified parser · Lean 4 + lean4-parser</p>\n\n",
+    "  <p style=\"color: #666; font-size: 16px;\">YAML 1.2.2 verified parser · Lean 4</p>\n\n",
     "  <div class=\"summary\">\n",
     "    <h3>yaml-test-suite Compliance</h3>\n",
     "    <pre>\n",
-    s!"Total unique tests: {stats.total}\n",
-    s!"Passed:           {stats.passed}\n",
-    s!"Failed:           {stats.failed}\n",
-    s!"Expected fail:    {stats.expectedFail}\n",
-    s!"Unexpected pass:  {stats.unexpectedPass}\n",
-    s!"Skipped:          {stats.skipped}\n",
-    s!"Timeout:          {stats.timeout}\n",
-    s!"\nCorrect: {stats.correctCount}/{stats.total} ({pctStr}%)\n",
+    s!"Total unique tests:      {stats.total}\n",
+    s!"Applicable (YAML 1.2.2): {stats.applicable}  <span style=\"color:#999\">({stats.skipped} skipped — YAML 1.3 specific)</span>\n",
+    s!"Passed:                  {stats.passed}\n",
+    s!"Failed:                  {stats.failed}\n",
+    s!"Expected fail:           {stats.expectedFail}\n",
+    s!"Unexpected pass:         {stats.unexpectedPass}\n",
+    s!"Timeout:                 {stats.timeout}\n",
+    s!"\nCorrect: {stats.correctCount}/{stats.applicable} ({pctStr}%)\n",
     "    </pre>\n",
     "  </div>\n\n",
     "  <h2>Reports</h2>\n",
@@ -772,8 +783,7 @@ def generateIndexHtml (results : Array ReportResult)
       ]
     | none => "",
     "  <footer>\n",
-    "    Generated by <a href=\"https://github.com/yaml/yaml-test-suite\">yaml-test-suite</a> runner · ",
-    "    <a href=\"https://github.com/fgdorais/lean4-parser\">lean4-parser</a> · Lean 4\n",
+    "    Generated by <a href=\"https://github.com/yaml/yaml-test-suite\">yaml-test-suite</a> runner · Lean 4\n",
     "  </footer>\n",
     "</div>\n",
     "</body>\n</html>\n"
@@ -799,8 +809,8 @@ def generateVerifiedTestsHtml (suites : Array Tests.VerifiedSuiteResult) : Strin
 
   -- Per-suite breakdown cards
   let suiteCards := String.join (suites.toList.map fun suite =>
-    let pct := if suite.total == 0 then "0"
-               else toString (suite.passed * 100 / suite.total)
+    let pct := if suite.total == 0 then "0.0"
+               else formatPct (suite.passed.toFloat / suite.total.toFloat * 100.0)
     let borderColor := if suite.allPass then "var(--color-pass)" else "var(--color-fail)"
     s!"    <div class=\"stage-card\" style=\"border-left-color:{borderColor}\">\n" ++
     s!"      <div class=\"stage-card-name\">{escapeHtml suite.label}</div>\n" ++
@@ -1001,8 +1011,7 @@ def generateVerifiedTestsHtml (suites : Array Tests.VerifiedSuiteResult) : Strin
     "    </tbody>\n",
     "  </table>\n\n",
     "  <footer>\n",
-    "    Generated by <a href=\"https://github.com/yaml/yaml-test-suite\">yaml-test-suite</a> runner · ",
-    "    <a href=\"https://github.com/fgdorais/lean4-parser\">lean4-parser</a> · Lean 4\n",
+    "    Generated by <a href=\"https://github.com/yaml/yaml-test-suite\">yaml-test-suite</a> runner · Lean 4\n",
     "  </footer>\n",
     "</div>\n\n",
     "<script>\n", js, "</script>\n",
