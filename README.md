@@ -3623,9 +3623,45 @@ These 70 UPs are error-tagged tests that do not appear in flow/block/document st
 | **Anchor/tag errors** | ~5 | 4JVG, GT5M, H7J7, SR86, SU74, LHL4, U99R, G9HC, SY6V | `Scanner.lean` anchor/tag parsing |
 | **Multiline quoted** | ~2 | 2CMS, 9KBC | `Scanner.lean` quoted scalar rules |
 
+##### Y79Y production rule analysis (2026-02-28)
+
+Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
+
+**Key productions:**
+- `[63] s-indent(n) ::= s-space × n` — spaces only (§6.1)
+- `[66] s-separate-in-line ::= s-white+ | start-of-line` — spaces+tabs allowed (§6.2)
+- `[69] s-flow-line-prefix(n) ::= s-indent(n) s-separate-in-line?` — indent=spaces, then optional tabs
+- `[78] l-comment ::= s-separate-in-line c-nb-comment-text? b-comment`
+- `[171] l-nb-literal-text(n) ::= l-empty* s-indent(n) nb-char+`
+- `[188] c-l-block-seq-entry(n) ::= "-" s-l+block-indented(n,c)`
+- `[189] s-l+block-indented(n,c)` — three alternatives: compact (needs `s-indent(m)`), flow-in-block (needs `s-separate`), or empty+comments
+
+| Variant | fail | Input (escaped) | Production path | Why pass/fail |
+|---------|------|-----------------|----------------|---------------|
+| Y79Y:0 | ✓ | `foo: \|\n\t\nbar: 1\n` | `l-nb-literal-text(n)`: line 2 has tab at col 0. `s-indent(n)` fails (tab≠space). `l-empty` also fails (tab not `b-break`). | Tab cannot satisfy `s-indent(n)` or `l-empty` in block scalar. |
+| Y79Y:1 | — | `foo: \|\n \t\nbar: 1\n` | `l-nb-literal-text(1)`: space satisfies `s-indent(1)`, tab is `nb-char` (scalar content). | Tab is **content**, not indentation. |
+| Y79Y:2 | — | `- [\n\t\n foo\n ]\n` | Inside flow `[]`: tab line consumed by `l-comment` via `s-separate-in-line` (`s-white+` matches tab), then `b-comment`. | Tab in `s-separate-in-line` within `l-comment` — legal. |
+| Y79Y:3 | ✓ | `- [\n\tfoo,\n foo\n ]\n` | Flow continuation needs `s-flow-line-prefix(n)` = `s-indent(n) s-separate-in-line?`. Tab at col 0 fails `s-indent(n≥1)`. Content follows tab so it's not consumed as `l-comment`. | Tab as indentation on flow content line — violates `s-indent`. |
+| Y79Y:4 | ✓ | `-\t-\n\n` | After `-` block entry: `s-l+block-indented(0)`. Compact: `s-indent(m)` at tab → only `m=0`. `ns-l-compact-sequence(1)` needs `-` but sees tab. Flow-in-block: `s-separate` consumes tab, but `-\n` is not a valid `ns-flow-node` (`-` needs `ns-plain-safe` follower). Empty: `s-b-comment` needs blank/break after tab but sees `-`. | Tab blocks compact notation; remaining content invalid as flow node. |
+| Y79Y:5 | ✓ | `- \t-\n\n` | Same as Y79Y:4. Compact: `s-indent(1)` = space ✓, but then `ns-l-compact-sequence(2)` at tab fails. | Tab past indent space prevents compact; `-\n` not a valid flow node. |
+| Y79Y:6 | ✓ | `?\t-\n\n` | Mirror of Y79Y:4 with `?` key indicator. Same triple failure of `s-l+block-indented`. | Same mechanism as Y79Y:4. |
+| Y79Y:7 | ✓ | `? -\n:\t-\n\n` | Line 2: `:` value indicator, then tab + `-\n`. Same `s-l+block-indented` failure. | Same mechanism as Y79Y:4 on value indicator. |
+| Y79Y:8 | ✓ | `?\tkey:\n\n` | After `?`: tab consumed by `s-separate`, `key:` parsed, but `:` at end not followed by `ns-plain-safe`; plain scalar is `key`. Then `:` fails `s-l-comments`. | Tab-separated content doesn't form valid structure. |
+| Y79Y:9 | ✓ | `? key:\n:\tkey:\n\n` | Same structure as Y79Y:8 on line 2. | Same mechanism as Y79Y:8. |
+| Y79Y:10 | — | `-\t-1\n` | After `-`: `s-separate-in-line` = tab ✓. `ns-flow-node`: `-1` is valid plain scalar (`-` + `1` which is `ns-plain-safe`). | Tab as `s-separate-in-line`, valid scalar follows. |
+
+**Two distinct failure modes:**
+1. **Tab as indentation** (Y79Y:0, Y79Y:3): tab at position where `s-indent(n)` requires spaces.
+2. **Tab as separation + invalid content** (Y79Y:4–9): tab consumed by `s-separate-in-line` ✓, but following content doesn't form a valid node.
+
+**Scanner defects identified:**
+- `skipToContent` uses `skipWhitespace` (tabs+spaces) for indentation — should use `skipSpaces` after newlines in block context, error on tab in indent position.
+- `scanBlockScalar` auto-detection: `detected` variable conflates minimum required indent (`parentIndent+1`) with actual detected indent (`probe.col`) — should be separated.
+- `advance` counts tab as `col+1`, making tabs look like one space of indentation everywhere `col` is used for indent comparison. This is unsound for `s-indent(n)` checking.
+
 ##### Implementation steps
 
-1. **10.6d.5 — Tab rejection** (Y79Y × 7) — add tab-as-indentation check in `Scanner.lean` `scanIndent` / `fetchNextToken`. Highest leverage: fixes 7 block UPs in one change.
+1. **10.6d.5 — Tab rejection** (Y79Y × 7) — add tab-as-indentation check in `Scanner.lean` `skipToContent` / `scanNextToken`. Highest leverage: fixes 7 block UPs in one change.
 2. **10.6d.6 — Directive strictness** (H7TQ, MUS6 × 2, 9HCY, 9MMA, B63P, EB22, RHX7, SF5V, QLJ7) — enforce `%YAML`/`%TAG` syntax and document boundary rules. Fixes ~10 UPs.
 3. **10.6d.7 — Flow state machine** (VJP3, 4H7K, 6JTT, 9C9N, 9JBA, 9MAG, CML9, CTN5, CVW2, KS4U, T833, N782) — track flow nesting depth; reject unclosed brackets, invalid commas, multi-line flows in block context. Fixes ~12 UPs.
 4. **10.6d.8 — Implicit key limits** (JKF3, DK95, 7LBH, D49Q, DK4H, G7JE, ZXT5, 7MNF, GDY7) — enforce 1024-character limit and single-line constraint per §7.1.3. Fixes ~9 UPs.
