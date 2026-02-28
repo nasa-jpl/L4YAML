@@ -5,7 +5,6 @@ import Tests.VerifiedResult
 import Tests.Main
 import Tests.ParseTest
 import Tests.QuotedFolding
-import Tests.Verification
 import Tests.StringLemmas
 import Tests.AnchorAlias
 import Tests.TagTests
@@ -324,7 +323,6 @@ def main (args : List String) : IO UInt32 := do
       Tests.collectTests,
       Tests.Parse.collectTests,
       Tests.QuotedFolding.collectTests,
-      Tests.Verification.collectTests,
       Tests.StringLemmas.collectTests,
       Tests.Anchor.collectTests,
       Tests.Tag.collectTests,

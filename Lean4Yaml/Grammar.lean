@@ -589,6 +589,36 @@ where
     | [] => []
     | (k, v) :: rest => (toYamlValue k, toYamlValue v) :: toYamlValuePairs rest
 
+/-! ## Quoted Scalar Fold Result Type
+
+  Relocated from `Parser/Scalar.lean` in P10.3 so that proof files
+  (`StringProperties.lean`, `Validation.lean`, `FoldNewlines.lean`)
+  can reference it without importing the old char-level parser.
+-/
+
+/--
+Result of folding newlines in a quoted scalar continuation line.
+
+YAML 1.2.2 §9.1.2 production [206] defines `c-forbidden`: the sequences
+`--- ` and `... ` at column 0 (start-of-line) followed by whitespace,
+line break, or end-of-input are document boundary markers that terminate
+document content. Inside a quoted scalar, encountering `c-forbidden` on
+a continuation line means the scalar was never closed — this is
+definitively invalid YAML.
+
+Without an explicit result type, backtracking would swallow the error
+and some enclosing combinator might silently accept part of the input.
+-/
+inductive FoldResult where
+  /-- Successfully folded the continuation. `result` is the accumulated
+      string with the fold applied (space or preserved newlines). -/
+  | folded (result : String)
+  /-- Found a `c-forbidden` document boundary indicator (`---` or `...`)
+      at column 0 on a continuation line. The quoted scalar is unterminated.
+      This is definitively invalid — not a backtracking opportunity. -/
+  | forbidden (msg : String)
+  deriving Repr, Nonempty
+
 /-! ## Block Scalar Header Character Classification
   (YAML 1.2.2 §8.1.1, https://yaml.org/spec/1.2.2/#811-block-scalar-headers)
 

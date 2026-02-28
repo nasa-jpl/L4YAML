@@ -2971,6 +2971,79 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 2. Move `BlockScalarHeader`, `ChompStyle`, `BlockScalarMeta` if they're only in `Parser/` — check if `Grammar.lean` already has them (it does: `Grammar.BlockScalarHeader`)
 3. Remove `DispatchResult`, `ContinuationCheck`, `DocumentResult` — these are old-parser dispatch types with no external consumers
 
+**Status**: ✅ Complete (2026-02-27).
+
+- `FoldResult` moved from `Parser/Scalar.lean` (`Lean4Yaml.Parse` namespace) to `Grammar.lean` (`Lean4Yaml.Grammar` namespace). Consumer files updated: `Scalar.lean` and `Proofs/StringProperties.lean` now use `open Lean4Yaml.Grammar (FoldResult)`.
+- `ChompStyle`, `BlockScalarMeta` confirmed already in `Types.lean`; `isBlockScalarHeaderChar` already in `Grammar.lean` — no relocation needed.
+- `DispatchResult`, `ContinuationCheck`, `DocumentResult` definitions left in `Parser/Combinators.lean` and `Parser/Document.lean` (still used by old parser code until P10.6 deletion). Theorems about these types removed from `Proofs/Validation.lean` (~60 lines: 3 sections × 4 theorems each). Validation.lean now imports only `Grammar` and `Stream` — fully decoupled from old parser.
+- `Proofs/StringProperties.lean` import changed from `Parser.Scalar` to `Grammar` — fully decoupled from old parser.
+- P10.2 leftover fix: removed stale `import Tests.Verification` and `Tests.Verification.collectTests` from `Tests/SuiteRunner/Main.lean`.
+- Build: 260/260 jobs (2 expected `sorry` in `Composition.lean`). Verified: 1107/1146. Spec examples: 132/132. yaml-test-suite: 799/50/171 (correct tokenized-parser baseline after `lake clean` rebuild — 50 "expected parse failure but succeeded" are the known improvements where tokenized parser correctly accepts inputs libyaml rejects).
+
+##### Reflections — unexpected challenges, simplifications, and idioms
+
+###### Unexpected challenges
+
+1. **Namespace migration requires `open` at every consumer.** 
+- Moving `FoldResult` from the `Lean4Yaml.Parse` namespace (in `Parser/Scalar.lean`) to `Lean4Yaml.Grammar` (in `Grammar.lean`) is semantically trivial — the type is unchanged. 
+- But every file that referenced `FoldResult` without qualification relied on the ambient `namespace Lean4Yaml.Parse` or an `open Lean4Yaml.Parse (FoldResult)` statement. 
+- Each consumer needed an explicit `open Lean4Yaml.Grammar (FoldResult)` to restore unqualified access.
+- In a language with re-export mechanisms (e.g., Haskell's `module X (module Y)` or Rust's `pub use`), a single re-export in the old namespace would suffice.
+- Lean 4 has no re-export — each consumer must independently open the new namespace. 
+- For a type used in only 2 consumer files this was manageable; for a widely-used type, namespace migration would require touching every import site.
+
+2. **`lake clean` required to flush stale linker artifacts.** 
+- After removing the `Tests.Verification` import from `SuiteRunner/Main.lean`, `lake build` succeeded (260/260 jobs) because the Lean elaborator only checks live imports. 
+- But `lake exe suiterunner` failed with `undefined symbol: initialize_lean4_x2dyaml_x2dverified_Tests_Verification` — the linker still referenced the old object file cached in `.lake/build/lib/`. 
+- Incremental `lake build` does not garbage-collect orphaned artifacts. 
+- Only `lake clean` followed by a full rebuild cleared the stale `.olean` and `.ilean` files. 
+- This is a known Lake limitation: the build system tracks dependencies forward (recompile if source changed) but not backward (delete if import removed). 
+- The P10.2 deletion of `Tests/Verification.lean` removed the source, but the compiled artifact persisted until explicitly cleaned.
+
+3. **Suite runner baseline shifted from 849/0/171 to 799/50/171 after `lake clean`.**
+- The previous 849/0/171 baseline was measured with a stale `tryparse` binary that still used the old char-level parser (compiled before P10.2's API switch). 
+- After `lake clean` forced a full rebuild, `tryparse` picked up the tokenized parser — which correctly accepts 50 inputs that the old parser incorrectly rejected. 
+- These 50 "expected parse failure but succeeded" cases are the same inputs identified as "improvements" in ParserCompare (P10.1).
+- The yaml-test-suite marks them as error tests because libyaml rejects them, but the YAML 1.2.2 spec permits them. 
+- This is not a regression — it's the first time the suite runner reflected the tokenized parser's actual behavior. 
+- The lesson: after any API-level switch, `lake clean` is mandatory to ensure all binaries (not just the library) are rebuilt.
+
+###### Simplifications
+
+1. **Two of three planned relocations were already done.** 
+- The P10.3 plan listed three type groups to check: `FoldResult`, `BlockScalarHeader`/`ChompStyle`/`BlockScalarMeta`, and the old-parser dispatch types. 
+- Auditing the codebase revealed that `ChompStyle` and `BlockScalarMeta` were already in `Types.lean` (the root `Lean4Yaml` namespace), and `isBlockScalarHeaderChar` was already in `Grammar.lean`. 
+- Only `FoldResult` actually needed moving.
+- This reduced the phase from "relocate three type groups" to "relocate one type, confirm two already placed, remove theorems about three others."
+
+2. **Removing old-parser type theorems was deletion, not migration.** 
+- The `DispatchResult`, `ContinuationCheck`, and `DocumentResult` types exist solely for the old parser's internal dispatch logic.
+- Their theorems in `Validation.lean` (exhaustiveness, discrimination, constructor inequality — 4 theorems each, ~60 lines total) prove properties of types that have no analogue in the tokenized parser. 
+- Rather than migrating these theorems to prove equivalent properties of different types, they were simply deleted. 
+- The tokenized parser's dispatch is via pattern matching on `YamlToken` constructors, which is already exhaustive by Lean's match checker — no manual exhaustiveness theorems needed.
+
+3. **Proof files decouple cleanly from old parser.** 
+- After P10.3, both `Proofs/Validation.lean` and `Proofs/StringProperties.lean` import zero old-parser files — they depend only on `Grammar.lean` and `Stream.lean`.
+- This was not planned as a goal but emerged naturally: once `FoldResult` moved to `Grammar.lean`, `StringProperties.lean` no longer needed `Parser/Scalar.lean`; once the dispatch-type theorems were removed, `Validation.lean` no longer needed `Parser/Combinators.lean`, `Parser/Scalar.lean`, or `Parser/Document.lean`.
+- Each proof file's import set shrank to its minimum — a leading indicator that P10.4's "reusable" classification (import fix only) is accurate.
+
+###### Idioms
+
+- **`open M (T)` for selective namespace access.** 
+- Rather than `open Lean4Yaml.Grammar` (which would bring all Grammar definitions into scope, risking name collisions), the targeted `open Lean4Yaml.Grammar (FoldResult)` imports only the relocated type. 
+- This is the Lean 4 analogue of Python's `from module import name` — it makes the migration explicit in each consumer file and avoids polluting the local namespace. 
+- The pattern is especially useful during phased migrations where only some types have moved to their final location.
+
+- **Comment tombstones at relocation sites.** 
+- The original `FoldResult` definition in `Parser/Scalar.lean` was replaced with `-- FoldResult relocated to Grammar.lean in P10.3` rather than silently deleted. 
+- This helps anyone reading the old parser code understand where the type went — particularly important because the old parser files still exist (until P10.6) and are still imported by other old parser files. 
+- The tombstone comment costs nothing and prevents confusion during the multi-phase migration.
+
+- **Phase-tagged `sorry` and removal comments.** 
+- Every structural change is tagged with its phase: `-- P10.3` on the relocation comment, `-- P10.2→P10.5` on the `sorry`'d theorems.
+- This creates a grep-able audit trail: `grep -r 'P10\.' Lean4Yaml/` shows exactly which changes belong to which phase. 
+- When P10.6 deletes the old parser files, the `P10.3` tombstone comments go with them — no cleanup needed.
+
 #### P10.4: Proof Migration — Reusable & Adaptable (8 files, ~3,500 lines)
 
 **Goal**: Migrate the 3 reusable + 7 adaptable proof files.
