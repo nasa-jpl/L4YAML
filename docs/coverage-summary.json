@@ -1,16 +1,16 @@
 {
-  "date": "2026-02-28T12:49:27-0800",
+  "date": "2026-02-28T15:10:15-0800",
   "overall": {
     "applicable": 354,
-    "correct": 267,
-    "correctRate": 75.4,
-    "expectedFail": 8,
+    "correct": 269,
+    "correctRate": 75.9,
+    "expectedFail": 10,
     "failed": 0,
     "passed": 259,
     "skipped": 52,
     "timeout": 0,
     "total": 406,
-    "unexpectedPass": 87
+    "unexpectedPass": 85
   },
   "stages": {
     "advanced": {
@@ -27,15 +27,15 @@
     },
     "block": {
       "applicable": 99,
-      "correct": 85,
-      "correctRate": 85.8,
-      "expectedFail": 1,
+      "correct": 86,
+      "correctRate": 86.8,
+      "expectedFail": 2,
       "failed": 0,
       "passed": 84,
       "skipped": 0,
       "timeout": 0,
       "total": 99,
-      "unexpectedPass": 14
+      "unexpectedPass": 13
     },
     "document": {
       "applicable": 17,
@@ -51,15 +51,15 @@
     },
     "error": {
       "applicable": 74,
-      "correct": 4,
-      "correctRate": 5.4,
-      "expectedFail": 4,
+      "correct": 5,
+      "correctRate": 6.7,
+      "expectedFail": 5,
       "failed": 0,
       "passed": 0,
       "skipped": 0,
       "timeout": 0,
       "total": 74,
-      "unexpectedPass": 70
+      "unexpectedPass": 69
     },
     "flow": {
       "applicable": 46,
@@ -312,10 +312,10 @@
       "stage": "scalar"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "4EJS",
       "name": "Invalid tabs as indendation in a mapping",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "error"
     },
     {
@@ -1425,10 +1425,10 @@
       "stage": "block"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "DK95",
       "name": "",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "block"
     },
     {
@@ -2953,7 +2953,7 @@
       {
         "allPass": false,
         "label": "Structural Validation Tests",
-        "passed": 68,
+        "passed": 69,
         "total": 84
       },
       {
@@ -2999,7 +2999,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 702,
+    "totalPassed": 703,
     "totalTests": 738
   }
 }

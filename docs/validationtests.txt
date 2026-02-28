@@ -47,7 +47,7 @@
   ✓ accept: literal block scalar
   ✓ accept: nested mapping
   ✓ accept: empty document
-  ✗ reject: tab in indentation
+  ✓ reject: tab in indentation
   ✗ reject: trailing content after flow seq
   ✗ reject: trailing content after flow map
 
@@ -95,5 +95,5 @@
   ✗ reject: missing comma in flow mapping (T833)
   ✗ reject: colon-value on next line after quoted key (ZXT5)
 
-=== Results: 68/84 passed ===
-    16 FAILED
+=== Results: 69/84 passed ===
+    15 FAILED
