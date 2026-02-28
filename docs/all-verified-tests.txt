@@ -15,121 +15,11 @@
   ✓ Document has 1 directive
   ✓ YAML directive version correct
 
---- YamlStream ---
-  ✓ Initial position (0,0)
-  ✓ First char is 'a'
-  ✓ Column advances to 1
-  ✓ Newline resets col to 0, increments line to 1
-  ✓ After 'c': position (1,1)
-  ✓ peek? returns 'a' without advancing
-  ✓ Empty stream has no next
-
 --- YamlPos ---
   ✓ YamlPos BEq reflexive
   ✓ YamlPos BEq distinguishes
 
-=== Results: 17/17 passed ===
-=== Parser Integration Tests ===
-=== Parser Integration Tests ===
-
---- Double-quoted scalars ---
-  ✓ simple
-  ✓ with space
-  ✓ with escape
-  ✓ empty
-
---- Single-quoted scalars ---
-  ✓ simple
-  ✓ with space
-  ✓ escaped quote
-  ✓ empty
-
---- Plain scalars ---
-  ✓ word
-  ✓ multi-word
-
---- Flow sequences ---
-  ✓ simple
-  ✓ nested
-  ✓ empty
-
---- Flow mappings ---
-  ✓ simple
-  ✓ empty
-
---- Block sequences ---
-  ✓ simple
-  ✓ items
-
---- Block mappings ---
-  ✓ simple
-
---- Document parsing ---
-  ✓ empty
-  ✓ just scalar
-  ✓ explicit doc
-  ✓ multi doc
-
---- Nested block ---
-  ✓ map with seq value
-  ✓ nested map
-  ✓ seq of maps
-
-=== Results: 25/25 passed ===
-=== Quoted Folding Tests ===
-=== Quoted Folding Tests ===
-
---- Bug A: Simple fold (newline → space) ---
-  ✓ dq basic fold
-  ✓ dq no leading ws
-  ✓ sq basic fold
-  ✓ sq no leading ws
-
---- Bug B: Empty line counting (preserved newlines) ---
-  ✓ dq one empty line
-  ✓ dq two empty lines
-  ✓ dq three empty lines
-  ✓ sq one empty line
-  ✓ sq two empty lines
-
---- Bug C: Trailing whitespace trimming ---
-  ✓ dq trailing spaces
-  ✓ dq trailing tab
-  ✓ dq trailing mixed ws
-  ✓ sq trailing spaces
-
---- Bug D: Tab handling on continuation lines ---
-  ✓ dq tab continuation
-  ✓ dq tab+space continuation
-  ✓ dq tab after blank
-  ✓ sq tab continuation
-
---- Bug E: Escaped line breaks (line continuation) ---
-  ✓ dq escaped newline
-  ✓ dq escaped bare
-  ✓ dq escaped with trailing
-  ✓ dq double escaped
-
---- Combined folding tests ---
-  ✓ dq multi-line fold
-  ✓ dq fold then blank
-  ✓ dq blank then fold
-  ✓ dq triple fold
-
---- CRLF folding ---
-  ✓ dq CRLF fold
-  ✓ dq CRLF blank
-  ✓ sq CRLF fold
-
---- Edge cases ---
-  ✓ dq no fold
-  ✓ sq no fold
-  ✓ dq empty
-  ✓ sq empty
-  ✓ dq fold at end
-  ✓ dq ws-only blank
-
-=== Results: 34/34 passed ===
+=== Results: 10/10 passed ===
 === Demo ===
 === Demo ===
 
@@ -143,289 +33,6 @@
   ✓ Multi-document stream
 
 === Results: 7/7 passed ===
-=== String Lemma Tests ===
-=== String Lemma Tests ===
-
---- Char.utf8Size positivity ---
-  ✓ utf8Size 'a' > 0
-  ✓ utf8Size 'a' == 1
-  ✓ utf8Size '\n' > 0
-  ✓ utf8Size '\n' == 1
-  ✓ utf8Size ' ' > 0
-  ✓ utf8Size '\t' > 0
-  ✓ utf8Size ':' > 0
-  ✓ utf8Size '-' > 0
-  ✓ utf8Size '{' > 0
-  ✓ utf8Size '}' > 0
-  ✓ utf8Size '[' > 0
-  ✓ utf8Size ']' > 0
-  ✓ utf8Size '€' == 3 (3-byte)
-  ✓ utf8Size 'é' == 2 (2-byte)
-  ✓ utf8Size '日' == 3 (3-byte CJK)
-  ✓ utf8Size '𐀀' == 4 (4-byte)
-  ✓ utf8Size_pos holds for NUL
-  ✓ utf8Size_pos holds for DEL
-  ✓ utf8Size_pos holds for max BMP
-
---- String.Pos.Raw advancement ---
-  ✓ next advances past 'a'
-  ✓ next advances past 'b'
-  ✓ next advances past 'c'
-  ✓ p0 < p1 (strict)
-  ✓ p1 < p2 (strict)
-  ✓ p2 < p3 (strict)
-  ✓ next past 'é' (2-byte)
-  ✓ next past '€' (3-byte)
-  ✓ mp0 < mp1 (multibyte strict)
-  ✓ mp1 < mp2 (multibyte strict)
-  ✓ next strictly advances from 0
-
---- Pos.Raw.get at valid positions ---
-  ✓ get at 0 == 'h'
-  ✓ get at 1 == 'e'
-  ✓ get at 4 == 'o'
-  ✓ get 'a' at 0 (multibyte string)
-  ✓ get '€' at 1 (3-byte char)
-  ✓ get 'b' at 4 (after 3-byte char)
-  ✓ get at 0 == 'x'
-  ✓ next past 'x' lands on 'y'
-
---- YamlStream ↔ Pos.Raw consistency ---
-  ✓ next? char matches Pos.Raw.get
-  ✓ next? startPos matches Pos.Raw.next
-  ✓ stopPos unchanged
-  ✓ multibyte: next? char is '日'
-  ✓ multibyte: startPos advances by 3
-  ✓ multibyte: startPos == 3
-
---- remainingLength strictly decreases ---
-  ✓ single char: remainingLength > 0
-  ✓ single char: remaining decreases
-  ✓ single char: remaining == 0 after
-  ✓ r0 > r1 after 'a'
-  ✓ r1 > r2 after 'b'
-  ✓ r2 > r3 after 'c'
-  ✓ r3 == 0 at end
-  ✓ multibyte: drops by utf8Size (3)
-  ✓ multibyte: still strictly decreases
-  ✓ empty: remainingLength == 0
-  ✓ empty: next? is none
-
---- rawEndPos / utf8ByteSize ---
-  ✓ rawEndPos 'hello' == 5
-  ✓ utf8ByteSize 'hello' == 5
-  ✓ rawEndPos == utf8ByteSize
-  ✓ rawEndPos 'aé€' == 6
-  ✓ utf8ByteSize 'aé€' == 6
-  ✓ rawEndPos '' == 0
-  ✓ utf8ByteSize '' == 0
-  ✓ stream.stopPos == rawEndPos
-  ✓ rawEndPos 4-byte char == 4
-
---- position validity (character boundaries) ---
-  ✓ pos 0 valid (start)
-  ✓ pos 1 valid (after 'a')
-  ✓ pos 2 valid (after 'b')
-  ✓ pos 0 → 'a'
-  ✓ pos 1 → 'é' (valid boundary)
-  ✓ rawEndPos is 3
-  ✓ chain: p0=0
-  ✓ chain: p1=1 (after 'x')
-  ✓ chain: p2=4 (after '€')
-  ✓ chain: p3=5 (after 'y')
-  ✓ chain: p3 == rawEndPos
-
---- subtraction arithmetic ---
-  ✓ stopPos == 6
-  ✓ after 'a': start=1, remaining=5
-  ✓ remaining = stop - start
-  ✓ after 'b': start=2, remaining=4
-  ✓ after '€': start=5, remaining=1
-  ✓ '€' consumed 3 bytes
-  ✓ after 'd': start=6, remaining=0
-  ✓ at end: next? is none
-
---- newline still advances position ---
-  ✓ after 'a': remaining decreases
-  ✓ after '\n': remaining decreases
-  ✓ col resets to 0 on newline
-  ✓ line increments on newline
-  ✓ but byte position still advances
-  ✓ after 'b': remaining decreases
-  ✓ r3 == 0
-
---- strictly monotone consumption ---
-  ✓ chain length == 5
-  ✓ chain starts at 4
-  ✓ chain ends at 0
-  ✓ all transitions strictly decrease
-  ✓ multibyte chain length == 4
-  ✓ multibyte starts at 9
-  ✓ multibyte ends at 0
-  ✓ multibyte: all transitions strictly decrease
-
---- stopPos invariance ---
-  ✓ stopPos unchanged after 1st next?
-  ✓ stopPos unchanged after 2nd next?
-  ✓ stopPos unchanged after 3rd next?
-
---- str invariance ---
-  ✓ str unchanged after next?
-  ✓ str unchanged after 2nd next?
-
---- hasNext ↔ startPos < stopPos ---
-  ✓ initially: hasNext
-  ✓ initially: start < stop
-  ✓ after 1: hasNext
-  ✓ after 1: start < stop
-  ✓ after 2: not hasNext
-  ✓ after 2: start == stop
-  ✓ after 2: next? is none
-  ✓ empty: not hasNext
-  ✓ empty: start == stop (both 0)
-
---- decidable property checks ---
-  ✓ Parse.isLineBreak '\n'
-  ✓ ¬Parse.isLineBreak 'a'
-  ✓ Parse.isWhiteSpace ' '
-  ✓ Parse.isWhiteSpace '\t'
-  ✓ ¬Parse.isWhiteSpace 'x'
-  ✓ Parse.isFlowIndicator ','
-  ✓ Parse.isFlowIndicator '['
-  ✓ ¬Parse.isFlowIndicator 'a'
-  ✓ isIndentChar ' '
-  ✓ ¬isIndentChar 'a'
-
---- indentation column tracking ---
-  ✓ starts at col 0
-  ✓ after 2 spaces: col == 2
-  ✓ after 2 spaces: remaining decreases
-  ✓ 2 spaces = 2 bytes consumed
-  ✓ after 4 spaces: col == 4
-  ✓ after newline: col == 0
-  ✓ 2 spaces after newline: col == 2
-
-=== Results: 129/129 passed ===
-=== Anchor/Alias Tests ===
-=== Anchor & Alias Tests ===
-
---- Anchor name parsing ---
-  ✓ simple name
-  ✓ name with hyphens
-  ✓ name with underscore and digit
-  ✓ single char name
-
---- Basic block anchors ---
-  ✓ anchor on plain scalar parses
-  ✓ anchor on double-quoted scalar
-  ✓ anchor on single-quoted scalar
-
---- Basic block aliases ---
-  ✓ alias resolves to anchored value
-  ✓ alias value is correct
-  ✗ undefined alias fails
-
---- Block collection anchors ---
-  ✓ anchor on block sequence
-  ✓ sequence has 2 items
-  ✓ anchor on block mapping
-
---- Flow context anchors ---
-  ✓ anchor on flow sequence
-  ✓ anchor on flow mapping
-  ✓ alias in block sequence
-  ✓ alias equals anchor
-
---- Flow inline anchors ---
-  ✓ anchors within flow seq
-  ✓ first alias matches
-  ✓ second alias matches
-  ✓ anchor in flow mapping value
-  ✓ flow mapping alias matches
-
---- Value correctness ---
-  ✓ anchor value preserved
-  ✓ alias is exact copy
-
---- Anchor map behavior ---
-  ✓ multiple anchors: *x
-  ✓ multiple anchors: *y
-  ✗ anchor redefinition uses latest
-
---- YAML spec examples ---
-  ✓ Ex 2.10: hr value
-  ✓ Ex 2.10: rbi value
-
---- Alias as mapping key ---
-  ✓ alias in sequence resolves
-  ✓ alias equals original
-
---- Document scope (§3.2.2.2) ---
-  ✓ first doc parses
-  ✗ anchor does not leak across docs: expected 1 doc (second should fail), got 2
-
-=== Results: 30/33 passed ===
-    3 FAILED
-=== Tag Tests ===
-=== Tag Tests ===
-
---- Tag prefix parsing ---
-  ✓ non-specific tag
-  ✓ secondary handle !!str
-  ✓ secondary handle !!int
-  ✓ secondary handle !!map
-  ✓ secondary handle !!seq
-  ✓ primary local tag !local
-  ✓ verbatim tag
-  ✓ named handle !e!tag
-
---- Block tags ---
-  ✓ !!str on plain scalar parses
-  ✓ !!str tag present
-  ✓ !!str on dquoted scalar
-  ✓ !!str tag on dquoted
-  ✓ !!str on squoted scalar
-  ✓ !!str tag on squoted
-  ✓ !!seq on block sequence
-  ✓ !!seq tag present
-  ✓ !!map on block mapping
-  ✓ !!map tag present
-  ✓ non-specific tag on scalar
-  ✓ non-specific tag value
-  ✓ tag on mapping value
-  ✓ tag on mapping value present
-  ✓ tag on seq item 0
-  ✓ tag on seq item 1
-
---- Flow tags ---
-  ✓ !!seq on flow sequence
-  ✓ !!seq tag on flow seq
-  ✓ !!map on flow mapping
-  ✓ !!map tag on flow map
-  ✓ tag in flow mapping value
-  ✓ tag in flow value present
-
---- Tag + anchor ordering ---
-  ✓ tag-then-anchor: value correct
-  ✓ tag-then-anchor: tag present
-  ✓ tag-then-anchor: alias resolves
-  ✓ anchor-then-tag: value correct
-  ✓ anchor-then-tag: tag present
-  ✓ anchor-then-tag: alias resolves
-
---- Mapping key tags ---
-  ✓ tag on mapping key
-  ✓ mapping key content
-
---- withTag helper ---
-  ✓ withTag scalar
-  ✓ withTag scalar content
-  ✓ withTag sequence
-  ✓ withTag sequence items
-  ✓ withTag mapping
-  ✓ withTag mapping pairs
-
-=== Results: 44/44 passed ===
 === Explicit Key Tests ===
 === Explicit Key Tests ===
 
@@ -611,3 +218,711 @@
 
 === Results: 85/86 passed ===
     1 FAILED
+=== Validation Tests ===
+=== Structural Validation Tests ===
+
+--- Indentation Properties ---
+  ✓ Indented 0: preserves content
+  ✓ Indented 0: empty list
+  ✓ indent 3 + 2 chars: length ≥ 3
+  ✓ indent 5 + 0 chars: length ≥ 5
+  ✓ indent 10 + 0 chars: length ≥ 10
+  ✓ indent 1 + 3 chars: length = 4
+  ✓ indent 1 head = ' '
+  ✓ indent 4 head = ' '
+  ✓ indent 0 head ≠ ' ' (content starts)
+  ✓ indent 3 prefix
+  ✓ indent 5 prefix = replicate 5 ' '
+  ✓ indent 4 satisfies atLeast 2
+  ✓ indent 4 satisfies atLeast 0
+  ✓ tab is not indent char
+  ✓ space is indent char
+  ✓ indent n adds exactly n chars
+  ✓ indent 0 adds no chars
+
+--- ValidNode & ChompStyle Structural ---
+  ✓ ChompStyle strip ≠ clip
+  ✓ ChompStyle strip ≠ keep
+  ✓ ChompStyle clip ≠ keep
+  ✓ ChompStyle exhaustive: strip
+  ✓ ChompStyle exhaustive: clip
+  ✓ ChompStyle exhaustive: keep
+  ✓ ChompStyle decidable eq
+  ✓ plain scalar → .plain style
+  ✓ double-quoted → .doubleQuoted style
+  ✓ single-quoted → .singleQuoted style
+  ✓ literal → .literal style
+  ✓ folded → .folded style
+
+--- Validation Integration ---
+  ✓ accept: simple scalar
+  ✓ accept: simple mapping
+  ✓ accept: simple sequence
+  ✓ accept: flow sequence
+  ✓ accept: flow mapping
+  ✓ accept: multi-doc
+  ✓ accept: document end marker
+  ✓ accept: double-quoted scalar
+  ✓ accept: single-quoted scalar
+  ✓ accept: literal block scalar
+  ✓ accept: nested mapping
+  ✓ accept: empty document
+  ✗ reject: tab in indentation
+  ✗ reject: trailing content after flow seq
+  ✗ reject: trailing content after flow map
+
+--- Block Scalar Contracts ---
+  ✓ '-' is header char
+  ✓ '+' is header char
+  ✓ '1' is header char
+  ✓ '9' is header char
+  ✓ '5' is header char
+  ✓ '0' is NOT header char
+  ✓ '\n' is NOT header char
+  ✓ ' ' is NOT header char
+  ✓ '\t' is NOT header char
+  ✓ 'a' is NOT header char
+  ✓ '#' is NOT header char
+  ✓ extract empty = ([], [])
+  ✓ extract '-' = (['-'], [])
+  ✓ extract '-2' = (['-','2'], [])
+  ✓ extract '\n' = ([], ['\n'])
+  ✓ extract '\nxy' preserves tail
+  ✓ extract '2-\n' = (['2','-'], ['\n'])
+  ✓ literal block: no contract violation
+  ✓ folded block: no contract violation
+  ✓ literal block with chomp strip
+  ✓ literal block with chomp keep
+  ✓ literal block with explicit indent
+  ✓ folded block with chomp+indent
+  ✓ literal block: plain header (no indicators)
+  ✓ peek-before-consume: newline not consumed by header loop
+  ✓ peek-before-consume: space not consumed by header loop
+  ✓ peek-before-consume: comment after indicator
+
+--- Flow Structure Errors ---
+  ✗ reject: extra closing bracket (4H7K)
+  ✗ reject: content after closing brace (62EZ)
+  ✗ reject: unclosed flow sequence (6JTT)
+  ✗ reject: comment without space after ] (9JBA)
+  ✗ reject: leading comma in flow seq (9MAG)
+  ✗ reject: multiline flow mapping key (C2SP)
+  ✗ reject: double comma in flow seq (CTN5)
+  ✗ reject: comment without space after comma (CVW2)
+  ✗ reject: implicit key colon on next line (DK4H)
+  ✗ reject: content after closed flow seq (KS4U)
+  ✗ reject: block item after flow map (P2EQ)
+  ✗ reject: missing comma in flow mapping (T833)
+  ✗ reject: colon-value on next line after quoted key (ZXT5)
+
+=== Results: 68/84 passed ===
+    16 FAILED
+=== Dump Round-Trip Tests ===
+=== Dump Round-Trip Tests ===
+
+--- Structural properties ---
+  ✓ plain scalar → content itself
+  ✓ empty string → double-quoted ""
+  ✓ reserved 'true' → auto-quoted
+  ✓ reserved 'null' → auto-quoted
+  ✓ reserved 'yes' → auto-quoted
+  ✓ empty flow sequence → []
+  ✓ empty flow mapping → {}
+  ✓ empty block sequence → [] (degenerate)
+  ✓ empty block mapping → {} (degenerate)
+  ✓ alias → *name
+  ✓ plain scalar output non-empty
+  ✓ empty scalar output non-empty (quotes)
+  ✓ flow sequence output non-empty
+  ✓ flow mapping output non-empty
+
+--- Content analysis (isPlainSafe) ---
+  ✓ simple word is plain-safe
+  ✓ number is plain-safe
+  ✓ mixed alphanum is plain-safe
+  ✓ interior space is plain-safe
+  ✓ empty string not plain-safe
+  ✓ leading space not plain-safe
+  ✓ trailing space not plain-safe
+  ✓ newline not plain-safe
+  ✓ ': ' (colon-space) not plain-safe
+  ✓ ' #' (space-hash) not plain-safe
+  ✓ '{' not plain-safe
+  ✓ '[' not plain-safe
+  ✓ 'true' not plain-safe
+  ✓ 'false' not plain-safe
+  ✓ 'null' not plain-safe
+  ✓ '~' not plain-safe
+  ✓ 'Yes' not plain-safe
+  ✓ 'NO' not plain-safe
+  ✓ '-item' not plain-safe
+  ✓ '?key' not plain-safe
+  ✓ ':val' not plain-safe
+  ✓ '&anchor' not plain-safe
+  ✓ '*alias' not plain-safe
+  ✓ '!tag' not plain-safe
+  ✓ '|literal' not plain-safe
+  ✓ '>folded' not plain-safe
+  ✓ single-quote leader not plain-safe
+  ✓ double-quote leader not plain-safe
+  ✓ '%directive' not plain-safe
+  ✓ '@reserved' not plain-safe
+  ✓ '`reserved' not plain-safe
+
+--- Style preservation ---
+  ✓ config doubleQuoted forces quoting
+  ✓ config singleQuoted forces quoting
+  ✓ singleQuoted falls back to double for newlines
+  ✓ literal block scalar honored
+  ✓ folded block scalar honored
+  ✓ literal strip chomp (|-)
+  ✓ literal keep chomp (|+)
+  ✓ config flow overrides block sequence
+  ✓ config flow overrides block mapping
+  ✓ flow annotation preserved with block config
+  ✓ anchor emitted
+  ✓ tag emitted
+  ✓ tag + anchor both emitted
+
+--- Dump→Parse round-trip ---
+  ✓ plain 'hello' round-trips
+  ✓ plain 'two words' round-trips
+  ✓ plain '123' round-trips
+  ✓ reserved 'true' round-trips
+  ✓ reserved 'false' round-trips
+  ✓ reserved 'null' round-trips
+  ✓ reserved 'yes' round-trips
+  ✓ reserved '~' round-trips
+  ✓ empty string round-trips
+  ✓ 'key: value' round-trips
+  ✓ 'has #comment' round-trips
+  ✓ '{flow}' round-trips
+  ✓ '[array]' round-trips
+  ✓ double-quoted config round-trips
+  ✓ single-quoted config round-trips
+  ✓ empty flow seq round-trips
+  ✓ flow seq [a] round-trips
+  ✓ flow seq [a, b] round-trips
+  ✓ empty flow map round-trips
+  ✓ flow map {k: v} round-trips
+  ✓ flow map 2 pairs round-trips
+  ✓ block seq [a] round-trips
+  ✓ block seq [a, b] round-trips
+  ✓ block map {key: val} round-trips
+  ✓ block map 2 pairs round-trips
+  ✓ mapping with seq value round-trips
+  ✓ nested mapping round-trips
+  ✓ mixed block/flow round-trips
+  ✓ nested flow round-trips
+  ✓ tab escape round-trips
+  ✓ backslash round-trips
+  ✓ embedded quotes round-trips
+  ✓ flow config on block seq round-trips
+  ✓ flow config on block map round-trips
+  ✓ custom indent round-trips
+
+--- Document dump ---
+  ✓ dumpDirective YAML
+  ✓ dumpDirective TAG
+  ✓ document no directives
+  ✓ document with YAML directive
+  ✓ document multiple directives
+  ✓ dumpDocuments empty
+  ✓ dumpDocuments single
+  ✓ dumpDocuments two → ---/...
+  ✓ dumpDocuments three
+
+=== Results: 102/102 passed ===
+=== Raw Parse Tests ===
+=== Raw Parse / Compose Tests ===
+
+--- Raw parse preserves aliases ---
+  ✓ alias node preserved in raw
+  ✓ alias name is 'val'
+  ✓ alias in sequence preserved
+  ✓ second element is alias
+  ✓ flow alias preserved
+
+--- Raw parse preserves anchor fields ---
+  ✓ scalar anchor field set
+  ✓ sequence anchor field set
+  ✓ flow mapping anchor field set
+
+--- Raw parse captures anchor map ---
+  ✓ anchor map non-empty
+  ✓ anchor map has 'anchor'
+  ✓ anchor map has 2+ entries
+  ✓ anchor map has 'x'
+  ✓ anchor map has 'y'
+  ✗ anchor map value has no aliases
+
+--- Compose resolves aliases ---
+  ✓ composed has no aliases
+  ✓ alias resolved to value
+  ✓ compose matches parseYamlSingle
+
+--- Compose strips anchors ---
+  ✓ raw tree has anchor fields
+  ✓ composed tree has no anchor fields
+  ✓ composed anchor map is empty
+
+--- Raw dump preserves anchors/aliases ---
+  ✓ dump contains &val
+  ✓ dump contains *val
+  ✓ dump contains &seq
+
+--- Composed dump is clean ---
+  ✓ composed dump has no &
+  ✓ composed dump has no *
+  ✓ composed dump has 'hello' twice
+
+--- Multi-doc anchor scoping (raw) ---
+  ✓ two documents parsed
+  ✗ doc0 anchor 'a' = hello
+  ✗ doc1 anchor 'a' = world
+
+=== Results: 26/29 passed ===
+    3 FAILED
+=== Spec Examples ===
+=== YAML 1.2.2 Spec Examples ===
+
+--- §2 Spec Examples ---
+  ✓ Example example-2.1
+  ✓ Example example-2.10
+  ✓ Example example-2.11
+  ✓ Example example-2.12
+  ✓ Example example-2.13
+  ✓ Example example-2.14
+  ✓ Example example-2.15
+  ✓ Example example-2.16
+  ✓ Example example-2.17
+  ✓ Example example-2.18
+  ✓ Example example-2.19
+  ✓ Example example-2.2
+  ✓ Example example-2.20
+  ✓ Example example-2.21
+  ✓ Example example-2.22
+  ✓ Example example-2.23
+  ✓ Example example-2.24
+  ✓ Example example-2.25
+  ✓ Example example-2.26
+  ✓ Example example-2.27
+  ✓ Example example-2.28
+  ✓ Example example-2.3
+  ✓ Example example-2.4
+  ✓ Example example-2.5
+  ✓ Example example-2.6
+  ✓ Example example-2.7
+  ✓ Example example-2.8
+  ✓ Example example-2.9
+
+--- §5 Spec Examples ---
+  ✓ Example example-5.1
+  ✓ Example example-5.10
+  ✓ Example example-5.11
+  ✓ Example example-5.12
+  ✓ Example example-5.13
+  ✓ Example example-5.14
+  ✓ Example example-5.2
+  ✓ Example example-5.3
+  ✓ Example example-5.4
+  ✓ Example example-5.5
+  ✓ Example example-5.6
+  ✓ Example example-5.7
+  ✓ Example example-5.8
+  ✓ Example example-5.9
+
+--- §6 Spec Examples ---
+  ✓ Example example-6.1
+  ✓ Example example-6.10
+  ✓ Example example-6.11
+  ✓ Example example-6.12
+  ✓ Example example-6.13
+  ✓ Example example-6.14
+  ✓ Example example-6.15
+  ✓ Example example-6.16
+  ✓ Example example-6.17
+  ✓ Example example-6.18
+  ✓ Example example-6.19
+  ✓ Example example-6.2
+  ✓ Example example-6.20
+  ✓ Example example-6.21
+  ✓ Example example-6.22
+  ✓ Example example-6.23
+  ✓ Example example-6.24
+  ✓ Example example-6.25
+  ✓ Example example-6.26
+  ✓ Example example-6.27
+  ✓ Example example-6.28
+  ✓ Example example-6.29
+  ✓ Example example-6.3
+  ✓ Example example-6.4
+  ✓ Example example-6.5
+  ✓ Example example-6.6
+  ✓ Example example-6.7
+  ✓ Example example-6.8
+  ✓ Example example-6.9
+
+--- §7 Spec Examples ---
+  ✓ Example example-7.1
+  ✓ Example example-7.10
+  ✓ Example example-7.11
+  ✓ Example example-7.12
+  ✓ Example example-7.13
+  ✓ Example example-7.14
+  ✓ Example example-7.15
+  ✓ Example example-7.16
+  ✓ Example example-7.17
+  ✓ Example example-7.18
+  ✓ Example example-7.19
+  ✓ Example example-7.2
+  ✓ Example example-7.20
+  ✓ Example example-7.21
+  ✓ Example example-7.22
+  ✓ Example example-7.23
+  ✓ Example example-7.24
+  ✓ Example example-7.3
+  ✓ Example example-7.4
+  ✓ Example example-7.5
+  ✓ Example example-7.6
+  ✓ Example example-7.7
+  ✓ Example example-7.8
+  ✓ Example example-7.9
+
+--- §8 Spec Examples ---
+  ✓ Example example-8.1
+  ✓ Example example-8.10
+  ✓ Example example-8.11
+  ✓ Example example-8.12
+  ✓ Example example-8.13
+  ✓ Example example-8.14
+  ✓ Example example-8.15
+  ✓ Example example-8.16
+  ✓ Example example-8.17
+  ✓ Example example-8.18
+  ✓ Example example-8.19
+  ✓ Example example-8.2
+  ✓ Example example-8.20
+  ✓ Example example-8.21
+  ✓ Example example-8.22
+  ✓ Example example-8.3
+  ✓ Example example-8.4
+  ✓ Example example-8.5
+  ✓ Example example-8.6
+  ✓ Example example-8.7
+  ✓ Example example-8.8
+  ✓ Example example-8.9
+
+--- §9 Spec Examples ---
+  ✓ Example example-9.1
+  ✓ Example example-9.2
+  ✓ Example example-9.3
+  ✓ Example example-9.4
+  ✓ Example example-9.5
+  ✓ Example example-9.6
+
+--- §10 Spec Examples ---
+  ✓ Example example-10.1
+  ✓ Example example-10.2
+  ✓ Example example-10.3
+  ✓ Example example-10.4
+  ✓ Example example-10.5
+  ✓ Example example-10.6
+  ✓ Example example-10.7
+  ✓ Example example-10.8
+  ✓ Example example-10.9
+
+=== Results: 132/132 passed ===
+=== Schema Dump Tests ===
+=== Schema ↔ Dump Integration ===
+
+--- Primitive serialization ---
+  ✓ Bool true → "true" (auto-quoted)
+  ✓ Bool false → "false" (auto-quoted)
+  ✓ Nat 0 → 0
+  ✓ Nat 42 → 42
+  ✓ Nat 999 → 999
+  ✓ Int -7 → "-7" (auto-quoted)
+  ✓ Int 100 → 100
+  ✓ Int 0 → 0
+  ✓ String simple → plain
+  ✓ String with space → plain
+  ✓ String empty → ""
+  ✓ String colon-space → quoted
+  ✓ Unit → "null" (auto-quoted)
+
+--- Collection serialization ---
+  ✓ Array String [a,b] → block sequence
+  ✓ Array String [x] → singleton block
+  ✓ Array String [] → []
+  ✓ List String [a,b] → block sequence
+  ✓ Nested Array → nested block
+  ✓ Array Nat [1,2,3] → block sequence
+  ✓ Array Bool → block with auto-quoting
+
+--- Option serialization ---
+  ✓ some String → plain scalar
+  ✓ none String → "null" (auto-quoted)
+  ✓ some Nat → plain scalar
+  ✓ none Nat → "null" (auto-quoted)
+  ✓ some Bool → auto-quoted
+
+--- Content round-trip (dump→parse→contentEq) ---
+  ✓ Bool true round-trips
+  ✓ Bool false round-trips
+  ✓ Nat 0 round-trips
+  ✓ Nat 42 round-trips
+  ✓ Nat 999 round-trips
+  ✓ Int -7 round-trips
+  ✓ Int 100 round-trips
+  ✓ String simple round-trips
+  ✓ String with space round-trips
+  ✓ String empty round-trips
+  ✓ String colon-space round-trips
+  ✓ String has #comment round-trips
+  ✓ String {flow} round-trips
+  ✓ String [array] round-trips
+  ✓ Unit round-trips
+  ✓ Array [a,b] round-trips
+  ✓ Array [x] round-trips
+  ✓ Array [] round-trips
+  ✓ List [a,b] round-trips
+  ✓ Nested arrays round-trip
+  ✓ Option some String round-trips
+  ✓ Option some Nat round-trips
+
+--- Typed round-trip (α→String→α) ---
+  ✓ Bool true → String → Bool
+  ✓ Bool false → String → Bool
+  ✓ Nat 42 → String → Nat
+  ✓ Nat 0 → String → Nat
+  ✓ Int 100 → String → Int
+  ✓ Int -7 → String → Int
+  ✓ String hello → String → String
+  ✓ String colon-space → String → String
+  ✓ Unit → String → Unit
+
+--- Document serialization ---
+  ✓ dumpTypedDocument Nat no directives
+  ✓ dumpTypedDocument Nat with YAML directive
+  ✓ dumpTypedDocument String with directive
+  ✓ dumpTypedDocuments empty
+  ✓ dumpTypedDocuments single
+  ✓ dumpTypedDocuments two
+
+--- Config variations ---
+  ✓ double-quoted config
+  ✓ single-quoted config
+  ✓ custom indent array
+  ✓ double-quoted round-trips
+  ✓ single-quoted round-trips
+  ✓ indent 4 array round-trips
+
+=== Results: 68/68 passed ===
+=== Scanner Tests ===
+=== Scanner & TokenParser Tests (Phase 9) ===
+
+--- Scanner basics ---
+  ✓ empty input scans
+  ✓ empty produces 2 tokens
+  ✓ whitespace only
+  ✓ comment only
+  ✓ streamStart is first
+  ✓ streamEnd is last
+
+--- Plain scalars ---
+  ✓ simple word
+  ✓ plain style
+  ✓ plain with spaces
+
+--- Quoted scalars ---
+  ✓ double-quoted content
+  ✓ double-quoted style
+  ✓ double-quoted newline
+  ✓ single-quoted content
+  ✓ single-quoted style
+  ✓ single-quoted escape
+
+--- Block sequences ---
+  ✓ simple list size
+  ✓ single item
+
+--- Block mappings ---
+  ✓ simple mapping size
+  ✓ mapping key
+  ✓ mapping value
+
+--- Flow collections ---
+  ✓ flow sequence size
+  ✓ flow mapping size
+
+--- Document markers ---
+  ✓ explicit doc start
+  ✓ doc start/end
+
+--- Anchors and aliases ---
+  ✓ anchor scan
+  ✓ alias scan
+
+--- Phase 9 regression: b: x: y ---
+  ✓ b: x: y scans
+  ✓ b: x: y pipeline
+  ✓ b: x: y key is b
+  ✓ b: x: y val is {x: y}
+
+--- Escape sequences ---
+  ✓ tab escape
+  ✓ hex escape \x41
+  ✓ unicode \u0041
+
+=== Results: 33/33 passed ===
+=== Scanner Spec Examples ===
+=== YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline) ===
+
+--- §2 Scanner Spec Examples ---
+  ✓ Example example-2.1
+  ✓ Example example-2.10
+  ✓ Example example-2.11
+  ✓ Example example-2.12
+  ✓ Example example-2.13
+  ✓ Example example-2.14
+  ✓ Example example-2.15
+  ✓ Example example-2.16
+  ✓ Example example-2.17
+  ✓ Example example-2.18
+  ✓ Example example-2.19
+  ✓ Example example-2.2
+  ✓ Example example-2.20
+  ✓ Example example-2.21
+  ✓ Example example-2.22
+  ✓ Example example-2.23
+  ✓ Example example-2.24
+  ✓ Example example-2.25
+  ✓ Example example-2.26
+  ✓ Example example-2.27
+  ✓ Example example-2.28
+  ✓ Example example-2.3
+  ✓ Example example-2.4
+  ✓ Example example-2.5
+  ✓ Example example-2.6
+  ✓ Example example-2.7
+  ✓ Example example-2.8
+  ✓ Example example-2.9
+
+--- §5 Scanner Spec Examples ---
+  ✓ Example example-5.1
+  ✓ Example example-5.10
+  ✓ Example example-5.11
+  ✓ Example example-5.12
+  ✓ Example example-5.13
+  ✓ Example example-5.14
+  ✓ Example example-5.2
+  ✓ Example example-5.3
+  ✓ Example example-5.4
+  ✓ Example example-5.5
+  ✓ Example example-5.6
+  ✓ Example example-5.7
+  ✓ Example example-5.8
+  ✓ Example example-5.9
+
+--- §6 Scanner Spec Examples ---
+  ✓ Example example-6.1
+  ✓ Example example-6.10
+  ✓ Example example-6.11
+  ✓ Example example-6.12
+  ✓ Example example-6.13
+  ✓ Example example-6.14
+  ✓ Example example-6.15
+  ✓ Example example-6.16
+  ✓ Example example-6.17
+  ✓ Example example-6.18
+  ✓ Example example-6.19
+  ✓ Example example-6.2
+  ✓ Example example-6.20
+  ✓ Example example-6.21
+  ✓ Example example-6.22
+  ✓ Example example-6.23
+  ✓ Example example-6.24
+  ✓ Example example-6.25
+  ✓ Example example-6.26
+  ✓ Example example-6.27
+  ✓ Example example-6.28
+  ✓ Example example-6.29
+  ✓ Example example-6.3
+  ✓ Example example-6.4
+  ✓ Example example-6.5
+  ✓ Example example-6.6
+  ✓ Example example-6.7
+  ✓ Example example-6.8
+  ✓ Example example-6.9
+
+--- §7 Scanner Spec Examples ---
+  ✓ Example example-7.1
+  ✓ Example example-7.10
+  ✓ Example example-7.11
+  ✓ Example example-7.12
+  ✓ Example example-7.13
+  ✓ Example example-7.14
+  ✓ Example example-7.15
+  ✓ Example example-7.16
+  ✓ Example example-7.17
+  ✓ Example example-7.18
+  ✓ Example example-7.19
+  ✓ Example example-7.2
+  ✓ Example example-7.20
+  ✓ Example example-7.21
+  ✓ Example example-7.22
+  ✓ Example example-7.23
+  ✓ Example example-7.24
+  ✓ Example example-7.3
+  ✓ Example example-7.4
+  ✓ Example example-7.5
+  ✓ Example example-7.6
+  ✓ Example example-7.7
+  ✓ Example example-7.8
+  ✓ Example example-7.9
+
+--- §8 Scanner Spec Examples ---
+  ✓ Example example-8.1
+  ✓ Example example-8.10
+  ✓ Example example-8.11
+  ✓ Example example-8.12
+  ✓ Example example-8.13
+  ✓ Example example-8.14
+  ✓ Example example-8.15
+  ✓ Example example-8.16
+  ✓ Example example-8.17
+  ✓ Example example-8.18
+  ✓ Example example-8.19
+  ✓ Example example-8.2
+  ✓ Example example-8.20
+  ✓ Example example-8.21
+  ✓ Example example-8.22
+  ✓ Example example-8.3
+  ✓ Example example-8.4
+  ✓ Example example-8.5
+  ✓ Example example-8.6
+  ✓ Example example-8.7
+  ✓ Example example-8.8
+  ✓ Example example-8.9
+
+--- §9 Scanner Spec Examples ---
+  ✓ Example example-9.1
+  ✓ Example example-9.2
+  ✓ Example example-9.3
+  ✓ Example example-9.4
+  ✓ Example example-9.5
+  ✓ Example example-9.6
+
+--- §10 Scanner Spec Examples ---
+  ✓ Example example-10.1
+  ✓ Example example-10.2
+  ✓ Example example-10.3
+  ✓ Example example-10.4
+  ✓ Example example-10.5
+  ✓ Example example-10.6
+  ✓ Example example-10.7
+  ✓ Example example-10.8
+  ✓ Example example-10.9
+
+=== Results: 132/132 passed ===

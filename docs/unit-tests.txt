@@ -15,17 +15,8 @@
   ✓ Document has 1 directive
   ✓ YAML directive version correct
 
---- YamlStream ---
-  ✓ Initial position (0,0)
-  ✓ First char is 'a'
-  ✓ Column advances to 1
-  ✓ Newline resets col to 0, increments line to 1
-  ✓ After 'c': position (1,1)
-  ✓ peek? returns 'a' without advancing
-  ✓ Empty stream has no next
-
 --- YamlPos ---
   ✓ YamlPos BEq reflexive
   ✓ YamlPos BEq distinguishes
 
-=== Results: 17/17 passed ===
+=== Results: 10/10 passed ===

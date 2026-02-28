@@ -1,0 +1,86 @@
+=== Schema Dump Tests ===
+=== Schema ↔ Dump Integration ===
+
+--- Primitive serialization ---
+  ✓ Bool true → "true" (auto-quoted)
+  ✓ Bool false → "false" (auto-quoted)
+  ✓ Nat 0 → 0
+  ✓ Nat 42 → 42
+  ✓ Nat 999 → 999
+  ✓ Int -7 → "-7" (auto-quoted)
+  ✓ Int 100 → 100
+  ✓ Int 0 → 0
+  ✓ String simple → plain
+  ✓ String with space → plain
+  ✓ String empty → ""
+  ✓ String colon-space → quoted
+  ✓ Unit → "null" (auto-quoted)
+
+--- Collection serialization ---
+  ✓ Array String [a,b] → block sequence
+  ✓ Array String [x] → singleton block
+  ✓ Array String [] → []
+  ✓ List String [a,b] → block sequence
+  ✓ Nested Array → nested block
+  ✓ Array Nat [1,2,3] → block sequence
+  ✓ Array Bool → block with auto-quoting
+
+--- Option serialization ---
+  ✓ some String → plain scalar
+  ✓ none String → "null" (auto-quoted)
+  ✓ some Nat → plain scalar
+  ✓ none Nat → "null" (auto-quoted)
+  ✓ some Bool → auto-quoted
+
+--- Content round-trip (dump→parse→contentEq) ---
+  ✓ Bool true round-trips
+  ✓ Bool false round-trips
+  ✓ Nat 0 round-trips
+  ✓ Nat 42 round-trips
+  ✓ Nat 999 round-trips
+  ✓ Int -7 round-trips
+  ✓ Int 100 round-trips
+  ✓ String simple round-trips
+  ✓ String with space round-trips
+  ✓ String empty round-trips
+  ✓ String colon-space round-trips
+  ✓ String has #comment round-trips
+  ✓ String {flow} round-trips
+  ✓ String [array] round-trips
+  ✓ Unit round-trips
+  ✓ Array [a,b] round-trips
+  ✓ Array [x] round-trips
+  ✓ Array [] round-trips
+  ✓ List [a,b] round-trips
+  ✓ Nested arrays round-trip
+  ✓ Option some String round-trips
+  ✓ Option some Nat round-trips
+
+--- Typed round-trip (α→String→α) ---
+  ✓ Bool true → String → Bool
+  ✓ Bool false → String → Bool
+  ✓ Nat 42 → String → Nat
+  ✓ Nat 0 → String → Nat
+  ✓ Int 100 → String → Int
+  ✓ Int -7 → String → Int
+  ✓ String hello → String → String
+  ✓ String colon-space → String → String
+  ✓ Unit → String → Unit
+
+--- Document serialization ---
+  ✓ dumpTypedDocument Nat no directives
+  ✓ dumpTypedDocument Nat with YAML directive
+  ✓ dumpTypedDocument String with directive
+  ✓ dumpTypedDocuments empty
+  ✓ dumpTypedDocuments single
+  ✓ dumpTypedDocuments two
+
+--- Config variations ---
+  ✓ double-quoted config
+  ✓ single-quoted config
+  ✓ custom indent array
+  ✓ double-quoted round-trips
+  ✓ single-quoted round-trips
+  ✓ indent 4 array round-trips
+
+=== Results: 68/68 passed ===

@@ -1,0 +1,57 @@
+=== Scanner Tests ===
+=== Scanner & TokenParser Tests (Phase 9) ===
+
+--- Scanner basics ---
+  ✓ empty input scans
+  ✓ empty produces 2 tokens
+  ✓ whitespace only
+  ✓ comment only
+  ✓ streamStart is first
+  ✓ streamEnd is last
+
+--- Plain scalars ---
+  ✓ simple word
+  ✓ plain style
+  ✓ plain with spaces
+
+--- Quoted scalars ---
+  ✓ double-quoted content
+  ✓ double-quoted style
+  ✓ double-quoted newline
+  ✓ single-quoted content
+  ✓ single-quoted style
+  ✓ single-quoted escape
+
+--- Block sequences ---
+  ✓ simple list size
+  ✓ single item
+
+--- Block mappings ---
+  ✓ simple mapping size
+  ✓ mapping key
+  ✓ mapping value
+
+--- Flow collections ---
+  ✓ flow sequence size
+  ✓ flow mapping size
+
+--- Document markers ---
+  ✓ explicit doc start
+  ✓ doc start/end
+
+--- Anchors and aliases ---
+  ✓ anchor scan
+  ✓ alias scan
+
+--- Phase 9 regression: b: x: y ---
+  ✓ b: x: y scans
+  ✓ b: x: y pipeline
+  ✓ b: x: y key is b
+  ✓ b: x: y val is {x: y}
+
+--- Escape sequences ---
+  ✓ tab escape
+  ✓ hex escape \x41
+  ✓ unicode \u0041
+
+=== Results: 33/33 passed ===
