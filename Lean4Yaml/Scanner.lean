@@ -40,6 +40,39 @@ Internally it uses `ScannerState` to track:
 4. **Context-sensitive.** The same character sequence may tokenize differently
    depending on indentation level, flow/block context, and scalar style.
 
+## Production Rule Contracts
+
+Each scanning function documents which YAML 1.2.2 production(s) it implements
+and the contract governing its variables and state transitions.
+
+### Variable Classification
+
+Every numeric variable in the scanner has exactly one of these roles:
+
+- **Position** (absolute column, 0-based): the column where something is or
+  must be. Indentation levels are positions. Examples: `parentIndent`,
+  `contentIndent`, `s.col`, `currentIndent`.
+
+- **Distance** (character count): how many characters of a particular kind.
+  Always non-negative. Examples: `explicitIndent` (the `m` in `s-indent(m)`),
+  `spacesConsumed`.
+
+- **Pos** (`YamlPos`): a full (offset, line, col) triple for token attribution.
+  Examples: `startPos`, `simpleKey.pos`.
+
+The fundamental relationship: `Position = Position + Distance`.
+Never add two Positions or use a Distance where a Position is expected.
+
+### Pre/Post-Condition Style
+
+Each scanning function specifies:
+
+- **Implements**: YAML 1.2.2 production number(s) and section.
+- **Pre**: Required scanner state at entry (position, context, expectations).
+- **Post**: Scanner state at exit (position advanced past matched content,
+  token(s) emitted, flags set).
+- **Error**: Conditions under which `Except.error` is returned.
+
 ## References
 
 - libyaml `scanner.c` (~2800 lines)
@@ -183,8 +216,23 @@ def isIndicator (c : Char) : Bool :=
   c ∈ ['-', '?', ':', ',', '[', ']', '{', '}', '#', '&', '*', '!', '|', '>',
        '\'', '"', '%', '@', '`']
 
-/-! ## Whitespace Consumption -/
+/-! ## Whitespace Consumption
 
+    YAML 1.2.2 distinguishes two kinds of horizontal whitespace:
+    - `[31] s-space` = `#x20` (space only)
+    - `[32] s-tab`  = `#x09` (tab only)
+    - `[33] s-white` = `s-space | s-tab`
+
+    Indentation ([63] `s-indent(n)` = `s-space × n`) uses **spaces only**.
+    Separation ([66] `s-separate-in-line` = `s-white+`) allows **spaces + tabs**.
+
+    `skipSpaces`     — matches `s-space*`  (for `s-indent`)
+    `skipWhitespace` — matches `s-white*`  (for `s-separate-in-line`)
+-/
+
+/-- Skip zero or more `s-white` characters (spaces + tabs).
+    Implements `s-white*` — use for `s-separate-in-line` ([66]) contexts.
+    **Not** for indentation. See `skipSpaces` for `s-indent`. -/
 def skipWhitespace (s : ScannerState) : ScannerState := Id.run do
   let mut s' := s
   let fuel := s.inputEnd - s.offset
@@ -194,6 +242,9 @@ def skipWhitespace (s : ScannerState) : ScannerState := Id.run do
     | none => break
   return s'
 
+/-- Skip zero or more `s-space` characters (spaces only, no tabs).
+    Implements `s-space*` — use for `s-indent(n)` ([63]) contexts.
+    YAML §6.1: "tab characters must not be used in indentation". -/
 def skipSpaces (s : ScannerState) : ScannerState := Id.run do
   let mut s' := s
   let fuel := s.inputEnd - s.offset
@@ -222,6 +273,22 @@ def consumeNewline (s : ScannerState) : ScannerState :=
     | _ => { s' with needIndentCheck := true }
   | _ => s
 
+/-- Advance past whitespace, comments, and line breaks to the next content character.
+
+    **Implements**: `s-l-comments` ([79]) and parts of `l-comment` ([78]).
+
+    Each iteration of the outer loop handles one "line" of skippable content:
+    1. Skip `s-separate-in-line` ([66]): `s-white*` (spaces + tabs) via `skipWhitespace`.
+    2. Skip optional comment: if `#`, consume to end of line.
+    3. If line break: consume it, set `simpleKeyAllowed`, continue to next line.
+    4. Otherwise: we've reached content — stop.
+
+    **Note on tabs**: This function uses `skipWhitespace` (spaces+tabs) which is
+    correct for `s-separate-in-line` within comments and trailing whitespace.
+    However, the resulting `s'.col` may include tab-inflated columns.
+    The caller (`scanNextToken`) uses `s'.col` for indentation comparison —
+    `s-indent(n)` requires spaces only. Tab rejection in indentation contexts
+    must be handled separately. See TODO(P10.6d.5). -/
 def skipToContent (s : ScannerState) : ScannerState := Id.run do
   let mut s' := s
   let fuel := s.inputEnd - s.offset + 1
@@ -748,59 +815,100 @@ where
         | _ => go rest (acc.push ' ') false
     | c :: rest, acc, _ => go rest (acc.push c) false
 
+/-- Scan a block scalar (literal `|` or folded `>`).
+
+    **Implements** (YAML 1.2.2 §8.1):
+    - `[170] c-l+literal(n)` = `"|" c-b-block-header(t,m) l-literal-content(n+m,t)`
+    - `[174] c-l+folded(n)`  = `">" c-b-block-header(t,m) l-folded-content(n+m,t)`
+    - `[162] c-b-block-header(t,m)` = `(c-indentation-indicator(m) c-chomping-indicator(t) | ...) s-b-comment`
+    - `[163] c-indentation-indicator(m)` = `ns-dec-digit` (explicit) | `ε` (auto-detect)
+    - `[164] c-chomping-indicator(t)` = `"-"` (STRIP) | `"+"` (KEEP) | `ε` (CLIP)
+    - `[171] l-nb-literal-text(n)` = `l-empty(n,BLOCK-IN)* s-indent(n) nb-char+`
+    - `[63]  s-indent(n)` = `s-space × n`  ← **spaces only**
+
+    **Variable classification:**
+    | Variable          | Kind     | Spec equivalent | Description |
+    |-------------------|----------|-----------------|-------------|
+    | `startPos`        | Pos      | —               | Position of `\|`/`>` for token attribution |
+    | `parentIndent`    | Position | `n`             | Column of `\|`/`>` indicator (caller's indent level) |
+    | `explicitOffset`  | Distance | `m` (explicit)  | 1–9 from `c-indentation-indicator`, or `none` |
+    | `minContentIndent`| Position | `n + 1`         | Floor: spec requires `m ≥ 1`, so content ≥ `n + 1` |
+    | `contentIndent`   | Position | `n + m`         | Target column for content lines |
+    | `spacesConsumed`  | Distance | count in `s-indent(n+m)` | Spaces matched at start of content line |
+
+    **Pre**: Scanner at `|` or `>`. `s.col` = `n` (parent indent level).
+    **Post**: Scanner past block scalar content. Emits `.scalar content style`.
+    **Error**: Missing newline after header. -/
 def scanBlockScalar (s : ScannerState) : Except String ScannerState := do
-  let startPos := s.currentPos
+  let startPos := s.currentPos  -- Pos: position of `|`/`>` indicator
   let isLiteral := s.peek? == some '|'
   let s' := s.advance
-  -- Parse header
-  let (chomp, explicitIndent, s') := Id.run do
+  -- Parse header: c-b-block-header(t,m) [162]
+  let (chomp, explicitOffset, s') := Id.run do
     let mut s' := s'
-    let mut chomp : ChompStyle := .clip
-    let mut explicitIndent : Option Nat := none
+    let mut chomp : ChompStyle := .clip          -- t: c-chomping-indicator [164]
+    let mut explicitOffset : Option Nat := none  -- m: c-indentation-indicator [163] (Distance)
     for _ in [:2] do
       match s'.peek? with
       | some '-' => chomp := .strip; s' := s'.advance
       | some '+' => chomp := .keep; s' := s'.advance
       | some c =>
         if c.isDigit && c != '0' then
-          explicitIndent := some (c.toNat - '0'.toNat)
+          explicitOffset := some (c.toNat - '0'.toNat)  -- Distance: 1–9
           s' := s'.advance
       | none => pure ()
-    return (chomp, explicitIndent, s')
-  let s' := skipWhitespace s'
+    return (chomp, explicitOffset, s')
+  -- s-b-comment: skip trailing whitespace and optional comment after header
+  let s' := skipWhitespace s'  -- s-separate-in-line [66]: s-white* (tabs ok here)
   let s' := match s'.peek? with
-    | some '#' => skipToEndOfLine s'
+    | some '#' => skipToEndOfLine s'  -- c-nb-comment-text [77]
     | _ => s'
-  -- Consume newline after header
+  -- b-comment [76]: consume newline after header
   let s' ← match s'.peek? with
     | some c =>
       if isLineBreak c then .ok (consumeNewline s')
       else if !s'.hasMore then .ok s'
       else .error s!"expected newline after block scalar header at line {s'.line}"
     | none => .ok s'
-  -- Determine content indentation
+  -- Determine content indentation: n+m
+  -- parentIndent (Position) = n = column of `|`/`>` indicator
   let parentIndent := s.col
-  let contentIndent := match explicitIndent with
-    | some n => parentIndent + n
-    | none => Id.run do
-      let mut probe := s'
-      let mut detected := parentIndent + 1
-      let fuel := s.inputEnd - probe.offset + 1
-      for _ in [:fuel] do
-        probe := skipSpaces probe
-        match probe.peek? with
-        | some c =>
-          if isLineBreak c then probe := consumeNewline probe
-          else detected := probe.col; break
-        | none => break
-      return detected
-  -- Collect content
+  -- minContentIndent (Position) = n+1: spec §8.1.3 requires m ≥ 1
+  let minContentIndent := parentIndent + 1
+  let contentIndent := match explicitOffset with
+    | some m =>
+      -- Explicit: contentIndent (Position) = parentIndent (Position) + m (Distance)
+      parentIndent + m
+    | none =>
+      -- Auto-detect: scan ahead past blank lines to find first content line.
+      -- The detected column must respect the floor (minContentIndent).
+      -- Uses skipSpaces (not skipWhitespace) because s-indent uses spaces only [63].
+      Id.run do
+        let mut probe := s'
+        let fuel := s.inputEnd - probe.offset + 1
+        for _ in [:fuel] do
+          probe := skipSpaces probe
+          match probe.peek? with
+          | some c =>
+            if isLineBreak c then probe := consumeNewline probe
+            else
+              -- detectedIndent (Position) = first content line's column
+              -- contentIndent = max(minContentIndent, detectedIndent)
+              -- If detectedIndent < minContentIndent, scalar has no content
+              -- (the collection loop will terminate immediately).
+              return max minContentIndent probe.col
+          | none => break
+        return minContentIndent  -- no content found; use floor
+  -- Collect content: l-literal-content / l-folded-content
+  -- Each content line must match: s-indent(contentIndent) nb-char+
+  -- Empty lines (l-empty): s-indent(≤contentIndent) b-as-line-feed
   let (rawContent, s') := Id.run do
     let mut s' := s'
     let mut rawContent := ""
     let fuel := s.inputEnd - s'.offset + 1
     for _ in [:fuel] do
-      let (spacesConsumed, s'') := Id.run do
+      -- Try to consume s-indent(contentIndent): exactly `contentIndent` spaces [63]
+      let (spacesConsumed, s'') := Id.run do  -- spacesConsumed: Distance
         let mut s' := s'
         let mut cnt := (0 : Nat)
         for _ in [:contentIndent] do
@@ -813,11 +921,14 @@ def scanBlockScalar (s : ScannerState) : Except String ScannerState := do
       | none => break
       | some c =>
         if isLineBreak c then
+          -- l-empty line: fewer than contentIndent spaces followed by line break
           rawContent := rawContent.push '\n'
           s' := consumeNewline s'
         else if spacesConsumed < contentIndent && !isLineBreak c then
+          -- Less-indented non-empty line: end of block scalar content
           break
         else
+          -- nb-char+: content characters until line break
           let innerFuel := s.inputEnd - s'.offset + 1
           for _ in [:innerFuel] do
             match s'.peek? with
@@ -827,16 +938,16 @@ def scanBlockScalar (s : ScannerState) : Except String ScannerState := do
           | some c' => if isLineBreak c' then rawContent := rawContent.push '\n'; s' := consumeNewline s'
           | none => pure ()
     return (rawContent, s')
-  -- Apply chomp
+  -- Apply chomp: c-chomping-indicator(t) [164]
   let stripTrailingNewlines (str : String) : String :=
     String.ofList (str.toList.reverse.dropWhile (· == '\n') |>.reverse)
   let content := match chomp with
-    | .strip => stripTrailingNewlines rawContent
+    | .strip => stripTrailingNewlines rawContent        -- t=STRIP: no final line breaks
     | .clip =>
       let stripped := stripTrailingNewlines rawContent
-      if rawContent.endsWith "\n" then stripped ++ "\n" else stripped
-    | .keep => rawContent
-  -- Apply folding
+      if rawContent.endsWith "\n" then stripped ++ "\n" else stripped  -- t=CLIP: single final
+    | .keep => rawContent                               -- t=KEEP: all trailing line breaks
+  -- Apply folding (for `>` only): l-folded-content [174]
   let content := if isLiteral then content else foldBlockContent content
   let style := if isLiteral then ScalarStyle.literal else ScalarStyle.folded
   .ok ({ s'.emitAt startPos (.scalar content style) with simpleKeyAllowed := false })
@@ -856,14 +967,32 @@ def saveSimpleKey (st : ScannerState) : ScannerState :=
         pos := st.currentPos } }
   else st
 
+/-- Scan the next token from the input.
+
+    **Implements**: Main dispatch loop for YAML token recognition.
+    Called repeatedly by `scan` until input is exhausted.
+
+    Flow:
+    1. `skipToContent` — advance past `s-l-comments` ([79])
+    2. Indent check — `unwindIndents` for block context (emits `blockEnd` tokens)
+    3. `saveSimpleKey` — record potential implicit key position
+    4. Character dispatch — delegate to specific scanner based on current char
+
+    **Pre**: Scanner state from previous token (or initial state).
+    **Post**: Scanner past one token. Token emitted. State updated.
+    **Error**: Unexpected character at current position. -/
 def scanNextToken (s : ScannerState) : Except String (Option ScannerState) := do
+  -- Step 1: Skip to content — s-l-comments [79]
   let s := skipToContent s
   if !s.hasMore then
     return none
+  -- Step 2: Indent check — unwind block collections when de-indented
+  -- Note: s.col here may include tab-inflated columns (see skipToContent note)
   let s := if !s.inFlow && s.needIndentCheck then
     let s := unwindIndents s s.col
     { s with needIndentCheck := false }
   else s
+  -- Step 3: Save simple key position for potential implicit key
   let s := saveSimpleKey s
   match s.peek? with
   | none =>
