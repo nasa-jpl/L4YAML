@@ -1,17 +1,17 @@
 import Lean4Yaml.Grammar
 import Lean4Yaml.Stream
-import Lean4Yaml.Parser.Combinators
-import Lean4Yaml.Parser.Scalar
-import Lean4Yaml.Parser.Document
 
 /-!
 # Structural Validation Correctness Proofs
 
 This module proves properties of the validation architecture used
 throughout the YAML parser: the backtracking-safe validation error
-channel, the explicit decision types (`DispatchResult`,
-`ContinuationCheck`, `FoldResult`, `DocumentResult`), and the
-indentation invariant.
+channel, the `FoldResult` decision type, and the indentation invariant.
+
+Old-parser-specific decision types (`DispatchResult`,
+`ContinuationCheck`, `DocumentResult`) were removed in P10.3 —
+they have no consumers outside the old parser pipeline
+(Parser/*.lean, which will be deleted in P10.6).
 
 ## Proof Groups
 
@@ -21,8 +21,8 @@ indentation invariant.
 2. **Indentation structural properties** (§2): `Indented n cs → cs.length ≥ n`,
    prefix-spaces characterisation, monotonicity.
 
-3. **Decision type discrimination** (§3): each pair of distinct constructors
-   is provably disjoint — formalising the "no exceptions for decisions" principle.
+3. **FoldResult discrimination** (§3): the two constructors are provably
+   disjoint — formalising the "no exceptions for decisions" principle.
 
 4. **ValidNode structural properties** (§4): injectivity, empty collections.
 
@@ -149,42 +149,16 @@ theorem indented_implies_atLeast {n : Nat} {cs : List Char}
 theorem indentedAtLeast_zero (cs : List Char) : IndentedAtLeast 0 cs :=
   ⟨0, Nat.le_refl 0, Indented.zero cs⟩
 
-/-! ## §3  Decision Type Discrimination
+/-! ## §3  FoldResult Discrimination
 
-The parser uses four explicit result types instead of exceptions.
-Each type's constructors are provably disjoint — this is the formal
-foundation for the "no exceptions for decisions" architecture.
+`FoldResult` (Grammar.lean) is a two-valued result type for quoted-scalar
+line folding. Its constructors are provably disjoint — formalising the
+"no exceptions for decisions" principle for fold operations.
 
-### DispatchResult
-
-Three-valued dispatch for structural alternatives:
-- `.matched val` — parser succeeded
-- `.noMatch`     — no alternative matched (try something else)
-- `.invalid msg` — input is definitely invalid
+Old-parser decision types (`DispatchResult`, `ContinuationCheck`,
+`DocumentResult`) had theorems here in prior phases. Those types are
+parser-internal (Parser/*.lean) and will be removed in P10.6.
 -/
-
-/-- `.invalid` is never `.matched`. -/
-theorem dispatchResult_invalid_ne_matched {α : Type} (msg : String) (val : α) :
-    DispatchResult.invalid msg ≠ DispatchResult.matched val := by
-  exact nofun
-
-/-- `.invalid` is never `.noMatch`. -/
-theorem dispatchResult_invalid_ne_noMatch {α : Type} (msg : String) :
-    DispatchResult.invalid (α := α) msg ≠ DispatchResult.noMatch := by
-  exact nofun
-
-/-- `.matched` is never `.noMatch`. -/
-theorem dispatchResult_matched_ne_noMatch {α : Type} (val : α) :
-    DispatchResult.matched val ≠ (DispatchResult.noMatch : DispatchResult α) := by
-  exact nofun
-
-/-- Every `DispatchResult` is one of the three constructors. -/
-theorem dispatchResult_exhaustive {α : Type} (r : DispatchResult α) :
-    (∃ v, r = .matched v) ∨ r = .noMatch ∨ (∃ msg, r = .invalid msg) := by
-  match r with
-  | .matched v => exact Or.inl ⟨v, rfl⟩
-  | .noMatch => exact Or.inr (Or.inl rfl)
-  | .invalid msg => exact Or.inr (Or.inr ⟨msg, rfl⟩)
 
 /-! ### FoldResult
 
@@ -204,73 +178,6 @@ theorem foldResult_exhaustive (r : FoldResult) :
   match r with
   | .folded s => exact Or.inl ⟨s, rfl⟩
   | .forbidden msg => exact Or.inr ⟨msg, rfl⟩
-
-/-! ### DocumentResult
-
-Three-valued result for document parsing:
-- `.parsed doc` — successfully parsed a document
-- `.endOfStream` — no remaining input
-- `.stalled pos` — input remains but can't be parsed
--/
-
-/-- `.stalled` is never `.parsed`. -/
-theorem documentResult_stalled_ne_parsed (pos : YamlPos) (doc : YamlDocument) :
-    DocumentResult.stalled pos ≠ DocumentResult.parsed doc := by
-  exact nofun
-
-/-- `.stalled` is never `.endOfStream`. -/
-theorem documentResult_stalled_ne_endOfStream (pos : YamlPos) :
-    DocumentResult.stalled pos ≠ DocumentResult.endOfStream := by
-  exact nofun
-
-/-- `.endOfStream` is never `.parsed`. -/
-theorem documentResult_endOfStream_ne_parsed (doc : YamlDocument) :
-    DocumentResult.endOfStream ≠ DocumentResult.parsed doc := by
-  exact nofun
-
-/-- Every `DocumentResult` is one of the three constructors. -/
-theorem documentResult_exhaustive (r : DocumentResult) :
-    (∃ doc, r = .parsed doc) ∨ r = .endOfStream ∨ (∃ pos, r = .stalled pos) := by
-  match r with
-  | .parsed doc => exact Or.inl ⟨doc, rfl⟩
-  | .endOfStream => exact Or.inr (Or.inl rfl)
-  | .stalled pos => exact Or.inr (Or.inr ⟨pos, rfl⟩)
-
-/-! ### ContinuationCheck
-
-Five-valued result for plain scalar continuation detection:
-- `.notContinuing` — dedent / end of input / document boundary
-- `.plainContinuation` — regular content continuation
-- `.afterEmpty n` — continuation after blank lines
-- `.sequenceMarker` — line starts with `- `
-- `.mappingEntry` — line contains `: `
--/
-
-/-- `.sequenceMarker` is never `.plainContinuation`. -/
-theorem continuationCheck_seq_ne_plain :
-    ContinuationCheck.sequenceMarker ≠ ContinuationCheck.plainContinuation := by
-  exact nofun
-
-/-- `.mappingEntry` is never `.plainContinuation`. -/
-theorem continuationCheck_map_ne_plain :
-    ContinuationCheck.mappingEntry ≠ ContinuationCheck.plainContinuation := by
-  exact nofun
-
-/-- `.notContinuing` is never `.plainContinuation`. -/
-theorem continuationCheck_notCont_ne_plain :
-    ContinuationCheck.notContinuing ≠ ContinuationCheck.plainContinuation := by
-  exact nofun
-
-/-- Every `ContinuationCheck` is one of the five constructors. -/
-theorem continuationCheck_exhaustive (r : ContinuationCheck) :
-    r = .notContinuing ∨ r = .plainContinuation ∨
-    (∃ n, r = .afterEmpty n) ∨ r = .sequenceMarker ∨ r = .mappingEntry := by
-  match r with
-  | .notContinuing => exact Or.inl rfl
-  | .plainContinuation => exact Or.inr (Or.inl rfl)
-  | .afterEmpty n => exact Or.inr (Or.inr (Or.inl ⟨n, rfl⟩))
-  | .sequenceMarker => exact Or.inr (Or.inr (Or.inr (Or.inl rfl)))
-  | .mappingEntry => exact Or.inr (Or.inr (Or.inr (Or.inr rfl)))
 
 /-! ## §4  ValidNode Structural Properties
 

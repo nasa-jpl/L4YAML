@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml.Types
 import Lean4Yaml.Stream
+import Lean4Yaml.Grammar
 import Lean4Yaml.Parser.Combinators
 import Lean4Yaml.YamlSpec
 
@@ -38,6 +39,7 @@ namespace Lean4Yaml.Parse
 open Parser
 open Parser.Char
 open Lean4Yaml
+open Lean4Yaml.Grammar (FoldResult)
 
 /-! ## Double-Quoted Scalars
   **YAML 1.2.2**: [107] c-double-quoted(n,c) (§7.3.1, https://yaml.org/spec/1.2.2/#731-double-quoted-style) -/
@@ -95,36 +97,7 @@ where
       setValidationError s!"invalid unicode code point: {code}"
       return '\uFFFD'
 
-/-! ## Quoted Scalar Fold Result Type -/
-
-/--
-Result of folding newlines in a quoted scalar continuation line.
-
-YAML 1.2.2 §9.1.2 production [206] defines `c-forbidden`: the sequences
-`--- ` and `... ` at column 0 (start-of-line) followed by whitespace,
-line break, or end-of-input are document boundary markers that terminate
-document content. Inside a quoted scalar, encountering `c-forbidden` on
-a continuation line means the scalar was never closed — this is
-definitively invalid YAML.
-
-Without an explicit result type, backtracking would swallow the error
-and some enclosing combinator might silently accept part of the input.
-This follows the same explicit-result-type pattern as:
-- `DispatchResult`: three-valued dispatch (matched/noMatch/invalid)
-- `DocumentResult`: document parsing (parsed/endOfStream/stalled)
-- `ContinuationCheck`: plain scalar continuation classification
-
-See ANALYSIS.md §2.F and §6 table.
--/
-inductive FoldResult where
-  /-- Successfully folded the continuation. `result` is the accumulated
-      string with the fold applied (space or preserved newlines). -/
-  | folded (result : String)
-  /-- Found a `c-forbidden` document boundary indicator (`---` or `...`)
-      at column 0 on a continuation line. The quoted scalar is unterminated.
-      This is definitively invalid — not a backtracking opportunity. -/
-  | forbidden (msg : String)
-  deriving Repr, Nonempty
+-- FoldResult relocated to Grammar.lean in P10.3
 
 /--
 Fold newlines in a quoted scalar

@@ -2,7 +2,7 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Lean4Yaml.Parser.Scalar
+import Lean4Yaml.Grammar
 
 /-!
 # Pure String and List Properties (Layer 1b + 1d)
@@ -28,7 +28,7 @@ that constitute their implementation.
 namespace Lean4Yaml.Proofs.StringProperties
 
 open Lean4Yaml
-open Lean4Yaml.Parse (FoldResult)
+open Lean4Yaml.Grammar (FoldResult)
 
 /-! ## §3  Auxiliary List Lemmas -/
 
