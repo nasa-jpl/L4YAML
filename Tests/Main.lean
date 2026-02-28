@@ -1,5 +1,4 @@
 import Lean4Yaml.Types
-import Lean4Yaml.Stream
 import Tests.VerifiedResult
 
 /-
@@ -66,38 +65,6 @@ def testYamlDocument (state : IO.Ref TestCollector) : IO Unit := do
     check state "YAML directive version correct" (ver == "1.2")
   | _ => check state "YAML directive version correct" false
 
-/-! ## Stream tests -/
-
-def testYamlStream (state : IO.Ref TestCollector) : IO Unit := do
-  setCategory state "YamlStream"
-  let stream := YamlStream.ofString "ab\ncd"
-
-  check state "Initial position (0,0)" (stream.line == 0 && stream.col == 0)
-
-  match stream.next? with
-  | some ('a', s1) =>
-    check state "First char is 'a'" true
-    check state "Column advances to 1" (s1.col == 1)
-    match s1.next? with
-    | some ('b', s2) =>
-      match s2.next? with
-      | some ('\n', s3) =>
-        check state "Newline resets col to 0, increments line to 1" (s3.line == 1 && s3.col == 0)
-        match s3.next? with
-        | some ('c', s4) =>
-          check state "After 'c': position (1,1)" (s4.line == 1 && s4.col == 1)
-        | _ => check state "After 'c': position (1,1)" false
-      | _ => check state "Newline resets col to 0, increments line to 1" false
-    | _ => check state "Column advances to 1" false
-  | _ => check state "First char is 'a'" false
-
-  match stream.peek? with
-  | some 'a' => check state "peek? returns 'a' without advancing" true
-  | _ => check state "peek? returns 'a' without advancing" false
-
-  let empty := YamlStream.ofString ""
-  check state "Empty stream has no next" (!empty.hasNext)
-
 def testYamlPos (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "YamlPos"
   let p1 : YamlPos := { offset := 0, line := 0, col := 0 }
@@ -111,7 +78,6 @@ def collectTests : IO VerifiedSuiteResult := do
   testScalarStyles state
   testYamlValueConstruction state
   testYamlDocument state
-  testYamlStream state
   testYamlPos state
   let results ← finish state
   return { name := "tests", label := "Unit Tests", sourceFile := "Tests/Main.lean", tests := results }

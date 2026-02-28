@@ -384,7 +384,8 @@ def collStyle (input : String) : Option CollectionStyle :=
 
 -- Block scalar content (literal preserves line breaks)
 #guard match parseYamlSingle "|\n  line1\n  line2\n" with
-  | .ok (.scalar s) => s.content.containsSubstr "line1" && s.content.containsSubstr "line2"
+  | .ok (.scalar s) =>
+    let c := s.content; (c.splitOn "line1").length > 1 && (c.splitOn "line2").length > 1
   | _ => false
 
 end Lean4Yaml.Tests.Suite

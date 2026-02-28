@@ -6,9 +6,12 @@ A YAML 1.2.2 parser in Lean 4 with the goal of **verified correctness** — proo
 
 ```
 Lean4Yaml/
-├── Types.lean               # YamlValue AST (shared with lean4-yaml)
-├── Stream.lean              # Position-aware YamlStream with line/col tracking
+├── Types.lean               # YamlValue AST, YamlPos position tracking
+├── YamlSpec.lean            # YAML 1.2.2 spec cross-references
 ├── Grammar.lean             # Formal YAML grammar as Lean Props
+├── Token.lean               # YamlToken inductive + Positioned + TokenStream
+├── Scanner.lean             # Character → Token scanner (L-layer, 132 productions)
+├── TokenParser.lean         # Token → AST grammar parser (S-layer, 54 productions)
 ├── Emitter.lean             # Canonical YAML emitter (YamlValue → String)
 ├── Dump.lean                # Style-aware dump: YamlValue → DumpConfig → String
 ├── Schema.lean              # Core Schema §10.3: YamlType, resolve, resolveImplicit
@@ -18,28 +21,23 @@ Lean4Yaml/
 │   ├── Deriving.lean        # deriving FromYaml, ToYaml macro handlers
 │   ├── Dump.lean            # Schema↔Dump integration: dumpTyped, roundTripTyped
 │   └── Api.lean             # Convenience: parseAs, toYaml, parseTyped
-├── Token.lean               # Phase 9: YamlToken inductive + Positioned + TokenStream
-├── Scanner.lean             # Phase 9: Character → Token scanner (L-layer, 132 productions)
-├── TokenParser.lean         # Phase 9: Token → AST grammar parser (S-layer, 54 productions)
-├── Parser/
-│   ├── Combinators.lean     # Character classification & basic parsers
-│   ├── Scalar.lean          # Plain, quoted, and block scalar parsers
-│   ├── Flow.lean            # Flow sequences [...] and mappings {...}
-│   ├── Block.lean           # Block sequences (- item) and mappings (key: value)
-│   └── Document.lean        # Document markers, directives, multi-document streams
-│   ├── Anchor.lean          # Anchor (&) / alias (*) parsers with contracts
-│   ├── Tag.lean             # Tag (!) parsers: `!!type`, `!local`, `!<uri>`, `!h!suffix`
 ├── Proofs/
-│   ├── Termination.lean           # Termination proofs for recursive parsers
-│   ├── Soundness.lean             # Parser produces only valid YAML (planned)
+│   ├── Soundness.lean             # Parser produces only valid YAML
+│   ├── Completeness.lean          # Valid YAML parses successfully (DecidableEq + native_decide)
+│   ├── Composition.lean           # Scanner→TokenParser pipeline composition
 │   ├── RoundTrip.lean             # Round-trip: parse ∘ emit = id (58 theorems + 63 guards)
 │   ├── BlockScalarContracts.lean  # Block scalar A/G contracts (axiom-free)
+│   ├── DocumentContracts.lean     # Document parser A/G contracts
 │   ├── CharClass.lean             # Character classification proofs
+│   ├── StringProperties.lean      # String manipulation proofs
+│   ├── EscapeResolution.lean      # Escape sequence resolution proofs
+│   ├── FoldNewlines.lean          # Newline folding proofs
+│   ├── ScannerIndent.lean         # Scanner indentation tracking proofs
 │   ├── SchemaResolution.lean      # Schema resolution proofs (35 theorems + 31 guards)
 │   ├── SchemaDump.lean            # Schema↔Dump proofs (40 theorems + 24 guards)
-│   ├── ScannerProofs.lean         # Phase 9 scanner proofs (53 theorems + 55 guards)
-│   ├── TestSuite.lean             # yaml-test-suite as compile-time checks (blocked)
-│   └── SuiteGuards/               # Auto-generated #guard tests (350 tests, 6 files)
+│   ├── DumpRoundTrip.lean         # Dump round-trip proofs
+│   ├── TestSuite.lean             # yaml-test-suite as compile-time checks
+│   └── SuiteGuards/               # Auto-generated #guard tests (358 tests, 6 files)
 │       ├── Scalar.lean            # 53 scalar stage guards
 │       ├── Flow.lean              # 43 flow stage guards
 │       ├── Block.lean             # 83 block stage guards
@@ -48,25 +46,21 @@ Lean4Yaml/
 │       └── Error.lean             # 92 error stage guards
 └── Tests/
     ├── VerifiedResult.lean  # Shared result types (VerifiedSuiteResult, TestCollector)
-    ├── Main.lean            # Unit tests (17 tests)
-    ├── ParseTest.lean       # Parser integration tests (25 tests)
-    ├── QuotedFolding.lean   # Quoted scalar folding tests (34 tests)
-    ├── AnchorAlias.lean     # Anchor/alias tests (33 tests)
-    ├── TagTests.lean        # Tag tests (44 tests)
-    ├── Verification.lean    # Layer 1 verification tests (138 tests)
-    ├── StringLemmas.lean    # String/position lemma tests (129 tests)
-    ├── ValidationTests.lean # Structural validation tests (135 tests)
-    ├── CharClassTests.lean  # Grammar↔Combinators correspondence (224 tests)
+    ├── Main.lean            # Unit tests (types + position)
+    ├── ValidationTests.lean # Structural validation tests
     ├── ExplicitKeyTests.lean # Explicit key tests (66 tests)
     ├── FlowTests.lean       # Flow completeness tests (88 tests)
-    ├── FlowRegressionCheck.lean # Flow regression diagnostics (11 tests)
-    ├── ErrorStageDiag.lean  # Error-stage pipeline diagnostic (5 suite + 5 inline + 5 comparison)
-    ├── TryParse.lean        # Single-file parse binary (subprocess isolation)
-    ├── CheckStringPos.lean  # String position utility tests
+    ├── FlowRegressionCheck.lean # Flow regression diagnostics
+    ├── ErrorStageDiag.lean  # Error-stage pipeline diagnostic
+    ├── RawParseTests.lean   # Raw parse tests
+    ├── DumpRoundTrip.lean   # Dump round-trip tests
     ├── SpecExamples.lean    # YAML 1.2.2 spec example parse tests (132 examples)
-    ├── ScannerSpecExamples.lean # Phase 9: spec examples via scanner/parser pipeline (132 examples)
-    ├── ScannerTests.lean    # Phase 9: scanner/parser pipeline tests (33 tests)
+    ├── ScannerSpecExamples.lean # Spec examples via scanner/parser pipeline (132 examples)
+    ├── ScannerTests.lean    # Scanner/parser pipeline tests (33 tests)
     ├── SchemaDump.lean      # Schema↔Dump integration tests (68 tests)
+    ├── TryParse.lean        # Single-file parse binary (subprocess isolation)
+    ├── TryRoundTrip.lean    # Round-trip test binary
+    ├── TryDump.lean         # Dump test binary
     └── SuiteRunner/
         ├── Meta.lean        # Line-based yaml-test-suite file parser
         ├── Main.lean        # Programmatic yaml-test-suite runner
@@ -181,13 +175,11 @@ Built the complete parser from scratch on Lean 4.28.0-rc1 / Lake v5.0.0:
 | Module | Lines | Description |
 |--------|-------|-------------|
 | `Types.lean` | ~173 | YamlValue AST, YamlDocument, compatible with lean4-yaml |
-| `Stream.lean` | ~272 | Position-aware YamlStream with automatic line/col tracking |
+| `Types.lean` | ~500 | YamlValue AST, YamlPos position tracking, AnchorMap |
 | `Grammar.lean` | ~315 | Formal YAML grammar encoded as Lean Props |
-| `Combinators.lean` | ~215 | Character classification, whitespace/indent handling |
-| `Scalar.lean` | ~710 | Plain, double-quoted, single-quoted, block scalar parsers |
-| `Flow.lean` | ~420 | Flow sequences `[...]` and mappings `{...}` (mutual recursion, implicit single-pair entries §7.5, JSON-like key detection §7.4) |
-| `Block.lean` | ~352 | Block sequences and mappings with indentation tracking |
-| `Document.lean` | ~230 | Document markers `---`/`...`, directives, multi-document streams |
+| `Token.lean` | ~263 | YamlToken inductive, Positioned wrapper, TokenStream |
+| `Scanner.lean` | ~2,050 | Character → Token scanner (L-layer) |
+| `TokenParser.lean` | ~425 | Token → AST parser (S-layer) |
 
 </details>
 
@@ -3240,13 +3232,55 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 **Goal**: Remove the old parser and `lean4-parser` dependency.
 
 1. Delete `Lean4Yaml/Parser/` directory (7 files)
-2. Remove `import Lean4Yaml.Parser.*` lines from `Lean4Yaml.lean`
-3. Remove `[[require]] name = "Parser"` from `lakefile.toml`
-4. Remove `lean4-parser` entry from `lake-manifest.json`
-5. Clean up any remaining references in documentation, comments, README
-6. `lake clean && lake build` — full rebuild from scratch
+2. Delete `Lean4Yaml/Stream.lean` (old parser's char-level stream + lean4-parser integration)
+3. Delete `Lean4Yaml/Proofs/Termination.lean` (old parser termination proofs via `Parser.Stream.remaining`)
+4. Delete `Lean4Yaml/Proofs/Validation.lean` (dead leaf — not imported by any file)
+5. Relocate `YamlPos` struct from `Stream.lean` to `Types.lean` (pure struct, no lean4-parser dependency)
+6. Remove `import Lean4Yaml.Parser.*`, `import Lean4Yaml.Stream`, `import Lean4Yaml.Proofs.Termination`, `import Lean4Yaml.Proofs.Soundness` (unused) from `Lean4Yaml.lean`
+7. Update imports in `Token.lean`, `Soundness.lean`, `Completeness.lean`, `BlockScalarContracts.lean`, `DocumentContracts.lean`, `SuiteGuards/Error.lean`
+8. Remove `[[require]] name = "Parser"` from `lakefile.toml`
+9. Remove `lean4-parser` entry from `lake-manifest.json`
+10. Delete 10 old-parser test files and their runners; remove corresponding `lean_lib`/`lean_exe` targets from `lakefile.toml`
+11. Strip `testValidationErrorSemantics` from `Tests/ValidationTests.lean` (used `YamlStream`)
+12. Strip `testYamlStream` from `Tests/Main.lean` (used `YamlStream`)
+13. Fix `String.containsSubstr` in `TestSuite.lean` (lost with lean4-parser's transitive Batteries import)
+14. `lake clean && lake build` — full rebuild from scratch
 
 **Validation gate**: Clean build with zero warnings. All tests pass. No references to `lean4-parser` or `Lean4Yaml.Parser.*` in any `.lean` file.
+
+**Status**: ✅ Complete (2026-02-28).
+
+**Files deleted** (29 files):
+- `Lean4Yaml/Parser/` directory: `Anchor.lean`, `Block.lean`, `Combinators.lean`, `Document.lean`, `Flow.lean`, `Scalar.lean`, `Tag.lean` (7 files, ~4,400 lines)
+- `Lean4Yaml/Stream.lean` (429 lines — lean4-parser `Parser.Stream` instance, `YamlStream`, `YamlParser`, `YamlError`, monadic helpers)
+- `Lean4Yaml/Proofs/Termination.lean` (165 lines — old parser termination via `Parser.Stream.remaining`)
+- `Lean4Yaml/Proofs/Validation.lean` (232 lines — dead leaf, `YamlStream` struct orthogonality proofs)
+- Test files: `AnchorAlias.lean`, `CharClassTests.lean`, `CompletenessTests.lean`, `ParseTest.lean`, `QuotedFolding.lean`, `StringLemmas.lean`, `TagTests.lean`, `CheckStringPos.lean`, `IteratorTests.lean`, `ParserCompare.lean` + 8 runner directories (all old-parser tests)
+
+**Files modified** (10 files):
+- `Lean4Yaml/Types.lean`: added `YamlPos` struct + `Ord`/`LT`/`LE` instances (relocated from `Stream.lean`)
+- `Lean4Yaml/Token.lean`: removed `import Lean4Yaml.Stream` (only needed `YamlPos`, now in `Types.lean`)
+- `Lean4Yaml/Proofs/Completeness.lean`: removed unused imports `Stream`, `Soundness`, `Termination`
+- `Lean4Yaml/Proofs/Soundness.lean`: removed unused `import Lean4Yaml.Stream`
+- `Lean4Yaml/Proofs/BlockScalarContracts.lean`: changed `import Lean4Yaml.Stream` → `import Lean4Yaml.Types`
+- `Lean4Yaml/Proofs/DocumentContracts.lean`: changed `import Lean4Yaml.Stream` → `import Lean4Yaml.Types`
+- `Lean4Yaml/Proofs/SuiteGuards/Error.lean`: changed `import Lean4Yaml.Parser.Document` → `import Lean4Yaml.TokenParser`
+- `Lean4Yaml/Proofs/TestSuite.lean`: replaced `String.containsSubstr` with `String.splitOn` (lost transitive Batteries import)
+- `Tests/Main.lean`: removed `import Lean4Yaml.Stream`, deleted `testYamlStream` function
+- `Tests/ValidationTests.lean`: deleted `testValidationErrorSemantics` function (used `YamlStream`)
+
+**Build configuration changes**:
+- `lakefile.toml`: removed `[[require]] name = "Parser"`, removed 14 obsolete `lean_lib`/`lean_exe` targets
+- `lake-manifest.json`: removed `Parser` package entry
+- `Lean4Yaml.lean` root: removed 9 imports (7 × `Parser.*`, `Stream`, `Termination`, `Soundness`); updated module docstring
+
+**Build**: **37/37 jobs**. Zero `sorry`. Zero warnings.
+
+**Scope expanded beyond original plan**: 
+- The original plan listed 6 steps (delete Parser/, remove imports, remove requirement, clean build).
+- The actual scope was significantly larger because `Stream.lean` was the sole bridge between lean4-parser and the rest of the codebase — it defined `YamlPos`, `YamlStream`, `YamlParser`, `YamlError`, the `Parser.Stream` typeclass instance, and all monadic helpers.
+- Removing lean4-parser required relocating `YamlPos` to `Types.lean`, updating every file that imported `Stream.lean` (14 source files), and deleting/updating test files that used `YamlStream` or old parser functions.
+- The dependency audit (P10.5 session) identified all affected files before any deletions began.
 
 #### P10.7: Documentation & Spec Table Update
 
@@ -3273,9 +3307,10 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 | Category | Old Parser Era | After P10 | Change |
 |---|---|---|---|
 | **Parser implementation** | 4,403 (Parser/) + 1,606 (Token+Scanner+TokenParser) = 6,009 | 1,606 | −4,403 |
-| **Proofs** | 11,224 (pre-P10.5) | 7,696 (post-P10.5) | −3,528 deleted, +215 new = −3,313 |
-| **lean4-parser dependency** | Yes | No (after P10.6) | Removed |
-| **Net proof files** | 21 files | 17 files | 4 deleted (ParserSpecs, PerParserSpecs, FuelSufficiency, IndentConsumption); 1 new (ScannerIndent) |
+| **Stream** | 429 (Stream.lean) | 0 (YamlPos relocated to Types.lean) | −429 |
+| **Proofs** | 11,224 (pre-P10.5) | 7,696 (post-P10.5) → 7,299 (post-P10.6) | −3,925 |
+| **lean4-parser dependency** | Yes | No (removed in P10.6) | ✅ Removed |
+| **Net proof files** | 21 files | 15 files (post-P10.6) | 6 deleted; 1 new (ScannerIndent) |
 
 ### Dependencies
 
@@ -3283,8 +3318,8 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 - **P10.3** is trivial and can run in parallel with P10.2
 - **P10.4** depends on P10.3 (type relocation) for `FoldResult` imports
 - **P10.5** depends on P10.4 (adaptable proofs compile) and is the critical path — ✅ complete
-- **P10.6** depends on all of P10.1–P10.5 — ready to start
-- **P10.7** depends on P10.6
+- **P10.6** depends on all of P10.1–P10.5 — ✅ complete
+- **P10.7** depends on P10.6 — ready to start
 - **Phase 8** (comment preservation) should target the tokenized parser only — if P10 completes first, Phase 8 has a single implementation target
 
 ### Estimated Effort
@@ -3331,7 +3366,7 @@ Zero unexpected passes remaining. **H7TQ** (extra words after `%YAML` version di
 | **§5 Characters** | §5.1 Character set | ✅ | UTF-8 stream |
 | | §5.2 Character encodings | ✅ | UTF-8 only (BOM detection deferred) |
 | | §5.3 Indicator characters | ✅ | All indicators classified in `Combinators.lean` |
-| | §5.4 Line break characters | ✅ | CR, LF, CRLF handled in `Stream.lean` |
+| | §5.4 Line break characters | ✅ | CR, LF, CRLF handled in `Scanner.lean` |
 | | §5.5 White space characters | ✅ | Space + tab |
 | | §5.6 Miscellaneous characters | ✅ | |
 | | §5.7 Escaped characters | ✅ | All YAML 1.2 escape sequences including `\\`, `\n`, `\t`, `\x`, `\u`, `\U`, `\` + newline |

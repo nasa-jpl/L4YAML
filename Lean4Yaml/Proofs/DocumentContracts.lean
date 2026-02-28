@@ -3,7 +3,7 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml.Grammar
-import Lean4Yaml.Stream
+import Lean4Yaml.Types
 
 /-!
 # Document Parser Assume/Guarantee Contracts (Layer 1f)
