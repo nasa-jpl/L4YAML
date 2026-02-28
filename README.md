@@ -3081,12 +3081,12 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 
 ###### Unexpected challenges
 
-1. **`canStartPlainScalar` has no scanner-side equivalent.** 
-- The old parser exposed `Parse.canStartPlainScalar : Char → Option Char → Bool` as a standalone function. 
-- The scanner inlines this logic directly in `scanPlainScalar` — there is no standalone `Scanner.canStartPlainScalar`.
-- To preserve the correspondence theorems, we defined a local `canStartPlainScalarBool` predicate in `CharClass.lean` that matches the scanner's inline logic. 
-- This is accurate but fragile — if the scanner's logic changes, the local predicate must be updated manually. 
-- A cleaner solution would be to extract the scanner's inline logic into a named function, but that's a scanner refactoring task, not a proof migration task.
+1. **`canStartPlainScalar` was already in Scanner — just misnamed.** 
+- The old parser exposed `Parse.canStartPlainScalar : Char → Option Char → Bool` as a standalone function.
+- The scanner had the same logic in a function named `canStartPlain` (not `canStartPlainScalar`) — with an additional `inFlow : Bool` parameter for flow-context flow-indicator checks.
+- The initial P10.4 migration missed this function and defined a local `canStartPlainScalarBool` predicate in `CharClass.lean` to bridge the gap.
+- **Resolved**: Renamed `Scanner.canStartPlain` → `Scanner.canStartPlainScalar` to align with `Grammar.canStartPlainScalar` and the YAML spec name (`ns-plain-first(c)` §7.3.3 [123]). Removed the local predicate. The correspondence theorems now reference `Scanner.canStartPlainScalar` directly.
+- Bonus: the base theorem (`canStartPlainScalar_base`) is now universal over `inFlow` (the `else` branch is context-independent), and a new `canStartPlainScalar_exception_flow` theorem covers the flow-context case where exception characters additionally require a non-flow-indicator follower.
 
 2. **`DocumentResult` prevents clean decoupling of `DocumentContracts.lean`.**
 - The §3 contract (D3: DocumentResult Monotonicity) uses `DocumentResult.endOfStream` and `DocumentResult.stalled` — constructors of an old-parser-internal type.
