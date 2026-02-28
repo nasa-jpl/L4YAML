@@ -3443,6 +3443,206 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 — using the compiled `tryparse` binary to determine actual parser behavior at guard-generation time eliminates the need for manual UP tracking.
 - The guards always match reality.
 
+#### P10.6c: Test Diagnostics & Result Persistence
+
+**Goal**: Make test results queryable without re-running tests or parsing HTML. Every `suiterunner` invocation should produce machine-readable output that supports post-hoc filtering, diffing, and categorization — so that planning phases like P10.6d can be done from saved artifacts instead of live re-runs.
+
+**Motivation**: Planning P10.6d required multiple 40-second `suiterunner` runs, ad-hoc `grep` / `python` one-liners to categorize 87 UPs by stage, and manual cross-referencing of Error.lean guard comments with suiterunner console output. This work should be one `queryresults` command away.
+
+**Baseline** (post-P10.6b): `suiterunner --html docs/` produces `coverage-summary.json` with per-test outcome + per-stage aggregate stats + verified suite totals. Gaps:
+- Verified suite JSON has **no per-test detail** — only `{label, passed, total, allPass}`, no individual test names/outcomes/errors
+- No **standalone JSON mode** — `--html` writes HTML + JSON together; no `--json` flag for just the machine-readable data
+- No **parser output capture** — UP/fail entries record the error message string but not the actual parser output (token stream, AST)
+- No **diff capability** — comparing two runs requires manual `jq` on two JSON files
+- No **query tool** — filtering "all UPs by stage" or "all verified failures" requires ad-hoc `jq`/`python` one-liners
+- Console output mixes progress indicators with results, making pipe-based analysis fragile
+
+##### 10.6c.1 — Add `--json <dir>` flag to `suiterunner`
+
+Add a standalone JSON output mode that writes `coverage-summary.json` (and runs verified suites) without generating HTML. Faster for CI and scripted analysis.
+
+```bash
+suiterunner --json docs/           # JSON only, no HTML
+suiterunner --html docs/           # HTML + JSON (existing)
+suiterunner --json docs/ --snapshot  # timestamped snapshot (see 10.6c.5)
+```
+
+**Files**: `Tests/SuiteRunner/Main.lean`
+
+##### 10.6c.2 — Per-test detail in verified suite JSON
+
+Extend `JsonVerifiedSuite` to include per-test entries (category, name, outcome, error message) so that verified test failures are queryable from the JSON without re-running.
+
+**Files**: `Tests/SuiteRunner/HtmlReport.lean`, `Tests/VerifiedResult.lean`
+
+**Before** (current):
+```json
+{"label": "Explicit Key Tests", "passed": 39, "total": 55, "allPass": false}
+```
+
+**After**:
+```json
+{"label": "Explicit Key Tests", "passed": 39, "total": 55, "allPass": false,
+ "tests": [
+   {"category": "basic", "name": "simple explicit key", "outcome": "pass"},
+   {"category": "flow", "name": "nested flow explicit", "outcome": "fail",
+    "error": "expected mapping value"}
+ ]}
+```
+
+##### 10.6c.3 — Capture parser output for UP/fail tests
+
+For tests with outcome `unexpectedPass` or `fail`, capture the actual `tryparse` stdout (token stream / AST) and store it in the JSON entry's `"parserOutput"` field. This lets us categorize UPs by *what the parser produced* without re-running.
+
+**Files**: `Tests/SuiteRunner/Main.lean` (subprocess capture), `Tests/SuiteRunner/HtmlReport.lean` (JSON schema)
+
+**Before**:
+```json
+{"id": "VJP3", "outcome": "unexpectedPass",
+ "error": "expected parse failure but succeeded"}
+```
+
+**After**:
+```json
+{"id": "VJP3", "outcome": "unexpectedPass",
+ "error": "expected parse failure but succeeded",
+ "parserOutput": "ok\n- key: value\n  nested: flow\n"}
+```
+
+##### 10.6c.4 — `queryresults` Lean analysis tool
+
+Create a Lean executable (built by `lake`) that reads `coverage-summary.json` and supports common queries that previously required ad-hoc scripting:
+
+```bash
+# List all UPs grouped by stage
+.lake/build/bin/queryresults ups --by-stage
+
+# List all verified test failures with error messages
+.lake/build/bin/queryresults verified-failures
+
+# Diff two runs (additions, removals, outcome changes)
+.lake/build/bin/queryresults diff results-before.json results-after.json
+
+# Summary table (README-ready markdown)
+.lake/build/bin/queryresults summary
+
+# Filter by test ID pattern
+.lake/build/bin/queryresults filter --id "Y79Y*"
+
+# Export UP list for gen-suite-guards.py cross-reference
+.lake/build/bin/queryresults ups --ids-only
+```
+
+**Files**: `Tests/QueryResults.lean` (new), `lakefile.lean` (add `queryresults` executable target)
+
+##### 10.6c.5 — Timestamped result snapshots
+
+Add `--snapshot` flag that writes JSON to `results/<ISO-timestamp>.json` instead of overwriting `coverage-summary.json`. Creates a history of test runs for regression tracking across P10.6d implementation steps.
+
+```bash
+suiterunner --json results/ --snapshot
+# → results/2026-02-27T220000.json
+
+# Diff against previous snapshot:
+.lake/build/bin/queryresults diff results/2026-02-27T220000.json results/2026-02-28T140000.json
+```
+
+**Files**: `Tests/SuiteRunner/Main.lean`
+
+##### Validation gate
+
+- `suiterunner --json docs/` produces valid `coverage-summary.json` with per-test verified detail and parser output for UPs
+- `queryresults summary` output matches console summary (267/354 correct, 695/731 verified)
+- `queryresults ups --by-stage` correctly categorizes all 87 UPs (1 flow, 14 block, 2 document, 70 error)
+- `queryresults diff` detects insertions/removals/outcome changes between two result files
+- Build: 155/155, zero `sorry`, zero warnings
+
+**Status**: Not started.
+
+#### P10.6d: Fix Remaining Unexpected Passes (87 UPs)
+
+**Goal**: Make the tokenized parser correctly reject all 87 error-test inputs that it currently accepts (unexpected passes). Fixes are categorized by the earliest suiterunner stage where the UP manifests.
+
+**Baseline** (post-P10.6b): yaml-test-suite 267/354 correct (75.4%). 87 UPs = 87 error-tagged tests where the parser returns `.ok` instead of `.error`.
+
+##### 10.6d.1 — Flow validation (1 UP)
+
+| ID | Description | Root cause |
+|----|-------------|------------|
+| VJP3:0 | Flow collections over many lines | Parser does not enforce single-line constraint on flow collections in block context |
+
+**Fix area**: `Scanner.lean` flow collection handling — reject flow collections that span multiple lines when not nested inside another flow context.
+
+##### 10.6d.2 — Block / indentation validation (14 UPs)
+
+| ID | Description | Root cause |
+|----|-------------|------------|
+| 9MQT:1 | *(multi-variant)* | Incorrect acceptance of error variant |
+| DK95:1 | *(multi-variant)* | Incorrect acceptance of error variant |
+| DK95:6 | *(multi-variant)* | Incorrect acceptance of error variant |
+| JKF3:0 | Multiline unidented double quoted block key | Missing indentation check for implicit keys |
+| MUS6:0 | Directive variants | Missing directive validation |
+| Y79Y:3 | Tabs in various contexts | Tab-as-indentation not rejected |
+| Y79Y:4 | Tabs in various contexts | Tab-as-indentation not rejected |
+| Y79Y:5 | Tabs in various contexts | Tab-as-indentation not rejected |
+| Y79Y:6 | Tabs in various contexts | Tab-as-indentation not rejected |
+| Y79Y:7 | Tabs in various contexts | Tab-as-indentation not rejected |
+| Y79Y:8 | Tabs in various contexts | Tab-as-indentation not rejected |
+| Y79Y:9 | Tabs in various contexts | Tab-as-indentation not rejected |
+| ZYU8:2 | *(multi-variant)* | Incorrect acceptance of error variant |
+
+**Fix areas**:
+- `Scanner.lean` indentation tracking — reject tabs used as indentation (Y79Y, 7 variants)
+- `Scanner.lean` / `TokenParser.lean` — implicit key length/line validation (JKF3, DK95)
+- `Scanner.lean` directive handling — validate `%YAML`/`%TAG` directive syntax (MUS6, 9MQT)
+
+##### 10.6d.3 — Document boundary validation (2 UPs)
+
+| ID | Description | Root cause |
+|----|-------------|------------|
+| H7TQ:0 | Extra words on %YAML directive | `%YAML` directive accepts trailing garbage |
+| MUS6:1 | Directive variants | Second directive variant not validated |
+
+**Fix area**: `Scanner.lean` directive parsing — enforce strict `%YAML` / `%TAG` directive syntax per YAML 1.2.2 §6.8.1 and §6.8.2.
+
+##### 10.6d.4 — Error-only validation (70 UPs)
+
+These 70 UPs are error-tagged tests that do not appear in flow/block/document stages. They require general validation hardening across the parser:
+
+**Subcategory breakdown** (by root cause pattern):
+
+| Pattern | Count | Representative IDs | Fix area |
+|---------|-------|--------------------|----------|
+| **Indentation errors** | ~15 | 4EJS, 4HVU, DMG6, EW3V, N4JP, U44R, ZVH3, QB6E, W9L4, S98Z, 5LLU | `Scanner.lean` indent tracking |
+| **Flow syntax errors** | ~12 | 4H7K, 6JTT, 9C9N, 9JBA, 9MAG, CML9, CTN5, CVW2, KS4U, T833, N782 | `Scanner.lean` flow state machine |
+| **Mapping/sequence structure** | ~10 | 236B, 62EZ, 5U3A, BD7L, HU3P, TD5N, ZCZ6, ZL4Z, P2EQ, 6S55 | `TokenParser.lean` structure validation |
+| **Implicit key violations** | ~8 | 7LBH, 7MNF, D49Q, DK4H, G7JE, ZXT5, GDY7, 9CWY | `Scanner.lean` implicit key limits |
+| **Comment placement** | ~5 | 8XDJ, BF9H, BS4K, SU5Z, X4QW | `Scanner.lean` comment detection |
+| **Directive / document** | ~8 | 9HCY, 9MMA, B63P, EB22, RHX7, SF5V, QLJ7, CXX2 | `Scanner.lean` directive state |
+| **Trailing content** | ~5 | 3HFZ, JY7Z, Q4CL, RXY3, 5TRB | `TokenParser.lean` post-value validation |
+| **Anchor/tag errors** | ~5 | 4JVG, GT5M, H7J7, SR86, SU74, LHL4, U99R, G9HC, SY6V | `Scanner.lean` anchor/tag parsing |
+| **Multiline quoted** | ~2 | 2CMS, 9KBC | `Scanner.lean` quoted scalar rules |
+
+##### Implementation steps
+
+1. **10.6d.5 — Tab rejection** (Y79Y × 7) — add tab-as-indentation check in `Scanner.lean` `scanIndent` / `fetchNextToken`. Highest leverage: fixes 7 block UPs in one change.
+2. **10.6d.6 — Directive strictness** (H7TQ, MUS6 × 2, 9HCY, 9MMA, B63P, EB22, RHX7, SF5V, QLJ7) — enforce `%YAML`/`%TAG` syntax and document boundary rules. Fixes ~10 UPs.
+3. **10.6d.7 — Flow state machine** (VJP3, 4H7K, 6JTT, 9C9N, 9JBA, 9MAG, CML9, CTN5, CVW2, KS4U, T833, N782) — track flow nesting depth; reject unclosed brackets, invalid commas, multi-line flows in block context. Fixes ~12 UPs.
+4. **10.6d.8 — Implicit key limits** (JKF3, DK95, 7LBH, D49Q, DK4H, G7JE, ZXT5, 7MNF, GDY7) — enforce 1024-character limit and single-line constraint per §7.1.3. Fixes ~9 UPs.
+5. **10.6d.9 — Indentation enforcement** (4EJS, 4HVU, DMG6, EW3V, N4JP, U44R, ZVH3, QB6E, W9L4, S98Z, 5LLU, 9C9N, 9CWY) — tighten indent comparison in `Scanner.lean`. Fixes ~13 UPs.
+6. **10.6d.10 — Structure / trailing content** (236B, 62EZ, BD7L, 3HFZ, JY7Z, Q4CL, etc.) — validate no trailing content after scalars, sequences, and document markers. Fixes ~15 UPs.
+7. **10.6d.11 — Anchor / tag / comment** (4JVG, SR86, SU74, LHL4, 8XDJ, BF9H, BS4K, etc.) — enforce anchor uniqueness, tag syntax, comment whitespace. Fixes ~10 UPs.
+8. **10.6d.12 — Regenerate guards** — rerun `gen-suite-guards.py` after each batch; UPs that become correct rejections flip from `[UP]` to normal guards.
+9. **10.6d.13 — Regression gate** — after each step, verify: `lake build` (155/155, zero sorry, zero warnings), suiterunner UP count decreases, verified test pass count ≥ 695/731.
+
+##### Validation gate
+
+- yaml-test-suite: **354/354 correct** (100% of YAML 1.2.2-applicable) — all 87 UPs converted to expected failures
+- Verified tests: ≥ 695/731 (no regressions; may improve as validation fixes also fix `validationtests`)
+- Build: 155/155, zero `sorry`, zero warnings
+
+**Status**: Not started.
+
 #### P10.7: Documentation & Spec Table Update
 
 **Goal**: Update README spec coverage table to reference tokenized parser files.
@@ -3481,7 +3681,9 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 - **P10.5** depends on P10.4 (adaptable proofs compile) and is the critical path — ✅ complete
 - **P10.6** depends on all of P10.1–P10.5 — ✅ complete
 - **P10.6b** depends on P10.6 — ✅ complete (352 guards, 155/155 build, 695/731 verified tests)
-- **P10.7** depends on P10.6b — ready to start
+- **P10.6c** depends on P10.6b — not started (test diagnostics improvement)
+- **P10.6d** depends on P10.6c — not started (87 UPs: 1 flow, 14 block, 2 document, 70 error)
+- **P10.7** depends on P10.6d — blocked
 - **Phase 8** (comment preservation) should target the tokenized parser only — if P10 completes first, Phase 8 has a single implementation target
 
 ### Estimated Effort
@@ -3495,6 +3697,8 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 | P10.5 | 5–8 days (est.) / <1 day (actual) | 4 proof rewrites — PerParserSpecs deleted, not rewritten |
 | P10.6 | 0.5 day | Deletion + clean build |
 | P10.6b | 1–2 days | Post-deletion test repair: namespace fixes, guard regeneration, runtime failures |
+| P10.6c | 1–2 days | Test diagnostics: JSON output, verified per-test detail, diff mode, `queryresults` Lean tool |
+| P10.6d | 3–5 days | Fix 87 UPs: tab rejection, directive strictness, flow state, implicit key limits, indentation, structure validation |
 | P10.7 | 0.5 day | Documentation update |
 | **Total** | **10–15 days** | — |
 
