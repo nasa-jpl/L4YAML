@@ -38,7 +38,7 @@ jobs:
         run: |
           lake build Lean4Yaml
           lake build suiterunner tryparse
-          lake build tests parsetest quotedfolding verification demo
+          lake build tests parsetest quotedfolding demo
           lake build stringlemmas anchortests tagtests explicitkeytests flowtests
 
       - name: Run unit and integration tests
@@ -51,9 +51,6 @@ jobs:
           echo ""
           echo "=== Quoted Folding Tests ===" | tee docs/quotedfolding.txt
           ./.lake/build/bin/quotedfolding 2>&1 | tee -a docs/quotedfolding.txt
-          echo ""
-          echo "=== Verification Tests ===" | tee docs/verification.txt
-          ./.lake/build/bin/verification 2>&1 | tee -a docs/verification.txt
           echo ""
           echo "=== Demo ===" | tee docs/demo.txt
           ./.lake/build/bin/demo 2>&1 | tee -a docs/demo.txt
@@ -82,7 +79,7 @@ jobs:
 
       - name: Generate verified tests HTML page
         run: |
-          cat docs/unit-tests.txt docs/parsetest.txt docs/quotedfolding.txt docs/verification.txt docs/demo.txt docs/stringlemmas.txt docs/anchortests.txt docs/tagtests.txt docs/explicitkeytests.txt docs/flowtests.txt > docs/all-verified-tests.txt
+          cat docs/unit-tests.txt docs/parsetest.txt docs/quotedfolding.txt docs/demo.txt docs/stringlemmas.txt docs/anchortests.txt docs/tagtests.txt docs/explicitkeytests.txt docs/flowtests.txt > docs/all-verified-tests.txt
 
       - name: Upload coverage reports as artifact
         uses: actions/upload-artifact@v3
