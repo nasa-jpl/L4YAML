@@ -4051,43 +4051,70 @@ The `scanBlockScalar` annotations added during P10.6d (variable classification t
 Each event below was resolved locally at the time. In aggregate, they form a pattern: the codebase repeatedly suffered from (a) unstructured error types swallowing failure information, (b) numeric variables whose roles were ambiguous, and (c) implicit contracts that only manifested as bugs when violated. P10.6e addresses all three root causes.
 
 1. **P1 — `throwUnexpected` elimination reveals error-model inadequacy (2026-02-17).**
-   All 29 `throwUnexpected` calls eliminated across 7 files because lean4-parser's `<|>` unconditionally swallows `Result.error` values. The replacement — `validationError : Option String` in `YamlStream` — was a *workaround* for lacking a structured error channel. It survived backtracking only because it was stored in stream state (like `anchorMap`), bypassing the combinator error model entirely. With `Except ScanError`, error categories are first-class values that callers must handle — no workaround needed.
-   *(README: P1 architectural change, line ~142; Progress log P1, line ~280)*
+   - All 29 `throwUnexpected` calls eliminated across 7 files because lean4-parser's `<|>` unconditionally swallows `Result.error` values. 
+   - The replacement — `validationError : Option String` in `YamlStream` — was a *workaround* for lacking a structured error channel.
+   - It survived backtracking only because it was stored in stream state (like `anchorMap`), bypassing the combinator error model entirely.
+   - With `Except ScanError`, error categories are first-class values that callers must handle — no workaround needed.
+   - *(README: P1 architectural change, line ~142; Progress log P1, line ~280)*
 
 2. **P3 — `blockValue` passes `col` instead of `minIndent` (2026-02-20).**
-   `blockValue` was passing `col` (the column where the block indicator sits) to `dispatchByChar`, instead of `minIndent` (the enclosing structure's indentation). This inflated `parentIndent` for block scalars after `--- >` (receiving 4 instead of correct 0). The root cause: both `col` and `minIndent` are `Nat`, and nothing in the type system or comments distinguished their semantic roles. A subtype contract `{minIndent : Nat // minIndent = s.currentIndent}` would have made the confusion a type error.
-   *(README: P3 progress, line ~318; T1 fix detail, line ~408)*
+   - `blockValue` was passing `col` (the column where the block indicator sits) to `dispatchByChar`, instead of `minIndent` (the enclosing structure's indentation).
+   - This inflated `parentIndent` for block scalars after `--- >` (receiving 4 instead of correct 0).
+   - The root cause: both `col` and `minIndent` are `Nat`, and nothing in the type system or comments distinguished their semantic roles.
+   - A subtype contract `{minIndent : Nat // minIndent = s.currentIndent}` would have made the confusion a type error.
+   - *(README: P3 progress, line ~318; T1 fix detail, line ~408)*
 
 3. **P3 — `blockScalar` receives `contentIndent` with double-counted `+1` (2026-02-20).**
-   Callers already computed `parentIndent + 1` before passing to `blockScalar`, which then internally added another `+1`. The parameter was named `parentIndent` but received `contentIndent` — a Position+Distance confusion. Renaming the parameter and removing the internal `+1` fixed it. A subtype `{contentIndent : Nat // contentIndent ≥ parentIndent + 1}` with an explicit derivation from `parentIndent` would have prevented the double-counting.
-   *(README: T2 fix detail, line ~409)*
+   - Callers already computed `parentIndent + 1` before passing to `blockScalar`, which then internally added another `+1`.
+   - The parameter was named `parentIndent` but received `contentIndent` — a Position+Distance confusion.
+   - Renaming the parameter and removing the internal `+1` fixed it.
+   - A subtype `{contentIndent : Nat // contentIndent ≥ parentIndent + 1}` with an explicit derivation from `parentIndent` would have prevented the double-counting.
+   - *(README: T2 fix detail, line ~409)*
 
 4. **P6/P8 — `detectMappingKeyImpl` accumulates four layers of special cases.**
-   Basic `: ` detection (initial), flow-bracket skipping (P6), `::` handling (UKK6), quote skipping (P8 — 40 lines for `skipDoubleQuoted`/`skipSingleQuoted`). Each layer was a response to a false positive that violated an unstated contract: "the scanner must be aware of all quoting/nesting contexts when searching for mapping indicators." Without explicit contracts, each fix was a patch on previous patches. The Phase 9 scanner eliminated the function entirely — but the *pattern* of accumulating special cases is what happens when contracts are implicit.
-   *(README: detectMappingKeyImpl reflection, line ~625; P8 fix, line ~591)*
+   - Basic `: ` detection (initial), flow-bracket skipping (P6), `::` handling (UKK6), quote skipping (P8 — 40 lines for `skipDoubleQuoted`/`skipSingleQuoted`).
+   - Each layer was a response to a false positive that violated an unstated contract: "the scanner must be aware of all quoting/nesting contexts when searching for mapping indicators."
+   - Without explicit contracts, each fix was a patch on previous patches.
+   - The Phase 9 scanner eliminated the function entirely — but the *pattern* of accumulating special cases is what happens when contracts are implicit.
+   - *(README: detectMappingKeyImpl reflection, line ~625; P8 fix, line ~591)*
 
 5. **Phase 5 — proof difficulties are the cost of abstraction without contracts (2026-02-23).**
-   Seven "surprises" documented: `*>` ≠ `>>=` for proofs, `Sum` match auxiliary opacity, `Id` monad opaque to tactics, lean4-parser ships zero theorems, position algebra as hidden backbone, compounding pattern, `show` as universal workaround. The common thread: lean4-parser provides abstraction *without* specification. Each combinator has operational semantics but no declared contracts, forcing all proofs from first principles (20 `@[simp]` lemmas in `ParserSpecs.lean` that the library should have shipped). P10.6e applies the lesson: abstraction must come *with* contracts, or proofs become archaeology.
-   *(README: Phase 5 surprises 1–7, lines ~1494–1507)*
+   - Seven "surprises" documented: `*>` ≠ `>>=` for proofs, `Sum` match auxiliary opacity, `Id` monad opaque to tactics, lean4-parser ships zero theorems, position algebra as hidden backbone, compounding pattern, `show` as universal workaround.
+   - The common thread: lean4-parser provides abstraction *without* specification.
+   - Each combinator has operational semantics but no declared contracts, forcing all proofs from first principles (20 `@[simp]` lemmas in `ParserSpecs.lean` that the library should have shipped).
+   - P10.6e applies the lesson: abstraction must come *with* contracts, or proofs become archaeology.
+   - *(README: Phase 5 surprises 1–7, lines ~1494–1507)*
 
 6. **P7 — `minIndent` threaded through 7 mutual flow functions (2026-02-24).**
-   Implementing flow indent floor (§7.4) required threading `minIndent` through `flowSequence`, `flowMapping`, `flowMappingEntry`, `flowScalar`, `flowNode`, `flowCollection`, and `flowMappingContent`. Each function gained a new `Nat` parameter with no type-level annotation of its meaning or range. Tab rejection (`checkIndentForTabs(minIndent)`) further consumed this parameter. A subtype `{minIndent : Nat // minIndent ≥ enclosingBlockIndent + 1}` would have documented the invariant once instead of requiring manual verification at 7 call sites.
-   *(README: P7 progress, line ~322; 10b detail, line ~374)*
+   - Implementing flow indent floor (§7.4) required threading `minIndent` through `flowSequence`, `flowMapping`, `flowMappingEntry`, `flowScalar`, `flowNode`, `flowCollection`, and `flowMappingContent`.
+   - Each function gained a new `Nat` parameter with no type-level annotation of its meaning or range.
+   - Tab rejection (`checkIndentForTabs(minIndent)`) further consumed this parameter.
+   - A subtype `{minIndent : Nat // minIndent ≥ enclosingBlockIndent + 1}` would have documented the invariant once instead of requiring manual verification at 7 call sites.
+   - *(README: P7 progress, line ~322; 10b detail, line ~374)*
 
 7. **Y79Y analysis — manual production rule trace required (2026-02-28).**
-   Analyzing 11 tab-related test cases required manually tracing each input through YAML 1.2.2 productions (`s-indent(n)` [63], `s-separate-in-line` [66], `l-nb-literal-text(n)` [170], `s-l+block-indented(n,c)` [185]) because no function carries its production rule reference. The analysis took a full session that would have been minutes with traceability annotations.
-   *(README: Y79Y analysis table, lines ~3887–3897)*
+   - Analyzing 11 tab-related test cases required manually tracing each input through YAML 1.2.2 productions (`s-indent(n)` [63], `s-separate-in-line` [66], `l-nb-literal-text(n)` [170], `s-l+block-indented(n,c)` [185]) because no function carries its production rule reference.
+   - The analysis took a full session that would have been minutes with traceability annotations.
+   - *(README: Y79Y analysis table, lines ~3887–3897)*
 
 8. **P10.6d — `currentIndent` tab check discovers hidden boundary semantics (2026-02-28).**
-   The tab rejection fix in `skipToContent` required discovering that `col ≤ currentIndent` means "indentation zone" and `col > currentIndent` means "separation zone." This boundary was always implicit in `ScannerState` — the indentation stack already encoded it — but no contract stated it. The fix worked because of this hidden invariant; the next developer modifying `skipToContent` would have to rediscover it. A `have : col ≤ s.currentIndent → inIndentationZone` would make it permanent.
-   *(README: P10.6d reflections — simplification #1 and idiom #2, lines ~3991–4007)*
+   - The tab rejection fix in `skipToContent` required discovering that `col ≤ currentIndent` means "indentation zone" and `col > currentIndent` means "separation zone."
+   - This boundary was always implicit in `ScannerState` — the indentation stack already encoded it — but no contract stated it.
+   - The fix worked because of this hidden invariant; the next developer modifying `skipToContent` would have to rediscover it.
+   - A `have : col ≤ s.currentIndent → inIndentationZone` would make it permanent.
+   - *(README: P10.6d reflections — simplification #1 and idiom #2, lines ~3991–4007)*
 
 9. **`detected` variable conflates two roles in `scanBlockScalar` (identified 2026-02-28).**
-   The `detected` variable in `scanBlockScalar`'s auto-detection loop serves as both "minimum required indent" (`parentIndent + 1`) and "actual detected indent" (`probe.col`). These are semantically distinct (the minimum is a Distance from `parentIndent`, the detected is a Position). The variable classification table added during P10.6d annotations exposed this conflation. Separating them into `{minRequired : Nat // minRequired = parentIndent + 1}` and `{detectedIndent : Nat // detectedIndent ≥ minRequired}` would prevent future confusion.
-   *(README: Y79Y scanner defects, line ~3905; scanBlockScalar annotations in Scanner.lean)*
+   - The `detected` variable in `scanBlockScalar`'s auto-detection loop serves as both "minimum required indent" (`parentIndent + 1`) and "actual detected indent" (`probe.col`).
+   - These are semantically distinct (the minimum is a Distance from `parentIndent`, the detected is a Position).
+   - The variable classification table added during P10.6d annotations exposed this conflation.
+   - Separating them into `{minRequired : Nat // minRequired = parentIndent + 1}` and `{detectedIndent : Nat // detectedIndent ≥ minRequired}` would prevent future confusion.
+   - *(README: Y79Y scanner defects, line ~3905; scanBlockScalar annotations in Scanner.lean)*
 
 10. **All 18 error sites use `Except String` — the universal code smell.**
-    Every `throw s!"..."` in Scanner.lean (13 sites) and `.error s!"..."` in TokenParser.lean (5 sites) constructs an unstructured string. The caller receives `Except String α` and can only pattern-match on the error case by string content — brittle, untestable, and invisible to the type system. This is the single refactoring that touches every error path and motivates P10.6e.2.
+    - Every `throw s!"..."` in Scanner.lean (13 sites) and `.error s!"..."` in TokenParser.lean (5 sites) constructs an unstructured string.
+    - The caller receives `Except String α` and can only pattern-match on the error case by string content — brittle, untestable, and invisible to the type system.
+    - This is the single refactoring that touches every error path and motivates P10.6e.2.
 
 </details>
 
