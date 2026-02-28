@@ -60,7 +60,7 @@ def main (args : List String) : IO UInt32 := do
         return 2
     -- Parse the YAML
     let yamlStr ← IO.FS.readFile yamlPath
-    match Parse.parseYaml yamlStr with
+    match TokenParser.parseYaml yamlStr with
     | .ok docs =>
       let output := dumpDocuments docs cfg
       IO.print output

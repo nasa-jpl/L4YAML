@@ -47,7 +47,7 @@ def loadTestYaml (testId : String) : IO String := do
 
 /-- Expect `parseYaml` to reject the input. -/
 def expectReject (label : String) (input : String) : IO Bool := do
-  match Parse.parseYaml input with
+  match TokenParser.parseYaml input with
   | .ok _ =>
     IO.println s!"  ✗ {label} — unexpectedly ACCEPTED"
     return false

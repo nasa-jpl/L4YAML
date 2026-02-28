@@ -3,20 +3,15 @@ import Tests.SuiteRunner.Meta
 import Tests.SuiteRunner.HtmlReport
 import Tests.VerifiedResult
 import Tests.Main
-import Tests.ParseTest
-import Tests.QuotedFolding
-import Tests.StringLemmas
-import Tests.AnchorAlias
-import Tests.TagTests
 import Tests.ExplicitKeyTests
 import Tests.FlowTests
-import Tests.CharClassTests
 import Tests.ValidationTests
-import Tests.CompletenessTests
 import Tests.DumpRoundTrip
 import Tests.RawParseTests
 import Tests.SpecExamples
 import Tests.SchemaDump
+import Tests.ScannerTests
+import Tests.ScannerSpecExamples
 import Demo
 
 /-!
@@ -78,7 +73,7 @@ def runTestCore (tc : TestCase) : TestResult :=
     .skip "YAML 1.3 specific"
   else if tc.expectFail then .skip "error test (run with 'error' stage)"
   else
-    match Lean4Yaml.Parse.parseYaml yaml with
+    match Lean4Yaml.TokenParser.parseYaml yaml with
     | Except.ok _docs => .pass
     | Except.error e => .fail s!"parse error: {e}"
 
@@ -209,9 +204,9 @@ def runAllForReport (testCases : Array TestCase) (stage : Stage)
         else
           { testCase := tc, outcome := .pass }
       | .fail reason =>
-        if reason.containsSubstr "timeout" then
+        if (reason.splitOn "timeout").length > 1 then
           { testCase := tc, outcome := .timeout, errorMsg := some reason }
-        else if reason.containsSubstr "expected parse failure but succeeded" then
+        else if (reason.splitOn "expected parse failure but succeeded").length > 1 then
           { testCase := tc, outcome := .unexpectedPass, errorMsg := some reason }
         else if tc.expectFail then
           { testCase := tc, outcome := .expectedFail, errorMsg := some reason }
@@ -321,20 +316,15 @@ def main (args : List String) : IO UInt32 := do
     dbg t0 "starting verified test suites"
     let collectors : Array (IO Tests.VerifiedSuiteResult) := #[
       Tests.collectTests,
-      Tests.Parse.collectTests,
-      Tests.QuotedFolding.collectTests,
-      Tests.StringLemmas.collectTests,
-      Tests.Anchor.collectTests,
-      Tests.Tag.collectTests,
       Tests.ExplicitKey.collectTests,
       Tests.Flow.collectTests,
-      Tests.CharClass.collectTests,
       Tests.Validation.collectTests,
-      Tests.Completeness.collectTests,
       Tests.DumpRoundTrip.collectTests,
       Tests.RawParse.collectTests,
       Tests.SpecExamples.collectTests,
       Tests.SchemaDump.collectTests,
+      Tests.ScannerTests.collectTests,
+      Tests.ScannerSpecExamples.collectTests,
       Demo.collectTests
     ]
     let mut verifiedSuites : Array Tests.VerifiedSuiteResult := #[]

@@ -1,6 +1,4 @@
-import Batteries.Data.String.Matcher
 import Lean.Data.Json
-import Batteries.Lean.Json
 import Tests.SuiteRunner.Meta
 import Tests.VerifiedResult
 
