@@ -4,7 +4,7 @@ import Lean4Yaml.Schema.FromToYaml
 import Lean4Yaml.Schema.Struct
 import Lean4Yaml.Dump
 import Lean4Yaml.Emitter
-import Lean4Yaml.Parser.Document
+import Lean4Yaml.TokenParser
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -53,7 +53,7 @@ namespace Lean4Yaml.Schema.Dump
 open Lean4Yaml
 open Lean4Yaml.Dump
 open Lean4Yaml.Emit
-open Lean4Yaml.Parse
+open Lean4Yaml.TokenParser
 
 /-! ## Core Serialization Pipeline -/
 

@@ -1,5 +1,5 @@
 import Lean4Yaml.Grammar
-import Lean4Yaml.Parser.Document
+import Lean4Yaml.TokenParser
 
 /-!
 # Escape Sequence Resolution Proofs (Layer 2b)
@@ -226,7 +226,7 @@ These are the same technique used in the yaml-test-suite guards
 (Phase 4): kernel-evaluated, build-time regression tests.
 -/
 
-open Lean4Yaml.Parse in
+open Lean4Yaml.TokenParser in
 open Lean4Yaml in
 /-- Parse a YAML value and extract its scalar content. -/
 private def parseScalar (s : String) : Option String :=

@@ -4,7 +4,6 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml.Grammar
 import Lean4Yaml.Stream
-import Lean4Yaml.Parser.Document
 
 /-!
 # Document Parser Assume/Guarantee Contracts (Layer 1f)
@@ -39,7 +38,6 @@ disjointness. This module adds semantic content.
 namespace Lean4Yaml.Proofs.DocumentContracts
 
 open Lean4Yaml
-open Lean4Yaml.Parse (DocumentResult)
 
 /-! ## §1  Contract D1: Explicit Document Boundary
 
@@ -132,12 +130,7 @@ theorem madeProgress_of_advance (p : YamlPos) (n : Nat) (hn : n > 0) :
   simp
   omega
 
-/-- `DocumentResult.endOfStream` is idempotent — calling document again
-    after end-of-stream will produce end-of-stream again (the stream
-    has no more characters). This is a specification-level property. -/
-theorem endOfStream_ne_stalled (p : YamlPos) :
-    DocumentResult.endOfStream ≠ DocumentResult.stalled p :=
-  nofun
+-- endOfStream_ne_stalled removed in P10.4 — DocumentResult is an old-parser type (P10.6 deletion)
 
 /-! ## §4  Tag Handle Scope (§6.8.2)
 
