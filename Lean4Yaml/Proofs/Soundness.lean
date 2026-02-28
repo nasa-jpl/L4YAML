@@ -4,7 +4,6 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml.Types
 import Lean4Yaml.Grammar
-import Lean4Yaml.Stream
 
 /-!
 # Soundness Proofs

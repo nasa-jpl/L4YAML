@@ -1,17 +1,9 @@
 import Lean4Yaml.Types
 import Lean4Yaml.YamlSpec
-import Lean4Yaml.Stream
 import Lean4Yaml.Grammar
 import Lean4Yaml.Token
 import Lean4Yaml.Scanner
 import Lean4Yaml.TokenParser
-import Lean4Yaml.Parser.Combinators
-import Lean4Yaml.Parser.Scalar
-import Lean4Yaml.Parser.Anchor
-import Lean4Yaml.Parser.Tag
-import Lean4Yaml.Parser.Flow
-import Lean4Yaml.Parser.Block
-import Lean4Yaml.Parser.Document
 import Lean4Yaml.Emitter
 import Lean4Yaml.Dump
 import Lean4Yaml.Schema
@@ -21,8 +13,6 @@ import Lean4Yaml.Schema.Deriving
 import Lean4Yaml.Schema.Api
 import Lean4Yaml.Schema.Dump
 import Lean4Yaml.Proofs.CharClass
-import Lean4Yaml.Proofs.Termination
-import Lean4Yaml.Proofs.Soundness
 import Lean4Yaml.Proofs.RoundTrip
 import Lean4Yaml.Proofs.BlockScalarContracts
 import Lean4Yaml.Proofs.StringProperties
@@ -51,8 +41,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 /-!
 # Lean4Yaml — Verified YAML Parser
 
-A YAML 1.2.2 parser built on lean4-parser with the goal of
-verified correctness.
+A YAML 1.2.2 parser with the goal of verified correctness.
 
 ## Quick Start
 
@@ -70,9 +59,10 @@ open Lean4Yaml
 
 ## Architecture
 
-- **Types**: `YamlValue` AST (compatible with lean4-yaml)
-- **Stream**: `YamlStream` with automatic line/column tracking
+- **Types**: `YamlValue` AST, `YamlPos` position tracking
+- **Token**: Token types with position information
+- **Scanner**: Tokenizer producing `TokenStream`
+- **TokenParser**: Token-level parser producing `YamlValue`
 - **Grammar**: Formal specification as inductive `Prop`s
-- **Parser**: lean4-parser combinators producing `YamlValue`
-- **Proofs**: Termination, soundness, round-trip (in progress)
+- **Proofs**: Soundness, completeness, round-trip, composition
 -/

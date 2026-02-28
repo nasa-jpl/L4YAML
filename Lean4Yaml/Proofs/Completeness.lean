@@ -4,9 +4,6 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml.TokenParser
 import Lean4Yaml.Grammar
-import Lean4Yaml.Stream
-import Lean4Yaml.Proofs.Soundness
-import Lean4Yaml.Proofs.Termination
 
 /-!
 # Completeness Proofs  (Step 5.4 — Tokenized Parser)

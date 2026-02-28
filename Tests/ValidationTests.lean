@@ -32,53 +32,6 @@ open Tests
 
 namespace Tests.Validation
 
-/-! ## §1  Validation Error Semantics -/
-
-def testValidationErrorSemantics (state : IO.Ref TestCollector) : IO Unit := do
-  setCategory state "Validation Error Semantics"
-
-  -- Setting validationError is observable
-  let s : YamlStream := YamlStream.ofString ""
-  let s' : YamlStream := { s with validationError := some "err" }
-  check state "set validationError → some msg" (s'.validationError == some "err")
-
-  let s2 : YamlStream := YamlStream.ofString "abc"
-  let s2' : YamlStream := { s2 with validationError := some "bad indent" }
-  check state "set validationError different msg" (s2'.validationError == some "bad indent")
-
-  -- Clearing validationError produces none
-  let s3 : YamlStream := { s' with validationError := none }
-  check state "clear validationError → none" (s3.validationError == none)
-
-  -- First-error-wins guard: isNone check
-  check state "isNone guard: none → true" (s.validationError.isNone == true)
-  check state "isNone guard: some → false" (s'.validationError.isNone == false)
-
-  -- Orthogonality: validation error ⊥ anchor map
-  check state "set validationError preserves anchorMap" (s'.anchorMap == s.anchorMap)
-
-  -- Orthogonality: validation error ⊥ position
-  let s4 : YamlStream := YamlStream.ofString "hello"
-  let s4v : YamlStream := { s4 with validationError := some "err" }
-  check state "set validationError preserves startPos" (s4v.startPos == s4.startPos)
-
-  let s4c : YamlStream := { s4 with validationError := none }
-  check state "clear validationError preserves startPos" (s4c.startPos == s4.startPos)
-
-  -- Default value
-  check state "initial validationError is none" (s.validationError == none)
-
-  -- Double-set: second set is a no-op (guard check)
-  let se : YamlStream := { s with validationError := some "first" }
-  -- Simulate first-error-wins: if isNone is false, don't overwrite
-  let wouldOverwrite := !se.validationError.isNone
-  check state "first-error-wins: isNone false after set" wouldOverwrite
-
-  -- Clearing then setting works
-  let sc : YamlStream := { se with validationError := none }
-  let sc' : YamlStream := { sc with validationError := some "second" }
-  check state "clear then set yields new msg" (sc'.validationError == some "second")
-
 /-! ## §2  Indentation Properties -/
 
 /-- Build a list with `n` leading spaces followed by `rest`. -/
@@ -337,7 +290,6 @@ def testFlowStructureErrors (state : IO.Ref TestCollector) : IO Unit := do
 /-- Collect all validation test results as structured data. -/
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
-  testValidationErrorSemantics state
   testIndentationProperties state
   testValidNodeStructural state
   testValidationIntegration state

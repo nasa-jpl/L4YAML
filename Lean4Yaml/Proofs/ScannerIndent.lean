@@ -8,7 +8,7 @@ and line positions, and that `skipSpaces` advances the column by the
 number of spaces consumed.
 
 Replaces `IndentConsumption.lean` (P10.5), which proved the same
-properties for the old `YamlStream.next?` character-level parser.
+properties for the old character-level parser.
 
 ## Key Results
 

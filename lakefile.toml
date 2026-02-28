@@ -14,11 +14,6 @@ name = "DocGen4"
 git = "https://github.com/leanprover/doc-gen4"
 rev = "v4.28.0"
 
-[[require]]
-name = "Parser"
-git = "https://github.com/NicolasRouquette/lean4-parser"
-rev = "well-founded-streams"
-
 [[lean_lib]]
 name = "Lean4Yaml"
 
@@ -35,21 +30,6 @@ name = "Tests.SuiteRunner.HtmlReport"
 name = "Tests.Main"
 
 [[lean_lib]]
-name = "Tests.ParseTest"
-
-[[lean_lib]]
-name = "Tests.QuotedFolding"
-
-[[lean_lib]]
-name = "Tests.StringLemmas"
-
-[[lean_lib]]
-name = "Tests.AnchorAlias"
-
-[[lean_lib]]
-name = "Tests.TagTests"
-
-[[lean_lib]]
 name = "Demo"
 
 [[lean_exe]]
@@ -59,10 +39,6 @@ root = "Tests.Main.Runner"
 [[lean_exe]]
 name = "demo"
 root = "Demo.Runner"
-
-[[lean_exe]]
-name = "parsetest"
-root = "Tests.ParseTest.Runner"
 
 [[lean_exe]]
 name = "suiterunner"
@@ -80,22 +56,6 @@ root = "Tests.TryRoundTrip"
 name = "trydump"
 root = "Tests.TryDump"
 
-[[lean_exe]]
-name = "quotedfolding"
-root = "Tests.QuotedFolding.Runner"
-
-[[lean_exe]]
-name = "stringlemmas"
-root = "Tests.StringLemmas.Runner"
-
-[[lean_exe]]
-name = "anchortests"
-root = "Tests.AnchorAlias.Runner"
-
-[[lean_exe]]
-name = "tagtests"
-root = "Tests.TagTests.Runner"
-
 [[lean_lib]]
 name = "Tests.ExplicitKeyTests"
 
@@ -109,13 +69,6 @@ name = "Tests.FlowTests"
 [[lean_exe]]
 name = "flowtests"
 root = "Tests.FlowTests.Runner"
-
-[[lean_lib]]
-name = "Tests.CharClassTests"
-
-[[lean_exe]]
-name = "charclass"
-root = "Tests.CharClassTests.Runner"
 
 [[lean_lib]]
 name = "Tests.ValidationTests"
@@ -135,13 +88,6 @@ root = "Tests.ErrorStageDiag"
 [[lean_exe]]
 name = "scalarstagediag"
 root = "Tests.ScalarStageDiag"
-
-[[lean_lib]]
-name = "Tests.CompletenessTests"
-
-[[lean_exe]]
-name = "completenesstests"
-root = "Tests.CompletenessTests.Runner"
 
 [[lean_lib]]
 name = "Tests.DumpRoundTrip"
@@ -177,13 +123,6 @@ name = "schemadump"
 root = "Tests.SchemaDump.Runner"
 
 [[lean_lib]]
-name = "Tests.IteratorTests"
-
-[[lean_exe]]
-name = "iteratortests"
-root = "Tests.IteratorTests.Runner"
-
-[[lean_lib]]
 name = "Tests.ScannerTests"
 
 [[lean_exe]]
@@ -197,6 +136,3 @@ name = "Tests.ScannerSpecExamples"
 name = "scannerspecexamples"
 root = "Tests.ScannerSpecExamples.Runner"
 
-[[lean_exe]]
-name = "parsercompare"
-root = "Tests.ParserCompare"

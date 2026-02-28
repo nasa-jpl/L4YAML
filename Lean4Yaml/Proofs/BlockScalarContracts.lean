@@ -1,5 +1,5 @@
 import Lean4Yaml.Grammar
-import Lean4Yaml.Stream
+import Lean4Yaml.Types
 
 /-
 Copyright (c) 2026. All rights reserved.
