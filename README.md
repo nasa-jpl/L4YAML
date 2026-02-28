@@ -3282,6 +3282,71 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 - Removing lean4-parser required relocating `YamlPos` to `Types.lean`, updating every file that imported `Stream.lean` (14 source files), and deleting/updating test files that used `YamlStream` or old parser functions.
 - The dependency audit (P10.5 session) identified all affected files before any deletions began.
 
+##### Reflections — unexpected challenges, simplifications, and idioms
+
+###### Unexpected challenges
+
+1. **`Stream.lean` was a load-bearing bridge, not a leaf.**
+   - The original plan treated `Stream.lean` as a simple deletion target — "old parser's char-level stream."
+   - In reality, `Stream.lean` was the sole module that connected `lean4-parser` to the rest of the codebase, and it also defined `YamlPos` — a pure struct with no lean4-parser dependency used by 14 source files (Token.lean, all proof files referencing positions, BlockScalarContracts.lean, DocumentContracts.lean, etc.).
+   - Deleting `Stream.lean` without relocating `YamlPos` would break every file that tracks positions in the token/parse pipeline.
+   - The solution — adding `YamlPos` + its `Ord`/`LT`/`LE` instances to the bottom of `Types.lean` — was clean but required auditing every `import Lean4Yaml.Stream` to determine whether it needed `YamlPos` (→ `import Lean4Yaml.Types`) or was genuinely dead (→ delete import).
+
+2. **`String.containsSubstr` vanished with lean4-parser's transitive Batteries.**
+   - `TestSuite.lean` used `s.content.containsSubstr "line1"` — a `Batteries` extension on `String`.
+   - This function was never explicitly imported; it arrived transitively through `lean4-parser` → `Batteries`.
+   - Removing the `[[require]] name = "Parser"` from `lakefile.toml` severed the transitive dependency chain, and the build failed with "unknown identifier `String.containsSubstr`."
+   - The fix was `String.splitOn`-based: `(c.splitOn "line1").length > 1` — using only Lean 4 core library functions.
+   - **Lesson**: transitive dependencies are invisible load-bearing walls. The only way to find them is to delete the root and rebuild.
+
+3. **Pipe operator `|>` conflicts with match-arm `|` in Lean 4.**
+   - The initial `containsSubstr` replacement used `s.content.splitOn "line1" |>.length > 1` inside a `match` arm.
+   - Lean's parser interpreted `|>` as part of the `|` match-arm syntax, producing a parse error.
+   - Extracting to a `let` binding (`let c := s.content; (c.splitOn "line1").length > 1`) resolved the ambiguity.
+   - This is a parser-level ambiguity in Lean 4 — `|>` and `|` are both valid at the same syntactic positions inside `match` expressions.
+
+4. **`SuiteGuards/Error.lean` had a stale `import Lean4Yaml.Parser.Document` hidden in plain sight.**
+   - This file was updated in P10.2 to use `open Lean4Yaml.TokenParser`, but its import line still referenced the old parser.
+   - It compiled throughout P10.2–P10.5 because `Parser.Document` was still present — the import was dead weight but not an error.
+   - Only the P10.6 deletion surfaced it: once `Parser/Document.lean` was gone, the import became a hard build failure.
+   - Caught by the pre-build `grep -rn 'import.*Parser\.'` sweep — validating the practice of grepping for stale references before rebuilding.
+
+###### Simplifications
+
+1. **Deletion is the easiest refactoring.**
+   - 29 files deleted, 10 files modified — and the modifications were almost all one-line import changes.
+   - The hard work was in P10.1–P10.5: migrating consumers, relocating types, rewriting proofs. By the time P10.6 ran, every live file had already been decoupled from the old parser.
+   - The dependency audit (performed during the P10.5 session) reduced P10.6 to a mechanical checklist: audit said "these 14 files import Stream.lean" → update each one → delete.
+
+2. **`lake-manifest.json` edit was surgical.**
+   - Removing the `Parser` package entry was a single 10-line block deletion (lines 4–13).
+   - No other manifest entries referenced Parser, so there were no cascading edits.
+   - The remaining packages (importGraph, DocGen4, and their transitive deps) were unaffected.
+
+3. **Build job count dropped from 257 to 37.**
+   - lean4-parser and its transitive dependencies (Batteries, etc.) accounted for 220 of the 257 build jobs.
+   - Post-deletion, the project builds in a fraction of the time — a tangible developer-experience improvement beyond the architectural cleanup.
+
+4. **`YamlPos` relocation was copy-paste.**
+   - `YamlPos` is a pure `structure` with three `Nat` fields and `deriving Repr, DecidableEq, Inhabited, BEq, Hashable`.
+   - The `Ord`, `LT`, and `LE` instances are boilerplate (`compare` on the `offset` field).
+   - No proofs referenced `YamlPos`'s definition site — they only used its interface. Moving it to `Types.lean` changed zero proof obligations.
+
+###### Idioms
+
+- **Pre-deletion grep sweep as a safety net.**
+  - Before running `lake build`, a `grep -rn 'import.*Stream\|import.*Parser\.\|YamlStream\|YamlParser' Lean4Yaml/ Tests/` sweep identified 2 files that the deletion plan missed (`SuiteGuards/Error.lean`, `Tests/ValidationTests.lean`).
+  - This 5-second check prevented a build failure that would have required re-diagnosing the same issues from compiler errors — which are less informative than grep results for "which file still references the deleted module."
+
+- **`lake clean` as a phase gate.**
+  - P10.6 is a deletion phase — stale `.olean` and `.ilean` artifacts from deleted files could mask broken imports (the linker might still find cached symbols).
+  - Running `lake clean && lake build` ensured a from-scratch rebuild with no cached artifacts. This is the same lesson from P10.3 (stale `Tests.Verification` linker symbol) applied proactively.
+
+- **Dead import detection requires deletion, not compilation.**
+  - `import Lean4Yaml.Parser.Document` in `SuiteGuards/Error.lean` compiled for 6 sub-phases because the imported module existed — even though **nothing** from that module was used.
+  - Lean 4 does not warn on unused imports. The only reliable detector is removing the imported module and observing whether the build breaks.
+  - In a codebase undergoing phased migration, dead imports accumulate silently. A grep sweep before the deletion phase is the practical mitigation.
+
 #### P10.7: Documentation & Spec Table Update
 
 **Goal**: Update README spec coverage table to reference tokenized parser files.
