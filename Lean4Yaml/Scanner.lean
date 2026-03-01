@@ -19,7 +19,7 @@ The grammar parser (S-layer) then operates on tokens, never on raw characters.
 String ──→ scan ──→ Array (Positioned YamlToken) ──→ [Grammar Parser] ──→ YamlValue
 ```
 
-The scanner is a **pure function** `String → Except String (Array (Positioned YamlToken))`.
+The scanner is a **pure function** `String → Except ScanError (Array (Positioned YamlToken))`.
 Internally it uses `ScannerState` to track:
 - Current position (offset, line, col)
 - Indentation stack (for virtual BLOCK-START/BLOCK-END generation)
@@ -289,7 +289,7 @@ def consumeNewline (s : ScannerState) : ScannerState :=
     6. Otherwise: we've reached content — stop.
 
     **Error**: Tab character used as indentation (before content on a new line). -/
-def skipToContent (s : ScannerState) : Except String ScannerState := do
+def skipToContent (s : ScannerState) : Except ScanError ScannerState := do
   let fuel := s.inputEnd - s.offset + 1
   let mut s' := s
   for _ in [:fuel] do
@@ -314,7 +314,7 @@ def skipToContent (s : ScannerState) : Except String ScannerState := do
             if isLineBreak c then s' := skipWhitespace s'  -- tab on blank line: allowed
             else
               -- Tab followed by content: tab used as indentation — forbidden §6.1
-              throw s!"tab character in indentation at line {s'.line}, column {s'.col}"
+              throw (.tabInIndentation s'.line s'.col)
           | none => s' := skipWhitespace s'        -- tab before EOF: allowed
         | _ => pure ()
       else
@@ -513,7 +513,7 @@ def scanTag (s : ScannerState) : ScannerState := Id.run do
 
 /-! ## Directive Scanning -/
 
-def scanDirective (s : ScannerState) : Except String ScannerState := do
+def scanDirective (s : ScannerState) : Except ScanError ScannerState := do
   let startPos := s.currentPos
   let s' := s.advance  -- consume `%`
   let (name, s') := Id.run do
@@ -587,7 +587,7 @@ def scanDocumentEnd (s : ScannerState) : ScannerState :=
 
 /-! ## Escape Sequence Processing -/
 
-private def parseHexEscape (s : ScannerState) (n : Nat) : Except String (Char × ScannerState) := do
+private def parseHexEscape (s : ScannerState) (n : Nat) : Except ScanError (Char × ScannerState) := do
   let (hex, s') := Id.run do
     let mut s' := s
     let mut hex := ""
@@ -600,7 +600,7 @@ private def parseHexEscape (s : ScannerState) (n : Nat) : Except String (Char ×
       | none => return (hex, s')
     return (hex, s')
   if hex.length != n then
-    .error s!"expected {n} hex digits in escape at line {s'.line}"
+    .error (.invalidHexEscape n hex.length s'.line)
   else
     let val := hex.foldl (fun acc c =>
       acc * 16 + if c.isDigit then c.toNat - '0'.toNat
@@ -609,11 +609,11 @@ private def parseHexEscape (s : ScannerState) (n : Nat) : Except String (Char ×
     if val < 0x110000 then
       .ok (Char.ofNat val, s')
     else
-      .error s!"unicode escape out of range at line {s'.line}"
+      .error (.unicodeOutOfRange s'.line)
 
-def processEscape (s : ScannerState) : Except String (Char × ScannerState) := do
+def processEscape (s : ScannerState) : Except ScanError (Char × ScannerState) := do
   match s.peek? with
-  | none => .error s!"unexpected end of input in escape at line {s.line}"
+  | none => .error (.unterminatedEscape s.line)
   | some c =>
     let s' := s.advance
     match c with
@@ -638,7 +638,7 @@ def processEscape (s : ScannerState) : Except String (Char × ScannerState) := d
     | 'x'  => parseHexEscape s' 2
     | 'u'  => parseHexEscape s' 4
     | 'U'  => parseHexEscape s' 8
-    | _    => .error s!"unknown escape '\\{c}' at line {s.line}"
+    | _    => .error (.unknownEscape c s.line)
 
 /-! ## Scalar Scanning -/
 
@@ -668,14 +668,14 @@ def foldQuotedNewlines (s : ScannerState) : (String × ScannerState) := Id.run d
   else
     return (" ", s')
 
-def scanDoubleQuoted (s : ScannerState) : Except String ScannerState := do
+def scanDoubleQuoted (s : ScannerState) : Except ScanError ScannerState := do
   let startPos := s.currentPos
   let mut s' := s.advance
   let mut content := ""
   let fuel := s.inputEnd - s'.offset + 1
   for _ in [:fuel] do
     match s'.peek? with
-    | none => return ← .error s!"unterminated double-quoted scalar at line {startPos.line}"
+    | none => return ← .error (.unterminatedScalar .doubleQuoted startPos.line)
     | some '"' =>
       s' := s'.advance
       return { s'.emitAt startPos (.scalar content .doubleQuoted) with simpleKeyAllowed := false }
@@ -690,7 +690,7 @@ def scanDoubleQuoted (s : ScannerState) : Except String ScannerState := do
           let (ch, s'') ← processEscape s'
           content := content.push ch
           s' := s''
-      | none => return ← .error s!"unterminated escape at end of input"
+      | none => return ← .error (.unterminatedEscape s'.line)
     | some c =>
       if isLineBreak c then
         content := trimTrailingWS content  -- YAML §6.5: trim trailing WS before fold
@@ -700,16 +700,16 @@ def scanDoubleQuoted (s : ScannerState) : Except String ScannerState := do
       else
         content := content.push c
         s' := s'.advance
-  .error s!"unterminated double-quoted scalar at line {startPos.line}"
+  .error (.unterminatedScalar .doubleQuoted startPos.line)
 
-def scanSingleQuoted (s : ScannerState) : Except String ScannerState := do
+def scanSingleQuoted (s : ScannerState) : Except ScanError ScannerState := do
   let startPos := s.currentPos
   let mut s' := s.advance
   let mut content := ""
   let fuel := s.inputEnd - s'.offset + 1
   for _ in [:fuel] do
     match s'.peek? with
-    | none => return ← .error s!"unterminated single-quoted scalar at line {startPos.line}"
+    | none => return ← .error (.unterminatedScalar .singleQuoted startPos.line)
     | some '\'' =>
       s' := s'.advance
       match s'.peek? with
@@ -726,7 +726,7 @@ def scanSingleQuoted (s : ScannerState) : Except String ScannerState := do
       else
         content := content.push c
         s' := s'.advance
-  .error s!"unterminated single-quoted scalar at line {startPos.line}"
+  .error (.unterminatedScalar .singleQuoted startPos.line)
 
 /--
 Can character `c` start a plain scalar, given the next character and flow context?
@@ -867,7 +867,7 @@ where
     **Pre**: Scanner at `|` or `>`. `s.col` = `n` (parent indent level).
     **Post**: Scanner past block scalar content. Emits `.scalar content style`.
     **Error**: Missing newline after header. -/
-def scanBlockScalar (s : ScannerState) : Except String ScannerState := do
+def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState := do
   let startPos := s.currentPos  -- Pos: position of `|`/`>` indicator
   let isLiteral := s.peek? == some '|'
   let s' := s.advance
@@ -896,7 +896,7 @@ def scanBlockScalar (s : ScannerState) : Except String ScannerState := do
     | some c =>
       if isLineBreak c then .ok (consumeNewline s')
       else if !s'.hasMore then .ok s'
-      else .error s!"expected newline after block scalar header at line {s'.line}"
+      else .error (.expectedNewline s'.line)
     | none => .ok s'
   -- Determine content indentation: n+m
   -- parentIndent (Position) = n = column of `|`/`>` indicator
@@ -1009,7 +1009,7 @@ def saveSimpleKey (st : ScannerState) : ScannerState :=
     **Pre**: Scanner state from previous token (or initial state).
     **Post**: Scanner past one token. Token emitted. State updated.
     **Error**: Unexpected character at current position. -/
-def scanNextToken (s : ScannerState) : Except String (Option ScannerState) := do
+def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) := do
   -- Step 1: Skip to content — s-l-comments [79]
   let s ← skipToContent s
   if !s.hasMore then
@@ -1075,12 +1075,12 @@ def scanNextToken (s : ScannerState) : Except String (Option ScannerState) := do
       return some s'
     if canStartPlainScalar c (s.peekAt? 1) s.inFlow then
       return some (scanPlainScalar s)
-    .error s!"unexpected character '{c}' at line {s.line}, column {s.col}"
+    .error (.unexpectedChar c s.line s.col)
 
 /-- Run the scanner on an input string, producing a token array.
 
     **Post-condition**: starts with `streamStart`, ends with `streamEnd`. -/
-def scan (input : String) : Except String (Array (Positioned YamlToken)) := do
+def scan (input : String) : Except ScanError (Array (Positioned YamlToken)) := do
   let mut s := ScannerState.mk' input
   s := s.emit .streamStart
   -- Handle BOM
@@ -1095,6 +1095,6 @@ def scan (input : String) : Except String (Array (Positioned YamlToken)) := do
       let final := unwindIndents s (-1)
       let final := final.emit .streamEnd
       return final.tokens
-  .error s!"scanner fuel exhausted at line {s.line}, column {s.col}"
+  .error (.fuelExhausted s.line s.col)
 
 end Lean4Yaml.Scanner

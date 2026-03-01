@@ -56,7 +56,7 @@ theorem parseYamlRaw_pipeline (input : String)
     (h_scan : Scanner.scan input = .ok tokens)
     (h_parse : parseStream tokens = .ok docs) :
     parseYamlRaw input = .ok docs := by
-  unfold parseYamlRaw; rw [h_scan]; exact h_parse
+  simp only [parseYamlRaw, h_scan, h_parse]
 
 /--
 If `parseYamlRaw` succeeds, then both `Scanner.scan` and `parseStream`
@@ -69,30 +69,34 @@ theorem parseYamlRaw_ok_decompose (input : String) (docs : Array YamlDocument)
   simp only [parseYamlRaw] at h
   match h_scan : Scanner.scan input with
   | .ok tokens =>
-    rw [h_scan] at h
-    exact ⟨tokens, rfl, h⟩
+    simp only [h_scan] at h
+    match h_parse : parseStream tokens with
+    | .ok docs' =>
+      simp only [h_parse, Except.ok.injEq] at h
+      subst h; exact ⟨tokens, rfl, h_parse⟩
+    | .error e =>
+      simp only [h_parse] at h; contradiction
   | .error e =>
-    rw [h_scan] at h
-    contradiction
+    simp only [h_scan] at h; contradiction
 
 /--
-If `Scanner.scan` fails, `parseYamlRaw` fails with the same error.
+If `Scanner.scan` fails, `parseYamlRaw` fails with the stringified error.
 -/
-theorem parseYamlRaw_scan_error (input : String) (e : String)
+theorem parseYamlRaw_scan_error (input : String) (e : ScanError)
     (h : Scanner.scan input = .error e) :
-    parseYamlRaw input = .error e := by
-  unfold parseYamlRaw; rw [h]; rfl
+    parseYamlRaw input = .error e.toString := by
+  simp only [parseYamlRaw, h]
 
 /--
 If `Scanner.scan` succeeds but `parseStream` fails, `parseYamlRaw` fails
-with the parse error.
+with the stringified parse error.
 -/
-theorem parseYamlRaw_parse_error (input : String) (e : String)
+theorem parseYamlRaw_parse_error (input : String) (e : ScanError)
     (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scan input = .ok tokens)
     (h_parse : parseStream tokens = .error e) :
-    parseYamlRaw input = .error e := by
-  unfold parseYamlRaw; rw [h_scan]; exact h_parse
+    parseYamlRaw input = .error e.toString := by
+  simp only [parseYamlRaw, h_scan, h_parse]
 
 /-! ## §2  Compose Layer
 

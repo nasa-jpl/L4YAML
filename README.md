@@ -4173,6 +4173,56 @@ def ScanError.toString : ScanError → String
 
 **Impact**: 18 error sites across 2 files (13 in Scanner.lean, 5 in TokenParser.lean). Each `s!"..."` string construction becomes a single ADT constructor application. `parseYaml`'s `Except String YamlValue` return type changes to `Except ScanError YamlValue` (or keeps `String` by calling `ScanError.toString` at the API boundary).
 
+**Status**: Complete (2026-02-28). Build: 37/37 jobs, zero sorry, zero warnings.
+
+###### Reflections — unexpected challenges, simplifications, and idioms
+
+1. **`.mapError toString` blocks `simp`**.
+  - The first attempt defined `parseYamlRaw` as `(scanAndParse input).mapError toString`.
+  - This is clean one-liner Lean, but `Except.mapError` unfolds into a `match` wrapper that `simp` can see yet cannot reduce through when hypotheses about `Scanner.scan` and `parseStream` are available.
+  - Composition.lean proofs that previously needed one `simp only [parseYamlRaw, h_scan, h_parse]` now faced an intermediate `(match parseStream tokens with | .error err => .error (toString err) | .ok v => .ok v) = .ok docs` that couldn't be decomposed into `parseStream tokens = .ok docs`. 
+  - **Fix**: replaced `.mapError` with an explicit double-match in `parseYamlRaw`, giving `simp` direct access to both match levels.
+  - Lesson: *in proof-facing definitions, prefer explicit pattern matches over higher-order combinators* — even when the combinator is definitionally equivalent.
+
+2. **`do` notation in `scanAndParse` also blocks `simp`**.
+  - The initial `scanAndParse` used `do let tokens ← Scanner.scan input; parseStream tokens`.
+  - Lean desugars this to `Except.bind`, which `simp` doesn't unfold by default.
+  - Adding `Except.bind` to simp lemmas is fragile and leaks implementation details into proof scripts.
+  - **Fix**: replaced `do` with `match Scanner.scan input with | .ok tokens => parseStream tokens | .error e => .error e`.
+  - Same lesson as above — `do` is sugar for `bind`, and `bind` is opaque to `simp`.
+
+3. **`toString e` vs `e.toString` — definitionally equal, invisible to `simp`**.
+   - After the `ScanError` refactoring, proof goals contained `Except.error (toString e) = Except.error e.toString`.
+   - These are *definitionally* equal (the `ToString ScanError` instance delegates to `ScanError.toString`, and dot notation is just sugar), so `rfl` closes them.
+   - But `simp` doesn't see the equality because it works up to simp lemmas, not definitional equality.
+   - Early proof attempts that relied on `simp` alone failed here. 
+   - **Fix**: append `; rfl` or use the explicit double-match (which avoids the `toString`/`.toString` gap entirely).
+
+4. **`Except.noConfusion` has universe issues with `String`**. 
+   - In the `parseYamlRaw_ok_decompose` proof, error branches needed to close goals of the form `Except.error e.toString = .ok docs → False`. 
+   - `Except.noConfusion h` should work (distinct constructors), but Lean 4's auto-generated `noConfusion` for `Except` has universe constraints that don't unify when the error type is `String` and hypothesis lives at `Prop` level.
+   - **Fix**: `contradiction`, which internally uses `Decidable` instance on `BEq` or discriminant injection — more robust than `noConfusion` for concrete types.
+
+5. **API boundary design: double-match > `.mapError`**.
+   - The final `parseYamlRaw` definition:
+   ```lean
+   def parseYamlRaw (input : String) : Except String (Array YamlDocument) :=
+     match Scanner.scan input with
+     | .ok tokens =>
+       match parseStream tokens with
+       | .ok docs => .ok docs
+       | .error e => .error e.toString
+     | .error e => .error e.toString
+   ```
+   - This is 7 lines instead of 1, but every Composition.lean proof now closes with a single `simp only [parseYamlRaw, h_scan, h_parse]` — no `Except.mapError`, no `Except.bind`, no `rfl` patches.
+   - The explicit match also documents the API contract:
+      - callers of `parseYamlRaw` get `Except String`,
+      - callers of `scanAndParse` get `Except ScanError`.
+   - *Verbosity at the definition site buys conciseness at every proof site.*
+
+6. **`DecidableEq` on `ScanError` is free and useful**.
+   - Adding `deriving DecidableEq` to the `ScanError` inductive costs nothing (Lean generates it automatically) but enables `contradiction` to close goals involving distinct `ScanError` constructors in proofs — and will support `if e == .tabInIndentation ..` guards in future P10.6d error-recovery code.
+
 </details>
 
 ##### P10.6e.3 — Subtype contracts (type-enforced invariants)

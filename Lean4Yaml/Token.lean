@@ -209,6 +209,78 @@ def YamlToken.isFlowIndicator : YamlToken → Bool
   | .flowEntry => true
   | _ => false
 
+/-! ## Scanner/Parser Error Type -/
+
+/--
+Structured error type for the YAML scanner and grammar parser.
+
+Replaces unstructured `Except String` throughout `Scanner.lean` and
+`TokenParser.lean` (P10.6e.2). Each constructor corresponds to a
+specific error category, making errors machine-inspectable and
+pattern-matchable.
+
+**Scanner errors** (13 sites in `Scanner.lean`): character-level
+violations detected during tokenization.
+
+**Parser errors** (5 sites in `TokenParser.lean`): token-level
+violations detected during grammar parsing.
+-/
+inductive ScanError where
+  /- Character-level errors (Scanner.lean) -/
+
+  /-- Tab character used as indentation — §6.1 violation.
+      `s-indent(n)` [63] requires spaces only. -/
+  | tabInIndentation     (line col : Nat)
+  /-- Character cannot start any token in the current context. -/
+  | unexpectedChar       (c : Char) (line col : Nat)
+  /-- Quoted scalar opened but never closed (missing closing `"` or `'`). -/
+  | unterminatedScalar   (style : ScalarStyle) (line : Nat)
+  /-- Escape sequence `\` at end of input with no following character. -/
+  | unterminatedEscape   (line : Nat)
+  /-- Backslash followed by an unrecognized escape character. -/
+  | unknownEscape        (c : Char) (line : Nat)
+  /-- Hex escape (`\x`, `\u`, `\U`) has fewer hex digits than required. -/
+  | invalidHexEscape     (expected found : Nat) (line : Nat)
+  /-- Hex escape value exceeds Unicode range (> U+10FFFF). -/
+  | unicodeOutOfRange    (line : Nat)
+  /-- Block scalar header not followed by a newline. -/
+  | expectedNewline      (line : Nat)
+  /-- Scanner iteration limit reached (defensive guard). -/
+  | fuelExhausted        (line col : Nat)
+
+  /- Grammar-level errors (TokenParser.lean) -/
+
+  /-- Expected a specific token but found something else (or end of input). -/
+  | expectedToken        (desc : String) (line : Nat) (got : Option String)
+  /-- Recursive nesting depth exceeded `maxDepth` (stack overflow guard). -/
+  | nestingDepthExceeded (line : Nat)
+  /-- `parseYamlSingle*` called but input contains multiple documents. -/
+  | multipleDocuments    (count : Nat)
+  deriving Repr, BEq, Inhabited, DecidableEq
+
+/-- Human-readable error message, separated from error construction.
+
+    This is the **only** place where error messages are formatted as strings.
+    All error construction sites use ADT constructors with structured data. -/
+def ScanError.toString : ScanError → String
+  | .tabInIndentation l c      => s!"tab character in indentation at line {l}, column {c}"
+  | .unexpectedChar c l col    => s!"unexpected character '{c}' at line {l}, column {col}"
+  | .unterminatedScalar .doubleQuoted l => s!"unterminated double-quoted scalar at line {l}"
+  | .unterminatedScalar .singleQuoted l => s!"unterminated single-quoted scalar at line {l}"
+  | .unterminatedScalar style l => s!"unterminated {repr style} scalar at line {l}"
+  | .unterminatedEscape l      => s!"unterminated escape at line {l}"
+  | .unknownEscape c l         => s!"unknown escape '\\{c}' at line {l}"
+  | .invalidHexEscape exp fnd l => s!"expected {exp} hex digits in escape at line {l}, found {fnd}"
+  | .unicodeOutOfRange l       => s!"unicode escape out of range at line {l}"
+  | .expectedNewline l         => s!"expected newline after block scalar header at line {l}"
+  | .fuelExhausted l c         => s!"scanner fuel exhausted at line {l}, column {c}"
+  | .expectedToken desc l (some got) => s!"expected {desc} at line {l}, got {got}"
+  | .expectedToken desc _ none => s!"expected {desc} but reached end of tokens"
+  | .nestingDepthExceeded l    => s!"maximum nesting depth exceeded at line {l}"
+  | .multipleDocuments n       => s!"expected single document, found {n}"
+
+instance : ToString ScanError := ⟨ScanError.toString⟩
+
 /-! ## Token Stream -/
 
 /--

@@ -7,7 +7,7 @@ Machine-checked properties of the Phase 9 YAML scanner (`Scanner.lean`)
 and token stream infrastructure (`Token.lean`).
 
 The Phase 9 scanner is a **pure function**
-`String → Except String (Array (Positioned YamlToken))`.
+`String → Except ScanError (Array (Positioned YamlToken))`.
 Because it avoids monadic state (using `Id.run do` with mutable locals),
 many properties are directly provable by `rfl`, `native_decide`, or
 simple `simp`/`omega` chains.
