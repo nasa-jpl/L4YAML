@@ -1,16 +1,16 @@
 {
-  "date": "2026-02-28T17:54:46-0800",
+  "date": "2026-02-28T20:11:47-0800",
   "overall": {
     "applicable": 354,
-    "correct": 283,
-    "correctRate": 79.9,
-    "expectedFail": 24,
+    "correct": 284,
+    "correctRate": 80.2,
+    "expectedFail": 25,
     "failed": 0,
     "passed": 259,
     "skipped": 52,
     "timeout": 0,
     "total": 406,
-    "unexpectedPass": 71
+    "unexpectedPass": 70
   },
   "stages": {
     "advanced": {
@@ -27,15 +27,15 @@
     },
     "block": {
       "applicable": 99,
-      "correct": 88,
-      "correctRate": 88.8,
-      "expectedFail": 4,
+      "correct": 89,
+      "correctRate": 89.8,
+      "expectedFail": 5,
       "failed": 0,
       "passed": 84,
       "skipped": 0,
       "timeout": 0,
       "total": 99,
-      "unexpectedPass": 11
+      "unexpectedPass": 10
     },
     "document": {
       "applicable": 17,
@@ -2741,10 +2741,10 @@
       "stage": "advanced"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "Y79Y",
       "name": "Tabs in various contexts",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "block"
     },
     {
@@ -2969,9 +2969,9 @@
         "total": 29
       },
       {
-        "allPass": false,
+        "allPass": true,
         "label": "YAML 1.2.2 Spec Examples",
-        "passed": 128,
+        "passed": 132,
         "total": 132
       },
       {
@@ -2987,9 +2987,9 @@
         "total": 33
       },
       {
-        "allPass": false,
+        "allPass": true,
         "label": "YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline)",
-        "passed": 128,
+        "passed": 132,
         "total": 132
       },
       {
@@ -2999,7 +2999,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 697,
+    "totalPassed": 705,
     "totalTests": 738
   }
 }
