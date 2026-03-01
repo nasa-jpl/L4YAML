@@ -285,11 +285,11 @@ def collStyle (input : String) : Option CollectionStyle :=
 
 /-! ## §9 Error Rejection -/
 
--- Unmatched flow bracket (tokenized parser accepts partial input)
-#guard parseOk "[unclosed"
+-- Unmatched flow bracket (scanner now detects unterminated flow collections)
+#guard !parseOk "[unclosed"
 
--- Unmatched flow brace (tokenized parser accepts partial input)
-#guard parseOk "{unclosed"
+-- Unmatched flow brace (scanner now detects unterminated flow collections)
+#guard !parseOk "{unclosed"
 
 -- Tab in indentation — scanner rejects tabs in indentation zone (§6.1)
 -- col 0 ≤ currentIndent 0: tab before content is an indentation error

@@ -104,6 +104,10 @@ structure SimpleKeyState where
   tokenIndex : Nat := 0
   /-- Source position of the potential simple key -/
   pos : YamlPos := default
+  /-- Line where the simple key token ended (for multi-line quoted keys,
+      this differs from `pos.line`). Used to validate that `:` follows
+      on the same line as the key's end, not just its start. -/
+  endLine : Nat := 0
   deriving Repr, BEq, Inhabited
 
 /-- The scanner's mutable state. -/
@@ -442,8 +446,14 @@ def scanFlowMappingEnd (s : ScannerState) : ScannerState :=
   { s'.advance with flowLevel := if s'.flowLevel > 0 then s'.flowLevel - 1 else 0,
                     simpleKeyAllowed := false }
 
-def scanFlowEntry (s : ScannerState) : ScannerState :=
-  { (s.emit .flowEntry).advance with simpleKeyAllowed := true }
+def scanFlowEntry (s : ScannerState) : Except ScanError ScannerState := do
+  -- §7.4: Leading comma (after flow-open) or consecutive commas are invalid.
+  if s.tokens.size > 0 then
+    let lastTok := s.tokens[s.tokens.size - 1]!.val
+    if lastTok == .flowSequenceStart || lastTok == .flowMappingStart ||
+       lastTok == .flowEntry then
+      throw (.invalidFlowEntry s.line s.col)
+  .ok ({ (s.emit .flowEntry).advance with simpleKeyAllowed := true })
 
 def scanBlockEntry (s : ScannerState) : ScannerState :=
   let s' := if !s.inFlow then pushSequenceIndent s s.col else s
@@ -453,7 +463,20 @@ def scanKey (s : ScannerState) : ScannerState :=
   let s' := if !s.inFlow then pushMappingIndent s s.col else s
   { (s'.emit .key).advance with simpleKeyAllowed := true }
 
-def scanValue (s : ScannerState) : ScannerState :=
+def scanValue (s : ScannerState) : Except ScanError ScannerState := do
+  -- §7.4: "Plain keys are restricted to a single line."
+  -- In block context, reject implicit keys where the key token and the `:`
+  -- value indicator are on different lines.
+  if s.simpleKey.possible && !s.inFlow && s.simpleKey.pos.line != s.line then
+    throw (.invalidImplicitKey s.line)
+  -- §8.2.1: A mapping key at the same indent as a block sequence is
+  -- invalid.  Reject before building new state.
+  if s.simpleKey.possible && !s.inFlow then
+    let keyCol : Int := s.simpleKey.pos.col
+    if keyCol <= s.currentIndent then
+      if let some top := s.indents.back? then
+        if top.isSequence && keyCol == top.column then
+          throw (.trailingContent s.simpleKey.pos.line s.simpleKey.pos.col)
   let s' := if s.simpleKey.possible then
     let s'' := s.insertAt s.simpleKey.tokenIndex s.simpleKey.pos .key
     if !s.inFlow then
@@ -469,7 +492,7 @@ def scanValue (s : ScannerState) : ScannerState :=
       { s'' with simpleKey := { possible := false } }
   else
     if !s.inFlow then pushMappingIndent s s.col else s
-  (s'.emit .value).advance |> fun s => { s with simpleKeyAllowed := true }
+  .ok ((s'.emit .value).advance |> fun s => { s with simpleKeyAllowed := true })
 
 /-! ## Anchor and Alias Scanning -/
 
@@ -767,6 +790,21 @@ def scanDoubleQuoted (s : ScannerState) : Except ScanError ScannerState := do
     | none => return ← .error (.unterminatedScalar .doubleQuoted startPos.line)
     | some '"' =>
       s' := s'.advance
+      -- §7.3.2: In block context, after a double-quoted scalar, only
+      -- whitespace, comments, `:` (value indicator), or end-of-line/EOF
+      -- may follow on the same line. Other content is trailing garbage.
+      if !s.inFlow then
+        let mut probe := s'
+        let probeFuel := s.inputEnd - probe.offset + 1
+        for _ in [:probeFuel] do
+          match probe.peek? with
+          | some c => if c == ' ' || c == '\t' then probe := probe.advance else break
+          | none => break
+        match probe.peek? with
+        | none => pure ()  -- EOF is fine
+        | some c =>
+          if isLineBreak c || c == '#' || c == ':' then pure ()
+          else return ← .error (.trailingContent probe.line probe.col)
       return { s'.emitAt startPos (.scalar content .doubleQuoted) with simpleKeyAllowed := false }
     | some '\\' =>
       s' := s'.advance
@@ -811,7 +849,23 @@ def scanSingleQuoted (s : ScannerState) : Except ScanError ScannerState := do
       | some '\'' =>
         content := content.push '\''
         s' := s'.advance
-      | _ => return { s'.emitAt startPos (.scalar content .singleQuoted) with simpleKeyAllowed := false }
+      | _ =>
+        -- §7.3.2: In block context, after a single-quoted scalar, only
+        -- whitespace, comments, `:` (value indicator), or end-of-line/EOF
+        -- may follow on the same line.
+        if !s.inFlow then
+          let mut probe := s'
+          let probeFuel := s.inputEnd - probe.offset + 1
+          for _ in [:probeFuel] do
+            match probe.peek? with
+            | some c => if c == ' ' || c == '\t' then probe := probe.advance else break
+            | none => break
+          match probe.peek? with
+          | none => pure ()
+          | some c =>
+            if isLineBreak c || c == '#' || c == ':' then pure ()
+            else return ← .error (.trailingContent probe.line probe.col)
+        return { s'.emitAt startPos (.scalar content .singleQuoted) with simpleKeyAllowed := false }
     | some c =>
       if isLineBreak c then
         content := trimTrailingWS content  -- YAML §6.5: trim trailing WS before fold
@@ -855,7 +909,11 @@ def isPlainSafe (c : Char) (inFlow : Bool) : Bool :=
 def scanPlainScalar (s : ScannerState) : ScannerState := Id.run do
   let startPos := s.currentPos
   let inFlow := s.inFlow
-  let contentIndent := s.col
+  -- §7.3.3: Continuation lines must be indented past the current block level.
+  -- Use currentIndent + 1 (not s.col) so that continuation correctly includes
+  -- lines at the block's content region, matching YAML 1.2.2 §7.3.3 / libyaml.
+  let contentIndent := if inFlow then s.col
+    else (max 0 (s.currentIndent + 1)).toNat
   let mut s' := s
   let mut content := ""
   let mut spaces := ""
@@ -881,6 +939,14 @@ def scanPlainScalar (s : ScannerState) : ScannerState := Id.run do
       if isLineBreak c then
         if inFlow then
           let (folded, s'') := foldQuotedNewlines s'
+          -- §7.3.3 [131]: After folding a newline to whitespace, `#` is
+          -- preceded by whitespace and starts a comment (terminating the
+          -- scalar).  `foldQuotedNewlines` already skipped leading
+          -- whitespace on the continuation line, so s'' points at the
+          -- first non-whitespace character.
+          match s''.peek? with
+          | some '#' => s' := s''; break
+          | _ => pure ()
           content := content ++ folded  -- drop trailing `spaces` per YAML §6.5
           spaces := ""
           s' := s''
@@ -1113,7 +1179,13 @@ def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState := do
             -- where s-indent requires spaces only. Reject immediately.
             if c == '\t' && probe.col < minContentIndent then
               return (0, some (probe.line, probe.col))
-            if isLineBreak c then probe := consumeNewline probe
+            if isLineBreak c then
+              -- §8.1.3: l-empty(n) lines have at most n = minContentIndent
+              -- spaces.  Lines with more spaces are content lines (the
+              -- trailing spaces are nb-char content) and set the indent.
+              if probe.col > minContentIndent then
+                return (probe.col, none)  -- whitespace-only content line
+              probe := consumeNewline probe
             else
               -- detectedIndent (Position) = first content line's column
               -- contentIndent = max(minContentIndent, detectedIndent)
@@ -1178,7 +1250,12 @@ def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState := do
   -- Apply folding (for `>` only): l-folded-content [174]
   let content := if isLiteral then content else foldBlockContent content
   let style := if isLiteral then ScalarStyle.literal else ScalarStyle.folded
-  .ok ({ s'.emitAt startPos (.scalar content style) with simpleKeyAllowed := false })
+  -- Block scalars cannot be implicit keys (§7.4): clear stale simpleKey.
+  -- After a block scalar the scanner is at the start of the next line where
+  -- new simple keys are allowed, so set simpleKeyAllowed := true.
+  .ok ({ s'.emitAt startPos (.scalar content style) with
+    simpleKeyAllowed := true
+    simpleKey := { possible := false } })
 
 /-! ## Main Scanner Loop -/
 
@@ -1187,12 +1264,14 @@ def saveSimpleKey (st : ScannerState) : ScannerState :=
     { st with simpleKey := {
         possible := true
         tokenIndex := st.tokens.size
-        pos := st.currentPos } }
+        pos := st.currentPos
+        endLine := st.line } }
   else if st.simpleKeyAllowed && st.inFlow then
     { st with simpleKey := {
         possible := true
         tokenIndex := st.tokens.size
-        pos := st.currentPos } }
+        pos := st.currentPos
+        endLine := st.line } }
   else st
 
 /-- Scan the next token from the input.
@@ -1215,16 +1294,34 @@ def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) :=
   if !s.hasMore then
     return none
   -- Step 2: Indent check — unwind block collections when de-indented
+  --   §6.1: After unwinding, if the new content's column is strictly
+  --   between the current indent level and the just-popped level, the
+  --   content is at an invalid intermediate indentation.
+  let savedIndentSize := s.indents.size
   let s := if !s.inFlow && s.needIndentCheck then
     let s := unwindIndents s s.col
     { s with needIndentCheck := false }
   else s
+  -- Check for intermediate indentation after unwind.
+  -- If unwindIndents popped levels (stack shrank) AND the content column
+  -- is strictly deeper than the new currentIndent, the content is at an
+  -- indentation level that doesn't match any enclosing block collection.
+  if s.indents.size < savedIndentSize && (s.col : Int) > s.currentIndent then
+    return ← .error (.trailingContent s.line s.col)
   -- Step 3: Save simple key position for potential implicit key
   let s := saveSimpleKey s
   match s.peek? with
   | none =>
     return none
   | some c =>
+    -- §8.1 / §7.5: Flow content inside a block structure must be more
+    -- indented than the enclosing block collection. Check on new lines
+    -- (not the opening line of the flow collection).
+    -- Only check when there IS an enclosing block (currentIndent ≥ 0).
+    if s.inFlow && s.currentIndent >= 0 && (s.col : Int) <= s.currentIndent then
+      -- Allow flow-close indicators (they end the flow, so indent doesn't apply)
+      if c != ']' && c != '}' then
+        return ← .error (.underIndentedFlowContent s.line s.col)
     -- §5.4: Document markers are forbidden inside flow collections.
     if s.col == 0 && s.inFlow && (atDocumentStart s || atDocumentEnd s) then
       return ← .error (.documentMarkerInFlow s.line)
@@ -1243,12 +1340,44 @@ def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) :=
     if c == '[' then return some (scanFlowSequenceStart s)
     if c == ']' then
       if s.flowLevel == 0 then return ← .error (.flowEndOutsideFlow ']' s.line s.col)
-      return some (scanFlowSequenceEnd s)
+      let s' := scanFlowSequenceEnd s
+      -- §7.5: When a flow collection close returns us to block context,
+      -- only whitespace, comments, `:`, or end-of-line may follow on the same line.
+      if s'.flowLevel == 0 then
+        let mut probe := s'
+        let probeFuel := s.inputEnd - probe.offset + 1
+        for _ in [:probeFuel] do
+          match probe.peek? with
+          | some pc => if pc == ' ' || pc == '\t' then probe := probe.advance else break
+          | none => break
+        match probe.peek? with
+        | none => pure ()
+        | some pc =>
+          if isLineBreak pc || pc == '#' || pc == ':' then pure ()
+          else return ← .error (.trailingContent probe.line probe.col)
+      return some s'
     if c == '{' then return some (scanFlowMappingStart s)
     if c == '}' then
       if s.flowLevel == 0 then return ← .error (.flowEndOutsideFlow '}' s.line s.col)
-      return some (scanFlowMappingEnd s)
-    if c == ',' then return some (scanFlowEntry s)
+      let s' := scanFlowMappingEnd s
+      if s'.flowLevel == 0 then
+        let mut probe := s'
+        let probeFuel := s.inputEnd - probe.offset + 1
+        for _ in [:probeFuel] do
+          match probe.peek? with
+          | some pc => if pc == ' ' || pc == '\t' then probe := probe.advance else break
+          | none => break
+        match probe.peek? with
+        | none => pure ()
+        | some pc =>
+          if isLineBreak pc || pc == '#' || pc == ':' then pure ()
+          else return ← .error (.trailingContent probe.line probe.col)
+      return some s'
+    if c == ',' then
+      -- §7.4.2: Flow entry indicator `,` is only valid inside flow collections.
+      if s.flowLevel == 0 then return ← .error (.flowEndOutsideFlow ',' s.line s.col)
+      let s' ← scanFlowEntry s
+      return some s'
     if c == '-' && !s.inFlow then
       let next := s.peekAt? 1
       let isEntry := match next with
@@ -1274,7 +1403,9 @@ def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) :=
         match next with
         | some n => isBlank n || (s.inFlow && isFlowIndicator n)
         | none => true
-      if isValue then return some (scanValue s)
+      if isValue then
+        let s' ← scanValue s
+        return some s'
     if c == '&' then return some (scanAnchorOrAlias s true)
     if c == '*' then return some (scanAnchorOrAlias s false)
     if c == '!' then return some (scanTag s)
@@ -1283,9 +1414,17 @@ def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) :=
       return some s'
     if c == '"' then
       let s' ← scanDoubleQuoted s
+      -- §7.4: Quoted scalars can span lines; update simpleKey.endLine
+      -- so scanValue can check key-end-line vs `:` line.
+      let s' := if s'.simpleKey.possible then
+        { s' with simpleKey := { s'.simpleKey with endLine := s'.line } }
+      else s'
       return some s'
     if c == '\'' then
       let s' ← scanSingleQuoted s
+      let s' := if s'.simpleKey.possible then
+        { s' with simpleKey := { s'.simpleKey with endLine := s'.line } }
+      else s'
       return some s'
     if canStartPlainScalar c (s.peekAt? 1) s.inFlow then
       return some (scanPlainScalar s)
@@ -1306,6 +1445,9 @@ def scan (input : String) : Except ScanError (Array (Positioned YamlToken)) := d
     match ← scanNextToken s with
     | some s' => s := s'
     | none =>
+      -- §7.4: Unclosed flow collections are an error.
+      if s.flowLevel > 0 then
+        throw (.unterminatedFlowCollection '[' s.line)
       -- §6.8: If directives were present but no document followed, error.
       if s.directivesPresent && !s.documentEverStarted then
         throw (.directiveWithoutDocument s.line)
