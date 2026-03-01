@@ -72,7 +72,7 @@
   ✓ {[1,2]: pair} is mapping
   ✓ {[1,2]: pair} key is sequence
   ✓ {[1,2]: pair} value
-  ✗ {{a:b}: nested} parses: expected single document, found 13
+  ✗ {{a:b}: nested} parses: expected single document, found 2
 
 --- Suite regressions ---
   ✓ 87E4 is sequence

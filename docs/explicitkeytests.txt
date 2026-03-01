@@ -59,12 +59,12 @@
   ✓ ? key # comment
 
 --- Flow explicit keys ---
-  ✗ DFF7 parses: expected single document, found 16
-  ✗ FRK4 parses: expected single document, found 13
-  ✗ {? a : b} parses: expected single document, found 9
+  ✗ DFF7 parses: expected single document, found 2
+  ✗ FRK4 parses: expected single document, found 2
+  ✗ {? a : b} parses: expected single document, found 2
 
 --- Flow sequence explicit entries ---
-  ✗ [? a : b] parses: expected single document, found 9
+  ✗ [? a : b] parses: expected single document, found 2
   ✓ [?] is sequence
   ✓ [?] item is mapping
 

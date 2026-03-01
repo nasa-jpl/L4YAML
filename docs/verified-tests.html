@@ -66,8 +66,8 @@
 
   <div class="stats">
     <div class="stat-box stat-total"><h3>Total</h3><div class="number">738</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">706</div></div>
-    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">32</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">710</div></div>
+    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">28</div></div>
     <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">11</div></div>
   </div>
   <h3>Suites</h3>
@@ -92,8 +92,8 @@
     </div>
     <div class="stage-card" style="border-left-color:var(--color-fail)">
       <div class="stage-card-name">Structural Validation Tests</div>
-      <div class="stage-card-stats">72/84 passed (85.7%)</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 85.7%"></div></div>
+      <div class="stage-card-stats">81/84 passed (96.4%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 96.4%"></div></div>
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean" target="_blank" class="source-link">📄 Tests/ValidationTests.lean</a></div>
     </div>
     <div class="stage-card" style="border-left-color:var(--color-pass)">
@@ -108,10 +108,10 @@
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 89.7%"></div></div>
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean" target="_blank" class="source-link">📄 Tests/RawParseTests.lean</a></div>
     </div>
-    <div class="stage-card" style="border-left-color:var(--color-pass)">
+    <div class="stage-card" style="border-left-color:var(--color-fail)">
       <div class="stage-card-name">YAML 1.2.2 Spec Examples</div>
-      <div class="stage-card-stats">132/132 passed (100.0%)</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100.0%"></div></div>
+      <div class="stage-card-stats">131/132 passed (99.2%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 99.2%"></div></div>
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SpecExamples.lean" target="_blank" class="source-link">📄 Tests/SpecExamples.lean</a></div>
     </div>
     <div class="stage-card" style="border-left-color:var(--color-pass)">
@@ -120,16 +120,16 @@
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 100.0%"></div></div>
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SchemaDump.lean" target="_blank" class="source-link">📄 Tests/SchemaDump.lean</a></div>
     </div>
-    <div class="stage-card" style="border-left-color:var(--color-pass)">
+    <div class="stage-card" style="border-left-color:var(--color-fail)">
       <div class="stage-card-name">Scanner &amp; TokenParser Tests (Phase 9)</div>
-      <div class="stage-card-stats">33/33 passed (100.0%)</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100.0%"></div></div>
+      <div class="stage-card-stats">30/33 passed (90.9%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 90.9%"></div></div>
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ScannerTests.lean" target="_blank" class="source-link">📄 Tests/ScannerTests.lean</a></div>
     </div>
-    <div class="stage-card" style="border-left-color:var(--color-pass)">
+    <div class="stage-card" style="border-left-color:var(--color-fail)">
       <div class="stage-card-name">YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline)</div>
-      <div class="stage-card-stats">132/132 passed (100.0%)</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100.0%"></div></div>
+      <div class="stage-card-stats">131/132 passed (99.2%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 99.2%"></div></div>
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ScannerSpecExamples.lean" target="_blank" class="source-link">📄 Tests/ScannerSpecExamples.lean</a></div>
     </div>
     <div class="stage-card" style="border-left-color:var(--color-pass)">
@@ -558,28 +558,28 @@
         <td>Flow explicit keys</td>
         <td>DFF7 parses</td>
         <td><span class="badge badge-fail">Fail</span></td>
-        <td><span class="error-msg" title="expected single document, found 16">expected single document, found 16</span></td>
+        <td><span class="error-msg" title="expected single document, found 2">expected single document, found 2</span></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-suite="explicittests" data-search="explicittests flow explicit keys frk4 parses">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L270" target="_blank" class="source-link">Explicit Key Tests</a></td>
         <td>Flow explicit keys</td>
         <td>FRK4 parses</td>
         <td><span class="badge badge-fail">Fail</span></td>
-        <td><span class="error-msg" title="expected single document, found 13">expected single document, found 13</span></td>
+        <td><span class="error-msg" title="expected single document, found 2">expected single document, found 2</span></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-suite="explicittests" data-search="explicittests flow explicit keys {? a : b} parses">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L277" target="_blank" class="source-link">Explicit Key Tests</a></td>
         <td>Flow explicit keys</td>
         <td>{? a : b} parses</td>
         <td><span class="badge badge-fail">Fail</span></td>
-        <td><span class="error-msg" title="expected single document, found 9">expected single document, found 9</span></td>
+        <td><span class="error-msg" title="expected single document, found 2">expected single document, found 2</span></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-suite="explicittests" data-search="explicittests flow sequence explicit entries [? a : b] parses">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L294" target="_blank" class="source-link">Explicit Key Tests</a></td>
         <td>Flow sequence explicit entries</td>
         <td>[? a : b] parses</td>
         <td><span class="badge badge-fail">Fail</span></td>
-        <td><span class="error-msg" title="expected single document, found 9">expected single document, found 9</span></td>
+        <td><span class="error-msg" title="expected single document, found 2">expected single document, found 2</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="explicittests" data-search="explicittests flow sequence explicit entries [?] is sequence">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean#L299" target="_blank" class="source-link">Explicit Key Tests</a></td>
@@ -1062,7 +1062,7 @@
         <td>Flow mapping collection keys</td>
         <td>{{a:b}: nested} parses</td>
         <td><span class="badge badge-fail">Fail</span></td>
-        <td><span class="error-msg" title="expected single document, found 13">expected single document, found 13</span></td>
+        <td><span class="error-msg" title="expected single document, found 2">expected single document, found 2</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="flowtests" data-search="flowtests suite regressions 87e4 is sequence">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/FlowTests.lean#L314" target="_blank" class="source-link">Flow Completeness Tests</a></td>
@@ -1533,18 +1533,18 @@
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-suite="validationtests" data-search="validationtests validation integration reject: trailing content after flow seq">
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation integration reject: trailing content after flow seq">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L145" target="_blank" class="source-link">Structural Validation Tests</a></td>
         <td>Validation Integration</td>
         <td>reject: trailing content after flow seq</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-suite="validationtests" data-search="validationtests validation integration reject: trailing content after flow map">
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests validation integration reject: trailing content after flow map">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L147" target="_blank" class="source-link">Structural Validation Tests</a></td>
         <td>Validation Integration</td>
         <td>reject: trailing content after flow map</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests block scalar contracts &#39;-&#39; is header char">
@@ -1743,18 +1743,18 @@
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-suite="validationtests" data-search="validationtests flow structure errors reject: content after closing brace (62ez)">
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests flow structure errors reject: content after closing brace (62ez)">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L241" target="_blank" class="source-link">Structural Validation Tests</a></td>
         <td>Flow Structure Errors</td>
         <td>reject: content after closing brace (62EZ)</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-suite="validationtests" data-search="validationtests flow structure errors reject: unclosed flow sequence (6jtt)">
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests flow structure errors reject: unclosed flow sequence (6jtt)">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L245" target="_blank" class="source-link">Structural Validation Tests</a></td>
         <td>Flow Structure Errors</td>
         <td>reject: unclosed flow sequence (6JTT)</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests flow structure errors reject: comment without space after ] (9jba)">
@@ -1764,25 +1764,25 @@
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-suite="validationtests" data-search="validationtests flow structure errors reject: leading comma in flow seq (9mag)">
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests flow structure errors reject: leading comma in flow seq (9mag)">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L253" target="_blank" class="source-link">Structural Validation Tests</a></td>
         <td>Flow Structure Errors</td>
         <td>reject: leading comma in flow seq (9MAG)</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-suite="validationtests" data-search="validationtests flow structure errors reject: multiline flow mapping key (c2sp)">
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests flow structure errors reject: multiline flow mapping key (c2sp)">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L257" target="_blank" class="source-link">Structural Validation Tests</a></td>
         <td>Flow Structure Errors</td>
         <td>reject: multiline flow mapping key (C2SP)</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-suite="validationtests" data-search="validationtests flow structure errors reject: double comma in flow seq (ctn5)">
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests flow structure errors reject: double comma in flow seq (ctn5)">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L261" target="_blank" class="source-link">Structural Validation Tests</a></td>
         <td>Flow Structure Errors</td>
         <td>reject: double comma in flow seq (CTN5)</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests flow structure errors reject: comment without space after comma (cvw2)">
@@ -1799,18 +1799,18 @@
         <td><span class="badge badge-fail">Fail</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-suite="validationtests" data-search="validationtests flow structure errors reject: content after closed flow seq (ks4u)">
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests flow structure errors reject: content after closed flow seq (ks4u)">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L273" target="_blank" class="source-link">Structural Validation Tests</a></td>
         <td>Flow Structure Errors</td>
         <td>reject: content after closed flow seq (KS4U)</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="fail" data-suite="validationtests" data-search="validationtests flow structure errors reject: block item after flow map (p2eq)">
+      <tr class="test-row" data-outcome="pass" data-suite="validationtests" data-search="validationtests flow structure errors reject: block item after flow map (p2eq)">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean#L277" target="_blank" class="source-link">Structural Validation Tests</a></td>
         <td>Flow Structure Errors</td>
         <td>reject: block item after flow map (P2EQ)</td>
-        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="fail" data-suite="validationtests" data-search="validationtests flow structure errors reject: missing comma in flow mapping (t833)">
@@ -3059,12 +3059,12 @@
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-suite="specexamples" data-search="specexamples §6 spec examples example example-6.12">
+      <tr class="test-row" data-outcome="fail" data-suite="specexamples" data-search="specexamples §6 spec examples example example-6.12">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SpecExamples.lean" target="_blank" class="source-link">YAML 1.2.2 Spec Examples</a></td>
         <td>§6 Spec Examples</td>
         <td>Example example-6.12</td>
-        <td><span class="badge badge-pass">Pass</span></td>
-        <td></td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="trailing content at line 2, column 2">trailing content at line 2, column 2</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="specexamples" data-search="specexamples §6 spec examples example example-6.13">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SpecExamples.lean" target="_blank" class="source-link">YAML 1.2.2 Spec Examples</a></td>
@@ -4333,25 +4333,25 @@
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-suite="scannertests" data-search="scannertests phase 9 regression: b: x: y b: x: y pipeline">
+      <tr class="test-row" data-outcome="fail" data-suite="scannertests" data-search="scannertests phase 9 regression: b: x: y b: x: y pipeline">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ScannerTests.lean#L192" target="_blank" class="source-link">Scanner &amp; TokenParser Tests (Phase 9)</a></td>
         <td>Phase 9 regression: b: x: y</td>
         <td>b: x: y pipeline</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-suite="scannertests" data-search="scannertests phase 9 regression: b: x: y b: x: y key is b">
+      <tr class="test-row" data-outcome="fail" data-suite="scannertests" data-search="scannertests phase 9 regression: b: x: y b: x: y key is b">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ScannerTests.lean#L193" target="_blank" class="source-link">Scanner &amp; TokenParser Tests (Phase 9)</a></td>
         <td>Phase 9 regression: b: x: y</td>
         <td>b: x: y key is b</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-suite="scannertests" data-search="scannertests phase 9 regression: b: x: y b: x: y val is {x: y}">
+      <tr class="test-row" data-outcome="fail" data-suite="scannertests" data-search="scannertests phase 9 regression: b: x: y b: x: y val is {x: y}">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ScannerTests.lean#L194" target="_blank" class="source-link">Scanner &amp; TokenParser Tests (Phase 9)</a></td>
         <td>Phase 9 regression: b: x: y</td>
         <td>b: x: y val is {x: y}</td>
-        <td><span class="badge badge-pass">Pass</span></td>
+        <td><span class="badge badge-fail">Fail</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="scannertests" data-search="scannertests escape sequences tab escape">
@@ -4690,12 +4690,12 @@
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-suite="scannerspecexamples" data-search="scannerspecexamples §6 scanner spec examples example example-6.12">
+      <tr class="test-row" data-outcome="fail" data-suite="scannerspecexamples" data-search="scannerspecexamples §6 scanner spec examples example example-6.12">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ScannerSpecExamples.lean" target="_blank" class="source-link">YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline)</a></td>
         <td>§6 Scanner Spec Examples</td>
         <td>Example example-6.12</td>
-        <td><span class="badge badge-pass">Pass</span></td>
-        <td></td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="trailing content at line 2, column 2">trailing content at line 2, column 2</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="scannerspecexamples" data-search="scannerspecexamples §6 scanner spec examples example example-6.13">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ScannerSpecExamples.lean" target="_blank" class="source-link">YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline)</a></td>

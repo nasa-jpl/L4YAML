@@ -45,13 +45,14 @@
 
 --- Phase 9 regression: b: x: y ---
   ✓ b: x: y scans
-  ✓ b: x: y pipeline
-  ✓ b: x: y key is b
-  ✓ b: x: y val is {x: y}
+  ✗ b: x: y pipeline
+  ✗ b: x: y key is b
+  ✗ b: x: y val is {x: y}
 
 --- Escape sequences ---
   ✓ tab escape
   ✓ hex escape \x41
   ✓ unicode \u0041
 
-=== Results: 33/33 passed ===
+=== Results: 30/33 passed ===
+    3 FAILED

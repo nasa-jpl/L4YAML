@@ -48,8 +48,8 @@
   ✓ accept: nested mapping
   ✓ accept: empty document
   ✓ reject: tab in indentation
-  ✗ reject: trailing content after flow seq
-  ✗ reject: trailing content after flow map
+  ✓ reject: trailing content after flow seq
+  ✓ reject: trailing content after flow map
 
 --- Block Scalar Contracts ---
   ✓ '-' is header char
@@ -82,18 +82,18 @@
 
 --- Flow Structure Errors ---
   ✓ reject: extra closing bracket (4H7K)
-  ✗ reject: content after closing brace (62EZ)
-  ✗ reject: unclosed flow sequence (6JTT)
+  ✓ reject: content after closing brace (62EZ)
+  ✓ reject: unclosed flow sequence (6JTT)
   ✓ reject: comment without space after ] (9JBA)
-  ✗ reject: leading comma in flow seq (9MAG)
-  ✗ reject: multiline flow mapping key (C2SP)
-  ✗ reject: double comma in flow seq (CTN5)
+  ✓ reject: leading comma in flow seq (9MAG)
+  ✓ reject: multiline flow mapping key (C2SP)
+  ✓ reject: double comma in flow seq (CTN5)
   ✓ reject: comment without space after comma (CVW2)
   ✗ reject: implicit key colon on next line (DK4H)
-  ✗ reject: content after closed flow seq (KS4U)
-  ✗ reject: block item after flow map (P2EQ)
+  ✓ reject: content after closed flow seq (KS4U)
+  ✓ reject: block item after flow map (P2EQ)
   ✗ reject: missing comma in flow mapping (T833)
   ✗ reject: colon-value on next line after quoted key (ZXT5)
 
-=== Results: 72/84 passed ===
-    12 FAILED
+=== Results: 81/84 passed ===
+    3 FAILED
