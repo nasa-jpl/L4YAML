@@ -178,11 +178,11 @@
     <div class="stat-box stat-total"><h3>Unique Tests</h3><div class="number">74</div></div>
     <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">0</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
-    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">71</div></div>
-    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">3</div></div>
+    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">74</div></div>
+    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">0</div></div>
     <div class="stat-box stat-skip"><h3>Skipped (1.3)</h3><div class="number">0</div></div>
     <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">0</div></div>
-    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">71/74</div><div class="pct">(95.9%)</div></div>
+    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">74/74</div><div class="pct">(100.0%)</div></div>
   </div>
   <h3>Coverage by Stage</h3>
   <div class="stage-cards">
@@ -213,8 +213,8 @@
     </div>
     <div class="stage-card">
       <div class="stage-card-name">error</div>
-      <div class="stage-card-stats">71/74 correct (95.9%) · 0 pass, 0 fail, 71 exp-fail, 3 unexp-pass, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-segment" style="flex: 71 0 0px; background: var(--color-expected-fail)" title="71 expected fail"></div><div class="stage-bar-segment" style="flex: 3 0 0px; background: var(--color-unexpected-pass)" title="3 unexpected pass"></div></div>
+      <div class="stage-card-stats">74/74 correct (100.0%) · 0 pass, 0 fail, 74 exp-fail, 0 unexp-pass, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-segment" style="flex: 74 0 0px; background: var(--color-expected-fail)" title="74 expected fail"></div></div>
     </div>
   </div>
   <div class="filters">
@@ -306,13 +306,13 @@
         <td><span class="tag">error</span><span class="tag">sequence</span><span class="tag">indent</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="4jvg scalar value with two anchors anchor error mapping">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="4jvg scalar value with two anchors anchor error mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/4JVG.yaml" target="_blank" class="test-id-link" title="View 4JVG source in yaml-test-suite">4JVG</a></td>
         <td>Scalar value with two anchors</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">anchor</span><span class="tag">error</span><span class="tag">mapping</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="55wf invalid escape in double quoted string error double">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/55WF.yaml" target="_blank" class="test-id-link" title="View 55WF source in yaml-test-suite">55WF</a></td>
@@ -722,13 +722,13 @@
         <td><span class="tag">error</span><span class="tag">folded</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="s98z block scalar with more spaces than first content line error folded comment scalar whitespace">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="s98z block scalar with more spaces than first content line error folded comment scalar whitespace">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/S98Z.yaml" target="_blank" class="test-id-link" title="View S98Z source in yaml-test-suite">S98Z</a></td>
         <td>Block scalar with more spaces than first content line</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">folded</span><span class="tag">comment</span><span class="tag">scalar</span><span class="tag">whitespace</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="sf5v duplicate yaml directive directive error">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/SF5V.yaml" target="_blank" class="test-id-link" title="View SF5V source in yaml-test-suite">SF5V</a></td>
@@ -770,13 +770,13 @@
         <td><span class="tag">anchor</span><span class="tag">error</span><span class="tag">sequence</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="t833 flow mapping missing a separating comma error flow mapping">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="t833 flow mapping missing a separating comma error flow mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/T833.yaml" target="_blank" class="test-id-link" title="View T833 source in yaml-test-suite">T833</a></td>
         <td>Flow mapping missing a separating comma</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">mapping</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="td5n invalid scalar after sequence error sequence scalar">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/TD5N.yaml" target="_blank" class="test-id-link" title="View TD5N source in yaml-test-suite">TD5N</a></td>

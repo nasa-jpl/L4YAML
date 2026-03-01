@@ -1,16 +1,16 @@
 {
-  "date": "2026-03-01T15:23:29-0800",
+  "date": "2026-03-01T15:59:43-0800",
   "overall": {
     "applicable": 358,
-    "correct": 355,
-    "correctRate": 99.1,
-    "expectedFail": 92,
+    "correct": 358,
+    "correctRate": 100,
+    "expectedFail": 95,
     "failed": 0,
     "passed": 263,
     "skipped": 48,
     "timeout": 0,
     "total": 406,
-    "unexpectedPass": 3
+    "unexpectedPass": 0
   },
   "stages": {
     "advanced": {
@@ -51,15 +51,15 @@
     },
     "error": {
       "applicable": 74,
-      "correct": 71,
-      "correctRate": 95.9,
-      "expectedFail": 71,
+      "correct": 74,
+      "correctRate": 100,
+      "expectedFail": 74,
       "failed": 0,
       "passed": 0,
       "skipped": 0,
       "timeout": 0,
       "total": 74,
-      "unexpectedPass": 3
+      "unexpectedPass": 0
     },
     "flow": {
       "applicable": 46,
@@ -347,10 +347,10 @@
       "stage": "error"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "4JVG",
       "name": "Scalar value with two anchors",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "error"
     },
     {
@@ -2391,10 +2391,10 @@
       "stage": "scalar"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "S98Z",
       "name": "Block scalar with more spaces than first content line",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "error"
     },
     {
@@ -2503,10 +2503,10 @@
       "stage": "scalar"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "T833",
       "name": "Flow mapping missing a separating comma",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "error"
     },
     {
@@ -2951,9 +2951,9 @@
         "total": 86
       },
       {
-        "allPass": false,
+        "allPass": true,
         "label": "Structural Validation Tests",
-        "passed": 83,
+        "passed": 84,
         "total": 84
       },
       {
@@ -2999,7 +2999,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 712,
+    "totalPassed": 713,
     "totalTests": 738
   }
 }

@@ -51,7 +51,7 @@ Running all tests for HTML report...
   [35/406] 4GC6 ○ YAML 1.3 specific
   [36/406] 4H7K ✓ (expected fail)
   [37/406] 4HVU ✓ (expected fail)
-  [38/406] 4JVG ⚠ unexpected pass
+  [38/406] 4JVG ✓ (expected fail)
   [39/406] 4MUZ ✓
   [40/406] 4MUZ ✓
   [41/406] 4MUZ ✓
@@ -343,7 +343,7 @@ Running all tests for HTML report...
   [327/406] S4JQ ✓
   [328/406] S4T7 ✓
   [329/406] S7BG ✓
-  [330/406] S98Z ⚠ unexpected pass
+  [330/406] S98Z ✓ (expected fail)
   [331/406] S9E8 ✓
   [332/406] SBG9 ✓
   [333/406] SF5V ✓ (expected fail)
@@ -359,7 +359,7 @@ Running all tests for HTML report...
   [343/406] T26H ○ YAML 1.3 specific
   [344/406] T4YY ○ YAML 1.3 specific
   [345/406] T5N4 ○ YAML 1.3 specific
-  [346/406] T833 ⚠ unexpected pass
+  [346/406] T833 ✓ (expected fail)
   [347/406] TD5N ✓ (expected fail)
   [348/406] TE2A ✓
   [349/406] TL85 ✓
@@ -422,13 +422,13 @@ Running all tests for HTML report...
   [406/406] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 355/406 (99.000000%)
+Correct: 358/406 (100.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 10/10
   Explicit Key Tests: ✗ 39/55
   Flow Completeness Tests: ✗ 85/86
-  Structural Validation Tests: ✗ 83/84
+  Structural Validation Tests: ✓ 84/84
   Dump Round-Trip Tests: ✓ 102/102
   Raw Parse / Compose Tests: ✗ 26/29
   YAML 1.2.2 Spec Examples: ✗ 131/132
@@ -437,7 +437,7 @@ Running verified test suites...
   YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline): ✗ 131/132
   Demo: ✓ 7/7
 
-Verified: 712/738
+Verified: 713/738
 
 Generating HTML reports...
   wrote docs/index.html
