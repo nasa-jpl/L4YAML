@@ -1,13 +1,13 @@
 {
-  "date": "2026-02-28T20:11:47-0800",
+  "date": "2026-02-28T21:11:24-0800",
   "overall": {
-    "applicable": 354,
-    "correct": 284,
-    "correctRate": 80.2,
+    "applicable": 358,
+    "correct": 288,
+    "correctRate": 80.4,
     "expectedFail": 25,
     "failed": 0,
-    "passed": 259,
-    "skipped": 52,
+    "passed": 263,
+    "skipped": 48,
     "timeout": 0,
     "total": 406,
     "unexpectedPass": 70
@@ -74,13 +74,13 @@
       "unexpectedPass": 1
     },
     "scalar": {
-      "applicable": 54,
-      "correct": 54,
+      "applicable": 58,
+      "correct": 58,
       "correctRate": 100,
       "expectedFail": 1,
       "failed": 0,
-      "passed": 53,
-      "skipped": 28,
+      "passed": 57,
+      "skipped": 24,
       "timeout": 0,
       "total": 82,
       "unexpectedPass": 0
@@ -686,7 +686,7 @@
       "error": null,
       "id": "6VJK",
       "name": "Spec Example 2.15. Folded newlines are preserved for \"more indented\" and blank lines",
-      "outcome": "skip",
+      "outcome": "pass",
       "stage": "scalar"
     },
     {
@@ -784,7 +784,7 @@
       "error": null,
       "id": "7T8X",
       "name": "Spec Example 8.10. Folded Lines - 8.13. Final Empty Lines",
-      "outcome": "skip",
+      "outcome": "pass",
       "stage": "scalar"
     },
     {
@@ -2037,14 +2037,14 @@
       "error": null,
       "id": "M9B4",
       "name": "Spec Example 8.7. Literal Scalar",
-      "outcome": "skip",
+      "outcome": "pass",
       "stage": "scalar"
     },
     {
       "error": null,
       "id": "MJS9",
       "name": "Spec Example 6.7. Block Folding",
-      "outcome": "skip",
+      "outcome": "pass",
       "stage": "scalar"
     },
     {
