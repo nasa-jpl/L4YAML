@@ -23,7 +23,7 @@ Array (Positioned YamlToken) ──→ TokenParser ──→ Array YamlDocument
 ```
 
 The parser is a **pure function**:
-  `Array (Positioned YamlToken) → Except String (Array YamlDocument)`
+  `Array (Positioned YamlToken) → Except ScanError (Array YamlDocument)`
 
 Internally it uses `ParseState` (current index into the token array) and
 operates via recursive descent, matching token patterns.
@@ -94,12 +94,12 @@ def ParseState.currentLine (ps : ParseState) : Nat :=
   | none => 0
 
 /-- Consume a specific token, error if mismatch. -/
-def ParseState.expect (ps : ParseState) (tok : YamlToken) (desc : String) : Except String ParseState :=
+def ParseState.expect (ps : ParseState) (tok : YamlToken) (desc : String) : Except ScanError ParseState :=
   match ps.peek? with
   | some t =>
     if BEq.beq t tok then .ok ps.advance
-    else .error s!"expected {desc} at line {ps.currentLine}, got {repr t}"
-  | none => .error s!"expected {desc} but reached end of tokens"
+    else .error (.expectedToken desc ps.currentLine (some (toString (repr t))))
+  | none => .error (.expectedToken desc ps.currentLine none)
 
 /-- Try to consume a specific token if present. -/
 def ParseState.tryConsume (ps : ParseState) (tok : YamlToken) : (Bool × ParseState) :=
@@ -153,9 +153,9 @@ def maxDepth : Nat := 1000
 mutual
 
 /-- Parse a YAML node (the core recursive function). -/
-partial def parseNode (ps : ParseState) (depth : Nat := 0) : Except String (YamlValue × ParseState) := do
+partial def parseNode (ps : ParseState) (depth : Nat := 0) : Except ScanError (YamlValue × ParseState) := do
   if depth > maxDepth then
-    .error s!"maximum nesting depth exceeded at line {ps.currentLine}"
+    .error (.nestingDepthExceeded ps.currentLine)
   -- Check for alias
   match ps.peek? with
   | some (.alias name) =>
@@ -192,7 +192,7 @@ partial def parseNode (ps : ParseState) (depth : Nat := 0) : Except String (Yaml
   .ok (val, ps)
 
 /-- Parse a block sequence: `BLOCK-SEQ-START (BLOCK-ENTRY node?)* BLOCK-END` -/
-partial def parseBlockSequence (ps : ParseState) (depth : Nat) : Except String (YamlValue × ParseState) := do
+partial def parseBlockSequence (ps : ParseState) (depth : Nat) : Except ScanError (YamlValue × ParseState) := do
   let ps := ps.advance  -- consume blockSequenceStart
   let mut ps := ps
   let mut items : Array YamlValue := #[]
@@ -221,7 +221,7 @@ partial def parseBlockSequence (ps : ParseState) (depth : Nat) : Except String (
     behaviour.  There is no corresponding `BLOCK-END` for this sequence;
     the entries are terminated by a `key`, `blockEnd`, or `streamEnd`
     token belonging to the parent structure. -/
-partial def parseImplicitBlockSequence (ps : ParseState) (depth : Nat) : Except String (YamlValue × ParseState) := do
+partial def parseImplicitBlockSequence (ps : ParseState) (depth : Nat) : Except ScanError (YamlValue × ParseState) := do
   let mut ps := ps
   let mut items : Array YamlValue := #[]
   let fuel := ps.tokens.size - ps.pos
@@ -241,7 +241,7 @@ partial def parseImplicitBlockSequence (ps : ParseState) (depth : Nat) : Except 
   .ok (YamlValue.sequence .block items, ps)
 
 /-- Parse a block mapping: `BLOCK-MAP-START (KEY node? VALUE node?)* BLOCK-END` -/
-partial def parseBlockMapping (ps : ParseState) (depth : Nat) : Except String (YamlValue × ParseState) := do
+partial def parseBlockMapping (ps : ParseState) (depth : Nat) : Except ScanError (YamlValue × ParseState) := do
   let ps := ps.advance  -- consume blockMappingStart
   let mut ps := ps
   let mut pairs : Array (YamlValue × YamlValue) := #[]
@@ -281,7 +281,7 @@ partial def parseBlockMapping (ps : ParseState) (depth : Nat) : Except String (Y
   .ok (YamlValue.mapping .block pairs, ps)
 
 /-- Parse a flow sequence: `FLOW-SEQ-START (node (FLOW-ENTRY node)*)? FLOW-SEQ-END` -/
-partial def parseFlowSequence (ps : ParseState) (depth : Nat) : Except String (YamlValue × ParseState) := do
+partial def parseFlowSequence (ps : ParseState) (depth : Nat) : Except ScanError (YamlValue × ParseState) := do
   let ps := ps.advance  -- consume flowSequenceStart
   let mut ps := ps
   let mut items : Array YamlValue := #[]
@@ -311,7 +311,7 @@ partial def parseFlowSequence (ps : ParseState) (depth : Nat) : Except String (Y
   .ok (YamlValue.sequence .flow items, ps)
 
 /-- Parse a flow mapping: `FLOW-MAP-START (entries)? FLOW-MAP-END` -/
-partial def parseFlowMapping (ps : ParseState) (depth : Nat) : Except String (YamlValue × ParseState) := do
+partial def parseFlowMapping (ps : ParseState) (depth : Nat) : Except ScanError (YamlValue × ParseState) := do
   let ps := ps.advance  -- consume flowMappingStart
   let mut ps := ps
   let mut pairs : Array (YamlValue × YamlValue) := #[]
@@ -365,7 +365,7 @@ partial def parseFlowMapping (ps : ParseState) (depth : Nat) : Except String (Ya
   .ok (YamlValue.mapping .flow pairs, ps)
 
 /-- Parse a single key:value pair as an implicit mapping (in flow sequences). -/
-partial def parseSinglePairMapping (ps : ParseState) (depth : Nat) : Except String (YamlValue × ParseState) := do
+partial def parseSinglePairMapping (ps : ParseState) (depth : Nat) : Except ScanError (YamlValue × ParseState) := do
   let ps := ps.advance  -- consume KEY token
   let (key, ps) ← match ps.peek? with
     | some .value | some .flowEntry | some .flowSequenceEnd =>
@@ -404,7 +404,7 @@ def parseDirectives (ps : ParseState) : (Array Directive × ParseState) := Id.ru
 /-! ## Document Parsing -/
 
 /-- Parse a single YAML document. -/
-def parseDocument (ps : ParseState) : Except String (YamlDocument × ParseState) := do
+def parseDocument (ps : ParseState) : Except ScanError (YamlDocument × ParseState) := do
   -- Optional directives
   let (dirs, ps) := parseDirectives ps
   -- Optional document start marker
@@ -423,8 +423,8 @@ def parseDocument (ps : ParseState) : Except String (YamlDocument × ParseState)
 /-- Parse a complete YAML stream (multiple documents).
 
     `scan ∘ parseStream` composes the full Phase 9 pipeline:
-    `String → Except String (Array YamlDocument)` -/
-def parseStream (tokens : Array (Positioned YamlToken)) : Except String (Array YamlDocument) := do
+    `String → Except ScanError (Array YamlDocument)` -/
+def parseStream (tokens : Array (Positioned YamlToken)) : Except ScanError (Array YamlDocument) := do
   let mut ps := ParseState.mk' tokens
   -- Expect stream start
   ps ← ps.expect .streamStart "STREAM-START"
@@ -450,6 +450,16 @@ The *Raw* variants return the serialization tree (anchors + aliases preserved).
 The standard variants apply Compose for backward compatibility.
 -/
 
+/-- Internal: scan + parse pipeline returning structured `ScanError`.
+
+    Callers who need machine-inspectable errors (e.g., for testing specific
+    error categories) should use this directly. The public `parseYaml*`
+    functions map errors to `String` at the API boundary. -/
+def scanAndParse (input : String) : Except ScanError (Array YamlDocument) :=
+  match Scanner.scan input with
+  | .ok tokens => parseStream tokens
+  | .error e => .error e
+
 /--
 Parse a YAML string into an array of documents (**serialization tree**).
 
@@ -459,9 +469,13 @@ This is the **Parse** step from YAML 1.2.2 §3.1.
 Each `YamlDocument` includes an `anchors` map that can be used by
 `YamlDocument.compose` to resolve aliases.
 -/
-def parseYamlRaw (input : String) : Except String (Array YamlDocument) := do
-  let tokens ← Scanner.scan input
-  parseStream tokens
+def parseYamlRaw (input : String) : Except String (Array YamlDocument) :=
+  match Scanner.scan input with
+  | .ok tokens =>
+    match parseStream tokens with
+    | .ok docs => .ok docs
+    | .error e => .error e.toString
+  | .error e => .error e.toString
 
 /--
 Parse a YAML string into an array of documents (**representation graph**).
@@ -487,7 +501,7 @@ def parseYamlSingleRaw (input : String) : Except String YamlDocument :=
   | .ok docs =>
     if docs.size == 0 then .ok { value := YamlValue.null }
     else if docs.size == 1 then .ok docs[0]!
-    else .error s!"expected single document, found {docs.size}"
+    else .error (ScanError.multipleDocuments docs.size).toString
   | .error e => .error e
 
 /--
@@ -501,7 +515,7 @@ def parseYamlSingle (input : String) : Except String YamlValue :=
   | .ok docs =>
     if docs.size == 0 then .ok YamlValue.null
     else if docs.size == 1 then .ok docs[0]!.value
-    else .error s!"expected single document, found {docs.size}"
+    else .error (ScanError.multipleDocuments docs.size).toString
   | .error e => .error e
 
 end Lean4Yaml.TokenParser
