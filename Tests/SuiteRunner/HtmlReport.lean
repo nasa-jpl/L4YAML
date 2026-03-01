@@ -681,6 +681,22 @@ def generateStageReport (results : Array ReportResult) (stage : Stage) : String 
     (title := s!"{stage} Tests — lean4-yaml-verified")
     (navLink := some ("index.html", "Back to Coverage Index"))
 
+/-- Map ReportResult outcomes back to the console-mode pass/fail/skip categorization.
+    - pass = runTest returned .pass (output matched expected)
+    - fail = runTest returned .fail (mismatch, timeout, unexpected parse success)
+    - skip = test was not run -/
+private def consoleStats (results : Array ReportResult) : Nat × Nat × Nat :=
+  results.foldl (fun (p, f, s) r =>
+    match r.outcome with
+    | .pass => (p + 1, f, s)
+    | .expectedFail =>
+      -- expectedFail with no errorMsg came from runTest .pass path;
+      -- with errorMsg came from runTest .fail path
+      if r.errorMsg.isNone then (p + 1, f, s) else (p, f + 1, s)
+    | .fail | .unexpectedPass | .timeout => (p, f + 1, s)
+    | .skip _ => (p, f, s + 1)
+  ) (0, 0, 0)
+
 /-- Generate the index page linking to all reports. -/
 def generateIndexHtml (results : Array ReportResult)
     (verifiedSuites : Option (Array Tests.VerifiedSuiteResult) := none) : String :=
@@ -699,6 +715,30 @@ def generateIndexHtml (results : Array ReportResult)
     s!"                <a href=\"coverage-{stage}.html\">{stage}</a>\n" ++
     s!"                <div class=\"description\">{ss.correctCount}/{ss.applicable} correct ({sp}%){skipNote}</div>\n" ++
     s!"              </div>\n")
+
+  -- Suite Runner progressive stage summary (matches console-mode `lake exe suiterunner`)
+  -- Each stage tests its own tests PLUS all lower stages (cumulative/hierarchical).
+  -- Error tests are excluded (same as console mode).
+  let progressiveStages : Array Stage := #[.scalar, .flow, .block, .document, .advanced]
+  let stageData := progressiveStages.map fun stage =>
+    let filtered := results.filter (fun r => r.testCase.inStage stage)
+    let (p, f, s) := consoleStats filtered
+    (stage, filtered.size, p, f, s)
+  let srTotal := stageData.foldl (fun acc (_, t, _, _, _) => acc + t) 0
+  let srPassed := stageData.foldl (fun acc (_, _, p, _, _) => acc + p) 0
+  let srFailed := stageData.foldl (fun acc (_, _, _, f, _) => acc + f) 0
+  let srSkipped := stageData.foldl (fun acc (_, _, _, _, s) => acc + s) 0
+  let srPctStr := if srTotal == 0 then "0.0"
+    else formatPct (srPassed.toFloat / srTotal.toFloat * 100.0)
+  let srBorderColor := if srFailed == 0 then "#4CAF50" else "#2196F3"
+  let srBgColor := if srFailed == 0 then "#e8f5e9" else "#e3f2fd"
+  let srIcon := if srFailed == 0 then "✓" else "▶"
+  let srTableRows := String.join (stageData.toList.map fun (stage, total, p, f, s) =>
+    let color := if f == 0 then "#4CAF50" else "#f44336"
+    s!"    <tr><td>{stage}</td>" ++
+    s!"<td>{total}</td>" ++
+    s!"<td style=\"color:{color};font-weight:bold\">{p}</td>" ++
+    s!"<td>{f}</td><td>{s}</td></tr>\n")
 
   String.join [
     "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n",
@@ -749,6 +789,18 @@ def generateIndexHtml (results : Array ReportResult)
     "  <h2>Coverage by Stage</h2>\n",
     "  <div class=\"links\">\n",
     stageRows,
+    "  </div>\n\n",
+    -- Suite Runner progressive stages summary
+    s!"  <h2>Suite Runner (Progressive Stages)</h2>\n",
+    s!"  <div class=\"summary\" style=\"border-left-color:{srBorderColor};background:{srBgColor}\">\n",
+    s!"    <h3 style=\"color:{srBorderColor}\">{srIcon} Suite Runner: {srPassed}/{srTotal} ({srPctStr}%)</h3>\n",
+    "    <p style=\"color:#666;font-size:13px;margin:5px 0 10px\">Each stage tests its own tests plus all lower stages (cumulative). Error tests excluded.</p>\n",
+    "    <table style=\"width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:14px;\">\n",
+    "    <tr style=\"color:#999;font-size:12px\"><td>Stage</td><td>Total</td><td>Passed</td><td>Failed</td><td>Skipped</td></tr>\n",
+    srTableRows,
+    s!"    <tr style=\"border-top:2px solid #ccc;font-weight:bold\"><td>Total</td>" ++
+    s!"<td>{srTotal}</td><td>{srPassed}</td><td>{srFailed}</td><td>{srSkipped}</td></tr>\n",
+    "    </table>\n",
     "  </div>\n\n",
     -- Verified Tests section
     match verifiedSuites with

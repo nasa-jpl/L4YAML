@@ -34,25 +34,25 @@ open Lean4Yaml.TokenParser
   | .ok _ => false
   | .error _ => true
 
--- 2G84:1 
+-- 2G84:1
 #guard match parseYaml "--- |10\n\n" with
   | .ok _ => false
   | .error _ => true
 
--- 3HFZ:0 [UP] Invalid content after document end marker
+-- 3HFZ:0 Invalid content after document end marker
 #guard match parseYaml "---\nkey: value\n... invalid\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- 4EJS:0 Invalid tabs as indendation in a mapping
 #guard match parseYaml "---\na:\n\tb:\n\t\tc: value\n" with
   | .ok _ => false
   | .error _ => true
 
--- 4H7K:0 [UP] Flow sequence with invalid extra closing bracket
+-- 4H7K:0 Flow sequence with invalid extra closing bracket
 #guard match parseYaml "---\n[ a, b, c ] ]\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- 4HVU:0 [UP] Wrong indendation in Sequence
 #guard match parseYaml "key:\n   - ok\n   - also ok\n  - wrong\n" with
@@ -74,10 +74,10 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- 5TRB:0 [UP] Invalid document-start marker in doublequoted tring
+-- 5TRB:0 Invalid document-start marker in doublequoted tring
 #guard match parseYaml "---\n\"\n---\n\"\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- 5U3A:0 [UP] Sequence on same Line as Mapping Key
 #guard match parseYaml "key: - a\n     - b\n" with
@@ -149,10 +149,10 @@ open Lean4Yaml.TokenParser
   | .ok _ => false
   | .error _ => true
 
--- 9MQT:1 [UP] 
+-- 9MQT:1
 #guard match parseYaml "--- \"a\n... x\nb\"\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- B63P:0 Directive without document
 #guard match parseYaml "%YAML 1.2\n...\n" with
@@ -214,12 +214,12 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- DK95:1 [UP] 
+-- DK95:1 [UP]
 #guard match parseYaml "foo: \"bar\n\tbaz\"\n" with
   | .ok _ => true
   | .error _ => false
 
--- DK95:6 
+-- DK95:6
 #guard match parseYaml "foo:\n  a: 1\n  \tb: 2\n" with
   | .ok _ => false
   | .error _ => true
@@ -284,10 +284,10 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- JKF3:0 [UP] Multiline unidented double quoted block key
+-- JKF3:0 Multiline unidented double quoted block key
 #guard match parseYaml "- - \"bar\nbar\": x\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- JY7Z:0 [UP] Trailing content that looks like a mapping
 #guard match parseYaml "key1: \"quoted1\"\nkey2: \"quoted2\" no key: nor value\nkey3: \"quoted3\"\n" with
@@ -309,7 +309,7 @@ open Lean4Yaml.TokenParser
   | .ok _ => false
   | .error _ => true
 
--- MUS6:1 
+-- MUS6:1
 #guard match parseYaml "%YAML 1.2\n---\n%YAML 1.2\n---\n" with
   | .ok _ => false
   | .error _ => true
@@ -319,10 +319,10 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- N782:0 [UP] Invalid document markers in flow style
+-- N782:0 Invalid document markers in flow style
 #guard match parseYaml "[\n--- ,\n...\n]\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- P2EQ:0 [UP] Invalid sequene item on same line as previous item
 #guard match parseYaml "---\n- { y: z }- invalid\n" with
@@ -334,10 +334,10 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- QB6E:0 [UP] Wrong indented multiline quoted scalar
+-- QB6E:0 Wrong indented multiline quoted scalar
 #guard match parseYaml "---\nquoted: \"a\nb\nc\"\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- QLJ7:0 [UP] Tag shorthand used in documents but only defined in the first
 #guard match parseYaml "%TAG !prefix! tag:example.com,2011:\n--- !prefix!A\na: b\n--- !prefix!B\nc: d\n--- !prefix!C\ne: f\n" with
@@ -349,10 +349,10 @@ open Lean4Yaml.TokenParser
   | .ok _ => false
   | .error _ => true
 
--- RXY3:0 [UP] Invalid document-end marker in single quoted string
+-- RXY3:0 Invalid document-end marker in single quoted string
 #guard match parseYaml "---\n'\n...\n'\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- S4GJ:0 Invalid text after block scalar indicator
 #guard match parseYaml "---\nfolded: > first line\n  second line\n" with
@@ -429,37 +429,37 @@ open Lean4Yaml.TokenParser
   | .ok _ => false
   | .error _ => true
 
--- Y79Y:3 [UP] 
+-- Y79Y:3 [UP]
 #guard match parseYaml "- [\n\tfoo,\n foo\n ]\n" with
   | .ok _ => true
   | .error _ => false
 
--- Y79Y:4 [UP] 
+-- Y79Y:4 [UP]
 #guard match parseYaml "-\t-\n\n" with
   | .ok _ => true
   | .error _ => false
 
--- Y79Y:5 [UP] 
+-- Y79Y:5 [UP]
 #guard match parseYaml "- \t-\n\n" with
   | .ok _ => true
   | .error _ => false
 
--- Y79Y:6 [UP] 
+-- Y79Y:6 [UP]
 #guard match parseYaml "?\t-\n\n" with
   | .ok _ => true
   | .error _ => false
 
--- Y79Y:7 [UP] 
+-- Y79Y:7 [UP]
 #guard match parseYaml "? -\n:\t-\n\n" with
   | .ok _ => true
   | .error _ => false
 
--- Y79Y:8 [UP] 
+-- Y79Y:8 [UP]
 #guard match parseYaml "?\tkey:\n\n" with
   | .ok _ => true
   | .error _ => false
 
--- Y79Y:9 [UP] 
+-- Y79Y:9 [UP]
 #guard match parseYaml "? key:\n:\tkey:\n\n" with
   | .ok _ => true
   | .error _ => false
@@ -489,7 +489,7 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- ZYU8:2 
+-- ZYU8:2
 #guard match parseYaml "%YAML 1.1 1.2\n---\n" with
   | .ok _ => false
   | .error _ => true

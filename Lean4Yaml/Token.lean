@@ -255,6 +255,18 @@ inductive ScanError where
   | directiveAfterContent (line : Nat)
   /-- Directives present but no document follows (`---` required) — §6.8 violation. -/
   | directiveWithoutDocument (line : Nat)
+  /-- Document marker (`---`/`...`) at col 0 terminates multi-line quoted scalar — §9.1.2. -/
+  | documentMarkerInScalar (style : ScalarStyle) (line : Nat)
+  /-- Non-comment content after document-end marker `...` — §9.1.2 violation. -/
+  | trailingContentAfterDocEnd (line col : Nat)
+  /-- `]` or `}` encountered outside any flow collection — §7.4 violation. -/
+  | flowEndOutsideFlow (bracket : Char) (line col : Nat)
+  /-- Continuation line of quoted scalar is under-indented — §8.1 violation. -/
+  | underIndentedScalar (style : ScalarStyle) (line : Nat)
+  /-- Document marker (`---`/`...`) inside flow collection — §5.4 violation. -/
+  | documentMarkerInFlow (line : Nat)
+  /-- Flow content below block indentation level — §8.1 violation. -/
+  | underIndentedFlowContent (line col : Nat)
 
   /- Grammar-level errors (TokenParser.lean) -/
 
@@ -286,6 +298,16 @@ def ScanError.toString : ScanError → String
   | .duplicateYamlDirective l   => s!"duplicate %YAML directive at line {l}"
   | .directiveAfterContent l    => s!"directive after document content without document-end marker at line {l}"
   | .directiveWithoutDocument l => s!"directive(s) at line {l} with no following document"
+  | .documentMarkerInScalar .doubleQuoted l => s!"document marker inside double-quoted scalar at line {l}"
+  | .documentMarkerInScalar .singleQuoted l => s!"document marker inside single-quoted scalar at line {l}"
+  | .documentMarkerInScalar style l => s!"document marker inside {repr style} scalar at line {l}"
+  | .trailingContentAfterDocEnd l c => s!"unexpected content after document-end marker at line {l}, column {c}"
+  | .flowEndOutsideFlow b l c => s!"unexpected '{b}' outside flow collection at line {l}, column {c}"
+  | .underIndentedScalar .doubleQuoted l => s!"under-indented continuation line in double-quoted scalar at line {l}"
+  | .underIndentedScalar .singleQuoted l => s!"under-indented continuation line in single-quoted scalar at line {l}"
+  | .underIndentedScalar style l => s!"under-indented continuation line in {repr style} scalar at line {l}"
+  | .documentMarkerInFlow l => s!"document marker (--- or ...) inside flow collection at line {l}"
+  | .underIndentedFlowContent l c => s!"flow content under-indented at line {l}, column {c}"
   | .expectedToken desc l (some got) => s!"expected {desc} at line {l}, got {got}"
   | .expectedToken desc _ none => s!"expected {desc} but reached end of tokens"
   | .nestingDepthExceeded l    => s!"maximum nesting depth exceeded at line {l}"
