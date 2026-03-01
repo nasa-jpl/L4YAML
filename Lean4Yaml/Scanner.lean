@@ -148,6 +148,13 @@ structure ScannerState where
   /-- Whether a document has ever been started (via `---` or implicit content).
       Used to detect directive-only streams. -/
   documentEverStarted : Bool := false
+  /-- Stack tracking flow collection types.  `true` = sequence (`[`),
+      `false` = mapping (`{`).  Pushed on flow-open, popped on flow-close. -/
+  flowStack : Array Bool := #[]
+  /-- Whether an explicit `?` key indicator has been emitted for the
+      current mapping entry.  Used to bypass the flow-sequence
+      implicit-key-single-line restriction when `?` was used. -/
+  explicitKeyActive : Bool := false
   deriving Repr, Inhabited
 
 /-- Create initial scanner state from an input string. -/
@@ -155,6 +162,11 @@ def ScannerState.mk' (input : String) : ScannerState :=
   { input := input, inputEnd := input.utf8ByteSize }
 
 /-! ## State Accessors -/
+
+/-- Whether the scanner is currently inside a flow sequence (`[…]`),
+    as opposed to a flow mapping or block context. -/
+def ScannerState.isInFlowSequence (s : ScannerState) : Bool :=
+  s.flowLevel > 0 && s.flowStack.back? == some true
 
 def ScannerState.currentPos (s : ScannerState) : YamlPos where
   offset := s.offset
@@ -355,7 +367,7 @@ def skipToContent (s : ScannerState) : Except ScanError ScannerState := do
       -- Key insight: once col > currentIndent, we've consumed enough spaces
       -- to be inside the current block's content area. Any tabs here are
       -- s-separate-in-line [66] (legal separation), not indentation.
-      if !s'.inFlow && (s'.col : Int) ≤ s'.currentIndent then
+      if (s'.col : Int) ≤ s'.currentIndent then
         -- Still at or below the current block's indent level.
         -- A tab here would extend into indentation territory — §6.1 violation.
         match s'.peek? with
@@ -392,7 +404,13 @@ def skipToContent (s : ScannerState) : Except ScanError ScannerState := do
     | some c =>
       if isLineBreak c then
         s' := consumeNewline s'
-        s' := { s' with simpleKeyAllowed := true }
+        -- §7.4.2: In flow sequences, implicit keys are restricted to a
+        -- single line.  Don't re-enable simple keys on newline so that
+        -- `saveSimpleKey` preserves (rather than overwrites) the pending
+        -- key, allowing `scanValue` to detect the line mismatch.
+        -- In block context and flow mappings, newlines always allow new keys.
+        if !s'.isInFlowSequence then
+          s' := { s' with simpleKeyAllowed := true }
       else break
     | none => break
   return s'
@@ -450,22 +468,26 @@ def atDocumentBoundary (s : ScannerState) : Bool :=
 def scanFlowSequenceStart (s : ScannerState) : ScannerState :=
   let s' := { s with simpleKey := { possible := false } }
   let s' := s'.emit .flowSequenceStart
-  { s'.advance with flowLevel := s'.flowLevel + 1, simpleKeyAllowed := true }
+  { s'.advance with flowLevel := s'.flowLevel + 1, simpleKeyAllowed := true,
+                    flowStack := s'.flowStack.push true }
 
 def scanFlowSequenceEnd (s : ScannerState) : ScannerState :=
   let s' := s.emit .flowSequenceEnd
   { s'.advance with flowLevel := if s'.flowLevel > 0 then s'.flowLevel - 1 else 0,
-                    simpleKeyAllowed := false }
+                    simpleKeyAllowed := false,
+                    flowStack := s'.flowStack.pop }
 
 def scanFlowMappingStart (s : ScannerState) : ScannerState :=
   let s' := { s with simpleKey := { possible := false } }
   let s' := s'.emit .flowMappingStart
-  { s'.advance with flowLevel := s'.flowLevel + 1, simpleKeyAllowed := true }
+  { s'.advance with flowLevel := s'.flowLevel + 1, simpleKeyAllowed := true,
+                    flowStack := s'.flowStack.push false }
 
 def scanFlowMappingEnd (s : ScannerState) : ScannerState :=
   let s' := s.emit .flowMappingEnd
   { s'.advance with flowLevel := if s'.flowLevel > 0 then s'.flowLevel - 1 else 0,
-                    simpleKeyAllowed := false }
+                    simpleKeyAllowed := false,
+                    flowStack := s'.flowStack.pop }
 
 def scanFlowEntry (s : ScannerState) : Except ScanError ScannerState := do
   -- §7.4: Leading comma (after flow-open) or consecutive commas are invalid.
@@ -495,13 +517,19 @@ def scanKey (s : ScannerState) : Except ScanError ScannerState := do
   if !s'.inFlow then
     if let some '\t' := s'.peek? then
       throw (.tabInIndentation s'.line s'.col)
-  .ok { s' with simpleKeyAllowed := true }
+  .ok { s' with simpleKeyAllowed := true, explicitKeyActive := true }
 
 def scanValue (s : ScannerState) : Except ScanError ScannerState := do
   -- §7.4: "Plain keys are restricted to a single line."
   -- In block context, reject implicit keys where the key token and the `:`
   -- value indicator are on different lines.
   if s.simpleKey.possible && !s.inFlow && s.simpleKey.pos.line != s.line then
+    throw (.invalidImplicitKey s.line)
+  -- §7.4.2: In flow sequences, implicit key entries (without `?`) must
+  -- have the key and `:` on the same line.  Flow mappings allow multi-line
+  -- implicit keys per `ns-flow-map-yaml-key-entry(n,c)` with `s-separate`.
+  if s.simpleKey.possible && s.isInFlowSequence && !s.explicitKeyActive
+      && s.simpleKey.endLine != s.line then
     throw (.invalidImplicitKey s.line)
   -- §8.2.1: A mapping key at the same indent as a block sequence is
   -- invalid.  Reject before building new state.
@@ -534,7 +562,7 @@ def scanValue (s : ScannerState) : Except ScanError ScannerState := do
   if (s.col : Int) ≤ s.currentIndent && !s''.inFlow then
     if let some '\t' := s''.peek? then
       throw (.tabInIndentation s''.line s''.col)
-  .ok { s'' with simpleKeyAllowed := true }
+  .ok { s'' with simpleKeyAllowed := true, explicitKeyActive := false }
 
 /-! ## Anchor and Alias Scanning -/
 

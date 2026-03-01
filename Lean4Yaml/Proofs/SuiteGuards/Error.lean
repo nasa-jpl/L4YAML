@@ -209,10 +209,10 @@ open Lean4Yaml.TokenParser
   | .ok _ => false
   | .error _ => true
 
--- DK4H:0 [UP] Implicit key followed by newline
+-- DK4H:0 [PASS] Implicit key followed by newline
 #guard match parseYaml "---\n[ key\n  : value ]\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- DK95:1 [PASS — tab in indentation zone on quoted continuation line]
 #guard match parseYaml "foo: \"bar\n\tbaz\"\n" with
@@ -429,10 +429,10 @@ open Lean4Yaml.TokenParser
   | .ok _ => false
   | .error _ => true
 
--- Y79Y:3 [UP]
+-- Y79Y:3 [PASS]
 #guard match parseYaml "- [\n\tfoo,\n foo\n ]\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- Y79Y:4 [PASS]
 #guard match parseYaml "-\t-\n\n" with
@@ -484,10 +484,10 @@ open Lean4Yaml.TokenParser
   | .ok _ => false
   | .error _ => true
 
--- ZXT5:0 [UP] Implicit key followed by newline and adjacent value
+-- ZXT5:0 [PASS] Implicit key followed by newline and adjacent value
 #guard match parseYaml "[ \"key\"\n  :value ]\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- ZYU8:2
 #guard match parseYaml "%YAML 1.1 1.2\n---\n" with
