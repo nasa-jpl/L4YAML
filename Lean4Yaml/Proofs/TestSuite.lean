@@ -299,12 +299,12 @@ def collStyle (input : String) : Option CollectionStyle :=
 #guard parseFails "\"\\z\""
 
 -- Directive without document end before next
--- (tokenized parser accepts duplicate directives)
-#guard parseOk "%YAML 1.2\n%YAML 1.2\n---\n"
+-- (tokenized parser rejects duplicate %YAML per §6.8.1)
+#guard parseFails "%YAML 1.2\n%YAML 1.2\n---\n"
 
 -- Duplicate YAML directives (§6.8.1)
--- (tokenized parser accepts duplicate directives)
-#guard parseOk "%YAML 1.2\n%YAML 1.2\n---\nhello\n"
+-- (tokenized parser rejects duplicate %YAML per §6.8.1)
+#guard parseFails "%YAML 1.2\n%YAML 1.2\n---\nhello\n"
 
 -- Unmatched single quote — fuel exhaustion sets validationError
 #guard parseFails "'unclosed"
