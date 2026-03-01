@@ -651,10 +651,28 @@ def scanDocumentEnd (s : ScannerState) : Except ScanError ScannerState := do
     throw (.directiveWithoutDocument s.line)
   let s' := unwindIndents s (-1)
   let s' := { s' with simpleKey := { possible := false } }
-  .ok { (s'.emit .documentEnd).advanceN 3 with
+  let result := { (s'.emit .documentEnd).advanceN 3 with
     simpleKeyAllowed := true
     allowDirectives := true
     directivesPresent := false }
+  -- §9.1.2: After `...`, only s-l-comments (whitespace + optional comment) allowed.
+  let mut s'' := result
+  -- Skip whitespace on the same line
+  let fuel := s.inputEnd - s''.offset + 1
+  for _ in [:fuel] do
+    match s''.peek? with
+    | some c =>
+      if c == ' ' || c == '\t' then s'' := s''.advance
+      else break
+    | none => break
+  -- After whitespace, must be comment (#), newline, or EOF
+  match s''.peek? with
+  | none => pure ()  -- EOF is fine
+  | some '#' => pure ()  -- comment is fine
+  | some c =>
+    if isLineBreak c then pure ()  -- newline is fine
+    else throw (.trailingContentAfterDocEnd s''.line s''.col)
+  .ok result
 
 /-! ## Escape Sequence Processing -/
 
@@ -766,6 +784,12 @@ def scanDoubleQuoted (s : ScannerState) : Except ScanError ScannerState := do
       if isLineBreak c then
         content := trimTrailingWS content  -- YAML §6.5: trim trailing WS before fold
         let (folded, s'') := foldQuotedNewlines s'
+        -- §9.1.2: Document markers at col 0 terminate even inside quoted scalars
+        if atDocumentStart s'' || atDocumentEnd s'' then
+          return ← .error (.documentMarkerInScalar .doubleQuoted startPos.line)
+        -- §8.1: Continuation line must be indented past current block level
+        if (s''.col : Int) ≤ s.currentIndent then
+          return ← .error (.underIndentedScalar .doubleQuoted s''.line)
         content := content ++ folded
         s' := s''
       else
@@ -792,6 +816,12 @@ def scanSingleQuoted (s : ScannerState) : Except ScanError ScannerState := do
       if isLineBreak c then
         content := trimTrailingWS content  -- YAML §6.5: trim trailing WS before fold
         let (folded, s'') := foldQuotedNewlines s'
+        -- §9.1.2: Document markers at col 0 terminate even inside quoted scalars
+        if atDocumentStart s'' || atDocumentEnd s'' then
+          return ← .error (.documentMarkerInScalar .singleQuoted startPos.line)
+        -- §8.1: Continuation line must be indented past current block level
+        if (s''.col : Int) ≤ s.currentIndent then
+          return ← .error (.underIndentedScalar .singleQuoted s''.line)
         content := content ++ folded
         s' := s''
       else
@@ -1195,6 +1225,9 @@ def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) :=
   | none =>
     return none
   | some c =>
+    -- §5.4: Document markers are forbidden inside flow collections.
+    if s.col == 0 && s.inFlow && (atDocumentStart s || atDocumentEnd s) then
+      return ← .error (.documentMarkerInFlow s.line)
     if s.col == 0 && atDocumentStart s then return some (scanDocumentStart s)
     if s.col == 0 && atDocumentEnd s then
       let s' ← scanDocumentEnd s
@@ -1208,9 +1241,13 @@ def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) :=
       { s with allowDirectives := false, documentEverStarted := true }
     else s
     if c == '[' then return some (scanFlowSequenceStart s)
-    if c == ']' then return some (scanFlowSequenceEnd s)
+    if c == ']' then
+      if s.flowLevel == 0 then return ← .error (.flowEndOutsideFlow ']' s.line s.col)
+      return some (scanFlowSequenceEnd s)
     if c == '{' then return some (scanFlowMappingStart s)
-    if c == '}' then return some (scanFlowMappingEnd s)
+    if c == '}' then
+      if s.flowLevel == 0 then return ← .error (.flowEndOutsideFlow '}' s.line s.col)
+      return some (scanFlowMappingEnd s)
     if c == ',' then return some (scanFlowEntry s)
     if c == '-' && !s.inFlow then
       let next := s.peekAt? 1
