@@ -139,13 +139,13 @@ Running all tests for HTML report...
   [123/406] 9CWY ⚠ unexpected pass
   [124/406] 9DXL ○ YAML 1.3 specific
   [125/406] 9FMG ✓
-  [126/406] 9HCY ⚠ unexpected pass
+  [126/406] 9HCY ✓ (expected fail)
   [127/406] 9J7A ✓
-  [128/406] 9JBA ⚠ unexpected pass
+  [128/406] 9JBA ✓ (expected fail)
   [129/406] 9KAX ○ YAML 1.3 specific
   [130/406] 9KBC ⚠ unexpected pass
   [131/406] 9MAG ⚠ unexpected pass
-  [132/406] 9MMA ⚠ unexpected pass
+  [132/406] 9MMA ✓ (expected fail)
   [133/406] 9MMW ✓
   [134/406] 9MQT ✓
   [135/406] 9MQT ⚠ unexpected pass
@@ -163,7 +163,7 @@ Running all tests for HTML report...
   [147/406] AZ63 ✓
   [148/406] AZW3 ✓
   [149/406] B3HG ○ YAML 1.3 specific
-  [150/406] B63P ⚠ unexpected pass
+  [150/406] B63P ✓ (expected fail)
   [151/406] BD7L ⚠ unexpected pass
   [152/406] BEC7 ✓
   [153/406] BF9H ⚠ unexpected pass
@@ -181,7 +181,7 @@ Running all tests for HTML report...
   [165/406] CT4Q ✓
   [166/406] CTN5 ⚠ unexpected pass
   [167/406] CUP7 ✓
-  [168/406] CVW2 ⚠ unexpected pass
+  [168/406] CVW2 ✓ (expected fail)
   [169/406] CXX2 ⚠ unexpected pass
   [170/406] D49Q ⚠ unexpected pass
   [171/406] D83L ✓
@@ -211,7 +211,7 @@ Running all tests for HTML report...
   [195/406] DMG6 ⚠ unexpected pass
   [196/406] DWX9 ○ YAML 1.3 specific
   [197/406] E76Z ✓
-  [198/406] EB22 ⚠ unexpected pass
+  [198/406] EB22 ✓ (expected fail)
   [199/406] EHF6 ✓
   [200/406] EW3V ⚠ unexpected pass
   [201/406] EX5H ○ YAML 1.3 specific
@@ -238,7 +238,7 @@ Running all tests for HTML report...
   [222/406] H2RW ✓
   [223/406] H3Z8 ✓
   [224/406] H7J7 ⚠ unexpected pass
-  [225/406] H7TQ ⚠ unexpected pass
+  [225/406] H7TQ ✓ (expected fail)
   [226/406] HM87 ✓
   [227/406] HM87 ✓
   [228/406] HMK4 ✓
@@ -294,8 +294,8 @@ Running all tests for HTML report...
   [278/406] M7NX ✓
   [279/406] M9B4 ○ YAML 1.3 specific
   [280/406] MJS9 ○ YAML 1.3 specific
-  [281/406] MUS6 ⚠ unexpected pass
-  [282/406] MUS6 ⚠ unexpected pass
+  [281/406] MUS6 ✓ (expected fail)
+  [282/406] MUS6 ✓ (expected fail)
   [283/406] MUS6 ✓
   [284/406] MUS6 ✓
   [285/406] MUS6 ✓
@@ -331,7 +331,7 @@ Running all tests for HTML report...
   [315/406] QT73 ✓
   [316/406] R4YG ✓
   [317/406] R52L ✓
-  [318/406] RHX7 ⚠ unexpected pass
+  [318/406] RHX7 ✓ (expected fail)
   [319/406] RLU9 ✓
   [320/406] RR7F ✓
   [321/406] RTP8 ✓
@@ -346,13 +346,13 @@ Running all tests for HTML report...
   [330/406] S98Z ⚠ unexpected pass
   [331/406] S9E8 ✓
   [332/406] SBG9 ✓
-  [333/406] SF5V ⚠ unexpected pass
+  [333/406] SF5V ✓ (expected fail)
   [334/406] SKE5 ✓
   [335/406] SM9W ✓
   [336/406] SM9W ✓
   [337/406] SR86 ⚠ unexpected pass
   [338/406] SSW6 ○ YAML 1.3 specific
-  [339/406] SU5Z ⚠ unexpected pass
+  [339/406] SU5Z ✓ (expected fail)
   [340/406] SU74 ⚠ unexpected pass
   [341/406] SY6V ⚠ unexpected pass
   [342/406] SYW4 ✓
@@ -387,7 +387,7 @@ Running all tests for HTML report...
   [371/406] W9L4 ⚠ unexpected pass
   [372/406] WZ62 ✓
   [373/406] X38W ✓
-  [374/406] X4QW ⚠ unexpected pass
+  [374/406] X4QW ✓ (expected fail)
   [375/406] X8DW ✓
   [376/406] XLQ9 ✓
   [377/406] XV9V ○ YAML 1.3 specific
@@ -418,26 +418,26 @@ Running all tests for HTML report...
   [402/406] ZXT5 ⚠ unexpected pass
   [403/406] ZYU8 ✓
   [404/406] ZYU8 ✓
-  [405/406] ZYU8 ⚠ unexpected pass
+  [405/406] ZYU8 ✓ (expected fail)
   [406/406] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 269/406 (75.000000%)
+Correct: 283/406 (79.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 10/10
   Explicit Key Tests: ✗ 39/55
   Flow Completeness Tests: ✗ 85/86
-  Structural Validation Tests: ✗ 69/84
+  Structural Validation Tests: ✗ 71/84
   Dump Round-Trip Tests: ✓ 102/102
   Raw Parse / Compose Tests: ✗ 26/29
-  YAML 1.2.2 Spec Examples: ✓ 132/132
+  YAML 1.2.2 Spec Examples: ✗ 128/132
   Schema ↔ Dump Integration: ✓ 68/68
   Scanner & TokenParser Tests (Phase 9): ✓ 33/33
-  YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline): ✓ 132/132
+  YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline): ✗ 128/132
   Demo: ✓ 7/7
 
-Verified: 703/738
+Verified: 697/738
 
 Generating HTML reports...
   wrote docs/index.html

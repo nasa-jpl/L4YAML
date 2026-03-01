@@ -304,19 +304,19 @@
   ✗ reject: extra closing bracket (4H7K)
   ✗ reject: content after closing brace (62EZ)
   ✗ reject: unclosed flow sequence (6JTT)
-  ✗ reject: comment without space after ] (9JBA)
+  ✓ reject: comment without space after ] (9JBA)
   ✗ reject: leading comma in flow seq (9MAG)
   ✗ reject: multiline flow mapping key (C2SP)
   ✗ reject: double comma in flow seq (CTN5)
-  ✗ reject: comment without space after comma (CVW2)
+  ✓ reject: comment without space after comma (CVW2)
   ✗ reject: implicit key colon on next line (DK4H)
   ✗ reject: content after closed flow seq (KS4U)
   ✗ reject: block item after flow map (P2EQ)
   ✗ reject: missing comma in flow mapping (T833)
   ✗ reject: colon-value on next line after quoted key (ZXT5)
 
-=== Results: 69/84 passed ===
-    15 FAILED
+=== Results: 71/84 passed ===
+    13 FAILED
 === Dump Round-Trip Tests ===
 === Dump Round-Trip Tests ===
 
@@ -517,7 +517,7 @@
   ✓ Example example-2.9
 
 --- §5 Spec Examples ---
-  ✓ Example example-5.1
+  ✗ Example example-5.1: unexpected character '#' at line 0, column 1
   ✓ Example example-5.10
   ✓ Example example-5.11
   ✓ Example example-5.12
@@ -614,11 +614,11 @@
   ✓ Example example-8.9
 
 --- §9 Spec Examples ---
-  ✓ Example example-9.1
+  ✗ Example example-9.1: unexpected character '#' at line 0, column 1
   ✓ Example example-9.2
-  ✓ Example example-9.3
+  ✗ Example example-9.3: directive after document content without document-end marker at line 6
   ✓ Example example-9.4
-  ✓ Example example-9.5
+  ✗ Example example-9.5: directive after document content without document-end marker at line 2
   ✓ Example example-9.6
 
 --- §10 Spec Examples ---
@@ -632,7 +632,8 @@
   ✓ Example example-10.8
   ✓ Example example-10.9
 
-=== Results: 132/132 passed ===
+=== Results: 128/132 passed ===
+    4 FAILED
 === Schema Dump Tests ===
 === Schema ↔ Dump Integration ===
 
@@ -810,7 +811,7 @@
   ✓ Example example-2.9
 
 --- §5 Scanner Spec Examples ---
-  ✓ Example example-5.1
+  ✗ Example example-5.1: unexpected character '#' at line 0, column 1
   ✓ Example example-5.10
   ✓ Example example-5.11
   ✓ Example example-5.12
@@ -907,11 +908,11 @@
   ✓ Example example-8.9
 
 --- §9 Scanner Spec Examples ---
-  ✓ Example example-9.1
+  ✗ Example example-9.1: unexpected character '#' at line 0, column 1
   ✓ Example example-9.2
-  ✓ Example example-9.3
+  ✗ Example example-9.3: directive after document content without document-end marker at line 6
   ✓ Example example-9.4
-  ✓ Example example-9.5
+  ✗ Example example-9.5: directive after document content without document-end marker at line 2
   ✓ Example example-9.6
 
 --- §10 Scanner Spec Examples ---
@@ -925,4 +926,5 @@
   ✓ Example example-10.8
   ✓ Example example-10.9
 
-=== Results: 132/132 passed ===
+=== Results: 128/132 passed ===
+    4 FAILED

@@ -1,16 +1,16 @@
 {
-  "date": "2026-02-28T16:28:13-0800",
+  "date": "2026-02-28T17:54:46-0800",
   "overall": {
     "applicable": 354,
-    "correct": 269,
-    "correctRate": 75.9,
-    "expectedFail": 10,
+    "correct": 283,
+    "correctRate": 79.9,
+    "expectedFail": 24,
     "failed": 0,
     "passed": 259,
     "skipped": 52,
     "timeout": 0,
     "total": 406,
-    "unexpectedPass": 85
+    "unexpectedPass": 71
   },
   "stages": {
     "advanced": {
@@ -27,39 +27,39 @@
     },
     "block": {
       "applicable": 99,
-      "correct": 86,
-      "correctRate": 86.8,
-      "expectedFail": 2,
+      "correct": 88,
+      "correctRate": 88.8,
+      "expectedFail": 4,
       "failed": 0,
       "passed": 84,
       "skipped": 0,
       "timeout": 0,
       "total": 99,
-      "unexpectedPass": 13
+      "unexpectedPass": 11
     },
     "document": {
       "applicable": 17,
-      "correct": 15,
-      "correctRate": 88.2,
-      "expectedFail": 0,
+      "correct": 17,
+      "correctRate": 100,
+      "expectedFail": 2,
       "failed": 0,
       "passed": 15,
       "skipped": 7,
       "timeout": 0,
       "total": 24,
-      "unexpectedPass": 2
+      "unexpectedPass": 0
     },
     "error": {
       "applicable": 74,
-      "correct": 5,
-      "correctRate": 6.7,
-      "expectedFail": 5,
+      "correct": 15,
+      "correctRate": 20.2,
+      "expectedFail": 15,
       "failed": 0,
       "passed": 0,
       "skipped": 0,
       "timeout": 0,
       "total": 74,
-      "unexpectedPass": 69
+      "unexpectedPass": 59
     },
     "flow": {
       "applicable": 46,
@@ -963,10 +963,10 @@
       "stage": "block"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "9HCY",
       "name": "Need document footer before directives",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "error"
     },
     {
@@ -977,10 +977,10 @@
       "stage": "block"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "9JBA",
       "name": "Invalid comment after end of flow sequence",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "error"
     },
     {
@@ -1005,10 +1005,10 @@
       "stage": "error"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "9MMA",
       "name": "Directive by itself with no document",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "error"
     },
     {
@@ -1131,10 +1131,10 @@
       "stage": "scalar"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "B63P",
       "name": "Directive without document",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "error"
     },
     {
@@ -1257,10 +1257,10 @@
       "stage": "advanced"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "CVW2",
       "name": "Invalid comment after comma",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "error"
     },
     {
@@ -1467,10 +1467,10 @@
       "stage": "advanced"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "EB22",
       "name": "Missing document-end marker before directive",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "error"
     },
     {
@@ -1656,10 +1656,10 @@
       "stage": "error"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "H7TQ",
       "name": "Extra words on %YAML directive",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "document"
     },
     {
@@ -2048,17 +2048,17 @@
       "stage": "scalar"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "MUS6",
       "name": "Directive variants",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "document"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "MUS6",
       "name": "",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "block"
     },
     {
@@ -2307,10 +2307,10 @@
       "stage": "flow"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "RHX7",
       "name": "YAML directive without document end marker",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "error"
     },
     {
@@ -2412,10 +2412,10 @@
       "stage": "advanced"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "SF5V",
       "name": "Duplicate YAML directive",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "error"
     },
     {
@@ -2454,10 +2454,10 @@
       "stage": "scalar"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "SU5Z",
       "name": "Comment without whitespace after doublequoted scalar",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "error"
     },
     {
@@ -2699,10 +2699,10 @@
       "stage": "advanced"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "X4QW",
       "name": "Comment without whitespace after block scalar indicator",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "error"
     },
     {
@@ -2916,10 +2916,10 @@
       "stage": "block"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "ZYU8",
       "name": "",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "block"
     },
     {
@@ -2953,7 +2953,7 @@
       {
         "allPass": false,
         "label": "Structural Validation Tests",
-        "passed": 69,
+        "passed": 71,
         "total": 84
       },
       {
@@ -2969,9 +2969,9 @@
         "total": 29
       },
       {
-        "allPass": true,
+        "allPass": false,
         "label": "YAML 1.2.2 Spec Examples",
-        "passed": 132,
+        "passed": 128,
         "total": 132
       },
       {
@@ -2987,9 +2987,9 @@
         "total": 33
       },
       {
-        "allPass": true,
+        "allPass": false,
         "label": "YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline)",
-        "passed": 132,
+        "passed": 128,
         "total": 132
       },
       {
@@ -2999,7 +2999,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 703,
+    "totalPassed": 697,
     "totalTests": 738
   }
 }
