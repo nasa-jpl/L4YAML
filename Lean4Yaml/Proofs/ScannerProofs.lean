@@ -67,7 +67,9 @@ theorem isLineBreak_iff (c : Char) : isLineBreak c = true ↔ (c = '\n' ∨ c = 
   constructor
   · intro h
     simp only [isLineBreak, Bool.or_eq_true] at h
-    rcases h with h | h <;> [left; right] <;> exact eq_of_beq h
+    rcases h with h | h
+    · left; exact eq_of_beq h
+    · right; exact eq_of_beq h
   · rintro (rfl | rfl) <;> native_decide
 
 /--
@@ -77,7 +79,9 @@ theorem isWhiteSpace_iff (c : Char) : isWhiteSpace c = true ↔ (c = ' ' ∨ c =
   constructor
   · intro h
     simp only [isWhiteSpace, Bool.or_eq_true] at h
-    rcases h with h | h <;> [left; right] <;> exact eq_of_beq h
+    rcases h with h | h
+    · left; exact eq_of_beq h
+    · right; exact eq_of_beq h
   · rintro (rfl | rfl) <;> native_decide
 
 /--
