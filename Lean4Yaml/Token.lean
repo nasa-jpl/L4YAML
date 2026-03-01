@@ -247,6 +247,14 @@ inductive ScanError where
   | expectedNewline      (line : Nat)
   /-- Scanner iteration limit reached (defensive guard). -/
   | fuelExhausted        (line col : Nat)
+  /-- Trailing content after `%YAML` version — §6.8.1 violation. -/
+  | directiveTrailingContent (line col : Nat)
+  /-- Duplicate `%YAML` directive in the same document — §6.8.1 violation. -/
+  | duplicateYamlDirective (line : Nat)
+  /-- `%YAML`/`%TAG` directive after document content without `...` — §6.8 violation. -/
+  | directiveAfterContent (line : Nat)
+  /-- Directives present but no document follows (`---` required) — §6.8 violation. -/
+  | directiveWithoutDocument (line : Nat)
 
   /- Grammar-level errors (TokenParser.lean) -/
 
@@ -274,6 +282,10 @@ def ScanError.toString : ScanError → String
   | .unicodeOutOfRange l       => s!"unicode escape out of range at line {l}"
   | .expectedNewline l         => s!"expected newline after block scalar header at line {l}"
   | .fuelExhausted l c         => s!"scanner fuel exhausted at line {l}, column {c}"
+  | .directiveTrailingContent l c => s!"unexpected content after directive at line {l}, column {c}"
+  | .duplicateYamlDirective l   => s!"duplicate %YAML directive at line {l}"
+  | .directiveAfterContent l    => s!"directive after document content without document-end marker at line {l}"
+  | .directiveWithoutDocument l => s!"directive(s) at line {l} with no following document"
   | .expectedToken desc l (some got) => s!"expected {desc} at line {l}, got {got}"
   | .expectedToken desc _ none => s!"expected {desc} but reached end of tokens"
   | .nestingDepthExceeded l    => s!"maximum nesting depth exceeded at line {l}"

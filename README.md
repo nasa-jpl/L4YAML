@@ -3939,9 +3939,30 @@ Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
 
 - **2026-02-28 (10.6d.5 — Tab rejection, partial)**: 
   - Implemented `currentIndent`-based tab check in `skipToContent`. 
-  - Changed signature from `ScannerState → ScannerState` to `ScannerState → Except String ScannerState`. 8
-  - 7 → 85 UPs (4EJS:0, DK95:6 fixed). 
+  - Changed signature from `ScannerState → ScannerState` to `ScannerState → Except String ScannerState`.
+  - 87 → 85 UPs (4EJS:0, DK95:6 fixed). 
   - Build: 37/37, zero warnings.
+- **2026-03-01 (10.6d.6 — Directive strictness)**: 
+  - 4 new `ScanError` constructors: `directiveTrailingContent`, `duplicateYamlDirective`, `directiveAfterContent`, `directiveWithoutDocument`.
+  - 5 new `ScannerState` fields: `allowDirectives`, `seenYamlDirective`, `directivesPresent`, `documentEverStarted`.
+  - `scanDocumentEnd` changed to `Except ScanError ScannerState` (now checks for orphan directives).
+  - Validates: trailing content after `%YAML` version, `#` without preceding whitespace, duplicate `%YAML`, directive after content (no `...`), directives without following `---`.
+  - 85 → 75 UPs: H7TQ:0, MUS6:0, MUS6:1, SF5V:0, 9MMA:0, B63P:0, EB22:0, RHX7:0, 9HCY:0, ZYU8:2 fixed.
+  - Build: 37/37, zero errors.
+- **2026-02-28 (10.6d.7 — Comment-without-whitespace)**:
+  - §6.7: `c-nb-comment-text` (`#`) requires preceding `s-separate-in-line` (whitespace or start-of-line).
+  - Added `ScannerState.peekBack?` helper: reads the raw input character before the current position.
+  - Two fix sites: `skipToContent` (general comment detection) and `scanBlockScalar` header (s-b-comment after header).
+  - Uses `peekBack?` to check whether `#` is preceded by whitespace or line break — more robust than tracking whitespace consumption because prior token scanners may have already consumed the whitespace.
+  - 75 → 71 UPs: SU5Z:0, X4QW:0, 9JBA:0, CVW2:0 fixed.
+  - Build: 37/37, zero errors.
+- **2026-02-28 (10.6d.8 — Implicit key multiline check, attempted and reverted)**:
+  - Added `multilineImplicitKey` error constructor; changed `scanValue` to `Except ScanError ScannerState` with `simpleKey.pos.line != s.line` check.
+  - Correctly rejected 8 UP targets (7LBH, D49Q, G7JE, JKF3, DK4H, ZXT5, C2SP, HU3P) but regressed 9 valid tests across 5 guard files.
+  - **Root cause 1 — Stale simpleKey**: `saveSimpleKey` preserves `simpleKey.possible = true` when `simpleKeyAllowed = false`, so old positions from tokens like `>` (block scalar indicator) persist after the scalar is emitted. When a later `:` triggers `scanValue`, it sees the stale position from a different line → false positive.
+  - **Root cause 2 — Spec/libyaml tension on flow-context implicit keys**: Production [152] `ns-s-implicit-yaml-key(c)` uses `s-separate-in-line?` [66] (single-line) regardless of context. But §6.5 says flow has "relaxed semantics" where line breaks are presentation details, and libyaml allows `:` on a different line than the key in flow context. See Reflections for full analysis.
+  - Reverted: `scanValue` restored to non-Except signature, `multilineImplicitKey` constructor removed.
+  - Prerequisite for future attempt: fix simpleKey staling logic, then apply line check in block context only.
 
 </details>
 
@@ -3975,6 +3996,23 @@ Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
    - The fix was surgical: `skipSpaces` first, then compare `col` against `currentIndent` to decide whether a tab violates §6.1 or is valid `s-separate-in-line`.
    - This insight — that a single field already in `ScannerState` (`currentIndent`) encodes the boundary between the two whitespace regimes — was not obvious until we traced individual Y79Y test cases through the production rules.
 
+4. **YAML 1.2.2 §7.4 / [152] implicit key single-line restriction conflicts with §6.5 flow folding philosophy.**
+   - Production [152] `ns-s-implicit-yaml-key(c) ::= ns-flow-yaml-node(n/a,c) s-separate-in-line?` uses the *single-line* separator [66] regardless of flow/block context. The normative note says: "implicit keys are restricted to a single line."
+   - But §6.5 says: "Flow styles typically depend on explicit indicators rather than indentation to convey structure. Hence spaces preceding or following the text in a line are a presentation detail."
+   - The general separator `s-separate(n,c)` [69] in flow context uses `s-separate-lines(n)` [70] which CAN span lines. But [152] specifically uses the restrictive `s-separate-in-line?`, creating an asymmetry with the surrounding flow grammar.
+   - In production [145] `ns-flow-map-yaml-key-entry(n,c)`, the implicit key production is immediately followed by the value indicator `:` (via [149]), with NO intervening `s-separate` — so the grammar requires `:` on the same line as the key.
+   - libyaml resolves this by allowing `:` on a different line in flow context (the value indicator is recognized independently of simple key state). The yaml-test-suite reflects this permissive behavior.
+   - **Flow folding (§6.5) doesn't technically apply**: `b-l-folded` [73] and `s-flow-folded` [74] are content-level mechanisms referenced by specific flow scalar productions, not a blanket structural rule. But the *philosophy* — that flow context line breaks are presentation details — supports a context-sensitive reading of [152].
+   - **Potential spec clarification**: Production [152] could use `s-separate-in-line?` for `BLOCK-KEY` but `s-separate(n,c)?` for `FLOW-KEY`, aligning with §6.5's stated intent and matching libyaml's behavior. This would be a non-trivial grammar change.
+   - **Implementation consequence**: multiline key enforcement deferred until simpleKey staling is fixed (see challenge #5). When implemented, should apply in block context only — the flow context restriction is ambiguous per the spec tension above.
+
+5. **The `simpleKey` tracking has a staling bug that makes line-number validation unreliable.**
+   - `saveSimpleKey` updates `simpleKey` when `simpleKeyAllowed` is true but *preserves* the old entry when `simpleKeyAllowed` is false.
+   - After `scanValue` resolves a key and sets `simpleKeyAllowed := true`, the next token (e.g., `>` block scalar indicator) gets saved as a new simpleKey candidate. When the block scalar is emitted (`simpleKeyAllowed := false`), `simpleKey.possible` remains `true` with the block scalar's position.
+   - If another key-value pair follows (e.g., `clip: >`), the `:` triggers `scanValue` which finds `simpleKey.possible = true` but with the *stale* position from the block scalar indicator, not from `clip`. A line-number check then sees a cross-line "multiline key" that doesn't actually exist.
+   - Fix approach: when `simpleKeyAllowed` transitions to `false` (e.g., after emitting a scalar), set `simpleKey.possible := false` for entries that refer to already-emitted tokens. Alternatively, adopt libyaml's approach of tracking `token_number` and staling entries whose tokens have been "consumed."
+   - This is a pre-existing correctness bug for token stream output (stale simpleKey can produce spurious `.key` insertions) but only manifests as a crash when combined with the multiline line-number check.
+
 **Simplifications**:
 
 1. **`currentIndent` already exists and suffices — no new state needed.**
@@ -3989,6 +4027,12 @@ Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
 3. **Tab before comment/blank-line/EOF is unconditionally allowed.**
    - Even in indentation territory, a tab that's followed only by a comment (`#`), a line break, or EOF doesn't contribute to indentation — it's consumed as part of `s-l-comments` [79].
    - This "peek ahead" pattern let us keep passing tests like Y79Y:2 (tab on blank line in flow) without special-casing.
+
+4. **`peekBack?` is more robust than column tracking for comment validation.**
+   - Initial approach: save `colBeforeWs` before `skipWhitespace`, then check if column advanced before accepting `#` as a comment.
+   - This broke 14 tests because prior token scanners (plain scalar, quoted scalar, flow indicator) can consume the whitespace before `skipToContent` runs — so `colBeforeWs == s'.col` even when the raw input has whitespace before `#`.
+   - Fix: `peekBack?` reads the raw input character at `offset - 1`. If it's a whitespace or line-break character, `#` is a comment. This works regardless of which scanner function consumed the preceding whitespace.
+   - Cost: one `String.Pos.Raw.prev` call per `#` encountered — negligible.
 
 **Idioms**:
 
@@ -4023,7 +4067,7 @@ Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
    - In short: the scanner/grammar separation made the scanner *more* stateful and *more* error-aware than a combinator pipeline supports, while simultaneously making the grammar parser *less* complex than a combinator framework is designed for. Both layers moved away from the combinator sweet spot.
    - **Note on `Except` vs. exceptions**: Lean 4's `throw`/`Except` is a pure functional sum type (`Either ε α`), not imperative exception semantics. Using `Except ScanError α` with `throw` is the idiomatic Lean 4 way to express short-circuiting computations — it constructs `Except.error val` as a value, with no side effects or stack unwinding. The actual code smell in the current scanner is `Except String` — the unstructured error type, not the `throw` mechanism. P10.6e will replace `String` with a structured `ScanError` ADT that makes error categories machine-inspectable and pattern-matchable.
 
-**Status**: In progress (85 UPs remaining, 2 fixed).
+**Status**: In progress (71 UPs remaining, 16 fixed: 2 tab, 10 directive, 4 comment).
 
 </details>
 
@@ -4314,7 +4358,7 @@ Each `have` serves as a machine-checked comment: if the invariant doesn't hold, 
 - **P10.6** depends on all of P10.1–P10.5 — ✅ complete
 - **P10.6b** depends on P10.6 — ✅ complete (352 guards, 155/155 build, 695/731 verified tests)
 - **P10.6c** depends on P10.6b — not started (test diagnostics improvement)
-- **P10.6d** depends on P10.6c — not started (87 UPs: 1 flow, 14 block, 2 document, 70 error)
+- **P10.6d** depends on P10.6c — in progress (75 UPs remaining; 12 fixed: 2 tab, 10 directive)
 - **P10.6e** depends on P10.6d — not started (production rule annotation + subtype contracts)
 - **P10.7** depends on P10.6e — blocked
 - **Phase 8** (comment preservation) should target the tokenized parser only — if P10 completes first, Phase 8 has a single implementation target

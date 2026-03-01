@@ -132,6 +132,18 @@ structure ScannerState where
   simpleKeyAllowed : Bool := true
   /-- Whether we need to check indentation at current position -/
   needIndentCheck : Bool := true
+  /-- Whether directives (`%YAML`, `%TAG`) are allowed at the current position.
+      True at stream start and after `...`; false after `---` or content. -/
+  allowDirectives : Bool := true
+  /-- Whether a `%YAML` directive has been seen in the current directive block.
+      Reset when `---` is emitted. Used to detect duplicate `%YAML`. -/
+  seenYamlDirective : Bool := false
+  /-- Whether any directive has been emitted since last `---`.
+      Used to detect directives-without-document at EOF and before `...`. -/
+  directivesPresent : Bool := false
+  /-- Whether a document has ever been started (via `---` or implicit content).
+      Used to detect directive-only streams. -/
+  documentEverStarted : Bool := false
   deriving Repr, Inhabited
 
 /-- Create initial scanner state from an input string. -/
@@ -165,6 +177,16 @@ def ScannerState.peekAt? (s : ScannerState) (n : Nat) : Option Char := Id.run do
     return some (String.Pos.Raw.get s.input pos)
   else
     return none
+
+/-- Look at the character immediately before the current position in the raw input.
+    Used for §6.7 comment validation: `c-nb-comment-text` (`#`) requires
+    preceding `s-separate-in-line` (whitespace or start-of-line). -/
+def ScannerState.peekBack? (s : ScannerState) : Option Char :=
+  if s.offset > 0 then
+    let prevPos := String.Pos.Raw.prev s.input ⟨s.offset⟩
+    some (String.Pos.Raw.get s.input prevPos)
+  else
+    none
 
 def ScannerState.advance (s : ScannerState) : ScannerState :=
   if s.offset < s.inputEnd then
@@ -296,6 +318,13 @@ def skipToContent (s : ScannerState) : Except ScanError ScannerState := do
     -- After a newline, use skipSpaces for indentation (s-indent [63]: spaces only).
     -- Then check for tab-as-indentation, using currentIndent to determine the
     -- boundary between indentation territory and separation territory.
+    --
+    -- Track whether `#` is allowed as a comment start per §6.7:
+    --   [78] l-comment ::= s-separate-in-line c-nb-comment-text? b-comment
+    -- s-separate-in-line [66] = s-white+ | start-of-line.
+    -- So `#` is a comment only if (a) at start-of-line, or (b) preceded by ≥1 s-white.
+    -- Check the raw input character before `#` (via peekBack?) rather than tracking
+    -- whitespace consumption, since prior token scanners may have consumed the whitespace.
     if s'.needIndentCheck then
       s' := skipSpaces s'
       -- Key insight: once col > currentIndent, we've consumed enough spaces
@@ -322,8 +351,17 @@ def skipToContent (s : ScannerState) : Except ScanError ScannerState := do
         s' := skipWhitespace s'
     else
       s' := skipWhitespace s'
+    -- §6.7: c-nb-comment-text (#) requires preceding s-separate-in-line.
+    -- s-separate-in-line = s-white+ | start-of-line.
+    -- Check the raw input: # must be preceded by whitespace or be at column 0.
     match s'.peek? with
-    | some '#' => s' := skipToEndOfLine s'
+    | some '#' =>
+      let commentOk := s'.col == 0 || match s'.peekBack? with
+        | some c => isWhiteSpace c || isLineBreak c
+        | none => true   -- start of input
+      if commentOk then
+        s' := skipToEndOfLine s'
+      -- else: `#` without preceding whitespace — not a comment; leave for scanNextToken
     | _ => pure ()
     match s'.peek? with
     | some c =>
@@ -514,6 +552,10 @@ def scanTag (s : ScannerState) : ScannerState := Id.run do
 /-! ## Directive Scanning -/
 
 def scanDirective (s : ScannerState) : Except ScanError ScannerState := do
+  -- §6.8: Directives are only allowed before a document (at stream start
+  -- or after `...`). Reject directives after document content.
+  if !s.allowDirectives then
+    throw (.directiveAfterContent s.line)
   let startPos := s.currentPos
   let s' := s.advance  -- consume `%`
   let (name, s') := Id.run do
@@ -530,6 +572,9 @@ def scanDirective (s : ScannerState) : Except ScanError ScannerState := do
     return (name, s')
   let s' := skipWhitespace s'
   if name == "YAML" then
+    -- §6.8.1: At most one %YAML directive per document.
+    if s.seenYamlDirective then
+      throw (.duplicateYamlDirective s.line)
     let (major, minor, s') := Id.run do
       let mut s' := s'
       let mut major := ""
@@ -546,7 +591,20 @@ def scanDirective (s : ScannerState) : Except ScanError ScannerState := do
         | some c => if c.isDigit then minor := minor.push c; s' := s'.advance else break
         | none => break
       return (major, minor, s')
-    .ok (s'.emitAt startPos (.versionDirective major.toNat! minor.toNat!))
+    -- §6.8.1: After version, only s-separate-in-line + comment, or linebreak/EOF.
+    -- c-nb-comment-text (#) requires preceding s-separate-in-line (≥1 s-white).
+    let colBeforeWs := s'.col
+    let s' := skipWhitespace s'
+    match s'.peek? with
+    | some '#' =>
+      -- Verify whitespace was consumed (s-separate-in-line before #)
+      if s'.col == colBeforeWs then
+        throw (.directiveTrailingContent s'.line s'.col)
+    | some c => if !isLineBreak c then throw (.directiveTrailingContent s'.line s'.col)
+    | none => pure ()       -- EOF: ok (orphan directive caught later)
+    let s' := { s'.emitAt startPos (.versionDirective major.toNat! minor.toNat!) with
+                  seenYamlDirective := true, directivesPresent := true }
+    .ok s'
   else if name == "TAG" then
     let (handle, tagPrefix, st) := Id.run do
       let mut st := s'
@@ -569,7 +627,7 @@ def scanDirective (s : ScannerState) : Except ScanError ScannerState := do
           else break
         | none => break
       return (handle, tagPrefix, st)
-    .ok (st.emitAt startPos (.tagDirective handle tagPrefix))
+    .ok { st.emitAt startPos (.tagDirective handle tagPrefix) with directivesPresent := true }
   else
     .ok (skipToEndOfLine s')
 
@@ -578,12 +636,25 @@ def scanDirective (s : ScannerState) : Except ScanError ScannerState := do
 def scanDocumentStart (s : ScannerState) : ScannerState :=
   let s' := unwindIndents s (-1)
   let s' := { s' with simpleKey := { possible := false } }
-  { (s'.emit .documentStart).advanceN 3 with simpleKeyAllowed := true }
+  { (s'.emit .documentStart).advanceN 3 with
+    simpleKeyAllowed := true
+    allowDirectives := false
+    seenYamlDirective := false
+    directivesPresent := false
+    documentEverStarted := true }
 
-def scanDocumentEnd (s : ScannerState) : ScannerState :=
+def scanDocumentEnd (s : ScannerState) : Except ScanError ScannerState := do
+  -- §9.1.2: Document end marker `...` requires an open document.
+  -- If directives were present but no `---` followed, the `...` cannot
+  -- close a document that was never opened.
+  if s.directivesPresent && !s.documentEverStarted then
+    throw (.directiveWithoutDocument s.line)
   let s' := unwindIndents s (-1)
   let s' := { s' with simpleKey := { possible := false } }
-  { (s'.emit .documentEnd).advanceN 3 with simpleKeyAllowed := true }
+  .ok { (s'.emit .documentEnd).advanceN 3 with
+    simpleKeyAllowed := true
+    allowDirectives := true
+    directivesPresent := false }
 
 /-! ## Escape Sequence Processing -/
 
@@ -887,9 +958,16 @@ def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState := do
       | none => pure ()
     return (chomp, explicitOffset, s')
   -- s-b-comment: skip trailing whitespace and optional comment after header
+  -- §6.7: c-nb-comment-text (#) requires preceding s-separate-in-line (≥1 s-white).
   let s' := skipWhitespace s'  -- s-separate-in-line [66]: s-white* (tabs ok here)
   let s' := match s'.peek? with
-    | some '#' => skipToEndOfLine s'  -- c-nb-comment-text [77]
+    | some '#' =>
+      -- Check raw input: # must be preceded by whitespace (not at start-of-line here)
+      let commentOk := match s'.peekBack? with
+        | some c => isWhiteSpace c || isLineBreak c
+        | none => false
+      if commentOk then skipToEndOfLine s'  -- c-nb-comment-text [77]: whitespace preceded `#`
+      else s'  -- `#` without preceding whitespace — not a comment
     | _ => s'
   -- b-comment [76]: consume newline after header
   let s' ← match s'.peek? with
@@ -1026,10 +1104,17 @@ def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) :=
     return none
   | some c =>
     if s.col == 0 && atDocumentStart s then return some (scanDocumentStart s)
-    if s.col == 0 && atDocumentEnd s then return some (scanDocumentEnd s)
+    if s.col == 0 && atDocumentEnd s then
+      let s' ← scanDocumentEnd s
+      return some s'
     if c == '%' && s.col == 0 then
       let s' ← scanDirective s
       return some s'
+    -- Any non-directive, non-document-marker content means we're in a document.
+    -- Disallow directives until the next `...` document-end marker.
+    let s := if s.allowDirectives then
+      { s with allowDirectives := false, documentEverStarted := true }
+    else s
     if c == '[' then return some (scanFlowSequenceStart s)
     if c == ']' then return some (scanFlowSequenceEnd s)
     if c == '{' then return some (scanFlowMappingStart s)
@@ -1092,6 +1177,9 @@ def scan (input : String) : Except ScanError (Array (Positioned YamlToken)) := d
     match ← scanNextToken s with
     | some s' => s := s'
     | none =>
+      -- §6.8: If directives were present but no document followed, error.
+      if s.directivesPresent && !s.documentEverStarted then
+        throw (.directiveWithoutDocument s.line)
       let final := unwindIndents s (-1)
       let final := final.emit .streamEnd
       return final.tokens

@@ -124,15 +124,15 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- 9HCY:0 [UP] Need document footer before directives
+-- 9HCY:0 Need document footer before directives
 #guard match parseYaml "!foo \"bar\"\n%TAG ! tag:example.com,2000:app/\n---\n!foo \"bar\"\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
--- 9JBA:0 [UP] Invalid comment after end of flow sequence
+-- 9JBA:0 Invalid comment after end of flow sequence
 #guard match parseYaml "---\n[ a, b, c, ]#invalid\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- 9KBC:0 [UP] Mapping starting at --- line
 #guard match parseYaml "--- key1: value1\n    key2: value2\n" with
@@ -144,20 +144,20 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- 9MMA:0 [UP] Directive by itself with no document
+-- 9MMA:0 Directive by itself with no document
 #guard match parseYaml "%YAML 1.2\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- 9MQT:1 [UP]
 #guard match parseYaml "--- \"a\n... x\nb\"\n" with
   | .ok _ => true
   | .error _ => false
 
--- B63P:0 [UP] Directive without document
+-- B63P:0 Directive without document
 #guard match parseYaml "%YAML 1.2\n...\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- BD7L:0 [UP] Invalid mapping after sequence
 #guard match parseYaml "- item1\n- item2\ninvalid: x\n" with
@@ -194,10 +194,10 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- CVW2:0 [UP] Invalid comment after comma
+-- CVW2:0 Invalid comment after comma
 #guard match parseYaml "---\n[ a, b, c,#invalid\n]\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- CXX2:0 [UP] Mapping with anchor on document start line
 #guard match parseYaml "--- &anchor a: b\n" with
@@ -229,10 +229,10 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- EB22:0 [UP] Missing document-end marker before directive
+-- EB22:0 Missing document-end marker before directive
 #guard match parseYaml "---\nscalar1 # comment\n%YAML 1.2\n---\nscalar2\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- EW3V:0 [UP] Wrong indendation in mapping
 #guard match parseYaml "k1: v1\n k2: v2\n" with
@@ -269,10 +269,10 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- H7TQ:0 [UP] Extra words on %YAML directive
+-- H7TQ:0 Extra words on %YAML directive
 #guard match parseYaml "%YAML 1.2 foo\n---\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- HRE5:0 Double quoted scalar with escaped single quote
 #guard match parseYaml "---\ndouble: \"quoted \\' scalar\"\n" with
@@ -304,15 +304,15 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- MUS6:0 [UP] Directive variants
+-- MUS6:0 Directive variants
 #guard match parseYaml "%YAML 1.1#...\n---\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
--- MUS6:1 [UP]
+-- MUS6:1
 #guard match parseYaml "%YAML 1.2\n---\n%YAML 1.2\n---\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- N4JP:0 [UP] Bad indentation in mapping
 #guard match parseYaml "map:\n  key1: \"quoted1\"\n key2: \"bad indentation\"\n" with
@@ -344,10 +344,10 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- RHX7:0 [UP] YAML directive without document end marker
+-- RHX7:0 YAML directive without document end marker
 #guard match parseYaml "---\nkey: value\n%YAML 1.2\n---\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- RXY3:0 [UP] Invalid document-end marker in single quoted string
 #guard match parseYaml "---\n'\n...\n'\n" with
@@ -364,20 +364,20 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- SF5V:0 [UP] Duplicate YAML directive
+-- SF5V:0 Duplicate YAML directive
 #guard match parseYaml "%YAML 1.2\n%YAML 1.2\n---\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- SR86:0 [UP] Anchor plus Alias
 #guard match parseYaml "key1: &a value\nkey2: &b *a\n" with
   | .ok _ => true
   | .error _ => false
 
--- SU5Z:0 [UP] Comment without whitespace after doublequoted scalar
+-- SU5Z:0 Comment without whitespace after doublequoted scalar
 #guard match parseYaml "key: \"value\"# invalid comment\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- SU74:0 [UP] Anchor and alias as mapping key
 #guard match parseYaml "key1: &alias value1\n&b *alias : value2\n" with
@@ -419,10 +419,10 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- X4QW:0 [UP] Comment without whitespace after block scalar indicator
+-- X4QW:0 Comment without whitespace after block scalar indicator
 #guard match parseYaml "block: ># comment\n  scalar\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- Y79Y:0 [UP] Tabs in various contexts
 #guard match parseYaml "foo: |\n\t\nbar: 1\n" with
@@ -489,9 +489,9 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- ZYU8:2 [UP]
+-- ZYU8:2
 #guard match parseYaml "%YAML 1.1 1.2\n---\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 end Lean4Yaml.Proofs.SuiteGuards.Error
