@@ -1,16 +1,16 @@
 {
-  "date": "2026-03-01T13:52:51-0800",
+  "date": "2026-03-01T14:33:13-0800",
   "overall": {
     "applicable": 358,
-    "correct": 345,
-    "correctRate": 96.3,
-    "expectedFail": 82,
+    "correct": 352,
+    "correctRate": 98.3,
+    "expectedFail": 89,
     "failed": 0,
     "passed": 263,
     "skipped": 48,
     "timeout": 0,
     "total": 406,
-    "unexpectedPass": 13
+    "unexpectedPass": 6
   },
   "stages": {
     "advanced": {
@@ -27,15 +27,15 @@
     },
     "block": {
       "applicable": 99,
-      "correct": 91,
-      "correctRate": 91.9,
-      "expectedFail": 7,
+      "correct": 98,
+      "correctRate": 98.9,
+      "expectedFail": 14,
       "failed": 0,
       "passed": 84,
       "skipped": 0,
       "timeout": 0,
       "total": 99,
-      "unexpectedPass": 8
+      "unexpectedPass": 1
     },
     "document": {
       "applicable": 17,
@@ -1390,10 +1390,10 @@
       "stage": "block"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "DK95",
       "name": "",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "block"
     },
     {
@@ -2769,45 +2769,45 @@
       "stage": "block"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "Y79Y",
       "name": "",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "block"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "Y79Y",
       "name": "",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "block"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "Y79Y",
       "name": "",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "block"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "Y79Y",
       "name": "",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "block"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "Y79Y",
       "name": "",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "block"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "Y79Y",
       "name": "",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "block"
     },
     {

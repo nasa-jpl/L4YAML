@@ -200,7 +200,7 @@ Running all tests for HTML report...
   [184/406] DK3J ✓
   [185/406] DK4H ⚠ unexpected pass
   [186/406] DK95 ✓
-  [187/406] DK95 ⚠ unexpected pass
+  [187/406] DK95 ✓ (expected fail)
   [188/406] DK95 ✓
   [189/406] DK95 ✓
   [190/406] DK95 ✓
@@ -397,12 +397,12 @@ Running all tests for HTML report...
   [381/406] Y79Y ✓
   [382/406] Y79Y ✓
   [383/406] Y79Y ⚠ unexpected pass
-  [384/406] Y79Y ⚠ unexpected pass
-  [385/406] Y79Y ⚠ unexpected pass
-  [386/406] Y79Y ⚠ unexpected pass
-  [387/406] Y79Y ⚠ unexpected pass
-  [388/406] Y79Y ⚠ unexpected pass
-  [389/406] Y79Y ⚠ unexpected pass
+  [384/406] Y79Y ✓ (expected fail)
+  [385/406] Y79Y ✓ (expected fail)
+  [386/406] Y79Y ✓ (expected fail)
+  [387/406] Y79Y ✓ (expected fail)
+  [388/406] Y79Y ✓ (expected fail)
+  [389/406] Y79Y ✓ (expected fail)
   [390/406] Y79Y ✓
   [391/406] YD5X ✓
   [392/406] YJV2 ✓ (expected fail)
@@ -422,7 +422,7 @@ Running all tests for HTML report...
   [406/406] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 345/406 (96.000000%)
+Correct: 352/406 (98.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 10/10
