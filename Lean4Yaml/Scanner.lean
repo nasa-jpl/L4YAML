@@ -256,6 +256,27 @@ def isIndicator (c : Char) : Bool :=
     `skipWhitespace` — matches `s-white*`  (for `s-separate-in-line`)
 -/
 
+/-- Check whether any TAB character appears in the contiguous whitespace
+    (spaces + tabs) immediately before the current offset.  Scans backward
+    without consuming anything.  Used by `scanBlockEntry` to enforce YAML §6.1:
+    tabs must not be used in indentation.  Because `skipToContent` consumes
+    whitespace (including tabs) on same-line continuations without checking,
+    this backward scan detects tabs that slipped through as indentation before
+    the block entry indicator.
+
+    Handles `-\t-`, `- \t-`, `-\t -`, etc. — any tab in the preceding
+    whitespace run means a tab contributed to the indentation of this token. -/
+def ScannerState.hasTabInPrecedingWhitespace (s : ScannerState) : Bool := Id.run do
+  let mut pos := s.offset
+  for _ in [:s.offset] do
+    if pos == 0 then break
+    let prevPos := (String.Pos.Raw.prev s.input ⟨pos⟩).byteIdx
+    let c := String.Pos.Raw.get s.input ⟨prevPos⟩
+    if c == '\t' then return true
+    if c == ' ' then pos := prevPos; continue
+    break  -- non-whitespace character: stop scanning
+  return false
+
 /-- Skip zero or more `s-white` characters (spaces + tabs).
     Implements `s-white*` — use for `s-separate-in-line` ([66]) contexts.
     **Not** for indentation. See `skipSpaces` for `s-indent`. -/
@@ -455,13 +476,26 @@ def scanFlowEntry (s : ScannerState) : Except ScanError ScannerState := do
       throw (.invalidFlowEntry s.line s.col)
   .ok ({ (s.emit .flowEntry).advance with simpleKeyAllowed := true })
 
-def scanBlockEntry (s : ScannerState) : ScannerState :=
+def scanBlockEntry (s : ScannerState) : Except ScanError ScannerState := do
+  -- §6.1: Tab in indentation before block entry.
+  -- Scan backward through whitespace consumed by skipToContent to detect any
+  -- tab used as indentation for this block entry — forbidden.
+  -- Handles `-\t-`, `- \t-`, `-\t -`, etc.
+  if !s.inFlow then
+    if s.hasTabInPrecedingWhitespace then
+      throw (.tabInIndentation s.line s.col)
   let s' := if !s.inFlow then pushSequenceIndent s s.col else s
-  { (s'.emit .blockEntry).advance with simpleKeyAllowed := true }
+  .ok { (s'.emit .blockEntry).advance with simpleKeyAllowed := true }
 
-def scanKey (s : ScannerState) : ScannerState :=
+def scanKey (s : ScannerState) : Except ScanError ScannerState := do
   let s' := if !s.inFlow then pushMappingIndent s s.col else s
-  { (s'.emit .key).advance with simpleKeyAllowed := true }
+  let s' := (s'.emit .key).advance
+  -- §6.1: Tab immediately after `?` indicator in block context is
+  -- indentation for the key content — forbidden.
+  if !s'.inFlow then
+    if let some '\t' := s'.peek? then
+      throw (.tabInIndentation s'.line s'.col)
+  .ok { s' with simpleKeyAllowed := true }
 
 def scanValue (s : ScannerState) : Except ScanError ScannerState := do
   -- §7.4: "Plain keys are restricted to a single line."
@@ -492,7 +526,15 @@ def scanValue (s : ScannerState) : Except ScanError ScannerState := do
       { s'' with simpleKey := { possible := false } }
   else
     if !s.inFlow then pushMappingIndent s s.col else s
-  .ok ((s'.emit .value).advance |> fun s => { s with simpleKeyAllowed := true })
+  let s'' := (s'.emit .value).advance
+  -- §6.1: Tab immediately after explicit `:` value indicator (at or below
+  -- block indent level) — the tab functions as indentation for the value
+  -- content, which is forbidden.  When `:` is past the indent level (inline
+  -- implicit value, e.g., `key:\tval`), the tab is valid `s-separate-in-line`.
+  if (s.col : Int) ≤ s.currentIndent && !s''.inFlow then
+    if let some '\t' := s''.peek? then
+      throw (.tabInIndentation s''.line s''.col)
+  .ok { s'' with simpleKeyAllowed := true }
 
 /-! ## Anchor and Alias Scanning -/
 
@@ -758,7 +800,7 @@ def processEscape (s : ScannerState) : Except ScanError (Char × ScannerState) :
 private def trimTrailingWS (s : String) : String :=
   String.ofList ((s.toList.reverse.dropWhile (fun c => c == ' ' || c == '\t')).reverse)
 
-def foldQuotedNewlines (s : ScannerState) : (String × ScannerState) := Id.run do
+def foldQuotedNewlines (s : ScannerState) : Except ScanError (String × ScannerState) := do
   let s' := consumeNewline s
   let mut s' := s'
   let mut emptyCount := (0 : Nat)
@@ -774,6 +816,13 @@ def foldQuotedNewlines (s : ScannerState) : (String × ScannerState) := Id.run d
       else
         s' := saved; break
     | none => break
+  -- §6.1: After consuming empty lines and leading spaces on the continuation
+  -- line, check for tab-as-indentation.  If we haven't advanced past the
+  -- current block indent level, a tab here is in the indentation zone.
+  s' := skipSpaces s'
+  if !s'.inFlow && (s'.col : Int) ≤ s'.currentIndent then
+    if let some '\t' := s'.peek? then
+      throw (.tabInIndentation s'.line s'.col)
   s' := skipWhitespace s'
   if emptyCount > 0 then
     return (String.ofList (List.replicate emptyCount '\n'), s')
@@ -821,7 +870,7 @@ def scanDoubleQuoted (s : ScannerState) : Except ScanError ScannerState := do
     | some c =>
       if isLineBreak c then
         content := trimTrailingWS content  -- YAML §6.5: trim trailing WS before fold
-        let (folded, s'') := foldQuotedNewlines s'
+        let (folded, s'') ← foldQuotedNewlines s'
         -- §9.1.2: Document markers at col 0 terminate even inside quoted scalars
         if atDocumentStart s'' || atDocumentEnd s'' then
           return ← .error (.documentMarkerInScalar .doubleQuoted startPos.line)
@@ -869,7 +918,7 @@ def scanSingleQuoted (s : ScannerState) : Except ScanError ScannerState := do
     | some c =>
       if isLineBreak c then
         content := trimTrailingWS content  -- YAML §6.5: trim trailing WS before fold
-        let (folded, s'') := foldQuotedNewlines s'
+        let (folded, s'') ← foldQuotedNewlines s'
         -- §9.1.2: Document markers at col 0 terminate even inside quoted scalars
         if atDocumentStart s'' || atDocumentEnd s'' then
           return ← .error (.documentMarkerInScalar .singleQuoted startPos.line)
@@ -906,7 +955,7 @@ def isPlainSafe (c : Char) (inFlow : Bool) : Bool :=
   else
     !isWhiteSpace c && !isLineBreak c
 
-def scanPlainScalar (s : ScannerState) : ScannerState := Id.run do
+def scanPlainScalar (s : ScannerState) : Except ScanError ScannerState := do
   let startPos := s.currentPos
   let inFlow := s.inFlow
   -- §7.3.3: Continuation lines must be indented past the current block level.
@@ -938,7 +987,7 @@ def scanPlainScalar (s : ScannerState) : ScannerState := Id.run do
       -- Line break: check continuation
       if isLineBreak c then
         if inFlow then
-          let (folded, s'') := foldQuotedNewlines s'
+          let (folded, s'') ← foldQuotedNewlines s'
           -- §7.3.3 [131]: After folding a newline to whitespace, `#` is
           -- preceded by whitespace and starts a comment (terminating the
           -- scalar).  `foldQuotedNewlines` already skipped leading
@@ -1383,13 +1432,17 @@ def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) :=
       let isEntry := match next with
         | some n => isBlank n
         | none => true
-      if isEntry then return some (scanBlockEntry s)
+      if isEntry then
+        let s' ← scanBlockEntry s
+        return some s'
     if c == '?' then
       let next := s.peekAt? 1
       let isKey := match next with
         | some n => isBlank n || (s.inFlow && isFlowIndicator n)
         | none => true
-      if isKey then return some (scanKey s)
+      if isKey then
+        let s' ← scanKey s
+        return some s'
     if c == ':' then
       -- YAML §7.4 / libyaml: In flow context, `:` is a value indicator
       -- whenever a simple key is possible (e.g., after a quoted scalar),
@@ -1427,7 +1480,7 @@ def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) :=
       else s'
       return some s'
     if canStartPlainScalar c (s.peekAt? 1) s.inFlow then
-      return some (scanPlainScalar s)
+      let s' ← scanPlainScalar s; return some s'
     .error (.unexpectedChar c s.line s.col)
 
 /-- Run the scanner on an input string, producing a token array.
