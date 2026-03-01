@@ -120,17 +120,29 @@ def ParseState.addAnchor (ps : ParseState) (name : String) (val : YamlValue) : P
 structure NodeProperties where
   anchor : Option String := none
   tag : Option String := none
+  /-- Set when two anchors appeared before the same node.  The check is
+      deferred to `parseNode` so that collection-start tokens (which arise
+      from scanner retroactive insertion) can disambiguate the two anchors
+      into collection-anchor vs key-anchor (see 6BFJ). -/
+  hadDuplicateAnchor : Bool := false
   deriving Repr, BEq, Inhabited
 
 /-- Parse node properties: optional anchor and tag in either order.
     Validates that non-builtin tag handles (`!`, `!!`) were declared
-    via `%TAG` in the current document (§6.8.2.2). -/
+    via `%TAG` in the current document (§6.8.2.2).
+    Rejects duplicate anchors on the same node (§6.9.2). -/
 def parseNodeProperties (ps : ParseState) : Except ScanError (NodeProperties × ParseState) := do
   let mut ps := ps
   let mut props : NodeProperties := {}
   for _ in [:2] do
     match ps.peek? with
     | some (.anchor name) =>
+      -- §6.9.2: At most one anchor per node.  Flag the duplicate here;
+      -- the actual rejection is deferred to `parseNode` (scalar branch)
+      -- so that collection-content cases like 6BFJ can tolerate the
+      -- scanner's consecutive-anchor quirk.
+      if props.anchor.isSome then
+        props := { props with hadDuplicateAnchor := true }
       props := { props with anchor := some name }
       ps := ps.advance
     | some (.tag handle suffix) =>
@@ -186,6 +198,18 @@ partial def parseNode (ps : ParseState) (depth : Nat := 0) : Except ScanError (Y
       if lastPropPos.line == blockPos.line then
         throw (.trailingContent blockPos.line blockPos.col)
   | _ => pure ()
+  -- §6.9.2: Reject duplicate anchors when the content is a scalar (or empty
+  -- node).  Collection-start content (mapping/sequence) tolerates the
+  -- duplicate because the scanner's single-simpleKey design sometimes
+  -- places a collection-anchor and a key-anchor consecutively in the
+  -- token stream (see 6BFJ); the first anchor is silently assigned to
+  -- the collection.
+  if props.hadDuplicateAnchor then
+    match ps.peek? with
+    | some .blockSequenceStart | some .blockMappingStart
+    | some .flowSequenceStart  | some .flowMappingStart
+    | some .blockEntry => pure ()   -- collection: tolerate
+    | _ => throw (.duplicateAnchor ps.currentLine)  -- scalar/empty: reject
   -- Parse content
   let (val, ps) ← match ps.peek? with
     | some (YamlToken.scalar content style) =>

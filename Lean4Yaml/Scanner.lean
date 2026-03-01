@@ -539,6 +539,17 @@ def scanValue (s : ScannerState) : Except ScanError ScannerState := do
       if let some top := s.indents.back? then
         if top.isSequence && keyCol == top.column then
           throw (.trailingContent s.simpleKey.pos.line s.simpleKey.pos.col)
+  -- T833: Missing comma in flow mapping.  When the simple key position is
+  -- immediately after a `value` token (no intervening `flowEntry` comma),
+  -- AND the current `:` is on a different line from that `value` token,
+  -- the new key was created by plain-scalar folding across a newline into
+  -- a value position — e.g., `{ foo: 1\n bar: 2 }` folds `1 bar` as a key.
+  -- Reject because flow mapping entries require comma separation.
+  -- Same-line cases like `{x: :x}` or `{"key"::value}` are valid (§7.4).
+  if s.simpleKey.possible && s.inFlow && s.simpleKey.tokenIndex > 0 then
+    if let some prevTok := s.tokens[s.simpleKey.tokenIndex - 1]? then
+      if prevTok.val == .value && prevTok.pos.line != s.line then
+        throw (.invalidFlowEntry s.line s.col)
   let s' := if s.simpleKey.possible then
     let s'' := s.insertAt s.simpleKey.tokenIndex s.simpleKey.pos .key
     if !s.inFlow then
@@ -1237,16 +1248,22 @@ def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState := do
   let parentIndent : Int := s.currentIndent
   -- minContentIndent (Position) = n+1: spec §8.1.3 requires m ≥ 1
   let minContentIndent : Nat := (max 0 (parentIndent + 1)).toNat
-  let (contentIndent, autoDetectTabErr?) := match explicitOffset with
+  let (contentIndent, autoDetectErr?) := match explicitOffset with
     | some m =>
       -- Explicit: contentIndent (Position) = parentIndent (Position) + m (Distance)
-      ((max 0 (parentIndent + (m : Int))).toNat, (none : Option (Nat × Nat)))
+      ((max 0 (parentIndent + (m : Int))).toNat, (none : Option ScanError))
     | none =>
       -- Auto-detect: scan ahead past blank lines to find first content line.
       -- The detected column must respect the floor (minContentIndent).
       -- Uses skipSpaces (not skipWhitespace) because s-indent uses spaces only [63].
+      -- §8.1.3: "the content indentation level is equal to the number of
+      -- leading spaces on the first non-empty line of the content."
+      -- Whitespace-only lines (spaces + newline) are skipped; their max column
+      -- is tracked to validate against the detected indent.
       Id.run do
         let mut probe := s'
+        let mut maxWSCol : Nat := 0
+        let mut maxWSLine : Nat := 0
         let fuel := s.inputEnd - probe.offset + 1
         for _ in [:fuel] do
           probe := skipSpaces probe
@@ -1255,24 +1272,32 @@ def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState := do
             -- §6.1: Tab at col < minContentIndent is in the indentation zone
             -- where s-indent requires spaces only. Reject immediately.
             if c == '\t' && probe.col < minContentIndent then
-              return (0, some (probe.line, probe.col))
+              return (0, some (.tabInIndentation probe.line probe.col))
             if isLineBreak c then
-              -- §8.1.3: l-empty(n) lines have at most n = minContentIndent
-              -- spaces.  Lines with more spaces are content lines (the
-              -- trailing spaces are nb-char content) and set the indent.
-              if probe.col > minContentIndent then
-                return (probe.col, none)  -- whitespace-only content line
+              -- Whitespace-only line: track max column but skip for indent detection.
+              if probe.col > maxWSCol then
+                maxWSCol := probe.col
+                maxWSLine := probe.line
               probe := consumeNewline probe
             else
-              -- detectedIndent (Position) = first content line's column
-              -- contentIndent = max(minContentIndent, detectedIndent)
-              -- If detectedIndent < minContentIndent, scalar has no content
-              -- (the collection loop will terminate immediately).
-              return (max minContentIndent probe.col, none)
+              -- First non-empty line: set contentIndent.
+              let detectedIndent := max minContentIndent probe.col
+              -- Validate: preceding whitespace-only lines must not exceed
+              -- the detected content indent.  Per §8.1.3, l-empty(n) lines
+              -- have at most n spaces; lines with more can't be l-empty and
+              -- have no nb-char content, so they're grammatically invalid.
+              if maxWSCol > detectedIndent then
+                return (0, some (.blockScalarIndentMismatch maxWSLine maxWSCol))
+              return (detectedIndent, none)
           | none => break
-        return (minContentIndent, none)  -- no content found; use floor
-  if let some (line, col) := autoDetectTabErr? then
-    throw (.tabInIndentation line col)
+        -- No content found.  Use the maximum whitespace-only column as
+        -- the content indent (these lines are l-keep-empty/l-strip-empty
+        -- and legitimately establish the indent for trailing whitespace).
+        if maxWSCol > minContentIndent then
+          return (maxWSCol, none)
+        return (minContentIndent, none)
+  if let some err := autoDetectErr? then
+    throw err
   -- Collect content: l-literal-content / l-folded-content
   -- Each content line must match: s-indent(contentIndent) nb-char+
   -- Empty lines (l-empty): s-indent(≤contentIndent) b-as-line-feed

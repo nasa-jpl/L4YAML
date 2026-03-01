@@ -59,10 +59,10 @@ open Lean4Yaml.TokenParser
   | .ok _ => false
   | .error _ => true
 
--- 4JVG:0 [UP] Scalar value with two anchors
+-- 4JVG:0 [PASS] Scalar value with two anchors
 #guard match parseYaml "top1: &node1\n  &k1 key1: val1\ntop2: &node2\n  &v2 val2\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- 55WF:0 Invalid escape in double quoted string
 #guard match parseYaml "---\n\"\\.\"\n" with
@@ -359,10 +359,10 @@ open Lean4Yaml.TokenParser
   | .ok _ => false
   | .error _ => true
 
--- S98Z:0 [UP] Block scalar with more spaces than first content line
+-- S98Z:0 [PASS] Block scalar with more spaces than first content line
 #guard match parseYaml "empty block scalar: >\n \n  \n   \n # comment\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- SF5V:0 Duplicate YAML directive
 #guard match parseYaml "%YAML 1.2\n%YAML 1.2\n---\n" with
@@ -389,10 +389,10 @@ open Lean4Yaml.TokenParser
   | .ok _ => false
   | .error _ => true
 
--- T833:0 [UP] Flow mapping missing a separating comma
+-- T833:0 [PASS] Flow mapping missing a separating comma
 #guard match parseYaml "---\n{\n foo: 1\n bar: 2 }\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- TD5N:0 Invalid scalar after sequence (§9.2 bare document rejection)
 #guard match parseYaml "- item1\n- item2\ninvalid\n" with
