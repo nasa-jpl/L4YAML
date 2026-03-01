@@ -1,16 +1,16 @@
 {
-  "date": "2026-03-01T14:33:13-0800",
+  "date": "2026-03-01T15:23:29-0800",
   "overall": {
     "applicable": 358,
-    "correct": 352,
-    "correctRate": 98.3,
-    "expectedFail": 89,
+    "correct": 355,
+    "correctRate": 99.1,
+    "expectedFail": 92,
     "failed": 0,
     "passed": 263,
     "skipped": 48,
     "timeout": 0,
     "total": 406,
-    "unexpectedPass": 6
+    "unexpectedPass": 3
   },
   "stages": {
     "advanced": {
@@ -27,15 +27,15 @@
     },
     "block": {
       "applicable": 99,
-      "correct": 98,
-      "correctRate": 98.9,
-      "expectedFail": 14,
+      "correct": 99,
+      "correctRate": 100,
+      "expectedFail": 15,
       "failed": 0,
       "passed": 84,
       "skipped": 0,
       "timeout": 0,
       "total": 99,
-      "unexpectedPass": 1
+      "unexpectedPass": 0
     },
     "document": {
       "applicable": 17,
@@ -51,15 +51,15 @@
     },
     "error": {
       "applicable": 74,
-      "correct": 69,
-      "correctRate": 93.2,
-      "expectedFail": 69,
+      "correct": 71,
+      "correctRate": 95.9,
+      "expectedFail": 71,
       "failed": 0,
       "passed": 0,
       "skipped": 0,
       "timeout": 0,
       "total": 74,
-      "unexpectedPass": 5
+      "unexpectedPass": 3
     },
     "flow": {
       "applicable": 46,
@@ -1376,10 +1376,10 @@
       "stage": "scalar"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "DK4H",
       "name": "Implicit key followed by newline",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "error"
     },
     {
@@ -2762,10 +2762,10 @@
       "stage": "block"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "Y79Y",
       "name": "",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "block"
     },
     {
@@ -2895,10 +2895,10 @@
       "stage": "advanced"
     },
     {
-      "error": "expected parse failure but succeeded",
+      "error": null,
       "id": "ZXT5",
       "name": "Implicit key followed by newline and adjacent value",
-      "outcome": "unexpected-pass",
+      "outcome": "expected-fail",
       "stage": "error"
     },
     {
@@ -2953,7 +2953,7 @@
       {
         "allPass": false,
         "label": "Structural Validation Tests",
-        "passed": 81,
+        "passed": 83,
         "total": 84
       },
       {
@@ -2999,7 +2999,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 710,
+    "totalPassed": 712,
     "totalTests": 738
   }
 }

@@ -198,7 +198,7 @@ Running all tests for HTML report...
   [182/406] DFF7 ✓
   [183/406] DHP8 ✓
   [184/406] DK3J ✓
-  [185/406] DK4H ⚠ unexpected pass
+  [185/406] DK4H ✓ (expected fail)
   [186/406] DK95 ✓
   [187/406] DK95 ✓ (expected fail)
   [188/406] DK95 ✓
@@ -396,7 +396,7 @@ Running all tests for HTML report...
   [380/406] Y79Y ✓ (expected fail)
   [381/406] Y79Y ✓
   [382/406] Y79Y ✓
-  [383/406] Y79Y ⚠ unexpected pass
+  [383/406] Y79Y ✓ (expected fail)
   [384/406] Y79Y ✓ (expected fail)
   [385/406] Y79Y ✓ (expected fail)
   [386/406] Y79Y ✓ (expected fail)
@@ -415,20 +415,20 @@ Running all tests for HTML report...
   [399/406] ZL4Z ✓ (expected fail)
   [400/406] ZVH3 ✓ (expected fail)
   [401/406] ZWK4 ✓
-  [402/406] ZXT5 ⚠ unexpected pass
+  [402/406] ZXT5 ✓ (expected fail)
   [403/406] ZYU8 ✓
   [404/406] ZYU8 ✓
   [405/406] ZYU8 ✓ (expected fail)
   [406/406] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 352/406 (98.000000%)
+Correct: 355/406 (99.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 10/10
   Explicit Key Tests: ✗ 39/55
   Flow Completeness Tests: ✗ 85/86
-  Structural Validation Tests: ✗ 81/84
+  Structural Validation Tests: ✗ 83/84
   Dump Round-Trip Tests: ✓ 102/102
   Raw Parse / Compose Tests: ✗ 26/29
   YAML 1.2.2 Spec Examples: ✗ 131/132
@@ -437,7 +437,7 @@ Running verified test suites...
   YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline): ✗ 131/132
   Demo: ✓ 7/7
 
-Verified: 710/738
+Verified: 712/738
 
 Generating HTML reports...
   wrote docs/index.html

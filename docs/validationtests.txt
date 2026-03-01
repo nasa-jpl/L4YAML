@@ -89,11 +89,11 @@
   ✓ reject: multiline flow mapping key (C2SP)
   ✓ reject: double comma in flow seq (CTN5)
   ✓ reject: comment without space after comma (CVW2)
-  ✗ reject: implicit key colon on next line (DK4H)
+  ✓ reject: implicit key colon on next line (DK4H)
   ✓ reject: content after closed flow seq (KS4U)
   ✓ reject: block item after flow map (P2EQ)
   ✗ reject: missing comma in flow mapping (T833)
-  ✗ reject: colon-value on next line after quoted key (ZXT5)
+  ✓ reject: colon-value on next line after quoted key (ZXT5)
 
-=== Results: 81/84 passed ===
-    3 FAILED
+=== Results: 83/84 passed ===
+    1 FAILED
