@@ -276,6 +276,29 @@ inductive ScanError where
   | nestingDepthExceeded (line : Nat)
   /-- `parseYamlSingle*` called but input contains multiple documents. -/
   | multipleDocuments    (count : Nat)
+  /-- Unexpected content after a node where no more tokens are expected.
+      E.g., trailing text after a quoted scalar in a block mapping value,
+      or content after a flow collection close in block context. -/
+  | trailingContent      (line col : Nat)
+  /-- Anchor defined twice on the same node — §6.9.2 violation. -/
+  | duplicateAnchor      (line : Nat)
+  /-- Unexpected content on the `---` document-start line.
+      YAML §9.1.1: document start is `---` followed by s-l-comments or content
+      on a new line. Content on the same line as `---` without directives
+      context is ambiguous. -/
+  | contentOnDocumentStartLine (line col : Nat)
+  /-- Flow collection opened but never closed (missing `]` or `}`). -/
+  | unterminatedFlowCollection (bracket : Char) (line : Nat)
+  /-- Comma at an invalid position in a flow collection (leading or duplicate). -/
+  | invalidFlowEntry    (line col : Nat)
+  /-- Implicit key used as value indicator without preceding key content — §7.4 violation. -/
+  | invalidImplicitKey  (line : Nat)
+  /-- Bare document (no `---`) after a previous document without `...` — §9.2 [211] violation.
+      YAML streams allow bare documents only as the first document or after `...`. -/
+  | invalidBareDocument (line col : Nat)
+  /-- Tag shorthand handle used without a corresponding `%TAG` directive — §6.8.2.2 violation.
+      Named handles (e.g., `!prefix!`) are local to the document and must be declared. -/
+  | undeclaredTagHandle (handle : String) (line col : Nat)
   deriving Repr, BEq, Inhabited, DecidableEq
 
 /-- Human-readable error message, separated from error construction.
@@ -312,6 +335,14 @@ def ScanError.toString : ScanError → String
   | .expectedToken desc _ none => s!"expected {desc} but reached end of tokens"
   | .nestingDepthExceeded l    => s!"maximum nesting depth exceeded at line {l}"
   | .multipleDocuments n       => s!"expected single document, found {n}"
+  | .trailingContent l c       => s!"trailing content at line {l}, column {c}"
+  | .duplicateAnchor l         => s!"duplicate anchor on the same node at line {l}"
+  | .contentOnDocumentStartLine l c => s!"unexpected content on document-start line at line {l}, column {c}"
+  | .unterminatedFlowCollection b l => s!"unterminated flow collection '{b}' at line {l}"
+  | .invalidFlowEntry l c      => s!"invalid comma in flow collection at line {l}, column {c}"
+  | .invalidImplicitKey l      => s!"invalid implicit key at line {l}"
+  | .invalidBareDocument l c   => s!"bare document content at line {l}, column {c} — expected '---' or '...' before new document (§9.2)"
+  | .undeclaredTagHandle h l c => s!"undeclared tag handle '{h}' at line {l}, column {c} — use %TAG directive to declare it (§6.8.2.2)"
 
 instance : ToString ScanError := ⟨ScanError.toString⟩
 
