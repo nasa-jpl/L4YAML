@@ -3963,6 +3963,20 @@ Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
   - **Root cause 2 — Spec/libyaml tension on flow-context implicit keys**: Production [152] `ns-s-implicit-yaml-key(c)` uses `s-separate-in-line?` [66] (single-line) regardless of context. But §6.5 says flow has "relaxed semantics" where line breaks are presentation details, and libyaml allows `:` on a different line than the key in flow context. See Reflections for full analysis.
   - Reverted: `scanValue` restored to non-Except signature, `multilineImplicitKey` constructor removed.
   - Prerequisite for future attempt: fix simpleKey staling logic, then apply line check in block context only.
+- **2026-02-28 (10.6d.9 — CI regression fix: BOM, parentIndent, document-marker termination)**:
+  - CI showed Verified: 697/738 (down from 703). Root cause: 3 interacting scanner bugs.
+  - **Fix 1 — BOM transparency in comment check**: `peekBack?` in `skipToContent` and `scanBlockScalar` now treats BOM (U+FEFF) as transparent — `#` after BOM is a valid comment per §5.2. Fixed spec examples 5.1 and 9.1.
+  - **Fix 2 — `parentIndent` bug**: `scanBlockScalar` used `s.col` (column of `|`/`>` indicator) as parent indent. Changed to `s.currentIndent` (the enclosing block's indent level, `Int`, -1 at stream level). This fixes block scalars after `key: |` receiving inflated `parentIndent = 5` instead of correct `0`. Uses `Int` arithmetic to handle stream-level `-1` correctly: `minContentIndent := (max 0 (parentIndent + 1)).toNat`.
+  - **Fix 3 — Document-marker termination in block scalar content (§9.1.4/§9.2)**: Block scalar content collection now checks `atDocumentBoundary` at the top of each iteration. `---` and `...` at column 0 always terminate block scalar content, regardless of indentation level. Without this, the parentIndent fix caused block scalars at stream level (`currentIndent = -1`, `minContentIndent = 0`) to eat document-end markers as content.
+  - Added `tryscan` diagnostic tool (`Tests/TryScan.lean`) for inspecting scanner token streams.
+  - Verified: 697 → 705/738 (+8). UP count unchanged at 71 (fixes were correctness, not error-rejection).
+  - Build: 37/37, spec examples: 132/132, scanner tests: 33/33.
+- **2026-02-28 (10.6d.10 — Block scalar tab detection in auto-detect probe)**:
+  - **Fix — Tab in block scalar indentation zone during auto-detect**: `scanBlockScalar`'s auto-detect probe (which scans ahead past blank lines to find the first content line) now checks for tab characters at `col < minContentIndent`. A tab at this position is in the `s-indent` zone where only spaces are allowed (§6.1). Returns a deferred error tuple from the `Id.run do` block, thrown after the match. Fixes Y79Y:0 (`foo: |\n\t\nbar: 1`).
+  - **Investigated and deferred — Flow context tab check in `skipToContent`**: Attempted removing `!s'.inFlow` guard from the tab-as-indentation check. This correctly caught Y79Y:3 (tab before content in flow, col ≤ block's `currentIndent`) but regressed spec example 6.1 because inside deep flow collections, the block-level `currentIndent` can be very high (e.g., 15) while valid flow content is at lower columns. The `!s'.inFlow` guard is essential: block-level `currentIndent` doesn't represent flow indentation requirements.
+  - Also discovered: DK95:4/5 tests confirm that tabs on blank lines between block entries are valid YAML (yaml-test-suite), so rejecting tab-on-blank-line universally is incorrect.
+  - UP count: 71 → 70 (Y79Y:0 fixed; 7 Y79Y tab-after-indicator UPs remain, need per-indicator tab checks).
+  - Suite runner: 815 passed, 34 failed, 171 skipped. Build: 37/37, spec examples: 132/132.
 
 </details>
 
@@ -4067,7 +4081,7 @@ Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
    - In short: the scanner/grammar separation made the scanner *more* stateful and *more* error-aware than a combinator pipeline supports, while simultaneously making the grammar parser *less* complex than a combinator framework is designed for. Both layers moved away from the combinator sweet spot.
    - **Note on `Except` vs. exceptions**: Lean 4's `throw`/`Except` is a pure functional sum type (`Either ε α`), not imperative exception semantics. Using `Except ScanError α` with `throw` is the idiomatic Lean 4 way to express short-circuiting computations — it constructs `Except.error val` as a value, with no side effects or stack unwinding. The actual code smell in the current scanner is `Except String` — the unstructured error type, not the `throw` mechanism. P10.6e will replace `String` with a structured `ScanError` ADT that makes error categories machine-inspectable and pattern-matchable.
 
-**Status**: In progress (71 UPs remaining, 16 fixed: 2 tab, 10 directive, 4 comment).
+**Status**: In progress (70 UPs remaining, 17 fixed: 3 tab, 10 directive, 4 comment). Suite runner: 815/1020.
 
 </details>
 
@@ -4358,7 +4372,7 @@ Each `have` serves as a machine-checked comment: if the invariant doesn't hold, 
 - **P10.6** depends on all of P10.1–P10.5 — ✅ complete
 - **P10.6b** depends on P10.6 — ✅ complete (352 guards, 155/155 build, 695/731 verified tests)
 - **P10.6c** depends on P10.6b — not started (test diagnostics improvement)
-- **P10.6d** depends on P10.6c — in progress (75 UPs remaining; 12 fixed: 2 tab, 10 directive)
+- **P10.6d** depends on P10.6c — in progress (70 UPs remaining; 17 fixed: 3 tab, 10 directive, 4 comment; 3 correctness fixes: BOM, parentIndent, doc-marker)
 - **P10.6e** depends on P10.6d — not started (production rule annotation + subtype contracts)
 - **P10.7** depends on P10.6e — blocked
 - **Phase 8** (comment preservation) should target the tokenized parser only — if P10 completes first, Phase 8 has a single implementation target

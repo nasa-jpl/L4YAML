@@ -1,5 +1,24 @@
 name = "lean4-yaml-verified"
-defaultTargets = ["Lean4Yaml"]
+defaultTargets = [
+  "Lean4Yaml",
+  "tryparse",
+  "tryscan",
+  "tryroundtrip",
+  "trydump",
+  "explicitkeytests",
+  "flowtests",
+  "validationtests",
+  "flowregressioncheck",
+  "errorstagediag",
+  "scalarstagediag",
+  "dumproundtrip",
+  "rawparsetests",
+  "specexamples",
+  "schemadump",
+  "scannertests",
+  "scannerspecexamples",
+  "suiterunner",
+]
 
 [leanOptions]
 "autoImplicit" = false
@@ -47,6 +66,10 @@ root = "Tests.SuiteRunner.Main"
 [[lean_exe]]
 name = "tryparse"
 root = "Tests.TryParse"
+
+[[lean_exe]]
+name = "tryscan"
+root = "Tests.TryScan"
 
 [[lean_exe]]
 name = "tryroundtrip"
