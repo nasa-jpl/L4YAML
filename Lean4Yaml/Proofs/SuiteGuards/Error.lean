@@ -424,10 +424,10 @@ open Lean4Yaml.TokenParser
   | .ok _ => false
   | .error _ => true
 
--- Y79Y:0 [UP] Tabs in various contexts
+-- Y79Y:0 Tabs in various contexts
 #guard match parseYaml "foo: |\n\t\nbar: 1\n" with
-  | .ok _ => true
-  | .error _ => false
+  | .ok _ => false
+  | .error _ => true
 
 -- Y79Y:3 [UP]
 #guard match parseYaml "- [\n\tfoo,\n foo\n ]\n" with

@@ -357,7 +357,7 @@ def skipToContent (s : ScannerState) : Except ScanError ScannerState := do
     match s'.peek? with
     | some '#' =>
       let commentOk := s'.col == 0 || match s'.peekBack? with
-        | some c => isWhiteSpace c || isLineBreak c
+        | some c => isWhiteSpace c || isLineBreak c || c == '\uFEFF'  -- BOM is transparent (§5.2)
         | none => true   -- start of input
       if commentOk then
         s' := skipToEndOfLine s'
@@ -964,7 +964,7 @@ def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState := do
     | some '#' =>
       -- Check raw input: # must be preceded by whitespace (not at start-of-line here)
       let commentOk := match s'.peekBack? with
-        | some c => isWhiteSpace c || isLineBreak c
+        | some c => isWhiteSpace c || isLineBreak c || c == '\uFEFF'  -- BOM is transparent (§5.2)
         | none => false
       if commentOk then skipToEndOfLine s'  -- c-nb-comment-text [77]: whitespace preceded `#`
       else s'  -- `#` without preceding whitespace — not a comment
@@ -977,14 +977,17 @@ def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState := do
       else .error (.expectedNewline s'.line)
     | none => .ok s'
   -- Determine content indentation: n+m
-  -- parentIndent (Position) = n = column of `|`/`>` indicator
-  let parentIndent := s.col
+  -- parentIndent = n = parent block's indentation level (§8.1.2).
+  -- Uses currentIndent (Int, -1 at stream level) so that top-level block
+  -- scalars correctly allow content at column 0, and nested block scalars
+  -- use the block's indent rather than the column of the `|`/`>` indicator.
+  let parentIndent : Int := s.currentIndent
   -- minContentIndent (Position) = n+1: spec §8.1.3 requires m ≥ 1
-  let minContentIndent := parentIndent + 1
-  let contentIndent := match explicitOffset with
+  let minContentIndent : Nat := (max 0 (parentIndent + 1)).toNat
+  let (contentIndent, autoDetectTabErr?) := match explicitOffset with
     | some m =>
       -- Explicit: contentIndent (Position) = parentIndent (Position) + m (Distance)
-      parentIndent + m
+      ((max 0 (parentIndent + (m : Int))).toNat, (none : Option (Nat × Nat)))
     | none =>
       -- Auto-detect: scan ahead past blank lines to find first content line.
       -- The detected column must respect the floor (minContentIndent).
@@ -996,15 +999,21 @@ def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState := do
           probe := skipSpaces probe
           match probe.peek? with
           | some c =>
+            -- §6.1: Tab at col < minContentIndent is in the indentation zone
+            -- where s-indent requires spaces only. Reject immediately.
+            if c == '\t' && probe.col < minContentIndent then
+              return (0, some (probe.line, probe.col))
             if isLineBreak c then probe := consumeNewline probe
             else
               -- detectedIndent (Position) = first content line's column
               -- contentIndent = max(minContentIndent, detectedIndent)
               -- If detectedIndent < minContentIndent, scalar has no content
               -- (the collection loop will terminate immediately).
-              return max minContentIndent probe.col
+              return (max minContentIndent probe.col, none)
           | none => break
-        return minContentIndent  -- no content found; use floor
+        return (minContentIndent, none)  -- no content found; use floor
+  if let some (line, col) := autoDetectTabErr? then
+    throw (.tabInIndentation line col)
   -- Collect content: l-literal-content / l-folded-content
   -- Each content line must match: s-indent(contentIndent) nb-char+
   -- Empty lines (l-empty): s-indent(≤contentIndent) b-as-line-feed
@@ -1013,6 +1022,9 @@ def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState := do
     let mut rawContent := ""
     let fuel := s.inputEnd - s'.offset + 1
     for _ in [:fuel] do
+      -- §9.1.4 / §9.2: Document markers `---` and `...` at column 0 always
+      -- terminate block scalar content, regardless of indentation.
+      if s'.col == 0 && atDocumentBoundary s' then break
       -- Try to consume s-indent(contentIndent): exactly `contentIndent` spaces [63]
       let (spacesConsumed, s'') := Id.run do  -- spacesConsumed: Distance
         let mut s' := s'
