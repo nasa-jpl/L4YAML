@@ -178,11 +178,11 @@
     <div class="stat-box stat-total"><h3>Unique Tests</h3><div class="number">74</div></div>
     <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">0</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
-    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">15</div></div>
-    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">59</div></div>
+    <div class="stat-box stat-expected"><h3>Expected Fail</h3><div class="number">21</div></div>
+    <div class="stat-box stat-unexpected"><h3>Unexpected Pass</h3><div class="number">53</div></div>
     <div class="stat-box stat-skip"><h3>Skipped (1.3)</h3><div class="number">0</div></div>
     <div class="stat-box stat-timeout"><h3>Timeout</h3><div class="number">0</div></div>
-    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">15/74</div><div class="pct">(20.3%)</div></div>
+    <div class="stat-box stat-correct"><h3>Correct</h3><div class="number">21/74</div><div class="pct">(28.4%)</div></div>
   </div>
   <h3>Coverage by Stage</h3>
   <div class="stage-cards">
@@ -213,8 +213,8 @@
     </div>
     <div class="stage-card">
       <div class="stage-card-name">error</div>
-      <div class="stage-card-stats">15/74 correct (20.3%) · 0 pass, 0 fail, 15 exp-fail, 59 unexp-pass, 0 timeout</div>
-      <div class="stage-bar"><div class="stage-bar-segment" style="flex: 15 0 0px; background: var(--color-expected-fail)" title="15 expected fail"></div><div class="stage-bar-segment" style="flex: 59 0 0px; background: var(--color-unexpected-pass)" title="59 unexpected pass"></div></div>
+      <div class="stage-card-stats">21/74 correct (28.4%) · 0 pass, 0 fail, 21 exp-fail, 53 unexp-pass, 0 timeout</div>
+      <div class="stage-bar"><div class="stage-bar-segment" style="flex: 21 0 0px; background: var(--color-expected-fail)" title="21 expected fail"></div><div class="stage-bar-segment" style="flex: 53 0 0px; background: var(--color-unexpected-pass)" title="53 unexpected pass"></div></div>
     </div>
   </div>
   <div class="filters">
@@ -274,13 +274,13 @@
         <td><span class="tag">error</span><span class="tag">mapping</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="3hfz invalid content after document end marker error footer">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="3hfz invalid content after document end marker error footer">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/3HFZ.yaml" target="_blank" class="test-id-link" title="View 3HFZ source in yaml-test-suite">3HFZ</a></td>
         <td>Invalid content after document end marker</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">footer</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="4ejs invalid tabs as indendation in a mapping error mapping whitespace">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/4EJS.yaml" target="_blank" class="test-id-link" title="View 4EJS source in yaml-test-suite">4EJS</a></td>
@@ -290,13 +290,13 @@
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">whitespace</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="4h7k flow sequence with invalid extra closing bracket error flow sequence">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="4h7k flow sequence with invalid extra closing bracket error flow sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/4H7K.yaml" target="_blank" class="test-id-link" title="View 4H7K source in yaml-test-suite">4H7K</a></td>
         <td>Flow sequence with invalid extra closing bracket</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">error</span><span class="tag">flow</span><span class="tag">sequence</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="4hvu wrong indendation in sequence error sequence indent">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/4HVU.yaml" target="_blank" class="test-id-link" title="View 4HVU source in yaml-test-suite">4HVU</a></td>
@@ -330,13 +330,13 @@
         <td><span class="tag">error</span><span class="tag">folded</span><span class="tag">whitespace</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="5trb invalid document-start marker in doublequoted tring header double error">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="5trb invalid document-start marker in doublequoted tring header double error">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/5TRB.yaml" target="_blank" class="test-id-link" title="View 5TRB source in yaml-test-suite">5TRB</a></td>
         <td>Invalid document-start marker in doublequoted tring</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">header</span><span class="tag">double</span><span class="tag">error</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="5u3a sequence on same line as mapping key error sequence mapping">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/5U3A.yaml" target="_blank" class="test-id-link" title="View 5U3A source in yaml-test-suite">5U3A</a></td>
@@ -658,13 +658,13 @@
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">indent</span><span class="tag">double</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="n782 invalid document markers in flow style flow edge header footer error">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="n782 invalid document markers in flow style flow edge header footer error">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/N782.yaml" target="_blank" class="test-id-link" title="View N782 source in yaml-test-suite">N782</a></td>
         <td>Invalid document markers in flow style</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">flow</span><span class="tag">edge</span><span class="tag">header</span><span class="tag">footer</span><span class="tag">error</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="p2eq invalid sequene item on same line as previous item error flow mapping sequence">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/P2EQ.yaml" target="_blank" class="test-id-link" title="View P2EQ source in yaml-test-suite">P2EQ</a></td>
@@ -682,13 +682,13 @@
         <td><span class="tag">error</span><span class="tag">mapping</span><span class="tag">double</span></td>
         <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="qb6e wrong indented multiline quoted scalar double error indent">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="qb6e wrong indented multiline quoted scalar double error indent">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/QB6E.yaml" target="_blank" class="test-id-link" title="View QB6E source in yaml-test-suite">QB6E</a></td>
         <td>Wrong indented multiline quoted scalar</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">double</span><span class="tag">error</span><span class="tag">indent</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="qlj7 tag shorthand used in documents but only defined in the first error directive tag">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/QLJ7.yaml" target="_blank" class="test-id-link" title="View QLJ7 source in yaml-test-suite">QLJ7</a></td>
@@ -706,13 +706,13 @@
         <td><span class="tag">directive</span><span class="tag">error</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="unexpected-pass" data-stage="error" data-search="rxy3 invalid document-end marker in single quoted string footer single error">
+      <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="rxy3 invalid document-end marker in single quoted string footer single error">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/RXY3.yaml" target="_blank" class="test-id-link" title="View RXY3 source in yaml-test-suite">RXY3</a></td>
         <td>Invalid document-end marker in single quoted string</td>
         <td>error</td>
-        <td><span class="badge badge-unexpected-pass">Unexpected Pass</span></td>
+        <td><span class="badge badge-expected-fail">Expected Fail</span></td>
         <td><span class="tag">footer</span><span class="tag">single</span><span class="tag">error</span></td>
-        <td><span class="error-msg" title="expected parse failure but succeeded">expected parse failure but succeeded</span></td>
+        <td></td>
       </tr>
       <tr class="test-row" data-outcome="expected-fail" data-stage="error" data-search="s4gj invalid text after block scalar indicator error folded">
         <td><a href="https://github.com/yaml/yaml-test-suite/blob/main/src/S4GJ.yaml" target="_blank" class="test-id-link" title="View S4GJ source in yaml-test-suite">S4GJ</a></td>

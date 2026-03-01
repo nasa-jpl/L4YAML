@@ -81,7 +81,7 @@
   ✓ peek-before-consume: comment after indicator
 
 --- Flow Structure Errors ---
-  ✗ reject: extra closing bracket (4H7K)
+  ✓ reject: extra closing bracket (4H7K)
   ✗ reject: content after closing brace (62EZ)
   ✗ reject: unclosed flow sequence (6JTT)
   ✓ reject: comment without space after ] (9JBA)
@@ -95,5 +95,5 @@
   ✗ reject: missing comma in flow mapping (T833)
   ✗ reject: colon-value on next line after quoted key (ZXT5)
 
-=== Results: 71/84 passed ===
-    13 FAILED
+=== Results: 72/84 passed ===
+    12 FAILED
