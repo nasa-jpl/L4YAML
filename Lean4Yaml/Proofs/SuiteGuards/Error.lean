@@ -34,7 +34,7 @@ open Lean4Yaml.TokenParser
   | .ok _ => false
   | .error _ => true
 
--- 2G84:1
+-- 2G84:1 
 #guard match parseYaml "--- |10\n\n" with
   | .ok _ => false
   | .error _ => true
@@ -149,7 +149,7 @@ open Lean4Yaml.TokenParser
   | .ok _ => false
   | .error _ => true
 
--- 9MQT:1 [UP]
+-- 9MQT:1 [UP] 
 #guard match parseYaml "--- \"a\n... x\nb\"\n" with
   | .ok _ => true
   | .error _ => false
@@ -214,12 +214,12 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- DK95:1 [UP]
+-- DK95:1 [UP] 
 #guard match parseYaml "foo: \"bar\n\tbaz\"\n" with
   | .ok _ => true
   | .error _ => false
 
--- DK95:6
+-- DK95:6 
 #guard match parseYaml "foo:\n  a: 1\n  \tb: 2\n" with
   | .ok _ => false
   | .error _ => true
@@ -309,7 +309,7 @@ open Lean4Yaml.TokenParser
   | .ok _ => false
   | .error _ => true
 
--- MUS6:1
+-- MUS6:1 
 #guard match parseYaml "%YAML 1.2\n---\n%YAML 1.2\n---\n" with
   | .ok _ => false
   | .error _ => true
@@ -429,37 +429,37 @@ open Lean4Yaml.TokenParser
   | .ok _ => false
   | .error _ => true
 
--- Y79Y:3 [UP]
+-- Y79Y:3 [UP] 
 #guard match parseYaml "- [\n\tfoo,\n foo\n ]\n" with
   | .ok _ => true
   | .error _ => false
 
--- Y79Y:4 [UP]
+-- Y79Y:4 [UP] 
 #guard match parseYaml "-\t-\n\n" with
   | .ok _ => true
   | .error _ => false
 
--- Y79Y:5 [UP]
+-- Y79Y:5 [UP] 
 #guard match parseYaml "- \t-\n\n" with
   | .ok _ => true
   | .error _ => false
 
--- Y79Y:6 [UP]
+-- Y79Y:6 [UP] 
 #guard match parseYaml "?\t-\n\n" with
   | .ok _ => true
   | .error _ => false
 
--- Y79Y:7 [UP]
+-- Y79Y:7 [UP] 
 #guard match parseYaml "? -\n:\t-\n\n" with
   | .ok _ => true
   | .error _ => false
 
--- Y79Y:8 [UP]
+-- Y79Y:8 [UP] 
 #guard match parseYaml "?\tkey:\n\n" with
   | .ok _ => true
   | .error _ => false
 
--- Y79Y:9 [UP]
+-- Y79Y:9 [UP] 
 #guard match parseYaml "? key:\n:\tkey:\n\n" with
   | .ok _ => true
   | .error _ => false
@@ -489,7 +489,7 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
--- ZYU8:2
+-- ZYU8:2 
 #guard match parseYaml "%YAML 1.1 1.2\n---\n" with
   | .ok _ => false
   | .error _ => true

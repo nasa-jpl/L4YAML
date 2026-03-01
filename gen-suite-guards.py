@@ -191,12 +191,24 @@ def is_1_3_specific(tags: list[str]) -> bool:
     return any(t in ('1.3-err', '1.3-mod') for t in tags)
 
 
+# Tests tagged 1.3-err/1.3-mod whose YAML 1.2.2 behavior we now handle correctly.
+# These are included despite the 1.3 tag because the test's expected tree reflects
+# the 1.2.2 result (the tag indicates 1.3 *changes* from this behavior).
+# See README P10.6d §2.2 — foldBlockContent 4-state machine.
+YAML_1_3_INCLUDE = {
+    '6VJK',  # Spec 2.15: folded newlines preserved for more-indented
+    '7T8X',  # Spec 8.10-8.13: folded lines / final empty lines
+    'MJS9',  # Spec 6.7: block folding (trailing space + tab)
+    'M9B4',  # Spec 8.7: literal scalar (tab in content)
+}
+
+
 def should_skip(tc: TestCase) -> Optional[str]:
     """Return skip reason or None if test should be included."""
     yaml = unescape_test_yaml(tc.yaml)
     if not yaml or yaml.isspace():
         return "empty yaml input"
-    if is_1_3_specific(tc.tags):
+    if is_1_3_specific(tc.tags) and tc.id not in YAML_1_3_INCLUDE:
         return "YAML 1.3 specific"
     return None
 

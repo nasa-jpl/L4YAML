@@ -57,6 +57,12 @@ private def dbg (startMs : Nat) (msg : String) : IO Unit := do
 
 /-! ## Test Execution -/
 
+/-- Tests tagged `1.3-err`/`1.3-mod` whose YAML 1.2.2 behavior we handle correctly.
+    These are included despite the 1.3 tag because the test's expected tree reflects
+    the 1.2.2 result. See README P10.6d §2.2 — `foldBlockContent` 4-state machine. -/
+private def yaml13Include : List String :=
+  ["6VJK", "7T8X", "MJS9", "M9B4"]
+
 /-- Result of running a single test case. -/
 inductive TestResult where
   | pass
@@ -68,8 +74,9 @@ inductive TestResult where
 def runTestCore (tc : TestCase) : TestResult :=
   let yaml := unescapeTestYaml tc.yaml
   if yaml.isEmpty then .skip "empty yaml input"
-  -- Tests tagged 1.3-err or 1.3-mod are YAML 1.3 specific
-  else if tc.tags.any (fun t => t == "1.3-err" || t == "1.3-mod") then
+  -- Tests tagged 1.3-err or 1.3-mod are YAML 1.3 specific (unless allowlisted)
+  else if tc.tags.any (fun t => t == "1.3-err" || t == "1.3-mod")
+      && !yaml13Include.contains tc.id then
     .skip "YAML 1.3 specific"
   else if tc.expectFail then .skip "error test (run with 'error' stage)"
   else
@@ -83,7 +90,8 @@ def runTestCore (tc : TestCase) : TestResult :=
 def runTest (tc : TestCase) (timeoutSec : Nat := 2) : IO TestResult := do
   let yaml := unescapeTestYaml tc.yaml
   if yaml.isEmpty then return .skip "empty yaml input"
-  if tc.tags.any (fun t => t == "1.3-err" || t == "1.3-mod") then
+  if tc.tags.any (fun t => t == "1.3-err" || t == "1.3-mod")
+      && !yaml13Include.contains tc.id then
     return .skip "YAML 1.3 specific"
   -- Write yaml to temp file
   let tmpPath := s!"/tmp/yaml_suite_test_{tc.id}.yaml"

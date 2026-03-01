@@ -10,7 +10,7 @@ import Lean4Yaml.TokenParser
 Auto-generated from yaml-test-suite test files by `gen-suite-guards.py`.
 Each `#guard` is evaluated by Lean's kernel during `lake build`.
 
-**53 guards** covering all passing scalar tests.
+**57 guards** covering all passing scalar tests.
 
 These are Phase 4 of the verification plan: yaml-test-suite as compile-time proofs.
 -/
@@ -94,8 +94,18 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
+-- 6VJK:0 Spec Example 2.15. Folded newlines are preserved for "more indented" and blank lines
+#guard match parseYaml ">\n Sammy Sosa completed another\n fine season with great stats.\n\n   63 Home Runs\n   0.288 Batting Average\n\n What a year!\n" with
+  | .ok _ => true
+  | .error _ => false
+
 -- 7A4E:0 Spec Example 7.6. Double Quoted Lines
 #guard match parseYaml "\" 1st non-empty\n\n 2nd non-empty \n\t3rd non-empty \"\n" with
+  | .ok _ => true
+  | .error _ => false
+
+-- 7T8X:0 Spec Example 8.10. Folded Lines - 8.13. Final Empty Lines
+#guard match parseYaml ">\n\n folded\n line\n\n next\n line\n   * bullet\n\n   * list\n   * lines\n\n last\n line\n\n# Comment\n" with
   | .ok _ => true
   | .error _ => false
 
@@ -226,6 +236,16 @@ open Lean4Yaml.TokenParser
 
 -- M29M:0 Literal Block Scalar
 #guard match parseYaml "a: |\n ab\n \n cd\n ef\n \n\n...\n" with
+  | .ok _ => true
+  | .error _ => false
+
+-- M9B4:0 Spec Example 8.7. Literal Scalar
+#guard match parseYaml "|\n literal\n \ttext\n\n\n" with
+  | .ok _ => true
+  | .error _ => false
+
+-- MJS9:0 Spec Example 6.7. Block Folding
+#guard match parseYaml ">\n  foo \n \n  \t bar\n\n  baz\n" with
   | .ok _ => true
   | .error _ => false
 

@@ -3977,6 +3977,20 @@ Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
   - Also discovered: DK95:4/5 tests confirm that tabs on blank lines between block entries are valid YAML (yaml-test-suite), so rejecting tab-on-blank-line universally is incorrect.
   - UP count: 71 → 70 (Y79Y:0 fixed; 7 Y79Y tab-after-indicator UPs remain, need per-indicator tab checks).
   - Suite runner: 815 passed, 34 failed, 171 skipped. Build: 37/37, spec examples: 132/132.
+- **2026-02-28 (10.6d.11 — `foldBlockContent` 4-state machine, COMPARISON.md §2.2)**:
+  - **Root cause**: `foldBlockContent` used a 3-state `Bool` (`prevWasNewline`) on `List Char`, which cannot distinguish "more-indented" lines (space-leading after indent stripping) from normal content lines. YAML 1.2.2 §8.1.3 requires 4 distinct newline-handling behaviors depending on adjacent line types.
+  - **Fix**: Replaced `Bool` state with `FoldState` inductive (`start | content | empty | more`) and added `pending : Nat` counter for deferred newline emission. The folding rules derive from productions [170]–[181]:
+    - `content→1→content`: `b-as-space` [176] — fold to space
+    - `content→1→more`: `b-as-line-feed` [177] — preserve `\n`
+    - `content→N>1→content`: `b-non-content` + (N-1) `l-empty` — emit N-1 `\n`s
+    - `content→N>1→more`: `b-as-line-feed` + (N-1) `l-empty` — emit N `\n`s
+    - `more→N→any`: `b-as-line-feed` + (N-1) `l-empty` — emit N `\n`s
+    - `start→N→any`: `l-empty` × N — emit N `\n`s (leading blank lines)
+  - Line classification after indent stripping: space at column 0 → more-indented (`s-nb-spaced-text` [173]); otherwise → normal content (`s-nb-folded-text` [171]).
+  - The inductive type was chosen over `Bool`/`Nat` encoding specifically to simplify future proofs — each `FoldState` constructor becomes a named case in pattern matches.
+  - **Unskipped 4 tests**: Added `YAML_1_3_INCLUDE` allowlist to both `gen-suite-guards.py` and `Tests/SuiteRunner/Main.lean` for `1.3-err`-tagged tests whose 1.2.2 behavior is now correct: 6VJK (Spec 2.15: folded more-indented), 7T8X (Spec 8.10–8.13: folded lines), MJS9 (Spec 6.7: block folding with trailing space + tab), M9B4 (Spec 8.7: literal scalar with tab). All 4 pass in the scalar stage.
+  - UP count: unchanged at 70 (this fix is output correctness, not error rejection).
+  - Suite runner: 815 → 835 passed, 34 failed, 171 → 151 skipped (+20 passed from 4 unskipped tests × stages). Build: 153/153, spec examples: 132/132, scanner tests: 33/33.
 
 </details>
 
@@ -4081,7 +4095,19 @@ Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
    - In short: the scanner/grammar separation made the scanner *more* stateful and *more* error-aware than a combinator pipeline supports, while simultaneously making the grammar parser *less* complex than a combinator framework is designed for. Both layers moved away from the combinator sweet spot.
    - **Note on `Except` vs. exceptions**: Lean 4's `throw`/`Except` is a pure functional sum type (`Either ε α`), not imperative exception semantics. Using `Except ScanError α` with `throw` is the idiomatic Lean 4 way to express short-circuiting computations — it constructs `Except.error val` as a value, with no side effects or stack unwinding. The actual code smell in the current scanner is `Except String` — the unstructured error type, not the `throw` mechanism. P10.6e will replace `String` with a structured `ScanError` ADT that makes error categories machine-inspectable and pattern-matchable.
 
-**Status**: In progress (70 UPs remaining, 17 fixed: 3 tab, 10 directive, 4 comment). Suite runner: 815/1020.
+5. **Proof-preserving refactoring: proved cases are the refactoring contract.**
+   - When the old parser's `processFolded` was deleted (P10.6) and replaced by the scanner's `foldBlockContent` (Phase 9), the proofs were deleted too — removing the only machine-checked evidence of what the function was required to do.
+   - The old `processFolded` (in `Parser/Scalar.lean`) operated on `List String` (lines after `splitOn "\n"`) and had **4 logical states**: first, empty, more-indented (`line.front == ' '`), and normal. Eight theorems in `Proofs/FoldNewlines.lean` covered these cases, including `processFolded_go_cons_more_indented` ("space-leading → preserve newline").
+   - The scanner's `foldBlockContent` operated on `List Char` with a **3-state** `Bool` (`prevWasNewline`). The representation change (`List String` → `List Char`) erased line boundaries, making "more-indented" classification impossible without reconstruction. The more-indented case was silently lost.
+   - Five clues were present in the codebase but overlooked:
+     - (a) The old code had `line.front == ' '`; the new code had no equivalent — a side-by-side diff would have caught this.
+     - (b) The design notes claimed "Block scalar processing reuses the existing algorithm" — accepted without verification.
+     - (c) Eight proved theorems existed, including one explicitly named `cons_more_indented` — deleting proofs without checking the replacement covered the same cases was the gap.
+     - (d) `YAML_PRODUCTIONS.md` still referenced the deleted function for production [172] `b-l-spaced(n)` — literally naming the missing behavior.
+     - (e) Test 6VJK ("Folded newlines are preserved for more indented") was skipped under a blanket "YAML 1.3" label without individual inspection.
+   - **Lesson**: proofs are executable documentation of a function's case structure. When a proved function is replaced, the developer must map every proved case to the new code *before* deleting the proofs. If the new data representation cannot distinguish a case the proofs required (here: `List Char` cannot distinguish "newline before space-leading line" from any other newline), the refactoring has a logic gap. See `.claude/LEAN4_STYLE.md` § "Proof-Preserving Refactoring" for the full checklist.
+
+**Status**: In progress (70 UPs remaining, 17 fixed: 3 tab, 10 directive, 4 comment). Fold fix: `FoldState` 4-state machine (§2.2). Suite runner: 835/1020.
 
 </details>
 
