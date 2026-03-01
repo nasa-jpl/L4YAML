@@ -899,20 +899,100 @@ def scanPlainScalar (s : ScannerState) : ScannerState := Id.run do
   content := trimTrailingWS content
   return { s'.emitAt startPos (.scalar content .plain) with simpleKeyAllowed := false }
 
+/-- States for folded block scalar newline processing (YAML 1.2.2 §8.1.3).
+
+    The YAML spec distinguishes four contexts that determine how a newline
+    is folded:
+
+    - `start`   — before any content has been accumulated
+    - `content` — after a normal content line (`s-nb-folded-text` [171]);
+                   a following single newline is folded to a space
+    - `empty`   — after a blank line (`b-l-trimmed` [170]);
+                   newline is preserved (becomes `\n`)
+    - `more`    — after a more-indented line (`s-nb-spaced-text` [173]);
+                   newline is preserved (becomes `\n`)
+
+    Defining these as an inductive rather than encoding in a `Bool` makes
+    each case a named constructor for pattern matching in proofs. -/
+private inductive FoldState where
+  | start   : FoldState
+  | content : FoldState
+  | empty   : FoldState
+  | more    : FoldState
+  deriving Repr, BEq
+
+/-- Fold newlines in block scalar content per YAML 1.2.2 §8.1.3.
+
+    **Implements** (folding pass for `[174] c-l+folded(n)`):
+    - `[171] s-nb-folded-text(n)` — normal content line → fold newline to space
+    - `[172] b-l-spaced(n)`       — more-indented line  → preserve newline
+    - `[173] s-nb-spaced-text(n)` — more-indented line content
+    - `[170] b-l-trimmed(n,c)`    — blank line           → preserve newline
+
+    Input `raw` has already had indentation stripped by `scanBlockScalar`;
+    lines at column 0 are content, lines starting with a space are
+    more-indented.
+
+    **State machine** (`FoldState`):
+    - `start`   — initial state, no pending newline
+    - `content` — in a normal content line; a pending newline folds to space
+    - `empty`   — saw at least one blank line; pending newlines preserved
+    - `more`    — in/after a more-indented line; pending newlines preserved
+
+    On `\n`: don't emit yet — record blank lines in `pendingNL` count.
+    On first non-`\n` char of a new line: emit pending newlines based on
+    state and line classification (space-leading → more, otherwise → content). -/
 private def foldBlockContent (raw : String) : String :=
-  go raw.toList "" false
+  go raw.toList "" .start 0
 where
-  go : List Char → String → Bool → String
-    | [], acc, _ => acc
-    | '\n' :: '\n' :: rest, acc, _ =>
-      go ('\n' :: rest) (acc.push '\n') true
-    | '\n' :: rest, acc, prevWasNewline =>
-      if prevWasNewline then go rest (acc.push '\n') false
-      else match rest with
-        | [] => acc
-        | '\n' :: _ => go rest (acc.push '\n') true
-        | _ => go rest (acc.push ' ') false
-    | c :: rest, acc, _ => go rest (acc.push c) false
+  appendNewlines (acc : String) : Nat → String
+    | 0 => acc
+    | n + 1 => appendNewlines (acc.push '\n') n
+  go : List Char → String → FoldState → Nat → String
+    -- End of input: don't emit trailing newlines (chomping handles them)
+    | [], acc, _, _ => acc
+    -- Newline: don't emit yet, increment pending count
+    | '\n' :: rest, acc, st, pending =>
+      go rest acc st (pending + 1)
+    -- First non-newline char after line boundary (pending > 0):
+    -- Decide what to emit for the pending newline(s).
+    -- `pending + 1` is the total number of `\n` chars seen since last content.
+    | c :: rest, acc, st, pending + 1 =>
+      -- Classify this new line: space-leading → more-indented [173]
+      let isMore := c == ' '
+      let newSt := if isMore then FoldState.more else .content
+      -- Emit pending newline(s) based on previous line state.
+      -- The rules derive from YAML 1.2.2 productions [170]-[181]:
+      --   content→1→content : b-as-space [176] → fold to ` `
+      --   content→1→more    : b-as-line-feed [177] → `\n`
+      --   content→N>1→content : b-non-content + (N-1) l-empty → (N-1) `\n`s
+      --   content→N>1→more   : b-as-line-feed + (N-1) l-empty → N `\n`s
+      --   more→N→any         : b-as-line-feed + (N-1) l-empty → N `\n`s
+      --   start→N→any        : l-empty × N → N `\n`s
+      let acc := match st with
+        | .start => appendNewlines acc (pending + 1)
+        | .content =>
+          if pending == 0 && !isMore then
+            -- Single newline between two content lines → fold to space
+            acc.push ' '
+          else if pending == 0 && isMore then
+            -- Single newline, content → more → preserve as line-feed
+            acc.push '\n'
+          else if isMore then
+            -- Multiple newlines, next is more → all preserved
+            appendNewlines acc (pending + 1)
+          else
+            -- Multiple newlines, next is content → first is b-non-content (silent)
+            appendNewlines acc pending
+        | .more => appendNewlines acc (pending + 1)
+        | .empty => appendNewlines acc (pending + 1)  -- shouldn't occur in practice
+      go rest (acc.push c) newSt 0
+    -- Normal character within a line (pending == 0)
+    | c :: rest, acc, st, 0 =>
+      let newSt := match st with
+        | .start => if c == ' ' then FoldState.more else .content
+        | s => s
+      go rest (acc.push c) newSt 0
 
 /-- Scan a block scalar (literal `|` or folded `>`).
 
