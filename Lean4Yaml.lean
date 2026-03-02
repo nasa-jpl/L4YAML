@@ -36,6 +36,7 @@ import Lean4Yaml.Proofs.ScannerProofs
 import Lean4Yaml.Proofs.ScannerContracts
 import Lean4Yaml.Proofs.Soundness
 import Lean4Yaml.Proofs.ParserSoundness
+import Lean4Yaml.Proofs.ParserCompleteness
 
 /-
 Copyright (c) 2026. All rights reserved.
