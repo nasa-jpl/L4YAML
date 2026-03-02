@@ -728,8 +728,9 @@ def generateIndexHtml (results : Array ReportResult)
   let srPassed := stageData.foldl (fun acc (_, _, p, _, _) => acc + p) 0
   let srFailed := stageData.foldl (fun acc (_, _, _, f, _) => acc + f) 0
   let srSkipped := stageData.foldl (fun acc (_, _, _, _, s) => acc + s) 0
-  let srPctStr := if srTotal == 0 then "0.0"
-    else formatPct (srPassed.toFloat / srTotal.toFloat * 100.0)
+  let srApplicable := srTotal - srSkipped
+  let srPctStr := if srApplicable == 0 then "0.0"
+    else formatPct (srPassed.toFloat / srApplicable.toFloat * 100.0)
   let srBorderColor := if srFailed == 0 then "#4CAF50" else "#2196F3"
   let srBgColor := if srFailed == 0 then "#e8f5e9" else "#e3f2fd"
   let srIcon := if srFailed == 0 then "✓" else "▶"
@@ -793,7 +794,7 @@ def generateIndexHtml (results : Array ReportResult)
     -- Suite Runner progressive stages summary
     s!"  <h2>Suite Runner (Progressive Stages)</h2>\n",
     s!"  <div class=\"summary\" style=\"border-left-color:{srBorderColor};background:{srBgColor}\">\n",
-    s!"    <h3 style=\"color:{srBorderColor}\">{srIcon} Suite Runner: {srPassed}/{srTotal} ({srPctStr}%)</h3>\n",
+    s!"    <h3 style=\"color:{srBorderColor}\">{srIcon} Suite Runner: {srPassed}/{srApplicable} ({srPctStr}%)</h3>\n",
     "    <p style=\"color:#666;font-size:13px;margin:5px 0 10px\">Each stage tests its own tests plus all lower stages (cumulative). Error tests excluded.</p>\n",
     "    <table style=\"width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:14px;\">\n",
     "    <tr style=\"color:#999;font-size:12px\"><td>Stage</td><td>Total</td><td>Passed</td><td>Failed</td><td>Skipped</td></tr>\n",
