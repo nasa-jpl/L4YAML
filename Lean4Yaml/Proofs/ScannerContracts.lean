@@ -12,8 +12,9 @@ Machine-checked contracts encoding the scanner's type-level invariants.
 These extend the structural proofs in `ScannerProofs.lean` and
 `ScannerIndent.lean` with:
 
-1. **`WellFormed` preservation** — the three-conjunct invariant
-   (`indents.size ≥ 1`, `flowLevel = flowStack.size`, `offset ≤ inputEnd`)
+1. **`WellFormed` preservation** — the four-conjunct invariant
+   (`indents.size ≥ 1`, `flowLevel = flowStack.size`,
+   `simpleKeyStack.size = flowStack.size`, `offset ≤ inputEnd`)
    holds for `mk'` and is preserved by key operations.
 
 2. **Flow level contracts** — `scanFlowSequenceStart`/`End` and
@@ -41,20 +42,23 @@ open Lean4Yaml.Scanner
 
 /-! ## §1  WellFormed — Initial State
 
-The `mk'` constructor satisfies all three `WellFormed` conjuncts:
+The `mk'` constructor satisfies all four `WellFormed` conjuncts:
 - `indents = #[{ column := -1, isSequence := false }]` → size = 1 ≥ 1
 - `flowLevel = 0 = #[].size = flowStack.size`
+- `simpleKeyStack = #[] = flowStack` → `simpleKeyStack.size = flowStack.size`
 - `offset = 0 ≤ input.utf8ByteSize = inputEnd`
 -/
 
 /-- `mk'` produces a well-formed initial state. -/
 theorem mk'_wellFormed (input : String) :
     (ScannerState.mk' input).WellFormed := by
-  refine ⟨?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_⟩
   · -- indents.size ≥ 1: default indents = #[sentinel], size = 1
     have : (ScannerState.mk' input).indents.size = 1 := rfl
     omega
   · -- flowLevel = flowStack.size: both are 0 (default values)
+    rfl
+  · -- simpleKeyStack.size = flowStack.size: both are 0 (default values)
     rfl
   · -- offset ≤ inputEnd: 0 ≤ input.utf8ByteSize
     exact Nat.zero_le _
@@ -89,6 +93,10 @@ theorem emit_indents (s : ScannerState) (tok : YamlToken) :
 theorem emit_indents_size (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).indents.size = s.indents.size := rfl
 
+/-- `emit` preserves `simpleKeyStack`. -/
+theorem emit_simpleKeyStack (s : ScannerState) (tok : YamlToken) :
+    (s.emit tok).simpleKeyStack = s.simpleKeyStack := rfl
+
 /-! ## §3  Flow Level Contracts — Proven Theorems
 
 Each flow open/close operation maintains `flowLevel = flowStack.size`.
@@ -112,11 +120,27 @@ theorem scanFlowSequenceStart_flow_sync (s : ScannerState)
   simp [scanFlowSequenceStart, ScannerState.emit, Array.size_push]
   omega
 
+/-- After `scanFlowSequenceStart`, `simpleKeyStack.size = flowStack.size`
+    (assuming the invariant held before). -/
+theorem scanFlowSequenceStart_simpleKeyStack_sync (s : ScannerState)
+    (h : s.simpleKeyStack.size = s.flowStack.size) :
+    (scanFlowSequenceStart s).simpleKeyStack.size = (scanFlowSequenceStart s).flowStack.size := by
+  simp [scanFlowSequenceStart, ScannerState.emit, Array.size_push]
+  omega
+
 /-- After `scanFlowMappingStart`, `flowLevel = flowStack.size`
     (assuming the invariant held before). -/
 theorem scanFlowMappingStart_flow_sync (s : ScannerState)
     (h : s.flowLevel = s.flowStack.size) :
     (scanFlowMappingStart s).flowLevel = (scanFlowMappingStart s).flowStack.size := by
+  simp [scanFlowMappingStart, ScannerState.emit, Array.size_push]
+  omega
+
+/-- After `scanFlowMappingStart`, `simpleKeyStack.size = flowStack.size`
+    (assuming the invariant held before). -/
+theorem scanFlowMappingStart_simpleKeyStack_sync (s : ScannerState)
+    (h : s.simpleKeyStack.size = s.flowStack.size) :
+    (scanFlowMappingStart s).simpleKeyStack.size = (scanFlowMappingStart s).flowStack.size := by
   simp [scanFlowMappingStart, ScannerState.emit, Array.size_push]
   omega
 
@@ -148,21 +172,27 @@ private def nestedFlow : ScannerState :=
 
 #guard nestedFlow.flowLevel == 2
 #guard nestedFlow.flowStack.size == 2
+#guard nestedFlow.simpleKeyStack.size == 2
 #guard nestedFlow.flowLevel == nestedFlow.flowStack.size
+#guard nestedFlow.simpleKeyStack.size == nestedFlow.flowStack.size
 
 private def afterOneClose : ScannerState :=
   scanFlowMappingEnd nestedFlow
 
 #guard afterOneClose.flowLevel == 1
 #guard afterOneClose.flowStack.size == 1
+#guard afterOneClose.simpleKeyStack.size == 1
 #guard afterOneClose.flowLevel == afterOneClose.flowStack.size
+#guard afterOneClose.simpleKeyStack.size == afterOneClose.flowStack.size
 
 private def afterBothClose : ScannerState :=
   scanFlowSequenceEnd afterOneClose
 
 #guard afterBothClose.flowLevel == 0
 #guard afterBothClose.flowStack.size == 0
+#guard afterBothClose.simpleKeyStack.size == 0
 #guard afterBothClose.flowLevel == afterBothClose.flowStack.size
+#guard afterBothClose.simpleKeyStack.size == afterBothClose.flowStack.size
 #guard afterBothClose.inFlow == false
 
 /-! ## §4  Indent Stack Contracts
@@ -347,5 +377,12 @@ the flow nesting level throughout token sequences.
        (scanFlowSequenceStart (ScannerState.mk' "[")).flowStack.size
 #guard afterOneClose.flowLevel == afterOneClose.flowStack.size
 #guard afterBothClose.flowLevel == afterBothClose.flowStack.size
+
+-- WellFormed invariant: simpleKeyStack.size = flowStack.size across operations
+#guard (ScannerState.mk' "").simpleKeyStack.size == (ScannerState.mk' "").flowStack.size
+#guard (scanFlowSequenceStart (ScannerState.mk' "[")).simpleKeyStack.size ==
+       (scanFlowSequenceStart (ScannerState.mk' "[")).flowStack.size
+#guard afterOneClose.simpleKeyStack.size == afterOneClose.flowStack.size
+#guard afterBothClose.simpleKeyStack.size == afterBothClose.flowStack.size
 
 end Lean4Yaml.Proofs.ScannerContracts

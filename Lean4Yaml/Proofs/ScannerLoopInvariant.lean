@@ -197,6 +197,13 @@ theorem advance_flowStack (s : ScannerState) :
   split <;> simp_all
   split <;> rfl
 
+/-- `advance` preserves the `simpleKeyStack` field. -/
+theorem advance_simpleKeyStack (s : ScannerState) :
+    s.advance.simpleKeyStack = s.simpleKeyStack := by
+  unfold ScannerState.advance
+  split <;> simp_all
+  split <;> rfl
+
 /-- `advance` preserves the `inputEnd` field. -/
 theorem advance_inputEnd (s : ScannerState) :
     s.advance.inputEnd = s.inputEnd := by
@@ -216,7 +223,7 @@ theorem advance_input (s : ScannerState) :
 
     This is the main loop invariant: combined with `advance` preserving
     indents, flowLevel, and flowStack, it shows that `advance` preserves
-    all three conjuncts of `WellFormed`. -/
+    all four conjuncts of `WellFormed`. -/
 theorem advance_offset_le (s : ScannerState)
     (hv : String.Pos.Raw.IsValid s.input ⟨s.offset⟩)
     (hwf : s.offset ≤ s.inputEnd)
@@ -243,25 +250,28 @@ theorem advance_preserves_wellFormed (s : ScannerState)
     (hv : String.Pos.Raw.IsValid s.input ⟨s.offset⟩)
     (hend : s.inputEnd = s.input.utf8ByteSize) :
     s.advance.WellFormed := by
-  obtain ⟨hind, hflow, hoff⟩ := hwf
-  refine ⟨?_, ?_, ?_⟩
+  obtain ⟨hind, hflow, hsk, hoff⟩ := hwf
+  refine ⟨?_, ?_, ?_, ?_⟩
   · -- indents.size ≥ 1: preserved by advance
     rw [advance_indents]; exact hind
   · -- flowLevel = flowStack.size: preserved by advance
     rw [advance_flowLevel, advance_flowStack]; exact hflow
+  · -- simpleKeyStack.size = flowStack.size: preserved by advance
+    rw [advance_simpleKeyStack, advance_flowStack]; exact hsk
   · -- offset ≤ inputEnd: the main result
     rw [advance_inputEnd]
     exact advance_offset_le s hv hoff hend
 
 /-! ## §5  Emit Preserves WellFormed -/
 
-/-- `emit` preserves all three `WellFormed` conjuncts (it only modifies `tokens`). -/
+/-- `emit` preserves all four `WellFormed` conjuncts (it only modifies `tokens`). -/
 theorem emit_preserves_wellFormed (s : ScannerState) (tok : YamlToken)
     (hwf : s.WellFormed) : (s.emit tok).WellFormed := by
-  obtain ⟨hind, hflow, hoff⟩ := hwf
-  refine ⟨?_, ?_, ?_⟩
+  obtain ⟨hind, hflow, hsk, hoff⟩ := hwf
+  refine ⟨?_, ?_, ?_, ?_⟩
   · simp [ScannerState.emit]; exact hind
   · simp [ScannerState.emit]; exact hflow
+  · simp [ScannerState.emit]; exact hsk
   · simp [ScannerState.emit]; exact hoff
 
 /-! ## §6  Validation Guards -/
@@ -295,11 +305,13 @@ theorem emit_preserves_wellFormed (s : ScannerState) (tok : YamlToken)
 -- mk' produces well-formed state (concrete check on each conjunct)
 #guard (ScannerState.mk' "test").indents.size ≥ 1
 #guard (ScannerState.mk' "test").flowLevel == (ScannerState.mk' "test").flowStack.size
+#guard (ScannerState.mk' "test").simpleKeyStack.size == (ScannerState.mk' "test").flowStack.size
 #guard (ScannerState.mk' "test").offset ≤ (ScannerState.mk' "test").inputEnd
 
 -- advance chain stays well-formed (concrete check on each conjunct)
 #guard (ScannerState.mk' "ab").advance.indents.size ≥ 1
 #guard (ScannerState.mk' "ab").advance.flowLevel == (ScannerState.mk' "ab").advance.flowStack.size
+#guard (ScannerState.mk' "ab").advance.simpleKeyStack.size == (ScannerState.mk' "ab").advance.flowStack.size
 #guard (ScannerState.mk' "ab").advance.offset ≤ (ScannerState.mk' "ab").advance.inputEnd
 
 end Lean4Yaml.Proofs.ScannerLoopInvariant
