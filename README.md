@@ -5243,6 +5243,59 @@ below the grammar proof layer.  Closing it would require either:
   `simpleKeyStack` sync theorems, expanded `#guard` checks
 - `Lean4Yaml/Proofs/ScannerLoopInvariant.lean`: `advance_simpleKeyStack`, 4-conjunct proof updates
 
+### P10.10 — Scanner State Machine Verification (2026-03-02)
+
+**Context.** After P10.9, the proof architecture verifies grammar ↔ AST correspondence
+(soundness, completeness, round-trip) and primitive operations (`advance`, `emit`,
+flow open/close) preserve `WellFormed`.  However, no proofs exist for the scanner's
+high-level functions: `scanNextToken`, `scanKey`, `scanValue`, `saveSimpleKey`, scalar
+scanners, or whitespace navigation.  P10.9 revealed that scanner state machine bugs
+(explicit key flags, simple key lifecycle, anchor scoping) sit below the grammar proof
+layer — the proofs *cannot* catch them.  P10.10 closes this gap by proving `WellFormed`
+preservation through every scanner function, culminating in a proof that the main
+`scanNextToken` dispatch loop maintains the invariant.
+
+#### Baseline
+
+| Metric | Value |
+|---|---|
+| Scanner functions (total) | 56 |
+| Functions with universal theorems | 8 + 1 (`advance`, `emit`, 4× flow open/close, `pushSequenceIndent`, `pushMappingIndent`, `consumeNewline`) |
+| Functions with `#guard`-only coverage | ~14 (`unwindIndents`, `skipSpaces`, `skipWhitespace`, `skipToEndOfLine`, `advanceN`, `scanBlockScalar`, etc.) |
+| Functions with zero proof coverage | ~34 (`scanNextToken`, `scanKey`, `scanValue`, `saveSimpleKey`, all scalar scanners, all document functions) |
+| `WellFormed` conjuncts | 4: `indents.size ≥ 1`, `flowLevel = flowStack.size`, `simpleKeyStack.size = flowStack.size`, `offset ≤ inputEnd` |
+| Scanner proof theorems | 204 |
+| Scanner `#guard` checks | 463 |
+
+#### Sub-phases
+
+| Sub-phase | Effort | Description |
+|---|---|---|
+| **P10.10a** | 2–3 days | **Whitespace & navigation primitives.** ✅ **DONE.** 6 universal theorems for `consumeNewline` field preservation + 99 `#guard` checks covering all 5 functions (`skipWhitespace`, `skipSpaces`, `skipToEndOfLine`, `consumeNewline`, `advanceN`) across all 4 `WellFormed` conjuncts. File: `Proofs/ScannerWhitespace.lean` (378 lines). Loop-function universal proofs deferred to reusable `Nat.fold` infrastructure. |
+| **P10.10b** | 3–5 days | **Indent stack invariant.** Prove `unwindIndents` preserves C1 (`indents.size ≥ 1`), `pushSequenceIndent`/`pushMappingIndent` preserve all 4 conjuncts universally (currently `#guard`-only for indent operations). Requires reasoning about `Array.pop` with size guard. |
+| **P10.10c** | 5–8 days | **Simple key lifecycle.** Prove `saveSimpleKey`/`scanKey`/`scanValue` state invariants. Define `SimpleKeyInvariant` predicate; prove preserved across the lifecycle. This is where P10.9's bugs lived — highest-value verification target. |
+| **P10.10d** | 5–8 days | **Scalar scanner correctness.** Prove `scanDoubleQuoted`, `scanSingleQuoted`, `scanPlainScalar`, `scanBlockScalar` preserve `WellFormed` and produce correctly-typed tokens. `scanPlainScalar` (~200 LOC) is the most complex. |
+| **P10.10e** | 3–5 days | **Document & directive functions.** Prove `scanDocumentStart`/`End`, `scanDirective`, `scanAnchorOrAlias`, `scanTag` preserve `WellFormed`. |
+| **P10.10f** | 5–8 days | **`scanNextToken` dispatch completeness — capstone.** Prove the main dispatch loop preserves `WellFormed` by composing all per-function results. Prove dispatch covers all valid input characters. Optionally prove progress (offset strictly increases per iteration → fuel sufficiency). |
+
+#### Design Decisions
+
+1. **Theorem shape**: scanner functions return `Except ScanError ScannerState`. Theorems take
+   the form `∀ s, s.WellFormed → ∀ s', scanFoo s = .ok s' → s'.WellFormed`. Error paths
+   don't need `WellFormed` preservation (the scanner halts on error).
+
+2. **`#guard` first, theorem second**: for each sub-phase, start with exhaustive `#guard`
+   checks on concrete states to validate the property holds, then lift to universal theorems.
+   This pattern worked well in P10.8f.
+
+3. **`WellFormed` may gain conjuncts**: P10.10c may add `SimpleKeyWF` (e.g.,
+   `simpleKey.possible → simpleKey.tokenIndex < tokens.size`) as a 5th conjunct or as a
+   separate predicate composed with `WellFormed`.
+
+4. **`skipToContent` is `Except`-valued**: its `WellFormed` preservation proof must handle
+   the `tabInIndentation` error path (show error is thrown, not that `WellFormed` holds
+   for a non-existent output state).
+
 ### Dependencies
 
 - **P10.1–P10.2** can start immediately — no other phase dependency
@@ -5257,6 +5310,7 @@ below the grammar proof layer.  Closing it would require either:
 - **P10.7** depends on P10.6e — ✅ complete (spec table, running tests, Proofs/README.md updated)
 - **P10.8** depends on P10.7 — ready (P10.7 ✅ complete)
 - **P10.9** depends on P10.8 — ✅ complete (25/25 verified test errors fixed)
+- **P10.10** depends on P10.9 — in progress (scanner state machine verification)
 - **Phase 8** (comment preservation) should target the tokenized parser only — if P10 completes first, Phase 8 has a single implementation target
 
 ### Estimated Effort
@@ -5276,7 +5330,8 @@ below the grammar proof layer.  Closing it would require either:
 | P10.7 | 0.5 day | Documentation update |
 | P10.8 | 16–26 days | TokenParser total recursion (2–3d) + partial removal (3–5d) + grammar cleanup (1–2d) + soundness (5–8d) + completeness (5–8d) |
 | P10.9 | 1 day | Verified test error investigation & fix: 22/25 errors resolved across 4 root causes |
-| **Total** | **32–50 days** | — |
+| P10.10 | 23–37 days | Scanner state machine verification (see sub-phases below) |
+| **Total** | **55–87 days** | — |
 
 </details>
 
