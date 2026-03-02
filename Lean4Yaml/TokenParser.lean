@@ -195,12 +195,12 @@ def emptyNode : YamlValue :=
 
 /-! ## Recursive Descent Parser
 
-### Fuel-based recursion (P10.8a)
+### Fuel-based termination (P10.8a–b)
 
 All 12 functions in the mutual block take a `fuel : Nat` parameter that
 decreases by 1 at each function entry (via `match fuel with | fuel + 1 => ...`).
-This structure prepares for P10.8b where `partial` will be removed and
-`termination_by fuel` will close all obligations trivially.
+Lean 4 infers termination automatically from the structural decrease on `fuel`,
+so no explicit `termination_by` annotations are needed.
 
 Initial fuel is set by `parseDocument` to `4 * tokens.size + 4`, which
 bounds the total number of mutual-function entries.  Each token generates
@@ -223,7 +223,7 @@ mutual
     **Post**: Returns the parsed `YamlValue` and the advanced parse state.
     **Error**: `nestingDepthExceeded` (fuel exhausted), `trailingContent` (properties and block collection on same line),
     `duplicateAnchor` (two anchors on scalar/empty node, §6.9.2). -/
-partial def parseNode (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
+def parseNode (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
   match fuel with
   | 0 => .error (.nestingDepthExceeded ps.currentLine)
   | fuel + 1 => do
@@ -296,7 +296,7 @@ partial def parseNode (ps : ParseState) (fuel : Nat) : Except ScanError (YamlVal
 
     **Pre**: Current token is `blockSequenceStart`.
     **Post**: Consumes through `blockEnd`, returns `YamlValue.sequence .block items`. -/
-partial def parseBlockSequence (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
+def parseBlockSequence (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
   match fuel with
   | 0 => .error (.nestingDepthExceeded ps.currentLine)
   | fuel + 1 => do
@@ -308,7 +308,7 @@ partial def parseBlockSequence (ps : ParseState) (fuel : Nat) : Except ScanError
   .ok (YamlValue.sequence .block items, ps)
 
 /-- Tail-recursive loop for block sequence entries. -/
-partial def parseBlockSequenceLoop (ps : ParseState) (fuel : Nat)
+def parseBlockSequenceLoop (ps : ParseState) (fuel : Nat)
     (items : Array YamlValue) : Except ScanError (Array YamlValue × ParseState) := do
   match fuel with
   | 0 => .ok (items, ps)
@@ -338,7 +338,7 @@ partial def parseBlockSequenceLoop (ps : ParseState) (fuel : Nat)
     **Pre**: Current token is `blockEntry` without a preceding `blockSequenceStart`.
     **Post**: Consumes entries until parent-structure delimiter, returns
     `YamlValue.sequence .block items`. -/
-partial def parseImplicitBlockSequence (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
+def parseImplicitBlockSequence (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
   match fuel with
   | 0 => .error (.nestingDepthExceeded ps.currentLine)
   | fuel + 1 => do
@@ -347,7 +347,7 @@ partial def parseImplicitBlockSequence (ps : ParseState) (fuel : Nat) : Except S
   .ok (YamlValue.sequence .block items, ps)
 
 /-- Tail-recursive loop for implicit block sequence entries. -/
-partial def parseImplicitBlockSequenceLoop (ps : ParseState) (fuel : Nat)
+def parseImplicitBlockSequenceLoop (ps : ParseState) (fuel : Nat)
     (items : Array YamlValue) : Except ScanError (Array YamlValue × ParseState) := do
   match fuel with
   | 0 => .ok (items, ps)
@@ -378,7 +378,7 @@ partial def parseImplicitBlockSequenceLoop (ps : ParseState) (fuel : Nat)
 
     **Pre**: Current token is `blockMappingStart`.
     **Post**: Consumes through `blockEnd`, returns `YamlValue.mapping .block pairs`. -/
-partial def parseBlockMapping (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
+def parseBlockMapping (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
   match fuel with
   | 0 => .error (.nestingDepthExceeded ps.currentLine)
   | fuel + 1 => do
@@ -390,7 +390,7 @@ partial def parseBlockMapping (ps : ParseState) (fuel : Nat) : Except ScanError 
   .ok (YamlValue.mapping .block pairs, ps)
 
 /-- Tail-recursive loop for block mapping entries. -/
-partial def parseBlockMappingLoop (ps : ParseState) (fuel : Nat)
+def parseBlockMappingLoop (ps : ParseState) (fuel : Nat)
     (pairs : Array (YamlValue × YamlValue)) : Except ScanError (Array (YamlValue × YamlValue) × ParseState) := do
   match fuel with
   | 0 => .ok (pairs, ps)
@@ -459,7 +459,7 @@ partial def parseBlockMappingLoop (ps : ParseState) (fuel : Nat)
 
     **Pre**: Current token is `flowSequenceStart`.
     **Post**: Consumes through `flowSequenceEnd`, returns `YamlValue.sequence .flow items`. -/
-partial def parseFlowSequence (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
+def parseFlowSequence (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
   match fuel with
   | 0 => .error (.nestingDepthExceeded ps.currentLine)
   | fuel + 1 => do
@@ -471,7 +471,7 @@ partial def parseFlowSequence (ps : ParseState) (fuel : Nat) : Except ScanError 
   .ok (YamlValue.sequence .flow items, ps)
 
 /-- Tail-recursive loop for flow sequence entries. -/
-partial def parseFlowSequenceLoop (ps : ParseState) (fuel : Nat)
+def parseFlowSequenceLoop (ps : ParseState) (fuel : Nat)
     (items : Array YamlValue) : Except ScanError (Array YamlValue × ParseState) := do
   match fuel with
   | 0 => .ok (items, ps)
@@ -507,7 +507,7 @@ partial def parseFlowSequenceLoop (ps : ParseState) (fuel : Nat)
 
     **Pre**: Current token is `flowMappingStart`.
     **Post**: Consumes through `flowMappingEnd`, returns `YamlValue.mapping .flow pairs`. -/
-partial def parseFlowMapping (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
+def parseFlowMapping (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
   match fuel with
   | 0 => .error (.nestingDepthExceeded ps.currentLine)
   | fuel + 1 => do
@@ -519,7 +519,7 @@ partial def parseFlowMapping (ps : ParseState) (fuel : Nat) : Except ScanError (
   .ok (YamlValue.mapping .flow pairs, ps)
 
 /-- Tail-recursive loop for flow mapping entries. -/
-partial def parseFlowMappingLoop (ps : ParseState) (fuel : Nat)
+def parseFlowMappingLoop (ps : ParseState) (fuel : Nat)
     (pairs : Array (YamlValue × YamlValue)) : Except ScanError (Array (YamlValue × YamlValue) × ParseState) := do
   match fuel with
   | 0 => .ok (pairs, ps)
@@ -572,7 +572,7 @@ partial def parseFlowMappingLoop (ps : ParseState) (fuel : Nat)
 
     **Pre**: Current token is `key` inside a flow sequence.
     **Post**: Consumes key, optional value, returns `YamlValue.mapping .flow #[(key, val)]`. -/
-partial def parseSinglePairMapping (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
+def parseSinglePairMapping (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
   match fuel with
   | 0 => .error (.nestingDepthExceeded ps.currentLine)
   | fuel + 1 => do
