@@ -47,6 +47,7 @@ import Lean4Yaml.Proofs.ScannerSimpleKey
 import Lean4Yaml.Proofs.ScannerScalar
 import Lean4Yaml.Proofs.ScannerDocument
 import Lean4Yaml.Proofs.ScannerDispatch
+import Lean4Yaml.Proofs.ScannerProgress
 
 /-
 Copyright (c) 2026. All rights reserved.
