@@ -4716,9 +4716,10 @@ that may warrant its own sub-phase.
 | P10.8c | 1–2 days | Grammar cleanup + enrichment |
 | P10.8d | 5–8 days | `parseStream_sound` universal theorem |
 | P10.8e | 5–8 days | `parseStream_complete` (may require scanner correctness) |
-| **Total** | **16–26 days** | Full soundness/completeness bridge |
+| P10.8f | 10–20 days | Canonical-form scanner completeness (emitter → scan → parse roundtrip) |
+| **Total** | **26–46 days** | Full soundness/completeness bridge + scanner completeness |
 
-**Status**: **P10.8a ✅ complete, P10.8b ✅ complete, P10.8c ✅ complete, P10.8d ✅ complete**.
+**Status**: **P10.8a ✅ complete, P10.8b ✅ complete, P10.8c ✅ complete, P10.8d ✅ complete, P10.8e ✅ complete**.
 
 - P10.8a delivered: 7 `partial def` → 12 `partial def` in mutual block
   (5 `for` loops extracted to tail-recursive helpers).  `depth` parameter
@@ -4763,6 +4764,159 @@ that may warrant its own sub-phase.
     plus 4 `@[simp]` unfolding lemmas for `stripAnnotations`.
   - Zero sorry, zero axiom, zero partial.
   Build: 161/161 jobs, zero warnings.  Suite: 869 passed, 0 failed.
+- P10.8e delivered: Completeness theorem proving grammar–value roundtrip.
+  - Proved `toYamlValue_grammable`: every `ValidNode` produces a grammable
+    `YamlValue` — the grammar contains no "junk".  Covers all 11
+    constructors: plain scalars discharge the `Grammable.scalar` hypothesis
+    directly; non-plain scalars use `nofun` (vacuously true since
+    `style ≠ .plain`); empty node uses `Nat.not_lt`; collections recur
+    through list/pair helpers.
+  - Proved `stripAnnotations_idempotent`: double-stripping equals single
+    stripping.  Mutual recursion with list/pair helpers; the `mutual`
+    block terminates by well-founded recursion on `sizeOf`.
+  - Proved `grammar_value_roundtrip`: every `ValidNode` has a canonical
+    representative — composing `toYamlValue_grammable` (§8) with
+    `yamlValue_has_witness` (P10.8d §7).
+  - Proved `parseStream_complete`: conditional parser completeness — if
+    parser output is grammable, every document value has a `ValidNode`
+    witness that is itself grammable (the soundness–completeness loop
+    can be iterated).
+  - Proved `soundness_completeness_compose`: for any grammable value, the
+    recovered grammar witness is itself grammable (key "no junk" property).
+  - Scanner contract boundary: full end-to-end completeness
+    (`ValidNode → ∃ tokens, parseStream tokens = .ok docs`) additionally
+    requires scanner correctness (~2000 lines), which is explicitly
+    deferred.  The grammar-level completeness proved here is the maximal
+    result achievable without scanner correctness.
+  - Zero sorry, zero axiom, zero partial.
+  Build: 163/163 jobs, zero warnings.  Suite: 869 passed, 0 failed.
+
+**P10.8f — Canonical-form scanner completeness** (estimated: 10–20 days)
+
+Prove end-to-end completeness through the canonical emitter:
+
+```lean
+theorem canonical_roundtrip (n : ValidNode) :
+    ∃ tokens docs,
+      Scanner.scan (emit (toYamlValue n)) = .ok tokens ∧
+      TokenParser.parseStream tokens = .ok docs ∧
+      ∃ i, stripAnnotations docs[i].value = stripAnnotations (toYamlValue n)
+```
+
+This is feasible because the canonical emitter (`Emitter.emit`, 164 LOC)
+produces only double-quoted scalars and flow-style collections —
+entirely avoiding the hardest parts of scanner verification:
+
+- **No indentation tracking** — flow collections don't use indent-based
+  block structure, eliminating the indent stack state machine
+- **No plain scalar disambiguation** — double-quoted scalars have
+  unambiguous `"..."`delimiters, no context-sensitive first-character
+  rules
+- **No block scalars** — no literal/folded scanning, no chomp/indent
+  header parsing
+- **No simple key tracking** — flow mappings use explicit `{` and `}`
+  delimiters with explicit `:` after keys
+
+The proof decomposes into four sub-phases:
+
+| Sub-phase | Scope | Estimated effort |
+|-----------|-------|------------------|
+| P10.8f.1 | **Scanner loop invariant**: Prove `scan` preserves a well-formedness invariant across iterations of the `for _ in [:fuel * 4]` loop. Requires showing `scanNextToken` preserves offset monotonicity and token array growth. | 3–5 days |
+| P10.8f.2 | **Double-quoted scanner correctness**: Prove `scanDoubleQuoted` correctly tokenizes `emitScalar content` for all `content : String`. The canonical emitter's `escapeString` maps every character to a scanner-accepted escape; `processEscape` is its left inverse. Existing `escape_roundtrip` in RoundTrip.lean provides the character-level foundation. | 3–5 days |
+| P10.8f.3 | **Flow collection scanner correctness**: Prove `scanFlowSequenceStart/End`, `scanFlowMappingStart/End`, and `scanFlowEntry` correctly tokenize the `[`, `]`, `{`, `}`, `,` delimiters produced by `emit`. These are single-character dispatches with minimal state interaction. | 2–4 days |
+| P10.8f.4 | **Token-to-AST bridge**: Prove that the token stream produced by `scan (emit v)` satisfies the preconditions of `parseStream`, and that `parseStream` reconstructs the original value up to `stripAnnotations`. Leverages the existing conditional completeness from P10.8e. | 2–6 days |
+
+**Why canonical form only?** Full style-preserving scanner completeness
+would require verifying all ~40 scanner functions across 1,940 LOC of
+context-sensitive stateful code (indent stack × flow level × simple key
+state × document phase).  That is estimated at 10,000+ lines of proof
+and may not be feasible within reasonable effort.  The canonical-form
+restriction reduces the scanner surface to ~300 LOC (double-quoted +
+flow delimiters + stream envelope), making the proof tractable.
+
+**What it delivers**: The composition P10.8d + P10.8e + P10.8f would
+establish:
+
+```
+  ∀ n : ValidNode,
+    emit (toYamlValue n) ──scan──→ tokens ──parseStream──→ docs
+    ∧ stripAnnotations docs[i].value = stripAnnotations (toYamlValue n)
+```
+
+This is the strongest end-to-end statement achievable without verifying
+the full scanner: every grammar node can be serialized to YAML text,
+re-scanned, re-parsed, and recovered up to annotation stripping.
+
+##### Reflections — unexpected challenges, simplifications, and idioms
+
+The P10.8 phase was originally estimated at 16–26 days for five
+sub-phases.  All five completed in substantially less time than
+estimated.  Several design characteristics contributed to this:
+
+**1. Fuel-based termination eliminated the hardest proof obligation.**
+The original plan anticipated 3–5 days for `termination_by` in P10.8b,
+with risks around mutual `termination_by` bugs and lexicographic measures.
+In practice, replacing `depth : Nat` with `fuel : Nat` (matching on
+`fuel + 1`) gave Lean 4 v4.28.0 enough structural information to infer
+termination automatically — zero `termination_by` annotations needed.
+This converted the riskiest sub-phase into the simplest.
+
+**2. `toYamlValue` as a computable specification function was the key
+architectural decision.**  Rather than proving properties about the
+parser directly (which would require reasoning about the 12-function
+mutual block, token array indexing, and `Except` error propagation),
+the proofs work through `toYamlValue : ValidNode → YamlValue` — a
+straightforward recursive function with no error handling, no state,
+and no fuel.  Soundness and completeness reduce to showing that
+`toYamlValue` maps bijectively onto `Grammable` values.  This
+"specification function" pattern decouples proof complexity from
+implementation complexity.
+
+**3. `stripAnnotations` absorbed the tag/anchor/blockMeta mismatch.**
+The grammar nodes carry style-specific metadata (indent level, chomp
+indicator) that the parser's `YamlValue` output does not.  Rather than
+proving exact equality (which would require reconstructing metadata),
+`stripAnnotations` canonicalizes both sides by zeroing out tags,
+anchors, and block metadata.  This made all soundness/completeness
+statements equalities after stripping — each branch closes by `rfl`
+or simple congruence.
+
+**4. `nofun` and definitional equality replaced tactic-heavy proofs.**
+The `Grammable.scalar` hypothesis has the form
+`s.style = .plain → s.content.length > 0 → ...`.  For non-plain
+scalars the hypothesis is vacuously true.  The term-mode proof `nofun`
+(Lean 4 for "no function can inhabit this type") discharges all four
+non-plain cases in one token.  Similarly, `Array.size` and `Array.getElem`
+for `l.toArray` are definitionally equal to `List.length` and
+`List.getElem`, so the collection cases need no conversion lemmas.
+
+**5. Incremental sub-phasing de-risked the entire effort.**
+Each sub-phase (P10.8a–e) produced a compiling, zero-sorry deliverable
+that could be evaluated independently.  P10.8a (loop extraction) and
+P10.8b (remove `partial`) were pure refactoring with full test coverage;
+failure would not have wasted proof effort.  P10.8c (grammar enrichment)
+extended the grammar without touching existing proofs.  P10.8d and
+P10.8e built on all prior phases but never required backtracking.
+
+**6. Lean 4 v4.28.0's equation compiler handled recursive `where` clauses
+poorly — but the workarounds were systematic.**  The `stripAnnotations`
+function uses `where`-clause helpers (`stripAnnotationsList`,
+`stripAnnotationsPairs`).  Lean's equation compiler failed to generate
+the expected equation theorems (`stripAnnotations.eq_3` etc.), causing
+`simp only [stripAnnotations]` to fail.  The fix was systematic:
+hand-write `@[simp]` lemmas proved by `rfl` in ParserSoundness.lean,
+then use those lemmas everywhere.  This pattern recurred in both
+P10.8d and P10.8e and should be expected for any `where`-clause
+function in this Lean version.
+
+**7. `mutual ... end` blocks require `def` (not `theorem`) for
+well-founded recursion.**  The `stripAnnotations_idempotent` proof
+requires mutual recursion with list/pair helpers.  Lean 4 v4.28.0
+rejects `theorem` inside `mutual` blocks when well-founded recursion
+is needed (since `theorem` declarations are irreducible and cannot
+participate in the termination checker's structural analysis).  Using
+`def` instead works — the proofs are still machine-checked, just
+not marked irreducible.
 
 </details>
 
