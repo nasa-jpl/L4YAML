@@ -44,6 +44,7 @@ import Lean4Yaml.Proofs.ScannerEmitBridge
 import Lean4Yaml.Proofs.ScannerWhitespace
 import Lean4Yaml.Proofs.ScannerIndentStack
 import Lean4Yaml.Proofs.ScannerSimpleKey
+import Lean4Yaml.Proofs.ScannerScalar
 
 /-
 Copyright (c) 2026. All rights reserved.
