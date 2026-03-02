@@ -33,6 +33,7 @@ import Lean4Yaml.Proofs.DumpRoundTrip
 import Lean4Yaml.Proofs.SchemaResolution
 import Lean4Yaml.Proofs.SchemaDump
 import Lean4Yaml.Proofs.ScannerProofs
+import Lean4Yaml.Proofs.ScannerContracts
 
 /-
 Copyright (c) 2026. All rights reserved.

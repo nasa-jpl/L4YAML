@@ -157,6 +157,25 @@ structure ScannerState where
   explicitKeyActive : Bool := false
   deriving Repr, Inhabited
 
+/-! ### State Invariants
+
+The following predicate captures the structural invariants that every
+well-formed `ScannerState` must satisfy.  Individual operations preserve
+these invariants; see `Proofs/ScannerContracts.lean` for proofs.
+-/
+
+/-- Structural well-formedness invariant for `ScannerState`.
+
+    These three conjuncts capture the essential invariants that all scanner
+    operations must preserve:
+    1. **Indent stack non-empty** — the sentinel `{ column := -1 }` is never popped.
+    2. **Flow level = flow stack size** — `flowLevel` and `flowStack` stay in sync.
+    3. **Offset bounded** — the scanner never reads past the input end. -/
+def ScannerState.WellFormed (s : ScannerState) : Prop :=
+  s.indents.size ≥ 1
+  ∧ s.flowLevel = s.flowStack.size
+  ∧ s.offset ≤ s.inputEnd
+
 /-- Create initial scanner state from an input string.
     Initializes offset, line, col to zero; empty token array and indent stack. -/
 def ScannerState.mk' (input : String) : ScannerState :=
@@ -1574,8 +1593,13 @@ def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState := do
   -- scalars correctly allow content at column 0, and nested block scalars
   -- use the block's indent rather than the column of the `|`/`>` indicator.
   let parentIndent : Int := s.currentIndent
+  -- CONTRACT: parentIndent is the current block's indent level
+  have h_parentIndent : parentIndent = s.currentIndent := rfl
   -- minContentIndent (Position) = n+1: spec §8.1.3 requires m ≥ 1
   let minContentIndent : Nat := (max 0 (parentIndent + 1)).toNat
+  -- CONTRACT: minContentIndent ≥ 0 (trivially, as Nat)
+  -- CONTRACT: minContentIndent is the floor for content indent
+  have h_minFloor : (0 : Int) ≤ max 0 (parentIndent + 1) := by omega
   let (contentIndent, autoDetectErr?) := match explicitOffset with
     | some m =>
       -- Explicit: contentIndent (Position) = parentIndent (Position) + m (Distance)
@@ -1626,6 +1650,12 @@ def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState := do
         return (minContentIndent, none)
   if let some err := autoDetectErr? then
     throw err
+  -- CONTRACT: contentIndent ≥ minContentIndent (§8.1.3: m ≥ 1).
+  -- In the explicit case: parentIndent + m ≥ parentIndent + 1 since m ≥ 1.
+  -- In the auto-detect case: detectedIndent = max minContentIndent probe.col ≥ minContentIndent.
+  -- This invariant is checked at runtime via the auto-detect logic and
+  -- the explicit case's arithmetic. See Proofs/ScannerContracts.lean for
+  -- the formal statement and #guard verification.
   -- Collect content: l-literal-content / l-folded-content
   -- Each content line must match: s-indent(contentIndent) nb-char+
   -- Empty lines (l-empty): s-indent(≤contentIndent) b-as-line-feed
