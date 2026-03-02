@@ -4718,16 +4718,18 @@ that may warrant its own sub-phase.
 | P10.8e | 5–8 days | `parseStream_complete` (may require scanner correctness) |
 | **Total** | **16–26 days** | Full soundness/completeness bridge |
 
-**Status**: **P10.8a ✅ complete** (loop extraction + fuel parameter).
+**Status**: **P10.8a ✅ complete, P10.8b ✅ complete**.
 
 - P10.8a delivered: 7 `partial def` → 12 `partial def` in mutual block
   (5 `for` loops extracted to tail-recursive helpers).  `depth` parameter
   replaced by `fuel` (counting down).  Initial fuel `4 × tokens.size + 4`.
   Build: 157/157 jobs, zero warnings.  Suite: 869 passed, 0 failed
   (identical to pre-refactor).
-- P10.8b next: remove `partial`, add `termination_by fuel`.
-  Feasibility confirmed: 5-function mutual `def` with fuel-based
-  termination compiles cleanly in Lean 4 v4.28.0.
+- P10.8b delivered: removed `partial` from all 12 mutual functions.
+  Lean 4 v4.28.0 inferred termination automatically from the structural
+  decrease on `fuel` — no explicit `termination_by` annotations needed.
+  Build: 157/157 jobs, zero warnings.  Suite: 869 passed, 0 failed.
+  All functions now kernel-unfoldable for formal proofs.
 
 </details>
 
