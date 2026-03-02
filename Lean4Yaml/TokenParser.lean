@@ -193,10 +193,19 @@ def parseNodeProperties (ps : ParseState) : Except ScanError (NodeProperties × 
 def emptyNode : YamlValue :=
   YamlValue.scalar { content := "", style := .plain }
 
-/-! ## Recursive Descent Parser -/
+/-! ## Recursive Descent Parser
 
-/-- Maximum recursion depth to prevent stack overflow on malicious input. -/
-def maxDepth : Nat := 1000
+### Fuel-based recursion (P10.8a)
+
+All 12 functions in the mutual block take a `fuel : Nat` parameter that
+decreases by 1 at each function entry (via `match fuel with | fuel + 1 => ...`).
+This structure prepares for P10.8b where `partial` will be removed and
+`termination_by fuel` will close all obligations trivially.
+
+Initial fuel is set by `parseDocument` to `4 * tokens.size + 4`, which
+bounds the total number of mutual-function entries.  Each token generates
+at most ~4 function entries (dispatch + collection + loop + sub-node).
+-/
 
 mutual
 
@@ -212,11 +221,12 @@ mutual
 
     **Pre**: Parse state positioned at the first token of a node (alias, anchor, tag, or content).
     **Post**: Returns the parsed `YamlValue` and the advanced parse state.
-    **Error**: `nestingDepthExceeded`, `trailingContent` (properties and block collection on same line),
+    **Error**: `nestingDepthExceeded` (fuel exhausted), `trailingContent` (properties and block collection on same line),
     `duplicateAnchor` (two anchors on scalar/empty node, §6.9.2). -/
-partial def parseNode (ps : ParseState) (depth : Nat := 0) : Except ScanError (YamlValue × ParseState) := do
-  if depth > maxDepth then
-    .error (.nestingDepthExceeded ps.currentLine)
+partial def parseNode (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
+  match fuel with
+  | 0 => .error (.nestingDepthExceeded ps.currentLine)
+  | fuel + 1 => do
   -- Check for alias
   match ps.peek? with
   | some (.alias name) =>
@@ -252,14 +262,14 @@ partial def parseNode (ps : ParseState) (depth : Nat := 0) : Except ScanError (Y
   let (val, ps) ← match ps.peek? with
     | some (YamlToken.scalar content style) =>
       .ok (YamlValue.scalar { content, style, tag := props.tag, anchor := props.anchor }, ps.advance)
-    | some .blockSequenceStart => parseBlockSequence ps depth
-    | some .blockMappingStart => parseBlockMapping ps depth
+    | some .blockSequenceStart => parseBlockSequence ps fuel
+    | some .blockMappingStart => parseBlockMapping ps fuel
     | some .blockEntry =>
       -- Implicit block sequence: libyaml/our scanner omits BLOCK-SEQUENCE-START
       -- when block entries sit at the same indent as the containing mapping key.
-      parseImplicitBlockSequence ps depth
-    | some .flowSequenceStart => parseFlowSequence ps depth
-    | some .flowMappingStart => parseFlowMapping ps depth
+      parseImplicitBlockSequence ps fuel
+    | some .flowSequenceStart => parseFlowSequence ps fuel
+    | some .flowMappingStart => parseFlowMapping ps fuel
     | _ =>
       -- Empty node with possible properties
       .ok (YamlValue.scalar { content := "", style := .plain, tag := props.tag, anchor := props.anchor }, ps)
@@ -286,27 +296,33 @@ partial def parseNode (ps : ParseState) (depth : Nat := 0) : Except ScanError (Y
 
     **Pre**: Current token is `blockSequenceStart`.
     **Post**: Consumes through `blockEnd`, returns `YamlValue.sequence .block items`. -/
-partial def parseBlockSequence (ps : ParseState) (depth : Nat) : Except ScanError (YamlValue × ParseState) := do
+partial def parseBlockSequence (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
+  match fuel with
+  | 0 => .error (.nestingDepthExceeded ps.currentLine)
+  | fuel + 1 => do
   let ps := ps.advance  -- consume blockSequenceStart
-  let mut ps := ps
-  let mut items : Array YamlValue := #[]
-  let fuel := ps.tokens.size - ps.pos
-  for _ in [:fuel] do
+  let (items, ps) ← parseBlockSequenceLoop ps fuel #[]
+  let ps := match ps.peek? with
+    | some .blockEnd => ps.advance
+    | _ => ps
+  .ok (YamlValue.sequence .block items, ps)
+
+/-- Tail-recursive loop for block sequence entries. -/
+partial def parseBlockSequenceLoop (ps : ParseState) (fuel : Nat)
+    (items : Array YamlValue) : Except ScanError (Array YamlValue × ParseState) := do
+  match fuel with
+  | 0 => .ok (items, ps)
+  | fuel + 1 =>
     match ps.peek? with
     | some .blockEntry =>
-      ps := ps.advance
+      let ps := ps.advance
       match ps.peek? with
       | some .blockEntry | some .blockEnd | none =>
-        items := items.push emptyNode
-      | _ =>
-        let (val, ps') ← parseNode ps (depth + 1)
-        items := items.push val
-        ps := ps'
-    | _ => break
-  match ps.peek? with
-  | some .blockEnd => ps := ps.advance
-  | _ => pure ()
-  .ok (YamlValue.sequence .block items, ps)
+        parseBlockSequenceLoop ps fuel (items.push emptyNode)
+      | _ => do
+        let (val, ps) ← parseNode ps fuel
+        parseBlockSequenceLoop ps fuel (items.push val)
+    | _ => .ok (items, ps)
 
 /-- Parse an implicit block sequence (no `BLOCK-SEQUENCE-START` token).
 
@@ -322,24 +338,30 @@ partial def parseBlockSequence (ps : ParseState) (depth : Nat) : Except ScanErro
     **Pre**: Current token is `blockEntry` without a preceding `blockSequenceStart`.
     **Post**: Consumes entries until parent-structure delimiter, returns
     `YamlValue.sequence .block items`. -/
-partial def parseImplicitBlockSequence (ps : ParseState) (depth : Nat) : Except ScanError (YamlValue × ParseState) := do
-  let mut ps := ps
-  let mut items : Array YamlValue := #[]
-  let fuel := ps.tokens.size - ps.pos
-  for _ in [:fuel] do
-    match ps.peek? with
-    | some .blockEntry =>
-      ps := ps.advance
-      match ps.peek? with
-      | some .blockEntry | some .blockEnd | some .key | none =>
-        items := items.push emptyNode
-      | _ =>
-        let (val, ps') ← parseNode ps (depth + 1)
-        items := items.push val
-        ps := ps'
-    | _ => break
+partial def parseImplicitBlockSequence (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
+  match fuel with
+  | 0 => .error (.nestingDepthExceeded ps.currentLine)
+  | fuel + 1 => do
+  let (items, ps) ← parseImplicitBlockSequenceLoop ps fuel #[]
   -- No blockEnd to consume — the parent mapping owns it.
   .ok (YamlValue.sequence .block items, ps)
+
+/-- Tail-recursive loop for implicit block sequence entries. -/
+partial def parseImplicitBlockSequenceLoop (ps : ParseState) (fuel : Nat)
+    (items : Array YamlValue) : Except ScanError (Array YamlValue × ParseState) := do
+  match fuel with
+  | 0 => .ok (items, ps)
+  | fuel + 1 =>
+    match ps.peek? with
+    | some .blockEntry =>
+      let ps := ps.advance
+      match ps.peek? with
+      | some .blockEntry | some .blockEnd | some .key | none =>
+        parseImplicitBlockSequenceLoop ps fuel (items.push emptyNode)
+      | _ => do
+        let (val, ps) ← parseNode ps fuel
+        parseImplicitBlockSequenceLoop ps fuel (items.push val)
+    | _ => .ok (items, ps)
 
 /-- Parse a block mapping.
 
@@ -356,36 +378,43 @@ partial def parseImplicitBlockSequence (ps : ParseState) (depth : Nat) : Except 
 
     **Pre**: Current token is `blockMappingStart`.
     **Post**: Consumes through `blockEnd`, returns `YamlValue.mapping .block pairs`. -/
-partial def parseBlockMapping (ps : ParseState) (depth : Nat) : Except ScanError (YamlValue × ParseState) := do
+partial def parseBlockMapping (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
+  match fuel with
+  | 0 => .error (.nestingDepthExceeded ps.currentLine)
+  | fuel + 1 => do
   let ps := ps.advance  -- consume blockMappingStart
-  let mut ps := ps
-  let mut pairs : Array (YamlValue × YamlValue) := #[]
-  let fuel := ps.tokens.size - ps.pos
-  for _ in [:fuel] do
+  let (pairs, ps) ← parseBlockMappingLoop ps fuel #[]
+  let ps := match ps.peek? with
+    | some .blockEnd => ps.advance
+    | _ => ps
+  .ok (YamlValue.mapping .block pairs, ps)
+
+/-- Tail-recursive loop for block mapping entries. -/
+partial def parseBlockMappingLoop (ps : ParseState) (fuel : Nat)
+    (pairs : Array (YamlValue × YamlValue)) : Except ScanError (Array (YamlValue × YamlValue) × ParseState) := do
+  match fuel with
+  | 0 => .ok (pairs, ps)
+  | fuel + 1 =>
     match ps.peek? with
-    | some .key =>
+    | some .key => do
       -- §8.2.2 [200]: Block collections require s-l-comments (line break)
       -- before content. Save the key indicator line to detect
       -- implicit keys with block collections on the same line.
-      -- Only check when the key has actual content (not an empty key
-      -- generated by the scanner for explicit value indicators like `: -`).
       let keyPos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
       let keyLine := keyPos.line
       let keyCol := keyPos.col
-      ps := ps.advance
+      let ps := ps.advance
       -- Parse key — check whether key has content (non-empty implicit key)
       let keyHasContent := match ps.peek? with
         | some .value | some .blockEnd => false
         | _ => true
-      let (key, ps') ← if keyHasContent then
-        parseNode ps (depth + 1)
+      let (key, ps) ← if keyHasContent then
+        parseNode ps fuel
       else
         .ok (emptyNode, ps)
-      ps := ps'
       -- Parse value
-      let (consumed, ps') := ps.tryConsume .value
-      ps := ps'
-      let (val, ps') ← if consumed then
+      let (consumed, ps) := ps.tryConsume .value
+      let (val, ps) ← if consumed then do
         -- §8.2.1: Value node properties on a new line must be more
         -- indented than the parent key. Reject anchors/tags at or
         -- below the key's column on a subsequent line (G9HC, H7J7).
@@ -404,25 +433,19 @@ partial def parseBlockMapping (ps : ParseState) (depth : Nat) : Except ScanError
           if keyHasContent && pos.line == keyLine then
             throw (.trailingContent pos.line pos.col)
           else
-            parseNode ps (depth + 1)
-        | _ => parseNode ps (depth + 1)
+            parseNode ps fuel
+        | _ => parseNode ps fuel
       else
         .ok (emptyNode, ps)
-      ps := ps'
-      pairs := pairs.push (key, val)
-    | some .value =>
+      parseBlockMappingLoop ps fuel (pairs.push (key, val))
+    | some .value => do
       -- Implicit key (empty key)
-      ps := ps.advance
-      let (val, ps') ← match ps.peek? with
+      let ps := ps.advance
+      let (val, ps) ← match ps.peek? with
         | some .key | some .blockEnd | none => .ok (emptyNode, ps)
-        | _ => parseNode ps (depth + 1)
-      ps := ps'
-      pairs := pairs.push (emptyNode, val)
-    | _ => break
-  match ps.peek? with
-  | some .blockEnd => ps := ps.advance
-  | _ => pure ()
-  .ok (YamlValue.mapping .block pairs, ps)
+        | _ => parseNode ps fuel
+      parseBlockMappingLoop ps fuel (pairs.push (emptyNode, val))
+    | _ => .ok (pairs, ps)
 
 /-- Parse a flow sequence.
 
@@ -436,34 +459,40 @@ partial def parseBlockMapping (ps : ParseState) (depth : Nat) : Except ScanError
 
     **Pre**: Current token is `flowSequenceStart`.
     **Post**: Consumes through `flowSequenceEnd`, returns `YamlValue.sequence .flow items`. -/
-partial def parseFlowSequence (ps : ParseState) (depth : Nat) : Except ScanError (YamlValue × ParseState) := do
+partial def parseFlowSequence (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
+  match fuel with
+  | 0 => .error (.nestingDepthExceeded ps.currentLine)
+  | fuel + 1 => do
   let ps := ps.advance  -- consume flowSequenceStart
-  let mut ps := ps
-  let mut items : Array YamlValue := #[]
-  let fuel := ps.tokens.size - ps.pos
-  for _ in [:fuel] do
+  let (items, ps) ← parseFlowSequenceLoop ps fuel #[]
+  let ps := match ps.peek? with
+    | some .flowSequenceEnd => ps.advance
+    | _ => ps
+  .ok (YamlValue.sequence .flow items, ps)
+
+/-- Tail-recursive loop for flow sequence entries. -/
+partial def parseFlowSequenceLoop (ps : ParseState) (fuel : Nat)
+    (items : Array YamlValue) : Except ScanError (Array YamlValue × ParseState) := do
+  match fuel with
+  | 0 => .ok (items, ps)
+  | fuel + 1 =>
     match ps.peek? with
-    | some .flowSequenceEnd => break
-    | _ =>
-      if items.size > 0 then
+    | some .flowSequenceEnd => .ok (items, ps)
+    | _ => do
+      let ps ← if items.size > 0 then
         match ps.peek? with
-        | some .flowEntry => ps := ps.advance
-        | _ => break
+        | some .flowEntry => pure ps.advance
+        | _ => return (items, ps)   -- no separator → end of entries
+      else pure ps
       -- Check for implicit mapping in flow sequence: `key: value`
       match ps.peek? with
-      | some .key =>
-        let (mapVal, ps') ← parseSinglePairMapping ps depth
-        items := items.push mapVal
-        ps := ps'
-      | some .flowSequenceEnd => break
-      | _ =>
-        let (val, ps') ← parseNode ps (depth + 1)
-        items := items.push val
-        ps := ps'
-  match ps.peek? with
-  | some .flowSequenceEnd => ps := ps.advance
-  | _ => pure ()
-  .ok (YamlValue.sequence .flow items, ps)
+      | some .key => do
+        let (mapVal, ps) ← parseSinglePairMapping ps fuel
+        parseFlowSequenceLoop ps fuel (items.push mapVal)
+      | some .flowSequenceEnd => .ok (items, ps)
+      | _ => do
+        let (val, ps) ← parseNode ps fuel
+        parseFlowSequenceLoop ps fuel (items.push val)
 
 /-- Parse a flow mapping.
 
@@ -478,58 +507,60 @@ partial def parseFlowSequence (ps : ParseState) (depth : Nat) : Except ScanError
 
     **Pre**: Current token is `flowMappingStart`.
     **Post**: Consumes through `flowMappingEnd`, returns `YamlValue.mapping .flow pairs`. -/
-partial def parseFlowMapping (ps : ParseState) (depth : Nat) : Except ScanError (YamlValue × ParseState) := do
+partial def parseFlowMapping (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
+  match fuel with
+  | 0 => .error (.nestingDepthExceeded ps.currentLine)
+  | fuel + 1 => do
   let ps := ps.advance  -- consume flowMappingStart
-  let mut ps := ps
-  let mut pairs : Array (YamlValue × YamlValue) := #[]
-  let fuel := ps.tokens.size - ps.pos
-  for _ in [:fuel] do
+  let (pairs, ps) ← parseFlowMappingLoop ps fuel #[]
+  let ps := match ps.peek? with
+    | some .flowMappingEnd => ps.advance
+    | _ => ps
+  .ok (YamlValue.mapping .flow pairs, ps)
+
+/-- Tail-recursive loop for flow mapping entries. -/
+partial def parseFlowMappingLoop (ps : ParseState) (fuel : Nat)
+    (pairs : Array (YamlValue × YamlValue)) : Except ScanError (Array (YamlValue × YamlValue) × ParseState) := do
+  match fuel with
+  | 0 => .ok (pairs, ps)
+  | fuel + 1 =>
     match ps.peek? with
-    | some .flowMappingEnd => break
-    | _ =>
-      if pairs.size > 0 then
+    | some .flowMappingEnd => .ok (pairs, ps)
+    | _ => do
+      let ps ← if pairs.size > 0 then
         match ps.peek? with
-        | some .flowEntry => ps := ps.advance
-        | _ => break
+        | some .flowEntry => pure ps.advance
+        | _ => return (pairs, ps)   -- no separator → end of entries
+      else pure ps
       match ps.peek? with
-      | some .flowMappingEnd => break
-      | some .key =>
-        ps := ps.advance
-        let (key, ps') ← match ps.peek? with
+      | some .flowMappingEnd => .ok (pairs, ps)
+      | some .key => do
+        let ps := ps.advance
+        let (key, ps) ← match ps.peek? with
           | some .value | some .flowEntry | some .flowMappingEnd =>
             .ok (emptyNode, ps)
-          | _ => parseNode ps (depth + 1)
-        ps := ps'
-        let (consumed, ps') := ps.tryConsume .value
-        ps := ps'
-        let (val, ps') ← if consumed then
+          | _ => parseNode ps fuel
+        let (consumed, ps) := ps.tryConsume .value
+        let (val, ps) ← if consumed then
           match ps.peek? with
           | some .flowEntry | some .flowMappingEnd | none =>
             .ok (emptyNode, ps)
-          | _ => parseNode ps (depth + 1)
+          | _ => parseNode ps fuel
         else
           .ok (emptyNode, ps)
-        ps := ps'
-        pairs := pairs.push (key, val)
-      | _ =>
+        parseFlowMappingLoop ps fuel (pairs.push (key, val))
+      | _ => do
         -- Implicit key: value without KEY token
-        let (key, ps') ← parseNode ps (depth + 1)
-        ps := ps'
-        let (consumed, ps') := ps.tryConsume .value
-        ps := ps'
-        let (val, ps') ← if consumed then
+        let (key, ps) ← parseNode ps fuel
+        let (consumed, ps) := ps.tryConsume .value
+        let (val, ps) ← if consumed then
           match ps.peek? with
           | some .flowEntry | some .flowMappingEnd | none =>
             .ok (emptyNode, ps)
-          | _ => parseNode ps (depth + 1)
+          | _ => parseNode ps fuel
         else
           .ok (emptyNode, ps)
-        ps := ps'
-        pairs := pairs.push (key, val)
-  match ps.peek? with
-  | some .flowMappingEnd => ps := ps.advance
-  | _ => pure ()
-  .ok (YamlValue.mapping .flow pairs, ps)
+        parseFlowMappingLoop ps fuel (pairs.push (key, val))
 
 /-- Parse a single key:value pair as an implicit mapping (in flow sequences).
 
@@ -541,18 +572,21 @@ partial def parseFlowMapping (ps : ParseState) (depth : Nat) : Except ScanError 
 
     **Pre**: Current token is `key` inside a flow sequence.
     **Post**: Consumes key, optional value, returns `YamlValue.mapping .flow #[(key, val)]`. -/
-partial def parseSinglePairMapping (ps : ParseState) (depth : Nat) : Except ScanError (YamlValue × ParseState) := do
+partial def parseSinglePairMapping (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
+  match fuel with
+  | 0 => .error (.nestingDepthExceeded ps.currentLine)
+  | fuel + 1 => do
   let ps := ps.advance  -- consume KEY token
   let (key, ps) ← match ps.peek? with
     | some .value | some .flowEntry | some .flowSequenceEnd =>
       .ok (emptyNode, ps)
-    | _ => parseNode ps (depth + 1)
+    | _ => parseNode ps fuel
   let (consumed, ps) := ps.tryConsume .value
   let (val, ps) ← if consumed then
     match ps.peek? with
     | some .flowEntry | some .flowSequenceEnd | none =>
       .ok (emptyNode, ps)
-    | _ => parseNode ps (depth + 1)
+    | _ => parseNode ps fuel
   else
     .ok (emptyNode, ps)
   .ok (YamlValue.mapping .flow #[(key, val)], ps)
@@ -703,10 +737,13 @@ def parseDocument (ps : ParseState) : Except ScanError (YamlDocument × ParseSta
         throw (.contentOnDocumentStartLine pos.line pos.col)
     | _ => pure ()
   -- Parse the document's root node
+  -- Initial fuel: 4 × token count + 4 bounds all mutual-function entries.
+  -- Each token generates at most ~4 function entries in the recursion.
+  let fuel := 4 * ps.tokens.size + 4
   let (val, ps) ← match ps.peek? with
     | some .documentEnd | some .streamEnd | none =>
       .ok (emptyNode, ps)
-    | _ => parseNode ps
+    | _ => parseNode ps fuel
   -- Note: `documentEnd` (`...`) is NOT consumed here.
   -- It is consumed by `parseStream` to track document boundary state
   -- for §9.2 [211] validation.
