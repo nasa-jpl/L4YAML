@@ -41,6 +41,9 @@ import Lean4Yaml.Proofs.Soundness
 import Lean4Yaml.Proofs.ParserSoundness
 import Lean4Yaml.Proofs.ParserCompleteness
 import Lean4Yaml.Proofs.ScannerEmitBridge
+import Lean4Yaml.Proofs.ScannerWhitespace
+import Lean4Yaml.Proofs.ScannerIndentStack
+import Lean4Yaml.Proofs.ScannerSimpleKey
 
 /-
 Copyright (c) 2026. All rights reserved.
