@@ -284,8 +284,7 @@ decreasing_by
   all_goals
     first
     | omega
-    | (rename_i i
-       first
+    | (first
        | (have := array_sizeOf_getElem_lt items i.val i.isLt; omega)
        | (have h1 := array_sizeOf_getElem_lt pairs i.val i.isLt
           have h2 := prod_fst_sizeOf_lt (pairs[i.val])

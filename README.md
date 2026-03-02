@@ -4719,7 +4719,7 @@ that may warrant its own sub-phase.
 | P10.8f | 10–20 days | Canonical-form scanner completeness (emitter → scan → parse roundtrip) |
 | **Total** | **26–46 days** | Full soundness/completeness bridge + scanner completeness |
 
-**Status**: **P10.8a ✅ complete, P10.8b ✅ complete, P10.8c ✅ complete, P10.8d ✅ complete, P10.8e ✅ complete, P10.8f.1 ✅ complete, P10.8f.2 ✅ complete**.
+**Status**: **P10.8a ✅ complete, P10.8b ✅ complete, P10.8c ✅ complete, P10.8d ✅ complete, P10.8e ✅ complete, P10.8f.1 ✅ complete, P10.8f.2 ✅ complete, P10.8f.3 ✅ complete**.
 
 - P10.8a delivered: 7 `partial def` → 12 `partial def` in mutual block
   (5 `for` loops extracted to tail-recursive helpers).  `depth` parameter
@@ -4836,8 +4836,30 @@ that may warrant its own sub-phase.
     chars, multi-byte UTF-8 (2/3/4-byte), and mixed content.
   - Zero sorry, zero axiom, zero partial.
   Build: 167/167 jobs, zero warnings.  Suite: 869 passed, 0 failed.
-
-**P10.8f — Canonical-form scanner completeness** (estimated: 10–20 days)
+- P10.8f.3 delivered: Flow collection scanner correctness —
+  `scanFlowSequenceStart/End`, `scanFlowMappingStart/End`, and
+  `scanFlowEntry` correctly tokenize `[`, `]`, `{`, `}`, `,`.
+  - Proved `advance_tokens`: `ScannerState.advance` preserves the
+    `tokens` array (complement to existing field-level lemmas).
+  - Proved token-count theorems for all five flow functions: each adds
+    exactly one token to the array.
+  - Proved `scanFlowSequenceEnd_flowLevel_pos`/`scanFlowMappingEnd_flowLevel_pos`:
+    flow-end decrements `flowLevel` by 1 when `flowLevel > 0`.
+  - Proved `scanFlowSequenceEnd_flow_sync`/`scanFlowMappingEnd_flow_sync`:
+    `flowLevel = flowStack.size` invariant preserved through end functions.
+  - Proved `scanFlowSequenceStart_inFlow`/`scanFlowMappingStart_inFlow`:
+    flow-start transitions to flow context (`inFlow = true`).
+  - Proved `scanFlowSequenceStart_pushes_true`/`scanFlowMappingStart_pushes_false`:
+    correct stack marker pushed.
+  - Proved `scanFlowEntry_preserves_flowLevel`/`scanFlowEntry_tokens_size`:
+    comma handling preserves flow level and adds one token.  Proofs
+    navigate `do`-notation via `dsimp [letFun]` + `injection`.
+  - 37 `#guard` checks: token types, comma rejection/acceptance,
+    full scan pipeline (empty/nested/escaped/UTF-8 flow collections),
+    `emit → scan` round-trip.
+  - 15 universal theorems + 37 `#guard` checks.
+  - Zero sorry, zero axiom, zero partial.
+  Build: 169/169 jobs, zero warnings.  Suite: 869 passed, 0 failed. (estimated: 10–20 days)
 
 Prove end-to-end completeness through the canonical emitter:
 
@@ -4869,7 +4891,7 @@ The proof decomposes into four sub-phases:
 |-----------|-------|------------------|
 | P10.8f.1 | ✅ **Scanner loop invariant**: Proved `advance` preserves `WellFormed` across iterations. Proved `raw_next_le_utf8ByteSize` (no standard library theorem existed). | 3–5 days |
 | P10.8f.2 | ✅ **Double-quoted scanner correctness**: Proved `processEscape` correctly inverts `escapeChar` for all 11 escaped characters. 8 universal theorems + 30+ `#guard` checks. | 3–5 days |
-| P10.8f.3 | **Flow collection scanner correctness**: Prove `scanFlowSequenceStart/End`, `scanFlowMappingStart/End`, and `scanFlowEntry` correctly tokenize the `[`, `]`, `{`, `}`, `,` delimiters produced by `emit`. These are single-character dispatches with minimal state interaction. | 2–4 days |
+| P10.8f.3 | ✅ **Flow collection scanner correctness**: Proved `scanFlowSequenceStart/End`, `scanFlowMappingStart/End`, and `scanFlowEntry` correctly tokenize the `[`, `]`, `{`, `}`, `,` delimiters produced by `emit`. 15 universal theorems + 37 `#guard` checks. | 2–4 days |
 | P10.8f.4 | **Token-to-AST bridge**: Prove that the token stream produced by `scan (emit v)` satisfies the preconditions of `parseStream`, and that `parseStream` reconstructs the original value up to `stripAnnotations`. Leverages the existing conditional completeness from P10.8e. | 2–6 days |
 
 **Why canonical form only?** Full style-preserving scanner completeness
