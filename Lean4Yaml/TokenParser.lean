@@ -123,9 +123,16 @@ def ParseState.tryConsume (ps : ParseState) (tok : YamlToken) : (Bool × ParseSt
   | some t => if BEq.beq t tok then (true, ps.advance) else (false, ps)
   | none => (false, ps)
 
-/-- Register an anchor definition `&name` with its resolved value for alias lookup. -/
+/-- Register an anchor definition `&name` with its resolved value for alias lookup.
+
+    The value is resolved (aliases expanded from the current anchor map)
+    and stripped (anchor annotation removed) before storing.  This ensures:
+    - Transitive alias chains resolve correctly (`*b → [*a, world] → [hello, world]`)
+    - Anchor map values compare equal to plain values (no stale `anchor := some name`)
+-/
 def ParseState.addAnchor (ps : ParseState) (name : String) (val : YamlValue) : ParseState :=
-  { ps with anchors := ps.anchors.push (name, val) }
+  let cleaned := (val.resolveAliases ps.anchors).stripAnchors
+  { ps with anchors := ps.anchors.push (name, cleaned) }
 
 /-! ## Node Properties -/
 
@@ -429,6 +436,8 @@ def parseBlockMappingLoop (ps : ParseState) (fuel : Nat)
         match ps.peek? with
         | some .key | some .blockEnd | none => .ok (emptyNode, ps)
         | some .blockMappingStart | some .blockSequenceStart =>
+          -- §8.2.1 [200]: Block collections require a line break before
+          -- content.  Reject `key: - item` or `a: b: c` on the same line.
           let pos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
           if keyHasContent && pos.line == keyLine then
             throw (.trailingContent pos.line pos.col)
@@ -786,7 +795,9 @@ def parseStream (tokens : Array (Positioned YamlToken)) : Except ScanError (Arra
       let savedPos := ps.pos
       let (doc, ps') ← parseDocument ps
       docs := docs.push doc
-      ps := ps'
+      -- §3.2.2.2: Anchors are scoped to the document.  Reset anchor map
+      -- so subsequent documents start with a clean namespace.
+      ps := { ps' with anchors := #[] }
       -- Consume optional document-end marker (`...`) and update stream state.
       -- This determines what token types are valid at the next iteration.
       let (consumed, ps') := ps.tryConsume .documentEnd
