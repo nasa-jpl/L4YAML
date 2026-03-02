@@ -4718,7 +4718,7 @@ that may warrant its own sub-phase.
 | P10.8e | 5–8 days | `parseStream_complete` (may require scanner correctness) |
 | **Total** | **16–26 days** | Full soundness/completeness bridge |
 
-**Status**: **P10.8a ✅ complete, P10.8b ✅ complete**.
+**Status**: **P10.8a ✅ complete, P10.8b ✅ complete, P10.8c ✅ complete**.
 
 - P10.8a delivered: 7 `partial def` → 12 `partial def` in mutual block
   (5 `for` loops extracted to tail-recursive helpers).  `depth` parameter
@@ -4730,6 +4730,18 @@ that may warrant its own sub-phase.
   decrease on `fuel` — no explicit `termination_by` annotations needed.
   Build: 157/157 jobs, zero warnings.  Suite: 869 passed, 0 failed.
   All functions now kernel-unfoldable for formal proofs.
+- P10.8c delivered: Grammar cleanup and enrichment.
+  - Removed 6 orphaned structures (`ValidPlainScalarBlock`,
+    `ValidPlainScalarFlow`, `ValidSingleQuoted`, `ValidDoubleQuoted`,
+    `ValidLiteralScalar`, `ValidFoldedScalar`) — unused outside Grammar.lean.
+  - Enriched `ValidNode.plainScalarBlock` with `validPlainFirst`,
+    `noColonSpace`, `noSpaceHash` proof obligations (§7.3.3 [123]/[127]).
+  - Enriched `ValidNode.plainScalarFlow` with the above plus
+    `noFlowIndicators` (§7.3.3 [126]).
+  - Added `ValidTokenStream` structure with scanner contract invariants
+    (`streamStart`/`streamEnd` bracketing, monotonic positions).
+  - Updated `NodeToValue`, `toYamlValue`, and all Soundness.lean proofs.
+  Build: 157/157 jobs, zero warnings.  Suite: 869 passed, 0 failed.
 
 </details>
 
