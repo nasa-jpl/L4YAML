@@ -4719,7 +4719,7 @@ that may warrant its own sub-phase.
 | P10.8f | 10–20 days | Canonical-form scanner completeness (emitter → scan → parse roundtrip) |
 | **Total** | **26–46 days** | Full soundness/completeness bridge + scanner completeness |
 
-**Status**: **P10.8a ✅ complete, P10.8b ✅ complete, P10.8c ✅ complete, P10.8d ✅ complete, P10.8e ✅ complete**.
+**Status**: **P10.8a ✅ complete, P10.8b ✅ complete, P10.8c ✅ complete, P10.8d ✅ complete, P10.8e ✅ complete, P10.8f.1 ✅ complete**.
 
 - P10.8a delivered: 7 `partial def` → 12 `partial def` in mutual block
   (5 `for` loops extracted to tail-recursive helpers).  `depth` parameter
@@ -4790,6 +4790,25 @@ that may warrant its own sub-phase.
     result achievable without scanner correctness.
   - Zero sorry, zero axiom, zero partial.
   Build: 163/163 jobs, zero warnings.  Suite: 869 passed, 0 failed.
+- P10.8f.1 delivered: Scanner loop invariant — `advance` preserves `WellFormed`.
+  - Proved `raw_next_le_utf8ByteSize`: the hardest sub-theorem.  No standard
+    library theorem exists for `(Raw.next s p).byteIdx ≤ s.utf8ByteSize`.
+    Proof decomposes via `isValid_iff_exists_append` (string decomposition
+    at valid position), custom induction on `utf8GetAux` (skip prefix,
+    extract head character), and a new `utf8ByteSize_eq_sum` bridge
+    connecting `utf8ByteSize` to `(toList.map Char.utf8Size).sum`.
+  - Proved `advance_preserves_wellFormed`: all three `WellFormed` conjuncts
+    (indents.size ≥ 1, flowLevel = flowStack.size, offset ≤ inputEnd)
+    are preserved by `advance`.  The offset bound uses
+    `raw_next_le_utf8ByteSize`; indents/flow fields are shown invariant
+    via field-level projection lemmas.
+  - Proved `emit_preserves_wellFormed`: `emit` only modifies `tokens`.
+  - 5 field-level invariant lemmas (`advance_indents`, `advance_flowLevel`,
+    `advance_flowStack`, `advance_inputEnd`, `advance_input`).
+  - 14 `#guard` validation checks (ASCII, multi-byte UTF-8: 2-byte Greek,
+    3-byte CJK, 4-byte emoji, mixed, empty string).
+  - Zero sorry, zero axiom, zero partial.
+  Build: 165/165 jobs, zero warnings.  Suite: 869 passed, 0 failed.
 
 **P10.8f — Canonical-form scanner completeness** (estimated: 10–20 days)
 
@@ -4821,7 +4840,7 @@ The proof decomposes into four sub-phases:
 
 | Sub-phase | Scope | Estimated effort |
 |-----------|-------|------------------|
-| P10.8f.1 | **Scanner loop invariant**: Prove `scan` preserves a well-formedness invariant across iterations of the `for _ in [:fuel * 4]` loop. Requires showing `scanNextToken` preserves offset monotonicity and token array growth. | 3–5 days |
+| P10.8f.1 | ✅ **Scanner loop invariant**: Proved `advance` preserves `WellFormed` across iterations. Proved `raw_next_le_utf8ByteSize` (no standard library theorem existed). | 3–5 days |
 | P10.8f.2 | **Double-quoted scanner correctness**: Prove `scanDoubleQuoted` correctly tokenizes `emitScalar content` for all `content : String`. The canonical emitter's `escapeString` maps every character to a scanner-accepted escape; `processEscape` is its left inverse. Existing `escape_roundtrip` in RoundTrip.lean provides the character-level foundation. | 3–5 days |
 | P10.8f.3 | **Flow collection scanner correctness**: Prove `scanFlowSequenceStart/End`, `scanFlowMappingStart/End`, and `scanFlowEntry` correctly tokenize the `[`, `]`, `{`, `}`, `,` delimiters produced by `emit`. These are single-character dispatches with minimal state interaction. | 2–4 days |
 | P10.8f.4 | **Token-to-AST bridge**: Prove that the token stream produced by `scan (emit v)` satisfies the preconditions of `parseStream`, and that `parseStream` reconstructs the original value up to `stripAnnotations`. Leverages the existing conditional completeness from P10.8e. | 2–6 days |
