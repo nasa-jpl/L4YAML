@@ -40,6 +40,7 @@ import Lean4Yaml.Proofs.ScannerFlowCollection
 import Lean4Yaml.Proofs.Soundness
 import Lean4Yaml.Proofs.ParserSoundness
 import Lean4Yaml.Proofs.ParserCompleteness
+import Lean4Yaml.Proofs.ScannerEmitBridge
 
 /-
 Copyright (c) 2026. All rights reserved.
