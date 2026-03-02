@@ -1,0 +1,305 @@
+import Lean4Yaml.Scanner
+
+/-
+Copyright (c) 2026. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+-/
+
+/-!
+# Scanner Loop Invariant (P10.8f.1)
+
+Machine-checked proof that `ScannerState.advance` preserves the
+`WellFormed` offset bound, provided the scanner offset corresponds to a
+valid UTF-8 character boundary.
+
+## Key Result
+
+`advance_preserves_offset_bound`: When the scanner is at a valid UTF-8
+position with `offset < inputEnd`, advancing to the next character keeps
+`offset ≤ inputEnd`.  This is the critical loop-invariant lemma that
+underpins all scanner progress arguments.
+
+## Architecture
+
+The proof decomposes into four layers:
+
+1. **`utf8ByteSize_eq_sum`** — connects `String.utf8ByteSize` (byte-array
+   level) to `(s.toList.map Char.utf8Size).sum` (character-list level).
+
+2. **`utf8GetAux_skip`** — induction lemma: scanning `utf8GetAux` past a
+   prefix list of characters skips to the suffix.
+
+3. **`utf8GetAux_head`** — base case: `utf8GetAux (c :: cs) i i = c`.
+
+4. **`raw_next_le_utf8ByteSize`** — combines the above via
+   `isValid_iff_exists_append` string decomposition to show
+   `(Raw.next s p).byteIdx ≤ s.utf8ByteSize`.
+
+## Zero Axioms
+
+All theorems are machine-checked.  No `sorry`, no `axiom`, no `partial`.
+-/
+
+namespace Lean4Yaml.Proofs.ScannerLoopInvariant
+
+open Lean4Yaml.Scanner
+
+/-! ## §1  UTF-8 Byte Size ↔ Character Size Sum
+
+The fundamental bridge between the byte-array representation (`utf8ByteSize`)
+and the character-list representation (`toList.map Char.utf8Size`).
+-/
+
+/-- For a string constructed from a character list, `utf8ByteSize` equals
+    the sum of individual character byte widths. -/
+private theorem utf8ByteSize_eq_sum_aux (cs : List Char) :
+    (String.ofList cs).utf8ByteSize = (cs.map Char.utf8Size).sum := by
+  show (cs.flatMap String.utf8EncodeChar).toByteArray.size = (cs.map Char.utf8Size).sum
+  rw [List.size_toByteArray, List.length_flatMap]
+  congr 1
+  induction cs with
+  | nil => rfl
+  | cons c cs ih =>
+    simp only [List.map_cons, List.cons.injEq]
+    exact ⟨String.length_utf8EncodeChar c, ih⟩
+
+/-- For any string, `utf8ByteSize` equals the sum of `utf8Size` over its
+    characters.  This connects the byte-level size to the character-level
+    representation used by `utf8GetAux`. -/
+private theorem utf8ByteSize_eq_sum (s : String) :
+    s.utf8ByteSize = (s.toList.map Char.utf8Size).sum := by
+  have h := utf8ByteSize_eq_sum_aux s.toList
+  rw [String.ofList_toList] at h; exact h
+
+/-! ## §2  utf8GetAux Navigation Lemmas
+
+These lemmas show how `utf8GetAux` navigates through a character list:
+- `utf8GetAux_skip`: scanning past a prefix skips to the suffix position
+- `utf8GetAux_head`: at the head position, the head character is returned
+-/
+
+/-- Scanning `utf8GetAux` past a prefix `cs₁` in `cs₁ ++ cs₂` reaches
+    the same result as starting from `cs₂` at the accumulated offset.
+
+    This is the key induction lemma: it shows that `utf8GetAux` with
+    target position `base + sum(cs₁.map utf8Size)` skips exactly past
+    `cs₁` and starts scanning `cs₂`.  -/
+private theorem utf8GetAux_skip (cs₁ cs₂ : List Char) (base : Nat) :
+    String.Pos.Raw.utf8GetAux (cs₁ ++ cs₂)
+      (String.Pos.Raw.mk base) (String.Pos.Raw.mk (base + (cs₁.map Char.utf8Size).sum)) =
+    String.Pos.Raw.utf8GetAux cs₂
+      (String.Pos.Raw.mk (base + (cs₁.map Char.utf8Size).sum))
+      (String.Pos.Raw.mk (base + (cs₁.map Char.utf8Size).sum)) := by
+  induction cs₁ generalizing base with
+  | nil => simp
+  | cons c cs₁ ih =>
+    simp only [List.cons_append, List.map_cons, List.sum_cons]
+    have hne : String.Pos.Raw.mk base ≠
+        String.Pos.Raw.mk (base + (c.utf8Size + (cs₁.map Char.utf8Size).sum)) := by
+      simp only [ne_eq, String.Pos.Raw.mk.injEq]; have := Char.utf8Size_pos c; omega
+    -- Unfold brecOn to if-then-else form
+    change (if String.Pos.Raw.mk base =
+              String.Pos.Raw.mk (base + (c.utf8Size + (cs₁.map Char.utf8Size).sum))
+            then c
+            else String.Pos.Raw.utf8GetAux (cs₁ ++ cs₂) (String.Pos.Raw.mk base + c)
+              (String.Pos.Raw.mk (base + (c.utf8Size + (cs₁.map Char.utf8Size).sum)))) = _
+    rw [if_neg hne]
+    -- Normalize the position arithmetic
+    show String.Pos.Raw.utf8GetAux (cs₁ ++ cs₂) (String.Pos.Raw.mk (base + c.utf8Size))
+        (String.Pos.Raw.mk (base + (c.utf8Size + (cs₁.map Char.utf8Size).sum))) = _
+    rw [show base + (c.utf8Size + (cs₁.map Char.utf8Size).sum) =
+        (base + c.utf8Size) + (cs₁.map Char.utf8Size).sum from by omega]
+    exact ih (base + c.utf8Size)
+
+/-- Specialized version of `utf8GetAux_skip` with `base = 0`, matching
+    the form that appears after unfolding `Raw.get`. -/
+private theorem utf8GetAux_skip_zero (cs₁ cs₂ : List Char) :
+    String.Pos.Raw.utf8GetAux (cs₁ ++ cs₂)
+      (String.Pos.Raw.mk 0) (String.Pos.Raw.mk (cs₁.map Char.utf8Size).sum) =
+    String.Pos.Raw.utf8GetAux cs₂
+      (String.Pos.Raw.mk (cs₁.map Char.utf8Size).sum)
+      (String.Pos.Raw.mk (cs₁.map Char.utf8Size).sum) := by
+  have h := utf8GetAux_skip cs₁ cs₂ 0; simp at h; exact h
+
+/-- At the head position, `utf8GetAux` returns the head character. -/
+private theorem utf8GetAux_head (c : Char) (cs : List Char) (i : String.Pos.Raw) :
+    String.Pos.Raw.utf8GetAux (c :: cs) i i = c := by
+  simp [String.Pos.Raw.utf8GetAux]
+
+/-! ## §3  Raw.next Upper Bound — The Main Theorem
+
+Proof that advancing a valid UTF-8 position never overshoots the string end.
+-/
+
+/-- When `p` is a valid UTF-8 position in string `s` and `p < s.utf8ByteSize`,
+    the next position does not overshoot the string end.
+
+    **Proof strategy**: Use `isValid_iff_exists_append` to decompose
+    `s = s₁ ++ s₂` with `p = s₁.rawEndPos`.  Since `p < s.utf8ByteSize`,
+    `s₂` is non-empty with head character `c`.  The character retrieved by
+    `Raw.get` at position `p` is exactly `c` (via `utf8GetAux_skip` +
+    `utf8GetAux_head`), and `c.utf8Size ≤ s₂.utf8ByteSize` since `c` is
+    the first character of `s₂`. -/
+theorem raw_next_le_utf8ByteSize (s : String) (p : String.Pos.Raw)
+    (hv : String.Pos.Raw.IsValid s p) (hlt : p.byteIdx < s.utf8ByteSize) :
+    (String.Pos.Raw.next s p).byteIdx ≤ s.utf8ByteSize := by
+  -- Decompose: s = s₁ ++ s₂, p = s₁.rawEndPos = ⟨s₁.utf8ByteSize⟩
+  rw [String.Pos.Raw.isValid_iff_exists_append] at hv
+  obtain ⟨s₁, s₂, hs, hp⟩ := hv
+  subst hs; subst hp
+  simp only [String.rawEndPos, String.utf8ByteSize_append] at hlt ⊢
+  -- Unfold Raw.next: adds the retrieved character's utf8Size to the position
+  show s₁.utf8ByteSize +
+       (String.Pos.Raw.get (s₁ ++ s₂) (String.Pos.Raw.mk s₁.utf8ByteSize)).utf8Size ≤
+       s₁.utf8ByteSize + s₂.utf8ByteSize
+  -- Reduce to: character size ≤ remaining string size
+  suffices h : (String.Pos.Raw.get (s₁ ++ s₂)
+                 (String.Pos.Raw.mk s₁.utf8ByteSize)).utf8Size ≤ s₂.utf8ByteSize by omega
+  -- s₂ must be non-empty (since s₁.utf8ByteSize < s₁.utf8ByteSize + s₂.utf8ByteSize)
+  have hs2_ne : s₂.toList ≠ [] := by
+    intro hempty
+    have h0 : s₂.utf8ByteSize = 0 := by rw [utf8ByteSize_eq_sum s₂]; simp [hempty]
+    omega
+  obtain ⟨c, cs₂, hcs₂⟩ := List.exists_cons_of_ne_nil hs2_ne
+  -- Unfold Raw.get to utf8GetAux on the character list
+  show (String.Pos.Raw.utf8GetAux ((s₁ ++ s₂).toList) (String.Pos.Raw.mk 0)
+        (String.Pos.Raw.mk s₁.utf8ByteSize)).utf8Size ≤ s₂.utf8ByteSize
+  -- Skip past s₁.toList, then extract the head character c
+  rw [String.toList_append, utf8ByteSize_eq_sum s₁, utf8GetAux_skip_zero s₁.toList s₂.toList]
+  rw [hcs₂, utf8GetAux_head c cs₂]
+  -- c.utf8Size ≤ c.utf8Size + rest = s₂.utf8ByteSize
+  rw [utf8ByteSize_eq_sum s₂, hcs₂, List.map_cons, List.sum_cons]
+  omega
+
+/-! ## §4  Advance Preserves WellFormed
+
+Application of `raw_next_le_utf8ByteSize` to the scanner's `advance` function.
+-/
+
+/-- `advance` preserves the `indents` field (it only touches offset/line/col). -/
+theorem advance_indents (s : ScannerState) :
+    s.advance.indents = s.indents := by
+  unfold ScannerState.advance
+  split <;> simp_all
+  split <;> rfl
+
+/-- `advance` preserves the `flowLevel` field. -/
+theorem advance_flowLevel (s : ScannerState) :
+    s.advance.flowLevel = s.flowLevel := by
+  unfold ScannerState.advance
+  split <;> simp_all
+  split <;> rfl
+
+/-- `advance` preserves the `flowStack` field. -/
+theorem advance_flowStack (s : ScannerState) :
+    s.advance.flowStack = s.flowStack := by
+  unfold ScannerState.advance
+  split <;> simp_all
+  split <;> rfl
+
+/-- `advance` preserves the `inputEnd` field. -/
+theorem advance_inputEnd (s : ScannerState) :
+    s.advance.inputEnd = s.inputEnd := by
+  unfold ScannerState.advance
+  split <;> simp_all
+  split <;> rfl
+
+/-- `advance` preserves the `input` field. -/
+theorem advance_input (s : ScannerState) :
+    s.advance.input = s.input := by
+  unfold ScannerState.advance
+  split <;> simp_all
+  split <;> rfl
+
+/-- When the scanner has more input and the offset is at a valid UTF-8
+    position, `advance` keeps the offset within bounds.
+
+    This is the main loop invariant: combined with `advance` preserving
+    indents, flowLevel, and flowStack, it shows that `advance` preserves
+    all three conjuncts of `WellFormed`. -/
+theorem advance_offset_le (s : ScannerState)
+    (hv : String.Pos.Raw.IsValid s.input ⟨s.offset⟩)
+    (hwf : s.offset ≤ s.inputEnd)
+    (hend : s.inputEnd = s.input.utf8ByteSize) :
+    s.advance.offset ≤ s.inputEnd := by
+  unfold ScannerState.advance
+  split
+  case isTrue hlt =>
+    -- offset < inputEnd, so advance happens
+    rw [hend] at hlt
+    have hle := raw_next_le_utf8ByteSize s.input ⟨s.offset⟩ hv hlt
+    dsimp only []
+    split
+    · rw [hend]; omega
+    · rw [hend]; omega
+  case isFalse _ =>
+    -- offset ≥ inputEnd, advance is identity
+    exact hwf
+
+/-- `advance` preserves `WellFormed`, given that the current offset is
+    at a valid UTF-8 character boundary and `inputEnd = input.utf8ByteSize`. -/
+theorem advance_preserves_wellFormed (s : ScannerState)
+    (hwf : s.WellFormed)
+    (hv : String.Pos.Raw.IsValid s.input ⟨s.offset⟩)
+    (hend : s.inputEnd = s.input.utf8ByteSize) :
+    s.advance.WellFormed := by
+  obtain ⟨hind, hflow, hoff⟩ := hwf
+  refine ⟨?_, ?_, ?_⟩
+  · -- indents.size ≥ 1: preserved by advance
+    rw [advance_indents]; exact hind
+  · -- flowLevel = flowStack.size: preserved by advance
+    rw [advance_flowLevel, advance_flowStack]; exact hflow
+  · -- offset ≤ inputEnd: the main result
+    rw [advance_inputEnd]
+    exact advance_offset_le s hv hoff hend
+
+/-! ## §5  Emit Preserves WellFormed -/
+
+/-- `emit` preserves all three `WellFormed` conjuncts (it only modifies `tokens`). -/
+theorem emit_preserves_wellFormed (s : ScannerState) (tok : YamlToken)
+    (hwf : s.WellFormed) : (s.emit tok).WellFormed := by
+  obtain ⟨hind, hflow, hoff⟩ := hwf
+  refine ⟨?_, ?_, ?_⟩
+  · simp [ScannerState.emit]; exact hind
+  · simp [ScannerState.emit]; exact hflow
+  · simp [ScannerState.emit]; exact hoff
+
+/-! ## §6  Validation Guards -/
+
+-- Concrete validation that advance preserves offset bound for ASCII strings
+#guard (ScannerState.mk' "abc").advance.offset ≤ (ScannerState.mk' "abc").advance.inputEnd
+#guard (ScannerState.mk' "abc").advance.advance.offset ≤
+       (ScannerState.mk' "abc").advance.advance.inputEnd
+#guard (ScannerState.mk' "abc").advance.advance.advance.offset ≤
+       (ScannerState.mk' "abc").advance.advance.advance.inputEnd
+
+-- Validation for multi-byte UTF-8 characters
+#guard (ScannerState.mk' "αβγ").advance.offset ≤ (ScannerState.mk' "αβγ").advance.inputEnd
+#guard (ScannerState.mk' "αβγ").advance.advance.offset ≤
+       (ScannerState.mk' "αβγ").advance.advance.inputEnd
+
+-- Validation for 3-byte and 4-byte characters
+#guard (ScannerState.mk' "日本語").advance.offset ≤ (ScannerState.mk' "日本語").advance.inputEnd
+#guard (ScannerState.mk' "🎉🎊").advance.offset ≤ (ScannerState.mk' "🎉🎊").advance.inputEnd
+#guard (ScannerState.mk' "🎉🎊").advance.advance.offset ≤
+       (ScannerState.mk' "🎉🎊").advance.advance.inputEnd
+
+-- Empty string: advance is identity
+#guard (ScannerState.mk' "").advance.offset == 0
+
+-- Mixed ASCII and multi-byte
+#guard (ScannerState.mk' "a日b").advance.offset ≤ (ScannerState.mk' "a日b").advance.inputEnd
+#guard (ScannerState.mk' "a日b").advance.advance.offset ≤
+       (ScannerState.mk' "a日b").advance.advance.inputEnd
+
+-- mk' produces well-formed state (concrete check on each conjunct)
+#guard (ScannerState.mk' "test").indents.size ≥ 1
+#guard (ScannerState.mk' "test").flowLevel == (ScannerState.mk' "test").flowStack.size
+#guard (ScannerState.mk' "test").offset ≤ (ScannerState.mk' "test").inputEnd
+
+-- advance chain stays well-formed (concrete check on each conjunct)
+#guard (ScannerState.mk' "ab").advance.indents.size ≥ 1
+#guard (ScannerState.mk' "ab").advance.flowLevel == (ScannerState.mk' "ab").advance.flowStack.size
+#guard (ScannerState.mk' "ab").advance.offset ≤ (ScannerState.mk' "ab").advance.inputEnd
+
+end Lean4Yaml.Proofs.ScannerLoopInvariant
