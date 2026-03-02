@@ -426,18 +426,18 @@ Correct: 358/406 (100.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 10/10
-  Explicit Key Tests: ✗ 39/55
+  Explicit Key Tests: ✓ 66/66
   Flow Completeness Tests: ✗ 85/86
   Structural Validation Tests: ✓ 84/84
   Dump Round-Trip Tests: ✓ 102/102
-  Raw Parse / Compose Tests: ✗ 26/29
+  Raw Parse / Compose Tests: ✓ 29/29
   YAML 1.2.2 Spec Examples: ✗ 131/132
   Schema ↔ Dump Integration: ✓ 68/68
-  Scanner & TokenParser Tests (Phase 9): ✗ 30/33
+  Scanner & TokenParser Tests (Phase 9): ✓ 32/32
   YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline): ✗ 131/132
   Demo: ✓ 7/7
 
-Verified: 713/738
+Verified: 745/748
 
 Generating HTML reports...
   wrote docs/index.html

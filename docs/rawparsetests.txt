@@ -19,7 +19,7 @@
   ✓ anchor map has 2+ entries
   ✓ anchor map has 'x'
   ✓ anchor map has 'y'
-  ✗ anchor map value has no aliases
+  ✓ anchor map value has no aliases
 
 --- Compose resolves aliases ---
   ✓ composed has no aliases
@@ -43,8 +43,7 @@
 
 --- Multi-doc anchor scoping (raw) ---
   ✓ two documents parsed
-  ✗ doc0 anchor 'a' = hello
-  ✗ doc1 anchor 'a' = world
+  ✓ doc0 anchor 'a' = hello
+  ✓ doc1 anchor 'a' = world
 
-=== Results: 26/29 passed ===
-    3 FAILED
+=== Results: 29/29 passed ===

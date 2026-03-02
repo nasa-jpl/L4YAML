@@ -39,9 +39,9 @@
 --- Basic explicit keys ---
   ✓ ? a : b parses as mapping
   ✓ ? a : b key
-  ✗ ? a : b value
+  ✓ ? a : b value
   ✓ ? a : 1.3 key
-  ✗ ? a : 1.3 value
+  ✓ ? a : 1.3 value
   ✓ ? explicit key (no colon)
   ✓ ? explicit key: key content
 
@@ -55,32 +55,32 @@
 
 --- Next-line keys ---
   ✓ 6PBE key is sequence
-  ✗ 6PBE value is sequence
+  ✓ 6PBE value is sequence
   ✓ bare ? + : value
   ✓ bare ? key is null
-  ✗ bare ? : value
+  ✓ bare ? : value
 
 --- Complex keys ---
   ✓ JTV5 multiline key
-  ✗ JTV5 multiline value
+  ✓ JTV5 multiline value
   ✓ V9D5 parses
   ✓ V9D5 first item is mapping
   ✓ V9D5 second item is mapping
   ✓ M5DY key is sequence
-  ✗ M5DY value is sequence
+  ✓ M5DY value is sequence
 
 --- Explicit key + anchors ---
   ✓ 6M2F key
-  ✗ 6M2F value
+  ✓ 6M2F value
   ✓ ? &d produces mapping
   ✓ ? &e : &a parses
 
 --- Mixed explicit/implicit keys ---
-  ✗ GH63 pair count
+  ✓ GH63 pair count
   ✓ GH63 explicit key
-  ✗ GH63 explicit value
-  ✗ GH63 implicit key
-  ✗ GH63 implicit value
+  ✓ GH63 explicit value
+  ✓ GH63 implicit key
+  ✓ GH63 implicit value
   ✓ ZWK4 pair count
   ✓ ZWK4 first key
   ✓ ZWK4 first value
@@ -90,16 +90,27 @@
 
 --- Comments between key and value ---
   ✓ X8DW key
-  ✗ X8DW value
+  ✓ X8DW value
   ✓ ? key # comment
 
 --- Flow explicit keys ---
-  ✗ DFF7 parses: expected single document, found 2
-  ✗ FRK4 parses: expected single document, found 2
-  ✗ {? a : b} parses: expected single document, found 2
+  ✓ DFF7 parses as mapping
+  ✓ DFF7 pair count
+  ✓ DFF7 explicit key
+  ✓ DFF7 explicit value
+  ✓ DFF7 implicit key
+  ✓ DFF7 bare ? null key
+  ✓ FRK4 parses
+  ✓ FRK4 pair count
+  ✓ FRK4 first key
+  ✓ FRK4 first value is null
+  ✓ FRK4 empty key value
+  ✓ {? a : b} key
+  ✓ {? a : b} value
 
 --- Flow sequence explicit entries ---
-  ✗ [? a : b] parses: expected single document, found 2
+  ✓ [? a : b] is sequence
+  ✓ [? a : b] item is mapping
   ✓ [?] is sequence
   ✓ [?] item is mapping
 
@@ -111,8 +122,7 @@
   ✓ {:} empty key
   ✓ {:} null value
 
-=== Results: 39/55 passed ===
-    16 FAILED
+=== Results: 66/66 passed ===
 === Flow Completeness Tests ===
 === Flow Completeness Tests ===
 
@@ -453,7 +463,7 @@
   ✓ anchor map has 2+ entries
   ✓ anchor map has 'x'
   ✓ anchor map has 'y'
-  ✗ anchor map value has no aliases
+  ✓ anchor map value has no aliases
 
 --- Compose resolves aliases ---
   ✓ composed has no aliases
@@ -477,11 +487,10 @@
 
 --- Multi-doc anchor scoping (raw) ---
   ✓ two documents parsed
-  ✗ doc0 anchor 'a' = hello
-  ✗ doc1 anchor 'a' = world
+  ✓ doc0 anchor 'a' = hello
+  ✓ doc1 anchor 'a' = world
 
-=== Results: 26/29 passed ===
-    3 FAILED
+=== Results: 29/29 passed ===
 === Spec Examples ===
 === YAML 1.2.2 Spec Examples ===
 
@@ -766,17 +775,15 @@
 
 --- Phase 9 regression: b: x: y ---
   ✓ b: x: y scans
-  ✗ b: x: y pipeline
-  ✗ b: x: y key is b
-  ✗ b: x: y val is {x: y}
+  ✓ b: x: y pipeline
+  ✓ b: x: y rejected
 
 --- Escape sequences ---
   ✓ tab escape
   ✓ hex escape \x41
   ✓ unicode \u0041
 
-=== Results: 30/33 passed ===
-    3 FAILED
+=== Results: 32/32 passed ===
 === Scanner Spec Examples ===
 === YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline) ===
 

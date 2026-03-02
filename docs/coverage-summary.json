@@ -1,5 +1,5 @@
 {
-  "date": "2026-03-01T22:09:43-0800",
+  "date": "2026-03-01T22:32:49-0800",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -2939,10 +2939,10 @@
         "total": 10
       },
       {
-        "allPass": false,
+        "allPass": true,
         "label": "Explicit Key Tests",
-        "passed": 39,
-        "total": 55
+        "passed": 66,
+        "total": 66
       },
       {
         "allPass": false,
@@ -2963,9 +2963,9 @@
         "total": 102
       },
       {
-        "allPass": false,
+        "allPass": true,
         "label": "Raw Parse / Compose Tests",
-        "passed": 26,
+        "passed": 29,
         "total": 29
       },
       {
@@ -2981,10 +2981,10 @@
         "total": 68
       },
       {
-        "allPass": false,
+        "allPass": true,
         "label": "Scanner & TokenParser Tests (Phase 9)",
-        "passed": 30,
-        "total": 33
+        "passed": 32,
+        "total": 32
       },
       {
         "allPass": false,
@@ -2999,7 +2999,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 713,
-    "totalTests": 738
+    "totalPassed": 745,
+    "totalTests": 748
   }
 }
