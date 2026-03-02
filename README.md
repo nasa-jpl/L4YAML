@@ -4266,7 +4266,7 @@ Each event below was resolved locally at the time. In aggregate, they form a pat
 
 <details>
 
-Annotate every function in `Scanner.lean` (~30 functions) and `TokenParser.lean` (~15 functions) with:
+Annotate every function in `Scanner.lean` (~58 functions) and `TokenParser.lean` (~28 functions) with:
 - **Implements**: YAML 1.2.2 production number(s) and section reference.
 - **Pre**: Required scanner/parser state at entry (position, context, expectations).
 - **Post**: State at exit (position advanced past matched content, tokens emitted, flags set).
@@ -4274,6 +4274,20 @@ Annotate every function in `Scanner.lean` (~30 functions) and `TokenParser.lean`
 - **Variable classification**: every numeric parameter/local tagged as Position, Distance, or Pos.
 
 This is pure documentation — no behavioral changes, no type signature changes.
+
+**Coverage** (2026-03-01):
+
+| File | Defs | Fully annotated | Brief docstring | Total |
+|---|---|---|---|---|
+| `Scanner.lean` | 58 | 29 (formal Implements/Pre/Post/Error) | 29 (utilities) | 58/58 (100%) |
+| `TokenParser.lean` | 28 | 12 (formal Implements/Pre/Post/Error) | 16 (accessors/API) | 28/28 (100%) |
+| **Total** | 86 | 41 | 45 | **86/86 (100%)** |
+
+Key annotations added:
+- Scanner: all indicator scanners (§7–§8 productions), scalar scanners (§7.3, §8.1), escape processing (§5.7), anchor/tag/directive (§6.8–§6.9), character classification (§5.2–§5.4), whitespace/indentation management, main loop (`scanNextToken`, `scan`)
+- TokenParser: recursive descent parsers (`parseNode` §7–§8, `parseBlockSequence` §8.2.1, `parseBlockMapping` §8.2.2, `parseFlowSequence` §7.4.1, `parseFlowMapping` §7.4.2), node properties (`parseNodeProperties` §6.9), document/stream grammar (`parseDocument` §9.1, `parseStream` §9.2), public API boundary
+
+**Status**: ✅ Complete (2026-03-01). Build: 155/155, zero warnings.
 
 </details>
 
@@ -4401,7 +4415,7 @@ Each `have` serves as a machine-checked comment: if the invariant doesn't hold, 
 
 **Estimated effort**: P10.6e.1: 2–3 days. P10.6e.2: 1–2 days. P10.6e.3: 3–5 days.
 
-**Status**: Not started.
+**Status**: In progress (P10.6e.1 ✅ Complete 2026-03-01, P10.6e.2 ✅ Complete 2026-02-28, P10.6e.3 not started).
 
 </details>
 
@@ -4458,8 +4472,8 @@ Each `have` serves as a machine-checked comment: if the invariant doesn't hold, 
 - **P10.6** depends on all of P10.1–P10.5 — ✅ complete
 - **P10.6b** depends on P10.6 — ✅ complete (352 guards, 155/155 build, 695/731 verified tests)
 - **P10.6c** depends on P10.6b — not started (test diagnostics improvement)
-- **P10.6d** depends on P10.6c — in progress (70 UPs remaining; 17 fixed: 3 tab, 10 directive, 4 comment; 3 correctness fixes: BOM, parentIndent, doc-marker)
-- **P10.6e** depends on P10.6d — not started (production rule annotation + subtype contracts)
+- **P10.6d** depends on P10.6c — ✅ complete (87→0 UPs, yaml-test-suite 100%)
+- **P10.6e** depends on P10.6d — in progress (P10.6e.1 ✅, P10.6e.2 ✅, P10.6e.3 not started)
 - **P10.7** depends on P10.6e — blocked
 - **Phase 8** (comment preservation) should target the tokenized parser only — if P10 completes first, Phase 8 has a single implementation target
 
