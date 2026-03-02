@@ -4718,7 +4718,7 @@ that may warrant its own sub-phase.
 | P10.8e | 5–8 days | `parseStream_complete` (may require scanner correctness) |
 | **Total** | **16–26 days** | Full soundness/completeness bridge |
 
-**Status**: **P10.8a ✅ complete, P10.8b ✅ complete, P10.8c ✅ complete**.
+**Status**: **P10.8a ✅ complete, P10.8b ✅ complete, P10.8c ✅ complete, P10.8d ✅ complete**.
 
 - P10.8a delivered: 7 `partial def` → 12 `partial def` in mutual block
   (5 `for` loops extracted to tail-recursive helpers).  `depth` parameter
@@ -4742,6 +4742,27 @@ that may warrant its own sub-phase.
     (`streamStart`/`streamEnd` bracketing, monotonic positions).
   - Updated `NodeToValue`, `toYamlValue`, and all Soundness.lean proofs.
   Build: 157/157 jobs, zero warnings.  Suite: 869 passed, 0 failed.
+- P10.8d delivered: Soundness theorem proving parser output corresponds
+  to valid grammar nodes.
+  - Added `ValidNode.emptyNode` (YAML §72 e-node) and `NodeToValue.emptyNode`.
+  - Added `stripAnnotations : YamlValue → YamlValue` (zeroes tag, anchor,
+    blockMeta) with `where`-clause helpers for lists/pairs.
+  - Defined `Grammable` inductive predicate encoding the scanner contract
+    (valid plain scalar constraints as hypotheses).
+  - Proved `scalar_has_witness`: every scalar `YamlValue` has a `ValidNode`
+    witness after stripping annotations. Pattern-matches on `ScalarStyle`;
+    all branches close by `rfl` (definitional equality after stripping).
+  - Proved `yamlValue_has_witness`: main theorem — every grammable
+    `YamlValue` (scalar, sequence, or mapping) has a `ValidNode` witness.
+    Uses well-founded recursion on `sizeOf`.
+  - Proved `parseStream_sound`: corollary applying the witness theorem
+    to `TokenParser.parseStream` output under `Grammable` hypotheses.
+  - Helper lemmas: `array_sizeOf_getElem_lt`, `prod_fst_sizeOf_lt`,
+    `prod_snd_sizeOf_lt`, `stripped_list_eq`, `stripped_pairs_eq`,
+    `stripAnnotationsList_eq_map`, `stripAnnotationsPairs_eq_map`,
+    plus 4 `@[simp]` unfolding lemmas for `stripAnnotations`.
+  - Zero sorry, zero axiom, zero partial.
+  Build: 161/161 jobs, zero warnings.  Suite: 869 passed, 0 failed.
 
 </details>
 
