@@ -3,6 +3,7 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml.Types
+import Lean4Yaml.Token
 import Lean4Yaml.YamlSpec
 
 /-!
@@ -280,116 +281,55 @@ def isNamedEscapeChar (c : Char) : Prop :=
 instance (c : Char) : Decidable (isNamedEscapeChar c) := by
   unfold isNamedEscapeChar; infer_instance
 
-/--
-A valid plain scalar in block context.
+/-! ### Plain Scalar Content Predicates (§7.3.3)
 
-**YAML 1.2.2**: [128] ns-plain(n,BLOCK-KEY/BLOCK-OUT)
-(§7.3.3, https://yaml.org/spec/1.2.2/#733-plain-style)
-- [123] ns-plain-first(c): first character constraint
-- [127] ns-plain-char(c): subsequent character constraint
-- [132] ns-plain-multi-line(n,c): multi-line continuation with folding
-
-Plain scalars in block context:
-- Cannot start with indicators
-- Cannot contain `: ` (colon-space) or ` #` (space-hash)
-- Are terminated by line breaks, `: `, or less-indented lines
-- Continuation lines are folded (replacing newline with space)
+Character-level constraints that plain scalar content must satisfy.
+These predicates are used as proof obligations in `ValidNode` constructors
+to tie the grammar specification to the actual YAML production rules.
 -/
-@[yaml_spec "7.3.3" 128 "ns-plain(n,c)"]
-structure ValidPlainScalarBlock where
-  /-- The resolved content string -/
-  content : String
-  /-- The content is non-empty -/
-  nonempty : content.length > 0
 
 /--
-A valid plain scalar in flow context.
+First character of a non-empty string can start a plain scalar.
 
-**YAML 1.2.2**: [128] ns-plain(n,FLOW-OUT/FLOW-IN)
-(§7.3.3, https://yaml.org/spec/1.2.2/#733-plain-style)
-- [126] ns-plain-safe-in: flow-context safe characters
-
-Plain scalars in flow context additionally:
-- Cannot contain flow indicators ([23] c-flow-indicator: `,`, `[`, `]`, `{`, `}`)
-- Are terminated by flow indicators in addition to block terminators
+**YAML 1.2.2**: [123] ns-plain-first(c) (§7.3.3)
 -/
-@[yaml_spec "7.3.3" 128 "ns-plain(n,c)"]
-structure ValidPlainScalarFlow where
-  content : String
-  nonempty : content.length > 0
+def validPlainFirst (content : String) : Prop :=
+  match content.toList with
+  | c :: _ => canStartPlainScalar c
+  | [] => True
+
+instance (content : String) : Decidable (validPlainFirst content) := by
+  unfold validPlainFirst
+  cases content.toList with
+  | nil => exact .isTrue trivial
+  | cons c _ => exact inferInstance
 
 /--
-A valid single-quoted scalar.
+Content does not contain `: ` (colon immediately followed by space).
 
-**YAML 1.2.2**: [118] c-single-quoted(n,c) (§7.3.2, https://yaml.org/spec/1.2.2/#732-single-quoted-style)
-- [18] c-single-quote: the `'` delimiter
-- [115] c-quoted-quote: `''` → `'` (doubled single quote)
-- [116] nb-single-char: content characters
-
-Single-quoted scalars:
-- Delimited by `'...'`
-- Only escape: `''` → `'` (doubled single quote)
-- All other characters are literal
+**YAML 1.2.2**: [127] ns-plain-char(c) (§7.3.3) — colon may appear in
+a plain scalar only when NOT followed by an `s-white` character.
 -/
-@[yaml_spec "7.3.2" 118 "c-single-quoted(n,c)"]
-structure ValidSingleQuoted where
-  content : String
+def noColonSpace (content : String) : Prop :=
+  ¬ ∃ i, content.toList[i]? = some ':' ∧ content.toList[i + 1]? = some ' '
 
 /--
-A valid double-quoted scalar.
+Content does not contain ` #` (space immediately followed by hash).
 
-**YAML 1.2.2**: [107] c-double-quoted(n,c) (§7.3.1, https://yaml.org/spec/1.2.2/#731-double-quoted-style)
-- [19] c-double-quote: the `"` delimiter
-- [61] c-ns-esc-char: escape sequences ([42]–[60])
-- [106] ns-double-char: content characters
-- [114] nb-double-multi-line(n): multi-line with folding
-
-Double-quoted scalars:
-- Delimited by `"..."`
-- Full escape sequence support: `\n`, `\t`, `\\`, `\"`, `\xHH`, `\uHHHH`, etc.
-- Line folding: newlines become spaces (unless `\` at end of line)
+**YAML 1.2.2**: [127] ns-plain-char(c) (§7.3.3) — `#` may appear in
+a plain scalar only when NOT preceded by an `s-white` character.
 -/
-@[yaml_spec "7.3.1" 107 "c-double-quoted(n,c)"]
-structure ValidDoubleQuoted where
-  content : String
+def noSpaceHash (content : String) : Prop :=
+  ¬ ∃ i, content.toList[i]? = some ' ' ∧ content.toList[i + 1]? = some '#'
 
 /--
-A valid literal block scalar.
+Content contains no flow indicator characters.
 
-**YAML 1.2.2**: [170] c-l+literal(n) (§8.1.2, https://yaml.org/spec/1.2.2/#812-literal-style)
-- [16] c-literal: the `|` indicator
-- [158] c-b-block-header(m,t): header with indent/chomp indicators
-- [166] l-literal-content(n,t): content lines
-
-Literal scalars (`|`):
-- Preserve line breaks exactly
-- Content indented relative to indicator
-- Optional chomping indicator: `-` (strip), `+` (keep), default (clip)
+**YAML 1.2.2**: [126] ns-plain-safe(FLOW-IN) (§7.3.3) — in flow context,
+plain scalars additionally cannot contain `,`, `[`, `]`, `{`, `}`.
 -/
-@[yaml_spec "8.1.2" 170 "c-l+literal(n)"]
-structure ValidLiteralScalar where
-  content : String
-  indent : Nat
-  chomp : ChompStyle
-
-/--
-A valid folded block scalar.
-
-**YAML 1.2.2**: [175] c-l+folded(n) (§8.1.3, https://yaml.org/spec/1.2.2/#813-folded-style)
-- [17] c-folded: the `>` indicator
-- [158] c-b-block-header(m,t): header with indent/chomp indicators
-- [174] l-folded-content(n,t): content lines with fold semantics
-- [173] s-b-folded(n,c): line folding rules
-
-Folded scalars (`>`):
-- Fold line breaks to spaces (except for blank lines and more-indented lines)
-- Optional chomping indicator
--/
-@[yaml_spec "8.1.3" 175 "c-l+folded(n)"]
-structure ValidFoldedScalar where
-  content : String
-  indent : Nat
-  chomp : ChompStyle
+def noFlowIndicators (content : String) : Prop :=
+  ∀ c ∈ content.toList, ¬isFlowIndicator c
 
 /-! ## Node Grammar
 
@@ -408,10 +348,18 @@ avoid mutual recursion between structures.
 -/
 @[yaml_spec "8.2.3" 196 "s-l+block-node(n,c)", yaml_spec "7.5" 157 "ns-flow-node(n,c)"]
 inductive ValidNode where
-  /-- [128] ns-plain(n,BLOCK-KEY/BLOCK-OUT) — Plain scalar in block context -/
+  /-- [128] ns-plain(n,BLOCK-KEY/BLOCK-OUT) — Plain scalar in block context.
+      Carries character-level production-rule constraints:
+      [123] ns-plain-first, [127] no `: ` or ` #`. -/
   | plainScalarBlock (content : String) (nonempty : content.length > 0)
-  /-- [128] ns-plain(n,FLOW-OUT/FLOW-IN) — Plain scalar in flow context -/
+      (firstValid : validPlainFirst content)
+      (noCS : noColonSpace content) (noSH : noSpaceHash content)
+  /-- [128] ns-plain(n,FLOW-OUT/FLOW-IN) — Plain scalar in flow context.
+      Additionally [126] no flow-indicator characters. -/
   | plainScalarFlow (content : String) (nonempty : content.length > 0)
+      (firstValid : validPlainFirst content)
+      (noCS : noColonSpace content) (noSH : noSpaceHash content)
+      (noFlow : noFlowIndicators content)
   /-- [118] c-single-quoted(n,c) (§7.3.2) — Single-quoted scalar -/
   | singleQuoted (content : String)
   /-- [107] c-double-quoted(n,c) (§7.3.1) — Double-quoted scalar -/
@@ -458,6 +406,44 @@ structure ValidStream where
   documents : List ValidDocument
   nonempty : documents.length > 0
 
+/-! ## Token Stream Contract
+
+`ValidTokenStream` relates an input string to the token array produced
+by scanning it. This is the bridge between the string-level grammar
+(`ValidNode`) and the token-level parser (`TokenParser`).
+
+The scanner's correctness theorem (future work) will state:
+```
+theorem scan_valid (input : String) (tokens : Array (Positioned YamlToken))
+    (h : Scanner.scan input = .ok tokens) : ValidTokenStream input tokens
+```
+-/
+
+/--
+Valid token stream: structural contract between the scanner and the token parser.
+
+Captures the invariants that `TokenParser` relies on when consuming tokens:
+- Stream boundary tokens bracket the array (`streamStart` … `streamEnd`)
+- Token positions are monotonically non-decreasing
+
+**YAML 1.2.2**: §3.1 Processes — this corresponds to the
+Presentation → Serialization boundary.
+-/
+structure ValidTokenStream where
+  /-- The input string that was scanned -/
+  input : String
+  /-- The resulting token array -/
+  tokens : Array (Positioned YamlToken)
+  /-- At least two tokens (streamStart + streamEnd) -/
+  sizeGe2 : tokens.size ≥ 2
+  /-- First token is streamStart -/
+  firstIsStreamStart : (tokens[0]'(by omega)).val = .streamStart
+  /-- Last token is streamEnd -/
+  lastIsStreamEnd : (tokens[tokens.size - 1]'(by omega)).val = .streamEnd
+  /-- Token positions are monotonically non-decreasing -/
+  positionsOrdered : ∀ (i j : Fin tokens.size), i.val < j.val →
+    (tokens[i]).pos.offset ≤ (tokens[j]).pos.offset
+
 /-! ## Top-Level Specification -/
 
 /--
@@ -466,13 +452,18 @@ Correspondence between grammar nodes and YAML values.
 This bridges the specification (grammar) and the implementation (YamlValue AST).
 -/
 inductive NodeToValue : ValidNode → YamlValue → Prop where
-  | plainScalarBlock (content : String) (h : content.length > 0) :
+  | plainScalarBlock (content : String) (h : content.length > 0)
+      (hfirst : validPlainFirst content)
+      (hnoCS : noColonSpace content) (hnoSH : noSpaceHash content) :
       NodeToValue
-        (.plainScalarBlock content h)
+        (.plainScalarBlock content h hfirst hnoCS hnoSH)
         (.scalar ⟨content, .plain, none, none, none⟩)
-  | plainScalarFlow (content : String) (h : content.length > 0) :
+  | plainScalarFlow (content : String) (h : content.length > 0)
+      (hfirst : validPlainFirst content)
+      (hnoCS : noColonSpace content) (hnoSH : noSpaceHash content)
+      (hnoFlow : noFlowIndicators content) :
       NodeToValue
-        (.plainScalarFlow content h)
+        (.plainScalarFlow content h hfirst hnoCS hnoSH hnoFlow)
         (.scalar ⟨content, .plain, none, none, none⟩)
   | singleQuoted (content : String) :
       NodeToValue
@@ -565,8 +556,8 @@ Structural recursion on `ValidNode` terminates because `List ValidNode`
 sub-lists are structurally smaller.
 -/
 def toYamlValue : ValidNode → YamlValue
-  | .plainScalarBlock content _ => .scalar ⟨content, .plain, none, none, none⟩
-  | .plainScalarFlow content _ => .scalar ⟨content, .plain, none, none, none⟩
+  | .plainScalarBlock content .. => .scalar ⟨content, .plain, none, none, none⟩
+  | .plainScalarFlow content .. => .scalar ⟨content, .plain, none, none, none⟩
   | .singleQuoted content => .scalar ⟨content, .singleQuoted, none, none, none⟩
   | .doubleQuoted content => .scalar ⟨content, .doubleQuoted, none, none, none⟩
   | .literalScalar content indent chomp =>

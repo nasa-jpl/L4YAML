@@ -112,8 +112,8 @@ Uses well-founded recursion on `sizeOf` to handle recursive calls through
 list elements.
 -/
 def toYamlValue_nodeToValue : (n : ValidNode) → NodeToValue n (toYamlValue n)
-  | .plainScalarBlock content h => .plainScalarBlock content h
-  | .plainScalarFlow content h => .plainScalarFlow content h
+  | .plainScalarBlock content h hf hcs hsh => .plainScalarBlock content h hf hcs hsh
+  | .plainScalarFlow content h hf hcs hsh hfl => .plainScalarFlow content h hf hcs hsh hfl
   | .singleQuoted content => .singleQuoted content
   | .doubleQuoted content => .doubleQuoted content
   | .literalScalar content indent chomp => .literalScalar content indent chomp
@@ -189,8 +189,8 @@ Reverse direction: `NodeToValue n v` implies `v = toYamlValue n`.
 theorem nodeToValue_implies_toYamlValue {n : ValidNode} {v : YamlValue}
     (h : NodeToValue n v) : v = toYamlValue n := by
   induction h with
-  | plainScalarBlock _ _ => rfl
-  | plainScalarFlow _ _ => rfl
+  | plainScalarBlock _ _ _ _ _ => rfl
+  | plainScalarFlow _ _ _ _ _ _ => rfl
   | singleQuoted _ => rfl
   | doubleQuoted _ => rfl
   | literalScalar _ _ _ => rfl
@@ -249,13 +249,18 @@ lemmas: they guarantee the parser cannot mis-label scalar styles.
 -/
 
 /-- Plain scalars (block context) produce `.plain` style. -/
-theorem plainScalar_block_style_sound (content : String) (h : content.length > 0) :
-    ∃ s, toYamlValue (.plainScalarBlock content h) = .scalar s ∧ s.style = .plain := by
+theorem plainScalar_block_style_sound (content : String) (h : content.length > 0)
+    (hfirst : validPlainFirst content)
+    (hnoCS : noColonSpace content) (hnoSH : noSpaceHash content) :
+    ∃ s, toYamlValue (.plainScalarBlock content h hfirst hnoCS hnoSH) = .scalar s ∧ s.style = .plain := by
   exact ⟨⟨content, .plain, none, none, none⟩, rfl, rfl⟩
 
 /-- Plain scalars (flow context) produce `.plain` style. -/
-theorem plainScalar_flow_style_sound (content : String) (h : content.length > 0) :
-    ∃ s, toYamlValue (.plainScalarFlow content h) = .scalar s ∧ s.style = .plain := by
+theorem plainScalar_flow_style_sound (content : String) (h : content.length > 0)
+    (hfirst : validPlainFirst content)
+    (hnoCS : noColonSpace content) (hnoSH : noSpaceHash content)
+    (hnoFlow : noFlowIndicators content) :
+    ∃ s, toYamlValue (.plainScalarFlow content h hfirst hnoCS hnoSH hnoFlow) = .scalar s ∧ s.style = .plain := by
   exact ⟨⟨content, .plain, none, none, none⟩, rfl, rfl⟩
 
 /-- Single-quoted scalars produce `.singleQuoted` style. -/
@@ -289,8 +294,8 @@ the grammar→value correspondence.
 -/
 theorem scalar_content_preserved (n : ValidNode) (v : YamlValue)
     (h : NodeToValue n v) :
-    (∀ c hne, n = .plainScalarBlock c hne → ∃ s, v = .scalar s ∧ s.content = c) ∧
-    (∀ c hne, n = .plainScalarFlow c hne → ∃ s, v = .scalar s ∧ s.content = c) ∧
+    (∀ c hne hf hcs hsh, n = .plainScalarBlock c hne hf hcs hsh → ∃ s, v = .scalar s ∧ s.content = c) ∧
+    (∀ c hne hf hcs hsh hfl, n = .plainScalarFlow c hne hf hcs hsh hfl → ∃ s, v = .scalar s ∧ s.content = c) ∧
     (∀ c, n = .singleQuoted c → ∃ s, v = .scalar s ∧ s.content = c) ∧
     (∀ c, n = .doubleQuoted c → ∃ s, v = .scalar s ∧ s.content = c) ∧
     (∀ c i ch, n = .literalScalar c i ch → ∃ s, v = .scalar s ∧ s.content = c) ∧
@@ -298,8 +303,8 @@ theorem scalar_content_preserved (n : ValidNode) (v : YamlValue)
   have hv := nodeToValue_implies_toYamlValue h
   subst hv
   exact ⟨
-    fun c hne heq => by subst heq; exact ⟨_, rfl, rfl⟩,
-    fun c hne heq => by subst heq; exact ⟨_, rfl, rfl⟩,
+    fun c hne _ _ _ heq => by subst heq; exact ⟨_, rfl, rfl⟩,
+    fun c hne _ _ _ _ heq => by subst heq; exact ⟨_, rfl, rfl⟩,
     fun c heq => by subst heq; exact ⟨_, rfl, rfl⟩,
     fun c heq => by subst heq; exact ⟨_, rfl, rfl⟩,
     fun c i ch heq => by subst heq; exact ⟨_, rfl, rfl⟩,
@@ -385,8 +390,8 @@ theorem validYaml_value_eq_toYamlValue (vy : ValidYaml) :
 is any scalar constructor, the value is a `YamlValue.scalar`.
 -/
 theorem validYaml_scalar_is_scalar (vy : ValidYaml) :
-    (∃ c h, vy.grammar = .plainScalarBlock c h) ∨
-    (∃ c h, vy.grammar = .plainScalarFlow c h) ∨
+    (∃ c h hf hcs hsh, vy.grammar = .plainScalarBlock c h hf hcs hsh) ∨
+    (∃ c h hf hcs hsh hfl, vy.grammar = .plainScalarFlow c h hf hcs hsh hfl) ∨
     (∃ c, vy.grammar = .singleQuoted c) ∨
     (∃ c, vy.grammar = .doubleQuoted c) ∨
     (∃ c i ch, vy.grammar = .literalScalar c i ch) ∨
@@ -394,7 +399,7 @@ theorem validYaml_scalar_is_scalar (vy : ValidYaml) :
     ∃ s, vy.value = .scalar s := by
   intro h
   rw [validYaml_value_eq_toYamlValue]
-  rcases h with ⟨c, h, heq⟩ | ⟨c, h, heq⟩ | ⟨c, heq⟩ | ⟨c, heq⟩ | ⟨c, i, ch, heq⟩ | ⟨c, i, ch, heq⟩ <;>
+  rcases h with ⟨c, h, _, _, _, heq⟩ | ⟨c, h, _, _, _, _, heq⟩ | ⟨c, heq⟩ | ⟨c, heq⟩ | ⟨c, i, ch, heq⟩ | ⟨c, i, ch, heq⟩ <;>
   rw [heq] <;> exact ⟨_, rfl⟩
 
 /--
