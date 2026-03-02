@@ -51,7 +51,7 @@
   ✓ Example example-6.1
   ✓ Example example-6.10
   ✓ Example example-6.11
-  ✗ Example example-6.12: trailing content at line 2, column 2
+  ✓ Example example-6.12
   ✓ Example example-6.13
   ✓ Example example-6.14
   ✓ Example example-6.15
@@ -147,5 +147,4 @@
   ✓ Example example-10.8
   ✓ Example example-10.9
 
-=== Results: 131/132 passed ===
-    1 FAILED
+=== Results: 132/132 passed ===

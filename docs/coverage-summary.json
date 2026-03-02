@@ -1,5 +1,5 @@
 {
-  "date": "2026-03-01T22:32:49-0800",
+  "date": "2026-03-02T07:49:20-0800",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -2945,10 +2945,10 @@
         "total": 66
       },
       {
-        "allPass": false,
+        "allPass": true,
         "label": "Flow Completeness Tests",
-        "passed": 85,
-        "total": 86
+        "passed": 88,
+        "total": 88
       },
       {
         "allPass": true,
@@ -2969,9 +2969,9 @@
         "total": 29
       },
       {
-        "allPass": false,
+        "allPass": true,
         "label": "YAML 1.2.2 Spec Examples",
-        "passed": 131,
+        "passed": 132,
         "total": 132
       },
       {
@@ -2987,9 +2987,9 @@
         "total": 32
       },
       {
-        "allPass": false,
+        "allPass": true,
         "label": "YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline)",
-        "passed": 131,
+        "passed": 132,
         "total": 132
       },
       {
@@ -2999,7 +2999,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 745,
-    "totalTests": 748
+    "totalPassed": 750,
+    "totalTests": 750
   }
 }
