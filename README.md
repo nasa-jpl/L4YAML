@@ -5100,7 +5100,7 @@ limitation of `#guard` / `#eval` contexts in Lean 4.28.
 inspection of the inline test binaries (`explicitkeytests`, `scannertests`,
 `rawparsetests`, `flowtests`, `specexamples`, `scannerspecexamples`) revealed
 **25 verified test errors** grouped into **5 root causes**.  P10.9 fixes the
-first 4 root causes (22 tests); Root Cause F (3 tests) is deferred.
+all 5 root causes (25/25 tests fixed).
 
 #### Root Causes
 
@@ -5109,7 +5109,7 @@ first 4 root causes (22 tests); Root Cause F (3 tests) is deferred.
 | A+B | 16 | **Explicit `?` key produces double `key` tokens.** `scanKey` did not invalidate the pending simple key, so `saveSimpleKey` recorded the key's content-node as a new implicit key. The subsequent `:` then retroactively confirmed it, emitting a duplicate `key` + `blockMappingStart`. Additionally, `scanValue` pushed a mapping indent even when the explicit key had already emitted the mapping structure. | ✅ Fixed |
 | C | 3 | **`trailingContent` guard rejects same-line nested mapping.** Originally misidentified as a parser bug — re-analysis confirms the YAML spec §8.2.1 [200] requires `s-b-comment` (line break) before block collections. `b: x: y` on a single line is spec-invalid (confirmed by test ZCZ6). | ✅ Tests corrected |
 | D+E | 3 | **Anchor map stores raw/annotated values.** `addAnchor` pushed values with unresolved `*alias` references and `anchor` wrappers. Transitive aliases and stale anchor annotations persisted in the map. Additionally, anchors leaked across document boundaries. | ✅ Fixed |
-| F | 3 | **Flat simple key stack can't span flow collections.** Flow mappings used as block mapping keys (`{{a:b}: nested}`, Spec Example 6.12) fail because the simple key mechanism doesn't survive nested flow collection scanning. | Deferred |
+| F | 3 | **Flat simple key stack can't span flow collections.** Flow mappings used as block mapping keys (`{{a:b}: nested}`, Spec Example 6.12) fail because the simple key mechanism doesn't survive nested flow collection scanning. | ✅ Fixed |
 
 #### Fix A+B: Explicit Key Handling (Scanner.lean)
 
@@ -5157,6 +5157,33 @@ Two changes:
    this reset, `doc1` would inherit `doc0`'s anchor map and lookups would find stale
    values via `findSome?`.
 
+#### Fix F: Simple Key Stack (Scanner.lean, ScannerContracts.lean, ScannerLoopInvariant.lean)
+
+The root problem: `scanFlowMappingStart`/`scanFlowSequenceStart` destroy the pending
+`simpleKey` by setting `possible := false`.  When a flow collection is used as a
+mapping key (e.g., `{a: b}: value`), the outer simple key — saved before `{` — is
+lost, so `:` after `}` can't confirm it.
+
+Fix: add `simpleKeyStack : Array SimpleKeyState := #[]` to `ScannerState`.  Flow
+collection open functions push the current `simpleKey` before clearing it; flow
+collection close functions pop the stack to restore the outer simple key:
+
+- **`scanFlowSequenceStart` / `scanFlowMappingStart`** — `let savedKey := s.simpleKey;
+  s := { s with simpleKeyStack := s.simpleKeyStack.push savedKey, simpleKey := { possible := false } }`
+- **`scanFlowSequenceEnd` / `scanFlowMappingEnd`** — `let restored := s.simpleKeyStack.back?.getD {};
+  s := { s with simpleKey := restored, simpleKeyStack := s.simpleKeyStack.pop }`
+
+The `WellFormed` predicate gains a fourth conjunct: `s.simpleKeyStack.size = s.flowStack.size`.
+New theorems in `ScannerContracts.lean`:
+- `emit_simpleKeyStack`: emit preserves `simpleKeyStack`
+- `scanFlowSequenceStart_simpleKeyStack_sync`: push maintains size invariant
+- `scanFlowMappingStart_simpleKeyStack_sync`: push maintains size invariant
+
+`ScannerLoopInvariant.lean` updated:
+- `advance_simpleKeyStack`: advance preserves `simpleKeyStack`
+- `advance_preserves_wellFormed` and `emit_preserves_wellFormed`: updated from
+  3-conjunct to 4-conjunct destructuring
+
 #### Why Proofs Did Not Catch These Errors
 
 The existing proofs operate at the **grammar specification level** — they verify
@@ -5201,9 +5228,10 @@ below the grammar proof layer.  Closing it would require either:
 | explicitkeytests | 50/66 | 66/66 | +16 |
 | scannertests | 29/32 | 32/32 | +3 |
 | rawparsetests | 28/29 | 29/29 | +1 |
-| flowtests | N/66 | (N+0)/66 | Root Cause F deferred |
-| specexamples | N-1/N | N-1/N | Root Cause F deferred |
-| Remaining failures | 25 | 3 | −22 (Root Cause F) |
+| flowtests | 85/88 | 88/88 | +3 |
+| specexamples | 131/132 | 132/132 | +1 |
+| scannerspecexamples | 131/132 | 132/132 | +1 |
+| Remaining failures | 25 | 0 | −25 |
 
 **Files changed:**
 - `Lean4Yaml/Scanner.lean`: `explicitKeyActive : Bool` → `explicitKeyLine : Option Nat`;
@@ -5211,6 +5239,9 @@ below the grammar proof layer.  Closing it would require either:
 - `Lean4Yaml/TokenParser.lean`: `addAnchor` resolves aliases + strips anchors;
   `parseStream` resets anchors between documents
 - `Tests/ScannerTests.lean`: `b: x: y` test expectations corrected (error, not success)
+- `Lean4Yaml/Proofs/ScannerContracts.lean`: 4-conjunct `WellFormed`, `emit_simpleKeyStack`,
+  `simpleKeyStack` sync theorems, expanded `#guard` checks
+- `Lean4Yaml/Proofs/ScannerLoopInvariant.lean`: `advance_simpleKeyStack`, 4-conjunct proof updates
 
 ### Dependencies
 
@@ -5225,7 +5256,7 @@ below the grammar proof layer.  Closing it would require either:
 - **P10.6e** depends on P10.6d — ✅ complete (P10.6e.1 ✅, P10.6e.2 ✅, P10.6e.3 ✅)
 - **P10.7** depends on P10.6e — ✅ complete (spec table, running tests, Proofs/README.md updated)
 - **P10.8** depends on P10.7 — ready (P10.7 ✅ complete)
-- **P10.9** depends on P10.8 — ✅ complete (22/25 verified test errors fixed, Root Cause F deferred)
+- **P10.9** depends on P10.8 — ✅ complete (25/25 verified test errors fixed)
 - **Phase 8** (comment preservation) should target the tokenized parser only — if P10 completes first, Phase 8 has a single implementation target
 
 ### Estimated Effort
