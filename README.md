@@ -5018,6 +5018,51 @@ participate in the termination checker's structural analysis).  Using
 `def` instead works — the proofs are still machine-checked, just
 not marked irreducible.
 
+**P10.8f reflections — scanner completeness sub-phases (f.1–f.4):**
+
+**8. `stripAnnotations` preserves `ScalarStyle`, defeating naive
+round-trip equality.**  The target theorem `canonical_roundtrip`
+originally aimed for `stripAnnotations` equality.  But `stripAnnotations`
+zeroes tags/anchors/blockMeta while **preserving** `ScalarStyle`.  The
+emitter always produces double-quoted scalars (`style = .doubleQuoted`),
+so parsing the emitter output yields DQ scalars in `toYamlValue`.  When
+the source `ValidNode` is a `plainScalarBlock` (style `.plain`), the
+two sides have different styles even after stripping.  The solution was
+to split the round-trip into two levels: `contentEq` (ignores style —
+works universally) and `stripAnnotations ==` (only for "canonical" DQ +
+flow nodes).  This mismatch was not apparent from the type signatures alone
+and required reading all five fields of `Scalar` to diagnose.
+
+**9. `Bool.and_eq_true` is a simp lemma, not an iff — decomposing `&&`
+requires care.**  In Lean 4 v4.28.0, `Bool.and_eq_true.mp` does not exist.
+The pattern `simp only [Bool.and_eq_true] at h` rewrites
+`(a && b) = true` into `a = true ∧ b = true`, but applied to
+`contentEqList (v₁::v₂::rest₁) (v₂::v₃::rest₂)` it recursively unfolds
+the entire list, destroying the induction hypothesis.  The fix was to
+`have h_and : (contentEq v₁ v₂ && contentEqList rest₁ rest₂) = true := h`
+to re-fold the recursive call before applying `simp only [Bool.and_eq_true]`.
+
+**10. `show ... from rfl` is the key idiom for re-folding definitions.**
+Lean's `simp` aggressively unfolds recursive functions.  When a proof
+needs the folded form (e.g., `emitPairList ((k,v)::rest)` rather than
+`"\"" ++ escapeChar ... ++ "\": \"" ++ ...`), the idiom
+`rw [show emitPairList ((k,v)::rest) = ... from rfl]` forces Lean to
+recognize the unfolded expression as equal to the folded call.  This
+pattern appeared in every mutual recursion in `ScannerEmitBridge.lean`.
+
+**11. `List.Mem` constructors changed in Lean 4.28.**  The proof term
+`List.mem_cons_self v rest` (from mathlib / older Lean) does not exist.
+Instead, `List.Mem` uses `.head rest` and `.tail elem proof`.  This
+affected all list membership proofs in the mutual termination blocks
+(`decreasing_by` for `emitList_stripAnnotationsList` etc.).
+
+**12. Array indexing `docs[⟨0, h⟩]` fails in `#guard` — use `List`
+pattern matching.**  Anonymous constructor syntax `⟨0, h⟩ : Fin n` is
+rejected inside `#guard` blocks.  The workaround is
+`match docs.toList with | d :: _ => ...` combined with
+`List.toList_toArray` for bridge lemmas.  This is a recurring
+limitation of `#guard` / `#eval` contexts in Lean 4.28.
+
 </details>
 
 ### Risk Analysis
