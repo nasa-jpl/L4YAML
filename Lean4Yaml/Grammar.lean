@@ -376,6 +376,10 @@ inductive ValidNode where
   | flowSeq (items : List ValidNode)
   /-- [137] c-flow-mapping(n,c) (§7.4.2) — Flow mapping -/
   | flowMap (entries : List (ValidNode × ValidNode))
+  /-- [72] e-node (§7.2.1) — Empty node (implicit null).
+      YAML 1.2.2: `e-node ::= e-scalar`, `e-scalar ::= /* empty */`.
+      The parser produces this for absent values (e.g., empty block entries). -/
+  | emptyNode
 
 /-! ## Document Grammar (YAML 1.2.2 §9: https://yaml.org/spec/1.2.2/#chapter-9-document-stream-productions) -/
 
@@ -517,6 +521,9 @@ inductive NodeToValue : ValidNode → YamlValue → Prop where
       NodeToValue
         (.flowMap entries)
         (.mapping .flow (pairs.toArray) none)
+  /-- [72] e-node — empty node maps to the null plain scalar. -/
+  | emptyNode :
+      NodeToValue .emptyNode (.scalar ⟨"", .plain, none, none, none⟩)
 
 /--
 **The specification**: a string `s` is valid YAML producing value `v`.
@@ -570,6 +577,7 @@ def toYamlValue : ValidNode → YamlValue
   | .flowSeq items => .sequence .flow (toYamlValueList items).toArray none
   | .flowMap entries =>
       .mapping .flow (toYamlValuePairs entries).toArray none
+  | .emptyNode => .scalar ⟨"", .plain, none, none, none⟩
 where
   /-- Map a list of nodes to a list of values. -/
   toYamlValueList : List ValidNode → List YamlValue
@@ -579,6 +587,74 @@ where
   toYamlValuePairs : List (ValidNode × ValidNode) → List (YamlValue × YamlValue)
     | [] => []
     | (k, v) :: rest => (toYamlValue k, toYamlValue v) :: toYamlValuePairs rest
+
+/-! ## Annotation Stripping
+
+`stripAnnotations` removes all non-semantic metadata (tags, anchors,
+block-scalar metadata) from a `YamlValue`, keeping only the content
+and style.  This bridges the parser output (which carries tags/anchors
+from node properties) to the `toYamlValue` output (which produces
+values with `none` for those fields).
+
+Structurally recursive via list helpers, mirroring `toYamlValue`.
+-/
+
+/--
+Strip tags, anchors, and block-scalar metadata from a `YamlValue`.
+
+Preserves only the **semantic core**: scalar content + style,
+collection style + recursive structure.  Alias nodes are left as-is
+(they carry no annotations).
+-/
+def stripAnnotations : YamlValue → YamlValue
+  | .scalar s => .scalar ⟨s.content, s.style, none, none, none⟩
+  | .sequence style items _ _ =>
+      .sequence style (stripAnnotationsList items.toList).toArray
+  | .mapping style pairs _ _ =>
+      .mapping style (stripAnnotationsPairs pairs.toList).toArray
+  | .alias name => .alias name
+where
+  /-- Strip annotations from a list of values. -/
+  stripAnnotationsList : List YamlValue → List YamlValue
+    | [] => []
+    | v :: vs => stripAnnotations v :: stripAnnotationsList vs
+  /-- Strip annotations from a list of value pairs. -/
+  stripAnnotationsPairs : List (YamlValue × YamlValue) → List (YamlValue × YamlValue)
+    | [] => []
+    | (k, v) :: rest =>
+        (stripAnnotations k, stripAnnotations v) :: stripAnnotationsPairs rest
+
+/-! ## Grammable Predicate
+
+A `YamlValue` is *grammable* when it contains no alias nodes and every
+nested plain scalar satisfies the YAML grammar's character-level
+constraints.  This is the precondition for recovering a `ValidNode`
+witness — it captures the *scanner contract* that the parser relies on.
+-/
+
+/--
+A `YamlValue` is **grammable** if:
+1. It contains no `YamlValue.alias` nodes (aliases must be resolved first).
+2. Every nested plain scalar with non-empty content satisfies
+   `validPlainFirst`, `noColonSpace`, and `noSpaceHash`.
+
+The scanner guarantees these properties for every token it emits.
+After composition (alias resolution), property (1) is also satisfied.
+-/
+inductive Grammable : YamlValue → Prop where
+  | scalar (s : Scalar)
+      (h : s.style = .plain → s.content.length > 0 →
+           validPlainFirst s.content ∧ noColonSpace s.content ∧ noSpaceHash s.content) :
+      Grammable (.scalar s)
+  | sequence (style : CollectionStyle) (items : Array YamlValue)
+      (tag : Option String) (anchor : Option String)
+      (h : ∀ i : Fin items.size, Grammable items[i]) :
+      Grammable (.sequence style items tag anchor)
+  | mapping (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
+      (tag : Option String) (anchor : Option String)
+      (hk : ∀ i : Fin pairs.size, Grammable pairs[i].1)
+      (hv : ∀ i : Fin pairs.size, Grammable pairs[i].2) :
+      Grammable (.mapping style pairs tag anchor)
 
 /-! ## Quoted Scalar Fold Result Type
 

@@ -118,6 +118,7 @@ def toYamlValue_nodeToValue : (n : ValidNode) → NodeToValue n (toYamlValue n)
   | .doubleQuoted content => .doubleQuoted content
   | .literalScalar content indent chomp => .literalScalar content indent chomp
   | .foldedScalar content indent chomp => .foldedScalar content indent chomp
+  | .emptyNode => .emptyNode
   | .blockSeq indent items => by
       simp [toYamlValue, toYamlValueList_eq_map]
       exact .blockSeq indent items (items.map toYamlValue) (by simp) (fun i hi => by
@@ -195,6 +196,7 @@ theorem nodeToValue_implies_toYamlValue {n : ValidNode} {v : YamlValue}
   | doubleQuoted _ => rfl
   | literalScalar _ _ _ => rfl
   | foldedScalar _ _ _ => rfl
+  | emptyNode => rfl
   | blockSeq indent nodes vals hlen hcorr ih =>
     simp [toYamlValue, toYamlValueList_eq_map]
     exact vals_eq_map_of_ih nodes vals hlen ih
@@ -299,7 +301,8 @@ theorem scalar_content_preserved (n : ValidNode) (v : YamlValue)
     (∀ c, n = .singleQuoted c → ∃ s, v = .scalar s ∧ s.content = c) ∧
     (∀ c, n = .doubleQuoted c → ∃ s, v = .scalar s ∧ s.content = c) ∧
     (∀ c i ch, n = .literalScalar c i ch → ∃ s, v = .scalar s ∧ s.content = c) ∧
-    (∀ c i ch, n = .foldedScalar c i ch → ∃ s, v = .scalar s ∧ s.content = c) := by
+    (∀ c i ch, n = .foldedScalar c i ch → ∃ s, v = .scalar s ∧ s.content = c) ∧
+    (n = .emptyNode → ∃ s, v = .scalar s ∧ s.content = "") := by
   have hv := nodeToValue_implies_toYamlValue h
   subst hv
   exact ⟨
@@ -308,7 +311,8 @@ theorem scalar_content_preserved (n : ValidNode) (v : YamlValue)
     fun c heq => by subst heq; exact ⟨_, rfl, rfl⟩,
     fun c heq => by subst heq; exact ⟨_, rfl, rfl⟩,
     fun c i ch heq => by subst heq; exact ⟨_, rfl, rfl⟩,
-    fun c i ch heq => by subst heq; exact ⟨_, rfl, rfl⟩⟩
+    fun c i ch heq => by subst heq; exact ⟨_, rfl, rfl⟩,
+    fun heq => by subst heq; exact ⟨_, rfl, rfl⟩⟩
 
 /-! ## §4  Collection Soundness
 
@@ -395,11 +399,12 @@ theorem validYaml_scalar_is_scalar (vy : ValidYaml) :
     (∃ c, vy.grammar = .singleQuoted c) ∨
     (∃ c, vy.grammar = .doubleQuoted c) ∨
     (∃ c i ch, vy.grammar = .literalScalar c i ch) ∨
-    (∃ c i ch, vy.grammar = .foldedScalar c i ch) →
+    (∃ c i ch, vy.grammar = .foldedScalar c i ch) ∨
+    (vy.grammar = .emptyNode) →
     ∃ s, vy.value = .scalar s := by
   intro h
   rw [validYaml_value_eq_toYamlValue]
-  rcases h with ⟨c, h, _, _, _, heq⟩ | ⟨c, h, _, _, _, _, heq⟩ | ⟨c, heq⟩ | ⟨c, heq⟩ | ⟨c, i, ch, heq⟩ | ⟨c, i, ch, heq⟩ <;>
+  rcases h with ⟨c, h, _, _, _, heq⟩ | ⟨c, h, _, _, _, _, heq⟩ | ⟨c, heq⟩ | ⟨c, heq⟩ | ⟨c, i, ch, heq⟩ | ⟨c, i, ch, heq⟩ | heq <;>
   rw [heq] <;> exact ⟨_, rfl⟩
 
 /--
