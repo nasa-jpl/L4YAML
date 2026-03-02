@@ -82,9 +82,9 @@ Demo.lean                    # End-to-end demo examples (7 tests)
 
 Verification uses a deliberate 3-layer approach:
 
-1. **Internal runtime tests** (1041 tests across 14 suites + 11 diagnostic + 2×132 spec examples) — hand-written Lean tests validating parser properties. Every `theorem` target starts life as a runtime `check` test. These are _separate_ from the yaml-test-suite's 406 external test cases. Additionally, 132 examples extracted from the YAML 1.2.2 specification (§2–§10) are parsed as an extra conformance layer — both the old parser pipeline and the Phase 9 scanner/parser pipeline achieve 132/132 (100%).
-2. **Formal proofs** (`theorem`/`lemma` in `Proofs/*.lean`) — machine-checked guarantees. Layered by dependency: pure functions first, then parser invariants, then full soundness.
-3. **Compile-time guards** (`#guard`) — 76 hand-written + 351 auto-generated from yaml-test-suite (in `Proofs/SuiteGuards/*.lean`). All parsers are total (via lean4-parser `well-founded-streams` branch + Steps 3.3.2–3.3.3), so `#guard` kernel evaluation works. Any parser regression breaks the build.
+1. **Internal runtime tests** (1041 tests across 14 suites + 11 diagnostic + 132 spec examples) — hand-written Lean tests validating parser properties. Every `theorem` target starts life as a runtime `check` test. These are _separate_ from the yaml-test-suite's 406 external test cases. Additionally, 132 examples extracted from the YAML 1.2.2 specification (§2–§10) are parsed as an extra conformance layer — the tokenized pipeline (`Scanner.lean` → `TokenParser.lean`) achieves 132/132 (100%).
+2. **Formal proofs** (`theorem`/`lemma` in `Proofs/*.lean`) — machine-checked guarantees. Layered by dependency: pure functions first, then scanner invariants, then pipeline composition.
+3. **Compile-time guards** (`#guard`) — 76 hand-written + 351 auto-generated from yaml-test-suite (in `Proofs/SuiteGuards/*.lean`). `#guard` kernel evaluation works for all scanner functions (total `def`); `TokenParser.lean` functions marked `partial def` are exercised via `native_decide` in `Completeness.lean`. Any parser regression breaks the build.
 
 The runtime tests serve as a proof roadmap: each `setCategory`/`check` group maps to a `theorem` target. When a proof is completed, the corresponding tests become redundant (but are kept as regression guards).
 
@@ -2779,7 +2779,7 @@ Resolved all four open questions from the original plan:
 1. **Batch scanning** — `scan : String → Except String (Array (Positioned YamlToken))` produces the complete token array before parsing begins. Pure function with no lazy evaluation.
 2. **Explicit state** — `ScannerState` struct with `Id.run do` mutable locals. No state monad.
 3. **Hand-written token parser** — Recursive descent over `Array (Positioned YamlToken)` with explicit `ParseState` threading. No lean4-parser dependency for the grammar layer.
-4. **API compatible** — `TokenParser.parseYaml` has the same `String → Except String (Array YamlDocument)` signature. Both old and new parsers coexist.
+4. **API compatible** — `TokenParser.parseYaml` has the same `String → Except String (Array YamlDocument)` signature. _(The old single-pass parser was removed in Phase 10; the tokenized pipeline is now the sole implementation.)_
 
 The `b: x: y` regression is fixed: the scanner produces `KEY "b" VALUE KEY "x" VALUE "y"` tokens, and the parser builds `{b: {x: y}}` — the correct YAML 1.2.2 nested mapping interpretation.
 
@@ -4498,7 +4498,7 @@ P10.6d (spec compliance fixes) took multiple intensive rounds to drive 87 unexpe
 
 </details>
 
-#### P10.7: Documentation & Spec Table Update
+#### P10.7: Documentation & Spec Table Update ✅
 
 <details>
 
@@ -4509,6 +4509,216 @@ P10.6d (spec compliance fixes) took multiple intensive rounds to drive 87 unexpe
 3. Update the "Building" and "Running Tests" sections if any executable names changed
 4. Archive Phase 9's "both parsers coexist" language — the tokenized parser is now the sole implementation
 5. Update proof file descriptions in `Proofs/README.md`
+
+</details>
+
+#### P10.8: TokenParser Total Recursion & Soundness Bridge
+
+<details>
+
+**Goal**: Refactor the 7 `partial def` functions in `TokenParser.lean` to use
+well-founded recursion, enabling the Lean 4 kernel to unfold parser definitions
+in proofs. This is the prerequisite for universal soundness and completeness
+theorems connecting the parser to `Grammar.lean`.
+
+##### Motivation
+
+The current `TokenParser.lean` uses `partial def` + `maxDepth` for all 7
+mutual recursive functions. This is safe at runtime but **opaque to the
+kernel**: Lean 4 refuses to unfold `partial` definitions in proofs. The
+consequence is that:
+
+- `Soundness.lean` proves properties of `Grammar → YamlValue` (spec-internal
+  consistency) but cannot connect to the parser.
+- `Completeness.lean` uses `native_decide` on specific inputs — compile-time
+  verification, not universal theorems.
+- The stated goal `parse_sound : parse s = .ok v → ValidYaml s v` is
+  **unprovable** with `partial def` because `parse` cannot be unfolded.
+
+##### Analysis: Why the current parser terminates
+
+Every execution path through the mutual recursion **consumes at least one
+token** before recursing:
+
+| Function | Tokens consumed before recursive call |
+|----------|--------------------------------------|
+| `parseNode` | Properties (anchor/tag) are consumed, then dispatch consumes a start token (`blockSequenceStart`, `flowMappingStart`, etc.) before calling a collection parser. Scalar case consumes 1 token (no recursion). |
+| `parseBlockSequence` | Consumes `blockSequenceStart` + each loop iteration consumes `blockEntry` before calling `parseNode`. |
+| `parseImplicitBlockSequence` | Each loop iteration consumes `blockEntry` before calling `parseNode`. |
+| `parseBlockMapping` | Consumes `blockMappingStart` + each loop iteration consumes `key`/`value` before calling `parseNode`. |
+| `parseFlowSequence` | Consumes `flowSequenceStart` + each loop iteration consumes `flowEntry` before calling `parseNode`. |
+| `parseFlowMapping` | Consumes `flowMappingStart` + each loop iteration consumes `flowEntry`/`key` before calling `parseNode`. |
+| `parseSinglePairMapping` | Consumes `key` before calling `parseNode`. |
+
+The natural termination measure is `ps.tokens.size - ps.pos` (remaining
+tokens), which strictly decreases at every recursive call site. The existing
+`fuel := ps.tokens.size - ps.pos` loops already encode this measure — they
+just don't prove it.
+
+##### Design: Fuel-indexed recursion
+
+Replace `partial def` with explicit `fuel : Nat` parameter and
+`termination_by fuel`:
+
+```lean
+mutual
+def parseNode (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) :=
+  match fuel with
+  | 0 => .error (.nestingDepthExceeded ps.currentLine)
+  | fuel + 1 => do
+    -- ... (body as before, passing `fuel` to sub-calls)
+
+def parseBlockSequence (ps : ParseState) (fuel : Nat) : ... :=
+  match fuel with
+  | 0 => .error (...)
+  | fuel + 1 => do
+    -- ... (each recursive call uses `fuel`)
+end
+termination_by parseNode _ fuel => fuel
+termination_by parseBlockSequence _ fuel => fuel
+-- etc.
+```
+
+**Why fuel, not `tokens.size - ps.pos`?**
+
+Using `ps.tokens.size - ps.pos` as the measure would require **proving**
+at every recursive call site that `ps'.pos > ps.pos`. This is true but
+non-trivial to discharge — it requires lemmas about `advance`, `expect`,
+`tryConsume`, and the compound `parseNodeProperties` function. The fuel
+approach sidesteps this: `fuel` is a plain `Nat` that decreases by
+pattern matching, so `termination_by` is trivial.
+
+The tradeoff is that completeness proofs must show the initial fuel
+(`tokens.size`) suffices for valid inputs. This is straightforward since
+every token is consumed at most once.
+
+##### Sub-phases
+
+**P10.8a — Loop extraction** (estimated: 2–3 days)
+
+Convert the 6 `for _ in [:fuel] do` loops into tail-recursive helper
+functions. The `for` loop desugaring in `do` blocks creates opaque
+`ForIn` instances that are hostile to `termination_by`.
+
+| Loop site | Replacement |
+|-----------|-------------|
+| `parseBlockSequence` loop | `parseBlockSequenceEntries (ps : ParseState) (fuel : Nat) (acc : Array YamlValue)` |
+| `parseImplicitBlockSequence` loop | `parseImplicitBlockSeqEntries (ps : ParseState) (fuel : Nat) (acc : Array YamlValue)` |
+| `parseBlockMapping` loop | `parseBlockMappingEntries (ps : ParseState) (fuel : Nat) (acc : Array (YamlValue × YamlValue))` |
+| `parseFlowSequence` loop | `parseFlowSequenceEntries (ps : ParseState) (fuel : Nat) (acc : Array YamlValue)` |
+| `parseFlowMapping` loop | `parseFlowMappingEntries (ps : ParseState) (fuel : Nat) (acc : Array (YamlValue × YamlValue))` |
+| `parseNodeProperties` loop | Already bounded (`[:2]`), can use explicit `if`/`else` chain |
+
+Target: 7 `partial def` → 12–13 `def` in the mutual block (7 original +
+5–6 loop helpers). Build passes, identical behavior on all test inputs.
+
+**Validation**: `lake build` zero warnings, `lake exe suiterunner` and
+all internal test suites produce identical results.
+
+**P10.8b — `partial` → `def` with `termination_by`** (estimated: 3–5 days)
+
+Remove `partial` from all mutual functions. Add `termination_by fuel`
+or `termination_by (fuel, ps.tokens.size - ps.pos)` (lexicographic) if
+needed. Lean's `decreasing_by` obligations will require:
+
+- `fuel` strictly decreases at every `match fuel with | fuel + 1 => ...`
+- (If using position measure) `ps'.pos > ps.pos` after `advance`/`expect`
+
+Key challenge: `parseBlockMapping` has **two** recursive `parseNode` calls
+per loop iteration (key + value), each returning an updated `ps'`. The
+fuel must cover both. With position-based measure, each call's position
+advance must be proved. With fuel, simply pass `fuel` to both.
+
+**Validation**: `lake build` succeeds without `partial`. All tests pass.
+Proofs in `ScannerContracts.lean`, `Soundness.lean`, `Completeness.lean`
+still compile.
+
+**P10.8c — Grammar cleanup** (estimated: 1–2 days)
+
+1. **Remove orphaned structures**: `ValidPlainScalarBlock`,
+   `ValidPlainScalarFlow`, `ValidSingleQuoted`, `ValidDoubleQuoted`,
+   `ValidLiteralScalar`, `ValidFoldedScalar` — all unused outside
+   `Grammar.lean`. Their fields are already inlined in `ValidNode`
+   constructors.
+
+2. **Enrich `ValidNode` with character-level constraints** for key
+   scalar constructors. Currently `plainScalarBlock` only carries
+   `content : String` + `nonempty : content.length > 0`. For soundness,
+   it should carry the production rule constraints:
+   - First character satisfies `canStartPlainScalar`
+   - Content doesn't contain `: ` or ` #` substrings (block context)
+   - Content doesn't contain flow indicators (flow context)
+
+3. **Add `ValidTokenStream`** inductive relating a `String` to an
+   `Array (Positioned YamlToken)` — the scanner's contract. This bridges
+   `Grammar.ValidNode` (string-level) to `TokenParser` (token-level).
+
+**Validation**: `lake build`, all existing proofs still compile.
+
+**P10.8d — Soundness theorem** (estimated: 5–8 days)
+
+Prove the forward direction:
+
+```lean
+theorem parseStream_sound (tokens : Array (Positioned YamlToken))
+    (docs : Array YamlDocument) (fuel : Nat)
+    (h : parseStream tokens fuel = .ok docs) :
+    ∀ i (hi : i < docs.size),
+      ∃ n : ValidNode, NodeToValue n docs[i].value
+```
+
+This requires:
+1. `parseNode` returns a `YamlValue` that corresponds to some `ValidNode`
+2. Each branch (scalar, block sequence, flow mapping, etc.) constructs
+   the appropriate `ValidNode` constructor
+3. Induction on `fuel` with the recursive structure of the mutual block
+
+The proof is structural: each `match` branch in `parseNode` maps to a
+`ValidNode` constructor, and the recursive calls provide the sub-nodes
+by induction hypothesis.
+
+**P10.8e — Completeness theorem** (estimated: 5–8 days)
+
+Prove the reverse direction:
+
+```lean
+theorem parseStream_complete (tokens : Array (Positioned YamlToken))
+    (n : ValidNode) (fuel : Nat) (hfuel : fuel ≥ tokens.size) :
+    ∃ docs, parseStream tokens fuel = .ok docs ∧
+      ∃ i, NodeToValue n docs[i].value
+```
+
+This is harder because it requires showing that valid grammar nodes
+produce token streams that the parser accepts. The key lemma is
+**scanner correctness**: `Scanner.scan input = .ok tokens →`
+the tokens faithfully represent the input's grammar structure.
+
+Scanner correctness is a separate (and substantial) proof obligation
+that may warrant its own sub-phase.
+
+##### Risk analysis
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| `for` loop extraction changes behavior | Low | High | Identical-output testing on full suite before removing `partial` |
+| `termination_by` obligations don't close with `omega` | Medium | Medium | Fall back to fuel-only measure (always closes trivially) |
+| Mutual `termination_by` in Lean 4 v4.28.0 has bugs | Medium | High | Test with a minimal 2-function mutual block first |
+| `parseBlockMapping` double-recursion needs lexicographic measure | Medium | Low | Fuel subsumes this: pass same `fuel` to both key and value calls |
+| Grammar enrichment (P10.8c) breaks existing Soundness.lean proofs | Low | Medium | P10.8c is isolated; existing theorems use current `ValidNode` shape |
+| Scanner correctness proof (needed for P10.8e) is unbounded effort | High | High | P10.8e can be deferred; P10.8a–P10.8d already deliver substantial value |
+
+##### Estimated effort
+
+| Sub-phase | Effort | Deliverable |
+|-----------|--------|-------------|
+| P10.8a | 2–3 days | Loop extraction, behavioral equivalence |
+| P10.8b | 3–5 days | `partial` removal, `termination_by` |
+| P10.8c | 1–2 days | Grammar cleanup + enrichment |
+| P10.8d | 5–8 days | `parseStream_sound` universal theorem |
+| P10.8e | 5–8 days | `parseStream_complete` (may require scanner correctness) |
+| **Total** | **16–26 days** | Full soundness/completeness bridge |
+
+**Status**: Not started. Depends on P10.7 (documentation cleanup).
 
 </details>
 
@@ -4551,7 +4761,8 @@ P10.6d (spec compliance fixes) took multiple intensive rounds to drive 87 unexpe
 - **P10.6c** depends on P10.6b — not started (test diagnostics improvement)
 - **P10.6d** depends on P10.6c — ✅ complete (87→0 UPs, yaml-test-suite 100%)
 - **P10.6e** depends on P10.6d — ✅ complete (P10.6e.1 ✅, P10.6e.2 ✅, P10.6e.3 ✅)
-- **P10.7** depends on P10.6e — ready (P10.6e ✅ complete)
+- **P10.7** depends on P10.6e — ✅ complete (spec table, running tests, Proofs/README.md updated)
+- **P10.8** depends on P10.7 — ready (P10.7 ✅ complete)
 - **Phase 8** (comment preservation) should target the tokenized parser only — if P10 completes first, Phase 8 has a single implementation target
 
 ### Estimated Effort
@@ -4569,7 +4780,8 @@ P10.6d (spec compliance fixes) took multiple intensive rounds to drive 87 unexpe
 | P10.6d | 3–5 days | Fix 87 UPs: tab rejection, directive strictness, flow state, implicit key limits, indentation, structure validation |
 | P10.6e | 5–8 days | Production rule traceability (2–3d) + subtype contracts (3–5d) |
 | P10.7 | 0.5 day | Documentation update |
-| **Total** | **15–23 days** | — |
+| P10.8 | 16–26 days | TokenParser total recursion (2–3d) + partial removal (3–5d) + grammar cleanup (1–2d) + soundness (5–8d) + completeness (5–8d) |
+| **Total** | **31–49 days** | — |
 
 </details>
 
@@ -4736,22 +4948,21 @@ lake build suiterunner tryparse && lake exe suiterunner --html docs/
 # → generates docs/index.html, per-stage coverage pages, and
 #   docs/coverage-summary.json (machine-readable per-test/per-stage results)
 
-# Internal test suites (940 hand-written tests across 12 suites)
+# Internal test suites
 lake exe tests              # Unit tests (17)
-lake exe parsetest           # Parser integration (25)
-lake exe quotedfolding       # Quoted folding (34)
-lake exe anchortests         # Anchor/alias tests (33)
-lake exe tagtests            # Tag tests (44)
 lake exe explicitkeytests    # Explicit key tests (66)
 lake exe flowtests           # Flow completeness tests (88)
-lake exe charclass           # CharClass correspondence tests (224)
-lake exe verification        # Layer 1 verification (138)
-lake exe stringlemmas        # String lemma tests (129)
 lake exe validationtests     # Structural validation tests (135)
 lake exe demo                # Demo examples (7)
 lake exe flowregressioncheck # Flow regression diagnostics (11)
 lake exe specexamples        # YAML 1.2.2 spec examples (132 from §2–§10)
-lake exe scannerspecexamples  # Same 132 examples via Phase 9 scanner/parser
+lake exe scannerspecexamples  # Same 132 examples via tokenized pipeline
+lake exe scannertests        # Scanner/parser pipeline tests (33)
+lake exe rawparsetests       # Raw parse tests
+lake exe dumproundtrip       # Dump round-trip tests
+lake exe schemadump          # Schema↔Dump integration tests (68)
+lake exe errorstagediag      # Error-stage pipeline diagnostic
+lake exe scalarstagediag     # Scalar-stage diagnostic
 
 # Re-extract spec examples from yaml.org (requires curl)
 lake build extractSpecExamples && ./.lake/build/bin/extractSpecExamples
@@ -4776,73 +4987,73 @@ Complete section-by-section coverage of YAML 1.2.2 Chapters 5–9.
 | Section | Title | Productions | Implementation | Proofs | Status |
 |---------|-------|-------------|----------------|--------|--------|
 | [§5.1](https://yaml.org/spec/1.2.2/#51-character-set) | Character Set | [[1] c-printable](https://yaml.org/spec/1.2.2/#rule-c-printable) | [`Grammar.isPrintable`](Lean4Yaml/Grammar.lean) | [`EscapeResolution.lean`](Lean4Yaml/Proofs/EscapeResolution.lean) | ✅ |
-| [§5.2](https://yaml.org/spec/1.2.2/#52-character-encodings) | Character Encodings | [2]–[3] [c-byte-order-mark](https://yaml.org/spec/1.2.2/#rule-c-byte-order-mark) | [`Document.skipBOM`](Lean4Yaml/Parser/Document.lean) | [`Composition.skipBOM_noop`](Lean4Yaml/Proofs/Composition.lean) | ✅ |
-| [§5.3](https://yaml.org/spec/1.2.2/#53-indicator-characters) | Indicator Characters | [22]–[24] [c-indicator](https://yaml.org/spec/1.2.2/#rule-c-indicator), [c-flow-indicator](https://yaml.org/spec/1.2.2/#rule-c-flow-indicator) | [`Grammar.isFlowIndicator`](Lean4Yaml/Grammar.lean), [`Combinators.isIndicator`](Lean4Yaml/Parser/Combinators.lean), [`Combinators.isFlowIndicator`](Lean4Yaml/Parser/Combinators.lean) | [`CharClass.isFlowIndicator_correspondence`](Lean4Yaml/Proofs/CharClass.lean), [`CharClass.isIndicator_equiv`](Lean4Yaml/Proofs/CharClass.lean) | ✅ |
-| [§5.4](https://yaml.org/spec/1.2.2/#54-line-break-characters) | Line Break Characters | [25]–[30] [b-line-feed](https://yaml.org/spec/1.2.2/#rule-b-line-feed), [b-char](https://yaml.org/spec/1.2.2/#rule-b-char), [b-break](https://yaml.org/spec/1.2.2/#rule-b-break) | [`Grammar.isLineBreak`](Lean4Yaml/Grammar.lean), [`Combinators.isLineBreak`](Lean4Yaml/Parser/Combinators.lean), [`Combinators.newline`](Lean4Yaml/Parser/Combinators.lean) | [`CharClass.isLineBreak_correspondence`](Lean4Yaml/Proofs/CharClass.lean), [`EscapeResolution.lean`](Lean4Yaml/Proofs/EscapeResolution.lean) | ✅ |
-| [§5.5](https://yaml.org/spec/1.2.2/#55-white-space-characters) | White Space Characters | [31]–[34] [s-space](https://yaml.org/spec/1.2.2/#rule-s-space), [s-tab](https://yaml.org/spec/1.2.2/#rule-s-tab), [s-white](https://yaml.org/spec/1.2.2/#rule-s-white), [ns-char](https://yaml.org/spec/1.2.2/#rule-ns-char) | [`Grammar.isWhiteSpace`](Lean4Yaml/Grammar.lean), [`Grammar.isIndentChar`](Lean4Yaml/Grammar.lean), [`Combinators.isWhiteSpace`](Lean4Yaml/Parser/Combinators.lean) | [`CharClass.isWhiteSpace_correspondence`](Lean4Yaml/Proofs/CharClass.lean), [`CharClass.isIndentChar_iff`](Lean4Yaml/Proofs/CharClass.lean) | ✅ |
-| [§5.6](https://yaml.org/spec/1.2.2/#56-miscellaneous-characters) | Miscellaneous Characters | [35]–[40] [ns-dec-digit](https://yaml.org/spec/1.2.2/#rule-ns-dec-digit), [ns-hex-digit](https://yaml.org/spec/1.2.2/#rule-ns-hex-digit), [ns-ascii-letter](https://yaml.org/spec/1.2.2/#rule-ns-ascii-letter), [ns-word-char](https://yaml.org/spec/1.2.2/#rule-ns-word-char), [ns-uri-char](https://yaml.org/spec/1.2.2/#rule-ns-uri-char), [ns-tag-char](https://yaml.org/spec/1.2.2/#rule-ns-tag-char) | [`Scalar.unicodeEscape`](Lean4Yaml/Parser/Scalar.lean) (hex), [`Combinators.isAnchorChar`](Lean4Yaml/Parser/Combinators.lean) ([38] superset), [`Tag.isTagChar`](Lean4Yaml/Parser/Tag.lean) ([39]–[40]) | — | ✅ Impl |
-| [§5.7](https://yaml.org/spec/1.2.2/#57-escaped-characters) | Escaped Characters | [41]–[61] [c-ns-esc-char](https://yaml.org/spec/1.2.2/#rule-c-ns-esc-char) and 20 specific escapes | [`Grammar.resolveNamedEscape`](Lean4Yaml/Grammar.lean), [`Scalar.escapeSequence`](Lean4Yaml/Parser/Scalar.lean), [`Emitter.escapeChar`](Lean4Yaml/Emitter.lean) | [`EscapeResolution.lean`](Lean4Yaml/Proofs/EscapeResolution.lean) (16 theorems), [`RoundTrip.lean`](Lean4Yaml/Proofs/RoundTrip.lean) §2 (13 theorems), [`RoundTrip.lean`](Lean4Yaml/Proofs/RoundTrip.lean) §8 (`escapeTag_roundtrip`) | ✅ |
+| [§5.2](https://yaml.org/spec/1.2.2/#52-character-encodings) | Character Encodings | [2]–[3] [c-byte-order-mark](https://yaml.org/spec/1.2.2/#rule-c-byte-order-mark) | [`Scanner.scan`](Lean4Yaml/Scanner.lean) (BOM skip at scan start) | [`ScannerProofs.lean`](Lean4Yaml/Proofs/ScannerProofs.lean) | ✅ |
+| [§5.3](https://yaml.org/spec/1.2.2/#53-indicator-characters) | Indicator Characters | [22]–[24] [c-indicator](https://yaml.org/spec/1.2.2/#rule-c-indicator), [c-flow-indicator](https://yaml.org/spec/1.2.2/#rule-c-flow-indicator) | [`Grammar.isFlowIndicator`](Lean4Yaml/Grammar.lean), [`Scanner.isIndicator`](Lean4Yaml/Scanner.lean), [`Scanner.isFlowIndicator`](Lean4Yaml/Scanner.lean) | [`CharClass.isFlowIndicator_correspondence`](Lean4Yaml/Proofs/CharClass.lean), [`CharClass.isIndicator_equiv`](Lean4Yaml/Proofs/CharClass.lean) | ✅ |
+| [§5.4](https://yaml.org/spec/1.2.2/#54-line-break-characters) | Line Break Characters | [25]–[30] [b-line-feed](https://yaml.org/spec/1.2.2/#rule-b-line-feed), [b-char](https://yaml.org/spec/1.2.2/#rule-b-char), [b-break](https://yaml.org/spec/1.2.2/#rule-b-break) | [`Grammar.isLineBreak`](Lean4Yaml/Grammar.lean), [`Scanner.isLineBreak`](Lean4Yaml/Scanner.lean), [`Scanner.consumeNewline`](Lean4Yaml/Scanner.lean) | [`CharClass.isLineBreak_correspondence`](Lean4Yaml/Proofs/CharClass.lean), [`EscapeResolution.lean`](Lean4Yaml/Proofs/EscapeResolution.lean) | ✅ |
+| [§5.5](https://yaml.org/spec/1.2.2/#55-white-space-characters) | White Space Characters | [31]–[34] [s-space](https://yaml.org/spec/1.2.2/#rule-s-space), [s-tab](https://yaml.org/spec/1.2.2/#rule-s-tab), [s-white](https://yaml.org/spec/1.2.2/#rule-s-white), [ns-char](https://yaml.org/spec/1.2.2/#rule-ns-char) | [`Grammar.isWhiteSpace`](Lean4Yaml/Grammar.lean), [`Grammar.isIndentChar`](Lean4Yaml/Grammar.lean), [`Scanner.isWhiteSpace`](Lean4Yaml/Scanner.lean) | [`CharClass.isWhiteSpace_correspondence`](Lean4Yaml/Proofs/CharClass.lean), [`CharClass.isIndentChar_iff`](Lean4Yaml/Proofs/CharClass.lean) | ✅ |
+| [§5.6](https://yaml.org/spec/1.2.2/#56-miscellaneous-characters) | Miscellaneous Characters | [35]–[40] [ns-dec-digit](https://yaml.org/spec/1.2.2/#rule-ns-dec-digit), [ns-hex-digit](https://yaml.org/spec/1.2.2/#rule-ns-hex-digit), [ns-ascii-letter](https://yaml.org/spec/1.2.2/#rule-ns-ascii-letter), [ns-word-char](https://yaml.org/spec/1.2.2/#rule-ns-word-char), [ns-uri-char](https://yaml.org/spec/1.2.2/#rule-ns-uri-char), [ns-tag-char](https://yaml.org/spec/1.2.2/#rule-ns-tag-char) | [`Scanner.parseHexEscape`](Lean4Yaml/Scanner.lean) (hex), [`Scanner.scanAnchorOrAlias`](Lean4Yaml/Scanner.lean) ([38] superset), [`Scanner.scanTag`](Lean4Yaml/Scanner.lean) ([39]–[40]) | [`ScannerProofs.lean`](Lean4Yaml/Proofs/ScannerProofs.lean) | ✅ |
+| [§5.7](https://yaml.org/spec/1.2.2/#57-escaped-characters) | Escaped Characters | [41]–[61] [c-ns-esc-char](https://yaml.org/spec/1.2.2/#rule-c-ns-esc-char) and 20 specific escapes | [`Grammar.resolveNamedEscape`](Lean4Yaml/Grammar.lean), [`Scanner.processEscape`](Lean4Yaml/Scanner.lean), [`Emitter.escapeChar`](Lean4Yaml/Emitter.lean) | [`EscapeResolution.lean`](Lean4Yaml/Proofs/EscapeResolution.lean) (16 theorems), [`RoundTrip.lean`](Lean4Yaml/Proofs/RoundTrip.lean) §2 (13 theorems), [`RoundTrip.lean`](Lean4Yaml/Proofs/RoundTrip.lean) §8 (`escapeTag_roundtrip`) | ✅ |
 
 ### Chapter 6: Structural Productions
 
 | Section | Title | Productions | Implementation | Proofs | Status |
 |---------|-------|-------------|----------------|--------|--------|
-| [§6.1](https://yaml.org/spec/1.2.2/#61-indentation-spaces) | Indentation Spaces | [63]–[66] [s-indent(n)](https://yaml.org/spec/1.2.2/#rule-s-indent), [s-indent(<n)](https://yaml.org/spec/1.2.2/#rule-s-indent), [s-indent(≤n)](https://yaml.org/spec/1.2.2/#rule-s-indent) | [`Grammar.Indented`](Lean4Yaml/Grammar.lean), [`Combinators.consumeIndent`](Lean4Yaml/Parser/Combinators.lean), [`Combinators.checkIndentForTabs`](Lean4Yaml/Parser/Combinators.lean) | [`IndentConsumption.lean`](Lean4Yaml/Proofs/IndentConsumption.lean) (9 theorems), [`Validation.lean`](Lean4Yaml/Proofs/Validation.lean), [`CharClass.isIndentChar_iff`](Lean4Yaml/Proofs/CharClass.lean) | ✅ |
-| [§6.2](https://yaml.org/spec/1.2.2/#62-separation-spaces) | Separation Spaces | [66]–[67] [s-separate-in-line](https://yaml.org/spec/1.2.2/#rule-s-separate-in-line) | [`Combinators.skipSpaces`](Lean4Yaml/Parser/Combinators.lean), [`Combinators.skipHWhitespace`](Lean4Yaml/Parser/Combinators.lean) | — | ✅ Impl |
-| [§6.3](https://yaml.org/spec/1.2.2/#63-line-prefixes) | Line Prefixes | [68]–[70] [s-line-prefix(n,c)](https://yaml.org/spec/1.2.2/#rule-s-line-prefix) | [`Combinators.consumeIndent`](Lean4Yaml/Parser/Combinators.lean) (block), [`Scalar.foldQuotedNewlines`](Lean4Yaml/Parser/Scalar.lean) (flow) | — | ✅ Impl |
-| [§6.4](https://yaml.org/spec/1.2.2/#64-empty-lines) | Empty Lines | [71] [l-empty(n,c)](https://yaml.org/spec/1.2.2/#rule-l-empty) | [`Flow.lean`](Lean4Yaml/Parser/Flow.lean) (flow whitespace), [`Combinators.skipBlankLines`](Lean4Yaml/Parser/Combinators.lean), [`Combinators.countEmptyLines`](Lean4Yaml/Parser/Combinators.lean) | — | ✅ Impl |
-| [§6.5](https://yaml.org/spec/1.2.2/#65-line-folding) | Line Folding | [72]–[74] [b-l-trimmed](https://yaml.org/spec/1.2.2/#rule-b-l-trimmed), [b-as-space](https://yaml.org/spec/1.2.2/#rule-b-as-space), [b-l-folded(n,c)](https://yaml.org/spec/1.2.2/#rule-b-l-folded) | [`Combinators.checkContinuation`](Lean4Yaml/Parser/Combinators.lean), [`Scalar.foldQuotedNewlines`](Lean4Yaml/Parser/Scalar.lean) | [`FoldNewlines.lean`](Lean4Yaml/Proofs/FoldNewlines.lean) (18 theorems) | ✅ |
-| [§6.6](https://yaml.org/spec/1.2.2/#66-comments) | Comments | [75]–[79] [c-nb-comment-text](https://yaml.org/spec/1.2.2/#rule-c-nb-comment-text), [b-comment](https://yaml.org/spec/1.2.2/#rule-b-comment), [s-b-comment](https://yaml.org/spec/1.2.2/#rule-s-b-comment), [l-comment](https://yaml.org/spec/1.2.2/#rule-l-comment), [s-l-comments](https://yaml.org/spec/1.2.2/#rule-s-l-comments) | [`Combinators.comment`](Lean4Yaml/Parser/Combinators.lean), [`Combinators.skipTrailing`](Lean4Yaml/Parser/Combinators.lean) | — | ✅ Impl (text discarded — see [Phase 8](#phase-8-comment-preservation--planned)) |
-| [§6.7](https://yaml.org/spec/1.2.2/#67-separation-lines) | Separation Lines | [79]–[81] [s-separate-in-line](https://yaml.org/spec/1.2.2/#rule-s-separate-in-line), [s-l-comments](https://yaml.org/spec/1.2.2/#rule-s-l-comments), [s-separate(n,c)](https://yaml.org/spec/1.2.2/#rule-s-separate) | [`Combinators.skipTrailing`](Lean4Yaml/Parser/Combinators.lean), [`Scalar.lean`](Lean4Yaml/Parser/Scalar.lean), [`Flow.lean`](Lean4Yaml/Parser/Flow.lean), [`Block.lean`](Lean4Yaml/Parser/Block.lean), [`Document.lean`](Lean4Yaml/Parser/Document.lean) | [`DocumentContracts.lean`](Lean4Yaml/Proofs/DocumentContracts.lean) | ✅ |
-| [§6.8](https://yaml.org/spec/1.2.2/#68-directives) | Directives | [82]–[88] [l-directive](https://yaml.org/spec/1.2.2/#rule-l-directive), [ns-yaml-directive](https://yaml.org/spec/1.2.2/#rule-ns-yaml-directive), [ns-tag-directive](https://yaml.org/spec/1.2.2/#rule-ns-tag-directive) | [`Document.parseDirective`](Lean4Yaml/Parser/Document.lean) | [`DocumentContracts.lean`](Lean4Yaml/Proofs/DocumentContracts.lean) | ✅ |
-| [§6.8.1](https://yaml.org/spec/1.2.2/#681-tag-directives) | Tag Directives | [85] [ns-tag-directive](https://yaml.org/spec/1.2.2/#rule-ns-tag-directive) | [`Document.parseDirective`](Lean4Yaml/Parser/Document.lean), [`Tag.parseTagHandle`](Lean4Yaml/Parser/Tag.lean) | [`DocumentContracts.lean`](Lean4Yaml/Proofs/DocumentContracts.lean) | ✅ |
-| [§6.8.2](https://yaml.org/spec/1.2.2/#682-tag-handles) | Tag Handles | [86]–[88] [c-primary-tag-handle](https://yaml.org/spec/1.2.2/#rule-c-primary-tag-handle), [c-secondary-tag-handle](https://yaml.org/spec/1.2.2/#rule-c-secondary-tag-handle), [c-named-tag-handle](https://yaml.org/spec/1.2.2/#rule-c-named-tag-handle) | [`Tag.parseTagHandle`](Lean4Yaml/Parser/Tag.lean), [`Stream.getTagHandles/setTagHandles`](Lean4Yaml/Stream.lean) | [`DocumentContracts.lean`](Lean4Yaml/Proofs/DocumentContracts.lean) | ✅ |
-| [§6.9](https://yaml.org/spec/1.2.2/#69-node-properties) | Node Properties | [95]–[98] [c-ns-properties(n,c)](https://yaml.org/spec/1.2.2/#rule-c-ns-properties) | [`Tag.parseTagPrefix`](Lean4Yaml/Parser/Tag.lean), [`Anchor.parseAnchorPrefix`](Lean4Yaml/Parser/Anchor.lean) (combined in [`Block.lean`](Lean4Yaml/Parser/Block.lean)/[`Flow.lean`](Lean4Yaml/Parser/Flow.lean) dispatch) | — | ✅ Impl |
-| [§6.9.1](https://yaml.org/spec/1.2.2/#691-node-tags) | Node Tags | [95]–[98] [c-ns-tag-property](https://yaml.org/spec/1.2.2/#rule-c-ns-tag-property), [c-verbatim-tag](https://yaml.org/spec/1.2.2/#rule-c-verbatim-tag), [c-ns-shorthand-tag](https://yaml.org/spec/1.2.2/#rule-c-ns-shorthand-tag), [c-non-specific-tag](https://yaml.org/spec/1.2.2/#rule-c-non-specific-tag) | [`Tag.parseTagPrefix`](Lean4Yaml/Parser/Tag.lean) (all 5 tag forms) | — | ✅ Impl |
-| [§6.9.2](https://yaml.org/spec/1.2.2/#692-node-anchors) | Node Anchors | [99]–[103] [c-ns-anchor-property](https://yaml.org/spec/1.2.2/#rule-c-ns-anchor-property), [ns-anchor-char](https://yaml.org/spec/1.2.2/#rule-ns-anchor-char), [ns-anchor-name](https://yaml.org/spec/1.2.2/#rule-ns-anchor-name) | [`Anchor.parseAnchorPrefix`](Lean4Yaml/Parser/Anchor.lean), [`Anchor.parseAlias`](Lean4Yaml/Parser/Anchor.lean), [`Combinators.isAnchorChar`](Lean4Yaml/Parser/Combinators.lean) | [`PerParserSpecs.parseAlias_*`](Lean4Yaml/Proofs/PerParserSpecs.lean) | ✅ |
+| [§6.1](https://yaml.org/spec/1.2.2/#61-indentation-spaces) | Indentation Spaces | [63]–[66] [s-indent(n)](https://yaml.org/spec/1.2.2/#rule-s-indent), [s-indent(<n)](https://yaml.org/spec/1.2.2/#rule-s-indent), [s-indent(≤n)](https://yaml.org/spec/1.2.2/#rule-s-indent) | [`Grammar.Indented`](Lean4Yaml/Grammar.lean), [`Scanner.unwindIndents`](Lean4Yaml/Scanner.lean), [`Scanner.pushSequenceIndent`](Lean4Yaml/Scanner.lean), [`Scanner.pushMappingIndent`](Lean4Yaml/Scanner.lean) | [`ScannerIndent.lean`](Lean4Yaml/Proofs/ScannerIndent.lean), [`CharClass.isIndentChar_iff`](Lean4Yaml/Proofs/CharClass.lean) | ✅ |
+| [§6.2](https://yaml.org/spec/1.2.2/#62-separation-spaces) | Separation Spaces | [66]–[67] [s-separate-in-line](https://yaml.org/spec/1.2.2/#rule-s-separate-in-line) | [`Scanner.skipSpaces`](Lean4Yaml/Scanner.lean), [`Scanner.skipWhitespace`](Lean4Yaml/Scanner.lean) | — | ✅ Impl |
+| [§6.3](https://yaml.org/spec/1.2.2/#63-line-prefixes) | Line Prefixes | [68]–[70] [s-line-prefix(n,c)](https://yaml.org/spec/1.2.2/#rule-s-line-prefix) | [`Scanner.skipToContent`](Lean4Yaml/Scanner.lean) (block), [`Scanner.foldQuotedNewlines`](Lean4Yaml/Scanner.lean) (flow) | — | ✅ Impl |
+| [§6.4](https://yaml.org/spec/1.2.2/#64-empty-lines) | Empty Lines | [71] [l-empty(n,c)](https://yaml.org/spec/1.2.2/#rule-l-empty) | [`Scanner.skipToContent`](Lean4Yaml/Scanner.lean), [`Scanner.skipWhitespace`](Lean4Yaml/Scanner.lean) | — | ✅ Impl |
+| [§6.5](https://yaml.org/spec/1.2.2/#65-line-folding) | Line Folding | [72]–[74] [b-l-trimmed](https://yaml.org/spec/1.2.2/#rule-b-l-trimmed), [b-as-space](https://yaml.org/spec/1.2.2/#rule-b-as-space), [b-l-folded(n,c)](https://yaml.org/spec/1.2.2/#rule-b-l-folded) | [`Scanner.foldQuotedNewlines`](Lean4Yaml/Scanner.lean), [`Scanner.foldBlockContent`](Lean4Yaml/Scanner.lean) | [`FoldNewlines.lean`](Lean4Yaml/Proofs/FoldNewlines.lean) (18 theorems) | ✅ |
+| [§6.6](https://yaml.org/spec/1.2.2/#66-comments) | Comments | [75]–[79] [c-nb-comment-text](https://yaml.org/spec/1.2.2/#rule-c-nb-comment-text), [b-comment](https://yaml.org/spec/1.2.2/#rule-b-comment), [s-b-comment](https://yaml.org/spec/1.2.2/#rule-s-b-comment), [l-comment](https://yaml.org/spec/1.2.2/#rule-l-comment), [s-l-comments](https://yaml.org/spec/1.2.2/#rule-s-l-comments) | [`Scanner.skipToContent`](Lean4Yaml/Scanner.lean) (comment skip during whitespace consumption) | — | ✅ Impl (text discarded — see [Phase 8](#phase-8-comment-preservation--planned)) |
+| [§6.7](https://yaml.org/spec/1.2.2/#67-separation-lines) | Separation Lines | [79]–[81] [s-separate-in-line](https://yaml.org/spec/1.2.2/#rule-s-separate-in-line), [s-l-comments](https://yaml.org/spec/1.2.2/#rule-s-l-comments), [s-separate(n,c)](https://yaml.org/spec/1.2.2/#rule-s-separate) | [`Scanner.skipToContent`](Lean4Yaml/Scanner.lean), [`Scanner.scanNextToken`](Lean4Yaml/Scanner.lean) | [`DocumentContracts.lean`](Lean4Yaml/Proofs/DocumentContracts.lean) | ✅ |
+| [§6.8](https://yaml.org/spec/1.2.2/#68-directives) | Directives | [82]–[88] [l-directive](https://yaml.org/spec/1.2.2/#rule-l-directive), [ns-yaml-directive](https://yaml.org/spec/1.2.2/#rule-ns-yaml-directive), [ns-tag-directive](https://yaml.org/spec/1.2.2/#rule-ns-tag-directive) | [`Scanner.scanDirective`](Lean4Yaml/Scanner.lean), [`TokenParser.parseDirectives`](Lean4Yaml/TokenParser.lean) | [`DocumentContracts.lean`](Lean4Yaml/Proofs/DocumentContracts.lean) | ✅ |
+| [§6.8.1](https://yaml.org/spec/1.2.2/#681-tag-directives) | Tag Directives | [85] [ns-tag-directive](https://yaml.org/spec/1.2.2/#rule-ns-tag-directive) | [`Scanner.scanDirective`](Lean4Yaml/Scanner.lean), [`TokenParser.parseDirectives`](Lean4Yaml/TokenParser.lean) | [`DocumentContracts.lean`](Lean4Yaml/Proofs/DocumentContracts.lean) | ✅ |
+| [§6.8.2](https://yaml.org/spec/1.2.2/#682-tag-handles) | Tag Handles | [86]–[88] [c-primary-tag-handle](https://yaml.org/spec/1.2.2/#rule-c-primary-tag-handle), [c-secondary-tag-handle](https://yaml.org/spec/1.2.2/#rule-c-secondary-tag-handle), [c-named-tag-handle](https://yaml.org/spec/1.2.2/#rule-c-named-tag-handle) | [`Scanner.scanTag`](Lean4Yaml/Scanner.lean), [`TokenParser.parseDirectives`](Lean4Yaml/TokenParser.lean) | [`DocumentContracts.lean`](Lean4Yaml/Proofs/DocumentContracts.lean) | ✅ |
+| [§6.9](https://yaml.org/spec/1.2.2/#69-node-properties) | Node Properties | [95]–[98] [c-ns-properties(n,c)](https://yaml.org/spec/1.2.2/#rule-c-ns-properties) | [`Scanner.scanTag`](Lean4Yaml/Scanner.lean), [`Scanner.scanAnchorOrAlias`](Lean4Yaml/Scanner.lean), [`TokenParser.parseNodeProperties`](Lean4Yaml/TokenParser.lean) | — | ✅ Impl |
+| [§6.9.1](https://yaml.org/spec/1.2.2/#691-node-tags) | Node Tags | [95]–[98] [c-ns-tag-property](https://yaml.org/spec/1.2.2/#rule-c-ns-tag-property), [c-verbatim-tag](https://yaml.org/spec/1.2.2/#rule-c-verbatim-tag), [c-ns-shorthand-tag](https://yaml.org/spec/1.2.2/#rule-c-ns-shorthand-tag), [c-non-specific-tag](https://yaml.org/spec/1.2.2/#rule-c-non-specific-tag) | [`Scanner.scanTag`](Lean4Yaml/Scanner.lean) (all 5 tag forms), [`TokenParser.parseNodeProperties`](Lean4Yaml/TokenParser.lean) | — | ✅ Impl |
+| [§6.9.2](https://yaml.org/spec/1.2.2/#692-node-anchors) | Node Anchors | [99]–[103] [c-ns-anchor-property](https://yaml.org/spec/1.2.2/#rule-c-ns-anchor-property), [ns-anchor-char](https://yaml.org/spec/1.2.2/#rule-ns-anchor-char), [ns-anchor-name](https://yaml.org/spec/1.2.2/#rule-ns-anchor-name) | [`Scanner.scanAnchorOrAlias`](Lean4Yaml/Scanner.lean), [`TokenParser.parseNodeProperties`](Lean4Yaml/TokenParser.lean) | [`ScannerProofs.lean`](Lean4Yaml/Proofs/ScannerProofs.lean) | ✅ |
 
 ### Chapter 7: Flow Style Productions
 
 | Section | Title | Productions | Implementation | Proofs | Status |
 |---------|-------|-------------|----------------|--------|--------|
-| [§7.1](https://yaml.org/spec/1.2.2/#71-alias-nodes) | Alias Nodes | [103] [c-ns-alias-node](https://yaml.org/spec/1.2.2/#rule-c-ns-alias-node) | [`Anchor.parseAlias`](Lean4Yaml/Parser/Anchor.lean) | [`PerParserSpecs.parseAlias_known`](Lean4Yaml/Proofs/PerParserSpecs.lean), [`PerParserSpecs.parseAlias_unknown`](Lean4Yaml/Proofs/PerParserSpecs.lean) | ✅ |
-| [§7.2](https://yaml.org/spec/1.2.2/#72-empty-nodes) | Empty Nodes | [104]–[105] [e-node](https://yaml.org/spec/1.2.2/#rule-e-node), [e-scalar](https://yaml.org/spec/1.2.2/#rule-e-scalar) | Implicit: [`YamlValue.null`](Lean4Yaml/Types.lean) default in [`Block.blockMappingEntry`](Lean4Yaml/Parser/Block.lean), [`Flow.flowMappingEntry`](Lean4Yaml/Parser/Flow.lean) | — | ✅ Impl |
-| [§7.3](https://yaml.org/spec/1.2.2/#73-flow-scalar-styles) | Flow Scalar Styles | [106] [ns-flow-yaml-content(n,c)](https://yaml.org/spec/1.2.2/#rule-ns-flow-yaml-content) | [`Scalar.lean`](Lean4Yaml/Parser/Scalar.lean) (dispatch to double/single/plain) | [`RoundTrip.lean`](Lean4Yaml/Proofs/RoundTrip.lean) | ✅ |
-| [§7.3.1](https://yaml.org/spec/1.2.2/#731-double-quoted-style) | Double-Quoted Style | [107]–[117] [c-double-quoted(n,c)](https://yaml.org/spec/1.2.2/#rule-c-double-quoted) | [`Grammar.DoubleQuotedScalar`](Lean4Yaml/Grammar.lean), [`Scalar.doubleQuotedScalar`](Lean4Yaml/Parser/Scalar.lean) | [`PerParserSpecs.doubleQuotedScalar_*`](Lean4Yaml/Proofs/PerParserSpecs.lean) | ✅ |
-| [§7.3.2](https://yaml.org/spec/1.2.2/#732-single-quoted-style) | Single-Quoted Style | [118]–[125] [c-single-quoted(n,c)](https://yaml.org/spec/1.2.2/#rule-c-single-quoted) | [`Grammar.SingleQuotedScalar`](Lean4Yaml/Grammar.lean), [`Scalar.singleQuotedScalar`](Lean4Yaml/Parser/Scalar.lean) | [`PerParserSpecs.singleQuotedScalar_*`](Lean4Yaml/Proofs/PerParserSpecs.lean) | ✅ |
-| [§7.3.3](https://yaml.org/spec/1.2.2/#733-plain-style) | Plain Style | [123]–[133] [ns-plain-first(c)](https://yaml.org/spec/1.2.2/#rule-ns-plain-first), [ns-plain(n,c)](https://yaml.org/spec/1.2.2/#rule-ns-plain) | [`Grammar.canStartPlainScalar`](Lean4Yaml/Grammar.lean), [`Combinators.isPlainSafe`](Lean4Yaml/Parser/Combinators.lean), [`Scalar.plainScalarSingleLine`](Lean4Yaml/Parser/Scalar.lean), [`Scalar.plainScalarContent`](Lean4Yaml/Parser/Scalar.lean) | [`CharClass.canStartPlainScalar_*`](Lean4Yaml/Proofs/CharClass.lean), [`PerParserSpecs.plainScalarSingleLine_*`](Lean4Yaml/Proofs/PerParserSpecs.lean), [`PerParserSpecs.collectPlain_*`](Lean4Yaml/Proofs/PerParserSpecs.lean) | ✅ |
-| [§7.4](https://yaml.org/spec/1.2.2/#74-flow-collection-styles) | Flow Collection Styles | [134]–[157] | [`Flow.lean`](Lean4Yaml/Parser/Flow.lean) (mutual recursion: 6 `*Impl` functions) | [`PerParserSpecs.flowSequence_spec`](Lean4Yaml/Proofs/PerParserSpecs.lean), [`PerParserSpecs.flowMapping_spec`](Lean4Yaml/Proofs/PerParserSpecs.lean), [`FuelSufficiency.lean`](Lean4Yaml/Proofs/FuelSufficiency.lean) (flow fuel-zero) | ✅ |
-| [§7.4.1](https://yaml.org/spec/1.2.2/#741-flow-sequences) | Flow Sequences | [134]–[136] [c-flow-sequence(n,c)](https://yaml.org/spec/1.2.2/#rule-c-flow-sequence) | [`Flow.flowSequenceImpl`](Lean4Yaml/Parser/Flow.lean), [`Flow.flowSequenceItems`](Lean4Yaml/Parser/Flow.lean) | [`PerParserSpecs.flowSequenceImpl_empty`](Lean4Yaml/Proofs/PerParserSpecs.lean), [`FuelSufficiency.flowSequenceImpl_zero`](Lean4Yaml/Proofs/FuelSufficiency.lean) | ✅ |
-| [§7.4.2](https://yaml.org/spec/1.2.2/#742-flow-mappings) | Flow Mappings | [137]–[157] [c-flow-mapping(n,c)](https://yaml.org/spec/1.2.2/#rule-c-flow-mapping) | [`Flow.flowMappingImpl`](Lean4Yaml/Parser/Flow.lean), [`Flow.flowMappingEntry`](Lean4Yaml/Parser/Flow.lean) | [`PerParserSpecs.flowMappingImpl_empty`](Lean4Yaml/Proofs/PerParserSpecs.lean), [`FuelSufficiency.flowMappingImpl_zero`](Lean4Yaml/Proofs/FuelSufficiency.lean) | ✅ |
-| [§7.5](https://yaml.org/spec/1.2.2/#75-flow-nodes) | Flow Nodes | [157] [ns-flow-node(n,c)](https://yaml.org/spec/1.2.2/#rule-ns-flow-node) | [`Flow.flowValue`](Lean4Yaml/Parser/Flow.lean) (anchor/tag/alias dispatch + scalar/collection) | [`Composition.flowValue_eq`](Lean4Yaml/Proofs/Composition.lean) | ✅ |
+| [§7.1](https://yaml.org/spec/1.2.2/#71-alias-nodes) | Alias Nodes | [103] [c-ns-alias-node](https://yaml.org/spec/1.2.2/#rule-c-ns-alias-node) | [`Scanner.scanAnchorOrAlias`](Lean4Yaml/Scanner.lean), [`TokenParser.parseNode`](Lean4Yaml/TokenParser.lean) (alias branch) | [`ScannerProofs.lean`](Lean4Yaml/Proofs/ScannerProofs.lean) | ✅ |
+| [§7.2](https://yaml.org/spec/1.2.2/#72-empty-nodes) | Empty Nodes | [104]–[105] [e-node](https://yaml.org/spec/1.2.2/#rule-e-node), [e-scalar](https://yaml.org/spec/1.2.2/#rule-e-scalar) | Implicit: [`YamlValue.null`](Lean4Yaml/Types.lean) default in [`TokenParser.parseBlockMapping`](Lean4Yaml/TokenParser.lean), [`TokenParser.parseFlowMapping`](Lean4Yaml/TokenParser.lean) | — | ✅ Impl |
+| [§7.3](https://yaml.org/spec/1.2.2/#73-flow-scalar-styles) | Flow Scalar Styles | [106] [ns-flow-yaml-content(n,c)](https://yaml.org/spec/1.2.2/#rule-ns-flow-yaml-content) | [`Scanner.lean`](Lean4Yaml/Scanner.lean) (dispatch to double/single/plain scanning) | [`RoundTrip.lean`](Lean4Yaml/Proofs/RoundTrip.lean) | ✅ |
+| [§7.3.1](https://yaml.org/spec/1.2.2/#731-double-quoted-style) | Double-Quoted Style | [107]–[117] [c-double-quoted(n,c)](https://yaml.org/spec/1.2.2/#rule-c-double-quoted) | [`Grammar.DoubleQuotedScalar`](Lean4Yaml/Grammar.lean), [`Scanner.scanDoubleQuoted`](Lean4Yaml/Scanner.lean) | [`ScannerProofs.lean`](Lean4Yaml/Proofs/ScannerProofs.lean), [`ScannerContracts.lean`](Lean4Yaml/Proofs/ScannerContracts.lean) | ✅ |
+| [§7.3.2](https://yaml.org/spec/1.2.2/#732-single-quoted-style) | Single-Quoted Style | [118]–[125] [c-single-quoted(n,c)](https://yaml.org/spec/1.2.2/#rule-c-single-quoted) | [`Grammar.SingleQuotedScalar`](Lean4Yaml/Grammar.lean), [`Scanner.scanSingleQuoted`](Lean4Yaml/Scanner.lean) | [`ScannerProofs.lean`](Lean4Yaml/Proofs/ScannerProofs.lean), [`ScannerContracts.lean`](Lean4Yaml/Proofs/ScannerContracts.lean) | ✅ |
+| [§7.3.3](https://yaml.org/spec/1.2.2/#733-plain-style) | Plain Style | [123]–[133] [ns-plain-first(c)](https://yaml.org/spec/1.2.2/#rule-ns-plain-first), [ns-plain(n,c)](https://yaml.org/spec/1.2.2/#rule-ns-plain) | [`Grammar.canStartPlainScalar`](Lean4Yaml/Grammar.lean), [`Scanner.isPlainSafe`](Lean4Yaml/Scanner.lean), [`Scanner.canStartPlainScalar`](Lean4Yaml/Scanner.lean), [`Scanner.scanPlainScalar`](Lean4Yaml/Scanner.lean) | [`CharClass.canStartPlainScalar_*`](Lean4Yaml/Proofs/CharClass.lean), [`ScannerProofs.lean`](Lean4Yaml/Proofs/ScannerProofs.lean) | ✅ |
+| [§7.4](https://yaml.org/spec/1.2.2/#74-flow-collection-styles) | Flow Collection Styles | [134]–[157] | [`Scanner.scanFlowSequenceStart/End`](Lean4Yaml/Scanner.lean), [`Scanner.scanFlowMappingStart/End`](Lean4Yaml/Scanner.lean), [`TokenParser.parseFlowSequence`](Lean4Yaml/TokenParser.lean), [`TokenParser.parseFlowMapping`](Lean4Yaml/TokenParser.lean) | [`Completeness.lean`](Lean4Yaml/Proofs/Completeness.lean) (concrete `native_decide`) | ✅ |
+| [§7.4.1](https://yaml.org/spec/1.2.2/#741-flow-sequences) | Flow Sequences | [134]–[136] [c-flow-sequence(n,c)](https://yaml.org/spec/1.2.2/#rule-c-flow-sequence) | [`Scanner.scanFlowSequenceStart/End`](Lean4Yaml/Scanner.lean), [`TokenParser.parseFlowSequence`](Lean4Yaml/TokenParser.lean) | [`Completeness.lean`](Lean4Yaml/Proofs/Completeness.lean) (concrete `native_decide`) | ✅ |
+| [§7.4.2](https://yaml.org/spec/1.2.2/#742-flow-mappings) | Flow Mappings | [137]–[157] [c-flow-mapping(n,c)](https://yaml.org/spec/1.2.2/#rule-c-flow-mapping) | [`Scanner.scanFlowMappingStart/End`](Lean4Yaml/Scanner.lean), [`TokenParser.parseFlowMapping`](Lean4Yaml/TokenParser.lean) | [`Completeness.lean`](Lean4Yaml/Proofs/Completeness.lean) (concrete `native_decide`) | ✅ |
+| [§7.5](https://yaml.org/spec/1.2.2/#75-flow-nodes) | Flow Nodes | [157] [ns-flow-node(n,c)](https://yaml.org/spec/1.2.2/#rule-ns-flow-node) | [`TokenParser.parseNode`](Lean4Yaml/TokenParser.lean) (anchor/tag/alias dispatch + scalar/collection) | [`Composition.lean`](Lean4Yaml/Proofs/Composition.lean) | ✅ |
 
 ### Chapter 8: Block Style Productions
 
 | Section | Title | Productions | Implementation | Proofs | Status |
 |---------|-------|-------------|----------------|--------|--------|
-| [§8.1](https://yaml.org/spec/1.2.2/#81-block-scalar-styles) | Block Scalar Styles | [158]–[179] | [`Scalar.blockScalar`](Lean4Yaml/Parser/Scalar.lean) (5-phase pipeline) | [`PerParserSpecs.blockScalar_spec`](Lean4Yaml/Proofs/PerParserSpecs.lean) | ✅ |
-| [§8.1.1](https://yaml.org/spec/1.2.2/#811-block-scalar-headers) | Block Scalar Headers | [158]–[169] [c-b-block-header(m,t)](https://yaml.org/spec/1.2.2/#rule-c-b-block-header) | [`Grammar.BlockScalarHeader`](Lean4Yaml/Grammar.lean), [`Scalar.blockScalarHeader`](Lean4Yaml/Parser/Scalar.lean) | [`BlockScalarContracts.lean`](Lean4Yaml/Proofs/BlockScalarContracts.lean) | ✅ |
-| [§8.1.2](https://yaml.org/spec/1.2.2/#812-literal-style) | Literal Style | [170]–[174] [c-l+literal(n)](https://yaml.org/spec/1.2.2/#rule-c-l+literal) | [`Grammar.LiteralBlockScalar`](Lean4Yaml/Grammar.lean), [`Scalar.blockScalar`](Lean4Yaml/Parser/Scalar.lean) (literal branch) | — | ✅ Impl |
-| [§8.1.3](https://yaml.org/spec/1.2.2/#813-folded-style) | Folded Style | [175]–[179] [c-l+folded(n)](https://yaml.org/spec/1.2.2/#rule-c-l+folded) | [`Grammar.FoldedBlockScalar`](Lean4Yaml/Grammar.lean), [`Scalar.blockScalar`](Lean4Yaml/Parser/Scalar.lean) (folded branch) | — | ✅ Impl |
-| [§8.2](https://yaml.org/spec/1.2.2/#82-block-collection-styles) | Block Collection Styles | [180]–[196] | [`Block.lean`](Lean4Yaml/Parser/Block.lean) (mutual recursion: 10 `*Impl` functions) | [`FuelSufficiency.lean`](Lean4Yaml/Proofs/FuelSufficiency.lean) (block fuel-zero), [`PerParserSpecs.blockSequence_spec/blockMapping_spec`](Lean4Yaml/Proofs/PerParserSpecs.lean) | ✅ |
-| [§8.2.1](https://yaml.org/spec/1.2.2/#821-block-sequences) | Block Sequences | [183]–[185] [l+block-sequence(n)](https://yaml.org/spec/1.2.2/#rule-l+block-sequence) | [`Block.blockSequenceImpl`](Lean4Yaml/Parser/Block.lean), [`Block.blockSequenceItems`](Lean4Yaml/Parser/Block.lean) | [`FuelSufficiency.blockSequenceImpl_zero`](Lean4Yaml/Proofs/FuelSufficiency.lean), [`Composition.blockSequence_eq`](Lean4Yaml/Proofs/Composition.lean) | ✅ |
-| [§8.2.2](https://yaml.org/spec/1.2.2/#822-block-mappings) | Block Mappings | [184]–[196] [l+block-mapping(n)](https://yaml.org/spec/1.2.2/#rule-l+block-mapping) | [`Block.blockMappingImpl`](Lean4Yaml/Parser/Block.lean), [`Block.blockMappingEntry`](Lean4Yaml/Parser/Block.lean), [`Block.detectMappingKey`](Lean4Yaml/Parser/Block.lean) | [`FuelSufficiency.blockMappingImpl_zero`](Lean4Yaml/Proofs/FuelSufficiency.lean), [`Composition.blockMapping_eq`](Lean4Yaml/Proofs/Composition.lean) | ✅ |
-| [§8.2.3](https://yaml.org/spec/1.2.2/#823-block-nodes) | Block Nodes | [196] [s-l+block-node(n,c)](https://yaml.org/spec/1.2.2/#rule-s-l+block-node) | [`Block.blockValue`](Lean4Yaml/Parser/Block.lean) (dispatch: scalar/sequence/mapping/flow) | [`Composition.blockValue_eq`](Lean4Yaml/Proofs/Composition.lean) | ✅ |
+| [§8.1](https://yaml.org/spec/1.2.2/#81-block-scalar-styles) | Block Scalar Styles | [158]–[179] | [`Scanner.scanBlockScalar`](Lean4Yaml/Scanner.lean) (5-phase pipeline) | [`ScannerContracts.lean`](Lean4Yaml/Proofs/ScannerContracts.lean) | ✅ |
+| [§8.1.1](https://yaml.org/spec/1.2.2/#811-block-scalar-headers) | Block Scalar Headers | [158]–[169] [c-b-block-header(m,t)](https://yaml.org/spec/1.2.2/#rule-c-b-block-header) | [`Grammar.BlockScalarHeader`](Lean4Yaml/Grammar.lean), [`Scanner.scanBlockScalar`](Lean4Yaml/Scanner.lean) | [`BlockScalarContracts.lean`](Lean4Yaml/Proofs/BlockScalarContracts.lean), [`ScannerContracts.lean`](Lean4Yaml/Proofs/ScannerContracts.lean) | ✅ |
+| [§8.1.2](https://yaml.org/spec/1.2.2/#812-literal-style) | Literal Style | [170]–[174] [c-l+literal(n)](https://yaml.org/spec/1.2.2/#rule-c-l+literal) | [`Grammar.LiteralBlockScalar`](Lean4Yaml/Grammar.lean), [`Scanner.scanBlockScalar`](Lean4Yaml/Scanner.lean) (literal branch) | [`ScannerContracts.lean`](Lean4Yaml/Proofs/ScannerContracts.lean) | ✅ |
+| [§8.1.3](https://yaml.org/spec/1.2.2/#813-folded-style) | Folded Style | [175]–[179] [c-l+folded(n)](https://yaml.org/spec/1.2.2/#rule-c-l+folded) | [`Grammar.FoldedBlockScalar`](Lean4Yaml/Grammar.lean), [`Scanner.scanBlockScalar`](Lean4Yaml/Scanner.lean) (folded branch) | [`ScannerContracts.lean`](Lean4Yaml/Proofs/ScannerContracts.lean) | ✅ |
+| [§8.2](https://yaml.org/spec/1.2.2/#82-block-collection-styles) | Block Collection Styles | [180]–[196] | [`Scanner.scanBlockEntry`](Lean4Yaml/Scanner.lean), [`Scanner.scanKey`](Lean4Yaml/Scanner.lean), [`Scanner.scanValue`](Lean4Yaml/Scanner.lean), [`TokenParser.parseBlockSequence`](Lean4Yaml/TokenParser.lean), [`TokenParser.parseBlockMapping`](Lean4Yaml/TokenParser.lean) | [`Completeness.lean`](Lean4Yaml/Proofs/Completeness.lean) (concrete `native_decide`) | ✅ |
+| [§8.2.1](https://yaml.org/spec/1.2.2/#821-block-sequences) | Block Sequences | [183]–[185] [l+block-sequence(n)](https://yaml.org/spec/1.2.2/#rule-l+block-sequence) | [`Scanner.scanBlockEntry`](Lean4Yaml/Scanner.lean), [`TokenParser.parseBlockSequence`](Lean4Yaml/TokenParser.lean) | [`Completeness.lean`](Lean4Yaml/Proofs/Completeness.lean) (concrete `native_decide`) | ✅ |
+| [§8.2.2](https://yaml.org/spec/1.2.2/#822-block-mappings) | Block Mappings | [184]–[196] [l+block-mapping(n)](https://yaml.org/spec/1.2.2/#rule-l+block-mapping) | [`Scanner.scanKey`](Lean4Yaml/Scanner.lean), [`Scanner.scanValue`](Lean4Yaml/Scanner.lean), [`TokenParser.parseBlockMapping`](Lean4Yaml/TokenParser.lean) | [`Completeness.lean`](Lean4Yaml/Proofs/Completeness.lean) (concrete `native_decide`) | ✅ |
+| [§8.2.3](https://yaml.org/spec/1.2.2/#823-block-nodes) | Block Nodes | [196] [s-l+block-node(n,c)](https://yaml.org/spec/1.2.2/#rule-s-l+block-node) | [`TokenParser.parseNode`](Lean4Yaml/TokenParser.lean) (dispatch: scalar/sequence/mapping/flow) | [`Composition.lean`](Lean4Yaml/Proofs/Composition.lean) | ✅ |
 
 ### Chapter 9: Document Stream Productions
 
 | Section | Title | Productions | Implementation | Proofs | Status |
 |---------|-------|-------------|----------------|--------|--------|
-| [§9.1.1](https://yaml.org/spec/1.2.2/#911-document-prefix) | Document Prefix | [200] [l-document-prefix](https://yaml.org/spec/1.2.2/#rule-l-document-prefix) | [`Document.skipBOM`](Lean4Yaml/Parser/Document.lean) (BOM), [`Document.lean`](Lean4Yaml/Parser/Document.lean) (comment handling) | [`Composition.skipBOM_noop`](Lean4Yaml/Proofs/Composition.lean) | ✅ Impl |
-| [§9.1.2](https://yaml.org/spec/1.2.2/#912-document-markers) | Document Markers | [197]–[199] [c-directives-end](https://yaml.org/spec/1.2.2/#rule-c-directives-end), [c-document-end](https://yaml.org/spec/1.2.2/#rule-c-document-end), [l-document-suffix](https://yaml.org/spec/1.2.2/#rule-l-document-suffix) | [`Grammar.isCForbiddenPrefix`](Lean4Yaml/Grammar.lean), [`Combinators.atDocumentBoundary`](Lean4Yaml/Parser/Combinators.lean), [`Document.documentEndMarker`](Lean4Yaml/Parser/Document.lean) | [`FoldNewlines.lean`](Lean4Yaml/Proofs/FoldNewlines.lean), [`DocumentContracts.lean`](Lean4Yaml/Proofs/DocumentContracts.lean) | ✅ |
-| [§9.1.3](https://yaml.org/spec/1.2.2/#913-bare-documents) | Bare Documents | [201] [l-bare-document](https://yaml.org/spec/1.2.2/#rule-l-bare-document) | [`Document.document`](Lean4Yaml/Parser/Document.lean) (bare document path) | — | ✅ Impl |
-| [§9.1.4](https://yaml.org/spec/1.2.2/#914-explicit-documents) | Explicit Documents | [202] [l-explicit-document](https://yaml.org/spec/1.2.2/#rule-l-explicit-document) | [`Document.document`](Lean4Yaml/Parser/Document.lean) (explicit `---` path) | — | ✅ Impl |
-| [§9.1.5](https://yaml.org/spec/1.2.2/#915-directives-documents) | Directives Documents | [203] [l-directive-document](https://yaml.org/spec/1.2.2/#rule-l-directive-document) | [`Document.document`](Lean4Yaml/Parser/Document.lean) (`%YAML`/`%TAG` + `---` path) | — | ✅ Impl |
-| [§9.2](https://yaml.org/spec/1.2.2/#92-streams) | Streams | [204]–[205] [l-any-document](https://yaml.org/spec/1.2.2/#rule-l-any-document), [l-yaml-stream](https://yaml.org/spec/1.2.2/#rule-l-yaml-stream) | [`Grammar.ValidYamlStream`](Lean4Yaml/Grammar.lean), [`Document.yamlStream`](Lean4Yaml/Parser/Document.lean) | [`Completeness.parseYaml_ok_iff`](Lean4Yaml/Proofs/Completeness.lean), [`Composition.parseYaml_of_yamlStream_ok`](Lean4Yaml/Proofs/Composition.lean) | ✅ |
+| [§9.1.1](https://yaml.org/spec/1.2.2/#911-document-prefix) | Document Prefix | [200] [l-document-prefix](https://yaml.org/spec/1.2.2/#rule-l-document-prefix) | [`Scanner.scan`](Lean4Yaml/Scanner.lean) (BOM skip), [`Scanner.skipToContent`](Lean4Yaml/Scanner.lean) (comment handling) | [`ScannerProofs.lean`](Lean4Yaml/Proofs/ScannerProofs.lean) | ✅ Impl |
+| [§9.1.2](https://yaml.org/spec/1.2.2/#912-document-markers) | Document Markers | [197]–[199] [c-directives-end](https://yaml.org/spec/1.2.2/#rule-c-directives-end), [c-document-end](https://yaml.org/spec/1.2.2/#rule-c-document-end), [l-document-suffix](https://yaml.org/spec/1.2.2/#rule-l-document-suffix) | [`Grammar.isCForbiddenPrefix`](Lean4Yaml/Grammar.lean), [`Scanner.atDocumentBoundary`](Lean4Yaml/Scanner.lean), [`Scanner.scanDocumentStart`](Lean4Yaml/Scanner.lean), [`Scanner.scanDocumentEnd`](Lean4Yaml/Scanner.lean) | [`FoldNewlines.lean`](Lean4Yaml/Proofs/FoldNewlines.lean), [`DocumentContracts.lean`](Lean4Yaml/Proofs/DocumentContracts.lean) | ✅ |
+| [§9.1.3](https://yaml.org/spec/1.2.2/#913-bare-documents) | Bare Documents | [201] [l-bare-document](https://yaml.org/spec/1.2.2/#rule-l-bare-document) | [`TokenParser.parseDocument`](Lean4Yaml/TokenParser.lean) (bare document path) | — | ✅ Impl |
+| [§9.1.4](https://yaml.org/spec/1.2.2/#914-explicit-documents) | Explicit Documents | [202] [l-explicit-document](https://yaml.org/spec/1.2.2/#rule-l-explicit-document) | [`TokenParser.parseDocument`](Lean4Yaml/TokenParser.lean) (explicit `---` path) | — | ✅ Impl |
+| [§9.1.5](https://yaml.org/spec/1.2.2/#915-directives-documents) | Directives Documents | [203] [l-directive-document](https://yaml.org/spec/1.2.2/#rule-l-directive-document) | [`TokenParser.parseDocument`](Lean4Yaml/TokenParser.lean) (`%YAML`/`%TAG` + `---` path) | — | ✅ Impl |
+| [§9.2](https://yaml.org/spec/1.2.2/#92-streams) | Streams | [204]–[205] [l-any-document](https://yaml.org/spec/1.2.2/#rule-l-any-document), [l-yaml-stream](https://yaml.org/spec/1.2.2/#rule-l-yaml-stream) | [`Grammar.ValidYamlStream`](Lean4Yaml/Grammar.lean), [`TokenParser.parseStream`](Lean4Yaml/TokenParser.lean) | [`Completeness.parseYaml_ok_iff`](Lean4Yaml/Proofs/Completeness.lean), [`Composition.parseYaml_pipeline`](Lean4Yaml/Proofs/Composition.lean) | ✅ |
 
 ### Coverage Summary
 
-**All 36 sections of YAML 1.2.2 Chapters 5–9 are implemented.** 28 sections have explicit `§`-citations in code; 8 sections (§5.6, §6.2, §6.3, §6.6, §7.2, §8.1.2, §9.1.1, §9.1.5) are implemented without explicit citations. 16 sections have formal proof coverage in `Proofs/*.lean`.
+**All 36 sections of YAML 1.2.2 Chapters 5–9 are implemented** via the two-pass tokenized pipeline (`Scanner.lean` → `TokenParser.lean`). 28 sections have explicit `§`-citations in code; 8 sections (§5.6, §6.2, §6.3, §6.6, §7.2, §8.1.2, §9.1.1, §9.1.5) are implemented without explicit citations. 16 sections have formal proof coverage in `Proofs/*.lean`.
 
 **§6.6 limitation:** Comment text is parsed and discarded — productions [75]–[79] are recognized but comment content is not preserved in the AST. [Phase 8](#phase-8-comment-preservation--planned) plans AST-level comment preservation for round-trip fidelity.
 
