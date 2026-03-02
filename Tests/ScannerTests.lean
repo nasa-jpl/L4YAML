@@ -182,16 +182,19 @@ def collectTests : IO VerifiedSuiteResult := do
   setCategory ref "Phase 9 regression: b: x: y"
   -- ═══════════════════════════════════════════
 
-  -- This is THE bug that motivated Phase 9. The old parser's
-  -- detectMappingKeyImpl produced a false positive at "x:" in "b: x: y".
-  -- Per the YAML 1.2.2 spec, "b: x: y" is a valid implicit mapping
-  -- where the value of "b" is itself a nested mapping {x: y}.
-  -- The two-pass scanner correctly recognises both ": " boundaries.
+  -- `b: x: y` on a single line: per YAML 1.2.2 §8.2.1 [200],
+  -- block collections require `s-b-comment` (line break) before
+  -- content.  A nested block mapping cannot start on the same line
+  -- as the enclosing key.  The scanner correctly tokenises both `: `
+  -- boundaries, but the parser rejects the same-line nested mapping.
+  -- Reference confirmation: test ZCZ6 (`a: b: c: d`) expects error.
 
   check ref "b: x: y scans" (scanOk "b: x: y")
-  check ref "b: x: y pipeline" (pipelineOk "b: x: y")
-  check ref "b: x: y key is b" (firstMapKey "b: x: y" == some "b")
-  check ref "b: x: y val is {x: y}" (firstMapValIsMapping "b: x: y" "x" "y")
+  check ref "b: x: y pipeline" (!pipelineOk "b: x: y")
+  check ref "b: x: y rejected" (
+    match parseYaml "b: x: y" with
+    | .error _ => true
+    | .ok _ => false)
 
   -- ═══════════════════════════════════════════
   setCategory ref "Escape sequences"

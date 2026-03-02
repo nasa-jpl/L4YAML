@@ -151,10 +151,11 @@ structure ScannerState where
   /-- Stack tracking flow collection types.  `true` = sequence (`[`),
       `false` = mapping (`{`).  Pushed on flow-open, popped on flow-close. -/
   flowStack : Array Bool := #[]
-  /-- Whether an explicit `?` key indicator has been emitted for the
-      current mapping entry.  Used to bypass the flow-sequence
+  /-- Line number of the most recent explicit `?` key indicator, if the
+      entry has not yet been closed by `:`.  Used to (a) inhibit simple-key
+      saving on the same line as `?`, and (b) bypass the flow-sequence
       implicit-key-single-line restriction when `?` was used. -/
-  explicitKeyActive : Bool := false
+  explicitKeyLine : Option Nat := none
   deriving Repr, Inhabited
 
 /-! ### State Invariants
@@ -666,7 +667,7 @@ def scanBlockEntry (s : ScannerState) : Except ScanError ScannerState := do
 
     **Pre**: Scanner at `?` followed by blank/EOF (or flow indicator in flow context).
     **Post**: Pushes mapping indent if needed, emits `key`, advances past `?`,
-    sets `simpleKeyAllowed := true`, `explicitKeyActive := true`.
+    sets `simpleKeyAllowed := true`, `explicitKeyLine := some s.line`.
     **Error**: `tabInIndentation` if tab immediately follows `?` in block context (§6.1). -/
 def scanKey (s : ScannerState) : Except ScanError ScannerState := do
   let s' := if !s.inFlow then pushMappingIndent s s.col else s
@@ -676,7 +677,11 @@ def scanKey (s : ScannerState) : Except ScanError ScannerState := do
   if !s'.inFlow then
     if let some '\t' := s'.peek? then
       throw (.tabInIndentation s'.line s'.col)
-  .ok { s' with simpleKeyAllowed := true, explicitKeyActive := true }
+  -- Invalidate any pending simple key.  The `?` has already emitted an
+  -- explicit `key` token; the next `:` is this key's value indicator,
+  -- not confirmation of a new implicit key.
+  .ok { s' with simpleKeyAllowed := true, explicitKeyLine := some s.line,
+                simpleKey := { possible := false } }
 
 /-- Scan a value indicator `:`.
 
@@ -704,6 +709,15 @@ def scanKey (s : ScannerState) : Except ScanError ScannerState := do
     `invalidFlowEntry` (missing comma in flow mapping, T833 §7.4),
     `tabInIndentation` (tab after explicit `:` at/below indent level §6.1). -/
 def scanValue (s : ScannerState) : Except ScanError ScannerState := do
+  -- When `saveSimpleKey` saved the position of `:` itself (before dispatch
+  -- recognised it as a value indicator) and an explicit `?` key is still
+  -- pending, the saved key is spurious — discard it so the explicit-key
+  -- path fires below.  Example: `? a\n: b` — the `:` on line 1 is the
+  -- value indicator for the explicit key, not a new implicit key.
+  let s := if s.explicitKeyLine.isSome && s.simpleKey.possible
+              && s.simpleKey.pos.offset == s.offset then
+    { s with simpleKey := { possible := false } }
+  else s
   -- §7.4: "Plain keys are restricted to a single line."
   -- In block context, reject implicit keys where the key token and the `:`
   -- value indicator are on different lines.
@@ -712,7 +726,7 @@ def scanValue (s : ScannerState) : Except ScanError ScannerState := do
   -- §7.4.2: In flow sequences, implicit key entries (without `?`) must
   -- have the key and `:` on the same line.  Flow mappings allow multi-line
   -- implicit keys per `ns-flow-map-yaml-key-entry(n,c)` with `s-separate`.
-  if s.simpleKey.possible && s.isInFlowSequence && !s.explicitKeyActive
+  if s.simpleKey.possible && s.isInFlowSequence && s.explicitKeyLine.isNone
       && s.simpleKey.endLine != s.line then
     throw (.invalidImplicitKey s.line)
   -- §8.2.1: A mapping key at the same indent as a block sequence is
@@ -747,6 +761,12 @@ def scanValue (s : ScannerState) : Except ScanError ScannerState := do
         { s'' with simpleKey := { possible := false } }
     else
       { s'' with simpleKey := { possible := false } }
+  else if s.explicitKeyLine.isSome then
+    -- Explicit `?` already emitted `blockMappingStart + key`.
+    -- Just emit `value` — no new mapping indent needed.
+    -- Also discard any stale simpleKey (saved by saveSimpleKey before
+    -- dispatch recognised `:` as a value indicator).
+    { s with simpleKey := { possible := false } }
   else
     if !s.inFlow then pushMappingIndent s s.col else s
   let s'' := (s'.emit .value).advance
@@ -757,7 +777,7 @@ def scanValue (s : ScannerState) : Except ScanError ScannerState := do
   if (s.col : Int) ≤ s.currentIndent && !s''.inFlow then
     if let some '\t' := s''.peek? then
       throw (.tabInIndentation s''.line s''.col)
-  .ok { s'' with simpleKeyAllowed := true, explicitKeyActive := false }
+  .ok { s'' with simpleKeyAllowed := true, explicitKeyLine := none }
 
 /-! ## Anchor and Alias Scanning -/
 
@@ -1730,7 +1750,13 @@ def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState := do
     **Pre**: Called after `skipToContent` and indent check, before character dispatch.
     **Post**: Updates `simpleKey` if allowed, otherwise no-op. -/
 def saveSimpleKey (st : ScannerState) : ScannerState :=
-  if st.simpleKeyAllowed && !st.inFlow then
+  -- §7.4: Do not record a new implicit key on the same line as an
+  -- explicit `?` indicator.  Content on the `?` line is the explicit
+  -- key's node, not a new implicit key (Root Cause A/B fix).
+  -- On subsequent lines, saving is allowed — the content may start a
+  -- new entry (e.g., `? a\n c:` where `c` is a new implicit key).
+  if st.explicitKeyLine == some st.line then st
+  else if st.simpleKeyAllowed && !st.inFlow then
     { st with simpleKey := {
         possible := true
         tokenIndex := st.tokens.size
