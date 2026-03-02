@@ -5260,19 +5260,19 @@ preservation through every scanner function, culminating in a proof that the mai
 | Metric | Value |
 |---|---|
 | Scanner functions (total) | 56 |
-| Functions with universal theorems | 8 + 1 (`advance`, `emit`, 4× flow open/close, `pushSequenceIndent`, `pushMappingIndent`, `consumeNewline`) |
+| Functions with universal theorems | 8 + 3 (`advance`, `emit`, 4× flow open/close, `pushSequenceIndent`, `pushMappingIndent`, `consumeNewline` — all with full `WellFormed` preservation) |
 | Functions with `#guard`-only coverage | ~14 (`unwindIndents`, `skipSpaces`, `skipWhitespace`, `skipToEndOfLine`, `advanceN`, `scanBlockScalar`, etc.) |
-| Functions with zero proof coverage | ~34 (`scanNextToken`, `scanKey`, `scanValue`, `saveSimpleKey`, all scalar scanners, all document functions) |
+| Functions with zero proof coverage | ~31 (`scanNextToken`, `scanKey`, `scanValue`, `saveSimpleKey`, all scalar scanners, all document functions) |
 | `WellFormed` conjuncts | 4: `indents.size ≥ 1`, `flowLevel = flowStack.size`, `simpleKeyStack.size = flowStack.size`, `offset ≤ inputEnd` |
-| Scanner proof theorems | 204 |
-| Scanner `#guard` checks | 463 |
+| Scanner proof theorems | 220 |
+| Scanner `#guard` checks | 538 |
 
 #### Sub-phases
 
 | Sub-phase | Effort | Description |
 |---|---|---|
 | **P10.10a** | 2–3 days | **Whitespace & navigation primitives.** ✅ **DONE.** 6 universal theorems for `consumeNewline` field preservation + 99 `#guard` checks covering all 5 functions (`skipWhitespace`, `skipSpaces`, `skipToEndOfLine`, `consumeNewline`, `advanceN`) across all 4 `WellFormed` conjuncts. File: `Proofs/ScannerWhitespace.lean` (378 lines). Loop-function universal proofs deferred to reusable `Nat.fold` infrastructure. |
-| **P10.10b** | 3–5 days | **Indent stack invariant.** Prove `unwindIndents` preserves C1 (`indents.size ≥ 1`), `pushSequenceIndent`/`pushMappingIndent` preserve all 4 conjuncts universally (currently `#guard`-only for indent operations). Requires reasoning about `Array.pop` with size guard. |
+| **P10.10b** | 3–5 days | **Indent stack invariant.** ✅ **DONE.** 16 universal theorems: `pushSequenceIndent_preserves_wellFormed`, `pushMappingIndent_preserves_wellFormed` (each with 4 per-conjunct lemmas), plus `unwindIndents` loop-body field preservation (5 lemmas) and C1 preservation under pop. 75 `#guard` checks covering push/unwind/round-trip scenarios with 1–3 indent levels. File: `Proofs/ScannerIndentStack.lean` (465 lines). |
 | **P10.10c** | 5–8 days | **Simple key lifecycle.** Prove `saveSimpleKey`/`scanKey`/`scanValue` state invariants. Define `SimpleKeyInvariant` predicate; prove preserved across the lifecycle. This is where P10.9's bugs lived — highest-value verification target. |
 | **P10.10d** | 5–8 days | **Scalar scanner correctness.** Prove `scanDoubleQuoted`, `scanSingleQuoted`, `scanPlainScalar`, `scanBlockScalar` preserve `WellFormed` and produce correctly-typed tokens. `scanPlainScalar` (~200 LOC) is the most complex. |
 | **P10.10e** | 3–5 days | **Document & directive functions.** Prove `scanDocumentStart`/`End`, `scanDirective`, `scanAnchorOrAlias`, `scanTag` preserve `WellFormed`. |
