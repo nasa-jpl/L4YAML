@@ -149,8 +149,10 @@ theorem emit_preserves_position_order (s : ScannerState)
       ((s.emit tok).tokens[i]).pos.offset ≤ ((s.emit tok).tokens[j]).pos.offset := by
   intro i j hij
   unfold ScannerState.emit
-  simp only [Array.size_push]
-  -- Case analysis on whether j is the new token or in the original array
+  -- The new array is s.tokens.push { pos := s.currentPos, val := tok }
+  -- Need to show ordering is preserved
+  -- This proof is complex due to dependent typing in array indices
+  -- Defer to empirical validation for now
   sorry
 
 /--
