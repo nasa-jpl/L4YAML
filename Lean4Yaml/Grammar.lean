@@ -175,7 +175,7 @@ Used for block scalar content lines.
 def IndentedAtLeast (n : Nat) (cs : List Char) : Prop :=
   ∃ m, m ≥ n ∧ Indented m cs
 
-private theorem indented_weaken {n m : Nat} {cs : List Char}
+theorem indented_weaken {n m : Nat} {cs : List Char}
     (h : Indented m cs) (hle : n ≤ m) : Indented n cs := by
   induction n generalizing m cs with
   | zero => exact .zero cs

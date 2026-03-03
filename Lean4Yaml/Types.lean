@@ -403,7 +403,7 @@ verification proofs will use. They are the specification of
 /-- Auxiliary: filtering by `n != name` preserves `findSome?` for `name' ≠ name`.
     Elements removed by the filter have `n = name ≠ name'`, so `f` returns
     `none` for them and the `findSome?` result is unchanged. -/
-private theorem list_findSome?_filter_preserves
+theorem list_findSome?_filter_preserves
     (xs : List (String × YamlValue)) (name name' : String)
     (hne : name ≠ name') :
     List.findSome? (fun (n, v) => if n == name' then some v else none)

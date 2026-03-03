@@ -155,7 +155,7 @@ def isInt (s : String) : Option Int :=
 /-! ### Float Parsing Helpers -/
 
 /-- Parse the mantissa (base) part of a float -/
-private def parseMantissa? (s : String) : Option Float :=
+def parseMantissa? (s : String) : Option Float :=
   if s.isEmpty then none
   else if s == "0." || s == "0.0" then some 0.0
   else if s.startsWith "." then
@@ -183,7 +183,7 @@ private def parseMantissa? (s : String) : Option Float :=
     | none => none
 
 /-- Parse the exponent part after `e` or `E` -/
-private def parseExponent? (s : String) : Option Int :=
+def parseExponent? (s : String) : Option Int :=
   if s.isEmpty then none
   else
     -- Handle optional sign

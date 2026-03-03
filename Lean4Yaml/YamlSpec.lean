@@ -70,7 +70,7 @@ instance : ToString YamlSpecRef := ⟨YamlSpecRef.toString⟩
 end YamlSpecRef
 
 /-- Add an entry to the yaml spec map, accumulating refs for the same declaration. -/
-private def addSpecEntry
+def addSpecEntry
     (map : NameMap (Array YamlSpecRef))
     (entry : Name × YamlSpecRef) : NameMap (Array YamlSpecRef) :=
   let (name, ref) := entry

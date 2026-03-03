@@ -1084,7 +1084,7 @@ def scanDocumentEnd (s : ScannerState) : Except ScanError ScannerState := do
     **Post**: Advances past `n` hex digits, returns the decoded character.
     **Error**: `invalidHexEscape` (fewer than `n` hex digits available),
     `unicodeOutOfRange` (value ≥ U+110000). -/
-private def parseHexEscape (s : ScannerState) (n : Nat) : Except ScanError (Char × ScannerState) := do
+def parseHexEscape (s : ScannerState) (n : Nat) : Except ScanError (Char × ScannerState) := do
   let (hex, s') := Id.run do
     let mut s' := s
     let mut hex := ""
@@ -1154,7 +1154,7 @@ def processEscape (s : ScannerState) : Except ScanError (Char × ScannerState) :
 /-! ## Scalar Scanning -/
 
 /-- Trim trailing space/tab characters (YAML §6.5 flow line folding). -/
-private def trimTrailingWS (s : String) : String :=
+def trimTrailingWS (s : String) : String :=
   String.ofList ((s.toList.reverse.dropWhile (fun c => c == ' ' || c == '\t')).reverse)
 
 /-- Fold a newline in a quoted scalar (double or single) per YAML flow folding.
@@ -1490,7 +1490,7 @@ def scanPlainScalar (s : ScannerState) : Except ScanError ScannerState := do
 
     Defining these as an inductive rather than encoding in a `Bool` makes
     each case a named constructor for pattern matching in proofs. -/
-private inductive FoldState where
+inductive FoldState where
   | start   : FoldState
   | content : FoldState
   | empty   : FoldState
@@ -1518,7 +1518,7 @@ private inductive FoldState where
     On `\n`: don't emit yet — record blank lines in `pendingNL` count.
     On first non-`\n` char of a new line: emit pending newlines based on
     state and line classification (space-leading → more, otherwise → content). -/
-private def foldBlockContent (raw : String) : String :=
+def foldBlockContent (raw : String) : String :=
   go raw.toList "" .start 0
 where
   appendNewlines (acc : String) : Nat → String

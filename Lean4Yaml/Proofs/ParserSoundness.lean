@@ -98,7 +98,7 @@ theorem stripAnnotationsPairs_eq_map (ps : List (YamlValue × YamlValue)) :
     simp [stripAnnotations.stripAnnotationsPairs, List.map, ih]
 
 /-- Array elements are strictly smaller than the array (for well-founded recursion). -/
-private theorem array_sizeOf_getElem_lt {α : Type _} [SizeOf α] (a : Array α) (i : Nat)
+theorem array_sizeOf_getElem_lt {α : Type _} [SizeOf α] (a : Array α) (i : Nat)
     (hi : i < a.size) : sizeOf a[i] < sizeOf a := by
   have hil : i < a.toList.length := hi
   have hmem : a.toList[i] ∈ a.toList := List.getElem_mem hil
@@ -110,12 +110,12 @@ private theorem array_sizeOf_getElem_lt {α : Type _} [SizeOf α] (a : Array α)
   omega
 
 /-- First component of a pair is strictly smaller than the pair. -/
-private theorem prod_fst_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
+theorem prod_fst_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
     (p : α × β) : sizeOf p.1 < sizeOf p := by
   rcases p with ⟨a, b⟩; simp [Prod.mk.sizeOf_spec]; omega
 
 /-- Second component of a pair is strictly smaller than the pair. -/
-private theorem prod_snd_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
+theorem prod_snd_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
     (p : α × β) : sizeOf p.2 < sizeOf p := by
   rcases p with ⟨a, b⟩; simp [Prod.mk.sizeOf_spec]; omega
 
@@ -131,7 +131,7 @@ zero out tags, anchors, and blockMeta), both sides are definitionally
 equal — `rfl` closes every non-plain branch, and the plain-empty
 branch closes after substituting `content = ""`.
 -/
-private def scalar_has_witness :
+def scalar_has_witness :
     (s : Scalar) →
     (s.style = .plain → s.content.length > 0 →
        validPlainFirst s.content ∧ noColonSpace s.content ∧ noSpaceHash s.content) →
@@ -154,7 +154,7 @@ private def scalar_has_witness :
 
 /-! ### List equality helpers -/
 
-private theorem stripped_list_eq
+theorem stripped_list_eq
     (nodes : List ValidNode) (items : Array YamlValue)
     (hlen : nodes.length = items.size)
     (helem : ∀ (i : Nat) (hi : i < items.size),
@@ -168,7 +168,7 @@ private theorem stripped_list_eq
   have hi : i < items.size := by simp at hi₂; omega
   exact helem i hi
 
-private theorem stripped_pairs_eq
+theorem stripped_pairs_eq
     (nodePairs : List (ValidNode × ValidNode))
     (pairs : Array (YamlValue × YamlValue))
     (hlen : nodePairs.length = pairs.size)

@@ -133,7 +133,7 @@ instance : Lean.FromJson DumpConfig where
 /-! ## Private Helpers -/
 
 /-- Build an indentation string: `depth × width` spaces. -/
-private def makeIndent (depth : Nat) (width : Nat) : String :=
+def makeIndent (depth : Nat) (width : Nat) : String :=
   String.ofList (List.replicate (depth * width) ' ')
 
 /--
@@ -142,7 +142,7 @@ Escape a character for double-quoted YAML scalars (§5.7).
 Same table as `Emit.escapeChar`; duplicated here to avoid a
 dependency cycle (`Dump` imports only `Types`).
 -/
-private def escapeChar (c : Char) : String :=
+def escapeChar (c : Char) : String :=
   match c with
   | '\x00' => "\\0"
   | '\x07' => "\\a"
@@ -158,15 +158,15 @@ private def escapeChar (c : Char) : String :=
   | c      => c.toString
 
 /-- Escape a string for double-quoted context. -/
-private def escapeString (s : String) : String :=
+def escapeString (s : String) : String :=
   s.foldl (fun acc c => acc ++ escapeChar c) ""
 
 /-- Emit a double-quoted scalar. -/
-private def dumpDoubleQuoted (s : String) : String :=
+def dumpDoubleQuoted (s : String) : String :=
   "\"" ++ escapeString s ++ "\""
 
 /-- Emit a single-quoted scalar. Only `'` is escaped (as `''`). -/
-private def dumpSingleQuoted (s : String) : String :=
+def dumpSingleQuoted (s : String) : String :=
   "'" ++ s.foldl (fun acc c => acc ++ if c == '\'' then "''" else c.toString) "" ++ "'"
 
 /-- Check if string is a YAML reserved word (boolean, null). -/
@@ -228,7 +228,7 @@ def hasNewlines (s : String) : Bool :=
   s.any (· == '\n')
 
 /-- Choose effective scalar style based on content and config. -/
-private def chooseScalarStyle (s : Scalar) (cfg : DumpConfig) : ScalarStyle :=
+def chooseScalarStyle (s : Scalar) (cfg : DumpConfig) : ScalarStyle :=
   -- Honor explicit block scalar style when content has newlines
   if (s.style == .literal || s.style == .folded) && hasNewlines s.content then
     s.style
@@ -248,7 +248,7 @@ private def chooseScalarStyle (s : Scalar) (cfg : DumpConfig) : ScalarStyle :=
       else .doubleQuoted
 
 /-- Resolve collection style from node annotation and config. -/
-private def resolveCollectionStyle (nodeStyle : CollectionStyle) (cfg : DumpConfig)
+def resolveCollectionStyle (nodeStyle : CollectionStyle) (cfg : DumpConfig)
     : CollectionStyle :=
   match cfg.defaultStyle with
   | .flow => .flow
@@ -262,7 +262,7 @@ Returns the header + newline + indented content lines.
 Content lines are indented at `max(1, depth) × indentWidth` spaces
 to satisfy YAML's minimum 1-space content indent requirement.
 -/
-private def dumpBlockScalar (content : String) (indicator : String)
+def dumpBlockScalar (content : String) (indicator : String)
     (bsMeta : Option BlockScalarMeta) (depth : Nat) (indentWidth : Nat) : String :=
   let chomp := match bsMeta with | some m => m.chomp | none => .clip
   let chompStr := match chomp with | .clip => "" | .strip => "-" | .keep => "+"
@@ -274,7 +274,7 @@ private def dumpBlockScalar (content : String) (indicator : String)
   indicator ++ chompStr ++ "\n" ++ String.intercalate "\n" body
 
 /-- Build tag + anchor prefix for a node. No trailing space. -/
-private def nodePrefix (tag : Option String) (anchor : Option String) : String :=
+def nodePrefix (tag : Option String) (anchor : Option String) : String :=
   let t := match tag with | some t => t | none => ""
   let a := match anchor with | some n => "&" ++ n | none => ""
   match t.isEmpty, a.isEmpty with
@@ -290,7 +290,7 @@ def isEmptyCollection : YamlValue → Bool
   | _ => false
 
 /-- Check if a value renders as a single line (can follow `- ` or `key: `). -/
-private def isInlineValue : YamlValue → Bool
+def isInlineValue : YamlValue → Bool
   | .scalar _ => true
   | .alias _ => true
   | .sequence .flow _ .. => true
@@ -299,7 +299,7 @@ private def isInlineValue : YamlValue → Bool
 
 /-- Check if a value is a block mapping (eligible for compact
     sequence notation where the first key shares the `- ` line). -/
-private def isCompactableMapping : YamlValue → Bool
+def isCompactableMapping : YamlValue → Bool
   | .mapping .block _ _ _ => true
   | _ => false
 
