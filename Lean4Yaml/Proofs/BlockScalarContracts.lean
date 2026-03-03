@@ -271,7 +271,7 @@ def satisfiesNonConsuming (pre post : YamlPos) : Bool :=
   pre.offset == post.offset && pre.line == post.line && pre.col == post.col
 
 /-- Helper: decompose a three-way `Bool.and` into individual equalities. -/
-private theorem and3_true {a b c : Bool} (h : (a && b && c) = true) :
+theorem and3_true {a b c : Bool} (h : (a && b && c) = true) :
     a = true ∧ b = true ∧ c = true := by
   cases a <;> cases b <;> cases c <;> simp_all
 

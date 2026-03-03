@@ -505,7 +505,7 @@ match branch. The `where`-clause helpers `contentEqList` and `contentEqPairList`
 -/
 
 /-- `contentEqList` is reflexive given an inductive hypothesis on elements. -/
-private theorem contentEqList_refl (vs : List YamlValue)
+theorem contentEqList_refl (vs : List YamlValue)
     (ih : ∀ v, v ∈ vs → contentEq v v = true) :
     contentEq.contentEqList vs vs = true := by
   induction vs with
@@ -515,7 +515,7 @@ private theorem contentEqList_refl (vs : List YamlValue)
     exact ⟨ih hd (.head tl), ihtl (fun v hv => ih v (.tail hd hv))⟩
 
 /-- `contentEqPairList` is reflexive given an inductive hypothesis on pairs. -/
-private theorem contentEqPairList_refl (ps : List (YamlValue × YamlValue))
+theorem contentEqPairList_refl (ps : List (YamlValue × YamlValue))
     (ih : ∀ p, p ∈ ps → contentEq p.1 p.1 = true ∧ contentEq p.2 p.2 = true) :
     contentEq.contentEqPairList ps ps = true := by
   induction ps with
@@ -568,7 +568,7 @@ lemmas for lists and pair-lists that take an inductive hypothesis from the calle
 -/
 
 /-- `contentEqList` is symmetric given a symmetric IH on elements. -/
-private theorem contentEqList_symm (vs₁ vs₂ : List YamlValue)
+theorem contentEqList_symm (vs₁ vs₂ : List YamlValue)
     (ih : ∀ v, v ∈ vs₁ → ∀ v₂, contentEq v v₂ = true → contentEq v₂ v = true)
     (h : contentEq.contentEqList vs₁ vs₂ = true) :
     contentEq.contentEqList vs₂ vs₁ = true := by
@@ -582,7 +582,7 @@ private theorem contentEqList_symm (vs₁ vs₂ : List YamlValue)
            contentEqList_symm tl₁ tl₂ (fun v hv => ih v (.tail _ hv)) h.2⟩
 
 /-- `contentEqPairList` is symmetric given a symmetric IH on pairs. -/
-private theorem contentEqPairList_symm (ps₁ ps₂ : List (YamlValue × YamlValue))
+theorem contentEqPairList_symm (ps₁ ps₂ : List (YamlValue × YamlValue))
     (ih : ∀ p, p ∈ ps₁ →
           (∀ v₂, contentEq p.1 v₂ = true → contentEq v₂ p.1 = true) ∧
           (∀ v₂, contentEq p.2 v₂ = true → contentEq v₂ p.2 = true))
@@ -671,7 +671,7 @@ is a full equivalence relation on `YamlValue`.
 -/
 
 /-- `contentEqList` is transitive given a transitive IH on elements. -/
-private theorem contentEqList_trans (vs₁ vs₂ vs₃ : List YamlValue)
+theorem contentEqList_trans (vs₁ vs₂ vs₃ : List YamlValue)
     (ih : ∀ v, v ∈ vs₁ → ∀ v₂ v₃, contentEq v v₂ = true → contentEq v₂ v₃ = true →
                                      contentEq v v₃ = true)
     (h₁ : contentEq.contentEqList vs₁ vs₂ = true)
@@ -689,7 +689,7 @@ private theorem contentEqList_trans (vs₁ vs₂ vs₃ : List YamlValue)
            contentEqList_trans tl₁ tl₂ tl₃ (fun v hv => ih v (.tail _ hv)) h₁.2 h₂.2⟩
 
 /-- `contentEqPairList` is transitive given a transitive IH on pairs. -/
-private theorem contentEqPairList_trans (ps₁ ps₂ ps₃ : List (YamlValue × YamlValue))
+theorem contentEqPairList_trans (ps₁ ps₂ ps₃ : List (YamlValue × YamlValue))
     (ih : ∀ p, p ∈ ps₁ →
           (∀ v₂ v₃, contentEq p.1 v₂ = true → contentEq v₂ v₃ = true → contentEq p.1 v₃ = true) ∧
           (∀ v₂ v₃, contentEq p.2 v₂ = true → contentEq v₂ v₃ = true → contentEq p.2 v₃ = true))

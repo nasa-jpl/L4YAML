@@ -97,7 +97,7 @@ Each constructor case is dispatched by comparing fields.  For `sequence`
 and `mapping`, we convert `Array` to `List` and use the mutual
 `decEqListYV` / `decEqPairListYV` `where`-clause helpers.
 -/
-private def decEqYamlValue : (a b : YamlValue) → Decidable (a = b)
+def decEqYamlValue : (a b : YamlValue) → Decidable (a = b)
   | .scalar s₁, .scalar s₂ =>
     if h : s₁ = s₂ then isTrue (h ▸ rfl)
     else isFalse fun heq => h (by cases heq; rfl)

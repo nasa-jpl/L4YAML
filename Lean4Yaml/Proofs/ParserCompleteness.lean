@@ -78,7 +78,7 @@ structure of `toYamlValue` itself.
 
 /-- List helper: if every `ValidNode` in a list produces a grammable value,
     then the `toYamlValueList` result is element-wise grammable. -/
-private theorem toYamlValueList_grammable
+theorem toYamlValueList_grammable
     (nodes : List ValidNode)
     (ih : ∀ (n : ValidNode), sizeOf n < sizeOf nodes → Grammable (toYamlValue n)) :
     ∀ (i : Nat) (hi : i < (toYamlValue.toYamlValueList nodes).length),
@@ -91,7 +91,7 @@ private theorem toYamlValueList_grammable
 
 /-- Pair list helper: if every `ValidNode` in a pair list produces grammable
     values, then the keys of `toYamlValuePairs` are grammable. -/
-private theorem toYamlValuePairs_keys_grammable
+theorem toYamlValuePairs_keys_grammable
     (entries : List (ValidNode × ValidNode))
     (ih : ∀ (n : ValidNode), sizeOf n < sizeOf entries → Grammable (toYamlValue n)) :
     ∀ (i : Nat) (hi : i < (toYamlValue.toYamlValuePairs entries).length),
@@ -107,7 +107,7 @@ private theorem toYamlValuePairs_keys_grammable
   omega
 
 /-- Pair list helper: values of `toYamlValuePairs` are grammable. -/
-private theorem toYamlValuePairs_vals_grammable
+theorem toYamlValuePairs_vals_grammable
     (entries : List (ValidNode × ValidNode))
     (ih : ∀ (n : ValidNode), sizeOf n < sizeOf entries → Grammable (toYamlValue n)) :
     ∀ (i : Nat) (hi : i < (toYamlValue.toYamlValuePairs entries).length),
@@ -190,7 +190,7 @@ stripping and the list/pair helpers that handle collection elements.
 
 mutual
 /-- List helper for idempotence. -/
-private def stripAnnotationsList_idempotent :
+def stripAnnotationsList_idempotent :
     (vs : List YamlValue) →
     stripAnnotations.stripAnnotationsList (stripAnnotations.stripAnnotationsList vs) =
       stripAnnotations.stripAnnotationsList vs
@@ -201,7 +201,7 @@ private def stripAnnotationsList_idempotent :
         (stripAnnotationsList_idempotent vs)
 
 /-- Pair list helper for idempotence. -/
-private def stripAnnotationsPairs_idempotent :
+def stripAnnotationsPairs_idempotent :
     (ps : List (YamlValue × YamlValue)) →
     stripAnnotations.stripAnnotationsPairs (stripAnnotations.stripAnnotationsPairs ps) =
       stripAnnotations.stripAnnotationsPairs ps
