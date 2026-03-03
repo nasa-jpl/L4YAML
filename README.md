@@ -5336,6 +5336,152 @@ preservation through every scanner function, culminating in a proof that the mai
 
 </details>
 
+### P10.11 — Grammar-to-Parser Bridge Gap Analysis (2026-03-03)
+
+**Context.** The README claims extensive soundness and completeness proofs for the parser. However, doc-verification-bridge analysis reveals that key grammar specification definitions in [Grammar.lean](Lean4Yaml/Grammar.lean) have no theorems connecting them to the actual parser implementation.
+
+#### The Missing Bridge
+
+The project defines several predicates in Grammar.lean that are **never actually connected to the parser**:
+
+1. **`ValidYaml`** (line 541) - The top-level specification relating input strings to parsed values
+2. **`ValidStream`** (line 409) - Specification for document streams
+3. **`ValidTokenStream`** (line 436) - The bridge between scanner and parser
+4. **`ValidDocument`** (line 397) - Document-level specification
+5. **Helper predicates** - `canStartPlainScalar`, `noFlowIndicators`, `noColonSpace`, `validHeaderLength`, `isNamedEscapeChar`, `IndentedAtLeast`, `decideIndented`, etc.
+
+All of these have `"verifiedBy": []` in doc-verification-bridge analysis.
+
+#### The Claimed vs. Actual Theorems
+
+Lines 533-538 in Grammar.lean show aspirational theorems:
+```lean
+theorem parse_sound : parse s = .ok v → ValidYaml s v
+theorem parse_complete : ValidYaml s v → parse s = .ok v
+```
+
+**These are documentation examples, not actual theorems.** They appear inside a docstring comment block (`/-- ... -/`), not as real Lean declarations. A grep of the codebase confirms neither theorem exists as an actual `theorem` or `axiom` declaration.
+
+#### What Actually Exists
+
+The proof files contain theorems about:
+
+1. **`ValidNode` ↔ `YamlValue` correspondence** ([Soundness.lean](Lean4Yaml/Proofs/Soundness.lean:1-150)) - Proves `toYamlValue` correctly implements `NodeToValue`
+2. **Scanner low-level properties** ([ScannerProofs.lean](Lean4Yaml/Proofs/ScannerProofs.lean:1-200)) - Character classification, escape sequences, token properties
+3. **Scanner state machine** ([ScannerIndentStack.lean](Lean4Yaml/Proofs/ScannerIndentStack.lean), [ScannerSimpleKey.lean](Lean4Yaml/Proofs/ScannerSimpleKey.lean), etc.) - `WellFormed` preservation through scanner operations
+4. **Helper function properties** - String operations, folding, schema resolution, etc.
+
+#### The Architectural Gap
+
+The proof architecture has **three layers that are never connected**:
+
+```
+Layer 1: Grammar Specification (Grammar.lean)
+  ├─ ValidYaml (input: String, output: YamlValue)
+  ├─ ValidTokenStream (bridge: String → tokens)
+  └─ ValidNode (grammar rules)
+         ↓
+      [GAP: No theorem connecting ValidYaml/ValidTokenStream to implementation]
+         ↓
+Layer 2: Parser Implementation (TokenParser.lean, Scanner.lean)
+  ├─ Scanner.scan : String → tokens
+  ├─ TokenParser.parseStream : tokens → YamlValue
+  └─ Parse module
+         ↓
+      [EXISTS: toYamlValue_correct in Soundness.lean]
+         ↓
+Layer 3: Grammar Node → Value Correspondence
+  └─ NodeToValue relation (proven complete)
+```
+
+#### What's Missing
+
+To actually prove soundness and completeness, the project needs:
+
+1. **Scanner correctness**:
+   ```lean
+   theorem scan_valid : Scanner.scan input = .ok tokens → ValidTokenStream input tokens
+   ```
+   This would establish that `ValidTokenStream` actually characterizes the scanner's output.
+
+2. **Parser soundness**:
+   ```lean
+   theorem parser_sound :
+     TokenParser.parseStream tokens = .ok v →
+     ValidTokenStream input tokens →
+     ∃ node, ValidNode node ∧ NodeToValue node v
+   ```
+
+3. **Parser completeness**:
+   ```lean
+   theorem parser_complete :
+     ValidYaml input v →
+     ∃ tokens, Scanner.scan input = .ok tokens ∧
+               TokenParser.parseStream tokens = .ok v
+   ```
+
+4. **End-to-end composition** connecting the Parse API to `ValidYaml`.
+
+#### Why the Gap Exists
+
+The definitions like `ValidStream`, `ValidYaml`, `ValidTokenStream`, `canStartPlainScalar`, `noFlowIndicators`, etc. are **specifications** - they define what it *means* for input to be valid YAML. But:
+
+- **No theorems prove the scanner produces `ValidTokenStream`s**
+- **No theorems prove the parser preserves `ValidYaml`**
+- **The predicates define validity, but nothing connects them to the actual parser code**
+
+The project has proven that the *grammar abstraction* is sound (ValidNode ↔ YamlValue), and that the *scanner state machine* maintains invariants. But it hasn't proven that the *parser implementation* respects the grammar specification. It's like having:
+- A formal grammar for a language (✓ proven internally consistent)
+- A parser implementation (✓ proven to maintain state machine invariants)
+- But no proof that the parser follows the grammar
+
+This is why doc-verification-bridge correctly identifies these definitions as having `"verifiedBy": []` - they're unverified specifications waiting to be connected to the implementation.
+
+#### Comparison with Existing Work
+
+The completed work includes:
+
+| Proof Category | Status | Coverage |
+|---|---|---|
+| **Grammar internal consistency** | ✅ Complete | `toYamlValue_correct`, `nodeToValue_total`, `nodeToValue_deterministic` |
+| **Scanner state machine** | ✅ Complete (P10.10) | `WellFormed` preservation through 56 scanner functions |
+| **Parser fuel sufficiency** | ✅ Complete | 35 theorems in FuelSufficiency.lean |
+| **Round-trip properties** | ✅ Complete | `contentEq` equivalence, escape invertibility |
+| **Grammar → Implementation bridge** | ❌ **Missing** | No theorems connecting `ValidYaml` to `parse`, `ValidTokenStream` to `Scanner.scan` |
+
+#### Impact on Verification Claims
+
+The README claims "verified correctness — proofs that the parser conforms to the YAML specification." However:
+
+- ✅ **True**: The grammar abstraction is internally consistent
+- ✅ **True**: The scanner maintains state machine invariants
+- ✅ **True**: Round-trip properties hold at the value level
+- ❌ **Not proven**: The parser implementation conforms to the grammar specification
+- ❌ **Not proven**: The scanner output satisfies `ValidTokenStream`
+- ❌ **Not proven**: Valid YAML (per `ValidYaml`) is accepted by the parser
+
+The verification is **sound but incomplete** - it verifies internal consistency and lower-level properties, but doesn't close the loop to the top-level specification.
+
+#### Future Work
+
+Closing this gap would require:
+
+1. **P10.11a: Define `ValidTokenStream` properties** (2-3 days)
+   - Characterize valid token sequences (envelope invariants, matching start/end markers, etc.)
+   - Prove scanner output satisfies these properties
+
+2. **P10.11b: Parser respects grammar** (5-8 days)
+   - Prove `TokenParser.parseStream` produces values that correspond to `ValidNode`s
+   - Connect to existing `NodeToValue` correspondence
+
+3. **P10.11c: End-to-end theorems** (3-5 days)
+   - Compose scanner correctness + parser soundness
+   - State and prove `parse_sound` and `parse_complete` as actual theorems
+
+**Total estimated effort:** 10-16 days
+
+This would elevate the verification from "internally consistent abstractions with state machine proofs" to "proven conformance to the YAML specification."
+
 ## Gap Analysis: YAML 1.2.2 Specification Coverage
 
 ### Current State (2026-02-21)
