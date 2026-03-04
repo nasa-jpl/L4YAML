@@ -122,6 +122,26 @@ theorem scanLoop_success_emits_streamEnd (s : ScannerState) (fuel : Nat) (tokens
       -- For now, defer to complete this proof properly
       sorry
 
+/-- scanLoop preserves existing tokens (prefix preservation).
+
+When `scanLoop` succeeds, it only appends tokens to the input state.
+The original tokens remain unchanged in their positions.
+
+**Note**: This requires lemmas about:
+- `unwindIndents` preserves prefix
+- `scanNextToken` preserves prefix
+- `emit` preserves prefix (proven: emit only appends)
+
+Full proof deferred - requires building library of prefix-preservation lemmas. -/
+theorem scanLoop_preserves_tokens (s : ScannerState) (fuel : Nat) (tokens : Array (Positioned YamlToken))
+    (h : scanLoop s fuel = .ok tokens) :
+    ∀ (i : Nat) (h_bound : i < s.tokens.size),
+      ∃ (h_bound' : i < tokens.size), tokens[i] = s.tokens[i] := by
+  intro i h_bound
+  -- This requires proving scanLoop only appends, never modifies existing tokens
+  -- Would need induction on fuel with lemmas about each operation
+  sorry
+
 /-- scanLoop preserves or increases token count.
 
 When `scanLoop` succeeds, the resulting tokens have at least as many tokens
@@ -168,45 +188,40 @@ via induction on fuel. The key facts are:
 -/
 theorem scan_produces_at_least_two (input : String) (tokens : Array (Positioned YamlToken))
     (h : scan input = .ok tokens) : tokens.size ≥ 2 := by
+  -- Alternative approach: Use scanLoop_success_emits_streamEnd directly
+  -- We know tokens came from scanLoop, which emits streamEnd
+  -- We also know scan starts with emit streamStart
+  -- Two emits = at least 2 tokens
+
   unfold scan at h
-  -- After unfold, h : scanLoop s (fuel * 4) = .ok tokens
-  -- where s is (mk' input |> emit .streamStart |> maybe advance for BOM)
 
-  -- Step 1: State after emit .streamStart has 1 token
-  have h_after_start : ((ScannerState.mk' input).emit .streamStart).tokens.size = 1 := by
-    rw [emit_tokens_size, mk'_tokens_empty]
-    simp
+  -- scanLoop only succeeds by emitting streamEnd
+  have ⟨s', h_structure⟩ := scanLoop_success_emits_streamEnd _ _ _ h
 
-  -- Step 2: The BOM match/advance doesn't change token count
-  -- The expression is: match s.peek? with | some '\uFEFF' => s.advance | _ => s
-  -- In both branches, tokens are preserved (advance_preserves_tokens)
+  -- So tokens = (s'.emit .streamEnd).tokens
+  subst h_structure
 
-  -- Step 3: Therefore the state passed to scanLoop has 1 token
-  -- Let's call this state s_before_loop
-  -- We have: s_before_loop.tokens.size = 1
+  -- After emit, size = s'.tokens.size + 1 (by emit_tokens_size)
+  rw [ScannerState.emit]
+  simp only [Array.size_push]
 
-  -- Step 2-3: The BOM handling preserves token count
-  -- After emit .streamStart, we have state s with tokens.size = 1
-  -- The match for BOM either keeps s or does s.advance
-  -- advance preserves tokens (advance_preserves_tokens)
-  -- So s_before_loop.tokens.size = 1
+  -- We need to show: s'.tokens.size + 1 ≥ 2
+  -- Which means: s'.tokens.size ≥ 1
 
-  -- Step 4: Show the state passed to scanLoop has 1 token
-  have h_before_loop :
-    (match ((ScannerState.mk' input).emit .streamStart).peek? with
-     | some '\uFEFF' => ((ScannerState.mk' input).emit .streamStart).advance
-     | _ => (ScannerState.mk' input).emit .streamStart).tokens.size = 1 := by
-    split
-    · -- BOM case: advance preserves tokens
-      rw [advance_preserves_tokens]
-      exact h_after_start
-    · -- No BOM case: unchanged
-      exact h_after_start
+  -- The state s' comes from operations on the initial state
+  -- Initial state had 1 token (emit .streamStart)
+  -- All subsequent operations (advance, unwindIndents, scanNextToken) only add tokens
 
-  -- Step 5: Apply scanLoop_increases_tokens
-  -- The challenge is connecting the local variable `s` in the unfolded scan
-  -- to the explicit expression in h_before_loop
-  -- This requires more sophisticated rewriting of `have` bindings
+  -- We know the initial state (after streamStart) has 1 token
+  have h_init : ((ScannerState.mk' input).emit .streamStart).tokens.size = 1 := by
+    rw [emit_tokens_size, mk'_tokens_empty]; simp
+
+  -- Key insight: s' comes from operations that don't remove tokens
+  -- At minimum, s' has the initial streamStart token
+  -- So s'.tokens.size ≥ 1
+
+  -- This requires proving operations preserve tokens (unwindIndents only adds)
+  -- For now, we have the structure but defer the final connection
   sorry
 
 /--
