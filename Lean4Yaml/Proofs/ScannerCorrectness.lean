@@ -314,12 +314,14 @@ theorem scanLoop_increases_tokens (s : ScannerState) (fuel : Nat) (tokens : Arra
   have ⟨s', h_tokens⟩ := scanLoop_success_emits_streamEnd s fuel tokens h
   rw [h_tokens]
   -- Now we have: (s'.emit .streamEnd).tokens.size ≥ s.tokens.size + 1
-  rw [ScannerState.emit]
-  simp [Array.size_push]
+  have h_emit : (s'.emit .streamEnd).tokens.size = s'.tokens.size + 1 := emit_tokens_size s' .streamEnd
+  rw [h_emit]
   -- Need to show: s'.tokens.size + 1 ≥ s.tokens.size + 1
   -- Which reduces to: s'.tokens.size ≥ s.tokens.size
-  -- This requires knowing that operations between s and s' don't remove tokens
-  -- For now, this is the key insight - unwindIndents only adds tokens (blockEnd)
+
+  -- For the success path, we know s' comes from unwindIndents which only adds tokens
+  -- For recursive path, would need scanNextToken preserves/adds tokens
+  -- Strategy: prove this holds for success path, defer recursive path
   sorry
 
 /-! ## §1  Token Envelope Properties
@@ -348,40 +350,52 @@ via induction on fuel. The key facts are:
 -/
 theorem scan_produces_at_least_two (input : String) (tokens : Array (Positioned YamlToken))
     (h : scan input = .ok tokens) : tokens.size ≥ 2 := by
-  -- Alternative approach: Use scanLoop_success_emits_streamEnd directly
-  -- We know tokens came from scanLoop, which emits streamEnd
-  -- We also know scan starts with emit streamStart
-  -- Two emits = at least 2 tokens
-
   unfold scan at h
 
   -- scanLoop only succeeds by emitting streamEnd
   have ⟨s', h_structure⟩ := scanLoop_success_emits_streamEnd _ _ _ h
-
-  -- So tokens = (s'.emit .streamEnd).tokens
   subst h_structure
 
-  -- After emit, size = s'.tokens.size + 1 (by emit_tokens_size)
-  rw [ScannerState.emit]
-  simp only [Array.size_push]
+  -- After emit streamEnd, size = s'.tokens.size + 1
+  have h_final_size : (s'.emit .streamEnd).tokens.size = s'.tokens.size + 1 := emit_tokens_size s' .streamEnd
 
-  -- We need to show: s'.tokens.size + 1 ≥ 2
-  -- Which means: s'.tokens.size ≥ 1
+  -- We need: s'.tokens.size + 1 ≥ 2, i.e., s'.tokens.size ≥ 1
 
-  -- The state s' comes from operations on the initial state
-  -- Initial state had 1 token (emit .streamStart)
-  -- All subsequent operations (advance, unwindIndents, scanNextToken) only add tokens
-
-  -- We know the initial state (after streamStart) has 1 token
-  have h_init : ((ScannerState.mk' input).emit .streamStart).tokens.size = 1 := by
+  -- Key insight: Use scanLoop_preserves_tokens
+  -- The initial state (after streamStart, before scanLoop) has 1 token
+  have h_init_size : ((ScannerState.mk' input).emit .streamStart).tokens.size = 1 := by
     rw [emit_tokens_size, mk'_tokens_empty]; simp
 
-  -- Key insight: s' comes from operations that don't remove tokens
-  -- At minimum, s' has the initial streamStart token
-  -- So s'.tokens.size ≥ 1
+  -- After BOM handling, still 1 token (advance preserves tokens)
+  let s_after_emit := (ScannerState.mk' input).emit .streamStart
+  let s_after_bom := match s_after_emit.peek? with
+    | some '\uFEFF' => s_after_emit.advance
+    | _ => s_after_emit
 
-  -- This requires proving operations preserve tokens (unwindIndents only adds)
-  -- For now, we have the structure but defer the final connection
+  have h_bom_preserves : s_after_bom.tokens.size = s_after_emit.tokens.size := by
+    unfold s_after_bom
+    split
+    · have := advance_preserves_tokens s_after_emit
+      simp only [this]
+    · rfl
+
+  have h_after_bom_size : s_after_bom.tokens.size = 1 := by
+    rw [h_bom_preserves, h_init_size]
+
+  -- Strategy: Use scanLoop_preserves_tokens to show token[0] is preserved
+  -- Then show contradiction if output size < 2
+
+  -- Proof outline:
+  -- 1. s_after_bom has 1 token: streamStart at index 0
+  -- 2. scanLoop preserves this token: output[0] = streamStart
+  -- 3. scanLoop result is (s'.emit .streamEnd).tokens
+  -- 4. If this has size < 2, then size = 1 (since size > 0 from preservation)
+  -- 5. If size = 1, then token[0] = streamEnd (the only token)
+  -- 6. But token[0] = streamStart (preserved), contradiction
+  -- 7. Therefore size ≥ 2
+
+  -- This proof requires careful handling of array equality with dependent types
+  -- and showing streamStart ≠ streamEnd. For now, the structural insight is clear.
   sorry
 
 /--
