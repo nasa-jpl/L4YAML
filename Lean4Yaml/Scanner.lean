@@ -475,6 +475,22 @@ def skipToContent (s : ScannerState) : Except ScanError ScannerState := do
 
 /-! ## Indentation Management -/
 
+/-- Helper for unwindIndents using structural recursion.
+
+    **Termination**: Structurally recursive on `fuel`.
+    **Invariant**: At most `fuel` iterations, each popping one indent entry. -/
+def unwindIndentsLoop (s : ScannerState) (col : Int) (fuel : Nat) : ScannerState :=
+  match fuel with
+  | 0 => s
+  | fuel' + 1 =>
+    if s.currentIndent > col && s.indents.size > 1 then
+      let s' := s.emit .blockEnd
+      let s' := { s' with indents := s'.indents.pop }
+      unwindIndentsLoop s' col fuel'
+    else
+      s
+termination_by fuel
+
 /-- Unwind the indentation stack, emitting `blockEnd` tokens for each closed block.
 
     **Implements**: Virtual BLOCK-END generation (libyaml, not a single YAML production).
@@ -484,16 +500,8 @@ def skipToContent (s : ScannerState) : Except ScanError ScannerState := do
     **Pre**: `col` is the column of the next content character (or -1 for stream/document end).
     **Post**: All indent entries deeper than `col` are popped; a `blockEnd` token is emitted for each.
     **Error**: None (pure computation). -/
-def unwindIndents (s : ScannerState) (col : Int) : ScannerState := Id.run do
-  let mut s' := s
-  let fuel := s'.indents.size
-  for _ in [:fuel] do
-    if s'.currentIndent > col && s'.indents.size > 1 then
-      s' := s'.emit .blockEnd
-      s' := { s' with indents := s'.indents.pop }
-    else
-      break
-  return s'
+def unwindIndents (s : ScannerState) (col : Int) : ScannerState :=
+  unwindIndentsLoop s col s.indents.size
 
 /-- Push a new block sequence indent level if `col` is deeper than `currentIndent`.
 

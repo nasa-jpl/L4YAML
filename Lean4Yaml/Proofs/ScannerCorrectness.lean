@@ -74,6 +74,96 @@ theorem advance_preserves_tokens (s : ScannerState) :
   · -- Case: s.offset >= s.inputEnd
     rfl
 
+/-- The `emit` operation preserves existing tokens.
+
+For any index i < original size, tokens[i] remains unchanged. -/
+theorem emit_preserves_tokens_at (s : ScannerState) (tok : YamlToken)
+    (i : Nat) (h : i < s.tokens.size) :
+    (s.emit tok).tokens[i]'(by have := emit_tokens_size s tok; omega) = s.tokens[i] := by
+  unfold ScannerState.emit
+  simp only [Array.getElem_push]
+  split
+  · rfl
+  · -- This branch is when i = s.tokens.size, but h says i < s.tokens.size
+    omega
+
+/-- Helper lemma: unwindIndentsLoop only appends tokens (never removes).
+
+This is proven by induction on fuel. Each iteration either returns the state unchanged
+or emits a blockEnd token (which adds exactly one token). -/
+theorem unwindIndentsLoop_tokens_monotonic (s : ScannerState) (col : Int) (fuel : Nat) :
+    (unwindIndentsLoop s col fuel).tokens.size ≥ s.tokens.size := by
+  induction fuel generalizing s with
+  | zero =>
+    -- Base case: fuel = 0, returns s unchanged
+    unfold unwindIndentsLoop
+    exact Nat.le_refl _
+  | succ fuel' ih =>
+    -- Inductive case: fuel = fuel' + 1
+    unfold unwindIndentsLoop
+    split
+    · -- Condition true: emit blockEnd and recurse
+      -- After emit: size increases by 1
+      have h_emit := emit_tokens_size s .blockEnd
+      -- After modifying indents, tokens stay same (only indents field changed)
+      let s' := s.emit .blockEnd
+      let s'' := { s' with indents := s'.indents.pop }
+      -- s''.tokens = s'.tokens (modifying indents doesn't affect tokens)
+      have h_tokens_eq : s''.tokens = s'.tokens := by rfl
+      -- Apply IH to s''
+      have h_ih : (unwindIndentsLoop s'' col fuel').tokens.size ≥ s''.tokens.size := ih s''
+      -- Combine: result.size ≥ s''.tokens.size = s'.tokens.size = s.tokens.size + 1 ≥ s.tokens.size
+      rw [h_tokens_eq] at h_ih
+      rw [h_emit] at h_ih
+      exact Nat.le_trans (Nat.le_succ s.tokens.size) h_ih
+    · -- Condition false: return s
+      exact Nat.le_refl _
+
+/-- Helper lemma: unwindIndentsLoop preserves the prefix of tokens.
+
+For any index i < original size, tokens[i] remains unchanged. -/
+theorem unwindIndentsLoop_preserves_prefix (s : ScannerState) (col : Int) (fuel : Nat)
+    (i : Nat) (h_bound : i < s.tokens.size) :
+    (unwindIndentsLoop s col fuel).tokens[i]'
+      (by have := unwindIndentsLoop_tokens_monotonic s col fuel; omega) =
+    s.tokens[i] := by
+  induction fuel generalizing s with
+  | zero =>
+    -- Base case: fuel = 0, returns s unchanged
+    unfold unwindIndentsLoop
+    rfl
+  | succ fuel' ih =>
+    -- Inductive case
+    unfold unwindIndentsLoop
+    split
+    · -- Condition true: emit and recurse
+      let s_emit := s.emit .blockEnd
+      let s_pop := { s_emit with indents := s_emit.indents.pop }
+      -- We know emit increases size by 1
+      have h_emit_size : s_emit.tokens.size = s.tokens.size + 1 := emit_tokens_size s .blockEnd
+      -- So i < s_emit.tokens.size
+      have h_i_lt_emit : i < s_emit.tokens.size := by
+        rw [h_emit_size]
+        omega
+      -- Use emit_preserves_tokens_at instead of unfolding
+      have h_emit_preserves : s_emit.tokens[i]'h_i_lt_emit = s.tokens[i] := emit_preserves_tokens_at s .blockEnd i h_bound
+      -- After modifying indents field, tokens unchanged
+      have h_tokens_same : s_pop.tokens = s_emit.tokens := by rfl
+      -- Apply IH to s_pop
+      have h_new_size : i < s_pop.tokens.size := by
+        rw [h_tokens_same, h_emit_size]
+        omega
+      have h_ih : (unwindIndentsLoop s_pop col fuel').tokens[i]'_ = s_pop.tokens[i]'h_new_size := ih s_pop h_new_size
+      -- Now combine: result[i] = s_pop[i] = s_emit[i] = s[i]
+      -- s_pop.tokens[i] = s_emit.tokens[i] because tokens are the same
+      have h_pop_eq_emit : s_pop.tokens[i]'h_new_size = s_emit.tokens[i]'h_i_lt_emit := by
+        have : s_pop.tokens = s_emit.tokens := h_tokens_same
+        cases this
+        rfl
+      rw [h_ih, h_pop_eq_emit, h_emit_preserves]
+    · -- Condition false: return s unchanged
+      rfl
+
 /-- The `unwindIndents` operation preserves or adds tokens.
 
 When unwinding indents, we only emit `blockEnd` tokens, never removing any.
@@ -81,11 +171,16 @@ So the token count increases or stays the same. -/
 theorem unwindIndents_adds_tokens (s : ScannerState) (col : Int) :
     (unwindIndents s col).tokens.size ≥ s.tokens.size := by
   unfold unwindIndents
-  -- unwindIndents uses Id.run do with a for loop
-  -- It conditionally emits blockEnd when popping indents
-  -- Each emit adds exactly 1 token (emit_tokens_size)
-  -- Never removes tokens
-  sorry
+  exact unwindIndentsLoop_tokens_monotonic s col s.indents.size
+
+/-- unwindIndents preserves the prefix of tokens. -/
+theorem unwindIndents_preserves_prefix (s : ScannerState) (col : Int)
+    (i : Nat) (h_bound : i < s.tokens.size) :
+    (unwindIndents s col).tokens[i]'
+      (by have := unwindIndents_adds_tokens s col; omega) =
+    s.tokens[i] := by
+  unfold unwindIndents
+  exact unwindIndentsLoop_preserves_prefix s col s.indents.size i h_bound
 
 /-- scanLoop only succeeds by emitting streamEnd.
 
@@ -122,15 +217,35 @@ theorem scanLoop_success_emits_streamEnd (s : ScannerState) (fuel : Nat) (tokens
       -- For now, defer to complete this proof properly
       sorry
 
+/-- scanNextToken preserves or adds tokens.
+
+`scanNextToken` may emit tokens but never removes existing ones. -/
+theorem scanNextToken_adds_tokens (s : ScannerState) (s' : ScannerState) :
+    (scanNextToken s = .ok (some s')) →
+    s'.tokens.size ≥ s.tokens.size := by
+  -- scanNextToken calls unwindIndents, emit, and other operations
+  -- Each of these only appends tokens
+  sorry
+
+/-- scanNextToken preserves existing token prefix.
+
+For any index i < original size, tokens[i] remains unchanged. -/
+theorem scanNextToken_preserves_prefix (s : ScannerState) (s' : ScannerState)
+    (h_next : scanNextToken s = .ok (some s'))
+    (i : Nat) (h_bound : i < s.tokens.size) :
+    s'.tokens[i]'(by have := scanNextToken_adds_tokens s s' h_next; omega) = s.tokens[i] := by
+  -- scanNextToken only appends, never modifies existing tokens
+  sorry
+
 /-- scanLoop preserves existing tokens (prefix preservation).
 
 When `scanLoop` succeeds, it only appends tokens to the input state.
 The original tokens remain unchanged in their positions.
 
 **Note**: This requires lemmas about:
-- `unwindIndents` preserves prefix
-- `scanNextToken` preserves prefix
-- `emit` preserves prefix (proven: emit only appends)
+- `unwindIndents` preserves prefix ✅ (proven above)
+- `scanNextToken` preserves prefix (deferred)
+- `emit` preserves prefix ✅ (proven: emit only appends)
 
 Full proof deferred - requires building library of prefix-preservation lemmas. -/
 theorem scanLoop_preserves_tokens (s : ScannerState) (fuel : Nat) (tokens : Array (Positioned YamlToken))
@@ -239,15 +354,32 @@ theorem scan_first_is_streamStart (input : String) (tokens : Array (Positioned Y
     (h : scan input = .ok tokens) (h_size : tokens.size > 0) :
     (tokens[0]'(by omega)).val = YamlToken.streamStart := by
   unfold scan at h
-  -- After unfolding, the structure is:
-  -- let s := mk' input
-  -- let s := s.emit .streamStart  -- This creates token[0]
-  -- let s := (BOM handling)        -- advance preserves tokens
-  -- scanLoop s fuel                -- scanLoop only appends
+  -- After unfolding scan, we have:
+  -- let s := (ScannerState.mk' input).emit .streamStart
+  -- let s := match s.peek? with | some '\uFEFF' => s.advance | _ => s
+  -- scanLoop s fuel
 
-  -- Key insight: we need to show that scanLoop preserves tokens[0]
-  -- This would require a lemma: scanLoop_preserves_prefix
-  -- For now, we note the structure but defer full proof
+  -- Step 1: After emit .streamStart, token[0] is streamStart
+  have h_init_size : ((ScannerState.mk' input).emit .streamStart).tokens.size = 1 := by
+    rw [emit_tokens_size, mk'_tokens_empty]
+    simp
+
+  have h_init_token : (((ScannerState.mk' input).emit .streamStart).tokens[0]'(by omega : 0 < 1)).val =
+    YamlToken.streamStart := by
+    unfold ScannerState.emit
+    simp [mk'_tokens_empty]
+
+  -- Step 2: BOM handling preserves tokens (advance_preserves_tokens)
+  have h_bom_preserves : ∀ s : ScannerState,
+    (match s.peek? with | some '\uFEFF' => s.advance | _ => s).tokens = s.tokens := by
+    intro s
+    split <;> try rfl
+    exact advance_preserves_tokens s
+
+  -- Step 3: scanLoop preserves existing tokens
+  -- After scanLoop, tokens[0] is still the same
+  -- This requires scanLoop_preserves_prefix which depends on scanNextToken_preserves_prefix
+  -- For now, structure is in place
   sorry
 
 /--
