@@ -74,6 +74,44 @@ theorem advance_preserves_tokens (s : ScannerState) :
   · -- Case: s.offset >= s.inputEnd
     rfl
 
+/-- The `advance` operation preserves flowLevel.
+
+`advance` only modifies position fields, not flow state. -/
+theorem advance_preserves_flowLevel (s : ScannerState) :
+    s.advance.flowLevel = s.flowLevel := by
+  unfold ScannerState.advance
+  split
+  · simp only []
+    split <;> rfl
+  · rfl
+
+/-- The `advance` operation preserves flowStack.
+
+`advance` only modifies position fields, not flow state. -/
+theorem advance_preserves_flowStack (s : ScannerState) :
+    s.advance.flowStack = s.flowStack := by
+  unfold ScannerState.advance
+  split
+  · simp only []
+    split <;> rfl
+  · rfl
+
+/-- The `emit` operation preserves flowLevel.
+
+`emit` only adds to tokens array, doesn't modify flow state. -/
+theorem emit_preserves_flowLevel (s : ScannerState) (tok : YamlToken) :
+    (s.emit tok).flowLevel = s.flowLevel := by
+  unfold ScannerState.emit
+  rfl
+
+/-- The `emit` operation preserves flowStack.
+
+`emit` only adds to tokens array, doesn't modify flow state. -/
+theorem emit_preserves_flowStack (s : ScannerState) (tok : YamlToken) :
+    (s.emit tok).flowStack = s.flowStack := by
+  unfold ScannerState.emit
+  rfl
+
 /-- The `emit` operation preserves existing tokens.
 
 For any index i < original size, tokens[i] remains unchanged. -/
@@ -230,40 +268,39 @@ theorem saveSimpleKey_preserves_tokens (s : ScannerState) :
 
 /-- scanFlowSequenceStart adds exactly one token.
 
-**Structure**: field update → emit → advance → field updates
+After refactoring with explicit variable names (s_key_disabled, s_with_token,
+s_after_advance), the token flow is clear:
+- s_key_disabled.tokens = s.tokens (field update doesn't touch tokens)
+- s_with_token.tokens = s.tokens.push token (emit adds one)
+- s_after_advance.tokens = s_with_token.tokens (advance preserves)
+- final result.tokens = s_after_advance.tokens (field update doesn't touch tokens)
 
-**Conceptual proof**: Only emit modifies tokens (adds 1), all other operations preserve.
-
-**Technical barrier**: The definition uses nested let bindings that don't reduce
-definitionally. After unfold, we get:
-```lean
-let savedKey := s.simpleKey
-let s' := { s with simpleKey := {possible := false} }
-let s' := s'.emit .flowSequenceStart
-{ s'.advance with flowLevel := ..., flowStack := ..., ... }
-```
-
-The tokens field in the final result is `s'.advance.tokens`, which equals
-`s'.tokens` (by advance_preserves_tokens), which equals `s.tokens.push ...`
-(by emit definition).
-
-However, Lean's definitional equality doesn't automatically reduce through
-the nested let bindings and field updates. A complete proof would need either:
-1. Manual tracking through each let binding with intermediate `show` statements
-2. Refactoring scan* functions to make token operations more explicit
-3. Stronger automation lemmas for field projections through let bindings
-
-For now, defer as the architectural insight is proven (emit adds, advance preserves). -/
+Therefore: result.tokens.size = s.tokens.size + 1 -/
 theorem scanFlowSequenceStart_adds_one_token (s : ScannerState) :
     (scanFlowSequenceStart s).tokens.size = s.tokens.size + 1 := by
-  sorry
+  unfold scanFlowSequenceStart ScannerState.emit
+  simp only [advance_preserves_tokens, Array.size_push]
 
 /-- scanFlowSequenceEnd adds exactly one token.
 
-Same structure and proof challenges as scanFlowSequenceStart. -/
+Same refactoring as scanFlowSequenceStart: emit → advance → structure update.
+Only emit modifies tokens (adds 1). -/
 theorem scanFlowSequenceEnd_adds_one_token (s : ScannerState) :
     (scanFlowSequenceEnd s).tokens.size = s.tokens.size + 1 := by
-  sorry
+  unfold scanFlowSequenceEnd ScannerState.emit
+  simp only [advance_preserves_tokens, Array.size_push]
+
+/-- scanFlowMappingStart adds exactly one token. -/
+theorem scanFlowMappingStart_adds_one_token (s : ScannerState) :
+    (scanFlowMappingStart s).tokens.size = s.tokens.size + 1 := by
+  unfold scanFlowMappingStart ScannerState.emit
+  simp only [advance_preserves_tokens, Array.size_push]
+
+/-- scanFlowMappingEnd adds exactly one token. -/
+theorem scanFlowMappingEnd_adds_one_token (s : ScannerState) :
+    (scanFlowMappingEnd s).tokens.size = s.tokens.size + 1 := by
+  unfold scanFlowMappingEnd ScannerState.emit
+  simp only [advance_preserves_tokens, Array.size_push]
 
 /-- skipToContent preserves tokens exactly.
 

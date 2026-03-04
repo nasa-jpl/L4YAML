@@ -102,22 +102,76 @@ theorem emit_simpleKeyStack (s : ScannerState) (tok : YamlToken) :
 Each flow open/close operation maintains `flowLevel = flowStack.size`.
 -/
 
+/-- Helper: `emit` preserves flowLevel. -/
+private theorem emit_preserves_flowLevel (s : ScannerState) (tok : YamlToken) :
+    (s.emit tok).flowLevel = s.flowLevel := by
+  unfold ScannerState.emit
+  rfl
+
+/-- Helper: `emit` preserves flowStack. -/
+private theorem emit_preserves_flowStack (s : ScannerState) (tok : YamlToken) :
+    (s.emit tok).flowStack = s.flowStack := by
+  unfold ScannerState.emit
+  rfl
+
+/-- Helper: `advance` preserves flowLevel. -/
+private theorem advance_preserves_flowLevel (s : ScannerState) :
+    s.advance.flowLevel = s.flowLevel := by
+  unfold ScannerState.advance
+  split
+  · simp only []
+    split <;> rfl
+  · rfl
+
+/-- Helper: `advance` preserves flowStack. -/
+private theorem advance_preserves_flowStack (s : ScannerState) :
+    s.advance.flowStack = s.flowStack := by
+  unfold ScannerState.advance
+  split
+  · simp only []
+    split <;> rfl
+  · rfl
+
+/-- Helper: `emit` preserves simpleKeyStack. -/
+private theorem emit_preserves_simpleKeyStack (s : ScannerState) (tok : YamlToken) :
+    (s.emit tok).simpleKeyStack = s.simpleKeyStack := by
+  unfold ScannerState.emit
+  rfl
+
+/-- Helper: `advance` preserves simpleKeyStack. -/
+private theorem advance_preserves_simpleKeyStack (s : ScannerState) :
+    s.advance.simpleKeyStack = s.simpleKeyStack := by
+  unfold ScannerState.advance
+  split
+  · simp only []
+    split <;> rfl
+  · rfl
+
 /-- `scanFlowSequenceStart` increments `flowLevel` by exactly 1. -/
 theorem scanFlowSequenceStart_flowLevel (s : ScannerState) :
     (scanFlowSequenceStart s).flowLevel = s.flowLevel + 1 := by
-  simp [scanFlowSequenceStart, ScannerState.emit]
+  unfold scanFlowSequenceStart
+  -- After refactoring: final flowLevel = s_after_advance.flowLevel + 1
+  -- s_after_advance.flowLevel = s_with_token.flowLevel (advance preserves)
+  -- s_with_token.flowLevel = s_key_disabled.flowLevel (emit preserves)
+  -- s_key_disabled.flowLevel = s.flowLevel (field update doesn't change flowLevel)
+  simp only [emit_preserves_flowLevel, advance_preserves_flowLevel]
 
 /-- `scanFlowMappingStart` increments `flowLevel` by exactly 1. -/
 theorem scanFlowMappingStart_flowLevel (s : ScannerState) :
     (scanFlowMappingStart s).flowLevel = s.flowLevel + 1 := by
-  simp [scanFlowMappingStart, ScannerState.emit]
+  unfold scanFlowMappingStart
+  simp only [emit_preserves_flowLevel, advance_preserves_flowLevel]
 
 /-- After `scanFlowSequenceStart`, `flowLevel = flowStack.size`
     (assuming the invariant held before). -/
 theorem scanFlowSequenceStart_flow_sync (s : ScannerState)
     (h : s.flowLevel = s.flowStack.size) :
     (scanFlowSequenceStart s).flowLevel = (scanFlowSequenceStart s).flowStack.size := by
-  simp [scanFlowSequenceStart, ScannerState.emit, Array.size_push]
+  unfold scanFlowSequenceStart
+  simp only [emit_preserves_flowLevel, emit_preserves_flowStack,
+             advance_preserves_flowLevel, advance_preserves_flowStack,
+             Array.size_push]
   omega
 
 /-- After `scanFlowSequenceStart`, `simpleKeyStack.size = flowStack.size`
@@ -125,7 +179,10 @@ theorem scanFlowSequenceStart_flow_sync (s : ScannerState)
 theorem scanFlowSequenceStart_simpleKeyStack_sync (s : ScannerState)
     (h : s.simpleKeyStack.size = s.flowStack.size) :
     (scanFlowSequenceStart s).simpleKeyStack.size = (scanFlowSequenceStart s).flowStack.size := by
-  simp [scanFlowSequenceStart, ScannerState.emit, Array.size_push]
+  unfold scanFlowSequenceStart
+  simp only [emit_preserves_flowStack, emit_preserves_simpleKeyStack,
+             advance_preserves_flowStack, advance_preserves_simpleKeyStack,
+             Array.size_push]
   omega
 
 /-- After `scanFlowMappingStart`, `flowLevel = flowStack.size`
@@ -133,7 +190,10 @@ theorem scanFlowSequenceStart_simpleKeyStack_sync (s : ScannerState)
 theorem scanFlowMappingStart_flow_sync (s : ScannerState)
     (h : s.flowLevel = s.flowStack.size) :
     (scanFlowMappingStart s).flowLevel = (scanFlowMappingStart s).flowStack.size := by
-  simp [scanFlowMappingStart, ScannerState.emit, Array.size_push]
+  unfold scanFlowMappingStart
+  simp only [emit_preserves_flowLevel, emit_preserves_flowStack,
+             advance_preserves_flowLevel, advance_preserves_flowStack,
+             Array.size_push]
   omega
 
 /-- After `scanFlowMappingStart`, `simpleKeyStack.size = flowStack.size`
@@ -141,7 +201,10 @@ theorem scanFlowMappingStart_flow_sync (s : ScannerState)
 theorem scanFlowMappingStart_simpleKeyStack_sync (s : ScannerState)
     (h : s.simpleKeyStack.size = s.flowStack.size) :
     (scanFlowMappingStart s).simpleKeyStack.size = (scanFlowMappingStart s).flowStack.size := by
-  simp [scanFlowMappingStart, ScannerState.emit, Array.size_push]
+  unfold scanFlowMappingStart
+  simp only [emit_preserves_flowStack, emit_preserves_simpleKeyStack,
+             advance_preserves_flowStack, advance_preserves_simpleKeyStack,
+             Array.size_push]
   omega
 
 /-- `inFlow` is true iff `flowLevel > 0`. -/
