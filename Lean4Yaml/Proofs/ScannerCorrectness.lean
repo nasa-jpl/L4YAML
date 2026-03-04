@@ -68,36 +68,30 @@ The `scan` function produces at least 2 tokens.
 
 Since `emit` appends exactly one token each time, we have at least 2.
 
-**Note**: Full proof requires reasoning about the for-loop structure, which is
-complex in Lean's computational model. For now, we rely on extensive empirical
-validation via `#guard` checks (see §4) as evidence.
+**After refactoring to structural recursion**: This proof becomes tractable
+via induction on fuel. The key facts are:
+- mk' produces 0 tokens (mk'_tokens_empty)
+- emit adds 1 token (emit_tokens_size)
+- scan does: mk' → emit streamStart → scanLoop → emit streamEnd
+- Therefore: 0 + 1 (streamStart) + 1 (streamEnd) = at least 2
 -/
 theorem scan_produces_at_least_two (input : String) (tokens : Array (Positioned YamlToken))
     (h : scan input = .ok tokens) : tokens.size ≥ 2 := by
-  -- Key facts we'd use in a complete proof:
-  -- 1. (mk' input).tokens = #[] (mk'_tokens_empty)
-  -- 2. (s.emit tok).tokens.size = s.tokens.size + 1 (emit_tokens_size)
-  -- 3. scan does: mk' → emit streamStart (size 1) → loop → emit streamEnd (size ≥ 2)
-
-  -- Attempt to unfold scan
   unfold scan at h
-  -- The scan function uses do-notation with ForIn typeclass for the loop
-  -- Lean's do-notation desugars to complex bind operations
-  -- The ForIn typeclass for ranges desugars to ForInStep recursion
+  -- After unfold: h : scanLoop (... .emit .streamStart) fuel = .ok tokens
 
-  -- simp can sometimes make progress on do-notation
-  simp only [Bind.bind, Pure.pure] at h
+  -- We need to show that scanLoop preserves/adds tokens
+  -- The success path in scanLoop does (unwindIndents s (-1)).emit .streamEnd
+  -- which adds at least 1 token to the current state
 
-  -- At this point, h contains a complex expression mixing Except.bind,
-  -- ForIn operations, and state mutations. Without a custom tactic or
-  -- lemma library for imperative loops, we cannot proceed further.
+  -- Key insight: Initial state after emit .streamStart has 1 token
+  -- scanLoop's success adds streamEnd, giving at least 2
 
-  -- The proof strategy would be:
-  -- 1. Show that .ok return only happens at line 1988
-  -- 2. At line 1988, tokens = final.tokens where final = (unwindIndents s (-1)).emit .streamEnd
-  -- 3. Show that s at that point has tokens.size ≥ 1 (from initial emit streamStart)
-  -- 4. Therefore final.tokens.size ≥ 2 (by emit_tokens_size)
+  -- To complete this proof, we need a lemma about scanLoop:
+  -- "If scanLoop s fuel = .ok tokens, then tokens.size ≥ s.tokens.size + 1"
+  -- This is provable by induction on fuel
 
+  -- For now, documented strategy with structural recursion makes this tractable
   sorry
 
 /--
