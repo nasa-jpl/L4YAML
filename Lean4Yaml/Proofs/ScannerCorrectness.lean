@@ -242,20 +242,65 @@ theorem scanNextToken_preserves_prefix (s : ScannerState) (s' : ScannerState)
 When `scanLoop` succeeds, it only appends tokens to the input state.
 The original tokens remain unchanged in their positions.
 
-**Note**: This requires lemmas about:
-- `unwindIndents` preserves prefix ✅ (proven above)
-- `scanNextToken` preserves prefix (deferred)
-- `emit` preserves prefix ✅ (proven: emit only appends)
+**Proof strategy**:
+- Base case (fuel = 0): scanLoop returns error, contradiction
+- Inductive case: split on scanNextToken result
+  - If none: uses unwindIndents + emit (both proven to preserve prefix)
+  - If some s': would use IH + scanNextToken_preserves_prefix
 
-Full proof deferred - requires building library of prefix-preservation lemmas. -/
+**Status**: Proven for the success path (scanNextToken = none), which includes
+the final streamEnd emission. The recursive path requires scanNextToken_preserves_prefix. -/
 theorem scanLoop_preserves_tokens (s : ScannerState) (fuel : Nat) (tokens : Array (Positioned YamlToken))
     (h : scanLoop s fuel = .ok tokens) :
     ∀ (i : Nat) (h_bound : i < s.tokens.size),
       ∃ (h_bound' : i < tokens.size), tokens[i] = s.tokens[i] := by
   intro i h_bound
-  -- This requires proving scanLoop only appends, never modifies existing tokens
-  -- Would need induction on fuel with lemmas about each operation
-  sorry
+  -- Induction on fuel
+  cases fuel with
+  | zero =>
+    -- Base case: fuel = 0, scanLoop returns error
+    unfold scanLoop at h
+    contradiction
+  | succ fuel' =>
+    -- Inductive case
+    unfold scanLoop at h
+    split at h
+    · -- scanNextToken = error: contradiction
+      contradiction
+    · -- scanNextToken = none: success path
+      -- Handle if-then-else conditions
+      split at h <;> try contradiction
+      split at h <;> try contradiction
+      -- Now h : .ok ((unwindIndents s (-1)).emit .streamEnd).tokens = .ok tokens
+      injection h with h_eq
+      -- tokens = (unwindIndents s (-1)).emit .streamEnd).tokens
+      -- h_eq : ((unwindIndents s (-1)).emit .streamEnd).tokens = tokens
+      let s_unwind := unwindIndents s (-1)
+      -- Establish size bounds
+      have h_unwind_mono : s_unwind.tokens.size ≥ s.tokens.size := unwindIndents_adds_tokens s (-1)
+      have h_emit_size : (s_unwind.emit .streamEnd).tokens.size = s_unwind.tokens.size + 1 :=
+        emit_tokens_size s_unwind .streamEnd
+      have h_i_lt_unwind : i < s_unwind.tokens.size := by omega
+      have h_i_lt_emitted : i < (s_unwind.emit .streamEnd).tokens.size := by
+        rw [h_emit_size]; omega
+      have h_i_lt_tokens : i < tokens.size := by
+        rw [← h_eq]; exact h_i_lt_emitted
+
+      exists h_i_lt_tokens
+
+      -- Show tokens[i] = s.tokens[i]
+      -- Use subst to replace tokens with the RHS of h_eq
+      cases h_eq
+      -- Now goal is: ((s_unwind.emit .streamEnd).tokens)[i] = s.tokens[i]
+      calc (s_unwind.emit .streamEnd).tokens[i]
+          = s_unwind.tokens[i]'h_i_lt_unwind :=
+            emit_preserves_tokens_at s_unwind .streamEnd i h_i_lt_unwind
+        _ = s.tokens[i] :=
+            unwindIndents_preserves_prefix s (-1) i h_bound
+    · -- scanNextToken = some s': recursive case
+      -- This would require: scanNextToken_preserves_prefix + IH
+      -- The structure is clear but requires full scanNextToken analysis
+      sorry
 
 /-- scanLoop preserves or increases token count.
 
@@ -377,10 +422,32 @@ theorem scan_first_is_streamStart (input : String) (tokens : Array (Positioned Y
     exact advance_preserves_tokens s
 
   -- Step 3: scanLoop preserves existing tokens
-  -- After scanLoop, tokens[0] is still the same
-  -- This requires scanLoop_preserves_prefix which depends on scanNextToken_preserves_prefix
-  -- For now, structure is in place
-  sorry
+  -- The state after BOM handling
+  let s_after_bom := match ((ScannerState.mk' input).emit .streamStart).peek? with
+    | some '\uFEFF' => ((ScannerState.mk' input).emit .streamStart).advance
+    | _ => (ScannerState.mk' input).emit .streamStart
+
+  -- BOM handling preserves tokens
+  have h_bom_eq : s_after_bom.tokens = ((ScannerState.mk' input).emit .streamStart).tokens :=
+    h_bom_preserves _
+
+  -- So token[0] is still streamStart after BOM handling
+  have h_after_bom_size : s_after_bom.tokens.size = 1 := by
+    rw [h_bom_eq, h_init_size]
+
+  have h_0_lt_after_bom : 0 < s_after_bom.tokens.size := by
+    rw [h_after_bom_size]; omega
+
+  have h_after_bom_token : (s_after_bom.tokens[0]'h_0_lt_after_bom).val = YamlToken.streamStart := by
+    -- s_after_bom.tokens = ((ScannerState.mk' input).emit .streamStart).tokens
+    simp only [h_bom_eq, h_init_token]
+
+  -- Step 4: scanLoop preserves token[0]
+  -- Apply scanLoop_preserves_tokens
+  have ⟨h_0_lt_tokens, h_preserved⟩ := scanLoop_preserves_tokens s_after_bom _ tokens h 0 h_0_lt_after_bom
+
+  -- Combine: tokens[0].val = s_after_bom.tokens[0].val = streamStart
+  simp only [h_preserved, h_after_bom_token]
 
 /--
 The last token produced by `scan` is always `streamEnd`.
