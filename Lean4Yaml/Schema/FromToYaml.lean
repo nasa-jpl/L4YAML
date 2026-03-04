@@ -188,7 +188,7 @@ instance {α β : Type} [ToYaml α] [ToYaml β] : ToYaml (α × β) where
 /-! ## HashMap Instances -/
 
 /-- Convert a `YamlType` to a string key for HashMap use. -/
-private def yamlTypeToString? : YamlType → Except String String
+def yamlTypeToString? : YamlType → Except String String
   | .str s => .ok s
   | .int n => .ok (toString n)
   | .bool b => .ok (toString b)

@@ -90,7 +90,7 @@ in `ParserCompleteness.lean`:
 /-- `emitList` distributes over `stripAnnotationsList`:
     stripping annotations from each element doesn't change the
     emitted list representation. -/
-private theorem emitList_stripAnnotationsList (vs : List YamlValue)
+theorem emitList_stripAnnotationsList (vs : List YamlValue)
     (ih : ∀ v, v ∈ vs → emit (stripAnnotations v) = emit v) :
     emit.emitList (stripAnnotations.stripAnnotationsList vs) = emit.emitList vs := by
   match vs with
@@ -110,7 +110,7 @@ private theorem emitList_stripAnnotationsList (vs : List YamlValue)
 /-- `emitPairList` distributes over `stripAnnotationsPairs`:
     stripping annotations from keys and values doesn't change the
     emitted pair-list representation. -/
-private theorem emitPairList_stripAnnotationsPairs :
+theorem emitPairList_stripAnnotationsPairs :
     (ps : List (YamlValue × YamlValue)) →
     (ih : ∀ p, p ∈ ps →
           emit (stripAnnotations p.1) = emit p.1 ∧
@@ -192,7 +192,7 @@ and recurses structurally through collections.
 -/
 
 /-- `emitList` agrees on content-equivalent lists. -/
-private theorem emitList_contentEq (vs₁ vs₂ : List YamlValue)
+theorem emitList_contentEq (vs₁ vs₂ : List YamlValue)
     (ih : ∀ v₁, v₁ ∈ vs₁ → ∀ v₂, contentEq v₁ v₂ = true → emit v₁ = emit v₂)
     (h : contentEq.contentEqList vs₁ vs₂ = true) :
     emit.emitList vs₁ = emit.emitList vs₂ := by
@@ -220,7 +220,7 @@ private theorem emitList_contentEq (vs₁ vs₂ : List YamlValue)
       (fun v hv => ih v (.tail _ hv)) h_and.2
 
 /-- `emitPairList` agrees on content-equivalent pair lists. -/
-private theorem emitPairList_contentEq :
+theorem emitPairList_contentEq :
     (ps₁ ps₂ : List (YamlValue × YamlValue)) →
     (ih : ∀ p, p ∈ ps₁ →
           (∀ v₂, contentEq p.1 v₂ = true → emit p.1 = emit v₂) ∧

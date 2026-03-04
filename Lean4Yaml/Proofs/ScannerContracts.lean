@@ -103,13 +103,13 @@ Each flow open/close operation maintains `flowLevel = flowStack.size`.
 -/
 
 /-- Helper: `emit` preserves flowLevel. -/
-private theorem emit_preserves_flowLevel (s : ScannerState) (tok : YamlToken) :
+theorem emit_preserves_flowLevel (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).flowLevel = s.flowLevel := by
   unfold ScannerState.emit
   rfl
 
 /-- Helper: `emit` preserves flowStack. -/
-private theorem emit_preserves_flowStack (s : ScannerState) (tok : YamlToken) :
+theorem emit_preserves_flowStack (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).flowStack = s.flowStack := by
   unfold ScannerState.emit
   rfl
@@ -124,7 +124,7 @@ private theorem advance_preserves_flowLevel (s : ScannerState) :
   · rfl
 
 /-- Helper: `advance` preserves flowStack. -/
-private theorem advance_preserves_flowStack (s : ScannerState) :
+theorem advance_preserves_flowStack (s : ScannerState) :
     s.advance.flowStack = s.flowStack := by
   unfold ScannerState.advance
   split
@@ -133,13 +133,13 @@ private theorem advance_preserves_flowStack (s : ScannerState) :
   · rfl
 
 /-- Helper: `emit` preserves simpleKeyStack. -/
-private theorem emit_preserves_simpleKeyStack (s : ScannerState) (tok : YamlToken) :
+theorem emit_preserves_simpleKeyStack (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).simpleKeyStack = s.simpleKeyStack := by
   unfold ScannerState.emit
   rfl
 
 /-- Helper: `advance` preserves simpleKeyStack. -/
-private theorem advance_preserves_simpleKeyStack (s : ScannerState) :
+theorem advance_preserves_simpleKeyStack (s : ScannerState) :
     s.advance.simpleKeyStack = s.simpleKeyStack := by
   unfold ScannerState.advance
   split

@@ -210,7 +210,7 @@ standard types.
 -/
 
 /-- Helper: check typed round-trip returns the expected value. -/
-private def roundTripsTo {α : Type} [ToYaml α] [FromYaml α] [BEq α]
+def roundTripsTo {α : Type} [ToYaml α] [FromYaml α] [BEq α]
     (value : α) (cfg : DumpConfig := {}) : Bool :=
   match roundTripTyped α value cfg with
   | .ok v => v == value

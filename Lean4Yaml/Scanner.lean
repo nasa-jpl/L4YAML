@@ -867,7 +867,7 @@ def scanValue (s : ScannerState) : Except ScanError ScannerState := do
     **Post**: Advances past indicator + name characters, emits `.anchor name`
     or `.alias name`. Sets `simpleKeyAllowed := false`. -/
 -- Helper: Collect anchor/alias name characters using structural recursion.
-private def collectAnchorNameLoop (s : ScannerState) (name : String) (fuel : Nat) : String × ScannerState :=
+def collectAnchorNameLoop (s : ScannerState) (name : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
   | 0 => (name, s)
   | fuel' + 1 =>
@@ -891,7 +891,7 @@ def scanAnchorOrAlias (s : ScannerState) (isAnchor : Bool) : ScannerState :=
 /-! ## Tag Scanning -/
 
 -- Helper: Collect verbatim tag URI until '>'.
-private def collectVerbatimTagLoop (s : ScannerState) (uri : String) (fuel : Nat) : String × ScannerState :=
+def collectVerbatimTagLoop (s : ScannerState) (uri : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
   | 0 => (uri, s)
   | fuel' + 1 =>
@@ -901,7 +901,7 @@ private def collectVerbatimTagLoop (s : ScannerState) (uri : String) (fuel : Nat
     | none => (uri, s)
 
 -- Helper: Collect tag suffix characters (non-whitespace, non-flow).
-private def collectTagSuffixLoop (s : ScannerState) (suffix : String) (fuel : Nat) : String × ScannerState :=
+def collectTagSuffixLoop (s : ScannerState) (suffix : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
   | 0 => (suffix, s)
   | fuel' + 1 =>
@@ -915,7 +915,7 @@ private def collectTagSuffixLoop (s : ScannerState) (suffix : String) (fuel : Na
 
 -- Helper: Collect tag handle characters until '!' or invalid char.
 -- Returns (chars_before_bang, found_second_bang, state).
-private def collectTagHandleLoop (s : ScannerState) (chars : String) (fuel : Nat) : String × Bool × ScannerState :=
+def collectTagHandleLoop (s : ScannerState) (chars : String) (fuel : Nat) : String × Bool × ScannerState :=
   match fuel with
   | 0 => (chars, false, s)
   | fuel' + 1 =>
@@ -984,7 +984,7 @@ def scanTag (s : ScannerState) : ScannerState :=
 /-! ## Directive Scanning -/
 
 -- Helper: Collect directive name (non-whitespace, non-linebreak characters).
-private def collectDirectiveNameLoop (s : ScannerState) (name : String) (fuel : Nat) : String × ScannerState :=
+def collectDirectiveNameLoop (s : ScannerState) (name : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
   | 0 => (name, s)
   | fuel' + 1 =>
@@ -997,7 +997,7 @@ private def collectDirectiveNameLoop (s : ScannerState) (name : String) (fuel : 
     | none => (name, s)
 
 -- Helper: Collect version major digits until '.'.
-private def collectVersionMajorLoop (s : ScannerState) (major : String) (fuel : Nat) : String × ScannerState :=
+def collectVersionMajorLoop (s : ScannerState) (major : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
   | 0 => (major, s)
   | fuel' + 1 =>
@@ -1011,7 +1011,7 @@ private def collectVersionMajorLoop (s : ScannerState) (major : String) (fuel : 
     | none => (major, s)
 
 -- Helper: Collect version minor digits.
-private def collectVersionMinorLoop (s : ScannerState) (minor : String) (fuel : Nat) : String × ScannerState :=
+def collectVersionMinorLoop (s : ScannerState) (minor : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
   | 0 => (minor, s)
   | fuel' + 1 =>
@@ -1024,7 +1024,7 @@ private def collectVersionMinorLoop (s : ScannerState) (minor : String) (fuel : 
     | none => (minor, s)
 
 -- Helper: Collect TAG directive handle (non-whitespace characters).
-private def collectTagHandleDirectiveLoop (s : ScannerState) (handle : String) (fuel : Nat) : String × ScannerState :=
+def collectTagHandleDirectiveLoop (s : ScannerState) (handle : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
   | 0 => (handle, s)
   | fuel' + 1 =>
@@ -1037,7 +1037,7 @@ private def collectTagHandleDirectiveLoop (s : ScannerState) (handle : String) (
     | none => (handle, s)
 
 -- Helper: Collect TAG directive prefix (non-whitespace, non-linebreak characters).
-private def collectTagPrefixLoop (s : ScannerState) (pfx : String) (fuel : Nat) : String × ScannerState :=
+def collectTagPrefixLoop (s : ScannerState) (pfx : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
   | 0 => (pfx, s)
   | fuel' + 1 =>
@@ -1308,7 +1308,7 @@ def foldQuotedNewlines (s : ScannerState) : Except ScanError (String × ScannerS
     return (" ", s')
 
 -- Helper: Skip whitespace for trailing content validation
-private def skipTrailingSpaces (s : ScannerState) (fuel : Nat) : ScannerState :=
+def skipTrailingSpaces (s : ScannerState) (fuel : Nat) : ScannerState :=
   match fuel with
   | 0 => s
   | fuel' + 1 =>
@@ -1321,7 +1321,7 @@ private def skipTrailingSpaces (s : ScannerState) (fuel : Nat) : ScannerState :=
     | none => s
 
 -- Helper: Validate trailing content after closing quote (block context only)
-private def validateTrailingContent (s : ScannerState) (inputEnd : Nat) : Except ScanError Unit := do
+def validateTrailingContent (s : ScannerState) (inputEnd : Nat) : Except ScanError Unit := do
   let probe := skipTrailingSpaces s (inputEnd - s.offset + 1)
   match probe.peek? with
   | none => pure ()
@@ -1332,7 +1332,7 @@ private def validateTrailingContent (s : ScannerState) (inputEnd : Nat) : Except
       throw (.trailingContent probe.line probe.col)
 
 -- Helper: Collect double-quoted content using structural recursion
-private def collectDoubleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
+def collectDoubleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
     (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
     Except ScanError (String × ScannerState) :=
   match fuel with
@@ -1406,7 +1406,7 @@ def scanDoubleQuoted (s : ScannerState) : Except ScanError ScannerState := do
   .ok { s_with_token with simpleKeyAllowed := false }
 
 -- Helper: Collect single-quoted content using structural recursion
-private def collectSingleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
+def collectSingleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
     (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
     Except ScanError (String × ScannerState) :=
   match fuel with
@@ -1496,6 +1496,105 @@ def isPlainSafe (c : Char) (inFlow : Bool) : Bool :=
   else
     !isWhiteSpace c && !isLineBreak c
 
+-- Helper: Skip blank lines and count them (for plain scalar block context)
+def skipBlankLinesLoop (s : ScannerState) (cnt : Nat) (fuel : Nat) (inputEnd : Nat) :
+    Nat × ScannerState :=
+  match fuel with
+  | 0 => (cnt, s)
+  | fuel' + 1 =>
+    let saved := s
+    let s_after_spaces := skipSpaces s
+    match s_after_spaces.peek? with
+    | some c =>
+      if isLineBreak c then
+        let s_after_newline := consumeNewline s_after_spaces
+        skipBlankLinesLoop s_after_newline (cnt + 1) fuel' inputEnd
+      else
+        (cnt, saved)
+    | none => (cnt, s)
+
+-- Result type for plain scalar collection
+structure PlainScalarResult where
+  content : String
+  spaces : String
+  state : ScannerState
+  terminated : Bool
+
+-- Helper: Collect plain scalar content using structural recursion
+def collectPlainScalarLoop (s : ScannerState) (content : String) (spaces : String) (fuel : Nat)
+    (inFlow : Bool) (contentIndent : Nat) (inputEnd : Nat) :
+    Except ScanError PlainScalarResult :=
+  match fuel with
+  | 0 => .ok { content, spaces, state := s, terminated := false }
+  | fuel' + 1 =>
+    match s.peek? with
+    | none => .ok { content, spaces, state := s, terminated := true }
+    | some c =>
+      -- ` #` terminates
+      if c == '#' && spaces.length > 0 then
+        .ok { content, spaces, state := s, terminated := true }
+      else if c == ':' then
+        -- `: ` terminates at value indicator position
+        let next := s.peekAt? 1
+        let terminates := match next with
+          | some n => isBlank n || (inFlow && isFlowIndicator n)
+          | none => true
+        if terminates then
+          .ok { content, spaces, state := s, terminated := true }
+        else
+          -- Regular `:` character (not a terminator)
+          if !isPlainSafe c inFlow then
+            .ok { content, spaces, state := s, terminated := true }
+          else
+            let content' := content ++ spaces ++ (String.singleton c)
+            collectPlainScalarLoop s.advance content' "" fuel' inFlow contentIndent inputEnd
+      else if inFlow && isFlowIndicator c then
+        -- Flow indicators terminate in flow context
+        .ok { content, spaces, state := s, terminated := true }
+      else if s.col == 0 && atDocumentBoundary s then
+        -- Document boundary at col 0 terminates
+        .ok { content, spaces, state := s, terminated := true }
+      else if isLineBreak c then
+        -- Line break: check continuation
+        if inFlow then do
+          let (folded, s_after_fold) ← foldQuotedNewlines s
+          -- Check for `#` after folding
+          match s_after_fold.peek? with
+          | some '#' =>
+            .ok { content, spaces, state := s_after_fold, terminated := true }
+          | _ =>
+            let content' := content ++ folded
+            collectPlainScalarLoop s_after_fold content' "" fuel' inFlow contentIndent inputEnd
+        else
+          let saved := s
+          let s_after_newline := consumeNewline s
+          -- Skip blank lines
+          let bfuel := inputEnd - s_after_newline.offset + 1
+          let (emptyCount, s_after_blanks) := skipBlankLinesLoop s_after_newline 0 bfuel inputEnd
+          let s_after_spaces := skipSpaces s_after_blanks
+          -- Check termination conditions
+          if s_after_spaces.col < contentIndent then
+            .ok { content, spaces, state := saved, terminated := true }
+          else if atDocumentBoundary s_after_spaces then
+            .ok { content, spaces, state := saved, terminated := true }
+          else
+            -- Continue with folded content
+            let content' := if emptyCount > 0 then
+              content ++ String.ofList (List.replicate emptyCount '\n')
+            else
+              content ++ " "
+            collectPlainScalarLoop s_after_spaces content' "" fuel' inFlow contentIndent inputEnd
+      else if isWhiteSpace c then
+        -- Whitespace accumulates
+        collectPlainScalarLoop s.advance content (spaces.push c) fuel' inFlow contentIndent inputEnd
+      else
+        -- Regular content character
+        if !isPlainSafe c inFlow then
+          .ok { content, spaces, state := s, terminated := true }
+        else
+          let content' := content ++ spaces ++ (String.singleton c)
+          collectPlainScalarLoop s.advance content' "" fuel' inFlow contentIndent inputEnd
+
 /-- Scan a plain (unquoted) scalar.
 
     **Implements** (YAML 1.2.2 §7.3.3):
@@ -1522,90 +1621,14 @@ def scanPlainScalar (s : ScannerState) : Except ScanError ScannerState := do
   let startPos := s.currentPos
   let inFlow := s.inFlow
   -- §7.3.3: Continuation lines must be indented past the current block level.
-  -- Use currentIndent + 1 (not s.col) so that continuation correctly includes
-  -- lines at the block's content region, matching YAML 1.2.2 §7.3.3 / libyaml.
   let contentIndent := if inFlow then s.col
     else (max 0 (s.currentIndent + 1)).toNat
-  let mut s' := s
-  let mut content := ""
-  let mut spaces := ""
   let fuel := (s.inputEnd - s.offset + 1) * 2
-  for _ in [:fuel] do
-    match s'.peek? with
-    | none => break
-    | some c =>
-      -- ` #` terminates
-      if c == '#' && spaces.length > 0 then break
-      -- `: ` terminates at value indicator position
-      if c == ':' then
-        let next := s'.peekAt? 1
-        let terminates := match next with
-          | some n => isBlank n || (inFlow && isFlowIndicator n)
-          | none => true
-        if terminates then break
-      -- Flow indicators terminate in flow context
-      if inFlow && isFlowIndicator c then break
-      -- Document boundary at col 0 terminates
-      if s'.col == 0 && atDocumentBoundary s' then break
-      -- Line break: check continuation
-      if isLineBreak c then
-        if inFlow then
-          let (folded, s'') ← foldQuotedNewlines s'
-          -- §7.3.3 [131]: After folding a newline to whitespace, `#` is
-          -- preceded by whitespace and starts a comment (terminating the
-          -- scalar).  `foldQuotedNewlines` already skipped leading
-          -- whitespace on the continuation line, so s'' points at the
-          -- first non-whitespace character.
-          match s''.peek? with
-          | some '#' => s' := s''; break
-          | _ => pure ()
-          content := content ++ folded  -- drop trailing `spaces` per YAML §6.5
-          spaces := ""
-          s' := s''
-        else
-          let saved := s'
-          let s'' := consumeNewline s'
-          -- Skip blank lines
-          let (emptyCount, s'') := Id.run do
-            let mut s'' := s''
-            let mut cnt := (0 : Nat)
-            let bfuel := s.inputEnd - s''.offset + 1
-            for _ in [:bfuel] do
-              let sv := s''
-              s'' := skipSpaces s''
-              match s''.peek? with
-              | some bc =>
-                if isLineBreak bc then
-                  s'' := consumeNewline s''
-                  cnt := cnt + 1
-                else
-                  s'' := sv; break
-              | none => break
-            return (cnt, s'')
-          let s'' := skipSpaces s''
-          if s''.col < contentIndent then
-            s' := saved; break
-          if atDocumentBoundary s'' then
-            s' := saved; break
-          if emptyCount > 0 then
-            content := content ++ String.ofList (List.replicate emptyCount '\n')
-          else
-            content := content ++ " "  -- drop trailing `spaces` per YAML §6.5
-          spaces := ""
-          s' := s''
-        continue
-      -- Whitespace accumulates
-      if isWhiteSpace c then
-        spaces := spaces.push c; s' := s'.advance; continue
-      -- Regular content character
-      if !isPlainSafe c inFlow then break
-      content := content ++ spaces
-      spaces := ""
-      content := content.push c
-      s' := s'.advance
+  let result ← collectPlainScalarLoop s "" "" fuel inFlow contentIndent s.inputEnd
   -- Trim trailing whitespace: plain scalars never have trailing WS per §7.3.3
-  content := trimTrailingWS content
-  return { s'.emitAt startPos (.scalar content .plain) with simpleKeyAllowed := false }
+  let content_trimmed := trimTrailingWS result.content
+  let s_with_token := result.state.emitAt startPos (.scalar content_trimmed .plain)
+  .ok { s_with_token with simpleKeyAllowed := false }
 
 /-- States for folded block scalar newline processing (YAML 1.2.2 §8.1.3).
 
@@ -1702,6 +1725,116 @@ where
         | s => s
       go rest (acc.push c) newSt 0
 
+-- Helper: Auto-detect block scalar content indentation
+def autoDetectBlockScalarIndentLoop (probe : ScannerState) (maxWSCol maxWSLine : Nat)
+    (minContentIndent : Nat) (fuel : Nat) (inputEnd : Nat) :
+    Nat × Nat × ScannerState × Option ScanError :=
+  match fuel with
+  | 0 =>
+    -- No content found. Use max whitespace column as indent
+    if maxWSCol > minContentIndent then
+      (maxWSCol, maxWSLine, probe, none)
+    else
+      (minContentIndent, maxWSLine, probe, none)
+  | fuel' + 1 =>
+    let probe_after_spaces := skipSpaces probe
+    match probe_after_spaces.peek? with
+    | some c =>
+      -- Tab in indentation zone
+      if c == '\t' && probe_after_spaces.col < minContentIndent then
+        (0, maxWSLine, probe, some (.tabInIndentation probe_after_spaces.line probe_after_spaces.col))
+      else if isLineBreak c then
+        -- Whitespace-only line: track max column
+        let maxWSCol' := if probe_after_spaces.col > maxWSCol then probe_after_spaces.col else maxWSCol
+        let maxWSLine' := if probe_after_spaces.col > maxWSCol then probe_after_spaces.line else maxWSLine
+        let probe' := consumeNewline probe_after_spaces
+        autoDetectBlockScalarIndentLoop probe' maxWSCol' maxWSLine' minContentIndent fuel' inputEnd
+      else
+        -- First non-empty line: set contentIndent
+        let detectedIndent := max minContentIndent probe_after_spaces.col
+        -- Validate preceding whitespace-only lines
+        if maxWSCol > detectedIndent then
+          (0, maxWSLine, probe, some (.blockScalarIndentMismatch maxWSLine maxWSCol))
+        else
+          (detectedIndent, maxWSLine, probe, none)
+    | none =>
+      -- No more content
+      if maxWSCol > minContentIndent then
+        (maxWSCol, maxWSLine, probe, none)
+      else
+        (minContentIndent, maxWSLine, probe, none)
+
+def autoDetectBlockScalarIndent (s : ScannerState) (minContentIndent : Nat) (inputEnd : Nat) :
+    Nat × Option ScanError :=
+  let fuel := inputEnd - s.offset + 1
+  let (indent, _, _, err) := autoDetectBlockScalarIndentLoop s 0 0 minContentIndent fuel inputEnd
+  (indent, err)
+
+-- Helper: Consume exactly `count` spaces (for s-indent in block scalars)
+def consumeExactSpaces (s : ScannerState) (count : Nat) : Nat × ScannerState :=
+  match count with
+  | 0 => (0, s)
+  | count' + 1 =>
+    match s.peek? with
+    | some ' ' =>
+      let (consumed, s') := consumeExactSpaces s.advance count'
+      (consumed + 1, s')
+    | _ => (0, s)
+
+-- Helper: Collect content characters until line break
+def collectLineContentLoop (s : ScannerState) (content : String) (fuel : Nat) :
+    String × ScannerState :=
+  match fuel with
+  | 0 => (content, s)
+  | fuel' + 1 =>
+    match s.peek? with
+    | some c =>
+      if isLineBreak c then
+        (content, s)
+      else
+        collectLineContentLoop s.advance (content.push c) fuel'
+    | none => (content, s)
+
+-- Helper: Collect block scalar raw content using structural recursion
+def collectBlockScalarLoop (s : ScannerState) (rawContent : String) (fuel : Nat)
+    (contentIndent : Nat) (inputEnd : Nat) :
+    String × ScannerState :=
+  match fuel with
+  | 0 => (rawContent, s)
+  | fuel' + 1 =>
+    -- Check for document boundary
+    if s.col == 0 && atDocumentBoundary s then
+      (rawContent, s)
+    else
+      -- Try to consume s-indent(contentIndent): exactly contentIndent spaces
+      let (spacesConsumed, s_after_spaces) := consumeExactSpaces s contentIndent
+      match s_after_spaces.peek? with
+      | none => (rawContent, s_after_spaces)
+      | some c =>
+        if isLineBreak c then
+          -- l-empty line: fewer than contentIndent spaces followed by line break
+          let rawContent' := rawContent.push '\n'
+          let s' := consumeNewline s_after_spaces
+          collectBlockScalarLoop s' rawContent' fuel' contentIndent inputEnd
+        else if spacesConsumed < contentIndent && !isLineBreak c then
+          -- Less-indented non-empty line: end of block scalar content
+          (rawContent, s)
+        else
+          -- nb-char+: content characters until line break
+          let innerFuel := inputEnd - s_after_spaces.offset + 1
+          let (lineContent, s_after_line) := collectLineContentLoop s_after_spaces "" innerFuel
+          let rawContent' := rawContent ++ lineContent
+          -- Consume line break if present
+          match s_after_line.peek? with
+          | some c' =>
+            if isLineBreak c' then
+              let rawContent'' := rawContent'.push '\n'
+              let s' := consumeNewline s_after_line
+              collectBlockScalarLoop s' rawContent'' fuel' contentIndent inputEnd
+            else
+              collectBlockScalarLoop s_after_line rawContent' fuel' contentIndent inputEnd
+          | none => (rawContent', s_after_line)
+
 /-- Scan a block scalar (literal `|` or folded `>`).
 
     **Implements** (YAML 1.2.2 §8.1):
@@ -1766,115 +1899,23 @@ def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState := do
     | none => .ok s'
   -- Determine content indentation: n+m
   -- parentIndent = n = parent block's indentation level (§8.1.2).
-  -- Uses currentIndent (Int, -1 at stream level) so that top-level block
-  -- scalars correctly allow content at column 0, and nested block scalars
-  -- use the block's indent rather than the column of the `|`/`>` indicator.
   let parentIndent : Int := s.currentIndent
-  -- CONTRACT: parentIndent is the current block's indent level
   have h_parentIndent : parentIndent = s.currentIndent := rfl
   -- minContentIndent (Position) = n+1: spec §8.1.3 requires m ≥ 1
   let minContentIndent : Nat := (max 0 (parentIndent + 1)).toNat
-  -- CONTRACT: minContentIndent ≥ 0 (trivially, as Nat)
-  -- CONTRACT: minContentIndent is the floor for content indent
   have h_minFloor : (0 : Int) ≤ max 0 (parentIndent + 1) := by omega
   let (contentIndent, autoDetectErr?) := match explicitOffset with
     | some m =>
       -- Explicit: contentIndent (Position) = parentIndent (Position) + m (Distance)
       ((max 0 (parentIndent + (m : Int))).toNat, (none : Option ScanError))
     | none =>
-      -- Auto-detect: scan ahead past blank lines to find first content line.
-      -- The detected column must respect the floor (minContentIndent).
-      -- Uses skipSpaces (not skipWhitespace) because s-indent uses spaces only [63].
-      -- §8.1.3: "the content indentation level is equal to the number of
-      -- leading spaces on the first non-empty line of the content."
-      -- Whitespace-only lines (spaces + newline) are skipped; their max column
-      -- is tracked to validate against the detected indent.
-      Id.run do
-        let mut probe := s'
-        let mut maxWSCol : Nat := 0
-        let mut maxWSLine : Nat := 0
-        let fuel := s.inputEnd - probe.offset + 1
-        for _ in [:fuel] do
-          probe := skipSpaces probe
-          match probe.peek? with
-          | some c =>
-            -- §6.1: Tab at col < minContentIndent is in the indentation zone
-            -- where s-indent requires spaces only. Reject immediately.
-            if c == '\t' && probe.col < minContentIndent then
-              return (0, some (.tabInIndentation probe.line probe.col))
-            if isLineBreak c then
-              -- Whitespace-only line: track max column but skip for indent detection.
-              if probe.col > maxWSCol then
-                maxWSCol := probe.col
-                maxWSLine := probe.line
-              probe := consumeNewline probe
-            else
-              -- First non-empty line: set contentIndent.
-              let detectedIndent := max minContentIndent probe.col
-              -- Validate: preceding whitespace-only lines must not exceed
-              -- the detected content indent.  Per §8.1.3, l-empty(n) lines
-              -- have at most n spaces; lines with more can't be l-empty and
-              -- have no nb-char content, so they're grammatically invalid.
-              if maxWSCol > detectedIndent then
-                return (0, some (.blockScalarIndentMismatch maxWSLine maxWSCol))
-              return (detectedIndent, none)
-          | none => break
-        -- No content found.  Use the maximum whitespace-only column as
-        -- the content indent (these lines are l-keep-empty/l-strip-empty
-        -- and legitimately establish the indent for trailing whitespace).
-        if maxWSCol > minContentIndent then
-          return (maxWSCol, none)
-        return (minContentIndent, none)
+      -- Auto-detect using structural recursion
+      autoDetectBlockScalarIndent s' minContentIndent s.inputEnd
   if let some err := autoDetectErr? then
     throw err
-  -- CONTRACT: contentIndent ≥ minContentIndent (§8.1.3: m ≥ 1).
-  -- In the explicit case: parentIndent + m ≥ parentIndent + 1 since m ≥ 1.
-  -- In the auto-detect case: detectedIndent = max minContentIndent probe.col ≥ minContentIndent.
-  -- This invariant is checked at runtime via the auto-detect logic and
-  -- the explicit case's arithmetic. See Proofs/ScannerContracts.lean for
-  -- the formal statement and #guard verification.
-  -- Collect content: l-literal-content / l-folded-content
-  -- Each content line must match: s-indent(contentIndent) nb-char+
-  -- Empty lines (l-empty): s-indent(≤contentIndent) b-as-line-feed
-  let (rawContent, s') := Id.run do
-    let mut s' := s'
-    let mut rawContent := ""
-    let fuel := s.inputEnd - s'.offset + 1
-    for _ in [:fuel] do
-      -- §9.1.4 / §9.2: Document markers `---` and `...` at column 0 always
-      -- terminate block scalar content, regardless of indentation.
-      if s'.col == 0 && atDocumentBoundary s' then break
-      -- Try to consume s-indent(contentIndent): exactly `contentIndent` spaces [63]
-      let (spacesConsumed, s'') := Id.run do  -- spacesConsumed: Distance
-        let mut s' := s'
-        let mut cnt := (0 : Nat)
-        for _ in [:contentIndent] do
-          match s'.peek? with
-          | some ' ' => s' := s'.advance; cnt := cnt + 1
-          | _ => break
-        return (cnt, s')
-      s' := s''
-      match s'.peek? with
-      | none => break
-      | some c =>
-        if isLineBreak c then
-          -- l-empty line: fewer than contentIndent spaces followed by line break
-          rawContent := rawContent.push '\n'
-          s' := consumeNewline s'
-        else if spacesConsumed < contentIndent && !isLineBreak c then
-          -- Less-indented non-empty line: end of block scalar content
-          break
-        else
-          -- nb-char+: content characters until line break
-          let innerFuel := s.inputEnd - s'.offset + 1
-          for _ in [:innerFuel] do
-            match s'.peek? with
-            | some c' => if isLineBreak c' then break else rawContent := rawContent.push c'; s' := s'.advance
-            | none => break
-          match s'.peek? with
-          | some c' => if isLineBreak c' then rawContent := rawContent.push '\n'; s' := consumeNewline s'
-          | none => pure ()
-    return (rawContent, s')
+  -- Collect content: l-literal-content / l-folded-content using structural recursion
+  let fuel := s.inputEnd - s'.offset + 1
+  let (rawContent, s_after_content) := collectBlockScalarLoop s' "" fuel contentIndent s.inputEnd
   -- Apply chomp: c-chomping-indicator(t) [164]
   let stripTrailingNewlines (str : String) : String :=
     String.ofList (str.toList.reverse.dropWhile (· == '\n') |>.reverse)
@@ -1888,11 +1929,8 @@ def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState := do
   let content := if isLiteral then content else foldBlockContent content
   let style := if isLiteral then ScalarStyle.literal else ScalarStyle.folded
   -- Block scalars cannot be implicit keys (§7.4): clear stale simpleKey.
-  -- After a block scalar the scanner is at the start of the next line where
-  -- new simple keys are allowed, so set simpleKeyAllowed := true.
-  .ok ({ s'.emitAt startPos (.scalar content style) with
-    simpleKeyAllowed := true
-    simpleKey := { possible := false } })
+  let s_with_token := s_after_content.emitAt startPos (.scalar content style)
+  .ok { s_with_token with simpleKeyAllowed := true, simpleKey := { possible := false } }
 
 /-! ## Main Scanner Loop -/
 

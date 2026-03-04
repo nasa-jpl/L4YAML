@@ -137,13 +137,13 @@ theorem scanFlowMappingEnd_tokens_size (s : ScannerState) :
 /-! ## Flow end decrements flowLevel when > 0 -/
 
 /-- Helper: emit preserves flowLevel. -/
-private theorem emit_preserves_flowLevel (s : ScannerState) (tok : YamlToken) :
+theorem emit_preserves_flowLevel (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).flowLevel = s.flowLevel := by
   unfold ScannerState.emit
   rfl
 
 /-- Helper: advance preserves flowLevel. -/
-private theorem advance_preserves_flowLevel (s : ScannerState) :
+theorem advance_preserves_flowLevel (s : ScannerState) :
     s.advance.flowLevel = s.flowLevel := by
   unfold ScannerState.advance
   split
@@ -168,13 +168,13 @@ theorem scanFlowMappingEnd_flowLevel_pos (s : ScannerState) (h : s.flowLevel > 0
 /-! ## Flow end preserves flow_sync when > 0 -/
 
 /-- Helper: emit preserves flowStack. -/
-private theorem emit_preserves_flowStack (s : ScannerState) (tok : YamlToken) :
+theorem emit_preserves_flowStack (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).flowStack = s.flowStack := by
   unfold ScannerState.emit
   rfl
 
 /-- Helper: advance preserves flowStack. -/
-private theorem advance_preserves_flowStack (s : ScannerState) :
+theorem advance_preserves_flowStack (s : ScannerState) :
     s.advance.flowStack = s.flowStack := by
   unfold ScannerState.advance
   split
