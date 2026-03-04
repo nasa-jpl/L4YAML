@@ -581,17 +581,23 @@ def atDocumentBoundary (s : ScannerState) : Bool :=
 
     **Pre**: Scanner at `[`.
     **Post**: Emits `flowSequenceStart`, advances past `[`, increments `flowLevel`,
-    pushes `true` onto `flowStack` (= sequence), sets `simpleKeyAllowed := true`. -/
+    pushes `true` onto `flowStack` (= sequence), sets `simpleKeyAllowed := true`.
+
+    **Refactored for verification**: Uses explicit variable names (no shadowing)
+    to make token tracking clearer for formal proofs. -/
 def scanFlowSequenceStart (s : ScannerState) : ScannerState :=
   -- Save the outer simple key so it survives flow nesting.
   -- Example: `[a, b]: value` — the simple key saved before `[` must
   -- still be pending after `]` for `:` to confirm it.
   let savedKey := s.simpleKey
-  let s' := { s with simpleKey := { possible := false } }
-  let s' := s'.emit .flowSequenceStart
-  { s'.advance with flowLevel := s'.flowLevel + 1, simpleKeyAllowed := true,
-                    flowStack := s'.flowStack.push true,
-                    simpleKeyStack := s'.simpleKeyStack.push savedKey }
+  let s_key_disabled := { s with simpleKey := { possible := false } }
+  let s_with_token := s_key_disabled.emit .flowSequenceStart
+  let s_after_advance := s_with_token.advance
+  { s_after_advance with
+      flowLevel := s_after_advance.flowLevel + 1,
+      simpleKeyAllowed := true,
+      flowStack := s_after_advance.flowStack.push true,
+      simpleKeyStack := s_after_advance.simpleKeyStack.push savedKey }
 
 /-- Scan a flow sequence end indicator `]`.
 
@@ -600,16 +606,21 @@ def scanFlowSequenceStart (s : ScannerState) : ScannerState :=
 
     **Pre**: Scanner at `]` inside a flow collection (`flowLevel > 0`).
     **Post**: Emits `flowSequenceEnd`, advances past `]`, decrements `flowLevel`,
-    pops `flowStack`, sets `simpleKeyAllowed := false`. -/
+    pops `flowStack`, sets `simpleKeyAllowed := false`.
+
+    **Refactored for verification**: Uses explicit variable names to make
+    token tracking clearer for formal proofs. -/
 def scanFlowSequenceEnd (s : ScannerState) : ScannerState :=
-  let s' := s.emit .flowSequenceEnd
+  let s_with_token := s.emit .flowSequenceEnd
+  let s_after_advance := s_with_token.advance
   -- Restore the outer simple key saved by the matching flow-open.
-  let restored := s'.simpleKeyStack.back?.getD {}
-  { s'.advance with flowLevel := if s'.flowLevel > 0 then s'.flowLevel - 1 else 0,
-                    simpleKeyAllowed := false,
-                    flowStack := s'.flowStack.pop,
-                    simpleKey := restored,
-                    simpleKeyStack := s'.simpleKeyStack.pop }
+  let restored := s_with_token.simpleKeyStack.back?.getD {}
+  { s_after_advance with
+      flowLevel := if s_after_advance.flowLevel > 0 then s_after_advance.flowLevel - 1 else 0,
+      simpleKeyAllowed := false,
+      flowStack := s_after_advance.flowStack.pop,
+      simpleKey := restored,
+      simpleKeyStack := s_after_advance.simpleKeyStack.pop }
 
 /-- Scan a flow mapping start indicator `{`.
 
@@ -619,17 +630,23 @@ def scanFlowSequenceEnd (s : ScannerState) : ScannerState :=
 
     **Pre**: Scanner at `{`.
     **Post**: Emits `flowMappingStart`, advances past `{`, increments `flowLevel`,
-    pushes `false` onto `flowStack` (= mapping), sets `simpleKeyAllowed := true`. -/
+    pushes `false` onto `flowStack` (= mapping), sets `simpleKeyAllowed := true`.
+
+    **Refactored for verification**: Uses explicit variable names to make
+    token tracking clearer for formal proofs. -/
 def scanFlowMappingStart (s : ScannerState) : ScannerState :=
   -- Save the outer simple key so it survives flow nesting.
   -- Example: `{a: b}: value` — the simple key saved before `{` must
   -- still be pending after `}` for `:` to confirm it.
   let savedKey := s.simpleKey
-  let s' := { s with simpleKey := { possible := false } }
-  let s' := s'.emit .flowMappingStart
-  { s'.advance with flowLevel := s'.flowLevel + 1, simpleKeyAllowed := true,
-                    flowStack := s'.flowStack.push false,
-                    simpleKeyStack := s'.simpleKeyStack.push savedKey }
+  let s_key_disabled := { s with simpleKey := { possible := false } }
+  let s_with_token := s_key_disabled.emit .flowMappingStart
+  let s_after_advance := s_with_token.advance
+  { s_after_advance with
+      flowLevel := s_after_advance.flowLevel + 1,
+      simpleKeyAllowed := true,
+      flowStack := s_after_advance.flowStack.push false,
+      simpleKeyStack := s_after_advance.simpleKeyStack.push savedKey }
 
 /-- Scan a flow mapping end indicator `}`.
 
@@ -638,16 +655,21 @@ def scanFlowMappingStart (s : ScannerState) : ScannerState :=
 
     **Pre**: Scanner at `}` inside a flow collection (`flowLevel > 0`).
     **Post**: Emits `flowMappingEnd`, advances past `}`, decrements `flowLevel`,
-    pops `flowStack`, sets `simpleKeyAllowed := false`. -/
+    pops `flowStack`, sets `simpleKeyAllowed := false`.
+
+    **Refactored for verification**: Uses explicit variable names to make
+    token tracking clearer for formal proofs. -/
 def scanFlowMappingEnd (s : ScannerState) : ScannerState :=
-  let s' := s.emit .flowMappingEnd
+  let s_with_token := s.emit .flowMappingEnd
+  let s_after_advance := s_with_token.advance
   -- Restore the outer simple key saved by the matching flow-open.
-  let restored := s'.simpleKeyStack.back?.getD {}
-  { s'.advance with flowLevel := if s'.flowLevel > 0 then s'.flowLevel - 1 else 0,
-                    simpleKeyAllowed := false,
-                    flowStack := s'.flowStack.pop,
-                    simpleKey := restored,
-                    simpleKeyStack := s'.simpleKeyStack.pop }
+  let restored := s_with_token.simpleKeyStack.back?.getD {}
+  { s_after_advance with
+      flowLevel := if s_after_advance.flowLevel > 0 then s_after_advance.flowLevel - 1 else 0,
+      simpleKeyAllowed := false,
+      flowStack := s_after_advance.flowStack.pop,
+      simpleKey := restored,
+      simpleKeyStack := s_after_advance.simpleKeyStack.pop }
 
 /-- Scan a flow entry separator `,`.
 
