@@ -723,20 +723,24 @@ def scanBlockEntry (s : ScannerState) : Except ScanError ScannerState := do
     **Pre**: Scanner at `?` followed by blank/EOF (or flow indicator in flow context).
     **Post**: Pushes mapping indent if needed, emits `key`, advances past `?`,
     sets `simpleKeyAllowed := true`, `explicitKeyLine := some s.line`.
-    **Error**: `tabInIndentation` if tab immediately follows `?` in block context (§6.1). -/
+    **Error**: `tabInIndentation` if tab immediately follows `?` in block context (§6.1).
+
+    **Refactored for verification**: Uses explicit variable names to make
+    token tracking clearer for formal proofs. -/
 def scanKey (s : ScannerState) : Except ScanError ScannerState := do
-  let s' := if !s.inFlow then pushMappingIndent s s.col else s
-  let s' := (s'.emit .key).advance
+  let s_with_indent := if !s.inFlow then pushMappingIndent s s.col else s
+  let s_with_token := s_with_indent.emit .key
+  let s_after_advance := s_with_token.advance
   -- §6.1: Tab immediately after `?` indicator in block context is
   -- indentation for the key content — forbidden.
-  if !s'.inFlow then
-    if let some '\t' := s'.peek? then
-      throw (.tabInIndentation s'.line s'.col)
+  if !s_after_advance.inFlow then
+    if let some '\t' := s_after_advance.peek? then
+      throw (.tabInIndentation s_after_advance.line s_after_advance.col)
   -- Invalidate any pending simple key.  The `?` has already emitted an
   -- explicit `key` token; the next `:` is this key's value indicator,
   -- not confirmation of a new implicit key.
-  .ok { s' with simpleKeyAllowed := true, explicitKeyLine := some s.line,
-                simpleKey := { possible := false } }
+  .ok { s_after_advance with simpleKeyAllowed := true, explicitKeyLine := some s.line,
+                              simpleKey := { possible := false } }
 
 /-- Scan a value indicator `:`.
 
@@ -762,36 +766,39 @@ def scanKey (s : ScannerState) : Except ScanError ScannerState := do
     **Error**: `invalidImplicitKey` (multiline implicit key in block §7.4, or flow sequence §7.4.2),
     `trailingContent` (key at same indent as block sequence §8.2.1),
     `invalidFlowEntry` (missing comma in flow mapping, T833 §7.4),
-    `tabInIndentation` (tab after explicit `:` at/below indent level §6.1). -/
+    `tabInIndentation` (tab after explicit `:` at/below indent level §6.1).
+
+    **Refactored for verification**: Uses explicit variable names to make
+    token tracking clearer for formal proofs. -/
 def scanValue (s : ScannerState) : Except ScanError ScannerState := do
   -- When `saveSimpleKey` saved the position of `:` itself (before dispatch
   -- recognised it as a value indicator) and an explicit `?` key is still
   -- pending, the saved key is spurious — discard it so the explicit-key
   -- path fires below.  Example: `? a\n: b` — the `:` on line 1 is the
   -- value indicator for the explicit key, not a new implicit key.
-  let s := if s.explicitKeyLine.isSome && s.simpleKey.possible
+  let s_key_cleared := if s.explicitKeyLine.isSome && s.simpleKey.possible
               && s.simpleKey.pos.offset == s.offset then
     { s with simpleKey := { possible := false } }
   else s
   -- §7.4: "Plain keys are restricted to a single line."
   -- In block context, reject implicit keys where the key token and the `:`
   -- value indicator are on different lines.
-  if s.simpleKey.possible && !s.inFlow && s.simpleKey.pos.line != s.line then
-    throw (.invalidImplicitKey s.line)
+  if s_key_cleared.simpleKey.possible && !s_key_cleared.inFlow && s_key_cleared.simpleKey.pos.line != s_key_cleared.line then
+    throw (.invalidImplicitKey s_key_cleared.line)
   -- §7.4.2: In flow sequences, implicit key entries (without `?`) must
   -- have the key and `:` on the same line.  Flow mappings allow multi-line
   -- implicit keys per `ns-flow-map-yaml-key-entry(n,c)` with `s-separate`.
-  if s.simpleKey.possible && s.isInFlowSequence && s.explicitKeyLine.isNone
-      && s.simpleKey.endLine != s.line then
-    throw (.invalidImplicitKey s.line)
+  if s_key_cleared.simpleKey.possible && s_key_cleared.isInFlowSequence && s_key_cleared.explicitKeyLine.isNone
+      && s_key_cleared.simpleKey.endLine != s_key_cleared.line then
+    throw (.invalidImplicitKey s_key_cleared.line)
   -- §8.2.1: A mapping key at the same indent as a block sequence is
   -- invalid.  Reject before building new state.
-  if s.simpleKey.possible && !s.inFlow then
-    let keyCol : Int := s.simpleKey.pos.col
-    if keyCol <= s.currentIndent then
-      if let some top := s.indents.back? then
+  if s_key_cleared.simpleKey.possible && !s_key_cleared.inFlow then
+    let keyCol : Int := s_key_cleared.simpleKey.pos.col
+    if keyCol <= s_key_cleared.currentIndent then
+      if let some top := s_key_cleared.indents.back? then
         if top.isSequence && keyCol == top.column then
-          throw (.trailingContent s.simpleKey.pos.line s.simpleKey.pos.col)
+          throw (.trailingContent s_key_cleared.simpleKey.pos.line s_key_cleared.simpleKey.pos.col)
   -- T833: Missing comma in flow mapping.  When the simple key position is
   -- immediately after a `value` token (no intervening `flowEntry` comma),
   -- AND the current `:` is on a different line from that `value` token,
@@ -799,40 +806,41 @@ def scanValue (s : ScannerState) : Except ScanError ScannerState := do
   -- a value position — e.g., `{ foo: 1\n bar: 2 }` folds `1 bar` as a key.
   -- Reject because flow mapping entries require comma separation.
   -- Same-line cases like `{x: :x}` or `{"key"::value}` are valid (§7.4).
-  if s.simpleKey.possible && s.inFlow && s.simpleKey.tokenIndex > 0 then
-    if let some prevTok := s.tokens[s.simpleKey.tokenIndex - 1]? then
-      if prevTok.val == .value && prevTok.pos.line != s.line then
-        throw (.invalidFlowEntry s.line s.col)
-  let s' := if s.simpleKey.possible then
-    let s'' := s.insertAt s.simpleKey.tokenIndex s.simpleKey.pos .key
-    if !s.inFlow then
-      let keyCol : Int := s.simpleKey.pos.col
-      if keyCol > s''.currentIndent then
-        let s3 := s''.insertAt s.simpleKey.tokenIndex s.simpleKey.pos .blockMappingStart
-        { s3 with
-          indents := s3.indents.push { column := keyCol, isSequence := false }
+  if s_key_cleared.simpleKey.possible && s_key_cleared.inFlow && s_key_cleared.simpleKey.tokenIndex > 0 then
+    if let some prevTok := s_key_cleared.tokens[s_key_cleared.simpleKey.tokenIndex - 1]? then
+      if prevTok.val == .value && prevTok.pos.line != s_key_cleared.line then
+        throw (.invalidFlowEntry s_key_cleared.line s_key_cleared.col)
+  let s_prepared := if s_key_cleared.simpleKey.possible then
+    let s_with_key := s_key_cleared.insertAt s_key_cleared.simpleKey.tokenIndex s_key_cleared.simpleKey.pos .key
+    if !s_key_cleared.inFlow then
+      let keyCol : Int := s_key_cleared.simpleKey.pos.col
+      if keyCol > s_with_key.currentIndent then
+        let s_with_mapping := s_with_key.insertAt s_key_cleared.simpleKey.tokenIndex s_key_cleared.simpleKey.pos .blockMappingStart
+        { s_with_mapping with
+          indents := s_with_mapping.indents.push { column := keyCol, isSequence := false }
           simpleKey := { possible := false } }
       else
-        { s'' with simpleKey := { possible := false } }
+        { s_with_key with simpleKey := { possible := false } }
     else
-      { s'' with simpleKey := { possible := false } }
-  else if s.explicitKeyLine.isSome then
+      { s_with_key with simpleKey := { possible := false } }
+  else if s_key_cleared.explicitKeyLine.isSome then
     -- Explicit `?` already emitted `blockMappingStart + key`.
     -- Just emit `value` — no new mapping indent needed.
     -- Also discard any stale simpleKey (saved by saveSimpleKey before
     -- dispatch recognised `:` as a value indicator).
-    { s with simpleKey := { possible := false } }
+    { s_key_cleared with simpleKey := { possible := false } }
   else
-    if !s.inFlow then pushMappingIndent s s.col else s
-  let s'' := (s'.emit .value).advance
+    if !s_key_cleared.inFlow then pushMappingIndent s_key_cleared s_key_cleared.col else s_key_cleared
+  let s_with_token := s_prepared.emit .value
+  let s_after_advance := s_with_token.advance
   -- §6.1: Tab immediately after explicit `:` value indicator (at or below
   -- block indent level) — the tab functions as indentation for the value
   -- content, which is forbidden.  When `:` is past the indent level (inline
   -- implicit value, e.g., `key:\tval`), the tab is valid `s-separate-in-line`.
-  if (s.col : Int) ≤ s.currentIndent && !s''.inFlow then
-    if let some '\t' := s''.peek? then
-      throw (.tabInIndentation s''.line s''.col)
-  .ok { s'' with simpleKeyAllowed := true, explicitKeyLine := none }
+  if (s.col : Int) ≤ s.currentIndent && !s_after_advance.inFlow then
+    if let some '\t' := s_after_advance.peek? then
+      throw (.tabInIndentation s_after_advance.line s_after_advance.col)
+  .ok { s_after_advance with simpleKeyAllowed := true, explicitKeyLine := none }
 
 /-! ## Anchor and Alias Scanning -/
 

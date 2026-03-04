@@ -302,6 +302,37 @@ theorem scanFlowMappingEnd_adds_one_token (s : ScannerState) :
   unfold scanFlowMappingEnd ScannerState.emit
   simp only [advance_preserves_tokens, Array.size_push]
 
+/-- scanKey adds exactly one token (on success).
+
+scanKey: conditional pushMappingIndent (preserves tokens) → emit .key → advance.
+Only emit modifies tokens (adds 1).
+
+**Status**: Refactored with explicit names, but proof requires handling monadic do-notation
+with error paths. The architectural insight is sound:
+- pushMappingIndent doesn't modify tokens
+- emit adds 1 token (emit_tokens_size)
+- advance preserves tokens (advance_preserves_tokens)
+- structure update doesn't modify tokens
+
+Full proof requires better automation for Except monad or manual case analysis. -/
+theorem scanKey_adds_one_token (s : ScannerState) (s' : ScannerState)
+    (h : scanKey s = .ok s') :
+    s'.tokens.size = s.tokens.size + 1 := by
+  sorry
+
+/-- scanValue adds at least one token (on success).
+
+scanValue: validation → conditional insertAt operations → emit .value → advance.
+The insertAt operations may add 1-2 tokens (key, blockMappingStart), then emit adds 1 more.
+So total: adds 1-3 tokens depending on whether a simple key is resolved. -/
+theorem scanValue_adds_tokens (s : ScannerState) (s' : ScannerState)
+    (h : scanValue s = .ok s') :
+    s'.tokens.size ≥ s.tokens.size + 1 := by
+  unfold scanValue at h
+  -- Complex control flow with insertAt operations
+  -- For now, defer the full proof
+  sorry
+
 /-- skipToContent preserves tokens exactly.
 
 skipToContent only calls skipSpaces, skipWhitespace, skipToEndOfLine, consumeNewline,
