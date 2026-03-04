@@ -679,7 +679,10 @@ def scanFlowMappingEnd (s : ScannerState) : ScannerState :=
     **Pre**: Scanner at `,` inside a flow collection (`flowLevel > 0`).
     **Post**: Emits `flowEntry`, advances past `,`, sets `simpleKeyAllowed := true`.
     **Error**: `invalidFlowEntry` if comma immediately follows a flow-open indicator
-    (`[`, `{`) or another comma — catching leading/consecutive commas. -/
+    (`[`, `{`) or another comma — catching leading/consecutive commas.
+
+    **Refactored for verification**: Uses explicit variable names to make
+    token tracking clearer for formal proofs. -/
 def scanFlowEntry (s : ScannerState) : Except ScanError ScannerState := do
   -- §7.4: Leading comma (after flow-open) or consecutive commas are invalid.
   if s.tokens.size > 0 then
@@ -687,7 +690,9 @@ def scanFlowEntry (s : ScannerState) : Except ScanError ScannerState := do
     if lastTok == .flowSequenceStart || lastTok == .flowMappingStart ||
        lastTok == .flowEntry then
       throw (.invalidFlowEntry s.line s.col)
-  .ok ({ (s.emit .flowEntry).advance with simpleKeyAllowed := true })
+  let s_with_token := s.emit .flowEntry
+  let s_after_advance := s_with_token.advance
+  .ok { s_after_advance with simpleKeyAllowed := true }
 
 /-- Scan a block entry indicator `-`.
 
@@ -699,7 +704,10 @@ def scanFlowEntry (s : ScannerState) : Except ScanError ScannerState := do
     **Pre**: Scanner at `-` followed by blank/EOF, in block context.
     **Post**: Pushes sequence indent if needed, emits `blockEntry`, advances past `-`,
     sets `simpleKeyAllowed := true`.
-    **Error**: `tabInIndentation` if tab is found in preceding whitespace (§6.1). -/
+    **Error**: `tabInIndentation` if tab is found in preceding whitespace (§6.1).
+
+    **Refactored for verification**: Uses explicit variable names to make
+    token tracking clearer for formal proofs. -/
 def scanBlockEntry (s : ScannerState) : Except ScanError ScannerState := do
   -- §6.1: Tab in indentation before block entry.
   -- Scan backward through whitespace consumed by skipToContent to detect any
@@ -708,8 +716,10 @@ def scanBlockEntry (s : ScannerState) : Except ScanError ScannerState := do
   if !s.inFlow then
     if s.hasTabInPrecedingWhitespace then
       throw (.tabInIndentation s.line s.col)
-  let s' := if !s.inFlow then pushSequenceIndent s s.col else s
-  .ok { (s'.emit .blockEntry).advance with simpleKeyAllowed := true }
+  let s_with_indent := if !s.inFlow then pushSequenceIndent s s.col else s
+  let s_with_token := s_with_indent.emit .blockEntry
+  let s_after_advance := s_with_token.advance
+  .ok { s_after_advance with simpleKeyAllowed := true }
 
 /-- Scan an explicit key indicator `?`.
 
@@ -1058,9 +1068,11 @@ def scanDirective (s : ScannerState) : Except ScanError ScannerState := do
     advances past `---`. Resets `allowDirectives := false`, `simpleKeyAllowed := true`,
     `documentEverStarted := true`. -/
 def scanDocumentStart (s : ScannerState) : ScannerState :=
-  let s' := unwindIndents s (-1)
-  let s' := { s' with simpleKey := { possible := false } }
-  { (s'.emit .documentStart).advanceN 3 with
+  let s_unwound := unwindIndents s (-1)
+  let s_key_disabled := { s_unwound with simpleKey := { possible := false } }
+  let s_with_token := s_key_disabled.emit .documentStart
+  let s_advanced := s_with_token.advanceN 3
+  { s_advanced with
     simpleKeyAllowed := true
     allowDirectives := false
     seenYamlDirective := false
@@ -1084,9 +1096,11 @@ def scanDocumentEnd (s : ScannerState) : Except ScanError ScannerState := do
   -- close a document that was never opened.
   if s.directivesPresent && !s.documentEverStarted then
     throw (.directiveWithoutDocument s.line)
-  let s' := unwindIndents s (-1)
-  let s' := { s' with simpleKey := { possible := false } }
-  let result := { (s'.emit .documentEnd).advanceN 3 with
+  let s_unwound := unwindIndents s (-1)
+  let s_key_disabled := { s_unwound with simpleKey := { possible := false } }
+  let s_with_token := s_key_disabled.emit .documentEnd
+  let s_advanced := s_with_token.advanceN 3
+  let result := { s_advanced with
     simpleKeyAllowed := true
     allowDirectives := true
     directivesPresent := false }
