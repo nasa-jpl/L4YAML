@@ -1307,6 +1307,76 @@ def foldQuotedNewlines (s : ScannerState) : Except ScanError (String × ScannerS
   else
     return (" ", s')
 
+-- Helper: Skip whitespace for trailing content validation
+private def skipTrailingSpaces (s : ScannerState) (fuel : Nat) : ScannerState :=
+  match fuel with
+  | 0 => s
+  | fuel' + 1 =>
+    match s.peek? with
+    | some c =>
+      if c == ' ' || c == '\t' then
+        skipTrailingSpaces s.advance fuel'
+      else
+        s
+    | none => s
+
+-- Helper: Validate trailing content after closing quote (block context only)
+private def validateTrailingContent (s : ScannerState) (inputEnd : Nat) : Except ScanError Unit := do
+  let probe := skipTrailingSpaces s (inputEnd - s.offset + 1)
+  match probe.peek? with
+  | none => pure ()
+  | some c =>
+    if isLineBreak c || c == '#' || c == ':' then
+      pure ()
+    else
+      throw (.trailingContent probe.line probe.col)
+
+-- Helper: Collect double-quoted content using structural recursion
+private def collectDoubleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
+    (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
+    Except ScanError (String × ScannerState) :=
+  match fuel with
+  | 0 => .error (.unterminatedScalar .doubleQuoted startPos.line)
+  | fuel' + 1 =>
+    match s.peek? with
+    | none => .error (.unterminatedScalar .doubleQuoted startPos.line)
+    | some '"' =>
+      -- Closing quote found
+      .ok (content, s.advance)
+    | some '\\' =>
+      -- Escape sequence
+      let s_after_backslash := s.advance
+      match s_after_backslash.peek? with
+      | some c =>
+        if isLineBreak c then do
+          -- Escaped line break: consume and skip whitespace
+          let s_after_newline := consumeNewline s_after_backslash
+          let s_after_ws := skipWhitespace s_after_newline
+          collectDoubleQuotedLoop s_after_ws content fuel' startPos inFlow currentIndent inputEnd
+        else do
+          -- Regular escape sequence
+          let (ch, s_after_escape) ← processEscape s_after_backslash
+          let content' := content.push ch
+          collectDoubleQuotedLoop s_after_escape content' fuel' startPos inFlow currentIndent inputEnd
+      | none => .error (.unterminatedEscape s_after_backslash.line)
+    | some c =>
+      if isLineBreak c then do
+        -- Line break: fold newlines
+        let content_trimmed := trimTrailingWS content
+        let (folded, s') ← foldQuotedNewlines s
+        -- Validation: document markers at col 0 terminate
+        if atDocumentStart s' || atDocumentEnd s' then
+          throw (.documentMarkerInScalar .doubleQuoted startPos.line)
+        -- Validation: continuation line must be indented past block level
+        if (s'.col : Int) ≤ currentIndent then
+          throw (.underIndentedScalar .doubleQuoted s'.line)
+        let content' := content_trimmed ++ folded
+        collectDoubleQuotedLoop s' content' fuel' startPos inFlow currentIndent inputEnd
+      else
+        -- Regular character
+        let content' := content.push c
+        collectDoubleQuotedLoop s.advance content' fuel' startPos inFlow currentIndent inputEnd
+
 /-- Scan a double-quoted scalar.
 
     **Implements** (YAML 1.2.2 §7.3.1):
@@ -1326,58 +1396,51 @@ def foldQuotedNewlines (s : ScannerState) : Except ScanError (String × ScannerS
     `trailingContent` (non-whitespace/comment/`:` after closing `"` in block context §7.3.2). -/
 def scanDoubleQuoted (s : ScannerState) : Except ScanError ScannerState := do
   let startPos := s.currentPos
-  let mut s' := s.advance
-  let mut content := ""
-  let fuel := s.inputEnd - s'.offset + 1
-  for _ in [:fuel] do
-    match s'.peek? with
-    | none => return ← .error (.unterminatedScalar .doubleQuoted startPos.line)
-    | some '"' =>
-      s' := s'.advance
-      -- §7.3.2: In block context, after a double-quoted scalar, only
-      -- whitespace, comments, `:` (value indicator), or end-of-line/EOF
-      -- may follow on the same line. Other content is trailing garbage.
-      if !s.inFlow then
-        let mut probe := s'
-        let probeFuel := s.inputEnd - probe.offset + 1
-        for _ in [:probeFuel] do
-          match probe.peek? with
-          | some c => if c == ' ' || c == '\t' then probe := probe.advance else break
-          | none => break
-        match probe.peek? with
-        | none => pure ()  -- EOF is fine
-        | some c =>
-          if isLineBreak c || c == '#' || c == ':' then pure ()
-          else return ← .error (.trailingContent probe.line probe.col)
-      return { s'.emitAt startPos (.scalar content .doubleQuoted) with simpleKeyAllowed := false }
-    | some '\\' =>
-      s' := s'.advance
-      match s'.peek? with
-      | some c =>
-        if isLineBreak c then
-          s' := consumeNewline s'
-          s' := skipWhitespace s'
-        else
-          let (ch, s'') ← processEscape s'
-          content := content.push ch
-          s' := s''
-      | none => return ← .error (.unterminatedEscape s'.line)
+  let s_after_open := s.advance
+  let fuel := s.inputEnd - s_after_open.offset + 1
+  let (content, s_after_close) ← collectDoubleQuotedLoop s_after_open "" fuel startPos s.inFlow s.currentIndent s.inputEnd
+  -- §7.3.2: In block context, validate trailing content
+  if !s.inFlow then
+    validateTrailingContent s_after_close s.inputEnd
+  let s_with_token := s_after_close.emitAt startPos (.scalar content .doubleQuoted)
+  .ok { s_with_token with simpleKeyAllowed := false }
+
+-- Helper: Collect single-quoted content using structural recursion
+private def collectSingleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
+    (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
+    Except ScanError (String × ScannerState) :=
+  match fuel with
+  | 0 => .error (.unterminatedScalar .singleQuoted startPos.line)
+  | fuel' + 1 =>
+    match s.peek? with
+    | none => .error (.unterminatedScalar .singleQuoted startPos.line)
+    | some '\'' =>
+      let s_after_quote := s.advance
+      match s_after_quote.peek? with
+      | some '\'' =>
+        -- Escaped quote: ''
+        let content' := content.push '\''
+        collectSingleQuotedLoop s_after_quote.advance content' fuel' startPos inFlow currentIndent inputEnd
+      | _ =>
+        -- Closing quote found
+        .ok (content, s_after_quote)
     | some c =>
-      if isLineBreak c then
-        content := trimTrailingWS content  -- YAML §6.5: trim trailing WS before fold
-        let (folded, s'') ← foldQuotedNewlines s'
-        -- §9.1.2: Document markers at col 0 terminate even inside quoted scalars
-        if atDocumentStart s'' || atDocumentEnd s'' then
-          return ← .error (.documentMarkerInScalar .doubleQuoted startPos.line)
-        -- §8.1: Continuation line must be indented past current block level
-        if (s''.col : Int) ≤ s.currentIndent then
-          return ← .error (.underIndentedScalar .doubleQuoted s''.line)
-        content := content ++ folded
-        s' := s''
+      if isLineBreak c then do
+        -- Line break: fold newlines
+        let content_trimmed := trimTrailingWS content
+        let (folded, s') ← foldQuotedNewlines s
+        -- Validation: document markers at col 0 terminate
+        if atDocumentStart s' || atDocumentEnd s' then
+          throw (.documentMarkerInScalar .singleQuoted startPos.line)
+        -- Validation: continuation line must be indented past block level
+        if (s'.col : Int) ≤ currentIndent then
+          throw (.underIndentedScalar .singleQuoted s'.line)
+        let content' := content_trimmed ++ folded
+        collectSingleQuotedLoop s' content' fuel' startPos inFlow currentIndent inputEnd
       else
-        content := content.push c
-        s' := s'.advance
-  .error (.unterminatedScalar .doubleQuoted startPos.line)
+        -- Regular character
+        let content' := content.push c
+        collectSingleQuotedLoop s.advance content' fuel' startPos inFlow currentIndent inputEnd
 
 /-- Scan a single-quoted scalar.
 
@@ -1396,51 +1459,14 @@ def scanDoubleQuoted (s : ScannerState) : Except ScanError ScannerState := do
     `trailingContent` (same conditions as `scanDoubleQuoted`). -/
 def scanSingleQuoted (s : ScannerState) : Except ScanError ScannerState := do
   let startPos := s.currentPos
-  let mut s' := s.advance
-  let mut content := ""
-  let fuel := s.inputEnd - s'.offset + 1
-  for _ in [:fuel] do
-    match s'.peek? with
-    | none => return ← .error (.unterminatedScalar .singleQuoted startPos.line)
-    | some '\'' =>
-      s' := s'.advance
-      match s'.peek? with
-      | some '\'' =>
-        content := content.push '\''
-        s' := s'.advance
-      | _ =>
-        -- §7.3.2: In block context, after a single-quoted scalar, only
-        -- whitespace, comments, `:` (value indicator), or end-of-line/EOF
-        -- may follow on the same line.
-        if !s.inFlow then
-          let mut probe := s'
-          let probeFuel := s.inputEnd - probe.offset + 1
-          for _ in [:probeFuel] do
-            match probe.peek? with
-            | some c => if c == ' ' || c == '\t' then probe := probe.advance else break
-            | none => break
-          match probe.peek? with
-          | none => pure ()
-          | some c =>
-            if isLineBreak c || c == '#' || c == ':' then pure ()
-            else return ← .error (.trailingContent probe.line probe.col)
-        return { s'.emitAt startPos (.scalar content .singleQuoted) with simpleKeyAllowed := false }
-    | some c =>
-      if isLineBreak c then
-        content := trimTrailingWS content  -- YAML §6.5: trim trailing WS before fold
-        let (folded, s'') ← foldQuotedNewlines s'
-        -- §9.1.2: Document markers at col 0 terminate even inside quoted scalars
-        if atDocumentStart s'' || atDocumentEnd s'' then
-          return ← .error (.documentMarkerInScalar .singleQuoted startPos.line)
-        -- §8.1: Continuation line must be indented past current block level
-        if (s''.col : Int) ≤ s.currentIndent then
-          return ← .error (.underIndentedScalar .singleQuoted s''.line)
-        content := content ++ folded
-        s' := s''
-      else
-        content := content.push c
-        s' := s'.advance
-  .error (.unterminatedScalar .singleQuoted startPos.line)
+  let s_after_open := s.advance
+  let fuel := s.inputEnd - s_after_open.offset + 1
+  let (content, s_after_close) ← collectSingleQuotedLoop s_after_open "" fuel startPos s.inFlow s.currentIndent s.inputEnd
+  -- §7.3.2: In block context, validate trailing content
+  if !s.inFlow then
+    validateTrailingContent s_after_close s.inputEnd
+  let s_with_token := s_after_close.emitAt startPos (.scalar content .singleQuoted)
+  .ok { s_with_token with simpleKeyAllowed := false }
 
 /--
 Can character `c` start a plain scalar, given the next character and flow context?
