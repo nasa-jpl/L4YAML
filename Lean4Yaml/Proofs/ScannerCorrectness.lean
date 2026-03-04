@@ -50,6 +50,69 @@ open Lean4Yaml
 open Lean4Yaml.Scanner
 open Lean4Yaml.Grammar
 open Lean4Yaml.Proofs.ScannerProgress
+open Lean4Yaml.Proofs.ScannerProofs
+
+/-! ## §0  Helper Lemmas for scanLoop
+
+These lemmas characterize the behavior of `scanLoop`, which is the structurally
+recursive helper function used by `scan`. They enable proving properties about
+`scan` via induction on the fuel parameter.
+-/
+
+/-- scanLoop only succeeds by emitting streamEnd.
+
+When `scanLoop s fuel` returns `.ok tokens`, those tokens came from a code path
+that includes `final.emit .streamEnd`. This means `tokens.size = final.tokens.size + 1`
+where `final = unwindIndents s (-1)`. -/
+theorem scanLoop_success_emits_streamEnd (s : ScannerState) (fuel : Nat) (tokens : Array (Positioned YamlToken)) :
+    scanLoop s fuel = .ok tokens →
+    ∃ (s' : ScannerState), tokens = (s'.emit .streamEnd).tokens := by
+  intro h
+  -- Induction on fuel
+  cases fuel with
+  | zero =>
+    -- Case fuel = 0: scanLoop returns .error, contradiction
+    unfold scanLoop at h
+    contradiction
+  | succ fuel' =>
+    -- Case fuel = fuel' + 1
+    unfold scanLoop at h
+    -- Case split on scanNextToken result
+    split at h
+    · -- scanNextToken = .error e: scanLoop returns .error, contradiction
+      contradiction
+    · -- scanNextToken = .ok none: success path
+      -- Need to handle the if-then-else for flowLevel and directivesPresent
+      split at h <;> try contradiction
+      split at h <;> try contradiction
+      -- Now h : .ok ((unwindIndents s (-1)).emit .streamEnd).tokens = .ok tokens
+      injection h with h_eq
+      exists (unwindIndents s (-1))
+      exact h_eq.symm
+    · -- scanNextToken = .ok (some s'): recursive call
+      -- This would require the inductive hypothesis
+      -- For now, defer to complete this proof properly
+      sorry
+
+/-- scanLoop preserves or increases token count.
+
+When `scanLoop` succeeds, the resulting tokens have at least as many tokens
+as the input state, plus the streamEnd token (so at least +1). -/
+theorem scanLoop_increases_tokens (s : ScannerState) (fuel : Nat) (tokens : Array (Positioned YamlToken)) :
+    scanLoop s fuel = .ok tokens →
+    tokens.size ≥ s.tokens.size + 1 := by
+  intro h
+  -- Use scanLoop_success_emits_streamEnd
+  have ⟨s', h_tokens⟩ := scanLoop_success_emits_streamEnd s fuel tokens h
+  rw [h_tokens]
+  -- Now we have: (s'.emit .streamEnd).tokens.size ≥ s.tokens.size + 1
+  rw [ScannerState.emit]
+  simp [Array.size_push]
+  -- Need to show: s'.tokens.size + 1 ≥ s.tokens.size + 1
+  -- Which reduces to: s'.tokens.size ≥ s.tokens.size
+  -- This requires knowing that operations between s and s' don't remove tokens
+  -- For now, this is the key insight - unwindIndents only adds tokens (blockEnd)
+  sorry
 
 /-! ## §1  Token Envelope Properties
 
@@ -78,20 +141,27 @@ via induction on fuel. The key facts are:
 theorem scan_produces_at_least_two (input : String) (tokens : Array (Positioned YamlToken))
     (h : scan input = .ok tokens) : tokens.size ≥ 2 := by
   unfold scan at h
-  -- After unfold: h : scanLoop (... .emit .streamStart) fuel = .ok tokens
+  -- After unfold: h : scanLoop (s.emit .streamStart) fuel = .ok tokens
+  -- where s is the initial state with BOM handling
 
-  -- We need to show that scanLoop preserves/adds tokens
-  -- The success path in scanLoop does (unwindIndents s (-1)).emit .streamEnd
-  -- which adds at least 1 token to the current state
+  -- The state s comes from mk' with possible BOM advance
+  -- After emit .streamStart, we have exactly 1 token
 
-  -- Key insight: Initial state after emit .streamStart has 1 token
-  -- scanLoop's success adds streamEnd, giving at least 2
+  -- Key fact: Initial state has 0 tokens
+  have h_mk_empty : (ScannerState.mk' input).tokens = #[] := mk'_tokens_empty input
 
-  -- To complete this proof, we need a lemma about scanLoop:
-  -- "If scanLoop s fuel = .ok tokens, then tokens.size ≥ s.tokens.size + 1"
-  -- This is provable by induction on fuel
+  -- After emit .streamStart, we have 1 token (BOM handling doesn't change token count)
+  have h_after_start : ((ScannerState.mk' input).emit .streamStart).tokens.size = 1 := by
+    rw [emit_tokens_size, h_mk_empty]
+    simp
 
-  -- For now, documented strategy with structural recursion makes this tractable
+  -- scanLoop adds at least 1 more token (the streamEnd)
+  -- So we have: tokens.size ≥ 1 + 1 = 2
+
+  -- However, h involves the state after BOM handling, not just mk'
+  -- The BOM advance doesn't affect token count, only offset
+  -- For a complete proof, we need to track through the BOM handling
+
   sorry
 
 /--
