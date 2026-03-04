@@ -48,7 +48,7 @@ based on whether it's a newline, and moves `offset` to the next byte position.
 -/
 
 /-- Helper: space is not newline. -/
-private theorem space_ne_newline : (' ' : Char) ≠ '\n' := by decide
+theorem space_ne_newline : (' ' : Char) ≠ '\n' := by decide
 
 /--
 When the current character is a space, `advance` increases `col` by 1.

@@ -52,7 +52,7 @@ and the character-list representation (`toList.map Char.utf8Size`).
 
 /-- For a string constructed from a character list, `utf8ByteSize` equals
     the sum of individual character byte widths. -/
-private theorem utf8ByteSize_eq_sum_aux (cs : List Char) :
+theorem utf8ByteSize_eq_sum_aux (cs : List Char) :
     (String.ofList cs).utf8ByteSize = (cs.map Char.utf8Size).sum := by
   show (cs.flatMap String.utf8EncodeChar).toByteArray.size = (cs.map Char.utf8Size).sum
   rw [List.size_toByteArray, List.length_flatMap]
@@ -66,7 +66,7 @@ private theorem utf8ByteSize_eq_sum_aux (cs : List Char) :
 /-- For any string, `utf8ByteSize` equals the sum of `utf8Size` over its
     characters.  This connects the byte-level size to the character-level
     representation used by `utf8GetAux`. -/
-private theorem utf8ByteSize_eq_sum (s : String) :
+theorem utf8ByteSize_eq_sum (s : String) :
     s.utf8ByteSize = (s.toList.map Char.utf8Size).sum := by
   have h := utf8ByteSize_eq_sum_aux s.toList
   rw [String.ofList_toList] at h; exact h
@@ -84,7 +84,7 @@ These lemmas show how `utf8GetAux` navigates through a character list:
     This is the key induction lemma: it shows that `utf8GetAux` with
     target position `base + sum(cs₁.map utf8Size)` skips exactly past
     `cs₁` and starts scanning `cs₂`.  -/
-private theorem utf8GetAux_skip (cs₁ cs₂ : List Char) (base : Nat) :
+theorem utf8GetAux_skip (cs₁ cs₂ : List Char) (base : Nat) :
     String.Pos.Raw.utf8GetAux (cs₁ ++ cs₂)
       (String.Pos.Raw.mk base) (String.Pos.Raw.mk (base + (cs₁.map Char.utf8Size).sum)) =
     String.Pos.Raw.utf8GetAux cs₂
@@ -113,7 +113,7 @@ private theorem utf8GetAux_skip (cs₁ cs₂ : List Char) (base : Nat) :
 
 /-- Specialized version of `utf8GetAux_skip` with `base = 0`, matching
     the form that appears after unfolding `Raw.get`. -/
-private theorem utf8GetAux_skip_zero (cs₁ cs₂ : List Char) :
+theorem utf8GetAux_skip_zero (cs₁ cs₂ : List Char) :
     String.Pos.Raw.utf8GetAux (cs₁ ++ cs₂)
       (String.Pos.Raw.mk 0) (String.Pos.Raw.mk (cs₁.map Char.utf8Size).sum) =
     String.Pos.Raw.utf8GetAux cs₂
@@ -122,7 +122,7 @@ private theorem utf8GetAux_skip_zero (cs₁ cs₂ : List Char) :
   have h := utf8GetAux_skip cs₁ cs₂ 0; simp at h; exact h
 
 /-- At the head position, `utf8GetAux` returns the head character. -/
-private theorem utf8GetAux_head (c : Char) (cs : List Char) (i : String.Pos.Raw) :
+theorem utf8GetAux_head (c : Char) (cs : List Char) (i : String.Pos.Raw) :
     String.Pos.Raw.utf8GetAux (c :: cs) i i = c := by
   simp [String.Pos.Raw.utf8GetAux]
 

@@ -87,7 +87,7 @@ theorem toYamlValuePairs_eq_map (es : List (ValidNode × ValidNode)) :
 
 /-! ### Size helpers for well-founded recursion through product lists -/
 
-private theorem prod_fst_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
+theorem prod_fst_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
     (l : List (α × β)) (i : Nat) (hi : i < l.length) :
     sizeOf l[i].1 < sizeOf l := by
   have h1 := List.sizeOf_lt_of_mem (List.getElem_mem hi)
@@ -95,7 +95,7 @@ private theorem prod_fst_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
     cases l[i]; simp [Prod.mk.sizeOf_spec]
   omega
 
-private theorem prod_snd_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
+theorem prod_snd_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
     (l : List (α × β)) (i : Nat) (hi : i < l.length) :
     sizeOf l[i].2 < sizeOf l := by
   have h1 := List.sizeOf_lt_of_mem (List.getElem_mem hi)
@@ -159,7 +159,7 @@ decreasing_by
 
 /-! ### Helper: list equality from element-wise induction hypotheses -/
 
-private theorem vals_eq_map_of_ih
+theorem vals_eq_map_of_ih
     (nodes : List ValidNode) (vals : List YamlValue)
     (hlen : nodes.length = vals.length)
     (ih : ∀ i (hi : i < nodes.length),
@@ -170,7 +170,7 @@ private theorem vals_eq_map_of_ih
   simp only [List.get_eq_getElem, List.getElem_map]
   exact ih i (by omega)
 
-private theorem pairs_eq_map_of_ih
+theorem pairs_eq_map_of_ih
     (entries : List (ValidNode × ValidNode))
     (pairs : List (YamlValue × YamlValue))
     (hlen : entries.length = pairs.length)

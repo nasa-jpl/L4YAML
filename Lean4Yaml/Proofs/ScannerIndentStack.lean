@@ -196,37 +196,37 @@ For C2/C3/C4:
 -/
 
 /-- The loop body of `unwindIndents` preserves `flowLevel`. -/
-private theorem unwindBody_flowLevel (s : ScannerState) :
+theorem unwindBody_flowLevel (s : ScannerState) :
     { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop }.flowLevel =
     s.flowLevel := by
   simp [ScannerState.emit]
 
 /-- The loop body of `unwindIndents` preserves `flowStack`. -/
-private theorem unwindBody_flowStack (s : ScannerState) :
+theorem unwindBody_flowStack (s : ScannerState) :
     { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop }.flowStack =
     s.flowStack := by
   simp [ScannerState.emit]
 
 /-- The loop body of `unwindIndents` preserves `simpleKeyStack`. -/
-private theorem unwindBody_simpleKeyStack (s : ScannerState) :
+theorem unwindBody_simpleKeyStack (s : ScannerState) :
     { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop }.simpleKeyStack =
     s.simpleKeyStack := by
   simp [ScannerState.emit]
 
 /-- The loop body of `unwindIndents` preserves `offset`. -/
-private theorem unwindBody_offset (s : ScannerState) :
+theorem unwindBody_offset (s : ScannerState) :
     { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop }.offset =
     s.offset := by
   simp [ScannerState.emit]
 
 /-- The loop body of `unwindIndents` preserves `inputEnd`. -/
-private theorem unwindBody_inputEnd (s : ScannerState) :
+theorem unwindBody_inputEnd (s : ScannerState) :
     { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop }.inputEnd =
     s.inputEnd := by
   simp [ScannerState.emit]
 
 /-- When `indents.size > 1`, the loop body preserves C1 (`indents.size ≥ 1`). -/
-private theorem unwindBody_indents_ge_1 (s : ScannerState)
+theorem unwindBody_indents_ge_1 (s : ScannerState)
     (h : s.indents.size > 1) :
     { s.emit .blockEnd with
       indents := (s.emit .blockEnd).indents.pop }.indents.size ≥ 1 := by
