@@ -866,24 +866,67 @@ def scanValue (s : ScannerState) : Except ScanError ScannerState := do
     **Pre**: Scanner at `&` (anchor) or `*` (alias).
     **Post**: Advances past indicator + name characters, emits `.anchor name`
     or `.alias name`. Sets `simpleKeyAllowed := false`. -/
-def scanAnchorOrAlias (s : ScannerState) (isAnchor : Bool) : ScannerState := Id.run do
-  let startPos := s.currentPos
-  let mut s' := s.advance
-  let mut name := ""
-  let fuel := s.inputEnd - s'.offset
-  for _ in [:fuel] do
-    match s'.peek? with
+-- Helper: Collect anchor/alias name characters using structural recursion.
+private def collectAnchorNameLoop (s : ScannerState) (name : String) (fuel : Nat) : String × ScannerState :=
+  match fuel with
+  | 0 => (name, s)
+  | fuel' + 1 =>
+    match s.peek? with
     | some c =>
       if !isFlowIndicator c && !isWhiteSpace c && !isLineBreak c then
-        name := name.push c; s' := s'.advance
-      else break
-    | none => break
-  if isAnchor then
-    return { s'.emitAt startPos (.anchor name) with simpleKeyAllowed := false }
-  else
-    return { s'.emitAt startPos (.alias name) with simpleKeyAllowed := false }
+        collectAnchorNameLoop s.advance (name.push c) fuel'
+      else
+        (name, s)
+    | none => (name, s)
+
+def scanAnchorOrAlias (s : ScannerState) (isAnchor : Bool) : ScannerState :=
+  let startPos := s.currentPos
+  let s_after_marker := s.advance
+  let fuel := s.inputEnd - s_after_marker.offset
+  let (name, s_after_name) := collectAnchorNameLoop s_after_marker "" fuel
+  let token := if isAnchor then YamlToken.anchor name else YamlToken.alias name
+  let s_with_token := s_after_name.emitAt startPos token
+  { s_with_token with simpleKeyAllowed := false }
 
 /-! ## Tag Scanning -/
+
+-- Helper: Collect verbatim tag URI until '>'.
+private def collectVerbatimTagLoop (s : ScannerState) (uri : String) (fuel : Nat) : String × ScannerState :=
+  match fuel with
+  | 0 => (uri, s)
+  | fuel' + 1 =>
+    match s.peek? with
+    | some '>' => (uri, s.advance)
+    | some c => collectVerbatimTagLoop s.advance (uri.push c) fuel'
+    | none => (uri, s)
+
+-- Helper: Collect tag suffix characters (non-whitespace, non-flow).
+private def collectTagSuffixLoop (s : ScannerState) (suffix : String) (fuel : Nat) : String × ScannerState :=
+  match fuel with
+  | 0 => (suffix, s)
+  | fuel' + 1 =>
+    match s.peek? with
+    | some c =>
+      if !isWhiteSpace c && !isLineBreak c && !isFlowIndicator c then
+        collectTagSuffixLoop s.advance (suffix.push c) fuel'
+      else
+        (suffix, s)
+    | none => (suffix, s)
+
+-- Helper: Collect tag handle characters until '!' or invalid char.
+-- Returns (chars_before_bang, found_second_bang, state).
+private def collectTagHandleLoop (s : ScannerState) (chars : String) (fuel : Nat) : String × Bool × ScannerState :=
+  match fuel with
+  | 0 => (chars, false, s)
+  | fuel' + 1 =>
+    match s.peek? with
+    | some '!' => (chars, true, s.advance)
+    | some c =>
+      if !isWhiteSpace c && !isLineBreak c && !isFlowIndicator c then
+        collectTagHandleLoop s.advance (chars.push c) fuel'
+      else
+        (chars, false, s)
+    | none => (chars, false, s)
 
 /-- Scan a tag property (`!`, `!!suffix`, `!handle!suffix`, `!<uri>`).
 
@@ -902,64 +945,109 @@ def scanAnchorOrAlias (s : ScannerState) (isAnchor : Bool) : ScannerState := Id.
     **Pre**: Scanner at `!`.
     **Post**: Advances past tag, emits `.tag handle suffix`.
     Sets `simpleKeyAllowed := false`. -/
-def scanTag (s : ScannerState) : ScannerState := Id.run do
+def scanTag (s : ScannerState) : ScannerState :=
   let startPos := s.currentPos
-  let s' := s.advance  -- consume `!`
-  match s'.peek? with
+  let s_after_bang := s.advance  -- consume `!`
+  match s_after_bang.peek? with
   | some '<' =>
-    let mut s' := s'.advance
-    let mut uri := ""
-    let fuel := s.inputEnd - s'.offset
-    for _ in [:fuel] do
-      match s'.peek? with
-      | some '>' => s' := s'.advance; break
-      | some c => uri := uri.push c; s' := s'.advance
-      | none => break
-    return { s'.emitAt startPos (.tag "" uri) with simpleKeyAllowed := false }
+    -- Verbatim tag: !<uri>
+    let s_after_open := s_after_bang.advance
+    let fuel := s.inputEnd - s_after_open.offset
+    let (uri, s_after_uri) := collectVerbatimTagLoop s_after_open "" fuel
+    let s_with_token := s_after_uri.emitAt startPos (.tag "" uri)
+    { s_with_token with simpleKeyAllowed := false }
   | some '!' =>
-    let mut s' := s'.advance
-    let mut suffix := ""
-    let fuel := s.inputEnd - s'.offset
-    for _ in [:fuel] do
-      match s'.peek? with
-      | some c =>
-        if !isWhiteSpace c && !isLineBreak c && !isFlowIndicator c then
-          suffix := suffix.push c; s' := s'.advance
-        else break
-      | none => break
-    return { s'.emitAt startPos (.tag "!!" suffix) with simpleKeyAllowed := false }
+    -- Secondary tag: !!suffix
+    let s_after_second_bang := s_after_bang.advance
+    let fuel := s.inputEnd - s_after_second_bang.offset
+    let (suffix, s_after_suffix) := collectTagSuffixLoop s_after_second_bang "" fuel
+    let s_with_token := s_after_suffix.emitAt startPos (.tag "!!" suffix)
+    { s_with_token with simpleKeyAllowed := false }
   | _ =>
-    let mut s' := s'
-    let mut handle := "!"
-    let mut chars := ""
-    let fuel := s.inputEnd - s'.offset
-    for _ in [:fuel] do
-      match s'.peek? with
-      | some '!' =>
-        handle := "!" ++ chars ++ "!"
-        chars := ""
-        s' := s'.advance
-        break
-      | some c =>
-        if !isWhiteSpace c && !isLineBreak c && !isFlowIndicator c then
-          chars := chars.push c; s' := s'.advance
-        else break
-      | none => break
-    let mut suffix := ""
-    if handle == "!" then
-      suffix := chars
-    else
-      let fuel' := s.inputEnd - s'.offset
-      for _ in [:fuel'] do
-        match s'.peek? with
-        | some c =>
-          if !isWhiteSpace c && !isLineBreak c && !isFlowIndicator c then
-            suffix := suffix.push c; s' := s'.advance
-          else break
-        | none => break
-    return { s'.emitAt startPos (.tag handle suffix) with simpleKeyAllowed := false }
+    -- Named/primary tag: !handle!suffix or !suffix
+    let fuel := s.inputEnd - s_after_bang.offset
+    let (chars, foundBang, s_after_handle) := collectTagHandleLoop s_after_bang "" fuel
+    let (handle, suffix_or_chars) :=
+      if foundBang then
+        ("!" ++ chars ++ "!", "")
+      else
+        ("!", chars)
+    let (suffix, s_after_suffix) :=
+      if foundBang then
+        let fuel' := s.inputEnd - s_after_handle.offset
+        collectTagSuffixLoop s_after_handle "" fuel'
+      else
+        (suffix_or_chars, s_after_handle)
+    let s_with_token := s_after_suffix.emitAt startPos (.tag handle suffix)
+    { s_with_token with simpleKeyAllowed := false }
 
 /-! ## Directive Scanning -/
+
+-- Helper: Collect directive name (non-whitespace, non-linebreak characters).
+private def collectDirectiveNameLoop (s : ScannerState) (name : String) (fuel : Nat) : String × ScannerState :=
+  match fuel with
+  | 0 => (name, s)
+  | fuel' + 1 =>
+    match s.peek? with
+    | some c =>
+      if !isWhiteSpace c && !isLineBreak c then
+        collectDirectiveNameLoop s.advance (name.push c) fuel'
+      else
+        (name, s)
+    | none => (name, s)
+
+-- Helper: Collect version major digits until '.'.
+private def collectVersionMajorLoop (s : ScannerState) (major : String) (fuel : Nat) : String × ScannerState :=
+  match fuel with
+  | 0 => (major, s)
+  | fuel' + 1 =>
+    match s.peek? with
+    | some '.' => (major, s.advance)
+    | some c =>
+      if c.isDigit then
+        collectVersionMajorLoop s.advance (major.push c) fuel'
+      else
+        (major, s)
+    | none => (major, s)
+
+-- Helper: Collect version minor digits.
+private def collectVersionMinorLoop (s : ScannerState) (minor : String) (fuel : Nat) : String × ScannerState :=
+  match fuel with
+  | 0 => (minor, s)
+  | fuel' + 1 =>
+    match s.peek? with
+    | some c =>
+      if c.isDigit then
+        collectVersionMinorLoop s.advance (minor.push c) fuel'
+      else
+        (minor, s)
+    | none => (minor, s)
+
+-- Helper: Collect TAG directive handle (non-whitespace characters).
+private def collectTagHandleDirectiveLoop (s : ScannerState) (handle : String) (fuel : Nat) : String × ScannerState :=
+  match fuel with
+  | 0 => (handle, s)
+  | fuel' + 1 =>
+    match s.peek? with
+    | some c =>
+      if !isWhiteSpace c then
+        collectTagHandleDirectiveLoop s.advance (handle.push c) fuel'
+      else
+        (handle, s)
+    | none => (handle, s)
+
+-- Helper: Collect TAG directive prefix (non-whitespace, non-linebreak characters).
+private def collectTagPrefixLoop (s : ScannerState) (pfx : String) (fuel : Nat) : String × ScannerState :=
+  match fuel with
+  | 0 => (pfx, s)
+  | fuel' + 1 =>
+    match s.peek? with
+    | some c =>
+      if !isWhiteSpace c && !isLineBreak c then
+        collectTagPrefixLoop s.advance (pfx.push c) fuel'
+      else
+        (pfx, s)
+    | none => (pfx, s)
 
 /-- Scan a directive (`%YAML` or `%TAG`).
 
@@ -982,79 +1070,45 @@ def scanDirective (s : ScannerState) : Except ScanError ScannerState := do
   if !s.allowDirectives then
     throw (.directiveAfterContent s.line)
   let startPos := s.currentPos
-  let s' := s.advance  -- consume `%`
-  let (name, s') := Id.run do
-    let mut s' := s'
-    let mut name := ""
-    let fuel := s.inputEnd - s'.offset
-    for _ in [:fuel] do
-      match s'.peek? with
-      | some c =>
-        if !isWhiteSpace c && !isLineBreak c then
-          name := name.push c; s' := s'.advance
-        else break
-      | none => break
-    return (name, s')
-  let s' := skipWhitespace s'
+  let s_after_percent := s.advance  -- consume `%`
+  let fuel := s.inputEnd - s_after_percent.offset
+  let (name, s_after_name) := collectDirectiveNameLoop s_after_percent "" fuel
+  let s_after_ws := skipWhitespace s_after_name
   if name == "YAML" then
     -- §6.8.1: At most one %YAML directive per document.
     if s.seenYamlDirective then
       throw (.duplicateYamlDirective s.line)
-    let (major, minor, s') := Id.run do
-      let mut s' := s'
-      let mut major := ""
-      let fuel := s.inputEnd - s'.offset
-      for _ in [:fuel] do
-        match s'.peek? with
-        | some '.' => s' := s'.advance; break
-        | some c => if c.isDigit then major := major.push c; s' := s'.advance else break
-        | none => break
-      let mut minor := ""
-      let fuel' := s.inputEnd - s'.offset
-      for _ in [:fuel'] do
-        match s'.peek? with
-        | some c => if c.isDigit then minor := minor.push c; s' := s'.advance else break
-        | none => break
-      return (major, minor, s')
+    let fuel_major := s.inputEnd - s_after_ws.offset
+    let (major, s_after_dot) := collectVersionMajorLoop s_after_ws "" fuel_major
+    let fuel_minor := s.inputEnd - s_after_dot.offset
+    let (minor, s_after_version) := collectVersionMinorLoop s_after_dot "" fuel_minor
     -- §6.8.1: After version, only s-separate-in-line + comment, or linebreak/EOF.
     -- c-nb-comment-text (#) requires preceding s-separate-in-line (≥1 s-white).
-    let colBeforeWs := s'.col
-    let s' := skipWhitespace s'
-    match s'.peek? with
+    let colBeforeWs := s_after_version.col
+    let s_validated := skipWhitespace s_after_version
+    match s_validated.peek? with
     | some '#' =>
       -- Verify whitespace was consumed (s-separate-in-line before #)
-      if s'.col == colBeforeWs then
-        throw (.directiveTrailingContent s'.line s'.col)
-    | some c => if !isLineBreak c then throw (.directiveTrailingContent s'.line s'.col)
+      if s_validated.col == colBeforeWs then
+        throw (.directiveTrailingContent s_validated.line s_validated.col)
+    | some c => if !isLineBreak c then throw (.directiveTrailingContent s_validated.line s_validated.col)
     | none => pure ()       -- EOF: ok (orphan directive caught later)
-    let s' := { s'.emitAt startPos (.versionDirective major.toNat! minor.toNat!) with
-                  seenYamlDirective := true, directivesPresent := true }
-    .ok s'
+    let s_with_token := s_validated.emitAt startPos (.versionDirective major.toNat! minor.toNat!)
+    .ok { s_with_token with seenYamlDirective := true, directivesPresent := true }
   else if name == "TAG" then
-    let (handle, tagPrefix, st) := Id.run do
-      let mut st := s'
-      let mut handle := ""
-      let fuel := s.inputEnd - st.offset
-      for _ in [:fuel] do
-        match st.peek? with
-        | some c =>
-          if !isWhiteSpace c then handle := handle.push c; st := st.advance
-          else break
-        | none => break
-      st := skipWhitespace st
-      let mut tagPrefix := ""
-      let fuel' := s.inputEnd - st.offset
-      for _ in [:fuel'] do
-        match st.peek? with
-        | some c =>
-          if !isWhiteSpace c && !isLineBreak c then
-            tagPrefix := tagPrefix.push c; st := st.advance
-          else break
-        | none => break
-      return (handle, tagPrefix, st)
-    .ok { st.emitAt startPos (.tagDirective handle tagPrefix) with directivesPresent := true }
+    let fuel_handle := s.inputEnd - s_after_ws.offset
+    let result := collectTagHandleDirectiveLoop s_after_ws "" fuel_handle
+    let handle := result.1
+    let s_after_handle := result.2
+    let s_after_ws2 := skipWhitespace s_after_handle
+    let fuel_prefix := s.inputEnd - s_after_ws2.offset
+    let result2 := collectTagPrefixLoop s_after_ws2 "" fuel_prefix
+    let tagPrefix := result2.1
+    let s_after_prefix := result2.2
+    let s_with_token := s_after_prefix.emitAt startPos (.tagDirective handle tagPrefix)
+    .ok { s_with_token with directivesPresent := true }
   else
-    .ok (skipToEndOfLine s')
+    .ok (skipToEndOfLine s_after_ws)
 
 /-! ## Document Marker Scanning -/
 
