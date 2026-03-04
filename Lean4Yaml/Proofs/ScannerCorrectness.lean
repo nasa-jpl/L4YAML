@@ -59,6 +59,34 @@ recursive helper function used by `scan`. They enable proving properties about
 `scan` via induction on the fuel parameter.
 -/
 
+/-- The `advance` operation preserves the token array.
+
+`advance` only modifies position fields (offset, line, col), never the tokens. -/
+theorem advance_preserves_tokens (s : ScannerState) :
+    s.advance.tokens = s.tokens := by
+  unfold ScannerState.advance
+  split
+  · -- Case: s.offset < s.inputEnd
+    -- Simplify the let bindings and structure updates
+    simp only []
+    -- The tokens field appears unchanged in both branches
+    split <;> rfl
+  · -- Case: s.offset >= s.inputEnd
+    rfl
+
+/-- The `unwindIndents` operation preserves or adds tokens.
+
+When unwinding indents, we only emit `blockEnd` tokens, never removing any.
+So the token count increases or stays the same. -/
+theorem unwindIndents_adds_tokens (s : ScannerState) (col : Int) :
+    (unwindIndents s col).tokens.size ≥ s.tokens.size := by
+  unfold unwindIndents
+  -- unwindIndents uses Id.run do with a for loop
+  -- It conditionally emits blockEnd when popping indents
+  -- Each emit adds exactly 1 token (emit_tokens_size)
+  -- Never removes tokens
+  sorry
+
 /-- scanLoop only succeeds by emitting streamEnd.
 
 When `scanLoop s fuel` returns `.ok tokens`, those tokens came from a code path
@@ -141,27 +169,44 @@ via induction on fuel. The key facts are:
 theorem scan_produces_at_least_two (input : String) (tokens : Array (Positioned YamlToken))
     (h : scan input = .ok tokens) : tokens.size ≥ 2 := by
   unfold scan at h
-  -- After unfold: h : scanLoop (s.emit .streamStart) fuel = .ok tokens
-  -- where s is the initial state with BOM handling
+  -- After unfold, h : scanLoop s (fuel * 4) = .ok tokens
+  -- where s is (mk' input |> emit .streamStart |> maybe advance for BOM)
 
-  -- The state s comes from mk' with possible BOM advance
-  -- After emit .streamStart, we have exactly 1 token
-
-  -- Key fact: Initial state has 0 tokens
-  have h_mk_empty : (ScannerState.mk' input).tokens = #[] := mk'_tokens_empty input
-
-  -- After emit .streamStart, we have 1 token (BOM handling doesn't change token count)
+  -- Step 1: State after emit .streamStart has 1 token
   have h_after_start : ((ScannerState.mk' input).emit .streamStart).tokens.size = 1 := by
-    rw [emit_tokens_size, h_mk_empty]
+    rw [emit_tokens_size, mk'_tokens_empty]
     simp
 
-  -- scanLoop adds at least 1 more token (the streamEnd)
-  -- So we have: tokens.size ≥ 1 + 1 = 2
+  -- Step 2: The BOM match/advance doesn't change token count
+  -- The expression is: match s.peek? with | some '\uFEFF' => s.advance | _ => s
+  -- In both branches, tokens are preserved (advance_preserves_tokens)
 
-  -- However, h involves the state after BOM handling, not just mk'
-  -- The BOM advance doesn't affect token count, only offset
-  -- For a complete proof, we need to track through the BOM handling
+  -- Step 3: Therefore the state passed to scanLoop has 1 token
+  -- Let's call this state s_before_loop
+  -- We have: s_before_loop.tokens.size = 1
 
+  -- Step 2-3: The BOM handling preserves token count
+  -- After emit .streamStart, we have state s with tokens.size = 1
+  -- The match for BOM either keeps s or does s.advance
+  -- advance preserves tokens (advance_preserves_tokens)
+  -- So s_before_loop.tokens.size = 1
+
+  -- Step 4: Show the state passed to scanLoop has 1 token
+  have h_before_loop :
+    (match ((ScannerState.mk' input).emit .streamStart).peek? with
+     | some '\uFEFF' => ((ScannerState.mk' input).emit .streamStart).advance
+     | _ => (ScannerState.mk' input).emit .streamStart).tokens.size = 1 := by
+    split
+    · -- BOM case: advance preserves tokens
+      rw [advance_preserves_tokens]
+      exact h_after_start
+    · -- No BOM case: unchanged
+      exact h_after_start
+
+  -- Step 5: Apply scanLoop_increases_tokens
+  -- The challenge is connecting the local variable `s` in the unfolded scan
+  -- to the explicit expression in h_before_loop
+  -- This requires more sophisticated rewriting of `have` bindings
   sorry
 
 /--
@@ -178,8 +223,16 @@ Empirically validated on all test inputs (§4).
 theorem scan_first_is_streamStart (input : String) (tokens : Array (Positioned YamlToken))
     (h : scan input = .ok tokens) (h_size : tokens.size > 0) :
     (tokens[0]'(by omega)).val = YamlToken.streamStart := by
-  -- Unfold scan to expose the initial emit
-  -- Track that emit only appends, preserving index 0
+  unfold scan at h
+  -- After unfolding, the structure is:
+  -- let s := mk' input
+  -- let s := s.emit .streamStart  -- This creates token[0]
+  -- let s := (BOM handling)        -- advance preserves tokens
+  -- scanLoop s fuel                -- scanLoop only appends
+
+  -- Key insight: we need to show that scanLoop preserves tokens[0]
+  -- This would require a lemma: scanLoop_preserves_prefix
+  -- For now, we note the structure but defer full proof
   sorry
 
 /--
@@ -195,9 +248,24 @@ Empirically validated on all test inputs (§4).
 theorem scan_last_is_streamEnd (input : String) (tokens : Array (Positioned YamlToken))
     (h : scan input = .ok tokens) (h_size : tokens.size > 0) :
     (tokens[tokens.size - 1]'(by omega)).val = YamlToken.streamEnd := by
-  -- Unfold scan to the final emit
-  -- Show this is the last token appended
-  sorry
+  unfold scan at h
+  -- Use scanLoop_success_emits_streamEnd to get the structure
+  have ⟨s', h_tokens⟩ := scanLoop_success_emits_streamEnd _ _ _ h
+
+  -- Subst tokens with its definition
+  subst h_tokens
+
+  -- Now goal is: ((s'.emit .streamEnd).tokens)[...].val = .streamEnd
+  unfold ScannerState.emit
+  simp only [Array.size_push]
+
+  -- After emit, size is s'.tokens.size + 1
+  -- Last index is s'.tokens.size + 1 - 1 = s'.tokens.size
+  have h_idx : s'.tokens.size + 1 - 1 = s'.tokens.size := by omega
+
+  -- Array is s'.tokens.push {pos := ..., val := .streamEnd}
+  -- Element at index s'.tokens.size is the pushed element
+  simp [Array.getElem_push, h_idx]
 
 /-! ## §2  Position Monotonicity
 
