@@ -74,10 +74,30 @@ validation via `#guard` checks (see §4) as evidence.
 -/
 theorem scan_produces_at_least_two (input : String) (tokens : Array (Positioned YamlToken))
     (h : scan input = .ok tokens) : tokens.size ≥ 2 := by
-  -- This requires unfolding the scan function's imperative loop.
-  -- The structure guarantees: mk' → emit streamStart → loop → emit streamEnd
-  -- Each emit adds 1 token, so we get at least 2.
-  -- Full proof deferred; empirically validated on all test cases.
+  -- Key facts we'd use in a complete proof:
+  -- 1. (mk' input).tokens = #[] (mk'_tokens_empty)
+  -- 2. (s.emit tok).tokens.size = s.tokens.size + 1 (emit_tokens_size)
+  -- 3. scan does: mk' → emit streamStart (size 1) → loop → emit streamEnd (size ≥ 2)
+
+  -- Attempt to unfold scan
+  unfold scan at h
+  -- The scan function uses do-notation with ForIn typeclass for the loop
+  -- Lean's do-notation desugars to complex bind operations
+  -- The ForIn typeclass for ranges desugars to ForInStep recursion
+
+  -- simp can sometimes make progress on do-notation
+  simp only [Bind.bind, Pure.pure] at h
+
+  -- At this point, h contains a complex expression mixing Except.bind,
+  -- ForIn operations, and state mutations. Without a custom tactic or
+  -- lemma library for imperative loops, we cannot proceed further.
+
+  -- The proof strategy would be:
+  -- 1. Show that .ok return only happens at line 1988
+  -- 2. At line 1988, tokens = final.tokens where final = (unwindIndents s (-1)).emit .streamEnd
+  -- 3. Show that s at that point has tokens.size ≥ 1 (from initial emit streamStart)
+  -- 4. Therefore final.tokens.size ≥ 2 (by emit_tokens_size)
+
   sorry
 
 /--
