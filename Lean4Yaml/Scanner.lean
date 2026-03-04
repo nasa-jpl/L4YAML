@@ -1955,37 +1955,73 @@ def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) :=
       let s' ← scanPlainScalar s; return some s'
     .error (.unexpectedChar c s.line s.col)
 
+/-- Structurally recursive helper for scan.
+
+    Processes tokens one at a time using `scanNextToken`, with fuel decreasing
+    on each iteration. Returns when either:
+    - `scanNextToken` returns `none` (normal completion)
+    - fuel is exhausted (error)
+
+    **Design for provability**: Uses structural recursion on fuel parameter,
+    enabling standard induction tactics for theorem proving. This replaces
+    the imperative `for` loop in the original implementation.
+
+    **Implements**: Core scanning loop with termination checking.
+    **Post**: Same as `scan` - returns tokens starting with `streamStart`,
+    ending with `streamEnd`.
+    **Error**: Same error conditions as `scan`. -/
+def scanLoop (s : ScannerState) (fuel : Nat) :
+    Except ScanError (Array (Positioned YamlToken)) :=
+  match fuel with
+  | 0 =>
+    -- Fuel exhausted without scanner signaling completion
+    .error (.fuelExhausted s.line s.col)
+  | fuel' + 1 =>
+    match scanNextToken s with
+    | .error e =>
+      -- Propagate scanner error
+      .error e
+    | .ok none =>
+      -- Scanner signals completion (no more tokens to process)
+      -- Perform final validation and emit streamEnd
+      if s.flowLevel > 0 then
+        -- §7.4: Unclosed flow collections are an error
+        .error (.unterminatedFlowCollection '[' s.line)
+      else if s.directivesPresent && !s.documentEverStarted then
+        -- §6.8: Directives without document are an error
+        .error (.directiveWithoutDocument s.line)
+      else
+        -- Close all remaining block contexts and emit final token
+        let final := unwindIndents s (-1)
+        let final := final.emit .streamEnd
+        .ok final.tokens
+    | .ok (some s') =>
+      -- Scanner produced a new state, continue with remaining fuel
+      scanLoop s' fuel'
+termination_by fuel
+
 /-- Run the scanner on an input string, producing a token array.
 
     **Implements**: Complete YAML tokenization pipeline.
-    Wraps `scanNextToken` in a fuel-bounded loop, bookended by
+    Wraps `scanNextToken` in a fuel-bounded loop (via `scanLoop`), bookended by
     `streamStart`/`streamEnd` tokens.
+
+    **Refactored for provability**: Now uses structurally recursive `scanLoop`
+    instead of imperative `for` loop, enabling formal verification via induction.
 
     **Post**: Token array starts with `streamStart`, ends with `streamEnd`.
     All block collections are properly closed via `unwindIndents`.
     **Error**: `unterminatedFlowCollection` (unclosed `[`/`{`),
     `directiveWithoutDocument` (orphan directives), `fuelExhausted`. -/
-def scan (input : String) : Except ScanError (Array (Positioned YamlToken)) := do
-  let mut s := ScannerState.mk' input
-  s := s.emit .streamStart
-  -- Handle BOM
-  match s.peek? with
-  | some '\uFEFF' => s := s.advance
-  | _ => pure ()
+def scan (input : String) : Except ScanError (Array (Positioned YamlToken)) :=
+  let s := ScannerState.mk' input
+  let s := s.emit .streamStart
+  -- Handle BOM (Byte Order Mark)
+  let s := match s.peek? with
+    | some '\uFEFF' => s.advance
+    | _ => s
+  -- Calculate fuel: 4x input size should be more than enough
   let fuel := input.utf8ByteSize + 1
-  for _ in [:fuel * 4] do
-    match ← scanNextToken s with
-    | some s' => s := s'
-    | none =>
-      -- §7.4: Unclosed flow collections are an error.
-      if s.flowLevel > 0 then
-        throw (.unterminatedFlowCollection '[' s.line)
-      -- §6.8: If directives were present but no document followed, error.
-      if s.directivesPresent && !s.documentEverStarted then
-        throw (.directiveWithoutDocument s.line)
-      let final := unwindIndents s (-1)
-      let final := final.emit .streamEnd
-      return final.tokens
-  .error (.fuelExhausted s.line s.col)
+  scanLoop s (fuel * 4)
 
 end Lean4Yaml.Scanner
