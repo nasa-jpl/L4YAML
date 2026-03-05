@@ -213,18 +213,25 @@ def ScannerState.peek? (s : ScannerState) : Option Char :=
   else
     none
 
-/-- Peek at the character `n` positions ahead without consuming. -/
-def ScannerState.peekAt? (s : ScannerState) (n : Nat) : Option Char := Id.run do
-  let mut pos : String.Pos.Raw := ⟨s.offset⟩
-  for _ in [:n] do
-    if pos.byteIdx < s.inputEnd then
-      pos := String.Pos.Raw.next s.input pos
+/-- Helper for peekAt? using structural recursion on `n`.
+
+    **Termination**: Structurally recursive on `n`. -/
+def ScannerState.peekAt?Loop (input : String) (inputEnd : Nat) (pos : String.Pos.Raw) (n : Nat) : Option Char :=
+  match n with
+  | 0 =>
+    if pos.byteIdx < inputEnd then
+      some (String.Pos.Raw.get input pos)
     else
-      return none
-  if pos.byteIdx < s.inputEnd then
-    return some (String.Pos.Raw.get s.input pos)
-  else
-    return none
+      none
+  | n' + 1 =>
+    if pos.byteIdx < inputEnd then
+      ScannerState.peekAt?Loop input inputEnd (String.Pos.Raw.next input pos) n'
+    else
+      none
+
+/-- Peek at the character `n` positions ahead without consuming. -/
+def ScannerState.peekAt? (s : ScannerState) (n : Nat) : Option Char :=
+  ScannerState.peekAt?Loop s.input s.inputEnd ⟨s.offset⟩ n
 
 /-- Look at the character immediately before the current position in the raw input.
     Used for §6.7 comment validation: `c-nb-comment-text` (`#`) requires
@@ -249,12 +256,17 @@ def ScannerState.advance (s : ScannerState) : ScannerState :=
   else
     s
 
+/-- Helper for advanceN using structural recursion on `n`.
+
+    **Termination**: Structurally recursive on `n`. -/
+def ScannerState.advanceNLoop (s : ScannerState) (n : Nat) : ScannerState :=
+  match n with
+  | 0 => s
+  | n' + 1 => ScannerState.advanceNLoop s.advance n'
+
 /-- Advance past `n` characters. -/
-def ScannerState.advanceN (s : ScannerState) (n : Nat) : ScannerState := Id.run do
-  let mut s' := s
-  for _ in [:n] do
-    s' := s'.advance
-  return s'
+def ScannerState.advanceN (s : ScannerState) (n : Nat) : ScannerState :=
+  ScannerState.advanceNLoop s n
 
 /-- Whether the scanner is inside a flow collection (`flowLevel > 0`). -/
 def ScannerState.inFlow (s : ScannerState) : Bool :=
@@ -333,16 +345,20 @@ def isIndicator (c : Char) : Bool :=
 
     Handles `-\t-`, `- \t-`, `-\t -`, etc. — any tab in the preceding
     whitespace run means a tab contributed to the indentation of this token. -/
-def ScannerState.hasTabInPrecedingWhitespace (s : ScannerState) : Bool := Id.run do
-  let mut pos := s.offset
-  for _ in [:s.offset] do
-    if pos == 0 then break
-    let prevPos := (String.Pos.Raw.prev s.input ⟨pos⟩).byteIdx
-    let c := String.Pos.Raw.get s.input ⟨prevPos⟩
-    if c == '\t' then return true
-    if c == ' ' then pos := prevPos; continue
-    break  -- non-whitespace character: stop scanning
-  return false
+def ScannerState.hasTabInPrecedingWhitespaceLoop (input : String) (pos : Nat) (fuel : Nat) : Bool :=
+  match fuel with
+  | 0 => false
+  | fuel' + 1 =>
+    if pos == 0 then false
+    else
+      let prevPos := (String.Pos.Raw.prev input ⟨pos⟩).byteIdx
+      let c := String.Pos.Raw.get input ⟨prevPos⟩
+      if c == '\t' then true
+      else if c == ' ' then ScannerState.hasTabInPrecedingWhitespaceLoop input prevPos fuel'
+      else false  -- non-whitespace character: stop scanning
+
+def ScannerState.hasTabInPrecedingWhitespace (s : ScannerState) : Bool :=
+  ScannerState.hasTabInPrecedingWhitespaceLoop s.input s.offset s.offset
 
 /-- Helper for skipWhitespace using structural recursion.
 
@@ -1172,6 +1188,18 @@ def scanDocumentStart (s : ScannerState) : ScannerState :=
     directivesPresent := false
     documentEverStarted := true }
 
+/-- Helper: skip whitespace (spaces + tabs) using structural recursion.
+    Used by scanDocumentEnd for trailing content validation. -/
+def skipDocEndWhitespace (s : ScannerState) (fuel : Nat) : ScannerState :=
+  match fuel with
+  | 0 => s
+  | fuel' + 1 =>
+    match s.peek? with
+    | some c =>
+      if c == ' ' || c == '\t' then skipDocEndWhitespace s.advance fuel'
+      else s
+    | none => s
+
 /-- Scan a document-end marker `...`.
 
     **Implements** (YAML 1.2.2 §9.1.2):
@@ -1198,15 +1226,8 @@ def scanDocumentEnd (s : ScannerState) : Except ScanError ScannerState := do
     allowDirectives := true
     directivesPresent := false }
   -- §9.1.2: After `...`, only s-l-comments (whitespace + optional comment) allowed.
-  let mut s'' := result
-  -- Skip whitespace on the same line
-  let fuel := s.inputEnd - s''.offset + 1
-  for _ in [:fuel] do
-    match s''.peek? with
-    | some c =>
-      if c == ' ' || c == '\t' then s'' := s''.advance
-      else break
-    | none => break
+  -- Skip whitespace on the same line (structural recursion via skipDocEndWhitespace)
+  let s'' := skipDocEndWhitespace result (s.inputEnd - result.offset + 1)
   -- After whitespace, must be comment (#), newline, or EOF
   match s''.peek? with
   | none => pure ()  -- EOF is fine
@@ -1217,6 +1238,18 @@ def scanDocumentEnd (s : ScannerState) : Except ScanError ScannerState := do
   .ok result
 
 /-! ## Escape Sequence Processing -/
+
+/-- Helper for parseHexEscape: collect up to `n` hex digits using structural recursion. -/
+def collectHexDigitsLoop (s : ScannerState) (hex : String) (n : Nat) : String × ScannerState :=
+  match n with
+  | 0 => (hex, s)
+  | n' + 1 =>
+    match s.peek? with
+    | some c =>
+      if c.isDigit || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') then
+        collectHexDigitsLoop s.advance (hex.push c) n'
+      else (hex, s)
+    | none => (hex, s)
 
 /-- Parse `n` hexadecimal digits and convert to a character.
 
@@ -1230,17 +1263,7 @@ def scanDocumentEnd (s : ScannerState) : Except ScanError ScannerState := do
     **Error**: `invalidHexEscape` (fewer than `n` hex digits available),
     `unicodeOutOfRange` (value ≥ U+110000). -/
 def parseHexEscape (s : ScannerState) (n : Nat) : Except ScanError (Char × ScannerState) := do
-  let (hex, s') := Id.run do
-    let mut s' := s
-    let mut hex := ""
-    for _ in [:n] do
-      match s'.peek? with
-      | some c =>
-        if c.isDigit || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') then
-          hex := hex.push c; s' := s'.advance
-        else return (hex, s')
-      | none => return (hex, s')
-    return (hex, s')
+  let (hex, s') := collectHexDigitsLoop s "" n
   if hex.length != n then
     .error (.invalidHexEscape n hex.length s'.line)
   else
@@ -1302,6 +1325,26 @@ def processEscape (s : ScannerState) : Except ScanError (Char × ScannerState) :
 def trimTrailingWS (s : String) : String :=
   String.ofList ((s.toList.reverse.dropWhile (fun c => c == ' ' || c == '\t')).reverse)
 
+/-- Helper for foldQuotedNewlines: count consecutive empty lines using structural recursion.
+
+    Skips blank lines (spaces followed by line break), counting them.
+    Returns on first non-blank line content or EOF.
+
+    **Termination**: Structurally recursive on `fuel`. -/
+def foldQuotedNewlinesLoop (s : ScannerState) (emptyCount : Nat) (fuel : Nat) :
+    ScannerState × Nat :=
+  match fuel with
+  | 0 => (s, emptyCount)
+  | fuel' + 1 =>
+    let saved := s
+    let s_skipped := skipSpaces s
+    match s_skipped.peek? with
+    | some c =>
+      if isLineBreak c then
+        foldQuotedNewlinesLoop (consumeNewline s_skipped) (emptyCount + 1) fuel'
+      else (saved, emptyCount)
+    | none => (s, emptyCount)
+
 /-- Fold a newline in a quoted scalar (double or single) per YAML flow folding.
 
     **Implements** (YAML 1.2.2 §6.5):
@@ -1319,28 +1362,15 @@ def trimTrailingWS (s : String) : String :=
     **Error**: `tabInIndentation` if tab found in indentation zone of continuation line (§6.1). -/
 def foldQuotedNewlines (s : ScannerState) : Except ScanError (String × ScannerState) := do
   let s' := consumeNewline s
-  let mut s' := s'
-  let mut emptyCount := (0 : Nat)
-  let fuel := s.inputEnd - s'.offset + 1
-  for _ in [:fuel] do
-    let saved := s'
-    s' := skipSpaces s'
-    match s'.peek? with
-    | some c =>
-      if isLineBreak c then
-        s' := consumeNewline s'
-        emptyCount := emptyCount + 1
-      else
-        s' := saved; break
-    | none => break
+  let (s', emptyCount) := foldQuotedNewlinesLoop s' 0 (s.inputEnd - s'.offset + 1)
   -- §6.1: After consuming empty lines and leading spaces on the continuation
   -- line, check for tab-as-indentation.  If we haven't advanced past the
   -- current block indent level, a tab here is in the indentation zone.
-  s' := skipSpaces s'
+  let s' := skipSpaces s'
   if !s'.inFlow && (s'.col : Int) ≤ s'.currentIndent then
     if let some '\t' := s'.peek? then
       throw (.tabInIndentation s'.line s'.col)
-  s' := skipWhitespace s'
+  let s' := skipWhitespace s'
   if emptyCount > 0 then
     return (String.ofList (List.replicate emptyCount '\n'), s')
   else
@@ -1874,6 +1904,26 @@ def collectBlockScalarLoop (s : ScannerState) (rawContent : String) (fuel : Nat)
               collectBlockScalarLoop s_after_line rawContent' fuel' contentIndent inputEnd
           | none => (rawContent', s_after_line)
 
+/-- Helper for scanBlockScalar header parsing using structural recursion.
+
+    Parses up to `fuel` header characters: chomp indicator (`-`/`+`) and
+    indentation indicator (digit 1-9) in either order per YAML §8.1 [162].
+
+    **Termination**: Structurally recursive on `fuel`. -/
+def parseBlockHeaderLoop (s : ScannerState) (chomp : ChompStyle) (explicitOffset : Option Nat)
+    (fuel : Nat) : ChompStyle × Option Nat × ScannerState :=
+  match fuel with
+  | 0 => (chomp, explicitOffset, s)
+  | fuel' + 1 =>
+    match s.peek? with
+    | some '-' => parseBlockHeaderLoop s.advance .strip explicitOffset fuel'
+    | some '+' => parseBlockHeaderLoop s.advance .keep explicitOffset fuel'
+    | some c =>
+      if c.isDigit && c != '0' then
+        parseBlockHeaderLoop s.advance chomp (some (c.toNat - '0'.toNat)) fuel'
+      else (chomp, explicitOffset, s)
+    | none => (chomp, explicitOffset, s)
+
 /-- Scan a block scalar (literal `|` or folded `>`).
 
     **Implements** (YAML 1.2.2 §8.1):
@@ -1903,20 +1953,8 @@ def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState := do
   let isLiteral := s.peek? == some '|'
   let s' := s.advance
   -- Parse header: c-b-block-header(t,m) [162]
-  let (chomp, explicitOffset, s') := Id.run do
-    let mut s' := s'
-    let mut chomp : ChompStyle := .clip          -- t: c-chomping-indicator [164]
-    let mut explicitOffset : Option Nat := none  -- m: c-indentation-indicator [163] (Distance)
-    for _ in [:2] do
-      match s'.peek? with
-      | some '-' => chomp := .strip; s' := s'.advance
-      | some '+' => chomp := .keep; s' := s'.advance
-      | some c =>
-        if c.isDigit && c != '0' then
-          explicitOffset := some (c.toNat - '0'.toNat)  -- Distance: 1–9
-          s' := s'.advance
-      | none => pure ()
-    return (chomp, explicitOffset, s')
+  -- Uses structural recursion on fuel (bounded by 2 header characters).
+  let (chomp, explicitOffset, s') := parseBlockHeaderLoop s' .clip none 2
   -- s-b-comment: skip trailing whitespace and optional comment after header
   -- §6.7: c-nb-comment-text (#) requires preceding s-separate-in-line (≥1 s-white).
   let s' := skipWhitespace s'  -- s-separate-in-line [66]: s-white* (tabs ok here)
@@ -2074,12 +2112,7 @@ def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) :=
       -- §7.5: When a flow collection close returns us to block context,
       -- only whitespace, comments, `:`, or end-of-line may follow on the same line.
       if s'.flowLevel == 0 then
-        let mut probe := s'
-        let probeFuel := s.inputEnd - probe.offset + 1
-        for _ in [:probeFuel] do
-          match probe.peek? with
-          | some pc => if pc == ' ' || pc == '\t' then probe := probe.advance else break
-          | none => break
+        let probe := skipTrailingSpaces s' (s.inputEnd - s'.offset + 1)
         match probe.peek? with
         | none => pure ()
         | some pc =>
@@ -2091,12 +2124,7 @@ def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) :=
       if s.flowLevel == 0 then return ← .error (.flowEndOutsideFlow '}' s.line s.col)
       let s' := scanFlowMappingEnd s
       if s'.flowLevel == 0 then
-        let mut probe := s'
-        let probeFuel := s.inputEnd - probe.offset + 1
-        for _ in [:probeFuel] do
-          match probe.peek? with
-          | some pc => if pc == ' ' || pc == '\t' then probe := probe.advance else break
-          | none => break
+        let probe := skipTrailingSpaces s' (s.inputEnd - s'.offset + 1)
         match probe.peek? with
         | none => pure ()
         | some pc =>
