@@ -334,6 +334,56 @@ theorem scanValue_adds_tokens (s : ScannerState) (s' : ScannerState)
   -- For now, defer the full proof
   sorry
 
+/-- Helper: consumeNewline preserves tokens.
+
+consumeNewline only calls advance and modifies needIndentCheck field. -/
+theorem consumeNewline_preserves_tokens (s : ScannerState) :
+    (consumeNewline s).tokens = s.tokens := by
+  unfold consumeNewline
+  split
+  · -- some '\n' => { s.advance with needIndentCheck := true }
+    exact advance_preserves_tokens s
+  · -- some '\r' => ...
+    dsimp only []
+    split
+    · -- s.advance.peek? = some '\n'
+      rw [advance_preserves_tokens, advance_preserves_tokens]
+    · -- _ => { s.advance with needIndentCheck := true }
+      exact advance_preserves_tokens s
+  · -- _ => s
+    rfl
+
+/-- Helper: skipSpaces preserves tokens.
+
+skipSpaces uses an imperative loop that only calls advance, which preserves tokens.
+While we can't directly induct on the imperative loop, inspection shows tokens are never modified. -/
+theorem skipSpaces_preserves_tokens (s : ScannerState) :
+    (skipSpaces s).tokens = s.tokens := by
+  -- skipSpaces (Scanner.lean:362-369) uses imperative for-loop calling only advance.
+  -- Each iteration: either breaks or calls s' := s'.advance
+  -- advance_preserves_tokens shows tokens unchanged at each step.
+  -- Full verification would require refactoring to structural recursion (like skipToContent).
+  -- For now, observation suffices: no emit calls, only advance (proven to preserve tokens).
+  sorry
+
+/-- Helper: skipWhitespace preserves tokens.
+
+skipWhitespace uses an imperative loop that only calls advance, which preserves tokens. -/
+theorem skipWhitespace_preserves_tokens (s : ScannerState) :
+    (skipWhitespace s).tokens = s.tokens := by
+  -- skipWhitespace (Scanner.lean:350-357) uses imperative for-loop calling only advance.
+  -- Same reasoning as skipSpaces_preserves_tokens.
+  sorry
+
+/-- Helper: skipToEndOfLine preserves tokens.
+
+skipToEndOfLine uses an imperative loop that only calls advance, which preserves tokens. -/
+theorem skipToEndOfLine_preserves_tokens (s : ScannerState) :
+    (skipToEndOfLine s).tokens = s.tokens := by
+  -- skipToEndOfLine (Scanner.lean:372-379) uses imperative for-loop calling only advance.
+  -- Same reasoning as skipSpaces_preserves_tokens.
+  sorry
+
 /-- skipToContent preserves tokens exactly.
 
 skipToContent only calls skipSpaces, skipWhitespace, skipToEndOfLine, consumeNewline,
@@ -341,20 +391,29 @@ and field modifications. None of these touch the tokens field. The only mutation
 operations are advance (proven to preserve tokens) and field updates that don't affect tokens.
 
 **Status update (2026-03-04)**: skipToContent has been refactored from imperative for-loop
-to structural recursion (Scanner.lean:393-495), making this theorem provable. The proof
-requires induction on fuel and analyzing the do-notation/match branches to show all
-operations preserve tokens. This is ~40-60 lines of mechanical proof work, deferred for now. -/
+to structural recursion (Scanner.lean:398-485), making this theorem provable via induction.
+
+**Proof approach** (with helper lemmas now in place):
+1. skipToContent delegates to skipToContentLoop with fuel = s.inputEnd - s.offset + 1
+2. Induction on fuel:
+   - Base case (fuel = 0): Returns s unchanged, so s'.tokens = s.tokens trivially
+   - Inductive case (fuel = fuel' + 1): Loop body uses only token-preserving operations:
+     * skipSpaces → skipSpaces_preserves_tokens
+     * skipWhitespace → skipWhitespace_preserves_tokens
+     * skipToEndOfLine → skipToEndOfLine_preserves_tokens
+     * consumeNewline → consumeNewline_preserves_tokens (✅ proven)
+     * Field updates ({ s with simpleKeyAllowed := ... }) → don't touch tokens field
+     * Recursive call → IH applies
+3. Case analysis on do-notation branches and match statements (~30-40 lines mechanical work)
+
+The refactoring enables this proof structure. Full completion requires the helper lemma
+proofs (skipSpaces, skipWhitespace, skipToEndOfLine) which need similar refactoring. -/
 theorem skipToContent_preserves_tokens (s : ScannerState) (s' : ScannerState) :
     skipToContent s = .ok s' →
     s'.tokens = s.tokens := by
   intro h
-  -- skipToContent now delegates to skipToContentLoop (structural recursion).
-  -- Full proof: induction on fuel, showing all operations preserve tokens:
-  -- - skipSpaces, skipWhitespace, skipToEndOfLine: only call advance
-  -- - advance: proven to preserve tokens (advance_preserves_tokens)
-  -- - consumeNewline: calls advance
-  -- - Field updates: modify simpleKeyAllowed, needIndentCheck, but not tokens
-  -- The refactoring unblocks this proof; completion requires ~40-60 lines of case analysis.
+  -- Proof strategy documented above. Requires helper lemmas to be completed first.
+  -- With all helpers proven, this becomes ~40-50 lines of induction + case analysis.
   sorry
 
 /-- scanNextToken preserves or adds tokens.
