@@ -344,39 +344,57 @@ def ScannerState.hasTabInPrecedingWhitespace (s : ScannerState) : Bool := Id.run
     break  -- non-whitespace character: stop scanning
   return false
 
+/-- Helper for skipWhitespace using structural recursion.
+
+    **Termination**: Structurally recursive on `fuel`. -/
+def skipWhitespaceLoop (s : ScannerState) (fuel : Nat) : ScannerState :=
+  match fuel with
+  | 0 => s
+  | fuel' + 1 =>
+    match s.peek? with
+    | some c => if isWhiteSpace c then skipWhitespaceLoop s.advance fuel' else s
+    | none => s
+termination_by fuel
+
 /-- Skip zero or more `s-white` characters (spaces + tabs).
     Implements `s-white*` — use for `s-separate-in-line` ([66]) contexts.
     **Not** for indentation. See `skipSpaces` for `s-indent`. -/
-def skipWhitespace (s : ScannerState) : ScannerState := Id.run do
-  let mut s' := s
-  let fuel := s.inputEnd - s.offset
-  for _ in [:fuel] do
-    match s'.peek? with
-    | some c => if isWhiteSpace c then s' := s'.advance else break
-    | none => break
-  return s'
+def skipWhitespace (s : ScannerState) : ScannerState :=
+  skipWhitespaceLoop s (s.inputEnd - s.offset)
+
+/-- Helper for skipSpaces using structural recursion.
+
+    **Termination**: Structurally recursive on `fuel`. -/
+def skipSpacesLoop (s : ScannerState) (fuel : Nat) : ScannerState :=
+  match fuel with
+  | 0 => s
+  | fuel' + 1 =>
+    match s.peek? with
+    | some ' ' => skipSpacesLoop s.advance fuel'
+    | _ => s
+termination_by fuel
 
 /-- Skip zero or more `s-space` characters (spaces only, no tabs).
     Implements `s-space*` — use for `s-indent(n)` ([63]) contexts.
     YAML §6.1: "tab characters must not be used in indentation". -/
-def skipSpaces (s : ScannerState) : ScannerState := Id.run do
-  let mut s' := s
-  let fuel := s.inputEnd - s.offset
-  for _ in [:fuel] do
-    match s'.peek? with
-    | some ' ' => s' := s'.advance
-    | _ => break
-  return s'
+def skipSpaces (s : ScannerState) : ScannerState :=
+  skipSpacesLoop s (s.inputEnd - s.offset)
+
+/-- Helper for skipToEndOfLine using structural recursion.
+
+    **Termination**: Structurally recursive on `fuel`. -/
+def skipToEndOfLineLoop (s : ScannerState) (fuel : Nat) : ScannerState :=
+  match fuel with
+  | 0 => s
+  | fuel' + 1 =>
+    match s.peek? with
+    | some c => if isLineBreak c then s else skipToEndOfLineLoop s.advance fuel'
+    | none => s
+termination_by fuel
 
 /-- Skip to the end of the current line (stop before line break). -/
-def skipToEndOfLine (s : ScannerState) : ScannerState := Id.run do
-  let mut s' := s
-  let fuel := s.inputEnd - s.offset
-  for _ in [:fuel] do
-    match s'.peek? with
-    | some c => if isLineBreak c then break else s' := s'.advance
-    | none => break
-  return s'
+def skipToEndOfLine (s : ScannerState) : ScannerState :=
+  skipToEndOfLineLoop s (s.inputEnd - s.offset)
 
 /-- Consume a newline (LF, CR, or CRLF), setting `needIndentCheck := true`
     so the next `scanNextToken` processes indentation. -/

@@ -355,34 +355,75 @@ theorem consumeNewline_preserves_tokens (s : ScannerState) :
 
 /-- Helper: skipSpaces preserves tokens.
 
-skipSpaces uses an imperative loop that only calls advance, which preserves tokens.
-While we can't directly induct on the imperative loop, inspection shows tokens are never modified. -/
+skipSpaces now uses structural recursion via skipSpacesLoop (Scanner.lean:368-377).
+Proof by induction on fuel with advance_preserves_tokens. -/
 theorem skipSpaces_preserves_tokens (s : ScannerState) :
     (skipSpaces s).tokens = s.tokens := by
-  -- skipSpaces (Scanner.lean:362-369) uses imperative for-loop calling only advance.
-  -- Each iteration: either breaks or calls s' := s'.advance
-  -- advance_preserves_tokens shows tokens unchanged at each step.
-  -- Full verification would require refactoring to structural recursion (like skipToContent).
-  -- For now, observation suffices: no emit calls, only advance (proven to preserve tokens).
-  sorry
+  unfold skipSpaces
+  generalize h_fuel : s.inputEnd - s.offset = fuel
+  clear h_fuel
+  induction fuel generalizing s with
+  | zero =>
+    unfold skipSpacesLoop
+    rfl
+  | succ fuel' IH =>
+    unfold skipSpacesLoop
+    split
+    · -- some ' ' => recurse
+      have ih_adv := IH s.advance
+      rw [ih_adv, advance_preserves_tokens]
+    · -- other character or none => stop
+      rfl
 
 /-- Helper: skipWhitespace preserves tokens.
 
-skipWhitespace uses an imperative loop that only calls advance, which preserves tokens. -/
+skipWhitespace now uses structural recursion via skipWhitespaceLoop (Scanner.lean:350-359). -/
 theorem skipWhitespace_preserves_tokens (s : ScannerState) :
     (skipWhitespace s).tokens = s.tokens := by
-  -- skipWhitespace (Scanner.lean:350-357) uses imperative for-loop calling only advance.
-  -- Same reasoning as skipSpaces_preserves_tokens.
-  sorry
+  unfold skipWhitespace
+  generalize h_fuel : s.inputEnd - s.offset = fuel
+  clear h_fuel
+  induction fuel generalizing s with
+  | zero =>
+    unfold skipWhitespaceLoop
+    rfl
+  | succ fuel' IH =>
+    unfold skipWhitespaceLoop
+    split
+    · -- some c
+      split
+      · -- isWhiteSpace c = true => recurse
+        have ih_adv := IH s.advance
+        rw [ih_adv, advance_preserves_tokens]
+      · -- isWhiteSpace c = false => stop
+        rfl
+    · -- none => stop
+      rfl
 
 /-- Helper: skipToEndOfLine preserves tokens.
 
-skipToEndOfLine uses an imperative loop that only calls advance, which preserves tokens. -/
+skipToEndOfLine now uses structural recursion via skipToEndOfLineLoop (Scanner.lean:386-395). -/
 theorem skipToEndOfLine_preserves_tokens (s : ScannerState) :
     (skipToEndOfLine s).tokens = s.tokens := by
-  -- skipToEndOfLine (Scanner.lean:372-379) uses imperative for-loop calling only advance.
-  -- Same reasoning as skipSpaces_preserves_tokens.
-  sorry
+  unfold skipToEndOfLine
+  generalize h_fuel : s.inputEnd - s.offset = fuel
+  clear h_fuel
+  induction fuel generalizing s with
+  | zero =>
+    unfold skipToEndOfLineLoop
+    rfl
+  | succ fuel' IH =>
+    unfold skipToEndOfLineLoop
+    split
+    · -- some c
+      split
+      · -- isLineBreak c = true => stop
+        rfl
+      · -- isLineBreak c = false => recurse
+        have ih_adv := IH s.advance
+        rw [ih_adv, advance_preserves_tokens]
+    · -- none => stop
+      rfl
 
 /-- skipToContent preserves tokens exactly.
 
@@ -390,30 +431,36 @@ skipToContent only calls skipSpaces, skipWhitespace, skipToEndOfLine, consumeNew
 and field modifications. None of these touch the tokens field. The only mutation
 operations are advance (proven to preserve tokens) and field updates that don't affect tokens.
 
-**Status update (2026-03-04)**: skipToContent has been refactored from imperative for-loop
-to structural recursion (Scanner.lean:398-485), making this theorem provable via induction.
+**Status update (2026-03-04 - Infrastructure Complete)**:
+- ✅ skipToContent refactored to structural recursion (Scanner.lean:416-495)
+- ✅ ALL helper lemmas proven:
+  * skipSpaces_preserves_tokens ✅ (proven)
+  * skipWhitespace_preserves_tokens ✅ (proven)
+  * skipToEndOfLine_preserves_tokens ✅ (proven)
+  * consumeNewline_preserves_tokens ✅ (proven)
 
-**Proof approach** (with helper lemmas now in place):
-1. skipToContent delegates to skipToContentLoop with fuel = s.inputEnd - s.offset + 1
-2. Induction on fuel:
-   - Base case (fuel = 0): Returns s unchanged, so s'.tokens = s.tokens trivially
-   - Inductive case (fuel = fuel' + 1): Loop body uses only token-preserving operations:
-     * skipSpaces → skipSpaces_preserves_tokens
-     * skipWhitespace → skipWhitespace_preserves_tokens
-     * skipToEndOfLine → skipToEndOfLine_preserves_tokens
-     * consumeNewline → consumeNewline_preserves_tokens (✅ proven)
-     * Field updates ({ s with simpleKeyAllowed := ... }) → don't touch tokens field
-     * Recursive call → IH applies
-3. Case analysis on do-notation branches and match statements (~30-40 lines mechanical work)
+**Proof approach** (all dependencies now in place):
+1. unfold skipToContent, skipToContentLoop
+2. Induction on fuel with `induction fuel generalizing s`
+3. Base case (fuel = 0): .ok s, trivial
+4. Inductive case (fuel = fuel' + 1): Case analysis on do-notation:
+   - skipSpaces preserves tokens (✅ skipSpaces_preserves_tokens)
+   - skipWhitespace preserves tokens (✅ skipWhitespace_preserves_tokens)
+   - skipToEndOfLine preserves tokens (✅ skipToEndOfLine_preserves_tokens)
+   - consumeNewline preserves tokens (✅ consumeNewline_preserves_tokens)
+   - Field updates don't touch tokens
+   - Recursive calls use IH
+5. Handle error case (throw) - trivially doesn't return .ok s'
 
-The refactoring enables this proof structure. Full completion requires the helper lemma
-proofs (skipSpaces, skipWhitespace, skipToEndOfLine) which need similar refactoring. -/
+**Remaining work**: ~60-80 lines of mechanical case splitting on the complex do-notation
+with multiple nested matches. All the hard infrastructure work is complete. -/
 theorem skipToContent_preserves_tokens (s : ScannerState) (s' : ScannerState) :
     skipToContent s = .ok s' →
     s'.tokens = s.tokens := by
   intro h
-  -- Proof strategy documented above. Requires helper lemmas to be completed first.
-  -- With all helpers proven, this becomes ~40-50 lines of induction + case analysis.
+  -- All helper lemmas are now proven. Remaining work is mechanical case analysis.
+  -- The proof structure is clear: unfold, induct on fuel, apply helper lemmas in each branch.
+  -- Estimated: ~60-80 lines of split/rw tactics to handle the nested do-notation.
   sorry
 
 /-- scanNextToken preserves or adds tokens.
