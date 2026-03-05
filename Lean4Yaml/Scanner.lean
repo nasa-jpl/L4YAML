@@ -408,79 +408,89 @@ def consumeNewline (s : ScannerState) : ScannerState :=
     | _ => { s' with needIndentCheck := true }
   | _ => s
 
-/-- Helper for skipToContent using structural recursion.
+/-- Phase 1: Skip indentation and whitespace, returning the updated state.
 
-    **Termination**: Structurally recursive on `fuel`.
-    **Invariant**: At most `fuel` iterations, each consuming whitespace/comments
-                   or stopping at content/EOF. -/
+    Returns `.ok s'` with the whitespace-consumed state, or `.error` on
+    tab-as-indentation violations.
+
+    Refactored from `do`+`mut` to explicit state threading so that `unfold`
+    exposes proof-tractable structure (no monadic join points). -/
+def skipToContentWs (s : ScannerState) : Except ScanError ScannerState :=
+  -- After a newline, use skipSpaces for indentation (s-indent [63]: spaces only).
+  -- Then check for tab-as-indentation, using currentIndent to determine the
+  -- boundary between indentation territory and separation territory.
+  if s.needIndentCheck then
+    let s1 := skipSpaces s
+    -- Key insight: once col > currentIndent, we've consumed enough spaces
+    -- to be inside the current block's content area. Any tabs here are
+    -- s-separate-in-line [66] (legal separation), not indentation.
+    if (s1.col : Int) ≤ s1.currentIndent then
+      -- Still at or below the current block's indent level.
+      -- A tab here would extend into indentation territory — §6.1 violation.
+      match s1.peek? with
+      | some '\t' =>
+        -- Peek past tabs/spaces to see what follows
+        let probe := skipWhitespace s1
+        match probe.peek? with
+        | some '#' => .ok (skipWhitespace s1)      -- tab before comment: allowed
+        | some c =>
+          if isLineBreak c then .ok (skipWhitespace s1)  -- tab on blank line: allowed
+          else
+            -- Tab followed by content: tab used as indentation — forbidden §6.1
+            .error (.tabInIndentation s1.line s1.col)
+        | none => .ok (skipWhitespace s1)           -- tab before EOF: allowed
+      | _ => .ok s1
+    else
+      -- Past indentation boundary or in flow context: tabs are legal separation
+      .ok (skipWhitespace s1)
+  else
+    .ok (skipWhitespace s)
+
+/-- Phase 2: Skip optional comment (from `#` to end of line).
+
+    §6.7: `c-nb-comment-text` (#) requires preceding `s-separate-in-line`.
+    `s-separate-in-line` = `s-white+` | `start-of-line`.
+    Check raw input: `#` must be preceded by whitespace or be at column 0. -/
+def skipToContentComment (s : ScannerState) : ScannerState :=
+  match s.peek? with
+  | some '#' =>
+    let commentOk := s.col == 0 || match s.peekBack? with
+      | some c => isWhiteSpace c || isLineBreak c || c == '\uFEFF'  -- BOM is transparent (§5.2)
+      | none => true   -- start of input
+    if commentOk then skipToEndOfLine s else s
+  | _ => s
+
+/-- Structural-recursive loop for `skipToContent`.
+
+    Each iteration: (1) skip whitespace/indentation via `skipToContentWs`,
+    (2) skip optional comment via `skipToContentComment`,
+    (3) if line break: consume it and recurse; otherwise stop.
+
+    **Proof-friendly design**: no `do`-notation, no `mut`, no monadic bind.
+    Every intermediate state is an explicit `let`-binding, making `unfold`
+    expose simple `match`/`if` trees that `split` can decompose. -/
 def skipToContentLoop (s : ScannerState) (fuel : Nat) : Except ScanError ScannerState :=
   match fuel with
   | 0 => .ok s
-  | fuel' + 1 => do
-    let mut s' := s
-    -- After a newline, use skipSpaces for indentation (s-indent [63]: spaces only).
-    -- Then check for tab-as-indentation, using currentIndent to determine the
-    -- boundary between indentation territory and separation territory.
-    --
-    -- Track whether `#` is allowed as a comment start per §6.7:
-    --   [78] l-comment ::= s-separate-in-line c-nb-comment-text? b-comment
-    -- s-separate-in-line [66] = s-white+ | start-of-line.
-    -- So `#` is a comment only if (a) at start-of-line, or (b) preceded by ≥1 s-white.
-    -- Check the raw input character before `#` (via peekBack?) rather than tracking
-    -- whitespace consumption, since prior token scanners may have consumed the whitespace.
-    if s'.needIndentCheck then
-      s' := skipSpaces s'
-      -- Key insight: once col > currentIndent, we've consumed enough spaces
-      -- to be inside the current block's content area. Any tabs here are
-      -- s-separate-in-line [66] (legal separation), not indentation.
-      if (s'.col : Int) ≤ s'.currentIndent then
-        -- Still at or below the current block's indent level.
-        -- A tab here would extend into indentation territory — §6.1 violation.
-        match s'.peek? with
-        | some '\t' =>
-          -- Peek past tabs/spaces to see what follows
-          let probe := skipWhitespace s'
-          match probe.peek? with
-          | some '#' => s' := skipWhitespace s'   -- tab before comment: allowed
-          | some c =>
-            if isLineBreak c then s' := skipWhitespace s'  -- tab on blank line: allowed
-            else
-              -- Tab followed by content: tab used as indentation — forbidden §6.1
-              throw (.tabInIndentation s'.line s'.col)
-          | none => s' := skipWhitespace s'        -- tab before EOF: allowed
-        | _ => pure ()
-      else
-        -- Past indentation boundary or in flow context: tabs are legal separation
-        s' := skipWhitespace s'
-    else
-      s' := skipWhitespace s'
-    -- §6.7: c-nb-comment-text (#) requires preceding s-separate-in-line.
-    -- s-separate-in-line = s-white+ | start-of-line.
-    -- Check the raw input: # must be preceded by whitespace or be at column 0.
-    match s'.peek? with
-    | some '#' =>
-      let commentOk := s'.col == 0 || match s'.peekBack? with
-        | some c => isWhiteSpace c || isLineBreak c || c == '\uFEFF'  -- BOM is transparent (§5.2)
-        | none => true   -- start of input
-      if commentOk then
-        s' := skipToEndOfLine s'
-      -- else: `#` without preceding whitespace — not a comment; leave for scanNextToken
-    | _ => pure ()
-    match s'.peek? with
-    | some c =>
-      if isLineBreak c then
-        s' := consumeNewline s'
-        -- §7.4.2: In flow sequences, implicit keys are restricted to a
-        -- single line.  Don't re-enable simple keys on newline so that
-        -- `saveSimpleKey` preserves (rather than overwrites) the pending
-        -- key, allowing `scanValue` to detect the line mismatch.
-        -- In block context and flow mappings, newlines always allow new keys.
-        if !s'.isInFlowSequence then
-          skipToContentLoop { s' with simpleKeyAllowed := true } fuel'
-        else
-          skipToContentLoop s' fuel'
-      else .ok s'
-    | none => .ok s'
+  | fuel' + 1 =>
+    match skipToContentWs s with
+    | .error e => .error e
+    | .ok s1 =>
+      let s2 := skipToContentComment s1
+      match s2.peek? with
+      | some c =>
+        if isLineBreak c then
+          let s3 := consumeNewline s2
+          -- §7.4.2: In flow sequences, implicit keys are restricted to a
+          -- single line.  Don't re-enable simple keys on newline so that
+          -- `saveSimpleKey` preserves (rather than overwrites) the pending
+          -- key, allowing `scanValue` to detect the line mismatch.
+          if !s3.isInFlowSequence then
+            skipToContentLoop { s3 with simpleKeyAllowed := true } fuel'
+          else
+            skipToContentLoop s3 fuel'
+        else .ok s2
+      | none => .ok s2
 termination_by fuel
 
 /-- Advance past whitespace, comments, and line breaks to the next content character.
