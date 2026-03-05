@@ -390,26 +390,16 @@ def consumeNewline (s : ScannerState) : ScannerState :=
     | _ => { s' with needIndentCheck := true }
   | _ => s
 
-/-- Advance past whitespace, comments, and line breaks to the next content character.
+/-- Helper for skipToContent using structural recursion.
 
-    **Implements**: `s-l-comments` ([79]) and parts of `l-comment` ([78]).
-
-    Each iteration of the outer loop handles one "line" of skippable content:
-    1. Skip indentation spaces (`s-indent`, [63]): `s-space*` via `skipSpaces`.
-    2. Tab-as-indentation check (§6.1), guarded by `currentIndent`:
-       - `col > currentIndent` → past indentation → tabs are `s-separate-in-line` [66] (legal)
-       - `col ≤ currentIndent` → in indentation zone → tabs before content are an error
-       - Flow context → no indentation significance → tabs always legal
-    3. Skip remaining `s-separate-in-line` whitespace (spaces + tabs) via `skipWhitespace`.
-    4. Skip optional comment: if `#`, consume to end of line.
-    5. If line break: consume it, set `simpleKeyAllowed`, continue to next line.
-    6. Otherwise: we've reached content — stop.
-
-    **Error**: Tab character used as indentation (before content on a new line). -/
-def skipToContent (s : ScannerState) : Except ScanError ScannerState := do
-  let fuel := s.inputEnd - s.offset + 1
-  let mut s' := s
-  for _ in [:fuel] do
+    **Termination**: Structurally recursive on `fuel`.
+    **Invariant**: At most `fuel` iterations, each consuming whitespace/comments
+                   or stopping at content/EOF. -/
+def skipToContentLoop (s : ScannerState) (fuel : Nat) : Except ScanError ScannerState :=
+  match fuel with
+  | 0 => .ok s
+  | fuel' + 1 => do
+    let mut s' := s
     -- After a newline, use skipSpaces for indentation (s-indent [63]: spaces only).
     -- Then check for tab-as-indentation, using currentIndent to determine the
     -- boundary between indentation territory and separation territory.
@@ -468,10 +458,31 @@ def skipToContent (s : ScannerState) : Except ScanError ScannerState := do
         -- key, allowing `scanValue` to detect the line mismatch.
         -- In block context and flow mappings, newlines always allow new keys.
         if !s'.isInFlowSequence then
-          s' := { s' with simpleKeyAllowed := true }
-      else break
-    | none => break
-  return s'
+          skipToContentLoop { s' with simpleKeyAllowed := true } fuel'
+        else
+          skipToContentLoop s' fuel'
+      else .ok s'
+    | none => .ok s'
+termination_by fuel
+
+/-- Advance past whitespace, comments, and line breaks to the next content character.
+
+    **Implements**: `s-l-comments` ([79]) and parts of `l-comment` ([78]).
+
+    Each iteration of the outer loop handles one "line" of skippable content:
+    1. Skip indentation spaces (`s-indent`, [63]): `s-space*` via `skipSpaces`.
+    2. Tab-as-indentation check (§6.1), guarded by `currentIndent`:
+       - `col > currentIndent` → past indentation → tabs are `s-separate-in-line` [66] (legal)
+       - `col ≤ currentIndent` → in indentation zone → tabs before content are an error
+       - Flow context → no indentation significance → tabs always legal
+    3. Skip remaining `s-separate-in-line` whitespace (spaces + tabs) via `skipWhitespace`.
+    4. Skip optional comment: if `#`, consume to end of line.
+    5. If line break: consume it, set `simpleKeyAllowed`, continue to next line.
+    6. Otherwise: we've reached content — stop.
+
+    **Error**: Tab character used as indentation (before content on a new line). -/
+def skipToContent (s : ScannerState) : Except ScanError ScannerState :=
+  skipToContentLoop s (s.inputEnd - s.offset + 1)
 
 /-! ## Indentation Management -/
 

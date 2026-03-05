@@ -220,23 +220,24 @@ theorem unwindIndents_preserves_prefix (s : ScannerState) (col : Int)
   unfold unwindIndents
   exact unwindIndentsLoop_preserves_prefix s col s.indents.size i h_bound
 
-/-- scanLoop only succeeds by emitting streamEnd.
+/-- scanLoop only succeeds by emitting streamEnd (generalized over all states).
 
 When `scanLoop s fuel` returns `.ok tokens`, those tokens came from a code path
 that includes `final.emit .streamEnd`. This means `tokens.size = final.tokens.size + 1`
 where `final = unwindIndents s (-1)`. -/
-theorem scanLoop_success_emits_streamEnd (s : ScannerState) (fuel : Nat) (tokens : Array (Positioned YamlToken)) :
+theorem scanLoop_success_emits_streamEnd : ∀ (s : ScannerState) (fuel : Nat) (tokens : Array (Positioned YamlToken)),
     scanLoop s fuel = .ok tokens →
     ∃ (s' : ScannerState), tokens = (s'.emit .streamEnd).tokens := by
-  intro h
-  -- Induction on fuel
-  cases fuel with
+  intro s fuel
+  induction fuel generalizing s with
   | zero =>
     -- Case fuel = 0: scanLoop returns .error, contradiction
+    intro tokens h
     unfold scanLoop at h
     contradiction
-  | succ fuel' =>
+  | succ fuel' IH =>
     -- Case fuel = fuel' + 1
+    intro tokens h
     unfold scanLoop at h
     -- Case split on scanNextToken result
     split at h
@@ -250,10 +251,10 @@ theorem scanLoop_success_emits_streamEnd (s : ScannerState) (fuel : Nat) (tokens
       injection h with h_eq
       exists (unwindIndents s (-1))
       exact h_eq.symm
-    · -- scanNextToken = .ok (some s'): recursive call
-      -- This would require the inductive hypothesis
-      -- For now, defer to complete this proof properly
-      sorry
+    · -- scanNextToken = .ok (some s'): recursive call to scanLoop s' fuel'
+      -- Apply IH with the new state s'
+      rename_i s' _
+      exact IH s' tokens h
 
 /-- saveSimpleKey preserves tokens.
 
@@ -337,19 +338,23 @@ theorem scanValue_adds_tokens (s : ScannerState) (s' : ScannerState)
 
 skipToContent only calls skipSpaces, skipWhitespace, skipToEndOfLine, consumeNewline,
 and field modifications. None of these touch the tokens field. The only mutation
-operations are advance (proven to preserve tokens) and field updates that don't affect tokens. -/
+operations are advance (proven to preserve tokens) and field updates that don't affect tokens.
+
+**Status update (2026-03-04)**: skipToContent has been refactored from imperative for-loop
+to structural recursion (Scanner.lean:393-495), making this theorem provable. The proof
+requires induction on fuel and analyzing the do-notation/match branches to show all
+operations preserve tokens. This is ~40-60 lines of mechanical proof work, deferred for now. -/
 theorem skipToContent_preserves_tokens (s : ScannerState) (s' : ScannerState) :
     skipToContent s = .ok s' →
     s'.tokens = s.tokens := by
   intro h
-  -- skipToContent uses imperative for-loop, which blocks direct proof.
-  -- However, inspection shows it never calls emit or modifies tokens field.
-  -- All operations preserve tokens:
+  -- skipToContent now delegates to skipToContentLoop (structural recursion).
+  -- Full proof: induction on fuel, showing all operations preserve tokens:
   -- - skipSpaces, skipWhitespace, skipToEndOfLine: only call advance
   -- - advance: proven to preserve tokens (advance_preserves_tokens)
   -- - consumeNewline: calls advance
   -- - Field updates: modify simpleKeyAllowed, needIndentCheck, but not tokens
-  -- For full verification, would need to refactor skipToContent to structural recursion.
+  -- The refactoring unblocks this proof; completion requires ~40-60 lines of case analysis.
   sorry
 
 /-- scanNextToken preserves or adds tokens.
