@@ -425,38 +425,116 @@ theorem skipToEndOfLine_preserves_tokens (s : ScannerState) :
     · -- none => stop
       rfl
 
-/-- skipToContent preserves tokens exactly.
+/-- Helper: skipToContentWs preserves tokens.
 
-skipToContent only calls skipSpaces, skipWhitespace, skipToEndOfLine, consumeNewline,
-and field modifications. None of these touch the tokens field. The only mutation
-operations are advance (proven to preserve tokens) and field updates that don't affect tokens.
+`skipToContentWs` only calls `skipSpaces` and `skipWhitespace` (both proven
+to preserve tokens), plus field updates and error throws. No `emit` calls. -/
+theorem skipToContentWs_preserves_tokens (s : ScannerState) (s' : ScannerState)
+    (h : skipToContentWs s = .ok s') :
+    s'.tokens = s.tokens := by
+  unfold skipToContentWs at h
+  split at h
+  · -- needIndentCheck = true
+    simp only [] at h  -- reduce `have s1 := skipSpaces s`
+    split at h
+    · -- col ≤ currentIndent
+      split at h
+      · -- peek? = some '\t'
+        split at h
+        · -- probe.peek? = some '#'
+          simp at h; rw [← h, skipWhitespace_preserves_tokens, skipSpaces_preserves_tokens]
+        · -- probe.peek? = some c (not '#')
+          split at h
+          · simp at h; rw [← h, skipWhitespace_preserves_tokens, skipSpaces_preserves_tokens]
+          · simp at h
+        · -- probe.peek? = none
+          simp at h; rw [← h, skipWhitespace_preserves_tokens, skipSpaces_preserves_tokens]
+      · -- peek? ≠ some '\t'
+        simp at h; rw [← h, skipSpaces_preserves_tokens]
+    · -- col > currentIndent
+      simp at h; rw [← h, skipWhitespace_preserves_tokens, skipSpaces_preserves_tokens]
+  · -- needIndentCheck = false
+    simp at h; rw [← h, skipWhitespace_preserves_tokens]
 
-**Status update (2026-03-04 - Infrastructure Complete)**:
-- ✅ skipToContent refactored to structural recursion (Scanner.lean:416-495)
-- ✅ ALL helper lemmas proven:
-  * skipSpaces_preserves_tokens ✅ (proven)
-  * skipWhitespace_preserves_tokens ✅ (proven)
-  * skipToEndOfLine_preserves_tokens ✅ (proven)
-  * consumeNewline_preserves_tokens ✅ (proven)
+/-- Helper: skipToContentComment preserves tokens.
 
-**Proof status**: BLOCKED - skipToContentLoop not accessible
-The proof is blocked by a visibility issue: `skipToContentLoop` is not accessible in the proof context,
-even though it's defined in Scanner.lean:416 and Scanner is opened in this module (line 50).
+`skipToContentComment` only calls `skipToEndOfLine` (proven to preserve tokens).
+No `emit` calls. -/
+theorem skipToContentComment_preserves_tokens (s : ScannerState) :
+    (skipToContentComment s).tokens = s.tokens := by
+  unfold skipToContentComment
+  split
+  · -- peek? = some '#'
+    simp only []  -- reduce `let commentOk := ...`
+    split  -- splits on peekBack?
+    · -- peekBack? = some c
+      split  -- splits on the if condition
+      · exact skipToEndOfLine_preserves_tokens s
+      · rfl
+    · -- peekBack? = none
+      simp [skipToEndOfLine_preserves_tokens]
+  · -- peek? ≠ some '#'
+    rfl
 
-This is puzzling because the other loop functions (skipSpacesLoop, skipWhitespaceLoop,
-skipToEndOfLineLoop) ARE accessible and their proofs work fine with the same pattern.
+/-- `skipToContentLoop` preserves tokens.
 
-**Possible causes**:
-1. The `Except` return type may affect visibility differently than plain `ScannerState`
-2. Definition ordering or some other scoping issue with later definitions in Scanner.lean
-3. Build system or module compilation issue
+By induction on fuel. Each iteration:
+1. `skipToContentWs` preserves tokens (or errors out)
+2. `skipToContentComment` preserves tokens
+3. If line break: `consumeNewline` preserves tokens, `{ .. with simpleKeyAllowed }` preserves tokens, then recurse
+4. Otherwise: return — tokens unchanged
 
-**Estimated effort to resolve**: 2-4 hours (investigate visibility issue, potentially refactor
-definition, or work around with axiom) -/
+The refactoring from `do`+`mut` to explicit state threading (`skipToContentWs`,
+`skipToContentComment`) makes each step visible to `unfold`+`split`. -/
+theorem skipToContentLoop_preserves_tokens (s : ScannerState) (s' : ScannerState)
+    (fuel : Nat)
+    (h : skipToContentLoop s fuel = .ok s') :
+    s'.tokens = s.tokens := by
+  induction fuel generalizing s with
+  | zero =>
+    unfold skipToContentLoop at h
+    simp at h; rw [← h]
+  | succ fuel' IH =>
+    unfold skipToContentLoop at h
+    split at h
+    · -- skipToContentWs s = .error e → contradiction
+      simp at h
+    · -- skipToContentWs s = .ok s1
+      rename_i s1 hws
+      simp only [] at h  -- reduce `let s2 := skipToContentComment s1`
+      split at h
+      · -- (skipToContentComment s1).peek? = some c
+        rename_i c hpeek
+        split at h
+        · -- isLineBreak c = true
+          split at h
+          · -- !isInFlowSequence → recurse with simpleKeyAllowed := true
+            have ih := IH _ h
+            rw [ih, consumeNewline_preserves_tokens, skipToContentComment_preserves_tokens]
+            exact skipToContentWs_preserves_tokens s s1 hws
+          · -- isInFlowSequence → recurse without flag change
+            have ih := IH _ h
+            rw [ih, consumeNewline_preserves_tokens, skipToContentComment_preserves_tokens]
+            exact skipToContentWs_preserves_tokens s s1 hws
+        · -- isLineBreak c = false → .ok (skipToContentComment s1)
+          simp at h; rw [← h, skipToContentComment_preserves_tokens]
+          exact skipToContentWs_preserves_tokens s s1 hws
+      · -- (skipToContentComment s1).peek? = none
+        simp at h; rw [← h, skipToContentComment_preserves_tokens]
+        exact skipToContentWs_preserves_tokens s s1 hws
+
+/-- `skipToContent` preserves tokens exactly.
+
+Proved by delegating to `skipToContentLoop_preserves_tokens`.
+The refactoring from `do`+`mut` to explicit state threading removed
+all monadic join points, making `unfold`+`split` proof-tractable.
+Zero axioms, zero sorry. -/
 theorem skipToContent_preserves_tokens (s : ScannerState) (s' : ScannerState) :
     skipToContent s = .ok s' →
     s'.tokens = s.tokens := by
-  sorry
+  intro h
+  unfold skipToContent at h
+  exact skipToContentLoop_preserves_tokens s s' _ h
 
 /-- scanNextToken preserves or adds tokens.
 
