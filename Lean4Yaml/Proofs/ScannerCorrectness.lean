@@ -439,28 +439,23 @@ operations are advance (proven to preserve tokens) and field updates that don't 
   * skipToEndOfLine_preserves_tokens ✅ (proven)
   * consumeNewline_preserves_tokens ✅ (proven)
 
-**Proof approach** (all dependencies now in place):
-1. unfold skipToContent, skipToContentLoop
-2. Induction on fuel with `induction fuel generalizing s`
-3. Base case (fuel = 0): .ok s, trivial
-4. Inductive case (fuel = fuel' + 1): Case analysis on do-notation:
-   - skipSpaces preserves tokens (✅ skipSpaces_preserves_tokens)
-   - skipWhitespace preserves tokens (✅ skipWhitespace_preserves_tokens)
-   - skipToEndOfLine preserves tokens (✅ skipToEndOfLine_preserves_tokens)
-   - consumeNewline preserves tokens (✅ consumeNewline_preserves_tokens)
-   - Field updates don't touch tokens
-   - Recursive calls use IH
-5. Handle error case (throw) - trivially doesn't return .ok s'
+**Proof status**: BLOCKED - skipToContentLoop not accessible
+The proof is blocked by a visibility issue: `skipToContentLoop` is not accessible in the proof context,
+even though it's defined in Scanner.lean:416 and Scanner is opened in this module (line 50).
 
-**Remaining work**: ~60-80 lines of mechanical case splitting on the complex do-notation
-with multiple nested matches. All the hard infrastructure work is complete. -/
+This is puzzling because the other loop functions (skipSpacesLoop, skipWhitespaceLoop,
+skipToEndOfLineLoop) ARE accessible and their proofs work fine with the same pattern.
+
+**Possible causes**:
+1. The `Except` return type may affect visibility differently than plain `ScannerState`
+2. Definition ordering or some other scoping issue with later definitions in Scanner.lean
+3. Build system or module compilation issue
+
+**Estimated effort to resolve**: 2-4 hours (investigate visibility issue, potentially refactor
+definition, or work around with axiom) -/
 theorem skipToContent_preserves_tokens (s : ScannerState) (s' : ScannerState) :
     skipToContent s = .ok s' →
     s'.tokens = s.tokens := by
-  intro h
-  -- All helper lemmas are now proven. Remaining work is mechanical case analysis.
-  -- The proof structure is clear: unfold, induct on fuel, apply helper lemmas in each branch.
-  -- Estimated: ~60-80 lines of split/rw tactics to handle the nested do-notation.
   sorry
 
 /-- scanNextToken preserves or adds tokens.
