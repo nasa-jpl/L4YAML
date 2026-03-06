@@ -1098,14 +1098,64 @@ def collectTagPrefixLoop (s : ScannerState) (pfx : String) (fuel : Nat) : String
         (pfx, s)
     | none => (pfx, s)
 
+/-- Handle `%YAML` directive: parse version, validate trailing content, emit token.
+
+    **Implements** (YAML 1.2.2 §6.8.1):
+    - `[86]  ns-yaml-directive` = `"YAML" s-separate-in-line ns-yaml-version`
+    - `[88]  ns-yaml-version`  = `ns-dec-digit+ "." ns-dec-digit+`
+
+    **Pre**: `s` is state after `%YAML` + whitespace skip; `startPos` is position of `%`.
+    **Post**: Emits `.versionDirective major minor`, sets `seenYamlDirective`.
+    **Error**: `duplicateYamlDirective`, `directiveTrailingContent`. -/
+def scanYamlDirective (s : ScannerState) (s_after_ws : ScannerState) (startPos : YamlPos) :
+    Except ScanError ScannerState := do
+  if s.seenYamlDirective then
+    throw (.duplicateYamlDirective s.line)
+  let fuel_major := s.inputEnd - s_after_ws.offset
+  let (major, s_after_dot) := collectVersionMajorLoop s_after_ws "" fuel_major
+  let fuel_minor := s.inputEnd - s_after_dot.offset
+  let (minor, s_after_version) := collectVersionMinorLoop s_after_dot "" fuel_minor
+  let colBeforeWs := s_after_version.col
+  let s_validated := skipWhitespace s_after_version
+  match s_validated.peek? with
+  | some '#' =>
+    if s_validated.col == colBeforeWs then
+      throw (.directiveTrailingContent s_validated.line s_validated.col)
+  | some c => if !isLineBreak c then throw (.directiveTrailingContent s_validated.line s_validated.col)
+  | none => pure ()
+  let s_with_token := s_validated.emitAt startPos (.versionDirective major.toNat! minor.toNat!)
+  .ok { s_with_token with seenYamlDirective := true, directivesPresent := true }
+
+/-- Handle `%TAG` directive: parse handle and prefix, emit token.
+
+    **Implements** (YAML 1.2.2 §6.8.2):
+    - `[89]  ns-tag-directive` = `"TAG" s-separate-in-line c-tag-handle s-separate-in-line ns-tag-prefix`
+
+    **Pre**: `s_after_ws` is state after `%TAG` + whitespace skip; `startPos` is position of `%`.
+    **Post**: Emits `.tagDirective handle prefix`, sets `directivesPresent`. -/
+def scanTagDirective (s : ScannerState) (s_after_ws : ScannerState) (startPos : YamlPos) :
+    Except ScanError ScannerState := do
+  let fuel_handle := s.inputEnd - s_after_ws.offset
+  let result := collectTagHandleDirectiveLoop s_after_ws "" fuel_handle
+  let handle := result.1
+  let s_after_handle := result.2
+  let s_after_ws2 := skipWhitespace s_after_handle
+  let fuel_prefix := s.inputEnd - s_after_ws2.offset
+  let result2 := collectTagPrefixLoop s_after_ws2 "" fuel_prefix
+  let tagPrefix := result2.1
+  let s_after_prefix := result2.2
+  let s_with_token := s_after_prefix.emitAt startPos (.tagDirective handle tagPrefix)
+  .ok { s_with_token with directivesPresent := true }
+
 /-- Scan a directive (`%YAML` or `%TAG`).
 
     **Implements** (YAML 1.2.2 §6.8):
     - `[82]  l-directive` = `"%" ( ns-yaml-directive | ns-tag-directive | ns-reserved-directive ) s-l-comments`
-    - `[86]  ns-yaml-directive` = `"YAML" s-separate-in-line ns-yaml-version`
-    - `[89]  ns-tag-directive`  = `"TAG" s-separate-in-line c-tag-handle s-separate-in-line ns-tag-prefix`
-    - `[88]  ns-yaml-version`  = `ns-dec-digit+ "." ns-dec-digit+`
     - `[20]  c-directive` = `"%"`
+
+    **Decomposed for provability**: YAML and TAG handling are in
+    `scanYamlDirective` and `scanTagDirective` respectively, each with ≤ 6
+    branch points. This wrapper has only 3 branch points.
 
     **Pre**: Scanner at `%` at column 0, `allowDirectives` is true.
     **Post**: Emits `.versionDirective major minor` or `.tagDirective handle prefix`.
@@ -1113,51 +1163,21 @@ def collectTagPrefixLoop (s : ScannerState) (pfx : String) (fuel : Nat) : String
     **Error**: `directiveAfterContent` (directive after document content without `...`),
     `duplicateYamlDirective` (second `%YAML` in same document),
     `directiveTrailingContent` (content after version string). -/
-def scanDirective (s : ScannerState) : Except ScanError ScannerState := do
-  -- §6.8: Directives are only allowed before a document (at stream start
-  -- or after `...`). Reject directives after document content.
+def scanDirective (s : ScannerState) : Except ScanError ScannerState :=
   if !s.allowDirectives then
-    throw (.directiveAfterContent s.line)
-  let startPos := s.currentPos
-  let s_after_percent := s.advance  -- consume `%`
-  let fuel := s.inputEnd - s_after_percent.offset
-  let (name, s_after_name) := collectDirectiveNameLoop s_after_percent "" fuel
-  let s_after_ws := skipWhitespace s_after_name
-  if name == "YAML" then
-    -- §6.8.1: At most one %YAML directive per document.
-    if s.seenYamlDirective then
-      throw (.duplicateYamlDirective s.line)
-    let fuel_major := s.inputEnd - s_after_ws.offset
-    let (major, s_after_dot) := collectVersionMajorLoop s_after_ws "" fuel_major
-    let fuel_minor := s.inputEnd - s_after_dot.offset
-    let (minor, s_after_version) := collectVersionMinorLoop s_after_dot "" fuel_minor
-    -- §6.8.1: After version, only s-separate-in-line + comment, or linebreak/EOF.
-    -- c-nb-comment-text (#) requires preceding s-separate-in-line (≥1 s-white).
-    let colBeforeWs := s_after_version.col
-    let s_validated := skipWhitespace s_after_version
-    match s_validated.peek? with
-    | some '#' =>
-      -- Verify whitespace was consumed (s-separate-in-line before #)
-      if s_validated.col == colBeforeWs then
-        throw (.directiveTrailingContent s_validated.line s_validated.col)
-    | some c => if !isLineBreak c then throw (.directiveTrailingContent s_validated.line s_validated.col)
-    | none => pure ()       -- EOF: ok (orphan directive caught later)
-    let s_with_token := s_validated.emitAt startPos (.versionDirective major.toNat! minor.toNat!)
-    .ok { s_with_token with seenYamlDirective := true, directivesPresent := true }
-  else if name == "TAG" then
-    let fuel_handle := s.inputEnd - s_after_ws.offset
-    let result := collectTagHandleDirectiveLoop s_after_ws "" fuel_handle
-    let handle := result.1
-    let s_after_handle := result.2
-    let s_after_ws2 := skipWhitespace s_after_handle
-    let fuel_prefix := s.inputEnd - s_after_ws2.offset
-    let result2 := collectTagPrefixLoop s_after_ws2 "" fuel_prefix
-    let tagPrefix := result2.1
-    let s_after_prefix := result2.2
-    let s_with_token := s_after_prefix.emitAt startPos (.tagDirective handle tagPrefix)
-    .ok { s_with_token with directivesPresent := true }
+    .error (.directiveAfterContent s.line)
   else
-    .ok (skipToEndOfLine s_after_ws)
+    let startPos := s.currentPos
+    let s_after_percent := s.advance
+    let fuel := s.inputEnd - s_after_percent.offset
+    let (name, s_after_name) := collectDirectiveNameLoop s_after_percent "" fuel
+    let s_after_ws := skipWhitespace s_after_name
+    if name == "YAML" then
+      scanYamlDirective s s_after_ws startPos
+    else if name == "TAG" then
+      scanTagDirective s s_after_ws startPos
+    else
+      .ok (skipToEndOfLine s_after_ws)
 
 /-! ## Document Marker Scanning -/
 
@@ -2036,155 +2056,197 @@ def saveSimpleKey (st : ScannerState) : ScannerState :=
         endLine := st.line } }
   else st
 
-/-- Scan the next token from the input.
+/-- Check whether a block-entry indicator (`-`) is followed by a blank or EOF. -/
+def isBlockEntryCandidate (s : ScannerState) : Bool :=
+  match s.peekAt? 1 with
+  | some n => isBlank n
+  | none => true
 
-    **Implements**: Main dispatch loop for YAML token recognition.
-    Called repeatedly by `scan` until input is exhausted.
+/-- Check whether a key indicator (`?`) is followed by a blank, flow indicator, or EOF. -/
+def isKeyCandidate (s : ScannerState) : Bool :=
+  match s.peekAt? 1 with
+  | some n => isBlank n || (s.inFlow && isFlowIndicator n)
+  | none => true
 
-    Flow:
-    1. `skipToContent` — advance past `s-l-comments` ([79])
-    2. Indent check — `unwindIndents` for block context (emits `blockEnd` tokens)
-    3. `saveSimpleKey` — record potential implicit key position
-    4. Character dispatch — delegate to specific scanner based on current char
+/-- Check whether a value indicator (`:`) should be recognized.
+    In flow context with a possible simple key, always true.
+    Otherwise, requires a blank, flow indicator, or EOF after. -/
+def isValueCandidate (s : ScannerState) : Bool :=
+  if s.inFlow && s.simpleKey.possible then true
+  else match s.peekAt? 1 with
+  | some n => isBlank n || (s.inFlow && isFlowIndicator n)
+  | none => true
 
-    **Pre**: Scanner state from previous token (or initial state).
-    **Post**: Scanner past one token. Token emitted. State updated.
-    **Error**: Unexpected character at current position. -/
-def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) := do
-  -- Step 1: Skip to content — s-l-comments [79]
+/-- §7.5: After a flow collection close returns us to block context,
+    validate that only whitespace, comments, `:`, or end-of-line follow
+    on the same line. -/
+def validateFlowClose (s' : ScannerState) : Except ScanError Unit := do
+  if s'.flowLevel == 0 then
+    let probe := skipTrailingSpaces s' (s'.inputEnd - s'.offset + 1)
+    match probe.peek? with
+    | none => pure ()
+    | some pc =>
+      if isLineBreak pc || pc == '#' || pc == ':' then pure ()
+      else return ← .error (.trailingContent probe.line probe.col)
+
+/-- Preprocessing phase of `scanNextToken`.
+
+    Skips whitespace/comments, handles block indentation unwind,
+    saves simple key position, and peeks at the next character.
+
+    Returns `none` if input is exhausted, or `some (s', c)` where
+    `s'` is the preprocessed state and `c` is the peeked character. -/
+def scanNextToken_preprocess (s : ScannerState) :
+    Except ScanError (Option (ScannerState × Char)) := do
   let s ← skipToContent s
-  if !s.hasMore then
-    return none
-  -- Step 2: Indent check — unwind block collections when de-indented
-  --   §6.1: After unwinding, if the new content's column is strictly
-  --   between the current indent level and the just-popped level, the
-  --   content is at an invalid intermediate indentation.
+  if !s.hasMore then return none
   let savedIndentSize := s.indents.size
   let s := if !s.inFlow && s.needIndentCheck then
     let s := unwindIndents s s.col
     { s with needIndentCheck := false }
   else s
-  -- Check for intermediate indentation after unwind.
-  -- If unwindIndents popped levels (stack shrank) AND the content column
-  -- is strictly deeper than the new currentIndent, the content is at an
-  -- indentation level that doesn't match any enclosing block collection.
   if s.indents.size < savedIndentSize && (s.col : Int) > s.currentIndent then
     return ← .error (.trailingContent s.line s.col)
-  -- Step 3: Save simple key position for potential implicit key
   let s := saveSimpleKey s
   match s.peek? with
-  | none =>
-    return none
-  | some c =>
-    -- §8.1 / §7.5: Flow content inside a block structure must be more
-    -- indented than the enclosing block collection. Check on new lines
-    -- (not the opening line of the flow collection).
-    -- Only check when there IS an enclosing block (currentIndent ≥ 0).
-    if s.inFlow && s.currentIndent >= 0 && (s.col : Int) <= s.currentIndent then
-      -- Allow flow-close indicators (they end the flow, so indent doesn't apply)
-      if c != ']' && c != '}' then
-        return ← .error (.underIndentedFlowContent s.line s.col)
-    -- §5.4: Document markers are forbidden inside flow collections.
-    if s.col == 0 && s.inFlow && (atDocumentStart s || atDocumentEnd s) then
-      return ← .error (.documentMarkerInFlow s.line)
-    if s.col == 0 && atDocumentStart s then return some (scanDocumentStart s)
-    if s.col == 0 && atDocumentEnd s then
-      let s' ← scanDocumentEnd s
-      return some s'
-    if c == '%' && s.col == 0 then
-      let s' ← scanDirective s
-      return some s'
-    -- Any non-directive, non-document-marker content means we're in a document.
-    -- Disallow directives until the next `...` document-end marker.
-    let s := if s.allowDirectives then
-      { s with allowDirectives := false, documentEverStarted := true }
-    else s
-    if c == '[' then return some (scanFlowSequenceStart s)
-    if c == ']' then
-      if s.flowLevel == 0 then return ← .error (.flowEndOutsideFlow ']' s.line s.col)
-      let s' := scanFlowSequenceEnd s
-      -- §7.5: When a flow collection close returns us to block context,
-      -- only whitespace, comments, `:`, or end-of-line may follow on the same line.
-      if s'.flowLevel == 0 then
-        let probe := skipTrailingSpaces s' (s.inputEnd - s'.offset + 1)
-        match probe.peek? with
-        | none => pure ()
-        | some pc =>
-          if isLineBreak pc || pc == '#' || pc == ':' then pure ()
-          else return ← .error (.trailingContent probe.line probe.col)
-      return some s'
-    if c == '{' then return some (scanFlowMappingStart s)
-    if c == '}' then
-      if s.flowLevel == 0 then return ← .error (.flowEndOutsideFlow '}' s.line s.col)
-      let s' := scanFlowMappingEnd s
-      if s'.flowLevel == 0 then
-        let probe := skipTrailingSpaces s' (s.inputEnd - s'.offset + 1)
-        match probe.peek? with
-        | none => pure ()
-        | some pc =>
-          if isLineBreak pc || pc == '#' || pc == ':' then pure ()
-          else return ← .error (.trailingContent probe.line probe.col)
-      return some s'
-    if c == ',' then
-      -- §7.4.2: Flow entry indicator `,` is only valid inside flow collections.
-      if s.flowLevel == 0 then return ← .error (.flowEndOutsideFlow ',' s.line s.col)
-      let s' ← scanFlowEntry s
-      return some s'
-    if c == '-' && !s.inFlow then
-      let next := s.peekAt? 1
-      let isEntry := match next with
-        | some n => isBlank n
-        | none => true
-      if isEntry then
-        let s' ← scanBlockEntry s
-        return some s'
-    if c == '?' then
-      let next := s.peekAt? 1
-      let isKey := match next with
-        | some n => isBlank n || (s.inFlow && isFlowIndicator n)
-        | none => true
-      if isKey then
-        let s' ← scanKey s
-        return some s'
-    if c == ':' then
-      -- YAML §7.4 / libyaml: In flow context, `:` is a value indicator
-      -- whenever a simple key is possible (e.g., after a quoted scalar),
-      -- regardless of the character that follows.
-      -- In block context (or flow without a simple key), `:` requires
-      -- a trailing blank or flow indicator.
-      let isValue := if s.inFlow && s.simpleKey.possible then
-        true
-      else
-        let next := s.peekAt? 1
-        match next with
-        | some n => isBlank n || (s.inFlow && isFlowIndicator n)
-        | none => true
-      if isValue then
-        let s' ← scanValue s
-        return some s'
-    if c == '&' then return some (scanAnchorOrAlias s true)
-    if c == '*' then return some (scanAnchorOrAlias s false)
-    if c == '!' then return some (scanTag s)
-    if c == '|' || c == '>' then
-      let s' ← scanBlockScalar s
-      return some s'
-    if c == '"' then
-      let s' ← scanDoubleQuoted s
-      -- §7.4: Quoted scalars can span lines; update simpleKey.endLine
-      -- so scanValue can check key-end-line vs `:` line.
-      let s' := if s'.simpleKey.possible then
-        { s' with simpleKey := { s'.simpleKey with endLine := s'.line } }
-      else s'
-      return some s'
-    if c == '\'' then
-      let s' ← scanSingleQuoted s
-      let s' := if s'.simpleKey.possible then
-        { s' with simpleKey := { s'.simpleKey with endLine := s'.line } }
-      else s'
-      return some s'
-    if canStartPlainScalar c (s.peekAt? 1) s.inFlow then
-      let s' ← scanPlainScalar s; return some s'
-    .error (.unexpectedChar c s.line s.col)
+  | none => return none
+  | some c => return some (s, c)
+
+/-- Structural dispatch: validation checks, document markers, and directives.
+
+    Returns `some s'` if a document marker or directive was processed,
+    `none` to indicate fallthrough to indicator/content dispatch. -/
+def scanNextToken_dispatchStructural (s : ScannerState) (c : Char) :
+    Except ScanError (Option ScannerState) := do
+  -- §8.1 / §7.5: Flow content inside a block structure must be more
+  -- indented than the enclosing block collection.
+  if s.inFlow && s.currentIndent >= 0 && (s.col : Int) <= s.currentIndent then
+    if c != ']' && c != '}' then
+      return ← .error (.underIndentedFlowContent s.line s.col)
+  -- §5.4: Document markers are forbidden inside flow collections.
+  if s.col == 0 && s.inFlow && (atDocumentStart s || atDocumentEnd s) then
+    return ← .error (.documentMarkerInFlow s.line)
+  if s.col == 0 && atDocumentStart s then return some (scanDocumentStart s)
+  if s.col == 0 && atDocumentEnd s then
+    let s' ← scanDocumentEnd s
+    return some s'
+  if c == '%' && s.col == 0 then
+    let s' ← scanDirective s
+    return some s'
+  return none
+
+/-- Flow indicator dispatch: `[`, `]`, `{`, `}`, `,`.
+
+    Returns `some s'` if a flow indicator was processed,
+    `none` to indicate fallthrough. -/
+def scanNextToken_dispatchFlowIndicators (s : ScannerState) (c : Char) :
+    Except ScanError (Option ScannerState) := do
+  if c == '[' then return some (scanFlowSequenceStart s)
+  if c == ']' then
+    if s.flowLevel == 0 then return ← .error (.flowEndOutsideFlow ']' s.line s.col)
+    let s' := scanFlowSequenceEnd s
+    validateFlowClose s'
+    return some s'
+  if c == '{' then return some (scanFlowMappingStart s)
+  if c == '}' then
+    if s.flowLevel == 0 then return ← .error (.flowEndOutsideFlow '}' s.line s.col)
+    let s' := scanFlowMappingEnd s
+    validateFlowClose s'
+    return some s'
+  if c == ',' then
+    if s.flowLevel == 0 then return ← .error (.flowEndOutsideFlow ',' s.line s.col)
+    let s' ← scanFlowEntry s
+    return some s'
+  return none
+
+/-- Block indicator dispatch: `-`, `?`, `:`.
+
+    Returns `some s'` if a block indicator was processed,
+    `none` to indicate fallthrough. -/
+def scanNextToken_dispatchBlockIndicators (s : ScannerState) (c : Char) :
+    Except ScanError (Option ScannerState) := do
+  if c == '-' && !s.inFlow && isBlockEntryCandidate s then
+    let s' ← scanBlockEntry s
+    return some s'
+  if c == '?' && isKeyCandidate s then
+    let s' ← scanKey s
+    return some s'
+  if c == ':' && isValueCandidate s then
+    let s' ← scanValue s
+    return some s'
+  return none
+
+/-- Content token dispatch: anchors, tags, scalars, and error.
+
+    Handles `&`, `*`, `!`, `|`/`>`, `"`, `'`, plain scalars.
+    Always either processes a token or returns an error. -/
+def scanNextToken_dispatchContent (s : ScannerState) (c : Char) :
+    Except ScanError ScannerState := do
+  if c == '&' then return scanAnchorOrAlias s true
+  if c == '*' then return scanAnchorOrAlias s false
+  if c == '!' then return scanTag s
+  if c == '|' || c == '>' then
+    let s' ← scanBlockScalar s
+    return s'
+  if c == '"' then
+    let s' ← scanDoubleQuoted s
+    -- §7.4: Quoted scalars can span lines; update simpleKey.endLine
+    -- so scanValue can check key-end-line vs `:` line.
+    let s' := if s'.simpleKey.possible then
+      { s' with simpleKey := { s'.simpleKey with endLine := s'.line } }
+    else s'
+    return s'
+  if c == '\'' then
+    let s' ← scanSingleQuoted s
+    let s' := if s'.simpleKey.possible then
+      { s' with simpleKey := { s'.simpleKey with endLine := s'.line } }
+    else s'
+    return s'
+  if canStartPlainScalar c (s.peekAt? 1) s.inFlow then
+    let s' ← scanPlainScalar s; return s'
+  .error (.unexpectedChar c s.line s.col)
+
+/-- Scan the next token from the input.
+
+    **Implements**: Main dispatch loop for YAML token recognition.
+    Called repeatedly by `scan` until input is exhausted.
+
+    **Decomposed for provability**: Preprocessing and character dispatch are
+    split into helper functions (`scanNextToken_preprocess`,
+    `scanNextToken_dispatchStructural`, `scanNextToken_dispatchFlowIndicators`,
+    `scanNextToken_dispatchBlockIndicators`, `scanNextToken_dispatchContent`)
+    each with ≤ 7 branch points, keeping individual proofs tractable.
+
+    Flow:
+    1. `scanNextToken_preprocess` — skip whitespace, indent check, peek char
+    2. `scanNextToken_dispatchStructural` — validation, document markers, directives
+    3. `scanNextToken_dispatchFlowIndicators` — `[`, `]`, `{`, `}`, `,`
+    4. `scanNextToken_dispatchBlockIndicators` — `-`, `?`, `:`
+    5. `scanNextToken_dispatchContent` — `&`, `*`, `!`, `|`/`>`, `"`, `'`, plain
+
+    **Pre**: Scanner state from previous token (or initial state).
+    **Post**: Scanner past one token. Token emitted. State updated.
+    **Error**: Unexpected character at current position. -/
+def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) := do
+  match ← scanNextToken_preprocess s with
+  | none => return none
+  | some (s, c) =>
+    match ← scanNextToken_dispatchStructural s c with
+    | some s' => return some s'
+    | none =>
+      -- Any non-directive, non-document-marker content means we're in a document.
+      -- Disallow directives until the next `...` document-end marker.
+      let s := if s.allowDirectives then
+        { s with allowDirectives := false, documentEverStarted := true }
+      else s
+      match ← scanNextToken_dispatchFlowIndicators s c with
+      | some s' => return some s'
+      | none =>
+        match ← scanNextToken_dispatchBlockIndicators s c with
+        | some s' => return some s'
+        | none =>
+          let s' ← scanNextToken_dispatchContent s c
+          return some s'
 
 /-- Structurally recursive helper for scan.
 

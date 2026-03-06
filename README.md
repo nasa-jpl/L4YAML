@@ -5614,6 +5614,80 @@ split at h                              -- split on scanValueValidate
   `.ok` second. After `split at h`, the first goal is always the error case
   (closed by `contradiction`), and the second is the success path.
 
+### P10.11a — `scanDirective` & `scanNextToken` Decomposition (2026-03-08)
+
+**Context.** After `scanValue` decomposition (above), the next targets were `scanDirective` (monolithic `do` block, proof needed `set_option maxHeartbeats 6400000`) and `scanNextToken` (~28 branch points, `simp [bind, Except.bind]` exceeded 128K step limit — structurally infeasible without decomposition).
+
+#### scanDirective decomposition
+
+`scanDirective` was split into two helper functions + bind-free wrapper:
+
+| Function | Purpose | Branch Points |
+|---|---|---|
+| `scanYamlDirective(s, s_after_ws, startPos : YamlPos)` | `%YAML` — parse version, validate trailing content, emit `versionDirective` | ~6 |
+| `scanTagDirective(s, s_after_ws, startPos : YamlPos)` | `%TAG` — parse handle + prefix, emit `tagDirective` | ~2 (linear pipeline) |
+| `scanDirective` (wrapper) | Dispatch on directive name; **no `do` notation** | 3 |
+
+**Key technique: bind-free wrapper.** The wrapper uses `.error` instead of `throw` and avoids `do` notation entirely:
+```lean
+def scanDirective (s : ScannerState) : Except ScanError ScannerState :=
+  if !s.allowDirectives then .error (.directiveAfterContent s.line)
+  else
+    ...
+    if name == "YAML" then scanYamlDirective s s_after_ws startPos
+    else if name == "TAG" then scanTagDirective s s_after_ws startPos
+    else .ok (skipToEndOfLine s_after_ws)
+```
+
+This eliminates all `Bind.bind` from the unfolded term — `split at h` works directly after `unfold; dsimp only []`.
+
+#### scanDirective proof improvement
+
+| Metric | Before | After |
+|---|---|---|
+| `maxHeartbeats` | 6,400,000 (50× default) | default (128,000) |
+| Proof lines | ~70 (monolithic) | ~30 (composed from 3 helper theorems) |
+| Theorems | 1 | 3 (`scanYamlDirective_monotonic`, `scanTagDirective_monotonic`, `scanDirective_monotonic`) |
+
+Each helper theorem is proven independently. The wrapper proof composes them via `exact helper_monotonic s ... h_pre h`, establishing token preservation hypotheses with `rw [skipWhitespace_preserves_tokens, collectDirectiveNameLoop_preserves_tokens, advance_preserves_tokens]`.
+
+#### scanNextToken decomposition
+
+`scanNextToken` (~28 branch points) was split into 5 dispatch helpers + 3 pure Bool helpers + thin wrapper:
+
+| Function | Purpose | Branch Points |
+|---|---|---|
+| `isBlockEntryCandidate` | Pure: checks `-` + blank in non-flow | 0 (pure Bool) |
+| `isKeyCandidate` | Pure: checks `?` at flow start or + blank | 0 (pure Bool) |
+| `isValueCandidate` | Pure: checks `:` at flow start or + blank | 0 (pure Bool) |
+| `scanNextToken_preprocess` | skipToContent, unwindIndents, saveSimpleKey, peek | ~5 |
+| `scanNextToken_dispatchStructural` | Document markers, directives | ~6 |
+| `scanNextToken_dispatchFlowIndicators` | `[`, `]`, `{`, `}`, `,` | ~5 |
+| `scanNextToken_dispatchBlockIndicators` | `-`, `?`, `:` | ~3 |
+| `scanNextToken_dispatchContent` | `&`, `*`, `!`, `\|`/`>`, `"`, `'`, plain | ~7 |
+| `scanNextToken` (wrapper) | Compose via `match ← helper` | ~4 |
+
+The wrapper is now a thin composition:
+```lean
+def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) := do
+  match ← scanNextToken_preprocess s with
+  | none => return none
+  | some (s, c) =>
+    match ← scanNextToken_dispatchStructural s c with
+    | some s' => return some s'
+    | none => ...
+```
+
+#### Reflections
+
+**New idioms discovered:**
+- **Bind-free wrapper pattern**: Use `.error` not `throw`, no `do` notation in wrappers — eliminates `Bind.bind` entirely from the proof term
+- **`dsimp only [] at h` before `split`**: Reduces `let`/`have` bindings that hide conditionals from `split`
+- **Token preservation hypothesis threading**: Pass `h_ws : s_after_ws.tokens = s.tokens` to helper theorems; caller constructs it via `rw [preservation_lemmas]`
+- **Helper theorem composition via `exact`**: Each wrapper branch delegates to its helper's theorem
+
+**Result.** `sorry` count: 4 (unchanged — infrastructure only). Zero `maxHeartbeats` overrides remaining in `ScannerCorrectness.lean`. Build: 191/191 jobs, 869/869 tests.
+
 ## Gap Analysis: YAML 1.2.2 Specification Coverage
 
 ### Current State (2026-02-21)
