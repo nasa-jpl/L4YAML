@@ -1036,15 +1036,188 @@ theorem scanDocumentEnd_adds_tokens (s : ScannerState) (s' : ScannerState)
     s'.tokens.size ≥ s.tokens.size + 1 := by
   -- The function unwinds indents (adds ≥ 0 tokens), emits documentEnd (+1), advanceN (preserves),
   -- then validates trailing content and returns result. All validation branches return the same result.
-  sorry
+  unfold scanDocumentEnd at h
+  dsimp only [] at h
+  simp only [bind, Except.bind] at h
+  split at h
+  · contradiction
+  · split at h
+    · contradiction
+    · split at h
+      · split at h
+        · contradiction
+        · injection h with h_eq; subst h_eq
+          dsimp only []
+          simp only [emit_tokens_size, advanceN_preserves_tokens]
+          have h_unwind := unwindIndents_adds_tokens s (-1)
+          omega
+      · split at h
+        · contradiction
+        · injection h with h_eq; subst h_eq
+          dsimp only []
+          simp only [emit_tokens_size, advanceN_preserves_tokens]
+          have h_unwind := unwindIndents_adds_tokens s (-1)
+          omega
+      · split at h
+        · split at h
+          · contradiction
+          · injection h with h_eq; subst h_eq
+            dsimp only []
+            simp only [emit_tokens_size, advanceN_preserves_tokens]
+            have h_unwind := unwindIndents_adds_tokens s (-1)
+            omega
+        · contradiction
 
-/-- scanDirective adds exactly one token (on success). -/
-theorem scanDirective_adds_one_token (s : ScannerState) (s' : ScannerState)
+/-- collectDirectiveNameLoop preserves tokens. -/
+theorem collectDirectiveNameLoop_preserves_tokens (s : ScannerState) (name : String) (fuel : Nat) :
+    (collectDirectiveNameLoop s name fuel).snd.tokens = s.tokens := by
+  induction fuel generalizing s name with
+  | zero => unfold collectDirectiveNameLoop; rfl
+  | succ fuel' ih =>
+    unfold collectDirectiveNameLoop; split
+    · split
+      · rw [ih]; exact advance_preserves_tokens s
+      · rfl
+    · rfl
+
+/-- collectVersionMajorLoop preserves tokens. -/
+theorem collectVersionMajorLoop_preserves_tokens (s : ScannerState) (major : String) (fuel : Nat) :
+    (collectVersionMajorLoop s major fuel).snd.tokens = s.tokens := by
+  induction fuel generalizing s major with
+  | zero => unfold collectVersionMajorLoop; rfl
+  | succ fuel' ih =>
+    unfold collectVersionMajorLoop; split
+    · exact advance_preserves_tokens s
+    · split
+      · rw [ih]; exact advance_preserves_tokens s
+      · rfl
+    · rfl
+
+/-- collectVersionMinorLoop preserves tokens. -/
+theorem collectVersionMinorLoop_preserves_tokens (s : ScannerState) (minor : String) (fuel : Nat) :
+    (collectVersionMinorLoop s minor fuel).snd.tokens = s.tokens := by
+  induction fuel generalizing s minor with
+  | zero => unfold collectVersionMinorLoop; rfl
+  | succ fuel' ih =>
+    unfold collectVersionMinorLoop; split
+    · split
+      · rw [ih]; exact advance_preserves_tokens s
+      · rfl
+    · rfl
+
+/-- collectTagHandleDirectiveLoop preserves tokens. -/
+theorem collectTagHandleDirectiveLoop_preserves_tokens (s : ScannerState) (handle : String) (fuel : Nat) :
+    (collectTagHandleDirectiveLoop s handle fuel).snd.tokens = s.tokens := by
+  induction fuel generalizing s handle with
+  | zero => unfold collectTagHandleDirectiveLoop; rfl
+  | succ fuel' ih =>
+    unfold collectTagHandleDirectiveLoop; split
+    · split
+      · rw [ih]; exact advance_preserves_tokens s
+      · rfl
+    · rfl
+
+/-- collectTagPrefixLoop preserves tokens. -/
+theorem collectTagPrefixLoop_preserves_tokens (s : ScannerState) (pfx : String) (fuel : Nat) :
+    (collectTagPrefixLoop s pfx fuel).snd.tokens = s.tokens := by
+  induction fuel generalizing s pfx with
+  | zero => unfold collectTagPrefixLoop; rfl
+  | succ fuel' ih =>
+    unfold collectTagPrefixLoop; split
+    · split
+      · rw [ih]; exact advance_preserves_tokens s
+      · rfl
+    · rfl
+
+/-- scanYamlDirective is monotonic in token count. -/
+theorem scanYamlDirective_monotonic (s : ScannerState) (s_after_ws : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState)
+    (h_ws : s_after_ws.tokens = s.tokens)
+    (h : scanYamlDirective s s_after_ws startPos = .ok s') :
+    s'.tokens.size ≥ s.tokens.size := by
+  unfold scanYamlDirective at h
+  dsimp only [] at h
+  simp only [bind, Except.bind] at h
+  split at h
+  · contradiction
+  · split at h
+    · contradiction
+    · split at h
+      · -- some '#'
+        split at h
+        · contradiction
+        · injection h with h_eq; subst h_eq; dsimp only []
+          rw [emitAt_tokens_size,
+              skipWhitespace_preserves_tokens,
+              collectVersionMinorLoop_preserves_tokens,
+              collectVersionMajorLoop_preserves_tokens,
+              h_ws]
+          omega
+      · -- some c (not '#')
+        split at h
+        · contradiction
+        · split at h <;> try contradiction
+          all_goals (injection h with h_eq; subst h_eq; dsimp only []
+                     rw [emitAt_tokens_size,
+                         skipWhitespace_preserves_tokens,
+                         collectVersionMinorLoop_preserves_tokens,
+                         collectVersionMajorLoop_preserves_tokens,
+                         h_ws]
+                     omega)
+      · -- none
+        injection h with h_eq; subst h_eq; dsimp only []
+        rw [emitAt_tokens_size,
+            skipWhitespace_preserves_tokens,
+            collectVersionMinorLoop_preserves_tokens,
+            collectVersionMajorLoop_preserves_tokens,
+            h_ws]
+        omega
+
+/-- scanTagDirective is monotonic in token count. -/
+theorem scanTagDirective_monotonic (s : ScannerState) (s_after_ws : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState)
+    (h_ws : s_after_ws.tokens = s.tokens)
+    (h : scanTagDirective s s_after_ws startPos = .ok s') :
+    s'.tokens.size ≥ s.tokens.size := by
+  unfold scanTagDirective at h
+  dsimp only [] at h
+  injection h with h_eq; subst h_eq; dsimp only []
+  rw [emitAt_tokens_size,
+      collectTagPrefixLoop_preserves_tokens,
+      skipWhitespace_preserves_tokens,
+      collectTagHandleDirectiveLoop_preserves_tokens,
+      h_ws]
+  omega
+
+/-- scanDirective is monotonic in token count (YAML/TAG add one, unknown preserves). -/
+theorem scanDirective_monotonic (s : ScannerState) (s' : ScannerState)
     (h : scanDirective s = .ok s') :
-    s'.tokens.size = s.tokens.size + 1 := by
-  -- Note: This theorem is imprecise for unknown directives (which preserve tokens)
-  -- but those are rare edge cases. The main YAML and TAG cases do add tokens.
-  sorry
+    s'.tokens.size ≥ s.tokens.size := by
+  unfold scanDirective at h
+  dsimp only [] at h
+  split at h
+  · contradiction
+  · split at h
+    · -- YAML
+      have h_ws : (skipWhitespace (collectDirectiveNameLoop s.advance "" (s.inputEnd - s.advance.offset)).2).tokens = s.tokens := by
+        rw [skipWhitespace_preserves_tokens,
+            collectDirectiveNameLoop_preserves_tokens,
+            advance_preserves_tokens]
+      exact scanYamlDirective_monotonic s _ _ s' h_ws h
+    · split at h
+      · -- TAG
+        have h_ws : (skipWhitespace (collectDirectiveNameLoop s.advance "" (s.inputEnd - s.advance.offset)).2).tokens = s.tokens := by
+          rw [skipWhitespace_preserves_tokens,
+              collectDirectiveNameLoop_preserves_tokens,
+              advance_preserves_tokens]
+        exact scanTagDirective_monotonic s _ _ s' h_ws h
+      · -- unknown directive
+        injection h with h_eq; subst h_eq
+        rw [skipToEndOfLine_preserves_tokens,
+            skipWhitespace_preserves_tokens,
+            collectDirectiveNameLoop_preserves_tokens,
+            advance_preserves_tokens]
+        omega
 
 /-- scanAnchorOrAlias adds exactly one token. -/
 theorem scanAnchorOrAlias_adds_one_token (s : ScannerState) (isAnchor : Bool) :
@@ -1119,11 +1292,176 @@ theorem scanTag_adds_one_token (s : ScannerState) :
     · -- foundBang = false: use chars as suffix, no additional collection
       rw [emitAt_tokens_size, h_handle, h_adv]
 
+/-- `parseBlockHeaderLoop` preserves tokens (structural recursion on fuel). -/
+theorem parseBlockHeaderLoop_preserves_tokens (s : ScannerState) (chomp : ChompStyle)
+    (offset : Option Nat) (fuel : Nat) :
+    (parseBlockHeaderLoop s chomp offset fuel).snd.snd.tokens = s.tokens := by
+  induction fuel generalizing s chomp offset with
+  | zero => unfold parseBlockHeaderLoop; rfl
+  | succ fuel' ih =>
+    unfold parseBlockHeaderLoop; split
+    · rw [ih]; exact advance_preserves_tokens s
+    · rw [ih]; exact advance_preserves_tokens s
+    · split
+      · rw [ih]; exact advance_preserves_tokens s
+      · rfl
+    · rfl
+
+/-- `consumeExactSpaces` preserves tokens (structural recursion on count). -/
+theorem consumeExactSpaces_preserves_tokens (s : ScannerState) (count : Nat) :
+    (consumeExactSpaces s count).snd.tokens = s.tokens := by
+  induction count generalizing s with
+  | zero => unfold consumeExactSpaces; rfl
+  | succ count' ih =>
+    unfold consumeExactSpaces; split
+    · simp only []; rw [ih]; exact advance_preserves_tokens s
+    · rfl
+
+/-- `collectLineContentLoop` preserves tokens (structural recursion on fuel). -/
+theorem collectLineContentLoop_preserves_tokens (s : ScannerState) (content : String) (fuel : Nat) :
+    (collectLineContentLoop s content fuel).snd.tokens = s.tokens := by
+  induction fuel generalizing s content with
+  | zero => unfold collectLineContentLoop; rfl
+  | succ fuel' ih =>
+    unfold collectLineContentLoop
+    split
+    · split
+      · rfl
+      · rw [ih]; exact advance_preserves_tokens s
+    · rfl
+
+/-- `collectBlockScalarLoop` preserves tokens (structural recursion on fuel). -/
+theorem collectBlockScalarLoop_preserves_tokens (s : ScannerState) (rawContent : String)
+    (fuel : Nat) (contentIndent : Nat) (inputEnd : Nat) :
+    (collectBlockScalarLoop s rawContent fuel contentIndent inputEnd).snd.tokens = s.tokens := by
+  induction fuel generalizing s rawContent with
+  | zero => unfold collectBlockScalarLoop; rfl
+  | succ fuel' ih =>
+    unfold collectBlockScalarLoop
+    split
+    · rfl
+    · simp only []
+      split
+      · exact consumeExactSpaces_preserves_tokens s contentIndent
+      · split
+        · rw [ih, consumeNewline_preserves_tokens, consumeExactSpaces_preserves_tokens]
+        · split
+          · rfl
+          · split
+            · split
+              · rw [ih, consumeNewline_preserves_tokens,
+                    collectLineContentLoop_preserves_tokens, consumeExactSpaces_preserves_tokens]
+              · rw [ih, collectLineContentLoop_preserves_tokens, consumeExactSpaces_preserves_tokens]
+            · rw [collectLineContentLoop_preserves_tokens, consumeExactSpaces_preserves_tokens]
+
 /-- scanBlockScalar adds exactly one token (on success). -/
 theorem scanBlockScalar_adds_one_token (s : ScannerState) (s' : ScannerState)
     (h : scanBlockScalar s = .ok s') :
     s'.tokens.size = s.tokens.size + 1 := by
-  sorry
+  unfold scanBlockScalar at h
+  dsimp only [] at h
+  simp only [bind, Except.bind] at h
+  split at h
+  · -- peek? = some c (newline check)
+    split at h
+    · -- isLineBreak = true → consumeNewline
+      split at h
+      · contradiction
+      · split at h
+        · contradiction
+        · injection h with h_eq; subst h_eq; simp only []
+          rw [emitAt_tokens_size]; congr 1
+          rw [collectBlockScalarLoop_preserves_tokens, consumeNewline_preserves_tokens]
+          split
+          · split
+            · split
+              · rw [skipToEndOfLine_preserves_tokens, skipWhitespace_preserves_tokens,
+                    parseBlockHeaderLoop_preserves_tokens, advance_preserves_tokens]
+              · rw [skipWhitespace_preserves_tokens,
+                    parseBlockHeaderLoop_preserves_tokens, advance_preserves_tokens]
+            · split
+              · rename_i heq; simp at heq
+              · rw [skipWhitespace_preserves_tokens,
+                    parseBlockHeaderLoop_preserves_tokens, advance_preserves_tokens]
+          · rw [skipWhitespace_preserves_tokens,
+                parseBlockHeaderLoop_preserves_tokens, advance_preserves_tokens]
+    · -- ¬isLineBreak
+      split at h
+      · -- comment peek? = some '#'
+        split at h
+        · -- peekBack? = some c
+          split at h
+          · -- commentOk = true → skipToEndOfLine
+            split at h
+            · split at h
+              · contradiction
+              · split at h
+                · contradiction
+                · injection h with h_eq; subst h_eq; simp only []
+                  rw [emitAt_tokens_size]; congr 1
+                  rw [collectBlockScalarLoop_preserves_tokens,
+                      skipToEndOfLine_preserves_tokens, skipWhitespace_preserves_tokens,
+                      parseBlockHeaderLoop_preserves_tokens, advance_preserves_tokens]
+            · contradiction
+          · -- commentOk = false
+            split at h
+            · split at h
+              · contradiction
+              · split at h
+                · contradiction
+                · injection h with h_eq; subst h_eq; simp only []
+                  rw [emitAt_tokens_size]; congr 1
+                  rw [collectBlockScalarLoop_preserves_tokens,
+                      skipWhitespace_preserves_tokens,
+                      parseBlockHeaderLoop_preserves_tokens, advance_preserves_tokens]
+            · contradiction
+        · -- peekBack? = none
+          split at h
+          · contradiction
+          · split at h
+            · split at h
+              · contradiction
+              · split at h
+                · contradiction
+                · injection h with h_eq; subst h_eq; simp only []
+                  rw [emitAt_tokens_size]; congr 1
+                  rw [collectBlockScalarLoop_preserves_tokens,
+                      skipWhitespace_preserves_tokens,
+                      parseBlockHeaderLoop_preserves_tokens, advance_preserves_tokens]
+            · contradiction
+      · -- comment peek? ≠ '#'
+        split at h
+        · split at h
+          · contradiction
+          · split at h
+            · contradiction
+            · injection h with h_eq; subst h_eq; simp only []
+              rw [emitAt_tokens_size]; congr 1
+              rw [collectBlockScalarLoop_preserves_tokens,
+                  skipWhitespace_preserves_tokens,
+                  parseBlockHeaderLoop_preserves_tokens, advance_preserves_tokens]
+        · contradiction
+  · -- peek? = none
+    split at h
+    · contradiction
+    · split at h
+      · contradiction
+      · injection h with h_eq; subst h_eq; simp only []
+        rw [emitAt_tokens_size]; congr 1
+        rw [collectBlockScalarLoop_preserves_tokens]
+        split
+        · split
+          · split
+            · rw [skipToEndOfLine_preserves_tokens, skipWhitespace_preserves_tokens,
+                  parseBlockHeaderLoop_preserves_tokens, advance_preserves_tokens]
+            · rw [skipWhitespace_preserves_tokens,
+                  parseBlockHeaderLoop_preserves_tokens, advance_preserves_tokens]
+          · split
+            · rename_i heq; simp at heq
+            · rw [skipWhitespace_preserves_tokens,
+                  parseBlockHeaderLoop_preserves_tokens, advance_preserves_tokens]
+        · rw [skipWhitespace_preserves_tokens,
+              parseBlockHeaderLoop_preserves_tokens, advance_preserves_tokens]
 
 /-- scanDoubleQuoted adds exactly one token (on success). -/
 theorem scanDoubleQuoted_adds_one_token (s : ScannerState) (s' : ScannerState)
