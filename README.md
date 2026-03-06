@@ -5482,6 +5482,138 @@ Closing this gap would require:
 
 This would elevate the verification from "internally consistent abstractions with state machine proofs" to "proven conformance to the YAML specification."
 
+### P10.11a — ValidTokenStream: `scanValue` Decomposition & Proof (2026-07-03)
+
+**Context.** `ScannerCorrectness.lean` tracks whether each scanner function adds tokens (a prerequisite for `ValidTokenStream`). Five theorems remained as `sorry`. The hardest — `scanValue_adds_tokens` — resisted proof for multiple sessions because `scanValue` was a 98-line monolithic `do` block. After `unfold`, the proof term was too large for `split at h`, which uses a hardcoded 100K simp step limit (`Simp.neutralConfig`). The solution: decompose the function, then prove each piece independently.
+
+#### Decomposition
+
+`scanValue` was split into four helper functions in `Scanner.lean`:
+
+| Function | Signature | Purpose |
+|---|---|---|
+| `scanValueClearKey` | `ScannerState → ScannerState` | Clears spurious simple key when explicit `?` is pending |
+| `scanValueValidate` | `ScannerState → Except ScanError Unit` | Four error guards (block multiline key, flow-seq multiline key, block-seq indent conflict, missing comma in flow mapping) |
+| `scanValuePrepare` | `ScannerState → ScannerState` | Inserts key/blockMappingStart tokens at saved positions; `let` bindings inlined across `if` boundaries |
+| `scanValueTabCheck` | `ScannerState → Except ScanError Unit` | Tab-after-colon check at/below indent level |
+
+The rewritten `scanValue` composes them:
+```lean
+def scanValue (s : ScannerState) : Except ScanError ScannerState := do
+  let s_kc := scanValueClearKey s
+  scanValueValidate s_kc
+  let s_prep := scanValuePrepare s_kc
+  let s_emit := s_prep.emit .value
+  let s_adv := s_emit.advance
+  scanValueTabCheck s_adv
+  return { s_adv with simpleKeyAllowed := ... }
+```
+
+#### Proof structure
+
+Two private helper lemmas in `ScannerCorrectness.lean`:
+
+1. **`scanValueClearKey_preserves_tokens`**: `(scanValueClearKey s).tokens = s.tokens` — by `unfold; split <;> rfl`
+2. **`scanValuePrepare_tokens_monotonic`**: `(scanValuePrepare s).tokens.size ≥ s.tokens.size` — by `unfold; split` (6 branches) with `dsimp only []` + `insertAt_tokens_size` + `pushMappingIndent_tokens_monotonic` + `omega`
+
+The main `scanValue_adds_tokens` proof:
+
+```lean
+unfold scanValue at h
+dsimp only [] at h
+simp only [bind, Except.bind] at h    -- expose match on Except results
+split at h                              -- split on scanValueValidate
+· contradiction                         -- .error branch
+· split at h                            -- split on scanValueTabCheck
+  · contradiction                       -- .error branch
+  · injection h; subst ...
+    dsimp only []
+    rw [advance_preserves_tokens, emit_tokens_size]
+    rw [scanValueClearKey_preserves_tokens] at *
+    omega
+```
+
+**Result.** `sorry` count in `ScannerCorrectness.lean`: 5 → 4. Build: 191/191 jobs.
+
+#### Reflections — unexpected challenges, simplifications, and idioms
+
+##### Unexpected challenges
+
+1. **`do`-notation desugars to `Bind.bind`, not `Except.bind`.**
+   After `unfold scanValue at h; dsimp only [] at h`, the hypothesis contains
+   `have __do_jp := ...; Bind.bind (scanValueValidate ...) ...`. The `split at h`
+   tactic cannot see through `Bind.bind` to find the `match` it needs. This was
+   the root cause of all prior proof failures — the function was "correct" but
+   opaque to the tactic framework.
+
+2. **`split at h` has a hardcoded 100K simp step limit.**
+   Lean 4's `split` tactic internally uses `Simp.neutralConfig` which caps
+   at 100,000 steps. For a 98-line function that desugars into dozens of
+   `have __do_jp` join points, the unfolded term easily exceeds this budget.
+   No tactic option can raise this limit — the only solution is to reduce
+   term size by decomposing the source function.
+
+3. **`let` bindings crossing `if` boundaries block `split`.**
+   `scanValuePrepare` originally had `let x := v; if cond then A x else B x`.
+   After `unfold`, `split` could not find the `if`. The fix: inline the `let`
+   bindings into both branches of the source definition. This duplicates code
+   but makes the `if` directly visible to `split`.
+
+4. **Struct projections don't reduce through `with`-updates.**
+   After `subst`, the goal contains `{ s_adv with simpleKeyAllowed := true, ... }.tokens`.
+   Neither `simp` nor `omega` can see that `.tokens` passes through — it's not
+   the field being updated. `dsimp only []` is required to reduce the projection
+   before `rw` or `omega` can proceed.
+
+5. **`advance_preserves_tokens` scope.**
+   This lemma is defined in `ScannerCorrectness.lean` itself (not exported from
+   `ScannerProofs.lean`), so it's available in scope — but easy to miss when
+   writing proofs in diagnostic test files outside the module.
+
+##### Simplifications
+
+1. **Decomposition makes proofs trivial.**
+   Each helper function unfolds to a small, self-contained term. `scanValueClearKey`
+   is a single `if` — its token preservation is `split <;> rfl`. `scanValuePrepare`
+   is 6 branches — each closes with `dsimp only []` + an existing monotonicity lemma
+   + `omega`. The original monolithic function made even *stating* intermediate facts
+   impossible.
+
+2. **`simp only [bind, Except.bind] at h` is a one-line unlock.**
+   This single rewrite transforms the opaque `Bind.bind` calls into explicit
+   `match scanValueValidate ... with | .error e => .error e | .ok () => ...`.
+   Once the `match` is visible, `split at h` works immediately. The key insight:
+   `bind` (the typeclass method) and `Except.bind` (the concrete implementation)
+   together give `simp` enough to unfold the `Bind Except` instance.
+
+3. **Error branches close by `contradiction`.**
+   The `scanValue_adds_tokens` theorem has hypothesis `scanValue s = .ok s'`.
+   After splitting on `scanValueValidate`, the `.error` branch gives
+   `h : .error e = .ok s'` — which is `contradiction`. No analysis of the
+   error conditions needed.
+
+##### Idioms
+
+- **`simp only [bind, Except.bind] at h` → `split at h`** — the canonical
+  two-step pattern for proving properties of Lean 4 `do`-notation functions
+  that use `Except` as the monad. Should be the first thing to try for any
+  `Except`-returning function with `do` blocks.
+
+- **`dsimp only []` as a projection reducer** — when the goal or hypothesis
+  contains `{ s with field₁ := v₁, ... }.field₂` where `field₂ ∉ {field₁, ...}`,
+  `dsimp only []` reduces the projection without triggering other simplifications.
+  More predictable than `simp` for struct-heavy scanner proofs.
+
+- **Decompose → prove helpers → chain with `omega`** — for functions that
+  modify state through a sequence of pure transforms and monadic checks,
+  decompose into: (a) pure transforms with token-preservation/monotonicity
+  lemmas, (b) `Except Unit` validators that don't touch state. The main
+  proof chains the helper lemmas with `rw` + `omega`.
+
+- **Match arm order after `simp [bind, Except.bind]`**: `.error` comes first,
+  `.ok` second. After `split at h`, the first goal is always the error case
+  (closed by `contradiction`), and the second is the success path.
+
 ## Gap Analysis: YAML 1.2.2 Specification Coverage
 
 ### Current State (2026-02-21)

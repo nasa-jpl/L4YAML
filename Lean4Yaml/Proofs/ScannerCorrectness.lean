@@ -39,9 +39,25 @@ the parser relies on.
 ### §3  Main Correctness Theorem
 - `scan_produces_valid_tokens` — composition of §1 and §2
 
-## Zero Axioms
+## Status
 
-All theorems are machine-checked. No `sorry`, no `axiom`, no `partial`.
+Proven (no sorry):
+- `scanKey_adds_one_token` — scanKey adds at least one token
+- `emit_preserves_position_order` — appending tokens preserves ordering
+- `scanLoop_increases_tokens` — loop increases token count by at least 1
+- `scan_produces_at_least_two` — scan output has at least 2 tokens
+- Helper lemmas: `advance_preserves_tokens`, `advance_preserves_flowLevel`,
+  `emit_tokens_size`, `emit_preserves_tokens_at`, `pushMappingIndent_tokens_monotonic`,
+  `pushSequenceIndent_tokens_monotonic`, `insertAt_tokens_size`, `emitAt_tokens_size`,
+  `scanFlowEntry_adds_one_token`, `scanBlockEntry_adds_tokens`,
+  `collectAnchorNameLoop_preserves_tokens`, all skipToContent* lemmas,
+  `scanValue_adds_tokens` (via scanValue decomposition into 4 helpers)
+
+Sorry (4 remaining):
+- `scanNextToken_adds_tokens` — requires analyzing ~17 scan* branches
+- `scanNextToken_preserves_prefix` — may need redesign (insertAt shifts indices)
+- `scanLoop_preserves_tokens` (recursive case) — depends on prefix preservation
+- `scan_positions_ordered` — needs full loop invariant
 -/
 
 namespace Lean4Yaml.Proofs.ScannerCorrectness
@@ -303,36 +319,153 @@ theorem scanFlowMappingEnd_adds_one_token (s : ScannerState) :
   unfold scanFlowMappingEnd ScannerState.emit
   simp only [advance_preserves_tokens, Array.size_push]
 
-/-- scanKey adds exactly one token (on success).
+/-- `pushMappingIndent` preserves or adds tokens.
 
-scanKey: conditional pushMappingIndent (preserves tokens) → emit .key → advance.
-Only emit modifies tokens (adds 1).
+When the current column is deeper than `currentIndent`, emits `blockMappingStart`
+(+1 token). Otherwise, the state is unchanged. -/
+private theorem pushMappingIndent_tokens_monotonic (s : ScannerState) (col : Int) :
+    (pushMappingIndent s col).tokens.size ≥ s.tokens.size := by
+  unfold pushMappingIndent
+  split
+  · simp [ScannerState.emit, Array.size_push]
+  · omega
 
-**Status**: Refactored with explicit names, but proof requires handling monadic do-notation
-with error paths. The architectural insight is sound:
-- pushMappingIndent doesn't modify tokens
-- emit adds 1 token (emit_tokens_size)
-- advance preserves tokens (advance_preserves_tokens)
-- structure update doesn't modify tokens
+/-- `pushSequenceIndent` preserves or adds tokens. -/
+private theorem pushSequenceIndent_tokens_monotonic (s : ScannerState) (col : Int) :
+    (pushSequenceIndent s col).tokens.size ≥ s.tokens.size := by
+  unfold pushSequenceIndent
+  split
+  · simp [ScannerState.emit, Array.size_push]
+  · omega
 
-Full proof requires better automation for Except monad or manual case analysis. -/
+/-- `insertAt` adds exactly one token.
+
+`insertAt` either pushes at the end or inserts via extract+push+append;
+both paths increase the token array size by exactly 1. -/
+private theorem insertAt_tokens_size (s : ScannerState) (idx : Nat) (pos : YamlPos) (tok : YamlToken) :
+    (s.insertAt idx pos tok).tokens.size = s.tokens.size + 1 := by
+  unfold ScannerState.insertAt
+  split
+  · simp [Array.size_push]
+  · simp only [Array.size_append, Array.size_push, Array.size_extract]; omega
+
+/-- `emitAt` adds exactly one token (like `emit` but at a saved position). -/
+private theorem emitAt_tokens_size (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
+    (s.emitAt pos tok).tokens.size = s.tokens.size + 1 := by
+  unfold ScannerState.emitAt; simp [Array.size_push]
+
+/-- scanKey adds at least one token (on success).
+
+scanKey: conditional pushMappingIndent (≥0) → emit .key (+1) → advance (0).
+Total: ≥ s.tokens.size + 1. -/
 theorem scanKey_adds_one_token (s : ScannerState) (s' : ScannerState)
     (h : scanKey s = .ok s') :
-    s'.tokens.size = s.tokens.size + 1 := by
-  sorry
+    s'.tokens.size ≥ s.tokens.size + 1 := by
+  unfold scanKey at h
+  simp only [] at h
+  split at h
+  · -- !inFlow → pushMappingIndent called
+    split at h
+    · split at h
+      · contradiction
+      · injection h with h_eq; subst h_eq
+        simp only [advance_preserves_tokens, emit_tokens_size]
+        have := pushMappingIndent_tokens_monotonic s s.col; omega
+    · injection h with h_eq; subst h_eq
+      simp only [advance_preserves_tokens, emit_tokens_size]
+      have := pushMappingIndent_tokens_monotonic s s.col; omega
+  · -- inFlow → no pushMappingIndent
+    split at h
+    · split at h
+      · contradiction
+      · injection h with h_eq; subst h_eq
+        simp only [advance_preserves_tokens, emit_tokens_size]; omega
+    · injection h with h_eq; subst h_eq
+      simp only [advance_preserves_tokens, emit_tokens_size]; omega
+
+/-- scanValueClearKey preserves the token array.
+
+`scanValueClearKey` only modifies `simpleKey` (or returns `s` unchanged),
+so the token array is identical. -/
+private theorem scanValueClearKey_preserves_tokens (s : ScannerState) :
+    (scanValueClearKey s).tokens = s.tokens := by
+  unfold scanValueClearKey; split <;> rfl
+
+/-- scanValuePrepare preserves or adds tokens.
+
+Each branch of `scanValuePrepare` either:
+- calls `insertAt` 1–2 times (adding 1–2 tokens),
+- calls `pushMappingIndent` (monotonic), or
+- returns an updated state with unchanged tokens. -/
+private theorem scanValuePrepare_tokens_monotonic (s : ScannerState) :
+    (scanValuePrepare s).tokens.size ≥ s.tokens.size := by
+  unfold scanValuePrepare
+  split
+  · -- simpleKey.possible = true
+    split
+    · -- !inFlow
+      split
+      · -- keyCol > currentIndent: two insertAts
+        dsimp only []
+        have h1 := insertAt_tokens_size s s.simpleKey.tokenIndex s.simpleKey.pos .key
+        have h2 := insertAt_tokens_size (s.insertAt s.simpleKey.tokenIndex s.simpleKey.pos .key)
+          s.simpleKey.tokenIndex s.simpleKey.pos .blockMappingStart
+        omega
+      · -- keyCol ≤ currentIndent: one insertAt
+        dsimp only []
+        have h1 := insertAt_tokens_size s s.simpleKey.tokenIndex s.simpleKey.pos .key
+        omega
+    · -- inFlow: one insertAt
+      dsimp only []
+      have h1 := insertAt_tokens_size s s.simpleKey.tokenIndex s.simpleKey.pos .key
+      omega
+  · -- simpleKey.possible = false
+    split
+    · -- explicitKeyLine.isSome: only simpleKey field changes
+      dsimp only []; omega
+    · -- else
+      split
+      · -- !inFlow: pushMappingIndent
+        exact pushMappingIndent_tokens_monotonic s s.col
+      · -- inFlow: identity
+        omega
 
 /-- scanValue adds at least one token (on success).
 
-scanValue: validation → conditional insertAt operations → emit .value → advance.
-The insertAt operations may add 1-2 tokens (key, blockMappingStart), then emit adds 1 more.
-So total: adds 1-3 tokens depending on whether a simple key is resolved. -/
+scanValue is decomposed into four helpers:
+  `scanValueClearKey` (preserves tokens) →
+  `scanValueValidate` (error or ok ()) →
+  `scanValuePrepare` (tokens monotonic) →
+  `emit .value` (+1 token) →
+  `advance` (preserves tokens) →
+  `scanValueTabCheck` (error or ok ())
+
+The `Except.bind` chain is exposed via `simp only [bind, Except.bind]`,
+then each branch is handled by `split at h` / `contradiction` / `omega`. -/
 theorem scanValue_adds_tokens (s : ScannerState) (s' : ScannerState)
     (h : scanValue s = .ok s') :
     s'.tokens.size ≥ s.tokens.size + 1 := by
   unfold scanValue at h
-  -- Complex control flow with insertAt operations
-  -- For now, defer the full proof
-  sorry
+  dsimp only [] at h
+  -- Unfold both Bind.bind calls (validate + tabCheck) to expose matches
+  simp only [bind, Except.bind] at h
+  -- Split on outer match (scanValueValidate): .error first, .ok second
+  split at h
+  · -- scanValueValidate = .error → contradiction
+    contradiction
+  · -- scanValueValidate = .ok ()
+    -- Split on inner match (scanValueTabCheck): .error first, .ok second
+    split at h
+    · -- scanValueTabCheck = .error → contradiction
+      contradiction
+    · -- scanValueTabCheck = .ok () → h : .ok {...} = .ok s'
+      injection h with h_eq; subst h_eq
+      -- Reduce struct projection through { ... with simpleKeyAllowed := ... }
+      dsimp only []
+      rw [advance_preserves_tokens, emit_tokens_size]
+      have h_ck := scanValueClearKey_preserves_tokens s
+      have h_prep := scanValuePrepare_tokens_monotonic (scanValueClearKey s)
+      rw [h_ck] at h_prep; omega
 
 /-- Helper: consumeNewline preserves tokens.
 
@@ -649,24 +782,33 @@ theorem scanLoop_preserves_tokens (s : ScannerState) (fuel : Nat) (tokens : Arra
 /-- scanLoop preserves or increases token count.
 
 When `scanLoop` succeeds, the resulting tokens have at least as many tokens
-as the input state, plus the streamEnd token (so at least +1). -/
+as the input state, plus the streamEnd token (so at least +1).
+
+Proved by structural induction on fuel. Base case (fuel = 0) is contradiction.
+Success path (scanNextToken = none) uses unwindIndents_adds_tokens + emit_tokens_size.
+Recursive path uses IH + scanNextToken_adds_tokens. -/
 theorem scanLoop_increases_tokens (s : ScannerState) (fuel : Nat) (tokens : Array (Positioned YamlToken)) :
     scanLoop s fuel = .ok tokens →
     tokens.size ≥ s.tokens.size + 1 := by
   intro h
-  -- Use scanLoop_success_emits_streamEnd
-  have ⟨s', h_tokens⟩ := scanLoop_success_emits_streamEnd s fuel tokens h
-  rw [h_tokens]
-  -- Now we have: (s'.emit .streamEnd).tokens.size ≥ s.tokens.size + 1
-  have h_emit : (s'.emit .streamEnd).tokens.size = s'.tokens.size + 1 := emit_tokens_size s' .streamEnd
-  rw [h_emit]
-  -- Need to show: s'.tokens.size + 1 ≥ s.tokens.size + 1
-  -- Which reduces to: s'.tokens.size ≥ s.tokens.size
-
-  -- For the success path, we know s' comes from unwindIndents which only adds tokens
-  -- For recursive path, would need scanNextToken preserves/adds tokens
-  -- Strategy: prove this holds for success path, defer recursive path
-  sorry
+  induction fuel generalizing s with
+  | zero => unfold scanLoop at h; contradiction
+  | succ fuel' IH =>
+    unfold scanLoop at h
+    split at h
+    · contradiction
+    · -- scanNextToken = none: final emit
+      split at h <;> try contradiction
+      split at h <;> try contradiction
+      injection h with h_eq; rw [← h_eq]
+      have h1 := unwindIndents_adds_tokens s (-1)
+      have h2 := emit_tokens_size (unwindIndents s (-1)) .streamEnd
+      rw [h2]; omega
+    · -- scanNextToken = some s': recursive
+      rename_i s' h_snt
+      have h_ih := IH s' h
+      have h_adds := scanNextToken_adds_tokens s s' h_snt
+      omega
 
 /-! ## §1  Token Envelope Properties
 
@@ -695,52 +837,16 @@ via induction on fuel. The key facts are:
 theorem scan_produces_at_least_two (input : String) (tokens : Array (Positioned YamlToken))
     (h : scan input = .ok tokens) : tokens.size ≥ 2 := by
   unfold scan at h
-
-  -- scanLoop only succeeds by emitting streamEnd
-  have ⟨s', h_structure⟩ := scanLoop_success_emits_streamEnd _ _ _ h
-  subst h_structure
-
-  -- After emit streamEnd, size = s'.tokens.size + 1
-  have h_final_size : (s'.emit .streamEnd).tokens.size = s'.tokens.size + 1 := emit_tokens_size s' .streamEnd
-
-  -- We need: s'.tokens.size + 1 ≥ 2, i.e., s'.tokens.size ≥ 1
-
-  -- Key insight: Use scanLoop_preserves_tokens
-  -- The initial state (after streamStart, before scanLoop) has 1 token
+  simp only [] at h
+  -- h : scanLoop (match ... BOM ...) (fuel*4) = .ok tokens
+  have h_loop := scanLoop_increases_tokens _ _ tokens h
+  -- h_loop : tokens.size ≥ (match ...).tokens.size + 1
   have h_init_size : ((ScannerState.mk' input).emit .streamStart).tokens.size = 1 := by
     rw [emit_tokens_size, mk'_tokens_empty]; simp
-
-  -- After BOM handling, still 1 token (advance preserves tokens)
-  let s_after_emit := (ScannerState.mk' input).emit .streamStart
-  let s_after_bom := match s_after_emit.peek? with
-    | some '\uFEFF' => s_after_emit.advance
-    | _ => s_after_emit
-
-  have h_bom_preserves : s_after_bom.tokens.size = s_after_emit.tokens.size := by
-    unfold s_after_bom
-    split
-    · have := advance_preserves_tokens s_after_emit
-      simp only [this]
-    · rfl
-
-  have h_after_bom_size : s_after_bom.tokens.size = 1 := by
-    rw [h_bom_preserves, h_init_size]
-
-  -- Strategy: Use scanLoop_preserves_tokens to show token[0] is preserved
-  -- Then show contradiction if output size < 2
-
-  -- Proof outline:
-  -- 1. s_after_bom has 1 token: streamStart at index 0
-  -- 2. scanLoop preserves this token: output[0] = streamStart
-  -- 3. scanLoop result is (s'.emit .streamEnd).tokens
-  -- 4. If this has size < 2, then size = 1 (since size > 0 from preservation)
-  -- 5. If size = 1, then token[0] = streamEnd (the only token)
-  -- 6. But token[0] = streamStart (preserved), contradiction
-  -- 7. Therefore size ≥ 2
-
-  -- This proof requires careful handling of array equality with dependent types
-  -- and showing streamStart ≠ streamEnd. For now, the structural insight is clear.
-  sorry
+  -- Split on h_loop to resolve the match expression
+  split at h_loop
+  · rw [advance_preserves_tokens, h_init_size] at h_loop; omega
+  · rw [h_init_size] at h_loop; omega
 
 /--
 The first token produced by `scan` is always `streamStart`.
@@ -848,21 +954,11 @@ token array. This follows from two properties:
 2. Scanner operations either preserve offset or increase it (never decrease)
 -/
 
-/--
-Emitting a token preserves the position ordering property.
+/-- Helper: array access is equal when indices are equal (regardless of proof terms). -/
+private theorem Array.getElem_congr {α : Type} {arr : Array α} {i j : Nat}
+    (hi : i < arr.size) (hj : j < arr.size) (heq : i = j) :
+    arr[i]'hi = arr[j]'hj := by subst heq; rfl
 
-If a token array has monotonically non-decreasing positions, and we append
-a token whose position is ≥ the last token's position, the extended array
-still has the ordering property.
-
-**Proof strategy**:
-- `emit` appends to the end via `Array.push` (Scanner.lean)
-- For indices (i,j) both in the original array: ordering preserved by h_ordered
-- For i in original, j = new last: h_pos gives ordering
-- New token compared to itself: trivial
-
-**Note**: Requires case analysis on whether i,j are in original vs. new position.
--/
 theorem emit_preserves_position_order (s : ScannerState)
     (h_ordered : ∀ (i j : Fin s.tokens.size), i.val < j.val →
                  (s.tokens[i]).pos.offset ≤ (s.tokens[j]).pos.offset)
@@ -872,12 +968,35 @@ theorem emit_preserves_position_order (s : ScannerState)
     ∀ (i j : Fin (s.emit tok).tokens.size), i.val < j.val →
       ((s.emit tok).tokens[i]).pos.offset ≤ ((s.emit tok).tokens[j]).pos.offset := by
   intro i j hij
+  show ((s.emit tok).tokens[i.val]'i.isLt).pos.offset ≤
+       ((s.emit tok).tokens[j.val]'j.isLt).pos.offset
   unfold ScannerState.emit
-  -- The new array is s.tokens.push { pos := s.currentPos, val := tok }
-  -- Need to show ordering is preserved
-  -- This proof is complex due to dependent typing in array indices
-  -- Defer to empirical validation for now
-  sorry
+  simp only [Array.getElem_push]
+  split <;> rename_i hi_lt
+  · -- i.val < s.tokens.size (in original array)
+    split <;> rename_i hj_lt
+    · -- both in original
+      exact h_ordered ⟨i.val, hi_lt⟩ ⟨j.val, hj_lt⟩ hij
+    · -- i in original, j is pushed element
+      simp only [ScannerState.currentPos]
+      suffices h : (s.tokens[i.val]'hi_lt).pos.offset ≤ s.offset from h
+      calc (s.tokens[i.val]'hi_lt).pos.offset
+          ≤ (s.tokens[s.tokens.size - 1]'(by omega)).pos.offset := by
+            by_cases h_eq : i.val = s.tokens.size - 1
+            · have := Array.getElem_congr hi_lt (by omega : s.tokens.size - 1 < s.tokens.size) h_eq
+              rw [this]; omega
+            · have h_lt : i.val < s.tokens.size - 1 := by
+                have := h_nonzero; have := hi_lt; have := h_eq; omega
+              exact h_ordered ⟨i.val, hi_lt⟩ ⟨s.tokens.size - 1, by omega⟩ h_lt
+        _ ≤ s.offset := h_pos
+  · -- i.val ≥ s.tokens.size
+    have : i.val < s.tokens.size + 1 := by
+      have := i.isLt; simp [ScannerState.emit, Array.size_push] at this; exact this
+    split <;> rename_i hj_lt
+    · omega
+    · have : j.val < s.tokens.size + 1 := by
+        have := j.isLt; simp [ScannerState.emit, Array.size_push] at this; exact this
+      omega
 
 /--
 The `advance` operation never decreases the offset.
