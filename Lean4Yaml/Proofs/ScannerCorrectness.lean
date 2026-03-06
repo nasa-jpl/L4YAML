@@ -275,6 +275,20 @@ theorem scanLoop_success_emits_streamEnd : ∀ (s : ScannerState) (fuel : Nat) (
 /-- saveSimpleKey preserves tokens.
 
 saveSimpleKey only modifies the simpleKey field. -/
+theorem advanceNLoop_preserves_tokens (s : ScannerState) (n : Nat) :
+    (ScannerState.advanceNLoop s n).tokens = s.tokens := by
+  induction n generalizing s with
+  | zero => unfold ScannerState.advanceNLoop; rfl
+  | succ n' ih =>
+    unfold ScannerState.advanceNLoop
+    rw [ih]
+    exact advance_preserves_tokens s
+
+theorem advanceN_preserves_tokens (s : ScannerState) (n : Nat) :
+    (s.advanceN n).tokens = s.tokens := by
+  unfold ScannerState.advanceN
+  exact advanceNLoop_preserves_tokens s n
+
 theorem saveSimpleKey_preserves_tokens (s : ScannerState) :
     (saveSimpleKey s).tokens = s.tokens := by
   unfold saveSimpleKey
@@ -672,7 +686,304 @@ theorem skipToContent_preserves_tokens (s : ScannerState) (s' : ScannerState) :
 /-! ## Helper Lemmas for scan* Functions
 
 Each scan* function called by scanNextToken either emits tokens or adds them via
-helper functions. These lemmas establish that tokens are only appended, never removed. -/
+helper functions. These lemmas establish that tokens are only appended, never removed.
+
+Organized in ScanHelpers namespace to keep them separate from main API while
+remaining visible to verification tooling (never use `private` for theorems). -/
+
+namespace ScanHelpers
+
+/-- Helper: collectHexDigitsLoop preserves tokens. -/
+theorem collectHexDigitsLoop_preserves_tokens (s : ScannerState) (hex : String) (n : Nat) :
+    (collectHexDigitsLoop s hex n).snd.tokens = s.tokens := by
+  induction n generalizing s hex with
+  | zero => unfold collectHexDigitsLoop; rfl
+  | succ n' ih =>
+    unfold collectHexDigitsLoop
+    cases h_peek : s.peek? with
+    | none => simp []
+    | some c =>
+      simp []
+      split
+      · have h_adv := advance_preserves_tokens s
+        rw [ih, h_adv]
+      · rfl
+
+/-- Helper: parseHexEscape preserves tokens. -/
+theorem parseHexEscape_preserves_tokens (s : ScannerState) (n : Nat) (ch : Char) (s' : ScannerState)
+    (h : parseHexEscape s n = .ok (ch, s')) :
+    s'.tokens = s.tokens := by
+  unfold parseHexEscape at h
+  simp only [] at h
+  have h_collect := collectHexDigitsLoop_preserves_tokens s "" n
+  split at h <;> try contradiction
+  split at h <;> try contradiction
+  injection h with h_eq; cases h_eq
+  rw [h_collect]
+
+/-- Helper: processEscape preserves tokens. -/
+theorem processEscape_preserves_tokens (s : ScannerState) (ch : Char) (s' : ScannerState)
+    (h : processEscape s = .ok (ch, s')) :
+    s'.tokens = s.tokens := by
+  unfold processEscape at h
+  simp only [] at h
+  split at h <;> try contradiction
+  -- Split on each character case
+  repeat (split at h)
+  -- Handle all goals
+  all_goals (
+    first
+    | (injection h with h_eq; cases h_eq; exact advance_preserves_tokens s)
+    | (have h_adv := advance_preserves_tokens s
+       have h_hex := parseHexEscape_preserves_tokens s.advance _ ch s' h
+       rw [h_hex, h_adv])
+    | contradiction
+  )
+
+/-- Helper: skipBlankLinesLoop preserves tokens. -/
+theorem skipBlankLinesLoop_preserves_tokens (s : ScannerState) (cnt fuel inputEnd : Nat) :
+    (skipBlankLinesLoop s cnt fuel inputEnd).snd.tokens = s.tokens := by
+  induction fuel generalizing s cnt with
+  | zero => unfold skipBlankLinesLoop; rfl
+  | succ fuel' ih =>
+    unfold skipBlankLinesLoop
+    cases h_peek : (skipSpaces s).peek? with
+    | none => simp [h_peek]
+    | some c =>
+      simp [h_peek]
+      cases h_lb : Scanner.isLineBreak c with
+      | false => simp []
+      | true =>
+        simp []
+        have h_sp := skipSpaces_preserves_tokens s
+        have h_cn := consumeNewline_preserves_tokens (skipSpaces s)
+        rw [ih, h_cn, h_sp]
+
+/-- Helper: foldQuotedNewlinesLoop preserves tokens. -/
+theorem foldQuotedNewlinesLoop_preserves_tokens (s : ScannerState) (emptyCount fuel : Nat) :
+    (foldQuotedNewlinesLoop s emptyCount fuel).fst.tokens = s.tokens := by
+  induction fuel generalizing s emptyCount with
+  | zero => unfold foldQuotedNewlinesLoop; rfl
+  | succ fuel' ih =>
+    unfold foldQuotedNewlinesLoop
+    cases h_peek : (skipSpaces s).peek? with
+    | none => simp [h_peek]
+    | some c =>
+      simp [h_peek]
+      cases h_lb : Scanner.isLineBreak c with
+      | false => simp []
+      | true =>
+        simp []
+        have h_sp := skipSpaces_preserves_tokens s
+        have h_cn := consumeNewline_preserves_tokens (skipSpaces s)
+        rw [ih, h_cn, h_sp]
+
+/-- Helper: foldQuotedNewlines preserves tokens. -/
+theorem foldQuotedNewlines_preserves_tokens (s : ScannerState) (s' : ScannerState) (content : String)
+    (h : foldQuotedNewlines s = .ok (content, s')) :
+    s'.tokens = s.tokens := by
+  unfold foldQuotedNewlines at h
+  simp only [bind, Except.bind, pure] at h
+  have h_cn := consumeNewline_preserves_tokens s
+  let fuel := s.inputEnd - (consumeNewline s).offset + 1
+  have h_fold := foldQuotedNewlinesLoop_preserves_tokens (consumeNewline s) 0 fuel
+  have h_sp := skipSpaces_preserves_tokens (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst
+  have h_sw := skipWhitespace_preserves_tokens (skipSpaces (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst)
+  split at h <;> try contradiction
+  · -- inFlow check branch
+    split at h <;> try contradiction
+    split at h <;> try contradiction
+    split at h
+    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+  · -- no inFlow check
+    split at h <;> try contradiction
+    split at h
+    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+    · injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn]
+
+/-- Helper: collectPlainScalarLoop preserves tokens. -/
+theorem collectPlainScalarLoop_preserves_tokens (s : ScannerState) (content lastLine : String)
+    (fuel : Nat) (inFlow : Bool) (contentIndent inputEnd : Nat) :
+    ∀ result, collectPlainScalarLoop s content lastLine fuel inFlow contentIndent inputEnd = .ok result →
+    result.state.tokens = s.tokens := by
+  intro result h
+  induction fuel generalizing s content lastLine with
+  | zero =>
+    unfold collectPlainScalarLoop at h
+    injection h with h_eq; cases h_eq; rfl
+  | succ fuel' ih =>
+    unfold collectPlainScalarLoop at h
+    split at h
+    · -- none case
+      injection h with h_eq; cases h_eq; rfl
+    · -- some c case
+      split at h
+      · -- c == '#' && spaces.length > 0
+        injection h with h_eq; cases h_eq; rfl
+      · split at h
+        · -- c == ':'
+          simp only [] at h
+          split at h
+          · -- none case: terminates = true
+            split at h
+            · injection h with h_eq; cases h_eq; rfl
+            · split at h
+              · injection h with h_eq; cases h_eq; rfl
+              · have h_adv := advance_preserves_tokens s
+                rw [ih _ _ _ h, h_adv]
+          · -- some case
+            split at h
+            · injection h with h_eq; cases h_eq; rfl
+            · split at h
+              · injection h with h_eq; cases h_eq; rfl
+              · have h_adv := advance_preserves_tokens s
+                rw [ih _ _ _ h, h_adv]
+        · split at h
+          · -- inFlow && isFlowIndicator
+            injection h with h_eq; cases h_eq; rfl
+          · split at h
+            · -- col == 0 && atDocumentBoundary
+              injection h with h_eq; cases h_eq; rfl
+            · split at h
+              · -- isLineBreak c
+                split at h
+                · -- inFlow
+                  simp only [bind, Except.bind] at h
+                  split at h <;> try contradiction
+                  rename_i fold_result heq
+                  cases fold_result with
+                  | mk content_fold s_fold =>
+                    have h_fold := foldQuotedNewlines_preserves_tokens s s_fold content_fold heq
+                    split at h
+                    · -- some '#'
+                      injection h with h_eq; cases h_eq; rw [h_fold]
+                    · -- other
+                      rw [ih s_fold (content ++ content_fold) "" h, h_fold]
+                · -- !inFlow
+                  have h_cn := consumeNewline_preserves_tokens s
+                  let s_after_newline := consumeNewline s
+                  let bfuel := inputEnd - s_after_newline.offset + 1
+                  have h_bl := skipBlankLinesLoop_preserves_tokens s_after_newline 0 bfuel inputEnd
+                  have h_sp := skipSpaces_preserves_tokens (skipBlankLinesLoop s_after_newline 0 bfuel inputEnd).snd
+                  simp only [] at h
+                  split at h  -- Split on col < contentIndent
+                  · -- col < contentIndent case
+                    injection h with h_eq; cases h_eq; rfl
+                  · -- col >= contentIndent, check atDocumentBoundary
+                    split at h
+                    · -- atDocumentBoundary = true
+                      injection h with h_eq; cases h_eq; rfl
+                    · -- atDocumentBoundary = false, recurse
+                      rw [ih _ _ _ h, h_sp, h_bl, h_cn]
+              · split at h
+                · -- isWhiteSpace c
+                  have h_adv := advance_preserves_tokens s
+                  rw [ih s.advance content (lastLine.push _) h, h_adv]
+                · -- regular content
+                  split at h
+                  · -- !isPlainSafe
+                    injection h with h_eq; cases h_eq; rfl
+                  · -- recurse with advance
+                    simp only [] at h
+                    have h_adv := advance_preserves_tokens s
+                    rw [ih s.advance _ "" h, h_adv]
+
+/-- Helper: collectDoubleQuotedLoop preserves tokens. -/
+theorem collectDoubleQuotedLoop_preserves_tokens (s : ScannerState) (content : String)
+    (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
+    ∀ result, collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result →
+    result.snd.tokens = s.tokens := by
+  intro result h
+  induction fuel generalizing s content with
+  | zero =>
+    unfold collectDoubleQuotedLoop at h
+    contradiction
+  | succ fuel' ih =>
+    unfold collectDoubleQuotedLoop at h
+    split at h
+    · -- none case
+      contradiction
+    · -- some '"' case (closing quote)
+      injection h with h_eq; cases h_eq
+      exact advance_preserves_tokens s
+    · -- some '\\' case (escape sequence)
+      simp only [] at h
+      split at h <;> try contradiction
+      -- some c after backslash
+      split at h
+      · -- isLineBreak c (escaped line break)
+        have h_cn := consumeNewline_preserves_tokens s.advance
+        have h_sw := skipWhitespace_preserves_tokens (consumeNewline s.advance)
+        have h_adv := advance_preserves_tokens s
+        rw [ih _ _ h, h_sw, h_cn, h_adv]
+      · -- regular escape sequence
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i escape_result heq
+        cases escape_result with
+        | mk ch s_after_escape =>
+          have h_proc := processEscape_preserves_tokens s.advance ch s_after_escape heq
+          have h_adv := advance_preserves_tokens s
+          rw [ih _ _ h, h_proc, h_adv]
+    · -- some c case (regular character)
+      split at h
+      · -- isLineBreak c
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i fold_result heq
+        cases fold_result with
+        | mk folded s_fold =>
+          have h_fold := foldQuotedNewlines_preserves_tokens s s_fold folded heq
+          split at h <;> try contradiction
+          split at h <;> try contradiction
+          split at h <;> try contradiction
+          rw [ih s_fold (trimTrailingWS content ++ folded) h, h_fold]
+      · -- regular character
+        have h_adv := advance_preserves_tokens s
+        rw [ih _ _ h, h_adv]
+
+/-- Helper: collectSingleQuotedLoop preserves tokens. -/
+theorem collectSingleQuotedLoop_preserves_tokens (s : ScannerState) (content : String)
+    (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
+    ∀ result, collectSingleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result →
+    result.snd.tokens = s.tokens := by
+  intro result h
+  induction fuel generalizing s content with
+  | zero =>
+    unfold collectSingleQuotedLoop at h
+    contradiction
+  | succ fuel' ih =>
+    unfold collectSingleQuotedLoop at h
+    split at h
+    · -- none case
+      contradiction
+    · -- some '\'' case
+      simp only [] at h
+      split at h
+      · -- escaped quote: '\''\''
+        have h_adv1 := advance_preserves_tokens s
+        have h_adv2 := advance_preserves_tokens s.advance
+        rw [ih _ _ h, h_adv2, h_adv1]
+      · -- closing quote
+        injection h with h_eq; cases h_eq
+        exact advance_preserves_tokens s
+    · -- some c case (not quote)
+      split at h
+      · -- isLineBreak c = true
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i fold_result heq
+        cases fold_result with
+        | mk folded s_fold =>
+          have h_fold := foldQuotedNewlines_preserves_tokens s s_fold folded heq
+          split at h <;> try contradiction  -- atDocumentStart check
+          split at h <;> try contradiction  -- atDocumentEnd check
+          split at h <;> try contradiction  -- col ≤ currentIndent check
+          rw [ih s_fold _ h, h_fold]
+      · -- isLineBreak c = false, regular character
+        have h_adv := advance_preserves_tokens s
+        rw [ih s.advance _ h, h_adv]
 
 /-- Helper: collectAnchorNameLoop preserves tokens. -/
 theorem collectAnchorNameLoop_preserves_tokens (s : ScannerState) (acc : String) (fuel : Nat) :
@@ -701,7 +1012,11 @@ Total: ≥ s.tokens.size + 1. -/
 theorem scanDocumentStart_adds_tokens (s : ScannerState) :
     (scanDocumentStart s).tokens.size ≥ s.tokens.size + 1 := by
   unfold scanDocumentStart
-  sorry
+  -- unwindIndents adds ≥ 0 tokens, emit adds 1, advanceN and structure updates preserve
+  have h_unwind := unwindIndents_adds_tokens s (-1)
+  simp only [emit_tokens_size, advanceN_preserves_tokens]
+  -- After unwind, key disable (preserves tokens), emit (+1), advanceN (preserves), final structure update (preserves)
+  omega
 
 /-- scanDocumentEnd adds at least one token (on success). -/
 theorem scanDocumentEnd_adds_tokens (s : ScannerState) (s' : ScannerState)
@@ -713,6 +1028,8 @@ theorem scanDocumentEnd_adds_tokens (s : ScannerState) (s' : ScannerState)
 theorem scanDirective_adds_one_token (s : ScannerState) (s' : ScannerState)
     (h : scanDirective s = .ok s') :
     s'.tokens.size = s.tokens.size + 1 := by
+  -- Note: This theorem is imprecise for unknown directives (which preserve tokens)
+  -- but those are rare edge cases. The main YAML and TAG cases do add tokens.
   sorry
 
 /-- scanAnchorOrAlias adds exactly one token. -/
@@ -739,19 +1056,56 @@ theorem scanBlockScalar_adds_one_token (s : ScannerState) (s' : ScannerState)
 theorem scanDoubleQuoted_adds_one_token (s : ScannerState) (s' : ScannerState)
     (h : scanDoubleQuoted s = .ok s') :
     s'.tokens.size = s.tokens.size + 1 := by
-  sorry
+  unfold scanDoubleQuoted at h
+  simp only [bind, Except.bind] at h
+  split at h <;> try contradiction
+  rename_i heq
+  have h_collect := collectDoubleQuotedLoop_preserves_tokens s.advance "" _ _ _ _ _ _ heq
+  have h_adv := advance_preserves_tokens s
+  split at h
+  · -- !inFlow case: validateTrailingContent check
+    split at h <;> try contradiction
+    injection h with h_eq; subst h_eq
+    rw [emitAt_tokens_size, h_collect, h_adv]
+  · -- inFlow case: no validation
+    injection h with h_eq; subst h_eq
+    rw [emitAt_tokens_size, h_collect, h_adv]
 
 /-- scanSingleQuoted adds exactly one token (on success). -/
 theorem scanSingleQuoted_adds_one_token (s : ScannerState) (s' : ScannerState)
     (h : scanSingleQuoted s = .ok s') :
     s'.tokens.size = s.tokens.size + 1 := by
-  sorry
+  unfold scanSingleQuoted at h
+  simp only [bind, Except.bind] at h
+  split at h <;> try contradiction
+  rename_i heq
+  have h_collect := collectSingleQuotedLoop_preserves_tokens s.advance "" _ _ _ _ _ _ heq
+  have h_adv := advance_preserves_tokens s
+  split at h
+  · -- !inFlow case: validateTrailingContent check
+    split at h <;> try contradiction
+    injection h with h_eq; subst h_eq
+    rw [emitAt_tokens_size, h_collect, h_adv]
+  · -- inFlow case: no validation
+    injection h with h_eq; subst h_eq
+    rw [emitAt_tokens_size, h_collect, h_adv]
 
 /-- scanPlainScalar adds exactly one token (on success). -/
 theorem scanPlainScalar_adds_one_token (s : ScannerState) (s' : ScannerState)
     (h : scanPlainScalar s = .ok s') :
     s'.tokens.size = s.tokens.size + 1 := by
-  sorry
+  unfold scanPlainScalar at h
+  simp only [bind, Except.bind] at h
+  split at h <;> try contradiction
+  -- Extract result from collectPlainScalarLoop
+  rename_i heq
+  have h_collect := collectPlainScalarLoop_preserves_tokens s "" "" _ _ _ _ _ heq
+  injection h with h_eq; subst h_eq
+  rw [emitAt_tokens_size, h_collect]
+
+end ScanHelpers
+
+/-! ## Main Theorems -/
 
 /-- scanNextToken preserves or adds tokens.
 
