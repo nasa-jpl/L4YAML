@@ -323,7 +323,7 @@ theorem scanFlowMappingEnd_adds_one_token (s : ScannerState) :
 
 When the current column is deeper than `currentIndent`, emits `blockMappingStart`
 (+1 token). Otherwise, the state is unchanged. -/
-private theorem pushMappingIndent_tokens_monotonic (s : ScannerState) (col : Int) :
+theorem pushMappingIndent_tokens_monotonic (s : ScannerState) (col : Int) :
     (pushMappingIndent s col).tokens.size ≥ s.tokens.size := by
   unfold pushMappingIndent
   split
@@ -331,7 +331,7 @@ private theorem pushMappingIndent_tokens_monotonic (s : ScannerState) (col : Int
   · omega
 
 /-- `pushSequenceIndent` preserves or adds tokens. -/
-private theorem pushSequenceIndent_tokens_monotonic (s : ScannerState) (col : Int) :
+theorem pushSequenceIndent_tokens_monotonic (s : ScannerState) (col : Int) :
     (pushSequenceIndent s col).tokens.size ≥ s.tokens.size := by
   unfold pushSequenceIndent
   split
@@ -342,7 +342,7 @@ private theorem pushSequenceIndent_tokens_monotonic (s : ScannerState) (col : In
 
 `insertAt` either pushes at the end or inserts via extract+push+append;
 both paths increase the token array size by exactly 1. -/
-private theorem insertAt_tokens_size (s : ScannerState) (idx : Nat) (pos : YamlPos) (tok : YamlToken) :
+theorem insertAt_tokens_size (s : ScannerState) (idx : Nat) (pos : YamlPos) (tok : YamlToken) :
     (s.insertAt idx pos tok).tokens.size = s.tokens.size + 1 := by
   unfold ScannerState.insertAt
   split
@@ -350,7 +350,7 @@ private theorem insertAt_tokens_size (s : ScannerState) (idx : Nat) (pos : YamlP
   · simp only [Array.size_append, Array.size_push, Array.size_extract]; omega
 
 /-- `emitAt` adds exactly one token (like `emit` but at a saved position). -/
-private theorem emitAt_tokens_size (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
+theorem emitAt_tokens_size (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
     (s.emitAt pos tok).tokens.size = s.tokens.size + 1 := by
   unfold ScannerState.emitAt; simp [Array.size_push]
 
@@ -387,7 +387,7 @@ theorem scanKey_adds_one_token (s : ScannerState) (s' : ScannerState)
 
 `scanValueClearKey` only modifies `simpleKey` (or returns `s` unchanged),
 so the token array is identical. -/
-private theorem scanValueClearKey_preserves_tokens (s : ScannerState) :
+theorem scanValueClearKey_preserves_tokens (s : ScannerState) :
     (scanValueClearKey s).tokens = s.tokens := by
   unfold scanValueClearKey; split <;> rfl
 
@@ -397,7 +397,7 @@ Each branch of `scanValuePrepare` either:
 - calls `insertAt` 1–2 times (adding 1–2 tokens),
 - calls `pushMappingIndent` (monotonic), or
 - returns an updated state with unchanged tokens. -/
-private theorem scanValuePrepare_tokens_monotonic (s : ScannerState) :
+theorem scanValuePrepare_tokens_monotonic (s : ScannerState) :
     (scanValuePrepare s).tokens.size ≥ s.tokens.size := by
   unfold scanValuePrepare
   split
@@ -669,6 +669,90 @@ theorem skipToContent_preserves_tokens (s : ScannerState) (s' : ScannerState) :
   unfold skipToContent at h
   exact skipToContentLoop_preserves_tokens s s' _ h
 
+/-! ## Helper Lemmas for scan* Functions
+
+Each scan* function called by scanNextToken either emits tokens or adds them via
+helper functions. These lemmas establish that tokens are only appended, never removed. -/
+
+/-- Helper: collectAnchorNameLoop preserves tokens. -/
+theorem collectAnchorNameLoop_preserves_tokens (s : ScannerState) (acc : String) (fuel : Nat) :
+    (collectAnchorNameLoop s acc fuel).snd.tokens = s.tokens := by
+  induction fuel generalizing s acc with
+  | zero =>
+    unfold collectAnchorNameLoop
+    rfl
+  | succ fuel' ih =>
+    unfold collectAnchorNameLoop
+    split
+    · -- some c
+      split
+      · -- condition true: recurse with advance
+        rw [ih]
+        exact advance_preserves_tokens s
+      · -- condition false: return
+        rfl
+    · -- none
+      rfl
+
+/-- scanDocumentStart adds at least one token.
+
+scanDocumentStart: unwindIndents (≥0) → emit .documentStart (+1) → advanceN 3 (preserves).
+Total: ≥ s.tokens.size + 1. -/
+theorem scanDocumentStart_adds_tokens (s : ScannerState) :
+    (scanDocumentStart s).tokens.size ≥ s.tokens.size + 1 := by
+  unfold scanDocumentStart
+  sorry
+
+/-- scanDocumentEnd adds at least one token (on success). -/
+theorem scanDocumentEnd_adds_tokens (s : ScannerState) (s' : ScannerState)
+    (h : scanDocumentEnd s = .ok s') :
+    s'.tokens.size ≥ s.tokens.size + 1 := by
+  sorry
+
+/-- scanDirective adds exactly one token (on success). -/
+theorem scanDirective_adds_one_token (s : ScannerState) (s' : ScannerState)
+    (h : scanDirective s = .ok s') :
+    s'.tokens.size = s.tokens.size + 1 := by
+  sorry
+
+/-- scanAnchorOrAlias adds exactly one token. -/
+theorem scanAnchorOrAlias_adds_one_token (s : ScannerState) (isAnchor : Bool) :
+    (scanAnchorOrAlias s isAnchor).tokens.size = s.tokens.size + 1 := by
+  unfold scanAnchorOrAlias
+  have h_collect := collectAnchorNameLoop_preserves_tokens s.advance "" (s.inputEnd - s.advance.offset)
+  have h_adv := advance_preserves_tokens s
+  simp only []
+  rw [emitAt_tokens_size, h_collect, h_adv]
+
+/-- scanTag adds exactly one token. -/
+theorem scanTag_adds_one_token (s : ScannerState) :
+    (scanTag s).tokens.size = s.tokens.size + 1 := by
+  sorry
+
+/-- scanBlockScalar adds exactly one token (on success). -/
+theorem scanBlockScalar_adds_one_token (s : ScannerState) (s' : ScannerState)
+    (h : scanBlockScalar s = .ok s') :
+    s'.tokens.size = s.tokens.size + 1 := by
+  sorry
+
+/-- scanDoubleQuoted adds exactly one token (on success). -/
+theorem scanDoubleQuoted_adds_one_token (s : ScannerState) (s' : ScannerState)
+    (h : scanDoubleQuoted s = .ok s') :
+    s'.tokens.size = s.tokens.size + 1 := by
+  sorry
+
+/-- scanSingleQuoted adds exactly one token (on success). -/
+theorem scanSingleQuoted_adds_one_token (s : ScannerState) (s' : ScannerState)
+    (h : scanSingleQuoted s = .ok s') :
+    s'.tokens.size = s.tokens.size + 1 := by
+  sorry
+
+/-- scanPlainScalar adds exactly one token (on success). -/
+theorem scanPlainScalar_adds_one_token (s : ScannerState) (s' : ScannerState)
+    (h : scanPlainScalar s = .ok s') :
+    s'.tokens.size = s.tokens.size + 1 := by
+  sorry
+
 /-- scanNextToken preserves or adds tokens.
 
 `scanNextToken` may emit tokens but never removes existing ones.
@@ -691,10 +775,7 @@ Each scan* function either:
   - Returns a ScannerState that calls emit (which appends tokens)
 
 Complete proof requires: Analyze each scan* function to show it only appends tokens.
-This is mechanical but tedious (~17 functions × ~10-50 lines each).
-
-For now, defer with sorry. The key architectural insight is proven:
-emit appends (emit_tokens_size), unwindIndents adds (unwindIndents_adds_tokens). -/
+This is mechanical but tedious (~17 functions × ~10-50 lines each). -/
 theorem scanNextToken_adds_tokens (s : ScannerState) (s' : ScannerState) :
     (scanNextToken s = .ok (some s')) →
     s'.tokens.size ≥ s.tokens.size := by
@@ -955,7 +1036,7 @@ token array. This follows from two properties:
 -/
 
 /-- Helper: array access is equal when indices are equal (regardless of proof terms). -/
-private theorem Array.getElem_congr {α : Type} {arr : Array α} {i j : Nat}
+theorem Array.getElem_congr {α : Type} {arr : Array α} {i j : Nat}
     (hi : i < arr.size) (hj : j < arr.size) (heq : i = j) :
     arr[i]'hi = arr[j]'hj := by subst heq; rfl
 
