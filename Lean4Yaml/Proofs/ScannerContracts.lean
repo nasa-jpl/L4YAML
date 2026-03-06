@@ -115,7 +115,7 @@ theorem emit_preserves_flowStack (s : ScannerState) (tok : YamlToken) :
   rfl
 
 /-- Helper: `advance` preserves flowLevel. -/
-private theorem advance_preserves_flowLevel (s : ScannerState) :
+theorem advance_preserves_flowLevel (s : ScannerState) :
     s.advance.flowLevel = s.flowLevel := by
   unfold ScannerState.advance
   split
