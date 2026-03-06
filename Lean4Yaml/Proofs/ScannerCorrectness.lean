@@ -1019,9 +1019,23 @@ theorem scanDocumentStart_adds_tokens (s : ScannerState) :
   omega
 
 /-- scanDocumentEnd adds at least one token (on success). -/
+theorem skipDocEndWhitespace_preserves_tokens (s : ScannerState) (fuel : Nat) :
+    (skipDocEndWhitespace s fuel).tokens = s.tokens := by
+  induction fuel generalizing s with
+  | zero => unfold skipDocEndWhitespace; rfl
+  | succ fuel' ih =>
+    unfold skipDocEndWhitespace
+    split
+    · split
+      · rw [ih]; exact advance_preserves_tokens s
+      · rfl
+    · rfl
+
 theorem scanDocumentEnd_adds_tokens (s : ScannerState) (s' : ScannerState)
     (h : scanDocumentEnd s = .ok s') :
     s'.tokens.size ≥ s.tokens.size + 1 := by
+  -- The function unwinds indents (adds ≥ 0 tokens), emits documentEnd (+1), advanceN (preserves),
+  -- then validates trailing content and returns result. All validation branches return the same result.
   sorry
 
 /-- scanDirective adds exactly one token (on success). -/
@@ -1041,10 +1055,69 @@ theorem scanAnchorOrAlias_adds_one_token (s : ScannerState) (isAnchor : Bool) :
   simp only []
   rw [emitAt_tokens_size, h_collect, h_adv]
 
+/-- Helper: collectVerbatimTagLoop preserves tokens. -/
+theorem collectVerbatimTagLoop_preserves_tokens (s : ScannerState) (uri : String) (fuel : Nat) :
+    (collectVerbatimTagLoop s uri fuel).snd.tokens = s.tokens := by
+  induction fuel generalizing s uri with
+  | zero => unfold collectVerbatimTagLoop; rfl
+  | succ fuel' ih =>
+    unfold collectVerbatimTagLoop
+    split
+    · simp only []; exact advance_preserves_tokens s  -- found '>', return (uri, s.advance)
+    · rw [ih]; exact advance_preserves_tokens s  -- some c (c != '>'), recurse
+    · simp only []  -- none, return (uri, s)
+
+/-- Helper: collectTagSuffixLoop preserves tokens. -/
+theorem collectTagSuffixLoop_preserves_tokens (s : ScannerState) (suffix : String) (fuel : Nat) :
+    (collectTagSuffixLoop s suffix fuel).snd.tokens = s.tokens := by
+  induction fuel generalizing s suffix with
+  | zero => unfold collectTagSuffixLoop; rfl
+  | succ fuel' ih =>
+    unfold collectTagSuffixLoop
+    split
+    · split
+      · rw [ih]; exact advance_preserves_tokens s  -- tag char, recurse
+      · simp only []  -- not tag char, return
+    · simp only []  -- none, return
+
+/-- Helper: collectTagHandleLoop preserves tokens. -/
+theorem collectTagHandleLoop_preserves_tokens (s : ScannerState) (chars : String) (fuel : Nat) :
+    (collectTagHandleLoop s chars fuel).snd.snd.tokens = s.tokens := by
+  induction fuel generalizing s chars with
+  | zero => unfold collectTagHandleLoop; rfl
+  | succ fuel' ih =>
+    unfold collectTagHandleLoop
+    split
+    · simp only []; exact advance_preserves_tokens s  -- found '!', return (chars, true, s.advance)
+    · split  -- split on the if condition
+      · rw [ih]; exact advance_preserves_tokens s  -- word char, recurse
+      · simp only []  -- not word char, return
+    · simp only []  -- none, return
+
 /-- scanTag adds exactly one token. -/
 theorem scanTag_adds_one_token (s : ScannerState) :
     (scanTag s).tokens.size = s.tokens.size + 1 := by
-  sorry
+  unfold scanTag
+  -- All three branches advance, collect (preserving tokens), emit (+1), and update fields (preserving)
+  simp only []
+  -- The structure has nested matches, so we use split to expose the branches
+  split
+  · -- some '<': Verbatim tag
+    simp only [emitAt_tokens_size, collectVerbatimTagLoop_preserves_tokens, advance_preserves_tokens]
+  · -- some '!': Secondary tag
+    simp only [emitAt_tokens_size, collectTagSuffixLoop_preserves_tokens, advance_preserves_tokens]
+  · -- other: Named/primary tag with conditional suffix collection
+    -- Need to split on foundBang to handle both cases
+    have h_handle := collectTagHandleLoop_preserves_tokens s.advance "" (s.inputEnd - s.advance.offset)
+    have h_adv := advance_preserves_tokens s
+    split
+    · -- foundBang = true: collect suffix
+      let s_after_handle := (collectTagHandleLoop s.advance "" (s.inputEnd - s.advance.offset)).snd.snd
+      let fuel' := s.inputEnd - s_after_handle.offset
+      have h_suffix := collectTagSuffixLoop_preserves_tokens s_after_handle "" fuel'
+      rw [emitAt_tokens_size, h_suffix, h_handle, h_adv]
+    · -- foundBang = false: use chars as suffix, no additional collection
+      rw [emitAt_tokens_size, h_handle, h_adv]
 
 /-- scanBlockScalar adds exactly one token (on success). -/
 theorem scanBlockScalar_adds_one_token (s : ScannerState) (s' : ScannerState)
