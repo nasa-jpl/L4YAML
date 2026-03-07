@@ -600,7 +600,7 @@ increasing offset position in the input.
 
 -- Token positions are monotonically non-decreasing
 private def tokenPositionsMonotone (input : String) : Bool :=
-  match scan input with
+  match scanFiltered input with
   | .ok tokens =>
     let offsets := tokens.toList.map (fun t => t.pos.offset)
     (offsets.zip offsets.tail).all (fun (a, b) => a ≤ b)

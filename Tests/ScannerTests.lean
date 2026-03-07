@@ -39,12 +39,12 @@ def scanOk (input : String) : Bool :=
   | .error _ => false
 
 def scanTokenCount (input : String) : Nat :=
-  match scan input with
+  match scanFiltered input with
   | .ok toks => toks.size
   | .error _ => 0
 
 def hasToken (input : String) (pred : YamlToken → Bool) : Bool :=
-  match scan input with
+  match scanFiltered input with
   | .ok tokens => tokens.any (fun t => pred t.val)
   | .error _ => false
 

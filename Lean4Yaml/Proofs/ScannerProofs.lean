@@ -355,25 +355,25 @@ but the concrete checks demonstrate the invariant across diverse inputs.
 
 /-- Check whether `scan` succeeds on an input. -/
 private def scanOk (input : String) : Bool :=
-  match scan input with
+  match scanFiltered input with
   | .ok _ => true
   | .error _ => false
 
 /-- Extract the first token value from a scan result. -/
 private def scanFirst (input : String) : Option YamlToken :=
-  match scan input with
+  match scanFiltered input with
   | .ok tokens => if tokens.size > 0 then some tokens[0]!.val else none
   | .error _ => none
 
 /-- Extract the last token value from a scan result. -/
 private def scanLast (input : String) : Option YamlToken :=
-  match scan input with
+  match scanFiltered input with
   | .ok tokens => if tokens.size > 0 then some tokens[tokens.size - 1]!.val else none
   | .error _ => none
 
 /-- Count tokens from a scan result. -/
 private def scanSize (input : String) : Option Nat :=
-  match scan input with
+  match scanFiltered input with
   | .ok tokens => some tokens.size
   | .error _ => none
 

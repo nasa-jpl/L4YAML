@@ -418,7 +418,7 @@ private def afterBlock : Option (Bool × Bool) :=
 
 -- Helper: extract token values from full scan
 private def scanTokens (input : String) : Option (List YamlToken) :=
-  match scan input with
+  match scanFiltered input with
   | .ok tokens => some (tokens.toList.map Positioned.val)
   | .error _ => none
 

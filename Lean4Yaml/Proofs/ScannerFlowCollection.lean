@@ -235,10 +235,9 @@ theorem scanFlowEntry_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
     (h : scanFlowEntry s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanFlowEntry at h
+  simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
   split at h
-  · dsimp only [letFun] at h
-    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
-    split at h
+  · split at h
     · exact absurd h (by simp)
     · injection h with h; rw [← h]; simp [ScannerState.emit, advance_flowLevel]
   · injection h with h; rw [← h]; simp [ScannerState.emit, advance_flowLevel]
@@ -248,10 +247,9 @@ theorem scanFlowEntry_tokens_size (s : ScannerState) (s' : ScannerState)
     (h : scanFlowEntry s = .ok s') :
     s'.tokens.size = s.tokens.size + 1 := by
   unfold scanFlowEntry at h
+  simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
   split at h
-  · dsimp only [letFun] at h
-    simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
-    split at h
+  · split at h
     · exact absurd h (by simp)
     · injection h with h; rw [← h]; simp [ScannerState.emit, advance_tokens, Array.size_push]
   · injection h with h; rw [← h]; simp [ScannerState.emit, advance_tokens, Array.size_push]
@@ -281,7 +279,7 @@ private def stateInSeq : ScannerState :=
 /-! ## End-to-end scan `#guard` checks -/
 
 private def scanTokenTypes (input : String) : Option (List YamlToken) :=
-  match scan input with
+  match scanFiltered input with
   | .ok tokens => some (tokens.toList.map (·.val))
   | .error _ => none
 

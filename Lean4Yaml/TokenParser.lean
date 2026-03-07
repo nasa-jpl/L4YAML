@@ -679,6 +679,7 @@ def StreamState.validNextToken (state : StreamState) (tok : YamlToken) : Bool :=
     | .tag ..              => false  -- `!tag`
     | .comment ..          => true   -- comments are never content
     | .streamStart         => false  -- should never appear here
+    | .placeholder         => true   -- reservation slot (filtered before output)
 
 /-! ## Directive Parsing -/
 
@@ -828,7 +829,7 @@ The standard variants apply Compose for backward compatibility.
     error categories) should use this directly. The public `parseYaml*`
     functions map errors to `String` at the API boundary. -/
 def scanAndParse (input : String) : Except ScanError (Array YamlDocument) :=
-  match Scanner.scan input with
+  match Scanner.scanFiltered input with
   | .ok tokens => parseStream tokens
   | .error e => .error e
 
@@ -844,7 +845,7 @@ Each `YamlDocument` includes an `anchors` map that can be used by
 
 **Error** boundary: `ScanError` → `String` mapping happens here. -/
 def parseYamlRaw (input : String) : Except String (Array YamlDocument) :=
-  match Scanner.scan input with
+  match Scanner.scanFiltered input with
   | .ok tokens =>
     match parseStream tokens with
     | .ok docs => .ok docs

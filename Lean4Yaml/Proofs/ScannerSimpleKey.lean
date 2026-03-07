@@ -52,88 +52,12 @@ open Lean4Yaml.Proofs.ScannerLoopInvariant
 open Lean4Yaml.Proofs.ScannerContracts
 open Lean4Yaml.Proofs.ScannerIndentStack
 
-/-! ## §1  insertAt — WellFormed Field Preservation
-
-```
-def ScannerState.insertAt (s : ScannerState) (idx : Nat) (pos : YamlPos)
-    (tok : YamlToken) : ScannerState :=
-  let positioned := { pos := pos, val := tok }
-  if idx >= s.tokens.size then
-    { s with tokens := s.tokens.push positioned }
-  else
-    let before := s.tokens.extract 0 idx
-    let after := s.tokens.extract idx s.tokens.size
-    { s with tokens := (before.push positioned) ++ after }
-```
-
-Both branches use `{ s with tokens := ... }`, so all WellFormed fields
-(indents, flowLevel, flowStack, simpleKeyStack, offset, inputEnd) are
-preserved.
--/
-
-/-- `insertAt` preserves `indents`. -/
-theorem insertAt_indents (s : ScannerState) (idx : Nat) (pos : YamlPos) (tok : YamlToken) :
-    (s.insertAt idx pos tok).indents = s.indents := by
-  unfold ScannerState.insertAt
-  split <;> rfl
-
-/-- `insertAt` preserves `flowLevel`. -/
-theorem insertAt_flowLevel (s : ScannerState) (idx : Nat) (pos : YamlPos) (tok : YamlToken) :
-    (s.insertAt idx pos tok).flowLevel = s.flowLevel := by
-  unfold ScannerState.insertAt
-  split <;> rfl
-
-/-- `insertAt` preserves `flowStack`. -/
-theorem insertAt_flowStack (s : ScannerState) (idx : Nat) (pos : YamlPos) (tok : YamlToken) :
-    (s.insertAt idx pos tok).flowStack = s.flowStack := by
-  unfold ScannerState.insertAt
-  split <;> rfl
-
-/-- `insertAt` preserves `simpleKeyStack`. -/
-theorem insertAt_simpleKeyStack (s : ScannerState) (idx : Nat) (pos : YamlPos) (tok : YamlToken) :
-    (s.insertAt idx pos tok).simpleKeyStack = s.simpleKeyStack := by
-  unfold ScannerState.insertAt
-  split <;> rfl
-
-/-- `insertAt` preserves `offset`. -/
-theorem insertAt_offset (s : ScannerState) (idx : Nat) (pos : YamlPos) (tok : YamlToken) :
-    (s.insertAt idx pos tok).offset = s.offset := by
-  unfold ScannerState.insertAt
-  split <;> rfl
-
-/-- `insertAt` preserves `inputEnd`. -/
-theorem insertAt_inputEnd (s : ScannerState) (idx : Nat) (pos : YamlPos) (tok : YamlToken) :
-    (s.insertAt idx pos tok).inputEnd = s.inputEnd := by
-  unfold ScannerState.insertAt
-  split <;> rfl
-
-/-- `insertAt` preserves `WellFormed` (all 4 conjuncts). -/
-theorem insertAt_preserves_wellFormed (s : ScannerState) (idx : Nat) (pos : YamlPos)
-    (tok : YamlToken) (hwf : s.WellFormed) :
-    (s.insertAt idx pos tok).WellFormed := by
-  obtain ⟨hind, hflow, hsk, hoff⟩ := hwf
-  refine ⟨?_, ?_, ?_, ?_⟩
-  · rw [insertAt_indents]; exact hind
-  · rw [insertAt_flowLevel, insertAt_flowStack]; exact hflow
-  · rw [insertAt_simpleKeyStack, insertAt_flowStack]; exact hsk
-  · rw [insertAt_offset, insertAt_inputEnd]; exact hoff
-
 /-! ## §2  saveSimpleKey — WellFormed Preservation (universal)
 
-```
-def saveSimpleKey (st : ScannerState) : ScannerState :=
-  if st.explicitKeyLine == some st.line then st
-  else if st.simpleKeyAllowed && !st.inFlow then
-    { st with simpleKey := { possible := true, tokenIndex := st.tokens.size,
-                             pos := st.currentPos, endLine := st.line } }
-  else if st.simpleKeyAllowed && st.inFlow then
-    { st with simpleKey := { possible := true, tokenIndex := st.tokens.size,
-                             pos := st.currentPos, endLine := st.line } }
-  else st
-```
-
-All three branches either return `st` unchanged or `{ st with simpleKey := ... }`.
-Since `simpleKey` is not part of `WellFormed`, all branches trivially preserve it.
+The refactored `saveSimpleKey` now pushes 2 placeholder tokens into the
+token array (reserving slots for potential `blockMappingStart` and `key`),
+but only modifies `tokens` and `simpleKey` — neither of which appear in
+any WellFormed conjunct.  Preservation remains trivial.
 -/
 
 /-- `saveSimpleKey` preserves C1 (`indents.size ≥ 1`). -/
@@ -141,7 +65,6 @@ theorem saveSimpleKey_preserves_indents_ge_1 (s : ScannerState)
     (hwf : s.indents.size ≥ 1) :
     (saveSimpleKey s).indents.size ≥ 1 := by
   unfold saveSimpleKey
-  split <;> simp_all
   split <;> simp_all
   split <;> simp_all
 
@@ -152,7 +75,6 @@ theorem saveSimpleKey_preserves_flow_sync (s : ScannerState)
   unfold saveSimpleKey
   split <;> simp_all
   split <;> simp_all
-  split <;> simp_all
 
 /-- `saveSimpleKey` preserves C3 (`simpleKeyStack.size = flowStack.size`). -/
 theorem saveSimpleKey_preserves_sk_sync (s : ScannerState)
@@ -161,14 +83,12 @@ theorem saveSimpleKey_preserves_sk_sync (s : ScannerState)
   unfold saveSimpleKey
   split <;> simp_all
   split <;> simp_all
-  split <;> simp_all
 
 /-- `saveSimpleKey` preserves C4 (`offset ≤ inputEnd`). -/
 theorem saveSimpleKey_preserves_offset_le (s : ScannerState)
     (hoff : s.offset ≤ s.inputEnd) :
     (saveSimpleKey s).offset ≤ (saveSimpleKey s).inputEnd := by
   unfold saveSimpleKey
-  split <;> simp_all
   split <;> simp_all
   split <;> simp_all
 
@@ -269,40 +189,6 @@ private def explicitKeyState : ScannerState :=
 #guard (saveSimpleKey explicitKeyState).indents.size ≥ 1
 #guard (saveSimpleKey explicitKeyState).flowLevel ==
        (saveSimpleKey explicitKeyState).flowStack.size
-
-/-! ## §5  Validation Guards — insertAt -/
-
--- insertAt at end (idx ≥ tokens.size) → push
-private def stateWithTokens : ScannerState :=
-  (ScannerState.mk' "test").emit .streamStart
-
-#guard stateWithTokens.tokens.size == 1
-#guard (stateWithTokens.insertAt 5 default .key).tokens.size == 2
-
--- insertAt preserves WellFormed fields
-#guard (stateWithTokens.insertAt 0 default .key).indents.size ≥ 1
-#guard (stateWithTokens.insertAt 0 default .key).flowLevel ==
-       (stateWithTokens.insertAt 0 default .key).flowStack.size
-#guard (stateWithTokens.insertAt 0 default .key).simpleKeyStack.size ==
-       (stateWithTokens.insertAt 0 default .key).flowStack.size
-#guard (stateWithTokens.insertAt 0 default .key).offset ≤
-       (stateWithTokens.insertAt 0 default .key).inputEnd
-
--- insertAt in the middle of token array
-private def stateWith3Tokens : ScannerState :=
-  ((ScannerState.mk' "test").emit .streamStart).emit .blockMappingStart |>.emit .key
-
-#guard stateWith3Tokens.tokens.size == 3
-#guard (stateWith3Tokens.insertAt 1 default .blockMappingStart).tokens.size == 4
-
--- WellFormed preserved for middle insertAt
-#guard (stateWith3Tokens.insertAt 1 default .blockMappingStart).indents.size ≥ 1
-#guard (stateWith3Tokens.insertAt 1 default .blockMappingStart).flowLevel ==
-       (stateWith3Tokens.insertAt 1 default .blockMappingStart).flowStack.size
-#guard (stateWith3Tokens.insertAt 1 default .blockMappingStart).simpleKeyStack.size ==
-       (stateWith3Tokens.insertAt 1 default .blockMappingStart).flowStack.size
-#guard (stateWith3Tokens.insertAt 1 default .blockMappingStart).offset ≤
-       (stateWith3Tokens.insertAt 1 default .blockMappingStart).inputEnd
 
 /-! ## §6  Validation Guards — scanKey -/
 
@@ -474,7 +360,7 @@ private def tabAfterValue : Except ScanError ScannerState :=
 
 -- Full scan pipeline: simple mapping
 private def scanTokenTypes (input : String) : Option (List YamlToken) :=
-  match scan input with
+  match scanFiltered input with
   | .ok tokens => some (tokens.toList.map (·.val))
   | .error _ => none
 

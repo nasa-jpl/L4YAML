@@ -83,6 +83,14 @@ inductive YamlToken where
   /-- End of input. Always the last token emitted. -/
   | streamEnd
 
+  /-- Reserved slot for potential simple key resolution.
+      Pushed by `saveSimpleKey` to pre-allocate space for `.key` and
+      optionally `.blockMappingStart`. Overwritten in-place by
+      `scanValuePrepare` when the key is confirmed, or filtered out
+      by `scan` before returning the final token array.
+      Never appears in the output token stream. -/
+  | placeholder
+
   /- Directive tokens (§6.8, productions [82]–[93]) -/
 
   /-- `%YAML major.minor` version directive. -/
@@ -183,6 +191,7 @@ not by consuming characters. They delimit block structures.
 def YamlToken.isVirtual : YamlToken → Bool
   | .streamStart | .streamEnd => true
   | .blockSequenceStart | .blockMappingStart | .blockEnd => true
+  | .placeholder => true
   | _ => false
 
 /--
