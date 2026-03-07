@@ -287,18 +287,6 @@ def ScannerState.emit (s : ScannerState) (tok : YamlToken) : ScannerState :=
 def ScannerState.emitAt (s : ScannerState) (pos : YamlPos) (tok : YamlToken) : ScannerState :=
   { s with tokens := s.tokens.push { pos := pos, val := tok } }
 
-/-- Insert a token retroactively at an earlier index in the token array.
-    Used by `scanValue` to insert `key`/`blockMappingStart` at the position
-    where the implicit key began (the `simpleKey.tokenIndex`). -/
-def ScannerState.insertAt (s : ScannerState) (idx : Nat) (pos : YamlPos) (tok : YamlToken) : ScannerState :=
-  let positioned : Positioned YamlToken := { pos := pos, val := tok }
-  if idx >= s.tokens.size then
-    { s with tokens := s.tokens.push positioned }
-  else
-    let before := s.tokens.extract 0 idx
-    let after := s.tokens.extract idx s.tokens.size
-    { s with tokens := (before.push positioned) ++ after }
-
 /-! ## Character Classification
 
     YAML 1.2.2 character sets used by the scanner:
@@ -726,6 +714,20 @@ def scanFlowMappingEnd (s : ScannerState) : ScannerState :=
       simpleKey := restored,
       simpleKeyStack := s_after_advance.simpleKeyStack.pop }
 
+/-- Find the last non-placeholder token value, skipping reservation slots.
+    Returns `none` if there are no real tokens. -/
+def lastRealTokenVal? (tokens : Array (Positioned YamlToken)) : Option YamlToken :=
+  if tokens.size > 0 then
+    let lastIdx := tokens.size - 1
+    let tok1 := tokens[lastIdx]!.val
+    if tok1 == .placeholder && lastIdx > 0 then
+      let tok2 := tokens[lastIdx - 1]!.val
+      if tok2 == .placeholder && lastIdx > 1 then
+        some (tokens[lastIdx - 2]!.val)
+      else some tok2
+    else some tok1
+  else none
+
 /-- Scan a flow entry separator `,`.
 
     **Implements** (YAML 1.2.2 §7.4):
@@ -740,8 +742,7 @@ def scanFlowMappingEnd (s : ScannerState) : ScannerState :=
     token tracking clearer for formal proofs. -/
 def scanFlowEntry (s : ScannerState) : Except ScanError ScannerState := do
   -- §7.4: Leading comma (after flow-open) or consecutive commas are invalid.
-  if s.tokens.size > 0 then
-    let lastTok := s.tokens[s.tokens.size - 1]!.val
+  if let some lastTok := lastRealTokenVal? s.tokens then
     if lastTok == .flowSequenceStart || lastTok == .flowMappingStart ||
        lastTok == .flowEntry then
       throw (.invalidFlowEntry s.line s.col)
@@ -855,28 +856,30 @@ def scanValueValidate (s : ScannerState) : Except ScanError Unit := do
       if prevTok.val == .value && prevTok.pos.line != s.line then
         throw (.invalidFlowEntry s.line s.col)
 
-/-- Build the prepared state: resolve a pending simple key (insertAt key,
-    optionally insertAt blockMappingStart + push indent), or start a new
-    mapping if no simple key.  Tokens are preserved or grown.
+/-- Build the prepared state: resolve a pending simple key by overwriting
+    placeholder slots (via `Array.setIfInBounds`), optionally pushing indent
+    for block mappings, or start a new mapping if no simple key.
+    Tokens are preserved or grown (never shifted).
 
     **Note**: `let` bindings are inlined across `if` boundaries so that
     `split` can discharge each branch independently in proofs. -/
 def scanValuePrepare (s : ScannerState) : ScannerState :=
   if s.simpleKey.possible then
+    let idx := s.simpleKey.tokenIndex
     if !s.inFlow then
-      if (s.simpleKey.pos.col : Int) >
-          (s.insertAt s.simpleKey.tokenIndex s.simpleKey.pos .key).currentIndent then
-        let s2 := (s.insertAt s.simpleKey.tokenIndex s.simpleKey.pos .key).insertAt
-                    s.simpleKey.tokenIndex s.simpleKey.pos .blockMappingStart
-        { s2 with
-          indents := s2.indents.push { column := (s.simpleKey.pos.col : Int), isSequence := false }
+      if (s.simpleKey.pos.col : Int) > s.currentIndent then
+        let tokens := s.tokens.setIfInBounds idx ⟨s.simpleKey.pos, .blockMappingStart⟩
+                      |>.setIfInBounds (idx + 1) ⟨s.simpleKey.pos, .key⟩
+        { s with
+          tokens := tokens
+          indents := s.indents.push { column := (s.simpleKey.pos.col : Int), isSequence := false }
           simpleKey := { possible := false } }
       else
-        { s.insertAt s.simpleKey.tokenIndex s.simpleKey.pos .key with
-            simpleKey := { possible := false } }
+        let tokens := s.tokens.setIfInBounds (idx + 1) ⟨s.simpleKey.pos, .key⟩
+        { s with tokens := tokens, simpleKey := { possible := false } }
     else
-      { s.insertAt s.simpleKey.tokenIndex s.simpleKey.pos .key with
-          simpleKey := { possible := false } }
+      let tokens := s.tokens.setIfInBounds (idx + 1) ⟨s.simpleKey.pos, .key⟩
+      { s with tokens := tokens, simpleKey := { possible := false } }
   else if s.explicitKeyLine.isSome then
     { s with simpleKey := { possible := false } }
   else
@@ -2042,16 +2045,15 @@ def saveSimpleKey (st : ScannerState) : ScannerState :=
   -- On subsequent lines, saving is allowed — the content may start a
   -- new entry (e.g., `? a\n c:` where `c` is a new implicit key).
   if st.explicitKeyLine == some st.line then st
-  else if st.simpleKeyAllowed && !st.inFlow then
+  else if st.simpleKeyAllowed then
+    -- Reserve 2 placeholder slots for potential .blockMappingStart + .key
+    -- (block context) or .key + spare (flow context).
+    let idx := st.tokens.size
+    let ph : Positioned YamlToken := ⟨st.currentPos, .placeholder⟩
+    let st := { st with tokens := st.tokens.push ph |>.push ph }
     { st with simpleKey := {
         possible := true
-        tokenIndex := st.tokens.size
-        pos := st.currentPos
-        endLine := st.line } }
-  else if st.simpleKeyAllowed && st.inFlow then
-    { st with simpleKey := {
-        possible := true
-        tokenIndex := st.tokens.size
+        tokenIndex := idx
         pos := st.currentPos
         endLine := st.line } }
   else st
@@ -2316,5 +2318,12 @@ def scan (input : String) : Except ScanError (Array (Positioned YamlToken)) :=
   -- Calculate fuel: 4x input size should be more than enough
   let fuel := input.utf8ByteSize + 1
   scanLoop s (fuel * 4)
+
+/-- Like `scan` but filters out internal placeholder tokens.
+    Use this for all user-facing output and tests. -/
+def scanFiltered (input : String) : Except ScanError (Array (Positioned YamlToken)) :=
+  match scan input with
+  | .ok tokens => .ok (tokens.filter fun t => t.val != .placeholder)
+  | .error e => .error e
 
 end Lean4Yaml.Scanner

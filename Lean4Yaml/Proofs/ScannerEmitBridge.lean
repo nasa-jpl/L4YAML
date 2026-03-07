@@ -331,7 +331,7 @@ emitter output.
 theorem emit_pipeline_decompose (v : YamlValue) (docs : Array YamlDocument)
     (h : parseYamlRaw (emit v) = .ok docs) :
     ∃ tokens : Array (Positioned YamlToken),
-      Scanner.scan (emit v) = .ok tokens ∧
+      Scanner.scanFiltered (emit v) = .ok tokens ∧
       parseStream tokens = .ok docs :=
   Composition.parseYamlRaw_ok_decompose (emit v) docs h
 

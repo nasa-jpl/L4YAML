@@ -494,7 +494,7 @@ private def scanOk (input : String) : Bool := (scan input).isOk
 
 -- Helper: extract token types from scan
 private def scanTokens (input : String) : Option (List YamlToken) :=
-  match scan input with
+  match scanFiltered input with
   | .ok tokens => some (tokens.toList.map Positioned.val)
   | .error _ => none
 

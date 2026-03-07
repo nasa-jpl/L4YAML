@@ -42,7 +42,7 @@ open Lean4Yaml.TokenParser
 
 /-! ## §1  Scanner–TokenParser Pipeline
 
-`parseYamlRaw` is `do let tokens ← Scanner.scan input; parseStream tokens`.
+`parseYamlRaw` is `do let tokens ← Scanner.scanFiltered input; parseStream tokens`.
 The following theorems decompose this pipeline.
 -/
 
@@ -53,7 +53,7 @@ succeed, the result is the `parseStream` output on the scanned tokens.
 theorem parseYamlRaw_pipeline (input : String)
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
-    (h_scan : Scanner.scan input = .ok tokens)
+    (h_scan : Scanner.scanFiltered input = .ok tokens)
     (h_parse : parseStream tokens = .ok docs) :
     parseYamlRaw input = .ok docs := by
   simp only [parseYamlRaw, h_scan, h_parse]
@@ -65,9 +65,9 @@ must have succeeded.
 theorem parseYamlRaw_ok_decompose (input : String) (docs : Array YamlDocument)
     (h : parseYamlRaw input = .ok docs) :
     ∃ tokens : Array (Positioned YamlToken),
-      Scanner.scan input = .ok tokens ∧ parseStream tokens = .ok docs := by
+      Scanner.scanFiltered input = .ok tokens ∧ parseStream tokens = .ok docs := by
   simp only [parseYamlRaw] at h
-  match h_scan : Scanner.scan input with
+  match h_scan : Scanner.scanFiltered input with
   | .ok tokens =>
     simp only [h_scan] at h
     match h_parse : parseStream tokens with
@@ -83,7 +83,7 @@ theorem parseYamlRaw_ok_decompose (input : String) (docs : Array YamlDocument)
 If `Scanner.scan` fails, `parseYamlRaw` fails with the stringified error.
 -/
 theorem parseYamlRaw_scan_error (input : String) (e : ScanError)
-    (h : Scanner.scan input = .error e) :
+    (h : Scanner.scanFiltered input = .error e) :
     parseYamlRaw input = .error e.toString := by
   simp only [parseYamlRaw, h]
 
@@ -93,7 +93,7 @@ with the stringified parse error.
 -/
 theorem parseYamlRaw_parse_error (input : String) (e : ScanError)
     (tokens : Array (Positioned YamlToken))
-    (h_scan : Scanner.scan input = .ok tokens)
+    (h_scan : Scanner.scanFiltered input = .ok tokens)
     (h_parse : parseStream tokens = .error e) :
     parseYamlRaw input = .error e.toString := by
   simp only [parseYamlRaw, h_scan, h_parse]
@@ -129,7 +129,7 @@ If scanning and parsing both succeed, `parseYaml` returns composed documents.
 theorem parseYaml_pipeline (input : String)
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
-    (h_scan : Scanner.scan input = .ok tokens)
+    (h_scan : Scanner.scanFiltered input = .ok tokens)
     (h_parse : parseStream tokens = .ok docs) :
     parseYaml input = .ok (docs.map YamlDocument.compose) :=
   parseYaml_of_parseYamlRaw_ok input docs (parseYamlRaw_pipeline input tokens docs h_scan h_parse)

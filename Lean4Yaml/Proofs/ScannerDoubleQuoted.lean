@@ -267,7 +267,7 @@ escape processing, and `streamEnd` emission.
 
 /-- Scan a string and extract the content of the first double-quoted scalar token. -/
 private def scanDQContent (input : String) : Option String :=
-  match scan input with
+  match scanFiltered input with
   | .ok tokens =>
     tokens.toList.filterMap (fun t =>
       match t.val with

@@ -373,7 +373,7 @@ This is definitional (`rfl`) — `parentIndent` is bound to `s.currentIndent`.
 
 /-- Helper: scan a block scalar input and extract the scalar content. -/
 private def scanBlockScalarContent (input : String) : Option String :=
-  match scan input with
+  match scanFiltered input with
   | .ok tokens =>
     let scalars := tokens.toList.filterMap fun pt =>
       match pt.val with
@@ -403,7 +403,7 @@ private def scanBlockScalarContent (input : String) : Option String :=
 
 -- §8.1.3 auto-detect in nested context (mapping value)
 private def scanNestedBlockScalar (input : String) : Option String :=
-  match scan input with
+  match scanFiltered input with
   | .ok tokens =>
     let scalars := tokens.toList.filterMap fun pt =>
       match pt.val with
