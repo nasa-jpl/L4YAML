@@ -5019,6 +5019,205 @@ theorem unwindIndents_preserves_ScanInv (s : ScannerState) (col : Int)
   exact unwindIndentsLoop_preserves_ScanInv s col s.indents.size h
 
 /-!
+### Phase 1: Primitive ScanInv lemmas
+
+Building blocks for the full `scanNextToken_preserves_ScanInv` proof.
+-/
+
+-- emitAt preserves ScanInv when the emitted position is ≤ offset and ≥ all existing tokens.
+theorem emitAt_preserves_ScanInv (s : ScannerState) (pos : YamlPos) (tok : YamlToken)
+    (h : ScanInv s) (h_pos : pos.offset ≤ s.offset)
+    (h_ge : ∀ i : Fin s.tokens.size, s.tokens[i].pos.offset ≤ pos.offset) :
+    ScanInv (s.emitAt pos tok) := by
+  obtain ⟨h_ord, h_bnd⟩ := h
+  unfold ScanInv ScanInv'
+  have h_off : (s.emitAt pos tok).offset = s.offset := rfl
+  rw [h_off]
+  constructor
+  · -- Ordering: all existing ≤ pos.offset, and the new token is at pos.offset
+    intro ⟨i, hi⟩ ⟨j, hj⟩ hij
+    show ((s.emitAt pos tok).tokens[i]'hi).pos.offset ≤
+         ((s.emitAt pos tok).tokens[j]'hj).pos.offset
+    unfold ScannerState.emitAt
+    simp only [Array.getElem_push]
+    split <;> rename_i hi_lt
+    · -- i in original array
+      split <;> rename_i hj_lt
+      · -- j in original: use h_ord
+        exact h_ord ⟨i, hi_lt⟩ ⟨j, hj_lt⟩ hij
+      · -- j is new element at pos.offset
+        exact h_ge ⟨i, hi_lt⟩
+    · -- i is new element (i ≥ s.tokens.size)
+      have hij' : i < j := hij  -- extract raw Nat inequality from Fin
+      have hi_sz : i < s.tokens.size + 1 := by
+        have := hi; simp [ScannerState.emitAt, Array.size_push] at this; exact this
+      split <;> rename_i hj_lt
+      · omega -- impossible: i ≥ size but j < size and i < j
+      · have hj_sz : j < s.tokens.size + 1 := by
+          have := hj; simp [ScannerState.emitAt, Array.size_push] at this; exact this
+        omega -- i = j = s.tokens.size contradicts i < j
+  · -- Bounded: all token offsets ≤ s.offset
+    intro ⟨i, hi⟩
+    show ((s.emitAt pos tok).tokens[i]'hi).pos.offset ≤ s.offset
+    have h_sz : i < s.tokens.size ∨ i = s.tokens.size := by
+      have := hi; simp [ScannerState.emitAt, Array.size_push] at this; omega
+    rcases h_sz with h_lt | h_eq
+    · -- Old token: use getElem_push with i < s.tokens.size
+      unfold ScannerState.emitAt
+      simp only [Array.getElem_push, show i < s.tokens.size from h_lt, dite_true]
+      exact h_bnd ⟨i, h_lt⟩
+    · subst h_eq
+      unfold ScannerState.emitAt
+      simp only [Array.getElem_push, dif_neg (by omega : ¬ s.tokens.size < s.tokens.size)]
+      exact h_pos
+
+-- Simplified emitAt_preserves_ScanInv: when pos.offset = s.offset (common case).
+theorem emitAt_preserves_ScanInv_eq (s : ScannerState) (pos : YamlPos) (tok : YamlToken)
+    (h : ScanInv s) (h_pos : pos.offset = s.offset) :
+    ScanInv (s.emitAt pos tok) := by
+  apply emitAt_preserves_ScanInv s pos tok h (by omega)
+  intro ⟨i, hi⟩
+  exact Nat.le_of_lt_succ (by rw [h_pos]; exact Nat.lt_succ_of_le (h.2 ⟨i, hi⟩))
+
+-- saveSimpleKey preserves ScanInv: pushes 0 or 2 placeholders at s.offset.
+theorem saveSimpleKey_preserves_ScanInv (s : ScannerState)
+    (h : ScanInv s) : ScanInv (saveSimpleKey s) := by
+  unfold saveSimpleKey
+  -- Branch 1: explicitKeyLine == some s.line → no-op
+  split
+  · exact h
+  · -- Branch 2: simpleKeyAllowed → push 2 placeholders at s.currentPos
+    split
+    · -- Push 2 placeholders at s.currentPos (offset = s.offset)
+      -- The result is ScanInv' (tokens.push ph |>.push ph) s.offset
+      -- where ph = ⟨s.currentPos, .placeholder⟩ and s.currentPos.offset = s.offset.
+      -- This is the same as two emit operations.
+      have h1 : ScanInv (s.emit .placeholder) := emit_preserves_ScanInv s .placeholder h
+      have h2 : ScanInv ((s.emit .placeholder).emit .placeholder) :=
+        emit_preserves_ScanInv (s.emit .placeholder) .placeholder h1
+      -- The saveSimpleKey result has tokens = (s.emit ph).emit ph |>.tokens and offset = s.offset
+      show ScanInv' _ s.offset
+      exact h2
+    · -- Branch 3: not allowed → no-op
+      exact h
+
+-- setIfInBounds at index idx preserves ScanInv' when the replacement has
+-- the same offset as the original element.
+theorem setIfInBounds_preserves_ScanInv' (tokens : Array (Positioned YamlToken))
+    (offset : Nat) (idx : Nat) (v : Positioned YamlToken)
+    (h : ScanInv' tokens offset)
+    (h_idx : idx < tokens.size)
+    (h_off : v.pos.offset = tokens[idx].pos.offset) :
+    ScanInv' (tokens.setIfInBounds idx v) offset := by
+  obtain ⟨h_ord, h_bnd⟩ := h
+  have h_sz : (tokens.setIfInBounds idx v).size = tokens.size := Array.size_setIfInBounds
+  -- Helper: rewrite Fin-indexed access on setIfInBounds array to if-then-else
+  have getElem_helper : ∀ (k : Nat) (hk : k < (tokens.setIfInBounds idx v).size),
+      (tokens.setIfInBounds idx v)[k]'hk =
+        if idx = k then v else tokens[k]'(by rw [h_sz] at hk; exact hk) :=
+    fun k hk => Array.getElem_setIfInBounds (by rw [h_sz] at hk; exact hk)
+  unfold ScanInv'
+  constructor
+  · intro ⟨i, hi⟩ ⟨j, hj⟩ hij
+    show ((tokens.setIfInBounds idx v)[i]'hi).pos.offset ≤
+         ((tokens.setIfInBounds idx v)[j]'hj).pos.offset
+    rw [getElem_helper i hi, getElem_helper j hj]
+    have hi' : i < tokens.size := by rw [h_sz] at hi; exact hi
+    have hj' : j < tokens.size := by rw [h_sz] at hj; exact hj
+    split <;> rename_i h_eq_i
+    · split <;> rename_i h_eq_j
+      · omega
+      · rw [h_off]; subst h_eq_i; exact h_ord ⟨idx, h_idx⟩ ⟨j, hj'⟩ hij
+    · split <;> rename_i h_eq_j
+      · rw [h_off]; subst h_eq_j; exact h_ord ⟨i, hi'⟩ ⟨idx, h_idx⟩ hij
+      · exact h_ord ⟨i, hi'⟩ ⟨j, hj'⟩ hij
+  · intro ⟨i, hi⟩
+    show ((tokens.setIfInBounds idx v)[i]'hi).pos.offset ≤ offset
+    rw [getElem_helper i hi]
+    have hi' : i < tokens.size := by rw [h_sz] at hi; exact hi
+    split
+    · rw [h_off]; exact h_bnd ⟨idx, h_idx⟩
+    · exact h_bnd ⟨i, hi'⟩
+
+-- Two consecutive setIfInBounds preserve ScanInv' when both replacements
+-- have the same offsets as the originals.
+theorem setIfInBounds_twice_preserves_ScanInv' (tokens : Array (Positioned YamlToken))
+    (offset : Nat) (idx1 idx2 : Nat) (v1 v2 : Positioned YamlToken)
+    (h : ScanInv' tokens offset)
+    (h_idx1 : idx1 < tokens.size)
+    (h_idx2 : idx2 < tokens.size)
+    (h_off1 : v1.pos.offset = tokens[idx1].pos.offset)
+    (h_off2 : v2.pos.offset = tokens[idx2].pos.offset)
+    (h_ne : idx1 ≠ idx2) :
+    ScanInv' (tokens.setIfInBounds idx1 v1 |>.setIfInBounds idx2 v2) offset := by
+  have h1 := setIfInBounds_preserves_ScanInv' tokens offset idx1 v1 h h_idx1 h_off1
+  have h_idx2' : idx2 < (tokens.setIfInBounds idx1 v1).size := by
+    rw [Array.size_setIfInBounds]; exact h_idx2
+  refine setIfInBounds_preserves_ScanInv' _ offset idx2 v2 h1 h_idx2' ?_
+  -- Need: v2.pos.offset = (tokens.setIfInBounds idx1 v1)[idx2]'h_idx2' |>.pos.offset
+  have h_eq : (tokens.setIfInBounds idx1 v1)[idx2]'h_idx2' =
+      tokens[idx2]'h_idx2 := by
+    rw [Array.getElem_setIfInBounds h_idx2]
+    exact if_neg h_ne
+  simp only [h_eq]; exact h_off2
+
+-- scanValuePrepare preserves ScanInv, given that simpleKey placeholders
+-- were created at simpleKey.pos (same offset as the replacement values).
+theorem scanValuePrepare_preserves_ScanInv (s : ScannerState) (h : ScanInv s)
+    (h_sk : s.simpleKey.possible = true →
+      s.simpleKey.tokenIndex < s.tokens.size ∧
+      s.simpleKey.tokenIndex + 1 < s.tokens.size ∧
+      (∀ (h1 : s.simpleKey.tokenIndex < s.tokens.size),
+        s.tokens[s.simpleKey.tokenIndex].pos = s.simpleKey.pos) ∧
+      (∀ (h2 : s.simpleKey.tokenIndex + 1 < s.tokens.size),
+        s.tokens[s.simpleKey.tokenIndex + 1].pos = s.simpleKey.pos)) :
+    ScanInv (scanValuePrepare s) := by
+  unfold scanValuePrepare
+  split
+  · -- simpleKey.possible = true
+    rename_i h_poss
+    obtain ⟨h_idx_lt, h_idx1_lt, h_pos_eq, h_pos1_eq⟩ := h_sk h_poss
+    have h_pe := h_pos_eq h_idx_lt
+    have h_pe1 := h_pos1_eq h_idx1_lt
+    split
+    · -- !inFlow
+      split
+      · -- keyCol > currentIndent: two setIfInBounds + push indent
+        show ScanInv' _ s.offset
+        exact setIfInBounds_twice_preserves_ScanInv' s.tokens s.offset
+          s.simpleKey.tokenIndex (s.simpleKey.tokenIndex + 1)
+          ⟨s.simpleKey.pos, .blockMappingStart⟩ ⟨s.simpleKey.pos, .key⟩
+          h h_idx_lt h_idx1_lt
+          (by simp [h_pe]) (by simp [h_pe1])
+          (by omega)
+      · -- keyCol ≤ currentIndent: one setIfInBounds at idx+1
+        show ScanInv' _ s.offset
+        exact setIfInBounds_preserves_ScanInv' s.tokens s.offset
+          (s.simpleKey.tokenIndex + 1) ⟨s.simpleKey.pos, .key⟩
+          h h_idx1_lt (by simp [h_pe1])
+    · -- inFlow: one setIfInBounds at idx+1
+      show ScanInv' _ s.offset
+      exact setIfInBounds_preserves_ScanInv' s.tokens s.offset
+        (s.simpleKey.tokenIndex + 1) ⟨s.simpleKey.pos, .key⟩
+        h h_idx1_lt (by simp [h_pe1])
+  · -- simpleKey.possible = false
+    split
+    · -- explicitKeyLine.isSome: field-only update
+      exact field_update_preserves_ScanInv _ _ h rfl rfl
+    · -- else
+      split
+      · -- !inFlow: pushMappingIndent
+        unfold pushMappingIndent
+        split
+        · -- indent check true: emit blockMappingStart + push indent
+          exact emit_preserves_ScanInv { s with indents := _ } .blockMappingStart
+            (field_update_preserves_ScanInv _ _ h rfl rfl)
+        · -- indent check false: no-op
+          exact h
+      · -- inFlow: identity
+        exact h
+
+/-!
 ### scanNextToken preserves ScanInv
 
 Within each `scanNextToken` call, the token array is only modified by:
