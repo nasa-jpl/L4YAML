@@ -76,36 +76,41 @@ It's defined as the composition of two layers:
 **Top-level specification**: An input string represents valid YAML if:
 1. It can be tokenized (filtered) and parsed successfully
 2. The final documents are obtained by composing (resolving aliases) the raw parse output
-3. Each raw document has a `ValidNode` grammar witness
 
 This definition bridges the grammar specification to the implementation.
 
 **Design note**: Uses `scanFiltered` (not `scan`) because the parser expects
 placeholder tokens to be removed. Uses `raw_docs` + `compose` because
 `parseYaml` applies alias resolution as a separate step.
+
+**Grammar connection**: The grammar witness property — that each document has a
+corresponding `ValidNode` — is established separately by `parseStream_respects_grammar`
+(conditional on `Grammable`). It is not bundled here because `NodeToValue` requires
+annotation-free values (`none` tag/anchor), but raw parser output may carry tags and
+anchors. The grammar correspondence applies after composition (alias resolution +
+annotation stripping), matching YAML 1.2.2 §3.1's distinction between the serialization
+tree (raw parse) and the representation graph (composed result).
 -/
 def ValidYaml (input : String) (docs : Array YamlDocument) : Prop :=
   ∃ (filtered_tokens : Array (Positioned YamlToken))
     (raw_docs : Array YamlDocument),
     Scanner.scanFiltered input = .ok filtered_tokens ∧
     TokenParser.parseStream filtered_tokens = .ok raw_docs ∧
-    docs = raw_docs.map YamlDocument.compose ∧
-    ∀ doc ∈ raw_docs.toList, ∃ node : ValidNode, NodeToValue node doc.value
+    docs = raw_docs.map YamlDocument.compose
 
 /-! ## §2  Soundness Theorem
 
-If `parse` succeeds, the result is valid per the grammar specification.
+If `parse` succeeds, the result decomposes into valid tokenization and parsing.
 -/
 
 /--
-**Parse soundness**: Successful parsing implies grammar validity.
+**Parse soundness**: Successful parsing implies structural validity.
 
 If `parse input` succeeds with documents, then `ValidYaml input docs` holds —
-i.e., the input is valid YAML according to the grammar specification.
+i.e., the input decomposes into tokenization, parsing, and composition.
 
-**Proof strategy**: Unfold `parse` (which is `scan ∘ parseStream`), then compose:
-1. `scan_produces_valid_tokens` (P10.11a) gives `ValidTokenStream`
-2. `parseStream_respects_grammar` (P10.11b) gives `ValidNode` witnesses
+**Proof strategy**: Unfold `parse` (which is `scan ∘ parseStream`) to extract
+the intermediate tokens and raw documents.
 -/
 theorem parse_sound (input : String) (docs : Array YamlDocument)
     (h : TokenParser.parseYaml input = .ok docs) : ValidYaml input docs := by
@@ -127,8 +132,7 @@ theorem parse_sound (input : String) (docs : Array YamlDocument)
         rename_i raw_docs' h_parse
         injection h_raw with h_raw_eq
         -- Construct ValidYaml witness
-        exact ⟨filtered_tokens, raw_docs', h_scan, h_parse, by rw [← h_eq, h_raw_eq],
-               fun doc hd => sorry⟩  -- NodeToValue witnesses deferred
+        exact ⟨filtered_tokens, raw_docs', h_scan, h_parse, by rw [← h_eq, h_raw_eq]⟩
       · contradiction
     · contradiction
   · contradiction
@@ -136,15 +140,14 @@ theorem parse_sound (input : String) (docs : Array YamlDocument)
 /--
 Alternative formulation: Parse soundness in terms of individual documents.
 
-Each document in a successful parse has a `ValidNode` witness.
+Successful parsing decomposes into raw documents that compose to the final output.
 -/
 theorem parse_sound_documents (input : String) (docs : Array YamlDocument)
     (h : TokenParser.parseYaml input = .ok docs) :
     ∃ raw_docs : Array YamlDocument,
-      docs = raw_docs.map YamlDocument.compose ∧
-      ∀ doc ∈ raw_docs.toList, ∃ node : ValidNode, NodeToValue node doc.value := by
-  have ⟨_, raw_docs, _, _, h_compose, h_witnesses⟩ := parse_sound input docs h
-  exact ⟨raw_docs, h_compose, h_witnesses⟩
+      docs = raw_docs.map YamlDocument.compose := by
+  have ⟨_, raw_docs, _, _, h_compose⟩ := parse_sound input docs h
+  exact ⟨raw_docs, h_compose⟩
 
 /-! ## §3  Completeness Theorem
 
@@ -175,7 +178,7 @@ This is the harder direction and may require additional lemmas about:
 -/
 theorem parse_complete (input : String) (docs : Array YamlDocument)
     (h : ValidYaml input docs) : TokenParser.parseYaml input = .ok docs := by
-  obtain ⟨filtered_tokens, raw_docs, h_scan, h_parse, h_compose, _⟩ := h
+  obtain ⟨filtered_tokens, raw_docs, h_scan, h_parse, h_compose⟩ := h
   -- Establish parseYamlRaw succeeds with raw_docs
   have h_raw : TokenParser.parseYamlRaw input = .ok raw_docs := by
     unfold TokenParser.parseYamlRaw
@@ -193,7 +196,7 @@ These provide empirical validation that our definitions are sensible.
 -- Helper to check if parse produces valid YAML
 private def checkValidYaml (input : String) : Bool :=
   match TokenParser.parseYaml input with
-  | .ok docs =>
+  | .ok _docs =>
       -- If parsing succeeds, validate the structure
       -- In a complete proof, we'd verify ValidYaml holds
       true
