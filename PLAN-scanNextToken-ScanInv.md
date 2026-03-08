@@ -87,8 +87,12 @@ only overwrites tokens that were placeholders created at the same offset.
 | `advance_preserves_ScanInv` | ~4983 | `ScanInv s → ScanInv s.advance` |
 | `field_update_preserves_ScanInv` | ~4994 | `s'.tokens = s.tokens → s'.offset = s.offset → ScanInv s'` |
 | `unwindIndentsLoop_preserves_ScanInv` | ~5008 | Induction on fuel |
-| `unwindIndents_preserves_ScanInv` | ~5016 | Wrapper |
-
+| `unwindIndents_preserves_ScanInv` | ~5016 | Wrapper || `emitAt_preserves_ScanInv` | ~5028 | Phase 1 ✅ — `emitAt` with `h_pos` + `h_ge` |
+| `emitAt_preserves_ScanInv_eq` | ~5075 | Phase 1 ✅ — simplified when `pos.offset = s.offset` |
+| `saveSimpleKey_preserves_ScanInv` | ~5083 | Phase 1 ✅ — 3-branch: no-op / 2×emit / no-op |
+| `setIfInBounds_preserves_ScanInv'` | ~5106 | Phase 1 ✅ — single replacement, same offset |
+| `setIfInBounds_twice_preserves_ScanInv'` | ~5144 | Phase 1 ✅ — double replacement, different indices |
+| `scanValuePrepare_preserves_ScanInv` | ~5166 | Phase 1 ✅ — 6 branches with `h_sk` hypothesis |
 ### Offset preservation (in ScannerProgress.lean)
 
 | Theorem | What it proves |
@@ -117,15 +121,21 @@ This proves the ordering sub-invariant is preserved for existing tokens.
 
 ## Proof strategy
 
-### Phase 1: New primitive lemmas (~8 theorems)
+### Phase 1: New primitive lemmas — ✅ COMPLETE (7 theorems, ~200 lines)
 
 These are the missing building blocks needed before composing per-function proofs.
 
-#### 1a. `emitAt_preserves_ScanInv`
+> **Status**: All 7 theorems proven and verified. 191/191 build, 869/869 tests, 0 sorry, 0 warnings.
+> See [Phase 1 Reflections](#phase-1-reflections) for lessons learned.
 
+#### 1a. `emitAt_preserves_ScanInv` — ✅
+
+**Actual signature** (3 hypotheses, not 2 as initially sketched):
 ```lean
 theorem emitAt_preserves_ScanInv (s : ScannerState) (pos : YamlPos) (tok : YamlToken)
-    (h : ScanInv s) (h_pos : pos.offset ≤ s.offset) : ScanInv (s.emitAt pos tok)
+    (h : ScanInv s) (h_pos : pos.offset ≤ s.offset)
+    (h_ge : ∀ i : Fin s.tokens.size, s.tokens[i].pos.offset ≤ pos.offset) :
+    ScanInv (s.emitAt pos tok)
 ```
 
 **Approach**: Mirror `emit_preserves_ScanInv`. The structure is identical — `emitAt` is just
@@ -163,7 +173,7 @@ theorem emitAt_preserves_ScanInv (s : ScannerState) (pos : YamlPos) (tok : YamlT
 
 This is direct and mirrors the `emit` proof.
 
-#### 1b. `saveSimpleKey_preserves_ScanInv`
+#### 1b. `saveSimpleKey_preserves_ScanInv` — ✅
 
 ```lean
 theorem saveSimpleKey_preserves_ScanInv (s : ScannerState)
@@ -179,14 +189,29 @@ For the push case:
 - Bounded: new tokens at `s.offset` = `s.offset` (by `saveSimpleKey_offset`)
 - Use `emit_preserves_ScanInv` twice, or prove directly
 
-#### 1c. `setIfInBounds_preserves_ScanInv`
+#### 1c. `setIfInBounds_preserves_ScanInv'` — ✅
 
+**Actual signature** (simpler than planned — direct index bound, not `Option`):
 ```lean
-theorem setIfInBounds_preserves_ScanInv (tokens : Array (Positioned YamlToken))
+theorem setIfInBounds_preserves_ScanInv' (tokens : Array (Positioned YamlToken))
     (offset : Nat) (idx : Nat) (v : Positioned YamlToken)
     (h : ScanInv' tokens offset)
-    (h_v : v.pos.offset = tokens[idx]?.map (·.pos.offset) |>.getD 0)  -- same offset as original
-    : ScanInv' (tokens.setIfInBounds idx v) offset
+    (h_idx : idx < tokens.size)
+    (h_off : v.pos.offset = tokens[idx].pos.offset) :
+    ScanInv' (tokens.setIfInBounds idx v) offset
+```
+
+**Bonus**: `setIfInBounds_twice_preserves_ScanInv'` (not in original plan) for
+two consecutive replacements at different indices:
+```lean
+theorem setIfInBounds_twice_preserves_ScanInv' (tokens : Array (Positioned YamlToken))
+    (offset : Nat) (idx1 idx2 : Nat) (v1 v2 : Positioned YamlToken)
+    (h : ScanInv' tokens offset)
+    (h_idx1 : idx1 < tokens.size) (h_idx2 : idx2 < tokens.size)
+    (h_off1 : v1.pos.offset = tokens[idx1].pos.offset)
+    (h_off2 : v2.pos.offset = tokens[idx2].pos.offset)
+    (h_ne : idx1 ≠ idx2) :
+    ScanInv' (tokens.setIfInBounds idx1 v1 |>.setIfInBounds idx2 v2) offset
 ```
 
 **Approach**: `setIfInBounds` overwrites `tokens[idx]` with `v` which has the same
@@ -201,11 +226,19 @@ original placeholder was also at that position. The key fact is:
 if `idx < tokens.size`: `(tokens.setIfInBounds idx v)[i] = if i = idx then v else tokens[i]`.
 Since `v.pos.offset = tokens[idx].pos.offset`, ordering is preserved.
 
-#### 1d. `scanValuePrepare_preserves_ScanInv`
+#### 1d. `scanValuePrepare_preserves_ScanInv` — ✅
 
+**Actual signature** (takes explicit `h_sk` hypothesis, not hypothesis-free as initially sketched):
 ```lean
-theorem scanValuePrepare_preserves_ScanInv (s : ScannerState)
-    (h : ScanInv s) : ScanInv (scanValuePrepare s)
+theorem scanValuePrepare_preserves_ScanInv (s : ScannerState) (h : ScanInv s)
+    (h_sk : s.simpleKey.possible = true →
+      s.simpleKey.tokenIndex < s.tokens.size ∧
+      s.simpleKey.tokenIndex + 1 < s.tokens.size ∧
+      (∀ (h1 : s.simpleKey.tokenIndex < s.tokens.size),
+        s.tokens[s.simpleKey.tokenIndex].pos = s.simpleKey.pos) ∧
+      (∀ (h2 : s.simpleKey.tokenIndex + 1 < s.tokens.size),
+        s.tokens[s.simpleKey.tokenIndex + 1].pos = s.simpleKey.pos)) :
+    ScanInv (scanValuePrepare s)
 ```
 
 **Approach**: `scanValuePrepare` uses `setIfInBounds` to overwrite placeholder positions,
@@ -313,7 +346,7 @@ scanNextToken_preserves_ScanInv
   ├── preprocess_preserves_ScanInv
   │     ├── skipToContent_preserves_ScanInv (NEW: from skipToContent_preserves_tokens + offset_ge)
   │     ├── unwindIndents_preserves_ScanInv (EXISTS)
-  │     └── saveSimpleKey_preserves_ScanInv (NEW)
+  │     └── saveSimpleKey_preserves_ScanInv ✅
   │
   ├── dispatchStructural_preserves_ScanInv
   │     ├── scanDocumentStart_preserves_ScanInv (NEW)
@@ -322,7 +355,7 @@ scanNextToken_preserves_ScanInv
   │     │     └── advance_preserves_ScanInv (EXISTS)
   │     ├── scanDocumentEnd_preserves_ScanInv (NEW)
   │     └── scanDirective_preserves_ScanInv (NEW)
-  │           └── emitAt_preserves_ScanInv (NEW)
+  │           └── emitAt_preserves_ScanInv ✅
   │
   ├── dispatchFlowIndicators_preserves_ScanInv
   │     └── 5× (emit + advance + field_update) — all EXISTS
@@ -331,11 +364,12 @@ scanNextToken_preserves_ScanInv
   │     ├── scanBlockEntry_preserves_ScanInv (NEW)
   │     ├── scanKey_preserves_ScanInv (NEW)
   │     └── scanValue_preserves_ScanInv (NEW)
-  │           └── scanValuePrepare_preserves_ScanInv (NEW)
-  │                 └── setIfInBounds_preserves_ScanInv (NEW)
+  │           └── scanValuePrepare_preserves_ScanInv ✅
+  │                 ├── setIfInBounds_preserves_ScanInv' ✅
+  │                 └── setIfInBounds_twice_preserves_ScanInv' ✅
   │
   └── dispatchContent_preserves_ScanInv
-        └── 7× emitAt_preserves_ScanInv (NEW)
+        └── 7× emitAt_preserves_ScanInv ✅
               ├── scanAnchorOrAlias_preserves_ScanInv
               ├── scanTag_preserves_ScanInv (+ 3 sub-tag variants)
               ├── scanBlockScalar_preserves_ScanInv
@@ -348,17 +382,18 @@ scanNextToken_preserves_ScanInv
 
 | Phase | New theorems | Approach |
 |-------|-------------|----------|
-| **1a** `emitAt_preserves_ScanInv` | 1 | Mirror `emit_preserves_ScanInv`, extra `h_ge` hypothesis |
-| **1b** `saveSimpleKey_preserves_ScanInv` | 1 | 3-way split: unchanged / 2× push at `s.offset` |
-| **1c** `setIfInBounds_preserves_ScanInv` | 1 | Array element replacement with same offset |
-| **1d** `scanValuePrepare_preserves_ScanInv` | 1 | Compose `setIfInBounds` + field updates |
+| **1a** `emitAt_preserves_ScanInv` | ~~1~~ 2 ✅ | + `emitAt_preserves_ScanInv_eq` convenience wrapper |
+| **1b** `saveSimpleKey_preserves_ScanInv` | 1 ✅ | 3-way split: unchanged / 2× `emit` at `s.offset` |
+| **1c** `setIfInBounds_preserves_ScanInv'` | ~~1~~ 2 ✅ | + `setIfInBounds_twice_preserves_ScanInv'` for double replacement |
+| **1d** `scanValuePrepare_preserves_ScanInv` | 2 ✅ | 6 branches; `h_sk` hypothesis; compose `setIfInBounds` + field updates |
 | **2a** `preprocess_preserves_ScanInv` | 2 | `skipToContent + offset_ge` lemma + composition |
 | **2b** structural dispatchers | 3 | `scanDocumentStart/End`, `scanDirective` |
 | **2c** flow indicator dispatchers | 1 | Single theorem, 5 cases all emit+advance+field |
 | **2d** block indicator dispatchers | 3 | `scanBlockEntry`, `scanKey`, `scanValue` |
 | **2e** content dispatchers | 7–10 | Per-scanner + sub-tag variants |
 | **3** composition | 1 | Top-level unfold + split |
-| **Total** | **~21–25** | |
+| **Phase 1 subtotal** | **7 ✅** | |
+| **Total** | **~24–28** (revised) | |
 
 ## Risk assessment
 
@@ -397,12 +432,12 @@ scanNextToken_preserves_ScanInv
 
 ## Recommended execution order
 
-1. **Phase 1a**: `emitAt_preserves_ScanInv` — unlocks all content scanner proofs
-2. **Phase 1b**: `saveSimpleKey_preserves_ScanInv` — unlocks preprocess proof
+1. ~~**Phase 1a**: `emitAt_preserves_ScanInv` — unlocks all content scanner proofs~~ ✅
+2. ~~**Phase 1b**: `saveSimpleKey_preserves_ScanInv` — unlocks preprocess proof~~ ✅
 3. **Phase 2c**: `dispatchFlowIndicators_preserves_ScanInv` — easiest, builds confidence
 4. **Phase 2a**: `preprocess_preserves_ScanInv` — needs 1b + skipToContent offset lemma
 5. **Phase 2b**: `dispatchStructural_preserves_ScanInv` — needs 1a for directive emitAt
-6. **Phase 1c–1d**: `setIfInBounds` + `scanValuePrepare` — needed for scanValue
+6. ~~**Phase 1c–1d**: `setIfInBounds` + `scanValuePrepare` — needed for scanValue~~ ✅
 7. **Phase 2d**: `dispatchBlockIndicators_preserves_ScanInv` — needs 1d
 8. **Phase 2e**: `dispatchContent_preserves_ScanInv` — needs 1a, most sub-theorems
 9. **Phase 3**: Final composition
