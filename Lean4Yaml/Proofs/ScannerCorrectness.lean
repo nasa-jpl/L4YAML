@@ -4939,15 +4939,15 @@ resolution) only overwrites placeholders with the same offset they were created 
 
 -- Compound scanner invariant: tokens ordered and all bounded by current offset.
 -- Defined via helper to avoid dependent-type issues when tokens/offset are rewritten.
-private def ScanInv' (tokens : Array (Positioned YamlToken)) (offset : Nat) : Prop :=
+def ScanInv' (tokens : Array (Positioned YamlToken)) (offset : Nat) : Prop :=
   (∀ i j : Fin tokens.size, i.val < j.val →
     tokens[i].pos.offset ≤ tokens[j].pos.offset) ∧
   (∀ i : Fin tokens.size, tokens[i].pos.offset ≤ offset)
 
-private def ScanInv (s : ScannerState) : Prop := ScanInv' s.tokens s.offset
+def ScanInv (s : ScannerState) : Prop := ScanInv' s.tokens s.offset
 
 -- emit preserves ScanInv: new token at s.offset, which is ≥ all existing.
-private theorem emit_preserves_ScanInv (s : ScannerState) (tok : YamlToken)
+theorem emit_preserves_ScanInv (s : ScannerState) (tok : YamlToken)
     (h : ScanInv s) : ScanInv (s.emit tok) := by
   obtain ⟨h_ord, h_bnd⟩ := h
   unfold ScanInv ScanInv'
@@ -4980,7 +4980,7 @@ private theorem emit_preserves_ScanInv (s : ScannerState) (tok : YamlToken)
       simp [ScannerState.currentPos]
 
 -- advance preserves ScanInv: offset increases, tokens unchanged.
-private theorem advance_preserves_ScanInv (s : ScannerState) (h : ScanInv s) :
+theorem advance_preserves_ScanInv (s : ScannerState) (h : ScanInv s) :
     ScanInv s.advance := by
   obtain ⟨h_ord, h_bnd⟩ := h
   unfold ScanInv ScanInv'
@@ -4991,13 +4991,13 @@ private theorem advance_preserves_ScanInv (s : ScannerState) (h : ScanInv s) :
     exact Nat.le_trans (h_bnd ⟨i, hi⟩) (ScannerProgress.advance_offset_ge s)
 
 -- Field updates (not touching tokens/offset) preserve ScanInv.
-private theorem field_update_preserves_ScanInv (s s' : ScannerState)
+theorem field_update_preserves_ScanInv (s s' : ScannerState)
     (h : ScanInv s) (h_tok : s'.tokens = s.tokens) (h_off : s'.offset = s.offset) :
     ScanInv s' := by
   unfold ScanInv ScanInv'; rw [h_tok, h_off]; exact h
 
 -- unwindIndentsLoop preserves ScanInv (emits blockEnd at current offset).
-private theorem unwindIndentsLoop_preserves_ScanInv (s : ScannerState) (col : Int) (fuel : Nat)
+theorem unwindIndentsLoop_preserves_ScanInv (s : ScannerState) (col : Int) (fuel : Nat)
     (h : ScanInv s) : ScanInv (unwindIndentsLoop s col fuel) := by
   induction fuel generalizing s with
   | zero => unfold unwindIndentsLoop; exact h
@@ -5013,7 +5013,7 @@ private theorem unwindIndentsLoop_preserves_ScanInv (s : ScannerState) (col : In
     · exact h
 
 -- unwindIndents preserves ScanInv.
-private theorem unwindIndents_preserves_ScanInv (s : ScannerState) (col : Int)
+theorem unwindIndents_preserves_ScanInv (s : ScannerState) (col : Int)
     (h : ScanInv s) : ScanInv (unwindIndents s col) := by
   unfold unwindIndents
   exact unwindIndentsLoop_preserves_ScanInv s col s.indents.size h
@@ -5040,7 +5040,7 @@ private axiom scanNextToken_preserves_ScanInv :
       ScanInv s → scanNextToken s = .ok (some s') → ScanInv s'
 
 -- scanLoop preserves ordering via induction on fuel.
-private theorem scanLoop_ordered (s : ScannerState) (fuel : Nat)
+theorem scanLoop_ordered (s : ScannerState) (fuel : Nat)
     (tokens : Array (Positioned YamlToken))
     (h_inv : ScanInv s) (h_ok : scanLoop s fuel = .ok tokens) :
     ∀ i j : Fin tokens.size, i.val < j.val →
