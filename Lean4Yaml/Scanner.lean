@@ -980,58 +980,48 @@ def collectTagHandleLoop (s : ScannerState) (chars : String) (fuel : Nat) : Stri
         (chars, false, s)
     | none => (chars, false, s)
 
+/-- Scan a verbatim tag `!<uri>`.  Pre: scanner after first `!`, peek = `<`. -/
+def scanVerbatimTag (s : ScannerState) (startPos : YamlPos) : ScannerState :=
+  let s_after_open := s.advance
+  let fuel := startPos.offset + s.inputEnd - s_after_open.offset  -- conservative fuel
+  let (uri, s_after_uri) := collectVerbatimTagLoop s_after_open "" fuel
+  s_after_uri.emitAt startPos (.tag "" uri)
+
+/-- Scan a secondary tag `!!suffix`.  Pre: scanner after first `!`, peek = `!`. -/
+def scanSecondaryTag (s : ScannerState) (startPos : YamlPos) : ScannerState :=
+  let s_after_second_bang := s.advance
+  let fuel := startPos.offset + s.inputEnd - s_after_second_bang.offset
+  let (suffix, s_after_suffix) := collectTagSuffixLoop s_after_second_bang "" fuel
+  s_after_suffix.emitAt startPos (.tag "!!" suffix)
+
+/-- Scan a named/primary tag `!handle!suffix` or `!suffix`.
+    Pre: scanner after first `!`, peek ≠ `<` and ≠ `!`. -/
+def scanNamedTag (s : ScannerState) (startPos : YamlPos) (inputEnd : Nat) : ScannerState :=
+  let fuel := inputEnd - s.offset
+  let (chars, foundBang, s_after_handle) := collectTagHandleLoop s "" fuel
+  let (handle, suffix_or_chars) :=
+    if foundBang then
+      ("!" ++ chars ++ "!", "")
+    else
+      ("!", chars)
+  let (suffix, s_after_suffix) :=
+    if foundBang then
+      let fuel' := inputEnd - s_after_handle.offset
+      collectTagSuffixLoop s_after_handle "" fuel'
+    else
+      (suffix_or_chars, s_after_handle)
+  s_after_suffix.emitAt startPos (.tag handle suffix)
+
 /-- Scan a tag property (`!`, `!!suffix`, `!handle!suffix`, `!<uri>`).
-
-    **Implements** (YAML 1.2.2 §6.8.2):
-    - `[96]  c-ns-tag-property` = `c-verbatim-tag | c-ns-shorthand-tag | c-non-specific-tag`
-    - `[97]  c-verbatim-tag`    = `"!<" ns-uri-char+ ">"`
-    - `[98]  c-ns-shorthand-tag` = `c-tag-handle ns-tag-char+`
-    - `[99]  c-non-specific-tag` = `"!"`
-    - `[15]  c-tag` = `"!"`
-
-    Handles three tag forms:
-    1. **Verbatim**: `!<uri>` → `(.tag "" "uri")`
-    2. **Secondary**: `!!suffix` → `(.tag "!!" "suffix")`
-    3. **Named/primary**: `!handle!suffix` or `!suffix` → `(.tag handle suffix)`
-
-    **Pre**: Scanner at `!`.
-    **Post**: Advances past tag, emits `.tag handle suffix`.
-    Sets `simpleKeyAllowed := false`. -/
+    Dispatches to `scanVerbatimTag`, `scanSecondaryTag`, or `scanNamedTag`. -/
 def scanTag (s : ScannerState) : ScannerState :=
   let startPos := s.currentPos
   let s_after_bang := s.advance  -- consume `!`
-  match s_after_bang.peek? with
-  | some '<' =>
-    -- Verbatim tag: !<uri>
-    let s_after_open := s_after_bang.advance
-    let fuel := s.inputEnd - s_after_open.offset
-    let (uri, s_after_uri) := collectVerbatimTagLoop s_after_open "" fuel
-    let s_with_token := s_after_uri.emitAt startPos (.tag "" uri)
-    { s_with_token with simpleKeyAllowed := false }
-  | some '!' =>
-    -- Secondary tag: !!suffix
-    let s_after_second_bang := s_after_bang.advance
-    let fuel := s.inputEnd - s_after_second_bang.offset
-    let (suffix, s_after_suffix) := collectTagSuffixLoop s_after_second_bang "" fuel
-    let s_with_token := s_after_suffix.emitAt startPos (.tag "!!" suffix)
-    { s_with_token with simpleKeyAllowed := false }
-  | _ =>
-    -- Named/primary tag: !handle!suffix or !suffix
-    let fuel := s.inputEnd - s_after_bang.offset
-    let (chars, foundBang, s_after_handle) := collectTagHandleLoop s_after_bang "" fuel
-    let (handle, suffix_or_chars) :=
-      if foundBang then
-        ("!" ++ chars ++ "!", "")
-      else
-        ("!", chars)
-    let (suffix, s_after_suffix) :=
-      if foundBang then
-        let fuel' := s.inputEnd - s_after_handle.offset
-        collectTagSuffixLoop s_after_handle "" fuel'
-      else
-        (suffix_or_chars, s_after_handle)
-    let s_with_token := s_after_suffix.emitAt startPos (.tag handle suffix)
-    { s_with_token with simpleKeyAllowed := false }
+  let s_inner := match s_after_bang.peek? with
+    | some '<' => scanVerbatimTag s_after_bang startPos
+    | some '!' => scanSecondaryTag s_after_bang startPos
+    | _        => scanNamedTag s_after_bang startPos s.inputEnd
+  { s_inner with simpleKeyAllowed := false }
 
 /-! ## Directive Scanning -/
 
@@ -1941,6 +1931,81 @@ def parseBlockHeaderLoop (s : ScannerState) (chomp : ChompStyle) (explicitOffset
       else (chomp, explicitOffset, s)
     | none => (chomp, explicitOffset, s)
 
+/-- Skip optional comment after block-scalar header whitespace.
+
+    **Implements** part of `s-b-comment` (§6.7 / production [76]):
+    `c-nb-comment-text` requires `#` preceded by whitespace.
+
+    **Decomposed for provability**: 3 branch points (peek?, peekBack?, commentOk).
+    Extracted from `scanBlockScalar` so proofs unfold only this piece. -/
+def scanBlockScalarSkipComment (s : ScannerState) : ScannerState :=
+  match s.peek? with
+  | some '#' =>
+    -- Check raw input: # must be preceded by whitespace (not at start-of-line here)
+    let commentOk := match s.peekBack? with
+      | some c => isWhiteSpace c || isLineBreak c || c == '\uFEFF'  -- BOM is transparent (§5.2)
+      | none => false
+    if commentOk then skipToEndOfLine s  -- c-nb-comment-text [77]: whitespace preceded `#`
+    else s  -- `#` without preceding whitespace — not a comment
+  | _ => s
+
+/-- Consume required newline (or EOF) after block-scalar header.
+
+    **Implements** `b-comment` (§6.7 / production [76]):
+    expects a line break or end-of-input after the header line.
+
+    **Decomposed for provability**: 3 branch points (peek?, isLineBreak, hasMore).
+    Extracted from `scanBlockScalar` so proofs unfold only this piece. -/
+def scanBlockScalarConsumeNewline (s : ScannerState) : Except ScanError ScannerState :=
+  match s.peek? with
+  | some c =>
+    if isLineBreak c then .ok (consumeNewline s)
+    else if !s.hasMore then .ok s
+    else .error (.expectedNewline s.line)
+  | none => .ok s
+
+/-- Collect block-scalar body: detect indentation, collect content, apply chomp/fold, emit token.
+
+    **Implements** (YAML 1.2.2 §8.1):
+    - `[163] c-indentation-indicator(m)` — explicit or auto-detect
+    - `[171] l-nb-literal-text(n)` / folded content
+    - `[164] c-chomping-indicator(t)` — strip / clip / keep
+
+    **Decomposed for provability**: ~5 branch points but most are pure string
+    computation (chomp, fold) that don't affect scanner-state fields used in proofs.
+    Extracted from `scanBlockScalar` so proofs for `simpleKey`, `simpleKeyStack`,
+    `tokens` need only unfold this smaller definition.
+
+    **Pre**: `s_after_newline` is past the header line; `s_orig` provides `currentIndent` and `inputEnd`.
+    **Post**: Emits `.scalar content style`, clears simpleKey. -/
+def scanBlockScalarBody (s_orig : ScannerState) (s_after_newline : ScannerState)
+    (chomp : ChompStyle) (explicitOffset : Option Nat) (isLiteral : Bool) (startPos : YamlPos) :
+    Except ScanError ScannerState :=
+  let parentIndent : Int := s_orig.currentIndent
+  let minContentIndent : Nat := (max 0 (parentIndent + 1)).toNat
+  let (contentIndent, autoDetectErr?) := match explicitOffset with
+    | some m =>
+      ((max 0 (parentIndent + (m : Int))).toNat, (none : Option ScanError))
+    | none =>
+      autoDetectBlockScalarIndent s_after_newline minContentIndent s_orig.inputEnd
+  match autoDetectErr? with
+  | some err => .error err
+  | none =>
+    let fuel := s_orig.inputEnd - s_after_newline.offset + 1
+    let (rawContent, s_after_content) := collectBlockScalarLoop s_after_newline "" fuel contentIndent s_orig.inputEnd
+    let stripTrailingNewlines (str : String) : String :=
+      String.ofList (str.toList.reverse.dropWhile (· == '\n') |>.reverse)
+    let content := match chomp with
+      | .strip => stripTrailingNewlines rawContent
+      | .clip =>
+        let stripped := stripTrailingNewlines rawContent
+        if rawContent.endsWith "\n" then stripped ++ "\n" else stripped
+      | .keep => rawContent
+    let content := if isLiteral then content else foldBlockContent content
+    let style := if isLiteral then ScalarStyle.literal else ScalarStyle.folded
+    let s_with_token := s_after_content.emitAt startPos (.scalar content style)
+    .ok { s_with_token with simpleKeyAllowed := true, simpleKey := { possible := false } }
+
 /-- Scan a block scalar (literal `|` or folded `>`).
 
     **Implements** (YAML 1.2.2 §8.1):
@@ -1952,79 +2017,22 @@ def parseBlockHeaderLoop (s : ScannerState) (chomp : ChompStyle) (explicitOffset
     - `[171] l-nb-literal-text(n)` = `l-empty(n,BLOCK-IN)* s-indent(n) nb-char+`
     - `[63]  s-indent(n)` = `s-space × n`  ← **spaces only**
 
-    **Variable classification:**
-    | Variable          | Kind     | Spec equivalent | Description |
-    |-------------------|----------|-----------------|-------------|
-    | `startPos`        | Pos      | —               | Position of `\|`/`>` for token attribution |
-    | `parentIndent`    | Position | `n`             | Column of `\|`/`>` indicator (caller's indent level) |
-    | `explicitOffset`  | Distance | `m` (explicit)  | 1–9 from `c-indentation-indicator`, or `none` |
-    | `minContentIndent`| Position | `n + 1`         | Floor: spec requires `m ≥ 1`, so content ≥ `n + 1` |
-    | `contentIndent`   | Position | `n + m`         | Target column for content lines |
-    | `spacesConsumed`  | Distance | count in `s-indent(n+m)` | Spaces matched at start of content line |
+    **Decomposed for provability**: Comment handling (`scanBlockScalarSkipComment`,
+    3 branches), newline consumption (`scanBlockScalarConsumeNewline`, 3 branches),
+    and body processing (`scanBlockScalarBody`, ≤5 branches) are each extracted.
+    This wrapper has only 1 branch point (match on newline result), eliminating
+    the need for `set_option maxHeartbeats 400000` in proofs.
 
     **Pre**: Scanner at `|` or `>`. `s.col` = `n` (parent indent level).
     **Post**: Scanner past block scalar content. Emits `.scalar content style`.
     **Error**: Missing newline after header. -/
-def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState := do
-  let startPos := s.currentPos  -- Pos: position of `|`/`>` indicator
-  let isLiteral := s.peek? == some '|'
-  let s' := s.advance
-  -- Parse header: c-b-block-header(t,m) [162]
-  -- Uses structural recursion on fuel (bounded by 2 header characters).
-  let (chomp, explicitOffset, s') := parseBlockHeaderLoop s' .clip none 2
-  -- s-b-comment: skip trailing whitespace and optional comment after header
-  -- §6.7: c-nb-comment-text (#) requires preceding s-separate-in-line (≥1 s-white).
-  let s' := skipWhitespace s'  -- s-separate-in-line [66]: s-white* (tabs ok here)
-  let s' := match s'.peek? with
-    | some '#' =>
-      -- Check raw input: # must be preceded by whitespace (not at start-of-line here)
-      let commentOk := match s'.peekBack? with
-        | some c => isWhiteSpace c || isLineBreak c || c == '\uFEFF'  -- BOM is transparent (§5.2)
-        | none => false
-      if commentOk then skipToEndOfLine s'  -- c-nb-comment-text [77]: whitespace preceded `#`
-      else s'  -- `#` without preceding whitespace — not a comment
-    | _ => s'
-  -- b-comment [76]: consume newline after header
-  let s' ← match s'.peek? with
-    | some c =>
-      if isLineBreak c then .ok (consumeNewline s')
-      else if !s'.hasMore then .ok s'
-      else .error (.expectedNewline s'.line)
-    | none => .ok s'
-  -- Determine content indentation: n+m
-  -- parentIndent = n = parent block's indentation level (§8.1.2).
-  let parentIndent : Int := s.currentIndent
-  have h_parentIndent : parentIndent = s.currentIndent := rfl
-  -- minContentIndent (Position) = n+1: spec §8.1.3 requires m ≥ 1
-  let minContentIndent : Nat := (max 0 (parentIndent + 1)).toNat
-  have h_minFloor : (0 : Int) ≤ max 0 (parentIndent + 1) := by omega
-  let (contentIndent, autoDetectErr?) := match explicitOffset with
-    | some m =>
-      -- Explicit: contentIndent (Position) = parentIndent (Position) + m (Distance)
-      ((max 0 (parentIndent + (m : Int))).toNat, (none : Option ScanError))
-    | none =>
-      -- Auto-detect using structural recursion
-      autoDetectBlockScalarIndent s' minContentIndent s.inputEnd
-  if let some err := autoDetectErr? then
-    throw err
-  -- Collect content: l-literal-content / l-folded-content using structural recursion
-  let fuel := s.inputEnd - s'.offset + 1
-  let (rawContent, s_after_content) := collectBlockScalarLoop s' "" fuel contentIndent s.inputEnd
-  -- Apply chomp: c-chomping-indicator(t) [164]
-  let stripTrailingNewlines (str : String) : String :=
-    String.ofList (str.toList.reverse.dropWhile (· == '\n') |>.reverse)
-  let content := match chomp with
-    | .strip => stripTrailingNewlines rawContent        -- t=STRIP: no final line breaks
-    | .clip =>
-      let stripped := stripTrailingNewlines rawContent
-      if rawContent.endsWith "\n" then stripped ++ "\n" else stripped  -- t=CLIP: single final
-    | .keep => rawContent                               -- t=KEEP: all trailing line breaks
-  -- Apply folding (for `>` only): l-folded-content [174]
-  let content := if isLiteral then content else foldBlockContent content
-  let style := if isLiteral then ScalarStyle.literal else ScalarStyle.folded
-  -- Block scalars cannot be implicit keys (§7.4): clear stale simpleKey.
-  let s_with_token := s_after_content.emitAt startPos (.scalar content style)
-  .ok { s_with_token with simpleKeyAllowed := true, simpleKey := { possible := false } }
+def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState :=
+  let header := parseBlockHeaderLoop s.advance .clip none 2
+  let s_after_comment := scanBlockScalarSkipComment (skipWhitespace header.2.2)
+  match scanBlockScalarConsumeNewline s_after_comment with
+  | .error e => .error e
+  | .ok s_after_newline =>
+    scanBlockScalarBody s s_after_newline header.1 header.2.1 (s.peek? == some '|') s.currentPos
 
 /-! ## Main Scanner Loop -/
 
