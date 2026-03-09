@@ -1371,6 +1371,52 @@ def PlainContentInv (content : String) (spaces : String)
 
 This goes in a new file `Lean4Yaml/Proofs/ScannerPlainContent.lean`.
 
+###### B3.2 Reflections
+
+**Delivered:**
+
+- **New file:** `Lean4Yaml/Proofs/ScannerPlainContent.lean` (~50 lines)
+  - `PlainContentInv` structure with 5 fields:
+    1. `content_noColonSpace` — no `: ` pattern in content
+    2. `content_noSpaceHash` — no ` #` pattern in content
+    3. `content_noFlowIndicators` — no flow indicators when `inFlow`
+    4. `spaces_whitespace` — spaces buffer is pure whitespace
+    5. `boundary_colon` — content ending with `:` implies spaces is empty
+  - `PlainContentInv.empty` — base case for empty content/spaces
+
+- **Build:** 215/215 (was 213 pre-B3.2), 0 sorry, 0 axioms, clean.
+
+**Design decisions vs plan:**
+
+1. **Dropped `firstChar` parameter.** The plan tracked `firstChar : Option
+   (Char × Option Char)` for `canStartPlainScalarProp`. Analysis showed this is
+   unnecessary: `validPlainFirst` depends only on the first character of content,
+   which never changes once set (we only append). The entry condition can be
+   established once in B3.4 via `scanPlainScalar`'s `canStartPlainScalarBool` check
+   and carried separately — no need to thread it through the loop invariant.
+
+2. **Added `boundary_colon` condition.** The plan's sketch had a placeholder
+   `content.toList.getLast? ≠ some ':' ∨ True` (trivially true). Replaced with
+   the real condition: `content.toList.getLast? = some ':' → spaces = ""`. This
+   is the key boundary safety property: it prevents `: ` from appearing at the
+   content–spaces junction when spaces are flushed. It is maintainable because
+   the scanner's `_terminates?` ensures a non-terminating `:` is always followed
+   by a non-whitespace char (which gets appended to content before any whitespace
+   can accumulate in spaces).
+
+3. **Used `structure` instead of nested `∧`.** Named fields make proof
+   construction and destruction cleaner than anonymous conjunction chains.
+
+4. **No `noSpaceHash` boundary condition needed.** Analysis showed that the
+   `#` termination check in `_terminates?` (when `spaces.length > 0`) and the
+   fact that spaces contains only whitespace (no `#`) fully prevent ` #` at
+   all boundaries without additional invariant tracking.
+
+5. **`List.not_mem_nil` vs `simp [String.toList]`.** Initial attempt used
+   `absurd hc (List.not_mem_nil _)` for the `spaces_whitespace` of the empty
+   case, but `"".toList` doesn't reduce to `[]` at the type level in Lean 4.28.
+   Fixed with `simp [String.toList]` which handles the normalization.
+
 ##### **B3.3: Prove `collectPlainScalarLoop_preserves_contentInv`** (~300–500 lines)
 
 The core theorem:
