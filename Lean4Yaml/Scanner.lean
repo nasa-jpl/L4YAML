@@ -3,6 +3,7 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml.Token
+import Lean4Yaml.CharPredicates
 
 /-!
 # YAML Scanner (Tokenizer)
@@ -83,6 +84,7 @@ Each scanning function specifies:
 namespace Lean4Yaml.Scanner
 
 open Lean4Yaml
+open Lean4Yaml.CharPredicates
 
 /-! ## Scanner State -/
 
@@ -289,25 +291,11 @@ def ScannerState.emitAt (s : ScannerState) (pos : YamlPos) (tok : YamlToken) : S
 
 /-! ## Character Classification
 
-    YAML 1.2.2 character sets used by the scanner:
-    - `[24][25][26] b-char` = line feed / carriage return → `isLineBreak`
-    - `[33] s-white` = space / tab → `isWhiteSpace`
-    - `[22] c-indicator` = all indicator characters → `isIndicator`
-    - `[23] c-flow-indicator` = `,`, `[`, `]`, `{`, `}` → `isFlowIndicator`
+    Character predicates are imported from `CharPredicates.lean` via
+    `open Lean4Yaml.CharPredicates`. The `*Bool` names are used throughout:
+    `isLineBreakBool`, `isWhiteSpaceBool`, `isBlankBool`,
+    `isFlowIndicatorBool`, `isIndicatorBool`.
 -/
-
-/-- `[24][25][26] b-char`: line feed (`\n`) or carriage return (`\r`). -/
-def isLineBreak (c : Char) : Bool := c == '\n' || c == '\r'
-/-- `[33] s-white`: space or tab. -/
-def isWhiteSpace (c : Char) : Bool := c == ' ' || c == '\t'
-/-- Blank: whitespace or line break. -/
-def isBlank (c : Char) : Bool := isWhiteSpace c || isLineBreak c
-/-- `[23] c-flow-indicator`: `,`, `[`, `]`, `{`, `}`. -/
-def isFlowIndicator (c : Char) : Bool := c ∈ [',', '[', ']', '{', '}']
-/-- `[22] c-indicator`: all YAML indicator characters. -/
-def isIndicator (c : Char) : Bool :=
-  c ∈ ['-', '?', ':', ',', '[', ']', '{', '}', '#', '&', '*', '!', '|', '>',
-       '\'', '"', '%', '@', '`']
 
 /-! ## Whitespace Consumption
 
@@ -356,7 +344,7 @@ def skipWhitespaceLoop (s : ScannerState) (fuel : Nat) : ScannerState :=
   | 0 => s
   | fuel' + 1 =>
     match s.peek? with
-    | some c => if isWhiteSpace c then skipWhitespaceLoop s.advance fuel' else s
+    | some c => if isWhiteSpaceBool c then skipWhitespaceLoop s.advance fuel' else s
     | none => s
 termination_by fuel
 
@@ -392,7 +380,7 @@ def skipToEndOfLineLoop (s : ScannerState) (fuel : Nat) : ScannerState :=
   | 0 => s
   | fuel' + 1 =>
     match s.peek? with
-    | some c => if isLineBreak c then s else skipToEndOfLineLoop s.advance fuel'
+    | some c => if isLineBreakBool c then s else skipToEndOfLineLoop s.advance fuel'
     | none => s
 termination_by fuel
 
@@ -438,7 +426,7 @@ def skipToContentWs (s : ScannerState) : Except ScanError ScannerState :=
         match probe.peek? with
         | some '#' => .ok (skipWhitespace s1)      -- tab before comment: allowed
         | some c =>
-          if isLineBreak c then .ok (skipWhitespace s1)  -- tab on blank line: allowed
+          if isLineBreakBool c then .ok (skipWhitespace s1)  -- tab on blank line: allowed
           else
             -- Tab followed by content: tab used as indentation — forbidden §6.1
             .error (.tabInIndentation s1.line s1.col)
@@ -459,7 +447,7 @@ def skipToContentComment (s : ScannerState) : ScannerState :=
   match s.peek? with
   | some '#' =>
     let commentOk := s.col == 0 || match s.peekBack? with
-      | some c => isWhiteSpace c || isLineBreak c || c == '\uFEFF'  -- BOM is transparent (§5.2)
+      | some c => isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF'  -- BOM is transparent (§5.2)
       | none => true   -- start of input
     if commentOk then skipToEndOfLine s else s
   | _ => s
@@ -483,7 +471,7 @@ def skipToContentLoop (s : ScannerState) (fuel : Nat) : Except ScanError Scanner
       let s2 := skipToContentComment s1
       match s2.peek? with
       | some c =>
-        if isLineBreak c then
+        if isLineBreakBool c then
           let s3 := consumeNewline s2
           -- §7.4.2: In flow sequences, implicit keys are restricted to a
           -- single line.  Don't re-enable simple keys on newline so that
@@ -590,7 +578,7 @@ def atDocumentStart (s : ScannerState) : Bool :=
   && s.peekAt? 2 == some '-'
   && match s.peekAt? 3 with
      | none => true
-     | some c => isBlank c
+     | some c => isBlankBool c
 
 /-- Check if the scanner is at a document-end marker (`...`).
 
@@ -608,7 +596,7 @@ def atDocumentEnd (s : ScannerState) : Bool :=
   && s.peekAt? 2 == some '.'
   && match s.peekAt? 3 with
      | none => true
-     | some c => isBlank c
+     | some c => isBlankBool c
 
 /-- Check if the scanner is at any document boundary (`---` or `...`). -/
 def atDocumentBoundary (s : ScannerState) : Bool :=
@@ -925,7 +913,7 @@ def collectAnchorNameLoop (s : ScannerState) (name : String) (fuel : Nat) : Stri
   | fuel' + 1 =>
     match s.peek? with
     | some c =>
-      if !isFlowIndicator c && !isWhiteSpace c && !isLineBreak c then
+      if !isFlowIndicatorBool c && !isWhiteSpaceBool c && !isLineBreakBool c then
         collectAnchorNameLoop s.advance (name.push c) fuel'
       else
         (name, s)
@@ -959,7 +947,7 @@ def collectTagSuffixLoop (s : ScannerState) (suffix : String) (fuel : Nat) : Str
   | fuel' + 1 =>
     match s.peek? with
     | some c =>
-      if !isWhiteSpace c && !isLineBreak c && !isFlowIndicator c then
+      if !isWhiteSpaceBool c && !isLineBreakBool c && !isFlowIndicatorBool c then
         collectTagSuffixLoop s.advance (suffix.push c) fuel'
       else
         (suffix, s)
@@ -974,7 +962,7 @@ def collectTagHandleLoop (s : ScannerState) (chars : String) (fuel : Nat) : Stri
     match s.peek? with
     | some '!' => (chars, true, s.advance)
     | some c =>
-      if !isWhiteSpace c && !isLineBreak c && !isFlowIndicator c then
+      if !isWhiteSpaceBool c && !isLineBreakBool c && !isFlowIndicatorBool c then
         collectTagHandleLoop s.advance (chars.push c) fuel'
       else
         (chars, false, s)
@@ -1032,7 +1020,7 @@ def collectDirectiveNameLoop (s : ScannerState) (name : String) (fuel : Nat) : S
   | fuel' + 1 =>
     match s.peek? with
     | some c =>
-      if !isWhiteSpace c && !isLineBreak c then
+      if !isWhiteSpaceBool c && !isLineBreakBool c then
         collectDirectiveNameLoop s.advance (name.push c) fuel'
       else
         (name, s)
@@ -1072,7 +1060,7 @@ def collectTagHandleDirectiveLoop (s : ScannerState) (handle : String) (fuel : N
   | fuel' + 1 =>
     match s.peek? with
     | some c =>
-      if !isWhiteSpace c then
+      if !isWhiteSpaceBool c then
         collectTagHandleDirectiveLoop s.advance (handle.push c) fuel'
       else
         (handle, s)
@@ -1085,7 +1073,7 @@ def collectTagPrefixLoop (s : ScannerState) (pfx : String) (fuel : Nat) : String
   | fuel' + 1 =>
     match s.peek? with
     | some c =>
-      if !isWhiteSpace c && !isLineBreak c then
+      if !isWhiteSpaceBool c && !isLineBreakBool c then
         collectTagPrefixLoop s.advance (pfx.push c) fuel'
       else
         (pfx, s)
@@ -1114,7 +1102,7 @@ def scanYamlDirective (s : ScannerState) (s_after_ws : ScannerState) (startPos :
   | some '#' =>
     if s_validated.col == colBeforeWs then
       throw (.directiveTrailingContent s_validated.line s_validated.col)
-  | some c => if !isLineBreak c then throw (.directiveTrailingContent s_validated.line s_validated.col)
+  | some c => if !isLineBreakBool c then throw (.directiveTrailingContent s_validated.line s_validated.col)
   | none => pure ()
   let s_with_token := s_validated.emitAt startPos (.versionDirective major.toNat! minor.toNat!)
   .ok { s_with_token with seenYamlDirective := true, directivesPresent := true }
@@ -1240,7 +1228,7 @@ def scanDocumentEnd (s : ScannerState) : Except ScanError ScannerState := do
   | none => pure ()  -- EOF is fine
   | some '#' => pure ()  -- comment is fine
   | some c =>
-    if isLineBreak c then pure ()  -- newline is fine
+    if isLineBreakBool c then pure ()  -- newline is fine
     else throw (.trailingContentAfterDocEnd s''.line s''.col)
   .ok result
 
@@ -1347,7 +1335,7 @@ def foldQuotedNewlinesLoop (s : ScannerState) (emptyCount : Nat) (fuel : Nat) :
     let s_skipped := skipSpaces s
     match s_skipped.peek? with
     | some c =>
-      if isLineBreak c then
+      if isLineBreakBool c then
         foldQuotedNewlinesLoop (consumeNewline s_skipped) (emptyCount + 1) fuel'
       else (saved, emptyCount)
     | none => (s, emptyCount)
@@ -1402,7 +1390,7 @@ def validateTrailingContent (s : ScannerState) (inputEnd : Nat) : Except ScanErr
   match probe.peek? with
   | none => pure ()
   | some c =>
-    if isLineBreak c || c == '#' || c == ':' then
+    if isLineBreakBool c || c == '#' || c == ':' then
       pure ()
     else
       throw (.trailingContent probe.line probe.col)
@@ -1424,7 +1412,7 @@ def collectDoubleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
       let s_after_backslash := s.advance
       match s_after_backslash.peek? with
       | some c =>
-        if isLineBreak c then do
+        if isLineBreakBool c then do
           -- Escaped line break: consume and skip whitespace
           let s_after_newline := consumeNewline s_after_backslash
           let s_after_ws := skipWhitespace s_after_newline
@@ -1436,7 +1424,7 @@ def collectDoubleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
           collectDoubleQuotedLoop s_after_escape content' fuel' startPos inFlow currentIndent inputEnd
       | none => .error (.unterminatedEscape s_after_backslash.line)
     | some c =>
-      if isLineBreak c then do
+      if isLineBreakBool c then do
         -- Line break: fold newlines
         let content_trimmed := trimTrailingWS content
         let (folded, s') ← foldQuotedNewlines s
@@ -1501,7 +1489,7 @@ def collectSingleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
         -- Closing quote found
         .ok (content, s_after_quote)
     | some c =>
-      if isLineBreak c then do
+      if isLineBreakBool c then do
         -- Line break: fold newlines
         let content_trimmed := trimTrailingWS content
         let (folded, s') ← foldQuotedNewlines s
@@ -1544,33 +1532,11 @@ def scanSingleQuoted (s : ScannerState) : Except ScanError ScannerState := do
   let s_with_token := s_after_close.emitAt startPos (.scalar content .singleQuoted)
   .ok { s_with_token with simpleKeyAllowed := false }
 
-/--
-Can character `c` start a plain scalar, given the next character and flow context?
+/-! ### Plain Scalar Character Predicates
 
-**YAML 1.2.2**: [123] ns-plain-first(c) (§7.3.3)
-
-Base rule: excludes indicators, whitespace, and line breaks.
-Exception: `-`, `?`, `:` are allowed if followed by a safe character
-(`ns-plain-safe` — non-blank, and in flow context, non-flow-indicator).
+    `canStartPlainScalarBool` and `isPlainSafeBool` are imported from
+    `CharPredicates.lean` via `open Lean4Yaml.CharPredicates`.
 -/
-def canStartPlainScalar (c : Char) (next : Option Char) (inFlow : Bool) : Bool :=
-  if c == '-' || c == '?' || c == ':' then
-    match next with
-    | some n => !isWhiteSpace n && !isLineBreak n && !(inFlow && isFlowIndicator n)
-    | none => false
-  else
-    !isIndicator c && !isWhiteSpace c && !isLineBreak c
-
-/-- Check if character `c` can follow `#` to prevent valid `ns-plain-safe`
-    characters from being confused with plain scalars.  Used in `scanPlainScalar`.
-
-    **Implements** (YAML 1.2.2 §7.3.3):
-    - `[126] ns-plain-safe(c)` — excludes flow indicators in flow context -/
-def isPlainSafe (c : Char) (inFlow : Bool) : Bool :=
-  if inFlow then
-    !isWhiteSpace c && !isLineBreak c && !isFlowIndicator c
-  else
-    !isWhiteSpace c && !isLineBreak c
 
 -- Helper: Skip blank lines and count them (for plain scalar block context)
 def skipBlankLinesLoop (s : ScannerState) (cnt : Nat) (fuel : Nat) (inputEnd : Nat) :
@@ -1582,7 +1548,7 @@ def skipBlankLinesLoop (s : ScannerState) (cnt : Nat) (fuel : Nat) (inputEnd : N
     let s_after_spaces := skipSpaces s
     match s_after_spaces.peek? with
     | some c =>
-      if isLineBreak c then
+      if isLineBreakBool c then
         let s_after_newline := consumeNewline s_after_spaces
         skipBlankLinesLoop s_after_newline (cnt + 1) fuel' inputEnd
       else
@@ -1613,24 +1579,24 @@ def collectPlainScalarLoop (s : ScannerState) (content : String) (spaces : Strin
         -- `: ` terminates at value indicator position
         let next := s.peekAt? 1
         let terminates := match next with
-          | some n => isBlank n || (inFlow && isFlowIndicator n)
+          | some n => isBlankBool n || (inFlow && isFlowIndicatorBool n)
           | none => true
         if terminates then
           .ok { content, spaces, state := s, terminated := true }
         else
           -- Regular `:` character (not a terminator)
-          if !isPlainSafe c inFlow then
+          if !isPlainSafeBool c inFlow then
             .ok { content, spaces, state := s, terminated := true }
           else
             let content' := content ++ spaces ++ (String.singleton c)
             collectPlainScalarLoop s.advance content' "" fuel' inFlow contentIndent inputEnd
-      else if inFlow && isFlowIndicator c then
+      else if inFlow && isFlowIndicatorBool c then
         -- Flow indicators terminate in flow context
         .ok { content, spaces, state := s, terminated := true }
       else if s.col == 0 && atDocumentBoundary s then
         -- Document boundary at col 0 terminates
         .ok { content, spaces, state := s, terminated := true }
-      else if isLineBreak c then
+      else if isLineBreakBool c then
         -- Line break: check continuation
         if inFlow then do
           let (folded, s_after_fold) ← foldQuotedNewlines s
@@ -1660,12 +1626,12 @@ def collectPlainScalarLoop (s : ScannerState) (content : String) (spaces : Strin
             else
               content ++ " "
             collectPlainScalarLoop s_after_spaces content' "" fuel' inFlow contentIndent inputEnd
-      else if isWhiteSpace c then
+      else if isWhiteSpaceBool c then
         -- Whitespace accumulates
         collectPlainScalarLoop s.advance content (spaces.push c) fuel' inFlow contentIndent inputEnd
       else
         -- Regular content character
-        if !isPlainSafe c inFlow then
+        if !isPlainSafeBool c inFlow then
           .ok { content, spaces, state := s, terminated := true }
         else
           let content' := content ++ spaces ++ (String.singleton c)
@@ -1675,8 +1641,8 @@ def collectPlainScalarLoop (s : ScannerState) (content : String) (spaces : Strin
 
     **Implements** (YAML 1.2.2 §7.3.3):
     - `[131] ns-plain(n,c)` = plain scalar content across potentially multiple lines
-    - `[123] ns-plain-first(c)` — first character restrictions (via `canStartPlainScalar`)
-    - `[126] ns-plain-safe(c)` — safe continuation characters (via `isPlainSafe`)
+    - `[123] ns-plain-first(c)` — first character restrictions (via `canStartPlainScalarBool`)
+    - `[126] ns-plain-safe(c)` — safe continuation characters (via `isPlainSafeBool`)
     - `[129] ns-plain-char(c)` — `:` and `#` context-sensitive handling
     - `[133] ns-plain-multi-line(c)` — continuation lines must be indented past block level
 
@@ -1689,7 +1655,7 @@ def collectPlainScalarLoop (s : ScannerState) (content : String) (spaces : Strin
     | `contentIndent`  | Position | Floor column for continuation lines |
     | `startPos`       | Pos      | Position for token attribution |
 
-    **Pre**: Scanner at a character satisfying `canStartPlainScalar`.
+    **Pre**: Scanner at a character satisfying `canStartPlainScalarBool`.
     **Post**: Advances past all plain scalar content (including folded continuations),
     emits `.scalar content .plain`. Sets `simpleKeyAllowed := false`.
     **Error**: None directly (terminates by breaking). -/
@@ -1819,7 +1785,7 @@ def autoDetectBlockScalarIndentLoop (probe : ScannerState) (maxWSCol maxWSLine :
       -- Tab in indentation zone
       if c == '\t' && probe_after_spaces.col < minContentIndent then
         (0, maxWSLine, probe, some (.tabInIndentation probe_after_spaces.line probe_after_spaces.col))
-      else if isLineBreak c then
+      else if isLineBreakBool c then
         -- Whitespace-only line: track max column
         let maxWSCol' := if probe_after_spaces.col > maxWSCol then probe_after_spaces.col else maxWSCol
         let maxWSLine' := if probe_after_spaces.col > maxWSCol then probe_after_spaces.line else maxWSLine
@@ -1865,7 +1831,7 @@ def collectLineContentLoop (s : ScannerState) (content : String) (fuel : Nat) :
   | fuel' + 1 =>
     match s.peek? with
     | some c =>
-      if isLineBreak c then
+      if isLineBreakBool c then
         (content, s)
       else
         collectLineContentLoop s.advance (content.push c) fuel'
@@ -1887,12 +1853,12 @@ def collectBlockScalarLoop (s : ScannerState) (rawContent : String) (fuel : Nat)
       match s_after_spaces.peek? with
       | none => (rawContent, s_after_spaces)
       | some c =>
-        if isLineBreak c then
+        if isLineBreakBool c then
           -- l-empty line: fewer than contentIndent spaces followed by line break
           let rawContent' := rawContent.push '\n'
           let s' := consumeNewline s_after_spaces
           collectBlockScalarLoop s' rawContent' fuel' contentIndent inputEnd
-        else if spacesConsumed < contentIndent && !isLineBreak c then
+        else if spacesConsumed < contentIndent && !isLineBreakBool c then
           -- Less-indented non-empty line: end of block scalar content
           (rawContent, s)
         else
@@ -1903,7 +1869,7 @@ def collectBlockScalarLoop (s : ScannerState) (rawContent : String) (fuel : Nat)
           -- Consume line break if present
           match s_after_line.peek? with
           | some c' =>
-            if isLineBreak c' then
+            if isLineBreakBool c' then
               let rawContent'' := rawContent'.push '\n'
               let s' := consumeNewline s_after_line
               collectBlockScalarLoop s' rawContent'' fuel' contentIndent inputEnd
@@ -1943,7 +1909,7 @@ def scanBlockScalarSkipComment (s : ScannerState) : ScannerState :=
   | some '#' =>
     -- Check raw input: # must be preceded by whitespace (not at start-of-line here)
     let commentOk := match s.peekBack? with
-      | some c => isWhiteSpace c || isLineBreak c || c == '\uFEFF'  -- BOM is transparent (§5.2)
+      | some c => isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF'  -- BOM is transparent (§5.2)
       | none => false
     if commentOk then skipToEndOfLine s  -- c-nb-comment-text [77]: whitespace preceded `#`
     else s  -- `#` without preceding whitespace — not a comment
@@ -1954,12 +1920,12 @@ def scanBlockScalarSkipComment (s : ScannerState) : ScannerState :=
     **Implements** `b-comment` (§6.7 / production [76]):
     expects a line break or end-of-input after the header line.
 
-    **Decomposed for provability**: 3 branch points (peek?, isLineBreak, hasMore).
+    **Decomposed for provability**: 3 branch points (peek?, isLineBreakBool, hasMore).
     Extracted from `scanBlockScalar` so proofs unfold only this piece. -/
 def scanBlockScalarConsumeNewline (s : ScannerState) : Except ScanError ScannerState :=
   match s.peek? with
   | some c =>
-    if isLineBreak c then .ok (consumeNewline s)
+    if isLineBreakBool c then .ok (consumeNewline s)
     else if !s.hasMore then .ok s
     else .error (.expectedNewline s.line)
   | none => .ok s
@@ -2069,13 +2035,13 @@ def saveSimpleKey (st : ScannerState) : ScannerState :=
 /-- Check whether a block-entry indicator (`-`) is followed by a blank or EOF. -/
 def isBlockEntryCandidate (s : ScannerState) : Bool :=
   match s.peekAt? 1 with
-  | some n => isBlank n
+  | some n => isBlankBool n
   | none => true
 
 /-- Check whether a key indicator (`?`) is followed by a blank, flow indicator, or EOF. -/
 def isKeyCandidate (s : ScannerState) : Bool :=
   match s.peekAt? 1 with
-  | some n => isBlank n || (s.inFlow && isFlowIndicator n)
+  | some n => isBlankBool n || (s.inFlow && isFlowIndicatorBool n)
   | none => true
 
 /-- Check whether a value indicator (`:`) should be recognized.
@@ -2084,7 +2050,7 @@ def isKeyCandidate (s : ScannerState) : Bool :=
 def isValueCandidate (s : ScannerState) : Bool :=
   if s.inFlow && s.simpleKey.possible then true
   else match s.peekAt? 1 with
-  | some n => isBlank n || (s.inFlow && isFlowIndicator n)
+  | some n => isBlankBool n || (s.inFlow && isFlowIndicatorBool n)
   | none => true
 
 /-- §7.5: After a flow collection close returns us to block context,
@@ -2096,7 +2062,7 @@ def validateFlowClose (s' : ScannerState) : Except ScanError Unit := do
     match probe.peek? with
     | none => pure ()
     | some pc =>
-      if isLineBreak pc || pc == '#' || pc == ':' then pure ()
+      if isLineBreakBool pc || pc == '#' || pc == ':' then pure ()
       else return ← .error (.trailingContent probe.line probe.col)
 
 /-- Preprocessing phase of `scanNextToken`.
@@ -2212,7 +2178,7 @@ def scanNextToken_dispatchContent (s : ScannerState) (c : Char) :
       { s' with simpleKey := { s'.simpleKey with endLine := s'.line } }
     else s'
     return s'
-  if canStartPlainScalar c (s.peekAt? 1) s.inFlow then
+  if canStartPlainScalarBool c (s.peekAt? 1) s.inFlow then
     let s' ← scanPlainScalar s; return s'
   .error (.unexpectedChar c s.line s.col)
 

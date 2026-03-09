@@ -1,14 +1,14 @@
 import Lean4Yaml.Grammar
 import Lean4Yaml.Scanner
+import Lean4Yaml.CharPredicates
 
 /-!
 # Character Classification Correspondence Proofs (Layer 1c)
 
 This module proves that the `Prop`-valued character classifiers in
-`Grammar.lean` correspond exactly to the `Bool`-valued classifiers
-in `Scanner.lean`.
+`CharPredicates.lean` correspond exactly to the `Bool`-valued classifiers.
 
-Each theorem states: `Grammar.X c ↔ Scanner.X c = true`.
+Each theorem states: `XProp c ↔ XBool c = true`.
 
 This is the formal version of the 32 runtime tests in
 `Tests/Verification.lean` (categories: Grammar↔Combinators isLineBreak,
@@ -25,72 +25,72 @@ and all operations are computable, the proofs use `simp` lemmas connecting
 
 namespace Lean4Yaml.Proofs.CharClass
 
-/-! ## isLineBreak: Grammar.isLineBreak ↔ Scanner.isLineBreak -/
+open Lean4Yaml.CharPredicates
+
+/-! ## isLineBreak: isLineBreakProp ↔ isLineBreakBool -/
 
 /--
-The Grammar specification of line breaks matches the scanner implementation.
+The Prop specification of line breaks matches the Bool implementation.
 
-- Grammar (Prop): `c == '\n' ∨ c == '\r'`
-- Scanner (Bool):  `c == '\n' || c == '\r'`
+- Prop: `c == '\n' ∨ c == '\r'`
+- Bool: `c == '\n' || c == '\r'`
 -/
 theorem isLineBreak_correspondence (c : Char) :
-    Grammar.isLineBreak c ↔ Scanner.isLineBreak c = true := by
-  simp only [Grammar.isLineBreak, Scanner.isLineBreak, Bool.or_eq_true]
+    isLineBreakProp c ↔ isLineBreakBool c = true := by
+  simp only [isLineBreakProp, isLineBreakBool, Bool.or_eq_true]
 
-/-! ## isWhiteSpace: Grammar.isWhiteSpace ↔ Scanner.isWhiteSpace -/
+/-! ## isWhiteSpace: isWhiteSpaceProp ↔ isWhiteSpaceBool -/
 
 /--
-The Grammar specification of white space matches the scanner implementation.
+The Prop specification of white space matches the Bool implementation.
 
-- Grammar (Prop): `c == ' ' ∨ c == '\t'`
-- Scanner (Bool):  `c == ' ' || c == '\t'`
+- Prop: `c == ' ' ∨ c == '\t'`
+- Bool: `c == ' ' || c == '\t'`
 -/
 theorem isWhiteSpace_correspondence (c : Char) :
-    Grammar.isWhiteSpace c ↔ Scanner.isWhiteSpace c = true := by
-  simp only [Grammar.isWhiteSpace, Scanner.isWhiteSpace, Bool.or_eq_true]
+    isWhiteSpaceProp c ↔ isWhiteSpaceBool c = true := by
+  simp only [isWhiteSpaceProp, isWhiteSpaceBool, Bool.or_eq_true]
 
-/-! ## isIndentChar: Grammar.isIndentChar ↔ (c == ' ') -/
+/-! ## isIndentChar: isIndentCharProp ↔ (c == ' ') -/
 
 /--
-The Grammar specification of indentation characters matches the parser check.
+The Prop specification of indentation characters matches the parser check.
 
-- Grammar (Prop): `c == ' '`
+- Prop: `c == ' '`
 - Parser: uses inline `c == ' '` checks (no dedicated Bool function)
 
-We prove the Grammar definition is equivalent to `(c == ' ') = true`.
+We prove the definition is equivalent to `(c == ' ') = true`.
 -/
 theorem isIndentChar_iff (c : Char) :
-    Grammar.isIndentChar c ↔ (c == ' ') = true := by
-  simp only [Grammar.isIndentChar]
+    isIndentCharProp c ↔ (c == ' ') = true := by
+  simp only [isIndentCharProp]
 
-/-! ## isFlowIndicator: Grammar.isFlowIndicator ↔ Scanner.isFlowIndicator -/
+/-! ## isFlowIndicator: isFlowIndicatorProp ↔ isFlowIndicatorBool -/
 
 /--
-The Grammar specification of flow indicators matches the scanner implementation.
+The Prop specification of flow indicators matches the Bool implementation.
 
-Both use `c ∈ [',', '[', ']', '{', '}']`. Since both Grammar and Scanner
-definitions expand to the same `List.elem` check, `Iff.rfl` closes the goal
-after unfolding.
+Both use `c ∈ [',', '[', ']', '{', '}']`.
 -/
 theorem isFlowIndicator_correspondence (c : Char) :
-    Grammar.isFlowIndicator c ↔ Scanner.isFlowIndicator c = true := by
-  unfold Grammar.isFlowIndicator Scanner.isFlowIndicator
+    isFlowIndicatorProp c ↔ isFlowIndicatorBool c = true := by
+  unfold isFlowIndicatorProp isFlowIndicatorBool
   simp [List.mem_cons, Bool.or_eq_true]
 
-/-! ## isIndicator: Grammar indicators ↔ Scanner.isIndicator -/
+/-! ## isIndicator: Grammar indicators ↔ isIndicatorBool -/
 
 /--
-The full indicator list used in `Grammar.canStartPlainScalar` matches
-`Scanner.isIndicator`. Both expand to `List.elem` on the same character list.
+The full indicator list used in `canStartPlainScalar` matches
+`isIndicatorBool`. Both expand to `List.elem` on the same character list.
 -/
 theorem isIndicator_equiv (c : Char) :
     (c ∈ ['-', '?', ':', ',', '[', ']', '{', '}', '#', '&', '*', '!', '|', '>',
           '\'', '"', '%', '@', '`'] : Prop) ↔
-    Scanner.isIndicator c = true := by
-  unfold Scanner.isIndicator
+    isIndicatorBool c = true := by
+  unfold isIndicatorBool
   simp [List.mem_cons, Bool.or_eq_true]
 
-/-! ## canStartPlainScalar: Grammar.canStartPlainScalar ↔ Scanner.canStartPlainScalar
+/-! ## canStartPlainScalar: Grammar.canStartPlainScalar (1-arg) → canStartPlainScalarBool (3-arg)
 
 The Grammar Prop captures the base exclusion rule (YAML §7.3.3 [123]).
 The Scanner Bool `canStartPlainScalar` captures the full rule including
@@ -105,32 +105,34 @@ We prove:
 -/
 
 /--
-For non-exceptional characters (not `-`, `?`, `:`), `Grammar.canStartPlainScalar`
-implies `Scanner.canStartPlainScalar c next inFlow = true` for any `next` and `inFlow`.
+For non-exceptional characters (not `-`, `?`, `:`), `Grammar.canStartPlainScalar` (1-arg)
+implies `canStartPlainScalarBool c next inFlow = true` for any `next` and `inFlow`.
 
-The `else` branch of `Scanner.canStartPlainScalar` is context-independent:
+The `else` branch of `canStartPlainScalarBool` is context-independent:
 `!isIndicator c && !isWhiteSpace c && !isLineBreak c`.
 -/
 theorem canStartPlainScalar_base (c : Char) (next : Option Char) (inFlow : Bool)
     (hDash : c ≠ '-') (hQ : c ≠ '?') (hColon : c ≠ ':') :
     Grammar.canStartPlainScalar c →
-    Scanner.canStartPlainScalar c next inFlow = true := by
+    canStartPlainScalarBool c next inFlow = true := by
   intro ⟨_, hNotWs, hNotLb, hNotInd⟩
-  unfold Scanner.canStartPlainScalar
-  have h1 : (c == '-') = false := Bool.eq_false_iff.mpr (by simpa using hDash)
-  have h2 : (c == '?') = false := Bool.eq_false_iff.mpr (by simpa using hQ)
-  have h3 : (c == ':') = false := Bool.eq_false_iff.mpr (by simpa using hColon)
-  simp only [h1, h2, h3, Bool.false_or]
-  -- Goal: (!Scanner.isIndicator c && !Scanner.isWhiteSpace c && !Scanner.isLineBreak c) = true
-  have hNotIndBool : Scanner.isIndicator c = false := by
+  unfold canStartPlainScalarBool
+  have hNot : ¬(c = '-' ∨ c = '?' ∨ c = ':') := by
+    rintro (rfl | rfl | rfl)
+    · exact hDash rfl
+    · exact hQ rfl
+    · exact hColon rfl
+  simp only [hNot, ite_false]
+  -- Goal: (!isIndicatorBool c && !isWhiteSpaceBool c && !isLineBreakBool c) = true
+  have hNotIndBool : isIndicatorBool c = false := by
     rw [Bool.eq_false_iff]
     intro h
     exact hNotInd ((isIndicator_equiv c).mpr h)
-  have hNotWsBool : Scanner.isWhiteSpace c = false := by
+  have hNotWsBool : isWhiteSpaceBool c = false := by
     rw [Bool.eq_false_iff]
     intro h
     exact hNotWs ((isWhiteSpace_correspondence c).mpr h)
-  have hNotLbBool : Scanner.isLineBreak c = false := by
+  have hNotLbBool : isLineBreakBool c = false := by
     rw [Bool.eq_false_iff]
     intro h
     exact hNotLb ((isLineBreak_correspondence c).mpr h)
@@ -149,10 +151,10 @@ is not whitespace and not a line break.
 -/
 theorem canStartPlainScalar_exception (c : Char) (n : Char)
     (hExc : c = '-' ∨ c = '?' ∨ c = ':')
-    (hNotWs : Scanner.isWhiteSpace n = false)
-    (hNotLb : Scanner.isLineBreak n = false) :
-    Scanner.canStartPlainScalar c (some n) false = true := by
-  unfold Scanner.canStartPlainScalar
+    (hNotWs : isWhiteSpaceBool n = false)
+    (hNotLb : isLineBreakBool n = false) :
+    canStartPlainScalarBool c (some n) false = true := by
+  unfold canStartPlainScalarBool
   rcases hExc with rfl | rfl | rfl <;> simp [hNotWs, hNotLb]
 
 /--
@@ -161,11 +163,11 @@ character is not a flow indicator.
 -/
 theorem canStartPlainScalar_exception_flow (c : Char) (n : Char)
     (hExc : c = '-' ∨ c = '?' ∨ c = ':')
-    (hNotWs : Scanner.isWhiteSpace n = false)
-    (hNotLb : Scanner.isLineBreak n = false)
-    (hNotFlow : Scanner.isFlowIndicator n = false) :
-    Scanner.canStartPlainScalar c (some n) true = true := by
-  unfold Scanner.canStartPlainScalar
+    (hNotWs : isWhiteSpaceBool n = false)
+    (hNotLb : isLineBreakBool n = false)
+    (hNotFlow : isFlowIndicatorBool n = false) :
+    canStartPlainScalarBool c (some n) true = true := by
+  unfold canStartPlainScalarBool
   rcases hExc with rfl | rfl | rfl <;> simp [hNotWs, hNotLb, hNotFlow]
 
 /--
@@ -173,8 +175,8 @@ Exception characters with no following character are rejected in any context.
 -/
 theorem canStartPlainScalar_exception_none (c : Char) (inFlow : Bool)
     (hExc : c = '-' ∨ c = '?' ∨ c = ':') :
-    Scanner.canStartPlainScalar c none inFlow = false := by
-  unfold Scanner.canStartPlainScalar
+    canStartPlainScalarBool c none inFlow = false := by
+  unfold canStartPlainScalarBool
   rcases hExc with rfl | rfl | rfl <;> simp
 
 end Lean4Yaml.Proofs.CharClass

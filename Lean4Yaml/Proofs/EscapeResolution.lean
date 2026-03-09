@@ -16,7 +16,7 @@ valid Unicode characters.
 2. **Named escape table correctness**: The 16 named escapes in
    `Grammar.resolveNamedEscape` are exhaustively verified:
    - Each maps to exactly the character specified by YAML 1.2.2 §5.7
-   - Each output is a YAML-printable character (`Grammar.isPrintable`),
+   - Each output is a YAML-printable character (`isPrintableProp`),
      except for 7 control characters (null, bell, backspace, vertical tab,
      form feed, escape, line feed)
 
@@ -146,7 +146,7 @@ theorem escape_hex32_none : resolveNamedEscape 'U' = none := by native_decide
 
 /-! ## §4: Named Escape Output Printability
 
-Most named escape outputs are YAML-printable (`Grammar.isPrintable`).
+Most named escape outputs are YAML-printable (`isPrintableProp`).
 The exceptions are 7 control characters below U+0020 that are not in
 the YAML printable set (§5.1): null, bell, backspace, vertical tab,
 form feed, escape, and line feed.
@@ -156,36 +156,36 @@ outputs ≥ U+0020 are printable.
 -/
 
 /-- Tab output is YAML-printable. -/
-theorem escape_tab_printable : isPrintable '\t' := by native_decide
+theorem escape_tab_printable : isPrintableProp '\t' := by native_decide
 
 /-- Carriage return is treated as a line break, not tested for printability.
     CR (U+000D) falls in the gap between 0x7E and 0x85 — it is NOT printable
     per §5.1, but is valid as a line break character (§5.4). -/
-theorem escape_cr_isLineBreak : isLineBreak '\r' := by native_decide
+theorem escape_cr_isLineBreak : isLineBreakProp '\r' := by native_decide
 
 /-- Line feed is a line break character. -/
-theorem escape_lf_isLineBreak : isLineBreak '\n' := by native_decide
+theorem escape_lf_isLineBreak : isLineBreakProp '\n' := by native_decide
 
 /-- Space output is YAML-printable. -/
-theorem escape_space_printable : isPrintable ' ' := by native_decide
+theorem escape_space_printable : isPrintableProp ' ' := by native_decide
 
 /-- Double quote output is YAML-printable. -/
-theorem escape_dquote_printable : isPrintable '"' := by native_decide
+theorem escape_dquote_printable : isPrintableProp '"' := by native_decide
 
 /-- Slash output is YAML-printable. -/
-theorem escape_slash_printable : isPrintable '/' := by native_decide
+theorem escape_slash_printable : isPrintableProp '/' := by native_decide
 
 /-- Backslash output is YAML-printable. -/
-theorem escape_backslash_printable : isPrintable '\\' := by native_decide
+theorem escape_backslash_printable : isPrintableProp '\\' := by native_decide
 
 /-- NEL (U+0085) output is YAML-printable. -/
-theorem escape_nel_printable : isPrintable '\x85' := by native_decide
+theorem escape_nel_printable : isPrintableProp '\x85' := by native_decide
 
 /-- Non-breaking space (U+00A0) output is YAML-printable. -/
-theorem escape_nbsp_printable : isPrintable '\xa0' := by native_decide
+theorem escape_nbsp_printable : isPrintableProp '\xa0' := by native_decide
 
 /-- The replacement character U+FFFD is YAML-printable. -/
-theorem replacement_char_printable : isPrintable '\uFFFD' := by native_decide
+theorem replacement_char_printable : isPrintableProp '\uFFFD' := by native_decide
 
 /-! ## §5: Non-Printable Escape Outputs
 
@@ -195,25 +195,25 @@ double-quoted scalars via their escape sequences.
 -/
 
 /-- Null (U+0000) is not YAML-printable. -/
-theorem escape_null_not_printable : ¬ isPrintable '\x00' := by native_decide
+theorem escape_null_not_printable : ¬ isPrintableProp '\x00' := by native_decide
 
 /-- Bell (U+0007) is not YAML-printable. -/
-theorem escape_bell_not_printable : ¬ isPrintable '\x07' := by native_decide
+theorem escape_bell_not_printable : ¬ isPrintableProp '\x07' := by native_decide
 
 /-- Backspace (U+0008) is not YAML-printable. -/
-theorem escape_backspace_not_printable : ¬ isPrintable '\x08' := by native_decide
+theorem escape_backspace_not_printable : ¬ isPrintableProp '\x08' := by native_decide
 
 /-- Vertical tab (U+000B) is not YAML-printable. -/
-theorem escape_vtab_not_printable : ¬ isPrintable '\x0b' := by native_decide
+theorem escape_vtab_not_printable : ¬ isPrintableProp '\x0b' := by native_decide
 
 /-- Form feed (U+000C) is not YAML-printable. -/
-theorem escape_formfeed_not_printable : ¬ isPrintable '\x0c' := by native_decide
+theorem escape_formfeed_not_printable : ¬ isPrintableProp '\x0c' := by native_decide
 
 /-- Escape (U+001B) is not YAML-printable. -/
-theorem escape_esc_not_printable : ¬ isPrintable '\x1b' := by native_decide
+theorem escape_esc_not_printable : ¬ isPrintableProp '\x1b' := by native_decide
 
 /-- Line feed (U+000A) is not YAML-printable. Appears as a line break. -/
-theorem escape_lf_not_printable : ¬ isPrintable '\n' := by native_decide
+theorem escape_lf_not_printable : ¬ isPrintableProp '\n' := by native_decide
 
 /-! ## §7: Summary Theorem
 
