@@ -442,7 +442,7 @@ scanNextToken_preserves_ScanInv
 8. **Phase 2e**: `dispatchContent_preserves_ScanInv` — needs 1a, most sub-theorems
 9. **Phase 3**: Final composition
 
-## Open questions
+## Open questionsls 
 
 1. **SimpleKey position invariant**: Do we need to thread
    `s.simpleKey.pos = s.tokens[s.simpleKey.tokenIndex].pos` through `ScanInv`? This
@@ -584,3 +584,146 @@ Based on Phase 1 experience:
    token array. This holds because `saveSimpleKey` pushes at `s.offset = startPos.offset`,
    but needs an explicit `saveSimpleKey_tokens_offset_le` lemma (or derive from
    `emit_preserves_ScanInv` intermediate states).
+
+---
+
+## Phase 2 Reflections
+
+Phases 2a–2e collectively proved the remaining per-dispatcher ScanInv preservation
+theorems. This section records the key challenges and patterns discovered.
+
+### What the Phase 1 idioms bought us
+
+The patterns documented in Phase 1 Reflections (especially the `show ScanInv' _ s.offset`
+idiom, `Fin`-to-`Nat` extraction for `omega`, and the `field_update_preserves_ScanInv`
+shortcut) applied without modification across all Phase 2 sub-proofs. The biggest
+productivity gain was knowing to work with `ScanInv'` directly rather than through
+the `ScanInv` struct wrapper.
+
+### `split at h_ok` follows source pattern order
+
+A critical discovery: when `split` branches on a `match` result from a `do`-notation
+function, the goals appear in **source pattern order** (the order branches appear in
+the Lean source), NOT in constructor order (`.ok` before `.error`). Mismatching the
+branch order causes proofs to target the wrong goal. Diagnosis technique: insert
+`exact h_ok` into a branch to see the actual goal type and match against it.
+
+### `AllKeysValid` vs `SimpleKeyValid`
+
+Initially attempted to track only `SimpleKeyValid` (single simple-key invariant),
+but `scanNextToken` dispatches through `saveSimpleKey` which updates both the
+current simple key AND the simple-key stack. The correct compound invariant is
+`AllKeysValid` = `SimpleKeyValid ∧ SimpleKeyStackValid`, which tracks that all
+token indices in both the current key and the stack remain within bounds. This
+was the most significant design insight of Phase 2.
+
+### `Except.map` requires `unfold`, not `simp`
+
+`simp only [Except.map]` produces no progress; the function must be unfolded
+with `unfold Except.map`. This pattern recurred across all dispatcher proofs
+that use `Except.map` for pure post-processing after monadic scanner calls.
+
+### Open questions resolved (from Phase 1)
+
+- **Question 5 (`h_sk` discharge)**: Resolved by proving `saveSimpleKey_placeholder_pos`
+  compositionally — the placeholder position equals `s.currentPos` at push time, and no
+  operation between `saveSimpleKey` and `scanValuePrepare` modifies the placeholder indices.
+- **Question 6 (`h_ge` discharge)**: Resolved by deriving from `ScanInv` at save time:
+  since `emit` at `s.offset` preserves the bound and `saveSimpleKey` only pushes at
+  `s.offset`, the post-save token array satisfies `h_ge` for the saved `startPos`.
+
+---
+
+## Phase 3 Reflections
+
+Phase 3 replaced the last `private axiom scanNextToken_preserves_ScanInv` with a
+proved theorem, achieving **0 axioms, 0 sorry** across the full 191-module build.
+
+### Final composition structure
+
+The top-level theorem unfolds `scanNextToken` into `preprocess → dispatch`, then
+`split`s on each dispatcher result. Each branch delegates to the corresponding
+Phase 2 theorem. The proof is ~30 lines of structured `case` analysis — mechanical
+once all sub-theorems exist.
+
+### Why the axiom was necessary during development
+
+The axiom allowed proving downstream theorems (scanner correctness, token stream
+validity) while the sub-proofs were under construction. Without it, the entire
+proof chain would have been blocked by incomplete intermediate results. This
+"axiom-as-interface" pattern is effective for large proof developments where the
+leaf theorems require the most effort.
+
+### Key metric
+
+| Metric | Before Phase 3 | After Phase 3 |
+|--------|---------------|---------------|
+| Axioms | 1 | 0 |
+| Sorry | 0 | 0 |
+| Build modules | 191/191 | 191/191 |
+| Tests | 869/869 | 869/869 |
+
+---
+
+## Phase 4 Reflections
+
+Phase 4 extracted all 1917 `#guard` checks from the `Lean4Yaml/` library into
+`Tests/Guards/`, separating proof artifacts from build-time regression tests.
+
+### Motivation
+
+`#guard` checks are kernel-evaluated at build time — they verify concrete computations
+but are not part of the library's logical content (theorems, definitions, types). Moving
+them to a separate test directory:
+1. Keeps the library focused on specifications and proofs
+2. Allows independent iteration on test coverage
+3. Reduces recompilation when adding new guards
+4. Makes the proof/test boundary explicit
+
+### Structure
+
+- **32 files** under `Tests/Guards/` mirroring the `Lean4Yaml/` directory structure
+- **7 guard-only files** (SuiteGuards/\*, TestSuite.lean) moved wholesale
+- **25 mixed files** had guards and guard-only private defs extracted
+- **`Tests/Guards.lean`** hub file imports all 32 sub-modules
+- **`Tests.Guards`** lean\_lib entry added to lakefile.toml
+
+### Challenges
+
+1. **Orphaned doc comments**: Extracting guard blocks left behind `/-- ... -/` doc
+   comments that previously preceded guard-only private defs. In Lean 4, a doc comment
+   MUST be followed by a declaration — orphaned ones cause `unexpected token` errors.
+   Similarly, `/-! section header -/` comments with no content after them, and unclosed
+   `/-!` blocks whose closing `-/` was part of the extracted text. Required manual review
+   of ~10 source files.
+
+2. **`open ... in` prefix lines**: The extraction script removed guard-only private defs
+   but left behind `open Foo in` / `open Bar in` lines that scoped into the removed def.
+   These `open ... in` constructs require a following command, so orphaned ones also
+   cause syntax errors.
+
+3. **Private def accessibility**: When a `private def` is used by BOTH guards AND theorems,
+   it stays in the source file but becomes inaccessible from the guard file (since
+   `private` is file-scoped in Lean 4). Fix: remove `private` from 5 such defs
+   (`scannerEscapeChar`, `canonicalRoundTrips`, `digitOffset`, `twoLevels`, `threeLevels`).
+
+4. **Missing `open` statements in guard files**: Guard-only private defs often referenced
+   functions via scoped `open ... in` in the original source. The extraction script
+   captured the namespace but not all `open` statements. Fix: add `open Lean4Yaml.TokenParser`
+   to 4 guard files that use `parseYamlSingle`.
+
+5. **Lake lean\_lib module discovery**: Initially used `name = "Tests.GuardChecks"` for the
+   hub file, but the `Tests/Guards/*.lean` sub-modules were not in the `Tests.GuardChecks`
+   namespace and Lake couldn't discover them. Fix: renamed hub to `Tests/Guards.lean` with
+   `name = "Tests.Guards"` so sub-modules are properly scoped.
+
+### Key metrics
+
+| Metric | Before Phase 4 | After Phase 4 |
+|--------|---------------|---------------|
+| Build modules | 191/191 | 211/211 (+32 guard modules, −7 deleted) |
+| `#guard` in Lean4Yaml/ | 1917 | 0 |
+| `#guard` in Tests/Guards/ | 0 | 1917 |
+| Tests | 869/869 | 869/869 |
+| Sorry | 0 | 0 |
+| Axioms | 0 | 0 |

@@ -215,49 +215,6 @@ theorem escape_esc_not_printable : ¬ isPrintable '\x1b' := by native_decide
 /-- Line feed (U+000A) is not YAML-printable. Appears as a line break. -/
 theorem escape_lf_not_printable : ¬ isPrintable '\n' := by native_decide
 
-/-! ## §6: Parser–Specification Agreement (`#guard` checks)
-
-The parser's `processEscape` is monadic (`YamlParser Char`), so direct
-equational proofs require unwinding the parser monad. Instead, we verify
-agreement via compile-time `#guard` checks that parse escape sequences
-and compare the results to `resolveNamedEscape`.
-
-These are the same technique used in the yaml-test-suite guards
-(Phase 4): kernel-evaluated, build-time regression tests.
--/
-
-open Lean4Yaml.TokenParser in
-open Lean4Yaml in
-/-- Parse a YAML value and extract its scalar content. -/
-private def parseScalar (s : String) : Option String :=
-  match parseYamlSingle s with
-  | .ok (.scalar node) => some node.content
-  | _ => none
-
--- Named escape round-trips through the parser
-#guard parseScalar "\"\\0\"" == some "\x00"      -- \0 → null
-#guard parseScalar "\"\\a\"" == some "\x07"      -- \a → bell
-#guard parseScalar "\"\\b\"" == some "\x08"      -- \b → backspace
-#guard parseScalar "\"\\t\"" == some "\t"        -- \t → tab
-#guard parseScalar "\"\\n\"" == some "\n"        -- \n → line feed
-#guard parseScalar "\"\\v\"" == some "\x0b"      -- \v → vertical tab
-#guard parseScalar "\"\\f\"" == some "\x0c"      -- \f → form feed
-#guard parseScalar "\"\\r\"" == some "\r"        -- \r → carriage return
-#guard parseScalar "\"\\e\"" == some "\x1b"      -- \e → escape
-#guard parseScalar "\"\\ \"" == some " "         -- \<space> → space
-#guard parseScalar "\"\\\"\"" == some "\""       -- \" → double quote
-#guard parseScalar "\"\\/\"" == some "/"         -- \/ → slash
-#guard parseScalar "\"\\\\\"" == some "\\"       -- \\ → backslash
-#guard parseScalar "\"\\N\"" == some "\x85"      -- \N → NEL
-#guard parseScalar "\"\\_\"" == some "\xa0"      -- \_ → NBSP
-
--- Hex unicode escapes
-#guard parseScalar "\"\\x41\"" == some "A"       -- \x41 → 'A'
-#guard parseScalar "\"\\u0041\"" == some "A"     -- \u0041 → 'A'
-#guard parseScalar "\"\\U00000041\"" == some "A" -- \U00000041 → 'A'
-#guard parseScalar "\"\\u03B1\"" == some "α"     -- \u03B1 → 'α' (Greek alpha)
-#guard parseScalar "\"\\uFFFD\"" == some "\uFFFD" -- \uFFFD → replacement char
-
 /-! ## §7: Summary Theorem
 
 Collecting the key results into a single statement about escape resolution.

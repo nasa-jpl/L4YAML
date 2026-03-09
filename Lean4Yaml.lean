@@ -43,13 +43,6 @@ import Lean4Yaml.Proofs.SchemaDump
 import Lean4Yaml.Proofs.SchemaResolution
 import Lean4Yaml.Proofs.Soundness
 import Lean4Yaml.Proofs.StringProperties
-import Lean4Yaml.Proofs.SuiteGuards.Advanced
-import Lean4Yaml.Proofs.SuiteGuards.Block
-import Lean4Yaml.Proofs.SuiteGuards.Document
-import Lean4Yaml.Proofs.SuiteGuards.Error
-import Lean4Yaml.Proofs.SuiteGuards.Flow
-import Lean4Yaml.Proofs.SuiteGuards.Scalar
-import Lean4Yaml.Proofs.TestSuite
 
 /-
 Copyright (c) 2026. All rights reserved.
