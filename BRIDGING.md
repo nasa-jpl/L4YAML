@@ -1074,7 +1074,8 @@ ParserCorrectness.lean, ScannerEmitBridge.lean — 5 files total.
 
 ### Phase B3: Scanner Predicate Enforcement
 
-Prove that the scanner produces tokens satisfying `ScalarScannable`:
+**Goal.** Prove that every plain scalar token emitted by the scanner
+satisfies `ScalarScannable`:
 
 ```lean
 theorem scan_plain_scalar_valid (input : String)
@@ -1090,6 +1091,400 @@ theorem scan_plain_scalar_valid (input : String)
 
 This uses the `_iff` theorems from `CharPredicates.lean` to bridge from
 the scanner's Bool computations to the specification's Prop predicates.
+
+#### B3 Architecture: Proof Strategy
+
+The proof decomposes into three layers, modeled on the `scanNextToken`
+refactoring documented in PLAN-scanNextToken-ScanInv.md:
+
+```
+scan_plain_scalar_valid                   [B3.5 — global theorem]
+  ├── scanFiltered → scanLoop threading   [token provenance]
+  └── scanPlainScalar_content_valid       [B3.4 — per-function theorem]
+        └── collectPlainScalarLoop_preserves_contentInv  [B3.3 — loop invariant]
+              ├── PlainContentInv definition            [B3.2]
+              ├── collectPlainScalar_charDecision        [B3.1 — refactored sub-fn]
+              ├── collectPlainScalar_lineBreakBlock      [B3.1 — refactored sub-fn]
+              └── string property lemmas                [B3.0]
+                    ├── noColonSpace_append_*            [CharPredicates.lean]
+                    ├── noSpaceHash_append_*             [CharPredicates.lean]
+                    ├── noFlowIndicators_append_*        [CharPredicates.lean]
+                    ├── validPlainFirst_preserved_*      [CharPredicates.lean]
+                    └── trimTrailingWS_preserves_*       [StringProperties.lean]
+```
+
+#### B3 Sub-phases
+
+**B3.0: String Property Lemmas** (~10–15 theorems, ~200 lines)
+
+Append/prefix preservation lemmas for the four `ScalarScannable`
+predicates. These go in `CharPredicates.lean` (Prop-level lemmas that
+compose with the existing `_iff` theorems) and `StringProperties.lean`
+(for `trimTrailingWS`).
+
+Required lemmas (representative, not exhaustive):
+
+| Lemma | Module | Purpose |
+|-------|--------|---------|
+| `noColonSpace_append_char h_prev h_not_colon_space` | CharPredicates | `: ` not introduced by append |
+| `noSpaceHash_append_char h_prev h_not_space_hash` | CharPredicates | ` #` not introduced by append |
+| `noFlowIndicators_append_nonflow h_prev h_not_flow` | CharPredicates | Flow indicator not introduced |
+| `validPlainFirst_prefix h_first` | CharPredicates | First char(s) unchanged by append |
+| `noColonSpace_concat h1 h2 h_boundary` | CharPredicates | Boundary safety when concatenating |
+| `noSpaceHash_concat h1 h2 h_boundary` | CharPredicates | Boundary safety when concatenating |
+| `hasAdjacentChars_append_iff` | CharPredicates | General adjacent-pair append decomposition |
+| `trimTrailingWS_preserves_noColonSpace` | StringProperties | Prefix preservation under WS trim |
+| `trimTrailingWS_preserves_noSpaceHash` | StringProperties | Prefix preservation under WS trim |
+| `trimTrailingWS_preserves_noFlowIndicators` | StringProperties | Prefix preservation under WS trim |
+| `trimTrailingWS_preserves_validPlainFirst` | StringProperties | First char unchanged by suffix trim |
+
+**Key insight for `trimTrailingWS`:** `trimTrailingWS s` removes trailing
+spaces/tabs. This is a *suffix* operation — it cannot introduce new
+adjacent pairs and cannot change the first character. So the `_preserves_`
+lemmas should be straightforward: `trimTrailingWS s` is a prefix of `s`
+(modulo trailing WS), and all four predicates are prefix-stable.
+
+##### B3.0 Reflections
+
+**Status:** Complete. 213/213 build, 0 sorry, 0 axioms, 0 warnings.
+
+**Delivered: 31 theorems** (25 in CharPredicates.lean, 6 in StringProperties.lean)
+
+*CharPredicates.lean — new sections:*
+
+| Section | Theorems | Key result |
+|---------|----------|------------|
+| hasAdjacentChars append decomposition | 4 | `hasAdjacentChars_append`: full 3-disjunct `↔` decomposition for `xs ++ ys` |
+| noColonSpace preservation | 3 | `_empty`, `_push`, `_append` — covers all accumulation patterns |
+| noSpaceHash preservation | 3 | Same structure as noColonSpace |
+| noFlowIndicators preservation | 3 | `_empty`, `_push`, `_append` via pointwise membership |
+| validPlainFirst preservation | 3 | `_empty`, `_push_of_nonempty`, `_append_of_nonempty` (requires ≥2 chars) |
+| Boundary helpers | 7 | `mem_of_getElemQ_some`, `not_space_of_plainSafe`, whitespace `getLast?` cases, `noColonSpaceProp_of_whitespace`, `noSpaceHashProp_of_whitespace`, `noFlowIndicatorsProp_of_whitespace` |
+| **Subtotal** | **23 + 2 earlier** | |
+
+*StringProperties.lean — new §4 Trim Preservation:*
+
+| Theorem | Purpose |
+|---------|---------|
+| `reverse_dropWhile_reverse_isPrefix` | Trimmed list is a prefix of the original |
+| `hasAdjacentChars_false_of_append` | Prefix inherits no-adjacent-chars from whole |
+| `trim_preserves_noColonSpace` | Trimming preserves no `: ` |
+| `trim_preserves_noSpaceHash` | Trimming preserves no ` #` |
+| `trim_preserves_noFlowIndicators` | Trimming preserves no flow indicators |
+| `trim_preserves_validPlainFirst` | Trimming preserves first-char validity (≥2 chars) |
+
+**Unexpected challenges:**
+
+1. **`String` is `ByteArray`-backed in Lean 4.28.** Anonymous constructor
+   `⟨s.toList ++ t.toList⟩` silently type-checks against `ByteArray`, not
+   `List Char`. Must use `String.ofList`/`(s ++ t)` with `String.toList_append`
+   for round-tripping.
+
+2. **`List.getElem?_mem` does not exist.** No stdlib lemma converts
+   `l[i]? = some a → a ∈ l`, so we wrote a private `mem_of_getElemQ_some`
+   using induction on `l` and `List.getElem?_cons_zero` + `Option.some.injEq`.
+
+3. **`Bool.not` vs propositional `¬` in `_iff` lemmas.** `noColonSpaceBool`
+   unfolds to `!hasAdjacentChars ...`, producing hypotheses of the form
+   `(!b) = true`. The simp lemma `Bool.not_eq_true` operates on
+   propositional `¬(b = true)`, not `Bool.not b = true`. Fix:
+   `Bool.not_inj : (!x) = (!y) → x = y` converts `(!b) = true` to
+   `b = false` since `true = !false` definitionally.
+
+4. **`validPlainFirstProp` is sensitive to the `next` argument.** Pushing a
+   single character onto a 1-character string `[c]` changes the `next` argument
+   from `none` to `some c`. When `c ∈ {'-', '?', ':'}`,
+   `canStartPlainScalarProp c none inFlow = False`, so a 1-char string can
+   never satisfy the predicate anyway. Required strengthening the push/append
+   preconditions to `∃ x y rest, content.toList = x :: y :: rest`.
+
+5. **`∨` is right-associative.** `hasAdjacentChars_append` produces a
+   right-associative disjunction `A ∨ B ∨ C` (= `A ∨ (B ∨ C)`). Must use
+   `rintro (h | h | h)`, not `rintro ((h | h) | h)`.
+
+**Simplifications discovered:**
+
+- **`hasAdjacentChars_append` as universal decomposition.** All four
+  `noColonSpace`/`noSpaceHash` predicates reduce to `hasAdjacentChars`,
+  so a single append `↔` theorem handles all cases uniformly.
+
+- **`reverse_dropWhile_reverse_isPrefix` as the sole trim argument.** Once we
+  proved the trimmed list is a prefix (`∃ suf, cs = trimmed ++ suf`), all four
+  trim preservation theorems follow from the corresponding `_of_append` lemma.
+
+- **Whitespace contradictions close goals directly.** For concrete characters
+  like `':'`, `simp [isWhiteSpaceProp] at hws` evaluates the BEq to `False`
+  and closes the goal immediately — no `rcases` needed.
+
+**Idioms established:**
+
+- **BEq→Prop conversion:** `simp only [isWhiteSpaceProp, beq_iff_eq]` converts
+  `(c == ' ') = true` to `c = ' '`.
+- **`Bool.not` conversion:** `Bool.not_inj h` where `h : (!b) = true` yields
+  `b = false`.
+- **Concrete char contradiction:** `simp [isWhiteSpaceProp] at hws` when `hws`
+  asserts whitespace on a non-whitespace char.
+- **Right-associative `∨` destruction:** `rintro (h | h | h)` for 3-way.
+
+**B3.1: Refactor `collectPlainScalarLoop`** (~100 lines changed in Scanner.lean)
+
+The current `collectPlainScalarLoop` (Scanner.lean L1566–1655) has ~90
+lines and 12+ branch points — beyond the ≤7 rule established in the
+`scanNextToken` refactoring. Decompose into sub-functions:
+
+```
+collectPlainScalarLoop s content spaces fuel inFlow contentIndent inputEnd
+  match fuel with
+  | 0 => ...
+  | fuel' + 1 =>
+    match s.peek? with
+    | none => ...
+    | some c =>
+      ├── collectPlainScalar_terminates?        [B3.1a: ~5 branches]
+      │     # with spaces, `: `, flow indicator, doc boundary
+      ├── collectPlainScalar_lineBreakBlock     [B3.1b: ~5 branches]
+      │     consumeNewline, skipBlanks, skipSpaces, indent/docboundary
+      └── collectPlainScalar_continueChar       [B3.1c: ~3 branches]
+            whitespace accumulate, isPlainSafeBool, content append
+```
+
+**Decomposition detail:**
+
+| Sub-function | Lines (est.) | Branches | Character coverage |
+|-------------|-------------|----------|--------------------|
+| `collectPlainScalar_terminates?` | ~25 | 5 | `#`, `:`, flow ind., doc boundary, general |
+| `collectPlainScalar_lineBreakBlock` | ~25 | 5 | newline, blank skip, indent, doc boundary, fold |
+| `collectPlainScalar_continueChar` | ~15 | 3 | whitespace, plainSafe, unsafe |
+| `collectPlainScalarLoop` (simplified) | ~30 | 5 | fuel, peek, terminate?, linebreak, continue |
+
+The flow-context line break path (L1613–1623) stays inline since it's
+only ~5 lines using the existing `foldQuotedNewlines` helper.
+
+**B3.2: Define `PlainContentInv` loop invariant** (~30 lines, new proof file)
+
+```lean
+/-- Loop invariant for `collectPlainScalarLoop` content correctness.
+
+    Tracks that the accumulated `content` string satisfies all four
+    `ScalarScannable` predicates, and that `spaces` contains only
+    whitespace (ensuring it cannot introduce forbidden patterns when
+    flushed into content). -/
+def PlainContentInv (content : String) (spaces : String)
+    (inFlow : Bool) (firstChar : Option (Char × Option Char)) : Prop :=
+  -- First character validity (remembered from entry)
+  (match firstChar with
+   | some (c, next) => canStartPlainScalarProp c next inFlow
+   | none => True) ∧
+  -- Content properties
+  noColonSpaceProp content ∧
+  noSpaceHashProp content ∧
+  (inFlow → noFlowIndicatorsProp content) ∧
+  -- Spaces accumulator is pure whitespace
+  (∀ c ∈ spaces.toList, isWhiteSpaceProp c) ∧
+  -- Boundary safety: last char of content is not `:` when spaces is empty
+  -- (needed for noColonSpace preservation at content++spaces++c boundary)
+  (spaces = "" → content.length > 0 →
+    content.toList.getLast? ≠ some ':' ∨ True)
+    -- ^ refined during implementation; sketch shows the kind of
+    --   boundary condition needed
+```
+
+This goes in a new file `Lean4Yaml/Proofs/ScannerPlainContent.lean`.
+
+**B3.3: Prove `collectPlainScalarLoop_preserves_contentInv`** (~300–500 lines)
+
+The core theorem:
+
+```lean
+theorem collectPlainScalarLoop_preserves_contentInv
+    (s : ScannerState) (content spaces : String) (fuel : Nat)
+    (inFlow : Bool) (contentIndent : Nat) (inputEnd : Nat)
+    (firstChar : Option (Char × Option Char))
+    (h_inv : PlainContentInv content spaces inFlow firstChar)
+    (result : PlainScalarResult)
+    (h_ok : collectPlainScalarLoop s content spaces fuel
+              inFlow contentIndent inputEnd = .ok result) :
+    PlainContentInv result.content "" inFlow firstChar
+```
+
+**Proof approach:** Structural induction on `fuel`. Each branch calls the
+corresponding B3.0 string property lemma and B3.1 sub-function's spec.
+
+**Estimated effort by branch (from PLAN-scanNextToken experience):**
+
+| Branch | Risk | Proof lines (est.) | Notes |
+|--------|------|-------------------|-------|
+| fuel=0 | Low | 5 | Identity |
+| peek=none | Low | 5 | Identity |
+| `#` + spaces | Low | 10 | Terminate — invariant carries through |
+| `:` terminate | Low | 10 | Terminate |
+| `:` continue | **High** | 40 | Must show next char is non-blank via `peekAt?` |
+| flow indicator | Low | 10 | Terminate |
+| doc boundary | Low | 5 | Terminate |
+| line break (flow) | **Medium** | 50 | `foldQuotedNewlines` content + boundary check |
+| line break (block) | **High** | 80 | Multi-step: fold produces ` ` or `\n`s, must show no `: `/` #` at boundary |
+| whitespace | Low | 15 | Spaces accumulator grows; content unchanged |
+| regular char | Medium | 30 | `isPlainSafeBool` → content properties preserved |
+| unsafe char | Low | 5 | Terminate |
+| **Total** | | **~265** | Budget 500 for build-fix cycles |
+
+**Highest-risk branch: block-context line break.** After folding,
+`content' = content ++ " "` (single fold) or `content ++ "\n"*n`
+(multi-fold). The ` ` from single-fold could create a ` #` hazard
+if the continuation starts with `#`. Must prove this cannot happen:
+either `#` at continuation start terminates the scalar (it terminates
+when `spaces.length > 0`), or `spaces` is reset to `""` after fold
+and `#` falls through to content append. The latter case produces
+`content ++ " #"` — which would violate `noSpaceHash`. This may
+require a scanner fix or a more refined analysis showing that `#` at
+the start of a continuation line is preceded by indent spaces (which
+the scanner consumes), leaving `s_after_spaces` past the `#` if it
+was a comment. **Investigation needed during implementation.**
+
+**B3.4: Prove `scanPlainScalar_content_valid`** (~50–100 lines)
+
+Per-function theorem at the `scanPlainScalar` level:
+
+```lean
+theorem scanPlainScalar_content_valid (s s' : ScannerState)
+    (h : scanPlainScalar s = .ok s') :
+    let idx := s.tokens.size
+    ∀ (h_bound : idx < s'.tokens.size),
+      match s'.tokens[idx].val with
+      | .scalar content .plain =>
+          ScalarScannable ⟨content, .plain⟩ s.inFlow
+      | _ => True
+```
+
+**Proof structure:**
+1. Unfold `scanPlainScalar` to expose `collectPlainScalarLoop` call
+2. Establish base case: `canStartPlainScalarBool c (peekAt? 1) inFlow`
+   gives `PlainContentInv "" "" inFlow (some (c, peekAt? 1))`
+3. Apply B3.3 to get `PlainContentInv result.content "" inFlow ...`
+4. Apply `trimTrailingWS_preserves_*` lemmas from B3.0
+5. Combine with `canStartPlainScalar_iff` to get `validPlainFirstProp`
+6. Package as `ScalarScannable`
+
+**B3.5: Prove `scan_plain_scalar_valid`** (~100–200 lines)
+
+Thread B3.4 through the `scanFiltered → scanLoop → scanNextToken →
+dispatchContent → scanPlainScalar` chain. This requires:
+
+1. **Token provenance:** A theorem that each token in `scanFiltered`
+   output was produced by exactly one `scanNextToken` call. Existing
+   structural theorems (`scanPlainScalar_adds_one_token`,
+   `scanPlainScalar_preserves_prefix`) provide the foundation.
+
+2. **Flow context propagation:** Track `s.inFlow` through the dispatch
+   chain to match the `inFlow` parameter of `ScalarScannable`.
+
+This is the most infrastructure-heavy sub-phase. If the token provenance
+machinery proves too complex, an alternative is to strengthen the main
+`scanLoop` invariant to carry `ScalarScannable` as an additional property
+(similar to how `ScanInv` was threaded through in the `scanNextToken`
+refactoring).
+
+#### Module Decisions
+
+**`TokenPredicates.lean` — NOT needed.** `ScalarScannable` operates on
+string content, not on token structure. The relevant predicates
+(`validPlainFirst`, `noColonSpace`, `noSpaceHash`, `noFlowIndicators`)
+are all string-level and already live in `CharPredicates.lean`. There is
+no token-level Bool/Prop coupling needed.
+
+**`ScannerPredicates.lean` — NOT needed.** The scanner contract
+(`ScalarScannable`) is already defined in `Grammar.lean` where it belongs
+(it's the specification, not a scanner-internal concept). No additional
+scanner-level predicate module is required.
+
+**New proof file: `Lean4Yaml/Proofs/ScannerPlainContent.lean`.**
+Houses the `PlainContentInv` definition and the
+`collectPlainScalarLoop_preserves_contentInv` theorem. Follows the
+existing naming convention (`ScannerScalar.lean`, `ScannerContracts.lean`,
+`ScannerWhitespace.lean`, etc.). Imports `CharPredicates` for `_iff`
+theorems and `Scanner` for function definitions.
+
+**Existing files extended:**
+- `CharPredicates.lean` — append/concat preservation lemmas (~10 theorems)
+- `StringProperties.lean` — `trimTrailingWS_preserves_*` lemmas (~5 theorems)
+
+#### Function Refactoring Analysis
+
+The user identified 11 functions for potential refactoring. Analysis by
+B3 relevance:
+
+| Function | Lines | Branches | B3 Need | Refactor? | Notes |
+|----------|-------|----------|---------|-----------|-------|
+| `collectPlainScalarLoop` | 90 | 12+ | **CRITICAL** | **YES** | Decompose per B3.1 |
+| `scanNextToken_dispatchContent` | 40 | 8 | Threading | No | Already refactored; needs content predicate theorem |
+| `skipToContentWs` | 30 | 7 | No | No | Already at ≤7 threshold |
+| `skipToContentLoop` | 25 | 5 | No | No | Tractable as-is |
+| `scanValueValidate` | 22 | 5 | No | No | Tractable as-is |
+| `scanYamlDirective` | 19 | 5 | No | No | Tractable as-is |
+| `collectDoubleQuotedLoop` | 48 | 8 | No* | Maybe | *Non-plain: ScalarScannable trivially satisfied |
+| `collectSingleQuotedLoop` | 40 | 6 | No* | No | *Same: vacuously true for non-plain styles |
+| `foldBlockContent` | 50 | 4 | No | No | Pure function; different proof style |
+| `autoDetectBlockScalarIndentLoop` | 36 | 6 | No | No | Tractable as-is |
+| `scanBlockScalarBody` | 41 | 5 | No | No | Already decomposed |
+
+*Non-plain scalar tokens satisfy `ScalarScannable` vacuously:
+`ScalarScannable s inFlow` starts with `s.style = .plain → ...`, so
+any `s.style ≠ .plain` scalar is trivially scalarScannable via `nofun`.
+
+**Conclusion:** Only `collectPlainScalarLoop` needs structural refactoring
+for B3. The other 10 functions are either already tractable, irrelevant
+to B3, or would be relevant only in future phases (E/F) for broader
+scanner property verification.
+
+#### Risk Assessment
+
+| Sub-phase | Risk | Rationale |
+|-----------|------|-----------|
+| B3.0 | Low | Mechanical string lemmas; well-scoped |
+| B3.1 | Low | Structural refactoring; no proof impact (behavioral equivalence) |
+| B3.2 | Low | Definition only |
+| B3.3 | **High** | 12-branch inductive proof; block line-break boundary is tricky |
+| B3.4 | Medium | Composition of B3.0 + B3.3; `trimTrailingWS` interaction |
+| B3.5 | **High** | Token provenance infrastructure; flow context threading |
+
+**Total estimated new theorems:** ~25–35
+**Total estimated proof lines:** ~700–1000
+**Expected build-fix cycles:** ~15–25 (budget 2–3 per non-trivial theorem,
+per Phase 1 experience)
+
+#### Execution Order
+
+1. **B3.0** — String property lemmas (unlocks everything)
+2. **B3.1** — Refactor `collectPlainScalarLoop` (verify build still passes)
+3. **B3.2** — Define `PlainContentInv`
+4. **B3.3** — Loop invariant preservation (largest proof effort)
+5. **B3.4** — `scanPlainScalar_content_valid` (composition)
+6. **B3.5** — Global `scan_plain_scalar_valid` (threading)
+
+#### Open Questions
+
+1. **Block-context line-fold + `#` boundary:** Does the scanner correctly
+   handle `#` at the start of a continuation line in a block-context plain
+   scalar? If `content = "foo"`, line fold produces `"foo "`, and the next
+   line starts with `#` with `spaces = ""`, then `#` enters content giving
+   `"foo #"` which violates `noSpaceHash`. Need to verify whether this is
+   (a) prevented by the YAML spec (§7.3.3 says `#` preceded by `ns-char`
+   only), (b) caught by a termination condition we're not tracking, or
+   (c) a scanner bug that needs fixing before the proof.
+
+2. **`firstChar` tracking through line folds:** Can a plain scalar's first
+   character come from a continuation line (i.e., empty first line then
+   content on continuation)? The `canStartPlainScalarBool` check happens
+   before `collectPlainScalarLoop` in `scanPlainScalar`, so the first
+   character is always checked. But `validPlainFirst` operates on the
+   *final* content string. If `trimTrailingWS` changes the content's first
+   character (unlikely — it's a suffix operation), we need a lemma.
+
+3. **`PlainContentInv` exact shape:** The invariant sketch above captures
+   the main properties, but the exact boundary conditions (last character
+   of content before spaces flush, interaction between empty content and
+   `validPlainFirst`) will be refined during implementation. Expect 1–2
+   revisions as proof obligations reveal additional constraints.
 
 ### Phase C: Discharge `h_grammable` (CRITICAL PATH)
 

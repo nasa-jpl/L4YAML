@@ -36,7 +36,7 @@ theorem not_bool_iff_not {b : Bool} {p : Prop} (h : b = true ↔ p) :
   cases b <;> simp_all
 
 /-- `!(b₁ && b₂) = true ↔ (b₁ = true → ¬p)` given `b₂ = true ↔ p`. -/
-private theorem not_and_bool_iff_imp_not {b₁ b₂ : Bool} {p : Prop}
+theorem not_and_bool_iff_imp_not {b₁ b₂ : Bool} {p : Prop}
     (h : b₂ = true ↔ p) :
     (!(b₁ && b₂)) = true ↔ (b₁ = true → ¬p) := by
   cases b₁ <;> cases b₂ <;> simp_all
@@ -379,6 +379,104 @@ theorem hasAdjacentChars_iff (a b : Char) (cs : List Char) :
     hasAdjacentChars a b cs = true ↔ ∃ i, cs[i]? = some a ∧ cs[i + 1]? = some b :=
   ⟨hasAdjacentChars_true_implies a b cs, hasAdjacentChars_true_of a b cs⟩
 
+/-! ## Adjacent Characters: Append Decomposition
+
+Lemmas for reasoning about `hasAdjacentChars` over concatenated and
+extended lists. These underpin the `noColonSpace` and `noSpaceHash`
+preservation lemmas needed for B3.
+-/
+
+/-- `hasAdjacentChars` is false on a singleton list. -/
+theorem hasAdjacentChars_singleton (a b : Char) (c : Char) :
+    hasAdjacentChars a b [c] = false := by
+  rfl
+
+/-- Pushing a character: `hasAdjacentChars a b (xs ++ [c])` iff it already
+    holds in `xs`, or the last char of `xs` is `a` and `c` is `b`. -/
+theorem hasAdjacentChars_append_singleton (a b : Char) (xs : List Char) (c : Char) :
+    hasAdjacentChars a b (xs ++ [c]) = true ↔
+    hasAdjacentChars a b xs = true ∨ (xs.getLast? = some a ∧ c = b) := by
+  induction xs with
+  | nil => simp [hasAdjacentChars]
+  | cons x₁ rest ih =>
+    match rest with
+    | [] =>
+      simp [hasAdjacentChars, List.getLast?, beq_iff_eq]
+    | x₂ :: rest' =>
+      simp only [List.cons_append, hasAdjacentChars, Bool.or_eq_true,
+                  List.getLast?_cons_cons]
+      constructor
+      · rintro (h | h)
+        · exact Or.inl (Or.inl h)
+        · rcases ih.mp h with h' | h'
+          · exact Or.inl (Or.inr h')
+          · exact Or.inr h'
+      · rintro (h | h)
+        · rcases h with h | h
+          · exact Or.inl h
+          · exact Or.inr (ih.mpr (Or.inl h))
+        · exact Or.inr (ih.mpr (Or.inr h))
+
+/-- Negative form: no adjacent `a b` in `xs ++ [c]` iff no adjacent `a b`
+    in `xs` AND NOT (last of xs is `a` and `c` is `b`). -/
+theorem not_hasAdjacentChars_append_singleton (a b : Char) (xs : List Char) (c : Char) :
+    hasAdjacentChars a b (xs ++ [c]) = false ↔
+    hasAdjacentChars a b xs = false ∧ ¬(xs.getLast? = some a ∧ c = b) := by
+  rw [Bool.eq_false_iff, Bool.eq_false_iff]
+  constructor
+  · intro h
+    exact ⟨fun h1 => h ((hasAdjacentChars_append_singleton a b xs c).mpr (Or.inl h1)),
+           fun h2 => h ((hasAdjacentChars_append_singleton a b xs c).mpr (Or.inr h2))⟩
+  · rintro ⟨h1, h2⟩ h3
+    rcases (hasAdjacentChars_append_singleton a b xs c).mp h3 with h | h
+    · exact h1 h
+    · exact h2 h
+
+/-- `hasAdjacentChars` over concatenation: holds iff it holds in the left part,
+    the right part, or across the boundary (last of left = a, first of right = b). -/
+theorem hasAdjacentChars_append (a b : Char) (xs ys : List Char) :
+    hasAdjacentChars a b (xs ++ ys) = true ↔
+    hasAdjacentChars a b xs = true ∨ hasAdjacentChars a b ys = true
+    ∨ (xs.getLast? = some a ∧ ys.head? = some b) := by
+  induction xs with
+  | nil => simp [hasAdjacentChars]
+  | cons x₁ rest ih =>
+    match rest with
+    | [] =>
+      simp only [List.cons_append, List.getLast?_singleton, List.nil_append]
+      cases ys with
+      | nil => simp [hasAdjacentChars]
+      | cons y₁ ys' =>
+        simp only [hasAdjacentChars, Bool.or_eq_true, List.head?_cons]
+        constructor
+        · rintro (h | h)
+          · obtain ⟨h1, h2⟩ := Bool.and_eq_true_iff.mp h
+            rw [beq_iff_eq] at h1 h2
+            exact Or.inr (Or.inr ⟨by rw [h1], by rw [h2]⟩)
+          · exact Or.inr (Or.inl h)
+        · rintro (h | h | h)
+          · simp at h
+          · exact Or.inr h
+          · obtain ⟨h1, h2⟩ := h
+            left
+            rw [Bool.and_eq_true_iff, beq_iff_eq, beq_iff_eq]
+            exact ⟨Option.some.inj h1, Option.some.inj h2⟩
+    | x₂ :: rest' =>
+      simp only [List.cons_append, hasAdjacentChars, Bool.or_eq_true,
+                  List.getLast?_cons_cons]
+      constructor
+      · rintro (h | h)
+        · exact Or.inl (Or.inl h)
+        · rcases ih.mp h with h' | h' | h'
+          · exact Or.inl (Or.inr h')
+          · exact Or.inr (Or.inl h')
+          · exact Or.inr (Or.inr h')
+      · rintro ((h | h) | (h | h))
+        · exact Or.inl h
+        · exact Or.inr (ih.mpr (Or.inl h))
+        · exact Or.inr (ih.mpr (Or.inr (Or.inl h)))
+        · exact Or.inr (ih.mpr (Or.inr (Or.inr h)))
+
 /-! ## No Colon-Space
 
 YAML 1.2.2: [127] ns-plain-char(c) (§7.3.3) — colon may appear in a
@@ -459,5 +557,194 @@ theorem noFlowIndicators_iff (content : String) :
     simp only [noFlowIndicatorsBool, List.all_eq_true]
     intro c hc
     exact (not_bool_iff_not (isFlowIndicator_iff c)).mpr (h c hc)
+
+/-! ## String Property Preservation Lemmas (B3.0)
+
+Append/push/prefix preservation for `noColonSpace`, `noSpaceHash`,
+`noFlowIndicators`, and `validPlainFirst`. These are the building blocks
+for the `PlainContentInv` loop invariant in Phase B3.3.
+-/
+
+/-! ### noColonSpace preservation -/
+
+/-- `noColonSpace` for the empty string. -/
+theorem noColonSpaceProp_empty : noColonSpaceProp "" := by
+  intro ⟨i, h1, _⟩; simp at h1
+
+/-- Pushing a character preserves `noColonSpace` when the push doesn't
+    introduce a `: ` pair at the boundary. -/
+theorem noColonSpaceProp_push (content : String) (c : Char)
+    (h : noColonSpaceProp content)
+    (h_boundary : ¬(content.toList.getLast? = some ':' ∧ c = ' ')) :
+    noColonSpaceProp (content.push c) := by
+  rw [noColonSpaceProp] at h ⊢
+  rw [String.toList_push]
+  intro ⟨i, h1, h2⟩
+  have := (hasAdjacentChars_append_singleton ':' ' ' content.toList c).mpr
+  have h_adj : hasAdjacentChars ':' ' ' (content.toList ++ [c]) = true :=
+    (hasAdjacentChars_iff ':' ' ' (content.toList ++ [c])).mpr ⟨i, h1, h2⟩
+  rcases (hasAdjacentChars_append_singleton ':' ' ' content.toList c).mp h_adj with h' | h'
+  · exact h ((hasAdjacentChars_iff ':' ' ' content.toList).mp h')
+  · exact h_boundary h'
+
+/-- Appending two strings preserves `noColonSpace` when both parts are
+    clean and the boundary is safe. -/
+theorem noColonSpaceProp_append (s t : String)
+    (hs : noColonSpaceProp s) (ht : noColonSpaceProp t)
+    (h_boundary : ¬(s.toList.getLast? = some ':' ∧ t.toList.head? = some ' ')) :
+    noColonSpaceProp (s ++ t) := by
+  rw [noColonSpaceProp] at hs ht ⊢
+  simp only [String.toList_append]
+  intro ⟨i, h1, h2⟩
+  have h_adj := (hasAdjacentChars_iff ':' ' ' (s.toList ++ t.toList)).mpr ⟨i, h1, h2⟩
+  rcases (hasAdjacentChars_append ':' ' ' s.toList t.toList).mp h_adj with h | h | h
+  · exact hs ((hasAdjacentChars_iff ':' ' ' s.toList).mp h)
+  · exact ht ((hasAdjacentChars_iff ':' ' ' t.toList).mp h)
+  · exact h_boundary h
+
+/-! ### noSpaceHash preservation -/
+
+/-- `noSpaceHash` for the empty string. -/
+theorem noSpaceHashProp_empty : noSpaceHashProp "" := by
+  intro ⟨i, h1, _⟩; simp at h1
+
+/-- Pushing a character preserves `noSpaceHash` when the push doesn't
+    introduce a ` #` pair at the boundary. -/
+theorem noSpaceHashProp_push (content : String) (c : Char)
+    (h : noSpaceHashProp content)
+    (h_boundary : ¬(content.toList.getLast? = some ' ' ∧ c = '#')) :
+    noSpaceHashProp (content.push c) := by
+  rw [noSpaceHashProp] at h ⊢
+  rw [String.toList_push]
+  intro ⟨i, h1, h2⟩
+  have h_adj := (hasAdjacentChars_iff ' ' '#' (content.toList ++ [c])).mpr ⟨i, h1, h2⟩
+  rcases (hasAdjacentChars_append_singleton ' ' '#' content.toList c).mp h_adj with h' | h'
+  · exact h ((hasAdjacentChars_iff ' ' '#' content.toList).mp h')
+  · exact h_boundary h'
+
+/-- Appending two strings preserves `noSpaceHash` when both parts are
+    clean and the boundary is safe. -/
+theorem noSpaceHashProp_append (s t : String)
+    (hs : noSpaceHashProp s) (ht : noSpaceHashProp t)
+    (h_boundary : ¬(s.toList.getLast? = some ' ' ∧ t.toList.head? = some '#')) :
+    noSpaceHashProp (s ++ t) := by
+  rw [noSpaceHashProp] at hs ht ⊢
+  simp only [String.toList_append]
+  intro ⟨i, h1, h2⟩
+  have h_adj := (hasAdjacentChars_iff ' ' '#' (s.toList ++ t.toList)).mpr ⟨i, h1, h2⟩
+  rcases (hasAdjacentChars_append ' ' '#' s.toList t.toList).mp h_adj with h | h | h
+  · exact hs ((hasAdjacentChars_iff ' ' '#' s.toList).mp h)
+  · exact ht ((hasAdjacentChars_iff ' ' '#' t.toList).mp h)
+  · exact h_boundary h
+
+/-! ### noFlowIndicators preservation -/
+
+/-- `noFlowIndicators` for the empty string. -/
+theorem noFlowIndicatorsProp_empty : noFlowIndicatorsProp "" := by
+  intro c hc; simp at hc
+
+/-- Pushing a non-flow-indicator character preserves `noFlowIndicators`. -/
+theorem noFlowIndicatorsProp_push (content : String) (c : Char)
+    (h : noFlowIndicatorsProp content)
+    (hc : ¬isFlowIndicatorProp c) :
+    noFlowIndicatorsProp (content.push c) := by
+  intro x hx
+  rw [String.toList_push] at hx
+  rcases List.mem_append.mp hx with hx' | hx'
+  · exact h x hx'
+  · simp at hx'; rw [hx']; exact hc
+
+/-- Appending preserves `noFlowIndicators` when both parts are clean. -/
+theorem noFlowIndicatorsProp_append (s t : String)
+    (hs : noFlowIndicatorsProp s) (ht : noFlowIndicatorsProp t) :
+    noFlowIndicatorsProp (s ++ t) := by
+  intro c hc
+  simp only [String.toList_append] at hc
+  rcases List.mem_append.mp hc with hc' | hc'
+  · exact hs c hc'
+  · exact ht c hc'
+
+/-! ### validPlainFirst preservation -/
+
+/-- `validPlainFirst` is vacuously true for the empty string. -/
+theorem validPlainFirstProp_empty (inFlow : Bool) :
+    validPlainFirstProp "" inFlow := by
+  simp [validPlainFirstProp]
+
+/-- `validPlainFirst` depends only on the first 1–2 characters.
+    Pushing a character onto a string with ≥2 characters preserves it. -/
+theorem validPlainFirstProp_push_of_nonempty (content : String) (c : Char)
+    (inFlow : Bool) (h : validPlainFirstProp content inFlow)
+    (hlen : ∃ x y rest, content.toList = x :: y :: rest) :
+    validPlainFirstProp (content.push c) inFlow := by
+  obtain ⟨x, y, rest, hxs⟩ := hlen
+  simp only [validPlainFirstProp, String.toList_push, hxs, List.cons_append] at h ⊢
+  exact h
+
+/-- `validPlainFirst` for appending to a string with ≥2 characters. -/
+theorem validPlainFirstProp_append_of_nonempty (s t : String)
+    (inFlow : Bool) (h : validPlainFirstProp s inFlow)
+    (hlen : ∃ x y rest, s.toList = x :: y :: rest) :
+    validPlainFirstProp (s ++ t) inFlow := by
+  obtain ⟨x, y, rest, hxs⟩ := hlen
+  simp only [validPlainFirstProp, String.toList_append, hxs, List.cons_append] at h ⊢
+  exact h
+
+/-! ### Boundary helpers for scanner loop proofs -/
+
+/-- Extract list membership from a `getElem?` hit. -/
+theorem mem_of_getElemQ_some {l : List Char} {a : Char} {i : Nat}
+    (h : l[i]? = some a) : a ∈ l := by
+  induction l generalizing i with
+  | nil => exact absurd h (by simp)
+  | cons x xs ih =>
+    cases i with
+    | zero =>
+      simp only [List.getElem?_cons_zero, Option.some.injEq] at h
+      subst h; exact List.mem_cons_self
+    | succ n =>
+      have : xs[n]? = some a := by simpa using h
+      exact List.mem_cons_of_mem x (ih this)
+
+/-- A non-whitespace, non-line-break character is not ' '. -/
+theorem not_space_of_plainSafe (c : Char) (inFlow : Bool)
+    (h : isPlainSafeProp c inFlow) : c ≠ ' ' := by
+  intro heq; rw [heq] at h
+  simp [isPlainSafeProp, isWhiteSpaceProp] at h
+
+/-- Whitespace chars have `getLast? = some ' '` or `some '\t'`. -/
+theorem whitespace_getLast?_cases (spaces : String)
+    (h : ∀ c ∈ spaces.toList, isWhiteSpaceProp c) (hne : spaces.toList ≠ []) :
+    spaces.toList.getLast? = some ' ' ∨ spaces.toList.getLast? = some '\t' := by
+  have hLast := List.getLast?_eq_some_getLast hne
+  rw [hLast]
+  have hMem := List.getLast_mem hne
+  have hws := h _ hMem
+  simp only [isWhiteSpaceProp, beq_iff_eq] at hws
+  rcases hws with h1 | h1 <;> simp [h1]
+
+/-- A string of pure whitespace has no colon-space pattern. -/
+theorem noColonSpaceProp_of_whitespace (s : String)
+    (h : ∀ c ∈ s.toList, isWhiteSpaceProp c) : noColonSpaceProp s := by
+  intro ⟨i, h1, _⟩
+  have hMem := mem_of_getElemQ_some h1
+  have hws := h ':' hMem
+  simp [isWhiteSpaceProp] at hws
+
+/-- A string of pure whitespace has no space-hash pattern. -/
+theorem noSpaceHashProp_of_whitespace (s : String)
+    (h : ∀ c ∈ s.toList, isWhiteSpaceProp c) : noSpaceHashProp s := by
+  intro ⟨i, _, h2⟩
+  have hMem := mem_of_getElemQ_some h2
+  have hws := h '#' hMem
+  simp [isWhiteSpaceProp] at hws
+
+/-- A string of pure whitespace has no flow indicators. -/
+theorem noFlowIndicatorsProp_of_whitespace (s : String)
+    (h : ∀ c ∈ s.toList, isWhiteSpaceProp c) : noFlowIndicatorsProp s := by
+  intro c hc hfi
+  have := h c hc
+  simp only [isWhiteSpaceProp, beq_iff_eq] at this
+  rcases this with rfl | rfl <;> simp [isFlowIndicatorProp] at hfi
 
 end Lean4Yaml.CharPredicates
