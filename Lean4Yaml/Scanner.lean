@@ -1643,7 +1643,11 @@ def collectPlainScalarLoop (s : ScannerState) (content : String) (spaces : Strin
             | none =>
               .ok { content, spaces, state := s, terminated := true }
             | some (content', s') =>
-              collectPlainScalarLoop s' content' "" fuel' inFlow contentIndent inputEnd
+              match s'.peek? with
+              | some '#' =>
+                .ok { content, spaces, state := s', terminated := true }
+              | _ =>
+                collectPlainScalarLoop s' content' "" fuel' inFlow contentIndent inputEnd
         else if isWhiteSpaceBool c then
           collectPlainScalarLoop s.advance content (spaces.push c) fuel' inFlow contentIndent inputEnd
         else
