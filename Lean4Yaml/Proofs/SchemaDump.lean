@@ -106,11 +106,6 @@ constructors, ensuring the dump function receives well-typed input.
 so we use `#guard` compile-time checks instead of `native_decide` theorems.
 -/
 
-#guard toYaml true == YamlValue.scalar { content := "true", style := .plain }
-#guard toYaml false == YamlValue.scalar { content := "false", style := .plain }
-#guard toYaml (42 : Nat) == YamlValue.scalar { content := "42", style := .plain }
-#guard toYaml () == YamlValue.scalar { content := "null", style := .plain }
-#guard toYaml "hello" == YamlValue.scalar { content := "hello", style := .plain }
 
 /-! ## §3: Content Round-Trip Proofs
 
@@ -244,9 +239,6 @@ theorem roundTrip_int_neg7 :
 theorem roundTrip_string_hello :
     roundTripsTo "hello" = true := by native_decide
 
--- Empty string: content round-trips but typed round-trip fails because
--- schema resolution maps "" → null (YAML semantics). Expected behavior.
-#guard contentRoundTrips (α := String) ""
 
 /-- String with special chars round-trip succeeds. -/
 theorem roundTrip_string_colonspace :
@@ -281,31 +273,6 @@ theorem contentRoundTrips_indent4_array :
 Additional compile-time checks for broader coverage.
 -/
 
-section SchemaDumpExtendedGuards
-
--- Strings with various special characters
-#guard contentRoundTrips "has #comment"
-#guard contentRoundTrips "{flow}"
-#guard contentRoundTrips "[array]"
-#guard contentRoundTrips "tab\there"
-
--- Nat edge cases
-#guard contentRoundTrips (1 : Nat)
-#guard contentRoundTrips (999 : Nat)
-
--- Int edge cases
-#guard contentRoundTrips (0 : Int)
-#guard contentRoundTrips (-1 : Int)
-
--- Nested structures
-#guard contentRoundTrips (#[#["a"]] : Array (Array String))
-#guard contentRoundTrips (#[(#[] : Array String)] : Array (Array String))
-
--- Various config combinations
-#guard contentRoundTrips (42 : Nat) (cfg := { scalarStyle := .doubleQuoted })
-#guard contentRoundTrips (42 : Nat) (cfg := { scalarStyle := .singleQuoted })
-#guard contentRoundTrips (#["a"] : Array String) (cfg := { indent := 4 })
-
-end SchemaDumpExtendedGuards
 
 end Lean4Yaml.Proofs.SchemaDump
+

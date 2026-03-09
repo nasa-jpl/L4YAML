@@ -41,21 +41,19 @@ the parser relies on.
 
 ## Status
 
-Proven (no sorry):
+Proven (no sorry, no axioms):
 - `scanKey_adds_one_token` — scanKey adds at least one token
 - `emit_preserves_position_order` — appending tokens preserves ordering
 - `scanLoop_increases_tokens` — loop increases token count by at least 1
 - `scan_produces_at_least_two` — scan output has at least 2 tokens
+- `scanNextToken_preserves_ScanInv` — scanNextToken preserves compound invariant
+- `scanNextToken_preserves_AllKeysValid` — scanNextToken preserves simple-key validity
 - Helper lemmas: `advance_preserves_tokens`, `advance_preserves_flowLevel`,
   `emit_tokens_size`, `emit_preserves_tokens_at`, `pushMappingIndent_tokens_monotonic`,
   `pushSequenceIndent_tokens_monotonic`, `emitAt_tokens_size`,
   `scanFlowEntry_adds_one_token`, `scanBlockEntry_adds_tokens`,
   `collectAnchorNameLoop_preserves_tokens`, all skipToContent* lemmas,
   `scanValue_adds_tokens` (via scanValue decomposition into 4 helpers)
-
-Axiom (1):
-- `scanNextToken_preserves_ScanInv` — scanNextToken preserves compound invariant
-  (empirically validated by 869 tests + 787 `#guard` checks)
 
 Position monotonicity infrastructure:
 - `ScanInv` / `ScanInv'` — compound invariant (ordered ∧ bounded)
@@ -2198,6 +2196,73 @@ theorem scanValuePrepare_preserves_prefix (s : ScannerState)
       · -- inFlow: identity
         rfl
 
+/-- scanValuePrepare preserves `.pos` at ALL existing token positions.
+
+When `possible = false`, no existing tokens are modified.
+When `possible = true`, `setIfInBounds` at `idx` and `idx+1` replaces the token VALUE
+but the new element has `.pos = simpleKey.pos`, which equals the old `.pos`
+(from `SimpleKeyValid`). So `.pos` is preserved everywhere. -/
+theorem scanValuePrepare_preserves_all_pos (s : ScannerState)
+    (h_skv : s.simpleKey.possible = true →
+      s.simpleKey.tokenIndex < s.tokens.size ∧
+      s.simpleKey.tokenIndex + 1 < s.tokens.size ∧
+      (∀ (h1 : s.simpleKey.tokenIndex < s.tokens.size),
+        s.tokens[s.simpleKey.tokenIndex].pos = s.simpleKey.pos) ∧
+      (∀ (h2 : s.simpleKey.tokenIndex + 1 < s.tokens.size),
+        s.tokens[s.simpleKey.tokenIndex + 1].pos = s.simpleKey.pos))
+    (i : Nat) (hi : i < s.tokens.size) :
+    ((scanValuePrepare s).tokens[i]'(by
+      have := scanValuePrepare_tokens_monotonic s; omega)).pos =
+    s.tokens[i].pos := by
+  unfold scanValuePrepare
+  split
+  · -- simpleKey.possible = true
+    rename_i h_poss
+    obtain ⟨h_idx, h_idx1, h_pos_idx, h_pos_idx1⟩ := h_skv h_poss
+    split
+    · -- !inFlow
+      split
+      · -- keyCol > currentIndent: setIfInBounds at idx and idx+1
+        dsimp only []
+        rw [Array.getElem_setIfInBounds (by simp [Array.size_setIfInBounds]; omega)]
+        split
+        · -- i = idx + 1
+          rename_i h_eq; subst h_eq
+          simp [h_pos_idx1 h_idx1]
+        · -- i ≠ idx + 1
+          rw [Array.getElem_setIfInBounds (by omega)]
+          split
+          · -- i = idx
+            rename_i h_eq; subst h_eq
+            simp [h_pos_idx h_idx]
+          · -- i ≠ idx: token unchanged
+            rfl
+      · -- keyCol ≤ currentIndent: setIfInBounds at idx+1 only
+        dsimp only []
+        rw [Array.getElem_setIfInBounds (by omega)]
+        split
+        · rename_i h_eq; subst h_eq
+          simp [h_pos_idx1 h_idx1]
+        · rfl
+    · -- inFlow: setIfInBounds at idx+1 only
+      dsimp only []
+      rw [Array.getElem_setIfInBounds (by omega)]
+      split
+      · rename_i h_eq; subst h_eq
+        simp [h_pos_idx1 h_idx1]
+      · rfl
+  · -- simpleKey.possible = false
+    split
+    · -- explicitKeyLine.isSome: only simpleKey field changes
+      dsimp only []
+    · -- else
+      split
+      · -- !inFlow: pushMappingIndent
+        have := pushMappingIndent_preserves_prefix s s.col i (by omega)
+        simp [this]
+      · -- inFlow: identity
+        rfl
+
 set_option maxHeartbeats 400000 in
 /-- scanValue preserves tokens at indices below n, given the simpleKey invariant.
 
@@ -2232,6 +2297,50 @@ theorem scanValue_preserves_prefix (s s' : ScannerState)
         YamlToken.value i (by have := scanValuePrepare_tokens_monotonic (scanValueClearKey s); rw [h_ck] at this; omega)
       have h_adv := advance_preserves_tokens ((scanValuePrepare (scanValueClearKey s)).emit .value)
       simp_all
+
+set_option maxHeartbeats 400000 in
+/-- scanValue preserves `.pos` at ALL existing token positions.
+Requires `SimpleKeyValid` to establish that placeholder tokens at `tokenIndex`
+already have `.pos = simpleKey.pos`. -/
+theorem scanValue_preserves_all_pos (s s' : ScannerState)
+    (h : scanValue s = .ok s')
+    (h_skv : s.simpleKey.possible = true →
+      s.simpleKey.tokenIndex < s.tokens.size ∧
+      s.simpleKey.tokenIndex + 1 < s.tokens.size ∧
+      (∀ (h1 : s.simpleKey.tokenIndex < s.tokens.size),
+        s.tokens[s.simpleKey.tokenIndex].pos = s.simpleKey.pos) ∧
+      (∀ (h2 : s.simpleKey.tokenIndex + 1 < s.tokens.size),
+        s.tokens[s.simpleKey.tokenIndex + 1].pos = s.simpleKey.pos))
+    (i : Nat) (hi : i < s.tokens.size) :
+    (s'.tokens[i]'(by have := scanValue_adds_tokens s s' h; omega)).pos =
+    s.tokens[i].pos := by
+  unfold scanValue at h
+  dsimp only [] at h
+  simp only [bind, Except.bind] at h
+  split at h
+  · contradiction
+  · split at h
+    · contradiction
+    · injection h with h_eq; subst h_eq; dsimp only []
+      have h_ck := scanValueClearKey_preserves_tokens s
+      have h_skv' : (scanValueClearKey s).simpleKey.possible = true →
+          (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size ∧
+          (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size ∧
+          (∀ (h1 : (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size),
+            (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex].pos =
+              (scanValueClearKey s).simpleKey.pos) ∧
+          (∀ (h2 : (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size),
+            (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex + 1].pos =
+              (scanValueClearKey s).simpleKey.pos) := by
+        unfold scanValueClearKey
+        split
+        · simp
+        · exact h_skv
+      have h_prep := scanValuePrepare_preserves_all_pos (scanValueClearKey s) h_skv' i (by rw [h_ck]; exact hi)
+      have h_emit := emit_preserves_tokens_at (scanValuePrepare (scanValueClearKey s))
+        YamlToken.value i (by have := scanValuePrepare_tokens_monotonic (scanValueClearKey s); rw [h_ck] at this; omega)
+      have h_adv := advance_preserves_tokens ((scanValuePrepare (scanValueClearKey s)).emit .value)
+      simp only [h_adv, h_emit]; rw [h_prep]; simp [h_ck]
 
 /-- Block indicator dispatch preserves prefix below n (needs simpleKey invariant for scanValue). -/
 theorem dispatchBlockIndicators_preserves_prefix (s : ScannerState) (c : Char) (s' : ScannerState)
@@ -5217,31 +5326,2432 @@ theorem scanValuePrepare_preserves_ScanInv (s : ScannerState) (h : ScanInv s)
       · -- inFlow: identity
         exact h
 
+-- skipSpacesLoop preserves ScanInv: only calls advance.
+theorem skipSpacesLoop_preserves_ScanInv (s : ScannerState) (fuel : Nat)
+    (h : ScanInv s) : ScanInv (skipSpacesLoop s fuel) := by
+  induction fuel generalizing s with
+  | zero => unfold skipSpacesLoop; exact h
+  | succ n ih =>
+    unfold skipSpacesLoop; split
+    · exact ih _ (advance_preserves_ScanInv _ h)
+    · exact h
+
+theorem skipSpaces_preserves_ScanInv (s : ScannerState) (h : ScanInv s) :
+    ScanInv (skipSpaces s) := by
+  unfold skipSpaces; exact skipSpacesLoop_preserves_ScanInv s _ h
+
+-- skipWhitespaceLoop preserves ScanInv: only calls advance.
+theorem skipWhitespaceLoop_preserves_ScanInv (s : ScannerState) (fuel : Nat)
+    (h : ScanInv s) : ScanInv (skipWhitespaceLoop s fuel) := by
+  induction fuel generalizing s with
+  | zero => unfold skipWhitespaceLoop; exact h
+  | succ n ih =>
+    unfold skipWhitespaceLoop; split
+    · split
+      · exact ih _ (advance_preserves_ScanInv _ h)
+      · exact h
+    · exact h
+
+theorem skipWhitespace_preserves_ScanInv (s : ScannerState) (h : ScanInv s) :
+    ScanInv (skipWhitespace s) := by
+  unfold skipWhitespace; exact skipWhitespaceLoop_preserves_ScanInv s _ h
+
+-- skipToEndOfLineLoop preserves ScanInv: only calls advance.
+theorem skipToEndOfLineLoop_preserves_ScanInv (s : ScannerState) (fuel : Nat)
+    (h : ScanInv s) : ScanInv (skipToEndOfLineLoop s fuel) := by
+  induction fuel generalizing s with
+  | zero => unfold skipToEndOfLineLoop; exact h
+  | succ n ih =>
+    unfold skipToEndOfLineLoop; split
+    · split
+      · exact h
+      · exact ih _ (advance_preserves_ScanInv _ h)
+    · exact h
+
+theorem skipToEndOfLine_preserves_ScanInv (s : ScannerState) (h : ScanInv s) :
+    ScanInv (skipToEndOfLine s) := by
+  unfold skipToEndOfLine; exact skipToEndOfLineLoop_preserves_ScanInv s _ h
+
+-- consumeNewline preserves ScanInv: advance + field update.
+theorem consumeNewline_preserves_ScanInv (s : ScannerState) (h : ScanInv s) :
+    ScanInv (consumeNewline s) := by
+  unfold consumeNewline; split
+  · exact field_update_preserves_ScanInv _ _ (advance_preserves_ScanInv _ h) rfl rfl
+  · dsimp only []; split
+    · exact field_update_preserves_ScanInv _ _
+        (advance_preserves_ScanInv _ (advance_preserves_ScanInv _ h)) rfl rfl
+    · exact field_update_preserves_ScanInv _ _ (advance_preserves_ScanInv _ h) rfl rfl
+  · exact h
+
+-- skipToContentWs preserves ScanInv.
+theorem skipToContentWs_preserves_ScanInv (s s' : ScannerState)
+    (h : ScanInv s) (h_ok : skipToContentWs s = .ok s') : ScanInv s' := by
+  unfold skipToContentWs at h_ok; split at h_ok
+  · -- needIndentCheck = true
+    simp only [] at h_ok
+    have h_sp : ScanInv (skipSpaces s) := skipSpaces_preserves_ScanInv s h
+    split at h_ok
+    · -- col ≤ currentIndent
+      split at h_ok
+      · -- peek? = some '\t'
+        split at h_ok
+        · simp at h_ok; rw [← h_ok]; exact skipWhitespace_preserves_ScanInv _ h_sp
+        · split at h_ok
+          · simp at h_ok; rw [← h_ok]; exact skipWhitespace_preserves_ScanInv _ h_sp
+          · simp at h_ok
+        · simp at h_ok; rw [← h_ok]; exact skipWhitespace_preserves_ScanInv _ h_sp
+      · simp at h_ok; rw [← h_ok]; exact h_sp
+    · simp at h_ok; rw [← h_ok]; exact skipWhitespace_preserves_ScanInv _ h_sp
+  · -- needIndentCheck = false
+    simp at h_ok; rw [← h_ok]; exact skipWhitespace_preserves_ScanInv _ h
+
+-- skipToContentComment preserves ScanInv.
+theorem skipToContentComment_preserves_ScanInv (s : ScannerState)
+    (h : ScanInv s) : ScanInv (skipToContentComment s) := by
+  unfold skipToContentComment; split
+  · -- peek? = some '#'
+    simp only []
+    -- split on peekBack? inside commentOk, then on the if
+    split <;> split
+    all_goals (first | exact skipToEndOfLine_preserves_ScanInv s h | exact h)
+  · exact h
+
+-- skipToContentLoop preserves ScanInv.
+theorem skipToContentLoop_preserves_ScanInv (s s' : ScannerState) (fuel : Nat)
+    (h : ScanInv s) (h_ok : skipToContentLoop s fuel = .ok s') : ScanInv s' := by
+  induction fuel generalizing s with
+  | zero => unfold skipToContentLoop at h_ok; simp at h_ok; rw [← h_ok]; exact h
+  | succ n ih =>
+    unfold skipToContentLoop at h_ok; split at h_ok
+    · simp at h_ok
+    · rename_i s1 h_ws
+      have h_s1 : ScanInv s1 := skipToContentWs_preserves_ScanInv s s1 h h_ws
+      have h_s2 : ScanInv (skipToContentComment s1) :=
+        skipToContentComment_preserves_ScanInv s1 h_s1
+      simp only [] at h_ok; split at h_ok
+      · split at h_ok
+        · split at h_ok
+          · -- !isInFlowSequence: recurse with { ... simpleKeyAllowed := true }
+            have h_cn := consumeNewline_preserves_ScanInv _ h_s2
+            have h_fu : ScanInv { consumeNewline (skipToContentComment s1)
+                with simpleKeyAllowed := true } :=
+              field_update_preserves_ScanInv _ _ h_cn rfl rfl
+            exact ih _ h_fu h_ok
+          · exact ih _ (consumeNewline_preserves_ScanInv _ h_s2) h_ok
+        · simp at h_ok; rw [← h_ok]; exact h_s2
+      · simp at h_ok; rw [← h_ok]; exact h_s2
+
+-- skipToContent preserves ScanInv.
+theorem skipToContent_preserves_ScanInv (s s' : ScannerState)
+    (h : ScanInv s) (h_ok : skipToContent s = .ok s') : ScanInv s' := by
+  unfold skipToContent at h_ok
+  exact skipToContentLoop_preserves_ScanInv s s' _ h h_ok
+
+-- Phase 2a: preprocess preserves ScanInv.
+-- Helper: the state after the optional unwindIndents branch preserves ScanInv.
+theorem preprocess_unwind_preserves_ScanInv (s_skip : ScannerState)
+    (h_sinv : ScanInv s_skip) :
+    ScanInv (if !s_skip.inFlow && s_skip.needIndentCheck then
+      { unwindIndents s_skip s_skip.col with needIndentCheck := false }
+    else s_skip) := by
+  split
+  · exact field_update_preserves_ScanInv _ _
+      (unwindIndents_preserves_ScanInv s_skip s_skip.col h_sinv) rfl rfl
+  · exact h_sinv
+
+theorem preprocess_preserves_ScanInv (s : ScannerState) (s' : ScannerState) (c : Char)
+    (h : ScanInv s) (h_ok : scanNextToken_preprocess s = .ok (some (s', c))) : ScanInv s' := by
+  unfold scanNextToken_preprocess at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · simp at h_ok
+  · rename_i s_skip h_skip
+    have h_sinv : ScanInv s_skip := skipToContent_preserves_ScanInv s s_skip h h_skip
+    split at h_ok
+    · simp at h_ok
+    · -- past hasMore
+      split at h_ok
+      · -- unwindIndents active
+        split at h_ok
+        · simp at h_ok
+        · split at h_ok
+          · simp at h_ok
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h_ok
+            obtain ⟨h_eq, _⟩ := h_ok; subst h_eq
+            apply saveSimpleKey_preserves_ScanInv
+            exact field_update_preserves_ScanInv _ _
+              (unwindIndents_preserves_ScanInv s_skip s_skip.col h_sinv) rfl rfl
+      · -- unwindIndents inactive
+        split at h_ok
+        · simp at h_ok
+        · split at h_ok
+          · simp at h_ok
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h_ok
+            obtain ⟨h_eq, _⟩ := h_ok; subst h_eq
+            exact saveSimpleKey_preserves_ScanInv _ h_sinv
+
+/-!
+### Phase 2: Per-dispatcher ScanInv theorems
+-/
+
+-- Phase 2c: Each flow indicator function is emit + advance + field updates.
+theorem scanFlowSequenceStart_preserves_ScanInv (s : ScannerState)
+    (h : ScanInv s) : ScanInv (scanFlowSequenceStart s) := by
+  unfold scanFlowSequenceStart
+  apply field_update_preserves_ScanInv _ _ _ rfl rfl
+  apply advance_preserves_ScanInv
+  apply emit_preserves_ScanInv
+  exact field_update_preserves_ScanInv _ _ h rfl rfl
+
+theorem scanFlowSequenceEnd_preserves_ScanInv (s : ScannerState)
+    (h : ScanInv s) : ScanInv (scanFlowSequenceEnd s) := by
+  unfold scanFlowSequenceEnd
+  apply field_update_preserves_ScanInv _ _ _ rfl rfl
+  apply advance_preserves_ScanInv
+  exact emit_preserves_ScanInv _ .flowSequenceEnd h
+
+theorem scanFlowMappingStart_preserves_ScanInv (s : ScannerState)
+    (h : ScanInv s) : ScanInv (scanFlowMappingStart s) := by
+  unfold scanFlowMappingStart
+  apply field_update_preserves_ScanInv _ _ _ rfl rfl
+  apply advance_preserves_ScanInv
+  apply emit_preserves_ScanInv
+  exact field_update_preserves_ScanInv _ _ h rfl rfl
+
+theorem scanFlowMappingEnd_preserves_ScanInv (s : ScannerState)
+    (h : ScanInv s) : ScanInv (scanFlowMappingEnd s) := by
+  unfold scanFlowMappingEnd
+  apply field_update_preserves_ScanInv _ _ _ rfl rfl
+  apply advance_preserves_ScanInv
+  exact emit_preserves_ScanInv _ .flowMappingEnd h
+
+theorem scanFlowEntry_preserves_ScanInv (s : ScannerState)
+    (h : ScanInv s) (s' : ScannerState)
+    (h_ok : scanFlowEntry s = .ok s') : ScanInv s' := by
+  unfold scanFlowEntry at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · split at h_ok
+    · simp at h_ok
+    · simp only [Except.ok.injEq] at h_ok; subst h_ok
+      exact field_update_preserves_ScanInv _ _
+        (advance_preserves_ScanInv _ (emit_preserves_ScanInv _ .flowEntry h)) rfl rfl
+  · simp only [Except.ok.injEq] at h_ok; subst h_ok
+    exact field_update_preserves_ScanInv _ _
+      (advance_preserves_ScanInv _ (emit_preserves_ScanInv _ .flowEntry h)) rfl rfl
+
+-- Phase 2c: dispatchFlowIndicators preserves ScanInv.
+theorem dispatchFlowIndicators_preserves_ScanInv (s : ScannerState) (c : Char)
+    (h : ScanInv s) (s' : ScannerState)
+    (h_ok : scanNextToken_dispatchFlowIndicators s c = .ok (some s')) : ScanInv s' := by
+  unfold scanNextToken_dispatchFlowIndicators at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  -- c == '['
+  split at h_ok
+  · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+    exact scanFlowSequenceStart_preserves_ScanInv s h
+  -- c == ']'
+  · split at h_ok
+    · split at h_ok
+      · simp at h_ok
+      · split at h_ok
+        · simp at h_ok
+        · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+          exact scanFlowSequenceEnd_preserves_ScanInv s h
+    -- c == '{'
+    · split at h_ok
+      · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact scanFlowMappingStart_preserves_ScanInv s h
+      -- c == '}'
+      · split at h_ok
+        · split at h_ok
+          · simp at h_ok
+          · split at h_ok
+            · simp at h_ok
+            · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+              exact scanFlowMappingEnd_preserves_ScanInv s h
+        -- c == ','
+        · split at h_ok
+          · split at h_ok
+            · simp at h_ok
+            · split at h_ok
+              · simp at h_ok
+              · rename_i _ _ _ h_entry
+                simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+                exact scanFlowEntry_preserves_ScanInv s h _ h_entry
+          -- fallthrough: none
+          · simp at h_ok
+
+-- Phase 2b: Structural dispatchers.
+
+-- advanceNLoop preserves ScanInv: just repeated advance.
+theorem advanceNLoop_preserves_ScanInv (s : ScannerState) (n : Nat)
+    (h : ScanInv s) : ScanInv (ScannerState.advanceNLoop s n) := by
+  induction n generalizing s with
+  | zero => unfold ScannerState.advanceNLoop; exact h
+  | succ n ih => unfold ScannerState.advanceNLoop; exact ih _ (advance_preserves_ScanInv _ h)
+
+theorem advanceN_preserves_ScanInv (s : ScannerState) (n : Nat)
+    (h : ScanInv s) : ScanInv (s.advanceN n) := by
+  unfold ScannerState.advanceN; exact advanceNLoop_preserves_ScanInv s n h
+
+-- Advance-only loop ScanInv preservation (directive sub-functions).
+theorem collectDirectiveNameLoop_preserves_ScanInv (s : ScannerState)
+    (name : String) (fuel : Nat) (h : ScanInv s) :
+    ScanInv (collectDirectiveNameLoop s name fuel).2 := by
+  induction fuel generalizing s name with
+  | zero => unfold collectDirectiveNameLoop; exact h
+  | succ n ih =>
+    unfold collectDirectiveNameLoop; split
+    · split
+      · exact ih _ _ (advance_preserves_ScanInv _ h)
+      · exact h
+    · exact h
+
+theorem collectVersionMajorLoop_preserves_ScanInv (s : ScannerState)
+    (major : String) (fuel : Nat) (h : ScanInv s) :
+    ScanInv (collectVersionMajorLoop s major fuel).2 := by
+  induction fuel generalizing s major with
+  | zero => unfold collectVersionMajorLoop; exact h
+  | succ n ih =>
+    unfold collectVersionMajorLoop; split
+    · exact advance_preserves_ScanInv _ h
+    · split
+      · exact ih _ _ (advance_preserves_ScanInv _ h)
+      · exact h
+    · exact h
+
+theorem collectVersionMinorLoop_preserves_ScanInv (s : ScannerState)
+    (minor : String) (fuel : Nat) (h : ScanInv s) :
+    ScanInv (collectVersionMinorLoop s minor fuel).2 := by
+  induction fuel generalizing s minor with
+  | zero => unfold collectVersionMinorLoop; exact h
+  | succ n ih =>
+    unfold collectVersionMinorLoop; split
+    · split
+      · exact ih _ _ (advance_preserves_ScanInv _ h)
+      · exact h
+    · exact h
+
+theorem collectTagHandleDirectiveLoop_preserves_ScanInv (s : ScannerState)
+    (handle : String) (fuel : Nat) (h : ScanInv s) :
+    ScanInv (collectTagHandleDirectiveLoop s handle fuel).2 := by
+  induction fuel generalizing s handle with
+  | zero => unfold collectTagHandleDirectiveLoop; exact h
+  | succ n ih =>
+    unfold collectTagHandleDirectiveLoop; split
+    · split
+      · exact ih _ _ (advance_preserves_ScanInv _ h)
+      · exact h
+    · exact h
+
+theorem collectTagPrefixLoop_preserves_ScanInv (s : ScannerState)
+    (pfx : String) (fuel : Nat) (h : ScanInv s) :
+    ScanInv (collectTagPrefixLoop s pfx fuel).2 := by
+  induction fuel generalizing s pfx with
+  | zero => unfold collectTagPrefixLoop; exact h
+  | succ n ih =>
+    unfold collectTagPrefixLoop; split
+    · split
+      · exact ih _ _ (advance_preserves_ScanInv _ h)
+      · exact h
+    · exact h
+
+-- Offset monotonicity for advance-only loops (needed for emitAt h_pos).
+theorem skipWhitespaceLoop_offset_ge (s : ScannerState) (fuel : Nat) :
+    (skipWhitespaceLoop s fuel).offset ≥ s.offset := by
+  induction fuel generalizing s with
+  | zero => unfold skipWhitespaceLoop; omega
+  | succ n ih =>
+    unfold skipWhitespaceLoop; split
+    · split
+      · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _)
+      · exact Nat.le_refl _
+    · exact Nat.le_refl _
+
+theorem skipWhitespace_offset_ge (s : ScannerState) :
+    (skipWhitespace s).offset ≥ s.offset := by
+  unfold skipWhitespace; exact skipWhitespaceLoop_offset_ge s _
+
+theorem collectDirectiveNameLoop_offset_ge (s : ScannerState) (name : String) (fuel : Nat) :
+    (collectDirectiveNameLoop s name fuel).2.offset ≥ s.offset := by
+  induction fuel generalizing s name with
+  | zero => unfold collectDirectiveNameLoop; exact Nat.le_refl _
+  | succ n ih =>
+    unfold collectDirectiveNameLoop; split
+    · split
+      · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _)
+      · exact Nat.le_refl _
+    · exact Nat.le_refl _
+
+theorem collectVersionMajorLoop_offset_ge (s : ScannerState) (major : String) (fuel : Nat) :
+    (collectVersionMajorLoop s major fuel).2.offset ≥ s.offset := by
+  induction fuel generalizing s major with
+  | zero => unfold collectVersionMajorLoop; exact Nat.le_refl _
+  | succ n ih =>
+    unfold collectVersionMajorLoop; split
+    · exact ScannerProgress.advance_offset_ge s
+    · split
+      · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _)
+      · exact Nat.le_refl _
+    · exact Nat.le_refl _
+
+theorem collectVersionMinorLoop_offset_ge (s : ScannerState) (minor : String) (fuel : Nat) :
+    (collectVersionMinorLoop s minor fuel).2.offset ≥ s.offset := by
+  induction fuel generalizing s minor with
+  | zero => unfold collectVersionMinorLoop; exact Nat.le_refl _
+  | succ n ih =>
+    unfold collectVersionMinorLoop; split
+    · split
+      · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _)
+      · exact Nat.le_refl _
+    · exact Nat.le_refl _
+
+theorem collectTagHandleDirectiveLoop_offset_ge (s : ScannerState)
+    (handle : String) (fuel : Nat) :
+    (collectTagHandleDirectiveLoop s handle fuel).2.offset ≥ s.offset := by
+  induction fuel generalizing s handle with
+  | zero => unfold collectTagHandleDirectiveLoop; exact Nat.le_refl _
+  | succ n ih =>
+    unfold collectTagHandleDirectiveLoop; split
+    · split
+      · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _)
+      · exact Nat.le_refl _
+    · exact Nat.le_refl _
+
+theorem collectTagPrefixLoop_offset_ge (s : ScannerState) (pfx : String) (fuel : Nat) :
+    (collectTagPrefixLoop s pfx fuel).2.offset ≥ s.offset := by
+  induction fuel generalizing s pfx with
+  | zero => unfold collectTagPrefixLoop; exact Nat.le_refl _
+  | succ n ih =>
+    unfold collectTagPrefixLoop; split
+    · split
+      · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _)
+      · exact Nat.le_refl _
+    · exact Nat.le_refl _
+
+-- Phase 2e offset_ge lemmas for content scanner sub-functions.
+
+theorem skipSpacesLoop_offset_ge (s : ScannerState) (fuel : Nat) :
+    (skipSpacesLoop s fuel).offset ≥ s.offset := by
+  induction fuel generalizing s with
+  | zero => unfold skipSpacesLoop; exact Nat.le_refl _
+  | succ n ih =>
+    unfold skipSpacesLoop; split
+    · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _)
+    · exact Nat.le_refl _
+
+theorem skipSpaces_offset_ge (s : ScannerState) :
+    (skipSpaces s).offset ≥ s.offset := by
+  unfold skipSpaces; exact skipSpacesLoop_offset_ge s _
+
+theorem skipToEndOfLineLoop_offset_ge (s : ScannerState) (fuel : Nat) :
+    (skipToEndOfLineLoop s fuel).offset ≥ s.offset := by
+  induction fuel generalizing s with
+  | zero => unfold skipToEndOfLineLoop; exact Nat.le_refl _
+  | succ n ih =>
+    unfold skipToEndOfLineLoop; split
+    · split
+      · exact Nat.le_refl _
+      · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _)
+    · exact Nat.le_refl _
+
+theorem skipToEndOfLine_offset_ge (s : ScannerState) :
+    (skipToEndOfLine s).offset ≥ s.offset := by
+  unfold skipToEndOfLine; exact skipToEndOfLineLoop_offset_ge s _
+
+theorem consumeNewline_offset_ge (s : ScannerState) :
+    (consumeNewline s).offset ≥ s.offset := by
+  unfold consumeNewline
+  split
+  · -- '\n': advance
+    exact ScannerProgress.advance_offset_ge s
+  · -- '\r': advance, maybe advance again
+    -- The inner match is on s.advance.peek?
+    simp only []
+    split
+    · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ScannerProgress.advance_offset_ge _)
+    · exact ScannerProgress.advance_offset_ge s
+  · exact Nat.le_refl _
+
+theorem collectHexDigitsLoop_offset_ge (s : ScannerState) (hex : String) (n : Nat) :
+    (collectHexDigitsLoop s hex n).snd.offset ≥ s.offset := by
+  induction n generalizing s hex with
+  | zero => unfold collectHexDigitsLoop; exact Nat.le_refl _
+  | succ n' ih =>
+    unfold collectHexDigitsLoop; split
+    · split
+      · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _)
+      · exact Nat.le_refl _
+    · exact Nat.le_refl _
+
+theorem parseHexEscape_offset_ge (s : ScannerState) (n : Nat)
+    (ch : Char) (s' : ScannerState) (h : parseHexEscape s n = .ok (ch, s')) :
+    s'.offset ≥ s.offset := by
+  unfold parseHexEscape at h
+  simp at h
+  split at h <;> try contradiction
+  split at h <;> try contradiction
+  simp only [Except.ok.injEq, Prod.mk.injEq] at h
+  exact h.2 ▸ collectHexDigitsLoop_offset_ge s _ n
+
+theorem processEscape_offset_ge (s : ScannerState)
+    (ch : Char) (s' : ScannerState) (h : processEscape s = .ok (ch, s')) :
+    s'.offset ≥ s.offset := by
+  unfold processEscape at h
+  split at h
+  · contradiction
+  · -- Match on character: 26+ branches, all either .ok (ch, s.advance) or parseHexEscape
+    simp only [] at h
+    -- Split all character match arms
+    split at h <;>
+    (try (simp only [Except.ok.injEq, Prod.mk.injEq] at h; exact h.2 ▸ ScannerProgress.advance_offset_ge s)) <;>
+    (try contradiction) <;>
+    -- parseHexEscape branches (x, u, U): s.advance then parseHexEscape
+    (exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (parseHexEscape_offset_ge s.advance _ _ _ h))
+
+theorem collectAnchorNameLoop_offset_ge (s : ScannerState) (name : String) (fuel : Nat) :
+    (collectAnchorNameLoop s name fuel).snd.offset ≥ s.offset := by
+  induction fuel generalizing s name with
+  | zero => unfold collectAnchorNameLoop; exact Nat.le_refl _
+  | succ n ih =>
+    unfold collectAnchorNameLoop; split
+    · split
+      · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _)
+      · exact Nat.le_refl _
+    · exact Nat.le_refl _
+
+theorem collectVerbatimTagLoop_offset_ge (s : ScannerState) (uri : String) (fuel : Nat) :
+    (collectVerbatimTagLoop s uri fuel).snd.offset ≥ s.offset := by
+  induction fuel generalizing s uri with
+  | zero => unfold collectVerbatimTagLoop; exact Nat.le_refl _
+  | succ n ih =>
+    unfold collectVerbatimTagLoop; split
+    · exact ScannerProgress.advance_offset_ge s
+    · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _)
+    · exact Nat.le_refl _
+
+theorem collectTagSuffixLoop_offset_ge (s : ScannerState) (suffix : String) (fuel : Nat) :
+    (collectTagSuffixLoop s suffix fuel).snd.offset ≥ s.offset := by
+  induction fuel generalizing s suffix with
+  | zero => unfold collectTagSuffixLoop; exact Nat.le_refl _
+  | succ n ih =>
+    unfold collectTagSuffixLoop; split
+    · split
+      · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _)
+      · exact Nat.le_refl _
+    · exact Nat.le_refl _
+
+theorem collectTagHandleLoop_offset_ge (s : ScannerState) (chars : String) (fuel : Nat) :
+    (collectTagHandleLoop s chars fuel).2.2.offset ≥ s.offset := by
+  induction fuel generalizing s chars with
+  | zero => unfold collectTagHandleLoop; exact Nat.le_refl _
+  | succ n ih =>
+    unfold collectTagHandleLoop; split
+    · exact ScannerProgress.advance_offset_ge s
+    · split
+      · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _)
+      · exact Nat.le_refl _
+    · exact Nat.le_refl _
+
+theorem parseBlockHeaderLoop_offset_ge (s : ScannerState) (chomp : ChompStyle)
+    (explicitOffset : Option Nat) (fuel : Nat) :
+    (parseBlockHeaderLoop s chomp explicitOffset fuel).2.2.offset ≥ s.offset := by
+  induction fuel generalizing s chomp explicitOffset with
+  | zero => unfold parseBlockHeaderLoop; exact Nat.le_refl _
+  | succ n ih =>
+    unfold parseBlockHeaderLoop; split
+    · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ _)
+    · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ _)
+    · split
+      · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ _)
+      · exact Nat.le_refl _
+    · exact Nat.le_refl _
+
+theorem consumeExactSpaces_offset_ge (s : ScannerState) (count : Nat) :
+    (consumeExactSpaces s count).snd.offset ≥ s.offset := by
+  induction count generalizing s with
+  | zero => unfold consumeExactSpaces; exact Nat.le_refl _
+  | succ n ih =>
+    unfold consumeExactSpaces; split
+    · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _)
+    · exact Nat.le_refl _
+
+theorem collectLineContentLoop_offset_ge (s : ScannerState) (content : String) (fuel : Nat) :
+    (collectLineContentLoop s content fuel).snd.offset ≥ s.offset := by
+  induction fuel generalizing s content with
+  | zero => unfold collectLineContentLoop; exact Nat.le_refl _
+  | succ n ih =>
+    unfold collectLineContentLoop; split
+    · split
+      · exact Nat.le_refl _
+      · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _)
+    · exact Nat.le_refl _
+
+theorem scanBlockScalarSkipComment_offset_ge (s : ScannerState) :
+    (scanBlockScalarSkipComment s).offset ≥ s.offset := by
+  unfold scanBlockScalarSkipComment
+  split
+  · -- some '#'
+    split
+    · -- peekBack? = some c: commentOk = (isWhiteSpace c || isLineBreak c || c == '')
+      dsimp only []
+      split
+      · exact skipToEndOfLine_offset_ge s
+      · exact Nat.le_refl _
+    · -- peekBack? = none: commentOk = false → if false then ... else s
+      exact Nat.le_refl _
+  · exact Nat.le_refl _
+
+theorem scanBlockScalarConsumeNewline_offset_ge (s s' : ScannerState)
+    (h : scanBlockScalarConsumeNewline s = .ok s') :
+    s'.offset ≥ s.offset := by
+  unfold scanBlockScalarConsumeNewline at h; split at h
+  · split at h
+    · simp only [Except.ok.injEq] at h; subst h; exact consumeNewline_offset_ge s
+    · split at h
+      · simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
+      · contradiction
+  · simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
+
+theorem foldQuotedNewlinesLoop_offset_ge (s : ScannerState) (emptyCount : Nat)
+    (fuel : Nat) :
+    (foldQuotedNewlinesLoop s emptyCount fuel).1.offset ≥ s.offset := by
+  induction fuel generalizing s emptyCount with
+  | zero => unfold foldQuotedNewlinesLoop; exact Nat.le_refl _
+  | succ n ih =>
+    unfold foldQuotedNewlinesLoop; simp only []
+    split
+    · split
+      · exact Nat.le_trans (Nat.le_trans (skipSpaces_offset_ge s) (consumeNewline_offset_ge _)) (ih _ _)
+      · exact Nat.le_refl _
+    · exact Nat.le_refl _
+
+theorem skipBlankLinesLoop_offset_ge (s : ScannerState) (cnt : Nat) (fuel : Nat)
+    (inputEnd : Nat) :
+    (skipBlankLinesLoop s cnt fuel inputEnd).snd.offset ≥ s.offset := by
+  induction fuel generalizing s cnt with
+  | zero => unfold skipBlankLinesLoop; exact Nat.le_refl _
+  | succ n ih =>
+    unfold skipBlankLinesLoop; simp only []
+    split
+    · split
+      · exact Nat.le_trans
+          (Nat.le_trans (skipSpaces_offset_ge s) (consumeNewline_offset_ge _))
+          (ih _ _)
+      · exact Nat.le_refl _
+    · exact Nat.le_refl _
+
+theorem foldQuotedNewlines_offset_ge (s : ScannerState)
+    (str : String) (s' : ScannerState) (h : foldQuotedNewlines s = .ok (str, s')) :
+    s'.offset ≥ s.offset := by
+  unfold foldQuotedNewlines at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h <;> try split at h
+  all_goals (try contradiction)
+  all_goals (try split at h) <;> try contradiction
+  all_goals (simp only [Except.ok.injEq, Prod.mk.injEq] at h; obtain ⟨_, rfl⟩ := h)
+  all_goals (
+    have h1 := consumeNewline_offset_ge s
+    have h2 := foldQuotedNewlinesLoop_offset_ge (consumeNewline s) 0
+      (s.inputEnd - (consumeNewline s).offset + 1)
+    have h3 := skipSpaces_offset_ge (foldQuotedNewlinesLoop (consumeNewline s) 0
+      (s.inputEnd - (consumeNewline s).offset + 1)).fst
+    have h4 := skipWhitespace_offset_ge (skipSpaces (foldQuotedNewlinesLoop (consumeNewline s) 0
+      (s.inputEnd - (consumeNewline s).offset + 1)).fst)
+    exact Nat.le_trans h1 (Nat.le_trans h2 (Nat.le_trans h3 h4)))
+
+theorem collectBlockScalarLoop_offset_ge (s : ScannerState) (rawContent : String)
+    (fuel : Nat) (contentIndent inputEnd : Nat) :
+    (collectBlockScalarLoop s rawContent fuel contentIndent inputEnd).snd.offset ≥ s.offset := by
+  induction fuel generalizing s rawContent with
+  | zero => unfold collectBlockScalarLoop; exact Nat.le_refl _
+  | succ n ih =>
+    unfold collectBlockScalarLoop; simp only []
+    split
+    · -- atDocumentBoundary: return s
+      exact Nat.le_refl _
+    · -- not atDocumentBoundary
+      -- After consumeExactSpaces, match on peek?
+      split
+      · -- none: return s_after_spaces
+        exact consumeExactSpaces_offset_ge s _
+      · -- some c
+        split
+        · -- isLineBreak: consumeNewline then recurse
+          exact Nat.le_trans (Nat.le_trans (consumeExactSpaces_offset_ge s _) (consumeNewline_offset_ge _)) (ih _ _)
+        · -- not isLineBreak
+          split
+          · -- spacesConsumed < contentIndent: return s
+            exact Nat.le_refl _
+          · -- collect line content, then match on peek?
+            split
+            · -- some c': split on isLineBreak
+              split
+              · -- isLineBreak c': consumeNewline then recurse
+                exact Nat.le_trans
+                  (Nat.le_trans (consumeExactSpaces_offset_ge s _)
+                    (Nat.le_trans (collectLineContentLoop_offset_ge _ _ _)
+                      (consumeNewline_offset_ge _)))
+                  (ih _ _)
+              · -- not isLineBreak c': recurse with s_after_line
+                exact Nat.le_trans
+                  (Nat.le_trans (consumeExactSpaces_offset_ge s _)
+                    (collectLineContentLoop_offset_ge _ _ _))
+                  (ih _ _)
+            · -- none: return s_after_line
+              exact Nat.le_trans (consumeExactSpaces_offset_ge s _)
+                (collectLineContentLoop_offset_ge _ _ _)
+
+-- Level 3 offset_ge lemmas for content loop functions.
+
+theorem collectDoubleQuotedLoop_offset_ge (s : ScannerState) (content : String)
+    (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat)
+    (str : String) (s' : ScannerState)
+    (h : collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok (str, s')) :
+    s'.offset ≥ s.offset := by
+  induction fuel generalizing s content with
+  | zero => unfold collectDoubleQuotedLoop at h; contradiction
+  | succ n ih =>
+    unfold collectDoubleQuotedLoop at h
+    split at h
+    · contradiction  -- none
+    · -- some '"': closing quote, result is (content, s.advance)
+      simp only [Except.ok.injEq, Prod.mk.injEq] at h
+      exact h.2 ▸ ScannerProgress.advance_offset_ge s
+    · -- some '\\': escape sequence
+      simp only [] at h
+      split at h
+      · -- some c after backslash
+        split at h
+        · -- isLineBreak: consumeNewline → skipWhitespace → recurse
+          exact Nat.le_trans (ScannerProgress.advance_offset_ge s)
+            (Nat.le_trans (consumeNewline_offset_ge s.advance)
+            (Nat.le_trans (skipWhitespace_offset_ge _) (ih _ _ h)))
+        · -- regular escape: processEscape → recurse
+          simp only [bind, Except.bind] at h
+          split at h <;> try contradiction
+          rename_i esc_result heq
+          cases esc_result with
+          | mk ch s_esc =>
+            exact Nat.le_trans (ScannerProgress.advance_offset_ge s)
+              (Nat.le_trans (processEscape_offset_ge s.advance ch s_esc heq) (ih _ _ h))
+      · contradiction  -- none after backslash
+    · -- some c (regular/linebreak)
+      split at h
+      · -- isLineBreak: foldQuotedNewlines → validation → recurse
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i fold_result heq
+        cases fold_result with
+        | mk folded s_fold =>
+          simp only [pure, Except.pure] at h
+          split at h <;> try contradiction  -- atDocumentStart || atDocumentEnd
+          split at h <;> try contradiction  -- col ≤ currentIndent
+          exact Nat.le_trans (foldQuotedNewlines_offset_ge s folded s_fold heq) (ih _ _ h)
+      · -- regular character: advance → recurse
+        exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ h)
+
+theorem collectSingleQuotedLoop_offset_ge (s : ScannerState) (content : String)
+    (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat)
+    (str : String) (s' : ScannerState)
+    (h : collectSingleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok (str, s')) :
+    s'.offset ≥ s.offset := by
+  induction fuel generalizing s content with
+  | zero => unfold collectSingleQuotedLoop at h; contradiction
+  | succ n ih =>
+    unfold collectSingleQuotedLoop at h
+    split at h
+    · contradiction  -- none
+    · -- some '\'': escaped or closing
+      simp only [] at h
+      split at h
+      · -- escaped quote '\'': advance twice → recurse
+        exact Nat.le_trans (ScannerProgress.advance_offset_ge s)
+          (Nat.le_trans (ScannerProgress.advance_offset_ge s.advance) (ih _ _ h))
+      · -- closing quote
+        simp only [Except.ok.injEq, Prod.mk.injEq] at h
+        exact h.2 ▸ ScannerProgress.advance_offset_ge s
+    · -- some c (regular character or linebreak)
+      split at h
+      · -- isLineBreak: foldQuotedNewlines → validations → recurse
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i fold_result heq
+        cases fold_result with
+        | mk folded s_fold =>
+          simp only [pure, Except.pure] at h
+          split at h <;> try contradiction  -- atDocumentStart || atDocumentEnd
+          split at h <;> try contradiction  -- col ≤ currentIndent
+          exact Nat.le_trans (foldQuotedNewlines_offset_ge s folded s_fold heq) (ih _ _ h)
+      · -- regular character: advance → recurse
+        exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ h)
+
+theorem collectPlainScalarLoop_offset_ge (s : ScannerState) (content spaces : String)
+    (fuel : Nat) (inFlow : Bool) (contentIndent inputEnd : Nat)
+    (result : PlainScalarResult)
+    (h : collectPlainScalarLoop s content spaces fuel inFlow contentIndent inputEnd = .ok result) :
+    result.state.offset ≥ s.offset := by
+  induction fuel generalizing s content spaces with
+  | zero =>
+    unfold collectPlainScalarLoop at h
+    simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
+  | succ n ih =>
+    unfold collectPlainScalarLoop at h
+    split at h
+    · -- none
+      simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
+    · -- some c
+      split at h
+      · -- c == '#' && spaces.length > 0
+        simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
+      · split at h
+        · -- c == ':'
+          simp only [] at h
+          split at h
+          · -- terminates
+            split at h
+            · simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
+            · split at h
+              · simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
+              · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ _ h)
+          · -- non-terminating ':'
+            split at h
+            · simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
+            · split at h
+              · simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
+              · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ _ h)
+        · split at h
+          · -- inFlow && isFlowIndicator
+            simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
+          · split at h
+            · -- col == 0 && atDocumentBoundary
+              simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
+            · split at h
+              · -- isLineBreak c
+                split at h
+                · -- inFlow
+                  simp only [bind, Except.bind] at h
+                  split at h <;> try contradiction
+                  rename_i fold_result heq
+                  cases fold_result with
+                  | mk folded s_fold =>
+                    split at h
+                    · -- some '#': terminate at s_fold
+                      simp only [Except.ok.injEq] at h; subst h
+                      exact foldQuotedNewlines_offset_ge s folded s_fold heq
+                    · -- recurse
+                      exact Nat.le_trans
+                        (foldQuotedNewlines_offset_ge s folded s_fold heq) (ih _ _ _ h)
+                · -- !inFlow
+                  simp only [] at h
+                  split at h
+                  · -- col < contentIndent
+                    simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
+                  · split at h
+                    · -- atDocumentBoundary
+                      simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
+                    · -- recurse through consumeNewline → skipBlankLinesLoop → skipSpaces
+                      exact Nat.le_trans (consumeNewline_offset_ge s)
+                        (Nat.le_trans (skipBlankLinesLoop_offset_ge _ _ _ _)
+                        (Nat.le_trans (skipSpaces_offset_ge _) (ih _ _ _ h)))
+              · split at h
+                · -- isWhiteSpace: advance → recurse
+                  exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ _ h)
+                · -- regular content
+                  split at h
+                  · -- !isPlainSafe
+                    simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
+                  · -- recurse with advance
+                    simp only [] at h
+                    exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ _ h)
+
+-- ScanInv monotonicity: if tokens are unchanged and offset increases, ScanInv transfers.
+theorem ScanInv_mono {s s' : ScannerState} (h_inv : ScanInv s) (h_tok : s'.tokens = s.tokens)
+    (h_off : s'.offset ≥ s.offset) : ScanInv s' := by
+  obtain ⟨h_ord, h_bnd⟩ := h_inv
+  constructor
+  · intro ⟨i, hi⟩ ⟨j, hj⟩ hij
+    simp only [h_tok] at hi hj ⊢
+    exact h_ord ⟨i, hi⟩ ⟨j, hj⟩ hij
+  · intro ⟨i, hi⟩
+    simp only [h_tok] at hi ⊢
+    exact Nat.le_trans (h_bnd ⟨i, hi⟩) h_off
+
+-- Helper: if tokens are unchanged from a state where all token offsets ≤ pos.offset,
+-- then the current tokens are also ≤ pos.offset.
+theorem tokens_bounded_through_chain (s_curr s_orig : ScannerState) (pos_off : Nat)
+    (h_bnd : ∀ i : Fin s_orig.tokens.size, s_orig.tokens[i].pos.offset ≤ pos_off)
+    (h_tok : s_curr.tokens = s_orig.tokens) :
+    ∀ i : Fin s_curr.tokens.size, s_curr.tokens[i].pos.offset ≤ pos_off := by
+  intro ⟨i, hi⟩
+  simp only [h_tok] at hi ⊢
+  exact h_bnd ⟨i, hi⟩
+
+-- scanDocumentStart preserves ScanInv (pure function).
+theorem scanDocumentStart_preserves_ScanInv (s : ScannerState)
+    (h : ScanInv s) : ScanInv (scanDocumentStart s) := by
+  unfold scanDocumentStart
+  apply field_update_preserves_ScanInv _ _ _ rfl rfl
+  apply advanceN_preserves_ScanInv
+  apply emit_preserves_ScanInv
+  exact field_update_preserves_ScanInv _ _
+    (unwindIndents_preserves_ScanInv s (-1) h) rfl rfl
+
+-- scanDocumentEnd preserves ScanInv (Except — returns `result`, not the validated state).
+set_option maxHeartbeats 800000 in
+theorem scanDocumentEnd_preserves_ScanInv (s s' : ScannerState)
+    (h : ScanInv s) (h_ok : scanDocumentEnd s = .ok s') : ScanInv s' := by
+  unfold scanDocumentEnd at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · simp at h_ok
+  · -- All ok paths produce the same `result` state; prove ScanInv per branch
+    -- Helper tactic macro not needed; just repeat the apply chain
+    split at h_ok
+    · simp only [Except.ok.injEq] at h_ok; subst h_ok
+      apply field_update_preserves_ScanInv _ _ _ rfl rfl
+      apply advanceN_preserves_ScanInv
+      apply emit_preserves_ScanInv
+      apply field_update_preserves_ScanInv _ _ _ rfl rfl
+      exact unwindIndents_preserves_ScanInv s (-1) h
+    · simp only [Except.ok.injEq] at h_ok; subst h_ok
+      apply field_update_preserves_ScanInv _ _ _ rfl rfl
+      apply advanceN_preserves_ScanInv
+      apply emit_preserves_ScanInv
+      apply field_update_preserves_ScanInv _ _ _ rfl rfl
+      exact unwindIndents_preserves_ScanInv s (-1) h
+    · split at h_ok
+      · simp only [Except.ok.injEq] at h_ok; subst h_ok
+        apply field_update_preserves_ScanInv _ _ _ rfl rfl
+        apply advanceN_preserves_ScanInv
+        apply emit_preserves_ScanInv
+        apply field_update_preserves_ScanInv _ _ _ rfl rfl
+        exact unwindIndents_preserves_ScanInv s (-1) h
+      · simp at h_ok
+
+-- scanYamlDirective preserves ScanInv.
+-- h_tok_bnd: all existing tokens have offset ≤ startPos.offset (because tokens
+-- haven't changed since the original state where startPos was captured).
+theorem scanYamlDirective_preserves_ScanInv (s s_after_ws : ScannerState)
+    (startPos : YamlPos) (h_inv : ScanInv s_after_ws) (h_pos_ge : startPos.offset ≤ s_after_ws.offset)
+    (h_tok_bnd : ∀ i : Fin s_after_ws.tokens.size, s_after_ws.tokens[i].pos.offset ≤ startPos.offset)
+    (s' : ScannerState) (h_ok : scanYamlDirective s s_after_ws startPos = .ok s') :
+    ScanInv s' := by
+  unfold scanYamlDirective at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · simp at h_ok
+  · -- past seenYamlDirective check; all intermediate ops are advance-only
+    -- s_validated = skipWhitespace (collectVersionMinorLoop (collectVersionMajorLoop s_after_ws ...).2 ...).2
+    -- tokens chain: s_validated.tokens = s_after_ws.tokens (all ops preserve tokens)
+    -- offset chain: s_validated.offset ≥ s_after_ws.offset (all ops increase offset)
+    -- For emitAt: need h_pos (startPos.offset ≤ s_validated.offset) and h_ge (token bound)
+    -- All throw/error branches are contradictions
+    -- Three match branches on s_validated.peek?:
+    split at h_ok
+    · -- peek? = some '#'
+      split at h_ok
+      · simp at h_ok
+      · simp only [Except.ok.injEq] at h_ok; subst h_ok
+        apply field_update_preserves_ScanInv _ _ _ rfl rfl
+        apply emitAt_preserves_ScanInv
+        · exact skipWhitespace_preserves_ScanInv _
+            (collectVersionMinorLoop_preserves_ScanInv _ _ _
+              (collectVersionMajorLoop_preserves_ScanInv _ _ _ h_inv))
+        · exact Nat.le_trans h_pos_ge
+            (Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
+            (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _)
+            (skipWhitespace_offset_ge _)))
+        · exact tokens_bounded_through_chain _ s_after_ws _ h_tok_bnd
+            (by rw [skipWhitespace_preserves_tokens,
+                     ScanHelpers.collectVersionMinorLoop_preserves_tokens,
+                     ScanHelpers.collectVersionMajorLoop_preserves_tokens])
+    · -- peek? = some c (not '#')
+      split at h_ok
+      · simp at h_ok
+      · simp only [Except.ok.injEq] at h_ok; subst h_ok
+        apply field_update_preserves_ScanInv _ _ _ rfl rfl
+        apply emitAt_preserves_ScanInv
+        · exact skipWhitespace_preserves_ScanInv _
+            (collectVersionMinorLoop_preserves_ScanInv _ _ _
+              (collectVersionMajorLoop_preserves_ScanInv _ _ _ h_inv))
+        · exact Nat.le_trans h_pos_ge
+            (Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
+            (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _)
+            (skipWhitespace_offset_ge _)))
+        · exact tokens_bounded_through_chain _ s_after_ws _ h_tok_bnd
+            (by rw [skipWhitespace_preserves_tokens,
+                     ScanHelpers.collectVersionMinorLoop_preserves_tokens,
+                     ScanHelpers.collectVersionMajorLoop_preserves_tokens])
+    · -- peek? = none
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      apply field_update_preserves_ScanInv _ _ _ rfl rfl
+      apply emitAt_preserves_ScanInv
+      · exact skipWhitespace_preserves_ScanInv _
+          (collectVersionMinorLoop_preserves_ScanInv _ _ _
+            (collectVersionMajorLoop_preserves_ScanInv _ _ _ h_inv))
+      · exact Nat.le_trans h_pos_ge
+          (Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
+          (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _)
+          (skipWhitespace_offset_ge _)))
+      · exact tokens_bounded_through_chain _ s_after_ws _ h_tok_bnd
+          (by rw [skipWhitespace_preserves_tokens,
+                   ScanHelpers.collectVersionMinorLoop_preserves_tokens,
+                   ScanHelpers.collectVersionMajorLoop_preserves_tokens])
+
+-- scanTagDirective preserves ScanInv.
+theorem scanTagDirective_preserves_ScanInv (s s_after_ws : ScannerState)
+    (startPos : YamlPos) (h_inv : ScanInv s_after_ws) (h_pos_ge : startPos.offset ≤ s_after_ws.offset)
+    (h_tok_bnd : ∀ i : Fin s_after_ws.tokens.size, s_after_ws.tokens[i].pos.offset ≤ startPos.offset)
+    (s' : ScannerState) (h_ok : scanTagDirective s s_after_ws startPos = .ok s') :
+    ScanInv s' := by
+  unfold scanTagDirective at h_ok
+  simp only [Except.ok.injEq] at h_ok; subst h_ok
+  apply field_update_preserves_ScanInv _ _ _ rfl rfl
+  apply emitAt_preserves_ScanInv
+  · exact collectTagPrefixLoop_preserves_ScanInv _ _ _
+      (skipWhitespace_preserves_ScanInv _
+        (collectTagHandleDirectiveLoop_preserves_ScanInv _ _ _ h_inv))
+  · exact Nat.le_trans h_pos_ge
+      (Nat.le_trans (collectTagHandleDirectiveLoop_offset_ge _ _ _)
+      (Nat.le_trans (skipWhitespace_offset_ge _)
+      (collectTagPrefixLoop_offset_ge _ _ _)))
+  · exact tokens_bounded_through_chain _ s_after_ws _ h_tok_bnd
+      (by rw [ScanHelpers.collectTagPrefixLoop_preserves_tokens,
+               skipWhitespace_preserves_tokens,
+               ScanHelpers.collectTagHandleDirectiveLoop_preserves_tokens])
+
+-- scanDirective preserves ScanInv.
+theorem scanDirective_preserves_ScanInv (s s' : ScannerState)
+    (h : ScanInv s) (h_ok : scanDirective s = .ok s') : ScanInv s' := by
+  unfold scanDirective at h_ok
+  split at h_ok
+  · simp at h_ok
+  · -- allowDirectives: process directive
+    -- Build the intermediate state chain
+    have h_ws_inv : ScanInv (skipWhitespace
+        (collectDirectiveNameLoop s.advance "" (s.inputEnd - s.advance.offset)).2) :=
+      skipWhitespace_preserves_ScanInv _
+        (collectDirectiveNameLoop_preserves_ScanInv s.advance "" _
+          (advance_preserves_ScanInv _ h))
+    -- startPos = s.currentPos, so startPos.offset = s.offset
+    have h_pos_ge : s.currentPos.offset ≤ (skipWhitespace
+        (collectDirectiveNameLoop s.advance "" (s.inputEnd - s.advance.offset)).2).offset :=
+      Nat.le_trans (show s.currentPos.offset ≤ s.advance.offset from
+        show s.offset ≤ s.advance.offset from ScannerProgress.advance_offset_ge s)
+        (Nat.le_trans (collectDirectiveNameLoop_offset_ge _ _ _)
+          (skipWhitespace_offset_ge _))
+    -- Token bound: all tokens ≤ startPos.offset = s.offset
+    have h_tok_bnd : ∀ i : Fin (skipWhitespace
+        (collectDirectiveNameLoop s.advance "" (s.inputEnd - s.advance.offset)).2).tokens.size,
+        (skipWhitespace (collectDirectiveNameLoop s.advance "" (s.inputEnd - s.advance.offset)).2).tokens[i].pos.offset ≤
+          s.currentPos.offset := by
+      apply tokens_bounded_through_chain _ s _ (fun i => h.2 i)
+      rw [skipWhitespace_preserves_tokens, ScanHelpers.collectDirectiveNameLoop_preserves_tokens,
+          advance_preserves_tokens]
+    -- Reduce have/let bindings so split can find the match
+    dsimp only [] at h_ok
+    -- Dispatch on directive name
+    split at h_ok
+    · exact scanYamlDirective_preserves_ScanInv s _ _ h_ws_inv h_pos_ge h_tok_bnd s' h_ok
+    · split at h_ok
+      · exact scanTagDirective_preserves_ScanInv s _ _ h_ws_inv h_pos_ge h_tok_bnd s' h_ok
+      · -- Unknown directive: skipToEndOfLine
+        simp only [Except.ok.injEq] at h_ok; subst h_ok
+        exact skipToEndOfLine_preserves_ScanInv _ h_ws_inv
+
+-- Phase 2b dispatcher: dispatchStructural preserves ScanInv.
+theorem dispatchStructural_preserves_ScanInv (s : ScannerState) (c : Char)
+    (h : ScanInv s) (s' : ScannerState)
+    (h_ok : scanNextToken_dispatchStructural s c = .ok (some s')) : ScanInv s' := by
+  unfold scanNextToken_dispatchStructural at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  -- Flow indentation check: if in_flow && indentation issue
+  split at h_ok
+  · -- flow indentation check true
+    split at h_ok
+    · simp at h_ok  -- error
+    · -- past flow indentation → document marker in flow check
+      split at h_ok
+      · simp at h_ok
+      · split at h_ok
+        · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+          exact scanDocumentStart_preserves_ScanInv s h
+        · split at h_ok
+          · split at h_ok
+            · simp at h_ok
+            · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+              rename_i s_de h_de
+              exact scanDocumentEnd_preserves_ScanInv s s_de h h_de
+          · split at h_ok
+            · split at h_ok
+              · simp at h_ok
+              · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+                rename_i s_dir h_dir
+                exact scanDirective_preserves_ScanInv s s_dir h h_dir
+            · simp at h_ok
+  · -- flow indentation check false
+    split at h_ok
+    · simp at h_ok
+    · split at h_ok
+      · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact scanDocumentStart_preserves_ScanInv s h
+      · split at h_ok
+        · split at h_ok
+          · simp at h_ok
+          · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+            rename_i s_de h_de
+            exact scanDocumentEnd_preserves_ScanInv s s_de h h_de
+        · split at h_ok
+          · split at h_ok
+            · simp at h_ok
+            · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+              rename_i s_dir h_dir
+              exact scanDirective_preserves_ScanInv s s_dir h h_dir
+          · simp at h_ok
+
+-- Phase 2d: Block indicators preserve ScanInv.
+
+-- Helper lemmas: advance/emit/pushIndent preserve inFlow (they don't change flowLevel).
+theorem advance_preserves_inFlow (s : ScannerState) :
+    s.advance.inFlow = s.inFlow := by
+  unfold ScannerState.advance ScannerState.inFlow
+  split
+  · dsimp only []; split <;> rfl
+  · rfl
+
+theorem emit_preserves_inFlow (s : ScannerState) (tok : YamlToken) :
+    (s.emit tok).inFlow = s.inFlow := by
+  unfold ScannerState.emit ScannerState.inFlow; rfl
+
+theorem pushMappingIndent_preserves_inFlow (s : ScannerState) (col : Int) :
+    (pushMappingIndent s col).inFlow = s.inFlow := by
+  unfold pushMappingIndent; split
+  · simp [ScannerState.emit, ScannerState.inFlow]
+  · rfl
+
+theorem pushSequenceIndent_preserves_inFlow (s : ScannerState) (col : Int) :
+    (pushSequenceIndent s col).inFlow = s.inFlow := by
+  unfold pushSequenceIndent; split
+  · simp [ScannerState.emit, ScannerState.inFlow]
+  · rfl
+
+-- pushSequenceIndent: if col > currentIndent, emit blockSequenceStart + push indent; else identity.
+theorem pushSequenceIndent_preserves_ScanInv (s : ScannerState) (col : Int)
+    (h : ScanInv s) : ScanInv (pushSequenceIndent s col) := by
+  unfold pushSequenceIndent; split
+  · apply field_update_preserves_ScanInv _ _ _ rfl rfl
+    exact emit_preserves_ScanInv s .blockSequenceStart h
+  · exact h
+
+-- pushMappingIndent: if col > currentIndent, emit blockMappingStart + push indent; else identity.
+theorem pushMappingIndent_preserves_ScanInv (s : ScannerState) (col : Int)
+    (h : ScanInv s) : ScanInv (pushMappingIndent s col) := by
+  unfold pushMappingIndent; split
+  · apply field_update_preserves_ScanInv _ _ _ rfl rfl
+    exact emit_preserves_ScanInv s .blockMappingStart h
+  · exact h
+
+-- Helper: the `if !inFlow then pushIndent else s` pattern.
+theorem pushSequenceIfNotInFlow_preserves_ScanInv (s : ScannerState)
+    (h : ScanInv s) : ScanInv (if !s.inFlow then pushSequenceIndent s s.col else s) := by
+  split
+  · exact pushSequenceIndent_preserves_ScanInv _ _ h
+  · exact h
+
+theorem pushMappingIfNotInFlow_preserves_ScanInv (s : ScannerState)
+    (h : ScanInv s) : ScanInv (if !s.inFlow then pushMappingIndent s s.col else s) := by
+  split
+  · exact pushMappingIndent_preserves_ScanInv _ _ h
+  · exact h
+
+-- scanBlockEntry preserves ScanInv.
+theorem scanBlockEntry_preserves_ScanInv (s s' : ScannerState)
+    (h : ScanInv s) (h_ok : scanBlockEntry s = .ok s') : ScanInv s' := by
+  unfold scanBlockEntry at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · -- guard fired: !s.inFlow = true, split on hasTab
+    rename_i h_fl
+    split at h_ok
+    · contradiction
+    · simp only [Except.ok.injEq] at h_ok; subst h_ok
+      -- h_fl resolves if → pushSequenceIndent s s.col
+      have h1 := pushSequenceIndent_preserves_ScanInv s s.col h
+      have h2 := emit_preserves_ScanInv _ .blockEntry h1
+      have h3 := advance_preserves_ScanInv _ h2
+      exact field_update_preserves_ScanInv _ _ h3 rfl rfl
+  · -- guard not fired: !s.inFlow = false
+    rename_i h_fl
+    simp only [Except.ok.injEq] at h_ok; subst h_ok
+    -- if !s.inFlow resolves to false → s_with_indent = s
+    have h2 := emit_preserves_ScanInv s .blockEntry h
+    have h3 := advance_preserves_ScanInv _ h2
+    exact field_update_preserves_ScanInv _ _ h3 rfl rfl
+
+-- scanKey preserves ScanInv.
+theorem scanKey_preserves_ScanInv (s s' : ScannerState)
+    (h : ScanInv s) (h_ok : scanKey s = .ok s') : ScanInv s' := by
+  unfold scanKey at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  -- Examine what split does:
+  split at h_ok
+  · rename_i h_cond1
+    -- h_cond1 tells us what was split on
+    split at h_ok
+    · rename_i h_cond2
+      split at h_ok <;> (first | contradiction | skip)
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      -- Goal is in the case: s.inFlow = false, tab check passed
+      have h1 := pushMappingIndent_preserves_ScanInv s s.col h
+      have h2 := emit_preserves_ScanInv _ .key h1
+      have h3 := advance_preserves_ScanInv _ h2
+      exact field_update_preserves_ScanInv _ _ h3 rfl rfl
+    · simp only [Except.ok.injEq] at h_ok; subst h_ok
+      have h1 := pushMappingIndent_preserves_ScanInv s s.col h
+      have h2 := emit_preserves_ScanInv _ .key h1
+      have h3 := advance_preserves_ScanInv _ h2
+      exact field_update_preserves_ScanInv _ _ h3 rfl rfl
+  · rename_i h_cond1
+    split at h_ok
+    · split at h_ok <;> (first | contradiction | skip)
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      have h2 := emit_preserves_ScanInv s .key h
+      have h3 := advance_preserves_ScanInv _ h2
+      exact field_update_preserves_ScanInv _ _ h3 rfl rfl
+    · simp only [Except.ok.injEq] at h_ok; subst h_ok
+      have h2 := emit_preserves_ScanInv s .key h
+      have h3 := advance_preserves_ScanInv _ h2
+      exact field_update_preserves_ScanInv _ _ h3 rfl rfl
+
+-- scanValueClearKey preserves ScanInv (pure field update or identity).
+theorem scanValueClearKey_preserves_ScanInv (s : ScannerState)
+    (h : ScanInv s) : ScanInv (scanValueClearKey s) := by
+  unfold scanValueClearKey; split
+  · exact field_update_preserves_ScanInv _ _ h rfl rfl
+  · exact h
+
+-- scanValue preserves ScanInv.
+-- Requires precondition on simple key validity (needed by scanValuePrepare).
+theorem scanValue_preserves_ScanInv (s s' : ScannerState)
+    (h : ScanInv s)
+    (h_sk : (scanValueClearKey s).simpleKey.possible = true →
+      (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size ∧
+      (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size ∧
+      (∀ (h1 : (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size),
+        (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex].pos =
+          (scanValueClearKey s).simpleKey.pos) ∧
+      (∀ (h2 : (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size),
+        (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex + 1].pos =
+          (scanValueClearKey s).simpleKey.pos))
+    (h_ok : scanValue s = .ok s') : ScanInv s' := by
+  unfold scanValue at h_ok
+  simp only [bind, Except.bind] at h_ok
+  -- Two Except.bind matches: scanValueValidate and scanValueTabCheck
+  -- Don't unfold them — just split on .error/.ok for each
+  split at h_ok
+  · simp at h_ok  -- scanValueValidate error → contradiction
+  · -- scanValueValidate ok; now scanValueTabCheck bind
+    split at h_ok
+    · simp at h_ok  -- scanValueTabCheck error → contradiction
+    · -- Both checks passed
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      apply field_update_preserves_ScanInv _ _ _ rfl rfl
+      apply advance_preserves_ScanInv
+      apply emit_preserves_ScanInv
+      exact scanValuePrepare_preserves_ScanInv (scanValueClearKey s)
+        (scanValueClearKey_preserves_ScanInv s h) h_sk
+
+-- Phase 2d dispatcher: dispatchBlockIndicators preserves ScanInv.
+theorem dispatchBlockIndicators_preserves_ScanInv (s : ScannerState) (c : Char)
+    (h : ScanInv s)
+    (h_sk : (scanValueClearKey s).simpleKey.possible = true →
+      (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size ∧
+      (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size ∧
+      (∀ (h1 : (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size),
+        (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex].pos =
+          (scanValueClearKey s).simpleKey.pos) ∧
+      (∀ (h2 : (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size),
+        (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex + 1].pos =
+          (scanValueClearKey s).simpleKey.pos))
+    (s' : ScannerState)
+    (h_ok : scanNextToken_dispatchBlockIndicators s c = .ok (some s')) : ScanInv s' := by
+  unfold scanNextToken_dispatchBlockIndicators at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · -- c == '-' && !inFlow && isBlockEntryCandidate
+    split at h_ok
+    · simp at h_ok
+    · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+      rename_i s_be h_be
+      exact scanBlockEntry_preserves_ScanInv s s_be h h_be
+  · -- c == '?' && isKeyCandidate
+    split at h_ok
+    · split at h_ok
+      · simp at h_ok
+      · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        rename_i s_k h_k
+        exact scanKey_preserves_ScanInv s s_k h h_k
+    · -- c == ':' && isValueCandidate
+      split at h_ok
+      · split at h_ok
+        · simp at h_ok
+        · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+          rename_i s_v h_v
+          exact scanValue_preserves_ScanInv s s_v h h_sk h_v
+      · simp at h_ok
+
+-- Phase 2e: Content dispatcher ScanInv theorems.
+
+-- scanAnchorOrAlias preserves ScanInv (pure function).
+theorem scanAnchorOrAlias_preserves_ScanInv (s : ScannerState) (isAnchor : Bool)
+    (h : ScanInv s) : ScanInv (scanAnchorOrAlias s isAnchor) := by
+  unfold scanAnchorOrAlias
+  apply field_update_preserves_ScanInv _ _ _ rfl rfl
+  apply emitAt_preserves_ScanInv
+  · exact ScanInv_mono (advance_preserves_ScanInv s h)
+      (ScanHelpers.collectAnchorNameLoop_preserves_tokens _ _ _)
+      (collectAnchorNameLoop_offset_ge _ _ _)
+  · -- startPos.offset (= s.offset) ≤ s_loop.offset
+    show s.currentPos.offset ≤ _
+    simp only [ScannerState.currentPos]
+    exact Nat.le_trans (ScannerProgress.advance_offset_ge s)
+      (collectAnchorNameLoop_offset_ge _ _ _)
+  · -- all tokens ≤ startPos.offset
+    intro ⟨i, hi⟩
+    have h_tok := ScanHelpers.collectAnchorNameLoop_preserves_tokens s.advance "" (s.inputEnd - s.advance.offset)
+    have h_adv := advance_preserves_tokens s
+    simp only [h_tok, h_adv] at hi ⊢
+    show s.tokens[i].pos.offset ≤ s.currentPos.offset
+    simp only [ScannerState.currentPos]
+    exact h.2 ⟨i, hi⟩
+
+-- scanVerbatimTag preserves ScanInv (pure function).
+theorem scanVerbatimTag_preserves_ScanInv (s : ScannerState) (startPos : YamlPos)
+    (h : ScanInv s) (h_pos : startPos.offset ≤ s.offset)
+    (h_ge : ∀ i : Fin s.tokens.size, s.tokens[i].pos.offset ≤ startPos.offset) :
+    ScanInv (scanVerbatimTag s startPos) := by
+  unfold scanVerbatimTag
+  apply emitAt_preserves_ScanInv
+  · exact ScanInv_mono (advance_preserves_ScanInv s h)
+      (ScanHelpers.collectVerbatimTagLoop_preserves_tokens _ _ _)
+      (collectVerbatimTagLoop_offset_ge _ _ _)
+  · exact Nat.le_trans h_pos (Nat.le_trans (ScannerProgress.advance_offset_ge s)
+      (collectVerbatimTagLoop_offset_ge _ _ _))
+  · intro ⟨i, hi⟩
+    have h_tok := ScanHelpers.collectVerbatimTagLoop_preserves_tokens s.advance "" (startPos.offset + s.inputEnd - s.advance.offset)
+    have h_adv := advance_preserves_tokens s
+    simp only [h_tok, h_adv] at hi ⊢
+    exact h_ge ⟨i, hi⟩
+
+-- scanSecondaryTag preserves ScanInv (pure function).
+theorem scanSecondaryTag_preserves_ScanInv (s : ScannerState) (startPos : YamlPos)
+    (h : ScanInv s) (h_pos : startPos.offset ≤ s.offset)
+    (h_ge : ∀ i : Fin s.tokens.size, s.tokens[i].pos.offset ≤ startPos.offset) :
+    ScanInv (scanSecondaryTag s startPos) := by
+  unfold scanSecondaryTag
+  apply emitAt_preserves_ScanInv
+  · exact ScanInv_mono (advance_preserves_ScanInv s h)
+      (ScanHelpers.collectTagSuffixLoop_preserves_tokens _ _ _)
+      (collectTagSuffixLoop_offset_ge _ _ _)
+  · exact Nat.le_trans h_pos (Nat.le_trans (ScannerProgress.advance_offset_ge s)
+      (collectTagSuffixLoop_offset_ge _ _ _))
+  · intro ⟨i, hi⟩
+    have h_tok := ScanHelpers.collectTagSuffixLoop_preserves_tokens s.advance "" (startPos.offset + s.inputEnd - s.advance.offset)
+    have h_adv := advance_preserves_tokens s
+    simp only [h_tok, h_adv] at hi ⊢
+    exact h_ge ⟨i, hi⟩
+
+-- scanNamedTag preserves ScanInv (pure function).
+theorem scanNamedTag_preserves_ScanInv (s : ScannerState) (startPos : YamlPos)
+    (inputEnd : Nat) (h : ScanInv s) (h_pos : startPos.offset ≤ s.offset)
+    (h_ge : ∀ i : Fin s.tokens.size, s.tokens[i].pos.offset ≤ startPos.offset) :
+    ScanInv (scanNamedTag s startPos inputEnd) := by
+  unfold scanNamedTag; simp only []
+  split
+  · -- foundBang = true: collectTagHandleLoop → collectTagSuffixLoop → emitAt
+    apply emitAt_preserves_ScanInv
+    · have h_handle_tok := ScanHelpers.collectTagHandleLoop_preserves_tokens s "" (inputEnd - s.offset)
+      have h_handle_ge := collectTagHandleLoop_offset_ge s "" (inputEnd - s.offset)
+      have h_inv_handle : ScanInv (collectTagHandleLoop s "" (inputEnd - s.offset)).snd.snd :=
+        ScanInv_mono h h_handle_tok h_handle_ge
+      exact ScanInv_mono h_inv_handle
+        (ScanHelpers.collectTagSuffixLoop_preserves_tokens _ _ _)
+        (collectTagSuffixLoop_offset_ge _ _ _)
+    · exact Nat.le_trans h_pos (Nat.le_trans (collectTagHandleLoop_offset_ge s "" _)
+        (collectTagSuffixLoop_offset_ge _ _ _))
+    · intro ⟨i, hi⟩
+      have h_tok1 := ScanHelpers.collectTagHandleLoop_preserves_tokens s "" (inputEnd - s.offset)
+      have h_tok2 := ScanHelpers.collectTagSuffixLoop_preserves_tokens
+        (collectTagHandleLoop s "" (inputEnd - s.offset)).snd.snd "" (inputEnd - (collectTagHandleLoop s "" (inputEnd - s.offset)).snd.snd.offset)
+      simp only [h_tok2, h_tok1] at hi ⊢
+      exact h_ge ⟨i, hi⟩
+  · -- foundBang = false: collectTagHandleLoop only → emitAt
+    apply emitAt_preserves_ScanInv
+    · exact ScanInv_mono h
+        (ScanHelpers.collectTagHandleLoop_preserves_tokens s "" _)
+        (collectTagHandleLoop_offset_ge s "" _)
+    · exact Nat.le_trans h_pos (collectTagHandleLoop_offset_ge s "" _)
+    · intro ⟨i, hi⟩
+      have h_tok := ScanHelpers.collectTagHandleLoop_preserves_tokens s "" (inputEnd - s.offset)
+      simp only [h_tok] at hi ⊢
+      exact h_ge ⟨i, hi⟩
+
+-- scanTag preserves ScanInv (pure function).
+theorem scanTag_preserves_ScanInv (s : ScannerState)
+    (h : ScanInv s) : ScanInv (scanTag s) := by
+  unfold scanTag; simp only []
+  have h_adv : ScanInv s.advance := advance_preserves_ScanInv s h
+  have h_pos : s.currentPos.offset ≤ s.advance.offset := by
+    simp only [ScannerState.currentPos]; exact ScannerProgress.advance_offset_ge s
+  have h_ge : ∀ i : Fin s.advance.tokens.size, s.advance.tokens[i].pos.offset ≤ s.currentPos.offset := by
+    intro ⟨i, hi⟩
+    simp only [advance_preserves_tokens, ScannerState.currentPos] at hi ⊢
+    exact h.2 ⟨i, hi⟩
+  apply field_update_preserves_ScanInv _ _ _ rfl rfl
+  split
+  · exact scanVerbatimTag_preserves_ScanInv s.advance s.currentPos h_adv h_pos h_ge
+  · exact scanSecondaryTag_preserves_ScanInv s.advance s.currentPos h_adv h_pos h_ge
+  · exact scanNamedTag_preserves_ScanInv s.advance s.currentPos s.inputEnd h_adv h_pos h_ge
+
+-- scanDoubleQuoted preserves ScanInv (Except function).
+theorem scanDoubleQuoted_preserves_ScanInv (s s' : ScannerState)
+    (h : ScanInv s) (h_ok : scanDoubleQuoted s = .ok s') : ScanInv s' := by
+  unfold scanDoubleQuoted at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok <;> try contradiction
+  rename_i dq_result heq
+  cases dq_result with
+  | mk content s_close =>
+    -- validateTrailingContent returns Unit, doesn't change state
+    split at h_ok
+    · -- inFlow check: validation branch
+      split at h_ok <;> try contradiction
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      apply field_update_preserves_ScanInv _ _ _ rfl rfl
+      apply emitAt_preserves_ScanInv
+      · exact ScanInv_mono (advance_preserves_ScanInv s h)
+          (ScanHelpers.collectDoubleQuotedLoop_preserves_tokens _ _ _ _ _ _ _  _ heq)
+          (collectDoubleQuotedLoop_offset_ge s.advance _ _ _ _ _ _ _ _ heq)
+      · show s.currentPos.offset ≤ _
+        simp only [ScannerState.currentPos]
+        exact Nat.le_trans (ScannerProgress.advance_offset_ge s)
+          (collectDoubleQuotedLoop_offset_ge s.advance _ _ _ _ _ _ _ _ heq)
+      · intro ⟨i, hi⟩
+        have h_tok : s_close.tokens = s.advance.tokens :=
+          ScanHelpers.collectDoubleQuotedLoop_preserves_tokens s.advance "" _ _ _ _ _ _ heq
+        have h_adv := advance_preserves_tokens s
+        simp only [h_tok, h_adv] at hi ⊢
+        show s.tokens[i].pos.offset ≤ s.currentPos.offset
+        simp only [ScannerState.currentPos]
+        exact h.2 ⟨i, hi⟩
+    · -- not inFlow: no validation
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      apply field_update_preserves_ScanInv _ _ _ rfl rfl
+      apply emitAt_preserves_ScanInv
+      · exact ScanInv_mono (advance_preserves_ScanInv s h)
+          (ScanHelpers.collectDoubleQuotedLoop_preserves_tokens _ _ _ _ _ _ _ _ heq)
+          (collectDoubleQuotedLoop_offset_ge s.advance _ _ _ _ _ _ _ _ heq)
+      · show s.currentPos.offset ≤ _
+        simp only [ScannerState.currentPos]
+        exact Nat.le_trans (ScannerProgress.advance_offset_ge s)
+          (collectDoubleQuotedLoop_offset_ge s.advance _ _ _ _ _ _ _ _ heq)
+      · intro ⟨i, hi⟩
+        have h_tok : s_close.tokens = s.advance.tokens :=
+          ScanHelpers.collectDoubleQuotedLoop_preserves_tokens s.advance "" _ _ _ _ _ _ heq
+        have h_adv := advance_preserves_tokens s
+        simp only [h_tok, h_adv] at hi ⊢
+        show s.tokens[i].pos.offset ≤ s.currentPos.offset
+        simp only [ScannerState.currentPos]
+        exact h.2 ⟨i, hi⟩
+
+-- scanSingleQuoted preserves ScanInv (Except function).
+theorem scanSingleQuoted_preserves_ScanInv (s s' : ScannerState)
+    (h : ScanInv s) (h_ok : scanSingleQuoted s = .ok s') : ScanInv s' := by
+  unfold scanSingleQuoted at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok <;> try contradiction
+  rename_i sq_result heq
+  cases sq_result with
+  | mk content s_close =>
+    split at h_ok
+    · split at h_ok <;> try contradiction
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      apply field_update_preserves_ScanInv _ _ _ rfl rfl
+      apply emitAt_preserves_ScanInv
+      · exact ScanInv_mono (advance_preserves_ScanInv s h)
+          (ScanHelpers.collectSingleQuotedLoop_preserves_tokens _ _ _ _ _ _ _ _ heq)
+          (collectSingleQuotedLoop_offset_ge s.advance _ _ _ _ _ _ _ _ heq)
+      · show s.currentPos.offset ≤ _
+        simp only [ScannerState.currentPos]
+        exact Nat.le_trans (ScannerProgress.advance_offset_ge s)
+          (collectSingleQuotedLoop_offset_ge s.advance _ _ _ _ _ _ _ _ heq)
+      · intro ⟨i, hi⟩
+        have h_tok : s_close.tokens = s.advance.tokens :=
+          ScanHelpers.collectSingleQuotedLoop_preserves_tokens s.advance "" _ _ _ _ _ _ heq
+        have h_adv := advance_preserves_tokens s
+        simp only [h_tok, h_adv] at hi ⊢
+        show s.tokens[i].pos.offset ≤ s.currentPos.offset
+        simp only [ScannerState.currentPos]
+        exact h.2 ⟨i, hi⟩
+    · simp only [Except.ok.injEq] at h_ok; subst h_ok
+      apply field_update_preserves_ScanInv _ _ _ rfl rfl
+      apply emitAt_preserves_ScanInv
+      · exact ScanInv_mono (advance_preserves_ScanInv s h)
+          (ScanHelpers.collectSingleQuotedLoop_preserves_tokens _ _ _ _ _ _ _ _ heq)
+          (collectSingleQuotedLoop_offset_ge s.advance _ _ _ _ _ _ _ _ heq)
+      · show s.currentPos.offset ≤ _
+        simp only [ScannerState.currentPos]
+        exact Nat.le_trans (ScannerProgress.advance_offset_ge s)
+          (collectSingleQuotedLoop_offset_ge s.advance _ _ _ _ _ _ _ _ heq)
+      · intro ⟨i, hi⟩
+        have h_tok : s_close.tokens = s.advance.tokens :=
+          ScanHelpers.collectSingleQuotedLoop_preserves_tokens s.advance "" _ _ _ _ _ _ heq
+        have h_adv := advance_preserves_tokens s
+        simp only [h_tok, h_adv] at hi ⊢
+        show s.tokens[i].pos.offset ≤ s.currentPos.offset
+        simp only [ScannerState.currentPos]
+        exact h.2 ⟨i, hi⟩
+
+-- scanPlainScalar preserves ScanInv (Except function).
+theorem scanPlainScalar_preserves_ScanInv (s s' : ScannerState)
+    (h : ScanInv s) (h_ok : scanPlainScalar s = .ok s') : ScanInv s' := by
+  unfold scanPlainScalar at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok <;> try contradiction
+  rename_i result heq
+  simp only [Except.ok.injEq] at h_ok; subst h_ok
+  apply field_update_preserves_ScanInv _ _ _ rfl rfl
+  apply emitAt_preserves_ScanInv
+  · exact ScanInv_mono h
+      (ScanHelpers.collectPlainScalarLoop_preserves_tokens _ _ _ _ _ _ _ _ heq)
+      (collectPlainScalarLoop_offset_ge _ _ _ _ _ _ _ _ heq)
+  · show s.currentPos.offset ≤ _
+    simp only [ScannerState.currentPos]
+    exact collectPlainScalarLoop_offset_ge _ _ _ _ _ _ _ _ heq
+  · intro ⟨i, hi⟩
+    have h_tok := ScanHelpers.collectPlainScalarLoop_preserves_tokens _ _ _ _ _ _ _ _ heq
+    simp only [h_tok] at hi ⊢
+    show s.tokens[i].pos.offset ≤ s.currentPos.offset
+    simp only [ScannerState.currentPos]
+    exact h.2 ⟨i, hi⟩
+
+-- scanBlockScalarBody preserves ScanInv (Except function).
+-- Requires: ScanInv for s_after_newline state, startPos.offset ≤ s_after_newline.offset,
+-- all tokens ≤ startPos.offset.
+theorem scanBlockScalarBody_preserves_ScanInv (s_orig s_nl : ScannerState)
+    (chomp : ChompStyle) (expl : Option Nat) (isLit : Bool) (startPos : YamlPos)
+    (s' : ScannerState)
+    (h_inv : ScanInv s_nl) (h_tok : s_nl.tokens = s_orig.tokens)
+    (h_pos : startPos.offset ≤ s_nl.offset)
+    (h_ge : ∀ i : Fin s_orig.tokens.size, s_orig.tokens[i].pos.offset ≤ startPos.offset)
+    (h_ok : scanBlockScalarBody s_orig s_nl chomp expl isLit startPos = .ok s') : ScanInv s' := by
+  unfold scanBlockScalarBody at h_ok
+  simp only [] at h_ok
+  -- All successful branches produce { (cbs ...).snd.emitAt startPos _ with simpleKeyAllowed := true, simpleKey := _ }
+  -- where cbs = collectBlockScalarLoop. Factor out the common tail.
+  -- Step 1: Handle match on explicitOffset and autoDetectErr? to get to the ok branch
+  repeat (any_goals (split at h_ok))
+  all_goals (try contradiction)
+  -- Step 2: In each ok branch, extract the result
+  all_goals simp only [Except.ok.injEq] at h_ok
+  all_goals subst h_ok
+  -- Step 3: Prove ScanInv for the result
+  all_goals apply field_update_preserves_ScanInv _ _ _ rfl rfl
+  all_goals apply emitAt_preserves_ScanInv
+  -- h1: ScanInv of collectBlockScalarLoop result
+  all_goals first
+    | (exact ScanInv_mono h_inv
+         (ScanHelpers.collectBlockScalarLoop_preserves_tokens _ _ _ _ _)
+         (collectBlockScalarLoop_offset_ge _ _ _ _ _))
+    | (exact Nat.le_trans h_pos (collectBlockScalarLoop_offset_ge _ _ _ _ _))
+    | (intro ⟨i, hi⟩
+       simp only [ScanHelpers.collectBlockScalarLoop_preserves_tokens, h_tok] at hi ⊢
+       exact h_ge ⟨i, hi⟩)
+
+-- scanBlockScalar preserves ScanInv (Except function).
+theorem scanBlockScalar_preserves_ScanInv (s s' : ScannerState)
+    (h : ScanInv s) (h_ok : scanBlockScalar s = .ok s') : ScanInv s' := by
+  unfold scanBlockScalar at h_ok
+  simp only [] at h_ok
+  split at h_ok
+  · contradiction  -- scanBlockScalarConsumeNewline error
+  · -- scanBlockScalarConsumeNewline ok
+    rename_i s_nl heq_nl
+    -- Build the invariant chain:
+    -- s → advance → parseBlockHeaderLoop → skipWhitespace → scanBlockScalarSkipComment → consumeNewline → body
+    have h_adv := advance_preserves_ScanInv s h
+    have h_hdr_tok := ScanHelpers.parseBlockHeaderLoop_preserves_tokens s.advance .clip none 2
+    have h_hdr_ge := parseBlockHeaderLoop_offset_ge s.advance .clip none 2
+    have h_inv_hdr : ScanInv (parseBlockHeaderLoop s.advance .clip none 2).snd.snd :=
+      ScanInv_mono h_adv h_hdr_tok h_hdr_ge
+    have h_sw_tok := skipWhitespace_preserves_tokens (parseBlockHeaderLoop s.advance .clip none 2).snd.snd
+    have h_sw_ge := skipWhitespace_offset_ge (parseBlockHeaderLoop s.advance .clip none 2).snd.snd
+    have h_inv_sw : ScanInv (skipWhitespace (parseBlockHeaderLoop s.advance .clip none 2).snd.snd) :=
+      ScanInv_mono h_inv_hdr h_sw_tok h_sw_ge
+    have h_sc_tok := ScanHelpers.scanBlockScalarSkipComment_preserves_tokens (skipWhitespace (parseBlockHeaderLoop s.advance .clip none 2).snd.snd)
+    have h_sc_ge := scanBlockScalarSkipComment_offset_ge (skipWhitespace (parseBlockHeaderLoop s.advance .clip none 2).snd.snd)
+    have h_inv_sc : ScanInv (scanBlockScalarSkipComment (skipWhitespace (parseBlockHeaderLoop s.advance .clip none 2).snd.snd)) :=
+      ScanInv_mono h_inv_sw h_sc_tok h_sc_ge
+    have h_nl_tok := ScanHelpers.scanBlockScalarConsumeNewline_preserves_tokens _ _ heq_nl
+    have h_nl_ge := scanBlockScalarConsumeNewline_offset_ge _ _ heq_nl
+    have h_inv_nl : ScanInv s_nl := ScanInv_mono h_inv_sc h_nl_tok h_nl_ge
+    -- s_nl.tokens = s.tokens (chain through all steps)
+    have h_chain_tok : s_nl.tokens = s.tokens := by
+      rw [h_nl_tok, h_sc_tok, h_sw_tok, h_hdr_tok, advance_preserves_tokens]
+    -- startPos = s.currentPos, so startPos.offset = s.offset ≤ s_nl.offset
+    have h_chain_off : s.currentPos.offset ≤ s_nl.offset := by
+      simp only [ScannerState.currentPos]
+      exact Nat.le_trans (ScannerProgress.advance_offset_ge s)
+        (Nat.le_trans h_hdr_ge (Nat.le_trans h_sw_ge (Nat.le_trans h_sc_ge h_nl_ge)))
+    -- all tokens in s ≤ s.currentPos.offset = s.offset
+    have h_chain_ge : ∀ i : Fin s.tokens.size, s.tokens[i].pos.offset ≤ s.currentPos.offset := by
+      intro ⟨i, hi⟩; simp only [ScannerState.currentPos]; exact h.2 ⟨i, hi⟩
+    exact scanBlockScalarBody_preserves_ScanInv s s_nl _ _ _ s.currentPos s'
+      h_inv_nl h_chain_tok h_chain_off h_chain_ge h_ok
+
+-- Phase 2e dispatcher: dispatchContent preserves ScanInv.
+theorem dispatchContent_preserves_ScanInv (s : ScannerState) (c : Char)
+    (h : ScanInv s) (s' : ScannerState)
+    (h_ok : scanNextToken_dispatchContent s c = .ok s') : ScanInv s' := by
+  unfold scanNextToken_dispatchContent at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  -- c == '&'
+  split at h_ok
+  · simp only [Except.ok.injEq] at h_ok; subst h_ok
+    exact scanAnchorOrAlias_preserves_ScanInv s true h
+  · -- c == '*'
+    split at h_ok
+    · simp only [Except.ok.injEq] at h_ok; subst h_ok
+      exact scanAnchorOrAlias_preserves_ScanInv s false h
+    · -- c == '!'
+      split at h_ok
+      · simp only [Except.ok.injEq] at h_ok; subst h_ok
+        exact scanTag_preserves_ScanInv s h
+      · -- c == '|' || c == '>'
+        split at h_ok
+        · split at h_ok <;> try contradiction
+          simp only [Except.ok.injEq] at h_ok; subst h_ok
+          rename_i s_bs h_bs
+          exact scanBlockScalar_preserves_ScanInv s s_bs h h_bs
+        · -- c == '"'
+          split at h_ok
+          · split at h_ok <;> try contradiction
+            rename_i s_dq h_dq
+            -- simpleKey endLine update: field_update only changes simpleKey, not tokens/offset
+            split at h_ok
+            · simp only [Except.ok.injEq] at h_ok; subst h_ok
+              exact field_update_preserves_ScanInv _ _
+                (scanDoubleQuoted_preserves_ScanInv s s_dq h h_dq) rfl rfl
+            · simp only [Except.ok.injEq] at h_ok; subst h_ok
+              exact scanDoubleQuoted_preserves_ScanInv s s_dq h h_dq
+          · -- c == '\''
+            split at h_ok
+            · split at h_ok <;> try contradiction
+              rename_i s_sq h_sq
+              split at h_ok
+              · simp only [Except.ok.injEq] at h_ok; subst h_ok
+                exact field_update_preserves_ScanInv _ _
+                  (scanSingleQuoted_preserves_ScanInv s s_sq h h_sq) rfl rfl
+              · simp only [Except.ok.injEq] at h_ok; subst h_ok
+                exact scanSingleQuoted_preserves_ScanInv s s_sq h h_sq
+            · -- canStartPlainScalar
+              split at h_ok
+              · split at h_ok <;> try contradiction
+                simp only [Except.ok.injEq] at h_ok; subst h_ok
+                rename_i s_ps h_ps
+                exact scanPlainScalar_preserves_ScanInv s s_ps h h_ps
+              · -- error: unexpectedChar
+                simp at h_ok
+
+/-!
+### SimpleKeyValid: simpleKey bookkeeping invariant
+
+When `simpleKey.possible` is true, the placeholder tokens at the saved
+indices have the correct position.  This links `simpleKey` metadata to
+actual token array content and is needed by `scanValuePrepare_preserves_ScanInv`
+(which calls `setIfInBounds` at those indices).
+
+`saveSimpleKey` establishes this by pushing two placeholders at
+`currentPos` and recording `tokenIndex = old_size`, `pos = currentPos`.
+Between `saveSimpleKey` and `scanValue`, only token-appending operations
+occur, so the placeholders at the saved indices remain untouched.
+-/
+
+/-- The simpleKey validity condition: when the simple key is possible,
+    the saved tokenIndex and tokenIndex+1 are within bounds and the
+    tokens at those positions have pos = simpleKey.pos. -/
+def SimpleKeyValid (s : ScannerState) : Prop :=
+  s.simpleKey.possible = true →
+    s.simpleKey.tokenIndex < s.tokens.size ∧
+    s.simpleKey.tokenIndex + 1 < s.tokens.size ∧
+    (∀ (h1 : s.simpleKey.tokenIndex < s.tokens.size),
+      s.tokens[s.simpleKey.tokenIndex].pos = s.simpleKey.pos) ∧
+    (∀ (h2 : s.simpleKey.tokenIndex + 1 < s.tokens.size),
+      s.tokens[s.simpleKey.tokenIndex + 1].pos = s.simpleKey.pos)
+
+-- SimpleKeyValid is vacuously true when possible = false.
+theorem SimpleKeyValid_of_not_possible (s : ScannerState)
+    (h : s.simpleKey.possible = false) : SimpleKeyValid s :=
+  fun h_poss => absurd h_poss (by simp [h])
+
+-- SimpleKeyValid transfers across simpleKey.possible := false updates.
+theorem SimpleKeyValid_of_cleared (_s : ScannerState)
+    (s' : ScannerState)
+    (h : s'.simpleKey.possible = false) : SimpleKeyValid s' :=
+  SimpleKeyValid_of_not_possible s' h
+
+-- SimpleKeyValid is monotone: preserved when tokens grow and existing entries unchanged.
+theorem SimpleKeyValid_mono (s s' : ScannerState)
+    (h_skv : SimpleKeyValid s)
+    (h_sk : s'.simpleKey = s.simpleKey)
+    (h_mono : s'.tokens.size ≥ s.tokens.size)
+    (h_pref : ∀ i (h : i < s.tokens.size), s'.tokens[i]'(by omega) = s.tokens[i]) :
+    SimpleKeyValid s' := by
+  intro h_poss
+  rw [h_sk] at h_poss ⊢
+  have ⟨hb1, hb2, hp1, hp2⟩ := h_skv h_poss
+  refine ⟨by omega, by omega, ?_, ?_⟩
+  · intro h1; rw [h_pref _ hb1]; exact hp1 hb1
+  · intro h2; rw [h_pref _ hb2]; exact hp2 hb2
+
+-- saveSimpleKey establishes SimpleKeyValid from any state.
+theorem saveSimpleKey_preserves_SimpleKeyValid (s : ScannerState)
+    (h_skv : SimpleKeyValid s) : SimpleKeyValid (saveSimpleKey s) := by
+  unfold saveSimpleKey
+  split
+  · exact h_skv
+  · split
+    · -- simpleKeyAllowed = true: pushes 2 placeholders, sets tokenIndex = s.tokens.size
+      unfold SimpleKeyValid
+      intro _h_poss
+      simp only [Array.size_push]
+      exact ⟨by omega, by omega,
+        fun h1 => by simp [Array.getElem_push, ScannerState.currentPos],
+        fun h2 => by simp [Array.getElem_push, ScannerState.currentPos]⟩
+    · exact h_skv
+
+-- skipToContent preserves SimpleKeyValid (preserves simpleKey and tokens exactly).
+theorem skipToContent_preserves_SimpleKeyValid (s s' : ScannerState)
+    (h : skipToContent s = .ok s') (h_skv : SimpleKeyValid s) : SimpleKeyValid s' := by
+  have h_sk := skipToContent_preserves_simpleKey s s' h
+  have h_tok := skipToContent_preserves_tokens s s' h
+  unfold SimpleKeyValid at h_skv ⊢
+  intro h_poss
+  rw [h_sk] at h_poss
+  obtain ⟨h1, h2, h3, h4⟩ := h_skv h_poss
+  rw [h_tok, h_sk]
+  exact ⟨h1, h2, h3, h4⟩
+
+-- unwindIndents preserves SimpleKeyValid (preserves simpleKey, only appends tokens).
+theorem unwindIndents_preserves_SimpleKeyValid (s : ScannerState) (col : Int)
+    (h_skv : SimpleKeyValid s) : SimpleKeyValid (unwindIndents s col) :=
+  SimpleKeyValid_mono s _ h_skv
+    (unwindIndents_preserves_simpleKey s col)
+    (unwindIndents_adds_tokens s col)
+    (fun i hi => unwindIndents_preserves_prefix s col i hi)
+
+-- preprocess preserves SimpleKeyValid.
+theorem preprocess_preserves_SimpleKeyValid (s : ScannerState) (s' : ScannerState) (c : Char)
+    (h : scanNextToken_preprocess s = .ok (some (s', c)))
+    (h_skv : SimpleKeyValid s) : SimpleKeyValid s' := by
+  unfold scanNextToken_preprocess at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h
+  · contradiction
+  · rename_i s_skip h_skip
+    have h_skv_skip := skipToContent_preserves_SimpleKeyValid s s_skip h_skip h_skv
+    split at h
+    · simp at h
+    · split at h
+      · -- needIndentCheck path with unwindIndents
+        split at h
+        · contradiction
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            apply saveSimpleKey_preserves_SimpleKeyValid
+            show SimpleKeyValid { unwindIndents s_skip s_skip.col with needIndentCheck := false }
+            exact unwindIndents_preserves_SimpleKeyValid s_skip s_skip.col h_skv_skip
+      · -- no needIndentCheck
+        split at h
+        · contradiction
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            exact saveSimpleKey_preserves_SimpleKeyValid s_skip h_skv_skip
+
+-- allowDirectives update preserves SimpleKeyValid.
+theorem allowDir_ite_preserves_SimpleKeyValid (s : ScannerState)
+    (h_skv : SimpleKeyValid s) :
+    SimpleKeyValid (if s.allowDirectives then
+      { s with allowDirectives := false, documentEverStarted := true } else s) := by
+  split <;> exact h_skv
+
+theorem allowDir_ite_preserves_ScanInv (s : ScannerState)
+    (h_inv : ScanInv s) :
+    ScanInv (if s.allowDirectives then
+      { s with allowDirectives := false, documentEverStarted := true } else s) := by
+  split
+  · exact field_update_preserves_ScanInv _ _ h_inv rfl rfl
+  · exact h_inv
+
+-- scanValueClearKey transfers SimpleKeyValid to h_sk condition.
+theorem SimpleKeyValid_implies_scanValue_h_sk (s : ScannerState) (h_skv : SimpleKeyValid s) :
+    (scanValueClearKey s).simpleKey.possible = true →
+      (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size ∧
+      (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size ∧
+      (∀ (h1 : (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size),
+        (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex].pos =
+          (scanValueClearKey s).simpleKey.pos) ∧
+      (∀ (h2 : (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size),
+        (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex + 1].pos =
+          (scanValueClearKey s).simpleKey.pos) := by
+  unfold scanValueClearKey
+  split
+  · -- cleared: possible = false
+    intro h_poss; simp at h_poss
+  · -- unchanged: exactly SimpleKeyValid s
+    exact h_skv
+
+/-!
+### SimpleKeyStackValid: validity of stacked simple keys
+
+Flow collection openers (`[`, `{`) push the current simple key onto the
+stack. Closers (`]`, `}`) restore it. Between push and pop, the token
+array only grows and existing entries are never modified (only extended).
+Therefore, the token-position equalities that held at push time continue
+to hold at pop time.
+-/
+
+/-- Validity of every simple key entry on the stack. -/
+def SimpleKeyStackValid (s : ScannerState) : Prop :=
+  ∀ j (h : j < s.simpleKeyStack.size),
+    s.simpleKeyStack[j].possible = true →
+    s.simpleKeyStack[j].tokenIndex < s.tokens.size ∧
+    s.simpleKeyStack[j].tokenIndex + 1 < s.tokens.size ∧
+    (∀ (h1 : s.simpleKeyStack[j].tokenIndex < s.tokens.size),
+      s.tokens[s.simpleKeyStack[j].tokenIndex].pos = s.simpleKeyStack[j].pos) ∧
+    (∀ (h2 : s.simpleKeyStack[j].tokenIndex + 1 < s.tokens.size),
+      s.tokens[s.simpleKeyStack[j].tokenIndex + 1].pos = s.simpleKeyStack[j].pos)
+
+/-- Combined simple key validity for both current and stacked keys. -/
+def AllKeysValid (s : ScannerState) : Prop :=
+  SimpleKeyValid s ∧ SimpleKeyStackValid s
+
+-- SimpleKeyStackValid is monotone: preserved when tokens grow and existing entries unchanged.
+theorem SimpleKeyStackValid_mono (s s' : ScannerState)
+    (h_ssv : SimpleKeyStackValid s)
+    (h_stack : s'.simpleKeyStack = s.simpleKeyStack)
+    (h_mono : s'.tokens.size ≥ s.tokens.size)
+    (h_pref : ∀ i (h : i < s.tokens.size), s'.tokens[i]'(by omega) = s.tokens[i]) :
+    SimpleKeyStackValid s' := by
+  intro j hj h_poss
+  have hj_s : j < s.simpleKeyStack.size := by rw [← h_stack]; exact hj
+  have h_get : s'.simpleKeyStack[j] = s.simpleKeyStack[j]'hj_s := by
+    simp [h_stack]
+  rw [h_get] at h_poss ⊢
+  have ⟨hb1, hb2, hp1, hp2⟩ := h_ssv j hj_s h_poss
+  refine ⟨by omega, by omega, ?_, ?_⟩
+  · intro h1; rw [h_pref _ hb1]; exact hp1 hb1
+  · intro h2; rw [h_pref _ hb2]; exact hp2 hb2
+
+-- SimpleKeyStackValid is preserved when tokens grow and `.pos` is preserved at all existing positions.
+-- This is weaker than `SimpleKeyStackValid_mono` (which requires full token equality).
+theorem SimpleKeyStackValid_mono_pos (s s' : ScannerState)
+    (h_ssv : SimpleKeyStackValid s)
+    (h_stack : s'.simpleKeyStack = s.simpleKeyStack)
+    (h_mono : s'.tokens.size ≥ s.tokens.size)
+    (h_pos : ∀ i (h : i < s.tokens.size), (s'.tokens[i]'(by omega)).pos = s.tokens[i].pos) :
+    SimpleKeyStackValid s' := by
+  intro j hj h_poss
+  have hj_s : j < s.simpleKeyStack.size := by rw [← h_stack]; exact hj
+  have h_get : s'.simpleKeyStack[j] = s.simpleKeyStack[j]'hj_s := by
+    simp [h_stack]
+  rw [h_get] at h_poss ⊢
+  have ⟨hb1, hb2, hp1, hp2⟩ := h_ssv j hj_s h_poss
+  refine ⟨by omega, by omega, ?_, ?_⟩
+  · intro h1; rw [h_pos _ hb1]; exact hp1 hb1
+  · intro h2; rw [h_pos _ hb2]; exact hp2 hb2
+
+-- AllKeysValid is monotone under the same conditions.
+theorem AllKeysValid_mono (s s' : ScannerState)
+    (h_akv : AllKeysValid s)
+    (h_sk : s'.simpleKey = s.simpleKey)
+    (h_stack : s'.simpleKeyStack = s.simpleKeyStack)
+    (h_mono : s'.tokens.size ≥ s.tokens.size)
+    (h_pref : ∀ i (h : i < s.tokens.size), s'.tokens[i]'(by omega) = s.tokens[i]) :
+    AllKeysValid s' :=
+  ⟨SimpleKeyValid_mono s s' h_akv.1 h_sk h_mono h_pref,
+   SimpleKeyStackValid_mono s s' h_akv.2 h_stack h_mono h_pref⟩
+
+-- AllKeysValid when current key cleared (possible = false).
+theorem AllKeysValid_of_cleared_current (_s : ScannerState) (s' : ScannerState)
+    (h_poss : s'.simpleKey.possible = false)
+    (h_ssv : SimpleKeyStackValid s')
+    : AllKeysValid s' :=
+  ⟨SimpleKeyValid_of_not_possible s' h_poss, h_ssv⟩
+
+-- skipToContent preserves SimpleKeyStackValid.
+theorem skipToContent_preserves_SimpleKeyStackValid (s s' : ScannerState)
+    (h : skipToContent s = .ok s') (h_ssv : SimpleKeyStackValid s) : SimpleKeyStackValid s' :=
+  have h_tok := skipToContent_preserves_tokens s s' h
+  SimpleKeyStackValid_mono s s' h_ssv
+    (skipToContent_preserves_simpleKeyStack s s' h)
+    (by simp [h_tok])
+    (fun i hi => by simp [h_tok])
+
+-- unwindIndents preserves SimpleKeyStackValid.
+theorem unwindIndents_preserves_SimpleKeyStackValid (s : ScannerState) (col : Int)
+    (h_ssv : SimpleKeyStackValid s) : SimpleKeyStackValid (unwindIndents s col) :=
+  SimpleKeyStackValid_mono s _ h_ssv
+    (unwindIndents_preserves_simpleKeyStack s col)
+    (unwindIndents_adds_tokens s col)
+    (fun i hi => unwindIndents_preserves_prefix s col i hi)
+
+-- saveSimpleKey preserves SimpleKeyStackValid.
+theorem saveSimpleKey_preserves_SimpleKeyStackValid (s : ScannerState)
+    (h_ssv : SimpleKeyStackValid s) : SimpleKeyStackValid (saveSimpleKey s) := by
+  unfold saveSimpleKey
+  split
+  · exact h_ssv
+  · split
+    · -- simpleKeyAllowed = true: stack unchanged, tokens grow by 2
+      intro j hj h_poss
+      simp only [] at hj h_poss ⊢
+      have ⟨hb1, hb2, hp1, hp2⟩ := h_ssv j hj h_poss
+      refine ⟨by simp [Array.size_push]; omega, by simp [Array.size_push]; omega, ?_, ?_⟩
+      · intro h1
+        have : (s.tokens.push ⟨s.currentPos, .placeholder⟩ |>.push ⟨s.currentPos, .placeholder⟩)[s.simpleKeyStack[j].tokenIndex]'h1 = s.tokens[s.simpleKeyStack[j].tokenIndex] := by
+          rw [Array.getElem_push_lt (by simp [Array.size_push]; omega),
+              Array.getElem_push_lt (by omega)]
+        rw [this]; exact hp1 hb1
+      · intro h2
+        have : (s.tokens.push ⟨s.currentPos, .placeholder⟩ |>.push ⟨s.currentPos, .placeholder⟩)[s.simpleKeyStack[j].tokenIndex + 1]'h2 = s.tokens[s.simpleKeyStack[j].tokenIndex + 1] := by
+          rw [Array.getElem_push_lt (by simp [Array.size_push]; omega),
+              Array.getElem_push_lt (by omega)]
+        rw [this]; exact hp2 hb2
+    · exact h_ssv
+
+-- preprocess preserves AllKeysValid.
+theorem preprocess_preserves_AllKeysValid (s s' : ScannerState) (c : Char)
+    (h : scanNextToken_preprocess s = .ok (some (s', c)))
+    (h_akv : AllKeysValid s) : AllKeysValid s' :=
+  ⟨preprocess_preserves_SimpleKeyValid s s' c h h_akv.1,
+   by -- trace through preprocess: skipToContent → unwindIndents → saveSimpleKey
+      unfold scanNextToken_preprocess at h
+      simp only [bind, Except.bind, pure, Except.pure] at h
+      split at h
+      · contradiction
+      · rename_i s_skip h_skip
+        have h_ssv_skip := skipToContent_preserves_SimpleKeyStackValid s s_skip h_skip h_akv.2
+        split at h
+        · simp at h
+        · split at h
+          · split at h
+            · contradiction
+            · split at h
+              · simp at h
+              · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+                obtain ⟨rfl, _⟩ := h
+                apply saveSimpleKey_preserves_SimpleKeyStackValid
+                show SimpleKeyStackValid { unwindIndents s_skip s_skip.col with needIndentCheck := false }
+                exact unwindIndents_preserves_SimpleKeyStackValid s_skip s_skip.col h_ssv_skip
+          · split at h
+            · contradiction
+            · split at h
+              · simp at h
+              · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+                obtain ⟨rfl, _⟩ := h
+                exact saveSimpleKey_preserves_SimpleKeyStackValid s_skip h_ssv_skip⟩
+
+-- allowDirectives update preserves AllKeysValid.
+theorem allowDir_ite_preserves_AllKeysValid (s : ScannerState)
+    (h_akv : AllKeysValid s) :
+    AllKeysValid (if s.allowDirectives then
+      { s with allowDirectives := false, documentEverStarted := true } else s) := by
+  split <;> exact h_akv
+
+-- dispatchStructural: all branches either clear possible or preserve simpleKey+stack.
+theorem dispatchStructural_preserves_AllKeysValid (s : ScannerState) (c : Char)
+    (s' : ScannerState) (h : scanNextToken_dispatchStructural s c = .ok (some s'))
+    (h_akv : AllKeysValid s) : AllKeysValid s' := by
+  unfold scanNextToken_dispatchStructural at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h
+  · split at h
+    · simp at h
+    · split at h
+      · simp at h
+      · split at h
+        · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+          exact AllKeysValid_of_cleared_current s _ (scanDocumentStart_clears_simpleKey s)
+            (SimpleKeyStackValid_mono s _ h_akv.2
+              (scanDocumentStart_preserves_simpleKeyStack s)
+              (by have := ScanHelpers.scanDocumentStart_adds_tokens s; omega)
+              (fun i hi => ScanHelpers.scanDocumentStart_preserves_prefix s i hi))
+        · split at h
+          · split at h
+            · simp at h
+            · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+              rename_i s_de h_de
+              exact AllKeysValid_of_cleared_current s _ (scanDocumentEnd_clears_simpleKey s s_de h_de)
+                (SimpleKeyStackValid_mono s _ h_akv.2
+                  (scanDocumentEnd_preserves_simpleKeyStack s s_de h_de)
+                  (by have := ScanHelpers.scanDocumentEnd_adds_tokens s s_de h_de; omega)
+                  (fun i hi => ScanHelpers.scanDocumentEnd_preserves_prefix s s_de h_de i hi))
+          · split at h
+            · split at h
+              · simp at h
+              · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                rename_i s_dir h_dir
+                exact AllKeysValid_mono s _ h_akv
+                  (scanDirective_preserves_simpleKey s s_dir h_dir)
+                  (scanDirective_preserves_simpleKeyStack s s_dir h_dir)
+                  (ScanHelpers.scanDirective_monotonic s s_dir h_dir)
+                  (fun i hi => ScanHelpers.scanDirective_preserves_prefix s s_dir h_dir i hi)
+            · simp at h
+  · split at h
+    · simp at h
+    · split at h
+      · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+        exact AllKeysValid_of_cleared_current s _ (scanDocumentStart_clears_simpleKey s)
+          (SimpleKeyStackValid_mono s _ h_akv.2
+            (scanDocumentStart_preserves_simpleKeyStack s)
+            (by have := ScanHelpers.scanDocumentStart_adds_tokens s; omega)
+            (fun i hi => ScanHelpers.scanDocumentStart_preserves_prefix s i hi))
+      · split at h
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+            rename_i s_de h_de
+            exact AllKeysValid_of_cleared_current s _ (scanDocumentEnd_clears_simpleKey s s_de h_de)
+              (SimpleKeyStackValid_mono s _ h_akv.2
+                (scanDocumentEnd_preserves_simpleKeyStack s s_de h_de)
+                (by have := ScanHelpers.scanDocumentEnd_adds_tokens s s_de h_de; omega)
+                (fun i hi => ScanHelpers.scanDocumentEnd_preserves_prefix s s_de h_de i hi))
+        · split at h
+          · split at h
+            · simp at h
+            · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+              rename_i s_dir h_dir
+              exact AllKeysValid_mono s _ h_akv
+                (scanDirective_preserves_simpleKey s s_dir h_dir)
+                (scanDirective_preserves_simpleKeyStack s s_dir h_dir)
+                (ScanHelpers.scanDirective_monotonic s s_dir h_dir)
+                (fun i hi => ScanHelpers.scanDirective_preserves_prefix s s_dir h_dir i hi)
+          · simp at h
+
+-- Helper: flow start preserves AllKeysValid.
+-- Pushes current key to stack (valid → stays valid), clears current.
+theorem flowStart_preserves_AllKeysValid (s s' : ScannerState)
+    (h_akv : AllKeysValid s)
+    (h_cleared : s'.simpleKey.possible = false)
+    (h_pushed : s'.simpleKeyStack = s.simpleKeyStack.push s.simpleKey)
+    (h_mono : s'.tokens.size ≥ s.tokens.size)
+    (h_pref : ∀ i (hi : i < s.tokens.size), s'.tokens[i]'(by omega) = s.tokens[i]) :
+    AllKeysValid s' := by
+  constructor
+  · exact SimpleKeyValid_of_not_possible _ h_cleared
+  · intro j hj h_poss
+    have hj_sz : j < s.simpleKeyStack.size + 1 := by
+      rw [h_pushed, Array.size_push] at hj; exact hj
+    have h_get : s'.simpleKeyStack[j] = (s.simpleKeyStack.push s.simpleKey)[j]'(by rw [Array.size_push]; exact hj_sz) := by
+      simp [h_pushed]
+    rw [h_get] at h_poss ⊢
+    by_cases hlt : j < s.simpleKeyStack.size
+    · -- existing stack entry
+      rw [Array.getElem_push_lt hlt] at h_poss ⊢
+      have ⟨hb1, hb2, hp1, hp2⟩ := h_akv.2 j hlt h_poss
+      refine ⟨by omega, by omega, ?_, ?_⟩
+      · intro h1; rw [h_pref _ hb1]; exact hp1 hb1
+      · intro h2; rw [h_pref _ hb2]; exact hp2 hb2
+    · -- newly pushed entry (j = s.simpleKeyStack.size)
+      have hj_eq : j = s.simpleKeyStack.size := by omega
+      subst hj_eq
+      rw [Array.getElem_push_eq] at h_poss ⊢
+      have ⟨hb1, hb2, hp1, hp2⟩ := h_akv.1 h_poss
+      refine ⟨by omega, by omega, ?_, ?_⟩
+      · intro h1; rw [h_pref _ hb1]; exact hp1 hb1
+      · intro h2; rw [h_pref _ hb2]; exact hp2 hb2
+-- Restores current key from stack top (valid), pops stack.
+theorem flowEnd_preserves_AllKeysValid (s s' : ScannerState)
+    (h_akv : AllKeysValid s)
+    (h_restored : s'.simpleKey = s.simpleKeyStack.back?.getD {})
+    (h_popped : s'.simpleKeyStack = s.simpleKeyStack.pop)
+    (h_mono : s'.tokens.size ≥ s.tokens.size)
+    (h_pref : ∀ i (hi : i < s.tokens.size), s'.tokens[i]'(by omega) = s.tokens[i]) :
+    AllKeysValid s' := by
+  constructor
+  · -- current key: restored from stack top
+    intro h_poss
+    rw [h_restored] at h_poss ⊢
+    by_cases h_size : s.simpleKeyStack.size > 0
+    · -- stack non-empty
+      have h_bound : s.simpleKeyStack.size - 1 < s.simpleKeyStack.size := by omega
+      have h_get : (s.simpleKeyStack.back?.getD {}) =
+          s.simpleKeyStack[s.simpleKeyStack.size - 1]'h_bound := by
+        simp [Array.back?, h_bound]
+      rw [h_get] at h_poss ⊢
+      have ⟨hb1, hb2, hp1, hp2⟩ := h_akv.2 (s.simpleKeyStack.size - 1) h_bound h_poss
+      refine ⟨by omega, by omega, ?_, ?_⟩
+      · intro h1; rw [h_pref _ hb1]; exact hp1 hb1
+      · intro h2; rw [h_pref _ hb2]; exact hp2 hb2
+    · -- stack empty: back? = none, getD = {}, possible = false → contradiction
+      have h_empty : s.simpleKeyStack.size = 0 := by omega
+      simp [Array.back?, h_empty] at h_poss
+  · -- stack: popped (all remaining entries were valid)
+    intro j hj h_poss
+    have hj' : j < s.simpleKeyStack.size := by
+      simp [h_popped, Array.size_pop] at hj; omega
+    have h_get : s'.simpleKeyStack[j] = s.simpleKeyStack[j]'hj' := by
+      simp [h_popped, Array.getElem_pop]
+    rw [h_get] at h_poss ⊢
+    have ⟨hb1, hb2, hp1, hp2⟩ := h_akv.2 j hj' h_poss
+    refine ⟨by omega, by omega, ?_, ?_⟩
+    · intro h1; rw [h_pref _ hb1]; exact hp1 hb1
+    · intro h2; rw [h_pref _ hb2]; exact hp2 hb2
+theorem dispatchFlowIndicators_preserves_AllKeysValid (s : ScannerState) (c : Char)
+    (s' : ScannerState) (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s'))
+    (h_akv : AllKeysValid s) : AllKeysValid s' := by
+  unfold scanNextToken_dispatchFlowIndicators at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h
+  · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+    exact flowStart_preserves_AllKeysValid s _ h_akv
+      (scanFlowSequenceStart_simpleKey_cleared s)
+      (scanFlowSequenceStart_stack_pushed s)
+      (by have := scanFlowSequenceStart_adds_one_token s; omega)
+      (fun i hi => ScanHelpers.scanFlowSequenceStart_preserves_prefix s i hi)
+  · split at h
+    · split at h
+      · simp at h
+      · split at h
+        · simp at h
+        · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+          exact flowEnd_preserves_AllKeysValid s _ h_akv
+            (scanFlowSequenceEnd_simpleKey_restored s)
+            (scanFlowSequenceEnd_stack_popped s)
+            (by have := scanFlowSequenceEnd_adds_one_token s; omega)
+            (fun i hi => ScanHelpers.scanFlowSequenceEnd_preserves_prefix s i hi)
+    · split at h
+      · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+        exact flowStart_preserves_AllKeysValid s _ h_akv
+          (scanFlowMappingStart_simpleKey_cleared s)
+          (scanFlowMappingStart_stack_pushed s)
+          (by have := scanFlowMappingStart_adds_one_token s; omega)
+          (fun i hi => ScanHelpers.scanFlowMappingStart_preserves_prefix s i hi)
+      · split at h
+        · split at h
+          · simp at h
+          · split at h
+            · simp at h
+            · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+              exact flowEnd_preserves_AllKeysValid s _ h_akv
+                (scanFlowMappingEnd_simpleKey_restored s)
+                (scanFlowMappingEnd_stack_popped s)
+                (by have := scanFlowMappingEnd_adds_one_token s; omega)
+                (fun i hi => ScanHelpers.scanFlowMappingEnd_preserves_prefix s i hi)
+        · split at h
+          · split at h
+            · simp at h
+            · split at h
+              · simp at h
+              · rename_i _ _ _ h_entry
+                simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                exact AllKeysValid_mono s _ h_akv
+                  (scanFlowEntry_preserves_simpleKey s _ h_entry)
+                  (scanFlowEntry_preserves_simpleKeyStack s _ h_entry)
+                  (by have := ScanHelpers.scanFlowEntry_adds_one_token s _ h_entry; omega)
+                  (fun i hi => ScanHelpers.scanFlowEntry_preserves_prefix s _ h_entry i hi)
+          · simp at h
+
+-- dispatchBlockIndicators: blockEntry preserves, key/value clear possible.
+theorem dispatchBlockIndicators_preserves_AllKeysValid (s : ScannerState) (c : Char)
+    (s' : ScannerState) (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s'))
+    (h_akv : AllKeysValid s) : AllKeysValid s' := by
+  unfold scanNextToken_dispatchBlockIndicators at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h
+  · -- c == '-' && ... : scanBlockEntry (preserves key+stack)
+    split at h
+    · simp at h
+    · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+      rename_i s_be h_be
+      exact AllKeysValid_mono s _ h_akv
+        (scanBlockEntry_preserves_simpleKey s s_be h_be)
+        (scanBlockEntry_preserves_simpleKeyStack s s_be h_be)
+        (by have := ScanHelpers.scanBlockEntry_adds_tokens s s_be h_be; omega)
+        (fun i hi => ScanHelpers.scanBlockEntry_preserves_prefix s s_be h_be i hi)
+  · -- c == '?' ... : scanKey (clears key, preserves stack)
+    split at h
+    · split at h
+      · simp at h
+      · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+        rename_i s_k h_k
+        exact AllKeysValid_of_cleared_current s _ (scanKey_clears_simpleKey s s_k h_k)
+          (SimpleKeyStackValid_mono s _ h_akv.2
+            (scanKey_preserves_simpleKeyStack s s_k h_k)
+            (by have := scanKey_adds_one_token s s_k h_k; omega)
+            (fun i hi => ScanHelpers.scanKey_preserves_prefix s s_k h_k i hi))
+    · -- c == ':' ... : scanValue (clears key, preserves stack, pos-preserving)
+      split at h
+      · split at h
+        · simp at h
+        · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+          rename_i s_v h_v
+          exact AllKeysValid_of_cleared_current s _ (scanValue_clears_simpleKey s s_v h_v)
+            (SimpleKeyStackValid_mono_pos s _ h_akv.2
+              (scanValue_preserves_simpleKeyStack s s_v h_v)
+              (by have := scanValue_adds_tokens s s_v h_v; omega)
+              (fun i hi => ScanHelpers.scanValue_preserves_all_pos s s_v h_v h_akv.1 i hi))
+      · simp at h
+
+-- dispatchContent: preserves simpleKey (all branches) and stack.
+theorem dispatchContent_preserves_AllKeysValid (s : ScannerState) (c : Char)
+    (s' : ScannerState) (h : scanNextToken_dispatchContent s c = .ok s')
+    (h_akv : AllKeysValid s) : AllKeysValid s' := by
+  unfold scanNextToken_dispatchContent at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h
+  · -- c == '&': anchor
+    simp only [Except.ok.injEq] at h; subst h
+    exact AllKeysValid_mono s _ h_akv
+      (scanAnchorOrAlias_preserves_simpleKey s true)
+      (scanAnchorOrAlias_preserves_simpleKeyStack s true)
+      (by have := ScanHelpers.scanAnchorOrAlias_adds_one_token s true; omega)
+      (fun i hi => ScanHelpers.scanAnchorOrAlias_preserves_prefix s true i hi)
+  · split at h
+    · -- c == '*': alias
+      simp only [Except.ok.injEq] at h; subst h
+      exact AllKeysValid_mono s _ h_akv
+        (scanAnchorOrAlias_preserves_simpleKey s false)
+        (scanAnchorOrAlias_preserves_simpleKeyStack s false)
+        (by have := ScanHelpers.scanAnchorOrAlias_adds_one_token s false; omega)
+        (fun i hi => ScanHelpers.scanAnchorOrAlias_preserves_prefix s false i hi)
+    · split at h
+      · -- c == '!': tag
+        simp only [Except.ok.injEq] at h; subst h
+        exact AllKeysValid_mono s _ h_akv
+          (scanTag_preserves_simpleKey s)
+          (scanTag_preserves_simpleKeyStack s)
+          (by have := ScanHelpers.scanTag_adds_one_token s; omega)
+          (fun i hi => ScanHelpers.scanTag_preserves_prefix s i hi)
+      · split at h
+        · -- c == '|' || c == '>': block scalar (clears key)
+          split at h <;> try contradiction
+          simp only [Except.ok.injEq] at h; subst h
+          rename_i s_bs h_bs
+          exact AllKeysValid_of_cleared_current s _ (scanBlockScalar_clears_simpleKey s s_bs h_bs)
+            (SimpleKeyStackValid_mono s _ h_akv.2
+              (scanBlockScalar_preserves_simpleKeyStack s s_bs h_bs)
+              (by have := ScanHelpers.scanBlockScalar_adds_one_token s s_bs h_bs; omega)
+              (fun i hi => ScanHelpers.scanBlockScalar_preserves_prefix s s_bs h_bs i hi))
+        · split at h
+          · -- c == '"': double quoted (preserves key+stack, possibly endLine update)
+            split at h <;> try contradiction
+            rename_i s_dq h_dq
+            have h_akv_dq := AllKeysValid_mono s s_dq h_akv
+              (scanDoubleQuoted_preserves_simpleKey s s_dq h_dq)
+              (scanDoubleQuoted_preserves_simpleKeyStack s s_dq h_dq)
+              (by have := ScanHelpers.scanDoubleQuoted_adds_one_token s s_dq h_dq; omega)
+              (fun i hi => ScanHelpers.scanDoubleQuoted_preserves_prefix s s_dq h_dq i hi)
+            split at h
+            · simp only [Except.ok.injEq] at h; subst h; exact h_akv_dq
+            · simp only [Except.ok.injEq] at h; subst h; exact h_akv_dq
+          · split at h
+            · -- c == '\'': single quoted (preserves key+stack, possibly endLine update)
+              split at h <;> try contradiction
+              rename_i s_sq h_sq
+              have h_akv_sq := AllKeysValid_mono s s_sq h_akv
+                (scanSingleQuoted_preserves_simpleKey s s_sq h_sq)
+                (scanSingleQuoted_preserves_simpleKeyStack s s_sq h_sq)
+                (by have := ScanHelpers.scanSingleQuoted_adds_one_token s s_sq h_sq; omega)
+                (fun i hi => ScanHelpers.scanSingleQuoted_preserves_prefix s s_sq h_sq i hi)
+              split at h
+              · simp only [Except.ok.injEq] at h; subst h; exact h_akv_sq
+              · simp only [Except.ok.injEq] at h; subst h; exact h_akv_sq
+            · split at h
+              · -- plain scalar
+                split at h <;> try contradiction
+                simp only [Except.ok.injEq] at h; subst h
+                rename_i s_ps h_ps
+                exact AllKeysValid_mono s _ h_akv
+                  (scanPlainScalar_preserves_simpleKey s s_ps h_ps)
+                  (scanPlainScalar_preserves_simpleKeyStack s s_ps h_ps)
+                  (by have := ScanHelpers.scanPlainScalar_adds_one_token s s_ps h_ps; omega)
+                  (fun i hi => ScanHelpers.scanPlainScalar_preserves_prefix s s_ps h_ps i hi)
+              · -- error
+                simp at h
+
+/-!
+### scanNextToken preserves AllKeysValid
+
+The proof case-splits on which dispatcher handles the character:
+- Dispatchers that clear `possible` produce `SimpleKeyValid` vacuously.
+- Dispatchers that preserve `simpleKey` and only append tokens preserve it
+  via monotonicity.
+- Flow-start pushes the valid current key onto the stack and clears current.
+- Flow-end restores a valid key from the stack.
+-/
+
+-- Helper: after structural dispatch returns none, the remaining dispatchers preserve AllKeysValid.
+theorem scanNextToken_postStructural_preserves_AllKeysValid
+    (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h_akv : AllKeysValid s)
+    (h_ok : (match scanNextToken_dispatchFlowIndicators s c with
+      | Except.ok (some s') => Except.ok (some s')
+      | Except.ok none =>
+        match scanNextToken_dispatchBlockIndicators s c with
+        | Except.ok (some s') => Except.ok (some s')
+        | Except.ok none => (scanNextToken_dispatchContent s c).map some
+        | Except.error e => Except.error e
+      | Except.error e => Except.error e) = Except.ok (some s')) :
+    AllKeysValid s' := by
+  split at h_ok
+  · -- flow = .ok (some _)
+    simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+    exact dispatchFlowIndicators_preserves_AllKeysValid s c _ (by assumption) h_akv
+  · -- flow = .ok none → try block
+    split at h_ok
+    · -- block = .ok (some _)
+      simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+      exact dispatchBlockIndicators_preserves_AllKeysValid s c _ (by assumption) h_akv
+    · -- block = .ok none → try content
+      unfold Except.map at h_ok
+      split at h_ok
+      · simp at h_ok  -- content = .error
+      · -- content = .ok v✝
+        simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact dispatchContent_preserves_AllKeysValid s c _ (by assumption) h_akv
+    · -- block = .error
+      simp at h_ok
+  · -- flow = .error
+    simp at h_ok
+
+theorem scanNextToken_preserves_AllKeysValid :
+    ∀ (s s' : ScannerState),
+      AllKeysValid s → scanNextToken s = .ok (some s') → AllKeysValid s' := by
+  intro s s' h_akv h_ok
+  unfold scanNextToken at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok <;> (try (simp at h_ok; done)) -- preprocess Except: .error closes
+  split at h_ok <;> (try (simp at h_ok; done)) -- preprocess Option: none closes
+  rename_i s2 c h_pre
+  have h_akv2 := preprocess_preserves_AllKeysValid s s2 c h_pre h_akv
+  split at h_ok <;> (try (simp at h_ok; done)) -- structural Except: .error closes
+  split at h_ok
+  · -- structural Option: some → structural succeeded (source order: some first)
+    simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+    exact dispatchStructural_preserves_AllKeysValid s2 c _ (by assumption) h_akv2
+  · -- structural Option: none → continue to flow/block/content
+    have h_akv3 := allowDir_ite_preserves_AllKeysValid s2 h_akv2
+    -- Flow Except split
+    split at h_ok <;> (try (simp at h_ok; done))
+    -- Flow Option split (source order: some first, none second)
+    split at h_ok
+    · -- flow some → flow succeeded
+      simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+      exact dispatchFlowIndicators_preserves_AllKeysValid _ c _ (by assumption) h_akv3
+    · -- flow none → block
+      split at h_ok <;> (try (simp at h_ok; done)) -- block Except
+      split at h_ok
+      · -- block some → block succeeded
+        simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact dispatchBlockIndicators_preserves_AllKeysValid _ c _ (by assumption) h_akv3
+      · -- block none → content
+        split at h_ok <;> (try (simp at h_ok; done)) -- content Except
+        simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact dispatchContent_preserves_AllKeysValid _ c _ (by assumption) h_akv3
+
 /-!
 ### scanNextToken preserves ScanInv
 
-Within each `scanNextToken` call, the token array is only modified by:
-1. `emit tok` — pushes at `s.currentPos.offset = s.offset`
-2. `emitAt pos tok` — pushes at `pos.offset` where pos was saved earlier, ≤ s.offset
-3. `Array.push` of placeholders (in saveSimpleKey) — at `s.currentPos.offset = s.offset`
-4. `setIfInBounds` — overwrites placeholder with same offset (simpleKey.pos = placeholder pos)
-
-The offset only increases (via `advance`). All new token offsets equal the
-post-`skipToContent` offset (≥ s.offset ≥ all existing token offsets).
-
-This property holds for all 20+ sub-functions of scanNextToken. Rather than
-trace through each branch (which would require ~300 lines of branch-by-branch
-proof), we express it as an axiom validated by 869 passing tests and 787
-`#guard` checks spanning all scanNextToken code paths.
+The proof composes all per-dispatcher preservation theorems.
+The `SimpleKeyValid` condition is carried as a side invariant to
+supply the `h_sk` precondition needed by `scanValue_preserves_ScanInv`.
 -/
-private axiom scanNextToken_preserves_ScanInv :
+
+-- Helper: after structural dispatch returns none, the remaining dispatchers preserve ScanInv.
+theorem scanNextToken_postStructural_preserves_ScanInv
+    (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h_inv : ScanInv s) (h_skv : SimpleKeyValid s)
+    (h_ok : (match scanNextToken_dispatchFlowIndicators s c with
+      | Except.ok (some s') => Except.ok (some s')
+      | Except.ok none =>
+        match scanNextToken_dispatchBlockIndicators s c with
+        | Except.ok (some s') => Except.ok (some s')
+        | Except.ok none => (scanNextToken_dispatchContent s c).map some
+        | Except.error e => Except.error e
+      | Except.error e => Except.error e) = Except.ok (some s')) :
+    ScanInv s' := by
+  split at h_ok
+  · -- flow = .ok (some _)
+    simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+    exact dispatchFlowIndicators_preserves_ScanInv s c h_inv _ (by assumption)
+  · -- flow = .ok none → try block
+    split at h_ok
+    · -- block = .ok (some _)
+      simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+      exact dispatchBlockIndicators_preserves_ScanInv s c h_inv
+        (SimpleKeyValid_implies_scanValue_h_sk s h_skv) _ (by assumption)
+    · -- block = .ok none → try content
+      unfold Except.map at h_ok
+      split at h_ok
+      · simp at h_ok  -- content = .error
+      · -- content = .ok v✝
+        simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact dispatchContent_preserves_ScanInv s c h_inv _ (by assumption)
+    · -- block = .error
+      simp at h_ok
+  · -- flow = .error
+    simp at h_ok
+
+theorem scanNextToken_preserves_ScanInv :
     ∀ (s s' : ScannerState),
-      ScanInv s → scanNextToken s = .ok (some s') → ScanInv s'
+      ScanInv s → SimpleKeyValid s → scanNextToken s = .ok (some s') → ScanInv s' := by
+  intro s s' h_inv h_skv h_ok
+  unfold scanNextToken at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok <;> (try (simp at h_ok; done)) -- preprocess Except
+  split at h_ok <;> (try (simp at h_ok; done)) -- preprocess Option
+  rename_i s2 c h_pre
+  have h_inv2 := preprocess_preserves_ScanInv s s2 c h_inv h_pre
+  have h_skv2 := preprocess_preserves_SimpleKeyValid s s2 c h_pre h_skv
+  split at h_ok <;> (try (simp at h_ok; done)) -- structural Except
+  split at h_ok
+  · -- structural some (source order: some first)
+    simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+    exact dispatchStructural_preserves_ScanInv s2 c h_inv2 _ (by assumption)
+  · -- structural none → continue to flow/block/content
+    have h_inv3 := allowDir_ite_preserves_ScanInv s2 h_inv2
+    have h_skv3 := allowDir_ite_preserves_SimpleKeyValid s2 h_skv2
+    -- Flow Except split
+    split at h_ok <;> (try (simp at h_ok; done))
+    -- Flow Option split (source order: some first)
+    split at h_ok
+    · -- flow some
+      simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+      exact dispatchFlowIndicators_preserves_ScanInv _ c h_inv3 _ (by assumption)
+    · -- flow none → block
+      split at h_ok <;> (try (simp at h_ok; done)) -- block Except
+      split at h_ok
+      · -- block some
+        simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact dispatchBlockIndicators_preserves_ScanInv _ c h_inv3
+          (SimpleKeyValid_implies_scanValue_h_sk _ h_skv3) _ (by assumption)
+      · -- block none → content
+        split at h_ok <;> (try (simp at h_ok; done)) -- content Except
+        simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact dispatchContent_preserves_ScanInv _ c h_inv3 _ (by assumption)
 
 -- scanLoop preserves ordering via induction on fuel.
 theorem scanLoop_ordered (s : ScannerState) (fuel : Nat)
     (tokens : Array (Positioned YamlToken))
-    (h_inv : ScanInv s) (h_ok : scanLoop s fuel = .ok tokens) :
+    (h_inv : ScanInv s) (h_akv : AllKeysValid s) (h_ok : scanLoop s fuel = .ok tokens) :
     ∀ i j : Fin tokens.size, i.val < j.val →
       tokens[i].pos.offset ≤ tokens[j].pos.offset := by
   induction fuel generalizing s with
@@ -5265,7 +7775,10 @@ theorem scanLoop_ordered (s : ScannerState) (fuel : Nat)
           exact (emit_preserves_ScanInv _ .streamEnd
             (unwindIndents_preserves_ScanInv s (-1) h_inv)).1
     · next s' h_snt => -- scanNextToken s = .ok (some s'): recursive case
-      exact ih s' (scanNextToken_preserves_ScanInv s s' h_inv h_snt) h_ok
+      exact ih s'
+        (scanNextToken_preserves_ScanInv s s' h_inv h_akv.1 h_snt)
+        (scanNextToken_preserves_AllKeysValid s s' h_akv h_snt)
+        h_ok
 
 theorem scan_positions_ordered (input : String) (tokens : Array (Positioned YamlToken))
     (h : scan input = .ok tokens) :
@@ -5293,8 +7806,24 @@ theorem scan_positions_ordered (input : String) (tokens : Array (Positioned Yaml
     split
     · exact advance_preserves_ScanInv _ h_inv0
     · exact h_inv0
+  -- Initial AllKeysValid: simpleKey.possible = false, stack empty.
+  have h_akv0 : AllKeysValid ((ScannerState.mk' input).emit .streamStart) := by
+    constructor
+    · intro h_poss; simp [ScannerState.mk', ScannerState.emit] at h_poss
+    · intro j hj; simp [ScannerState.mk', ScannerState.emit] at hj
+  have h_akv : AllKeysValid (match (ScannerState.mk' input).emit .streamStart |>.peek? with
+      | some '\uFEFF' => ((ScannerState.mk' input).emit .streamStart).advance
+      | _ => (ScannerState.mk' input).emit .streamStart) := by
+    split
+    · have h_tok := advance_preserves_tokens ((ScannerState.mk' input).emit .streamStart)
+      exact AllKeysValid_mono _ _ h_akv0
+        (advance_preserves_simpleKey _)
+        (advance_preserves_simpleKeyStack _)
+        (by simp [h_tok])
+        (fun i hi => by simp [h_tok])
+    · exact h_akv0
   -- Apply scanLoop_ordered with the post-BOM state
-  exact scanLoop_ordered _ _ tokens h_inv h
+  exact scanLoop_ordered _ _ tokens h_inv h_akv h
 
 /-! ## §3  Main Correctness Theorem
 
@@ -5335,7 +7864,7 @@ These provide empirical validation before the universal proof.
 -/
 
 -- Helper to extract ValidTokenStream from scan result
-private def checkValidStream (input : String) : Bool :=
+def checkValidStream (input : String) : Bool :=
   match scanFiltered input with
   | .ok tokens =>
       tokens.size ≥ 2 &&
@@ -5343,14 +7872,5 @@ private def checkValidStream (input : String) : Bool :=
       (if _h : tokens.size > 0 then tokens[tokens.size - 1]!.val == .streamEnd else false)
   | .error _ => false
 
--- Envelope property holds on diverse inputs
-#guard checkValidStream ""
-#guard checkValidStream "hello"
-#guard checkValidStream "key: value"
-#guard checkValidStream "- item"
-#guard checkValidStream "{ a: 1 }"
-#guard checkValidStream "---\ndoc\n..."
-#guard checkValidStream "# comment"
-#guard checkValidStream "literal: |\n  text"
 
 end Lean4Yaml.Proofs.ScannerCorrectness
