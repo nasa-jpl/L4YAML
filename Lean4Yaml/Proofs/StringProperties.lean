@@ -29,6 +29,7 @@ namespace Lean4Yaml.Proofs.StringProperties
 
 open Lean4Yaml
 open Lean4Yaml.Grammar (FoldResult)
+open Lean4Yaml.CharPredicates
 
 /-! ## §3  Auxiliary List Lemmas -/
 
@@ -168,5 +169,82 @@ theorem folded_injective (s t : String) :
 theorem forbidden_injective (s t : String) :
     FoldResult.forbidden s = FoldResult.forbidden t → s = t := by
   intro h; exact FoldResult.forbidden.inj h
+
+/-! ## §4  Trim Preservation (Layer 1b+)
+
+`trimTrailingWS` is `String.ofList (l.reverse.dropWhile p).reverse`, which
+produces a **prefix** of the original list.  Properties closed under prefix
+(no adjacent bad‐pairs, no flow indicators, validPlainFirst) are therefore
+preserved.
+-/
+
+/-- The reverse‑dropWhile‑reverse operation produces a prefix of the original. -/
+theorem reverse_dropWhile_reverse_isPrefix (p : Char → Bool) (cs : List Char) :
+    ∃ suf, cs = (cs.reverse.dropWhile p).reverse ++ suf := by
+  have := @List.takeWhile_append_dropWhile _ p cs.reverse
+  refine ⟨(cs.reverse.takeWhile p).reverse, ?_⟩
+  calc cs = cs.reverse.reverse := (List.reverse_reverse cs).symm
+    _ = (List.takeWhile p cs.reverse ++ List.dropWhile p cs.reverse).reverse := by rw [this]
+    _ = (List.dropWhile p cs.reverse).reverse ++ (List.takeWhile p cs.reverse).reverse :=
+        List.reverse_append ..
+
+/-- `hasAdjacentChars` is false on a prefix when it is false on the whole list. -/
+theorem hasAdjacentChars_false_of_append (a b : Char) (xs ys : List Char)
+    (h : hasAdjacentChars a b (xs ++ ys) = false) :
+    hasAdjacentChars a b xs = false := by
+  rw [Bool.eq_false_iff] at h ⊢
+  intro h'
+  exact h ((hasAdjacentChars_append a b xs ys).mpr (Or.inl h'))
+
+/-- Trimming trailing whitespace preserves `noColonSpaceProp`. -/
+theorem trim_preserves_noColonSpace (p : Char → Bool) (cs : List Char)
+    (h : noColonSpaceProp (String.ofList cs)) :
+    noColonSpaceProp (String.ofList (cs.reverse.dropWhile p).reverse) := by
+  obtain ⟨suf, hsuf⟩ := reverse_dropWhile_reverse_isPrefix p cs
+  rw [← noColonSpace_iff] at h ⊢
+  simp only [noColonSpaceBool, String.toList_ofList] at h ⊢
+  rw [hsuf] at h
+  simp [hasAdjacentChars_false_of_append ':' ' ' _ suf (Bool.not_inj h)]
+
+/-- Trimming trailing whitespace preserves `noSpaceHashProp`. -/
+theorem trim_preserves_noSpaceHash (p : Char → Bool) (cs : List Char)
+    (h : noSpaceHashProp (String.ofList cs)) :
+    noSpaceHashProp (String.ofList (cs.reverse.dropWhile p).reverse) := by
+  obtain ⟨suf, hsuf⟩ := reverse_dropWhile_reverse_isPrefix p cs
+  rw [← noSpaceHash_iff] at h ⊢
+  simp only [noSpaceHashBool, String.toList_ofList] at h ⊢
+  rw [hsuf] at h
+  simp [hasAdjacentChars_false_of_append ' ' '#' _ suf (Bool.not_inj h)]
+
+/-- Trimming trailing whitespace preserves `noFlowIndicatorsProp`. -/
+theorem trim_preserves_noFlowIndicators (p : Char → Bool) (cs : List Char)
+    (h : noFlowIndicatorsProp (String.ofList cs)) :
+    noFlowIndicatorsProp (String.ofList (cs.reverse.dropWhile p).reverse) := by
+  obtain ⟨suf, hsuf⟩ := reverse_dropWhile_reverse_isPrefix p cs
+  intro c hc
+  simp only [String.toList_ofList] at hc
+  exact h c (by simp only [String.toList_ofList]; rw [hsuf]; exact List.mem_append_left _ hc)
+
+/-- Trimming preserves `validPlainFirstProp` when the result has ≥ 2 characters.
+    (When the first char is `-`/`?`/`:`, `canStartPlainScalarProp c none` is `False`,
+    so a single-char result would not inherit `validPlainFirstProp` from the original.) -/
+theorem trim_preserves_validPlainFirst (p : Char → Bool) (cs : List Char)
+    (inFlow : Bool) (h : validPlainFirstProp (String.ofList cs) inFlow)
+    (hge2 : (cs.reverse.dropWhile p).reverse.length ≥ 2) :
+    validPlainFirstProp (String.ofList (cs.reverse.dropWhile p).reverse) inFlow := by
+  obtain ⟨suf, hsuf⟩ := reverse_dropWhile_reverse_isPrefix p cs
+  -- Extract two elements from the length-≥-2 trimmed prefix
+  obtain ⟨x, y, rest', htrim⟩ : ∃ x y rest',
+      (cs.reverse.dropWhile p).reverse = x :: y :: rest' := by
+    match htr : (cs.reverse.dropWhile p).reverse, hge2 with
+    | a :: b :: tl, _ => exact ⟨a, b, tl, rfl⟩
+  -- Derive concrete decomposition: cs = x :: y :: (rest' ++ suf)
+  have hcs : cs = x :: y :: (rest' ++ suf) := by
+    rw [hsuf, htrim]; simp [List.cons_append]
+  -- Rewrite h with the concrete decomposition, then unfold
+  rw [hcs] at h
+  simp only [validPlainFirstProp, String.toList_ofList] at h ⊢
+  rw [htrim]
+  exact h
 
 end Lean4Yaml.Proofs.StringProperties
