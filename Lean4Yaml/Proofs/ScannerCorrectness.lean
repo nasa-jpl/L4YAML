@@ -714,6 +714,29 @@ remaining visible to verification tooling (never use `private` for theorems). -/
 
 namespace ScanHelpers
 
+/-- When `collectPlainScalar_terminates?` returns `some result`, the result state is unchanged. -/
+theorem collectPlainScalar_terminates?_state (c : Char) (s : ScannerState)
+    (content spaces : String) (inFlow : Bool) (result : PlainScalarResult)
+    (h : collectPlainScalar_terminates? c s content spaces inFlow = some result) :
+    result.state = s := by
+  unfold collectPlainScalar_terminates? at h
+  split at h
+  · injection h with h; cases h; rfl
+  · split at h
+    · simp only [] at h
+      split at h
+      · split at h
+        · injection h with h; cases h; rfl
+        · contradiction
+      · split at h
+        · injection h with h; cases h; rfl
+        · contradiction
+    · split at h
+      · injection h with h; cases h; rfl
+      · split at h
+        · injection h with h; cases h; rfl
+        · contradiction
+
 /-- Helper: collectHexDigitsLoop preserves tokens. -/
 theorem collectHexDigitsLoop_preserves_tokens (s : ScannerState) (hex : String) (n : Nat) :
     (collectHexDigitsLoop s hex n).snd.tokens = s.tokens := by
@@ -836,79 +859,56 @@ theorem collectPlainScalarLoop_preserves_tokens (s : ScannerState) (content last
   | succ fuel' ih =>
     unfold collectPlainScalarLoop at h
     split at h
-    · -- none case
+    · -- peek = none
       injection h with h_eq; cases h_eq; rfl
-    · -- some c case
+    · -- peek = some c
+      rename_i c
       split at h
-      · -- c == '#' && spaces.length > 0
-        injection h with h_eq; cases h_eq; rfl
-      · split at h
-        · -- c == ':'
-          simp only [] at h
+      · -- collectPlainScalar_terminates? = some → state = s
+        rename_i hterm
+        injection h with h_eq; cases h_eq
+        rw [collectPlainScalar_terminates?_state _ _ _ _ _ _ hterm]
+      · -- collectPlainScalar_terminates? = none → continue
+        split at h
+        · -- isLineBreak c
           split at h
-          · -- none case: terminates = true
+          · -- inFlow
+            simp only [bind, Except.bind] at h
+            split at h <;> try contradiction
+            rename_i fold_result heq
+            cases fold_result with
+            | mk content_fold s_fold =>
+              have h_fold := foldQuotedNewlines_preserves_tokens s s_fold content_fold heq
+              split at h
+              · injection h with h_eq; cases h_eq; rw [h_fold]
+              · rw [ih s_fold (content ++ content_fold) "" h, h_fold]
+          · -- !inFlow: block line break
             split at h
-            · injection h with h_eq; cases h_eq; rfl
-            · split at h
-              · injection h with h_eq; cases h_eq; rfl
-              · have h_adv := advance_preserves_tokens s
-                rw [ih _ _ _ h, h_adv]
-          · -- some case
-            split at h
-            · injection h with h_eq; cases h_eq; rfl
-            · split at h
-              · injection h with h_eq; cases h_eq; rfl
-              · have h_adv := advance_preserves_tokens s
-                rw [ih _ _ _ h, h_adv]
-        · split at h
-          · -- inFlow && isFlowIndicator
-            injection h with h_eq; cases h_eq; rfl
-          · split at h
-            · -- col == 0 && atDocumentBoundary
+            · -- _handleBlockLineBreak = none → terminate
               injection h with h_eq; cases h_eq; rfl
-            · split at h
-              · -- isLineBreak c
-                split at h
-                · -- inFlow
-                  simp only [bind, Except.bind] at h
-                  split at h <;> try contradiction
-                  rename_i fold_result heq
-                  cases fold_result with
-                  | mk content_fold s_fold =>
-                    have h_fold := foldQuotedNewlines_preserves_tokens s s_fold content_fold heq
-                    split at h
-                    · -- some '#'
-                      injection h with h_eq; cases h_eq; rw [h_fold]
-                    · -- other
-                      rw [ih s_fold (content ++ content_fold) "" h, h_fold]
-                · -- !inFlow
-                  have h_cn := consumeNewline_preserves_tokens s
-                  let s_after_newline := consumeNewline s
-                  let bfuel := inputEnd - s_after_newline.offset + 1
-                  have h_bl := skipBlankLinesLoop_preserves_tokens s_after_newline 0 bfuel inputEnd
-                  have h_sp := skipSpaces_preserves_tokens (skipBlankLinesLoop s_after_newline 0 bfuel inputEnd).snd
-                  simp only [] at h
-                  split at h  -- Split on col < contentIndent
-                  · -- col < contentIndent case
-                    injection h with h_eq; cases h_eq; rfl
-                  · -- col >= contentIndent, check atDocumentBoundary
-                    split at h
-                    · -- atDocumentBoundary = true
-                      injection h with h_eq; cases h_eq; rfl
-                    · -- atDocumentBoundary = false, recurse
-                      rw [ih _ _ _ h, h_sp, h_bl, h_cn]
-              · split at h
-                · -- isWhiteSpace c
-                  have h_adv := advance_preserves_tokens s
-                  rw [ih s.advance content (lastLine.push _) h, h_adv]
-                · -- regular content
-                  split at h
-                  · -- !isPlainSafe
-                    injection h with h_eq; cases h_eq; rfl
-                  · -- recurse with advance
-                    simp only [] at h
-                    have h_adv := advance_preserves_tokens s
-                    rw [ih s.advance _ "" h, h_adv]
+            · -- _handleBlockLineBreak = some → recurse
+              rename_i content' s' hblk
+              have hprop : s'.tokens = s.tokens := by
+                unfold collectPlainScalar_handleBlockLineBreak at hblk
+                simp only [] at hblk
+                split at hblk <;> try contradiction
+                split at hblk <;> try contradiction
+                have := Prod.mk.inj (Option.some.inj hblk)
+                rw [← this.2, skipSpaces_preserves_tokens,
+                    skipBlankLinesLoop_preserves_tokens, consumeNewline_preserves_tokens]
+              rw [ih _ _ _ h, hprop]
+        · split at h
+          · -- isWhiteSpace c
+            have h_adv := advance_preserves_tokens s
+            rw [ih s.advance content (lastLine.push _) h, h_adv]
+          · -- regular content
+            split at h
+            · -- !isPlainSafe → terminate
+              injection h with h_eq; cases h_eq; rfl
+            · -- plainSafe → recurse
+              simp only [] at h
+              have h_adv := advance_preserves_tokens s
+              rw [ih s.advance _ "" h, h_adv]
 
 /-- Helper: collectDoubleQuotedLoop preserves tokens. -/
 theorem collectDoubleQuotedLoop_preserves_tokens (s : ScannerState) (content : String)
@@ -2706,79 +2706,56 @@ theorem collectPlainScalarLoop_preserves_simpleKey (s : ScannerState) (content l
   | succ fuel' ih =>
     unfold collectPlainScalarLoop at h
     split at h
-    · -- none case
+    · -- peek = none
       injection h with h_eq; cases h_eq; rfl
-    · -- some c case
+    · -- peek = some c
+      rename_i c
       split at h
-      · -- c == '#' && spaces.length > 0
-        injection h with h_eq; cases h_eq; rfl
-      · split at h
-        · -- c == ':'
-          simp only [] at h
+      · -- collectPlainScalar_terminates? = some → state = s
+        rename_i hterm
+        injection h with h_eq; cases h_eq
+        rw [ScanHelpers.collectPlainScalar_terminates?_state _ _ _ _ _ _ hterm]
+      · -- collectPlainScalar_terminates? = none → continue
+        split at h
+        · -- isLineBreak c
           split at h
-          · -- none case: terminates = true
+          · -- inFlow
+            simp only [bind, Except.bind] at h
+            split at h <;> try contradiction
+            rename_i fold_result heq
+            cases fold_result with
+            | mk content_fold s_fold =>
+              have h_fold := foldQuotedNewlines_preserves_simpleKey s s_fold content_fold heq
+              split at h
+              · injection h with h_eq; cases h_eq; rw [h_fold]
+              · rw [ih s_fold (content ++ content_fold) "" h, h_fold]
+          · -- !inFlow: block line break
             split at h
-            · injection h with h_eq; cases h_eq; rfl
-            · split at h
-              · injection h with h_eq; cases h_eq; rfl
-              · have h_adv := advance_preserves_simpleKey s
-                rw [ih _ _ _ h, h_adv]
-          · -- some case
-            split at h
-            · injection h with h_eq; cases h_eq; rfl
-            · split at h
-              · injection h with h_eq; cases h_eq; rfl
-              · have h_adv := advance_preserves_simpleKey s
-                rw [ih _ _ _ h, h_adv]
-        · split at h
-          · -- inFlow && isFlowIndicator
-            injection h with h_eq; cases h_eq; rfl
-          · split at h
-            · -- col == 0 && atDocumentBoundary
+            · -- _handleBlockLineBreak = none → terminate
               injection h with h_eq; cases h_eq; rfl
-            · split at h
-              · -- isLineBreak c
-                split at h
-                · -- inFlow
-                  simp only [bind, Except.bind] at h
-                  split at h <;> try contradiction
-                  rename_i fold_result heq
-                  cases fold_result with
-                  | mk content_fold s_fold =>
-                    have h_fold := foldQuotedNewlines_preserves_simpleKey s s_fold content_fold heq
-                    split at h
-                    · -- some '#'
-                      injection h with h_eq; cases h_eq; rw [h_fold]
-                    · -- other
-                      rw [ih s_fold (content ++ content_fold) "" h, h_fold]
-                · -- !inFlow
-                  have h_cn := consumeNewline_preserves_simpleKey s
-                  let s_after_newline := consumeNewline s
-                  let bfuel := inputEnd - s_after_newline.offset + 1
-                  have h_bl := skipBlankLinesLoop_preserves_simpleKey s_after_newline 0 bfuel inputEnd
-                  have h_sp := skipSpaces_preserves_simpleKey (skipBlankLinesLoop s_after_newline 0 bfuel inputEnd).snd
-                  simp only [] at h
-                  split at h  -- Split on col < contentIndent
-                  · -- col < contentIndent case
-                    injection h with h_eq; cases h_eq; rfl
-                  · -- col >= contentIndent, check atDocumentBoundary
-                    split at h
-                    · -- atDocumentBoundary = true
-                      injection h with h_eq; cases h_eq; rfl
-                    · -- atDocumentBoundary = false, recurse
-                      rw [ih _ _ _ h, h_sp, h_bl, h_cn]
-              · split at h
-                · -- isWhiteSpace c
-                  have h_adv := advance_preserves_simpleKey s
-                  rw [ih s.advance content (lastLine.push _) h, h_adv]
-                · -- regular content
-                  split at h
-                  · -- !isPlainSafe
-                    injection h with h_eq; cases h_eq; rfl
-                  · -- recurse with advance
-                    simp only [] at h
-                    have h_adv := advance_preserves_simpleKey s
-                    rw [ih s.advance _ "" h, h_adv]
+            · -- _handleBlockLineBreak = some → recurse
+              rename_i content' s' hblk
+              have hprop : s'.simpleKey = s.simpleKey := by
+                unfold collectPlainScalar_handleBlockLineBreak at hblk
+                simp only [] at hblk
+                split at hblk <;> try contradiction
+                split at hblk <;> try contradiction
+                have := Prod.mk.inj (Option.some.inj hblk)
+                rw [← this.2, skipSpaces_preserves_simpleKey,
+                    skipBlankLinesLoop_preserves_simpleKey, consumeNewline_preserves_simpleKey]
+              rw [ih _ _ _ h, hprop]
+        · split at h
+          · -- isWhiteSpace c
+            have h_adv := advance_preserves_simpleKey s
+            rw [ih s.advance content (lastLine.push _) h, h_adv]
+          · -- regular content
+            split at h
+            · -- !isPlainSafe → terminate
+              injection h with h_eq; cases h_eq; rfl
+            · -- plainSafe → recurse
+              simp only [] at h
+              have h_adv := advance_preserves_simpleKey s
+              rw [ih s.advance _ "" h, h_adv]
 
 
 theorem collectDoubleQuotedLoop_preserves_simpleKey (s : ScannerState) (content : String)
@@ -3334,79 +3311,57 @@ theorem collectPlainScalarLoop_preserves_simpleKeyStack (s : ScannerState) (cont
   | succ fuel' ih =>
     unfold collectPlainScalarLoop at h
     split at h
-    · -- none case
+    · -- peek = none
       injection h with h_eq; cases h_eq; rfl
-    · -- some c case
+    · -- peek = some c
+      rename_i c
       split at h
-      · -- c == '#' && spaces.length > 0
-        injection h with h_eq; cases h_eq; rfl
-      · split at h
-        · -- c == ':'
-          simp only [] at h
+      · -- collectPlainScalar_terminates? = some → state = s
+        rename_i hterm
+        injection h with h_eq; cases h_eq
+        rw [ScanHelpers.collectPlainScalar_terminates?_state _ _ _ _ _ _ hterm]
+      · -- collectPlainScalar_terminates? = none → continue
+        split at h
+        · -- isLineBreak c
           split at h
-          · -- none case: terminates = true
+          · -- inFlow
+            simp only [bind, Except.bind] at h
+            split at h <;> try contradiction
+            rename_i fold_result heq
+            cases fold_result with
+            | mk content_fold s_fold =>
+              have h_fold := foldQuotedNewlines_preserves_simpleKeyStack s s_fold content_fold heq
+              split at h
+              · injection h with h_eq; cases h_eq; rw [h_fold]
+              · rw [ih s_fold (content ++ content_fold) "" h, h_fold]
+          · -- !inFlow: block line break
             split at h
-            · injection h with h_eq; cases h_eq; rfl
-            · split at h
-              · injection h with h_eq; cases h_eq; rfl
-              · have h_adv := advance_preserves_simpleKeyStack s
-                rw [ih _ _ _ h, h_adv]
-          · -- some case
-            split at h
-            · injection h with h_eq; cases h_eq; rfl
-            · split at h
-              · injection h with h_eq; cases h_eq; rfl
-              · have h_adv := advance_preserves_simpleKeyStack s
-                rw [ih _ _ _ h, h_adv]
-        · split at h
-          · -- inFlow && isFlowIndicator
-            injection h with h_eq; cases h_eq; rfl
-          · split at h
-            · -- col == 0 && atDocumentBoundary
+            · -- _handleBlockLineBreak = none → terminate
               injection h with h_eq; cases h_eq; rfl
-            · split at h
-              · -- isLineBreak c
-                split at h
-                · -- inFlow
-                  simp only [bind, Except.bind] at h
-                  split at h <;> try contradiction
-                  rename_i fold_result heq
-                  cases fold_result with
-                  | mk content_fold s_fold =>
-                    have h_fold := foldQuotedNewlines_preserves_simpleKeyStack s s_fold content_fold heq
-                    split at h
-                    · -- some '#'
-                      injection h with h_eq; cases h_eq; rw [h_fold]
-                    · -- other
-                      rw [ih s_fold (content ++ content_fold) "" h, h_fold]
-                · -- !inFlow
-                  have h_cn := consumeNewline_preserves_simpleKeyStack s
-                  let s_after_newline := consumeNewline s
-                  let bfuel := inputEnd - s_after_newline.offset + 1
-                  have h_bl := skipBlankLinesLoop_preserves_simpleKeyStack s_after_newline 0 bfuel inputEnd
-                  have h_sp := skipSpaces_preserves_simpleKeyStack (skipBlankLinesLoop s_after_newline 0 bfuel inputEnd).snd
-                  simp only [] at h
-                  split at h  -- Split on col < contentIndent
-                  · -- col < contentIndent case
-                    injection h with h_eq; cases h_eq; rfl
-                  · -- col >= contentIndent, check atDocumentBoundary
-                    split at h
-                    · -- atDocumentBoundary = true
-                      injection h with h_eq; cases h_eq; rfl
-                    · -- atDocumentBoundary = false, recurse
-                      rw [ih _ _ _ h, h_sp, h_bl, h_cn]
-              · split at h
-                · -- isWhiteSpace c
-                  have h_adv := advance_preserves_simpleKeyStack s
-                  rw [ih s.advance content (lastLine.push _) h, h_adv]
-                · -- regular content
-                  split at h
-                  · -- !isPlainSafe
-                    injection h with h_eq; cases h_eq; rfl
-                  · -- recurse with advance
-                    simp only [] at h
-                    have h_adv := advance_preserves_simpleKeyStack s
-                    rw [ih s.advance _ "" h, h_adv]
+            · -- _handleBlockLineBreak = some → recurse
+              rename_i content' s' hblk
+              have hprop : s'.simpleKeyStack = s.simpleKeyStack := by
+                unfold collectPlainScalar_handleBlockLineBreak at hblk
+                simp only [] at hblk
+                split at hblk <;> try contradiction
+                split at hblk <;> try contradiction
+                have := Prod.mk.inj (Option.some.inj hblk)
+                rw [← this.2, skipSpaces_preserves_simpleKeyStack,
+                    skipBlankLinesLoop_preserves_simpleKeyStack,
+                    consumeNewline_preserves_simpleKeyStack]
+              rw [ih _ _ _ h, hprop]
+        · split at h
+          · -- isWhiteSpace c
+            have h_adv := advance_preserves_simpleKeyStack s
+            rw [ih s.advance content (lastLine.push _) h, h_adv]
+          · -- regular content
+            split at h
+            · -- !isPlainSafe → terminate
+              injection h with h_eq; cases h_eq; rfl
+            · -- plainSafe → recurse
+              simp only [] at h
+              have h_adv := advance_preserves_simpleKeyStack s
+              rw [ih s.advance _ "" h, h_adv]
 
 
 theorem collectDoubleQuotedLoop_preserves_simpleKeyStack (s : ScannerState) (content : String)
@@ -6100,72 +6055,60 @@ theorem collectPlainScalarLoop_offset_ge (s : ScannerState) (content spaces : St
   | succ n ih =>
     unfold collectPlainScalarLoop at h
     split at h
-    · -- none
+    · -- peek = none
       simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
-    · -- some c
+    · -- peek = some c
+      rename_i c
       split at h
-      · -- c == '#' && spaces.length > 0
-        simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
-      · split at h
-        · -- c == ':'
-          simp only [] at h
+      · -- collectPlainScalar_terminates? = some → state = s
+        rename_i hterm
+        simp only [Except.ok.injEq] at h; subst h
+        rw [ScanHelpers.collectPlainScalar_terminates?_state _ _ _ _ _ _ hterm]
+        exact Nat.le_refl _
+      · -- collectPlainScalar_terminates? = none → continue
+        split at h
+        · -- isLineBreak c
           split at h
-          · -- terminates
+          · -- inFlow
+            simp only [bind, Except.bind] at h
+            split at h <;> try contradiction
+            rename_i fold_result heq
+            cases fold_result with
+            | mk folded s_fold =>
+              split at h
+              · -- some '#': terminate at s_fold
+                simp only [Except.ok.injEq] at h; subst h
+                exact foldQuotedNewlines_offset_ge s folded s_fold heq
+              · -- recurse
+                exact Nat.le_trans
+                  (foldQuotedNewlines_offset_ge s folded s_fold heq) (ih _ _ _ h)
+          · -- !inFlow: block line break
             split at h
-            · simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
-            · split at h
-              · simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
-              · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ _ h)
-          · -- non-terminating ':'
-            split at h
-            · simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
-            · split at h
-              · simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
-              · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ _ h)
-        · split at h
-          · -- inFlow && isFlowIndicator
-            simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
-          · split at h
-            · -- col == 0 && atDocumentBoundary
+            · -- _handleBlockLineBreak = none → terminate
               simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
-            · split at h
-              · -- isLineBreak c
-                split at h
-                · -- inFlow
-                  simp only [bind, Except.bind] at h
-                  split at h <;> try contradiction
-                  rename_i fold_result heq
-                  cases fold_result with
-                  | mk folded s_fold =>
-                    split at h
-                    · -- some '#': terminate at s_fold
-                      simp only [Except.ok.injEq] at h; subst h
-                      exact foldQuotedNewlines_offset_ge s folded s_fold heq
-                    · -- recurse
-                      exact Nat.le_trans
-                        (foldQuotedNewlines_offset_ge s folded s_fold heq) (ih _ _ _ h)
-                · -- !inFlow
-                  simp only [] at h
-                  split at h
-                  · -- col < contentIndent
-                    simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
-                  · split at h
-                    · -- atDocumentBoundary
-                      simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
-                    · -- recurse through consumeNewline → skipBlankLinesLoop → skipSpaces
-                      exact Nat.le_trans (consumeNewline_offset_ge s)
-                        (Nat.le_trans (skipBlankLinesLoop_offset_ge _ _ _ _)
-                        (Nat.le_trans (skipSpaces_offset_ge _) (ih _ _ _ h)))
-              · split at h
-                · -- isWhiteSpace: advance → recurse
-                  exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ _ h)
-                · -- regular content
-                  split at h
-                  · -- !isPlainSafe
-                    simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
-                  · -- recurse with advance
-                    simp only [] at h
-                    exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ _ h)
+            · -- _handleBlockLineBreak = some → recurse
+              rename_i content' s' hblk
+              have hoff : s'.offset ≥ s.offset := by
+                unfold collectPlainScalar_handleBlockLineBreak at hblk
+                simp only [] at hblk
+                split at hblk <;> try contradiction
+                split at hblk <;> try contradiction
+                have := Prod.mk.inj (Option.some.inj hblk)
+                rw [← this.2]
+                exact Nat.le_trans (consumeNewline_offset_ge s)
+                  (Nat.le_trans (skipBlankLinesLoop_offset_ge _ _ _ _)
+                  (skipSpaces_offset_ge _))
+              exact Nat.le_trans hoff (ih _ _ _ h)
+        · split at h
+          · -- isWhiteSpace: advance → recurse
+            exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ _ h)
+          · -- regular content
+            split at h
+            · -- !isPlainSafe
+              simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
+            · -- recurse with advance
+              simp only [] at h
+              exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ _ h)
 
 -- ScanInv monotonicity: if tokens are unchanged and offset increases, ScanInv transfers.
 theorem ScanInv_mono {s s' : ScannerState} (h_inv : ScanInv s) (h_tok : s'.tokens = s.tokens)
