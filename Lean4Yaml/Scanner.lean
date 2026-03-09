@@ -1562,6 +1562,60 @@ structure PlainScalarResult where
   state : ScannerState
   terminated : Bool
 
+/-- Check if the current character terminates a plain scalar.
+    Returns `some result` to terminate, `none` to continue scanning.
+
+    Covers YAML 1.2.2 §7.3.3 termination conditions:
+    - ` #` (comment after whitespace)
+    - `: ` or `:` at EOF (value indicator)
+    - Flow indicators in flow context
+    - Document boundary (`---`/`...`) at column 0 -/
+def collectPlainScalar_terminates? (c : Char) (s : ScannerState)
+    (content spaces : String) (inFlow : Bool) : Option PlainScalarResult :=
+  if c == '#' && spaces.length > 0 then
+    some { content, spaces, state := s, terminated := true }
+  else if c == ':' then
+    let next := s.peekAt? 1
+    let terminates := match next with
+      | some n => isBlankBool n || (inFlow && isFlowIndicatorBool n)
+      | none => true
+    if terminates then
+      some { content, spaces, state := s, terminated := true }
+    else
+      none
+  else if inFlow && isFlowIndicatorBool c then
+    some { content, spaces, state := s, terminated := true }
+  else if s.col == 0 && atDocumentBoundary s then
+    some { content, spaces, state := s, terminated := true }
+  else
+    none
+
+/-- Handle a block-context line break during plain scalar collection.
+    Returns `none` to terminate (under-indented or document boundary),
+    or `some (content', s')` with folded content and new state to continue.
+
+    Implements YAML 1.2.2 §7.3.3 block-context line folding:
+    - Consume newline and skip blank lines
+    - Check continuation indent and document boundaries
+    - Fold: single empty line → space, multiple → newlines -/
+def collectPlainScalar_handleBlockLineBreak (s : ScannerState)
+    (content : String) (contentIndent : Nat) (inputEnd : Nat) :
+    Option (String × ScannerState) :=
+  let s_after_newline := consumeNewline s
+  let bfuel := inputEnd - s_after_newline.offset + 1
+  let (emptyCount, s_after_blanks) := skipBlankLinesLoop s_after_newline 0 bfuel inputEnd
+  let s_after_spaces := skipSpaces s_after_blanks
+  if s_after_spaces.col < contentIndent then
+    none
+  else if atDocumentBoundary s_after_spaces then
+    none
+  else
+    let content' := if emptyCount > 0 then
+      content ++ String.ofList (List.replicate emptyCount '\n')
+    else
+      content ++ " "
+    some (content', s_after_spaces)
+
 -- Helper: Collect plain scalar content using structural recursion
 def collectPlainScalarLoop (s : ScannerState) (content : String) (spaces : String) (fuel : Nat)
     (inFlow : Bool) (contentIndent : Nat) (inputEnd : Nat) :
@@ -1572,70 +1626,32 @@ def collectPlainScalarLoop (s : ScannerState) (content : String) (spaces : Strin
     match s.peek? with
     | none => .ok { content, spaces, state := s, terminated := true }
     | some c =>
-      -- ` #` terminates
-      if c == '#' && spaces.length > 0 then
-        .ok { content, spaces, state := s, terminated := true }
-      else if c == ':' then
-        -- `: ` terminates at value indicator position
-        let next := s.peekAt? 1
-        let terminates := match next with
-          | some n => isBlankBool n || (inFlow && isFlowIndicatorBool n)
-          | none => true
-        if terminates then
-          .ok { content, spaces, state := s, terminated := true }
+      match collectPlainScalar_terminates? c s content spaces inFlow with
+      | some result => .ok result
+      | none =>
+        if isLineBreakBool c then
+          if inFlow then do
+            let (folded, s_after_fold) ← foldQuotedNewlines s
+            match s_after_fold.peek? with
+            | some '#' =>
+              .ok { content, spaces, state := s_after_fold, terminated := true }
+            | _ =>
+              let content' := content ++ folded
+              collectPlainScalarLoop s_after_fold content' "" fuel' inFlow contentIndent inputEnd
+          else
+            match collectPlainScalar_handleBlockLineBreak s content contentIndent inputEnd with
+            | none =>
+              .ok { content, spaces, state := s, terminated := true }
+            | some (content', s') =>
+              collectPlainScalarLoop s' content' "" fuel' inFlow contentIndent inputEnd
+        else if isWhiteSpaceBool c then
+          collectPlainScalarLoop s.advance content (spaces.push c) fuel' inFlow contentIndent inputEnd
         else
-          -- Regular `:` character (not a terminator)
           if !isPlainSafeBool c inFlow then
             .ok { content, spaces, state := s, terminated := true }
           else
             let content' := content ++ spaces ++ (String.singleton c)
             collectPlainScalarLoop s.advance content' "" fuel' inFlow contentIndent inputEnd
-      else if inFlow && isFlowIndicatorBool c then
-        -- Flow indicators terminate in flow context
-        .ok { content, spaces, state := s, terminated := true }
-      else if s.col == 0 && atDocumentBoundary s then
-        -- Document boundary at col 0 terminates
-        .ok { content, spaces, state := s, terminated := true }
-      else if isLineBreakBool c then
-        -- Line break: check continuation
-        if inFlow then do
-          let (folded, s_after_fold) ← foldQuotedNewlines s
-          -- Check for `#` after folding
-          match s_after_fold.peek? with
-          | some '#' =>
-            .ok { content, spaces, state := s_after_fold, terminated := true }
-          | _ =>
-            let content' := content ++ folded
-            collectPlainScalarLoop s_after_fold content' "" fuel' inFlow contentIndent inputEnd
-        else
-          let saved := s
-          let s_after_newline := consumeNewline s
-          -- Skip blank lines
-          let bfuel := inputEnd - s_after_newline.offset + 1
-          let (emptyCount, s_after_blanks) := skipBlankLinesLoop s_after_newline 0 bfuel inputEnd
-          let s_after_spaces := skipSpaces s_after_blanks
-          -- Check termination conditions
-          if s_after_spaces.col < contentIndent then
-            .ok { content, spaces, state := saved, terminated := true }
-          else if atDocumentBoundary s_after_spaces then
-            .ok { content, spaces, state := saved, terminated := true }
-          else
-            -- Continue with folded content
-            let content' := if emptyCount > 0 then
-              content ++ String.ofList (List.replicate emptyCount '\n')
-            else
-              content ++ " "
-            collectPlainScalarLoop s_after_spaces content' "" fuel' inFlow contentIndent inputEnd
-      else if isWhiteSpaceBool c then
-        -- Whitespace accumulates
-        collectPlainScalarLoop s.advance content (spaces.push c) fuel' inFlow contentIndent inputEnd
-      else
-        -- Regular content character
-        if !isPlainSafeBool c inFlow then
-          .ok { content, spaces, state := s, terminated := true }
-        else
-          let content' := content ++ spaces ++ (String.singleton c)
-          collectPlainScalarLoop s.advance content' "" fuel' inFlow contentIndent inputEnd
 
 /-- Scan a plain (unquoted) scalar.
 

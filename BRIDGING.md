@@ -1115,7 +1115,7 @@ scan_plain_scalar_valid                   [B3.5 — global theorem]
 
 #### B3 Sub-phases
 
-**B3.0: String Property Lemmas** (~10–15 theorems, ~200 lines)
+##### **B3.0: String Property Lemmas** (~10–15 theorems, ~200 lines) (COMPLETE ✅)
 
 Append/prefix preservation lemmas for the four `ScalarScannable`
 predicates. These go in `CharPredicates.lean` (Prop-level lemmas that
@@ -1144,7 +1144,7 @@ adjacent pairs and cannot change the first character. So the `_preserves_`
 lemmas should be straightforward: `trimTrailingWS s` is a prefix of `s`
 (modulo trailing WS), and all four predicates are prefix-stable.
 
-##### B3.0 Reflections
+###### B3.0 Reflections
 
 **Status:** Complete. 213/213 build, 0 sorry, 0 axioms, 0 warnings.
 
@@ -1226,7 +1226,7 @@ lemmas should be straightforward: `trimTrailingWS s` is a prefix of `s`
   asserts whitespace on a non-whitespace char.
 - **Right-associative `∨` destruction:** `rintro (h | h | h)` for 3-way.
 
-**B3.1: Refactor `collectPlainScalarLoop`** (~100 lines changed in Scanner.lean)
+##### **B3.1: Refactor `collectPlainScalarLoop`** (~100 lines changed in Scanner.lean) (COMPLETE ✅)
 
 The current `collectPlainScalarLoop` (Scanner.lean L1566–1655) has ~90
 lines and 12+ branch points — beyond the ≤7 rule established in the
@@ -1260,7 +1260,87 @@ collectPlainScalarLoop s content spaces fuel inFlow contentIndent inputEnd
 The flow-context line break path (L1613–1623) stays inline since it's
 only ~5 lines using the existing `foldQuotedNewlines` helper.
 
-**B3.2: Define `PlainContentInv` loop invariant** (~30 lines, new proof file)
+###### B3.1 Reflections
+
+**Delivered:**
+
+- **Scanner.lean:** Two new helper functions extracted from `collectPlainScalarLoop`:
+  - `collectPlainScalar_terminates?` (~35 lines): non-recursive, checks 4
+    termination conditions (`#`+spaces, `:`+blank, flow indicator, doc boundary).
+    Returns `Option PlainScalarResult`. All `some` branches preserve `state = s`.
+  - `collectPlainScalar_handleBlockLineBreak` (~25 lines): non-recursive, handles
+    block-context line breaks via `consumeNewline → skipBlankLinesLoop → skipSpaces`.
+    Returns `Option (String × ScannerState)` — `none` = under-indented/doc-boundary
+    terminate, `some (content', s')` = continue with folded whitespace.
+  - `collectPlainScalarLoop` reduced from ~90 lines / 12+ branches to ~70 lines /
+    ~7 top-level branches.
+  - Note: the planned `collectPlainScalar_continueChar` was NOT extracted — the
+    remaining continue logic (whitespace accumulate / plainSafe check / content
+    append) is only ~10 lines with 3 straightforward branches, so extraction would
+    over-engineer. Two sub-functions was the sweet spot.
+
+- **ScannerCorrectness.lean:** 5 proof changes:
+  - `collectPlainScalar_terminates?_state` (new, ~25 lines): universal helper in
+    `ScanHelpers` namespace proving `result.state = s` for any `some` return from
+    `_terminates?`. Pattern: `unfold; split` with special `:` branch needing
+    `simp only []` then 2 nested splits for `match next` and `if terminates`.
+  - 4 existing proofs rewritten to match new loop structure:
+    `_preserves_tokens`, `_preserves_simpleKey`, `_preserves_simpleKeyStack`,
+    `_offset_ge`.
+
+- **Build:** 213/213, 0 sorry, 0 axioms, 0 warnings.
+
+**Unexpected challenges:**
+
+1. **Dependency ordering blocks helper lemma placement.** Initially tried adding
+   `_handleBlockLineBreak_preserves_tokens/simpleKey/simpleKeyStack/offset_ge`
+   helper lemmas near `_terminates?_state` in the ScanHelpers namespace. Failed
+   because they need `skipBlankLinesLoop_preserves_*` lemmas that are defined
+   LATER in the file (some outside ScanHelpers entirely). Could have placed each
+   helper just before its consumer, but inline unfold was simpler.
+
+2. **Inline unfold as alternative to helper lemmas.** Instead of separate lemmas,
+   each proof unfolds `_handleBlockLineBreak` directly:
+   ```lean
+   unfold collectPlainScalar_handleBlockLineBreak at hblk
+   simp only [] at hblk
+   split at hblk <;> try contradiction
+   split at hblk <;> try contradiction
+   have := Prod.mk.inj (Option.some.inj hblk)
+   rw [← this.2, skipSpaces_preserves_X, skipBlankLinesLoop_preserves_X,
+       consumeNewline_preserves_X]
+   ```
+   This ~6-line pattern is repeated 4 times. Acceptable duplication given the
+   dependency ordering constraint.
+
+3. **`Option (A × B)` destructuring idiom.** When `split at h` decomposes
+   `match f with | none | some (a, b)`, use `rename_i a b hblk` to name the
+   pair components and hypothesis. Then `Prod.mk.inj (Option.some.inj hblk)`
+   gives `.1 : fst = a` and `.2 : snd = b` for rewriting.
+
+4. **Namespace qualification outside `ScanHelpers`.** `_terminates?_state` is
+   defined inside `namespace ScanHelpers` (ends L2389). The `_preserves_tokens`
+   proof (L870) is also inside ScanHelpers — no qualification needed. But
+   `_preserves_simpleKey` (L2717), `_preserves_simpleKeyStack` (L3322), and
+   `_offset_ge` (L6066) are all outside, requiring `ScanHelpers.` prefix.
+
+5. **`_offset_ge` differs from field-equality proofs.** The first 3 proofs show
+   `result.state.field = s.field` (closed by `rfl` after rewrite). `_offset_ge`
+   shows `result.state.offset ≥ s.offset` — after rewriting with `_terminates?_state`,
+   the goal becomes `s.offset ≥ s.offset`, which needs an explicit `Nat.le_refl _`.
+   Similarly, the block linebreak continuation uses `Nat.le_trans` chains instead
+   of `rw` chains.
+
+**Simplifications vs plan:**
+
+- Planned 3 sub-functions, delivered 2. `_continueChar` wasn't worth extracting.
+- Plan estimated ~100 lines changed; actual was ~60 in Scanner.lean + ~120 in
+  ScannerCorrectness.lean (underestimated proof repair cost).
+- Plan said "no proof impact (behavioral equivalence)" — incorrect. All 4
+  `collectPlainScalarLoop_*` proofs broke and needed full rewrites because they
+  `unfold collectPlainScalarLoop` and match on the internal branch structure.
+
+##### **B3.2: Define `PlainContentInv` loop invariant** (~30 lines, new proof file)
 
 ```lean
 /-- Loop invariant for `collectPlainScalarLoop` content correctness.
@@ -1291,7 +1371,7 @@ def PlainContentInv (content : String) (spaces : String)
 
 This goes in a new file `Lean4Yaml/Proofs/ScannerPlainContent.lean`.
 
-**B3.3: Prove `collectPlainScalarLoop_preserves_contentInv`** (~300–500 lines)
+##### **B3.3: Prove `collectPlainScalarLoop_preserves_contentInv`** (~300–500 lines)
 
 The core theorem:
 
@@ -1341,7 +1421,7 @@ the start of a continuation line is preceded by indent spaces (which
 the scanner consumes), leaving `s_after_spaces` past the `#` if it
 was a comment. **Investigation needed during implementation.**
 
-**B3.4: Prove `scanPlainScalar_content_valid`** (~50–100 lines)
+##### **B3.4: Prove `scanPlainScalar_content_valid`** (~50–100 lines)
 
 Per-function theorem at the `scanPlainScalar` level:
 
@@ -1365,7 +1445,7 @@ theorem scanPlainScalar_content_valid (s s' : ScannerState)
 5. Combine with `canStartPlainScalar_iff` to get `validPlainFirstProp`
 6. Package as `ScalarScannable`
 
-**B3.5: Prove `scan_plain_scalar_valid`** (~100–200 lines)
+##### **B3.5: Prove `scan_plain_scalar_valid`** (~100–200 lines)
 
 Thread B3.4 through the `scanFiltered → scanLoop → scanNextToken →
 dispatchContent → scanPlainScalar` chain. This requires:
