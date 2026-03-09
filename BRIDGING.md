@@ -16,25 +16,62 @@ the Grammar specification to the implementation.
 
 ## Architecture Overview
 
-The intended proof architecture is:
+### Target Architecture (Revised)
+
+The specification mirrors the implementation's two-layer architecture
+(scanner + parser) with a shared predicate foundation. This prevents
+specification drift by coupling Bool and Prop definitions via iff theorems
+that break the build if either side changes.
 
 ```
-String ──[scan]──▸ ValidTokenStream ──[parseStream]──▸ ∃ ValidNode ──[NodeToValue]──▸ YamlValue
-                                                            │
-                                                   Grammar.ValidYaml
+CharPredicates.lean  (Bool + Prop + iff theorems, no project imports)
+        ↑
+  Types.lean ← Token.lean ← Scanner.lean   (uses Bool predicates)
+                           ← Grammar.lean   (uses Prop predicates;
+                                             defines Scannable, Grammable,
+                                             ValidNode, ValidYaml)
+
+Proof chain:
+  String ──[scan]──▸ tokens ──[parseStream]──▸ raw docs
+                        │                         │
+                   Scannable                   compose
+                  (per-token)                     │
+                                                  ▼
+                                         ──[Grammable]──▸ composed docs
+                                                  │
+                                            ∃ ValidNode
+                                                  │
+                                            NodeToValue
+                                                  │
+                                          Grammar.ValidYaml ◀── capstone
 ```
 
-What actually exists:
+### Three Specification Layers
 
+| Layer | Predicate | Scope | Handles |
+|-------|-----------|-------|---------|
+| **Char-level** | `CharPredicates.lean` | Individual chars and strings | `isWhiteSpaceProp/Bool`, `canStartPlainScalarProp/Bool`, `validPlainFirstProp/Bool`, `noColonSpaceProp/Bool`, `noSpaceHashProp/Bool`, `noFlowIndicatorsProp/Bool` — with `_iff` coupling theorems |
+| **Token-level** | `Scannable` | Pre-compose `YamlValue` tree | Scanner contract: char predicates satisfied, aliases allowed, context-aware (`inFlow`) |
+| **Grammar-level** | `Grammable` | Post-compose `YamlValue` tree | Parser contract: char predicates satisfied, no aliases, context-aware (`inFlow`) |
+
+### Anti-Drift Mechanism
+
+Each predicate in `CharPredicates.lean` has three parts:
+
+```lean
+-- 1. Bool (runtime — used by Scanner)
+def isWhiteSpaceBool (c : Char) : Bool := c == ' ' || c == '\t'
+
+-- 2. Prop (specification — used by Grammar/proofs)
+def isWhiteSpaceProp (c : Char) : Prop := c = ' ' ∨ c = '\t'
+
+-- 3. Coupling theorem (the "drift alarm" — build breaks if either side changes)
+@[simp] theorem isWhiteSpace_iff (c : Char) :
+    isWhiteSpaceBool c = true ↔ isWhiteSpaceProp c := by ...
 ```
-String ──[scan]──▸ tokens ──[parseStream]──▸ docs ──[compose]──▸ final docs
-                     │                         │
-               (no contract)           (Grammable ASSUMED)
-                                               │
-                                    EndToEndCorrectness.ValidYaml
-                                    (pipeline existence only —
-                                     no Grammar.ValidYaml connection)
-```
+
+If someone changes the Bool version in a refactor, the iff proof fails →
+build error. Silent drift is impossible.
 
 ### Two `ValidYaml` Definitions (THE CENTRAL PROBLEM)
 
@@ -499,7 +536,156 @@ theorem extractHeaderChars_bounded (cs : List Char)
 
 ---
 
-## Priority Plan
+## Specification Drift Analysis (Phase B pre-investigation)
+
+Investigation conducted after Phase A to determine whether Grammar.lean's
+definitions are provably connected to the scanner/parser implementation.
+
+**Finding: Grammar.lean has drifted from the implementation in 4 ways.**
+The specification is **salvageable** but requires targeted fixes before
+Phase B proofs can proceed.
+
+### Drift 1: `canStartPlainScalar` — Context-free vs Context-sensitive
+
+**YAML 1.2.2 spec** ([123] ns-plain-first): characters `-`, `?`, `:` MAY
+start a plain scalar *when followed by a non-whitespace, non-break character*
+(and in flow context, not followed by a flow indicator).
+
+**Grammar.lean** (line 115): **Unconditionally excludes** `-`, `?`, `:`:
+```lean
+def canStartPlainScalar (c : Char) : Prop :=
+  isPrintable c ∧ ¬ isWhiteSpace c ∧ ¬ isLineBreak c
+  ∧ c ∉ ['-', '?', ':', ',', '[', ']', '{', '}', '#', '&', '*', '!', '|', '>',
+         '\'', '"', '%', '@', '`']
+```
+
+**Scanner.lean** (line 1556): **Conditionally allows** them (correct per spec):
+```lean
+def canStartPlainScalar (c : Char) (next : Option Char) (inFlow : Bool) : Bool :=
+  if c == '-' || c == '?' || c == ':' then
+    match next with
+    | some n => !isWhiteSpace n && !isLineBreak n && !(inFlow && isFlowIndicator n)
+    | none => false
+  else
+    !isIndicator c && !isWhiteSpace c && !isLineBreak c
+```
+
+**Empirical evidence:** The scanner/parser accepts `?foo`, `-bar`, `:baz`
+as plain scalars. Grammar's `validPlainFirst` rejects all three. These are
+**valid YAML** per the spec.
+
+**Impact:** `validPlainFirst`, `ValidNode.plainScalarBlock`, `ValidNode.plainScalarFlow`,
+and `Grammable` all share this bug. No `ValidNode` can represent a plain scalar
+whose content starts with `-`, `?`, or `:`.
+
+**Fix:** Change `canStartPlainScalar` to a 2-argument version that takes the
+first two characters of the content string (or the content string itself):
+```lean
+def canStartPlainScalar (c : Char) (next : Option Char) : Prop :=
+  if c == '-' ∨ c == '?' ∨ c == ':' then
+    match next with
+    | some n => ¬isWhiteSpace n ∧ ¬isLineBreak n
+    | none => False
+  else
+    isPrintable c ∧ ¬isWhiteSpace c ∧ ¬isLineBreak c ∧ ¬isIndicator c
+```
+
+And update `validPlainFirst` to extract the first two characters:
+```lean
+def validPlainFirst (content : String) : Prop :=
+  match content.toList with
+  | c :: n :: _ => canStartPlainScalar c (some n)
+  | [c] => canStartPlainScalar c none
+  | [] => True
+```
+
+### Drift 2: `noColonSpace` — Missing tab and flow-indicator termination
+
+**Scanner** terminates plain scalars at `:` followed by any blank
+(`isWhiteSpace` = space OR tab) or `:` followed by a flow indicator in
+flow context.
+
+**Grammar** checks only for `:` followed by literal `' '` (space):
+```lean
+def noColonSpace (content : String) : Prop :=
+  ¬ ∃ i, content.toList[i]? = some ':' ∧ content.toList[i + 1]? = some ' '
+```
+
+**Impact:** `noColonSpace` is **weaker than what the scanner enforces**.
+This means the Grammar accepts strings like `"foo:\tbar"` that the scanner
+would never produce. For bridging proofs, this is actually **fine** for
+soundness (scanner output satisfies a stronger property that implies
+`noColonSpace`), but the spec is less precise than it could be.
+
+**Fix (optional):** Could strengthen to `noColonBlank` checking for both
+space and tab. For bridging purposes, the current definition is sufficient
+since the scanner's stronger guarantee implies `noColonSpace`.
+
+### Drift 3: `noSpaceHash` — Missing tab
+
+Same pattern as Drift 2. Scanner terminates at ANY whitespace + `#`
+(space or tab), but Grammar only checks for space + `#`. Again, this is
+fine for soundness — the weaker Grammar predicate is implied by the
+scanner's stronger behavior.
+
+### Drift 4: Tags and Anchors — `NodeToValue` is annotation-free only
+
+**Parser output:** `YamlValue.scalar { tag := some "!!str", anchor := some "a" }`
+
+**NodeToValue:** All constructors produce `tag := none, anchor := none`:
+```lean
+| plainScalarBlock content h ... :
+    NodeToValue (.plainScalarBlock content h ...)
+      (.scalar ⟨content, .plain, none, none, none⟩)
+```
+
+**Impact:** A tagged plain scalar like `!!str hello` cannot be represented
+by any `ValidNode` → `NodeToValue` pair. The Grammar specification only
+covers annotation-free values.
+
+**Current mitigation:** `stripAnnotations` removes tags/anchors, and the
+existing proofs (ParserSoundness, ParserCompleteness) work modulo
+`stripAnnotations`. The `Grammable` predicate ignores tags/anchors.
+This is architecturally intentional — Grammar.lean models the
+*representation graph* (YAML 1.2.2 §3.2.1) where tags and anchors are
+metadata, not structural content.
+
+**Fix:** None needed for Phase B. The existing `stripAnnotations`-modulo
+approach is sound. The real specification target is:
+```
+stripAnnotations (toYamlValue witness) = stripAnnotations (parser_output)
+```
+which is what `parseStream_sound` and `parseStream_complete` already state.
+
+### Drift Summary
+
+| Drift | Severity | Fix Required for Phase B? | Effort |
+|-------|----------|--------------------------|--------|
+| 1. `canStartPlainScalar` | **BLOCKING** | **Yes** — spec is wrong per YAML 1.2.2 | Low (definition + Decidable) |
+| 2. `noColonSpace` weaker | Cosmetic | No — scanner implies Grammar's weaker predicate | — |
+| 3. `noSpaceHash` weaker | Cosmetic | No — same reasoning | — |
+| 4. Tags/anchors | Architectural | No — `stripAnnotations`-modulo works | — |
+
+### Parallel Definitions (Bool vs Prop)
+
+Grammar.lean and Scanner.lean define **parallel** character predicates
+that are semantically identical but have different types:
+
+| Predicate | Scanner (Bool) | Grammar (Prop) | Semantics |
+|-----------|---------------|----------------|-----------|
+| `isLineBreak` | L300 | L73 | ✅ Identical |
+| `isWhiteSpace` | L302 | L88 | ✅ Identical |
+| `isFlowIndicator` | L306 | L133 | ✅ Identical |
+| `isIndicator` | L308 | (inline list) | ✅ Identical chars |
+| `isPrintable` | — | L56 | Grammar-only |
+
+These are maintained in sync by convention, not by sharing. A future
+cleanup could extract shared definitions to a `CharPredicates.lean` module,
+but this is not blocking.
+
+---
+
+## Priority Plan (Revised — v2)
 
 ### Phase A: Decidable Instances ✅ COMPLETE
 
@@ -544,36 +730,205 @@ match h : booleanCheck args with
 | true  => .isFalse (fun hn => absurd (iff.mp h) hn)
 ```
 
-### Phase B: Scanner Character Predicate Enforcement (CRITICAL PATH)
+### Phase B0: Create `CharPredicates.lean` (ARCHITECTURAL FOUNDATION)
 
-Prove that the scanner produces tokens satisfying `validPlainFirst`,
-`noColonSpace`, `noSpaceHash`, and (in flow context) `noFlowIndicators`.
+Extract all character-level and string-level predicates into a shared module
+that both Scanner.lean and Grammar.lean import. Each predicate gets three
+parts: Bool (runtime), Prop (specification), iff theorem (drift alarm).
 
-This requires:
-1. Identifying the scanner functions that emit plain scalar tokens
-2. Tracing character consumption through the scanner state machine
-3. Showing the consumed characters satisfy the Grammar predicates
+**Module:** `Lean4Yaml/CharPredicates.lean` — imports nothing from the project.
 
-**Theorem:** `scan_plain_scalar_valid` (Gap 0)
+**Contents:**
 
-**Estimated difficulty:** High. The scanner is a complex state machine.
-May require introducing a scanner invariant (analogous to `ScanInv`).
+| Predicate | Bool name | Prop name | Coupling theorem | YAML Spec |
+|-----------|-----------|-----------|------------------|-----------|
+| White space | `isWhiteSpaceBool` | `isWhiteSpaceProp` | `isWhiteSpace_iff` | §5.4 [34] |
+| Line break | `isLineBreakBool` | `isLineBreakProp` | `isLineBreak_iff` | §5.4 [27–28] |
+| Flow indicator | `isFlowIndicatorBool` | `isFlowIndicatorProp` | `isFlowIndicator_iff` | §7.4 [23] |
+| Indicator | `isIndicatorBool` | `isIndicatorProp` | `isIndicator_iff` | §5.3 [22] |
+| Printable | `isPrintableBool` | `isPrintableProp` | `isPrintable_iff` | §5.1 [1–4] |
+| Plain first | `canStartPlainScalarBool` | `canStartPlainScalarProp` | `canStartPlainScalar_iff` | §7.3.3 [123] |
+| Valid first | `validPlainFirstBool` | `validPlainFirstProp` | `validPlainFirst_iff` | §7.3.3 [123] |
+| No colon-space | `noColonSpaceBool` | `noColonSpaceProp` | `noColonSpace_iff` | §7.3.3 [127] |
+| No space-hash | `noSpaceHashBool` | `noSpaceHashProp` | `noSpaceHash_iff` | §7.3.3 [127] |
+| No flow indicators | `noFlowIndicatorsBool` | `noFlowIndicatorsProp` | `noFlowIndicators_iff` | §7.3.3 [126] |
+
+**Key design for `canStartPlainScalarProp` — 3-arg, matching Scanner:**
+
+```lean
+def canStartPlainScalarBool (c : Char) (next : Option Char) (inFlow : Bool) : Bool :=
+  if c == '-' || c == '?' || c == ':' then
+    match next with
+    | some n => !isWhiteSpaceBool n && !isLineBreakBool n
+                && !(inFlow && isFlowIndicatorBool n)
+    | none => false
+  else
+    !isIndicatorBool c && !isWhiteSpaceBool c && !isLineBreakBool c
+
+def canStartPlainScalarProp (c : Char) (next : Option Char) (inFlow : Bool) : Prop :=
+  if c = '-' ∨ c = '?' ∨ c = ':' then
+    match next with
+    | some n => ¬isWhiteSpaceProp n ∧ ¬isLineBreakProp n
+                ∧ ¬(inFlow ∧ isFlowIndicatorProp n)
+    | none => False
+  else
+    ¬isIndicatorProp c ∧ ¬isWhiteSpaceProp c ∧ ¬isLineBreakProp c
+
+theorem canStartPlainScalar_iff (c : Char) (next : Option Char) (inFlow : Bool) :
+    canStartPlainScalarBool c next inFlow = true ↔
+    canStartPlainScalarProp c next inFlow := by ...
+```
+
+**`validPlainFirstProp` — 2-arg, with `inFlow`:**
+
+```lean
+def validPlainFirstProp (content : String) (inFlow : Bool) : Prop :=
+  match content.toList with
+  | c :: n :: _ => canStartPlainScalarProp c (some n) inFlow
+  | [c] => canStartPlainScalarProp c none inFlow
+  | [] => True
+```
+
+**Moved helpers:** `hasAdjacentChars` + `hasAdjacentChars_iff` (from Phase A)
+relocate into `CharPredicates.lean`. All `Decidable` instances relocate too.
+
+**Steps:**
+1. Create `CharPredicates.lean` with all Bool + Prop + iff + Decidable
+2. Update `Scanner.lean`: import `CharPredicates`, delete inline predicate defs,
+   use `Bool` names (e.g., `isWhiteSpaceBool` replaces `isWhiteSpace`)
+3. Update `Grammar.lean`: import `CharPredicates`, delete inline predicate defs,
+   use `Prop` names (e.g., `isWhiteSpaceProp` replaces `isWhiteSpace`)
+4. Update all 33 proof files + tests for renamed predicates
+5. Build: 211/211, tests: 869/869, 0 sorry, 0 axioms
+
+### Phase B1: Add `Scannable` Predicate
+
+Define `Scannable` in `Grammar.lean` — the **scanner contract** that mirrors
+the implementation's token-level guarantees. `Scannable` is the pre-compose
+specification: it allows `.alias` nodes and threads flow context.
+
+```lean
+/-- Scanner contract: per-scalar character constraints in flow context. -/
+def ScalarScannable (s : Scalar) (inFlow : Bool) : Prop :=
+  s.style = .plain → s.content.length > 0 →
+    validPlainFirstProp s.content inFlow
+    ∧ noColonSpaceProp s.content
+    ∧ noSpaceHashProp s.content
+    ∧ (inFlow → noFlowIndicatorsProp s.content)
+
+/-- Pre-compose tree validity. Allows aliases. Threads flow context. -/
+inductive Scannable : YamlValue → Bool → Prop where
+  | scalar (s : Scalar) (inFlow : Bool)
+      (h : ScalarScannable s inFlow) :
+      Scannable (.scalar s) inFlow
+  | alias (name : String) (inFlow : Bool) :
+      Scannable (.alias name) inFlow
+  | sequence (style : CollectionStyle) (items : Array YamlValue)
+      (tag anchor : Option String) (inFlow : Bool)
+      (h : ∀ i : Fin items.size,
+        Scannable items[i] (inFlow || style == .flow)) :
+      Scannable (.sequence style items tag anchor) inFlow
+  | mapping (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
+      (tag anchor : Option String) (inFlow : Bool)
+      (hk : ∀ i : Fin pairs.size,
+        Scannable pairs[i].1 (inFlow || style == .flow))
+      (hv : ∀ i : Fin pairs.size,
+        Scannable pairs[i].2 (inFlow || style == .flow)) :
+      Scannable (.mapping style pairs tag anchor) inFlow
+```
+
+**Context-threading rule:** Once a value is inside a `.flow` collection,
+`inFlow` becomes `true` and stays `true` for all descendants. This matches
+YAML 1.2.2 — flow context is inherited.
+
+### Phase B2: Update `Grammable` to Context-Aware (Option C)
+
+Replace the current `Grammable` with a context-aware version that threads
+`inFlow : Bool` and excludes aliases (post-compose guarantee).
+
+```lean
+/-- Post-compose tree validity. No aliases. Context-aware. -/
+inductive Grammable : YamlValue → Bool → Prop where
+  | scalar (s : Scalar) (inFlow : Bool)
+      (h : ScalarScannable s inFlow) :
+      Grammable (.scalar s) inFlow
+  -- NO alias constructor — Grammable is post-compose only
+  | sequence (style : CollectionStyle) (items : Array YamlValue)
+      (tag anchor : Option String) (inFlow : Bool)
+      (h : ∀ i : Fin items.size,
+        Grammable items[i] (inFlow || style == .flow)) :
+      Grammable (.sequence style items tag anchor) inFlow
+  | mapping (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
+      (tag anchor : Option String) (inFlow : Bool)
+      (hk : ∀ i : Fin pairs.size,
+        Grammable pairs[i].1 (inFlow || style == .flow))
+      (hv : ∀ i : Fin pairs.size,
+        Grammable pairs[i].2 (inFlow || style == .flow)) :
+      Grammable (.mapping style pairs tag anchor) inFlow
+```
+
+**Bridging theorem (Phase C1):**
+
+```lean
+theorem compose_scannable_to_grammable (doc : YamlDocument)
+    (h : Scannable doc.value false) :
+    Grammable (doc.compose.value) false
+```
+
+This theorem captures: alias resolution removes all `.alias` nodes,
+anchor stripping doesn't affect character predicates, and the
+composed tree satisfies `Grammable`.
+
+**Update `ValidNode` constructors:**
+
+```lean
+| plainScalarBlock ... (firstValid : validPlainFirstProp content false) ...
+| plainScalarFlow  ... (firstValid : validPlainFirstProp content true) ...
+```
+
+**Update existing proof files** that reference `Grammable` — they now
+require the `inFlow` parameter. Top-level documents start with
+`inFlow = false`.
+
+### Phase B3: Scanner Predicate Enforcement
+
+Prove that the scanner produces tokens satisfying `ScalarScannable`:
+
+```lean
+theorem scan_plain_scalar_valid (input : String)
+    (tokens : Array (Positioned YamlToken))
+    (h : Scanner.scanFiltered input = .ok tokens)
+    (i : Fin tokens.size) (s : Scalar)
+    (hs : tokens[i].val = .scalar s) (hplain : s.style = .plain)
+    (hne : s.content.length > 0)
+    (inFlow : Bool)
+    (hctx : -- token i was scanned in flow context ↔ inFlow --) :
+    ScalarScannable s inFlow
+```
+
+This uses the `_iff` theorems from `CharPredicates.lean` to bridge from
+the scanner's Bool computations to the specification's Prop predicates.
 
 ### Phase C: Discharge `h_grammable` (CRITICAL PATH)
 
-With Phase B's scanner theorem, prove:
+With Phases B1–B3 established:
+
+**C1.** Prove `compose_scannable_to_grammable` — alias resolution +
+anchor stripping preserves character predicates and eliminates aliases.
+
+**C2.** Prove `parseStream_output_scannable` — the parser propagates
+scanner token properties into the `YamlValue` tree.
+
+**C3.** Combine: `parseStream_output_grammable` = C2 + C1.
 
 ```lean
-theorem parseStream_output_grammable : ...
-    ∀ doc ∈ docs.toList, Grammable (doc.compose.value)
+theorem parseStream_output_grammable (tokens : Array (Positioned YamlToken))
+    (docs : Array YamlDocument)
+    (h : TokenParser.parseStream tokens = .ok docs) :
+    ∀ doc ∈ docs.toList, Grammable (doc.compose.value) false
 ```
 
-This also requires showing that `compose` (alias resolution) preserves
-`Grammable` — specifically that resolved aliases are still alias-free
-and plain scalar constraints are preserved.
-
-**Estimated difficulty:** Medium. Requires showing `compose` preserves
-`Grammable` and that `parseStream` propagates scanner token properties.
+This discharges the `h_grammable` hypothesis in `ParserCorrectness.lean`.
 
 ### Phase D: Bridge `Grammar.ValidYaml` to Parser Output (CAPSTONE)
 
@@ -582,19 +937,20 @@ gives `∃ ValidNode` witnesses. Combine with `NodeToValue` (already proven
 via `Soundness.lean`) to construct `Grammar.ValidYaml`:
 
 ```lean
-theorem parse_produces_valid_yaml : ...
-    ∀ i : Fin docs.size, ∃ vy : Grammar.ValidYaml, ...
+theorem parse_produces_valid_yaml (input : String)
+    (docs : Array YamlDocument)
+    (h : TokenParser.parseYaml input = .ok docs) :
+    ∀ i : Fin docs.size,
+      ∃ vy : Grammar.ValidYaml,
+        vy.input = input ∧
+        stripAnnotations vy.value = stripAnnotations docs[i].compose.value
 ```
-
-**Estimated difficulty:** Medium. The machinery exists; this is composition.
 
 ### Phase E: ValidTokenStream Contract (SUPPORTING)
 
 Prove `scan_produces_valid_token_stream` so the scanner/parser boundary
-has a typed contract. This is architecturally important but not blocking
-the critical path (the existing proofs bypass `ValidTokenStream`).
-
-**Estimated difficulty:** Medium. Requires scanner internals analysis.
+has a typed contract. Architecturally important but not blocking the
+critical path.
 
 ### Phase F: Dead Code & Low-Priority Gaps
 
@@ -604,40 +960,223 @@ the critical path (the existing proofs bypass `ValidTokenStream`).
 4. **validHeaderLength** — bounded extraction theorems
 5. **IndentedAtLeast** — scanner indent correctness
 
+### Phase G: Comment Preservation (ROUND-TRIP)
+
+Currently the scanner discards comments (`skipToContentComment` consumes
+`#`-to-EOL without emitting tokens). The infrastructure exists but is
+incomplete:
+
+| Component | Status |
+|-----------|--------|
+| `Comment` struct (text + position) | ✅ Defined in Types.lean |
+| `CommentPosition` (before/inline/after) | ✅ Defined in Types.lean |
+| `YamlToken.comment` variant | ✅ Defined in Token.lean |
+| Scanner emits `.comment` tokens | ❌ Not implemented |
+| `YamlValue` carries comments | ❌ No comment fields |
+| `YamlDocument` carries comments | ❌ No comment fields |
+| Parser preserves comments | ❌ Not implemented |
+
+**Implementation plan:**
+
+**G1. Scanner: emit `.comment` tokens.** Modify `skipToContentComment`
+(Scanner.lean L458–464) to emit `YamlToken.comment text` before
+consuming the comment. The scanner already identifies comment text
+spans — it just needs to emit instead of discard.
+
+**G2. AST: add comment fields.** Two options:
+
+*Option G2a — Comments on nodes:*
+```lean
+structure Scalar where
+  ...
+  comments : Array Comment := #[]
+
+inductive YamlValue where
+  | scalar (s : Scalar)
+  | sequence ... (comments : Array Comment := #[])
+  | mapping ... (comments : Array Comment := #[])
+  | alias (name : String) (comments : Array Comment := #[])
+```
+
+*Option G2b — Comments as side-channel:*
+```lean
+structure YamlDocument where
+  ...
+  comments : Array (YamlPos × Comment) := #[]
+```
+
+Option G2b is cleaner for proofs — comments don't pollute the value tree.
+Proofs about structural equivalence work on the value tree directly;
+comment preservation is a separate side-property.
+
+**G3. Parser: collect `.comment` tokens into side-channel.**
+
+**G4. Normalization:**
+
+```lean
+/-- Strip all comments from a document (side-channel variant). -/
+def YamlDocument.stripComments (doc : YamlDocument) : YamlDocument :=
+  { doc with comments := #[] }
+```
+
+**G5. Specification predicates operate modulo comments:**
+
+All grammar validity predicates (`Scannable`, `Grammable`, `ValidNode`,
+`ValidYaml`) are defined on `YamlValue` which does not contain comments
+(Option G2b). Therefore they are **automatically** comment-agnostic —
+no changes needed to the predicates themselves.
+
+**G6. Round-trip theorem:**
+
+```lean
+/-- Comments are preserved through parse → emit → parse. -/
+theorem comment_round_trip (input : String)
+    (doc : YamlDocument)
+    (h : parseYaml input = .ok #[doc]) :
+    ∀ c ∈ doc.comments,
+      ∃ c' ∈ (parseYaml (emit doc)).get!.comments,
+        c.2.text = c'.2.text ∧ c.2.position = c'.2.position
+```
+
+This theorem states that comment text and relative position are
+preserved through a round-trip. The exact byte position may shift
+(due to whitespace normalization), but the logical position
+(before/inline/after which node) and text content are stable.
+
+**G7. Structural equivalence modulo comments:**
+
+```lean
+/-- Structural parse results are unchanged by comment presence.
+    Parsing with or without comments yields the same YamlValue tree. -/
+theorem parse_value_independent_of_comments (input : String)
+    (docs : Array YamlDocument)
+    (h : parseYaml input = .ok docs) :
+    ∀ i : Fin docs.size,
+      docs[i].stripComments.compose.value = docs[i].compose.value
+```
+
+This is trivially true when comments are in a side-channel (G2b)
+since `stripComments` doesn't touch `value`. But it's worth stating
+explicitly as it formalizes YAML 1.2.2 §6.6: comments have no
+effect on the serialization tree.
+
+### Phase H: JSON-is-YAML-subset (FUTURE)
+
+Every valid JSON document is valid YAML 1.2. The scanner handles JSON
+uniformly — flow collections, double-quoted strings, no block scalars.
+`CharPredicates.lean` predicates apply identically to JSON input.
+
+```lean
+/-- Every valid JSON document parses as valid YAML. -/
+theorem json_is_valid_yaml (input : String) (h : isValidJSON input) :
+    ∃ docs, parseYaml input = .ok docs
+```
+
+The Core Schema (YAML 1.2.2 §10.3) is already implemented in
+`Schema.lean`, subsuming the JSON Schema (§10.2). Schema resolution
+proofs exist in `SchemaResolution.lean` and `SchemaDump.lean`. This
+phase is a theorem on top of the existing architecture, not a
+structural change.
+
 ---
 
 ## Dependency Graph
 
 ```
-Phase A (Decidable instances)
+Phase A (Decidable instances)  ✅ COMPLETE
     │
     ▼
-Phase B (Scanner character predicates)  ──▸  Phase E (ValidTokenStream)
+Phase B0 (CharPredicates.lean — shared Bool + Prop + iff)
     │
-    ▼
-Phase C (Discharge h_grammable)
+    ├──▸ Phase B1 (Scannable predicate)
+    │        │
+    │        ├──▸ Phase B2 (Grammable update — Option C, context-aware)
+    │        │
+    │        └──▸ Phase B3 (Scanner predicate enforcement)
+    │                 │
+    │                 ▼
+    │            Phase C (Discharge h_grammable)
+    │                 │
+    │                 ├──▸ C1 (compose_scannable_to_grammable)
+    │                 ├──▸ C2 (parseStream_output_scannable)
+    │                 └──▸ C3 (parseStream_output_grammable = C2 + C1)
+    │                          │
+    │                          ▼
+    │                     Phase D (Grammar.ValidYaml bridge — CAPSTONE)
     │
-    ▼
-Phase D (Grammar.ValidYaml bridge)  ◀── capstone
+    ├──▸ Phase E (ValidTokenStream contract — supporting)
     │
-    ▼
-Phase F (cleanup & low-priority)
+    ├──▸ Phase F (dead code & low-priority gaps)
+    │
+    └──▸ Phase G (comment preservation — round-trip)
+              │
+              ├──▸ G1 (scanner emits comment tokens)
+              ├──▸ G2 (AST side-channel for comments)
+              ├──▸ G3 (parser collects comments)
+              ├──▸ G4–G5 (stripComments + modulo-comments)
+              ├──▸ G6 (comment round-trip theorem)
+              └──▸ G7 (structural independence theorem)
+
+Phase H (JSON-is-YAML-subset — future, no structural changes)
 ```
 
 ## Summary Table
 
-| Definition | YAML Spec | Severity | Has Decidable | Has Theorems | Blocking |
+| Definition | YAML Spec | Severity | Has Decidable | Has Theorems | Phase |
 |---|---|---|---|---|---|
-| `validPlainFirst` | §7.3.3 [123] | CRITICAL | ✅ | ❌ | Phase B |
-| `noColonSpace` | §7.3.3 [127] | CRITICAL | ✅ (Phase A) | ❌ | Phase B |
-| `noSpaceHash` | §7.3.3 [127] | CRITICAL | ✅ (Phase A) | ❌ | Phase B |
-| `noFlowIndicators` | §7.3.3 [126] | CRITICAL | ✅ (Phase A) | ❌ | Phase B |
-| `canStartPlainScalar` | §7.3.3 [123] | HIGH | ✅ | ❌ | Phase B |
-| `IndentedAtLeast` | §6.1 [65] | HIGH | ✅ | `indented_weaken` only | Phase F |
-| `Indented` / `decideIndented` | §6.1 [63] | HIGH | ✅ | `indented_weaken` only | Phase F |
-| `ValidTokenStream` | §3.1 | HIGH | n/a | ❌ | Phase E |
-| `ValidYaml` (Grammar) | §9 / top | CRITICAL | n/a | construction only | Phase D |
-| `ValidStream` | §9 [205] | LOW | n/a | ❌ dead code | Phase F |
-| `isContentChar` | §8.1.1 [158] | LOW | ✅ | ❌ | Phase F |
-| `isNamedEscapeChar` | §5.7 | LOW | ✅ | ❌ | Phase F |
-| `validHeaderLength` | §8.1.1 [158] | LOW | ✅ | ❌ | Phase F |
+| `canStartPlainScalarProp/Bool` | §7.3.3 [123] | **BLOCKING** | Pending B0 | Pending (`_iff`) | B0 |
+| `validPlainFirstProp/Bool` | §7.3.3 [123] | CRITICAL | Pending B0 | Pending (`_iff`) | B0 |
+| `noColonSpaceProp/Bool` | §7.3.3 [127] | CRITICAL | ✅ (Phase A → B0) | Pending (`_iff`) | B0 |
+| `noSpaceHashProp/Bool` | §7.3.3 [127] | CRITICAL | ✅ (Phase A → B0) | Pending (`_iff`) | B0 |
+| `noFlowIndicatorsProp/Bool` | §7.3.3 [126] | CRITICAL | ✅ (Phase A → B0) | Pending (`_iff`) | B0 |
+| `Scannable` | Scanner contract | CRITICAL | n/a | Pending | B1 |
+| `Grammable` (context-aware) | Parser contract | CRITICAL | n/a | Pending update | B2 |
+| `ScalarScannable` | §7.3.3 | CRITICAL | n/a | Pending | B1 |
+| `ValidNode` (updated) | §3.2.1 | CRITICAL | n/a | Pending update | B2 |
+| `ValidYaml` (Grammar) | §9 / top | CRITICAL | n/a | construction only | D |
+| `IndentedAtLeast` | §6.1 [65] | HIGH | ✅ | `indented_weaken` only | F |
+| `ValidTokenStream` | §3.1 | HIGH | n/a | ❌ | E |
+| `ValidStream` | §9 [205] | LOW | n/a | ❌ dead code | F |
+| Comment preservation | §6.6 | MEDIUM | n/a | ❌ | G |
+| JSON-is-YAML | §1.3 | LOW | n/a | ❌ | H |
+
+---
+
+## Grammar.lean Salvageability Assessment
+
+**Verdict: SALVAGEABLE with architectural refactoring.**
+
+Grammar.lean's core architecture — `ValidNode` as a witness type,
+`NodeToValue` as an extraction function, `ValidYaml` as the top-level
+property — is sound. The `stripAnnotations`-modulo approach for tags and
+anchors is architecturally correct (models the representation graph per
+YAML 1.2.2 §3.2.1). The existing 33 proof files and 869 tests depend on
+this structure.
+
+**Required changes:**
+
+1. **`CharPredicates.lean` extraction** — Move all character predicates
+   (Bool + Prop + iff + Decidable) to a shared module. This prevents
+   specification drift permanently. (Phase B0)
+
+2. **`canStartPlainScalarProp`** — Fix the unconditional exclusion of
+   `-`, `?`, `:` by adding `next : Option Char` and `inFlow : Bool`
+   parameters, matching the Scanner's semantics and YAML 1.2.2 [123].
+   (Part of Phase B0)
+
+3. **`Scannable` predicate** — New pre-compose specification layer
+   that allows aliases and threads flow context. (Phase B1)
+
+4. **`Grammable` update** — Add `inFlow : Bool` parameter (Option C),
+   threading context through the tree via `CollectionStyle`. (Phase B2)
+
+5. **Comment side-channel** — Add `comments` field to `YamlDocument`
+   (not `YamlValue`) so proofs are automatically comment-agnostic.
+   (Phase G)
+
+**What stays unchanged:**
+- `ValidNode` constructors (except `validPlainFirstProp` parameter update)
+- `NodeToValue` inductive
+- `ValidYaml` structure
+- All `stripAnnotations`-modulo proof architecture
+- `AnchorMap` and its algebraic laws
