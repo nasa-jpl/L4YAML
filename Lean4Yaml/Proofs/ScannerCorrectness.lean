@@ -896,7 +896,11 @@ theorem collectPlainScalarLoop_preserves_tokens (s : ScannerState) (content last
                 have := Prod.mk.inj (Option.some.inj hblk)
                 rw [← this.2, skipSpaces_preserves_tokens,
                     skipBlankLinesLoop_preserves_tokens, consumeNewline_preserves_tokens]
-              rw [ih _ _ _ h, hprop]
+              split at h
+              · -- s'.peek? = some '#' → terminate
+                injection h with h_eq; cases h_eq; rw [hprop]
+              · -- s'.peek? = _ → recurse
+                rw [ih _ _ _ h, hprop]
         · split at h
           · -- isWhiteSpace c
             have h_adv := advance_preserves_tokens s
@@ -2743,7 +2747,9 @@ theorem collectPlainScalarLoop_preserves_simpleKey (s : ScannerState) (content l
                 have := Prod.mk.inj (Option.some.inj hblk)
                 rw [← this.2, skipSpaces_preserves_simpleKey,
                     skipBlankLinesLoop_preserves_simpleKey, consumeNewline_preserves_simpleKey]
-              rw [ih _ _ _ h, hprop]
+              split at h
+              · injection h with h_eq; cases h_eq; rw [hprop]
+              · rw [ih _ _ _ h, hprop]
         · split at h
           · -- isWhiteSpace c
             have h_adv := advance_preserves_simpleKey s
@@ -3349,7 +3355,9 @@ theorem collectPlainScalarLoop_preserves_simpleKeyStack (s : ScannerState) (cont
                 rw [← this.2, skipSpaces_preserves_simpleKeyStack,
                     skipBlankLinesLoop_preserves_simpleKeyStack,
                     consumeNewline_preserves_simpleKeyStack]
-              rw [ih _ _ _ h, hprop]
+              split at h
+              · injection h with h_eq; cases h_eq; rw [hprop]
+              · rw [ih _ _ _ h, hprop]
         · split at h
           · -- isWhiteSpace c
             have h_adv := advance_preserves_simpleKeyStack s
@@ -6098,7 +6106,11 @@ theorem collectPlainScalarLoop_offset_ge (s : ScannerState) (content spaces : St
                 exact Nat.le_trans (consumeNewline_offset_ge s)
                   (Nat.le_trans (skipBlankLinesLoop_offset_ge _ _ _ _)
                   (skipSpaces_offset_ge _))
-              exact Nat.le_trans hoff (ih _ _ _ h)
+              split at h
+              · -- s'.peek? = some '#' → terminate
+                simp only [Except.ok.injEq] at h; subst h; exact hoff
+              · -- s'.peek? = _ → recurse
+                exact Nat.le_trans hoff (ih _ _ _ h)
         · split at h
           · -- isWhiteSpace: advance → recurse
             exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ _ h)

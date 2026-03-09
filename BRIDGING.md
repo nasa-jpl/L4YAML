@@ -1340,7 +1340,7 @@ only ~5 lines using the existing `foldQuotedNewlines` helper.
   `collectPlainScalarLoop_*` proofs broke and needed full rewrites because they
   `unfold collectPlainScalarLoop` and match on the internal branch structure.
 
-##### **B3.2: Define `PlainContentInv` loop invariant** (~30 lines, new proof file)
+##### **B3.2: Define `PlainContentInv` loop invariant** (~30 lines, new proof file) (COMPLETE ✅)
 
 ```lean
 /-- Loop invariant for `collectPlainScalarLoop` content correctness.
@@ -1417,7 +1417,7 @@ This goes in a new file `Lean4Yaml/Proofs/ScannerPlainContent.lean`.
    case, but `"".toList` doesn't reduce to `[]` at the type level in Lean 4.28.
    Fixed with `simp [String.toList]` which handles the normalization.
 
-##### **B3.3: Prove `collectPlainScalarLoop_preserves_contentInv`** (~300–500 lines)
+##### **B3.3: Prove `collectPlainScalarLoop_preserves_contentInv`** (~300–500 lines) (COMPLETE ✅)
 
 The core theorem:
 
@@ -1466,6 +1466,125 @@ require a scanner fix or a more refined analysis showing that `#` at
 the start of a continuation line is preceded by indent spaces (which
 the scanner consumes), leaving `s_after_spaces` past the `#` if it
 was a comment. **Investigation needed during implementation.**
+
+###### B3.3 Reflections
+
+**Status:** Complete. 215/215 build, 0 sorry, 0 axioms, 0 warnings.
+
+**Delivered:**
+
+- **File:** `Lean4Yaml/Proofs/ScannerPlainContent.lean` expanded from ~50 to ~510 lines
+  - 23 top-level theorems/definitions (including helpers)
+  - Main theorem: `collectPlainScalarLoop_preserves_contentInv` — fully proven, 0 sorry
+  - New definition: `BoundaryHash` — an invariant discovered during proof that was NOT anticipated in B3.2
+
+**Unexpected change to `PlainContentInv`:** B3.2's reflections stated
+"No `noSpaceHash` boundary condition needed" based on static analysis.
+This turned out to be **wrong**. During the proof, the plainSafe `#`
+append case revealed a gap: when `content` ends with `' '`, `spaces = ""`,
+and `c = '#'`, `_terminates?` does NOT fire (the `#` check requires
+`spaces.length > 0`). The scanner happily appends `'#'` to content,
+producing `content ++ "#"` — violating `noSpaceHashProp` at the
+boundary. This required adding `BoundaryHash` as a **separate hypothesis**
+to the theorem (not a `PlainContentInv` struct field; see below for why).
+
+Also, `boundary_colon` was strengthened from the B3.2 form
+(`content.toList.getLast? = some ':' → spaces = ""`) to also couple
+to the scanner state: `→ spaces = "" ∧ (∀ n, s.peek? = some n → ¬isBlankProp n)`.
+This was needed because the fold cases produce `content ++ " "` or
+`content ++ replicate '\n'`, and showing `noColonSpaceProp` at the
+boundary requires knowing the next character after fold isn't blank.
+
+**Resolution of open question (block linebreak + `#`):** The B3.3
+plan flagged "Investigation needed during implementation" for the case
+where `#` appears at the start of a continuation line after block fold.
+The answer: the B3.1 scanner fix — adding
+`match s'.peek? with | some '#' => terminate | _ => recurse` after
+`_handleBlockLineBreak` — is exactly what makes the proof work. After
+fold, if the next char is `#`, we terminate (invariant preserved trivially
+via `transfer_nonblank_peek`). If not, `BoundaryHash` for the recursive
+call is satisfied directly by `s'.peek? ≠ some '#'`.
+
+**Key discovery: why `BoundaryHash` is NOT part of `PlainContentInv`:**
+
+The `#` termination cases (after block/flow fold) output
+`{content, spaces, state := s'}` where `s'.peek? = some '#'`. If
+`content` ended with `' '` and `spaces = ""`, a BoundaryHash struct
+field would require `'#' ≠ '#'` — impossible. Since these are terminal
+results (no recursion follows), the caller needs only the content
+properties (noColonSpace, noSpaceHash, etc.), not the loop-internal
+boundary condition. Making BoundaryHash a separate hypothesis avoids
+this impossibility while still providing the induction step.
+
+**Helper lemma inventory:**
+
+| Helper | Lines | Purpose |
+|--------|-------|---------|
+| `advance_peek_eq_peekAt_one` | ~15 | `s.advance.peek? = s.peekAt? 1` when `peek? = some _` |
+| `terminates_none_colon_peekAt_nonblank` | ~15 | Non-terminating `:` implies next char is non-blank |
+| `noColonSpaceProp_space` / `_replicate_newline` | ~10 ea | Content properties for fold strings |
+| `noSpaceHashProp_space` / `_replicate_newline` | ~10 ea | Content properties for fold strings |
+| `noFlowIndicatorsProp_space` / `_replicate_newline` | ~10 ea | Content properties for fold strings |
+| `replicate_getElem?_char` | ~5 | Elements of `List.replicate` equal the replicated element |
+| `getLast_append_space` / `_replicate_newline` | ~10 ea | Last char of `content ++ fold` |
+| `head_space` / `head_replicate_newline` | ~5 ea | First char of fold string |
+| `hash_not_blank` | ~2 | `¬isBlankProp '#'` |
+| `terminates_preserves_all` | ~20 | `_terminates? = some r → r.content = content ∧ r.spaces = spaces ∧ r.state = s` |
+| `PlainContentInv.transfer_nonblank_peek` | ~10 | Transfer invariant to new state with known non-blank peek |
+| `handleBlockLineBreak_content_form` | ~15 | Extracts fold form from block handler result |
+| `foldQuotedNewlines_result_form` | ~20 | Extracts fold form from flow handler result |
+| `PlainContentInv.of_fold` | ~30 | Generic constructor for fold-appended content invariant |
+
+**Unexpected difficulties:**
+
+1. **`split` failure on nested `have/let/match`.** The `:` branch of
+   `_terminates?` uses `have next := s.peekAt? 1; have terminates := match next with ...`
+   which defeats `split at h`. The `split` tactic cannot see through
+   `have` bindings to find the `match`. Solution: `simp only at h` to
+   reduce bindings first, then `split at h <;> (split at h <;> ...)` for
+   the nested match.
+
+2. **`do`-notation desugaring blocks `split`.** `foldQuotedNewlines` uses
+   `do`-notation which desugars to nested `bind`/`pure`. `split at h`
+   cannot operate on `if` conditions buried under the desugaring.
+   Solution: `dsimp only at h` reduces the desugaring, exposing the
+   branching structure.
+
+3. **`String` is `ByteArray`-backed.** Deriving `spaces = ""` from
+   `spaces.toList = []` requires `String.ext_iff.mpr` — not obvious when
+   string internals are opaque. Similarly, `spaces.length > 0` from
+   `spaces.toList = x :: xs` needs `rw [← String.length_toList]; simp [hl]`.
+
+4. **`List.Mem` constructor naming.** `List.Mem.head _` is the correct
+   form, not `List.mem_cons_self _ _` (which takes different arguments
+   in Lean 4.28). Discovered by trial.
+
+5. **BoundaryHash maintenance through whitespace.** When `c` is whitespace
+   and `spaces.push c` grows, the `spaces = ""` premise of BoundaryHash
+   becomes false — but proving `spaces.push c ≠ ""` requires going through
+   `String.toList_push` and `simp`, not just `nofun`.
+
+**Simplifications vs plan:**
+
+- **Plan estimated ~265 proof lines; actual core theorem is ~190 lines.**
+  The `PlainContentInv.of_fold` generic helper eliminated massive
+  duplication between block and flow linebreak cases — both use the
+  identical pattern `of_fold inv c hpeek hc_lb fold hfold hpeek_ne`.
+
+- **`terminates_preserves_all` eliminated `transfer_nonblank_peek` for
+  the termination case.** Originally tried to transfer the invariant to
+  a new state, but `terminates_preserves_all` proved `r.state = s`,
+  allowing a direct rewrite + `exact inv`.
+
+- **Whitespace case is 15 lines, not 15.** The plan estimated correctly
+  here — content unchanged, `spaces.push c` grows, `boundary_colon`
+  discharged by contradiction (whitespace `c` is blank, violating the
+  `¬isBlankProp n` conclusion).
+
+- **Block and flow linebreak cases are structurally identical.** Despite
+  different fold functions (`_handleBlockLineBreak` vs `foldQuotedNewlines`),
+  once the fold form is extracted (`" "` or `replicate '\n'`), the
+  `of_fold` + recursive `ih` pattern is the same 15 lines in both cases.
 
 ##### **B3.4: Prove `scanPlainScalar_content_valid`** (~50–100 lines)
 
@@ -1883,3 +2002,5 @@ this structure.
 - `ValidYaml` structure
 - All `stripAnnotations`-modulo proof architecture
 - `AnchorMap` and its algebraic laws
+
+
