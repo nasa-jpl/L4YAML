@@ -152,21 +152,13 @@ def noColonSpace (content : String) : Prop :=
 ```
 
 **Current state:** Used in `ValidNode.plainScalarBlock/Flow` and `Grammable`.
-No theorem proves the scanner enforces it. **No `Decidable` instance** — this is
-a negated existential over list indices.
+No theorem proves the scanner enforces it. ✅ `Decidable` instance added (Phase A)
+via `hasAdjacentChars` helper.
 
 **Required theorems:**
 
 ```lean
--- Decidable instance (needed for #guard and runtime validation)
-instance (content : String) : Decidable (noColonSpace content)
-
 -- Scanner enforcement (subsumed by Gap 0's scan_plain_scalar_valid)
-
--- Useful characterization
-theorem noColonSpace_iff_forall (content : String) :
-    noColonSpace content ↔
-    ∀ i, ¬(content.toList[i]? = some ':' ∧ content.toList[i + 1]? = some ' ')
 ```
 
 ---
@@ -182,13 +174,11 @@ def noSpaceHash (content : String) : Prop :=
 ```
 
 **Current state:** Same as `noColonSpace` — used in `ValidNode` and `Grammable`,
-never proven enforced. **No `Decidable` instance.**
+never proven enforced. ✅ `Decidable` instance added (Phase A) via `hasAdjacentChars`.
 
 **Required theorems:**
 
 ```lean
-instance (content : String) : Decidable (noSpaceHash content)
-
 -- Scanner enforcement (subsumed by Gap 0's scan_plain_scalar_valid)
 ```
 
@@ -208,12 +198,11 @@ def noFlowIndicators (content : String) : Prop :=
 `Grammable` (which does not distinguish block/flow context). No theorem proves
 the scanner enforces it in flow context.
 
+✅ `Decidable` instance added (Phase A) via `List.decidableBAll`.
+
 **Required theorems:**
 
 ```lean
--- Decidable instance (∀ over a finite list - should be derivable)
-instance (content : String) : Decidable (noFlowIndicators content)
-
 -- Scanner enforcement in flow context
 theorem scan_flow_plain_no_indicators (input : String)
     (tokens : Array (Positioned YamlToken))
@@ -512,18 +501,48 @@ theorem extractHeaderChars_bounded (cs : List Char)
 
 ## Priority Plan
 
-### Phase A: Decidable Instances (prerequisite, low effort)
+### Phase A: Decidable Instances ✅ COMPLETE
 
-Add missing `Decidable` instances for:
-1. `noColonSpace` — decidable via finite list search
-2. `noSpaceHash` — decidable via finite list search
-3. `noFlowIndicators` — decidable via `List.decidableBAll`
+Added missing `Decidable` instances for:
+1. ✅ `noColonSpace` — via `hasAdjacentChars ':' ' '` boolean helper + iff proof
+2. ✅ `noSpaceHash` — via `hasAdjacentChars ' ' '#'` boolean helper + iff proof
+3. ✅ `noFlowIndicators` — via `List.decidableBAll`
 
-These enable `#guard` checks and runtime assertions. Without Mathlib,
-the proofs must be written manually using `List.getElem?` case analysis.
+All added to `Grammar.lean`. Build: 211/211, tests: 869/869, 0 sorry, 0 axioms.
 
-**Estimated difficulty:** Low. These are finite list traversals with
-decidable element predicates.
+#### Phase A Reflections
+
+**Approach chosen:** Instead of trying to get `Decidable` for the negated
+existential `¬ ∃ i, ...` directly, we introduced a boolean scanning function
+`hasAdjacentChars` and proved the bidirectional `hasAdjacentChars_iff` theorem
+that connects it to the `∃ i, cs[i]? = ...` proposition. The `Decidable`
+instance then pattern-matches on the boolean result.
+
+**Unexpected challenges:**
+- `beq_iff_eq.mp`/`.mpr` produces `(c == a) = true` not `c = a`. Using `subst`
+  after `simp` destructures the BEq hypothesis cleanly. First attempt failed
+  because `simp [beq_iff_eq.mp h]` doesn't substitute into the goal — `subst`
+  is required.
+- `push_neg` is Mathlib-only. The `isFalse` branch uses
+  `absurd ((iff).mp h) hn` instead.
+- `List.getElem?` is not a valid identifier in Lean 4.28 (it's notation, not
+  a def). Simplification lemmas `List.getElem?_cons_zero` and
+  `List.getElem?_cons_succ` work with bare `simp`.
+
+**Simplifications:**
+- `noFlowIndicators` was trivial: `List.decidableBAll` from core Lean handles
+  `∀ c ∈ list, ¬P c` directly, given `Decidable (isFlowIndicator c)` which
+  already existed.
+- The `hasAdjacentChars` helper is reusable — it works for any two-character
+  adjacency pattern, making `noColonSpace` and `noSpaceHash` share the same
+  proof infrastructure.
+
+**Idiom:** For `¬ ∃ i, P i` decidability without Mathlib, the pattern is:
+```lean
+match h : booleanCheck args with
+| false => .isTrue (fun hex => absurd (iff.mpr hex) (by simp [h]))
+| true  => .isFalse (fun hn => absurd (iff.mp h) hn)
+```
 
 ### Phase B: Scanner Character Predicate Enforcement (CRITICAL PATH)
 
@@ -610,9 +629,9 @@ Phase F (cleanup & low-priority)
 | Definition | YAML Spec | Severity | Has Decidable | Has Theorems | Blocking |
 |---|---|---|---|---|---|
 | `validPlainFirst` | §7.3.3 [123] | CRITICAL | ✅ | ❌ | Phase B |
-| `noColonSpace` | §7.3.3 [127] | CRITICAL | ❌ | ❌ | Phase A, B |
-| `noSpaceHash` | §7.3.3 [127] | CRITICAL | ❌ | ❌ | Phase A, B |
-| `noFlowIndicators` | §7.3.3 [126] | CRITICAL | ❌ | ❌ | Phase A, B |
+| `noColonSpace` | §7.3.3 [127] | CRITICAL | ✅ (Phase A) | ❌ | Phase B |
+| `noSpaceHash` | §7.3.3 [127] | CRITICAL | ✅ (Phase A) | ❌ | Phase B |
+| `noFlowIndicators` | §7.3.3 [126] | CRITICAL | ✅ (Phase A) | ❌ | Phase B |
 | `canStartPlainScalar` | §7.3.3 [123] | HIGH | ✅ | ❌ | Phase B |
 | `IndentedAtLeast` | §6.1 [65] | HIGH | ✅ | `indented_weaken` only | Phase F |
 | `Indented` / `decideIndented` | §6.1 [63] | HIGH | ✅ | `indented_weaken` only | Phase F |

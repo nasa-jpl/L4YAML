@@ -304,6 +304,59 @@ instance (content : String) : Decidable (validPlainFirst content) := by
   | nil => exact .isTrue trivial
   | cons c _ => exact inferInstance
 
+/-- Check if a list contains adjacent characters `a` then `b`. -/
+def hasAdjacentChars (a b : Char) : List Char → Bool
+  | c₁ :: c₂ :: rest => (c₁ == a && c₂ == b) || hasAdjacentChars a b (c₂ :: rest)
+  | _ => false
+
+theorem hasAdjacentChars_true_implies (a b : Char) (cs : List Char)
+    (h : hasAdjacentChars a b cs = true) :
+    ∃ i, cs[i]? = some a ∧ cs[i + 1]? = some b := by
+  induction cs with
+  | nil => simp [hasAdjacentChars] at h
+  | cons c₁ rest ih =>
+    match rest, ih with
+    | [], _ => simp [hasAdjacentChars] at h
+    | c₂ :: rest', ih =>
+      simp [hasAdjacentChars] at h
+      cases h with
+      | inl h =>
+        obtain ⟨h₁, h₂⟩ := h
+        subst h₁; subst h₂
+        exact ⟨0, by simp, by simp⟩
+      | inr h =>
+        have ⟨i, hi₁, hi₂⟩ := ih h
+        exact ⟨i + 1, by simp [hi₁], by simp [hi₂]⟩
+
+theorem hasAdjacentChars_true_of (a b : Char) (cs : List Char)
+    (h : ∃ i, cs[i]? = some a ∧ cs[i + 1]? = some b) :
+    hasAdjacentChars a b cs = true := by
+  induction cs with
+  | nil => obtain ⟨i, h₁, _⟩ := h; simp at h₁
+  | cons c₁ rest ih =>
+    match rest with
+    | [] =>
+      obtain ⟨i, h₁, h₂⟩ := h
+      cases i with
+      | zero => simp at h₂
+      | succ j => simp at h₁
+    | c₂ :: rest' =>
+      obtain ⟨i, h₁, h₂⟩ := h
+      simp [hasAdjacentChars]
+      cases i with
+      | zero =>
+        left
+        simp at h₁ h₂
+        exact ⟨h₁, h₂⟩
+      | succ j =>
+        right
+        simp at h₁ h₂
+        exact ih ⟨j, h₁, h₂⟩
+
+theorem hasAdjacentChars_iff (a b : Char) (cs : List Char) :
+    hasAdjacentChars a b cs = true ↔ ∃ i, cs[i]? = some a ∧ cs[i + 1]? = some b :=
+  ⟨hasAdjacentChars_true_implies a b cs, hasAdjacentChars_true_of a b cs⟩
+
 /--
 Content does not contain `: ` (colon immediately followed by space).
 
@@ -312,6 +365,13 @@ a plain scalar only when NOT followed by an `s-white` character.
 -/
 def noColonSpace (content : String) : Prop :=
   ¬ ∃ i, content.toList[i]? = some ':' ∧ content.toList[i + 1]? = some ' '
+
+instance (content : String) : Decidable (noColonSpace content) :=
+  match h : hasAdjacentChars ':' ' ' content.toList with
+  | false => .isTrue (fun hex =>
+      absurd ((hasAdjacentChars_iff ':' ' ' content.toList).mpr hex) (by simp [h]))
+  | true => .isFalse (fun hn =>
+      absurd ((hasAdjacentChars_iff ':' ' ' content.toList).mp h) hn)
 
 /--
 Content does not contain ` #` (space immediately followed by hash).
@@ -322,6 +382,13 @@ a plain scalar only when NOT preceded by an `s-white` character.
 def noSpaceHash (content : String) : Prop :=
   ¬ ∃ i, content.toList[i]? = some ' ' ∧ content.toList[i + 1]? = some '#'
 
+instance (content : String) : Decidable (noSpaceHash content) :=
+  match h : hasAdjacentChars ' ' '#' content.toList with
+  | false => .isTrue (fun hex =>
+      absurd ((hasAdjacentChars_iff ' ' '#' content.toList).mpr hex) (by simp [h]))
+  | true => .isFalse (fun hn =>
+      absurd ((hasAdjacentChars_iff ' ' '#' content.toList).mp h) hn)
+
 /--
 Content contains no flow indicator characters.
 
@@ -330,6 +397,10 @@ plain scalars additionally cannot contain `,`, `[`, `]`, `{`, `}`.
 -/
 def noFlowIndicators (content : String) : Prop :=
   ∀ c ∈ content.toList, ¬isFlowIndicator c
+
+instance (content : String) : Decidable (noFlowIndicators content) := by
+  unfold noFlowIndicators
+  exact List.decidableBAll _ content.toList
 
 /-! ## Node Grammar
 
