@@ -70,6 +70,7 @@ namespace Lean4Yaml.Proofs.ScannerCorrectness
 
 open Lean4Yaml
 open Lean4Yaml.Scanner
+open Lean4Yaml.CharPredicates
 open Lean4Yaml.Grammar
 open Lean4Yaml.Proofs.ScannerProgress
 open Lean4Yaml.Proofs.ScannerProofs
@@ -771,7 +772,7 @@ theorem skipBlankLinesLoop_preserves_tokens (s : ScannerState) (cnt fuel inputEn
     | none => simp [h_peek]
     | some c =>
       simp [h_peek]
-      cases h_lb : Scanner.isLineBreak c with
+      cases h_lb : isLineBreakBool c with
       | false => simp []
       | true =>
         simp []
@@ -790,7 +791,7 @@ theorem foldQuotedNewlinesLoop_preserves_tokens (s : ScannerState) (emptyCount f
     | none => simp [h_peek]
     | some c =>
       simp [h_peek]
-      cases h_lb : Scanner.isLineBreak c with
+      cases h_lb : isLineBreakBool c with
       | false => simp []
       | true =>
         simp []
@@ -2641,7 +2642,7 @@ theorem skipBlankLinesLoop_preserves_simpleKey (s : ScannerState) (cnt fuel inpu
     | none => simp [h_peek]
     | some c =>
       simp [h_peek]
-      cases h_lb : Scanner.isLineBreak c with
+      cases h_lb : isLineBreakBool c with
       | false => simp []
       | true =>
         simp []
@@ -2660,7 +2661,7 @@ theorem foldQuotedNewlinesLoop_preserves_simpleKey (s : ScannerState) (emptyCoun
     | none => simp [h_peek]
     | some c =>
       simp [h_peek]
-      cases h_lb : Scanner.isLineBreak c with
+      cases h_lb : isLineBreakBool c with
       | false => simp []
       | true =>
         simp []
@@ -3269,7 +3270,7 @@ theorem skipBlankLinesLoop_preserves_simpleKeyStack (s : ScannerState) (cnt fuel
     | none => simp [h_peek]
     | some c =>
       simp [h_peek]
-      cases h_lb : Scanner.isLineBreak c with
+      cases h_lb : isLineBreakBool c with
       | false => simp []
       | true =>
         simp []
@@ -3288,7 +3289,7 @@ theorem foldQuotedNewlinesLoop_preserves_simpleKeyStack (s : ScannerState) (empt
     | none => simp [h_peek]
     | some c =>
       simp [h_peek]
-      cases h_lb : Scanner.isLineBreak c with
+      cases h_lb : isLineBreakBool c with
       | false => simp []
       | true =>
         simp []

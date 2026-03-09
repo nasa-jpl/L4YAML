@@ -1,5 +1,6 @@
 import Lean4Yaml.Scanner
 import Lean4Yaml.Emitter
+import Lean4Yaml.CharPredicates
 import Lean4Yaml.Grammar
 import Lean4Yaml.Proofs.RoundTrip
 
@@ -77,6 +78,7 @@ All theorems are machine-checked.  No `sorry`, no `axiom`, no `partial`.
 namespace Lean4Yaml.Proofs.ScannerDoubleQuoted
 
 open Lean4Yaml
+open Lean4Yaml.CharPredicates
 open Lean4Yaml.Scanner
 open Lean4Yaml.Emit
 open Lean4Yaml.Grammar
@@ -159,13 +161,13 @@ classes that trigger special handling in `scanDoubleQuoted`.
     `content := content.push c; s' := s'.advance` branch, exactly
     recovering the original character. -/
 theorem escapeChar_identity_implies_safe (c : Char) (h : isEscapedChar c = false) :
-    c ≠ '"' ∧ c ≠ '\\' ∧ Scanner.isLineBreak c = false := by
+    c ≠ '"' ∧ c ≠ '\\' ∧ isLineBreakBool c = false := by
   unfold isEscapedChar at h
   constructor
   · intro heq; subst heq; simp at h
   constructor
   · intro heq; subst heq; simp at h
-  · unfold Scanner.isLineBreak
+  · unfold isLineBreakBool
     split at h <;> simp_all
 
 /-- For non-escaped characters, `escapeChar c = c.toString`. -/

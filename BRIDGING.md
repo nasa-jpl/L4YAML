@@ -799,7 +799,85 @@ relocate into `CharPredicates.lean`. All `Decidable` instances relocate too.
 3. Update `Grammar.lean`: import `CharPredicates`, delete inline predicate defs,
    use `Prop` names (e.g., `isWhiteSpaceProp` replaces `isWhiteSpace`)
 4. Update all 33 proof files + tests for renamed predicates
-5. Build: 211/211, tests: 869/869, 0 sorry, 0 axioms
+5. Build: 213/213, tests: all passing, 0 sorry, 0 axioms
+
+#### Phase B0 Reflections
+
+**Status:** COMPLETE. 213/213 build, 0 sorry, 0 axioms.
+
+**Unexpected challenges:**
+
+1. **Bool ↔ Prop gap in `canStartPlainScalar_iff`**. The Bool version uses
+   `if c == '-' || c == '?' || c == ':' then ...` (BEq/Bool) while the Prop
+   version uses `if c = '-' ∨ c = '?' ∨ c = ':' then ...` (Prop equality). Lean
+   treats these as structurally different `if` conditions.  The proof required
+   manual `split` + helper lemma `neg_eq_false_iff_eq_true` rather than a simple
+   `simp`. **Idiom learned:** when bridging Bool/Prop `if` conditions, use
+   `split` to case-split on the Prop version, then convert each branch's
+   Bool `if` with `simp [show c = '-' from ...]` or its negation.
+
+2. **Missing `Bool.not_eq_true_iff`**. Lean 4.28 provides `Bool.eq_false_iff`
+   but not `Bool.not_eq_true_iff`. The pattern `rw [Bool.eq_false_iff]` converts
+   `¬(b = true)` to `b = false`, which is the correct replacement.
+
+3. **CharClass.lean `canStartPlainScalar_base` proof cascade**. The old proof
+   used `simp only [h1, h2, h3, Bool.false_or]` which worked because the old
+   Grammar definition expanded the indicator list inline as `c ∉ [...]`. The new
+   definition uses `¬ isIndicatorProp c`, requiring the proof to go through
+   `isIndicator_equiv` instead.  Fixed with `rw [Bool.eq_false_iff]; intro h;
+   exact hNotInd ((isIndicator_equiv c).mpr h)`.
+
+4. **`noFlowIndicators` uses `isFlowIndicator` which was deleted**. The old
+   `Grammar.noFlowIndicators` body referenced `Grammar.isFlowIndicator`, which
+   was removed when character predicates moved to CharPredicates. Replaced with
+   `abbrev noFlowIndicators := noFlowIndicatorsProp`.
+
+5. **Hidden dependency: `ScannerCorrectness.lean`**. Initial `lake build` after
+   Scanner.lean changes showed only 3 failing files. After fixing those, a 4th
+   file (`ScannerCorrectness.lean`) appeared — it had been cached and was only
+   rebuilt after its dependencies changed.
+
+**Simplifications discovered:**
+
+1. **`abbrev` aliases eliminate Decidable boilerplate**. Using
+   `abbrev noColonSpace := noColonSpaceProp` instead of re-defining the
+   predicate + separately proving `Decidable` meant zero proof obligations —
+   Lean's kernel unfolds `abbrev` to the original + inherits the existing
+   `Decidable` instance automatically.
+
+2. **`export` re-exports eliminate `open` cascades**. Adding
+   `export Lean4Yaml.CharPredicates (isPrintableProp ...)` in Grammar.lean's
+   namespace means files that `open Lean4Yaml.Grammar` automatically see all
+   CharPredicates names. This avoided adding `import CharPredicates` /
+   `open CharPredicates` to every proof file that imports Grammar.
+
+3. **Backward-compatible aliases in Scanner.lean** (`def isLineBreak :=
+   isLineBreakBool`) kept ~60 internal usage sites working with zero renames.
+   Only externally-qualified references (`Scanner.isLineBreak` in proof files)
+   needed updating.
+
+4. **`cases inFlow <;> simp [...]`** is the universal proof pattern for
+   `inFlow : Bool` conditions. It splits into the `true`/`false` branches and
+   `simp` handles each independently.
+
+**Architecture outcome:**
+
+```
+CharPredicates.lean (standalone, ~470 lines)
+  ├── Bool predicates: isPrintableBool, isLineBreakBool, ...
+  ├── Prop predicates: isPrintableProp, isLineBreakProp, ...
+  ├── iff theorems:    isPrintable_iff, isLineBreak_iff, ...
+  └── Decidable instances for all Prop predicates
+
+Scanner.lean ──imports CharPredicates──▸ uses Bool names via aliases
+Grammar.lean ──imports CharPredicates──▸ re-exports Prop names; keeps
+     canStartPlainScalar (1-arg compat), validPlainFirst (1-arg compat),
+     isFoldAppendChar, isMarkerFollower, isCForbiddenPrefix
+```
+
+Files changed: CharPredicates.lean (new), Scanner.lean, Grammar.lean,
+CharClass.lean, ScannerProofs.lean, ScannerDoubleQuoted.lean,
+ScannerCorrectness.lean, EscapeResolution.lean — 8 files total.
 
 ### Phase B1: Add `Scannable` Predicate
 

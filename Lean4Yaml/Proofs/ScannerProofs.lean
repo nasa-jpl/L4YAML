@@ -1,4 +1,5 @@
 import Lean4Yaml.Scanner
+import Lean4Yaml.CharPredicates
 
 /-!
 # Scanner Proofs (Phase 9)
@@ -15,11 +16,11 @@ simple `simp`/`omega` chains.
 ## Structure
 
 ### §1  Character Classification (16 theorems)
-Properties of `isLineBreak`, `isWhiteSpace`, `isBlank`, `isFlowIndicator`,
-`isIndicator` and their relationships.
+Properties of `isLineBreakBool`, `isWhiteSpaceBool`, `isBlankBool`, `isFlowIndicatorBool`,
+`isIndicatorBool` and their relationships.
 
 ### §2  Token Classification (10 theorems)
-Properties of `YamlToken.isVirtual`, `canStartNode`, `isFlowIndicator`.
+Properties of `YamlToken.isVirtual`, `canStartNode`, `isFlowIndicatorBool`.
 
 ### §3  Scanner Escape Correctness (20 `#guard` checks, 1 theorem)
 Each YAML 1.2.2 §5.13 named escape via the scanner's `processEscape`
@@ -47,6 +48,7 @@ namespace Lean4Yaml.Proofs.ScannerProofs
 
 open Lean4Yaml
 open Lean4Yaml.Scanner
+open Lean4Yaml.CharPredicates
 
 /-! ## §1  Character Classification Properties
 
@@ -56,39 +58,39 @@ functions on `Char`, so they are directly amenable to `native_decide` and
 -/
 
 /--
-`isBlank` decomposes into `isWhiteSpace ∨ isLineBreak` (definitional).
+`isBlankBool` decomposes into `isWhiteSpaceBool ∨ isLineBreakBool` (definitional).
 -/
-theorem isBlank_def (c : Char) : isBlank c = (isWhiteSpace c || isLineBreak c) := rfl
+theorem isBlank_def (c : Char) : isBlankBool c = (isWhiteSpaceBool c || isLineBreakBool c) := rfl
 
 /--
-Characterization of `isLineBreak`: exactly `'\n'` and `'\r'`.
+Characterization of `isLineBreakBool`: exactly `'\n'` and `'\r'`.
 -/
-theorem isLineBreak_iff (c : Char) : isLineBreak c = true ↔ (c = '\n' ∨ c = '\r') := by
+theorem isLineBreak_iff (c : Char) : isLineBreakBool c = true ↔ (c = '\n' ∨ c = '\r') := by
   constructor
   · intro h
-    simp only [isLineBreak, Bool.or_eq_true] at h
+    simp only [isLineBreakBool, Bool.or_eq_true] at h
     rcases h with h | h
     · left; exact eq_of_beq h
     · right; exact eq_of_beq h
   · rintro (rfl | rfl) <;> native_decide
 
 /--
-Characterization of `isWhiteSpace`: exactly `' '` and `'\t'`.
+Characterization of `isWhiteSpaceBool`: exactly `' '` and `'\t'`.
 -/
-theorem isWhiteSpace_iff (c : Char) : isWhiteSpace c = true ↔ (c = ' ' ∨ c = '\t') := by
+theorem isWhiteSpace_iff (c : Char) : isWhiteSpaceBool c = true ↔ (c = ' ' ∨ c = '\t') := by
   constructor
   · intro h
-    simp only [isWhiteSpace, Bool.or_eq_true] at h
+    simp only [isWhiteSpaceBool, Bool.or_eq_true] at h
     rcases h with h | h
     · left; exact eq_of_beq h
     · right; exact eq_of_beq h
   · rintro (rfl | rfl) <;> native_decide
 
 /--
-Characterization of `isBlank`: exactly `' '`, `'\t'`, `'\n'`, `'\r'`.
+Characterization of `isBlankBool`: exactly `' '`, `'\t'`, `'\n'`, `'\r'`.
 -/
 theorem isBlank_iff (c : Char) :
-    isBlank c = true ↔ (c = ' ' ∨ c = '\t' ∨ c = '\n' ∨ c = '\r') := by
+    isBlankBool c = true ↔ (c = ' ' ∨ c = '\t' ∨ c = '\n' ∨ c = '\r') := by
   rw [isBlank_def, Bool.or_eq_true]
   constructor
   · rintro (h | h)
@@ -105,22 +107,22 @@ theorem isBlank_iff (c : Char) :
     · right; native_decide
 
 -- Concrete classification checks
-theorem isLineBreak_nl    : isLineBreak '\n' = true  := by native_decide
-theorem isLineBreak_cr    : isLineBreak '\r' = true  := by native_decide
-theorem isLineBreak_space : isLineBreak ' '  = false := by native_decide
-theorem isLineBreak_tab   : isLineBreak '\t' = false := by native_decide
+theorem isLineBreak_nl    : isLineBreakBool '\n' = true  := by native_decide
+theorem isLineBreak_cr    : isLineBreakBool '\r' = true  := by native_decide
+theorem isLineBreak_space : isLineBreakBool ' '  = false := by native_decide
+theorem isLineBreak_tab   : isLineBreakBool '\t' = false := by native_decide
 
-theorem isWhiteSpace_space : isWhiteSpace ' '  = true  := by native_decide
-theorem isWhiteSpace_tab   : isWhiteSpace '\t' = true  := by native_decide
-theorem isWhiteSpace_nl    : isWhiteSpace '\n' = false := by native_decide
-theorem isWhiteSpace_cr    : isWhiteSpace '\r' = false := by native_decide
+theorem isWhiteSpace_space : isWhiteSpaceBool ' '  = true  := by native_decide
+theorem isWhiteSpace_tab   : isWhiteSpaceBool '\t' = true  := by native_decide
+theorem isWhiteSpace_nl    : isWhiteSpaceBool '\n' = false := by native_decide
+theorem isWhiteSpace_cr    : isWhiteSpaceBool '\r' = false := by native_decide
 
 -- Flow indicators are a subset of indicators (per-character)
-theorem flowIndicator_comma    : isFlowIndicator ',' = true ∧ isIndicator ',' = true := by constructor <;> native_decide
-theorem flowIndicator_lbracket : isFlowIndicator '[' = true ∧ isIndicator '[' = true := by constructor <;> native_decide
-theorem flowIndicator_rbracket : isFlowIndicator ']' = true ∧ isIndicator ']' = true := by constructor <;> native_decide
-theorem flowIndicator_lbrace   : isFlowIndicator '{' = true ∧ isIndicator '{' = true := by constructor <;> native_decide
-theorem flowIndicator_rbrace   : isFlowIndicator '}' = true ∧ isIndicator '}' = true := by constructor <;> native_decide
+theorem flowIndicator_comma    : isFlowIndicatorBool ',' = true ∧ isIndicatorBool ',' = true := by constructor <;> native_decide
+theorem flowIndicator_lbracket : isFlowIndicatorBool '[' = true ∧ isIndicatorBool '[' = true := by constructor <;> native_decide
+theorem flowIndicator_rbracket : isFlowIndicatorBool ']' = true ∧ isIndicatorBool ']' = true := by constructor <;> native_decide
+theorem flowIndicator_lbrace   : isFlowIndicatorBool '{' = true ∧ isIndicatorBool '{' = true := by constructor <;> native_decide
+theorem flowIndicator_rbrace   : isFlowIndicatorBool '}' = true ∧ isIndicatorBool '}' = true := by constructor <;> native_decide
 
 -- Flow indicator → indicator (universal)
 /--
@@ -129,18 +131,18 @@ This is a structural subset relationship: the 5 flow indicator characters
 `{`, `}`, `[`, `]`, `,` all appear in the 19-character indicator list.
 -/
 theorem isFlowIndicator_implies_isIndicator (c : Char)
-    (h : isFlowIndicator c = true) : isIndicator c = true := by
-  simp only [isFlowIndicator, decide_eq_true_eq, List.mem_cons, List.not_mem_nil,
+    (h : isFlowIndicatorBool c = true) : isIndicatorBool c = true := by
+  simp only [isFlowIndicatorBool, decide_eq_true_eq, List.mem_cons, List.not_mem_nil,
     or_false] at h
   rcases h with rfl | rfl | rfl | rfl | rfl <;> native_decide
 
 -- Non-indicator alphanumeric characters
-theorem isIndicator_alpha : isIndicator 'a' = false := by native_decide
-theorem isIndicator_digit : isIndicator '0' = false := by native_decide
+theorem isIndicator_alpha : isIndicatorBool 'a' = false := by native_decide
+theorem isIndicator_digit : isIndicatorBool '0' = false := by native_decide
 
 /-! ## §2  Token Classification Properties
 
-Properties of `YamlToken.isVirtual`, `canStartNode`, and `isFlowIndicator`
+Properties of `YamlToken.isVirtual`, `canStartNode`, and `isFlowIndicatorBool`
 (the token-level classifier, distinct from the character-level one in §1).
 -/
 

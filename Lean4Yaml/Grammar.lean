@@ -5,6 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import Lean4Yaml.Types
 import Lean4Yaml.Token
 import Lean4Yaml.YamlSpec
+import Lean4Yaml.CharPredicates
 
 /-!
 # Formal YAML Grammar
@@ -43,97 +44,52 @@ ties everything together.
 
 namespace Lean4Yaml.Grammar
 
-/-! ## Character Classifications (YAML 1.2.2 §5: https://yaml.org/spec/1.2.2/#chapter-5-character-productions) -/
+open Lean4Yaml.CharPredicates
 
-/--
-YAML printable characters.
+-- Re-export CharPredicates names so that `open Grammar` makes them available
+export Lean4Yaml.CharPredicates (
+  isPrintableProp isPrintableBool isPrintable_iff
+  isLineBreakProp isLineBreakBool isLineBreak_iff
+  isWhiteSpaceProp isWhiteSpaceBool isWhiteSpace_iff
+  isFlowIndicatorProp isFlowIndicatorBool isFlowIndicator_iff
+  isIndicatorProp isIndicatorBool isIndicator_iff
+  isIndentCharProp isIndentCharBool isIndentChar_iff
+  isBlankProp isBlankBool isBlank_iff
+  canStartPlainScalarProp canStartPlainScalarBool canStartPlainScalar_iff
+  isPlainSafeProp isPlainSafeBool isPlainSafe_iff
+  validPlainFirstProp validPlainFirstBool validPlainFirst_iff
+  noColonSpaceProp noColonSpaceBool noColonSpace_iff
+  noSpaceHashProp noSpaceHashBool noSpaceHash_iff
+  noFlowIndicatorsProp noFlowIndicatorsBool noFlowIndicators_iff
+  hasAdjacentChars hasAdjacentChars_iff
+  not_bool_iff_not
+)
 
-**YAML 1.2.2**: [1] c-printable (§5.1, https://yaml.org/spec/1.2.2/#51-character-set)
+/-! ## Character Classifications
 
-The set of characters that can appear in a YAML stream.
+Character predicates (`isPrintableProp`, `isLineBreakProp`, `isWhiteSpaceProp`,
+`isFlowIndicatorProp`, `isIndentCharProp`, etc.) are defined in
+`CharPredicates.lean` and re-exported above.
 -/
-@[yaml_spec "5.1" 1 "c-printable"]
-def isPrintable (c : Char) : Prop :=
-  c == '\t'                                    -- Tab
-  ∨ (c.val ≥ 0x20 ∧ c.val ≤ 0x7E)            -- Basic ASCII printable
-  ∨ c == '\u0085'                              -- Next Line
-  ∨ (c.val ≥ 0xA0 ∧ c.val ≤ 0xD7FF)          -- Basic Multilingual Plane
-  ∨ (c.val ≥ 0xE000 ∧ c.val ≤ 0xFFFD)        -- More BMP
-  ∨ (c.val ≥ 0x10000 ∧ c.val ≤ 0x10FFFF)     -- Supplementary planes
-
-instance (c : Char) : Decidable (isPrintable c) := by unfold isPrintable; infer_instance
 
 /--
-Line break characters.
-
-**YAML 1.2.2**: [24] b-line-feed, [25] b-carriage-return, [26] b-char
-(§5.4, https://yaml.org/spec/1.2.2/#54-line-break-characters)
--/
-@[yaml_spec "5.4" 26 "b-char"]
-def isLineBreak (c : Char) : Prop :=
-  c == '\n' ∨ c == '\r'
-
-instance (c : Char) : Decidable (isLineBreak c) := by unfold isLineBreak; infer_instance
-
-/--
-White space characters for YAML.
-
-**YAML 1.2.2**: [33] s-white (§5.5, https://yaml.org/spec/1.2.2/#55-white-space-characters)
-- [31] s-space: the space character
-- [32] s-tab: the tab character
-
-Only space and tab — NOT line breaks.
--/
-@[yaml_spec "5.5" 33 "s-white"]
-def isWhiteSpace (c : Char) : Prop :=
-  c == ' ' ∨ c == '\t'
-
-instance (c : Char) : Decidable (isWhiteSpace c) := by unfold isWhiteSpace; infer_instance
-
-/--
-YAML space character for indentation.
-
-**YAML 1.2.2**: [31] s-space (§6.1, https://yaml.org/spec/1.2.2/#61-indentation-spaces)
-
-Only the space character is valid for indentation.
-Tabs are explicitly forbidden for indentation in YAML 1.2.2.
--/
-@[yaml_spec "6.1" 31 "s-space"]
-def isIndentChar (c : Char) : Prop :=
-  c == ' '
-
-instance (c : Char) : Decidable (isIndentChar c) := by unfold isIndentChar; infer_instance
-
-/--
-Characters that can start a plain scalar.
+Characters that can start a plain scalar (1-argument compatibility wrapper).
 
 **YAML 1.2.2**: [123] ns-plain-first(c) (§7.3.3, https://yaml.org/spec/1.2.2/#733-plain-style)
 
-Excludes indicators ([22] c-indicator) that have special meaning at the start.
+NOTE: This is the old 1-argument version that unconditionally rejects `-`, `?`, `:`.
+The correct 3-argument version is `canStartPlainScalarProp` in CharPredicates.lean.
+This wrapper will be removed in Phase B2.
 -/
 @[yaml_spec "7.3.3" 123 "ns-plain-first(c)"]
 def canStartPlainScalar (c : Char) : Prop :=
-  isPrintable c
-  ∧ ¬ isWhiteSpace c
-  ∧ ¬ isLineBreak c
-  ∧ c ∉ ['-', '?', ':', ',', '[', ']', '{', '}', '#', '&', '*', '!', '|', '>',
-         '\'', '"', '%', '@', '`']
+  isPrintableProp c
+  ∧ ¬ isWhiteSpaceProp c
+  ∧ ¬ isLineBreakProp c
+  ∧ ¬ isIndicatorProp c
 
 instance (c : Char) : Decidable (canStartPlainScalar c) := by
   unfold canStartPlainScalar; infer_instance
-
-/--
-Flow indicator characters.
-
-**YAML 1.2.2**: [23] c-flow-indicator (§5.3, https://yaml.org/spec/1.2.2/#53-indicator-characters)
-
-These terminate plain scalars in flow context.
--/
-@[yaml_spec "5.3" 23 "c-flow-indicator"]
-def isFlowIndicator (c : Char) : Prop :=
-  c ∈ [',', '[', ']', '{', '}']
-
-instance (c : Char) : Decidable (isFlowIndicator c) := by unfold isFlowIndicator; infer_instance
 
 /-! ## Indentation (YAML 1.2.2 §6.1: https://yaml.org/spec/1.2.2/#61-indentation-spaces) -/
 
@@ -304,103 +260,16 @@ instance (content : String) : Decidable (validPlainFirst content) := by
   | nil => exact .isTrue trivial
   | cons c _ => exact inferInstance
 
-/-- Check if a list contains adjacent characters `a` then `b`. -/
-def hasAdjacentChars (a b : Char) : List Char → Bool
-  | c₁ :: c₂ :: rest => (c₁ == a && c₂ == b) || hasAdjacentChars a b (c₂ :: rest)
-  | _ => false
+-- `hasAdjacentChars` and `hasAdjacentChars_iff` are re-exported from CharPredicates above.
 
-theorem hasAdjacentChars_true_implies (a b : Char) (cs : List Char)
-    (h : hasAdjacentChars a b cs = true) :
-    ∃ i, cs[i]? = some a ∧ cs[i + 1]? = some b := by
-  induction cs with
-  | nil => simp [hasAdjacentChars] at h
-  | cons c₁ rest ih =>
-    match rest, ih with
-    | [], _ => simp [hasAdjacentChars] at h
-    | c₂ :: rest', ih =>
-      simp [hasAdjacentChars] at h
-      cases h with
-      | inl h =>
-        obtain ⟨h₁, h₂⟩ := h
-        subst h₁; subst h₂
-        exact ⟨0, by simp, by simp⟩
-      | inr h =>
-        have ⟨i, hi₁, hi₂⟩ := ih h
-        exact ⟨i + 1, by simp [hi₁], by simp [hi₂]⟩
+/-- Backward-compatible alias for `noColonSpaceProp` (YAML 1.2.2 §7.3.3 [127]). -/
+abbrev noColonSpace := noColonSpaceProp
 
-theorem hasAdjacentChars_true_of (a b : Char) (cs : List Char)
-    (h : ∃ i, cs[i]? = some a ∧ cs[i + 1]? = some b) :
-    hasAdjacentChars a b cs = true := by
-  induction cs with
-  | nil => obtain ⟨i, h₁, _⟩ := h; simp at h₁
-  | cons c₁ rest ih =>
-    match rest with
-    | [] =>
-      obtain ⟨i, h₁, h₂⟩ := h
-      cases i with
-      | zero => simp at h₂
-      | succ j => simp at h₁
-    | c₂ :: rest' =>
-      obtain ⟨i, h₁, h₂⟩ := h
-      simp [hasAdjacentChars]
-      cases i with
-      | zero =>
-        left
-        simp at h₁ h₂
-        exact ⟨h₁, h₂⟩
-      | succ j =>
-        right
-        simp at h₁ h₂
-        exact ih ⟨j, h₁, h₂⟩
+/-- Backward-compatible alias for `noSpaceHashProp` (YAML 1.2.2 §7.3.3 [127]). -/
+abbrev noSpaceHash := noSpaceHashProp
 
-theorem hasAdjacentChars_iff (a b : Char) (cs : List Char) :
-    hasAdjacentChars a b cs = true ↔ ∃ i, cs[i]? = some a ∧ cs[i + 1]? = some b :=
-  ⟨hasAdjacentChars_true_implies a b cs, hasAdjacentChars_true_of a b cs⟩
-
-/--
-Content does not contain `: ` (colon immediately followed by space).
-
-**YAML 1.2.2**: [127] ns-plain-char(c) (§7.3.3) — colon may appear in
-a plain scalar only when NOT followed by an `s-white` character.
--/
-def noColonSpace (content : String) : Prop :=
-  ¬ ∃ i, content.toList[i]? = some ':' ∧ content.toList[i + 1]? = some ' '
-
-instance (content : String) : Decidable (noColonSpace content) :=
-  match h : hasAdjacentChars ':' ' ' content.toList with
-  | false => .isTrue (fun hex =>
-      absurd ((hasAdjacentChars_iff ':' ' ' content.toList).mpr hex) (by simp [h]))
-  | true => .isFalse (fun hn =>
-      absurd ((hasAdjacentChars_iff ':' ' ' content.toList).mp h) hn)
-
-/--
-Content does not contain ` #` (space immediately followed by hash).
-
-**YAML 1.2.2**: [127] ns-plain-char(c) (§7.3.3) — `#` may appear in
-a plain scalar only when NOT preceded by an `s-white` character.
--/
-def noSpaceHash (content : String) : Prop :=
-  ¬ ∃ i, content.toList[i]? = some ' ' ∧ content.toList[i + 1]? = some '#'
-
-instance (content : String) : Decidable (noSpaceHash content) :=
-  match h : hasAdjacentChars ' ' '#' content.toList with
-  | false => .isTrue (fun hex =>
-      absurd ((hasAdjacentChars_iff ' ' '#' content.toList).mpr hex) (by simp [h]))
-  | true => .isFalse (fun hn =>
-      absurd ((hasAdjacentChars_iff ' ' '#' content.toList).mp h) hn)
-
-/--
-Content contains no flow indicator characters.
-
-**YAML 1.2.2**: [126] ns-plain-safe(FLOW-IN) (§7.3.3) — in flow context,
-plain scalars additionally cannot contain `,`, `[`, `]`, `{`, `}`.
--/
-def noFlowIndicators (content : String) : Prop :=
-  ∀ c ∈ content.toList, ¬isFlowIndicator c
-
-instance (content : String) : Decidable (noFlowIndicators content) := by
-  unfold noFlowIndicators
-  exact List.decidableBAll _ content.toList
+/-- Backward-compatible alias for `noFlowIndicatorsProp` (YAML 1.2.2 §7.3.3 [126]). -/
+abbrev noFlowIndicators := noFlowIndicatorsProp
 
 /-! ## Node Grammar
 
