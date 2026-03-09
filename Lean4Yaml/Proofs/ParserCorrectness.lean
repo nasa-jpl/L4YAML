@@ -109,13 +109,13 @@ theorem parseStream_values_have_witnesses
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
     (_h : parseStream tokens = .ok docs)
-    (h_grammable : ∀ doc ∈ docs.toList, Grammable (doc.compose.value)) :
+    (h_grammable : ∀ doc ∈ docs.toList, Grammable (doc.compose.value) false) :
     ∀ doc ∈ docs.toList, ∃ node : ValidNode,
       stripAnnotations (toYamlValue node) = stripAnnotations (doc.compose.value) := by
   intro doc hdoc
   have hg := h_grammable doc hdoc
   -- Apply yamlValue_has_witness from ParserSoundness.lean
-  exact ParserSoundness.yamlValue_has_witness (doc.compose.value) hg
+  exact ParserSoundness.yamlValue_has_witness (doc.compose.value) false hg
 
 /-! ## §2  Main Correctness Theorem
 
@@ -148,7 +148,7 @@ theorem parseStream_respects_grammar
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
     (h_parse : parseStream tokens = .ok docs)
-    (h_grammable : ∀ doc ∈ docs.toList, Grammable (doc.compose.value)) :
+    (h_grammable : ∀ doc ∈ docs.toList, Grammable (doc.compose.value) false) :
     ∀ doc ∈ docs.toList, ∃ node : ValidNode,
       stripAnnotations (toYamlValue node) = stripAnnotations (doc.compose.value) := by
   exact parseStream_values_have_witnesses tokens docs h_parse h_grammable
@@ -160,4 +160,3 @@ theorem parseStream_respects_grammar
 
 
 end Lean4Yaml.Proofs.ParserCorrectness
-

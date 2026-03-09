@@ -351,10 +351,9 @@ there exists a `ValidNode` whose `toYamlValue` is annotation-equivalent.
 
 Re-export of `soundness_completeness_compose` from `ParserCompleteness`.
 -/
-noncomputable def grammable_has_witness (v : YamlValue) (hg : Grammable v) :
+noncomputable def grammable_has_witness (v : YamlValue) (hg : Grammable v false) :
     ∃ n : ValidNode,
-      stripAnnotations (toYamlValue n) = stripAnnotations v ∧
-      Grammable (toYamlValue n) :=
+      stripAnnotations (toYamlValue n) = stripAnnotations v :=
   ParserCompleteness.soundness_completeness_compose v hg
 
 /--
@@ -381,9 +380,9 @@ concrete instances in §4.
 noncomputable def canonical_roundtrip_conditional (n : ValidNode)
     (docs : Array YamlDocument)
     (h_parse : parseYamlRaw (emit (toYamlValue n)) = .ok docs)
-    (h_grammable : ∀ i : Fin docs.size, Grammable docs[i].value) :
+    (h_grammable : ∀ i : Fin docs.size, Grammable docs[i].value false) :
     ∀ i : Fin docs.size,
-      ∃ m : ValidNode, Grammable (toYamlValue m) ∧
+      ∃ m : ValidNode,
         stripAnnotations (toYamlValue m) = stripAnnotations docs[i].value := by
   intro i
   obtain ⟨tokens, h_scan, h_pstream⟩ := emit_pipeline_decompose _ docs h_parse
@@ -401,12 +400,12 @@ This follows because:
 5. The parser output relates to SOME valid node (soundness)
 -/
 noncomputable def emit_parse_has_witness (v : YamlValue)
-    (_hg : Grammable v)
+    (_hg : Grammable v false)
     (docs : Array YamlDocument)
     (h_parse : parseYamlRaw (emit v) = .ok docs)
-    (h_grammable : ∀ i : Fin docs.size, Grammable docs[i].value) :
+    (h_grammable : ∀ i : Fin docs.size, Grammable docs[i].value false) :
     ∀ i : Fin docs.size,
-      ∃ m : ValidNode, Grammable (toYamlValue m) ∧
+      ∃ m : ValidNode,
         stripAnnotations (toYamlValue m) = stripAnnotations docs[i].value := by
   intro i
   obtain ⟨tokens, _, h_pstream⟩ := emit_pipeline_decompose _ docs h_parse

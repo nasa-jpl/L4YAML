@@ -12,34 +12,37 @@ import Lean4Yaml.Proofs.ParserSoundness
 # Parser Completeness (P10.8e)
 
 This module proves the completeness direction of the grammar–value bridge:
-every `ValidNode` in the grammar produces a **grammable** `YamlValue`,
+given a grammable value, the soundness witness is itself well-formed,
 and the annotation-stripping roundtrip is internally consistent.
 
 Combined with `parseStream_sound` (P10.8d), this establishes a full
 bidirectional correspondence:
 
 ```
-  Soundness  (P10.8d):  Grammable v  →  ∃ n, stripAnnotations (toYamlValue n) = stripAnnotations v
-  Completeness (P10.8e): ∀ n,  toYamlValue n  is Grammable
-                         ∧  ∃ n', stripAnnotations (toYamlValue n') = stripAnnotations (toYamlValue n)
+  Soundness  (P10.8d):  Grammable v inFlow  →  ∃ n, stripAnnotations (toYamlValue n) = stripAnnotations v
+  Completeness (P10.8e): ∀ grammable v, ∃ n', stripAnnotations (toYamlValue n') = stripAnnotations v
 ```
 
-Together these show the grammar is **junk-free** (every grammar node
-produces a grammable value) and **roundtrip-complete** (the
+Together these show the grammar is **roundtrip-complete** (the
 soundness theorem can always recover a grammar witness for any
 grammar-produced value).
 
+**Note on junk-freeness**: With context-aware `Grammable` (B2), the
+property `∀ n, Grammable (toYamlValue n) inFlow` cannot hold universally
+because `ValidNode` does not enforce flow-context consistency (e.g.,
+`.plainScalarBlock` inside `.flowSeq` is syntactically valid but not
+flow-grammable). Witnesses constructed by `yamlValue_has_witness` ARE
+context-consistent by construction, but this is not captured as a
+separate theorem.
+
 ## Main Results
 
-### §8: Grammar Grammability
-- `toYamlValue_grammable` — every `ValidNode` produces a grammable `YamlValue`
-
-### §9: Annotation Stripping Properties
+### §8: Annotation Stripping Properties
 - `stripAnnotations_idempotent` — double-stripping equals single stripping
 - `stripAnnotations_toYamlValue_scalar_content` — stripping a grammar scalar is identity-on-content
 
-### §10: Grammar Roundtrip
-- `grammar_value_roundtrip` — every `ValidNode` has a roundtrip witness
+### §9: Grammar Roundtrip
+- `grammar_value_roundtrip` — grammable `ValidNode` values have roundtrip witnesses
 - `parseStream_complete` — parser completeness conditioned on grammability
 - `soundness_completeness_compose` — bidirectional bridge composition
 
@@ -65,124 +68,7 @@ namespace Lean4Yaml.Proofs.ParserCompleteness
 open Lean4Yaml
 open Lean4Yaml.Grammar
 
-/-! ## §8  Grammar Grammability
-
-Every `ValidNode` produces a `YamlValue` (via `toYamlValue`) that
-satisfies the `Grammable` predicate.  This means the grammar contains
-no "junk" — every well-formed grammar node corresponds to a value
-that the soundness theorem can process.
-
-The proof is by structural recursion on `ValidNode`, matching the
-structure of `toYamlValue` itself.
--/
-
-/-- List helper: if every `ValidNode` in a list produces a grammable value,
-    then the `toYamlValueList` result is element-wise grammable. -/
-theorem toYamlValueList_grammable
-    (nodes : List ValidNode)
-    (ih : ∀ (n : ValidNode), sizeOf n < sizeOf nodes → Grammable (toYamlValue n)) :
-    ∀ (i : Nat) (hi : i < (toYamlValue.toYamlValueList nodes).length),
-      Grammable ((toYamlValue.toYamlValueList nodes)[i]) := by
-  rw [Soundness.toYamlValueList_eq_map]
-  intro i hi
-  simp only [List.length_map] at hi
-  simp only [List.getElem_map]
-  exact ih nodes[i] (List.sizeOf_lt_of_mem (List.getElem_mem hi))
-
-/-- Pair list helper: if every `ValidNode` in a pair list produces grammable
-    values, then the keys of `toYamlValuePairs` are grammable. -/
-theorem toYamlValuePairs_keys_grammable
-    (entries : List (ValidNode × ValidNode))
-    (ih : ∀ (n : ValidNode), sizeOf n < sizeOf entries → Grammable (toYamlValue n)) :
-    ∀ (i : Nat) (hi : i < (toYamlValue.toYamlValuePairs entries).length),
-      Grammable ((toYamlValue.toYamlValuePairs entries)[i].1) := by
-  rw [Soundness.toYamlValuePairs_eq_map]
-  intro i hi
-  simp only [List.length_map] at hi
-  simp only [List.getElem_map]
-  apply ih entries[i].1
-  have h1 := List.sizeOf_lt_of_mem (List.getElem_mem hi)
-  have h2 : sizeOf entries[i] = 1 + sizeOf entries[i].1 + sizeOf entries[i].2 := by
-    cases entries[i]; simp [Prod.mk.sizeOf_spec]
-  omega
-
-/-- Pair list helper: values of `toYamlValuePairs` are grammable. -/
-theorem toYamlValuePairs_vals_grammable
-    (entries : List (ValidNode × ValidNode))
-    (ih : ∀ (n : ValidNode), sizeOf n < sizeOf entries → Grammable (toYamlValue n)) :
-    ∀ (i : Nat) (hi : i < (toYamlValue.toYamlValuePairs entries).length),
-      Grammable ((toYamlValue.toYamlValuePairs entries)[i].2) := by
-  rw [Soundness.toYamlValuePairs_eq_map]
-  intro i hi
-  simp only [List.length_map] at hi
-  simp only [List.getElem_map]
-  apply ih entries[i].2
-  have h1 := List.sizeOf_lt_of_mem (List.getElem_mem hi)
-  have h2 : sizeOf entries[i] = 1 + sizeOf entries[i].1 + sizeOf entries[i].2 := by
-    cases entries[i]; simp [Prod.mk.sizeOf_spec]
-  omega
-
-/--
-**Grammar grammability**: every `ValidNode` produces a grammable `YamlValue`.
-
-This is the completeness kernel — it shows the grammar contains no junk.
-Each `ValidNode` constructor carries exactly the proof obligations that
-`Grammable` demands for the corresponding `YamlValue`.
-
-- **Plain scalars** (block/flow): the `ValidNode` constructor already
-  carries `validPlainFirst`, `noColonSpace`, `noSpaceHash` proofs;
-  the `Grammable.scalar` hypothesis is satisfied directly.
-- **Non-plain scalars**: `.singleQuoted`, `.doubleQuoted`, `.literal`,
-  `.folded` — the `Grammable.scalar` hypothesis is vacuously true
-  because `s.style ≠ .plain`.
-- **Empty node**: `s.content = ""` so `s.content.length = 0`,
-  making the hypothesis `s.content.length > 0 → ...` vacuously true.
-- **Collections**: structural recursion through the list helpers above.
-  Array size and indexing for `l.toArray` are definitionally equal to
-  list length and indexing, so no conversion lemmas are needed.
--/
-def toYamlValue_grammable : (n : ValidNode) → Grammable (toYamlValue n)
-  | .plainScalarBlock content _hne hf hcs hsh =>
-      .scalar ⟨content, .plain, none, none, none⟩ (fun _ _ => ⟨hf, hcs, hsh⟩)
-  | .plainScalarFlow content _hne hf hcs hsh _ =>
-      .scalar ⟨content, .plain, none, none, none⟩ (fun _ _ => ⟨hf, hcs, hsh⟩)
-  | .singleQuoted content =>
-      .scalar ⟨content, .singleQuoted, none, none, none⟩ (nofun)
-  | .doubleQuoted content =>
-      .scalar ⟨content, .doubleQuoted, none, none, none⟩ (nofun)
-  | .literalScalar content indent chomp =>
-      .scalar ⟨content, .literal, none, none, some ⟨chomp, some indent⟩⟩ (nofun)
-  | .foldedScalar content indent chomp =>
-      .scalar ⟨content, .folded, none, none, some ⟨chomp, some indent⟩⟩ (nofun)
-  | .emptyNode =>
-      .scalar ⟨"", .plain, none, none, none⟩
-        (fun _ h => absurd h (Nat.not_lt.mpr (Nat.le.refl)))
-  | .blockSeq _indent items =>
-      .sequence .block _ none none (fun ⟨i, hi⟩ =>
-        toYamlValueList_grammable items
-          (fun n _hn => toYamlValue_grammable n) i hi)
-  | .flowSeq items =>
-      .sequence .flow _ none none (fun ⟨i, hi⟩ =>
-        toYamlValueList_grammable items
-          (fun n _hn => toYamlValue_grammable n) i hi)
-  | .blockMap _indent entries =>
-      .mapping .block _ none none
-        (fun ⟨i, hi⟩ =>
-          toYamlValuePairs_keys_grammable entries
-            (fun n _hn => toYamlValue_grammable n) i hi)
-        (fun ⟨i, hi⟩ =>
-          toYamlValuePairs_vals_grammable entries
-            (fun n _hn => toYamlValue_grammable n) i hi)
-  | .flowMap entries =>
-      .mapping .flow _ none none
-        (fun ⟨i, hi⟩ =>
-          toYamlValuePairs_keys_grammable entries
-            (fun n _hn => toYamlValue_grammable n) i hi)
-        (fun ⟨i, hi⟩ =>
-          toYamlValuePairs_vals_grammable entries
-            (fun n _hn => toYamlValue_grammable n) i hi)
-
-/-! ## §9  Annotation Stripping Properties
+/-! ## §8  Annotation Stripping Properties
 
 The idempotence proof requires mutual recursion between `YamlValue`
 stripping and the list/pair helpers that handle collection elements.
@@ -257,41 +143,47 @@ theorem stripAnnotations_toYamlValue_scalar_content (n : ValidNode) (s : Scalar)
       .scalar ⟨s.content, s.style, none, none, none⟩ := by
   rw [h]; rfl
 
-/-! ## §10  Grammar Roundtrip
+/-! ## §9  Grammar Roundtrip
 
-The main completeness result: every `ValidNode` has a grammar witness
-that roundtrips through annotation stripping.
+The main completeness result: given a grammable `YamlValue`, the
+soundness theorem can recover a grammar witness that roundtrips
+through annotation stripping.
 
 ```
-  ValidNode n ──toYamlValue──→ YamlValue v ──stripAnnotations──→ stripped v
-       ↑                                                              ‖
-       └─── ∃ n' : ValidNode ────── toYamlValue n' ──strip──→ = stripped v
+  YamlValue v ──Grammable v inFlow──→ ∃ n, stripAnnotations (toYamlValue n) = stripAnnotations v
 ```
 
-This is proved by composing `toYamlValue_grammable` (§8) with
-`yamlValue_has_witness` (P10.8d §7).
+This is a direct corollary of `yamlValue_has_witness` (P10.8d §7).
+
+**Note**: With context-aware `Grammable` (B2), the unconditional property
+`∀ n : ValidNode, Grammable (toYamlValue n) inFlow` no longer holds because
+`ValidNode` does not enforce flow-context consistency. The roundtrip
+theorem is therefore conditional on the value being grammable.
 -/
 
 /--
-**Grammar roundtrip**: every `ValidNode` has a grammar witness whose
-stripped canonical form matches.
+**Grammar roundtrip**: a grammable `ValidNode` value has a grammar witness
+whose stripped canonical form matches.
 
 This theorem closes the soundness–completeness loop at the grammar level:
 - **Soundness** (P10.8d): every grammable value has a grammar witness
-- **Completeness** (P10.8e): every grammar node produces a grammable value
-- **Roundtrip** (this theorem): composing the two, every grammar node
-  has a canonical representative
+- **Roundtrip** (this theorem): composing soundness with grammability,
+  every grammable grammar node has a canonical representative
+
+The `inFlow` parameter and `Grammable` hypothesis are required because
+context-aware `Grammable` cannot be proven universally for all `ValidNode`
+values — only for those that are flow-context-consistent.
 -/
-noncomputable def grammar_value_roundtrip (n : ValidNode) :
+noncomputable def grammar_value_roundtrip (n : ValidNode) (inFlow : Bool)
+    (hg : Grammable (toYamlValue n) inFlow) :
     ∃ n' : ValidNode,
       stripAnnotations (toYamlValue n') = stripAnnotations (toYamlValue n) :=
-  ParserSoundness.yamlValue_has_witness (toYamlValue n) (toYamlValue_grammable n)
+  ParserSoundness.yamlValue_has_witness (toYamlValue n) inFlow hg
 
 /--
 **Parser completeness**: if `parseStream` succeeds and every document
-value is grammable, then for each `ValidNode` appearing (up to
-annotation stripping) in the parser output, there exists a `ValidNode`
-witness that matches it.
+value is grammable, then for each document there exists a `ValidNode`
+witness whose stripped form matches.
 
 This is the conditional completeness theorem: it does not require
 scanner correctness.  The full pipeline completeness
@@ -306,38 +198,32 @@ grammable, the grammar→value→grammar roundtrip is always available*.
 
 Combined with `parseStream_sound`:
 ```
-  parseStream ok ∧ Grammable docs[i].value
+  parseStream ok ∧ Grammable docs[i].value false
     → ∃ n, stripAnnotations (toYamlValue n) = stripAnnotations docs[i].value   [soundness]
-    → Grammable (toYamlValue n)                                                 [completeness]
-    → ∃ n', stripAnnotations (toYamlValue n') = stripAnnotations (toYamlValue n) [roundtrip]
 ```
 -/
 noncomputable def parseStream_complete
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
     (_hparse : TokenParser.parseStream tokens = Except.ok docs)
-    (hgrammable : ∀ i : Fin docs.size, Grammable docs[i].value) :
+    (hgrammable : ∀ i : Fin docs.size, Grammable docs[i].value false) :
     ∀ i : Fin docs.size,
-      ∃ n : ValidNode, Grammable (toYamlValue n) ∧
+      ∃ n : ValidNode,
         stripAnnotations (toYamlValue n) = stripAnnotations docs[i].value :=
   fun i =>
-    let ⟨n, hn⟩ := ParserSoundness.yamlValue_has_witness docs[i].value (hgrammable i)
-    ⟨n, toYamlValue_grammable n, hn⟩
+    ParserSoundness.yamlValue_has_witness docs[i].value false (hgrammable i)
 
 /--
-**Soundness–completeness composition**: for any grammable value, the
-recovered grammar witness is itself grammable.
+**Soundness–completeness composition**: for any grammable value,
+there exists a `ValidNode` witness whose stripped form matches.
 
-This is the key "no junk" property: the soundness direction (P10.8d)
-finds a witness `n` from a value `v`, and completeness (P10.8e) guarantees
-`toYamlValue n` is grammable — so the process can be iterated.
+This is the core bridge: the soundness direction (P10.8d) always finds
+a witness `n` from a grammable value `v`.
 -/
 noncomputable def soundness_completeness_compose
-    (v : YamlValue) (hg : Grammable v) :
+    (v : YamlValue) (hg : Grammable v false) :
     ∃ n : ValidNode,
-      stripAnnotations (toYamlValue n) = stripAnnotations v ∧
-      Grammable (toYamlValue n) :=
-  let ⟨n, hn⟩ := ParserSoundness.yamlValue_has_witness v hg
-  ⟨n, hn, toYamlValue_grammable n⟩
+      stripAnnotations (toYamlValue n) = stripAnnotations v :=
+  ParserSoundness.yamlValue_has_witness v false hg
 
 end Lean4Yaml.Proofs.ParserCompleteness

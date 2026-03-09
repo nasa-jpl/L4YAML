@@ -564,37 +564,94 @@ where
     | (k, v) :: rest =>
         (stripAnnotations k, stripAnnotations v) :: stripAnnotationsPairs rest
 
-/-! ## Grammable Predicate
+/-! ## Scalar Scannability and Grammable Predicate
 
-A `YamlValue` is *grammable* when it contains no alias nodes and every
-nested plain scalar satisfies the YAML grammar's character-level
-constraints.  This is the precondition for recovering a `ValidNode`
-witness — it captures the *scanner contract* that the parser relies on.
+The scanner guarantees that plain scalar tokens satisfy character-level
+constraints from YAML 1.2.2 §7.3.3. `ScalarScannable` captures these
+constraints, parameterized by the flow context (`inFlow : Bool`).
+
+`Grammable` is the tree-level predicate: a `YamlValue` is grammable when
+it contains no alias nodes and every nested scalar satisfies `ScalarScannable`
+at the appropriate flow context. This is the precondition for recovering a
+`ValidNode` witness — it captures the *scanner contract* that the parser
+relies on.
 -/
+
+/--
+Scanner contract: per-scalar character constraints in flow context.
+
+A scalar satisfies `ScalarScannable s inFlow` when:
+- Non-plain scalars: trivially satisfied (no character constraints)
+- Empty plain scalars: trivially satisfied
+- Non-empty plain scalars: first character can start a plain scalar,
+  no `: ` or ` #` sequences, and (in flow context) no flow indicators.
+
+**YAML 1.2.2**: §7.3.3 [123] ns-plain-first, [127] ns-plain-char,
+[126] ns-plain-safe(FLOW-IN)
+-/
+def ScalarScannable (s : Scalar) (inFlow : Bool) : Prop :=
+  s.style = .plain → s.content.length > 0 →
+    validPlainFirst s.content ∧ noColonSpace s.content ∧ noSpaceHash s.content
+    ∧ (inFlow = true → noFlowIndicators s.content)
 
 /--
 A `YamlValue` is **grammable** if:
 1. It contains no `YamlValue.alias` nodes (aliases must be resolved first).
 2. Every nested plain scalar with non-empty content satisfies
-   `validPlainFirst`, `noColonSpace`, and `noSpaceHash`.
+   `ScalarScannable` at the appropriate flow context.
 
-The scanner guarantees these properties for every token it emits.
-After composition (alias resolution), property (1) is also satisfied.
+The `inFlow` parameter threads the flow context through the tree:
+- Top-level documents start at `inFlow = false`
+- Flow collections (`style = .flow`) set `inFlow = true` for descendants
+- Block collections inherit the parent's `inFlow`
+
+**YAML 1.2.2**: Flow context is inherited (§3.2.3.1).
 -/
-inductive Grammable : YamlValue → Prop where
-  | scalar (s : Scalar)
-      (h : s.style = .plain → s.content.length > 0 →
-           validPlainFirst s.content ∧ noColonSpace s.content ∧ noSpaceHash s.content) :
-      Grammable (.scalar s)
+inductive Grammable : YamlValue → Bool → Prop where
+  | scalar (s : Scalar) (inFlow : Bool)
+      (h : ScalarScannable s inFlow) :
+      Grammable (.scalar s) inFlow
   | sequence (style : CollectionStyle) (items : Array YamlValue)
-      (tag : Option String) (anchor : Option String)
-      (h : ∀ i : Fin items.size, Grammable items[i]) :
-      Grammable (.sequence style items tag anchor)
+      (tag : Option String) (anchor : Option String) (inFlow : Bool)
+      (h : ∀ i : Fin items.size, Grammable items[i] (inFlow || style == .flow)) :
+      Grammable (.sequence style items tag anchor) inFlow
   | mapping (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
-      (tag : Option String) (anchor : Option String)
-      (hk : ∀ i : Fin pairs.size, Grammable pairs[i].1)
-      (hv : ∀ i : Fin pairs.size, Grammable pairs[i].2) :
-      Grammable (.mapping style pairs tag anchor)
+      (tag : Option String) (anchor : Option String) (inFlow : Bool)
+      (hk : ∀ i : Fin pairs.size, Grammable pairs[i].1 (inFlow || style == .flow))
+      (hv : ∀ i : Fin pairs.size, Grammable pairs[i].2 (inFlow || style == .flow)) :
+      Grammable (.mapping style pairs tag anchor) inFlow
+
+/--
+Pre-compose tree validity: the **scanner contract**.
+
+`Scannable` is the pre-compose counterpart of `Grammable`. It threads
+flow context (`inFlow : Bool`) exactly like `Grammable`, but additionally
+allows `.alias` nodes — because alias resolution happens during
+composition, and the raw parser output (serialization tree) may contain
+unresolved aliases.
+
+The bridging theorem `compose_scannable_to_grammable` (Phase C1) will
+prove that alias resolution + anchor stripping transforms a `Scannable`
+tree into a `Grammable` tree.
+
+**YAML 1.2.2**: §3.2.2 — the serialization tree may contain alias nodes;
+the representation graph (post-compose) does not.
+-/
+inductive Scannable : YamlValue → Bool → Prop where
+  | scalar (s : Scalar) (inFlow : Bool)
+      (h : ScalarScannable s inFlow) :
+      Scannable (.scalar s) inFlow
+  | alias (name : String) (inFlow : Bool) :
+      Scannable (.alias name) inFlow
+  | sequence (style : CollectionStyle) (items : Array YamlValue)
+      (tag : Option String) (anchor : Option String) (inFlow : Bool)
+      (h : ∀ i : Fin items.size, Scannable items[i] (inFlow || style == .flow)) :
+      Scannable (.sequence style items tag anchor) inFlow
+  | mapping (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
+      (tag : Option String) (anchor : Option String) (inFlow : Bool)
+      (hk : ∀ i : Fin pairs.size, Scannable pairs[i].1 (inFlow || style == .flow))
+      (hv : ∀ i : Fin pairs.size, Scannable pairs[i].2 (inFlow || style == .flow)) :
+      Scannable (.mapping style pairs tag anchor) inFlow
 
 /-! ## Quoted Scalar Fold Result Type
 
