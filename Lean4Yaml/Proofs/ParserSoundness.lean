@@ -122,29 +122,40 @@ theorem prod_snd_sizeOf_lt {α β : Type _} [SizeOf α] [SizeOf β]
 /-! ## §7  Value Witness Theorem -/
 
 /--
-**Scalar Witness**: every scalar `YamlValue` satisfying the `Grammable`
-scalar constraint has a `ValidNode` witness.
+**Scalar Witness**: every scalar `YamlValue` satisfying `ScalarScannable`
+has a `ValidNode` witness.
 
-Pattern-matches on `Scalar.style` to choose the `ValidNode` constructor.
+Pattern-matches on `Scalar.style` and `inFlow` to choose the `ValidNode` constructor.
+At `inFlow = false`, plain scalars get `.plainScalarBlock`.
+At `inFlow = true`, plain scalars get `.plainScalarFlow` (which carries `noFlowIndicators`).
 After expanding `stripAnnotations` and `toYamlValue` (both of which
 zero out tags, anchors, and blockMeta), both sides are definitionally
 equal — `rfl` closes every non-plain branch, and the plain-empty
 branch closes after substituting `content = ""`.
 -/
 def scalar_has_witness :
-    (s : Scalar) →
-    (s.style = .plain → s.content.length > 0 →
-       validPlainFirst s.content ∧ noColonSpace s.content ∧ noSpaceHash s.content) →
+    (s : Scalar) → (inFlow : Bool) →
+    ScalarScannable s inFlow →
     ∃ n : ValidNode,
       stripAnnotations (toYamlValue n) = stripAnnotations (YamlValue.scalar s)
-  | ⟨content, .singleQuoted, _, _, _⟩, _ => ⟨.singleQuoted content, rfl⟩
-  | ⟨content, .doubleQuoted, _, _, _⟩, _ => ⟨.doubleQuoted content, rfl⟩
-  | ⟨content, .literal,     _, _, _⟩, _ => ⟨.literalScalar content 0 .clip, rfl⟩
-  | ⟨content, .folded,      _, _, _⟩, _ => ⟨.foldedScalar content 0 .clip, rfl⟩
-  | ⟨content, .plain,       _, _, _⟩, h => by
+  | ⟨content, .singleQuoted, _, _, _⟩, _, _ => ⟨.singleQuoted content, rfl⟩
+  | ⟨content, .doubleQuoted, _, _, _⟩, _, _ => ⟨.doubleQuoted content, rfl⟩
+  | ⟨content, .literal,     _, _, _⟩, _, _ => ⟨.literalScalar content 0 .clip, rfl⟩
+  | ⟨content, .folded,      _, _, _⟩, _, _ => ⟨.foldedScalar content 0 .clip, rfl⟩
+  | ⟨content, .plain,       _, _, _⟩, false, h => by
     by_cases hne : content.length > 0
-    · have ⟨hf, hcs, hsh⟩ := h rfl hne
+    · have ⟨hf, hcs, hsh, _⟩ := h rfl hne
       exact ⟨.plainScalarBlock content hne hf hcs hsh, rfl⟩
+    · have h0 : content.length = 0 := by omega
+      have he : content = "" := by
+        rw [String.ext_iff]
+        simp only [String.length] at h0
+        exact List.eq_nil_of_length_eq_zero h0
+      exact ⟨.emptyNode, by subst he; rfl⟩
+  | ⟨content, .plain,       _, _, _⟩, true, h => by
+    by_cases hne : content.length > 0
+    · have ⟨hf, hcs, hsh, hnoFlow⟩ := h rfl hne
+      exact ⟨.plainScalarFlow content hne hf hcs hsh (hnoFlow rfl), rfl⟩
     · have h0 : content.length = 0 := by omega
       have he : content = "" := by
         rw [String.ext_iff]
@@ -194,14 +205,15 @@ theorem stripped_pairs_eq
 `noncomputable` because `Classical.choice` is used to select witnesses.
 -/
 noncomputable def yamlValue_has_witness :
-    (v : YamlValue) → Grammable v →
+    (v : YamlValue) → (inFlow : Bool) → Grammable v inFlow →
     ∃ n : ValidNode, stripAnnotations (toYamlValue n) = stripAnnotations v
-  | YamlValue.scalar s, .scalar _ h => scalar_has_witness s h
-  | YamlValue.sequence style items _tag _anchor, .sequence _ _ _ _ hchildren => by
+  | YamlValue.scalar s, inFlow, .scalar _ _ h => scalar_has_witness s inFlow h
+  | YamlValue.sequence style items _tag _anchor, inFlow, .sequence _ _ _ _ _ hchildren => by
+    let childFlow := inFlow || (style == .flow)
     have ih : ∀ i : Fin items.size,
         ∃ n : ValidNode,
           stripAnnotations (toYamlValue n) = stripAnnotations items[i] :=
-      fun i => yamlValue_has_witness items[i] (hchildren i)
+      fun i => yamlValue_has_witness items[i] childFlow (hchildren i)
     let nodes : List ValidNode :=
       (List.finRange items.size).map fun i => (ih i).choose
     have hNodesLen : nodes.length = items.size := by
@@ -230,15 +242,16 @@ noncomputable def yamlValue_has_witness :
     match style with
     | .block => exact ⟨.blockSeq 0 nodes, hlistArr .block⟩
     | .flow  => exact ⟨.flowSeq nodes, hlistArr .flow⟩
-  | YamlValue.mapping style pairs _tag _anchor, .mapping _ _ _ _ hk hv => by
+  | YamlValue.mapping style pairs _tag _anchor, inFlow, .mapping _ _ _ _ _ hk hv => by
+    let childFlow := inFlow || (style == .flow)
     have ihk : ∀ i : Fin pairs.size,
         ∃ n : ValidNode,
           stripAnnotations (toYamlValue n) = stripAnnotations pairs[i].1 :=
-      fun i => yamlValue_has_witness pairs[i].1 (hk i)
+      fun i => yamlValue_has_witness pairs[i].1 childFlow (hk i)
     have ihv : ∀ i : Fin pairs.size,
         ∃ n : ValidNode,
           stripAnnotations (toYamlValue n) = stripAnnotations pairs[i].2 :=
-      fun i => yamlValue_has_witness pairs[i].2 (hv i)
+      fun i => yamlValue_has_witness pairs[i].2 childFlow (hv i)
     let nodePairs : List (ValidNode × ValidNode) :=
       (List.finRange pairs.size).map fun i => ((ihk i).choose, (ihv i).choose)
     have hPairsLen : nodePairs.length = pairs.size := by
@@ -317,10 +330,10 @@ theorem parseStream_sound
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
     (_hparse : TokenParser.parseStream tokens = Except.ok docs)
-    (hgrammable : ∀ i : Fin docs.size, Grammable docs[i].value) :
+    (hgrammable : ∀ i : Fin docs.size, Grammable docs[i].value false) :
     ∀ i : Fin docs.size,
       ∃ n : ValidNode,
         stripAnnotations (toYamlValue n) = stripAnnotations docs[i].value :=
-  fun i => yamlValue_has_witness docs[i].value (hgrammable i)
+  fun i => yamlValue_has_witness docs[i].value false (hgrammable i)
 
 end Lean4Yaml.Proofs.ParserSoundness

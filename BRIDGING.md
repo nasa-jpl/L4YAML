@@ -730,7 +730,7 @@ match h : booleanCheck args with
 | true  => .isFalse (fun hn => absurd (iff.mp h) hn)
 ```
 
-### Phase B0: Create `CharPredicates.lean` (ARCHITECTURAL FOUNDATION)
+### Phase B0: Create `CharPredicates.lean` (COMPLETE ✅)
 
 Extract all character-level and string-level predicates into a shared module
 that both Scanner.lean and Grammar.lean import. Each predicate gets three
@@ -879,7 +879,7 @@ Files changed: CharPredicates.lean (new), Scanner.lean, Grammar.lean,
 CharClass.lean, ScannerProofs.lean, ScannerDoubleQuoted.lean,
 ScannerCorrectness.lean, EscapeResolution.lean — 8 files total.
 
-### Phase B1: Add `Scannable` Predicate
+### Phase B1: Add `Scannable` Predicate (COMPLETE ✅)
 
 Define `Scannable` in `Grammar.lean` — the **scanner contract** that mirrors
 the implementation's token-level guarantees. `Scannable` is the pre-compose
@@ -919,7 +919,26 @@ inductive Scannable : YamlValue → Bool → Prop where
 `inFlow` becomes `true` and stays `true` for all descendants. This matches
 YAML 1.2.2 — flow context is inherited.
 
-### Phase B2: Update `Grammable` to Context-Aware (Option C)
+#### Phase B1 Reflections
+
+**Status:** COMPLETE. 213/213 build, 0 sorry, 0 axioms.
+
+B1 was purely additive — `Scannable` and `ScalarScannable` were added to
+Grammar.lean without changing any existing definitions or proofs.
+
+**Implementation note — `ScalarScannable` uses old 1-arg predicates:**
+The B1 plan specified `validPlainFirstProp s.content inFlow` (2-arg Prop),
+but the implementation uses `validPlainFirst s.content` (old 1-arg Bool
+wrapper from `canStartPlainScalar`). This was a deliberate choice to keep
+`ValidNode` UNCHANGED — the old `.plainScalarBlock` and `.plainScalarFlow`
+constructors carry 1-arg `validPlainFirst` proofs, so using the same
+predicate in `ScalarScannable` avoids a conversion step. The 1-arg version
+is strictly stronger (rejects ALL indicators including `-`, `?`, `:`) so
+it implies the 2-arg version for any `inFlow`.
+
+**Files changed:** Grammar.lean (1 file — additive only).
+
+### Phase B2: Update `Grammable` to Context-Aware (Option C) (COMPLETE ✅)
 
 Replace the current `Grammable` with a context-aware version that threads
 `inFlow : Bool` and excludes aliases (post-compose guarantee).
@@ -967,6 +986,91 @@ composed tree satisfies `Grammable`.
 **Update existing proof files** that reference `Grammable` — they now
 require the `inFlow` parameter. Top-level documents start with
 `inFlow = false`.
+
+#### Phase B2 Reflections
+
+**Status:** COMPLETE. 213/213 build, 0 sorry, 0 axioms.
+
+**Unexpected challenges:**
+
+1. **`toYamlValue_grammable` became unprovable.** The old `Grammable` was
+   context-free, so `∀ n : ValidNode, Grammable (toYamlValue n)` held
+   trivially — every constructor had the right proofs. With context-aware
+   `Grammable`, the theorem `∀ n, Grammable (toYamlValue n) inFlow` fails
+   for any fixed `inFlow`:
+   - At `false`: `.flowSeq` children need `Grammable child true`, but IH
+     only gives `false`.
+   - At `true`: `.plainScalarBlock` lacks `noFlowIndicators`.
+   - At `∀ inFlow`: same `.plainScalarBlock` problem.
+
+   **Root cause:** `ValidNode` is a free inductive — you can construct
+   `.flowSeq [.plainScalarBlock "hello{bad}"]` which is syntactically valid
+   but semantically inconsistent (block scalar with flow indicators inside
+   a flow collection). Context-aware `Grammable` correctly rejects this,
+   but `toYamlValue_grammable` was trying to prove ALL ValidNodes grammable.
+
+2. **Solution: remove `toYamlValue_grammable` entirely.** The "no-junk"
+   property it provided was actually guaranteed by construction in
+   `yamlValue_has_witness`: when soundness constructs a witness `n` from
+   `Grammable v inFlow`, it picks the RIGHT constructor (`.plainScalarBlock`
+   at `false`, `.plainScalarFlow` at `true`), so the witness is always
+   context-consistent. The separate `toYamlValue_grammable` was redundant.
+
+**Simplifications discovered:**
+
+1. **Return type simplification cascaded nicely.** Dropping
+   `Grammable (toYamlValue n)` from the return types of `parseStream_complete`,
+   `soundness_completeness_compose`, `grammable_has_witness`,
+   `canonical_roundtrip_conditional`, and `emit_parse_has_witness` made all
+   these theorems trivial wrappers around `yamlValue_has_witness`. The proof
+   bodies reduced from multi-line compositions to single-line calls.
+
+2. **`nofun` works for non-plain scalar `ScalarScannable`.** Since
+   `ScalarScannable s inFlow` starts with `s.style = .plain → ...`, non-plain
+   scalars (`.singleQuoted`, `.doubleQuoted`, `.literal`, `.folded`) are
+   handled by `nofun` — identical to the old Grammable.
+
+3. **`grammar_value_roundtrip` became conditional.** Previously unconditional
+   (`∀ n, ∃ n', ...`), it now requires `Grammable (toYamlValue n) inFlow`.
+   This is semantically correct: only context-consistent ValidNodes can
+   roundtrip through the soundness bridge.
+
+**Idiom learned:** When a free inductive type gains semantic constraints
+(like flow context), properties proven "for all constructors" may become
+unprovable. The fix is to carry the constraint as a hypothesis, not to
+force the property to hold universally. This matches the standard approach
+of conditional correctness theorems throughout the codebase.
+
+**Architecture outcome:**
+
+```
+Grammar.lean:
+  ScalarScannable s inFlow                    — scanner contract (B1)
+  Scannable v inFlow                          — pre-compose validity + aliases (B1)
+  Grammable v inFlow                          — post-compose validity, no aliases (B2)
+
+ParserSoundness.lean:
+  scalar_has_witness s inFlow h               — scalar witness at context
+  yamlValue_has_witness v inFlow hg           — value witness at context
+  parseStream_sound ... (hg : ∀ i, Grammable docs[i].value false)
+
+ParserCompleteness.lean:
+  grammar_value_roundtrip n inFlow hg         — conditional roundtrip
+  parseStream_complete ... (hg : ∀ i, Grammable docs[i].value false)
+  soundness_completeness_compose v (hg : Grammable v false)
+
+ParserCorrectness.lean:
+  parseStream_values_have_witnesses ... (hg : ∀ doc ∈ ..., Grammable ... false)
+  parseStream_respects_grammar      ... (hg : ∀ doc ∈ ..., Grammable ... false)
+
+ScannerEmitBridge.lean:
+  grammable_has_witness v (hg : Grammable v false)
+  canonical_roundtrip_conditional ... (hg : ∀ i, Grammable docs[i].value false)
+  emit_parse_has_witness          ... (hg : ∀ i, Grammable docs[i].value false)
+```
+
+Files changed: Grammar.lean, ParserSoundness.lean, ParserCompleteness.lean,
+ParserCorrectness.lean, ScannerEmitBridge.lean — 5 files total.
 
 ### Phase B3: Scanner Predicate Enforcement
 
