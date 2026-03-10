@@ -2373,41 +2373,235 @@ All grammar validity predicates (`Scannable`, `Grammable`, `ValidNode`,
 (Option G2b). Therefore they are **automatically** comment-agnostic —
 no changes needed to the predicates themselves.
 
-#### **G6. Round-trip theorem:**
+##### Phase G5 Reflections
+
+**Status: COMPLETE — confirmed and formalized.**
+The G2b side-channel design makes this phase trivially true: all four
+predicates operate on `YamlValue`, and `stripComments` only touches
+`YamlDocument.comments`, leaving `.value` definitionally unchanged.
+
+**Predicate signatures (all on `YamlValue`, none mention comments):**
+
+| Predicate | Type | Defined in |
+|-----------|------|------------|
+| `Grammable` | `YamlValue → Bool → Prop` | Grammar.lean L593 |
+| `Scannable` | `YamlValue → Bool → Prop` | Grammar.lean L623 |
+| `ValidNode` | inductive (pure AST) | Grammar.lean L265 |
+| `ValidYaml` | structure with `value : YamlValue` | Grammar.lean L464 |
+
+**Formalization (CommentProperties.lean §6 — 4 new theorems):**
+
+| Theorem | Statement | Proof |
+|---------|-----------|-------|
+| `grammable_stripComments_iff` | `Grammable doc.stripComments.value ↔ Grammable doc.value` | `constructor <;> intro h; exact h` |
+| `scannable_stripComments_iff` | `Scannable doc.stripComments.value ↔ Scannable doc.value` | same |
+| `grammable_of_stripComments` | forward direction (convenience) | direct |
+| `scannable_of_stripComments` | forward direction (convenience) | direct |
+
+**Why the proofs are trivial:** `doc.stripComments.value` is
+*definitionally* `doc.value` (since `stripComments = { doc with comments := #[] }`
+doesn't touch `value`). Both `iff` directions are the identity function.
+The theorems exist for documentation and so downstream proofs can `rw` through
+`stripComments` without needing to know the implementation.
+
+**No predicate changes needed:** As predicted by the G2b design, zero
+modifications to `Scannable`, `Grammable`, `ValidNode`, or `ValidYaml`.
+
+**New import:** CommentProperties.lean now also imports `Lean4Yaml.Grammar`
+(previously only `Lean4Yaml.Types`) for `Grammar.Grammable`/`Grammar.Scannable`.
+
+**Build:** 223/223 ✔, 4 pre-existing sorries unchanged.
+
+#### **G5b. YamlPath: tree-addressed value navigation.**
+
+The G5 theorems confirm predicates are comment-agnostic, but a practical
+gap remains: given a `YamlValue` deep in a document, there is no way to
+find its source position or associated comments. `commentsAt` requires
+a `YamlPos` that the user doesn't have.
+
+A **YamlPath** type (analogous to `jq`/`yq` paths) addresses this:
 
 ```lean
-/-- Comments are preserved through parse → emit → parse. -/
-theorem comment_round_trip (input : String)
-    (doc : YamlDocument)
-    (h : parseYaml input = .ok #[doc]) :
-    ∀ c ∈ doc.comments,
-      ∃ c' ∈ (parseYaml (emit doc)).get!.comments,
-        c.2.text = c'.2.text ∧ c.2.position = c'.2.position
+/-- A single step in a path through a YAML value tree. -/
+inductive PathSegment where
+  /-- Index into a sequence: `.[i]` -/
+  | index (i : Nat)
+  /-- Key lookup in a mapping: `.key` -/
+  | key (k : String)
+  deriving Repr, BEq, DecidableEq
+
+/-- A path from the document root to a node in the value tree.
+    Analogous to jq/yq selectors: `.servers[0].port` ≈ #[.key "servers", .index 0, .key "port"] -/
+abbrev YamlPath := Array PathSegment
 ```
 
-This theorem states that comment text and relative position are
-preserved through a round-trip. The exact byte position may shift
-(due to whitespace normalization), but the logical position
-(before/inline/after which node) and text content are stable.
+**Tree navigation:**
+
+```lean
+/-- Resolve a path against a value tree, returning the addressed sub-value. -/
+def YamlValue.resolve (v : YamlValue) (path : YamlPath) : Option YamlValue
+```
+
+Structural recursion on path segments: `.index i` indexes into
+`.sequence` items, `.key k` looks up in `.mapping` pairs by scalar
+content. Returns `none` for type mismatches or out-of-bounds.
+
+**Properties:**
+
+```lean
+/-- Empty path resolves to the value itself. -/
+theorem resolve_nil (v : YamlValue) : v.resolve #[] = some v
+
+/-- Resolve is deterministic (functional — follows from being a `def`). -/
+
+/-- Stripping comments does not affect resolution (comments are on
+    YamlDocument, not YamlValue). -/
+theorem resolve_stripComments_eq (doc : YamlDocument) (path : YamlPath) :
+    doc.stripComments.value.resolve path = doc.value.resolve path
+```
+
+##### Phase G5b Reflections
+
+#### **G5c. Node position side-channel + `commentsFor`.**
+
+The parser already knows the source position of every node it constructs
+(via `ParseState.pos`), but discards this information after building the
+`YamlValue`. A **node position map** captures it as a side-channel on
+`YamlDocument`, keyed by `YamlPath`:
+
+```lean
+structure YamlDocument where
+  value : YamlValue
+  directives : Array Directive := #[]
+  anchors : Array (String × YamlValue) := #[]
+  comments : Array (YamlPos × Comment) := #[]
+  /-- Source span of each node, keyed by path from root. -/
+  nodePositions : Array (YamlPath × YamlPos × YamlPos) := #[]
+```
+
+The parser records `(currentPath, startPos, endPos)` for each completed
+node during `parseNode`/`parseSequence`/`parseMapping`. The path is
+built incrementally: `parseSequence` pushes `.index i` for each child,
+`parseMapping` pushes `.key k` for each entry.
+
+**Comment-for-path lookup:**
+
+```lean
+/-- Find all comments whose source position falls within the span of
+    the node at `path`. Returns an empty array if the path is not in
+    the position map. -/
+def YamlDocument.commentsFor (doc : YamlDocument) (path : YamlPath) : Array Comment :=
+  match doc.nodePositions.find? (fun (p, _, _) => p == path) with
+  | some (_, startPos, endPos) =>
+    doc.comments.filterMap fun (pos, c) =>
+      if startPos.offset ≤ pos.offset && pos.offset ≤ endPos.offset then some c else none
+  | none => #[]
+```
+
+**Normalization:**
+
+```lean
+/-- Strip node positions (presentation detail, like comments). -/
+def YamlDocument.stripPositions (doc : YamlDocument) : YamlDocument :=
+  { doc with nodePositions := #[] }
+```
+
+**Properties:**
+
+```lean
+/-- Stripping positions preserves the value tree. -/
+theorem stripPositions_value_eq (doc) : doc.stripPositions.value = doc.value
+
+/-- Stripping positions preserves comments. -/
+theorem stripPositions_comments_eq (doc) : doc.stripPositions.comments = doc.comments
+
+/-- stripPositions and stripComments commute. -/
+theorem stripPositions_stripComments_comm (doc) :
+    doc.stripPositions.stripComments = doc.stripComments.stripPositions
+
+/-- commentsFor on a document with no comments returns empty. -/
+theorem commentsFor_stripComments (doc : YamlDocument) (path : YamlPath) :
+    doc.stripComments.commentsFor path = #[]
+```
+
+All expected to be `rfl` — same orthogonal-struct-update pattern as G3/G4.
+
+**Proof impact:** Adding `nodePositions` to `YamlDocument` has the same
+impact profile as adding `comments` in G2:
+- `DecidableEq YamlDocument` needs 5-field case analysis (was 4)
+- Anonymous constructor sites `⟨val, dirs, anchors, comments⟩` → add `#[]`
+- All `{ value := ... }` named-field sites unaffected (default `#[]`)
+- `compose`, `stripComments` use `{ doc with ... }` → preserve `nodePositions`
+
+##### Phase G5c Reflections
+
+#### **G6. Round-trip theorem (YamlPath-aware):**
+
+With G5b/G5c, comment round-trip can be stated in terms of *which node*
+a comment is associated with, not just raw byte positions:
+
+```lean
+/-- Comments are preserved through parse → emit → parse, identified
+    by their associated node path and text content. -/
+theorem comment_round_trip (input : String)
+    (doc : YamlDocument)
+    (h : parseYamlWithComments input = .ok #[doc]) :
+    ∀ path : YamlPath,
+      ∀ c ∈ (doc.commentsFor path).toList,
+        ∃ c' ∈ (roundTrip doc |>.commentsFor path).toList,
+          c.text = c'.text ∧ c.position = c'.position
+where
+  roundTrip (doc : YamlDocument) : YamlDocument :=
+    match parseYamlWithComments (emit doc) with
+    | .ok #[doc'] => doc'
+    | _ => doc  -- fallback for type-correctness
+```
+
+This states: for every node path in the document, every comment
+associated with that path survives the round-trip with the same text
+and relative position. The exact byte offset may shift (whitespace
+normalization), but the logical association (which node, before/inline/after)
+and text content are stable.
+
+**Depends on:** G5b (`YamlPath`), G5c (`commentsFor`, `nodePositions`),
+G3 (`parseYamlWithComments`).
 
 ##### Phase G6 Reflections
 
-#### **G7. Structural equivalence modulo comments:**
+#### **G7. Structural equivalence modulo comments and positions:**
 
 ```lean
-/-- Structural parse results are unchanged by comment presence.
-    Parsing with or without comments yields the same YamlValue tree. -/
+/-- Structural parse results are unchanged by comment or position presence.
+    Parsing with or without comments/positions yields the same YamlValue tree. -/
 theorem parse_value_independent_of_comments (input : String)
     (docs : Array YamlDocument)
     (h : parseYaml input = .ok docs) :
     ∀ i : Fin docs.size,
       docs[i].stripComments.compose.value = docs[i].compose.value
+
+/-- Positions do not affect the value tree either. -/
+theorem parse_value_independent_of_positions (input : String)
+    (docs : Array YamlDocument)
+    (h : parseYaml input = .ok docs) :
+    ∀ i : Fin docs.size,
+      docs[i].stripPositions.compose.value = docs[i].compose.value
+
+/-- Stripping both comments and positions still yields the same value. -/
+theorem parse_value_independent_of_presentation (input : String)
+    (docs : Array YamlDocument)
+    (h : parseYaml input = .ok docs) :
+    ∀ i : Fin docs.size,
+      docs[i].stripComments.stripPositions.compose.value = docs[i].compose.value
+
+/-- Resolution by YamlPath is independent of comments and positions. -/
+theorem resolve_independent_of_presentation (doc : YamlDocument) (path : YamlPath) :
+    doc.stripComments.stripPositions.value.resolve path = doc.value.resolve path
 ```
 
-This is trivially true when comments are in a side-channel (G2b)
-since `stripComments` doesn't touch `value`. But it's worth stating
-explicitly as it formalizes YAML 1.2.2 §6.6: comments have no
-effect on the serialization tree.
+All trivially true under the G2b side-channel design — `stripComments`,
+`stripPositions`, and `compose` operate on orthogonal struct fields.
+Formalizes YAML 1.2.2 §6.6: comments and source positions are
+presentation details with no effect on the serialization tree.
 
 ##### Phase G7 Reflections
 
@@ -2461,12 +2655,18 @@ Phase B0 (CharPredicates.lean — shared Bool + Prop + iff)
     │
     └──▸ Phase G (comment preservation — round-trip)
               │
-              ├──▸ G1 (scanner emits comment tokens)
-              ├──▸ G2 (AST side-channel for comments)
-              ├──▸ G3 (parser collects comments)
-              ├──▸ G4–G5 (stripComments + modulo-comments)
-              ├──▸ G6 (comment round-trip theorem)
-              └──▸ G7 (structural independence theorem)
+              ├──▸ G1 (scanner emits comment tokens) ✅
+              ├──▸ G2 (AST side-channel for comments) ✅
+              ├──▸ G3 (parser collects comments) ✅
+              ├──▸ G4 (stripComments normalization) ✅
+              ├──▸ G5 (predicate comment-agnosticism) ✅
+              ├──▸ G5b (YamlPath type + resolve + properties)
+              ├──▸ G5c (nodePositions side-channel + commentsFor)
+              │         │
+              │         ├──▸ G6 (comment round-trip — YamlPath-aware)
+              │         └──▸ G7 (structural independence — comments + positions)
+              │
+              └── G5b + G5c are prerequisites for G6/G7
 
 Phase H (JSON-is-YAML-subset — future, no structural changes)
 ```

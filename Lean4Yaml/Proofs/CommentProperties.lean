@@ -3,6 +3,7 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml.Types
+import Lean4Yaml.Grammar
 
 /-!
 # Comment Properties (Phase G3)
@@ -123,5 +124,42 @@ theorem compose_value_eq_of_comments_eq
   unfold YamlDocument.compose
   simp only []
   rw [hv, ha]
+
+/-! ## §6  Specification predicates modulo comments (Phase G5)
+
+All grammar validity predicates (`Scannable`, `Grammable`, `ValidNode`,
+`ValidYaml`) are defined on `YamlValue`, which does not contain comments
+(G2b side-channel design). `YamlDocument.stripComments` only touches the
+`comments` field, leaving `value` identical. Therefore every predicate
+that holds on `doc.value` automatically holds on `doc.stripComments.value`
+and vice versa.
+
+This section formalizes that comment-agnosticism with explicit theorems
+so downstream proofs can rewrite through `stripComments` transparently.
+-/
+
+/-- `Grammable` is comment-agnostic: stripping comments from a document
+    does not affect whether its value is grammable. -/
+theorem grammable_stripComments_iff (doc : YamlDocument) (inFlow : Bool) :
+    Grammar.Grammable doc.stripComments.value inFlow ↔
+    Grammar.Grammable doc.value inFlow := by
+  constructor <;> (intro h; exact h)
+
+/-- `Scannable` is comment-agnostic: stripping comments from a document
+    does not affect whether its value is scannable. -/
+theorem scannable_stripComments_iff (doc : YamlDocument) (inFlow : Bool) :
+    Grammar.Scannable doc.stripComments.value inFlow ↔
+    Grammar.Scannable doc.value inFlow := by
+  constructor <;> (intro h; exact h)
+
+/-- Stripping comments preserves `Grammable` (forward direction). -/
+theorem grammable_of_stripComments (doc : YamlDocument) (inFlow : Bool)
+    (h : Grammar.Grammable doc.value inFlow) :
+    Grammar.Grammable doc.stripComments.value inFlow := h
+
+/-- Stripping comments preserves `Scannable` (forward direction). -/
+theorem scannable_of_stripComments (doc : YamlDocument) (inFlow : Bool)
+    (h : Grammar.Scannable doc.value inFlow) :
+    Grammar.Scannable doc.stripComments.value inFlow := h
 
 end Lean4Yaml.Proofs.CommentProperties
