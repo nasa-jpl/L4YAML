@@ -102,6 +102,37 @@ structure Comment where
   position : CommentPosition
   deriving Repr, BEq, Inhabited, DecidableEq
 
+/-! ## Stream Position
+
+Position in a YAML stream, used by the tokenized parser pipeline.
+Relocated from `Stream.lean` during P10.6 (old parser deletion) so that
+position tracking survives without the lean4-parser dependency.
+-/
+
+/--
+Position in a YAML stream.
+
+Tracks byte offset (for efficient save/restore), line number, and column number.
+Line and column are 0-based to match YAML spec conventions.
+-/
+structure YamlPos where
+  /-- Byte offset into the source string -/
+  offset : Nat
+  /-- Current line number (0-based) -/
+  line : Nat
+  /-- Current column number (0-based) -/
+  col : Nat
+  deriving Repr, BEq, Inhabited, Hashable, DecidableEq
+
+instance : Ord YamlPos where
+  compare a b := compare a.offset b.offset
+
+instance : LT YamlPos where
+  lt a b := a.offset < b.offset
+
+instance : LE YamlPos where
+  le a b := a.offset ≤ b.offset
+
 /--
 A YAML scalar with style information.
 
@@ -174,6 +205,9 @@ structure YamlDocument where
   value : YamlValue
   directives : Array Directive := #[]
   anchors : Array (String × YamlValue) := #[]
+  /-- Comments collected during scanning (side-channel, §6.6).
+      Each entry pairs the source position of the `#` with the comment struct. -/
+  comments : Array (YamlPos × Comment) := #[]
   deriving Repr, BEq, Inhabited
 
 /-! ## Convenience Constructors -/
@@ -353,6 +387,10 @@ def YamlDocument.compose (doc : YamlDocument) : YamlDocument :=
     value := (doc.value.resolveAliases doc.anchors).stripAnchors
     anchors := #[] }
 
+/-- Strip all comments from a document (§6.6: comments are presentation detail). -/
+def YamlDocument.stripComments (doc : YamlDocument) : YamlDocument :=
+  { doc with comments := #[] }
+
 /-! ## Anchor Map
 
 An association-list map from anchor names to their resolved `YamlValue`s.
@@ -464,36 +502,5 @@ theorem find?_empty (name : String) :
   rfl
 
 end AnchorMap
-
-/-! ## Stream Position
-
-Position in a YAML stream, used by the tokenized parser pipeline.
-Relocated from `Stream.lean` during P10.6 (old parser deletion) so that
-position tracking survives without the lean4-parser dependency.
--/
-
-/--
-Position in a YAML stream.
-
-Tracks byte offset (for efficient save/restore), line number, and column number.
-Line and column are 0-based to match YAML spec conventions.
--/
-structure YamlPos where
-  /-- Byte offset into the source string -/
-  offset : Nat
-  /-- Current line number (0-based) -/
-  line : Nat
-  /-- Current column number (0-based) -/
-  col : Nat
-  deriving Repr, BEq, Inhabited, Hashable, DecidableEq
-
-instance : Ord YamlPos where
-  compare a b := compare a.offset b.offset
-
-instance : LT YamlPos where
-  lt a b := a.offset < b.offset
-
-instance : LE YamlPos where
-  le a b := a.offset ≤ b.offset
 
 end Lean4Yaml

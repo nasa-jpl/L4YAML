@@ -2163,8 +2163,8 @@ incomplete:
 | `CommentPosition` (before/inline/after) | ✅ Defined in Types.lean |
 | `YamlToken.comment` variant | ✅ Defined in Token.lean |
 | Scanner emits `.comment` tokens | ✅ Side-channel in `ScannerState.comments` |
-| `YamlValue` carries comments | ❌ No comment fields |
-| `YamlDocument` carries comments | ❌ No comment fields |
+| `YamlValue` carries comments | ❌ No comment fields (by design: G2b) |
+| `YamlDocument` carries comments | ✅ Side-channel `comments` field |
 | Parser preserves comments | ❌ Not implemented |
 
 **Implementation plan:**
@@ -2248,6 +2248,38 @@ Proofs about structural equivalence work on the value tree directly;
 comment preservation is a separate side-property.
 
 ##### Phase G2 Reflections
+
+**Decision: G2b (side-channel) — as planned.**
+Comments live on `YamlDocument`, not on `YamlValue`. This keeps the value
+tree proof-clean: all `Scannable`, `Grammable`, `ValidNode`, `ValidYaml`
+predicates operate on `YamlValue` and are automatically comment-agnostic.
+
+**Implementation (Types.lean):**
+1. Relocated `YamlPos` definition from end of file to before `YamlDocument`
+   (it was defined after `YamlDocument`, creating a forward-reference error
+   when used as a field type).
+2. Added `comments : Array (YamlPos × Comment) := #[]` field to
+   `YamlDocument`, with default `#[]` so all existing construction sites
+   that use named fields or `{ value := ..., directives := ..., anchors := ... }`
+   continue to work without modification.
+3. Added `YamlDocument.stripComments` — `{ doc with comments := #[] }` —
+   anticipating G4/G7 needs.
+4. `YamlDocument.compose` uses `{ doc with ... }` syntax → comments are
+   automatically preserved through composition (no code change needed).
+
+**Proof impact:**
+- `DecidableEq YamlDocument` (Completeness.lean) — extended manually from
+  3-field to 4-field case analysis. `Comment` and `YamlPos` both derive
+  `DecidableEq`, so `Array (YamlPos × Comment)` gets it automatically.
+- Anonymous constructor sites (`⟨val, dirs, anchors⟩`) in
+  `Lean4Yaml/Proofs/DumpRoundTrip.lean` and `Tests/DumpRoundTrip.lean` —
+  updated to `⟨val, dirs, anchors, #[]⟩` (8 sites total). Named field
+  construction sites (`{ value := ... }`) were unaffected.
+- All other proofs untouched — `YamlValue` is unchanged, and proofs
+  only destructure `YamlDocument` through `.value`/`.directives`/`.anchors`
+  field accessors.
+
+**Build:** 221/221 ✔, 4 pre-existing sorries unchanged.
 
 #### **G3. Parser: collect `.comment` tokens into side-channel.**
 
