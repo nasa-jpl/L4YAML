@@ -1838,30 +1838,32 @@ per Phase 1 experience)
 5. **B3.4** — `scanPlainScalar_content_valid` (composition)
 6. **B3.5** — Global `scan_plain_scalar_valid` (threading)
 
-#### Open Questions
+#### Open Questions (ALL RESOLVED)
 
-1. **Block-context line-fold + `#` boundary:** Does the scanner correctly
-   handle `#` at the start of a continuation line in a block-context plain
-   scalar? If `content = "foo"`, line fold produces `"foo "`, and the next
-   line starts with `#` with `spaces = ""`, then `#` enters content giving
-   `"foo #"` which violates `noSpaceHash`. Need to verify whether this is
-   (a) prevented by the YAML spec (§7.3.3 says `#` preceded by `ns-char`
-   only), (b) caught by a termination condition we're not tracking, or
-   (c) a scanner bug that needs fixing before the proof.
+1. **Block-context line-fold + `#` boundary** — RESOLVED in B3.3.
+   Answer: **(b) caught by a termination condition.** The B3.1 scanner
+   fix added `match s'.peek? with | some '#' => terminate | _ => recurse`
+   after `_handleBlockLineBreak`. After fold, if the next char is `#`,
+   the scanner terminates (invariant preserved trivially via
+   `transfer_nonblank_peek`). This also motivated the `BoundaryHash`
+   hypothesis — see B3.3 Reflections.
 
-2. **`firstChar` tracking through line folds:** Can a plain scalar's first
-   character come from a continuation line (i.e., empty first line then
-   content on continuation)? The `canStartPlainScalarBool` check happens
-   before `collectPlainScalarLoop` in `scanPlainScalar`, so the first
-   character is always checked. But `validPlainFirst` operates on the
-   *final* content string. If `trimTrailingWS` changes the content's first
-   character (unlikely — it's a suffix operation), we need a lemma.
+2. **`firstChar` tracking through line folds** — RESOLVED in B3.4.
+   Answer: **No issue.** The first character always comes from the initial
+   `canStartPlainScalarBool` check (before the loop), and `trimTrailingWS`
+   is a suffix operation that never changes the first character. The
+   `PlainContentInv.empty` base case handles initial content directly.
+   The remaining gap is `validPlainFirstProp` for single-exception-char
+   content (e.g., `"?"` alone) — documented in B3.4 Reflections as a
+   known sorry with three resolution options.
 
-3. **`PlainContentInv` exact shape:** The invariant sketch above captures
-   the main properties, but the exact boundary conditions (last character
-   of content before spaces flush, interaction between empty content and
-   `validPlainFirst`) will be refined during implementation. Expect 1–2
-   revisions as proof obligations reveal additional constraints.
+3. **`PlainContentInv` exact shape** — RESOLVED in B3.3.
+   Answer: **Two revisions occurred as predicted.** (a) `BoundaryHash`
+   was discovered as a *separate hypothesis* (not a struct field) because
+   terminal `#` cases make the field impossible at termination points.
+   (b) `boundary_colon` was strengthened to couple with scanner state:
+   `content.toList.getLast? = some ':' → spaces = "" ∧ (∀ n, s.peek? =
+   some n → ¬isBlankProp n)`. See B3.3 Reflections for details.
 
 ### Phase C: Discharge `h_grammable` (CRITICAL PATH) (COMPLETE ✅)
 
@@ -2053,11 +2055,51 @@ work was done in Phases B3.5 and C. The key enablers:
 - `Grammar.ValidYaml` bundles these two fields with `input` and `value`
 - The structure constructor does the rest
 
-### Phase E: ValidTokenStream Contract (SUPPORTING)
+### Phase E: ValidTokenStream Contract ✅ COMPLETE
 
-Prove `scan_produces_valid_token_stream` so the scanner/parser boundary
-has a typed contract. Architecturally important but not blocking the
-critical path.
+Proved `scanFiltered_produces_valid_tokens`: filtering out internal
+`.placeholder` tokens from a successful `scan` result preserves all
+`ValidTokenStream` invariants (size ≥ 2, streamStart/streamEnd envelope,
+monotonic position ordering).
+
+**Key result** (ScannerCorrectness.lean §3.5, ~120 lines, zero sorry):
+```
+def scanFiltered_produces_valid_tokens (input : String)
+    (ftokens : Array (Positioned YamlToken))
+    (h : scanFiltered input = .ok ftokens) : ValidTokenStream
+```
+
+This bridges the scanner's internal representation (`scan` with placeholders)
+to the filtered stream consumed by `TokenParser` (`scanFiltered`).
+
+#### Phase E Reflections
+
+**Proof architecture**: The core difficulty was bridging `Array` operations
+(which elaborate to `.data[i]`) with `List`-level lemmas (which use
+`.toList`). `simp only [Array.toList_filter]` cannot fire on array
+subscript goals directly because the elaborator uses `.data`, not `.toList`.
+The solution: `show (a.filter p).toList[i]'bound = ...` introduces `.toList`
+explicitly, after which `simp only [Array.toList_filter]` matches and rewrites.
+
+**Proof strategy**:
+1. Unfold `scanFiltered`, case-split on `scan input`, extract tokens
+2. Obtain `ValidTokenStream` for unfiltered tokens via `scan_produces_valid_tokens`
+3. Work entirely at `List` level: prove head/getLast of filtered list equal
+   original head/getLast using `List.head_filter` / `List.getLast_filter` +
+   `List.find?_cons_of_pos`
+4. Prove `size ≥ 2` by contradiction: size=0 contradicts non-empty, size=1
+   forces streamStart = streamEnd (impossible by `cases`)
+5. Prove position ordering via `List.pairwise_iff_getElem` ↔ `List.Pairwise`,
+   `List.Pairwise.sublist List.filter_sublist`
+
+**Technical lessons**:
+- `omega` cannot bridge `Array.size` and `List.length` even though they are
+  definitionally equal — use `show` to cast between them
+- `rw` on terms with dependent bound proofs causes motive errors — use `simp`
+  (which handles congruence) or `conv` to target specific subexpressions
+- `let` bindings (not `have`) make structure fields transparent to tactics
+- `List.pairwise_iff_getElem` exists in Lean 4.28 stdlib; `List.Pairwise.get`
+  does not
 
 ### Phase F: Dead Code & Low-Priority Gaps
 
@@ -2211,7 +2253,7 @@ Phase B0 (CharPredicates.lean — shared Bool + Prop + iff)
     │                          ▼
     │                     Phase D (Grammar.ValidYaml bridge — CAPSTONE) ✅
     │
-    ├──▸ Phase E (ValidTokenStream contract — supporting)
+    ├──▸ Phase E ✅ (ValidTokenStream contract — complete)
     │
     ├──▸ Phase F (dead code & low-priority gaps)
     │
