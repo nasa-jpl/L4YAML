@@ -23,6 +23,7 @@ import Lean4Yaml.Proofs.EscapeResolution
 import Lean4Yaml.Proofs.FoldNewlines
 import Lean4Yaml.Proofs.ParserCompleteness
 import Lean4Yaml.Proofs.ParserCorrectness
+import Lean4Yaml.Proofs.ParserGrammable
 import Lean4Yaml.Proofs.ParserSoundness
 import Lean4Yaml.Proofs.RoundTrip
 import Lean4Yaml.Proofs.ScannerContracts
