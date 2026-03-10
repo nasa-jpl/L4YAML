@@ -72,24 +72,8 @@ Character predicates (`isPrintableProp`, `isLineBreakProp`, `isWhiteSpaceProp`,
 `CharPredicates.lean` and re-exported above.
 -/
 
-/--
-Characters that can start a plain scalar (1-argument compatibility wrapper).
-
-**YAML 1.2.2**: [123] ns-plain-first(c) (§7.3.3, https://yaml.org/spec/1.2.2/#733-plain-style)
-
-NOTE: This is the old 1-argument version that unconditionally rejects `-`, `?`, `:`.
-The correct 3-argument version is `canStartPlainScalarProp` in CharPredicates.lean.
-This wrapper will be removed in Phase B2.
--/
-@[yaml_spec "7.3.3" 123 "ns-plain-first(c)"]
-def canStartPlainScalar (c : Char) : Prop :=
-  isPrintableProp c
-  ∧ ¬ isWhiteSpaceProp c
-  ∧ ¬ isLineBreakProp c
-  ∧ ¬ isIndicatorProp c
-
-instance (c : Char) : Decidable (canStartPlainScalar c) := by
-  unfold canStartPlainScalar; infer_instance
+-- NOTE: The old 1-argument `canStartPlainScalar` has been removed.
+-- Use `canStartPlainScalarProp` (3-arg) from CharPredicates.lean instead.
 
 /-! ## Indentation (YAML 1.2.2 §6.1: https://yaml.org/spec/1.2.2/#61-indentation-spaces) -/
 
@@ -244,21 +228,8 @@ These predicates are used as proof obligations in `ValidNode` constructors
 to tie the grammar specification to the actual YAML production rules.
 -/
 
-/--
-First character of a non-empty string can start a plain scalar.
-
-**YAML 1.2.2**: [123] ns-plain-first(c) (§7.3.3)
--/
-def validPlainFirst (content : String) : Prop :=
-  match content.toList with
-  | c :: _ => canStartPlainScalar c
-  | [] => True
-
-instance (content : String) : Decidable (validPlainFirst content) := by
-  unfold validPlainFirst
-  cases content.toList with
-  | nil => exact .isTrue trivial
-  | cons c _ => exact inferInstance
+-- NOTE: The old 1-argument `validPlainFirst` has been removed.
+-- Use `validPlainFirstProp` (2-arg, with `inFlow : Bool`) from CharPredicates.lean instead.
 
 -- `hasAdjacentChars` and `hasAdjacentChars_iff` are re-exported from CharPredicates above.
 
@@ -292,12 +263,12 @@ inductive ValidNode where
       Carries character-level production-rule constraints:
       [123] ns-plain-first, [127] no `: ` or ` #`. -/
   | plainScalarBlock (content : String) (nonempty : content.length > 0)
-      (firstValid : validPlainFirst content)
+      (firstValid : validPlainFirstProp content false)
       (noCS : noColonSpace content) (noSH : noSpaceHash content)
   /-- [128] ns-plain(n,FLOW-OUT/FLOW-IN) — Plain scalar in flow context.
       Additionally [126] no flow-indicator characters. -/
   | plainScalarFlow (content : String) (nonempty : content.length > 0)
-      (firstValid : validPlainFirst content)
+      (firstValid : validPlainFirstProp content true)
       (noCS : noColonSpace content) (noSH : noSpaceHash content)
       (noFlow : noFlowIndicators content)
   /-- [118] c-single-quoted(n,c) (§7.3.2) — Single-quoted scalar -/
@@ -397,13 +368,13 @@ This bridges the specification (grammar) and the implementation (YamlValue AST).
 -/
 inductive NodeToValue : ValidNode → YamlValue → Prop where
   | plainScalarBlock (content : String) (h : content.length > 0)
-      (hfirst : validPlainFirst content)
+      (hfirst : validPlainFirstProp content false)
       (hnoCS : noColonSpace content) (hnoSH : noSpaceHash content) :
       NodeToValue
         (.plainScalarBlock content h hfirst hnoCS hnoSH)
         (.scalar ⟨content, .plain, none, none, none⟩)
   | plainScalarFlow (content : String) (h : content.length > 0)
-      (hfirst : validPlainFirst content)
+      (hfirst : validPlainFirstProp content true)
       (hnoCS : noColonSpace content) (hnoSH : noSpaceHash content)
       (hnoFlow : noFlowIndicators content) :
       NodeToValue
@@ -591,7 +562,7 @@ A scalar satisfies `ScalarScannable s inFlow` when:
 -/
 def ScalarScannable (s : Scalar) (inFlow : Bool) : Prop :=
   s.style = .plain → s.content.length > 0 →
-    validPlainFirst s.content ∧ noColonSpace s.content ∧ noSpaceHash s.content
+    validPlainFirstProp s.content inFlow ∧ noColonSpace s.content ∧ noSpaceHash s.content
     ∧ (inFlow = true → noFlowIndicators s.content)
 
 /--
