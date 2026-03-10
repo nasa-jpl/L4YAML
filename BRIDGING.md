@@ -1586,7 +1586,7 @@ this impossibility while still providing the induction step.
   once the fold form is extracted (`" "` or `replicate '\n'`), the
   `of_fold` + recursive `ih` pattern is the same 15 lines in both cases.
 
-##### **B3.4: Prove `scanPlainScalar_content_valid`** (~50–100 lines)
+##### **B3.4: Prove `scanPlainScalar_content_valid`** (~50–100 lines) (COMPLETE ✅)
 
 Per-function theorem at the `scanPlainScalar` level:
 
@@ -1678,7 +1678,7 @@ documentation rather than block the other three fully-provable properties.
   essential — `ScalarScannable` used a 1-arg `validPlainFirst` that
   didn't match the scanner's 3-arg `canStartPlainScalarBool`
 
-##### **B3.5: Prove `scan_plain_scalar_valid`** (~100–200 lines)
+##### **B3.5: Prove `scan_plain_scalar_valid`** (~100–200 lines) (COMPLETE ✅)
 
 Thread B3.4 through the `scanFiltered → scanLoop → scanNextToken →
 dispatchContent → scanPlainScalar` chain. This requires:
@@ -1696,8 +1696,57 @@ machinery proves too complex, an alternative is to strengthen the main
 `scanLoop` invariant to carry `ScalarScannable` as an additional property
 (similar to how `ScanInv` was threaded through in the `scanNextToken`
 refactoring).
- 
-###### B3.5 Reflections
+
+###### B3.5 Implementation Status
+
+**File:** `Lean4Yaml/Proofs/ScannerPlainScalarValid.lean` (~380 lines)
+
+**Build:** 219/219 ✔, 9 sorry warnings (1 pre-existing from B3.4, 8 new)
+
+**Architecture — `PlainScalarsValid` invariant:**
+- `PlainScalarsValid tokens` := ∀ i, if `tokens[i]` is `.scalar _ .plain`
+  then `ScalarScannable ⟨content, .plain, ...⟩ false`
+- Generic lemma `PlainScalarsValid_of_prefix_and_new`: given prefix preservation
+  (`∀ i < old.size, new[i] = old[i]`) and new-token validity, concludes
+  `PlainScalarsValid new_tokens`. Used uniformly across all dispatch-level theorems.
+
+**Key design decision — `inFlow = false` universally:**
+- Proved `ScalarScannable_true_implies_false`: `ScalarScannable s true → ScalarScannable s false`
+- Via `canStartPlainScalarProp_true_implies_false` and `validPlainFirstProp_true_implies_false`
+- Monotonicity chains: the inFlow exception branch weakens (third conjunct
+  `¬isFlowIndicator` dropped), and `(false = true → noFlowIndicators)` is
+  vacuously true
+- This means: prove `ScalarScannable _ s.inFlow` (B3.4's output), then
+  monotonicity gives `ScalarScannable _ false` regardless of actual flow state
+- Phase C can upgrade to `ScalarScannable _ true` for flow-context tokens
+  if needed
+
+**Sorry-free theorems (the critical chain):**
+- `ScalarScannable_true_implies_false` — monotonicity
+- `PlainScalarsValid_of_prefix_and_new` — generic prefix+new lemma
+- `scanPlainScalar_preserves_PlainScalarsValid` — threads B3.4 + monotonicity
+- `scanNextToken_preserves_PlainScalarsValid` — delegates to dispatch-level
+- `scanLoop_preserves_PlainScalarsValid` — induction on fuel
+
+**Sorry categories (8 new):**
+1. **Non-plain token characterization** (6 sorries in `dispatchContent` +
+   4 dispatch-level theorems): Each non-plain branch emits `.anchor`, `.alias`,
+   `.tag`, `.scalar _ .literal`, `.scalar _ .doubleQuoted`, `.scalar _ .singleQuoted`,
+   `.blockEnd`, `.documentStart`, `.flowEntry`, etc. — all structurally not
+   `.scalar _ .plain`. Discharging requires unfolding each sub-function to
+   expose its `emit`/`emitAt` call. ~20 lines each × ~12 branches.
+2. **Scan chain setup** (2 sorries): `scan_all_plain_scalars_valid` (threading
+   the invariant from initial state through `scan`'s let-bindings into `scanLoop`)
+   and `scan_plain_scalar_valid` (filter preserves property — array filter
+   element provenance).
+
+**Proof technique — `generalize` + `cases` for token match:**
+- Goal: `match token.val with | .scalar content .plain => P content | _ => True`
+- Pattern: `generalize h_tok : token.val = tok; cases tok with | scalar c style => cases style with | plain => ... | _ => trivial | _ => trivial`
+- This cleanly destructs the match and allows `rw [h_tok]` on hypotheses
+  containing the same discriminant
+- Previous attempt with `match h_tok :` in tactic mode failed because the
+  catch-all `| _ =>` branch leaves the match variable opaque
 
 #### Module Decisions
 
