@@ -1678,7 +1678,7 @@ documentation rather than block the other three fully-provable properties.
   essential — `ScalarScannable` used a 1-arg `validPlainFirst` that
   didn't match the scanner's 3-arg `canStartPlainScalarBool`
 
-##### **B3.5: Prove `scan_plain_scalar_valid`** (~100–200 lines) (COMPLETE ✅)
+##### **B3.5: Prove `scan_plain_scalar_valid`** (~1160 lines) (COMPLETE ✅, SORRY-FREE)
 
 Thread B3.4 through the `scanFiltered → scanLoop → scanNextToken →
 dispatchContent → scanPlainScalar` chain. This requires:
@@ -1699,9 +1699,9 @@ refactoring).
 
 ###### B3.5 Implementation Status
 
-**File:** `Lean4Yaml/Proofs/ScannerPlainScalarValid.lean` (~380 lines)
+**File:** `Lean4Yaml/Proofs/ScannerPlainScalarValid.lean` (~1000 lines)
 
-**Build:** 219/219 ✔, 9 sorry warnings (1 pre-existing from B3.4, 8 new)
+**Build:** 221/221 ✔, 0 sorry warnings in B3.5 scope (3 remain in Phase C's ParserGrammable.lean)
 
 **Architecture — `PlainScalarsValid` invariant:**
 - `PlainScalarsValid tokens` := ∀ i, if `tokens[i]` is `.scalar _ .plain`
@@ -1709,6 +1709,9 @@ refactoring).
 - Generic lemma `PlainScalarsValid_of_prefix_and_new`: given prefix preservation
   (`∀ i < old.size, new[i] = old[i]`) and new-token validity, concludes
   `PlainScalarsValid new_tokens`. Used uniformly across all dispatch-level theorems.
+- General lemmas `PlainScalarsValid_setIfInBounds_non_plain` and
+  `PlainScalarsValid_push_non_plain` for token operations that don't preserve
+  prefix (used by `scanValuePrepare`'s `setIfInBounds` branches).
 
 **Key design decision — `inFlow = false` universally:**
 - Proved `ScalarScannable_true_implies_false`: `ScalarScannable s true → ScalarScannable s false`
@@ -1721,32 +1724,42 @@ refactoring).
 - Phase C can upgrade to `ScalarScannable _ true` for flow-context tokens
   if needed
 
-**Sorry-free theorems (the critical chain):**
+**All theorems are sorry-free. The critical chain:**
 - `ScalarScannable_true_implies_false` — monotonicity
 - `PlainScalarsValid_of_prefix_and_new` — generic prefix+new lemma
+- `PlainScalarsValid_setIfInBounds_non_plain` — overwrite with non-plain preserves PSV
+- `PlainScalarsValid_push_non_plain` — push non-plain preserves PSV
 - `scanPlainScalar_preserves_PlainScalarsValid` — threads B3.4 + monotonicity
+- `pushSequenceIndent_preserves_PlainScalarsValid` — conditional emit `.blockSequenceStart`
+- `pushMappingIndent_preserves_PlainScalarsValid` — conditional emit `.blockMappingStart`
+- `scanBlockEntry_preserves_PlainScalarsValid` — pushSequenceIndent + emit .blockEntry
+- `scanKey_preserves_PlainScalarsValid` — pushMappingIndent + emit .key
+- `scanValuePrepare_preserves_PlainScalarsValid` — all 6 branches (setIfInBounds/push/identity)
+- `scanValue_preserves_PlainScalarsValid` — clearKey + validate + prepare + emit .value
+- `dispatchBlockIndicators_preserves_PlainScalarsValid` — routes to scanBlockEntry/Key/Value
+- `dispatchFlowIndicators_preserves_PlainScalarsValid` — 5 flow indicator cases
+- `dispatchStructural_preserves_PlainScalarsValid` — document start/end, directives
+- `preprocess_preserves_PlainScalarsValid` — unwindIndents + saveSimpleKey
 - `scanNextToken_preserves_PlainScalarsValid` — delegates to dispatch-level
+- `finalEmit_preserves_PlainScalarsValid` — unwindIndents + emit .streamEnd
 - `scanLoop_preserves_PlainScalarsValid` — induction on fuel
-
-**Sorry categories (8 new):**
-1. **Non-plain token characterization** (6 sorries in `dispatchContent` +
-   4 dispatch-level theorems): Each non-plain branch emits `.anchor`, `.alias`,
-   `.tag`, `.scalar _ .literal`, `.scalar _ .doubleQuoted`, `.scalar _ .singleQuoted`,
-   `.blockEnd`, `.documentStart`, `.flowEntry`, etc. — all structurally not
-   `.scalar _ .plain`. Discharging requires unfolding each sub-function to
-   expose its `emit`/`emitAt` call. ~20 lines each × ~12 branches.
-2. **Scan chain setup** (2 sorries): `scan_all_plain_scalars_valid` (threading
-   the invariant from initial state through `scan`'s let-bindings into `scanLoop`)
-   and `scan_plain_scalar_valid` (filter preserves property — array filter
-   element provenance).
+- `scan_all_plain_scalars_valid` — threads from initial empty state through scan
+- `scan_plain_scalar_valid` — filter element provenance to individual tokens
 
 **Proof technique — `generalize` + `cases` for token match:**
 - Goal: `match token.val with | .scalar content .plain => P content | _ => True`
 - Pattern: `generalize h_tok : token.val = tok; cases tok with | scalar c style => cases style with | plain => ... | _ => trivial | _ => trivial`
 - This cleanly destructs the match and allows `rw [h_tok]` on hypotheses
   containing the same discriminant
-- Previous attempt with `match h_tok :` in tactic mode failed because the
-  catch-all `| _ =>` branch leaves the match variable opaque
+
+**Proof technique — `setIfInBounds` for non-prefix-preserving functions:**
+- `scanValuePrepare` uses `Array.setIfInBounds` to overwrite placeholder tokens
+  with `.blockMappingStart`/`.key` — cannot use prefix preservation
+- Instead: prove all overwritten values are non-plain, then use
+  `PlainScalarsValid_setIfInBounds_non_plain` which shows that overwriting
+  with non-plain tokens preserves PSV regardless of what was there before
+- Pattern: `rw [Array.getElem_setIfInBounds]; by_cases h_eq : idx = i;
+  subst; simp [↓reduceIte]; generalize + cases` to destroy the match
 
 #### Module Decisions
 
@@ -1873,9 +1886,9 @@ This discharges the `h_grammable` hypothesis in `ParserCorrectness.lean`.
 
 #### Phase C Reflections
 
-**File:** `Lean4Yaml/Proofs/ParserGrammable.lean` (~440 lines)
+**File:** `Lean4Yaml/Proofs/ParserGrammable.lean` (~500 lines)
 
-**Build:** 221/221 ✔, 16 sorry warnings (9 pre-existing from B3.4/B3.5, 7 new)
+**Build:** 221/221 ✔, 3 sorry warnings remaining (parser chain: C2)
 
 **Critical discovery — cross-context aliasing gap:**
 The original BRIDGING.md plan assumed `h_grammable` could be universally
@@ -1909,53 +1922,62 @@ This was the key enabling step — it means `stripAnchors` (which only clears
 the `anchor` field) preserves `ScalarScannable`, and the parser attaching
 `tag`/`anchor` from `NodeProperties` doesn't affect it.
 
-**`where`-clause equation generation barrier:**
+**`where`-clause equation generation barrier (RESOLVED):**
 `resolveAliases` and `stripAnchors` both use `where`-clause mutual recursion
 (e.g., `resolveList`, `resolvePairs`). Lean 4.28's equation compiler cannot
 generate equational theorems for these functions — both `simp only [...]` and
-`unfold` fail with "invalid projection" errors. Workaround: for the scalar
-case, `rfl` works (the kernel can reduce `.scalar s |>.resolveAliases anchors`
-to `.scalar s` by definitional reduction even though the elaborator can't
-generate the equational lemma). For sequence/mapping cases, the proofs are
-left as sorry pending either custom `@[simp]` lemmas for `resolveList`/
-`resolvePairs` or manual well-founded induction.
+`unfold` fail with "failed to generate equational theorem" errors. Workaround:
+- For the scalar case, `rfl` works (definitional reduction).
+- For sequence/mapping cases, proved helper lemmas: `stripList_eq_map`,
+  `stripPairs_eq_map`, `resolveList_eq_map`, `resolvePairs_eq_map` — each
+  shows the `where`-clause function equals `List.map` applied to the
+  corresponding top-level function. With these, the `show` tactic provides
+  the definitional expansion, then `rw` with the map equivalences reduces
+  to standard `Grammable.sequence`/`.mapping` construction.
+- Array↔List roundtrip handled by `rw [List.toList_toArray]` followed by
+  `simp at hi ⊢` for element-wise indexing.
 
 **Architecture — C1/C2/C3 decomposition (as planned):**
 
-| Sub-phase | Theorem | Status | Sorry reason |
-|-----------|---------|--------|--------------|
-| C1 | `compose_value_grammable` | 3 sorry (alias/seq/map) | where-clause unfolding + WF recursion |
+| Sub-phase | Theorem | Status | Notes |
+|-----------|---------|--------|-------|
+| C1 | `stripAnchors_preserves_Grammable` | ✔ (sorry-free) | Induction on Grammable derivation |
+| C1 | `Scannable_aliasFree_to_Grammable` | ✔ (sorry-free) | Induction on Scannable derivation |
+| C1 | `compose_value_grammable` | ✔ (sorry-free) | Induction on Scannable + findSome bridge |
 | C1 | `compose_grammable` | ✔ (sorry-free wrapper) | — |
-| C2 | `parseStream_output_scannable` | sorry | Parser tracing |
-| C2 | `parseStream_output_aliases_resolve` | sorry | Parser anchor tracking |
-| C2 | `parseStream_output_anchors_wellformed` | sorry | Parser + ∀ inFlow |
-| C2 | `scanFiltered_plain_scalars_valid` | sorry | Filter preserves PlainScalarsValid |
+| C2 | `parseStream_output_scannable` | sorry | Parser tracing (~400 LOC estimate) |
+| C2 | `parseStream_output_aliases_resolve` | sorry | Parser anchor tracking (~300 LOC) |
+| C2 | `parseStream_output_anchors_wellformed` | sorry | Semantic gap: ∀ inFlow too strong |
+| C2 | `scanFiltered_plain_scalars_valid` | ✔ (sorry-free) | Trivial from B3.5 |
 | C3 | `parseStream_output_grammable` | ✔ (chains C1+C2) | — |
 | C3 | `parseYaml_produces_valid_nodes` | ✔ (end-to-end) | — |
 
-**Supporting theorems (sorry):**
-| Theorem | Sorry reason |
-|---------|--------------|
-| `stripAnchors_preserves_Grammable` | List/Array conversion for seq/map |
-| `Scannable_aliasFree_to_Grammable` | Well-founded recursion for seq/map |
+**Helper lemmas (all sorry-free):**
+| Lemma | Purpose |
+|-------|---------|
+| `stripList_eq_map` | `stripAnchors.stripList l = l.map stripAnchors` |
+| `stripPairs_eq_map` | Same for pairs |
+| `resolveList_eq_map` | `resolveAliases.resolveList l a = l.map (· .resolveAliases a)` |
+| `resolvePairs_eq_map` | Same for pairs |
+| `findSome_unit_to_val` | If `findSome?` returning `()` is `.isSome`, then `findSome?` returning values also succeeds |
 
-**Sorry categories (7 new):**
-1. **List/Array conversion** (2 theorems, 4 sorry sites): `stripAnchors`
-   and `AliasFree→Grammable` for sequence/mapping cases. The `where`-clause
-   functions (`stripList`, `stripPairs`) convert Array→List→Array. Proving
-   element-wise correspondence requires `stripList l = l.map stripAnchors`.
-2. **Alias resolution** (1 theorem, 3 sorry sites): `compose_value_grammable`
-   alias/seq/map cases. Requires unfolding `resolveAliases` through
-   `where`-clause mutual recursion plus well-founded induction.
-3. **Parser chain** (3 theorems, 3 sorry sites): `parseStream_output_scannable`,
-   `parseStream_output_aliases_resolve`, `parseStream_output_anchors_wellformed`.
-   Each requires tracing the parser's token→tree construction through
-   `parseNode`/`parseDocument`/`parseStream`. Structurally straightforward
-   but involves deep function unfolding.
-4. **Filter bridge** (1 theorem, 1 sorry site): `scanFiltered_plain_scalars_valid`.
-   `scan_all_plain_scalars_valid` operates on unfiltered tokens from `scan`;
-   `scanFiltered` filters to content tokens. Need to show filtering preserves
-   `PlainScalarsValid` (array filter element provenance).
+**Sorry categories (3 remaining, all C2 parser chain):**
+1. **Parser tracing** (`parseStream_output_scannable`): Requires tracing
+   token→YamlValue construction through `parseNode`/`parseDocument`/
+   `parseStream` — a mutual block of 12 functions with fuel-based termination.
+   Structurally straightforward (scalar content/style comes from direct
+   pattern match on `YamlToken.scalar content style`), but massive in scope.
+2. **Anchor tracking** (`parseStream_output_aliases_resolve`): Requires
+   maintaining an invariant through the parsing loop: "all alias names in
+   partially constructed values have entries in `ps.anchors`". Depends on
+   an unproven scanner-level invariant (no `*name` without prior `&name`).
+3. **Cross-context well-formedness** (`parseStream_output_anchors_wellformed`):
+   The `∀ inFlow` quantifier is genuinely too strong — block-context plain
+   scalars with flow indicators (`{`, `}`, `[`, `]`) satisfy
+   `ScalarScannable _ false` but NOT `ScalarScannable _ true`. This is a
+   real semantic limitation, not a proof gap. Options: weaken to require a
+   `NoFlowIndicatorsInBlockAnchors` precondition, or accept as documenting
+   a YAML spec corner case.
 
 **End-to-end theorem — `parseYaml_produces_valid_nodes` (sorry-free chain):**
 ```lean
@@ -1968,6 +1990,13 @@ Chains: `parseYamlRaw_ok_decompose` → `scanFiltered_plain_scalars_valid` →
 `parseStream_output_scannable` → `compose_grammable` →
 `ParserSoundness.yamlValue_has_witness`. Sorry-free at this level; depends
 on sorry'd sub-theorems.
+
+**Hindsight — induction on derivation, not on value:**
+`YamlValue` is a nested inductive type — `induction v` fails because Lean 4
+cannot generate induction principles for nested inductives. The solution is
+to induct on the `Grammable`/`Scannable` derivation (`induction h`), which
+is a regular inductive type with `∀ i, Grammable items[i] ctx` premises
+that automatically provide IH for all children.
 
 **Hindsight — B3.5's `inFlow = false` weakening was the right call:**
 B3.5 proved `ScalarScannable _ false` universally rather than tracking
@@ -1984,11 +2013,13 @@ Converting to `inductive` types with explicit constructors eliminated the
 termination obligations entirely. This is the preferred pattern for
 predicates over `YamlValue` trees in this codebase.
 
-### Phase D: Bridge `Grammar.ValidYaml` to Parser Output (CAPSTONE)
+### Phase D: Bridge `Grammar.ValidYaml` to Parser Output (CAPSTONE) — ✅ COMPLETE
 
-With `h_grammable` discharged, the existing `parseStream_respects_grammar`
-gives `∃ ValidNode` witnesses. Combine with `NodeToValue` (already proven
-via `Soundness.lean`) to construct `Grammar.ValidYaml`:
+With `h_grammable` discharged, `parseYaml_produces_valid_nodes` (Phase C)
+gives `∃ ValidNode` witnesses. Combined with `toYamlValue_nodeToValue`
+(Soundness.lean) to construct `Grammar.ValidYaml`.
+
+**File**: `Lean4Yaml/Proofs/EndToEndCorrectness.lean` §5
 
 ```lean
 theorem parse_produces_valid_yaml (input : String)
@@ -1997,8 +2028,30 @@ theorem parse_produces_valid_yaml (input : String)
     ∀ i : Fin docs.size,
       ∃ vy : Grammar.ValidYaml,
         vy.input = input ∧
-        stripAnnotations vy.value = stripAnnotations docs[i].compose.value
+        stripAnnotations vy.value = stripAnnotations docs[i.val].value
 ```
+
+**Proof**: 5 lines. `Array.getElem_mem_toList` for membership, then
+`parseYaml_produces_valid_nodes` for the `ValidNode`, then anonymous
+constructor with `toYamlValue_nodeToValue` for `NodeToValue`.
+
+**Build**: 221/221 ✔, no new sorries.
+
+**Note**: The original spec used `docs[i].compose.value` but since
+`parseYaml` already returns composed documents (`raw_docs.map compose`),
+the final statement uses `docs[i.val].value` directly. Composing an
+already-composed document is approximately idempotent, but avoiding the
+redundant composition is both cleaner and avoids an unnecessary
+idempotency proof.
+
+#### Phase D Reflections
+
+Phase D turned out to be trivial (5-line proof) because all the hard
+work was done in Phases B3.5 and C. The key enablers:
+- `parseYaml_produces_valid_nodes` (Phase C) provides the `ValidNode` witness
+- `toYamlValue_nodeToValue` (Soundness.lean) provides the `NodeToValue` proof
+- `Grammar.ValidYaml` bundles these two fields with `input` and `value`
+- The structure constructor does the rest
 
 ### Phase E: ValidTokenStream Contract (SUPPORTING)
 
@@ -2156,7 +2209,7 @@ Phase B0 (CharPredicates.lean — shared Bool + Prop + iff)
     │                 └──▸ C3 (parseStream_output_grammable = C2 + C1)
     │                          │
     │                          ▼
-    │                     Phase D (Grammar.ValidYaml bridge — CAPSTONE)
+    │                     Phase D (Grammar.ValidYaml bridge — CAPSTONE) ✅
     │
     ├──▸ Phase E (ValidTokenStream contract — supporting)
     │
