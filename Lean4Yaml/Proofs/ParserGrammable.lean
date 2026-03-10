@@ -120,34 +120,54 @@ theorem stripAnchors_scalar_grammable (s : Scalar) (inFlow : Bool)
     exact .scalar { s with anchor := none } inFlow
       ((ScalarScannable_strip_anchor s inFlow).mp h_ss)
 
+/-- The `stripList` where-clause helper equals `List.map stripAnchors`. -/
+private theorem stripList_eq_map (l : List YamlValue) :
+    YamlValue.stripAnchors.stripList l = l.map YamlValue.stripAnchors := by
+  induction l with
+  | nil => simp [YamlValue.stripAnchors.stripList]
+  | cons v vs ih => simp [YamlValue.stripAnchors.stripList, ih]
+
+/-- The `stripPairs` where-clause helper equals `List.map` over pairs. -/
+private theorem stripPairs_eq_map (l : List (YamlValue × YamlValue)) :
+    YamlValue.stripAnchors.stripPairs l =
+      l.map (fun (k, v) => (k.stripAnchors, v.stripAnchors)) := by
+  induction l with
+  | nil => simp [YamlValue.stripAnchors.stripPairs]
+  | cons p ps ih =>
+    obtain ⟨k, v⟩ := p
+    simp [YamlValue.stripAnchors.stripPairs, ih]
+
+set_option maxHeartbeats 2400000 in
 /-- `stripAnchors` preserves `Grammable` for any value.
 
-The proof proceeds by well-founded induction on `sizeOf v`.
-`stripAnchors` clears anchor fields and recursively processes children
-via `stripList`/`stripPairs`, both of which are element-wise `stripAnchors`.
-Since `ScalarScannable` is metadata-independent, `Grammable` transfers
-element-wise.
-
-The recursive cases (sequence/mapping) require showing that
-`(stripList items.toList).toArray` has the same size and element-wise
-correspondence with `items`. This is structurally straightforward
-(stripList = List.map stripAnchors) but involves List↔Array conversion. -/
+The proof is by induction on the `Grammable` derivation. The scalar
+case uses metadata independence. The sequence/mapping cases use the
+`stripList_eq_map`/`stripPairs_eq_map` lemmas to reduce where-clause
+mutual recursion to `List.map`, then apply the IH element-wise. -/
 theorem stripAnchors_preserves_Grammable (v : YamlValue) (inFlow : Bool) :
     Grammable v inFlow → Grammable v.stripAnchors inFlow := by
   intro h
-  cases h with
-  | scalar s _ h_ss =>
+  induction h with
+  | scalar s inFlow h_ss =>
     exact .scalar { s with anchor := none } inFlow
-      ((ScalarScannable_strip_anchor s inFlow).mp h_ss)
-  | sequence style items tag anchor _ h_items =>
-    -- stripAnchors (.sequence ...) = .sequence style (stripList items.toList).toArray tag none
-    -- Need: ∀ i : Fin (stripList items.toList).toArray.size,
-    --   Grammable (stripList items.toList).toArray[i] (inFlow || style == .flow)
-    -- Each element of stripList is items[j].stripAnchors
-    -- By IH: Grammable items[j] ctx → Grammable items[j].stripAnchors ctx
-    sorry
-  | mapping style pairs tag anchor _ hk hv =>
-    sorry
+      (fun hplain hlen => h_ss hplain hlen)
+  | sequence style items tag anchor inFlow h_items ih_items =>
+    show Grammable (.sequence style (YamlValue.stripAnchors.stripList items.toList).toArray tag none) inFlow
+    rw [stripList_eq_map]
+    apply Grammable.sequence
+    intro ⟨i, hi⟩
+    simp at hi ⊢
+    exact ih_items ⟨i, hi⟩
+  | mapping style pairs tag anchor inFlow hk hv ih_k ih_v =>
+    show Grammable (.mapping style (YamlValue.stripAnchors.stripPairs pairs.toList).toArray tag none) inFlow
+    rw [stripPairs_eq_map]
+    apply Grammable.mapping
+    · intro ⟨i, hi⟩
+      simp at hi ⊢
+      exact ih_k ⟨i, hi⟩
+    · intro ⟨i, hi⟩
+      simp at hi ⊢
+      exact ih_v ⟨i, hi⟩
 
 /-! ## §3  `Scannable` → `Grammable` for Alias-Free Values
 
@@ -172,20 +192,23 @@ inductive AliasFree : YamlValue → Prop where
 theorem Scannable_aliasFree_to_Grammable (v : YamlValue) (inFlow : Bool) :
     Scannable v inFlow → AliasFree v → Grammable v inFlow := by
   intro h_scan h_af
-  cases h_scan with
-  | scalar s _ h_ss => exact .scalar s inFlow h_ss
+  induction h_scan with
+  | scalar s _ h_ss => exact .scalar s _ h_ss
   | alias _ _ => cases h_af
-  | sequence style items tag anchor _ h_items =>
+  | sequence style items tag anchor inFlow h_items ih_items =>
     cases h_af with
     | sequence _ _ _ _ h_af_items =>
       apply Grammable.sequence
-      intro i
-      -- Would need IH on sizeOf — sorry for well-founded recursion setup
-      sorry
-  | mapping style pairs tag anchor _ hk hv =>
+      intro ⟨i, hi⟩
+      exact ih_items ⟨i, hi⟩ (h_af_items ⟨i, hi⟩)
+  | mapping style pairs tag anchor inFlow hk hv ih_k ih_v =>
     cases h_af with
     | mapping _ _ _ _ h_afk h_afv =>
-      sorry
+      apply Grammable.mapping
+      · intro ⟨i, hi⟩
+        exact ih_k ⟨i, hi⟩ (h_afk ⟨i, hi⟩)
+      · intro ⟨i, hi⟩
+        exact ih_v ⟨i, hi⟩ (h_afv ⟨i, hi⟩)
 
 /-! ## §4  Compose: `Scannable` → `Grammable` (C1)
 
@@ -239,47 +262,105 @@ def WellFormedAnchors (anchors : Array (String × YamlValue)) : Prop :=
     anchors.findSome? (fun (n, v) => if n == name then some v else none) = some val →
       ∀ inFlow, Grammable val.stripAnchors inFlow
 
+/-- If `findSome?` with unit-returning predicate succeeds, then
+    `findSome?` with value-returning predicate also succeeds. -/
+private theorem findSome_unit_to_val (arr : Array (String × YamlValue)) (name : String)
+    (h : (arr.findSome? (fun (n, _) => if n == name then some () else none)).isSome) :
+    ∃ val, arr.findSome? (fun (n, v) => if n == name then some v else none) = some val := by
+  simp only [Option.isSome_iff_exists] at h
+  obtain ⟨_, h_find⟩ := h
+  rw [Array.findSome?_eq_some_iff] at h_find
+  obtain ⟨ys, a, zs, h_split, h_fa, h_prefix⟩ := h_find
+  have h_beq : (a.1 == name) = true := by
+    revert h_fa
+    split
+    · intro _; assumption
+    · intro h_abs; simp at h_abs
+  exact ⟨a.2, Array.findSome?_eq_some_iff.mpr
+    ⟨ys, a, zs, h_split, by simp [h_beq], fun x hx => by
+      have h_unit := h_prefix x hx
+      by_cases h_eq : x.1 == name
+      · simp [h_eq] at h_unit
+      · simp [h_eq]⟩⟩
+
+/-- The `resolveList` where-clause helper equals `List.map resolveAliases`. -/
+private theorem resolveList_eq_map (l : List YamlValue) (anchors : Array (String × YamlValue)) :
+    YamlValue.resolveAliases.resolveList l anchors =
+      l.map (fun v => v.resolveAliases anchors) := by
+  induction l with
+  | nil => simp [YamlValue.resolveAliases.resolveList]
+  | cons v vs ih => simp [YamlValue.resolveAliases.resolveList, ih]
+
+/-- The `resolvePairs` where-clause helper equals `List.map` over pairs. -/
+private theorem resolvePairs_eq_map (l : List (YamlValue × YamlValue))
+    (anchors : Array (String × YamlValue)) :
+    YamlValue.resolveAliases.resolvePairs l anchors =
+      l.map (fun (k, v) => (k.resolveAliases anchors, v.resolveAliases anchors)) := by
+  induction l with
+  | nil => simp [YamlValue.resolveAliases.resolvePairs]
+  | cons p ps ih =>
+    obtain ⟨k, v⟩ := p
+    simp [YamlValue.resolveAliases.resolvePairs, ih]
+
+set_option maxHeartbeats 4000000 in
 /-- C1: Composing a `Scannable` value produces a `Grammable` value,
     provided all aliases resolve and anchor values are well-formed.
 
     `doc.compose.value = (doc.value.resolveAliases doc.anchors).stripAnchors`
 
-    **Preconditions**:
-    - `Scannable doc.value false` — the raw parser output is scannable
-    - `AllAliasesResolve doc.value doc.anchors` — all aliases have targets
-    - `WellFormedAnchors doc.anchors` — anchor targets are grammable
-
-    **Sorry**: The proof requires well-founded mutual induction through
-    `resolveAliases`/`stripAnchors` combined with alias lookup. -/
+    The proof is by induction on the `Scannable` derivation:
+    - **scalar**: resolveAliases is identity on scalars; use metadata independence.
+    - **alias**: Use `findSome_unit_to_val` to resolve the alias lookup,
+      then apply `WellFormedAnchors`.
+    - **sequence/mapping**: Rewrite where-clause recursion using
+      `resolveList_eq_map`/`resolvePairs_eq_map` and
+      `stripList_eq_map`/`stripPairs_eq_map`, then apply IH element-wise. -/
 theorem compose_value_grammable
     (v : YamlValue) (anchors : Array (String × YamlValue)) (inFlow : Bool)
     (h_scan : Scannable v inFlow)
     (h_resolve : AllAliasesResolve v anchors)
     (h_anchors : WellFormedAnchors anchors) :
     Grammable (v.resolveAliases anchors).stripAnchors inFlow := by
-  cases h_scan with
-  | scalar s _ h_ss =>
-    -- resolveAliases (.scalar s) = .scalar s
-    -- stripAnchors (.scalar s) = .scalar { s with anchor := none }
-    -- Use sorry for the simp on where-clause functions
-    have : (YamlValue.scalar s).resolveAliases anchors = .scalar s := rfl
-    rw [this]
-    exact stripAnchors_scalar_grammable s inFlow (.scalar s inFlow h_ss)
-  | alias name _ =>
-    -- resolveAliases (.alias name) = lookup result
+  induction h_scan with
+  | scalar s inFlow h_ss =>
+    exact .scalar { s with anchor := none } inFlow
+      (fun hplain hlen => h_ss hplain hlen)
+  | alias name inFlow =>
     cases h_resolve with
     | alias _ _ h_res =>
-      -- h_res tells us the alias resolved
-      -- Need to unfold resolveAliases for alias case
-      -- and show the lookup succeeds
-      sorry
-  | sequence style items tag anchor _ h_items =>
-    -- resolveAliases (.sequence ..) = .sequence style (resolveList items.toList anchors).toArray ..
-    -- stripAnchors of that = .sequence style (stripList (resolveList ..)).toArray tag none
-    -- Need: each element grammable by IH
-    sorry
-  | mapping style pairs tag anchor _ hk hv =>
-    sorry
+      obtain ⟨resolved, h_val⟩ := findSome_unit_to_val anchors name h_res
+      have h_eq : (YamlValue.alias name).resolveAliases anchors =
+        (match anchors.findSome? (fun (n, v) => if n == name then some v else none) with
+         | some v => v | none => .alias name) := rfl
+      rw [h_eq, h_val]
+      exact h_anchors name resolved h_val inFlow
+  | sequence style items tag anchor inFlow h_items ih_items =>
+    cases h_resolve with
+    | sequence _ _ _ _ _ h_resolve_items =>
+      show Grammable (.sequence style
+        (YamlValue.stripAnchors.stripList
+          (YamlValue.resolveAliases.resolveList items.toList anchors).toArray.toList).toArray
+        tag none) inFlow
+      rw [List.toList_toArray, stripList_eq_map, resolveList_eq_map]
+      apply Grammable.sequence
+      intro ⟨i, hi⟩
+      simp at hi ⊢
+      exact ih_items ⟨i, hi⟩ (h_resolve_items ⟨i, hi⟩)
+  | mapping style pairs tag anchor inFlow hk hv ih_k ih_v =>
+    cases h_resolve with
+    | mapping _ _ _ _ _ hk_resolve hv_resolve =>
+      show Grammable (.mapping style
+        (YamlValue.stripAnchors.stripPairs
+          (YamlValue.resolveAliases.resolvePairs pairs.toList anchors).toArray.toList).toArray
+        tag none) inFlow
+      rw [List.toList_toArray, stripPairs_eq_map, resolvePairs_eq_map]
+      apply Grammable.mapping
+      · intro ⟨i, hi⟩
+        simp at hi ⊢
+        exact ih_k ⟨i, hi⟩ (hk_resolve ⟨i, hi⟩)
+      · intro ⟨i, hi⟩
+        simp at hi ⊢
+        exact ih_v ⟨i, hi⟩ (hv_resolve ⟨i, hi⟩)
 
 /-- C1 applied to `YamlDocument.compose`. -/
 theorem compose_grammable (doc : YamlDocument)
@@ -373,8 +454,8 @@ to discharge `h_grammable`.
 theorem scanFiltered_plain_scalars_valid (input : String)
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered input = .ok tokens) :
-    PlainScalarsValid tokens := by
-  sorry
+    PlainScalarsValid tokens :=
+  fun i hi => scan_plain_scalar_valid input tokens h i hi
 
 /-- **C3**: Every document produced by the full pipeline (scan + parse + compose)
     is `Grammable`.

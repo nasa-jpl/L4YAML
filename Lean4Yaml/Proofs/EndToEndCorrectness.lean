@@ -7,6 +7,7 @@ import Lean4Yaml.Scanner
 import Lean4Yaml.Grammar
 import Lean4Yaml.Proofs.ScannerCorrectness
 import Lean4Yaml.Proofs.ParserCorrectness
+import Lean4Yaml.Proofs.ParserGrammable
 import Lean4Yaml.Proofs.Soundness
 
 /-!
@@ -40,6 +41,11 @@ These make the aspirational theorems from Grammar.lean:533-538 into reality.
 ### §4  Compile-Time Validation
 - `#guard` checks on diverse inputs
 
+### §5  Grammar Specification Bridge (Phase D)
+- `parse_produces_valid_yaml` — Every parsed document has a `Grammar.ValidYaml` witness
+
+### §6  Corollaries
+
 ## Strategy
 
 The proof architecture follows the implementation pipeline:
@@ -62,6 +68,7 @@ open Lean4Yaml
 open Lean4Yaml.Grammar
 open Lean4Yaml.Proofs.ScannerCorrectness
 open Lean4Yaml.Proofs.ParserCorrectness
+open Lean4Yaml.Proofs.ParserGrammable
 open Lean4Yaml.Proofs.Soundness
 
 /-! ## §1  ValidYaml Definition
@@ -194,7 +201,44 @@ These provide empirical validation that our definitions are sensible.
 -/
 
 
-/-! ## §5  Corollaries
+/-! ## §5  Grammar Specification Bridge (Phase D)
+
+Bridge from parser output to the `Grammar.ValidYaml` specification type.
+This is the capstone theorem: every successfully parsed document has a
+corresponding `ValidYaml` witness from the grammar specification.
+-/
+
+/--
+**Phase D capstone**: Every document produced by `parseYaml` has a
+corresponding `Grammar.ValidYaml` witness.
+
+Combines `parseYaml_produces_valid_nodes` (Phase C) with
+`toYamlValue_nodeToValue` (Soundness) to construct the full
+`ValidYaml` bundle: a `ValidNode` grammar witness paired with
+a `NodeToValue` correspondence proof.
+
+The `stripAnnotations` equality bridges parser output (which may carry
+tags/anchors) to the grammar specification (which uses `none` for all
+annotation fields).
+-/
+theorem parse_produces_valid_yaml (input : String)
+    (docs : Array YamlDocument)
+    (h : TokenParser.parseYaml input = .ok docs) :
+    ∀ i : Fin docs.size,
+      ∃ vy : Grammar.ValidYaml,
+        vy.input = input ∧
+        stripAnnotations vy.value = stripAnnotations docs[i.val].value := by
+  intro i
+  have h_mem : docs[i.val] ∈ docs.toList := Array.getElem_mem_toList i.isLt
+  obtain ⟨node, h_eq⟩ := parseYaml_produces_valid_nodes input docs h docs[i.val] h_mem
+  exact ⟨{
+    input := input
+    value := toYamlValue node
+    grammar := node
+    corresponds := toYamlValue_nodeToValue node
+  }, rfl, h_eq⟩
+
+/-! ## §6  Corollaries
 
 Useful consequences of the main theorems.
 -/
