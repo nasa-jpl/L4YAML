@@ -245,4 +245,46 @@ theorem resolveNamedEscape_deterministic (c : Char) (r₁ r₂ : Char)
     (h₂ : resolveNamedEscape c = some r₂) : r₁ = r₂ := by
   rw [h₁] at h₂; exact Option.some.inj h₂
 
+/-! ## §8: `isNamedEscapeChar` Characterization
+
+The predicate `isNamedEscapeChar c` holds iff `resolveNamedEscape c ≠ none`.
+We exhaustively verify the 16 positive cases and the 3 hex-prefix negatives
+via `native_decide`, then prove the structural equivalence to `Option.isSome`.
+-/
+
+/-- The 16 named escape chars satisfy `isNamedEscapeChar`. -/
+theorem isNamedEscapeChar_null      : isNamedEscapeChar '0'  := by native_decide
+theorem isNamedEscapeChar_bell      : isNamedEscapeChar 'a'  := by native_decide
+theorem isNamedEscapeChar_backspace : isNamedEscapeChar 'b'  := by native_decide
+theorem isNamedEscapeChar_tab       : isNamedEscapeChar 't'  := by native_decide
+theorem isNamedEscapeChar_tab_lit   : isNamedEscapeChar '\t' := by native_decide
+theorem isNamedEscapeChar_linefeed  : isNamedEscapeChar 'n'  := by native_decide
+theorem isNamedEscapeChar_vtab      : isNamedEscapeChar 'v'  := by native_decide
+theorem isNamedEscapeChar_formfeed  : isNamedEscapeChar 'f'  := by native_decide
+theorem isNamedEscapeChar_cr        : isNamedEscapeChar 'r'  := by native_decide
+theorem isNamedEscapeChar_esc       : isNamedEscapeChar 'e'  := by native_decide
+theorem isNamedEscapeChar_space     : isNamedEscapeChar ' '  := by native_decide
+theorem isNamedEscapeChar_dquote    : isNamedEscapeChar '"'  := by native_decide
+theorem isNamedEscapeChar_slash     : isNamedEscapeChar '/'  := by native_decide
+theorem isNamedEscapeChar_backslash : isNamedEscapeChar '\\' := by native_decide
+theorem isNamedEscapeChar_nel       : isNamedEscapeChar 'N'  := by native_decide
+theorem isNamedEscapeChar_nbsp      : isNamedEscapeChar '_'  := by native_decide
+
+/-- Hex escape prefixes are NOT named escapes. -/
+theorem not_isNamedEscapeChar_x : ¬isNamedEscapeChar 'x' := by native_decide
+theorem not_isNamedEscapeChar_u : ¬isNamedEscapeChar 'u' := by native_decide
+theorem not_isNamedEscapeChar_U : ¬isNamedEscapeChar 'U' := by native_decide
+
+/-- `isNamedEscapeChar` iff `resolveNamedEscape` returns `some`. -/
+theorem isNamedEscapeChar_iff_isSome (c : Char) :
+    isNamedEscapeChar c ↔ (resolveNamedEscape c).isSome = true := by
+  unfold isNamedEscapeChar
+  constructor
+  · intro h; cases hc : resolveNamedEscape c with
+    | none => exact absurd hc h
+    | some _ => rfl
+  · intro h; cases hc : resolveNamedEscape c with
+    | none => simp [hc] at h
+    | some _ => exact nofun
+
 end Lean4Yaml.Proofs.EscapeResolution

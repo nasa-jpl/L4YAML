@@ -429,4 +429,50 @@ and the runtime assertions that verify G1/G2.
 -/
 theorem principle_peek_before_consume : True := trivial
 
+/-! ## §5  Content Character Bridge
+
+`isContentChar` is the complement of `isBlockScalarHeaderChar`.
+A content char stops header extraction — this bridges the
+predicate from Grammar.lean to the `extractHeaderChars` theorems.
+-/
+
+/-- Content chars (non-header chars) stop header extraction. -/
+theorem isContentChar_stops_extraction (c : Char) (cs : List Char)
+    (h : isContentChar c) :
+    extractHeaderChars (c :: cs) = ([], c :: cs) :=
+  extractHeaderChars_preserves_non_header c cs h
+
+/-- Content character classification is the complement of header chars. -/
+theorem isContentChar_complement (c : Char) :
+    isContentChar c ↔ ¬(isBlockScalarHeaderChar c = true) := by
+  unfold isContentChar
+  constructor
+  · intro h habs; rw [h] at habs; exact absurd habs (by decide)
+  · intro h; exact Bool.eq_false_iff.mpr h
+
+/-! ## §6  Extraction Length Bound
+
+`extractHeaderChars` can never return more chars than its input,
+and `validHeaderLength` is a direct re-statement of the ≤ 2 bound.
+-/
+
+/-- Extracted header chars cannot exceed input length. -/
+theorem extractHeaderChars_length_le (cs : List Char) :
+    (extractHeaderChars cs).1.length ≤ cs.length := by
+  induction cs with
+  | nil => simp [extractHeaderChars]
+  | cons hd tl ih =>
+    unfold extractHeaderChars
+    split
+    · simp; omega
+    · simp
+
+/-- `validHeaderLength` directly gives the ≤ 2 bound. -/
+theorem validHeaderLength_bound (cs : List Char) (h : validHeaderLength cs) :
+    (extractHeaderChars cs).1.length ≤ 2 := h
+
+/-- Empty input trivially satisfies `validHeaderLength`. -/
+theorem validHeaderLength_nil : validHeaderLength [] := by
+  unfold validHeaderLength extractHeaderChars; simp
+
 end Lean4Yaml.Proofs.BlockScalarContracts

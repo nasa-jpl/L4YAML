@@ -129,6 +129,10 @@ instance (n : Nat) (cs : List Char) : Decidable (IndentedAtLeast n cs) :=
   | .isTrue h => .isTrue ⟨n, Nat.le.refl, h⟩
   | .isFalse h => .isFalse (fun ⟨_, hge, hind⟩ => h (indented_weaken hind hge))
 
+/-- IndentedAtLeast 0 is trivially satisfied by any input. -/
+theorem indentedAtLeast_zero (cs : List Char) : IndentedAtLeast 0 cs :=
+  ⟨0, Nat.le_refl 0, Indented.zero cs⟩
+
 /-! ## c-forbidden Content (YAML 1.2.2 §9.1.2: https://yaml.org/spec/1.2.2/#912-document-markers)
 
 Document markers `---` and `...` at column 0 followed by whitespace,
@@ -303,6 +307,10 @@ A valid YAML document.
 - [203] l-directive-document: directives + `---` prefixed document
 
 Documents may optionally start with `---` and end with `...`.
+
+**Phase F decision (kept)**: Specification-level structure for multi-document
+stream support. Not yet referenced by proof files — bridge theorems will
+connect when full stream-level parsing proofs are developed.
 -/
 @[yaml_spec "9" 204 "l-any-document"]
 structure ValidDocument where
@@ -315,6 +323,10 @@ structure ValidDocument where
 A valid YAML stream — one or more documents.
 
 **YAML 1.2.2**: [205] l-yaml-stream (§9, https://yaml.org/spec/1.2.2/#chapter-9-document-stream-productions)
+
+**Phase F decision (kept)**: Top-level specification type. Not yet referenced
+by proofs — `checkValidStream` in ScannerCorrectness.lean is a Bool utility
+that shares the name but not the type. Full stream proofs are future work.
 -/
 @[yaml_spec "9" 205 "l-yaml-stream"]
 structure ValidStream where
