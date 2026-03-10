@@ -35,6 +35,7 @@ import Lean4Yaml.Proofs.ScannerIndent
 import Lean4Yaml.Proofs.ScannerIndentStack
 import Lean4Yaml.Proofs.ScannerLoopInvariant
 import Lean4Yaml.Proofs.ScannerPlainContent
+import Lean4Yaml.Proofs.ScannerPlainScalar
 import Lean4Yaml.Proofs.ScannerProgress
 import Lean4Yaml.Proofs.ScannerProofs
 import Lean4Yaml.Proofs.ScannerScalar

@@ -1610,6 +1610,74 @@ theorem scanPlainScalar_content_valid (s s' : ScannerState)
 5. Combine with `canStartPlainScalar_iff` to get `validPlainFirstProp`
 6. Package as `ScalarScannable`
 
+###### B3.4 Reflections
+
+**Status:** Complete. 217/217 build, 1 sorry (documented `validPlainFirstProp` gap), 0 axioms.
+
+**Delivered:**
+
+- **New file:** `Lean4Yaml/Proofs/ScannerPlainScalar.lean` (~160 lines)
+  - 5 theorems: `trimTrailingWS_eq`, `trimTrailingWS_noColonSpace`,
+    `trimTrailingWS_noSpaceHash`, `trimTrailingWS_noFlowIndicators`,
+    `validPlainFirst_sorry`
+  - Main theorem: `scanPlainScalar_content_valid` — complete proof
+    modulo the 1 sorry in `validPlainFirst_sorry`
+- **Updated:** `Lean4Yaml.lean` — added import
+- **Stale definition cleanup** (prerequisite discovered during B3.4 analysis):
+  - Deleted `canStartPlainScalar` (1-arg) and `validPlainFirst` (1-arg) from `Grammar.lean`
+  - Updated `ValidNode.plainScalarBlock/Flow` to use `validPlainFirstProp content false/true`
+  - Updated `NodeToValue` constructors similarly
+  - Updated `ScalarScannable` to use `validPlainFirstProp s.content inFlow`
+  - Fixed downstream: `Soundness.lean`, `CharClass.lean`, `ParserCorrectness.lean`
+
+**Proof technique: `Array.getElem_push` + `dite_false`:**
+
+The main proof difficulty was reducing `(s.tokens.push tok)[s.tokens.size].val`
+inside a `match` expression. `Array.getElem_push_eq` (which states
+`(xs.push x)[xs.size] = x`) could not be applied via `simp` because
+the implicit bound proof term didn't unify with the goal's bound proof.
+
+Solution: Use the conditional form `Array.getElem_push` first
+(`(xs.push x)[i] = if h : i < xs.size then xs[i] else x`), which
+`simp` CAN apply since it doesn't need proof-term unification. Then
+prove `¬(idx < s.tokens.size)` via `Nat.lt_irrefl` and apply `dite_false`
+to reduce to the `else` branch:
+
+```lean
+simp only [Array.getElem_push]
+have h_not_lt : ¬(idx < s.tokens.size) := Nat.lt_irrefl _
+simp only [h_not_lt, dite_false]
+```
+
+This two-step pattern (`getElem_push` → `dite_false`) is reusable for
+any proof that needs to identify the last-pushed token in an array.
+
+**Known gap: `validPlainFirstProp` for single-exception-char content:**
+
+The scanner checks `canStartPlainScalarBool c (peekAt? 1) inFlow` against
+the **input** lookahead, but the grammar's `validPlainFirstProp` checks
+against the **content** lookahead. For exception chars (`-`, `?`, `:`)
+where the second input char terminates the loop immediately (e.g., input
+`?:` at EOF → content `"?"`), the content has no second character, so
+`validPlainFirstProp "?" inFlow = canStartPlainScalarProp '?' none inFlow = False`.
+
+This is documented in the module docstring with three resolution options
+for future work. The pragmatic choice was to use `sorry` with clear
+documentation rather than block the other three fully-provable properties.
+
+**Deviation from plan:**
+
+- Plan estimated ~50–100 lines; actual file is ~160 lines (with
+  documentation and helpers)
+- Plan step 2 ("establish base case from `canStartPlainScalarBool`")
+  was identified as unnecessary — `PlainContentInv.empty` provides the
+  base case directly (content = "")
+- Plan step 5 ("combine with `canStartPlainScalar_iff`") was identified
+  as unprovable for the single-exception-char edge case (see above)
+- The stale definition cleanup was not anticipated in the plan but was
+  essential — `ScalarScannable` used a 1-arg `validPlainFirst` that
+  didn't match the scanner's 3-arg `canStartPlainScalarBool`
+
 ##### **B3.5: Prove `scan_plain_scalar_valid`** (~100–200 lines)
 
 Thread B3.4 through the `scanFiltered → scanLoop → scanNextToken →
@@ -1628,6 +1696,8 @@ machinery proves too complex, an alternative is to strengthen the main
 `scanLoop` invariant to carry `ScalarScannable` as an additional property
 (similar to how `ScanInv` was threaded through in the `scanNextToken`
 refactoring).
+ 
+###### B3.5 Reflections
 
 #### Module Decisions
 

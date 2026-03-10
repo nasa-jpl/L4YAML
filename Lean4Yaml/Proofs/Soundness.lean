@@ -252,14 +252,14 @@ lemmas: they guarantee the parser cannot mis-label scalar styles.
 
 /-- Plain scalars (block context) produce `.plain` style. -/
 theorem plainScalar_block_style_sound (content : String) (h : content.length > 0)
-    (hfirst : validPlainFirst content)
+    (hfirst : validPlainFirstProp content false)
     (hnoCS : noColonSpace content) (hnoSH : noSpaceHash content) :
     ∃ s, toYamlValue (.plainScalarBlock content h hfirst hnoCS hnoSH) = .scalar s ∧ s.style = .plain := by
   exact ⟨⟨content, .plain, none, none, none⟩, rfl, rfl⟩
 
 /-- Plain scalars (flow context) produce `.plain` style. -/
 theorem plainScalar_flow_style_sound (content : String) (h : content.length > 0)
-    (hfirst : validPlainFirst content)
+    (hfirst : validPlainFirstProp content true)
     (hnoCS : noColonSpace content) (hnoSH : noSpaceHash content)
     (hnoFlow : noFlowIndicators content) :
     ∃ s, toYamlValue (.plainScalarFlow content h hfirst hnoCS hnoSH hnoFlow) = .scalar s ∧ s.style = .plain := by

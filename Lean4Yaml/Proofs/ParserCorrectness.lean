@@ -94,7 +94,7 @@ This is the **standard pattern** in the codebase:
   3. Aliases are resolvable (no cycles, valid anchors)
 
 **Why conditional**: Proving the grammability hypothesis requires analyzing:
-- Scanner's `scanPlainScalar` validates `validPlainFirst`, `noColonSpace`, `noSpaceHash`
+- Scanner's `scanPlainScalar` validates `validPlainFirstProp`, `noColonSpace`, `noSpaceHash`
 - TokenParser's 7 `partial def` functions preserve token properties
 - `YamlValue.resolveAliases` produces valid values
 

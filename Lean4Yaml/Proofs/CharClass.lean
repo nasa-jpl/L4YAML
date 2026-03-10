@@ -105,15 +105,16 @@ We prove:
 -/
 
 /--
-For non-exceptional characters (not `-`, `?`, `:`), `Grammar.canStartPlainScalar` (1-arg)
-implies `canStartPlainScalarBool c next inFlow = true` for any `next` and `inFlow`.
+For non-exceptional characters (not `-`, `?`, `:`), if a character is printable,
+not whitespace, not a line break, and not an indicator, then
+`canStartPlainScalarBool c next inFlow = true` for any `next` and `inFlow`.
 
 The `else` branch of `canStartPlainScalarBool` is context-independent:
 `!isIndicator c && !isWhiteSpace c && !isLineBreak c`.
 -/
 theorem canStartPlainScalar_base (c : Char) (next : Option Char) (inFlow : Bool)
     (hDash : c ≠ '-') (hQ : c ≠ '?') (hColon : c ≠ ':') :
-    Grammar.canStartPlainScalar c →
+    isPrintableProp c ∧ ¬ isWhiteSpaceProp c ∧ ¬ isLineBreakProp c ∧ ¬ isIndicatorProp c →
     canStartPlainScalarBool c next inFlow = true := by
   intro ⟨_, hNotWs, hNotLb, hNotInd⟩
   unfold canStartPlainScalarBool
