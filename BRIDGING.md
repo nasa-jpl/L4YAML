@@ -2101,7 +2101,7 @@ explicitly, after which `simp only [Array.toList_filter]` matches and rewrites.
 - `List.pairwise_iff_getElem` exists in Lean 4.28 stdlib; `List.Pairwise.get`
   does not
 
-### Phase F: Dead Code & Low-Priority Gaps
+### Phase F: Dead Code & Low-Priority Gaps ✅ COMPLETE
 
 1. **ValidStream / ValidDocument** — decide keep-or-remove
 2. **isContentChar** — verify block scalar header proofs reference it
@@ -2162,19 +2162,66 @@ incomplete:
 | `Comment` struct (text + position) | ✅ Defined in Types.lean |
 | `CommentPosition` (before/inline/after) | ✅ Defined in Types.lean |
 | `YamlToken.comment` variant | ✅ Defined in Token.lean |
-| Scanner emits `.comment` tokens | ❌ Not implemented |
+| Scanner emits `.comment` tokens | ✅ Side-channel in `ScannerState.comments` |
 | `YamlValue` carries comments | ❌ No comment fields |
 | `YamlDocument` carries comments | ❌ No comment fields |
 | Parser preserves comments | ❌ Not implemented |
 
 **Implementation plan:**
 
-**G1. Scanner: emit `.comment` tokens.** Modify `skipToContentComment`
-(Scanner.lean L458–464) to emit `YamlToken.comment text` before
-consuming the comment. The scanner already identifies comment text
-spans — it just needs to emit instead of discard.
+#### **G1. Scanner: collect comment text.** Modify `skipToContentComment`
+(Scanner.lean L467–480) and `scanBlockScalarSkipComment` (L1955–1968) to
+collect comment text into a side-channel instead of discarding it.
 
-**G2. AST: add comment fields.** Two options:
+##### Phase G1 Reflections
+
+**Architecture decision — side-channel over token emission.**
+The original plan was to emit `YamlToken.comment text` into the token array.
+Analysis revealed this would break 11+ proofs that depend on
+`skipToContentComment_preserves_tokens` (which transitively feeds
+`skipToContentLoop_preserves_tokens` → `skipToContent_preserves_tokens` →
+7 call sites across ScannerCorrectness.lean and ScannerPlainScalarValid.lean).
+Emitting into the token array would also require updating `scanFiltered` to
+strip comment tokens and proving the `SimpleKeyValid_mono` pattern.
+
+Instead, comments are collected into a new `ScannerState.comments` field
+(`Array (YamlPos × String)`) — a side-channel that the existing proof
+infrastructure never touches. All `preserves_tokens` proofs remain valid
+because tokens aren't modified.
+
+**Implementation (Scanner.lean):**
+1. Added `comments : Array (YamlPos × String) := #[]` field to `ScannerState`
+   (after `explicitKeyLine`, with default `#[]`).
+2. Added `collectCommentTextLoop` — structural recursion on fuel, peeks char,
+   if not line-break: advance + push char + recurse; else stop. Returns
+   `(String × ScannerState)`, same pattern as existing `collectAnchorNameLoop`.
+3. Modified `skipToContentComment` to call `collectCommentTextLoop` after
+   advancing past `#`, storing `(commentPos, text)` in `s.comments`.
+4. Modified `scanBlockScalarSkipComment` the same way.
+5. Added `scanLoopFull` (returns full `ScannerState`) and `scanWithComments`
+   API that returns `(filteredTokens, comments)`.
+6. `scan` and `scanFiltered` are **unchanged** — backward compatible.
+
+**Proof repairs (ScannerCorrectness.lean):**
+All 11 broken proofs followed the same pattern — they unfold
+`skipToContentComment`/`scanBlockScalarSkipComment` and previously found
+`skipToEndOfLine` but now find `collectCommentTextLoop` + struct update.
+Added helper lemmas for the new function:
+- `collectCommentTextLoop_preserves_tokens` (induction on fuel)
+- `collectCommentTextLoop_preserves_simpleKey` (same pattern)
+- `collectCommentTextLoop_preserves_simpleKeyStack` (same pattern)
+- `collectCommentTextLoop_offset_ge` (same pattern)
+- `collectCommentTextLoop_preserves_ScanInv` (same pattern)
+
+Each helper placed immediately before its first use site (not grouped at
+the top) to avoid forward-reference errors. The `peekBack? = none` branches
+in `skipToContentComment` needed `split` on the `if commentOk` rather than
+`simp only []` because `commentOk = s.col == 0 || true` is a stuck
+Boolean expression that `simp only []` can't reduce.
+
+**Build:** 221/221 ✔, 4 pre-existing sorries unchanged.
+
+#### **G2. AST: add comment fields.** Two options:
 
 *Option G2a — Comments on nodes:*
 ```lean
@@ -2200,9 +2247,13 @@ Option G2b is cleaner for proofs — comments don't pollute the value tree.
 Proofs about structural equivalence work on the value tree directly;
 comment preservation is a separate side-property.
 
-**G3. Parser: collect `.comment` tokens into side-channel.**
+##### Phase G2 Reflections
 
-**G4. Normalization:**
+#### **G3. Parser: collect `.comment` tokens into side-channel.**
+
+##### Phase G3 Reflections
+
+#### **G4. Normalization:**
 
 ```lean
 /-- Strip all comments from a document (side-channel variant). -/
@@ -2210,14 +2261,16 @@ def YamlDocument.stripComments (doc : YamlDocument) : YamlDocument :=
   { doc with comments := #[] }
 ```
 
-**G5. Specification predicates operate modulo comments:**
+##### Phase G4 Reflections
+
+#### **G5. Specification predicates operate modulo comments:**
 
 All grammar validity predicates (`Scannable`, `Grammable`, `ValidNode`,
 `ValidYaml`) are defined on `YamlValue` which does not contain comments
 (Option G2b). Therefore they are **automatically** comment-agnostic —
 no changes needed to the predicates themselves.
 
-**G6. Round-trip theorem:**
+#### **G6. Round-trip theorem:**
 
 ```lean
 /-- Comments are preserved through parse → emit → parse. -/
@@ -2234,7 +2287,9 @@ preserved through a round-trip. The exact byte position may shift
 (due to whitespace normalization), but the logical position
 (before/inline/after which node) and text content are stable.
 
-**G7. Structural equivalence modulo comments:**
+##### Phase G6 Reflections
+
+#### **G7. Structural equivalence modulo comments:**
 
 ```lean
 /-- Structural parse results are unchanged by comment presence.
@@ -2250,6 +2305,8 @@ This is trivially true when comments are in a side-channel (G2b)
 since `stripComments` doesn't touch `value`. But it's worth stating
 explicitly as it formalizes YAML 1.2.2 §6.6: comments have no
 effect on the serialization tree.
+
+##### Phase G7 Reflections
 
 ### Phase H: JSON-is-YAML-subset (FUTURE)
 
