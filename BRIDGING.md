@@ -2165,7 +2165,7 @@ incomplete:
 | Scanner emits `.comment` tokens | ✅ Side-channel in `ScannerState.comments` |
 | `YamlValue` carries comments | ❌ No comment fields (by design: G2b) |
 | `YamlDocument` carries comments | ✅ Side-channel `comments` field |
-| Parser preserves comments | ❌ Not implemented |
+| Parser preserves comments | ✅ via `parseYamlWithComments` |
 
 **Implementation plan:**
 
@@ -2284,6 +2284,57 @@ predicates operate on `YamlValue` and are automatically comment-agnostic.
 #### **G3. Parser: collect `.comment` tokens into side-channel.**
 
 ##### Phase G3 Reflections
+
+**Architecture decision — new entry point, not modification of existing.**
+The original plan assumed `.comment` tokens in the token stream. With the
+G1 side-channel approach (`ScannerState.comments`), G3 becomes: thread
+scanner-collected comments through to `YamlDocument.comments`. Rather than
+modifying the existing `parseYaml` pipeline (which would risk breaking
+proofs about `scanFiltered` → `parseStream` → `compose`), we added a
+parallel entry point `parseYamlWithComments` that uses `scanWithComments`.
+
+**Implementation (TokenParser.lean):**
+1. Added `parseYamlWithComments : String → Except String (Array YamlDocument)`.
+   Pipeline: `Scanner.scanWithComments` → convert raw comments
+   `Array (YamlPos × String)` to `Array (YamlPos × Comment)` (all
+   `CommentPosition.inline` by default) → `parseStream` → `.map compose`
+   → attach comments to each composed document.
+2. Existing `parseYaml` / `parseYamlSingle` / `parseYamlRaw` unchanged —
+   backward compatible, continue to produce documents with `comments = #[]`.
+3. Multi-document simplification: all scanner comments are attached to every
+   document. For single-document streams (the common case) this is exact.
+   Per-document partitioning by position span is a future refinement.
+
+**Comment properties proofs (Proofs/CommentProperties.lean — new file):**
+11 theorems across 5 sections, all `rfl` or near-`rfl` (zero `sorry`):
+
+| Section | Theorem | Tactic |
+|---------|---------|--------|
+| §1 Compose preserves | `compose_preserves_comments` | `rfl` |
+| §1 Compose preserves | `compose_preserves_directives` | `rfl` |
+| §2 Strip preserves structure | `stripComments_value_eq` | `rfl` |
+| §2 Strip preserves structure | `stripComments_directives_eq` | `rfl` |
+| §2 Strip preserves structure | `stripComments_anchors_eq` | `rfl` |
+| §2 Strip preserves structure | `stripComments_comments_eq` | `rfl` |
+| §3 Idempotence | `stripComments_idem` | `rfl` |
+| §4 Commutativity | `compose_stripComments_comm` | `rfl` |
+| §4 Commutativity | `stripComments_compose_value_eq` | `rfl` |
+| §5 Value-independence (§6.6) | `value_independent_of_comments` | `rfl` |
+| §5 Value-independence (§6.6) | `compose_value_eq_of_comments_eq` | `unfold` + `rw` |
+
+**Why all `rfl`?** Both `compose` and `stripComments` use `{ doc with ... }`
+on orthogonal struct fields — `compose` touches `value`/`anchors`,
+`stripComments` touches `comments`. Lean 4 reduces struct updates
+definitionally, so all cross-field independence lemmas hold by `rfl`.
+The one exception (`compose_value_eq_of_comments_eq`) relates two
+*different* documents, requiring hypothesis rewriting.
+
+**Proof impact:** Zero breakage. The new file only imports `Lean4Yaml.Types`
+and adds no dependencies on existing proofs. Added to root import file
+`Lean4Yaml.lean` (alphabetical position after `CharClass`).
+
+**Build:** 223/223 ✔ (up from 221: +1 CommentProperties, +1 root rebuild),
+4 pre-existing sorries unchanged.
 
 #### **G4. Normalization:**
 
