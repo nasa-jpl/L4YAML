@@ -7813,6 +7813,128 @@ def scan_produces_valid_tokens (input : String) (tokens : Array (Positioned Yaml
     positionsOrdered := scan_positions_ordered input tokens h
   }
 
+/-! ### §3.5  `scanFiltered` Lifts `ValidTokenStream`
+
+Filtering out internal `.placeholder` tokens preserves all `ValidTokenStream`
+invariants (size, envelope, ordering).  This bridges the scanner's internal
+representation to the token stream consumed by `TokenParser`.
+-/
+
+/-- Filtering out placeholder tokens from a valid scan result preserves ValidTokenStream. -/
+def scanFiltered_produces_valid_tokens (input : String) (ftokens : Array (Positioned YamlToken))
+    (h : scanFiltered input = .ok ftokens) : ValidTokenStream := by
+  -- Step 1: Case split on underlying scan result
+  unfold scanFiltered at h
+  revert h
+  generalize h_scan : scan input = result
+  cases result with
+  | error e => intro h; contradiction
+  | ok tokens =>
+  intro h
+  injection h with h_filt
+  subst h_filt
+  -- Step 2: Build ValidTokenStream for unfiltered tokens
+  let vts := scan_produces_valid_tokens input tokens h_scan
+  let p : Positioned YamlToken → Bool := fun t => t.val != .placeholder
+  let l := tokens.toList
+  -- Step 3: List-level facts
+  have h_l_ne : l ≠ [] := by
+    intro h0
+    have h0' : tokens.size = 0 := by show l.length = 0; simp [h0]
+    have h_sz2 : tokens.size ≥ 2 := vts.sizeGe2
+    omega
+  have h_p_first : p (l.head h_l_ne) = true := by
+    show ((l.head h_l_ne).val != .placeholder) = true
+    have : (l.head h_l_ne).val = .streamStart := by
+      rw [List.head_eq_getElem]; exact vts.firstIsStreamStart
+    rw [this]; decide
+  have h_p_last : p (l.getLast h_l_ne) = true := by
+    show ((l.getLast h_l_ne).val != .placeholder) = true
+    have : (l.getLast h_l_ne).val = .streamEnd := by
+      rw [List.getLast_eq_getElem]; exact vts.lastIsStreamEnd
+    rw [this]; decide
+  have h_find : l.find? p = some (l.head h_l_ne) := by
+    conv => lhs; rw [show l = l.head h_l_ne :: l.tail from (List.cons_head_tail h_l_ne).symm]
+    exact List.find?_cons_of_pos h_p_first
+  have h_rev_ne : l.reverse ≠ [] := by simp [h_l_ne]
+  have h_rfind : l.reverse.find? p = some (l.getLast h_l_ne) := by
+    conv => lhs; rw [show l.reverse = l.reverse.head h_rev_ne :: l.reverse.tail
+                        from (List.cons_head_tail h_rev_ne).symm,
+                      show l.reverse.head h_rev_ne = l.getLast h_l_ne
+                        from List.head_reverse ..]
+    exact List.find?_cons_of_pos h_p_last
+  have h_flt_ne : l.filter p ≠ [] := by
+    intro h0
+    rw [show l = l.head h_l_ne :: l.tail from (List.cons_head_tail h_l_ne).symm,
+        List.filter_cons_of_pos h_p_first] at h0
+    exact absurd h0 (List.cons_ne_nil _ _)
+  have h_head_filt : (l.filter p).head h_flt_ne = l.head h_l_ne := by
+    rw [List.head_filter]; simp [h_find]
+  have h_last_filt : (l.filter p).getLast h_flt_ne = l.getLast h_l_ne := by
+    rw [List.getLast_filter]; simp [h_rfind]
+  -- Step 4: Filtered list has size ≥ 2
+  have h_filt_sz_list : (l.filter p).length ≥ 2 := by
+    have h_pos : (l.filter p).length > 0 := List.length_pos_iff.mpr h_flt_ne
+    have h_ne_1 : (l.filter p).length ≠ 1 := by
+      intro h1
+      obtain ⟨a, h_eq⟩ := List.length_eq_one_iff.mp h1
+      have h_ha : (l.filter p).head h_flt_ne = a := by simp [h_eq]
+      have h_la : (l.filter p).getLast h_flt_ne = a := by simp [h_eq]
+      have : l.head h_l_ne = l.getLast h_l_ne := by
+        rw [← h_head_filt, ← h_last_filt, h_ha, h_la]
+      have := congrArg Positioned.val this
+      rw [show (l.head h_l_ne).val = .streamStart
+            from by rw [List.head_eq_getElem]; exact vts.firstIsStreamStart,
+          show (l.getLast h_l_ne).val = .streamEnd
+            from by rw [List.getLast_eq_getElem]; exact vts.lastIsStreamEnd] at this
+      cases this
+    omega
+  have h_filt_sz : (tokens.filter p).size ≥ 2 := by
+    show (tokens.filter p).toList.length ≥ 2
+    rw [Array.toList_filter]; exact h_filt_sz_list
+  -- Step 5: Build ValidTokenStream
+  exact {
+    input := input,
+    tokens := tokens.filter p,
+    sizeGe2 := h_filt_sz,
+    firstIsStreamStart := by
+      have h_first_val : ((l.filter p).head h_flt_ne).val = .streamStart := by
+        rw [h_head_filt, List.head_eq_getElem]; exact vts.firstIsStreamStart
+      rw [List.head_eq_getElem] at h_first_val
+      show ((tokens.filter p).toList[0]'(show 0 < (tokens.filter p).size from by omega)).val
+        = .streamStart
+      simp only [Array.toList_filter]
+      exact h_first_val,
+    lastIsStreamEnd := by
+      have h_last_val : ((l.filter p).getLast h_flt_ne).val = .streamEnd := by
+        rw [h_last_filt, List.getLast_eq_getElem]; exact vts.lastIsStreamEnd
+      rw [List.getLast_eq_getElem] at h_last_val
+      have h_sz_eq : (tokens.filter p).size = (l.filter p).length := by
+        have : (tokens.filter p).toList = l.filter p := Array.toList_filter
+        show (tokens.filter p).toList.length = (l.filter p).length
+        rw [this]
+      show ((tokens.filter p).toList[(tokens.filter p).size - 1]'(show (tokens.filter p).size - 1 < (tokens.filter p).size from by omega)).val
+        = .streamEnd
+      simp only [Array.toList_filter, h_sz_eq]
+      exact h_last_val,
+    positionsOrdered := by
+      intro ⟨i, hi⟩ ⟨j, hj⟩ h_lt
+      have h_pw : List.Pairwise (fun a b => a.pos.offset ≤ b.pos.offset) l :=
+        List.pairwise_iff_getElem.mpr fun i j hi hj h_ij =>
+          vts.positionsOrdered ⟨i, hi⟩ ⟨j, hj⟩ h_ij
+      have h_sublist : (l.filter p).Sublist l := List.filter_sublist
+      have h_pw_filt : List.Pairwise (fun a b => a.pos.offset ≤ b.pos.offset) (l.filter p) :=
+        List.Pairwise.sublist h_sublist h_pw
+      have h_filt_len : (tokens.filter p).size = (l.filter p).length := by
+        have : (tokens.filter p).toList = l.filter p := Array.toList_filter
+        show (tokens.filter p).toList.length = (l.filter p).length; rw [this]
+      have h_result := List.pairwise_iff_getElem.mp h_pw_filt i j (by omega) (by omega) h_lt
+      show ((tokens.filter p).toList[i]'(show i < (tokens.filter p).size from hi)).pos.offset
+        ≤ ((tokens.filter p).toList[j]'(show j < (tokens.filter p).size from hj)).pos.offset
+      simp only [Array.toList_filter]
+      exact h_result
+  }
+
 /-! ## §4  Compile-Time Verification
 
 `#guard` checks demonstrating the theorem on concrete inputs.
