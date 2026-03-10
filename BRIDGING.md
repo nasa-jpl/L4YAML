@@ -2346,6 +2346,26 @@ def YamlDocument.stripComments (doc : YamlDocument) : YamlDocument :=
 
 ##### Phase G4 Reflections
 
+**Status: COMPLETE — no new code needed.**
+`YamlDocument.stripComments` was implemented in G2 (Types.lean L391) as
+`{ doc with comments := #[] }`, anticipating this phase. All normalization
+properties were proved in G3 (CommentProperties.lean):
+
+| Property | Theorem | Tactic |
+|----------|---------|--------|
+| Value preserved | `stripComments_value_eq` | `rfl` |
+| Directives preserved | `stripComments_directives_eq` | `rfl` |
+| Anchors preserved | `stripComments_anchors_eq` | `rfl` |
+| Comments zeroed | `stripComments_comments_eq` | `rfl` |
+| Idempotent | `stripComments_idem` | `rfl` |
+| Commutes with compose | `compose_stripComments_comm` | `rfl` |
+
+G4 was subsumed by the G2+G3 implementation. The side-channel design (G2b)
+makes normalization trivial: clearing a single struct field with no impact
+on the value tree, directives, or anchors.
+
+**Build:** 223/223 ✔, 4 pre-existing sorries unchanged.
+
 #### **G5. Specification predicates operate modulo comments:**
 
 All grammar validity predicates (`Scannable`, `Grammable`, `ValidNode`,
