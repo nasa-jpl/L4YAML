@@ -276,16 +276,16 @@ theorem dumpDirective_tag :
 
 /-- A document with no directives dumps to just its value. -/
 theorem dumpDocument_no_directives :
-    dumpDocument ⟨.plainScalar "hello", #[], #[]⟩ = "hello" := by native_decide
+    dumpDocument ⟨.plainScalar "hello", #[], #[], #[]⟩ = "hello" := by native_decide
 
 /-- A document with a YAML directive includes `---` marker. -/
 theorem dumpDocument_with_yaml_directive :
-    dumpDocument ⟨.plainScalar "hello", #[.yaml "1.2"], #[]⟩ =
+    dumpDocument ⟨.plainScalar "hello", #[.yaml "1.2"], #[], #[]⟩ =
       "%YAML 1.2\n---\nhello" := by native_decide
 
 /-- A document with multiple directives emits all of them. -/
 theorem dumpDocument_multiple_directives :
-    dumpDocument ⟨.plainScalar "v", #[.yaml "1.2", .tag "!e!" "tag:e.com,2000:"], #[]⟩ =
+    dumpDocument ⟨.plainScalar "v", #[.yaml "1.2", .tag "!e!" "tag:e.com,2000:"], #[], #[]⟩ =
       "%YAML 1.2\n%TAG !e! tag:e.com,2000:\n---\nv" := by native_decide
 
 /-- Dumping an empty document array produces empty string. -/
@@ -294,17 +294,17 @@ theorem dumpDocuments_empty :
 
 /-- Dumping a single document produces no `---` or `...` markers. -/
 theorem dumpDocuments_single :
-    dumpDocuments #[⟨.plainScalar "hello", #[], #[]⟩] = "hello" := by native_decide
+    dumpDocuments #[⟨.plainScalar "hello", #[], #[], #[]⟩] = "hello" := by native_decide
 
 /-- Dumping two documents separates them with `---` and ends with `...`. -/
 theorem dumpDocuments_two :
-    dumpDocuments #[⟨.plainScalar "a", #[], #[]⟩, ⟨.plainScalar "b", #[], #[]⟩] =
+    dumpDocuments #[⟨.plainScalar "a", #[], #[], #[]⟩, ⟨.plainScalar "b", #[], #[], #[]⟩] =
       "a\n---\nb\n..." := by native_decide
 
 /-- Dumping three documents separates each with `---` and ends with `...`. -/
 theorem dumpDocuments_three :
-    dumpDocuments #[⟨.plainScalar "a", #[], #[]⟩, ⟨.plainScalar "b", #[], #[]⟩,
-                    ⟨.plainScalar "c", #[], #[]⟩] =
+    dumpDocuments #[⟨.plainScalar "a", #[], #[], #[]⟩, ⟨.plainScalar "b", #[], #[], #[]⟩,
+                    ⟨.plainScalar "c", #[], #[], #[]⟩] =
       "a\n---\nb\n---\nc\n..." := by native_decide
 
 end Lean4Yaml.Proofs.DumpRoundTrip
