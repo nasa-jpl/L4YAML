@@ -894,4 +894,29 @@ def parseYamlSingle (input : String) : Except String YamlValue :=
     else .error (ScanError.multipleDocuments docs.size).toString
   | .error e => .error e
 
+/--
+Parse a YAML string with comment preservation (**representation graph**).
+
+Like `parseYaml` but also collects comments discovered during scanning.
+Each composed document carries all scanner-collected comments in its
+`comments` field (as `Array (YamlPos × Comment)`).
+
+**Note**: All scanner comments are attached to every document. For
+single-document streams (the common case) this is exact. For multi-document
+streams, a future refinement can partition comments by document span.
+
+**Comment position**: All comments are assigned `CommentPosition.inline`
+at this level. A post-processing pass can reclassify to `.before`/`.after`
+based on node positions. -/
+def parseYamlWithComments (input : String) : Except String (Array YamlDocument) :=
+  match Scanner.scanWithComments input with
+  | .ok (tokens, rawComments) =>
+    let comments : Array (YamlPos × Comment) :=
+      rawComments.map fun (pos, text) => (pos, ⟨text, .inline⟩)
+    match parseStream tokens with
+    | .ok docs => .ok (docs.map fun doc =>
+        { doc.compose with comments := comments })
+    | .error e => .error e.toString
+  | .error e => .error e.toString
+
 end Lean4Yaml.TokenParser
