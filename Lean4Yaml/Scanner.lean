@@ -163,6 +163,10 @@ structure ScannerState where
       saving on the same line as `?`, and (b) bypass the flow-sequence
       implicit-key-single-line restriction when `?` was used. -/
   explicitKeyLine : Option Nat := none
+  /-- Collected comments (position × text). Comments are stored here as a
+      side-channel rather than in the token array so that all existing
+      `preserves_tokens` proofs remain valid unchanged. -/
+  comments : Array (YamlPos × String) := #[]
   deriving Repr, Inhabited
 
 /-! ### State Invariants
@@ -438,18 +442,41 @@ def skipToContentWs (s : ScannerState) : Except ScanError ScannerState :=
   else
     .ok (skipWhitespace s)
 
+/-- Helper: collect comment text characters until end-of-line or EOF.
+
+    Structurally recursive on `fuel`.  Advances the scanner past each
+    collected character while accumulating the text string. -/
+def collectCommentTextLoop (s : ScannerState) (text : String) (fuel : Nat) : String × ScannerState :=
+  match fuel with
+  | 0 => (text, s)
+  | fuel' + 1 =>
+    match s.peek? with
+    | some c => if isLineBreakBool c then (text, s)
+                else collectCommentTextLoop s.advance (text.push c) fuel'
+    | none => (text, s)
+termination_by fuel
+
 /-- Phase 2: Skip optional comment (from `#` to end of line).
 
     §6.7: `c-nb-comment-text` (#) requires preceding `s-separate-in-line`.
     `s-separate-in-line` = `s-white+` | `start-of-line`.
-    Check raw input: `#` must be preceded by whitespace or be at column 0. -/
+    Check raw input: `#` must be preceded by whitespace or be at column 0.
+
+    Comments are collected into `ScannerState.comments` as a side-channel
+    (§6.6: comments have no effect on the serialization tree). -/
 def skipToContentComment (s : ScannerState) : ScannerState :=
   match s.peek? with
   | some '#' =>
     let commentOk := s.col == 0 || match s.peekBack? with
       | some c => isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF'  -- BOM is transparent (§5.2)
       | none => true   -- start of input
-    if commentOk then skipToEndOfLine s else s
+    if commentOk then
+      let commentPos := s.currentPos
+      let s_after_hash := s.advance  -- skip '#'
+      let fuel := s_after_hash.inputEnd - s_after_hash.offset
+      let (text, s') := collectCommentTextLoop s_after_hash "" fuel
+      { s' with comments := s'.comments.push (commentPos, text) }
+    else s
   | _ => s
 
 /-- Structural-recursive loop for `skipToContent`.
@@ -1931,7 +1958,12 @@ def scanBlockScalarSkipComment (s : ScannerState) : ScannerState :=
     let commentOk := match s.peekBack? with
       | some c => isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF'  -- BOM is transparent (§5.2)
       | none => false
-    if commentOk then skipToEndOfLine s  -- c-nb-comment-text [77]: whitespace preceded `#`
+    if commentOk then
+      let commentPos := s.currentPos
+      let s_after_hash := s.advance  -- skip '#'
+      let fuel := s_after_hash.inputEnd - s_after_hash.offset
+      let (text, s') := collectCommentTextLoop s_after_hash "" fuel
+      { s' with comments := s'.comments.push (commentPos, text) }
     else s  -- `#` without preceding whitespace — not a comment
   | _ => s
 
@@ -2318,6 +2350,48 @@ def scan (input : String) : Except ScanError (Array (Positioned YamlToken)) :=
 def scanFiltered (input : String) : Except ScanError (Array (Positioned YamlToken)) :=
   match scan input with
   | .ok tokens => .ok (tokens.filter fun t => t.val != .placeholder)
+  | .error e => .error e
+
+/-- Like `scanLoop` but returns the full final `ScannerState` (including
+    collected comments) rather than just the token array. -/
+def scanLoopFull (s : ScannerState) (fuel : Nat) : Except ScanError ScannerState :=
+  match fuel with
+  | 0 => .error (.fuelExhausted s.line s.col)
+  | fuel' + 1 =>
+    match scanNextToken s with
+    | .error e => .error e
+    | .ok none =>
+      if s.flowLevel > 0 then
+        .error (.unterminatedFlowCollection '[' s.line)
+      else if s.directivesPresent && !s.documentEverStarted then
+        .error (.directiveWithoutDocument s.line)
+      else
+        let final := unwindIndents s (-1)
+        let final := final.emit .streamEnd
+        .ok final
+    | .ok (some s') => scanLoopFull s' fuel'
+termination_by fuel
+
+/-- Scan with comment preservation.
+
+    Returns both the filtered token array and the collected comments
+    (each as position × text). Comments are collected as a side-channel
+    during scanning — they do not appear in the token array.
+
+    The token array is identical to `scanFiltered`; comments are the
+    additional information. -/
+def scanWithComments (input : String) :
+    Except ScanError (Array (Positioned YamlToken) × Array (YamlPos × String)) :=
+  let s := ScannerState.mk' input
+  let s := s.emit .streamStart
+  let s := match s.peek? with
+    | some '\uFEFF' => s.advance
+    | _ => s
+  let fuel := input.utf8ByteSize + 1
+  match scanLoopFull s (fuel * 4) with
+  | .ok final =>
+    let tokens := final.tokens.filter fun t => t.val != .placeholder
+    .ok (tokens, final.comments)
   | .error e => .error e
 
 end Lean4Yaml.Scanner

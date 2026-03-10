@@ -593,6 +593,21 @@ theorem skipToEndOfLine_preserves_tokens (s : ScannerState) :
     · -- none => stop
       rfl
 
+/-- Helper: collectCommentTextLoop preserves tokens.
+
+    `collectCommentTextLoop` only calls `s.advance` which preserves tokens. -/
+theorem collectCommentTextLoop_preserves_tokens (s : ScannerState)
+    (text : String) (fuel : Nat) :
+    (collectCommentTextLoop s text fuel).2.tokens = s.tokens := by
+  induction fuel generalizing s text with
+  | zero => unfold collectCommentTextLoop; rfl
+  | succ fuel' IH =>
+    unfold collectCommentTextLoop; split
+    · split
+      · rfl
+      · rw [IH, advance_preserves_tokens]
+    · rfl
+
 /-- Helper: skipToContentWs preserves tokens.
 
 `skipToContentWs` only calls `skipSpaces` and `skipWhitespace` (both proven
@@ -626,8 +641,9 @@ theorem skipToContentWs_preserves_tokens (s : ScannerState) (s' : ScannerState)
 
 /-- Helper: skipToContentComment preserves tokens.
 
-`skipToContentComment` only calls `skipToEndOfLine` (proven to preserve tokens).
-No `emit` calls. -/
+`skipToContentComment` collects comment text into the `comments` side-channel
+via `collectCommentTextLoop`, which only calls `advance` and field updates.
+No `emit` calls — the `tokens` array is unchanged. -/
 theorem skipToContentComment_preserves_tokens (s : ScannerState) :
     (skipToContentComment s).tokens = s.tokens := by
   unfold skipToContentComment
@@ -637,10 +653,15 @@ theorem skipToContentComment_preserves_tokens (s : ScannerState) :
     split  -- splits on peekBack?
     · -- peekBack? = some c
       split  -- splits on the if condition
-      · exact skipToEndOfLine_preserves_tokens s
+      · -- commentOk = true
+        simp only []  -- reduce let bindings
+        rw [collectCommentTextLoop_preserves_tokens, advance_preserves_tokens]
       · rfl
-    · -- peekBack? = none
-      simp [skipToEndOfLine_preserves_tokens]
+    · -- peekBack? = none: commentOk = s.col == 0 || true
+      split  -- if commentOk
+      · simp only []
+        rw [collectCommentTextLoop_preserves_tokens, advance_preserves_tokens]
+      · rfl
   · -- peek? ≠ some '#'
     rfl
 
@@ -1398,7 +1419,8 @@ theorem scanBlockScalarSkipComment_preserves_tokens (s : ScannerState) :
     · -- peekBack? = some c
       dsimp only []
       split
-      · exact skipToEndOfLine_preserves_tokens s
+      · simp only []
+        rw [collectCommentTextLoop_preserves_tokens, advance_preserves_tokens]
       · rfl
     · -- peekBack? = none
       rfl
@@ -2522,17 +2544,36 @@ theorem skipToEndOfLine_preserves_simpleKey (s : ScannerState) :
     (skipToEndOfLine s).simpleKey = s.simpleKey := by
   unfold skipToEndOfLine; exact skipToEndOfLineLoop_preserves_simpleKey s _
 
+/-- Helper: collectCommentTextLoop preserves simpleKey. -/
+theorem collectCommentTextLoop_preserves_simpleKey (s : ScannerState)
+    (text : String) (fuel : Nat) :
+    (collectCommentTextLoop s text fuel).2.simpleKey = s.simpleKey := by
+  induction fuel generalizing s text with
+  | zero => unfold collectCommentTextLoop; rfl
+  | succ fuel' IH =>
+    unfold collectCommentTextLoop; split
+    · split
+      · rfl
+      · rw [IH, advance_preserves_simpleKey]
+    · rfl
+
 theorem skipToContentComment_preserves_simpleKey (s : ScannerState) :
     (skipToContentComment s).simpleKey = s.simpleKey := by
   unfold skipToContentComment
   split
-  · -- peek? = some '#': commentOk check with peekBack? match
-    dsimp only []
-    repeat (first | split | done)
-    all_goals first
-      | exact skipToEndOfLine_preserves_simpleKey s
-      | (simp; exact skipToEndOfLine_preserves_simpleKey s)
-      | rfl
+  · -- peek? = some '#'
+    simp only []
+    split  -- peekBack?
+    · -- peekBack? = some c
+      split  -- if commentOk
+      · simp only []
+        rw [collectCommentTextLoop_preserves_simpleKey, advance_preserves_simpleKey]
+      · rfl
+    · -- peekBack? = none
+      split  -- if commentOk
+      · simp only []
+        rw [collectCommentTextLoop_preserves_simpleKey, advance_preserves_simpleKey]
+      · rfl
   · rfl
 
 theorem consumeNewline_preserves_simpleKey (s : ScannerState) :
@@ -3107,6 +3148,19 @@ theorem skipToEndOfLine_preserves_simpleKeyStack (s : ScannerState) :
     (skipToEndOfLine s).simpleKeyStack = s.simpleKeyStack := by
   unfold skipToEndOfLine; exact skipToEndOfLineLoop_preserves_simpleKeyStack s _
 
+/-- Helper: collectCommentTextLoop preserves simpleKeyStack. -/
+theorem collectCommentTextLoop_preserves_simpleKeyStack (s : ScannerState)
+    (text : String) (fuel : Nat) :
+    (collectCommentTextLoop s text fuel).2.simpleKeyStack = s.simpleKeyStack := by
+  induction fuel generalizing s text with
+  | zero => unfold collectCommentTextLoop; rfl
+  | succ fuel' IH =>
+    unfold collectCommentTextLoop; split
+    · split
+      · rfl
+      · rw [IH, advance_preserves_simpleKeyStack]
+    · rfl
+
 theorem skipToContentWs_preserves_simpleKeyStack (s : ScannerState) (s' : ScannerState)
     (h : skipToContentWs s = .ok s') : s'.simpleKeyStack = s.simpleKeyStack := by
   unfold skipToContentWs at h
@@ -3128,12 +3182,19 @@ theorem skipToContentComment_preserves_simpleKeyStack (s : ScannerState) :
     (skipToContentComment s).simpleKeyStack = s.simpleKeyStack := by
   unfold skipToContentComment
   split
-  · dsimp only []
-    repeat (first | split | done)
-    all_goals first
-      | exact skipToEndOfLine_preserves_simpleKeyStack s
-      | (simp; exact skipToEndOfLine_preserves_simpleKeyStack s)
-      | rfl
+  · -- peek? = some '#'
+    simp only []
+    split  -- peekBack?
+    · -- peekBack? = some c
+      split  -- if commentOk
+      · simp only []
+        rw [collectCommentTextLoop_preserves_simpleKeyStack, advance_preserves_simpleKeyStack]
+      · rfl
+    · -- peekBack? = none
+      split  -- if commentOk
+      · simp only []
+        rw [collectCommentTextLoop_preserves_simpleKeyStack, advance_preserves_simpleKeyStack]
+      · rfl
   · rfl
 
 theorem consumeNewline_preserves_simpleKeyStack (s : ScannerState) :
@@ -4027,7 +4088,8 @@ theorem scanBlockScalarSkipComment_preserves_simpleKeyStack (s : ScannerState) :
     · -- peekBack? = some c
       dsimp only []
       split
-      · exact skipToEndOfLine_preserves_simpleKeyStack s
+      · simp only []
+        rw [collectCommentTextLoop_preserves_simpleKeyStack, advance_preserves_simpleKeyStack]
       · rfl
     · -- peekBack? = none
       rfl
@@ -5370,14 +5432,37 @@ theorem skipToContentWs_preserves_ScanInv (s s' : ScannerState)
     simp at h_ok; rw [← h_ok]; exact skipWhitespace_preserves_ScanInv _ h
 
 -- skipToContentComment preserves ScanInv.
+
+/-- Helper: collectCommentTextLoop preserves ScanInv. -/
+theorem collectCommentTextLoop_preserves_ScanInv (s : ScannerState)
+    (text : String) (fuel : Nat) (h : ScanInv s) :
+    ScanInv (collectCommentTextLoop s text fuel).2 := by
+  induction fuel generalizing s text with
+  | zero => unfold collectCommentTextLoop; exact h
+  | succ fuel' IH =>
+    unfold collectCommentTextLoop; split
+    · split
+      · exact h
+      · exact IH _ _ (advance_preserves_ScanInv _ h)
+    · exact h
+
 theorem skipToContentComment_preserves_ScanInv (s : ScannerState)
     (h : ScanInv s) : ScanInv (skipToContentComment s) := by
   unfold skipToContentComment; split
   · -- peek? = some '#'
     simp only []
-    -- split on peekBack? inside commentOk, then on the if
-    split <;> split
-    all_goals (first | exact skipToEndOfLine_preserves_ScanInv s h | exact h)
+    split  -- peekBack?
+    · -- peekBack? = some c
+      split  -- if commentOk
+      · -- true: { s' with comments := ... }
+        exact field_update_preserves_ScanInv _ _
+          (collectCommentTextLoop_preserves_ScanInv _ _ _ (advance_preserves_ScanInv _ h)) rfl rfl
+      · exact h
+    · -- peekBack? = none
+      split  -- if commentOk
+      · exact field_update_preserves_ScanInv _ _
+          (collectCommentTextLoop_preserves_ScanInv _ _ _ (advance_preserves_ScanInv _ h)) rfl rfl
+      · exact h
   · exact h
 
 -- skipToContentLoop preserves ScanInv.
@@ -5852,16 +5937,31 @@ theorem collectLineContentLoop_offset_ge (s : ScannerState) (content : String) (
       · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _)
     · exact Nat.le_refl _
 
+/-- Helper: collectCommentTextLoop offset is non-decreasing. -/
+theorem collectCommentTextLoop_offset_ge (s : ScannerState)
+    (text : String) (fuel : Nat) :
+    (collectCommentTextLoop s text fuel).2.offset ≥ s.offset := by
+  induction fuel generalizing s text with
+  | zero => unfold collectCommentTextLoop; exact Nat.le_refl _
+  | succ fuel' IH =>
+    unfold collectCommentTextLoop; split
+    · split
+      · exact Nat.le_refl _
+      · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (IH _ _)
+    · exact Nat.le_refl _
+
 theorem scanBlockScalarSkipComment_offset_ge (s : ScannerState) :
     (scanBlockScalarSkipComment s).offset ≥ s.offset := by
   unfold scanBlockScalarSkipComment
   split
   · -- some '#'
     split
-    · -- peekBack? = some c: commentOk = (isWhiteSpace c || isLineBreak c || c == '')
+    · -- peekBack? = some c
       dsimp only []
       split
-      · exact skipToEndOfLine_offset_ge s
+      · simp only []
+        exact Nat.le_trans (ScannerProgress.advance_offset_ge s)
+          (collectCommentTextLoop_offset_ge _ _ _)
       · exact Nat.le_refl _
     · -- peekBack? = none: commentOk = false → if false then ... else s
       exact Nat.le_refl _
