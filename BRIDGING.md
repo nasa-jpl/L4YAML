@@ -2109,6 +2109,48 @@ explicitly, after which `simp only [Array.toList_filter]` matches and rewrites.
 4. **validHeaderLength** — bounded extraction theorems
 5. **IndentedAtLeast** — scanner indent correctness
 
+#### Phase F Reflections
+
+**Status: COMPLETE** — all 5 items assessed and addressed. Build 221/221 ✔, 4 pre-existing sorries unchanged.
+
+**Decisions:**
+
+1. **ValidStream / ValidDocument — KEPT.** These are YAML §9 specification structures
+   (`l-any-document` [204], `l-yaml-stream` [205]) needed for future multi-document
+   stream proofs. Neither type is referenced by any current proof file. Added doc
+   annotations in Grammar.lean explaining the keep decision and noting that
+   `checkValidStream` in ScannerCorrectness.lean is a Bool utility sharing the
+   name but not the type.
+
+2. **isContentChar — BRIDGED.** Added two theorems in BlockScalarContracts.lean §5:
+   - `isContentChar_stops_extraction`: content chars stop header extraction
+     (delegates directly to existing `extractHeaderChars_preserves_non_header`)
+   - `isContentChar_complement`: `isContentChar c ↔ ¬(isBlockScalarHeaderChar c = true)`
+
+3. **isNamedEscapeChar — CHARACTERIZED.** Added to EscapeResolution.lean §8:
+   - 16 positive theorems (`isNamedEscapeChar_null` through `_nbsp`), all by `native_decide`
+   - 3 negative theorems for hex prefixes (`not_isNamedEscapeChar_x/u/U`)
+   - `isNamedEscapeChar_iff_isSome`: structural equivalence to `Option.isSome`
+
+4. **validHeaderLength — BOUNDED.** Added to BlockScalarContracts.lean §6:
+   - `extractHeaderChars_length_le`: extracted length ≤ input length (structural induction)
+   - `validHeaderLength_bound`: direct re-statement of the ≤ 2 bound
+   - `validHeaderLength_nil`: empty input trivially satisfies
+
+5. **IndentedAtLeast — KEPT + `indentedAtLeast_zero`.** Already had `indented_weaken` and
+   `Decidable` instance. Added `indentedAtLeast_zero` in Grammar.lean: `IndentedAtLeast 0 cs`
+   holds for any input. Scanner indent bridge proofs await non-partial scanner interface.
+
+**Key finding:** All 5 items were specification-only definitions in Grammar.lean with zero
+references from any proof or implementation file. None were dead code — they're spec contracts
+per YAML 1.2.2. The characterization theorems now connect them to the existing proof infrastructure.
+
+**Proof techniques:**
+- `native_decide` for all char-membership theorems (consistent with §1 pattern in BlockScalarContracts)
+- `Bool.eq_false_iff` for complement characterization
+- `nofun` for `Option.some ≠ Option.none` contradictions
+- Structural `List.cons` induction for `extractHeaderChars_length_le`
+
 ### Phase G: Comment Preservation (ROUND-TRIP)
 
 Currently the scanner discards comments (`skipToContentComment` consumes
