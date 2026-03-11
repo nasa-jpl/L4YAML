@@ -379,23 +379,122 @@ token. By B3.5, every plain scalar token satisfies `ScalarScannable _ false`.
 Non-plain scalars satisfy `ScalarScannable` vacuously (`style ≠ .plain`).
 Aliases satisfy `Scannable.alias` trivially.
 
-**Sorry**: The full proof requires tracing the token→tree construction
-through `parseNode`, `parseDocument`, and `parseStream`, showing that
-every `YamlValue.scalar` in the output has content/style from a scanner
-token. This is structurally straightforward (the parser pattern-matches
-on `YamlToken.scalar content style` and constructs
-`YamlValue.scalar { content, style, ... }`) but involves deep parser
-function unfolding.
+### Gap Analysis
+
+Three distinct barriers prevent full discharge of the C2 sorries:
+
+1. **Flow context gap** (`parseStream_output_scannable`):
+   `Scannable (.sequence .flow items ...) false` requires
+   `∀ i, Scannable items[i] true` because
+   `(false || .flow == .flow) = true`. And `Scannable (.scalar s) true`
+   requires `ScalarScannable s true`, which includes `noFlowIndicators`
+   and `validPlainFirstProp _ true`. But `PlainScalarsValid` only gives
+   `ScalarScannable _ false` (no flow indicator check). The scanner DOES
+   guarantee `ScalarScannable _ true` for flow-context tokens (B3.4 gives
+   `ScalarScannable _ s.inFlow`), but B3.5's universal weakening via
+   `ScalarScannable_any_implies_false` discards per-token flow context.
+
+   **Fix**: Extend B3.5 to also prove `FlowAwarePSV` (defined below).
+   This requires showing scanner `flowLevel > 0 ↔ flowNesting > 0` in the
+   token stream, and threading `ScalarScannable _ true` for flow-context
+   tokens through the scanner dispatch chain.
+
+2. **Alias ordering invariant** (`parseStream_output_aliases_resolve`):
+   The parser's `parseNode` produces `.alias name` from `.alias name` tokens
+   without validating that a prior `.anchor name` token exists. The scanner's
+   `scanAnchorOrAlias` similarly just emits tokens. Proving
+   `AllAliasesResolve` requires a scanner-level invariant that every
+   `*name` token has a prior `&name` token (YAML §7.1), plus a parser
+   invariant that `ps.addAnchor` accumulations cover all processed anchors.
+
+3. **Cross-context semantic gap** (`parseStream_output_anchors_wellformed`):
+   `WellFormedAnchors` requires `∀ inFlow, Grammable val.stripAnchors inFlow`.
+   But block-context plain scalars like `value{key}` satisfy
+   `ScalarScannable _ false` (vacuous flow indicator check) but NOT
+   `ScalarScannable _ true` (flow indicators present). If such values are
+   anchored, the `∀ inFlow` quantifier is genuinely unsatisfiable.
+   This is a YAML spec corner case (§7.1 cross-context aliasing), not a
+   proof gap. Options: weaken to `NoFlowIndicatorsInBlockAnchors`
+   precondition, or restrict to single-context documents.
 -/
+
+/-! ### C2 Infrastructure
+
+Helper lemmas and definitions that narrow the gap between B3.5's
+token-level `PlainScalarsValid` and C2's tree-level `Scannable`. -/
+
+/-- Strengthen `ScalarScannable _ false` to `_ true` given the two
+    additional flow-context properties.
+
+    From `ScalarScannable s false` we already have `noColonSpace` and
+    `noSpaceHash`. To reach `_ true` we additionally need
+    `validPlainFirstProp _ true` and `noFlowIndicators`.
+
+    This is the bridge that `FlowAwarePSV` fills: flow-context tokens
+    have these properties by scanner construction (B3.4). -/
+theorem ScalarScannable_strengthen (s : Scalar)
+    (h : ScalarScannable s false)
+    (h_vpf : s.style = .plain → s.content.length > 0 →
+      validPlainFirstProp s.content true)
+    (h_nfi : s.style = .plain → s.content.length > 0 →
+      noFlowIndicatorsProp s.content) :
+    ScalarScannable s true := by
+  intro hplain hlen
+  have ⟨_, h2, h3, _⟩ := h hplain hlen
+  exact ⟨h_vpf hplain hlen, h2, h3, fun _ => h_nfi hplain hlen⟩
+
+/-! ### Flow Nesting
+
+The scanner tracks flow context via `flowLevel`. In the token stream,
+this corresponds to nesting depth of `flowSequenceStart`/`flowMappingStart`
+vs `flowSequenceEnd`/`flowMappingEnd` tokens. -/
+
+/-- Flow nesting depth at position `i` in the token array.
+    Counts unmatched flow-start tokens (`flowSequenceStart`, `flowMappingStart`)
+    before position `i`, subtracting flow-end tokens. Uses natural number
+    subtraction (saturating at 0) for well-formed token streams. -/
+def flowNesting (tokens : Array (Positioned YamlToken)) (i : Nat) : Nat :=
+  go tokens 0 i 0
+where
+  go (tokens : Array (Positioned YamlToken)) (pos target depth : Nat) : Nat :=
+    if pos ≥ target then depth
+    else if h : pos < tokens.size then
+      let depth' := match (tokens[pos]'h).val with
+        | .flowSequenceStart | .flowMappingStart => depth + 1
+        | .flowSequenceEnd | .flowMappingEnd => if depth > 0 then depth - 1 else 0
+        | _ => depth
+      go tokens (pos + 1) target depth'
+    else depth
+  termination_by target - pos
+
+/-- Flow-aware extension of `PlainScalarsValid`.
+
+    At positions where `flowNesting > 0` (inside a flow collection),
+    plain scalar tokens additionally satisfy `ScalarScannable _ true`.
+    This captures the scanner's guarantee that flow-context plain scalars
+    have no flow indicators and satisfy `validPlainFirstProp _ true`.
+
+    **Provable from scanner**: B3.4 gives `ScalarScannable _ s.inFlow`,
+    and the scanner's `flowLevel > 0 ↔ inFlow = true` corresponds to
+    `flowNesting > 0` in the token stream. Extending B3.5 to also
+    preserve `ScalarScannable _ true` (without weakening) for flow-context
+    tokens would prove this predicate. -/
+def FlowAwarePSV (tokens : Array (Positioned YamlToken)) : Prop :=
+  PlainScalarsValid tokens ∧
+  ∀ i (hi : i < tokens.size),
+    flowNesting tokens i > 0 →
+    match (tokens[i]'hi).val with
+    | .scalar content .plain =>
+        ScalarScannable ⟨content, .plain, none, none, none⟩ true
+    | _ => True
 
 /-! ### C2 Bridge Lemmas
 
 These connect B3.5's token-level `PlainScalarsValid` to the tree-level
-`Scannable` predicate for scalar base cases. Used by the parser tracing
-proofs (when completed). -/
+`Scannable` predicate for scalar base cases. -/
 
 /-- A scalar YamlValue constructed from a token satisfying PlainScalarsValid
-    is Scannable. Bridges token-level ScalarScannable → tree-level Scannable. -/
+    is Scannable at block context. -/
 theorem scalar_from_token_scannable
     (tokens : Array (Positioned YamlToken))
     (h_psv : PlainScalarsValid tokens)
@@ -412,22 +511,78 @@ theorem scalar_from_token_scannable
   | plain => exact h_match hplain hlen
   | _ => contradiction
 
-/-- Empty content scalar (parser empty node) is trivially Scannable. -/
-theorem empty_scalar_scannable (tag anchor : Option String) :
-    Scannable (.scalar ⟨"", .plain, tag, anchor, none⟩) false := by
+/-- A scalar from a flow-context token satisfying FlowAwarePSV is
+    Scannable at any flow context. -/
+theorem scalar_from_flow_token_scannable
+    (tokens : Array (Positioned YamlToken))
+    (h_fpsv : FlowAwarePSV tokens)
+    (i : Nat) (hi : i < tokens.size)
+    (content : String) (style : ScalarStyle)
+    (h_tok : (tokens[i]'hi).val = .scalar content style)
+    (h_flow : flowNesting tokens i > 0)
+    (tag anchor : Option String) (inFlow : Bool) :
+    Scannable (.scalar ⟨content, style, tag, anchor, none⟩) inFlow := by
+  apply Scannable.scalar
+  intro hplain hlen
+  cases inFlow with
+  | false =>
+    have h_match := h_fpsv.1 i hi
+    rw [h_tok] at h_match
+    cases style with
+    | plain => exact h_match hplain hlen
+    | _ => contradiction
+  | true =>
+    have h_match := h_fpsv.2 i hi h_flow
+    rw [h_tok] at h_match
+    cases style with
+    | plain => exact h_match hplain hlen
+    | _ => contradiction
+
+/-- Empty content scalar (parser empty node) is trivially Scannable
+    at any flow context. -/
+theorem empty_scalar_scannable (tag anchor : Option String) (inFlow : Bool) :
+    Scannable (.scalar ⟨"", .plain, tag, anchor, none⟩) inFlow := by
   apply Scannable.scalar; intro _ hlen; simp at hlen
 
-/-- C2: Every document produced by `parseStream` from scanner tokens
+/-- C2a: Every document produced by `parseStream` from scanner tokens
     has a `Scannable` value tree.
 
-    The proof connects B3.5's token-level `ScalarScannable` to the
-    tree-level `Scannable` predicate. The key observation is that
-    `parseNode` constructs `YamlValue.scalar { content, style, tag, anchor }`
-    directly from `YamlToken.scalar content style`, preserving the
-    content and style that B3.5 has already validated.
+    ### Proof Architecture (when completed)
 
-    **Sorry**: Requires tracing through `parseNode`/`parseDocument`/
-    `parseStream` to show content/style preservation. -/
+    The proof requires mutual induction on fuel across 6 parser functions
+    (`parseNode`, `parseBlockSequence`, `parseBlockMapping`,
+    `parseFlowSequence`, `parseFlowMapping`, `parseImplicitBlockSequence`)
+    plus their loop variants.
+
+    **Base cases** (proved, see bridge lemmas above):
+    - Scalar from token: `scalar_from_token_scannable` / `scalar_from_flow_token_scannable`
+    - Empty node: `empty_scalar_scannable`
+    - Alias: `Scannable.alias` (trivial)
+
+    **Inductive cases**: Collections delegate to recursive `parseNode` calls.
+    Block collections need `Scannable _ false` for items (available from PSV).
+    Flow collections need `Scannable _ true` for items (needs `FlowAwarePSV`).
+
+    ### Remaining Barriers
+
+    1. **Flow context gap** (PRIMARY): `parseFlowSequence`/`parseFlowMapping`
+       construct `.sequence .flow` / `.mapping .flow`, whose items need
+       `Scannable _ true`. This requires `ScalarScannable _ true` for
+       flow-context scalars, which `PlainScalarsValid` does not provide.
+       Use `ScalarScannable_strengthen` + `FlowAwarePSV` to bridge.
+
+    2. **Mutual induction mechanics**: 6 mutually recursive functions with
+       fuel-based termination require ~300 LOC of induction infrastructure.
+
+    ### Fix Path
+
+    1. Prove `scanFiltered_flow_aware_psv` by extending B3.5 (~200 LOC):
+       thread `ScalarScannable _ true` for flow-context tokens alongside
+       the existing `ScalarScannable _ false` weakening.
+    2. Add `FlowAwarePSV` as hypothesis here.
+    3. Prove by mutual induction on fuel, using `scalar_from_flow_token_scannable`
+       for flow-context scalars and `scalar_from_token_scannable` for
+       block-context scalars. -/
 theorem parseStream_output_scannable
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
@@ -436,15 +591,28 @@ theorem parseStream_output_scannable
     ∀ doc ∈ docs.toList, Scannable doc.value false := by
   sorry
 
-/-- Every document's aliases resolve through its anchor map.
+/-- C2b: Every document's aliases resolve through its anchor map.
 
-    The parser maintains anchor maps per document: when `parseNode` sees
-    an `&anchor` token, it records `(anchor, value)`. When the parser
-    produces the document, `doc.anchors` contains all such bindings.
-    Every `.alias name` in `doc.value` references a name that was
-    previously anchored.
+    ### Proof Architecture (when completed)
 
-    **Sorry**: Requires tracing through the parser's anchor map management. -/
+    Requires two invariants:
+
+    1. **Scanner invariant**: Every `.alias name` token in the filtered
+       token stream has a prior `.anchor name` token. The scanner's
+       `scanAnchorOrAlias` does not validate this — it must be proved
+       from YAML §7.1 compliance of the scanner loop (specifically,
+       that the scanner rejects `*name` without a prior `&name`).
+
+    2. **Parser invariant**: When `parseNode` encounters `.anchor name`,
+       it calls `ps.addAnchor name val`, adding `(name, _)` to
+       `ps.anchors`. When it encounters `.alias name`, it returns
+       `.alias name`. The invariant: at document end, `doc.anchors`
+       contains entries for all anchor names, and every `.alias name`
+       in `doc.value` has a corresponding entry.
+
+    **Note**: The scanner currently does NOT validate alias ordering —
+    `scanAnchorOrAlias` just emits tokens. This sorry partially depends
+    on an unproven scanner-level property. -/
 theorem parseStream_output_aliases_resolve
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
@@ -452,18 +620,32 @@ theorem parseStream_output_aliases_resolve
     ∀ doc ∈ docs.toList, AllAliasesResolve doc.value doc.anchors := by
   sorry
 
-/-- Anchor values in parser output are well-formed.
+/-- C2c: Anchor values in parser output are well-formed.
 
-    Each anchor value was constructed by `parseNode` from scanner tokens.
-    By B3.5, plain scalar tokens satisfy `ScalarScannable _ false`.
-    Non-plain scalars satisfy `ScalarScannable` vacuously.
+    ### Semantic Gap (`∀ inFlow`)
 
-    **Caveat**: `WellFormedAnchors` requires `∀ inFlow, Grammable _ inFlow`.
-    This holds for anchor values that don't contain plain scalars with
-    flow indicators. The `∀ inFlow` quantifier may fail for block-context
-    plain scalars containing `{`, `}`, `[`, or `]`.
+    `WellFormedAnchors` requires `∀ inFlow, Grammable val.stripAnchors inFlow`.
+    This is genuinely unsatisfiable for anchored block-context plain scalars
+    containing flow indicators. Example:
 
-    **Sorry**: Requires parser tracing + the `∀ inFlow` justification. -/
+    ```yaml
+    anchor: &a value{key}   # block-context, content has flow indicators
+    flow: [*a]               # alias in flow context
+    ```
+
+    Here `value{key}` satisfies `ScalarScannable _ false` (flow indicator
+    check is vacuous) but NOT `ScalarScannable _ true` (`noFlowIndicators`
+    fails for `{` and `}`). The `∀ inFlow` quantifier requires both.
+
+    ### Resolution Options
+
+    1. **Precondition**: Add `NoFlowIndicatorsInBlockAnchors` to ensure
+       anchored values don't contain flow indicators in plain scalar content.
+    2. **Weaken `WellFormedAnchors`**: Replace `∀ inFlow` with specific
+       flow context determined by alias usage sites.
+    3. **Accept as spec corner case**: Document that the verification covers
+       all YAML documents without cross-context flow indicator aliasing
+       (the vast majority of real-world YAML). -/
 theorem parseStream_output_anchors_wellformed
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
