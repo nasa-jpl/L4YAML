@@ -1,0 +1,9 @@
+# from: https://hitchdev.com/strictyaml/why/implicit-typing-removed/
+countries:
+- GB
+- IE
+- FR
+- DE
+- NO
+- false
+- true

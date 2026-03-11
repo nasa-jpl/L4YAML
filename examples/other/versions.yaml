@@ -1,0 +1,6 @@
+# from: https://hitchdev.com/strictyaml/why/implicit-typing-removed/#string-or-float
+python: 3.5.3
+python: "3.12.3"
+postgres: 9.3.0
+redis: 3.2
+stable: 1
