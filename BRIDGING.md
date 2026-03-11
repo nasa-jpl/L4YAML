@@ -2011,9 +2011,15 @@ generate equational theorems for these functions — both `simp only [...]` and
 | C1 | `Scannable_aliasFree_to_Grammable` | ✔ (sorry-free) | Induction on Scannable derivation |
 | C1 | `compose_value_grammable` | ✔ (sorry-free) | Induction on Scannable + findSome bridge |
 | C1 | `compose_grammable` | ✔ (sorry-free wrapper) | — |
-| C2 | `parseStream_output_scannable` | sorry | Parser tracing (~400 LOC estimate) |
-| C2 | `parseStream_output_aliases_resolve` | sorry | Parser anchor tracking (~300 LOC) |
-| C2 | `parseStream_output_anchors_wellformed` | sorry | Semantic gap: ∀ inFlow too strong |
+| C2 | `ScalarScannable_strengthen` | ✔ (sorry-free) | `_ false` → `_ true` given `validPlainFirstProp _ true` + `noFlowIndicators` |
+| C2 | `flowNesting` | ✔ (definition) | Flow depth at token position from flow start/end tokens |
+| C2 | `FlowAwarePSV` | ✔ (definition) | PSV + `ScalarScannable _ true` at `flowNesting > 0` |
+| C2 | `scalar_from_token_scannable` | ✔ (sorry-free) | Token PSV → `Scannable (.scalar _) false` |
+| C2 | `scalar_from_flow_token_scannable` | ✔ (sorry-free) | Flow token FlowAwarePSV → `Scannable (.scalar _) inFlow` |
+| C2 | `empty_scalar_scannable` | ✔ (sorry-free) | Empty scalar → `Scannable _ inFlow` (any flow context) |
+| C2 | `parseStream_output_scannable` | sorry | Flow context gap + mutual induction (see C2 gap analysis) |
+| C2 | `parseStream_output_aliases_resolve` | sorry | Scanner alias ordering invariant (see C2 gap analysis) |
+| C2 | `parseStream_output_anchors_wellformed` | sorry | Genuine semantic gap: ∀ inFlow too strong |
 | C2 | `scanFiltered_plain_scalars_valid` | ✔ (sorry-free) | Trivial from B3.5 |
 | C3 | `parseStream_output_grammable` | ✔ (chains C1+C2) | — |
 | C3 | `parseYaml_produces_valid_nodes` | ✔ (end-to-end) | — |
@@ -2028,29 +2034,78 @@ generate equational theorems for these functions — both `simp only [...]` and
 | `findSome_unit_to_val` | If `findSome?` returning `()` is `.isSome`, then `findSome?` returning values also succeeds |
 
 **Sorry categories (3 remaining, all C2 parser chain):**
-1. **Parser tracing** (`parseStream_output_scannable`): Requires tracing
-   token→YamlValue construction through `parseNode`/`parseDocument`/
-   `parseStream` — a mutual block of 12 functions with fuel-based termination.
-   Structurally straightforward (scalar content/style comes from direct
-   pattern match on `YamlToken.scalar content style`), but massive in scope.
-   **Proof approach:** The key insight is that `parseNode` constructs
-   `YamlValue.scalar { content, style, ... }` directly from
-   `YamlToken.scalar content style` tokens, and the empty-node case
-   produces `content = ""` (length 0, so `ScalarScannable` is vacuously
-   true). Aliases are handled by `Scannable.alias`. Collections need
-   mutual induction across the 6 parser functions with fuel-based
-   termination. Estimated ~400 LOC.
-2. **Anchor tracking** (`parseStream_output_aliases_resolve`): Requires
-   maintaining an invariant through the parsing loop: "all alias names in
-   partially constructed values have entries in `ps.anchors`". Depends on
-   an unproven scanner-level invariant (no `*name` without prior `&name`).
-3. **Cross-context well-formedness** (`parseStream_output_anchors_wellformed`):
-   The `∀ inFlow` quantifier is genuinely too strong — block-context plain
-   scalars with flow indicators (`{`, `}`, `[`, `]`) satisfy
-   `ScalarScannable _ false` but NOT `ScalarScannable _ true`. This is a
-   real semantic limitation, not a proof gap. Options: weaken to require a
-   `NoFlowIndicatorsInBlockAnchors` precondition, or accept as documenting
-   a YAML spec corner case.
+
+#### C2 Gap Analysis
+
+**Sorry 1 — `parseStream_output_scannable` (flow context gap + mutual induction):**
+
+This sorry has TWO independent barriers:
+
+*Barrier A — Flow context gap:*
+`Scannable (.sequence .flow items ...) false` requires
+`∀ i, Scannable items[i] (false || .flow == .flow) = ∀ i, Scannable items[i] true`.
+But `PlainScalarsValid` only gives `ScalarScannable _ false` (vacuous flow
+indicator check). For `ScalarScannable _ true`, we additionally need:
+- `validPlainFirstProp content true` — scanner checks this via
+  `canStartPlainScalarBool c next true` when `inFlow = true`
+- `noFlowIndicatorsProp content` — scanner's `collectPlainScalarLoop`
+  stops at flow indicators when `inFlow = true`
+
+B3.4 gives `ScalarScannable _ s.inFlow`, so flow-context tokens satisfy
+`ScalarScannable _ true`. But B3.5 weakens via `ScalarScannable_any_implies_false`
+to `ScalarScannable _ false`, discarding per-token flow context.
+
+*Fix:* Define `FlowAwarePSV` (done) and prove `scanFiltered_flow_aware_psv`
+by extending B3.5 to preserve `ScalarScannable _ s.inFlow` where
+`flowNesting > 0`. Estimated ~200 LOC in B3.5 extension. The bridge lemma
+`ScalarScannable_strengthen` (proved) and `scalar_from_flow_token_scannable`
+(proved) provide the connection to `Scannable _ true`.
+
+*Barrier B — Mutual induction:*
+6 mutually recursive parser functions (`parseNode`, `parseBlockSequence`,
+`parseBlockMapping`, `parseFlowSequence`, `parseFlowMapping`,
+`parseImplicitBlockSequence`) plus loop variants all use fuel-based
+termination. Proof requires simultaneous induction on fuel, tracking
+`Scannable _ inFlow` where `inFlow` is determined by the calling function
+(block context → false, flow context → true). Estimated ~300 LOC.
+
+*Base cases* (all proved):
+- Scalar from token: `scalar_from_token_scannable` (block) /
+  `scalar_from_flow_token_scannable` (flow)
+- Empty node: `empty_scalar_scannable`
+- Alias: `Scannable.alias` (trivial)
+
+**Sorry 2 — `parseStream_output_aliases_resolve` (scanner + parser invariants):**
+
+Requires TWO invariants:
+1. *Scanner-level:* Every `.alias name` token has a prior `.anchor name`
+   token in the stream. The scanner's `scanAnchorOrAlias` does NOT
+   validate this — it just emits tokens. Proving this requires extending
+   the scanner proofs to show YAML §7.1 compliance.
+2. *Parser-level:* At document end, `ps.anchors` contains entries for all
+   processed anchors, and every `.alias name` in `doc.value` has a
+   matching entry. Proof by induction on the parsing loop, tracking: "all
+   alias names encountered so far have entries in the current `ps.anchors`".
+
+Estimated ~300 LOC (scanner invariant ~100, parser invariant ~200).
+
+**Sorry 3 — `parseStream_output_anchors_wellformed` (genuine semantic gap):**
+
+The `∀ inFlow` quantifier in `WellFormedAnchors` is genuinely unsatisfiable
+for anchored block-context plain scalars containing flow indicators. Example:
+```yaml
+anchor: &a value{key}   # block-context, ScalarScannable _ false ✓, _ true ✗
+flow: [*a]               # alias resolves in flow context, needs Grammable _ true
+```
+`Grammable (.scalar ⟨"value{key}", .plain, ...⟩) true` requires
+`ScalarScannable _ true`, which requires `noFlowIndicatorsProp "value{key}"`.
+But `{` and `}` are flow indicators, so this fails.
+
+*Resolution options:*
+1. Add `NoFlowIndicatorsInBlockAnchors` precondition to exclude the corner case
+2. Weaken `WellFormedAnchors` to track per-alias flow context
+3. Accept as documenting a YAML spec corner case (vast majority of real
+   YAML doesn't alias block scalars with flow indicators into flow context)
 
 **End-to-end theorem — `parseYaml_produces_valid_nodes` (sorry-free chain):**
 ```lean
@@ -2071,13 +2126,23 @@ to induct on the `Grammable`/`Scannable` derivation (`induction h`), which
 is a regular inductive type with `∀ i, Grammable items[i] ctx` premises
 that automatically provide IH for all children.
 
-**Hindsight — B3.5's `inFlow = false` weakening was the right call:**
+**Hindsight — B3.5's `inFlow = false` weakening (PARTIALLY correct):**
 B3.5 proved `ScalarScannable _ false` universally rather than tracking
-per-token flow context. Phase C confirms this was correct: the final
-`parseStream_output_grammable` uses `Grammable _ false` (block context at
-the document level), and B3.5's universal weakening feeds directly into
-this. The flow-context gap only matters for anchor values (handled by
-`WellFormedAnchors`), not for direct scanner→tree threading.
+per-token flow context. This was correct for the document ROOT context
+(`parseStream_output_grammable` uses `Grammable _ false`). However,
+C2 analysis reveals the weakening is too aggressive: `Scannable _ false`
+for a document root value containing flow collections requires
+`Scannable items[i] true` for flow collection items, which needs
+`ScalarScannable _ true`. B3.5's universal weakening discards exactly
+the per-token flow context needed to discharge this.
+
+**Fix architecture** (defined, proof pending): `FlowAwarePSV` extends
+`PlainScalarsValid` to preserve `ScalarScannable _ true` at positions
+where `flowNesting > 0`. The helper `ScalarScannable_strengthen` bridges
+`_ false` to `_ true` given `validPlainFirstProp _ true` and
+`noFlowIndicatorsProp`. Extending B3.5 to prove `FlowAwarePSV` requires
+preserving flow-context properties alongside the existing weakening
+(~200 LOC in ScannerPlainScalarValid.lean).
 
 **Hindsight — `AliasFree` and `AllAliasesResolve` as inductives:**
 Initial attempt defined these as recursive `def`s, which caused Lean's
@@ -2920,14 +2985,17 @@ the theorem statements.
 
 **Note on remaining sorries:** The 3 remaining sorries are in the
 C2 pipeline (parser grammability), unrelated to G-phase comment/position
-work. The B3.4 sorry (`validPlainFirst_sorry`) has been fully eliminated:
+work. The B3.4 sorry (`validPlainFirst_sorry`) has been fully eliminated.
+C2 infrastructure (ScalarScannable_strengthen, flowNesting, FlowAwarePSV,
+bridge lemmas) has been added but the core sorries remain — see Phase C
+Reflections for detailed C2 gap analysis.
 
 | Sorry | File | Phase | Issue |
 |-------|------|-------|-------|
 | ~~`validPlainFirst_sorry`~~ | ~~ScannerPlainScalar.lean~~ | ~~B3.4~~ | ~~RESOLVED — see B3.4 Reflections~~ |
-| `parseStream_output_scannable` | ParserGrammable.lean:402 | C2 | Parser output → `Scannable` (requires parser function tracing) |
-| `parseStream_output_aliases_resolve` | ParserGrammable.lean:419 | C2 | Alias resolution completeness |
-| `parseStream_output_anchors_wellformed` | ParserGrammable.lean:438 | C2 | Anchor well-formedness + cross-context aliasing gap |
+| `parseStream_output_scannable` | ParserGrammable.lean | C2 | Flow context gap: `PlainScalarsValid` gives `ScalarScannable _ false` but flow collections need `_ true`. Fix: prove `FlowAwarePSV` from B3.5 + mutual induction on parser. |
+| `parseStream_output_aliases_resolve` | ParserGrammable.lean | C2 | Scanner doesn't validate alias ordering; parser doesn't validate prior anchors. Needs scanner-level §7.1 invariant + parser anchor tracking. |
+| `parseStream_output_anchors_wellformed` | ParserGrammable.lean | C2 | `∀ inFlow` in `WellFormedAnchors` is genuinely unsatisfiable for block-context anchors with flow indicators (e.g., `value{key}`). Semantic gap, not proof gap. |
 
 These require deep parser function unfolding and are orthogonal to the
 side-channel architecture. Completing them would be a B3/C2 continuation,
