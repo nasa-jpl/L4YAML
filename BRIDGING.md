@@ -2813,6 +2813,55 @@ presentation details with no effect on the serialization tree.
 
 ##### Phase G7 Reflections
 
+**Status: COMPLETE.**
+
+**Implementation (CommentProperties.lean §10 — 6 new theorems):**
+
+All theorems are `rfl` — the G2b side-channel design makes structural
+equivalence trivially true. `stripComments`, `stripPositions`, and
+`compose` operate on orthogonal struct fields:
+- `compose` modifies `value` (alias resolution) and `anchors` (cleared)
+- `stripComments` modifies `comments` (cleared)
+- `stripPositions` modifies `nodePositions` (cleared)
+
+| Theorem | Statement | Tactic |
+|---------|-----------|--------|
+| `parse_value_independent_of_comments` | `docs[i].stripComments.compose.value = docs[i].compose.value` | `intro i; rfl` |
+| `parse_value_independent_of_positions` | `docs[i].stripPositions.compose.value = docs[i].compose.value` | `intro i; rfl` |
+| `parse_value_independent_of_presentation` | `docs[i].stripComments.stripPositions.compose.value = docs[i].compose.value` | `intro i; rfl` |
+| `resolve_independent_of_presentation` | `doc.stripComments.stripPositions.value.resolve path = doc.value.resolve path` | `rfl` |
+| `strip_order_compose_comm` | `doc.stripComments.stripPositions.compose = doc.stripPositions.stripComments.compose` | `rfl` |
+| `compose_strip_all_comm` | `doc.compose.stripComments.stripPositions.value = doc.stripComments.stripPositions.compose.value` | `rfl` |
+
+The first three theorems accept `parseYaml` output as hypothesis (for
+documentation — these theorems are meaningful because the parser produces
+`YamlDocument` values) but don't use it: the properties hold for *all*
+documents. The last two are bonus commutativity theorems not in the original
+G7 spec.
+
+**Import change:** CommentProperties.lean now also imports
+`Lean4Yaml.TokenParser` for the `TokenParser.parseYaml` reference in
+the theorem statements.
+
+**Proof impact:** Zero breakage. All new theorems are additive.
+
+**Build:** 226/226 ✔, 4 pre-existing sorries unchanged.
+
+**Note on remaining sorries:** The 4 pre-existing sorries are in the
+B3/C2 pipeline (scanner plain scalar validation → parser grammability),
+unrelated to G-phase comment/position work:
+
+| Sorry | File | Phase | Issue |
+|-------|------|-------|-------|
+| `validPlainFirst_sorry` | ScannerPlainScalar.lean:103 | B3.4 | Single-exception-char plain scalar first-char validation |
+| `parseStream_output_scannable` | ParserGrammable.lean:402 | C2 | Parser output → `Scannable` (requires parser function tracing) |
+| `parseStream_output_aliases_resolve` | ParserGrammable.lean:419 | C2 | Alias resolution completeness |
+| `parseStream_output_anchors_wellformed` | ParserGrammable.lean:438 | C2 | Anchor well-formedness + cross-context aliasing gap |
+
+These require deep parser function unfolding and are orthogonal to the
+side-channel architecture. Completing them would be a B3/C2 continuation,
+not a G-phase task.
+
 ### Phase H: JSON-is-YAML-subset (FUTURE)
 
 Every valid JSON document is valid YAML 1.2. The scanner handles JSON

@@ -5,6 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import Lean4Yaml.Types
 import Lean4Yaml.Grammar
 import Lean4Yaml.Emitter
+import Lean4Yaml.TokenParser
 
 /-!
 # Comment Properties (Phase G3)
@@ -287,5 +288,68 @@ theorem commentTexts_empty_iff (doc : YamlDocument) :
     unfold YamlDocument.commentTexts
     rw [h]
     simp [Array.map]
+
+/-! ## §10  Structural equivalence modulo comments and positions (Phase G7)
+
+YAML 1.2.2 §6.6: "Comments are a presentation detail and must not be
+used to convey content information." Source positions are likewise
+presentation-only metadata.
+
+Under the G2b side-channel design, `stripComments`, `stripPositions`,
+and `compose` operate on orthogonal struct fields of `YamlDocument`:
+- `compose` modifies `value` (alias resolution) and `anchors` (cleared)
+- `stripComments` modifies `comments` (cleared)
+- `stripPositions` modifies `nodePositions` (cleared)
+
+Because these fields are independent, stripping comments or positions
+before or after composition yields the same value tree. These theorems
+formalize §6.6 at the structural level: presentation details (comments
+and positions) have no effect on the serialization/representation tree.
+
+The first three theorems accept `parseYaml` output as hypothesis but
+do not actually use it — the properties hold for *all* `YamlDocument`s.
+The hypothesis is kept for documentation: these theorems are meaningful
+precisely because the parser produces `YamlDocument` values.
+-/
+
+/-- Structural parse results are unchanged by comment presence.
+    Stripping comments before composing yields the same value tree. -/
+theorem parse_value_independent_of_comments (_input : String)
+    (docs : Array YamlDocument)
+    (_h : TokenParser.parseYaml _input = .ok docs) :
+    ∀ i : Fin docs.size,
+      docs[i].stripComments.compose.value = docs[i].compose.value := by
+  intro i; rfl
+
+/-- Positions do not affect the value tree either. -/
+theorem parse_value_independent_of_positions (_input : String)
+    (docs : Array YamlDocument)
+    (_h : TokenParser.parseYaml _input = .ok docs) :
+    ∀ i : Fin docs.size,
+      docs[i].stripPositions.compose.value = docs[i].compose.value := by
+  intro i; rfl
+
+/-- Stripping both comments and positions still yields the same value. -/
+theorem parse_value_independent_of_presentation (_input : String)
+    (docs : Array YamlDocument)
+    (_h : TokenParser.parseYaml _input = .ok docs) :
+    ∀ i : Fin docs.size,
+      docs[i].stripComments.stripPositions.compose.value = docs[i].compose.value := by
+  intro i; rfl
+
+/-- Resolution by YamlPath is independent of comments and positions. -/
+theorem resolve_independent_of_presentation (doc : YamlDocument) (path : YamlPath) :
+    doc.stripComments.stripPositions.value.resolve path = doc.value.resolve path := rfl
+
+/-- Stripping order doesn't matter: comments-then-positions = positions-then-comments,
+    and compose commutes with both. -/
+theorem strip_order_compose_comm (doc : YamlDocument) :
+    doc.stripComments.stripPositions.compose =
+    doc.stripPositions.stripComments.compose := rfl
+
+/-- Compose then strip-all produces the same value as strip-all then compose. -/
+theorem compose_strip_all_comm (doc : YamlDocument) :
+    doc.compose.stripComments.stripPositions.value =
+    doc.stripComments.stripPositions.compose.value := rfl
 
 end Lean4Yaml.Proofs.CommentProperties
