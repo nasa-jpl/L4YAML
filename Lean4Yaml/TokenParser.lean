@@ -74,6 +74,14 @@ structure ParseState where
   /-- Tag handles declared via `%TAG` for the current document.
       §6.8.2.2: tag handles are local to the document. -/
   tagHandles : Array String := #[]
+  /-- Whether to record node positions (G5c). Disabled by default;
+      enabled by `parseYamlWithComments`. -/
+  trackPositions : Bool := false
+  /-- Current path from document root for node position tracking (G5c). -/
+  currentPath : YamlPath := #[]
+  /-- Accumulated node position map (G5c).
+      Each entry is `(path, startPos, endPos)` for a parsed node. -/
+  nodePositions : Array (YamlPath × YamlPos × YamlPos) := #[]
   deriving Repr, Inhabited
 
 /-- Create a `ParseState` positioned at the start of the token array. -/
@@ -101,6 +109,13 @@ def ParseState.peekPos? (ps : ParseState) : Option YamlPos :=
 /-- Advance past the current token. -/
 def ParseState.advance (ps : ParseState) : ParseState :=
   { ps with pos := ps.pos + 1 }
+
+/-- Position of the last consumed token (for node span tracking, G5c). -/
+def ParseState.lastPos? (ps : ParseState) : Option YamlPos :=
+  if ps.pos > 0 && ps.pos ≤ ps.tokens.size then
+    some ps.tokens[ps.pos - 1]!.pos
+  else
+    none
 
 /-- Line number of the current token (for error reporting). -/
 def ParseState.currentLine (ps : ParseState) : Nat :=
@@ -234,10 +249,18 @@ def parseNode (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × Pa
   match fuel with
   | 0 => .error (.nestingDepthExceeded ps.currentLine)
   | fuel + 1 => do
+  -- G5c: save start position for node span tracking
+  let nodeStartPos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
   -- Check for alias
   match ps.peek? with
   | some (.alias name) =>
-    return (YamlValue.alias name, ps.advance)
+    let ps := ps.advance
+    -- G5c: record alias position (only if tracking enabled)
+    let ps := if ps.trackPositions then
+        let nodeEndPos := ps.lastPos?.getD nodeStartPos
+        { ps with nodePositions := ps.nodePositions.push (ps.currentPath, nodeStartPos, nodeEndPos) }
+      else ps
+    return (YamlValue.alias name, ps)
   | _ => pure ()
   -- Parse optional node properties
   let prePropPos := ps.pos
@@ -291,6 +314,11 @@ def parseNode (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × Pa
   let ps := match props.anchor with
     | some name => ps.addAnchor name val
     | none => ps
+  -- G5c: record node position (only if tracking enabled)
+  let ps := if ps.trackPositions then
+      let nodeEndPos := ps.lastPos?.getD nodeStartPos
+      { ps with nodePositions := ps.nodePositions.push (ps.currentPath, nodeStartPos, nodeEndPos) }
+    else ps
   .ok (val, ps)
 
 /-- Parse a block sequence.
@@ -327,7 +355,11 @@ def parseBlockSequenceLoop (ps : ParseState) (fuel : Nat)
       | some .blockEntry | some .blockEnd | none =>
         parseBlockSequenceLoop ps fuel (items.push emptyNode)
       | _ => do
+        -- G5c: set path for child node
+        let savedPath := ps.currentPath
+        let ps := { ps with currentPath := savedPath.push (.index items.size) }
         let (val, ps) ← parseNode ps fuel
+        let ps := { ps with currentPath := savedPath }
         parseBlockSequenceLoop ps fuel (items.push val)
     | _ => .ok (items, ps)
 
@@ -366,7 +398,11 @@ def parseImplicitBlockSequenceLoop (ps : ParseState) (fuel : Nat)
       | some .blockEntry | some .blockEnd | some .key | none =>
         parseImplicitBlockSequenceLoop ps fuel (items.push emptyNode)
       | _ => do
+        -- G5c: set path for child node
+        let savedPath := ps.currentPath
+        let ps := { ps with currentPath := savedPath.push (.index items.size) }
         let (val, ps) ← parseNode ps fuel
+        let ps := { ps with currentPath := savedPath }
         parseImplicitBlockSequenceLoop ps fuel (items.push val)
     | _ => .ok (items, ps)
 
@@ -419,6 +455,10 @@ def parseBlockMappingLoop (ps : ParseState) (fuel : Nat)
         parseNode ps fuel
       else
         .ok (emptyNode, ps)
+      -- G5c: set path for value node
+      let keyContent := match key with | .scalar s => s.content | _ => s!"{pairs.size}"
+      let savedPath := ps.currentPath
+      let ps := { ps with currentPath := savedPath.push (.key keyContent) }
       -- Parse value
       let (consumed, ps) := ps.tryConsume .value
       let (val, ps) ← if consumed then do
@@ -446,13 +486,20 @@ def parseBlockMappingLoop (ps : ParseState) (fuel : Nat)
         | _ => parseNode ps fuel
       else
         .ok (emptyNode, ps)
+      -- G5c: restore path
+      let ps := { ps with currentPath := savedPath }
       parseBlockMappingLoop ps fuel (pairs.push (key, val))
     | some .value => do
       -- Implicit key (empty key)
       let ps := ps.advance
+      -- G5c: set path for value node (empty key)
+      let savedPath := ps.currentPath
+      let ps := { ps with currentPath := savedPath.push (.key s!"{pairs.size}") }
       let (val, ps) ← match ps.peek? with
         | some .key | some .blockEnd | none => .ok (emptyNode, ps)
         | _ => parseNode ps fuel
+      -- G5c: restore path
+      let ps := { ps with currentPath := savedPath }
       parseBlockMappingLoop ps fuel (pairs.push (emptyNode, val))
     | _ => .ok (pairs, ps)
 
@@ -496,11 +543,19 @@ def parseFlowSequenceLoop (ps : ParseState) (fuel : Nat)
       -- Check for implicit mapping in flow sequence: `key: value`
       match ps.peek? with
       | some .key => do
+        -- G5c: set path for implicit mapping child
+        let savedPath := ps.currentPath
+        let ps := { ps with currentPath := savedPath.push (.index items.size) }
         let (mapVal, ps) ← parseSinglePairMapping ps fuel
+        let ps := { ps with currentPath := savedPath }
         parseFlowSequenceLoop ps fuel (items.push mapVal)
       | some .flowSequenceEnd => .ok (items, ps)
       | _ => do
+        -- G5c: set path for child node
+        let savedPath := ps.currentPath
+        let ps := { ps with currentPath := savedPath.push (.index items.size) }
         let (val, ps) ← parseNode ps fuel
+        let ps := { ps with currentPath := savedPath }
         parseFlowSequenceLoop ps fuel (items.push val)
 
 /-- Parse a flow mapping.
@@ -549,6 +604,10 @@ def parseFlowMappingLoop (ps : ParseState) (fuel : Nat)
           | some .value | some .flowEntry | some .flowMappingEnd =>
             .ok (emptyNode, ps)
           | _ => parseNode ps fuel
+        -- G5c: set path for value node
+        let keyContent := match key with | .scalar s => s.content | _ => s!"{pairs.size}"
+        let savedPath := ps.currentPath
+        let ps := { ps with currentPath := savedPath.push (.key keyContent) }
         let (consumed, ps) := ps.tryConsume .value
         let (val, ps) ← if consumed then
           match ps.peek? with
@@ -557,10 +616,15 @@ def parseFlowMappingLoop (ps : ParseState) (fuel : Nat)
           | _ => parseNode ps fuel
         else
           .ok (emptyNode, ps)
+        let ps := { ps with currentPath := savedPath }
         parseFlowMappingLoop ps fuel (pairs.push (key, val))
       | _ => do
         -- Implicit key: value without KEY token
         let (key, ps) ← parseNode ps fuel
+        -- G5c: set path for value node
+        let keyContent := match key with | .scalar s => s.content | _ => s!"{pairs.size}"
+        let savedPath := ps.currentPath
+        let ps := { ps with currentPath := savedPath.push (.key keyContent) }
         let (consumed, ps) := ps.tryConsume .value
         let (val, ps) ← if consumed then
           match ps.peek? with
@@ -569,6 +633,7 @@ def parseFlowMappingLoop (ps : ParseState) (fuel : Nat)
           | _ => parseNode ps fuel
         else
           .ok (emptyNode, ps)
+        let ps := { ps with currentPath := savedPath }
         parseFlowMappingLoop ps fuel (pairs.push (key, val))
 
 /-- Parse a single key:value pair as an implicit mapping (in flow sequences).
@@ -590,6 +655,10 @@ def parseSinglePairMapping (ps : ParseState) (fuel : Nat) : Except ScanError (Ya
     | some .value | some .flowEntry | some .flowSequenceEnd =>
       .ok (emptyNode, ps)
     | _ => parseNode ps fuel
+  -- G5c: set path for value node
+  let keyContent := match key with | .scalar s => s.content | _ => "0"
+  let savedPath := ps.currentPath
+  let ps := { ps with currentPath := savedPath.push (.key keyContent) }
   let (consumed, ps) := ps.tryConsume .value
   let (val, ps) ← if consumed then
     match ps.peek? with
@@ -598,6 +667,7 @@ def parseSinglePairMapping (ps : ParseState) (fuel : Nat) : Except ScanError (Ya
     | _ => parseNode ps fuel
   else
     .ok (emptyNode, ps)
+  let ps := { ps with currentPath := savedPath }
   .ok (YamlValue.mapping .flow #[(key, val)], ps)
 
 end -- mutual
@@ -757,7 +827,8 @@ def parseDocument (ps : ParseState) : Except ScanError (YamlDocument × ParseSta
   -- Note: `documentEnd` (`...`) is NOT consumed here.
   -- It is consumed by `parseStream` to track document boundary state
   -- for §9.2 [211] validation.
-  .ok ({ value := val, directives := dirs, anchors := ps.anchors }, ps)
+  .ok ({ value := val, directives := dirs, anchors := ps.anchors,
+         nodePositions := ps.nodePositions }, ps)
 
 /-! ## Stream Parsing -/
 
@@ -776,8 +847,9 @@ def parseDocument (ps : ParseState) : Except ScanError (YamlDocument × ParseSta
     **Pre**: Token array starts with `streamStart`.
     **Post**: Consumes through `streamEnd`, returns array of documents.
     **Error**: `invalidBareDocument` (bare content after non-`...`-terminated document, §9.2). -/
-def parseStream (tokens : Array (Positioned YamlToken)) : Except ScanError (Array YamlDocument) := do
-  let mut ps := ParseState.mk' tokens
+def parseStream (tokens : Array (Positioned YamlToken))
+    (trackPositions : Bool := false) : Except ScanError (Array YamlDocument) := do
+  let mut ps : ParseState := { tokens := tokens, trackPositions := trackPositions }
   -- Expect stream start
   ps ← ps.expect .streamStart "STREAM-START"
   let mut docs : Array YamlDocument := #[]
@@ -798,7 +870,8 @@ def parseStream (tokens : Array (Positioned YamlToken)) : Except ScanError (Arra
       docs := docs.push doc
       -- §3.2.2.2: Anchors are scoped to the document.  Reset anchor map
       -- so subsequent documents start with a clean namespace.
-      ps := { ps' with anchors := #[] }
+      -- G5c: also reset nodePositions and currentPath per document.
+      ps := { ps' with anchors := #[], nodePositions := #[], currentPath := #[] }
       -- Consume optional document-end marker (`...`) and update stream state.
       -- This determines what token types are valid at the next iteration.
       let (consumed, ps') := ps.tryConsume .documentEnd
@@ -913,7 +986,7 @@ def parseYamlWithComments (input : String) : Except String (Array YamlDocument) 
   | .ok (tokens, rawComments) =>
     let comments : Array (YamlPos × Comment) :=
       rawComments.map fun (pos, text) => (pos, ⟨text, .inline⟩)
-    match parseStream tokens with
+    match parseStream tokens (trackPositions := true) with
     | .ok docs => .ok (docs.map fun doc =>
         { doc.compose with comments := comments })
     | .error e => .error e.toString
