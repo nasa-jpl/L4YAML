@@ -1583,31 +1583,76 @@ theorem flowNesting_go_placeholder_neutral
   rw [flowNesting_go_step _ _ _ _ hk h_tgt]
   simp [h_placeholder]
 
-/-- If filtered[i] = arr[j], then i counts the elements satisfying p before position j.
+/-- `flowNesting.go` returns `depth` when `pos ≥ target`. -/
+theorem flowNesting_go_ge_target (tokens : Array (Positioned YamlToken))
+    (pos target depth : Nat) (h : pos ≥ target) :
+    flowNesting.go tokens pos target depth = depth := by
+  unfold flowNesting.go; simp [h]
 
-    This is a fundamental property of `filter`: the filtered array preserves order,
-    so if the i-th element of the filtered result equals the j-th element of the
-    original array, then there must be exactly i elements satisfying the predicate
-    in positions 0..j-1.
+/-- Core List-level reverse direction: for every position `i` in a filtered list,
+    there exists a canonical position `j` in the original list such that the
+    filtered element equals the original, it satisfies the predicate, and `i`
+    equals the count of satisfying elements before `j`. -/
+theorem list_filter_origIdx
+    {α : Type _} (l : List α) (p : α → Bool) (i : Nat)
+    (hi : i < (l.filter p).length) :
+    ∃ j, ∃ hj : j < l.length,
+      (l.filter p)[i] = l[j] ∧
+      p l[j] = true ∧
+      i = ((l.take j).filter p).length := by
+  induction l generalizing i with
+  | nil => simp at hi
+  | cons x xs ih =>
+    by_cases hpx : p x = true
+    · simp only [List.filter_cons_of_pos hpx] at hi
+      cases i with
+      | zero =>
+        exact ⟨0, by simp,
+          by simp [List.filter_cons_of_pos hpx],
+          by simpa using hpx,
+          by simp⟩
+      | succ i' =>
+        simp only [List.length_cons] at hi
+        have hi' : i' < (xs.filter p).length := by omega
+        obtain ⟨j', hj', val_eq, p_eq, count_eq⟩ := ih i' hi'
+        refine ⟨j' + 1, by simp; omega, ?_, ?_, ?_⟩
+        · simp only [List.filter_cons_of_pos hpx, List.getElem_cons_succ]; exact val_eq
+        · simp only [List.getElem_cons_succ]; exact p_eq
+        · simp only [List.take_succ_cons, List.filter_cons_of_pos hpx, List.length_cons]; omega
+    · simp only [List.filter_cons_of_neg hpx] at hi
+      obtain ⟨j', hj', val_eq, p_eq, count_eq⟩ := ih i hi
+      refine ⟨j' + 1, by simp; omega, ?_, ?_, ?_⟩
+      · simp only [List.filter_cons_of_neg hpx, List.getElem_cons_succ]; exact val_eq
+      · simp only [List.getElem_cons_succ]; exact p_eq
+      · simp only [List.take_succ_cons, List.filter_cons_of_neg hpx]; exact count_eq
 
-    **Proof approach**: This can be proven by induction on the structure of arr:
-    - Base case: empty array (vacuous)
-    - Inductive case: arr = arr' ++ [x]
-      - If x doesn't satisfy p: filtered doesn't grow, recurse
-      - If x satisfies p: if x = arr[j], we have arr = arr[0..j] ++ [arr[j]] ++ arr[j+1..],
-        and filtered = (arr[0..j]).filter p ++ [arr[j]] ++ ...,
-        so i = length of (arr[0..j]).filter p
+/-- Core List-level forward direction: position `j` in a list with `p l[j] = true`
+    maps to position `i = (l.take j |>.filter p).length` in the filtered list. -/
+theorem list_filter_getElem_by_count
+    {α : Type _} (l : List α) (p : α → Bool) (j : Nat) (hj : j < l.length)
+    (h_sat : p l[j] = true) :
+    ((l.take j).filter p).length < (l.filter p).length ∧
+    ∀ (h : ((l.take j).filter p).length < (l.filter p).length),
+      (l.filter p)[((l.take j).filter p).length] = l[j] := by
+  induction l generalizing j with
+  | nil => simp at hj
+  | cons x xs ih =>
+    cases j with
+    | zero =>
+      simp only [List.take, List.filter, List.getElem_cons_zero] at *
+      exact ⟨by simp [h_sat], fun _ => by simp [h_sat]⟩
+    | succ j' =>
+      have hj' : j' < xs.length := by simp at hj; omega
+      simp only [List.getElem_cons_succ] at h_sat
+      have ih_result := ih j' hj' h_sat
+      simp only [List.take_succ_cons]
+      by_cases hpx : p x = true
+      · simp only [List.filter_cons_of_pos hpx, List.length_cons, List.getElem_cons_succ]
+        exact ⟨by omega, fun _ => ih_result.2 ih_result.1⟩
+      · simp only [List.filter_cons_of_neg hpx]
+        exact ih_result
 
-    Alternatively, this follows from properties of `List.findIdx` or `List.indexOf`
-    combined with filter preservation of order. -/
-theorem array_filter_getElem_index_correspondence
-    {α : Type _} (arr : Array α) (p : α → Bool) (i j : Nat)
-    (hi : i < (arr.filter p).size) (hj : j < arr.size)
-    (h_eq : (arr.filter p)[i] = arr[j]) :
-    i = ((arr.toList.take j).filter p).length := by
-  sorry
-
-/-- Helper: The i-th element of a filtered array corresponds to the j-th element
+/-- Array wrapper: the i-th element of a filtered array corresponds to the j-th element
     of the original array, where i counts elements satisfying the predicate before j. -/
 theorem array_filter_getElem_correspondence
     {α : Type _} (arr : Array α) (p : α → Bool) (j : Nat) (hj : j < arr.size)
@@ -1616,98 +1661,112 @@ theorem array_filter_getElem_correspondence
     let i := (arr.toList.take j).filter p |>.length
     ∃ (h : i < filtered.size), filtered[i] = arr[j] := by
   intro filtered i
-  -- Proof strategy: filtered is arr.toList.filter p converted to array
-  -- We can split arr.toList = take j ++ drop j
-  -- The filtered list = (take j).filter p ++ (drop j).filter p
-  -- i = length of (take j).filter p
-  -- arr[j] is the first element of drop j, and it satisfies p
-  -- So arr[j] is the first element of (drop j).filter p
-  -- Therefore filtered[i] = the element at position i in the concatenation
-  --                       = the 0-th element of (drop j).filter p
-  --                       = arr[j]
-  sorry
+  have hj_list : j < arr.toList.length := by simpa using hj
+  have h_sat_list : p arr.toList[j] = true := by simpa [Array.getElem_toList] using h_sat
+  have h_list := list_filter_getElem_by_count arr.toList p j hj_list h_sat_list
+  have h_bound : i < filtered.size := by
+    show ((arr.toList.take j).filter p).length < (arr.filter p).size
+    rw [show (arr.filter p).size = (arr.filter p).toList.length from rfl,
+        Array.toList_filter]
+    exact h_list.1
+  refine ⟨h_bound, ?_⟩
+  have h_val := h_list.2 h_list.1
+  -- Goal: filtered[i] = arr[j]
+  show (arr.filter p).toList[i] = arr.toList[j]
+  simp only [Array.toList_filter]
+  exact h_val
 
-/-- Helper: flowNesting.go processes the same flow tokens in both arrays.
-
-    This lemma establishes that when computing flow nesting, skipping placeholders
-    in the original array is equivalent to processing the filtered array, since
-    placeholders don't contribute to flow depth. -/
+/-- `flowNesting.go` on the original array equals `flowNesting.go` on the filtered
+    array, where the target in the filtered array is the count of non-placeholder
+    tokens before position `j`. -/
 theorem flowNesting_go_filter_equiv
     (all_tokens : Array (Positioned YamlToken))
-    (j : Nat) (hj : j ≤ all_tokens.size) :
-    let filtered := all_tokens.filter fun t => t.val != .placeholder
-    let i := (all_tokens.toList.take j).filter (fun t => t.val != .placeholder) |>.length
-    ∀ (depth : Nat),
-      i ≤ filtered.size →
-      flowNesting.go all_tokens 0 j depth =
-      flowNesting.go filtered 0 i depth := by
-  intro filtered i depth hi_bound
-  -- Proof by strong induction on j
-  sorry
-
-/-- Flow nesting at a filtered position equals flow nesting at the original position.
-
-    **Proof strategy**: Both `flowNesting` computations walk through their arrays
-    from 0 to their target positions, accumulating depth changes from flow tokens.
-
-    Key observations:
-    1. Placeholders are not flow tokens (don't match flowSequenceStart/End or flowMappingStart/End)
-    2. The filtered array contains exactly the non-placeholder tokens from all_tokens
-    3. filtered[i] = all_tokens[j] (given)
-    4. Therefore filtered[0..i) = all_tokens[0..j) with placeholders removed
-
-    Since both walks see the same sequence of flow-affecting tokens, they compute
-    the same depth. The formal proof uses `flowNesting_go_filter_equiv` to establish
-    this correspondence. -/
-theorem flowNesting_filter_correspondence
-    (all_tokens : Array (Positioned YamlToken))
-    (i j : Nat)
-    (hi : i < (all_tokens.filter fun t => t.val != .placeholder).size)
-    (hj : j < all_tokens.size)
-    (h_eq : (all_tokens.filter fun t => t.val != .placeholder)[i] = all_tokens[j]) :
-    flowNesting (all_tokens.filter fun t => t.val != .placeholder) i =
-    flowNesting all_tokens j := by
-  -- Key fact: all_tokens[j] is not a placeholder (it passed the filter)
-  have h_not_ph : all_tokens[j].val ≠ .placeholder := by
-    have h_mem := Array.mem_filter.mp (Array.getElem_mem hi)
-    have h_bne : (((all_tokens.filter fun t => t.val != .placeholder)[i]).val != .placeholder) = true := h_mem.2
-    -- Convert Bool equality to Prop inequality
-    have h_val : ((all_tokens.filter fun t => t.val != .placeholder)[i]).val ≠ .placeholder := by
-      intro h_contra
-      rw [h_contra] at h_bne
-      -- Now h_bne says (.placeholder != .placeholder) = true, which is false = true
-      exact absurd h_bne (by decide)
-    rw [h_eq] at h_val
-    exact h_val
-  -- Both flowNesting computations walk from 0 to their targets (i and j respectively)
-  -- Since placeholders don't affect flow depth and filtered contains exactly
-  -- the non-placeholder tokens from all_tokens, both walks accumulate the same depth.
-  unfold flowNesting
-  -- The core argument: flowNesting.go processes the same flow tokens in both cases
-  -- First establish that i = count of non-placeholders before j
-  let filtered := all_tokens.filter fun t => t.val != .placeholder
-  have hi_eq : i = ((all_tokens.toList.take j).filter (fun t => t.val != .placeholder)).length := by
-    apply array_filter_getElem_index_correspondence all_tokens (fun t => t.val != .placeholder) i j hi hj
-    exact h_eq
-  -- Now we can apply flowNesting_go_filter_equiv
-  have h_equiv := flowNesting_go_filter_equiv all_tokens j (by omega : j ≤ all_tokens.size)
-  -- h_equiv gives us: flowNesting.go all_tokens 0 j 0 = flowNesting.go filtered 0 i_count 0
-  -- where i_count = count of non-placeholders before j
-  -- We know i = i_count by hi_eq
-  let i_count := ((all_tokens.toList.take j).filter (fun t => t.val != .placeholder)).length
-  have h_i_bound : i_count ≤ filtered.size := by
-    simp only [i_count, filtered]
-    have h1 : ((all_tokens.toList.take j).filter (fun t => t.val != .placeholder)).length
-              ≤ (all_tokens.toList.take j).length := List.length_filter_le _ _
-    have h2 : (all_tokens.toList.take j).length ≤ j := List.length_take_le j _
-    have h3 : j ≤ all_tokens.size := by omega
-    have h4 : (all_tokens.filter fun t => t.val != .placeholder).size ≤ all_tokens.size :=
-      Array.size_filter_le
-    omega
-  -- h_equiv has let-bound variables, apply it directly
-  have h_equiv_applied := h_equiv 0 h_i_bound
-  rw [← hi_eq] at h_equiv_applied
-  exact h_equiv_applied.symm
+    (j : Nat) (hj : j ≤ all_tokens.size)
+    (depth : Nat) :
+    let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+    let filtered := all_tokens.filter p
+    let i := (all_tokens.toList.take j).filter p |>.length
+    flowNesting.go all_tokens 0 j depth =
+    flowNesting.go filtered 0 i depth := by
+  intro p filtered
+  show flowNesting.go all_tokens 0 j depth =
+    flowNesting.go filtered 0 ((all_tokens.toList.take j).filter p |>.length) depth
+  induction j generalizing depth with
+  | zero =>
+    simp only [List.take_zero, List.filter_nil, List.length_nil]
+    rw [flowNesting_go_ge_target _ _ _ _ (by omega : 0 ≥ 0),
+        flowNesting_go_ge_target _ _ _ _ (by omega : 0 ≥ 0)]
+  | succ j' ih =>
+    -- Split LHS at position j'
+    rw [flowNesting_go_split all_tokens 0 j' (j' + 1) depth (by omega) (by omega)]
+    -- Apply IH to rewrite inner go
+    rw [ih (by omega : j' ≤ all_tokens.size)]
+    -- Goal: go all_tokens j' (j'+1) (go filtered 0 len_j' depth) = go filtered 0 len_succ depth
+    by_cases hj'_bound : j' < all_tokens.size
+    · -- j' in bounds
+      have hj'_list : j' < all_tokens.toList.length := by simpa using hj'_bound
+      have h_take_split : all_tokens.toList.take (j' + 1) =
+          all_tokens.toList.take j' ++ [all_tokens.toList[j']] :=
+        List.take_succ_eq_append_getElem hj'_list
+      by_cases h_ph : (all_tokens[j']).val = .placeholder
+      · -- Placeholder: flowNesting step is neutral, filter count doesn't increase
+        rw [flowNesting_go_step all_tokens j' (j' + 1) _ hj'_bound (by omega)]
+        simp [h_ph]
+        rw [flowNesting_go_ge_target all_tokens (j' + 1) (j' + 1) _ (by omega)]
+        -- Show filter counts are equal (placeholder doesn't pass filter)
+        congr 1
+        show (List.filter p (List.take j' all_tokens.toList)).length =
+             (List.filter p (List.take (j' + 1) all_tokens.toList)).length
+        symm
+        rw [h_take_split, List.filter_append, List.length_append]
+        simp only [List.filter, List.length_nil]
+        have : p all_tokens.toList[j'] = false := by
+          simp only [p, bne]
+          rw [Array.getElem_toList hj'_bound, h_ph]
+          decide
+        rw [this]; simp
+      · -- Not placeholder: process token, filter count increases by 1
+        have h_p_true : p all_tokens[j'] = true := by
+          simp only [p, bne, Bool.not_eq_true']
+          exact decide_eq_false h_ph
+        have h_p_list : p all_tokens.toList[j'] = true := by
+          rwa [Array.getElem_toList hj'_bound]
+        have h_len_succ : (List.filter p (List.take (j' + 1) all_tokens.toList)).length =
+            (List.filter p (List.take j' all_tokens.toList)).length + 1 := by
+          rw [h_take_split, List.filter_append, List.length_append]
+          simp only [List.filter, h_p_list, List.length_cons, List.length_nil]
+        obtain ⟨h_i_bound, h_filt_eq⟩ :=
+          array_filter_getElem_correspondence all_tokens p j' hj'_bound h_p_true
+        -- Split RHS at len_j'
+        rw [h_len_succ]
+        rw [flowNesting_go_split filtered 0
+          ((List.filter p (List.take j' all_tokens.toList)).length)
+          ((List.filter p (List.take j' all_tokens.toList)).length + 1)
+          _ (by omega) (by omega)]
+        -- Apply one-step unfolding on both sides
+        rw [flowNesting_go_step all_tokens j' (j' + 1) _ hj'_bound (by omega)]
+        rw [flowNesting_go_step filtered
+          ((List.filter p (List.take j' all_tokens.toList)).length)
+          ((List.filter p (List.take j' all_tokens.toList)).length + 1)
+          _ h_i_bound (by omega)]
+        -- Reduce trailing go to identity
+        simp only [flowNesting_go_ge_target _ _ _ _ (by omega : j' + 1 ≥ j' + 1),
+                    flowNesting_go_ge_target _ _ _ _
+                      (by omega : (List.filter p (List.take j' all_tokens.toList)).length + 1 ≥
+                        (List.filter p (List.take j' all_tokens.toList)).length + 1)]
+        -- Now both sides are match on token value applied to the same inner depth
+        have h_val_eq : (filtered[(List.filter p (List.take j' all_tokens.toList)).length]'h_i_bound).val =
+               (all_tokens[j']'hj'_bound).val := by
+          rw [h_filt_eq]
+        rw [h_val_eq]
+    · -- j' out of bounds
+      rw [flowNesting_go_oob all_tokens j' (j' + 1) _ (by omega)]
+      congr 1
+      show (List.filter p (List.take j' all_tokens.toList)).length =
+           (List.filter p (List.take (j' + 1) all_tokens.toList)).length
+      symm; congr 1
+      have : all_tokens.toList.length ≤ j' := by simpa using hj'_bound
+      rw [List.take_of_length_le this, List.take_of_length_le (by omega)]
 
 /-- Filtering out `.placeholder` tokens preserves `FlowContextPSV`.
     `.placeholder` tokens are neither flow start/end nor plain scalars,
@@ -1718,20 +1777,31 @@ theorem filter_preserves_FlowContextPSV
     FlowContextPSV (all_tokens.filter fun t => t.val != YamlToken.placeholder) := by
   unfold FlowContextPSV
   intro i hi h_flow
-  let filtered := all_tokens.filter fun t => t.val != YamlToken.placeholder
-  -- The token at position i in the filtered array exists in all_tokens at some position j
-  have h_in : filtered[i] ∈ all_tokens := by
-    exact (Array.mem_filter.mp (Array.getElem_mem hi)).1
-  obtain ⟨j, hj_lt, hj_eq⟩ := Array.mem_iff_getElem.mp h_in
-  -- Flow nesting is preserved
-  have h_nest_eq : flowNesting filtered i = flowNesting all_tokens j :=
-    flowNesting_filter_correspondence all_tokens i j hi hj_lt hj_eq.symm
-  -- Apply h_fpsv at position j with the preserved flow nesting
+  let p := fun (t : Positioned YamlToken) => t.val != YamlToken.placeholder
+  let filtered := all_tokens.filter p
+  -- Find canonical original position using list_filter_origIdx
+  have hi_list : i < (all_tokens.toList.filter p).length := by
+    rwa [← Array.toList_filter, show (all_tokens.filter p).toList.length =
+      (all_tokens.filter p).size from rfl]
+  obtain ⟨j, hj_lt, val_eq, p_j, count_eq⟩ :=
+    list_filter_origIdx all_tokens.toList p i hi_list
+  have hj_arr : j < all_tokens.size := by simpa using hj_lt
+  -- Lift value equality to array level
+  have val_eq_arr : filtered[i] = all_tokens[j] := by
+    have hi_list2 : i < (all_tokens.filter p).toList.length := by
+      rwa [show (all_tokens.filter p).toList.length = (all_tokens.filter p).size from rfl]
+    have hj_list2 : j < all_tokens.toList.length := by simpa using hj_arr
+    show (all_tokens.filter p).toList[i]'hi_list2 = all_tokens.toList[j]'hj_list2
+    simp only [Array.toList_filter]; exact val_eq
+  -- Flow nesting correspondence via flowNesting_go_filter_equiv
+  have h_nest_eq : flowNesting filtered i = flowNesting all_tokens j := by
+    unfold flowNesting
+    rw [count_eq]
+    exact (flowNesting_go_filter_equiv all_tokens j (by omega) 0).symm
+  -- Apply h_fpsv
   rw [h_nest_eq] at h_flow
-  have h_j := h_fpsv j hj_lt h_flow
-  -- The tokens are equal, so the property transfers
-  rw [← hj_eq]
-  exact h_j
+  have h_j := h_fpsv j hj_arr h_flow
+  exact val_eq_arr ▸ h_j
 
 /-! ### Main theorems -/
 
