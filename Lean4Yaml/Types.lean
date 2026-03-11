@@ -210,6 +210,24 @@ structure YamlDocument where
   comments : Array (YamlPos × Comment) := #[]
   deriving Repr, BEq, Inhabited
 
+/-! ## YamlPath — Tree-addressed value navigation (Phase G5b)
+
+A path from the document root to a node in the value tree,
+analogous to jq/yq selectors: `.servers[0].port` ≈
+`#[.key "servers", .index 0, .key "port"]`.
+-/
+
+/-- A single step in a path through a YAML value tree. -/
+inductive PathSegment where
+  /-- Index into a sequence: `.[i]` -/
+  | index (i : Nat)
+  /-- Key lookup in a mapping: `.key` -/
+  | key (k : String)
+  deriving Repr, BEq, DecidableEq, Inhabited
+
+/-- A path from the document root to a node in the value tree. -/
+abbrev YamlPath := Array PathSegment
+
 /-! ## Convenience Constructors -/
 
 /-- Create a plain scalar value -/
@@ -312,6 +330,31 @@ def YamlValue.lookup? (v : YamlValue) (key : String) : Option YamlValue :=
       | .scalar s => if s.content == key then some v else none
       | _ => none
   | _ => none
+
+/--
+Resolve a path against a value tree, returning the addressed sub-value.
+
+Structural recursion on the path segment list. `.index i` indexes into
+sequence items, `.key k` looks up in mapping pairs by scalar content.
+Returns `none` for type mismatches, out-of-bounds, or unresolvable aliases.
+-/
+def YamlValue.resolve (v : YamlValue) (path : YamlPath) : Option YamlValue :=
+  go v path.toList
+where
+  go : YamlValue → List PathSegment → Option YamlValue
+    | v, [] => some v
+    | .sequence _ items .., .index i :: rest =>
+      match items[i]? with
+      | some child => go child rest
+      | none => none
+    | .mapping _ pairs .., .key k :: rest =>
+      match pairs.findSome? (fun (key, val) =>
+        match key with
+        | .scalar s => if s.content == k then some val else none
+        | _ => none) with
+      | some child => go child rest
+      | none => none
+    | _, _ :: _ => none
 
 /--
 Resolve all alias nodes by substituting the anchored value.
