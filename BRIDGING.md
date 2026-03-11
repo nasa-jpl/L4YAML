@@ -2462,6 +2462,41 @@ theorem resolve_stripComments_eq (doc : YamlDocument) (path : YamlPath) :
 
 ##### Phase G5b Reflections
 
+**Status: COMPLETE.**
+
+**Implementation (Types.lean):**
+1. Added `PathSegment` inductive with `.index (i : Nat)` and `.key (k : String)`,
+   with `Repr`, `BEq`, `DecidableEq`, `Inhabited` deriving.
+2. Added `YamlPath` as `abbrev YamlPath := Array PathSegment`.
+3. Added `YamlValue.resolve : YamlValue → YamlPath → Option YamlValue` using
+   a `go` helper with structural recursion on `List PathSegment` (converted
+   from the array via `.toList`). `.index i` uses `items[i]?` for safe
+   array access; `.key k` reuses the same `findSome?` pattern as `lookup?`.
+
+**Placement decisions:**
+- `PathSegment`/`YamlPath` placed immediately after `YamlDocument` (before
+  convenience constructors) — they are document-level concepts.
+- `resolve` placed after `lookup?` in the Value Inspection section — natural
+  grouping with other navigation functions. `resolve` generalizes `lookup?`
+  to multi-step paths.
+
+**Proofs (CommentProperties.lean §7 — 3 new theorems):**
+
+| Theorem | Statement | Tactic |
+|---------|-----------|--------|
+| `resolve_nil` | `v.resolve #[] = some v` | `rfl` |
+| `resolve_stripComments_eq` | `doc.stripComments.value.resolve path = doc.value.resolve path` | `rfl` |
+| `resolve_deterministic` | `v.resolve path = v.resolve path` | `rfl` |
+
+All `rfl` — `resolve` operates on `YamlValue`, which `stripComments`
+doesn't touch. Determinism is trivially true for any `def`.
+
+**Proof impact:** Zero breakage. `PathSegment` and `YamlPath` are new types
+with no impact on existing code. `resolve` is a new function with no
+existing callers.
+
+**Build:** 223/223 ✔, 4 pre-existing sorries unchanged.
+
 #### **G5c. Node position side-channel + `commentsFor`.**
 
 The parser already knows the source position of every node it constructs

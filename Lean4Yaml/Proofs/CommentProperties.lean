@@ -162,4 +162,24 @@ theorem scannable_of_stripComments (doc : YamlDocument) (inFlow : Bool)
     (h : Grammar.Scannable doc.value inFlow) :
     Grammar.Scannable doc.stripComments.value inFlow := h
 
+/-! ## §7  YamlPath resolution properties (Phase G5b)
+
+`YamlValue.resolve` navigates the value tree by `YamlPath`. Since paths
+operate on `YamlValue` (not `YamlDocument`), and `stripComments` only
+touches `YamlDocument.comments`, resolution is automatically independent
+of comments.
+-/
+
+/-- Empty path resolves to the value itself. -/
+theorem resolve_nil (v : YamlValue) : v.resolve #[] = some v := rfl
+
+/-- Stripping comments does not affect path resolution. -/
+theorem resolve_stripComments_eq (doc : YamlDocument) (path : YamlPath) :
+    doc.stripComments.value.resolve path = doc.value.resolve path := rfl
+
+/-- Path resolution is deterministic — resolving the same path twice
+    yields the same result (trivially, since `resolve` is a `def`). -/
+theorem resolve_deterministic (v : YamlValue) (path : YamlPath) :
+    v.resolve path = v.resolve path := rfl
+
 end Lean4Yaml.Proofs.CommentProperties
