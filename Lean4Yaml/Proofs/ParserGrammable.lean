@@ -388,6 +388,35 @@ on `YamlToken.scalar content style` and constructs
 function unfolding.
 -/
 
+/-! ### C2 Bridge Lemmas
+
+These connect B3.5's token-level `PlainScalarsValid` to the tree-level
+`Scannable` predicate for scalar base cases. Used by the parser tracing
+proofs (when completed). -/
+
+/-- A scalar YamlValue constructed from a token satisfying PlainScalarsValid
+    is Scannable. Bridges token-level ScalarScannable → tree-level Scannable. -/
+theorem scalar_from_token_scannable
+    (tokens : Array (Positioned YamlToken))
+    (h_psv : PlainScalarsValid tokens)
+    (i : Nat) (hi : i < tokens.size)
+    (content : String) (style : ScalarStyle)
+    (h_tok : (tokens[i]'hi).val = .scalar content style)
+    (tag anchor : Option String) :
+    Scannable (.scalar ⟨content, style, tag, anchor, none⟩) false := by
+  apply Scannable.scalar
+  intro hplain hlen
+  have h_match := h_psv i hi
+  rw [h_tok] at h_match
+  cases style with
+  | plain => exact h_match hplain hlen
+  | _ => contradiction
+
+/-- Empty content scalar (parser empty node) is trivially Scannable. -/
+theorem empty_scalar_scannable (tag anchor : Option String) :
+    Scannable (.scalar ⟨"", .plain, tag, anchor, none⟩) false := by
+  apply Scannable.scalar; intro _ hlen; simp at hlen
+
 /-- C2: Every document produced by `parseStream` from scanner tokens
     has a `Scannable` value tree.
 
