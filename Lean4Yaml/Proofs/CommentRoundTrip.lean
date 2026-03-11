@@ -88,7 +88,7 @@ and checks that the comment texts match.
 
 /-- Helper: check that a document's comment texts survive the round-trip
     through emitWithComments → parseYamlWithComments. -/
-private def commentRoundTrips (doc : YamlDocument) : Bool :=
+def commentRoundTrips (doc : YamlDocument) : Bool :=
   match parseYamlWithComments (emitWithComments doc) with
   | .ok docs =>
     if h : docs.size = 1 then
@@ -99,7 +99,7 @@ private def commentRoundTrips (doc : YamlDocument) : Bool :=
 
 /-- Helper: check that a document's value content survives the round-trip
     through emitWithComments → parseYamlWithComments. -/
-private def valueRoundTrips (doc : YamlDocument) : Bool :=
+def valueRoundTrips (doc : YamlDocument) : Bool :=
   match parseYamlWithComments (emitWithComments doc) with
   | .ok docs =>
     if h : docs.size = 1 then
