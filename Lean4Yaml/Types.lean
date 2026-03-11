@@ -191,25 +191,6 @@ inductive Directive where
   | tag (handle : String) (tagPrefix : String)
   deriving Repr, BEq, DecidableEq
 
-/-! ## Documents -/
-
-/--
-A YAML document with optional directives and anchor map.
-
-YAML streams can contain multiple documents separated by `---` markers.
-
-The `anchors` field captures the document's anchor map from the parse phase.
-This enables the **Compose** step (YAML 1.2.2 §3.1) to resolve alias nodes.
--/
-structure YamlDocument where
-  value : YamlValue
-  directives : Array Directive := #[]
-  anchors : Array (String × YamlValue) := #[]
-  /-- Comments collected during scanning (side-channel, §6.6).
-      Each entry pairs the source position of the `#` with the comment struct. -/
-  comments : Array (YamlPos × Comment) := #[]
-  deriving Repr, BEq, Inhabited
-
 /-! ## YamlPath — Tree-addressed value navigation (Phase G5b)
 
 A path from the document root to a node in the value tree,
@@ -227,6 +208,29 @@ inductive PathSegment where
 
 /-- A path from the document root to a node in the value tree. -/
 abbrev YamlPath := Array PathSegment
+
+/-! ## Documents -/
+
+/--
+A YAML document with optional directives and anchor map.
+
+YAML streams can contain multiple documents separated by `---` markers.
+
+The `anchors` field captures the document's anchor map from the parse phase.
+This enables the **Compose** step (YAML 1.2.2 §3.1) to resolve alias nodes.
+-/
+structure YamlDocument where
+  value : YamlValue
+  directives : Array Directive := #[]
+  anchors : Array (String × YamlValue) := #[]
+  /-- Comments collected during scanning (side-channel, §6.6).
+      Each entry pairs the source position of the `#` with the comment struct. -/
+  comments : Array (YamlPos × Comment) := #[]
+  /-- Source span of each node, keyed by path from root (G5c).
+      Each entry is `(path, startPos, endPos)` where the positions
+      delimit the node's token span in the source. -/
+  nodePositions : Array (YamlPath × YamlPos × YamlPos) := #[]
+  deriving Repr, BEq, Inhabited
 
 /-! ## Convenience Constructors -/
 
@@ -433,6 +437,20 @@ def YamlDocument.compose (doc : YamlDocument) : YamlDocument :=
 /-- Strip all comments from a document (§6.6: comments are presentation detail). -/
 def YamlDocument.stripComments (doc : YamlDocument) : YamlDocument :=
   { doc with comments := #[] }
+
+/-- Strip node positions (presentation detail, like comments). -/
+def YamlDocument.stripPositions (doc : YamlDocument) : YamlDocument :=
+  { doc with nodePositions := #[] }
+
+/-- Find all comments whose source position falls within the span of
+    the node at `path`. Returns an empty array if the path is not in
+    the position map. -/
+def YamlDocument.commentsFor (doc : YamlDocument) (path : YamlPath) : Array Comment :=
+  match doc.nodePositions.find? (fun (p, _, _) => p == path) with
+  | some (_, startPos, endPos) =>
+    doc.comments.filterMap fun (pos, c) =>
+      if startPos.offset ≤ pos.offset && pos.offset ≤ endPos.offset then some c else none
+  | none => #[]
 
 /-! ## Anchor Map
 

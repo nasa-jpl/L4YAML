@@ -190,13 +190,16 @@ All component types now have `DecidableEq`:
 - `Directive` — derived in `Types.lean`
 - `Array (String × YamlValue)` — from `DecidableEq String` × `DecidableEq YamlValue`
 - `Array (YamlPos × Comment)` — from `DecidableEq YamlPos` × `DecidableEq Comment`
+- `Array (YamlPath × YamlPos × YamlPos)` — from `DecidableEq PathSegment` × `DecidableEq YamlPos`
 -/
 instance : DecidableEq YamlDocument := fun a b =>
   if hv : a.value = b.value then
   if hd : a.directives = b.directives then
   if ha : a.anchors = b.anchors then
   if hc : a.comments = b.comments then
-    isTrue (by cases a; cases b; subst hv; subst hd; subst ha; subst hc; rfl)
+  if hn : a.nodePositions = b.nodePositions then
+    isTrue (by cases a; cases b; subst hv; subst hd; subst ha; subst hc; subst hn; rfl)
+  else isFalse fun h => hn (by cases h; rfl)
   else isFalse fun h => hc (by cases h; rfl)
   else isFalse fun h => ha (by cases h; rfl)
   else isFalse fun h => hd (by cases h; rfl)

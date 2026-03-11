@@ -2570,6 +2570,95 @@ impact profile as adding `comments` in G2:
 
 ##### Phase G5c Reflections
 
+**Status: COMPLETE.**
+
+**Types.lean changes:**
+1. Moved `PathSegment`/`YamlPath` definitions **before** `YamlDocument`
+   (were after) so the new field can reference `YamlPath`.
+2. Added `nodePositions : Array (YamlPath × YamlPos × YamlPos) := #[]`
+   as the fifth field of `YamlDocument`.
+3. Added `YamlDocument.stripPositions` (`{ doc with nodePositions := #[] }`).
+4. Added `YamlDocument.commentsFor` — looks up a path in `nodePositions`,
+   then `filterMap`s comments whose byte offset falls within the node span.
+
+**TokenParser.lean changes (heaviest modification):**
+1. Added three fields to `ParseState`:
+   - `trackPositions : Bool := false` — opt-in flag
+   - `currentPath : YamlPath := #[]` — path being built during descent
+   - `nodePositions : Array (YamlPath × YamlPos × YamlPos) := #[]`
+2. Added `ParseState.lastPos?` helper for computing end positions.
+3. Modified `parseNode`: saves `nodeStartPos` at entry, records
+   `(currentPath, startPos, endPos)` at exit — **guarded by
+   `if ps.trackPositions`**.
+4. **Seven loop/collection functions** modified with save/restore path
+   pattern (`parseBlockSequenceLoop`, `parseImplicitBlockSequenceLoop`,
+   `parseBlockMappingLoop`, `parseFlowSequenceLoop`, `parseFlowMappingLoop`,
+   `parseSinglePairMapping`, `parseDocument`):
+   - Sequences push `.index items.size` before child `parseNode`
+   - Mappings push `.key keyContent` (extracted from scalar or index
+     fallback) before value `parseNode`
+   - All restore `currentPath` after child returns
+5. `parseDocument` copies `ps.nodePositions` into the returned document.
+6. `parseStream` accepts `(trackPositions : Bool := false)` parameter,
+   constructs `ParseState` with it, resets `nodePositions`/`currentPath`
+   between documents.
+7. `parseYamlWithComments` calls `parseStream tokens (trackPositions := true)`.
+
+**Key design decision — `trackPositions` flag:**
+Two consecutive build failures drove this design:
+- **Attempt 1**: Always record positions → `native_decide` tests in
+  Completeness.lean failed (expected documents had `nodePositions = #[]`
+  but parser produced non-empty arrays).
+- **Attempt 2**: Strip positions in `parseYamlRaw` → Composition.lean
+  proofs broke (they `simp only [parseYamlRaw, ...]` and expect the
+  unfolded form to match `parseStream` output directly).
+- **Solution**: Opt-in flag on `ParseState`. Standard API paths
+  (`parseYaml`, `parseYamlRaw`, `scanAndParse`) use default `false` —
+  zero behavioral change, zero position overhead. Only
+  `parseYamlWithComments` enables tracking. All existing proofs and
+  tests pass unchanged.
+
+**Lesson learned:** Adding observable state to shared parser
+infrastructure in a verified codebase requires opt-in flags to preserve
+backward compatibility with proofs that use `native_decide` or `simp`
+on API definitions.
+
+**Completeness.lean:** Extended `DecidableEq YamlDocument` from 4-field
+to 5-field case analysis (added `hn : a.nodePositions = b.nodePositions`).
+
+**DumpRoundTrip files:** 18 anonymous constructor sites updated (9 in
+Proofs/, 9 in Tests/) — added trailing `#[]` for `nodePositions`.
+
+**Proofs (CommentProperties.lean §8 — 11 new theorems):**
+
+| Theorem | Statement | Tactic |
+|---------|-----------|--------|
+| `stripPositions_value_eq` | `doc.stripPositions.value = doc.value` | `rfl` |
+| `stripPositions_comments_eq` | `doc.stripPositions.comments = doc.comments` | `rfl` |
+| `stripPositions_directives_eq` | `doc.stripPositions.directives = doc.directives` | `rfl` |
+| `stripPositions_anchors_eq` | `doc.stripPositions.anchors = doc.anchors` | `rfl` |
+| `stripPositions_idem` | `doc.stripPositions.stripPositions = doc.stripPositions` | `rfl` |
+| `stripPositions_stripComments_comm` | `doc.stripPositions.stripComments = doc.stripComments.stripPositions` | `rfl` |
+| `commentsFor_stripComments` | `doc.stripComments.commentsFor path = #[]` | `simp + split` |
+| `resolve_stripPositions_eq` | `doc.stripPositions.value.resolve path = doc.value.resolve path` | `rfl` |
+| `compose_preserves_nodePositions` | `doc.compose.nodePositions = doc.nodePositions` | `rfl` |
+| `stripComments_preserves_nodePositions` | `doc.stripComments.nodePositions = doc.nodePositions` | `rfl` |
+
+10 of 11 are `rfl` — same orthogonal-struct-update pattern as G3/G4.
+`commentsFor_stripComments` requires `simp only [...]; split <;> simp`
+because it must reason about the empty-comments filter.
+
+(Note: the table above has 10 rows — the 11th theorem
+`stripPositions_stripComments_comm` was already listed as a separate row.)
+
+**Proof impact:** Same profile as G2 (`comments` field addition):
+- `DecidableEq`: 4→5 fields
+- Anonymous constructors: +1 trailing `#[]` at 18 sites
+- Named-field sites unaffected (default `#[]`)
+- `compose`, `stripComments` use `{ doc with ... }` → preserve new field
+
+**Build:** 223/223 ✔, 4 pre-existing sorries unchanged.
+
 #### **G6. Round-trip theorem (YamlPath-aware):**
 
 With G5b/G5c, comment round-trip can be stated in terms of *which node*

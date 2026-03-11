@@ -182,4 +182,54 @@ theorem resolve_stripComments_eq (doc : YamlDocument) (path : YamlPath) :
 theorem resolve_deterministic (v : YamlValue) (path : YamlPath) :
     v.resolve path = v.resolve path := rfl
 
+/-! ## §8  Node position properties (Phase G5c)
+
+`nodePositions` is a side-channel on `YamlDocument`, orthogonal to
+`value`, `directives`, `anchors`, and `comments`. The same struct-update
+independence pattern applies: `stripPositions`, `stripComments`, and
+`compose` operate on disjoint fields.
+-/
+
+/-- Stripping positions preserves the value tree. -/
+theorem stripPositions_value_eq (doc : YamlDocument) :
+    doc.stripPositions.value = doc.value := rfl
+
+/-- Stripping positions preserves comments. -/
+theorem stripPositions_comments_eq (doc : YamlDocument) :
+    doc.stripPositions.comments = doc.comments := rfl
+
+/-- Stripping positions preserves directives. -/
+theorem stripPositions_directives_eq (doc : YamlDocument) :
+    doc.stripPositions.directives = doc.directives := rfl
+
+/-- Stripping positions preserves anchors. -/
+theorem stripPositions_anchors_eq (doc : YamlDocument) :
+    doc.stripPositions.anchors = doc.anchors := rfl
+
+/-- stripPositions is idempotent. -/
+theorem stripPositions_idem (doc : YamlDocument) :
+    doc.stripPositions.stripPositions = doc.stripPositions := rfl
+
+/-- stripPositions and stripComments commute. -/
+theorem stripPositions_stripComments_comm (doc : YamlDocument) :
+    doc.stripPositions.stripComments = doc.stripComments.stripPositions := rfl
+
+/-- commentsFor on a document with no comments returns empty. -/
+theorem commentsFor_stripComments (doc : YamlDocument) (path : YamlPath) :
+    doc.stripComments.commentsFor path = #[] := by
+  simp only [YamlDocument.stripComments, YamlDocument.commentsFor]
+  split <;> simp [Array.filterMap]
+
+/-- Stripping positions does not affect path resolution. -/
+theorem resolve_stripPositions_eq (doc : YamlDocument) (path : YamlPath) :
+    doc.stripPositions.value.resolve path = doc.value.resolve path := rfl
+
+/-- Compose preserves nodePositions. -/
+theorem compose_preserves_nodePositions (doc : YamlDocument) :
+    doc.compose.nodePositions = doc.nodePositions := rfl
+
+/-- Stripping comments preserves nodePositions. -/
+theorem stripComments_preserves_nodePositions (doc : YamlDocument) :
+    doc.stripComments.nodePositions = doc.nodePositions := rfl
+
 end Lean4Yaml.Proofs.CommentProperties
