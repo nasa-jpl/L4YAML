@@ -178,7 +178,7 @@ inductive YamlToken where
   /-- Comment text (excluding the leading `#` and whitespace).
       Preserved for Phase 8 (comment round-trip fidelity). -/
   | comment (text : String)
-  deriving Repr, BEq, Inhabited
+  deriving Repr, Inhabited, DecidableEq
 
 /-! ## Token Classification -/
 

@@ -730,6 +730,53 @@ match h : booleanCheck args with
 | true  => .isFalse (fun hn => absurd (iff.mp h) hn)
 ```
 
+#### Phase A Addendum: `DecidableEq YamlToken`
+
+**Change:** Removed `BEq` from and added `DecidableEq` to `YamlToken`'s
+`deriving` clause in `Token.lean` (line 181):
+```lean
+  deriving Repr, Inhabited, DecidableEq
+```
+
+**Why `BEq` was removed:** The derived `BEq` and derived `DecidableEq` are
+independent instances. `BEq.beq` uses an auto-generated pattern matcher, while
+`DecidableEq` produces `Decidable (a = b)`. Without `LawfulBEq` connecting
+them, `by_cases h : x ≠ y` (Prop) cannot prove `(x != y) = true` (Bool).
+By removing the explicit `BEq` derivation, `BEq YamlToken` comes from
+`instBEqOfDecidableEq`, which implements `beq a b = decide (a = b)`. This
+ensures `bne`/`beq` are inherently connected to `=`/`≠`, enabling
+`simp [bne, h]` or `decide_eq_false h` to close BEq↔Prop bridging goals.
+
+**Why this is needed:**
+
+The `flowNesting_go_filter_equiv` proof (in `ScannerPlainScalarValid.lean`)
+requires case-splitting on whether a token equals `.placeholder`:
+```lean
+by_cases h_ph : (all_tokens[j']).val = .placeholder
+```
+Without `DecidableEq`, `by_cases` cannot synthesize `Decidable (x = y)` for
+`YamlToken` values. The workaround — using `by_cases h : x == y` with `BEq`
+— produces `Bool`-valued hypotheses (`h : (x == y) = true/false`) that
+require manual bridging to `Prop` equalities. This bridging needs either
+`LawfulBEq` (which requires `DecidableEq` anyway to derive) or verbose
+`eq_of_beq`/`bne_iff_ne` chains.
+
+With `DecidableEq`:
+- `by_cases h : x.val = .placeholder` gives `h : x.val = .placeholder` or
+  `h : x.val ≠ .placeholder` directly as `Prop` hypotheses
+- `decide` can close goals involving `YamlToken` equality
+- `if h : x = y then ... else ...` works in `Decidable` instances
+- Enables future `LawfulBEq YamlToken` derivation if needed
+
+**Impact:** The derivation succeeds automatically because `YamlToken` is a
+plain inductive type whose constructor arguments (`String`, `Nat`, `Char`,
+`Option`, `Bool`, `ScalarStyle`) all already have `DecidableEq`. No manual
+instance needed.
+
+**Scope:** This affects only `YamlToken` (the scanner's output token type).
+`ScanError` already had `DecidableEq` (line 311). `ScalarStyle` does not
+yet need it but could add it trivially if future proofs require it.
+
 ### Phase B0: Create `CharPredicates.lean` (COMPLETE ✅)
 
 Extract all character-level and string-level predicates into a shared module
