@@ -161,4 +161,31 @@ where
       contentEq k₁ k₂ && contentEq v₁ v₂ && contentEqPairList rest₁ rest₂
     | _, _ => false
 
+/-! ## Comment-Aware Emission
+
+`emitWithComments` serializes a `YamlDocument` into a string that
+includes both the value tree (in canonical form) and any collected
+comments. Comments are emitted as `#text` lines before the value.
+
+When re-parsed with `parseYamlWithComments`, the same comment texts
+are recovered (though byte offsets will differ). This is the emitter
+for comment round-trip verification.
+-/
+
+/-- Emit comment lines from a document's comment array.
+    Each comment becomes `#text\n` (the scanner stores text without `#`). -/
+def emitCommentLines (comments : Array (YamlPos × Comment)) : String :=
+  comments.foldl (fun acc (_, c) => acc ++ "#" ++ c.text ++ "\n") ""
+
+/-- Emit a YAML document with comments preserved.
+
+    Comments are emitted as `#text` lines before the canonical value.
+    When re-parsed by `parseYamlWithComments`, the same comment texts
+    are recovered (byte offsets will shift but text content is stable).
+
+    Uses the canonical emitter (`emit`) for the value tree, ensuring
+    deterministic output. -/
+def emitWithComments (doc : YamlDocument) : String :=
+  emitCommentLines doc.comments ++ emit doc.value
+
 end Lean4Yaml.Emit

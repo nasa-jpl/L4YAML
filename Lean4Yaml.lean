@@ -15,6 +15,7 @@ import Lean4Yaml.Schema.Dump
 import Lean4Yaml.Proofs.BlockScalarContracts
 import Lean4Yaml.Proofs.CharClass
 import Lean4Yaml.Proofs.CommentProperties
+import Lean4Yaml.Proofs.CommentRoundTrip
 import Lean4Yaml.Proofs.Completeness
 import Lean4Yaml.Proofs.Composition
 import Lean4Yaml.Proofs.DocumentContracts

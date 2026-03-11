@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml.Types
 import Lean4Yaml.Grammar
+import Lean4Yaml.Emitter
 
 /-!
 # Comment Properties (Phase G3)
@@ -231,5 +232,60 @@ theorem compose_preserves_nodePositions (doc : YamlDocument) :
 /-- Stripping comments preserves nodePositions. -/
 theorem stripComments_preserves_nodePositions (doc : YamlDocument) :
     doc.stripComments.nodePositions = doc.nodePositions := rfl
+
+/-! ## §9  Comment text properties and emitter round-trip (Phase G6)
+
+`commentTexts` extracts just the text strings from a document's comments,
+independent of byte positions. `emitWithComments` serializes a document
+with comments as `#text` lines followed by the canonical value.
+
+These properties establish the algebraic foundations for comment round-trip:
+the new functions compose predictably with `stripComments`, `stripPositions`,
+`compose`, etc.
+-/
+
+/-- Stripping positions does not affect comment texts. -/
+theorem commentTexts_stripPositions_eq (doc : YamlDocument) :
+    doc.stripPositions.commentTexts = doc.commentTexts := rfl
+
+/-- Stripping comments yields empty comment texts. -/
+theorem commentTexts_stripComments_eq (doc : YamlDocument) :
+    doc.stripComments.commentTexts = #[] := by
+  simp [YamlDocument.stripComments, YamlDocument.commentTexts, Array.map]
+
+/-- Compose preserves comment texts. -/
+theorem commentTexts_compose_eq (doc : YamlDocument) :
+    doc.compose.commentTexts = doc.commentTexts := rfl
+
+/-- A document with no comments emits as just the value. -/
+theorem emitWithComments_no_comments (doc : YamlDocument)
+    (h : doc.comments = #[]) :
+    Emit.emitWithComments doc = Emit.emit doc.value := by
+  unfold Emit.emitWithComments Emit.emitCommentLines
+  rw [h]
+  simp [Array.foldl]
+
+/-- Stripping positions does not affect emitWithComments output
+    (positions are not used during emission). -/
+theorem emitWithComments_stripPositions_eq (doc : YamlDocument) :
+    Emit.emitWithComments doc.stripPositions = Emit.emitWithComments doc := rfl
+
+/-- Stripping comments makes emitWithComments emit just the value. -/
+theorem emitWithComments_stripComments_eq (doc : YamlDocument) :
+    Emit.emitWithComments doc.stripComments = Emit.emit doc.value := by
+  unfold Emit.emitWithComments Emit.emitCommentLines
+  simp [YamlDocument.stripComments, Array.foldl]
+
+/-- commentTexts is empty iff comments is empty. -/
+theorem commentTexts_empty_iff (doc : YamlDocument) :
+    doc.commentTexts = #[] ↔ doc.comments = #[] := by
+  constructor
+  · intro h
+    unfold YamlDocument.commentTexts at h
+    exact Array.eq_empty_of_map_eq_empty h
+  · intro h
+    unfold YamlDocument.commentTexts
+    rw [h]
+    simp [Array.map]
 
 end Lean4Yaml.Proofs.CommentProperties

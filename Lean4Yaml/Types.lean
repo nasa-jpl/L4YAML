@@ -452,6 +452,11 @@ def YamlDocument.commentsFor (doc : YamlDocument) (path : YamlPath) : Array Comm
       if startPos.offset ≤ pos.offset && pos.offset ≤ endPos.offset then some c else none
   | none => #[]
 
+/-- Extract all comment text strings from a document, ignoring positions.
+    Useful for position-independent comment round-trip comparisons. -/
+def YamlDocument.commentTexts (doc : YamlDocument) : Array String :=
+  doc.comments.map fun (_, c) => c.text
+
 /-! ## Anchor Map
 
 An association-list map from anchor names to their resolved `YamlValue`s.
