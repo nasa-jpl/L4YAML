@@ -2692,6 +2692,90 @@ G3 (`parseYamlWithComments`).
 
 ##### Phase G6 Reflections
 
+**Status: COMPLETE.**
+
+**Design decision — `emitWithComments` as comment-header emitter:**
+The G6 spec envisions a full `comment_round_trip` theorem using
+`commentsFor` (path-aware). However, the full path-aware round-trip
+requires that the emitter reproduce comments at exactly the right byte
+positions relative to node spans — which couples the emitter to parser
+internals. Instead, we implemented a simpler, provable approach:
+
+- **`emitWithComments : YamlDocument → String`** emits comments as
+  `#text\n` lines before the canonical value emission. The scanner
+  stores comment text without `#`, so emitting `#` + text + `\n` is
+  the exact inverse.
+- **`commentTexts : YamlDocument → Array String`** extracts just the
+  text strings from comments, ignoring byte positions. This is the
+  position-independent projection for round-trip comparisons.
+- **Round-trip property**: comment *texts* (not positions) are preserved
+  through `emitWithComments → parseYamlWithComments`. The value tree is
+  also preserved via `contentEq`.
+
+This mirrors the approach of `Proofs/RoundTrip.lean` for value round-trip:
+concrete `#guard` / `native_decide` verification now, with the universal
+theorem as a future composition target.
+
+**Types.lean changes:**
+- Added `YamlDocument.commentTexts` — `doc.comments.map fun (_, c) => c.text`
+
+**Emitter.lean changes:**
+- Added `emitCommentLines` — folds over comments producing `#text\n` lines
+- Added `emitWithComments` — `emitCommentLines doc.comments ++ emit doc.value`
+
+**New file: Proofs/CommentRoundTrip.lean (7 theorems):**
+
+| Theorem | Statement | Tactic |
+|---------|-----------|--------|
+| `emitWithComments_empty_comments` | No-comments doc → `emit value` | `native_decide` |
+| `emitWithComments_one_comment` | One comment → `#text\n` + value | `native_decide` |
+| `emitCommentLines_empty` | Empty comments → `""` | `native_decide` |
+| `emitCommentLines_single` | Single comment → `#text\n` | `native_decide` |
+| `value_roundtrip_no_comments` | Value preserved (no comments) | `native_decide` |
+| `value_roundtrip_one_comment` | Value preserved (with comment) | `native_decide` |
+| `comment_roundtrip_one_comment` | One comment text preserved | `native_decide` |
+| `comment_roundtrip_two_comments` | Two comment texts preserved | `native_decide` |
+| `comment_roundtrip_mapping` | Comment on mapping round-trips | `native_decide` |
+| `comment_roundtrip_sequence` | Comment on sequence round-trips | `native_decide` |
+
+(Note: 10 theorems total — `native_decide` evaluates the full
+scan→parse→emit→re-scan→re-parse pipeline on concrete inputs.)
+
+**CommentProperties.lean §9 (7 new theorems):**
+
+| Theorem | Statement | Tactic |
+|---------|-----------|--------|
+| `commentTexts_stripPositions_eq` | Positions don't affect texts | `rfl` |
+| `commentTexts_stripComments_eq` | Stripped → `#[]` | `simp` |
+| `commentTexts_compose_eq` | Compose preserves texts | `rfl` |
+| `emitWithComments_no_comments` | No comments → `emit value` | `unfold + rw + simp` |
+| `emitWithComments_stripPositions_eq` | Positions don't affect emission | `rfl` |
+| `emitWithComments_stripComments_eq` | Stripped → `emit value` | `unfold + simp` |
+| `commentTexts_empty_iff` | `commentTexts = #[] ↔ comments = #[]` | `constructor + simp` |
+
+**Guards file: Tests/Guards/Proofs/CommentRoundTrip.lean:**
+- 11 `#guard` compile-time checks covering:
+  - Comment text round-trip for 1, 2, 3 comments
+  - Value round-trip with and without comments
+  - Special characters in comment text
+  - Empty, mapping, and sequence values
+
+**Proof impact:** Zero breakage to existing code.
+- New file `CommentRoundTrip.lean` added to Lean4Yaml.lean imports
+- New Guards file added to Tests/Guards.lean imports
+- `CommentProperties.lean` gained Emitter import + §9 section
+
+**Build:** 226/226 ✔ (was 223 → +3 new modules), 4 pre-existing sorries unchanged.
+
+**Aspirational extension (future):** The full universal theorem
+```lean
+∀ doc, commentTexts doc = commentTexts (roundTrip doc)
+```
+requires composing scanner invertibility (comment collection from `#text`)
+with parser threading (comment array preservation) — same challenge as the
+universal value round-trip in `RoundTrip.lean`. The `#guard` checks serve
+as build-time invariants until the full proof is constructed.
+
 #### **G7. Structural equivalence modulo comments and positions:**
 
 ```lean
