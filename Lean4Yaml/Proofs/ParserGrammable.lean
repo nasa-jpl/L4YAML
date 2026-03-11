@@ -443,50 +443,15 @@ theorem ScalarScannable_strengthen (s : Scalar)
   have ⟨_, h2, h3, _⟩ := h hplain hlen
   exact ⟨h_vpf hplain hlen, h2, h3, fun _ => h_nfi hplain hlen⟩
 
-/-! ### Flow Nesting
+/-! ### Flow Nesting and FlowAwarePSV
 
-The scanner tracks flow context via `flowLevel`. In the token stream,
-this corresponds to nesting depth of `flowSequenceStart`/`flowMappingStart`
-vs `flowSequenceEnd`/`flowMappingEnd` tokens. -/
+`flowNesting`, `FlowContextPSV`, `FlowAwarePSV`, and `FlowNestingInv`
+are defined in `ScannerPlainScalarValid.lean` to avoid circular imports
+(the FlowAwarePSV proof chain lives there alongside B3.5).
 
-/-- Flow nesting depth at position `i` in the token array.
-    Counts unmatched flow-start tokens (`flowSequenceStart`, `flowMappingStart`)
-    before position `i`, subtracting flow-end tokens. Uses natural number
-    subtraction (saturating at 0) for well-formed token streams. -/
-def flowNesting (tokens : Array (Positioned YamlToken)) (i : Nat) : Nat :=
-  go tokens 0 i 0
-where
-  go (tokens : Array (Positioned YamlToken)) (pos target depth : Nat) : Nat :=
-    if pos ≥ target then depth
-    else if h : pos < tokens.size then
-      let depth' := match (tokens[pos]'h).val with
-        | .flowSequenceStart | .flowMappingStart => depth + 1
-        | .flowSequenceEnd | .flowMappingEnd => if depth > 0 then depth - 1 else 0
-        | _ => depth
-      go tokens (pos + 1) target depth'
-    else depth
-  termination_by target - pos
+`FlowAwarePSV tokens ≡ PlainScalarsValid tokens ∧ FlowContextPSV tokens`
 
-/-- Flow-aware extension of `PlainScalarsValid`.
-
-    At positions where `flowNesting > 0` (inside a flow collection),
-    plain scalar tokens additionally satisfy `ScalarScannable _ true`.
-    This captures the scanner's guarantee that flow-context plain scalars
-    have no flow indicators and satisfy `validPlainFirstProp _ true`.
-
-    **Provable from scanner**: B3.4 gives `ScalarScannable _ s.inFlow`,
-    and the scanner's `flowLevel > 0 ↔ inFlow = true` corresponds to
-    `flowNesting > 0` in the token stream. Extending B3.5 to also
-    preserve `ScalarScannable _ true` (without weakening) for flow-context
-    tokens would prove this predicate. -/
-def FlowAwarePSV (tokens : Array (Positioned YamlToken)) : Prop :=
-  PlainScalarsValid tokens ∧
-  ∀ i (hi : i < tokens.size),
-    flowNesting tokens i > 0 →
-    match (tokens[i]'hi).val with
-    | .scalar content .plain =>
-        ScalarScannable ⟨content, .plain, none, none, none⟩ true
-    | _ => True
+Proved by `scan_flow_aware_psv` (B3.5+ chain). -/
 
 /-! ### C2 Bridge Lemmas
 
