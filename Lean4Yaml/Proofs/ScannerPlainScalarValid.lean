@@ -77,7 +77,12 @@ theorem validPlainFirstProp_true_implies_false (content : String) :
   | nil => exact id
   | cons c rest =>
     cases rest with
-    | nil => exact canStartPlainScalarProp_true_implies_false c none
+    | nil =>
+      intro h
+      by_cases hexc : c = '-' ∨ c = '?' ∨ c = ':'
+      · simp [hexc]
+      · simp [hexc] at h ⊢
+        exact canStartPlainScalarProp_true_implies_false c none h
     | cons n _ => exact canStartPlainScalarProp_true_implies_false c (some n)
 
 theorem ScalarScannable_true_implies_false (s : Scalar) :
@@ -226,7 +231,9 @@ theorem saveSimpleKey_new_tokens_not_plain (s : ScannerState)
 
 theorem scanPlainScalar_preserves_PlainScalarsValid
     (s s' : ScannerState) (h_old : PlainScalarsValid s.tokens)
-    (h_ok : scanPlainScalar s = .ok s') :
+    (h_ok : scanPlainScalar s = .ok s')
+    (h_canStart : ∃ c, s.peek? = some c ∧
+        canStartPlainScalarBool c (s.peekAt? 1) s.inFlow = true) :
     PlainScalarsValid s'.tokens := by
   have h_adds := scanPlainScalar_adds_one_token s s' h_ok
   apply PlainScalarsValid_of_prefix_and_new s.tokens s'.tokens h_old (by omega)
@@ -240,7 +247,7 @@ theorem scanPlainScalar_preserves_PlainScalarsValid
     | scalar content style =>
       cases style with
       | plain =>
-        have h_cv := scanPlainScalar_content_valid s s' h_ok hj
+        have h_cv := scanPlainScalar_content_valid s s' h_ok h_canStart hj
         rw [h_tok] at h_cv
         exact ScalarScannable_any_implies_false _ s.inFlow h_cv
       | _ => trivial
@@ -437,7 +444,8 @@ theorem scanSingleQuoted_psv_match (s s_sq : ScannerState)
 
 set_option maxHeartbeats 800000 in
 theorem dispatchContent_preserves_PlainScalarsValid
-    (s : ScannerState) (c : Char) (h_old : PlainScalarsValid s.tokens)
+    (s : ScannerState) (c : Char) (h_peek : s.peek? = some c)
+    (h_old : PlainScalarsValid s.tokens)
     (s' : ScannerState)
     (h_ok : scanNextToken_dispatchContent s c = .ok s') :
     PlainScalarsValid s'.tokens := by
@@ -523,6 +531,7 @@ theorem dispatchContent_preserves_PlainScalarsValid
                   split at h_ok <;> try contradiction
                   simp only [Except.ok.injEq] at h_ok; subst h_ok
                   rename_i s_ps h_ps
+                  have h_cs : canStartPlainScalarBool c (s.peekAt? 1) s.inFlow = true := by assumption
                   intro j hj hge
                   have : j = s.tokens.size := by
                     have := scanPlainScalar_adds_one_token s s_ps h_ps; omega
@@ -533,7 +542,8 @@ theorem dispatchContent_preserves_PlainScalarsValid
                   | scalar content style =>
                     cases style with
                     | plain =>
-                      have h_cv := scanPlainScalar_content_valid s s_ps h_ps hj
+                      have h_cv := scanPlainScalar_content_valid s s_ps h_ps
+                        ⟨c, h_peek, h_cs⟩ hj
                       rw [h_tok] at h_cv
                       exact ScalarScannable_any_implies_false _ s.inFlow h_cv
                     | _ => trivial
@@ -546,6 +556,31 @@ theorem dispatchContent_preserves_PlainScalarsValid
 These functions only emit structural/flow/block tokens, never `.scalar _ .plain`.
 Preservation follows from prefix preservation + the fact that no new plain scalar
 tokens are introduced. The sorry's are for characterizing new token values. -/
+
+theorem preprocess_peek (s s' : ScannerState) (c : Char)
+    (h : scanNextToken_preprocess s = .ok (some (s', c))) :
+    s'.peek? = some c := by
+  unfold scanNextToken_preprocess at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h
+  · contradiction
+  · split at h
+    · simp at h
+    · split at h
+      · split at h
+        · contradiction
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, rfl⟩ := h
+            assumption
+      · split at h
+        · contradiction
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, rfl⟩ := h
+            assumption
 
 theorem preprocess_preserves_PlainScalarsValid
     (s s1 : ScannerState) (c : Char)
@@ -1032,11 +1067,15 @@ theorem scanNextToken_preserves_PlainScalarsValid :
   split at h_ok <;> (try (simp at h_ok; done))
   rename_i s2 c h_pre
   have h_old2 := preprocess_preserves_PlainScalarsValid s s2 c h_old h_pre
+  have h_peek2 := preprocess_peek s s2 c h_pre
   split at h_ok <;> (try (simp at h_ok; done))
   split at h_ok
   · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
     exact dispatchStructural_preserves_PlainScalarsValid s2 c h_old2 _ (by assumption)
   · have h_old3 := allowDir_ite_preserves_PlainScalarsValid s2 h_old2
+    have h_peek3 : (if s2.allowDirectives then
+        { s2 with allowDirectives := false, documentEverStarted := true }
+      else s2).peek? = some c := by split <;> exact h_peek2
     split at h_ok <;> (try (simp at h_ok; done))
     split at h_ok
     · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
@@ -1047,7 +1086,7 @@ theorem scanNextToken_preserves_PlainScalarsValid :
         exact dispatchBlockIndicators_preserves_PlainScalarsValid _ c h_old3 _ (by assumption)
       · split at h_ok <;> (try (simp at h_ok; done))
         simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
-        exact dispatchContent_preserves_PlainScalarsValid _ c h_old3 _ (by assumption)
+        exact dispatchContent_preserves_PlainScalarsValid _ c h_peek3 h_old3 _ (by assumption)
 
 /-! ## scanLoop preserves PlainScalarsValid -/
 

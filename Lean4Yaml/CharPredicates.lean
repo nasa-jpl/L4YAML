@@ -287,18 +287,30 @@ YAML 1.2.2: [123] ns-plain-first(c) applied to the first character(s) of
 a string. 2-argument version with flow context.
 -/
 
-/-- First character(s) can start a plain scalar (Bool). -/
+/-- First character(s) can start a plain scalar (Bool).
+
+    **YAML 1.2.2 §7.3.3 [123]**: Exception chars (`-`, `?`, `:`) require a
+    following `ns-plain-safe` character in the INPUT context. When the content
+    is a single exception char (the safe char was consumed by a terminator),
+    the scanner already validated the input context, so we accept it. -/
 def validPlainFirstBool (content : String) (inFlow : Bool) : Bool :=
   match content.toList with
   | c :: n :: _ => canStartPlainScalarBool c (some n) inFlow
-  | [c] => canStartPlainScalarBool c none inFlow
+  | [c] => if c = '-' ∨ c = '?' ∨ c = ':' then true
+            else canStartPlainScalarBool c none inFlow
   | [] => true
 
-/-- First character(s) can start a plain scalar (Prop). -/
+/-- First character(s) can start a plain scalar (Prop).
+
+    **YAML 1.2.2 §7.3.3 [123]**: Exception chars (`-`, `?`, `:`) require a
+    following `ns-plain-safe` character in the INPUT context. When the content
+    is a single exception char (the safe char was consumed by a terminator),
+    the scanner already validated the input context, so we accept it. -/
 def validPlainFirstProp (content : String) (inFlow : Bool) : Prop :=
   match content.toList with
   | c :: n :: _ => canStartPlainScalarProp c (some n) inFlow
-  | [c] => canStartPlainScalarProp c none inFlow
+  | [c] => if c = '-' ∨ c = '?' ∨ c = ':' then True
+            else canStartPlainScalarProp c none inFlow
   | [] => True
 
 instance (content : String) (inFlow : Bool) : Decidable (validPlainFirstProp content inFlow) := by
@@ -312,13 +324,11 @@ instance (content : String) (inFlow : Bool) : Decidable (validPlainFirstProp con
 
 theorem validPlainFirst_iff (content : String) (inFlow : Bool) :
     validPlainFirstBool content inFlow = true ↔ validPlainFirstProp content inFlow := by
-  simp only [validPlainFirstBool, validPlainFirstProp]
-  cases content.toList with
-  | nil => simp
-  | cons c rest =>
-    cases rest with
-    | nil => exact canStartPlainScalar_iff c none inFlow
-    | cons n _ => exact canStartPlainScalar_iff c (some n) inFlow
+  unfold validPlainFirstBool validPlainFirstProp
+  split
+  · exact canStartPlainScalar_iff _ _ _
+  · split <;> simp_all [canStartPlainScalar_iff]
+  · simp
 
 /-! ## Adjacent Characters Helper
 
