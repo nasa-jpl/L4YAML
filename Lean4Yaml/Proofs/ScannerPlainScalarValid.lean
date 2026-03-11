@@ -1719,7 +1719,7 @@ theorem flowNesting_go_filter_equiv
              (List.filter p (List.take (j' + 1) all_tokens.toList)).length
         symm
         rw [h_take_split, List.filter_append, List.length_append]
-        simp only [List.filter, List.length_nil]
+        simp only [List.filter]
         have : p all_tokens.toList[j'] = false := by
           simp only [p, bne]
           rw [Array.getElem_toList hj'_bound, h_ph]
