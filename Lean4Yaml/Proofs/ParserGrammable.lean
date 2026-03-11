@@ -121,14 +121,14 @@ theorem stripAnchors_scalar_grammable (s : Scalar) (inFlow : Bool)
       ((ScalarScannable_strip_anchor s inFlow).mp h_ss)
 
 /-- The `stripList` where-clause helper equals `List.map stripAnchors`. -/
-private theorem stripList_eq_map (l : List YamlValue) :
+theorem stripList_eq_map (l : List YamlValue) :
     YamlValue.stripAnchors.stripList l = l.map YamlValue.stripAnchors := by
   induction l with
   | nil => simp [YamlValue.stripAnchors.stripList]
   | cons v vs ih => simp [YamlValue.stripAnchors.stripList, ih]
 
 /-- The `stripPairs` where-clause helper equals `List.map` over pairs. -/
-private theorem stripPairs_eq_map (l : List (YamlValue × YamlValue)) :
+theorem stripPairs_eq_map (l : List (YamlValue × YamlValue)) :
     YamlValue.stripAnchors.stripPairs l =
       l.map (fun (k, v) => (k.stripAnchors, v.stripAnchors)) := by
   induction l with
@@ -264,7 +264,7 @@ def WellFormedAnchors (anchors : Array (String × YamlValue)) : Prop :=
 
 /-- If `findSome?` with unit-returning predicate succeeds, then
     `findSome?` with value-returning predicate also succeeds. -/
-private theorem findSome_unit_to_val (arr : Array (String × YamlValue)) (name : String)
+theorem findSome_unit_to_val (arr : Array (String × YamlValue)) (name : String)
     (h : (arr.findSome? (fun (n, _) => if n == name then some () else none)).isSome) :
     ∃ val, arr.findSome? (fun (n, v) => if n == name then some v else none) = some val := by
   simp only [Option.isSome_iff_exists] at h
@@ -284,7 +284,7 @@ private theorem findSome_unit_to_val (arr : Array (String × YamlValue)) (name :
       · simp [h_eq]⟩⟩
 
 /-- The `resolveList` where-clause helper equals `List.map resolveAliases`. -/
-private theorem resolveList_eq_map (l : List YamlValue) (anchors : Array (String × YamlValue)) :
+theorem resolveList_eq_map (l : List YamlValue) (anchors : Array (String × YamlValue)) :
     YamlValue.resolveAliases.resolveList l anchors =
       l.map (fun v => v.resolveAliases anchors) := by
   induction l with
@@ -292,7 +292,7 @@ private theorem resolveList_eq_map (l : List YamlValue) (anchors : Array (String
   | cons v vs ih => simp [YamlValue.resolveAliases.resolveList, ih]
 
 /-- The `resolvePairs` where-clause helper equals `List.map` over pairs. -/
-private theorem resolvePairs_eq_map (l : List (YamlValue × YamlValue))
+theorem resolvePairs_eq_map (l : List (YamlValue × YamlValue))
     (anchors : Array (String × YamlValue)) :
     YamlValue.resolveAliases.resolvePairs l anchors =
       l.map (fun (k, v) => (k.resolveAliases anchors, v.resolveAliases anchors)) := by

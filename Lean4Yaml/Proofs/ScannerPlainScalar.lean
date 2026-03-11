@@ -65,7 +65,7 @@ theorem trimTrailingWS_eq (s : String) :
 
 /-! ## Content properties after trimming -/
 
-private def wsTab : Char → Bool := fun c => c == ' ' || c == '\t'
+def wsTab : Char → Bool := fun c => c == ' ' || c == '\t'
 
 theorem trimTrailingWS_noColonSpace (content : String)
     (h : noColonSpaceProp content) :
@@ -141,7 +141,7 @@ theorem collectPlainScalarLoop_content_isPrefix
 
 open Lean4Yaml.Proofs.ScannerProofs in
 /-- `canStartPlainScalarBool c _ inFlow = true` implies `isPlainSafeBool c inFlow = true`. -/
-private theorem canStart_isPlainSafe (c : Char) (next : Option Char) (inFlow : Bool)
+theorem canStart_isPlainSafe (c : Char) (next : Option Char) (inFlow : Bool)
     (h : canStartPlainScalarBool c next inFlow = true) :
     isPlainSafeBool c inFlow = true := by
   rw [isPlainSafe_iff]
@@ -157,7 +157,7 @@ private theorem canStart_isPlainSafe (c : Char) (next : Option Char) (inFlow : B
     · exact ⟨h_nws, h_nlb⟩
 
 /-- `canStartPlainScalarBool c _ inFlow = true` implies `c` is not whitespace. -/
-private theorem canStart_not_whitespace (c : Char) (next : Option Char) (inFlow : Bool)
+theorem canStart_not_whitespace (c : Char) (next : Option Char) (inFlow : Bool)
     (h : canStartPlainScalarBool c next inFlow = true) :
     isWhiteSpaceBool c = false := by
   unfold canStartPlainScalarBool at h
@@ -167,7 +167,7 @@ private theorem canStart_not_whitespace (c : Char) (next : Option Char) (inFlow 
     obtain ⟨⟨_, h2⟩, _⟩ := h; exact h2
 
 /-- `canStartPlainScalarBool c _ inFlow = true` implies `c` is not a linebreak. -/
-private theorem canStart_not_linebreak (c : Char) (next : Option Char) (inFlow : Bool)
+theorem canStart_not_linebreak (c : Char) (next : Option Char) (inFlow : Bool)
     (h : canStartPlainScalarBool c next inFlow = true) :
     isLineBreakBool c = false := by
   unfold canStartPlainScalarBool at h
@@ -177,14 +177,14 @@ private theorem canStart_not_linebreak (c : Char) (next : Option Char) (inFlow :
     obtain ⟨⟨_, _⟩, h3⟩ := h; exact h3
 
 /-- For non-exception chars, `canStartPlainScalarProp` does not depend on `next`. -/
-private theorem canStart_nonException_next_irrel (c : Char) (n1 n2 : Option Char) (inFlow : Bool)
+theorem canStart_nonException_next_irrel (c : Char) (n1 n2 : Option Char) (inFlow : Bool)
     (h : ¬(c = '-' ∨ c = '?' ∨ c = ':')) :
     canStartPlainScalarProp c n1 inFlow = canStartPlainScalarProp c n2 inFlow := by
   unfold canStartPlainScalarProp; simp [h]
 
 /-- For non-exception first char, `canStartPlainScalarBool` implies `validPlainFirstProp`
     regardless of what follows in the content. -/
-private theorem validPlainFirst_of_nonException
+theorem validPlainFirst_of_nonException
     (c0 : Char) (content : List Char) (inFlow : Bool)
     (h_nexc : ¬(c0 = '-' ∨ c0 = '?' ∨ c0 = ':'))
     (h_cs : canStartPlainScalarProp c0 none inFlow) :
@@ -196,7 +196,7 @@ private theorem validPlainFirst_of_nonException
     simp; rwa [← canStart_nonException_next_irrel c0 none (some n) inFlow h_nexc]
 
 /-- `canStartPlainScalarBool` for non-exception chars implies `canStartPlainScalarProp _ none`. -/
-private theorem canStart_nonException_to_prop (c : Char) (next : Option Char) (inFlow : Bool)
+theorem canStart_nonException_to_prop (c : Char) (next : Option Char) (inFlow : Bool)
     (h_nexc : ¬(c = '-' ∨ c = '?' ∨ c = ':'))
     (h : canStartPlainScalarBool c next inFlow = true) :
     canStartPlainScalarProp c none inFlow := by
@@ -205,7 +205,7 @@ private theorem canStart_nonException_to_prop (c : Char) (next : Option Char) (i
 
 /-- `canStartPlainScalarBool` for exception chars requires `peekAt? 1 = some n`
     with `n` that is plain-safe, not whitespace, and not a linebreak. -/
-private theorem canStart_exception_next (c : Char) (next : Option Char) (inFlow : Bool)
+theorem canStart_exception_next (c : Char) (next : Option Char) (inFlow : Bool)
     (h_exc : c = '-' ∨ c = '?' ∨ c = ':')
     (h : canStartPlainScalarBool c next inFlow = true) :
     ∃ n, next = some n ∧ isPlainSafeBool n inFlow = true
@@ -225,7 +225,7 @@ private theorem canStart_exception_next (c : Char) (next : Option Char) (inFlow 
       exact ⟨h_nws, h_nlb⟩
 
 /-- For exception chars, `validPlainFirstProp` for singletons is trivially `True`. -/
-private theorem validPlainFirst_singleton_exception
+theorem validPlainFirst_singleton_exception
     (c0 : Char) (inFlow : Bool) (h_exc : c0 = '-' ∨ c0 = '?' ∨ c0 = ':') :
     validPlainFirstProp (String.singleton c0) inFlow := by
   simp only [validPlainFirstProp, String.toList_singleton, h_exc, ↓reduceIte]
@@ -339,7 +339,7 @@ theorem collectPlainScalarLoop_validFirst_and_head
 /-! ### Transfer through trimTrailingWS -/
 
 /-- `trimTrailingWS` preserves `List.head?` when the result is nonempty. -/
-private theorem trimTrailingWS_preserves_head (content : String) (c : Char)
+theorem trimTrailingWS_preserves_head (content : String) (c : Char)
     (hne : (trimTrailingWS content).toList ≠ [])
     (hhead : content.toList.head? = some c) :
     (trimTrailingWS content).toList.head? = some c := by
