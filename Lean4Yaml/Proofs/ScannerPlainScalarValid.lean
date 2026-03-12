@@ -2346,7 +2346,7 @@ theorem scanAnchorOrAlias_new_token_not_plain (s : ScannerState) (isAnchor : Boo
   unfold scanAnchorOrAlias
   simp [ScannerState.emitAt, collectAnchorNameLoop_preserves_tokens,
         advance_preserves_tokens, Array.getElem_push_eq]
-  split <;> nofun
+  cases isAnchor <;> trivial
 
 -- Individual helper lemmas for content scan functions
 
