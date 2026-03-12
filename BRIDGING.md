@@ -2290,14 +2290,17 @@ have h_ph_ck : ... := by
 | `flowNesting_setIfInBounds_non_flow` | ~5 | Wrapper |
 | `FlowContextPSV_setIfInBounds` | ~20 | `by_cases` on modified index |
 | `scanValuePrepare_preserves_FlowContextPSV` | ~50 | 6-branch split, placeholder threading |
+| `scanValuePrepare_preserves_FlowNestingInv` | ~55 | setIfInBounds + pushMappingIndent branches |
 | `scanValue_preserves_FlowContextPSV` | ~35 | clearKey→prepare→emit pipeline |
-| **Total new infrastructure** | **~150** | — |
+| `scanValue_preserves_FlowNestingInv` | ~35 | Same pipeline, placeholder threading |
+| **Total new infrastructure** | **~220** | — |
 
-**Remaining sorry inventory (2 expected):**
-- `scanValue_preserves_FlowNestingInv` — requires proving `scanValuePrepare`
-  preserves `FlowNestingInv` (non-trivial due to `setIfInBounds` + `pushMappingIndent`)
+**Remaining sorry inventory (1 expected):**
 - Placeholder hypothesis in `dispatchBlockIndicators_preserves_FlowInv` — requires
-  `ScanInv`-level tracking of placeholder positions
+  `ScanInv`-level tracking of placeholder positions. Both `scanValue_preserves_FlowContextPSV`
+  and `scanValue_preserves_FlowNestingInv` now take an explicit `h_ph` placeholder
+  hypothesis; their proofs are sorry-free. The single remaining sorry supplies
+  `h_ph` at the call site.
 
 ### Phase C: Discharge `h_grammable` (CRITICAL PATH) (COMPLETE ✅)
 
