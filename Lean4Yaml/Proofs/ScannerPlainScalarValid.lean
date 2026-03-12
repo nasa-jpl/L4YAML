@@ -2346,7 +2346,22 @@ theorem scanValue_preserves_FlowNestingInv
   -- and flowLevel is preserved throughout
   -- scanValuePrepare may modify tokens (setIfInBounds, pushMappingIndent)
   -- but doesn't change flowLevel. Then emit .value (non-flow token).
-  -- This is complex - defer for now
+  unfold scanValue at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok <;> try contradiction
+  split at h_ok <;> try contradiction
+  injection h_ok with h_eq; subst h_eq
+  -- After scanValueClearKey, scanValueValidate, scanValuePrepare, we emit .value, advance, then scanValueTabCheck
+  -- The result is: { advance(emit(scanValuePrepare(...)).value) with simpleKeyAllowed := true, explicitKeyLine := none }
+
+  -- Key observations:
+  -- 1. scanValueClearKey preserves FlowNestingInv (only modifies simpleKey field)
+  -- 2. scanValuePrepare preserves FlowNestingInv (complex - needs helper lemma)
+  -- 3. emit .value preserves FlowNestingInv (non-flow token)
+  -- 4. advance preserves FlowNestingInv
+  -- 5. Setting simpleKeyAllowed and explicitKeyLine preserves FlowNestingInv
+
+  -- For now, this is complex enough to warrant a sorry
   sorry
 
 /-- Block indicators dispatch preserves `FlowInv`. -/
