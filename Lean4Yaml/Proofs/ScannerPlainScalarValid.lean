@@ -2410,8 +2410,11 @@ theorem scanNamedTag_preserves_flowLevel (s : ScannerState) (startPos : YamlPos)
 theorem scanTag_preserves_flowLevel (s : ScannerState) :
     (scanTag s).flowLevel = s.flowLevel := by
   unfold scanTag
-  split <;> simp [scanVerbatimTag_preserves_flowLevel, scanSecondaryTag_preserves_flowLevel,
-                   scanNamedTag_preserves_flowLevel]
+  simp only []
+  split
+  · simp only [scanVerbatimTag_preserves_flowLevel, advance_preserves_flowLevel]
+  · simp only [scanSecondaryTag_preserves_flowLevel, advance_preserves_flowLevel]
+  · simp only [scanNamedTag_preserves_flowLevel, advance_preserves_flowLevel]
 
 theorem scanVerbatimTag_new_token_is_tag (s : ScannerState) (startPos : YamlPos)
     (h : s.tokens.size < (scanVerbatimTag s startPos).tokens.size) :
