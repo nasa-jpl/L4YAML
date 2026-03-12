@@ -5,6 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import Lean4Yaml.Grammar
 import Lean4Yaml.Proofs.ScannerPlainScalar
 import Lean4Yaml.Proofs.ScannerCorrectness
+import Lean4Yaml.Proofs.ScannerFlowCollection
 
 /-!
 # Plain Scalar Validity for the Full Scan Chain (B3.5)
@@ -630,6 +631,22 @@ theorem preprocess_preserves_PlainScalarsValid
               apply psv_of_not_plain
               exact saveSimpleKey_new_tokens_not_plain v j hj (by omega)
 
+theorem scanDocumentStart_new_tok_not_plain (s : ScannerState) (j : Nat)
+    (hj : j < (scanDocumentStart s).tokens.size) (hge : j ≥ s.tokens.size) :
+    match ((scanDocumentStart s).tokens[j]'hj).val with
+    | .scalar _ .plain => False
+    | _ => True := by
+  unfold scanDocumentStart at hj ⊢
+  simp only [advanceN_preserves_tokens] at hj ⊢
+  have h_sk_tok : ({ unwindIndents s (-1) with simpleKey := { possible := false } } : ScannerState).tokens = (unwindIndents s (-1)).tokens := rfl
+  by_cases h_lt : j < (unwindIndents s (-1)).tokens.size
+  · simp only [emit_preserves_tokens_at
+        { unwindIndents s (-1) with simpleKey := { possible := false } }
+        .documentStart j (by rw [h_sk_tok]; exact h_lt)]
+    exact unwindIndents_new_tokens_not_plain s (-1) j h_lt hge
+  · have h_j : j = (unwindIndents s (-1)).tokens.size := by rw [emit_tokens_size, h_sk_tok] at hj; omega
+    subst h_j; unfold ScannerState.emit; simp only [Array.getElem_push_eq]
+
 theorem scanDocumentStart_new_not_plain (s : ScannerState) (j : Nat)
     (hj : j < (scanDocumentStart s).tokens.size) (hge : j ≥ s.tokens.size) :
     match ((scanDocumentStart s).tokens[j]'hj).val with
@@ -691,6 +708,100 @@ theorem scanDocumentEnd_new_not_plain (s : ScannerState) (s' : ScannerState)
     exact psv_of_not_plain _ (unwindIndents_new_tokens_not_plain s (-1) j h_lt hge)
   · have h_j : j = (unwindIndents s (-1)).tokens.size := by rw [emit_tokens_size, h_sk_tok] at hj; omega
     subst h_j; unfold ScannerState.emit; simp only [Array.getElem_push_eq]
+
+theorem scanDocumentEnd_new_tok_not_plain (s : ScannerState) (s' : ScannerState)
+    (h_de : scanDocumentEnd s = .ok s') (j : Nat)
+    (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
+    match (s'.tokens[j]'hj).val with
+    | .scalar _ .plain => False
+    | _ => True := by
+  have h_tok := scanDocumentEnd_tokens_eq s s' h_de
+  simp only [h_tok] at hj ⊢
+  have h_sk_tok : ({ unwindIndents s (-1) with simpleKey := { possible := false } } : ScannerState).tokens = (unwindIndents s (-1)).tokens := rfl
+  by_cases h_lt : j < (unwindIndents s (-1)).tokens.size
+  · simp only [emit_preserves_tokens_at
+        { unwindIndents s (-1) with simpleKey := { possible := false } }
+        .documentEnd j (by rw [h_sk_tok]; exact h_lt)]
+    exact unwindIndents_new_tokens_not_plain s (-1) j h_lt hge
+  · have h_j : j = (unwindIndents s (-1)).tokens.size := by rw [emit_tokens_size, h_sk_tok] at hj; omega
+    subst h_j; unfold ScannerState.emit; simp only [Array.getElem_push_eq]
+
+theorem scanYamlDirective_new_tok_not_plain (s s_after_ws : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState) (h : scanYamlDirective s s_after_ws startPos = .ok s')
+    (h_ws : s_after_ws.tokens = s.tokens) (j : Nat)
+    (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
+    match (s'.tokens[j]'hj).val with
+    | .scalar _ .plain => False
+    | _ => True := by
+  have h_toks : s'.tokens = s.tokens.push ⟨startPos, .versionDirective
+    (collectVersionMajorLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).fst.toNat!
+    (collectVersionMinorLoop (collectVersionMajorLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd ""
+      (s.inputEnd - (collectVersionMajorLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd.offset)).fst.toNat!⟩ := by
+    unfold scanYamlDirective at h
+    dsimp only [] at h
+    simp only [bind, Except.bind, pure, Except.pure] at h
+    split at h
+    · contradiction
+    · split at h
+      · split at h
+        · contradiction
+        · injection h with h_eq; subst h_eq
+          simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
+            collectVersionMinorLoop_preserves_tokens,
+            collectVersionMajorLoop_preserves_tokens, h_ws]
+      · split at h
+        · contradiction
+        · injection h with h_eq; subst h_eq
+          simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
+            collectVersionMinorLoop_preserves_tokens,
+            collectVersionMajorLoop_preserves_tokens, h_ws]
+      · injection h with h_eq; subst h_eq
+        simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
+          collectVersionMinorLoop_preserves_tokens,
+          collectVersionMajorLoop_preserves_tokens, h_ws]
+  simp only [h_toks, Array.size_push] at hj
+  have h_j : j = s.tokens.size := by omega
+  simp only [h_toks, h_j, Array.getElem_push_eq]
+
+theorem scanTagDirective_new_tok_not_plain (s s_after_ws : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState) (h : scanTagDirective s s_after_ws startPos = .ok s')
+    (h_ws : s_after_ws.tokens = s.tokens) (j : Nat)
+    (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
+    match (s'.tokens[j]'hj).val with
+    | .scalar _ .plain => False
+    | _ => True := by
+  unfold scanTagDirective at h
+  dsimp only [] at h
+  injection h with h_eq
+  have h_toks : s'.tokens = s.tokens.push ⟨startPos, .tagDirective
+    (collectTagHandleDirectiveLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).fst
+    (collectTagPrefixLoop (skipWhitespace (collectTagHandleDirectiveLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd) ""
+      (s.inputEnd - (skipWhitespace (collectTagHandleDirectiveLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd).offset)).fst⟩ := by
+    subst h_eq
+    simp only [ScannerState.emitAt, collectTagPrefixLoop_preserves_tokens,
+      skipWhitespace_preserves_tokens, collectTagHandleDirectiveLoop_preserves_tokens, h_ws]
+  simp only [h_toks, Array.size_push] at hj
+  have h_j : j = s.tokens.size := by omega
+  simp only [h_toks, h_j, Array.getElem_push_eq]
+
+theorem scanDirective_new_tok_not_plain (s : ScannerState) (s' : ScannerState)
+    (h_dir : scanDirective s = .ok s') (j : Nat)
+    (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
+    match (s'.tokens[j]'hj).val with
+    | .scalar _ .plain => False
+    | _ => True := by
+  unfold scanDirective at h_dir
+  dsimp only [] at h_dir
+  split at h_dir
+  any_goals contradiction
+  have h_ws_tok : (skipWhitespace (collectDirectiveNameLoop s.advance "" (s.inputEnd - s.advance.offset)).2).tokens = s.tokens := by
+    rw [skipWhitespace_preserves_tokens, collectDirectiveNameLoop_preserves_tokens, advance_preserves_tokens]
+  split at h_dir
+  · exact scanYamlDirective_new_tok_not_plain s _ _ s' h_dir h_ws_tok j hj hge
+  · split at h_dir
+    · exact scanTagDirective_new_tok_not_plain s _ _ s' h_dir h_ws_tok j hj hge
+    · injection h_dir with h_eq; subst h_eq; exfalso
+      rw [skipToEndOfLine_preserves_tokens, h_ws_tok] at hj; omega
 
 set_option maxHeartbeats 800000 in
 theorem scanYamlDirective_new_not_plain (s s_after_ws : ScannerState) (startPos : YamlPos)
@@ -1444,24 +1555,582 @@ theorem FlowNestingInv_emit_non_flow (s : ScannerState) (tok : YamlToken)
   rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, tok⟩ h1 h2 h3 h4]
   exact h_fni
 
-/-! ### Scan chain threading
+/-! ### FlowInv helper lemmas -/
 
-These sorry'd theorems follow the same dispatch structure as B3.5's
-`PlainScalarsValid` threading. The proofs are structurally identical:
-most dispatch branches emit non-plain tokens (trivially satisfy
-`FlowContextPSV`), and `FlowNestingInv` is restored at each function
-boundary since only flow indicator functions change `flowLevel`.
+/-- When a token is provably not `.scalar _ .plain`, the FlowContextPSV match is `True`. -/
+theorem fpsv_of_not_plain (tok : Positioned YamlToken)
+    (h : match tok.val with | .scalar _ .plain => False | _ => True) :
+    match tok.val with
+    | .scalar content .plain =>
+        ScalarScannable ⟨content, .plain, none, none, none⟩ true
+    | _ => True := by
+  cases tok with | mk pos val =>
+  cases val <;> simp_all
+  rename_i content style; cases style <;> simp_all
 
-### Key case: `scanPlainScalar`
+/-- `flowNesting.go` on non-flow tokens returns depth unchanged. -/
+theorem flowNesting_go_non_flow
+    (tokens : Array (Positioned YamlToken)) (pos target depth : Nat)
+    (h_nf : ∀ j, pos ≤ j → j < target → (hj : j < tokens.size) →
+      (tokens[j]'hj).val ≠ .flowSequenceStart ∧
+      (tokens[j]'hj).val ≠ .flowMappingStart ∧
+      (tokens[j]'hj).val ≠ .flowSequenceEnd ∧
+      (tokens[j]'hj).val ≠ .flowMappingEnd) :
+    flowNesting.go tokens pos target depth = depth := by
+  generalize hn : target - pos = n
+  induction n generalizing pos depth with
+  | zero => simp [flowNesting.go, show pos ≥ target by omega]
+  | succ n ih =>
+    have h_lt : pos < target := by omega
+    by_cases h_pos : pos < tokens.size
+    · rw [flowNesting_go_step tokens pos target depth h_pos h_lt]
+      have ⟨h1, h2, h3, h4⟩ := h_nf pos (Nat.le_refl _) h_lt h_pos
+      have : (match (tokens[pos]'h_pos).val with
+        | .flowSequenceStart | .flowMappingStart => depth + 1
+        | .flowSequenceEnd | .flowMappingEnd => if depth > 0 then depth - 1 else 0
+        | _ => depth) = depth := by
+        generalize h_tok : (tokens[pos]'h_pos).val = tok
+        cases tok <;> simp_all
+      rw [this]
+      exact ih (pos + 1) depth (fun j hge hlt hj => h_nf j (by omega) hlt hj) (by omega)
+    · exact flowNesting_go_oob tokens pos target depth (by omega)
 
-When `scanPlainScalar` emits a plain scalar token at position `j = s.tokens.size`:
-- `flowNesting new_tokens j = flowNesting s.tokens s.tokens.size` (prefix stability)
-- `flowNesting s.tokens s.tokens.size = s.flowLevel` (FlowNestingInv)
-- If `s.flowLevel > 0`, then `s.inFlow = true`
-- B3.4 gives `ScalarScannable _ s.inFlow = ScalarScannable _ true` ✓
-- If `s.flowLevel = 0`, then `flowNesting = 0`, condition is vacuously true ✓
--/
+/-- `FlowNestingInv` is preserved through any extension that adds only non-flow tokens
+    and preserves flowLevel. -/
+theorem FlowNestingInv_of_non_flow_extension
+    (s s' : ScannerState)
+    (h_fni : FlowNestingInv s)
+    (h_mono : s.tokens.size ≤ s'.tokens.size)
+    (h_prefix_val : ∀ j (hj : j < s.tokens.size),
+      (s'.tokens[j]'(by omega)).val = (s.tokens[j]).val)
+    (h_fl : s'.flowLevel = s.flowLevel)
+    (h_non_flow : ∀ j (hj : j < s'.tokens.size), j ≥ s.tokens.size →
+      (s'.tokens[j]'hj).val ≠ .flowSequenceStart ∧
+      (s'.tokens[j]'hj).val ≠ .flowMappingStart ∧
+      (s'.tokens[j]'hj).val ≠ .flowSequenceEnd ∧
+      (s'.tokens[j]'hj).val ≠ .flowMappingEnd) :
+    FlowNestingInv s' := by
+  unfold FlowNestingInv at *
+  rw [h_fl]; unfold flowNesting
+  rw [flowNesting_go_split s'.tokens 0 s.tokens.size s'.tokens.size 0 (by omega) h_mono]
+  rw [flowNesting_go_prefix_stable s.tokens s'.tokens h_mono h_prefix_val 0 s.tokens.size 0
+      (by omega)]
+  rw [flowNesting_go_non_flow s'.tokens s.tokens.size s'.tokens.size _
+      (fun j hge hlt hj => h_non_flow j hj (by omega))]
+  exact h_fni
 
+/-- `unwindIndentsLoop` preserves `FlowNestingInv`. -/
+theorem unwindIndentsLoop_preserves_FlowNestingInv (s : ScannerState) (col : Int) (fuel : Nat)
+    (h_fni : FlowNestingInv s) :
+    FlowNestingInv (unwindIndentsLoop s col fuel) := by
+  induction fuel generalizing s with
+  | zero => unfold unwindIndentsLoop; exact h_fni
+  | succ fuel' ih =>
+    unfold unwindIndentsLoop; split
+    · apply ih
+      exact FlowNestingInv_emit_non_flow s .blockEnd h_fni
+        (by decide) (by decide) (by decide) (by decide)
+    · exact h_fni
+
+/-- `unwindIndents` preserves `FlowNestingInv`. -/
+theorem unwindIndents_preserves_FlowNestingInv (s : ScannerState) (col : Int)
+    (h_fni : FlowNestingInv s) :
+    FlowNestingInv (unwindIndents s col) := by
+  unfold unwindIndents
+  exact unwindIndentsLoop_preserves_FlowNestingInv s col s.indents.size h_fni
+
+/-- `saveSimpleKey` preserves `FlowNestingInv`. -/
+theorem saveSimpleKey_preserves_FlowNestingInv (s : ScannerState)
+    (h_fni : FlowNestingInv s) :
+    FlowNestingInv (saveSimpleKey s) := by
+  unfold FlowNestingInv at *
+  rw [saveSimpleKey_preserves_flowLevel]
+  have h_cases : (saveSimpleKey s).tokens = s.tokens ∨
+      ∃ ph : Positioned YamlToken, ph.val = .placeholder ∧
+        (saveSimpleKey s).tokens = (s.tokens.push ph).push ph := by
+    unfold saveSimpleKey; split
+    · left; rfl
+    · split
+      · right; exact ⟨⟨s.currentPos, .placeholder⟩, rfl, rfl⟩
+      · left; rfl
+  rcases h_cases with h_eq | ⟨ph, h_ph, h_eq⟩
+  · rw [h_eq]; exact h_fni
+  · rw [h_eq, Array.size_push]
+    rw [flowNesting_push_non_flow (s.tokens.push ph) ph
+      (by rw [h_ph]; decide) (by rw [h_ph]; decide)
+      (by rw [h_ph]; decide) (by rw [h_ph]; decide)]
+    rw [Array.size_push]
+    rw [flowNesting_push_non_flow s.tokens ph
+      (by rw [h_ph]; decide) (by rw [h_ph]; decide)
+      (by rw [h_ph]; decide) (by rw [h_ph]; decide)]
+    exact h_fni
+
+/-- Preprocessing preserves `FlowNestingInv`. -/
+theorem preprocess_preserves_FlowNestingInv
+    (s s1 : ScannerState) (c : Char)
+    (h_fni : FlowNestingInv s)
+    (h_ok : scanNextToken_preprocess s = .ok (some (s1, c))) :
+    FlowNestingInv s1 := by
+  unfold scanNextToken_preprocess at h_ok
+  simp only [bind, bind_error_simp, bind_ok_simp, pure, Pure.pure, Except.pure] at h_ok
+  simp only [Except.bind] at h_ok
+  split at h_ok
+  · contradiction
+  · rename_i v heq_skip
+    have h_fni_v : FlowNestingInv v := by
+      unfold FlowNestingInv at *
+      rw [skipToContent_preserves_tokens s v heq_skip,
+          skipToContent_preserves_flowLevel s v heq_skip]
+      exact h_fni
+    split at h_ok
+    · simp at h_ok
+    · split at h_ok
+      · split at h_ok
+        · contradiction
+        · split at h_ok
+          · simp at h_ok
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h_ok
+            obtain ⟨rfl, _⟩ := h_ok
+            exact saveSimpleKey_preserves_FlowNestingInv _
+              (unwindIndents_preserves_FlowNestingInv v v.col h_fni_v)
+      · split at h_ok
+        · contradiction
+        · split at h_ok
+          · simp at h_ok
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h_ok
+            obtain ⟨rfl, _⟩ := h_ok
+            exact saveSimpleKey_preserves_FlowNestingInv v h_fni_v
+
+/-- Preprocessing preserves `FlowContextPSV`. -/
+theorem preprocess_preserves_FlowContextPSV
+    (s s1 : ScannerState) (c : Char)
+    (h_old : FlowContextPSV s.tokens)
+    (h_ok : scanNextToken_preprocess s = .ok (some (s1, c))) :
+    FlowContextPSV s1.tokens := by
+  apply FlowContextPSV_of_prefix_and_new s.tokens s1.tokens h_old
+    (preprocess_tokens_mono s s1 c h_ok)
+  · intro i hi; exact preprocess_preserves_prefix s s1 c h_ok i hi
+  · intro j hj hge h_flow
+    -- Same token analysis as preprocess_preserves_PlainScalarsValid:
+    -- new tokens are .blockEnd or .placeholder, not .scalar _ .plain
+    unfold scanNextToken_preprocess at h_ok
+    simp only [bind, bind_error_simp, bind_ok_simp, pure, Pure.pure, Except.pure] at h_ok
+    simp only [Except.bind] at h_ok
+    split at h_ok
+    · contradiction
+    · rename_i v heq_skip
+      have h_sizes : v.tokens.size = s.tokens.size :=
+        congrArg Array.size (skipToContent_preserves_tokens s v heq_skip)
+      split at h_ok
+      · simp at h_ok
+      · split at h_ok
+        · split at h_ok
+          · contradiction
+          · split at h_ok
+            · simp at h_ok
+            · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h_ok
+              obtain ⟨rfl, _⟩ := h_ok
+              by_cases h_lt : j < (unwindIndents v v.col).tokens.size
+              · rw [saveSimpleKey_preserves_prefix _ j
+                  (by show j < ({ unwindIndents v v.col with needIndentCheck := false } : ScannerState).tokens.size; exact h_lt)]
+                exact fpsv_of_not_plain _
+                  (unwindIndents_new_tokens_not_plain v v.col j h_lt (by omega))
+              · exact fpsv_of_not_plain _
+                  (saveSimpleKey_new_tokens_not_plain _ j hj (by
+                    have : ({ unwindIndents v v.col with needIndentCheck := false } : ScannerState).tokens.size = (unwindIndents v v.col).tokens.size := rfl
+                    show j ≥ ({ unwindIndents v v.col with needIndentCheck := false } : ScannerState).tokens.size
+                    rw [this]; omega))
+        · split at h_ok
+          · contradiction
+          · split at h_ok
+            · simp at h_ok
+            · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h_ok
+              obtain ⟨rfl, _⟩ := h_ok
+              exact fpsv_of_not_plain _
+                (saveSimpleKey_new_tokens_not_plain v j hj (by omega))
+
+/-- `allowDirectives` conditional preserves `FlowNestingInv` (tokens and flowLevel unchanged). -/
+theorem allowDir_ite_preserves_FlowNestingInv (s : ScannerState)
+    (h : FlowNestingInv s) :
+    FlowNestingInv (if s.allowDirectives then
+      { s with allowDirectives := false, documentEverStarted := true }
+    else s) := by
+  split <;> exact h
+
+/-- `allowDirectives` conditional preserves `FlowContextPSV` (tokens unchanged). -/
+theorem allowDir_ite_preserves_FlowContextPSV (s : ScannerState)
+    (h : FlowContextPSV s.tokens) :
+    FlowContextPSV (if s.allowDirectives then
+      { s with allowDirectives := false, documentEverStarted := true }
+    else s).tokens := by
+  split <;> exact h
+
+/-! ### Non-flow dispatch helpers for FlowNestingInv
+
+For structural, block, and content dispatches: all new tokens are non-flow
+indicators, and `flowLevel` is unchanged. `FlowNestingInv_of_non_flow_extension`
+handles all three. -/
+
+/-- Unwinding new tokens from `unwindIndents` are non-flow. -/
+theorem unwindIndentsLoop_new_tokens_not_flow (s : ScannerState) (col : Int) (fuel : Nat) :
+    ∀ (j : Nat) (hj : j < (unwindIndentsLoop s col fuel).tokens.size), j ≥ s.tokens.size →
+    ((unwindIndentsLoop s col fuel).tokens[j]'hj).val ≠ .flowSequenceStart ∧
+    ((unwindIndentsLoop s col fuel).tokens[j]'hj).val ≠ .flowMappingStart ∧
+    ((unwindIndentsLoop s col fuel).tokens[j]'hj).val ≠ .flowSequenceEnd ∧
+    ((unwindIndentsLoop s col fuel).tokens[j]'hj).val ≠ .flowMappingEnd := by
+  induction fuel generalizing s with
+  | zero =>
+    unfold unwindIndentsLoop
+    intro j hj hge; omega
+  | succ fuel' ih =>
+    unfold unwindIndentsLoop
+    split
+    · intro j hj hge
+      have h_emit_size : (s.emit .blockEnd).tokens.size = s.tokens.size + 1 := emit_tokens_size s .blockEnd
+      by_cases hlt : j < s.tokens.size + 1
+      · have hj_eq : j = s.tokens.size := by omega
+        subst hj_eq
+        have h_pop_sz : s.tokens.size < ({ s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop } : ScannerState).tokens.size := by
+          show s.tokens.size < (s.emit .blockEnd).tokens.size
+          rw [h_emit_size]; omega
+        rw [unwindIndentsLoop_preserves_prefix _ col fuel' s.tokens.size h_pop_sz]
+        have h_val : (({ s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop } : ScannerState).tokens[s.tokens.size]'h_pop_sz).val = .blockEnd := by
+          show ((s.emit .blockEnd).tokens[s.tokens.size]'(by rw [h_emit_size]; omega)).val = .blockEnd
+          unfold ScannerState.emit; simp [Array.getElem_push_eq]
+        simp [h_val]
+      · have hge' : j ≥ ({ s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop } : ScannerState).tokens.size := by
+          show j ≥ (s.emit .blockEnd).tokens.size
+          rw [h_emit_size]; omega
+        exact ih _ j hj hge'
+    · intro j hj hge; omega
+
+/-- `unwindIndents` new tokens are non-flow. -/
+theorem unwindIndents_new_tokens_not_flow (s : ScannerState) (col : Int)
+    (j : Nat) (hj : j < (unwindIndents s col).tokens.size) (hge : j ≥ s.tokens.size) :
+    ((unwindIndents s col).tokens[j]'hj).val ≠ .flowSequenceStart ∧
+    ((unwindIndents s col).tokens[j]'hj).val ≠ .flowMappingStart ∧
+    ((unwindIndents s col).tokens[j]'hj).val ≠ .flowSequenceEnd ∧
+    ((unwindIndents s col).tokens[j]'hj).val ≠ .flowMappingEnd := by
+  unfold unwindIndents
+  exact unwindIndentsLoop_new_tokens_not_flow s col s.indents.size j hj hge
+
+/-- `saveSimpleKey` new tokens are non-flow (.placeholder only). -/
+theorem saveSimpleKey_new_tokens_not_flow (s : ScannerState)
+    (j : Nat) (hj : j < (saveSimpleKey s).tokens.size) (hge : j ≥ s.tokens.size) :
+    ((saveSimpleKey s).tokens[j]'hj).val ≠ .flowSequenceStart ∧
+    ((saveSimpleKey s).tokens[j]'hj).val ≠ .flowMappingStart ∧
+    ((saveSimpleKey s).tokens[j]'hj).val ≠ .flowSequenceEnd ∧
+    ((saveSimpleKey s).tokens[j]'hj).val ≠ .flowMappingEnd := by
+  have h_cases : (saveSimpleKey s).tokens = s.tokens ∨
+                 (saveSimpleKey s).tokens = (s.tokens.push ⟨s.currentPos, .placeholder⟩).push ⟨s.currentPos, .placeholder⟩ := by
+    unfold saveSimpleKey
+    split
+    · left; rfl
+    · split
+      · right; rfl
+      · left; rfl
+  rcases h_cases with h_eq | h_eq
+  · rw [h_eq] at hj; omega
+  · simp only [h_eq] at hj ⊢
+    by_cases h : j < s.tokens.size + 1
+    · have hj_eq : j = s.tokens.size := by omega
+      subst hj_eq
+      simp [Array.getElem_push]
+    · have hj_eq : j = s.tokens.size + 1 := by
+        simp [Array.size_push] at hj; omega
+      subst hj_eq
+      simp [Array.getElem_push]
+
+/-! ### Dispatch-level FlowInv preservation
+
+For structural, block, and content dispatches: all new tokens are non-flow
+indicators, and `flowLevel` is unchanged. The flow indicators dispatch changes
+both and requires specific analysis. -/
+
+/-- `advanceN` preserves `FlowNestingInv` (preserves both tokens and flowLevel). -/
+theorem advanceN_preserves_FlowNestingInv (s : ScannerState) (n : Nat)
+    (h : FlowNestingInv s) : FlowNestingInv (s.advanceN n) := by
+  unfold FlowNestingInv at *
+  rw [advanceN_preserves_tokens, advanceN_preserves_flowLevel]; exact h
+
+/-- `scanDocumentStart` preserves `FlowNestingInv`. -/
+theorem scanDocumentStart_preserves_FlowNestingInv (s : ScannerState)
+    (h : FlowNestingInv s) : FlowNestingInv (scanDocumentStart s) := by
+  unfold scanDocumentStart
+  apply advanceN_preserves_FlowNestingInv
+  exact FlowNestingInv_emit_non_flow
+    { unwindIndents s (-1) with simpleKey := { possible := false } }
+    .documentStart
+    (unwindIndents_preserves_FlowNestingInv s (-1) h)
+    (by decide) (by decide) (by decide) (by decide)
+
+set_option maxHeartbeats 800000 in
+/-- `scanDocumentEnd` preserves `FlowNestingInv` on success.
+    The function chains: unwindIndents → simpleKey update → emit .documentEnd → advanceN 3 →
+    field update. Validation (skipDocEndWhitespace + peek) may throw but doesn't change result. -/
+theorem scanDocumentEnd_preserves_FlowNestingInv (s s' : ScannerState)
+    (h_fni : FlowNestingInv s) (h_ok : scanDocumentEnd s = .ok s') :
+    FlowNestingInv s' := by
+  unfold scanDocumentEnd at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · simp at h_ok
+  · -- All ok paths produce the same `result` computed before validation
+    have h_base : FlowNestingInv
+        (({ unwindIndents s (-1) with simpleKey := { possible := false } }.emit .documentEnd).advanceN 3) :=
+      advanceN_preserves_FlowNestingInv _ _
+        (FlowNestingInv_emit_non_flow
+          { unwindIndents s (-1) with simpleKey := { possible := false } }
+          .documentEnd
+          (unwindIndents_preserves_FlowNestingInv s (-1) h_fni)
+          (by decide) (by decide) (by decide) (by decide))
+    split at h_ok
+    · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_base
+    · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_base
+    · split at h_ok
+      · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_base
+      · simp at h_ok
+
+set_option maxHeartbeats 800000 in
+/-- `scanDirective` preserves `flowLevel` on success. -/
+theorem scanDirective_preserves_flowLevel (s s' : ScannerState)
+    (h : scanDirective s = .ok s') : s'.flowLevel = s.flowLevel := by
+  unfold scanDirective at h
+  split at h
+  · contradiction
+  · -- allowDirectives = true. After advance + collectDirectiveNameLoop + skipWhitespace,
+    -- dispatches to scanYamlDirective, scanTagDirective, or skipToEndOfLine.
+    dsimp only [] at h
+    -- The intermediate state preserves flowLevel:
+    have h_ws_fl :
+        (skipWhitespace (collectDirectiveNameLoop s.advance "" (s.inputEnd - s.advance.offset)).2).flowLevel
+        = s.flowLevel := by
+      rw [skipWhitespace_preserves_flowLevel,
+          collectDirectiveNameLoop_preserves_flowLevel,
+          advance_preserves_flowLevel]
+    split at h
+    · -- name == "YAML": scanYamlDirective
+      unfold scanYamlDirective at h
+      simp only [bind, Except.bind, pure, Except.pure] at h
+      split at h
+      · contradiction  -- seenYamlDirective error
+      · -- Past validation, all branches produce { s_with_token | seenYamlDirective, directivesPresent }
+        -- where s_with_token = s_validated.emitAt startPos tok
+        -- emitAt preserves flowLevel, struct update preserves flowLevel
+        split at h
+        · -- some '#'
+          split at h
+          · contradiction
+          · simp only [Except.ok.injEq] at h; subst h; simp only []
+            rw [emitAt_preserves_flowLevel, skipWhitespace_preserves_flowLevel,
+                collectVersionMinorLoop_preserves_flowLevel,
+                collectVersionMajorLoop_preserves_flowLevel, h_ws_fl]
+        · -- some c (not '#')
+          split at h
+          · contradiction
+          · simp only [Except.ok.injEq] at h; subst h; simp only []
+            rw [emitAt_preserves_flowLevel, skipWhitespace_preserves_flowLevel,
+                collectVersionMinorLoop_preserves_flowLevel,
+                collectVersionMajorLoop_preserves_flowLevel, h_ws_fl]
+        · -- none
+          simp only [Except.ok.injEq] at h; subst h; simp only []
+          rw [emitAt_preserves_flowLevel, skipWhitespace_preserves_flowLevel,
+              collectVersionMinorLoop_preserves_flowLevel,
+              collectVersionMajorLoop_preserves_flowLevel, h_ws_fl]
+    · split at h
+      · -- name == "TAG": scanTagDirective
+        unfold scanTagDirective at h
+        simp only [Except.ok.injEq] at h; subst h
+        simp only []
+        rw [emitAt_preserves_flowLevel, collectTagPrefixLoop_preserves_flowLevel,
+            skipWhitespace_preserves_flowLevel,
+            collectTagHandleDirectiveLoop_preserves_flowLevel, h_ws_fl]
+      · -- unknown directive: skipToEndOfLine
+        simp only [Except.ok.injEq] at h; subst h
+        rw [skipToEndOfLine_preserves_flowLevel, h_ws_fl]
+
+theorem scanYamlDirective_new_tokens_not_flow (s s_after_ws : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState) (h : scanYamlDirective s s_after_ws startPos = .ok s')
+    (h_ws : s_after_ws.tokens = s.tokens) (j : Nat)
+    (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
+    (s'.tokens[j]'hj).val ≠ .flowSequenceStart ∧
+    (s'.tokens[j]'hj).val ≠ .flowMappingStart ∧
+    (s'.tokens[j]'hj).val ≠ .flowSequenceEnd ∧
+    (s'.tokens[j]'hj).val ≠ .flowMappingEnd := by
+  unfold scanYamlDirective at h
+  dsimp only [] at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h
+  · contradiction
+  · -- All three YAML sub-branches produce the same token structure
+    -- Prove token equality: s'.tokens = s.tokens.push ⟨startPos, .versionDirective ...⟩
+    have h_toks : s'.tokens = s.tokens.push ⟨startPos, .versionDirective
+      (collectVersionMajorLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).fst.toNat!
+      (collectVersionMinorLoop (collectVersionMajorLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd ""
+        (s.inputEnd - (collectVersionMajorLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd.offset)).fst.toNat!⟩ := by
+      split at h
+      · split at h
+        · contradiction
+        · injection h with h_eq; subst h_eq
+          simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
+            collectVersionMinorLoop_preserves_tokens,
+            collectVersionMajorLoop_preserves_tokens, h_ws]
+      · split at h
+        · contradiction
+        · injection h with h_eq; subst h_eq
+          simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
+            collectVersionMinorLoop_preserves_tokens,
+            collectVersionMajorLoop_preserves_tokens, h_ws]
+      · injection h with h_eq; subst h_eq
+        simp only [ScannerState.emitAt, skipWhitespace_preserves_tokens,
+          collectVersionMinorLoop_preserves_tokens,
+          collectVersionMajorLoop_preserves_tokens, h_ws]
+    simp only [h_toks, Array.size_push] at hj
+    have h_j : j = s.tokens.size := by omega
+    simp only [h_toks, h_j, Array.getElem_push_eq]
+    exact ⟨by nofun, by nofun, by nofun, by nofun⟩
+
+theorem scanTagDirective_new_tokens_not_flow (s s_after_ws : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState) (h : scanTagDirective s s_after_ws startPos = .ok s')
+    (h_ws : s_after_ws.tokens = s.tokens) (j : Nat)
+    (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
+    (s'.tokens[j]'hj).val ≠ .flowSequenceStart ∧
+    (s'.tokens[j]'hj).val ≠ .flowMappingStart ∧
+    (s'.tokens[j]'hj).val ≠ .flowSequenceEnd ∧
+    (s'.tokens[j]'hj).val ≠ .flowMappingEnd := by
+  unfold scanTagDirective at h
+  dsimp only [] at h
+  injection h with h_eq
+  have h_toks : s'.tokens = s.tokens.push ⟨startPos, .tagDirective
+    (collectTagHandleDirectiveLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).fst
+    (collectTagPrefixLoop (skipWhitespace (collectTagHandleDirectiveLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd) ""
+      (s.inputEnd - (skipWhitespace (collectTagHandleDirectiveLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd).offset)).fst⟩ := by
+    subst h_eq
+    simp only [ScannerState.emitAt, collectTagPrefixLoop_preserves_tokens,
+      skipWhitespace_preserves_tokens, collectTagHandleDirectiveLoop_preserves_tokens, h_ws]
+  simp only [h_toks, Array.size_push] at hj
+  have h_j : j = s.tokens.size := by omega
+  simp only [h_toks, h_j, Array.getElem_push_eq]
+  exact ⟨by nofun, by nofun, by nofun, by nofun⟩
+
+set_option maxHeartbeats 800000 in
+/-- `scanDirective` emits non-flow tokens.
+    Proved by the same structural decomposition as `scanDirective_new_not_plain`:
+    each branch emits `.versionDirective`, `.tagDirective`, or no new tokens. -/
+theorem scanDirective_new_tokens_not_flow (s s' : ScannerState)
+    (h : scanDirective s = .ok s')
+    (j : Nat) (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
+    (s'.tokens[j]'hj).val ≠ .flowSequenceStart ∧
+    (s'.tokens[j]'hj).val ≠ .flowMappingStart ∧
+    (s'.tokens[j]'hj).val ≠ .flowSequenceEnd ∧
+    (s'.tokens[j]'hj).val ≠ .flowMappingEnd := by
+  unfold scanDirective at h
+  dsimp only [] at h
+  split at h
+  any_goals contradiction
+  have h_ws_tok : (skipWhitespace (collectDirectiveNameLoop s.advance "" (s.inputEnd - s.advance.offset)).2).tokens = s.tokens := by
+    rw [skipWhitespace_preserves_tokens, collectDirectiveNameLoop_preserves_tokens, advance_preserves_tokens]
+  split at h
+  · -- YAML directive
+    exact scanYamlDirective_new_tokens_not_flow s _ _ s' h h_ws_tok j hj hge
+  · split at h
+    · -- TAG directive
+      exact scanTagDirective_new_tokens_not_flow s _ _ s' h h_ws_tok j hj hge
+    · -- unknown directive: skipToEndOfLine adds no tokens
+      injection h with h_eq; subst h_eq; exfalso
+      rw [skipToEndOfLine_preserves_tokens, h_ws_tok] at hj; omega
+
+set_option maxHeartbeats 800000 in
+/-- Structural dispatch preserves `FlowInv`. -/
+theorem dispatchStructural_preserves_FlowInv
+    (s : ScannerState) (c : Char)
+    (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s)
+    (s' : ScannerState)
+    (h_ok : scanNextToken_dispatchStructural s c = .ok (some s')) :
+    FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
+  constructor
+  · -- FlowContextPSV: new tokens from structural dispatch are .documentStart,
+    -- .documentEnd, .blockEnd, .directive — never .scalar _ .plain
+    apply FlowContextPSV_of_prefix_and_new s.tokens s'.tokens h_fpsv
+      (dispatchStructural_tokens_mono s c s' h_ok)
+    · intro i hi; exact dispatchStructural_preserves_prefix s c s' h_ok i (by omega)
+    · intro j hj hge _
+      -- All new structural tokens satisfy fpsv_of_not_plain
+      unfold scanNextToken_dispatchStructural at h_ok
+      simp only [bind, bind_error_simp, bind_ok_simp, pure, Pure.pure, Except.pure] at h_ok
+      simp only [Except.bind] at h_ok
+      repeat (any_goals (split at h_ok))
+      any_goals contradiction
+      all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+      any_goals contradiction
+      all_goals (try subst_vars)
+      -- scanDocumentStart: tokens are .blockEnd (from unwindIndents) or .documentStart
+      all_goals (try (
+        apply fpsv_of_not_plain
+        exact scanDocumentStart_new_tok_not_plain s j hj hge))
+      -- scanDocumentEnd
+      all_goals (try (
+        rename_i _ _ v h_de _
+        apply fpsv_of_not_plain
+        exact scanDocumentEnd_new_tok_not_plain s v h_de j hj hge))
+      -- scanDirective
+      all_goals (try (
+        rename_i _ _ v h_dir _
+        apply fpsv_of_not_plain
+        exact scanDirective_new_tok_not_plain s v h_dir j hj hge))
+  · -- FlowNestingInv: structural dispatch preserves flowLevel and emits non-flow tokens
+    unfold scanNextToken_dispatchStructural at h_ok
+    simp only [bind, bind_error_simp, bind_ok_simp, pure, Pure.pure, Except.pure] at h_ok
+    simp only [Except.bind] at h_ok
+    repeat (any_goals (split at h_ok))
+    any_goals contradiction
+    all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+    any_goals contradiction
+    all_goals (try subst_vars)
+    -- scanDocumentStart branches
+    all_goals (try exact scanDocumentStart_preserves_FlowNestingInv s h_fni)
+    -- scanDocumentEnd branches
+    all_goals (try (rename_i s_de h_de
+                    exact scanDocumentEnd_preserves_FlowNestingInv s s_de h_fni h_de))
+    -- scanDirective branches
+    all_goals (rename_i v h_dir
+               exact FlowNestingInv_of_non_flow_extension s v h_fni
+                 (scanDirective_monotonic s v h_dir)
+                 (fun j hj => congrArg Positioned.val (scanDirective_preserves_prefix s v h_dir j (by omega)))
+                 (scanDirective_preserves_flowLevel s v h_dir)
+                 (fun j hj hge => scanDirective_new_tokens_not_flow s v h_dir j hj hge))
+
+/-- Flow indicators dispatch preserves `FlowInv`. -/
+theorem dispatchFlowIndicators_preserves_FlowInv
+    (s : ScannerState) (c : Char)
+    (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s)
+    (s' : ScannerState)
+    (h_ok : scanNextToken_dispatchFlowIndicators s c = .ok (some s')) :
+    FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
+  sorry
+
+/-- Block indicators dispatch preserves `FlowInv`. -/
+theorem dispatchBlockIndicators_preserves_FlowInv
+    (s : ScannerState) (c : Char)
+    (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s)
+    (s' : ScannerState)
+    (h_ok : scanNextToken_dispatchBlockIndicators s c = .ok (some s')) :
+    FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
+  sorry
+
+/-- Content dispatch preserves `FlowInv`. -/
+theorem dispatchContent_preserves_FlowInv
+    (s : ScannerState) (c : Char)
+    (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s)
+    (h_peek : s.peek? = some c)
+    (s' : ScannerState)
+    (h_ok : scanNextToken_dispatchContent s c = .ok s') :
+    FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
+  sorry
+
+/-! ### Scan chain threading -/
+
+set_option maxHeartbeats 800000 in
 /-- `scanNextToken` preserves `FlowContextPSV ∧ FlowNestingInv`.
     Proof follows B3.5's `scanNextToken_preserves_PlainScalarsValid`
     dispatch structure. For each branch:
@@ -1476,7 +2145,38 @@ theorem scanNextToken_preserves_FlowInv
     (h_fni : FlowNestingInv s)
     (h_ok : scanNextToken s = .ok (some s')) :
     FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
-  sorry
+  unfold scanNextToken at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok <;> (try (simp at h_ok; done))
+  split at h_ok <;> (try (simp at h_ok; done))
+  rename_i s2 c h_pre
+  have h_fpsv2 := preprocess_preserves_FlowContextPSV s s2 c h_fpsv h_pre
+  have h_fni2 := preprocess_preserves_FlowNestingInv s s2 c h_fni h_pre
+  have h_peek2 := preprocess_peek s s2 c h_pre
+  split at h_ok <;> (try (simp at h_ok; done))
+  split at h_ok
+  · -- dispatchStructural
+    simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+    exact dispatchStructural_preserves_FlowInv s2 c h_fpsv2 h_fni2 _ (by assumption)
+  · have h_fpsv3 := allowDir_ite_preserves_FlowContextPSV s2 h_fpsv2
+    have h_fni3 := allowDir_ite_preserves_FlowNestingInv s2 h_fni2
+    have h_peek3 : (if s2.allowDirectives then
+        { s2 with allowDirectives := false, documentEverStarted := true }
+      else s2).peek? = some c := by split <;> exact h_peek2
+    split at h_ok <;> (try (simp at h_ok; done))
+    split at h_ok
+    · -- dispatchFlowIndicators
+      simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+      exact dispatchFlowIndicators_preserves_FlowInv _ c h_fpsv3 h_fni3 _ (by assumption)
+    · split at h_ok <;> (try (simp at h_ok; done))
+      split at h_ok
+      · -- dispatchBlockIndicators
+        simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact dispatchBlockIndicators_preserves_FlowInv _ c h_fpsv3 h_fni3 _ (by assumption)
+      · -- dispatchContent
+        split at h_ok <;> (try (simp at h_ok; done))
+        simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+        exact dispatchContent_preserves_FlowInv _ c h_fpsv3 h_fni3 h_peek3 _ (by assumption)
 
 theorem finalEmit_preserves_FlowContextPSV (s : ScannerState)
     (h : FlowContextPSV s.tokens) :
