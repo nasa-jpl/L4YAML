@@ -3898,6 +3898,75 @@ theorem scanValuePrepare_preserves_FlowContextPSV
       · -- inFlow: identity
         exact h_old
 
+/-- `scanValuePrepare` preserves `FlowNestingInv` provided tokens at simple-key
+    positions are placeholders (non-flow tokens). -/
+theorem scanValuePrepare_preserves_FlowNestingInv
+    (s : ScannerState) (h_fni : FlowNestingInv s)
+    (h_ph : s.simpleKey.possible = true →
+      (∀ (h : s.simpleKey.tokenIndex < s.tokens.size),
+        (s.tokens[s.simpleKey.tokenIndex]'h).val = .placeholder) ∧
+      (∀ (h : s.simpleKey.tokenIndex + 1 < s.tokens.size),
+        (s.tokens[s.simpleKey.tokenIndex + 1]'h).val = .placeholder)) :
+    FlowNestingInv (scanValuePrepare s) := by
+  unfold scanValuePrepare
+  split
+  · -- simpleKey.possible = true
+    rename_i h_poss
+    have ⟨h_ph1, h_ph2⟩ := h_ph h_poss
+    split
+    · -- !inFlow
+      split
+      · -- col > currentIndent: two setIfInBounds
+        show flowNesting _ _ = s.flowLevel
+        unfold FlowNestingInv at h_fni
+        rw [Array.size_setIfInBounds, Array.size_setIfInBounds]
+        rw [flowNesting_setIfInBounds_non_flow _ _ ⟨s.simpleKey.pos, .key⟩
+            ⟨by nofun, by nofun, by nofun, by nofun⟩
+            (fun h_lt => by
+              rw [Array.size_setIfInBounds] at h_lt
+              simp only [Array.getElem_setIfInBounds h_lt,
+                         if_neg (show s.simpleKey.tokenIndex ≠ s.simpleKey.tokenIndex + 1 from by omega)]
+              rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩)]
+        rw [flowNesting_setIfInBounds_non_flow _ _ ⟨s.simpleKey.pos, .blockMappingStart⟩
+            ⟨by nofun, by nofun, by nofun, by nofun⟩
+            (fun h_lt => by rw [h_ph1 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩)]
+        exact h_fni
+      · -- col ≤ currentIndent: one setIfInBounds
+        show flowNesting _ _ = s.flowLevel
+        unfold FlowNestingInv at h_fni
+        rw [Array.size_setIfInBounds]
+        rw [flowNesting_setIfInBounds_non_flow _ _ ⟨s.simpleKey.pos, .key⟩
+            ⟨by nofun, by nofun, by nofun, by nofun⟩
+            (fun h_lt => by rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩)]
+        exact h_fni
+    · -- inFlow: one setIfInBounds
+      show flowNesting _ _ = s.flowLevel
+      unfold FlowNestingInv at h_fni
+      rw [Array.size_setIfInBounds]
+      rw [flowNesting_setIfInBounds_non_flow _ _ ⟨s.simpleKey.pos, .key⟩
+          ⟨by nofun, by nofun, by nofun, by nofun⟩
+          (fun h_lt => by rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩)]
+      exact h_fni
+  · -- simpleKey.possible = false
+    split
+    · -- explicitKeyLine.isSome: tokens unchanged
+      exact h_fni
+    · split
+      · -- !inFlow: pushMappingIndent
+        unfold FlowNestingInv at h_fni ⊢
+        unfold pushMappingIndent
+        split
+        · -- col > currentIndent: emit .blockMappingStart
+          simp only [emit_preserves_flowLevel, emit_tokens_size]
+          rw [show (s.emit .blockMappingStart).tokens = s.tokens.push ⟨s.currentPos, .blockMappingStart⟩ from rfl]
+          rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .blockMappingStart⟩
+              (by nofun) (by nofun) (by nofun) (by nofun)]
+          exact h_fni
+        · -- col ≤ currentIndent: identity
+          exact h_fni
+      · -- inFlow: identity
+        exact h_fni
+
 theorem scanValue_preserves_FlowContextPSV
     (s s' : ScannerState) (h_fpsv : FlowContextPSV s.tokens)
     (h_ok : scanValue s = .ok s')
@@ -3948,29 +4017,45 @@ theorem scanValue_preserves_FlowContextPSV
 
 theorem scanValue_preserves_FlowNestingInv
     (s s' : ScannerState) (h_fni : FlowNestingInv s)
-    (h_ok : scanValue s = .ok s') :
+    (h_ok : scanValue s = .ok s')
+    (h_ph : s.simpleKey.possible = true →
+      (∀ (h : s.simpleKey.tokenIndex < s.tokens.size),
+        (s.tokens[s.simpleKey.tokenIndex]'h).val = .placeholder) ∧
+      (∀ (h : s.simpleKey.tokenIndex + 1 < s.tokens.size),
+        (s.tokens[s.simpleKey.tokenIndex + 1]'h).val = .placeholder)) :
     FlowNestingInv s' := by
-  -- scanValue: complex due to scanValuePrepare, but all emitted tokens are non-flow
-  -- and flowLevel is preserved throughout
-  -- scanValuePrepare may modify tokens (setIfInBounds, pushMappingIndent)
-  -- but doesn't change flowLevel. Then emit .value (non-flow token).
-  unfold scanValue at h_ok
+  unfold scanValue scanValueTabCheck at h_ok
   simp only [bind, Except.bind] at h_ok
-  split at h_ok <;> try contradiction
-  split at h_ok <;> try contradiction
-  injection h_ok with h_eq; subst h_eq
-  -- After scanValueClearKey, scanValueValidate, scanValuePrepare, we emit .value, advance, then scanValueTabCheck
-  -- The result is: { advance(emit(scanValuePrepare(...)).value) with simpleKeyAllowed := true, explicitKeyLine := none }
-
-  -- Key observations:
-  -- 1. scanValueClearKey preserves FlowNestingInv (only modifies simpleKey field)
-  -- 2. scanValuePrepare preserves FlowNestingInv (complex - needs helper lemma)
-  -- 3. emit .value preserves FlowNestingInv (non-flow token)
-  -- 4. advance preserves FlowNestingInv
-  -- 5. Setting simpleKeyAllowed and explicitKeyLine preserves FlowNestingInv
-
-  -- For now, this is complex enough to warrant a sorry
-  sorry
+  split at h_ok
+  · contradiction
+  · split at h_ok
+    · contradiction
+    · injection h_ok with h_ok; subst h_ok
+      -- s' = { advance(emit(scanValuePrepare(scanValueClearKey s)).value) with ... }
+      -- Step 1: scanValueClearKey preserves FlowNestingInv
+      have h_fni_ck : FlowNestingInv (scanValueClearKey s) := by
+        unfold FlowNestingInv at h_fni ⊢
+        rw [scanValueClearKey_preserves_tokens]; unfold scanValueClearKey; split <;> exact h_fni
+      have h_ph_ck : (scanValueClearKey s).simpleKey.possible = true →
+          (∀ (h : (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size),
+            ((scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex]'h).val = .placeholder) ∧
+          (∀ (h : (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size),
+            ((scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex + 1]'h).val = .placeholder) := by
+        unfold scanValueClearKey
+        split
+        · intro h_poss; simp at h_poss
+        · exact h_ph
+      -- Step 2: scanValuePrepare preserves FlowNestingInv
+      have h_fni_prep := scanValuePrepare_preserves_FlowNestingInv
+        (scanValueClearKey s) h_fni_ck h_ph_ck
+      -- Step 3: emit .value preserves FlowNestingInv
+      have h_fni_emit := FlowNestingInv_emit_non_flow
+        (scanValuePrepare (scanValueClearKey s)) .value h_fni_prep
+        (by nofun) (by nofun) (by nofun) (by nofun)
+      -- Step 4: advance + field updates preserve FlowNestingInv
+      unfold FlowNestingInv at h_fni_emit ⊢
+      simp only [advance_preserves_flowLevel, advance_preserves_tokens]
+      exact h_fni_emit
 
 /-- Block indicators dispatch preserves `FlowInv`. -/
 theorem dispatchBlockIndicators_preserves_FlowInv
@@ -4009,7 +4094,8 @@ theorem dispatchBlockIndicators_preserves_FlowInv
         (by -- Placeholder invariant: tokens at simpleKey positions are .placeholder
             -- This follows from ScanInv but is not yet threaded through the proof chain.
             sorry)
-    · exact scanValue_preserves_FlowNestingInv s s_v h_fni h_v)
+    · exact scanValue_preserves_FlowNestingInv s s_v h_fni h_v
+        (by sorry))
 
 /-! ### Scan chain threading -/
 
