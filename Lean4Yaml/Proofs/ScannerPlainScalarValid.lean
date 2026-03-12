@@ -2747,13 +2747,55 @@ theorem scanDoubleQuoted_preserves_flowLevel (s s' : ScannerState)
     injection h_ok with h_eq; subst h_eq
     simp [emitAt_preserves_flowLevel, h_fl_collect, advance_preserves_flowLevel]
 
+theorem collectSingleQuotedLoop_preserves_flowLevel (s : ScannerState) (content : String) (fuel : Nat)
+    (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat)
+    (result : String × ScannerState)
+    (h : collectSingleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result) :
+    result.snd.flowLevel = s.flowLevel := by
+  induction fuel generalizing s content with
+  | zero => unfold collectSingleQuotedLoop at h; contradiction
+  | succ fuel' ih =>
+    unfold collectSingleQuotedLoop at h
+    split at h <;> try contradiction
+    · -- Case: peek? = some '\''
+      rename_i heq_quote
+      simp only [] at h
+      split at h
+      · -- Case: peek? after advance = some '\'' (escaped quote)
+        exact ih _ _ h |>.trans (advance_preserves_flowLevel _) |>.trans (advance_preserves_flowLevel s)
+      · -- Case: closing quote (other character or none)
+        injection h with h_eq; subst h_eq
+        exact advance_preserves_flowLevel s
+    · -- Case: peek? = some c (other character)
+      split at h <;> try contradiction
+      · -- Line break: fold newlines
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i folded_result heq_fold
+        have h_fl_fold := foldQuotedNewlines_preserves_flowLevel _ _ heq_fold
+        split at h <;> try contradiction
+        split at h <;> try contradiction
+        split at h <;> try contradiction
+        exact ih _ _ h |>.trans h_fl_fold
+      · -- Regular character
+        exact ih _ _ h |>.trans (advance_preserves_flowLevel s)
+
 theorem scanSingleQuoted_preserves_flowLevel (s s' : ScannerState)
     (h_ok : scanSingleQuoted s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanSingleQuoted at h_ok
   simp only [bind, Except.bind, pure, Except.pure] at h_ok
   split at h_ok <;> try contradiction
-  all_goals (split at h_ok <;> try contradiction; injection h_ok with h_eq; subst h_eq; rfl)
+  rename_i result heq
+  have h_fl_collect := collectSingleQuotedLoop_preserves_flowLevel _ _ _ _ _ _ _ _ heq
+  split at h_ok
+  · -- Case: !s.inFlow = true, need to validate trailing content
+    split at h_ok <;> try contradiction
+    injection h_ok with h_eq; subst h_eq
+    simp [emitAt_preserves_flowLevel, h_fl_collect, advance_preserves_flowLevel]
+  · -- Case: !s.inFlow = false, no validation needed
+    injection h_ok with h_eq; subst h_eq
+    simp [emitAt_preserves_flowLevel, h_fl_collect, advance_preserves_flowLevel]
 
 theorem scanPlainScalar_preserves_flowLevel (s s' : ScannerState)
     (h_ok : scanPlainScalar s = .ok s') :
