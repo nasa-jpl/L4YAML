@@ -3310,7 +3310,19 @@ theorem scanPlainScalar_preserves_FlowInv (s s' : ScannerState)
       have h_flowLevel : s.flowLevel > 0 := by
         unfold FlowNestingInv at h_fni
         rw [← h_fni]
-        sorry
+        -- h_flowNest : flowNesting s'.tokens s.tokens.size > 0
+        -- Need: flowNesting s.tokens s.tokens.size > 0
+        have h_mono : s.tokens.size ≤ s'.tokens.size := by
+          have := scanPlainScalar_adds_one_token s s' h_ok
+          omega
+        have h_prefix_val : ∀ j (hj : j < s.tokens.size),
+            (s'.tokens[j]'(by omega)).val = (s.tokens[j]).val := by
+          intro j hj
+          rw [scanPlainScalar_preserves_prefix s s' h_ok j hj]
+        have h_fn := flowNesting_prefix_stable s.tokens s'.tokens h_mono h_prefix_val
+                       s.tokens.size (by omega)
+        rw [← h_fn]
+        exact h_flowNest
       -- Since s.flowLevel > 0, we have s.inFlow = true
       have h_inFlow : s.inFlow = true := by
         unfold ScannerState.inFlow
@@ -3330,7 +3342,16 @@ theorem scanPlainScalar_preserves_FlowInv (s s' : ScannerState)
     unfold scanPlainScalar at h_ok
     simp only [bind, Except.bind] at h_ok
     split at h_ok <;> try contradiction
-    sorry
+    rename_i result heq
+    injection h_ok with h_eq; subst h_eq
+    unfold ScannerState.emitAt
+    simp only []
+    have h_preserve : result.state.tokens = s.tokens :=
+      collectPlainScalarLoop_preserves_tokens s "" "" _ _ _ _ _ heq
+    rw [h_preserve]
+    rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .scalar _ .plain⟩]
+    · exact h_fni
+    all_goals nofun
 
 /-- Content dispatch preserves `FlowInv` by delegating to individual scan function lemmas. -/
 theorem dispatchContent_preserves_FlowInv
