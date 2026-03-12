@@ -2631,10 +2631,33 @@ theorem scanBlockScalar_preserves_flowLevel (s s' : ScannerState)
       injection h_ok with h_eq; subst h_eq
       simp [collectBlockScalarLoop_preserves_flowLevel, h_fl]
 
+theorem collectHexDigitsLoop_preserves_flowLevel (s : ScannerState) (hex : String) (n : Nat) :
+    (collectHexDigitsLoop s hex n).snd.flowLevel = s.flowLevel := by
+  induction n generalizing s hex with
+  | zero => unfold collectHexDigitsLoop; rfl
+  | succ n' ih =>
+    unfold collectHexDigitsLoop
+    split
+    · split
+      · rw [ih, advance_preserves_flowLevel]
+      · rfl
+    · rfl
+
 theorem parseHexEscape_preserves_flowLevel (s : ScannerState) (digits : Nat)
     (result : Char × ScannerState) (h : parseHexEscape s digits = .ok result) :
     result.snd.flowLevel = s.flowLevel := by
-  sorry
+  unfold parseHexEscape at h
+  simp only [] at h
+  split at h
+  · -- Case: hex.length != digits (error case)
+    contradiction
+  · -- Case: hex.length = digits
+    split at h
+    · -- Case: val < 0x110000 (success)
+      injection h with h_eq; subst h_eq
+      exact collectHexDigitsLoop_preserves_flowLevel s "" digits
+    · -- Case: val >= 0x110000 (error)
+      contradiction
 
 theorem processEscape_preserves_flowLevel (s : ScannerState) (result : Char × ScannerState)
     (h : processEscape s = .ok result) :
