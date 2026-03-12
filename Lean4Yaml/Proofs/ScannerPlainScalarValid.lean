@@ -2799,7 +2799,49 @@ theorem collectDoubleQuotedLoop_preserves_flowLevel (s : ScannerState) (content 
     (result : String × ScannerState)
     (h : collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result) :
     result.snd.flowLevel = s.flowLevel := by
-  sorry
+  induction fuel generalizing s content with
+  | zero => unfold collectDoubleQuotedLoop at h; contradiction
+  | succ fuel' ih =>
+    unfold collectDoubleQuotedLoop at h
+    split at h <;> try contradiction
+    · -- Case: peek? = some '"' - closing quote
+      injection h with h_eq; subst h_eq
+      exact advance_preserves_flowLevel s
+    · -- Case: peek? = some '\\' - escape sequence
+      -- First split on s_after_backslash.peek?
+      simp only [] at h
+      split at h <;> try contradiction
+      · -- s_after_backslash.peek? = some c
+        -- Now split on isLineBreakBool c
+        split at h
+        · -- Escaped line break
+          exact ih _ _ h |>.trans (skipWhitespace_preserves_flowLevel _)
+                         |>.trans (consumeNewline_preserves_flowLevel _)
+                         |>.trans (advance_preserves_flowLevel s)
+        · -- Regular escape
+          simp only [bind, Except.bind] at h
+          split at h <;> try contradiction
+          rename_i escape_result heq_escape
+          have h_fl_escape := processEscape_preserves_flowLevel _ _ heq_escape
+          exact ih _ _ h |>.trans h_fl_escape |>.trans (advance_preserves_flowLevel s)
+    · -- Case: peek? = some c (other character)
+      split at h
+      · -- Line break: fold newlines
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i folded_result heq_fold
+        have h_fl_fold := foldQuotedNewlines_preserves_flowLevel _ _ heq_fold
+        -- Split on document marker checks (atDocumentStart || atDocumentEnd)
+        split at h <;> try contradiction
+        -- Split on indentation check
+        split at h <;> try contradiction
+        -- Simplify the monadic structure
+        simp only [] at h
+        split at h <;> try contradiction
+        -- After all validations pass, we have the recursive call
+        exact ih _ _ h |>.trans h_fl_fold
+      · -- Regular character
+        exact ih _ _ h |>.trans (advance_preserves_flowLevel s)
 
 theorem scanDoubleQuoted_preserves_flowLevel (s s' : ScannerState)
     (h_ok : scanDoubleQuoted s = .ok s') :
