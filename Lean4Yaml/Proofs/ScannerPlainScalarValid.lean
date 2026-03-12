@@ -2631,13 +2631,98 @@ theorem scanBlockScalar_preserves_flowLevel (s s' : ScannerState)
       injection h_ok with h_eq; subst h_eq
       simp [collectBlockScalarLoop_preserves_flowLevel, h_fl]
 
+theorem parseHexEscape_preserves_flowLevel (s : ScannerState) (digits : Nat)
+    (result : Char × ScannerState) (h : parseHexEscape s digits = .ok result) :
+    result.snd.flowLevel = s.flowLevel := by
+  sorry
+
+theorem processEscape_preserves_flowLevel (s : ScannerState) (result : Char × ScannerState)
+    (h : processEscape s = .ok result) :
+    result.snd.flowLevel = s.flowLevel := by
+  unfold processEscape at h
+  split at h <;> try contradiction
+  split at h
+  · injection h with h_eq; subst h_eq; exact advance_preserves_flowLevel s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_flowLevel s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_flowLevel s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_flowLevel s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_flowLevel s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_flowLevel s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_flowLevel s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_flowLevel s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_flowLevel s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_flowLevel s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_flowLevel s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_flowLevel s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_flowLevel s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_flowLevel s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_flowLevel s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_flowLevel s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_flowLevel s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_flowLevel s
+  · simp only [] at h; exact parseHexEscape_preserves_flowLevel _ _ _ h |>.trans (advance_preserves_flowLevel s)
+  · simp only [] at h; exact parseHexEscape_preserves_flowLevel _ _ _ h |>.trans (advance_preserves_flowLevel s)
+  · simp only [] at h; exact parseHexEscape_preserves_flowLevel _ _ _ h |>.trans (advance_preserves_flowLevel s)
+  · contradiction
+
+theorem foldQuotedNewlinesLoop_preserves_flowLevel (s : ScannerState) (emptyCount fuel : Nat) :
+    (foldQuotedNewlinesLoop s emptyCount fuel).fst.flowLevel = s.flowLevel := by
+  induction fuel generalizing s emptyCount with
+  | zero => unfold foldQuotedNewlinesLoop; rfl
+  | succ fuel' ih =>
+    unfold foldQuotedNewlinesLoop
+    simp only []
+    split
+    · split
+      · rw [ih, consumeNewline_preserves_flowLevel, skipSpaces_preserves_flowLevel]
+      · rfl
+    · rfl
+
+theorem foldQuotedNewlines_preserves_flowLevel (s : ScannerState) (result : String × ScannerState)
+    (h : foldQuotedNewlines s = .ok result) :
+    result.snd.flowLevel = s.flowLevel := by
+  unfold foldQuotedNewlines at h
+  simp only [] at h
+  split at h
+  · split at h <;> try contradiction
+    split at h
+    · injection h with h_eq; subst h_eq
+      simp [skipWhitespace_preserves_flowLevel, skipSpaces_preserves_flowLevel,
+            foldQuotedNewlinesLoop_preserves_flowLevel, consumeNewline_preserves_flowLevel]
+    · injection h with h_eq; subst h_eq
+      simp [skipWhitespace_preserves_flowLevel, skipSpaces_preserves_flowLevel,
+            foldQuotedNewlinesLoop_preserves_flowLevel, consumeNewline_preserves_flowLevel]
+  · split at h
+    · injection h with h_eq; subst h_eq
+      simp [skipWhitespace_preserves_flowLevel, skipSpaces_preserves_flowLevel,
+            foldQuotedNewlinesLoop_preserves_flowLevel, consumeNewline_preserves_flowLevel]
+    · injection h with h_eq; subst h_eq
+      simp [skipWhitespace_preserves_flowLevel, skipSpaces_preserves_flowLevel,
+            foldQuotedNewlinesLoop_preserves_flowLevel, consumeNewline_preserves_flowLevel]
+
+theorem collectDoubleQuotedLoop_preserves_flowLevel (s : ScannerState) (content : String) (fuel : Nat)
+    (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat)
+    (result : String × ScannerState)
+    (h : collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result) :
+    result.snd.flowLevel = s.flowLevel := by
+  sorry
+
 theorem scanDoubleQuoted_preserves_flowLevel (s s' : ScannerState)
     (h_ok : scanDoubleQuoted s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanDoubleQuoted at h_ok
   simp only [bind, Except.bind, pure, Except.pure] at h_ok
   split at h_ok <;> try contradiction
-  all_goals (split at h_ok <;> try contradiction; injection h_ok with h_eq; subst h_eq; rfl)
+  rename_i result heq
+  have h_fl_collect := collectDoubleQuotedLoop_preserves_flowLevel _ _ _ _ _ _ _ _ heq
+  split at h_ok
+  · -- Case: !s.inFlow = true, need to validate trailing content
+    split at h_ok <;> try contradiction
+    injection h_ok with h_eq; subst h_eq
+    simp [emitAt_preserves_flowLevel, h_fl_collect, advance_preserves_flowLevel]
+  · -- Case: !s.inFlow = false, no validation needed
+    injection h_ok with h_eq; subst h_eq
+    simp [emitAt_preserves_flowLevel, h_fl_collect, advance_preserves_flowLevel]
 
 theorem scanSingleQuoted_preserves_flowLevel (s s' : ScannerState)
     (h_ok : scanSingleQuoted s = .ok s') :
