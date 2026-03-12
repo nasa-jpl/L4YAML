@@ -251,6 +251,57 @@ theorem unwindIndents_preserves_prefix (s : ScannerState) (col : Int)
   unfold unwindIndents
   exact unwindIndentsLoop_preserves_prefix s col s.indents.size i h_bound
 
+/-- `unwindIndentsLoop` preserves `flowLevel` through all iterations.
+    Each step does `emit .blockEnd` (preserves flowLevel) + record update
+    on `indents` only (preserves flowLevel). -/
+theorem unwindIndentsLoop_preserves_flowLevel (s : ScannerState) (col : Int) (fuel : Nat) :
+    (unwindIndentsLoop s col fuel).flowLevel = s.flowLevel := by
+  induction fuel generalizing s with
+  | zero => unfold unwindIndentsLoop; rfl
+  | succ fuel' ih =>
+    unfold unwindIndentsLoop
+    split
+    · rw [ih]; exact emit_preserves_flowLevel s .blockEnd
+    · rfl
+
+/-- `unwindIndents` preserves `flowLevel`. -/
+theorem unwindIndents_preserves_flowLevel (s : ScannerState) (col : Int) :
+    (unwindIndents s col).flowLevel = s.flowLevel := by
+  unfold unwindIndents
+  exact unwindIndentsLoop_preserves_flowLevel s col s.indents.size
+
+/-- `saveSimpleKey` preserves `flowLevel`. -/
+theorem saveSimpleKey_preserves_flowLevel (s : ScannerState) :
+    (saveSimpleKey s).flowLevel = s.flowLevel := by
+  unfold saveSimpleKey
+  split <;> (try rfl)
+  split <;> rfl
+
+/-- `scanFlowEntry` preserves `flowLevel` on success. -/
+theorem scanFlowEntry_preserves_flowLevel (s s' : ScannerState)
+    (h : scanFlowEntry s = .ok s') :
+    s'.flowLevel = s.flowLevel := by
+  unfold scanFlowEntry at h
+  simp only [bind, Except.bind] at h
+  split at h
+  · split at h <;> (try contradiction)
+    injection h with h_eq; subst h_eq
+    simp [emit_preserves_flowLevel, advance_preserves_flowLevel]
+  · injection h with h_eq; subst h_eq
+    simp [emit_preserves_flowLevel, advance_preserves_flowLevel]
+
+theorem advanceNLoop_preserves_flowLevel (s : ScannerState) (n : Nat) :
+    (ScannerState.advanceNLoop s n).flowLevel = s.flowLevel := by
+  induction n generalizing s with
+  | zero => unfold ScannerState.advanceNLoop; rfl
+  | succ n' ih =>
+    unfold ScannerState.advanceNLoop
+    rw [ih]; exact advance_preserves_flowLevel s
+
+theorem advanceN_preserves_flowLevel (s : ScannerState) (n : Nat) :
+    (s.advanceN n).flowLevel = s.flowLevel := by
+  unfold ScannerState.advanceN; exact advanceNLoop_preserves_flowLevel s n
+
 /-- scanLoop only succeeds by emitting streamEnd (generalized over all states).
 
 When `scanLoop s fuel` returns `.ok tokens`, those tokens came from a code path
@@ -724,6 +775,218 @@ theorem skipToContent_preserves_tokens (s : ScannerState) (s' : ScannerState) :
   intro h
   unfold skipToContent at h
   exact skipToContentLoop_preserves_tokens s s' _ h
+
+/-! ## flowLevel preservation through skipToContent chain
+
+Each function in the skipToContent pipeline preserves `flowLevel` because
+none of them emit tokens or modify flow state. -/
+
+theorem consumeNewline_preserves_flowLevel (s : ScannerState) :
+    (consumeNewline s).flowLevel = s.flowLevel := by
+  unfold consumeNewline
+  split
+  · exact advance_preserves_flowLevel s
+  · dsimp only []
+    split
+    · rw [advance_preserves_flowLevel, advance_preserves_flowLevel]
+    · exact advance_preserves_flowLevel s
+  · rfl
+
+theorem skipSpaces_preserves_flowLevel (s : ScannerState) :
+    (skipSpaces s).flowLevel = s.flowLevel := by
+  unfold skipSpaces
+  generalize s.inputEnd - s.offset = fuel
+  induction fuel generalizing s with
+  | zero => unfold skipSpacesLoop; rfl
+  | succ fuel' IH =>
+    unfold skipSpacesLoop; split
+    · rw [IH, advance_preserves_flowLevel]
+    · rfl
+
+theorem skipWhitespace_preserves_flowLevel (s : ScannerState) :
+    (skipWhitespace s).flowLevel = s.flowLevel := by
+  unfold skipWhitespace
+  generalize s.inputEnd - s.offset = fuel
+  induction fuel generalizing s with
+  | zero => unfold skipWhitespaceLoop; rfl
+  | succ fuel' IH =>
+    unfold skipWhitespaceLoop; split
+    · split
+      · rw [IH, advance_preserves_flowLevel]
+      · rfl
+    · rfl
+
+theorem collectCommentTextLoop_preserves_flowLevel (s : ScannerState)
+    (text : String) (fuel : Nat) :
+    (collectCommentTextLoop s text fuel).2.flowLevel = s.flowLevel := by
+  induction fuel generalizing s text with
+  | zero => unfold collectCommentTextLoop; rfl
+  | succ fuel' IH =>
+    unfold collectCommentTextLoop; split
+    · split
+      · rfl
+      · rw [IH, advance_preserves_flowLevel]
+    · rfl
+
+theorem skipToEndOfLineLoop_preserves_flowLevel (s : ScannerState) (fuel : Nat) :
+    (skipToEndOfLineLoop s fuel).flowLevel = s.flowLevel := by
+  induction fuel generalizing s with
+  | zero => unfold skipToEndOfLineLoop; rfl
+  | succ fuel' IH =>
+    unfold skipToEndOfLineLoop; split
+    · split
+      · rfl
+      · rw [IH, advance_preserves_flowLevel]
+    · rfl
+
+theorem skipToEndOfLine_preserves_flowLevel (s : ScannerState) :
+    (skipToEndOfLine s).flowLevel = s.flowLevel := by
+  unfold skipToEndOfLine; exact skipToEndOfLineLoop_preserves_flowLevel s _
+
+theorem collectDirectiveNameLoop_preserves_flowLevel (s : ScannerState)
+    (name : String) (fuel : Nat) :
+    (collectDirectiveNameLoop s name fuel).2.flowLevel = s.flowLevel := by
+  induction fuel generalizing s name with
+  | zero => unfold collectDirectiveNameLoop; rfl
+  | succ fuel' IH =>
+    unfold collectDirectiveNameLoop; split
+    · -- some c
+      split
+      · rw [IH, advance_preserves_flowLevel]  -- condition true: recurse
+      · rfl  -- condition false: stop
+    · rfl  -- none
+
+theorem collectVersionMajorLoop_preserves_flowLevel (s : ScannerState)
+    (major : String) (fuel : Nat) :
+    (collectVersionMajorLoop s major fuel).2.flowLevel = s.flowLevel := by
+  induction fuel generalizing s major with
+  | zero => unfold collectVersionMajorLoop; rfl
+  | succ fuel' IH =>
+    unfold collectVersionMajorLoop
+    split <;> try rfl
+    · exact advance_preserves_flowLevel s
+    · split
+      · rw [IH, advance_preserves_flowLevel]
+      · rfl
+
+theorem collectVersionMinorLoop_preserves_flowLevel (s : ScannerState)
+    (minor : String) (fuel : Nat) :
+    (collectVersionMinorLoop s minor fuel).2.flowLevel = s.flowLevel := by
+  induction fuel generalizing s minor with
+  | zero => unfold collectVersionMinorLoop; rfl
+  | succ fuel' IH =>
+    unfold collectVersionMinorLoop; split
+    · -- some c
+      split
+      · rw [IH, advance_preserves_flowLevel]  -- isDigit true: recurse
+      · rfl  -- isDigit false
+    · rfl  -- none
+
+theorem collectTagHandleDirectiveLoop_preserves_flowLevel (s : ScannerState)
+    (handle : String) (fuel : Nat) :
+    (collectTagHandleDirectiveLoop s handle fuel).2.flowLevel = s.flowLevel := by
+  induction fuel generalizing s handle with
+  | zero => unfold collectTagHandleDirectiveLoop; rfl
+  | succ fuel' IH =>
+    unfold collectTagHandleDirectiveLoop; split
+    · -- some c
+      split
+      · rw [IH, advance_preserves_flowLevel]  -- condition true: recurse
+      · rfl  -- condition false: stop
+    · rfl  -- none
+
+theorem collectTagPrefixLoop_preserves_flowLevel (s : ScannerState)
+    (pfx : String) (fuel : Nat) :
+    (collectTagPrefixLoop s pfx fuel).2.flowLevel = s.flowLevel := by
+  induction fuel generalizing s pfx with
+  | zero => unfold collectTagPrefixLoop; rfl
+  | succ fuel' IH =>
+    unfold collectTagPrefixLoop; split
+    · -- some c
+      split
+      · rw [IH, advance_preserves_flowLevel]  -- condition true: recurse
+      · rfl  -- condition false: stop
+    · rfl  -- none
+
+theorem emitAt_preserves_flowLevel (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
+    (s.emitAt pos tok).flowLevel = s.flowLevel := by
+  unfold ScannerState.emitAt; rfl
+
+theorem skipToContentWs_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
+    (h : skipToContentWs s = .ok s') :
+    s'.flowLevel = s.flowLevel := by
+  unfold skipToContentWs at h
+  split at h
+  · simp only [] at h
+    split at h
+    · split at h
+      · split at h
+        · simp at h; rw [← h, skipWhitespace_preserves_flowLevel,
+            skipSpaces_preserves_flowLevel]
+        · split at h
+          · simp at h; rw [← h, skipWhitespace_preserves_flowLevel,
+              skipSpaces_preserves_flowLevel]
+          · simp at h
+        · simp at h; rw [← h, skipWhitespace_preserves_flowLevel,
+            skipSpaces_preserves_flowLevel]
+      · simp at h; rw [← h, skipSpaces_preserves_flowLevel]
+    · simp at h; rw [← h, skipWhitespace_preserves_flowLevel,
+        skipSpaces_preserves_flowLevel]
+  · simp at h; rw [← h, skipWhitespace_preserves_flowLevel]
+
+theorem skipToContentComment_preserves_flowLevel (s : ScannerState) :
+    (skipToContentComment s).flowLevel = s.flowLevel := by
+  unfold skipToContentComment
+  split
+  · simp only []
+    split
+    · split
+      · simp only []
+        rw [collectCommentTextLoop_preserves_flowLevel, advance_preserves_flowLevel]
+      · rfl
+    · split
+      · simp only []
+        rw [collectCommentTextLoop_preserves_flowLevel, advance_preserves_flowLevel]
+      · rfl
+  · rfl
+
+theorem skipToContentLoop_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
+    (fuel : Nat)
+    (h : skipToContentLoop s fuel = .ok s') :
+    s'.flowLevel = s.flowLevel := by
+  induction fuel generalizing s with
+  | zero =>
+    unfold skipToContentLoop at h
+    simp at h; rw [← h]
+  | succ fuel' IH =>
+    unfold skipToContentLoop at h
+    split at h
+    · simp at h
+    · rename_i s1 hws
+      simp only [] at h
+      split at h
+      · rename_i c hpeek
+        split at h
+        · split at h
+          · have ih := IH _ h
+            rw [ih, consumeNewline_preserves_flowLevel,
+                skipToContentComment_preserves_flowLevel]
+            exact skipToContentWs_preserves_flowLevel s s1 hws
+          · have ih := IH _ h
+            rw [ih, consumeNewline_preserves_flowLevel,
+                skipToContentComment_preserves_flowLevel]
+            exact skipToContentWs_preserves_flowLevel s s1 hws
+        · simp at h; rw [← h, skipToContentComment_preserves_flowLevel]
+          exact skipToContentWs_preserves_flowLevel s s1 hws
+      · simp at h; rw [← h, skipToContentComment_preserves_flowLevel]
+        exact skipToContentWs_preserves_flowLevel s s1 hws
+
+theorem skipToContent_preserves_flowLevel (s : ScannerState) (s' : ScannerState) :
+    skipToContent s = .ok s' →
+    s'.flowLevel = s.flowLevel := by
+  intro h
+  unfold skipToContent at h
+  exact skipToContentLoop_preserves_flowLevel s s' _ h
 
 /-! ## Helper Lemmas for scan* Functions
 
