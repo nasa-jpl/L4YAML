@@ -2797,13 +2797,22 @@ theorem scanSingleQuoted_preserves_flowLevel (s s' : ScannerState)
     injection h_ok with h_eq; subst h_eq
     simp [emitAt_preserves_flowLevel, h_fl_collect, advance_preserves_flowLevel]
 
+theorem collectPlainScalarLoop_preserves_flowLevel (s : ScannerState) (content spaces : String) (fuel : Nat)
+    (inFlow : Bool) (contentIndent inputEnd : Nat) (result : PlainScalarResult)
+    (h : collectPlainScalarLoop s content spaces fuel inFlow contentIndent inputEnd = .ok result) :
+    result.state.flowLevel = s.flowLevel := by
+  sorry
+
 theorem scanPlainScalar_preserves_flowLevel (s s' : ScannerState)
     (h_ok : scanPlainScalar s = .ok s') :
     s'.flowLevel = s.flowLevel := by
   unfold scanPlainScalar at h_ok
   simp only [bind, Except.bind] at h_ok
   split at h_ok <;> try contradiction
-  injection h_ok with h_eq; subst h_eq; rfl
+  rename_i result heq
+  have h_fl_collect := collectPlainScalarLoop_preserves_flowLevel _ _ _ _ _ _ _ _ heq
+  injection h_ok with h_eq; subst h_eq
+  simp [emitAt_preserves_flowLevel, h_fl_collect]
 
 theorem scanPlainScalar_new_token_is_plain (s s' : ScannerState)
     (h_ok : scanPlainScalar s = .ok s')
