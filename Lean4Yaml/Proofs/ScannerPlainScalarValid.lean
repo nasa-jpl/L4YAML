@@ -2109,6 +2109,77 @@ theorem dispatchFlowIndicators_preserves_FlowInv
     FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
   sorry
 
+/-! ### Block indicator helper lemmas -/
+
+theorem scanBlockEntry_preserves_FlowContextPSV
+    (s s' : ScannerState) (h_fpsv : FlowContextPSV s.tokens)
+    (h_ok : scanBlockEntry s = .ok s') :
+    FlowContextPSV s'.tokens := by
+  sorry
+
+theorem scanBlockEntry_preserves_FlowNestingInv
+    (s s' : ScannerState) (h_fni : FlowNestingInv s)
+    (h_ok : scanBlockEntry s = .ok s') :
+    FlowNestingInv s' := by
+  -- scanBlockEntry: emits non-flow tokens, preserves flowLevel
+  unfold scanBlockEntry at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · split at h_ok
+    · contradiction
+    · injection h_ok with h_eq; subst h_eq
+      unfold FlowNestingInv at *
+      simp only [advance_preserves_flowLevel, advance_preserves_tokens]
+      -- Show flowNesting at final size = flowLevel
+      -- pushSequenceIndent may emit blockSequenceStart, then emit blockEntry
+      unfold pushSequenceIndent
+      split
+      · -- Emitted blockSequenceStart, then blockEntry
+        -- Both are non-flow tokens
+        sorry
+      · -- No blockSequenceStart, just blockEntry
+        unfold ScannerState.emit
+        simp [Array.size_push]
+        have : flowNesting (s.tokens.push ⟨s.currentPos, .blockEntry⟩) (s.tokens.size + 1) =
+               flowNesting s.tokens s.tokens.size := by
+          apply flowNesting_push_non_flow <;> nofun
+        rw [this]
+        exact h_fni
+  · injection h_ok with h_eq; subst h_eq
+    unfold FlowNestingInv at *
+    simp only [advance_preserves_flowLevel, advance_preserves_tokens]
+    unfold ScannerState.emit
+    simp [Array.size_push]
+    have : flowNesting (s.tokens.push ⟨s.currentPos, .blockEntry⟩) (s.tokens.size + 1) =
+           flowNesting s.tokens s.tokens.size := by
+      apply flowNesting_push_non_flow <;> nofun
+    rw [this]
+    exact h_fni
+
+theorem scanKey_preserves_FlowContextPSV
+    (s s' : ScannerState) (h_fpsv : FlowContextPSV s.tokens)
+    (h_ok : scanKey s = .ok s') :
+    FlowContextPSV s'.tokens := by
+  sorry
+
+theorem scanKey_preserves_FlowNestingInv
+    (s s' : ScannerState) (h_fni : FlowNestingInv s)
+    (h_ok : scanKey s = .ok s') :
+    FlowNestingInv s' := by
+  sorry
+
+theorem scanValue_preserves_FlowContextPSV
+    (s s' : ScannerState) (h_fpsv : FlowContextPSV s.tokens)
+    (h_ok : scanValue s = .ok s') :
+    FlowContextPSV s'.tokens := by
+  sorry
+
+theorem scanValue_preserves_FlowNestingInv
+    (s s' : ScannerState) (h_fni : FlowNestingInv s)
+    (h_ok : scanValue s = .ok s') :
+    FlowNestingInv s' := by
+  sorry
+
 /-- Block indicators dispatch preserves `FlowInv`. -/
 theorem dispatchBlockIndicators_preserves_FlowInv
     (s : ScannerState) (c : Char)
@@ -2116,7 +2187,34 @@ theorem dispatchBlockIndicators_preserves_FlowInv
     (s' : ScannerState)
     (h_ok : scanNextToken_dispatchBlockIndicators s c = .ok (some s')) :
     FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
-  sorry
+  -- Block indicators: `-` (blockEntry), `?` (key), `:` (value)
+  unfold scanNextToken_dispatchBlockIndicators at h_ok
+  simp only [bind, bind_ok_simp, pure, Pure.pure, Except.pure] at h_ok
+  simp only [Except.bind] at h_ok
+  repeat (any_goals (split at h_ok))
+  any_goals contradiction
+  all_goals (try simp only [Except.ok.injEq, Option.some.injEq] at *)
+  any_goals contradiction
+  all_goals (try subst_vars)
+  -- After splitting, we have 3 cases: scanBlockEntry, scanKey, scanValue
+  -- scanBlockEntry case
+  all_goals (try (
+    rename_i s_be h_be
+    constructor
+    · exact scanBlockEntry_preserves_FlowContextPSV s s_be h_fpsv h_be
+    · exact scanBlockEntry_preserves_FlowNestingInv s s_be h_fni h_be))
+  -- scanKey case
+  all_goals (try (
+    rename_i s_k h_k
+    constructor
+    · exact scanKey_preserves_FlowContextPSV s s_k h_fpsv h_k
+    · exact scanKey_preserves_FlowNestingInv s s_k h_fni h_k))
+  -- scanValue case
+  all_goals (
+    rename_i s_v h_v
+    constructor
+    · exact scanValue_preserves_FlowContextPSV s s_v h_fpsv h_v
+    · exact scanValue_preserves_FlowNestingInv s s_v h_fni h_v)
 
 /-- Content dispatch preserves `FlowInv`. -/
 theorem dispatchContent_preserves_FlowInv
