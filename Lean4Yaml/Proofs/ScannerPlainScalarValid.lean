@@ -2107,7 +2107,177 @@ theorem dispatchFlowIndicators_preserves_FlowInv
     (s' : ScannerState)
     (h_ok : scanNextToken_dispatchFlowIndicators s c = .ok (some s')) :
     FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
-  sorry
+  -- Flow indicators: `[`, `]`, `{`, `}`, `,`
+  -- These change flowLevel and emit flow tokens
+  unfold scanNextToken_dispatchFlowIndicators at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  -- Split on each character check
+  split at h_ok
+  · -- c == '['
+    injection h_ok with h_ok2; injection h_ok2 with h_eq; subst h_eq
+    -- s' = scanFlowSequenceStart s
+    constructor
+    · -- FlowContextPSV: new token is flowSequenceStart (not plain scalar)
+      refine FlowContextPSV_of_prefix_and_new s.tokens (scanFlowSequenceStart s).tokens h_fpsv ?_ ?_ ?_
+      · have : (scanFlowSequenceStart s).tokens.size ≥ s.tokens.size + 1 := by
+          simp [scanFlowSequenceStart_adds_one_token]
+        omega
+      · intro i hi
+        exact scanFlowSequenceStart_preserves_prefix s i hi
+      · intro j hj hge _
+        apply fpsv_of_not_plain
+        -- j = s.tokens.size, token is flowSequenceStart
+        have : j = s.tokens.size := by
+          have : (scanFlowSequenceStart s).tokens.size = s.tokens.size + 1 := scanFlowSequenceStart_adds_one_token s
+          omega
+        subst this
+        unfold scanFlowSequenceStart
+        simp [ScannerState.emit, advance_preserves_tokens, Array.getElem_push_eq]
+    · -- FlowNestingInv: flowLevel increases by 1, flowNesting increases by 1
+      unfold FlowNestingInv at *
+      unfold scanFlowSequenceStart
+      simp [ScannerState.emit, advance_preserves_tokens, advance_preserves_flowLevel, Array.size_push]
+      rw [flowNesting_push, h_fni]
+  · split at h_ok
+    · split at h_ok
+      · contradiction  -- flowLevel == 0 error
+      · split at h_ok
+        · contradiction  -- validateFlowClose error
+        · -- c == ']', s' = scanFlowSequenceEnd s
+          injection h_ok with h_ok2; injection h_ok2 with h_eq; subst h_eq
+          constructor
+          · -- FlowContextPSV: new token is flowSequenceEnd (not plain scalar)
+            refine FlowContextPSV_of_prefix_and_new s.tokens (scanFlowSequenceEnd s).tokens h_fpsv ?_ ?_ ?_
+            · have : (scanFlowSequenceEnd s).tokens.size ≥ s.tokens.size + 1 := by
+                simp [scanFlowSequenceEnd_adds_one_token]
+              omega
+            · intro i hi
+              exact scanFlowSequenceEnd_preserves_prefix s i hi
+            · intro j hj hge _
+              apply fpsv_of_not_plain
+              have : j = s.tokens.size := by
+                have : (scanFlowSequenceEnd s).tokens.size = s.tokens.size + 1 := scanFlowSequenceEnd_adds_one_token s
+                omega
+              subst this
+              unfold scanFlowSequenceEnd
+              simp [ScannerState.emit, advance_preserves_tokens, Array.getElem_push_eq]
+          · -- FlowNestingInv: flowLevel decreases by 1, flowNesting decreases by 1
+            unfold FlowNestingInv at *
+            unfold scanFlowSequenceEnd
+            simp [ScannerState.emit, advance_preserves_tokens, advance_preserves_flowLevel, Array.size_push]
+            rw [flowNesting_push, h_fni]
+    · split at h_ok
+      · -- c == '{'
+        injection h_ok with h_ok2; injection h_ok2 with h_eq; subst h_eq
+        constructor
+        · -- FlowContextPSV
+          refine FlowContextPSV_of_prefix_and_new s.tokens (scanFlowMappingStart s).tokens h_fpsv ?_ ?_ ?_
+          · have : (scanFlowMappingStart s).tokens.size ≥ s.tokens.size + 1 := by
+              simp [scanFlowMappingStart_adds_one_token]
+            omega
+          · intro i hi
+            exact scanFlowMappingStart_preserves_prefix s i hi
+          · intro j hj hge _
+            apply fpsv_of_not_plain
+            have : j = s.tokens.size := by
+              have : (scanFlowMappingStart s).tokens.size = s.tokens.size + 1 := scanFlowMappingStart_adds_one_token s
+              omega
+            subst this
+            unfold scanFlowMappingStart
+            simp [ScannerState.emit, advance_preserves_tokens, Array.getElem_push_eq]
+        · -- FlowNestingInv
+          unfold FlowNestingInv at *
+          unfold scanFlowMappingStart
+          simp [ScannerState.emit, advance_preserves_tokens, advance_preserves_flowLevel, Array.size_push]
+          rw [flowNesting_push, h_fni]
+      · split at h_ok
+        · split at h_ok
+          · contradiction  -- flowLevel == 0 error
+          · split at h_ok
+            · contradiction  -- validateFlowClose error
+            · -- c == '}'
+              injection h_ok with h_ok2; injection h_ok2 with h_eq; subst h_eq
+              constructor
+              · -- FlowContextPSV
+                refine FlowContextPSV_of_prefix_and_new s.tokens (scanFlowMappingEnd s).tokens h_fpsv ?_ ?_ ?_
+                · have : (scanFlowMappingEnd s).tokens.size ≥ s.tokens.size + 1 := by
+                    simp [scanFlowMappingEnd_adds_one_token]
+                  omega
+                · intro i hi
+                  exact scanFlowMappingEnd_preserves_prefix s i hi
+                · intro j hj hge _
+                  apply fpsv_of_not_plain
+                  have : j = s.tokens.size := by
+                    have : (scanFlowMappingEnd s).tokens.size = s.tokens.size + 1 := scanFlowMappingEnd_adds_one_token s
+                    omega
+                  subst this
+                  unfold scanFlowMappingEnd
+                  simp [ScannerState.emit, advance_preserves_tokens, Array.getElem_push_eq]
+              · -- FlowNestingInv
+                unfold FlowNestingInv at *
+                unfold scanFlowMappingEnd
+                simp [ScannerState.emit, advance_preserves_tokens, advance_preserves_flowLevel, Array.size_push]
+                rw [flowNesting_push, h_fni]
+        · split at h_ok
+          · -- c == ','
+            split at h_ok
+            · contradiction  -- flowLevel == 0 error
+            · -- flowLevel > 0, split on scanFlowEntry result
+              split at h_ok
+              · contradiction  -- scanFlowEntry error
+              · rename_i _ s_flow h_flow
+                injection h_ok with h_ok2; injection h_ok2 with h_eq; subst h_eq
+                -- s' = s_flow = result of scanFlowEntry s
+                -- scanFlowEntry emits .flowEntry (not plain scalar) and preserves flowLevel
+                constructor
+                · -- FlowContextPSV
+                  refine FlowContextPSV_of_prefix_and_new s.tokens s_flow.tokens h_fpsv ?_ ?_ ?_
+                  · have : s_flow.tokens.size ≥ s.tokens.size + 1 := by
+                      exact scanFlowEntry_adds_one_token s s_flow h_flow
+                    omega
+                  · intro i hi
+                    exact scanFlowEntry_preserves_prefix s s_flow h_flow i hi
+                  · intro j hj hge _
+                    apply fpsv_of_not_plain
+                    have hsize : s_flow.tokens.size = s.tokens.size + 1 := by
+                      have := scanFlowEntry_adds_one_token s s_flow h_flow
+                      unfold scanFlowEntry at h_flow
+                      simp only [bind, Except.bind, pure, Except.pure] at h_flow
+                      split at h_flow
+                      · split at h_flow
+                        · simp at h_flow
+                        · injection h_flow with h_eq; subst h_eq
+                          simp [ScannerState.emit, advance_preserves_tokens, Array.size_push]
+                      · injection h_flow with h_eq; subst h_eq
+                        simp [ScannerState.emit, advance_preserves_tokens, Array.size_push]
+                    have : j = s.tokens.size := by omega
+                    subst this
+                    unfold scanFlowEntry at h_flow
+                    simp only [bind, Except.bind, pure, Except.pure] at h_flow
+                    split at h_flow
+                    · split at h_flow
+                      · simp at h_flow
+                      · injection h_flow with h_eq; subst h_eq
+                        simp [ScannerState.emit, advance_preserves_tokens, Array.getElem_push_eq]
+                    · injection h_flow with h_eq; subst h_eq
+                      simp [ScannerState.emit, advance_preserves_tokens, Array.getElem_push_eq]
+                · -- FlowNestingInv
+                  unfold FlowNestingInv at *
+                  have h_fl := scanFlowEntry_preserves_flowLevel s s_flow h_flow
+                  rw [h_fl]
+                  unfold scanFlowEntry at h_flow
+                  simp only [bind, Except.bind, pure, Except.pure] at h_flow
+                  split at h_flow
+                  · split at h_flow
+                    · simp at h_flow
+                    · injection h_flow with h_eq; subst h_eq
+                      simp [ScannerState.emit, advance_preserves_tokens, Array.size_push]
+                      rw [flowNesting_push, h_fni]
+                  · injection h_flow with h_eq; subst h_eq
+                    simp [ScannerState.emit, advance_preserves_tokens, Array.size_push]
+                    rw [flowNesting_push, h_fni]
+          · -- c is not any flow indicator, returns none
+            simp at h_ok
 
 /-! ### pushSequenceIndent / pushMappingIndent token type lemmas -/
 
