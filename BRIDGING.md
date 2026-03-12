@@ -2120,6 +2120,185 @@ entangled with any dependent types.
 
 *Used in:* `scanBlockScalar_preserves_FlowInv` (FlowContextPSV branch)
 
+##### **B3.5 Extension: `setIfInBounds` Infrastructure — scanValue Proof Techniques**
+
+The `scanValue` function is unique among scanner dispatch targets: rather than
+only *appending* new tokens, `scanValuePrepare` *modifies in-place* tokens at
+previously-reserved placeholder positions via `Array.setIfInBounds`. This
+breaks the append-only assumption underlying `FlowContextPSV_of_prefix_and_new`
+and required a new proof infrastructure of ~200 lines and ~9 build-fix
+iterations to resolve.
+
+**The core problem — prefix preservation fails for in-place modification:**
+
+`FlowContextPSV_of_prefix_and_new` assumes `s'.tokens` is a prefix extension
+of `s.tokens` — every prior token is unchanged, and only new tokens at positions
+≥ `s.tokens.size` need fresh proofs. But `scanValuePrepare`, when
+`simpleKey.possible = true`, calls `setIfInBounds` to overwrite placeholder
+tokens at indices *below* `s.tokens.size` with `.key` and `.blockMappingStart`.
+This means existing token values change, so the prefix argument fails.
+
+**Proof technique — `flowNesting` preservation through `setIfInBounds`:**
+
+The key insight is that `setIfInBounds` replaces one non-flow token (`.placeholder`)
+with another non-flow token (`.key` or `.blockMappingStart`). Since `flowNesting`
+only depends on the four flow delimiter tokens (`.flowSequenceStart`, `.flowMappingStart`,
+`.flowSequenceEnd`, `.flowMappingEnd`), swapping non-flow tokens cannot change
+the flow depth at any position. The proof proceeds by induction on `target - pos`
+(the `flowNesting.go` fuel), using `Array.getElem_setIfInBounds` to split each
+step into "modified index" vs "unmodified index" cases:
+
+```lean
+theorem flowNesting_go_setIfInBounds_non_flow ... := by
+  generalize hn : target - pos = n
+  induction n generalizing pos depth with
+  | zero => rw [flowNesting_go_ge_target ..., flowNesting_go_ge_target ...]
+  | succ n ih =>
+    rw [flowNesting_go_step ..., flowNesting_go_step ...]
+    simp only [Array.getElem_setIfInBounds h_pos]
+    by_cases h_eq : idx = pos
+    · subst h_eq; rw [if_pos rfl]
+      -- Both old and new tokens map depth ↦ depth (non-flow)
+      have hd1 : (match val.val with ...) = depth := ...
+      have hd2 : (match (tokens[idx]).val with ...) = depth := ...
+      rw [hd1, hd2]; exact ih ...
+    · rw [if_neg h_eq]; exact ih ...
+```
+
+*Helper chain:* `flowNesting_depth_non_flow` → `flowNesting_go_setIfInBounds_non_flow`
+→ `flowNesting_setIfInBounds_non_flow` → `FlowContextPSV_setIfInBounds`
+
+**Proof technique — match-compilation mismatch and inline `generalize`:**
+
+A surprising obstacle: `flowNesting_depth_non_flow` is a simple helper that maps
+non-flow tokens to `depth` unchanged via `cases v`. However, Lean's kernel
+compiles the theorem's match expression with proof arguments as a **tupled
+discriminant** — `match val.val, hv1, hv2, hv3, hv4 with | ...` — while the
+goal in `flowNesting_go_setIfInBounds_non_flow` contains a **simple match** —
+`match val.val with | ...`. These are different kernel terms, so `rw` silently
+fails (the LHS doesn't match the goal).
+
+Solution: Instead of rewriting with the helper lemma, **inline the proof** at
+each use site using `generalize` to abstract the token value out of the four
+negation hypotheses, then case-split:
+
+```lean
+-- Instead of: rw [flowNesting_depth_non_flow ...] (FAILS: kernel match mismatch)
+-- Use inline proof:
+have hd : (match val.val with
+    | .flowSequenceStart | .flowMappingStart => depth + 1
+    | .flowSequenceEnd | .flowMappingEnd => if depth > 0 then depth - 1 else 0
+    | _ => depth) = depth := by
+  generalize val.val = v at hv1 hv2 hv3 hv4
+  cases v <;> first | contradiction | rfl
+```
+
+The `generalize val.val = v at hv1 hv2 hv3 hv4` replaces `val.val` with a fresh
+`v` in the negation hypotheses without touching the goal's match, so `cases v`
+produces exactly the same match form that the goal expects. Each flow-token case
+is contradicted by the negation hypothesis, and all other cases reduce to `rfl`.
+
+*Lesson:* When a helper lemma's compiled match form differs from the goal's match
+form, don't fight the kernel — inline the proof at the use site with `generalize`
+to ensure the tactic-level proof matches the goal's exact kernel representation.
+
+**Proof technique — `rw [if_pos rfl]` instead of `simp only [if_pos rfl]`:**
+
+After `simp only [Array.getElem_setIfInBounds h_pos]`, the goal contains
+`if idx = pos then val else tokens[pos]`. When `idx = pos` has been proved by
+`subst`, the condition becomes `pos = pos`. Using `simp only [if_pos rfl]`
+*fails* because `simp`'s preprocessing phase reduces `pos = pos` to `True`
+before attempting to match the `if`-condition, so the rewrite pattern
+`if_pos rfl : @ite _ (pos = pos) ... = ...` no longer matches.
+
+Solution: Use `rw [if_pos rfl]` instead. Unlike `simp`, `rw` performs direct
+structural matching without preprocessing, so `if_pos rfl` matches the
+`if pos = pos then ...` pattern exactly.
+
+*Dual:* `rw [if_neg h_eq]` works correctly for the `idx ≠ pos` branch.
+
+**Proof technique — placeholder hypothesis threading for `scanValue`:**
+
+`scanValuePrepare` overwrites tokens at `simpleKey.tokenIndex` and
+`simpleKey.tokenIndex + 1`. For `FlowContextPSV_setIfInBounds`, we need to know
+the *original* token values are non-flow. But within `scanValue_preserves_FlowContextPSV`,
+we have no access to scanner-level invariants about placeholder positions.
+
+Solution: Add the knowledge as an explicit hypothesis and thread it through the
+call chain:
+
+```lean
+theorem scanValue_preserves_FlowContextPSV (s s' : ScannerState)
+    (h_fpsv : FlowContextPSV s.tokens)
+    (h_ok : scanValue s = .ok s')
+    (h_ph : s.simpleKey.possible = true →
+      (∀ (h : s.simpleKey.tokenIndex < s.tokens.size),
+        (s.tokens[s.simpleKey.tokenIndex]'h).val = .placeholder) ∧
+      (∀ (h : s.simpleKey.tokenIndex + 1 < s.tokens.size),
+        (s.tokens[s.simpleKey.tokenIndex + 1]'h).val = .placeholder)) :
+    FlowContextPSV s'.tokens
+```
+
+The placeholder hypothesis uses explicit bounds proofs (`∀ (h : idx < tokens.size),
+(tokens[idx]'h).val = .placeholder`) rather than bare indexing, avoiding
+autobound implicit issues that cause type errors. The caller
+(`dispatchBlockIndicators_preserves_FlowInv`) supplies the precondition with
+`sorry` — discharging it requires a `ScanInv`-level invariant tracking
+placeholder positions, a future extension.
+
+**Proof technique — `.tokens` field equality instead of full struct equality:**
+
+In the `pushMappingIndent` branch of `scanValuePrepare`, `by_cases h_col` gives
+two paths. The `col > currentIndent` path produces
+`(pushMappingIndent s ↑s.col).tokens = (s.emit .blockMappingStart).tokens`. Attempting
+`rw [h_pm]` on the full struct equality fails because of dependent-type
+entanglement across struct fields. Instead, prove equality on just the `.tokens`
+field:
+
+```lean
+have h_tok : (pushMappingIndent s ↑s.col).tokens = (s.emit .blockMappingStart).tokens := by
+  unfold pushMappingIndent; simp [h_col]
+-- Then use h_tok for token-level reasoning:
+simp only [h_tok, ScannerState.emit, h_jeq, Array.getElem_push_eq]
+```
+
+For the `col ≤ currentIndent` path, `pushMappingIndent` is the identity on
+tokens, so `tokens.size` is unchanged and the new-token branch is vacuously
+false — discharged by `exfalso` + `omega`.
+
+**Proof technique — `scanValueClearKey` threading via `unfold`/`split`:**
+
+`scanValueClearKey` conditionally clears `simpleKey.possible`. The placeholder
+hypothesis must be threaded through: if `possible` was cleared, the hypothesis
+is vacuously true; if not cleared, the original hypothesis applies. This is
+proved by unfolding `scanValueClearKey` in the *goal* and splitting, rather than
+the unsupported `split at h_poss ⊢`:
+
+```lean
+have h_ph_ck : ... := by
+  unfold scanValueClearKey; split
+  · intro h_poss; simp at h_poss  -- cleared → possible = false, contradiction
+  · exact h_ph                     -- unchanged → original hypothesis
+```
+
+**Architecture summary:**
+
+| Lemma | Lines | Technique |
+|-------|-------|-----------|
+| `flowNesting_depth_non_flow` | ~5 | `cases v` exhaustion |
+| `flowNesting_go_setIfInBounds_non_flow` | ~35 | Induction + inline `generalize` |
+| `flowNesting_setIfInBounds_non_flow` | ~5 | Wrapper |
+| `FlowContextPSV_setIfInBounds` | ~20 | `by_cases` on modified index |
+| `scanValuePrepare_preserves_FlowContextPSV` | ~50 | 6-branch split, placeholder threading |
+| `scanValue_preserves_FlowContextPSV` | ~35 | clearKey→prepare→emit pipeline |
+| **Total new infrastructure** | **~150** | — |
+
+**Remaining sorry inventory (2 expected):**
+- `scanValue_preserves_FlowNestingInv` — requires proving `scanValuePrepare`
+  preserves `FlowNestingInv` (non-trivial due to `setIfInBounds` + `pushMappingIndent`)
+- Placeholder hypothesis in `dispatchBlockIndicators_preserves_FlowInv` — requires
+  `ScanInv`-level tracking of placeholder positions
+
 ### Phase C: Discharge `h_grammable` (CRITICAL PATH) (COMPLETE ✅)
 
 With Phases B1–B3 established:

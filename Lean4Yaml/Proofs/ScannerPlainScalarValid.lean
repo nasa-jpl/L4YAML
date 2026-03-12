@@ -1468,6 +1468,12 @@ theorem flowNesting_go_step
           simp only [eq_false (show ¬(pos ≥ target) by omega), ite_false,
             eq_true h_pos, dite_true]
 
+/-- `flowNesting.go` returns `depth` when `pos ≥ target`. -/
+theorem flowNesting_go_ge_target (tokens : Array (Positioned YamlToken))
+    (pos target depth : Nat) (h : pos ≥ target) :
+    flowNesting.go tokens pos target depth = depth := by
+  unfold flowNesting.go; simp [h]
+
 /-- Splitting `flowNesting.go`: processing positions `[pos, target)` can be split
     at any midpoint `mid` s.t. `pos ≤ mid ≤ target`.
 
@@ -3724,25 +3730,221 @@ theorem scanKey_preserves_FlowNestingInv
       rw [this]
       exact h_fni
 
+/-! ### setIfInBounds preserves FlowContextPSV -/
+
+/-- The flow-nesting depth function maps non-flow tokens to `depth` unchanged. -/
+theorem flowNesting_depth_non_flow (v : YamlToken) (depth : Nat)
+    (h1 : v ≠ .flowSequenceStart) (h2 : v ≠ .flowMappingStart)
+    (h3 : v ≠ .flowSequenceEnd) (h4 : v ≠ .flowMappingEnd) :
+    (match v with
+     | .flowSequenceStart | .flowMappingStart => depth + 1
+     | .flowSequenceEnd | .flowMappingEnd => if depth > 0 then depth - 1 else 0
+     | _ => depth) = depth := by
+  cases v <;> first | contradiction | rfl
+
+/-- Replacing a non-flow token with another non-flow token preserves `flowNesting.go`. -/
+theorem flowNesting_go_setIfInBounds_non_flow
+    (tokens : Array (Positioned YamlToken))
+    (idx : Nat) (val : Positioned YamlToken)
+    (h_val_nf : val.val ≠ .flowSequenceStart ∧ val.val ≠ .flowMappingStart ∧
+                val.val ≠ .flowSequenceEnd ∧ val.val ≠ .flowMappingEnd)
+    (h_orig_nf : ∀ (h : idx < tokens.size),
+      (tokens[idx]'h).val ≠ .flowSequenceStart ∧ (tokens[idx]'h).val ≠ .flowMappingStart ∧
+      (tokens[idx]'h).val ≠ .flowSequenceEnd ∧ (tokens[idx]'h).val ≠ .flowMappingEnd)
+    (pos target depth : Nat) :
+    flowNesting.go (tokens.setIfInBounds idx val) pos target depth =
+    flowNesting.go tokens pos target depth := by
+  generalize hn : target - pos = n
+  induction n generalizing pos depth with
+  | zero =>
+    rw [flowNesting_go_ge_target _ _ _ _ (by omega),
+        flowNesting_go_ge_target _ _ _ _ (by omega)]
+  | succ n ih =>
+    by_cases h_pos : pos < tokens.size
+    · have h_pos' : pos < (tokens.setIfInBounds idx val).size := by
+        rw [Array.size_setIfInBounds]; exact h_pos
+      rw [flowNesting_go_step _ _ _ _ h_pos' (by omega),
+          flowNesting_go_step _ _ _ _ h_pos (by omega)]
+      simp only [Array.getElem_setIfInBounds h_pos]
+      by_cases h_eq : idx = pos
+      · subst h_eq; rw [if_pos rfl]
+        rcases h_val_nf with ⟨hv1, hv2, hv3, hv4⟩
+        rcases h_orig_nf h_pos with ⟨ho1, ho2, ho3, ho4⟩
+        have hd1 : (match val.val with
+         | .flowSequenceStart | .flowMappingStart => depth + 1
+         | .flowSequenceEnd | .flowMappingEnd => if depth > 0 then depth - 1 else 0
+         | _ => depth) = depth := by
+          generalize val.val = v at hv1 hv2 hv3 hv4; cases v <;> first | contradiction | rfl
+        have hd2 : (match (tokens[idx]'h_pos).val with
+         | .flowSequenceStart | .flowMappingStart => depth + 1
+         | .flowSequenceEnd | .flowMappingEnd => if depth > 0 then depth - 1 else 0
+         | _ => depth) = depth := by
+          generalize (tokens[idx]'h_pos).val = v at ho1 ho2 ho3 ho4; cases v <;> first | contradiction | rfl
+        rw [hd1, hd2]
+        exact ih (idx + 1) _ (by omega)
+      · rw [if_neg h_eq]
+        exact ih (pos + 1) _ (by omega)
+    · rw [flowNesting_go_oob (tokens.setIfInBounds idx val) pos target depth
+            (by rw [Array.size_setIfInBounds]; omega),
+          flowNesting_go_oob tokens pos target depth (by omega)]
+
+/-- Replacing a non-flow token with a non-flow token preserves `flowNesting`. -/
+theorem flowNesting_setIfInBounds_non_flow
+    (tokens : Array (Positioned YamlToken))
+    (idx : Nat) (val : Positioned YamlToken)
+    (h_val_nf : val.val ≠ .flowSequenceStart ∧ val.val ≠ .flowMappingStart ∧
+                val.val ≠ .flowSequenceEnd ∧ val.val ≠ .flowMappingEnd)
+    (h_orig_nf : ∀ (h : idx < tokens.size),
+      (tokens[idx]'h).val ≠ .flowSequenceStart ∧ (tokens[idx]'h).val ≠ .flowMappingStart ∧
+      (tokens[idx]'h).val ≠ .flowSequenceEnd ∧ (tokens[idx]'h).val ≠ .flowMappingEnd)
+    (target : Nat) :
+    flowNesting (tokens.setIfInBounds idx val) target = flowNesting tokens target := by
+  unfold flowNesting
+  exact flowNesting_go_setIfInBounds_non_flow tokens idx val h_val_nf h_orig_nf 0 target 0
+
+/-- `setIfInBounds` with a non-flow, non-plain replacement preserves `FlowContextPSV`,
+    provided the original token at the modified position is also non-flow. -/
+theorem FlowContextPSV_setIfInBounds
+    (tokens : Array (Positioned YamlToken)) (h_old : FlowContextPSV tokens)
+    (idx : Nat) (val : Positioned YamlToken)
+    (h_np : match val.val with | .scalar _ .plain => False | _ => True)
+    (h_val_nf : val.val ≠ .flowSequenceStart ∧ val.val ≠ .flowMappingStart ∧
+                val.val ≠ .flowSequenceEnd ∧ val.val ≠ .flowMappingEnd)
+    (h_orig_nf : ∀ (h : idx < tokens.size),
+      (tokens[idx]'h).val ≠ .flowSequenceStart ∧ (tokens[idx]'h).val ≠ .flowMappingStart ∧
+      (tokens[idx]'h).val ≠ .flowSequenceEnd ∧ (tokens[idx]'h).val ≠ .flowMappingEnd) :
+    FlowContextPSV (tokens.setIfInBounds idx val) := by
+  by_cases h_idx : idx < tokens.size
+  · intro i hi h_flow
+    have h_i_lt : i < tokens.size := by rw [Array.size_setIfInBounds] at hi; exact hi
+    have h_flow_eq := flowNesting_setIfInBounds_non_flow tokens idx val h_val_nf h_orig_nf i
+    rw [h_flow_eq] at h_flow
+    simp only [Array.getElem_setIfInBounds h_i_lt]
+    by_cases h_eq : idx = i
+    · subst h_eq; rw [if_pos rfl]
+      exact fpsv_of_not_plain val h_np
+    · rw [if_neg h_eq]
+      exact h_old i h_i_lt h_flow
+  · have : tokens.setIfInBounds idx val = tokens := by
+      unfold Array.setIfInBounds; simp [show ¬(idx < tokens.size) from h_idx]
+    rw [this]; exact h_old
+
+/-- `scanValuePrepare` preserves `FlowContextPSV` provided tokens at simple-key
+    positions are placeholders (non-flow tokens). -/
+theorem scanValuePrepare_preserves_FlowContextPSV
+    (s : ScannerState) (h_old : FlowContextPSV s.tokens)
+    (h_ph : s.simpleKey.possible = true →
+      (∀ (h : s.simpleKey.tokenIndex < s.tokens.size),
+        (s.tokens[s.simpleKey.tokenIndex]'h).val = .placeholder) ∧
+      (∀ (h : s.simpleKey.tokenIndex + 1 < s.tokens.size),
+        (s.tokens[s.simpleKey.tokenIndex + 1]'h).val = .placeholder)) :
+    FlowContextPSV (scanValuePrepare s).tokens := by
+  unfold scanValuePrepare
+  split
+  · -- simpleKey.possible = true
+    rename_i h_poss
+    have ⟨h_ph1, h_ph2⟩ := h_ph h_poss
+    split
+    · -- !inFlow
+      split
+      · -- col > currentIndent: two setIfInBounds
+        dsimp only []
+        apply FlowContextPSV_setIfInBounds _ _ _ ⟨s.simpleKey.pos, .key⟩ (by trivial)
+            ⟨by nofun, by nofun, by nofun, by nofun⟩
+        · intro h_lt
+          rw [Array.size_setIfInBounds] at h_lt
+          simp only [Array.getElem_setIfInBounds h_lt,
+                     if_neg (show s.simpleKey.tokenIndex ≠ s.simpleKey.tokenIndex + 1 from by omega)]
+          rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩
+        · apply FlowContextPSV_setIfInBounds _ h_old _ ⟨s.simpleKey.pos, .blockMappingStart⟩
+              (by trivial) ⟨by nofun, by nofun, by nofun, by nofun⟩
+          intro h_lt; rw [h_ph1 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩
+      · -- col ≤ currentIndent: one setIfInBounds
+        dsimp only []
+        apply FlowContextPSV_setIfInBounds _ h_old _ ⟨s.simpleKey.pos, .key⟩ (by trivial)
+            ⟨by nofun, by nofun, by nofun, by nofun⟩
+        intro h_lt; rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩
+    · -- inFlow: one setIfInBounds
+      dsimp only []
+      apply FlowContextPSV_setIfInBounds _ h_old _ ⟨s.simpleKey.pos, .key⟩ (by trivial)
+          ⟨by nofun, by nofun, by nofun, by nofun⟩
+      intro h_lt; rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩
+  · -- simpleKey.possible = false
+    split
+    · -- explicitKeyLine.isSome: tokens unchanged
+      exact h_old
+    · split
+      · -- !inFlow: pushMappingIndent
+        refine FlowContextPSV_of_prefix_and_new s.tokens _ h_old ?_ ?_ ?_
+        · unfold pushMappingIndent; split <;> simp [ScannerState.emit, Array.size_push] <;> omega
+        · intro i hi; exact pushMappingIndent_preserves_prefix s s.col i hi
+        · intro j hj hge h_flow
+          by_cases h_col : ↑s.col > s.currentIndent
+          · -- col > currentIndent: pushMappingIndent emits blockMappingStart
+            have h_tok : (pushMappingIndent s ↑s.col).tokens = (s.emit .blockMappingStart).tokens := by
+              unfold pushMappingIndent; simp [h_col]
+            have h_sz_eq : (pushMappingIndent s ↑s.col).tokens.size = s.tokens.size + 1 := by
+              rw [h_tok]; simp [ScannerState.emit, Array.size_push]
+            have h_jeq : j = s.tokens.size := by omega
+            apply fpsv_of_not_plain
+            have h_val : (pushMappingIndent s ↑s.col).tokens[j].val = .blockMappingStart := by
+              simp only [h_tok, ScannerState.emit, h_jeq, Array.getElem_push_eq]
+            rw [h_val]; trivial
+          · -- col ≤ currentIndent: identity, tokens unchanged
+            exfalso
+            have : (pushMappingIndent s ↑s.col).tokens.size = s.tokens.size := by
+              unfold pushMappingIndent; rw [if_neg h_col]
+            omega
+      · -- inFlow: identity
+        exact h_old
+
 theorem scanValue_preserves_FlowContextPSV
     (s s' : ScannerState) (h_fpsv : FlowContextPSV s.tokens)
-    (h_ok : scanValue s = .ok s') :
+    (h_ok : scanValue s = .ok s')
+    (h_ph : s.simpleKey.possible = true →
+      (∀ (h : s.simpleKey.tokenIndex < s.tokens.size),
+        (s.tokens[s.simpleKey.tokenIndex]'h).val = .placeholder) ∧
+      (∀ (h : s.simpleKey.tokenIndex + 1 < s.tokens.size),
+        (s.tokens[s.simpleKey.tokenIndex + 1]'h).val = .placeholder)) :
     FlowContextPSV s'.tokens := by
-  -- scanValue emits .value (and possibly .key, .blockMappingStart via scanValuePrepare)
-  -- None are plain scalars
-  refine FlowContextPSV_of_prefix_and_new s.tokens s'.tokens h_fpsv ?_ ?_ ?_
-  · -- h_mono
-    have : s'.tokens.size ≥ s.tokens.size + 1 := scanValue_adds_tokens s s' h_ok
-    omega
-  · -- h_prefix
-    intro i hi
-    -- scanValue_preserves_prefix has complex requirements about simpleKey
-    sorry
-  · -- h_new
-    intro j hj hge _
-    apply fpsv_of_not_plain
-    -- scanValue emits .value and possibly .key, .blockMappingStart
-    sorry
+  -- Follow the pattern of scanValue_preserves_PlainScalarsValid:
+  -- unfold scanValue, thread through clearKey → prepare → emit → advance
+  unfold scanValue scanValueTabCheck at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · contradiction
+  · split at h_ok
+    · contradiction
+    · injection h_ok with h_ok; subst h_ok
+      simp only [advance_preserves_tokens]
+      -- s'.tokens = (scanValuePrepare (scanValueClearKey s)).tokens.push ⟨pos, .value⟩
+      -- Step 1: FlowContextPSV for scanValuePrepare (scanValueClearKey s)
+      have h_ck := scanValueClearKey_preserves_tokens s
+      have h_fpsv_ck : FlowContextPSV (scanValueClearKey s).tokens := by
+        rw [h_ck]; exact h_fpsv
+      have h_ph_ck : (scanValueClearKey s).simpleKey.possible = true →
+          (∀ (h : (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size),
+            ((scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex]'h).val = .placeholder) ∧
+          (∀ (h : (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size),
+            ((scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex + 1]'h).val = .placeholder) := by
+        unfold scanValueClearKey
+        split
+        · intro h_poss; simp at h_poss
+        · exact h_ph
+      have h_fpsv_prep := scanValuePrepare_preserves_FlowContextPSV
+        (scanValueClearKey s) h_fpsv_ck h_ph_ck
+      -- Step 2: FlowContextPSV_of_prefix_and_new for emit .value
+      refine FlowContextPSV_of_prefix_and_new
+        (scanValuePrepare (scanValueClearKey s)).tokens _ h_fpsv_prep ?_ ?_ ?_
+      · simp [ScannerState.emit, Array.size_push]
+      · intro i hi
+        exact emit_preserves_tokens_at (scanValuePrepare (scanValueClearKey s)) .value i hi
+      · intro j hj hge _
+        apply fpsv_of_not_plain
+        simp only [ScannerState.emit] at hj ⊢
+        have : j = (scanValuePrepare (scanValueClearKey s)).tokens.size := by
+          simp [Array.size_push] at hj; omega
+        subst this; simp [Array.getElem_push_eq]
 
 theorem scanValue_preserves_FlowNestingInv
     (s s' : ScannerState) (h_fni : FlowNestingInv s)
@@ -3804,6 +4006,9 @@ theorem dispatchBlockIndicators_preserves_FlowInv
     rename_i s_v h_v
     constructor
     · exact scanValue_preserves_FlowContextPSV s s_v h_fpsv h_v
+        (by -- Placeholder invariant: tokens at simpleKey positions are .placeholder
+            -- This follows from ScanInv but is not yet threaded through the proof chain.
+            sorry)
     · exact scanValue_preserves_FlowNestingInv s s_v h_fni h_v)
 
 /-! ### Scan chain threading -/
@@ -3960,12 +4165,6 @@ theorem flowNesting_go_placeholder_neutral
     flowNesting.go tokens (k + 1) target depth := by
   rw [flowNesting_go_step _ _ _ _ hk h_tgt]
   simp [h_placeholder]
-
-/-- `flowNesting.go` returns `depth` when `pos ≥ target`. -/
-theorem flowNesting_go_ge_target (tokens : Array (Positioned YamlToken))
-    (pos target depth : Nat) (h : pos ≥ target) :
-    flowNesting.go tokens pos target depth = depth := by
-  unfold flowNesting.go; simp [h]
 
 /-- Core List-level reverse direction: for every position `i` in a filtered list,
     there exists a canonical position `j` in the original list such that the
