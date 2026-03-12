@@ -2491,24 +2491,120 @@ theorem scanTag_preserves_FlowInv (s : ScannerState)
 
 -- Helper: scalar scan functions preserve flowLevel
 
+theorem consumeExactSpaces_preserves_flowLevel (s : ScannerState) (count : Nat) :
+    (consumeExactSpaces s count).snd.flowLevel = s.flowLevel := by
+  induction count generalizing s with
+  | zero => unfold consumeExactSpaces; rfl
+  | succ count' ih =>
+    unfold consumeExactSpaces
+    split
+    · simp [ih, advance_preserves_flowLevel]
+    · rfl
+
+theorem consumeNewline_preserves_flowLevel (s : ScannerState) :
+    (consumeNewline s).flowLevel = s.flowLevel := by
+  unfold consumeNewline
+  split
+  · simp [advance_preserves_flowLevel]
+  · simp only []
+    split
+    · simp [advance_preserves_flowLevel]
+    · simp [advance_preserves_flowLevel]
+  · rfl
+
+theorem collectLineContentLoop_preserves_flowLevel (s : ScannerState) (content : String) (fuel : Nat) :
+    (collectLineContentLoop s content fuel).snd.flowLevel = s.flowLevel := by
+  induction fuel generalizing s content with
+  | zero => unfold collectLineContentLoop; rfl
+  | succ fuel' ih =>
+    unfold collectLineContentLoop
+    split
+    · split
+      · rfl
+      · rw [ih, advance_preserves_flowLevel]
+    · rfl
+
 theorem collectBlockScalarLoop_preserves_flowLevel (s : ScannerState) (rawContent : String)
     (fuel contentIndent inputEnd : Nat) :
     (collectBlockScalarLoop s rawContent fuel contentIndent inputEnd).snd.flowLevel = s.flowLevel := by
-  sorry
+  induction fuel generalizing s rawContent with
+  | zero => unfold collectBlockScalarLoop; rfl
+  | succ fuel' ih =>
+    unfold collectBlockScalarLoop
+    split
+    · rfl
+    · cases h_eq : consumeExactSpaces s contentIndent with
+      | mk spacesConsumed s_after_spaces =>
+        have h_fl_spaces : s_after_spaces.flowLevel = s.flowLevel := by
+          have := consumeExactSpaces_preserves_flowLevel s contentIndent
+          rw [h_eq] at this; exact this
+        simp only []
+        split
+        · exact h_fl_spaces
+        · split
+          · rw [ih, consumeNewline_preserves_flowLevel, h_fl_spaces]
+          · split
+            · rfl
+            · have h_fl_line := collectLineContentLoop_preserves_flowLevel
+                  s_after_spaces ""
+                  (inputEnd - s_after_spaces.offset + 1)
+              split
+              · split
+                · rw [ih, consumeNewline_preserves_flowLevel, h_fl_line, h_fl_spaces]
+                · rw [ih, h_fl_line, h_fl_spaces]
+              · rw [h_fl_line, h_fl_spaces]
+
+theorem collectCommentTextLoop_preserves_flowLevel (s : ScannerState) (text : String) (fuel : Nat) :
+    (collectCommentTextLoop s text fuel).snd.flowLevel = s.flowLevel := by
+  induction fuel generalizing s text with
+  | zero => unfold collectCommentTextLoop; rfl
+  | succ fuel' ih =>
+    unfold collectCommentTextLoop
+    split
+    · split
+      · rfl
+      · rw [ih, advance_preserves_flowLevel]
+    · rfl
+
+theorem scanBlockScalarSkipComment_preserves_flowLevel (s : ScannerState) :
+    (scanBlockScalarSkipComment s).flowLevel = s.flowLevel := by
+  unfold scanBlockScalarSkipComment
+  split
+  · split
+    · simp only []
+      split
+      · simp only [collectCommentTextLoop_preserves_flowLevel, advance_preserves_flowLevel]
+      · rfl
+    · rfl
+  · rfl
 
 theorem parseBlockHeaderLoop_preserves_flowLevel (s : ScannerState) (chomp : ChompStyle)
     (explicitOffset : Option Nat) (fuel : Nat) :
     (parseBlockHeaderLoop s chomp explicitOffset fuel).snd.snd.flowLevel = s.flowLevel := by
-  sorry
-
-theorem scanBlockScalarSkipComment_preserves_flowLevel (s : ScannerState) :
-    (scanBlockScalarSkipComment s).flowLevel = s.flowLevel := by
-  sorry
+  induction fuel generalizing s chomp explicitOffset with
+  | zero => unfold parseBlockHeaderLoop; rfl
+  | succ fuel' ih =>
+    unfold parseBlockHeaderLoop
+    split
+    · rw [ih, advance_preserves_flowLevel]
+    · rw [ih, advance_preserves_flowLevel]
+    · split
+      · rw [ih, advance_preserves_flowLevel]
+      · rfl
+    · rfl
 
 theorem scanBlockScalarConsumeNewline_preserves_flowLevel (s s' : ScannerState)
     (h : scanBlockScalarConsumeNewline s = .ok s') :
     s'.flowLevel = s.flowLevel := by
-  sorry
+  unfold scanBlockScalarConsumeNewline at h
+  split at h
+  · split at h
+    · injection h with h_eq; subst h_eq
+      exact consumeNewline_preserves_flowLevel s
+    · split at h
+      · injection h with h_eq; subst h_eq; rfl
+      · contradiction
+  · injection h with h_eq; subst h_eq; rfl
 
 theorem scanBlockScalar_preserves_flowLevel (s s' : ScannerState)
     (h_ok : scanBlockScalar s = .ok s') :
