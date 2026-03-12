@@ -2293,6 +2293,45 @@ theorem collectAnchorNameLoop_preserves_flowLevel (s : ScannerState) (acc : Stri
       · rfl
     · rfl
 
+theorem collectVerbatimTagLoop_preserves_flowLevel (s : ScannerState) (uri : String) (fuel : Nat) :
+    (collectVerbatimTagLoop s uri fuel).snd.flowLevel = s.flowLevel := by
+  induction fuel generalizing s uri with
+  | zero => unfold collectVerbatimTagLoop; rfl
+  | succ fuel' ih =>
+    unfold collectVerbatimTagLoop
+    split
+    · -- some '>'
+      exact advance_preserves_flowLevel s
+    · -- some c (not '>')
+      rw [ih, advance_preserves_flowLevel]
+    · -- none
+      rfl
+
+theorem collectTagSuffixLoop_preserves_flowLevel (s : ScannerState) (suffix : String) (fuel : Nat) :
+    (collectTagSuffixLoop s suffix fuel).snd.flowLevel = s.flowLevel := by
+  induction fuel generalizing s suffix with
+  | zero => unfold collectTagSuffixLoop; rfl
+  | succ fuel' ih =>
+    unfold collectTagSuffixLoop
+    split
+    · split
+      · rw [ih, advance_preserves_flowLevel]
+      · rfl
+    · rfl
+
+theorem collectTagHandleLoop_preserves_flowLevel (s : ScannerState) (chars : String) (fuel : Nat) :
+    (collectTagHandleLoop s chars fuel).snd.snd.flowLevel = s.flowLevel := by
+  induction fuel generalizing s chars with
+  | zero => unfold collectTagHandleLoop; rfl
+  | succ fuel' ih =>
+    unfold collectTagHandleLoop
+    split
+    · exact advance_preserves_flowLevel s
+    · split
+      · rw [ih, advance_preserves_flowLevel]
+      · rfl
+    · rfl
+
 theorem scanAnchorOrAlias_preserves_flowLevel (s : ScannerState) (isAnchor : Bool) :
     (scanAnchorOrAlias s isAnchor).flowLevel = s.flowLevel := by
   unfold scanAnchorOrAlias
@@ -2344,38 +2383,368 @@ theorem scanAnchorOrAlias_preserves_FlowInv (s : ScannerState) (isAnchor : Bool)
     split <;> (rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, _⟩
            (by nofun) (by nofun) (by nofun) (by nofun)]; exact h_fni)
 
+theorem scanVerbatimTag_preserves_flowLevel (s : ScannerState) (startPos : YamlPos) :
+    (scanVerbatimTag s startPos).flowLevel = s.flowLevel := by
+  unfold scanVerbatimTag
+  simp [ScannerState.emitAt,
+        collectVerbatimTagLoop_preserves_flowLevel, advance_preserves_flowLevel]
+
+theorem scanSecondaryTag_preserves_flowLevel (s : ScannerState) (startPos : YamlPos) :
+    (scanSecondaryTag s startPos).flowLevel = s.flowLevel := by
+  unfold scanSecondaryTag
+  simp [ScannerState.emitAt, collectTagSuffixLoop_preserves_flowLevel, advance_preserves_flowLevel]
+
+theorem scanNamedTag_preserves_flowLevel (s : ScannerState) (startPos : YamlPos) (inputEnd : Nat) :
+    (scanNamedTag s startPos inputEnd).flowLevel = s.flowLevel := by
+  unfold scanNamedTag
+  generalize h_handle : (collectTagHandleLoop s "" (inputEnd - s.offset)) = handle_result
+  have h_fl : handle_result.2.2.flowLevel = s.flowLevel := by
+    rw [← h_handle]
+    exact collectTagHandleLoop_preserves_flowLevel s "" (inputEnd - s.offset)
+  simp only [h_handle]
+  split
+  · simp [ScannerState.emitAt,
+          collectTagSuffixLoop_preserves_flowLevel, h_fl]
+  · simp [ScannerState.emitAt, h_fl]
+
+theorem scanTag_preserves_flowLevel (s : ScannerState) :
+    (scanTag s).flowLevel = s.flowLevel := by
+  unfold scanTag
+  split <;> simp [scanVerbatimTag_preserves_flowLevel, scanSecondaryTag_preserves_flowLevel,
+                   scanNamedTag_preserves_flowLevel]
+
+theorem scanVerbatimTag_new_token_is_tag (s : ScannerState) (startPos : YamlPos)
+    (h : s.tokens.size < (scanVerbatimTag s startPos).tokens.size) :
+    ∃ handle suffix, ((scanVerbatimTag s startPos).tokens[s.tokens.size]'h).val = .tag handle suffix := by
+  unfold scanVerbatimTag
+  simp [ScannerState.emitAt, collectVerbatimTagLoop_preserves_tokens,
+        advance_preserves_tokens, Array.getElem_push_eq]
+  exact ⟨_, _, rfl⟩
+
+theorem scanSecondaryTag_new_token_is_tag (s : ScannerState) (startPos : YamlPos)
+    (h : s.tokens.size < (scanSecondaryTag s startPos).tokens.size) :
+    ∃ handle suffix, ((scanSecondaryTag s startPos).tokens[s.tokens.size]'h).val = .tag handle suffix := by
+  unfold scanSecondaryTag
+  simp [ScannerState.emitAt, collectTagSuffixLoop_preserves_tokens,
+        advance_preserves_tokens, Array.getElem_push_eq]
+  exact ⟨_, _, rfl⟩
+
+theorem scanNamedTag_new_token_is_tag (s : ScannerState) (startPos : YamlPos) (inputEnd : Nat)
+    (h : s.tokens.size < (scanNamedTag s startPos inputEnd).tokens.size) :
+    ∃ handle suffix, ((scanNamedTag s startPos inputEnd).tokens[s.tokens.size]'h).val = .tag handle suffix := by
+  unfold scanNamedTag
+  simp [ScannerState.emitAt]
+  exact ⟨_, _, rfl⟩
+
+theorem scanTag_new_token_not_plain (s : ScannerState) :
+    let tok := (scanTag s).tokens[s.tokens.size]'(by
+      have := scanTag_adds_one_token s; omega)
+    match tok.val with
+    | .scalar _ .plain => False
+    | _ => True := by
+  unfold scanTag
+  split
+  · obtain ⟨_, _, h⟩ := scanVerbatimTag_new_token_is_tag _ _ _
+    rw [h]; trivial
+  · obtain ⟨_, _, h⟩ := scanSecondaryTag_new_token_is_tag _ _ _
+    rw [h]; trivial
+  · obtain ⟨_, _, h⟩ := scanNamedTag_new_token_is_tag _ _ _ _
+    rw [h]; trivial
+
 theorem scanTag_preserves_FlowInv (s : ScannerState)
     (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s) :
     FlowContextPSV (scanTag s).tokens ∧ FlowNestingInv (scanTag s) := by
-  sorry
+  constructor
+  · -- FlowContextPSV: tag is not plain scalar
+    refine FlowContextPSV_of_prefix_and_new s.tokens (scanTag s).tokens h_fpsv ?_ ?_ ?_
+    · have : (scanTag s).tokens.size = s.tokens.size + 1 := scanTag_adds_one_token s
+      omega
+    · intro i hi
+      exact scanTag_preserves_prefix s i hi
+    · intro j hj hge _
+      have : j = s.tokens.size := by
+        have : (scanTag s).tokens.size = s.tokens.size + 1 := scanTag_adds_one_token s
+        omega
+      subst this
+      apply fpsv_of_not_plain
+      exact scanTag_new_token_not_plain s
+  · -- FlowNestingInv: flowLevel unchanged, tag is non-flow token
+    unfold FlowNestingInv at *
+    have h_size : (scanTag s).tokens.size = s.tokens.size + 1 := scanTag_adds_one_token s
+    rw [h_size, scanTag_preserves_flowLevel]
+    -- scanTag emits one non-flow token
+    unfold scanTag
+    split <;> (
+      unfold scanVerbatimTag scanSecondaryTag scanNamedTag
+      simp only [ScannerState.emitAt, advance_preserves_tokens,
+                 collectVerbatimTagLoop_preserves_tokens,
+                 collectTagSuffixLoop_preserves_tokens,
+                 collectTagHandleLoop_preserves_tokens]
+      rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .tag _ _⟩
+           (by nofun) (by nofun) (by nofun) (by nofun)]
+      exact h_fni)
+
+-- Helper: scalar scan functions preserve flowLevel
+
+theorem scanBlockScalar_preserves_flowLevel (s s' : ScannerState)
+    (h_ok : scanBlockScalar s = .ok s') :
+    s'.flowLevel = s.flowLevel := by
+  unfold scanBlockScalar at h_ok
+  split at h_ok
+  · contradiction
+  · unfold scanBlockScalarBody at h_ok
+    split at h_ok <;> try contradiction
+    all_goals (injection h_ok with h_eq; subst h_eq; rfl)
+
+theorem scanDoubleQuoted_preserves_flowLevel (s s' : ScannerState)
+    (h_ok : scanDoubleQuoted s = .ok s') :
+    s'.flowLevel = s.flowLevel := by
+  unfold scanDoubleQuoted at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok <;> try contradiction
+  all_goals (split at h_ok <;> try contradiction; injection h_ok with h_eq; subst h_eq; rfl)
+
+theorem scanSingleQuoted_preserves_flowLevel (s s' : ScannerState)
+    (h_ok : scanSingleQuoted s = .ok s') :
+    s'.flowLevel = s.flowLevel := by
+  unfold scanSingleQuoted at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok <;> try contradiction
+  all_goals (split at h_ok <;> try contradiction; injection h_ok with h_eq; subst h_eq; rfl)
+
+theorem scanPlainScalar_preserves_flowLevel (s s' : ScannerState)
+    (h_ok : scanPlainScalar s = .ok s') :
+    s'.flowLevel = s.flowLevel := by
+  unfold scanPlainScalar at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok <;> try contradiction
+  injection h_ok with h_eq; subst h_eq; rfl
+
+theorem scanPlainScalar_new_token_is_plain (s s' : ScannerState)
+    (h_ok : scanPlainScalar s = .ok s')
+    (hj : s.tokens.size < s'.tokens.size) :
+    ∃ content, (s'.tokens[s.tokens.size]'hj).val = .scalar content .plain := by
+  unfold scanPlainScalar at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok; contradiction
+  rename_i result heq
+  injection h_ok with h_eq; subst h_eq
+  have h_tok : result.state.tokens = s.tokens :=
+    collectPlainScalarLoop_preserves_tokens s "" "" _ _ _ _ _ heq
+  unfold ScannerState.emitAt
+  simp only [h_tok, Array.getElem_push_eq]
+  exact ⟨_, rfl⟩
 
 theorem scanBlockScalar_preserves_FlowInv (s s' : ScannerState)
     (h_ok : scanBlockScalar s = .ok s')
     (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s) :
     FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
-  sorry
+  constructor
+  · -- FlowContextPSV: block scalar is not plain
+    refine FlowContextPSV_of_prefix_and_new s.tokens s'.tokens h_fpsv ?_ ?_ ?_
+    · have : s'.tokens.size = s.tokens.size + 1 := by
+        have := scanBlockScalar_adds_one_token s s' h_ok
+        omega
+      omega
+    · intro i hi
+      exact scanBlockScalar_preserves_prefix s s' h_ok i hi
+    · intro j hj hge _
+      have : j = s.tokens.size := by
+        have : s'.tokens.size = s.tokens.size + 1 := by
+          have := scanBlockScalar_adds_one_token s s' h_ok
+          omega
+        omega
+      subst this
+      apply fpsv_of_not_plain
+      -- Token is block scalar, not plain
+      unfold scanBlockScalar at h_ok
+      split at h_ok; contradiction
+      unfold scanBlockScalarBody at h_ok
+      split at h_ok <;> try contradiction
+      all_goals (injection h_ok with h_eq; subst h_eq;
+                 simp [ScannerState.emitAt, Array.getElem_push_eq]; nofun)
+  · -- FlowNestingInv: flowLevel unchanged, scalar is non-flow token
+    unfold FlowNestingInv at *
+    have h_size : s'.tokens.size = s.tokens.size + 1 := by
+      have := scanBlockScalar_adds_one_token s s' h_ok
+      omega
+    rw [h_size, scanBlockScalar_preserves_flowLevel s s' h_ok]
+    unfold scanBlockScalar at h_ok
+    split at h_ok; contradiction
+    unfold scanBlockScalarBody at h_ok
+    generalize h_body_tok : (if _ then _ else _) = body_tok at h_ok
+    split at h_ok <;> try contradiction
+    all_goals (
+      injection h_ok with h_eq; subst h_eq
+      simp [ScannerState.emitAt]
+      rw [flowNesting_push_non_flow s.tokens ⟨_, .scalar _ _⟩
+           (by nofun) (by nofun) (by nofun) (by nofun)]
+      exact h_fni)
 
 theorem scanDoubleQuoted_preserves_FlowInv (s s' : ScannerState)
     (h_ok : scanDoubleQuoted s = .ok s')
     (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s) :
     FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
-  sorry
+  constructor
+  · -- FlowContextPSV: double quoted scalar is not plain
+    refine FlowContextPSV_of_prefix_and_new s.tokens s'.tokens h_fpsv ?_ ?_ ?_
+    · have : s'.tokens.size = s.tokens.size + 1 := by
+        have := scanDoubleQuoted_adds_one_token s s' h_ok
+        omega
+      omega
+    · intro i hi
+      exact scanDoubleQuoted_preserves_prefix s s' h_ok i hi
+    · intro j hj hge _
+      have : j = s.tokens.size := by
+        have : s'.tokens.size = s.tokens.size + 1 := by
+          have := scanDoubleQuoted_adds_one_token s s' h_ok
+          omega
+        omega
+      subst this
+      apply fpsv_of_not_plain
+      unfold scanDoubleQuoted at h_ok
+      simp only [bind, Except.bind, pure, Except.pure] at h_ok
+      split at h_ok <;> try contradiction
+      all_goals (split at h_ok <;> try contradiction;
+                 injection h_ok with h_eq; subst h_eq;
+                 simp [ScannerState.emitAt, Array.getElem_push_eq,
+                       collectDoubleQuotedLoop_preserves_tokens, advance_preserves_tokens];
+                 nofun)
+  · -- FlowNestingInv: flowLevel unchanged
+    unfold FlowNestingInv at *
+    have h_size : s'.tokens.size = s.tokens.size + 1 := by
+      have := scanDoubleQuoted_adds_one_token s s' h_ok
+      omega
+    rw [h_size, scanDoubleQuoted_preserves_flowLevel s s' h_ok]
+    unfold scanDoubleQuoted at h_ok
+    simp only [bind, Except.bind, pure, Except.pure] at h_ok
+    split at h_ok <;> try contradiction
+    all_goals (
+      split at h_ok <;> try contradiction
+      injection h_ok with h_eq; subst h_eq
+      simp [ScannerState.emitAt, collectDoubleQuotedLoop_preserves_tokens, advance_preserves_tokens]
+      rw [flowNesting_push_non_flow s.tokens ⟨_, .scalar _ .doubleQuoted⟩
+           (by nofun) (by nofun) (by nofun) (by nofun)]
+      exact h_fni)
 
 theorem scanSingleQuoted_preserves_FlowInv (s s' : ScannerState)
     (h_ok : scanSingleQuoted s = .ok s')
     (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s) :
     FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
-  sorry
+  constructor
+  · -- FlowContextPSV: single quoted scalar is not plain
+    refine FlowContextPSV_of_prefix_and_new s.tokens s'.tokens h_fpsv ?_ ?_ ?_
+    · have : s'.tokens.size = s.tokens.size + 1 := by
+        have := scanSingleQuoted_adds_one_token s s' h_ok
+        omega
+      omega
+    · intro i hi
+      exact scanSingleQuoted_preserves_prefix s s' h_ok i hi
+    · intro j hj hge _
+      have : j = s.tokens.size := by
+        have : s'.tokens.size = s.tokens.size + 1 := by
+          have := scanSingleQuoted_adds_one_token s s' h_ok
+          omega
+        omega
+      subst this
+      apply fpsv_of_not_plain
+      unfold scanSingleQuoted at h_ok
+      simp only [bind, Except.bind, pure, Except.pure] at h_ok
+      split at h_ok <;> try contradiction
+      all_goals (split at h_ok <;> try contradiction;
+                 injection h_ok with h_eq; subst h_eq;
+                 simp [ScannerState.emitAt, Array.getElem_push_eq,
+                       collectSingleQuotedLoop_preserves_tokens, advance_preserves_tokens];
+                 nofun)
+  · -- FlowNestingInv: flowLevel unchanged
+    unfold FlowNestingInv at *
+    have h_size : s'.tokens.size = s.tokens.size + 1 := by
+      have := scanSingleQuoted_adds_one_token s s' h_ok
+      omega
+    rw [h_size, scanSingleQuoted_preserves_flowLevel s s' h_ok]
+    unfold scanSingleQuoted at h_ok
+    simp only [bind, Except.bind, pure, Except.pure] at h_ok
+    split at h_ok <;> try contradiction
+    all_goals (
+      split at h_ok <;> try contradiction
+      injection h_ok with h_eq; subst h_eq
+      simp [ScannerState.emitAt, collectSingleQuotedLoop_preserves_tokens, advance_preserves_tokens]
+      rw [flowNesting_push_non_flow s.tokens ⟨_, .scalar _ .singleQuoted⟩
+           (by nofun) (by nofun) (by nofun) (by nofun)]
+      exact h_fni)
 
 theorem scanPlainScalar_preserves_FlowInv (s s' : ScannerState)
     (h_ok : scanPlainScalar s = .ok s')
+    (h_canStart : ∃ c, s.peek? = some c ∧
+        canStartPlainScalarBool c (s.peekAt? 1) s.inFlow = true)
     (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s) :
     FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
-  sorry
+  constructor
+  · -- FlowContextPSV: plain scalar is scannable in flow context
+    refine FlowContextPSV_of_prefix_and_new s.tokens s'.tokens h_fpsv ?_ ?_ ?_
+    · have : s'.tokens.size = s.tokens.size + 1 := by
+        have := scanPlainScalar_adds_one_token s s' h_ok
+        omega
+      omega
+    · intro i hi
+      exact scanPlainScalar_preserves_prefix s s' h_ok i hi
+    · intro j hj hge h_flowNest
+      have : j = s.tokens.size := by
+        have : s'.tokens.size = s.tokens.size + 1 := by
+          have := scanPlainScalar_adds_one_token s s' h_ok
+          omega
+        omega
+      subst this
+      -- At j = s.tokens.size, the token is a plain scalar
+      obtain ⟨content, h_tok⟩ := scanPlainScalar_new_token_is_plain s s' h_ok hj
+      rw [h_tok]
+      -- Need to show: ScalarScannable ⟨content, .plain, none, none, none⟩ true
+      -- Since flowNesting > 0, by FlowNestingInv we have s.flowLevel > 0
+      have h_flowLevel : s.flowLevel > 0 := by
+        unfold FlowNestingInv at h_fni
+        rw [← h_fni]
+        have h_tokens_eq : s'.tokens.take s.tokens.size = s.tokens := by
+          have h_pres : ∀ i (hi : i < s.tokens.size),
+            s'.tokens[i]'(by have := scanPlainScalar_adds_one_token s s' h_ok; omega) =
+            s.tokens[i] := fun i hi => scanPlainScalar_preserves_prefix s s' h_ok i hi
+          ext i
+          · simp [Array.size_take]
+            have := scanPlainScalar_adds_one_token s s' h_ok
+            omega
+          · intro hi hi'
+            simp [Array.getElem_take]
+            exact h_pres i hi'
+        rw [← h_tokens_eq]
+        exact h_flowNest
+      -- Since s.flowLevel > 0, we have s.inFlow = true
+      have h_inFlow : s.inFlow = true := by
+        unfold ScannerState.inFlow
+        simp [h_flowLevel]
+      -- scanPlainScalar_content_valid gives us ScalarScannable _ s.inFlow
+      have h_cv := scanPlainScalar_content_valid s s' h_ok h_canStart hj
+      rw [h_tok] at h_cv
+      -- Since s.inFlow = true, we have ScalarScannable _ true
+      rw [h_inFlow] at h_cv
+      exact h_cv
+  · -- FlowNestingInv: flowLevel unchanged
+    unfold FlowNestingInv at *
+    have h_size : s'.tokens.size = s.tokens.size + 1 := by
+      have := scanPlainScalar_adds_one_token s s' h_ok
+      omega
+    rw [h_size, scanPlainScalar_preserves_flowLevel s s' h_ok]
+    unfold scanPlainScalar at h_ok
+    simp only [bind, Except.bind] at h_ok
+    split at h_ok <;> try contradiction
+    injection h_ok with h_eq; subst h_eq
+    simp [ScannerState.emitAt, collectPlainScalarLoop_preserves_tokens]
+    rw [flowNesting_push_non_flow s.tokens ⟨_, .scalar _ .plain⟩
+         (by nofun) (by nofun) (by nofun) (by nofun)]
+    exact h_fni
 
 /-- Content dispatch preserves `FlowInv` by delegating to individual scan function lemmas. -/
 theorem dispatchContent_preserves_FlowInv
     (s : ScannerState) (c : Char)
+    (h_peek : s.peek? = some c)
     (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s)
     (s' : ScannerState)
     (h_ok : scanNextToken_dispatchContent s c = .ok s') :
@@ -2423,11 +2792,15 @@ theorem dispatchContent_preserves_FlowInv
                   exact scanSingleQuoted_preserves_FlowInv s s_sq h_sq h_fpsv h_fni
             · split at h_ok
               · -- Plain scalar
+                rename_i h_canStart
                 split at h_ok
                 · contradiction
                 · rename_i s_ps h_ps
                   injection h_ok with h_eq; subst h_eq
-                  exact scanPlainScalar_preserves_FlowInv s s_ps h_ps h_fpsv h_fni
+                  have h_cs : ∃ c', s.peek? = some c' ∧
+                      canStartPlainScalarBool c' (s.peekAt? 1) s.inFlow = true := by
+                    exact ⟨c, h_peek, h_canStart⟩
+                  exact scanPlainScalar_preserves_FlowInv s s_ps h_ps h_cs h_fpsv h_fni
               · simp at h_ok
 
 /-! ### pushSequenceIndent / pushMappingIndent token type lemmas -/
