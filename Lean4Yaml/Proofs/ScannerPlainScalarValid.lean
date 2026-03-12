@@ -3437,6 +3437,45 @@ theorem pushMappingIndent_new_token_is_blockMappingStart (s : ScannerState) (col
 
 /-! ### Block indicator helper lemmas -/
 
+/-- Helper: scanBlockEntry emits only .blockEntry or .blockSequenceStart tokens,
+    never .scalar _ .plain. -/
+theorem scanBlockEntry_new_token_not_plain (s s' : ScannerState)
+    (h_ok : scanBlockEntry s = .ok s')
+    (j : Nat) (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
+    (match (s'.tokens[j]'hj).val with
+    | .scalar _ .plain => False
+    | _ => True) := by
+  -- Generalize the token value, then show it's one of blockSequenceStart/blockEntry
+  generalize h_gen : (s'.tokens[j]'hj).val = tok_val
+  unfold scanBlockEntry at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · split at h_ok
+    · contradiction
+    · injection h_ok with h_eq; subst h_eq
+      simp only [advance_preserves_tokens] at h_gen
+      unfold pushSequenceIndent ScannerState.emit at h_gen
+      split at h_gen
+      · -- col > currentIndent: tokens = (s.tokens ++ [blockSequenceStart]) ++ [blockEntry]
+        simp only [Array.getElem_push] at h_gen
+        split at h_gen
+        · split at h_gen
+          · omega  -- j < s.tokens.size contradicts hge
+          · subst h_gen; trivial  -- blockSequenceStart
+        · subst h_gen; trivial  -- blockEntry
+      · -- col ≤ currentIndent: tokens = s.tokens ++ [blockEntry]
+        simp only [Array.getElem_push] at h_gen
+        split at h_gen
+        · omega  -- j < s.tokens.size contradicts hge
+        · subst h_gen; trivial  -- blockEntry
+  · injection h_ok with h_eq; subst h_eq
+    simp only [advance_preserves_tokens] at h_gen
+    unfold ScannerState.emit at h_gen
+    simp only [Array.getElem_push] at h_gen
+    split at h_gen
+    · omega  -- j < s.tokens.size contradicts hge
+    · subst h_gen; trivial  -- blockEntry
+
 theorem scanBlockEntry_preserves_FlowContextPSV
     (s s' : ScannerState) (h_fpsv : FlowContextPSV s.tokens)
     (h_ok : scanBlockEntry s = .ok s') :
@@ -3453,10 +3492,7 @@ theorem scanBlockEntry_preserves_FlowContextPSV
   · -- h_new: show new tokens are not plain scalars
     intro j hj hge _
     apply fpsv_of_not_plain
-    -- Need to prove: match s'.tokens[j].val with | .scalar _ .plain => False | _ => True
-    -- scanBlockEntry emits blockEntry and possibly blockSequenceStart
-    -- Both are non-plain tokens
-    sorry  -- TODO: Complete proof showing emitted tokens are blockEntry/blockSequenceStart
+    exact scanBlockEntry_new_token_not_plain s s' h_ok j hj hge
 
 theorem scanBlockEntry_preserves_FlowNestingInv
     (s s' : ScannerState) (h_fni : FlowNestingInv s)
@@ -3512,6 +3548,71 @@ theorem scanBlockEntry_preserves_FlowNestingInv
     simp only [advance_preserves_flowLevel, advance_preserves_tokens] at h_after_entry ⊢
     exact h_after_entry
 
+theorem scanKey_new_token_not_plain (s s' : ScannerState)
+    (h_ok : scanKey s = .ok s')
+    (j : Nat) (hj : j < s'.tokens.size) (hge : j ≥ s.tokens.size) :
+    (match (s'.tokens[j]'hj).val with
+    | .scalar _ .plain => False
+    | _ => True) := by
+  generalize h_gen : (s'.tokens[j]'hj).val = tok_val
+  unfold scanKey at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  -- Tactic for resolving each branch after injection/subst/simp/unfold:
+  -- After Array.getElem_push, h_gen has nested ifs. Repeatedly split + close.
+  split at h_ok
+  · -- !s.inFlow
+    split at h_ok
+    · split at h_ok
+      · contradiction
+      · injection h_ok with h_eq; subst h_eq
+        simp only [advance_preserves_tokens] at h_gen
+        unfold pushMappingIndent ScannerState.emit at h_gen
+        split at h_gen
+        · -- pushMappingIndent true: double push
+          simp only [Array.getElem_push] at h_gen
+          split at h_gen
+          · -- j < inner push size
+            split at h_gen
+            · omega
+            · dsimp only [] at h_gen; subst h_gen; exact True.intro
+          · dsimp only [] at h_gen; subst h_gen; exact True.intro
+        · -- pushMappingIndent false: single push
+          simp only [Array.getElem_push] at h_gen
+          split at h_gen
+          · omega
+          · dsimp only [] at h_gen; subst h_gen; exact True.intro
+    · -- !s.inFlow, no tab
+      injection h_ok with h_eq; subst h_eq
+      simp only [advance_preserves_tokens] at h_gen
+      unfold pushMappingIndent ScannerState.emit at h_gen
+      split at h_gen
+      · simp only [Array.getElem_push] at h_gen
+        split at h_gen
+        · split at h_gen
+          · omega
+          · dsimp only [] at h_gen; subst h_gen; exact True.intro
+        · dsimp only [] at h_gen; subst h_gen; exact True.intro
+      · simp only [Array.getElem_push] at h_gen
+        split at h_gen
+        · omega
+        · dsimp only [] at h_gen; subst h_gen; exact True.intro
+  · -- s.inFlow
+    split at h_ok
+    · split at h_ok
+      · contradiction
+      · injection h_ok with h_eq; subst h_eq
+        simp only [advance_preserves_tokens] at h_gen
+        unfold ScannerState.emit at h_gen
+        simp only [Array.getElem_push] at h_gen
+        split at h_gen <;> try omega
+        subst h_gen; exact True.intro
+    · injection h_ok with h_eq; subst h_eq
+      simp only [advance_preserves_tokens] at h_gen
+      unfold ScannerState.emit at h_gen
+      simp only [Array.getElem_push] at h_gen
+      split at h_gen <;> try omega
+      subst h_gen; exact True.intro
+
 theorem scanKey_preserves_FlowContextPSV
     (s s' : ScannerState) (h_fpsv : FlowContextPSV s.tokens)
     (h_ok : scanKey s = .ok s') :
@@ -3528,8 +3629,7 @@ theorem scanKey_preserves_FlowContextPSV
   · -- h_new
     intro j hj hge _
     apply fpsv_of_not_plain
-    -- scanKey emits .key and possibly .blockMappingStart
-    sorry
+    exact scanKey_new_token_not_plain s s' h_ok j hj hge
 
 theorem scanKey_preserves_FlowNestingInv
     (s s' : ScannerState) (h_fni : FlowNestingInv s)
