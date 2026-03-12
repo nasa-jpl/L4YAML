@@ -3076,20 +3076,32 @@ theorem scanBlockScalar_preserves_FlowInv (s s' : ScannerState)
         omega
       subst this
       apply fpsv_of_not_plain
-      -- Token is block scalar, not plain
+      -- Generalize the token value in the goal to abstract it from s'
+      generalize h_gen : (s'.tokens[s.tokens.size]'hj).val = tok_val
+      -- Now unfold scanBlockScalar to see the concrete token
       unfold scanBlockScalar at h_ok
       simp only [] at h_ok
       split at h_ok; contradiction
+      rename_i s_after_newline heq_nl
+      have h_tok : s_after_newline.tokens = s.tokens := by
+        rw [scanBlockScalarConsumeNewline_preserves_tokens _ _ heq_nl,
+            scanBlockScalarSkipComment_preserves_tokens,
+            skipWhitespace_preserves_tokens,
+            parseBlockHeaderLoop_preserves_tokens,
+            advance_preserves_tokens]
       unfold scanBlockScalarBody at h_ok
       simp only [] at h_ok
       split at h_ok
       · contradiction
-      · simp only [ScannerState.emitAt] at h_ok
-        injection h_ok with h_eq; subst h_eq
-        simp only [Array.getElem_push_eq]
-        -- The token is .scalar _ (if peek? == '|' then literal else folded)
-        -- which cannot be .scalar _ plain
-        sorry
+      · simp only [ScannerState.emitAt, Except.ok.injEq] at h_ok
+        subst h_ok
+        dsimp only [] at h_gen
+        simp only [Array.getElem_push] at h_gen
+        rw [collectBlockScalarLoop_preserves_tokens, h_tok] at h_gen
+        simp only [Nat.lt_irrefl, dite_false] at h_gen
+        -- h_gen : .scalar content (if ... then .literal else .folded) = tok_val
+        -- Split the if in the hypothesis, then subst back
+        split at h_gen <;> (subst h_gen; trivial)
   · -- FlowNestingInv: flowLevel unchanged, scalar is non-flow token
     unfold FlowNestingInv at *
     have h_size : s'.tokens.size = s.tokens.size + 1 := by
@@ -3106,9 +3118,18 @@ theorem scanBlockScalar_preserves_FlowInv (s s' : ScannerState)
     · -- autoDetectErr? = some err
       contradiction
     · -- autoDetectErr? = none
+      have h_tok : s_after_newline.tokens = s.tokens := by
+        rw [scanBlockScalarConsumeNewline_preserves_tokens _ _ heq,
+            scanBlockScalarSkipComment_preserves_tokens,
+            skipWhitespace_preserves_tokens,
+            parseBlockHeaderLoop_preserves_tokens,
+            advance_preserves_tokens]
       simp only [ScannerState.emitAt] at h_ok
       injection h_ok with h_eq; subst h_eq
-      sorry
+      simp only []
+      rw [collectBlockScalarLoop_preserves_tokens, h_tok]
+      rw [flowNesting_push_non_flow s.tokens _ (by nofun) (by nofun) (by nofun) (by nofun)]
+      exact h_fni
 
 theorem scanDoubleQuoted_preserves_FlowInv (s s' : ScannerState)
     (h_ok : scanDoubleQuoted s = .ok s')
@@ -3134,7 +3155,24 @@ theorem scanDoubleQuoted_preserves_FlowInv (s s' : ScannerState)
       unfold scanDoubleQuoted at h_ok
       simp only [bind, Except.bind, pure, Except.pure] at h_ok
       split at h_ok <;> try contradiction
-      sorry
+      rename_i result heq_collect
+      split at h_ok
+      · -- inFlow = false: validate trailing content
+        split at h_ok <;> try contradiction
+        -- validateTrailingContent succeeded
+        injection h_ok with h_eq
+        subst h_eq
+        simp only [ScannerState.emitAt]
+        have h_preserve : result.snd.tokens = s.advance.tokens :=
+          collectDoubleQuotedLoop_preserves_tokens _ _ _ _ _ _ _ _ heq_collect
+        simp [h_preserve, advance_preserves_tokens]
+      · -- inFlow = true (no validation)
+        injection h_ok with h_eq
+        subst h_eq
+        simp only [ScannerState.emitAt]
+        have h_preserve : result.snd.tokens = s.advance.tokens :=
+          collectDoubleQuotedLoop_preserves_tokens _ _ _ _ _ _ _ _ heq_collect
+        simp [h_preserve, advance_preserves_tokens]
   · -- FlowNestingInv: flowLevel unchanged
     unfold FlowNestingInv at *
     have h_size : s'.tokens.size = s.tokens.size + 1 := by
@@ -3144,7 +3182,29 @@ theorem scanDoubleQuoted_preserves_FlowInv (s s' : ScannerState)
     unfold scanDoubleQuoted at h_ok
     simp only [bind, Except.bind, pure, Except.pure] at h_ok
     split at h_ok <;> try contradiction
-    sorry
+    rename_i result heq_collect
+    split at h_ok
+    · -- inFlow = false: validate trailing content
+      split at h_ok <;> try contradiction
+      injection h_ok with h_eq; subst h_eq
+      unfold ScannerState.emitAt
+      simp only []
+      have h_preserve : result.snd.tokens = s.advance.tokens :=
+        collectDoubleQuotedLoop_preserves_tokens _ _ _ _ _ _ _ _ heq_collect
+      rw [h_preserve, advance_preserves_tokens]
+      rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .scalar _ .doubleQuoted⟩]
+      · exact h_fni
+      all_goals nofun
+    · -- inFlow = true (no validation)
+      injection h_ok with h_eq; subst h_eq
+      unfold ScannerState.emitAt
+      simp only []
+      have h_preserve : result.snd.tokens = s.advance.tokens :=
+        collectDoubleQuotedLoop_preserves_tokens _ _ _ _ _ _ _ _ heq_collect
+      rw [h_preserve, advance_preserves_tokens]
+      rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .scalar _ .doubleQuoted⟩]
+      · exact h_fni
+      all_goals nofun
 
 theorem scanSingleQuoted_preserves_FlowInv (s s' : ScannerState)
     (h_ok : scanSingleQuoted s = .ok s')
@@ -3170,7 +3230,23 @@ theorem scanSingleQuoted_preserves_FlowInv (s s' : ScannerState)
       unfold scanSingleQuoted at h_ok
       simp only [bind, Except.bind, pure, Except.pure] at h_ok
       split at h_ok <;> try contradiction
-      sorry
+      rename_i result heq_collect
+      split at h_ok
+      · -- inFlow = false: validate trailing content
+        split at h_ok <;> try contradiction
+        injection h_ok with h_eq
+        subst h_eq
+        simp only [ScannerState.emitAt]
+        have h_preserve : result.snd.tokens = s.advance.tokens :=
+          collectSingleQuotedLoop_preserves_tokens _ _ _ _ _ _ _ _ heq_collect
+        simp [h_preserve, advance_preserves_tokens]
+      · -- inFlow = true (no validation)
+        injection h_ok with h_eq
+        subst h_eq
+        simp only [ScannerState.emitAt]
+        have h_preserve : result.snd.tokens = s.advance.tokens :=
+          collectSingleQuotedLoop_preserves_tokens _ _ _ _ _ _ _ _ heq_collect
+        simp [h_preserve, advance_preserves_tokens]
   · -- FlowNestingInv: flowLevel unchanged
     unfold FlowNestingInv at *
     have h_size : s'.tokens.size = s.tokens.size + 1 := by
@@ -3180,7 +3256,29 @@ theorem scanSingleQuoted_preserves_FlowInv (s s' : ScannerState)
     unfold scanSingleQuoted at h_ok
     simp only [bind, Except.bind, pure, Except.pure] at h_ok
     split at h_ok <;> try contradiction
-    sorry
+    rename_i result heq_collect
+    split at h_ok
+    · -- inFlow = false: validate trailing content
+      split at h_ok <;> try contradiction
+      injection h_ok with h_eq; subst h_eq
+      unfold ScannerState.emitAt
+      simp only []
+      have h_preserve : result.snd.tokens = s.advance.tokens :=
+        collectSingleQuotedLoop_preserves_tokens _ _ _ _ _ _ _ _ heq_collect
+      rw [h_preserve, advance_preserves_tokens]
+      rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .scalar _ .singleQuoted⟩]
+      · exact h_fni
+      all_goals nofun
+    · -- inFlow = true (no validation)
+      injection h_ok with h_eq; subst h_eq
+      unfold ScannerState.emitAt
+      simp only []
+      have h_preserve : result.snd.tokens = s.advance.tokens :=
+        collectSingleQuotedLoop_preserves_tokens _ _ _ _ _ _ _ _ heq_collect
+      rw [h_preserve, advance_preserves_tokens]
+      rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .scalar _ .singleQuoted⟩]
+      · exact h_fni
+      all_goals nofun
 
 theorem scanPlainScalar_preserves_FlowInv (s s' : ScannerState)
     (h_ok : scanPlainScalar s = .ok s')
