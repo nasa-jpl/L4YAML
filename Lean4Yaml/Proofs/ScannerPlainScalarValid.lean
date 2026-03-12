@@ -2434,7 +2434,17 @@ theorem scanNamedTag_new_token_is_tag (s : ScannerState) (startPos : YamlPos) (i
     (h : s.tokens.size < (scanNamedTag s startPos inputEnd).tokens.size) :
     ∃ handle suffix, ((scanNamedTag s startPos inputEnd).tokens[s.tokens.size]'h).val = .tag handle suffix := by
   unfold scanNamedTag
-  simp [ScannerState.emitAt]
+  generalize h_handle : (collectTagHandleLoop s "" (inputEnd - s.offset)) = handle_result
+  have h_toks : handle_result.2.2.tokens = s.tokens := by
+    rw [← h_handle]
+    exact collectTagHandleLoop_preserves_tokens s "" (inputEnd - s.offset)
+  simp only [h_handle]
+  split
+  · -- foundBang = true
+    simp [ScannerState.emitAt, collectTagSuffixLoop_preserves_tokens,
+          h_toks, Array.getElem_push_eq]
+  · -- foundBang = false
+    simp [ScannerState.emitAt, h_toks, Array.getElem_push_eq]
 
 theorem scanTag_new_token_not_plain (s : ScannerState) :
     let tok := (scanTag s).tokens[s.tokens.size]'(by
