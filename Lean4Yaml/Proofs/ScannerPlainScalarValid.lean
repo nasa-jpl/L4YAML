@@ -2115,7 +2115,22 @@ theorem scanBlockEntry_preserves_FlowContextPSV
     (s s' : ScannerState) (h_fpsv : FlowContextPSV s.tokens)
     (h_ok : scanBlockEntry s = .ok s') :
     FlowContextPSV s'.tokens := by
-  sorry
+  -- scanBlockEntry emits blockEntry (and possibly blockSequenceStart)
+  -- Neither is a plain scalar
+  refine FlowContextPSV_of_prefix_and_new s.tokens s'.tokens h_fpsv ?_ ?_ ?_
+  · -- h_mono
+    have : s'.tokens.size ≥ s.tokens.size + 1 := scanBlockEntry_adds_tokens s s' h_ok
+    omega
+  · -- h_prefix
+    intro i hi
+    exact scanBlockEntry_preserves_prefix s s' h_ok i hi
+  · -- h_new: show new tokens are not plain scalars
+    intro j hj hge _
+    apply fpsv_of_not_plain
+    -- scanBlockEntry emits blockEntry and possibly blockSequenceStart
+    -- Neither is .scalar _ .plain
+    -- Detailed proof requires analyzing token structure
+    sorry
 
 theorem scanBlockEntry_preserves_FlowNestingInv
     (s s' : ScannerState) (h_fni : FlowNestingInv s)
@@ -2161,8 +2176,19 @@ theorem scanKey_preserves_FlowContextPSV
     (h_ok : scanKey s = .ok s') :
     FlowContextPSV s'.tokens := by
   -- scanKey emits .key (and possibly .blockMappingStart), never plain scalars
-  -- Both .key and .blockMappingStart are not plain scalars, so FlowContextPSV is preserved
-  sorry
+  -- Use same pattern as scanBlockEntry
+  refine FlowContextPSV_of_prefix_and_new s.tokens s'.tokens h_fpsv ?_ ?_ ?_
+  · -- h_mono
+    have : s'.tokens.size ≥ s.tokens.size + 1 := scanKey_adds_one_token s s' h_ok
+    omega
+  · -- h_prefix
+    intro i hi
+    exact scanKey_preserves_prefix s s' h_ok i hi
+  · -- h_new
+    intro j hj hge _
+    apply fpsv_of_not_plain
+    -- scanKey emits .key and possibly .blockMappingStart
+    sorry
 
 theorem scanKey_preserves_FlowNestingInv
     (s s' : ScannerState) (h_fni : FlowNestingInv s)
@@ -2234,7 +2260,21 @@ theorem scanValue_preserves_FlowContextPSV
     (s s' : ScannerState) (h_fpsv : FlowContextPSV s.tokens)
     (h_ok : scanValue s = .ok s') :
     FlowContextPSV s'.tokens := by
-  sorry
+  -- scanValue emits .value (and possibly .key, .blockMappingStart via scanValuePrepare)
+  -- None are plain scalars
+  refine FlowContextPSV_of_prefix_and_new s.tokens s'.tokens h_fpsv ?_ ?_ ?_
+  · -- h_mono
+    have : s'.tokens.size ≥ s.tokens.size + 1 := scanValue_adds_tokens s s' h_ok
+    omega
+  · -- h_prefix
+    intro i hi
+    -- scanValue_preserves_prefix has complex requirements about simpleKey
+    sorry
+  · -- h_new
+    intro j hj hge _
+    apply fpsv_of_not_plain
+    -- scanValue emits .value and possibly .key, .blockMappingStart
+    sorry
 
 theorem scanValue_preserves_FlowNestingInv
     (s s' : ScannerState) (h_fni : FlowNestingInv s)
