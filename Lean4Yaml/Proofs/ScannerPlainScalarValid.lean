@@ -2163,45 +2163,48 @@ theorem scanBlockEntry_preserves_FlowNestingInv
   · split at h_ok
     · contradiction
     · injection h_ok with h_eq; subst h_eq
-      unfold FlowNestingInv at *
-      simp only [advance_preserves_flowLevel, advance_preserves_tokens]
-      -- Show flowNesting at final size = flowLevel
-      -- pushSequenceIndent may emit blockSequenceStart, then emit blockEntry
+      -- Case: !inFlow, no tab error
+      -- s' = (pushSequenceIndent s s.col).emit(blockEntry).advance
       unfold pushSequenceIndent
       split
       · rename_i h_indent
-        -- Emitted blockSequenceStart, then blockEntry
-        -- Both are non-flow tokens, so flowNesting is preserved
-        simp only [ScannerState.emit]
-        -- After emit blockSequenceStart and emit blockEntry
-        -- tokens array is: s.tokens.push(blockSequenceStart).push(blockEntry)
-        -- Size is s.tokens.size + 2
-        simp [Array.size_push]
-        -- Show flowNesting is preserved through both pushes
-        have h1 : flowNesting (s.tokens.push ⟨s.currentPos, .blockSequenceStart⟩) (s.tokens.size + 1) =
-                  flowNesting s.tokens s.tokens.size := by
-          apply flowNesting_push_non_flow <;> nofun
-        -- For the second push, we need to account for the position coming from modified state
-        -- But the key is that blockEntry is still a non-flow token
-        sorry  -- TODO: Handle position from modified state in flowNesting lemma
-      · -- No blockSequenceStart, just blockEntry
-        unfold ScannerState.emit
-        simp [Array.size_push]
-        have : flowNesting (s.tokens.push ⟨s.currentPos, .blockEntry⟩) (s.tokens.size + 1) =
-               flowNesting s.tokens s.tokens.size := by
-          apply flowNesting_push_non_flow <;> nofun
-        rw [this]
-        exact h_fni
+        -- pushSequenceIndent emitted blockSequenceStart, then emit blockEntry
+        -- Use FlowNestingInv_emit_non_flow twice
+        have h_after_start : FlowNestingInv (s.emit .blockSequenceStart) := by
+          apply FlowNestingInv_emit_non_flow s .blockSequenceStart h_fni <;> nofun
+        -- After emitting blockSequenceStart, the state is modified (indents updated)
+        -- but FlowNestingInv is preserved. Now emit blockEntry from modified state.
+        let s_with_indent := { s.emit .blockSequenceStart with
+              indents := (s.emit .blockSequenceStart).indents.push { column := ↑s.col, isSequence := true } }
+        have h_indents : FlowNestingInv s_with_indent := by
+          unfold FlowNestingInv at *
+          -- s_with_indent only differs in indents field, tokens and flowLevel are the same
+          show flowNesting s_with_indent.tokens s_with_indent.tokens.size = s_with_indent.flowLevel
+          -- s_with_indent.tokens = (s.emit .blockSequenceStart).tokens (same reference)
+          -- s_with_indent.flowLevel = (s.emit .blockSequenceStart).flowLevel (same reference)
+          -- s_with_indent.tokens.size = (s.emit .blockSequenceStart).tokens.size (same reference)
+          -- So the goal is exactly h_after_start
+          exact h_after_start
+        have h_after_entry : FlowNestingInv (s_with_indent.emit .blockEntry) := by
+          apply FlowNestingInv_emit_non_flow s_with_indent .blockEntry h_indents <;> nofun
+        -- Finally, advance preserves FlowNestingInv
+        unfold FlowNestingInv at *
+        simp only [advance_preserves_flowLevel, advance_preserves_tokens] at h_after_entry ⊢
+        exact h_after_entry
+      · rename_i h_indent
+        -- pushSequenceIndent returned s unchanged, just emit blockEntry
+        have h_after_entry : FlowNestingInv (s.emit .blockEntry) := by
+          apply FlowNestingInv_emit_non_flow s .blockEntry h_fni <;> nofun
+        unfold FlowNestingInv at *
+        simp only [advance_preserves_flowLevel, advance_preserves_tokens] at h_after_entry ⊢
+        exact h_after_entry
   · injection h_ok with h_eq; subst h_eq
+    -- Case: inFlow, no pushSequenceIndent, just emit blockEntry
+    have h_after_entry : FlowNestingInv (s.emit .blockEntry) := by
+      apply FlowNestingInv_emit_non_flow s .blockEntry h_fni <;> nofun
     unfold FlowNestingInv at *
-    simp only [advance_preserves_flowLevel, advance_preserves_tokens]
-    unfold ScannerState.emit
-    simp [Array.size_push]
-    have : flowNesting (s.tokens.push ⟨s.currentPos, .blockEntry⟩) (s.tokens.size + 1) =
-           flowNesting s.tokens s.tokens.size := by
-      apply flowNesting_push_non_flow <;> nofun
-    rw [this]
-    exact h_fni
+    simp only [advance_preserves_flowLevel, advance_preserves_tokens] at h_after_entry ⊢
+    exact h_after_entry
 
 theorem scanKey_preserves_FlowContextPSV
     (s s' : ScannerState) (h_fpsv : FlowContextPSV s.tokens)
@@ -2239,8 +2242,23 @@ theorem scanKey_preserves_FlowNestingInv
         -- pushMappingIndent may emit blockMappingStart, then emit .key
         unfold pushMappingIndent
         split
-        · -- Emitted blockMappingStart, then .key
-          sorry
+        · rename_i h_indent
+          -- pushMappingIndent emitted blockMappingStart, then emit .key
+          -- Use FlowNestingInv_emit_non_flow twice
+          have h_after_start : FlowNestingInv (s.emit .blockMappingStart) := by
+            apply FlowNestingInv_emit_non_flow s .blockMappingStart h_fni <;> nofun
+          -- After emitting blockMappingStart, the state is modified (indents updated)
+          let s_with_indent := { s.emit .blockMappingStart with
+                indents := (s.emit .blockMappingStart).indents.push { column := ↑s.col, isSequence := false } }
+          have h_indents : FlowNestingInv s_with_indent := by
+            unfold FlowNestingInv at *
+            exact h_after_start
+          have h_after_key : FlowNestingInv (s_with_indent.emit .key) := by
+            apply FlowNestingInv_emit_non_flow s_with_indent .key h_indents <;> nofun
+          -- Finally, advance preserves FlowNestingInv
+          unfold FlowNestingInv at *
+          simp at h_after_key ⊢
+          exact h_after_key
         · -- No blockMappingStart, just .key
           unfold ScannerState.emit
           simp [Array.size_push]
@@ -2254,8 +2272,20 @@ theorem scanKey_preserves_FlowNestingInv
       simp only [advance_preserves_flowLevel, advance_preserves_tokens]
       unfold pushMappingIndent
       split
-      · -- Emitted blockMappingStart, then .key
-        sorry
+      · rename_i h_indent
+        -- pushMappingIndent emitted blockMappingStart, then emit .key
+        have h_after_start : FlowNestingInv (s.emit .blockMappingStart) := by
+          apply FlowNestingInv_emit_non_flow s .blockMappingStart h_fni <;> nofun
+        let s_with_indent := { s.emit .blockMappingStart with
+              indents := (s.emit .blockMappingStart).indents.push { column := ↑s.col, isSequence := false } }
+        have h_indents : FlowNestingInv s_with_indent := by
+          unfold FlowNestingInv at *
+          exact h_after_start
+        have h_after_key : FlowNestingInv (s_with_indent.emit .key) := by
+          apply FlowNestingInv_emit_non_flow s_with_indent .key h_indents <;> nofun
+        unfold FlowNestingInv at *
+        simp at h_after_key ⊢
+        exact h_after_key
       · -- No blockMappingStart, just .key
         unfold ScannerState.emit
         simp [Array.size_push]
