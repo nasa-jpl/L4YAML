@@ -2309,133 +2309,126 @@ theorem scanAnchorOrAlias_new_token_not_plain (s : ScannerState) (isAnchor : Boo
         advance_preserves_tokens, Array.getElem_push_eq]
   split <;> nofun
 
+-- Individual helper lemmas for content scan functions
+
+theorem scanAnchorOrAlias_preserves_FlowInv (s : ScannerState) (isAnchor : Bool)
+    (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s) :
+    FlowContextPSV (scanAnchorOrAlias s isAnchor).tokens ∧
+    FlowNestingInv (scanAnchorOrAlias s isAnchor) := by
+  constructor
+  · -- FlowContextPSV: anchor/alias is not plain scalar
+    refine FlowContextPSV_of_prefix_and_new s.tokens (scanAnchorOrAlias s isAnchor).tokens h_fpsv ?_ ?_ ?_
+    · have : (scanAnchorOrAlias s isAnchor).tokens.size = s.tokens.size + 1 :=
+        scanAnchorOrAlias_adds_one_token s isAnchor
+      omega
+    · intro i hi
+      exact scanAnchorOrAlias_preserves_prefix s isAnchor i hi
+    · intro j hj hge _
+      have : j = s.tokens.size := by
+        have : (scanAnchorOrAlias s isAnchor).tokens.size = s.tokens.size + 1 :=
+          scanAnchorOrAlias_adds_one_token s isAnchor
+        omega
+      subst this
+      apply fpsv_of_not_plain
+      exact scanAnchorOrAlias_new_token_not_plain s isAnchor
+  · -- FlowNestingInv: flowLevel unchanged, non-flow token
+    unfold FlowNestingInv at *
+    have h_size : (scanAnchorOrAlias s isAnchor).tokens.size = s.tokens.size + 1 :=
+      scanAnchorOrAlias_adds_one_token s isAnchor
+    rw [h_size, scanAnchorOrAlias_preserves_flowLevel]
+    unfold scanAnchorOrAlias
+    generalize h_name : (collectAnchorNameLoop s.advance "" (s.inputEnd - s.advance.offset)).fst = name
+    have h_coll := collectAnchorNameLoop_preserves_tokens s.advance "" (s.inputEnd - s.advance.offset)
+    have h_adv := advance_preserves_tokens s
+    simp only [ScannerState.emitAt, h_coll, h_adv, h_name]
+    split <;> (rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, _⟩
+           (by nofun) (by nofun) (by nofun) (by nofun)]; exact h_fni)
+
+theorem scanTag_preserves_FlowInv (s : ScannerState)
+    (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s) :
+    FlowContextPSV (scanTag s).tokens ∧ FlowNestingInv (scanTag s) := by
+  sorry
+
+theorem scanBlockScalar_preserves_FlowInv (s s' : ScannerState)
+    (h_ok : scanBlockScalar s = .ok s')
+    (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s) :
+    FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
+  sorry
+
+theorem scanDoubleQuoted_preserves_FlowInv (s s' : ScannerState)
+    (h_ok : scanDoubleQuoted s = .ok s')
+    (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s) :
+    FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
+  sorry
+
+theorem scanSingleQuoted_preserves_FlowInv (s s' : ScannerState)
+    (h_ok : scanSingleQuoted s = .ok s')
+    (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s) :
+    FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
+  sorry
+
+theorem scanPlainScalar_preserves_FlowInv (s s' : ScannerState)
+    (h_ok : scanPlainScalar s = .ok s')
+    (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s) :
+    FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
+  sorry
+
+/-- Content dispatch preserves `FlowInv` by delegating to individual scan function lemmas. -/
 theorem dispatchContent_preserves_FlowInv
     (s : ScannerState) (c : Char)
     (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s)
     (s' : ScannerState)
     (h_ok : scanNextToken_dispatchContent s c = .ok s') :
     FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
-  -- Content tokens: anchors, tags, scalars
-  -- Most don't change flowLevel; plain scalars satisfy ScalarScannable at flow positions
   unfold scanNextToken_dispatchContent at h_ok
   simp only [bind, Except.bind, pure, Except.pure] at h_ok
   split at h_ok
   · -- c == '&'
     injection h_ok with h_eq; subst h_eq
-    constructor
-    · -- FlowContextPSV: anchor is not plain scalar
-      refine FlowContextPSV_of_prefix_and_new s.tokens (scanAnchorOrAlias s true).tokens h_fpsv ?_ ?_ ?_
-      · have : (scanAnchorOrAlias s true).tokens.size = s.tokens.size + 1 :=
-          scanAnchorOrAlias_adds_one_token s true
-        omega
-      · intro i hi
-        exact scanAnchorOrAlias_preserves_prefix s true i hi
-      · intro j hj hge _
-        have : j = s.tokens.size := by
-          have : (scanAnchorOrAlias s true).tokens.size = s.tokens.size + 1 :=
-            scanAnchorOrAlias_adds_one_token s true
-          omega
-        subst this
-        apply fpsv_of_not_plain
-        exact scanAnchorOrAlias_new_token_not_plain s true
-    · -- FlowNestingInv: flowLevel unchanged, anchor is non-flow token
-      unfold FlowNestingInv at *
-      have h_size : (scanAnchorOrAlias s true).tokens.size = s.tokens.size + 1 :=
-        scanAnchorOrAlias_adds_one_token s true
-      rw [h_size, scanAnchorOrAlias_preserves_flowLevel]
-      -- Use the fact that scanAnchorOrAlias adds exactly one non-flow token
-      unfold scanAnchorOrAlias
-      generalize h_name : (collectAnchorNameLoop s.advance "" (s.inputEnd - s.advance.offset)).fst = name
-      have h_coll := collectAnchorNameLoop_preserves_tokens s.advance "" (s.inputEnd - s.advance.offset)
-      have h_adv := advance_preserves_tokens s
-      simp only [ScannerState.emitAt, h_coll, h_adv, h_name]
-      simp  -- Reduce if True then anchor else alias to just anchor
-      rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, YamlToken.anchor name⟩
-           (by nofun) (by nofun) (by nofun) (by nofun)]
-      exact h_fni
+    exact scanAnchorOrAlias_preserves_FlowInv s true h_fpsv h_fni
   · split at h_ok
     · -- c == '*'
       injection h_ok with h_eq; subst h_eq
-      constructor
-      · -- FlowContextPSV: alias is not plain scalar
-        refine FlowContextPSV_of_prefix_and_new s.tokens (scanAnchorOrAlias s false).tokens h_fpsv ?_ ?_ ?_
-        · have : (scanAnchorOrAlias s false).tokens.size = s.tokens.size + 1 :=
-            scanAnchorOrAlias_adds_one_token s false
-          omega
-        · intro i hi
-          exact scanAnchorOrAlias_preserves_prefix s false i hi
-        · intro j hj hge _
-          have : j = s.tokens.size := by
-            have : (scanAnchorOrAlias s false).tokens.size = s.tokens.size + 1 :=
-              scanAnchorOrAlias_adds_one_token s false
-            omega
-          subst this
-          apply fpsv_of_not_plain
-          exact scanAnchorOrAlias_new_token_not_plain s false
-      · -- FlowNestingInv: flowLevel unchanged, alias is non-flow token
-        unfold FlowNestingInv at *
-        have h_size : (scanAnchorOrAlias s false).tokens.size = s.tokens.size + 1 :=
-          scanAnchorOrAlias_adds_one_token s false
-        rw [h_size, scanAnchorOrAlias_preserves_flowLevel]
-        unfold scanAnchorOrAlias
-        generalize h_name : (collectAnchorNameLoop s.advance "" (s.inputEnd - s.advance.offset)).fst = name
-        have h_coll := collectAnchorNameLoop_preserves_tokens s.advance "" (s.inputEnd - s.advance.offset)
-        have h_adv := advance_preserves_tokens s
-        simp only [ScannerState.emitAt, h_coll, h_adv, h_name]
-        simp  -- Reduce if False then anchor else alias to just alias
-        rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, YamlToken.alias name⟩
-             (by nofun) (by nofun) (by nofun) (by nofun)]
-        exact h_fni
+      exact scanAnchorOrAlias_preserves_FlowInv s false h_fpsv h_fni
     · split at h_ok
       · -- c == '!'
         injection h_ok with h_eq; subst h_eq
-        constructor
-        · sorry  -- FlowContextPSV: tag is not plain scalar
-        · sorry  -- FlowNestingInv: flowLevel unchanged
+        exact scanTag_preserves_FlowInv s h_fpsv h_fni
       · split at h_ok
         · -- c == '|' or c == '>'
           split at h_ok
-          · contradiction  -- error
-          · injection h_ok with h_eq; subst h_eq
-            constructor
-            · sorry  -- FlowContextPSV: block scalar is not plain
-            · sorry  -- FlowNestingInv: flowLevel unchanged
+          · contradiction
+          · rename_i s_bs h_bs
+            injection h_ok with h_eq; subst h_eq
+            exact scanBlockScalar_preserves_FlowInv s s_bs h_bs h_fpsv h_fni
         · split at h_ok
           · -- c == '"'
             split at h_ok
-            · contradiction  -- error
-            · split at h_ok
+            · contradiction
+            · rename_i s_dq h_dq
+              split at h_ok
               · injection h_ok with h_eq; subst h_eq
-                constructor
-                · sorry  -- FlowContextPSV: double quoted is not plain
-                · sorry  -- FlowNestingInv: flowLevel unchanged
+                exact scanDoubleQuoted_preserves_FlowInv s s_dq h_dq h_fpsv h_fni
               · injection h_ok with h_eq; subst h_eq
-                constructor
-                · sorry  -- FlowContextPSV: double quoted is not plain
-                · sorry  -- FlowNestingInv: flowLevel unchanged
+                exact scanDoubleQuoted_preserves_FlowInv s s_dq h_dq h_fpsv h_fni
           · split at h_ok
             · -- c == '\''
               split at h_ok
-              · contradiction  -- error
-              · split at h_ok
-                · injection h_ok with h_eq; subst h_eq
-                  constructor
-                  · sorry  -- FlowContextPSV: single quoted is not plain
-                  · sorry  -- FlowNestingInv: flowLevel unchanged
-                · injection h_ok with h_eq; subst h_eq
-                  constructor
-                  · sorry  -- FlowContextPSV: single quoted is not plain
-                  · sorry  -- FlowNestingInv: flowLevel unchanged
-            · split at h_ok
-              · -- Plain scalar case
+              · contradiction
+              · rename_i s_sq h_sq
                 split at h_ok
-                · contradiction  -- error
                 · injection h_ok with h_eq; subst h_eq
-                  constructor
-                  · sorry  -- FlowContextPSV: plain scalar satisfies ScalarScannable at flow positions
-                  · sorry  -- FlowNestingInv: flowLevel unchanged
-              · -- No valid character, error
-                simp at h_ok
+                  exact scanSingleQuoted_preserves_FlowInv s s_sq h_sq h_fpsv h_fni
+                · injection h_ok with h_eq; subst h_eq
+                  exact scanSingleQuoted_preserves_FlowInv s s_sq h_sq h_fpsv h_fni
+            · split at h_ok
+              · -- Plain scalar
+                split at h_ok
+                · contradiction
+                · rename_i s_ps h_ps
+                  injection h_ok with h_eq; subst h_eq
+                  exact scanPlainScalar_preserves_FlowInv s s_ps h_ps h_fpsv h_fni
+              · simp at h_ok
 
 /-! ### pushSequenceIndent / pushMappingIndent token type lemmas -/
 
