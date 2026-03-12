@@ -2109,6 +2109,26 @@ theorem dispatchFlowIndicators_preserves_FlowInv
     FlowContextPSV s'.tokens ∧ FlowNestingInv s' := by
   sorry
 
+/-! ### pushSequenceIndent / pushMappingIndent token type lemmas -/
+
+theorem pushSequenceIndent_new_token_is_blockSequenceStart (s : ScannerState) (col : Int)
+    (h : col > s.currentIndent) :
+    (pushSequenceIndent s col).tokens[s.tokens.size]'(by
+      unfold pushSequenceIndent
+      simp [h, ScannerState.emit, Array.size_push]) =
+      { pos := s.currentPos, val := YamlToken.blockSequenceStart } := by
+  unfold pushSequenceIndent
+  simp [h, ScannerState.emit, Array.getElem_push_eq]
+
+theorem pushMappingIndent_new_token_is_blockMappingStart (s : ScannerState) (col : Int)
+    (h : col > s.currentIndent) :
+    (pushMappingIndent s col).tokens[s.tokens.size]'(by
+      unfold pushMappingIndent
+      simp [h, ScannerState.emit, Array.size_push]) =
+      { pos := s.currentPos, val := YamlToken.blockMappingStart } := by
+  unfold pushMappingIndent
+  simp [h, ScannerState.emit, Array.getElem_push_eq]
+
 /-! ### Block indicator helper lemmas -/
 
 theorem scanBlockEntry_preserves_FlowContextPSV
@@ -2129,26 +2149,8 @@ theorem scanBlockEntry_preserves_FlowContextPSV
     apply fpsv_of_not_plain
     -- Need to prove: match s'.tokens[j].val with | .scalar _ .plain => False | _ => True
     -- scanBlockEntry emits blockEntry and possibly blockSequenceStart
-    unfold scanBlockEntry at h_ok
-    simp only [bind, Except.bind, pure, Except.pure] at h_ok
-    split at h_ok
-    · split at h_ok
-      · contradiction
-      · injection h_ok with h_eq; subst h_eq
-        -- Case: !inFlow, no tab error
-        sorry  -- TODO: Prove new tokens are blockEntry/blockSequenceStart, not plain scalars
-    · injection h_ok with h_eq; subst h_eq
-      -- Case: inFlow, no pushSequenceIndent
-      simp only [ScannerState.emit, advance_preserves_tokens]
-      have : j = s.tokens.size := by
-        have h_eq_toks : (s.emit YamlToken.blockEntry).advance.tokens = s.tokens.push { pos := s.currentPos, val := YamlToken.blockEntry } := by
-          simp [ScannerState.emit, advance_preserves_tokens]
-        have h_sz : (s.tokens.push { pos := s.currentPos, val := YamlToken.blockEntry }).size = s.tokens.size + 1 := by
-          simp [Array.size_push]
-        rw [h_eq_toks, h_sz] at hj
-        omega
-      subst this
-      simp [Array.getElem_push_eq]
+    -- Both are non-plain tokens
+    sorry  -- TODO: Complete proof showing emitted tokens are blockEntry/blockSequenceStart
 
 theorem scanBlockEntry_preserves_FlowNestingInv
     (s s' : ScannerState) (h_fni : FlowNestingInv s)
@@ -2167,9 +2169,21 @@ theorem scanBlockEntry_preserves_FlowNestingInv
       -- pushSequenceIndent may emit blockSequenceStart, then emit blockEntry
       unfold pushSequenceIndent
       split
-      · -- Emitted blockSequenceStart, then blockEntry
-        -- Both are non-flow tokens
-        sorry
+      · rename_i h_indent
+        -- Emitted blockSequenceStart, then blockEntry
+        -- Both are non-flow tokens, so flowNesting is preserved
+        simp only [ScannerState.emit]
+        -- After emit blockSequenceStart and emit blockEntry
+        -- tokens array is: s.tokens.push(blockSequenceStart).push(blockEntry)
+        -- Size is s.tokens.size + 2
+        simp [Array.size_push]
+        -- Show flowNesting is preserved through both pushes
+        have h1 : flowNesting (s.tokens.push ⟨s.currentPos, .blockSequenceStart⟩) (s.tokens.size + 1) =
+                  flowNesting s.tokens s.tokens.size := by
+          apply flowNesting_push_non_flow <;> nofun
+        -- For the second push, we need to account for the position coming from modified state
+        -- But the key is that blockEntry is still a non-flow token
+        sorry  -- TODO: Handle position from modified state in flowNesting lemma
       · -- No blockSequenceStart, just blockEntry
         unfold ScannerState.emit
         simp [Array.size_push]
