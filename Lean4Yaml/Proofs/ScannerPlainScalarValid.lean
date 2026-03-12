@@ -2910,11 +2910,124 @@ theorem scanSingleQuoted_preserves_flowLevel (s s' : ScannerState)
     injection h_ok with h_eq; subst h_eq
     simp [emitAt_preserves_flowLevel, h_fl_collect, advance_preserves_flowLevel]
 
+theorem skipBlankLinesLoop_preserves_flowLevel (s : ScannerState) (cnt fuel inputEnd : Nat) :
+    (skipBlankLinesLoop s cnt fuel inputEnd).snd.flowLevel = s.flowLevel := by
+  induction fuel generalizing s cnt with
+  | zero => unfold skipBlankLinesLoop; rfl
+  | succ fuel' ih =>
+    unfold skipBlankLinesLoop
+    simp only []
+    split
+    · -- peek? = some c
+      split
+      · -- isLineBreakBool c = true
+        exact ih _ _ |>.trans (consumeNewline_preserves_flowLevel _)
+                             |>.trans (skipSpaces_preserves_flowLevel s)
+      · -- isLineBreakBool c = false
+        rfl
+    · -- peek? = none
+      rfl
+
 theorem collectPlainScalarLoop_preserves_flowLevel (s : ScannerState) (content spaces : String) (fuel : Nat)
     (inFlow : Bool) (contentIndent inputEnd : Nat) (result : PlainScalarResult)
     (h : collectPlainScalarLoop s content spaces fuel inFlow contentIndent inputEnd = .ok result) :
     result.state.flowLevel = s.flowLevel := by
-  sorry
+  induction fuel generalizing s content spaces with
+  | zero => unfold collectPlainScalarLoop at h; injection h with h_eq; subst h_eq; rfl
+  | succ fuel' ih =>
+    unfold collectPlainScalarLoop at h
+    split at h <;> try (injection h with h_eq; subst h_eq; rfl)
+    · -- Case: peek? = some c
+      -- First check if it terminates
+      split at h
+      · -- terminates? returns some result with state = s unchanged
+        injection h with h_eq; subst h_eq
+        -- All branches of terminates? return state := s
+        simp only [collectPlainScalar_terminates?] at *
+        -- Split on (c == '#' && spaces.length > 0)
+        split at *
+        · -- true: some {...state := s...} = some result
+          rename_i heq_result
+          injection heq_result with h_val_eq
+          rw [← h_val_eq]
+        · -- false: split on c == ':'
+          split at *
+          · -- c == ':'
+            split at *
+            · -- match on peekAt? 1 = some c
+              split at *
+              · -- termination check passes
+                rename_i heq_result
+                injection heq_result with h_val_eq
+                rw [← h_val_eq]
+              · -- continues to next (none case = contradiction)
+                contradiction
+            · -- match on peekAt? 1 = none
+              split at *
+              · rename_i heq_result; injection heq_result with h_val_eq; rw [← h_val_eq]
+              · contradiction
+          · -- c != ':'
+            split at *
+            · rename_i heq_result; injection heq_result with h_val_eq; rw [← h_val_eq]
+            · split at *
+              · rename_i heq_result; injection heq_result with h_val_eq; rw [← h_val_eq]
+              · contradiction
+      · -- continues scanning
+        split at h
+        · -- isLineBreakBool c = true
+          split at h
+          · -- inFlow = true: fold quoted newlines
+            simp only [bind, Except.bind] at h
+            split at h <;> try contradiction
+            rename_i folded_result heq_fold
+            have h_fl_fold := foldQuotedNewlines_preserves_flowLevel _ _ heq_fold
+            split at h
+            · -- peek after fold is some '#': terminates
+              injection h with h_eq; subst h_eq
+              exact h_fl_fold
+            · -- continues
+              exact ih _ _ _ h |>.trans h_fl_fold
+          · -- inFlow = false: handle block line break
+            split at h
+            · -- handleBlockLineBreak returns none: terminates
+              injection h with h_eq; subst h_eq; rfl
+            · -- handleBlockLineBreak returns some: continues
+              split at h
+              · -- peek is some '#': terminates
+                injection h with h_eq; subst h_eq
+                simp only [collectPlainScalar_handleBlockLineBreak] at *
+                split at * <;> try contradiction
+                split at * <;> try contradiction
+                rename_i heq_handle
+                injection heq_handle with h_pair_eq
+                cases h_pair_eq
+                simp [skipBlankLinesLoop_preserves_flowLevel, skipSpaces_preserves_flowLevel,
+                      consumeNewline_preserves_flowLevel]
+              · -- continues scanning
+                simp only [collectPlainScalar_handleBlockLineBreak] at *
+                split at * <;> try contradiction
+                split at * <;> try contradiction
+                rename_i heq_handle
+                injection heq_handle with h_pair_eq
+                cases h_pair_eq
+                -- Now we know the state after handleBlockLineBreak
+                -- The inductive hypothesis h gives: result.state.flowLevel = (state after handle).flowLevel
+                -- We need to show: result.state.flowLevel = s.flowLevel
+                have h_fl : (skipSpaces (skipBlankLinesLoop (consumeNewline s) 0 (inputEnd - (consumeNewline s).offset + 1) inputEnd).snd).flowLevel = s.flowLevel := by
+                  rw [skipSpaces_preserves_flowLevel,
+                      skipBlankLinesLoop_preserves_flowLevel (consumeNewline s) 0 (inputEnd - (consumeNewline s).offset + 1) inputEnd,
+                      consumeNewline_preserves_flowLevel]
+                exact ih _ _ _ h |>.trans h_fl
+        · -- isWhiteSpaceBool c = true
+          split at h
+          · -- continues with spaces
+            exact ih _ _ _ h |>.trans (advance_preserves_flowLevel s)
+          · -- not plain safe or other termination
+            split at h
+            · -- terminates
+              injection h with h_eq; subst h_eq; rfl
+            · -- continues with content
+              exact ih _ _ _ h |>.trans (advance_preserves_flowLevel s)
 
 theorem scanPlainScalar_preserves_flowLevel (s s' : ScannerState)
     (h_ok : scanPlainScalar s = .ok s') :
