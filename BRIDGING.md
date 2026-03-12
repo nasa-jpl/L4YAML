@@ -2074,6 +2074,52 @@ which branches were *not* taken.
 
 *Used in:* `scanTag_new_token_is_tag` → `scanTag_new_token_not_plain`
 
+**Proof technique — `generalize` in goal, then `split` in hypothesis for
+dependent-type entanglement:**
+
+When a single expression (e.g., `s.peek? == some '|'`) flows into *multiple*
+dependent positions in the result — controlling both the `content` and `style`
+fields of a pushed token — all standard case-splitting tactics fail:
+
+- `cases`/`split` on the goal internally call `generalize` on the discriminant,
+  which fails with *"result is not type correct"* because the expression appears
+  in dependent type positions (e.g., both in `content` via `foldBlockContent`
+  and in `style` via `if isLiteral then .literal else .folded`).
+- `by_cases` avoids generalization but `simp_all` is overwhelmed by the
+  massive struct expression after substitution.
+- Tactic-level `match h : expr with` hits *"Application type mismatch"* errors.
+
+Solution: **Abstracting the goal first** breaks the dependent-type link, then
+the problematic expression can be case-split safely inside a standalone
+hypothesis:
+
+```lean
+-- Goal: match .scalar content (if (s.peek? == some '|') = true
+--         then .literal else .folded)
+--       with | .scalar _ .plain => False | _ => True
+-- STEP 1: Abstract the token value OUT of the goal
+generalize h_gen : (s'.tokens[s.tokens.size]'hj).val = tok_val
+-- STEP 2: Unfold the scanner + inject/subst to make h_gen concrete
+unfold scanBlockScalar at h_ok; ...
+simp only [ScannerState.emitAt, Except.ok.injEq] at h_ok; subst h_ok
+-- STEP 3: Simplify h_gen via token preservation chain
+simp only [Array.getElem_push] at h_gen
+rw [collectBlockScalarLoop_preserves_tokens, h_tok] at h_gen
+simp only [Nat.lt_irrefl, dite_false] at h_gen
+-- h_gen : .scalar content (if ... then .literal else .folded) = tok_val
+-- STEP 4: Split the if INSIDE h_gen (no dependent types here)
+split at h_gen <;> (subst h_gen; trivial)
+```
+
+The key insight: `generalize h_gen : expr = x` replaces `expr` in the goal
+with a fresh variable `x`, while recording the equality in `h_gen`. The goal
+no longer mentions the problematic expression, so no generalization failure
+occurs. After unfolding makes `h_gen` concrete, `split at h_gen` operates on
+a standalone equality hypothesis where the `if` expression is not
+entangled with any dependent types.
+
+*Used in:* `scanBlockScalar_preserves_FlowInv` (FlowContextPSV branch)
+
 ### Phase C: Discharge `h_grammable` (CRITICAL PATH) (COMPLETE ✅)
 
 With Phases B1–B3 established:
