@@ -2127,10 +2127,28 @@ theorem scanBlockEntry_preserves_FlowContextPSV
   · -- h_new: show new tokens are not plain scalars
     intro j hj hge _
     apply fpsv_of_not_plain
+    -- Need to prove: match s'.tokens[j].val with | .scalar _ .plain => False | _ => True
     -- scanBlockEntry emits blockEntry and possibly blockSequenceStart
-    -- Neither is .scalar _ .plain
-    -- Detailed proof requires analyzing token structure
-    sorry
+    unfold scanBlockEntry at h_ok
+    simp only [bind, Except.bind, pure, Except.pure] at h_ok
+    split at h_ok
+    · split at h_ok
+      · contradiction
+      · injection h_ok with h_eq; subst h_eq
+        -- Case: !inFlow, no tab error
+        sorry  -- TODO: Prove new tokens are blockEntry/blockSequenceStart, not plain scalars
+    · injection h_ok with h_eq; subst h_eq
+      -- Case: inFlow, no pushSequenceIndent
+      simp only [ScannerState.emit, advance_preserves_tokens]
+      have : j = s.tokens.size := by
+        have h_eq_toks : (s.emit YamlToken.blockEntry).advance.tokens = s.tokens.push { pos := s.currentPos, val := YamlToken.blockEntry } := by
+          simp [ScannerState.emit, advance_preserves_tokens]
+        have h_sz : (s.tokens.push { pos := s.currentPos, val := YamlToken.blockEntry }).size = s.tokens.size + 1 := by
+          simp [Array.size_push]
+        rw [h_eq_toks, h_sz] at hj
+        omega
+      subst this
+      simp [Array.getElem_push_eq]
 
 theorem scanBlockEntry_preserves_FlowNestingInv
     (s s' : ScannerState) (h_fni : FlowNestingInv s)
