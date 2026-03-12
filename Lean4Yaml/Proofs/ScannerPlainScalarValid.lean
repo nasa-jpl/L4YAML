@@ -2160,13 +2160,75 @@ theorem scanKey_preserves_FlowContextPSV
     (s s' : ScannerState) (h_fpsv : FlowContextPSV s.tokens)
     (h_ok : scanKey s = .ok s') :
     FlowContextPSV s'.tokens := by
+  -- scanKey emits .key (and possibly .blockMappingStart), never plain scalars
+  -- Both .key and .blockMappingStart are not plain scalars, so FlowContextPSV is preserved
   sorry
 
 theorem scanKey_preserves_FlowNestingInv
     (s s' : ScannerState) (h_fni : FlowNestingInv s)
     (h_ok : scanKey s = .ok s') :
     FlowNestingInv s' := by
-  sorry
+  -- scanKey: emits non-flow tokens (.key, optionally .blockMappingStart), preserves flowLevel
+  unfold scanKey at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · split at h_ok
+    · split at h_ok
+      · contradiction
+      · injection h_ok with h_eq; subst h_eq
+        unfold FlowNestingInv at *
+        simp only [advance_preserves_flowLevel, advance_preserves_tokens]
+        -- pushMappingIndent may emit blockMappingStart, then emit .key
+        unfold pushMappingIndent
+        split
+        · -- Emitted blockMappingStart, then .key
+          sorry
+        · -- No blockMappingStart, just .key
+          unfold ScannerState.emit
+          simp [Array.size_push]
+          have : flowNesting (s.tokens.push ⟨s.currentPos, .key⟩) (s.tokens.size + 1) =
+                 flowNesting s.tokens s.tokens.size := by
+            apply flowNesting_push_non_flow <;> nofun
+          rw [this]
+          exact h_fni
+    · injection h_ok with h_eq; subst h_eq
+      unfold FlowNestingInv at *
+      simp only [advance_preserves_flowLevel, advance_preserves_tokens]
+      unfold pushMappingIndent
+      split
+      · -- Emitted blockMappingStart, then .key
+        sorry
+      · -- No blockMappingStart, just .key
+        unfold ScannerState.emit
+        simp [Array.size_push]
+        have : flowNesting (s.tokens.push ⟨s.currentPos, .key⟩) (s.tokens.size + 1) =
+               flowNesting s.tokens s.tokens.size := by
+          apply flowNesting_push_non_flow <;> nofun
+        rw [this]
+        exact h_fni
+  · split at h_ok
+    · split at h_ok
+      · contradiction
+      · injection h_ok with h_eq; subst h_eq
+        unfold FlowNestingInv at *
+        simp only [advance_preserves_flowLevel, advance_preserves_tokens]
+        unfold ScannerState.emit
+        simp [Array.size_push]
+        have : flowNesting (s.tokens.push ⟨s.currentPos, .key⟩) (s.tokens.size + 1) =
+               flowNesting s.tokens s.tokens.size := by
+          apply flowNesting_push_non_flow <;> nofun
+        rw [this]
+        exact h_fni
+    · injection h_ok with h_eq; subst h_eq
+      unfold FlowNestingInv at *
+      simp only [advance_preserves_flowLevel, advance_preserves_tokens]
+      unfold ScannerState.emit
+      simp [Array.size_push]
+      have : flowNesting (s.tokens.push ⟨s.currentPos, .key⟩) (s.tokens.size + 1) =
+             flowNesting s.tokens s.tokens.size := by
+        apply flowNesting_push_non_flow <;> nofun
+      rw [this]
+      exact h_fni
 
 theorem scanValue_preserves_FlowContextPSV
     (s s' : ScannerState) (h_fpsv : FlowContextPSV s.tokens)
@@ -2178,6 +2240,11 @@ theorem scanValue_preserves_FlowNestingInv
     (s s' : ScannerState) (h_fni : FlowNestingInv s)
     (h_ok : scanValue s = .ok s') :
     FlowNestingInv s' := by
+  -- scanValue: complex due to scanValuePrepare, but all emitted tokens are non-flow
+  -- and flowLevel is preserved throughout
+  -- scanValuePrepare may modify tokens (setIfInBounds, pushMappingIndent)
+  -- but doesn't change flowLevel. Then emit .value (non-flow token).
+  -- This is complex - defer for now
   sorry
 
 /-- Block indicators dispatch preserves `FlowInv`. -/
