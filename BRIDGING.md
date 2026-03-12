@@ -1975,6 +1975,105 @@ per Phase 1 experience)
    `content.toList.getLast? = some ':' → spaces = "" ∧ (∀ n, s.peek? =
    some n → ¬isBlankProp n)`. See B3.3 Reflections for details.
 
+##### **B3.5 Extension: FlowInv Infrastructure — Proof Techniques**
+
+The `FlowInv` work extends B3.5 by threading two additional invariants
+(`FlowContextPSV` and `FlowNestingInv`) through the scanner dispatch chain.
+This surfaced three reusable proof techniques for dependent-type reasoning
+over token arrays.
+
+**Proof technique — `revert` before `split` for dependent discriminants:**
+
+When a hypothesis `h : s.tokens.size < (f s).tokens.size` appears in the
+context and the goal mentions `(f s).tokens[s.tokens.size]'h`, `split` on
+the definition of `f` will fail with *"resulting expression was not type
+correct"*. This happens because `split` must generalize the match discriminant
+(e.g., `s.advance.peek?`), but `h`'s type depends on the match result through
+`(f s).tokens.size`. Generalizing the discriminant breaks this dependency.
+
+Solution: `revert h` before `split` to lift the dependent bound into the goal
+as a universal quantifier. After `split`, each branch re-introduces `h` with
+the discriminant already specialized:
+
+```lean
+-- h : s.tokens.size < (scanTag s).tokens.size
+-- ⊢ ∃ handle suffix, (scanTag s).tokens[s.tokens.size]'h = .tag handle suffix
+unfold scanTag at h ⊢
+simp only [] at h ⊢
+revert h; split     -- lift h into goal, THEN split the peek? match
+· intro h           -- h now specialized to the scanVerbatimTag branch
+  ...
+```
+
+This pattern applies whenever `split` or `cases` needs to generalize a
+discriminant that appears in a dependent bound proof. The key insight is
+that `∀ (h : P disc), Q disc h` can be generalized to
+`∀ d, ∀ (h : P d), Q d h` without type errors, whereas `h : P disc` as a
+fixed context hypothesis cannot.
+
+*Used in:* `scanTag_new_token_is_tag`
+
+**Proof technique — argument-specific `simp` to prevent rewrite loops:**
+
+`simp only [← advance_preserves_tokens]` (without arguments) rewrites
+`s.tokens` → `s.advance.tokens` for *any* scanner state. When the goal
+or hypothesis contains multiple scanner-state expressions, `simp` keeps
+finding new instances to rewrite, causing infinite recursion
+("maximum recursion depth has been reached").
+
+Solution: Supply the specific scanner state argument to `simp`:
+
+```lean
+-- advance_preserves_tokens (s : ScannerState) : s.advance.tokens = s.tokens
+simp only [← advance_preserves_tokens s] at h ⊢
+```
+
+This restricts the rewrite to `s.tokens ↔ s.advance.tokens` for the single
+state `s`. After one rewrite, `s.advance.tokens` doesn't match the LHS
+pattern `s.tokens` (it would need `s.advance` as the argument), so `simp`
+terminates.
+
+*Used in:* `scanTag_new_token_is_tag` (all three branches)
+
+**Proof technique — factoring `_is_tag` to avoid catch-all negation gaps:**
+
+When a function `f` is defined by `match e with | a => g₁ | b => g₂ | _ => g₃`,
+proving properties about `f` in the catch-all branch is difficult with
+tactic-level `match h : e with ... | _ => ...`, because the catch-all **does not
+produce negation hypotheses** (`¬(e = a)` and `¬(e = b)` are absent). Any
+`by_cases` attempted inside the catch-all creates goals that can't be closed.
+
+Solution: Factor out a helper lemma (e.g., `f_new_token_is_tag`) that
+unfolds `f` at both `h` and `⊢` simultaneously using `unfold f at h ⊢`,
+then uses `revert h; split` to case-split properly. Each branch (including
+the catch-all) gets the discriminant fully specialized, so no negation
+hypotheses are needed — the branch just proves the existential directly:
+
+```lean
+-- Instead of: match h : s.advance.peek? with | some '<' => ... | _ => sorry
+-- Factor a helper that avoids the match entirely:
+theorem scanTag_new_token_is_tag (s : ScannerState)
+    (h : s.tokens.size < (scanTag s).tokens.size) :
+    ∃ handle suffix, ((scanTag s).tokens[s.tokens.size]'h).val = .tag handle suffix := by
+  unfold scanTag at h ⊢; simp only [] at h ⊢
+  revert h; split
+  · intro h; ...  -- scanVerbatimTag: delegate to existing _is_tag lemma
+  · intro h; ...  -- scanSecondaryTag: delegate
+  · intro h; ...  -- scanNamedTag: delegate (catch-all, no negation needed)
+
+-- The consumer is then trivial:
+theorem scanTag_new_token_not_plain ... := by
+  obtain ⟨handle, suffix, h_tag⟩ := scanTag_new_token_is_tag s h_sz
+  simp only [h_tag]
+```
+
+The key insight is that proving a *positive* property (token is a tag) in all
+branches is simpler than proving a *negative* property (token is not plain) in
+the catch-all, because the positive approach never needs to reason about
+which branches were *not* taken.
+
+*Used in:* `scanTag_new_token_is_tag` → `scanTag_new_token_not_plain`
+
 ### Phase C: Discharge `h_grammable` (CRITICAL PATH) (COMPLETE ✅)
 
 With Phases B1–B3 established:

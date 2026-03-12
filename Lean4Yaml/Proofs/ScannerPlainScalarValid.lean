@@ -2446,15 +2446,40 @@ theorem scanNamedTag_new_token_is_tag (s : ScannerState) (startPos : YamlPos) (i
   · -- foundBang = false
     simp [ScannerState.emitAt, h_toks, Array.getElem_push_eq]
 
+theorem scanTag_new_token_is_tag (s : ScannerState)
+    (h : s.tokens.size < (scanTag s).tokens.size) :
+    ∃ handle suffix, ((scanTag s).tokens[s.tokens.size]'h).val = .tag handle suffix := by
+  -- Unfold scanTag at both h and ⊢ so that `split` can generalize
+  -- the peek? discriminant without breaking the dependent bound proof.
+  -- simp only [] reduces the let bindings and struct update.
+  -- Crucially, revert h before split so the dependent bound is part of the
+  -- goal (universally quantified), allowing split to generalize the discriminant.
+  unfold scanTag at h ⊢
+  simp only [] at h ⊢
+  revert h; split
+  · -- some '<' → scanVerbatimTag
+    intro h
+    simp only [← advance_preserves_tokens s] at h ⊢
+    exact scanVerbatimTag_new_token_is_tag s.advance s.currentPos h
+  · -- some '!' → scanSecondaryTag
+    intro h
+    simp only [← advance_preserves_tokens s] at h ⊢
+    exact scanSecondaryTag_new_token_is_tag s.advance s.currentPos h
+  · -- catch-all → scanNamedTag
+    intro h
+    simp only [← advance_preserves_tokens s] at h ⊢
+    exact scanNamedTag_new_token_is_tag s.advance s.currentPos s.inputEnd h
+
 theorem scanTag_new_token_not_plain (s : ScannerState) :
     let tok := (scanTag s).tokens[s.tokens.size]'(by
       have := scanTag_adds_one_token s; omega)
     match tok.val with
     | .scalar _ .plain => False
     | _ => True := by
-  unfold scanTag
-  simp only []
-  sorry
+  have h_sz : s.tokens.size < (scanTag s).tokens.size := by
+    have := scanTag_adds_one_token s; omega
+  obtain ⟨handle, suffix, h_tag⟩ := scanTag_new_token_is_tag s h_sz
+  simp only [h_tag]
 
 theorem scanTag_preserves_FlowInv (s : ScannerState)
     (h_fpsv : FlowContextPSV s.tokens) (h_fni : FlowNestingInv s) :
