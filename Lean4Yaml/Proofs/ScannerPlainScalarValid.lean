@@ -2422,7 +2422,6 @@ theorem scanVerbatimTag_new_token_is_tag (s : ScannerState) (startPos : YamlPos)
   unfold scanVerbatimTag
   simp [ScannerState.emitAt, collectVerbatimTagLoop_preserves_tokens,
         advance_preserves_tokens, Array.getElem_push_eq]
-  exact ⟨_, _, rfl⟩
 
 theorem scanSecondaryTag_new_token_is_tag (s : ScannerState) (startPos : YamlPos)
     (h : s.tokens.size < (scanSecondaryTag s startPos).tokens.size) :
@@ -2430,14 +2429,12 @@ theorem scanSecondaryTag_new_token_is_tag (s : ScannerState) (startPos : YamlPos
   unfold scanSecondaryTag
   simp [ScannerState.emitAt, collectTagSuffixLoop_preserves_tokens,
         advance_preserves_tokens, Array.getElem_push_eq]
-  exact ⟨_, _, rfl⟩
 
 theorem scanNamedTag_new_token_is_tag (s : ScannerState) (startPos : YamlPos) (inputEnd : Nat)
     (h : s.tokens.size < (scanNamedTag s startPos inputEnd).tokens.size) :
     ∃ handle suffix, ((scanNamedTag s startPos inputEnd).tokens[s.tokens.size]'h).val = .tag handle suffix := by
   unfold scanNamedTag
   simp [ScannerState.emitAt]
-  exact ⟨_, _, rfl⟩
 
 theorem scanTag_new_token_not_plain (s : ScannerState) :
     let tok := (scanTag s).tokens[s.tokens.size]'(by
@@ -3145,7 +3142,7 @@ theorem scanNextToken_preserves_FlowInv
       · -- dispatchContent
         split at h_ok <;> (try (simp at h_ok; done))
         simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
-        exact dispatchContent_preserves_FlowInv _ c h_fpsv3 h_fni3 h_peek3 _ (by assumption)
+        exact dispatchContent_preserves_FlowInv _ c h_peek3 h_fpsv3 h_fni3 _ (by assumption)
 
 theorem finalEmit_preserves_FlowContextPSV (s : ScannerState)
     (h : FlowContextPSV s.tokens) :
