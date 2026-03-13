@@ -2295,12 +2295,151 @@ have h_ph_ck : ... := by
 | `scanValue_preserves_FlowNestingInv` | ~35 | Same pipeline, placeholder threading |
 | **Total new infrastructure** | **~220** | — |
 
-**Remaining sorry inventory (1 expected):**
-- Placeholder hypothesis in `dispatchBlockIndicators_preserves_FlowInv` — requires
-  `ScanInv`-level tracking of placeholder positions. Both `scanValue_preserves_FlowContextPSV`
-  and `scanValue_preserves_FlowNestingInv` now take an explicit `h_ph` placeholder
-  hypothesis; their proofs are sorry-free. The single remaining sorry supplies
-  `h_ph` at the call site.
+**Remaining sorry inventory: ZERO** (was 1 — placeholder hypothesis now discharged)
+
+The placeholder hypothesis in `dispatchBlockIndicators_preserves_FlowInv` has been
+fully discharged via the `AllKeysPlaceholderInv` invariant (see B3.5 Extension:
+AllKeysPlaceholderInv below). Both `scanValue_preserves_FlowContextPSV` and
+`scanValue_preserves_FlowNestingInv` take an explicit `h_ph` placeholder hypothesis;
+`AllKeysPlaceholderInv` supplies it at the call site by tracking that simple key
+placeholder tokens actually contain `.placeholder` values.
+
+**ScannerPlainScalarValid.lean is now completely sorry-free.**
+
+##### **B3.5 Extension: `AllKeysPlaceholderInv` — Placeholder Position Tracking**
+
+The final sorry in ScannerPlainScalarValid.lean was the `h_ph` placeholder
+hypothesis in `dispatchBlockIndicators_preserves_FlowInv`. This required
+proving that tokens at `simpleKey.tokenIndex` and `simpleKey.tokenIndex + 1`
+actually contain `.placeholder` values when `simpleKey.possible = true`.
+The resolution introduced a new 4-part invariant threaded through the entire
+scanner dispatch chain.
+
+**Problem:** `scanValuePrepare` overwrites tokens at `simpleKey.tokenIndex`
+and `+1` via `setIfInBounds`. The `FlowContextPSV` and `FlowNestingInv`
+proofs need to know the overwritten tokens are non-flow (`.placeholder`).
+But no existing invariant tracked what values occupied placeholder positions.
+
+**Solution: `AllKeysPlaceholderInv`** — a conjunction of four sub-invariants:
+
+```lean
+def SimpleKeyPlaceholderInv (sk : SimpleKey) (tokens : Array (Positioned YamlToken)) : Prop :=
+  sk.possible = true →
+    sk.tokenIndex < tokens.size ∧
+    sk.tokenIndex + 1 < tokens.size ∧
+    (tokens[sk.tokenIndex]'(by omega)).val = .placeholder ∧
+    (tokens[sk.tokenIndex + 1]'(by omega)).val = .placeholder
+
+def SimpleKeyStackPlaceholderInv (stack : Array SimpleKey) (tokens : ...) : Prop :=
+  ∀ j (hj : j < stack.size), SimpleKeyPlaceholderInv (stack[j]'hj) tokens
+
+def SimpleKeyTokenDisjoint (sk : SimpleKey) (stack : Array SimpleKey) : Prop :=
+  sk.possible = true →
+    ∀ j (hj : j < stack.size), (stack[j]'hj).possible = true →
+      (stack[j]'hj).tokenIndex + 1 < sk.tokenIndex
+
+def SimpleKeyStackOrdering (stack : Array SimpleKey) : Prop :=
+  ∀ j (hj : j < stack.size), (stack[j]'hj).possible = true →
+    ∀ k (hk : k < stack.size), k < j →
+      (stack[k]'hk).possible = true →
+        (stack[k]'hk).tokenIndex + 1 < (stack[j]'hj).tokenIndex
+
+def AllKeysPlaceholderInv (s : ScannerState) : Prop :=
+  SimpleKeyPlaceholderInv s.simpleKey s.tokens ∧
+  SimpleKeyStackPlaceholderInv s.simpleKeyStack s.tokens ∧
+  SimpleKeyTokenDisjoint s.simpleKey s.simpleKeyStack ∧
+  SimpleKeyStackOrdering s.simpleKeyStack
+```
+
+**Why 4 sub-invariants:**
+- `SimpleKeyPlaceholderInv` (current + stacked): Ensures placeholder tokens
+  exist at the claimed positions — needed by `FlowContextPSV_setIfInBounds`.
+- `SimpleKeyTokenDisjoint`: Ensures `scanValue`'s in-place modification of
+  the *current* key's placeholders doesn't affect *stacked* keys' positions —
+  critical for `scanValue_preserves_prefix` at stacked token indices.
+- `SimpleKeyStackOrdering`: Pairwise ordering of stacked keys — needed to
+  recover `SimpleKeyTokenDisjoint` when `flowEnd` restores a stacked key
+  to current position.
+
+**Preservation chain (5 theorems, all sorry-free):**
+
+| Theorem | Lines | Strategy |
+|---------|-------|----------|
+| `preprocess_preserves_AllKeysPlaceholderInv` | ~35 | skipToContent (token equality → trivial mono) → unwindIndents (mono) → saveSimpleKey |
+| `dispatchStructural_preserves_AllKeysPlaceholderInv` | ~65 | Mirrors `AllKeysValid` pattern: docStart/docEnd use `cleared_mono`, directive uses `mono` |
+| `dispatchFlowIndicators_preserves_AllKeysPlaceholderInv` | ~45 | flowStart/flowEnd helpers + flowEntry mono |
+| `dispatchBlockIndicators_preserves_AllKeysPlaceholderInv` | ~55 | blockEntry=mono, key=cleared_mono, value=manual proof |
+| `dispatchContent_preserves_AllKeysPlaceholderInv` | ~75 | Mirrors `AllKeysValid` pattern |
+
+**Key helper theorems:**
+
+| Helper | Purpose |
+|--------|---------|
+| `AllKeysPlaceholderInv_mono` | Prefix extension preserves all 4 sub-invariants |
+| `AllKeysPlaceholderInv_of_cleared_current` | Clearing `simpleKey.possible` makes current invariant vacuous |
+| `AllKeysPlaceholderInv_of_cleared_mono` | Combined pattern: clear current + mono for stack |
+| `saveSimpleKey_preserves_AllKeysPlaceholderInv` | **KEY ESTABLISHMENT**: pushes 2 `.placeholder` tokens, sets `tokenIndex = tokens.size`, establishes `Disjoint` from `tokenIndex > all stacked` |
+| `flowStart_preserves_AllKeysPlaceholderInv` | Push current to stack, clear current; `Ordering` from `Disjoint` |
+| `flowEnd_preserves_AllKeysPlaceholderInv` | Restore from `Array.back?.getD {}`, pop; `Disjoint` from `Ordering` |
+
+**Proof technique — `have hj'` instead of `rw at hj` for bound preservation:**
+
+When a hypothesis `hj : j < s.simpleKeyStack.size` needs to be rewritten
+to `j < new_stack.size` using `h_stack : new_stack = s.simpleKeyStack`, the
+direct `rw [h_stack] at hj` destroys the original bound proof, which may
+still be needed by terms like `(s.simpleKeyStack[j]'hj)`. Solution:
+```lean
+have hj' : j < s.simpleKeyStack.size := by rw [← h_stack]; exact hj
+```
+This preserves `hj` for downstream array indexing while creating `hj'` for
+the new stack.
+
+**Proof technique — `have h_fi := ...` instead of destructuring `let`:**
+
+When `scanNextToken_preserves_FlowInv` returns a 3-tuple
+`FlowContextPSV ∧ FlowNestingInv ∧ AllKeysPlaceholderInv`, using
+`have ⟨h1, h2, h3⟩ := ...` in a `match` arm creates metavariable issues
+because Lean tries to unify the tuple structure across all match branches.
+Solution: bind the whole result and project:
+```lean
+have h_fi := scanNextToken_preserves_FlowInv ...
+-- Use h_fi.1, h_fi.2.1, h_fi.2.2 downstream
+```
+
+**Proof technique — `flowEnd` + empty stack contradiction:**
+
+`flowEnd` restores the simple key from `stack.back?.getD {}`. When
+`stack.size = 0`, `Array.back?` returns `none`, giving `getD {} none = {}`.
+The restored key has `possible = false`, so `SimpleKeyPlaceholderInv` is
+vacuously true. But `SimpleKeyTokenDisjoint` needs the empty-stack case
+handled: `simp [Array.back?, h_empty]` closes it by showing there are
+no stacked keys to be disjoint from.
+
+**Architecture — threading through the scanner chain:**
+
+```
+scanNextToken_preserves_FlowInv (takes + returns AllKeysPlaceholderInv)
+    ├── preprocess_preserves_AllKeysPlaceholderInv
+    │       └── saveSimpleKey_preserves_... (ESTABLISHMENT POINT)
+    ├── dispatchStructural_preserves_AllKeysPlaceholderInv
+    ├── dispatchFlowIndicators_preserves_AllKeysPlaceholderInv
+    │       ├── flowStart_preserves_... (push to stack)
+    │       └── flowEnd_preserves_... (pop from stack)
+    ├── dispatchBlockIndicators_preserves_AllKeysPlaceholderInv
+    │       └── value branch: scanValue_preserves_prefix + Disjoint bounds
+    └── dispatchContent_preserves_AllKeysPlaceholderInv
+
+scanLoop_preserves_FlowInv (takes h_akpi, destructs 3-tuple in recursive case)
+scan_all_flow_context_psv (establishes initial AllKeysPlaceholderInv:
+    simpleKey.possible = false, stack empty → all vacuous)
+```
+
+**Build:** 226/226 ✔, **ZERO sorry warnings in ScannerPlainScalarValid.lean**.
+Only 3 sorry warnings remain in ParserGrammable.lean (C2 parser chain, unrelated).
+
+**Total new code:** ~380 lines across 2 sections of ScannerPlainScalarValid.lean:
+- Definitions + basic lemmas: ~100 lines
+- Preservation proofs: ~280 lines
 
 ### Phase C: Discharge `h_grammable` (CRITICAL PATH) (COMPLETE ✅)
 
@@ -3355,25 +3494,79 @@ the theorem statements.
 
 **Proof impact:** Zero breakage. All new theorems are additive.
 
-**Build:** 226/226 ✔, 3 remaining sorries (C2 parser chain, B3.4 sorry eliminated).
+**Build:** 226/226 ✔, 4 sorry warnings (C2 parser chain; ScannerPlainScalarValid.lean remains sorry-free).
 
-**Note on remaining sorries:** The 3 remaining sorries are in the
-C2 pipeline (parser grammability), unrelated to G-phase comment/position
-work. The B3.4 sorry (`validPlainFirst_sorry`) has been fully eliminated.
-C2 infrastructure (ScalarScannable_strengthen, flowNesting, FlowAwarePSV,
-bridge lemmas) has been added but the core sorries remain — see Phase C
-Reflections for detailed C2 gap analysis.
+**Note on remaining sorries:** The 4 remaining sorry warnings are all in
+ParserGrammable.lean's C2 pipeline (parser grammability):
 
-| Sorry | File | Phase | Issue |
-|-------|------|-------|-------|
-| ~~`validPlainFirst_sorry`~~ | ~~ScannerPlainScalar.lean~~ | ~~B3.4~~ | ~~RESOLVED — see B3.4 Reflections~~ |
-| `parseStream_output_scannable` | ParserGrammable.lean | C2 | Flow context gap: `PlainScalarsValid` gives `ScalarScannable _ false` but flow collections need `_ true`. Fix: prove `FlowAwarePSV` from B3.5 + mutual induction on parser. |
-| `parseStream_output_aliases_resolve` | ParserGrammable.lean | C2 | Scanner doesn't validate alias ordering; parser doesn't validate prior anchors. Needs scanner-level §7.1 invariant + parser anchor tracking. |
-| `parseStream_output_anchors_wellformed` | ParserGrammable.lean | C2 | `∀ inFlow` in `WellFormedAnchors` is genuinely unsatisfiable for block-context anchors with flow indicators (e.g., `value{key}`). Semantic gap, not proof gap. |
+1. **`parseNode_wb_all` (inductive step)** — NEW. The focused target for mutual
+   induction on fuel. Infrastructure for this is fully in place: `FlowAwarePSV`,
+   `Scannable_true_implies_false`, `flowNesting` step lemmas, `ParseNodeWB`
+   definition, `Scannable_attach_props`, base case proved. Requires monadic
+   unfolding of 12 mutual parser functions (~300–400 LOC).
 
-These require deep parser function unfolding and are orthogonal to the
-side-channel architecture. Completing them would be a B3/C2 continuation,
-not a G-phase task.
+2. **`parseStream_output_scannable`** — Signature upgraded from `PlainScalarsValid`
+   to `FlowAwarePSV`. Follows from `parseNode_wb_all` + for-loop extraction in
+   `parseStream` + monadic bind decomposition in `parseDocument`.
+
+3–4. **`parseStream_output_aliases_resolve`** and **`parseStream_output_anchors_wellformed`** — unchanged.
+
+| Sorry | File | Phase | Status |
+|-------|------|-------|--------|
+| ~~`validPlainFirst_sorry`~~ | ~~ScannerPlainScalar.lean~~ | ~~B3.4~~ | ~~RESOLVED~~ |
+| ~~placeholder `h_ph` sorry~~ | ~~ScannerPlainScalarValid.lean~~ | ~~B3.5~~ | ~~RESOLVED~~ |
+| `parseNode_wb_all` (step) | ParserGrammable.lean | C2 | **NEW**: Mutual induction inductive step. Infrastructure complete; needs monadic unfolding of 12 parser functions. |
+| `parseStream_output_scannable` | ParserGrammable.lean | C2 | Signature upgraded to `FlowAwarePSV`. Follows from `parseNode_wb_all` + loop/bind extraction. |
+| `parseStream_output_aliases_resolve` | ParserGrammable.lean | C2 | Scanner doesn't validate alias ordering (§7.1). Needs scanner-level invariant. |
+| `parseStream_output_anchors_wellformed` | ParserGrammable.lean | C2 | `∀ inFlow` in `WellFormedAnchors` is unsatisfiable for cross-context aliasing. Semantic gap. |
+
+##### **C2 Infrastructure: Parser Scannability Architecture**
+
+The C2 proof (parser output ⊢ `Scannable`) now has a complete infrastructure
+layer. The remaining work is localized to the mutual induction inductive step.
+
+**Proved lemmas** (no sorry):
+
+| Lemma | Purpose |
+|-------|---------|
+| `flowNesting_split_step` | Factor `flowNesting(i+1)` into single-step from `flowNesting(i)` |
+| `flowNesting_pos_after_flow_start` | After flow-start token, `flowNesting > 0` |
+| `flowNesting_after_flow_end` | After flow-end token, `flowNesting` decrements |
+| `flowNesting_non_flow_step` | Non-flow tokens preserve `flowNesting` |
+| `flowNesting_beyond_size` | `flowNesting` constant past array bounds |
+| `Scannable_true_implies_false` | Flow-context ⊢ block-context scannability (WF recursion on `sizeOf`) |
+| `Scannable_any_implies_false` | Corollary: any `inFlow` → `false` |
+| `scanFiltered_flow_aware_psv` | Scanner ⊢ `FlowAwarePSV` (wraps `scan_flow_aware_psv`) |
+| `Scannable_attach_props` | Tag/anchor modification preserves `Scannable` |
+| `parseNode_wb_zero` | Base case: fuel=0 ⊢ `ParseNodeWB` (vacuously) |
+
+**Proof architecture** for `parseNode_wb_all`:
+
+```
+ParseNodeWB tokens n = ∀ ps m val ps',
+    m ≤ n → ps.tokens = tokens →
+    parseNode ps m = .ok (val, ps') →
+    (Scannable val false) ∧
+    (flowNesting tokens ps.pos > 0 → Scannable val true) ∧
+    (flowNesting tokens ps'.pos = flowNesting tokens ps.pos)
+
+Strong induction on n:
+├── n = 0: parseNode_wb_zero (vacuous — fuel 0 returns error)
+└── n → n+1: inductive step (SORRY)
+    parseNode ps (n+1) dispatches to sub-functions at fuel ≤ n
+    ├── Alias case: Scannable.alias (trivial)
+    ├── Scalar case: scalar_from_token_scannable / scalar_from_flow_token_scannable
+    ├── Empty case: empty_scalar_scannable
+    ├── Block seq/map/implicit: IH gives items Scannable false
+    ├── Flow seq/map: IH + flowNesting_pos_after_flow_start gives items Scannable true
+    │   └── Flow nesting preserved by IH across parseNode calls in loop
+    └── parseSinglePairMapping: key/value from parseNode in flow context
+```
+
+The inductive step requires monadic unfolding of the 12 mutual parser functions
+(`parseNode`, `parseBlockSequence`, `parseBlockSequenceLoop`, etc.) to extract
+intermediate parseNode calls and show their results satisfy `ParseNodeWB`.
+Estimated: ~300–400 LOC of tactic proof.
 
 ### Phase H: JSON-is-YAML-subset (FUTURE)
 
