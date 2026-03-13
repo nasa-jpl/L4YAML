@@ -509,6 +509,27 @@ theorem empty_scalar_scannable (tag anchor : Option String) (inFlow : Bool) :
     Scannable (.scalar ⟨"", .plain, tag, anchor, none⟩) inFlow := by
   apply Scannable.scalar; intro _ hlen; simp at hlen
 
+/-- When `peek? ps = some tok`, `ps.pos` is in bounds and the bounded
+    access `(ps.tokens[ps.pos]'h).val` equals `tok`.
+    Bridges the `Array.getElem!` in `peek?` to the bounded `getElem` used
+    in proofs like `flowNesting_non_flow_step`. -/
+theorem peek_some_bounded (ps : ParseState) (tok : YamlToken)
+    (h : ps.peek? = some tok) :
+    ps.pos < ps.tokens.size ∧
+    ∀ (h_lt : ps.pos < ps.tokens.size), (ps.tokens[ps.pos]'h_lt).val = tok := by
+  unfold ParseState.peek? at h
+  split at h
+  · rename_i h_lt
+    constructor
+    · exact h_lt
+    · intro h_lt'
+      simp at h
+      -- h : ps.tokens[ps.pos]!.val = tok
+      -- getElem!_pos (simp lemma): c[i]! = c[i]'h when i < c.size
+      rw [getElem!_pos ps.tokens ps.pos h_lt'] at h
+      exact h
+  · simp at h
+
 /-! ### §5a  flowNesting position step lemmas
 
 `flowNesting tokens i` counts unmatched flow-start tokens before position `i`.
@@ -653,6 +674,53 @@ theorem Scannable_attach_props (val : YamlValue) (inFlow : Bool)
   | .mapping style pairs none none, .mapping _ _ _ _ _ hk hv =>
     exact .mapping style pairs tag anchor inFlow hk hv
 
+/-! ### §5d′  applyNodeFinalization preserves Scannable
+
+`applyNodeFinalization` is the pure tail of `parseNode` after content dispatch.
+It applies tag/anchor properties, registers the anchor, and records G5c position.
+None of these operations affect `val`'s scannability or the token array. -/
+
+/-- The value produced by `applyNodeFinalization` is `Scannable` whenever
+    the raw content value is `Scannable`. -/
+theorem applyNodeFinalization_scannable
+    (val : YamlValue) (ps : ParseState) (props : NodeProperties)
+    (nodeStartPos : YamlPos) (inFlow : Bool)
+    (h : Scannable val inFlow) :
+    Scannable (applyNodeFinalization val ps props nodeStartPos).1 inFlow := by
+  match val, h with
+  | .scalar _, h => simp [applyNodeFinalization]; exact h
+  | .alias _, h => simp [applyNodeFinalization]; exact h
+  | .sequence style items (.some _) _, h => simp [applyNodeFinalization]; exact h
+  | .sequence style items none (.some _), h => simp [applyNodeFinalization]; exact h
+  | .sequence style items none none, .sequence _ _ _ _ _ h_items =>
+    simp [applyNodeFinalization]
+    exact .sequence style items props.tag props.anchor inFlow h_items
+  | .mapping style pairs (.some _) _, h => simp [applyNodeFinalization]; exact h
+  | .mapping style pairs none (.some _), h => simp [applyNodeFinalization]; exact h
+  | .mapping style pairs none none, .mapping _ _ _ _ _ hk hv =>
+    simp [applyNodeFinalization]
+    exact .mapping style pairs props.tag props.anchor inFlow hk hv
+
+/-- `applyNodeFinalization` does not modify the token array.
+    (It only touches `anchors`, `nodePositions`, `currentPath`.) -/
+theorem applyNodeFinalization_tokens
+    (val : YamlValue) (ps : ParseState) (props : NodeProperties)
+    (nodeStartPos : YamlPos) :
+    (applyNodeFinalization val ps props nodeStartPos).2.tokens = ps.tokens := by
+  simp only [applyNodeFinalization, ParseState.addAnchor]
+  split <;> simp_all
+  all_goals (split <;> simp_all)
+
+/-- `applyNodeFinalization` preserves the parse position (`.pos`).
+    Properties application, anchor registration, and G5c tracking never advance. -/
+theorem applyNodeFinalization_pos
+    (val : YamlValue) (ps : ParseState) (props : NodeProperties)
+    (nodeStartPos : YamlPos) :
+    (applyNodeFinalization val ps props nodeStartPos).2.pos = ps.pos := by
+  simp only [applyNodeFinalization, ParseState.addAnchor]
+  split <;> simp_all
+  all_goals (split <;> simp_all)
+
 /-! ### §5e  Parser scannability — mutual induction
 
 The 12 mutually recursive parser functions all decrease `fuel` by 1 at each
@@ -734,7 +802,22 @@ theorem parseNode_wb_all (tokens : Array (Positioned YamlToken))
         simp only [Except.ok.injEq, Prod.mk.injEq] at h_ok
         exact ⟨h_ok.1 ▸ .alias name false,
                fun _ => h_ok.1 ▸ .alias name true,
-               by sorry⟩ -- flowNesting: token is .alias (non-flow boundary)
+               by -- flowNesting: alias token is non-flow boundary
+                  have ⟨h_lt, h_tok⟩ := peek_some_bounded ps (.alias name) h_peek
+                  have h_lt' : ps.pos < tokens.size := h_eq ▸ h_lt
+                  have h_val : (tokens[ps.pos]'h_lt').val = .alias name := by
+                    have := h_tok h_lt
+                    simp only [h_eq] at this
+                    exact this
+                  obtain ⟨_, h_ps'⟩ := h_ok
+                  rw [← h_ps']
+                  simp only [ParseState.advance]
+                  split <;> simp only [] <;>
+                    exact flowNesting_non_flow_step tokens ps.pos h_lt'
+                      (by rw [h_val]; exact YamlToken.noConfusion)
+                      (by rw [h_val]; exact YamlToken.noConfusion)
+                      (by rw [h_val]; exact YamlToken.noConfusion)
+                      (by rw [h_val]; exact YamlToken.noConfusion)⟩
       · -- Non-alias case: properties → content dispatch → apply props → anchor
         sorry
 

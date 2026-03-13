@@ -215,6 +215,39 @@ def parseNodeProperties (ps : ParseState) : Except ScanError (NodeProperties × 
 def emptyNode : YamlValue :=
   YamlValue.scalar { content := "", style := .plain }
 
+/-! ## Node Finalization Helper
+
+After content dispatch, `parseNode` applies node properties to non-scalar
+values, registers anchors, and records G5c position tracking. These are
+all pure `let` bindings (no `Except.bind`), extracted here so proofs can
+reason about them independently of the recursive content dispatch. -/
+
+/-- Apply node properties, register anchors, and record G5c positions.
+
+    This is the pure tail of `parseNode` after content dispatch.
+    Extracted to simplify proofs: `applyNodeFinalization_scannable` shows
+    that if the raw content value is `Scannable`, the finalized value is too. -/
+def applyNodeFinalization
+    (val : YamlValue) (ps : ParseState) (props : NodeProperties)
+    (nodeStartPos : YamlPos) : (YamlValue × ParseState) :=
+  -- Apply node properties to non-scalar nodes if not already set
+  let val := match val with
+    | YamlValue.sequence style items none none =>
+      YamlValue.sequence style items props.tag props.anchor
+    | YamlValue.mapping style pairs none none =>
+      YamlValue.mapping style pairs props.tag props.anchor
+    | other => other
+  -- Register anchor
+  let ps := match props.anchor with
+    | some name => ps.addAnchor name val
+    | none => ps
+  -- G5c: record node position (only if tracking enabled)
+  let ps := if ps.trackPositions then
+      let nodeEndPos := ps.lastPos?.getD nodeStartPos
+      { ps with nodePositions := ps.nodePositions.push (ps.currentPath, nodeStartPos, nodeEndPos) }
+    else ps
+  (val, ps)
+
 /-! ## Recursive Descent Parser
 
 ### Fuel-based termination (P10.8a–b)
@@ -303,23 +336,8 @@ def parseNode (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × Pa
     | _ =>
       -- Empty node with possible properties
       .ok (YamlValue.scalar { content := "", style := .plain, tag := props.tag, anchor := props.anchor }, ps)
-  -- Apply node properties to non-scalar nodes if not already set
-  let val := match val with
-    | YamlValue.sequence style items none none =>
-      YamlValue.sequence style items props.tag props.anchor
-    | YamlValue.mapping style pairs none none =>
-      YamlValue.mapping style pairs props.tag props.anchor
-    | other => other
-  -- Register anchor
-  let ps := match props.anchor with
-    | some name => ps.addAnchor name val
-    | none => ps
-  -- G5c: record node position (only if tracking enabled)
-  let ps := if ps.trackPositions then
-      let nodeEndPos := ps.lastPos?.getD nodeStartPos
-      { ps with nodePositions := ps.nodePositions.push (ps.currentPath, nodeStartPos, nodeEndPos) }
-    else ps
-  .ok (val, ps)
+  -- Apply properties, register anchor, and record G5c position
+  .ok (applyNodeFinalization val ps props nodeStartPos)
 
 /-- Parse a block sequence.
 
