@@ -725,26 +725,153 @@ theorem parseNode_wb_all (tokens : Array (Positioned YamlToken))
     · -- m = n + 1: the inductive step
       have hm_val : m = n + 1 := by omega
       subst hm_val
-      -- parseNode ps (n+1) = .ok (val, ps')
-      -- dispatches based on ps.peek? after consuming properties
-      -- Uses ih : ParseNodeWB tokens n for all recursive calls
-      sorry
+      unfold parseNode at h_ok
+      simp only [bind, Except.bind, pure, Except.pure] at h_ok
+      split at h_ok
+      · -- Alias case: ps.peek? = some (.alias name)
+        -- After desugaring, val = .alias name (trivially Scannable)
+        rename_i name h_peek
+        simp only [Except.ok.injEq, Prod.mk.injEq] at h_ok
+        exact ⟨h_ok.1 ▸ .alias name false,
+               fun _ => h_ok.1 ▸ .alias name true,
+               by sorry⟩ -- flowNesting: token is .alias (non-flow boundary)
+      · -- Non-alias case: properties → content dispatch → apply props → anchor
+        sorry
+
+/-! ### §5f  parseDocument output scannability
+
+`parseDocument` constructs a document by calling `parseDirectives`,
+optionally consuming `documentStart`, running error checks, and then
+dispatching to either `emptyNode` or `parseNode`.
+
+The root node value is either `emptyNode` (trivially Scannable at any
+flow context — empty plain scalar) or the result of `parseNode ps fuel`
+where `fuel = 4 * ps.tokens.size + 4` and `ps.tokens = tokens`.
+
+By `parseNode_wb_all`, the root value satisfies `Scannable _ false`.
+
+**Key invariant**: `parseDirectives`, tag handle assignment, and
+`tryConsume .documentStart` do not modify `ps.tokens`. Only `ps.pos`,
+`ps.tagHandles`, and similar metadata change.
+-/
+
+/-- `parseDocument` preserves the token array — only metadata changes. -/
+theorem parseDocument_tokens_preserved
+    (ps : ParseState) (doc : YamlDocument) (ps' : ParseState)
+    (h_ok : parseDocument ps = .ok (doc, ps')) :
+    ps'.tokens = ps.tokens := by
+  sorry
+
+/-- **Factoring lemma**: `parseDocument`'s root value is either `emptyNode`
+    or the result of `parseNode` at some state with `tokens` preserved.
+
+    `parseDocument` only calls `parseNode` with:
+    - `ps_inner.tokens = ps.tokens` (directives/tryConsume don't modify tokens)
+    - `fuel = 4 * ps.tokens.size + 4` (the fuel bound from parseDocument)
+
+    This lemma captures the essential content-dispatch structure without
+    requiring full do-notation reasoning. -/
+theorem parseDocument_value_cases
+    (ps : ParseState) (doc : YamlDocument) (ps' : ParseState)
+    (h_ok : parseDocument ps = .ok (doc, ps')) :
+    (doc.value = emptyNode) ∨
+    (∃ ps_inner ps_after,
+      ps_inner.tokens = ps.tokens ∧
+      parseNode ps_inner (4 * ps.tokens.size + 4) = .ok (doc.value, ps_after)) := by
+  unfold parseDocument at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  -- Peel through the do-notation bind chain.
+  -- Error paths contradict h_ok = .ok; success paths continue.
+  split at h_ok <;> try simp at h_ok
+  all_goals (first | (split at h_ok <;> try simp at h_ok) | skip)
+  all_goals (first | (split at h_ok <;> try simp at h_ok) | skip)
+  all_goals (first | (split at h_ok <;> try simp at h_ok) | skip)
+  all_goals (first | (split at h_ok <;> try simp at h_ok) | skip)
+  all_goals (first | (split at h_ok <;> try simp at h_ok) | skip)
+  all_goals (first | (split at h_ok <;> try simp at h_ok) | skip)
+  all_goals (first | (split at h_ok <;> try simp at h_ok) | skip)
+  -- Remaining: emptyNode branches (Left) and parseNode branches (Right)
+  -- emptyNode: doc = { value := emptyNode, ... } from the constructor
+  -- parseNode: doc.value came from parseNode ps_inner fuel
+  all_goals sorry
+
+/-- **C2a·core**: A document produced by `parseDocument` has a `Scannable` root value.
+
+    This is the core argument connecting parse-tree construction to the
+    `Scannable` predicate. `parseStream_output_scannable` follows from
+    this plus the stream-level loop decomposition.
+
+    **Proof**: By `parseDocument_value_cases`, `doc.value` is either
+    `emptyNode` (trivially Scannable via `empty_scalar_scannable`) or
+    the result of `parseNode` at fuel `4 * tokens.size + 4` with
+    `ps_inner.tokens = tokens`. By `parseNode_wb_all`, the latter
+    satisfies `Scannable doc.value false`. -/
+theorem parseDocument_scannable
+    (tokens : Array (Positioned YamlToken))
+    (ps : ParseState) (doc : YamlDocument) (ps' : ParseState)
+    (h_fpsv : FlowAwarePSV tokens)
+    (h_eq : ps.tokens = tokens)
+    (h_ok : parseDocument ps = .ok (doc, ps')) :
+    Scannable doc.value false := by
+  rcases parseDocument_value_cases ps doc ps' h_ok with
+    h_empty | ⟨ps_inner, ps_after, h_eq_inner, h_pn⟩
+  · -- emptyNode case: empty plain scalar is trivially Scannable
+    rw [h_empty]
+    exact empty_scalar_scannable none none false
+  · -- parseNode case: apply parseNode_wb_all
+    have h_tok : ps_inner.tokens = tokens := by rw [h_eq_inner, h_eq]
+    let fuel := 4 * ps.tokens.size + 4
+    have h_wb := parseNode_wb_all tokens h_fpsv fuel
+    exact (h_wb ps_inner fuel doc.value ps_after (by omega) h_tok h_pn).1
+
+/-! ### §5g  parseStream loop decomposition
+
+`parseStream` iterates `parseDocument` via `for _ in [:fuel] do`.
+Each iteration either breaks (peek? = streamEnd/none/stuck) or calls
+`parseDocument`, pushes the result to `docs`, and continues.
+
+The loop invariant has two parts:
+1. `ps.tokens = tokens` — preserved because `parseDocument` preserves
+   tokens (§5f) and the stream-level mutations (anchor reset,
+   tryConsume documentEnd) only touch metadata.
+2. `∀ doc ∈ docs.toList, Scannable doc.value false` — preserved because
+   each new document satisfies `Scannable` by `parseDocument_scannable`.
+
+After the loop, `docs` is the final document array, and the invariant
+gives the desired conclusion.
+-/
+
+/-- **Loop decomposition**: every document in `parseStream`'s output was
+    produced by `parseDocument` with the same token array.
+
+    This captures the essential structure of the `for _ in [:fuel] do`
+    loop: each iteration calls `parseDocument` on a `ParseState` whose
+    `.tokens` field is the original `tokens` (since only `.pos`, `.anchors`,
+    `.nodePositions`, `.currentPath`, `.tagHandles` change). -/
+theorem parseStream_doc_from_parseDocument
+    (tokens : Array (Positioned YamlToken))
+    (docs : Array YamlDocument)
+    (h_parse : parseStream tokens = .ok docs) :
+    ∀ doc ∈ docs.toList, ∃ ps ps',
+      ps.tokens = tokens ∧ parseDocument ps = .ok (doc, ps') := by
+  sorry
 
 /-- C2a: Every document produced by `parseStream` from scanner tokens
     has a `Scannable` value tree.
 
-    **Proof**: `parseStream` iterates `parseDocument`, which calls
-    `parseNode` with fuel `4 * tokens.size + 4`.  By `parseNode_wb_all`,
-    each root value is `Scannable _ false`.  The `FlowAwarePSV` hypothesis
-    (which implies `PlainScalarsValid`) provides both block-context and
-    flow-context scalar properties. -/
+    **Proof**: By `parseStream_doc_from_parseDocument`, each document
+    was produced by `parseDocument` with `ps.tokens = tokens`. By
+    `parseDocument_scannable`, the root value is `Scannable _ false`. -/
 theorem parseStream_output_scannable
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
     (h_fpsv : FlowAwarePSV tokens)
     (h_parse : parseStream tokens = .ok docs) :
     ∀ doc ∈ docs.toList, Scannable doc.value false := by
-  sorry
+  intro doc hdoc
+  obtain ⟨ps, ps', h_eq, h_ok⟩ :=
+    parseStream_doc_from_parseDocument tokens docs h_parse doc hdoc
+  exact parseDocument_scannable tokens ps doc ps' h_fpsv h_eq h_ok
 
 /-- C2b: Every document's aliases resolve through its anchor map.
 
