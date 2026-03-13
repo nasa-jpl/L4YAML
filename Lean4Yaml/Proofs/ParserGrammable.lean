@@ -721,6 +721,22 @@ theorem applyNodeFinalization_pos
   split <;> simp_all
   all_goals (split <;> simp_all)
 
+/-! ### §5e′  parseNodeProperties preservation lemmas -/
+
+/-- `parseNodeProperties` preserves the token array — only `.pos` changes. -/
+private theorem parseNodeProperties_tokens (ps : ParseState) (props : NodeProperties) (ps' : ParseState)
+    (h : parseNodeProperties ps = .ok (props, ps')) :
+    ps'.tokens = ps.tokens := by
+  sorry
+
+/-- `parseNodeProperties` preserves flow nesting — anchor/tag tokens are non-flow. -/
+private theorem parseNodeProperties_flowNesting (tokens : Array (Positioned YamlToken))
+    (ps : ParseState) (props : NodeProperties) (ps' : ParseState)
+    (h : parseNodeProperties ps = .ok (props, ps'))
+    (h_eq : ps.tokens = tokens) :
+    flowNesting tokens ps'.pos = flowNesting tokens ps.pos := by
+  sorry
+
 /-! ### §5e  Parser scannability — mutual induction
 
 The 12 mutually recursive parser functions all decrease `fuel` by 1 at each
@@ -747,6 +763,71 @@ def ParseNodeWB (tokens : Array (Positioned YamlToken)) (n : Nat) : Prop :=
     (Scannable val false) ∧
     (flowNesting tokens ps.pos > 0 → Scannable val true) ∧
     (flowNesting tokens ps'.pos = flowNesting tokens ps.pos)
+
+/-! ### §5e″  Sub-parser well-behavedness (fuel-inductive hypotheses)
+
+These sorry'd lemmas capture the well-behavedness of each
+content-dispatch sub-parser, assuming `ParseNodeWB tokens fuel`
+(the induction hypothesis from the strong induction in `parseNode_wb_all`).
+
+Together with the scalar and empty base cases, they close all content
+dispatch branches. Each will be proved separately once the overall
+structure is established. -/
+
+/-- `parseBlockSequence` well-behaved given parseNode IH. -/
+private theorem parseBlockSequence_wb (tokens : Array (Positioned YamlToken))
+    (fuel : Nat) (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens fuel)
+    (ps : ParseState) (result : YamlValue × ParseState)
+    (h_eq : ps.tokens = tokens)
+    (h_ok : parseBlockSequence ps fuel = .ok result) :
+    (Scannable result.1 false) ∧
+    (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
+    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) := by
+  sorry
+
+/-- `parseBlockMapping` well-behaved given parseNode IH. -/
+private theorem parseBlockMapping_wb (tokens : Array (Positioned YamlToken))
+    (fuel : Nat) (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens fuel)
+    (ps : ParseState) (result : YamlValue × ParseState)
+    (h_eq : ps.tokens = tokens)
+    (h_ok : parseBlockMapping ps fuel = .ok result) :
+    (Scannable result.1 false) ∧
+    (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
+    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) := by
+  sorry
+
+/-- `parseImplicitBlockSequence` well-behaved given parseNode IH. -/
+private theorem parseImplicitBlockSequence_wb (tokens : Array (Positioned YamlToken))
+    (fuel : Nat) (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens fuel)
+    (ps : ParseState) (result : YamlValue × ParseState)
+    (h_eq : ps.tokens = tokens)
+    (h_ok : parseImplicitBlockSequence ps fuel = .ok result) :
+    (Scannable result.1 false) ∧
+    (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
+    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) := by
+  sorry
+
+/-- `parseFlowSequence` well-behaved given parseNode IH. -/
+private theorem parseFlowSequence_wb (tokens : Array (Positioned YamlToken))
+    (fuel : Nat) (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens fuel)
+    (ps : ParseState) (result : YamlValue × ParseState)
+    (h_eq : ps.tokens = tokens)
+    (h_ok : parseFlowSequence ps fuel = .ok result) :
+    (Scannable result.1 false) ∧
+    (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
+    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) := by
+  sorry
+
+/-- `parseFlowMapping` well-behaved given parseNode IH. -/
+private theorem parseFlowMapping_wb (tokens : Array (Positioned YamlToken))
+    (fuel : Nat) (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens fuel)
+    (ps : ParseState) (result : YamlValue × ParseState)
+    (h_eq : ps.tokens = tokens)
+    (h_ok : parseFlowMapping ps fuel = .ok result) :
+    (Scannable result.1 false) ∧
+    (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
+    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) := by
+  sorry
 
 /-- Base case: at fuel 0, `parseNode` always returns error, so `ParseNodeWB`
     is vacuously true. -/
@@ -818,8 +899,161 @@ theorem parseNode_wb_all (tokens : Array (Positioned YamlToken))
                       (by rw [h_val]; exact YamlToken.noConfusion)
                       (by rw [h_val]; exact YamlToken.noConfusion)
                       (by rw [h_val]; exact YamlToken.noConfusion)⟩
-      · -- Non-alias case: properties → content dispatch → apply props → anchor
-        sorry
+      · -- Non-alias case: properties → error checks → content dispatch → applyNodeFinalization
+        -- Step 1: Extract parseNodeProperties result
+        generalize h_pnp : parseNodeProperties ps = pnp at h_ok
+        cases pnp with
+        | error e => simp [] at h_ok
+        | ok pnp_ok =>
+          obtain ⟨props, ps_prop⟩ := pnp_ok
+          dsimp only [] at h_ok
+          -- Step 2: Generalize ps_prop.peek? so all matches share one variable,
+          -- then case-split on peek_val to determine the content dispatch branch.
+          -- This gives each sub-goal a concrete peek? value.
+          generalize h_peek : ps_prop.peek? = peek_val at h_ok
+          -- Common setup for all branches: extract token chain invariants
+          have h_prop_tok : ps_prop.tokens = tokens :=
+            (parseNodeProperties_tokens ps props ps_prop h_pnp).trans h_eq
+          have h_prop_fn : flowNesting tokens ps_prop.pos = flowNesting tokens ps.pos :=
+            parseNodeProperties_flowNesting tokens ps props ps_prop h_pnp h_eq
+          -- Step 3: Case-split on peek_val to resolve all matches simultaneously
+          match peek_val with
+          | none =>
+            -- peek? = none: error checks take wildcard/false branches, content dispatch = empty node
+            simp only [] at h_ok
+            split at h_ok <;> first | contradiction | skip
+            all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+            all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+            all_goals (
+              simp only [Except.ok.injEq] at h_ok
+              have h_val := congrArg Prod.fst h_ok
+              have h_ps' := congrArg Prod.snd h_ok
+              simp only [] at h_val h_ps'
+              rw [← h_val, ← h_ps']
+              exact ⟨applyNodeFinalization_scannable _ _ _ _ false (empty_scalar_scannable _ _ _),
+                     fun _ => applyNodeFinalization_scannable _ _ _ _ true (empty_scalar_scannable _ _ _),
+                     by rw [applyNodeFinalization_pos]; exact h_prop_fn⟩)
+          | some (.scalar c s) =>
+            -- Scalar case: token → advance
+            simp only [] at h_ok
+            split at h_ok <;> first | contradiction | skip
+            all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+            all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+            all_goals (
+              simp only [Except.ok.injEq] at h_ok
+              have h_val := congrArg Prod.fst h_ok
+              have h_ps' := congrArg Prod.snd h_ok
+              simp only [] at h_val h_ps'
+              rw [← h_val, ← h_ps']
+              have ⟨h_lt_ps, h_tok_ps⟩ := peek_some_bounded ps_prop _ h_peek
+              have h_lt : ps_prop.pos < tokens.size := h_prop_tok ▸ h_lt_ps
+              have h_tok := by
+                have := h_tok_ps h_lt_ps; simp only [h_prop_tok] at this; exact this
+              exact ⟨applyNodeFinalization_scannable _ _ _ _ false
+                      (scalar_from_token_scannable tokens h_fpsv.1
+                        ps_prop.pos h_lt _ _ h_tok props.tag props.anchor),
+                     fun h_flow => applyNodeFinalization_scannable _ _ _ _ true
+                      (scalar_from_flow_token_scannable tokens h_fpsv
+                        ps_prop.pos h_lt _ _ h_tok (h_prop_fn ▸ h_flow)
+                        props.tag props.anchor true),
+                     by rw [applyNodeFinalization_pos]
+                        simp only [ParseState.advance]
+                        rw [flowNesting_non_flow_step tokens ps_prop.pos h_lt
+                          (by rw [h_tok]; exact YamlToken.noConfusion)
+                          (by rw [h_tok]; exact YamlToken.noConfusion)
+                          (by rw [h_tok]; exact YamlToken.noConfusion)
+                          (by rw [h_tok]; exact YamlToken.noConfusion)]
+                        exact h_prop_fn⟩)
+          | some .blockSequenceStart | some .blockMappingStart | some .blockEntry
+          | some .flowSequenceStart | some .flowMappingStart =>
+            -- Sub-parser cases: parseBlockSequence / parseBlockMapping / etc.
+            all_goals (simp only [] at h_ok)
+            -- Peel error checks, ifs, and sub-parser bind
+            all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+            all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+            all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+            all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+            all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+            all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+            all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+            all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+            -- Close contradictory goals from error check splits (anonymous heq✝ with unresolved ite/throw)
+            all_goals (try (simp_all only []; done))
+            all_goals (
+              simp only [Except.ok.injEq] at h_ok
+              have h_val := congrArg Prod.fst h_ok
+              have h_ps' := congrArg Prod.snd h_ok
+              simp only [] at h_val h_ps'
+              rw [← h_val, ← h_ps']
+              have h_wb := by
+                first
+                | exact parseBlockSequence_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
+                | exact parseBlockMapping_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
+                | exact parseImplicitBlockSequence_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
+                | exact parseFlowSequence_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
+                | exact parseFlowMapping_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
+              exact ⟨applyNodeFinalization_scannable _ _ _ _ false h_wb.1,
+                     fun h_flow => applyNodeFinalization_scannable _ _ _ _ true
+                       (h_wb.2.1 (h_prop_fn ▸ h_flow)),
+                     by rw [applyNodeFinalization_pos, h_wb.2.2]; exact h_prop_fn⟩)
+            done
+          | _ =>
+            -- Other tokens: error checks may throw (→ contradiction) or content dispatch = empty node
+            simp (config := { failIfUnchanged := false }) only [] at h_ok
+            split at h_ok <;> first | contradiction | skip
+            all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+            all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+            all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+            -- Some goals are contradictory (unreachable peek_val cases from content dispatch split)
+            all_goals (try (simp_all only [reduceCtorEq, Option.some.injEq]; done))
+            -- Reduce trivial matches on concrete peek_val (e.g., match some .blockSeqStart with ...)
+            all_goals (try (simp only [] at h_ok))
+            -- Peel sub-parser bind (from content dispatch that resolved to a sub-parser)
+            all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+            all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+            all_goals (try (
+              simp only [Except.ok.injEq] at h_ok
+              have h_val := congrArg Prod.fst h_ok
+              have h_ps' := congrArg Prod.snd h_ok
+              simp only [] at h_val h_ps'
+              rw [← h_val, ← h_ps']
+              first
+              | -- Empty node case
+                exact ⟨applyNodeFinalization_scannable _ _ _ _ false (empty_scalar_scannable _ _ _),
+                       fun _ => applyNodeFinalization_scannable _ _ _ _ true (empty_scalar_scannable _ _ _),
+                       by rw [applyNodeFinalization_pos]; exact h_prop_fn⟩
+              | -- Scalar case (leaked from content dispatch)
+                (have ⟨h_lt_ps, h_tok_ps⟩ := peek_some_bounded ps_prop _ h_peek
+                 have h_lt : ps_prop.pos < tokens.size := h_prop_tok ▸ h_lt_ps
+                 have h_tok := by
+                   have := h_tok_ps h_lt_ps; simp only [h_prop_tok] at this; exact this
+                 exact ⟨applyNodeFinalization_scannable _ _ _ _ false
+                         (scalar_from_token_scannable tokens h_fpsv.1
+                           ps_prop.pos h_lt _ _ h_tok _ _),
+                        fun h_flow => applyNodeFinalization_scannable _ _ _ _ true
+                         (scalar_from_flow_token_scannable tokens h_fpsv
+                           ps_prop.pos h_lt _ _ h_tok (h_prop_fn ▸ h_flow) _ _ true),
+                        by rw [applyNodeFinalization_pos]
+                           simp only [ParseState.advance]
+                           rw [flowNesting_non_flow_step tokens ps_prop.pos h_lt
+                             (by rw [h_tok]; exact YamlToken.noConfusion)
+                             (by rw [h_tok]; exact YamlToken.noConfusion)
+                             (by rw [h_tok]; exact YamlToken.noConfusion)
+                             (by rw [h_tok]; exact YamlToken.noConfusion)]
+                           exact h_prop_fn⟩)
+              | -- Sub-parser case
+                (have h_wb := by
+                  first
+                  | exact parseBlockSequence_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
+                  | exact parseBlockMapping_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
+                  | exact parseImplicitBlockSequence_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
+                  | exact parseFlowSequence_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
+                  | exact parseFlowMapping_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
+                 exact ⟨applyNodeFinalization_scannable _ _ _ _ false h_wb.1,
+                        fun h_flow => applyNodeFinalization_scannable _ _ _ _ true
+                          (h_wb.2.1 (h_prop_fn ▸ h_flow)),
+                        by rw [applyNodeFinalization_pos, h_wb.2.2]; exact h_prop_fn⟩)))
+            done
 
 /-! ### §5f  parseDocument output scannability
 
