@@ -3495,9 +3495,9 @@ the theorem statements.
 
 **Proof impact:** Zero breakage. All new theorems are additive.
 
-**Build:** 226/226 ✔, 10 sorry warnings (C2 parser chain; ScannerPlainScalarValid.lean remains sorry-free).
+**Build:** 322/322 ✔, 9 sorry warnings (C2 parser chain; ScannerPlainScalarValid.lean remains sorry-free).
 
-**Note on remaining sorries:** The 10 remaining sorry warnings are all in
+**Note on remaining sorries:** The 9 remaining sorry warnings are all in
 ParserGrammable.lean's C2 pipeline (parser grammability):
 
 1. ~~**`parseNode_wb_all` (inductive step)**~~ — **PROVED ✅** (2026-03-13).
@@ -3549,7 +3549,7 @@ ParserGrammable.lean's C2 pipeline (parser grammability):
 | ~~`parseNodeProperties_tokens`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-13): Loop unrolling + `ForInStep` case split + `dite_false`. ~120 LOC.~~ |
 | ~~`parseNodeProperties_flowNesting`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-13): Same loop-unrolling structure + `advance_preserves_flowNesting` helpers. ~100 LOC.~~ |
 | `parseDocument_value_cases` | ParserGrammable.lean | C2 | **NEW**: `doc.value` is `emptyNode` or from `parseNode`. Do-notation partially unfolded. |
-| `parseDocument_tokens_preserved` | ParserGrammable.lean | C2 | **NEW**: `parseDocument` preserves `ps.tokens`. Structural. |
+| ~~`parseDocument_tokens_preserved`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-15): Proved via `parseDirectives_tokens` + `tryConsume_tokens` + `parseNode_tokens_preserved`. Extended `ParseNodeWB` with 4th conjunct.~~ |
 | `parseStream_doc_from_parseDocument` | ParserGrammable.lean | C2 | **NEW**: For-loop decomposition. Needs `Range.forIn` invariant. |
 | `parseStream_output_aliases_resolve` | ParserGrammable.lean | C2 | Scanner doesn't validate alias ordering (§7.1). Needs scanner-level invariant. |
 | `parseStream_output_anchors_wellformed` | ParserGrammable.lean | C2 | `∀ inFlow` in `WellFormedAnchors` is unsatisfiable for cross-context aliasing. Semantic gap. |
@@ -3571,7 +3571,7 @@ proved:
 - **`parseStream_output_scannable`** ✅ — proved by factoring through
   `parseStream_doc_from_parseDocument` (§5g) and `parseDocument_scannable`
 
-The remaining 10 sorry's are localized to four categories:
+The remaining 9 sorry's are localized to four categories:
 
 1. **Auxiliary lemmas** (5 sorry's): 5 sub-parser WB lemmas.
    (`parseNodeProperties_tokens` and `parseNodeProperties_flowNesting`
@@ -3579,12 +3579,12 @@ The remaining 10 sorry's are localized to four categories:
    These are used axiomatically by `parseNode_wb_all` — the induction
    skeleton is complete and each auxiliary can be proved independently.
 
-2. **`parseDocument` do-notation** (`parseDocument_value_cases`,
-   `parseDocument_tokens_preserved`): structural properties about the
-   `parseDocument` bind chain. The do-notation is partially unfolded (8
+2. **`parseDocument` do-notation** (`parseDocument_value_cases`):
+   structural property about the `parseDocument` bind chain.
+   (`parseDocument_tokens_preserved` is now proved — see below.)
+   The do-notation is partially unfolded (8
    levels of split). Remaining goals need emptyNode/parseNode branch
-   identification and token array preservation through pure operations
-   (parseDirectives, tryConsume, tag handle assignment).
+   identification.
 
 3. **For-loop decomposition** (`parseStream_doc_from_parseDocument`):
    proving that the `for _ in [:fuel] do` loop in `parseStream` only
@@ -3618,6 +3618,10 @@ The remaining 10 sorry's are localized to four categories:
 | **`advance2_preserves_flowNesting`** | **Double `advance` preserves `flowNesting` (two non-flow-boundary tokens)** |
 | **`parseNodeProperties_tokens`** | **`parseNodeProperties` preserves `ps.tokens` (~120 LOC, loop unrolling)** |
 | **`parseNodeProperties_flowNesting`** | **`parseNodeProperties` preserves `flowNesting` (~100 LOC, loop unrolling)** |
+| **`tryConsume_tokens`** | **`ps.tryConsume tok` preserves tokens — split on `peek?` + advance** |
+| **`parseDirectives_tokens`** | **`parseDirectives` preserves tokens — `Id.run` for-loop induction via `Std.Legacy.Range.forIn_eq_forIn_range'`** |
+| **`parseNode_tokens_preserved`** | **`parseNode` preserves tokens — derives from `parseNode_wb_all`'s 4th conjunct** |
+| **`parseDocument_tokens_preserved`** | **`parseDocument` preserves tokens — do-notation unfolding + helper lemma chain** |
 
 **Proof architecture** for the C2 chain:
 
@@ -3626,10 +3630,18 @@ scanFiltered_flow_aware_psv (B3.5+)
     │ tokens → FlowAwarePSV
     ▼
 parseNode_wb_all (§5e)           [PROVED ✅ — all branches]
-    │ parseNode → ParseNodeWB (Scannable + flowNesting)
+    │ parseNode → ParseNodeWB (Scannable + flowNesting + tokens)
     │   ◄── parseNodeProperties_tokens      [PROVED ✅ — loop unrolling]
     │   ◄── parseNodeProperties_flowNesting  [PROVED ✅ — loop unrolling]
     │   ◄── 5 sub-parser _wb lemmas          [SORRY: monadic unfolding]
+    ▼
+parseNode_tokens_preserved (§5e₂)  [PROVED ✅ — derives from parseNode_wb_all]
+    │ parseNode preserves ps.tokens
+    ▼
+parseDocument_tokens_preserved (§5f)  [PROVED ✅ — do-notation + helpers]
+    │ parseDocument preserves ps.tokens
+    │   ◄── parseDirectives_tokens           [PROVED ✅ — for-loop induction]
+    │   ◄── tryConsume_tokens                [PROVED ✅ — trivial split]
     ▼
 parseDocument_value_cases (§5f)  [SORRY: do-notation decomposition]
     │ parseDocument → emptyNode ∨ parseNode result
@@ -3984,6 +3996,60 @@ splitting, while any future bounded-loop proof can reuse the
 | `advance2_preserves_flowNesting` | ParserGrammable.lean | Two-token consume paths |
 | `dite_false` reduction pattern | (technique) | Any bounded loop reaching iteration limit |
 | `ForInStep.noConfusion` via `cases` | (technique) | Any done/yield impossibility |
+
+##### **`parseDocument_tokens_preserved` Reflections (2026-03-15)**
+
+**What was proved:** `parseDocument` preserves the `ps.tokens` field —
+the output `ParseState`'s token array equals the input's. This required:
+
+1. **Extending `ParseNodeWB` with a 4th conjunct** (`∧ ps'.tokens = tokens`)
+   to propagate tokens preservation through `parseNode_wb_all`'s induction.
+
+2. **Three helper lemmas:**
+   - `tryConsume_tokens` — trivial (`unfold` + `split` + `simp`/`rfl`)
+   - `parseDirectives_tokens` — `Id.run do` for-loop with variable bound;
+     requires `Std.Legacy.Range.forIn_eq_forIn_range'` + list induction
+   - `parseNode_tokens_preserved` — derives from `parseNode_wb_all`'s
+     4th conjunct via `Prod.eta` rewriting
+
+3. **The main `parseDocument_tokens_preserved` proof:** unfold the
+   do-notation, split through 8 intermediate binds, dispatch emptyNode
+   goals (12 goals — `rw [tryConsume_tokens]; exact parseDirectives_tokens ps`),
+   then dispatch parseNode goals (4 goals — `parseNode_tokens_preserved`
+   + transitivity chain through `tryConsume_tokens` + `parseDirectives_tokens`).
+
+**Key technique — `refine ⟨..., ?_, ?_⟩ <;> first | ... | ...`:**
+
+When extending a 3-tuple `⟨a, b, by ... exact x⟩` to a 4-tuple
+`⟨a, b, by ... exact x, by ... exact y⟩`, Lean's parser treats the
+comma after the first `by` block ambiguously (tactic separator vs tuple
+separator). Two solutions:
+- **`refine ⟨a, b, ?_, ?_⟩ <;> first | tac1 | tac2`** — create typed
+  placeholders and dispatch each with `first`.
+- **`refine ⟨..., ?_, ?_⟩` + `·` bullets** — works for top-level cases
+  like the alias case.
+
+The `have h := by ...; exact ⟨..., h⟩` approach fails when Lean can't
+infer the type for the `have` (goal is `?m.475`), because the `by` block
+then can't find rewrite targets.
+
+**Key technique — Prod eta is NOT definitional in Lean 4.28.0:**
+
+`assumption` / `‹_›` can't unify `Except.ok v✝` with `.ok (val, ps')`
+because `Prod` eta (`v✝ = (v✝.1, v✝.2)`) is propositional, not
+definitional, in this version. The fix: accept `(result : α × β)` as a
+single argument in `parseNode_tokens_preserved` (not `(val : α) (ps' : β)`),
+then use `(by rw [Prod.eta]; exact h)` to convert when calling
+`parseNode_wb_all` internally.
+
+**Key technique — explicit struct for `tryConsume_tokens` argument:**
+
+When Lean infers `tryConsume_tokens _ .documentStart`, the `_` for
+`ps_x` may unify with `(parseDirectives ps).snd` instead of the
+intended `{ (parseDirectives ps).snd with tagHandles := ... }` (which
+differs in `tagHandles`). Providing the full struct literal explicitly
+fixes this. Without `Mathlib`'s `set` tactic, naming intermediate states
+is harder — `let` doesn't substitute into the goal.
 
 ### Phase H: JSON-is-YAML-subset (FUTURE)
 
