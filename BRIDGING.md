@@ -3503,9 +3503,10 @@ ParserGrammable.lean's C2 pipeline (parser grammability):
 1. ~~**`parseNode_wb_all` (inductive step)**~~ — **PROVED ✅** (2026-03-13).
    All branches of the inductive step are fully proved: alias, scalar,
    empty node, sub-parser dispatch (5 tokens), and wildcard (error-check
-   fallthrough + leaked cases). ~190 LOC. Modular — depends on 5
-   remaining sorry'd auxiliary lemmas (sub-parser WB lemmas; node
-   properties lemmas now proved) but the induction skeleton is complete.
+   fallthrough + leaked cases). ~190 LOC. Modular — depends on 4
+   remaining sorry'd auxiliary lemmas (3 sub-parser WB lemmas + 1 mapping
+   loop sub-case; node properties lemmas now proved) but the induction
+   skeleton is complete.
 
 2. ~~**`parseStream_output_scannable`**~~ — **PROVED**.
    Factored through `parseDocument_scannable` (also proved) and
@@ -3525,26 +3526,38 @@ ParserGrammable.lean's C2 pipeline (parser grammability):
    Required adding `h_peek : ps.peek? = some .blockSequenceStart` hypothesis.
    Helper: `push_all_scannable` for array push Scannable preservation.
 
-5. **4 remaining sub-parser WB lemmas** — `parseBlockMapping_wb`,
-   `parseImplicitBlockSequence_wb`, `parseFlowSequence_wb`, `parseFlowMapping_wb`.
+5. ~~**`parseBlockMapping_wb`**~~ — **MOSTLY PROVED** (2026-03-14).
+   Block mapping scannability + flowNesting/tokens preservation.
+   Proved via `parseBlockMappingLoop_wb` loop invariant (induction on fuel) +
+   `advance_preserves_flowNesting` for blockMappingStart/blockEnd +
+   `tryConsume_flowNesting` + `tryConsume_tokens`. Helper: `push_pair_scannable`
+   for `(YamlValue × YamlValue)` array push Scannable preservation.
+   The wrapper `parseBlockMapping_wb` is fully proved. The loop invariant
+   `parseBlockMappingLoop_wb` has 1 sorry remaining in the `.key` branch's
+   key-parseNode×val-parseNode sub-case (metavar leaking in `first`/`<;>`;
+   see reflections). `.value` branch fully proved, wildcard branch proved.
+   Required adding `h_peek : ps.peek? = some .blockMappingStart` hypothesis.
+
+6. **3 remaining sub-parser WB lemmas** — `parseImplicitBlockSequence_wb`,
+   `parseFlowSequence_wb`, `parseFlowMapping_wb`.
    Each asserts `Scannable result.1 false ∧ (flowNesting > 0 → Scannable result.1 true)
    ∧ flowNesting preserved`. Used axiomatically by `parseNode_wb_all`;
    each requires monadic unfolding of its respective parser + recursive
    application of the `ParseNodeWB` induction hypothesis.
 
-5. **`parseDocument_value_cases`** — `parseDocument`'s root value is
+7. **`parseDocument_value_cases`** — `parseDocument`'s root value is
    either `emptyNode` or from `parseNode`. The `do`-notation is partially
    unfolded (8 levels of bind-chain peeling); remaining goals need
    emptyNode/parseNode branch completion.
 
-6. **`parseDocument_tokens_preserved`** — `parseDocument` preserves
+8. ~~**`parseDocument_tokens_preserved`**~~ — `parseDocument` preserves
    `ps.tokens`. Structural property about the `do`-notation bind chain.
 
-7. **`parseStream_doc_from_parseDocument`** — For-loop decomposition:
+9. **`parseStream_doc_from_parseDocument`** — For-loop decomposition:
    every document in `parseStream`'s output was produced by `parseDocument`
    with the same token array. Requires `Range.forIn` loop invariant proof.
 
-8–9. **`parseStream_output_aliases_resolve`** and
+10–11. **`parseStream_output_aliases_resolve`** and
    **`parseStream_output_anchors_wellformed`** — unchanged.
 
 | Sorry | File | Phase | Status |
@@ -3555,9 +3568,15 @@ ParserGrammable.lean's C2 pipeline (parser grammability):
 | ~~`parseNode_wb_all` (step)~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-13): All branches proved — alias, scalar, empty, sub-parser, wildcard. ~190 LOC. Depends on 5 remaining sorry'd auxiliaries.~~ |
 | ~~`parseNodeProperties_tokens`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-13): Loop unrolling + `ForInStep` case split + `dite_false`. ~120 LOC.~~ |
 | ~~`parseNodeProperties_flowNesting`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-13): Same loop-unrolling structure + `advance_preserves_flowNesting` helpers. ~100 LOC.~~ |
-| `parseDocument_value_cases` | ParserGrammable.lean | C2 | **NEW**: `doc.value` is `emptyNode` or from `parseNode`. Do-notation partially unfolded. |
+| ~~`parseBlockSequence_wb`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-16): Loop invariant + advance helpers. ~130 LOC.~~ |
+| `parseBlockMappingLoop_wb` | ParserGrammable.lean | C2 | **MOSTLY PROVED** (2026-03-14): .value + wildcard branches proved; .key branch 3/4 sub-cases proved. 1 sorry in key-parseNode×val-parseNode sub-case (metavar leaking). |
+| `parseBlockMapping_wb` (wrapper) | ParserGrammable.lean | C2 | **PROVED** (2026-03-14): Wrapper fully proved using loop lemma + `h_peek` hypothesis. |
+| `parseImplicitBlockSequence_wb` | ParserGrammable.lean | C2 | Sub-parser WB lemma. Monadic unfolding needed. |
+| `parseFlowSequence_wb` | ParserGrammable.lean | C2 | Sub-parser WB lemma. Monadic unfolding needed. |
+| `parseFlowMapping_wb` | ParserGrammable.lean | C2 | Sub-parser WB lemma. Monadic unfolding needed. |
+| `parseDocument_value_cases` | ParserGrammable.lean | C2 | `doc.value` is `emptyNode` or from `parseNode`. Do-notation partially unfolded. |
 | ~~`parseDocument_tokens_preserved`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-15): Proved via `parseDirectives_tokens` + `tryConsume_tokens` + `parseNode_tokens_preserved`. Extended `ParseNodeWB` with 4th conjunct.~~ |
-| `parseStream_doc_from_parseDocument` | ParserGrammable.lean | C2 | **NEW**: For-loop decomposition. Needs `Range.forIn` invariant. |
+| `parseStream_doc_from_parseDocument` | ParserGrammable.lean | C2 | For-loop decomposition. Needs `Range.forIn` invariant. |
 | `parseStream_output_aliases_resolve` | ParserGrammable.lean | C2 | Scanner doesn't validate alias ordering (§7.1). Needs scanner-level invariant. |
 | `parseStream_output_anchors_wellformed` | ParserGrammable.lean | C2 | `∀ inFlow` in `WellFormedAnchors` is unsatisfiable for cross-context aliasing. Semantic gap. |
 
@@ -3580,8 +3599,9 @@ proved:
 
 The remaining 8 sorry's are localized to four categories:
 
-1. **Auxiliary lemmas** (4 sorry's): 4 sub-parser WB lemmas
+1. **Auxiliary lemmas** (4 sorry's): 3 sub-parser WB lemmas + 1 mapping loop sub-case
    (`parseBlockSequence_wb` now proved — see item 4 above).
+   (`parseBlockMapping_wb` wrapper proved; loop 1 sorry remains — see item 5 above).
    (`parseNodeProperties_tokens` and `parseNodeProperties_flowNesting`
    are now proved — see reflections below.)
    These are used axiomatically by `parseNode_wb_all` — the induction
@@ -3630,6 +3650,12 @@ The remaining 8 sorry's are localized to four categories:
 | **`parseDirectives_tokens`** | **`parseDirectives` preserves tokens — `Id.run` for-loop induction via `Std.Legacy.Range.forIn_eq_forIn_range'`** |
 | **`parseNode_tokens_preserved`** | **`parseNode` preserves tokens — derives from `parseNode_wb_all`'s 4th conjunct** |
 | **`parseDocument_tokens_preserved`** | **`parseDocument` preserves tokens — do-notation unfolding + helper lemma chain** |
+| **`push_pair_scannable`** | **`pairs.push (k,v)` preserves `∀ i, Scannable pairs[i]` for mapping accumulation** |
+| **`tryConsume_flowNesting`** | **`ps.tryConsume tok` preserves flowNesting for non-flow tokens** |
+| **`parseBlockSequenceLoop_wb`** | **Block sequence loop invariant — induction on fuel, Scannable+flowNesting+tokens** |
+| **`parseBlockSequence_wb`** | **Block sequence WB — wrapper around loop lemma, advance + blockEnd consumption** |
+| **`parseBlockMappingLoop_wb`** | **Block mapping loop invariant — mostly proved, 3/4 .key sub-cases + full .value + wildcard** |
+| **`parseBlockMapping_wb`** | **Block mapping WB — wrapper fully proved using loop lemma + h_peek** |
 
 **Proof architecture** for the C2 chain:
 
@@ -3641,7 +3667,9 @@ parseNode_wb_all (§5e)           [PROVED ✅ — all branches]
     │ parseNode → ParseNodeWB (Scannable + flowNesting + tokens)
     │   ◄── parseNodeProperties_tokens      [PROVED ✅ — loop unrolling]
     │   ◄── parseNodeProperties_flowNesting  [PROVED ✅ — loop unrolling]
-    │   ◄── 5 sub-parser _wb lemmas          [SORRY: monadic unfolding]
+    │   ◄── parseBlockSequence_wb            [PROVED ✅ — loop invariant]
+    │   ◄── parseBlockMapping_wb             [MOSTLY PROVED — 1 sorry in key×val sub-case]
+    │   ◄── 3 sub-parser _wb lemmas          [SORRY: monadic unfolding]
     ▼
 parseNode_tokens_preserved (§5e₂)  [PROVED ✅ — derives from parseNode_wb_all]
     │ parseNode preserves ps.tokens
@@ -4058,6 +4086,202 @@ intended `{ (parseDirectives ps).snd with tagHandles := ... }` (which
 differs in `tagHandles`). Providing the full struct literal explicitly
 fixes this. Without `Mathlib`'s `set` tactic, naming intermediate states
 is harder — `let` doesn't substitute into the goal.
+
+##### **`parseBlockMapping_wb` / `parseBlockMappingLoop_wb` Reflections (2026-03-14)**
+
+**What was proved:** Well-behavedness of the block mapping parser — the
+most complex sub-parser in the YAML implementation. `parseBlockMapping`
+wraps `parseBlockMappingLoop`, which has two main branches (`.key` and
+`.value`) each containing conditional `parseNode` calls, `tryConsume`,
+and array accumulation.
+
+- **`parseBlockMapping_wb`** (wrapper): FULLY PROVED. Advances past
+  `blockMappingStart`, calls loop, optionally consumes `blockEnd`,
+  returns `.mapping .block`. Uses `h_peek` hypothesis,
+  `advance_preserves_flowNesting`, and the loop lemma.
+- **`parseBlockMappingLoop_wb`**: MOSTLY PROVED — `.value` branch (fully),
+  wildcard branch (fully), `.key` branch (3 of 4 sub-cases). One sorry
+  remains in the key-parseNode×val-parseNode sub-case.
+
+**Proof size:** ~300 LOC for loop + ~40 LOC for wrapper + ~100 LOC helpers.
+
+**Proof architecture — 4 sub-cases per branch:**
+
+`parseBlockMappingLoop` has two recursive `parseNode` calls per `.key`
+iteration: one for the key value, one for the mapping value. Each
+`parseNode` call may succeed (producing a value via recursive `h_ih`)
+or be skipped (using `emptyNode`). This gives 4 sub-cases per branch:
+
+| Key | Value | Difficulty | Status |
+|-----|-------|------------|--------|
+| emptyNode | emptyNode | Low | ✅ Proved |
+| parseNode | emptyNode | Medium | ✅ Proved |
+| emptyNode | parseNode | Medium | ✅ Proved |
+| parseNode | parseNode | **High** | ⚠️ sorry (metavar leaking) |
+
+The `.value` branch has only 2 sub-cases (key is always emptyNode) —
+both proved.
+
+**Helper lemmas:**
+
+| Helper | Purpose |
+|--------|---------|
+| `push_pair_scannable` | `pairs.push (k, v)` preserves `∀ i, Scannable pairs[i]` given `Scannable k` ∧ `Scannable v` |
+| `tryConsume_tokens` | `(ps.tryConsume tok).2.tokens = ps.tokens` |
+| `tryConsume_flowNesting` | `flowNesting tokens (ps.tryConsume tok).2.pos = flowNesting tokens ps.pos` (for non-flow tokens) |
+| `mapping_recurse` (local) | Composes key/val Scannable proofs + flowNesting/tokens preservation + recursive call for loop continuation |
+
+**Key technique — `mapping_recurse` local helper for monadic composition:**
+
+The `parseBlockMappingLoop` function chains: advance → parse key → set
+path → tryConsume → parse value → push pair → recurse. Each step produces
+intermediate state that feeds the next. Rather than manually composing
+all 7 steps in each sub-case, `mapping_recurse` abstracts the final 3
+steps (push pair → recurse → extract result):
+
+```lean
+let mapping_recurse (h_key_sc_false : Scannable key_val false)
+    (h_key_sc_true : flowNesting tokens ps.pos > 0 → Scannable key_val true)
+    (h_val_sc_false : Scannable val_val false) (...) :=
+  h_ih val_ps' fuel' (Nat.le_of_succ_le h_fuel) h_tok_eq h_parseNode_eq
+```
+
+This reduces ~30 LOC of duplicated composition to a ~5-line call.
+
+**Key technique — `split at h_ok <;> first | contradiction | skip` peeling:**
+
+`parseBlockMappingLoop`'s `.key` branch has ~20 nested `if`/`match`/`do`
+binds. Peeling them mechanically:
+```lean
+all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+```
+repeated 20 times. Each round splits the outermost remaining `if`/`match`
+in `h_ok`, closes error paths via `contradiction`, and leaves success
+paths for further peeling. After all rounds, the remaining goals
+correspond exactly to the 4 key×value sub-case combinations.
+
+**Key discovery — deferred synthetic goal leaking in `first`/`<;>`:**
+
+The most significant finding of this proof effort. When using
+`refine mapping_recurse ... <;> (first | close_case | sorry)`, nested
+`(by tac)` expressions inside the `refine` term create **deferred
+synthetic goals** that leak from `first`'s checkpointing mechanism.
+
+**Root cause:** `first` saves and restores the *main goal state* when
+backtracking between alternatives. However, it does *not* save/restore
+the deferred synthetic goal queue or metavariable assignments. When an
+alternative contains `(by omega)` or `(by simp [...])` inside a term
+expression, these create deferred goals during elaboration. If the
+alternative fails and `first` backtracks, the deferred goals persist
+as orphans — they appear as "unsolved goals" with auto-generated case
+names like `h_2.refine_5`.
+
+**Symptoms:**
+- `all_goals sorry` → builds successfully
+- `refine term <;> sorry` → builds successfully
+- `refine term <;> (first | tac | sorry)` → ~86 unsolved goals
+- Goals have names like `h_2.refine_5`, `h_key_ih.refine_2.2.2.1`
+- Error messages mention "don't know how to synthesize placeholder"
+
+**Concrete example of the problem:**
+```lean
+-- UNSAFE: (by omega) inside term creates deferred goal
+refine h_ih ps' k val ps'' (by omega) (by simp [h_adv_tok]) ‹_›
+-- If ‹_› fails, `first` backtracks but the omega/simp goals LEAK
+
+-- SAFE: tactic-level `have` + `refine ... ?_; assumption`
+have h := by refine h_ih _ k _ _ (Nat.le_of_succ_le h_fuel) h_tok ?_; assumption
+```
+
+**Additional pitfall — `‹_›` vs `Except.ok _`:**
+
+Hypotheses from `split at h_ok` contain `Except.ok v✝` (an
+undestructured variable), not `Except.ok (val, ps')` (a pair constructor).
+Anonymous hypothesis reference `‹parseNode _ k = Except.ok (_, _)›`
+fails to unify because the pair pattern doesn't match the undestrutured
+variable. Fix: use `Except.ok _` or the `refine ... ?_; assumption`
+pattern which lets Lean's unifier match the full type.
+
+**Additional pitfall — `le_of_lt` doesn't exist in Lean 4.28 core:**
+
+There is no `le_of_lt : a < b → a ≤ b` in the kernel or standard library
+at version 4.28.0. Instead, use `Nat.le_of_succ_le : n + 1 ≤ m → n ≤ m`
+for the common fuel-decrement pattern `k + 1 ≤ n → k ≤ n`. This is a
+pure term proof, avoiding the `(by omega)` pattern that triggers deferred
+goal leaking inside `first`.
+
+**Resolution for the remaining sorry:**
+
+The key-parseNode×val-parseNode sub-case requires composing TWO `h_ih`
+applications — one for the key parseNode, one for the value parseNode.
+The value `h_ih` depends on the key `h_ih`'s results (specifically,
+`h_key_ih.2.2.2` for tokens preservation to establish `h_vtok`). This
+creates a **dependency chain** where the value parseNode's tokens argument
+cannot be resolved without first establishing the key IH:
+
+```lean
+-- Key IH: straightforward
+have h_key_ih := by
+  refine h_ih _ k _ _ (Nat.le_of_succ_le h_fuel) h_adv_tok ?_; assumption
+
+-- Value IH: depends on key IH result for tokens
+have h_vtok := by simp [tryConsume_tokens, h_key_ih.2.2.2]
+have h_val_ih := by
+  refine h_ih _ k _ _ (Nat.le_of_succ_le h_fuel) h_vtok ?_; assumption
+  -- ↑ The `assumption` here needs to find the right parseNode hypothesis
+  -- among potentially multiple similar hypotheses from the split
+```
+
+The issue is that after the monadic `split` peeling, there are multiple
+hypotheses of the form `parseNode _ k = Except.ok _` in context (one for
+key, one for value), and `assumption` may pick the wrong one. When this
+happens inside `first`, the resulting metavar leaking produces ~42
+orphaned goals. Three resolution approaches:
+
+1. **`rename_i`** to give distinguishing names to the two parseNode hyps
+2. **`show` wrapper** to constrain which hypothesis `assumption` picks
+3. **`have : parseNode _ k = .ok _ := ‹_›`** with explicit type annotation
+   to force the right match
+
+None was fully implemented before the session ended; the sorry fallback
+keeps the build passing (8 sorry warnings total, 1 from this sub-case +
+7 pre-existing).
+
+**What was hard:**
+
+The single hardest aspect was the **elaboration order interaction** between
+tactic-level `have := by` blocks and the surrounding `first`/`<;>` combinator.
+Over 10 iterations attempted different formulations:
+- `exact f (by omega) g` — leaked deferred goals
+- `have h : T := by assumption` — leaked metavar from `T` placeholder
+- `refine f ?_ ?_ <;> first | ...` — `first` doesn't scope to individual `?_`
+- `have h := by refine ...; · tac1; · tac2` — sub-goals leak from inner `·`
+- `have h := by refine ... ?_; assumption` — **WORKS**: `refine` creates proper
+  tactic-level sub-goals, `assumption` closes them, no deferred goals
+
+The final working pattern (`have := by refine ... ?_; assumption`) was
+discovered by eliminating all possible sources of deferred goal creation.
+The key insight: ANY `(by tac)` inside a *term* expression creates
+deferred goals. Moving proofs to *tactic* level (via `have := by ...`)
+eliminates this entirely because tactic-level sub-goals use the standard
+goal stack, which `first` properly saves/restores.
+
+**Contrast with `parseBlockSequence_wb`:**
+
+| Aspect | `parseBlockSequence_wb` | `parseBlockMapping_wb` |
+|--------|------------------------|----------------------|
+| **Recursive parseNode calls per iteration** | 1 | 2 (key + value) |
+| **Sub-cases per branch** | 2 (emptyNode + parseNode) | 4 (emptyNode² + mixed + parseNode²) |
+| **`tryConsume` within loop** | No | Yes (`.value` token) |
+| **Scannable proof** | 1 `push_all_scannable` | 2 `push_pair_scannable` (key + value) |
+| **Metavar leaking issue** | None | Critical — blocks 1 of 4 sub-cases |
+| **Proof size** | ~130 LOC | ~440 LOC (loop + wrapper + helpers) |
+| **Difficulty** | Medium | High |
+
+The mapping parser is inherently harder because the pair `(key, value)`
+requires two independent Scannable proofs with a dependency chain
+(value tokens depend on key IH), whereas the sequence parser needs only
+one Scannable proof per item.
 
 ### Phase H: JSON-is-YAML-subset (FUTURE)
 
