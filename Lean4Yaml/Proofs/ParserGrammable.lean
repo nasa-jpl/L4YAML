@@ -1034,17 +1034,198 @@ Together with the scalar and empty base cases, they close all content
 dispatch branches. Each will be proved separately once the overall
 structure is established. -/
 
-/-- `parseBlockSequence` well-behaved given parseNode IH. -/
+/-- Helper: pushing a Scannable value onto an all-Scannable array
+    preserves the all-Scannable property. -/
+theorem push_all_scannable {items : Array YamlValue} {x : YamlValue}
+    {inFlow : Bool}
+    (h_items : ∀ i : Fin items.size, Scannable items[i] inFlow)
+    (h_x : Scannable x inFlow) :
+    ∀ i : Fin (items.push x).size, Scannable (items.push x)[i] inFlow := by
+  intro ⟨i, hi⟩
+  show Scannable (items.push x)[i] inFlow
+  rw [Array.getElem_push]
+  split
+  · exact h_items ⟨i, by assumption⟩
+  · exact h_x
+
+/-- Loop invariant for `parseBlockSequenceLoop`: all accumulated items remain
+    Scannable, flowNesting is preserved, and the token array is unchanged. -/
+theorem parseBlockSequenceLoop_wb (tokens : Array (Positioned YamlToken))
+    (n fuel : Nat) (h_fuel : fuel ≤ n)
+    (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens n)
+    (ps : ParseState) (items : Array YamlValue) (result : Array YamlValue × ParseState)
+    (h_eq : ps.tokens = tokens)
+    (h_items_false : ∀ i : Fin items.size, Scannable items[i] false)
+    (h_items_true : flowNesting tokens ps.pos > 0 →
+      ∀ i : Fin items.size, Scannable items[i] true)
+    (h_ok : parseBlockSequenceLoop ps fuel items = .ok result) :
+    (∀ i : Fin result.1.size, Scannable result.1[i] false) ∧
+    (flowNesting tokens ps.pos > 0 →
+      ∀ i : Fin result.1.size, Scannable result.1[i] true) ∧
+    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) ∧
+    (result.2.tokens = tokens) := by
+  induction fuel generalizing ps items with
+  | zero =>
+    unfold parseBlockSequenceLoop at h_ok
+    simp only [Except.ok.injEq] at h_ok
+    subst h_ok
+    exact ⟨h_items_false, h_items_true, rfl, h_eq⟩
+  | succ k ih_fuel =>
+    unfold parseBlockSequenceLoop at h_ok
+    simp only [bind, Except.bind] at h_ok
+    split at h_ok
+    next h_peek =>
+      -- peek? = some .blockEntry
+      have h_adv_tok : ps.advance.tokens = tokens := by
+        simp [ParseState.advance, h_eq]
+      have h_fn : flowNesting tokens ps.advance.pos = flowNesting tokens ps.pos :=
+        advance_preserves_flowNesting tokens ps h_peek h_eq
+          (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+          (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+      split at h_ok
+      -- Handle empty-entry cases (blockEntry/blockEnd/none)
+      all_goals try
+        have h_wb := ih_fuel (by omega) ps.advance (items.push emptyNode)
+            h_adv_tok
+            (push_all_scannable h_items_false (empty_scalar_scannable none none false))
+            (fun h_flow => push_all_scannable
+              (h_items_true (by rw [← h_fn]; exact h_flow))
+              (empty_scalar_scannable none none true))
+            h_ok
+        refine ⟨h_wb.1,
+               fun h_flow => h_wb.2.1 (by rw [h_fn]; exact h_flow),
+               ?_, h_wb.2.2.2⟩
+        exact h_wb.2.2.1.trans h_fn
+      -- Non-empty entry: parseNode bind then recurse
+      next =>
+        split at h_ok
+        next => simp at h_ok  -- parseNode = .error → contradiction
+        next pn_result heq_pn =>
+          -- parseNode = .ok (val, ps₃)
+          obtain ⟨val, ps₃⟩ := pn_result
+          dsimp only [] at h_ok
+          -- Get ParseNodeWB properties
+          have h_ps2_tok : ({ ps.advance with
+              currentPath := ps.advance.currentPath.push
+                (.index items.size) } : ParseState).tokens = tokens := by
+            simp [ParseState.advance, h_eq]
+          have h_node := h_ih _ k val ps₃ (by omega) h_ps2_tok heq_pn
+          -- flowNesting chain: ps₃.pos → ps.advance.pos → ps.pos
+          have h_ps3_fn : flowNesting tokens ps₃.pos =
+              flowNesting tokens ps.advance.pos := by
+            have := h_node.2.2.1; simp at this; exact this
+          have h_ps3_tok : ps₃.tokens = tokens := h_node.2.2.2
+          -- Build items.push val Scannable
+          have h_push_f := push_all_scannable h_items_false h_node.1
+          have h_push_t : flowNesting tokens
+              ({ ps₃ with currentPath :=
+                  ps.advance.currentPath } : ParseState).pos > 0 →
+              ∀ i : Fin (items.push val).size,
+              Scannable (items.push val)[i] true := by
+            intro h_flow_ps4
+            simp only [] at h_flow_ps4
+            have h_flow_adv : flowNesting tokens ps.advance.pos > 0 := by
+              rw [← h_ps3_fn]; exact h_flow_ps4
+            have h_flow_ps : flowNesting tokens ps.pos > 0 := by
+              rw [← h_fn]; exact h_flow_adv
+            exact push_all_scannable (h_items_true h_flow_ps)
+              (h_node.2.1 h_flow_adv)
+          have h_ps4_tok : ({ ps₃ with currentPath :=
+              ps.advance.currentPath } : ParseState).tokens = tokens := by
+            simp [h_ps3_tok]
+          have h_wb := ih_fuel (by omega)
+              ({ ps₃ with currentPath := ps.advance.currentPath } : ParseState)
+              (items.push val) h_ps4_tok h_push_f h_push_t h_ok
+          have h_ps4_fn : flowNesting tokens
+              ({ ps₃ with currentPath :=
+                  ps.advance.currentPath } : ParseState).pos =
+              flowNesting tokens ps.pos := by
+            simp only []; rw [h_ps3_fn, h_fn]
+          refine ⟨h_wb.1,
+                 fun h_flow => h_wb.2.1 (by rw [h_ps4_fn]; exact h_flow),
+                 ?_, h_wb.2.2.2⟩
+          exact h_wb.2.2.1.trans h_ps4_fn
+    next =>
+      -- peek? ≠ .blockEntry → return (items, ps)
+      simp only [Except.ok.injEq] at h_ok
+      subst h_ok
+      exact ⟨h_items_false, h_items_true, rfl, h_eq⟩
+
+/-- `parseBlockSequence` well-behaved given parseNode IH.
+    Requires `h_peek` because the function unconditionally advances past
+    `blockSequenceStart` and we need the token to be non-flow. -/
 theorem parseBlockSequence_wb (tokens : Array (Positioned YamlToken))
     (fuel : Nat) (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_eq : ps.tokens = tokens)
+    (h_peek : ps.peek? = some .blockSequenceStart)
     (h_ok : parseBlockSequence ps fuel = .ok result) :
     (Scannable result.1 false) ∧
     (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
     (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) ∧
     (result.2.tokens = tokens) := by
-  sorry
+  -- Advance past blockSequenceStart preserves flowNesting
+  have h_fn_adv : flowNesting tokens ps.advance.pos = flowNesting tokens ps.pos :=
+    advance_preserves_flowNesting tokens ps h_peek h_eq
+      (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+      (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+  unfold parseBlockSequence at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · -- fuel = 0 → error
+    simp at h_ok
+  · -- fuel = k + 1
+    rename_i k
+    -- Split on parseBlockSequenceLoop result
+    split at h_ok
+    · simp at h_ok  -- loop returned error → contradiction
+    · -- loop returned .ok (items, ps_loop)
+      rename_i loop_result heq_loop
+      obtain ⟨items_arr, ps_loop⟩ := loop_result
+      dsimp only [] at h_ok
+      -- Get loop properties
+      have h_adv_tok : ps.advance.tokens = tokens := by
+        simp [ParseState.advance, h_eq]
+      have h_empty_f : ∀ i : Fin (#[] : Array YamlValue).size,
+          Scannable (#[] : Array YamlValue)[i] false := by
+        intro ⟨_, hi⟩; simp at hi
+      have h_empty_t : flowNesting tokens ps.advance.pos > 0 →
+          ∀ i : Fin (#[] : Array YamlValue).size,
+          Scannable (#[] : Array YamlValue)[i] true := by
+        intro _ ⟨_, hi⟩; simp at hi
+      have h_loop := parseBlockSequenceLoop_wb tokens (k + 1) k (by omega)
+          h_fpsv h_ih ps.advance #[] (items_arr, ps_loop) h_adv_tok
+          h_empty_f h_empty_t heq_loop
+      have h_loop_fn : flowNesting tokens ps_loop.pos =
+          flowNesting tokens ps.advance.pos := h_loop.2.2.1
+      have h_loop_tok : ps_loop.tokens = tokens := h_loop.2.2.2
+      -- Combine loop result with outer structure
+      simp only [Except.ok.injEq] at h_ok
+      subst h_ok
+      constructor
+      · -- Scannable (.sequence .block items_arr) false
+        exact Scannable.sequence .block items_arr none none false h_loop.1
+      constructor
+      · -- flow context → Scannable (.sequence .block items_arr) true
+        intro h_flow
+        exact Scannable.sequence .block items_arr none none true
+          (fun i => h_loop.2.1 (by rw [h_fn_adv]; exact h_flow) i)
+      constructor
+      · -- flowNesting preservation (through optional blockEnd advance)
+        simp only []
+        split
+        · rename_i h_peek_end
+          have h_fn_end := advance_preserves_flowNesting tokens ps_loop
+              h_peek_end h_loop_tok
+              (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+              (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+          exact h_fn_end.trans (h_loop_fn.trans h_fn_adv)
+        · exact h_loop_fn.trans h_fn_adv
+      · -- tokens preservation
+        simp only []
+        split
+        · simp only [ParseState.advance]; exact h_loop.2.2.2
+        · exact h_loop.2.2.2
 
 /-- `parseBlockMapping` well-behaved given parseNode IH. -/
 theorem parseBlockMapping_wb (tokens : Array (Positioned YamlToken))
@@ -1255,7 +1436,7 @@ theorem parseNode_wb_all (tokens : Array (Positioned YamlToken))
               rw [← h_val, ← h_ps']
               have h_wb := by
                 first
-                | exact parseBlockSequence_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
+                | exact parseBlockSequence_wb tokens n h_fpsv ih _ _ h_prop_tok h_peek ‹_›
                 | exact parseBlockMapping_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
                 | exact parseImplicitBlockSequence_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
                 | exact parseFlowSequence_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
@@ -1318,7 +1499,7 @@ theorem parseNode_wb_all (tokens : Array (Positioned YamlToken))
               | -- Sub-parser case
                 (have h_wb := by
                   first
-                  | exact parseBlockSequence_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
+                  | exact parseBlockSequence_wb tokens n h_fpsv ih _ _ h_prop_tok h_peek ‹_›
                   | exact parseBlockMapping_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
                   | exact parseImplicitBlockSequence_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
                   | exact parseFlowSequence_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›

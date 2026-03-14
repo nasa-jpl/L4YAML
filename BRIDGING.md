@@ -3495,9 +3495,9 @@ the theorem statements.
 
 **Proof impact:** Zero breakage. All new theorems are additive.
 
-**Build:** 322/322 ✔, 9 sorry warnings (C2 parser chain; ScannerPlainScalarValid.lean remains sorry-free).
+**Build:** 322/322 ✔, 8 sorry warnings (C2 parser chain; ScannerPlainScalarValid.lean remains sorry-free).
 
-**Note on remaining sorries:** The 9 remaining sorry warnings are all in
+**Note on remaining sorries:** The 8 remaining sorry warnings are all in
 ParserGrammable.lean's C2 pipeline (parser grammability):
 
 1. ~~**`parseNode_wb_all` (inductive step)**~~ — **PROVED ✅** (2026-03-13).
@@ -3518,7 +3518,14 @@ ParserGrammable.lean's C2 pipeline (parser grammability):
    lemmas `advance_preserves_flowNesting` / `advance2_preserves_flowNesting`
    chain single-token steps for the flow-nesting property.
 
-4. **5 sub-parser WB lemmas** — `parseBlockSequence_wb`, `parseBlockMapping_wb`,
+4. ~~**`parseBlockSequence_wb`**~~ — **PROVED ✅** (2026-03-16).
+   Block sequence scannability + flowNesting/tokens preservation.
+   Proved via `parseBlockSequenceLoop_wb` loop invariant (induction on fuel)
+   + `advance_preserves_flowNesting` for blockSequenceStart/blockEnd.
+   Required adding `h_peek : ps.peek? = some .blockSequenceStart` hypothesis.
+   Helper: `push_all_scannable` for array push Scannable preservation.
+
+5. **4 remaining sub-parser WB lemmas** — `parseBlockMapping_wb`,
    `parseImplicitBlockSequence_wb`, `parseFlowSequence_wb`, `parseFlowMapping_wb`.
    Each asserts `Scannable result.1 false ∧ (flowNesting > 0 → Scannable result.1 true)
    ∧ flowNesting preserved`. Used axiomatically by `parseNode_wb_all`;
@@ -3571,9 +3578,10 @@ proved:
 - **`parseStream_output_scannable`** ✅ — proved by factoring through
   `parseStream_doc_from_parseDocument` (§5g) and `parseDocument_scannable`
 
-The remaining 9 sorry's are localized to four categories:
+The remaining 8 sorry's are localized to four categories:
 
-1. **Auxiliary lemmas** (5 sorry's): 5 sub-parser WB lemmas.
+1. **Auxiliary lemmas** (4 sorry's): 4 sub-parser WB lemmas
+   (`parseBlockSequence_wb` now proved — see item 4 above).
    (`parseNodeProperties_tokens` and `parseNodeProperties_flowNesting`
    are now proved — see reflections below.)
    These are used axiomatically by `parseNode_wb_all` — the induction
