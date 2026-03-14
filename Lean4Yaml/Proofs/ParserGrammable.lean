@@ -752,7 +752,7 @@ elab "unfold_loop_at" h:ident : tactic => do
     let mvarId ← mvarId.replaceLocalDeclDefEq fvarId currentTy
     replaceMainGoal [mvarId]
 
-@[simp] private theorem ParseState.advance_tokens (ps : ParseState) :
+@[simp] theorem ParseState.advance_tokens (ps : ParseState) :
     ps.advance.tokens = ps.tokens := rfl
 
 -- `parseNodeProperties` preserves the token array — only `.pos` changes.
@@ -1021,7 +1021,8 @@ def ParseNodeWB (tokens : Array (Positioned YamlToken)) (n : Nat) : Prop :=
     parseNode ps m = .ok (val, ps') →
     (Scannable val false) ∧
     (flowNesting tokens ps.pos > 0 → Scannable val true) ∧
-    (flowNesting tokens ps'.pos = flowNesting tokens ps.pos)
+    (flowNesting tokens ps'.pos = flowNesting tokens ps.pos) ∧
+    (ps'.tokens = tokens)
 
 /-! ### §5e″  Sub-parser well-behavedness (fuel-inductive hypotheses)
 
@@ -1041,7 +1042,8 @@ theorem parseBlockSequence_wb (tokens : Array (Positioned YamlToken))
     (h_ok : parseBlockSequence ps fuel = .ok result) :
     (Scannable result.1 false) ∧
     (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
-    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) := by
+    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) ∧
+    (result.2.tokens = tokens) := by
   sorry
 
 /-- `parseBlockMapping` well-behaved given parseNode IH. -/
@@ -1052,7 +1054,8 @@ theorem parseBlockMapping_wb (tokens : Array (Positioned YamlToken))
     (h_ok : parseBlockMapping ps fuel = .ok result) :
     (Scannable result.1 false) ∧
     (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
-    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) := by
+    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) ∧
+    (result.2.tokens = tokens) := by
   sorry
 
 /-- `parseImplicitBlockSequence` well-behaved given parseNode IH. -/
@@ -1063,7 +1066,8 @@ theorem parseImplicitBlockSequence_wb (tokens : Array (Positioned YamlToken))
     (h_ok : parseImplicitBlockSequence ps fuel = .ok result) :
     (Scannable result.1 false) ∧
     (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
-    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) := by
+    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) ∧
+    (result.2.tokens = tokens) := by
   sorry
 
 /-- `parseFlowSequence` well-behaved given parseNode IH. -/
@@ -1074,7 +1078,8 @@ theorem parseFlowSequence_wb (tokens : Array (Positioned YamlToken))
     (h_ok : parseFlowSequence ps fuel = .ok result) :
     (Scannable result.1 false) ∧
     (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
-    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) := by
+    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) ∧
+    (result.2.tokens = tokens) := by
   sorry
 
 /-- `parseFlowMapping` well-behaved given parseNode IH. -/
@@ -1085,7 +1090,8 @@ theorem parseFlowMapping_wb (tokens : Array (Positioned YamlToken))
     (h_ok : parseFlowMapping ps fuel = .ok result) :
     (Scannable result.1 false) ∧
     (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
-    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) := by
+    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) ∧
+    (result.2.tokens = tokens) := by
   sorry
 
 /-- Base case: at fuel 0, `parseNode` always returns error, so `ParseNodeWB`
@@ -1140,24 +1146,23 @@ theorem parseNode_wb_all (tokens : Array (Positioned YamlToken))
         -- After desugaring, val = .alias name (trivially Scannable)
         rename_i name h_peek
         simp only [Except.ok.injEq, Prod.mk.injEq] at h_ok
-        exact ⟨h_ok.1 ▸ .alias name false,
-               fun _ => h_ok.1 ▸ .alias name true,
-               by -- flowNesting: alias token is non-flow boundary
-                  have ⟨h_lt, h_tok⟩ := peek_some_bounded ps (.alias name) h_peek
-                  have h_lt' : ps.pos < tokens.size := h_eq ▸ h_lt
-                  have h_val : (tokens[ps.pos]'h_lt').val = .alias name := by
-                    have := h_tok h_lt
-                    simp only [h_eq] at this
-                    exact this
-                  obtain ⟨_, h_ps'⟩ := h_ok
-                  rw [← h_ps']
-                  simp only [ParseState.advance]
-                  split <;> simp only [] <;>
-                    exact flowNesting_non_flow_step tokens ps.pos h_lt'
-                      (by rw [h_val]; exact YamlToken.noConfusion)
-                      (by rw [h_val]; exact YamlToken.noConfusion)
-                      (by rw [h_val]; exact YamlToken.noConfusion)
-                      (by rw [h_val]; exact YamlToken.noConfusion)⟩
+        have ⟨h_lt, h_tok⟩ := peek_some_bounded ps (.alias name) h_peek
+        have h_lt' : ps.pos < tokens.size := h_eq ▸ h_lt
+        have h_val : (tokens[ps.pos]'h_lt').val = .alias name := by
+          have := h_tok h_lt; simp only [h_eq] at this; exact this
+        obtain ⟨h_ok_val, h_ps'⟩ := h_ok
+        refine ⟨h_ok_val ▸ .alias name false,
+               fun _ => h_ok_val ▸ .alias name true, ?_, ?_⟩
+        · -- flowNesting preservation
+          rw [← h_ps']; simp only [ParseState.advance]
+          split <;> simp only [] <;>
+            exact flowNesting_non_flow_step tokens ps.pos h_lt'
+              (by rw [h_val]; exact YamlToken.noConfusion)
+              (by rw [h_val]; exact YamlToken.noConfusion)
+              (by rw [h_val]; exact YamlToken.noConfusion)
+              (by rw [h_val]; exact YamlToken.noConfusion)
+        · -- tokens preservation
+          rw [← h_ps']; split <;> exact h_eq
       · -- Non-alias case: properties → error checks → content dispatch → applyNodeFinalization
         -- Step 1: Extract parseNodeProperties result
         generalize h_pnp : parseNodeProperties ps = pnp at h_ok
@@ -1189,9 +1194,11 @@ theorem parseNode_wb_all (tokens : Array (Positioned YamlToken))
               have h_ps' := congrArg Prod.snd h_ok
               simp only [] at h_val h_ps'
               rw [← h_val, ← h_ps']
-              exact ⟨applyNodeFinalization_scannable _ _ _ _ false (empty_scalar_scannable _ _ _),
+              refine ⟨applyNodeFinalization_scannable _ _ _ _ false (empty_scalar_scannable _ _ _),
                      fun _ => applyNodeFinalization_scannable _ _ _ _ true (empty_scalar_scannable _ _ _),
-                     by rw [applyNodeFinalization_pos]; exact h_prop_fn⟩)
+                     ?_, ?_⟩ <;> first
+              | (rw [applyNodeFinalization_pos]; exact h_prop_fn)
+              | (rw [applyNodeFinalization_tokens]; exact h_prop_tok))
           | some (.scalar c s) =>
             -- Scalar case: token → advance
             simp only [] at h_ok
@@ -1208,21 +1215,23 @@ theorem parseNode_wb_all (tokens : Array (Positioned YamlToken))
               have h_lt : ps_prop.pos < tokens.size := h_prop_tok ▸ h_lt_ps
               have h_tok := by
                 have := h_tok_ps h_lt_ps; simp only [h_prop_tok] at this; exact this
-              exact ⟨applyNodeFinalization_scannable _ _ _ _ false
+              refine ⟨applyNodeFinalization_scannable _ _ _ _ false
                       (scalar_from_token_scannable tokens h_fpsv.1
                         ps_prop.pos h_lt _ _ h_tok props.tag props.anchor),
                      fun h_flow => applyNodeFinalization_scannable _ _ _ _ true
                       (scalar_from_flow_token_scannable tokens h_fpsv
                         ps_prop.pos h_lt _ _ h_tok (h_prop_fn ▸ h_flow)
                         props.tag props.anchor true),
-                     by rw [applyNodeFinalization_pos]
-                        simp only [ParseState.advance]
-                        rw [flowNesting_non_flow_step tokens ps_prop.pos h_lt
-                          (by rw [h_tok]; exact YamlToken.noConfusion)
-                          (by rw [h_tok]; exact YamlToken.noConfusion)
-                          (by rw [h_tok]; exact YamlToken.noConfusion)
-                          (by rw [h_tok]; exact YamlToken.noConfusion)]
-                        exact h_prop_fn⟩)
+                     ?_, ?_⟩ <;> first
+              | (rw [applyNodeFinalization_pos]
+                 simp only [ParseState.advance]
+                 rw [flowNesting_non_flow_step tokens ps_prop.pos h_lt
+                   (by rw [h_tok]; exact YamlToken.noConfusion)
+                   (by rw [h_tok]; exact YamlToken.noConfusion)
+                   (by rw [h_tok]; exact YamlToken.noConfusion)
+                   (by rw [h_tok]; exact YamlToken.noConfusion)]
+                 exact h_prop_fn)
+              | (rw [applyNodeFinalization_tokens]; simp [ParseState.advance_tokens, h_prop_tok]))
           | some .blockSequenceStart | some .blockMappingStart | some .blockEntry
           | some .flowSequenceStart | some .flowMappingStart =>
             -- Sub-parser cases: parseBlockSequence / parseBlockMapping / etc.
@@ -1251,10 +1260,12 @@ theorem parseNode_wb_all (tokens : Array (Positioned YamlToken))
                 | exact parseImplicitBlockSequence_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
                 | exact parseFlowSequence_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
                 | exact parseFlowMapping_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
-              exact ⟨applyNodeFinalization_scannable _ _ _ _ false h_wb.1,
+              refine ⟨applyNodeFinalization_scannable _ _ _ _ false h_wb.1,
                      fun h_flow => applyNodeFinalization_scannable _ _ _ _ true
                        (h_wb.2.1 (h_prop_fn ▸ h_flow)),
-                     by rw [applyNodeFinalization_pos, h_wb.2.2]; exact h_prop_fn⟩)
+                     ?_, ?_⟩ <;> first
+              | (rw [applyNodeFinalization_pos, h_wb.2.2.1]; exact h_prop_fn)
+              | (rw [applyNodeFinalization_tokens]; exact h_wb.2.2.2))
             done
           | _ =>
             -- Other tokens: error checks may throw (→ contradiction) or content dispatch = empty node
@@ -1278,28 +1289,32 @@ theorem parseNode_wb_all (tokens : Array (Positioned YamlToken))
               rw [← h_val, ← h_ps']
               first
               | -- Empty node case
-                exact ⟨applyNodeFinalization_scannable _ _ _ _ false (empty_scalar_scannable _ _ _),
-                       fun _ => applyNodeFinalization_scannable _ _ _ _ true (empty_scalar_scannable _ _ _),
-                       by rw [applyNodeFinalization_pos]; exact h_prop_fn⟩
+                (refine ⟨applyNodeFinalization_scannable _ _ _ _ false (empty_scalar_scannable _ _ _),
+                        fun _ => applyNodeFinalization_scannable _ _ _ _ true (empty_scalar_scannable _ _ _),
+                        ?_, ?_⟩ <;> first
+                 | (rw [applyNodeFinalization_pos]; exact h_prop_fn)
+                 | (rw [applyNodeFinalization_tokens]; exact h_prop_tok))
               | -- Scalar case (leaked from content dispatch)
                 (have ⟨h_lt_ps, h_tok_ps⟩ := peek_some_bounded ps_prop _ h_peek
                  have h_lt : ps_prop.pos < tokens.size := h_prop_tok ▸ h_lt_ps
                  have h_tok := by
                    have := h_tok_ps h_lt_ps; simp only [h_prop_tok] at this; exact this
-                 exact ⟨applyNodeFinalization_scannable _ _ _ _ false
+                 refine ⟨applyNodeFinalization_scannable _ _ _ _ false
                          (scalar_from_token_scannable tokens h_fpsv.1
                            ps_prop.pos h_lt _ _ h_tok _ _),
                         fun h_flow => applyNodeFinalization_scannable _ _ _ _ true
                          (scalar_from_flow_token_scannable tokens h_fpsv
                            ps_prop.pos h_lt _ _ h_tok (h_prop_fn ▸ h_flow) _ _ true),
-                        by rw [applyNodeFinalization_pos]
-                           simp only [ParseState.advance]
-                           rw [flowNesting_non_flow_step tokens ps_prop.pos h_lt
-                             (by rw [h_tok]; exact YamlToken.noConfusion)
-                             (by rw [h_tok]; exact YamlToken.noConfusion)
-                             (by rw [h_tok]; exact YamlToken.noConfusion)
-                             (by rw [h_tok]; exact YamlToken.noConfusion)]
-                           exact h_prop_fn⟩)
+                        ?_, ?_⟩ <;> first
+                 | (rw [applyNodeFinalization_pos]
+                    simp only [ParseState.advance]
+                    rw [flowNesting_non_flow_step tokens ps_prop.pos h_lt
+                      (by rw [h_tok]; exact YamlToken.noConfusion)
+                      (by rw [h_tok]; exact YamlToken.noConfusion)
+                      (by rw [h_tok]; exact YamlToken.noConfusion)
+                      (by rw [h_tok]; exact YamlToken.noConfusion)]
+                    exact h_prop_fn)
+                 | (rw [applyNodeFinalization_tokens]; simp [ParseState.advance_tokens, h_prop_tok]))
               | -- Sub-parser case
                 (have h_wb := by
                   first
@@ -1308,11 +1323,93 @@ theorem parseNode_wb_all (tokens : Array (Positioned YamlToken))
                   | exact parseImplicitBlockSequence_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
                   | exact parseFlowSequence_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
                   | exact parseFlowMapping_wb tokens n h_fpsv ih _ _ h_prop_tok ‹_›
-                 exact ⟨applyNodeFinalization_scannable _ _ _ _ false h_wb.1,
+                 refine ⟨applyNodeFinalization_scannable _ _ _ _ false h_wb.1,
                         fun h_flow => applyNodeFinalization_scannable _ _ _ _ true
                           (h_wb.2.1 (h_prop_fn ▸ h_flow)),
-                        by rw [applyNodeFinalization_pos, h_wb.2.2]; exact h_prop_fn⟩)))
+                        ?_, ?_⟩ <;> first
+                 | (rw [applyNodeFinalization_pos, h_wb.2.2.1]; exact h_prop_fn)
+                 | (rw [applyNodeFinalization_tokens]; exact h_wb.2.2.2))))
             done
+
+/-! ### §5e₂  Helper lemmas: token-array preservation through sub-operations
+
+`tryConsume`, `parseDirectives`, and `parseNode` all preserve the
+token array. These facts are used by `parseDocument_tokens_preserved`.
+-/
+
+/-- `tryConsume` preserves the token array. -/
+theorem tryConsume_tokens (ps : ParseState) (tok : YamlToken) :
+    (ps.tryConsume tok).2.tokens = ps.tokens := by
+  unfold ParseState.tryConsume
+  split
+  · split
+    · simp [ParseState.advance]
+    · rfl
+  · rfl
+
+set_option maxRecDepth 8000 in
+/-- `parseDirectives` preserves the token array. -/
+theorem parseDirectives_tokens (ps : ParseState) :
+    (parseDirectives ps).2.tokens = ps.tokens := by
+  unfold parseDirectives
+  simp only [Id.run]
+  generalize ps.tokens.size - ps.pos = fuel
+  simp only [Std.Legacy.Range.forIn_eq_forIn_range', Std.Legacy.Range.size,
+             Nat.sub_zero, Nat.add_sub_cancel, Nat.div_one]
+  generalize List.range' 0 fuel 1 = ls
+  suffices h : ∀ (acc : MProd (Array Directive) ParseState),
+      acc.2.tokens = ps.tokens →
+      (Id.run (do
+          let r ← @forIn Id (List Nat) Nat _ _ ls acc (fun x r =>
+            match r.snd.peek? with
+            | some (.versionDirective major minor) => do
+              pure PUnit.unit
+              pure (ForInStep.yield (MProd.mk (r.fst.push (.yaml (toString major ++ "." ++ toString minor))) r.snd.advance))
+            | some (.tagDirective handle tagPrefix) => do
+              pure PUnit.unit
+              pure (ForInStep.yield (MProd.mk (r.fst.push (.tag handle tagPrefix)) r.snd.advance))
+            | _ => pure (ForInStep.done (MProd.mk r.fst r.snd)))
+          pure (r.fst, r.snd))).snd.tokens = ps.tokens by
+    exact h (MProd.mk #[] ps) rfl
+  intro acc h_inv
+  induction ls generalizing acc with
+  | nil =>
+    simp only [Id.run, List.forIn'_nil, ForIn.forIn, bind, pure]
+    exact h_inv
+  | cons x xs ih =>
+    simp only [ForIn.forIn, List.forIn'_cons, Id.run, bind, pure] at ih ⊢
+    split
+    · rename_i b heq
+      revert heq; split
+      · intro heq; contradiction
+      · intro heq; contradiction
+      · intro heq
+        have := ForInStep.done.inj heq
+        subst this; exact h_inv
+    · rename_i b heq
+      apply ih; revert heq; split
+      · intro heq
+        have := ForInStep.yield.inj heq
+        subst this; simp [ParseState.advance, h_inv]
+      · intro heq
+        have := ForInStep.yield.inj heq
+        subst this; simp [ParseState.advance, h_inv]
+      · intro heq; contradiction
+
+/-- `parseNode` preserves the token array: the output state has the
+    same tokens as the input state. Follows from the 4th conjunct of
+    `parseNode_wb_all` (the `ParseNodeWB` inductive well-behavedness). -/
+theorem parseNode_tokens_preserved
+    (tokens : Array (Positioned YamlToken))
+    (h_fpsv : FlowAwarePSV tokens)
+    (ps : ParseState) (fuel : Nat) (result : YamlValue × ParseState)
+    (h_eq : ps.tokens = tokens)
+    (h_ok : parseNode ps fuel = .ok result) :
+    result.2.tokens = ps.tokens := by
+  have h_wb := parseNode_wb_all tokens h_fpsv fuel
+    ps fuel result.1 result.2 (Nat.le.refl) h_eq
+    (by rw [Prod.eta]; exact h_ok)
+  rw [h_wb.2.2.2, h_eq]
 
 /-! ### §5f  parseDocument output scannability
 
@@ -1334,9 +1431,39 @@ By `parseNode_wb_all`, the root value satisfies `Scannable _ false`.
 /-- `parseDocument` preserves the token array — only metadata changes. -/
 theorem parseDocument_tokens_preserved
     (ps : ParseState) (doc : YamlDocument) (ps' : ParseState)
+    (h_fpsv : FlowAwarePSV ps.tokens)
     (h_ok : parseDocument ps = .ok (doc, ps')) :
     ps'.tokens = ps.tokens := by
-  sorry
+  unfold parseDocument at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok <;> try simp at h_ok
+  all_goals (first | (split at h_ok <;> try simp at h_ok) | skip)
+  all_goals (first | (split at h_ok <;> try simp at h_ok) | skip)
+  all_goals (first | (split at h_ok <;> try simp at h_ok) | skip)
+  all_goals (first | (split at h_ok <;> try simp at h_ok) | skip)
+  all_goals (first | (split at h_ok <;> try simp at h_ok) | skip)
+  all_goals (first | (split at h_ok <;> try simp at h_ok) | skip)
+  all_goals (first | (split at h_ok <;> try simp at h_ok) | skip)
+  -- Close emptyNode goals (ps' = tryConsume state, tokens unchanged)
+  all_goals (try (
+    obtain ⟨_, rfl⟩ := h_ok
+    rw [tryConsume_tokens]
+    exact parseDirectives_tokens ps))
+  -- Close parseNode goals
+  all_goals (
+    obtain ⟨_, rfl⟩ := h_ok
+    have := parseNode_tokens_preserved
+      (parseDirectives ps).2.tokens
+      (by rw [parseDirectives_tokens]; exact h_fpsv)
+      _ _ _
+      (tryConsume_tokens
+        { (parseDirectives ps).2 with
+          tagHandles := Array.filterMap (fun x => match x with
+            | .tag handle _ => some handle | _ => none) (parseDirectives ps).1 }
+        YamlToken.documentStart)
+      (by assumption)
+    rw [this, tryConsume_tokens]
+    exact parseDirectives_tokens ps)
 
 /-- **Factoring lemma**: `parseDocument`'s root value is either `emptyNode`
     or the result of `parseNode` at some state with `tokens` preserved.
