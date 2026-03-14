@@ -723,19 +723,278 @@ theorem applyNodeFinalization_pos
 
 /-! ### §5e′  parseNodeProperties preservation lemmas -/
 
-/-- `parseNodeProperties` preserves the token array — only `.pos` changes. -/
-private theorem parseNodeProperties_tokens (ps : ParseState) (props : NodeProperties) (ps' : ParseState)
+-- Custom tactic: unfold all `*.loop*` constants in a hypothesis.
+-- Used to unroll `for _ in [:n]` loops in Except-monad proofs.
+open Lean Lean.Meta Lean.Elab.Tactic in
+elab "unfold_loop_at" h:ident : tactic => do
+  let mvarId ← getMainGoal
+  mvarId.withContext do
+    let fvarId ← getFVarId h
+    let ldecl ← fvarId.getDecl
+    let ty := ldecl.type
+    let namesRef ← IO.mkRef (∅ : NameSet)
+    let _ ← Lean.Meta.transform ty (pre := fun e => do
+      let fn := e.getAppFn
+      if fn.isConst then
+        let name := fn.constName!
+        let leaf := if name.isStr then name.getString! else ""
+        let parentLeaf := if name.getPrefix.isStr then name.getPrefix.getString! else ""
+        if leaf == "loop" || parentLeaf == "loop" then
+          namesRef.modify (·.insert name)
+      return .continue)
+    let names ← namesRef.get
+    if names.isEmpty then throwError "no loop constants found"
+    let mut currentTy := ty
+    for name in names do
+      let result ← Lean.Meta.unfold currentTy name
+      currentTy := result.expr
+    if ty == currentTy then throwError "no change"
+    let mvarId ← mvarId.replaceLocalDeclDefEq fvarId currentTy
+    replaceMainGoal [mvarId]
+
+@[simp] private theorem ParseState.advance_tokens (ps : ParseState) :
+    ps.advance.tokens = ps.tokens := rfl
+
+-- `parseNodeProperties` preserves the token array — only `.pos` changes.
+set_option maxRecDepth 10000 in
+set_option maxHeartbeats 800000000 in
+set_option linter.unusedSimpArgs false in
+theorem parseNodeProperties_tokens (ps : ParseState) (props : NodeProperties) (ps' : ParseState)
     (h : parseNodeProperties ps = .ok (props, ps')) :
     ps'.tokens = ps.tokens := by
-  sorry
+  -- Unroll the for-loop (2 iterations + termination check)
+  unfold parseNodeProperties at h
+  unfold ForIn.forIn instForInOfForIn' at h
+  unfold ForIn'.forIn' Std.Legacy.Range.instForIn'NatInferInstanceMembershipOfMonad at h
+  unfold Std.Legacy.Range.forIn' at h
+  unfold_loop_at h
+  simp (config := { decide := true, iota := false }) only [] at h
+  unfold_loop_at h
+  simp (config := { decide := true, iota := false }) only [] at h
+  try unfold_loop_at h
+  simp (config := { decide := true, iota := false }) only [
+    bind, Except.bind, pure, Except.pure, dite_true] at h
+  try unfold_loop_at h
+  try simp (config := { decide := true, iota := false }) only [
+    bind, Except.bind, pure, Except.pure, dite_true] at h
+  -- Split outermost Except (final result)
+  split at h
+  · contradiction
+  · -- ok case: extract ps'
+    simp only [Except.ok.injEq, Prod.mk.injEq] at h
+    obtain ⟨_hfst, rfl⟩ := h
+    -- Split continuation Except
+    rename_i heq
+    split at heq
+    · contradiction
+    · -- ForInStep.rec on first iteration result
+      rename_i v heq_first
+      cases v with
+      | done x =>
+        -- First iteration done (wildcard/break)
+        simp (config := { iota := true }) only [] at heq
+        simp only [Except.ok.injEq] at heq; subst heq
+        -- Split first iteration body
+        all_goals (first | contradiction | split at heq_first | skip)
+        all_goals (first | contradiction | split at heq_first | skip)
+        all_goals (first | contradiction | split at heq_first | skip)
+        all_goals (first | contradiction | split at heq_first | skip)
+        all_goals (first | contradiction | split at heq_first | skip)
+        all_goals (first | contradiction | split at heq_first | skip)
+        all_goals (try contradiction)
+        -- Close: inject equalities, substitute, simplify
+        all_goals (try simp only [Except.ok.injEq, ForInStep.done.injEq] at heq_first)
+        all_goals (try cases heq_first)
+        all_goals (try subst heq_first)
+        all_goals (first | rfl | simp [ParseState.advance_tokens])
+      | yield x =>
+        -- First iteration yielded → second iteration
+        simp (config := { iota := true }) only [] at heq
+        -- Split second iteration outer Except
+        split at heq
+        · contradiction
+        · rename_i v2 heq_second
+          cases v2 with
+          | done y =>
+            -- Second iteration done
+            simp (config := { iota := true }) only [] at heq
+            simp only [Except.ok.injEq] at heq; subst heq
+            -- Split second iter body
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (try contradiction)
+            -- Split first iter body
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (try contradiction)
+            -- Handle impossible ForInStep constructor mismatches
+            all_goals (try cases heq_first)
+            all_goals (try cases heq_second)
+            -- Close
+            all_goals (try simp only [Except.ok.injEq, ForInStep.done.injEq, ForInStep.yield.injEq] at *)
+            all_goals (try subst_vars)
+            all_goals (first | rfl | simp [ParseState.advance_tokens])
+          | yield y =>
+            -- Both iterations yielded; loop terminates
+            simp only [dite_false] at heq
+            simp only [Except.ok.injEq] at heq
+            subst heq
+            -- Split both iter bodies
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (try contradiction)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (try contradiction)
+            all_goals (try cases heq_first)
+            all_goals (try cases heq_second)
+            all_goals (try simp only [Except.ok.injEq, ForInStep.done.injEq, ForInStep.yield.injEq] at *)
+            all_goals (try subst_vars)
+            all_goals (first | rfl | simp [ParseState.advance_tokens])
 
-/-- `parseNodeProperties` preserves flow nesting — anchor/tag tokens are non-flow. -/
-private theorem parseNodeProperties_flowNesting (tokens : Array (Positioned YamlToken))
+-- Helper: advancing past a non-flow-boundary token preserves flowNesting
+theorem advance_preserves_flowNesting
+    (tokens : Array (Positioned YamlToken)) (ps : ParseState) {tok : YamlToken}
+    (h_peek : ps.peek? = some tok) (h_eq : ps.tokens = tokens)
+    (h1 : tok ≠ .flowSequenceStart) (h2 : tok ≠ .flowMappingStart)
+    (h3 : tok ≠ .flowSequenceEnd) (h4 : tok ≠ .flowMappingEnd) :
+    flowNesting tokens ps.advance.pos = flowNesting tokens ps.pos := by
+  have ⟨h_lt, h_val⟩ := peek_some_bounded ps tok h_peek
+  simp only [ParseState.advance]
+  subst h_eq
+  exact flowNesting_non_flow_step ps.tokens ps.pos h_lt
+    (by rw [h_val h_lt]; exact h1) (by rw [h_val h_lt]; exact h2)
+    (by rw [h_val h_lt]; exact h3) (by rw [h_val h_lt]; exact h4)
+
+theorem advance2_preserves_flowNesting
+    (tokens : Array (Positioned YamlToken)) (ps : ParseState) {tok1 tok2 : YamlToken}
+    (h_peek1 : ps.peek? = some tok1) (h_peek2 : ps.advance.peek? = some tok2)
+    (h_eq : ps.tokens = tokens)
+    (h1a : tok1 ≠ .flowSequenceStart) (h1b : tok1 ≠ .flowMappingStart)
+    (h1c : tok1 ≠ .flowSequenceEnd) (h1d : tok1 ≠ .flowMappingEnd)
+    (h2a : tok2 ≠ .flowSequenceStart) (h2b : tok2 ≠ .flowMappingStart)
+    (h2c : tok2 ≠ .flowSequenceEnd) (h2d : tok2 ≠ .flowMappingEnd) :
+    flowNesting tokens ps.advance.advance.pos = flowNesting tokens ps.pos := by
+  have h_eq' : ps.advance.tokens = tokens := by simp [ParseState.advance_tokens]; exact h_eq
+  calc flowNesting tokens ps.advance.advance.pos
+      = flowNesting tokens ps.advance.pos :=
+        advance_preserves_flowNesting tokens ps.advance h_peek2 h_eq' h2a h2b h2c h2d
+    _ = flowNesting tokens ps.pos :=
+        advance_preserves_flowNesting tokens ps h_peek1 h_eq h1a h1b h1c h1d
+
+-- `parseNodeProperties` preserves flow nesting — anchor/tag tokens are non-flow.
+set_option maxRecDepth 10000 in
+set_option maxHeartbeats 800000000 in
+set_option linter.unusedSimpArgs false in
+theorem parseNodeProperties_flowNesting (tokens : Array (Positioned YamlToken))
     (ps : ParseState) (props : NodeProperties) (ps' : ParseState)
     (h : parseNodeProperties ps = .ok (props, ps'))
     (h_eq : ps.tokens = tokens) :
     flowNesting tokens ps'.pos = flowNesting tokens ps.pos := by
-  sorry
+  unfold parseNodeProperties at h
+  unfold ForIn.forIn instForInOfForIn' at h
+  unfold ForIn'.forIn' Std.Legacy.Range.instForIn'NatInferInstanceMembershipOfMonad at h
+  unfold Std.Legacy.Range.forIn' at h
+  unfold_loop_at h
+  simp (config := { decide := true, iota := false }) only [] at h
+  unfold_loop_at h
+  simp (config := { decide := true, iota := false }) only [] at h
+  try unfold_loop_at h
+  simp (config := { decide := true, iota := false }) only [
+    bind, Except.bind, pure, Except.pure, dite_true] at h
+  try unfold_loop_at h
+  try simp (config := { decide := true, iota := false }) only [
+    bind, Except.bind, pure, Except.pure, dite_true] at h
+  split at h
+  · contradiction
+  · simp only [Except.ok.injEq, Prod.mk.injEq] at h
+    obtain ⟨_hfst, rfl⟩ := h
+    rename_i heq
+    split at heq
+    · contradiction
+    · rename_i v heq_first
+      cases v with
+      | done x =>
+        simp (config := { iota := true }) only [] at heq
+        simp only [Except.ok.injEq] at heq; subst heq
+        all_goals (first | contradiction | split at heq_first | skip)
+        all_goals (first | contradiction | split at heq_first | skip)
+        all_goals (first | contradiction | split at heq_first | skip)
+        all_goals (first | contradiction | split at heq_first | skip)
+        all_goals (first | contradiction | split at heq_first | skip)
+        all_goals (first | contradiction | split at heq_first | skip)
+        all_goals (try contradiction)
+        all_goals (try simp only [Except.ok.injEq, ForInStep.done.injEq] at heq_first)
+        all_goals (try cases heq_first)
+        all_goals (try subst heq_first)
+        all_goals rfl
+      | yield x =>
+        simp (config := { iota := true }) only [] at heq
+        split at heq
+        · contradiction
+        · rename_i v2 heq_second
+          cases v2 with
+          | done y =>
+            simp (config := { iota := true }) only [] at heq
+            simp only [Except.ok.injEq] at heq; subst heq
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (try contradiction)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (try contradiction)
+            all_goals (try cases heq_first)
+            all_goals (try cases heq_second)
+            all_goals (try simp only [Except.ok.injEq, ForInStep.done.injEq, ForInStep.yield.injEq] at *)
+            all_goals (try subst_vars)
+            all_goals (apply advance_preserves_flowNesting <;> first | assumption | rfl | (intro h; cases h))
+          | yield y =>
+            simp only [dite_false] at heq
+            simp only [Except.ok.injEq] at heq
+            subst heq
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (try contradiction)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (try contradiction)
+            all_goals (try cases heq_first)
+            all_goals (try cases heq_second)
+            all_goals (try simp only [Except.ok.injEq, ForInStep.done.injEq, ForInStep.yield.injEq] at *)
+            all_goals (try subst_vars)
+            all_goals (apply advance2_preserves_flowNesting <;> first | assumption | rfl | exact h_eq | (intro h; cases h))
 
 /-! ### §5e  Parser scannability — mutual induction
 
@@ -775,7 +1034,7 @@ dispatch branches. Each will be proved separately once the overall
 structure is established. -/
 
 /-- `parseBlockSequence` well-behaved given parseNode IH. -/
-private theorem parseBlockSequence_wb (tokens : Array (Positioned YamlToken))
+theorem parseBlockSequence_wb (tokens : Array (Positioned YamlToken))
     (fuel : Nat) (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_eq : ps.tokens = tokens)
@@ -786,7 +1045,7 @@ private theorem parseBlockSequence_wb (tokens : Array (Positioned YamlToken))
   sorry
 
 /-- `parseBlockMapping` well-behaved given parseNode IH. -/
-private theorem parseBlockMapping_wb (tokens : Array (Positioned YamlToken))
+theorem parseBlockMapping_wb (tokens : Array (Positioned YamlToken))
     (fuel : Nat) (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_eq : ps.tokens = tokens)
@@ -797,7 +1056,7 @@ private theorem parseBlockMapping_wb (tokens : Array (Positioned YamlToken))
   sorry
 
 /-- `parseImplicitBlockSequence` well-behaved given parseNode IH. -/
-private theorem parseImplicitBlockSequence_wb (tokens : Array (Positioned YamlToken))
+theorem parseImplicitBlockSequence_wb (tokens : Array (Positioned YamlToken))
     (fuel : Nat) (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_eq : ps.tokens = tokens)
@@ -808,7 +1067,7 @@ private theorem parseImplicitBlockSequence_wb (tokens : Array (Positioned YamlTo
   sorry
 
 /-- `parseFlowSequence` well-behaved given parseNode IH. -/
-private theorem parseFlowSequence_wb (tokens : Array (Positioned YamlToken))
+theorem parseFlowSequence_wb (tokens : Array (Positioned YamlToken))
     (fuel : Nat) (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_eq : ps.tokens = tokens)
@@ -819,7 +1078,7 @@ private theorem parseFlowSequence_wb (tokens : Array (Positioned YamlToken))
   sorry
 
 /-- `parseFlowMapping` well-behaved given parseNode IH. -/
-private theorem parseFlowMapping_wb (tokens : Array (Positioned YamlToken))
+theorem parseFlowMapping_wb (tokens : Array (Positioned YamlToken))
     (fuel : Nat) (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_eq : ps.tokens = tokens)

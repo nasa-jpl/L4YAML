@@ -1228,7 +1228,7 @@ lemmas should be straightforward: `trimTrailingWS s` is a prefix of `s`
    for round-tripping.
 
 2. **`List.getElem?_mem` does not exist.** No stdlib lemma converts
-   `l[i]? = some a → a ∈ l`, so we wrote a private `mem_of_getElemQ_some`
+   `l[i]? = some a → a ∈ l`, so we wrote a `mem_of_getElemQ_some`
    using induction on `l` and `List.getElem?_cons_zero` + `Option.some.injEq`.
 
 3. **`Bool.not` vs propositional `¬` in `_iff` lemmas.** `noColonSpaceBool`
@@ -3495,24 +3495,28 @@ the theorem statements.
 
 **Proof impact:** Zero breakage. All new theorems are additive.
 
-**Build:** 226/226 ✔, 12 sorry warnings (C2 parser chain; ScannerPlainScalarValid.lean remains sorry-free).
+**Build:** 226/226 ✔, 10 sorry warnings (C2 parser chain; ScannerPlainScalarValid.lean remains sorry-free).
 
-**Note on remaining sorries:** The 12 remaining sorry warnings are all in
+**Note on remaining sorries:** The 10 remaining sorry warnings are all in
 ParserGrammable.lean's C2 pipeline (parser grammability):
 
 1. ~~**`parseNode_wb_all` (inductive step)**~~ — **PROVED ✅** (2026-03-13).
    All branches of the inductive step are fully proved: alias, scalar,
    empty node, sub-parser dispatch (5 tokens), and wildcard (error-check
-   fallthrough + leaked cases). ~190 LOC. Modular — depends on 7
-   sorry'd auxiliary lemmas but the induction skeleton is complete.
+   fallthrough + leaked cases). ~190 LOC. Modular — depends on 5
+   remaining sorry'd auxiliary lemmas (sub-parser WB lemmas; node
+   properties lemmas now proved) but the induction skeleton is complete.
 
 2. ~~**`parseStream_output_scannable`**~~ — **PROVED**.
    Factored through `parseDocument_scannable` (also proved) and
    `parseStream_doc_from_parseDocument` (for-loop decomposition).
 
-3. **`parseNodeProperties_tokens`** / **`parseNodeProperties_flowNesting`** —
-   Token array and flow-nesting preservation through `parseNodeProperties`.
-   Structural properties about anchor/tag token consumption.
+3. ~~**`parseNodeProperties_tokens`** / **`parseNodeProperties_flowNesting`**~~ —
+   **PROVED ✅** (2026-03-13). Token array and flow-nesting preservation
+   through `parseNodeProperties`. Proved by loop unrolling (`unfold_loop_at`
+   × 4), `ForInStep` case splitting, and `dite_false` reduction. Helper
+   lemmas `advance_preserves_flowNesting` / `advance2_preserves_flowNesting`
+   chain single-token steps for the flow-nesting property.
 
 4. **5 sub-parser WB lemmas** — `parseBlockSequence_wb`, `parseBlockMapping_wb`,
    `parseImplicitBlockSequence_wb`, `parseFlowSequence_wb`, `parseFlowMapping_wb`.
@@ -3541,7 +3545,9 @@ ParserGrammable.lean's C2 pipeline (parser grammability):
 | ~~`validPlainFirst_sorry`~~ | ~~ScannerPlainScalar.lean~~ | ~~B3.4~~ | ~~RESOLVED~~ |
 | ~~placeholder `h_ph` sorry~~ | ~~ScannerPlainScalarValid.lean~~ | ~~B3.5~~ | ~~RESOLVED~~ |
 | ~~`parseStream_output_scannable`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED**: Proved via `parseDocument_scannable` + `parseStream_doc_from_parseDocument`.~~ |
-| ~~`parseNode_wb_all` (step)~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-13): All branches proved — alias, scalar, empty, sub-parser, wildcard. ~190 LOC. Depends on 7 sorry'd auxiliaries.~~ |
+| ~~`parseNode_wb_all` (step)~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-13): All branches proved — alias, scalar, empty, sub-parser, wildcard. ~190 LOC. Depends on 5 remaining sorry'd auxiliaries.~~ |
+| ~~`parseNodeProperties_tokens`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-13): Loop unrolling + `ForInStep` case split + `dite_false`. ~120 LOC.~~ |
+| ~~`parseNodeProperties_flowNesting`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-13): Same loop-unrolling structure + `advance_preserves_flowNesting` helpers. ~100 LOC.~~ |
 | `parseDocument_value_cases` | ParserGrammable.lean | C2 | **NEW**: `doc.value` is `emptyNode` or from `parseNode`. Do-notation partially unfolded. |
 | `parseDocument_tokens_preserved` | ParserGrammable.lean | C2 | **NEW**: `parseDocument` preserves `ps.tokens`. Structural. |
 | `parseStream_doc_from_parseDocument` | ParserGrammable.lean | C2 | **NEW**: For-loop decomposition. Needs `Range.forIn` invariant. |
@@ -3551,20 +3557,25 @@ ParserGrammable.lean's C2 pipeline (parser grammability):
 ##### **C2 Infrastructure: Parser Scannability Architecture**
 
 The C2 proof chain (parser output ⊢ `Scannable` ⊢ `Grammable`) is now
-established end-to-end. Three key theorems that previously had sorry are
+established end-to-end. Five key theorems that previously had sorry are
 proved:
 
 - **`parseNode_wb_all`** ✅ — proved by strong induction on fuel with
   tactic-level `match peek_val with` case split (§5e). ~190 LOC.
+- **`parseNodeProperties_tokens`** ✅ — token array preservation through
+  `parseNodeProperties`. Loop unrolling + `ForInStep` case split. ~120 LOC.
+- **`parseNodeProperties_flowNesting`** ✅ — flow-nesting preservation
+  through `parseNodeProperties`. Same structure + helper chaining. ~100 LOC.
 - **`parseDocument_scannable`** ✅ — proved by factoring through
   `parseDocument_value_cases` (§5f) and `parseNode_wb_all` (§5e)
 - **`parseStream_output_scannable`** ✅ — proved by factoring through
   `parseStream_doc_from_parseDocument` (§5g) and `parseDocument_scannable`
 
-The remaining sorry's are localized to three categories:
+The remaining 10 sorry's are localized to four categories:
 
-1. **Auxiliary lemmas** (7 sorry's): `parseNodeProperties_tokens`,
-   `parseNodeProperties_flowNesting`, and 5 sub-parser WB lemmas.
+1. **Auxiliary lemmas** (5 sorry's): 5 sub-parser WB lemmas.
+   (`parseNodeProperties_tokens` and `parseNodeProperties_flowNesting`
+   are now proved — see reflections below.)
    These are used axiomatically by `parseNode_wb_all` — the induction
    skeleton is complete and each auxiliary can be proved independently.
 
@@ -3579,6 +3590,11 @@ The remaining sorry's are localized to three categories:
    proving that the `for _ in [:fuel] do` loop in `parseStream` only
    adds documents produced by `parseDocument` with token array preserved.
    Requires `Range.forIn` loop invariant reasoning.
+
+4. **Semantic properties** (`parseStream_output_aliases_resolve`,
+   `parseStream_output_anchors_wellformed`): alias ordering and anchor
+   well-formedness across flow/block contexts. These may require
+   scanner-level invariants or definition adjustments.
 
 **Proved lemmas** (no sorry):
 
@@ -3597,6 +3613,11 @@ The remaining sorry's are localized to three categories:
 | **`parseNode_wb_all`** | **Inductive step: fuel=n+1 ⊢ `ParseNodeWB` (~190 LOC, all branches)** |
 | **`parseDocument_scannable`** | **`parseDocument` output ⊢ `Scannable doc.value false`** |
 | **`parseStream_output_scannable`** | **`parseStream` output ⊢ `∀ doc, Scannable doc.value false`** |
+| **`ParseState.advance_tokens`** | **`ps.advance.tokens = ps.tokens` — simp lemma for token preservation** |
+| **`advance_preserves_flowNesting`** | **Single `advance` preserves `flowNesting` (non-flow-boundary token)** |
+| **`advance2_preserves_flowNesting`** | **Double `advance` preserves `flowNesting` (two non-flow-boundary tokens)** |
+| **`parseNodeProperties_tokens`** | **`parseNodeProperties` preserves `ps.tokens` (~120 LOC, loop unrolling)** |
+| **`parseNodeProperties_flowNesting`** | **`parseNodeProperties` preserves `flowNesting` (~100 LOC, loop unrolling)** |
 
 **Proof architecture** for the C2 chain:
 
@@ -3606,6 +3627,9 @@ scanFiltered_flow_aware_psv (B3.5+)
     ▼
 parseNode_wb_all (§5e)           [PROVED ✅ — all branches]
     │ parseNode → ParseNodeWB (Scannable + flowNesting)
+    │   ◄── parseNodeProperties_tokens      [PROVED ✅ — loop unrolling]
+    │   ◄── parseNodeProperties_flowNesting  [PROVED ✅ — loop unrolling]
+    │   ◄── 5 sub-parser _wb lemmas          [SORRY: monadic unfolding]
     ▼
 parseDocument_value_cases (§5f)  [SORRY: do-notation decomposition]
     │ parseDocument → emptyNode ∨ parseNode result
@@ -3785,16 +3809,181 @@ goal — was essential throughout.
 
 **Modularity insight — the induction skeleton is the hard part:**
 
-`parseNode_wb_all` depends on 7 sorry'd auxiliary lemmas
-(`parseNodeProperties_tokens`, `parseNodeProperties_flowNesting`, and 5
-sub-parser `_wb` lemmas). Despite these sorry's, the inductive step proof
-is *complete* — it establishes the induction skeleton and case-split
-structure. Each auxiliary lemma can now be proved independently without
+`parseNode_wb_all` depends on 5 remaining sorry'd auxiliary lemmas
+(5 sub-parser `_wb` lemmas; `parseNodeProperties_tokens` and
+`parseNodeProperties_flowNesting` are now proved ✅). Despite these
+sorry's, the inductive step proof is *complete* — it establishes the
+induction skeleton and case-split structure. Each auxiliary lemma can
+now be proved independently without
 touching the main proof. This "sorry as axiom" pattern is effective for
 large proofs: get the overall structure right first, then fill in the
 pieces. The alternative — proving everything bottom-up — would have made
 the combinatorial interactions impossible to debug because the full proof
 would need to work end-to-end before any part could be tested.
+
+##### **`parseNodeProperties_tokens` / `parseNodeProperties_flowNesting` Reflections (2026-03-13)**
+
+**What was proved:** Two structural preservation theorems for
+`parseNodeProperties` — the function that parses YAML node anchors and
+tags. `parseNodeProperties` iterates `for _ in [:2]` (at most 2 tokens:
+one anchor + one tag, or vice versa), matching `ps.peek?` against anchor,
+tag, or wildcard and advancing on match.
+
+- **`parseNodeProperties_tokens`**: `ps'.tokens = ps.tokens` — the token
+  *array* is unchanged (only position advances).
+- **`parseNodeProperties_flowNesting`**: `flowNesting tokens ps'.pos =
+  flowNesting tokens ps.pos` — neither anchors nor tags are flow-boundary
+  tokens, so nesting depth is preserved.
+
+**Proof size:** ~120 LOC (tokens) + ~100 LOC (flowNesting) + ~45 LOC
+(helper lemmas: `ParseState.advance_tokens`, `advance_preserves_flowNesting`,
+`advance2_preserves_flowNesting`).
+
+**Why this was hard — bounded `for` loop unrolling:**
+
+`parseNodeProperties` uses `for _ in [:2] do` — a *bounded* for-loop with
+exactly 2 iterations. Unlike recursive functions (where induction on fuel
+handles the structure mechanically), bounded for-loops in Lean 4 compile
+to `Range.forIn` which wraps the body in `ForInStep.yield`/`ForInStep.done`
+control flow. There is no direct `cases` or `induction` tactic for this
+pattern. The proof must:
+
+1. **Unfold the loop machinery** — 4 rounds of `unfold_loop_at` expand
+   `Range.forIn` → `Range.forIn.loop` → iteration 1 body →
+   iteration 2 body → termination check (`2 < 2 = false`).
+2. **Case-split the `ForInStep` results** — each iteration can produce
+   `.yield` (continue) or `.done` (break). With 2 iterations, this gives
+   4 possible paths: done₁, yield-done₂, yield-yield (+ termination),
+   and an impossible done₁ followed by anything (since done exits).
+3. **Handle the third-iteration stub** — after 2 yields, the loop
+   checks `2 < 2`, which is `false`, creating `dite False (fun h => ...)
+   (fun h => ...)`. This must be reduced with `simp only [dite_false]`.
+
+**Key technique — `unfold_loop_at` custom tactic:**
+
+Standard `unfold` and `simp only [...]` failed to target the specific
+`*.loop*` constants generated by `Range.forIn`. A custom tactic
+`unfold_loop_at` was written that:
+- Walks the goal expression looking for constants whose name contains `.loop`
+- Unfolds exactly that constant via `Lean.Meta.unfoldDefinition?`
+- Uses `Lean.MVarId.replaceTargetDefEq` to swap the goal
+
+This was necessary because the loop constant names are auto-generated
+(`Std.Range.forIn.loop` or similar), and `unfold` requires the exact
+name. The tactic finds it dynamically. Applied 4 times, it fully unrolls
+both iterations plus the termination check.
+
+**Key technique — `ForInStep` case analysis:**
+
+After unrolling, the proof state contains nested `match` expressions on
+`ForInStep.yield v` vs `ForInStep.done v`. The pattern:
+```lean
+split  -- splits outermost ForInStep match
+all_goals (first | contradiction | split at h | skip)
+```
+repeated, handles the combinatorial case tree. `ForInStep.noConfusion`
+(invoked via `cases` on impossible equalities like `ForInStep.done a =
+ForInStep.yield b`) closes impossible paths, producing 0 goals.
+Importantly, `contradiction` alone does NOT always catch these —
+explicit `cases heq` is needed.
+
+**Key technique — `dite_false` for third-iteration elimination:**
+
+The yield-yield path produces the term:
+```
+(if h : False then <3rd iteration body> else Except.ok y) = Except.ok v✝
+```
+The `dite False` is not reduced by `simp` or `cases`. The solution:
+`simp only [dite_false] at heq` reduces it to `Except.ok y = Except.ok v✝`,
+then `simp only [Except.ok.injEq] at heq; subst heq` eliminates `v✝`.
+This is specific to bounded for-loops that reach their iteration limit —
+the termination branch always produces `dite False`.
+
+**Key technique — `advance_tokens` vs `advance` unfolding:**
+
+`ParseState.advance` is defined as `{ ps with pos := ps.pos + 1 }`.
+Using `simp [ParseState.advance]` unfolds this definition but does NOT
+simplify chains like `ps.advance.advance.tokens = ps.tokens` because
+the intermediate struct-update syntax doesn't reduce field projections
+automatically. The fix:
+```lean
+@[simp] theorem ParseState.advance_tokens (ps : ParseState) :
+    ps.advance.tokens = ps.tokens := rfl
+```
+Then `simp [ParseState.advance_tokens]` rewrites directly by the equation,
+handling arbitrary chains of `.advance`. This insight applies broadly:
+for any `{ s with field := ... }` style update, proving explicit field-
+projection lemmas is more effective than unfolding the definition.
+
+**Key technique — `advance_preserves_flowNesting` helper lemma chain:**
+
+For `flowNesting` preservation, the proof needs to show that advancing
+past an anchor or tag token doesn't change `flowNesting`. This requires
+bridging three facts:
+1. `ps.peek? = some tok` → `tok = tokens[ps.pos]` (via `peek_some_bounded`)
+2. `tok ≠ .flowSequenceStart ∧ tok ≠ .flowSequenceEnd ∧ ...` (from the
+   `match` branch — anchor/tag are not flow boundaries)
+3. `flowNesting_non_flow_step` (non-flow-boundary token preserves nesting)
+
+Rather than repeating this chain in every case, a helper:
+```lean
+theorem advance_preserves_flowNesting
+    (tokens) (ps : ParseState) {tok}
+    (h_peek : ps.peek? = some tok) (h_eq : ps.tokens = tokens)
+    (h1 : tok ≠ .flowSequenceStart) ... (h4 : tok ≠ .flowMappingEnd) :
+    flowNesting tokens ps.advance.pos = flowNesting tokens ps.pos
+```
+encapsulates it. `advance2_preserves_flowNesting` chains two applications
+via `calc` for the yield-yield case (two advances). The constructor-
+inequality goals (`tok ≠ .flowSequenceStart` where `tok = .anchor name`)
+close with `intro h; cases h`.
+
+**What was hard — the single hardest aspect:**
+
+The most difficult part was diagnosing the yield-yield case's final sorry.
+After loop unrolling and case splitting, the goal was
+`v✝.snd.tokens = ps.tokens`, but `v✝` was an opaque metavariable not
+connected to any known value. The `heq` hypothesis contained
+`(if h : False then <200-line third-iteration expression> else Except.ok y)
+= Except.ok v✝` — a `dite False` that hadn't been reduced. The diagnostic
+challenge was recognizing that this `dite` was the source of opacity and
+that `dite_false` (not `cases`, `simp`, or `split`) was the correct lemma.
+
+The second hardest aspect was the *interaction between `subst` and goal
+shapes*. After `subst h_eq` (substituting `ps'.tokens = ps.tokens`), some
+goals collapsed to `ps.tokens = ps.tokens` (trivially `rfl`), while others
+remained as `flowNesting tokens ps.advance.pos = flowNesting tokens ps.pos`
+(requiring the helper). A uniform closing tactic needed to handle both:
+`(first | rfl | apply advance_preserves_flowNesting <;> ...)`.
+
+**Contrast with `parseNode_wb_all`:**
+
+| Aspect | `parseNode_wb_all` | `parseNodeProperties_*` |
+|--------|-------------------|------------------------|
+| **Structure** | Strong induction on fuel | Bounded for-loop unrolling |
+| **Key challenge** | Combinatorial case explosion (dozens of `YamlToken` constructors) | Loop machinery (ForInStep, dite_false) |
+| **Tactic** | `match peek_val with` (groups constructors) | `unfold_loop_at` (custom tactic) |
+| **Modularity** | Sorry'd 7 auxiliaries | Self-contained |
+| **Helper lemmas** | `applyNodeFinalization_scannable` | `advance_preserves_flowNesting` |
+| **Closing pattern** | `simp_all [reduceCtorEq]` | `first \| rfl \| simp [advance_tokens]` |
+
+The proof techniques are orthogonal: `parseNode_wb_all` fights token
+variety (many constructors), while `parseNodeProperties` fights loop
+machinery (ForInStep, Range.forIn). Both are likely needed again — the
+5 remaining sub-parser WB lemmas will need `parseNode_wb_all`-style case
+splitting, while any future bounded-loop proof can reuse the
+`unfold_loop_at` + `dite_false` pattern verbatim.
+
+**Reusable infrastructure created:**
+
+| Component | Location | Reuse potential |
+|-----------|----------|----------------|
+| `unfold_loop_at` tactic | ParserGrammable.lean | Any `for _ in [:n]` loop proof |
+| `ParseState.advance_tokens` simp lemma | ParserGrammable.lean | Any parser tokens-preservation proof |
+| `advance_preserves_flowNesting` | ParserGrammable.lean | Any parser flowNesting-preservation proof |
+| `advance2_preserves_flowNesting` | ParserGrammable.lean | Two-token consume paths |
+| `dite_false` reduction pattern | (technique) | Any bounded loop reaching iteration limit |
+| `ForInStep.noConfusion` via `cases` | (technique) | Any done/yield impossibility |
 
 ### Phase H: JSON-is-YAML-subset (FUTURE)
 
