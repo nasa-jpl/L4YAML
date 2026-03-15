@@ -252,7 +252,7 @@ def applyNodeFinalization
 
 ### Fuel-based termination (P10.8a–b)
 
-All 12 functions in the mutual block take a `fuel : Nat` parameter that
+All 14 functions in the mutual block take a `fuel : Nat` parameter that
 decreases by 1 at each function entry (via `match fuel with | fuel + 1 => ...`).
 Lean 4 infers termination automatically from the structural decrease on `fuel`,
 so no explicit `termination_by` annotations are needed.
@@ -263,6 +263,27 @@ at most ~4 function entries (dispatch + collection + loop + sub-node).
 -/
 
 mutual
+
+/-- Dispatch content parsing based on the current token.
+    Extracted from `parseNode` — the 7-way content match that handles
+    scalar, block/flow sequences, block/flow mappings, implicit block
+    sequence, and empty node cases. -/
+def parseNodeContent (ps : ParseState) (fuel : Nat) (props : NodeProperties) :
+    Except ScanError (YamlValue × ParseState) :=
+  match ps.peek? with
+  | some (YamlToken.scalar content style) =>
+    .ok (YamlValue.scalar { content, style, tag := props.tag, anchor := props.anchor }, ps.advance)
+  | some .blockSequenceStart => parseBlockSequence ps fuel
+  | some .blockMappingStart => parseBlockMapping ps fuel
+  | some .blockEntry =>
+    -- Implicit block sequence: libyaml/our scanner omits BLOCK-SEQUENCE-START
+    -- when block entries sit at the same indent as the containing mapping key.
+    parseImplicitBlockSequence ps fuel
+  | some .flowSequenceStart => parseFlowSequence ps fuel
+  | some .flowMappingStart => parseFlowMapping ps fuel
+  | _ =>
+    -- Empty node with possible properties
+    .ok (YamlValue.scalar { content := "", style := .plain, tag := props.tag, anchor := props.anchor }, ps)
 
 /-- Parse a YAML node — the core recursive descent function.
 
@@ -321,21 +342,8 @@ def parseNode (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × Pa
     | some .flowSequenceStart  | some .flowMappingStart
     | some .blockEntry => pure ()   -- collection: tolerate
     | _ => throw (.duplicateAnchor ps.currentLine)  -- scalar/empty: reject
-  -- Parse content
-  let (val, ps) ← match ps.peek? with
-    | some (YamlToken.scalar content style) =>
-      .ok (YamlValue.scalar { content, style, tag := props.tag, anchor := props.anchor }, ps.advance)
-    | some .blockSequenceStart => parseBlockSequence ps fuel
-    | some .blockMappingStart => parseBlockMapping ps fuel
-    | some .blockEntry =>
-      -- Implicit block sequence: libyaml/our scanner omits BLOCK-SEQUENCE-START
-      -- when block entries sit at the same indent as the containing mapping key.
-      parseImplicitBlockSequence ps fuel
-    | some .flowSequenceStart => parseFlowSequence ps fuel
-    | some .flowMappingStart => parseFlowMapping ps fuel
-    | _ =>
-      -- Empty node with possible properties
-      .ok (YamlValue.scalar { content := "", style := .plain, tag := props.tag, anchor := props.anchor }, ps)
+  -- Parse content (dispatched via parseNodeContent)
+  let (val, ps) ← parseNodeContent ps fuel props
   -- Apply properties, register anchor, and record G5c position
   .ok (applyNodeFinalization val ps props nodeStartPos)
 
@@ -450,6 +458,81 @@ def parseBlockMapping (ps : ParseState) (fuel : Nat) : Except ScanError (YamlVal
     | _ => ps
   .ok (YamlValue.mapping .block pairs, ps)
 
+/-- Parse the value in a block mapping entry after the key has been parsed.
+    Handles `.value` consumption, indentation validation, and content dispatch.
+    Extracted from `handleBlockMappingKeyEntry` for proof tractability. -/
+def parseBlockMappingEntryValue (ps : ParseState) (fuel : Nat)
+    (keyHasContent : Bool) (keyLine keyCol : Nat) : Except ScanError (YamlValue × ParseState) := do
+  let (consumed, ps) := ps.tryConsume .value
+  if consumed then do
+    -- §8.2.1: Value node properties on a new line must be more
+    -- indented than the parent key. Reject anchors/tags at or
+    -- below the key's column on a subsequent line (G9HC, H7J7).
+    let valueLine := if ps.pos > 0 then ps.tokens[ps.pos - 1]!.pos.line else 0
+    for i in [ps.pos : min (ps.pos + 2) ps.tokens.size] do
+      match ps.tokens[i]!.val with
+      | .anchor _ | .tag _ _ =>
+        let propPos := ps.tokens[i]!.pos
+        if propPos.line != valueLine && propPos.col <= keyCol then
+          throw (.trailingContent propPos.line propPos.col)
+      | _ => break
+    match ps.peek? with
+    | some .key | some .blockEnd | none => .ok (emptyNode, ps)
+    | some .blockMappingStart | some .blockSequenceStart =>
+      -- §8.2.1 [200]: Block collections require a line break before
+      -- content.  Reject `key: - item` or `a: b: c` on the same line.
+      let pos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
+      if keyHasContent && pos.line == keyLine then
+        throw (.trailingContent pos.line pos.col)
+      else
+        parseNode ps fuel
+    | _ => parseNode ps fuel
+  else
+    .ok (emptyNode, ps)
+
+/-- Handle the `.key` branch of a block mapping iteration.
+    Parses the key node (if present) and delegates value parsing to
+    `parseBlockMappingEntryValue`.
+    Returns `(key, val, ps')`.  Does NOT do the recursive loop call. -/
+def handleBlockMappingKeyEntry (ps : ParseState) (fuel : Nat)
+    (pairIdx : Nat) : Except ScanError (YamlValue × YamlValue × ParseState) := do
+  let keyPos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
+  let keyLine := keyPos.line
+  let keyCol := keyPos.col
+  let ps := ps.advance
+  -- Parse key — check whether key has content (non-empty implicit key)
+  let keyHasContent := match ps.peek? with
+    | some .value | some .blockEnd => false
+    | _ => true
+  let (key, ps) ← if keyHasContent then
+    parseNode ps fuel
+  else
+    .ok (emptyNode, ps)
+  -- G5c: set path for value node
+  let keyContent := match key with | .scalar s => s.content | _ => s!"{pairIdx}"
+  let savedPath := ps.currentPath
+  let ps := { ps with currentPath := savedPath.push (.key keyContent) }
+  -- Parse value (dispatched via parseBlockMappingEntryValue)
+  let (val, ps) ← parseBlockMappingEntryValue ps fuel keyHasContent keyLine keyCol
+  -- G5c: restore path
+  let ps := { ps with currentPath := savedPath }
+  .ok (key, val, ps)
+
+/-- Handle the `.value` branch of a block mapping iteration (implicit key).
+    The key is always `emptyNode`.  Returns `(val, ps')`. -/
+def handleBlockMappingValueEntry (ps : ParseState) (fuel : Nat)
+    (pairIdx : Nat) : Except ScanError (YamlValue × ParseState) := do
+  let ps := ps.advance
+  -- G5c: set path for value node (empty key)
+  let savedPath := ps.currentPath
+  let ps := { ps with currentPath := savedPath.push (.key s!"{pairIdx}") }
+  let (val, ps) ← match ps.peek? with
+    | some .key | some .blockEnd | none => .ok (emptyNode, ps)
+    | _ => parseNode ps fuel
+  -- G5c: restore path
+  let ps := { ps with currentPath := savedPath }
+  .ok (val, ps)
+
 /-- Tail-recursive loop for block mapping entries. -/
 def parseBlockMappingLoop (ps : ParseState) (fuel : Nat)
     (pairs : Array (YamlValue × YamlValue)) : Except ScanError (Array (YamlValue × YamlValue) × ParseState) := do
@@ -458,66 +541,10 @@ def parseBlockMappingLoop (ps : ParseState) (fuel : Nat)
   | fuel + 1 =>
     match ps.peek? with
     | some .key => do
-      -- §8.2.2 [200]: Block collections require s-l-comments (line break)
-      -- before content. Save the key indicator line to detect
-      -- implicit keys with block collections on the same line.
-      let keyPos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
-      let keyLine := keyPos.line
-      let keyCol := keyPos.col
-      let ps := ps.advance
-      -- Parse key — check whether key has content (non-empty implicit key)
-      let keyHasContent := match ps.peek? with
-        | some .value | some .blockEnd => false
-        | _ => true
-      let (key, ps) ← if keyHasContent then
-        parseNode ps fuel
-      else
-        .ok (emptyNode, ps)
-      -- G5c: set path for value node
-      let keyContent := match key with | .scalar s => s.content | _ => s!"{pairs.size}"
-      let savedPath := ps.currentPath
-      let ps := { ps with currentPath := savedPath.push (.key keyContent) }
-      -- Parse value
-      let (consumed, ps) := ps.tryConsume .value
-      let (val, ps) ← if consumed then do
-        -- §8.2.1: Value node properties on a new line must be more
-        -- indented than the parent key. Reject anchors/tags at or
-        -- below the key's column on a subsequent line (G9HC, H7J7).
-        let valueLine := if ps.pos > 0 then ps.tokens[ps.pos - 1]!.pos.line else 0
-        for i in [ps.pos : min (ps.pos + 2) ps.tokens.size] do
-          match ps.tokens[i]!.val with
-          | .anchor _ | .tag _ _ =>
-            let propPos := ps.tokens[i]!.pos
-            if propPos.line != valueLine && propPos.col <= keyCol then
-              throw (.trailingContent propPos.line propPos.col)
-          | _ => break
-        match ps.peek? with
-        | some .key | some .blockEnd | none => .ok (emptyNode, ps)
-        | some .blockMappingStart | some .blockSequenceStart =>
-          -- §8.2.1 [200]: Block collections require a line break before
-          -- content.  Reject `key: - item` or `a: b: c` on the same line.
-          let pos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
-          if keyHasContent && pos.line == keyLine then
-            throw (.trailingContent pos.line pos.col)
-          else
-            parseNode ps fuel
-        | _ => parseNode ps fuel
-      else
-        .ok (emptyNode, ps)
-      -- G5c: restore path
-      let ps := { ps with currentPath := savedPath }
+      let (key, val, ps) ← handleBlockMappingKeyEntry ps fuel pairs.size
       parseBlockMappingLoop ps fuel (pairs.push (key, val))
     | some .value => do
-      -- Implicit key (empty key)
-      let ps := ps.advance
-      -- G5c: set path for value node (empty key)
-      let savedPath := ps.currentPath
-      let ps := { ps with currentPath := savedPath.push (.key s!"{pairs.size}") }
-      let (val, ps) ← match ps.peek? with
-        | some .key | some .blockEnd | none => .ok (emptyNode, ps)
-        | _ => parseNode ps fuel
-      -- G5c: restore path
-      let ps := { ps with currentPath := savedPath }
+      let (val, ps) ← handleBlockMappingValueEntry ps fuel pairs.size
       parseBlockMappingLoop ps fuel (pairs.push (emptyNode, val))
     | _ => .ok (pairs, ps)
 
@@ -797,6 +824,30 @@ def parseDirectives (ps : ParseState) : (Array Directive × ParseState) := Id.ru
 
 /-! ## Document Parsing -/
 
+/-- Prepare document state: parse directives, register tag handles,
+    consume optional `---`, and validate block-collection-on-same-line.
+    Extracted from `parseDocument` for proof tractability. -/
+def prepareDocumentState (ps : ParseState) :
+    Except ScanError (Array Directive × ParseState) := do
+  let (dirs, ps) := parseDirectives ps
+  let tagHandles := dirs.filterMap fun
+    | .tag handle _ => some handle
+    | _ => none
+  let ps := { ps with tagHandles := tagHandles }
+  let docStartLine := if ps.peek? == some .documentStart then
+    ps.peekPos?.map (·.line)
+  else
+    none
+  let (_, ps) := ps.tryConsume .documentStart
+  if let some dsLine := docStartLine then
+    match ps.peek? with
+    | some .blockMappingStart | some .blockSequenceStart =>
+      let pos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
+      if pos.line == dsLine then
+        throw (.contentOnDocumentStartLine pos.line pos.col)
+    | _ => pure ()
+  .ok (dirs, ps)
+
 /-- Parse a single YAML document.
 
     **Implements** (YAML 1.2.2 §9.1):
@@ -805,46 +856,18 @@ def parseDirectives (ps : ParseState) : (Array Directive × ParseState) := Id.ru
     - `[207] l-explicit-document` = `c-directives-end (l-bare-document | e-node s-l-comments)`
     - `[206] l-bare-document` = `s-l+block-node(-1,BLOCK-IN)`
 
-    Sequence: directives → tag handle registration → optional `---` → root node.
+    Sequence: `prepareDocumentState` (directives + validation) → root node dispatch.
 
     **Pre**: Parse state at the first token of a document (directive, `---`, or content).
     **Post**: Returns `YamlDocument` (value + directives + anchors) and advanced state.
     **Error**: `contentOnDocumentStartLine` (block collection on `---` line, §9.1.1). -/
 def parseDocument (ps : ParseState) : Except ScanError (YamlDocument × ParseState) := do
-  -- Optional directives
-  let (dirs, ps) := parseDirectives ps
-  -- §6.8.2.2: Tag handles are local to the document.
-  -- Extract declared handles from this document's %TAG directives.
-  let tagHandles := dirs.filterMap fun
-    | .tag handle _ => some handle
-    | _ => none
-  let ps := { ps with tagHandles := tagHandles }
-  -- Optional document start marker
-  let docStartLine := if ps.peek? == some .documentStart then
-    ps.peekPos?.map (·.line)
-  else
-    none
-  let (_, ps) := ps.tryConsume .documentStart
-  -- §9.1.1 [200]: Block collections require s-l-comments (line break)
-  -- before content. A block mapping/sequence cannot start on the `---` line.
-  if let some dsLine := docStartLine then
-    match ps.peek? with
-    | some .blockMappingStart | some .blockSequenceStart =>
-      let pos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
-      if pos.line == dsLine then
-        throw (.contentOnDocumentStartLine pos.line pos.col)
-    | _ => pure ()
-  -- Parse the document's root node
-  -- Initial fuel: 4 × token count + 4 bounds all mutual-function entries.
-  -- Each token generates at most ~4 function entries in the recursion.
+  let (dirs, ps) ← prepareDocumentState ps
   let fuel := 4 * ps.tokens.size + 4
   let (val, ps) ← match ps.peek? with
     | some .documentEnd | some .streamEnd | none =>
       .ok (emptyNode, ps)
     | _ => parseNode ps fuel
-  -- Note: `documentEnd` (`...`) is NOT consumed here.
-  -- It is consumed by `parseStream` to track document boundary state
-  -- for §9.2 [211] validation.
   .ok ({ value := val, directives := dirs, anchors := ps.anchors,
          nodePositions := ps.nodePositions }, ps)
 
