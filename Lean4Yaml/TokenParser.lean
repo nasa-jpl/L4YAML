@@ -627,6 +627,21 @@ def parseFlowMapping (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValu
     | _ => ps
   .ok (YamlValue.mapping .flow pairs, ps)
 
+/-- Parse the value part of a flow mapping entry.
+    After key is parsed, consume optional VALUE token and parse value.
+    Returns the value and updated state with currentPath restored. -/
+def parseFlowMappingValue (ps : ParseState) (fuel : Nat)
+    (savedPath : YamlPath) (keyContent : String)
+    : Except ScanError (YamlValue × ParseState) := do
+  let ps := { ps with currentPath := savedPath.push (.key keyContent) }
+  let (consumed, ps) := ps.tryConsume .value
+  let (val, ps) ← if consumed then
+    match ps.peek? with
+    | some .flowEntry | some .flowMappingEnd | none => .ok (emptyNode, ps)
+    | _ => parseNode ps fuel
+  else .ok (emptyNode, ps)
+  .ok (val, { ps with currentPath := savedPath })
+
 /-- Tail-recursive loop for flow mapping entries. -/
 def parseFlowMappingLoop (ps : ParseState) (fuel : Nat)
     (pairs : Array (YamlValue × YamlValue)) : Except ScanError (Array (YamlValue × YamlValue) × ParseState) := do
@@ -649,36 +664,13 @@ def parseFlowMappingLoop (ps : ParseState) (fuel : Nat)
           | some .value | some .flowEntry | some .flowMappingEnd =>
             .ok (emptyNode, ps)
           | _ => parseNode ps fuel
-        -- G5c: set path for value node
         let keyContent := match key with | .scalar s => s.content | _ => s!"{pairs.size}"
-        let savedPath := ps.currentPath
-        let ps := { ps with currentPath := savedPath.push (.key keyContent) }
-        let (consumed, ps) := ps.tryConsume .value
-        let (val, ps) ← if consumed then
-          match ps.peek? with
-          | some .flowEntry | some .flowMappingEnd | none =>
-            .ok (emptyNode, ps)
-          | _ => parseNode ps fuel
-        else
-          .ok (emptyNode, ps)
-        let ps := { ps with currentPath := savedPath }
+        let (val, ps) ← parseFlowMappingValue ps fuel ps.currentPath keyContent
         parseFlowMappingLoop ps fuel (pairs.push (key, val))
       | _ => do
-        -- Implicit key: value without KEY token
         let (key, ps) ← parseNode ps fuel
-        -- G5c: set path for value node
         let keyContent := match key with | .scalar s => s.content | _ => s!"{pairs.size}"
-        let savedPath := ps.currentPath
-        let ps := { ps with currentPath := savedPath.push (.key keyContent) }
-        let (consumed, ps) := ps.tryConsume .value
-        let (val, ps) ← if consumed then
-          match ps.peek? with
-          | some .flowEntry | some .flowMappingEnd | none =>
-            .ok (emptyNode, ps)
-          | _ => parseNode ps fuel
-        else
-          .ok (emptyNode, ps)
-        let ps := { ps with currentPath := savedPath }
+        let (val, ps) ← parseFlowMappingValue ps fuel ps.currentPath keyContent
         parseFlowMappingLoop ps fuel (pairs.push (key, val))
 
 /-- Parse a single key:value pair as an implicit mapping (in flow sequences).

@@ -604,8 +604,9 @@ def parseFlowMappingLoop (ps : ParseState) (fuel : Nat)
 ### Wadler-Style "Theorems for Free" as Refactoring Guards
 
 Before performing the refactoring, we derive behavioral specifications from
-the CURRENT `parseFlowMappingLoop` that must be preserved. These serve as
-regression lemmas:
+the CURRENT `parseFlowMappingLoop` that must be preserved. 
+
+#### Step 1: write the theorem properties for the current `parseFlowMappingLoop` implementation. These are properties that follow from the function's type signature and implementation structure, not from domain-specific knowledge. They are "free theorems" in the Wadler sense — they must hold for any function with the same type signature and similar accumulator structure, regardless of the specific parsing logic.
 
 1. **Token preservation** (from the type `ParseState → ... → Except ... (... × ParseState)`):
    ```lean
@@ -640,6 +641,10 @@ that only uses `push` on the accumulator must satisfy them. Property (4)
 requires domain knowledge (flow nesting semantics) but its STRUCTURE
 (state-property preservation through a loop) is a free theorem of the
 state-threading pattern.
+
+#### Step 2: Refactor `parseFlowMappingLoop` to extract the shared tryConsume + value dispatch logic into `parseFlowMappingValue`. This should be a purely syntactic transformation that does not change the overall structure of the loop or the way state is threaded.
+
+#### Step 3: Prove the same properties (1)–(3) for the new `parseFlowMappingLoop` + `parseFlowMappingValue`. If all three hold, we have strong evidence that the refactoring preserved the core behavior of the loop with respect to token handling and pair accumulation.
 
 After refactoring, we prove the SAME four properties for the new
 `parseFlowMappingLoop` + `parseFlowMappingValue`. If all four hold, the
