@@ -1027,7 +1027,7 @@ def ParseNodeWB (tokens : Array (Positioned YamlToken)) (n : Nat) : Prop :=
 /-- Variant of `ParseNodeWB` application that accepts a non-destructured
     pair result (matching how `split at h_ok` produces `parseNode` hypotheses).
     Takes `h_ok` before `h_le` so `m` is determined before omega needs it. -/
-private theorem parseNodeWB_apply {tokens : Array (Positioned YamlToken)} {n : Nat}
+theorem parseNodeWB_apply {tokens : Array (Positioned YamlToken)} {n : Nat}
     (h_ih : ParseNodeWB tokens n)
     {ps : ParseState} {m : Nat} {v : YamlValue × ParseState}
     (h_tok : ps.tokens = tokens)
@@ -1043,7 +1043,7 @@ private theorem parseNodeWB_apply {tokens : Array (Positioned YamlToken)} {n : N
     Parameter order: h_ok FIRST (so assumption determines ps, m, v),
     then h_le (omega, now m is known), then h_tok LAST (assumption finds
     the right token proof by definitional reduction of struct projections). -/
-private theorem parseNode_scannable_false {tokens : Array (Positioned YamlToken)} {n : Nat}
+theorem parseNode_scannable_false {tokens : Array (Positioned YamlToken)} {n : Nat}
     (h_ih : ParseNodeWB tokens n)
     {ps : ParseState} {m : Nat} {v : YamlValue × ParseState}
     (h_ok : parseNode ps m = .ok v)
@@ -1052,7 +1052,7 @@ private theorem parseNode_scannable_false {tokens : Array (Positioned YamlToken)
     Scannable v.1 false :=
   (h_ih ps m v.1 v.2 h_le h_tok h_ok).1
 
-private theorem parseNode_scannable_true {tokens : Array (Positioned YamlToken)} {n : Nat}
+theorem parseNode_scannable_true {tokens : Array (Positioned YamlToken)} {n : Nat}
     (h_ih : ParseNodeWB tokens n)
     {ps : ParseState} {m : Nat} {v : YamlValue × ParseState}
     (h_ok : parseNode ps m = .ok v)
@@ -1061,7 +1061,7 @@ private theorem parseNode_scannable_true {tokens : Array (Positioned YamlToken)}
     flowNesting tokens ps.pos > 0 → Scannable v.1 true :=
   (h_ih ps m v.1 v.2 h_le h_tok h_ok).2.1
 
-private theorem parseNode_flowNesting {tokens : Array (Positioned YamlToken)} {n : Nat}
+theorem parseNode_flowNesting {tokens : Array (Positioned YamlToken)} {n : Nat}
     (h_ih : ParseNodeWB tokens n)
     {ps : ParseState} {m : Nat} {v : YamlValue × ParseState}
     (h_ok : parseNode ps m = .ok v)
@@ -1070,7 +1070,7 @@ private theorem parseNode_flowNesting {tokens : Array (Positioned YamlToken)} {n
     flowNesting tokens v.2.pos = flowNesting tokens ps.pos :=
   (h_ih ps m v.1 v.2 h_le h_tok h_ok).2.2.1
 
-private theorem parseNode_tokens {tokens : Array (Positioned YamlToken)} {n : Nat}
+theorem parseNode_tokens {tokens : Array (Positioned YamlToken)} {n : Nat}
     (h_ih : ParseNodeWB tokens n)
     {ps : ParseState} {m : Nat} {v : YamlValue × ParseState}
     (h_ok : parseNode ps m = .ok v)
@@ -1435,7 +1435,6 @@ theorem mapping_recurse
          h_wb.2.2.1.trans h_fn_rec, h_wb.2.2.2⟩
   rw [h_fn_rec]; exact h_flow
 
-set_option maxHeartbeats 16000000 in
 /-- Loop invariant for `parseBlockMappingLoop`: all accumulated pairs remain
     Scannable (both projections), flowNesting is preserved, and the token
     array is unchanged. -/
@@ -1673,7 +1672,6 @@ theorem parseNode_wb_all (tokens : Array (Positioned YamlToken))
 token array. These facts are used by `parseDocument_tokens_preserved`.
 -/
 
-set_option maxRecDepth 8000 in
 /-- `parseDirectives` preserves the token array. -/
 theorem parseDirectives_tokens (ps : ParseState) :
     (parseDirectives ps).2.tokens = ps.tokens := by
