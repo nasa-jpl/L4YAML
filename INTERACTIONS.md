@@ -229,13 +229,182 @@ def checkWHNFExpansionHazard (e : Expr) : MetaM (Array Warning) := do
   return warnings
 ```
 
+#### Pattern 4: Complexity explosion in monolithic loop bodies
+
+**What to detect:** A recursive (or tail-recursive) function whose body
+contains multiple independent dispatch branches that each perform
+structurally similar sub-computations (key dispatch, tryConsume, value
+dispatch), leading to a combinatorial explosion in proof cases.
+
+**Why it matters:** When a loop body has $N$ entry patterns, each with $M$
+internal dispatch branches, the proof must handle $N \times M$ cases, many
+of which are nearly identical. The complexity scales multiplicatively rather
+than additively. This is invisible to code review — the function is clean,
+well-structured, and correct — but the proof becomes unmanageable.
+
+**Canonical example:** `parseFlowMappingLoop` (TokenParser.lean L631–690)
+has two entry patterns:
+- **Explicit key** (`some .key`): advance, key dispatch (3 emptyNode cases +
+  parseNode catch-all), tryConsume `.value`, value dispatch (3 emptyNode cases
+  + parseNode catch-all), recurse
+- **Implicit key** (catch-all `_`): parseNode, tryConsume `.value`, value
+  dispatch (same 4 × 2 structure), recurse
+
+The tryConsume + value dispatch tail is **identical** between both branches.
+Each proof case requires ~40 lines (key/value WB extraction, flowNesting
+chain, tokens chain, Scannable pair construction). Total: ~320 lines of
+largely duplicated proof for 8 cases (2 entry × 2 consumed × 2 value).
+
+Compare `parseFlowSequenceLoop` (L575–612): only 3 content dispatch branches
+(key → `parseSinglePairMapping`, `flowSequenceEnd`, parseNode catch-all), each
+with a single value. The proof (`parseFlowSequenceLoop_wb`) is ~110 lines.
+
+**Mitigation (code-side):** Factor out the shared sub-computation as a named
+function, then prove a single well-behavedness lemma for it:
+
+```lean
+/-- Extract a single mapping entry (key + optional value).
+    Shared logic for explicit-key and implicit-key branches. -/
+def parseFlowMappingEntry (ps : ParseState) (fuel : Nat) (pairIndex : Nat)
+    (key : YamlValue) : Except ScanError ((YamlValue × YamlValue) × ParseState)
+```
+
+Then the loop proof delegates to `parseFlowMappingEntry_wb` exactly as
+`parseFlowSequenceLoop_wb` delegates to `parseSinglePairMapping_wb`.
+
+**Relationship to Wadler's "theorems for free":** Before refactoring, we can
+derive **behavioral specifications** from the current `parseFlowMappingLoop`
+type signature and implementation that must be preserved:
+
+1. **Monotonicity**: `result.1.size ≥ pairs.size` (the loop only appends)
+2. **Token preservation**: `result.2.tokens = ps.tokens` (no token mutation)
+3. **flowNesting preservation**: `flowNesting tokens result.2.pos =
+   flowNesting tokens ps.pos` (in flow context)
+4. **Item well-behavedness**: All items in `result.1` satisfy `Scannable` at
+   the appropriate polarity
+
+These "free theorems" serve as regression tests for the refactoring: if the
+factored version satisfies the same specifications, behavior is preserved.
+The Wadler approach suggests deriving what we can from the type (parametricity)
+— here the key insight is that `parseFlowMappingLoop` is parametric in the
+*content* of key/value parsing (it just threads state), so any factoring that
+preserves the state-threading discipline preserves behavior.
+
+**Implementation sketch:**
+
+```lean
+/-- Check whether a recursive function has multiple branches with
+    structurally similar sub-computations. -/
+def checkComplexityExplosion (decl : ConstantInfo) : MetaM (Array Warning) := do
+  let body ← getDefBody decl
+  let branches := findRecursiveCallBranches body
+  -- Group branches by structural similarity (same sequence of bind operations
+  -- with different initial dispatch but shared tail)
+  let groups := groupBySimilarTail branches
+  for group in groups do
+    if group.size > 1 then
+      let sharedTail := computeSharedTail group
+      warnings := warnings.push {
+        msg := s!"'{decl.name}' has {group.size} branches sharing a common " ++
+               s!"tail of {sharedTail.bindCount} bind operations. " ++
+               s!"Consider extracting to a subfunction to reduce proof cases " ++
+               s!"from {totalCases group} to {reducedCases group}."
+      }
+  return warnings
+```
+
+#### Pattern 5: Semantic impasse from specification-level invariant gaps
+
+**What to detect:** A proof obligation that reduces (after available rewrites)
+to an arithmetic impossibility — e.g., `x + 1 = x`, `f x + c = f x` for
+`c > 0` — indicating that the theorem's claim is **unprovable** in a
+particular branch, not merely difficult. This signals a missing invariant at
+a higher level (e.g., scanner, grammar) rather than a proof technique gap.
+
+**Why it matters:** Without detection, these cases consume unbounded proof
+effort. The prover tries increasingly sophisticated techniques on a goal
+that is literally false in the current context. The root cause is that
+the theorem was stated under implicit assumptions (e.g., "the closing bracket
+is always consumed") that are not formalized as hypotheses.
+
+**Canonical example:** `parseFlowSequence_wb`, else-branch (no flowSequenceEnd
+consumed). After rewriting:
+```
+h_adv_fn_eq : flowNesting tokens ps.advance.pos = flowNesting tokens ps.pos + 1
+h_loop_fn : flowNesting tokens ps_loop.pos = flowNesting tokens ps.advance.pos
+⊢ flowNesting tokens ps_loop.pos = flowNesting tokens ps.pos
+```
+Substituting: `flowNesting tokens ps.pos + 1 = flowNesting tokens ps.pos`. This
+is `x + 1 = x` — false for all `x : Nat`.
+
+**Root cause analysis:** The theorem claims `flowNesting` is preserved through
+`parseFlowSequence`. This is true when `flowSequenceEnd` is consumed (the
+`+1` from `flowSequenceStart` is cancelled by `-1` from `flowSequenceEnd`).
+But the implementation has an `else` branch where `flowSequenceEnd` is NOT
+consumed (fuel exhaustion, or the loop exits without seeing the end token).
+In this branch, the net `flowNesting` change is `+1`, not `0`.
+
+**Resolution options:**
+
+1. **Scanner invariant (Option 1):** Add a `FlowBracketsMatched` property to
+   `FlowAwarePSV` proving that every `flowSequenceStart`/`flowMappingStart`
+   has a matching `flowSequenceEnd`/`flowMappingEnd` at a later position.
+   Combined with a fuel-sufficiency argument, this makes the else-branch
+   unreachable (`False.elim`).
+
+2. **Fuel-sufficiency (Option 2):** Prove that when `parseFlowSequence`
+   returns `.ok`, the loop **always** consumed `flowSequenceEnd` (i.e., the
+   else-branch yields `.error` or is never reached). This follows from the
+   scanner guaranteeing matched brackets: with well-formed tokens, the loop
+   sees `flowSequenceEnd` and exits via the `some .flowSequenceEnd` branch
+   before fuel runs out.
+
+3. **Combined approach (Options 1 + 2):** Add `FlowBracketsMatched` to
+   the scanner invariant chain (Option 1), then prove a lemma that
+   `parseFlowSequence` on matched-bracket tokens always takes the
+   `some .flowSequenceEnd` branch (Option 2). This is the most robust
+   approach: Option 1 provides the semantic foundation, Option 2 provides
+   the syntactic consequence.
+
+**Detection mechanism — automated impasse detection:**
+
+```lean
+/-- After tactic execution leaves a numeric goal, check if it's
+    a trivial impossibility. -/
+def checkArithmeticImpasse (goal : MVarId) : MetaM (Option Warning) := do
+  let target ← goal.getType
+  -- Normalize the target
+  let target ← Meta.reduce target
+  -- Check for patterns like `n + k = n` or `n = n + k` where k > 0
+  if let some (lhs, rhs) := isEqNat target then
+    -- Try to show lhs - rhs or rhs - lhs is a positive constant
+    let diff ← Meta.reduce (← mkAppM ``Nat.sub #[lhs, rhs])
+    if isPositiveLiteral diff then
+      return some { msg := s!"Arithmetic impasse: goal reduces to " ++
+        s!"'{← ppExpr target}' which requires {← ppExpr diff} = 0. " ++
+        s!"This suggests a missing invariant that would make this " ++
+        s!"branch unreachable." }
+  return none
+```
+
+**Generalized detection — "rewrite saturation + impossibility check":**
+
+A more general approach: after applying all available `rw` lemmas from
+hypotheses to the goal, run `omega` or `norm_num`. If these **succeed
+in proving `False`** from the goal + hypotheses, the branch is unreachable
+given a missing invariant. If they succeed in closing the goal, no impasse.
+If they fail but the goal has a simple arithmetic structure, flag as a
+potential impasse.
+
 ### Scope and Limitations
 
 **In scope:**
 - Pattern 1 (struct-with-update → method call unification failure)
 - Pattern 2 (flow collection return → Scannable polarity mismatch)
 - Pattern 3 (WHNF expansion of compound sub-expressions inside `split`)
-- All three are specific to the parser's `ParseState` + `Scannable`
+- Pattern 4 (complexity explosion in monolithic loop bodies)
+- Pattern 5 (semantic impasse from specification-level invariant gaps)
+- All five are specific to the parser's `ParseState` + `Scannable`
   architecture, but the detection algorithms generalize
 
 **Out of scope (initially):**
@@ -253,23 +422,27 @@ def checkWHNFExpansionHazard (e : Expr) : MetaM (Array Warning) := do
 | I2 | Pattern 1 detector (struct-with → method call) | Medium |
 | I3 | Pattern 2 detector (flow collection return check) | Medium |
 | I4 | Pattern 3 detector (WHNF expansion hazard) | Medium |
-| I5 | `#check_wb_interactions` command wiring | Small |
-| I6 | Run on all 7 G5c-modified functions, validate results | Small |
-| I7 | Document false-positive patterns and suppression mechanism | Small |
+| I5 | Pattern 4 detector (complexity explosion in loop bodies) | Medium |
+| I6 | Pattern 5 detector (arithmetic impasse / invariant gap) | Medium |
+| I7 | `#check_wb_interactions` command wiring | Small |
+| I8 | Run on all 7 G5c-modified functions, validate results | Small |
+| I9 | Document false-positive patterns and suppression mechanism | Small |
 
 ### Expected Results on Current Codebase
 
 Running the analysis on the 7 G5c-modified functions (BRIDGING.md §G5c):
 
-| Function | Pattern 1 (struct-with) | Pattern 2 (flow return) | Pattern 3 (WHNF hazard) |
-|----------|------------------------|------------------------|-------------------------|
-| `parseBlockSequenceLoop` | ✓ (currentPath before parseNode — but parseNode takes ps directly, so lemmas still apply) | ✗ (returns array, not flow collection) | ✗ (no compound scrutinee) |
-| `parseImplicitBlockSequenceLoop` | ✓ (same as above) | ✗ | ✗ |
-| `parseBlockMappingLoop` | ✓ (currentPath before BEV/parseNode) | ✗ (block mapping) | ✗ |
-| `parseFlowSequenceLoop` | ✓ (currentPath before parseNode + parseSinglePairMapping) | ✗ (returns array) | ✗ |
-| `parseFlowMappingLoop` | ✓ (currentPath before parseNode + tryConsume) | ✗ (returns array) | **✓** (tryConsume on struct-with feeds into `if consumed`) |
-| `parseSinglePairMapping` | **✓ CONFIRMED** (currentPath before tryConsume) | **✓ CONFIRMED** (.mapping .flow return) | **✓ CONFIRMED** (tryConsume internal match found before consumed dispatch) |
-| `parseDocument` | ✓ (currentPath before parseNode) | ✗ | ✗ |
+| Function | P1 (struct-with) | P2 (flow return) | P3 (WHNF hazard) | P4 (loop explosion) | P5 (impasse) |
+|----------|-----------------|-----------------|------------------|--------------------|--------------| 
+| `parseBlockSequenceLoop` | ✓ (currentPath before parseNode — but parseNode takes ps directly, so lemmas still apply) | ✗ (returns array, not flow collection) | ✗ (no compound scrutinee) | ✗ (single branch) | ✗ |
+| `parseImplicitBlockSequenceLoop` | ✓ (same as above) | ✗ | ✗ | ✗ (single branch) | ✗ |
+| `parseBlockMappingLoop` | ✓ (currentPath before BEV/parseNode) | ✗ (block mapping) | ✗ | ✗ (extracted to `handleBlockMapping*Entry`) | ✗ |
+| `parseFlowSequenceLoop` | ✓ (currentPath before parseNode + parseSinglePairMapping) | ✗ (returns array) | ✗ | ✗ (3 simple branches) | ✗ |
+| `parseFlowMappingLoop` | ✓ (currentPath before parseNode + tryConsume) | ✗ (returns array) | **✓** (tryConsume on struct-with feeds into `if consumed`) | **✓** (2 entry × 4 key × 2 consumed × 4 value = explosion) | ✗ |
+| `parseSinglePairMapping` | **✓ CONFIRMED** (currentPath before tryConsume) | **✓ CONFIRMED** (.mapping .flow return) | **✓ CONFIRMED** (tryConsume internal match found before consumed dispatch) | ✗ (single entry) | ✗ |
+| `parseDocument` | ✓ (currentPath before parseNode) | ✗ | ✗ | ✗ | ✗ |
+| `parseFlowSequence` (wrapper) | ✗ | ✗ | ✗ | ✗ | **✓** (`flowNesting ps.pos + 1 = flowNesting ps.pos` in else branch) |
+| `parseFlowMapping` (wrapper) | ✗ | ✗ | ✗ | ✗ | **✓** (same `flowNesting` impasse as `parseFlowSequence`) |
 
 Note: For most functions, Pattern 1 manifests as `{ ps with currentPath := ... }`
 before `parseNode`, but `parseNode` takes `ps : ParseState` as a regular
@@ -283,7 +456,7 @@ is only severe when the struct-with-update feeds into a **method** like
 
 ### Generalization Beyond This Project
 
-The three patterns generalize to any Lean 4 codebase where:
+The five patterns generalize to any Lean 4 codebase where:
 
 1. **Records with proof-irrelevant fields** are updated before method calls
    whose lemmas were stated for the original record. This is common in
@@ -307,5 +480,210 @@ The three patterns generalize to any Lean 4 codebase where:
    code where `do`-notation desugars to nested binds that `unfold`/`simp`
    must peel through, exposing intermediate computations.
 
+4. **Monolithic recursive functions with duplicated sub-computations** in
+   multiple branches. This is extremely common in parsers, interpreters, and
+   state machines where different input tokens trigger structurally similar
+   processing pipelines. The code is clean and correct, but the proof work
+   scales multiplicatively. The fix — factoring out shared sub-computations —
+   is a standard software engineering refactoring, but it's motivated here
+   by proof economics rather than code clarity. This connects to Wadler's
+   "theorems for free" insight: the factored function's type signature
+   constrains its behavior, making the proof obligation smaller and more
+   composable. **Behavioral specifications derived from the original type
+   (monotonicity, state preservation, well-behavedness propagation) serve as
+   regression tests ensuring the refactoring preserves semantics.**
+
+5. **Proof obligations that reduce to arithmetic impossibilities** after
+   applying available rewrites, indicating that a theorem's claim is false
+   in a particular branch. This signals a missing invariant at a higher
+   abstraction level (scanner, grammar, type system) rather than a proof
+   technique gap. The detection generalizes beyond parsers: any system where
+   a function maintains a counter-like quantity (nesting depth, reference
+   count, resource balance) that is modified by paired operations (open/close,
+   acquire/release, push/pop) can exhibit this pattern when the "close"
+   operation is not guaranteed to execute. The resolution requires either
+   (a) a liveness/matching invariant at the specification level, (b) a
+   proof that the unmatched branch is unreachable, or (c) both.
+
 A general version of this tool could be valuable for the broader Lean 4
 verified-systems community.
+
+---
+
+## Appendix: The `parseFlowMappingLoop` Case Study
+
+### Decomposition Analysis (2026-03-15)
+
+`parseFlowMappingLoop` is the canonical example of Pattern 4. Its 60-line
+body has two major entry branches (explicit key, implicit key) that share
+an identical tryConsume + value dispatch tail. The proof complexity comes
+from the Cartesian product of cases:
+
+```
+parseFlowMappingLoop (60 lines, ~320 proof lines estimated)
+├── fuel match (0 → base, k+1 → ...)
+├── peek? = flowMappingEnd → early return
+├── separator check (pairs.size > 0)
+│   ├── flowEntry → advance
+│   └── other → early return
+├── content dispatch (after separator)
+│   ├── some .key (explicit key)
+│   │   ├── advance KEY token
+│   │   ├── key dispatch
+│   │   │   ├── .value | .flowEntry | .flowMappingEnd → emptyNode key
+│   │   │   └── _ → parseNode key
+│   │   ├── tryConsume .value           ← SHARED TAIL STARTS HERE
+│   │   ├── value dispatch (consumed)
+│   │   │   ├── .flowEntry | .flowMappingEnd | none → emptyNode val
+│   │   │   └── _ → parseNode val
+│   │   ├── value dispatch (!consumed) → emptyNode val
+│   │   └── recurse with (key, val)
+│   └── _ (implicit key)
+│       ├── parseNode key
+│       ├── tryConsume .value           ← SAME SHARED TAIL
+│       ├── value dispatch (consumed)   ← SAME
+│       ├── value dispatch (!consumed)  ← SAME
+│       └── recurse with (key, val)
+```
+
+### Proposed Factoring
+
+Extract the shared tail into `parseFlowMappingValue`:
+
+```lean
+/-- Parse the value part of a flow mapping entry.
+    After key is parsed, consume optional VALUE token and parse value.
+    Returns the value and updated state. -/
+def parseFlowMappingValue (ps : ParseState) (fuel : Nat)
+    (savedPath : YamlPath) (keyContent : String)
+    : Except ScanError (YamlValue × ParseState) := do
+  let ps := { ps with currentPath := savedPath.push (.key keyContent) }
+  let (consumed, ps) := ps.tryConsume .value
+  let (val, ps) ← if consumed then
+    match ps.peek? with
+    | some .flowEntry | some .flowMappingEnd | none => .ok (emptyNode, ps)
+    | _ => parseNode ps fuel
+  else .ok (emptyNode, ps)
+  .ok (val, { ps with currentPath := savedPath })
+```
+
+Then `parseFlowMappingLoop` becomes:
+
+```lean
+def parseFlowMappingLoop (ps : ParseState) (fuel : Nat)
+    (pairs : Array (YamlValue × YamlValue)) := do
+  match fuel with
+  | 0 => .ok (pairs, ps)
+  | fuel + 1 =>
+    match ps.peek? with
+    | some .flowMappingEnd => .ok (pairs, ps)
+    | _ => do
+      let ps ← if pairs.size > 0 then
+        match ps.peek? with
+        | some .flowEntry => pure ps.advance
+        | _ => return (pairs, ps)
+      else pure ps
+      match ps.peek? with
+      | some .flowMappingEnd => .ok (pairs, ps)
+      | some .key => do
+        let ps := ps.advance
+        let (key, ps) ← match ps.peek? with
+          | some .value | some .flowEntry | some .flowMappingEnd =>
+            .ok (emptyNode, ps)
+          | _ => parseNode ps fuel
+        let keyContent := match key with | .scalar s => s.content | _ => s!"{pairs.size}"
+        let (val, ps) ← parseFlowMappingValue ps fuel ps.currentPath keyContent
+        parseFlowMappingLoop ps fuel (pairs.push (key, val))
+      | _ => do
+        let (key, ps) ← parseNode ps fuel
+        let keyContent := match key with | .scalar s => s.content | _ => s!"{pairs.size}"
+        let (val, ps) ← parseFlowMappingValue ps fuel ps.currentPath keyContent
+        parseFlowMappingLoop ps fuel (pairs.push (key, val))
+```
+
+### Wadler-Style "Theorems for Free" as Refactoring Guards
+
+Before performing the refactoring, we derive behavioral specifications from
+the CURRENT `parseFlowMappingLoop` that must be preserved. These serve as
+regression lemmas:
+
+1. **Token preservation** (from the type `ParseState → ... → Except ... (... × ParseState)`):
+   ```lean
+   theorem parseFlowMappingLoop_tokens_preserved (ps result) (h_ok : ... = .ok result) :
+       result.2.tokens = ps.tokens
+   ```
+
+2. **Monotonicity** (from the accumulator pattern `pairs → ... pairs.push ...`):
+   ```lean
+   theorem parseFlowMappingLoop_pairs_grow (ps pairs result) (h_ok : ... = .ok result) :
+       result.1.size ≥ pairs.size
+   ```
+
+3. **Prefix preservation** (from the push-only pattern):
+   ```lean
+   theorem parseFlowMappingLoop_prefix_preserved (ps pairs result) (h_ok : ... = .ok result) :
+       ∀ i : Fin pairs.size, result.1[i] = pairs[i]
+   ```
+
+4. **flowNesting preservation** (contingent on flow context — the well-behavedness
+   property). This becomes the loop invariant for the proof:
+   ```lean
+   theorem parseFlowMappingLoop_wb (tokens ps pairs result)
+       (h_eq : ps.tokens = tokens) (h_flow : flowNesting tokens ps.pos > 0)
+       (h_ok : ... = .ok result) :
+       flowNesting tokens result.2.pos = flowNesting tokens ps.pos
+   ```
+
+The Wadler insight: properties (1)–(3) follow purely from the function's
+TYPE and accumulator structure — any function with the same type signature
+that only uses `push` on the accumulator must satisfy them. Property (4)
+requires domain knowledge (flow nesting semantics) but its STRUCTURE
+(state-property preservation through a loop) is a free theorem of the
+state-threading pattern.
+
+After refactoring, we prove the SAME four properties for the new
+`parseFlowMappingLoop` + `parseFlowMappingValue`. If all four hold, the
+refactoring is semantically correct for proof purposes.
+
+### The `flowNesting` Impasse (Pattern 5 Instance)
+
+The `parseFlowSequence_wb` and `parseFlowMapping_wb` wrapper theorems both
+have an else-branch where the closing bracket (`flowSequenceEnd` /
+`flowMappingEnd`) is not consumed. In this branch:
+
+```
+h_adv_fn_eq : flowNesting tokens ps.advance.pos = flowNesting tokens ps.pos + 1
+h_loop_fn   : flowNesting tokens ps_loop.pos = flowNesting tokens ps.advance.pos
+⊢ flowNesting tokens ps_loop.pos = flowNesting tokens ps.pos
+```
+
+Substituting: `flowNesting tokens ps.pos + 1 = flowNesting tokens ps.pos`,
+i.e., `x + 1 = x` — literally false.
+
+**Resolution plan (Options 1 + 2 combined):**
+
+**Step 1 (Scanner invariant — Option 1):** Add to `FlowAwarePSV`:
+```lean
+def FlowBracketsMatched (tokens : Array (Positioned YamlToken)) : Prop :=
+  flowNesting tokens tokens.size = 0
+```
+This says all flow brackets are matched globally. It follows from
+`FlowNestingInv` (which says `flowNesting tokens tokens.size = flowLevel`)
+combined with the scanner's guarantee that `flowLevel = 0` at the end of
+scanning (the scanner errors if flow level is nonzero at stream end).
+
+**Step 2 (Fuel sufficiency — Option 2):** Prove that for well-formed
+(matched-bracket) token streams, `parseFlowSequence` with sufficient fuel
+ALWAYS reaches the `some .flowSequenceEnd` branch:
+```lean
+theorem parseFlowSequence_consumes_end (tokens ps result)
+    (h_matched : FlowBracketsMatched tokens)
+    (h_eq : ps.tokens = tokens)
+    (h_ok : parseFlowSequence ps fuel = .ok result) :
+    ∃ ps_loop, parseFlowSequenceLoop ps.advance (fuel - 1) #[] = .ok (_, ps_loop) ∧
+    ps_loop.peek? = some .flowSequenceEnd
+```
+
+**Step 3:** With Step 2 proved, the else-branch of `parseFlowSequence_wb`
+has a contradictory hypothesis (`h_peek_not_end` vs the Step 2 conclusion),
+and we close it with `absurd`/`contradiction`.
