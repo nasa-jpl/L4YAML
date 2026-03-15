@@ -3569,7 +3569,9 @@ ParserGrammable.lean's C2 pipeline (parser grammability):
 | ~~`parseNodeProperties_tokens`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-13): Loop unrolling + `ForInStep` case split + `dite_false`. ~120 LOC.~~ |
 | ~~`parseNodeProperties_flowNesting`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-13): Same loop-unrolling structure + `advance_preserves_flowNesting` helpers. ~100 LOC.~~ |
 | ~~`parseBlockSequence_wb`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-16): Loop invariant + advance helpers. ~130 LOC.~~ |
-| `parseBlockMappingLoop_wb` | ParserGrammable.lean | C2 | **MOSTLY PROVED** (2026-03-14): .value + wildcard branches proved; .key branch 3/4 sub-cases proved. 1 sorry in key-parseNode×val-parseNode sub-case (metavar leaking). |
+| `parseBlockMappingLoop_wb` | ParserGrammable.lean | C2 | **PROVED** (2026-03-14): Refactored `parseBlockMappingLoop` into sub-functions (`handleBlockMappingKeyEntry`, `handleBlockMappingValueEntry`). Loop proof now clean ~30 LOC; sorry moved to `handleBlockMappingKeyEntry_wb` and `handleBlockMappingValueEntry_wb`. |
+| `handleBlockMappingKeyEntry_wb` | ParserGrammable.lean | C2 | Sorry'd. Key/val Scannable + state preservation for `.key` branch. |
+| `handleBlockMappingValueEntry_wb` | ParserGrammable.lean | C2 | Sorry'd. Val Scannable + state preservation for `.value` branch (implicit key). |
 | `parseBlockMapping_wb` (wrapper) | ParserGrammable.lean | C2 | **PROVED** (2026-03-14): Wrapper fully proved using loop lemma + `h_peek` hypothesis. |
 | `parseImplicitBlockSequence_wb` | ParserGrammable.lean | C2 | Sub-parser WB lemma. Monadic unfolding needed. |
 | `parseFlowSequence_wb` | ParserGrammable.lean | C2 | Sub-parser WB lemma. Monadic unfolding needed. |
@@ -3654,7 +3656,7 @@ The remaining 8 sorry's are localized to four categories:
 | **`tryConsume_flowNesting`** | **`ps.tryConsume tok` preserves flowNesting for non-flow tokens** |
 | **`parseBlockSequenceLoop_wb`** | **Block sequence loop invariant — induction on fuel, Scannable+flowNesting+tokens** |
 | **`parseBlockSequence_wb`** | **Block sequence WB — wrapper around loop lemma, advance + blockEnd consumption** |
-| **`parseBlockMappingLoop_wb`** | **Block mapping loop invariant — mostly proved, 3/4 .key sub-cases + full .value + wildcard** |
+| **`parseBlockMappingLoop_wb`** | **Block mapping loop invariant — PROVED after refactoring into sub-functions; sorry in `handleBlockMappingKeyEntry_wb` + `handleBlockMappingValueEntry_wb`** |
 | **`parseBlockMapping_wb`** | **Block mapping WB — wrapper fully proved using loop lemma + h_peek** |
 
 **Proof architecture** for the C2 chain:
@@ -4282,6 +4284,89 @@ The mapping parser is inherently harder because the pair `(key, value)`
 requires two independent Scannable proofs with a dependency chain
 (value tokens depend on key IH), whereas the sequence parser needs only
 one Scannable proof per item.
+
+##### **`parseBlockMappingLoop` Refactoring (2026-03-14)**
+
+**Resolution:** Extract sub-functions from `parseBlockMappingLoop` to
+make the loop proof tractable.
+
+**Problem context:** The previous proof of `parseBlockMappingLoop_wb`
+required 20× `split at h_ok` rounds to peel through ~20 nested
+`if`/`match`/`do` binds in the `.key` branch, producing hundreds of
+sub-goals. The `mapping_recurse` helper was invoked via `refine ... <;>
+first | ...` to close 6 sub-goals per top-level goal simultaneously,
+but `apply parseNode_* <;> assumption` inside this nested `<;> first`
+closed ZERO goals due to deferred-goal leaking. This approach was
+fundamentally blocked.
+
+**Solution:** Split `parseBlockMappingLoop` into three functions:
+
+| Function | Responsibility |
+|----------|---------------|
+| `handleBlockMappingKeyEntry` | `.key` branch body: advance, parse key, tryConsume `.value`, parse value, restore path. Returns `(key, val, ps')`. |
+| `handleBlockMappingValueEntry` | `.value` branch body: advance, set path, parse value, restore path. Returns `(val, ps')`. |
+| `parseBlockMappingLoop` | Simple 3-way dispatch: `.key` → `handleBlockMappingKeyEntry` + recurse; `.value` → `handleBlockMappingValueEntry` + recurse; `_` → return. |
+
+After the refactoring, `parseBlockMappingLoop` has only 3 top-level
+branches and NO internal `if`/`match` nesting — unfolding it produces
+exactly 3 clean goals, each with a single `handleBlockMappingKeyEntry`
+or `handleBlockMappingValueEntry` hypothesis.
+
+**Impact on proofs:**
+
+| Aspect | Before refactoring | After refactoring |
+|--------|--------------------|-------------------|
+| `parseBlockMappingLoop_wb` proof | ~100 LOC, 20× split rounds, metavar corruption, `all_goals sorry` | ~30 LOC, clean `split` + `mapping_recurse` |
+| `.key` branch handling | 20× `split at h_ok`, 252 intermediate goals | Single `split at h_ok` (error vs ok), `handleBlockMappingKeyEntry_wb` provides all properties |
+| `.value` branch handling | 6× `split at h_ok`, `all_goals sorry` | Single `split at h_ok`, `handleBlockMappingValueEntry_wb` provides all properties |
+| `sorry` location | Scattered inside `<;> first` combinator | Isolated in two `_wb` theorems for the sub-functions |
+| metavar leaking | Critical — `<;> assumption` inside `<;> first` corrupts shared metavars | Eliminated — each `_wb` theorem is self-contained |
+| `parseBlockMapping_wb` | Unchanged | Unchanged (depends only on `parseBlockMappingLoop_wb`) |
+
+**Architectural lesson — functional decomposition for proof tractability:**
+
+Code that is perfectly acceptable from a software engineering perspective
+(one function with nested `match`/`if`/`do` chains) can be intractable
+for formal verification. The key metrics that determine proof difficulty
+are not the same as those that determine code readability:
+
+1. **Branch product explosion.** When `unfold f at h` exposes N nested
+   `match`/`if` expressions, `split at h` must be applied N times,
+   producing O(2^N) goals. For `parseBlockMappingLoop`'s `.key` branch,
+   N ≈ 20, producing hundreds of goals. Extracting the branch body into
+   a separate function means `unfold` exposes only the dispatch, and the
+   body's internal branching is hidden behind a single `h_ok : f ps = .ok result`
+   hypothesis.
+
+2. **Shared metavariable scope.** When `refine` introduces metavariables
+   (`?_`) for sub-goals, ALL sub-goals from that `refine` share a single
+   metavariable context. Closing sub-goal A (e.g., `exact h_fn_adv`)
+   constrains metavariables that affect sub-goal B. This interaction
+   makes independent reasoning about sub-goals impossible. Extracting
+   the computation into a sub-function means the sub-function's `_wb`
+   theorem produces a SINGLE hypothesis with all properties combined —
+   no shared metavariables between proof goals.
+
+3. **Tactic combinator limitations.** Lean 4's `<;>`, `first`, and
+   `all_goals` interact poorly when nested. `simp` and `assumption`
+   inside `<;> first` create deferred synthetic goals that leak on
+   backtrack. By proving each sub-function's properties in its own
+   theorem, the loop proof never needs deeply nested tactic combinators.
+
+**Rule of thumb:** If a function body requires more than ~5 rounds of
+`split at h_ok` to peel through its internal structure, extract the
+body into a named sub-function. The resulting `_wb` theorem for the
+sub-function can use the same peeling approach (it only runs once, not
+inside a combinator), and the caller's proof becomes a simple
+composition of pre-proved properties.
+
+**Parallel with B3.1 (`collectPlainScalarLoop` refactoring):** The same
+pattern was applied earlier to the scanner's `collectPlainScalarLoop`
+(~90 lines, 12+ branches → extracted `collectPlainScalar_terminates?`
+and `collectPlainScalar_handleBlockLineBreak`). Both refactorings share
+the principle: **a function that is easy to test but hard to prove
+should be split into sub-functions whose individual properties compose
+cleanly.**
 
 ### Phase H: JSON-is-YAML-subset (FUTURE)
 
