@@ -5222,12 +5222,130 @@ theorem scan_flow_aware_psv (input : String)
 
     Therefore, on `.ok`, `flowLevel = 0` and `flowNesting tokens tokens.size = 0`.
 
-    The proof requires threading `FlowNestingInv` through `scanLoop`'s induction,
+    The proof threads `FlowNestingInv` through `scanLoop`'s induction,
     then through `unwindIndents` and `emit .streamEnd` (both add only non-flow tokens),
-    and finally through the comment-filtering step in `scanFiltered`.
-    Infrastructure lemmas `FlowNestingInv_emit_non_flow`,
-    `unwindIndents_preserves_FlowNestingInv`, and `flowNesting_push_non_flow`
-    handle the non-flow token extensions. -/
+    and finally through the comment-filtering step in `scanFiltered`. -/
+
+/-- `scanLoop` output has matched flow brackets.
+    In the `.ok none` (completion) branch, `scanLoop` checks `s.flowLevel > 0`
+    and returns `.error` if so. Combined with `FlowNestingInv`, the else branch
+    gives `flowLevel = 0`, which is preserved through `unwindIndents` + `emit .streamEnd`. -/
+theorem scanLoop_FlowBracketsMatched
+    (s : ScannerState) (fuel : Nat)
+    (tokens : Array (Positioned YamlToken))
+    (h_fpsv : FlowContextPSV s.tokens)
+    (h_fni : FlowNestingInv s)
+    (h_akpi : AllKeysPlaceholderInv s)
+    (h_ok : scanLoop s fuel = .ok tokens) :
+    FlowBracketsMatched tokens := by
+  induction fuel generalizing s with
+  | zero => simp [scanLoop] at h_ok
+  | succ fuel' ih =>
+    simp only [scanLoop] at h_ok
+    split at h_ok
+    · simp at h_ok
+    · -- .ok none: completion with final validation
+      split at h_ok <;> try (simp at h_ok; done)
+      -- ¬(s.flowLevel > 0)
+      split at h_ok <;> try (simp at h_ok; done)
+      -- ¬(s.directivesPresent && !s.documentEverStarted)
+      injection h_ok with h_eq; rw [← h_eq]
+      -- Goal: FlowBracketsMatched ((unwindIndents s (-1)).emit .streamEnd).tokens
+      unfold FlowBracketsMatched
+      have h_fni2 := unwindIndents_preserves_FlowNestingInv s (-1) h_fni
+      have h_fni3 := FlowNestingInv_emit_non_flow (unwindIndents s (-1)) .streamEnd
+        h_fni2 (by decide) (by decide) (by decide) (by decide)
+      unfold FlowNestingInv at h_fni3
+      rw [h_fni3, emit_preserves_flowLevel, unwindIndents_preserves_flowLevel]
+      -- s.flowLevel = 0 from ¬(s.flowLevel > 0) and Nat
+      omega
+    · -- .ok (some s'): recurse
+      rename_i s' h_snt
+      have ⟨h1, h2, h3⟩ := scanNextToken_preserves_FlowInv s s' h_fpsv h_fni h_akpi h_snt
+      exact ih s' h1 h2 h3 h_ok
+
+/-- `scan` (without filtering) output has matched flow brackets. -/
+theorem scan_FlowBracketsMatched (input : String)
+    (tokens : Array (Positioned YamlToken))
+    (h : scan input = .ok tokens) :
+    FlowBracketsMatched tokens := by
+  unfold scan at h; simp only [] at h
+  exact scanLoop_FlowBracketsMatched _ _ _
+    (by -- FlowContextPSV for initial state (1 token: .streamStart, not plain)
+        have h_tok_eq : (match (ScannerState.mk' input |>.emit .streamStart).peek? with
+            | some '\uFEFF' => (ScannerState.mk' input |>.emit .streamStart).advance
+            | _ => ScannerState.mk' input |>.emit .streamStart).tokens =
+            (ScannerState.mk' input |>.emit .streamStart).tokens := by
+          split
+          · exact advance_preserves_tokens _
+          · rfl
+        suffices h_suf : FlowContextPSV (ScannerState.mk' input |>.emit .streamStart).tokens by
+          exact Eq.mpr (congrArg FlowContextPSV h_tok_eq) h_suf
+        intro i hi h_flow
+        have h_size : (ScannerState.mk' input |>.emit .streamStart).tokens.size = 1 := by
+          rw [emit_tokens_size]; simp [ScannerState.mk']
+        have h_i0 : i = 0 := by omega
+        subst h_i0
+        simp [ScannerState.emit, ScannerState.mk'])
+    (by -- FlowNestingInv for initial state (flowLevel = 0, single non-flow token)
+        unfold FlowNestingInv
+        split <;> (
+          try simp only [advance_preserves_tokens, advance_preserves_flowLevel]
+          simp only [ScannerState.emit, ScannerState.mk', ScannerState.currentPos]
+          unfold flowNesting
+          exact flowNesting_go_streamStart _))
+    (by -- AllKeysPlaceholderInv for initial state (simpleKey.possible = false, empty stack)
+        have h_poss : (match (ScannerState.mk' input |>.emit .streamStart).peek? with
+            | some '\uFEFF' => (ScannerState.mk' input |>.emit .streamStart).advance
+            | _ => ScannerState.mk' input |>.emit .streamStart).simpleKey.possible = false := by
+          split
+          · rw [advance_preserves_simpleKey]; simp [ScannerState.emit, ScannerState.mk']
+          · simp [ScannerState.emit, ScannerState.mk']
+        have h_stack : (match (ScannerState.mk' input |>.emit .streamStart).peek? with
+            | some '\uFEFF' => (ScannerState.mk' input |>.emit .streamStart).advance
+            | _ => ScannerState.mk' input |>.emit .streamStart).simpleKeyStack.size = 0 := by
+          split
+          · have := advance_preserves_simpleKeyStack (ScannerState.mk' input |>.emit .streamStart)
+            simp_all [ScannerState.emit, ScannerState.mk']
+          · simp [ScannerState.emit, ScannerState.mk']
+        have h_empty : ∀ j, ¬(j < (match (ScannerState.mk' input |>.emit .streamStart).peek? with
+            | some '\uFEFF' => (ScannerState.mk' input |>.emit .streamStart).advance
+            | _ => ScannerState.mk' input |>.emit .streamStart).simpleKeyStack.size) := by
+          intro j; rw [h_stack]; omega
+        have h_not_poss : ¬(match (ScannerState.mk' input |>.emit .streamStart).peek? with
+            | some '\uFEFF' => (ScannerState.mk' input |>.emit .streamStart).advance
+            | _ => ScannerState.mk' input |>.emit .streamStart).simpleKey.possible = true := by
+          rw [h_poss]; decide
+        exact ⟨fun hp => absurd hp h_not_poss,
+               fun j hj => absurd hj (h_empty j),
+               fun hp => absurd hp h_not_poss,
+               fun j hj => absurd hj (h_empty j)⟩)
+    h
+
+/-- Filtering out `.placeholder` tokens preserves `FlowBracketsMatched`.
+    Uses `flowNesting_go_filter_equiv` with target = full array size. -/
+theorem filter_preserves_FlowBracketsMatched
+    (all_tokens : Array (Positioned YamlToken))
+    (h_fbm : FlowBracketsMatched all_tokens) :
+    FlowBracketsMatched (all_tokens.filter fun t => t.val != YamlToken.placeholder) := by
+  unfold FlowBracketsMatched flowNesting at *
+  have h_equiv := flowNesting_go_filter_equiv all_tokens all_tokens.size (Nat.le_refl _) 0
+  simp only [] at h_equiv
+  -- Simplify: take all_tokens.size toList = toList (since size = toList.length)
+  have h_take : List.take all_tokens.size all_tokens.toList = all_tokens.toList := by
+    show List.take all_tokens.toList.length all_tokens.toList = all_tokens.toList
+    exact List.take_length
+  -- Simplify: (toList.filter p).length = (filter p).size
+  have h_target_eq : ∀ (p : Positioned YamlToken → Bool),
+      (List.filter p (List.take all_tokens.size all_tokens.toList)).length =
+      (all_tokens.filter p).size := by
+    intro p
+    rw [h_take]
+    show (all_tokens.toList.filter p).length = (all_tokens.filter p).size
+    rw [show (all_tokens.filter p).size = (all_tokens.filter p).toList.length from rfl,
+        Array.toList_filter]
+  simp only [h_target_eq] at h_equiv
+  omega
 
 /-- Scanner output has matched flow brackets.
     The scanner checks `flowLevel > 0` at completion and errors if so.
@@ -5236,6 +5354,12 @@ theorem scan_flow_brackets_matched (input : String)
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered input = .ok tokens) :
     FlowBracketsMatched tokens := by
-  sorry
+  unfold Scanner.scanFiltered at h
+  split at h
+  · rename_i all_tokens h_scan
+    injection h with h_eq; subst h_eq
+    exact filter_preserves_FlowBracketsMatched all_tokens
+      (scan_FlowBracketsMatched input all_tokens h_scan)
+  · simp at h
 
 end Lean4Yaml.Proofs.ScannerPlainScalarValid
