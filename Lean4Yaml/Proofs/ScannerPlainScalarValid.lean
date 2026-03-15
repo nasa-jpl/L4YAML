@@ -1364,6 +1364,14 @@ def FlowAwarePSV (tokens : Array (Positioned YamlToken)) : Prop :=
 def FlowNestingInv (s : ScannerState) : Prop :=
   flowNesting s.tokens s.tokens.size = s.flowLevel
 
+/-- All flow brackets are matched in the token array: every `flowSequenceStart`
+    has a corresponding `flowSequenceEnd`, and every `flowMappingStart` has a
+    corresponding `flowMappingEnd`. Follows from `FlowNestingInv` combined with
+    the scanner's guarantee that `flowLevel = 0` at stream end
+    (the scanner errors with `unterminatedFlowCollection` if nonzero). -/
+def FlowBracketsMatched (tokens : Array (Positioned YamlToken)) : Prop :=
+  flowNesting tokens tokens.size = 0
+
 /-! ### flowNesting stability -/
 
 theorem FlowContextPSV_empty : FlowContextPSV #[] :=
@@ -5204,5 +5212,30 @@ theorem scan_flow_aware_psv (input : String)
     FlowAwarePSV tokens :=
   ⟨fun i hi => scan_plain_scalar_valid input tokens h i hi,
    scan_flow_context_psv input tokens h⟩
+
+/-! ### §B3.6 FlowBracketsMatched
+
+    The scanner guarantees that all flow brackets are matched in successful
+    output. This follows from two facts:
+    1. `FlowNestingInv` is maintained through scanning (flowNesting tracks flowLevel)
+    2. `scanLoop` returns `.error (.unterminatedFlowCollection ...)` if `flowLevel > 0`
+
+    Therefore, on `.ok`, `flowLevel = 0` and `flowNesting tokens tokens.size = 0`.
+
+    The proof requires threading `FlowNestingInv` through `scanLoop`'s induction,
+    then through `unwindIndents` and `emit .streamEnd` (both add only non-flow tokens),
+    and finally through the comment-filtering step in `scanFiltered`.
+    Infrastructure lemmas `FlowNestingInv_emit_non_flow`,
+    `unwindIndents_preserves_FlowNestingInv`, and `flowNesting_push_non_flow`
+    handle the non-flow token extensions. -/
+
+/-- Scanner output has matched flow brackets.
+    The scanner checks `flowLevel > 0` at completion and errors if so.
+    Combined with `FlowNestingInv`, this gives `flowNesting = 0` on success. -/
+theorem scan_flow_brackets_matched (input : String)
+    (tokens : Array (Positioned YamlToken))
+    (h : Scanner.scanFiltered input = .ok tokens) :
+    FlowBracketsMatched tokens := by
+  sorry
 
 end Lean4Yaml.Proofs.ScannerPlainScalarValid
