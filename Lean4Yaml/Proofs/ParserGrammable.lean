@@ -1149,6 +1149,26 @@ theorem tryConsume_flowNesting (tokens : Array (Positioned YamlToken))
     · rfl
   · rfl
 
+/-- `tryConsume` on a currentPath-modified state preserves tokens of
+    the original state.  (currentPath doesn't affect peek?/advance.) -/
+theorem tryConsume_with_path_tokens (ps : ParseState) (p : YamlPath) (tok : YamlToken) :
+    ({ ps with currentPath := p }.tryConsume tok).2.tokens = ps.tokens := by
+  unfold ParseState.tryConsume
+  split
+  · split <;> simp [ParseState.advance]
+  · rfl
+
+/-- `tryConsume` on a currentPath-modified state preserves flowNesting
+    of the original state.  (currentPath doesn't affect peek?/advance.) -/
+theorem tryConsume_with_path_fn (tokens : Array (Positioned YamlToken))
+    (ps : ParseState) (p : YamlPath) (tok : YamlToken)
+    (h_eq : ps.tokens = tokens)
+    (h1 : tok ≠ .flowSequenceStart) (h2 : tok ≠ .flowMappingStart)
+    (h3 : tok ≠ .flowSequenceEnd) (h4 : tok ≠ .flowMappingEnd) :
+    flowNesting tokens ({ ps with currentPath := p }.tryConsume tok).2.pos =
+    flowNesting tokens ps.pos :=
+  tryConsume_flowNesting tokens { ps with currentPath := p } tok h_eq h1 h2 h3 h4
+
 /-- Loop invariant for `parseBlockSequenceLoop`: all accumulated items remain
     Scannable, flowNesting is preserved, and the token array is unchanged. -/
 theorem parseBlockSequenceLoop_wb (tokens : Array (Positioned YamlToken))
@@ -1335,7 +1355,7 @@ theorem parseBlockSequence_wb (tokens : Array (Positioned YamlToken))
     Extracted for use by `handleBlockMappingKeyEntry_wb`. -/
 theorem parseBlockMappingEntryValue_wb (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
-    (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens n)
+    (_h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens n)
     (ps : ParseState) (keyHasContent : Bool) (keyLine keyCol : Nat)
     (result : YamlValue × ParseState)
     (h_eq : ps.tokens = tokens)
@@ -1344,7 +1364,65 @@ theorem parseBlockMappingEntryValue_wb (tokens : Array (Positioned YamlToken))
     (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
     flowNesting tokens result.2.pos = flowNesting tokens ps.pos ∧
     result.2.tokens = tokens := by
-  sorry
+  unfold parseBlockMappingEntryValue at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  -- Split on whether .value was consumed
+  have h_tc_tok : (ps.tryConsume .value).2.tokens = tokens :=
+    (tryConsume_tokens ps .value).trans h_eq
+  have h_tc_fn : flowNesting tokens (ps.tryConsume .value).2.pos = flowNesting tokens ps.pos :=
+    tryConsume_flowNesting tokens ps .value h_eq
+      (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+      (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+  split at h_ok
+  · -- consumed = true: validation loop + content dispatch
+    -- The for loop is a pure validation (only throws or breaks, no state mutation).
+    -- After peeling through it, we reach the content dispatch match.
+    -- Use repeated split to peel through the for-loop desugaring and error checks.
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    -- After peeling, remaining goals are either emptyNode or parseNode results
+    -- emptyNode goals
+    all_goals (try (
+      obtain ⟨rfl, rfl⟩ := h_ok
+      exact ⟨empty_scalar_scannable none none false,
+             fun _ => empty_scalar_scannable none none true,
+             h_tc_fn, h_tc_tok⟩))
+    -- parseNode goals: h_ok should be `parseNode ps' fuel = .ok result`
+    all_goals (
+      have h_wb := parseNodeWB_apply h_ih h_tc_tok h_ok (by omega)
+      exact ⟨h_wb.1, fun h_flow => h_wb.2.1 (h_tc_fn ▸ h_flow),
+             h_wb.2.2.1.trans h_tc_fn, h_wb.2.2.2⟩)
+  · -- consumed = false: result = (emptyNode, ps)
+    obtain ⟨rfl, rfl⟩ := h_ok
+    exact ⟨empty_scalar_scannable none none false,
+           fun _ => empty_scalar_scannable none none true,
+           h_tc_fn, h_tc_tok⟩
+
+/-- Variant of `parseBlockMappingEntryValue_wb` with h_ok before h_eq,
+    so that `ps` is inferred from the `h_ok` hypothesis. -/
+theorem bevWB (tokens : Array (Positioned YamlToken))
+    (n fuel : Nat) (h_fuel : fuel ≤ n)
+    (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens n)
+    {ps : ParseState} {kc : Bool} {kl kcol : Nat}
+    {result : YamlValue × ParseState}
+    (h_ok : parseBlockMappingEntryValue ps fuel kc kl kcol = .ok result)
+    (h_eq : ps.tokens = tokens) :
+    Scannable result.1 false ∧
+    (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
+    flowNesting tokens result.2.pos = flowNesting tokens ps.pos ∧
+    result.2.tokens = tokens :=
+  parseBlockMappingEntryValue_wb tokens n fuel h_fuel h_fpsv h_ih
+      ps kc kl kcol result h_eq h_ok
 
 /-- Well-behavedness of the `.key` branch entry handler:
     the returned key and value are Scannable, and the output state
@@ -1363,7 +1441,60 @@ theorem handleBlockMappingKeyEntry_wb (tokens : Array (Positioned YamlToken))
     (flowNesting tokens ps.pos > 0 → Scannable result.2.1 true) ∧
     flowNesting tokens result.2.2.pos = flowNesting tokens ps.pos ∧
     result.2.2.tokens = tokens := by
-  sorry
+  unfold handleBlockMappingKeyEntry at h_ok
+  simp only [bind, Except.bind] at h_ok
+  have h_adv_tok : ps.advance.tokens = tokens := by
+    simp [ParseState.advance, h_eq]
+  have h_adv_fn : flowNesting tokens ps.advance.pos = flowNesting tokens ps.pos :=
+    advance_preserves_flowNesting tokens ps h_peek h_eq
+      (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+      (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+  -- Peel through all match/if/bind structures in h_ok
+  split at h_ok <;> first | contradiction | skip
+  -- Resolve `match emptyNode with .scalar ...` if present
+  all_goals (try (simp only [emptyNode] at h_ok))
+  all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+  all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+  all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+  all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+  all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+  all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+  all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+  all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+  all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+  -- After all peeling, h_ok is a final .ok equation
+  -- Extract the result and reduce tuple projections
+  all_goals (simp only [Except.ok.injEq] at h_ok)
+  all_goals (rw [← h_ok])
+  all_goals (try (dsimp only [Prod.fst, Prod.snd]))
+  -- emptyNode key goals
+  all_goals (try (
+    have h_bev := by
+      apply bevWB tokens n fuel h_fuel h_fpsv h_ih
+      · assumption  -- h_ok: determines ps from BEV hypothesis
+      · exact h_adv_tok  -- h_eq: ps resolved, matches via def-eq
+    exact ⟨empty_scalar_scannable none none false,
+           fun _ => empty_scalar_scannable none none true,
+           h_bev.1,
+           fun h_flow => h_bev.2.1 (Eq.mpr (congrArg (· > 0) h_adv_fn) h_flow),
+           h_bev.2.2.1.trans h_adv_fn,
+           h_bev.2.2.2⟩))
+  -- parseNode key goals
+  all_goals (
+    have h_key_wb := parseNodeWB_apply h_ih h_adv_tok (by assumption) (by omega)
+    have h_k_tok := h_key_wb.2.2.2
+    have h_k_fn := h_key_wb.2.2.1
+    have h_bev := by
+      apply bevWB tokens n fuel h_fuel h_fpsv h_ih
+      · assumption  -- h_ok
+      · exact h_k_tok  -- h_eq
+    exact ⟨h_key_wb.1,
+           fun h_flow => h_key_wb.2.1 (h_adv_fn ▸ h_flow),
+           h_bev.1,
+           fun h_flow => h_bev.2.1
+             (Eq.mpr (congrArg (· > 0) (h_k_fn.trans h_adv_fn)) h_flow),
+           h_bev.2.2.1.trans (h_k_fn.trans h_adv_fn),
+           h_bev.2.2.2⟩)
 
 /-- Well-behavedness of the `.value` branch entry handler (implicit key):
     the returned value is Scannable, and the output state preserves
@@ -1380,7 +1511,41 @@ theorem handleBlockMappingValueEntry_wb (tokens : Array (Positioned YamlToken))
     (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
     flowNesting tokens result.2.pos = flowNesting tokens ps.pos ∧
     result.2.tokens = tokens := by
-  sorry
+  unfold handleBlockMappingValueEntry at h_ok
+  simp only [bind, Except.bind] at h_ok
+  have h_adv_tok : ps.advance.tokens = tokens := by
+    simp [ParseState.advance, h_eq]
+  have h_adv_fn : flowNesting tokens ps.advance.pos = flowNesting tokens ps.pos :=
+    advance_preserves_flowNesting tokens ps h_peek h_eq
+      (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+      (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+  -- Split on the peek? match after advance
+  split at h_ok
+  -- emptyNode cases: .key, .blockEnd, none
+  all_goals (try (
+    simp only [Except.ok.injEq] at h_ok
+    rw [← h_ok]; dsimp only [Prod.fst, Prod.snd]
+    exact ⟨empty_scalar_scannable none none false,
+           fun _ => empty_scalar_scannable none none true,
+           h_adv_fn, h_adv_tok⟩))
+  -- parseNode case
+  split at h_ok
+  · simp at h_ok  -- error → contradiction
+  · rename_i pn_result heq_pn
+    obtain ⟨val, ps'⟩ := pn_result
+    simp only [Except.ok.injEq] at h_ok
+    rw [← h_ok]; dsimp only [Prod.fst, Prod.snd]
+    have h_ps2_tok : ({ ps.advance with
+        currentPath := ps.advance.currentPath.push
+          (.key s!"{pairIdx}") } : ParseState).tokens = tokens := by
+      simp [ParseState.advance, h_eq]
+    have h_wb := parseNodeWB_apply h_ih h_ps2_tok heq_pn (by omega)
+    have h_fn2 : flowNesting tokens ps'.pos = flowNesting tokens ps.advance.pos := by
+      have := h_wb.2.2.1; simp at this; exact this
+    exact ⟨h_wb.1,
+           fun h_flow => h_wb.2.1 (by simp only [] at *; rw [h_adv_fn]; exact h_flow),
+           h_fn2.trans h_adv_fn,
+           h_wb.2.2.2⟩
 
 /-- Given key/val with Scannable properties and a parse state with
     flowNesting/tokens preservation, plus the IH for the recursive call,
@@ -1575,6 +1740,105 @@ theorem parseBlockMapping_wb (tokens : Array (Positioned YamlToken))
         · simp only [ParseState.advance]; exact h_loop.2.2.2
         · exact h_loop.2.2.2
 
+/-- Loop invariant for `parseImplicitBlockSequenceLoop`: analogous to
+    `parseBlockSequenceLoop_wb` but for the implicit block sequence loop. -/
+theorem parseImplicitBlockSequenceLoop_wb (tokens : Array (Positioned YamlToken))
+    (n fuel : Nat) (h_fuel : fuel ≤ n)
+    (h_ih : ParseNodeWB tokens n)
+    (ps : ParseState) (items : Array YamlValue) (result : Array YamlValue × ParseState)
+    (h_eq : ps.tokens = tokens)
+    (h_items_false : ∀ i : Fin items.size, Scannable items[i] false)
+    (h_items_true : flowNesting tokens ps.pos > 0 →
+      ∀ i : Fin items.size, Scannable items[i] true)
+    (h_ok : parseImplicitBlockSequenceLoop ps fuel items = .ok result) :
+    (∀ i : Fin result.1.size, Scannable result.1[i] false) ∧
+    (flowNesting tokens ps.pos > 0 →
+      ∀ i : Fin result.1.size, Scannable result.1[i] true) ∧
+    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) ∧
+    (result.2.tokens = tokens) := by
+  induction fuel generalizing ps items with
+  | zero =>
+    unfold parseImplicitBlockSequenceLoop at h_ok
+    simp only [Except.ok.injEq] at h_ok
+    subst h_ok
+    exact ⟨h_items_false, h_items_true, rfl, h_eq⟩
+  | succ k ih_fuel =>
+    unfold parseImplicitBlockSequenceLoop at h_ok
+    simp only [bind, Except.bind] at h_ok
+    split at h_ok
+    next h_peek =>
+      -- peek? = some .blockEntry
+      have h_adv_tok : ps.advance.tokens = tokens := by
+        simp [ParseState.advance, h_eq]
+      have h_fn : flowNesting tokens ps.advance.pos = flowNesting tokens ps.pos :=
+        advance_preserves_flowNesting tokens ps h_peek h_eq
+          (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+          (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+      split at h_ok
+      -- Empty-entry cases: blockEntry/blockEnd/key/none
+      all_goals try
+        have h_wb := ih_fuel (by omega) ps.advance (items.push emptyNode)
+            h_adv_tok
+            (push_all_scannable h_items_false (empty_scalar_scannable none none false))
+            (fun h_flow => push_all_scannable
+              (h_items_true (by rw [← h_fn]; exact h_flow))
+              (empty_scalar_scannable none none true))
+            h_ok
+        refine ⟨h_wb.1,
+               fun h_flow => h_wb.2.1 (by rw [h_fn]; exact h_flow),
+               ?_, h_wb.2.2.2⟩
+        exact h_wb.2.2.1.trans h_fn
+      -- Non-empty entry: parseNode bind then recurse
+      next =>
+        split at h_ok
+        next => simp at h_ok  -- parseNode = .error → contradiction
+        next pn_result heq_pn =>
+          obtain ⟨val, ps₃⟩ := pn_result
+          dsimp only [] at h_ok
+          have h_ps2_tok : ({ ps.advance with
+              currentPath := ps.advance.currentPath.push
+                (.index items.size) } : ParseState).tokens = tokens := by
+            simp [ParseState.advance, h_eq]
+          have h_node := h_ih _ k val ps₃ (by omega) h_ps2_tok heq_pn
+          have h_ps3_fn : flowNesting tokens ps₃.pos =
+              flowNesting tokens ps.advance.pos := by
+            have := h_node.2.2.1; simp at this; exact this
+          have h_ps3_tok : ps₃.tokens = tokens := h_node.2.2.2
+          have h_push_f := push_all_scannable h_items_false h_node.1
+          have h_push_t : flowNesting tokens
+              ({ ps₃ with currentPath :=
+                  ps.advance.currentPath } : ParseState).pos > 0 →
+              ∀ i : Fin (items.push val).size,
+              Scannable (items.push val)[i] true := by
+            intro h_flow_ps4
+            simp only [] at h_flow_ps4
+            have h_flow_adv : flowNesting tokens ps.advance.pos > 0 := by
+              rw [← h_ps3_fn]; exact h_flow_ps4
+            have h_flow_ps : flowNesting tokens ps.pos > 0 := by
+              rw [← h_fn]; exact h_flow_adv
+            exact push_all_scannable (h_items_true h_flow_ps)
+              (h_node.2.1 h_flow_adv)
+          have h_ps4_tok : ({ ps₃ with currentPath :=
+              ps.advance.currentPath } : ParseState).tokens = tokens := by
+            simp [h_ps3_tok]
+          have h_wb := ih_fuel (by omega)
+              ({ ps₃ with currentPath := ps.advance.currentPath } : ParseState)
+              (items.push val) h_ps4_tok h_push_f h_push_t h_ok
+          have h_ps4_fn : flowNesting tokens
+              ({ ps₃ with currentPath :=
+                  ps.advance.currentPath } : ParseState).pos =
+              flowNesting tokens ps.pos := by
+            simp only []; rw [h_ps3_fn, h_fn]
+          refine ⟨h_wb.1,
+                 fun h_flow => h_wb.2.1 (by rw [h_ps4_fn]; exact h_flow),
+                 ?_, h_wb.2.2.2⟩
+          exact h_wb.2.2.1.trans h_ps4_fn
+    next =>
+      -- peek? ≠ .blockEntry → return (items, ps)
+      simp only [Except.ok.injEq] at h_ok
+      subst h_ok
+      exact ⟨h_items_false, h_items_true, rfl, h_eq⟩
+
 /-- `parseImplicitBlockSequence` well-behaved given parseNode IH. -/
 theorem parseImplicitBlockSequence_wb (tokens : Array (Positioned YamlToken))
     (fuel : Nat) (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens fuel)
@@ -1585,7 +1849,157 @@ theorem parseImplicitBlockSequence_wb (tokens : Array (Positioned YamlToken))
     (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
     (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) ∧
     (result.2.tokens = tokens) := by
-  sorry
+  unfold parseImplicitBlockSequence at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · -- fuel = 0 → error
+    simp at h_ok
+  · -- fuel = k + 1
+    rename_i k
+    split at h_ok
+    · simp at h_ok  -- loop returned error → contradiction
+    · rename_i loop_result heq_loop
+      obtain ⟨items_arr, ps_loop⟩ := loop_result
+      dsimp only [] at h_ok
+      have h_empty_f : ∀ i : Fin (#[] : Array YamlValue).size,
+          Scannable (#[] : Array YamlValue)[i] false := by
+        intro ⟨_, hi⟩; simp at hi
+      have h_empty_t : flowNesting tokens ps.pos > 0 →
+          ∀ i : Fin (#[] : Array YamlValue).size,
+          Scannable (#[] : Array YamlValue)[i] true := by
+        intro _ ⟨_, hi⟩; simp at hi
+      have h_loop := parseImplicitBlockSequenceLoop_wb tokens (k + 1) k (by omega)
+          h_ih ps #[] (items_arr, ps_loop) h_eq
+          h_empty_f h_empty_t heq_loop
+      simp only [Except.ok.injEq] at h_ok
+      subst h_ok
+      exact ⟨Scannable.sequence .block items_arr none none false h_loop.1,
+             fun h_flow => Scannable.sequence .block items_arr none none true
+               (fun i => h_loop.2.1 h_flow i),
+             h_loop.2.2.1, h_loop.2.2.2⟩
+
+set_option maxHeartbeats 800000 in
+/-- `parseSinglePairMapping` well-behaved given parseNode IH.
+    Returns `.mapping .flow #[(key, val)]` — both key and val are Scannable,
+    flowNesting preserved, tokens preserved.
+    Requires `flowNesting > 0` because `.mapping .flow` forces children to
+    `Scannable _ true` regardless of the outer context (see BRIDGING.md,
+    parseSinglePairMapping_wb Reflections). -/
+theorem parseSinglePairMapping_wb (tokens : Array (Positioned YamlToken))
+    (n fuel : Nat) (h_fuel : fuel ≤ n)
+    (_h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens n)
+    (ps : ParseState) (result : YamlValue × ParseState)
+    (h_eq : ps.tokens = tokens)
+    (h_peek : ps.peek? = some .key)
+    (h_flow : flowNesting tokens ps.pos > 0)
+    (h_ok : parseSinglePairMapping ps fuel = .ok result) :
+    Scannable result.1 true ∧
+    flowNesting tokens result.2.pos = flowNesting tokens ps.pos ∧
+    result.2.tokens = tokens := by
+  unfold parseSinglePairMapping at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · simp at h_ok  -- fuel = 0 → error
+  · rename_i k
+    have h_adv_tok : ps.advance.tokens = tokens := by
+      simp [ParseState.advance, h_eq]
+    have h_adv_fn : flowNesting tokens ps.advance.pos = flowNesting tokens ps.pos :=
+      advance_preserves_flowNesting tokens ps h_peek h_eq
+        (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+        (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+    simp only [emptyNode] at h_ok
+    -- Split on key match: emptyNode branches vs parseNode
+    split at h_ok
+    -- ---- Case 1-3: key = emptyNode (peek? = .value | .flowEntry | .flowSequenceEnd) ----
+    all_goals (try (
+      -- In all emptyNode cases: key = .scalar ⟨"", .plain,...⟩, keyContent = ""
+      -- Establish tryConsume facts BEFORE peeling the consumed/value dispatch
+      have h_tc_tok := fun p => (tryConsume_with_path_tokens ps.advance p .value).trans h_adv_tok
+      have h_tc_fn := fun p => tryConsume_with_path_fn tokens ps.advance p .value h_adv_tok
+        (fun h => nomatch h) (fun h => nomatch h)
+        (fun h => nomatch h) (fun h => nomatch h)
+      -- Generalize tryConsume BEFORE consumed split to prevent WHNF from exposing
+      -- the internal peek?/if matches inside the tryConsume call
+      generalize hg : ParseState.tryConsume _ _ = tc at h_ok
+      have h_tcr_tok : tc.2.tokens = tokens := hg ▸ h_tc_tok _
+      have h_tcr_fn : flowNesting tokens tc.2.pos = flowNesting tokens ps.advance.pos :=
+        hg ▸ h_tc_fn _
+      -- Now split on consumed flag (tc.fst — opaque, so split finds the if cleanly)
+      split at h_ok
+      -- Subcase: consumed = true → split on value peek?
+      · split at h_ok <;> first | contradiction | skip
+        all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+        -- emptyNode-val goals
+        all_goals (try (
+          simp only [Except.ok.injEq] at h_ok; rw [← h_ok]
+          exact ⟨.mapping .flow _ none none true
+              (fun ⟨0, _⟩ => empty_scalar_scannable none none true)
+              (fun ⟨0, _⟩ => empty_scalar_scannable none none true),
+            h_tcr_fn.trans h_adv_fn, h_tcr_tok⟩))
+        -- parseNode-val goals: split on parseNode match (reachable since tc is opaque)
+        all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+        all_goals (
+          have h_vwb := parseNodeWB_apply h_ih h_tcr_tok (by assumption) (by omega)
+          simp only [Except.ok.injEq] at h_ok; rw [← h_ok]
+          exact ⟨.mapping .flow _ none none true
+              (fun ⟨0, _⟩ => empty_scalar_scannable none none true)
+              (fun ⟨0, _⟩ => h_vwb.2.1 (by rw [h_tcr_fn, h_adv_fn]; exact h_flow)),
+            h_vwb.2.2.1.trans (h_tcr_fn.trans h_adv_fn), h_vwb.2.2.2⟩)
+      -- Subcase: consumed = false → val = emptyNode
+      · simp only [Except.ok.injEq] at h_ok; rw [← h_ok]
+        exact ⟨.mapping .flow _ none none true
+            (fun ⟨0, _⟩ => empty_scalar_scannable none none true)
+            (fun ⟨0, _⟩ => empty_scalar_scannable none none true),
+          h_tcr_fn.trans h_adv_fn, h_tcr_tok⟩))
+    -- ---- Case 4: key = parseNode (catch-all peek?) ----
+    -- parseNode returns (v✝.fst, v✝.snd); split on keyContent match
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    -- After keyContent split, establish tryConsume facts
+    -- v✝.snd is the post-parseNode state; the struct modification only changes currentPath
+    all_goals (
+      have h_kwb := parseNodeWB_apply h_ih h_adv_tok (by assumption) (by omega)
+      have h_k_fn := h_kwb.2.2.1
+      have h_k_tok := h_kwb.2.2.2
+      have h_k_true := h_kwb.2.1 (h_adv_fn ▸ h_flow)
+      have h_tc_tok := fun p => (tryConsume_with_path_tokens _ p .value).trans h_k_tok
+      have h_tc_fn := fun p => tryConsume_with_path_fn tokens _ p .value h_k_tok
+        (fun h => nomatch h) (fun h => nomatch h)
+        (fun h => nomatch h) (fun h => nomatch h)
+      -- Generalize tryConsume BEFORE consumed split to prevent WHNF from exposing
+      -- the internal peek?/if matches inside the tryConsume call
+      generalize hg : ParseState.tryConsume _ _ = tc at h_ok
+      have h_tcr_tok : tc.2.tokens = tokens := hg ▸ h_tc_tok _
+      have h_tcr_fn : flowNesting tokens tc.2.pos = flowNesting tokens ps.advance.pos :=
+        hg ▸ (h_tc_fn _).trans h_k_fn
+      -- Split on consumed flag (tc.fst — opaque, so split finds the if cleanly)
+      split at h_ok
+      -- Subcase: consumed = true → split on value peek?
+      · split at h_ok <;> first | contradiction | skip
+        all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+        -- emptyNode-val goals
+        all_goals (try (
+          simp only [Except.ok.injEq] at h_ok; rw [← h_ok]
+          exact ⟨.mapping .flow _ none none true
+              (fun ⟨0, _⟩ => h_k_true)
+              (fun ⟨0, _⟩ => empty_scalar_scannable none none true),
+            h_tcr_fn.trans h_adv_fn, h_tcr_tok⟩))
+        -- parseNode-val goals: split on parseNode match (reachable since tc is opaque)
+        all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+        all_goals (
+          have h_vwb := parseNodeWB_apply h_ih h_tcr_tok (by assumption) (by omega)
+          have h_v_true := h_vwb.2.1 (by rw [h_tcr_fn, h_adv_fn]; exact h_flow)
+          simp only [Except.ok.injEq] at h_ok; rw [← h_ok]
+          exact ⟨.mapping .flow _ none none true
+              (fun ⟨0, _⟩ => h_k_true)
+              (fun ⟨0, _⟩ => h_v_true),
+            h_vwb.2.2.1.trans (h_tcr_fn.trans h_adv_fn),
+            h_vwb.2.2.2⟩)
+      -- Subcase: consumed = false → val = emptyNode
+      · simp only [Except.ok.injEq] at h_ok; rw [← h_ok]
+        exact ⟨.mapping .flow _ none none true
+            (fun ⟨0, _⟩ => h_k_true)
+            (fun ⟨0, _⟩ => empty_scalar_scannable none none true),
+          h_tcr_fn.trans h_adv_fn, h_tcr_tok⟩)
 
 /-- `parseFlowSequence` well-behaved given parseNode IH. -/
 theorem parseFlowSequence_wb (tokens : Array (Positioned YamlToken))
