@@ -4368,6 +4368,315 @@ the principle: **a function that is easy to test but hard to prove
 should be split into sub-functions whose individual properties compose
 cleanly.**
 
+##### **`parseSinglePairMapping_wb` — Proof-Framework Interaction Analysis (2026-03-15)**
+
+`parseSinglePairMapping` is deceptively simple — 15 lines, no loops,
+straightforward control flow. Yet its `_wb` proof required ~100 lines, two
+new helper lemmas (`tryConsume_with_path_tokens`, `tryConsume_with_path_fn`),
+a theorem signature refactoring (adding `h_flow` hypothesis), and three
+failed proof attempts before converging. The difficulty was **entirely**
+caused by two accidental interactions between the function's implementation
+and the proof framework, not by the function's parsing logic.
+
+**The function** (TokenParser.lean L694–719):
+
+```lean
+def parseSinglePairMapping (ps : ParseState) (fuel : Nat) := do
+  match fuel with
+  | 0 => .error (...)
+  | fuel + 1 => do
+  let ps := ps.advance                       -- consume KEY token
+  let (key, ps) ← match ps.peek? with        -- key dispatch
+    | some .value | some .flowEntry | some .flowSequenceEnd =>
+      .ok (emptyNode, ps)
+    | _ => parseNode ps fuel
+  let keyContent := match key with | .scalar s => s.content | _ => "0"
+  let savedPath := ps.currentPath
+  let ps := { ps with currentPath := savedPath.push (.key keyContent) }  -- G5c
+  let (consumed, ps) := ps.tryConsume .value  -- try to consume VALUE token
+  let (val, ps) ← if consumed then           -- val dispatch
+    match ps.peek? with
+    | some .flowEntry | some .flowSequenceEnd | none => .ok (emptyNode, ps)
+    | _ => parseNode ps fuel
+  else .ok (emptyNode, ps)
+  let ps := { ps with currentPath := savedPath }
+  .ok (YamlValue.mapping .flow #[(key, val)], ps)
+```
+
+Compare with `parseBlockMappingEntryValue` (TokenParser.lean L464–493),
+which has similar `tryConsume` + content dispatch logic, more branches
+(indentation validation, block-on-same-line errors), and whose proof
+(`parseBlockMappingEntryValue_wb`) is 40 lines with **zero** custom helper
+lemmas. The critical difference is that `parseBlockMappingEntryValue` calls
+`ps.tryConsume .value` on the **unmodified** `ps` parameter, while
+`parseSinglePairMapping` calls it on `{ ps with currentPath := ... }`.
+
+**Interaction 1: Struct field modification breaks `tryConsume` lemma
+applicability.**
+
+The proof framework has two helper lemmas for `tryConsume`:
+
+```lean
+theorem tryConsume_tokens (ps : ParseState) (tok : YamlToken) :
+    (ps.tryConsume tok).2.tokens = ps.tokens
+
+theorem tryConsume_flowNesting (tokens) (ps : ParseState) (tok)
+    (h_eq : ps.tokens = tokens) (...) :
+    flowNesting tokens (ps.tryConsume tok).2.pos = flowNesting tokens ps.pos
+```
+
+In `parseBlockMappingEntryValue_wb`, the parse state passed to `tryConsume`
+is exactly `ps` (the theorem parameter), which directly matches these
+lemmas. But in `parseSinglePairMapping`, the G5c path tracking (Phase G5c
+in this document) inserts:
+
+```lean
+let ps := { ps with currentPath := savedPath.push (.key keyContent) }
+```
+
+**before** `ps.tryConsume .value`. After `unfold` and `simp only [bind,
+Except.bind]`, the hypothesis `h_ok` contains the expression:
+
+```lean
+{ tokens := ps.advance.tokens, pos := ps.advance.pos,
+  anchors := ps.advance.anchors, tagHandles := ps.advance.tagHandles,
+  trackPositions := ps.advance.trackPositions,
+  currentPath := Array.push ps.advance.currentPath (PathSegment.key ""),
+  nodePositions := ps.advance.nodePositions }.tryConsume YamlToken.value
+```
+
+This is **definitionally equal** to `ps.advance.tryConsume .value` with
+respect to `tokens` and `pos` (because `currentPath` doesn't affect
+`peek?` or `advance`), but Lean's unifier cannot see this. The
+`tryConsume_tokens` lemma expects `(ps : ParseState)` directly, not a
+struct literal that happens to agree on the relevant fields. There is no
+definitional reduction path from the struct literal back to `ps.advance`.
+
+**Solution:** Add wrapper lemmas that explicitly quantify over the path:
+
+```lean
+theorem tryConsume_with_path_tokens (ps : ParseState) (p : YamlPath) (tok) :
+    ({ ps with currentPath := p }.tryConsume tok).2.tokens = ps.tokens
+
+theorem tryConsume_with_path_fn (tokens) (ps : ParseState) (p : YamlPath) (tok)
+    (h_eq : ps.tokens = tokens) (...) :
+    flowNesting tokens ({ ps with currentPath := p }.tryConsume tok).2.pos =
+    flowNesting tokens ps.pos
+```
+
+These prove trivially (delegate to the originals) but bridge the
+unification gap. The proofs for `tryConsume_with_path_tokens` unfold
+`tryConsume`, split on `peek?`/`BEq`, and `simp [ParseState.advance]` —
+the struct field modification is resolved during `simp` because `{ ps with
+currentPath := p }.tokens = ps.tokens` reduces by the struct eta rule.
+
+**Root cause:** Lean 4's definitional equality does not reduce
+`{ r with field₁ := v }.field₂` to `r.field₂` when `field₁ ≠ field₂`
+in all contexts. The struct literal is not reduced back to the original
+record by the unifier, so lemmas stated for `ps` don't apply to
+`{ ps with currentPath := ... }` even though the relevant projections
+are definitionally equal. This is a known limitation — Lean 4's kernel
+does reduce struct projections of `with`-updates, but the elaborator's
+unification heuristics may not trigger this reduction when matching
+lemma signatures.
+
+**General pattern:** Any function that does `{ ps with irrelevantField := ... }`
+before calling a method whose proof lemma was stated for `ps` will trigger
+this interaction. The G5c additions (Phase G5c) modified 7 functions with
+`currentPath` save/restore patterns, all of which are potentially affected.
+The fix is mechanical: for each affected `tryFoo`/`advance`/`peek?` lemma,
+add a `_with_path` variant.
+
+**Interaction 2: Flow-only collection constructor requires `Scannable _ true`
+unconditionally.**
+
+The `Scannable` predicate for mappings (Grammar.lean L633–638) is:
+
+```lean
+| mapping (style) (pairs) (tag) (anchor) (inFlow : Bool)
+    (hk : ∀ i, Scannable pairs[i].1 (inFlow || style == .flow))
+    (hv : ∀ i, Scannable pairs[i].2 (inFlow || style == .flow))
+```
+
+For `.mapping .flow`, `style == .flow` evaluates to `true`, so
+`inFlow || true = true` regardless of the outer `inFlow` parameter.
+This means constructing `Scannable (.mapping .flow #[(key, val)]) false`
+requires `Scannable key true` **and** `Scannable val true` — flow-context
+scannability for **both** children.
+
+The `ParseNodeWB` inductive hypothesis provides:
+- `Scannable v.1 false` — always, unconditionally
+- `Scannable v.1 true` — **only when `flowNesting tokens ps.pos > 0`**
+
+Therefore, to prove `Scannable (.mapping .flow #[(key, val)]) false` when
+key and/or val come from `parseNode`, we need `flowNesting > 0` at the
+point where `parseNode` was called. Without this hypothesis, the theorem
+is **unprovable** for the `parseNode` branches.
+
+For `emptyNode` branches this doesn't matter: `empty_scalar_scannable`
+gives `Scannable emptyNode inFlow` for any `inFlow`, so both `true` and
+`false` cases are trivially satisfied.
+
+**The original theorem statement** (before refactoring) was:
+
+```lean
+theorem parseSinglePairMapping_wb (tokens) (n fuel : Nat) (h_fuel : fuel ≤ n)
+    (h_fpsv) (h_ih : ParseNodeWB tokens n)
+    (ps) (result) (h_eq : ps.tokens = tokens)
+    (h_peek : ps.peek? = some .key)
+    (h_ok : parseSinglePairMapping ps fuel = .ok result) :
+    Scannable result.1 false ∧
+    (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
+    flowNesting tokens result.2.pos = flowNesting tokens ps.pos ∧
+    result.2.tokens = tokens
+```
+
+This follows the signature pattern of all other `_wb` theorems, which
+prove `Scannable _ false` unconditionally and `Scannable _ true`
+conditionally on `flowNesting > 0`. But `parseSinglePairMapping` is
+different: it returns `.mapping .flow`, whose `Scannable _ false` proof
+**itself** requires `Scannable child true`. The other `_wb` theorems
+return `.sequence .block`, `.mapping .block`, or a value directly from
+`parseNode` — for block collections, `inFlow || style == .flow` evaluates
+to `inFlow`, so `Scannable _ false` only requires children to be
+`Scannable _ false`.
+
+**Solution:** Add `h_flow : flowNesting tokens ps.pos > 0` as a hypothesis.
+This is justified because `parseSinglePairMapping` is **only** called from
+`parseFlowSequenceLoop`, which runs after `parseFlowSequence` has advanced
+past `flowSequenceStart`, guaranteeing `flowNesting > 0`. With this
+hypothesis:
+- The `flowNesting > 0 → Scannable _ true` output from `parseNodeWB_apply`
+  can be unconditionally discharged
+- `Scannable _ false` follows from `Scannable_true_implies_false`
+- The conclusion simplifies to just `Scannable result.1 true ∧ ...`
+
+**Refactored theorem:**
+
+```lean
+theorem parseSinglePairMapping_wb (tokens) (n fuel : Nat) (h_fuel : fuel ≤ n)
+    (h_fpsv) (h_ih : ParseNodeWB tokens n)
+    (ps) (result) (h_eq : ps.tokens = tokens)
+    (h_peek : ps.peek? = some .key)
+    (h_flow : flowNesting tokens ps.pos > 0)    -- NEW: required precondition
+    (h_ok : parseSinglePairMapping ps fuel = .ok result) :
+    Scannable result.1 true ∧                    -- CHANGED: true directly
+    flowNesting tokens result.2.pos = flowNesting tokens ps.pos ∧
+    result.2.tokens = tokens
+```
+
+The caller (`parseFlowSequenceLoop_wb`) holds `flowNesting > 0` as a loop
+invariant (inherited from `parseFlowSequence_wb` after advancing past
+`flowSequenceStart`), so the stronger precondition is always available.
+The caller gets `Scannable _ false` by applying `Scannable_true_implies_false`.
+
+**General pattern:** When a function constructs a value whose `Scannable`
+proof requires children at a **stronger** flow context than the outer
+property being proved, the theorem needs the flow context as a hypothesis
+rather than as a conditional in the conclusion. This applies to any
+function that returns `.mapping .flow` or `.sequence .flow` — the
+`inFlow || style == .flow` in the `Scannable` constructor forces children
+to prove `Scannable _ true` even when the outer goal is `Scannable _ false`.
+
+**Combinatorial explosion from two nested matches:**
+
+Beyond the two framework interactions, the function has a second source of
+proof complexity: two **sequential** monadic binds with pattern matching
+(key dispatch then val dispatch), interleaved with a `tryConsume` that
+itself introduces an `if consumed` branch. After `unfold` and `simp only
+[bind, Except.bind]`, peeling through the choices produces:
+
+- Key: 4 branches (`.value` / `.flowEntry` / `.flowSequenceEnd` → emptyNode,
+  `_` → parseNode)
+- `tryConsume`: 2 branches (consumed = true / false)
+- Val (when consumed): 4 branches (`.flowEntry` / `.flowSequenceEnd` / none
+  → emptyNode, `_` → parseNode)
+
+Total: `4 × (1 + 2×4) = 36` potential goals, though many are closed by
+`contradiction` (impossible branch combinations). The peeling approach
+(`split at h_ok <;> first | contradiction | skip` repeated 8 times) handles
+this mechanically but generates ~20 surviving goals that must each be closed
+with the appropriate combination of `empty_scalar_scannable`, `parseNodeWB_apply`,
+and flow nesting chain lemmas.
+
+By contrast, `parseBlockMappingEntryValue` has a single match on `consumed`
+(2 branches) then a single content dispatch in the `consumed = true` case
+(~4 branches), for ~6 total goals — manageable with a single
+`all_goals try / all_goals` structure.
+
+**Lessons documented:**
+
+1. **Struct `with`-updates before method calls break lemma applicability.**
+   When G5c added `{ ps with currentPath := ... }` before `tryConsume`,
+   it created a proof obligation invisible to testing but requiring new
+   helper lemmas. Any future field addition to `ParseState` that triggers
+   a `with`-update before an already-lemmatized method call will need the
+   same treatment.
+
+2. **Flow-style collection constructors flip the Scannable polarity.**
+   `Scannable (.mapping .flow _) false` requires children at `true`, not
+   `false`. Theorem signatures must account for this — functions that
+   produce flow collections need `flowNesting > 0` as a precondition, not
+   just as a conditional in the conclusion.
+
+3. **Sequential monadic binds multiply proof goals exponentially.**
+   Each `match`-on-`peek?` after a monadic bind creates a branch, and
+   these multiply. Functions with 2+ such dispatches should be candidates
+   for sub-function extraction (per the refactoring principle in
+   `parseBlockMappingLoop` Reflections above).
+
+4. **`generalize` to control WHNF expansion before `split`.** (2026-03-15)
+   `split at h_ok` uses WHNF to find the outermost match to split on.
+   When `h_ok` contains `tryConsume` applied to a struct literal, WHNF
+   expands `tryConsume` into `match peek? with ... | some t => if t == tok
+   then ...`, and `split` targets this *inner* match instead of the
+   outer `if consumed then ...` dispatch. This causes the consumed-flag
+   split to never happen — the proof silently proceeds into the wrong
+   case structure.
+
+   **Fix:** `generalize hg : ParseState.tryConsume _ _ = tc at h_ok`
+   *before* `split at h_ok`. This replaces the `tryConsume` expression
+   with an opaque variable `tc`, preventing WHNF from expanding it.
+   `split` then finds the `if tc.fst then ...` cleanly. Derived facts
+   are recovered via `hg ▸ h_tc_tok _` and `hg ▸ h_tc_fn _`.
+
+   **General pattern:** When `split at h` targets a `match` inside a
+   compound expression, `generalize` the inner sub-expression to make it
+   opaque before splitting. This is the proof-side analogue of "extract
+   to a let binding" in implementation code.
+
+5. **Universal quantification for deferred metavariable resolution.**
+   (2026-03-15) `have h_tc_tok := tryConsume_with_path_tokens ps _ .value`
+   fails because `_` (the `YamlPath` argument) cannot be inferred at
+   `have` declaration time — nothing constrains it yet. The fix is:
+   ```lean
+   have h_tc_tok := fun p => (tryConsume_with_path_tokens ps p .value).trans h_adv_tok
+   ```
+   At usage sites, `h_tc_tok _` lets Lean infer `p` from the goal context
+   where the path is determined by the surrounding case split. This is a
+   general technique: when a lemma argument can't be inferred at
+   declaration time, wrap the `have` in `fun arg =>` and pass `_` at
+   each usage site.
+
+6. **`try (exfalso; ... ; simp_all)` corrupts goals silently.**
+   (2026-03-15) Lean 4's `try` combinator does NOT roll back if all
+   inner tactics "succeed" (i.e., don't throw). The sequence
+   `try (exfalso; unfold ...; dsimp; simp_all)` is dangerous:
+   - `exfalso` changes the goal to `⊢ False` (always succeeds)
+   - `simp_all` may simplify hypotheses without closing the goal
+   - Since no tactic threw, `try` considers the block successful
+   - The goal remains `⊢ False` — a *valid, provable* goal has been
+     silently turned into an *unprovable* one
+
+   **Fix:** Add `done` (or `exact absurd ...`) after `simp_all` to
+   ensure the block either fully closes the goal or fails:
+   ```lean
+   all_goals (try (exfalso; unfold ...; dsimp; simp_all; done))
+   ```
+   With `done`, if `simp_all` doesn't close the goal, `done` throws,
+   `try` catches it and rolls back the entire block. This turned 13
+   corrupted `⊢ False` goals back into 13 provable goals.
+
 ### Phase H: JSON-is-YAML-subset (FUTURE)
 
 Every valid JSON document is valid YAML 1.2. The scanner handles JSON
