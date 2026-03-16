@@ -37,13 +37,13 @@ Lean4Yaml/
 │   ├── SchemaDump.lean            # Schema↔Dump proofs (40 theorems + 24 guards)
 │   ├── DumpRoundTrip.lean         # Dump round-trip proofs
 │   ├── TestSuite.lean             # yaml-test-suite as compile-time checks
-│   └── SuiteGuards/               # Auto-generated #guard tests (358 tests, 6 files)
-│       ├── Scalar.lean            # 53 scalar stage guards
-│       ├── Flow.lean              # 43 flow stage guards
+│   └── SuiteGuards/               # Auto-generated #guard tests (362 tests, 6 files)
+│       ├── Scalar.lean            # 58 scalar stage guards
+│       ├── Flow.lean              # 44 flow stage guards (3 commented out: scanner bug)
 │       ├── Block.lean             # 83 block stage guards
-│       ├── Document.lean          # 15 document stage guards
-│       ├── Advanced.lean          # 64 advanced stage guards
-│       └── Error.lean             # 92 error stage guards
+│       ├── Document.lean          # 16 document stage guards
+│       ├── Advanced.lean          # 65 advanced stage guards
+│       └── Error.lean             # 96 error stage guards
 └── Tests/
     ├── VerifiedResult.lean  # Shared result types (VerifiedSuiteResult, TestCollector)
     ├── Main.lean            # Unit tests (types + position)
@@ -84,7 +84,7 @@ Verification uses a deliberate 3-layer approach:
 
 1. **Internal runtime tests** (1041 tests across 14 suites + 11 diagnostic + 132 spec examples) — hand-written Lean tests validating parser properties. Every `theorem` target starts life as a runtime `check` test. These are _separate_ from the yaml-test-suite's 406 external test cases. Additionally, 132 examples extracted from the YAML 1.2.2 specification (§2–§10) are parsed as an extra conformance layer — the tokenized pipeline (`Scanner.lean` → `TokenParser.lean`) achieves 132/132 (100%).
 2. **Formal proofs** (`theorem`/`lemma` in `Proofs/*.lean`) — machine-checked guarantees. Layered by dependency: pure functions first, then scanner invariants, then pipeline composition.
-3. **Compile-time guards** (`#guard`) — 76 hand-written + 351 auto-generated from yaml-test-suite (in `Proofs/SuiteGuards/*.lean`). `#guard` kernel evaluation works for all scanner functions (total `def`); `TokenParser.lean` functions marked `partial def` are exercised via `native_decide` in `Completeness.lean`. Any parser regression breaks the build.
+3. **Compile-time guards** (`#guard`) — 76 hand-written + 362 auto-generated from yaml-test-suite (in `Tests/Guards/Proofs/SuiteGuards/*.lean`). `#guard` kernel evaluation works for all scanner functions (total `def`); `TokenParser.lean` functions marked `partial def` are exercised via `native_decide` in `Completeness.lean`. Any parser regression breaks the build.
 
 The runtime tests serve as a proof roadmap: each `setCategory`/`check` group maps to a `theorem` target. When a proof is completed, the corresponding tests become redundant (but are kept as regression guards).
 

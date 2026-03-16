@@ -764,7 +764,7 @@ removed entirely as it's no longer needed.
    as `key, value, scalar "x"` instead of plain scalar `":x"` or `"::x"`.
    The old parser code silently produced `.ok` with wrong structure; the
    Pattern 5 code change correctly surfaces the error. Fix requires
-   scanner-level changes (40/43 flow guards passing = 93%).
+   scanner-level changes (41/44 flow guards passing = 93%; 3 commented out).
 
 **Result:** Sorry count reduced from 11 → 9.
 - Removed: `parseFlowSequenceLoop_reaches_end` (1 sorry)
