@@ -1,12 +1,12 @@
 {
-  "date": "2026-03-11T07:51:56-0700",
+  "date": "2026-03-15T21:19:08-0700",
   "overall": {
     "applicable": 358,
-    "correct": 358,
-    "correctRate": 100,
+    "correct": 355,
+    "correctRate": 99.1,
     "expectedFail": 95,
-    "failed": 0,
-    "passed": 263,
+    "failed": 3,
+    "passed": 260,
     "skipped": 48,
     "timeout": 0,
     "total": 406,
@@ -63,11 +63,11 @@
     },
     "flow": {
       "applicable": 46,
-      "correct": 46,
-      "correctRate": 100,
+      "correct": 43,
+      "correctRate": 93.4,
       "expectedFail": 3,
-      "failed": 0,
-      "passed": 43,
+      "failed": 3,
+      "passed": 40,
       "skipped": 0,
       "timeout": 0,
       "total": 46,
@@ -459,10 +459,10 @@
       "stage": "advanced"
     },
     {
-      "error": null,
+      "error": "parse error: expected '}' but reached end of tokens",
       "id": "58MP",
       "name": "Flow mapping edge cases",
-      "outcome": "pass",
+      "outcome": "fail",
       "stage": "flow"
     },
     {
@@ -515,10 +515,10 @@
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "parse error: expected '}' but reached end of tokens",
       "id": "5T43",
       "name": "Colon at the beginning of adjacent flow scalar",
-      "outcome": "pass",
+      "outcome": "fail",
       "stage": "flow"
     },
     {
@@ -1299,10 +1299,10 @@
       "stage": "block"
     },
     {
-      "error": null,
+      "error": "parse error: expected ']' but reached end of tokens",
       "id": "DBG4",
       "name": "Spec Example 7.10. Plain Characters",
-      "outcome": "pass",
+      "outcome": "fail",
       "stage": "flow"
     },
     {
@@ -2969,9 +2969,9 @@
         "total": 29
       },
       {
-        "allPass": true,
+        "allPass": false,
         "label": "YAML 1.2.2 Spec Examples",
-        "passed": 132,
+        "passed": 131,
         "total": 132
       },
       {
@@ -2987,9 +2987,9 @@
         "total": 32
       },
       {
-        "allPass": true,
+        "allPass": false,
         "label": "YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline)",
-        "passed": 132,
+        "passed": 131,
         "total": 132
       },
       {
@@ -2999,7 +2999,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 750,
+    "totalPassed": 748,
     "totalTests": 750
   }
 }

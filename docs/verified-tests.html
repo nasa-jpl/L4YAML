@@ -61,13 +61,13 @@
 <body>
 <div class="container">
   <a href="index.html" class="nav-link">← Back to Coverage Index</a>
-  <h1>✅ Verified Tests</h1>
+  <h1>❌ Verified Tests</h1>
   <p class="subtitle">Unit tests, parser tests, verification tests, and string lemma tests — all must pass.</p>
 
   <div class="stats">
     <div class="stat-box stat-total"><h3>Total</h3><div class="number">750</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">750</div></div>
-    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">748</div></div>
+    <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">2</div></div>
     <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">11</div></div>
   </div>
   <h3>Suites</h3>
@@ -108,10 +108,10 @@
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 100.0%"></div></div>
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/RawParseTests.lean" target="_blank" class="source-link">📄 Tests/RawParseTests.lean</a></div>
     </div>
-    <div class="stage-card" style="border-left-color:var(--color-pass)">
+    <div class="stage-card" style="border-left-color:var(--color-fail)">
       <div class="stage-card-name">YAML 1.2.2 Spec Examples</div>
-      <div class="stage-card-stats">132/132 passed (100.0%)</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100.0%"></div></div>
+      <div class="stage-card-stats">131/132 passed (99.2%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 99.2%"></div></div>
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SpecExamples.lean" target="_blank" class="source-link">📄 Tests/SpecExamples.lean</a></div>
     </div>
     <div class="stage-card" style="border-left-color:var(--color-pass)">
@@ -126,10 +126,10 @@
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 100.0%"></div></div>
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ScannerTests.lean" target="_blank" class="source-link">📄 Tests/ScannerTests.lean</a></div>
     </div>
-    <div class="stage-card" style="border-left-color:var(--color-pass)">
+    <div class="stage-card" style="border-left-color:var(--color-fail)">
       <div class="stage-card-name">YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline)</div>
-      <div class="stage-card-stats">132/132 passed (100.0%)</div>
-      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100.0%"></div></div>
+      <div class="stage-card-stats">131/132 passed (99.2%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 99.2%"></div></div>
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ScannerSpecExamples.lean" target="_blank" class="source-link">📄 Tests/ScannerSpecExamples.lean</a></div>
     </div>
     <div class="stage-card" style="border-left-color:var(--color-pass)">
@@ -3339,12 +3339,12 @@
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-suite="specexamples" data-search="specexamples §7 spec examples example example-7.10">
+      <tr class="test-row" data-outcome="fail" data-suite="specexamples" data-search="specexamples §7 spec examples example example-7.10">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SpecExamples.lean" target="_blank" class="source-link">YAML 1.2.2 Spec Examples</a></td>
         <td>§7 Spec Examples</td>
         <td>Example example-7.10</td>
-        <td><span class="badge badge-pass">Pass</span></td>
-        <td></td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="expected &#39;]&#39; but reached end of tokens">expected &#39;]&#39; but reached end of tokens</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="specexamples" data-search="specexamples §7 spec examples example example-7.11">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/SpecExamples.lean" target="_blank" class="source-link">YAML 1.2.2 Spec Examples</a></td>
@@ -4963,12 +4963,12 @@
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-suite="scannerspecexamples" data-search="scannerspecexamples §7 scanner spec examples example example-7.10">
+      <tr class="test-row" data-outcome="fail" data-suite="scannerspecexamples" data-search="scannerspecexamples §7 scanner spec examples example example-7.10">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ScannerSpecExamples.lean" target="_blank" class="source-link">YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline)</a></td>
         <td>§7 Scanner Spec Examples</td>
         <td>Example example-7.10</td>
-        <td><span class="badge badge-pass">Pass</span></td>
-        <td></td>
+        <td><span class="badge badge-fail">Fail</span></td>
+        <td><span class="error-msg" title="expected &#39;]&#39; but reached end of tokens">expected &#39;]&#39; but reached end of tokens</span></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="scannerspecexamples" data-search="scannerspecexamples §7 scanner spec examples example example-7.11">
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ScannerSpecExamples.lean" target="_blank" class="source-link">YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline)</a></td>

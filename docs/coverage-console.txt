@@ -67,7 +67,7 @@ Running all tests for HTML report...
   [51/406] 55WF ✓ (expected fail)
   [52/406] 565N ✓
   [53/406] 57H4 ✓
-  [54/406] 58MP ✓
+  [54/406] 58MP ✗ parse error: expected '}' but reached end of tokens
   [55/406] 5BVJ ✓
   [56/406] 5C5M ✓
   [57/406] 5GBF ✓
@@ -75,7 +75,7 @@ Running all tests for HTML report...
   [59/406] 5LLU ✓ (expected fail)
   [60/406] 5MUD ✓
   [61/406] 5NYZ ✓
-  [62/406] 5T43 ✓
+  [62/406] 5T43 ✗ parse error: expected '}' but reached end of tokens
   [63/406] 5TRB ✓ (expected fail)
   [64/406] 5TYM ✓
   [65/406] 5U3A ✓ (expected fail)
@@ -187,7 +187,7 @@ Running all tests for HTML report...
   [171/406] D83L ✓
   [172/406] D88J ✓
   [173/406] D9TU ✓
-  [174/406] DBG4 ✓
+  [174/406] DBG4 ✗ parse error: expected ']' but reached end of tokens
   [175/406] DC7X ✓
   [176/406] DE56 ✓
   [177/406] DE56 ✓
@@ -422,7 +422,7 @@ Running all tests for HTML report...
   [406/406] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 358/406 (100.000000%)
+Correct: 355/406 (99.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 10/10
@@ -431,13 +431,13 @@ Running verified test suites...
   Structural Validation Tests: ✓ 84/84
   Dump Round-Trip Tests: ✓ 102/102
   Raw Parse / Compose Tests: ✓ 29/29
-  YAML 1.2.2 Spec Examples: ✓ 132/132
+  YAML 1.2.2 Spec Examples: ✗ 131/132
   Schema ↔ Dump Integration: ✓ 68/68
   Scanner & TokenParser Tests (Phase 9): ✓ 32/32
-  YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline): ✓ 132/132
+  YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline): ✗ 131/132
   Demo: ✓ 7/7
 
-Verified: 750/750
+Verified: 748/750
 
 Generating HTML reports...
   wrote docs/index.html
