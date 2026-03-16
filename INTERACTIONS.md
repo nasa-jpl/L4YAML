@@ -608,6 +608,10 @@ the CURRENT `parseFlowMappingLoop` that must be preserved.
 
 #### Step 1: write the theorem properties for the current `parseFlowMappingLoop` implementation. These are properties that follow from the function's type signature and implementation structure, not from domain-specific knowledge. They are "free theorems" in the Wadler sense — they must hold for any function with the same type signature and similar accumulator structure, regardless of the specific parsing logic.
 
+**Status: COMPLETED (2026-03-14).** Four properties identified; (1)–(3)
+are pure free theorems, (4) is domain-contingent (see Pattern 5 / flowNesting
+impasse).
+
 1. **Token preservation** (from the type `ParseState → ... → Except ... (... × ParseState)`):
    ```lean
    theorem parseFlowMappingLoop_tokens_preserved (ps result) (h_ok : ... = .ok result) :
@@ -644,11 +648,58 @@ state-threading pattern.
 
 #### Step 2: Refactor `parseFlowMappingLoop` to extract the shared tryConsume + value dispatch logic into `parseFlowMappingValue`. This should be a purely syntactic transformation that does not change the overall structure of the loop or the way state is threaded.
 
+**Status: COMPLETED (2026-03-14).** `parseFlowMappingValue` extracted as a
+separate function in the `mutual` block (TokenParser.lean L630–644).
+`parseFlowMappingLoop` (L646–676) refactored to call it. All 323 test
+suite jobs pass.
+
 #### Step 3: Prove the same properties (1)–(3) for the new `parseFlowMappingLoop` + `parseFlowMappingValue`. If all three hold, we have strong evidence that the refactoring preserved the core behavior of the loop with respect to token handling and pair accumulation.
+
+**Status: COMPLETED (2026-03-15).** All three free-theorem properties
+proved, plus a helper lemma for the extracted function:
+
+| Theorem | Location | Status |
+|---------|----------|--------|
+| `parseFlowMappingValue_tokens_preserved` | ParserGrammable.lean L2259 | **Proved** |
+| `parseFlowMappingLoop_tokens_preserved` | ParserGrammable.lean L2291 | **Proved** |
+| `parseFlowMappingLoop_pairs_grow` | ParserGrammable.lean L2364 | **Proved** |
+| `parseFlowMappingLoop_prefix_preserved` | ParserGrammable.lean L2398 | **Proved** |
+
+Sorry count reduced from 14 → 11 (net -3: one sorry removed per loop
+theorem).
+
+**Proof technique notes:**
+
+- **`_pairs_grow` and `_prefix_preserved`**: Automated "split-and-close"
+  approach — 20× `all_goals (try (split at h_ok))` to exhaustively expand
+  all monadic branches, then close all goals with `first | ... | ...`
+  combining base-case, error, and IH closers. Required
+  `set_option maxHeartbeats 800000` / `1600000`.
+
+- **`_tokens_preserved`**: Fundamentally harder because it requires threading
+  `ps.tokens = tokens` through intermediate `parseNode` and
+  `parseFlowMappingValue` calls. The same split-and-close approach works for
+  Phase 1 (errors via `contradiction`/`simp at h_ok`) and Phase 2 (base
+  cases via `subst h_ok; exact h_eq`). Phase 3 (recursive cases) uses
+  `rename_i` to name auto-generated hypotheses from `split`, then chains:
+  1. `parseNodeWB_apply` to get `v_node.snd.tokens = tokens` from `parseNode`
+  2. `parseFlowMappingValue_tokens_preserved` to get `v_pFMV.snd.tokens = tokens`
+  3. `ih_fuel` with the derived token equality to close the loop
+
+  Key Lean 4 elaboration insight: `all_goals (try (...))` closers for
+  parseNode paths used `(by simp only [ParseState.advance_tokens]; exact h_eq)`
+  for the token hypothesis, which worked for all goals where `parseNode` was
+  called on `ps.advance` (explicit-key branch). One remaining goal called
+  `parseNode ps k` directly (implicit-key branch, `¬pairs.size > 0` sub-case),
+  requiring `h_eq` without the `simp` — solved by a direct (non-`try`) closer
+  after the `all_goals` pass.
 
 After refactoring, we prove the SAME four properties for the new
 `parseFlowMappingLoop` + `parseFlowMappingValue`. If all four hold, the
 refactoring is semantically correct for proof purposes.
+
+Property (4) — `flowNesting` preservation — remains contingent on resolving
+the `flowNesting` impasse (Pattern 5, see below).
 
 ### The `flowNesting` Impasse (Pattern 5 Instance)
 

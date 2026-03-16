@@ -2254,53 +2254,180 @@ after extracting `parseFlowMappingValue`, they become tractable.
 
 See INTERACTIONS.md §Wadler-Style "Theorems for Free" as Refactoring Guards. -/
 
+/-- Token preservation for `parseFlowMappingValue`: the token array is unchanged.
+    Helper for `parseFlowMappingLoop_tokens_preserved`. -/
+theorem parseFlowMappingValue_tokens_preserved
+    (tokens : Array (Positioned YamlToken))
+    (n : Nat) (h_ih : ParseNodeWB tokens n)
+    (ps : ParseState) (fuel : Nat) (h_fuel : fuel ≤ n)
+    (savedPath : YamlPath) (keyContent : String)
+    (result : YamlValue × ParseState)
+    (h_eq : ps.tokens = tokens)
+    (h_ok : parseFlowMappingValue ps fuel savedPath keyContent = .ok result) :
+    result.2.tokens = tokens := by
+  unfold parseFlowMappingValue at h_ok
+  simp only [bind, Except.bind] at h_ok
+  have h_tc_tok : ({ ps with currentPath := savedPath.push (.key keyContent) }.tryConsume .value).2.tokens = tokens :=
+    (tryConsume_with_path_tokens ps (savedPath.push (.key keyContent)) .value).trans h_eq
+  generalize hg : ParseState.tryConsume _ _ = tc at h_ok
+  have h_tcr_tok : tc.2.tokens = tokens := hg ▸ h_tc_tok
+  split at h_ok
+  · -- consumed = true → match peek?
+    split at h_ok
+    -- flowEntry | flowMappingEnd | none → emptyNode
+    all_goals (try (simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_tcr_tok))
+    -- parseNode (remaining goal)
+    split at h_ok <;> first | (simp at h_ok; done) | skip
+    have h_wb := parseNodeWB_apply h_ih h_tcr_tok (by assumption) (by omega)
+    simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_wb.2.2.2
+  · -- consumed = false → emptyNode
+    simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_tcr_tok
+
 set_option maxHeartbeats 800000 in
 /-- Token preservation: `parseFlowMappingLoop` never mutates the token array.
     Free theorem from the state-threading type.
-
-    Pattern 4 (complexity explosion): The proof requires splitting through
-    2 entry × 4 key-dispatch × 2 consumed × 4 value-dispatch = 64 cases.
-    Additionally, the `{ ps with currentPath := savedPath }` restoration
-    requires reversing the IH argument order to avoid Lean's left-to-right
-    elaboration binding `?ps` from `h_eq` before `h_ok` (see `ih'` helper).
-
-    Sorry'd pending `parseFlowMappingValue` extraction (Pattern 4 mitigation).
-    The proof infrastructure (ih' for struct update, tryConsume_with_path_tokens
-    for token threading) is validated; only the case explosion remains. -/
+    Proved via induction on fuel, using `parseFlowMappingValue_tokens_preserved`
+    for the extracted value-dispatch and `parseNodeWB_apply` for key parsing. -/
 theorem parseFlowMappingLoop_tokens_preserved
     (tokens : Array (Positioned YamlToken))
-    (n : Nat) (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens n)
+    (n : Nat)
+    (_h_fpsv : FlowAwarePSV tokens) -- should this unused hypothesis be removed?
+    (h_ih : ParseNodeWB tokens n)
     (ps : ParseState) (fuel : Nat) (h_fuel : fuel ≤ n)
     (pairs : Array (YamlValue × YamlValue))
     (result : Array (YamlValue × YamlValue) × ParseState)
     (h_eq : ps.tokens = tokens)
     (h_ok : parseFlowMappingLoop ps fuel pairs = .ok result) :
     result.2.tokens = tokens := by
-  sorry
-
+  induction fuel generalizing ps pairs with
+  | zero =>
+    unfold parseFlowMappingLoop at h_ok
+    simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_eq
+  | succ k ih_fuel =>
+    unfold parseFlowMappingLoop at h_ok
+    simp only [bind, Except.bind, pure, Except.pure] at h_ok
+    split at h_ok
+    · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_eq
+    · -- Exhaustively split all match/if in h_ok
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      -- Phase 1: Close error goals
+      all_goals (try contradiction)
+      all_goals (try (simp at h_ok))
+      -- Phase 2: Close base case goals (both Except.ok wrapped and unwrapped)
+      all_goals (try (simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_eq))
+      all_goals (try (simp only [Except.ok.injEq] at h_ok; subst h_ok; simp only [ParseState.advance_tokens]; exact h_eq))
+      all_goals (try (subst h_ok; exact h_eq))
+      all_goals (try (subst h_ok; simp only [ParseState.advance_tokens]; exact h_eq))
+      -- Phase 3: remaining goals should all be recursive calls
+      -- EmptyNode paths: rename auto-generated names, derive token chain
+      all_goals (try (
+        rename_i v_pFMV heq_pFMV
+        have h_vt := parseFlowMappingValue_tokens_preserved tokens n h_ih _ k
+          (by omega) _ _ v_pFMV (by simp only [ParseState.advance_tokens]; exact h_eq) heq_pFMV
+        exact ih_fuel _ (by omega) _ h_vt h_ok))
+      -- ParseNode paths: rename auto-generated names, derive token chain
+      all_goals (try (
+        rename_i v_node heq_node _ v_pFMV heq_pFMV
+        have h_nt := (parseNodeWB_apply h_ih
+          (by simp only [ParseState.advance_tokens]; exact h_eq)
+          heq_node (by omega)).2.2.2
+        have h_vt := parseFlowMappingValue_tokens_preserved tokens n h_ih _ k
+          (by omega) _ _ v_pFMV h_nt heq_pFMV
+        exact ih_fuel _ (by omega) _ h_vt h_ok))
+      -- Remaining: direct proof for parseNode ps k (no advance, h_eq direct)
+      rename_i v_node heq_node _ v_pFMV heq_pFMV
+      have h_nt := (parseNodeWB_apply h_ih h_eq heq_node (by omega)).2.2.2
+      have h_vt := parseFlowMappingValue_tokens_preserved tokens n h_ih _ k
+        (by omega) _ _ v_pFMV h_nt heq_pFMV
+      exact ih_fuel _ (by omega) _ h_vt h_ok
 /-- Monotonicity: `parseFlowMappingLoop` never shrinks the pairs array.
-    Free theorem from the push-only accumulator pattern.
-    Pattern 4 (complexity explosion) makes the full proof unwieldy on the
-    current monolithic code — this is the primary motivation for refactoring.
-    Stated with sorry; will be proved after `parseFlowMappingValue` extraction. -/
+    Free theorem from the push-only accumulator pattern. -/
 theorem parseFlowMappingLoop_pairs_grow
     (ps : ParseState) (fuel : Nat)
     (pairs : Array (YamlValue × YamlValue))
     (result : Array (YamlValue × YamlValue) × ParseState)
     (h_ok : parseFlowMappingLoop ps fuel pairs = .ok result) :
     result.1.size ≥ pairs.size := by
-  sorry
+  induction fuel generalizing ps pairs with
+  | zero =>
+    unfold parseFlowMappingLoop at h_ok
+    simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
+  | succ k ih_fuel =>
+    unfold parseFlowMappingLoop at h_ok
+    simp only [bind, Except.bind, pure, Except.pure] at h_ok
+    split at h_ok
+    · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
+    · -- Exhaustively split all match/if in h_ok
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      -- Close all goals: base cases, contradictions, or IH
+      all_goals (first
+        | (simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _)
+        | contradiction
+        | (exact absurd h_ok (by simp))
+        | (have := ih_fuel _ _ h_ok; simp [Array.size_push] at this; omega))
 
-/-- Prefix preservation: `parseFlowMappingLoop` never modifies existing pairs.
-    Free theorem from the push-only accumulator pattern.
-    Same Pattern 4 complexity as `_pairs_grow` — deferred to post-refactoring. -/
+set_option maxHeartbeats 1600000 in
 theorem parseFlowMappingLoop_prefix_preserved
     (ps : ParseState) (fuel : Nat)
     (pairs : Array (YamlValue × YamlValue))
     (result : Array (YamlValue × YamlValue) × ParseState)
     (h_ok : parseFlowMappingLoop ps fuel pairs = .ok result) :
     ∀ i : Fin pairs.size, result.1[i.val]'(by have := parseFlowMappingLoop_pairs_grow ps fuel pairs result h_ok; omega) = pairs[i] := by
-  sorry
+  induction fuel generalizing ps pairs with
+  | zero =>
+    unfold parseFlowMappingLoop at h_ok
+    simp only [Except.ok.injEq] at h_ok; subst h_ok; intro _; rfl
+  | succ k ih_fuel =>
+    unfold parseFlowMappingLoop at h_ok
+    simp only [bind, Except.bind, pure, Except.pure] at h_ok
+    split at h_ok
+    · simp only [Except.ok.injEq] at h_ok; subst h_ok; intro _; rfl
+    · -- Exhaustively split all match/if in h_ok
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      -- Close all goals
+      all_goals (first
+        | (simp only [Except.ok.injEq] at h_ok; subst h_ok; intro _; rfl)
+        | contradiction
+        | (exact absurd h_ok (by simp))
+        | (intro i; exact (ih_fuel _ _ h_ok ⟨i.val, by simp [Array.size_push]; omega⟩).trans
+            (Array.getElem_push_lt i.isLt)))
 
 /-- `parseFlowMapping` well-behaved given parseNode IH.
     Requires `h_matched` for the same reason as `parseFlowSequence_wb`:
