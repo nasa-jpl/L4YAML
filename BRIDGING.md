@@ -3495,9 +3495,9 @@ the theorem statements.
 
 **Proof impact:** Zero breakage. All new theorems are additive.
 
-**Build:** 322/322 ✔, 8 sorry warnings (C2 parser chain; ScannerPlainScalarValid.lean remains sorry-free).
+**Build:** 322/322 ✔, 9 sorry warnings (C2 parser chain; ScannerPlainScalarValid.lean remains sorry-free).
 
-**Note on remaining sorries:** The 8 remaining sorry warnings are all in
+**Note on remaining sorries:** The 9 remaining sorry warnings are all in
 ParserGrammable.lean's C2 pipeline (parser grammability):
 
 1. ~~**`parseNode_wb_all` (inductive step)**~~ — **PROVED ✅** (2026-03-13).
@@ -3526,16 +3526,16 @@ ParserGrammable.lean's C2 pipeline (parser grammability):
    Required adding `h_peek : ps.peek? = some .blockSequenceStart` hypothesis.
    Helper: `push_all_scannable` for array push Scannable preservation.
 
-5. ~~**`parseBlockMapping_wb`**~~ — **MOSTLY PROVED** (2026-03-14).
+5. ~~**`parseBlockMapping_wb`**~~ — **PROVED ✅** (2026-03-14, sub-cases 2026-03-15).
    Block mapping scannability + flowNesting/tokens preservation.
    Proved via `parseBlockMappingLoop_wb` loop invariant (induction on fuel) +
    `advance_preserves_flowNesting` for blockMappingStart/blockEnd +
    `tryConsume_flowNesting` + `tryConsume_tokens`. Helper: `push_pair_scannable`
    for `(YamlValue × YamlValue)` array push Scannable preservation.
-   The wrapper `parseBlockMapping_wb` is fully proved. The loop invariant
-   `parseBlockMappingLoop_wb` has 1 sorry remaining in the `.key` branch's
-   key-parseNode×val-parseNode sub-case (metavar leaking in `first`/`<;>`;
-   see reflections). `.value` branch fully proved, wildcard branch proved.
+   The wrapper `parseBlockMapping_wb`, the loop invariant
+   `parseBlockMappingLoop_wb`, and both sub-function helpers
+   `handleBlockMappingKeyEntry_wb` and `handleBlockMappingValueEntry_wb`
+   are fully proved. None require `FlowAwarePSV` (removed 2026-03-15).
    Required adding `h_peek : ps.peek? = some .blockMappingStart` hypothesis.
 
 6. **3 remaining sub-parser WB lemmas** — `parseImplicitBlockSequence_wb`,
@@ -3550,8 +3550,10 @@ ParserGrammable.lean's C2 pipeline (parser grammability):
    unfolded (8 levels of bind-chain peeling); remaining goals need
    emptyNode/parseNode branch completion.
 
-8. ~~**`parseDocument_tokens_preserved`**~~ — `parseDocument` preserves
-   `ps.tokens`. Structural property about the `do`-notation bind chain.
+8. **`parseDocument_tokens_preserved`** / **`prepareDocumentState_tokens_preserved`** —
+   `parseDocument` preserves `ps.tokens`. Previously proved (2026-03-15),
+   then refactored to extract `prepareDocumentState` helper, re-introducing
+   2 sorrys. `prepareDocumentState_tokens_preserved` needs proving first.
 
 9. **`parseStream_doc_from_parseDocument`** — For-loop decomposition:
    every document in `parseStream`'s output was produced by `parseDocument`
@@ -3569,15 +3571,17 @@ ParserGrammable.lean's C2 pipeline (parser grammability):
 | ~~`parseNodeProperties_tokens`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-13): Loop unrolling + `ForInStep` case split + `dite_false`. ~120 LOC.~~ |
 | ~~`parseNodeProperties_flowNesting`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-13): Same loop-unrolling structure + `advance_preserves_flowNesting` helpers. ~100 LOC.~~ |
 | ~~`parseBlockSequence_wb`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-16): Loop invariant + advance helpers. ~130 LOC.~~ |
-| `parseBlockMappingLoop_wb` | ParserGrammable.lean | C2 | **PROVED** (2026-03-14): Refactored `parseBlockMappingLoop` into sub-functions (`handleBlockMappingKeyEntry`, `handleBlockMappingValueEntry`). Loop proof now clean ~30 LOC; sorry moved to `handleBlockMappingKeyEntry_wb` and `handleBlockMappingValueEntry_wb`. |
-| `handleBlockMappingKeyEntry_wb` | ParserGrammable.lean | C2 | Sorry'd. Key/val Scannable + state preservation for `.key` branch. |
-| `handleBlockMappingValueEntry_wb` | ParserGrammable.lean | C2 | Sorry'd. Val Scannable + state preservation for `.value` branch (implicit key). |
-| `parseBlockMapping_wb` (wrapper) | ParserGrammable.lean | C2 | **PROVED** (2026-03-14): Wrapper fully proved using loop lemma + `h_peek` hypothesis. |
+| ~~`parseBlockMappingLoop_wb`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-14): Refactored `parseBlockMappingLoop` into sub-functions (`handleBlockMappingKeyEntry`, `handleBlockMappingValueEntry`). Loop proof now clean ~30 LOC.~~ |
+| ~~`handleBlockMappingKeyEntry_wb`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-15): Key/val Scannable + state preservation for `.key` branch. `FlowAwarePSV` hypothesis removed (unused).~~ |
+| ~~`handleBlockMappingValueEntry_wb`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-15): Val Scannable + state preservation for `.value` branch (implicit key). `FlowAwarePSV` hypothesis removed (unused).~~ |
+| ~~`parseBlockMapping_wb` (wrapper)~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-14): Wrapper fully proved using loop lemma + `h_peek` hypothesis. `FlowAwarePSV` hypothesis removed (unused).~~ |
 | `parseImplicitBlockSequence_wb` | ParserGrammable.lean | C2 | Sub-parser WB lemma. Monadic unfolding needed. |
 | `parseFlowSequence_wb` | ParserGrammable.lean | C2 | Sub-parser WB lemma. Monadic unfolding needed. |
 | `parseFlowMapping_wb` | ParserGrammable.lean | C2 | Sub-parser WB lemma. Monadic unfolding needed. |
 | `parseDocument_value_cases` | ParserGrammable.lean | C2 | `doc.value` is `emptyNode` or from `parseNode`. Do-notation partially unfolded. |
-| ~~`parseDocument_tokens_preserved`~~ | ~~ParserGrammable.lean~~ | ~~C2~~ | ~~**RESOLVED** (2026-03-15): Proved via `parseDirectives_tokens` + `tryConsume_tokens` + `parseNode_tokens_preserved`. Extended `ParseNodeWB` with 4th conjunct.~~ |
+| `prepareDocumentState_tokens_preserved` | ParserGrammable.lean | C2 | Token preservation for `prepareDocumentState` helper. Extracted from `parseDocument_tokens_preserved` refactoring. |
+| `parseDocument_tokens_preserved` | ParserGrammable.lean | C2 | Token preservation for `parseDocument`. Depends on `prepareDocumentState_tokens_preserved` + `parseNode_tokens_preserved`. Refactored from proved version; now sorry'd pending `prepareDocumentState` proof. |
+| *Note: `parseDocument_tokens_preserved` was previously proved (2026-03-15) but refactored to extract `prepareDocumentState` helper, re-introducing 2 sorrys.* | | | |
 | `parseStream_doc_from_parseDocument` | ParserGrammable.lean | C2 | For-loop decomposition. Needs `Range.forIn` invariant. |
 | `parseStream_output_aliases_resolve` | ParserGrammable.lean | C2 | Scanner doesn't validate alias ordering (§7.1). Needs scanner-level invariant. |
 | `parseStream_output_anchors_wellformed` | ParserGrammable.lean | C2 | `∀ inFlow` in `WellFormedAnchors` is unsatisfiable for cross-context aliasing. Semantic gap. |
@@ -3599,15 +3603,19 @@ proved:
 - **`parseStream_output_scannable`** ✅ — proved by factoring through
   `parseStream_doc_from_parseDocument` (§5g) and `parseDocument_scannable`
 
-The remaining 8 sorry's are localized to four categories:
+The remaining 9 sorry's are localized to four categories:
 
-1. **Auxiliary lemmas** (4 sorry's): 3 sub-parser WB lemmas + 1 mapping loop sub-case
-   (`parseBlockSequence_wb` now proved — see item 4 above).
-   (`parseBlockMapping_wb` wrapper proved; loop 1 sorry remains — see item 5 above).
+1. **Auxiliary lemmas** (3 sorry's): 3 sub-parser WB lemmas —
+   `parseImplicitBlockSequence_wb`, `parseFlowSequence_wb`, `parseFlowMapping_wb`.
+   (`parseBlockSequence_wb` proved — see item 4 above.)
+   (`parseBlockMapping_wb` fully proved including all sub-cases — see item 5 above.)
    (`parseNodeProperties_tokens` and `parseNodeProperties_flowNesting`
-   are now proved — see reflections below.)
+   are proved — see reflections below.)
    These are used axiomatically by `parseNode_wb_all` — the induction
    skeleton is complete and each auxiliary can be proved independently.
+   Note: `FlowAwarePSV` hypothesis was removed from the block mapping
+   chain (unused); it remains in the flow sub-parser chain where
+   `scalar_from_flow_token_scannable` genuinely needs it.
 
 2. **`parseDocument` do-notation** (`parseDocument_value_cases`):
    structural property about the `parseDocument` bind chain.
@@ -3651,12 +3659,14 @@ The remaining 8 sorry's are localized to four categories:
 | **`tryConsume_tokens`** | **`ps.tryConsume tok` preserves tokens — split on `peek?` + advance** |
 | **`parseDirectives_tokens`** | **`parseDirectives` preserves tokens — `Id.run` for-loop induction via `Std.Legacy.Range.forIn_eq_forIn_range'`** |
 | **`parseNode_tokens_preserved`** | **`parseNode` preserves tokens — derives from `parseNode_wb_all`'s 4th conjunct** |
-| **`parseDocument_tokens_preserved`** | **`parseDocument` preserves tokens — do-notation unfolding + helper lemma chain** |
 | **`push_pair_scannable`** | **`pairs.push (k,v)` preserves `∀ i, Scannable pairs[i]` for mapping accumulation** |
 | **`tryConsume_flowNesting`** | **`ps.tryConsume tok` preserves flowNesting for non-flow tokens** |
 | **`parseBlockSequenceLoop_wb`** | **Block sequence loop invariant — induction on fuel, Scannable+flowNesting+tokens** |
 | **`parseBlockSequence_wb`** | **Block sequence WB — wrapper around loop lemma, advance + blockEnd consumption** |
-| **`parseBlockMappingLoop_wb`** | **Block mapping loop invariant — PROVED after refactoring into sub-functions; sorry in `handleBlockMappingKeyEntry_wb` + `handleBlockMappingValueEntry_wb`** |
+| **`handleBlockMappingKeyEntry_wb`** | **Key entry WB — `.key` branch Scannable + state preservation, fully proved** |
+| **`handleBlockMappingValueEntry_wb`** | **Value entry WB — `.value` branch (implicit key) Scannable + state preservation, fully proved** |
+| **`parseBlockMappingEntryValue_wb`** | **Entry value WB — extracted Scannable + state preservation for value sub-parse** |
+| **`parseBlockMappingLoop_wb`** | **Block mapping loop invariant — PROVED, delegates to sub-function helpers** |
 | **`parseBlockMapping_wb`** | **Block mapping WB — wrapper fully proved using loop lemma + h_peek** |
 
 **Proof architecture** for the C2 chain:
@@ -3670,16 +3680,16 @@ parseNode_wb_all (§5e)           [PROVED ✅ — all branches]
     │   ◄── parseNodeProperties_tokens      [PROVED ✅ — loop unrolling]
     │   ◄── parseNodeProperties_flowNesting  [PROVED ✅ — loop unrolling]
     │   ◄── parseBlockSequence_wb            [PROVED ✅ — loop invariant]
-    │   ◄── parseBlockMapping_wb             [MOSTLY PROVED — 1 sorry in key×val sub-case]
+    │   ◄── parseBlockMapping_wb             [PROVED ✅ — all sub-cases]
     │   ◄── 3 sub-parser _wb lemmas          [SORRY: monadic unfolding]
     ▼
 parseNode_tokens_preserved (§5e₂)  [PROVED ✅ — derives from parseNode_wb_all]
     │ parseNode preserves ps.tokens
     ▼
-parseDocument_tokens_preserved (§5f)  [PROVED ✅ — do-notation + helpers]
+parseDocument_tokens_preserved (§5f)  [SORRY — refactored, depends on prepareDocumentState]
     │ parseDocument preserves ps.tokens
-    │   ◄── parseDirectives_tokens           [PROVED ✅ — for-loop induction]
-    │   ◄── tryConsume_tokens                [PROVED ✅ — trivial split]
+    │   ◄── prepareDocumentState_tokens_preserved  [SORRY]
+    │   ◄── parseNode_tokens_preserved             [PROVED ✅]
     ▼
 parseDocument_value_cases (§5f)  [SORRY: do-notation decomposition]
     │ parseDocument → emptyNode ∨ parseNode result

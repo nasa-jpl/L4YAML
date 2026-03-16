@@ -262,6 +262,7 @@ bounds the total number of mutual-function entries.  Each token generates
 at most ~4 function entries (dispatch + collection + loop + sub-node).
 -/
 
+set_option maxHeartbeats 400000 in
 mutual
 
 /-- Dispatch content parsing based on the current token.
@@ -566,10 +567,9 @@ def parseFlowSequence (ps : ParseState) (fuel : Nat) : Except ScanError (YamlVal
   | fuel + 1 => do
   let ps := ps.advance  -- consume flowSequenceStart
   let (items, ps) ← parseFlowSequenceLoop ps fuel #[]
-  let ps := match ps.peek? with
-    | some .flowSequenceEnd => ps.advance
-    | _ => ps
-  .ok (YamlValue.sequence .flow items, ps)
+  match ps.peek? with
+  | some .flowSequenceEnd => .ok (YamlValue.sequence .flow items, ps.advance)
+  | _ => .error (.expectedToken "']'" ps.currentLine none)
 
 /-- Tail-recursive loop for flow sequence entries. -/
 def parseFlowSequenceLoop (ps : ParseState) (fuel : Nat)
@@ -622,10 +622,9 @@ def parseFlowMapping (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValu
   | fuel + 1 => do
   let ps := ps.advance  -- consume flowMappingStart
   let (pairs, ps) ← parseFlowMappingLoop ps fuel #[]
-  let ps := match ps.peek? with
-    | some .flowMappingEnd => ps.advance
-    | _ => ps
-  .ok (YamlValue.mapping .flow pairs, ps)
+  match ps.peek? with
+  | some .flowMappingEnd => .ok (YamlValue.mapping .flow pairs, ps.advance)
+  | _ => .error (.expectedToken "'}'" ps.currentLine none)
 
 /-- Parse the value part of a flow mapping entry.
     After key is parsed, consume optional VALUE token and parse value.
@@ -634,6 +633,11 @@ def parseFlowMappingValue (ps : ParseState) (fuel : Nat)
     (savedPath : YamlPath) (keyContent : String)
     : Except ScanError (YamlValue × ParseState) := do
   let ps := { ps with currentPath := savedPath.push (.key keyContent) }
+  -- Consume retroactive key marker if present.
+  -- Multi-line implicit keys (e.g., {"foo"\n: "bar"}) produce token order:
+  --   scalar "foo", key, value, scalar "bar"
+  -- instead of the normal: key, scalar "foo", value, scalar "bar"
+  let (_, ps) := ps.tryConsume .key
   let (consumed, ps) := ps.tryConsume .value
   let (val, ps) ← if consumed then
     match ps.peek? with

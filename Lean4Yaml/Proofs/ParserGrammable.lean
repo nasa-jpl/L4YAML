@@ -1366,7 +1366,7 @@ theorem parseBlockSequence_wb (tokens : Array (Positioned YamlToken))
     Extracted for use by `handleBlockMappingKeyEntry_wb`. -/
 theorem parseBlockMappingEntryValue_wb (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
-    (_h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens n)
+    (h_ih : ParseNodeWB tokens n)
     (ps : ParseState) (keyHasContent : Bool) (keyLine keyCol : Nat)
     (result : YamlValue × ParseState)
     (h_eq : ps.tokens = tokens)
@@ -1423,7 +1423,7 @@ theorem parseBlockMappingEntryValue_wb (tokens : Array (Positioned YamlToken))
     so that `ps` is inferred from the `h_ok` hypothesis. -/
 theorem bevWB (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
-    (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens n)
+    (h_ih : ParseNodeWB tokens n)
     {ps : ParseState} {kc : Bool} {kl kcol : Nat}
     {result : YamlValue × ParseState}
     (h_ok : parseBlockMappingEntryValue ps fuel kc kl kcol = .ok result)
@@ -1432,7 +1432,7 @@ theorem bevWB (tokens : Array (Positioned YamlToken))
     (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
     flowNesting tokens result.2.pos = flowNesting tokens ps.pos ∧
     result.2.tokens = tokens :=
-  parseBlockMappingEntryValue_wb tokens n fuel h_fuel h_fpsv h_ih
+  parseBlockMappingEntryValue_wb tokens n fuel h_fuel h_ih
       ps kc kl kcol result h_eq h_ok
 
 /-- Well-behavedness of the `.key` branch entry handler:
@@ -1440,7 +1440,7 @@ theorem bevWB (tokens : Array (Positioned YamlToken))
     preserves flowNesting and tokens. -/
 theorem handleBlockMappingKeyEntry_wb (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
-    (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens n)
+    (h_ih : ParseNodeWB tokens n)
     (ps : ParseState) (pairIdx : Nat)
     (result : YamlValue × YamlValue × ParseState)
     (h_eq : ps.tokens = tokens)
@@ -1481,7 +1481,7 @@ theorem handleBlockMappingKeyEntry_wb (tokens : Array (Positioned YamlToken))
   -- emptyNode key goals
   all_goals (try (
     have h_bev := by
-      apply bevWB tokens n fuel h_fuel h_fpsv h_ih
+      apply bevWB tokens n fuel h_fuel h_ih
       · assumption  -- h_ok: determines ps from BEV hypothesis
       · exact h_adv_tok  -- h_eq: ps resolved, matches via def-eq
     exact ⟨empty_scalar_scannable none none false,
@@ -1496,7 +1496,7 @@ theorem handleBlockMappingKeyEntry_wb (tokens : Array (Positioned YamlToken))
     have h_k_tok := h_key_wb.2.2.2
     have h_k_fn := h_key_wb.2.2.1
     have h_bev := by
-      apply bevWB tokens n fuel h_fuel h_fpsv h_ih
+      apply bevWB tokens n fuel h_fuel h_ih
       · assumption  -- h_ok
       · exact h_k_tok  -- h_eq
     exact ⟨h_key_wb.1,
@@ -1512,7 +1512,7 @@ theorem handleBlockMappingKeyEntry_wb (tokens : Array (Positioned YamlToken))
     flowNesting and tokens. -/
 theorem handleBlockMappingValueEntry_wb (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
-    (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens n)
+    (h_ih : ParseNodeWB tokens n)
     (ps : ParseState) (pairIdx : Nat)
     (result : YamlValue × ParseState)
     (h_eq : ps.tokens = tokens)
@@ -1616,7 +1616,7 @@ theorem mapping_recurse
     array is unchanged. -/
 theorem parseBlockMappingLoop_wb (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
-    (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens n)
+    (h_ih : ParseNodeWB tokens n)
     (ps : ParseState) (pairs : Array (YamlValue × YamlValue))
     (result : Array (YamlValue × YamlValue) × ParseState)
     (h_eq : ps.tokens = tokens)
@@ -1648,7 +1648,7 @@ theorem parseBlockMappingLoop_wb (tokens : Array (Positioned YamlToken))
       · simp at h_ok  -- error case
       · rename_i kv_ps heq_handle
         have h_wb := handleBlockMappingKeyEntry_wb tokens n k (by omega)
-            h_fpsv h_ih ps pairs.size kv_ps h_eq h_peek_key heq_handle
+            h_ih ps pairs.size kv_ps h_eq h_peek_key heq_handle
         exact mapping_recurse tokens ps pairs result
             h_pairs_false h_pairs_true
             kv_ps.1 kv_ps.2.1 kv_ps.2.2 k
@@ -1661,7 +1661,7 @@ theorem parseBlockMappingLoop_wb (tokens : Array (Positioned YamlToken))
       · simp at h_ok  -- error case
       · rename_i v_ps heq_handle
         have h_wb := handleBlockMappingValueEntry_wb tokens n k (by omega)
-            h_fpsv h_ih ps pairs.size v_ps h_eq h_peek_val heq_handle
+            h_ih ps pairs.size v_ps h_eq h_peek_val heq_handle
         exact mapping_recurse tokens ps pairs result
             h_pairs_false h_pairs_true
             emptyNode v_ps.1 v_ps.2 k
@@ -1680,7 +1680,7 @@ theorem parseBlockMappingLoop_wb (tokens : Array (Positioned YamlToken))
     Requires `h_peek` because the function unconditionally advances past
     `blockMappingStart` and we need the token to be non-flow. -/
 theorem parseBlockMapping_wb (tokens : Array (Positioned YamlToken))
-    (fuel : Nat) (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens fuel)
+    (fuel : Nat) (h_ih : ParseNodeWB tokens fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_eq : ps.tokens = tokens)
     (h_peek : ps.peek? = some .blockMappingStart)
@@ -1718,7 +1718,7 @@ theorem parseBlockMapping_wb (tokens : Array (Positioned YamlToken))
           Scannable (#[] : Array (YamlValue × YamlValue))[i].2 true := by
         intro _ ⟨_, hi⟩; simp at hi
       have h_loop := parseBlockMappingLoop_wb tokens (k_map + 1) k_map (by omega)
-          h_fpsv h_ih ps.advance #[] (pairs_arr, ps_loop)
+          h_ih ps.advance #[] (pairs_arr, ps_loop)
           h_adv_tok h_empty_false h_empty_true heq_loop
       have h_loop_fn : flowNesting tokens ps_loop.pos =
           flowNesting tokens ps.advance.pos := h_loop.2.2.1
@@ -1852,7 +1852,7 @@ theorem parseImplicitBlockSequenceLoop_wb (tokens : Array (Positioned YamlToken)
 
 /-- `parseImplicitBlockSequence` well-behaved given parseNode IH. -/
 theorem parseImplicitBlockSequence_wb (tokens : Array (Positioned YamlToken))
-    (fuel : Nat) (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens fuel)
+    (fuel : Nat) (h_ih : ParseNodeWB tokens fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_eq : ps.tokens = tokens)
     (h_ok : parseImplicitBlockSequence ps fuel = .ok result) :
@@ -2126,33 +2126,11 @@ theorem parseFlowSequenceLoop_wb (tokens : Array (Positioned YamlToken))
             have h_wb := ih_fuel (by omega) _ _ (by simp [h_node_tok]) (by rw [h4fn]; exact h_flow) (push_all_scannable h_items h_vt) h_ok
             exact ⟨h_wb.1, h_wb.2.1.trans h4fn, h_wb.2.2⟩
 
-/-- When brackets are matched and parseFlowSequenceLoop returns `.ok`,
-    the loop state's `peek?` is `some .flowSequenceEnd`.
-    This is the fuel-sufficiency claim (INTERACTIONS.md Step 2):
-    with matched brackets, sufficient fuel, and a valid token stream,
-    the loop always reaches the closing bracket.
-
-    Proof outline: by induction on fuel, the loop consumes tokens strictly
-    monotonically (pos increases each iteration). With `FlowBracketsMatched`,
-    a `flowSequenceEnd` matching the opening `flowSequenceStart` exists in
-    the token stream. Since the loop stops at `flowSequenceEnd`, it must
-    reach it before fuel runs out. -/
-theorem parseFlowSequenceLoop_reaches_end
-    (tokens : Array (Positioned YamlToken))
-    (h_matched : FlowBracketsMatched tokens)
-    (ps : ParseState) (fuel : Nat)
-    (items : Array YamlValue) (result : Array YamlValue × ParseState)
-    (h_eq : ps.tokens = tokens)
-    (h_ok : parseFlowSequenceLoop ps fuel items = .ok result) :
-    result.2.peek? = some .flowSequenceEnd ∨
-    result.2.pos ≥ tokens.size := by
-  sorry
-
 /-- `parseFlowSequence` well-behaved given parseNode IH.
     Requires `h_peek` so we know the advance consumes `flowSequenceStart`,
     enabling exact flowNesting accounting (+1 at start, −1 at end).
-    Requires `h_matched` (`FlowBracketsMatched`) to rule out the else-branch
-    where the closing `flowSequenceEnd` is missing (Pattern 5 resolution). -/
+    The else-branch (missing `flowSequenceEnd`) is trivially closed because
+    the code returns `.error`, contradicting `h_ok`. -/
 theorem parseFlowSequence_wb (tokens : Array (Positioned YamlToken))
     (fuel : Nat) (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens fuel)
     (h_matched : FlowBracketsMatched tokens)
@@ -2221,22 +2199,8 @@ theorem parseFlowSequence_wb (tokens : Array (Positioned YamlToken))
           exact Scannable.sequence .flow items_arr none none true h_items_true
         · simp only [ParseState.advance]; exact h_net_fn
         · simp only [ParseState.advance]; exact h_loop_tok
-      · -- peek? ≠ flowSequenceEnd (Pattern 5: should be unreachable)
-        -- With FlowBracketsMatched, the loop must reach flowSequenceEnd.
-        -- parseFlowSequenceLoop_reaches_end gives us:
-        --   result.2.peek? = some .flowSequenceEnd ∨ result.2.pos ≥ tokens.size
-        -- The first disjunct contradicts h_peek_not_end (the else-branch hypothesis).
-        -- The second disjunct leads to a contradiction because the loop's
-        -- position can't exceed the token array when FlowBracketsMatched holds.
-        -- For now, delegate to parseFlowSequenceLoop_reaches_end (sorry'd).
-        rename_i h_peek_not_end
-        have h_reaches := parseFlowSequenceLoop_reaches_end tokens h_matched
-            ps.advance k #[] (items_arr, ps_loop) h_adv_tok heq_loop
-        simp only [Except.ok.injEq] at h_ok; subst h_ok
-        -- The loop result's peek? must be flowSequenceEnd or pos out of bounds.
-        -- Both contradict h_peek_not_end in a well-formed setting.
-        -- This sorry is now a FOCUSED claim: the loop reaches the end bracket.
-        sorry
+      · -- peek? ≠ flowSequenceEnd → code returns .error, contradicts h_ok
+        simp at h_ok
 
 /-! ### §5d₃  Wadler-style "theorems for free" for `parseFlowMappingLoop`
 
@@ -2267,10 +2231,17 @@ theorem parseFlowMappingValue_tokens_preserved
     result.2.tokens = tokens := by
   unfold parseFlowMappingValue at h_ok
   simp only [bind, Except.bind] at h_ok
-  have h_tc_tok : ({ ps with currentPath := savedPath.push (.key keyContent) }.tryConsume .value).2.tokens = tokens :=
-    (tryConsume_with_path_tokens ps (savedPath.push (.key keyContent)) .value).trans h_eq
-  generalize hg : ParseState.tryConsume _ _ = tc at h_ok
-  have h_tcr_tok : tc.2.tokens = tokens := hg ▸ h_tc_tok
+  -- Token preservation chain: path → tryConsume .key → tryConsume .value
+  have h1_tok : ({ ps with currentPath := savedPath.push (.key keyContent) }.tryConsume .key).2.tokens = tokens :=
+    (tryConsume_with_path_tokens ps (savedPath.push (.key keyContent)) .key).trans h_eq
+  generalize hg1 : ParseState.tryConsume
+    { ps with currentPath := savedPath.push (.key keyContent) }
+    YamlToken.key = tc1 at h_ok
+  have h1r : tc1.2.tokens = tokens := hg1 ▸ h1_tok
+  have h2_tok : (tc1.2.tryConsume .value).2.tokens = tokens :=
+    (tryConsume_tokens tc1.2 .value).trans h1r
+  generalize hg : ParseState.tryConsume tc1.2 .value = tc at h_ok
+  have h_tcr_tok : tc.2.tokens = tokens := hg ▸ h2_tok
   split at h_ok
   · -- consumed = true → match peek?
     split at h_ok
