@@ -94,12 +94,24 @@ For more details, see [Proofs/README](./Lean4Yaml/Proofs/README.md).
 
 <details>
 
-### Built on lean4-parser
+### Roadmap
 
-Uses [fgdorais/lean4-parser](https://github.com/fgdorais/lean4-parser) as the parser combinator library, providing:
-- Parameterized stream/error types (`ParserT ε σ τ m α`)
-- Backtracking with `withBacktracking`
-- Capture combinators for provenance tracking
+#### Version 0.1 (current work-in-progress)
+
+YAML1.2.2-compliant verified parser without resource limitations.
+
+Axiom-free, sorry-free proofs of correctness, completeness and soundness of both the scanner and token-based parser.`
+
+#### Version 0.2
+
+Improved type safety with explicit exception types for all APIs.
+
+#### Version 0.3
+
+Security mechanisms to prevent **two critical vulnerability classes**:
+
+1. **Denial-of-Service (DoS) attacks**: Billion laugh attacks, resource exhaustion, and cyclic structures
+2. **Arbitrary code execution (ACE)**: Unsafe tags and directives that could execute code during deserialization
 
 ### Position-Aware Stream
 

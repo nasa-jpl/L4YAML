@@ -24,6 +24,12 @@ defaultTargets = [
 [leanOptions]
 "autoImplicit" = false
 
+# see https://crates.io/crates/lean-tui
+[[require]]
+name = "LeanPrism"
+git = "https://codeberg.org/wvhulle/lean-prism.git"
+rev = "main"
+
 [[require]]
 name = "importGraph"
 git = "https://github.com/leanprover-community/import-graph"
