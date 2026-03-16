@@ -1,3 +1,5 @@
+import LeanPrism
+
 import Lean4Yaml.Types
 import Lean4Yaml.YamlSpec
 import Lean4Yaml.Grammar
