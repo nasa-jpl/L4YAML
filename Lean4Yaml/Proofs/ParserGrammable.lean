@@ -3242,7 +3242,32 @@ theorem parseDocument_value_cases
     (∃ ps_inner ps_after,
       ps_inner.tokens = ps.tokens ∧
       parseNode ps_inner (4 * ps.tokens.size + 4) = .ok (doc.value, ps_after)) := by
-  sorry
+  unfold parseDocument at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · simp at h_ok
+  · rename_i prep_result h_prep
+    obtain ⟨dirs, ps1⟩ := prep_result
+    dsimp only [] at h_ok
+    have h_prep_tok : ps1.tokens = ps.tokens :=
+      prepareDocumentState_tokens_preserved ps dirs ps1 h_prep
+    split at h_ok
+    -- documentEnd, streamEnd, none → emptyNode
+    all_goals (try (
+      simp only [Except.ok.injEq, Prod.mk.injEq] at h_ok
+      obtain ⟨h_doc, _⟩ := h_ok
+      subst h_doc; left; rfl))
+    -- else → parseNode
+    split at h_ok
+    · simp at h_ok
+    · rename_i node_result h_pn
+      obtain ⟨val, ps2⟩ := node_result
+      dsimp only [] at h_ok
+      simp only [Except.ok.injEq, Prod.mk.injEq] at h_ok
+      obtain ⟨h_doc, _⟩ := h_ok
+      right
+      subst h_doc
+      exact ⟨ps1, ps2, h_prep_tok, by rw [h_prep_tok] at h_pn; exact h_pn⟩
 
 /-- **C2a·core**: A document produced by `parseDocument` has a `Scannable` root value.
 
