@@ -2580,7 +2580,31 @@ theorem parseDocument_tokens_preserved
     (h_fpsv : FlowAwarePSV ps.tokens)
     (h_ok : parseDocument ps = .ok (doc, ps')) :
     ps'.tokens = ps.tokens := by
-  sorry
+  unfold parseDocument at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · simp at h_ok
+  · rename_i prep_result h_prep
+    obtain ⟨dirs, ps1⟩ := prep_result
+    dsimp only [] at h_ok
+    have h_prep_tok : ps1.tokens = ps.tokens :=
+      prepareDocumentState_tokens_preserved ps dirs ps1 h_prep
+    split at h_ok
+    all_goals (try (
+      simp only [Except.ok.injEq, Prod.mk.injEq] at h_ok
+      obtain ⟨_, rfl⟩ := h_ok
+      exact h_prep_tok))
+    split at h_ok
+    · simp at h_ok
+    · rename_i node_result h_pn
+      obtain ⟨val, ps2⟩ := node_result
+      dsimp only [] at h_ok
+      have h_node_tok : ps2.tokens = ps.tokens :=
+        (parseNode_tokens_preserved ps.tokens h_fpsv ps1 (4 * ps1.tokens.size + 4)
+          (val, ps2) h_prep_tok h_pn).trans h_prep_tok
+      simp only [Except.ok.injEq, Prod.mk.injEq] at h_ok
+      obtain ⟨_, rfl⟩ := h_ok
+      exact h_node_tok
 
 /-- **Factoring lemma**: `parseDocument`'s root value is either `emptyNode`
     or the result of `parseNode` at some state with `tokens` preserved.
