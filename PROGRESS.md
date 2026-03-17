@@ -18,7 +18,7 @@
 
 | # | Sorry | Line | Approach | Difficulty |
 |---|-------|------|----------|------------|
-| 1 | `prepareDocumentState_tokens_preserved` | L2565 | Unfold `prepareDocumentState` (directives + tryConsume chain). Mechanical do-notation unfolding. | **Easy** |
+| 1 | `prepareDocumentState_tokens_preserved` | L2565 | Unfold `prepareDocumentState` (directives + tryConsume chain). Mechanical do-notation unfolding. | ✅ Proved |
 | 2 | `parseDocument_tokens_preserved` | L2573 | Chain `prepareDocumentState_tokens_preserved` + `parseNode_tokens_preserved`. Depends on #1. | **Easy** |
 | 3 | `parseFlowMapping_wb` | L2407 | Mirrors `parseFlowSequence_wb` (proved). Same structure: advance past `flowMappingStart`, loop invariant, advance past `flowMappingEnd`, net-zero flowNesting. Only remaining sub-parser WB sorry. | **Medium** |
 | 4 | `parseNodeContent_wb` | L2434 | Dispatches to the 6 proved `_wb` lemmas + scalar/alias/empty cases. Monadic unfolding of `parseNodeContent`. | **Medium** |
