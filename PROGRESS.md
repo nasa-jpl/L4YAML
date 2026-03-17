@@ -14,13 +14,37 @@
 - `parseImplicitBlockSequenceLoop_wb` — loop invariant for implicit block sequence
 - `FlowAwarePSV` hypothesis removed from entire block mapping chain (unused)
 
+## New Findings (2026-03-16, 2nd investigation)
+
+- First direct attempt at `parseFlowMapping_wb` was reverted; the file is back to a clean state with only the intended `sorry`s.
+- The failed attempt confirmed that `parseFlowMapping_wb` wants the same proof shape as `parseFlowSequence_wb`, but the current file is missing two intermediate lemmas:
+	- `parseFlowMappingValue_wb`
+	- `parseFlowMappingLoop_wb`
+- `parseFlowMappingValue_wb` is now proved and compiles cleanly. It establishes:
+	- returned value is `Scannable` in block context
+	- returned value is `Scannable` in flow context when `flowNesting > 0`
+	- `flowNesting` is preserved
+	- tokens are preserved
+- Second pass on `parseFlowMappingLoop_wb` was also reverted after diagnostics. The blocker is now clearer:
+	- the explicit-key branch is not a simple binary split
+	- after consuming `.key`, the loop has three empty-key branches (`.value`, `.flowEntry`, `.flowMappingEnd`) plus the parsed-key branch
+	- trying to treat that subtree as one branch causes `parseNodeWB_apply` to be fed equalities for `parseFlowMappingValue` instead of `parseNode`
+	- the wrapper/helper design still looks right, but the loop proof needs those four post-key branches handled explicitly or via a dedicated local dispatch lemma
+- The wrapper statement likely also wants an explicit
+	`h_peek : ps.peek? = some .flowMappingStart`, exactly like `parseFlowSequence_wb`.
+	Without that hypothesis, the `+1` flow-nesting step from the initial advance is awkward to recover from `h_ok` alone.
+- Recommended second pass:
+	1. Keep `parseFlowMappingValue_wb` as the stable helper.
+	2. Re-attempt `parseFlowMappingLoop_wb` with a small local recurse lemma and explicit handling of the four post-key cases.
+	3. Prove `parseFlowMapping_wb` as a thin wrapper mirroring `parseFlowSequence_wb`.
+
 ## Remaining Sorrys — Priority Order
 
 | # | Sorry | Line | Approach | Difficulty |
 |---|-------|------|----------|------------|
 | 1 | `prepareDocumentState_tokens_preserved` | L2565 | Unfold `prepareDocumentState` (directives + tryConsume chain). Mechanical do-notation unfolding. | ✅ Proved |
 | 2 | `parseDocument_tokens_preserved` | L2573 | Chain `prepareDocumentState_tokens_preserved` + `parseNode_tokens_preserved`. Depends on #1. | ✅ Proved |
-| 3 | `parseFlowMapping_wb` | L2407 | Mirrors `parseFlowSequence_wb` (proved). Same structure: advance past `flowMappingStart`, loop invariant, advance past `flowMappingEnd`, net-zero flowNesting. Only remaining sub-parser WB sorry. | **Medium** |
+| 3 | `parseFlowMapping_wb` | L2407 | Second pass: first add `parseFlowMappingValue_wb`, then `parseFlowMappingLoop_wb`, then mirror `parseFlowSequence_wb` for the wrapper. Likely add explicit `h_peek : ps.peek? = some .flowMappingStart`. | **Medium** |
 | 4 | `parseNodeContent_wb` | L2434 | Dispatches to the 6 proved `_wb` lemmas + scalar/alias/empty cases. Monadic unfolding of `parseNodeContent`. | **Medium** |
 | 5 | `parseNode_wb_all` | L2469 | Strong induction. Fills in once `parseFlowMapping_wb` + `parseNodeContent_wb` are proved. | **Easy once deps done** |
 | 6 | `parseDocument_value_cases` | L2589 | Do-notation decomposition — identify emptyNode vs parseNode branch. | **Medium** |
