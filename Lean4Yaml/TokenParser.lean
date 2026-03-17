@@ -646,6 +646,17 @@ def parseFlowMappingValue (ps : ParseState) (fuel : Nat)
   else .ok (emptyNode, ps)
   .ok (val, { ps with currentPath := savedPath })
 
+/-- Parse the key in an explicit-key flow mapping entry.
+    After the KEY token is consumed, dispatches:
+    - `.value` / `.flowEntry` / `.flowMappingEnd` → emptyNode (no explicit key content)
+    - otherwise → parseNode -/
+def parseExplicitKey (ps : ParseState) (fuel : Nat)
+    : Except ScanError (YamlValue × ParseState) :=
+  match ps.peek? with
+  | some .value | some .flowEntry | some .flowMappingEnd =>
+    .ok (emptyNode, ps)
+  | _ => parseNode ps fuel
+
 /-- Tail-recursive loop for flow mapping entries. -/
 def parseFlowMappingLoop (ps : ParseState) (fuel : Nat)
     (pairs : Array (YamlValue × YamlValue)) : Except ScanError (Array (YamlValue × YamlValue) × ParseState) := do
@@ -664,10 +675,7 @@ def parseFlowMappingLoop (ps : ParseState) (fuel : Nat)
       | some .flowMappingEnd => .ok (pairs, ps)
       | some .key => do
         let ps := ps.advance
-        let (key, ps) ← match ps.peek? with
-          | some .value | some .flowEntry | some .flowMappingEnd =>
-            .ok (emptyNode, ps)
-          | _ => parseNode ps fuel
+        let (key, ps) ← parseExplicitKey ps fuel
         let keyContent := match key with | .scalar s => s.content | _ => s!"{pairs.size}"
         let (val, ps) ← parseFlowMappingValue ps fuel ps.currentPath keyContent
         parseFlowMappingLoop ps fuel (pairs.push (key, val))
