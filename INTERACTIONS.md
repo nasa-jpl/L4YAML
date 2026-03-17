@@ -1075,3 +1075,109 @@ un-reduced function call. This is Pattern 4b's variant of the "tactic vs kernel
 reduction" gap from Pattern 4.
 
 Sorry count: 5 → 4.
+
+---
+
+## Pattern 4c: Wadler-style extraction of `parseStreamLoop`
+
+### Problem
+
+`parseStream` contained a `for _ in [:fuel] do` loop with 3 mutable variables
+(`ps`, `docs`, `streamState`), an `Except` monad, and 3 break paths (streamEnd,
+none, stuck). Lean 4's `for` desugars to `Range.forIn` → `List.forIn'` with
+`ForInStep` wrappers, making direct tactic reasoning intractable.
+
+The theorem `parseStream_doc_from_parseDocument` states: every document in the
+output was produced by `parseDocument` with the same token array.
+
+### Solution: Extract tail-recursive `parseStreamLoop`
+
+**Third application of the Wadler-style extraction pattern** (after
+`validateNodeProps` in Pattern 4 and `parseExplicitKey` in Pattern 4a).
+
+1. **Extracted** `parseStreamLoop` as a tail-recursive function:
+   ```lean
+   def parseStreamLoop (ps : ParseState) (docs : Array YamlDocument)
+       (streamState : StreamState) (fuel : Nat) :
+       Except ScanError (Array YamlDocument) :=
+     match fuel with
+     | 0 => .ok docs
+     | fuel + 1 => match ps.peek? with
+       | some .streamEnd => .ok docs
+       | none => .ok docs
+       | some tok =>
+         if !streamState.validNextToken tok then .error (...)
+         else let savedPos := ps.pos
+           match parseDocument ps with
+           | .error e => .error e
+           | .ok (doc, ps') =>
+             let docs := docs.push doc
+             let ps := { ps' with anchors := #[], ... }
+             let (consumed, ps) := ps.tryConsume .documentEnd
+             ...
+             if ps.pos == savedPos then .ok docs
+             else parseStreamLoop ps docs streamState fuel
+   ```
+
+2. **Simplified** `parseStream` to a thin wrapper:
+   ```lean
+   def parseStream tokens := do
+     let ps := { tokens := tokens, ... }
+     let ps ← ps.expect .streamStart "STREAM-START"
+     parseStreamLoop ps #[] .initial tokens.size
+   ```
+
+3. **Proved** `parseStreamLoop_docs_from_parseDocument` by induction on `fuel`:
+   - Base (fuel=0): accumulator invariant holds trivially
+   - Step: unfold → split on `peek?` → streamEnd/none use accumulator directly
+   - `some tok`: split on validation (error→contradiction), then
+     `generalize`+`cases` on `parseDocument` result (error→contradiction),
+     ok→chain token preservation through `parseDocument_tokens_preserved` +
+     struct update + `tryConsume_tokens`, extend accumulator with
+     `Array.toList_push`, recurse via IH
+
+4. **Wrapper proof** `parseStream_doc_from_parseDocument`: unfold `parseStream`,
+   `simp [bind, Except.bind]`, split on `expect`, apply loop lemma with empty
+   accumulator.
+
+### Key technique: `generalize`+`cases` for match through `let`
+
+The `parseStreamLoop` body has `let savedPos := ps.pos` before the
+`match parseDocument ps`. Lean 4's `split` tactic cannot see through `let`
+bindings in hypotheses. Solution:
+
+```lean
+-- Clear the let binding
+dsimp only [] at h_ok
+-- Now generalize the match discriminant
+generalize h_pd : parseDocument ps = pd_result at h_ok
+cases pd_result with
+| error e => simp at h_ok
+| ok val =>
+  obtain ⟨doc_new, ps'⟩ := val
+  dsimp only [] at h_ok  -- reduce remaining lets
+  ...
+```
+
+This avoids the variable-mistyping issue where `split at h_ok` + `rename_i`
+would bind the wrong inaccessible names.
+
+### Guards
+
+No Wadler guards were needed because all consumers of
+`parseStream_doc_from_parseDocument` were already `sorry`-based — there was
+no proved code to protect.
+
+### Verification
+
+- Build: 322/322 ✔
+- Test suite: 857 passed, 12 failed, 151 skipped (identical to pre-extraction)
+- Sorry count: 3 → 2
+
+### Result
+
+All algorithmic/structural theorems in the C2 chain are now proved.
+The 2 remaining sorrys are genuine semantic spec gaps:
+- `parseStream_output_aliases_resolve` — scanner doesn't validate alias ordering
+- `parseStream_output_anchors_wellformed` — `∀ inFlow` is unsatisfiable for
+  cross-context aliasing
