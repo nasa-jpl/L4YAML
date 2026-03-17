@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Build:** 322/322 ✔, **5 sorry warnings** (all in ParserGrammable.lean C2 chain).
+**Build:** 322/322 ✔, **3 sorry warnings** (all in ParserGrammable.lean C2 chain).
 **Guards:** 362 active (65 Advanced + 83 Block + 16 Document + 96 Error + 44 Flow + 58 Scalar), 3 commented out (scanner colon-chain bug: 58MP, 5T43, DBG4).
 **Test suite:** 857 passed, 12 failed (same 3 tests × 4 stages), 151 skipped.
 
@@ -52,7 +52,7 @@
 | 3 | `parseFlowMapping_wb` | L2773 | ✅ Proved. Extracted `parseExplicitKey` (2nd-order Pattern 4 mitigation), then proved loop + wrapper. Added `h_peek` hypothesis. | ✅ Proved |
 | 4 | `parseNodeContent_wb` | L2859 | ✅ Proved. Dispatches to 6 sub-parser `_wb` lemmas + scalar/empty cases. Added `h_matched` parameter. | ✅ Proved |
 | 5 | `parseNode_wb_all` | L2933 | ✅ Proved. Wadler-style extraction of `validateNodeProps`, then `show`-based defeq matching to handle applyNodeFinalization expansion in goal. | ✅ Proved |
-| 6 | `parseDocument_value_cases` | L2589 | Do-notation decomposition — identify emptyNode vs parseNode branch. | **Medium** |
+| 6 | `parseDocument_value_cases` | L2589 | ✅ Proved. Unfold + split on peek? match, `subst` for emptyNode arms, `rw [h_prep_tok] at h_pn` for fuel alignment. | ✅ Proved |
 | 7 | `parseStream_doc_from_parseDocument` | L2651 | `Range.forIn` loop invariant. Lean 4 for-loop reasoning is non-trivial. | **Hard** |
 | 8 | `parseStream_output_aliases_resolve` | L2698 | Scanner doesn't validate alias ordering (§7.1). Needs scanner-level invariant. | **Hard / spec gap** |
 | 9 | `parseStream_output_anchors_wellformed` | L2731 | `∀ inFlow` in `WellFormedAnchors` is unsatisfiable for cross-context aliasing. Semantic gap. | **Hard / spec gap** |
@@ -79,5 +79,5 @@
 | `parseNodeContent_wb` | ✅ Proved (dispatches to all sub-parser `_wb` lemmas) |
 | `parseNode_wb_all` | ✅ Proved (Wadler-style validateNodeProps extraction + `show` defeq) |
 
-**Recommended path:** #6, which would reduce sorrys from 4 to 3 (+ the 2 semantic spec-gap sorrys #8–#9). All sub-parser WB theorems, `parseNodeContent_wb`, and `parseNode_wb_all` are now proved.
+**Current state:** 3 sorrys remain. #7 (`parseStream_doc_from_parseDocument`) is a `Range.forIn` loop invariant — hard but tractable. #8–#9 are semantic spec gaps unlikely to close without scanner changes.
 
