@@ -769,3 +769,131 @@ removed entirely as it's no longer needed.
 **Result:** Sorry count reduced from 11 → 9.
 - Removed: `parseFlowSequenceLoop_reaches_end` (1 sorry)
 - Removed: `parseFlowSequence_wb` else-branch (1 sorry)
+
+### 2nd-Order Refactoring: `parseExplicitKey` Extraction (2026-03-16)
+
+After the Step 2 refactoring extracted `parseFlowMappingValue` (shared
+tryConsume + value dispatch), the remaining `parseFlowMappingLoop` body
+still contained a **4-way key dispatch** inside the `some .key` branch:
+
+```lean
+match ps.advance.peek? with   -- after consuming KEY token
+| some .value | some .flowEntry | some .flowMappingEnd => .ok (emptyNode, ps)
+| _ => parseNode ps fuel
+```
+
+This is a **2nd-order instance of Pattern 4**: the first extraction
+(`parseFlowMappingValue`) reduced the per-branch proof from ~60 lines to
+~30 lines, but still left **2 content branches × 2 separator paths =
+4+ recursive goals** in the proof, each requiring separate flowNesting
+chain construction. Three successive proof attempts (direct wrapper,
+exhaustive splitting + bulk rename_i, named helper theorems) all failed:
+the 1st and 2nd were reverted; the 3rd compiled but had match generalization
+mismatches in helper theorems.
+
+**Root cause:** The 4-way key dispatch (`emptyNode` × 3 token cases +
+`parseNode` × 1 catch-all) appeared INLINE in the loop body. Each branch
+independently needed `Scannable` proof + flowNesting chain, and Lean 4's
+`split at h_ok` created a goal for each, leading to ~10 total goals after
+combining with the 2 separator paths.
+
+#### Solution: Extract `parseExplicitKey`
+
+**Observation:** The 4-way key dispatch is a pure function of `ps.peek?` and
+`fuel` — it doesn't depend on the separator path or accumulator state. By
+extracting it as a named function, the loop body "sees" a single opaque call
+with one `_wb` theorem, collapsing 4 key goals into 1.
+
+```lean
+-- TokenParser.lean, inside mutual block:
+def parseExplicitKey (ps : ParseState) (fuel : Nat)
+    : Except ScanError (YamlValue × ParseState) :=
+  match ps.peek? with
+  | some .value | some .flowEntry | some .flowMappingEnd => .ok (emptyNode, ps)
+  | _ => parseNode ps fuel
+```
+
+**Helper theorems:**
+
+| Theorem | Purpose |
+|---------|---------|
+| `parseExplicitKey_tokens_preserved` | Token array unchanged |
+| `parseExplicitKey_wb` | Key is Scannable, flowNesting/tokens preserved |
+| `explicitKey_val_recurse` | Chains `_wb` + `parseFlowMappingValue_wb` + recursion |
+| `implicitKey_val_recurse` | Same for implicit-key (direct `parseNode`) paths |
+
+**Proof structure after extraction:**
+
+```
+parseFlowMappingLoop_wb:
+  induction fuel
+  | zero => trivial
+  | succ k ih_fuel =>
+    unfold; split (flowMappingEnd vs other)
+    10× split at h_ok   -- exhaust all match/if
+    Phase 1: contradiction  (error goals)
+    Phase 2: first | subst+rfl | cases+rfl | advance+flowNesting chain | skip
+    Phase 3: first | explicitKey_val_recurse (sep+key) | explicitKey_val_recurse (key-only) | skip
+    Phase 4: first | implicitKey_val_recurse (sep) | implicitKey_val_recurse (direct)
+```
+
+Total proof: ~80 lines (down from ~300 in the failed 3rd attempt, ~320
+projected for a monolithic approach). The `maxHeartbeats` dropped from
+`1600000` to `800000`.
+
+#### Wadler Guard Regression Results
+
+The extraction immediately broke `parseFlowMappingLoop_tokens_preserved`
+(Wadler guard #1) — the proof referenced `parseNodeWB_apply` directly on
+the loop body, but the body now had `parseExplicitKey` instead of inline
+`parseNode`. This confirmed the guards' value: they detected the structural
+change instantly.
+
+New helper `parseExplicitKey_tokens_preserved` was added, and the
+`_tokens_preserved` proof's Phase 3 was rewritten to use it. The
+`_pairs_grow` guard (Wadler guard #2) continued to work without changes
+because it uses a generic `all_goals (first | ...)` closer that doesn't
+reference specific sub-function names.
+
+**Lesson:** Wadler guards with varying specificity give different signal:
+- **Specific guards** (`_tokens_preserved`): break on structural changes,
+  forcing proof updates that verify the new structure
+- **Generic guards** (`_pairs_grow`): survive refactoring unchanged,
+  confirming the accumulator pattern is preserved
+
+Both signals are valuable for different reasons.
+
+#### Pattern 4 Recursive Depth
+
+This establishes that Pattern 4 can require **iterative extraction**:
+
+| Step | Extraction | Branches eliminated | Net goals |
+|------|-----------|---------------------|-----------|
+| 0 (original) | — | — | ~20 (2 entry × 4 key × 2+ value) |
+| 1 (2026-03-14) | `parseFlowMappingValue` | Value dispatch (4→1) | ~10 (2 entry × 4 key × 1 value) |
+| 2 (2026-03-16) | `parseExplicitKey` | Key dispatch (4→1) | ~4 (2 entry × 1 key × 1 value) |
+
+The general principle: Pattern 4 mitigation is not one-shot. After each
+extraction, the REMAINING branches may still exhibit combinatorial explosion.
+Re-applying the Wadler-guard methodology at each step ensures correctness
+while progressively simplifying the proof.
+
+#### `parseFlowMapping_wb` Wrapper
+
+With `parseFlowMappingLoop_wb` proved, the wrapper theorem follows the
+same pattern as `parseFlowSequence_wb` (already proved):
+
+1. Unfold `parseFlowMapping`, split on fuel
+2. Advance past `flowMappingStart` → flowNesting increases by 1
+3. Apply `parseFlowMappingLoop_wb` with empty initial pairs
+4. Split on `flowMappingEnd` peek: advance → flowNesting decreases by 1
+   (net zero); else → `.error` contradiction
+
+Key difference from sequences: `Scannable.mapping .flow` requires children
+to be `Scannable _ true` even when the outer flow parameter is `false`
+(because `false || (.flow == .flow) = true`). So the proof uses
+`h_pairs_true` for both the `false` and `true` `Scannable` constructors.
+
+**Result:** Sorry count reduced from 9 → 7.
+- Proved: `parseFlowMappingLoop_wb` (1 sorry removed)
+- Proved: `parseFlowMapping_wb` (1 sorry removed)

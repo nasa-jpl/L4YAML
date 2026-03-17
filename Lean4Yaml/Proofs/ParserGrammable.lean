@@ -2333,11 +2333,54 @@ theorem parseFlowMappingValue_tokens_preserved
   · -- consumed = false → emptyNode
     simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_tcr_tok
 
+/-- Token preservation for `parseExplicitKey`: the token array is unchanged. -/
+theorem parseExplicitKey_tokens_preserved
+    (tokens : Array (Positioned YamlToken))
+    (n : Nat) (h_ih : ParseNodeWB tokens n)
+    (ps : ParseState) (fuel : Nat) (h_fuel : fuel ≤ n)
+    (result : YamlValue × ParseState)
+    (h_eq : ps.tokens = tokens)
+    (h_ok : parseExplicitKey ps fuel = .ok result) :
+    result.2.tokens = tokens := by
+  unfold parseExplicitKey at h_ok
+  split at h_ok
+  all_goals (try (simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_eq))
+  exact (parseNodeWB_apply h_ih h_eq h_ok (by omega)).2.2.2
+
+/-- Well-behavedness of `parseExplicitKey`:
+    the returned key is Scannable, flowNesting preserved, tokens preserved.
+    Dispatches emptyNode (for `.value`/`.flowEntry`/`.flowMappingEnd`) or parseNode. -/
+theorem parseExplicitKey_wb
+    (tokens : Array (Positioned YamlToken))
+    (n fuel : Nat) (h_fuel : fuel ≤ n)
+    (h_ih : ParseNodeWB tokens n)
+    (ps : ParseState)
+    (result : YamlValue × ParseState)
+    (h_eq : ps.tokens = tokens)
+    (h_ok : parseExplicitKey ps fuel = .ok result) :
+    Scannable result.1 false ∧
+    (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
+    flowNesting tokens result.2.pos = flowNesting tokens ps.pos ∧
+    result.2.tokens = tokens := by
+  unfold parseExplicitKey at h_ok
+  split at h_ok
+  · simp only [Except.ok.injEq] at h_ok; subst h_ok
+    exact ⟨empty_scalar_scannable none none false,
+           fun _ => empty_scalar_scannable none none true, rfl, h_eq⟩
+  · simp only [Except.ok.injEq] at h_ok; subst h_ok
+    exact ⟨empty_scalar_scannable none none false,
+           fun _ => empty_scalar_scannable none none true, rfl, h_eq⟩
+  · simp only [Except.ok.injEq] at h_ok; subst h_ok
+    exact ⟨empty_scalar_scannable none none false,
+           fun _ => empty_scalar_scannable none none true, rfl, h_eq⟩
+  · exact parseNodeWB_apply h_ih h_eq h_ok (by omega)
+
 set_option maxHeartbeats 800000 in
 /-- Token preservation: `parseFlowMappingLoop` never mutates the token array.
     Free theorem from the state-threading type.
     Proved via induction on fuel, using `parseFlowMappingValue_tokens_preserved`
-    for the extracted value-dispatch and `parseNodeWB_apply` for key parsing. -/
+    for the extracted value-dispatch and `parseExplicitKey_tokens_preserved`
+    for explicit key dispatch. -/
 theorem parseFlowMappingLoop_tokens_preserved
     (tokens : Array (Positioned YamlToken))
     (n : Nat)
@@ -2369,15 +2412,6 @@ theorem parseFlowMappingLoop_tokens_preserved
       all_goals (try (split at h_ok))
       all_goals (try (split at h_ok))
       all_goals (try (split at h_ok))
-      all_goals (try (split at h_ok))
-      all_goals (try (split at h_ok))
-      all_goals (try (split at h_ok))
-      all_goals (try (split at h_ok))
-      all_goals (try (split at h_ok))
-      all_goals (try (split at h_ok))
-      all_goals (try (split at h_ok))
-      all_goals (try (split at h_ok))
-      all_goals (try (split at h_ok))
       -- Phase 1: Close error goals
       all_goals (try contradiction)
       all_goals (try (simp at h_ok))
@@ -2386,14 +2420,16 @@ theorem parseFlowMappingLoop_tokens_preserved
       all_goals (try (simp only [Except.ok.injEq] at h_ok; subst h_ok; simp only [ParseState.advance_tokens]; exact h_eq))
       all_goals (try (subst h_ok; exact h_eq))
       all_goals (try (subst h_ok; simp only [ParseState.advance_tokens]; exact h_eq))
-      -- Phase 3: remaining goals should all be recursive calls
-      -- EmptyNode paths: rename auto-generated names, derive token chain
+      -- Phase 3: Recursive calls — explicit key (parseExplicitKey) or implicit key (parseNode)
+      -- Explicit key paths: parseExplicitKey ps.advance k → parseFlowMappingValue → recurse
       all_goals (try (
-        rename_i v_pFMV heq_pFMV
+        rename_i v_ek heq_ek _ v_pFMV heq_pFMV
+        have h_kt := parseExplicitKey_tokens_preserved tokens n h_ih _ k
+          (by omega) v_ek (by simp only [ParseState.advance_tokens]; exact h_eq) heq_ek
         have h_vt := parseFlowMappingValue_tokens_preserved tokens n h_ih _ k
-          (by omega) _ _ v_pFMV (by simp only [ParseState.advance_tokens]; exact h_eq) heq_pFMV
+          (by omega) _ _ v_pFMV h_kt heq_pFMV
         exact ih_fuel _ (by omega) _ h_vt h_ok))
-      -- ParseNode paths: rename auto-generated names, derive token chain
+      -- Implicit key paths: parseNode ps.advance k → parseFlowMappingValue → recurse
       all_goals (try (
         rename_i v_node heq_node _ v_pFMV heq_pFMV
         have h_nt := (parseNodeWB_apply h_ih
@@ -2451,9 +2487,168 @@ theorem parseFlowMappingLoop_pairs_grow
            simp [Array.size_push] at h_rec ⊢
            omega))
 
+/-- Flow-version recursion helper for `parseFlowMappingLoop_wb`.
+    Threads scannable / flowNesting / token facts through the recursive tail. -/
+theorem flow_mapping_recurse
+    (tokens : Array (Positioned YamlToken))
+    (ps : ParseState)
+    (pairs : Array (YamlValue × YamlValue))
+    (result : Array (YamlValue × YamlValue) × ParseState)
+    (h_flow : flowNesting tokens ps.pos > 0)
+    (h_pairs_false : ∀ i : Fin pairs.size,
+      Scannable pairs[i].1 false ∧ Scannable pairs[i].2 false)
+    (h_pairs_true : ∀ i : Fin pairs.size,
+      Scannable pairs[i].1 true ∧ Scannable pairs[i].2 true)
+    (key val : YamlValue) (ps_rec : ParseState) (k : Nat)
+    (h_kf : Scannable key false) (h_vf : Scannable val false)
+    (h_kt : Scannable key true) (h_vt : Scannable val true)
+    (h_fn_rec : flowNesting tokens ps_rec.pos = flowNesting tokens ps.pos)
+    (h_tok_rec : ps_rec.tokens = tokens)
+    (h_rec : parseFlowMappingLoop ps_rec k (pairs.push (key, val)) = .ok result)
+    (ih_fuel : ∀ (ps' : ParseState) (pairs' : Array (YamlValue × YamlValue)),
+      ps'.tokens = tokens →
+      flowNesting tokens ps'.pos > 0 →
+      (∀ i : Fin pairs'.size,
+        Scannable pairs'[i].1 false ∧ Scannable pairs'[i].2 false) →
+      (∀ i : Fin pairs'.size,
+        Scannable pairs'[i].1 true ∧ Scannable pairs'[i].2 true) →
+      parseFlowMappingLoop ps' k pairs' = .ok result →
+      (∀ i : Fin result.1.size,
+        Scannable result.1[i].1 false ∧ Scannable result.1[i].2 false) ∧
+      (∀ i : Fin result.1.size,
+        Scannable result.1[i].1 true ∧ Scannable result.1[i].2 true) ∧
+      (flowNesting tokens result.2.pos = flowNesting tokens ps'.pos) ∧
+      (result.2.tokens = tokens)) :
+    (∀ i : Fin result.1.size,
+      Scannable result.1[i].1 false ∧ Scannable result.1[i].2 false) ∧
+    (∀ i : Fin result.1.size,
+      Scannable result.1[i].1 true ∧ Scannable result.1[i].2 true) ∧
+    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) ∧
+    (result.2.tokens = tokens) := by
+  have h_flow_rec : flowNesting tokens ps_rec.pos > 0 := by rw [h_fn_rec]; exact h_flow
+  have h_wb := ih_fuel ps_rec (pairs.push (key, val)) h_tok_rec h_flow_rec
+      (push_pair_scannable h_pairs_false ⟨h_kf, h_vf⟩)
+      (push_pair_scannable h_pairs_true ⟨h_kt, h_vt⟩) h_rec
+  exact ⟨h_wb.1, h_wb.2.1, h_wb.2.2.1.trans h_fn_rec, h_wb.2.2.2⟩
+
+/-- Helper: close a goal with parseExplicitKey ok + parseFlowMappingValue ok + recurse.
+    Combines `parseExplicitKey_wb` + `parseFlowMappingValue_wb` + `flow_mapping_recurse`. -/
+theorem explicitKey_val_recurse
+    (tokens : Array (Positioned YamlToken))
+    (n : Nat) (h_ih : ParseNodeWB tokens n)
+    (ps : ParseState)
+    (pairs : Array (YamlValue × YamlValue))
+    (result : Array (YamlValue × YamlValue) × ParseState)
+    (h_flow : flowNesting tokens ps.pos > 0)
+    (h_pairs_false : ∀ i : Fin pairs.size,
+      Scannable pairs[i].1 false ∧ Scannable pairs[i].2 false)
+    (h_pairs_true : ∀ i : Fin pairs.size,
+      Scannable pairs[i].1 true ∧ Scannable pairs[i].2 true)
+    (ps_ek : ParseState) (k : Nat) (h_kn : k ≤ n)
+    (key : YamlValue) (ps_key : ParseState)
+    (h_ek_tok : ps_ek.tokens = tokens)
+    (h_ek_fn : flowNesting tokens ps_ek.pos = flowNesting tokens ps.pos)
+    (heq_ek : parseExplicitKey ps_ek k = .ok (key, ps_key))
+    (keyContent : String)
+    (val : YamlValue) (ps_rec : ParseState)
+    (heq_val : parseFlowMappingValue ps_key k ps_key.currentPath keyContent = .ok (val, ps_rec))
+    (h_ok : parseFlowMappingLoop ps_rec k (pairs.push (key, val)) = .ok result)
+    (ih_fuel : ∀ (ps' : ParseState) (pairs' : Array (YamlValue × YamlValue)),
+      ps'.tokens = tokens →
+      flowNesting tokens ps'.pos > 0 →
+      (∀ i : Fin pairs'.size,
+        Scannable pairs'[i].1 false ∧ Scannable pairs'[i].2 false) →
+      (∀ i : Fin pairs'.size,
+        Scannable pairs'[i].1 true ∧ Scannable pairs'[i].2 true) →
+      parseFlowMappingLoop ps' k pairs' = .ok result →
+      (∀ i : Fin result.1.size,
+        Scannable result.1[i].1 false ∧ Scannable result.1[i].2 false) ∧
+      (∀ i : Fin result.1.size,
+        Scannable result.1[i].1 true ∧ Scannable result.1[i].2 true) ∧
+      (flowNesting tokens result.2.pos = flowNesting tokens ps'.pos) ∧
+      (result.2.tokens = tokens)) :
+    (∀ i : Fin result.1.size,
+      Scannable result.1[i].1 false ∧ Scannable result.1[i].2 false) ∧
+    (∀ i : Fin result.1.size,
+      Scannable result.1[i].1 true ∧ Scannable result.1[i].2 true) ∧
+    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) ∧
+    (result.2.tokens = tokens) := by
+  have h_ek_flow : flowNesting tokens ps_ek.pos > 0 := by rw [h_ek_fn]; exact h_flow
+  have h_kwb := parseExplicitKey_wb tokens n k h_kn h_ih ps_ek (key, ps_key) h_ek_tok heq_ek
+  have h_key_flow : flowNesting tokens ps_key.pos > 0 := by
+    rw [h_kwb.2.2.1]; exact h_ek_flow
+  have h_vwb := parseFlowMappingValue_wb tokens n k h_kn h_ih ps_key ps_key.currentPath
+    keyContent (val, ps_rec) h_kwb.2.2.2 heq_val
+  exact flow_mapping_recurse tokens ps pairs result h_flow
+    h_pairs_false h_pairs_true
+    key val ps_rec k
+    h_kwb.1 h_vwb.1
+    (h_kwb.2.1 h_ek_flow) (h_vwb.2.1 h_key_flow)
+    (h_vwb.2.2.1.trans (h_kwb.2.2.1.trans h_ek_fn)) h_vwb.2.2.2 h_ok ih_fuel
+
+/-- Helper: close a goal with parseNode ok + parseFlowMappingValue ok + recurse.
+    Used for implicit-key branches where parseNode is called directly. -/
+theorem implicitKey_val_recurse
+    (tokens : Array (Positioned YamlToken))
+    (n : Nat) (h_ih : ParseNodeWB tokens n)
+    (ps : ParseState)
+    (pairs : Array (YamlValue × YamlValue))
+    (result : Array (YamlValue × YamlValue) × ParseState)
+    (h_flow : flowNesting tokens ps.pos > 0)
+    (h_pairs_false : ∀ i : Fin pairs.size,
+      Scannable pairs[i].1 false ∧ Scannable pairs[i].2 false)
+    (h_pairs_true : ∀ i : Fin pairs.size,
+      Scannable pairs[i].1 true ∧ Scannable pairs[i].2 true)
+    (ps_pn : ParseState) (k : Nat) (h_kn : k ≤ n)
+    (key : YamlValue) (ps_key : ParseState)
+    (h_pn_tok : ps_pn.tokens = tokens)
+    (h_pn_fn : flowNesting tokens ps_pn.pos = flowNesting tokens ps.pos)
+    (heq_pn : parseNode ps_pn k = .ok (key, ps_key))
+    (keyContent : String)
+    (val : YamlValue) (ps_rec : ParseState)
+    (heq_val : parseFlowMappingValue ps_key k ps_key.currentPath keyContent = .ok (val, ps_rec))
+    (h_ok : parseFlowMappingLoop ps_rec k (pairs.push (key, val)) = .ok result)
+    (ih_fuel : ∀ (ps' : ParseState) (pairs' : Array (YamlValue × YamlValue)),
+      ps'.tokens = tokens →
+      flowNesting tokens ps'.pos > 0 →
+      (∀ i : Fin pairs'.size,
+        Scannable pairs'[i].1 false ∧ Scannable pairs'[i].2 false) →
+      (∀ i : Fin pairs'.size,
+        Scannable pairs'[i].1 true ∧ Scannable pairs'[i].2 true) →
+      parseFlowMappingLoop ps' k pairs' = .ok result →
+      (∀ i : Fin result.1.size,
+        Scannable result.1[i].1 false ∧ Scannable result.1[i].2 false) ∧
+      (∀ i : Fin result.1.size,
+        Scannable result.1[i].1 true ∧ Scannable result.1[i].2 true) ∧
+      (flowNesting tokens result.2.pos = flowNesting tokens ps'.pos) ∧
+      (result.2.tokens = tokens)) :
+    (∀ i : Fin result.1.size,
+      Scannable result.1[i].1 false ∧ Scannable result.1[i].2 false) ∧
+    (∀ i : Fin result.1.size,
+      Scannable result.1[i].1 true ∧ Scannable result.1[i].2 true) ∧
+    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) ∧
+    (result.2.tokens = tokens) := by
+  have h_kwb := parseNodeWB_apply h_ih h_pn_tok heq_pn (by omega)
+  have h_key_flow : flowNesting tokens ps_pn.pos > 0 := by rw [h_pn_fn]; exact h_flow
+  have h_ps_key_flow : flowNesting tokens ps_key.pos > 0 := by
+    rw [h_kwb.2.2.1]; exact h_key_flow
+  have h_vwb := parseFlowMappingValue_wb tokens n k h_kn h_ih ps_key ps_key.currentPath
+    keyContent (val, ps_rec) h_kwb.2.2.2 heq_val
+  exact flow_mapping_recurse tokens ps pairs result h_flow
+    h_pairs_false h_pairs_true
+    key val ps_rec k
+    h_kwb.1 h_vwb.1
+    (h_kwb.2.1 h_key_flow) (h_vwb.2.1 h_ps_key_flow)
+    (h_vwb.2.2.1.trans (h_kwb.2.2.1.trans h_pn_fn)) h_vwb.2.2.2 h_ok ih_fuel
+
+set_option maxHeartbeats 800000 in
 /-- Loop invariant for `parseFlowMappingLoop`: accumulated pairs remain
     Scannable in both block and flow contexts, flowNesting is preserved,
-    and the token array is unchanged. -/
+    and the token array is unchanged.
+
+    After extracting `parseExplicitKey`, the loop has only 2 content branches
+    (explicit key via `parseExplicitKey`, implicit key via `parseNode`) × 2
+    separator paths = 4 recursive goals, closed by the helper theorems. -/
 theorem parseFlowMappingLoop_wb
     (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
@@ -2473,7 +2668,103 @@ theorem parseFlowMappingLoop_wb
       Scannable result.1[i].1 true ∧ Scannable result.1[i].2 true) ∧
     (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) ∧
     (result.2.tokens = tokens) := by
-  sorry
+  induction fuel generalizing ps pairs with
+  | zero =>
+    unfold parseFlowMappingLoop at h_ok
+    simp only [Except.ok.injEq] at h_ok; subst h_ok
+    exact ⟨h_pairs_false, h_pairs_true, rfl, h_eq⟩
+  | succ k ih_fuel =>
+    unfold parseFlowMappingLoop at h_ok
+    simp only [bind, Except.bind, pure, Except.pure] at h_ok
+    -- First match: peek? = flowMappingEnd vs other
+    split at h_ok
+    · -- flowMappingEnd → return (pairs, ps)
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      exact ⟨h_pairs_false, h_pairs_true, rfl, h_eq⟩
+    · -- not flowMappingEnd → separator handling then content dispatch
+      -- Exhaustively split all remaining match/if in h_ok
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      all_goals (try (split at h_ok))
+      -- Phase 1: Close error / contradiction goals
+      all_goals (try contradiction)
+      -- Phase 2: Close direct-return and advance-return goals
+      all_goals first
+        | (simp only [Except.ok.injEq] at h_ok; subst h_ok;
+           exact ⟨h_pairs_false, h_pairs_true, rfl, h_eq⟩)
+        | (simp only [Except.ok.injEq] at h_ok; cases h_ok;
+           exact ⟨h_pairs_false, h_pairs_true, rfl, h_eq⟩)
+        | (simp only [Except.ok.injEq] at h_ok; cases h_ok;
+           have h_sep : ps.peek? = some YamlToken.flowEntry := by assumption;
+           have h_adv_fn := advance_preserves_flowNesting tokens ps h_sep h_eq
+             (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+             (by exact fun h => nomatch h) (by exact fun h => nomatch h);
+           exact ⟨h_pairs_false, h_pairs_true, h_adv_fn,
+                  by simp [ParseState.advance, h_eq]⟩)
+        | skip
+      -- Phase 3: Explicit key (parseExplicitKey) + parseFlowMappingValue + recurse
+      all_goals first
+        | (rename_i v_ek heq_ek _ v_val heq_val;
+           obtain ⟨key, ps_key⟩ := v_ek;
+           obtain ⟨val, ps_rec⟩ := v_val;
+           dsimp only [] at h_ok;
+           exact explicitKey_val_recurse tokens n h_ih ps pairs result h_flow
+             h_pairs_false h_pairs_true _ k (by omega) key ps_key
+             (by simp [ParseState.advance, h_eq]) (by
+               have h_sep : ps.peek? = some YamlToken.flowEntry := by assumption
+               have h_adv_fn := advance_preserves_flowNesting tokens ps h_sep h_eq
+                 (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+                 (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+               have h_key_peek : ps.advance.peek? = some YamlToken.key := by assumption
+               have h_key_fn := advance_preserves_flowNesting tokens ps.advance h_key_peek
+                 (by simp [ParseState.advance, h_eq])
+                 (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+                 (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+               rw [h_key_fn, h_adv_fn])
+             heq_ek _ val ps_rec heq_val h_ok (ih_fuel (by omega)))
+        | (rename_i v_ek heq_ek _ v_val heq_val;
+           obtain ⟨key, ps_key⟩ := v_ek;
+           obtain ⟨val, ps_rec⟩ := v_val;
+           dsimp only [] at h_ok;
+           exact explicitKey_val_recurse tokens n h_ih ps pairs result h_flow
+             h_pairs_false h_pairs_true _ k (by omega) key ps_key
+             (by simp [ParseState.advance, h_eq]) (by
+               have h_key_peek : ps.peek? = some YamlToken.key := by assumption
+               have h_key_fn := advance_preserves_flowNesting tokens ps h_key_peek h_eq
+                 (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+                 (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+               exact h_key_fn)
+             heq_ek _ val ps_rec heq_val h_ok (ih_fuel (by omega)))
+        | skip
+      -- Phase 4: Implicit key (parseNode) + parseFlowMappingValue + recurse
+      all_goals first
+        | (rename_i v_node heq_node _ v_val heq_val;
+           obtain ⟨key, ps_key⟩ := v_node;
+           obtain ⟨val, ps_rec⟩ := v_val;
+           dsimp only [] at h_ok;
+           exact implicitKey_val_recurse tokens n h_ih ps pairs result h_flow
+             h_pairs_false h_pairs_true _ k (by omega) key ps_key
+             (by simp [ParseState.advance, h_eq]) (by
+               have h_sep : ps.peek? = some YamlToken.flowEntry := by assumption
+               have h_adv_fn := advance_preserves_flowNesting tokens ps h_sep h_eq
+                 (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+                 (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+               exact h_adv_fn)
+             heq_node _ val ps_rec heq_val h_ok (ih_fuel (by omega)))
+        | (rename_i v_node heq_node _ v_val heq_val;
+           obtain ⟨key, ps_key⟩ := v_node;
+           obtain ⟨val, ps_rec⟩ := v_val;
+           dsimp only [] at h_ok;
+           exact implicitKey_val_recurse tokens n h_ih ps pairs result h_flow
+             h_pairs_false h_pairs_true ps k (by omega) key ps_key
+             h_eq rfl heq_node _ val ps_rec heq_val h_ok (ih_fuel (by omega)))
 
 /-- `parseFlowMapping` well-behaved given parseNode IH.
     Requires `h_matched` for the same reason as `parseFlowSequence_wb`:
@@ -2484,12 +2775,71 @@ theorem parseFlowMapping_wb (tokens : Array (Positioned YamlToken))
     (h_matched : FlowBracketsMatched tokens)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_eq : ps.tokens = tokens)
+    (h_peek : ps.peek? = some .flowMappingStart)
     (h_ok : parseFlowMapping ps fuel = .ok result) :
     (Scannable result.1 false) ∧
     (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
     (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) ∧
     (result.2.tokens = tokens) := by
-  sorry
+  unfold parseFlowMapping at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · simp at h_ok
+  · rename_i k
+    have h_adv_tok : ps.advance.tokens = tokens := by
+      simp [ParseState.advance, h_eq]
+    have ⟨h_lt, h_val⟩ := peek_some_bounded ps .flowMappingStart h_peek
+    have h_adv_fn_eq : flowNesting tokens ps.advance.pos =
+        flowNesting tokens ps.pos + 1 := by
+      simp only [ParseState.advance]; subst h_eq
+      exact flowNesting_after_flow_start_eq ps.tokens ps.pos h_lt
+        (Or.inr (h_val h_lt))
+    have h_flow_adv : flowNesting tokens ps.advance.pos > 0 := by
+      rw [h_adv_fn_eq]; omega
+    split at h_ok
+    · simp at h_ok
+    · rename_i loop_result heq_loop
+      obtain ⟨pairs_arr, ps_loop⟩ := loop_result
+      dsimp only [] at h_ok
+      have h_empty_f : ∀ i : Fin (#[] : Array (YamlValue × YamlValue)).size,
+          Scannable (#[] : Array (YamlValue × YamlValue))[i].1 false ∧
+          Scannable (#[] : Array (YamlValue × YamlValue))[i].2 false := by
+        intro ⟨_, hi⟩; simp at hi
+      have h_empty_t : ∀ i : Fin (#[] : Array (YamlValue × YamlValue)).size,
+          Scannable (#[] : Array (YamlValue × YamlValue))[i].1 true ∧
+          Scannable (#[] : Array (YamlValue × YamlValue))[i].2 true := by
+        intro ⟨_, hi⟩; simp at hi
+      have h_loop := parseFlowMappingLoop_wb tokens (k + 1) k (by omega)
+          h_ih ps.advance #[] (pairs_arr, ps_loop) h_adv_tok
+          h_flow_adv h_empty_f h_empty_t heq_loop
+      have h_loop_fn : flowNesting tokens ps_loop.pos =
+          flowNesting tokens ps.advance.pos := h_loop.2.2.1
+      have h_loop_tok : ps_loop.tokens = tokens := h_loop.2.2.2
+      have h_pairs_false := h_loop.1
+      have h_pairs_true := h_loop.2.1
+      split at h_ok
+      · rename_i h_peek_end
+        simp only [Except.ok.injEq] at h_ok; subst h_ok
+        have ⟨h_lt_end, h_val_end⟩ := peek_some_bounded ps_loop
+            .flowMappingEnd h_peek_end
+        have h_end_fn : flowNesting tokens ps_loop.advance.pos =
+            flowNesting tokens ps_loop.pos - 1 := by
+          simp only [ParseState.advance]; rw [← h_loop_tok]
+          exact flowNesting_after_flow_end ps_loop.tokens ps_loop.pos h_lt_end
+            (Or.inr (h_val_end h_lt_end))
+            (by rw [h_loop_tok, h_loop_fn, h_adv_fn_eq]; omega)
+        have h_net_fn : flowNesting tokens ps_loop.advance.pos =
+            flowNesting tokens ps.pos := by
+          rw [h_end_fn, h_loop_fn, h_adv_fn_eq]; omega
+        refine ⟨?_, ?_, ?_, ?_⟩
+        · exact Scannable.mapping .flow pairs_arr none none false
+            (fun i => (h_pairs_true i).1) (fun i => (h_pairs_true i).2)
+        · intro _
+          exact Scannable.mapping .flow pairs_arr none none true
+            (fun i => (h_pairs_true i).1) (fun i => (h_pairs_true i).2)
+        · simp only [ParseState.advance]; exact h_net_fn
+        · simp only [ParseState.advance]; exact h_loop_tok
+      · simp at h_ok
 
 /-- Base case: at fuel 0, `parseNode` always returns error, so `ParseNodeWB`
     is vacuously true. -/
@@ -2509,6 +2859,7 @@ theorem parseNode_wb_zero (tokens : Array (Positioned YamlToken)) :
 theorem parseNodeContent_wb (tokens : Array (Positioned YamlToken))
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_fpsv : FlowAwarePSV tokens) (h_ih : ParseNodeWB tokens n)
+    (h_matched : FlowBracketsMatched tokens)
     (ps : ParseState) (props : NodeProperties)
     (result : YamlValue × ParseState)
     (h_eq : ps.tokens = tokens)
@@ -2517,7 +2868,45 @@ theorem parseNodeContent_wb (tokens : Array (Positioned YamlToken))
     (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
     flowNesting tokens result.2.pos = flowNesting tokens ps.pos ∧
     result.2.tokens = tokens := by
-  sorry
+  -- Derive ParseNodeWB at fuel level (sub-parsers receive fuel, not n)
+  have h_ih_fuel : ParseNodeWB tokens fuel :=
+    fun ps' m val ps'' hm htok hok => h_ih ps' m val ps'' (Nat.le_trans hm h_fuel) htok hok
+  unfold parseNodeContent at h_ok
+  split at h_ok
+  -- Case: scalar token → construct scalar value and advance
+  · rename_i content style heq_peek
+    simp only [Except.ok.injEq] at h_ok; subst h_ok
+    have ⟨h_lt, h_val⟩ := peek_some_bounded ps (.scalar content style) heq_peek
+    have h_lt_tok : ps.pos < tokens.size := by rw [← h_eq]; exact h_lt
+    have h_tok : (tokens[ps.pos]'h_lt_tok).val = .scalar content style := by
+      have h1 := h_val h_lt; simp only [h_eq] at h1; exact h1
+    exact ⟨scalar_from_token_scannable tokens h_fpsv.1 ps.pos h_lt_tok content style
+             h_tok props.tag props.anchor,
+           fun h_flow => scalar_from_flow_token_scannable tokens h_fpsv ps.pos h_lt_tok
+             content style h_tok h_flow props.tag props.anchor true,
+           advance_preserves_flowNesting tokens ps heq_peek h_eq
+             (fun h => nomatch h) (fun h => nomatch h)
+             (fun h => nomatch h) (fun h => nomatch h),
+           by simp [ParseState.advance, h_eq]⟩
+  -- Case: blockSequenceStart
+  · rename_i heq_peek
+    exact parseBlockSequence_wb tokens fuel h_fpsv h_ih_fuel ps result h_eq heq_peek h_ok
+  -- Case: blockMappingStart
+  · rename_i heq_peek
+    exact parseBlockMapping_wb tokens fuel h_ih_fuel ps result h_eq heq_peek h_ok
+  -- Case: blockEntry → implicit block sequence
+  · exact parseImplicitBlockSequence_wb tokens fuel h_ih_fuel ps result h_eq h_ok
+  -- Case: flowSequenceStart
+  · rename_i heq_peek
+    exact parseFlowSequence_wb tokens fuel h_fpsv h_ih_fuel h_matched ps result h_eq heq_peek h_ok
+  -- Case: flowMappingStart
+  · rename_i heq_peek
+    exact parseFlowMapping_wb tokens fuel h_fpsv h_ih_fuel h_matched ps result h_eq heq_peek h_ok
+  -- Case: empty content (no token or non-content token)
+  · simp only [Except.ok.injEq] at h_ok; subst h_ok
+    exact ⟨empty_scalar_scannable props.tag props.anchor false,
+           fun _ => empty_scalar_scannable props.tag props.anchor true,
+           rfl, h_eq⟩
 
 /-- **Key lemma**: `parseNode` is well-behaved at every fuel level.
 
