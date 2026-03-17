@@ -2224,6 +2224,79 @@ after extracting `parseFlowMappingValue`, they become tractable.
 
 See INTERACTIONS.md §Wadler-Style "Theorems for Free" as Refactoring Guards. -/
 
+/-- Well-behavedness of `parseFlowMappingValue`:
+    the returned value is Scannable, and the output state preserves
+    flowNesting and tokens. -/
+theorem parseFlowMappingValue_wb
+    (tokens : Array (Positioned YamlToken))
+    (n fuel : Nat) (h_fuel : fuel ≤ n)
+    (h_ih : ParseNodeWB tokens n)
+    (ps : ParseState) (savedPath : YamlPath) (keyContent : String)
+    (result : YamlValue × ParseState)
+    (h_eq : ps.tokens = tokens)
+    (h_ok : parseFlowMappingValue ps fuel savedPath keyContent = .ok result) :
+    Scannable result.1 false ∧
+    (flowNesting tokens ps.pos > 0 → Scannable result.1 true) ∧
+    flowNesting tokens result.2.pos = flowNesting tokens ps.pos ∧
+    result.2.tokens = tokens := by
+  unfold parseFlowMappingValue at h_ok
+  simp only [bind, Except.bind] at h_ok
+  have h1_tok : ({ ps with currentPath := savedPath.push (.key keyContent) }.tryConsume .key).2.tokens = tokens :=
+    (tryConsume_with_path_tokens ps (savedPath.push (.key keyContent)) .key).trans h_eq
+  have h1_fn : flowNesting tokens ({ ps with currentPath := savedPath.push (.key keyContent) }.tryConsume .key).2.pos =
+      flowNesting tokens ps.pos :=
+    tryConsume_with_path_fn tokens ps (savedPath.push (.key keyContent)) .key h_eq
+      (by intro h; cases h) (by intro h; cases h)
+      (by intro h; cases h) (by intro h; cases h)
+  generalize hg1 : ParseState.tryConsume
+    { ps with currentPath := savedPath.push (.key keyContent) }
+    YamlToken.key = tc1 at h_ok
+  have h1r_tok : tc1.2.tokens = tokens := hg1 ▸ h1_tok
+  have h1r_fn : flowNesting tokens tc1.2.pos = flowNesting tokens ps.pos := hg1 ▸ h1_fn
+  have h2_tok : (tc1.2.tryConsume .value).2.tokens = tokens :=
+    (tryConsume_tokens tc1.2 .value).trans h1r_tok
+  have h2_fn0 : flowNesting tokens (tc1.2.tryConsume .value).2.pos = flowNesting tokens tc1.2.pos :=
+    tryConsume_flowNesting tokens tc1.2 .value h1r_tok
+      (by intro h; cases h) (by intro h; cases h)
+      (by intro h; cases h) (by intro h; cases h)
+  generalize hg2 : ParseState.tryConsume tc1.2 YamlToken.value = tc2 at h_ok
+  have h2r_tok : tc2.2.tokens = tokens := hg2 ▸ h2_tok
+  have h2r_fn : flowNesting tokens tc2.2.pos = flowNesting tokens ps.pos := by
+    exact (hg2 ▸ h2_fn0).trans h1r_fn
+  split at h_ok
+  · split at h_ok
+    · simp only [Except.ok.injEq] at h_ok
+      rw [← h_ok]
+      exact ⟨empty_scalar_scannable none none false,
+             fun _ => empty_scalar_scannable none none true,
+             h2r_fn, h2r_tok⟩
+    · simp only [Except.ok.injEq] at h_ok
+      rw [← h_ok]
+      exact ⟨empty_scalar_scannable none none false,
+             fun _ => empty_scalar_scannable none none true,
+             h2r_fn, h2r_tok⟩
+    · simp only [Except.ok.injEq] at h_ok
+      rw [← h_ok]
+      exact ⟨empty_scalar_scannable none none false,
+             fun _ => empty_scalar_scannable none none true,
+             h2r_fn, h2r_tok⟩
+    · split at h_ok
+      · simp at h_ok
+      · rename_i pn_result heq_pn
+        obtain ⟨val, ps'⟩ := pn_result
+        have h_wb := parseNodeWB_apply h_ih h2r_tok heq_pn (by omega)
+        simp only [Except.ok.injEq] at h_ok
+        rw [← h_ok]
+        exact ⟨h_wb.1,
+               fun h_flow => h_wb.2.1 (by rw [h2r_fn]; exact h_flow),
+               h_wb.2.2.1.trans h2r_fn,
+               h_wb.2.2.2⟩
+  · simp only [Except.ok.injEq] at h_ok
+    rw [← h_ok]
+    exact ⟨empty_scalar_scannable none none false,
+           fun _ => empty_scalar_scannable none none true,
+           h2r_fn, h2r_tok⟩
+
 /-- Token preservation for `parseFlowMappingValue`: the token array is unchanged.
     Helper for `parseFlowMappingLoop_tokens_preserved`. -/
 theorem parseFlowMappingValue_tokens_preserved
@@ -2377,6 +2450,30 @@ theorem parseFlowMappingLoop_pairs_grow
         | (have h_rec := ih_fuel _ _ h_ok
            simp [Array.size_push] at h_rec ⊢
            omega))
+
+/-- Loop invariant for `parseFlowMappingLoop`: accumulated pairs remain
+    Scannable in both block and flow contexts, flowNesting is preserved,
+    and the token array is unchanged. -/
+theorem parseFlowMappingLoop_wb
+    (tokens : Array (Positioned YamlToken))
+    (n fuel : Nat) (h_fuel : fuel ≤ n)
+    (h_ih : ParseNodeWB tokens n)
+    (ps : ParseState) (pairs : Array (YamlValue × YamlValue))
+    (result : Array (YamlValue × YamlValue) × ParseState)
+    (h_eq : ps.tokens = tokens)
+    (h_flow : flowNesting tokens ps.pos > 0)
+    (h_pairs_false : ∀ i : Fin pairs.size,
+      Scannable pairs[i].1 false ∧ Scannable pairs[i].2 false)
+    (h_pairs_true : ∀ i : Fin pairs.size,
+      Scannable pairs[i].1 true ∧ Scannable pairs[i].2 true)
+    (h_ok : parseFlowMappingLoop ps fuel pairs = .ok result) :
+    (∀ i : Fin result.1.size,
+      Scannable result.1[i].1 false ∧ Scannable result.1[i].2 false) ∧
+    (∀ i : Fin result.1.size,
+      Scannable result.1[i].1 true ∧ Scannable result.1[i].2 true) ∧
+    (flowNesting tokens result.2.pos = flowNesting tokens ps.pos) ∧
+    (result.2.tokens = tokens) := by
+  sorry
 
 /-- `parseFlowMapping` well-behaved given parseNode IH.
     Requires `h_matched` for the same reason as `parseFlowSequence_wb`:
