@@ -882,6 +882,45 @@ def parseDocument (ps : ParseState) : Except ScanError (YamlDocument × ParseSta
 
 /-! ## Stream Parsing -/
 
+/-- Tail-recursive loop for `parseStream`: iterates over documents,
+    enforcing §9.2 [211] document boundary rules.
+
+    Extracted from `parseStream` for proof tractability — induction on
+    `fuel` is straightforward, whereas reasoning about `for _ in [:n] do`
+    with mutable state requires fighting `Range.forIn` / `List.forIn'`
+    desugaring.
+
+    **Invariant**: `ps.tokens` is preserved across iterations (only `.pos`,
+    `.anchors`, `.nodePositions`, `.currentPath`, `.tagHandles` change).
+
+    **Termination**: `fuel` decreases by 1 each iteration. Additionally,
+    a stuck-detection check breaks if `parseDocument` + `tryConsume` didn't
+    advance `ps.pos`. -/
+def parseStreamLoop (ps : ParseState) (docs : Array YamlDocument)
+    (streamState : StreamState) (fuel : Nat) :
+    Except ScanError (Array YamlDocument) :=
+  match fuel with
+  | 0 => .ok docs
+  | fuel + 1 =>
+    match ps.peek? with
+    | some .streamEnd => .ok docs
+    | none => .ok docs
+    | some tok =>
+      if !streamState.validNextToken tok then
+        let pos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
+        .error (.invalidBareDocument pos.line pos.col)
+      else
+        let savedPos := ps.pos
+        match parseDocument ps with
+        | .error e => .error e
+        | .ok (doc, ps') =>
+          let docs := docs.push doc
+          let ps := { ps' with anchors := #[], nodePositions := #[], currentPath := #[] }
+          let (consumed, ps) := ps.tryConsume .documentEnd
+          let streamState := if consumed then .afterDocumentEnd else .afterDocument
+          if ps.pos == savedPos then .ok docs
+          else parseStreamLoop ps docs streamState fuel
+
 /-- Parse a complete YAML stream (multiple documents).
 
     **Implements** (YAML 1.2.2 §9.2):
@@ -899,39 +938,9 @@ def parseDocument (ps : ParseState) : Except ScanError (YamlDocument × ParseSta
     **Error**: `invalidBareDocument` (bare content after non-`...`-terminated document, §9.2). -/
 def parseStream (tokens : Array (Positioned YamlToken))
     (trackPositions : Bool := false) : Except ScanError (Array YamlDocument) := do
-  let mut ps : ParseState := { tokens := tokens, trackPositions := trackPositions }
-  -- Expect stream start
-  ps ← ps.expect .streamStart "STREAM-START"
-  let mut docs : Array YamlDocument := #[]
-  let mut streamState : StreamState := .initial
-  let fuel := tokens.size
-  for _ in [:fuel] do
-    match ps.peek? with
-    | some .streamEnd => break
-    | none => break
-    | some tok =>
-      -- §9.2 [211] document boundary validation:
-      -- After a document without `...`, only explicit documents are valid.
-      if !streamState.validNextToken tok then
-        let pos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
-        throw (.invalidBareDocument pos.line pos.col)
-      let savedPos := ps.pos
-      let (doc, ps') ← parseDocument ps
-      docs := docs.push doc
-      -- §3.2.2.2: Anchors are scoped to the document.  Reset anchor map
-      -- so subsequent documents start with a clean namespace.
-      -- G5c: also reset nodePositions and currentPath per document.
-      ps := { ps' with anchors := #[], nodePositions := #[], currentPath := #[] }
-      -- Consume optional document-end marker (`...`) and update stream state.
-      -- This determines what token types are valid at the next iteration.
-      let (consumed, ps') := ps.tryConsume .documentEnd
-      streamState := if consumed then .afterDocumentEnd else .afterDocument
-      ps := ps'
-      -- Stuck detection: if neither parseDocument nor tryConsume advanced
-      -- the position, break to prevent infinite looping on unconsumed
-      -- structural tokens (e.g., orphaned `key`/`value` from scanner).
-      if ps.pos == savedPos then break
-  .ok docs
+  let ps : ParseState := { tokens := tokens, trackPositions := trackPositions }
+  let ps ← ps.expect .streamStart "STREAM-START"
+  parseStreamLoop ps #[] .initial tokens.size
 
 /-! ## Convenience: Full Pipeline
 

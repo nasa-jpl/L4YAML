@@ -3301,35 +3301,124 @@ theorem parseDocument_scannable
 
 /-! ### §5g  parseStream loop decomposition
 
-`parseStream` iterates `parseDocument` via `for _ in [:fuel] do`.
-Each iteration either breaks (peek? = streamEnd/none/stuck) or calls
-`parseDocument`, pushes the result to `docs`, and continues.
+`parseStream` calls `parseStreamLoop`, which iterates `parseDocument`
+via structural recursion on fuel.
 
 The loop invariant has two parts:
 1. `ps.tokens = tokens` — preserved because `parseDocument` preserves
    tokens (§5f) and the stream-level mutations (anchor reset,
    tryConsume documentEnd) only touch metadata.
-2. `∀ doc ∈ docs.toList, Scannable doc.value false` — preserved because
-   each new document satisfies `Scannable` by `parseDocument_scannable`.
+2. Every doc in the accumulator was produced by `parseDocument` with
+   `ps.tokens = tokens` — new docs satisfy this by construction,
+   and the accumulator is monotonically extended.
 
-After the loop, `docs` is the final document array, and the invariant
+After the loop, the result docs = final accumulator, and the invariant
 gives the desired conclusion.
 -/
+
+/-- `ParseState.expect` preserves the token array. -/
+theorem expect_tokens (ps ps' : ParseState) (tok : YamlToken) (desc : String)
+    (h : ps.expect tok desc = .ok ps') : ps'.tokens = ps.tokens := by
+  unfold ParseState.expect at h
+  split at h
+  · split at h
+    · simp only [Except.ok.injEq] at h; subst h; simp [ParseState.advance]
+    · simp at h
+  · simp at h
+
+/-- **Loop lemma**: every document in `parseStreamLoop`'s output was either
+    already in the accumulator or produced by `parseDocument` with the
+    same token array.
+
+    This is the core inductive structure that makes `parseStream_doc_from_parseDocument`
+    tractable after extracting `parseStreamLoop`. -/
+theorem parseStreamLoop_docs_from_parseDocument
+    (tokens : Array (Positioned YamlToken))
+    (h_fpsv : FlowAwarePSV tokens) (h_matched : FlowBracketsMatched tokens)
+    (ps : ParseState) (docs : Array YamlDocument)
+    (streamState : StreamState) (fuel : Nat)
+    (result : Array YamlDocument)
+    (h_eq : ps.tokens = tokens)
+    (h_acc : ∀ doc ∈ docs.toList, ∃ ps_d ps_d',
+        ps_d.tokens = tokens ∧ parseDocument ps_d = .ok (doc, ps_d'))
+    (h_ok : parseStreamLoop ps docs streamState fuel = .ok result) :
+    ∀ doc ∈ result.toList, ∃ ps_d ps_d',
+        ps_d.tokens = tokens ∧ parseDocument ps_d = .ok (doc, ps_d') := by
+  induction fuel generalizing ps docs streamState with
+  | zero =>
+    simp only [parseStreamLoop] at h_ok
+    simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc
+  | succ fuel ih =>
+    unfold parseStreamLoop at h_ok
+    -- Split on ps.peek?
+    split at h_ok
+    · -- streamEnd → result = docs
+      simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc
+    · -- none → result = docs
+      simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc
+    · -- some tok → validation + parseDocument + recurse
+      rename_i tok
+      split at h_ok
+      · simp at h_ok  -- validation failure → error, contradiction
+      · -- validation passed
+        -- Clear `let savedPos := ps.pos` so we can see the parseDocument match
+        dsimp only [] at h_ok
+        -- Case-analyze the parseDocument result
+        generalize h_pd : parseDocument ps = pd_result at h_ok
+        cases pd_result with
+        | error e => simp at h_ok
+        | ok val =>
+          obtain ⟨doc_new, ps'⟩ := val
+          -- Reduce the Except.ok match and remaining let bindings
+          dsimp only [] at h_ok
+          -- Tokens preserved through parseDocument
+          have h_pd_tok : ps'.tokens = tokens :=
+            (parseDocument_tokens_preserved ps doc_new ps'
+              (h_eq ▸ h_fpsv) (h_eq ▸ h_matched) h_pd).trans h_eq
+          -- Tokens preserved through struct update + tryConsume
+          let ps_reset : ParseState :=
+            { ps' with anchors := #[], nodePositions := #[], currentPath := #[] }
+          have h_next_tok : (ps_reset.tryConsume .documentEnd).2.tokens = tokens :=
+            (tryConsume_tokens _ _).trans h_pd_tok
+          -- The accumulator grows by one doc
+          have h_acc' : ∀ doc ∈ (docs.push doc_new).toList, ∃ ps_d ps_d',
+              ps_d.tokens = tokens ∧ parseDocument ps_d = .ok (doc, ps_d') := by
+            intro d hd
+            rw [Array.toList_push] at hd
+            simp only [List.mem_append, List.mem_singleton] at hd
+            rcases hd with hd_old | rfl
+            · exact h_acc d hd_old
+            · exact ⟨ps, ps', h_eq, h_pd⟩
+          -- Stuck check: if stuck, result = docs.push doc_new
+          split at h_ok
+          · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc'
+          · -- Recurse
+            exact ih _ _ _ h_next_tok h_acc' h_ok
 
 /-- **Loop decomposition**: every document in `parseStream`'s output was
     produced by `parseDocument` with the same token array.
 
-    This captures the essential structure of the `for _ in [:fuel] do`
-    loop: each iteration calls `parseDocument` on a `ParseState` whose
+    This captures the essential structure of the `parseStreamLoop`
+    recursion: each iteration calls `parseDocument` on a `ParseState` whose
     `.tokens` field is the original `tokens` (since only `.pos`, `.anchors`,
     `.nodePositions`, `.currentPath`, `.tagHandles` change). -/
 theorem parseStream_doc_from_parseDocument
     (tokens : Array (Positioned YamlToken))
+    (h_fpsv : FlowAwarePSV tokens) (h_matched : FlowBracketsMatched tokens)
     (docs : Array YamlDocument)
     (h_parse : parseStream tokens = .ok docs) :
     ∀ doc ∈ docs.toList, ∃ ps ps',
       ps.tokens = tokens ∧ parseDocument ps = .ok (doc, ps') := by
-  sorry
+  unfold parseStream at h_parse
+  simp only [bind, Except.bind] at h_parse
+  split at h_parse
+  · simp at h_parse
+  · rename_i ps_start h_expect
+    have h_tok : ps_start.tokens = tokens :=
+      (expect_tokens _ _ _ _ h_expect).trans (by simp)
+    exact parseStreamLoop_docs_from_parseDocument tokens h_fpsv h_matched
+      ps_start #[] .initial tokens.size docs h_tok
+      (by intro d hd; simp at hd) h_parse
 
 /-- C2a: Every document produced by `parseStream` from scanner tokens
     has a `Scannable` value tree.
@@ -3346,7 +3435,7 @@ theorem parseStream_output_scannable
     ∀ doc ∈ docs.toList, Scannable doc.value false := by
   intro doc hdoc
   obtain ⟨ps, ps', h_eq, h_ok⟩ :=
-    parseStream_doc_from_parseDocument tokens docs h_parse doc hdoc
+    parseStream_doc_from_parseDocument tokens h_fpsv h_matched docs h_parse doc hdoc
   exact parseDocument_scannable tokens ps doc ps' h_fpsv h_matched h_eq h_ok
 
 /-- C2b: Every document's aliases resolve through its anchor map.
