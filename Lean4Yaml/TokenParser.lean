@@ -262,6 +262,32 @@ bounds the total number of mutual-function entries.  Each token generates
 at most ~4 function entries (dispatch + collection + loop + sub-node).
 -/
 
+/-- Validate node properties after parsing (extracted from `parseNode`
+    for Pattern 4b mitigation).
+
+    - §8.2.2 [200]: Block collections must start on a new line after
+      node properties. Properties and block collection start on the
+      same line is an error.
+    - §6.9.2: Duplicate anchors are rejected on scalar/empty content
+      but tolerated on collection-start content (block/flow seq/map,
+      block entry). -/
+def validateNodeProps (ps : ParseState) (prePropPos : Nat)
+    (props : NodeProperties) : Except ScanError Unit := do
+  match ps.peek? with
+  | some .blockSequenceStart | some .blockMappingStart =>
+    if ps.pos > prePropPos then
+      let lastPropPos := ps.tokens[ps.pos - 1]!.pos
+      let blockPos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
+      if lastPropPos.line == blockPos.line then
+        throw (.trailingContent blockPos.line blockPos.col)
+  | _ => pure ()
+  if props.hadDuplicateAnchor then
+    match ps.peek? with
+    | some .blockSequenceStart | some .blockMappingStart
+    | some .flowSequenceStart  | some .flowMappingStart
+    | some .blockEntry => pure ()
+    | _ => throw (.duplicateAnchor ps.currentLine)
+
 set_option maxHeartbeats 400000 in
 mutual
 
@@ -320,29 +346,8 @@ def parseNode (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × Pa
   -- Parse optional node properties
   let prePropPos := ps.pos
   let (props, ps) ← parseNodeProperties ps
-  -- §8.2.2 [200]: After node properties, block collections require
-  -- s-l-comments (line break) before starting. Properties and block
-  -- collection start on the same line is an error.
-  match ps.peek? with
-  | some .blockSequenceStart | some .blockMappingStart =>
-    if ps.pos > prePropPos then -- properties were consumed
-      let lastPropPos := ps.tokens[ps.pos - 1]!.pos
-      let blockPos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
-      if lastPropPos.line == blockPos.line then
-        throw (.trailingContent blockPos.line blockPos.col)
-  | _ => pure ()
-  -- §6.9.2: Reject duplicate anchors when the content is a scalar (or empty
-  -- node).  Collection-start content (mapping/sequence) tolerates the
-  -- duplicate because the scanner's single-simpleKey design sometimes
-  -- places a collection-anchor and a key-anchor consecutively in the
-  -- token stream (see 6BFJ); the first anchor is silently assigned to
-  -- the collection.
-  if props.hadDuplicateAnchor then
-    match ps.peek? with
-    | some .blockSequenceStart | some .blockMappingStart
-    | some .flowSequenceStart  | some .flowMappingStart
-    | some .blockEntry => pure ()   -- collection: tolerate
-    | _ => throw (.duplicateAnchor ps.currentLine)  -- scalar/empty: reject
+  -- Validate node properties (block-same-line + duplicate-anchor checks)
+  validateNodeProps ps prePropPos props
   -- Parse content (dispatched via parseNodeContent)
   let (val, ps) ← parseNodeContent ps fuel props
   -- Apply properties, register anchor, and record G5c position

@@ -897,3 +897,181 @@ to be `Scannable _ true` even when the outer flow parameter is `false`
 **Result:** Sorry count reduced from 9 → 7.
 - Proved: `parseFlowMappingLoop_wb` (1 sorry removed)
 - Proved: `parseFlowMapping_wb` (1 sorry removed)
+
+### Pattern 4b: Sequential Monadic Pipeline Depth — `parseNode` (2026-03-17)
+
+`parseNode` is a second instance of Pattern 4, but with a **different
+complexity structure**. Where `parseFlowMappingLoop` has *multiplicative*
+branching (N entry patterns × M key/value dispatches), `parseNode` has
+*additive* depth from a 6-stage sequential monadic pipeline:
+
+```
+parseNode (50 lines, ~15 split-goals estimated)
+├── fuel match (0 → error, k+1 → ...)
+├── Stage 1: Alias check (match ps.peek?)
+│   ├── some (.alias name) → advance, G5c tracking, return (.alias name, ps')
+│   └── _ → pure ()   (fall through)
+├── Stage 2: parseNodeProperties ps → (props, ps)
+├── Stage 3: Block-same-line validation
+│   ├── match ps.peek?
+│   │   ├── some .blockSequenceStart | some .blockMappingStart →
+│   │   │   if ps.pos > prePropPos then
+│   │   │     if lastPropPos.line == blockPos.line then throw .trailingContent
+│   │   └── _ → pure ()
+├── Stage 4: Duplicate-anchor validation
+│   ├── if props.hadDuplicateAnchor then
+│   │   ├── match ps.peek?
+│   │   │   ├── some .block* | some .flow* | some .blockEntry → pure ()
+│   │   │   └── _ → throw .duplicateAnchor
+│   └── else → implicit pure ()
+├── Stage 5: parseNodeContent ps fuel props → (val, ps)
+└── Stage 6: .ok (applyNodeFinalization val ps props nodeStartPos)
+```
+
+Each stage expands to 2–5 bind-peeling `split at h_ok` operations. The
+total is additive (~15 goals) rather than multiplicative, but each goal
+requires chaining `parseNodeProperties_flowNesting + parseNodeProperties_tokens +
+parseNodeContent_wb + applyNodeFinalization_scannable / _tokens / _pos` — a
+4-lemma chain that must be threaded through each intermediate state.
+
+**Why the original "Easy" assessment was wrong:** The assessment assumed
+strong induction would make the proof short because all sub-parser WB
+theorems were proved. This ignored the cost of:
+
+1. **Do-notation desugaring depth.** Each `let x ← f; ...` desugars to
+   `Except.bind (f ps) (fun x => ...)`. Six sequential binds produce 6
+   levels of `Except.bind` to peel with `simp only [bind, Except.bind]` +
+   `split at h_ok`. The alias branch (stage 1) adds a further 3–4 binds
+   for `pure ()` + `parseNodeProperties` + the fallthrough.
+
+2. **Validation stages 3–4 are pure but branch-heavy.** The block-same-line
+   check has a `match` on `ps.peek?` (2 arms: block-start vs other), then
+   a nested `if pos > prePropPos` then `if line == line` — 3 more goals per
+   arm. The duplicate-anchor check has `if hadDuplicateAnchor` (2 arms),
+   then a `match` (6 arms) in the true branch. Total: ~10 additional goals
+   from stages 3–4 alone, all requiring flowNesting/tokens chain threading.
+
+3. **Alias branch early-return.** The alias branch returns directly without
+   going through `parseNodeContent`, so `parseNodeContent_wb` doesn't help.
+   It needs its own `Scannable (.alias name) inFlow` proof (trivial, but
+   requires separate case handling) and G5c position tracking (struct-with
+   updates on `ps` that must be shown to preserve tokens/flowNesting).
+
+**Pattern 4b vs Pattern 4:** The key difference:
+
+| | Pattern 4 (multiplicative) | Pattern 4b (additive / pipeline) |
+|---|---|---|
+| **Example** | `parseFlowMappingLoop` | `parseNode` |
+| **Branching** | N × M (entry × dispatch) | S₁ + S₂ + ... + Sₖ (stages) |
+| **Shared code** | Identical tails across branches | No sharing — each stage is unique |
+| **Extraction target** | Shared sub-computation | Validation stages (pure, no state effect) |
+| **Wadler guards** | Monotonicity + prefix + tokens + flowNesting | Tokens + flowNesting (no accumulator) |
+| **Proof reduction** | Multiplicative → additive (dramatic) | Pipeline → shorter pipeline (moderate) |
+
+**Mitigation — Wadler-style refactoring plan:**
+
+#### W1: Alias-branch token preservation
+
+Before refactoring, prove that the alias branch preserves the token array.
+This serves as a regression guard — if the refactoring changes the alias
+branch behavior, this theorem breaks.
+
+```lean
+-- State: the alias branch of parseNode preserves tokens
+theorem parseNode_alias_tokens (ps : ParseState) (name : String)
+    (h_peek : ps.peek? = some (.alias name)) :
+    let ps' := ps.advance
+    let ps' := if ps'.trackPositions then
+      { ps' with nodePositions := ps'.nodePositions.push ... }
+    else ps'
+    ps'.tokens = ps.tokens
+```
+
+#### W2: Alias-branch flowNesting preservation
+
+```lean
+theorem parseNode_alias_flowNesting (tokens : Array (Positioned YamlToken))
+    (ps : ParseState) (name : String)
+    (h_peek : ps.peek? = some (.alias name))
+    (h_eq : ps.tokens = tokens) :
+    -- flowNesting is preserved through advance of a non-flow token
+    flowNesting tokens ps.advance.pos = flowNesting tokens ps.pos
+```
+
+#### Extraction: `validateNodeProps`
+
+Extract stages 3–4 (block-same-line + duplicate-anchor validation) as a
+pure function **outside** the mutual block:
+
+```lean
+/-- Validate node properties after parsing.
+    - §8.2.2 [200]: block collections must start on a new line after properties
+    - §6.9.2: duplicate anchors rejected on scalar/empty content -/
+def validateNodeProps (ps : ParseState) (prePropPos : Nat)
+    (props : NodeProperties) : Except ScanError Unit := do
+  match ps.peek? with
+  | some .blockSequenceStart | some .blockMappingStart =>
+    if ps.pos > prePropPos then
+      let lastPropPos := ps.tokens[ps.pos - 1]!.pos
+      let blockPos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
+      if lastPropPos.line == blockPos.line then
+        throw (.trailingContent blockPos.line blockPos.col)
+  | _ => pure ()
+  if props.hadDuplicateAnchor then
+    match ps.peek? with
+    | some .blockSequenceStart | some .blockMappingStart
+    | some .flowSequenceStart  | some .flowMappingStart
+    | some .blockEntry => pure ()
+    | _ => throw (.duplicateAnchor ps.currentLine)
+```
+
+**Key property:** `validateNodeProps` never modifies `ps` — it only reads
+from it and either returns `()` or throws. Therefore:
+
+```lean
+theorem validateNodeProps_preserves_state (ps prePropPos props)
+    (h : validateNodeProps ps prePropPos props = .ok ()) :
+    True  -- ps is unchanged (it's passed by value, not modified)
+```
+
+The proof of `parseNode_wb_all` then becomes:
+
+1. Fuel match: `parseNode_wb_zero` for base case
+2. Induction step: unfold, peel alias check → handle directly using W2
+3. Peel `parseNodeProperties` → apply `_flowNesting` + `_tokens`
+4. Peel `validateNodeProps` → it's a single bind returning `Unit`, the
+   continuation gets the SAME `ps` (no state change)
+5. Peel `parseNodeContent` → apply `parseNodeContent_wb`
+6. Apply `applyNodeFinalization_scannable` + `_tokens` + `_pos`
+
+This reduces the ~15-goal proof to ~6 goals: fuel-0, alias, and then
+the 4-stage pipeline (properties → validate → content → finalization)
+as a linear chain with one WB lemma per stage.
+
+### Pattern 4b: Outcome
+
+**Status: ✅ Proved.** The Wadler-style refactoring worked exactly as planned.
+
+Key implementation details:
+- `validateNodeProps` extracted OUTSIDE the mutual block (pure validation, no mutual dependency)
+- `parseNode` simplified from ~15 lines of inline validation to a single `validateNodeProps` call
+- W1/W2 Wadler guards proved cleanly for the alias branch
+- The non-alias branch chains: `parseNodeProperties` → `validateNodeProps` → `parseNodeContent` → `applyNodeFinalization`
+
+**Subtle issue: `obtain ⟨rfl, rfl⟩` causes `applyNodeFinalization` expansion.**
+After `obtain ⟨rfl, rfl⟩ := Prod.mk.inj h_ok`, Lean substitutes `val` and `ps'`
+with the pair projections of `applyNodeFinalization ...`, then eagerly reduces
+the transparent function. This expands the goal to ~40 lines of raw `match`/`if`.
+
+The fix: use `show` with the *opaque* function-call form:
+```lean
+show flowNesting tokens (applyNodeFinalization v_content.1 v_content.2 v_props.1
+    nodeStartPos).2.pos = flowNesting tokens ps.pos from by
+  rw [h_fin_pos, h_content.2.2.1, h_props_fn]
+```
+Lean accepts this via definitional equality between the expanded goal and the
+opaque `show` target, then `rw` works because the `show`'s goal has the
+un-reduced function call. This is Pattern 4b's variant of the "tactic vs kernel
+reduction" gap from Pattern 4.
+
+Sorry count: 5 → 4.

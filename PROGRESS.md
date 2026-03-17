@@ -51,7 +51,7 @@
 | 2 | `parseDocument_tokens_preserved` | L2573 | Chain `prepareDocumentState_tokens_preserved` + `parseNode_tokens_preserved`. Depends on #1. | ✅ Proved |
 | 3 | `parseFlowMapping_wb` | L2773 | ✅ Proved. Extracted `parseExplicitKey` (2nd-order Pattern 4 mitigation), then proved loop + wrapper. Added `h_peek` hypothesis. | ✅ Proved |
 | 4 | `parseNodeContent_wb` | L2859 | ✅ Proved. Dispatches to 6 sub-parser `_wb` lemmas + scalar/empty cases. Added `h_matched` parameter. | ✅ Proved |
-| 5 | `parseNode_wb_all` | L2933 | Strong induction. All sub-parser deps proved. Next target. | **Easy** |
+| 5 | `parseNode_wb_all` | L2933 | ✅ Proved. Wadler-style extraction of `validateNodeProps`, then `show`-based defeq matching to handle applyNodeFinalization expansion in goal. | ✅ Proved |
 | 6 | `parseDocument_value_cases` | L2589 | Do-notation decomposition — identify emptyNode vs parseNode branch. | **Medium** |
 | 7 | `parseStream_doc_from_parseDocument` | L2651 | `Range.forIn` loop invariant. Lean 4 for-loop reasoning is non-trivial. | **Hard** |
 | 8 | `parseStream_output_aliases_resolve` | L2698 | Scanner doesn't validate alias ordering (§7.1). Needs scanner-level invariant. | **Hard / spec gap** |
@@ -77,6 +77,7 @@
 | `parseFlowMappingValue_wb` | ✅ Proved |
 | `parseExplicitKey_wb` | ✅ Proved |
 | `parseNodeContent_wb` | ✅ Proved (dispatches to all sub-parser `_wb` lemmas) |
+| `parseNode_wb_all` | ✅ Proved (Wadler-style validateNodeProps extraction + `show` defeq) |
 
-**Recommended path:** #5 → #6, which would reduce sorrys from 5 to 3 (+ the 2 semantic spec-gap sorrys #8–#9). All sub-parser WB theorems and `parseNodeContent_wb` are now proved.
+**Recommended path:** #6, which would reduce sorrys from 4 to 3 (+ the 2 semantic spec-gap sorrys #8–#9). All sub-parser WB theorems, `parseNodeContent_wb`, and `parseNode_wb_all` are now proved.
 

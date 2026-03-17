@@ -2908,6 +2908,53 @@ theorem parseNodeContent_wb (tokens : Array (Positioned YamlToken))
            fun _ => empty_scalar_scannable props.tag props.anchor true,
            rfl, h_eq⟩
 
+/-! ### Wadler guards for `parseNode` (Pattern 4b regression tests)
+
+W1: The alias branch of `parseNode` preserves the token array.
+W2: The alias branch preserves flowNesting.
+
+These serve as refactoring guards — if `parseNode` is restructured
+(e.g., extracting `validateNodeProps`), these theorems must continue to
+hold on the new implementation. -/
+
+-- `validateNodeProps` returns Unit on success and never modifies the parse state.
+-- After `Except.bind (validateNodeProps ps p props) (fun () => k ps)`, the
+-- continuation receives the SAME `ps`.
+theorem validateNodeProps_ok (ps : ParseState) (prePropPos : Nat)
+    (props : NodeProperties)
+    (_ : validateNodeProps ps prePropPos props = .ok ()) :
+    True := trivial
+
+-- W1: Alias branch preserves tokens
+theorem parseNode_alias_tokens (ps : ParseState) (fuel : Nat) (name : String)
+    (h_peek : ps.peek? = some (.alias name))
+    (result : YamlValue × ParseState)
+    (h_ok : parseNode ps (fuel + 1) = .ok result) :
+    result.2.tokens = ps.tokens := by
+  unfold parseNode at h_ok
+  simp only [h_peek, pure, Except.pure] at h_ok
+  split at h_ok <;> simp only [Except.ok.injEq] at h_ok <;> subst h_ok <;> simp [ParseState.advance]
+
+-- W2: Alias branch preserves flowNesting
+theorem parseNode_alias_flowNesting (tokens : Array (Positioned YamlToken))
+    (ps : ParseState) (fuel : Nat) (name : String)
+    (h_peek : ps.peek? = some (.alias name))
+    (h_eq : ps.tokens = tokens)
+    (result : YamlValue × ParseState)
+    (h_ok : parseNode ps (fuel + 1) = .ok result) :
+    flowNesting tokens result.2.pos = flowNesting tokens ps.pos := by
+  unfold parseNode at h_ok
+  simp only [h_peek, pure, Except.pure] at h_ok
+  -- After simplification, the if-then-else on trackPositions remains
+  split at h_ok <;> {
+    simp only [Except.ok.injEq] at h_ok; subst h_ok
+    -- Both branches: pos = ps.advance.pos (nodePositions/currentPath don't affect pos)
+    simp only [ParseState.advance]
+    exact advance_preserves_flowNesting tokens ps h_peek h_eq
+      (fun h => nomatch h) (fun h => nomatch h)
+      (fun h => nomatch h) (fun h => nomatch h)
+  }
+
 /-- **Key lemma**: `parseNode` is well-behaved at every fuel level.
 
     The proof is by strong induction on `n`. At fuel `n + 1`, `parseNode`
@@ -2931,13 +2978,98 @@ theorem parseNodeContent_wb (tokens : Array (Positioned YamlToken))
     - Flow start+end pairs: net zero change (start +1, end −1).
     - Properties (anchor, tag): non-flow tokens, preserved. -/
 theorem parseNode_wb_all (tokens : Array (Positioned YamlToken))
-    (h_fpsv : FlowAwarePSV tokens) :
+    (h_fpsv : FlowAwarePSV tokens)
+    (h_matched : FlowBracketsMatched tokens) :
     ∀ n, ParseNodeWB tokens n := by
-  -- When filling this sorry, `FlowBracketsMatched tokens` will be needed
-  -- (from `scan_flow_brackets_matched`) and threaded to `parseFlowSequence_wb`
-  -- and `parseFlowMapping_wb`. The scanner guarantees matched brackets on `.ok`,
-  -- so this precondition is always available at the call site.
-  sorry
+  intro n
+  induction n with
+  | zero => exact parseNode_wb_zero tokens
+  | succ n ih =>
+    intro ps m val ps' hm h_eq h_ok
+    -- m ≤ n + 1, so m = 0 (handled) or m = k + 1 for some k ≤ n
+    by_cases hm0 : m = 0
+    · subst hm0; unfold parseNode at h_ok; simp at h_ok
+    · -- m = k + 1
+      obtain ⟨k, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
+      have hk : k ≤ n := by omega
+      -- Unfold parseNode at fuel k + 1
+      unfold parseNode at h_ok
+      simp only [bind, Except.bind, pure, Except.pure] at h_ok
+      -- Split on ps.peek? for alias check
+      split at h_ok
+      · -- Alias branch: some (.alias name) → return
+        rename_i name heq_peek
+        -- The alias branch has an if-then-else on trackPositions
+        split at h_ok
+        · -- trackPositions = true
+          simp only [Except.ok.injEq] at h_ok
+          obtain ⟨rfl, rfl⟩ := Prod.mk.inj h_ok
+          exact ⟨.alias name false,
+                 fun _ => .alias name true,
+                 advance_preserves_flowNesting tokens ps heq_peek h_eq
+                   (fun h => nomatch h) (fun h => nomatch h)
+                   (fun h => nomatch h) (fun h => nomatch h),
+                 by simp [ParseState.advance, h_eq]⟩
+        · -- trackPositions = false
+          simp only [Except.ok.injEq] at h_ok
+          obtain ⟨rfl, rfl⟩ := Prod.mk.inj h_ok
+          exact ⟨.alias name false,
+                 fun _ => .alias name true,
+                 advance_preserves_flowNesting tokens ps heq_peek h_eq
+                   (fun h => nomatch h) (fun h => nomatch h)
+                   (fun h => nomatch h) (fun h => nomatch h),
+                 by simp [ParseState.advance, h_eq]⟩
+      · -- Non-alias branch: _ => pure (), then chain through
+        -- Split on parseNodeProperties result
+        split at h_ok
+        · contradiction  -- parseNodeProperties error
+        · rename_i v_props heq_props
+          -- Split on validateNodeProps
+          split at h_ok
+          · contradiction  -- validateNodeProps error
+          · -- validateNodeProps ok → Unit, continuation gets same ps
+            -- Split on parseNodeContent
+            split at h_ok
+            · contradiction  -- parseNodeContent error
+            · rename_i v_content heq_content
+              simp only [Except.ok.injEq] at h_ok
+              obtain ⟨rfl, rfl⟩ := Prod.mk.inj h_ok
+              -- Chain the preservation lemmas
+              -- parseNodeProperties preserves tokens and flowNesting
+              have h_props_tok : v_props.2.tokens = tokens :=
+                (parseNodeProperties_tokens ps v_props.1 v_props.2
+                  heq_props).trans h_eq
+              have h_props_fn : flowNesting tokens v_props.2.pos = flowNesting tokens ps.pos :=
+                parseNodeProperties_flowNesting tokens ps v_props.1 v_props.2
+                  heq_props h_eq
+              -- parseNodeContent well-behavedness
+              have h_content := parseNodeContent_wb tokens n k hk h_fpsv ih h_matched
+                v_props.2 v_props.1 v_content h_props_tok heq_content
+              -- applyNodeFinalization results (opaque form)
+              have h_fin_pos := applyNodeFinalization_pos
+                v_content.1 v_content.2 v_props.1
+                (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })
+              have h_fin_tok := applyNodeFinalization_tokens
+                v_content.1 v_content.2 v_props.1
+                (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })
+              -- Goal has applyNodeFinalization expanded (rfl subst reduces it).
+              -- Use `exact` with opaque-form proofs; Lean matches by defeq.
+              exact ⟨
+                applyNodeFinalization_scannable
+                  v_content.1 v_content.2 v_props.1
+                  (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })
+                  false h_content.1,
+                fun h_flow =>
+                  applyNodeFinalization_scannable v_content.1 v_content.2 v_props.1
+                    (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })
+                    true (h_content.2.1 (by rw [h_props_fn]; exact h_flow)),
+                show flowNesting tokens (applyNodeFinalization v_content.1 v_content.2 v_props.1
+                  (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.pos =
+                  flowNesting tokens ps.pos from by
+                  rw [h_fin_pos, h_content.2.2.1, h_props_fn],
+                show (applyNodeFinalization v_content.1 v_content.2 v_props.1
+                  (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })).2.tokens = tokens from by
+                  rw [h_fin_tok]; exact h_content.2.2.2⟩
 
 /-! ### §5e₂  Helper lemmas: token-array preservation through sub-operations
 
@@ -2999,11 +3131,12 @@ theorem parseDirectives_tokens (ps : ParseState) :
 theorem parseNode_tokens_preserved
     (tokens : Array (Positioned YamlToken))
     (h_fpsv : FlowAwarePSV tokens)
+    (h_matched : FlowBracketsMatched tokens)
     (ps : ParseState) (fuel : Nat) (result : YamlValue × ParseState)
     (h_eq : ps.tokens = tokens)
     (h_ok : parseNode ps fuel = .ok result) :
     result.2.tokens = ps.tokens := by
-  have h_wb := parseNode_wb_all tokens h_fpsv fuel
+  have h_wb := parseNode_wb_all tokens h_fpsv h_matched fuel
     ps fuel result.1 result.2 (Nat.le.refl) h_eq
     (by rw [Prod.eta]; exact h_ok)
   rw [h_wb.2.2.2, h_eq]
@@ -3064,6 +3197,7 @@ theorem prepareDocumentState_tokens_preserved
 theorem parseDocument_tokens_preserved
     (ps : ParseState) (doc : YamlDocument) (ps' : ParseState)
     (h_fpsv : FlowAwarePSV ps.tokens)
+    (h_matched : FlowBracketsMatched ps.tokens)
     (h_ok : parseDocument ps = .ok (doc, ps')) :
     ps'.tokens = ps.tokens := by
   unfold parseDocument at h_ok
@@ -3086,7 +3220,7 @@ theorem parseDocument_tokens_preserved
       obtain ⟨val, ps2⟩ := node_result
       dsimp only [] at h_ok
       have h_node_tok : ps2.tokens = ps.tokens :=
-        (parseNode_tokens_preserved ps.tokens h_fpsv ps1 (4 * ps1.tokens.size + 4)
+        (parseNode_tokens_preserved ps.tokens h_fpsv h_matched ps1 (4 * ps1.tokens.size + 4)
           (val, ps2) h_prep_tok h_pn).trans h_prep_tok
       simp only [Except.ok.injEq, Prod.mk.injEq] at h_ok
       obtain ⟨_, rfl⟩ := h_ok
@@ -3125,6 +3259,7 @@ theorem parseDocument_scannable
     (tokens : Array (Positioned YamlToken))
     (ps : ParseState) (doc : YamlDocument) (ps' : ParseState)
     (h_fpsv : FlowAwarePSV tokens)
+    (h_matched : FlowBracketsMatched tokens)
     (h_eq : ps.tokens = tokens)
     (h_ok : parseDocument ps = .ok (doc, ps')) :
     Scannable doc.value false := by
@@ -3136,7 +3271,7 @@ theorem parseDocument_scannable
   · -- parseNode case: apply parseNode_wb_all
     have h_tok : ps_inner.tokens = tokens := by rw [h_eq_inner, h_eq]
     let fuel := 4 * ps.tokens.size + 4
-    have h_wb := parseNode_wb_all tokens h_fpsv fuel
+    have h_wb := parseNode_wb_all tokens h_fpsv h_matched fuel
     exact (h_wb ps_inner fuel doc.value ps_after (by omega) h_tok h_pn).1
 
 /-! ### §5g  parseStream loop decomposition
@@ -3181,12 +3316,13 @@ theorem parseStream_output_scannable
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
     (h_fpsv : FlowAwarePSV tokens)
+    (h_matched : FlowBracketsMatched tokens)
     (h_parse : parseStream tokens = .ok docs) :
     ∀ doc ∈ docs.toList, Scannable doc.value false := by
   intro doc hdoc
   obtain ⟨ps, ps', h_eq, h_ok⟩ :=
     parseStream_doc_from_parseDocument tokens docs h_parse doc hdoc
-  exact parseDocument_scannable tokens ps doc ps' h_fpsv h_eq h_ok
+  exact parseDocument_scannable tokens ps doc ps' h_fpsv h_matched h_eq h_ok
 
 /-- C2b: Every document's aliases resolve through its anchor map.
 
@@ -3286,7 +3422,8 @@ theorem parseStream_output_grammable
     ∀ doc ∈ raw_docs.toList, Grammable doc.compose.value false := by
   intro doc hdoc
   have h_fpsv := scanFiltered_flow_aware_psv input tokens h_scan
-  have h_scannable := parseStream_output_scannable tokens raw_docs h_fpsv h_parse doc hdoc
+  have h_matched := scan_flow_brackets_matched input tokens h_scan
+  have h_scannable := parseStream_output_scannable tokens raw_docs h_fpsv h_matched h_parse doc hdoc
   have h_resolve := parseStream_output_aliases_resolve tokens raw_docs h_parse doc hdoc
   have h_anchors := parseStream_output_anchors_wellformed tokens raw_docs h_fpsv.1 h_parse doc hdoc
   exact compose_grammable doc h_scannable h_resolve h_anchors
