@@ -1,8 +1,8 @@
 # Specification Gap Analysis: Remaining Sorry Theorems
 
 **Date:** 2026-03-18 (updated)
-**Status:** 322/322 build, 3 sorry warnings — see below.
-**Progress:** Gap #8 Phase 1 complete (parser-level validation). Gap #8 Phase 3 complete (scanner-level `definedAnchors` + dispatch validation). Gap #9 proof infrastructure complete. Revised phase plan: Phase 3 (scanner) → Phase 2 (parser sorrys). Phase 2 next.
+**Status:** 330/330 build, 1 sorry warning (`parseStream_output_anchors_wellformed`).
+**Progress:** Gap #8 fully resolved — all three phases complete. Gap #9 remains (spec modeling gap). Only 1 sorry in entire project.
 
 ## Overview
 
@@ -14,18 +14,19 @@ requires two hypotheses:
 
 | # | Theorem | Predicate | Status |
 |---|---------|-----------|--------|
-| 8 | `parseStream_output_aliases_resolve` | `AllAliasesResolve` | **Proven** (modulo 2 helper sorrys: `parseNode_anchors_grow`, `parseNode_aliases_resolve`) |
+| 8 | `parseStream_output_aliases_resolve` | `AllAliasesResolve` | **Fully proven** — all helper sorrys discharged |
 | 9 | `parseStream_output_anchors_wellformed` | `WellFormedAnchors` | **Sorry** — specification modeling gap (`∀ inFlow` too strong) |
 
 ---
 
 ## Gap #8: `AllAliasesResolve` — Alias Ordering
 
-### Status: Phase 1 Complete
+### Status: All Phases Complete
 
-The parser now validates aliases at parse time (§7.1 compliance).
+The parser validates aliases at parse time (§7.1 compliance).
 `parseNode` rejects `*name` unless `name ∈ ps.anchors`, producing
-an `undefinedAlias` error. The top-level theorem is fully proven:
+an `undefinedAlias` error. The top-level theorem is fully proven
+with **zero sorrys**:
 
 ```lean
 theorem parseStream_output_aliases_resolve
@@ -38,11 +39,11 @@ theorem parseStream_output_aliases_resolve
 **Proof chain:** `parseStream` → `parseStreamLoop_aliases_resolve` →
 `parseDocument_aliases_resolve` → `parseNode_aliases_resolve`.
 
-Two helper lemmas remain as `sorry`:
-1. `parseNode_aliases_resolve` — core induction on fuel, showing every
-   alias in the output tree passed the `ps.anchors.any` check
-2. `parseNode_anchors_grow` — anchors only grow (monotonicity), needed  
-   to lift from child-level to parent-level anchors
+Both helper lemmas are now proved (in `Lean4Yaml/Proofs/ParserNodeProofs.lean`):
+1. `parseNode_aliases_resolve` — core strong induction on fuel over 14 sub-parsers,
+   showing every alias in the output tree passed the `ps.anchors.any` check
+2. `parseNode_anchors_grow` — anchors only grow (monotonicity), proved via
+   AnchorsGrow (AG) relation with strong induction on fuel
 
 ### Implementation Changes
 
@@ -79,12 +80,12 @@ provides no scaffolding for Phase 3.  Going scanner-first is better:
   `ScannerState`.  Scanner-level alias validation in dispatch layer.
   `scanAnchorOrAlias` kept pure; all preservation theorems untouched.
   Document boundaries reset field.  Dispatch proofs updated.
-- **Phase 2 (next)**: Discharge `parseNode_aliases_resolve`
-  and `parseNode_anchors_grow` using the scanner validation as a
-  precondition on the input token stream.  With
-  `AliasesHaveAnchors tokens` established by the scanner, the parser
-  proof becomes straightforward — no mutual induction over 14
-  functions needed.
+- **Phase 2 (complete)**: Discharged `parseNode_aliases_resolve`
+  and `parseNode_anchors_grow` via strong induction on fuel in
+  `ParserNodeProofs.lean` (~1781 lines).  The proof uses AG
+  (AnchorsGrow) and AAR (AllAliasesResolve) relations with blind
+  split patterns over all 14 sub-parsers.  No scanner precondition
+  needed — the parser's own `if` guard on aliases suffices.
 
 ### Resolution Options
 
@@ -398,7 +399,7 @@ efficient approach.
 | **Is the predicate correct?** | ✅ Yes | ✅ Yes — now satisfiable via `adaptForFlowContext` |
 | **Counterexample to provability?** | None (should be provable) | ~~Yes — `&a value{braces}` + `[*a]`~~ **Resolved**: `addAnchor` converts to `.doubleQuoted` |
 | **Category** | Formalization gap | ~~Specification modeling gap~~ → **Resolved at runtime** |
-| **Proof status** | Three-phase plan (D → B → A) | Helper lemmas all proven; loop invariant needed |
+| **Proof status** | ✅ All three phases complete — zero sorrys | Helper lemmas all proven; loop invariant needed |
 
 ---
 

@@ -2,6 +2,7 @@ import Lean4Yaml.Grammar
 import Lean4Yaml.TokenParser
 import Lean4Yaml.Proofs.ScannerPlainScalarValid
 import Lean4Yaml.Proofs.ParserGrammableBase
+import Lean4Yaml.Proofs.ParserNodeProofs
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -106,15 +107,15 @@ theorem parseNode_anchors_grow (ps : ParseState) (fuel : Nat)
     (val : YamlValue) (ps' : ParseState)
     (h_ok : parseNode ps fuel = .ok (val, ps')) :
     ∀ i : Fin ps.anchors.size, ∃ j : Fin ps'.anchors.size,
-        ps'.anchors[j] = ps.anchors[i] := by
-  sorry
+        ps'.anchors[j] = ps.anchors[i] :=
+  ParserNodeProofs.parseNode_anchors_grow ps fuel val ps' h_ok
 
 -- Core lemma: parseNode produces AllAliasesResolve-satisfying output.
 theorem parseNode_aliases_resolve (ps : ParseState) (fuel : Nat)
     (val : YamlValue) (ps' : ParseState)
     (h_ok : parseNode ps fuel = .ok (val, ps')) :
-    AllAliasesResolve val ps'.anchors := by
-  sorry
+    AllAliasesResolve val ps'.anchors :=
+  ParserNodeProofs.parseNode_aliases_resolve' ps fuel val ps' h_ok
 
 -- Lift to parseDocument level
 theorem parseDocument_aliases_resolve (ps : ParseState)
