@@ -2,7 +2,7 @@
 
 **Date:** 2026-03-17 (updated)
 **Status:** 322/322 build, 2 sorry warnings — both analyzed here.
-**Progress:** Gap #9 proof infrastructure complete (all helper lemmas proven). Gap #8 not yet started.
+**Progress:** Gap #9 proof infrastructure complete (all helper lemmas proven). Gap #8 three-phase plan established (D → B → A).
 
 ## Overview
 
@@ -73,26 +73,66 @@ scanner that accepts the input has already validated that every alias
 name has been anchored. The gap is that our scanner doesn't prove this
 property about its output.
 
+### Scanner Architecture (relevant to resolution options)
+
+The scanner state machine is in `Scanner.lean` (2397 lines). `scanNextToken`
+is **already Wadler-style decomposed** into 5 dispatch levels:
+
+| Level | Function | Branches |
+|-------|----------|----------|
+| 1 | `scanNextToken_preprocess` | Whitespace/indent/peek |
+| 2 | `scanNextToken_dispatchStructural` | `---`, `...`, `%` |
+| 3 | `scanNextToken_dispatchFlowIndicators` | `[`, `]`, `{`, `}`, `,` |
+| 4 | `scanNextToken_dispatchBlockIndicators` | `-`, `?`, `:` |
+| 5 | `scanNextToken_dispatchContent` | `&`, `*`, `!`, `|`/`>`, `"`, `'`, plain |
+
+Anchor/alias handling is in level 5: `scanAnchorOrAlias` (L951–958)
+collects the name and emits `.anchor name` or `.alias name` with **no
+validation and no state tracking**. `ScannerState` has no anchor-related
+fields.
+
+The existing decomposition means Wadler-style refactoring is **not the
+bottleneck** for a scanner-level proof. The challenge is instead the
+**ghost state / real state** question: how to track which anchor names
+have been defined.
+
 ### Resolution Options
 
 | Option | Effort | Impact | Recommended? |
 |--------|--------|--------|--------------|
-| **A. Scanner invariant proof** | High | Closes gap fully | ✅ Ideal but expensive |
-| **B. Parser-level tracking** | Medium | Closes gap fully | ✅ Practical |
+| **A. Scanner invariant proof** | High | Closes gap fully + proves §7.1 conformance | ✅ Ideal — semantically correct |
+| **B. Parser-level tracking** | Medium | Closes gap fully at parser level | ✅ Template for Option A |
 | **C. Precondition** | Low | Shifts burden to caller | ⚠️ Weakens theorem |
-| **D. Scanner validation** | Low (code) | Closes gap but changes behavior | ⚠️ Behavior change |
+| **D. Parser-level validation** | Low (code) | Closes sorry by construction | ✅ Immediate result |
 
-#### Option A: Scanner Invariant Proof
+#### Option A: Scanner Invariant Proof (with `definedAnchors` field)
 
 Prove from the scanner's state machine that for every `.alias name`
 token at position `i`, there exists a `.anchor name` token at position
-`j < i`. This is a substantial proof (the scanner has ~1000 lines of
-state machine logic) but is **semantically correct** — it captures what
-the YAML spec requires.
+`j < i`. This is **semantically correct** — it captures what
+YAML §7.1 requires.
 
-Estimated work: New inductive invariant over the scanner loop, tracking
-the set of defined anchor names. Similar in spirit to `FlowContextPSV`
-but over anchor names rather than flow nesting.
+**Approach:** Add a `definedAnchors : Array String` field to `ScannerState`.
+This is preferable to logical ghost state because:
+- Ghost state artificially papers over the fact that `ScannerState`
+  is incomplete — it lacks information that is genuinely part of the
+  scanner's semantic state
+- A real field makes the invariant self-evident: `scanAnchorOrAlias`
+  with `isAnchor = true` pushes to `definedAnchors`; with
+  `isAnchor = false` it checks membership
+- The field is semantically meaningful ("which anchors have been
+  defined in this document"), not an artificial proof artifact
+
+**Estimated work:**
+- Add `definedAnchors : Array String` to `ScannerState` (+ reset on
+  document boundaries in `scanDocumentStart`/`scanDocumentEnd`)
+- ~15 scanner functions need `definedAnchors`-preservation lemmas
+  (mechanical: most don't touch the field)
+- The 5-level dispatch decomposition helps: each level needs only a
+  pass-through lemma
+- `scanAnchorOrAlias` proof is the substantive one: push for anchors,
+  membership check for aliases
+- Thread through `scanLoop` induction
 
 #### Option B: Parser-Level Tracking
 
@@ -368,24 +408,22 @@ efficient approach.
 | **Is the predicate correct?** | ✅ Yes | ✅ Yes — now satisfiable via `adaptForFlowContext` |
 | **Counterexample to provability?** | None (should be provable) | ~~Yes — `&a value{braces}` + `[*a]`~~ **Resolved**: `addAnchor` converts to `.doubleQuoted` |
 | **Category** | Formalization gap | ~~Specification modeling gap~~ → **Resolved at runtime** |
-| **Proof status** | Not started | Helper lemmas all proven; loop invariant needed |
+| **Proof status** | Three-phase plan (D → B → A) | Helper lemmas all proven; loop invariant needed |
 
 ---
 
 ## Decisions
 
-### Gap #8: Option D — Parser-Level Alias Validation
+### Gap #8: Three-Phase Plan (D → B → A)
 
-**Decision:** Add runtime alias validation in `parseNode`. When the
-parser encounters `.alias name`, check that `name ∈ ps.anchors`;
-throw an error if not. This closes the gap by construction.
+Gap #8 will be resolved in three phases, each building on the previous:
 
-**Implementation note:** The validation belongs in the *parser* (not
-the scanner), because:
-- `ps.anchors` already tracks defined anchors with correct document scoping
-  (reset between documents in `parseStreamLoop`)
-- The scanner has no equivalent state — it stateless-ly emits tokens
-- Adding anchor tracking to the scanner would duplicate parser state
+#### Phase 1: Option D — Parser-Level Alias Validation
+
+**Goal:** Close the sorry immediately by construction.
+
+Add runtime alias validation in `parseNode`. When the parser encounters
+`.alias name`, check that `name ∈ ps.anchors`; throw an error if not.
 
 **Code change** (one line in `parseNode`, TokenParser.lean ~L337):
 ```lean
@@ -403,6 +441,61 @@ the scanner), because:
 
 **Conformance impact:** YAML §7.1 already rejects undefined aliases.
 This is a conformance improvement, not a behavior change for valid YAML.
+
+#### Phase 2: Option B — Parser-Level Invariant (template for Phase 3)
+
+**Goal:** Establish the parse-loop invariant structure that Phase 3 replicates.
+
+Thread an `AllAliasesResolve` invariant through the parser's `_wb` chain:
+- Each `_wb` lemma gets an additional conclusion:
+  `∀ (.alias name) in result.value, name ∈ ps'.anchors`
+- `parseDocument` collects these into the document's anchor map
+- `parseStream_doc_from_parseDocument` lifts to stream level
+
+This leverages the existing `_wb` infrastructure and provides a
+**concrete template** for the scanner-level proof in Phase 3:
+the induction shape, monotonicity argument, and per-function preservation
+lemmas all transfer directly.
+
+#### Phase 3: Option A — Scanner-Level `definedAnchors` Field
+
+**Goal:** Prove YAML §7.1 conformance at the scanner level — the
+semantically correct result.
+
+Add `definedAnchors : Array String` to `ScannerState`. This is
+preferred over logical ghost state because ghost state artificially
+papers over the fact that the scanner's semantic state is incomplete.
+The `definedAnchors` field is genuinely part of the scanner's
+responsibility — tracking which anchors have been defined in the
+current document is information the scanner *should* have.
+
+**Implementation:**
+1. Add `definedAnchors : Array String` to `ScannerState`
+2. `scanAnchorOrAlias` with `isAnchor = true`: push `name` to
+   `definedAnchors`
+3. `scanAnchorOrAlias` with `isAnchor = false`: check
+   `name ∈ definedAnchors` (reject if absent — §7.1 conformance)
+4. `scanDocumentStart` / `scanDocumentEnd`: reset `definedAnchors`
+   (document-scoped per §7.1)
+5. ~15 preservation lemmas (mechanical — most functions don't touch
+   the field; 5-level dispatch decomposition helps)
+6. `scanLoop` induction: thread `definedAnchors` monotonicity
+
+**Outcome:** A standalone scanner theorem:
+```lean
+theorem scan_aliases_have_prior_anchors
+    (tokens : Array (Positioned YamlToken))
+    (h_scan : scanFiltered input = .ok tokens) :
+    ∀ i (hi : i < tokens.size),
+      match (tokens[i]'hi).val with
+      | .alias name => ∃ j (hj : j < i),
+          (tokens[j]'(by omega)).val = .anchor name
+      | _ => True
+```
+
+This proves the scanner conforms to §7.1 independent of the parser,
+and makes Phase 1's parser-level validation redundant (but harmless
+as defense-in-depth).
 
 ### Gap #9: Option B′ — `adaptForFlowContext` in `addAnchor` ✅ IMPLEMENTED
 
