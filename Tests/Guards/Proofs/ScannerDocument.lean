@@ -55,8 +55,8 @@ private def aliasToken (input : String) : Option YamlToken :=
 #guard aliasToken "*a" == some (.alias "a")
 
 -- simpleKeyAllowed set to false
-#guard (scanAnchorOrAlias (ScannerState.mk' "&name") true).simpleKeyAllowed == false
-#guard (scanAnchorOrAlias (ScannerState.mk' "*name") false).simpleKeyAllowed == false
+#guard !(scanAnchorOrAlias (ScannerState.mk' "&name") true).simpleKeyAllowed
+#guard !(scanAnchorOrAlias (ScannerState.mk' "*name") false).simpleKeyAllowed
 -- WellFormed preservation
 private def checkTagWF (input : String) : Bool :=
   let s := scanTag (ScannerState.mk' input)
@@ -447,12 +447,8 @@ private def scanTokens (input : String) : Option (List YamlToken) :=
   .value, .scalar "value" .plain,
   .blockEnd, .streamEnd]
 
--- Alias as mapping value
-#guard scanTokens "key: *alias" == some [
-  .streamStart, .blockMappingStart, .key,
-  .scalar "key" .plain, .value,
-  .alias "alias",
-  .blockEnd, .streamEnd]
+-- Undefined alias as mapping value — now rejected
+#guard scanTokens "key: *alias" == none
 
 -- Anchor in flow sequence
 #guard scanTokens "[&a val, *a]" == some [
@@ -539,7 +535,7 @@ private def scanOk (input : String) : Bool :=
 #guard scanOk "!<tag:yaml.org,2002:str> value"
 #guard scanOk "!local value"
 #guard scanOk "&anchor key: value"
-#guard scanOk "key: *alias"
+#guard !scanOk "key: *alias"  -- undefined alias
 #guard scanOk "[&a val, *a]"
 #guard scanOk "{!!str key: value}"
 #guard scanOk "---\n---\n---"

@@ -3649,7 +3649,7 @@ theorem parseStream_output_scannable
 -- Bridge: `Array.any (fun (n, _) => n == name) = true` →
 --         `(Array.findSome? (fun (n, _) => if n == name then some () else none)).isSome`
 -- General bridge: if `any f` and `f x → (g x).isSome`, then `findSome? g .isSome`
-private theorem Array.any_true_findSome_isSome
+theorem Array.any_true_findSome_isSome
     {α β : Type} (xs : Array α) (f : α → Bool) (g : α → Option β)
     (h_fg : ∀ x, f x = true → (g x).isSome = true)
     (h : xs.any f = true) :
@@ -3660,14 +3660,14 @@ private theorem Array.any_true_findSome_isSome
   exact ⟨xs[i], Array.getElem_mem hi, h_fg _ hp⟩
 
 -- Specialized bridge for the alias resolution check
-private theorem any_name_implies_findSome_isSome
+theorem any_name_implies_findSome_isSome
     (anchors : Array (String × YamlValue)) (name : String)
     (h : anchors.any (fun (n, _) => n == name) = true) :
     (anchors.findSome? (fun (n, _) => if n == name then some () else none)).isSome = true :=
   Array.any_true_findSome_isSome anchors _ _ (fun ⟨n, _⟩ hp => by simp [hp]) h
 
 -- Monotonicity: AllAliasesResolve is preserved under anchor growth (push).
-private theorem AllAliasesResolve.push (val : YamlValue)
+theorem AllAliasesResolve.push (val : YamlValue)
     (anchors : Array (String × YamlValue)) (entry : String × YamlValue)
     (h : AllAliasesResolve val anchors) :
     AllAliasesResolve val (anchors.push entry) := by
@@ -3684,7 +3684,7 @@ private theorem AllAliasesResolve.push (val : YamlValue)
     exact .mapping style pairs tag anchor _ (fun i => ihk i) (fun i => ihv i)
 
 -- Monotonicity generalized: prefix ⊆ suffix via repeated push
-private theorem AllAliasesResolve.mono (val : YamlValue)
+theorem AllAliasesResolve.mono (val : YamlValue)
     (anchors1 anchors2 : Array (String × YamlValue))
     (h_prefix : ∀ i : Fin anchors1.size, ∃ j : Fin anchors2.size,
         anchors2[j] = anchors1[i])
@@ -3708,7 +3708,7 @@ private theorem AllAliasesResolve.mono (val : YamlValue)
 
 -- Anchors only grow within parseNode: ps'.anchors is a suffix extension of ps.anchors.
 -- (This is the key monotonicity property of the parser.)
-private theorem parseNode_anchors_grow (ps : ParseState) (fuel : Nat)
+theorem parseNode_anchors_grow (ps : ParseState) (fuel : Nat)
     (val : YamlValue) (ps' : ParseState)
     (h_ok : parseNode ps fuel = .ok (val, ps')) :
     ∀ i : Fin ps.anchors.size, ∃ j : Fin ps'.anchors.size,
@@ -3716,14 +3716,14 @@ private theorem parseNode_anchors_grow (ps : ParseState) (fuel : Nat)
   sorry
 
 -- Core lemma: parseNode produces AllAliasesResolve-satisfying output.
-private theorem parseNode_aliases_resolve (ps : ParseState) (fuel : Nat)
+theorem parseNode_aliases_resolve (ps : ParseState) (fuel : Nat)
     (val : YamlValue) (ps' : ParseState)
     (h_ok : parseNode ps fuel = .ok (val, ps')) :
     AllAliasesResolve val ps'.anchors := by
   sorry
 
 -- Lift to parseDocument level
-private theorem parseDocument_aliases_resolve (ps : ParseState)
+theorem parseDocument_aliases_resolve (ps : ParseState)
     (doc : YamlDocument) (ps' : ParseState)
     (h_ok : parseDocument ps = .ok (doc, ps')) :
     AllAliasesResolve doc.value doc.anchors := by
@@ -3759,7 +3759,7 @@ private theorem parseDocument_aliases_resolve (ps : ParseState)
         exact parseNode_aliases_resolve _ _ _ _ h_node
 
 -- Loop-level lemma: parseStreamLoop preserves AllAliasesResolve for accumulated docs
-private theorem parseStreamLoop_aliases_resolve
+theorem parseStreamLoop_aliases_resolve
     (ps : ParseState) (docs : Array YamlDocument)
     (streamState : StreamState) (fuel : Nat)
     (result : Array YamlDocument)

@@ -1904,7 +1904,8 @@ theorem dispatchContent_tokens_mono (s : ScannerState) (c : Char) (s' : ScannerS
     | (have := scanDoubleQuoted_adds_one_token s _ (by assumption); simp_all <;> omega)
     | (have := scanSingleQuoted_adds_one_token s _ (by assumption); simp_all <;> omega)
     | (have := scanPlainScalar_adds_one_token s _ (by assumption); simp_all <;> omega)
-    | (have := scanAnchorOrAlias_adds_one_token s true; simp_all <;> omega)
+    | (have := scanAnchorOrAlias_adds_one_token s true;
+       simp only [Except.ok.injEq] at h; subst h; dsimp only []; omega)
     | (have := scanAnchorOrAlias_adds_one_token s false; simp_all <;> omega)
     | (have := scanTag_adds_one_token s; simp_all <;> omega)
     | (simp_all <;> omega)
@@ -4901,7 +4902,12 @@ theorem dispatchContent_maintains_simpleKeyAbove (s : ScannerState) (c : Char) (
   -- Use a helper function to close goals by trying various strategies.
   all_goals (
     first
-    | -- Pure functions (scanAnchorOrAlias, scanTag): preserves both
+    | -- Anchor with definedAnchors struct update: bridge through pure result
+      exact SimpleKeyAbove_of_preserved _ (scanAnchorOrAlias s true) n rfl rfl
+        (SimpleKeyAbove_of_preserved _ s n
+          (scanAnchorOrAlias_preserves_simpleKey s true)
+          (scanAnchorOrAlias_preserves_simpleKeyStack s true) h_inv)
+    | -- Pure functions (scanAnchorOrAlias alias, scanTag): preserves both
       exact SimpleKeyAbove_of_preserved _ s n
         (scanAnchorOrAlias_preserves_simpleKey s _)
         (scanAnchorOrAlias_preserves_simpleKeyStack s _) h_inv
@@ -7239,11 +7245,15 @@ theorem dispatchContent_preserves_ScanInv (s : ScannerState) (c : Char)
   -- c == '&'
   split at h_ok
   · simp only [Except.ok.injEq] at h_ok; subst h_ok
-    exact scanAnchorOrAlias_preserves_ScanInv s true h
+    exact field_update_preserves_ScanInv _ _
+      (scanAnchorOrAlias_preserves_ScanInv s true h) rfl rfl
   · -- c == '*'
     split at h_ok
-    · simp only [Except.ok.injEq] at h_ok; subst h_ok
-      exact scanAnchorOrAlias_preserves_ScanInv s false h
+    · -- inner split: alias validation check
+      split at h_ok
+      · contradiction
+      · simp only [Except.ok.injEq] at h_ok; subst h_ok
+        exact scanAnchorOrAlias_preserves_ScanInv s false h
     · -- c == '!'
       split at h_ok
       · simp only [Except.ok.injEq] at h_ok; subst h_ok
@@ -7836,21 +7846,25 @@ theorem dispatchContent_preserves_AllKeysValid (s : ScannerState) (c : Char)
   unfold scanNextToken_dispatchContent at h
   simp only [bind, Except.bind, pure, Except.pure] at h
   split at h
-  · -- c == '&': anchor
+  · -- c == '&': anchor with definedAnchors update
     simp only [Except.ok.injEq] at h; subst h
-    exact AllKeysValid_mono s _ h_akv
+    have h_akv_base := AllKeysValid_mono s (scanAnchorOrAlias s true) h_akv
       (scanAnchorOrAlias_preserves_simpleKey s true)
       (scanAnchorOrAlias_preserves_simpleKeyStack s true)
       (by have := ScanHelpers.scanAnchorOrAlias_adds_one_token s true; omega)
       (fun i hi => ScanHelpers.scanAnchorOrAlias_preserves_prefix s true i hi)
+    exact AllKeysValid_mono (scanAnchorOrAlias s true) _ h_akv_base rfl rfl
+      (Nat.le_refl _) (fun i hi => rfl)
   · split at h
-    · -- c == '*': alias
-      simp only [Except.ok.injEq] at h; subst h
-      exact AllKeysValid_mono s _ h_akv
-        (scanAnchorOrAlias_preserves_simpleKey s false)
-        (scanAnchorOrAlias_preserves_simpleKeyStack s false)
-        (by have := ScanHelpers.scanAnchorOrAlias_adds_one_token s false; omega)
-        (fun i hi => ScanHelpers.scanAnchorOrAlias_preserves_prefix s false i hi)
+    · -- c == '*': alias (with alias validation check)
+      split at h
+      · contradiction
+      · simp only [Except.ok.injEq] at h; subst h
+        exact AllKeysValid_mono s _ h_akv
+          (scanAnchorOrAlias_preserves_simpleKey s false)
+          (scanAnchorOrAlias_preserves_simpleKeyStack s false)
+          (by have := ScanHelpers.scanAnchorOrAlias_adds_one_token s false; omega)
+          (fun i hi => ScanHelpers.scanAnchorOrAlias_preserves_prefix s false i hi)
     · split at h
       · -- c == '!': tag
         simp only [Except.ok.injEq] at h; subst h

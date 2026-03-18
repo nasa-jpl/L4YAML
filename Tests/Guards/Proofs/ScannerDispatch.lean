@@ -478,7 +478,7 @@ private def scanTokens (input : String) : Option (List YamlToken) :=
 
 -- Anchor/alias/tag
 #guard scanOk "&anchor value"
-#guard scanOk "*alias"
+#guard scanOk "&alias\n*alias"
 #guard scanOk "!!str value"
 #guard scanOk "!<uri> value"
 #guard scanOk "!local value"
