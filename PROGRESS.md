@@ -6,9 +6,22 @@ Three-phase plan (D → B → A) (see [SPEC-GAP-STRATEGIES.md](./SPEC-GAP-STRATE
 
 ## Current State
 
-**Build:** 322/322 ✔, **3 sorry warnings** (`parseNode_anchors_grow`, `parseNode_aliases_resolve`, `parseStream_output_anchors_wellformed` in ParserGrammable.lean).
+**Build:** 330/330 ✔, **1 sorry warning** (`parseStream_output_anchors_wellformed` in ParserAnchorProofs.lean).
 **Guards:** 362 active, 3 commented out (scanner colon-chain bug: 58MP, 5T43, DBG4).
 **Test suite:** 857 passed, 12 failed (same 3 tests × 4 stages), 151 skipped.
+
+## Phase 2 Complete: Discharge parseNode_anchors_grow + parseNode_aliases_resolve (2026-03-18)
+
+- Created `Lean4Yaml/Proofs/ParserNodeProofs.lean` (~1781 lines) containing:
+  - **AnchorsGrow (AG)** proofs: relation type + helpers (refl, trans, advance, withField, tryConsume, addAnchor), `tryConsume_snd_anchors` simp lemma, `applyNodeFinalization_ag`, all 14 sub-parser AG proofs, `parseNode_ag_all` (strong induction on fuel), `parseNode_anchors_grow` extraction
+  - **AllAliasesResolve (AAR)** proofs: `aar_mono` (lifts AAR via AG embedding), retag/push helpers, `applyNodeFinalization_aar`, all sub-parser AAR proofs (block seq/mapping, implicit seq, flow seq/mapping, SPM, nodeContent), `parseNode_aar_all` (strong induction on fuel), `parseNode_aliases_resolve'` extraction
+  - Key helpers: `spm_close` (single-pair-mapping AAR close), `aar_of_parseNode` (undestrutured pair wrapper)
+- Updated `Lean4Yaml/Proofs/ParserAnchorProofs.lean`:
+  - Added `import Lean4Yaml.Proofs.ParserNodeProofs`
+  - `parseNode_anchors_grow` sorry → `ParserNodeProofs.parseNode_anchors_grow`
+  - `parseNode_aliases_resolve` sorry → `ParserNodeProofs.parseNode_aliases_resolve'`
+- Proof technique: blind split pattern (`split at h_ok <;> first | contradiction | skip` ×9) for control flow; strong induction on fuel with `Nat.le.refl` extraction
+- Build: 330/330 jobs, 1 sorry remaining (spec gap #9)
 
 ## Phase 3 Complete: Scanner-Level Alias Validation (2026-03-18)
 
@@ -31,7 +44,7 @@ Three-phase plan (D → B → A) (see [SPEC-GAP-STRATEGIES.md](./SPEC-GAP-STRATE
 |-------|------|--------|
 | Phase 1 (D) | Parser-level alias validation (`undefinedAlias` error) | ✅ Complete |
 | Phase 3 (A) | Scanner-level `definedAnchors` field + validation in dispatch | ✅ Complete |
-| Phase 2 (B) | Discharge `parseNode_anchors_grow` + `parseNode_aliases_resolve` sorrys | ⬜ Next |
+| Phase 2 (B) | Discharge `parseNode_anchors_grow` + `parseNode_aliases_resolve` sorrys | ✅ Complete |
 | Gap #9 | `parseStream_output_anchors_wellformed` (`∀ inFlow` spec gap) | ⬜ Separate |
 
 2026-03-17
