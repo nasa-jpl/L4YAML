@@ -1,27 +1,31 @@
 # Specification Gap Analysis: Remaining Sorry Theorems
 
 **Date:** 2026-03-17 (updated)
-**Status:** 322/322 build, 2 sorry warnings — both analyzed here.
-**Progress:** Gap #9 proof infrastructure complete (all helper lemmas proven). Gap #8 three-phase plan established (D → B → A).
+**Status:** 322/322 build, 3 sorry warnings — see below.
+**Progress:** Gap #8 Phase 1 complete (parser-level validation). Gap #9 proof infrastructure complete. Gap #8 now has 2 localized sorry helpers; original `parseStream_output_aliases_resolve` is fully proven.
 
 ## Overview
 
 All algorithmic/structural theorems in the C2 proof chain are proved.
-The 2 remaining sorrys are in the **anchor/alias resolution** layer,
+The remaining sorrys are in the **anchor/alias resolution** layer,
 where the proof chain connects parser output (`Scannable`) to composed
 output (`Grammable`). The composition theorem `compose_value_grammable`
-requires two hypotheses that our proof chain cannot currently discharge:
+requires two hypotheses:
 
-| # | Theorem | Predicate | Gap Type |
-|---|---------|-----------|----------|
-| 8 | `parseStream_output_aliases_resolve` | `AllAliasesResolve` | **Formalization gap** — scanner omits provable invariant |
-| 9 | `parseStream_output_anchors_wellformed` | `WellFormedAnchors` | **Specification modeling gap** — `∀ inFlow` quantifier is too strong |
+| # | Theorem | Predicate | Status |
+|---|---------|-----------|--------|
+| 8 | `parseStream_output_aliases_resolve` | `AllAliasesResolve` | **Proven** (modulo 2 helper sorrys: `parseNode_anchors_grow`, `parseNode_aliases_resolve`) |
+| 9 | `parseStream_output_anchors_wellformed` | `WellFormedAnchors` | **Sorry** — specification modeling gap (`∀ inFlow` too strong) |
 
 ---
 
 ## Gap #8: `AllAliasesResolve` — Alias Ordering
 
-### What We Need to Prove
+### Status: Phase 1 Complete
+
+The parser now validates aliases at parse time (§7.1 compliance).
+`parseNode` rejects `*name` unless `name ∈ ps.anchors`, producing
+an `undefinedAlias` error. The top-level theorem is fully proven:
 
 ```lean
 theorem parseStream_output_aliases_resolve
@@ -31,70 +35,45 @@ theorem parseStream_output_aliases_resolve
     ∀ doc ∈ docs.toList, AllAliasesResolve doc.value doc.anchors
 ```
 
-`AllAliasesResolve v anchors` requires: for every `.alias name` node
-in the value tree `v`, there exists an entry with key `name` in the
-`anchors` array. This ensures alias resolution will succeed.
+**Proof chain:** `parseStream` → `parseStreamLoop_aliases_resolve` →
+`parseDocument_aliases_resolve` → `parseNode_aliases_resolve`.
 
-### Where the Gap Comes From
+Two helper lemmas remain as `sorry`:
+1. `parseNode_aliases_resolve` — core induction on fuel, showing every
+   alias in the output tree passed the `ps.anchors.any` check
+2. `parseNode_anchors_grow` — anchors only grow (monotonicity), needed  
+   to lift from child-level to parent-level anchors
 
-**This is a formalization gap, not a YAML spec gap.**
+### Implementation Changes
 
-YAML 1.2.2 §7.1 is explicit:
+1. **Token.lean**: Added `| undefinedAlias (name : String) (line col : Nat)`
+   to `ScanError` + `toString` case
+2. **TokenParser.lean**: `parseNode` alias branch now checks
+   `ps.anchors.any (fun (n, _) => n == name)` before proceeding
+3. **ParserGrammable.lean**: Proof infrastructure:
+   - `any_name_implies_findSome_isSome` — bridge from `Array.any` to
+     `Array.findSome? .isSome` (what `AllAliasesResolve.alias` requires)
+   - `AllAliasesResolve.push` / `AllAliasesResolve.mono` — monotonicity
+   - `parseStreamLoop_aliases_resolve` — loop induction
+   - `parseDocument_aliases_resolve` — document-level lift
 
-> "An alias node is denoted by the `*` indicator, followed by the
-> alias's name. The alias refers to the most recent **preceding** node
-> having the same anchor."
+### Why Phase 1 the Sorrys Are Small
 
-The word "preceding" establishes a clear ordering requirement: every
-alias must have a prior anchor with the same name.
+Both remaining sorrys are structural induction proofs over `parseNode`:
+- They unfold `parseNode` at fuel `k+1`, split on the token match, and
+  for recursive cases (sequences, mappings) use the IH at fuel `≤ k`
+- The alias branch is trivial: the `if` guard provides the witness
+- The scalar/empty branches are trivial: no aliases in the tree
+- The recursive branches need monotonicity (`parseNode_anchors_grow`)
+  to lift child-level IH to parent-level anchors
 
-Our implementation does not validate this:
+### Remaining Phase Plan
 
-1. **Scanner** (`scanAnchorOrAlias`): Emits `.anchor name` or `.alias name`
-   tokens unconditionally — it does not check whether a prior `.anchor`
-   with matching name exists.
-
-2. **Parser** (`parseNode`): When encountering `.alias name`, immediately
-   returns `YamlValue.alias name` without checking `ps.anchors`.
-
-3. **Anchor accumulation** (`applyNodeFinalization` → `addAnchor`): When
-   encountering `.anchor name`, adds `(name, resolved_value)` to
-   `ps.anchors`. This happens during document parsing, so the anchor
-   map grows monotonically.
-
-The proof chain has no theorem connecting "`.alias name` token implies
-prior `.anchor name` token" — and no theorem connecting "prior `.anchor
-name` token implies `name ∈ ps.anchors` at the point of alias processing."
-
-### Why This Is Not a YAML Spec Problem
-
-The YAML spec is unambiguous: §7.1 forbids forward aliases. A conforming
-scanner that accepts the input has already validated that every alias
-name has been anchored. The gap is that our scanner doesn't prove this
-property about its output.
-
-### Scanner Architecture (relevant to resolution options)
-
-The scanner state machine is in `Scanner.lean` (2397 lines). `scanNextToken`
-is **already Wadler-style decomposed** into 5 dispatch levels:
-
-| Level | Function | Branches |
-|-------|----------|----------|
-| 1 | `scanNextToken_preprocess` | Whitespace/indent/peek |
-| 2 | `scanNextToken_dispatchStructural` | `---`, `...`, `%` |
-| 3 | `scanNextToken_dispatchFlowIndicators` | `[`, `]`, `{`, `}`, `,` |
-| 4 | `scanNextToken_dispatchBlockIndicators` | `-`, `?`, `:` |
-| 5 | `scanNextToken_dispatchContent` | `&`, `*`, `!`, `|`/`>`, `"`, `'`, plain |
-
-Anchor/alias handling is in level 5: `scanAnchorOrAlias` (L951–958)
-collects the name and emits `.anchor name` or `.alias name` with **no
-validation and no state tracking**. `ScannerState` has no anchor-related
-fields.
-
-The existing decomposition means Wadler-style refactoring is **not the
-bottleneck** for a scanner-level proof. The challenge is instead the
-**ghost state / real state** question: how to track which anchor names
-have been defined.
+- **Phase 2 (optional)**: Formalize `parseNode_aliases_resolve` and
+  `parseNode_anchors_grow` by mutual structural induction, following
+  the same pattern as `parseNode_wb_all`
+- **Phase 3 (optional)**: Add `definedAnchors` field to `ScannerState`
+  for semantically correct §7.1 scanner-level proof
 
 ### Resolution Options
 

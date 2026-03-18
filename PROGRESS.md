@@ -1,3 +1,9 @@
+2026-03-18
+
+Plan:
+
+Three-phase plan (D → B → A) (see [SPEC-GAP-STRATEGIES.md](./SPEC-GAP-STRATEGIES.md) for details)
+
 2026-03-17
 
 ## Current State
