@@ -146,7 +146,7 @@ def ParseState.tryConsume (ps : ParseState) (tok : YamlToken) : (Bool × ParseSt
     - Anchor map values compare equal to plain values (no stale `anchor := some name`)
 -/
 def ParseState.addAnchor (ps : ParseState) (name : String) (val : YamlValue) : ParseState :=
-  let cleaned := (val.resolveAliases ps.anchors).stripAnchors
+  let cleaned := ((val.resolveAliases ps.anchors).stripAnchors).adaptForFlowContext
   { ps with anchors := ps.anchors.push (name, cleaned) }
 
 /-! ## Node Properties -/

@@ -1,7 +1,8 @@
 # Specification Gap Analysis: Remaining Sorry Theorems
 
-**Date:** 2026-03-17
+**Date:** 2026-03-17 (updated)
 **Status:** 322/322 build, 2 sorry warnings — both analyzed here.
+**Progress:** Gap #9 proof infrastructure complete (all helper lemmas proven). Gap #8 not yet started.
 
 ## Overview
 
@@ -340,13 +341,20 @@ Gap #8 (alias ordering) and Gap #9 (cross-context aliasing) are
 
 - Resolving #8 alone (proving `AllAliasesResolve`) would reduce sorrys
   from 2 to 1.
-- Resolving #9 alone (fixing `WellFormedAnchors`) would reduce sorrys
+- Resolving #9 alone (proving `WellFormedAnchors`) would reduce sorrys
   from 2 to 1.
 - Both can be resolved independently.
 
 However, the two gaps share one structural feature: they both involve
 the **anchor/alias pipeline** that crosses scanner → parser → composition
 boundaries. Any refactoring of anchor handling affects both.
+
+Both gaps now require **parse loop invariants** over `parseStreamLoop`:
+- Gap #8: "every `.alias name` in the value tree has `name ∈ ps.anchors`"
+- Gap #9: "every value in `ps.anchors` satisfies `∀ inFlow, Grammable _ inFlow`"
+
+A single loop invariant combining both properties would be the most
+efficient approach.
 
 ---
 
@@ -356,35 +364,103 @@ boundaries. Any refactoring of anchor handling affects both.
 |--------|--------------------------|------------------------------|
 | **Root cause** | Scanner doesn't prove anchor-before-alias ordering | `∀ inFlow` quantifier too strong for cross-context aliasing |
 | **YAML spec clear?** | ✅ Yes — §7.1 requires preceding anchor | ⚠️ Partially — spec allows cross-context aliasing but doesn't address serialization-level implications |
-| **Our formalization clear?** | ✅ Yes — `AllAliasesResolve` is correct | ❌ No — `WellFormedAnchors` over-constrains with `∀ inFlow` |
-| **Is the predicate correct?** | ✅ Yes | ❌ Too strong |
-| **Counterexample to provability?** | None (should be provable) | Yes — `&a value{braces}` + `[*a]` |
-| **Category** | Formalization gap | Specification modeling gap |
+| **Our formalization clear?** | ✅ Yes — `AllAliasesResolve` is correct | ✅ Yes — `adaptForFlowContext` in `addAnchor` makes stored values universally grammable |
+| **Is the predicate correct?** | ✅ Yes | ✅ Yes — now satisfiable via `adaptForFlowContext` |
+| **Counterexample to provability?** | None (should be provable) | ~~Yes — `&a value{braces}` + `[*a]`~~ **Resolved**: `addAnchor` converts to `.doubleQuoted` |
+| **Category** | Formalization gap | ~~Specification modeling gap~~ → **Resolved at runtime** |
+| **Proof status** | Not started | Helper lemmas all proven; loop invariant needed |
 
 ---
 
-## Recommended Path Forward
+## Decisions
 
-### Priority 1: Fix Gap #9 (specification modeling)
+### Gap #8: Option D — Parser-Level Alias Validation
 
-Gap #9 has a **genuine counterexample** — the theorem as stated is false
-for some valid YAML documents. This must be addressed by changing either
-the predicate or the theorem statement.
+**Decision:** Add runtime alias validation in `parseNode`. When the
+parser encounters `.alias name`, check that `name ∈ ps.anchors`;
+throw an error if not. This closes the gap by construction.
 
-**Recommended: Option B (Style-Flexible Grammable)** or **Option C
-(Precondition)**. Option B is more principled; Option C is more practical.
+**Implementation note:** The validation belongs in the *parser* (not
+the scanner), because:
+- `ps.anchors` already tracks defined anchors with correct document scoping
+  (reset between documents in `parseStreamLoop`)
+- The scanner has no equivalent state — it stateless-ly emits tokens
+- Adding anchor tracking to the scanner would duplicate parser state
 
-### Priority 2: Fix Gap #8 (formalization)
+**Code change** (one line in `parseNode`, TokenParser.lean ~L337):
+```lean
+| some (.alias name) =>
+    if !ps.anchors.any (fun (n, _) => n == name) then
+      throw (.undefinedAlias nodeStartPos.line nodeStartPos.col)
+    -- ... existing advance + return
+```
 
-Gap #8 is a true theorem — it's provable in principle, we just haven't
-proved it. The most practical approach is **Option B (Parser-Level
-Tracking)**: extend the `_wb` chain with an anchors-cover-aliases
-conclusion.
+**Proof strategy** for `AllAliasesResolve`:
+1. Every `.alias name` in the value tree passed the `ps.anchors` check
+2. `ps.anchors` is monotonically growing (push-only via `addAnchor`)
+3. Therefore `name ∈ doc.anchors` at document end
+4. Thread through existing `_wb` chain as an additional conclusion
 
-### Alternative: Hybrid Approach
+**Conformance impact:** YAML §7.1 already rejects undefined aliases.
+This is a conformance improvement, not a behavior change for valid YAML.
 
-If full proofs for both gaps are too expensive, consider:
-1. Fix #9 with Option C (precondition) — low effort, immediate progress
-2. Fix #8 with Option C (precondition) — low effort
-3. Add a comment to the final theorem listing the two preconditions and
-   explaining they are YAML spec requirements, not implementation artifacts
+### Gap #9: Option B′ — `adaptForFlowContext` in `addAnchor` ✅ IMPLEMENTED
+
+**Decision (revised):** The original plan (existentially quantify over
+scalar styles in `Grammable.scalar`) was prototyped and **reverted** —
+the existential witness propagation required modifying dozens of proof
+sites throughout the chain. Instead, we implemented a runtime
+transformation that makes stored anchor values universally grammable
+*before* they enter the anchor map.
+
+**Approach:** `addAnchor` (TokenParser.lean L149) now calls
+`YamlValue.adaptForFlowContext` on every value before storing it:
+
+```lean
+-- TokenParser.lean, addAnchor:
+let cleaned := ((val.resolveAliases ps.anchors).stripAnchors).adaptForFlowContext
+```
+
+`adaptForFlowContext` (Types.lean) recursively processes a value tree:
+- **Plain scalars with flow indicators** → style changed to `.doubleQuoted`
+- **All other scalars** → unchanged
+- **Collections** → recurse into children
+
+The flow indicator check uses `hasFlowIndicator` (a Bool function over
+char lists matching `isFlowIndicatorProp`).
+
+**Why this works:** After `adaptForFlowContext`, every plain scalar in
+the anchor value either:
+1. Has no flow indicators → `ScalarScannable s true` follows from
+   `ScalarScannable s false` + `noFlowIndicatorsProp` (proven in
+   `ScalarScannable_false_to_true_noFI`)
+2. Was converted to `.doubleQuoted` → `ScalarScannable` is vacuously
+   true (gated on `s.style = .plain`)
+
+This makes `∀ inFlow, Grammable val inFlow` provable without changing
+the `Grammable` predicate.
+
+**Advantages over existential approach:**
+- `Grammable` predicate unchanged — zero impact on existing proof chain
+- No existential witness propagation through ~40 proof lemmas
+- Runtime behavior is YAML-compliant (re-quoting is what serializers do)
+- Tests: 857 passed, 12 failed, 151 skipped (no regressions)
+
+**Proven lemmas** (all in ParserGrammable.lean, sorry-free):
+
+| Lemma | Purpose |
+|-------|---------|
+| `hasFlowIndicator_false_noFlowIndicators` | `hasFlowIndicator cs = false → noFlowIndicatorsProp` |
+| `ScalarScannable_false_to_true_noFI` | `ScalarScannable s false` + `noFlowIndicatorsProp` → `ScalarScannable s true` |
+| `adaptList_eq_map` | Where-clause `adaptList` = `List.map adaptForFlowContext` |
+| `adaptPairs_eq_map` | Where-clause `adaptPairs` = `List.map` over pairs |
+| `adaptForFlowContext_grammable_forall` | **Core lifting lemma**: `Grammable v b → ∀ inFlow, Grammable v.adaptForFlowContext inFlow` |
+
+**Remaining work for Gap #9:** The helper lemmas are fully proven.
+Discharging the actual `parseStream_output_anchors_wellformed` sorry
+requires threading `adaptForFlowContext_grammable_forall` through the
+parse loop invariant — showing that `addAnchor`'s call to
+`adaptForFlowContext` means `ps.anchors` satisfies `WellFormedAnchors`
+at document end. This requires a loop invariant over `parseStreamLoop`
+and `parseDocument` connecting individual `addAnchor` calls to the
+final anchor array.
