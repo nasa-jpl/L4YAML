@@ -1,8 +1,8 @@
 # Specification Gap Analysis: Remaining Sorry Theorems
 
-**Date:** 2026-03-17 (updated)
+**Date:** 2026-03-18 (updated)
 **Status:** 322/322 build, 3 sorry warnings — see below.
-**Progress:** Gap #8 Phase 1 complete (parser-level validation). Gap #9 proof infrastructure complete. Gap #8 now has 2 localized sorry helpers; original `parseStream_output_aliases_resolve` is fully proven.
+**Progress:** Gap #8 Phase 1 complete (parser-level validation). Gap #9 proof infrastructure complete. Gap #8 now has 2 localized sorry helpers; original `parseStream_output_aliases_resolve` is fully proven. Revised phase plan: Phase 3 (scanner) → Phase 2 (parser sorrys).
 
 ## Overview
 
@@ -67,13 +67,25 @@ Both remaining sorrys are structural induction proofs over `parseNode`:
 - The recursive branches need monotonicity (`parseNode_anchors_grow`)
   to lift child-level IH to parent-level anchors
 
-### Remaining Phase Plan
+### Remaining Phase Plan (revised: Phase 3 → Phase 2)
 
-- **Phase 2 (optional)**: Formalize `parseNode_aliases_resolve` and
-  `parseNode_anchors_grow` by mutual structural induction, following
-  the same pattern as `parseNode_wb_all`
-- **Phase 3 (optional)**: Add `definedAnchors` field to `ScannerState`
-  for semantically correct §7.1 scanner-level proof
+The original D → B → A ordering assumed Phase 2's parser-level mutual
+induction would "template" Phase 3's scanner proof.  In practice the
+two induction shapes are unrelated (14-function mutual induction vs.
+`scanLoop` state-machine induction with 5-level dispatch), so Phase 2
+provides no scaffolding for Phase 3.  Going scanner-first is better:
+
+- **Phase 3 (next)**: Add `definedAnchors : Array String` to
+  `ScannerState`.  Prove `scan_aliases_have_prior_anchors` — every
+  `.alias name` token at position `i` has a prior `.anchor name` at
+  `j < i`.  This is semantically correct §7.1 conformance at the
+  scanner level.
+- **Phase 2 (after Phase 3)**: Discharge `parseNode_aliases_resolve`
+  and `parseNode_anchors_grow` using the scanner theorem as a
+  precondition on the input token stream.  With
+  `AliasesHaveAnchors tokens` established by the scanner, the parser
+  proof becomes straightforward — no mutual induction over 14
+  functions needed.
 
 ### Resolution Options
 
@@ -395,7 +407,10 @@ efficient approach.
 
 ### Gap #8: Three-Phase Plan (D → B → A)
 
-Gap #8 will be resolved in three phases, each building on the previous:
+Gap #8 is resolved in three phases.  Phase 1 is complete.  The
+remaining phases are reordered: scanner first (Phase 3), then parser
+sorrys (Phase 2), because the scanner theorem trivializes the parser
+proof:
 
 #### Phase 1: Option D — Parser-Level Alias Validation
 
@@ -421,20 +436,25 @@ Add runtime alias validation in `parseNode`. When the parser encounters
 **Conformance impact:** YAML §7.1 already rejects undefined aliases.
 This is a conformance improvement, not a behavior change for valid YAML.
 
-#### Phase 2: Option B — Parser-Level Invariant (template for Phase 3)
+#### Phase 2: Parser-Level Sorrys (after Phase 3)
 
-**Goal:** Establish the parse-loop invariant structure that Phase 3 replicates.
+**Goal:** Discharge the two remaining sorry helpers using the scanner
+theorem from Phase 3.
 
-Thread an `AllAliasesResolve` invariant through the parser's `_wb` chain:
-- Each `_wb` lemma gets an additional conclusion:
-  `∀ (.alias name) in result.value, name ∈ ps'.anchors`
-- `parseDocument` collects these into the document's anchor map
-- `parseStream_doc_from_parseDocument` lifts to stream level
+Once `scan_aliases_have_prior_anchors` is proven, add
+`AliasesHaveAnchors tokens` as a (trivially-discharged) precondition
+to `parseStream`.  Then:
+- `parseNode_anchors_grow` follows from token-level anchor ordering:
+  `ps.anchors` grows only via `addAnchor`, which processes tokens
+  linearly.
+- `parseNode_aliases_resolve` follows from the `if` guard in Phase 1
+  plus anchors monotonicity: the guard certifies
+  `name ∈ ps.anchors` at parse time, and `ps.anchors ⊆ doc.anchors`
+  by monotonicity.
 
-This leverages the existing `_wb` infrastructure and provides a
-**concrete template** for the scanner-level proof in Phase 3:
-the induction shape, monotonicity argument, and per-function preservation
-lemmas all transfer directly.
+No mutual induction over 14 functions is needed — the scanner
+theorem provides the structural invariant that the parser proof
+previously had to establish from scratch.
 
 #### Phase 3: Option A — Scanner-Level `definedAnchors` Field
 

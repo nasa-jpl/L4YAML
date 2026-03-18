@@ -167,6 +167,11 @@ structure ScannerState where
       side-channel rather than in the token array so that all existing
       `preserves_tokens` proofs remain valid unchanged. -/
   comments : Array (YamlPos × String) := #[]
+  /-- Anchor names defined in the current document (§7.1).
+      Pushed by `scanAnchorOrAlias` when `isAnchor = true`.
+      Checked by `scanAnchorOrAlias` when `isAnchor = false`.
+      Reset on document boundaries (`scanDocumentStart`, `scanDocumentEnd`). -/
+  definedAnchors : Array String := #[]
   deriving Repr, Inhabited
 
 /-! ### State Invariants
@@ -1208,7 +1213,8 @@ def scanDocumentStart (s : ScannerState) : ScannerState :=
     allowDirectives := false
     seenYamlDirective := false
     directivesPresent := false
-    documentEverStarted := true }
+    documentEverStarted := true
+    definedAnchors := #[] }
 
 /-- Helper: skip whitespace (spaces + tabs) using structural recursion.
     Used by scanDocumentEnd for trailing content validation. -/
@@ -1246,7 +1252,8 @@ def scanDocumentEnd (s : ScannerState) : Except ScanError ScannerState := do
   let result := { s_advanced with
     simpleKeyAllowed := true
     allowDirectives := true
-    directivesPresent := false }
+    directivesPresent := false
+    definedAnchors := #[] }
   -- §9.1.2: After `...`, only s-l-comments (whitespace + optional comment) allowed.
   -- Skip whitespace on the same line (structural recursion via skipDocEndWhitespace)
   let s'' := skipDocEndWhitespace result (s.inputEnd - result.offset + 1)
@@ -2210,8 +2217,16 @@ def scanNextToken_dispatchBlockIndicators (s : ScannerState) (c : Char) :
     Always either processes a token or returns an error. -/
 def scanNextToken_dispatchContent (s : ScannerState) (c : Char) :
     Except ScanError ScannerState := do
-  if c == '&' then return scanAnchorOrAlias s true
-  if c == '*' then return scanAnchorOrAlias s false
+  if c == '&' then
+    let s' := scanAnchorOrAlias s true
+    let name := (collectAnchorNameLoop s.advance "" (s.inputEnd - s.advance.offset)).fst
+    return { s' with definedAnchors := s'.definedAnchors.push name }
+  if c == '*' then
+    let name := (collectAnchorNameLoop s.advance "" (s.inputEnd - s.advance.offset)).fst
+    if !(s.definedAnchors.any (· == name)) then
+      .error (.undefinedAlias name s.currentPos.line s.currentPos.col)
+    else
+      return scanAnchorOrAlias s false
   if c == '!' then return scanTag s
   if c == '|' || c == '>' then
     let s' ← scanBlockScalar s

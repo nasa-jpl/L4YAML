@@ -458,7 +458,7 @@ theorem dispatchContent_preserves_PlainScalarsValid
     simp only [bind, Except.bind, pure, Except.pure] at h_ok
     split at h_ok
     · -- c == '&': .anchor — not plain scalar
-      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      simp only [Except.ok.injEq] at h_ok; subst h_ok; dsimp only []
       intro j hj hge
       have : j = s.tokens.size := by
         have := scanAnchorOrAlias_adds_one_token s true; omega
@@ -471,17 +471,19 @@ theorem dispatchContent_preserves_PlainScalarsValid
         · simp)
     · split at h_ok
       · -- c == '*': .alias — not plain scalar
-        simp only [Except.ok.injEq] at h_ok; subst h_ok
-        intro j hj hge
-        have : j = s.tokens.size := by
-          have := scanAnchorOrAlias_adds_one_token s false; omega
-        subst this
-        exact psv_match_of_ne_plain _ _ hj (fun c => by
-          unfold scanAnchorOrAlias ScannerState.emitAt
-          simp only [collectAnchorNameLoop_preserves_tokens, advance_preserves_tokens, Array.getElem_push]
-          split
-          · omega
-          · simp)
+        split at h_ok
+        · contradiction
+        · simp only [Except.ok.injEq] at h_ok; subst h_ok
+          intro j hj hge
+          have : j = s.tokens.size := by
+            have := scanAnchorOrAlias_adds_one_token s false; omega
+          subst this
+          exact psv_match_of_ne_plain _ _ hj (fun c => by
+            unfold scanAnchorOrAlias ScannerState.emitAt
+            simp only [collectAnchorNameLoop_preserves_tokens, advance_preserves_tokens, Array.getElem_push]
+            split
+            · omega
+            · simp)
       · split at h_ok
         · -- c == '!': .tag — not plain scalar
           simp only [Except.ok.injEq] at h_ok
@@ -3383,8 +3385,10 @@ theorem dispatchContent_preserves_FlowInv
     exact scanAnchorOrAlias_preserves_FlowInv s true h_fpsv h_fni
   · split at h_ok
     · -- c == '*'
-      injection h_ok with h_eq; subst h_eq
-      exact scanAnchorOrAlias_preserves_FlowInv s false h_fpsv h_fni
+      split at h_ok
+      · contradiction
+      · injection h_ok with h_eq; subst h_eq
+        exact scanAnchorOrAlias_preserves_FlowInv s false h_fpsv h_fni
     · split at h_ok
       · -- c == '!'
         injection h_ok with h_eq; subst h_eq
@@ -4670,21 +4674,25 @@ theorem dispatchContent_preserves_AllKeysPlaceholderInv
   unfold scanNextToken_dispatchContent at h_ok
   simp only [bind, Except.bind, pure, Except.pure] at h_ok
   split at h_ok
-  · -- c == '&': anchor
+  · -- c == '&': anchor with definedAnchors update
     simp only [Except.ok.injEq] at h_ok; subst h_ok
-    exact AllKeysPlaceholderInv_mono s _ h_akpi
+    have h_base := AllKeysPlaceholderInv_mono s (scanAnchorOrAlias s true) h_akpi
       (scanAnchorOrAlias_preserves_simpleKey s true)
       (scanAnchorOrAlias_preserves_simpleKeyStack s true)
       (by have := ScanHelpers.scanAnchorOrAlias_adds_one_token s true; omega)
       (fun i hi => ScanHelpers.scanAnchorOrAlias_preserves_prefix s true i hi)
+    exact AllKeysPlaceholderInv_mono (scanAnchorOrAlias s true) _ h_base rfl rfl
+      (Nat.le_refl _) (fun i hi => rfl)
   · split at h_ok
-    · -- c == '*': alias
-      simp only [Except.ok.injEq] at h_ok; subst h_ok
-      exact AllKeysPlaceholderInv_mono s _ h_akpi
-        (scanAnchorOrAlias_preserves_simpleKey s false)
-        (scanAnchorOrAlias_preserves_simpleKeyStack s false)
-        (by have := ScanHelpers.scanAnchorOrAlias_adds_one_token s false; omega)
-        (fun i hi => ScanHelpers.scanAnchorOrAlias_preserves_prefix s false i hi)
+    · -- c == '*': alias (with alias validation check)
+      split at h_ok
+      · contradiction
+      · simp only [Except.ok.injEq] at h_ok; subst h_ok
+        exact AllKeysPlaceholderInv_mono s _ h_akpi
+          (scanAnchorOrAlias_preserves_simpleKey s false)
+          (scanAnchorOrAlias_preserves_simpleKeyStack s false)
+          (by have := ScanHelpers.scanAnchorOrAlias_adds_one_token s false; omega)
+          (fun i hi => ScanHelpers.scanAnchorOrAlias_preserves_prefix s false i hi)
     · split at h_ok
       · -- c == '!': tag
         simp only [Except.ok.injEq] at h_ok; subst h_ok
