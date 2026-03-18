@@ -4,6 +4,36 @@ Plan:
 
 Three-phase plan (D → B → A) (see [SPEC-GAP-STRATEGIES.md](./SPEC-GAP-STRATEGIES.md) for details)
 
+## Current State
+
+**Build:** 322/322 ✔, **3 sorry warnings** (`parseNode_anchors_grow`, `parseNode_aliases_resolve`, `parseStream_output_anchors_wellformed` in ParserGrammable.lean).
+**Guards:** 362 active, 3 commented out (scanner colon-chain bug: 58MP, 5T43, DBG4).
+**Test suite:** 857 passed, 12 failed (same 3 tests × 4 stages), 151 skipped.
+
+## Phase 3 Complete: Scanner-Level Alias Validation (2026-03-18)
+
+- Added `definedAnchors : Array String := #[]` field to `ScannerState`
+- `scanAnchorOrAlias` kept as pure function (returns `ScannerState`, not `Except`) — all 8+ preservation theorems untouched
+- Validation moved to `scanNextToken_dispatchContent`:
+  - Anchor (`&`): calls pure `scanAnchorOrAlias`, wraps result with `definedAnchors.push name`
+  - Alias (`*`): checks `s.definedAnchors.any (· == name)`; throws `.error (.undefinedAlias ...)` if not found; delegates to pure `scanAnchorOrAlias` on success
+- Document boundaries reset `definedAnchors := #[]` in `scanDocumentStart` and `scanDocumentEnd`
+- Dispatch proof fixes:
+  - `ScannerCorrectness.lean`: 4 dispatch proofs updated (tokens_mono, SimpleKeyAbove, ScanInv, AllKeysValid)
+  - `ScannerPlainScalarValid.lean`: 3 dispatch proofs updated (PSV, FlowInv, AllKeysPlaceholderInv)
+  - Pattern for anchor struct update `{ f s with definedAnchors := ... }`: double `AllKeysValid_mono` (prove for `f s`, bridge with `rfl`/`Nat.le_refl`/`rfl`); `field_update_preserves_ScanInv _ _ ... rfl rfl`; `dsimp only []` for PSV; `SimpleKeyAbove_of_preserved _ (f s true) n rfl rfl (...)`
+  - Pattern for alias validation `if`: `split at h_ok` for inner if; `contradiction` for error path; original proof for success
+- Guard test files updated (ScannerProgress, ScannerDocument, ScannerDispatch)
+
+## Phase Plan Status
+
+| Phase | Goal | Status |
+|-------|------|--------|
+| Phase 1 (D) | Parser-level alias validation (`undefinedAlias` error) | ✅ Complete |
+| Phase 3 (A) | Scanner-level `definedAnchors` field + validation in dispatch | ✅ Complete |
+| Phase 2 (B) | Discharge `parseNode_anchors_grow` + `parseNode_aliases_resolve` sorrys | ⬜ Next |
+| Gap #9 | `parseStream_output_anchors_wellformed` (`∀ inFlow` spec gap) | ⬜ Separate |
+
 2026-03-17
 
 ## Current State

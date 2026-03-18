@@ -2,7 +2,7 @@
 
 **Date:** 2026-03-18 (updated)
 **Status:** 322/322 build, 3 sorry warnings — see below.
-**Progress:** Gap #8 Phase 1 complete (parser-level validation). Gap #9 proof infrastructure complete. Gap #8 now has 2 localized sorry helpers; original `parseStream_output_aliases_resolve` is fully proven. Revised phase plan: Phase 3 (scanner) → Phase 2 (parser sorrys).
+**Progress:** Gap #8 Phase 1 complete (parser-level validation). Gap #8 Phase 3 complete (scanner-level `definedAnchors` + dispatch validation). Gap #9 proof infrastructure complete. Revised phase plan: Phase 3 (scanner) → Phase 2 (parser sorrys). Phase 2 next.
 
 ## Overview
 
@@ -75,13 +75,12 @@ two induction shapes are unrelated (14-function mutual induction vs.
 `scanLoop` state-machine induction with 5-level dispatch), so Phase 2
 provides no scaffolding for Phase 3.  Going scanner-first is better:
 
-- **Phase 3 (next)**: Add `definedAnchors : Array String` to
-  `ScannerState`.  Prove `scan_aliases_have_prior_anchors` — every
-  `.alias name` token at position `i` has a prior `.anchor name` at
-  `j < i`.  This is semantically correct §7.1 conformance at the
-  scanner level.
-- **Phase 2 (after Phase 3)**: Discharge `parseNode_aliases_resolve`
-  and `parseNode_anchors_grow` using the scanner theorem as a
+- **Phase 3 (complete)**: `definedAnchors : Array String` added to
+  `ScannerState`.  Scanner-level alias validation in dispatch layer.
+  `scanAnchorOrAlias` kept pure; all preservation theorems untouched.
+  Document boundaries reset field.  Dispatch proofs updated.
+- **Phase 2 (next)**: Discharge `parseNode_aliases_resolve`
+  and `parseNode_anchors_grow` using the scanner validation as a
   precondition on the input token stream.  With
   `AliasesHaveAnchors tokens` established by the scanner, the parser
   proof becomes straightforward — no mutual induction over 14
@@ -456,29 +455,24 @@ No mutual induction over 14 functions is needed — the scanner
 theorem provides the structural invariant that the parser proof
 previously had to establish from scratch.
 
-#### Phase 3: Option A — Scanner-Level `definedAnchors` Field
+#### Phase 3: Option A — Scanner-Level `definedAnchors` Field ✅ COMPLETE
 
 **Goal:** Prove YAML §7.1 conformance at the scanner level — the
 semantically correct result.
 
-Add `definedAnchors : Array String` to `ScannerState`. This is
-preferred over logical ghost state because ghost state artificially
-papers over the fact that the scanner's semantic state is incomplete.
-The `definedAnchors` field is genuinely part of the scanner's
-responsibility — tracking which anchors have been defined in the
-current document is information the scanner *should* have.
-
-**Implementation:**
-1. Add `definedAnchors : Array String` to `ScannerState`
-2. `scanAnchorOrAlias` with `isAnchor = true`: push `name` to
-   `definedAnchors`
-3. `scanAnchorOrAlias` with `isAnchor = false`: check
-   `name ∈ definedAnchors` (reject if absent — §7.1 conformance)
-4. `scanDocumentStart` / `scanDocumentEnd`: reset `definedAnchors`
-   (document-scoped per §7.1)
-5. ~15 preservation lemmas (mechanical — most functions don't touch
-   the field; 5-level dispatch decomposition helps)
-6. `scanLoop` induction: thread `definedAnchors` monotonicity
+**Implementation (completed 2026-03-18):**
+1. Added `definedAnchors : Array String` to `ScannerState`
+2. `scanAnchorOrAlias` kept as pure function (`ScannerState` return,
+   not `Except`) — all 8+ preservation theorems untouched
+3. Validation moved to `scanNextToken_dispatchContent`:
+   - Anchor (`&`): calls pure `scanAnchorOrAlias`, wraps result with
+     `definedAnchors.push name`
+   - Alias (`*`): checks `s.definedAnchors.any (· == name)`, rejects
+     if absent (§7.1 conformance), delegates to pure function on success
+4. `scanDocumentStart` / `scanDocumentEnd`: reset `definedAnchors := #[]`
+5. Dispatch proofs updated in ScannerCorrectness.lean (4 proofs) and
+   ScannerPlainScalarValid.lean (3 proofs)
+6. Guard test files updated (ScannerProgress, ScannerDocument, ScannerDispatch)
 
 **Outcome:** A standalone scanner theorem:
 ```lean
