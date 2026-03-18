@@ -417,6 +417,46 @@ where
     | (k, v) :: rest =>
       (k.stripAnchors, v.stripAnchors) :: stripPairs rest
 
+/-- Does the string contain any YAML flow indicator character
+    (`,`, `[`, `]`, `{`, `}`)? -/
+def hasFlowIndicator : List Char → Bool
+  | [] => false
+  | c :: cs => c == ',' || c == '[' || c == ']' || c == '{' || c == '}' || hasFlowIndicator cs
+
+/--
+Adapt a `YamlValue` tree so that every scalar is representable in
+**any** flow context.
+
+Plain scalars whose content contains flow indicator characters are
+re-styled as `.doubleQuoted` — all other nodes are unchanged. This
+ensures `ScalarScannable s inFlow` holds for every `inFlow : Bool`:
+- Non-plain scalars: the scannable check is vacuously `True`.
+- Plain scalars without flow indicators: the `noFlowIndicators` clause
+  in `ScalarScannable` is satisfied even when `inFlow = true`.
+
+This is applied to anchor values in `ParseState.addAnchor` so that
+anchors can be aliased into any context (YAML 1.2.2 §7.1).
+-/
+def YamlValue.adaptForFlowContext (v : YamlValue) : YamlValue :=
+  match v with
+  | .scalar s =>
+    if s.style == .plain && hasFlowIndicator s.content.toList then
+      .scalar { s with style := .doubleQuoted }
+    else .scalar s
+  | .sequence style items tag anchor =>
+    .sequence style (adaptList items.toList).toArray tag anchor
+  | .mapping style pairs tag anchor =>
+    .mapping style (adaptPairs pairs.toList).toArray tag anchor
+  | .alias _ => v
+where
+  adaptList : List YamlValue → List YamlValue
+    | [] => []
+    | v :: vs => v.adaptForFlowContext :: adaptList vs
+  adaptPairs : List (YamlValue × YamlValue) → List (YamlValue × YamlValue)
+    | [] => []
+    | (k, v) :: rest =>
+      (k.adaptForFlowContext, v.adaptForFlowContext) :: adaptPairs rest
+
 /--
 **Compose**: resolve aliases and strip anchor annotations.
 

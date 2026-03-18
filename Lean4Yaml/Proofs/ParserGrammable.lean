@@ -262,6 +262,177 @@ def WellFormedAnchors (anchors : Array (String × YamlValue)) : Prop :=
     anchors.findSome? (fun (n, v) => if n == name then some v else none) = some val →
       ∀ inFlow, Grammable val.stripAnchors inFlow
 
+/-! ### adaptForFlowContext: bridging + grammability lifting
+
+These lemmas prove that `YamlValue.adaptForFlowContext` makes any
+`Grammable v b` value universally grammable (at every flow context).
+This is the core tool for discharging `parseStream_output_anchors_wellformed`. -/
+
+/-- `hasFlowIndicator cs = false` implies no flow indicators (Prop).
+    Each char-level check in `hasFlowIndicator` exactly matches `isFlowIndicatorProp`,
+    so `hasFlowIndicator cs = false` means no char in `cs` is a flow indicator. -/
+theorem hasFlowIndicator_false_noFlowIndicators (content : String)
+    (h : hasFlowIndicator content.toList = false) :
+    noFlowIndicatorsProp content := by
+  unfold noFlowIndicatorsProp
+  suffices ∀ (cs : List Char), hasFlowIndicator cs = false →
+      ∀ c ∈ cs, ¬isFlowIndicatorProp c by exact this content.toList h
+  intro cs
+  induction cs with
+  | nil => intro _ c hc; nomatch hc
+  | cons x xs ih =>
+    intro h_fi c hc hfi
+    simp only [hasFlowIndicator, Bool.or_eq_false_iff] at h_fi
+    obtain ⟨h_char, h_rest⟩ := h_fi
+    rcases List.mem_cons.mp hc with rfl | hmem
+    · simp only [beq_eq_false_iff_ne] at h_char
+      obtain ⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩ := h_char
+      unfold isFlowIndicatorProp at hfi
+      cases hfi with
+      | head => exact h1 rfl
+      | tail _ hfi => cases hfi with
+        | head => exact h2 rfl
+        | tail _ hfi => cases hfi with
+          | head => exact h3 rfl
+          | tail _ hfi => cases hfi with
+            | head => exact h4 rfl
+            | tail _ hfi => cases hfi with
+              | head => exact h5 rfl
+              | tail _ hfi => nomatch hfi
+    · exact ih h_rest c hmem hfi
+
+/-- If `ScalarScannable s false` and content has no flow indicators,
+    then `ScalarScannable s true`.
+
+    The only difference between `false` and `true` contexts is that
+    exception chars (-, ?, :) with a next char add `¬isFlowIndicatorProp n`
+    in flow context, which follows from `noFlowIndicatorsProp`. -/
+theorem ScalarScannable_false_to_true_noFI (s : Scalar)
+    (h : ScalarScannable s false)
+    (h_nfi : noFlowIndicatorsProp s.content) :
+    ScalarScannable s true := by
+  intro hplain hlen
+  have ⟨hvpf, hcs, hsh, _⟩ := h hplain hlen
+  refine ⟨?_, hcs, hsh, fun _ => h_nfi⟩
+  -- Upgrade validPlainFirstProp from false → true.
+  -- The only inFlow-dependent part is exception chars with a next char.
+  unfold validPlainFirstProp at hvpf ⊢
+  generalize hcl : s.content.toList = cl at hvpf ⊢
+  match cl with
+  | [] => trivial
+  | [c] =>
+    -- Reduce match [c] in both hvpf and goal
+    dsimp only [] at hvpf ⊢
+    -- if exception then True else canStartPlainScalarProp c none inFlow
+    split
+    · trivial
+    · split at hvpf
+      · contradiction
+      · -- canStartPlainScalarProp c none false → true: inFlow-independent for none
+        unfold canStartPlainScalarProp at hvpf ⊢
+        dsimp only [] at hvpf ⊢
+        exact hvpf
+  | c :: n :: rest =>
+    -- Reduce match (c :: n :: rest) in both hvpf and goal
+    dsimp only [] at hvpf ⊢
+    -- canStartPlainScalarProp c (some n) false → true
+    unfold canStartPlainScalarProp at hvpf ⊢
+    dsimp only [] at hvpf ⊢
+    -- Both: if exc then (¬ws ∧ ¬lb ∧ (inFlow=true → ¬fi)) else (¬ind ∧ ¬ws ∧ ¬lb)
+    split at hvpf
+    · -- Exception branch in hvpf
+      split
+      · -- Exception in goal: upgrade ∧-conjunction with h_nfi
+        have h_n_mem : n ∈ s.content.toList := by
+          rw [hcl]; exact .tail _ (.head _)
+        exact ⟨hvpf.1, hvpf.2.1, fun _ => h_nfi n h_n_mem⟩
+      · contradiction
+    · -- Non-exception branch in hvpf: identical for both inFlow values
+      split
+      · contradiction
+      · exact hvpf
+
+/-- The `adaptList` where-clause helper equals `List.map adaptForFlowContext`. -/
+theorem adaptList_eq_map (l : List YamlValue) :
+    YamlValue.adaptForFlowContext.adaptList l =
+      l.map YamlValue.adaptForFlowContext := by
+  induction l with
+  | nil => simp [YamlValue.adaptForFlowContext.adaptList]
+  | cons v vs ih => simp [YamlValue.adaptForFlowContext.adaptList, ih]
+
+/-- The `adaptPairs` where-clause helper equals `List.map` over pairs. -/
+theorem adaptPairs_eq_map (l : List (YamlValue × YamlValue)) :
+    YamlValue.adaptForFlowContext.adaptPairs l =
+      l.map (fun (k, v) => (k.adaptForFlowContext, v.adaptForFlowContext)) := by
+  induction l with
+  | nil => simp [YamlValue.adaptForFlowContext.adaptPairs]
+  | cons p ps ih =>
+    obtain ⟨k, v⟩ := p
+    simp [YamlValue.adaptForFlowContext.adaptPairs, ih]
+
+-- **Core lifting lemma**: `adaptForFlowContext` makes any `Grammable` value
+--     universally grammable.
+--
+--     If `Grammable v b` for some flow context `b`, then
+--     `Grammable v.adaptForFlowContext inFlow` for every `inFlow`.
+--
+--     - Plain scalars with flow indicators → `.doubleQuoted` (vacuously scannable)
+--     - Plain scalars without flow indicators → unchanged (scannable at both contexts)
+--     - Non-plain scalars → unchanged (vacuously scannable)
+--     - Collections → recursive
+set_option maxHeartbeats 800000 in
+theorem adaptForFlowContext_grammable_forall (v : YamlValue) (b : Bool)
+    (h : Grammable v b) : ∀ inFlow, Grammable v.adaptForFlowContext inFlow := by
+  induction h with
+  | scalar s b h_ss =>
+    intro inFlow
+    show Grammable (if s.style == .plain && hasFlowIndicator s.content.toList
+      then .scalar { s with style := .doubleQuoted } else .scalar s) inFlow
+    split
+    · -- s.style == .plain && hasFlowIndicator → doubleQuoted (vacuously scannable)
+      exact .scalar { s with style := .doubleQuoted } inFlow
+        (fun h_plain => by dsimp only [] at h_plain; contradiction)
+    · -- else: s unchanged
+      rename_i h_neg
+      simp only [Bool.and_eq_true] at h_neg
+      by_cases hplain : s.style = .plain
+      · -- plain but no flow indicators
+        have h_no_fi : hasFlowIndicator s.content.toList = false := by
+          cases h_fi : hasFlowIndicator s.content.toList with
+          | false => rfl
+          | true =>
+            have h_beq : (s.style == ScalarStyle.plain) = true := by rw [hplain]; decide
+            exact absurd ⟨h_beq, h_fi⟩ h_neg
+        have h_nfi := hasFlowIndicator_false_noFlowIndicators s.content h_no_fi
+        have h_false := ScalarScannable_any_implies_false s b h_ss
+        cases inFlow with
+        | false => exact .scalar s false h_false
+        | true =>
+          exact .scalar s true (ScalarScannable_false_to_true_noFI s h_false h_nfi)
+      · -- non-plain: vacuously scannable
+        exact .scalar s inFlow (fun h_eq => absurd h_eq hplain)
+  | sequence style items tag anchor b h_items ih_items =>
+    intro inFlow
+    show Grammable (.sequence style
+      (YamlValue.adaptForFlowContext.adaptList items.toList).toArray tag anchor) inFlow
+    rw [adaptList_eq_map]
+    apply Grammable.sequence
+    intro ⟨i, hi⟩
+    simp at hi ⊢
+    exact ih_items ⟨i, hi⟩ _
+  | mapping style pairs tag anchor b hk hv ih_k ih_v =>
+    intro inFlow
+    show Grammable (.mapping style
+      (YamlValue.adaptForFlowContext.adaptPairs pairs.toList).toArray tag anchor) inFlow
+    rw [adaptPairs_eq_map]
+    apply Grammable.mapping
+    · intro ⟨i, hi⟩
+      simp at hi ⊢
+      exact ih_k ⟨i, hi⟩ _
+    · intro ⟨i, hi⟩
+      simp at hi ⊢
+      exact ih_v ⟨i, hi⟩ _
+
 /-- If `findSome?` with unit-returning predicate succeeds, then
     `findSome?` with value-returning predicate also succeeds. -/
 theorem findSome_unit_to_val (arr : Array (String × YamlValue)) (name : String)
@@ -324,7 +495,7 @@ theorem compose_value_grammable
   induction h_scan with
   | scalar s inFlow h_ss =>
     exact .scalar { s with anchor := none } inFlow
-      (fun hplain hlen => h_ss hplain hlen)
+      ((ScalarScannable_strip_anchor s inFlow).mp h_ss)
   | alias name inFlow =>
     cases h_resolve with
     | alias _ _ h_res =>
