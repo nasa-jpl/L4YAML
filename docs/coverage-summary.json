@@ -1,5 +1,5 @@
 {
-  "date": "2026-03-18T08:21:45-0700",
+  "date": "2026-03-18T09:30:11-0700",
   "overall": {
     "applicable": 358,
     "correct": 355,
@@ -2981,9 +2981,9 @@
         "total": 68
       },
       {
-        "allPass": true,
+        "allPass": false,
         "label": "Scanner & TokenParser Tests (Phase 9)",
-        "passed": 32,
+        "passed": 31,
         "total": 32
       },
       {
@@ -2999,7 +2999,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 748,
+    "totalPassed": 747,
     "totalTests": 750
   }
 }

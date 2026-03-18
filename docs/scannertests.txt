@@ -41,7 +41,7 @@
 
 --- Anchors and aliases ---
   ✓ anchor scan
-  ✓ alias scan
+  ✗ alias scan
 
 --- Phase 9 regression: b: x: y ---
   ✓ b: x: y scans
@@ -53,4 +53,5 @@
   ✓ hex escape \x41
   ✓ unicode \u0041
 
-=== Results: 32/32 passed ===
+=== Results: 31/32 passed ===
+    1 FAILED

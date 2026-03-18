@@ -433,11 +433,11 @@ Running verified test suites...
   Raw Parse / Compose Tests: ✓ 29/29
   YAML 1.2.2 Spec Examples: ✗ 131/132
   Schema ↔ Dump Integration: ✓ 68/68
-  Scanner & TokenParser Tests (Phase 9): ✓ 32/32
+  Scanner & TokenParser Tests (Phase 9): ✗ 31/32
   YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline): ✗ 131/132
   Demo: ✓ 7/7
 
-Verified: 748/750
+Verified: 747/750
 
 Generating HTML reports...
   wrote docs/index.html
