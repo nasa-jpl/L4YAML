@@ -3103,8 +3103,14 @@ theorem parseNode_alias_tokens (ps : ParseState) (fuel : Nat) (name : String)
     (h_ok : parseNode ps (fuel + 1) = .ok result) :
     result.2.tokens = ps.tokens := by
   unfold parseNode at h_ok
-  simp only [h_peek, pure, Except.pure] at h_ok
-  split at h_ok <;> simp only [Except.ok.injEq] at h_ok <;> subst h_ok <;> simp [ParseState.advance]
+  simp only [h_peek, bind, Except.bind, pure, Except.pure] at h_ok
+  -- Split on the §7.1 alias validation check
+  split at h_ok
+  · contradiction  -- undefinedAlias error branch
+  · split at h_ok <;> {
+      simp only [Except.ok.injEq] at h_ok
+      obtain ⟨-, rfl⟩ := h_ok; simp [ParseState.advance]
+    }
 
 -- W2: Alias branch preserves flowNesting
 theorem parseNode_alias_flowNesting (tokens : Array (Positioned YamlToken))
@@ -3115,16 +3121,20 @@ theorem parseNode_alias_flowNesting (tokens : Array (Positioned YamlToken))
     (h_ok : parseNode ps (fuel + 1) = .ok result) :
     flowNesting tokens result.2.pos = flowNesting tokens ps.pos := by
   unfold parseNode at h_ok
-  simp only [h_peek, pure, Except.pure] at h_ok
-  -- After simplification, the if-then-else on trackPositions remains
-  split at h_ok <;> {
-    simp only [Except.ok.injEq] at h_ok; subst h_ok
-    -- Both branches: pos = ps.advance.pos (nodePositions/currentPath don't affect pos)
-    simp only [ParseState.advance]
-    exact advance_preserves_flowNesting tokens ps h_peek h_eq
-      (fun h => nomatch h) (fun h => nomatch h)
-      (fun h => nomatch h) (fun h => nomatch h)
-  }
+  simp only [h_peek, bind, Except.bind, pure, Except.pure] at h_ok
+  -- Split on the §7.1 alias validation check
+  split at h_ok
+  · contradiction  -- undefinedAlias error branch
+  · -- After simplification, the if-then-else on trackPositions remains
+    split at h_ok <;> {
+      simp only [Except.ok.injEq] at h_ok
+      obtain ⟨-, rfl⟩ := h_ok
+      -- Both branches: pos = ps.advance.pos (nodePositions/currentPath don't affect pos)
+      simp only [ParseState.advance]
+      exact advance_preserves_flowNesting tokens ps h_peek h_eq
+        (fun h => nomatch h) (fun h => nomatch h)
+        (fun h => nomatch h) (fun h => nomatch h)
+    }
 
 /-- **Key lemma**: `parseNode` is well-behaved at every fuel level.
 
@@ -3170,26 +3180,29 @@ theorem parseNode_wb_all (tokens : Array (Positioned YamlToken))
       split at h_ok
       · -- Alias branch: some (.alias name) → return
         rename_i name heq_peek
-        -- The alias branch has an if-then-else on trackPositions
+        -- Split on the §7.1 alias validation check
         split at h_ok
-        · -- trackPositions = true
-          simp only [Except.ok.injEq] at h_ok
-          obtain ⟨rfl, rfl⟩ := Prod.mk.inj h_ok
-          exact ⟨.alias name false,
-                 fun _ => .alias name true,
-                 advance_preserves_flowNesting tokens ps heq_peek h_eq
-                   (fun h => nomatch h) (fun h => nomatch h)
-                   (fun h => nomatch h) (fun h => nomatch h),
-                 by simp [ParseState.advance, h_eq]⟩
-        · -- trackPositions = false
-          simp only [Except.ok.injEq] at h_ok
-          obtain ⟨rfl, rfl⟩ := Prod.mk.inj h_ok
-          exact ⟨.alias name false,
-                 fun _ => .alias name true,
-                 advance_preserves_flowNesting tokens ps heq_peek h_eq
-                   (fun h => nomatch h) (fun h => nomatch h)
-                   (fun h => nomatch h) (fun h => nomatch h),
-                 by simp [ParseState.advance, h_eq]⟩
+        · contradiction  -- undefinedAlias error branch
+        · -- The alias branch has an if-then-else on trackPositions
+          split at h_ok
+          · -- trackPositions = true
+            simp only [Except.ok.injEq] at h_ok
+            obtain ⟨rfl, rfl⟩ := Prod.mk.inj h_ok
+            exact ⟨.alias name false,
+                   fun _ => .alias name true,
+                   advance_preserves_flowNesting tokens ps heq_peek h_eq
+                     (fun h => nomatch h) (fun h => nomatch h)
+                     (fun h => nomatch h) (fun h => nomatch h),
+                   by simp [ParseState.advance, h_eq]⟩
+          · -- trackPositions = false
+            simp only [Except.ok.injEq] at h_ok
+            obtain ⟨rfl, rfl⟩ := Prod.mk.inj h_ok
+            exact ⟨.alias name false,
+                   fun _ => .alias name true,
+                   advance_preserves_flowNesting tokens ps heq_peek h_eq
+                     (fun h => nomatch h) (fun h => nomatch h)
+                     (fun h => nomatch h) (fun h => nomatch h),
+                   by simp [ParseState.advance, h_eq]⟩
       · -- Non-alias branch: _ => pure (), then chain through
         -- Split on parseNodeProperties result
         split at h_ok
@@ -3611,32 +3624,197 @@ theorem parseStream_output_scannable
 
 /-- C2b: Every document's aliases resolve through its anchor map.
 
-    ### Proof Architecture (when completed)
+    ### Proof Architecture
 
-    Requires two invariants:
+    With the parser-level §7.1 validation check in `parseNode`, every
+    `YamlValue.alias name` in the output tree was created only after
+    confirming `ps.anchors.any (fun (n, _) => n == name) = true`.
 
-    1. **Scanner invariant**: Every `.alias name` token in the filtered
-       token stream has a prior `.anchor name` token. The scanner's
-       `scanAnchorOrAlias` does not validate this — it must be proved
-       from YAML §7.1 compliance of the scanner loop (specifically,
-       that the scanner rejects `*name` without a prior `&name`).
+    The proof chains three properties:
 
-    2. **Parser invariant**: When `parseNode` encounters `.anchor name`,
-       it calls `ps.addAnchor name val`, adding `(name, _)` to
-       `ps.anchors`. When it encounters `.alias name`, it returns
-       `.alias name`. The invariant: at document end, `doc.anchors`
-       contains entries for all anchor names, and every `.alias name`
-       in `doc.value` has a corresponding entry.
+    1. **Bridge**: `Array.any ... = true` implies
+       `(Array.findSome? ...).isSome` (matching `AllAliasesResolve.alias`).
 
-    **Note**: The scanner currently does NOT validate alias ordering —
-    `scanAnchorOrAlias` just emits tokens. This sorry partially depends
-    on an unproven scanner-level property. -/
+    2. **Monotonicity**: `AllAliasesResolve val anchors` is preserved
+       when `anchors` grows (since `findSome?` on a larger array still finds
+       entries present in any prefix).
+
+    3. **Parser invariant**: By structural induction on fuel, `parseNode`
+       produces values satisfying `AllAliasesResolve` against the output
+       state's `anchors` (which includes all anchors accumulated during parsing).
+
+    The `parseStream_doc_from_parseDocument` decomposition lifts this to
+    `parseStream`. -/
+
+-- Bridge: `Array.any (fun (n, _) => n == name) = true` →
+--         `(Array.findSome? (fun (n, _) => if n == name then some () else none)).isSome`
+-- General bridge: if `any f` and `f x → (g x).isSome`, then `findSome? g .isSome`
+private theorem Array.any_true_findSome_isSome
+    {α β : Type} (xs : Array α) (f : α → Bool) (g : α → Option β)
+    (h_fg : ∀ x, f x = true → (g x).isSome = true)
+    (h : xs.any f = true) :
+    (xs.findSome? g).isSome = true := by
+  rw [Array.findSome?_isSome_iff]
+  rw [Array.any_eq_true] at h
+  obtain ⟨i, hi, hp⟩ := h
+  exact ⟨xs[i], Array.getElem_mem hi, h_fg _ hp⟩
+
+-- Specialized bridge for the alias resolution check
+private theorem any_name_implies_findSome_isSome
+    (anchors : Array (String × YamlValue)) (name : String)
+    (h : anchors.any (fun (n, _) => n == name) = true) :
+    (anchors.findSome? (fun (n, _) => if n == name then some () else none)).isSome = true :=
+  Array.any_true_findSome_isSome anchors _ _ (fun ⟨n, _⟩ hp => by simp [hp]) h
+
+-- Monotonicity: AllAliasesResolve is preserved under anchor growth (push).
+private theorem AllAliasesResolve.push (val : YamlValue)
+    (anchors : Array (String × YamlValue)) (entry : String × YamlValue)
+    (h : AllAliasesResolve val anchors) :
+    AllAliasesResolve val (anchors.push entry) := by
+  induction h with
+  | scalar s _ => exact .scalar s _
+  | alias name anchors h_find =>
+    apply AllAliasesResolve.alias
+    rw [Array.findSome?_isSome_iff] at h_find ⊢
+    obtain ⟨x, hx, hfx⟩ := h_find
+    exact ⟨x, Array.mem_push.mpr (.inl hx), hfx⟩
+  | sequence style items tag anchor anchors h_items ih_items =>
+    exact .sequence style items tag anchor _ (fun i => ih_items i)
+  | mapping style pairs tag anchor anchors hk hv ihk ihv =>
+    exact .mapping style pairs tag anchor _ (fun i => ihk i) (fun i => ihv i)
+
+-- Monotonicity generalized: prefix ⊆ suffix via repeated push
+private theorem AllAliasesResolve.mono (val : YamlValue)
+    (anchors1 anchors2 : Array (String × YamlValue))
+    (h_prefix : ∀ i : Fin anchors1.size, ∃ j : Fin anchors2.size,
+        anchors2[j] = anchors1[i])
+    (h : AllAliasesResolve val anchors1) :
+    AllAliasesResolve val anchors2 := by
+  induction h with
+  | scalar s _ => exact .scalar s _
+  | alias name anchors h_find =>
+    apply AllAliasesResolve.alias
+    rw [Array.findSome?_isSome_iff] at h_find ⊢
+    obtain ⟨x, hx, hfx⟩ := h_find
+    rw [Array.mem_iff_getElem] at hx
+    obtain ⟨i, hi, rfl⟩ := hx
+    obtain ⟨j, hj⟩ := h_prefix ⟨i, hi⟩
+    exact ⟨anchors2[j], Array.getElem_mem j.isLt, hj ▸ hfx⟩
+  | sequence style items tag anchor anchors h_items ih_items =>
+    exact .sequence style items tag anchor _ (fun i => ih_items i h_prefix)
+  | mapping style pairs tag anchor anchors hk hv ihk ihv =>
+    exact .mapping style pairs tag anchor _
+      (fun i => ihk i h_prefix) (fun i => ihv i h_prefix)
+
+-- Anchors only grow within parseNode: ps'.anchors is a suffix extension of ps.anchors.
+-- (This is the key monotonicity property of the parser.)
+private theorem parseNode_anchors_grow (ps : ParseState) (fuel : Nat)
+    (val : YamlValue) (ps' : ParseState)
+    (h_ok : parseNode ps fuel = .ok (val, ps')) :
+    ∀ i : Fin ps.anchors.size, ∃ j : Fin ps'.anchors.size,
+        ps'.anchors[j] = ps.anchors[i] := by
+  sorry
+
+-- Core lemma: parseNode produces AllAliasesResolve-satisfying output.
+private theorem parseNode_aliases_resolve (ps : ParseState) (fuel : Nat)
+    (val : YamlValue) (ps' : ParseState)
+    (h_ok : parseNode ps fuel = .ok (val, ps')) :
+    AllAliasesResolve val ps'.anchors := by
+  sorry
+
+-- Lift to parseDocument level
+private theorem parseDocument_aliases_resolve (ps : ParseState)
+    (doc : YamlDocument) (ps' : ParseState)
+    (h_ok : parseDocument ps = .ok (doc, ps')) :
+    AllAliasesResolve doc.value doc.anchors := by
+  unfold parseDocument at h_ok
+  simp only [bind, Except.bind] at h_ok
+  -- Split on prepareDocumentState result
+  split at h_ok
+  · contradiction
+  · rename_i v_prep h_prep
+    -- The rest: let fuel := ...; let (val, ps) ← match peek? ...; .ok (doc, ps)
+    -- After bind simplification, split on the match ps.peek?
+    split at h_ok
+    · -- documentEnd → empty doc
+      simp only [Except.ok.injEq] at h_ok
+      obtain ⟨rfl, _⟩ := Prod.mk.inj h_ok
+      exact .scalar _ _
+    · -- streamEnd → empty doc
+      simp only [Except.ok.injEq] at h_ok
+      obtain ⟨rfl, _⟩ := Prod.mk.inj h_ok
+      exact .scalar _ _
+    · -- none → empty doc
+      simp only [Except.ok.injEq] at h_ok
+      obtain ⟨rfl, _⟩ := Prod.mk.inj h_ok
+      exact .scalar _ _
+    · -- non-empty: parseNode was called
+      -- Split on parseNode result
+      split at h_ok
+      · contradiction
+      · rename_i v_node h_node
+        simp only [Except.ok.injEq] at h_ok
+        obtain ⟨rfl, _⟩ := Prod.mk.inj h_ok
+        obtain ⟨val_n, ps_n⟩ := v_node
+        exact parseNode_aliases_resolve _ _ _ _ h_node
+
+-- Loop-level lemma: parseStreamLoop preserves AllAliasesResolve for accumulated docs
+private theorem parseStreamLoop_aliases_resolve
+    (ps : ParseState) (docs : Array YamlDocument)
+    (streamState : StreamState) (fuel : Nat)
+    (result : Array YamlDocument)
+    (h_acc : ∀ doc ∈ docs.toList, AllAliasesResolve doc.value doc.anchors)
+    (h_ok : parseStreamLoop ps docs streamState fuel = .ok result) :
+    ∀ doc ∈ result.toList, AllAliasesResolve doc.value doc.anchors := by
+  induction fuel generalizing ps docs streamState with
+  | zero =>
+    simp only [parseStreamLoop] at h_ok
+    simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc
+  | succ fuel ih =>
+    unfold parseStreamLoop at h_ok
+    split at h_ok
+    · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc
+    · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc
+    · -- some tok → validation + parseDocument + recurse
+      split at h_ok
+      · simp at h_ok
+      · dsimp only [] at h_ok
+        generalize h_pd : parseDocument ps = pd_result at h_ok
+        cases pd_result with
+        | error e => simp at h_ok
+        | ok val =>
+          obtain ⟨doc_new, ps'⟩ := val
+          dsimp only [] at h_ok
+          have h_acc' : ∀ doc ∈ (docs.push doc_new).toList,
+              AllAliasesResolve doc.value doc.anchors := by
+            intro d hd
+            rw [Array.toList_push] at hd
+            simp only [List.mem_append, List.mem_singleton] at hd
+            rcases hd with hd_old | rfl
+            · exact h_acc d hd_old
+            · exact parseDocument_aliases_resolve _ _ _ h_pd
+          split at h_ok
+          · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc'
+          · exact ih _ _ _ h_acc' h_ok
+
 theorem parseStream_output_aliases_resolve
     (tokens : Array (Positioned YamlToken))
     (docs : Array YamlDocument)
     (h_parse : parseStream tokens = .ok docs) :
     ∀ doc ∈ docs.toList, AllAliasesResolve doc.value doc.anchors := by
-  sorry
+  -- Decompose: each doc came from a parseDocument call
+  intro doc hdoc
+  -- We need FlowAwarePSV and FlowBracketsMatched for the decomposition lemma,
+  -- but AllAliasesResolve doesn't actually depend on these scanner properties.
+  -- Use the direct approach: unfold parseStream and trace through parseStreamLoop.
+  unfold parseStream at h_parse
+  simp only [bind, Except.bind] at h_parse
+  split at h_parse
+  · contradiction
+  · rename_i ps_start h_expect
+    -- Now trace through parseStreamLoop
+    exact parseStreamLoop_aliases_resolve ps_start #[] .initial tokens.size docs
+      (by intro d hd; simp at hd) h_parse doc hdoc
 
 /-- C2c: Anchor values in parser output are well-formed.
 

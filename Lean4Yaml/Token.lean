@@ -308,7 +308,10 @@ inductive ScanError where
   /-- Tag shorthand handle used without a corresponding `%TAG` directive — §6.8.2.2 violation.
       Named handles (e.g., `!prefix!`) are local to the document and must be declared. -/
   | undeclaredTagHandle (handle : String) (line col : Nat)  /-- Whitespace-only line in block scalar exceeds detected content indent — §8.1.3. -/
-  | blockScalarIndentMismatch (line col : Nat)  deriving Repr, BEq, Inhabited, DecidableEq
+  | blockScalarIndentMismatch (line col : Nat)
+  /-- Alias `*name` used without a preceding `&name` anchor in this document — §7.1 violation. -/
+  | undefinedAlias (name : String) (line col : Nat)
+  deriving Repr, BEq, Inhabited, DecidableEq
 
 /-- Human-readable error message, separated from error construction.
 
@@ -353,6 +356,7 @@ def ScanError.toString : ScanError → String
   | .invalidBareDocument l c   => s!"bare document content at line {l}, column {c} — expected '---' or '...' before new document (§9.2)"
   | .undeclaredTagHandle h l c => s!"undeclared tag handle '{h}' at line {l}, column {c} — use %TAG directive to declare it (§6.8.2.2)"
   | .blockScalarIndentMismatch l c => s!"whitespace-only line exceeds detected block scalar content indent at line {l}, column {c} (§8.1.3)"
+  | .undefinedAlias name l c => s!"undefined alias '*{name}' at line {l}, column {c} — no preceding '&{name}' anchor in this document (§7.1)"
 
 instance : ToString ScanError := ⟨ScanError.toString⟩
 

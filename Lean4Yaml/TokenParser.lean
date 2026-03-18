@@ -335,6 +335,9 @@ def parseNode (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × Pa
   -- Check for alias
   match ps.peek? with
   | some (.alias name) =>
+    -- §7.1: Reject undefined aliases — every alias must have a preceding anchor
+    if !ps.anchors.any (fun (n, _) => n == name) then
+      throw (.undefinedAlias name nodeStartPos.line nodeStartPos.col)
     let ps := ps.advance
     -- G5c: record alias position (only if tracking enabled)
     let ps := if ps.trackPositions then
