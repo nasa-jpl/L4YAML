@@ -34,7 +34,7 @@ namespace Tests.ExplicitKey
 
 /-! ## Helpers -/
 
-def parseSingle (input : String) : Except String YamlValue :=
+def parseSingle (input : String) : Except ScanError YamlValue :=
   parseYamlSingle input
 
 def content (v : YamlValue) : Option String :=
@@ -78,21 +78,21 @@ def testBasicExplicitKeys (state : IO.Ref TestCollector) : IO Unit := do
     check state "? a : b parses as mapping" (v.isMapping)
     check state "? a : b key" (keyAt? v 0 == some "a")
     check state "? a : b value" (valAt? v 0 == some "b")
-  | .error e => checkM state "? a : b parses" false e
+  | .error e => checkM state "? a : b parses" false e.toString
 
   -- Explicit key with value on same line as colon
   match parseSingle "? a\n: 1.3" with
   | .ok v =>
     check state "? a : 1.3 key" (keyAt? v 0 == some "a")
     check state "? a : 1.3 value" (valAt? v 0 == some "1.3")
-  | .error e => checkM state "? a : 1.3 parses" false e
+  | .error e => checkM state "? a : 1.3 parses" false e.toString
 
   -- Explicit key with inline value (5WE3 pattern)
   match parseSingle "? explicit key" with
   | .ok v =>
     check state "? explicit key (no colon)" (v.isMapping)
     check state "? explicit key: key content" (keyAt? v 0 == some "explicit key")
-  | .error e => checkM state "? explicit key parses" false e
+  | .error e => checkM state "? explicit key parses" false e.toString
 
 /-! ## 2. Missing Value (null) -/
 
@@ -107,7 +107,7 @@ def testMissingValue (state : IO.Ref TestCollector) : IO Unit := do
     match pairAt? v 0 with
     | some (_, val) => check state "? a value is null" (isNull val)
     | none => check state "? a has pair" false
-  | .error e => checkM state "? a parses" false e
+  | .error e => checkM state "? a parses" false e.toString
 
   -- Consecutive explicit keys without values (7W2P pattern)
   match parseSingle "? a\n? b" with
@@ -115,7 +115,7 @@ def testMissingValue (state : IO.Ref TestCollector) : IO Unit := do
     check state "? a ? b key count" (pairCount v == 2)
     check state "? a ? b first key" (keyAt? v 0 == some "a")
     check state "? a ? b second key" (keyAt? v 1 == some "b")
-  | .error e => checkM state "? a ? b parses" false e
+  | .error e => checkM state "? a ? b parses" false e.toString
 
 /-! ## 3. Next-Line Keys -/
 
@@ -127,7 +127,7 @@ def testNextLineKeys (state : IO.Ref TestCollector) : IO Unit := do
   | .ok v =>
     check state "6PBE key is sequence" (match pairAt? v 0 with | some (k, _) => k.isSequence | none => false)
     check state "6PBE value is sequence" (match pairAt? v 0 with | some (_, val) => val.isSequence | none => false)
-  | .error e => checkM state "6PBE parses" false e
+  | .error e => checkM state "6PBE parses" false e.toString
 
   -- Bare ? on its own line, : on its own line
   match parseSingle "?\n: value" with
@@ -138,7 +138,7 @@ def testNextLineKeys (state : IO.Ref TestCollector) : IO Unit := do
       check state "bare ? key is null" (isNull k)
       check state "bare ? : value" (content val == some "value")
     | none => check state "bare ? has pair" false
-  | .error e => checkM state "bare ? + : value parses" false e
+  | .error e => checkM state "bare ? + : value parses" false e.toString
 
 /-! ## 4. Complex Keys -/
 
@@ -150,7 +150,7 @@ def testComplexKeys (state : IO.Ref TestCollector) : IO Unit := do
   | .ok v =>
     check state "JTV5 multiline key" (keyAt? v 0 == some "a true")
     check state "JTV5 multiline value" (valAt? v 0 == some "null d")
-  | .error e => checkM state "JTV5 parses" false e
+  | .error e => checkM state "JTV5 parses" false e.toString
 
   -- Mapping as complex key (V9D5 pattern)
   match parseSingle "- sun: yellow\n- ? earth: blue\n  : moon: white" with
@@ -163,14 +163,14 @@ def testComplexKeys (state : IO.Ref TestCollector) : IO Unit := do
         check state "V9D5 second item is mapping" (items[1].isMapping)
       else check state "V9D5 item count" false
     | none => check state "V9D5 as array" false
-  | .error e => checkM state "V9D5 parses" false e
+  | .error e => checkM state "V9D5 parses" false e.toString
 
   -- Sequence as key (M5DY pattern)
   match parseSingle "? - Detroit Tigers\n  - Chicago cubs\n:\n  - 2001-07-23" with
   | .ok v =>
     check state "M5DY key is sequence" (match pairAt? v 0 with | some (k, _) => k.isSequence | none => false)
     check state "M5DY value is sequence" (match pairAt? v 0 with | some (_, val) => val.isSequence | none => false)
-  | .error e => checkM state "M5DY parses" false e
+  | .error e => checkM state "M5DY parses" false e.toString
 
 /-! ## 5. Explicit Key + Anchors -/
 
@@ -182,20 +182,20 @@ def testExplicitKeyAnchors (state : IO.Ref TestCollector) : IO Unit := do
   | .ok v =>
     check state "6M2F key" (keyAt? v 0 == some "a")
     check state "6M2F value" (valAt? v 0 == some "b")
-  | .error e => checkM state "6M2F parses" false e
+  | .error e => checkM state "6M2F parses" false e.toString
 
   -- Anchor on explicit key with null value (PW8X ? &d pattern)
   match parseSingle "a: 1\n? &d\nb: 2" with
   | .ok v =>
     -- Should parse ? &d as explicit key with anchor, value null
     check state "? &d produces mapping" (v.isMapping)
-  | .error e => checkM state "? &d in mapping parses" false e
+  | .error e => checkM state "? &d in mapping parses" false e.toString
 
   -- Explicit key with anchor, colon with anchor (PW8X ? &e : &a pattern)
   match parseSingle "? &e\n: &a" with
   | .ok v =>
     check state "? &e : &a parses" (v.isMapping)
-  | .error e => checkM state "? &e : &a parses" false e
+  | .error e => checkM state "? &e : &a parses" false e.toString
 
 /-! ## 6. Mixed Explicit/Implicit Keys -/
 
@@ -210,7 +210,7 @@ def testMixedKeys (state : IO.Ref TestCollector) : IO Unit := do
     check state "GH63 explicit value" (valAt? v 0 == some "1.3")
     check state "GH63 implicit key" (keyAt? v 1 == some "fifteen")
     check state "GH63 implicit value" (valAt? v 1 == some "d")
-  | .error e => checkM state "GH63 parses" false e
+  | .error e => checkM state "GH63 parses" false e.toString
 
   -- Explicit key with missing value then implicit key (ZWK4 pattern)
   match parseSingle "---\na: 1\n? b\n&anchor c: 3" with
@@ -221,7 +221,7 @@ def testMixedKeys (state : IO.Ref TestCollector) : IO Unit := do
     check state "ZWK4 explicit key" (keyAt? v 1 == some "b")
     check state "ZWK4 third key" (keyAt? v 2 == some "c")
     check state "ZWK4 third value" (valAt? v 2 == some "3")
-  | .error e => checkM state "ZWK4 parses" false e
+  | .error e => checkM state "ZWK4 parses" false e.toString
 
 /-! ## 7. Comments Between Key and Value -/
 
@@ -233,13 +233,13 @@ def testCommentsInExplicitKey (state : IO.Ref TestCollector) : IO Unit := do
   | .ok v =>
     check state "X8DW key" (keyAt? v 0 == some "key")
     check state "X8DW value" (valAt? v 0 == some "value")
-  | .error e => checkM state "X8DW parses" false e
+  | .error e => checkM state "X8DW parses" false e.toString
 
   -- Comment after explicit key value (5WE3 pattern, first entry)
   match parseSingle "? explicit key # Empty value" with
   | .ok v =>
     check state "? key # comment" (keyAt? v 0 == some "explicit key")
-  | .error e => checkM state "? key # comment parses" false e
+  | .error e => checkM state "? key # comment parses" false e.toString
 
 /-! ## 8. Flow Explicit Keys -/
 
@@ -255,7 +255,7 @@ def testFlowExplicitKeys (state : IO.Ref TestCollector) : IO Unit := do
     check state "DFF7 explicit value" (valAt? v 0 == some "entry")
     check state "DFF7 implicit key" (keyAt? v 1 == some "implicit")
     check state "DFF7 bare ? null key" (match pairAt? v 2 with | some (k, _) => isNull k | none => false)
-  | .error e => checkM state "DFF7 parses" false e
+  | .error e => checkM state "DFF7 parses" false e.toString
 
   -- Explicit key with null value in flow (FRK4 pattern)
   match parseSingle "{\n  ? foo :,\n  : bar,\n}" with
@@ -267,14 +267,14 @@ def testFlowExplicitKeys (state : IO.Ref TestCollector) : IO Unit := do
     | some (_, val) => check state "FRK4 first value is null" (isNull val)
     | none => check state "FRK4 first pair exists" false
     check state "FRK4 empty key value" (valAt? v 1 == some "bar")
-  | .error e => checkM state "FRK4 parses" false e
+  | .error e => checkM state "FRK4 parses" false e.toString
 
   -- Simple explicit key in flow mapping
   match parseSingle "{? a : b}" with
   | .ok v =>
     check state "{? a : b} key" (keyAt? v 0 == some "a")
     check state "{? a : b} value" (valAt? v 0 == some "b")
-  | .error e => checkM state "{? a : b} parses" false e
+  | .error e => checkM state "{? a : b} parses" false e.toString
 
 /-! ## 9. Flow Sequence Explicit Entries -/
 
@@ -291,7 +291,7 @@ def testFlowSeqExplicitEntries (state : IO.Ref TestCollector) : IO Unit := do
         check state "[? a : b] item is mapping" (items[0].isMapping)
       else check state "[? a : b] item count" false
     | none => check state "[? a : b] as array" false
-  | .error e => checkM state "[? a : b] parses" false e
+  | .error e => checkM state "[? a : b] parses" false e.toString
 
   -- Bare ? in flow sequence
   match parseSingle "[? ]" with
@@ -303,7 +303,7 @@ def testFlowSeqExplicitEntries (state : IO.Ref TestCollector) : IO Unit := do
         check state "[?] item is mapping" (items[0].isMapping)
       else check state "[?] item count" false
     | none => check state "[?] as array" false
-  | .error e => checkM state "[?] parses" false e
+  | .error e => checkM state "[?] parses" false e.toString
 
 /-! ## 10. Empty Keys (Flow) -/
 
@@ -319,7 +319,7 @@ def testEmptyKeys (state : IO.Ref TestCollector) : IO Unit := do
       check state "{: bar} empty key" (isNull k)
       check state "{: bar} value" (content val == some "bar")
     | none => check state "{: bar} has pair" false
-  | .error e => checkM state "{: bar} parses" false e
+  | .error e => checkM state "{: bar} parses" false e.toString
 
   -- Empty key with null value
   match parseSingle "{:}" with
@@ -330,7 +330,7 @@ def testEmptyKeys (state : IO.Ref TestCollector) : IO Unit := do
       check state "{:} empty key" (isNull k)
       check state "{:} null value" (isNull val)
     | none => check state "{:} has pair" false
-  | .error e => checkM state "{:} parses" false e
+  | .error e => checkM state "{:} parses" false e.toString
 
 /-! ## Collect All Tests -/
 

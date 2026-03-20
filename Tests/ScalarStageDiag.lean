@@ -65,7 +65,7 @@ def testAccept (label : String) (input : String) : IO (Bool × Option String) :=
     return (true, none)
   | .error e =>
     IO.println s!"  ✗ {label} — {e}"
-    return (false, some e)
+    return (false, some e.toString)
 
 /-- Run a suite test by ID: loads from file, tests each case. -/
 def runSuiteTest (testId : String) (desc : String) :

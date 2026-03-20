@@ -100,7 +100,7 @@ def testRawPreservesAliases (state : IO.Ref TestCollector) : IO Unit := do
       check state "alias node preserved in raw" (v.isAlias)
       check state "alias name is 'val'" (aliasName? v == some "val")
     | none => check state "alias node preserved in raw" false
-  | .error e => checkM state "alias node preserved in raw" false e
+  | .error e => checkM state "alias node preserved in raw" false e.toString
 
   -- Alias inside sequence
   let yaml2 := "- &item hello\n- *item\n"
@@ -111,7 +111,7 @@ def testRawPreservesAliases (state : IO.Ref TestCollector) : IO Unit := do
       check state "alias in sequence preserved" (items.size == 2)
       check state "second element is alias" (items[1]?.map (·.isAlias) == some true)
     | none => check state "alias in sequence preserved" false
-  | .error e => checkM state "alias in sequence preserved" false e
+  | .error e => checkM state "alias in sequence preserved" false e.toString
 
   -- Flow context alias
   let yaml3 := "{a: &x 1, b: *x}"
@@ -119,7 +119,7 @@ def testRawPreservesAliases (state : IO.Ref TestCollector) : IO Unit := do
   | .ok doc =>
     let bVal := doc.value.lookup? "b"
     check state "flow alias preserved" (bVal.map (·.isAlias) == some true)
-  | .error e => checkM state "flow alias preserved" false e
+  | .error e => checkM state "flow alias preserved" false e.toString
 
 /-! ## 2. Raw Parse Preserves Anchor Fields -/
 
@@ -130,7 +130,7 @@ def testRawPreservesAnchors (state : IO.Ref TestCollector) : IO Unit := do
   match parseYamlSingleRaw yaml with
   | .ok doc =>
     check state "scalar anchor field set" (scalarAnchor? doc.value == some "myanchor")
-  | .error e => checkM state "scalar anchor field set" false e
+  | .error e => checkM state "scalar anchor field set" false e.toString
 
   -- Anchor on block sequence
   let yaml2 := "items: &mylist\n  - one\n  - two\n"
@@ -139,14 +139,14 @@ def testRawPreservesAnchors (state : IO.Ref TestCollector) : IO Unit := do
     match doc.value.lookup? "items" with
     | some v => check state "sequence anchor field set" (collectionAnchor? v == some "mylist")
     | none => check state "sequence anchor field set" false
-  | .error e => checkM state "sequence anchor field set" false e
+  | .error e => checkM state "sequence anchor field set" false e.toString
 
   -- Anchor on flow mapping
   let yaml3 := "&m {a: 1, b: 2}"
   match parseYamlSingleRaw yaml3 with
   | .ok doc =>
     check state "flow mapping anchor field set" (collectionAnchor? doc.value == some "m")
-  | .error e => checkM state "flow mapping anchor field set" false e
+  | .error e => checkM state "flow mapping anchor field set" false e.toString
 
 /-! ## 3. Raw Parse Captures Anchor Map -/
 
@@ -159,7 +159,7 @@ def testRawCapturesAnchorMap (state : IO.Ref TestCollector) : IO Unit := do
     check state "anchor map non-empty" (doc.anchors.size > 0)
     let found := doc.anchors.findSome? (fun (n, _) => if n == "anchor" then some true else none)
     check state "anchor map has 'anchor'" (found == some true)
-  | .error e => checkM state "anchor map non-empty" false e
+  | .error e => checkM state "anchor map non-empty" false e.toString
 
   -- Multiple anchors
   let yaml2 := "a: &x hello\nb: &y world\nc: *x\nd: *y\n"
@@ -170,7 +170,7 @@ def testRawCapturesAnchorMap (state : IO.Ref TestCollector) : IO Unit := do
     let hasY := doc.anchors.any (fun (n, _) => n == "y")
     check state "anchor map has 'x'" hasX
     check state "anchor map has 'y'" hasY
-  | .error e => checkM state "anchor map has 2+ entries" false e
+  | .error e => checkM state "anchor map has 2+ entries" false e.toString
 
   -- Anchor map values are resolved (no nested aliases)
   let yaml3 := "a: &a hello\nb: &b [*a, world]\nc: *b\n"
@@ -181,7 +181,7 @@ def testRawCapturesAnchorMap (state : IO.Ref TestCollector) : IO Unit := do
     | some bVal =>
       check state "anchor map value has no aliases" (!hasAlias bVal)
     | none => check state "anchor map value has no aliases" false
-  | .error e => checkM state "anchor map value has no aliases" false e
+  | .error e => checkM state "anchor map value has no aliases" false e.toString
 
 /-! ## 4. Compose Resolves Aliases -/
 
@@ -195,7 +195,7 @@ def testComposeResolvesAliases (state : IO.Ref TestCollector) : IO Unit := do
     check state "composed has no aliases" (!hasAlias composed.value)
     let bVal := composed.value.lookup? "b"
     check state "alias resolved to value" (bVal == some (YamlValue.plainScalar "hello"))
-  | .error e => checkM state "composed has no aliases" false e
+  | .error e => checkM state "composed has no aliases" false e.toString
 
   -- Composed matches parseYamlSingle
   match parseYamlSingleRaw yaml, parseYamlSingle yaml with
@@ -216,7 +216,7 @@ def testComposeStripsAnchors (state : IO.Ref TestCollector) : IO Unit := do
     let composed := rawDoc.compose
     check state "composed tree has no anchor fields" (!hasAnchorField composed.value)
     check state "composed anchor map is empty" (composed.anchors.size == 0)
-  | .error e => checkM state "raw tree has anchor fields" false e
+  | .error e => checkM state "raw tree has anchor fields" false e.toString
 
 /-! ## 6. Raw → Dump Preserves Anchors/Aliases -/
 
@@ -229,7 +229,7 @@ def testRawDumpPreserves (state : IO.Ref TestCollector) : IO Unit := do
     let dumped := Dump.dump doc.value
     check state "dump contains &val" (dumped.containsSubstr "&val")
     check state "dump contains *val" (dumped.containsSubstr "*val")
-  | .error e => checkM state "dump contains &val" false e
+  | .error e => checkM state "dump contains &val" false e.toString
 
   -- Sequence with anchor
   let yaml2 := "&seq\n- one\n- two\n"
@@ -237,7 +237,7 @@ def testRawDumpPreserves (state : IO.Ref TestCollector) : IO Unit := do
   | .ok doc =>
     let dumped := Dump.dump doc.value
     check state "dump contains &seq" (dumped.containsSubstr "&seq")
-  | .error e => checkM state "dump contains &seq" false e
+  | .error e => checkM state "dump contains &seq" false e.toString
 
 /-! ## 7. Compose → Dump Produces Clean Output -/
 
@@ -253,7 +253,7 @@ def testComposedDumpClean (state : IO.Ref TestCollector) : IO Unit := do
     -- Both a and b should have the same value
     check state "composed dump has 'hello' twice"
       ((dumped.splitOn "hello").length == 3)  -- "a: hello\nb: hello\n" splits to 3 parts
-  | .error e => checkM state "composed dump has no &" false e
+  | .error e => checkM state "composed dump has no &" false e.toString
 
 /-! ## 8. Multi-Document Anchor Scoping -/
 
@@ -276,7 +276,7 @@ def testMultiDocScoping (state : IO.Ref TestCollector) : IO Unit := do
         (a1 == some (YamlValue.plainScalar "world"))
     else
       check state "doc0 anchor 'a' = hello" false
-  | .error e => checkM state "two documents parsed" false e
+  | .error e => checkM state "two documents parsed" false e.toString
 
 /-! ## Collect All Tests -/
 

@@ -80,22 +80,22 @@ theorem parseYamlRaw_ok_decompose (input : String) (docs : Array YamlDocument)
     simp only [h_scan] at h; contradiction
 
 /--
-If `Scanner.scan` fails, `parseYamlRaw` fails with the stringified error.
+If `Scanner.scan` fails, `parseYamlRaw` fails with the same error.
 -/
 theorem parseYamlRaw_scan_error (input : String) (e : ScanError)
     (h : Scanner.scanFiltered input = .error e) :
-    parseYamlRaw input = .error e.toString := by
+    parseYamlRaw input = .error e := by
   simp only [parseYamlRaw, h]
 
 /--
 If `Scanner.scan` succeeds but `parseStream` fails, `parseYamlRaw` fails
-with the stringified parse error.
+with the same parse error.
 -/
 theorem parseYamlRaw_parse_error (input : String) (e : ScanError)
     (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered input = .ok tokens)
     (h_parse : parseStream tokens = .error e) :
-    parseYamlRaw input = .error e.toString := by
+    parseYamlRaw input = .error e := by
   simp only [parseYamlRaw, h_scan, h_parse]
 
 /-! ## §2  Compose Layer
@@ -117,7 +117,7 @@ theorem parseYaml_of_parseYamlRaw_ok (input : String) (docs : Array YamlDocument
 /--
 If `parseYamlRaw` fails, `parseYaml` fails with the same error.
 -/
-theorem parseYaml_of_parseYamlRaw_error (input : String) (e : String)
+theorem parseYaml_of_parseYamlRaw_error (input : String) (e : ScanError)
     (h : parseYamlRaw input = .error e) :
     parseYaml input = .error e := by
   simp only [parseYaml, h]
