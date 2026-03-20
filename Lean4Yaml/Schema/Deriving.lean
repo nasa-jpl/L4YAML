@@ -81,9 +81,8 @@ def mkFromYamlEnumInstance (declName : Name) (ctors : Array Name) : CommandElabM
     let ctorName := getLastComponent ctor
     code := code ++ s!"    | \"{ctorName}\" => .ok {ctor}\n"
 
-  let ctorNames := String.intercalate ", " (ctors.map getLastComponent |>.toList)
   let declShort := getLastComponent declName
-  code := code ++ s!"    | other => .error (\"Invalid {declShort} value: \" ++ other ++ \". Expected one of: {ctorNames}\")\n"
+  code := code ++ s!"    | other => .error (Lean4Yaml.SchemaError.unknownVariant other \"{declShort}\")\n"
 
   match Parser.runParserCategory (← getEnv) `command code with
   | .ok codeSyntax => elabCommand codeSyntax

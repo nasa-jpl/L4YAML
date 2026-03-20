@@ -371,6 +371,8 @@ inductive SchemaError where
   | notAMapping        (got : YamlValue)
   /-- `getString` called on a non-scalar `YamlValue`. -/
   | notAScalar         (got : YamlValue)
+  /-- `FromYaml` instance expected a sequence `YamlValue`. -/
+  | notASequence       (got : YamlValue)
   /-- Required field not found in mapping. -/
   | missingField       (fieldName : String)
   /-- Field found but inner conversion failed. -/
@@ -382,6 +384,8 @@ inductive SchemaError where
   | wrongSequenceSize  (expected got : Nat)
   /-- Array/List element conversion failed at the given index. -/
   | conversionFailed   (element : Nat) (inner : SchemaError)
+  /-- Enum deserialization: string value doesn't match any known variant. -/
+  | unknownVariant     (got : String) (typeName : String)
 
   deriving Repr, BEq, Inhabited
 
@@ -398,10 +402,12 @@ def SchemaError.toString : SchemaError → String
   | .invalidKeyType got     => s!"HashMap keys must be strings or convertible to strings, got {repr got}"
   | .notAMapping got        => s!"expected YAML mapping, got {repr got}"
   | .notAScalar got         => s!"expected YAML string scalar, got {repr got}"
+  | .notASequence got       => s!"expected YAML sequence, got {repr got}"
   | .missingField name      => s!"missing required field '{name}'"
   | .fieldConversionError name inner => s!"{name}: {inner.toString}"
   | .wrongSequenceSize exp got => s!"expected {exp}-element sequence for pair, got {got} elements"
   | .conversionFailed idx inner => s!"element {idx}: {inner.toString}"
+  | .unknownVariant got ty  => s!"unknown variant '{got}' for type {ty}"
 
 instance : ToString SchemaError := ⟨SchemaError.toString⟩
 
