@@ -245,19 +245,58 @@ queryresults diff before.json after.json                  # outcome changes, add
 - `queryresults diff` enables regression tracking across P10.6d implementation steps
 - Build: 341/341 jobs, 0 errors, 0 sorry, 0 warnings
 
-#### Version 0.2.3
+#### Version 0.2.3 (completed 2026-03-20)
 
-Grammar-to-Parser bridge (P10.11). Close the gap between `ValidYaml`/`ValidTokenStream` specifications in `Grammar.lean` and the actual parser/scanner implementation. Scanner correctness (`scan_valid`), parser soundness (`parser_sound`), parser completeness (`parser_complete`), and end-to-end composition theorems.
+Prop twins for specification structures (doc-verification-bridge visibility). The bridge analysis classifies `def`-as-witness patterns (e.g., `scan_produces_valid_tokens : ... → ValidTokenStream`) as `computationalOperation`, not theorems, making them invisible to automated verification analysis. Additionally, structure-level existential quantification (`∃ vy : ValidYaml, ...`) is traced to field projections but not to the parent structure itself.
+
+**Problem:** Three specification structures in `Grammar.lean` lack `Prop`-level projections that the doc-verification-bridge can detect as theorem targets:
+
+| Structure | Current status | Gap |
+|-----------|---------------|-----|
+| `ValidTokenStream` | `def scan_produces_valid_tokens` (classified as `computationalOperation`) | No `Prop` twin, no `theorem` |
+| `ValidYaml` | `ValidYamlProp` exists, `parse_produces_valid_yaml` theorem exists | Bridge traces field projections but not `ValidYaml` itself |
+| `NodeToValue` | `def toYamlValue_nodeToValue` (classified as `computationalOperation`) | No companion `theorem` |
+
+**Solution — 4 files, 5 new theorems + 1 new definition:**
+
+| File | Changes | Result |
+|------|---------|--------|
+| `Grammar.lean` | `ValidTokenStreamProp` definition (Prop twin of `ValidTokenStream`) | ✅ 4-conjunct Prop |
+| `ScannerCorrectness.lean` | `scan_valid_token_stream`, `ValidTokenStream_iff_Prop` | ✅ Bridge visibility for `ValidTokenStreamProp` |
+| `Soundness.lean` | `toYamlValue_produces_nodeToValue` (theorem companion for `def`) | ✅ Bridge visibility for `NodeToValue` |
+| `EndToEndCorrectness.lean` | `parseYaml_implies_validYaml`, `parseYaml_implies_valid_token_stream` | ✅ Bridge visibility for `ValidYaml` + end-to-end `ValidTokenStreamProp` |
+
+**Key results:**
+- `ValidTokenStreamProp`: flattens `ValidTokenStream` structure fields into a `Prop` conjunction (size ≥ 2, streamStart, streamEnd, ordered positions)
+- `scan_valid_token_stream`: theorem-level proof that `scan` produces `ValidTokenStreamProp` (was only available as a `def` → `ValidTokenStream`)
+- `toYamlValue_produces_nodeToValue`: theorem wrapper for the `def toYamlValue_nodeToValue`, making `NodeToValue` appear in the bridge's `verifiedBy` list
+- `parseYaml_implies_validYaml`: places `ValidYaml` in the `proves` position (not just field projections)
+- `parseYaml_implies_valid_token_stream`: connects `parseYaml` → `scanFiltered` → `scan` → `ValidTokenStreamProp` via unfold
+- Dropped `scanFiltered_valid_token_stream` because `scanFiltered_produces_valid_tokens` is a `by`-proof `def` whose `.tokens` field is opaque (not definitionally equal to the input)
+- Also fixed 6 missing imports in `Lean4Yaml.lean`: `ParserAnchorProofs`, `ParserGrammableBase`, `ParserNodeProofs`, `ParserWellBehaved`, `ParserWfaProofs`, `ScannerCorrectness`
+- Build: 341/341 jobs, 0 errors, 0 sorry, 0 warnings
 
 #### Version 0.2.4
 
-Schema round-trip composition (Phase 7.5). Prove that `resolve ∘ toYamlType` and `toYaml ∘ fromYaml` round-trip correctly for all schema types, completing the verified schema layer.
+`ValidStream` and `ValidDocument` proofs. Prove that the parser produces valid multi-document streams, closing the last unverified specification types in `Grammar.lean`.
+
+**Problem:** `ValidStream` and `ValidDocument` are defined in `Grammar.lean` but have zero theorems — `ValidStream` has `"verifiedBy": []` in bridge analysis, and `ValidDocument` appears only as a field type within `ValidStream`.
+
+**Scope:**
+1. Prove `parseYaml_produces_valid_documents` — each parsed document satisfies `ValidDocument`
+2. Prove `parseYaml_produces_valid_stream` — the full document array forms a `ValidStream`
+3. Remove `Grammable` hypothesis from `parseStream_respects_grammar` (if feasible)
+4. Define `ValidStreamProp` (`Prop` twin) and bridge theorem for doc-verification-bridge visibility
 
 #### Version 0.2.5
 
-Comment preservation (Phase 8). AST-level comment metadata for round-trip fidelity per YAML 1.2.2 §6.6. Seven sub-phases: token extension, scanner changes, parser threading, AST attachment, emitter output, round-trip proofs, spec example validation.
+Schema round-trip composition (Phase 7.5). Prove that `resolve ∘ toYamlType` and `toYaml ∘ fromYaml` round-trip correctly for all schema types, completing the verified schema layer.
 
 #### Version 0.2.6
+
+Comment preservation (Phase 8). AST-level comment metadata for round-trip fidelity per YAML 1.2.2 §6.6. Seven sub-phases: token extension, scanner changes, parser threading, AST attachment, emitter output, round-trip proofs, spec example validation.
+
+#### Version 0.2.7
 
 `%TAG` directive resolution (§6.8.2). Wire `%TAG` handle declarations into parser state and resolve `!handle!suffix` → expanded URI during parsing.
 

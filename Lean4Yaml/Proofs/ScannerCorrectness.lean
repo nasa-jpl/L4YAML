@@ -8318,6 +8318,30 @@ def scanFiltered_produces_valid_tokens (input : String) (ftokens : Array (Positi
 These provide empirical validation before the universal proof.
 -/
 
+/-! ### §4.1  ValidTokenStreamProp Bridge Theorems
+
+`ValidTokenStreamProp` is the `Prop` twin of `ValidTokenStream`.
+These theorems make scanner correctness visible to the doc-verification-bridge,
+which classifies `def`-as-witness patterns as `computationalOperation`
+rather than theorems.
+-/
+
+/--
+**Prop-level scanner correctness**: `scan` produces tokens satisfying all
+four `ValidTokenStreamProp` invariants.
+-/
+theorem scan_valid_token_stream (input : String) (tokens : Array (Positioned YamlToken))
+    (h : scan input = .ok tokens) : ValidTokenStreamProp tokens :=
+  let vts := scan_produces_valid_tokens input tokens h
+  ⟨vts.sizeGe2, fun _ => vts.firstIsStreamStart, fun _ => vts.lastIsStreamEnd, vts.positionsOrdered⟩
+
+/--
+**Projection**: `ValidTokenStream` fields imply `ValidTokenStreamProp`.
+-/
+theorem ValidTokenStream_iff_Prop (vts : ValidTokenStream) :
+    ValidTokenStreamProp vts.tokens :=
+  ⟨vts.sizeGe2, fun _ => vts.firstIsStreamStart, fun _ => vts.lastIsStreamEnd, vts.positionsOrdered⟩
+
 -- Helper to extract ValidTokenStream from scan result
 def checkValidStream (input : String) : Bool :=
   match scanFiltered input with

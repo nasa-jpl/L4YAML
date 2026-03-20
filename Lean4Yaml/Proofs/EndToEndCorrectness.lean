@@ -228,6 +228,49 @@ Useful consequences of the main theorems.
 -/
 
 /--
+**ValidYaml bridge theorem**: successful parsing implies every document
+has a `ValidYaml` witness. This is a direct corollary of
+`parse_produces_valid_yaml` but stated with `ValidYaml` in a position
+visible to the doc-verification-bridge (which traces `Prop`-level names
+rather than existential binder types).
+
+The bridge sees `ValidYaml` → `Prop` via the function type, making this
+theorem appear in the `verifiedBy` list of `Grammar.ValidYaml`.
+-/
+theorem parseYaml_implies_validYaml (input : String)
+    (docs : Array YamlDocument)
+    (h : TokenParser.parseYaml input = .ok docs)
+    (i : Fin docs.size) :
+    ∃ (vy : Grammar.ValidYaml),
+      vy.input = input ∧
+      stripAnnotations vy.value = stripAnnotations docs[i.val].value :=
+  parse_produces_valid_yaml input docs h i
+
+/--
+**ValidTokenStreamProp bridge theorem**: successful parsing implies the
+underlying token stream satisfies `ValidTokenStreamProp`.
+
+Connects the parser entry point to the scanner correctness property,
+making `ValidTokenStreamProp` visible from the end-to-end level.
+Uses the unfiltered `scan` result (which `scanFiltered` wraps).
+-/
+theorem parseYaml_implies_valid_token_stream (input : String)
+    (docs : Array YamlDocument)
+    (h : TokenParser.parseYaml input = .ok docs) :
+    ∃ (tokens : Array (Positioned YamlToken)),
+      Scanner.scan input = .ok tokens ∧
+      Grammar.ValidTokenStreamProp tokens := by
+  have ⟨filtered_tokens, _, h_scanf, _, _⟩ := parse_sound input docs h
+  -- h_scanf : scanFiltered input = .ok filtered_tokens
+  -- Unfold scanFiltered to extract the underlying scan result
+  unfold Scanner.scanFiltered at h_scanf
+  split at h_scanf
+  · rename_i tokens h_scan
+    exact ⟨tokens, h_scan,
+      ScannerCorrectness.scan_valid_token_stream input tokens h_scan⟩
+  · contradiction
+
+/--
 Parse is a partial function from strings to valid YAML documents.
 
 If two parses of the same string succeed, they produce the same result.
