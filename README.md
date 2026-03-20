@@ -133,7 +133,39 @@ YAML1.2.2-compliant verified parser without resource limitations.
 
 #### Version 0.2
 
-Improved type safety with explicit exception types for all APIs.
+Improved type safety with explicit exception types for all APIs. See [EXCEPTIONS.md](EXCEPTIONS.md) for the full design.
+
+**Problem:** The 5 top-level parser APIs and 13 Schema-layer functions return `Except String`, losing structured error information. Internally, scanner/parser already use the well-designed `ScanError` inductive (30 constructors in [Token.lean](Lean4Yaml/Token.lean)), but the `ScanError → String` boundary at the API surface discards machine-inspectable error categories.
+
+**Solution — three new types:**
+
+| Type | Scope | Constructors |
+|------|-------|-------------|
+| `SchemaError` (NEW) | Type conversion errors in FromYaml/ToYaml | 15: type mismatches, range violations, field access, collection errors |
+| `YamlError` (NEW) | Unified top-level error | 2: `.scanError ScanError`, `.schemaError SchemaError` |
+| `ScanError` (EXISTS) | Scanner + parser errors | 30: already implemented |
+
+**Refactoring scope — 5 phases, 10 files, ~23 `Except String` sites:**
+
+| Phase | Files | Changes | Risk |
+|-------|-------|---------|------|
+| **1. Define types** | `Token.lean` | Add `SchemaError`, `YamlError` inductives + `ToString`/`DecidableEq` | None (additive) |
+| **2. Schema layer** | `FromToYaml.lean`, `Struct.lean` | `Except String` → `Except SchemaError` (8 typeclass methods, 4 helpers) | Low — mechanical substitution |
+| **3. API entry points** | `TokenParser.lean`, `Api.lean`, `Dump.lean` | `Except String` → `Except ScanError` (parser) / `Except YamlError` (combined) | Medium — changes public API signatures |
+| **4. Tests** | `ExplicitKeyTests.lean`, `FlowTests.lean`, `TryDump.lean` | Update error assertions to pattern-match | Low |
+| **5. Proofs** | `SchemaDump.lean`, `Composition.lean`, `EndToEndCorrectness.lean`, `Completeness.lean`, `RoundTrip.lean`, `CommentRoundTrip.lean`, `ParserGrammable.lean`, `ScannerEmitBridge.lean` | Update 8 proof files referencing `parseYaml*` signatures | Medium — error lifting lemmas needed |
+
+**Key architectural decisions:**
+- Scanner/parser APIs (`parseYaml`, `parseYamlRaw`) return `Except ScanError` directly (no `String` lossy conversion)
+- Combined APIs (`parseAs`, `roundTripTyped`) return `Except YamlError` (unifying scan + schema errors)
+- `Coe ScanError YamlError` and `Coe SchemaError YamlError` instances for ergonomic lifting
+- Backwards-compatibility bridge: `YamlError.toString` preserves existing error message format
+- Incremental migration: parallel `'`-suffix APIs during transition, then swap
+
+**New proof opportunities enabled:**
+- Error discriminability: `scanError ≠ schemaError` (impossible with `String`)
+- Error coverage: `getMapping` only produces `notAMapping` errors
+- Error-specific round-trip: structured error propagation through pipeline
 
 #### Version 0.3
 
