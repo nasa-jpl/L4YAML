@@ -19,6 +19,7 @@ defaultTargets = [
   "scannertests",
   "scannerspecexamples",
   "suiterunner",
+  "queryresults",
 ]
 
 [leanOptions]
@@ -88,6 +89,10 @@ root = "Tests.TryRoundTrip"
 [[lean_exe]]
 name = "trydump"
 root = "Tests.TryDump"
+
+[[lean_exe]]
+name = "queryresults"
+root = "Tests.QueryResults"
 
 [[lean_lib]]
 name = "Tests.ExplicitKeyTests"

@@ -38,6 +38,7 @@ structure ReportResult where
   testCase : TestCase
   outcome : TestOutcome
   errorMsg : Option String := none
+  parserOutput : Option String := none
   deriving Repr
 
 /-- Summary statistics for a group of results. -/
@@ -135,15 +136,62 @@ structure JsonTestEntry where
   stage   : Stage
   outcome : TestOutcome
   error   : Option String := none
-  deriving Lean.ToJson
+  parserOutput : Option String := none
+  deriving Repr
 
-/-- JSON-serializable verified-suite summary row. -/
+open Lean in
+instance : ToJson JsonTestEntry where
+  toJson e :=
+    let fields : List (String × Json) := [
+      ("id",      toJson e.id),
+      ("name",    toJson e.name),
+      ("stage",   toJson e.stage),
+      ("outcome", toJson e.outcome)]
+    let fields := match e.error with
+      | some err => fields ++ [("error", toJson err)]
+      | none => fields
+    let fields := match e.parserOutput with
+      | some po => fields ++ [("parserOutput", toJson po)]
+      | none => fields
+    Json.mkObj fields
+
+/-- JSON-serializable per-test entry in a verified suite. -/
+structure JsonVerifiedTestEntry where
+  category : String
+  name     : String
+  outcome  : String     -- "pass" or "fail"
+  error    : Option String := none
+  deriving Repr
+
+open Lean in
+instance : ToJson JsonVerifiedTestEntry where
+  toJson e :=
+    let fields : List (String × Json) := [
+      ("category", toJson e.category),
+      ("name",     toJson e.name),
+      ("outcome",  toJson e.outcome)]
+    let fields := match e.error with
+      | some err => fields ++ [("error", toJson err)]
+      | none => fields
+    Json.mkObj fields
+
+/-- JSON-serializable verified-suite summary row (with per-test detail). -/
 structure JsonVerifiedSuite where
   label   : String
   passed  : Nat
   total   : Nat
   allPass : Bool
-  deriving Lean.ToJson
+  tests   : Array JsonVerifiedTestEntry := #[]
+  deriving Repr
+
+open Lean in
+instance : ToJson JsonVerifiedSuite where
+  toJson s := Json.mkObj [
+    ("label",   toJson s.label),
+    ("passed",  toJson s.passed),
+    ("total",   toJson s.total),
+    ("allPass", toJson s.allPass),
+    ("tests",   toJson s.tests)]
 
 /-- JSON-serializable verified section (aggregate + per-suite). -/
 structure JsonVerifiedSection where
@@ -188,21 +236,30 @@ def generateJsonSummary (results : Array ReportResult) (dateStamp : String)
   let stageFields := stages.map fun stage =>
     let stageResults := results.filter (fun r => r.testCase.stage == stage)
     (toString stage, toJson (CoverageStats.fromResults stageResults))
-  -- Per-test entries
+  -- Per-test entries (include parserOutput for UP/fail)
   let testEntries := results.map fun r =>
     toJson ({ id      := r.testCase.id
               name    := r.testCase.name
               stage   := r.testCase.stage
               outcome := r.outcome
-              error   := r.errorMsg : JsonTestEntry })
-  -- Optional verified section
+              error   := r.errorMsg
+              parserOutput := r.parserOutput : JsonTestEntry })
+  -- Optional verified section (with per-test detail)
   let verifiedField := match verifiedSuites with
     | some suites =>
       let totalPassed := suites.foldl (fun acc s => acc + s.passed) 0
       let totalTests  := suites.foldl (fun acc s => acc + s.total) 0
       let jsonSuites  := suites.map fun s =>
+        let testEntries := s.tests.map fun tc =>
+          ({ category := tc.category
+             name := tc.name
+             outcome := if tc.outcome.isPass then "pass" else "fail"
+             error := match tc.outcome with
+               | .fail msg => if msg.isEmpty then none else some msg
+               | .pass => none : JsonVerifiedTestEntry })
         ({ label := s.label, passed := s.passed,
-           total := s.total, allPass := s.allPass : JsonVerifiedSuite })
+           total := s.total, allPass := s.allPass,
+           tests := testEntries : JsonVerifiedSuite })
       [("verified", toJson ({ totalPassed, totalTests,
                               suites := jsonSuites : JsonVerifiedSection }))]
     | none => []
@@ -1113,5 +1170,25 @@ def writeReports (results : Array ReportResult) (outDir : String)
   IO.println s!"  wrote {dir}/coverage-summary.json"
 
   IO.println s!"\nHTML reports written to {dir}/"
+
+/-- Write JSON summary only (no HTML). Faster for CI and scripted analysis.
+    If `snapshot` is true, writes to `<dir>/<ISO-timestamp>.json` instead of
+    `coverage-summary.json`. -/
+def writeJsonOnly (results : Array ReportResult) (outDir : String)
+    (verifiedSuites : Option (Array Tests.VerifiedSuiteResult) := none)
+    (snapshot : Bool := false) : IO Unit := do
+  let dir := if outDir.endsWith "/" then (outDir.toRawSubstring.dropRight 1).toString else outDir
+  IO.FS.createDirAll dir
+  let dateResult ← IO.Process.output { cmd := "date", args := #["+%Y-%m-%dT%H:%M:%S%z"] }
+  let dateStr := dateResult.stdout.trimAscii.toString
+  let json := generateJsonSummary results dateStr (verifiedSuites := verifiedSuites)
+  let fileName := if snapshot then
+    -- ISO timestamp for filename: replace colons for filesystem safety
+    let safe := dateStr.replace ":" ""
+    s!"{dir}/{safe}.json"
+  else
+    s!"{dir}/coverage-summary.json"
+  IO.FS.writeFile fileName json
+  IO.println s!"  wrote {fileName}"
 
 end Tests.SuiteRunner

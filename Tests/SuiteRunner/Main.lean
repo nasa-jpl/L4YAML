@@ -29,7 +29,12 @@ pass/fail results staged by feature coverage.
 
 # Generate HTML reports
 .lake/build/bin/suiterunner --html docs/
-.lake/build/bin/suiterunner scalar --html docs/
+
+# Generate JSON summary only (faster, no HTML)
+.lake/build/bin/suiterunner --json docs/
+
+# JSON with timestamped snapshot
+.lake/build/bin/suiterunner --json results/ --snapshot
 ```
 
 ## References
@@ -65,8 +70,8 @@ private def yaml13Include : List String :=
 
 /-- Result of running a single test case. -/
 inductive TestResult where
-  | pass
-  | fail (reason : String)
+  | pass (stdout : String := "")
+  | fail (reason : String) (stdout : String := "")
   | skip (reason : String)
   deriving Repr
 
@@ -93,8 +98,9 @@ def runTest (tc : TestCase) (timeoutSec : Nat := 2) : IO TestResult := do
   if tc.tags.any (fun t => t == "1.3-err" || t == "1.3-mod")
       && !yaml13Include.contains tc.id then
     return .skip "YAML 1.3 specific"
-  -- Write yaml to temp file
-  let tmpPath := s!"/tmp/yaml_suite_test_{tc.id}.yaml"
+  -- Write yaml to temp file (use project-local tmp/ per workspace rules)
+  IO.FS.createDirAll "tmp"
+  let tmpPath := s!"tmp/yaml_suite_test_{tc.id}.yaml"
   IO.FS.writeFile tmpPath yaml
   -- Run tryparse with OS-level timeout
   let result ← IO.Process.output {
@@ -103,15 +109,17 @@ def runTest (tc : TestCase) (timeoutSec : Nat := 2) : IO TestResult := do
   }
   -- Clean up temp file
   try IO.FS.removeFile tmpPath catch _ => pure ()
+  -- Capture stdout for parser output (used in JSON reports for UP/fail analysis)
+  let stdout := result.stdout.trimAscii.toString
   -- Interpret exit code
   if result.exitCode == 0 then
-    if tc.expectFail then return .fail "expected parse failure but succeeded"
-    else return .pass
+    if tc.expectFail then return .fail "expected parse failure but succeeded" stdout
+    else return .pass stdout
   else if result.exitCode == 124 then
     return .fail "timeout (possible infinite loop)"
   else
-    if tc.expectFail then return .pass
-    else return .fail s!"parse error: {result.stderr.trimAscii.toString}"
+    if tc.expectFail then return .pass stdout
+    else return .fail s!"parse error: {result.stderr.trimAscii.toString}" stdout
 
 /-- Summary statistics for a test run. -/
 structure TestStats where
@@ -160,10 +168,10 @@ def runStage (stage : Stage) (testCases : Array TestCase)
     flushStdout
     let result ← runTest tc
     match result with
-    | .pass =>
+    | .pass .. =>
       stats := { stats with passed := stats.passed + 1 }
       IO.println "✓"
-    | .fail reason =>
+    | .fail reason .. =>
       let failures := stats.failures.push (tc.id, reason)
       stats := { stats with failed := stats.failed + 1 }
       stats := { stats with failures := failures }
@@ -206,20 +214,25 @@ def runAllForReport (testCases : Array TestCase) (stage : Stage)
     flushStdout
     let result ← runTest tc timeoutSec
     let reportResult : ReportResult := match result with
-      | .pass =>
+      | .pass stdout =>
+        let po := if stdout.isEmpty then none else some stdout
         if tc.expectFail then
-          { testCase := tc, outcome := .expectedFail }
+          { testCase := tc, outcome := .expectedFail, parserOutput := po }
         else
-          { testCase := tc, outcome := .pass }
-      | .fail reason =>
+          { testCase := tc, outcome := .pass, parserOutput := po }
+      | .fail reason stdout =>
+        let po := if stdout.isEmpty then none else some stdout
         if (reason.splitOn "timeout").length > 1 then
           { testCase := tc, outcome := .timeout, errorMsg := some reason }
         else if (reason.splitOn "expected parse failure but succeeded").length > 1 then
-          { testCase := tc, outcome := .unexpectedPass, errorMsg := some reason }
+          { testCase := tc, outcome := .unexpectedPass, errorMsg := some reason,
+            parserOutput := po }
         else if tc.expectFail then
-          { testCase := tc, outcome := .expectedFail, errorMsg := some reason }
+          { testCase := tc, outcome := .expectedFail, errorMsg := some reason,
+            parserOutput := po }
         else
-          { testCase := tc, outcome := .fail, errorMsg := some reason }
+          { testCase := tc, outcome := .fail, errorMsg := some reason,
+            parserOutput := po }
       | .skip reason =>
         { testCase := tc, outcome := .skip reason }
     -- Console output
@@ -246,6 +259,8 @@ def main (args : List String) : IO UInt32 := do
   let mut stageArg := "all"
   let mut verbose := false
   let mut htmlDir : Option String := none
+  let mut jsonDir : Option String := none
+  let mut snapshot := false
   let mut i : Nat := 0
   let mut skipNext := false
   for arg in args do
@@ -257,6 +272,12 @@ def main (args : List String) : IO UInt32 := do
       match args.drop (i + 1) with
       | dir :: _ => htmlDir := some dir; skipNext := true
       | [] => IO.eprintln "Error: --html requires a directory argument"; return 1
+    else if arg == "--json" then
+      match args.drop (i + 1) with
+      | dir :: _ => jsonDir := some dir; skipNext := true
+      | [] => IO.eprintln "Error: --json requires a directory argument"; return 1
+    else if arg == "--snapshot" then
+      snapshot := true
     else
       stageArg := arg
     i := i + 1
@@ -304,21 +325,8 @@ def main (args : List String) : IO UInt32 := do
   flushStdout
   dbg t0 "distribution printed, entering main test loop"
 
-  -- HTML report mode: run all tests and generate reports
-  match htmlDir with
-  | some dir =>
-    IO.println s!"Running all tests for HTML report..."
-    IO.println (String.ofList (List.replicate 60 '-'))
-    flushStdout
-    let results ← runAllForReport allCases .all (startMs := t0)
-    IO.println (String.ofList (List.replicate 60 '-'))
-    flushStdout
-    dbg t0 "computing coverage stats"
-    let stats := CoverageStats.fromResults results
-    IO.println s!"\nCorrect: {stats.correctCount}/{stats.total} ({stats.successRate.floor}%)"
-    flushStdout
-
-    -- Run verified test suites directly (no subprocess)
+  -- Shared helper: run all verified test suites and print progress
+  let runVerifiedSuites : IO (Array Tests.VerifiedSuiteResult) := do
     IO.println "\nRunning verified test suites..."
     flushStdout
     dbg t0 "starting verified test suites"
@@ -347,6 +355,42 @@ def main (args : List String) : IO UInt32 := do
     let totalVTests := verifiedSuites.foldl (fun acc s => acc + s.total) 0
     IO.println s!"\nVerified: {totalVPassed}/{totalVTests}"
     flushStdout
+    return verifiedSuites
+
+  -- Shared helper: run all suite tests and collect results
+  let runAllSuiteTests : IO (Array ReportResult) := do
+    IO.println s!"Running all tests..."
+    IO.println (String.ofList (List.replicate 60 '-'))
+    flushStdout
+    let results ← runAllForReport allCases .all (startMs := t0)
+    IO.println (String.ofList (List.replicate 60 '-'))
+    flushStdout
+    dbg t0 "computing coverage stats"
+    let stats := CoverageStats.fromResults results
+    IO.println s!"\nCorrect: {stats.correctCount}/{stats.total} ({stats.successRate.floor}%)"
+    flushStdout
+    return results
+
+  -- JSON-only mode: run all tests + verified suites, write JSON
+  match jsonDir with
+  | some dir =>
+    let results ← runAllSuiteTests
+    let verifiedSuites ← runVerifiedSuites
+    dbg t0 "generating JSON"
+    IO.println s!"\nGenerating JSON..."
+    flushStdout
+    writeJsonOnly results dir
+      (verifiedSuites := some verifiedSuites)
+      (snapshot := snapshot)
+    dbg t0 "done"
+    return 0
+  | none => pure ()
+
+  -- HTML report mode: run all tests and generate reports
+  match htmlDir with
+  | some dir =>
+    let results ← runAllSuiteTests
+    let verifiedSuites ← runVerifiedSuites
 
     dbg t0 "generating HTML reports"
     IO.println s!"\nGenerating HTML reports..."

@@ -198,9 +198,52 @@ Improved type safety with explicit exception types for all APIs. See [EXCEPTIONS
 - Key proof technique: `show beqFoo _ _ = true` / `change beqFoo _ _ = true at h` to bridge from `BEq.beq` to the explicit function name (necessary because `unfold beqFoo` fails after `unfold BEq.beq` — the term has shape `instBEqFoo.1`, not `beqFoo`)
 - Build: 338/338 jobs, 0 errors, 0 sorry, 0 warnings
 
-#### Version 0.2.2
+#### Version 0.2.2 (completed 2026-03-20)
 
 Test diagnostics & result persistence (P10.6c). Machine-readable JSON output from `suiterunner`, per-test detail in verified suite results, parser output capture for UP/fail tests, `queryresults` analysis tool, and timestamped result snapshots.
+
+**Problem:** Planning P10.6d required multiple 40-second `suiterunner` runs, ad-hoc `grep`/`python` one-liners to categorize UPs by stage, and manual cross-referencing of `Error.lean` guard comments with console output. The existing `--html` mode wrote HTML + JSON together, but: verified suite JSON had **no per-test detail** (only `{label, passed, total, allPass}`), no standalone JSON mode existed, no parser output was captured for UP/fail tests, and no query/diff tooling existed.
+
+**Solution — 5 sub-phases across 4 files + 1 new tool:**
+
+| Sub-phase | Scope | Files | Result |
+|-----------|-------|-------|--------|
+| **10.6c.1** | `--json <dir>` standalone JSON mode | `Main.lean` | ✅ JSON-only, no HTML |
+| **10.6c.2** | Per-test verified suite detail | `HtmlReport.lean` | ✅ category/name/outcome/error per test |
+| **10.6c.3** | Parser output capture for UP/fail | `Main.lean`, `HtmlReport.lean` | ✅ `tryparse` stdout in JSON |
+| **10.6c.4** | `queryresults` analysis tool | `QueryResults.lean` (new), `lakefile.toml` | ✅ 6 commands |
+| **10.6c.5** | `--snapshot` timestamped output | `Main.lean`, `HtmlReport.lean` | ✅ ISO-timestamp filenames |
+
+**New CLI modes:**
+```bash
+suiterunner --json docs/              # JSON only, no HTML (faster for CI)
+suiterunner --json results/ --snapshot  # timestamped: results/2026-03-20T220000-0700.json
+suiterunner --html docs/              # HTML + JSON (existing, unchanged)
+```
+
+**New `queryresults` tool:**
+```bash
+queryresults docs/coverage-summary.json summary           # README-ready markdown table
+queryresults docs/coverage-summary.json ups --by-stage    # UPs grouped by stage
+queryresults docs/coverage-summary.json ups --ids-only    # bare ID list
+queryresults docs/coverage-summary.json verified-failures # verified test failures with errors
+queryresults docs/coverage-summary.json filter --id "229Q" # filter by ID prefix
+queryresults diff before.json after.json                  # outcome changes, additions, removals
+```
+
+**JSON schema changes:**
+- `JsonTestEntry`: added optional `parserOutput` field (populated for UP/fail outcomes)
+- `JsonVerifiedSuite`: added `tests` array with `JsonVerifiedTestEntry` entries (category, name, outcome, error)
+- `TestResult` inductive: now carries subprocess `stdout` for parser output capture
+- `ReportResult` struct: added `parserOutput : Option String` field
+
+**Additional fix:** Changed `/tmp/` usage in `runTest` to project-local `tmp/` per workspace rules.
+
+**Key results:**
+- Refactored `main` to extract shared helpers (`runVerifiedSuites`, `runAllSuiteTests`) — eliminates code duplication between `--html` and `--json` modes
+- `queryresults summary` produces markdown tables directly usable in README updates
+- `queryresults diff` enables regression tracking across P10.6d implementation steps
+- Build: 341/341 jobs, 0 errors, 0 sorry, 0 warnings
 
 #### Version 0.2.3
 
