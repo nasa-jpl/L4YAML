@@ -3,6 +3,8 @@ import Lean4Yaml.TokenParser
 import Lean4Yaml.Proofs.ScannerPlainScalarValid
 import Lean4Yaml.Proofs.ParserGrammableBase
 import Lean4Yaml.Proofs.ParserNodeProofs
+import Lean4Yaml.Proofs.ValueAlgebra
+import Lean4Yaml.Proofs.ParserWfaProofs
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -211,39 +213,8 @@ theorem parseStream_output_aliases_resolve
     exact parseStreamLoop_aliases_resolve ps_start #[] .initial tokens.size docs
       (by intro d hd; simp at hd) h_parse doc hdoc
 
-/-- C2c: Anchor values in parser output are well-formed.
-
-    ### Semantic Gap (`∀ inFlow`)
-
-    `WellFormedAnchors` requires `∀ inFlow, Grammable val.stripAnchors inFlow`.
-    This is genuinely unsatisfiable for anchored block-context plain scalars
-    containing flow indicators. Example:
-
-    ```yaml
-    anchor: &a value{key}   # block-context, content has flow indicators
-    flow: [*a]               # alias in flow context
-    ```
-
-    Here `value{key}` satisfies `ScalarScannable _ false` (flow indicator
-    check is vacuous) but NOT `ScalarScannable _ true` (`noFlowIndicators`
-    fails for `{` and `}`). The `∀ inFlow` quantifier requires both.
-
-    ### Resolution Options
-
-    1. **Precondition**: Add `NoFlowIndicatorsInBlockAnchors` to ensure
-       anchored values don't contain flow indicators in plain scalar content.
-    2. **Weaken `WellFormedAnchors`**: Replace `∀ inFlow` with specific
-       flow context determined by alias usage sites.
-    3. **Accept as spec corner case**: Document that the verification covers
-       all YAML documents without cross-context flow indicator aliasing
-       (the vast majority of real-world YAML). -/
-theorem parseStream_output_anchors_wellformed
-    (tokens : Array (Positioned YamlToken))
-    (docs : Array YamlDocument)
-    (h_scan_tokens : PlainScalarsValid tokens)
-    (h_parse : parseStream tokens = .ok docs) :
-    ∀ doc ∈ docs.toList, WellFormedAnchors doc.anchors := by
-  sorry
-
+-- C2c: Anchor values in parser output are well-formed.
+-- parseStream_output_anchors_wellformed is now in ParserWfaProofs.lean
+-- (with updated signature: FlowAwarePSV + FlowBracketsMatched)
 
 end Lean4Yaml.Proofs.ParserGrammable

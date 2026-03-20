@@ -69,7 +69,7 @@ theorem parseStream_output_grammable
   have h_matched := scan_flow_brackets_matched input tokens h_scan
   have h_scannable := parseStream_output_scannable tokens raw_docs h_fpsv h_matched h_parse doc hdoc
   have h_resolve := parseStream_output_aliases_resolve tokens raw_docs h_parse doc hdoc
-  have h_anchors := parseStream_output_anchors_wellformed tokens raw_docs h_fpsv.1 h_parse doc hdoc
+  have h_anchors := parseStream_output_anchors_wellformed tokens raw_docs h_fpsv h_matched h_parse doc hdoc
   exact compose_grammable doc h_scannable h_resolve h_anchors
 
 /-- **Unconditional correctness**: The full `parseYaml` pipeline produces
