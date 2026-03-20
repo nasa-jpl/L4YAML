@@ -368,6 +368,19 @@ value field is exactly `toYamlValue`.
 -/
 
 /--
+**Theorem companion for `toYamlValue_nodeToValue`**: for every `ValidNode`,
+the `NodeToValue` relation holds between it and `toYamlValue n`.
+
+This is the `theorem` version of the `def toYamlValue_nodeToValue`.
+The `def` is classified as `computationalOperation` by the
+doc-verification-bridge; this `theorem` makes the result visible as a
+verified property of `NodeToValue`.
+-/
+theorem toYamlValue_produces_nodeToValue (n : ValidNode) :
+    NodeToValue n (toYamlValue n) :=
+  toYamlValue_nodeToValue n
+
+/--
 **ValidYaml construction**: given any `ValidNode`, we can construct
 a `ValidYaml` bundling the node with its canonical value.
 -/

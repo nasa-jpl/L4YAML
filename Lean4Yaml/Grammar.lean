@@ -371,6 +371,19 @@ structure ValidTokenStream where
   positionsOrdered : ∀ (i j : Fin tokens.size), i.val < j.val →
     (tokens[i]).pos.offset ≤ (tokens[j]).pos.offset
 
+/--
+Propositional twin of `ValidTokenStream`. Flattens the structure into a
+conjunction so that `theorem`s mentioning it are visible to the
+doc-verification-bridge (which traces `Prop`-level names, not structure
+constructors classified as `computationalOperation`).
+-/
+def ValidTokenStreamProp (tokens : Array (Positioned YamlToken)) : Prop :=
+  tokens.size ≥ 2 ∧
+  (∀ (h : 0 < tokens.size), (tokens[0]'h).val = .streamStart) ∧
+  (∀ (h : tokens.size - 1 < tokens.size), (tokens[tokens.size - 1]'h).val = .streamEnd) ∧
+  ∀ (i j : Fin tokens.size), i.val < j.val →
+    (tokens[i]).pos.offset ≤ (tokens[j]).pos.offset
+
 /-! ## Top-Level Specification -/
 
 /--
