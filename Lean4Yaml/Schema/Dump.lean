@@ -127,7 +127,7 @@ Returns `.error` if either the parse or the `FromYaml` conversion fails.
 def roundTripTyped (α : Type) {β : Type} [ToYaml β] [FromYaml α]
     (value : β) (cfg : DumpConfig := {}) : Except String α := do
   let yaml ← parseYamlSingle (dumpTyped value cfg)
-  fromYaml? yaml
+  (fromYaml? yaml).mapError toString
 
 /--
 Dump → Parse → contentEq round-trip check.
@@ -163,7 +163,7 @@ def roundTripDiagnostics {α : Type} [ToYaml α] [FromYaml α]
   let result := do
     let parsed ← parseYamlSingle yamlStr
     let ceq := contentEq (toYaml value) parsed
-    let typed := fromYaml? parsed
+    let typed := (fromYaml? parsed).mapError toString
     pure (parsed, ceq, typed)
   (yamlStr, result)
 
@@ -224,4 +224,3 @@ open Lean4Yaml.Emit
 
 
 end SchemaDumpGuards
-

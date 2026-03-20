@@ -34,7 +34,7 @@ namespace Lean4Yaml
     Combines `parseYamlSingle` with `FromYaml` conversion. -/
 def parseAs (α : Type) [Schema.FromYaml α] (s : String) : Except String α := do
   let yaml ← TokenParser.parseYamlSingle s
-  Schema.fromYaml? yaml
+  (Schema.fromYaml? yaml).mapError toString
 
 /-- Convert a Lean value to a `YamlValue` for serialization. -/
 def toYaml {α : Type} [Schema.ToYaml α] (value : α) : YamlValue :=

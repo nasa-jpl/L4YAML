@@ -166,52 +166,46 @@ instance : Coe SchemaError YamlError where
 - No breaking changes (additive only)
 - Exception hierarchy foundation established
 
-### Phase 2: Refactor Schema Layer
+### Phase 2: Refactor Schema Layer ✅ (2026-03-20)
 
-**Files to modify:**
+**Files modified:**
 
-1. **[Schema/FromToYaml.lean](Lean4Yaml/Schema/FromToYaml.lean)** (34 occurrences)
-   ```lean
-   -- Before:
-   class FromYamlType (α : Type u) where
-     fromYamlType? : YamlType → Except String α
+1. **[Schema.lean](Lean4Yaml/Schema.lean)** — Added 2 new `SchemaError` constructors:
+   - `notASequence (got : YamlValue)` — for `FromYaml` List/Array/Pair instances on raw `YamlValue`
+   - `unknownVariant (got : String) (typeName : String)` — for derived enum deserialization
 
-   -- After:
-   class FromYamlType (α : Type u) where
-     fromYamlType? : YamlType → Except SchemaError α
-   ```
-   - Update all 11 primitive/collection instances
-   - Replace `.error "..."` with structured constructors (e.g., `.error (.expectedBoolean got)`)
+2. **[Schema/FromToYaml.lean](Lean4Yaml/Schema/FromToYaml.lean)** — Typeclass signatures + all 11 instances:
+   - `FromYamlType.fromYamlType?` : `Except String α` → `Except SchemaError α`
+   - `FromYaml.fromYaml?` : `Except String α` → `Except SchemaError α`
+   - All `.error s!"..."` → structured `SchemaError` constructors
+   - `yamlTypeToString?` : `Except String` → `Except SchemaError`
 
-2. **[Schema/Struct.lean](Lean4Yaml/Schema/Struct.lean)** (13 occurrences)
-   ```lean
-   -- Before:
-   def getMapping (v : YamlValue) : Except String (Array (YamlValue × YamlValue))
+3. **[Schema/Struct.lean](Lean4Yaml/Schema/Struct.lean)** — All 4 helpers:
+   - `getMapping`, `getString` : `Except String` → `Except SchemaError`
+   - `getField`, `getFieldOpt` : `Except String` → `Except SchemaError`
+   - `.error s!"{fieldName}: {msg}"` → `.error (.fieldConversionError fieldName e)`
+   - `.error s!"missing required field..."` → `.error (.missingField fieldName)`
 
-   -- After:
-   def getMapping (v : YamlValue) : Except SchemaError (Array (YamlValue × YamlValue))
-   ```
-   - Update `getString`, `getField`, `getFieldOpt`
-   - Wrap nested errors with `.fieldConversionError`
+4. **[Schema/Deriving.lean](Lean4Yaml/Schema/Deriving.lean)** — Enum error generation:
+   - String error → `SchemaError.unknownVariant other "{typeName}"`
 
-3. **[Schema/Api.lean](Lean4Yaml/Schema/Api.lean)** (4 occurrences)
-   ```lean
-   -- Before:
-   def parseAs (α : Type) [Schema.FromYaml α] (s : String) : Except String α
+5. **[Schema/Api.lean](Lean4Yaml/Schema/Api.lean)** — Bridge with `.mapError toString`:
+   - `parseAs` and `parseTyped` keep `Except String` return type (parser still returns `Except String`)
+   - Internal `fromYaml?` now returns `Except SchemaError`, bridged via `.mapError toString`
+   - Will switch to `Except YamlError` in Phase 3 when parser returns `Except ScanError`
 
-   -- After:
-   def parseAs (α : Type) [Schema.FromYaml α] (s : String) : Except YamlError α
-   ```
-   - Lift `ScanError` from parser → `YamlError.scanError`
-   - Lift `SchemaError` from conversion → `YamlError.schemaError`
+6. **[Schema/Dump.lean](Lean4Yaml/Schema/Dump.lean)** — Bridge with `.mapError toString`:
+   - `roundTripTyped` and `roundTripDiagnostics` keep `Except String` return type
+   - Internal `fromYaml?` bridged via `.mapError toString`
 
-4. **[Schema/Dump.lean](Lean4Yaml/Schema/Dump.lean)** (4 occurrences)
-   - Update `roundTripTyped`, `roundTripDiagnostics`
+**Design note:** `Api.lean` and `Dump.lean` cannot return `Except YamlError` yet because
+`TokenParser.parseYamlSingle` still returns `Except String`. These will switch to
+`Except YamlError` / `Except ScanError` in Phase 3 when the parser entry points change.
 
-**Impact:**
-- Breaking change for Schema API users
-- Enables pattern matching on error types
-- Migration path: `match err with | .schemaError (.missingField name) => ... | .scanError _ => ...`
+**Result:**
+- Build: 334/334 jobs, 0 errors, 0 warnings, 0 sorry
+- Schema layer fully uses `SchemaError` internally
+- External API unchanged (`Except String`) — no downstream breakage yet
 
 ### Phase 3: Update Parser Entry Points
 
@@ -548,7 +542,7 @@ The exception refactoring **preserves this property** because:
 | Phase | Effort | Files Changed | Breaking |
 |-------|--------|---------------|----------|
 | 1. Create Types | ✅ done | 1 (Schema.lean) | No |
-| 2. Schema Layer | 2-3 days | 4 (Schema/*) | Yes |
+| 2. Schema Layer | ✅ done | 6 (Schema.lean + Schema/*) | Internal only |
 | 3. Parser Layer | 1 day | 1 (TokenParser.lean) | Yes |
 | 4. Tests/Examples | 1-2 days | ~15 | No |
 | 5. Proof Updates | 3-5 days | ~32 | No |

@@ -49,10 +49,10 @@ open Lean4Yaml
 /-! ## Mapping Extraction -/
 
 /-- Extract mapping pairs from a `YamlValue`, or return an error. -/
-def getMapping (v : YamlValue) : Except String (Array (YamlValue × YamlValue)) :=
+def getMapping (v : YamlValue) : Except SchemaError (Array (YamlValue × YamlValue)) :=
   match v with
   | .mapping _ pairs _ _ => .ok pairs
-  | _ => .error s!"expected YAML mapping, got {repr v}"
+  | _ => .error (.notAMapping v)
 
 /-- Get scalar content from a `YamlValue`. -/
 def getScalarContent (v : YamlValue) : Option String :=
@@ -61,10 +61,10 @@ def getScalarContent (v : YamlValue) : Option String :=
   | _ => none
 
 /-- Get string from a `YamlValue` for enum parsing. -/
-def getString (v : YamlValue) : Except String String :=
+def getString (v : YamlValue) : Except SchemaError String :=
   match v with
   | .scalar s => .ok s.content
-  | _ => .error s!"expected YAML string scalar, got {repr v}"
+  | _ => .error (.notAScalar v)
 
 /-! ## Field Access -/
 
@@ -76,18 +76,18 @@ def findField (pairs : Array (YamlValue × YamlValue)) (fieldName : String) : Op
 /-- Get and parse a required field from a mapping.
     Returns an error if the field is missing or cannot be converted. -/
 def getField {α : Type} [FromYaml α] (pairs : Array (YamlValue × YamlValue)) (fieldName : String) :
-    Except String α := do
+    Except SchemaError α := do
   match findField pairs fieldName with
   | some v =>
       match fromYaml? v with
       | .ok val => .ok val
-      | .error msg => .error s!"{fieldName}: {msg}"
-  | none => .error s!"missing required field '{fieldName}'"
+      | .error e => .error (.fieldConversionError fieldName e)
+  | none => .error (.missingField fieldName)
 
 /-- Get and parse an optional field from a mapping.
     Returns `none` if the field is missing or explicitly null. -/
 def getFieldOpt {α : Type} [FromYaml α] (pairs : Array (YamlValue × YamlValue)) (fieldName : String) :
-    Except String (Option α) := do
+    Except SchemaError (Option α) := do
   match findField pairs fieldName with
   | some v =>
       match v with
@@ -97,11 +97,11 @@ def getFieldOpt {α : Type} [FromYaml α] (pairs : Array (YamlValue × YamlValue
           else
             match fromYaml? v with
             | .ok val => .ok (some val)
-            | .error msg => .error s!"{fieldName}: {msg}"
+            | .error e => .error (.fieldConversionError fieldName e)
       | _ =>
           match fromYaml? v with
           | .ok val => .ok (some val)
-          | .error msg => .error s!"{fieldName}: {msg}"
+          | .error e => .error (.fieldConversionError fieldName e)
   | none => .ok none
 
 /-! ## Mapping Construction -/

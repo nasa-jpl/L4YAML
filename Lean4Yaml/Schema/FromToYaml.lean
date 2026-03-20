@@ -40,7 +40,7 @@ universe u
     Most types should implement this — the default `FromYaml` instance
     handles `resolve` automatically. -/
 class FromYamlType (α : Type u) where
-  fromYamlType? : YamlType → Except String α
+  fromYamlType? : YamlType → Except SchemaError α
 
 export FromYamlType (fromYamlType?)
 
@@ -48,7 +48,7 @@ export FromYamlType (fromYamlType?)
     The default instance delegates to `FromYamlType` via `Schema.resolve`.
     Override for types that need direct access to style/tag metadata. -/
 class FromYaml (α : Type u) where
-  fromYaml? : YamlValue → Except String α
+  fromYaml? : YamlValue → Except SchemaError α
 
 export FromYaml (fromYaml?)
 
@@ -67,14 +67,14 @@ instance {α : Type u} [FromYamlType α] : FromYaml α where
 
 instance : FromYamlType Unit where
   fromYamlType? | .null => .ok ()
-                | v => .error s!"expected null, got {repr v}"
+                | v => .error (.expectedNull v)
 
 instance : ToYaml Unit where
   toYaml _ := YamlValue.scalar { content := "null", style := .plain }
 
 instance : FromYamlType Bool where
   fromYamlType? | .bool b => .ok b
-                | v => .error s!"expected boolean, got {repr v}"
+                | v => .error (.expectedBoolean v)
 
 instance : ToYaml Bool where
   toYaml b := YamlValue.scalar {
@@ -84,7 +84,7 @@ instance : ToYaml Bool where
 
 instance : FromYamlType Int where
   fromYamlType? | .int n => .ok n
-                | v => .error s!"expected integer, got {repr v}"
+                | v => .error (.expectedInteger v)
 
 instance : ToYaml Int where
   toYaml n := YamlValue.scalar {
@@ -95,8 +95,8 @@ instance : ToYaml Int where
 instance : FromYamlType Nat where
   fromYamlType? | .int n =>
                     if n >= 0 then .ok n.toNat
-                    else .error s!"expected non-negative integer, got {n}"
-                | v => .error s!"expected integer, got {repr v}"
+                    else .error (.negativeNat n)
+                | v => .error (.expectedInteger v)
 
 instance : ToYaml Nat where
   toYaml n := YamlValue.scalar {
@@ -106,7 +106,7 @@ instance : ToYaml Nat where
 
 instance : FromYamlType String where
   fromYamlType? | .str s => .ok s
-                | v => .error s!"expected string, got {repr v}"
+                | v => .error (.expectedString v)
 
 instance : ToYaml String where
   toYaml s := YamlValue.scalar {
@@ -117,7 +117,7 @@ instance : ToYaml String where
 instance : FromYamlType Float where
   fromYamlType? | .float f => .ok f.toFloat
                 | .int n => .ok (Float.ofInt n)
-                | v => .error s!"expected float, got {repr v}"
+                | v => .error (.expectedFloat v)
 
 instance : ToYaml Float where
   toYaml f := YamlValue.scalar {
@@ -129,13 +129,13 @@ instance : ToYaml Float where
 
 instance {α : Type u} [FromYamlType α] : FromYamlType (Array α) where
   fromYamlType? | .seq items => items.mapM fromYamlType?
-                | v => .error s!"expected sequence, got {repr v}"
+                | v => .error (.expectedSequence v)
 
 instance {α : Type u} [ToYaml α] : ToYaml (Array α) where
   toYaml arr := YamlValue.sequence .block (arr.map toYaml)
 
 instance {α : Type u} [FromYamlType α] : FromYamlType (List α) where
-  fromYamlType? v := (fromYamlType? v : Except String (Array α)).map Array.toList
+  fromYamlType? v := (fromYamlType? v : Except SchemaError (Array α)).map Array.toList
 
 instance {α : Type u} [ToYaml α] : ToYaml (List α) where
   toYaml list := toYaml list.toArray
@@ -150,14 +150,14 @@ instance {α : Type u} [FromYaml α] : FromYaml (List α) where
           let val ← fromYaml? item
           result := val :: result
         pure result
-    | v => .error s!"expected sequence, got {repr v}"
+    | v => .error (.notASequence v)
 
 /-- Direct `FromYaml` instance for `Array α` when `α` has `FromYaml` (not requiring `FromYamlType`).
     This allows derived `FromYaml` instances for structures to contain `Array` fields. -/
 instance {α : Type u} [FromYaml α] : FromYaml (Array α) where
   fromYaml?
     | .sequence _ items _ _ => items.mapM fromYaml?
-    | v => .error s!"expected sequence, got {repr v}"
+    | v => .error (.notASequence v)
 
 instance {α : Type u} [FromYamlType α] : FromYamlType (Option α) where
   fromYamlType? | .null => .ok none
@@ -178,8 +178,8 @@ instance {α β : Type} [FromYaml α] [FromYaml β] : FromYaml (α × β) where
           let snd ← fromYaml? items[1]!
           pure (fst, snd)
         else
-          .error s!"expected 2-element sequence for pair, got {items.size} elements"
-    | v => .error s!"expected sequence for pair, got {repr v}"
+          .error (.wrongSequenceSize 2 items.size)
+    | v => .error (.notASequence v)
 
 /-- ToYaml instance for pairs as 2-element sequences. -/
 instance {α β : Type} [ToYaml α] [ToYaml β] : ToYaml (α × β) where
@@ -188,12 +188,12 @@ instance {α β : Type} [ToYaml α] [ToYaml β] : ToYaml (α × β) where
 /-! ## HashMap Instances -/
 
 /-- Convert a `YamlType` to a string key for HashMap use. -/
-def yamlTypeToString? : YamlType → Except String String
+def yamlTypeToString? : YamlType → Except SchemaError String
   | .str s => .ok s
   | .int n => .ok (toString n)
   | .bool b => .ok (toString b)
   | .null => .ok "null"
-  | v => .error s!"HashMap keys must be strings or convertible to strings, got {repr v}"
+  | v => .error (.invalidKeyType v)
 
 instance {α : Type} [FromYamlType α] : FromYamlType (Std.HashMap String α) where
   fromYamlType?
@@ -203,7 +203,7 @@ instance {α : Type} [FromYamlType α] : FromYamlType (Std.HashMap String α) wh
           let key ← yamlTypeToString? keyType
           let val ← fromYamlType? valType
           pure (acc.insert key val)
-    | v => .error s!"expected mapping, got {repr v}"
+    | v => .error (.expectedMapping v)
 
 instance {α : Type u} [ToYaml α] : ToYaml (Std.HashMap String α) where
   toYaml hm :=
@@ -220,13 +220,13 @@ instance : FromYaml (Std.HashMap String String) where
         for (keyVal, valueVal) in pairs do
           let key ← match keyVal with
             | .scalar s => .ok s.content
-            | _ => .error s!"HashMap keys must be scalars, got {repr keyVal}"
+            | _ => .error (.notAScalar keyVal)
           let value ← match valueVal with
             | .scalar s => .ok s.content
-            | _ => .error s!"HashMap String String values must be scalars, got {repr valueVal}"
+            | _ => .error (.notAScalar valueVal)
           result := result.insert key value
         pure result
-    | v => .error s!"expected mapping, got {repr v}"
+    | v => .error (.notAMapping v)
 
 /-- Generic direct `FromYaml` instance for `HashMap String α` without schema resolution. -/
 instance {α : Type} [FromYaml α] : FromYaml (Std.HashMap String α) where
@@ -236,10 +236,10 @@ instance {α : Type} [FromYaml α] : FromYaml (Std.HashMap String α) where
         for (keyVal, valueVal) in pairs do
           let key ← match keyVal with
             | .scalar s => .ok s.content
-            | _ => .error s!"HashMap keys must be scalars, got {repr keyVal}"
+            | _ => .error (.notAScalar keyVal)
           let value ← fromYaml? valueVal
           result := result.insert key value
         pure result
-    | v => .error s!"expected mapping, got {repr v}"
+    | v => .error (.notAMapping v)
 
 end Lean4Yaml.Schema
