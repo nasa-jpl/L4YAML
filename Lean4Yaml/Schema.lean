@@ -1,4 +1,5 @@
 import Lean4Yaml.Types
+import Lean4Yaml.Token
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -324,3 +325,117 @@ def getMap? : YamlType → Option (Array (YamlType × YamlType)) | .map pairs =>
 end YamlType
 
 end Lean4Yaml.Schema
+
+namespace Lean4Yaml
+
+/-! ## Schema Error Type -/
+
+/--
+Structured errors from the Schema type-conversion layer.
+
+These errors occur during `FromYaml`/`FromYamlType` conversions between
+`YamlValue`/`YamlType` and Lean types.  Each constructor carries the data
+needed for machine-inspectable error handling — no information is lost to
+string formatting.
+
+See also: `ScanError` (scanner/parser errors) in `Token.lean`.
+-/
+inductive SchemaError where
+  /- Type-mismatch errors (FromYamlType instances) -/
+
+  /-- Expected `null`, got a different `YamlType`. -/
+  | expectedNull       (got : Schema.YamlType)
+  /-- Expected `bool`, got a different `YamlType`. -/
+  | expectedBoolean    (got : Schema.YamlType)
+  /-- Expected `int`, got a different `YamlType`. -/
+  | expectedInteger    (got : Schema.YamlType)
+  /-- Expected `str`, got a different `YamlType`. -/
+  | expectedString     (got : Schema.YamlType)
+  /-- Expected `float`, got a different `YamlType`. -/
+  | expectedFloat      (got : Schema.YamlType)
+  /-- Expected `seq`, got a different `YamlType`. -/
+  | expectedSequence   (got : Schema.YamlType)
+  /-- Expected `map`, got a different `YamlType`. -/
+  | expectedMapping    (got : Schema.YamlType)
+
+  /- Range / constraint errors -/
+
+  /-- Nat conversion failed: integer is negative. -/
+  | negativeNat        (value : Int)
+  /-- HashMap key is not a string-like type. -/
+  | invalidKeyType     (got : Schema.YamlType)
+
+  /- Struct / field-access errors (Schema/Struct.lean) -/
+
+  /-- `getMapping` called on a non-mapping `YamlValue`. -/
+  | notAMapping        (got : YamlValue)
+  /-- `getString` called on a non-scalar `YamlValue`. -/
+  | notAScalar         (got : YamlValue)
+  /-- Required field not found in mapping. -/
+  | missingField       (fieldName : String)
+  /-- Field found but inner conversion failed. -/
+  | fieldConversionError (fieldName : String) (inner : SchemaError)
+
+  /- Collection errors -/
+
+  /-- Tuple/pair expected a fixed-size sequence but got a different length. -/
+  | wrongSequenceSize  (expected got : Nat)
+  /-- Array/List element conversion failed at the given index. -/
+  | conversionFailed   (element : Nat) (inner : SchemaError)
+
+  deriving Repr, BEq, Inhabited
+
+/-- Human-readable error message for `SchemaError`. -/
+def SchemaError.toString : SchemaError → String
+  | .expectedNull got       => s!"expected null, got {repr got}"
+  | .expectedBoolean got    => s!"expected boolean, got {repr got}"
+  | .expectedInteger got    => s!"expected integer, got {repr got}"
+  | .expectedString got     => s!"expected string, got {repr got}"
+  | .expectedFloat got      => s!"expected float, got {repr got}"
+  | .expectedSequence got   => s!"expected sequence, got {repr got}"
+  | .expectedMapping got    => s!"expected mapping, got {repr got}"
+  | .negativeNat n          => s!"expected non-negative integer, got {n}"
+  | .invalidKeyType got     => s!"HashMap keys must be strings or convertible to strings, got {repr got}"
+  | .notAMapping got        => s!"expected YAML mapping, got {repr got}"
+  | .notAScalar got         => s!"expected YAML string scalar, got {repr got}"
+  | .missingField name      => s!"missing required field '{name}'"
+  | .fieldConversionError name inner => s!"{name}: {inner.toString}"
+  | .wrongSequenceSize exp got => s!"expected {exp}-element sequence for pair, got {got} elements"
+  | .conversionFailed idx inner => s!"element {idx}: {inner.toString}"
+
+instance : ToString SchemaError := ⟨SchemaError.toString⟩
+
+/-! ## Unified YAML Error Type -/
+
+/--
+Top-level error type unifying all library layers.
+
+Returned by combined API functions like `parseAs` and `roundTripTyped`
+that cross the scanner/parser → schema boundary.
+
+- `.scanError` — scanner or parser failure (syntax/grammar)
+- `.schemaError` — type conversion failure (FromYaml/ToYaml)
+
+See also: `ScanError` (Token.lean), `SchemaError` (above).
+-/
+inductive YamlError where
+  | scanError   (err : ScanError)
+  | schemaError (err : SchemaError)
+  deriving Repr, BEq, Inhabited
+
+/-- Human-readable error message for `YamlError`. -/
+def YamlError.toString : YamlError → String
+  | .scanError e   => e.toString
+  | .schemaError e => e.toString
+
+instance : ToString YamlError := ⟨YamlError.toString⟩
+
+/-- Lift a `ScanError` into `YamlError`. -/
+instance : Coe ScanError YamlError where
+  coe := YamlError.scanError
+
+/-- Lift a `SchemaError` into `YamlError`. -/
+instance : Coe SchemaError YamlError where
+  coe := YamlError.schemaError
+
+end Lean4Yaml
