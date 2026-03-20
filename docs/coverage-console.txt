@@ -12,7 +12,7 @@ Test distribution by stage:
   advanced: 81
   error: 74
 
-Running all tests for HTML report...
+Running all tests...
 ------------------------------------------------------------
   [1/406] 229Q ✓
   [2/406] 236B ✓ (expected fail)
