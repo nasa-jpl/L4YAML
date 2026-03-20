@@ -1,6 +1,6 @@
 # lean4-yaml-verified
 
-A **fully verified** YAML 1.2.2 parser in Lean 4 — 1,577 machine-checked theorems, 2,012 compile-time guards, **zero sorry, zero axiom, zero partial def**. Proofs that the parser conforms to the [YAML specification](https://yaml.org/spec/1.2.2/) and the [yaml-test-suite](https://github.com/yaml/yaml-test-suite).
+A **fully verified** YAML 1.2.2 parser in Lean 4 — 1,589 machine-checked theorems, 2,012 compile-time guards, **zero sorry, zero axiom, zero partial def**. Proofs that the parser conforms to the [YAML specification](https://yaml.org/spec/1.2.2/) and the [yaml-test-suite](https://github.com/yaml/yaml-test-suite).
 
 ## Architecture
 
@@ -21,7 +21,7 @@ Lean4Yaml/
 │   ├── Deriving.lean        # deriving FromYaml, ToYaml macro handlers
 │   ├── Dump.lean            # Schema↔Dump integration: dumpTyped, roundTripTyped
 │   └── Api.lean             # Convenience: parseAs, toYaml, parseTyped
-├── Proofs/                              # 1,577 theorems, 44 modules, ~31,300 lines
+├── Proofs/                              # 1,589 theorems, 45 modules, ~31,500 lines
 │   ├── Soundness.lean             # Parser produces only valid YAML
 │   ├── Completeness.lean          # Valid YAML parses successfully (DecidableEq + native_decide)
 │   ├── Composition.lean           # Scanner→TokenParser pipeline composition
@@ -66,6 +66,7 @@ Lean4Yaml/
 │   ├── ParserAnchorProofs.lean    # Anchor/alias validation proofs
 │   ├── ParserNodeProofs.lean      # parseNode anchors-grow + aliases-resolve proofs
 │   ├── ParserWfaProofs.lean       # Well-formed anchors + token preservation proofs
+│   ├── ErrorProperties.lean       # Error type discriminability, coverage, lifting (12 theorems)
 │   └── SuiteGuards/               # Auto-generated #guard tests (362 tests, 6 files)
 │       ├── Scalar.lean            # 58 scalar stage guards
 │       ├── Flow.lean              # 44 flow stage guards (3 commented out: scanner bug)
@@ -131,41 +132,40 @@ YAML1.2.2-compliant verified parser without resource limitations.
 
 🎉 **Fully verified:** Axiom-free, sorry-free proofs of correctness, completeness and soundness of both the scanner and token-based parser. 1,577 theorems, 2,012 compile-time guards, zero sorry, zero axiom, zero partial def. Build: 334/334 jobs.
 
-#### Version 0.2
+#### Version 0.2 (completed 2026-03-20)
 
-Improved type safety with explicit exception types for all APIs. See [EXCEPTIONS.md](EXCEPTIONS.md) for the full design.
+Improved type safety with explicit exception types for all APIs. See [EXCEPTIONS.md](EXCEPTIONS.md) for the full design and migration retrospective.
 
-**Problem:** The 5 top-level parser APIs and 13 Schema-layer functions return `Except String`, losing structured error information. Internally, scanner/parser already use the well-designed `ScanError` inductive (30 constructors in [Token.lean](Lean4Yaml/Token.lean)), but the `ScanError → String` boundary at the API surface discards machine-inspectable error categories.
+**Problem:** The 5 top-level parser APIs and 13 Schema-layer functions returned `Except String`, losing structured error information. Internally, scanner/parser already used the well-designed `ScanError` inductive (32 constructors in [Token.lean](Lean4Yaml/Token.lean)), but the `ScanError → String` boundary at the API surface discarded machine-inspectable error categories.
 
-**Solution — three new types:**
+**Solution — three error types:**
 
 | Type | Scope | Constructors |
 |------|-------|-------------|
-| `SchemaError` (NEW) | Type conversion errors in FromYaml/ToYaml | 15: type mismatches, range violations, field access, collection errors |
-| `YamlError` (NEW) | Unified top-level error | 2: `.scanError ScanError`, `.schemaError SchemaError` |
-| `ScanError` (EXISTS) | Scanner + parser errors | 30: already implemented |
+| `SchemaError` | Type conversion errors in FromYaml/ToYaml | 17: type mismatches, range violations, field access, collection errors |
+| `YamlError` | Unified top-level error | 2: `.scanError ScanError`, `.schemaError SchemaError` |
+| `ScanError` | Scanner + parser errors | 32 (pre-existing) |
 
-**Refactoring scope — 5 phases, 10 files, ~23 `Except String` sites:**
+**Completed scope — 5 phases, 13 files:**
 
-| Phase | Files | Changes | Risk |
-|-------|-------|---------|------|
-| **1. Define types** | `Token.lean` | Add `SchemaError`, `YamlError` inductives + `ToString`/`DecidableEq` | None (additive) |
-| **2. Schema layer** | `FromToYaml.lean`, `Struct.lean` | `Except String` → `Except SchemaError` (8 typeclass methods, 4 helpers) | Low — mechanical substitution |
-| **3. API entry points** | `TokenParser.lean`, `Api.lean`, `Dump.lean` | `Except String` → `Except ScanError` (parser) / `Except YamlError` (combined) | Medium — changes public API signatures |
-| **4. Tests** | `ExplicitKeyTests.lean`, `FlowTests.lean`, `TryDump.lean` | Update error assertions to pattern-match | Low |
-| **5. Proofs** | `SchemaDump.lean`, `Composition.lean`, `EndToEndCorrectness.lean`, `Completeness.lean`, `RoundTrip.lean`, `CommentRoundTrip.lean`, `ParserGrammable.lean`, `ScannerEmitBridge.lean` | Update 8 proof files referencing `parseYaml*` signatures | Medium — error lifting lemmas needed |
+| Phase | Files | Changes | Result |
+|-------|-------|---------|--------|
+| **1. Define types** | `Schema.lean` | `SchemaError` (17), `YamlError` (2) + `Coe` instances | ✅ Additive, no breakage |
+| **2. Schema layer** | `FromToYaml.lean`, `Struct.lean`, `Deriving.lean` | `Except String` → `Except SchemaError` | ✅ Mechanical |
+| **3. API entry points** | `TokenParser.lean`, `Api.lean`, `Dump.lean` | `Except String` → `Except ScanError` / `Except YamlError` | ✅ Direct migration |
+| **4. Tests** | 7 test files + `Demo.lean` | `checkM e` → `checkM e.toString` | ✅ Bulk `sed` |
+| **5. Proofs** | `Composition.lean`, `EndToEndCorrectness.lean` | 3 type annotations + 1 proof simplification | ✅ Trivial |
 
-**Key architectural decisions:**
-- Scanner/parser APIs (`parseYaml`, `parseYamlRaw`) return `Except ScanError` directly (no `String` lossy conversion)
-- Combined APIs (`parseAs`, `roundTripTyped`) return `Except YamlError` (unifying scan + schema errors)
-- `Coe ScanError YamlError` and `Coe SchemaError YamlError` instances for ergonomic lifting
-- Backwards-compatibility bridge: `YamlError.toString` preserves existing error message format
-- Incremental migration: parallel `'`-suffix APIs during transition, then swap
-
-**New proof opportunities enabled:**
-- Error discriminability: `scanError ≠ schemaError` (impossible with `String`)
-- Error coverage: `getMapping` only produces `notAMapping` errors
-- Error-specific round-trip: structured error propagation through pipeline
+**Key results:**
+- Zero `Except String` remaining in public API
+- Scanner/parser APIs return `Except ScanError` directly; combined APIs return `Except YamlError`
+- Proof impact far less than predicted: 4 existing proof changes, 30 proof files untouched
+- 12 new error property theorems in [Proofs/ErrorProperties.lean](Lean4Yaml/Proofs/ErrorProperties.lean):
+  - Error discriminability: `scan_error_ne_schema_error` (impossible with `String`)
+  - Error coverage: `getMapping_error`, `getString_error`, 5 `fromYamlType_*_error` theorems
+  - Error lifting: coercion preserves `toString` (`rfl`)
+  - Constructor injectivity: `yaml_error_scan_injective`, `yaml_error_schema_injective`
+- Build: 336/336 jobs, 0 errors, 0 sorry, 0 warnings
 
 #### Version 0.3
 
@@ -1051,7 +1051,7 @@ Both `lake build WellFoundedStreams` and `lake build Parser` succeed cleanly.
 
 <details>
 <summary>
-🎉 **Fully verified.** 1,577 theorems + 2,012 compile-time guards. 354/406 correct. 0 sorry, 0 axiom, 0 `partial def`. Build: 334/334 jobs.
+🎉 **Fully verified.** 1,589 theorems + 2,012 compile-time guards. 354/406 correct. 0 sorry, 0 axiom, 0 `partial def`. Build: 336/336 jobs.
 </summary>
 
 Phase 2 (Parser Validation) is functionally complete. **354/406 correct** per HTML subprocess report. 0 failures, 0 timeouts, 0 UP. 52 YAML 1.3 skipped. Error stage: 74/74 (100%). Flow stage: 46/46 (100%). Block stage: 99/99 (100%). Scalar: 54/82 (65.9%). Advanced: 64/81 (79%). Document: 17/24 (71%).
@@ -1062,7 +1062,7 @@ Phase 2 (Parser Validation) is functionally complete. **354/406 correct** per HT
 
 **3.1–3.2 complete.** 3.1 (Foundation): ~90 theorems across 5 proof files. 3.2 (Key Invariants): ~30 theorems + 45 `#guard` checks across 3 proof files (`EscapeResolution.lean`, `IndentConsumption.lean`, `FoldNewlines.lean`). Grammar.lean extended with `resolveNamedEscape`, `isCForbiddenPrefix`, `isFoldAppendChar`, full Decidable instances.
 
-**Verification inventory:** 1,577 proved theorems/lemmas across 44 proof modules (~31,300 lines) + 2,012 compile-time `#guard` checks. 0 sorry, 0 axiom, 0 `partial def`. Build: 334/334 jobs.
+**Verification inventory:** 1,589 proved theorems/lemmas across 45 proof modules (~31,500 lines) + 2,012 compile-time `#guard` checks. 0 sorry, 0 axiom, 0 `partial def`. Build: 336/336 jobs.
 
 **3.3 complete.** All 6 steps finished: Steps 3.3.1–3.3.3 (totality), Step 3.3.4 (`#guard` compile-time tests), Step 3.3.5 (soundness proofs). Phase 4 complete. Phase 5 complete (emitter + round-trip proofs + completeness infrastructure).
 

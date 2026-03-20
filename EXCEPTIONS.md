@@ -309,235 +309,109 @@ match Lean4Yaml.parseAs AppConfig yamlString with
 
 ### Overview
 
-The lean4-yaml-verified.iterators project contains extensive formal verification (~32 proof files, ~750 `.error`/`.ok` occurrences). The exception type refactoring has **significant but manageable** implications on the proof layer.
+The lean4-yaml-verified.iterators project contains extensive formal verification (45 proof modules, 1,589 theorems, ~750 `.error`/`.ok` occurrences). The exception type refactoring had **minimal impact** on the proof layer — far less than the pre-refactoring predictions anticipated.
 
-### Impact Categories
+### Actual Impact (Post-Refactoring)
 
 #### 1. No Impact: Scanner/Parser Proofs (Majority)
 
-**Status:** ✅ Already use `ScanError`
+**Status:** ✅ No changes needed
 
-The scanner and parser layers already use structured `ScanError` types, so these proofs are unaffected:
-- `Proofs/Scanner*.lean` files — Scanner correctness, progress, invariants
-- `Proofs/Parser*.lean` files — Parser soundness, completeness, correctness
+The scanner and parser layers already used structured `ScanError` types, so these proofs were unaffected:
+- `Proofs/Scanner*.lean` (18 files) — Scanner correctness, progress, invariants
+- `Proofs/Parser*.lean` (8 files) — Parser soundness, completeness, correctness
 
-These represent the bulk of the verification effort and **require no changes**.
+These represent the bulk of the verification effort (>80% of proof code) and **required zero changes**.
 
-#### 2. Minor Impact: Schema Conversion Proofs
+#### 2. No Impact: Schema Conversion Proofs
 
-**Status:** ⚠️ Require mechanical updates
+**Status:** ✅ No changes needed
 
-Files that prove properties about Schema conversions need updates:
+Contrary to the pre-refactoring prediction of "⚠️ mechanical updates", these proofs required **no changes at all**:
 
-**[Proofs/SchemaDump.lean](Lean4Yaml/Proofs/SchemaDump.lean)** (201 lines, 3 error sites):
+- **[Proofs/SchemaDump.lean](Lean4Yaml/Proofs/SchemaDump.lean)** — All error-matching uses wildcard `| .error _ =>`, so the error type change from `String` to `ScanError`/`SchemaError` was invisible to the proof.
+- **[Proofs/SchemaResolution.lean](Lean4Yaml/Proofs/SchemaResolution.lean)** — Only references the `Schema.resolve` function, which has no error-type dependency.
+
+#### 3. Minimal Impact: Composition/End-to-End Proofs
+
+**Status:** ✅ 3 theorem signatures + 1 proof simplification
+
+The pre-refactoring prediction of "⚠️⚠️ theorem restructuring" proved far too pessimistic. Actual changes were trivial:
+
+**[Proofs/Composition.lean](Lean4Yaml/Proofs/Composition.lean)** — 3 type annotation updates:
 ```lean
--- Before:
-theorem roundTrip_preserves_content {α : Type} [ToYaml α] [FromYaml α] (a : α) :
-  match parseYamlSingle (dumpTyped a) with
-  | .error _ => False  -- String error
-  | .ok v' => contentEq (toYaml a) v'
-
--- After:
-theorem roundTrip_preserves_content {α : Type} [ToYaml α] [FromYaml α] (a : α) :
-  match parseYamlSingle (dumpTyped a) with
-  | .error _ => False  -- YamlError
-  | .ok v' => contentEq (toYaml a) v'
+-- parseYamlRaw_scan_error: conclusion `.error e.toString` → `.error e`
+-- parseYamlRaw_parse_error: same
+-- parseYaml_of_parseYamlRaw_error: `e : String` → `e : ScanError`
 ```
+All three proofs remained `by simp only [...]` — no restructuring needed.
 
-**Changes required:**
-- Update type signatures from `Except String` → `Except SchemaError`
-- Error pattern matching remains identical (`| .error _ => ...`)
-- Proof structure unchanged (only error type wrapper changes)
-
-**Estimated effort:** Low (mechanical substitution)
-
-#### 3. Moderate Impact: Composition/End-to-End Proofs
-
-**Status:** ⚠️⚠️ Require theorem restructuring
-
-Files proving properties across multiple layers need updates:
-
-**[Proofs/Composition.lean](Lean4Yaml/Proofs/Composition.lean)** (22 error sites):
-- Theorems about `parse ∘ dump` round-trips
-- Properties spanning Scanner → Parser → Schema layers
-- May need explicit error lifting lemmas
-
-**[Proofs/EndToEndCorrectness.lean](Lean4Yaml/Proofs/EndToEndCorrectness.lean)** (18 error sites):
-- Top-level correctness theorems
-- Integration of all verification layers
-
-**Changes required:**
-- Theorems about error propagation need explicit `YamlError` constructors
-- Add lemmas about error coercions: `ScanError → YamlError`, `SchemaError → YamlError`
-- Update error preservation theorems
-
-**Example refactoring:**
+**[Proofs/EndToEndCorrectness.lean](Lean4Yaml/Proofs/EndToEndCorrectness.lean)** — 1 proof simplification:
 ```lean
--- Before: Single error type
-theorem parse_error_preserves_line {s : String} {e : String} :
-  parseYaml s = .error e →
-  ∃ line : Nat, e.contains s!"line {line}"
-
--- After: Multiple error types with lifting
-theorem parse_error_preserves_line {s : String} {e : ScanError} :
-  parseYaml s = .error e →
-  ∃ line : Nat, e.toString.contains s!"line {line}"
-
-theorem parseAs_scan_error_preserves_line {s : String} {e : YamlError} :
-  parseAs α s = .error (.scanError se) →
-  ∃ line : Nat, se.toString.contains s!"line {line}"
+-- parse_sound: removed nested `split` since `parseYamlRaw` no longer wraps
+-- `parseStream` in a redundant match (the `.mapError toString` wrapper was gone)
 ```
+The proof became *simpler*, not more complex.
 
-**Estimated effort:** Moderate (theorem restructuring + new lemmas)
+**No new error lifting lemmas were required** for existing proofs. The predicted need for `ScanError → YamlError` coercion properties in proof chains did not materialize because the composition proofs only span the scanner/parser pipeline (which uses `ScanError` uniformly).
 
 #### 4. New Opportunities: Error-Specific Proofs
 
-**Status:** ✅ Enables stronger properties
+**Status:** ✅ Implemented in [Proofs/ErrorProperties.lean](Lean4Yaml/Proofs/ErrorProperties.lean)
 
-Structured errors enable **new classes of proofs** previously impossible with `String`:
+Structured errors enabled **new classes of proofs** previously impossible with `Except String`. These are now proven in the `ErrorProperties` module:
+
+**Error Lifting Lemmas:**
+- `coe_scan_error_toString` — coercion preserves `toString` (`rfl`)
+- `coe_schema_error_toString` — coercion preserves `toString` (`rfl`)
 
 **Discriminability:**
-```lean
--- New theorem: Scanner errors never claim missing fields
-theorem scan_error_not_schema_error :
-  ∀ (e : YamlError),
-    match e with
-    | .scanError _ => True
-    | .schemaError _ => False
-    ∨ True  -- Unprovable with String
+- `scan_error_ne_schema_error` — `YamlError.scanError se ≠ YamlError.schemaError sce`
+- `yaml_error_scan_injective` — `scanError` constructor is injective
+- `yaml_error_schema_injective` — `schemaError` constructor is injective
 
--- Concrete property: Field errors always name a field
-theorem field_error_has_name :
-  ∀ (e : SchemaError),
-    match e with
-    | .missingField name => name ≠ ""
-    | .fieldConversionError name _ => name ≠ ""
-    | _ => True
-```
+**Error Coverage (exact error characterization):**
+- `getMapping_error` — `getMapping v = .error e → e = .notAMapping v`
+- `getString_error` — `getString v = .error e → e = .notAScalar v`
+- `fromYamlType_unit_error` — `Unit` conversion only produces `.expectedNull`
+- `fromYamlType_bool_error` — `Bool` conversion only produces `.expectedBoolean`
+- `fromYamlType_int_error` — `Int` conversion only produces `.expectedInteger`
+- `fromYamlType_string_error` — `String` conversion only produces `.expectedString`
+- `fromYamlType_nat_error` — `Nat` conversion produces `.expectedInteger` or `.negativeNat`
 
-**Error Coverage:**
-```lean
--- Prove that certain operations only produce certain error types
-theorem getMapping_only_type_errors {v : YamlValue} {e : SchemaError} :
-  getMapping v = .error e →
-  e = .notAMapping v
+### Migration Retrospective
 
-theorem fromYamlType_nat_errors {t : YamlType} {e : SchemaError} :
-  (fromYamlType? t : Except SchemaError Nat) = .error e →
-  e = .expectedInteger t ∨ e = .negativeNat n
-```
+The pre-refactoring document predicted a four-phase incremental migration (Phases A–D) with parallel APIs and backwards-compatibility bridges. In practice, the direct migration was completed in a single pass:
 
-**Position Preservation:**
-```lean
--- Prove error positions trace back to input
-theorem schema_error_no_position :
-  ∀ (e : SchemaError), ¬∃ (line col : Nat), False  -- SchemaError has no position
+- **Phase A** (define types): ✅ Done as planned
+- **Phase B** (parallel APIs): Skipped — unnecessary. Direct signature changes compiled cleanly.
+- **Phase C** (incremental proof updates): Skipped — only 4 proof changes were needed, all trivial.
+- **Phase D** (remove old APIs): Skipped — there were no parallel APIs to remove.
 
-theorem scan_error_has_position :
-  ∀ (e : ScanError), ∃ (line : Nat),
-    e.toString.contains s!"line {line}"
-```
+The backwards-compatibility bridge (`oldProofCompat`, `yamlErrorToString`) was never needed. The `#guard`-based compile-time checks and all `native_decide` proofs were completely unaffected by the type changes.
 
-### Proof Strategy Recommendations
+### Proof Maintenance Burden (Actual)
 
-#### 1. Error Lifting Lemmas
-Create a small library of error conversion properties:
+| Category | Files | Changes | Risk |
+|----------|-------|---------|------|
+| Scanner proofs | 18 files | 0 | None |
+| Parser proofs | 8 files | 0 | None |
+| Schema proofs | 2 files | 0 | None |
+| Composition/E2E | 2 files | 4 changes | Trivial |
+| New error proofs | 1 file (new) | +12 theorems | Low |
 
-```lean
--- Coercion preserves toString
-theorem coe_scan_error_toString (e : ScanError) :
-  (e : YamlError).toString = e.toString := rfl
-
-theorem coe_schema_error_toString (e : SchemaError) :
-  (e : YamlError).toString = e.toString := rfl
-
--- Error injection (discriminability)
-theorem scan_error_ne_schema_error (se : ScanError) (sce : SchemaError) :
-  YamlError.scanError se ≠ YamlError.schemaError sce := by
-  intro h
-  cases h
-
--- Constructor injectivity
-theorem yaml_error_scan_injective {e1 e2 : ScanError} :
-  YamlError.scanError e1 = YamlError.scanError e2 → e1 = e2 := by
-  intro h
-  cases h
-  rfl
-```
-
-#### 2. Backwards Compatibility Bridge
-During transition, provide conversion functions:
-
-```lean
--- Temporary: Convert typed errors back to strings for old proof code
-def yamlErrorToString (e : YamlError) : String := e.toString
-
--- Mark old proofs with this during refactoring
-def oldProofCompat {α : Type} : Except YamlError α → Except String α
-  | .ok a => .ok a
-  | .error e => .error e.toString
-```
-
-#### 3. Incremental Migration Path
-
-**Phase A: Add new types (no breakage)** ✅
-- Defined `SchemaError`, `YamlError` in `Schema.lean`
-- Added `Coe ScanError YamlError` and `Coe SchemaError YamlError`
-- All existing code still compiles (334/334 jobs)
-
-**Phase B: Parallel APIs**
-- Create `parseAs'`, `fromYaml'?` with typed errors
-- Implement in terms of new types
-- Keep old APIs as wrappers (`.mapError toString`)
-- Migrate tests to new APIs
-
-**Phase C: Update proofs incrementally**
-- Start with leaf proofs (no dependencies)
-- Build error lifting lemma library
-- Update composition proofs
-- Verify no proof regressions
-
-**Phase D: Remove old APIs**
-- Delete string-based wrappers
-- Update all call sites
-- Final proof cleanup
-
-### Proof Maintenance Burden
-
-**Low-risk changes (80% of proof files):**
-- Scanner proofs — already use `ScanError`, no changes
-- Parser proofs — already use `ScanError`, no changes
-- Type signature updates — mechanical substitution
-- Error pattern matching — structure unchanged
-
-**Medium-risk changes (15% of proof files):**
-- Composition theorems — need error lifting
-- End-to-end properties — need new lemmas
-- Round-trip proofs — may need restructuring
-
-**High-value additions (5% of effort):**
-- Error discriminability proofs
-- Error coverage theorems
-- Position preservation properties
-
-**Overall assessment:** The refactoring strengthens the formal verification properties by making error handling explicit and inspectable. The proof updates are largely mechanical, with opportunities for stronger theorems that were impossible with unstructured strings.
+**Total**: 4 existing proof changes + 12 new theorems added. Zero axioms, zero sorry, zero partial preserved.
 
 ### Zero Axiom Preservation
 
 **Critical constraint:** The project maintains **zero axioms, zero sorry, zero partial**.
 
-The exception refactoring **preserves this property** because:
+The exception refactoring **preserved this property**:
 - All error types are inductive ADTs (fully defined, no axioms)
 - `toString` functions are total (cover all constructors)
 - Coercion instances are trivial wrappers (transparent)
 - No `partial`, no `unsafe`, no `opaque` required
-
-**Theorem count estimate:**
-- 30-50 new error lifting lemmas (trivial proofs)
-- 10-20 error discriminability theorems (by cases)
-- 100-150 proof updates (mostly mechanical type changes)
-
-**Benefit:** Stronger static guarantees with similar proof complexity.
+- The new `ErrorProperties.lean` module adds 12 theorems, all proven by `rfl`, `intro h; cases h`, or `by simp`
 
 ## Benefits Summary
 
