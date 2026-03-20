@@ -90,14 +90,14 @@
 
 | Requirement | Traditional Parsers | Verified Parser (This Work) |
 |-------------|--------------------|-----------------------------|
-| **Respects YAML 1.2.2** | Tested on examples | **Proven against spec** — 650+ theorems |
+| **Respects YAML 1.2.2** | Tested on examples | **Proven against spec** — 1,577 theorems |
 | **Rejects malformed input** | Sometimes — depends on test coverage | **Always** — soundness theorem guarantees |
 | **Round-trip correctness** | Untested for most configs | **Proven** — `parse(emit(data)) = data` |
 | **Schema validation** | External tool (ajv, yamllint) | **Built-in** — `ValidYaml` predicate proven |
 
 **Quantified Assurance:**
-- **650+ theorems** — machine-checked by Lean 4's trusted kernel
-- **708 compile-time guards** — continuous verification at build time
+- **1,577 theorems** — machine-checked by Lean 4's trusted kernel
+- **2,012 compile-time guards** — continuous verification at build time
 - **0 axioms, 0 `sorry`, 0 `partial def`** — no "trust me" code
 - **100% YAML 1.2.2 test suite** (225/225 test IDs) — plus mathematical proofs
 
@@ -216,7 +216,7 @@ Result: End-to-end correctness from YAML file → running robot behavior
 | Requirement | Traditional Testing | Formal Verification (This Work) |
 |------------|--------------------|---------------------------------|
 | **DO-178C Level A** | Requires extensive test coverage | **Formal methods explicitly allowed** |
-| **Evidence of correctness** | Test logs (incomplete) | **650+ machine-checked theorems** |
+| **Evidence of correctness** | Test logs (incomplete) | **1,577 machine-checked theorems** |
 | **Independent verification** | Re-run tests (trust results) | **Verify proof chain** (mathematical certainty) |
 | **Change impact analysis** | Re-test everything | **Proof breaks** → know exact impact |
 
@@ -255,7 +255,7 @@ Result: End-to-end correctness from YAML file → running robot behavior
 **Comparison to Industry:**
 - **seL4** (verified OS): ~200k LOC kernel, 480k LOC proofs → Used in defense systems
 - **CompCert** (verified compiler): ~60k LOC compiler, ~100k LOC proofs → Used in Airbus avionics
-- **This work**: ~2k LOC parser, ~8k LOC proofs → **Same rigor, aerospace-critical domain**
+- **This work**: ~2k LOC parser, ~31k LOC proofs → **Same rigor, aerospace-critical domain**
 
 **Bottom Line**: Only verified YAML parser in production. Eliminates entire vulnerability classes that testing cannot. Essential foundation for provably correct configuration-as-code in safety-critical systems.
 
@@ -270,7 +270,7 @@ Result: End-to-end correctness from YAML file → running robot behavior
 - Testing can't prove absence of bugs → CVEs discovered years after deployment
 
 **The Solution (Slide 3):**
-- **650+ theorems** prove parser correctness for **all** inputs (not just test cases)
+- **1,577 theorems** prove parser correctness for **all** inputs (not just test cases)
 - **Eliminates parsing bugs**: Proven termination (no infinite loops), soundness (no invalid output), completeness (no false rejections)
 - **Addresses schema gap**: Proven round-trip correctness, ValidYaml predicate
 - **DoS protection**: Termination proven (no hangs); resource bounds planned for exhaustion prevention

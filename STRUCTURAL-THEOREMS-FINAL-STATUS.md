@@ -1,7 +1,9 @@
 # Structural Theorems Final Status
 
+> **Update (2026-03-19):** The project is now **fully verified** — zero sorry across the entire codebase. The 8 sorry statements referenced below were eliminated in subsequent phases. See [PROGRESS.md](./PROGRESS.md) for the complete timeline.
+
 ## Date: 2026-03-03
-## Status: 2 of 3 Fully Proven ✅
+## Status: 2 of 3 Fully Proven ✅ _(Historical — all sorrys since eliminated)_
 
 ## Honest Assessment
 

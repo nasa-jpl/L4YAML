@@ -2,9 +2,9 @@
 
 ## 1. Overview
 
-The `Proofs/` directory contains 23 Lean 4 files (17 proof modules +
-6 SuiteGuards test suites) totaling ~7,700 lines, 458 theorems/lemmas,
-and 787 `#guard` compile-time checks.  Every file compiles with
+The `Proofs/` directory contains 50 Lean 4 files (44 proof modules +
+6 SuiteGuards test suites) totaling ~31,300 lines, 1,577 theorems/lemmas,
+and 2,012 `#guard` compile-time checks.  Every file compiles with
 **zero `sorry`, zero `axiom`, zero `partial def`** in our code.
 
 The proofs establish soundness, completeness (concrete and partial
@@ -48,12 +48,19 @@ def` functions (`parseNode`, `parseBlockSequence`, `parseBlockMapping`,
 primary trust gap.
 
 Correctness evidence:
-- **787 `#guard` checks** execute the full `scan → parse` pipeline at
+- **2,012 `#guard` checks** execute the full `scan → parse` pipeline at
   compile time via Lean's kernel evaluator.
 - **13 `native_decide` theorems** in `Completeness.lean` verify
   end-to-end parse results for concrete inputs.
 - **`Composition.lean`** proves pipeline composition properties
   (`parseYaml_pipeline`, `scanAndParse` correctness).
+- **`ParserWellBehaved.lean`** (3,100 lines, 74 theorems) proves
+  token monotonicity and flow nesting preservation for all sub-parsers.
+- **`ParserNodeProofs.lean`** (1,781 lines, 57 theorems) proves
+  `parseNode_anchors_grow` and `parseNode_aliases_resolve` via strong
+  induction on fuel.
+- **`ParserWfaProofs.lean`** (1,690 lines, 50 theorems) proves
+  well-formed anchors and token preservation for all sub-parsers.
 
 ### What this means
 
@@ -75,27 +82,54 @@ to total `def` with well-founded recursion on token list length.
 
 ## 3. File Inventory
 
-### Proof Modules (17 files)
+### Proof Modules (44 files)
 
 | File | Lines | Thms | Guards | Description |
 |---|---|---|---|---|
-| `BlockScalarContracts.lean` | 432 | 32 | — | Contracts for block scalar header extraction and strip/clip/keep modes |
-| `CharClass.lean` | 180 | 9 | — | Prop ↔ Bool correspondence for Grammar vs. Scanner character classifiers |
-| `Completeness.lean` | 342 | 13 | — | Bottom-up completeness, `DecidableEq YamlValue/YamlDocument`, concrete parse |
+| `BlockScalarContracts.lean` | 478 | 38 | — | Contracts for block scalar header extraction and strip/clip/keep modes |
+| `CharClass.lean` | 183 | 9 | — | Prop ↔ Bool correspondence for Grammar vs. Scanner character classifiers |
+| `CommentProperties.lean` | 355 | 41 | — | Comment handling properties |
+| `CommentRoundTrip.lean` | 159 | 10 | 4 | Comment round-trip correctness |
+| `Completeness.lean` | 348 | 13 | — | Bottom-up completeness, `DecidableEq YamlValue/YamlDocument`, concrete parse |
 | `Composition.lean` | 137 | 7 | — | Pipeline composition: `parseYaml_pipeline`, `scanAndParse` correctness |
 | `DocumentContracts.lean` | 183 | 16 | — | Document parser boundary detection, trailing comments, monotonicity |
-| `DumpRoundTrip.lean` | 453 | 67 | 43 | Style-aware dump produces well-formed output; dump→parse round-trip |
-| `EscapeResolution.lean` | 291 | 41 | 24 | Escape sequences produce valid Unicode per YAML 1.2.2 §5.7 |
-| `FoldNewlines.lean` | 313 | 36 | 18 | Line folding does not introduce c-forbidden content (doc markers) |
-| `RoundTrip.lean` | 905 | 50 | 66 | Parse-emit-parse round-trip preserves content |
-| `ScannerContracts.lean` | 351 | 14 | 66 | Scanner structural contracts: `scanDoubleQuoted`/`scanSingleQuoted` correctness, state monotonicity |
-| `ScannerIndent.lean` | 212 | 9 | 15 | Indentation push/pop invariants, `unwindIndents` correctness |
-| `ScannerProofs.lean` | 412 | 53 | 61 | Char classification, token classification, escape correctness, state accessors, indentation invariants, token stream envelope |
-| `SchemaDump.lean` | 311 | 40 | 22 | `ToYaml` + dump pipeline content round-trip |
-| `SchemaResolution.lean` | 267 | 35 | 34 | Core Schema (§10.3) resolution: null/bool/int/float determinism |
-| `Soundness.lean` | 413 | 23 | — | `NodeToValue` totality, determinism, faithful implementation |
-| `StringProperties.lean` | 172 | 13 | — | Pure string/list helpers (whitespace trim, FoldResult invariants) |
-| `TestSuite.lean` | 391 | — | 76 | Kernel-evaluated `#guard` tests across all parser components |
+| `DumpRoundTrip.lean` | 310 | 67 | 2 | Style-aware dump produces well-formed output; dump→parse round-trip |
+| `EndToEndCorrectness.lean` | 271 | 8 | 2 | End-to-end parse correctness proofs |
+| `EscapeResolution.lean` | 290 | 61 | 2 | Escape sequences produce valid Unicode per YAML 1.2.2 §5.7 |
+| `FoldNewlines.lean` | 248 | 36 | 2 | Line folding does not introduce c-forbidden content (doc markers) |
+| `ParserAnchorProofs.lean` | 220 | 9 | — | Anchor/alias validation proofs |
+| `ParserCompleteness.lean` | 229 | 2 | — | Token parser completeness proofs |
+| `ParserCorrectness.lean` | 162 | 3 | 4 | Token parser correctness proofs |
+| `ParserGrammableBase.lean` | 499 | 18 | — | Parser grammable base infrastructure |
+| `ParserGrammable.lean` | 112 | 4 | — | Parser grammable proofs |
+| `ParserNodeProofs.lean` | 1,781 | 57 | — | `parseNode` anchors-grow + aliases-resolve proofs (strong induction on fuel) |
+| `ParserSoundness.lean` | 339 | 8 | — | Token parser soundness proofs |
+| `ParserWellBehaved.lean` | 3,102 | 74 | — | Parser well-behavedness proofs (tokens monotonic, flow nesting preserved) |
+| `ParserWfaProofs.lean` | 1,690 | 50 | — | Well-formed anchors + token preservation for all sub-parsers |
+| `RoundTrip.lean` | 670 | 56 | 6 | Parse-emit-parse round-trip preserves content |
+| `ScannerContracts.lean` | 276 | 23 | 3 | Scanner structural contracts: `scanDoubleQuoted`/`scanSingleQuoted` correctness |
+| `ScannerCorrectness.lean` | 8,331 | 439 | 1 | Scanner correctness: dispatch, state invariants, all `scanNextToken` branches |
+| `ScannerDispatch.lean` | 251 | 7 | 4 | Scanner dispatch proofs |
+| `ScannerDocument.lean` | 237 | 5 | 5 | Scanner document boundary proofs |
+| `ScannerDoubleQuoted.lean` | 224 | 10 | 2 | Scanner double-quoted string proofs |
+| `ScannerEmitBridge.lean` | 434 | 9 | 6 | Scanner emit bridge proofs |
+| `ScannerFlowCollection.lean` | 267 | 19 | 3 | Scanner flow collection proofs |
+| `ScannerIndent.lean` | 169 | 10 | 1 | Indentation push/pop invariants, `unwindIndents` correctness |
+| `ScannerIndentStack.lean` | 279 | 16 | 1 | Scanner indent stack invariants |
+| `ScannerLoopInvariant.lean` | 281 | 15 | — | Scanner loop invariant proofs |
+| `ScannerPlainContent.lean` | 509 | 22 | — | Scanner plain content proofs |
+| `ScannerPlainScalar.lean` | 443 | 16 | — | Scanner plain scalar proofs |
+| `ScannerPlainScalarValid.lean` | 5,373 | 176 | — | Scanner plain scalar validity (all branches of PSV dispatch) |
+| `ScannerProgress.lean` | 300 | 18 | — | Scanner progress proofs |
+| `ScannerProofs.lean` | 306 | 53 | 5 | Char classification, token classification, escape correctness, state accessors |
+| `ScannerScalar.lean` | 177 | 11 | 1 | Scanner scalar proofs |
+| `ScannerSimpleKey.lean` | 160 | 7 | 1 | Scanner simple key proofs |
+| `ScannerWhitespace.lean` | 174 | 6 | 2 | Scanner whitespace proofs |
+| `SchemaDump.lean` | 278 | 40 | 3 | `ToYaml` + dump pipeline content round-trip |
+| `SchemaResolution.lean` | 226 | 35 | 3 | Core Schema (§10.3) resolution: null/bool/int/float determinism |
+| `Soundness.lean` | 423 | 27 | — | `NodeToValue` totality, determinism, faithful implementation |
+| `StringProperties.lean` | 250 | 19 | — | Pure string/list helpers (whitespace trim, FoldResult invariants) |
+| `ValueAlgebra.lean` | 199 | 7 | — | YamlValue algebraic properties |
 
 ### SuiteGuards (6 files — auto-generated yaml-test-suite `#guard` checks)
 
@@ -110,9 +144,8 @@ to total `def` with well-founded recursion on token list length.
 
 ### Totals
 
-- **458** theorems/lemmas (all machine-checked)
-- **787** `#guard` compile-time checks (Proofs/ + SuiteGuards/)
-- **18** additional `#guard` checks in `Tests/IteratorTests.lean`
+- **1,577** theorems/lemmas (all machine-checked)
+- **2,012** `#guard` compile-time checks (Proofs/ + SuiteGuards/ + Tests/)
 - **0** `sorry`, **0** `axiom`, **0** `partial def`
 
 ---
