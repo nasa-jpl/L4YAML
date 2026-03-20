@@ -2,8 +2,8 @@
 
 ## 1. Overview
 
-The `Proofs/` directory contains 51 Lean 4 files (45 proof modules +
-6 SuiteGuards test suites) totaling ~31,500 lines, 1,589 theorems/lemmas,
+The `Proofs/` directory contains 52 Lean 4 files (46 proof modules +
+6 SuiteGuards test suites) totaling ~31,800 lines, 1,621 theorems/lemmas,
 and 2,012 `#guard` compile-time checks.  Every file compiles with
 **zero `sorry`, zero `axiom`, zero `partial def`** in our code.
 
@@ -98,6 +98,7 @@ to total `def` with well-founded recursion on token list length.
 | `ErrorProperties.lean` | 129 | 12 | — | Error type discriminability, coverage, lifting (v0.2) |
 | `EscapeResolution.lean` | 290 | 61 | 2 | Escape sequences produce valid Unicode per YAML 1.2.2 §5.7 |
 | `FoldNewlines.lean` | 248 | 36 | 2 | Line folding does not introduce c-forbidden content (doc markers) |
+| `LawfulBEq.lean` | 261 | 32 | — | `LawfulBEq` for AST hierarchy: 6 instances, 24 equational lemmas, 2 main theorems |
 | `ParserAnchorProofs.lean` | 220 | 9 | — | Anchor/alias validation proofs |
 | `ParserCompleteness.lean` | 229 | 2 | — | Token parser completeness proofs |
 | `ParserCorrectness.lean` | 162 | 3 | 4 | Token parser correctness proofs |
@@ -145,7 +146,7 @@ to total `def` with well-founded recursion on token list length.
 
 ### Totals
 
-- **1,589** theorems/lemmas (all machine-checked)
+- **1,621** theorems/lemmas (all machine-checked)
 - **2,012** `#guard` compile-time checks (Proofs/ + SuiteGuards/ + Tests/)
 - **0** `sorry`, **0** `axiom`, **0** `partial def`
 
@@ -155,7 +156,7 @@ to total `def` with well-founded recursion on token list length.
 
 ### 4a. Items remaining in current proof files
 
-#### `Completeness.lean` — `DecidableEq YamlValue` ✅ / `LawfulBEq YamlValue` (deferred)
+#### `Completeness.lean` — `DecidableEq YamlValue` ✅ / `LawfulBEq YamlValue` ✅
 
 **`DecidableEq YamlValue`** and **`DecidableEq YamlDocument`** are now
 proved (25 new theorems/definitions).  The proof uses `where`-clause
@@ -165,10 +166,12 @@ following the same pattern as `contentEq` in `Emitter.lean`.
 Array equality is bridged via `Array.toList` + `congrArg Array.mk`,
 since `Array.toList a = a.data` definitionally.
 
-**`LawfulBEq YamlValue`** remains deferred — it requires showing the
-auto-derived `BEq` instance agrees with propositional equality through
-the same mutual induction.  This is non-blocking: `DecidableEq` is
-sufficient for universally quantified completeness proofs.
+**`LawfulBEq YamlValue`** is proved in `Proofs/LawfulBEq.lean` (v0.2.1).
+The proof required replacing both `Scalar` and `YamlValue`'s `deriving BEq`
+with explicit transparent definitions in `Types.lean`, then proving
+the full instance chain via structural recursion with `where`-clause
+list/pair-list helpers.  See the v0.2.1 section in the project README
+for the complete design retrospective.
 
 #### `PerParserSpecs.lean` — _(removed in Phase 10)_
 
@@ -287,6 +290,51 @@ per-constructor round-trip lemmas.
    When the character is concrete, `simp` or `decide` closes the goal
    directly.
 
+8. **`show`/`change` to bridge `BEq.beq` ↔ explicit function name.**
+   When a struct's `BEq` instance is defined as `instance : BEq Foo := ⟨beqFoo⟩`,
+   the goal after `unfold BEq.beq` has shape `instBEqFoo.1 a b = true`,
+   not `beqFoo a b = true`.  A subsequent `unfold beqFoo` fails because
+   the term structure doesn't match.  The fix is:
+   - Goals: `show beqFoo _ _ = true` (Lean accepts via definitional equality)
+   - Hypotheses: `change beqFoo _ _ = true at h`
+   
+   This bridges to the transparent function name so that `unfold beqFoo`
+   and `simp` work as expected.  Used throughout `LawfulBEq.lean` for
+   both `Scalar` and `YamlValue` proofs.
+
+9. **Manual `@[simp]` equational lemmas for `brecOn`-compiled functions.**
+   When a function compiles via `brecOn` (Lean's below-recursion
+   compilation for nested inductives), no auto-generated equational
+   theorems are produced.  The workaround is to write manual `@[simp]`
+   lemmas covering every constructor pair, each proved by `rfl`.  For
+   `beqYamlValue`, this required 24 lemmas (4 same-constructor +
+   12 cross-constructor + 4 list + 4 pair-list).  These lemmas are
+   essential for the `simp`-based proofs in `beqYamlValue_rfl` and
+   `beqYamlValue_eq`.
+
+#### Unexpected challenges (continued — v0.2.1)
+
+- **`deriving BEq` generates opaque functions for recursive inductives.**
+  Unlike `DecidableEq` (which silently fails), `deriving BEq` for
+  `YamlValue` *succeeds* but produces an opaque function that blocks
+  all proof tactics — `unfold`, `simp`, `rfl` all fail.  The only
+  fix is replacing with an explicit transparent definition.
+
+- **`Decidable.rec` in derived `BEq` for structs with `String` fields.**
+  `Scalar` has a `value : String` field.  The auto-derived `BEq`
+  compares it via `Decidable.rec` on the `DecidableEq String` instance,
+  but `cases` tactic fails on `Decidable.rec` goals with "dependent
+  elimination failed, stuck at motive."  An explicit `beqScalar` using
+  `s₁.value == s₂.value` avoids this entirely because `==` reduces
+  to `BEq.beq` on `String`, which *is* transparent.
+
+- **`induction` fails on nested inductives.**  `YamlValue` contains
+  `Array YamlValue` fields, making it a nested inductive.  The
+  `induction` tactic errors with "does not support nested inductive
+  type."  The workaround — explicit pattern matches with `where`-clause
+  helpers — is the same structure used for `decEqYamlValue` and
+  `beqYamlValue` itself.
+
 #### Unexpected challenges
 
 - **`deriving DecidableEq` fails silently on nested `Array`.**  Lean 4
@@ -333,6 +381,24 @@ per-constructor round-trip lemmas.
   `Stream.remaining` internals; instead, they are pure `Nat` statements
   that `omega` solves in <1ms, because the actual stream arithmetic
   is already encapsulated by the existing `remaining` abstraction.
+
+#### Unexpected simplifications (continued — v0.2.1)
+
+- **All 24 equational lemmas for `beqYamlValue` are `rfl`.**  Despite
+  `beqYamlValue` compiling via `brecOn`, every same-constructor,
+  cross-constructor, and list-helper reduction holds by definitional
+  equality.  No tactic unfolding needed — Lean's kernel evaluates the
+  match in each case.
+
+- **Enum `LawfulBEq` instances are one-liners.**  `cases a <;> cases b <;> decide`
+  handles both `rfl` and `eq_of_beq` for `ScalarStyle`, `ChompStyle`,
+  and `CollectionStyle`.  The finite case count (3–4 constructors each)
+  makes `decide` fast.
+
+- **`beq_self_eq_true` replaces the non-existent `LawfulBEq.rfl`.**
+  The standard library's name for `(a == a) = true` is `beq_self_eq_true`,
+  not `LawfulBEq.rfl` as one might guess.  Once discovered, it simplified
+  the `beqYamlValue_rfl` proof's `simp` calls significantly.
 
 ### 4b. Closing the fold-combinator gap — COMPLETED _(historical — lean4-parser era)_
 

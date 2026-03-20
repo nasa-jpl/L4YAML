@@ -147,7 +147,18 @@ structure Scalar where
   tag : Option String := none
   anchor : Option String := none
   blockMeta : Option BlockScalarMeta := none
-  deriving Repr, BEq, Inhabited, DecidableEq
+  deriving Repr, Inhabited, DecidableEq
+
+/-- Transparent boolean equality for `Scalar`.
+
+The auto-derived `BEq` uses `Decidable.rec` internally for `String` fields,
+which blocks dependent elimination in proofs (needed for `LawfulBEq`).
+This explicit definition avoids `Decidable.rec`. -/
+def beqScalar (a b : Scalar) : Bool :=
+  a.content == b.content && a.style == b.style &&
+  a.tag == b.tag && a.anchor == b.anchor && a.blockMeta == b.blockMeta
+
+instance : BEq Scalar := ⟨beqScalar⟩
 
 /-! ## Collection Styles -/
 
@@ -181,7 +192,37 @@ inductive YamlValue where
   | mapping (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
       (tag : Option String := none) (anchor : Option String := none)
   | alias (name : String)
-  deriving Repr, BEq, Inhabited
+  deriving Repr, Inhabited
+
+/-- Transparent boolean equality for `YamlValue`.
+
+The auto-derived `BEq` for recursive inductives with `Array` fields generates
+an **opaque** function (`instBEqYamlValue.beq`), which cannot be unfolded in
+proofs, blocking `LawfulBEq`. This explicit definition uses structural recursion
+on lists (via `.toList`) so the function body is a transparent `def`. -/
+def beqYamlValue : YamlValue → YamlValue → Bool
+  | .scalar s₁, .scalar s₂ => s₁ == s₂
+  | .sequence st₁ items₁ tag₁ anc₁, .sequence st₂ items₂ tag₂ anc₂ =>
+    st₁ == st₂ && beqYamlValue.beqList items₁.toList items₂.toList
+      && tag₁ == tag₂ && anc₁ == anc₂
+  | .mapping st₁ pairs₁ tag₁ anc₁, .mapping st₂ pairs₂ tag₂ anc₂ =>
+    st₁ == st₂ && beqYamlValue.beqPairList pairs₁.toList pairs₂.toList
+      && tag₁ == tag₂ && anc₁ == anc₂
+  | .alias n₁, .alias n₂ => n₁ == n₂
+  | _, _ => false
+where
+  beqList : List YamlValue → List YamlValue → Bool
+    | [], [] => true
+    | a :: as, b :: bs => beqYamlValue a b && beqList as bs
+    | _, _ => false
+  beqPairList :
+      List (YamlValue × YamlValue) → List (YamlValue × YamlValue) → Bool
+    | [], [] => true
+    | (k₁, v₁) :: rest₁, (k₂, v₂) :: rest₂ =>
+      beqYamlValue k₁ k₂ && beqYamlValue v₁ v₂ && beqPairList rest₁ rest₂
+    | _, _ => false
+
+instance : BEq YamlValue := ⟨beqYamlValue⟩
 
 /-! ## Directives -/
 

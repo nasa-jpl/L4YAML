@@ -26,6 +26,7 @@ import Lean4Yaml.Proofs.EndToEndCorrectness
 import Lean4Yaml.Proofs.ErrorProperties
 import Lean4Yaml.Proofs.EscapeResolution
 import Lean4Yaml.Proofs.FoldNewlines
+import Lean4Yaml.Proofs.LawfulBEq
 import Lean4Yaml.Proofs.ParserCompleteness
 import Lean4Yaml.Proofs.ParserCorrectness
 import Lean4Yaml.Proofs.ParserGrammable
