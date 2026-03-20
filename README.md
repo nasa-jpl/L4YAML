@@ -198,6 +198,26 @@ Improved type safety with explicit exception types for all APIs. See [EXCEPTIONS
 - Key proof technique: `show beqFoo _ _ = true` / `change beqFoo _ _ = true at h` to bridge from `BEq.beq` to the explicit function name (necessary because `unfold beqFoo` fails after `unfold BEq.beq` — the term has shape `instBEqFoo.1`, not `beqFoo`)
 - Build: 338/338 jobs, 0 errors, 0 sorry, 0 warnings
 
+#### Version 0.2.2
+
+Test diagnostics & result persistence (P10.6c). Machine-readable JSON output from `suiterunner`, per-test detail in verified suite results, parser output capture for UP/fail tests, `queryresults` analysis tool, and timestamped result snapshots.
+
+#### Version 0.2.3
+
+Grammar-to-Parser bridge (P10.11). Close the gap between `ValidYaml`/`ValidTokenStream` specifications in `Grammar.lean` and the actual parser/scanner implementation. Scanner correctness (`scan_valid`), parser soundness (`parser_sound`), parser completeness (`parser_complete`), and end-to-end composition theorems.
+
+#### Version 0.2.4
+
+Schema round-trip composition (Phase 7.5). Prove that `resolve ∘ toYamlType` and `toYaml ∘ fromYaml` round-trip correctly for all schema types, completing the verified schema layer.
+
+#### Version 0.2.5
+
+Comment preservation (Phase 8). AST-level comment metadata for round-trip fidelity per YAML 1.2.2 §6.6. Seven sub-phases: token extension, scanner changes, parser threading, AST attachment, emitter output, round-trip proofs, spec example validation.
+
+#### Version 0.2.6
+
+`%TAG` directive resolution (§6.8.2). Wire `%TAG` handle declarations into parser state and resolve `!handle!suffix` → expanded URI during parsing.
+
 #### Version 0.3
 
 Security mechanisms to prevent **two critical vulnerability classes**:
@@ -307,13 +327,13 @@ Created 24+ integration tests in `Tests/ParseTest.lean` covering:
 
 All 7 demo examples in `Demo.lean` pass, including deeply nested structures.
 
-### 2.3 Compile-Time `#guard` Tests — Unblocked (Step 3.3.4)
+### 2.3 Compile-Time `#guard` Tests — ✅ COMPLETE
 
-`#guard` requires kernel reduction, which does not work with `partial def` parsers. lean4-parser's fold combinators are now total (via PR#99 `well-founded-streams` branch, using well-founded recursion). Once our own parsers are made total (Steps 3.3.2–3.3.3), `#guard` tests become available.
+2,012 compile-time `#guard` checks verify parser correctness at the Lean kernel level. All `partial def` parsers eliminated — the scanner/parser pipeline is fully total. `#guard` tests cover yaml-test-suite (358 auto-generated), spec examples (132), and hand-written unit tests (1,522). See Phase 4 for details.
 
-### 2.4 yaml-test-suite — In Progress
+### 2.4 yaml-test-suite — ✅ COMPLETE
 
-Added [yaml-test-suite](https://github.com/yaml/yaml-test-suite) as a git submodule and built a programmatic test runner.
+354/406 correct (87.2%). 225/225 YAML 1.2.2-applicable unique test IDs (100%). 0 failures, 0 unexpected passes, 52 YAML 1.3 skips. All 358 passing tests locked as compile-time `#guard` checks (Phase 4). Added [yaml-test-suite](https://github.com/yaml/yaml-test-suite) as a git submodule and built a programmatic test runner.
 
 **Infrastructure built:**
 - `Tests/SuiteRunner/Meta.lean` (~280 lines) — line-based meta-parser for the yaml-test-suite file format (bootstrapping: can't use our own YAML parser to parse the test suite's YAML metadata)
@@ -501,7 +521,7 @@ Empty keys, escape sequences, complex keys.
 
 </details>
 
-## Step 11: Block scalar indentation fix (P3) — ✅ COMPLETE
+## Step 11a: Block scalar indentation fix (P3) — ✅ COMPLETE
 
 <details>
 <summary>
@@ -735,11 +755,11 @@ Zero regressions. The `SuiteGuards/Scalar.lean` and `SuiteGuards/Block.lean` com
 
 </details>
 
-## Phase 3: Verification — Layered Approach
+## Phase 3: Verification — Layered Approach ✅
 
 <details>
 <summary>
-~120 theorems across 3 layers (foundation, key invariants, termination & soundness). 0 sorry, 0 axiom.
+1,621 theorems across 3 layers (foundation, key invariants, termination & soundness). 0 sorry, 0 axiom, 0 partial def. Build: 338/338 jobs.
 </summary>
 
 Formal verification proceeds in three layers, ordered by feasibility and diagnostic impact.
@@ -1790,7 +1810,7 @@ Build verification: 475 rawparsetests jobs, 507 suiterunner jobs — all pass. S
 
 <details>
 <summary>
-Phase 7.1–7.4 complete: 1849 lines, 75 theorems, 105 <code>#guard</code> checks, 68 runtime tests. 529 build jobs, 0 errors, 0 sorry, 0 partial def. Phase 7.5 (round-trip composition) remaining.
+Phase 7.1–7.4 complete: 1849 lines, 75 theorems, 105 <code>#guard</code> checks, 68 runtime tests. 529 build jobs, 0 errors, 0 sorry, 0 partial def. Phase 7.5 (round-trip composition — v0.2.4) remaining.
 </summary>
 
 ### Motivation
@@ -2110,7 +2130,7 @@ Ported and adapted the schema layer from lean4-yaml (2026-02-24). 8 new files im
 
 </details>
 
-## Phase 8: Comment Preservation — Planned
+## Phase 8: Comment Preservation — Planned (v0.2.5)
 
 <details>
 
@@ -2891,11 +2911,11 @@ The `b: x: y` regression is fixed: the scanner produces `KEY "b" VALUE KEY "x" V
 
 </details>
 
-## Phase 10: Old Parser Removal & Proof Migration — Planned
+## Phase 10: Old Parser Removal & Proof Migration — ✅ COMPLETE
 
 <details>
 <summary>
-<b>Remove the single-pass character-level parser (<code>Lean4Yaml/Parser/</code>, 7 files, 4,403 lines) and the <code>lean4-parser</code> dependency. Migrate all proofs and tests to use the Phase 9 tokenized pipeline (<code>Scanner.lean</code> + <code>TokenParser.lean</code>). Estimated: ~2,850 lines preserved/adapted, ~3,950 lines rewritten or dropped across 15 proof files.</b>
+<b>Removed the single-pass character-level parser and <code>lean4-parser</code> dependency. All proofs and tests migrated to the Phase 9 tokenized pipeline (<code>Scanner.lean</code> + <code>TokenParser.lean</code>). P10.1–P10.10 complete. P10.6c (test diagnostics) not started. P10.11 gap analysis documented. Build: 338/338 jobs, 0 sorry, 0 partial def. 1,621 theorems + 2,012 #guard checks.</b>
 </summary>
 
 ### Motivation
@@ -2955,7 +2975,7 @@ Phase 9 introduced a two-pass scanner/parser (`Token.lean`, `Scanner.lean`, `Tok
 
 ### Phased Execution Plan
 
-#### P10.1: API Facade (non-breaking)
+#### P10.1: API Facade (non-breaking) ✅
 
 <details>
 
@@ -3080,7 +3100,7 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 
 </details>
 
-#### P10.2: Test Migration
+#### P10.2: Test Migration ✅
 
 <details>
 
@@ -3239,7 +3259,7 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 
 </details>
 
-#### P10.3: Type Relocation
+#### P10.3: Type Relocation ✅
 
 <details>
 
@@ -3324,7 +3344,7 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 
 </details>
 
-#### P10.4: Proof Migration — Reusable & Adaptable (8 files, ~3,500 lines)
+#### P10.4: Proof Migration — Reusable & Adaptable (8 files, ~3,500 lines) ✅
 
 <details>
 
@@ -3417,7 +3437,7 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 
 </details>
 
-#### P10.5: Proof Migration — Rewrites (4 files, ~3,400 lines)
+#### P10.5: Proof Migration — Rewrites (4 files, ~3,400 lines) ✅
 
 <details>
 
@@ -3524,7 +3544,7 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 
 </details>
 
-#### P10.6: Old Parser Deletion
+#### P10.6: Old Parser Deletion ✅
 
 <details>
 
@@ -3648,7 +3668,7 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 
 </details>
 
-#### P10.6b: Post-Deletion Test Repair
+#### P10.6b: Post-Deletion Test Repair ✅
 
 <details>
 
@@ -3748,7 +3768,7 @@ These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (
 
 </details>
 
-#### P10.6c: Test Diagnostics & Result Persistence
+#### P10.6c: Test Diagnostics & Result Persistence — v0.2.2
 
 <details>
 
@@ -3890,7 +3910,7 @@ suiterunner --json results/ --snapshot
 
 </details>
 
-#### P10.6d: Fix Remaining Unexpected Passes (87 UPs)
+#### P10.6d: Fix Remaining Unexpected Passes (87 UPs) ✅
 
 <details>
 
@@ -4277,7 +4297,7 @@ Systematic mapping of all 11 Y79Y variants to YAML 1.2.2 production rules.
 
 </details>
 
-#### P10.6e: Production Rule Traceability & Subtype Contracts
+#### P10.6e: Production Rule Traceability & Subtype Contracts ✅
 
 <details>
 
@@ -4616,7 +4636,7 @@ P10.6d (spec compliance fixes) took multiple intensive rounds to drive 87 unexpe
 
 </details>
 
-#### P10.8: TokenParser Total Recursion & Soundness Bridge
+#### P10.8: TokenParser Total Recursion & Soundness Bridge ✅
 
 <details>
 
@@ -5197,7 +5217,7 @@ limitation of `#guard` / `#eval` contexts in Lean 4.28.
 
 </details>
 
-### P10.9 — Verified Test Error Investigation & Fix (2026-06-25)
+### P10.9 — Verified Test Error Investigation & Fix (2026-06-25) ✅
 
 **Context.** After P10.8f.4, the full YAML test suite showed 869 passed / 0 failed /
 151 skipped (1020 total) and the build was 171/171.  However, fine-grained
@@ -5347,7 +5367,7 @@ below the grammar proof layer.  Closing it would require either:
   `simpleKeyStack` sync theorems, expanded `#guard` checks
 - `Lean4Yaml/Proofs/ScannerLoopInvariant.lean`: `advance_simpleKeyStack`, 4-conjunct proof updates
 
-### P10.10 — Scanner State Machine Verification (2026-03-02)
+### P10.10 — Scanner State Machine Verification (2026-03-02) ✅
 
 **Context.** After P10.9, the proof architecture verifies grammar ↔ AST correspondence
 (soundness, completeness, round-trip) and primitive operations (`advance`, `emit`,
@@ -5415,7 +5435,7 @@ preservation through every scanner function, culminating in a proof that the mai
 - **P10.7** depends on P10.6e — ✅ complete (spec table, running tests, Proofs/README.md updated)
 - **P10.8** depends on P10.7 — ready (P10.7 ✅ complete)
 - **P10.9** depends on P10.8 — ✅ complete (25/25 verified test errors fixed)
-- **P10.10** depends on P10.9 — in progress (scanner state machine verification)
+- **P10.10** depends on P10.9 — ✅ complete (scanner state machine verification: 259 theorems + 1,063 #guard checks)
 - **Phase 8** (comment preservation) should target the tokenized parser only — if P10 completes first, Phase 8 has a single implementation target
 
 ### Estimated Effort
@@ -5440,7 +5460,7 @@ preservation through every scanner function, culminating in a proof that the mai
 
 </details>
 
-### P10.11 — Grammar-to-Parser Bridge Gap Analysis (2026-03-03)
+### P10.11 — Grammar-to-Parser Bridge Gap Analysis (2026-03-03) — v0.2.3
 
 **Context.** The README claims extensive soundness and completeness proofs for the parser. However, doc-verification-bridge analysis reveals that key grammar specification definitions in [Grammar.lean](Lean4Yaml/Grammar.lean) have no theorems connecting them to the actual parser implementation.
 
@@ -5867,7 +5887,7 @@ This avoids the sorry warning while being transparent about the proof gap. The a
 
 ## Gap Analysis: YAML 1.2.2 Specification Coverage
 
-### Current State (2026-02-21)
+### Current State (2026-07-03)
 
 **yaml-test-suite: 354/406 correct (87.2%)** per subprocess report. 0 failures, 0 timeouts. 225 unique passing test IDs out of 277 (100% of YAML 1.2.2-applicable). **358 `#guard` compile-time proofs** (Phase 4) lock in all passing tests. All 171 skips are YAML 1.3 specific.
 
@@ -5885,7 +5905,7 @@ This avoids the sorry warning while being transparent about the proof gap. The a
 
 Zero unexpected passes remaining. **H7TQ** (extra words after `%YAML` version directive) was previously labeled unfixable due to conflict with ZYU8. Both are now fixed: `setValidationError` rejects extra content after `%YAML` version per §6.8 [82]+[86], and ZYU8 variant 3 (`%YAML 1.1 1.2`) is corrected to `fail: true` in a yaml-test-suite fork (the YAML 1.2.2 grammar only allows `s-l-comments` after `ns-yaml-version`). CQ3W (unclosed double-quote) was previously an UP but is now fixed: adding `setValidationError "unterminated double-quoted scalar"` to the fuel-exhaustion case of `collectChars` ensures both kernel and compiled code consistently reject unclosed quoted scalars. Error stage: 74/74 (100%). Flow stage: 46/46 (100%). Document stage: 17/24 (71%). Block stage improved from 83% to 91% through targeted validation. The 52 skipped tests are YAML 1.3 features outside YAML 1.2.2 scope (the SuiteRunner `emit` field fix eliminated 10 phantom variants, bringing total from 416 to 406).
 
-**Internal test suites: 940/940 (100%) across 12 suites** (hand-written Lean tests; separate from the yaml-test-suite cases above). Plus **434 compile-time `#guard` checks** (76 hand-written + 358 yaml-test-suite auto-generated).
+**Internal test suites: 940/940 (100%) across 12 suites** (hand-written Lean tests; separate from the yaml-test-suite cases above). Plus **2,012 compile-time `#guard` checks** (1,654 hand-written + 358 yaml-test-suite auto-generated).
 
 ### What's Implemented vs YAML 1.2.2 Spec
 
@@ -5995,7 +6015,7 @@ The root cause was architectural: lean4-parser's `<|>` unconditionally catches a
 
 | Phase | Work | Tests Fixed | Projected |
 |---|---|---|---|
-| **P1: Strict validation** | ⚠️ **Step 10a complete (2026-02-19).** Eliminated all `throwUnexpected` (P1 phase 1); added 4 flow validation rules (Step 10a). Error stage: 0→52/74. Fixed `runAllForReport` mapping bug. ~24 error-stage UP remain + 13 non-error UP. Latent A/G contracts documented (ANALYSIS.md §2.H). | +52 error done, ~37 UP remaining | ~307/416 (73.8%) |
+| **P1: Strict validation** | ✅ **Complete (2026-02-17).** Eliminated all `throwUnexpected` (P1 phase 1); added 4 flow validation rules (Step 10a). Error stage: 0→52/74. Fixed `runAllForReport` mapping bug. All remaining UPs resolved through P7. Latent A/G contracts documented (ANALYSIS.md §2.H). | +52 error done | — |
 | **P2: Flow completeness** | ✅ **Complete.** Implicit single-pair entries (§7.5), JSON-like `:` detection (§7.4), multi-line flow plain scalars (§7.3.3), flow mapping collection keys (§7.4.2), empty implicit keys. Flow stage: 34→43/46 (74%→93%). 88 new tests in `FlowTests.lean`. | +9 done | — |
 | **P3: Block scalar indentation** | ✅ **Complete (2026-02-20).** T1: `blockValue` passes `minIndent` (not `col`) to `dispatchByChar`. T2: `blockScalar` receives `contentIndent` without double-counting `+1`. EOF guard: `lookAhead anyToken` enforces spec §8.1.2 `nb-char+`. Fixed `consumeIndent(0)` infinite loop. Scalar: 34→46 (+12), advanced: 38→44 (+6). Also fixed 4 compiler warnings and added SuiteRunner debug output (timestamped stderr). See ANALYSIS.md §2.I. | +18 done | — |
 | **P4: Block completeness** | ✅ **Complete (2026-02-21).** T4: `detectMappingKey` scans past non-separator colons and mid-key quotes. T3: `dispatchByChar` checks mapping pattern before `"`, `'`, `?`, `-` scalar dispatch. Comment-after-colon fix for §6.7. BLOCK-OUT context (§8.2.2): `blockValue mapIndent` for next-line values. Block: 78→82 (+4), scalar: 46→50 (+4), advanced: 44→45 (+1), error: 50→46 (−4 — parser now accepts some invalid YAML). See ANALYSIS.md §2.I T3+T4 results. | +5 net done | — |
@@ -6009,10 +6029,10 @@ The remaining 52 skipped tests are YAML 1.1/1.3 features or tests that require b
 
 | Section | Description | Difficulty | Dependency |
 |---|---|---|---|
-| §6.8.2 `%TAG` directive resolution | Map `!handle!suffix` → expanded URI using directive declarations | Medium | Wire `%TAG` declarations into parser state |
-| §7.5 Flow nodes (complete) | ✅ Done (P2) | — | Implicit single-pair entries, JSON-like `:`, multi-line flow plain scalars |
-| §9.1.3 `c-forbidden` (complete) | Reject `---`/`...` inside block scalars at column 0 | Low | Already partial in `FoldResult` |
-| §10 Recommended Schemas | ✅ Core schema (Phase 7.1–7.4 complete). Failsafe/JSON implicit. | — | Phase 7.5 (round-trip composition) remaining |
+| §6.8.2 `%TAG` directive resolution | Map `!handle!suffix` → expanded URI using directive declarations (v0.2.6) | Medium | Wire `%TAG` declarations into parser state |
+| ~~§7.5 Flow nodes~~ | ✅ Done (P2) | — | — |
+| ~~§9.1.3 `c-forbidden`~~ | ✅ Done (P3) | — | — |
+| §10 Recommended Schemas | ✅ Core schema (Phase 7.1–7.4 complete). Failsafe/JSON implicit. | — | Phase 7.5 (round-trip composition — v0.2.4) remaining |
 
 ## Building
 

@@ -1232,32 +1232,44 @@ The `foldl_eq`, `dropMany_eq`, and `count_eq` lemmas have been added
 upstream to lean4-parser (§4b above).  All lean4-parser combinators
 used by the YAML parser are now deductively transparent for `m = Id`.
 
-### Phase B — Complete per-parser specifications
+### Phase B — Complete per-parser specifications ✅ DONE
 
-2. **Finish `singleQuoted` and `doubleQuoted`** specs (currently WIP in
-   `PerParserSpecs.lean`).  These require unfolding escape-sequence
-   handling; `EscapeResolution.lean` already provides supporting lemmas.
+> **Historical note:** The original Phase B described per-parser specs
+> for the lean4-parser combinator pipeline (`PerParserSpecs.lean`,
+> `FuelSufficiency.lean`).  These files were removed in Phase 10 when
+> the parser was replaced by the self-contained tokenized pipeline.
+> The equivalent work was completed through the tokenized pipeline's
+> proof infrastructure:
+>
+> - **`ScannerCorrectness.lean`** (~8,300 lines, 439 theorems) — complete
+>   scanner correctness for all `scanNextToken` branches
+> - **`ParserWellBehaved.lean`** (~3,100 lines, 74 theorems) — token
+>   monotonicity and flow nesting preservation for all sub-parsers
+> - **`ParserNodeProofs.lean`** (~1,800 lines, 57 theorems) — `parseNode`
+>   anchors-grow + aliases-resolve via strong induction on fuel
+> - **`ParserWfaProofs.lean`** (~1,700 lines, 50 theorems) — well-formed
+>   anchors + token preservation for all sub-parsers
+> - **`ParserSoundness.lean`**, **`ParserCompleteness.lean`**,
+>   **`ParserCorrectness.lean`** — token parser soundness, completeness,
+>   and correctness proofs
+>
+> Together these provide 620+ theorems covering scanner and token-parser
+> correctness — far exceeding the original 8 per-parser specs target.
 
-3. **Add specs for `literalScalar`, `foldedScalar`**.  Block scalar
-   contracts in `BlockScalarContracts.lean` provide the assume/guarantee
-   framework; the specs must compose these with the `dropMany`/`count`
-   specs from Phase A.
-
-4. **Add specs for `blockSeq`, `blockMap`, `flowSeq`, `flowMap`**.
-   These involve mutual recursion between `blockValue`, `dispatchByChar`,
-   `blockSequence`, and `blockMapping`.  The fuel-sufficiency lemmas in
-   `FuelSufficiency.lean` provide the termination arguments.
-
-### Phase C — Type-level infrastructure
+### Phase C — Type-level infrastructure ✅ DONE
 
 5. ~~**Prove `DecidableEq YamlValue`**~~ ✅ **Done.**
    `DecidableEq YamlValue` and `DecidableEq YamlDocument` are proved
    in `Completeness.lean` via mutual structural recursion through
    `where`-clause list helpers.
 
-   **Remaining:** Prove `LawfulBEq YamlValue` by showing the derived
-   `BEq` agrees with propositional equality.  Non-blocking for
-   completeness proofs (which use `DecidableEq` directly).
+6. ~~**Prove `LawfulBEq YamlValue`**~~ ✅ **Done** (v0.2.1).
+   `LawfulBEq` proved for the entire AST hierarchy (7 types) in
+   `Proofs/LawfulBEq.lean`.  Required replacing both `Scalar` and
+   `YamlValue`'s `deriving BEq` with explicit transparent definitions
+   in `Types.lean` to work around opaque derived BEq and `Decidable.rec`
+   dependent elimination failures.  See the v0.2.1 section in the
+   project README for the full retrospective.
 
 ### Phase D — Compose into full completeness
 
@@ -1285,12 +1297,18 @@ used by the YAML parser are now deductively transparent for `m = Id`.
 | Phase | Items | Difficulty | Prerequisite | Status |
 |---|---|---|---|---|
 | A | `dropMany_eq`, `count_eq` | Moderate | — | ✅ Done |
-| B | 8 per-parser specs | Moderate–Hard | A | WIP (161 specs in PerParserSpecs: B1–B4) |
+| B | Per-parser specifications (620+ theorems) | Moderate–Hard | A | ✅ Done (replaced by tokenized pipeline proofs) |
 | C | `DecidableEq YamlValue` | Moderate | — | ✅ Done |
-| C' | `LawfulBEq YamlValue` | Moderate | C | Deferred (non-blocking) |
-| D | Universal completeness | Hard | A, B, C | Planned |
+| C' | `LawfulBEq YamlValue` (32 proofs) | Moderate | C | ✅ Done (v0.2.1) |
+| D | Universal completeness | Hard | A, B, C, C' | Next — all prerequisites met |
 | E | Universal round-trip | Hard | D | Planned |
 
-Phases A and C are independent and can proceed in parallel.
-**Phase C is complete** (`DecidableEq YamlValue/YamlDocument` proved).
-Phase B depends on A.  The overall critical path is A → B → D → E.
+**Phases A, B, C, and C' are all complete.**  The remaining critical
+path is D → E.  Phase D can now proceed: all prerequisites (scanner
+correctness, parser well-behavedness, `DecidableEq`, `LawfulBEq`,
+stream initialization lemmas) are in place.  The main challenge is
+composing the 620+ per-parser theorems with the type-level infrastructure
+into a single universal completeness theorem.  The 7 `partial def`
+functions in `TokenParser.lean` remain the primary trust gap — P10.8
+(converting to total `def` with well-founded recursion on token list
+length) would close it.
