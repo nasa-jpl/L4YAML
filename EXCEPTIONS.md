@@ -2,7 +2,7 @@
 
 **Project:** lean4-yaml-verified.iterators
 **Date:** 2026-03-11
-**Status:** Planning Phase
+**Status:** Phase 1 Complete (2026-03-20)
 
 ## Executive Summary
 
@@ -154,14 +154,17 @@ instance : Coe SchemaError YamlError where
 
 ## Refactoring Roadmap
 
-### Phase 1: Create New Exception Types
+### Phase 1: Create New Exception Types ✅ (2026-03-20)
 
-**Files to create/modify:**
-- [Token.lean](Lean4Yaml/Token.lean) — Add `SchemaError` and `YamlError` near existing `ScanError`
+**Files modified:**
+- [Schema.lean](Lean4Yaml/Schema.lean) — Added `SchemaError` (15 constructors), `YamlError` (2 constructors), `ToString`/`Coe` instances
 
-**Impact:**
-- No breaking changes yet (additive only)
-- Establish the exception hierarchy foundation
+**Design note:** Types placed in `Schema.lean` (not `Token.lean` as originally planned) because `SchemaError` references `Schema.YamlType` and `YamlValue`, which are defined in `Schema.lean` and `Types.lean` respectively. `Schema.lean` already imports `Types.lean`; adding `import Lean4Yaml.Token` brings `ScanError` into scope for `YamlError`. This avoids pulling schema-layer dependencies into the scanner layer.
+
+**Result:**
+- Build: 334/334 jobs, 0 errors, 0 warnings, 0 sorry
+- No breaking changes (additive only)
+- Exception hierarchy foundation established
 
 ### Phase 2: Refactor Schema Layer
 
@@ -457,10 +460,10 @@ def oldProofCompat {α : Type} : Except YamlError α → Except String α
 
 #### 3. Incremental Migration Path
 
-**Phase A: Add new types (no breakage)**
-- Define `SchemaError`, `YamlError` in `Token.lean`
-- Add coercion instances
-- All existing code still compiles
+**Phase A: Add new types (no breakage)** ✅
+- Defined `SchemaError`, `YamlError` in `Schema.lean`
+- Added `Coe ScanError YamlError` and `Coe SchemaError YamlError`
+- All existing code still compiles (334/334 jobs)
 
 **Phase B: Parallel APIs**
 - Create `parseAs'`, `fromYaml'?` with typed errors
@@ -544,7 +547,7 @@ The exception refactoring **preserves this property** because:
 
 | Phase | Effort | Files Changed | Breaking |
 |-------|--------|---------------|----------|
-| 1. Create Types | 1 day | 1 (Token.lean) | No |
+| 1. Create Types | ✅ done | 1 (Schema.lean) | No |
 | 2. Schema Layer | 2-3 days | 4 (Schema/*) | Yes |
 | 3. Parser Layer | 1 day | 1 (TokenParser.lean) | Yes |
 | 4. Tests/Examples | 1-2 days | ~15 | No |
