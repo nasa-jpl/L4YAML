@@ -1,6 +1,6 @@
 # lean4-yaml-verified
 
-A **fully verified** YAML 1.2.2 parser in Lean 4 — 1,589 machine-checked theorems, 2,012 compile-time guards, **zero sorry, zero axiom, zero partial def**. Proofs that the parser conforms to the [YAML specification](https://yaml.org/spec/1.2.2/) and the [yaml-test-suite](https://github.com/yaml/yaml-test-suite).
+A **fully verified** YAML 1.2.2 parser in Lean 4 — 1,621 machine-checked theorems, 2,012 compile-time guards, **zero sorry, zero axiom, zero partial def**. Proofs that the parser conforms to the [YAML specification](https://yaml.org/spec/1.2.2/) and the [yaml-test-suite](https://github.com/yaml/yaml-test-suite).
 
 ## Architecture
 
@@ -21,7 +21,7 @@ Lean4Yaml/
 │   ├── Deriving.lean        # deriving FromYaml, ToYaml macro handlers
 │   ├── Dump.lean            # Schema↔Dump integration: dumpTyped, roundTripTyped
 │   └── Api.lean             # Convenience: parseAs, toYaml, parseTyped
-├── Proofs/                              # 1,589 theorems, 45 modules, ~31,500 lines
+├── Proofs/                              # 1,621 theorems, 46 modules, ~31,800 lines
 │   ├── Soundness.lean             # Parser produces only valid YAML
 │   ├── Completeness.lean          # Valid YAML parses successfully (DecidableEq + native_decide)
 │   ├── Composition.lean           # Scanner→TokenParser pipeline composition
@@ -67,6 +67,7 @@ Lean4Yaml/
 │   ├── ParserNodeProofs.lean      # parseNode anchors-grow + aliases-resolve proofs
 │   ├── ParserWfaProofs.lean       # Well-formed anchors + token preservation proofs
 │   ├── ErrorProperties.lean       # Error type discriminability, coverage, lifting (12 theorems)
+│   ├── LawfulBEq.lean            # LawfulBEq for entire AST hierarchy (32 proofs)
 │   └── SuiteGuards/               # Auto-generated #guard tests (362 tests, 6 files)
 │       ├── Scalar.lean            # 58 scalar stage guards
 │       ├── Flow.lean              # 44 flow stage guards (3 commented out: scanner bug)
@@ -166,6 +167,36 @@ Improved type safety with explicit exception types for all APIs. See [EXCEPTIONS
   - Error lifting: coercion preserves `toString` (`rfl`)
   - Constructor injectivity: `yaml_error_scan_injective`, `yaml_error_schema_injective`
 - Build: 336/336 jobs, 0 errors, 0 sorry, 0 warnings
+
+#### Version 0.2.1 (completed 2026-03-20)
+
+`LawfulBEq` instances for the entire YAML AST type hierarchy, enabling `simp` rewrites with `beq_self_eq_true` and `eq_of_beq` for all value types.
+
+**Problem:** Lean 4's `deriving BEq` produces **opaque** functions for recursive inductives with `Array` fields (`YamlValue`) and uses `Decidable.rec` for `String` field comparison (`Scalar`). Both block proof tactics — the opaque BEq prevents any equational reasoning, and `Decidable.rec` causes `cases` to fail with dependent elimination errors. Without `LawfulBEq`, `simp` cannot use `beq_self_eq_true` or `eq_of_beq`, limiting the algebraic reasoning available for value-layer proofs.
+
+**Solution — explicit transparent BEq + structural recursion proofs:**
+
+| Type | Approach | Key technique |
+|------|----------|---------------|
+| `ScalarStyle`, `ChompStyle`, `CollectionStyle` | `cases <;> decide` | Enums are finite |
+| `BlockScalarMeta` | Field-wise `eq_of_beq` | `dsimp` to expose instance internals |
+| `Scalar` | `show`/`change` to bridge `BEq.beq` ↔ `beqScalar` | Avoids `Decidable.rec` in derived BEq |
+| `YamlValue` | Structural recursion with `where`-clause helpers | Same pattern as `decEqYamlValue` |
+
+**Completed scope — 2 files:**
+
+| Phase | Files | Changes | Result |
+|-------|-------|---------|--------|
+| **1. Transparent BEq** | `Types.lean` | Replaced `deriving BEq` with explicit `beqScalar` for `Scalar` | ✅ Drop-in |
+| **2. LawfulBEq proofs** | `Proofs/LawfulBEq.lean` | 6 instances, 24 equational lemmas, 2 main theorems | ✅ 261 lines |
+
+**Key results:**
+- `LawfulBEq` for all 7 types in the AST hierarchy (3 enums, 2 structs, `YamlValue`, implicitly `YamlDocument`)
+- 24 `@[simp]` equational lemmas for `beqYamlValue` (same-constructor, cross-constructor, list helpers) — all `rfl`
+- Both `Scalar` and `YamlValue` now use explicit transparent BEq definitions in `Types.lean`
+- Structural recursion with `where`-clause list/pair-list helpers, matching the `decEqYamlValue` pattern from `Completeness.lean`
+- Key proof technique: `show beqFoo _ _ = true` / `change beqFoo _ _ = true at h` to bridge from `BEq.beq` to the explicit function name (necessary because `unfold beqFoo` fails after `unfold BEq.beq` — the term has shape `instBEqFoo.1`, not `beqFoo`)
+- Build: 338/338 jobs, 0 errors, 0 sorry, 0 warnings
 
 #### Version 0.3
 
@@ -1051,7 +1082,7 @@ Both `lake build WellFoundedStreams` and `lake build Parser` succeed cleanly.
 
 <details>
 <summary>
-🎉 **Fully verified.** 1,589 theorems + 2,012 compile-time guards. 354/406 correct. 0 sorry, 0 axiom, 0 `partial def`. Build: 336/336 jobs.
+🎉 **Fully verified.** 1,621 theorems + 2,012 compile-time guards. 354/406 correct. 0 sorry, 0 axiom, 0 `partial def`. Build: 338/338 jobs.
 </summary>
 
 Phase 2 (Parser Validation) is functionally complete. **354/406 correct** per HTML subprocess report. 0 failures, 0 timeouts, 0 UP. 52 YAML 1.3 skipped. Error stage: 74/74 (100%). Flow stage: 46/46 (100%). Block stage: 99/99 (100%). Scalar: 54/82 (65.9%). Advanced: 64/81 (79%). Document: 17/24 (71%).
@@ -1062,7 +1093,7 @@ Phase 2 (Parser Validation) is functionally complete. **354/406 correct** per HT
 
 **3.1–3.2 complete.** 3.1 (Foundation): ~90 theorems across 5 proof files. 3.2 (Key Invariants): ~30 theorems + 45 `#guard` checks across 3 proof files (`EscapeResolution.lean`, `IndentConsumption.lean`, `FoldNewlines.lean`). Grammar.lean extended with `resolveNamedEscape`, `isCForbiddenPrefix`, `isFoldAppendChar`, full Decidable instances.
 
-**Verification inventory:** 1,589 proved theorems/lemmas across 45 proof modules (~31,500 lines) + 2,012 compile-time `#guard` checks. 0 sorry, 0 axiom, 0 `partial def`. Build: 336/336 jobs.
+**Verification inventory:** 1,621 proved theorems/lemmas across 46 proof modules (~31,800 lines) + 2,012 compile-time `#guard` checks. 0 sorry, 0 axiom, 0 `partial def`. Build: 338/338 jobs.
 
 **3.3 complete.** All 6 steps finished: Steps 3.3.1–3.3.3 (totality), Step 3.3.4 (`#guard` compile-time tests), Step 3.3.5 (soundness proofs). Phase 4 complete. Phase 5 complete (emitter + round-trip proofs + completeness infrastructure).
 

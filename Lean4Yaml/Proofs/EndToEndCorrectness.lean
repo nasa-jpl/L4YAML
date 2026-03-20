@@ -14,25 +14,25 @@ import Lean4Yaml.Proofs.Soundness
 # End-to-End Correctness (P10.11c)
 
 Composes scanner and parser correctness into top-level theorems that connect
-the `parse` function to the `ValidYaml` grammar specification.
+the `parse` function to the `ValidYamlProp` specification.
 
 ## Main Results
 
 ```lean
-theorem parse_sound : parse s = .ok docs → ValidYaml s docs
-theorem parse_complete : ValidYaml s docs → parse s = .ok docs
+theorem parse_sound : parse s = .ok docs → ValidYamlProp s docs
+theorem parse_complete : ValidYamlProp s docs → parse s = .ok docs
 ```
 
 These make the aspirational theorems from Grammar.lean:533-538 into reality.
 
 ## Structure
 
-### §1  ValidYaml Definition
-- Defines `ValidYaml` in terms of `ValidTokenStream` and `ValidNode`
+### §1  ValidYamlProp Definition
+- Defines `ValidYamlProp` in terms of tokenization, parsing, and composition
 
 ### §2  Soundness Theorem
-- `parse_sound` — Parse success implies grammar validity
-- Composition of `scan_produces_valid_tokens` + `parseStream_respects_grammar`
+- `parse_sound` — Parse success implies `ValidYamlProp`
+- Unfolds `parseYaml` to extract tokenization and parsing steps
 
 ### §3  Completeness Theorem
 - `parse_complete` — Grammar validity implies parse success
@@ -42,7 +42,7 @@ These make the aspirational theorems from Grammar.lean:533-538 into reality.
 - `#guard` checks on diverse inputs
 
 ### §5  Grammar Specification Bridge (Phase D)
-- `parse_produces_valid_yaml` — Every parsed document has a `Grammar.ValidYaml` witness
+- `parse_produces_valid_yaml` — Every parsed document has a `Grammar.ValidYaml` witness (structure)
 
 ### §6  Corollaries
 
@@ -71,34 +71,29 @@ open Lean4Yaml.Proofs.ParserCorrectness
 open Lean4Yaml.Proofs.ParserGrammable
 open Lean4Yaml.Proofs.Soundness
 
-/-! ## §1  ValidYaml Definition
+/-! ## §1  ValidYamlProp Definition
 
-`ValidYaml` relates an input string to the documents it should parse to.
-It's defined as the composition of two layers:
-1. The string tokenizes to a `ValidTokenStream`
-2. Each document has a `ValidNode` witness via `NodeToValue`
+`ValidYamlProp` relates an input string to the documents it should parse to.
+It is the propositional (existential) version of validity, stating that the
+pipeline stages (scan → parse → compose) all succeed. Compare with
+`Grammar.ValidYaml` (a structure bundling a `ValidNode` grammar witness
+and `NodeToValue` correspondence).
 -/
 
 /--
-**Top-level specification**: An input string represents valid YAML if:
+**Propositional validity**: An input string represents valid YAML if:
 1. It can be tokenized (filtered) and parsed successfully
 2. The final documents are obtained by composing (resolving aliases) the raw parse output
 
-This definition bridges the grammar specification to the implementation.
+This is an existential `Prop` — it asserts the pipeline stages succeed.
+Compare with `Grammar.ValidYaml` (a structure bundling a `ValidNode`
+grammar witness with a `NodeToValue` correspondence proof).
 
 **Design note**: Uses `scanFiltered` (not `scan`) because the parser expects
 placeholder tokens to be removed. Uses `raw_docs` + `compose` because
 `parseYaml` applies alias resolution as a separate step.
-
-**Grammar connection**: The grammar witness property — that each document has a
-corresponding `ValidNode` — is established separately by `parseStream_respects_grammar`
-(conditional on `Grammable`). It is not bundled here because `NodeToValue` requires
-annotation-free values (`none` tag/anchor), but raw parser output may carry tags and
-anchors. The grammar correspondence applies after composition (alias resolution +
-annotation stripping), matching YAML 1.2.2 §3.1's distinction between the serialization
-tree (raw parse) and the representation graph (composed result).
 -/
-def ValidYaml (input : String) (docs : Array YamlDocument) : Prop :=
+def ValidYamlProp (input : String) (docs : Array YamlDocument) : Prop :=
   ∃ (filtered_tokens : Array (Positioned YamlToken))
     (raw_docs : Array YamlDocument),
     Scanner.scanFiltered input = .ok filtered_tokens ∧
@@ -113,14 +108,14 @@ If `parse` succeeds, the result decomposes into valid tokenization and parsing.
 /--
 **Parse soundness**: Successful parsing implies structural validity.
 
-If `parse input` succeeds with documents, then `ValidYaml input docs` holds —
+If `parse input` succeeds with documents, then `ValidYamlProp input docs` holds —
 i.e., the input decomposes into tokenization, parsing, and composition.
 
 **Proof strategy**: Unfold `parse` (which is `scan ∘ parseStream`) to extract
 the intermediate tokens and raw documents.
 -/
 theorem parse_sound (input : String) (docs : Array YamlDocument)
-    (h : TokenParser.parseYaml input = .ok docs) : ValidYaml input docs := by
+    (h : TokenParser.parseYaml input = .ok docs) : ValidYamlProp input docs := by
   -- Unfold parse definitions to extract intermediate results
   unfold TokenParser.parseYaml at h
   -- h : match parseYamlRaw input with | .ok d => .ok (d.map compose) | .error e => .error e = .ok docs
@@ -149,6 +144,7 @@ theorem parse_sound_documents (input : String) (docs : Array YamlDocument)
     ∃ raw_docs : Array YamlDocument,
       docs = raw_docs.map YamlDocument.compose := by
   have ⟨_, raw_docs, _, _, h_compose⟩ := parse_sound input docs h
+
   exact ⟨raw_docs, h_compose⟩
 
 /-! ## §3  Completeness Theorem
@@ -165,21 +161,13 @@ the parse result from the grammar specification. The full proof requires:
 /--
 **Parse completeness**: Grammar validity implies parse success.
 
-If `ValidYaml input docs` holds, then `parse input = .ok docs`.
+If `ValidYamlProp input docs` holds, then `parse input = .ok docs`.
 
-**Challenge**: This requires showing that:
-1. A `ValidTokenStream` can be consumed by `parseStream`
-2. The resulting documents match the specification
-
-This is the harder direction and may require additional lemmas about:
-- Token stream consumption by parser
-- Determinism of parsing
-- Round-trip properties between grammar and values
-
-**Current status**: Deferred pending scanner/parser lemma completion.
+Since `ValidYamlProp` is defined as the existence of intermediate results
+that succeed, the proof simply recomposes those intermediate results.
 -/
 theorem parse_complete (input : String) (docs : Array YamlDocument)
-    (h : ValidYaml input docs) : TokenParser.parseYaml input = .ok docs := by
+    (h : ValidYamlProp input docs) : TokenParser.parseYaml input = .ok docs := by
   obtain ⟨filtered_tokens, raw_docs, h_scan, h_parse, h_compose⟩ := h
   -- Establish parseYamlRaw succeeds with raw_docs
   have h_raw : TokenParser.parseYamlRaw input = .ok raw_docs := by
@@ -198,18 +186,19 @@ These provide empirical validation that our definitions are sensible.
 
 /-! ## §5  Grammar Specification Bridge (Phase D)
 
-Bridge from parser output to the `Grammar.ValidYaml` specification type.
+Bridge from parser output to the `Grammar.ValidYaml` specification type (structure).
 This is the capstone theorem: every successfully parsed document has a
-corresponding `ValidYaml` witness from the grammar specification.
+corresponding `Grammar.ValidYaml` witness.
 -/
 
 /--
 **Phase D capstone**: Every document produced by `parseYaml` has a
-corresponding `Grammar.ValidYaml` witness.
+corresponding `Grammar.ValidYaml` witness (the structure variant bundling
+a `ValidNode` and `NodeToValue` proof).
 
 Combines `parseYaml_produces_valid_nodes` (Phase C) with
 `toYamlValue_nodeToValue` (Soundness) to construct the full
-`ValidYaml` bundle: a `ValidNode` grammar witness paired with
+bundle: a `ValidNode` grammar witness paired with
 a `NodeToValue` correspondence proof.
 
 The `stripAnnotations` equality bridges parser output (which may carry

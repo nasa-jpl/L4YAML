@@ -73,8 +73,8 @@ by `contentEq` in `Emitter.lean`.
 1. **`decEqYamlValue`** — mutual recursion through `where`-clause list helpers
 2. **`DecidableEq YamlValue`** — instance from (1)
 3. **`DecidableEq YamlDocument`** — derived from (2) + `DecidableEq Directive`
-4. **`LawfulBEq YamlValue`** — deferred (requires showing derived `BEq` agrees
-   with the new `DecidableEq`; non-blocking for completeness proofs)
+4. **`LawfulBEq YamlValue`** — proved in `Proofs/LawfulBEq.lean` using the
+   explicit transparent `beqYamlValue` / `beqScalar` from `Types.lean`
 -/
 
 /-! ### §1.1  `DecidableEq YamlValue` via Mutual Structural Recursion
