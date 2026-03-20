@@ -31,17 +31,19 @@ namespace Lean4Yaml
 /-! ## Typed Parsing -/
 
 /-- Parse YAML string and convert to a specific Lean type.
-    Combines `parseYamlSingle` with `FromYaml` conversion. -/
-def parseAs (α : Type) [Schema.FromYaml α] (s : String) : Except String α := do
-  let yaml ← TokenParser.parseYamlSingle s
-  (Schema.fromYaml? yaml).mapError toString
+    Combines `parseYamlSingle` with `FromYaml` conversion.
+    Returns `YamlError` which can be either a `ScanError` (parse failure)
+    or a `SchemaError` (type conversion failure). -/
+def parseAs (α : Type) [Schema.FromYaml α] (s : String) : Except YamlError α := do
+  let yaml ← (TokenParser.parseYamlSingle s).mapError YamlError.scanError
+  (Schema.fromYaml? yaml).mapError YamlError.schemaError
 
 /-- Convert a Lean value to a `YamlValue` for serialization. -/
 def toYaml {α : Type} [Schema.ToYaml α] (value : α) : YamlValue :=
   Schema.toYaml value
 
 /-- Parse YAML string with automatic schema resolution to `YamlType`. -/
-def parseTyped (s : String) : Except String Schema.YamlType := do
+def parseTyped (s : String) : Except ScanError Schema.YamlType := do
   let yaml ← TokenParser.parseYamlSingle s
   pure (Schema.resolve yaml)
 

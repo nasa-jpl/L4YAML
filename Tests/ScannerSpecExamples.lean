@@ -89,7 +89,7 @@ private def testOneExample (path : System.FilePath) :
     -- Also try single-document parse
     match TokenParser.parseYamlSingle cleaned with
     | .ok _ => pure (exId, true, "")
-    | .error _ => pure (exId, false, e)
+    | .error _ => pure (exId, false, e.toString)
 
 /-- Run all spec example tests against scanner/parser and collect results. -/
 def collectTests : IO VerifiedSuiteResult := do

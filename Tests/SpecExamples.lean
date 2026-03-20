@@ -205,7 +205,7 @@ private def testOneExample (path : System.FilePath) :
     -- Also try single-document parse (some examples have extra whitespace)
     match parseYamlSingle cleaned with
     | .ok _ => pure (exId, true, "")
-    | .error _ => pure (exId, false, e)
+    | .error _ => pure (exId, false, e.toString)
 
 /-- Run all spec example tests and collect results. -/
 def collectTests : IO VerifiedSuiteResult := do

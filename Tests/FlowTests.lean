@@ -31,7 +31,7 @@ namespace Tests.Flow
 
 /-! ## Helpers -/
 
-def parseSingle (input : String) : Except String YamlValue :=
+def parseSingle (input : String) : Except ScanError YamlValue :=
   parseYamlSingle input
 
 def content (v : YamlValue) : Option String :=
@@ -89,7 +89,7 @@ def testImplicitSinglePair (state : IO.Ref TestCollector) : IO Unit := do
       check state "[a : b] key" (keyAt? item 0 == some "a")
       check state "[a : b] value" (valAt? item 0 == some "b")
     | none => check state "[a : b] has item" false
-  | .error e => checkM state "[a : b] parses" false e
+  | .error e => checkM state "[a : b] parses" false e.toString
 
   -- Multiple entries: plain key: value
   match parseSingle "[ one: 1, two: 2 ]" with
@@ -106,7 +106,7 @@ def testImplicitSinglePair (state : IO.Ref TestCollector) : IO Unit := do
       check state "[two:2] key" (keyAt? item 0 == some "two")
       check state "[two:2] value" (valAt? item 0 == some "2")
     | none => check state "[two:2] has item" false
-  | .error e => checkM state "[one:1, two:2] parses" false e
+  | .error e => checkM state "[one:1, two:2] parses" false e.toString
 
   -- Key with no value (null)
   match parseSingle "[ key: ]" with
@@ -120,7 +120,7 @@ def testImplicitSinglePair (state : IO.Ref TestCollector) : IO Unit := do
       | some (_, val) => check state "[key:] null value" (isNull val)
       | none => check state "[key:] has pair" false
     | none => check state "[key:] has item" false
-  | .error e => checkM state "[key:] parses" false e
+  | .error e => checkM state "[key:] parses" false e.toString
 
   -- YAML separate style: `YAML : separate`
   match parseSingle "[ YAML : separate ]" with
@@ -131,7 +131,7 @@ def testImplicitSinglePair (state : IO.Ref TestCollector) : IO Unit := do
       check state "[YAML : separate] key" (keyAt? item 0 == some "YAML")
       check state "[YAML : separate] value" (valAt? item 0 == some "separate")
     | none => check state "[YAML : separate] has item" false
-  | .error e => checkM state "[YAML : separate] parses" false e
+  | .error e => checkM state "[YAML : separate] parses" false e.toString
 
 /-! ## 2. JSON-like Key Detection (§7.4) -/
 
@@ -148,7 +148,7 @@ def testJsonLikeKeys (state : IO.Ref TestCollector) : IO Unit := do
       check state "[\"JSON like\":adjacent] key" (keyAt? item 0 == some "JSON like")
       check state "[\"JSON like\":adjacent] value" (valAt? item 0 == some "adjacent")
     | none => check state "[\"JSON like\":adjacent] has item" false
-  | .error e => checkM state "[\"JSON like\":adjacent] parses" false e
+  | .error e => checkM state "[\"JSON like\":adjacent] parses" false e.toString
 
   -- Single-quoted key adjacent to `:`
   match parseSingle "['single':val]" with
@@ -160,7 +160,7 @@ def testJsonLikeKeys (state : IO.Ref TestCollector) : IO Unit := do
       check state "['single':val] key" (keyAt? item 0 == some "single")
       check state "['single':val] value" (valAt? item 0 == some "val")
     | none => check state "['single':val] has item" false
-  | .error e => checkM state "['single':val] parses" false e
+  | .error e => checkM state "['single':val] parses" false e.toString
 
   -- Double-quoted key with space before `:` in flow mapping
   match parseSingle "{\"key\" :value}" with
@@ -168,7 +168,7 @@ def testJsonLikeKeys (state : IO.Ref TestCollector) : IO Unit := do
     check state "{\"key\" :value} is mapping" (v.isMapping)
     check state "{\"key\" :value} key" (keyAt? v 0 == some "key")
     check state "{\"key\" :value} value" (valAt? v 0 == some "value")
-  | .error e => checkM state "{\"key\" :value} parses" false e
+  | .error e => checkM state "{\"key\" :value} parses" false e.toString
 
   -- Double-quoted key adjacent in flow mapping
   match parseSingle "{\"key\":value}" with
@@ -176,7 +176,7 @@ def testJsonLikeKeys (state : IO.Ref TestCollector) : IO Unit := do
     check state "{\"key\":value} is mapping" (v.isMapping)
     check state "{\"key\":value} key" (keyAt? v 0 == some "key")
     check state "{\"key\":value} value" (valAt? v 0 == some "value")
-  | .error e => checkM state "{\"key\":value} parses" false e
+  | .error e => checkM state "{\"key\":value} parses" false e.toString
 
 /-! ## 3. Empty Implicit Keys in Flow Sequence -/
 
@@ -196,7 +196,7 @@ def testEmptyImplicitKeys (state : IO.Ref TestCollector) : IO Unit := do
         check state "[: value] value" (content val == some "value")
       | none => check state "[: value] has pair" false
     | none => check state "[: value] has item" false
-  | .error e => checkM state "[: value] parses" false e
+  | .error e => checkM state "[: value] parses" false e.toString
 
   -- Empty key with null value in flow sequence
   match parseSingle "[:, a]" with
@@ -212,7 +212,7 @@ def testEmptyImplicitKeys (state : IO.Ref TestCollector) : IO Unit := do
         check state "[:] null value" (isNull val)
       | none => check state "[:] has pair" false
     | none => check state "[:, a] has first item" false
-  | .error e => checkM state "[:, a] parses" false e
+  | .error e => checkM state "[:, a] parses" false e.toString
 
 /-! ## 4. Multi-line Flow Plain Scalars (§7.3.3) -/
 
@@ -225,7 +225,7 @@ def testMultilineFlowScalars (state : IO.Ref TestCollector) : IO Unit := do
     check state "{multi line: value} is mapping" (v.isMapping)
     check state "{multi line: value} key" (keyAt? v 0 == some "multi line")
     check state "{multi line: value} value" (valAt? v 0 == some "value")
-  | .error e => checkM state "{multi line: value} parses" false e
+  | .error e => checkM state "{multi line: value} parses" false e.toString
 
   -- Plain scalar value continued on next line in flow mapping
   match parseSingle "{ key :\n  multi\n  line\n}" with
@@ -233,7 +233,7 @@ def testMultilineFlowScalars (state : IO.Ref TestCollector) : IO Unit := do
     check state "{key: multi line} is mapping" (v.isMapping)
     check state "{key: multi line} key" (keyAt? v 0 == some "key")
     check state "{key: multi line} value" (valAt? v 0 == some "multi line")
-  | .error e => checkM state "{key: multi line} parses" false e
+  | .error e => checkM state "{key: multi line} parses" false e.toString
 
   -- Plain scalar in flow sequence spanning lines
   match parseSingle "[\n  multi\n  line\n]" with
@@ -243,7 +243,7 @@ def testMultilineFlowScalars (state : IO.Ref TestCollector) : IO Unit := do
     | some item =>
       check state "[multi line] content" (content item == some "multi line")
     | none => check state "[multi line] has item" false
-  | .error e => checkM state "[multi line] parses" false e
+  | .error e => checkM state "[multi line] parses" false e.toString
 
 /-! ## 5. Mixed Flow Sequence Entries -/
 
@@ -267,14 +267,14 @@ def testMixedFlowSequence (state : IO.Ref TestCollector) : IO Unit := do
     match seqItemAt? v 2 with
     | some item => check state "[a, b:c, d] third is scalar d" (content item == some "d")
     | none => check state "[a, b:c, d] has third" false
-  | .error e => checkM state "[a, b:c, d] parses" false e
+  | .error e => checkM state "[a, b:c, d] parses" false e.toString
 
   -- Trailing comma
   match parseSingle "[a, b: c,]" with
   | .ok v =>
     check state "[a, b:c,] is sequence" (v.isSequence)
     check state "[a, b:c,] count" (seqCount v == 2)
-  | .error e => checkM state "[a, b:c,] parses" false e
+  | .error e => checkM state "[a, b:c,] parses" false e.toString
 
 /-! ## 6. Flow Mapping with Collection Keys (§7.4.2) -/
 
@@ -290,7 +290,7 @@ def testFlowMappingCollectionKeys (state : IO.Ref TestCollector) : IO Unit := do
       check state "{[1,2]: pair} key is sequence" (k.isSequence)
       check state "{[1,2]: pair} value" (content val == some "pair")
     | none => check state "{[1,2]: pair} has pair" false
-  | .error e => checkM state "{[1,2]: pair} parses" false e
+  | .error e => checkM state "{[1,2]: pair} parses" false e.toString
 
   -- Flow mapping as a mapping key
   match parseSingle "{{a: b}: nested}" with
@@ -301,7 +301,7 @@ def testFlowMappingCollectionKeys (state : IO.Ref TestCollector) : IO Unit := do
       check state "{{a:b}: nested} key is mapping" (k.isMapping)
       check state "{{a:b}: nested} value" (content val == some "nested")
     | none => check state "{{a:b}: nested} has pair" false
-  | .error e => checkM state "{{a:b}: nested} parses" false e
+  | .error e => checkM state "{{a:b}: nested} parses" false e.toString
 
 /-! ## 7. yaml-test-suite Regressions -/
 
@@ -318,7 +318,7 @@ def testSuiteRegressions (state : IO.Ref TestCollector) : IO Unit := do
       check state "87E4 key" (keyAt? item 0 == some "implicit block key")
       check state "87E4 value" (valAt? item 0 == some "value")
     | none => check state "87E4 has item" false
-  | .error e => checkM state "87E4 parses" false e
+  | .error e => checkM state "87E4 parses" false e.toString
 
   -- L9U5: Implicit plain keys in flow sequence
   match parseSingle "[ a : b ]" with
@@ -329,7 +329,7 @@ def testSuiteRegressions (state : IO.Ref TestCollector) : IO Unit := do
       check state "L9U5 key" (keyAt? item 0 == some "a")
       check state "L9U5 value" (valAt? item 0 == some "b")
     | none => check state "L9U5 has item" false
-  | .error e => checkM state "L9U5 parses" false e
+  | .error e => checkM state "L9U5 parses" false e.toString
 
   -- LQZ7: Implicit double-quoted keys in flow sequence
   match parseSingle "[\"a\" : b]" with
@@ -340,7 +340,7 @@ def testSuiteRegressions (state : IO.Ref TestCollector) : IO Unit := do
       check state "LQZ7 key" (keyAt? item 0 == some "a")
       check state "LQZ7 value" (valAt? item 0 == some "b")
     | none => check state "LQZ7 has item" false
-  | .error e => checkM state "LQZ7 parses" false e
+  | .error e => checkM state "LQZ7 parses" false e.toString
 
   -- QF4Y: Single-pair flow mapping in sequence
   match parseSingle "[foo: bar]" with
@@ -352,21 +352,21 @@ def testSuiteRegressions (state : IO.Ref TestCollector) : IO Unit := do
       check state "QF4Y key" (keyAt? item 0 == some "foo")
       check state "QF4Y value" (valAt? item 0 == some "bar")
     | none => check state "QF4Y has item" false
-  | .error e => checkM state "QF4Y parses" false e
+  | .error e => checkM state "QF4Y parses" false e.toString
 
   -- 8UDB: Mixed flow sequence entries
   match parseSingle "[a, b: c, d]" with
   | .ok v =>
     check state "8UDB is sequence" (v.isSequence)
     check state "8UDB count" (seqCount v == 3)
-  | .error e => checkM state "8UDB parses" false e
+  | .error e => checkM state "8UDB parses" false e.toString
 
   -- 8KB6: Multi-line flow mapping key
   match parseSingle "{\n  multi\n  line : value\n}" with
   | .ok v =>
     check state "8KB6 is mapping" (v.isMapping)
     check state "8KB6 key" (keyAt? v 0 == some "multi line")
-  | .error e => checkM state "8KB6 parses" false e
+  | .error e => checkM state "8KB6 parses" false e.toString
 
   -- NJ66: Multi-line flow mapping key
   match parseSingle "{\n  multi\n  line : value,\n  another : entry\n}" with
@@ -375,7 +375,7 @@ def testSuiteRegressions (state : IO.Ref TestCollector) : IO Unit := do
     check state "NJ66 pair count" (pairCount v == 2)
     check state "NJ66 first key" (keyAt? v 0 == some "multi line")
     check state "NJ66 second key" (keyAt? v 1 == some "another")
-  | .error e => checkM state "NJ66 parses" false e
+  | .error e => checkM state "NJ66 parses" false e.toString
 
   -- CFD4: Empty implicit key in flow sequence
   match parseSingle "[: value]" with
@@ -388,7 +388,7 @@ def testSuiteRegressions (state : IO.Ref TestCollector) : IO Unit := do
       | some (k, _) => check state "CFD4 null key" (isNull k)
       | none => check state "CFD4 has pair" false
     | none => check state "CFD4 has item" false
-  | .error e => checkM state "CFD4 parses" false e
+  | .error e => checkM state "CFD4 parses" false e.toString
 
 /-! ## Collect All Tests -/
 

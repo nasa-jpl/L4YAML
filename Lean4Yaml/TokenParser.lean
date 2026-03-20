@@ -962,7 +962,8 @@ The standard variants apply Compose for backward compatibility.
 
     Callers who need machine-inspectable errors (e.g., for testing specific
     error categories) should use this directly. The public `parseYaml*`
-    functions map errors to `String` at the API boundary. -/
+    functions also return `Except ScanError` for machine-inspectable
+    error handling. -/
 def scanAndParse (input : String) : Except ScanError (Array YamlDocument) :=
   match Scanner.scanFiltered input with
   | .ok tokens => parseStream tokens
@@ -976,16 +977,11 @@ Parse a YAML string into an array of documents (**serialization tree**).
 
 Returns documents with `.alias name` nodes and `anchor` fields preserved.
 Each `YamlDocument` includes an `anchors` map that can be used by
-`YamlDocument.compose` to resolve aliases.
-
-**Error** boundary: `ScanError` → `String` mapping happens here. -/
-def parseYamlRaw (input : String) : Except String (Array YamlDocument) :=
+`YamlDocument.compose` to resolve aliases. -/
+def parseYamlRaw (input : String) : Except ScanError (Array YamlDocument) :=
   match Scanner.scanFiltered input with
-  | .ok tokens =>
-    match parseStream tokens with
-    | .ok docs => .ok docs
-    | .error e => .error e.toString
-  | .error e => .error e.toString
+  | .ok tokens => parseStream tokens
+  | .error e => .error e
 
 /--
 Parse a YAML string into an array of documents (**representation graph**).
@@ -994,10 +990,8 @@ Parse a YAML string into an array of documents (**representation graph**).
 - Full **Load** = Parse (→ serialization tree) + Compose (→ representation graph).
 
 Aliases are resolved and anchor annotations are stripped.
-This is the main entry point for most use cases.
-
-**Error** boundary: `ScanError` → `String` mapping happens here. -/
-def parseYaml (input : String) : Except String (Array YamlDocument) :=
+This is the main entry point for most use cases. -/
+def parseYaml (input : String) : Except ScanError (Array YamlDocument) :=
   match parseYamlRaw input with
   | .ok docs => .ok (docs.map YamlDocument.compose)
   | .error e => .error e
@@ -1007,12 +1001,12 @@ Parse a YAML string expecting exactly one document (**serialization tree**).
 
 Returns the raw document with `.alias` nodes and `anchor` fields preserved.
 **Error**: `multipleDocuments` if more than one document is found. -/
-def parseYamlSingleRaw (input : String) : Except String YamlDocument :=
+def parseYamlSingleRaw (input : String) : Except ScanError YamlDocument :=
   match parseYamlRaw input with
   | .ok docs =>
     if docs.size == 0 then .ok { value := YamlValue.null }
     else if docs.size == 1 then .ok docs[0]!
-    else .error (ScanError.multipleDocuments docs.size).toString
+    else .error (.multipleDocuments docs.size)
   | .error e => .error e
 
 /--
@@ -1021,12 +1015,12 @@ Parse a YAML string expecting exactly one document (**representation graph**).
 Returns the value of the single document with aliases resolved and
 anchor annotations stripped.
 **Error**: `multipleDocuments` if more than one document is found. -/
-def parseYamlSingle (input : String) : Except String YamlValue :=
+def parseYamlSingle (input : String) : Except ScanError YamlValue :=
   match parseYaml input with
   | .ok docs =>
     if docs.size == 0 then .ok YamlValue.null
     else if docs.size == 1 then .ok docs[0]!.value
-    else .error (ScanError.multipleDocuments docs.size).toString
+    else .error (.multipleDocuments docs.size)
   | .error e => .error e
 
 /--
@@ -1043,7 +1037,7 @@ streams, a future refinement can partition comments by document span.
 **Comment position**: All comments are assigned `CommentPosition.inline`
 at this level. A post-processing pass can reclassify to `.before`/`.after`
 based on node positions. -/
-def parseYamlWithComments (input : String) : Except String (Array YamlDocument) :=
+def parseYamlWithComments (input : String) : Except ScanError (Array YamlDocument) :=
   match Scanner.scanWithComments input with
   | .ok (tokens, rawComments) =>
     let comments : Array (YamlPos × Comment) :=
@@ -1051,7 +1045,7 @@ def parseYamlWithComments (input : String) : Except String (Array YamlDocument) 
     match parseStream tokens (trackPositions := true) with
     | .ok docs => .ok (docs.map fun doc =>
         { doc.compose with comments := comments })
-    | .error e => .error e.toString
-  | .error e => .error e.toString
+    | .error e => .error e
+  | .error e => .error e
 
 end Lean4Yaml.TokenParser

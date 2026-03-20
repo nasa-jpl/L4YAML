@@ -125,9 +125,9 @@ preserves semantic content.
 Returns `.error` if either the parse or the `FromYaml` conversion fails.
 -/
 def roundTripTyped (α : Type) {β : Type} [ToYaml β] [FromYaml α]
-    (value : β) (cfg : DumpConfig := {}) : Except String α := do
-  let yaml ← parseYamlSingle (dumpTyped value cfg)
-  (fromYaml? yaml).mapError toString
+    (value : β) (cfg : DumpConfig := {}) : Except YamlError α := do
+  let yaml ← (parseYamlSingle (dumpTyped value cfg)).mapError YamlError.scanError
+  (fromYaml? yaml).mapError YamlError.schemaError
 
 /--
 Dump → Parse → contentEq round-trip check.
@@ -158,12 +158,12 @@ Returns `(parsedYaml, contentMatch, typedResult)` for detailed diagnostics.
 -/
 def roundTripDiagnostics {α : Type} [ToYaml α] [FromYaml α]
     (value : α) (cfg : DumpConfig := {}) :
-    String × (Except String (YamlValue × Bool × Except String α)) :=
+    String × (Except ScanError (YamlValue × Bool × Except SchemaError α)) :=
   let yamlStr := dumpTyped value cfg
   let result := do
     let parsed ← parseYamlSingle yamlStr
     let ceq := contentEq (toYaml value) parsed
-    let typed := (fromYaml? parsed).mapError toString
+    let typed := fromYaml? parsed
     pure (parsed, ceq, typed)
   (yamlStr, result)
 

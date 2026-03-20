@@ -2,7 +2,7 @@
 
 **Project:** lean4-yaml-verified.iterators
 **Date:** 2026-03-11
-**Status:** Phase 1 Complete (2026-03-20)
+**Status:** Complete (2026-03-20) — All 5 phases done
 
 ## Executive Summary
 
@@ -207,48 +207,74 @@ instance : Coe SchemaError YamlError where
 - Schema layer fully uses `SchemaError` internally
 - External API unchanged (`Except String`) — no downstream breakage yet
 
-### Phase 3: Update Parser Entry Points
+### Phase 3: Update Parser Entry Points ✅ (2026-03-20)
 
-**Files to modify:**
+**Files modified:**
 
-1. **[TokenParser.lean](Lean4Yaml/TokenParser.lean)** (68 occurrences)
-   ```lean
-   -- Before:
-   def parseYaml (input : String) : Except String (Array YamlDocument)
+1. **[TokenParser.lean](Lean4Yaml/TokenParser.lean)** — 5 public API functions:
+   - `parseYamlRaw` : `Except String` → `Except ScanError` (removed `.toString` conversion)
+   - `parseYaml` : `Except String` → `Except ScanError`
+   - `parseYamlSingleRaw` : `Except String` → `Except ScanError`
+   - `parseYamlSingle` : `Except String` → `Except ScanError`
+   - `parseYamlWithComments` : `Except String` → `Except ScanError`
+   - Simplified implementations: `.error e.toString` → `.error e` (no more string conversion)
 
-   -- After:
-   def parseYaml (input : String) : Except ScanError (Array YamlDocument)
-   ```
-   - These functions don't perform schema conversion, so they return `ScanError` not `YamlError`
-   - Only functions in `Schema.Api` that combine parsing + conversion return `YamlError`
+2. **[Schema/Api.lean](Lean4Yaml/Schema/Api.lean)** — Now uses `YamlError`:
+   - `parseAs` : `Except String α` → `Except YamlError α`
+     (lifts `ScanError` via `.mapError YamlError.scanError`,
+      lifts `SchemaError` via `.mapError YamlError.schemaError`)
+   - `parseTyped` : `Except String Schema.YamlType` → `Except ScanError Schema.YamlType`
+     (pure schema resolution, no type conversion errors possible)
 
-**Impact:**
-- Breaking change for low-level parser users
-- No change for users who use `Schema.parseAs` (already returns `YamlError`)
+3. **[Schema/Dump.lean](Lean4Yaml/Schema/Dump.lean)** — Now uses `YamlError`/`ScanError`/`SchemaError`:
+   - `roundTripTyped` : `Except String α` → `Except YamlError α`
+   - `roundTripDiagnostics` : `Except String (... × Except String α)` →
+     `Except ScanError (... × Except SchemaError α)` (separate error types per layer)
+   - `contentRoundTrips` : unchanged (returns `Bool`, error type is internal)
 
-### Phase 4: Update Tests and Examples
+4. **[Proofs/Composition.lean](Lean4Yaml/Proofs/Composition.lean)** — 3 theorem updates:
+   - `parseYamlRaw_scan_error` : conclusion `.error e.toString` → `.error e`
+   - `parseYamlRaw_parse_error` : conclusion `.error e.toString` → `.error e`
+   - `parseYaml_of_parseYamlRaw_error` : `e : String` → `e : ScanError`
 
-**Files to modify:**
-- [Tests/FlowTests.lean](Tests/FlowTests.lean)
-- [Tests/ExplicitKeyTests.lean](Tests/ExplicitKeyTests.lean)
-- [Tests/TryDump.lean](Tests/TryDump.lean)
-- [examples/typed/*.lean](examples/typed/)
+5. **[Proofs/EndToEndCorrectness.lean](Lean4Yaml/Proofs/EndToEndCorrectness.lean)** — 1 proof simplified:
+   - `parse_sound` : removed nested `split` (no more intermediate match on `parseStream`)
 
-**Impact:**
-- Update test assertions from string matching to pattern matching
-- Better test granularity (can assert specific error types)
+6. **Test files** — `ScanError` where `String` was expected:
+   - [Tests/ExplicitKeyTests.lean](Tests/ExplicitKeyTests.lean) : `parseSingle` wrapper `Except String` → `Except ScanError` + 24 `checkM e` → `e.toString`
+   - [Tests/FlowTests.lean](Tests/FlowTests.lean) : same pattern, 27 `checkM` sites
+   - [Tests/SpecExamples.lean](Tests/SpecExamples.lean) : tuple `e` → `e.toString`
+   - [Tests/ScannerSpecExamples.lean](Tests/ScannerSpecExamples.lean) : same
+   - [Tests/ScalarStageDiag.lean](Tests/ScalarStageDiag.lean) : tuple `some e` → `some e.toString`
+   - [Tests/RawParseTests.lean](Tests/RawParseTests.lean) : 16 `checkM` sites
+   - [Demo.lean](Demo.lean) : 10 `checkM` sites
 
-### Phase 5: Update Proofs
+**Design notes:**
+- `parseAs` is the first function to return `Except YamlError` — unifying `ScanError` + `SchemaError`
+- Parser-only functions (`parseYaml`, `parseTyped`) return `Except ScanError` directly
+- `roundTripDiagnostics` separates error types per pipeline stage for precise diagnostics
+- Test files that use string interpolation `s!"{e}"` needed no changes since `ToString ScanError` exists
+- Only `checkM` calls (passing error as `String` parameter) required `.toString`
+- Proof simplification: `parse_sound` proof became shorter because `parseYamlRaw` no longer wraps `parseStream` in a redundant match
 
-**Files requiring proof updates:** (See detailed analysis in "Implications on Proofs" section)
-- [Proofs/SchemaDump.lean](Lean4Yaml/Proofs/SchemaDump.lean) — 3 occurrences
-- [Proofs/EndToEndCorrectness.lean](Lean4Yaml/Proofs/EndToEndCorrectness.lean) — 18 occurrences
-- [Proofs/Composition.lean](Lean4Yaml/Proofs/Composition.lean) — 22 occurrences
-- Others: ~750 total occurrences across 32 proof files
+**Result:**
+- Build: 334/334 jobs, 0 errors, 0 warnings, 0 sorry
+- No more `Except String` in the public parser API
+- All error types are now structured: `ScanError`, `SchemaError`, or `YamlError`
 
-**Impact:**
-- Proofs about `Except String` need to become proofs about `Except SchemaError`
-- See detailed implications below
+### Phase 4: Update Tests and Examples ✅ (2026-03-20)
+
+Completed as part of Phase 3 — all test files updated to handle `ScanError`
+instead of `String` in error branches. See Phase 3 file list above.
+
+### Phase 5: Update Proofs ✅ (2026-03-20)
+
+Completed as part of Phase 3 — proof updates were minimal:
+- 3 theorem signatures/conclusions in Composition.lean
+- 1 proof simplification in EndToEndCorrectness.lean
+- All other proofs (Completeness.lean, ParserGrammable.lean, ScannerEmitBridge.lean,
+  CommentProperties.lean, CommentRoundTrip.lean, etc.) required **no changes** — they
+  only reference `.ok` branches or use `native_decide`, both unaffected by error type.
 
 ## Migration Example
 
@@ -543,10 +569,10 @@ The exception refactoring **preserves this property** because:
 |-------|--------|---------------|----------|
 | 1. Create Types | ✅ done | 1 (Schema.lean) | No |
 | 2. Schema Layer | ✅ done | 6 (Schema.lean + Schema/*) | Internal only |
-| 3. Parser Layer | 1 day | 1 (TokenParser.lean) | Yes |
-| 4. Tests/Examples | 1-2 days | ~15 | No |
-| 5. Proof Updates | 3-5 days | ~32 | No |
-| **Total** | **8-12 days** | **~53 files** | **API only** |
+| 3. Parser Layer | ✅ done | 7 (TokenParser + Api + Dump + Proofs) | Yes |
+| 4. Tests/Examples | ✅ done | 7 (Tests/* + Demo) | No |
+| 5. Proof Updates | ✅ done | 2 (Composition + EndToEnd) | No |
+| **Total** | **✅ done** | **13 files** | **API only** |
 
 ## Open Questions
 

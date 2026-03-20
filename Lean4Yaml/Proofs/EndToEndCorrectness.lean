@@ -134,13 +134,8 @@ theorem parse_sound (input : String) (docs : Array YamlDocument)
     split at h_raw
     · -- scanFiltered input = .ok filtered_tokens
       rename_i filtered_tokens h_scan
-      split at h_raw
-      · -- parseStream filtered_tokens = .ok raw_docs
-        rename_i raw_docs' h_parse
-        injection h_raw with h_raw_eq
-        -- Construct ValidYaml witness
-        exact ⟨filtered_tokens, raw_docs', h_scan, h_parse, by rw [← h_eq, h_raw_eq]⟩
-      · contradiction
+      -- h_raw : parseStream filtered_tokens = .ok raw_docs (no nested match)
+      exact ⟨filtered_tokens, raw_docs, h_scan, h_raw, h_eq.symm⟩
     · contradiction
   · contradiction
 
