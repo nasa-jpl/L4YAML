@@ -125,7 +125,7 @@ For more details, see [Proofs/README](./Lean4Yaml/Proofs/README.md).
 
 ### Roadmap
 
-#### Version 0.1 (current work-in-progress)
+#### Version 0.1 (completed 2026-03-19)
 
 YAML1.2.2-compliant verified parser without resource limitations.
 
