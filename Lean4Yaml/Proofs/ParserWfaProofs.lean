@@ -398,7 +398,7 @@ theorem parseImplicitBlockSequence_wfa
 set_option maxHeartbeats 400000 in
 theorem parseBlockMappingEntryValue_wfa
     {tokens : Array (Positioned YamlToken)} {n : Nat}
-    (h_ih : ParseNodeWFA tokens n) (h_wb : ParseNodeWB tokens n)
+    (h_ih : ParseNodeWFA tokens n)
     (ps : ParseState) (fuel : Nat) (h_fuel : fuel ≤ n)
     (h_tok : ps.tokens = tokens)
     (keyHasContent : Bool) (keyLine keyCol : Nat)
@@ -436,7 +436,7 @@ theorem parseBlockMappingEntryValue_wfa
 -- handleBlockMappingValueEntry
 theorem handleBlockMappingValueEntry_wfa
     {tokens : Array (Positioned YamlToken)} {n : Nat}
-    (h_ih : ParseNodeWFA tokens n) (h_wb : ParseNodeWB tokens n)
+    (h_ih : ParseNodeWFA tokens n)
     (ps : ParseState) (fuel : Nat) (h_fuel : fuel ≤ n)
     (h_tok : ps.tokens = tokens)
     (pairIdx : Nat) (val : YamlValue) (ps' : ParseState)
@@ -541,7 +541,7 @@ theorem handleBlockMappingValueEntry_tok
         (by dsimp only []; exact h_tok_adv) _ _ heq_pn
 
 -- Helpers accepting undestruct'd pair results (for goals after split where v✝ is opaque)
-private theorem pn_tok_pair
+theorem pn_tok_pair
     {tokens : Array (Positioned YamlToken)} {n : Nat}
     (h_wb : ParseNodeWB tokens n)
     (ps : ParseState) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -552,7 +552,7 @@ private theorem pn_tok_pair
   obtain ⟨v, ps'⟩ := result
   exact parseNode_tokens_of_wb h_wb ps fuel h_fuel h_tok v ps' h_ok
 
-private theorem bev_tok_pair
+theorem bev_tok_pair
     {tokens : Array (Positioned YamlToken)} {n : Nat}
     (h_wb : ParseNodeWB tokens n)
     (ps : ParseState) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -564,7 +564,7 @@ private theorem bev_tok_pair
   obtain ⟨v, ps'⟩ := result
   exact parseBlockMappingEntryValue_tok h_wb ps fuel h_fuel h_tok keyHasContent keyLine keyCol v ps' h_ok
 
-private theorem pn_wfa_pair
+theorem pn_wfa_pair
     {tokens : Array (Positioned YamlToken)} {n : Nat}
     (h_ih : ParseNodeWFA tokens n)
     (ps : ParseState) (fuel : Nat) (h_fuel : fuel ≤ n)
@@ -576,9 +576,9 @@ private theorem pn_wfa_pair
   obtain ⟨v, ps'⟩ := result
   exact h_ih ps fuel v ps' h_fuel h_tok h_ok h_wfa
 
-private theorem bev_wfa_pair
+theorem bev_wfa_pair
     {tokens : Array (Positioned YamlToken)} {n : Nat}
-    (h_ih : ParseNodeWFA tokens n) (h_wb : ParseNodeWB tokens n)
+    (h_ih : ParseNodeWFA tokens n)
     (ps : ParseState) (fuel : Nat) (h_fuel : fuel ≤ n)
     (h_tok : ps.tokens = tokens)
     (keyHasContent : Bool) (keyLine keyCol : Nat)
@@ -587,7 +587,7 @@ private theorem bev_wfa_pair
     (h_wfa : WellFormedAnchors ps.anchors) :
     WellFormedAnchors result.2.anchors := by
   obtain ⟨v, ps'⟩ := result
-  exact parseBlockMappingEntryValue_wfa h_ih h_wb ps fuel h_fuel h_tok keyHasContent keyLine keyCol v ps' h_ok h_wfa
+  exact parseBlockMappingEntryValue_wfa h_ih ps fuel h_fuel h_tok keyHasContent keyLine keyCol v ps' h_ok h_wfa
 
 set_option maxHeartbeats 800000 in
 theorem handleBlockMappingKeyEntry_tok
@@ -746,13 +746,13 @@ theorem handleBlockMappingKeyEntry_wfa
   all_goals (dsimp only [] at *)
   -- emptyNode branches
   all_goals (try (
-    refine bev_wfa_pair h_ih h_wb ?_ fuel h_fuel ?htok ?_ ?_ ?_ ?_ ?hok ?hwfa
+    refine bev_wfa_pair h_ih ?_ fuel h_fuel ?htok ?_ ?_ ?_ ?_ ?hok ?hwfa
     case hok => assumption
     case htok => dsimp only []; exact h_tok_adv
     case hwfa => dsimp only []; exact h_wfa_adv))
   -- parseNode branches
   all_goals (
-    refine bev_wfa_pair h_ih h_wb ?_ fuel h_fuel ?htok ?_ ?_ ?_ ?_ ?hok ?hwfa
+    refine bev_wfa_pair h_ih ?_ fuel h_fuel ?htok ?_ ?_ ?_ ?_ ?hok ?hwfa
     case hok => assumption
     case htok =>
       dsimp only []
@@ -805,7 +805,7 @@ theorem parseBlockMappingLoop_wfa
       · rename_i val_res heq_val
         obtain ⟨val_v, ps_val⟩ := val_res
         dsimp only [] at h_ok
-        have h_wfa_val := handleBlockMappingValueEntry_wfa h_ih h_wb ps k (by omega)
+        have h_wfa_val := handleBlockMappingValueEntry_wfa h_ih ps k (by omega)
             h_tok _ val_v ps_val heq_val h_wfa
         have h_tok_val := handleBlockMappingValueEntry_tok h_wb ps k (by omega)
             h_tok _ val_v ps_val heq_val
@@ -845,7 +845,7 @@ theorem parseBlockMapping_wfa
 -- parseFlowMappingValue
 theorem parseFlowMappingValue_wfa
     {tokens : Array (Positioned YamlToken)} {n : Nat}
-    (h_ih : ParseNodeWFA tokens n) (h_wb : ParseNodeWB tokens n)
+    (h_ih : ParseNodeWFA tokens n)
     (ps : ParseState) (fuel : Nat) (h_fuel : fuel ≤ n)
     (h_tok : ps.tokens = tokens)
     (savedPath : YamlPath) (keyContent : String)
@@ -1122,7 +1122,7 @@ theorem parseFlowMappingLoop_wfa
               next => simp at h_ok
               next fmv_res heq_fmv =>
                 obtain ⟨val_v, ps_fmv⟩ := fmv_res; dsimp only [] at h_ok
-                have h_wfa_fmv := parseFlowMappingValue_wfa h_ih h_wb ps_ek k (by omega)
+                have h_wfa_fmv := parseFlowMappingValue_wfa h_ih ps_ek k (by omega)
                     h_tok_ek _ _ val_v ps_fmv heq_fmv h_wfa_ek
                 have h_tok_fmv := parseFlowMappingValue_tok h_wb ps_ek k (by omega)
                     h_tok_ek _ _ val_v ps_fmv heq_fmv
@@ -1139,7 +1139,7 @@ theorem parseFlowMappingLoop_wfa
               next => simp at h_ok
               next fmv_res heq_fmv =>
                 obtain ⟨val_v, ps_fmv⟩ := fmv_res; dsimp only [] at h_ok
-                have h_wfa_fmv := parseFlowMappingValue_wfa h_ih h_wb ps_pn k (by omega)
+                have h_wfa_fmv := parseFlowMappingValue_wfa h_ih ps_pn k (by omega)
                     h_tok_pn _ _ val_v ps_fmv heq_fmv h_wfa_pn
                 have h_tok_fmv := parseFlowMappingValue_tok h_wb ps_pn k (by omega)
                     h_tok_pn _ _ val_v ps_fmv heq_fmv
@@ -1167,7 +1167,7 @@ theorem parseFlowMappingLoop_wfa
             next => simp at h_ok
             next fmv_res heq_fmv =>
               obtain ⟨val_v, ps_fmv⟩ := fmv_res; dsimp only [] at h_ok
-              have h_wfa_fmv := parseFlowMappingValue_wfa h_ih h_wb ps_ek k (by omega)
+              have h_wfa_fmv := parseFlowMappingValue_wfa h_ih ps_ek k (by omega)
                   h_tok_ek _ _ val_v ps_fmv heq_fmv h_wfa_ek
               have h_tok_fmv := parseFlowMappingValue_tok h_wb ps_ek k (by omega)
                   h_tok_ek _ _ val_v ps_fmv heq_fmv
@@ -1183,7 +1183,7 @@ theorem parseFlowMappingLoop_wfa
             next => simp at h_ok
             next fmv_res heq_fmv =>
               obtain ⟨val_v, ps_fmv⟩ := fmv_res; dsimp only [] at h_ok
-              have h_wfa_fmv := parseFlowMappingValue_wfa h_ih h_wb ps_pn k (by omega)
+              have h_wfa_fmv := parseFlowMappingValue_wfa h_ih ps_pn k (by omega)
                   h_tok_pn _ _ val_v ps_fmv heq_fmv h_wfa_pn
               have h_tok_fmv := parseFlowMappingValue_tok h_wb ps_pn k (by omega)
                   h_tok_pn _ _ val_v ps_fmv heq_fmv
