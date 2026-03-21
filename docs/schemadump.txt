@@ -1,4 +1,4 @@
-=== Schema Dump Tests ===
+=== Schemadump ===
 === Schema ↔ Dump Integration ===
 
 --- Primitive serialization ---

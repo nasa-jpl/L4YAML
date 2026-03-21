@@ -1,4 +1,4 @@
-=== Flow Completeness Tests ===
+=== Flowtests ===
 === Flow Completeness Tests ===
 
 --- Implicit single-pair entries ---

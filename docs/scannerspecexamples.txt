@@ -1,4 +1,4 @@
-=== Scanner Spec Examples ===
+=== Scannerspecexamples ===
 === YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline) ===
 
 --- §2 Scanner Spec Examples ---
@@ -80,7 +80,7 @@
 
 --- §7 Scanner Spec Examples ---
   ✓ Example example-7.1
-  ✗ Example example-7.10: expected ']' but reached end of tokens
+  ✓ Example example-7.10
   ✓ Example example-7.11
   ✓ Example example-7.12
   ✓ Example example-7.13
@@ -147,5 +147,4 @@
   ✓ Example example-10.8
   ✓ Example example-10.9
 
-=== Results: 131/132 passed ===
-    1 FAILED
+=== Results: 132/132 passed ===

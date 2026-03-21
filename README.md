@@ -70,7 +70,7 @@ Lean4Yaml/
 │   ├── LawfulBEq.lean            # LawfulBEq for entire AST hierarchy (32 proofs)
 │   └── SuiteGuards/               # Auto-generated #guard tests (362 tests, 6 files)
 │       ├── Scalar.lean            # 58 scalar stage guards
-│       ├── Flow.lean              # 44 flow stage guards (3 commented out: scanner bug)
+│       ├── Flow.lean              # 44 flow stage guards
 │       ├── Block.lean             # 83 block stage guards
 │       ├── Document.lean          # 16 document stage guards
 │       ├── Advanced.lean          # 65 advanced stage guards
@@ -337,9 +337,40 @@ Schema round-trip composition (Phase 7.5). Proves that `resolve ∘ toYaml` and 
 | `fromYaml_toYaml_int` | `isInt (toString n) = some n → fromYaml? (toYaml n) = .ok n` |
 | `fromYaml_toYaml_option_none` | `fromYaml? (toYaml none) = .ok none` |
 
-#### Version 0.2.6
+#### Version 0.2.6 (completed 2026-03-20)
 
-Scanner bug fixes: fix 7 runtime test failures across 4 test suites. Two root causes: (1) colon-chain misparse in flow plain scalars — `:x`, `::value`, `::vector` tokenized as value indicators instead of plain scalar content (affects yaml-test-suite 58MP, 5T43, DBG4 and spec example 7.10); (2) anchor/alias edge cases — undefined alias rejection, anchor redefinition scoping, cross-document anchor isolation, and alias token scanning.
+Scanner bug fixes: fix 4 runtime test failures plus 1 scanner test. Root cause: colon-chain misparse in flow plain scalars — `isValueCandidate` returned `true` unconditionally when `s.inFlow && s.simpleKey.possible`, violating YAML §7.3.3/§7.4.2. Characters like `:x`, `::value`, `::vector` were tokenized as value indicators instead of plain scalar content.
+
+**Problem:** In flow context with a pending simple key, every `:` was treated as a value indicator regardless of the following character. YAML §7.4.2 (`c-ns-flow-map-adjacent-value` [155]) only allows `:` as a value indicator when immediately following a JSON-like node (quoted scalar, flow collection end) or when followed by a blank/flow-indicator.
+
+**Fix — 3-way logic in `isValueCandidate` (`Scanner.lean`):**
+
+| Condition | Result | Rationale |
+|-----------|--------|-----------|
+| `simpleKey.pos.offset ≠ s.offset` | `true` | Genuine preceding key at different position |
+| `simpleKey.pos.offset = s.offset` AND preceding token is JSON node | `true` | Adjacent value per §7.4.2 [155] |
+| Otherwise | standard next-char check | Fall through to `isBlank ∨ isFlowIndicator` |
+
+Added `isJsonNodeToken` helper that checks for `.scalar _ .doubleQuoted`, `.scalar _ .singleQuoted`, `.flowSequenceEnd`, or `.flowMappingEnd`.
+
+Also fixed the "alias scan" test in `ScannerTests.lean`: test was scanning `*anc` without a preceding `&anc` anchor, triggering the (correct) undefined alias validation. Changed to `- &anc hello\n- *anc`.
+
+**Tests fixed:**
+
+| Test | Description |
+|------|-------------|
+| 58MP | Flow mapping edge case: `{x: :x}` |
+| 5T43 | Colon at beginning of adjacent flow scalar: `{"key"::value}` |
+| DBG4 | Spec Example 7.10 Plain Characters: `::vector` |
+| example-7.10 | Spec example pipeline (same as DBG4) |
+| alias scan | Scanner test: alias with preceding anchor |
+
+**Key results:**
+- yaml-test-suite: 358/358 applicable correct (100%)
+- Spec examples: 132/132 (100%)
+- Verified internal tests: 750/750 (100%) across 11 suites
+- Compile-time guards: 3 previously commented-out guards (58MP, 5T43, DBG4) now active
+- Build: 344/344 jobs, 0 errors, 0 sorry, 0 warnings
 
 #### Version 0.2.7
 
@@ -364,7 +395,7 @@ This is the verified-correctness analog of lean4-yaml's empirical round-trip tes
 
 #### Version 0.2.10
 
-Scanner hardening: fix remaining scanner/parser edge cases beyond the 7 addressed in v0.2.6 (explicit key value resolution, flow explicit keys, validation strictness). These are beyond yaml-test-suite coverage but affect robustness.
+Scanner hardening: fix remaining scanner/parser edge cases beyond the 5 addressed in v0.2.6 (explicit key value resolution, flow explicit keys, validation strictness). These are beyond yaml-test-suite coverage but affect robustness.
 
 #### Version 0.3.0
 
@@ -3392,16 +3423,13 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
   - Lean's `sorry` produces a warning (not an error), so the build stays green while clearly flagging incomplete work.
   - The comment `-- P10.2→P10.5: old parser bridge, will be rewritten against tokenized parser` on each `sorry` links the debt to its resolution phase.
 
-###### Known gaps — scanner bug fixes (v0.2.6) and hardening (v0.2.10)
+###### Known gaps — scanner hardening (v0.2.10)
 
-7 runtime test failures remain across 4 test suites (down from 39 at the time of the P10.2 migration). Two distinct root causes:
+~~7 runtime test failures remained across 4 test suites (down from 39 at the time of the P10.2 migration). Two distinct root causes:~~
 
-| Category | Count | Failing tests | Root cause | Resolution |
-|---|---|---|---|---|
-| Colon-chain in flow plain scalars | 4 | yaml-test-suite 58MP, 5T43, DBG4; spec example 7.10 | Scanner tokenizes `:x`, `::value`, `::vector` as value indicator chains instead of plain scalar content. Per YAML §7.3.3/§7.4.2, `:` is only a value indicator when followed by a flow indicator or whitespace. | v0.2.6: scanner fix |
-| Anchor/alias edge cases | 3 | anchor tests: undefined alias, redefinition scoping, cross-doc isolation; scanner test: alias scan | `TokenParser` does not track anchor scope per document or validate alias references against defined anchors. | v0.2.6: anchor scope tracking in `TokenParser` |
+**v0.2.6 (completed):** Fixed all colon-chain failures (58MP, 5T43, DBG4, example 7.10) and the alias scan test. The `isValueCandidate` fix in `Scanner.lean` resolves the 4 yaml-test-suite/spec failures, and the alias scan test was corrected to include a preceding anchor definition. 3 compile-time `#guard` checks (58MP, 5T43, DBG4) in `Tests/Guards/Proofs/SuiteGuards/Flow.lean` are now active. Current results: yaml-test-suite 358/358 (100%), spec examples 132/132 (100%), verified internal tests 750/750 (100%).
 
-These failures are tracked as commented-out `#guard` checks in `Tests/Guards/Proofs/SuiteGuards/Flow.lean` (58MP, 5T43, DBG4). Current CI results (2026-03-20): yaml-test-suite 355/358 applicable correct (99.1%), spec examples 131/132, scanner tests 31/32, anchor tests 30/33. Total verified: 747/750.
+Remaining scanner hardening items (v0.2.10): explicit key value resolution, flow explicit keys, validation strictness. These are beyond yaml-test-suite coverage but affect robustness.
 
 </details>
 

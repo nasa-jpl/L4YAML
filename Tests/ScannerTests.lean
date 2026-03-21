@@ -176,7 +176,7 @@ def collectTests : IO VerifiedSuiteResult := do
   let anchorPred := fun (t : YamlToken) => match t with | .anchor "anc" => true | _ => false
   let aliasPred := fun (t : YamlToken) => match t with | .alias "anc" => true | _ => false
   check ref "anchor scan" (hasToken "&anc hello" anchorPred)
-  check ref "alias scan" (hasToken "*anc" aliasPred)
+  check ref "alias scan" (hasToken "- &anc hello\n- *anc" aliasPred)
 
   -- ═══════════════════════════════════════════
   setCategory ref "Phase 9 regression: b: x: y"
