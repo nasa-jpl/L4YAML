@@ -3,7 +3,7 @@
 ## 1. Overview
 
 The `Proofs/` directory contains 52 Lean 4 files (46 proof modules +
-6 SuiteGuards test suites) totaling ~31,800 lines, 1,621 theorems/lemmas,
+6 SuiteGuards test suites) totaling ~32,000 lines, 1,626 theorems/lemmas,
 and 2,012 `#guard` compile-time checks.  Every file compiles with
 **zero `sorry`, zero `axiom`, zero `partial def`** in our code.
 
@@ -94,7 +94,7 @@ to total `def` with well-founded recursion on token list length.
 | `Composition.lean` | 137 | 7 | — | Pipeline composition: `parseYaml_pipeline`, `scanAndParse` correctness |
 | `DocumentContracts.lean` | 183 | 16 | — | Document parser boundary detection, trailing comments, monotonicity |
 | `DumpRoundTrip.lean` | 310 | 67 | 2 | Style-aware dump produces well-formed output; dump→parse round-trip |
-| `EndToEndCorrectness.lean` | 271 | 8 | 2 | End-to-end parse correctness proofs |
+| `EndToEndCorrectness.lean` | 434 | 13 | 2 | End-to-end parse correctness + ValidDocument/ValidStream proofs (v0.2.4) |
 | `ErrorProperties.lean` | 129 | 12 | — | Error type discriminability, coverage, lifting (v0.2) |
 | `EscapeResolution.lean` | 290 | 61 | 2 | Escape sequences produce valid Unicode per YAML 1.2.2 §5.7 |
 | `FoldNewlines.lean` | 248 | 36 | 2 | Line folding does not introduce c-forbidden content (doc markers) |
@@ -146,7 +146,7 @@ to total `def` with well-founded recursion on token list length.
 
 ### Totals
 
-- **1,621** theorems/lemmas (all machine-checked)
+- **1,626** theorems/lemmas (all machine-checked)
 - **2,012** `#guard` compile-time checks (Proofs/ + SuiteGuards/ + Tests/)
 - **0** `sorry`, **0** `axiom`, **0** `partial def`
 

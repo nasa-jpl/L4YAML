@@ -8,6 +8,7 @@ import Lean4Yaml.Grammar
 import Lean4Yaml.Proofs.ScannerCorrectness
 import Lean4Yaml.Proofs.ParserCorrectness
 import Lean4Yaml.Proofs.ParserGrammable
+import Lean4Yaml.Proofs.ParserSoundness
 import Lean4Yaml.Proofs.Soundness
 
 /-!
@@ -69,6 +70,7 @@ open Lean4Yaml.Grammar
 open Lean4Yaml.Proofs.ScannerCorrectness
 open Lean4Yaml.Proofs.ParserCorrectness
 open Lean4Yaml.Proofs.ParserGrammable
+open Lean4Yaml.Proofs.ParserSoundness
 open Lean4Yaml.Proofs.Soundness
 
 /-! ## §1  ValidYamlProp Definition
@@ -294,5 +296,139 @@ If two strings are equal, their parse results are equal.
 theorem parse_respects_eq (s₁ s₂ : String) (h : s₁ = s₂) :
     TokenParser.parseYaml s₁ = TokenParser.parseYaml s₂ := by
   rw [h]
+
+/-! ## §7  ValidDocument and ValidStream (v0.2.4)
+
+Bridge from parser output to the `Grammar.ValidDocument` and
+`Grammar.ValidStream` specification types.
+
+These close the last unverified specification types in `Grammar.lean`:
+`ValidStream` previously had `"verifiedBy": []` in bridge analysis,
+and `ValidDocument` appeared only as a field type within `ValidStream`.
+
+### Architecture
+
+```
+parseYaml_produces_valid_nodes     (ParserGrammable, Phase C3)
+  → parse_produces_valid_documents (§7: each doc has ValidDocument)
+  → parse_produces_valid_stream    (§7: nonempty array forms ValidStream)
+```
+-/
+
+/--
+**Phase D2: ValidDocument bridge**: Every document produced by `parseYaml`
+has a corresponding `Grammar.ValidDocument` witness.
+
+The witness bundles a `ValidNode` grammar node (from
+`parseYaml_produces_valid_nodes`) with the YAML version directive
+extracted from the document's directives array.
+-/
+theorem parse_produces_valid_documents (input : String)
+    (docs : Array YamlDocument)
+    (h : TokenParser.parseYaml input = .ok docs) :
+    ∀ i : Fin docs.size,
+      ∃ vd : Grammar.ValidDocument,
+        stripAnnotations (toYamlValue vd.content) = stripAnnotations docs[i].value ∧
+        vd.yamlVersion = extractYamlVersion docs[i].directives := by
+  intro i
+  have ⟨vy, _, h_eq⟩ := parse_produces_valid_yaml input docs h i
+  have h_val : vy.value = toYamlValue vy.grammar :=
+    Soundness.validYaml_value_eq_toYamlValue vy
+  exact ⟨{
+    content := vy.grammar
+    yamlVersion := extractYamlVersion docs[i].directives
+  }, by rw [← h_val]; exact h_eq, rfl⟩
+
+/--
+**Phase D2: ValidStream bridge**: If `parseYaml` succeeds with at least
+one document, the result forms a `Grammar.ValidStream`.
+
+Note: YAML 1.2.2 §9.2 allows empty streams (`[streamStart, streamEnd]`),
+so the nonempty precondition is necessary. The parser returns `#[]` for
+empty inputs like `""`.
+-/
+theorem parse_produces_valid_stream (input : String)
+    (docs : Array YamlDocument)
+    (h : TokenParser.parseYaml input = .ok docs)
+    (h_ne : docs.size > 0) :
+    ∃ (vdocs : List ValidDocument) (h_len : vdocs.length = docs.size),
+      vdocs.length > 0 ∧
+      ∀ (i : Nat) (hi : i < vdocs.length),
+        stripAnnotations (toYamlValue vdocs[i].content) =
+          stripAnnotations (docs[i]'(h_len ▸ hi)).value := by
+  have h_each := parse_produces_valid_documents input docs h
+  let f : Fin docs.size → ValidDocument := fun i => (h_each i).choose
+  have hf : ∀ i : Fin docs.size,
+      stripAnnotations (toYamlValue (f i).content) = stripAnnotations docs[i].value :=
+    fun i => ((h_each i).choose_spec).1
+  refine ⟨List.ofFn f, by simp, by simp; exact h_ne, fun i hi => ?_⟩
+  have hi' : i < docs.size := by simp at hi; exact hi
+  simp only [List.getElem_ofFn]
+  exact hf ⟨i, hi'⟩
+
+/--
+**ValidDocumentProp bridge theorem**: successful parsing implies every
+document satisfies `ValidDocumentProp`.
+
+Makes `ValidDocumentProp` visible from the end-to-end level in the
+doc-verification-bridge's `verifiedBy` analysis.
+-/
+theorem parseYaml_implies_valid_document (input : String)
+    (docs : Array YamlDocument)
+    (h : TokenParser.parseYaml input = .ok docs)
+    (i : Fin docs.size) :
+    Grammar.ValidDocumentProp docs[i] := by
+  have ⟨vd, h_strip, _⟩ := parse_produces_valid_documents input docs h i
+  exact ⟨vd.content, h_strip⟩
+
+/--
+**ValidStreamProp bridge theorem**: successful parsing of a nonempty
+stream implies the documents satisfy `ValidStreamProp`.
+
+Makes `ValidStreamProp` visible from the end-to-end level in the
+doc-verification-bridge's `verifiedBy` analysis.
+-/
+theorem parseYaml_implies_valid_stream (input : String)
+    (docs : Array YamlDocument)
+    (h : TokenParser.parseYaml input = .ok docs)
+    (h_ne : docs.size > 0) :
+    Grammar.ValidStreamProp docs :=
+  ⟨h_ne, fun i => parseYaml_implies_valid_document input docs h i⟩
+
+/-! ## §8  Unconditional Grammar Theorem (v0.2.4, scope item 3)
+
+At the `parseStream` level, `parseStream_respects_grammar` (in
+`ParserCorrectness.lean`) carries a `Grammable` hypothesis because
+`parseStream` has no knowledge of how tokens were produced.
+
+When combined with the scanner hypothesis (tokens come from
+`Scanner.scanFiltered`), grammability is provable unconditionally via
+`parseStream_output_grammable` (Phase C3, `ParserGrammable.lean`).
+
+The `parseYaml`-level version is already unconditional
+(`parseYaml_produces_valid_nodes` in `ParserGrammable.lean`).
+This section provides the `parseStream`-level unconditional variant.
+-/
+
+/--
+**Unconditional grammar**: When tokens come from the scanner,
+`parseStream` output respects the grammar — no `Grammable` hypothesis needed.
+
+This is the scan-aware variant of `parseStream_respects_grammar` that
+eliminates the conditional hypothesis by chaining
+`parseStream_output_grammable` (Phase C3).
+-/
+theorem parseStream_respects_grammar_unconditional
+    (input : String)
+    (tokens : Array (Positioned YamlToken))
+    (docs : Array YamlDocument)
+    (h_scan : Scanner.scanFiltered input = .ok tokens)
+    (h_parse : TokenParser.parseStream tokens = .ok docs) :
+    ∀ doc ∈ docs.toList, ∃ node : ValidNode,
+      stripAnnotations (toYamlValue node) = stripAnnotations (doc.compose.value) := by
+  have h_grammable := ParserGrammable.parseStream_output_grammable
+    input tokens docs h_scan h_parse
+  intro doc hdoc
+  exact ParserSoundness.yamlValue_has_witness _ _ (h_grammable doc hdoc)
 
 end Lean4Yaml.Proofs.EndToEndCorrectness

@@ -376,6 +376,18 @@ def ValidTokenStreamProp (tokens : Array (Positioned YamlToken)) : Prop :=
   ∀ (i j : Fin tokens.size), i.val < j.val →
     (tokens[i]).pos.offset ≤ (tokens[j]).pos.offset
 
+/-! ## YAML Version Extraction -/
+
+/--
+Extract the YAML version string from a document's directives.
+
+The last `%YAML` directive wins (per YAML 1.2.2 §6.8.1: at most one
+`%YAML` directive per document, but we take the last if duplicated).
+Returns `none` if no `%YAML` directive is present.
+-/
+def extractYamlVersion (directives : Array Directive) : Option String :=
+  directives.foldl (fun acc d => match d with | .yaml v => some v | _ => acc) none
+
 /-! ## Top-Level Specification -/
 
 /--
@@ -551,6 +563,37 @@ where
     | [] => []
     | (k, v) :: rest =>
         (stripAnnotations k, stripAnnotations v) :: stripAnnotationsPairs rest
+
+/-! ## Propositional Twins: ValidDocument and ValidStream -/
+
+/--
+Propositional twin of `ValidDocument`. Flattens the structure into a
+conjunction so that `theorem`s mentioning it are visible to the
+doc-verification-bridge (which traces `Prop`-level names, not structure
+constructors classified as `computationalOperation`).
+
+A parsed document `doc` has a valid document witness when there exists
+a `ValidNode` grammar witness whose `toYamlValue` matches `doc.value`
+(modulo annotation stripping).
+-/
+def ValidDocumentProp (doc : YamlDocument) : Prop :=
+  ∃ node : ValidNode,
+    stripAnnotations (toYamlValue node) = stripAnnotations doc.value
+
+/--
+Propositional twin of `ValidStream`. Flattens the structure into a
+conjunction so that `theorem`s mentioning it are visible to the
+doc-verification-bridge.
+
+A parsed document array forms a valid stream when:
+1. There is at least one document.
+2. Every document has a `ValidNode` grammar witness.
+-/
+def ValidStreamProp (docs : Array YamlDocument) : Prop :=
+  docs.size > 0 ∧
+  ∀ i : Fin docs.size,
+    ∃ node : ValidNode,
+      stripAnnotations (toYamlValue node) = stripAnnotations docs[i].value
 
 /-! ## Scalar Scannability and Grammable Predicate
 
