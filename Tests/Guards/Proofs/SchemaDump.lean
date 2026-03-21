@@ -44,4 +44,17 @@ section SchemaDumpExtendedGuards
 
 end SchemaDumpExtendedGuards
 
+-- Option content round-trips (§5b)
+#guard contentRoundTrips (some () : Option Unit)
+#guard contentRoundTrips (none : Option String)
+#guard contentRoundTrips (some (42 : Nat) : Option Nat)
+#guard contentRoundTrips (some "hello" : Option String)
+
+-- Typed round-trips
+#guard contentRoundTrips "abc"
+#guard contentRoundTrips (0 : Int)
+#guard contentRoundTrips (1 : Nat)
+#guard contentRoundTrips (some true : Option Bool)
+#guard contentRoundTrips (some false : Option Bool)
+
 end Lean4Yaml.Proofs.SchemaDump

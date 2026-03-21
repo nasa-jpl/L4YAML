@@ -219,8 +219,9 @@ theorem resolveScalar_no_tag (content : String) :
 `YamlType` does not derive `DecidableEq` (due to `Float`), so concrete
 resolution correctness is verified via `#guard` (which uses `BEq`) rather
 than `native_decide` (which requires `Decidable`).
+
+Moved to `Tests/Guards/Proofs/SchemaResolution.lean`.
 -/
 
 
 end Lean4Yaml.Schema.Proofs
-

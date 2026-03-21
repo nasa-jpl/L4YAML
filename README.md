@@ -1,6 +1,6 @@
 # lean4-yaml-verified
 
-A **fully verified** YAML 1.2.2 parser in Lean 4 — 1,621 machine-checked theorems, 2,012 compile-time guards, **zero sorry, zero axiom, zero partial def**. Proofs that the parser conforms to the [YAML specification](https://yaml.org/spec/1.2.2/) and the [yaml-test-suite](https://github.com/yaml/yaml-test-suite).
+A **fully verified** YAML 1.2.2 parser in Lean 4 — 1,654 machine-checked theorems, 2,083 compile-time guards, **zero sorry, zero axiom, zero partial def**. Proofs that the parser conforms to the [YAML specification](https://yaml.org/spec/1.2.2/) and the [yaml-test-suite](https://github.com/yaml/yaml-test-suite).
 
 ## Architecture
 
@@ -21,7 +21,7 @@ Lean4Yaml/
 │   ├── Deriving.lean        # deriving FromYaml, ToYaml macro handlers
 │   ├── Dump.lean            # Schema↔Dump integration: dumpTyped, roundTripTyped
 │   └── Api.lean             # Convenience: parseAs, toYaml, parseTyped
-├── Proofs/                              # 1,626 theorems, 46 modules, ~32,000 lines
+├── Proofs/                              # 1,654 theorems, 47 modules, ~32,000 lines
 │   ├── Soundness.lean             # Parser produces only valid YAML
 │   ├── Completeness.lean          # Valid YAML parses successfully (DecidableEq + native_decide)
 │   ├── Composition.lean           # Scanner→TokenParser pipeline composition
@@ -50,8 +50,8 @@ Lean4Yaml/
 │   ├── ScannerScalar.lean         # Scanner scalar proofs
 │   ├── ScannerSimpleKey.lean      # Scanner simple key proofs
 │   ├── ScannerWhitespace.lean     # Scanner whitespace proofs
-│   ├── SchemaResolution.lean      # Schema resolution proofs (35 theorems + 31 guards)
-│   ├── SchemaDump.lean            # Schema↔Dump proofs (40 theorems + 24 guards)
+│   ├── SchemaResolution.lean      # Schema resolution proofs (35 theorems)
+│   ├── SchemaDump.lean            # Schema↔Dump proofs (40 theorems)
 │   ├── DumpRoundTrip.lean         # Dump round-trip proofs
 │   ├── CommentProperties.lean     # Comment handling proofs
 │   ├── CommentRoundTrip.lean      # Comment round-trip proofs
@@ -115,7 +115,7 @@ Verification uses a deliberate 3-layer approach:
 
 1. **Internal runtime tests** (1041 tests across 14 suites + 11 diagnostic + 132 spec examples) — hand-written Lean tests validating parser properties. Every `theorem` target starts life as a runtime `check` test. These are _separate_ from the yaml-test-suite's 406 external test cases. Additionally, 132 examples extracted from the YAML 1.2.2 specification (§2–§10) are parsed as an extra conformance layer — the tokenized pipeline (`Scanner.lean` → `TokenParser.lean`) achieves 132/132 (100%).
 2. **Formal proofs** (`theorem`/`lemma` in `Proofs/*.lean`) — machine-checked guarantees. Layered by dependency: pure functions first, then scanner invariants, then pipeline composition.
-3. **Compile-time guards** (`#guard`) — 2,012 total across all modules (72 in `Lean4Yaml/` + 1,940 in `Tests/`, including 362 auto-generated from yaml-test-suite in `Tests/Guards/Proofs/SuiteGuards/*.lean`). `#guard` kernel evaluation works for all functions (all `def`, zero `partial def`). Any parser regression breaks the build.
+3. **Compile-time guards** (`#guard`) — 2,083 total across all modules (143 in `Lean4Yaml/` + 1,940 in `Tests/`, including 362 auto-generated from yaml-test-suite in `Tests/Guards/Proofs/SuiteGuards/*.lean`). `#guard` kernel evaluation works for all functions (all `def`, zero `partial def`). Any parser regression breaks the build.
 
 The runtime tests serve as a proof roadmap: each `setCategory`/`check` group maps to a `theorem` target. When a proof is completed, the corresponding tests become redundant (but are kept as regression guards).
 
@@ -304,9 +304,38 @@ Prop twins for specification structures (doc-verification-bridge visibility). Th
 | `parseYaml_implies_valid_stream` | `parseYaml ok ∧ nonempty → ValidStreamProp docs` |
 | `parseStream_respects_grammar_unconditional` | `scanFiltered ok ∧ parseStream ok → ∀ doc, ∃ ValidNode` |
 
-#### Version 0.2.5
+#### Version 0.2.5 (completed 2026-03-20)
 
-Schema round-trip composition (Phase 7.5). Prove that `resolve ∘ toYamlType` and `toYaml ∘ fromYaml` round-trip correctly for all schema types, completing the verified schema layer.
+Schema round-trip composition (Phase 7.5). Proves that `resolve ∘ toYaml` and `fromYaml? ∘ toYaml` round-trip correctly for all schema types, completing the verified schema layer.
+
+**Scope:**
+
+| # | Item | Status |
+|---|------|--------|
+| 1 | `resolve ∘ toYaml` primitive correctness (Bool generic, Unit, concrete Int/Nat) | ✅ |
+| 2 | `resolve ∘ toYaml` collection structure (Array, List, Option) | ✅ |
+| 3 | `fromYamlType?` inversion lemmas (Bool, Unit, Int, String) | ✅ |
+| 4 | `fromYaml? ∘ toYaml` round-trip (Bool generic, Unit, Int, String, Option) | ✅ |
+| 5 | String schema-safety precondition (`isNull`/`isBool`/`isInt`/`isFloat` guards) | ✅ |
+| 6 | Int/Nat round-trip with `isInt` precondition + concrete instances via `native_decide` | ✅ |
+| 7 | `#guard` compile-time checks (35 composition + 41 resolution + 28 dump) → `Tests/Guards/` | ✅ |
+
+**New file: `Proofs/SchemaComposition.lean` (260 lines, 28 theorems; guards in `Tests/Guards/`)**
+
+**New theorems:**
+
+| Theorem | Statement |
+|---------|-----------|
+| `resolve_toYaml_bool` | `resolve (toYaml b) = .bool b` (generic) |
+| `resolve_toYaml_unit` | `resolve (toYaml ()) = .null` |
+| `resolve_toYaml_str_safe` | `¬null ∧ ¬bool ∧ ¬int ∧ ¬float → resolve (toYaml s) = .str s` |
+| `resolve_toYaml_int` | `isInt (toString n) = some n → resolve (toYaml n) = .int n` |
+| `resolve_toYaml_nat` | `isInt (toString n) = some ↑n → resolve (toYaml n) = .int ↑n` |
+| `fromYaml_toYaml_bool` | `fromYaml? (toYaml b) = .ok b` (generic) |
+| `fromYaml_toYaml_unit` | `fromYaml? (toYaml ()) = .ok ()` |
+| `fromYaml_toYaml_str_safe` | `schema-safe s → fromYaml? (toYaml s) = .ok s` |
+| `fromYaml_toYaml_int` | `isInt (toString n) = some n → fromYaml? (toYaml n) = .ok n` |
+| `fromYaml_toYaml_option_none` | `fromYaml? (toYaml none) = .ok none` |
 
 #### Version 0.2.6
 
@@ -2195,8 +2224,8 @@ Ported and adapted the schema layer from lean4-yaml (2026-02-24). 8 new files im
 | `Schema/Deriving.lean` | 267 | `deriving FromYaml, ToYaml` macro handlers. Auto-detects `Option α` fields via projection type inspection (`isOptionField`). Supports both structs (field-by-field serialization) and enums (string-based matching). Registers handlers via `registerDerivingHandler` |
 | `Schema/Api.lean` | 48 | Convenience API: `parseAs α s` (parse + `FromYaml`), `toYaml value` (Lean → `YamlValue`), `parseTyped s` (parse + `resolve`) |
 | `Schema/Dump.lean` | 290 | Schema↔Dump integration: `dumpTyped`, `dumpAs`, `dumpTypedDocument`, `dumpTypedDocuments`, `roundTripTyped`, `contentRoundTrips`, `roundTripDiagnostics`, config helpers. 49 `#guard` checks |
-| `Proofs/SchemaResolution.lean` | 267 | **35 theorems + 34 `#guard` checks** across 5 sections (see below) |
-| `Proofs/SchemaDump.lean` | 311 | **40 theorems + 22 `#guard` checks** — serialization output, content round-trip, typed round-trip, config variations |
+| `Proofs/SchemaResolution.lean` | 227 | **35 theorems** across 4 sections (see below); `#guard` checks in `Tests/Guards/` |
+| `Proofs/SchemaDump.lean` | 277 | **40 theorems** — serialization output, content round-trip, typed round-trip, config variations; `#guard` checks in `Tests/Guards/` |
 
 **Proof inventory (75 theorems):**
 
@@ -2206,7 +2235,7 @@ Ported and adapted the schema layer from lean4-yaml (2026-02-24). 8 new files im
 | §2 `resolveImplicit` properties | 4 | `resolveImplicit_complete` (exhaustive coverage), `resolveImplicit_null_precedence` (null wins), concrete: `resolveImplicit_null`, `resolveImplicit_true` |
 | §3 `resolve` structural preservation | 5 | `resolve_sequence_is_seq`, `resolve_mapping_is_map`, `resolveScalar_not_seq`, `resolveScalar_not_map`, `resolve_scalar_is_leaf` |
 | §4 Explicit tag dispatch | 3 | `resolveScalar_str_tag`, `resolveScalar_null_tag`, `resolveScalar_no_tag` — tag overrides implicit resolution |
-| §5 Compile-time checks | 34 `#guard` | Null/bool/int/float/str resolution, explicit tag override, `resolve` on `YamlValue` nodes |
+| §5 Compile-time checks | 41 `#guard` | Moved to `Tests/Guards/Proofs/SchemaResolution.lean` |
 | YAML 1.2.2 `yes`≠bool | 1 | `isBool_yes : isBool "yes" = none` — confirms 1.1→1.2.2 breaking change |
 | **SchemaDump §1** Serialization output | 11 | `dumpTyped_true`, `dumpTyped_nat_42`, `dumpTyped_int_neg7`, etc. — concrete output correctness |
 | **SchemaDump §3** Content round-trip | 20 | `contentRoundTrips_true`, `contentRoundTrips_array_strings`, etc. — dump→parse→contentEq for all ToYaml instances |
@@ -6003,7 +6032,7 @@ This avoids the sorry warning while being transparent about the proof gap. The a
 
 Zero unexpected passes remaining. **H7TQ** (extra words after `%YAML` version directive) was previously labeled unfixable due to conflict with ZYU8. Both are now fixed: `setValidationError` rejects extra content after `%YAML` version per §6.8 [82]+[86], and ZYU8 variant 3 (`%YAML 1.1 1.2`) is corrected to `fail: true` in a yaml-test-suite fork (the YAML 1.2.2 grammar only allows `s-l-comments` after `ns-yaml-version`). CQ3W (unclosed double-quote) was previously an UP but is now fixed: adding `setValidationError "unterminated double-quoted scalar"` to the fuel-exhaustion case of `collectChars` ensures both kernel and compiled code consistently reject unclosed quoted scalars. Error stage: 74/74 (100%). Flow stage: 46/46 (100%). Document stage: 17/24 (71%). Block stage improved from 83% to 91% through targeted validation. The 52 skipped tests are YAML 1.3 features outside YAML 1.2.2 scope (the SuiteRunner `emit` field fix eliminated 10 phantom variants, bringing total from 416 to 406).
 
-**Internal test suites: 940/940 (100%) across 12 suites** (hand-written Lean tests; separate from the yaml-test-suite cases above). Plus **2,012 compile-time `#guard` checks** (1,654 hand-written + 358 yaml-test-suite auto-generated).
+**Internal test suites: 940/940 (100%) across 12 suites** (hand-written Lean tests; separate from the yaml-test-suite cases above). Plus **2,083 compile-time `#guard` checks** (1,725 hand-written + 358 yaml-test-suite auto-generated).
 
 ### What's Implemented vs YAML 1.2.2 Spec
 
