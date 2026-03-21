@@ -1,4 +1,4 @@
-=== Specexamples ===
+=== Spec Examples ===
 === YAML 1.2.2 Spec Examples ===
 
 --- §2 Spec Examples ---

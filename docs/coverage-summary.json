@@ -1,12 +1,12 @@
 {
-  "date": "2026-03-20T21:20:43-0700",
+  "date": "2026-03-20T21:40:37-0700",
   "overall": {
     "applicable": 358,
-    "correct": 355,
-    "correctRate": 99.1,
+    "correct": 358,
+    "correctRate": 100,
     "expectedFail": 95,
-    "failed": 3,
-    "passed": 260,
+    "failed": 0,
+    "passed": 263,
     "skipped": 48,
     "timeout": 0,
     "total": 406,
@@ -63,11 +63,11 @@
     },
     "flow": {
       "applicable": 46,
-      "correct": 43,
-      "correctRate": 93.4,
+      "correct": 46,
+      "correctRate": 100,
       "expectedFail": 3,
-      "failed": 3,
-      "passed": 40,
+      "failed": 0,
+      "passed": 43,
       "skipped": 0,
       "timeout": 0,
       "total": 46,
@@ -406,10 +406,9 @@
       "stage": "advanced"
     },
     {
-      "error": "parse error: expected '}' but reached end of tokens",
       "id": "58MP",
       "name": "Flow mapping edge cases",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "flow"
     },
     {
@@ -455,10 +454,9 @@
       "stage": "block"
     },
     {
-      "error": "parse error: expected '}' but reached end of tokens",
       "id": "5T43",
       "name": "Colon at the beginning of adjacent flow scalar",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "flow"
     },
     {
@@ -1128,10 +1126,9 @@
       "stage": "block"
     },
     {
-      "error": "parse error: expected ']' but reached end of tokens",
       "id": "DBG4",
       "name": "Spec Example 7.10. Plain Characters",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "flow"
     },
     {
@@ -4473,9 +4470,9 @@
         "total": 29
       },
       {
-        "allPass": false,
+        "allPass": true,
         "label": "YAML 1.2.2 Spec Examples",
-        "passed": 131,
+        "passed": 132,
         "tests": [
           {
             "category": "§2 Spec Examples",
@@ -4839,9 +4836,8 @@
           },
           {
             "category": "§7 Spec Examples",
-            "error": "expected ']' but reached end of tokens",
             "name": "Example example-7.10",
-            "outcome": "fail"
+            "outcome": "pass"
           },
           {
             "category": "§7 Spec Examples",
@@ -5490,9 +5486,9 @@
         "total": 68
       },
       {
-        "allPass": false,
+        "allPass": true,
         "label": "Scanner & TokenParser Tests (Phase 9)",
-        "passed": 31,
+        "passed": 32,
         "tests": [
           {
             "category": "Scanner basics",
@@ -5622,7 +5618,7 @@
           {
             "category": "Anchors and aliases",
             "name": "alias scan",
-            "outcome": "fail"
+            "outcome": "pass"
           },
           {
             "category": "Phase 9 regression: b: x: y",
@@ -5658,9 +5654,9 @@
         "total": 32
       },
       {
-        "allPass": false,
+        "allPass": true,
         "label": "YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline)",
-        "passed": 131,
+        "passed": 132,
         "tests": [
           {
             "category": "§2 Scanner Spec Examples",
@@ -6024,9 +6020,8 @@
           },
           {
             "category": "§7 Scanner Spec Examples",
-            "error": "expected ']' but reached end of tokens",
             "name": "Example example-7.10",
-            "outcome": "fail"
+            "outcome": "pass"
           },
           {
             "category": "§7 Scanner Spec Examples",
@@ -6370,7 +6365,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 747,
+    "totalPassed": 750,
     "totalTests": 750
   }
 }
