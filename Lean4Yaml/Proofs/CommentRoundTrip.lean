@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml.Emitter
 import Lean4Yaml.TokenParser
+import Lean4Yaml.Dump
 
 /-!
 # Comment Round-Trip Proofs (Phase G6)
@@ -157,3 +158,109 @@ theorem comment_roundtrip_sequence :
   native_decide
 
 end Lean4Yaml.Proofs.CommentRoundTrip
+
+namespace Lean4Yaml.Proofs.CommentRoundTrip.Classification
+
+open Lean4Yaml
+open Lean4Yaml.Emit
+open Lean4Yaml.TokenParser
+
+/-!
+## §4: Comment Position Classification (v0.2.7)
+
+Concrete proofs that `classifyCommentPosition` correctly assigns
+`.inline`, `.before`, and `.after` based on source-line relationships
+between comments and node positions.
+-/
+
+/-- A comment on the same line as a node start is classified `.inline`. -/
+theorem classify_inline_same_line :
+    classifyCommentPosition ⟨10, 1, 5⟩
+      #[(#[], ⟨0, 1, 0⟩, ⟨20, 5, 0⟩)] = .inline := by native_decide
+
+/-- A comment on a line before any node is classified `.before`. -/
+theorem classify_before_any_node :
+    classifyCommentPosition ⟨0, 0, 0⟩
+      #[(#[], ⟨5, 1, 0⟩, ⟨20, 5, 0⟩)] = .before := by native_decide
+
+/-- A comment on a line after all nodes is classified `.after`. -/
+theorem classify_after_all_nodes :
+    classifyCommentPosition ⟨25, 6, 0⟩
+      #[(#[], ⟨5, 1, 0⟩, ⟨20, 5, 0⟩)] = .after := by native_decide
+
+/-- When there are no nodes, a comment is classified `.after` (fallback). -/
+theorem classify_no_nodes_fallback :
+    classifyCommentPosition ⟨5, 1, 0⟩ #[] = .after := by native_decide
+
+/-- With multiple nodes, a comment on one node's line is `.inline`. -/
+theorem classify_inline_multi_node :
+    classifyCommentPosition ⟨15, 3, 10⟩
+      #[(#[.index 0], ⟨5, 1, 0⟩, ⟨10, 2, 0⟩),
+        (#[.index 1], ⟨12, 3, 0⟩, ⟨20, 4, 0⟩)] = .inline := by native_decide
+
+/-- A comment between two nodes (different lines from both) is `.before`. -/
+theorem classify_between_nodes :
+    classifyCommentPosition ⟨11, 2, 5⟩
+      #[(#[.index 0], ⟨5, 1, 0⟩, ⟨10, 1, 5⟩),
+        (#[.index 1], ⟨15, 3, 0⟩, ⟨20, 4, 0⟩)] = .before := by native_decide
+
+/-!
+## §5: Comment-Aware Dump Structural Properties (v0.2.7)
+
+Concrete proofs for `dumpCommentLine`, `dumpCommentsOfPosition`, and
+`dumpDocumentWithComments` from `Dump.lean`.
+-/
+
+open Lean4Yaml.Dump
+
+/-- `dumpCommentLine` prepends `#` to the comment text. -/
+theorem dumpCommentLine_structure :
+    dumpCommentLine { text := " test comment", position := .inline } =
+    "# test comment" := by native_decide
+
+/-- `dumpCommentsOfPosition` on an empty array returns `""`. -/
+theorem dumpCommentsOfPosition_empty :
+    dumpCommentsOfPosition #[] .before = "" := by native_decide
+
+/-- `dumpDocumentWithComments` with no comments equals `dumpDocument`. -/
+theorem dumpDocumentWithComments_no_comments :
+    dumpDocumentWithComments { value := .plainScalar "hello" } =
+    dumpDocument { value := .plainScalar "hello" } := by native_decide
+
+/-- Before comment is emitted before the value. -/
+theorem dumpDocumentWithComments_before :
+    dumpDocumentWithComments
+      { value := .plainScalar "hello",
+        comments := #[(⟨0, 0, 0⟩, ⟨" header", .before⟩)] } =
+    "# header\nhello" := by native_decide
+
+/-- After comment is emitted after the value. -/
+theorem dumpDocumentWithComments_after :
+    dumpDocumentWithComments
+      { value := .plainScalar "hello",
+        comments := #[(⟨20, 5, 0⟩, ⟨" footer", .after⟩)] } =
+    "hello\n# footer\n" := by native_decide
+
+/-- Inline comment is appended to the first content line. -/
+theorem dumpDocumentWithComments_inline :
+    dumpDocumentWithComments
+      { value := .plainScalar "hello",
+        comments := #[(⟨5, 1, 5⟩, ⟨" note", .inline⟩)] } =
+    "hello # note" := by native_decide
+
+/-- Mixed before + inline + after produces expected output. -/
+theorem dumpDocumentWithComments_mixed :
+    dumpDocumentWithComments
+      { value := .plainScalar "hello",
+        comments := #[(⟨0, 0, 0⟩, ⟨" top", .before⟩),
+                      (⟨5, 1, 5⟩, ⟨" mid", .inline⟩),
+                      (⟨20, 5, 0⟩, ⟨" end", .after⟩)] } =
+    "# top\nhello # mid\n# end\n" := by native_decide
+
+/-- `dumpDocumentsWithComments` on a single document equals single-doc dump. -/
+theorem dumpDocumentsWithComments_single :
+    dumpDocumentsWithComments #[{ value := .plainScalar "hello" }] =
+    dumpDocumentWithComments { value := .plainScalar "hello" } := by
+  native_decide
+
+end Lean4Yaml.Proofs.CommentRoundTrip.Classification

@@ -510,6 +510,90 @@ def dumpDocuments (docs : Array YamlDocument) (cfg : DumpConfig := {}) : String 
 
 end Lean4Yaml.Dump
 
+/-! ## Comment-Aware Dump
+
+Extension of the style-aware dump that preserves comments from the
+`YamlDocument.comments` side-channel. Comments are emitted at their
+classified position:
+
+- `.before` → `# text\n` lines before the associated content
+- `.inline` → ` # text` appended to the end of the value's first line
+- `.after`  → `# text\n` lines after the associated content
+
+For document-level output, before-comments appear before `---` (or the value),
+inline comments follow the first content line, and after-comments trail the value.
+-/
+
+namespace Lean4Yaml.Dump
+
+open Lean4Yaml
+
+/-- Emit a single comment as a `# text` line (no trailing newline). -/
+def dumpCommentLine (c : Comment) : String :=
+  "#" ++ c.text
+
+/-- Emit comment lines with a given position filter.
+    Returns `""` when no comments match. -/
+def dumpCommentsOfPosition (comments : Array (YamlPos × Comment))
+    (pos : CommentPosition) : String :=
+  let matching := comments.filter fun (_, c) => c.position == pos
+  if matching.isEmpty then ""
+  else
+    let lines := matching.toList.map fun (_, c) => dumpCommentLine c
+    String.intercalate "\n" lines ++ "\n"
+
+/--
+Dump a YAML document with comments preserved.
+
+Like `dumpDocument` but integrates comments from `doc.comments`:
+- **Before** comments appear before the value (or directives + `---`)
+- **Inline** comments are appended to the first content line
+- **After** comments appear after the value body
+
+When the document has no comments, the output is identical to `dumpDocument`.
+-/
+def dumpDocumentWithComments (doc : YamlDocument) (cfg : DumpConfig := {}) : String :=
+  if doc.comments.isEmpty then
+    dumpDocument doc cfg
+  else
+    let beforeStr := dumpCommentsOfPosition doc.comments .before
+    let afterStr := dumpCommentsOfPosition doc.comments .after
+    let inlineComments := doc.comments.filter fun (_, c) => c.position == .inline
+    let body := dump doc.value cfg
+    -- Append inline comments to the first line of the body
+    let bodyWithInline :=
+      if inlineComments.isEmpty then body
+      else
+        let inlineSuffix := String.intercalate " " <|
+          inlineComments.toList.map fun (_, c) => " " ++ dumpCommentLine c
+        -- Find the first newline and insert inline comment before it
+        match body.splitOn "\n" with
+        | [] => body ++ inlineSuffix
+        | [single] => single ++ inlineSuffix
+        | first :: rest => first ++ inlineSuffix ++ "\n" ++ String.intercalate "\n" rest
+    if doc.directives.isEmpty then
+      beforeStr ++ bodyWithInline ++ (if afterStr.isEmpty then "" else "\n" ++ afterStr)
+    else
+      let dirs := doc.directives.toList.map dumpDirective
+      beforeStr ++ String.intercalate "\n" dirs ++ "\n---\n" ++ bodyWithInline ++
+        (if afterStr.isEmpty then "" else "\n" ++ afterStr)
+
+/--
+Dump multiple YAML documents with comments preserved.
+
+Like `dumpDocuments` but uses `dumpDocumentWithComments` for each document.
+-/
+def dumpDocumentsWithComments (docs : Array YamlDocument) (cfg : DumpConfig := {}) : String :=
+  match docs.toList with
+  | [] => ""
+  | [doc] => dumpDocumentWithComments doc cfg
+  | doc :: rest =>
+    let first := dumpDocumentWithComments doc cfg
+    let others := rest.map (fun d => "---\n" ++ dumpDocumentWithComments d cfg)
+    first ++ "\n" ++ String.intercalate "\n" others ++ "\n..."
+
+end Lean4Yaml.Dump
+
 /-! ## Compile-Time Tests -/
 
 section DumpGuards
@@ -598,4 +682,3 @@ open Lean4Yaml Lean4Yaml.Dump
 
 
 end DumpGuards
-
