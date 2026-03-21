@@ -1,3 +1,4 @@
+=== Scanner Spec Examples ===
 === YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline) ===
 
 --- §2 Scanner Spec Examples ---

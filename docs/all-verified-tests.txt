@@ -1,4 +1,5 @@
 === Unit Tests ===
+=== Unit Tests ===
 
 --- ScalarStyle ---
   ✓ All 5 scalar styles defined
@@ -20,6 +21,7 @@
 
 === Results: 10/10 passed ===
 === Demo ===
+=== Demo ===
 
 --- Parser examples ---
   ✓ Plain scalar
@@ -31,6 +33,7 @@
   ✓ Multi-document stream
 
 === Results: 7/7 passed ===
+=== Explicit Key Tests ===
 === Explicit Key Tests ===
 
 --- Basic explicit keys ---
@@ -120,6 +123,7 @@
   ✓ {:} null value
 
 === Results: 66/66 passed ===
+=== Flow Completeness Tests ===
 === Flow Completeness Tests ===
 
 --- Implicit single-pair entries ---
@@ -225,6 +229,7 @@
   ✓ CFD4 null key
 
 === Results: 88/88 passed ===
+=== Validation Tests ===
 === Structural Validation Tests ===
 
 --- Indentation Properties ---
@@ -322,6 +327,7 @@
   ✓ reject: colon-value on next line after quoted key (ZXT5)
 
 === Results: 84/84 passed ===
+=== Dump Round-Trip Tests ===
 === Dump Round-Trip Tests ===
 
 --- Structural properties ---
@@ -437,6 +443,7 @@
   ✓ dumpDocuments three
 
 === Results: 102/102 passed ===
+=== Raw Parse Tests ===
 === Raw Parse / Compose Tests ===
 
 --- Raw parse preserves aliases ---
@@ -485,6 +492,7 @@
   ✓ doc1 anchor 'a' = world
 
 === Results: 29/29 passed ===
+=== Spec Examples ===
 === YAML 1.2.2 Spec Examples ===
 
 --- §2 Spec Examples ---
@@ -634,6 +642,7 @@
   ✓ Example example-10.9
 
 === Results: 132/132 passed ===
+=== Schema Dump Tests ===
 === Schema ↔ Dump Integration ===
 
 --- Primitive serialization ---
@@ -719,6 +728,7 @@
   ✓ indent 4 array round-trips
 
 === Results: 68/68 passed ===
+=== Scanner Tests ===
 === Scanner & TokenParser Tests (Phase 9) ===
 
 --- Scanner basics ---
@@ -774,6 +784,7 @@
   ✓ unicode \u0041
 
 === Results: 32/32 passed ===
+=== Scanner Spec Examples ===
 === YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline) ===
 
 --- §2 Scanner Spec Examples ---
