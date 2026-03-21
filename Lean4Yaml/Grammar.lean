@@ -237,14 +237,6 @@ to tie the grammar specification to the actual YAML production rules.
 
 -- `hasAdjacentChars` and `hasAdjacentChars_iff` are re-exported from CharPredicates above.
 
-/-- Backward-compatible alias for `noColonSpaceProp` (YAML 1.2.2 §7.3.3 [127]). -/
-abbrev noColonSpace := noColonSpaceProp
-
-/-- Backward-compatible alias for `noSpaceHashProp` (YAML 1.2.2 §7.3.3 [127]). -/
-abbrev noSpaceHash := noSpaceHashProp
-
-/-- Backward-compatible alias for `noFlowIndicatorsProp` (YAML 1.2.2 §7.3.3 [126]). -/
-abbrev noFlowIndicators := noFlowIndicatorsProp
 
 /-! ## Node Grammar
 
@@ -268,13 +260,13 @@ inductive ValidNode where
       [123] ns-plain-first, [127] no `: ` or ` #`. -/
   | plainScalarBlock (content : String) (nonempty : content.length > 0)
       (firstValid : validPlainFirstProp content false)
-      (noCS : noColonSpace content) (noSH : noSpaceHash content)
+      (noCS : noColonSpaceProp content) (noSH : noSpaceHashProp content)
   /-- [128] ns-plain(n,FLOW-OUT/FLOW-IN) — Plain scalar in flow context.
       Additionally [126] no flow-indicator characters. -/
   | plainScalarFlow (content : String) (nonempty : content.length > 0)
       (firstValid : validPlainFirstProp content true)
-      (noCS : noColonSpace content) (noSH : noSpaceHash content)
-      (noFlow : noFlowIndicators content)
+      (noCS : noColonSpaceProp content) (noSH : noSpaceHashProp content)
+      (noFlow : noFlowIndicatorsProp content)
   /-- [118] c-single-quoted(n,c) (§7.3.2) — Single-quoted scalar -/
   | singleQuoted (content : String)
   /-- [107] c-double-quoted(n,c) (§7.3.1) — Double-quoted scalar -/
@@ -394,14 +386,14 @@ This bridges the specification (grammar) and the implementation (YamlValue AST).
 inductive NodeToValue : ValidNode → YamlValue → Prop where
   | plainScalarBlock (content : String) (h : content.length > 0)
       (hfirst : validPlainFirstProp content false)
-      (hnoCS : noColonSpace content) (hnoSH : noSpaceHash content) :
+      (hnoCS : noColonSpaceProp content) (hnoSH : noSpaceHashProp content) :
       NodeToValue
         (.plainScalarBlock content h hfirst hnoCS hnoSH)
         (.scalar ⟨content, .plain, none, none, none⟩)
   | plainScalarFlow (content : String) (h : content.length > 0)
       (hfirst : validPlainFirstProp content true)
-      (hnoCS : noColonSpace content) (hnoSH : noSpaceHash content)
-      (hnoFlow : noFlowIndicators content) :
+      (hnoCS : noColonSpaceProp content) (hnoSH : noSpaceHashProp content)
+      (hnoFlow : noFlowIndicatorsProp content) :
       NodeToValue
         (.plainScalarFlow content h hfirst hnoCS hnoSH hnoFlow)
         (.scalar ⟨content, .plain, none, none, none⟩)
@@ -587,8 +579,8 @@ A scalar satisfies `ScalarScannable s inFlow` when:
 -/
 def ScalarScannable (s : Scalar) (inFlow : Bool) : Prop :=
   s.style = .plain → s.content.length > 0 →
-    validPlainFirstProp s.content inFlow ∧ noColonSpace s.content ∧ noSpaceHash s.content
-    ∧ (inFlow = true → noFlowIndicators s.content)
+    validPlainFirstProp s.content inFlow ∧ noColonSpaceProp s.content ∧ noSpaceHashProp s.content
+    ∧ (inFlow = true → noFlowIndicatorsProp s.content)
 
 /--
 A `YamlValue` is **grammable** if:
