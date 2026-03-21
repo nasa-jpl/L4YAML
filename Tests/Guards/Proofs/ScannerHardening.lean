@@ -218,4 +218,54 @@ open Lean4Yaml.TokenParser
     | none => false
   | .error _ => false
 
+-- §8.2.2 [197]: misindented `:` after explicit key must be rejected.
+-- `? a\n : b` has `:` at col 1 when mapping indent is 0.
+#guard match parseYamlSingle "? a\n : b" with
+  | .ok _ => false
+  | .error _ => true
+
+-- Legal version: `:` at col 0 (matching mapping indent)
+#guard match parseYamlSingle "? a\n: b" with | .ok v => v.isMapping | .error _ => false
+
+-- Deeper nesting: `? ? a\n  : inner\n: outer` — both `:` at correct indents
+#guard match parseYamlSingle "? ? a\n  : inner\n: outer" with
+  | .ok v => v.isMapping | .error _ => false
+
+/-! ## §22: Same-line Explicit Value Rejection — §8.2.2 [197] (v0.2.11) -/
+
+-- `? : x` — `:` on same line as `?` with no simple key → reject
+#guard match parseYamlSingle "? : x" with | .ok _ => false | .error _ => true
+
+-- `? :` — same-line with empty value → reject
+#guard match parseYamlSingle "? :" with | .ok _ => false | .error _ => true
+
+-- `? ? : b` — nested explicit key, same-line `:` → reject
+#guard match parseYamlSingle "? ? : b" with | .ok _ => false | .error _ => true
+
+-- `? key : val` — `:` follows simple key on `?` line → accept
+#guard match parseYamlSingle "? key : val" with | .ok v => v.isMapping | .error _ => false
+
+-- `? key\n: val` — `:` on next line at correct indent → accept
+#guard match parseYamlSingle "? key\n: val" with | .ok v => v.isMapping | .error _ => false
+
+/-! ## §23: Block→Flow Underindent Rejection — §8.1 [187] (v0.2.11) -/
+
+-- `a:\n{b: c}` — flow at col 0 as value of mapping at indent 0 → reject
+#guard match parseYamlSingle "a:\n{b: c}" with | .ok _ => false | .error _ => true
+
+-- `a:\n[1, 2]` — sequence at col 0 under mapping at indent 0 → reject
+#guard match parseYamlSingle "a:\n[1, 2]" with | .ok _ => false | .error _ => true
+
+-- `a:\n {b: c}` — flow at col 1 (indent+1) → accept
+#guard match parseYamlSingle "a:\n {b: c}" with | .ok v => v.isMapping | .error _ => false
+
+-- `a:\n [1, 2]` — sequence at col 1 (indent+1) → accept
+#guard match parseYamlSingle "a:\n [1, 2]" with | .ok v => v.isMapping | .error _ => false
+
+-- Root `{a: 1}` — no enclosing block (indent = -1) → accept
+#guard match parseYamlSingle "{a: 1}" with | .ok v => v.isMapping | .error _ => false
+
+-- Root `[1, 2]` — no enclosing block → accept
+#guard match parseYamlSingle "[1, 2]" with | .ok v => v.isSequence | .error _ => false
+
 end Tests.Guards.ScannerHardening

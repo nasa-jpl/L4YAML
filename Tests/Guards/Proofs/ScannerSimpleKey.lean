@@ -41,10 +41,16 @@ private def flowState : ScannerState :=
 #guard (saveSimpleKey flowState).offset ≤
        (saveSimpleKey flowState).inputEnd
 
--- saveSimpleKey with explicitKeyLine == some line → identity (explicit key gate)
+-- saveSimpleKey with explicitKeyLine == some line in BLOCK context → saves
+-- (compact mapping on ?-line is allowed; guard only applies in flow context)
 private def explicitKeyState : ScannerState :=
   { ScannerState.mk' "? key" with explicitKeyLine := some 0 }
-#guard (saveSimpleKey explicitKeyState).simpleKey.possible == false
+#guard (saveSimpleKey explicitKeyState).simpleKey.possible == true
+
+-- saveSimpleKey with explicitKeyLine == some line in FLOW context → identity
+private def explicitKeyFlowState : ScannerState :=
+  { ScannerState.mk' "? key" with explicitKeyLine := some 0, flowStack := #[false], flowLevel := 1 }
+#guard (saveSimpleKey explicitKeyFlowState).simpleKey.possible == false
 
 -- saveSimpleKey preserves WellFormed with explicit key
 #guard (saveSimpleKey explicitKeyState).indents.size ≥ 1

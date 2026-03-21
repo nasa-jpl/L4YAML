@@ -1189,6 +1189,8 @@ theorem scanNextToken_preserves_PlainScalarsValid :
     have h_peek3 : (if s2.allowDirectives then
         { s2 with allowDirectives := false, documentEverStarted := true }
       else s2).peek? = some c := by split <;> exact h_peek2
+    -- Block→flow underindent check
+    split at h_ok <;> (try (simp at h_ok; done))
     split at h_ok <;> (try (simp at h_ok; done))
     split at h_ok
     · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
@@ -4008,10 +4010,9 @@ theorem scanValue_preserves_FlowContextPSV
             ((scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex]'h).val = .placeholder) ∧
           (∀ (h : (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size),
             ((scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex + 1]'h).val = .placeholder) := by
-        unfold scanValueClearKey
-        split
-        · intro h_poss; simp at h_poss
-        · exact h_ph
+        cases scanValueClearKey_identity_or_clear s with
+        | inl h_eq => rw [h_eq]; exact h_ph
+        | inr h_cl => intro h; rw [h_cl.1] at h; exact absurd h (by decide)
       have h_fpsv_prep := scanValuePrepare_preserves_FlowContextPSV
         (scanValueClearKey s) h_fpsv_ck h_ph_ck
       -- Step 2: FlowContextPSV_of_prefix_and_new for emit .value
@@ -4046,17 +4047,22 @@ theorem scanValue_preserves_FlowNestingInv
       -- s' = { advance(emit(scanValuePrepare(scanValueClearKey s)).value) with ... }
       -- Step 1: scanValueClearKey preserves FlowNestingInv
       have h_fni_ck : FlowNestingInv (scanValueClearKey s) := by
-        unfold FlowNestingInv at h_fni ⊢
-        rw [scanValueClearKey_preserves_tokens]; unfold scanValueClearKey; split <;> exact h_fni
+        unfold FlowNestingInv at h_fni ⊢; unfold scanValueClearKey
+        split
+        · dsimp only []; exact h_fni
+        · split
+          · split
+            · dsimp only []; exact h_fni
+            · exact h_fni
+          · exact h_fni
       have h_ph_ck : (scanValueClearKey s).simpleKey.possible = true →
           (∀ (h : (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size),
             ((scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex]'h).val = .placeholder) ∧
           (∀ (h : (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size),
             ((scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex + 1]'h).val = .placeholder) := by
-        unfold scanValueClearKey
-        split
-        · intro h_poss; simp at h_poss
-        · exact h_ph
+        cases scanValueClearKey_identity_or_clear s with
+        | inl h_eq => rw [h_eq]; exact h_ph
+        | inr h_cl => intro h; rw [h_cl.1] at h; exact absurd h (by decide)
       -- Step 2: scanValuePrepare preserves FlowNestingInv
       have h_fni_prep := scanValuePrepare_preserves_FlowNestingInv
         (scanValueClearKey s) h_fni_ck h_ph_ck
@@ -4832,6 +4838,8 @@ theorem scanNextToken_preserves_FlowInv
     have h_peek3 : (if s2.allowDirectives then
         { s2 with allowDirectives := false, documentEverStarted := true }
       else s2).peek? = some c := by split <;> exact h_peek2
+    -- Block→flow underindent check
+    split at h_ok <;> (try (simp at h_ok; done))
     split at h_ok <;> (try (simp at h_ok; done))
     split at h_ok
     · -- dispatchFlowIndicators

@@ -480,7 +480,26 @@ theorem scanKey_adds_one_token (s : ScannerState) (s' : ScannerState)
 so the token array is identical. -/
 theorem scanValueClearKey_preserves_tokens (s : ScannerState) :
     (scanValueClearKey s).tokens = s.tokens := by
-  unfold scanValueClearKey; split <;> rfl
+  unfold scanValueClearKey; split
+  · rfl
+  · split
+    · split <;> rfl
+    · rfl
+
+/-- `scanValueClearKey` either returns `s` unchanged or clears `simpleKey.possible`.
+    Used to transfer `SimpleKeyValid` through `scanValueClearKey`. -/
+theorem scanValueClearKey_identity_or_clear (s : ScannerState) :
+    (scanValueClearKey s = s) ∨
+    ((scanValueClearKey s).simpleKey.possible = false ∧
+     (scanValueClearKey s).tokens = s.tokens) := by
+  unfold scanValueClearKey
+  split
+  · right; exact ⟨rfl, rfl⟩
+  · split
+    · split
+      · right; exact ⟨rfl, rfl⟩
+      · left; rfl
+    · left; rfl
 
 /-- scanValuePrepare preserves or adds tokens.
 
@@ -2581,7 +2600,11 @@ theorem scanValue_preserves_prefix (s s' : ScannerState)
         unfold scanValueClearKey
         split
         · simp
-        · exact h_inv
+        · split
+          · split
+            · simp
+            · exact h_inv
+          · exact h_inv
       have h_prep := scanValuePrepare_preserves_prefix (scanValueClearKey s) n
         (by rw [h_ck]; exact h_n) h_inv' i h_bound
       have h_emit := emit_preserves_tokens_at (scanValuePrepare (scanValueClearKey s))
@@ -2623,10 +2646,9 @@ theorem scanValue_preserves_all_pos (s s' : ScannerState)
           (∀ (h2 : (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size),
             (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex + 1].pos =
               (scanValueClearKey s).simpleKey.pos) := by
-        unfold scanValueClearKey
-        split
-        · simp
-        · exact h_skv
+        cases scanValueClearKey_identity_or_clear s with
+        | inl h_eq => rw [h_eq]; exact h_skv
+        | inr h_cl => intro h_poss; rw [h_cl.1] at h_poss; contradiction
       have h_prep := scanValuePrepare_preserves_all_pos (scanValueClearKey s) h_skv' i (by rw [h_ck]; exact hi)
       have h_emit := emit_preserves_tokens_at (scanValuePrepare (scanValueClearKey s))
         YamlToken.value i (by have := scanValuePrepare_tokens_monotonic (scanValueClearKey s); rw [h_ck] at this; omega)
@@ -2719,6 +2741,8 @@ theorem scanNextToken_adds_tokens (s : ScannerState) (s' : ScannerState) :
       any_goals contradiction
       any_goals (simp at h)
       all_goals first
+        | contradiction
+        | (simp at h)
         | (have := ScanHelpers.dispatchStructural_tokens_mono _ _ _ (by assumption);
            simp_all <;> omega)
         | (have h_d := ScanHelpers.dispatchFlowIndicators_tokens_mono _ _ _ (by assumption);
@@ -4339,8 +4363,11 @@ theorem scanValue_preserves_simpleKeyStack (s : ScannerState) (s' : ScannerState
   simp only [Except.ok.injEq] at h; subst h
   simp [advance_preserves_simpleKeyStack, emit_preserves_simpleKeyStack,
         scanValuePrepare_preserves_simpleKeyStack]
-  unfold scanValueClearKey; split <;> rfl
-
+  unfold scanValueClearKey; split
+  · rfl
+  · split
+    · split <;> rfl
+    · rfl
 
 /-- scanBlockScalarSkipComment preserves simpleKeyStack. -/
 theorem scanBlockScalarSkipComment_preserves_simpleKeyStack (s : ScannerState) :
@@ -4759,6 +4786,8 @@ theorem scanNextToken_preserves_prefix (s : ScannerState) (s' : ScannerState)
       any_goals (simp at h_next)
       all_goals (try subst_vars)
       all_goals first
+        | contradiction
+        | (simp at h_next)
         | -- Structural dispatch
           (have h_d := ScanHelpers.dispatchStructural_preserves_prefix _ _ _ (by assumption) i (by omega);
            simp_all)
@@ -6855,7 +6884,11 @@ theorem scanValueClearKey_preserves_ScanInv (s : ScannerState)
     (h : ScanInv s) : ScanInv (scanValueClearKey s) := by
   unfold scanValueClearKey; split
   · exact field_update_preserves_ScanInv _ _ h rfl rfl
-  · exact h
+  · split
+    · split
+      · exact field_update_preserves_ScanInv _ _ h rfl rfl
+      · exact h
+    · exact h
 
 -- scanValue preserves ScanInv.
 -- Requires precondition on simple key validity (needed by scanValuePrepare).
@@ -7439,12 +7472,9 @@ theorem SimpleKeyValid_implies_scanValue_h_sk (s : ScannerState) (h_skv : Simple
       (∀ (h2 : (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size),
         (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex + 1].pos =
           (scanValueClearKey s).simpleKey.pos) := by
-  unfold scanValueClearKey
-  split
-  · -- cleared: possible = false
-    intro h_poss; simp at h_poss
-  · -- unchanged: exactly SimpleKeyValid s
-    exact h_skv
+  cases scanValueClearKey_identity_or_clear s with
+  | inl h_eq => rw [h_eq]; exact h_skv
+  | inr h_cl => intro h_poss; rw [h_cl.1] at h_poss; contradiction
 
 /-!
 ### SimpleKeyStackValid: validity of stacked simple keys
@@ -7982,6 +8012,8 @@ theorem scanNextToken_preserves_AllKeysValid :
     exact dispatchStructural_preserves_AllKeysValid s2 c _ (by assumption) h_akv2
   · -- structural Option: none → continue to flow/block/content
     have h_akv3 := allowDir_ite_preserves_AllKeysValid s2 h_akv2
+    -- Block→flow underindent check
+    split at h_ok <;> (try (simp at h_ok; done))
     -- Flow Except split
     split at h_ok <;> (try (simp at h_ok; done))
     -- Flow Option split (source order: some first, none second)
@@ -8062,6 +8094,8 @@ theorem scanNextToken_preserves_ScanInv :
   · -- structural none → continue to flow/block/content
     have h_inv3 := allowDir_ite_preserves_ScanInv s2 h_inv2
     have h_skv3 := allowDir_ite_preserves_SimpleKeyValid s2 h_skv2
+    -- Block→flow underindent check
+    split at h_ok <;> (try (simp at h_ok; done))
     -- Flow Except split
     split at h_ok <;> (try (simp at h_ok; done))
     -- Flow Option split (source order: some first)

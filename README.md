@@ -119,6 +119,51 @@ Verification uses a deliberate 3-layer approach:
 
 The runtime tests serve as a proof roadmap: each `setCategory`/`check` group maps to a `theorem` target. When a proof is completed, the corresponding tests become redundant (but are kept as regression guards).
 
+#### Asymmetric verification: soundness without strictness
+
+The three layers above verify the **positive direction** — if the parser accepts input, the output is a valid YAML structure:
+
+$$\text{parseYaml}(s) = \text{ok}(\mathit{docs}) \implies \exists\, n : \text{ValidNode},\; \text{NodeToValue}\; n\; \mathit{docs}$$
+
+This is **soundness**: accepted results are well-formed. All 1,769 theorems and the `ValidYaml`, `ValidTokenStream`, `ValidStream`, `ValidDocument`, `NodeToValue` witnesses flow in this direction.
+
+But the three layers do **not** verify the converse property:
+
+$$s \notin \mathcal{L}(\text{YAML 1.2.2}) \implies \text{parseYaml}(s) = \text{error}$$
+
+This is **strictness** (or rejection correctness): inputs outside the YAML 1.2.2 language must be rejected. Rejection correctness is tested empirically (yaml-test-suite, `#guard` checks, libyaml cross-validation) but not proved — and empirical tests have gaps. Indeed, differential testing against libyaml in v0.2.11 revealed that the parser accepts several inputs that violate the YAML 1.2.2 formal grammar (see v0.2.11 leniency audit).
+
+The root cause is structural: `Grammar.lean` formalizes the **YAML data model** (what valid documents, nodes, and token streams look like) but not the **YAML surface syntax** (which character sequences at which positions constitute valid input). The 205 YAML productions define a formal language over characters with rules like:
+
+- Production [63]: `s-indent(n)` = exactly n **space** characters (not tabs)
+- Production [197]: `l-block-map-explicit-value` = the `l-` prefix means line-start
+- Production [187]: `s-l+block-indented(n,c)` = content strictly more indented than n
+
+These are **input-string constraints**. But in `Grammar.lean`, the `Indented` predicate is a structural annotation on `ValidNode`, not a predicate on input character positions. No theorem connects the scanner's column-tracking logic to a formal specification of which columns are legal.
+
+The chain of trust:
+
+```
+YAML 1.2.2 English spec (ground truth, 205 productions)
+       ↓  manual formalization (data model only — not surface syntax)
+Grammar.lean (ValidNode, ValidTokenStream, ...)
+       ↓  proved (1,769 theorems)
+Scanner.lean + TokenParser.lean (implementation)
+       ↓  tested (2,124 guards, 869 yaml-test-suite)
+Rejection of invalid input
+```
+
+The proofs connect the implementation to `Grammar.lean`, but `Grammar.lean` captures only the output structure, not the input acceptance criteria. When the scanner accepts `? : b` (where `:` appears on the `?` line with no simple key), no theorem is violated — the output `{null: "b"}` is a valid `ValidNode.blockMap`. The defect is in *which inputs produce that output*, not the output itself.
+
+This asymmetry is common in verified parsers — soundness is an existential (construct one witness for the accepted result) while strictness is a universal (show all parse paths fail for every invalid input). The principled closure would be formalizing the YAML surface syntax:
+
+```lean
+def InYamlLanguage (s : String) : Prop := ...  -- 205 productions as a formal language
+theorem parse_strict : parseYaml s = .ok docs → InYamlLanguage s
+```
+
+In practice, fully formalizing 205 productions is a major undertaking. Version 0.2.11 introduces a **fourth layer** — systematic rejection testing — as the pragmatic complement: using the formal grammar structure to generate boundary-violation test cases that check rejection, even though rejection isn't proved. The generation is principled (grammar-directed, production-aware), the cross-validation is empirical (differential testing against libyaml), and the coverage is measured (production coverage analysis). This semi-formal bridge addresses the verification gap without requiring a full surface-syntax formalization.
+
 For more details, see [Proofs/README](./Lean4Yaml/Proofs/README.md).
 
 ## Key Design Decisions
@@ -397,7 +442,7 @@ Comment preservation (Phase 8). AST-level comment metadata for round-trip fideli
 - Compile-time guards: 2,024 total (43 new for comment round-trip)
 - Build: 342/342 jobs, 0 errors, 0 sorry, 0 warnings
 
-#### Version 0.2.8 (completed 2026-03-22)
+#### Version 0.2.8 (completed 2026-03-21)
 
 `%TAG` directive resolution (§6.8.2). Wire `%TAG` handle declarations into parser state and resolve `!handle!suffix` → expanded URI during parsing.
 
@@ -427,7 +472,7 @@ Comment preservation (Phase 8). AST-level comment metadata for round-trip fideli
 - Compile-time guards: 2,020 total (23 new for TAG resolution)
 - Build: 345/345 jobs, 0 errors, 0 sorry, 0 warnings
 
-#### Version 0.2.9 (completed 2026-03-27)
+#### Version 0.2.9 (completed 2026-03-21)
 
 End-to-end round-trip composition (Phase 7.5). Compose parser + dump + schema proofs to show that `dump→parse` preserves schema-level meaning.
 
@@ -456,7 +501,7 @@ End-to-end round-trip composition (Phase 7.5). Compose parser + dump + schema pr
 - Compile-time guards: 2,091 total (55 new for round-trip composition)
 - Build: 348/348 jobs, 0 errors, 0 sorry, 0 warnings
 
-#### Version 0.2.10
+#### Version 0.2.10 (completed 2026-03-21)
 
 Scanner hardening: systematic edge-case coverage for explicit key handling beyond the 5 fixes in v0.2.6.
 
@@ -486,12 +531,92 @@ Scanner hardening: systematic edge-case coverage for explicit key handling beyon
 - Compile-time guards: 2,124 total (+33 new in ScannerHardening.lean)
 - Build: 349/349 jobs, 0 errors, 0 sorry, 0 warnings
 
+
+#### Version 0.2.11
+
+Finding and fixing leniencies for 100% YAML 1.2.2 spec compliance. Differential testing against libyaml revealed that our parser accepts several inputs that violate the formal grammar. This version fixes all confirmed leniencies and builds systematic tooling to detect latent ones.
+
+**Part 1 — Fixing known leniencies**
+
+Leniency audit against libyaml identified four categories of non-compliant acceptance:
+
+| Category | Inputs | Spec violation | Root cause |
+|----------|--------|----------------|------------|
+| **A. Same-line explicit value** | `? : b`, `? :`, `? ? : b` | §8.2.2 [197]: `l-block-map-explicit-value` has `l-` prefix (line-start); `:` as explicit value must be on its own line with `s-indent(n)` | `scanValueValidate` §8.2.2 check only fires when `s.line != ekLine`; same-line `:` with no pending simple key bypasses it |
+| **B. Misindented explicit value** | `? a\n : b`, `? a\n   : b` | §8.2.2 [197]: `s-indent(n)` requires `:` at exactly the mapping's indent column | ✅ Fixed — `scanValueValidate` now checks `(s.col : Int) != s.currentIndent` when on different line from `?` |
+| **C. Tab handling** | `\ta: b` (tab as indentation), `a:\tb` (tab as separation), `- \tx` (tab after entry) | §6.1 [63]: `s-indent(n) ::= s-space × n` — tabs forbidden as indentation. §6.2 [66]: `s-separate-in-line` includes `s-white` (tabs ok as separation) — ambiguous cases require derivation-chain analysis | Scanner does not distinguish tab-as-indentation from tab-as-separation in all contexts |
+| **D. Flow content underindent** | `a:\n{b: c}` (flow at col 0 as value of mapping) | §8.1 [187]: `s-l+block-indented(n,c)` requires content indented more than enclosing block | `scanNextToken_dispatchStructural` underindent check does not catch flow collection starts at or below enclosing indent |
+| **E. Bare `:` as implicit empty key** | `: value`, `:\n- x` | §8.2.2 [185]: `e-node` before `:` is grammatically valid (empty implicit key), but scanner model requires context (preceding simple key or `?`). Needs yaml-test-suite investigation — may be an accepted scanner-model limitation shared by all implementations | Scanner emits `.value` only when a simple key or explicit `?` provides context |
+
+**Scope:**
+
+| # | Item | Status |
+|---|------|--------|
+| 1 | Fix Category A: reject same-line explicit value (`:` on `?` line with no simple key) | ✅ |
+| 2 | Fix Category B: reject misindented explicit value (`:` on wrong column) | ✅ |
+| 3 | Fix Category C: reject tab-as-indentation — analyzed: no fix needed, spec-correct (§6.2 allows tabs as `s-separate-in-line`) | ✅ |
+| 4 | Fix Category D: reject flow content at or below enclosing block indent | ✅ |
+| 5 | Investigate Category E: bare `:` is spec-valid (§8.2.2 [185] `e-node` as implicit key) — no fix needed | ✅ |
+| 6 | Add `#guard` tests and ExplicitKeyTests for all fixes | ✅ |
+| 7 | Cross-validate all fixes against libyaml | ✅ |
+
+**Part 2 — Systematic leniency detection**
+
+Four complementary approaches to maximize confidence that no latent leniencies remain:
+
+**Approach 1: Grammar-directed adversarial testing.** For each YAML 1.2.2 production with position-sensitive constraints, generate (a) the **canonical minimal-valid representation** annotated with the production rules that produced it, (b) extract the **indentation-dependent predicates** (exact column, line-start, indent depth), and (c) apply **boundary violations** — not random whitespace, but constraint-specific perturbations:
+
+| Production | Constraint | Boundary variants |
+|------------|-----------|-------------------|
+| [63] `s-indent(n)` | exactly n spaces | n−1, n+1, tab, mixed tab+space |
+| [197] `l-block-map-explicit-value` | `:` at col n, own line | col n±1, same line as `?`, tab prefix |
+| [180] `l+block-sequence` | `-` at col m > n | m = n (at indent), m = n−1 (under) |
+| [184] `l+block-mapping` | key at col m > n | m = n, m = n−1 |
+| [187] `s-l+block-indented` | content more indented than enclosing | content at enclosing indent, content at 0 |
+
+This is O(productions × constraints × boundary_variants) ≈ 200–500 test cases, not combinatorially explosive.
+
+For example, `? (? (? x: y) : mid) : outer` with canonical form:
+```yaml
+?           # col 0
+  ?         # col 2
+    ? x     # col 4
+    : y     # col 4 — [197] s-indent(4)
+  : mid     # col 2 — [197] s-indent(2)
+: outer     # col 0 — [197] s-indent(0)
+```
+generates variants: `: y` at col 3/5 (under/over-indent), `: mid` at col 1/3, `: outer` at col 1, same-line collapse `? ? ? x: y`, tab injection at each indent position.
+
+**Approach 3: Mutation testing on yaml-test-suite.** Take the 869 passing yaml-test-suite cases and apply spec-structure-aware mutations: shift indentation ±1 at key productions, delete/add newlines at `l-` (line-start) productions, replace spaces with tabs at `s-indent` positions, move `:` to same line as `?`, move `-` to wrong indent level. Each mutated input should either remain valid or be rejected — cross-check against libyaml.
+
+**Approach 4: Property-based testing (grammar-constrained fuzzing).** Use `Grammar.lean`'s `ValidNode` inductive as a generator: (a) generate random `ValidNode` witnesses, (b) `toYamlValue` → `dumpDocument` to produce YAML text, (c) parse back and verify round-trip, (d) apply adversarial mutations to the dumped text and verify rejection. Tests the dump→parse path.
+
+**Approach 5: Production coverage analysis.** Annotate each scanner/parser code path with the spec production it implements. Cross-reference with yaml-test-suite coverage data and internal `#guard` tests to identify productions with zero or insufficient boundary-case coverage. Priority: every indentation-dependent production must have boundary tests for under-indent, over-indent, and tab injection.
+
+| # | Item | Status |
+|---|------|--------|
+| 8 | Implement grammar-directed adversarial test generator (Approach 1) | 🔲 |
+| 9 | Implement yaml-test-suite mutation framework (Approach 3) | 🔲 |
+| 10 | Implement property-based round-trip fuzzer (Approach 4) | 🔲 |
+| 11 | Production coverage analysis and gap report (Approach 5) | 🔲 |
+| 12 | Fix any new leniencies discovered by systematic testing | 🔲 |
+
 #### Version 0.3.0
 
 Security mechanisms to prevent **two critical vulnerability classes**:
 
 1. **Denial-of-Service (DoS) attacks**: Billion laugh attacks, resource exhaustion, and cyclic structures
 2. **Arbitrary code execution (ACE)**: Unsafe tags and directives that could execute code during deserialization
+
+See [LIMITS](LIMITS.md) for detailed analysis and mitigation strategies.
+
+#### Version 0.4.0
+
+[Acceptance strictness](./STRICTNESS.md): formalize the YAML 1.2.2 surface syntax as parameterized inductive predicates and prove acceptance strictness: if the parser accepts an input, that input belongs to the formal grammar.
+
+#### Version 0.5.0
+
+Rejection completeness: if an input does not belong to the formal grammar, the parser rejects it. This is strictly harder than acceptance strictness and may require architectural changes to the parser's error handling.
 
 ### Position-Aware Stream
 

@@ -847,9 +847,19 @@ and the composed proof chains them with `omega`.
     saved position equals the current offset.  Example: `? a\n: b`.
     Pure state transformation — never modifies the token array. -/
 def scanValueClearKey (s : ScannerState) : ScannerState :=
+  -- (1) Clear phantom simple key: saved AT the `:` position itself
+  --     (e.g., `? : b` where saveSimpleKey recorded `:` as the key).
   if s.explicitKeyLine.isSome && s.simpleKey.possible
       && s.simpleKey.pos.offset == s.offset then
     { s with simpleKey := { possible := false } }
+  -- (2) Clear cross-line simple key from the `?` line: content on the
+  --     `?` line is the explicit key's node, not an implicit key to be
+  --     resolved by `:` on a subsequent line (§8.2.2 [197]).
+  else if let some ekLine := s.explicitKeyLine then
+    if s.simpleKey.possible && s.simpleKey.pos.line == ekLine
+        && s.line != ekLine && !s.inFlow then
+      { s with simpleKey := { possible := false } }
+    else s
   else s
 
 /-- Validate pre-conditions for `:` as a value indicator.
@@ -875,6 +885,18 @@ def scanValueValidate (s : ScannerState) : Except ScanError Unit := do
     if let some prevTok := s.tokens[s.simpleKey.tokenIndex - 1]? then
       if prevTok.val == .value && prevTok.pos.line != s.line then
         throw (.invalidFlowEntry s.line s.col)
+  -- §8.2.2 [197]: explicit value `:` must be at mapping indent level.
+  -- l-block-map-explicit-value(n) = s-indent(n) ":" ...
+  -- Two sub-checks:
+  --   (a) Same line as `?` with no implicit key → reject: the `l-` prefix
+  --       means `:` as explicit value must start on its own line.
+  --   (b) Different line from `?` → check s-indent(n): column must match.
+  if let some ekLine := s.explicitKeyLine then
+    if !s.simpleKey.possible && !s.inFlow then
+      if s.line == ekLine then
+        throw (.sameLineExplicitValue s.line s.col)
+      else if (s.col : Int) != s.currentIndent then
+        throw (.misindentedExplicitValue s.line s.col s.currentIndent)
 
 /-- Build the prepared state: resolve a pending simple key by overwriting
     placeholder slots (via `Array.setIfInBounds`), optionally pushing indent
@@ -2072,12 +2094,12 @@ def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState :=
     **Pre**: Called after `skipToContent` and indent check, before character dispatch.
     **Post**: Updates `simpleKey` if allowed, otherwise no-op. -/
 def saveSimpleKey (st : ScannerState) : ScannerState :=
-  -- §7.4: Do not record a new implicit key on the same line as an
-  -- explicit `?` indicator.  Content on the `?` line is the explicit
-  -- key's node, not a new implicit key (Root Cause A/B fix).
-  -- On subsequent lines, saving is allowed — the content may start a
-  -- new entry (e.g., `? a\n c:` where `c` is a new implicit key).
-  if st.explicitKeyLine == some st.line then st
+  -- §7.4.2: In flow context, content on the `?` line is the explicit
+  -- key's node; `?` already emitted a `.key` token so saving content
+  -- as a simple key would produce a duplicate key token.
+  -- In block context, content on the `?` line CAN form a compact
+  -- mapping (e.g., `? a : b` → `{a: b}` as key), so saving IS allowed.
+  if st.inFlow && st.explicitKeyLine == some st.line then st
   else if st.simpleKeyAllowed then
     -- Reserve 2 placeholder slots for potential .blockMappingStart + .key
     -- (block context) or .key + spare (flow context).
@@ -2281,6 +2303,18 @@ def scanNextToken_dispatchContent (s : ScannerState) (c : Char) :
     let s' ← scanPlainScalar s; return s'
   .error (.unexpectedChar c s.line s.col)
 
+/-- §8.1 [187]: Flow-collection start (`[` or `{`) from a block context must be
+    more indented than the enclosing block collection.  Returns `.ok ()` to
+    continue, or `.error` to reject.  Factored out so `unfold scanNextToken`
+    does not expose `Bool.and` internals to the proof engine. -/
+def scanNextToken_checkBlockFlowIndent (s : ScannerState) (c : Char) :
+    Except ScanError Unit :=
+  if !s.inFlow && s.currentIndent >= 0 && (s.col : Int) <= s.currentIndent
+      && (c == '[' || c == '{') then
+    .error (.underIndentedFlowContent s.line s.col)
+  else
+    .ok ()
+
 /-- Scan the next token from the input.
 
     **Implements**: Main dispatch loop for YAML token recognition.
@@ -2314,6 +2348,9 @@ def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) :=
       let s := if s.allowDirectives then
         { s with allowDirectives := false, documentEverStarted := true }
       else s
+      -- §8.1 [187]: Flow-collection start from block context must be more
+      -- indented than the enclosing block collection.
+      scanNextToken_checkBlockFlowIndent s c
       match ← scanNextToken_dispatchFlowIndicators s c with
       | some s' => return some s'
       | none =>
