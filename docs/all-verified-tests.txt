@@ -210,7 +210,28 @@
 --- Tab rejection in explicit keys ---
   ✓ ?\t correctly rejected
 
-=== Results: 134/134 passed ===
+--- Misindented explicit value rejection (§8.2.2) ---
+  ✓ ? a / : b correctly rejected
+  ✓ ? a / : b at col 0
+  ✓ ? a / : b value
+  ✓ nested ? ? a with correct : indents
+
+--- Same-line explicit value rejection (§8.2.2) ---
+  ✓ ? : x correctly rejected
+  ✓ ? : correctly rejected
+  ✓ ? ? : b correctly rejected
+  ✓ ? key : val parses
+  ✓ ? key / : val parses
+
+--- Block→flow underindent rejection (§8.1) ---
+  ✓ a: / {b: c} correctly rejected
+  ✓ a: / [1, 2] correctly rejected
+  ✓ a: / ·{b: c} parses
+  ✓ a: / ·[1, 2] parses
+  ✓ root {a: 1} parses
+  ✓ root [1, 2] parses
+
+=== Results: 149/149 passed ===
 === Flow Completeness Tests ===
 === Flow Completeness Tests ===
 

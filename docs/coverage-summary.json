@@ -1,12 +1,12 @@
 {
-  "date": "2026-03-21T12:45:49-0700",
+  "date": "2026-03-21T16:32:43-0700",
   "overall": {
     "applicable": 358,
-    "correct": 358,
-    "correctRate": 100,
+    "correct": 357,
+    "correctRate": 99.7,
     "expectedFail": 95,
-    "failed": 0,
-    "passed": 263,
+    "failed": 1,
+    "passed": 262,
     "skipped": 48,
     "timeout": 0,
     "total": 406,
@@ -27,11 +27,11 @@
     },
     "block": {
       "applicable": 99,
-      "correct": 99,
-      "correctRate": 100,
+      "correct": 98,
+      "correctRate": 98.9,
       "expectedFail": 15,
-      "failed": 0,
-      "passed": 84,
+      "failed": 1,
+      "passed": 83,
       "skipped": 0,
       "timeout": 0,
       "total": 99,
@@ -1714,9 +1714,10 @@
       "stage": "scalar"
     },
     {
+      "error": "parse error: value indicator ':' at line 0, column 4 cannot appear on same line as '?' — explicit value must start on its own line (§8.2.2 [197])",
       "id": "M2N8",
       "name": "Question mark edge cases",
-      "outcome": "pass",
+      "outcome": "fail",
       "stage": "block"
     },
     {
@@ -2587,7 +2588,7 @@
       {
         "allPass": true,
         "label": "Explicit Key Tests",
-        "passed": 134,
+        "passed": 149,
         "tests": [
           {
             "category": "Basic explicit keys",
@@ -3258,9 +3259,84 @@
             "category": "Tab rejection in explicit keys",
             "name": "?\\t correctly rejected",
             "outcome": "pass"
+          },
+          {
+            "category": "Misindented explicit value rejection (§8.2.2)",
+            "name": "? a / : b correctly rejected",
+            "outcome": "pass"
+          },
+          {
+            "category": "Misindented explicit value rejection (§8.2.2)",
+            "name": "? a / : b at col 0",
+            "outcome": "pass"
+          },
+          {
+            "category": "Misindented explicit value rejection (§8.2.2)",
+            "name": "? a / : b value",
+            "outcome": "pass"
+          },
+          {
+            "category": "Misindented explicit value rejection (§8.2.2)",
+            "name": "nested ? ? a with correct : indents",
+            "outcome": "pass"
+          },
+          {
+            "category": "Same-line explicit value rejection (§8.2.2)",
+            "name": "? : x correctly rejected",
+            "outcome": "pass"
+          },
+          {
+            "category": "Same-line explicit value rejection (§8.2.2)",
+            "name": "? : correctly rejected",
+            "outcome": "pass"
+          },
+          {
+            "category": "Same-line explicit value rejection (§8.2.2)",
+            "name": "? ? : b correctly rejected",
+            "outcome": "pass"
+          },
+          {
+            "category": "Same-line explicit value rejection (§8.2.2)",
+            "name": "? key : val parses",
+            "outcome": "pass"
+          },
+          {
+            "category": "Same-line explicit value rejection (§8.2.2)",
+            "name": "? key / : val parses",
+            "outcome": "pass"
+          },
+          {
+            "category": "Block→flow underindent rejection (§8.1)",
+            "name": "a: / {b: c} correctly rejected",
+            "outcome": "pass"
+          },
+          {
+            "category": "Block→flow underindent rejection (§8.1)",
+            "name": "a: / [1, 2] correctly rejected",
+            "outcome": "pass"
+          },
+          {
+            "category": "Block→flow underindent rejection (§8.1)",
+            "name": "a: / ·{b: c} parses",
+            "outcome": "pass"
+          },
+          {
+            "category": "Block→flow underindent rejection (§8.1)",
+            "name": "a: / ·[1, 2] parses",
+            "outcome": "pass"
+          },
+          {
+            "category": "Block→flow underindent rejection (§8.1)",
+            "name": "root {a: 1} parses",
+            "outcome": "pass"
+          },
+          {
+            "category": "Block→flow underindent rejection (§8.1)",
+            "name": "root [1, 2] parses",
+            "outcome": "pass"
           }
         ],
-        "total": 134
+        "total": 149
       },
       {
         "allPass": true,
@@ -6705,7 +6781,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 818,
-    "totalTests": 818
+    "totalPassed": 833,
+    "totalTests": 833
   }
 }

@@ -32,13 +32,13 @@
     <pre>
 Total unique tests:      406
 Applicable (YAML 1.2.2): 358  <span style="color:#999">(48 skipped — YAML 1.3 specific)</span>
-Passed:                  263
-Failed:                  0
+Passed:                  262
+Failed:                  1
 Expected fail:           95
 Unexpected pass:         0
 Timeout:                 0
 
-Correct: 358/358 (100.0%)
+Correct: 357/358 (99.7%)
     </pre>
   </div>
 
@@ -62,7 +62,7 @@ Correct: 358/358 (100.0%)
               </div>
               <div class="link-box">
                 <a href="coverage-block.html">block</a>
-                <div class="description">99/99 correct (100.0%)</div>
+                <div class="description">98/99 correct (99.0%)</div>
               </div>
               <div class="link-box">
                 <a href="coverage-document.html">document</a>
@@ -79,26 +79,26 @@ Correct: 358/358 (100.0%)
   </div>
 
   <h2>Suite Runner (Progressive Stages)</h2>
-  <div class="summary" style="border-left-color:#4CAF50;background:#e8f5e9">
-    <h3 style="color:#4CAF50">✓ Suite Runner: 869/869 (100.0%)</h3>
+  <div class="summary" style="border-left-color:#2196F3;background:#e3f2fd">
+    <h3 style="color:#2196F3">▶ Suite Runner: 866/869 (99.7%)</h3>
     <p style="color:#666;font-size:13px;margin:5px 0 10px">Each stage tests its own tests plus all lower stages (cumulative). Error tests excluded.</p>
     <table style="width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:14px;">
     <tr style="color:#999;font-size:12px"><td>Stage</td><td>Total</td><td>Passed</td><td>Failed</td><td>Skipped</td></tr>
     <tr><td>scalar</td><td>82</td><td style="color:#4CAF50;font-weight:bold">58</td><td>0</td><td>24</td></tr>
     <tr><td>flow</td><td>128</td><td style="color:#4CAF50;font-weight:bold">104</td><td>0</td><td>24</td></tr>
-    <tr><td>block</td><td>227</td><td style="color:#4CAF50;font-weight:bold">203</td><td>0</td><td>24</td></tr>
-    <tr><td>document</td><td>251</td><td style="color:#4CAF50;font-weight:bold">220</td><td>0</td><td>31</td></tr>
-    <tr><td>advanced</td><td>332</td><td style="color:#4CAF50;font-weight:bold">284</td><td>0</td><td>48</td></tr>
-    <tr style="border-top:2px solid #ccc;font-weight:bold"><td>Total</td><td>1020</td><td>869</td><td>0</td><td>151</td></tr>
+    <tr><td>block</td><td>227</td><td style="color:#f44336;font-weight:bold">202</td><td>1</td><td>24</td></tr>
+    <tr><td>document</td><td>251</td><td style="color:#f44336;font-weight:bold">219</td><td>1</td><td>31</td></tr>
+    <tr><td>advanced</td><td>332</td><td style="color:#f44336;font-weight:bold">283</td><td>1</td><td>48</td></tr>
+    <tr style="border-top:2px solid #ccc;font-weight:bold"><td>Total</td><td>1020</td><td>866</td><td>3</td><td>151</td></tr>
     </table>
   </div>
 
   <h2>Verified Tests</h2>
   <div class="summary" style="border-left-color:#4CAF50;background:#e8f5e9">
-    <h3 style="color:#4CAF50">✓ Internal Verified Test Suites (818/818)</h3>
+    <h3 style="color:#4CAF50">✓ Internal Verified Test Suites (833/833)</h3>
     <table style="width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:14px;">
     <tr><td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/Main.lean" target="_blank" style="color:#2196F3;text-decoration:none">Unit Tests</a></td><td style="color:#4CAF50;font-weight:bold">✓ 10/10</td></tr>
-    <tr><td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean" target="_blank" style="color:#2196F3;text-decoration:none">Explicit Key Tests</a></td><td style="color:#4CAF50;font-weight:bold">✓ 134/134</td></tr>
+    <tr><td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ExplicitKeyTests.lean" target="_blank" style="color:#2196F3;text-decoration:none">Explicit Key Tests</a></td><td style="color:#4CAF50;font-weight:bold">✓ 149/149</td></tr>
     <tr><td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/FlowTests.lean" target="_blank" style="color:#2196F3;text-decoration:none">Flow Completeness Tests</a></td><td style="color:#4CAF50;font-weight:bold">✓ 88/88</td></tr>
     <tr><td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ValidationTests.lean" target="_blank" style="color:#2196F3;text-decoration:none">Structural Validation Tests</a></td><td style="color:#4CAF50;font-weight:bold">✓ 84/84</td></tr>
     <tr><td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean" target="_blank" style="color:#2196F3;text-decoration:none">Dump Round-Trip Tests</a></td><td style="color:#4CAF50;font-weight:bold">✓ 102/102</td></tr>
@@ -108,13 +108,13 @@ Correct: 358/358 (100.0%)
     <tr><td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ScannerTests.lean" target="_blank" style="color:#2196F3;text-decoration:none">Scanner &amp; TokenParser Tests (Phase 9)</a></td><td style="color:#4CAF50;font-weight:bold">✓ 32/32</td></tr>
     <tr><td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ScannerSpecExamples.lean" target="_blank" style="color:#2196F3;text-decoration:none">YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline)</a></td><td style="color:#4CAF50;font-weight:bold">✓ 132/132</td></tr>
     <tr><td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Demo.lean" target="_blank" style="color:#2196F3;text-decoration:none">Demo</a></td><td style="color:#4CAF50;font-weight:bold">✓ 7/7</td></tr>
-    <tr style="border-top:2px solid #ccc;font-weight:bold"><td>Total</td><td>818/818</td></tr>
+    <tr style="border-top:2px solid #ccc;font-weight:bold"><td>Total</td><td>833/833</td></tr>
     </table>
   </div>
   <div class="links">
     <div class="link-box">
       <a href="verified-tests.html">Verified Tests Detail</a>
-      <div class="description">818/818 tests across 11 suites</div>
+      <div class="description">833/833 tests across 11 suites</div>
     </div>
   </div>
 
