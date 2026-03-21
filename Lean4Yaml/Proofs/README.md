@@ -2,9 +2,9 @@
 
 ## 1. Overview
 
-The `Proofs/` directory contains 52 Lean 4 files (46 proof modules +
-6 SuiteGuards test suites) totaling ~32,000 lines, 1,626 theorems/lemmas,
-and 2,012 `#guard` compile-time checks.  Every file compiles with
+The `Proofs/` directory contains 53 Lean 4 files (47 proof modules +
+6 SuiteGuards test suites) totaling ~32,000 lines, 1,654 theorems/lemmas,
+and 2,083 `#guard` compile-time checks.  Every file compiles with
 **zero `sorry`, zero `axiom`, zero `partial def`** in our code.
 
 The proofs establish soundness, completeness (concrete and partial
@@ -82,7 +82,7 @@ to total `def` with well-founded recursion on token list length.
 
 ## 3. File Inventory
 
-### Proof Modules (44 files)
+### Proof Modules (45 files)
 
 | File | Lines | Thms | Guards | Description |
 |---|---|---|---|---|
@@ -127,8 +127,9 @@ to total `def` with well-founded recursion on token list length.
 | `ScannerScalar.lean` | 177 | 11 | 1 | Scanner scalar proofs |
 | `ScannerSimpleKey.lean` | 160 | 7 | 1 | Scanner simple key proofs |
 | `ScannerWhitespace.lean` | 174 | 6 | 2 | Scanner whitespace proofs |
-| `SchemaDump.lean` | 278 | 40 | 3 | `ToYaml` + dump pipeline content round-trip |
-| `SchemaResolution.lean` | 226 | 35 | 3 | Core Schema (§10.3) resolution: null/bool/int/float determinism |
+| `SchemaComposition.lean` | 260 | 28 | — | `resolve ∘ toYaml` + `fromYaml? ∘ toYaml` composition round-trip (v0.2.5) |
+| `SchemaDump.lean` | 277 | 40 | — | `ToYaml` + dump pipeline content round-trip |
+| `SchemaResolution.lean` | 227 | 35 | — | Core Schema (§10.3) resolution: null/bool/int/float determinism |
 | `Soundness.lean` | 423 | 27 | — | `NodeToValue` totality, determinism, faithful implementation |
 | `StringProperties.lean` | 250 | 19 | — | Pure string/list helpers (whitespace trim, FoldResult invariants) |
 | `ValueAlgebra.lean` | 199 | 7 | — | YamlValue algebraic properties |
@@ -146,8 +147,8 @@ to total `def` with well-founded recursion on token list length.
 
 ### Totals
 
-- **1,626** theorems/lemmas (all machine-checked)
-- **2,012** `#guard` compile-time checks (Proofs/ + SuiteGuards/ + Tests/)
+- **1,654** theorems/lemmas (all machine-checked)
+- **2,083** `#guard` compile-time checks (Proofs/ + SuiteGuards/ + Tests/)
 - **0** `sorry`, **0** `axiom`, **0** `partial def`
 
 ---

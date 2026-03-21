@@ -48,4 +48,20 @@ open Lean4Yaml
 #guard (resolve (.sequence .block #[] none none)).isSeq
 #guard (resolve (.mapping .block #[] none none)).isMap
 
+-- Float resolution (§10.3.2)
+#guard resolveImplicit ".inf" == .float (.inf true)
+#guard resolveImplicit "-.inf" == .float (.inf false)
+#guard resolveImplicit ".nan" == .float .nan
+#guard resolveImplicit "foo bar" == .str "foo bar"
+
+-- resolve on complete YamlValue constructors (equality)
+#guard resolve (.scalar ⟨"42", .plain, none, none, none⟩) == .int 42
+#guard resolve (.scalar ⟨"true", .plain, none, none, none⟩) == .bool true
+#guard resolve (.scalar ⟨"hello", .plain, none, none, none⟩) == .str "hello"
+
+-- Explicit tag overrides via resolve
+#guard resolve (.scalar ⟨"true", .plain, some "tag:yaml.org,2002:str", none, none⟩) == .str "true"
+#guard resolve (.scalar ⟨"42", .plain, some "tag:yaml.org,2002:str", none, none⟩) == .str "42"
+#guard resolve (.scalar ⟨"hello", .plain, some "tag:yaml.org,2002:null", none, none⟩) == .null
+
 end Lean4Yaml.Schema.Proofs

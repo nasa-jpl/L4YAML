@@ -270,9 +270,8 @@ theorem contentRoundTrips_indent4_array :
 
 /-! ## §5b: Extended #guard Coverage
 
-Additional compile-time checks for broader coverage.
+Moved to `Tests/Guards/Proofs/SchemaDump.lean`.
 -/
 
 
 end Lean4Yaml.Proofs.SchemaDump
-
