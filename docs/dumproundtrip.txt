@@ -1,5 +1,4 @@
 === Dump Round-Trip Tests ===
-=== Dump Round-Trip Tests ===
 
 --- Structural properties ---
   ✓ plain scalar → content itself

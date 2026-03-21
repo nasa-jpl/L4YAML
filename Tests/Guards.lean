@@ -30,5 +30,6 @@ import Tests.Guards.Proofs.SuiteGuards.Document
 import Tests.Guards.Proofs.SuiteGuards.Error
 import Tests.Guards.Proofs.SuiteGuards.Flow
 import Tests.Guards.Proofs.SuiteGuards.Scalar
+import Tests.Guards.Proofs.TagResolution
 import Tests.Guards.Proofs.TestSuite
 import Tests.Guards.Schema.Dump

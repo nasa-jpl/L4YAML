@@ -1,4 +1,3 @@
-=== Scanner Tests ===
 === Scanner & TokenParser Tests (Phase 9) ===
 
 --- Scanner basics ---

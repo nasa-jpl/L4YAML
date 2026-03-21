@@ -71,9 +71,11 @@ structure ParseState where
   pos : Nat := 0
   /-- Accumulated anchor definitions -/
   anchors : Array (String × YamlValue) := #[]
-  /-- Tag handles declared via `%TAG` for the current document.
-      §6.8.2.2: tag handles are local to the document. -/
-  tagHandles : Array String := #[]
+  /-- Tag handle → prefix mapping declared via `%TAG` for the current document.
+      §6.8.2.2: tag handles are local to the document.
+      Each entry is `(handle, tagPrefix)` so `!handle!suffix` resolves to
+      `tagPrefix ++ suffix` during node property parsing (§6.8.2). -/
+  tagHandles : Array (String × String) := #[]
   /-- Whether to record node positions (G5c). Disabled by default;
       enabled by `parseYamlWithComments`. -/
   trackPositions : Bool := false
@@ -162,6 +164,23 @@ structure NodeProperties where
   hadDuplicateAnchor : Bool := false
   deriving Repr, BEq, Inhabited
 
+/-- Resolve a tag shorthand using the `%TAG` handle→prefix mapping (§6.8.2).
+
+    - **Verbatim** (`handle = ""`): pass through the suffix as a raw URI.
+    - **Declared handle** (found in `tagHandles`): expand to `prefix ++ suffix`.
+    - **Default secondary** (`!!` without explicit `%TAG !!`): keep shorthand
+      `"!!" ++ suffix` to match the old parser's convention (see README §10d).
+    - **Default primary** (`!` without explicit `%TAG !`): keep `"!" ++ suffix`. -/
+def resolveTag (tagHandles : Array (String × String))
+    (handle suffix : String) : String :=
+  if handle == "" && suffix != "" then suffix
+  else
+    match tagHandles.find? (·.1 == handle) with
+    | some (_, pfx) => pfx ++ suffix
+    | none =>
+      if handle == "!!" then "!!" ++ suffix
+      else handle ++ suffix
+
 /-- Parse node properties: optional anchor and tag in either order.
 
     **Implements** (YAML 1.2.2 §6.9, §6.8.2):
@@ -196,14 +215,13 @@ def parseNodeProperties (ps : ParseState) : Except ScanError (NodeProperties × 
       -- §6.8.2.2: Named handles must be declared via %TAG.
       -- Built-in handles: "" (verbatim), "!" (primary), "!!" (secondary).
       if handle != "" && handle != "!" && handle != "!!" then
-        if !ps.tagHandles.contains handle then
+        if !ps.tagHandles.any (·.1 == handle) then
           let pos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
           throw (.undeclaredTagHandle handle pos.line pos.col)
-      -- Store tags in shorthand form to match the old parser's convention.
-      -- `!!suffix` stays as `!!suffix`; verbatim/named handles pass through.
-      let fullTag := if handle == "" && suffix != "" then suffix
-                     else if handle == "!!" then "!!" ++ suffix
-                     else handle ++ suffix
+      -- §6.8.2: Resolve tag shorthand via %TAG handle→prefix mapping.
+      -- Declared handles expand to `prefix ++ suffix`; undeclared builtins
+      -- keep shorthand form (`!!suffix`, `!suffix`) for old-parser compat.
+      let fullTag := resolveTag ps.tagHandles handle suffix
       props := { props with tag := some fullTag }
       ps := ps.advance
     | _ => break
@@ -843,7 +861,7 @@ def prepareDocumentState (ps : ParseState) :
     Except ScanError (Array Directive × ParseState) := do
   let (dirs, ps) := parseDirectives ps
   let tagHandles := dirs.filterMap fun
-    | .tag handle _ => some handle
+    | .tag handle tagPrefix => some (handle, tagPrefix)
     | _ => none
   let ps := { ps with tagHandles := tagHandles }
   let docStartLine := if ps.peek? == some .documentStart then

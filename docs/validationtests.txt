@@ -1,4 +1,3 @@
-=== Validation Tests ===
 === Structural Validation Tests ===
 
 --- Indentation Properties ---
