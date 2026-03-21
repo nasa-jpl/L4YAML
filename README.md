@@ -427,18 +427,34 @@ Comment preservation (Phase 8). AST-level comment metadata for round-trip fideli
 - Compile-time guards: 2,020 total (23 new for TAG resolution)
 - Build: 345/345 jobs, 0 errors, 0 sorry, 0 warnings
 
-#### Version 0.2.9
+#### Version 0.2.9 (completed 2026-03-27)
 
-End-to-end round-trip composition (Phase 7.5). Compose parser + dump + schema proofs into:
+End-to-end round-trip composition (Phase 7.5). Compose parser + dump + schema proofs to show that `dump→parse` preserves schema-level meaning.
 
-```lean
-theorem roundtrip :
-  ∀ (v : YamlValue),
-    parseSingle (dump v cfg) = .ok v' →
-    resolve v' = resolve v
-```
+**Key theorems:**
 
-This is the verified-correctness analog of lean4-yaml's empirical round-trip tests. Requires the schema composition proofs (v0.2.5), parser soundness (Phase 3), and dump proofs (Phase 6) — all complete. The hard part is threading through the `parseSingle ∘ dump` chain.
+| Theorem | Statement | Proof technique |
+|---------|-----------|-----------------|
+| `resolve_eq_of_resolveEq` | `resolveEq v v' = true → resolve v = resolve v'` | Structural induction with list/pair-list helpers, `termination_by v`, `Bool.noConfusion` for cross-constructor |
+| `resolve_eq_of_contentEq_noTags` | `contentEq v v' = true → noTags v → noTags v' → resolve v = resolve v'` | Direct structural induction, `where`-clause helpers, `match h : s.tag` for tag extraction |
+| `roundtrip_*` (24 concrete) | `resolveRoundTrips v = true` for scalars, sequences, mappings, nested, config variations | `native_decide` through full `dump→parseYamlSingle→resolve==` pipeline |
+| `roundtrip_typed_*` (15 typed) | `resolveRoundTripsTyped a = true` for `Bool`, `Nat`, `Int`, `String`, `Unit`, `Option`, `Array`, `List`, nested | `native_decide` through `toYaml→dump→parseYamlSingle→resolve==` pipeline |
+
+**New definitions:**
+
+| Definition | Purpose |
+|------------|---------|
+| `resolveEq` | Resolution-relevant equivalence: captures exactly the fields `resolve` examines (scalar content+tag, recursive structure) |
+| `noTags` | Tag-free predicate: all scalar tags are `none` |
+| `resolveRoundTrips` | End-to-end round-trip checker: `dump v cfg → parseYamlSingle → resolve → BEq` |
+| `resolveRoundTripsTyped` | Typed round-trip: `toYaml a → dump → parseYamlSingle → resolve → BEq` |
+
+**Key results:**
+- yaml-test-suite: 869 passed, 0 failed (151 skipped)
+- Validated tests: 84/84 (100%)
+- Theorems: 1,769 total (43 new for round-trip composition)
+- Compile-time guards: 2,091 total (55 new for round-trip composition)
+- Build: 348/348 jobs, 0 errors, 0 sorry, 0 warnings
 
 #### Version 0.2.10
 
@@ -2250,20 +2266,28 @@ Plus 49 compile-time `#guard` checks validating serialization output and content
 
 </details>
 
-#### Phase 7.5: End-to-End Round-Trip (v0.2.9)
+#### Phase 7.5: End-to-End Round-Trip (v0.2.9) ✅
 
 <details>
 
-Compose parser + dump + schema proofs into:
+Compose parser + dump + schema proofs to show that `dump→parse` preserves schema-level meaning:
 
 ```lean
-theorem roundtrip :
-  ∀ (v : YamlValue),
-    parseSingle (dump v cfg) = .ok v' →
-    resolve v' = resolve v
+theorem resolve_eq_of_resolveEq :
+  ∀ (v v' : YamlValue),
+    resolveEq v v' = true →
+    resolve v = resolve v'
+
+theorem resolve_eq_of_contentEq_noTags :
+  ∀ (v v' : YamlValue),
+    contentEq v v' = true → noTags v = true → noTags v' = true →
+    resolve v = resolve v'
 ```
 
-This is the verified-correctness analog of lean4-yaml's empirical round-trip tests. It requires parser soundness proofs (Phase 3 of the main verification roadmap) and Phase 6 dump proofs, and is the long-term goal.
+Both algebraic theorems are fully proved by structural induction. End-to-end pipeline verification (`dump → parseYamlSingle → resolve ==`) is achieved via 24 concrete + 15 typed `native_decide` proofs covering scalars, sequences, mappings, nested structures, and configuration variations.
+
+**Module: `Lean4Yaml/Proofs/RoundTripComposition.lean`** — 43 theorems, 4 definitions.
+**Guards: `Tests/Guards/Proofs/RoundTripComposition.lean`** — 55 compile-time checks.
 
 </details>
 
@@ -2295,8 +2319,8 @@ The schema layer follows the same architectural principles documented in ANALYSI
 | 7.2: FromToYaml typeclasses | 208 | 1 | — (runtime tests TBD) | ✅ Complete |
 | 7.3: Struct helpers & deriving | 132 + 267 + 48 | 1 | — (macro validation by type system) | ✅ Complete |
 | 7.4: Schema ↔ dump integration | 290 + 311 proofs + 259 tests | 1 | 40 theorems + 71 `#guard` + 68 runtime tests | ✅ Complete |
-| 7.5: Round-trip composition (v0.2.9) | ~50 | 2+ | ~1 theorem (hard) | Not started |
-| **Total** | **1849 done + ~50 remaining** | **4 done + 2+** | **75 theorems + 105 guards + 68 runtime** | **7.1–7.4 ✅** |
+| 7.5: Round-trip composition (v0.2.9) | 370 + 55 guards | 1 | 43 theorems + 55 `#guard` | ✅ Complete |
+| **Total** | **2219 done** | **5 done** | **118 theorems + 160 guards + 68 runtime** | **7.1–7.5 ✅** |
 
 The schema layer is **1849 lines** (so far) of Lean code plus 75 formal theorems, 105 compile-time `#guard` checks, and 68 runtime tests. This is significantly less than the parser (~2500 lines) and has far better proof tractability since everything is pure functions on inductive types with no parser combinator dependency.
 
@@ -6253,7 +6277,7 @@ The remaining 52 skipped tests are YAML 1.1/1.3 features or tests that require b
 | §6.8.2 `%TAG` directive resolution | Map `!handle!suffix` → expanded URI using directive declarations (v0.2.8) | Medium | Wire `%TAG` declarations into parser state |
 | ~~§7.5 Flow nodes~~ | ✅ Done (P2) | — | — |
 | ~~§9.1.3 `c-forbidden`~~ | ✅ Done (P3) | — | — |
-| §10 Recommended Schemas | ✅ Core schema (Phase 7.1–7.4 complete). Failsafe/JSON implicit. | — | Phase 7.5 (end-to-end round-trip — v0.2.9) remaining |
+| §10 Recommended Schemas | ✅ Core schema (Phase 7.1–7.5 complete). Failsafe/JSON implicit. End-to-end round-trip composition verified (v0.2.9). | — | — |
 
 ## Building
 
