@@ -53,8 +53,7 @@ Lean4Yaml/
 │   ├── SchemaResolution.lean      # Schema resolution proofs (35 theorems)
 │   ├── SchemaDump.lean            # Schema↔Dump proofs (40 theorems)
 │   ├── DumpRoundTrip.lean         # Dump round-trip proofs
-│   ├── CommentProperties.lean     # Comment handling proofs
-│   ├── CommentRoundTrip.lean      # Comment round-trip proofs
+│   ├── CommentProperties.lean     # Comment handling + dump proofs (60 theorems)
 │   ├── EndToEndCorrectness.lean   # End-to-end correctness proofs
 │   ├── ValueAlgebra.lean          # YamlValue algebraic properties
 │   ├── ParserSoundness.lean       # Token parser soundness proofs
@@ -372,9 +371,30 @@ Also fixed the "alias scan" test in `ScannerTests.lean`: test was scanning `*anc
 - Compile-time guards: 3 previously commented-out guards (58MP, 5T43, DBG4) now active
 - Build: 344/344 jobs, 0 errors, 0 sorry, 0 warnings
 
-#### Version 0.2.7
+#### Version 0.2.7 (completed 2026-03-21)
 
-Comment preservation (Phase 8). AST-level comment metadata for round-trip fidelity per YAML 1.2.2 §6.6. Seven sub-phases: token extension, scanner changes, parser threading, AST attachment, emitter output, round-trip proofs, spec example validation.
+Comment preservation (Phase 8). AST-level comment metadata for round-trip fidelity per YAML 1.2.2 §6.6.
+
+**Implementation (side-channel architecture — comments on `YamlDocument`, not in `YamlValue`):**
+
+| Component | Change | File |
+|-----------|--------|------|
+| Scanner | Trailing comment collection fix in `scanLoopFull` — re-run `skipToContent` when `scanNextToken` returns `none` to capture comments discarded at end-of-input | `Scanner.lean` |
+| Classification | `classifyCommentPosition` — same line → `.inline`, before nodes → `.before`, after all → `.after` | `TokenParser.lean` |
+| Classification | `classifyDocumentComments` — reclassify all comments in a document using `nodePositions` | `TokenParser.lean` |
+| Partitioning | `partitionCommentsByDocument` — assign raw comments to documents by byte-offset spans for multi-doc streams | `TokenParser.lean` |
+| Pipeline | `parseYamlWithComments` — full lifecycle: scan → partition → classify → compose with classified comments | `TokenParser.lean` |
+| Dump | `dumpDocumentWithComments` — before/inline/after comment integration; falls back to `dumpDocument` when empty | `Dump.lean` |
+| Dump | `dumpDocumentsWithComments` — multi-document version with `---`/`...` separators | `Dump.lean` |
+| Proofs | 60 theorems in `CommentProperties.lean` — classification preserves value/directives/anchors/nodePositions, idempotence, commutativity with compose, dump fallback properties | `Proofs/CommentProperties.lean` |
+| Guards | 43 compile-time `#guard` checks — emitter structure, comment round-trip, position classification, comment-aware dump, spec §6.6/§6.9/§6.12 examples, end-to-end classification | `Tests/Guards/Proofs/CommentRoundTrip.lean` |
+
+**Key results:**
+- yaml-test-suite: 358/358 applicable correct (100%)
+- Spec examples: 132/132 (100%)
+- Verified internal tests: 750/750 (100%) across 11 suites
+- Compile-time guards: 2,024 total (43 new for comment round-trip)
+- Build: 342/342 jobs, 0 errors, 0 sorry, 0 warnings
 
 #### Version 0.2.8
 
@@ -2309,7 +2329,7 @@ Ported and adapted the schema layer from lean4-yaml (2026-02-24). 8 new files im
 
 </details>
 
-## Phase 8: Comment Preservation — Planned (v0.2.7)
+## Phase 8: Comment Preservation — ✅ COMPLETE (v0.2.7)
 
 <details>
 
@@ -2531,14 +2551,14 @@ This means the schema proofs (Phase 7) are unaffected, provided `BEq` on `YamlVa
 
 | Sub-phase | Lines (est.) | Sessions | Status |
 |-----------|-------------|----------|--------|
-| 8.1: AST changes | ~30 | <1 | Not started |
-| 8.2: Parser changes | ~100 | 1 | Not started |
-| 8.3: Grammar formalization | ~50 | <1 | Not started |
-| 8.4: Dump changes | ~80 | 1 | Not started |
-| 8.5: YAML_PRODUCTIONS.md | ~10 | <1 | Not started |
-| 8.6: Schema pass-through | ~20 (test updates) | <1 | Not started |
-| 8.7: Proof obligations | ~150 | 1–2 | Not started |
-| **Total** | **~440** | **3–4** | **Planned** |
+| 8.1: AST changes | ~30 | <1 | ✅ Done (v0.2.0: `Comment`, `CommentPosition`, `YamlDocument.comments`) |
+| 8.2: Parser changes | ~100 | 1 | ✅ Done (v0.2.7: `classifyCommentPosition`, `classifyDocumentComments`, `partitionCommentsByDocument`, `parseYamlWithComments`) |
+| 8.3: Grammar formalization | ~50 | <1 | ✅ Done (side-channel: comments orthogonal to `YamlValue`, no grammar changes needed) |
+| 8.4: Dump changes | ~80 | 1 | ✅ Done (v0.2.7: `dumpDocumentWithComments`, `dumpDocumentsWithComments`) |
+| 8.5: YAML_PRODUCTIONS.md | ~10 | <1 | ✅ Done (scanner side-channel captures comments via `skipToContentComment`) |
+| 8.6: Schema pass-through | ~20 (test updates) | <1 | ✅ Done (comments on `YamlDocument`, not `YamlValue` — schema layer untouched) |
+| 8.7: Proof obligations | ~150 | 1–2 | ✅ Done (60 theorems in `CommentProperties.lean`, 43 guards) |
+| **Total** | **~440** | **3–4** | **✅ Complete** |
 
 ### Dependencies
 

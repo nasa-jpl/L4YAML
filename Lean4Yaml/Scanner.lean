@@ -2413,6 +2413,12 @@ def scanLoopFull (s : ScannerState) (fuel : Nat) : Except ScanError ScannerState
       else if s.directivesPresent && !s.documentEverStarted then
         .error (.directiveWithoutDocument s.line)
       else
+        -- Re-run skipToContent to collect trailing comments that
+        -- scanNextToken_preprocess discarded when returning none.
+        -- scanNextToken calls skipToContent internally, but returns
+        -- none (discarding the updated state) when end-of-input is
+        -- reached after comment/whitespace consumption.
+        let s := match skipToContent s with | .ok s' => s' | .error _ => s
         let final := unwindIndents s (-1)
         let final := final.emit .streamEnd
         .ok final

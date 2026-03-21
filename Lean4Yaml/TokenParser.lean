@@ -1024,27 +1024,96 @@ def parseYamlSingle (input : String) : Except ScanError YamlValue :=
   | .error e => .error e
 
 /--
+Classify a comment's position relative to its nearest node.
+
+§6.6 / §6.9: Comments are a presentation detail. For round-trip fidelity
+we classify each comment as:
+- `.inline` — same line as a node's start position
+- `.before` — on a line preceding all content (or the next node)
+- `.after`  — on a line following all content
+
+The classification uses `nodePositions` from the parser's position-tracking
+pass (enabled by `trackPositions := true`).
+-/
+def classifyCommentPosition (cPos : YamlPos)
+    (nodePositions : Array (YamlPath × YamlPos × YamlPos)) : CommentPosition :=
+  -- If comment shares a line with any node start → inline
+  if nodePositions.any fun (_, startPos, _) => startPos.line == cPos.line then
+    .inline
+  -- If some node starts after the comment line → before that node
+  else if nodePositions.any fun (_, startPos, _) => cPos.line < startPos.line then
+    .before
+  -- Otherwise: after all nodes
+  else
+    .after
+
+/--
+Classify all comments in a document using its node positions.
+
+Replaces the `.inline` default assigned during initial attachment
+with the correct `.before`/`.inline`/`.after` classification.
+-/
+def classifyDocumentComments (doc : YamlDocument) : YamlDocument :=
+  { doc with comments := doc.comments.map fun (pos, c) =>
+      (pos, { c with position := classifyCommentPosition pos doc.nodePositions }) }
+
+/--
+Partition raw comments by document span.
+
+For multi-document streams, each comment is assigned to the document
+whose root node span contains the comment's byte offset. Comments
+outside all spans go to the nearest document (first or last).
+
+For single-document streams, all comments go to the single document.
+-/
+def partitionCommentsByDocument (rawComments : Array (YamlPos × String))
+    (docs : Array YamlDocument) : Array (Array (YamlPos × String)) :=
+  if docs.size ≤ 1 then
+    #[rawComments]
+  else
+    -- Build byte-offset spans from each document's root nodePosition
+    let spans : Array (Nat × Nat) := docs.map fun doc =>
+      match doc.nodePositions.find? (fun (p, _, _) => p == #[]) with
+      | some (_, startPos, endPos) => (startPos.offset, endPos.offset)
+      | none => (0, 0)  -- no root position: will collect nothing
+    -- Assign each comment to the containing document
+    docs.mapIdx fun i _ =>
+      let (startOff, endOff) := spans[i]!
+      -- First doc captures everything before its end;
+      -- last doc captures everything after its start
+      rawComments.filter fun (cPos, _) =>
+        if i == 0 then cPos.offset ≤ endOff
+        else if i == docs.size - 1 then cPos.offset ≥ startOff
+        else startOff ≤ cPos.offset && cPos.offset ≤ endOff
+
+/--
 Parse a YAML string with comment preservation (**representation graph**).
 
 Like `parseYaml` but also collects comments discovered during scanning.
-Each composed document carries all scanner-collected comments in its
+Each composed document carries scanner-collected comments in its
 `comments` field (as `Array (YamlPos × Comment)`).
 
-**Note**: All scanner comments are attached to every document. For
-single-document streams (the common case) this is exact. For multi-document
-streams, a future refinement can partition comments by document span.
-
-**Comment position**: All comments are assigned `CommentPosition.inline`
-at this level. A post-processing pass can reclassify to `.before`/`.after`
-based on node positions. -/
+**Comment lifecycle** (v0.2.7):
+1. Scanner collects comments as `(YamlPos × String)` side-channel
+2. Comments are partitioned by document span for multi-doc streams
+3. Each comment is classified as `.before`/`.inline`/`.after` based on
+   the document's `nodePositions` (from `trackPositions := true`)
+4. Classified comments are attached to the composed document
+-/
 def parseYamlWithComments (input : String) : Except ScanError (Array YamlDocument) :=
   match Scanner.scanWithComments input with
   | .ok (tokens, rawComments) =>
-    let comments : Array (YamlPos × Comment) :=
-      rawComments.map fun (pos, text) => (pos, ⟨text, .inline⟩)
     match parseStream tokens (trackPositions := true) with
-    | .ok docs => .ok (docs.map fun doc =>
-        { doc.compose with comments := comments })
+    | .ok docs =>
+      let partitioned := partitionCommentsByDocument rawComments docs
+      .ok (docs.mapIdx fun i doc =>
+        let docComments := partitioned[i]!
+        let comments : Array (YamlPos × Comment) :=
+          docComments.map fun (pos, text) => (pos, ⟨text, .inline⟩)
+        let composed := { doc.compose with
+          comments := comments
+          nodePositions := doc.nodePositions }
+        classifyDocumentComments composed)
     | .error e => .error e
   | .error e => .error e
 

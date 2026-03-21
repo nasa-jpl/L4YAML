@@ -6,6 +6,7 @@ import Lean4Yaml.Types
 import Lean4Yaml.Grammar
 import Lean4Yaml.Emitter
 import Lean4Yaml.TokenParser
+import Lean4Yaml.Dump
 
 /-!
 # Comment Properties (Phase G3)
@@ -351,5 +352,149 @@ theorem strip_order_compose_comm (doc : YamlDocument) :
 theorem compose_strip_all_comm (doc : YamlDocument) :
     doc.compose.stripComments.stripPositions.value =
     doc.stripComments.stripPositions.compose.value := rfl
+
+/-! ## §11  Comment classification properties (Phase 8 / v0.2.7)
+
+`classifyDocumentComments` uses `{ doc with comments := ... }` where
+only the `.position` field of each `Comment` is rewritten via
+`classifyCommentPosition`. It preserves `value`, `directives`, `anchors`,
+and `nodePositions` (orthogonal struct fields), and preserves comment
+text (only the position classification changes).
+
+`partitionCommentsByDocument` distributes raw comments among documents;
+for single-document streams it is the identity.
+
+These lemmas extend the algebraic foundation from §1–§10 to cover the
+v0.2.7 comment lifecycle: scan → partition → classify → compose.
+-/
+
+/-- Classification preserves the value tree. -/
+theorem classifyDocumentComments_preserves_value (doc : YamlDocument) :
+    (TokenParser.classifyDocumentComments doc).value = doc.value := rfl
+
+/-- Classification preserves directives. -/
+theorem classifyDocumentComments_preserves_directives (doc : YamlDocument) :
+    (TokenParser.classifyDocumentComments doc).directives = doc.directives := rfl
+
+/-- Classification preserves anchors. -/
+theorem classifyDocumentComments_preserves_anchors (doc : YamlDocument) :
+    (TokenParser.classifyDocumentComments doc).anchors = doc.anchors := rfl
+
+/-- Classification preserves nodePositions. -/
+theorem classifyDocumentComments_preserves_nodePositions (doc : YamlDocument) :
+    (TokenParser.classifyDocumentComments doc).nodePositions = doc.nodePositions := rfl
+
+/-- Comment count is preserved by classification. -/
+theorem classifyDocumentComments_size_eq (doc : YamlDocument) :
+    (TokenParser.classifyDocumentComments doc).comments.size = doc.comments.size := by
+  simp [TokenParser.classifyDocumentComments, Array.size_map]
+
+/-- Classification preserves comment texts — only positions change. -/
+theorem classifyDocumentComments_preserves_texts (doc : YamlDocument) :
+    (TokenParser.classifyDocumentComments doc).commentTexts = doc.commentTexts := by
+  simp [TokenParser.classifyDocumentComments, YamlDocument.commentTexts, Array.map_map]
+
+/-- Stripping comments after classification = stripping directly.
+    Both produce `{ doc with comments := #[] }`. -/
+theorem stripComments_classifyDocumentComments (doc : YamlDocument) :
+    (TokenParser.classifyDocumentComments doc).stripComments = doc.stripComments := by
+  simp [TokenParser.classifyDocumentComments, YamlDocument.stripComments]
+
+/-- Classification and `compose` commute — they modify orthogonal fields.
+    `compose` modifies `value` and `anchors`; `classifyDocumentComments`
+    modifies `comments`. -/
+theorem classifyDocumentComments_compose_comm (doc : YamlDocument) :
+    (TokenParser.classifyDocumentComments doc).compose =
+    TokenParser.classifyDocumentComments doc.compose := by
+  simp [TokenParser.classifyDocumentComments, YamlDocument.compose]
+
+/-- Classification is idempotent — classifying twice yields the same result
+    as classifying once. The second pass re-maps positions using the same
+    `nodePositions`, and `{ c with position := p }.position = p`. -/
+theorem classifyDocumentComments_idempotent (doc : YamlDocument) :
+    TokenParser.classifyDocumentComments (TokenParser.classifyDocumentComments doc) =
+    TokenParser.classifyDocumentComments doc := by
+  simp [TokenParser.classifyDocumentComments, Array.map_map]
+
+/-- Classifying comments on a stripped document is a no-op — there are
+    no comments to classify. -/
+theorem classifyDocumentComments_stripComments (doc : YamlDocument) :
+    TokenParser.classifyDocumentComments doc.stripComments = doc.stripComments := by
+  simp [TokenParser.classifyDocumentComments, YamlDocument.stripComments, Array.map]
+
+/-- For single-document streams, partitioning assigns all comments
+    to the single document. -/
+theorem partitionCommentsByDocument_single (rawComments : Array (YamlPos × String))
+    (doc : YamlDocument) :
+    TokenParser.partitionCommentsByDocument rawComments #[doc] = #[rawComments] := by
+  simp [TokenParser.partitionCommentsByDocument]
+
+/-- The composed value is independent of classification — classification
+    does not affect the value tree or anchors. -/
+theorem compose_value_classifyDocumentComments_eq (doc : YamlDocument) :
+    (TokenParser.classifyDocumentComments doc).compose.value = doc.compose.value := rfl
+
+/-! ## §12  Comment-aware dump properties (Phase 8 / v0.2.7)
+
+`dumpDocumentWithComments` integrates comments from the side-channel
+into the serialized output. When a document has no comments, it falls
+back to `dumpDocument` identically. The dump functions preserve the
+fundamental property: comments are presentation-only metadata that do
+not alter the value content.
+-/
+
+open Lean4Yaml.Dump in
+/-- A document with no comments: `dumpDocumentWithComments` = `dumpDocument`. -/
+theorem dumpDocumentWithComments_no_comments (doc : YamlDocument)
+    (cfg : DumpConfig)
+    (h : doc.comments = #[]) :
+    dumpDocumentWithComments doc cfg = dumpDocument doc cfg := by
+  unfold dumpDocumentWithComments
+  rw [h]
+  simp [Array.isEmpty]
+
+open Lean4Yaml.Dump in
+/-- Stripping comments then dumping with comments = plain dump.
+    Since `stripComments` produces `comments := #[]`, the fallback fires. -/
+theorem dumpDocumentWithComments_stripComments (doc : YamlDocument)
+    (cfg : DumpConfig) :
+    dumpDocumentWithComments doc.stripComments cfg =
+    dumpDocument doc.stripComments cfg := by
+  unfold dumpDocumentWithComments
+  simp [YamlDocument.stripComments, Array.isEmpty]
+
+open Lean4Yaml.Dump in
+/-- Stripping comments preserves dump output — the value tree is the same,
+    and `dumpDocument` only uses `value` and `directives`. -/
+theorem dumpDocument_stripComments_eq (doc : YamlDocument) (cfg : DumpConfig) :
+    dumpDocument doc.stripComments cfg = dumpDocument doc cfg := rfl
+
+open Lean4Yaml.Dump in
+/-- Classification does not affect `dumpDocument` — it only changes
+    `comments`, which `dumpDocument` ignores. -/
+theorem dumpDocument_classifyDocumentComments_eq (doc : YamlDocument)
+    (cfg : DumpConfig) :
+    dumpDocument (TokenParser.classifyDocumentComments doc) cfg =
+    dumpDocument doc cfg := rfl
+
+open Lean4Yaml.Dump in
+/-- `dumpCommentsOfPosition` on empty comments returns "". -/
+theorem dumpCommentsOfPosition_empty (pos : CommentPosition) :
+    dumpCommentsOfPosition #[] pos = "" := by
+  simp [dumpCommentsOfPosition, Array.filter, Array.isEmpty]
+
+open Lean4Yaml.Dump in
+/-- `dumpDocumentsWithComments` on empty array returns "". -/
+theorem dumpDocumentsWithComments_empty (cfg : DumpConfig) :
+    dumpDocumentsWithComments #[] cfg = "" := by
+  simp [dumpDocumentsWithComments]
+
+open Lean4Yaml.Dump in
+/-- `dumpDocumentsWithComments` on singleton uses `dumpDocumentWithComments`. -/
+theorem dumpDocumentsWithComments_singleton (doc : YamlDocument)
+    (cfg : DumpConfig) :
+    dumpDocumentsWithComments #[doc] cfg =
+    dumpDocumentWithComments doc cfg := by
+  simp [dumpDocumentsWithComments]
 
 end Lean4Yaml.Proofs.CommentProperties
