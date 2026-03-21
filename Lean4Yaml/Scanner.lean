@@ -2103,11 +2103,43 @@ def isKeyCandidate (s : ScannerState) : Bool :=
   | some n => isBlankBool n || (s.inFlow && isFlowIndicatorBool n)
   | none => true
 
+/-- Check whether a token is a JSON-like node end.
+    YAML §7.4.2 [157]: `c-ns-flow-map-json-key-entry` allows adjacent value
+    (`:` without following whitespace) after JSON nodes: quoted scalars,
+    flow sequence end `]`, and flow mapping end `}`. -/
+def isJsonNodeToken (tok : YamlToken) : Bool :=
+  match tok with
+  | .scalar _ .doubleQuoted => true
+  | .scalar _ .singleQuoted => true
+  | .flowSequenceEnd => true
+  | .flowMappingEnd => true
+  | _ => false
+
 /-- Check whether a value indicator (`:`) should be recognized.
-    In flow context with a possible simple key, always true.
-    Otherwise, requires a blank, flow indicator, or EOF after. -/
+    In flow context with a possible simple key from a preceding token, always true.
+    Otherwise, requires a blank, flow indicator, or EOF after.
+    §7.4.2: In flow context, `:` is adjacent-value only after an actual key
+    (quoted scalar, flow collection, etc.), not when `:` itself was saved as
+    the potential simple key at the current position.  When `saveSimpleKey`
+    overwrites a JSON-key's simple key (e.g., after a newline: `{ "foo"\n :bar }`),
+    the placeholders are at `simpleKey.tokenIndex` and the JSON node token
+    immediately precedes them — check for it. -/
 def isValueCandidate (s : ScannerState) : Bool :=
-  if s.inFlow && s.simpleKey.possible then true
+  if s.inFlow && s.simpleKey.possible then
+    if s.simpleKey.pos.offset != s.offset then true
+    else
+      -- Simple key was saved at current `:` position (by saveSimpleKey after
+      -- a newline reset simpleKeyAllowed).  Check if a JSON node token
+      -- immediately precedes the placeholder slots — if so, this `:` is
+      -- an adjacent value indicator for that node (§7.4.2 [155]/[157]).
+      -- Otherwise fall through to standard next-char check.
+      let jsonAdjacentValue := match s.tokens[s.simpleKey.tokenIndex - 1]? with
+        | some tok => isJsonNodeToken tok.val
+        | none => false
+      if jsonAdjacentValue then true
+      else match s.peekAt? 1 with
+        | some n => isBlankBool n || isFlowIndicatorBool n
+        | none => true
   else match s.peekAt? 1 with
   | some n => isBlankBool n || (s.inFlow && isFlowIndicatorBool n)
   | none => true
