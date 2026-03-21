@@ -339,13 +339,34 @@ Schema round-trip composition (Phase 7.5). Proves that `resolve ∘ toYaml` and 
 
 #### Version 0.2.6
 
-Comment preservation (Phase 8). AST-level comment metadata for round-trip fidelity per YAML 1.2.2 §6.6. Seven sub-phases: token extension, scanner changes, parser threading, AST attachment, emitter output, round-trip proofs, spec example validation.
+Scanner bug fixes: fix 7 runtime test failures across 4 test suites. Two root causes: (1) colon-chain misparse in flow plain scalars — `:x`, `::value`, `::vector` tokenized as value indicators instead of plain scalar content (affects yaml-test-suite 58MP, 5T43, DBG4 and spec example 7.10); (2) anchor/alias edge cases — undefined alias rejection, anchor redefinition scoping, cross-document anchor isolation, and alias token scanning.
 
 #### Version 0.2.7
 
+Comment preservation (Phase 8). AST-level comment metadata for round-trip fidelity per YAML 1.2.2 §6.6. Seven sub-phases: token extension, scanner changes, parser threading, AST attachment, emitter output, round-trip proofs, spec example validation.
+
+#### Version 0.2.8
+
 `%TAG` directive resolution (§6.8.2). Wire `%TAG` handle declarations into parser state and resolve `!handle!suffix` → expanded URI during parsing.
 
-#### Version 0.3
+#### Version 0.2.9
+
+End-to-end round-trip composition (Phase 7.5). Compose parser + dump + schema proofs into:
+
+```lean
+theorem roundtrip :
+  ∀ (v : YamlValue),
+    parseSingle (dump v cfg) = .ok v' →
+    resolve v' = resolve v
+```
+
+This is the verified-correctness analog of lean4-yaml's empirical round-trip tests. Requires the schema composition proofs (v0.2.5), parser soundness (Phase 3), and dump proofs (Phase 6) — all complete. The hard part is threading through the `parseSingle ∘ dump` chain.
+
+#### Version 0.2.10
+
+Scanner hardening: fix remaining scanner/parser edge cases beyond the 7 addressed in v0.2.6 (explicit key value resolution, flow explicit keys, validation strictness). These are beyond yaml-test-suite coverage but affect robustness.
+
+#### Version 0.3.0
 
 Security mechanisms to prevent **two critical vulnerability classes**:
 
@@ -1937,7 +1958,7 @@ Build verification: 475 rawparsetests jobs, 507 suiterunner jobs — all pass. S
 
 <details>
 <summary>
-Phase 7.1–7.4 complete: 1849 lines, 75 theorems, 105 <code>#guard</code> checks, 68 runtime tests. 529 build jobs, 0 errors, 0 sorry, 0 partial def. Phase 7.5 (round-trip composition — v0.2.4) remaining.
+Phase 7.1–7.4 complete: 1849 lines, 75 theorems, 105 <code>#guard</code> checks, 68 runtime tests. 529 build jobs, 0 errors, 0 sorry, 0 partial def. Phase 7.5 (end-to-end round-trip composition — v0.2.9) remaining.
 </summary>
 
 ### Motivation
@@ -2151,7 +2172,7 @@ Plus 49 compile-time `#guard` checks validating serialization output and content
 
 </details>
 
-#### Phase 7.5: End-to-End Round-Trip
+#### Phase 7.5: End-to-End Round-Trip (v0.2.9)
 
 <details>
 
@@ -2196,7 +2217,7 @@ The schema layer follows the same architectural principles documented in ANALYSI
 | 7.2: FromToYaml typeclasses | 208 | 1 | — (runtime tests TBD) | ✅ Complete |
 | 7.3: Struct helpers & deriving | 132 + 267 + 48 | 1 | — (macro validation by type system) | ✅ Complete |
 | 7.4: Schema ↔ dump integration | 290 + 311 proofs + 259 tests | 1 | 40 theorems + 71 `#guard` + 68 runtime tests | ✅ Complete |
-| 7.5: Round-trip composition | ~50 | 2+ | ~1 theorem (hard) | Not started |
+| 7.5: Round-trip composition (v0.2.9) | ~50 | 2+ | ~1 theorem (hard) | Not started |
 | **Total** | **1849 done + ~50 remaining** | **4 done + 2+** | **75 theorems + 105 guards + 68 runtime** | **7.1–7.4 ✅** |
 
 The schema layer is **1849 lines** (so far) of Lean code plus 75 formal theorems, 105 compile-time `#guard` checks, and 68 runtime tests. This is significantly less than the parser (~2500 lines) and has far better proof tractability since everything is pure functions on inductive types with no parser combinator dependency.
@@ -2257,7 +2278,7 @@ Ported and adapted the schema layer from lean4-yaml (2026-02-24). 8 new files im
 
 </details>
 
-## Phase 8: Comment Preservation — Planned (v0.2.5)
+## Phase 8: Comment Preservation — Planned (v0.2.7)
 
 <details>
 
@@ -2495,7 +2516,7 @@ This means the schema proofs (Phase 7) are unaffected, provided `BEq` on `YamlVa
 - Phase 8.4 (Dump) depends on 8.1 and can proceed in parallel with 8.2.
 - Phase 8.7 (Proofs) depends on all of 8.1–8.6.
 - Phases 7.1–7.4 proofs are **not affected** (comments are invisible to schema resolution).
-- Phase 7.5 (round-trip theorem) should be extended to account for comments once 8.7 is complete.
+- Phase 7.5 (round-trip theorem, v0.2.9) should be extended to account for comments once 8.7 is complete.
 
 </details>
 
@@ -3371,18 +3392,16 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
   - Lean's `sorry` produces a warning (not an error), so the build stays green while clearly flagging incomplete work.
   - The comment `-- P10.2→P10.5: old parser bridge, will be rewritten against tokenized parser` on each `sorry` links the debt to its resolution phase.
 
-###### Known gaps deferred to Phase 9 scanner hardening
+###### Known gaps — scanner bug fixes (v0.2.6) and hardening (v0.2.10)
 
-39 runtime test failures remain across 6 test suites — these are all scanner/parser edge cases beyond the yaml-test-suite's coverage:
+7 runtime test failures remain across 4 test suites (down from 39 at the time of the P10.2 migration). Two distinct root causes:
 
-| Category | Count | Root cause | Resolution |
-|---|---|---|---|
-| Explicit key value resolution | 12 | Scanner inserts spurious `KEY` when `?` explicit key transitions to `:` on next line — needs stale simple key invalidation (libyaml's `stale_simple_keys`) | Phase 9 scanner hardening |
-| Flow explicit keys | 5 | `{? a : b}`, `[? a : b]`, DFF7, FRK4 — scanner's single `simpleKey` slot can't track nested flow-level keys | Phase 9: per-flow-level simple key stack |
-| Validation strictness | 16 | Tokenized parser accepts inputs the old parser rejected (tab indent, trailing content after flow, unclosed sequences, etc.) | Phase 9: add validation pass between scan and parse |
-| Anchor scoping | 6 | Cross-document anchor isolation and alias resolution differ between old and tokenized parsers | Phase 9: anchor scope tracking in `TokenParser` |
+| Category | Count | Failing tests | Root cause | Resolution |
+|---|---|---|---|---|
+| Colon-chain in flow plain scalars | 4 | yaml-test-suite 58MP, 5T43, DBG4; spec example 7.10 | Scanner tokenizes `:x`, `::value`, `::vector` as value indicator chains instead of plain scalar content. Per YAML §7.3.3/§7.4.2, `:` is only a value indicator when followed by a flow indicator or whitespace. | v0.2.6: scanner fix |
+| Anchor/alias edge cases | 3 | anchor tests: undefined alias, redefinition scoping, cross-doc isolation; scanner test: alias scan | `TokenParser` does not track anchor scope per document or validate alias references against defined anchors. | v0.2.6: anchor scope tracking in `TokenParser` |
 
-These do not affect the yaml-test-suite (849/0/171 unchanged) or parsercompare (346/0 match). They represent scanner edge cases that the old char-level parser handled through its more complex (and buggy) single-pass architecture, and that the tokenized scanner will need explicit handling for. None are regressions — the tokenized parser never handled these cases; the old parser handled some of them as side effects of its `detectMappingKeyImpl` lookahead.
+These failures are tracked as commented-out `#guard` checks in `Tests/Guards/Proofs/SuiteGuards/Flow.lean` (58MP, 5T43, DBG4). Current CI results (2026-03-20): yaml-test-suite 355/358 applicable correct (99.1%), spec examples 131/132, scanner tests 31/32, anchor tests 30/33. Total verified: 747/750.
 
 </details>
 
@@ -6156,10 +6175,10 @@ The remaining 52 skipped tests are YAML 1.1/1.3 features or tests that require b
 
 | Section | Description | Difficulty | Dependency |
 |---|---|---|---|
-| §6.8.2 `%TAG` directive resolution | Map `!handle!suffix` → expanded URI using directive declarations (v0.2.6) | Medium | Wire `%TAG` declarations into parser state |
+| §6.8.2 `%TAG` directive resolution | Map `!handle!suffix` → expanded URI using directive declarations (v0.2.8) | Medium | Wire `%TAG` declarations into parser state |
 | ~~§7.5 Flow nodes~~ | ✅ Done (P2) | — | — |
 | ~~§9.1.3 `c-forbidden`~~ | ✅ Done (P3) | — | — |
-| §10 Recommended Schemas | ✅ Core schema (Phase 7.1–7.4 complete). Failsafe/JSON implicit. | — | Phase 7.5 (round-trip composition — v0.2.4) remaining |
+| §10 Recommended Schemas | ✅ Core schema (Phase 7.1–7.4 complete). Failsafe/JSON implicit. | — | Phase 7.5 (end-to-end round-trip — v0.2.9) remaining |
 
 ## Building
 
