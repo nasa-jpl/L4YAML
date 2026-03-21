@@ -21,7 +21,7 @@ Lean4Yaml/
 │   ├── Deriving.lean        # deriving FromYaml, ToYaml macro handlers
 │   ├── Dump.lean            # Schema↔Dump integration: dumpTyped, roundTripTyped
 │   └── Api.lean             # Convenience: parseAs, toYaml, parseTyped
-├── Proofs/                              # 1,621 theorems, 46 modules, ~31,800 lines
+├── Proofs/                              # 1,626 theorems, 46 modules, ~32,000 lines
 │   ├── Soundness.lean             # Parser produces only valid YAML
 │   ├── Completeness.lean          # Valid YAML parses successfully (DecidableEq + native_decide)
 │   ├── Composition.lean           # Scanner→TokenParser pipeline composition
@@ -276,17 +276,33 @@ Prop twins for specification structures (doc-verification-bridge visibility). Th
 - Also fixed 6 missing imports in `Lean4Yaml.lean`: `ParserAnchorProofs`, `ParserGrammableBase`, `ParserNodeProofs`, `ParserWellBehaved`, `ParserWfaProofs`, `ScannerCorrectness`
 - Build: 341/341 jobs, 0 errors, 0 sorry, 0 warnings
 
-#### Version 0.2.4
+#### Version 0.2.4 (completed 2026-03-20)
 
 `ValidStream` and `ValidDocument` proofs. Prove that the parser produces valid multi-document streams, closing the last unverified specification types in `Grammar.lean`.
 
-**Problem:** `ValidStream` and `ValidDocument` are defined in `Grammar.lean` but have zero theorems — `ValidStream` has `"verifiedBy": []` in bridge analysis, and `ValidDocument` appears only as a field type within `ValidStream`.
+**Status: Complete** — 341/341 build jobs, 0 errors, 0 sorry, 0 axiom.
 
-**Scope:**
-1. Prove `parseYaml_produces_valid_documents` — each parsed document satisfies `ValidDocument`
-2. Prove `parseYaml_produces_valid_stream` — the full document array forms a `ValidStream`
-3. Remove `Grammable` hypothesis from `parseStream_respects_grammar` (if feasible)
-4. Define `ValidStreamProp` (`Prop` twin) and bridge theorem for doc-verification-bridge visibility
+**Problem:** `ValidStream` and `ValidDocument` are defined in `Grammar.lean` but had zero theorems — `ValidStream` had `"verifiedBy": []` in bridge analysis, and `ValidDocument` appeared only as a field type within `ValidStream`.
+
+**Scope (all completed):**
+1. ✅ `parse_produces_valid_documents` — each parsed document has a `ValidDocument` witness (`EndToEndCorrectness.lean §7`)
+2. ✅ `parse_produces_valid_stream` — nonempty document array forms a `ValidStream` (`EndToEndCorrectness.lean §7`)
+3. ✅ `parseStream_respects_grammar_unconditional` — removes `Grammable` hypothesis when scanner context available (`EndToEndCorrectness.lean §8`)
+4. ✅ `ValidStreamProp` / `ValidDocumentProp` (Prop twins) + bridge theorems `parseYaml_implies_valid_stream` / `parseYaml_implies_valid_document` (`Grammar.lean`, `EndToEndCorrectness.lean §7`)
+
+**New definitions (Grammar.lean):**
+- `extractYamlVersion` — extract `%YAML` version from directive array
+- `ValidDocumentProp` — propositional twin: `∃ node, stripAnnotations (toYamlValue node) = stripAnnotations doc.value`
+- `ValidStreamProp` — propositional twin: `docs.size > 0 ∧ ∀ i, ValidDocumentProp docs[i]`
+
+**New theorems (EndToEndCorrectness.lean):**
+| Theorem | Statement |
+|---------|-----------|
+| `parse_produces_valid_documents` | `parseYaml ok → ∀ i, ∃ ValidDocument with matching content` |
+| `parse_produces_valid_stream` | `parseYaml ok ∧ nonempty → ∃ ValidStream` |
+| `parseYaml_implies_valid_document` | `parseYaml ok → ValidDocumentProp docs[i]` |
+| `parseYaml_implies_valid_stream` | `parseYaml ok ∧ nonempty → ValidStreamProp docs` |
+| `parseStream_respects_grammar_unconditional` | `scanFiltered ok ∧ parseStream ok → ∀ doc, ∃ ValidNode` |
 
 #### Version 0.2.5
 
