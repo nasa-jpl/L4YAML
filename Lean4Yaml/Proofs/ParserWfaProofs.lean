@@ -1480,16 +1480,16 @@ theorem prepareDocumentState_anchors_eq
   have h_anch :
       ({ (parseDirectives ps).2 with
           tagHandles := (parseDirectives ps).1.filterMap fun
-            | Directive.tag handle _ => some handle
+            | Directive.tag handle tagPrefix => some (handle, tagPrefix)
             | _ => none }.tryConsume .documentStart).2.anchors = ps.anchors := by
     calc
       ({ (parseDirectives ps).2 with
           tagHandles := (parseDirectives ps).1.filterMap fun
-            | Directive.tag handle _ => some handle
+            | Directive.tag handle tagPrefix => some (handle, tagPrefix)
             | _ => none }.tryConsume .documentStart).2.anchors
           = ({ (parseDirectives ps).2 with
                 tagHandles := (parseDirectives ps).1.filterMap fun
-                  | Directive.tag handle _ => some handle
+                  | Directive.tag handle tagPrefix => some (handle, tagPrefix)
                   | _ => none }).anchors :=
               tryConsume_snd_anchors _ _
       _ = (parseDirectives ps).2.anchors := rfl

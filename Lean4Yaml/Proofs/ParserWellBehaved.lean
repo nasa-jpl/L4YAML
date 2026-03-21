@@ -2826,16 +2826,16 @@ theorem prepareDocumentState_tokens_preserved
   have h_tok :
       ({ (parseDirectives ps).2 with
           tagHandles := (parseDirectives ps).1.filterMap fun
-            | Directive.tag handle _ => some handle
+            | Directive.tag handle tagPrefix => some (handle, tagPrefix)
             | _ => none }.tryConsume .documentStart).2.tokens = ps.tokens := by
     calc
       ({ (parseDirectives ps).2 with
           tagHandles := (parseDirectives ps).1.filterMap fun
-            | Directive.tag handle _ => some handle
+            | Directive.tag handle tagPrefix => some (handle, tagPrefix)
             | _ => none }.tryConsume .documentStart).2.tokens
           = ({ (parseDirectives ps).2 with
                 tagHandles := (parseDirectives ps).1.filterMap fun
-                  | Directive.tag handle _ => some handle
+                  | Directive.tag handle tagPrefix => some (handle, tagPrefix)
                   | _ => none }).tokens :=
               tryConsume_tokens _ _
       _ = (parseDirectives ps).2.tokens := rfl

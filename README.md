@@ -54,6 +54,7 @@ Lean4Yaml/
 │   ├── SchemaDump.lean            # Schema↔Dump proofs (40 theorems)
 │   ├── DumpRoundTrip.lean         # Dump round-trip proofs
 │   ├── CommentProperties.lean     # Comment handling + dump proofs (60 theorems)
+│   ├── TagResolution.lean         # %TAG directive resolution proofs (12 theorems)
 │   ├── EndToEndCorrectness.lean   # End-to-end correctness proofs
 │   ├── ValueAlgebra.lean          # YamlValue algebraic properties
 │   ├── ParserSoundness.lean       # Token parser soundness proofs
@@ -114,7 +115,7 @@ Verification uses a deliberate 3-layer approach:
 
 1. **Internal runtime tests** (1041 tests across 14 suites + 11 diagnostic + 132 spec examples) — hand-written Lean tests validating parser properties. Every `theorem` target starts life as a runtime `check` test. These are _separate_ from the yaml-test-suite's 406 external test cases. Additionally, 132 examples extracted from the YAML 1.2.2 specification (§2–§10) are parsed as an extra conformance layer — the tokenized pipeline (`Scanner.lean` → `TokenParser.lean`) achieves 132/132 (100%).
 2. **Formal proofs** (`theorem`/`lemma` in `Proofs/*.lean`) — machine-checked guarantees. Layered by dependency: pure functions first, then scanner invariants, then pipeline composition.
-3. **Compile-time guards** (`#guard`) — 2,083 total across all modules (143 in `Lean4Yaml/` + 1,940 in `Tests/`, including 362 auto-generated from yaml-test-suite in `Tests/Guards/Proofs/SuiteGuards/*.lean`). `#guard` kernel evaluation works for all functions (all `def`, zero `partial def`). Any parser regression breaks the build.
+3. **Compile-time guards** (`#guard`) — 2,020 total in `Tests/` (including 362 auto-generated from yaml-test-suite in `Tests/Guards/Proofs/SuiteGuards/*.lean`). `#guard` kernel evaluation works for all functions (all `def`, zero `partial def`). Any parser regression breaks the build.
 
 The runtime tests serve as a proof roadmap: each `setCategory`/`check` group maps to a `theorem` target. When a proof is completed, the corresponding tests become redundant (but are kept as regression guards).
 
@@ -396,9 +397,35 @@ Comment preservation (Phase 8). AST-level comment metadata for round-trip fideli
 - Compile-time guards: 2,024 total (43 new for comment round-trip)
 - Build: 342/342 jobs, 0 errors, 0 sorry, 0 warnings
 
-#### Version 0.2.8
+#### Version 0.2.8 (completed 2026-03-22)
 
 `%TAG` directive resolution (§6.8.2). Wire `%TAG` handle declarations into parser state and resolve `!handle!suffix` → expanded URI during parsing.
+
+**Implementation:**
+
+| Component | Change | File |
+|-----------|--------|------|
+| ParseState | `tagHandles : Array String` → `Array (String × String)` — stores `(handle, tagPrefix)` pairs for URI expansion | `TokenParser.lean` |
+| Resolution | `resolveTag` — pure function mapping `(handle, suffix)` to expanded URI via `%TAG` mapping; falls back to shorthand for undeclared builtins (`!!`, `!`) | `TokenParser.lean` |
+| prepareDocumentState | `filterMap` now extracts `(handle, tagPrefix)` pairs from directive array | `TokenParser.lean` |
+| parseNodeProperties | Handle existence check uses `tagHandles.any (·.1 == handle)`; tag value computed via `resolveTag` | `TokenParser.lean` |
+| Proofs | 12 theorems in `TagResolution.lean` — verbatim pass-through, declared handle expansion, default secondary/primary shorthand preservation, override correctness | `Proofs/TagResolution.lean` |
+| Proof updates | `prepareDocumentState_anchors_eq`, `prepareDocumentState_tokens_preserved` updated to match new `filterMap` signature | `Proofs/ParserWfaProofs.lean`, `Proofs/ParserWellBehaved.lean` |
+| Guards | 23 compile-time `#guard` checks — `resolveTag` unit tests, spec examples 6.16/6.18/6.19/6.20/6.21/2.24/6.26, default shorthand preservation, verbatim tags | `Tests/Guards/Proofs/TagResolution.lean` |
+
+**Tag resolution rules:**
+- Verbatim (`handle=""`): pass through suffix as-is
+- Declared handle (found in `%TAG`): `tagPrefix ++ suffix`
+- Default secondary (`!!` without `%TAG !!`): `"!!" ++ suffix` (shorthand form)
+- Default primary (`!` without `%TAG !`): `"!" ++ suffix` (local tag)
+
+**Key results:**
+- yaml-test-suite: 358/358 applicable correct (100%)
+- Spec examples: 132/132 (100%)
+- Verified internal tests: 750/750 (100%) across 11 suites
+- Theorems: 1,724 total (12 new for TAG resolution)
+- Compile-time guards: 2,020 total (23 new for TAG resolution)
+- Build: 345/345 jobs, 0 errors, 0 sorry, 0 warnings
 
 #### Version 0.2.9
 
@@ -658,7 +685,7 @@ Discovered 36 timeout cases (not 9), all sharing one root cause: `yamlStream`'s 
 
 **Result: +17 correct (175→192).** Fixed 17/28 tag-related failures. Remaining 11 tag failures involve:
 - Verbatim tags in complex nested contexts (7FWL, UGM3)
-- `%TAG` directive resolution not wired to tag handles (5TYM, P76L)
+- ~~`%TAG` directive resolution not wired to tag handles (5TYM, P76L)~~ — ✅ resolved in v0.2.8
 - Named handle tags in sequences (Z9M4, 6CK3)
 - Bare `!` and edge cases (UKK6, S4JQ)
 

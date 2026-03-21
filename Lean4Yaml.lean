@@ -59,6 +59,7 @@ import Lean4Yaml.Proofs.SchemaDump
 import Lean4Yaml.Proofs.SchemaResolution
 import Lean4Yaml.Proofs.Soundness
 import Lean4Yaml.Proofs.StringProperties
+import Lean4Yaml.Proofs.TagResolution
 import Lean4Yaml.Proofs.ValueAlgebra
 
 /-
