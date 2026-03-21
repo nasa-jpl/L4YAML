@@ -87,4 +87,92 @@
   ✓ {:} empty key
   ✓ {:} null value
 
-=== Results: 66/66 passed ===
+--- Double/nested explicit keys ---
+  ✓ ? ? a: b is mapping
+  ✓ ? ? a: b key is mapping
+  ✓ ? ? a: b value is null
+  ✓ nested ? key parses
+  ✓ nested ? key is mapping
+  ✓ ? ? is mapping
+  ✓ ? ? key is mapping
+
+--- Standalone ? and empty key/value ---
+  ✓ bare ? is mapping
+  ✓ bare ? null key
+  ✓ bare ? null value
+  ✓ ? (space) is mapping
+  ✓ ? (space) null key
+  ✓ ?\n is mapping
+  ✓ ?\n null key
+  ✓ ---\n? is mapping
+  ✓ ?\n:\n?\n: pair count
+  ✓ first null:null key
+  ✓ first null:null val
+  ✓ second null:null key
+  ✓ second null:null val
+
+--- Nested structures as explicit keys ---
+  ✓ ? [1,2] : value is mapping
+  ✓ ? [1,2] key is sequence
+  ✓ ? [1,2] value
+  ✓ ? {a:1} : value is mapping
+  ✓ ? {a:1} pair count
+  ✓ ? {a:1} key is mapping
+  ✓ ? {a:1} value is null
+  ✓ ? [a,b] : {c:d} is mapping
+  ✓ ? [a,b] key is sequence
+  ✓ ? [a,b] value is mapping
+  ✓ {? [a]: b} is mapping
+  ✓ {? [a]: b} key is sequence
+  ✓ {? [a]: b} value
+
+--- Tags on explicit keys ---
+  ✓ ? !!str 123 is mapping
+  ✓ ? !!str 123 key
+  ✓ ? !!str 123 value
+  ✓ ? !tag key is mapping
+  ✓ ? !tag key value
+
+--- Flow explicit key edge cases ---
+  ✓ {? : v1, ? : v2} parses
+  ✓ {? : v1, ? : v2} pair count
+  ✓ {?, ?} parses
+  ✓ {? , ? } parses
+  ✓ [? a:b, ? c:d] is sequence
+  ✓ [? a:b, ? c:d] count
+  ✓ [? a:b, ? c:d] first is mapping
+  ✓ [? a:b, ? c:d] second is mapping
+  ✓ [? a, ? b] is sequence
+  ✓ [? a, ? b] count
+  ✓ [? a, ? b] first is mapping
+  ✓ [? a, ? b] second is mapping
+
+--- Explicit key + block sequence nesting ---
+  ✓ seq of explicit maps is sequence
+  ✓ seq of explicit maps count
+  ✓ seq[0] is mapping
+  ✓ seq[1] is mapping
+
+--- Explicit key with colons in plain scalars ---
+  ✓ ? a:b:c key
+  ✓ ? a:b:c value
+  ✓ ? http://... key
+  ✓ ? http://... value
+
+--- Explicit key alias resolution ---
+  ✓ ? &a k : *a is mapping
+  ✓ ? &a k : *a key
+  ✓ ? &a k : *a value
+  ✓ ? &a : *a is mapping
+  ✓ ? &a null key
+  ✓ ? &a : *a null value
+
+--- Indented explicit keys ---
+  ✓ indented ? a : b
+  ✓ indented key
+  ✓ indented value
+
+--- Tab rejection in explicit keys ---
+  ✓ ?\t correctly rejected
+
+=== Results: 134/134 passed ===

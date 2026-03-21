@@ -1,5 +1,5 @@
 {
-  "date": "2026-03-21T11:27:10-0700",
+  "date": "2026-03-21T12:45:49-0700",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -2587,7 +2587,7 @@
       {
         "allPass": true,
         "label": "Explicit Key Tests",
-        "passed": 66,
+        "passed": 134,
         "tests": [
           {
             "category": "Basic explicit keys",
@@ -2918,9 +2918,349 @@
             "category": "Empty keys (flow)",
             "name": "{:} null value",
             "outcome": "pass"
+          },
+          {
+            "category": "Double/nested explicit keys",
+            "name": "? ? a: b is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Double/nested explicit keys",
+            "name": "? ? a: b key is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Double/nested explicit keys",
+            "name": "? ? a: b value is null",
+            "outcome": "pass"
+          },
+          {
+            "category": "Double/nested explicit keys",
+            "name": "nested ? key parses",
+            "outcome": "pass"
+          },
+          {
+            "category": "Double/nested explicit keys",
+            "name": "nested ? key is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Double/nested explicit keys",
+            "name": "? ? is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Double/nested explicit keys",
+            "name": "? ? key is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Standalone ? and empty key/value",
+            "name": "bare ? is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Standalone ? and empty key/value",
+            "name": "bare ? null key",
+            "outcome": "pass"
+          },
+          {
+            "category": "Standalone ? and empty key/value",
+            "name": "bare ? null value",
+            "outcome": "pass"
+          },
+          {
+            "category": "Standalone ? and empty key/value",
+            "name": "? (space) is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Standalone ? and empty key/value",
+            "name": "? (space) null key",
+            "outcome": "pass"
+          },
+          {
+            "category": "Standalone ? and empty key/value",
+            "name": "?\\n is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Standalone ? and empty key/value",
+            "name": "?\\n null key",
+            "outcome": "pass"
+          },
+          {
+            "category": "Standalone ? and empty key/value",
+            "name": "---\\n? is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Standalone ? and empty key/value",
+            "name": "?\\n:\\n?\\n: pair count",
+            "outcome": "pass"
+          },
+          {
+            "category": "Standalone ? and empty key/value",
+            "name": "first null:null key",
+            "outcome": "pass"
+          },
+          {
+            "category": "Standalone ? and empty key/value",
+            "name": "first null:null val",
+            "outcome": "pass"
+          },
+          {
+            "category": "Standalone ? and empty key/value",
+            "name": "second null:null key",
+            "outcome": "pass"
+          },
+          {
+            "category": "Standalone ? and empty key/value",
+            "name": "second null:null val",
+            "outcome": "pass"
+          },
+          {
+            "category": "Nested structures as explicit keys",
+            "name": "? [1,2] : value is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Nested structures as explicit keys",
+            "name": "? [1,2] key is sequence",
+            "outcome": "pass"
+          },
+          {
+            "category": "Nested structures as explicit keys",
+            "name": "? [1,2] value",
+            "outcome": "pass"
+          },
+          {
+            "category": "Nested structures as explicit keys",
+            "name": "? {a:1} : value is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Nested structures as explicit keys",
+            "name": "? {a:1} pair count",
+            "outcome": "pass"
+          },
+          {
+            "category": "Nested structures as explicit keys",
+            "name": "? {a:1} key is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Nested structures as explicit keys",
+            "name": "? {a:1} value is null",
+            "outcome": "pass"
+          },
+          {
+            "category": "Nested structures as explicit keys",
+            "name": "? [a,b] : {c:d} is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Nested structures as explicit keys",
+            "name": "? [a,b] key is sequence",
+            "outcome": "pass"
+          },
+          {
+            "category": "Nested structures as explicit keys",
+            "name": "? [a,b] value is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Nested structures as explicit keys",
+            "name": "{? [a]: b} is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Nested structures as explicit keys",
+            "name": "{? [a]: b} key is sequence",
+            "outcome": "pass"
+          },
+          {
+            "category": "Nested structures as explicit keys",
+            "name": "{? [a]: b} value",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tags on explicit keys",
+            "name": "? !!str 123 is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tags on explicit keys",
+            "name": "? !!str 123 key",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tags on explicit keys",
+            "name": "? !!str 123 value",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tags on explicit keys",
+            "name": "? !tag key is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tags on explicit keys",
+            "name": "? !tag key value",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow explicit key edge cases",
+            "name": "{? : v1, ? : v2} parses",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow explicit key edge cases",
+            "name": "{? : v1, ? : v2} pair count",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow explicit key edge cases",
+            "name": "{?, ?} parses",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow explicit key edge cases",
+            "name": "{? , ? } parses",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow explicit key edge cases",
+            "name": "[? a:b, ? c:d] is sequence",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow explicit key edge cases",
+            "name": "[? a:b, ? c:d] count",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow explicit key edge cases",
+            "name": "[? a:b, ? c:d] first is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow explicit key edge cases",
+            "name": "[? a:b, ? c:d] second is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow explicit key edge cases",
+            "name": "[? a, ? b] is sequence",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow explicit key edge cases",
+            "name": "[? a, ? b] count",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow explicit key edge cases",
+            "name": "[? a, ? b] first is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow explicit key edge cases",
+            "name": "[? a, ? b] second is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Explicit key + block sequence nesting",
+            "name": "seq of explicit maps is sequence",
+            "outcome": "pass"
+          },
+          {
+            "category": "Explicit key + block sequence nesting",
+            "name": "seq of explicit maps count",
+            "outcome": "pass"
+          },
+          {
+            "category": "Explicit key + block sequence nesting",
+            "name": "seq[0] is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Explicit key + block sequence nesting",
+            "name": "seq[1] is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Explicit key with colons in plain scalars",
+            "name": "? a:b:c key",
+            "outcome": "pass"
+          },
+          {
+            "category": "Explicit key with colons in plain scalars",
+            "name": "? a:b:c value",
+            "outcome": "pass"
+          },
+          {
+            "category": "Explicit key with colons in plain scalars",
+            "name": "? http://... key",
+            "outcome": "pass"
+          },
+          {
+            "category": "Explicit key with colons in plain scalars",
+            "name": "? http://... value",
+            "outcome": "pass"
+          },
+          {
+            "category": "Explicit key alias resolution",
+            "name": "? &a k : *a is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Explicit key alias resolution",
+            "name": "? &a k : *a key",
+            "outcome": "pass"
+          },
+          {
+            "category": "Explicit key alias resolution",
+            "name": "? &a k : *a value",
+            "outcome": "pass"
+          },
+          {
+            "category": "Explicit key alias resolution",
+            "name": "? &a : *a is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Explicit key alias resolution",
+            "name": "? &a null key",
+            "outcome": "pass"
+          },
+          {
+            "category": "Explicit key alias resolution",
+            "name": "? &a : *a null value",
+            "outcome": "pass"
+          },
+          {
+            "category": "Indented explicit keys",
+            "name": "indented ? a : b",
+            "outcome": "pass"
+          },
+          {
+            "category": "Indented explicit keys",
+            "name": "indented key",
+            "outcome": "pass"
+          },
+          {
+            "category": "Indented explicit keys",
+            "name": "indented value",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab rejection in explicit keys",
+            "name": "?\\t correctly rejected",
+            "outcome": "pass"
           }
         ],
-        "total": 66
+        "total": 134
       },
       {
         "allPass": true,
@@ -6365,7 +6705,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 750,
-    "totalTests": 750
+    "totalPassed": 818,
+    "totalTests": 818
   }
 }

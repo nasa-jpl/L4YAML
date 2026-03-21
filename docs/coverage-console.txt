@@ -426,7 +426,7 @@ Correct: 358/406 (100.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 10/10
-  Explicit Key Tests: ✓ 66/66
+  Explicit Key Tests: ✓ 134/134
   Flow Completeness Tests: ✓ 88/88
   Structural Validation Tests: ✓ 84/84
   Dump Round-Trip Tests: ✓ 102/102
@@ -437,7 +437,7 @@ Running verified test suites...
   YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline): ✓ 132/132
   Demo: ✓ 7/7
 
-Verified: 750/750
+Verified: 818/818
 
 Generating HTML reports...
   wrote docs/index.html
