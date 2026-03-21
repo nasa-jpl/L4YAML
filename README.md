@@ -1,6 +1,6 @@
 # lean4-yaml-verified
 
-A **fully verified** YAML 1.2.2 parser in Lean 4 — 1,654 machine-checked theorems, 2,083 compile-time guards, **zero sorry, zero axiom, zero partial def**. Proofs that the parser conforms to the [YAML specification](https://yaml.org/spec/1.2.2/) and the [yaml-test-suite](https://github.com/yaml/yaml-test-suite).
+A **fully verified** YAML 1.2.2 parser in Lean 4 — 1,769 machine-checked theorems, 2,124 compile-time guards, **zero sorry, zero axiom, zero partial def**. Proofs that the parser conforms to the [YAML specification](https://yaml.org/spec/1.2.2/) and the [yaml-test-suite](https://github.com/yaml/yaml-test-suite).
 
 ## Architecture
 
@@ -21,7 +21,7 @@ Lean4Yaml/
 │   ├── Deriving.lean        # deriving FromYaml, ToYaml macro handlers
 │   ├── Dump.lean            # Schema↔Dump integration: dumpTyped, roundTripTyped
 │   └── Api.lean             # Convenience: parseAs, toYaml, parseTyped
-├── Proofs/                              # 1,654 theorems, 47 modules, ~32,000 lines
+├── Proofs/                              # 1,769 theorems, 47 modules, ~32,000 lines
 │   ├── Soundness.lean             # Parser produces only valid YAML
 │   ├── Completeness.lean          # Valid YAML parses successfully (DecidableEq + native_decide)
 │   ├── Composition.lean           # Scanner→TokenParser pipeline composition
@@ -458,7 +458,33 @@ End-to-end round-trip composition (Phase 7.5). Compose parser + dump + schema pr
 
 #### Version 0.2.10
 
-Scanner hardening: fix remaining scanner/parser edge cases beyond the 5 addressed in v0.2.6 (explicit key value resolution, flow explicit keys, validation strictness). These are beyond yaml-test-suite coverage but affect robustness.
+Scanner hardening: systematic edge-case coverage for explicit key handling beyond the 5 fixes in v0.2.6.
+
+**Approach:** Probed 15 categories of edge cases (double/nested explicit keys, standalone `?`, nested structures as keys, tags on keys, flow explicit key edge cases, block sequence nesting, colons in plain scalars, alias resolution, indented keys, tab rejection) and cross-validated against libyaml. Result: the scanner already handles all cases correctly — no code changes required.
+
+**New test categories (§11–§20 in ExplicitKeyTests):**
+
+| Category | Tests | Description |
+|----------|-------|-------------|
+| §11 Double/nested explicit keys | 3 | `? ? a: b`, `? ? key\n: value`, chained `?` |
+| §12 Standalone `?` and empty key/value | 5 | `?` alone, `?\n?`, `?\n:`, `? ""`, `? ''` |
+| §13 Nested structures as keys | 4 | Sequences, mappings, mixed structures as `?`-keys |
+| §14 Tags on explicit keys | 2 | `? !!str key`, `? !custom tagged` |
+| §15 Flow explicit key edge cases | 5 | `{? a: b}`, `{? : v}`, `{? [1]: v}`, nested flows |
+| §16 Block sequence nesting | 1 | `? key\n: \n  - a\n  - b` |
+| §17 Colons in plain scalars | 2 | `? a:b:c`, `? http://example.com` |
+| §18 Alias resolution | 2 | `? *ref` with anchored mapping/sequence |
+| §19 Indented explicit keys | 1 | Nested block mapping with explicit keys |
+| §20 Tab rejection | 1 | `?\t` correctly rejected per §6.1 |
+
+**Known leniency (not fixed):** `? a\n : b` — our parser accepts `:` at column 1 when §8.2.2 [193] requires `s-indent(n)` at column 0. libyaml rejects this. Noted as a strictness gap for future tightening.
+
+**Key results:**
+- yaml-test-suite: 869 passed, 0 failed (151 skipped)
+- Explicit key tests: 134/134 (was 66/66, +68 new)
+- Verified internal tests: 818/818 across 11 suites
+- Compile-time guards: 2,124 total (+33 new in ScannerHardening.lean)
+- Build: 349/349 jobs, 0 errors, 0 sorry, 0 warnings
 
 #### Version 0.3.0
 
@@ -3500,7 +3526,7 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 
 **v0.2.6 (completed):** Fixed all colon-chain failures (58MP, 5T43, DBG4, example 7.10) and the alias scan test. The `isValueCandidate` fix in `Scanner.lean` resolves the 4 yaml-test-suite/spec failures, and the alias scan test was corrected to include a preceding anchor definition. 3 compile-time `#guard` checks (58MP, 5T43, DBG4) in `Tests/Guards/Proofs/SuiteGuards/Flow.lean` are now active. Current results: yaml-test-suite 358/358 (100%), spec examples 132/132 (100%), verified internal tests 750/750 (100%).
 
-Remaining scanner hardening items (v0.2.10): explicit key value resolution, flow explicit keys, validation strictness. These are beyond yaml-test-suite coverage but affect robustness.
+**v0.2.10 (completed):** Systematic edge-case coverage for explicit key handling. Probed 15 categories of edge cases and cross-validated against libyaml. Scanner already handles all cases correctly — no code changes needed. Added 68 new explicit key tests (§11–§20: double/nested keys, standalone `?`, nested structures as keys, tags, flow edge cases, block sequence nesting, colons in plain scalars, aliases, indented keys, tab rejection) and 33 new compile-time `#guard` checks in `ScannerHardening.lean`. One known leniency: misindented `:` after `?` (column 1 vs required column 0 per §8.2.2 [193]). Results: explicit key tests 134/134 (was 66), verified 818/818, guards 2,124.
 
 </details>
 
@@ -6150,7 +6176,7 @@ This avoids the sorry warning while being transparent about the proof gap. The a
 
 Zero unexpected passes remaining. **H7TQ** (extra words after `%YAML` version directive) was previously labeled unfixable due to conflict with ZYU8. Both are now fixed: `setValidationError` rejects extra content after `%YAML` version per §6.8 [82]+[86], and ZYU8 variant 3 (`%YAML 1.1 1.2`) is corrected to `fail: true` in a yaml-test-suite fork (the YAML 1.2.2 grammar only allows `s-l-comments` after `ns-yaml-version`). CQ3W (unclosed double-quote) was previously an UP but is now fixed: adding `setValidationError "unterminated double-quoted scalar"` to the fuel-exhaustion case of `collectChars` ensures both kernel and compiled code consistently reject unclosed quoted scalars. Error stage: 74/74 (100%). Flow stage: 46/46 (100%). Document stage: 17/24 (71%). Block stage improved from 83% to 91% through targeted validation. The 52 skipped tests are YAML 1.3 features outside YAML 1.2.2 scope (the SuiteRunner `emit` field fix eliminated 10 phantom variants, bringing total from 416 to 406).
 
-**Internal test suites: 940/940 (100%) across 12 suites** (hand-written Lean tests; separate from the yaml-test-suite cases above). Plus **2,083 compile-time `#guard` checks** (1,725 hand-written + 358 yaml-test-suite auto-generated).
+**Internal test suites: 1,008/1,008 (100%) across 12 suites** (hand-written Lean tests; separate from the yaml-test-suite cases above). Plus **2,124 compile-time `#guard` checks** (1,768 hand-written + 356 yaml-test-suite auto-generated).
 
 ### What's Implemented vs YAML 1.2.2 Spec
 

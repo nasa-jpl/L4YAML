@@ -14,6 +14,7 @@ import Tests.Guards.Proofs.ScannerDocument
 import Tests.Guards.Proofs.ScannerDoubleQuoted
 import Tests.Guards.Proofs.ScannerEmitBridge
 import Tests.Guards.Proofs.ScannerFlowCollection
+import Tests.Guards.Proofs.ScannerHardening
 import Tests.Guards.Proofs.ScannerIndent
 import Tests.Guards.Proofs.ScannerIndentStack
 import Tests.Guards.Proofs.ScannerLoopInvariant

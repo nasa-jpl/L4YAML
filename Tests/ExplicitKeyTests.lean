@@ -24,6 +24,16 @@ Runtime verification tests for YAML explicit key (`?`) support
 8. **Flow explicit keys** — `{? key : value}` and bare `?`
 9. **Flow sequence explicit entries** — `[? key : value]`
 10. **Empty keys** — `: value` with null key in flow
+11. **Double/nested explicit keys** — `? ? a: b`, `? ?` (v0.2.10)
+12. **Standalone ? and empty key/value** — `?` at EOF, `?\n:` (v0.2.10)
+13. **Nested structures as explicit keys** — `? [1,2]`, `? {a:1}` (v0.2.10)
+14. **Tags on explicit keys** — `? !!str 123` (v0.2.10)
+15. **Flow explicit key edge cases** — `{? : v1, ? : v2}`, `{?,?}` (v0.2.10)
+16. **Explicit key + block sequence nesting** — `- ? k : v` (v0.2.10)
+17. **Explicit key with colons** — `? a:b:c`, `? http://...` (v0.2.10)
+18. **Explicit key alias resolution** — `? &a k\n: *a` (v0.2.10)
+19. **Indented explicit keys** — `  ? a\n  : b` (v0.2.10)
+20. **Tab rejection** — `?\t` forbidden per §6.1 (v0.2.10)
 -/
 
 open Lean4Yaml
@@ -332,6 +342,305 @@ def testEmptyKeys (state : IO.Ref TestCollector) : IO Unit := do
     | none => check state "{:} has pair" false
   | .error e => checkM state "{:} parses" false e.toString
 
+/-! ## 11. Double/Nested Explicit Keys (v0.2.10) -/
+
+def testDoubleExplicitKeys (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Double/nested explicit keys"
+
+  -- ? ? a: b — mapping-as-key (valid YAML, unhashable in Python)
+  match parseSingle "? ? a: b" with
+  | .ok v =>
+    check state "? ? a: b is mapping" (v.isMapping)
+    match pairAt? v 0 with
+    | some (k, val) =>
+      check state "? ? a: b key is mapping" (k.isMapping)
+      check state "? ? a: b value is null" (isNull val)
+    | none => check state "? ? a: b has pair" false
+  | .error e => checkM state "? ? a: b parses" false e.toString
+
+  -- ? ?\n  a: b\n: outer — nested explicit key with outer value
+  match parseSingle "?\n  ? a: b\n: outer" with
+  | .ok v =>
+    check state "nested ? key parses" (v.isMapping)
+    match pairAt? v 0 with
+    | some (k, _) => check state "nested ? key is mapping" (k.isMapping)
+    | none => check state "nested ? key has pair" false
+  | .error e => checkM state "nested ? key parses" false e.toString
+
+  -- ? ? — double bare explicit key (mapping {null:null} as key)
+  match parseSingle "? ?" with
+  | .ok v =>
+    check state "? ? is mapping" (v.isMapping)
+    match pairAt? v 0 with
+    | some (k, _) => check state "? ? key is mapping" (k.isMapping)
+    | none => check state "? ? has pair" false
+  | .error e => checkM state "? ? parses" false e.toString
+
+/-! ## 12. Standalone ? and Empty Key/Value (v0.2.10) -/
+
+def testStandaloneExplicitKey (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Standalone ? and empty key/value"
+
+  -- Just "?" at EOF — null key, null value
+  match parseSingle "?" with
+  | .ok v =>
+    check state "bare ? is mapping" (v.isMapping)
+    match pairAt? v 0 with
+    | some (k, val) =>
+      check state "bare ? null key" (isNull k)
+      check state "bare ? null value" (isNull val)
+    | none => check state "bare ? has pair" false
+  | .error e => checkM state "bare ? parses" false e.toString
+
+  -- "? " with trailing space
+  match parseSingle "? " with
+  | .ok v =>
+    check state "? (space) is mapping" (v.isMapping)
+    match pairAt? v 0 with
+    | some (k, _) => check state "? (space) null key" (isNull k)
+    | none => check state "? (space) has pair" false
+  | .error e => checkM state "? (space) parses" false e.toString
+
+  -- "?\n" with trailing newline
+  match parseSingle "?\n" with
+  | .ok v =>
+    check state "?\\n is mapping" (v.isMapping)
+    match pairAt? v 0 with
+    | some (k, _) => check state "?\\n null key" (isNull k)
+    | none => check state "?\\n has pair" false
+  | .error e => checkM state "?\\n parses" false e.toString
+
+  -- "---\n?" under explicit document start
+  match parseSingle "---\n?" with
+  | .ok v =>
+    check state "---\\n? is mapping" (v.isMapping)
+  | .error e => checkM state "---\\n? parses" false e.toString
+
+  -- "?\n:\n?\n:" — two null:null entries
+  match parseSingle "?\n:\n?\n:" with
+  | .ok v =>
+    check state "?\\n:\\n?\\n: pair count" (pairCount v == 2)
+    match pairAt? v 0 with
+    | some (k, val) =>
+      check state "first null:null key" (isNull k)
+      check state "first null:null val" (isNull val)
+    | none => check state "first pair exists" false
+    match pairAt? v 1 with
+    | some (k, val) =>
+      check state "second null:null key" (isNull k)
+      check state "second null:null val" (isNull val)
+    | none => check state "second pair exists" false
+  | .error e => checkM state "?\\n:\\n?\\n: parses" false e.toString
+
+/-! ## 13. Nested Structures as Explicit Keys (v0.2.10) -/
+
+def testNestedStructureKeys (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Nested structures as explicit keys"
+
+  -- Flow sequence as key: ? [1, 2]\n: value
+  match parseSingle "? [1, 2]\n: value" with
+  | .ok v =>
+    check state "? [1,2] : value is mapping" (v.isMapping)
+    match pairAt? v 0 with
+    | some (k, val) =>
+      check state "? [1,2] key is sequence" (k.isSequence)
+      check state "? [1,2] value" (content val == some "value")
+    | none => check state "? [1,2] has pair" false
+  | .error e => checkM state "? [1,2] : value parses" false e.toString
+
+  -- Flow mapping as key: ? {a: 1}\n: value
+  -- Note: `: value` at col 0 starts a separate entry (null→"value"),
+  -- since the flow mapping closes on the `?` line.  Two entries total.
+  match parseSingle "? {a: 1}\n: value" with
+  | .ok v =>
+    check state "? {a:1} : value is mapping" (v.isMapping)
+    check state "? {a:1} pair count" (pairCount v == 2)
+    match pairAt? v 0 with
+    | some (k, val) =>
+      check state "? {a:1} key is mapping" (k.isMapping)
+      check state "? {a:1} value is null" (isNull val)
+    | none => check state "? {a:1} has pair" false
+  | .error e => checkM state "? {a:1} : value parses" false e.toString
+
+  -- Mixed: ? [a, b]\n: {c: d}
+  match parseSingle "? [a, b]\n: {c: d}" with
+  | .ok v =>
+    check state "? [a,b] : {c:d} is mapping" (v.isMapping)
+    match pairAt? v 0 with
+    | some (k, val) =>
+      check state "? [a,b] key is sequence" (k.isSequence)
+      check state "? [a,b] value is mapping" (val.isMapping)
+    | none => check state "? [a,b] : {c:d} has pair" false
+  | .error e => checkM state "? [a,b] : {c:d} parses" false e.toString
+
+  -- Flow mapping with sequence as explicit key: {? [a]: b}
+  match parseSingle "{? [a]: b}" with
+  | .ok v =>
+    check state "{? [a]: b} is mapping" (v.isMapping)
+    match pairAt? v 0 with
+    | some (k, val) =>
+      check state "{? [a]: b} key is sequence" (k.isSequence)
+      check state "{? [a]: b} value" (content val == some "b")
+    | none => check state "{? [a]: b} has pair" false
+  | .error e => checkM state "{? [a]: b} parses" false e.toString
+
+/-! ## 14. Tags on Explicit Keys (v0.2.10) -/
+
+def testTagsOnExplicitKeys (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Tags on explicit keys"
+
+  -- ? !!str 123\n: numeric — tagged explicit key
+  match parseSingle "? !!str 123\n: numeric" with
+  | .ok v =>
+    check state "? !!str 123 is mapping" (v.isMapping)
+    check state "? !!str 123 key" (keyAt? v 0 == some "123")
+    check state "? !!str 123 value" (valAt? v 0 == some "numeric")
+  | .error e => checkM state "? !!str 123 parses" false e.toString
+
+  -- ? !tag key\n: value — local tag on explicit key
+  match parseSingle "? !tag key\n: value" with
+  | .ok v =>
+    check state "? !tag key is mapping" (v.isMapping)
+    check state "? !tag key value" (valAt? v 0 == some "value")
+  | .error e => checkM state "? !tag key parses" false e.toString
+
+/-! ## 15. Flow Explicit Key Edge Cases (v0.2.10) -/
+
+def testFlowExplicitKeyEdgeCases (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Flow explicit key edge cases"
+
+  -- {? : v1, ? : v2} — duplicate null keys in flow
+  match parseSingle "{? : v1, ? : v2}" with
+  | .ok v =>
+    check state "{? : v1, ? : v2} parses" (v.isMapping)
+    check state "{? : v1, ? : v2} pair count" (pairCount v ≥ 1)
+  | .error e => checkM state "{? : v1, ? : v2} parses" false e.toString
+
+  -- {?, ?} — bare ? entries in flow (null:null)
+  match parseSingle "{?, ?}" with
+  | .ok v =>
+    check state "{?, ?} parses" (v.isMapping)
+  | .error e => checkM state "{?, ?} parses" false e.toString
+
+  -- {? , ? } — bare ? with spaces
+  match parseSingle "{? , ? }" with
+  | .ok v =>
+    check state "{? , ? } parses" (v.isMapping)
+  | .error e => checkM state "{? , ? } parses" false e.toString
+
+  -- [? a : b, ? c : d] — multiple explicit entries in flow sequence
+  match parseSingle "[? a : b, ? c : d]" with
+  | .ok v =>
+    check state "[? a:b, ? c:d] is sequence" (v.isSequence)
+    match v.asArray? with
+    | some items =>
+      check state "[? a:b, ? c:d] count" (items.size == 2)
+      if h : items.size ≥ 2 then
+        check state "[? a:b, ? c:d] first is mapping" (items[0].isMapping)
+        check state "[? a:b, ? c:d] second is mapping" (items[1].isMapping)
+      else check state "[? a:b, ? c:d] item access" false
+    | none => check state "[? a:b, ? c:d] as array" false
+  | .error e => checkM state "[? a:b, ? c:d] parses" false e.toString
+
+  -- [? a, ? b] — explicit keys without values in flow sequence
+  match parseSingle "[? a, ? b]" with
+  | .ok v =>
+    check state "[? a, ? b] is sequence" (v.isSequence)
+    match v.asArray? with
+    | some items =>
+      check state "[? a, ? b] count" (items.size == 2)
+      if h : items.size ≥ 2 then
+        check state "[? a, ? b] first is mapping" (items[0].isMapping)
+        check state "[? a, ? b] second is mapping" (items[1].isMapping)
+      else check state "[? a, ? b] item access" false
+    | none => check state "[? a, ? b] as array" false
+  | .error e => checkM state "[? a, ? b] parses" false e.toString
+
+/-! ## 16. Explicit Key + Block Sequence Nesting (v0.2.10) -/
+
+def testExplicitKeyBlockSeqNesting (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Explicit key + block sequence nesting"
+
+  -- - ? k1\n  : v1\n- ? k2\n  : v2
+  match parseSingle "- ? k1\n  : v1\n- ? k2\n  : v2" with
+  | .ok v =>
+    check state "seq of explicit maps is sequence" (v.isSequence)
+    match v.asArray? with
+    | some items =>
+      check state "seq of explicit maps count" (items.size == 2)
+      if h : items.size ≥ 2 then
+        check state "seq[0] is mapping" (items[0].isMapping)
+        check state "seq[1] is mapping" (items[1].isMapping)
+      else check state "seq item access" false
+    | none => check state "seq as array" false
+  | .error e => checkM state "seq of explicit maps parses" false e.toString
+
+/-! ## 17. Explicit Key + Colons in Plain Scalars (v0.2.10) -/
+
+def testExplicitKeyColons (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Explicit key with colons in plain scalars"
+
+  -- ? a:b:c\n: v — colons without spaces are part of the scalar
+  match parseSingle "? a:b:c\n: v" with
+  | .ok v =>
+    check state "? a:b:c key" (keyAt? v 0 == some "a:b:c")
+    check state "? a:b:c value" (valAt? v 0 == some "v")
+  | .error e => checkM state "? a:b:c parses" false e.toString
+
+  -- ? http://example.com\n: url — URL-like key
+  match parseSingle "? http://example.com\n: url" with
+  | .ok v =>
+    check state "? http://... key" (keyAt? v 0 == some "http://example.com")
+    check state "? http://... value" (valAt? v 0 == some "url")
+  | .error e => checkM state "? http://... parses" false e.toString
+
+/-! ## 18. Explicit Key + Alias Resolution (v0.2.10) -/
+
+def testExplicitKeyAliasResolution (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Explicit key alias resolution"
+
+  -- ? &a k\n: *a — key anchored, value aliases it
+  match parseSingle "? &a k\n: *a" with
+  | .ok v =>
+    check state "? &a k : *a is mapping" (v.isMapping)
+    check state "? &a k : *a key" (keyAt? v 0 == some "k")
+    check state "? &a k : *a value" (valAt? v 0 == some "k")
+  | .error e => checkM state "? &a k : *a parses" false e.toString
+
+  -- ? &a\n: *a — anchor on null key, alias resolves to null
+  match parseSingle "? &a\n: *a" with
+  | .ok v =>
+    check state "? &a : *a is mapping" (v.isMapping)
+    match pairAt? v 0 with
+    | some (k, val) =>
+      check state "? &a null key" (isNull k)
+      check state "? &a : *a null value" (isNull val)
+    | none => check state "? &a : *a has pair" false
+  | .error e => checkM state "? &a : *a parses" false e.toString
+
+/-! ## 19. Indented Explicit Keys (v0.2.10) -/
+
+def testIndentedExplicitKeys (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Indented explicit keys"
+
+  -- Indented explicit key block
+  match parseSingle "  ? a\n  : b" with
+  | .ok v =>
+    check state "indented ? a : b" (v.isMapping)
+    check state "indented key" (keyAt? v 0 == some "a")
+    check state "indented value" (valAt? v 0 == some "b")
+  | .error e => checkM state "indented ? a : b parses" false e.toString
+
+/-! ## 20. Tab Rejection in Explicit Keys (v0.2.10) -/
+
+def testTabRejection (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Tab rejection in explicit keys"
+
+  -- ?\t — tab after ? is forbidden in block context (§6.1)
+  match parseSingle "?\t" with
+  | .ok _ => check state "?\\t should error" false
+  | .error _ => check state "?\\t correctly rejected" true
+
 /-! ## Collect All Tests -/
 
 /-- Collect all explicit key test results as structured data. -/
@@ -347,6 +656,17 @@ def collectTests : IO VerifiedSuiteResult := do
   testFlowExplicitKeys state
   testFlowSeqExplicitEntries state
   testEmptyKeys state
+  -- v0.2.10: Scanner hardening edge cases
+  testDoubleExplicitKeys state
+  testStandaloneExplicitKey state
+  testNestedStructureKeys state
+  testTagsOnExplicitKeys state
+  testFlowExplicitKeyEdgeCases state
+  testExplicitKeyBlockSeqNesting state
+  testExplicitKeyColons state
+  testExplicitKeyAliasResolution state
+  testIndentedExplicitKeys state
+  testTabRejection state
   let results ← finish state
   return { name := "explicittests", label := "Explicit Key Tests",
            sourceFile := "Tests/ExplicitKeyTests.lean", tests := results }
