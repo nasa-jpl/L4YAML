@@ -34,6 +34,9 @@ Runtime verification tests for YAML explicit key (`?`) support
 18. **Explicit key alias resolution** — `? &a k\n: *a` (v0.2.10)
 19. **Indented explicit keys** — `  ? a\n  : b` (v0.2.10)
 20. **Tab rejection** — `?\t` forbidden per §6.1 (v0.2.10)
+21. **Misindented explicit value** — `? a\n : b` rejected (v0.2.10)
+22. **Same-line explicit value** — `? : x` rejected per §8.2.2 [197] (v0.2.11)
+23. **Block→flow underindent** — `a:\n{b: c}` rejected per §8.1 [187] (v0.2.11)
 -/
 
 open Lean4Yaml
@@ -641,6 +644,99 @@ def testTabRejection (state : IO.Ref TestCollector) : IO Unit := do
   | .ok _ => check state "?\\t should error" false
   | .error _ => check state "?\\t correctly rejected" true
 
+/-! ## 21. Misindented Explicit Value Rejection — §8.2.2 [197] (v0.2.10) -/
+
+def testMisindentedExplicitValue (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Misindented explicit value rejection (§8.2.2)"
+
+  -- ? a\n : b — `:` at col 1 when mapping indent is 0 → must reject
+  match parseSingle "? a\n : b" with
+  | .ok _ => check state "? a / : b should error" false
+  | .error _ => check state "? a / : b correctly rejected" true
+
+  -- ? a\n: b — `:` at col 0 matching mapping indent → must accept
+  match parseSingle "? a\n: b" with
+  | .ok v =>
+    check state "? a / : b at col 0" (keyAt? v 0 == some "a")
+    check state "? a / : b value" (valAt? v 0 == some "b")
+  | .error e => checkM state "? a / : b at col 0 parses" false e.toString
+
+  -- Nested: ? ? a\n  : inner\n: outer — both `:` at correct indents
+  match parseSingle "? ? a\n  : inner\n: outer" with
+  | .ok v => check state "nested ? ? a with correct : indents" v.isMapping
+  | .error e => checkM state "nested explicit values parse" false e.toString
+
+/-! ## 22. Same-line Explicit Value Rejection — §8.2.2 [197] (v0.2.11) -/
+
+def testSameLineExplicitValue (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Same-line explicit value rejection (§8.2.2)"
+
+  -- ? : x — `:` on same line as `?` with no simple key → reject
+  match parseSingle "? : x" with
+  | .ok _ => check state "? : x should error (same-line)" false
+  | .error _ => check state "? : x correctly rejected" true
+
+  -- ? :\n— `:` on same line as `?` with empty value → reject
+  match parseSingle "? :" with
+  | .ok _ => check state "? : should error (same-line)" false
+  | .error _ => check state "? : correctly rejected" true
+
+  -- ? ? : b — nested explicit key, same-line `:` → reject
+  match parseSingle "? ? : b" with
+  | .ok _ => check state "? ? : b should error (same-line)" false
+  | .error _ => check state "? ? : b correctly rejected" true
+
+  -- ? key : val — `:` follows simple key on `?` line → accept (simple key context)
+  match parseSingle "? key : val" with
+  | .ok v =>
+    check state "? key : val parses" v.isMapping
+  | .error e => checkM state "? key : val should parse" false e.toString
+
+  -- ? key\n: val — `:` on next line at correct indent → accept
+  match parseSingle "? key\n: val" with
+  | .ok v =>
+    check state "? key / : val parses" v.isMapping
+  | .error e => checkM state "? key / : val should parse" false e.toString
+
+/-! ## 23. Block→flow Underindent Rejection — §8.1 [187] (v0.2.11) -/
+
+def testUnderindentedFlowStart (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Block→flow underindent rejection (§8.1)"
+
+  -- a:\n{b: c} — flow at col 0 as value of mapping at indent 0 → reject
+  match parseSingle "a:\n{b: c}" with
+  | .ok _ => check state "a: / {b: c} should error (underindent)" false
+  | .error _ => check state "a: / {b: c} correctly rejected" true
+
+  -- a:\n[1, 2] — sequence at col 0 under mapping at indent 0 → reject
+  match parseSingle "a:\n[1, 2]" with
+  | .ok _ => check state "a: / [1, 2] should error (underindent)" false
+  | .error _ => check state "a: / [1, 2] correctly rejected" true
+
+  -- a:\n {b: c} — flow at col 1 (indent+1) → accept
+  match parseSingle "a:\n {b: c}" with
+  | .ok v =>
+    check state "a: / ·{b: c} parses" v.isMapping
+  | .error e => checkM state "a: / ·{b: c} should parse" false e.toString
+
+  -- a:\n [1, 2] — sequence at col 1 (indent+1) → accept
+  match parseSingle "a:\n [1, 2]" with
+  | .ok v =>
+    check state "a: / ·[1, 2] parses" v.isMapping
+  | .error e => checkM state "a: / ·[1, 2] should parse" false e.toString
+
+  -- Root level: {a: 1} — no enclosing block (indent = -1) → accept
+  match parseSingle "{a: 1}" with
+  | .ok v =>
+    check state "root {a: 1} parses" v.isMapping
+  | .error e => checkM state "root {a: 1} should parse" false e.toString
+
+  -- Root level: [1, 2] — no enclosing block → accept
+  match parseSingle "[1, 2]" with
+  | .ok v =>
+    check state "root [1, 2] parses" v.isSequence
+  | .error e => checkM state "root [1, 2] should parse" false e.toString
+
 /-! ## Collect All Tests -/
 
 /-- Collect all explicit key test results as structured data. -/
@@ -667,6 +763,9 @@ def collectTests : IO VerifiedSuiteResult := do
   testExplicitKeyAliasResolution state
   testIndentedExplicitKeys state
   testTabRejection state
+  testMisindentedExplicitValue state
+  testSameLineExplicitValue state
+  testUnderindentedFlowStart state
   let results ← finish state
   return { name := "explicittests", label := "Explicit Key Tests",
            sourceFile := "Tests/ExplicitKeyTests.lean", tests := results }

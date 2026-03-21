@@ -311,6 +311,14 @@ inductive ScanError where
   | blockScalarIndentMismatch (line col : Nat)
   /-- Alias `*name` used without a preceding `&name` anchor in this document — §7.1 violation. -/
   | undefinedAlias (name : String) (line col : Nat)
+  /-- Value indicator `:` after explicit key `?` at wrong indentation —
+      §8.2.2 [197] requires `s-indent(n)` before `:` in
+      `l-block-map-explicit-value(n)`. -/
+  | misindentedExplicitValue (line col : Nat) (expected : Int)
+  /-- Value indicator `:` on same line as `?` with no preceding implicit key —
+      §8.2.2 [197]: `l-block-map-explicit-value(n)` has `l-` prefix
+      (line-start); `:` as explicit value must be on its own line. -/
+  | sameLineExplicitValue (line col : Nat)
   deriving Repr, BEq, Inhabited, DecidableEq
 
 /-- Human-readable error message, separated from error construction.
@@ -357,6 +365,8 @@ def ScanError.toString : ScanError → String
   | .undeclaredTagHandle h l c => s!"undeclared tag handle '{h}' at line {l}, column {c} — use %TAG directive to declare it (§6.8.2.2)"
   | .blockScalarIndentMismatch l c => s!"whitespace-only line exceeds detected block scalar content indent at line {l}, column {c} (§8.1.3)"
   | .undefinedAlias name l c => s!"undefined alias '*{name}' at line {l}, column {c} — no preceding '&{name}' anchor in this document (§7.1)"
+  | .misindentedExplicitValue l c exp => s!"value indicator ':' at line {l}, column {c} has wrong indentation — expected column {exp} to match block mapping indent (§8.2.2 [197])"
+  | .sameLineExplicitValue l c => s!"value indicator ':' at line {l}, column {c} cannot appear on same line as '?' — explicit value must start on its own line (§8.2.2 [197])"
 
 instance : ToString ScanError := ⟨ScanError.toString⟩
 
