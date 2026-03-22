@@ -42,6 +42,22 @@ open Lean Lean4Yaml
 /-! ## Style Preferences -/
 
 /--
+Dump context: tracks whether we are currently emitting inside a flow
+collection or at block level. Threaded through `dumpValue` so that
+`chooseScalarStyle` and `resolveCollectionStyle` can make context-aware
+decisions.
+
+- `block`: top-level or inside a block collection
+- `flowIn`: inside a flow sequence or flow mapping value position
+- `flowKey`: inside a flow mapping key position
+-/
+inductive DumpContext where
+  | block
+  | flowIn
+  | flowKey
+  deriving Repr, BEq, Inhabited, DecidableEq
+
+/--
 Default collection style preference.
 
 - `block`: indentation-based (default, human-readable)
@@ -215,10 +231,11 @@ def isPlainSafe (s : String) (allowReserved : Bool := false) : Bool :=
                          ch == ',' || ch == '\n' || ch == '\r') &&
       -- Must not contain `: ` or ` #`
       !hasUnsafeSubsequence s &&
-      -- Must not have leading/trailing whitespace
+      -- Must not have leading/trailing whitespace or trailing `:`
+      -- Trailing `:` is interpreted as a mapping value indicator (§7.3.3)
       c != ' ' && c != '\t' &&
       (match chars.getLast? with
-       | some last => last != ' ' && last != '\t'
+       | some last => last != ' ' && last != '\t' && last != ':'
        | none => true) &&
       -- Must not be a reserved word (unless allowed)
       (allowReserved || !isReservedWord s)
@@ -227,10 +244,24 @@ def isPlainSafe (s : String) (allowReserved : Bool := false) : Bool :=
 def hasNewlines (s : String) : Bool :=
   s.any (· == '\n')
 
-/-- Choose effective scalar style based on content and config. -/
-def chooseScalarStyle (s : Scalar) (cfg : DumpConfig) : ScalarStyle :=
-  -- Honor explicit block scalar style when content has newlines
-  if (s.style == .literal || s.style == .folded) && hasNewlines s.content then
+/-- Check if string content is unsafe as a plain scalar in flow context.
+    Flow context forbids additional characters beyond what `isPlainSafe` checks:
+    - Any `:` (not just `: `), since `:` followed by `,`, `}`, `]` is a mapping indicator
+    - Trailing `-` or trailing space (block indicator ambiguity)
+    See YAML §7.3.3 [128] ns-plain-safe(flow-in). -/
+def isFlowUnsafe (s : String) : Bool :=
+  s.any (· == ':') ||
+  (match s.toList.getLast? with
+   | some c => c == '-' || c == ' '
+   | none => false)
+
+/-- Choose effective scalar style based on content, config, and dump context.
+    In flow context, additional characters require quoting (see `isFlowUnsafe`). -/
+def chooseScalarStyle (s : Scalar) (cfg : DumpConfig)
+    (ctx : DumpContext := .block) : ScalarStyle :=
+  -- Honor explicit block scalar style when content has newlines AND we're in block context
+  if (s.style == .literal || s.style == .folded) && hasNewlines s.content
+      && ctx == .block then
     s.style
   else match cfg.scalarStyle with
     | .doubleQuoted => .doubleQuoted
@@ -238,19 +269,32 @@ def chooseScalarStyle (s : Scalar) (cfg : DumpConfig) : ScalarStyle :=
       -- Single-quoted cannot represent newlines
       if hasNewlines s.content then .doubleQuoted else .singleQuoted
     | .plain =>
-      if isPlainSafe s.content cfg.allowReservedPlain then .plain else .doubleQuoted
+      if isPlainSafe s.content cfg.allowReservedPlain &&
+          (ctx == .block || !isFlowUnsafe s.content) then
+        .plain
+      else .doubleQuoted
     | .auto =>
       if s.content.isEmpty then .doubleQuoted
       else if hasNewlines s.content then
-        -- Multi-line: use block scalar style from annotation, or default to literal
-        if s.style == .literal || s.style == .folded then s.style else .literal
-      else if isPlainSafe s.content cfg.allowReservedPlain then .plain
+        if ctx != .block then
+          -- Flow context: block scalars are invalid, force double-quoted
+          .doubleQuoted
+        else
+          -- Block context: use block scalar style from annotation, or default to literal
+          if s.style == .literal || s.style == .folded then s.style else .literal
+      else if isPlainSafe s.content cfg.allowReservedPlain &&
+              (ctx == .block || !isFlowUnsafe s.content) then
+        .plain
       else .doubleQuoted
 
-/-- Resolve collection style from node annotation and config. -/
+/-- Resolve collection style from node annotation, config, and dump context.
+    When context is flow, block collections are forced to flow (YAML §8.1
+    forbids block collections inside flow context). -/
 def resolveCollectionStyle (nodeStyle : CollectionStyle) (cfg : DumpConfig)
-    : CollectionStyle :=
-  match cfg.defaultStyle with
+    (ctx : DumpContext := .block) : CollectionStyle :=
+  -- Flow context: always force flow style regardless of annotation or config
+  if ctx == .flowIn || ctx == .flowKey then .flow
+  else match cfg.defaultStyle with
   | .flow => .flow
   | .block => nodeStyle
   | .auto => nodeStyle
@@ -327,15 +371,16 @@ dump (.sequence .block #[.plainScalar "a", .plainScalar "b"])
 ```
 -/
 def dump (v : YamlValue) (cfg : DumpConfig := {}) : String :=
-  dumpValue v cfg 0
+  dumpValue v cfg 0 .block
 where
-  /-- Dump a value. First line unindented; continuation lines at `depth`. -/
-  dumpValue : YamlValue → DumpConfig → Nat → String
-    | .scalar s, cfg, depth =>
+  /-- Dump a value. First line unindented; continuation lines at `depth`.
+      `ctx` tracks whether we are inside a flow collection. -/
+  dumpValue : YamlValue → DumpConfig → Nat → DumpContext → String
+    | .scalar s, cfg, depth, ctx =>
       let anchorStr := match s.anchor with | some n => "&" ++ n ++ " " | none => ""
       let tagStr := match s.tag with | some t => t ++ " " | none => ""
       let pfx := tagStr ++ anchorStr
-      let effectiveStyle := chooseScalarStyle s cfg
+      let effectiveStyle := chooseScalarStyle s cfg ctx
       let body := match effectiveStyle with
         | .plain => s.content
         | .doubleQuoted => dumpDoubleQuoted s.content
@@ -343,10 +388,10 @@ where
         | .literal => dumpBlockScalar s.content "|" s.blockMeta depth cfg.indent
         | .folded => dumpBlockScalar s.content ">" s.blockMeta depth cfg.indent
       pfx ++ body
-    | .alias name, _, _ => "*" ++ name
-    | .sequence style items tag anchor, cfg, depth =>
+    | .alias name, _, _, _ => "*" ++ name
+    | .sequence style items tag anchor, cfg, depth, ctx =>
       let npfx := nodePrefix tag anchor
-      let effectiveStyle := resolveCollectionStyle style cfg
+      let effectiveStyle := resolveCollectionStyle style cfg ctx
       match effectiveStyle with
       | .flow =>
         let hdr := if npfx.isEmpty then "" else npfx ++ " "
@@ -359,9 +404,9 @@ where
         else
           npfx ++ "\n" ++ makeIndent depth cfg.indent ++
             dumpBlockList items.toList cfg depth true
-    | .mapping style pairs tag anchor, cfg, depth =>
+    | .mapping style pairs tag anchor, cfg, depth, ctx =>
       let npfx := nodePrefix tag anchor
-      let effectiveStyle := resolveCollectionStyle style cfg
+      let effectiveStyle := resolveCollectionStyle style cfg ctx
       match effectiveStyle with
       | .flow =>
         let hdr := if npfx.isEmpty then "" else npfx ++ " "
@@ -378,18 +423,18 @@ where
             result
           else
             npfx ++ "\n" ++ makeIndent depth cfg.indent ++ result
-  /-- Comma-separated flow list items. -/
+  /-- Comma-separated flow list items (always in flow context). -/
   dumpFlowList : List YamlValue → DumpConfig → Nat → String
     | [], _, _ => ""
-    | [v], cfg, depth => dumpValue v cfg depth
-    | v :: vs, cfg, depth => dumpValue v cfg depth ++ ", " ++ dumpFlowList vs cfg depth
-  /-- Comma-separated flow mapping pairs. -/
+    | [v], cfg, depth => dumpValue v cfg depth .flowIn
+    | v :: vs, cfg, depth => dumpValue v cfg depth .flowIn ++ ", " ++ dumpFlowList vs cfg depth
+  /-- Comma-separated flow mapping pairs (keys in flowKey context, values in flowIn). -/
   dumpFlowPairs : List (YamlValue × YamlValue) → DumpConfig → Nat → String
     | [], _, _ => ""
     | [(k, v)], cfg, depth =>
-      dumpValue k cfg depth ++ ": " ++ dumpValue v cfg depth
+      dumpValue k cfg depth .flowKey ++ ": " ++ dumpValue v cfg depth .flowIn
     | (k, v) :: rest, cfg, depth =>
-      dumpValue k cfg depth ++ ": " ++ dumpValue v cfg depth ++ ", " ++
+      dumpValue k cfg depth .flowKey ++ ": " ++ dumpValue v cfg depth .flowIn ++ ", " ++
         dumpFlowPairs rest cfg depth
   /-- Block sequence items. `first = true` suppresses indent on first line.
       When `cfg.compactSequenceMap` is true, non-empty block mapping items
@@ -400,19 +445,19 @@ where
       let ind := if first then "" else makeIndent depth cfg.indent
       if isInlineValue v ||
           (cfg.compactSequenceMap && isCompactableMapping v) then
-        ind ++ "- " ++ dumpValue v cfg (depth + 1)
+        ind ++ "- " ++ dumpValue v cfg (depth + 1) .block
       else
         ind ++ "-\n" ++ makeIndent (depth + 1) cfg.indent ++
-          dumpValue v cfg (depth + 1)
+          dumpValue v cfg (depth + 1) .block
     | v :: vs, cfg, depth, first =>
       let ind := if first then "" else makeIndent depth cfg.indent
       let item :=
         if isInlineValue v ||
             (cfg.compactSequenceMap && isCompactableMapping v) then
-          ind ++ "- " ++ dumpValue v cfg (depth + 1)
+          ind ++ "- " ++ dumpValue v cfg (depth + 1) .block
         else
           ind ++ "-\n" ++ makeIndent (depth + 1) cfg.indent ++
-            dumpValue v cfg (depth + 1)
+            dumpValue v cfg (depth + 1) .block
       item ++ "\n" ++ dumpBlockList vs cfg depth false
   /-- Block mapping pairs. `first = true` suppresses indent on first line.
       When `cfg.omitEmpty` is true, pairs whose value is an empty collection
@@ -424,10 +469,10 @@ where
       else
         let ind := if first then "" else makeIndent depth cfg.indent
         if isInlineValue v then
-          ind ++ dumpValue k cfg depth ++ ": " ++ dumpValue v cfg (depth + 1)
+          ind ++ dumpValue k cfg depth .block ++ ": " ++ dumpValue v cfg (depth + 1) .block
         else
-          ind ++ dumpValue k cfg depth ++ ":\n" ++
-            makeIndent (depth + 1) cfg.indent ++ dumpValue v cfg (depth + 1)
+          ind ++ dumpValue k cfg depth .block ++ ":\n" ++
+            makeIndent (depth + 1) cfg.indent ++ dumpValue v cfg (depth + 1) .block
     | (k, v) :: rest, cfg, depth, first =>
       if cfg.omitEmpty && isEmptyCollection v then
         dumpBlockPairs rest cfg depth first
@@ -435,10 +480,10 @@ where
         let ind := if first then "" else makeIndent depth cfg.indent
         let pair :=
           if isInlineValue v then
-            ind ++ dumpValue k cfg depth ++ ": " ++ dumpValue v cfg (depth + 1)
+            ind ++ dumpValue k cfg depth .block ++ ": " ++ dumpValue v cfg (depth + 1) .block
           else
-            ind ++ dumpValue k cfg depth ++ ":\n" ++
-              makeIndent (depth + 1) cfg.indent ++ dumpValue v cfg (depth + 1)
+            ind ++ dumpValue k cfg depth .block ++ ":\n" ++
+              makeIndent (depth + 1) cfg.indent ++ dumpValue v cfg (depth + 1) .block
         let tail := dumpBlockPairs rest cfg depth false
         if tail.isEmpty then pair
         else pair ++ "\n" ++ tail
