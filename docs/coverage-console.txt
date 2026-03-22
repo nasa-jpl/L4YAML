@@ -285,7 +285,7 @@ Running all tests...
   [269/406] LQZ7 ✓
   [270/406] LX3P ○ YAML 1.3 specific
   [271/406] M29M ✓
-  [272/406] M2N8 ✗ parse error: value indicator ':' at line 0, column 4 cannot appear on same line as '?' — explicit value must start on its own line (§8.2.2 [197])
+  [272/406] M2N8 ✓
   [273/406] M2N8 ✓
   [274/406] M5C3 ○ YAML 1.3 specific
   [275/406] M5DY ✓
@@ -422,7 +422,7 @@ Running all tests...
   [406/406] ZYU8 ✓
 ------------------------------------------------------------
 
-Correct: 357/406 (99.000000%)
+Correct: 358/406 (100.000000%)
 
 Running verified test suites...
   Unit Tests: ✓ 10/10

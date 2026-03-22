@@ -181,10 +181,10 @@
   ✓ ? a / : b value
   ✓ nested ? ? a with correct : indents
 
---- Same-line explicit value rejection (§8.2.2) ---
-  ✓ ? : x correctly rejected
-  ✓ ? : correctly rejected
-  ✓ ? ? : b correctly rejected
+--- Same-line explicit key content (§8.2.2) ---
+  ✓ ? : x parses as mapping
+  ✓ ? : parses as mapping
+  ✓ ? ? : b parses as mapping
   ✓ ? key : val parses
   ✓ ? key / : val parses
 

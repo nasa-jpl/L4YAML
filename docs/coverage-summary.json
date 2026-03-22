@@ -1,12 +1,12 @@
 {
-  "date": "2026-03-21T22:06:15-0700",
+  "date": "2026-03-21T22:44:24-0700",
   "overall": {
     "applicable": 358,
-    "correct": 357,
-    "correctRate": 99.7,
+    "correct": 358,
+    "correctRate": 100,
     "expectedFail": 95,
-    "failed": 1,
-    "passed": 262,
+    "failed": 0,
+    "passed": 263,
     "skipped": 48,
     "timeout": 0,
     "total": 406,
@@ -27,11 +27,11 @@
     },
     "block": {
       "applicable": 99,
-      "correct": 98,
-      "correctRate": 98.9,
+      "correct": 99,
+      "correctRate": 100,
       "expectedFail": 15,
-      "failed": 1,
-      "passed": 83,
+      "failed": 0,
+      "passed": 84,
       "skipped": 0,
       "timeout": 0,
       "total": 99,
@@ -1714,10 +1714,9 @@
       "stage": "scalar"
     },
     {
-      "error": "parse error: value indicator ':' at line 0, column 4 cannot appear on same line as '?' — explicit value must start on its own line (§8.2.2 [197])",
       "id": "M2N8",
       "name": "Question mark edge cases",
-      "outcome": "fail",
+      "outcome": "pass",
       "stage": "block"
     },
     {
@@ -3281,27 +3280,27 @@
             "outcome": "pass"
           },
           {
-            "category": "Same-line explicit value rejection (§8.2.2)",
-            "name": "? : x correctly rejected",
+            "category": "Same-line explicit key content (§8.2.2)",
+            "name": "? : x parses as mapping",
             "outcome": "pass"
           },
           {
-            "category": "Same-line explicit value rejection (§8.2.2)",
-            "name": "? : correctly rejected",
+            "category": "Same-line explicit key content (§8.2.2)",
+            "name": "? : parses as mapping",
             "outcome": "pass"
           },
           {
-            "category": "Same-line explicit value rejection (§8.2.2)",
-            "name": "? ? : b correctly rejected",
+            "category": "Same-line explicit key content (§8.2.2)",
+            "name": "? ? : b parses as mapping",
             "outcome": "pass"
           },
           {
-            "category": "Same-line explicit value rejection (§8.2.2)",
+            "category": "Same-line explicit key content (§8.2.2)",
             "name": "? key : val parses",
             "outcome": "pass"
           },
           {
-            "category": "Same-line explicit value rejection (§8.2.2)",
+            "category": "Same-line explicit key content (§8.2.2)",
             "name": "? key / : val parses",
             "outcome": "pass"
           },
