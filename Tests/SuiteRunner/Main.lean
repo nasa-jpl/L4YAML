@@ -12,6 +12,9 @@ import Tests.SpecExamples
 import Tests.SchemaDump
 import Tests.ScannerTests
 import Tests.ScannerSpecExamples
+import Tests.AdversarialGrammarTests
+import Tests.MutationSuiteTests
+import Tests.PropertyTests
 import Demo
 
 /-!
@@ -341,6 +344,9 @@ def main (args : List String) : IO UInt32 := do
       Tests.SchemaDump.collectTests,
       Tests.ScannerTests.collectTests,
       Tests.ScannerSpecExamples.collectTests,
+      Tests.AdversarialGrammar.collectTests,
+      Tests.MutationSuite.collectTests,
+      Tests.PropertyTests.collectTests,
       Demo.collectTests
     ]
     let mut verifiedSuites : Array Tests.VerifiedSuiteResult := #[]
