@@ -34,6 +34,9 @@ jobs:
           fi
           elan show
 
+      - name: Create docs directory
+        run: mkdir -p docs
+
       - name: Build parser and test tools
         run: |
           lake build Lean4Yaml
@@ -41,6 +44,7 @@ jobs:
           lake build tests demo explicitkeytests flowtests
           lake build validationtests dumproundtrip rawparsetests
           lake build specexamples schemadump scannertests scannerspecexamples
+          lake build adversarialtests mutationtests
           lake build flowregressioncheck errorstagediag scalarstagediag
 
       - name: Run unit and integration tests
@@ -77,9 +81,23 @@ jobs:
           echo ""
           echo "=== Scanner Spec Examples ===" | tee docs/scannerspecexamples.txt
           ./.lake/build/bin/scannerspecexamples 2>&1 | tee -a docs/scannerspecexamples.txt
+          echo ""
+          echo "=== Adversarial Grammar Tests ===" | tee docs/adversarialtests.txt
+          ./.lake/build/bin/adversarialtests 2>&1 | tee -a docs/adversarialtests.txt
+          echo ""
+          echo "=== Mutation Suite Tests ===" | tee docs/mutationtests.txt
+          ./.lake/build/bin/mutationtests 2>&1 | tee -a docs/mutationtests.txt
 
-      - name: Create docs directory
-        run: mkdir -p docs
+      - name: Run diagnostic checks
+        run: |
+          echo "=== Flow Regression Check ===" | tee docs/flowregressioncheck.txt
+          ./.lake/build/bin/flowregressioncheck 2>&1 | tee -a docs/flowregressioncheck.txt
+          echo ""
+          echo "=== Error Stage Diagnostics ===" | tee docs/errorstagediag.txt
+          ./.lake/build/bin/errorstagediag 2>&1 | tee -a docs/errorstagediag.txt
+          echo ""
+          echo "=== Scalar Stage Diagnostics ===" | tee docs/scalarstagediag.txt
+          ./.lake/build/bin/scalarstagediag 2>&1 | tee -a docs/scalarstagediag.txt
 
       - name: Generate HTML coverage reports
         run: |
@@ -87,10 +105,10 @@ jobs:
 
       - name: Generate verified tests HTML page
         run: |
-          cat docs/unit-tests.txt docs/demo.txt docs/explicitkeytests.txt docs/flowtests.txt docs/validationtests.txt docs/dumproundtrip.txt docs/rawparsetests.txt docs/specexamples.txt docs/schemadump.txt docs/scannertests.txt docs/scannerspecexamples.txt > docs/all-verified-tests.txt
+          cat docs/unit-tests.txt docs/demo.txt docs/explicitkeytests.txt docs/flowtests.txt docs/validationtests.txt docs/dumproundtrip.txt docs/rawparsetests.txt docs/specexamples.txt docs/schemadump.txt docs/scannertests.txt docs/scannerspecexamples.txt docs/adversarialtests.txt docs/mutationtests.txt > docs/all-verified-tests.txt
 
       - name: Upload coverage reports as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-reports
           path: docs/
