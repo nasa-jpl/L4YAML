@@ -554,7 +554,9 @@ Scanner hardening: systematic edge-case coverage for explicit key handling beyon
 - Explicit key tests: 134/134 (was 66/66, +68 new)
 - Verified internal tests: 818/818 across 11 suites
 - Compile-time guards: 2,124 total (+33 new in ScannerHardening.lean)
-- Build: 349/349 jobs, 0 errors, 0 sorry, 0 warnings
+- Adversarial grammar tests: 154/154 across 11 categories
+- Cross-validation vs libyaml: 131/136 match (4 known leniencies, 1 spec-correct divergence)
+- Build: 354/354 jobs, 0 errors, 0 sorry, 0 warnings
 </details>
 
 #### Version 0.2.11 (completed 2026-03-21)
@@ -607,33 +609,19 @@ Foundational data-structure improvements to support future acceptance-strictness
 Systematic leniency detection — four complementary approaches to maximize confidence that no latent leniencies remain:
 
 
-##### **Version 0.2.13.1: Grammar-directed adversarial testing.**
+##### **Version 0.2.13.1: Grammar-directed adversarial testing.** ✅
 
 <details>
+<summary>154 adversarial tests across 11 categories, cross-validated against libyaml</summary>
 
-For each YAML 1.2.2 production with position-sensitive constraints, generate (a) the **canonical minimal-valid representation** annotated with the production rules that produced it, (b) extract the **indentation-dependent predicates** (exact column, line-start, indent depth), and (c) apply **boundary violations** — not random whitespace, but constraint-specific perturbations:
+154 boundary-violation tests in [Tests/AdversarialGrammarTests.lean](Tests/AdversarialGrammarTests.lean) covering 11 categories: block mapping indent [63], tab-as-indentation §6.1, block sequence indent [180], mapping key indent [184], flow-in-block context [187], block scalar indent [170/174], explicit key/value [197], multi-level nesting combinations, tab injection cross-cutting, document boundary interaction, and anchor/tag interaction.
 
-| Production | Constraint | Boundary variants |
-|------------|-----------|-------------------|
-| [63] `s-indent(n)` | exactly n spaces | n−1, n+1, tab, mixed tab+space |
-| [197] `l-block-map-explicit-value` | `:` at col n, own line | col n±1, same line as `?`, tab prefix |
-| [180] `l+block-sequence` | `-` at col m > n | m = n (at indent), m = n−1 (under) |
-| [184] `l+block-mapping` | key at col m > n | m = n, m = n−1 |
-| [187] `s-l+block-indented` | content more indented than enclosing | content at enclosing indent, content at 0 |
+Cross-validated 136 inputs against libyaml (C binding via PyYAML `yaml.parse()`):
+- **131 matches** — our parser agrees with libyaml
+- **4 known leniencies** — tab at document start used as block indent (`\ta: 1` etc.): our scanner's `skipToContentWs` allows tabs when `col > currentIndent` (−1 at document start); fix deferred to v0.2.14+
+- **1 spec-correct divergence** — `-\ta` (tab as separation after `-` indicator): valid per spec [66] `s-separate-in-line`, libyaml overly strict
 
-This is O(productions × constraints × boundary_variants) ≈ 200–500 test cases, not combinatorially explosive.
-
-For example, `? (? (? x: y) : mid) : outer` with canonical form:
-```yaml
-?           # col 0
-  ?         # col 2
-    ? x     # col 4
-    : y     # col 4 — [197] s-indent(4)
-  : mid     # col 2 — [197] s-indent(2)
-: outer     # col 0 — [197] s-indent(0)
-```
-
-generates variants: `: y` at col 3/5 (under/over-indent), `: mid` at col 1/3, `: outer` at col 1, same-line collapse `? ? ? x: y`, tab injection at each indent position.
+Additional finding: 14 further adversarial boundary areas documented for future expansion (plain scalar termination, comment attachment, implicit key limits, block scalar header, seq-spaces context, reserved indicators, line breaks, escapes, directives, empty nodes, node properties, compact notation, flow pairs, BOM).
 
 </details>
 
