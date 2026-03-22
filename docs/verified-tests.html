@@ -65,8 +65,8 @@
   <p class="subtitle">Unit tests, parser tests, verification tests, and string lemma tests — all must pass.</p>
 
   <div class="stats">
-    <div class="stat-box stat-total"><h3>Total</h3><div class="number">1156</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">1156</div></div>
+    <div class="stat-box stat-total"><h3>Total</h3><div class="number">1171</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">1171</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
     <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">14</div></div>
   </div>
@@ -98,7 +98,7 @@
     </div>
     <div class="stage-card" style="border-left-color:var(--color-pass)">
       <div class="stage-card-name">Dump Round-Trip Tests</div>
-      <div class="stage-card-stats">102/102 passed (100.0%)</div>
+      <div class="stage-card-stats">117/117 passed (100.0%)</div>
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 100.0%"></div></div>
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean" target="_blank" class="source-link">📄 Tests/DumpRoundTrip.lean</a></div>
     </div>
@@ -189,7 +189,7 @@
       <label>Search:</label>
       <input type="text" class="search-input" placeholder="Category, test name..." oninput="searchTests(this.value)">
     </div>
-    <div class="filter-group"><span>Showing <strong id="visibleCount">1156</strong> of 1156</span></div>
+    <div class="filter-group"><span>Showing <strong id="visibleCount">1171</strong> of 1171</span></div>
   </div>
 
   <table id="testTable">
@@ -3231,6 +3231,111 @@
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L340" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
         <td>Document dump</td>
         <td>dumpDocuments three</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip flow-context edge cases (v0.2.13.4) flow seq: colon in value quotes">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L352" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Flow-context edge cases (v0.2.13.4)</td>
+        <td>flow seq: colon in value quotes</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip flow-context edge cases (v0.2.13.4) flow seq: trailing colon quotes">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L354" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Flow-context edge cases (v0.2.13.4)</td>
+        <td>flow seq: trailing colon quotes</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip flow-context edge cases (v0.2.13.4) flow map: colon in value quotes">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L357" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Flow-context edge cases (v0.2.13.4)</td>
+        <td>flow map: colon in value quotes</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip flow-context edge cases (v0.2.13.4) flow seq: key:value pattern quotes">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L360" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Flow-context edge cases (v0.2.13.4)</td>
+        <td>flow seq: key:value pattern quotes</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip flow-context edge cases (v0.2.13.4) flow map: colon-only value quotes">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L362" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Flow-context edge cases (v0.2.13.4)</td>
+        <td>flow map: colon-only value quotes</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip flow-context edge cases (v0.2.13.4) block seq in flow map → flow">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L365" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Flow-context edge cases (v0.2.13.4)</td>
+        <td>block seq in flow map → flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip flow-context edge cases (v0.2.13.4) block map in flow seq → flow">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L368" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Flow-context edge cases (v0.2.13.4)</td>
+        <td>block map in flow seq → flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip flow-context edge cases (v0.2.13.4) block-in-flow-in-block round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L372" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Flow-context edge cases (v0.2.13.4)</td>
+        <td>block-in-flow-in-block round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip flow-context edge cases (v0.2.13.4) block seq in flow renders as flow brackets">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L378" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Flow-context edge cases (v0.2.13.4)</td>
+        <td>block seq in flow renders as flow brackets</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip flow-context edge cases (v0.2.13.4) flow seq: multiline scalar double-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L383" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Flow-context edge cases (v0.2.13.4)</td>
+        <td>flow seq: multiline scalar double-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip flow-context edge cases (v0.2.13.4) flow seq: trailing dash quotes">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L387" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Flow-context edge cases (v0.2.13.4)</td>
+        <td>flow seq: trailing dash quotes</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip flow-context edge cases (v0.2.13.4) flow config forces all to flow">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L390" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Flow-context edge cases (v0.2.13.4)</td>
+        <td>flow config forces all to flow</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip flow-context edge cases (v0.2.13.4) flow seq: hash in value quotes">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L394" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Flow-context edge cases (v0.2.13.4)</td>
+        <td>flow seq: hash in value quotes</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip flow-context edge cases (v0.2.13.4) block seq: trailing colon quotes">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L397" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Flow-context edge cases (v0.2.13.4)</td>
+        <td>block seq: trailing colon quotes</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="dumproundtrip" data-search="dumproundtrip flow-context edge cases (v0.2.13.4) block map key: trailing colon quotes">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/DumpRoundTrip.lean#L399" target="_blank" class="source-link">Dump Round-Trip Tests</a></td>
+        <td>Flow-context edge cases (v0.2.13.4)</td>
+        <td>block map key: trailing colon quotes</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
@@ -7379,868 +7484,868 @@
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests basic dump→parse round-trip 100/100 random nodes round-trip successfully">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L395" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L400" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Basic dump→parse round-trip</td>
         <td>100/100 random nodes round-trip successfully</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests flow-style dump→parse round-trip 50/50 flow-style nodes round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L417" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L422" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Flow-style dump→parse round-trip</td>
         <td>50/50 flow-style nodes round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests double-quoted dump→parse round-trip 50/50 double-quoted nodes round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L438" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L443" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Double-quoted dump→parse round-trip</td>
         <td>50/50 double-quoted nodes round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases emptynode round-trips">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L446" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L451" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Scalar edge cases</td>
         <td>emptyNode round-trips</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases singlequoted empty">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L448" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L453" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Scalar edge cases</td>
         <td>singleQuoted empty</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases singlequoted &#39;hello&#39;">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L449" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L454" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Scalar edge cases</td>
         <td>singleQuoted &#39;hello&#39;</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases singlequoted with colon-space">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L450" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L455" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Scalar edge cases</td>
         <td>singleQuoted with colon-space</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases singlequoted with hash">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L451" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L456" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Scalar edge cases</td>
         <td>singleQuoted with hash</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases singlequoted with flow chars">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L452" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L457" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Scalar edge cases</td>
         <td>singleQuoted with flow chars</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases singlequoted with indicators">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L453" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L458" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Scalar edge cases</td>
         <td>singleQuoted with indicators</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases doublequoted empty">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L455" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L460" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Scalar edge cases</td>
         <td>doubleQuoted empty</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases doublequoted &#39;hello&#39;">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L456" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L461" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Scalar edge cases</td>
         <td>doubleQuoted &#39;hello&#39;</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases doublequoted with colon">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L457" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L462" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Scalar edge cases</td>
         <td>doubleQuoted with colon</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases doublequoted with braces">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L458" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L463" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Scalar edge cases</td>
         <td>doubleQuoted with braces</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases doublequoted with all indicators">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L459" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L464" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Scalar edge cases</td>
         <td>doubleQuoted with all indicators</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases doublequoted reserved &#39;true&#39;">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L461" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L466" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Scalar edge cases</td>
         <td>doubleQuoted reserved &#39;true&#39;</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases doublequoted reserved &#39;null&#39;">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L462" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L467" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Scalar edge cases</td>
         <td>doubleQuoted reserved &#39;null&#39;</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases doublequoted reserved &#39;false&#39;">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L463" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L468" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Scalar edge cases</td>
         <td>doubleQuoted reserved &#39;false&#39;</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases doublequoted numeric &#39;42&#39;">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L464" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L469" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Scalar edge cases</td>
         <td>doubleQuoted numeric &#39;42&#39;</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip block seq [a, b, c]">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L472" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L477" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Collection structure round-trip</td>
         <td>block seq [a, b, c]</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip block map {key1: val1, key2: val2}">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L478" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L483" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Collection structure round-trip</td>
         <td>block map {key1: val1, key2: val2}</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip flow seq [x, y]">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L483" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L488" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Collection structure round-trip</td>
         <td>flow seq [x, y]</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip flow map {a: 1, b: 2}">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L489" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L494" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Collection structure round-trip</td>
         <td>flow map {a: 1, b: 2}</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip nested block map with seq value">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L495" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L500" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Collection structure round-trip</td>
         <td>nested block map with seq value</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip block seq of maps">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L501" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L506" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Collection structure round-trip</td>
         <td>block seq of maps</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip flow collections inside block">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L507" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L512" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Collection structure round-trip</td>
         <td>flow collections inside block</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip empty flow seq []">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L511" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L516" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Collection structure round-trip</td>
         <td>empty flow seq []</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip empty flow map {}">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L513" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L518" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Collection structure round-trip</td>
         <td>empty flow map {}</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip 3-level deep nesting">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L522" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L527" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Collection structure round-trip</td>
         <td>3-level deep nesting</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests mutation resilience indent mutations: 16/16 handled consistently">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L579" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests mutation resilience indent mutations: 18/18 handled consistently">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L584" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Mutation resilience</td>
-        <td>indent mutations: 16/16 handled consistently</td>
+        <td>indent mutations: 18/18 handled consistently</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests mutation resilience tab mutations: 8/8 handled consistently">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L581" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests mutation resilience tab mutations: 9/9 handled consistently">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L586" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Mutation resilience</td>
-        <td>tab mutations: 8/8 handled consistently</td>
+        <td>tab mutations: 9/9 handled consistently</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests mutation resilience newline mutations: 8/8 handled consistently">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L583" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests mutation resilience newline mutations: 9/9 handled consistently">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L588" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Mutation resilience</td>
-        <td>newline mutations: 8/8 handled consistently</td>
+        <td>newline mutations: 9/9 handled consistently</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
-      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests mutation resilience colon mutations: 8/8 handled consistently">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L585" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests mutation resilience colon mutations: 9/9 handled consistently">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L590" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Mutation resilience</td>
-        <td>colon mutations: 8/8 handled consistently</td>
+        <td>colon mutations: 9/9 handled consistently</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 0: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 0: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 1: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 1: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 7: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 7: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 13: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 13: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 42: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 42: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 97: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 97: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 137: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 137: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 271: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 271: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 314: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 314: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 577: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 577: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 691: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 691: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 997: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 997: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 1234: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 1234: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 2718: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 2718: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 3141: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 3141: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 4242: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 4242: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 6174: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 6174: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 7919: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 7919: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 8675: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 8675: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 9999: 5/5 round-trip">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L615" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>seed 9999: 5/5 round-trip</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage total: 100/100 across 20 seeds">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L611" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L616" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>Diverse seed coverage</td>
         <td>total: 100/100 across 20 seeds</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+default</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=1</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=4</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+flow style</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+double-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+single-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+allow reserved</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+default</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=1</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=4</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+flow style</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+double-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+single-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+allow reserved</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+default</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=1</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=4</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+flow style</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+double-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+single-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+allow reserved</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+default</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=1</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=4</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+flow style</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+double-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+single-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+allow reserved</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+default</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=1</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=4</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+flow style</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+double-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+single-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+allow reserved</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+default</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=1</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=4</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+flow style</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+double-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+single-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+allow reserved</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+default</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=1</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=4</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+flow style</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+double-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+single-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+allow reserved</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+default</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=1</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=4</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+flow style</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+double-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+single-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+allow reserved</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+default</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=1</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=4</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+flow style</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+double-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+single-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+allow reserved</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+default</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=1</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+indent=4</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+flow style</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+double-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+single-quoted</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
       <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+allow reserved</td>
         <td><span class="badge badge-pass">Pass</span></td>

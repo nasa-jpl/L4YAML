@@ -41,10 +41,10 @@
   ✓ 3-level deep nesting
 
 --- Mutation resilience ---
-  ✓ indent mutations: 16/16 handled consistently
-  ✓ tab mutations: 8/8 handled consistently
-  ✓ newline mutations: 8/8 handled consistently
-  ✓ colon mutations: 8/8 handled consistently
+  ✓ indent mutations: 18/18 handled consistently
+  ✓ tab mutations: 9/9 handled consistently
+  ✓ newline mutations: 9/9 handled consistently
+  ✓ colon mutations: 9/9 handled consistently
 
 --- Diverse seed coverage ---
   ✓ seed 0: 5/5 round-trip

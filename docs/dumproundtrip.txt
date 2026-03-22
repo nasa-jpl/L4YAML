@@ -113,4 +113,21 @@
   ✓ dumpDocuments two → ---/...
   ✓ dumpDocuments three
 
-=== Results: 102/102 passed ===
+--- Flow-context edge cases (v0.2.13.4) ---
+  ✓ flow seq: colon in value quotes
+  ✓ flow seq: trailing colon quotes
+  ✓ flow map: colon in value quotes
+  ✓ flow seq: key:value pattern quotes
+  ✓ flow map: colon-only value quotes
+  ✓ block seq in flow map → flow
+  ✓ block map in flow seq → flow
+  ✓ block-in-flow-in-block round-trip
+  ✓ block seq in flow renders as flow brackets
+  ✓ flow seq: multiline scalar double-quoted
+  ✓ flow seq: trailing dash quotes
+  ✓ flow config forces all to flow
+  ✓ flow seq: hash in value quotes
+  ✓ block seq: trailing colon quotes
+  ✓ block map key: trailing colon quotes
+
+=== Results: 117/117 passed ===

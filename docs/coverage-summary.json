@@ -1,5 +1,5 @@
 {
-  "date": "2026-03-22T13:17:44-0700",
+  "date": "2026-03-22T14:54:50-0700",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -4216,7 +4216,7 @@
       {
         "allPass": true,
         "label": "Dump Round-Trip Tests",
-        "passed": 102,
+        "passed": 117,
         "tests": [
           {
             "category": "Structural properties",
@@ -4727,9 +4727,84 @@
             "category": "Document dump",
             "name": "dumpDocuments three",
             "outcome": "pass"
+          },
+          {
+            "category": "Flow-context edge cases (v0.2.13.4)",
+            "name": "flow seq: colon in value quotes",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow-context edge cases (v0.2.13.4)",
+            "name": "flow seq: trailing colon quotes",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow-context edge cases (v0.2.13.4)",
+            "name": "flow map: colon in value quotes",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow-context edge cases (v0.2.13.4)",
+            "name": "flow seq: key:value pattern quotes",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow-context edge cases (v0.2.13.4)",
+            "name": "flow map: colon-only value quotes",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow-context edge cases (v0.2.13.4)",
+            "name": "block seq in flow map → flow",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow-context edge cases (v0.2.13.4)",
+            "name": "block map in flow seq → flow",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow-context edge cases (v0.2.13.4)",
+            "name": "block-in-flow-in-block round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow-context edge cases (v0.2.13.4)",
+            "name": "block seq in flow renders as flow brackets",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow-context edge cases (v0.2.13.4)",
+            "name": "flow seq: multiline scalar double-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow-context edge cases (v0.2.13.4)",
+            "name": "flow seq: trailing dash quotes",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow-context edge cases (v0.2.13.4)",
+            "name": "flow config forces all to flow",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow-context edge cases (v0.2.13.4)",
+            "name": "flow seq: hash in value quotes",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow-context edge cases (v0.2.13.4)",
+            "name": "block seq: trailing colon quotes",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow-context edge cases (v0.2.13.4)",
+            "name": "block map key: trailing colon quotes",
+            "outcome": "pass"
           }
         ],
-        "total": 102
+        "total": 117
       },
       {
         "allPass": true,
@@ -7899,22 +7974,22 @@
           },
           {
             "category": "Mutation resilience",
-            "name": "indent mutations: 16/16 handled consistently",
+            "name": "indent mutations: 18/18 handled consistently",
             "outcome": "pass"
           },
           {
             "category": "Mutation resilience",
-            "name": "tab mutations: 8/8 handled consistently",
+            "name": "tab mutations: 9/9 handled consistently",
             "outcome": "pass"
           },
           {
             "category": "Mutation resilience",
-            "name": "newline mutations: 8/8 handled consistently",
+            "name": "newline mutations: 9/9 handled consistently",
             "outcome": "pass"
           },
           {
             "category": "Mutation resilience",
-            "name": "colon mutations: 8/8 handled consistently",
+            "name": "colon mutations: 9/9 handled consistently",
             "outcome": "pass"
           },
           {
@@ -8419,7 +8494,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 1156,
-    "totalTests": 1156
+    "totalPassed": 1171,
+    "totalTests": 1171
   }
 }

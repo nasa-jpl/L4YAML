@@ -429,7 +429,7 @@ Running verified test suites...
   Explicit Key Tests: ✓ 149/149
   Flow Completeness Tests: ✓ 88/88
   Structural Validation Tests: ✓ 84/84
-  Dump Round-Trip Tests: ✓ 102/102
+  Dump Round-Trip Tests: ✓ 117/117
   Raw Parse / Compose Tests: ✓ 29/29
   YAML 1.2.2 Spec Examples: ✓ 132/132
   Schema ↔ Dump Integration: ✓ 68/68
@@ -440,7 +440,7 @@ Running verified test suites...
   Property-Based Round-Trip Tests (v0.2.13.3): ✓ 124/124
   Demo: ✓ 7/7
 
-Verified: 1156/1156
+Verified: 1171/1171
 
 Generating HTML reports...
   wrote docs/index.html
