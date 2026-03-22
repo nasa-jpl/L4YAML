@@ -20,6 +20,7 @@ defaultTargets = [
   "scannerspecexamples",
   "suiterunner",
   "queryresults",
+  "adversarialtests",
 ]
 
 [leanOptions]
@@ -93,6 +94,13 @@ root = "Tests.TryDump"
 [[lean_exe]]
 name = "queryresults"
 root = "Tests.QueryResults"
+
+[[lean_lib]]
+name = "Tests.AdversarialGrammarTests"
+
+[[lean_exe]]
+name = "adversarialtests"
+root = "Tests.AdversarialGrammarTests.Runner"
 
 [[lean_lib]]
 name = "Tests.ExplicitKeyTests"
