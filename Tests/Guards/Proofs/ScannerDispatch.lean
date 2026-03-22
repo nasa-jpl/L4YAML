@@ -76,9 +76,9 @@ private def checkFlowEntryC1 (tokens : Array (Positioned YamlToken))
   | .error _ => true
 
 -- With prior scalar token (normal case)
-#guard checkFlowEntryC1 #[⟨default, .scalar "a" .plain⟩] ", b]"
+#guard checkFlowEntryC1 #[⟨default, .scalar "a" .plain, default⟩] ", b]"
 -- With prior key token
-#guard checkFlowEntryC1 #[⟨default, .key⟩] ", v}"
+#guard checkFlowEntryC1 #[⟨default, .key, default⟩] ", v}"
 
 -- scanFlowEntry C2 preservation (concrete)
 private def checkFlowEntryC2 (tokens : Array (Positioned YamlToken))
@@ -90,7 +90,7 @@ private def checkFlowEntryC2 (tokens : Array (Positioned YamlToken))
   | .ok s' => s'.flowLevel == s'.flowStack.size
   | .error _ => true
 
-#guard checkFlowEntryC2 #[⟨default, .scalar "a" .plain⟩] "[a, b]"
+#guard checkFlowEntryC2 #[⟨default, .scalar "a" .plain, default⟩] "[a, b]"
 
 -- scanFlowEntry C3 preservation (concrete)
 private def checkFlowEntryC3 (tokens : Array (Positioned YamlToken))
@@ -102,7 +102,7 @@ private def checkFlowEntryC3 (tokens : Array (Positioned YamlToken))
   | .ok s' => s'.simpleKeyStack.size == s'.flowStack.size
   | .error _ => true
 
-#guard checkFlowEntryC3 #[⟨default, .scalar "a" .plain⟩] "[a, b]"
+#guard checkFlowEntryC3 #[⟨default, .scalar "a" .plain, default⟩] "[a, b]"
 
 -- scanFlowEntry WellFormed (concrete)
 private def checkFlowEntryWF (input : String) : Bool :=

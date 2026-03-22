@@ -51,16 +51,31 @@ namespace Lean4Yaml
 /--
 A positioned token: token value paired with its source location.
 
-The position records where the token starts in the input — this is
-used for error messages and for proof correspondence between the
-scanner and the original character stream.
+The start position records where the token starts in the input — used for
+error messages and for proof correspondence between the scanner and the
+original character stream. The optional end position marks the first byte
+after the last character consumed by the token (exclusive).
 -/
 structure Positioned (α : Type) where
   /-- Source position where this token starts -/
   pos : YamlPos
   /-- The token value -/
   val : α
+  /-- Source position just after the last character of this token (exclusive).
+      Populated by the scanner at every emission site. For virtual tokens
+      (`blockEnd`, `blockSequenceStart`, `blockMappingStart`, `placeholder`)
+      this equals `pos` (zero-width). -/
+  endPos : YamlPos := pos
   deriving Repr, BEq, Inhabited
+
+namespace Positioned
+
+/-- The span from start to end of this token. -/
+def span {α : Type} (t : Positioned α) : YamlSpan where
+  start := t.pos
+  stop := t.endPos
+
+end Positioned
 
 /-! ## YAML Token Type -/
 

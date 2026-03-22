@@ -211,7 +211,7 @@ theorem saveSimpleKey_new_tokens_not_plain (s : ScannerState)
     | .scalar _ .plain => False
     | _ => True := by
   have h_cases : (saveSimpleKey s).tokens = s.tokens ∨
-                 (saveSimpleKey s).tokens = (s.tokens.push ⟨s.currentPos, .placeholder⟩).push ⟨s.currentPos, .placeholder⟩ := by
+                 (saveSimpleKey s).tokens = (s.tokens.push ⟨s.currentPos, .placeholder, s.currentPos⟩).push ⟨s.currentPos, .placeholder, s.currentPos⟩ := by
     unfold saveSimpleKey
     split
     · left; rfl
@@ -738,7 +738,7 @@ theorem scanYamlDirective_new_tok_not_plain (s s_after_ws : ScannerState) (start
   have h_toks : s'.tokens = s.tokens.push ⟨startPos, .versionDirective
     (collectVersionMajorLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).fst.toNat!
     (collectVersionMinorLoop (collectVersionMajorLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd ""
-      (s.inputEnd - (collectVersionMajorLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd.offset)).fst.toNat!⟩ := by
+      (s.inputEnd - (collectVersionMajorLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd.offset)).fst.toNat!, startPos⟩ := by
     unfold scanYamlDirective at h
     dsimp only [] at h
     simp only [bind, Except.bind, pure, Except.pure] at h
@@ -778,7 +778,7 @@ theorem scanTagDirective_new_tok_not_plain (s s_after_ws : ScannerState) (startP
   have h_toks : s'.tokens = s.tokens.push ⟨startPos, .tagDirective
     (collectTagHandleDirectiveLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).fst
     (collectTagPrefixLoop (skipWhitespace (collectTagHandleDirectiveLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd) ""
-      (s.inputEnd - (skipWhitespace (collectTagHandleDirectiveLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd).offset)).fst⟩ := by
+      (s.inputEnd - (skipWhitespace (collectTagHandleDirectiveLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd).offset)).fst, startPos⟩ := by
     subst h_eq
     simp only [ScannerState.emitAt, collectTagPrefixLoop_preserves_tokens,
       skipWhitespace_preserves_tokens, collectTagHandleDirectiveLoop_preserves_tokens, h_ws]
@@ -1028,7 +1028,7 @@ theorem pushSequenceIndent_preserves_PlainScalarsValid
   split
   · show PlainScalarsValid ({ s.emit .blockSequenceStart with indents := _ }.tokens)
     exact PlainScalarsValid_push_non_plain s.tokens h_old
-      ⟨s.currentPos, .blockSequenceStart⟩ (by trivial)
+      ⟨s.currentPos, .blockSequenceStart, s.currentPos⟩ (by trivial)
   · exact h_old
 
 theorem pushMappingIndent_preserves_PlainScalarsValid
@@ -1038,7 +1038,7 @@ theorem pushMappingIndent_preserves_PlainScalarsValid
   split
   · show PlainScalarsValid ({ s.emit .blockMappingStart with indents := _ }.tokens)
     exact PlainScalarsValid_push_non_plain s.tokens h_old
-      ⟨s.currentPos, .blockMappingStart⟩ (by trivial)
+      ⟨s.currentPos, .blockMappingStart, s.currentPos⟩ (by trivial)
   · exact h_old
 
 set_option maxHeartbeats 400000 in
@@ -1569,8 +1569,8 @@ theorem FlowNestingInv_emit_non_flow (s : ScannerState) (tok : YamlToken)
     FlowNestingInv (s.emit tok) := by
   unfold FlowNestingInv at *
   simp only [emit_preserves_flowLevel, emit_tokens_size]
-  rw [show (s.emit tok).tokens = s.tokens.push ⟨s.currentPos, tok⟩ from rfl]
-  rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, tok⟩ h1 h2 h3 h4]
+  rw [show (s.emit tok).tokens = s.tokens.push ⟨s.currentPos, tok, s.currentPos⟩ from rfl]
+  rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, tok, s.currentPos⟩ h1 h2 h3 h4]
   exact h_fni
 
 /-! ### FlowInv helper lemmas -/
@@ -1669,7 +1669,7 @@ theorem saveSimpleKey_preserves_FlowNestingInv (s : ScannerState)
     unfold saveSimpleKey; split
     · left; rfl
     · split
-      · right; exact ⟨⟨s.currentPos, .placeholder⟩, rfl, rfl⟩
+      · right; exact ⟨⟨s.currentPos, .placeholder, s.currentPos⟩, rfl, rfl⟩
       · left; rfl
   rcases h_cases with h_eq | ⟨ph, h_ph, h_eq⟩
   · rw [h_eq]; exact h_fni
@@ -1840,7 +1840,7 @@ theorem saveSimpleKey_new_tokens_not_flow (s : ScannerState)
     ((saveSimpleKey s).tokens[j]'hj).val ≠ .flowSequenceEnd ∧
     ((saveSimpleKey s).tokens[j]'hj).val ≠ .flowMappingEnd := by
   have h_cases : (saveSimpleKey s).tokens = s.tokens ∨
-                 (saveSimpleKey s).tokens = (s.tokens.push ⟨s.currentPos, .placeholder⟩).push ⟨s.currentPos, .placeholder⟩ := by
+                 (saveSimpleKey s).tokens = (s.tokens.push ⟨s.currentPos, .placeholder, s.currentPos⟩).push ⟨s.currentPos, .placeholder, s.currentPos⟩ := by
     unfold saveSimpleKey
     split
     · left; rfl
@@ -1985,7 +1985,7 @@ theorem scanYamlDirective_new_tokens_not_flow (s s_after_ws : ScannerState) (sta
     have h_toks : s'.tokens = s.tokens.push ⟨startPos, .versionDirective
       (collectVersionMajorLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).fst.toNat!
       (collectVersionMinorLoop (collectVersionMajorLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd ""
-        (s.inputEnd - (collectVersionMajorLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd.offset)).fst.toNat!⟩ := by
+        (s.inputEnd - (collectVersionMajorLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd.offset)).fst.toNat!, startPos⟩ := by
       split at h
       · split at h
         · contradiction
@@ -2022,7 +2022,7 @@ theorem scanTagDirective_new_tokens_not_flow (s s_after_ws : ScannerState) (star
   have h_toks : s'.tokens = s.tokens.push ⟨startPos, .tagDirective
     (collectTagHandleDirectiveLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).fst
     (collectTagPrefixLoop (skipWhitespace (collectTagHandleDirectiveLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd) ""
-      (s.inputEnd - (skipWhitespace (collectTagHandleDirectiveLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd).offset)).fst⟩ := by
+      (s.inputEnd - (skipWhitespace (collectTagHandleDirectiveLoop s_after_ws "" (s.inputEnd - s_after_ws.offset)).snd).offset)).fst, startPos⟩ := by
     subst h_eq
     simp only [ScannerState.emitAt, collectTagPrefixLoop_preserves_tokens,
       skipWhitespace_preserves_tokens, collectTagHandleDirectiveLoop_preserves_tokens, h_ws]
@@ -2398,7 +2398,7 @@ theorem scanAnchorOrAlias_preserves_FlowInv (s : ScannerState) (isAnchor : Bool)
     have h_coll := collectAnchorNameLoop_preserves_tokens s.advance "" (s.inputEnd - s.advance.offset)
     have h_adv := advance_preserves_tokens s
     simp only [ScannerState.emitAt, h_coll, h_adv, h_name]
-    split <;> (rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, _⟩
+    split <;> (rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, _, s.currentPos⟩
            (by nofun) (by nofun) (by nofun) (by nofun)]; exact h_fni)
 
 theorem scanVerbatimTag_preserves_flowLevel (s : ScannerState) (startPos : YamlPos) :
@@ -2528,14 +2528,14 @@ theorem scanTag_preserves_FlowInv (s : ScannerState)
       unfold scanVerbatimTag
       simp only [ScannerState.emitAt, collectVerbatimTagLoop_preserves_tokens,
                  advance_preserves_tokens]
-      rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .tag _ _⟩
+      rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .tag _ _, s.currentPos⟩
            (by nofun) (by nofun) (by nofun) (by nofun)]
       exact h_fni
     · -- Case: secondary tag
       unfold scanSecondaryTag
       simp only [ScannerState.emitAt, collectTagSuffixLoop_preserves_tokens,
                  advance_preserves_tokens]
-      rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .tag _ _⟩
+      rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .tag _ _, s.currentPos⟩
            (by nofun) (by nofun) (by nofun) (by nofun)]
       exact h_fni
     · -- Case: named tag
@@ -2560,7 +2560,7 @@ theorem scanTag_preserves_FlowInv (s : ScannerState)
         -- Simplify the if-then-else expressions (foundBang = false here)
         simp
         rw [h_tok, advance_preserves_tokens]
-        rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .tag _ _⟩
+        rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .tag _ _, s.currentPos⟩
              (by nofun) (by nofun) (by nofun) (by nofun)]
         exact h_fni
       · -- Case: foundBang = true, so we call collectTagSuffixLoop
@@ -2574,7 +2574,7 @@ theorem scanTag_preserves_FlowInv (s : ScannerState)
         -- Simplify the if-then-else expressions (foundBang = true here)
         simp
         rw [collectTagSuffixLoop_preserves_tokens, h_tok1, advance_preserves_tokens]
-        rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .tag _ _⟩
+        rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .tag _ _, s.currentPos⟩
              (by nofun) (by nofun) (by nofun) (by nofun)]
         exact h_fni
 
@@ -3210,7 +3210,7 @@ theorem scanDoubleQuoted_preserves_FlowInv (s s' : ScannerState)
       have h_preserve : result.snd.tokens = s.advance.tokens :=
         collectDoubleQuotedLoop_preserves_tokens _ _ _ _ _ _ _ _ heq_collect
       rw [h_preserve, advance_preserves_tokens]
-      rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .scalar _ .doubleQuoted⟩]
+      rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .scalar _ .doubleQuoted, s.currentPos⟩]
       · exact h_fni
       all_goals nofun
     · -- inFlow = true (no validation)
@@ -3220,7 +3220,7 @@ theorem scanDoubleQuoted_preserves_FlowInv (s s' : ScannerState)
       have h_preserve : result.snd.tokens = s.advance.tokens :=
         collectDoubleQuotedLoop_preserves_tokens _ _ _ _ _ _ _ _ heq_collect
       rw [h_preserve, advance_preserves_tokens]
-      rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .scalar _ .doubleQuoted⟩]
+      rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .scalar _ .doubleQuoted, s.currentPos⟩]
       · exact h_fni
       all_goals nofun
 
@@ -3284,7 +3284,7 @@ theorem scanSingleQuoted_preserves_FlowInv (s s' : ScannerState)
       have h_preserve : result.snd.tokens = s.advance.tokens :=
         collectSingleQuotedLoop_preserves_tokens _ _ _ _ _ _ _ _ heq_collect
       rw [h_preserve, advance_preserves_tokens]
-      rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .scalar _ .singleQuoted⟩]
+      rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .scalar _ .singleQuoted, s.currentPos⟩]
       · exact h_fni
       all_goals nofun
     · -- inFlow = true (no validation)
@@ -3294,7 +3294,7 @@ theorem scanSingleQuoted_preserves_FlowInv (s s' : ScannerState)
       have h_preserve : result.snd.tokens = s.advance.tokens :=
         collectSingleQuotedLoop_preserves_tokens _ _ _ _ _ _ _ _ heq_collect
       rw [h_preserve, advance_preserves_tokens]
-      rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .scalar _ .singleQuoted⟩]
+      rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .scalar _ .singleQuoted, s.currentPos⟩]
       · exact h_fni
       all_goals nofun
 
@@ -3367,7 +3367,7 @@ theorem scanPlainScalar_preserves_FlowInv (s s' : ScannerState)
     have h_preserve : result.state.tokens = s.tokens :=
       collectPlainScalarLoop_preserves_tokens s "" "" _ _ _ _ _ heq
     rw [h_preserve]
-    rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .scalar _ .plain⟩]
+    rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .scalar _ .plain, s.currentPos⟩]
     · exact h_fni
     all_goals nofun
 
@@ -3688,7 +3688,7 @@ theorem scanKey_preserves_FlowNestingInv
         · -- No blockMappingStart, just .key
           unfold ScannerState.emit
           simp [Array.size_push]
-          have : flowNesting (s.tokens.push ⟨s.currentPos, .key⟩) (s.tokens.size + 1) =
+          have : flowNesting (s.tokens.push ⟨s.currentPos, .key, s.currentPos⟩) (s.tokens.size + 1) =
                  flowNesting s.tokens s.tokens.size := by
             apply flowNesting_push_non_flow <;> nofun
           rw [this]
@@ -3715,7 +3715,7 @@ theorem scanKey_preserves_FlowNestingInv
       · -- No blockMappingStart, just .key
         unfold ScannerState.emit
         simp [Array.size_push]
-        have : flowNesting (s.tokens.push ⟨s.currentPos, .key⟩) (s.tokens.size + 1) =
+        have : flowNesting (s.tokens.push ⟨s.currentPos, .key, s.currentPos⟩) (s.tokens.size + 1) =
                flowNesting s.tokens s.tokens.size := by
           apply flowNesting_push_non_flow <;> nofun
         rw [this]
@@ -3728,7 +3728,7 @@ theorem scanKey_preserves_FlowNestingInv
         simp only [advance_preserves_flowLevel, advance_preserves_tokens]
         unfold ScannerState.emit
         simp [Array.size_push]
-        have : flowNesting (s.tokens.push ⟨s.currentPos, .key⟩) (s.tokens.size + 1) =
+        have : flowNesting (s.tokens.push ⟨s.currentPos, .key, s.currentPos⟩) (s.tokens.size + 1) =
                flowNesting s.tokens s.tokens.size := by
           apply flowNesting_push_non_flow <;> nofun
         rw [this]
@@ -3738,7 +3738,7 @@ theorem scanKey_preserves_FlowNestingInv
       simp only [advance_preserves_flowLevel, advance_preserves_tokens]
       unfold ScannerState.emit
       simp [Array.size_push]
-      have : flowNesting (s.tokens.push ⟨s.currentPos, .key⟩) (s.tokens.size + 1) =
+      have : flowNesting (s.tokens.push ⟨s.currentPos, .key, s.currentPos⟩) (s.tokens.size + 1) =
              flowNesting s.tokens s.tokens.size := by
         apply flowNesting_push_non_flow <;> nofun
       rw [this]
@@ -3863,24 +3863,24 @@ theorem scanValuePrepare_preserves_FlowContextPSV
       split
       · -- col > currentIndent: two setIfInBounds
         dsimp only []
-        apply FlowContextPSV_setIfInBounds _ _ _ ⟨s.simpleKey.pos, .key⟩ (by trivial)
+        apply FlowContextPSV_setIfInBounds _ _ _ ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩ (by trivial)
             ⟨by nofun, by nofun, by nofun, by nofun⟩
         · intro h_lt
           rw [Array.size_setIfInBounds] at h_lt
           simp only [Array.getElem_setIfInBounds h_lt,
                      if_neg (show s.simpleKey.tokenIndex ≠ s.simpleKey.tokenIndex + 1 from by omega)]
           rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩
-        · apply FlowContextPSV_setIfInBounds _ h_old _ ⟨s.simpleKey.pos, .blockMappingStart⟩
+        · apply FlowContextPSV_setIfInBounds _ h_old _ ⟨s.simpleKey.pos, .blockMappingStart, s.simpleKey.pos⟩
               (by trivial) ⟨by nofun, by nofun, by nofun, by nofun⟩
           intro h_lt; rw [h_ph1 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩
       · -- col ≤ currentIndent: one setIfInBounds
         dsimp only []
-        apply FlowContextPSV_setIfInBounds _ h_old _ ⟨s.simpleKey.pos, .key⟩ (by trivial)
+        apply FlowContextPSV_setIfInBounds _ h_old _ ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩ (by trivial)
             ⟨by nofun, by nofun, by nofun, by nofun⟩
         intro h_lt; rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩
     · -- inFlow: one setIfInBounds
       dsimp only []
-      apply FlowContextPSV_setIfInBounds _ h_old _ ⟨s.simpleKey.pos, .key⟩ (by trivial)
+      apply FlowContextPSV_setIfInBounds _ h_old _ ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩ (by trivial)
           ⟨by nofun, by nofun, by nofun, by nofun⟩
       intro h_lt; rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩
   · -- simpleKey.possible = false
@@ -3934,14 +3934,14 @@ theorem scanValuePrepare_preserves_FlowNestingInv
         show flowNesting _ _ = s.flowLevel
         unfold FlowNestingInv at h_fni
         rw [Array.size_setIfInBounds, Array.size_setIfInBounds]
-        rw [flowNesting_setIfInBounds_non_flow _ _ ⟨s.simpleKey.pos, .key⟩
+        rw [flowNesting_setIfInBounds_non_flow _ _ ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
             ⟨by nofun, by nofun, by nofun, by nofun⟩
             (fun h_lt => by
               rw [Array.size_setIfInBounds] at h_lt
               simp only [Array.getElem_setIfInBounds h_lt,
                          if_neg (show s.simpleKey.tokenIndex ≠ s.simpleKey.tokenIndex + 1 from by omega)]
               rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩)]
-        rw [flowNesting_setIfInBounds_non_flow _ _ ⟨s.simpleKey.pos, .blockMappingStart⟩
+        rw [flowNesting_setIfInBounds_non_flow _ _ ⟨s.simpleKey.pos, .blockMappingStart, s.simpleKey.pos⟩
             ⟨by nofun, by nofun, by nofun, by nofun⟩
             (fun h_lt => by rw [h_ph1 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩)]
         exact h_fni
@@ -3949,7 +3949,7 @@ theorem scanValuePrepare_preserves_FlowNestingInv
         show flowNesting _ _ = s.flowLevel
         unfold FlowNestingInv at h_fni
         rw [Array.size_setIfInBounds]
-        rw [flowNesting_setIfInBounds_non_flow _ _ ⟨s.simpleKey.pos, .key⟩
+        rw [flowNesting_setIfInBounds_non_flow _ _ ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
             ⟨by nofun, by nofun, by nofun, by nofun⟩
             (fun h_lt => by rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩)]
         exact h_fni
@@ -3957,7 +3957,7 @@ theorem scanValuePrepare_preserves_FlowNestingInv
       show flowNesting _ _ = s.flowLevel
       unfold FlowNestingInv at h_fni
       rw [Array.size_setIfInBounds]
-      rw [flowNesting_setIfInBounds_non_flow _ _ ⟨s.simpleKey.pos, .key⟩
+      rw [flowNesting_setIfInBounds_non_flow _ _ ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
           ⟨by nofun, by nofun, by nofun, by nofun⟩
           (fun h_lt => by rw [h_ph2 h_lt]; exact ⟨by nofun, by nofun, by nofun, by nofun⟩)]
       exact h_fni
@@ -3972,8 +3972,8 @@ theorem scanValuePrepare_preserves_FlowNestingInv
         split
         · -- col > currentIndent: emit .blockMappingStart
           simp only [emit_preserves_flowLevel, emit_tokens_size]
-          rw [show (s.emit .blockMappingStart).tokens = s.tokens.push ⟨s.currentPos, .blockMappingStart⟩ from rfl]
-          rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .blockMappingStart⟩
+          rw [show (s.emit .blockMappingStart).tokens = s.tokens.push ⟨s.currentPos, .blockMappingStart, s.currentPos⟩ from rfl]
+          rw [flowNesting_push_non_flow s.tokens ⟨s.currentPos, .blockMappingStart, s.currentPos⟩
               (by nofun) (by nofun) (by nofun) (by nofun)]
           exact h_fni
         · -- col ≤ currentIndent: identity
@@ -4000,7 +4000,7 @@ theorem scanValue_preserves_FlowContextPSV
     · contradiction
     · injection h_ok with h_ok; subst h_ok
       simp only [advance_preserves_tokens]
-      -- s'.tokens = (scanValuePrepare (scanValueClearKey s)).tokens.push ⟨pos, .value⟩
+      -- s'.tokens = (scanValuePrepare (scanValueClearKey s)).tokens.push ⟨pos, .value, pos⟩
       -- Step 1: FlowContextPSV for scanValuePrepare (scanValueClearKey s)
       have h_ck := scanValueClearKey_preserves_tokens s
       have h_fpsv_ck : FlowContextPSV (scanValueClearKey s).tokens := by
@@ -4077,7 +4077,7 @@ theorem scanValue_preserves_FlowNestingInv
 
 /-! ### SimpleKeyPlaceholderInv — token-value invariant for simple-key positions
 
-`saveSimpleKey` pushes `⟨currentPos, .placeholder⟩` tokens at `tokenIndex` and
+`saveSimpleKey` pushes `⟨currentPos, .placeholder, currentPos⟩` tokens at `tokenIndex` and
 `tokenIndex + 1`.  Between that push and `scanValue`'s `setIfInBounds`, those
 positions keep `.val = .placeholder`.  Our proofs of `FlowContextPSV` / `FlowNestingInv`
 preservation through `setIfInBounds` need the OLD token to be non-flow, which
@@ -4265,12 +4265,12 @@ theorem saveSimpleKey_preserves_AllKeysPlaceholderInv (s : ScannerState)
         have ⟨hb1, hb2, hp1, hp2⟩ := h_akpi.2.1 j hj h_poss
         refine ⟨by simp [Array.size_push]; omega, by simp [Array.size_push]; omega, ?_, ?_⟩
         · intro h1
-          have : (s.tokens.push ⟨s.currentPos, .placeholder⟩ |>.push ⟨s.currentPos, .placeholder⟩)[s.simpleKeyStack[j].tokenIndex]'h1 = s.tokens[s.simpleKeyStack[j].tokenIndex] := by
+          have : (s.tokens.push ⟨s.currentPos, .placeholder, s.currentPos⟩ |>.push ⟨s.currentPos, .placeholder, s.currentPos⟩)[s.simpleKeyStack[j].tokenIndex]'h1 = s.tokens[s.simpleKeyStack[j].tokenIndex] := by
             rw [Array.getElem_push_lt (by simp [Array.size_push]; omega),
                 Array.getElem_push_lt (by omega)]
           rw [this]; exact hp1 hb1
         · intro h2
-          have : (s.tokens.push ⟨s.currentPos, .placeholder⟩ |>.push ⟨s.currentPos, .placeholder⟩)[s.simpleKeyStack[j].tokenIndex + 1]'h2 = s.tokens[s.simpleKeyStack[j].tokenIndex + 1] := by
+          have : (s.tokens.push ⟨s.currentPos, .placeholder, s.currentPos⟩ |>.push ⟨s.currentPos, .placeholder, s.currentPos⟩)[s.simpleKeyStack[j].tokenIndex + 1]'h2 = s.tokens[s.simpleKeyStack[j].tokenIndex + 1] := by
             rw [Array.getElem_push_lt (by simp [Array.size_push]; omega),
                 Array.getElem_push_lt (by omega)]
           rw [this]; exact hp2 hb2
@@ -4909,7 +4909,7 @@ theorem scanLoop_preserves_FlowInv
       exact ih s' h1 h2 h3 h_ok
 
 theorem flowNesting_go_streamStart (p : YamlPos) :
-    flowNesting.go #[⟨p, .streamStart⟩] 0 1 0 = 0 := by
+    flowNesting.go #[⟨p, .streamStart, p⟩] 0 1 0 = 0 := by
   unfold flowNesting.go
   split
   · rfl

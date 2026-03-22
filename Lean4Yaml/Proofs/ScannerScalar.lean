@@ -98,15 +98,17 @@ theorem emitAt_inputEnd (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
     (s.emitAt pos tok).inputEnd = s.inputEnd := by
   unfold ScannerState.emitAt; rfl
 
-/-- `emitAt` preserves `WellFormed` (all 4 conjuncts). -/
+/-- `emitAt` preserves `WellFormed` (all 6 conjuncts). -/
 theorem emitAt_preserves_wellFormed (s : ScannerState) (pos : YamlPos) (tok : YamlToken)
     (hwf : s.WellFormed) : (s.emitAt pos tok).WellFormed := by
-  obtain ⟨hind, hflow, hsk, hoff⟩ := hwf
-  refine ⟨?_, ?_, ?_, ?_⟩
+  obtain ⟨hind, hflow, hsk, hoff, hmono, hsent⟩ := hwf
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [emitAt_indents]; exact hind
   · rw [emitAt_flowLevel, emitAt_flowStack]; exact hflow
   · rw [emitAt_simpleKeyStack, emitAt_flowStack]; exact hsk
   · rw [emitAt_offset, emitAt_inputEnd]; exact hoff
+  · intro i hi; simp only [emitAt_indents] at hi ⊢; exact hmono i hi
+  · intro h; simp only [emitAt_indents] at h ⊢; exact hsent h
 
 /-! ## §2  Record Update Patterns — WellFormed Preservation (universal)
 
@@ -174,4 +176,3 @@ theorem emitAt_then_blockFlags_preserves_wellFormed (s : ScannerState)
 
 
 end Lean4Yaml.Proofs.ScannerScalar
-

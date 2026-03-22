@@ -5619,19 +5619,19 @@ theorem scanValuePrepare_preserves_ScanInv (s : ScannerState) (h : ScanInv s)
         show ScanInv' _ s.offset
         exact setIfInBounds_twice_preserves_ScanInv' s.tokens s.offset
           s.simpleKey.tokenIndex (s.simpleKey.tokenIndex + 1)
-          ⟨s.simpleKey.pos, .blockMappingStart⟩ ⟨s.simpleKey.pos, .key⟩
+          ⟨s.simpleKey.pos, .blockMappingStart, s.simpleKey.pos⟩ ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
           h h_idx_lt h_idx1_lt
           (by simp [h_pe]) (by simp [h_pe1])
           (by omega)
       · -- keyCol ≤ currentIndent: one setIfInBounds at idx+1
         show ScanInv' _ s.offset
         exact setIfInBounds_preserves_ScanInv' s.tokens s.offset
-          (s.simpleKey.tokenIndex + 1) ⟨s.simpleKey.pos, .key⟩
+          (s.simpleKey.tokenIndex + 1) ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
           h h_idx1_lt (by simp [h_pe1])
     · -- inFlow: one setIfInBounds at idx+1
       show ScanInv' _ s.offset
       exact setIfInBounds_preserves_ScanInv' s.tokens s.offset
-        (s.simpleKey.tokenIndex + 1) ⟨s.simpleKey.pos, .key⟩
+        (s.simpleKey.tokenIndex + 1) ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
         h h_idx1_lt (by simp [h_pe1])
   · -- simpleKey.possible = false
     split
@@ -7584,12 +7584,12 @@ theorem saveSimpleKey_preserves_SimpleKeyStackValid (s : ScannerState)
       have ⟨hb1, hb2, hp1, hp2⟩ := h_ssv j hj h_poss
       refine ⟨by simp [Array.size_push]; omega, by simp [Array.size_push]; omega, ?_, ?_⟩
       · intro h1
-        have : (s.tokens.push ⟨s.currentPos, .placeholder⟩ |>.push ⟨s.currentPos, .placeholder⟩)[s.simpleKeyStack[j].tokenIndex]'h1 = s.tokens[s.simpleKeyStack[j].tokenIndex] := by
+        have : (s.tokens.push ⟨s.currentPos, .placeholder, s.currentPos⟩ |>.push ⟨s.currentPos, .placeholder, s.currentPos⟩)[s.simpleKeyStack[j].tokenIndex]'h1 = s.tokens[s.simpleKeyStack[j].tokenIndex] := by
           rw [Array.getElem_push_lt (by simp [Array.size_push]; omega),
               Array.getElem_push_lt (by omega)]
         rw [this]; exact hp1 hb1
       · intro h2
-        have : (s.tokens.push ⟨s.currentPos, .placeholder⟩ |>.push ⟨s.currentPos, .placeholder⟩)[s.simpleKeyStack[j].tokenIndex + 1]'h2 = s.tokens[s.simpleKeyStack[j].tokenIndex + 1] := by
+        have : (s.tokens.push ⟨s.currentPos, .placeholder, s.currentPos⟩ |>.push ⟨s.currentPos, .placeholder, s.currentPos⟩)[s.simpleKeyStack[j].tokenIndex + 1]'h2 = s.tokens[s.simpleKeyStack[j].tokenIndex + 1] := by
           rw [Array.getElem_push_lt (by simp [Array.size_push]; omega),
               Array.getElem_push_lt (by omega)]
         rw [this]; exact hp2 hb2

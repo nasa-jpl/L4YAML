@@ -250,8 +250,8 @@ theorem advance_preserves_wellFormed (s : ScannerState)
     (hv : String.Pos.Raw.IsValid s.input ⟨s.offset⟩)
     (hend : s.inputEnd = s.input.utf8ByteSize) :
     s.advance.WellFormed := by
-  obtain ⟨hind, hflow, hsk, hoff⟩ := hwf
-  refine ⟨?_, ?_, ?_, ?_⟩
+  obtain ⟨hind, hflow, hsk, hoff, hmono, hsent⟩ := hwf
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
   · -- indents.size ≥ 1: preserved by advance
     rw [advance_indents]; exact hind
   · -- flowLevel = flowStack.size: preserved by advance
@@ -261,21 +261,26 @@ theorem advance_preserves_wellFormed (s : ScannerState)
   · -- offset ≤ inputEnd: the main result
     rw [advance_inputEnd]
     exact advance_offset_le s hv hoff hend
+  · -- indent stack monotonicity: preserved (advance doesn't touch indents)
+    intro i hi; simp only [advance_indents] at hi ⊢; exact hmono i hi
+  · -- sentinel preserved: advance doesn't touch indents
+    intro h; simp only [advance_indents] at h ⊢; exact hsent h
 
 /-! ## §5  Emit Preserves WellFormed -/
 
-/-- `emit` preserves all four `WellFormed` conjuncts (it only modifies `tokens`). -/
+/-- `emit` preserves all six `WellFormed` conjuncts (it only modifies `tokens`). -/
 theorem emit_preserves_wellFormed (s : ScannerState) (tok : YamlToken)
     (hwf : s.WellFormed) : (s.emit tok).WellFormed := by
-  obtain ⟨hind, hflow, hsk, hoff⟩ := hwf
-  refine ⟨?_, ?_, ?_, ?_⟩
+  obtain ⟨hind, hflow, hsk, hoff, hmono, hsent⟩ := hwf
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
   · simp [ScannerState.emit]; exact hind
   · simp [ScannerState.emit]; exact hflow
   · simp [ScannerState.emit]; exact hsk
   · simp [ScannerState.emit]; exact hoff
+  · intro i hi; simp [ScannerState.emit] at hi ⊢; exact hmono i hi
+  · intro h; simp [ScannerState.emit] at h ⊢; exact hsent h
 
 /-! ## §6  Validation Guards -/
 
 
 end Lean4Yaml.Proofs.ScannerLoopInvariant
-

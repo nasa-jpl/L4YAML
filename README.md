@@ -587,18 +587,18 @@ Leniency audit against libyaml identified four categories of non-compliant accep
 | 7 | Cross-validate all fixes against libyaml | ✅ |
 </details>
 
-#### Version 0.2.12
+#### Version 0.2.12 (completed 2026-03-21)
 <details>
 
 Foundational data-structure improvements to support future acceptance-strictness and rejection-completeness proofs. These changes introduce spec-level vocabulary and enrich position tracking so that later formalization work (v0.4.0, v0.5.0) builds on stable, expressive types.
 
 | # | Item | Description | Status |
 |---|------|-------------|--------|
-| 1 | `YamlContext` enum | Define the six YAML 1.2.2 contexts (BLOCK-OUT, BLOCK-IN, BLOCK-KEY, FLOW-OUT, FLOW-IN, FLOW-KEY) as an inductive type with a `YamlContext.inFlow` projection bridging to the existing `Bool` representation | 🔲 |
-| 2 | `YamlSpan` type | A `(start : YamlPos) × (stop : YamlPos)` record giving a canonical span over the input — to be used by `Positioned`, `nodePositions`, and future production predicates | 🔲 |
-| 3 | End-position in `Positioned` | Add `endPos : YamlPos` to `Positioned` and populate it at every emission site in Scanner.lean (the scanner already computes both start and end positions; currently discards end) | 🔲 |
-| 4 | Strengthen `ScannerState.WellFormed` | Add invariants: indent stack monotonicity, flow-level/indent relationship — proofs already thread `WellFormed` through every scanner transition, so adding conjuncts is incremental | 🔲 |
-| 5 | Expand `@[yaml_spec]` coverage | Promote scanner/parser comment annotations (e.g., `-- [77] s-b-comment`) to machine-queryable `@[yaml_spec]` attributes, enabling automated production coverage analysis | 🔲 |
+| 1 | `YamlContext` enum | Define the six YAML 1.2.2 contexts (BLOCK-OUT, BLOCK-IN, BLOCK-KEY, FLOW-OUT, FLOW-IN, FLOW-KEY) as an inductive type with a `YamlContext.inFlow` projection bridging to the existing `Bool` representation | ✅ |
+| 2 | `YamlSpan` type | A `(start : YamlPos) × (stop : YamlPos)` record giving a canonical span over the input — to be used by `Positioned`, `nodePositions`, and future production predicates | ✅ |
+| 3 | End-position in `Positioned` | Add `endPos : YamlPos` to `Positioned` and populate it at every emission site in Scanner.lean (the scanner already computes both start and end positions; currently discards end) | ✅ |
+| 4 | Strengthen `ScannerState.WellFormed` | Add invariants: indent stack monotonicity, flow-level/indent relationship — proofs already thread `WellFormed` through every scanner transition, so adding conjuncts is incremental | ✅ |
+| 5 | Expand `@[yaml_spec]` coverage | Promote scanner/parser comment annotations (e.g., `-- [77] s-b-comment`) to machine-queryable `@[yaml_spec]` attributes, enabling automated production coverage analysis | ✅ |
 </details>
 
 #### Version 0.2.13
