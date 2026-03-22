@@ -606,7 +606,12 @@ Foundational data-structure improvements to support future acceptance-strictness
 
 Systematic leniency detection — four complementary approaches to maximize confidence that no latent leniencies remain:
 
-**Approach 1: Grammar-directed adversarial testing.** For each YAML 1.2.2 production with position-sensitive constraints, generate (a) the **canonical minimal-valid representation** annotated with the production rules that produced it, (b) extract the **indentation-dependent predicates** (exact column, line-start, indent depth), and (c) apply **boundary violations** — not random whitespace, but constraint-specific perturbations:
+
+##### **Version 0.2.13.1: Grammar-directed adversarial testing.**
+
+<details>
+
+For each YAML 1.2.2 production with position-sensitive constraints, generate (a) the **canonical minimal-valid representation** annotated with the production rules that produced it, (b) extract the **indentation-dependent predicates** (exact column, line-start, indent depth), and (c) apply **boundary violations** — not random whitespace, but constraint-specific perturbations:
 
 | Production | Constraint | Boundary variants |
 |------------|-----------|-------------------|
@@ -627,21 +632,51 @@ For example, `? (? (? x: y) : mid) : outer` with canonical form:
   : mid     # col 2 — [197] s-indent(2)
 : outer     # col 0 — [197] s-indent(0)
 ```
+
 generates variants: `: y` at col 3/5 (under/over-indent), `: mid` at col 1/3, `: outer` at col 1, same-line collapse `? ? ? x: y`, tab injection at each indent position.
 
-**Approach 3: Mutation testing on yaml-test-suite.** Take the 869 passing yaml-test-suite cases and apply spec-structure-aware mutations: shift indentation ±1 at key productions, delete/add newlines at `l-` (line-start) productions, replace spaces with tabs at `s-indent` positions, move `:` to same line as `?`, move `-` to wrong indent level. Each mutated input should either remain valid or be rejected — cross-check against libyaml.
+</details>
 
-**Approach 4: Property-based testing (grammar-constrained fuzzing).** Use `Grammar.lean`'s `ValidNode` inductive as a generator: (a) generate random `ValidNode` witnesses, (b) `toYamlValue` → `dumpDocument` to produce YAML text, (c) parse back and verify round-trip, (d) apply adversarial mutations to the dumped text and verify rejection. Tests the dump→parse path.
+##### **Version 0.2.13.2: Mutation testing on yaml-test-suite.**
 
-**Approach 5: Production coverage analysis.** Annotate each scanner/parser code path with the spec production it implements. Cross-reference with yaml-test-suite coverage data and internal `#guard` tests to identify productions with zero or insufficient boundary-case coverage. Priority: every indentation-dependent production must have boundary tests for under-indent, over-indent, and tab injection.
+<details>
+
+Take the 869 passing yaml-test-suite cases and apply spec-structure-aware mutations: shift indentation ±1 at key productions, delete/add newlines at `l-` (line-start) productions, replace spaces with tabs at `s-indent` positions, move `:` to same line as `?`, move `-` to wrong indent level. Each mutated input should either remain valid or be rejected — cross-check against libyaml.
+
+</details>
+
+##### **Version 0.2.13.3: Property-based testing (grammar-constrained fuzzing).**
+
+<details>
+
+Use `Grammar.lean`'s `ValidNode` inductive as a generator: (a) generate random `ValidNode` witnesses, (b) `toYamlValue` → `dumpDocument` to produce YAML text, (c) parse back and verify round-trip, (d) apply adversarial mutations to the dumped text and verify rejection. Tests the dump→parse path.
+
+</details>
+
+##### **Version 0.2.13.4: Production coverage analysis.**
+
+<details>
+
+Annotate each scanner/parser code path with the spec production it implements. Cross-reference with yaml-test-suite coverage data and internal `#guard` tests to identify productions with zero or insufficient boundary-case coverage. Priority: every indentation-dependent production must have boundary tests for under-indent, over-indent, and tab injection.
 
 | # | Item | Status |
 |---|------|--------|
-| 1 | Implement grammar-directed adversarial test generator (Approach 1) | 🔲 |
-| 2 | Implement yaml-test-suite mutation framework (Approach 3) | 🔲 |
-| 3 | Implement property-based round-trip fuzzer (Approach 4) | 🔲 |
-| 4 | Production coverage analysis and gap report (Approach 5) | 🔲 |
+| 1 | Implement grammar-directed adversarial test generator (Version 0.2.13.1) | 🔲 |
+| 2 | Implement yaml-test-suite mutation framework (Version 0.2.13.2) | 🔲 |
+| 3 | Implement property-based round-trip fuzzer (Version 0.2.13.3) | 🔲 |
+| 4 | Production coverage analysis and gap report (Version 0.2.13.4) | 🔲 |
 | 5 | Fix any new leniencies discovered by systematic testing | 🔲 |
+
+</details>
+
+##### **Version 0.2.13.5: Production coverage analysis.**
+
+<details>
+
+Fix any new leniencies discovered by systematic testing. This is the final step to ensure that the parser is acceptance-strict with respect to the YAML 1.2.2 grammar, eliminating all known leniencies and providing confidence that no critical ones remain.
+
+</details>
+
 </details>
 
 #### Version 0.3.0
