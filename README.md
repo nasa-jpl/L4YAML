@@ -171,14 +171,19 @@ For more details, see [Proofs/README](./Lean4Yaml/Proofs/README.md).
 <details>
 
 ### Roadmap
+<details>
 
 #### Version 0.1 (completed 2026-03-19)
+<details>
 
 YAML1.2.2-compliant verified parser without resource limitations.
 
-🎉 **Fully verified:** Axiom-free, sorry-free proofs of correctness, completeness and soundness of both the scanner and token-based parser. 1,577 theorems, 2,012 compile-time guards, zero sorry, zero axiom, zero partial def. Build: 334/334 jobs.
+🎉 **Soundness verified:** Axiom-free, sorry-free proofs that the scanner and token-based parser produce only well-formed output (soundness and completeness). 1,577 theorems, 2,012 compile-time guards, zero sorry, zero axiom, zero partial def. Build: 334/334 jobs. Note: rejection correctness (strictness) was not yet addressed — see v0.2.11 leniency audit and the "Asymmetric verification" discussion above.
+
+</details>
 
 #### Version 0.2 (completed 2026-03-20)
+<details>
 
 Improved type safety with explicit exception types for all APIs. See [EXCEPTIONS.md](EXCEPTIONS.md) for the full design and migration retrospective.
 
@@ -212,8 +217,10 @@ Improved type safety with explicit exception types for all APIs. See [EXCEPTIONS
   - Error lifting: coercion preserves `toString` (`rfl`)
   - Constructor injectivity: `yaml_error_scan_injective`, `yaml_error_schema_injective`
 - Build: 336/336 jobs, 0 errors, 0 sorry, 0 warnings
+</details>
 
 #### Version 0.2.1 (completed 2026-03-20)
+<details>
 
 `LawfulBEq` instances for the entire YAML AST type hierarchy, enabling `simp` rewrites with `beq_self_eq_true` and `eq_of_beq` for all value types.
 
@@ -242,8 +249,10 @@ Improved type safety with explicit exception types for all APIs. See [EXCEPTIONS
 - Structural recursion with `where`-clause list/pair-list helpers, matching the `decEqYamlValue` pattern from `Completeness.lean`
 - Key proof technique: `show beqFoo _ _ = true` / `change beqFoo _ _ = true at h` to bridge from `BEq.beq` to the explicit function name (necessary because `unfold beqFoo` fails after `unfold BEq.beq` — the term has shape `instBEqFoo.1`, not `beqFoo`)
 - Build: 338/338 jobs, 0 errors, 0 sorry, 0 warnings
+</details>
 
 #### Version 0.2.2 (completed 2026-03-20)
+<details>
 
 Test diagnostics & result persistence (P10.6c). Machine-readable JSON output from `suiterunner`, per-test detail in verified suite results, parser output capture for UP/fail tests, `queryresults` analysis tool, and timestamped result snapshots.
 
@@ -289,8 +298,10 @@ queryresults diff before.json after.json                  # outcome changes, add
 - `queryresults summary` produces markdown tables directly usable in README updates
 - `queryresults diff` enables regression tracking across P10.6d implementation steps
 - Build: 341/341 jobs, 0 errors, 0 sorry, 0 warnings
+</details>
 
 #### Version 0.2.3 (completed 2026-03-20)
+<details>
 
 Prop twins for specification structures (doc-verification-bridge visibility). The bridge analysis classifies `def`-as-witness patterns (e.g., `scan_produces_valid_tokens : ... → ValidTokenStream`) as `computationalOperation`, not theorems, making them invisible to automated verification analysis. Additionally, structure-level existential quantification (`∃ vy : ValidYaml, ...`) is traced to field projections but not to the parent structure itself.
 
@@ -320,8 +331,10 @@ Prop twins for specification structures (doc-verification-bridge visibility). Th
 - Dropped `scanFiltered_valid_token_stream` because `scanFiltered_produces_valid_tokens` is a `by`-proof `def` whose `.tokens` field is opaque (not definitionally equal to the input)
 - Also fixed 6 missing imports in `Lean4Yaml.lean`: `ParserAnchorProofs`, `ParserGrammableBase`, `ParserNodeProofs`, `ParserWellBehaved`, `ParserWfaProofs`, `ScannerCorrectness`
 - Build: 341/341 jobs, 0 errors, 0 sorry, 0 warnings
+</details>
 
 #### Version 0.2.4 (completed 2026-03-20)
+<details>
 
 `ValidStream` and `ValidDocument` proofs. Prove that the parser produces valid multi-document streams, closing the last unverified specification types in `Grammar.lean`.
 
@@ -348,8 +361,10 @@ Prop twins for specification structures (doc-verification-bridge visibility). Th
 | `parseYaml_implies_valid_document` | `parseYaml ok → ValidDocumentProp docs[i]` |
 | `parseYaml_implies_valid_stream` | `parseYaml ok ∧ nonempty → ValidStreamProp docs` |
 | `parseStream_respects_grammar_unconditional` | `scanFiltered ok ∧ parseStream ok → ∀ doc, ∃ ValidNode` |
+</details>
 
 #### Version 0.2.5 (completed 2026-03-20)
+<details>
 
 Schema round-trip composition (Phase 7.5). Proves that `resolve ∘ toYaml` and `fromYaml? ∘ toYaml` round-trip correctly for all schema types, completing the verified schema layer.
 
@@ -381,8 +396,10 @@ Schema round-trip composition (Phase 7.5). Proves that `resolve ∘ toYaml` and 
 | `fromYaml_toYaml_str_safe` | `schema-safe s → fromYaml? (toYaml s) = .ok s` |
 | `fromYaml_toYaml_int` | `isInt (toString n) = some n → fromYaml? (toYaml n) = .ok n` |
 | `fromYaml_toYaml_option_none` | `fromYaml? (toYaml none) = .ok none` |
+</details>
 
 #### Version 0.2.6 (completed 2026-03-20)
+<details>
 
 Scanner bug fixes: fix 4 runtime test failures plus 1 scanner test. Root cause: colon-chain misparse in flow plain scalars — `isValueCandidate` returned `true` unconditionally when `s.inFlow && s.simpleKey.possible`, violating YAML §7.3.3/§7.4.2. Characters like `:x`, `::value`, `::vector` were tokenized as value indicators instead of plain scalar content.
 
@@ -416,8 +433,10 @@ Also fixed the "alias scan" test in `ScannerTests.lean`: test was scanning `*anc
 - Verified internal tests: 750/750 (100%) across 11 suites
 - Compile-time guards: 3 previously commented-out guards (58MP, 5T43, DBG4) now active
 - Build: 344/344 jobs, 0 errors, 0 sorry, 0 warnings
+</details>
 
 #### Version 0.2.7 (completed 2026-03-21)
+<details>
 
 Comment preservation (Phase 8). AST-level comment metadata for round-trip fidelity per YAML 1.2.2 §6.6.
 
@@ -441,8 +460,10 @@ Comment preservation (Phase 8). AST-level comment metadata for round-trip fideli
 - Verified internal tests: 750/750 (100%) across 11 suites
 - Compile-time guards: 2,024 total (43 new for comment round-trip)
 - Build: 342/342 jobs, 0 errors, 0 sorry, 0 warnings
+</details>
 
 #### Version 0.2.8 (completed 2026-03-21)
+<details>
 
 `%TAG` directive resolution (§6.8.2). Wire `%TAG` handle declarations into parser state and resolve `!handle!suffix` → expanded URI during parsing.
 
@@ -471,8 +492,10 @@ Comment preservation (Phase 8). AST-level comment metadata for round-trip fideli
 - Theorems: 1,724 total (12 new for TAG resolution)
 - Compile-time guards: 2,020 total (23 new for TAG resolution)
 - Build: 345/345 jobs, 0 errors, 0 sorry, 0 warnings
+</details>
 
 #### Version 0.2.9 (completed 2026-03-21)
+<details>
 
 End-to-end round-trip composition (Phase 7.5). Compose parser + dump + schema proofs to show that `dump→parse` preserves schema-level meaning.
 
@@ -500,8 +523,10 @@ End-to-end round-trip composition (Phase 7.5). Compose parser + dump + schema pr
 - Theorems: 1,769 total (43 new for round-trip composition)
 - Compile-time guards: 2,091 total (55 new for round-trip composition)
 - Build: 348/348 jobs, 0 errors, 0 sorry, 0 warnings
+</details>
 
 #### Version 0.2.10 (completed 2026-03-21)
+<details>
 
 Scanner hardening: systematic edge-case coverage for explicit key handling beyond the 5 fixes in v0.2.6.
 
@@ -530,11 +555,12 @@ Scanner hardening: systematic edge-case coverage for explicit key handling beyon
 - Verified internal tests: 818/818 across 11 suites
 - Compile-time guards: 2,124 total (+33 new in ScannerHardening.lean)
 - Build: 349/349 jobs, 0 errors, 0 sorry, 0 warnings
+</details>
 
+#### Version 0.2.11 (completed 2026-03-21)
+<details>
 
-#### Version 0.2.11
-
-Finding and fixing leniencies for 100% YAML 1.2.2 spec compliance. Differential testing against libyaml revealed that our parser accepts several inputs that violate the formal grammar. This version fixes all confirmed leniencies and builds systematic tooling to detect latent ones.
+Finding and fixing leniencies for 100% YAML 1.2.2 spec compliance. Differential testing against libyaml revealed that our parser accepts several inputs that violate the formal grammar. This version fixes all confirmed leniencies.
 
 **Part 1 — Fixing known leniencies**
 
@@ -559,10 +585,26 @@ Leniency audit against libyaml identified four categories of non-compliant accep
 | 5 | Investigate Category E: bare `:` is spec-valid (§8.2.2 [185] `e-node` as implicit key) — no fix needed | ✅ |
 | 6 | Add `#guard` tests and ExplicitKeyTests for all fixes | ✅ |
 | 7 | Cross-validate all fixes against libyaml | ✅ |
+</details>
 
-**Part 2 — Systematic leniency detection**
+#### Version 0.2.12
+<details>
 
-Four complementary approaches to maximize confidence that no latent leniencies remain:
+Foundational data-structure improvements to support future acceptance-strictness and rejection-completeness proofs. These changes introduce spec-level vocabulary and enrich position tracking so that later formalization work (v0.4.0, v0.5.0) builds on stable, expressive types.
+
+| # | Item | Description | Status |
+|---|------|-------------|--------|
+| 1 | `YamlContext` enum | Define the six YAML 1.2.2 contexts (BLOCK-OUT, BLOCK-IN, BLOCK-KEY, FLOW-OUT, FLOW-IN, FLOW-KEY) as an inductive type with a `YamlContext.inFlow` projection bridging to the existing `Bool` representation | 🔲 |
+| 2 | `YamlSpan` type | A `(start : YamlPos) × (stop : YamlPos)` record giving a canonical span over the input — to be used by `Positioned`, `nodePositions`, and future production predicates | 🔲 |
+| 3 | End-position in `Positioned` | Add `endPos : YamlPos` to `Positioned` and populate it at every emission site in Scanner.lean (the scanner already computes both start and end positions; currently discards end) | 🔲 |
+| 4 | Strengthen `ScannerState.WellFormed` | Add invariants: indent stack monotonicity, flow-level/indent relationship — proofs already thread `WellFormed` through every scanner transition, so adding conjuncts is incremental | 🔲 |
+| 5 | Expand `@[yaml_spec]` coverage | Promote scanner/parser comment annotations (e.g., `-- [77] s-b-comment`) to machine-queryable `@[yaml_spec]` attributes, enabling automated production coverage analysis | 🔲 |
+</details>
+
+#### Version 0.2.13
+<details>
+
+Systematic leniency detection — four complementary approaches to maximize confidence that no latent leniencies remain:
 
 **Approach 1: Grammar-directed adversarial testing.** For each YAML 1.2.2 production with position-sensitive constraints, generate (a) the **canonical minimal-valid representation** annotated with the production rules that produced it, (b) extract the **indentation-dependent predicates** (exact column, line-start, indent depth), and (c) apply **boundary violations** — not random whitespace, but constraint-specific perturbations:
 
@@ -595,13 +637,15 @@ generates variants: `: y` at col 3/5 (under/over-indent), `: mid` at col 1/3, `:
 
 | # | Item | Status |
 |---|------|--------|
-| 8 | Implement grammar-directed adversarial test generator (Approach 1) | 🔲 |
-| 9 | Implement yaml-test-suite mutation framework (Approach 3) | 🔲 |
-| 10 | Implement property-based round-trip fuzzer (Approach 4) | 🔲 |
-| 11 | Production coverage analysis and gap report (Approach 5) | 🔲 |
-| 12 | Fix any new leniencies discovered by systematic testing | 🔲 |
+| 1 | Implement grammar-directed adversarial test generator (Approach 1) | 🔲 |
+| 2 | Implement yaml-test-suite mutation framework (Approach 3) | 🔲 |
+| 3 | Implement property-based round-trip fuzzer (Approach 4) | 🔲 |
+| 4 | Production coverage analysis and gap report (Approach 5) | 🔲 |
+| 5 | Fix any new leniencies discovered by systematic testing | 🔲 |
+</details>
 
 #### Version 0.3.0
+<details>
 
 Security mechanisms to prevent **two critical vulnerability classes**:
 
@@ -609,20 +653,31 @@ Security mechanisms to prevent **two critical vulnerability classes**:
 2. **Arbitrary code execution (ACE)**: Unsafe tags and directives that could execute code during deserialization
 
 See [LIMITS](LIMITS.md) for detailed analysis and mitigation strategies.
+</details>
 
 #### Version 0.4.0
+<details>
 
 [Acceptance strictness](./STRICTNESS.md): formalize the YAML 1.2.2 surface syntax as parameterized inductive predicates and prove acceptance strictness: if the parser accepts an input, that input belongs to the formal grammar.
+</details>
 
 #### Version 0.5.0
+<details>
 
 Rejection completeness: if an input does not belong to the formal grammar, the parser rejects it. This is strictly harder than acceptance strictness and may require architectural changes to the parser's error handling.
+</details>
+
+</details>
 
 ### Position-Aware Stream
+<details>
 
 The `YamlStream` type automatically tracks line and column through the `next?` function. This eliminates the class of bugs demonstrated by the `skipToNextLine` regression in lean4-yaml, where implicit position state caused 230→7 yaml-test-suite test failures.
+</details>
+
 
 ### Formal Grammar
+<details>
 
 The YAML grammar is encoded as Lean `Prop`s in `Grammar.lean`, independent of the parser. This enables stating and proving the soundness theorem:
 
@@ -632,12 +687,7 @@ theorem parse_sound :
     parseYaml input = .ok docs →
     Grammar.ValidYaml input docs
 ```
-
-### Compatible AST
-
-<details>
-
-The `YamlValue` type is identical to lean4-yaml's, allowing the Schema/FromToYaml/Deriving/Emitter layers (~1500 lines) to be shared between implementations.
+</details>
 
 ### No Exceptions for Control Flow
 
@@ -660,7 +710,6 @@ This is critical because lean4-parser's error model has **no committed/fatal err
 
 </details>
 
-</details>
 
 ### OS-Level Process Isolation for Testing
 
@@ -679,6 +728,9 @@ See [ANALYSIS.md](ANALYSIS.md) for a detailed comparison with the non-verified [
 </details>
 
 </details>
+
+# Log
+<details>
 
 ## Phase 1: Core Parser ✅
 
@@ -2218,6 +2270,7 @@ The non-verified `lean4-yaml` project (now deprecated) implemented a **684-line 
 
 The architecture is designed for reuse: `lean4-yaml-verified` and `lean4-yaml` share identical `YamlValue` types (documented in `Types.lean`). The schema layer sits entirely above the parser — it operates on `YamlValue` and has zero parser dependency. This means the verified parser can adopt the schema layer with no parser changes.
 
+
 ### Architecture: Two-Layer Separation
 
 ```
@@ -2460,6 +2513,8 @@ The schema layer follows the same architectural principles documented in ANALYSI
 
 5. **Proofs follow the same layered strategy.** Layer 1 (pure function properties) → Layer 2 (typeclass laws) → Layer 3 (round-trip composition). Each layer is independently valuable: Layer 1 catches implementation bugs at compile time, Layer 2 ensures typeclass coherence, Layer 3 provides the full end-to-end guarantee.
 
+</details>
+
 ### Estimated Effort
 
 <details>
@@ -2522,10 +2577,6 @@ Ported and adapted the schema layer from lean4-yaml (2026-02-24). 8 new files im
 - `YamlValue` has `BEq` but not `DecidableEq` (recursive inductive with `Array` children). SchemaDump proofs use `#guard` with `==` for `YamlValue` comparisons and a `roundTripsTo` Bool helper for typed round-trips returning `Except String α`.
 - `Std.Data.HashMap` import in `FromToYaml.lean` is the first `Std` import in the project — available in Lean 4.28.0 core, no additional dependency needed.
 - `resolve` equational lemma generation fails in Lean 4.28.0 due to a known `YamlValue.rec_1` projection issue with `where`-clause mutual recursion on arrays-converted-to-lists. Proofs for `resolve` on sequences/mappings use `rfl` (definitional reduction succeeds despite missing equational lemma). Proofs for `resolve` on scalars route through `resolveScalar` instead.
-
-</details>
-
-</details>
 
 </details>
 
@@ -2773,7 +2824,6 @@ This means the schema proofs (Phase 7) are unaffected, provided `BEq` on `YamlVa
 
 </details>
 
-</details>
 
 ## Phase 9: Explicit Tokenization Layer — ✅ COMPLETE
 
@@ -5765,6 +5815,8 @@ below the grammar proof layer.  Closing it would require either:
 
 ### P10.10 — Scanner State Machine Verification (2026-03-02) ✅
 
+<details>
+
 **Context.** After P10.9, the proof architecture verifies grammar ↔ AST correspondence
 (soundness, completeness, round-trip) and primitive operations (`advance`, `emit`,
 flow open/close) preserve `WellFormed`.  However, no proofs exist for the scanner's
@@ -5817,7 +5869,7 @@ preservation through every scanner function, culminating in a proof that the mai
    the `tabInIndentation` error path (show error is thrown, not that `WellFormed` holds
    for a non-existent output state).
 
-### Dependencies
+#### Dependencies
 
 - **P10.1–P10.2** can start immediately — no other phase dependency
 - **P10.3** is trivial and can run in parallel with P10.2
@@ -5834,7 +5886,7 @@ preservation through every scanner function, culminating in a proof that the mai
 - **P10.10** depends on P10.9 — ✅ complete (scanner state machine verification: 259 theorems + 1,063 #guard checks)
 - **Phase 8** (comment preservation) should target the tokenized parser only — if P10 completes first, Phase 8 has a single implementation target
 
-### Estimated Effort
+#### Estimated Effort
 
 | Sub-phase | Effort | Description |
 |---|---|---|
@@ -6429,6 +6481,8 @@ The remaining 52 skipped tests are YAML 1.1/1.3 features or tests that require b
 | ~~§7.5 Flow nodes~~ | ✅ Done (P2) | — | — |
 | ~~§9.1.3 `c-forbidden`~~ | ✅ Done (P3) | — | — |
 | §10 Recommended Schemas | ✅ Core schema (Phase 7.1–7.5 complete). Failsafe/JSON implicit. End-to-end round-trip composition verified (v0.2.9). | — | — |
+
+</details>
 
 ## Building
 
