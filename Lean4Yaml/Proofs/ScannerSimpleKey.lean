@@ -94,7 +94,6 @@ theorem saveSimpleKey_preserves_offset_le (s : ScannerState)
 
 /-- `saveSimpleKey` preserves C5 (indent stack monotonicity). -/
 theorem saveSimpleKey_preserves_monotone (s : ScannerState)
-    (hind : s.indents.size ≥ 1)
     (hmono : ∀ (i : Nat) (hi : i + 1 < s.indents.size),
       (s.indents[i]'(by omega)).column < (s.indents[i + 1]'hi).column) :
     ∀ (i : Nat) (hi : i + 1 < (saveSimpleKey s).indents.size),
@@ -123,7 +122,7 @@ theorem saveSimpleKey_preserves_wellFormed (s : ScannerState)
          saveSimpleKey_preserves_flow_sync s hflow,
          saveSimpleKey_preserves_sk_sync s hsk,
          saveSimpleKey_preserves_offset_le s hoff,
-         saveSimpleKey_preserves_monotone s hind hmono,
+         saveSimpleKey_preserves_monotone s hmono,
          saveSimpleKey_preserves_sentinel s hind hsent⟩
 
 /-! ## §3  scanKey — WellFormed Preservation (universal, modulo advance preconditions)
