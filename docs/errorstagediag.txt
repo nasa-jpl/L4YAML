@@ -1,0 +1,35 @@
+=== Error Stage Diagnostics ===
+--- Error Stage Diagnostic ---
+
+  == Suite-file pipeline (parseTestFile → unescapeTestYaml → parseYaml) ==
+  ✓ CVW2: Invalid comment after comma — correctly rejected
+  ✓ 9JBA: Invalid comment after end of flow sequence — correctly rejected
+  ✓ KS4U: Invalid item after end of flow sequence — correctly rejected
+  ✓ DK4H: Implicit key followed by newline — correctly rejected
+  ✓ ZXT5: Implicit key followed by newline and adjacent value — correctly rejected
+
+  Suite pipeline: 5/5 correctly rejected
+
+  == Inline strings (same as ValidationTests) ==
+  ✓ CVW2 (inline): # without space after , — correctly rejected
+  ✓ 9JBA (inline): # without space after ] — correctly rejected
+  ✓ KS4U (inline): content after closed flow — correctly rejected
+  ✓ DK4H (inline): key : on separate lines — correctly rejected
+  ✓ ZXT5 (inline): quoted key colon next line — correctly rejected
+
+  Inline: 5/5 correctly rejected
+
+  == Comparison ==
+  = CVW2: suite YAML matches inline string
+    expectFail=true, tags=[comment, error, flow, sequence]
+  = 9JBA: suite YAML matches inline string
+    expectFail=true, tags=[comment, error, flow, sequence]
+  = KS4U: suite YAML matches inline string
+    expectFail=true, tags=[error, flow, sequence]
+  = DK4H: suite YAML matches inline string
+    expectFail=true, tags=[error, flow, mapping, sequence]
+  = ZXT5: suite YAML matches inline string
+    expectFail=true, tags=[error, flow, mapping, sequence]
+
+  All tests correctly rejected in both pipelines.
+  If HTML report still shows 0/74, the bug is in runAllForReport mapping.

@@ -1,0 +1,14 @@
+=== Flow Regression Check ===
+--- Flow Regression Check ---
+  ✓ accept: 87E4: single-quoted implicit keys
+  ✓ accept: 2EBW: allowed chars in keys
+  ✓ accept: LQZ7: flow mapping in block
+  ✓ accept: 96NN: block mapping multi-value
+  ✓ accept: F6MC: more indented mapping
+  ✓ accept: H2RW: multi-doc with ---
+  ✓ reject: KS4U: invalid item after flow seq
+  ✓ reject: 9JBA: # without space after ]
+  ✓ reject: CVW2: # without space after ,
+  ✓ reject: DK4H: key : on separate lines
+  ✓ reject: ZXT5: quoted key colon next line
+

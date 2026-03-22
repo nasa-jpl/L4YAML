@@ -1043,3 +1043,398 @@
   ✓ Example example-10.9
 
 === Results: 132/132 passed ===
+=== Adversarial Grammar Tests ===
+=== Adversarial Grammar-Directed Tests (v0.2.13.1) ===
+
+--- [63] Block mapping indentation ---
+  ✓ a:\n  b: 1 (indent=2) is mapping
+  ✓ a:\n  b: 1 (indent=2) has 1 pairs
+  ✓ a:\n b: 1 (indent=1) is mapping
+  ✓ a:\n b: 1 (indent=1) has 1 pairs
+  ✓ a:\nb: 1 (sibling) is mapping
+  ✓ a:\nb: 1 (sibling) has 2 pairs
+  ✓ a:\n  first: 1\n second: 2 (under-indent)
+  ✓ 3-level 0→2→4
+  ✓ 3-level 0→1→2
+  ✓ 3-level inner=middle (sibling)
+  ✓ 3-level inner=top (a,c siblings) is mapping
+  ✓ 3-level inner=top (a,c siblings) has 2 pairs
+  ✓ mixed indent siblings (col 2 vs 3)
+  ✓ 5-deep 0→1→2→3→4
+  ✓ 3-key then under-indent
+
+--- [63] Tab as indentation (§6.1) ---
+  ✓ \ta: 1 (LENIENCY: tab indent)
+  ✓  \ta: 1 (LENIENCY: space+tab)
+  ✓ \t a: 1 (LENIENCY: tab+space)
+  ✓ \t\ta: 1 (LENIENCY: double tab)
+  ✓ a:\n\tb: 1 (tab indent nested)
+  ✓ a:\n\t b: 1 (tab+space nested)
+  ✓ a:\n \tb: 1 (space+tab = separation)
+  ✓ a:\tb (tab as value sep)
+
+--- [180] Block sequence indentation ---
+  ✓ top-level - a\n- b is sequence
+  ✓ top-level - a\n- b has 2 items
+  ✓ a:\n  - x\n  - y (indent+2)
+  ✓ a:\n - x\n - y (indent+1)
+  ✓ a:\n- x\n- y (seq-spaces)
+  ✓ a:\n      - x (deep indent)
+  ✓ seq indent 2→3 (nested)
+  ✓ - - a\n  - b (seq-in-seq) is sequence
+  ✓ - - a\n  - b (seq-in-seq) has 1 items
+  ✓ - - a\n- - b (separate) is sequence
+  ✓ - - a\n- - b (separate) has 2 items
+  ✓ - a:\n  - x\n - y (under-indent)
+  ✓ a:\n\t- x (tab before dash)
+  ✓ -\ta (tab = separation after dash)
+  ✓ multi-key seq
+  ✓ a:\n  b:\n- x (seq at col 0 under deep)
+  ✓ - - - - a (4-deep compact)
+
+--- [184] Block mapping key indentation ---
+  ✓ - a: 1\n  b: 2 (map in seq)
+  ✓ - a: 1\n b: 2 (map in seq under)
+  ✓ - a: 1\nb: 2 (map at col 0 after seq)
+  ✓ 3-level map correct
+  ✓ 3-level map inner drift
+  ✓ a:\n  b: 1\nc: 2 (sibling) is mapping
+  ✓ a:\n  b: 1\nc: 2 (sibling) has 2 pairs
+  ✓ a:\n  long\n  value (multiline)
+  ✓ - x\na: 1 (map after seq)
+  ✓ - a: 1\n  b: 2\n- c: 3 (multi-entry)
+  ✓ a→indent2, c→indent4
+  ✓ a:\nb: 1 (empty value) is mapping
+  ✓ a:\nb: 1 (empty value) has 2 pairs
+  ✓ a:\n  1 (value on next line)
+
+--- [187] Flow in block context ---
+  ✓ a:\n{b: c} (flow@0)
+  ✓ a:\n {b: c} (flow@1)
+  ✓ a:\n  {b: c} (flow@2)
+  ✓ a:\n[1, 2] (flowseq@0)
+  ✓ a:\n [1, 2] (flowseq@1)
+  ✓ {a: 1} (root flow map)
+  ✓ [1, 2] (root flow seq)
+  ✓ a:\n  b:\n  {c: d} (flow at parent)
+  ✓ a:\n  b:\n    {c: d} (flow proper)
+  ✓ a:\n  {} (empty flow map)
+  ✓ a:\n  [] (empty flow seq)
+  ✓ a:\n{} (empty flow@0)
+  ✓ a:\n[] (empty flowseq@0)
+  ✓ - {a: 1} (flow in seq)
+  ✓ - [1, 2] (flow seq in seq)
+  ✓ a:\n  b:\n   {c: d} (indent+1)
+  ✓ a: {b:\n  c} (block in flow)
+  ✓ - a:\n{b: c} (flow seq entry @0)
+  ✓ a→b→c: flow at c's indent
+  ✓ a→b→c: flow at c+2
+  ✓ a:\n\t{b: c} (tab before flow)
+
+--- [170/174] Block scalar indentation ---
+  ✓ literal indent=2 auto
+  ✓ literal indent=1 auto
+  ✓ literal indent=4 auto
+  ✓ literal under-indent (2→1)
+  ✓ literal content at col 0
+  ✓ literal |2 explicit
+  ✓ literal |1 explicit
+  ✓ literal empty
+  ✓ literal tab in content
+  ✓ folded indent=2 auto
+  ✓ folded under-indent (2→1)
+  ✓ folded content at col 0
+  ✓ folded indent=1 auto
+  ✓ folded indent=4 auto
+  ✓ literal strip chomp |-
+  ✓ literal keep chomp |+
+  ✓ a→b: literal nested
+  ✓ literal nested under-indent
+  ✓ literal then sibling key
+  ✓ folded content less than auto
+  ✓ literal then mapping
+  ✓ folded then mapping
+  ✓ literal with tab-only line
+
+--- [197] Explicit key/value indentation ---
+  ✓ ? key\n: value (canonical)
+  ✓ ?\n  key\n:\n  value (nested)
+  ✓ ? key\n:\n value (value indent+1)
+  ✓ ? key\n :\n value (: at col 1)
+  ✓ ? a\n  b\n: c (multiline key)
+  ✓ ?\tkey (tab after ?)
+  ✓ ? {a: 1}\n: val (flow key)
+  ✓ ? [1, 2]\n: val (seq key)
+  ✓ ?\n: val (empty key)
+  ✓ ? key : val (simple key)
+  ✓ ? &a key\n: val (anchored)
+  ✓ ?\n  - a\n  - b\n: val (seq key)
+  ✓ ?\n  a: 1\n  b: 2\n: val (map key)
+  ✓ ? ? inner\n  : ival\n: oval (nested ?)
+  ✓ ? a\n\t: b (tab before :)
+
+--- Multi-level nesting combinations ---
+  ✓ 4-deep 0→2→4→6
+  ✓ map→seq→map
+  ✓ seq→map→seq
+  ✓ map→seq→map→seq
+  ✓ 4-deep compact seq
+  ✓ map→seq→map 3 levels
+  ✓ seq with nested map indent
+  ✓ deep nest then sibling is mapping
+  ✓ deep nest then sibling has 2 pairs
+  ✓ 3-level then de-indent
+  ✓ seq→map→seq→map
+  ✓ map→seq of maps
+  ✓ ? nested then mapping
+
+--- Tab injection (§6.1) ---
+  ✓ \ta: 1 (LENIENCY)
+  ✓  \ta: 1 (LENIENCY)
+  ✓ \t a: 1 (LENIENCY)
+  ✓ \t\ta: 1 (LENIENCY)
+  ✓ a:\n\tb: 1
+  ✓ a:\n \tb: 1 (separation)
+  ✓ a:\n\t b: 1
+  ✓ a:\n\t- x
+  ✓ a:\n \t- x
+  ✓ -\ta (separation)
+  ✓ a:\n\t{b: c}
+  ✓ a:\n\t[1, 2]
+  ✓ a:\tb (tab value sep)
+  ✓ a: b\tc (tab in value)
+  ✓ a: b \t# comment (tab before comment)
+  ✓ ?\tkey
+  ✓ ? a\n\t: b
+  ✓ a:\t1 (tab after colon)
+  ✓ a: |\t\n  text (tab in header comment area)
+  ✓ a:\n  b:\n\tc: 1 (tab at level 3)
+  ✓ -\n\ta: 1 (tab indent in seq item)
+
+--- Document boundary interaction ---
+  ✓ a:\n  ... (indented doc-end)
+  ✓ a:\n  --- (indented doc-start)
+  ✓ ---\na: 1 (post-docstart)
+  ✓ ---\n  a: 1 (indented after docstart)
+
+--- Anchor/tag interaction with indent ---
+  ✓ a:\n  &x b: 1 (anchor indent)
+  ✓ a:\n  !!str b: 1 (tag indent)
+  ✓ - &x a\n- *x (anchor in seq)
+
+=== Results: 154/154 passed ===
+=== Mutation Suite Tests ===
+=== Mutation Testing on yaml-test-suite (v0.2.13.2) ===
+
+--- STRICT: tabs in quoted scalar continuations ---
+  ✓ 4CQQ tab in dquote continuation (STRICT: libyaml accepts)
+  ✓ DK95:2 tab in dquote continuation (STRICT: libyaml accepts)
+  ✓ DK95:8 dquote continuation at col 0 (STRICT: libyaml accepts)
+  ✓ NAT4:0 tab in squote continuation (STRICT: libyaml accepts)
+  ✓ RZP5:0 tab in dquote continuation (STRICT: libyaml accepts)
+
+--- STRICT: tabs in flow context ---
+  ✓ 87E4 tab indent in flow seq entry (STRICT: libyaml accepts)
+  ✓ 87E4 tab indent before flow closer (STRICT: libyaml accepts)
+  ✓ L9U5 tab indent in flow entry (STRICT: libyaml accepts)
+  ✓ ZF4X tab indent in flow mapping (STRICT: libyaml accepts)
+  ✓ LP6E tab indent in multiline flow (STRICT: libyaml accepts)
+  ✓ M5DY tab indent in flow seq (STRICT: libyaml accepts)
+
+--- STRICT: other mutations ---
+  ✓ 2SXE anchor:key no space (STRICT: libyaml accepts)
+  ✓ 35KP dash shifted right in multi-doc (STRICT: libyaml accepts)
+  ✓ 6ZKB comment+... joined (STRICT: libyaml accepts)
+  ✓ V55R dash shifted right with anchor (STRICT: libyaml accepts)
+
+--- LENIENT: indent shift ---
+  ✓ 2SXE:0 over-indent alias key (LENIENT: libyaml rejects)
+  ✓ 2SXE:0 under-indent alias key (LENIENT: libyaml rejects)
+  ✓ 5MUD:0 over-indent colon in flow (LENIENT: libyaml rejects)
+  ✓ 5MUD:0 under-indent colon in flow (LENIENT: libyaml rejects)
+  ✓ 4Q9F:0 under-indent flow content (LENIENT: libyaml rejects)
+  ✓ 6FWR:0 under-indent block value (LENIENT: libyaml rejects)
+
+--- LENIENT: delete-newline ---
+  ✓ 2JQS:0 join empty-key lines (LENIENT: libyaml rejects)
+  ✓ 4ABK:0 join multi-doc line 0+1 (LENIENT: libyaml rejects)
+  ✓ 6CK3:0 join doc start+content (LENIENT: libyaml rejects)
+  ✓ 5T43:0 join literal+value lines (LENIENT: libyaml rejects)
+  ✓ 58MP:0 join ?-colon lines (LENIENT: libyaml rejects)
+
+--- LENIENT: add-newline ---
+  ✓ 2LFX:0 blank after directive (LENIENT: libyaml rejects)
+  ✓ 4MUZ:0 blank in multi-doc (LENIENT: libyaml rejects)
+  ✓ 5MUD:0 blank after doc-start (LENIENT: libyaml rejects)
+
+--- LENIENT: space-to-tab (indent) ---
+  ✓ 2LFX:0 tab indent directive comment (LENIENT: libyaml rejects)
+  ✓ 4Q9F:0 tab indent block scalar (BOTH_REJECT)
+  ✓ 5MUD:0 tab indent flow content (LENIENT: libyaml rejects)
+  ✓ 6JQW:0 tab indent block mapping (BOTH_REJECT)
+
+--- LENIENT: colon-nospace ---
+  ✓ 6KGN:0 b:*anchor no space (LENIENT: libyaml rejects)
+  ✓ 7Z25:0 key:value no space (LENIENT: libyaml rejects)
+  ✓ 9SA2:0 flow multiline key:value (LENIENT: libyaml rejects)
+
+--- LENIENT: dash-indent ---
+  ✓ 8XYN:0 dash shifted right with emoji anchor (LENIENT: libyaml rejects)
+  ✓ DBG4:0 dash shifted right in sequence (LENIENT: libyaml rejects)
+
+--- Agreement: BOTH_REJECT mutations ---
+  ✓ space-to-tab block indent
+  ✓ indent-1 breaks nested mapping
+  ✓ delete-newline block scalar header
+  ✓ space-to-tab block scalar content
+
+--- Agreement: BOTH_ACCEPT mutations ---
+  ✓ add-newline after seq entry
+  ✓ indent+1 on scalar value
+  ✓ add-newline after mapping value
+
+=== Results: 45/45 passed ===
+=== Property-Based Round-Trip Tests ===
+=== Property-Based Round-Trip Tests (v0.2.13.3) ===
+
+--- Basic dump→parse round-trip ---
+  ✓ 100/100 random nodes round-trip successfully
+
+--- Flow-style dump→parse round-trip ---
+  ✓ 50/50 flow-style nodes round-trip
+
+--- Double-quoted dump→parse round-trip ---
+  ✓ 50/50 double-quoted nodes round-trip
+
+--- Scalar edge cases ---
+  ✓ emptyNode round-trips
+  ✓ singleQuoted empty
+  ✓ singleQuoted 'hello'
+  ✓ singleQuoted with colon-space
+  ✓ singleQuoted with hash
+  ✓ singleQuoted with flow chars
+  ✓ singleQuoted with indicators
+  ✓ doubleQuoted empty
+  ✓ doubleQuoted 'hello'
+  ✓ doubleQuoted with colon
+  ✓ doubleQuoted with braces
+  ✓ doubleQuoted with all indicators
+  ✓ doubleQuoted reserved 'true'
+  ✓ doubleQuoted reserved 'null'
+  ✓ doubleQuoted reserved 'false'
+  ✓ doubleQuoted numeric '42'
+
+--- Collection structure round-trip ---
+  ✓ block seq [a, b, c]
+  ✓ block map {key1: val1, key2: val2}
+  ✓ flow seq [x, y]
+  ✓ flow map {a: 1, b: 2}
+  ✓ nested block map with seq value
+  ✓ block seq of maps
+  ✓ flow collections inside block
+  ✓ empty flow seq []
+  ✓ empty flow map {}
+  ✓ 3-level deep nesting
+
+--- Mutation resilience ---
+  ✓ indent mutations: 16/16 handled consistently
+  ✓ tab mutations: 8/8 handled consistently
+  ✓ newline mutations: 8/8 handled consistently
+  ✓ colon mutations: 8/8 handled consistently
+
+--- Diverse seed coverage ---
+  ✓ seed 0: 5/5 round-trip
+  ✓ seed 1: 5/5 round-trip
+  ✓ seed 7: 5/5 round-trip
+  ✓ seed 13: 5/5 round-trip
+  ✓ seed 42: 5/5 round-trip
+  ✓ seed 97: 5/5 round-trip
+  ✓ seed 137: 5/5 round-trip
+  ✓ seed 271: 5/5 round-trip
+  ✓ seed 314: 5/5 round-trip
+  ✓ seed 577: 5/5 round-trip
+  ✓ seed 691: 5/5 round-trip
+  ✓ seed 997: 5/5 round-trip
+  ✓ seed 1234: 5/5 round-trip
+  ✓ seed 2718: 5/5 round-trip
+  ✓ seed 3141: 5/5 round-trip
+  ✓ seed 4242: 5/5 round-trip
+  ✓ seed 6174: 5/5 round-trip
+  ✓ seed 7919: 5/5 round-trip
+  ✓ seed 8675: 5/5 round-trip
+  ✓ seed 9999: 5/5 round-trip
+  ✓ total: 100/100 across 20 seeds
+
+--- DumpConfig variation round-trip ---
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+
+=== Results: 124/124 passed ===
