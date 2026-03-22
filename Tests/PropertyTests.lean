@@ -123,20 +123,20 @@ def genPlainSafe (rng : Rng) (maxLen : Nat := 8) : Rng × String :=
   (rng, String.ofList (first :: body))
 
 /-- Generate a string safe for double-quoted scalars.
-    Uses only plain-safe characters because the dumper may render quoted
-    scalars as plain style (a known limitation — the dumper's
-    `chooseScalarStyle` is too aggressive about choosing plain for content
-    containing `:`, `#`, `!` etc. in flow context).  See §dumper-bugs below. -/
+    Now that the dumper is context-aware (v0.2.13.4), we can include
+    characters like `:`, `#`, `!` that previously caused round-trip
+    failures in flow context — the dumper now quotes them properly. -/
 def genDoubleQuotedContent (rng : Rng) (maxLen : Nat := 12) : Rng × String :=
   let (rng, len) := rng.next (maxLen + 1)  -- [0, maxLen]
   let allChars : List Char :=
     ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', ' ',
      '0', '1', '2', '3', 'X', 'Y', 'Z', '.', '/', '_',
-     '(', ')', '+', '=', '-', '?']
+     '(', ')', '+', '=', '-', '?', ':', '#', '!',
+     '@', ';', '<', '>', '~', '&', '*']
   let safeLastChars : List Char :=
     ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
      '0', '1', '2', '3', 'X', 'Y', 'Z', '.', '/', '_',
-     '(', ')', '+', '=']
+     '(', ')', '+', '=', ':', '#', '!', '@', '~']
   let rec loop (rng : Rng) (acc : List Char) (n : Nat) : Rng × List Char :=
     match n with
     | 0 => (rng, acc.reverse)
@@ -150,17 +150,19 @@ def genDoubleQuotedContent (rng : Rng) (maxLen : Nat := 12) : Rng × String :=
     (rng, String.ofList (body ++ [last]))
 
 /-- Generate a string safe for single-quoted scalars (no newlines).
-    Uses only plain-safe characters because the dumper may override the
-    quoted style with plain.  See `genDoubleQuotedContent` doc. -/
+    Now that the dumper is context-aware (v0.2.13.4), we include
+    richer characters — the dumper properly quotes in flow context. -/
 def genSingleQuotedContent (rng : Rng) (maxLen : Nat := 12) : Rng × String :=
   let (rng, len) := rng.next (maxLen + 1)
   let chars : List Char :=
     ['a', 'b', 'c', ' ', '-', '.', '0', '1', '2',
-     'x', 'y', 'z', '(', ')', '_', '+', '=', '/', 'A', 'B', 'C']
-  -- Last character must not be `:` `-` ` ` to avoid dumping ambiguity
+     'x', 'y', 'z', '(', ')', '_', '+', '=', '/', 'A', 'B', 'C',
+     ':', '#', '!', '@', ';', '~', '&', '*']
+  -- Last character must not end with space (whitespace trim ambiguity)
   let safeLastChars : List Char :=
     ['a', 'b', 'c', '.', '0', '1', '2',
-     'x', 'y', 'z', '(', ')', '_', '+', '=', '/', 'A', 'B', 'C']
+     'x', 'y', 'z', '(', ')', '_', '+', '=', '/', 'A', 'B', 'C',
+     ':', '#', '!', '@', '~']
   let rec loop (rng : Rng) (acc : List Char) (n : Nat) : Rng × List Char :=
     match n with
     | 0 => (rng, acc.reverse)
@@ -214,8 +216,9 @@ Generate a random `ValidNode`.
 
 At depth 0, only scalars and empty node are generated.
 At higher depths, collections are included with decreasing probability.
-When `flowOnly` is true, only scalars and flow collections are generated
-(block collections inside flow context is invalid YAML).
+The `flowOnly` parameter is retained for testing purposes but is no longer
+needed for correctness — the dumper (v0.2.13.4) auto-forces flow style
+for any block collection nested inside a flow context.
 -/
 partial def genValidNode (rng : Rng) (depth : Nat := 0) (flowOnly : Bool := false)
     : Rng × ValidNode :=
@@ -284,7 +287,8 @@ where
       match n with
       | 0 => (rng, acc.reverse)
       | n + 1 =>
-        let (rng, item) := genValidNode rng (depth + 1) (flowOnly := true)
+        -- No flowOnly needed: dumper forces flow style for children in flow context
+        let (rng, item) := genValidNode rng (depth + 1)
         loop rng (item :: acc) n
     let (rng, items) := loop rng [] size
     (rng, .flowSeq items)
@@ -297,7 +301,8 @@ where
       | 0 => (rng, acc.reverse)
       | n + 1 =>
         let (rng, key) := genScalar rng
-        let (rng, val) := genValidNode rng (depth + 1) (flowOnly := true)
+        -- No flowOnly needed: dumper forces flow style for children in flow context
+        let (rng, val) := genValidNode rng (depth + 1)
         loop rng ((key, val) :: acc) n
     let (rng, entries) := loop rng [] size
     (rng, .flowMap entries)
@@ -405,8 +410,8 @@ def testFlowRoundTrip (state : IO.Ref TestCollector) (count : Nat := 50) : IO Un
   let mut failed := 0
   let mut failures : Array String := #[]
   for i in [:count] do
-    -- Generate flow-only nodes since entire tree will be dumped as flow
-    let (rng', node) := genValidNode rng (flowOnly := true)
+    -- Block-in-flow is now valid: dumper auto-forces flow style for nested blocks
+    let (rng', node) := genValidNode rng
     rng := rng'
     match roundTripCheckDiag node cfg with
     | .ok () => passed := passed + 1

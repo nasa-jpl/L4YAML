@@ -342,6 +342,63 @@ def testDocumentDump (state : IO.Ref TestCollector) : IO Unit := do
                      ⟨.plainScalar "c", #[], #[], #[], #[]⟩] ==
       "a\n---\nb\n---\nc\n...")
 
+/-! ### §6: Flow-context edge cases (v0.2.13.4) -/
+
+/-- Test flow-context-aware dumping: scalars with `:`, `#`, etc. inside
+    flow collections, and block-in-flow auto-promotion. -/
+def testFlowContextEdgeCases (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Flow-context edge cases (v0.2.13.4)"
+  -- Colon-containing scalars in flow sequence must be quoted
+  check state "flow seq: colon in value quotes"
+    (dumpRoundTrips (.sequence .flow #[.plainScalar "a:b"]))
+  check state "flow seq: trailing colon quotes"
+    (dumpRoundTrips (.sequence .flow #[.plainScalar "abc:"]))
+  -- Flow mapping with colon in value
+  check state "flow map: colon in value quotes"
+    (dumpRoundTrips (.mapping .flow #[(.plainScalar "k", .plainScalar "v:w")]))
+  -- Nested colon patterns
+  check state "flow seq: key:value pattern quotes"
+    (dumpRoundTrips (.sequence .flow #[.plainScalar "key: value"]))
+  check state "flow map: colon-only value quotes"
+    (dumpRoundTrips (.mapping .flow #[(.plainScalar "k", .plainScalar ":")]))
+  -- Block collection inside flow auto-promoted to flow
+  check state "block seq in flow map → flow"
+    (dumpRoundTrips (.mapping .flow #[
+      (.plainScalar "k", .sequence .block #[.plainScalar "a", .plainScalar "b"])]))
+  check state "block map in flow seq → flow"
+    (dumpRoundTrips (.sequence .flow #[
+      .mapping .block #[(.plainScalar "x", .plainScalar "y")]]))
+  -- Deep nesting: block inside flow inside block
+  check state "block-in-flow-in-block round-trip"
+    (dumpRoundTrips (.mapping .block #[
+      (.plainScalar "outer",
+       .sequence .flow #[
+         .mapping .block #[(.plainScalar "a", .plainScalar "1")]])]))
+  -- Verify block-in-flow actually becomes flow (structural check)
+  check state "block seq in flow renders as flow brackets"
+    (let yaml := dump (.mapping .flow #[
+       (.plainScalar "k", .sequence .block #[.plainScalar "a", .plainScalar "b"])])
+     (yaml.splitOn "[a, b]").length > 1)
+  -- Multi-line content in flow context → double-quoted (not block scalar)
+  check state "flow seq: multiline scalar double-quoted"
+    (dumpRoundTrips (.sequence .flow #[
+      .scalar { content := "line1\nline2", style := .literal }]))
+  -- Trailing dash in flow context
+  check state "flow seq: trailing dash quotes"
+    (dumpRoundTrips (.sequence .flow #[.plainScalar "abc-"]))
+  -- Config override: flow config + block-annotated children
+  check state "flow config forces all to flow"
+    (dumpRoundTrips (.sequence .block #[.plainScalar "a", .plainScalar "b"])
+      { defaultStyle := .flow })
+  -- Hash in flow value
+  check state "flow seq: hash in value quotes"
+    (dumpRoundTrips (.sequence .flow #[.plainScalar "a #b"]))
+  -- Trailing colon in block context also quotes
+  check state "block seq: trailing colon quotes"
+    (dumpRoundTrips (.sequence .block #[.plainScalar "abc:"]))
+  check state "block map key: trailing colon quotes"
+    (dumpRoundTrips (.mapping .block #[(.plainScalar "abc:", .plainScalar "v")]))
+
 /-- Collect all dump round-trip test results. -/
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
@@ -350,6 +407,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testStylePreservation state
   testDumpRoundTrip state
   testDocumentDump state
+  testFlowContextEdgeCases state
   let results ← finish state
   return {
     name := "dumproundtrip"

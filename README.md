@@ -678,14 +678,14 @@ Applied 7 spec-structure-aware mutation operators (indent ±1, delete/add newlin
 | Diverse seed coverage | 21 | 20 seeds × 5 nodes each (100 total) + aggregate |
 | Config variations | 70 | 10 nodes × 7 DumpConfig settings |
 
-**Findings during development:**
-- Block collections inside flow context produce invalid YAML — generator now enforces `flowOnly` constraint when generating children of flow collections
-- Dumper's `chooseScalarStyle` is overly aggressive about choosing plain style for quoted content containing `:`, `#`, flow indicators in flow context — generator avoids these characters
-- Both findings are dumper limitations (not parser bugs), documented for future Dump.lean improvements (See [PropertyTests.lean](Tests/PropertyTests.lean) for details in `genDoubleQuotedContent` and `genSingleQuotedContent`).
+**Findings during development (fixed in v0.2.13.4):**
+- Block collections inside flow context produce invalid YAML — fixed: `resolveCollectionStyle` now forces `.flow` in flow context
+- Dumper's `chooseScalarStyle` was overly aggressive about plain style for content containing `:`, `#`, flow indicators in flow context — fixed: `DumpContext` parameter gates flow-specific quoting
+- Trailing `:` in plain scalars (`x2:`) parsed as mapping key indicator — fixed: `isPlainSafe` now rejects trailing `:`
 
 </details>
 
-##### **Version 0.2.13.4: Dumper improvements.**
+##### **Version 0.2.13.4: Dumper improvements.** (completed 2026-03-22)
 
 <details>
 <summary>Fix `chooseScalarStyle` context-awareness and block-in-flow validation</summary>
@@ -718,13 +718,21 @@ When a `YamlValue.sequence .block` appears as a child of a `YamlValue.mapping .f
 
 | # | Item | Status |
 |---|------|--------|
-| 1 | Add `DumpContext` inductive (`.block`, `.flowIn`, `.flowKey`) | 🔲 |
-| 2 | Thread `DumpContext` through `dumpValue`, `dumpFlowList`, `dumpFlowPairs`, `dumpBlockList`, `dumpBlockPairs` | 🔲 |
-| 3 | Update `chooseScalarStyle` to accept context and apply flow-specific quoting rules | 🔲 |
-| 4 | Update `resolveCollectionStyle` to force `.flow` when context is `.flowIn` | 🔲 |
-| 5 | Remove char-set restrictions in PropertyTests generators; re-run with full char set | 🔲 |
-| 6 | Update DumpRoundTrip test suite with flow-context edge cases | 🔲 |
-| 7 | Full build + all test suites pass | 🔲 |
+| 1 | Add `DumpContext` inductive (`.block`, `.flowIn`, `.flowKey`) | ✅ |
+| 2 | Thread `DumpContext` through `dumpValue`, `dumpFlowList`, `dumpFlowPairs`, `dumpBlockList`, `dumpBlockPairs` | ✅ |
+| 3 | Update `chooseScalarStyle` to accept context and apply flow-specific quoting rules | ✅ |
+| 4 | Update `resolveCollectionStyle` to force `.flow` when context is `.flowIn` | ✅ |
+| 5 | Remove char-set restrictions in PropertyTests generators; re-run with full char set | ✅ |
+| 6 | Update DumpRoundTrip test suite with flow-context edge cases | ✅ |
+| 7 | Full build + all test suites pass | ✅ |
+
+**Key results:**
+- DumpRoundTrip tests: 117/117 passed (+15 new flow-context edge cases)
+- PropertyTests: 124/124 passed with expanded character sets (`:`, `#`, `!`, `@`, `;`, `<`, `>`, `~`, `&`, `*`)
+- Bug fix: `isPlainSafe` now rejects trailing `:` — previously `x2:` was dumped as plain and parsed as `{x2: null}`
+- `flowOnly` constraint in PropertyTests generators removed — dumper now handles block-in-flow correctly
+- suiterunner: 869 passed, 0 failed, 151 skipped (1020 total)
+- Build: 364/364 jobs, 0 errors
 
 </details>
 
@@ -739,7 +747,7 @@ Annotate each scanner/parser code path with the spec production it implements. C
 | 1 | Implement grammar-directed adversarial test generator (Version 0.2.13.1) | ✅ |
 | 2 | Implement yaml-test-suite mutation framework (Version 0.2.13.2) | ✅ |
 | 3 | Implement property-based round-trip fuzzer (Version 0.2.13.3) | ✅ |
-| 4 | Fix dumper context-awareness issues (Version 0.2.13.4) | 🔲 |
+| 4 | Fix dumper context-awareness issues (Version 0.2.13.4) | ✅ |
 | 5 | Production coverage analysis and gap report (Version 0.2.13.5) | 🔲 |
 | 6 | Fix any new leniencies discovered by systematic testing (Version 0.2.13.6) | 🔲 |
 
