@@ -556,7 +556,8 @@ Scanner hardening: systematic edge-case coverage for explicit key handling beyon
 - Compile-time guards: 2,124 total (+33 new in ScannerHardening.lean)
 - Adversarial grammar tests: 154/154 across 11 categories
 - Cross-validation vs libyaml: 131/136 match (4 known leniencies, 1 spec-correct divergence)
-- Build: 354/354 jobs, 0 errors, 0 sorry, 0 warnings
+- Mutation testing: 4,495 mutations, 45/45 Lean tests pass, 468 discrepancies documented
+- Build: 359/359 jobs, 0 errors, 0 sorry, 0 warnings
 </details>
 
 #### Version 0.2.11 (completed 2026-03-21)
@@ -625,11 +626,32 @@ Additional finding: 14 further adversarial boundary areas documented for future 
 
 </details>
 
-##### **Version 0.2.13.2: Mutation testing on yaml-test-suite.**
+##### **Version 0.2.13.2: Mutation testing on yaml-test-suite.** (completed 2026-03-21)
 
 <details>
+<summary>4,495 mutations across 7 operators, 45 Lean tests, cross-validated against libyaml</summary>
 
-Take the 869 passing yaml-test-suite cases and apply spec-structure-aware mutations: shift indentation ±1 at key productions, delete/add newlines at `l-` (line-start) productions, replace spaces with tabs at `s-indent` positions, move `:` to same line as `?`, move `-` to wrong indent level. Each mutated input should either remain valid or be rejected — cross-check against libyaml.
+Applied 7 spec-structure-aware mutation operators (indent ±1, delete/add newline, space→tab, dash indent ±1, colon-nospace) to all 311 valid yaml-test-suite source cases, generating **4,495 unique mutations**. Each mutated input cross-checked against libyaml (C binding via PyYAML `yaml.parse()`).
+
+**Results:**
+| Metric | Count |
+|--------|-------|
+| BOTH_ACCEPT (mutation preserved validity) | 2,277 |
+| BOTH_REJECT (mutation correctly broke input) | 1,750 |
+| OURS_LENIENT (we accept, libyaml rejects) | 422 |
+| OURS_STRICT (we reject, libyaml accepts) | 46 |
+
+**OURS_STRICT (46 cases, 20 source tests — potential bugs):**
+- 26× `space-to-tab`: tabs in quoted-scalar continuations and flow-context indentation. We reject; libyaml and spec allow. Root cause: scanner `skipToContentWs`/`skipWhitespace` don't distinguish flow/quoted contexts where tabs are valid separation.
+- 12× Y79Y:2 mutations: tab-containing flow sequence under various indent/newline mutations.
+- 3× `dash-indent+1`, 3× `delete-newline`, 1× `colon-nospace`, 1× `indent-1`.
+
+**OURS_LENIENT (422 cases, 93 source tests — leniencies):**
+- 159× `add-newline`: blank lines in directives/comments/multi-doc boundaries.
+- 140× `delete-newline`: line joins that break structure.
+- 42× `space-to-tab`, 39× `indent-1`, 27× `indent+1`, 9× `colon-nospace`, 6× `dash-indent`.
+
+45 representative Lean tests in [Tests/MutationSuiteTests.lean](Tests/MutationSuiteTests.lean) covering all discrepancy categories.
 
 </details>
 
@@ -649,8 +671,8 @@ Annotate each scanner/parser code path with the spec production it implements. C
 
 | # | Item | Status |
 |---|------|--------|
-| 1 | Implement grammar-directed adversarial test generator (Version 0.2.13.1) | 🔲 |
-| 2 | Implement yaml-test-suite mutation framework (Version 0.2.13.2) | 🔲 |
+| 1 | Implement grammar-directed adversarial test generator (Version 0.2.13.1) | ✅ |
+| 2 | Implement yaml-test-suite mutation framework (Version 0.2.13.2) | ✅ |
 | 3 | Implement property-based round-trip fuzzer (Version 0.2.13.3) | 🔲 |
 | 4 | Production coverage analysis and gap report (Version 0.2.13.4) | 🔲 |
 | 5 | Fix any new leniencies discovered by systematic testing | 🔲 |
