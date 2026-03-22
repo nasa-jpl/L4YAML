@@ -22,6 +22,7 @@ defaultTargets = [
   "queryresults",
   "adversarialtests",
   "mutationtests",
+  "propertytests",
 ]
 
 [leanOptions]
@@ -95,6 +96,13 @@ root = "Tests.TryDump"
 [[lean_exe]]
 name = "queryresults"
 root = "Tests.QueryResults"
+
+[[lean_lib]]
+name = "Tests.PropertyTests"
+
+[[lean_exe]]
+name = "propertytests"
+root = "Tests.PropertyTests.Runner"
 
 [[lean_lib]]
 name = "Tests.MutationSuiteTests"

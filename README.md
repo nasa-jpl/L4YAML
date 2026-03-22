@@ -552,9 +552,10 @@ Scanner hardening: systematic edge-case coverage for explicit key handling beyon
 **Key results:**
 - yaml-test-suite: 869 passed, 0 failed (151 skipped)
 - Explicit key tests: 134/134 (was 66/66, +68 new)
-- Verified internal tests: 1,032/1,032 across 13 suites
+- Verified internal tests: 1,156/1,156 across 14 suites
 - Compile-time guards: 2,124 total (+33 new in ScannerHardening.lean)
 - Adversarial grammar tests: 154/154 across 11 categories
+- Property-based round-trip tests: 124/124 across 8 categories
 - Cross-validation vs libyaml: 131/136 match (4 known leniencies, 1 spec-correct divergence)
 - Mutation testing: 4,495 mutations, 45/45 Lean tests pass, 468 discrepancies documented
 - Build: 359/359 jobs, 0 errors, 0 sorry, 0 warnings
@@ -655,15 +656,79 @@ Applied 7 spec-structure-aware mutation operators (indent ±1, delete/add newlin
 
 </details>
 
-##### **Version 0.2.13.3: Property-based testing (grammar-constrained fuzzing).**
+##### **Version 0.2.13.3: Property-based testing (grammar-constrained fuzzing).** (completed 2026-03-22)
 
 <details>
+<summary>124 property-based round-trip tests across 8 categories</summary>
 
-Use `Grammar.lean`'s `ValidNode` inductive as a generator: (a) generate random `ValidNode` witnesses, (b) `toYamlValue` → `dumpDocument` to produce YAML text, (c) parse back and verify round-trip, (d) apply adversarial mutations to the dumped text and verify rejection. Tests the dump→parse path.
+124 grammar-constrained round-trip tests in [Tests/PropertyTests.lean](Tests/PropertyTests.lean) using `Grammar.lean`'s `ValidNode` inductive as a generator with deterministic LCG PRNG.
+
+**Pipeline:** generate random `ValidNode` witnesses → `toYamlValue` → `dump` → `parseYamlSingle` → verify `contentEq`.
+
+**Test categories:**
+
+| Category | Count | Description |
+|----------|-------|-------------|
+| Basic round-trip | 100 | Random nodes across all types, seed 42 |
+| Flow-style round-trip | 50 | Flow-only tree generation, seed 137 |
+| Double-quoted round-trip | 50 | Forced double-quoted scalar style, seed 271 |
+| Scalar edge cases | 16 | Empty, quoted, reserved words, flow indicators |
+| Collection structures | 10 | Handcrafted nested block/flow combinations |
+| Mutation resilience | 4 | Indent/tab/newline/colon mutations on valid YAML |
+| Diverse seed coverage | 21 | 20 seeds × 5 nodes each (100 total) + aggregate |
+| Config variations | 70 | 10 nodes × 7 DumpConfig settings |
+
+**Findings during development:**
+- Block collections inside flow context produce invalid YAML — generator now enforces `flowOnly` constraint when generating children of flow collections
+- Dumper's `chooseScalarStyle` is overly aggressive about choosing plain style for quoted content containing `:`, `#`, flow indicators in flow context — generator avoids these characters
+- Both findings are dumper limitations (not parser bugs), documented for future Dump.lean improvements (See [PropertyTests.lean](Tests/PropertyTests.lean) for details in `genDoubleQuotedContent` and `genSingleQuotedContent`).
 
 </details>
 
-##### **Version 0.2.13.4: Production coverage analysis.**
+##### **Version 0.2.13.4: Dumper improvements.**
+
+<details>
+<summary>Fix `chooseScalarStyle` context-awareness and block-in-flow validation</summary>
+
+Property-based testing (v0.2.13.3) revealed two dumper limitations that produce invalid YAML. Neither is a parser bug — the parser correctly rejects the invalid output — but they prevent full round-trip coverage.
+
+**Finding 1: `chooseScalarStyle` ignores flow/block context.**
+
+`chooseScalarStyle` (Dump.lean) decides plain vs quoted based solely on content analysis (`isPlainSafe`) and `DumpConfig.scalarStyle`, with no awareness of whether the scalar appears inside a flow collection. In flow context, additional characters are unsafe as plain content — for example, `:` followed by a flow indicator or end-of-flow can be misinterpreted.
+
+Current `isPlainSafe` correctly rejects `: ` (colon-space), ` #` (space-hash), flow indicators `{`, `}`, `[`, `]`, `,`, leading/trailing whitespace, and reserved words. But it does *not* reject:
+- Trailing `:` — parsed as mapping key indicator when followed by `,` or `}`
+- `:` followed by `[`, `{` — ambiguous in flow context (value start vs flow indicator)
+- Content resembling `key: value` inside flow mapping values — `{a: b: c}` is `{a: "b: c"}` but parser sees two mapping entries
+
+**Root cause:** `dumpFlowList` and `dumpFlowPairs` call `dumpValue v cfg depth` with no context flag. `chooseScalarStyle` receives only `Scalar` and `DumpConfig` — there is no flow/block context parameter.
+
+**Fix:** Add a `DumpContext` parameter (`.block` | `.flowIn` | `.flowKey`) threaded through `dumpValue` → `chooseScalarStyle`. In flow context, `chooseScalarStyle` should:
+- Force double-quoted when content contains `:` (anywhere, not just `: `)
+- Force double-quoted when content ends with `-` or ` ` (block indicator ambiguity)
+- Keep existing `isPlainSafe` checks for block context (they are correct there)
+
+**Finding 2: `dump` emits block collections inside flow collections.**
+
+When a `YamlValue.sequence .block` appears as a child of a `YamlValue.mapping .flow`, the dumper renders block-style `- item` entries inside `{ }` delimiters, producing syntactically invalid YAML like `{key: - a\n- b}`.
+
+**Root cause:** `resolveCollectionStyle` checks `cfg.defaultStyle` and node annotation, but not parent context. A `.block`-annotated child inside a `.flow` parent is rendered as block.
+
+**Fix:** Thread `DumpContext` to `resolveCollectionStyle`. When context is `.flowIn`, override any `.block` annotation to `.flow` — YAML §8.1 forbids block collections inside flow context.
+
+| # | Item | Status |
+|---|------|--------|
+| 1 | Add `DumpContext` inductive (`.block`, `.flowIn`, `.flowKey`) | 🔲 |
+| 2 | Thread `DumpContext` through `dumpValue`, `dumpFlowList`, `dumpFlowPairs`, `dumpBlockList`, `dumpBlockPairs` | 🔲 |
+| 3 | Update `chooseScalarStyle` to accept context and apply flow-specific quoting rules | 🔲 |
+| 4 | Update `resolveCollectionStyle` to force `.flow` when context is `.flowIn` | 🔲 |
+| 5 | Remove char-set restrictions in PropertyTests generators; re-run with full char set | 🔲 |
+| 6 | Update DumpRoundTrip test suite with flow-context edge cases | 🔲 |
+| 7 | Full build + all test suites pass | 🔲 |
+
+</details>
+
+##### **Version 0.2.13.5: Production coverage analysis.**
 
 <details>
 
@@ -673,13 +738,14 @@ Annotate each scanner/parser code path with the spec production it implements. C
 |---|------|--------|
 | 1 | Implement grammar-directed adversarial test generator (Version 0.2.13.1) | ✅ |
 | 2 | Implement yaml-test-suite mutation framework (Version 0.2.13.2) | ✅ |
-| 3 | Implement property-based round-trip fuzzer (Version 0.2.13.3) | 🔲 |
-| 4 | Production coverage analysis and gap report (Version 0.2.13.4) | 🔲 |
-| 5 | Fix any new leniencies discovered by systematic testing | 🔲 |
+| 3 | Implement property-based round-trip fuzzer (Version 0.2.13.3) | ✅ |
+| 4 | Fix dumper context-awareness issues (Version 0.2.13.4) | 🔲 |
+| 5 | Production coverage analysis and gap report (Version 0.2.13.5) | 🔲 |
+| 6 | Fix any new leniencies discovered by systematic testing (Version 0.2.13.6) | 🔲 |
 
 </details>
 
-##### **Version 0.2.13.5: Production coverage analysis.**
+##### **Version 0.2.13.6: Fix any new leniencies.**
 
 <details>
 
