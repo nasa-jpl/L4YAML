@@ -609,7 +609,7 @@ Foundational data-structure improvements to support future acceptance-strictness
 Systematic leniency detection — four complementary approaches to maximize confidence that no latent leniencies remain:
 
 
-##### **Version 0.2.13.1: Grammar-directed adversarial testing.** ✅
+##### **Version 0.2.13.1: Grammar-directed adversarial testing.** (completed 2026-03-21)
 
 <details>
 <summary>154 adversarial tests across 11 categories, cross-validated against libyaml</summary>
