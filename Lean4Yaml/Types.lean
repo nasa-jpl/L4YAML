@@ -133,6 +133,76 @@ instance : LT YamlPos where
 instance : LE YamlPos where
   le a b := a.offset ≤ b.offset
 
+/-! ## YAML Context (§3.2.3, §7, §8)
+
+The six grammatical contexts defined in YAML 1.2.2 that control parsing
+behavior for indicator interpretation, allowed content, and indentation rules.
+Productions reference these as the `c` parameter in `n-s-properties(n,c)`,
+`ns-flow-node(n,c)`, `s-l+block-node(n,c)`, etc.
+-/
+
+/-- The six YAML 1.2.2 grammatical contexts.
+
+    - **block-out**: Content within a block sequence entry (§8.2.1 [183]).
+    - **block-in**: Content within a block mapping value (§8.2.2 [195]).
+    - **block-key**: Content used as a block mapping key (§8.2.2 [194]).
+    - **flow-out**: Flow content outside a flow collection (§7.4 [134]).
+    - **flow-in**: Flow content inside a flow collection (§7.4 [135]).
+    - **flow-key**: Flow content in a key position (§7.4 [136]). -/
+inductive YamlContext where
+  | blockOut
+  | blockIn
+  | blockKey
+  | flowOut
+  | flowIn
+  | flowKey
+  deriving Repr, BEq, Inhabited, DecidableEq
+
+namespace YamlContext
+
+/-- Whether this context is a flow context (`flowOut`, `flowIn`, or `flowKey`).
+    Bridges to the scanner's `Bool`-based `ScannerState.inFlow`. -/
+def inFlow : YamlContext → Bool
+  | .flowOut | .flowIn | .flowKey => true
+  | _ => false
+
+/-- Whether this context is a block context (`blockOut`, `blockIn`, or `blockKey`). -/
+def inBlock : YamlContext → Bool
+  | .blockOut | .blockIn | .blockKey => true
+  | _ => false
+
+/-- Whether this is a key context (`blockKey` or `flowKey`). -/
+def isKey : YamlContext → Bool
+  | .blockKey | .flowKey => true
+  | _ => false
+
+end YamlContext
+
+/-! ## YAML Span -/
+
+/-- A source span over the input, giving start and end positions.
+    Used by `Positioned`, `nodePositions`, and future production predicates. -/
+structure YamlSpan where
+  /-- Position where the spanned region starts (inclusive) -/
+  start : YamlPos
+  /-- Position where the spanned region ends (exclusive — first byte after) -/
+  stop : YamlPos
+  deriving Repr, BEq, Inhabited
+
+namespace YamlSpan
+
+/-- The byte length of the span. -/
+def byteSize (s : YamlSpan) : Nat := s.stop.offset - s.start.offset
+
+/-- Whether the span is empty (zero bytes). -/
+def isEmpty (s : YamlSpan) : Bool := s.stop.offset ≤ s.start.offset
+
+/-- Whether a position falls within this span (start ≤ pos < stop). -/
+def contains (s : YamlSpan) (pos : YamlPos) : Bool :=
+  s.start.offset ≤ pos.offset && pos.offset < s.stop.offset
+
+end YamlSpan
+
 /--
 A YAML scalar with style information.
 

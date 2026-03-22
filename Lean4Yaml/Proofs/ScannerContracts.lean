@@ -52,7 +52,7 @@ The `mk'` constructor satisfies all four `WellFormed` conjuncts:
 /-- `mk'` produces a well-formed initial state. -/
 theorem mk'_wellFormed (input : String) :
     (ScannerState.mk' input).WellFormed := by
-  refine ⟨?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
   · -- indents.size ≥ 1: default indents = #[sentinel], size = 1
     have : (ScannerState.mk' input).indents.size = 1 := rfl
     omega
@@ -62,6 +62,12 @@ theorem mk'_wellFormed (input : String) :
     rfl
   · -- offset ≤ inputEnd: 0 ≤ input.utf8ByteSize
     exact Nat.zero_le _
+  · -- indent stack monotonicity: only sentinel, so vacuously true
+    intro i hi
+    simp [ScannerState.mk'] at hi
+  · -- sentinel preserved: indents[0] = { column := -1, isSequence := false }
+    intro _
+    rfl
 
 /-- The initial indent stack sentinel is `{ column := -1 }`. -/
 theorem mk'_indents_sentinel (input : String) :

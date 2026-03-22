@@ -92,15 +92,39 @@ theorem saveSimpleKey_preserves_offset_le (s : ScannerState)
   split <;> simp_all
   split <;> simp_all
 
-/-- `saveSimpleKey` preserves `WellFormed` (all 4 conjuncts). -/
+/-- `saveSimpleKey` preserves C5 (indent stack monotonicity). -/
+theorem saveSimpleKey_preserves_monotone (s : ScannerState)
+    (hind : s.indents.size ≥ 1)
+    (hmono : ∀ (i : Nat) (hi : i + 1 < s.indents.size),
+      (s.indents[i]'(by omega)).column < (s.indents[i + 1]'hi).column) :
+    ∀ (i : Nat) (hi : i + 1 < (saveSimpleKey s).indents.size),
+      ((saveSimpleKey s).indents[i]'(by omega)).column <
+      ((saveSimpleKey s).indents[i + 1]'hi).column := by
+  unfold saveSimpleKey
+  split <;> simp_all
+  split <;> simp_all
+
+/-- `saveSimpleKey` preserves C6 (sentinel). -/
+theorem saveSimpleKey_preserves_sentinel (s : ScannerState)
+    (_hind : s.indents.size ≥ 1)
+    (hsent : ∀ (_ : 0 < s.indents.size), s.indents[0] = { column := -1, isSequence := false }) :
+    ∀ (_ : 0 < (saveSimpleKey s).indents.size),
+      (saveSimpleKey s).indents[0] = { column := -1, isSequence := false } := by
+  unfold saveSimpleKey
+  split <;> simp_all
+  split <;> simp_all
+
+/-- `saveSimpleKey` preserves `WellFormed` (all 6 conjuncts). -/
 theorem saveSimpleKey_preserves_wellFormed (s : ScannerState)
     (hwf : s.WellFormed) :
     (saveSimpleKey s).WellFormed := by
-  obtain ⟨hind, hflow, hsk, hoff⟩ := hwf
+  obtain ⟨hind, hflow, hsk, hoff, hmono, hsent⟩ := hwf
   exact ⟨saveSimpleKey_preserves_indents_ge_1 s hind,
          saveSimpleKey_preserves_flow_sync s hflow,
          saveSimpleKey_preserves_sk_sync s hsk,
-         saveSimpleKey_preserves_offset_le s hoff⟩
+         saveSimpleKey_preserves_offset_le s hoff,
+         saveSimpleKey_preserves_monotone s hind hmono,
+         saveSimpleKey_preserves_sentinel s hind hsent⟩
 
 /-! ## §3  scanKey — WellFormed Preservation (universal, modulo advance preconditions)
 
@@ -157,4 +181,3 @@ theorem scanKey_pre_advance_wellFormed (s : ScannerState)
 
 
 end Lean4Yaml.Proofs.ScannerSimpleKey
-

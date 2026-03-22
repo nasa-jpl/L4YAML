@@ -183,17 +183,22 @@ these invariants; see `Proofs/ScannerContracts.lean` for proofs.
 
 /-- Structural well-formedness invariant for `ScannerState`.
 
-    These four conjuncts capture the essential invariants that all scanner
+    These six conjuncts capture the essential invariants that all scanner
     operations must preserve:
     1. **Indent stack non-empty** — the sentinel `{ column := -1 }` is never popped.
     2. **Flow level = flow stack size** — `flowLevel` and `flowStack` stay in sync.
     3. **Simple key stack = flow stack size** — `simpleKeyStack` tracks flow nesting.
-    4. **Offset bounded** — the scanner never reads past the input end. -/
+    4. **Offset bounded** — the scanner never reads past the input end.
+    5. **Indent stack monotonic** — consecutive entries have strictly increasing columns.
+    6. **Sentinel preserved** — the bottom entry is always `{ column := -1, isSequence := false }`. -/
 def ScannerState.WellFormed (s : ScannerState) : Prop :=
   s.indents.size ≥ 1
   ∧ s.flowLevel = s.flowStack.size
   ∧ s.simpleKeyStack.size = s.flowStack.size
   ∧ s.offset ≤ s.inputEnd
+  ∧ (∀ (i : Nat), (hi : i + 1 < s.indents.size) →
+      (s.indents[i]'(by omega)).column < (s.indents[i + 1]'hi).column)
+  ∧ (∀ (_ : 0 < s.indents.size), s.indents[0] = { column := -1, isSequence := false })
 
 /-- Create initial scanner state from an input string.
     Initializes offset, line, col to zero; empty token array and indent stack. -/
@@ -330,6 +335,7 @@ def ScannerState.emitAt (s : ScannerState) (pos : YamlPos) (tok : YamlToken) : S
 
     Handles `-\t-`, `- \t-`, `-\t -`, etc. — any tab in the preceding
     whitespace run means a tab contributed to the indentation of this token. -/
+@[yaml_spec "6.1"]
 def ScannerState.hasTabInPrecedingWhitespaceLoop (input : String) (pos : Nat) (fuel : Nat) : Bool :=
   match fuel with
   | 0 => false
@@ -342,6 +348,7 @@ def ScannerState.hasTabInPrecedingWhitespaceLoop (input : String) (pos : Nat) (f
       else if c == ' ' then ScannerState.hasTabInPrecedingWhitespaceLoop input prevPos fuel'
       else false  -- non-whitespace character: stop scanning
 
+@[yaml_spec "6.1"]
 def ScannerState.hasTabInPrecedingWhitespace (s : ScannerState) : Bool :=
   ScannerState.hasTabInPrecedingWhitespaceLoop s.input s.offset s.offset
 
@@ -378,6 +385,7 @@ termination_by fuel
 /-- Skip zero or more `s-space` characters (spaces only, no tabs).
     Implements `s-space*` — use for `s-indent(n)` ([63]) contexts.
     YAML §6.1: "tab characters must not be used in indentation". -/
+@[yaml_spec "6.1" 63 "s-indent(n)"]
 def skipSpaces (s : ScannerState) : ScannerState :=
   skipSpacesLoop s (s.inputEnd - s.offset)
 
@@ -416,6 +424,7 @@ def consumeNewline (s : ScannerState) : ScannerState :=
 
     Refactored from `do`+`mut` to explicit state threading so that `unfold`
     exposes proof-tractable structure (no monadic join points). -/
+@[yaml_spec "6.1"]
 def skipToContentWs (s : ScannerState) : Except ScanError ScannerState :=
   -- After a newline, use skipSpaces for indentation (s-indent [63]: spaces only).
   -- Then check for tab-as-indentation, using currentIndent to determine the
@@ -469,6 +478,7 @@ termination_by fuel
 
     Comments are collected into `ScannerState.comments` as a side-channel
     (§6.6: comments have no effect on the serialization tree). -/
+@[yaml_spec "6.7" 77 "s-b-comment"]
 def skipToContentComment (s : ScannerState) : ScannerState :=
   match s.peek? with
   | some '#' =>
@@ -493,6 +503,7 @@ def skipToContentComment (s : ScannerState) : ScannerState :=
     **Proof-friendly design**: no `do`-notation, no `mut`, no monadic bind.
     Every intermediate state is an explicit `let`-binding, making `unfold`
     expose simple `match`/`if` trees that `split` can decompose. -/
+@[yaml_spec "6.7" 79 "s-l-comments"]
 def skipToContentLoop (s : ScannerState) (fuel : Nat) : Except ScanError ScannerState :=
   match fuel with
   | 0 => .ok s
@@ -533,6 +544,7 @@ termination_by fuel
     6. Otherwise: we've reached content — stop.
 
     **Error**: Tab character used as indentation (before content on a new line). -/
+@[yaml_spec "6.7" 79 "s-l-comments"]
 def skipToContent (s : ScannerState) : Except ScanError ScannerState :=
   skipToContentLoop s (s.inputEnd - s.offset + 1)
 
@@ -563,6 +575,7 @@ termination_by fuel
     **Pre**: `col` is the column of the next content character (or -1 for stream/document end).
     **Post**: All indent entries deeper than `col` are popped; a `blockEnd` token is emitted for each.
     **Error**: None (pure computation). -/
+@[yaml_spec "6.1"]
 def unwindIndents (s : ScannerState) (col : Int) : ScannerState :=
   unwindIndentsLoop s col s.indents.size
 
@@ -573,6 +586,7 @@ def unwindIndents (s : ScannerState) (col : Int) : ScannerState :=
 
     **Pre**: `col` is the column of the `-` block entry indicator.
     **Post**: If `col > currentIndent`, emits `blockSequenceStart` and pushes indent entry. -/
+@[yaml_spec "8.2.1" 186 "l+block-sequence"]
 def pushSequenceIndent (s : ScannerState) (col : Int) : ScannerState :=
   if col > s.currentIndent then
     let s' := s.emit .blockSequenceStart
@@ -586,6 +600,7 @@ def pushSequenceIndent (s : ScannerState) (col : Int) : ScannerState :=
 
     **Pre**: `col` is the implicit key's column or the `?`/`:` indicator's column.
     **Post**: If `col > currentIndent`, emits `blockMappingStart` and pushes indent entry. -/
+@[yaml_spec "8.2.2" 197 "l+block-mapping"]
 def pushMappingIndent (s : ScannerState) (col : Int) : ScannerState :=
   if col > s.currentIndent then
     let s' := s.emit .blockMappingStart
@@ -603,6 +618,7 @@ def pushMappingIndent (s : ScannerState) (col : Int) : ScannerState :=
 
     **Pre**: Any scanner position.
     **Post**: Pure predicate — scanner state unchanged. -/
+@[yaml_spec "9.1.2" 202 "c-directives-end"]
 def atDocumentStart (s : ScannerState) : Bool :=
   s.col == 0
   && s.peekAt? 0 == some '-'
@@ -621,6 +637,7 @@ def atDocumentStart (s : ScannerState) : Bool :=
 
     **Pre**: Any scanner position.
     **Post**: Pure predicate — scanner state unchanged. -/
+@[yaml_spec "9.1.2" 203 "c-document-end"]
 def atDocumentEnd (s : ScannerState) : Bool :=
   s.col == 0
   && s.peekAt? 0 == some '.'
@@ -648,6 +665,7 @@ def atDocumentBoundary (s : ScannerState) : Bool :=
 
     **Refactored for verification**: Uses explicit variable names (no shadowing)
     to make token tracking clearer for formal proofs. -/
+@[yaml_spec "7.4" 109 "c-flow-sequence"]
 def scanFlowSequenceStart (s : ScannerState) : ScannerState :=
   -- Save the outer simple key so it survives flow nesting.
   -- Example: `[a, b]: value` — the simple key saved before `[` must
@@ -673,6 +691,7 @@ def scanFlowSequenceStart (s : ScannerState) : ScannerState :=
 
     **Refactored for verification**: Uses explicit variable names to make
     token tracking clearer for formal proofs. -/
+@[yaml_spec "7.4" 9 "c-sequence-end"]
 def scanFlowSequenceEnd (s : ScannerState) : ScannerState :=
   let s_with_token := s.emit .flowSequenceEnd
   let s_after_advance := s_with_token.advance
@@ -697,6 +716,7 @@ def scanFlowSequenceEnd (s : ScannerState) : ScannerState :=
 
     **Refactored for verification**: Uses explicit variable names to make
     token tracking clearer for formal proofs. -/
+@[yaml_spec "7.4" 138 "c-flow-mapping"]
 def scanFlowMappingStart (s : ScannerState) : ScannerState :=
   -- Save the outer simple key so it survives flow nesting.
   -- Example: `{a: b}: value` — the simple key saved before `{` must
@@ -722,6 +742,7 @@ def scanFlowMappingStart (s : ScannerState) : ScannerState :=
 
     **Refactored for verification**: Uses explicit variable names to make
     token tracking clearer for formal proofs. -/
+@[yaml_spec "7.4" 11 "c-mapping-end"]
 def scanFlowMappingEnd (s : ScannerState) : ScannerState :=
   let s_with_token := s.emit .flowMappingEnd
   let s_after_advance := s_with_token.advance
@@ -760,6 +781,7 @@ def lastRealTokenVal? (tokens : Array (Positioned YamlToken)) : Option YamlToken
 
     **Refactored for verification**: Uses explicit variable names to make
     token tracking clearer for formal proofs. -/
+@[yaml_spec "7.4" 7 "c-collect-entry"]
 def scanFlowEntry (s : ScannerState) : Except ScanError ScannerState := do
   -- §7.4: Leading comma (after flow-open) or consecutive commas are invalid.
   if let some lastTok := lastRealTokenVal? s.tokens then
@@ -784,6 +806,7 @@ def scanFlowEntry (s : ScannerState) : Except ScanError ScannerState := do
 
     **Refactored for verification**: Uses explicit variable names to make
     token tracking clearer for formal proofs. -/
+@[yaml_spec "8.2.1" 187 "c-l-block-seq-entry"]
 def scanBlockEntry (s : ScannerState) : Except ScanError ScannerState := do
   -- §6.1: Tab in indentation before block entry.
   -- Scan backward through whitespace consumed by skipToContent to detect any
@@ -813,6 +836,7 @@ def scanBlockEntry (s : ScannerState) : Except ScanError ScannerState := do
 
     **Refactored for verification**: Uses explicit variable names to make
     token tracking clearer for formal proofs. -/
+@[yaml_spec "8.2.2" 191 "c-l-block-map-explicit-key"]
 def scanKey (s : ScannerState) : Except ScanError ScannerState := do
   let s_with_indent := if !s.inFlow then pushMappingIndent s s.col else s
   let s_with_token := s_with_indent.emit .key
@@ -846,6 +870,7 @@ and the composed proof chains them with `omega`.
 /-- Clear a spurious simple-key when an explicit `?` key is pending and the
     saved position equals the current offset.  Example: `? a\n: b`.
     Pure state transformation — never modifies the token array. -/
+@[yaml_spec "8.2.2"]
 def scanValueClearKey (s : ScannerState) : ScannerState :=
   -- (1) Clear phantom simple key: saved AT the `:` position itself
   --     (e.g., `? : b` where saveSimpleKey recorded `:` as the key).
@@ -865,6 +890,7 @@ def scanValueClearKey (s : ScannerState) : ScannerState :=
 /-- Validate pre-conditions for `:` as a value indicator.
     Returns `Unit` on success, throws on violation.
     Does **not** modify the scanner state — only inspects it. -/
+@[yaml_spec "8.2.2"]
 def scanValueValidate (s : ScannerState) : Except ScanError Unit := do
   -- §7.4: block-context multiline implicit key
   if s.simpleKey.possible && !s.inFlow && s.simpleKey.pos.line != s.line then
@@ -905,22 +931,23 @@ def scanValueValidate (s : ScannerState) : Except ScanError Unit := do
 
     **Note**: `let` bindings are inlined across `if` boundaries so that
     `split` can discharge each branch independently in proofs. -/
+@[yaml_spec "8.2.2"]
 def scanValuePrepare (s : ScannerState) : ScannerState :=
   if s.simpleKey.possible then
     let idx := s.simpleKey.tokenIndex
     if !s.inFlow then
       if (s.simpleKey.pos.col : Int) > s.currentIndent then
-        let tokens := s.tokens.setIfInBounds idx ⟨s.simpleKey.pos, .blockMappingStart⟩
-                      |>.setIfInBounds (idx + 1) ⟨s.simpleKey.pos, .key⟩
+        let tokens := s.tokens.setIfInBounds idx ⟨s.simpleKey.pos, .blockMappingStart, s.simpleKey.pos⟩
+                      |>.setIfInBounds (idx + 1) ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
         { s with
           tokens := tokens
           indents := s.indents.push { column := (s.simpleKey.pos.col : Int), isSequence := false }
           simpleKey := { possible := false } }
       else
-        let tokens := s.tokens.setIfInBounds (idx + 1) ⟨s.simpleKey.pos, .key⟩
+        let tokens := s.tokens.setIfInBounds (idx + 1) ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
         { s with tokens := tokens, simpleKey := { possible := false } }
     else
-      let tokens := s.tokens.setIfInBounds (idx + 1) ⟨s.simpleKey.pos, .key⟩
+      let tokens := s.tokens.setIfInBounds (idx + 1) ⟨s.simpleKey.pos, .key, s.simpleKey.pos⟩
       { s with tokens := tokens, simpleKey := { possible := false } }
   else if s.explicitKeyLine.isSome then
     { s with simpleKey := { possible := false } }
@@ -930,6 +957,7 @@ def scanValuePrepare (s : ScannerState) : ScannerState :=
 /-- Check for illegal tab after explicit `:` at or below indent level (§6.1).
     `origCol`/`origIndent` come from the *original* state (before emit/advance);
     the peek is on the *advanced* state. -/
+@[yaml_spec "6.1"]
 def scanValueTabCheck (origCol : Int) (origIndent : Int) (s_adv : ScannerState) : Except ScanError Unit :=
   if origCol ≤ origIndent && !s_adv.inFlow then
     if let some '\t' := s_adv.peek? then
@@ -937,6 +965,7 @@ def scanValueTabCheck (origCol : Int) (origIndent : Int) (s_adv : ScannerState) 
     else .ok ()
   else .ok ()
 
+@[yaml_spec "8.2.2" 6 "c-mapping-value"]
 def scanValue (s : ScannerState) : Except ScanError ScannerState := do
   let s_kc := scanValueClearKey s
   scanValueValidate s_kc
@@ -961,6 +990,7 @@ def scanValue (s : ScannerState) : Except ScanError ScannerState := do
     **Post**: Advances past indicator + name characters, emits `.anchor name`
     or `.alias name`. Sets `simpleKeyAllowed := false`. -/
 -- Helper: Collect anchor/alias name characters using structural recursion.
+@[yaml_spec "6.9" 103 "ns-anchor-name"]
 def collectAnchorNameLoop (s : ScannerState) (name : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
   | 0 => (name, s)
@@ -973,6 +1003,7 @@ def collectAnchorNameLoop (s : ScannerState) (name : String) (fuel : Nat) : Stri
         (name, s)
     | none => (name, s)
 
+@[yaml_spec "6.9" 101 "c-ns-anchor-property"]
 def scanAnchorOrAlias (s : ScannerState) (isAnchor : Bool) : ScannerState :=
   let startPos := s.currentPos
   let s_after_marker := s.advance
@@ -1056,6 +1087,7 @@ def scanNamedTag (s : ScannerState) (startPos : YamlPos) (inputEnd : Nat) : Scan
 
 /-- Scan a tag property (`!`, `!!suffix`, `!handle!suffix`, `!<uri>`).
     Dispatches to `scanVerbatimTag`, `scanSecondaryTag`, or `scanNamedTag`. -/
+@[yaml_spec "6.9" 98 "c-ns-tag-property"]
 def scanTag (s : ScannerState) : ScannerState :=
   let startPos := s.currentPos
   let s_after_bang := s.advance  -- consume `!`
@@ -1142,6 +1174,7 @@ def collectTagPrefixLoop (s : ScannerState) (pfx : String) (fuel : Nat) : String
     **Pre**: `s` is state after `%YAML` + whitespace skip; `startPos` is position of `%`.
     **Post**: Emits `.versionDirective major minor`, sets `seenYamlDirective`.
     **Error**: `duplicateYamlDirective`, `directiveTrailingContent`. -/
+@[yaml_spec "6.8.1" 86 "ns-yaml-directive"]
 def scanYamlDirective (s : ScannerState) (s_after_ws : ScannerState) (startPos : YamlPos) :
     Except ScanError ScannerState := do
   if s.seenYamlDirective then
@@ -1168,6 +1201,7 @@ def scanYamlDirective (s : ScannerState) (s_after_ws : ScannerState) (startPos :
 
     **Pre**: `s_after_ws` is state after `%TAG` + whitespace skip; `startPos` is position of `%`.
     **Post**: Emits `.tagDirective handle prefix`, sets `directivesPresent`. -/
+@[yaml_spec "6.8.2" 89 "ns-tag-directive"]
 def scanTagDirective (s : ScannerState) (s_after_ws : ScannerState) (startPos : YamlPos) :
     Except ScanError ScannerState := do
   let fuel_handle := s.inputEnd - s_after_ws.offset
@@ -1198,6 +1232,7 @@ def scanTagDirective (s : ScannerState) (s_after_ws : ScannerState) (startPos : 
     **Error**: `directiveAfterContent` (directive after document content without `...`),
     `duplicateYamlDirective` (second `%YAML` in same document),
     `directiveTrailingContent` (content after version string). -/
+@[yaml_spec "6.8" 82 "l-directive"]
 def scanDirective (s : ScannerState) : Except ScanError ScannerState :=
   if !s.allowDirectives then
     .error (.directiveAfterContent s.line)
@@ -1225,6 +1260,7 @@ def scanDirective (s : ScannerState) : Except ScanError ScannerState :=
     **Post**: Unwinds all indents (emits `blockEnd` tokens), emits `documentStart`,
     advances past `---`. Resets `allowDirectives := false`, `simpleKeyAllowed := true`,
     `documentEverStarted := true`. -/
+@[yaml_spec "9.1.2" 202 "c-directives-end"]
 def scanDocumentStart (s : ScannerState) : ScannerState :=
   let s_unwound := unwindIndents s (-1)
   let s_key_disabled := { s_unwound with simpleKey := { possible := false } }
@@ -1261,6 +1297,7 @@ def skipDocEndWhitespace (s : ScannerState) (fuel : Nat) : ScannerState :=
     Sets `allowDirectives := true` (re-enables directives for next document).
     **Error**: `directiveWithoutDocument` (if directives were present but no `---` followed),
     `trailingContentAfterDocEnd` (non-comment content on same line after `...`). -/
+@[yaml_spec "9.1.2" 204 "l-document-suffix"]
 def scanDocumentEnd (s : ScannerState) : Except ScanError ScannerState := do
   -- §9.1.2: Document end marker `...` requires an open document.
   -- If directives were present but no `---` followed, the `...` cannot
@@ -1313,6 +1350,7 @@ def collectHexDigitsLoop (s : ScannerState) (hex : String) (n : Nat) : String ×
     **Post**: Advances past `n` hex digits, returns the decoded character.
     **Error**: `invalidHexEscape` (fewer than `n` hex digits available),
     `unicodeOutOfRange` (value ≥ U+110000). -/
+@[yaml_spec "5.7" 58 "ns-esc-8-bit"]
 def parseHexEscape (s : ScannerState) (n : Nat) : Except ScanError (Char × ScannerState) := do
   let (hex, s') := collectHexDigitsLoop s "" n
   if hex.length != n then
@@ -1341,6 +1379,7 @@ def parseHexEscape (s : ScannerState) (n : Nat) : Except ScanError (Char × Scan
     **Pre**: Scanner positioned at the character AFTER `\`.
     **Post**: Returns the decoded character and scanner advanced past the escape.
     **Error**: `unterminatedEscape` (EOF after `\`), `unknownEscape` (unrecognized escape character). -/
+@[yaml_spec "5.7" 61 "c-ns-esc-char"]
 def processEscape (s : ScannerState) : Except ScanError (Char × ScannerState) := do
   match s.peek? with
   | none => .error (.unterminatedEscape s.line)
@@ -1373,6 +1412,7 @@ def processEscape (s : ScannerState) : Except ScanError (Char × ScannerState) :
 /-! ## Scalar Scanning -/
 
 /-- Trim trailing space/tab characters (YAML §6.5 flow line folding). -/
+@[yaml_spec "6.5"]
 def trimTrailingWS (s : String) : String :=
   String.ofList ((s.toList.reverse.dropWhile (fun c => c == ' ' || c == '\t')).reverse)
 
@@ -1411,6 +1451,7 @@ def foldQuotedNewlinesLoop (s : ScannerState) (emptyCount : Nat) (fuel : Nat) :
     **Post**: Consumes newline + blank lines + leading spaces on continuation line.
     Returns the folded replacement string (`" "` or `"\n"*`).
     **Error**: `tabInIndentation` if tab found in indentation zone of continuation line (§6.1). -/
+@[yaml_spec "6.5" 74 "s-flow-folded"]
 def foldQuotedNewlines (s : ScannerState) : Except ScanError (String × ScannerState) := do
   let s' := consumeNewline s
   let (s', emptyCount) := foldQuotedNewlinesLoop s' 0 (s.inputEnd - s'.offset + 1)
@@ -1514,6 +1555,7 @@ def collectDoubleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
     `documentMarkerInScalar` (document marker at col 0 inside scalar §9.1.2),
     `underIndentedScalar` (continuation line below current block indent §8.1),
     `trailingContent` (non-whitespace/comment/`:` after closing `"` in block context §7.3.2). -/
+@[yaml_spec "7.3.1" 107 "c-double-quoted"]
 def scanDoubleQuoted (s : ScannerState) : Except ScanError ScannerState := do
   let startPos := s.currentPos
   let s_after_open := s.advance
@@ -1577,6 +1619,7 @@ def collectSingleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
     Sets `simpleKeyAllowed := false`.
     **Error**: `unterminatedScalar`, `documentMarkerInScalar`, `underIndentedScalar`,
     `trailingContent` (same conditions as `scanDoubleQuoted`). -/
+@[yaml_spec "7.3.2" 113 "c-single-quoted"]
 def scanSingleQuoted (s : ScannerState) : Except ScanError ScannerState := do
   let startPos := s.currentPos
   let s_after_open := s.advance
@@ -1735,6 +1778,7 @@ def collectPlainScalarLoop (s : ScannerState) (content : String) (spaces : Strin
     **Post**: Advances past all plain scalar content (including folded continuations),
     emits `.scalar content .plain`. Sets `simpleKeyAllowed := false`.
     **Error**: None directly (terminates by breaking). -/
+@[yaml_spec "7.3.3" 131 "ns-plain"]
 def scanPlainScalar (s : ScannerState) : Except ScanError ScannerState := do
   let startPos := s.currentPos
   let inFlow := s.inFlow
@@ -1791,6 +1835,7 @@ inductive FoldState where
     On `\n`: don't emit yet — record blank lines in `pendingNL` count.
     On first non-`\n` char of a new line: emit pending newlines based on
     state and line classification (space-leading → more, otherwise → content). -/
+@[yaml_spec "8.1.3" 174 "c-l+folded"]
 def foldBlockContent (raw : String) : String :=
   go raw.toList "" .start 0
 where
@@ -1959,6 +2004,7 @@ def collectBlockScalarLoop (s : ScannerState) (rawContent : String) (fuel : Nat)
     indentation indicator (digit 1-9) in either order per YAML §8.1 [162].
 
     **Termination**: Structurally recursive on `fuel`. -/
+@[yaml_spec "8.1" 162 "c-b-block-header"]
 def parseBlockHeaderLoop (s : ScannerState) (chomp : ChompStyle) (explicitOffset : Option Nat)
     (fuel : Nat) : ChompStyle × Option Nat × ScannerState :=
   match fuel with
@@ -1980,6 +2026,7 @@ def parseBlockHeaderLoop (s : ScannerState) (chomp : ChompStyle) (explicitOffset
 
     **Decomposed for provability**: 3 branch points (peek?, peekBack?, commentOk).
     Extracted from `scanBlockScalar` so proofs unfold only this piece. -/
+@[yaml_spec "6.7" 76 "s-b-comment"]
 def scanBlockScalarSkipComment (s : ScannerState) : ScannerState :=
   match s.peek? with
   | some '#' =>
@@ -2003,6 +2050,7 @@ def scanBlockScalarSkipComment (s : ScannerState) : ScannerState :=
 
     **Decomposed for provability**: 3 branch points (peek?, isLineBreakBool, hasMore).
     Extracted from `scanBlockScalar` so proofs unfold only this piece. -/
+@[yaml_spec "6.7" 76 "s-b-comment"]
 def scanBlockScalarConsumeNewline (s : ScannerState) : Except ScanError ScannerState :=
   match s.peek? with
   | some c =>
@@ -2025,6 +2073,7 @@ def scanBlockScalarConsumeNewline (s : ScannerState) : Except ScanError ScannerS
 
     **Pre**: `s_after_newline` is past the header line; `s_orig` provides `currentIndent` and `inputEnd`.
     **Post**: Emits `.scalar content style`, clears simpleKey. -/
+@[yaml_spec "8.1" 170 "c-l+literal"]
 def scanBlockScalarBody (s_orig : ScannerState) (s_after_newline : ScannerState)
     (chomp : ChompStyle) (explicitOffset : Option Nat) (isLiteral : Bool) (startPos : YamlPos) :
     Except ScanError ScannerState :=
@@ -2073,6 +2122,7 @@ def scanBlockScalarBody (s_orig : ScannerState) (s_after_newline : ScannerState)
     **Pre**: Scanner at `|` or `>`. `s.col` = `n` (parent indent level).
     **Post**: Scanner past block scalar content. Emits `.scalar content style`.
     **Error**: Missing newline after header. -/
+@[yaml_spec "8.1" 170 "c-l+literal", yaml_spec "8.1" 174 "c-l+folded"]
 def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState :=
   let header := parseBlockHeaderLoop s.advance .clip none 2
   let s_after_comment := scanBlockScalarSkipComment (skipWhitespace header.2.2)
@@ -2093,6 +2143,7 @@ def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState :=
 
     **Pre**: Called after `skipToContent` and indent check, before character dispatch.
     **Post**: Updates `simpleKey` if allowed, otherwise no-op. -/
+@[yaml_spec "7.4" 152 "ns-s-implicit-yaml-key"]
 def saveSimpleKey (st : ScannerState) : ScannerState :=
   -- §7.4.2: In flow context, content on the `?` line is the explicit
   -- key's node; `?` already emitted a `.key` token so saving content
@@ -2104,7 +2155,7 @@ def saveSimpleKey (st : ScannerState) : ScannerState :=
     -- Reserve 2 placeholder slots for potential .blockMappingStart + .key
     -- (block context) or .key + spare (flow context).
     let idx := st.tokens.size
-    let ph : Positioned YamlToken := ⟨st.currentPos, .placeholder⟩
+    let ph : Positioned YamlToken := ⟨st.currentPos, .placeholder, st.currentPos⟩
     let st := { st with tokens := st.tokens.push ph |>.push ph }
     { st with simpleKey := {
         possible := true
@@ -2129,6 +2180,7 @@ def isKeyCandidate (s : ScannerState) : Bool :=
     YAML §7.4.2 [157]: `c-ns-flow-map-json-key-entry` allows adjacent value
     (`:` without following whitespace) after JSON nodes: quoted scalars,
     flow sequence end `]`, and flow mapping end `}`. -/
+@[yaml_spec "7.4.2" 157 "c-ns-flow-map-json-key-entry"]
 def isJsonNodeToken (tok : YamlToken) : Bool :=
   match tok with
   | .scalar _ .doubleQuoted => true
@@ -2146,6 +2198,7 @@ def isJsonNodeToken (tok : YamlToken) : Bool :=
     overwrites a JSON-key's simple key (e.g., after a newline: `{ "foo"\n :bar }`),
     the placeholders are at `simpleKey.tokenIndex` and the JSON node token
     immediately precedes them — check for it. -/
+@[yaml_spec "7.4.2" 155 "c-ns-flow-map-separate-value"]
 def isValueCandidate (s : ScannerState) : Bool :=
   if s.inFlow && s.simpleKey.possible then
     if s.simpleKey.pos.offset != s.offset then true
@@ -2169,6 +2222,7 @@ def isValueCandidate (s : ScannerState) : Bool :=
 /-- §7.5: After a flow collection close returns us to block context,
     validate that only whitespace, comments, `:`, or end-of-line follow
     on the same line. -/
+@[yaml_spec "7.5"]
 def validateFlowClose (s' : ScannerState) : Except ScanError Unit := do
   if s'.flowLevel == 0 then
     let probe := skipTrailingSpaces s' (s'.inputEnd - s'.offset + 1)
@@ -2336,6 +2390,7 @@ def scanNextToken_checkBlockFlowIndent (s : ScannerState) (c : Char) :
     **Pre**: Scanner state from previous token (or initial state).
     **Post**: Scanner past one token. Token emitted. State updated.
     **Error**: Unexpected character at current position. -/
+@[yaml_spec "9.2"]
 def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) := do
   match ← scanNextToken_preprocess s with
   | none => return none
@@ -2375,6 +2430,7 @@ def scanNextToken (s : ScannerState) : Except ScanError (Option ScannerState) :=
     **Post**: Same as `scan` - returns tokens starting with `streamStart`,
     ending with `streamEnd`.
     **Error**: Same error conditions as `scan`. -/
+@[yaml_spec "9.2"]
 def scanLoop (s : ScannerState) (fuel : Nat) :
     Except ScanError (Array (Positioned YamlToken)) :=
   match fuel with
@@ -2418,6 +2474,7 @@ termination_by fuel
     All block collections are properly closed via `unwindIndents`.
     **Error**: `unterminatedFlowCollection` (unclosed `[`/`{`),
     `directiveWithoutDocument` (orphan directives), `fuelExhausted`. -/
+@[yaml_spec "9.2" 205 "l-yaml-stream"]
 def scan (input : String) : Except ScanError (Array (Positioned YamlToken)) :=
   let s := ScannerState.mk' input
   let s := s.emit .streamStart

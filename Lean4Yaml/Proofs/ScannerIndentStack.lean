@@ -98,15 +98,69 @@ theorem pushSequenceIndent_preserves_offset_le (s : ScannerState) (col : Int)
   · simp [ScannerState.emit]; exact hoff
   · exact hoff
 
-/-- `pushSequenceIndent` preserves `WellFormed` (all 4 conjuncts). -/
+/-- `pushSequenceIndent` preserves C5 (indent stack monotonicity). -/
+theorem pushSequenceIndent_preserves_monotone (s : ScannerState) (col : Int)
+    (hind : s.indents.size ≥ 1)
+    (hmono : ∀ (i : Nat) (hi : i + 1 < s.indents.size),
+      (s.indents[i]'(by omega)).column < (s.indents[i + 1]'hi).column) :
+    ∀ (i : Nat) (hi : i + 1 < (pushSequenceIndent s col).indents.size),
+      ((pushSequenceIndent s col).indents[i]'(by omega)).column <
+      ((pushSequenceIndent s col).indents[i + 1]'hi).column := by
+  unfold pushSequenceIndent
+  split
+  · -- col > currentIndent
+    rename_i h_gt
+    intro i hi
+    simp only [ScannerState.emit, Array.size_push] at hi ⊢
+    by_cases h_last : i + 1 < s.indents.size
+    · -- Both indices within original array
+      rw [Array.getElem_push_lt (by omega), Array.getElem_push_lt h_last]
+      exact hmono i h_last
+    · -- i + 1 = s.indents.size (new element)
+      have h_eq : i + 1 = s.indents.size := by omega
+      rw [Array.getElem_push_lt (by omega)]
+      simp only [h_eq, Array.getElem_push_eq]
+      -- Need: s.indents[i].column < col
+      -- i = s.indents.size - 1, so s.indents[i] = last element = back
+      unfold ScannerState.currentIndent at h_gt
+      rw [Array.back?_eq_getElem?] at h_gt
+      have h_bound : s.indents.size - 1 < s.indents.size := by omega
+      simp only [Array.getElem?_eq_getElem h_bound] at h_gt
+      -- h_gt : s.indents[s.indents.size - 1].column < col
+      -- goal : s.indents[i].column < col  where i = s.indents.size - 1
+      have : s.indents[i]'(by omega) = s.indents[s.indents.size - 1]'h_bound := by
+        congr 1; omega
+      rw [this]; exact h_gt
+  · -- col ≤ currentIndent: identity
+    exact hmono
+
+/-- `pushSequenceIndent` preserves C6 (sentinel). -/
+theorem pushSequenceIndent_preserves_sentinel (s : ScannerState) (col : Int)
+    (hind : s.indents.size ≥ 1)
+    (hsent : ∀ (_ : 0 < s.indents.size), s.indents[0] = { column := -1, isSequence := false }) :
+    ∀ (_ : 0 < (pushSequenceIndent s col).indents.size),
+      (pushSequenceIndent s col).indents[0] = { column := -1, isSequence := false } := by
+  unfold pushSequenceIndent
+  split
+  · -- col > currentIndent: emit then push
+    intro h
+    simp only [ScannerState.emit, Array.size_push] at h ⊢
+    rw [Array.getElem_push_lt (by omega)]
+    exact hsent hind
+  · -- identity
+    exact hsent
+
+/-- `pushSequenceIndent` preserves `WellFormed` (all 6 conjuncts). -/
 theorem pushSequenceIndent_preserves_wellFormed (s : ScannerState) (col : Int)
     (hwf : s.WellFormed) :
     (pushSequenceIndent s col).WellFormed := by
-  obtain ⟨hind, hflow, hsk, hoff⟩ := hwf
+  obtain ⟨hind, hflow, hsk, hoff, hmono, hsent⟩ := hwf
   exact ⟨pushSequenceIndent_preserves_indents_ge_1 s col hind,
          pushSequenceIndent_preserves_flow_sync s col hflow,
          pushSequenceIndent_preserves_sk_sync s col hsk,
-         pushSequenceIndent_preserves_offset_le s col hoff⟩
+         pushSequenceIndent_preserves_offset_le s col hoff,
+         pushSequenceIndent_preserves_monotone s col hind hmono,
+         pushSequenceIndent_preserves_sentinel s col hind hsent⟩
 
 /-! ## §2  pushMappingIndent — WellFormed Preservation (universal)
 
@@ -158,15 +212,59 @@ theorem pushMappingIndent_preserves_offset_le (s : ScannerState) (col : Int)
   · simp [ScannerState.emit]; exact hoff
   · exact hoff
 
-/-- `pushMappingIndent` preserves `WellFormed` (all 4 conjuncts). -/
+/-- `pushMappingIndent` preserves C5 (indent stack monotonicity). -/
+theorem pushMappingIndent_preserves_monotone (s : ScannerState) (col : Int)
+    (hind : s.indents.size ≥ 1)
+    (hmono : ∀ (i : Nat) (hi : i + 1 < s.indents.size),
+      (s.indents[i]'(by omega)).column < (s.indents[i + 1]'hi).column) :
+    ∀ (i : Nat) (hi : i + 1 < (pushMappingIndent s col).indents.size),
+      ((pushMappingIndent s col).indents[i]'(by omega)).column <
+      ((pushMappingIndent s col).indents[i + 1]'hi).column := by
+  unfold pushMappingIndent
+  split
+  · rename_i h_gt
+    intro i hi
+    simp only [ScannerState.emit, Array.size_push] at hi ⊢
+    by_cases h_last : i + 1 < s.indents.size
+    · rw [Array.getElem_push_lt (by omega), Array.getElem_push_lt h_last]
+      exact hmono i h_last
+    · have h_eq : i + 1 = s.indents.size := by omega
+      rw [Array.getElem_push_lt (by omega)]
+      simp only [h_eq, Array.getElem_push_eq]
+      unfold ScannerState.currentIndent at h_gt
+      rw [Array.back?_eq_getElem?] at h_gt
+      have h_bound : s.indents.size - 1 < s.indents.size := by omega
+      simp only [Array.getElem?_eq_getElem h_bound] at h_gt
+      have : s.indents[i]'(by omega) = s.indents[s.indents.size - 1]'h_bound := by
+        congr 1; omega
+      rw [this]; exact h_gt
+  · exact hmono
+
+/-- `pushMappingIndent` preserves C6 (sentinel). -/
+theorem pushMappingIndent_preserves_sentinel (s : ScannerState) (col : Int)
+    (hind : s.indents.size ≥ 1)
+    (hsent : ∀ (_ : 0 < s.indents.size), s.indents[0] = { column := -1, isSequence := false }) :
+    ∀ (_ : 0 < (pushMappingIndent s col).indents.size),
+      (pushMappingIndent s col).indents[0] = { column := -1, isSequence := false } := by
+  unfold pushMappingIndent
+  split
+  · intro h
+    simp only [ScannerState.emit, Array.size_push] at h ⊢
+    rw [Array.getElem_push_lt (by omega)]
+    exact hsent hind
+  · exact hsent
+
+/-- `pushMappingIndent` preserves `WellFormed` (all 6 conjuncts). -/
 theorem pushMappingIndent_preserves_wellFormed (s : ScannerState) (col : Int)
     (hwf : s.WellFormed) :
     (pushMappingIndent s col).WellFormed := by
-  obtain ⟨hind, hflow, hsk, hoff⟩ := hwf
+  obtain ⟨hind, hflow, hsk, hoff, hmono, hsent⟩ := hwf
   exact ⟨pushMappingIndent_preserves_indents_ge_1 s col hind,
          pushMappingIndent_preserves_flow_sync s col hflow,
          pushMappingIndent_preserves_sk_sync s col hsk,
-         pushMappingIndent_preserves_offset_le s col hoff⟩
+         pushMappingIndent_preserves_offset_le s col hoff,
+         pushMappingIndent_preserves_monotone s col hind hmono,
+         pushMappingIndent_preserves_sentinel s col hind hsent⟩
 
 /-! ## §3  unwindIndents — Loop Body Analysis
 
