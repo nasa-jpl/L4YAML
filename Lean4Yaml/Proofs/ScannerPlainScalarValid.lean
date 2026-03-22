@@ -4049,12 +4049,12 @@ theorem scanValue_preserves_FlowNestingInv
       have h_fni_ck : FlowNestingInv (scanValueClearKey s) := by
         unfold FlowNestingInv at h_fni ⊢; unfold scanValueClearKey
         split
-        · dsimp only []; exact h_fni
         · split
+          · dsimp only []; exact h_fni
           · split
             · dsimp only []; exact h_fni
             · exact h_fni
-          · exact h_fni
+        · exact h_fni
       have h_ph_ck : (scanValueClearKey s).simpleKey.possible = true →
           (∀ (h : (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size),
             ((scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex]'h).val = .placeholder) ∧

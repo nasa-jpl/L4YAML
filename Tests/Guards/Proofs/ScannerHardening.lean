@@ -231,16 +231,17 @@ open Lean4Yaml.TokenParser
 #guard match parseYamlSingle "? ? a\n  : inner\n: outer" with
   | .ok v => v.isMapping | .error _ => false
 
-/-! ## §22: Same-line Explicit Value Rejection — §8.2.2 [197] (v0.2.11) -/
+/-! ## §22: Same-line Explicit Key Content — §8.2.2 [196] -/
 
--- `? : x` — `:` on same line as `?` with no simple key → reject
-#guard match parseYamlSingle "? : x" with | .ok _ => false | .error _ => true
+-- `? : x` — `:` on same line as `?` is implicit value for empty key
+-- inside the explicit key's content (compact mapping): accept
+#guard match parseYamlSingle "? : x" with | .ok v => v.isMapping | .error _ => false
 
--- `? :` — same-line with empty value → reject
-#guard match parseYamlSingle "? :" with | .ok _ => false | .error _ => true
+-- `? :` — same-line `:` with empty value → compact mapping: accept
+#guard match parseYamlSingle "? :" with | .ok v => v.isMapping | .error _ => false
 
--- `? ? : b` — nested explicit key, same-line `:` → reject
-#guard match parseYamlSingle "? ? : b" with | .ok _ => false | .error _ => true
+-- `? ? : b` — nested explicit key, same-line `:` → compact mapping: accept
+#guard match parseYamlSingle "? ? : b" with | .ok v => v.isMapping | .error _ => false
 
 -- `? key : val` — `:` follows simple key on `?` line → accept
 #guard match parseYamlSingle "? key : val" with | .ok v => v.isMapping | .error _ => false

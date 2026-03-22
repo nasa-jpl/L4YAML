@@ -294,11 +294,11 @@ set_option maxRecDepth 4096
   | .ok _ => true
   | .error _ => false
 
--- M2N8:0 Question mark edge cases — §8.2.2 [197]: same-line explicit value
--- rejected (`:` as explicit value on `?` line violates l-prefix requirement)
+-- M2N8:0 Question mark edge cases — §8.2.2 [196]: same-line `:` is
+-- implicit value for empty key inside explicit key content (compact mapping)
 #guard match parseYaml "- ? : x\n" with
-  | .ok _ => false
-  | .error _ => true
+  | .ok _ => true
+  | .error _ => false
 
 -- M2N8:1
 #guard match parseYaml "? []: x\n" with

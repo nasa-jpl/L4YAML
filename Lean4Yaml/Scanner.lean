@@ -867,21 +867,23 @@ Scan a value indicator `:`.
 and the composed proof chains them with `omega`.
 -/
 
-/-- Clear a spurious simple-key when an explicit `?` key is pending and the
-    saved position equals the current offset.  Example: `? a\n: b`.
+/-- Clear a spurious simple-key when an explicit `?` key is pending.
     Pure state transformation — never modifies the token array. -/
 @[yaml_spec "8.2.2"]
 def scanValueClearKey (s : ScannerState) : ScannerState :=
-  -- (1) Clear phantom simple key: saved AT the `:` position itself
-  --     (e.g., `? : b` where saveSimpleKey recorded `:` as the key).
-  if s.explicitKeyLine.isSome && s.simpleKey.possible
-      && s.simpleKey.pos.offset == s.offset then
-    { s with simpleKey := { possible := false } }
-  -- (2) Clear cross-line simple key from the `?` line: content on the
-  --     `?` line is the explicit key's node, not an implicit key to be
-  --     resolved by `:` on a subsequent line (§8.2.2 [197]).
-  else if let some ekLine := s.explicitKeyLine then
-    if s.simpleKey.possible && s.simpleKey.pos.line == ekLine
+  if let some ekLine := s.explicitKeyLine then
+    -- (1) Clear phantom simple key: saved AT the `:` position itself,
+    --     but only when `:` is on a DIFFERENT line from `?`.
+    --     On the same line, `:` is the value indicator for a nested empty
+    --     implicit key inside the explicit key's content per §8.2.2 [196]:
+    --     `? : x` → explicit key is the compact mapping {"":"x"}.
+    if s.simpleKey.possible && s.simpleKey.pos.offset == s.offset
+        && s.line != ekLine then
+      { s with simpleKey := { possible := false } }
+    -- (2) Clear cross-line simple key from the `?` line: content on the
+    --     `?` line is the explicit key's node, not an implicit key to be
+    --     resolved by `:` on a subsequent line (§8.2.2 [197]).
+    else if s.simpleKey.possible && s.simpleKey.pos.line == ekLine
         && s.line != ekLine && !s.inFlow then
       { s with simpleKey := { possible := false } }
     else s
