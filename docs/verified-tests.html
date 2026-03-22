@@ -65,10 +65,10 @@
   <p class="subtitle">Unit tests, parser tests, verification tests, and string lemma tests — all must pass.</p>
 
   <div class="stats">
-    <div class="stat-box stat-total"><h3>Total</h3><div class="number">833</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">833</div></div>
+    <div class="stat-box stat-total"><h3>Total</h3><div class="number">1156</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">1156</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
-    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">11</div></div>
+    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">14</div></div>
   </div>
   <h3>Suites</h3>
   <div class="stage-cards">
@@ -133,6 +133,24 @@
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ScannerSpecExamples.lean" target="_blank" class="source-link">📄 Tests/ScannerSpecExamples.lean</a></div>
     </div>
     <div class="stage-card" style="border-left-color:var(--color-pass)">
+      <div class="stage-card-name">Adversarial Grammar-Directed Tests (v0.2.13.1)</div>
+      <div class="stage-card-stats">154/154 passed (100.0%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100.0%"></div></div>
+      <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean" target="_blank" class="source-link">📄 Tests/AdversarialGrammarTests.lean</a></div>
+    </div>
+    <div class="stage-card" style="border-left-color:var(--color-pass)">
+      <div class="stage-card-name">Mutation Testing on yaml-test-suite (v0.2.13.2)</div>
+      <div class="stage-card-stats">45/45 passed (100.0%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100.0%"></div></div>
+      <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean" target="_blank" class="source-link">📄 Tests/MutationSuiteTests.lean</a></div>
+    </div>
+    <div class="stage-card" style="border-left-color:var(--color-pass)">
+      <div class="stage-card-name">Property-Based Round-Trip Tests (v0.2.13.3)</div>
+      <div class="stage-card-stats">124/124 passed (100.0%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100.0%"></div></div>
+      <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean" target="_blank" class="source-link">📄 Tests/PropertyTests.lean</a></div>
+    </div>
+    <div class="stage-card" style="border-left-color:var(--color-pass)">
       <div class="stage-card-name">Demo</div>
       <div class="stage-card-stats">7/7 passed (100.0%)</div>
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 100.0%"></div></div>
@@ -161,6 +179,9 @@
         <option value="schemadump">Schema ↔ Dump Integration</option>
         <option value="scannertests">Scanner &amp; TokenParser Tests (Phase 9)</option>
         <option value="scannerspecexamples">YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline)</option>
+        <option value="adversarialtests">Adversarial Grammar-Directed Tests (v0.2.13.1)</option>
+        <option value="mutationtests">Mutation Testing on yaml-test-suite (v0.2.13.2)</option>
+        <option value="propertytests">Property-Based Round-Trip Tests (v0.2.13.3)</option>
         <option value="demo">Demo</option>
       </select>
     </div>
@@ -168,7 +189,7 @@
       <label>Search:</label>
       <input type="text" class="search-input" placeholder="Category, test name..." oninput="searchTests(this.value)">
     </div>
-    <div class="filter-group"><span>Showing <strong id="visibleCount">833</strong> of 833</span></div>
+    <div class="filter-group"><span>Showing <strong id="visibleCount">1156</strong> of 1156</span></div>
   </div>
 
   <table id="testTable">
@@ -5961,6 +5982,2267 @@
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ScannerSpecExamples.lean" target="_blank" class="source-link">YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline)</a></td>
         <td>§10 Scanner Spec Examples</td>
         <td>Example example-10.9</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] block mapping indentation a:\n  b: 1 (indent=2) is mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L90" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Block mapping indentation</td>
+        <td>a:\n  b: 1 (indent=2) is mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] block mapping indentation a:\n  b: 1 (indent=2) has 1 pairs">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L92" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Block mapping indentation</td>
+        <td>a:\n  b: 1 (indent=2) has 1 pairs</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] block mapping indentation a:\n b: 1 (indent=1) is mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L90" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Block mapping indentation</td>
+        <td>a:\n b: 1 (indent=1) is mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] block mapping indentation a:\n b: 1 (indent=1) has 1 pairs">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L92" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Block mapping indentation</td>
+        <td>a:\n b: 1 (indent=1) has 1 pairs</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] block mapping indentation a:\nb: 1 (sibling) is mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L90" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Block mapping indentation</td>
+        <td>a:\nb: 1 (sibling) is mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] block mapping indentation a:\nb: 1 (sibling) has 2 pairs">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L92" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Block mapping indentation</td>
+        <td>a:\nb: 1 (sibling) has 2 pairs</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] block mapping indentation a:\n  first: 1\n second: 2 (under-indent)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Block mapping indentation</td>
+        <td>a:\n  first: 1\n second: 2 (under-indent)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] block mapping indentation 3-level 0→2→4">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Block mapping indentation</td>
+        <td>3-level 0→2→4</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] block mapping indentation 3-level 0→1→2">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Block mapping indentation</td>
+        <td>3-level 0→1→2</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] block mapping indentation 3-level inner=middle (sibling)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Block mapping indentation</td>
+        <td>3-level inner=middle (sibling)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] block mapping indentation 3-level inner=top (a,c siblings) is mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L90" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Block mapping indentation</td>
+        <td>3-level inner=top (a,c siblings) is mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] block mapping indentation 3-level inner=top (a,c siblings) has 2 pairs">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L92" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Block mapping indentation</td>
+        <td>3-level inner=top (a,c siblings) has 2 pairs</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] block mapping indentation mixed indent siblings (col 2 vs 3)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Block mapping indentation</td>
+        <td>mixed indent siblings (col 2 vs 3)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] block mapping indentation 5-deep 0→1→2→3→4">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Block mapping indentation</td>
+        <td>5-deep 0→1→2→3→4</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] block mapping indentation 3-key then under-indent">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Block mapping indentation</td>
+        <td>3-key then under-indent</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] tab as indentation (§6.1) \ta: 1 (leniency: tab indent)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Tab as indentation (§6.1)</td>
+        <td>\ta: 1 (LENIENCY: tab indent)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] tab as indentation (§6.1)  \ta: 1 (leniency: space+tab)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Tab as indentation (§6.1)</td>
+        <td> \ta: 1 (LENIENCY: space+tab)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] tab as indentation (§6.1) \t a: 1 (leniency: tab+space)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Tab as indentation (§6.1)</td>
+        <td>\t a: 1 (LENIENCY: tab+space)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] tab as indentation (§6.1) \t\ta: 1 (leniency: double tab)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Tab as indentation (§6.1)</td>
+        <td>\t\ta: 1 (LENIENCY: double tab)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] tab as indentation (§6.1) a:\n\tb: 1 (tab indent nested)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Tab as indentation (§6.1)</td>
+        <td>a:\n\tb: 1 (tab indent nested)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] tab as indentation (§6.1) a:\n\t b: 1 (tab+space nested)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Tab as indentation (§6.1)</td>
+        <td>a:\n\t b: 1 (tab+space nested)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] tab as indentation (§6.1) a:\n \tb: 1 (space+tab = separation)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Tab as indentation (§6.1)</td>
+        <td>a:\n \tb: 1 (space+tab = separation)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [63] tab as indentation (§6.1) a:\tb (tab as value sep)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[63] Tab as indentation (§6.1)</td>
+        <td>a:\tb (tab as value sep)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [180] block sequence indentation top-level - a\n- b is sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L101" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[180] Block sequence indentation</td>
+        <td>top-level - a\n- b is sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [180] block sequence indentation top-level - a\n- b has 2 items">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L103" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[180] Block sequence indentation</td>
+        <td>top-level - a\n- b has 2 items</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [180] block sequence indentation a:\n  - x\n  - y (indent+2)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[180] Block sequence indentation</td>
+        <td>a:\n  - x\n  - y (indent+2)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [180] block sequence indentation a:\n - x\n - y (indent+1)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[180] Block sequence indentation</td>
+        <td>a:\n - x\n - y (indent+1)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [180] block sequence indentation a:\n- x\n- y (seq-spaces)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[180] Block sequence indentation</td>
+        <td>a:\n- x\n- y (seq-spaces)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [180] block sequence indentation a:\n      - x (deep indent)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[180] Block sequence indentation</td>
+        <td>a:\n      - x (deep indent)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [180] block sequence indentation seq indent 2→3 (nested)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[180] Block sequence indentation</td>
+        <td>seq indent 2→3 (nested)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [180] block sequence indentation - - a\n  - b (seq-in-seq) is sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L101" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[180] Block sequence indentation</td>
+        <td>- - a\n  - b (seq-in-seq) is sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [180] block sequence indentation - - a\n  - b (seq-in-seq) has 1 items">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L103" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[180] Block sequence indentation</td>
+        <td>- - a\n  - b (seq-in-seq) has 1 items</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [180] block sequence indentation - - a\n- - b (separate) is sequence">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L101" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[180] Block sequence indentation</td>
+        <td>- - a\n- - b (separate) is sequence</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [180] block sequence indentation - - a\n- - b (separate) has 2 items">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L103" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[180] Block sequence indentation</td>
+        <td>- - a\n- - b (separate) has 2 items</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [180] block sequence indentation - a:\n  - x\n - y (under-indent)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[180] Block sequence indentation</td>
+        <td>- a:\n  - x\n - y (under-indent)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [180] block sequence indentation a:\n\t- x (tab before dash)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[180] Block sequence indentation</td>
+        <td>a:\n\t- x (tab before dash)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [180] block sequence indentation -\ta (tab = separation after dash)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[180] Block sequence indentation</td>
+        <td>-\ta (tab = separation after dash)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [180] block sequence indentation multi-key seq">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[180] Block sequence indentation</td>
+        <td>multi-key seq</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [180] block sequence indentation a:\n  b:\n- x (seq at col 0 under deep)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[180] Block sequence indentation</td>
+        <td>a:\n  b:\n- x (seq at col 0 under deep)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [180] block sequence indentation - - - - a (4-deep compact)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[180] Block sequence indentation</td>
+        <td>- - - - a (4-deep compact)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [184] block mapping key indentation - a: 1\n  b: 2 (map in seq)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[184] Block mapping key indentation</td>
+        <td>- a: 1\n  b: 2 (map in seq)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [184] block mapping key indentation - a: 1\n b: 2 (map in seq under)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[184] Block mapping key indentation</td>
+        <td>- a: 1\n b: 2 (map in seq under)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [184] block mapping key indentation - a: 1\nb: 2 (map at col 0 after seq)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[184] Block mapping key indentation</td>
+        <td>- a: 1\nb: 2 (map at col 0 after seq)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [184] block mapping key indentation 3-level map correct">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[184] Block mapping key indentation</td>
+        <td>3-level map correct</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [184] block mapping key indentation 3-level map inner drift">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[184] Block mapping key indentation</td>
+        <td>3-level map inner drift</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [184] block mapping key indentation a:\n  b: 1\nc: 2 (sibling) is mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L90" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[184] Block mapping key indentation</td>
+        <td>a:\n  b: 1\nc: 2 (sibling) is mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [184] block mapping key indentation a:\n  b: 1\nc: 2 (sibling) has 2 pairs">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L92" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[184] Block mapping key indentation</td>
+        <td>a:\n  b: 1\nc: 2 (sibling) has 2 pairs</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [184] block mapping key indentation a:\n  long\n  value (multiline)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[184] Block mapping key indentation</td>
+        <td>a:\n  long\n  value (multiline)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [184] block mapping key indentation - x\na: 1 (map after seq)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[184] Block mapping key indentation</td>
+        <td>- x\na: 1 (map after seq)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [184] block mapping key indentation - a: 1\n  b: 2\n- c: 3 (multi-entry)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[184] Block mapping key indentation</td>
+        <td>- a: 1\n  b: 2\n- c: 3 (multi-entry)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [184] block mapping key indentation a→indent2, c→indent4">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[184] Block mapping key indentation</td>
+        <td>a→indent2, c→indent4</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [184] block mapping key indentation a:\nb: 1 (empty value) is mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L90" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[184] Block mapping key indentation</td>
+        <td>a:\nb: 1 (empty value) is mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [184] block mapping key indentation a:\nb: 1 (empty value) has 2 pairs">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L92" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[184] Block mapping key indentation</td>
+        <td>a:\nb: 1 (empty value) has 2 pairs</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [184] block mapping key indentation a:\n  1 (value on next line)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[184] Block mapping key indentation</td>
+        <td>a:\n  1 (value on next line)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context a:\n{b: c} (flow@0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>a:\n{b: c} (flow@0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context a:\n {b: c} (flow@1)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>a:\n {b: c} (flow@1)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context a:\n  {b: c} (flow@2)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>a:\n  {b: c} (flow@2)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context a:\n[1, 2] (flowseq@0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>a:\n[1, 2] (flowseq@0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context a:\n [1, 2] (flowseq@1)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>a:\n [1, 2] (flowseq@1)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context {a: 1} (root flow map)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>{a: 1} (root flow map)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context [1, 2] (root flow seq)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>[1, 2] (root flow seq)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context a:\n  b:\n  {c: d} (flow at parent)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>a:\n  b:\n  {c: d} (flow at parent)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context a:\n  b:\n    {c: d} (flow proper)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>a:\n  b:\n    {c: d} (flow proper)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context a:\n  {} (empty flow map)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>a:\n  {} (empty flow map)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context a:\n  [] (empty flow seq)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>a:\n  [] (empty flow seq)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context a:\n{} (empty flow@0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>a:\n{} (empty flow@0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context a:\n[] (empty flowseq@0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>a:\n[] (empty flowseq@0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context - {a: 1} (flow in seq)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>- {a: 1} (flow in seq)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context - [1, 2] (flow seq in seq)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>- [1, 2] (flow seq in seq)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context a:\n  b:\n   {c: d} (indent+1)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>a:\n  b:\n   {c: d} (indent+1)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context a: {b:\n  c} (block in flow)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>a: {b:\n  c} (block in flow)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context - a:\n{b: c} (flow seq entry @0)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>- a:\n{b: c} (flow seq entry @0)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context a→b→c: flow at c&#39;s indent">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>a→b→c: flow at c&#39;s indent</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context a→b→c: flow at c+2">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>a→b→c: flow at c+2</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [187] flow in block context a:\n\t{b: c} (tab before flow)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[187] Flow in block context</td>
+        <td>a:\n\t{b: c} (tab before flow)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation literal indent=2 auto">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>literal indent=2 auto</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation literal indent=1 auto">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>literal indent=1 auto</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation literal indent=4 auto">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>literal indent=4 auto</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation literal under-indent (2→1)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>literal under-indent (2→1)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation literal content at col 0">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>literal content at col 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation literal |2 explicit">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>literal |2 explicit</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation literal |1 explicit">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>literal |1 explicit</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation literal empty">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>literal empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation literal tab in content">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>literal tab in content</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation folded indent=2 auto">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>folded indent=2 auto</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation folded under-indent (2→1)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>folded under-indent (2→1)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation folded content at col 0">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>folded content at col 0</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation folded indent=1 auto">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>folded indent=1 auto</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation folded indent=4 auto">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>folded indent=4 auto</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation literal strip chomp |-">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>literal strip chomp |-</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation literal keep chomp |+">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>literal keep chomp |+</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation a→b: literal nested">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>a→b: literal nested</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation literal nested under-indent">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>literal nested under-indent</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation literal then sibling key">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>literal then sibling key</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation folded content less than auto">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>folded content less than auto</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation literal then mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>literal then mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation folded then mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>folded then mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [170/174] block scalar indentation literal with tab-only line">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[170/174] Block scalar indentation</td>
+        <td>literal with tab-only line</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [197] explicit key/value indentation ? key\n: value (canonical)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[197] Explicit key/value indentation</td>
+        <td>? key\n: value (canonical)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [197] explicit key/value indentation ?\n  key\n:\n  value (nested)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[197] Explicit key/value indentation</td>
+        <td>?\n  key\n:\n  value (nested)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [197] explicit key/value indentation ? key\n:\n value (value indent+1)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[197] Explicit key/value indentation</td>
+        <td>? key\n:\n value (value indent+1)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [197] explicit key/value indentation ? key\n :\n value (: at col 1)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[197] Explicit key/value indentation</td>
+        <td>? key\n :\n value (: at col 1)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [197] explicit key/value indentation ? a\n  b\n: c (multiline key)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[197] Explicit key/value indentation</td>
+        <td>? a\n  b\n: c (multiline key)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [197] explicit key/value indentation ?\tkey (tab after ?)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[197] Explicit key/value indentation</td>
+        <td>?\tkey (tab after ?)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [197] explicit key/value indentation ? {a: 1}\n: val (flow key)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[197] Explicit key/value indentation</td>
+        <td>? {a: 1}\n: val (flow key)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [197] explicit key/value indentation ? [1, 2]\n: val (seq key)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[197] Explicit key/value indentation</td>
+        <td>? [1, 2]\n: val (seq key)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [197] explicit key/value indentation ?\n: val (empty key)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[197] Explicit key/value indentation</td>
+        <td>?\n: val (empty key)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [197] explicit key/value indentation ? key : val (simple key)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[197] Explicit key/value indentation</td>
+        <td>? key : val (simple key)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [197] explicit key/value indentation ? &amp;a key\n: val (anchored)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[197] Explicit key/value indentation</td>
+        <td>? &amp;a key\n: val (anchored)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [197] explicit key/value indentation ?\n  - a\n  - b\n: val (seq key)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[197] Explicit key/value indentation</td>
+        <td>?\n  - a\n  - b\n: val (seq key)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [197] explicit key/value indentation ?\n  a: 1\n  b: 2\n: val (map key)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[197] Explicit key/value indentation</td>
+        <td>?\n  a: 1\n  b: 2\n: val (map key)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [197] explicit key/value indentation ? ? inner\n  : ival\n: oval (nested ?)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[197] Explicit key/value indentation</td>
+        <td>? ? inner\n  : ival\n: oval (nested ?)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests [197] explicit key/value indentation ? a\n\t: b (tab before :)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>[197] Explicit key/value indentation</td>
+        <td>? a\n\t: b (tab before :)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests multi-level nesting combinations 4-deep 0→2→4→6">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Multi-level nesting combinations</td>
+        <td>4-deep 0→2→4→6</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests multi-level nesting combinations map→seq→map">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Multi-level nesting combinations</td>
+        <td>map→seq→map</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests multi-level nesting combinations seq→map→seq">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Multi-level nesting combinations</td>
+        <td>seq→map→seq</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests multi-level nesting combinations map→seq→map→seq">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Multi-level nesting combinations</td>
+        <td>map→seq→map→seq</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests multi-level nesting combinations 4-deep compact seq">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Multi-level nesting combinations</td>
+        <td>4-deep compact seq</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests multi-level nesting combinations map→seq→map 3 levels">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Multi-level nesting combinations</td>
+        <td>map→seq→map 3 levels</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests multi-level nesting combinations seq with nested map indent">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Multi-level nesting combinations</td>
+        <td>seq with nested map indent</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests multi-level nesting combinations deep nest then sibling is mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L90" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Multi-level nesting combinations</td>
+        <td>deep nest then sibling is mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests multi-level nesting combinations deep nest then sibling has 2 pairs">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L92" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Multi-level nesting combinations</td>
+        <td>deep nest then sibling has 2 pairs</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests multi-level nesting combinations 3-level then de-indent">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Multi-level nesting combinations</td>
+        <td>3-level then de-indent</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests multi-level nesting combinations seq→map→seq→map">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Multi-level nesting combinations</td>
+        <td>seq→map→seq→map</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests multi-level nesting combinations map→seq of maps">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Multi-level nesting combinations</td>
+        <td>map→seq of maps</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests multi-level nesting combinations ? nested then mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Multi-level nesting combinations</td>
+        <td>? nested then mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) \ta: 1 (leniency)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>\ta: 1 (LENIENCY)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1)  \ta: 1 (leniency)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td> \ta: 1 (LENIENCY)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) \t a: 1 (leniency)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>\t a: 1 (LENIENCY)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) \t\ta: 1 (leniency)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>\t\ta: 1 (LENIENCY)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) a:\n\tb: 1">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>a:\n\tb: 1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) a:\n \tb: 1 (separation)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>a:\n \tb: 1 (separation)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) a:\n\t b: 1">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>a:\n\t b: 1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) a:\n\t- x">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>a:\n\t- x</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) a:\n \t- x">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>a:\n \t- x</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) -\ta (separation)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>-\ta (separation)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) a:\n\t{b: c}">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>a:\n\t{b: c}</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) a:\n\t[1, 2]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>a:\n\t[1, 2]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) a:\tb (tab value sep)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>a:\tb (tab value sep)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) a: b\tc (tab in value)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>a: b\tc (tab in value)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) a: b \t# comment (tab before comment)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>a: b \t# comment (tab before comment)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) ?\tkey">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>?\tkey</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) ? a\n\t: b">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>? a\n\t: b</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) a:\t1 (tab after colon)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>a:\t1 (tab after colon)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) a: |\t\n  text (tab in header comment area)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>a: |\t\n  text (tab in header comment area)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) a:\n  b:\n\tc: 1 (tab at level 3)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>a:\n  b:\n\tc: 1 (tab at level 3)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests tab injection (§6.1) -\n\ta: 1 (tab indent in seq item)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L83" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Tab injection (§6.1)</td>
+        <td>-\n\ta: 1 (tab indent in seq item)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests document boundary interaction a:\n  ... (indented doc-end)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Document boundary interaction</td>
+        <td>a:\n  ... (indented doc-end)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests document boundary interaction a:\n  --- (indented doc-start)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Document boundary interaction</td>
+        <td>a:\n  --- (indented doc-start)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests document boundary interaction ---\na: 1 (post-docstart)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L452" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Document boundary interaction</td>
+        <td>---\na: 1 (post-docstart)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests document boundary interaction ---\n  a: 1 (indented after docstart)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Document boundary interaction</td>
+        <td>---\n  a: 1 (indented after docstart)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests anchor/tag interaction with indent a:\n  &amp;x b: 1 (anchor indent)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Anchor/tag interaction with indent</td>
+        <td>a:\n  &amp;x b: 1 (anchor indent)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests anchor/tag interaction with indent a:\n  !!str b: 1 (tag indent)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Anchor/tag interaction with indent</td>
+        <td>a:\n  !!str b: 1 (tag indent)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="adversarialtests" data-search="adversarialtests anchor/tag interaction with indent - &amp;x a\n- *x (anchor in seq)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/AdversarialGrammarTests.lean#L75" target="_blank" class="source-link">Adversarial Grammar-Directed Tests (v0.2.13.1)</a></td>
+        <td>Anchor/tag interaction with indent</td>
+        <td>- &amp;x a\n- *x (anchor in seq)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests strict: tabs in quoted scalar continuations 4cqq tab in dquote continuation (strict: libyaml accepts)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L96" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>STRICT: tabs in quoted scalar continuations</td>
+        <td>4CQQ tab in dquote continuation (STRICT: libyaml accepts)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests strict: tabs in quoted scalar continuations dk95:2 tab in dquote continuation (strict: libyaml accepts)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L96" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>STRICT: tabs in quoted scalar continuations</td>
+        <td>DK95:2 tab in dquote continuation (STRICT: libyaml accepts)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests strict: tabs in quoted scalar continuations dk95:8 dquote continuation at col 0 (strict: libyaml accepts)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L96" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>STRICT: tabs in quoted scalar continuations</td>
+        <td>DK95:8 dquote continuation at col 0 (STRICT: libyaml accepts)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests strict: tabs in quoted scalar continuations nat4:0 tab in squote continuation (strict: libyaml accepts)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L96" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>STRICT: tabs in quoted scalar continuations</td>
+        <td>NAT4:0 tab in squote continuation (STRICT: libyaml accepts)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests strict: tabs in quoted scalar continuations rzp5:0 tab in dquote continuation (strict: libyaml accepts)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L96" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>STRICT: tabs in quoted scalar continuations</td>
+        <td>RZP5:0 tab in dquote continuation (STRICT: libyaml accepts)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests strict: tabs in flow context 87e4 tab indent in flow seq entry (strict: libyaml accepts)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L96" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>STRICT: tabs in flow context</td>
+        <td>87E4 tab indent in flow seq entry (STRICT: libyaml accepts)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests strict: tabs in flow context 87e4 tab indent before flow closer (strict: libyaml accepts)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L96" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>STRICT: tabs in flow context</td>
+        <td>87E4 tab indent before flow closer (STRICT: libyaml accepts)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests strict: tabs in flow context l9u5 tab indent in flow entry (strict: libyaml accepts)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L96" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>STRICT: tabs in flow context</td>
+        <td>L9U5 tab indent in flow entry (STRICT: libyaml accepts)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests strict: tabs in flow context zf4x tab indent in flow mapping (strict: libyaml accepts)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L96" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>STRICT: tabs in flow context</td>
+        <td>ZF4X tab indent in flow mapping (STRICT: libyaml accepts)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests strict: tabs in flow context lp6e tab indent in multiline flow (strict: libyaml accepts)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L96" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>STRICT: tabs in flow context</td>
+        <td>LP6E tab indent in multiline flow (STRICT: libyaml accepts)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests strict: tabs in flow context m5dy tab indent in flow seq (strict: libyaml accepts)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L96" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>STRICT: tabs in flow context</td>
+        <td>M5DY tab indent in flow seq (STRICT: libyaml accepts)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests strict: other mutations 2sxe anchor:key no space (strict: libyaml accepts)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L96" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>STRICT: other mutations</td>
+        <td>2SXE anchor:key no space (STRICT: libyaml accepts)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests strict: other mutations 35kp dash shifted right in multi-doc (strict: libyaml accepts)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L110" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>STRICT: other mutations</td>
+        <td>35KP dash shifted right in multi-doc (STRICT: libyaml accepts)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests strict: other mutations 6zkb comment+... joined (strict: libyaml accepts)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L110" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>STRICT: other mutations</td>
+        <td>6ZKB comment+... joined (STRICT: libyaml accepts)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests strict: other mutations v55r dash shifted right with anchor (strict: libyaml accepts)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L96" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>STRICT: other mutations</td>
+        <td>V55R dash shifted right with anchor (STRICT: libyaml accepts)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: indent shift 2sxe:0 over-indent alias key (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: indent shift</td>
+        <td>2SXE:0 over-indent alias key (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: indent shift 2sxe:0 under-indent alias key (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: indent shift</td>
+        <td>2SXE:0 under-indent alias key (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: indent shift 5mud:0 over-indent colon in flow (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: indent shift</td>
+        <td>5MUD:0 over-indent colon in flow (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: indent shift 5mud:0 under-indent colon in flow (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: indent shift</td>
+        <td>5MUD:0 under-indent colon in flow (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: indent shift 4q9f:0 under-indent flow content (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: indent shift</td>
+        <td>4Q9F:0 under-indent flow content (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: indent shift 6fwr:0 under-indent block value (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: indent shift</td>
+        <td>6FWR:0 under-indent block value (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: delete-newline 2jqs:0 join empty-key lines (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: delete-newline</td>
+        <td>2JQS:0 join empty-key lines (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: delete-newline 4abk:0 join multi-doc line 0+1 (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L102" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: delete-newline</td>
+        <td>4ABK:0 join multi-doc line 0+1 (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: delete-newline 6ck3:0 join doc start+content (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L102" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: delete-newline</td>
+        <td>6CK3:0 join doc start+content (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: delete-newline 5t43:0 join literal+value lines (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: delete-newline</td>
+        <td>5T43:0 join literal+value lines (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: delete-newline 58mp:0 join ?-colon lines (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: delete-newline</td>
+        <td>58MP:0 join ?-colon lines (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: add-newline 2lfx:0 blank after directive (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: add-newline</td>
+        <td>2LFX:0 blank after directive (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: add-newline 4muz:0 blank in multi-doc (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: add-newline</td>
+        <td>4MUZ:0 blank in multi-doc (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: add-newline 5mud:0 blank after doc-start (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: add-newline</td>
+        <td>5MUD:0 blank after doc-start (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: space-to-tab (indent) 2lfx:0 tab indent directive comment (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: space-to-tab (indent)</td>
+        <td>2LFX:0 tab indent directive comment (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: space-to-tab (indent) 4q9f:0 tab indent block scalar (both_reject)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L96" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: space-to-tab (indent)</td>
+        <td>4Q9F:0 tab indent block scalar (BOTH_REJECT)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: space-to-tab (indent) 5mud:0 tab indent flow content (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: space-to-tab (indent)</td>
+        <td>5MUD:0 tab indent flow content (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: space-to-tab (indent) 6jqw:0 tab indent block mapping (both_reject)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L96" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: space-to-tab (indent)</td>
+        <td>6JQW:0 tab indent block mapping (BOTH_REJECT)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: colon-nospace 6kgn:0 b:*anchor no space (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: colon-nospace</td>
+        <td>6KGN:0 b:*anchor no space (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: colon-nospace 7z25:0 key:value no space (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L102" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: colon-nospace</td>
+        <td>7Z25:0 key:value no space (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: colon-nospace 9sa2:0 flow multiline key:value (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: colon-nospace</td>
+        <td>9SA2:0 flow multiline key:value (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: dash-indent 8xyn:0 dash shifted right with emoji anchor (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: dash-indent</td>
+        <td>8XYN:0 dash shifted right with emoji anchor (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests lenient: dash-indent dbg4:0 dash shifted right in sequence (lenient: libyaml rejects)">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>LENIENT: dash-indent</td>
+        <td>DBG4:0 dash shifted right in sequence (LENIENT: libyaml rejects)</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests agreement: both_reject mutations space-to-tab block indent">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L96" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>Agreement: BOTH_REJECT mutations</td>
+        <td>space-to-tab block indent</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests agreement: both_reject mutations indent-1 breaks nested mapping">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L96" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>Agreement: BOTH_REJECT mutations</td>
+        <td>indent-1 breaks nested mapping</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests agreement: both_reject mutations delete-newline block scalar header">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L96" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>Agreement: BOTH_REJECT mutations</td>
+        <td>delete-newline block scalar header</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests agreement: both_reject mutations space-to-tab block scalar content">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L96" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>Agreement: BOTH_REJECT mutations</td>
+        <td>space-to-tab block scalar content</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests agreement: both_accept mutations add-newline after seq entry">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>Agreement: BOTH_ACCEPT mutations</td>
+        <td>add-newline after seq entry</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests agreement: both_accept mutations indent+1 on scalar value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>Agreement: BOTH_ACCEPT mutations</td>
+        <td>indent+1 on scalar value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="mutationtests" data-search="mutationtests agreement: both_accept mutations add-newline after mapping value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/MutationSuiteTests.lean#L88" target="_blank" class="source-link">Mutation Testing on yaml-test-suite (v0.2.13.2)</a></td>
+        <td>Agreement: BOTH_ACCEPT mutations</td>
+        <td>add-newline after mapping value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests basic dump→parse round-trip 100/100 random nodes round-trip successfully">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L395" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Basic dump→parse round-trip</td>
+        <td>100/100 random nodes round-trip successfully</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests flow-style dump→parse round-trip 50/50 flow-style nodes round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L417" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Flow-style dump→parse round-trip</td>
+        <td>50/50 flow-style nodes round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests double-quoted dump→parse round-trip 50/50 double-quoted nodes round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L438" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Double-quoted dump→parse round-trip</td>
+        <td>50/50 double-quoted nodes round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases emptynode round-trips">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L446" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Scalar edge cases</td>
+        <td>emptyNode round-trips</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases singlequoted empty">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L448" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Scalar edge cases</td>
+        <td>singleQuoted empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases singlequoted &#39;hello&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L449" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Scalar edge cases</td>
+        <td>singleQuoted &#39;hello&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases singlequoted with colon-space">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L450" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Scalar edge cases</td>
+        <td>singleQuoted with colon-space</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases singlequoted with hash">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L451" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Scalar edge cases</td>
+        <td>singleQuoted with hash</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases singlequoted with flow chars">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L452" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Scalar edge cases</td>
+        <td>singleQuoted with flow chars</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases singlequoted with indicators">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L453" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Scalar edge cases</td>
+        <td>singleQuoted with indicators</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases doublequoted empty">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L455" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Scalar edge cases</td>
+        <td>doubleQuoted empty</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases doublequoted &#39;hello&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L456" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Scalar edge cases</td>
+        <td>doubleQuoted &#39;hello&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases doublequoted with colon">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L457" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Scalar edge cases</td>
+        <td>doubleQuoted with colon</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases doublequoted with braces">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L458" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Scalar edge cases</td>
+        <td>doubleQuoted with braces</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases doublequoted with all indicators">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L459" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Scalar edge cases</td>
+        <td>doubleQuoted with all indicators</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases doublequoted reserved &#39;true&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L461" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Scalar edge cases</td>
+        <td>doubleQuoted reserved &#39;true&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases doublequoted reserved &#39;null&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L462" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Scalar edge cases</td>
+        <td>doubleQuoted reserved &#39;null&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases doublequoted reserved &#39;false&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L463" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Scalar edge cases</td>
+        <td>doubleQuoted reserved &#39;false&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests scalar edge cases doublequoted numeric &#39;42&#39;">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L464" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Scalar edge cases</td>
+        <td>doubleQuoted numeric &#39;42&#39;</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip block seq [a, b, c]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L472" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Collection structure round-trip</td>
+        <td>block seq [a, b, c]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip block map {key1: val1, key2: val2}">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L478" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Collection structure round-trip</td>
+        <td>block map {key1: val1, key2: val2}</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip flow seq [x, y]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L483" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Collection structure round-trip</td>
+        <td>flow seq [x, y]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip flow map {a: 1, b: 2}">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L489" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Collection structure round-trip</td>
+        <td>flow map {a: 1, b: 2}</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip nested block map with seq value">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L495" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Collection structure round-trip</td>
+        <td>nested block map with seq value</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip block seq of maps">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L501" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Collection structure round-trip</td>
+        <td>block seq of maps</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip flow collections inside block">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L507" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Collection structure round-trip</td>
+        <td>flow collections inside block</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip empty flow seq []">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L511" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Collection structure round-trip</td>
+        <td>empty flow seq []</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip empty flow map {}">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L513" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Collection structure round-trip</td>
+        <td>empty flow map {}</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests collection structure round-trip 3-level deep nesting">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L522" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Collection structure round-trip</td>
+        <td>3-level deep nesting</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests mutation resilience indent mutations: 16/16 handled consistently">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L579" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Mutation resilience</td>
+        <td>indent mutations: 16/16 handled consistently</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests mutation resilience tab mutations: 8/8 handled consistently">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L581" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Mutation resilience</td>
+        <td>tab mutations: 8/8 handled consistently</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests mutation resilience newline mutations: 8/8 handled consistently">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L583" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Mutation resilience</td>
+        <td>newline mutations: 8/8 handled consistently</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests mutation resilience colon mutations: 8/8 handled consistently">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L585" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Mutation resilience</td>
+        <td>colon mutations: 8/8 handled consistently</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 0: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 0: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 1: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 1: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 7: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 7: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 13: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 13: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 42: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 42: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 97: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 97: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 137: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 137: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 271: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 271: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 314: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 314: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 577: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 577: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 691: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 691: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 997: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 997: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 1234: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 1234: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 2718: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 2718: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 3141: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 3141: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 4242: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 4242: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 6174: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 6174: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 7919: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 7919: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 8675: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 8675: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage seed 9999: 5/5 round-trip">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L610" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>seed 9999: 5/5 round-trip</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests diverse seed coverage total: 100/100 across 20 seeds">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L611" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>Diverse seed coverage</td>
+        <td>total: 100/100 across 20 seeds</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+default</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=4</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+flow style</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+double-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+single-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+allow reserved</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+default</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=4</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+flow style</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+double-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+single-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+allow reserved</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+default</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=4</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+flow style</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+double-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+single-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+allow reserved</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+default</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=4</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+flow style</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+double-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+single-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+allow reserved</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+default</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=4</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+flow style</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+double-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+single-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+allow reserved</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+default</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=4</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+flow style</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+double-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+single-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+allow reserved</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+default</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=4</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+flow style</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+double-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+single-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+allow reserved</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+default</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=4</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+flow style</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+double-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+single-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+allow reserved</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+default</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=4</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+flow style</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+double-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+single-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+allow reserved</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+default">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+default</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=1">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=1</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+indent=4">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+indent=4</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+flow style">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+flow style</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+double-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+double-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+single-quoted">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+single-quoted</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="propertytests" data-search="propertytests dumpconfig variation round-trip node+allow reserved">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L635" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
+        <td>DumpConfig variation round-trip</td>
+        <td>node+allow reserved</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>

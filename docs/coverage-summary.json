@@ -1,5 +1,5 @@
 {
-  "date": "2026-03-22T12:39:31-0700",
+  "date": "2026-03-22T13:17:44-0700",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -6738,6 +6738,1645 @@
       },
       {
         "allPass": true,
+        "label": "Adversarial Grammar-Directed Tests (v0.2.13.1)",
+        "passed": 154,
+        "tests": [
+          {
+            "category": "[63] Block mapping indentation",
+            "name": "a:\\n  b: 1 (indent=2) is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Block mapping indentation",
+            "name": "a:\\n  b: 1 (indent=2) has 1 pairs",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Block mapping indentation",
+            "name": "a:\\n b: 1 (indent=1) is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Block mapping indentation",
+            "name": "a:\\n b: 1 (indent=1) has 1 pairs",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Block mapping indentation",
+            "name": "a:\\nb: 1 (sibling) is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Block mapping indentation",
+            "name": "a:\\nb: 1 (sibling) has 2 pairs",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Block mapping indentation",
+            "name": "a:\\n  first: 1\\n second: 2 (under-indent)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Block mapping indentation",
+            "name": "3-level 0→2→4",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Block mapping indentation",
+            "name": "3-level 0→1→2",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Block mapping indentation",
+            "name": "3-level inner=middle (sibling)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Block mapping indentation",
+            "name": "3-level inner=top (a,c siblings) is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Block mapping indentation",
+            "name": "3-level inner=top (a,c siblings) has 2 pairs",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Block mapping indentation",
+            "name": "mixed indent siblings (col 2 vs 3)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Block mapping indentation",
+            "name": "5-deep 0→1→2→3→4",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Block mapping indentation",
+            "name": "3-key then under-indent",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Tab as indentation (§6.1)",
+            "name": "\\ta: 1 (LENIENCY: tab indent)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Tab as indentation (§6.1)",
+            "name": " \\ta: 1 (LENIENCY: space+tab)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Tab as indentation (§6.1)",
+            "name": "\\t a: 1 (LENIENCY: tab+space)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Tab as indentation (§6.1)",
+            "name": "\\t\\ta: 1 (LENIENCY: double tab)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Tab as indentation (§6.1)",
+            "name": "a:\\n\\tb: 1 (tab indent nested)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Tab as indentation (§6.1)",
+            "name": "a:\\n\\t b: 1 (tab+space nested)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Tab as indentation (§6.1)",
+            "name": "a:\\n \\tb: 1 (space+tab = separation)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[63] Tab as indentation (§6.1)",
+            "name": "a:\\tb (tab as value sep)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[180] Block sequence indentation",
+            "name": "top-level - a\\n- b is sequence",
+            "outcome": "pass"
+          },
+          {
+            "category": "[180] Block sequence indentation",
+            "name": "top-level - a\\n- b has 2 items",
+            "outcome": "pass"
+          },
+          {
+            "category": "[180] Block sequence indentation",
+            "name": "a:\\n  - x\\n  - y (indent+2)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[180] Block sequence indentation",
+            "name": "a:\\n - x\\n - y (indent+1)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[180] Block sequence indentation",
+            "name": "a:\\n- x\\n- y (seq-spaces)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[180] Block sequence indentation",
+            "name": "a:\\n      - x (deep indent)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[180] Block sequence indentation",
+            "name": "seq indent 2→3 (nested)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[180] Block sequence indentation",
+            "name": "- - a\\n  - b (seq-in-seq) is sequence",
+            "outcome": "pass"
+          },
+          {
+            "category": "[180] Block sequence indentation",
+            "name": "- - a\\n  - b (seq-in-seq) has 1 items",
+            "outcome": "pass"
+          },
+          {
+            "category": "[180] Block sequence indentation",
+            "name": "- - a\\n- - b (separate) is sequence",
+            "outcome": "pass"
+          },
+          {
+            "category": "[180] Block sequence indentation",
+            "name": "- - a\\n- - b (separate) has 2 items",
+            "outcome": "pass"
+          },
+          {
+            "category": "[180] Block sequence indentation",
+            "name": "- a:\\n  - x\\n - y (under-indent)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[180] Block sequence indentation",
+            "name": "a:\\n\\t- x (tab before dash)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[180] Block sequence indentation",
+            "name": "-\\ta (tab = separation after dash)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[180] Block sequence indentation",
+            "name": "multi-key seq",
+            "outcome": "pass"
+          },
+          {
+            "category": "[180] Block sequence indentation",
+            "name": "a:\\n  b:\\n- x (seq at col 0 under deep)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[180] Block sequence indentation",
+            "name": "- - - - a (4-deep compact)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[184] Block mapping key indentation",
+            "name": "- a: 1\\n  b: 2 (map in seq)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[184] Block mapping key indentation",
+            "name": "- a: 1\\n b: 2 (map in seq under)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[184] Block mapping key indentation",
+            "name": "- a: 1\\nb: 2 (map at col 0 after seq)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[184] Block mapping key indentation",
+            "name": "3-level map correct",
+            "outcome": "pass"
+          },
+          {
+            "category": "[184] Block mapping key indentation",
+            "name": "3-level map inner drift",
+            "outcome": "pass"
+          },
+          {
+            "category": "[184] Block mapping key indentation",
+            "name": "a:\\n  b: 1\\nc: 2 (sibling) is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "[184] Block mapping key indentation",
+            "name": "a:\\n  b: 1\\nc: 2 (sibling) has 2 pairs",
+            "outcome": "pass"
+          },
+          {
+            "category": "[184] Block mapping key indentation",
+            "name": "a:\\n  long\\n  value (multiline)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[184] Block mapping key indentation",
+            "name": "- x\\na: 1 (map after seq)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[184] Block mapping key indentation",
+            "name": "- a: 1\\n  b: 2\\n- c: 3 (multi-entry)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[184] Block mapping key indentation",
+            "name": "a→indent2, c→indent4",
+            "outcome": "pass"
+          },
+          {
+            "category": "[184] Block mapping key indentation",
+            "name": "a:\\nb: 1 (empty value) is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "[184] Block mapping key indentation",
+            "name": "a:\\nb: 1 (empty value) has 2 pairs",
+            "outcome": "pass"
+          },
+          {
+            "category": "[184] Block mapping key indentation",
+            "name": "a:\\n  1 (value on next line)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "a:\\n{b: c} (flow@0)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "a:\\n {b: c} (flow@1)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "a:\\n  {b: c} (flow@2)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "a:\\n[1, 2] (flowseq@0)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "a:\\n [1, 2] (flowseq@1)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "{a: 1} (root flow map)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "[1, 2] (root flow seq)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "a:\\n  b:\\n  {c: d} (flow at parent)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "a:\\n  b:\\n    {c: d} (flow proper)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "a:\\n  {} (empty flow map)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "a:\\n  [] (empty flow seq)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "a:\\n{} (empty flow@0)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "a:\\n[] (empty flowseq@0)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "- {a: 1} (flow in seq)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "- [1, 2] (flow seq in seq)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "a:\\n  b:\\n   {c: d} (indent+1)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "a: {b:\\n  c} (block in flow)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "- a:\\n{b: c} (flow seq entry @0)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "a→b→c: flow at c's indent",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "a→b→c: flow at c+2",
+            "outcome": "pass"
+          },
+          {
+            "category": "[187] Flow in block context",
+            "name": "a:\\n\\t{b: c} (tab before flow)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "literal indent=2 auto",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "literal indent=1 auto",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "literal indent=4 auto",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "literal under-indent (2→1)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "literal content at col 0",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "literal |2 explicit",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "literal |1 explicit",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "literal empty",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "literal tab in content",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "folded indent=2 auto",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "folded under-indent (2→1)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "folded content at col 0",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "folded indent=1 auto",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "folded indent=4 auto",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "literal strip chomp |-",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "literal keep chomp |+",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "a→b: literal nested",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "literal nested under-indent",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "literal then sibling key",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "folded content less than auto",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "literal then mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "folded then mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "[170/174] Block scalar indentation",
+            "name": "literal with tab-only line",
+            "outcome": "pass"
+          },
+          {
+            "category": "[197] Explicit key/value indentation",
+            "name": "? key\\n: value (canonical)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[197] Explicit key/value indentation",
+            "name": "?\\n  key\\n:\\n  value (nested)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[197] Explicit key/value indentation",
+            "name": "? key\\n:\\n value (value indent+1)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[197] Explicit key/value indentation",
+            "name": "? key\\n :\\n value (: at col 1)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[197] Explicit key/value indentation",
+            "name": "? a\\n  b\\n: c (multiline key)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[197] Explicit key/value indentation",
+            "name": "?\\tkey (tab after ?)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[197] Explicit key/value indentation",
+            "name": "? {a: 1}\\n: val (flow key)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[197] Explicit key/value indentation",
+            "name": "? [1, 2]\\n: val (seq key)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[197] Explicit key/value indentation",
+            "name": "?\\n: val (empty key)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[197] Explicit key/value indentation",
+            "name": "? key : val (simple key)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[197] Explicit key/value indentation",
+            "name": "? &a key\\n: val (anchored)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[197] Explicit key/value indentation",
+            "name": "?\\n  - a\\n  - b\\n: val (seq key)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[197] Explicit key/value indentation",
+            "name": "?\\n  a: 1\\n  b: 2\\n: val (map key)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[197] Explicit key/value indentation",
+            "name": "? ? inner\\n  : ival\\n: oval (nested ?)",
+            "outcome": "pass"
+          },
+          {
+            "category": "[197] Explicit key/value indentation",
+            "name": "? a\\n\\t: b (tab before :)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Multi-level nesting combinations",
+            "name": "4-deep 0→2→4→6",
+            "outcome": "pass"
+          },
+          {
+            "category": "Multi-level nesting combinations",
+            "name": "map→seq→map",
+            "outcome": "pass"
+          },
+          {
+            "category": "Multi-level nesting combinations",
+            "name": "seq→map→seq",
+            "outcome": "pass"
+          },
+          {
+            "category": "Multi-level nesting combinations",
+            "name": "map→seq→map→seq",
+            "outcome": "pass"
+          },
+          {
+            "category": "Multi-level nesting combinations",
+            "name": "4-deep compact seq",
+            "outcome": "pass"
+          },
+          {
+            "category": "Multi-level nesting combinations",
+            "name": "map→seq→map 3 levels",
+            "outcome": "pass"
+          },
+          {
+            "category": "Multi-level nesting combinations",
+            "name": "seq with nested map indent",
+            "outcome": "pass"
+          },
+          {
+            "category": "Multi-level nesting combinations",
+            "name": "deep nest then sibling is mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Multi-level nesting combinations",
+            "name": "deep nest then sibling has 2 pairs",
+            "outcome": "pass"
+          },
+          {
+            "category": "Multi-level nesting combinations",
+            "name": "3-level then de-indent",
+            "outcome": "pass"
+          },
+          {
+            "category": "Multi-level nesting combinations",
+            "name": "seq→map→seq→map",
+            "outcome": "pass"
+          },
+          {
+            "category": "Multi-level nesting combinations",
+            "name": "map→seq of maps",
+            "outcome": "pass"
+          },
+          {
+            "category": "Multi-level nesting combinations",
+            "name": "? nested then mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "\\ta: 1 (LENIENCY)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": " \\ta: 1 (LENIENCY)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "\\t a: 1 (LENIENCY)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "\\t\\ta: 1 (LENIENCY)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "a:\\n\\tb: 1",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "a:\\n \\tb: 1 (separation)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "a:\\n\\t b: 1",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "a:\\n\\t- x",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "a:\\n \\t- x",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "-\\ta (separation)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "a:\\n\\t{b: c}",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "a:\\n\\t[1, 2]",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "a:\\tb (tab value sep)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "a: b\\tc (tab in value)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "a: b \\t# comment (tab before comment)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "?\\tkey",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "? a\\n\\t: b",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "a:\\t1 (tab after colon)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "a: |\\t\\n  text (tab in header comment area)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "a:\\n  b:\\n\\tc: 1 (tab at level 3)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tab injection (§6.1)",
+            "name": "-\\n\\ta: 1 (tab indent in seq item)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Document boundary interaction",
+            "name": "a:\\n  ... (indented doc-end)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Document boundary interaction",
+            "name": "a:\\n  --- (indented doc-start)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Document boundary interaction",
+            "name": "---\\na: 1 (post-docstart)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Document boundary interaction",
+            "name": "---\\n  a: 1 (indented after docstart)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Anchor/tag interaction with indent",
+            "name": "a:\\n  &x b: 1 (anchor indent)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Anchor/tag interaction with indent",
+            "name": "a:\\n  !!str b: 1 (tag indent)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Anchor/tag interaction with indent",
+            "name": "- &x a\\n- *x (anchor in seq)",
+            "outcome": "pass"
+          }
+        ],
+        "total": 154
+      },
+      {
+        "allPass": true,
+        "label": "Mutation Testing on yaml-test-suite (v0.2.13.2)",
+        "passed": 45,
+        "tests": [
+          {
+            "category": "STRICT: tabs in quoted scalar continuations",
+            "name": "4CQQ tab in dquote continuation (STRICT: libyaml accepts)",
+            "outcome": "pass"
+          },
+          {
+            "category": "STRICT: tabs in quoted scalar continuations",
+            "name": "DK95:2 tab in dquote continuation (STRICT: libyaml accepts)",
+            "outcome": "pass"
+          },
+          {
+            "category": "STRICT: tabs in quoted scalar continuations",
+            "name": "DK95:8 dquote continuation at col 0 (STRICT: libyaml accepts)",
+            "outcome": "pass"
+          },
+          {
+            "category": "STRICT: tabs in quoted scalar continuations",
+            "name": "NAT4:0 tab in squote continuation (STRICT: libyaml accepts)",
+            "outcome": "pass"
+          },
+          {
+            "category": "STRICT: tabs in quoted scalar continuations",
+            "name": "RZP5:0 tab in dquote continuation (STRICT: libyaml accepts)",
+            "outcome": "pass"
+          },
+          {
+            "category": "STRICT: tabs in flow context",
+            "name": "87E4 tab indent in flow seq entry (STRICT: libyaml accepts)",
+            "outcome": "pass"
+          },
+          {
+            "category": "STRICT: tabs in flow context",
+            "name": "87E4 tab indent before flow closer (STRICT: libyaml accepts)",
+            "outcome": "pass"
+          },
+          {
+            "category": "STRICT: tabs in flow context",
+            "name": "L9U5 tab indent in flow entry (STRICT: libyaml accepts)",
+            "outcome": "pass"
+          },
+          {
+            "category": "STRICT: tabs in flow context",
+            "name": "ZF4X tab indent in flow mapping (STRICT: libyaml accepts)",
+            "outcome": "pass"
+          },
+          {
+            "category": "STRICT: tabs in flow context",
+            "name": "LP6E tab indent in multiline flow (STRICT: libyaml accepts)",
+            "outcome": "pass"
+          },
+          {
+            "category": "STRICT: tabs in flow context",
+            "name": "M5DY tab indent in flow seq (STRICT: libyaml accepts)",
+            "outcome": "pass"
+          },
+          {
+            "category": "STRICT: other mutations",
+            "name": "2SXE anchor:key no space (STRICT: libyaml accepts)",
+            "outcome": "pass"
+          },
+          {
+            "category": "STRICT: other mutations",
+            "name": "35KP dash shifted right in multi-doc (STRICT: libyaml accepts)",
+            "outcome": "pass"
+          },
+          {
+            "category": "STRICT: other mutations",
+            "name": "6ZKB comment+... joined (STRICT: libyaml accepts)",
+            "outcome": "pass"
+          },
+          {
+            "category": "STRICT: other mutations",
+            "name": "V55R dash shifted right with anchor (STRICT: libyaml accepts)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: indent shift",
+            "name": "2SXE:0 over-indent alias key (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: indent shift",
+            "name": "2SXE:0 under-indent alias key (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: indent shift",
+            "name": "5MUD:0 over-indent colon in flow (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: indent shift",
+            "name": "5MUD:0 under-indent colon in flow (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: indent shift",
+            "name": "4Q9F:0 under-indent flow content (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: indent shift",
+            "name": "6FWR:0 under-indent block value (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: delete-newline",
+            "name": "2JQS:0 join empty-key lines (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: delete-newline",
+            "name": "4ABK:0 join multi-doc line 0+1 (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: delete-newline",
+            "name": "6CK3:0 join doc start+content (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: delete-newline",
+            "name": "5T43:0 join literal+value lines (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: delete-newline",
+            "name": "58MP:0 join ?-colon lines (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: add-newline",
+            "name": "2LFX:0 blank after directive (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: add-newline",
+            "name": "4MUZ:0 blank in multi-doc (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: add-newline",
+            "name": "5MUD:0 blank after doc-start (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: space-to-tab (indent)",
+            "name": "2LFX:0 tab indent directive comment (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: space-to-tab (indent)",
+            "name": "4Q9F:0 tab indent block scalar (BOTH_REJECT)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: space-to-tab (indent)",
+            "name": "5MUD:0 tab indent flow content (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: space-to-tab (indent)",
+            "name": "6JQW:0 tab indent block mapping (BOTH_REJECT)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: colon-nospace",
+            "name": "6KGN:0 b:*anchor no space (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: colon-nospace",
+            "name": "7Z25:0 key:value no space (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: colon-nospace",
+            "name": "9SA2:0 flow multiline key:value (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: dash-indent",
+            "name": "8XYN:0 dash shifted right with emoji anchor (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "LENIENT: dash-indent",
+            "name": "DBG4:0 dash shifted right in sequence (LENIENT: libyaml rejects)",
+            "outcome": "pass"
+          },
+          {
+            "category": "Agreement: BOTH_REJECT mutations",
+            "name": "space-to-tab block indent",
+            "outcome": "pass"
+          },
+          {
+            "category": "Agreement: BOTH_REJECT mutations",
+            "name": "indent-1 breaks nested mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Agreement: BOTH_REJECT mutations",
+            "name": "delete-newline block scalar header",
+            "outcome": "pass"
+          },
+          {
+            "category": "Agreement: BOTH_REJECT mutations",
+            "name": "space-to-tab block scalar content",
+            "outcome": "pass"
+          },
+          {
+            "category": "Agreement: BOTH_ACCEPT mutations",
+            "name": "add-newline after seq entry",
+            "outcome": "pass"
+          },
+          {
+            "category": "Agreement: BOTH_ACCEPT mutations",
+            "name": "indent+1 on scalar value",
+            "outcome": "pass"
+          },
+          {
+            "category": "Agreement: BOTH_ACCEPT mutations",
+            "name": "add-newline after mapping value",
+            "outcome": "pass"
+          }
+        ],
+        "total": 45
+      },
+      {
+        "allPass": true,
+        "label": "Property-Based Round-Trip Tests (v0.2.13.3)",
+        "passed": 124,
+        "tests": [
+          {
+            "category": "Basic dump→parse round-trip",
+            "name": "100/100 random nodes round-trip successfully",
+            "outcome": "pass"
+          },
+          {
+            "category": "Flow-style dump→parse round-trip",
+            "name": "50/50 flow-style nodes round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Double-quoted dump→parse round-trip",
+            "name": "50/50 double-quoted nodes round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Scalar edge cases",
+            "name": "emptyNode round-trips",
+            "outcome": "pass"
+          },
+          {
+            "category": "Scalar edge cases",
+            "name": "singleQuoted empty",
+            "outcome": "pass"
+          },
+          {
+            "category": "Scalar edge cases",
+            "name": "singleQuoted 'hello'",
+            "outcome": "pass"
+          },
+          {
+            "category": "Scalar edge cases",
+            "name": "singleQuoted with colon-space",
+            "outcome": "pass"
+          },
+          {
+            "category": "Scalar edge cases",
+            "name": "singleQuoted with hash",
+            "outcome": "pass"
+          },
+          {
+            "category": "Scalar edge cases",
+            "name": "singleQuoted with flow chars",
+            "outcome": "pass"
+          },
+          {
+            "category": "Scalar edge cases",
+            "name": "singleQuoted with indicators",
+            "outcome": "pass"
+          },
+          {
+            "category": "Scalar edge cases",
+            "name": "doubleQuoted empty",
+            "outcome": "pass"
+          },
+          {
+            "category": "Scalar edge cases",
+            "name": "doubleQuoted 'hello'",
+            "outcome": "pass"
+          },
+          {
+            "category": "Scalar edge cases",
+            "name": "doubleQuoted with colon",
+            "outcome": "pass"
+          },
+          {
+            "category": "Scalar edge cases",
+            "name": "doubleQuoted with braces",
+            "outcome": "pass"
+          },
+          {
+            "category": "Scalar edge cases",
+            "name": "doubleQuoted with all indicators",
+            "outcome": "pass"
+          },
+          {
+            "category": "Scalar edge cases",
+            "name": "doubleQuoted reserved 'true'",
+            "outcome": "pass"
+          },
+          {
+            "category": "Scalar edge cases",
+            "name": "doubleQuoted reserved 'null'",
+            "outcome": "pass"
+          },
+          {
+            "category": "Scalar edge cases",
+            "name": "doubleQuoted reserved 'false'",
+            "outcome": "pass"
+          },
+          {
+            "category": "Scalar edge cases",
+            "name": "doubleQuoted numeric '42'",
+            "outcome": "pass"
+          },
+          {
+            "category": "Collection structure round-trip",
+            "name": "block seq [a, b, c]",
+            "outcome": "pass"
+          },
+          {
+            "category": "Collection structure round-trip",
+            "name": "block map {key1: val1, key2: val2}",
+            "outcome": "pass"
+          },
+          {
+            "category": "Collection structure round-trip",
+            "name": "flow seq [x, y]",
+            "outcome": "pass"
+          },
+          {
+            "category": "Collection structure round-trip",
+            "name": "flow map {a: 1, b: 2}",
+            "outcome": "pass"
+          },
+          {
+            "category": "Collection structure round-trip",
+            "name": "nested block map with seq value",
+            "outcome": "pass"
+          },
+          {
+            "category": "Collection structure round-trip",
+            "name": "block seq of maps",
+            "outcome": "pass"
+          },
+          {
+            "category": "Collection structure round-trip",
+            "name": "flow collections inside block",
+            "outcome": "pass"
+          },
+          {
+            "category": "Collection structure round-trip",
+            "name": "empty flow seq []",
+            "outcome": "pass"
+          },
+          {
+            "category": "Collection structure round-trip",
+            "name": "empty flow map {}",
+            "outcome": "pass"
+          },
+          {
+            "category": "Collection structure round-trip",
+            "name": "3-level deep nesting",
+            "outcome": "pass"
+          },
+          {
+            "category": "Mutation resilience",
+            "name": "indent mutations: 16/16 handled consistently",
+            "outcome": "pass"
+          },
+          {
+            "category": "Mutation resilience",
+            "name": "tab mutations: 8/8 handled consistently",
+            "outcome": "pass"
+          },
+          {
+            "category": "Mutation resilience",
+            "name": "newline mutations: 8/8 handled consistently",
+            "outcome": "pass"
+          },
+          {
+            "category": "Mutation resilience",
+            "name": "colon mutations: 8/8 handled consistently",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 0: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 1: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 7: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 13: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 42: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 97: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 137: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 271: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 314: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 577: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 691: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 997: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 1234: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 2718: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 3141: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 4242: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 6174: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 7919: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 8675: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "seed 9999: 5/5 round-trip",
+            "outcome": "pass"
+          },
+          {
+            "category": "Diverse seed coverage",
+            "name": "total: 100/100 across 20 seeds",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+default",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=1",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=4",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+flow style",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+double-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+single-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+allow reserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+default",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=1",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=4",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+flow style",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+double-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+single-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+allow reserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+default",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=1",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=4",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+flow style",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+double-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+single-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+allow reserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+default",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=1",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=4",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+flow style",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+double-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+single-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+allow reserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+default",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=1",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=4",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+flow style",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+double-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+single-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+allow reserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+default",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=1",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=4",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+flow style",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+double-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+single-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+allow reserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+default",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=1",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=4",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+flow style",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+double-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+single-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+allow reserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+default",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=1",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=4",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+flow style",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+double-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+single-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+allow reserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+default",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=1",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=4",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+flow style",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+double-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+single-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+allow reserved",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+default",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=1",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+indent=4",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+flow style",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+double-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+single-quoted",
+            "outcome": "pass"
+          },
+          {
+            "category": "DumpConfig variation round-trip",
+            "name": "node+allow reserved",
+            "outcome": "pass"
+          }
+        ],
+        "total": 124
+      },
+      {
+        "allPass": true,
         "label": "Demo",
         "passed": 7,
         "tests": [
@@ -6780,7 +8419,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 833,
-    "totalTests": 833
+    "totalPassed": 1156,
+    "totalTests": 1156
   }
 }

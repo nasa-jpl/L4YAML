@@ -435,9 +435,12 @@ Running verified test suites...
   Schema ↔ Dump Integration: ✓ 68/68
   Scanner & TokenParser Tests (Phase 9): ✓ 32/32
   YAML 1.2.2 Spec Examples (Scanner/Parser Pipeline): ✓ 132/132
+  Adversarial Grammar-Directed Tests (v0.2.13.1): ✓ 154/154
+  Mutation Testing on yaml-test-suite (v0.2.13.2): ✓ 45/45
+  Property-Based Round-Trip Tests (v0.2.13.3): ✓ 124/124
   Demo: ✓ 7/7
 
-Verified: 833/833
+Verified: 1156/1156
 
 Generating HTML reports...
   wrote docs/index.html
