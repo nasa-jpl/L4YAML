@@ -35,7 +35,7 @@ Runtime verification tests for YAML explicit key (`?`) support
 19. **Indented explicit keys** — `  ? a\n  : b` (v0.2.10)
 20. **Tab rejection** — `?\t` forbidden per §6.1 (v0.2.10)
 21. **Misindented explicit value** — `? a\n : b` rejected (v0.2.10)
-22. **Same-line explicit value** — `? : x` rejected per §8.2.2 [197] (v0.2.11)
+22. **Same-line explicit key content** — `? : x` parses as compact mapping per §8.2.2 [196]
 23. **Block→flow underindent** — `a:\n{b: c}` rejected per §8.1 [187] (v0.2.11)
 -/
 
@@ -666,25 +666,30 @@ def testMisindentedExplicitValue (state : IO.Ref TestCollector) : IO Unit := do
   | .ok v => check state "nested ? ? a with correct : indents" v.isMapping
   | .error e => checkM state "nested explicit values parse" false e.toString
 
-/-! ## 22. Same-line Explicit Value Rejection — §8.2.2 [197] (v0.2.11) -/
+/-! ## 22. Same-line Explicit Key Content — §8.2.2 [196] -/
 
 def testSameLineExplicitValue (state : IO.Ref TestCollector) : IO Unit := do
-  setCategory state "Same-line explicit value rejection (§8.2.2)"
+  setCategory state "Same-line explicit key content (§8.2.2)"
 
-  -- ? : x — `:` on same line as `?` with no simple key → reject
+  -- ? : x — `:` on same line as `?` is implicit value for empty key
+  -- inside the explicit key's content: key = {"":"x"}, value = empty.
+  -- Per §8.2.2 [196]: `? s-l+block-indented(n,BLOCK-OUT)` → compact mapping.
   match parseSingle "? : x" with
-  | .ok _ => check state "? : x should error (same-line)" false
-  | .error _ => check state "? : x correctly rejected" true
+  | .ok v =>
+    check state "? : x parses as mapping" v.isMapping
+  | .error e => checkM state "? : x should parse" false e.toString
 
-  -- ? :\n— `:` on same line as `?` with empty value → reject
+  -- ? : — same-line `:` with empty value → key = {"":""}, value = empty
   match parseSingle "? :" with
-  | .ok _ => check state "? : should error (same-line)" false
-  | .error _ => check state "? : correctly rejected" true
+  | .ok v =>
+    check state "? : parses as mapping" v.isMapping
+  | .error e => checkM state "? : should parse" false e.toString
 
-  -- ? ? : b — nested explicit key, same-line `:` → reject
+  -- ? ? : b — nested explicit key, same-line `:` → compact mapping in key
   match parseSingle "? ? : b" with
-  | .ok _ => check state "? ? : b should error (same-line)" false
-  | .error _ => check state "? ? : b correctly rejected" true
+  | .ok v =>
+    check state "? ? : b parses as mapping" v.isMapping
+  | .error e => checkM state "? ? : b should parse" false e.toString
 
   -- ? key : val — `:` follows simple key on `?` line → accept (simple key context)
   match parseSingle "? key : val" with

@@ -552,7 +552,7 @@ Scanner hardening: systematic edge-case coverage for explicit key handling beyon
 **Key results:**
 - yaml-test-suite: 869 passed, 0 failed (151 skipped)
 - Explicit key tests: 134/134 (was 66/66, +68 new)
-- Verified internal tests: 818/818 across 11 suites
+- Verified internal tests: 1,032/1,032 across 13 suites
 - Compile-time guards: 2,124 total (+33 new in ScannerHardening.lean)
 - Adversarial grammar tests: 154/154 across 11 categories
 - Cross-validation vs libyaml: 131/136 match (4 known leniencies, 1 spec-correct divergence)
@@ -571,7 +571,7 @@ Leniency audit against libyaml identified four categories of non-compliant accep
 
 | Category | Inputs | Spec violation | Root cause |
 |----------|--------|----------------|------------|
-| **A. Same-line explicit value** | `? : b`, `? :`, `? ? : b` | §8.2.2 [197]: `l-block-map-explicit-value` has `l-` prefix (line-start); `:` as explicit value must be on its own line with `s-indent(n)` | `scanValueValidate` §8.2.2 check only fires when `s.line != ekLine`; same-line `:` with no pending simple key bypasses it |
+| **A. Same-line explicit value** | `? : b`, `? :`, `? ? : b` | §8.2.2 [197]: `l-block-map-explicit-value` has `l-` prefix (line-start); `:` as explicit value must be on its own line with `s-indent(n)` | `scanValueValidate` §8.2.2 check only fires when `s.line != ekLine`; same-line `:` with no pending simple key bypasses it. **Note:** fix reverted in v0.2.13 — yaml-test-suite M2N8 confirms `? : x` is valid: `:` is an implicit value indicator for an empty key inside the explicit key's content (compact mapping per §8.2.2 [196]), not the explicit value. |
 | **B. Misindented explicit value** | `? a\n : b`, `? a\n   : b` | §8.2.2 [197]: `s-indent(n)` requires `:` at exactly the mapping's indent column | ✅ Fixed — `scanValueValidate` now checks `(s.col : Int) != s.currentIndent` when on different line from `?` |
 | **C. Tab handling** | `\ta: b` (tab as indentation), `a:\tb` (tab as separation), `- \tx` (tab after entry) | §6.1 [63]: `s-indent(n) ::= s-space × n` — tabs forbidden as indentation. §6.2 [66]: `s-separate-in-line` includes `s-white` (tabs ok as separation) — ambiguous cases require derivation-chain analysis | Scanner does not distinguish tab-as-indentation from tab-as-separation in all contexts |
 | **D. Flow content underindent** | `a:\n{b: c}` (flow at col 0 as value of mapping) | §8.1 [187]: `s-l+block-indented(n,c)` requires content indented more than enclosing block | `scanNextToken_dispatchStructural` underindent check does not catch flow collection starts at or below enclosing indent |
@@ -581,7 +581,7 @@ Leniency audit against libyaml identified four categories of non-compliant accep
 
 | # | Item | Status |
 |---|------|--------|
-| 1 | Fix Category A: reject same-line explicit value (`:` on `?` line with no simple key) | ✅ |
+| 1 | Fix Category A: reject same-line explicit value (`:` on `?` line with no simple key) — **reverted in v0.2.13**: yaml-test-suite M2N8 confirms these are valid YAML | ⚠️ reverted |
 | 2 | Fix Category B: reject misindented explicit value (`:` on wrong column) | ✅ |
 | 3 | Fix Category C: reject tab-as-indentation — analyzed: no fix needed, spec-correct (§6.2 allows tabs as `s-separate-in-line`) | ✅ |
 | 4 | Fix Category D: reject flow content at or below enclosing block indent | ✅ |

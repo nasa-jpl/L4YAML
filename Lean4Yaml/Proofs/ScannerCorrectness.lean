@@ -481,10 +481,10 @@ so the token array is identical. -/
 theorem scanValueClearKey_preserves_tokens (s : ScannerState) :
     (scanValueClearKey s).tokens = s.tokens := by
   unfold scanValueClearKey; split
-  · rfl
   · split
-    · split <;> rfl
     · rfl
+    · split <;> rfl
+  · rfl
 
 /-- `scanValueClearKey` either returns `s` unchanged or clears `simpleKey.possible`.
     Used to transfer `SimpleKeyValid` through `scanValueClearKey`. -/
@@ -494,12 +494,12 @@ theorem scanValueClearKey_identity_or_clear (s : ScannerState) :
      (scanValueClearKey s).tokens = s.tokens) := by
   unfold scanValueClearKey
   split
-  · right; exact ⟨rfl, rfl⟩
   · split
+    · right; exact ⟨rfl, rfl⟩
     · split
       · right; exact ⟨rfl, rfl⟩
       · left; rfl
-    · left; rfl
+  · left; rfl
 
 /-- scanValuePrepare preserves or adds tokens.
 
@@ -2599,12 +2599,12 @@ theorem scanValue_preserves_prefix (s s' : ScannerState)
           (scanValueClearKey s).simpleKey.tokenIndex ≥ n := by
         unfold scanValueClearKey
         split
-        · simp
         · split
+          · simp
           · split
             · simp
             · exact h_inv
-          · exact h_inv
+        · exact h_inv
       have h_prep := scanValuePrepare_preserves_prefix (scanValueClearKey s) n
         (by rw [h_ck]; exact h_n) h_inv' i h_bound
       have h_emit := emit_preserves_tokens_at (scanValuePrepare (scanValueClearKey s))
@@ -4364,10 +4364,10 @@ theorem scanValue_preserves_simpleKeyStack (s : ScannerState) (s' : ScannerState
   simp [advance_preserves_simpleKeyStack, emit_preserves_simpleKeyStack,
         scanValuePrepare_preserves_simpleKeyStack]
   unfold scanValueClearKey; split
-  · rfl
   · split
-    · split <;> rfl
     · rfl
+    · split <;> rfl
+  · rfl
 
 /-- scanBlockScalarSkipComment preserves simpleKeyStack. -/
 theorem scanBlockScalarSkipComment_preserves_simpleKeyStack (s : ScannerState) :
@@ -6883,12 +6883,12 @@ theorem scanKey_preserves_ScanInv (s s' : ScannerState)
 theorem scanValueClearKey_preserves_ScanInv (s : ScannerState)
     (h : ScanInv s) : ScanInv (scanValueClearKey s) := by
   unfold scanValueClearKey; split
-  · exact field_update_preserves_ScanInv _ _ h rfl rfl
   · split
+    · exact field_update_preserves_ScanInv _ _ h rfl rfl
     · split
       · exact field_update_preserves_ScanInv _ _ h rfl rfl
       · exact h
-    · exact h
+  · exact h
 
 -- scanValue preserves ScanInv.
 -- Requires precondition on simple key validity (needed by scanValuePrepare).
