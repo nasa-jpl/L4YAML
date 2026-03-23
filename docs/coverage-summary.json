@@ -1,5 +1,5 @@
 {
-  "date": "2026-03-22T23:25:45-0700",
+  "date": "2026-03-23T12:32:35-0700",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -8453,7 +8453,7 @@
       {
         "allPass": true,
         "label": "Production Coverage Analysis",
-        "passed": 128,
+        "passed": 118,
         "tests": [
           {
             "category": "Catalog completeness",
@@ -8462,7 +8462,7 @@
           },
           {
             "category": "Catalog completeness",
-            "name": "in-scope productions: 207",
+            "name": "in-scope productions: 208",
             "outcome": "pass"
           },
           {
@@ -8472,27 +8472,27 @@
           },
           {
             "category": "Automated @[yaml_spec] discovery",
-            "name": "@[yaml_spec] entries discovered: 133",
+            "name": "@[yaml_spec] entries discovered: 229",
             "outcome": "pass"
           },
           {
             "category": "Automated @[yaml_spec] discovery",
-            "name": "unique production rules annotated: 96",
+            "name": "unique production rules annotated: 109",
             "outcome": "pass"
           },
           {
             "category": "Automated @[yaml_spec] discovery",
-            "name": "source modules with annotations: 3",
+            "name": "source modules with annotations: 4",
             "outcome": "pass"
           },
           {
             "category": "Coverage analysis",
-            "name": "annotated productions: 96/207",
+            "name": "annotated productions: 108/208",
             "outcome": "pass"
           },
           {
             "category": "Coverage analysis",
-            "name": "unannotated in-scope productions: 111",
+            "name": "unannotated in-scope productions: 100",
             "outcome": "pass"
           },
           {
@@ -8502,7 +8502,7 @@
           },
           {
             "category": "Per-module annotation counts",
-            "name": "Lean4Yaml.Scanner: 112 annotations",
+            "name": "Lean4Yaml.Scanner: 114 annotations",
             "outcome": "pass"
           },
           {
@@ -8512,12 +8512,17 @@
           },
           {
             "category": "Per-module annotation counts",
-            "name": "Lean4Yaml.CharPredicates: 7 annotations",
+            "name": "Lean4Yaml.CharPredicates: 80 annotations",
+            "outcome": "pass"
+          },
+          {
+            "category": "Per-module annotation counts",
+            "name": "Lean4Yaml.Token: 21 annotations",
             "outcome": "pass"
           },
           {
             "category": "Per-chapter coverage",
-            "name": "Ch 5 (Characters): 39/59",
+            "name": "Ch 5 (Characters): 49/60",
             "outcome": "pass"
           },
           {
@@ -8527,7 +8532,7 @@
           },
           {
             "category": "Per-chapter coverage",
-            "name": "Ch 7 (Flow Styles): 21/57",
+            "name": "Ch 7 (Flow Styles): 23/57",
             "outcome": "pass"
           },
           {
@@ -8543,46 +8548,6 @@
           {
             "category": "Unannotated productions (gaps)",
             "name": "[3] c-byte-order-mark (§5.2) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[4] c-sequence-entry (§5.3) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[5] c-mapping-key (§5.3) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[12] c-comment (§5.3) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[15] c-tag (§5.3) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[16] c-literal (§5.3) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[17] c-folded (§5.3) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[24] b-line-feed (§5.4) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[25] b-carriage-return (§5.4) — no @[yaml_spec]",
             "outcome": "pass"
           },
           {
@@ -8603,11 +8568,6 @@
           {
             "category": "Unannotated productions (gaps)",
             "name": "[30] b-non-content (§5.4) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[32] s-tab (§5.5) — no @[yaml_spec]",
             "outcome": "pass"
           },
           {
@@ -8802,22 +8762,12 @@
           },
           {
             "category": "Unannotated productions (gaps)",
-            "name": "[127] ns-plain-safe(c) (§7.3.3) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
             "name": "[128] ns-plain-safe-out (§7.3.3) — no @[yaml_spec]",
             "outcome": "pass"
           },
           {
             "category": "Unannotated productions (gaps)",
             "name": "[129] ns-plain-safe-in (§7.3.3) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[130] ns-plain-char(c) (§7.3.3) — no @[yaml_spec]",
             "outcome": "pass"
           },
           {
@@ -9096,7 +9046,7 @@
             "outcome": "pass"
           }
         ],
-        "total": 128
+        "total": 118
       },
       {
         "allPass": true,
@@ -9142,7 +9092,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 1299,
-    "totalTests": 1299
+    "totalPassed": 1289,
+    "totalTests": 1289
   }
 }

@@ -1460,46 +1460,38 @@
 
 --- Catalog completeness ---
   ✓ YAML 1.2.2 productions cataloged: 211
-  ✓ in-scope productions: 207
+  ✓ in-scope productions: 208
   ✓ indent-dependent productions: 49
 
 --- Automated @[yaml_spec] discovery ---
-  ✓ @[yaml_spec] entries discovered: 133
-  ✓ unique production rules annotated: 96
-  ✓ source modules with annotations: 3
+  ✓ @[yaml_spec] entries discovered: 229
+  ✓ unique production rules annotated: 109
+  ✓ source modules with annotations: 4
 
 --- Coverage analysis ---
-  ✓ annotated productions: 96/207
-  ✓ unannotated in-scope productions: 111
+  ✓ annotated productions: 108/208
+  ✓ unannotated in-scope productions: 100
   ✓ indent-dependent with annotations: 16/49
 
 --- Per-module annotation counts ---
-  ✓ Lean4Yaml.Scanner: 112 annotations
+  ✓ Lean4Yaml.Scanner: 114 annotations
   ✓ Lean4Yaml.TokenParser: 14 annotations
-  ✓ Lean4Yaml.CharPredicates: 7 annotations
+  ✓ Lean4Yaml.CharPredicates: 80 annotations
+  ✓ Lean4Yaml.Token: 21 annotations
 
 --- Per-chapter coverage ---
-  ✓ Ch 5 (Characters): 39/59
+  ✓ Ch 5 (Characters): 49/60
   ✓ Ch 6 (Basic Structures): 19/41
-  ✓ Ch 7 (Flow Styles): 21/57
+  ✓ Ch 7 (Flow Styles): 23/57
   ✓ Ch 8 (Block Styles): 12/40
   ✓ Ch 9 (Documents): 5/10
 
 --- Unannotated productions (gaps) ---
   ✓ [3] c-byte-order-mark (§5.2) — no @[yaml_spec]
-  ✓ [4] c-sequence-entry (§5.3) — no @[yaml_spec]
-  ✓ [5] c-mapping-key (§5.3) — no @[yaml_spec]
-  ✓ [12] c-comment (§5.3) — no @[yaml_spec]
-  ✓ [15] c-tag (§5.3) — no @[yaml_spec]
-  ✓ [16] c-literal (§5.3) — no @[yaml_spec]
-  ✓ [17] c-folded (§5.3) — no @[yaml_spec]
-  ✓ [24] b-line-feed (§5.4) — no @[yaml_spec]
-  ✓ [25] b-carriage-return (§5.4) — no @[yaml_spec]
   ✓ [27] nb-char (§5.4) — no @[yaml_spec]
   ✓ [28] b-break (§5.4) — no @[yaml_spec]
   ✓ [29] b-as-line-feed (§5.4) — no @[yaml_spec]
   ✓ [30] b-non-content (§5.4) — no @[yaml_spec]
-  ✓ [32] s-tab (§5.5) — no @[yaml_spec]
   ✓ [34] ns-char (§5.5) — no @[yaml_spec]
   ✓ [35] ns-dec-digit (§5.6) — no @[yaml_spec]
   ✓ [36] ns-hex-digit (§5.6) — no @[yaml_spec]
@@ -1538,10 +1530,8 @@
   ✓ [123] nb-ns-single-in-line (§7.3.2) — no @[yaml_spec]
   ✓ [124] s-single-next-line(n) (§7.3.2) — no @[yaml_spec]
   ✓ [125] nb-single-multi-line(n) (§7.3.2) — no @[yaml_spec]
-  ✓ [127] ns-plain-safe(c) (§7.3.3) — no @[yaml_spec]
   ✓ [128] ns-plain-safe-out (§7.3.3) — no @[yaml_spec]
   ✓ [129] ns-plain-safe-in (§7.3.3) — no @[yaml_spec]
-  ✓ [130] ns-plain-char(c) (§7.3.3) — no @[yaml_spec]
   ✓ [132] nb-ns-plain-in-line(c) (§7.3.3) — no @[yaml_spec]
   ✓ [133] ns-plain-one-line(c) (§7.3.3) — no @[yaml_spec]
   ✓ [134] s-ns-plain-next-line(n,c) (§7.3.3) — no @[yaml_spec]
@@ -1598,5 +1588,5 @@
   ✓ [208] l-explicit-document (§9.1.4) — no @[yaml_spec]
   ✓ [209] l-directive-document (§9.1.5) — no @[yaml_spec]
 
-=== Results: 128/128 passed ===
+=== Results: 118/118 passed ===
   wrote docs/production-coverage.html
