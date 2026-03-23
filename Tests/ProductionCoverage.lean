@@ -47,7 +47,7 @@ structure YamlProduction where
 def yamlProductions : Array YamlProduction := #[
   -- Chapter 5: Character Productions (5.1–5.7)
   { number := 1,   name := "c-printable",                       chapter := "5", specSec := "5.1",   status := "G" },
-  { number := 2,   name := "nb-json",                           chapter := "5", specSec := "5.1",   status := "OOS" },
+  { number := 2,   name := "nb-json",                           chapter := "5", specSec := "5.1",   status := "G" },
   { number := 3,   name := "c-byte-order-mark",                 chapter := "5", specSec := "5.2",   status := "P" },
   { number := 4,   name := "c-sequence-entry",                  chapter := "5", specSec := "5.3",   status := "P" },
   { number := 5,   name := "c-mapping-key",                     chapter := "5", specSec := "5.3",   status := "P" },
@@ -370,7 +370,7 @@ def coveredIndentProductions : Array Nat :=
 
 -- Catalog completeness
 #guard yamlProductions.size == 211
-#guard inScopeProductions.size == 207  -- 211 - 4 out of scope
+#guard inScopeProductions.size == 208  -- 211 - 3 out of scope
 
 -- Dynamic coverage discovery (these will be verified at build time)
 #guard discoveredSpecEntries.size > 0
@@ -772,7 +772,7 @@ def collectTests : IO VerifiedSuiteResult := do
   check state s!"YAML 1.2.2 productions cataloged: {yamlProductions.size}"
     (yamlProductions.size == 211)
   check state s!"in-scope productions: {inScopeProductions.size}"
-    (inScopeProductions.size == 207)
+    (inScopeProductions.size == 208)
   check state s!"indent-dependent productions: {indentProductionNums.size}"
     (indentProductionNums.size == 49)
 

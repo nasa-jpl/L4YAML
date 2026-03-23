@@ -2859,6 +2859,7 @@ theorem collectDoubleQuotedLoop_preserves_flowLevel (s : ScannerState) (content 
         -- After all validations pass, we have the recursive call
         exact ih _ _ h |>.trans h_fl_fold
       · -- Regular character
+        split at h <;> try contradiction  -- isNbJsonBool check
         exact ih _ _ h |>.trans (advance_preserves_flowLevel s)
 
 theorem scanDoubleQuoted_preserves_flowLevel (s s' : ScannerState)
@@ -2909,6 +2910,7 @@ theorem collectSingleQuotedLoop_preserves_flowLevel (s : ScannerState) (content 
         split at h <;> try contradiction
         exact ih _ _ h |>.trans h_fl_fold
       · -- Regular character
+        split at h <;> try contradiction  -- isNbJsonBool check
         exact ih _ _ h |>.trans (advance_preserves_flowLevel s)
 
 theorem scanSingleQuoted_preserves_flowLevel (s s' : ScannerState)

@@ -1268,6 +1268,7 @@ theorem collectDoubleQuotedLoop_preserves_tokens (s : ScannerState) (content : S
           split at h <;> try contradiction
           rw [ih s_fold (trimTrailingWS content ++ folded) h, h_fold]
       · -- regular character
+        split at h <;> try contradiction  -- isNbJsonBool check
         have h_adv := advance_preserves_tokens s
         rw [ih _ _ h, h_adv]
 
@@ -1310,6 +1311,7 @@ theorem collectSingleQuotedLoop_preserves_tokens (s : ScannerState) (content : S
           split at h <;> try contradiction  -- col ≤ currentIndent check
           rw [ih s_fold _ h, h_fold]
       · -- isLineBreak c = false, regular character
+        split at h <;> try contradiction  -- isNbJsonBool check
         have h_adv := advance_preserves_tokens s
         rw [ih s.advance _ h, h_adv]
 
@@ -3143,6 +3145,7 @@ theorem collectDoubleQuotedLoop_preserves_simpleKey (s : ScannerState) (content 
           split at h <;> try contradiction
           rw [ih s_fold (trimTrailingWS content ++ folded) h, h_fold]
       · -- regular character
+        split at h <;> try contradiction  -- isNbJsonBool check
         have h_adv := advance_preserves_simpleKey s
         rw [ih _ _ h, h_adv]
 
@@ -3185,6 +3188,7 @@ theorem collectSingleQuotedLoop_preserves_simpleKey (s : ScannerState) (content 
           split at h <;> try contradiction  -- col ≤ currentIndent check
           rw [ih s_fold _ h, h_fold]
       · -- isLineBreak c = false, regular character
+        split at h <;> try contradiction  -- isNbJsonBool check
         have h_adv := advance_preserves_simpleKey s
         rw [ih s.advance _ h, h_adv]
 
@@ -3771,6 +3775,7 @@ theorem collectDoubleQuotedLoop_preserves_simpleKeyStack (s : ScannerState) (con
           split at h <;> try contradiction
           rw [ih s_fold (trimTrailingWS content ++ folded) h, h_fold]
       · -- regular character
+        split at h <;> try contradiction  -- isNbJsonBool check
         have h_adv := advance_preserves_simpleKeyStack s
         rw [ih _ _ h, h_adv]
 
@@ -3813,6 +3818,7 @@ theorem collectSingleQuotedLoop_preserves_simpleKeyStack (s : ScannerState) (con
           split at h <;> try contradiction  -- col ≤ currentIndent check
           rw [ih s_fold _ h, h_fold]
       · -- isLineBreak c = false, regular character
+        split at h <;> try contradiction  -- isNbJsonBool check
         have h_adv := advance_preserves_simpleKeyStack s
         rw [ih s.advance _ h, h_adv]
 
@@ -6412,6 +6418,7 @@ theorem collectDoubleQuotedLoop_offset_ge (s : ScannerState) (content : String)
           split at h <;> try contradiction  -- col ≤ currentIndent
           exact Nat.le_trans (foldQuotedNewlines_offset_ge s folded s_fold heq) (ih _ _ h)
       · -- regular character: advance → recurse
+        split at h <;> try contradiction  -- isNbJsonBool check
         exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ h)
 
 theorem collectSingleQuotedLoop_offset_ge (s : ScannerState) (content : String)
@@ -6447,6 +6454,7 @@ theorem collectSingleQuotedLoop_offset_ge (s : ScannerState) (content : String)
           split at h <;> try contradiction  -- col ≤ currentIndent
           exact Nat.le_trans (foldQuotedNewlines_offset_ge s folded s_fold heq) (ih _ _ h)
       · -- regular character: advance → recurse
+        split at h <;> try contradiction  -- isNbJsonBool check
         exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ h)
 
 theorem collectPlainScalarLoop_offset_ge (s : ScannerState) (content spaces : String)
