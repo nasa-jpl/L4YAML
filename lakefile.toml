@@ -23,6 +23,7 @@ defaultTargets = [
   "adversarialtests",
   "mutationtests",
   "propertytests",
+  "productioncoverage",
 ]
 
 [leanOptions]
@@ -197,4 +198,11 @@ name = "Tests.ScannerSpecExamples"
 [[lean_exe]]
 name = "scannerspecexamples"
 root = "Tests.ScannerSpecExamples.Runner"
+
+[[lean_lib]]
+name = "Tests.ProductionCoverage"
+
+[[lean_exe]]
+name = "productioncoverage"
+root = "Tests.ProductionCoverage.Runner"
 

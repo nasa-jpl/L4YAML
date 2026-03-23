@@ -195,8 +195,8 @@ def canStartPlainScalarBool (c : Char) (next : Option Char) (inFlow : Bool) : Bo
   else
     !isIndicatorBool c && !isWhiteSpaceBool c && !isLineBreakBool c
 
-/-- `[123] ns-plain-first(c)`: can character start a plain scalar? (Prop). -/
-@[yaml_spec "7.3.3" 123 "ns-plain-first(c)"]
+/-- `[126] ns-plain-first(c)`: can character start a plain scalar? (Prop). -/
+@[yaml_spec "7.3.3" 126 "ns-plain-first(c)"]
 def canStartPlainScalarProp (c : Char) (next : Option Char) (inFlow : Bool) : Prop :=
   if c = '-' ∨ c = '?' ∨ c = ':' then
     match next with

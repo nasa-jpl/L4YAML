@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml.Token
 import Lean4Yaml.Scanner
+import Lean4Yaml.YamlSpec
 
 /-!
 # YAML Grammar Parser (Token → AST)
@@ -171,6 +172,7 @@ structure NodeProperties where
     - **Default secondary** (`!!` without explicit `%TAG !!`): keep shorthand
       `"!!" ++ suffix` to match the old parser's convention (see README §10d).
     - **Default primary** (`!` without explicit `%TAG !`): keep `"!" ++ suffix`. -/
+@[yaml_spec "6.8.2" 99 "c-ns-shorthand-tag"]
 def resolveTag (tagHandles : Array (String × String))
     (handle suffix : String) : String :=
   if handle == "" && suffix != "" then suffix
@@ -197,6 +199,7 @@ def resolveTag (tagHandles : Array (String × String))
     **Pre**: Parse state at potential anchor/tag tokens.
     **Post**: Returns `(NodeProperties, advanced state)` — at most one anchor and one tag.
     **Error**: `undeclaredTagHandle` (named handle not in `%TAG` declarations). -/
+@[yaml_spec "6.9" 96 "c-ns-properties(n,c)"]
 def parseNodeProperties (ps : ParseState) : Except ScanError (NodeProperties × ParseState) := do
   let mut ps := ps
   let mut props : NodeProperties := {}
@@ -336,7 +339,7 @@ def parseNodeContent (ps : ParseState) (fuel : Nat) (props : NodeProperties) :
     - `[196] s-l+block-node(n,c)`  = `s-l+block-in-block(n,c) | s-l+flow-in-block(n)`
     - `[197] s-l+flow-in-block(n)` = `s-separate(n+1,FLOW-OUT) ns-flow-node(n+1,FLOW-OUT) ...`
     - `[198] s-l+block-in-block(n,c)` = `s-l+block-scalar(n,c) | s-l+block-collection(n,c)`
-    - `[159] ns-flow-node(n,c)` = `c-ns-alias-node | ns-flow-content(n,c) | (ns-flow-content ...)`
+    - `[161] ns-flow-node(n,c)` = `c-ns-alias-node | ns-flow-content(n,c) | (ns-flow-content ...)`
 
     Sequence: alias check → node properties → content dispatch (scalar / block collection / flow collection / empty).
 
@@ -344,6 +347,7 @@ def parseNodeContent (ps : ParseState) (fuel : Nat) (props : NodeProperties) :
     **Post**: Returns the parsed `YamlValue` and the advanced parse state.
     **Error**: `nestingDepthExceeded` (fuel exhausted), `trailingContent` (properties and block collection on same line),
     `duplicateAnchor` (two anchors on scalar/empty node, §6.9.2). -/
+@[yaml_spec "8.1" 196 "s-l+block-node(n,c)", yaml_spec "7.5" 161 "ns-flow-node(n,c)"]
 def parseNode (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
   match fuel with
   | 0 => .error (.nestingDepthExceeded ps.currentLine)
@@ -377,13 +381,14 @@ def parseNode (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × Pa
 /-- Parse a block sequence.
 
     **Implements** (YAML 1.2.2 §8.2.1):
-    - `[186] l+block-sequence(n)` = `(s-indent(n+m) c-l-block-seq-entry(n+m))+`
-    - `[187] c-l-block-seq-entry(n)` = `"-" s-l+block-indented(n,BLOCK-IN)`
+    - `[183] l+block-sequence(n)` = `(s-indent(n+m) c-l-block-seq-entry(n+m))+`
+    - `[184] c-l-block-seq-entry(n)` = `"-" s-l+block-indented(n,BLOCK-IN)`
 
     Token grammar: `BLOCK-SEQ-START (BLOCK-ENTRY node?)* BLOCK-END`
 
     **Pre**: Current token is `blockSequenceStart`.
     **Post**: Consumes through `blockEnd`, returns `YamlValue.sequence .block items`. -/
+@[yaml_spec "8.2.1" 183 "l+block-sequence(n)"]
 def parseBlockSequence (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
   match fuel with
   | 0 => .error (.nestingDepthExceeded ps.currentLine)
@@ -419,7 +424,7 @@ def parseBlockSequenceLoop (ps : ParseState) (fuel : Nat)
 /-- Parse an implicit block sequence (no `BLOCK-SEQUENCE-START` token).
 
     **Implements** (YAML 1.2.2 §8.2.1):
-    - `[186] l+block-sequence(n)` — variant where the scanner omits
+    - `[186] ns-l-compact-sequence(n)` — variant where the scanner omits
       `BLOCK-SEQUENCE-START` because block entries sit at the same indent
       level as the containing mapping key (matching libyaml behaviour).
 
@@ -430,6 +435,7 @@ def parseBlockSequenceLoop (ps : ParseState) (fuel : Nat)
     **Pre**: Current token is `blockEntry` without a preceding `blockSequenceStart`.
     **Post**: Consumes entries until parent-structure delimiter, returns
     `YamlValue.sequence .block items`. -/
+@[yaml_spec "8.2.1" 186 "ns-l-compact-sequence(n)"]
 def parseImplicitBlockSequence (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
   match fuel with
   | 0 => .error (.nestingDepthExceeded ps.currentLine)
@@ -462,8 +468,8 @@ def parseImplicitBlockSequenceLoop (ps : ParseState) (fuel : Nat)
 /-- Parse a block mapping.
 
     **Implements** (YAML 1.2.2 §8.2.2):
-    - `[188] l+block-mapping(n)` = `(s-indent(n+m) ns-l-block-map-entry(n+m))+`
-    - `[189] ns-l-block-map-entry(n)` = `c-l-block-map-explicit-entry(n) | ns-l-block-map-implicit-entry(n)`
+    - `[187] l+block-mapping(n)` = `(s-indent(n+m) ns-l-block-map-entry(n+m))+`
+    - `[188] ns-l-block-map-entry(n)` = `c-l-block-map-explicit-entry(n) | ns-l-block-map-implicit-entry(n)`
     - `[192] ns-l-block-map-implicit-entry(n)` = `(ns-s-implicit-yaml-key ... | e-node) c-l-block-map-implicit-value(n)`
 
     Token grammar: `BLOCK-MAP-START (KEY node? VALUE node?)* BLOCK-END`
@@ -474,6 +480,7 @@ def parseImplicitBlockSequenceLoop (ps : ParseState) (fuel : Nat)
 
     **Pre**: Current token is `blockMappingStart`.
     **Post**: Consumes through `blockEnd`, returns `YamlValue.mapping .block pairs`. -/
+@[yaml_spec "8.2.2" 187 "l+block-mapping(n)"]
 def parseBlockMapping (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
   match fuel with
   | 0 => .error (.nestingDepthExceeded ps.currentLine)
@@ -587,6 +594,7 @@ def parseBlockMappingLoop (ps : ParseState) (fuel : Nat)
 
     **Pre**: Current token is `flowSequenceStart`.
     **Post**: Consumes through `flowSequenceEnd`, returns `YamlValue.sequence .flow items`. -/
+@[yaml_spec "7.4.1" 137 "c-flow-sequence(n,c)"]
 def parseFlowSequence (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
   match fuel with
   | 0 => .error (.nestingDepthExceeded ps.currentLine)
@@ -632,9 +640,9 @@ def parseFlowSequenceLoop (ps : ParseState) (fuel : Nat)
 /-- Parse a flow mapping.
 
     **Implements** (YAML 1.2.2 §7.4.2):
-    - `[138] c-flow-mapping(n,c)` = `"{" s-separate(n,c)? ns-s-flow-map-entries(n,FLOW-IN)? "}"`
-    - `[139] ns-s-flow-map-entries(n,c)` = `ns-flow-map-entry(n,c) ...`
-    - `[140] ns-flow-map-entry(n,c)` = `("?" ... | ns-flow-map-implicit-entry(n,c))`
+    - `[140] c-flow-mapping(n,c)` = `"{" s-separate(n,c)? ns-s-flow-map-entries(n,FLOW-IN)? "}"`
+    - `[141] ns-s-flow-map-entries(n,c)` = `ns-flow-map-entry(n,c) ...`
+    - `[142] ns-flow-map-entry(n,c)` = `("?" ... | ns-flow-map-implicit-entry(n,c))`
 
     Token grammar: `FLOW-MAP-START (entries)? FLOW-MAP-END`
 
@@ -642,6 +650,7 @@ def parseFlowSequenceLoop (ps : ParseState) (fuel : Nat)
 
     **Pre**: Current token is `flowMappingStart`.
     **Post**: Consumes through `flowMappingEnd`, returns `YamlValue.mapping .flow pairs`. -/
+@[yaml_spec "7.4.2" 140 "c-flow-mapping(n,c)"]
 def parseFlowMapping (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
   match fuel with
   | 0 => .error (.nestingDepthExceeded ps.currentLine)
@@ -721,6 +730,7 @@ def parseFlowMappingLoop (ps : ParseState) (fuel : Nat)
 
     **Pre**: Current token is `key` inside a flow sequence.
     **Post**: Consumes key, optional value, returns `YamlValue.mapping .flow #[(key, val)]`. -/
+@[yaml_spec "7.4.1" 150 "ns-flow-pair(n,c)"]
 def parseSinglePairMapping (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
   match fuel with
   | 0 => .error (.nestingDepthExceeded ps.currentLine)
@@ -793,6 +803,7 @@ inductive StreamState where
     in flow context — the parser will produce empty/harmless documents from
     them.  Only tokens that could genuinely *start* a bare document node
     (per §9.1.4 `l-bare-document` → `s-l+block-node`) are rejected. -/
+@[yaml_spec "9.2" 211 "l-yaml-stream"]
 def StreamState.validNextToken (state : StreamState) (tok : YamlToken) : Bool :=
   match state with
   | .initial         => true   -- first document: any token is valid
@@ -837,6 +848,7 @@ def StreamState.validNextToken (state : StreamState) (tok : YamlToken) : Bool :=
 
     **Pre**: Parse state at potential directive tokens.
     **Post**: Consumes all contiguous directive tokens, returns `(directives, advanced state)`. -/
+@[yaml_spec "6.8" 82 "l-directive"]
 def parseDirectives (ps : ParseState) : (Array Directive × ParseState) := Id.run do
   let mut ps := ps
   let mut dirs : Array Directive := #[]
@@ -891,6 +903,7 @@ def prepareDocumentState (ps : ParseState) :
     **Pre**: Parse state at the first token of a document (directive, `---`, or content).
     **Post**: Returns `YamlDocument` (value + directives + anchors) and advanced state.
     **Error**: `contentOnDocumentStartLine` (block collection on `---` line, §9.1.1). -/
+@[yaml_spec "9.1" 210 "l-any-document"]
 def parseDocument (ps : ParseState) : Except ScanError (YamlDocument × ParseState) := do
   let (dirs, ps) ← prepareDocumentState ps
   let fuel := 4 * ps.tokens.size + 4
@@ -957,6 +970,7 @@ def parseStreamLoop (ps : ParseState) (docs : Array YamlDocument)
     **Pre**: Token array starts with `streamStart`.
     **Post**: Consumes through `streamEnd`, returns array of documents.
     **Error**: `invalidBareDocument` (bare content after non-`...`-terminated document, §9.2). -/
+@[yaml_spec "9.2" 211 "l-yaml-stream"]
 def parseStream (tokens : Array (Positioned YamlToken))
     (trackPositions : Bool := false) : Except ScanError (Array YamlDocument) := do
   let ps : ParseState := { tokens := tokens, trackPositions := trackPositions }

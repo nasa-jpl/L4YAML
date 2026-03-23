@@ -622,3 +622,61 @@ The net effect is **more proofs, but simpler proofs**: each layer's properties
 are stated and proved independently, then composed. This mirrors the
 compounding pattern observed in Phases 3–5 where layered specifications made
 each subsequent proof phase easier.
+
+---
+
+## Boundary Test Coverage Gap Report (v0.2.13.5)
+
+Cross-reference of indent-dependent productions against dedicated boundary tests.
+See `Tests/ProductionCoverage.lean` for the compile-time analysis.
+
+### Summary
+
+| Metric | Count |
+|--------|-------|
+| Total indent-dependent productions | 44 |
+| Key productions analyzed | 14 |
+| Fully covered (under + over + tab) | 5 |
+| Zero boundary tests | 5 |
+| Missing under-indent tests | 5 |
+| Missing over-indent tests | 8 |
+| Missing tab-injection tests | 9 |
+
+### Fully Covered Productions ✓
+
+| # | Production | Under | Over | Tab | Test Source |
+|---|-----------|-------|------|-----|-------------|
+| [63] | `s-indent(n)` | ✓ | ✓ | ✓ | Adversarial §1-§2, Mutation indent±1 |
+| [170] | `c-l+literal(n)` | ✓ | ✓ | ✓ | Adversarial §6, DumpRoundTrip |
+| [175] | `c-l+folded(n)` | ✓ | ✓ | ✓ | Adversarial §6, DumpRoundTrip |
+| [180] | `l+block-sequence(n)` | ✓ | ✓ | ✓ | Adversarial §3, Mutation, Property |
+| [184] | `l+block-mapping(n)` | ✓ | ✓ | ✓ | Adversarial §4, ExplicitKey, Mutation |
+
+### Partially Covered Productions
+
+| # | Production | Under | Over | Tab | Coverage Notes |
+|---|-----------|-------|------|-----|---------------|
+| [71] | `b-l-folded(n,c)` | ✓ | — | — | Adversarial §6 folded under-indent only |
+| [158] | `c-b-block-header(m,t)` | ✓ | — | — | yaml-test-suite `header` (23), Adversarial §6 |
+| [187] | `l-block-map-explicit-value(n)` | ✓ | ✓ | — | Adversarial §7, ExplicitKeyTests §21 |
+| [193] | `s-l+flow-in-block(n)` | ✓ | — | — | Adversarial §5, ExplicitKeyTests §23 |
+
+### Zero Boundary Test Productions (gap targets)
+
+| # | Production | Implicit Coverage |
+|---|-----------|------------------|
+| [67] | `s-line-prefix(n,c)` | Multi-line scalar continuation tests |
+| [68] | `l-empty(n,c)` | yaml-test-suite literal/folded/whitespace (122) |
+| [72] | `s-flow-folded(n)` | yaml-test-suite double (32), PropertyTests |
+| [80] | `s-separate(n,c)` | Pervasive in all yaml-test-suite tests |
+| [179] | `seq-spaces(n,c)` | Nested block sequence tests (implicit) |
+
+### `@[yaml_spec]` Annotation Coverage
+
+| File | Annotations | Layer |
+|------|------------|-------|
+| `Scanner.lean` | 46 | C + L layers |
+| `CharPredicates.lean` | 7 | C layer |
+| `Grammar.lean` | 9 | S layer (formal specs) |
+| `TokenParser.lean` | 13 | S layer (parser functions) |
+| **Total** | **75** | |
