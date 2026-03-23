@@ -480,7 +480,8 @@ termination_by fuel
     Comments are collected into `ScannerState.comments` as a side-channel
     (§6.6: comments have no effect on the serialization tree). -/
 @[yaml_spec "6.6" 75 "c-nb-comment-text",
-  yaml_spec "6.6" 77 "s-b-comment"]
+  yaml_spec "6.6" 77 "s-b-comment",
+  yaml_spec "5.4" 27 "nb-char"]
 def skipToContentComment (s : ScannerState) : ScannerState :=
   match s.peek? with
   | some '#' =>
@@ -2069,7 +2070,9 @@ def parseBlockHeaderLoop (s : ScannerState) (chomp : ChompStyle) (explicitOffset
 
     **Decomposed for provability**: 3 branch points (peek?, peekBack?, commentOk).
     Extracted from `scanBlockScalar` so proofs unfold only this piece. -/
-@[yaml_spec "6.7" 77 "s-b-comment"]
+@[yaml_spec "6.7" 77 "s-b-comment",
+  yaml_spec "6.6" 75 "c-nb-comment-text",
+  yaml_spec "5.4" 27 "nb-char"]
 def scanBlockScalarSkipComment (s : ScannerState) : ScannerState :=
   match s.peek? with
   | some '#' =>
@@ -2093,7 +2096,8 @@ def scanBlockScalarSkipComment (s : ScannerState) : ScannerState :=
 
     **Decomposed for provability**: 3 branch points (peek?, isLineBreakBool, hasMore).
     Extracted from `scanBlockScalar` so proofs unfold only this piece. -/
-@[yaml_spec "6.7" 77 "s-b-comment"]
+@[yaml_spec "6.6" 76 "b-comment",
+  yaml_spec "5.4" 30 "b-non-content"]
 def scanBlockScalarConsumeNewline (s : ScannerState) : Except ScanError ScannerState :=
   match s.peek? with
   | some c =>
