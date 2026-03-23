@@ -7,34 +7,32 @@
   ✓ indent-dependent productions: 49
 
 --- Automated @[yaml_spec] discovery ---
-  ✓ @[yaml_spec] entries discovered: 229
-  ✓ unique production rules annotated: 109
+  ✓ @[yaml_spec] entries discovered: 233
+  ✓ unique production rules annotated: 112
   ✓ source modules with annotations: 4
 
 --- Coverage analysis ---
-  ✓ annotated productions: 108/208
-  ✓ unannotated in-scope productions: 100
+  ✓ annotated productions: 111/208
+  ✓ unannotated in-scope productions: 97
   ✓ indent-dependent with annotations: 16/49
 
 --- Per-module annotation counts ---
-  ✓ Lean4Yaml.Scanner: 114 annotations
+  ✓ Lean4Yaml.Scanner: 118 annotations
   ✓ Lean4Yaml.TokenParser: 14 annotations
   ✓ Lean4Yaml.CharPredicates: 80 annotations
   ✓ Lean4Yaml.Token: 21 annotations
 
 --- Per-chapter coverage ---
-  ✓ Ch 5 (Characters): 49/60
-  ✓ Ch 6 (Basic Structures): 19/41
+  ✓ Ch 5 (Characters): 51/60
+  ✓ Ch 6 (Basic Structures): 20/41
   ✓ Ch 7 (Flow Styles): 23/57
   ✓ Ch 8 (Block Styles): 12/40
   ✓ Ch 9 (Documents): 5/10
 
 --- Unannotated productions (gaps) ---
   ✓ [3] c-byte-order-mark (§5.2) — no @[yaml_spec]
-  ✓ [27] nb-char (§5.4) — no @[yaml_spec]
   ✓ [28] b-break (§5.4) — no @[yaml_spec]
   ✓ [29] b-as-line-feed (§5.4) — no @[yaml_spec]
-  ✓ [30] b-non-content (§5.4) — no @[yaml_spec]
   ✓ [34] ns-char (§5.5) — no @[yaml_spec]
   ✓ [35] ns-dec-digit (§5.6) — no @[yaml_spec]
   ✓ [36] ns-hex-digit (§5.6) — no @[yaml_spec]
@@ -47,7 +45,6 @@
   ✓ [68] s-block-line-prefix(n) (§6.3) — no @[yaml_spec]
   ✓ [71] b-l-trimmed(n,c) (§6.5) — no @[yaml_spec]
   ✓ [72] b-as-space (§6.5) — no @[yaml_spec]
-  ✓ [76] b-comment (§6.6) — no @[yaml_spec]
   ✓ [80] s-separate(n,c) (§6.7) — no @[yaml_spec]
   ✓ [81] s-separate-lines(n) (§6.7) — no @[yaml_spec]
   ✓ [83] ns-reserved-directive (§6.8) — no @[yaml_spec]
@@ -131,5 +128,5 @@
   ✓ [208] l-explicit-document (§9.1.4) — no @[yaml_spec]
   ✓ [209] l-directive-document (§9.1.5) — no @[yaml_spec]
 
-=== Results: 118/118 passed ===
+=== Results: 115/115 passed ===
   wrote docs/production-coverage.html
