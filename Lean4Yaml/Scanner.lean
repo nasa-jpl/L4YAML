@@ -655,7 +655,7 @@ def atDocumentBoundary (s : ScannerState) : Bool :=
 
 /-- Scan a flow sequence start indicator `[`.
 
-    **Implements** (YAML 1.2.2 §7.4):
+    **Implements** (YAML 1.2.2 §7.4.1):
     - `[137] c-flow-sequence(n,c)` = `"[" s-separate(n,c)? ...`
     - `[8]   c-sequence-start` = `"["`
 
@@ -665,7 +665,7 @@ def atDocumentBoundary (s : ScannerState) : Bool :=
 
     **Refactored for verification**: Uses explicit variable names (no shadowing)
     to make token tracking clearer for formal proofs. -/
-@[yaml_spec "7.4" 137 "c-flow-sequence", yaml_spec "7.4" 8 "c-sequence-start"]
+@[yaml_spec "7.4.1" 137 "c-flow-sequence", yaml_spec "7.4.1" 8 "c-sequence-start"]
 def scanFlowSequenceStart (s : ScannerState) : ScannerState :=
   -- Save the outer simple key so it survives flow nesting.
   -- Example: `[a, b]: value` — the simple key saved before `[` must
@@ -682,7 +682,7 @@ def scanFlowSequenceStart (s : ScannerState) : ScannerState :=
 
 /-- Scan a flow sequence end indicator `]`.
 
-    **Implements** (YAML 1.2.2 §7.4):
+    **Implements** (YAML 1.2.2 §7.4.1):
     - `[9]  c-sequence-end` = `"]"`
 
     **Pre**: Scanner at `]` inside a flow collection (`flowLevel > 0`).
@@ -691,7 +691,7 @@ def scanFlowSequenceStart (s : ScannerState) : ScannerState :=
 
     **Refactored for verification**: Uses explicit variable names to make
     token tracking clearer for formal proofs. -/
-@[yaml_spec "7.4" 9 "c-sequence-end"]
+@[yaml_spec "7.4.1" 9 "c-sequence-end"]
 def scanFlowSequenceEnd (s : ScannerState) : ScannerState :=
   let s_with_token := s.emit .flowSequenceEnd
   let s_after_advance := s_with_token.advance
@@ -706,7 +706,7 @@ def scanFlowSequenceEnd (s : ScannerState) : ScannerState :=
 
 /-- Scan a flow mapping start indicator `{`.
 
-    **Implements** (YAML 1.2.2 §7.4):
+    **Implements** (YAML 1.2.2 §7.4.2):
     - `[140] c-flow-mapping(n,c)` = `"{" s-separate(n,c)? ...`
     - `[10]  c-mapping-start` = `"{"`
 
@@ -716,7 +716,7 @@ def scanFlowSequenceEnd (s : ScannerState) : ScannerState :=
 
     **Refactored for verification**: Uses explicit variable names to make
     token tracking clearer for formal proofs. -/
-@[yaml_spec "7.4" 140 "c-flow-mapping"]
+@[yaml_spec "7.4.2" 140 "c-flow-mapping", yaml_spec "7.4.2" 10 "c-mapping-start"]
 def scanFlowMappingStart (s : ScannerState) : ScannerState :=
   -- Save the outer simple key so it survives flow nesting.
   -- Example: `{a: b}: value` — the simple key saved before `{` must
@@ -733,7 +733,7 @@ def scanFlowMappingStart (s : ScannerState) : ScannerState :=
 
 /-- Scan a flow mapping end indicator `}`.
 
-    **Implements** (YAML 1.2.2 §7.4):
+    **Implements** (YAML 1.2.2 §7.4.2):
     - `[11] c-mapping-end` = `"}"`
 
     **Pre**: Scanner at `}` inside a flow collection (`flowLevel > 0`).
@@ -742,7 +742,7 @@ def scanFlowMappingStart (s : ScannerState) : ScannerState :=
 
     **Refactored for verification**: Uses explicit variable names to make
     token tracking clearer for formal proofs. -/
-@[yaml_spec "7.4" 11 "c-mapping-end"]
+@[yaml_spec "7.4.2" 11 "c-mapping-end"]
 def scanFlowMappingEnd (s : ScannerState) : ScannerState :=
   let s_with_token := s.emit .flowMappingEnd
   let s_after_advance := s_with_token.advance
@@ -992,7 +992,7 @@ def scanValue (s : ScannerState) : Except ScanError ScannerState := do
     **Post**: Advances past indicator + name characters, emits `.anchor name`
     or `.alias name`. Sets `simpleKeyAllowed := false`. -/
 -- Helper: Collect anchor/alias name characters using structural recursion.
-@[yaml_spec "6.9" 103 "ns-anchor-name"]
+@[yaml_spec "6.9" 101 "c-ns-anchor-property", yaml_spec "6.9" 104 "c-ns-alias-node", yaml_spec "6.9" 102 "ns-anchor-char", yaml_spec "6.9" 103 "ns-anchor-name", yaml_spec "6.9" 13 "c-anchor", yaml_spec "6.9" 14 "c-alias"]
 def collectAnchorNameLoop (s : ScannerState) (name : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
   | 0 => (name, s)
@@ -1176,7 +1176,7 @@ def collectTagPrefixLoop (s : ScannerState) (pfx : String) (fuel : Nat) : String
     **Pre**: `s` is state after `%YAML` + whitespace skip; `startPos` is position of `%`.
     **Post**: Emits `.versionDirective major minor`, sets `seenYamlDirective`.
     **Error**: `duplicateYamlDirective`, `directiveTrailingContent`. -/
-@[yaml_spec "6.8.1" 86 "ns-yaml-directive"]
+@[yaml_spec "6.8.1" 86 "ns-yaml-directive", yaml_spec "6.8.1" 88 "ns-yaml-version"]
 def scanYamlDirective (s : ScannerState) (s_after_ws : ScannerState) (startPos : YamlPos) :
     Except ScanError ScannerState := do
   if s.seenYamlDirective then
@@ -1234,7 +1234,7 @@ def scanTagDirective (s : ScannerState) (s_after_ws : ScannerState) (startPos : 
     **Error**: `directiveAfterContent` (directive after document content without `...`),
     `duplicateYamlDirective` (second `%YAML` in same document),
     `directiveTrailingContent` (content after version string). -/
-@[yaml_spec "6.8" 82 "l-directive"]
+@[yaml_spec "6.8" 82 "l-directive", yaml_spec "6.8" 20 "c-directive"]
 def scanDirective (s : ScannerState) : Except ScanError ScannerState :=
   if !s.allowDirectives then
     .error (.directiveAfterContent s.line)
@@ -1299,7 +1299,7 @@ def skipDocEndWhitespace (s : ScannerState) (fuel : Nat) : ScannerState :=
     Sets `allowDirectives := true` (re-enables directives for next document).
     **Error**: `directiveWithoutDocument` (if directives were present but no `---` followed),
     `trailingContentAfterDocEnd` (non-comment content on same line after `...`). -/
-@[yaml_spec "9.1.2" 205 "l-document-suffix"]
+@[yaml_spec "9.1.2" 204 "c-document-end", yaml_spec "9.1.2" 205 "l-document-suffix"]
 def scanDocumentEnd (s : ScannerState) : Except ScanError ScannerState := do
   -- §9.1.2: Document end marker `...` requires an open document.
   -- If directives were present but no `---` followed, the `...` cannot
@@ -1344,15 +1344,15 @@ def collectHexDigitsLoop (s : ScannerState) (hex : String) (n : Nat) : String ×
 /-- Parse `n` hexadecimal digits and convert to a character.
 
     **Implements** (YAML 1.2.2 §5.7):
-    - `[58] ns-esc-8-bit`  when `n = 2` (→ `\xHH`)
-    - `[59] ns-esc-16-bit` when `n = 4` (→ `\uHHHH`)
-    - `[60] ns-esc-32-bit` when `n = 8` (→ `\UHHHHHHHH`)
+    - `[59] ns-esc-8-bit`  when `n = 2` (→ `\xHH`)
+    - `[60] ns-esc-16-bit` when `n = 4` (→ `\uHHHH`)
+    - `[61] ns-esc-32-bit` when `n = 8` (→ `\UHHHHHHHH`)
 
     **Pre**: Scanner positioned after `\x`, `\u`, or `\U`.
     **Post**: Advances past `n` hex digits, returns the decoded character.
     **Error**: `invalidHexEscape` (fewer than `n` hex digits available),
     `unicodeOutOfRange` (value ≥ U+110000). -/
-@[yaml_spec "5.7" 59 "ns-esc-8-bit"]
+@[yaml_spec "5.7" 59 "ns-esc-8-bit", yaml_spec "5.7" 60 "ns-esc-16-bit", yaml_spec "5.7" 61 "ns-esc-32-bit"]
 def parseHexEscape (s : ScannerState) (n : Nat) : Except ScanError (Char × ScannerState) := do
   let (hex, s') := collectHexDigitsLoop s "" n
   if hex.length != n then
@@ -1370,9 +1370,9 @@ def parseHexEscape (s : ScannerState) (n : Nat) : Except ScanError (Char × Scan
 /-- Process a single escape sequence after `\`.
 
     **Implements** (YAML 1.2.2 §5.7):
-    - `[61] c-ns-esc-char` = `"\\" ( ns-esc-null | ... | ns-esc-32-bit )`
+    - `[62] c-ns-esc-char` = `"\\" ( ns-esc-null | ... | ns-esc-32-bit )`
     - `[41] c-escape` = `"\\"`
-    - `[42]`–`[60]` individual escape characters
+    - `[42]`–`[61]` individual escape characters
 
     Supports all 20 named escapes (`\0`, `\a`, `\b`, `\t`, `\n`, `\v`, `\f`,
     `\r`, `\e`, `\ `, `\"`, `\/`, `\\`, `\N`, `\_`, `\L`, `\P`)
@@ -1381,7 +1381,17 @@ def parseHexEscape (s : ScannerState) (n : Nat) : Except ScanError (Char × Scan
     **Pre**: Scanner positioned at the character AFTER `\`.
     **Post**: Returns the decoded character and scanner advanced past the escape.
     **Error**: `unterminatedEscape` (EOF after `\`), `unknownEscape` (unrecognized escape character). -/
-@[yaml_spec "5.7" 62 "c-ns-esc-char"]
+@[yaml_spec "5.7" 62 "c-ns-esc-char", yaml_spec "5.7" 41 "c-escape",
+  yaml_spec "5.7" 42 "ns-esc-null", yaml_spec "5.7" 43 "ns-esc-bell",
+  yaml_spec "5.7" 44 "ns-esc-backspace", yaml_spec "5.7" 45 "ns-esc-horizontal-tab",
+  yaml_spec "5.7" 46 "ns-esc-line-feed", yaml_spec "5.7" 47 "ns-esc-vertical-tab",
+  yaml_spec "5.7" 48 "ns-esc-form-feed", yaml_spec "5.7" 49 "ns-esc-carriage-return",
+  yaml_spec "5.7" 50 "ns-esc-escape", yaml_spec "5.7" 51 "ns-esc-space",
+  yaml_spec "5.7" 52 "ns-esc-double-quote", yaml_spec "5.7" 53 "ns-esc-slash",
+  yaml_spec "5.7" 54 "ns-esc-backslash", yaml_spec "5.7" 55 "ns-esc-next-line",
+  yaml_spec "5.7" 56 "ns-esc-non-breaking-space", yaml_spec "5.7" 57 "ns-esc-line-separator",
+  yaml_spec "5.7" 58 "ns-esc-paragraph-separator", yaml_spec "5.7" 59 "ns-esc-8-bit",
+  yaml_spec "5.7" 60 "ns-esc-16-bit", yaml_spec "5.7" 61 "ns-esc-32-bit"]
 def processEscape (s : ScannerState) : Except ScanError (Char × ScannerState) := do
   match s.peek? with
   | none => .error (.unterminatedEscape s.line)
@@ -1453,7 +1463,10 @@ def foldQuotedNewlinesLoop (s : ScannerState) (emptyCount : Nat) (fuel : Nat) :
     **Post**: Consumes newline + blank lines + leading spaces on continuation line.
     Returns the folded replacement string (`" "` or `"\n"*`).
     **Error**: `tabInIndentation` if tab found in indentation zone of continuation line (§6.1). -/
-@[yaml_spec "6.5" 74 "s-flow-folded"]
+@[yaml_spec "6.5" 73 "b-l-folded",
+  yaml_spec "6.5" 74 "s-flow-folded",
+ yaml_spec "6.5" 69 "b-l-trimmed",
+  yaml_spec "6.5" 70 "b-as-space"]
 def foldQuotedNewlines (s : ScannerState) : Except ScanError (String × ScannerState) := do
   let s' := consumeNewline s
   let (s', emptyCount) := foldQuotedNewlinesLoop s' 0 (s.inputEnd - s'.offset + 1)
@@ -1495,6 +1508,12 @@ def validateTrailingContent (s : ScannerState) (inputEnd : Nat) : Except ScanErr
       throw (.trailingContent probe.line probe.col)
 
 -- Helper: Collect double-quoted content using structural recursion
+@[yaml_spec "7.3.1" 107 "nb-double-char",
+  yaml_spec "7.3.1" 108 "ns-double-char",
+  yaml_spec "7.3.1" 110 "nb-double-text",
+  yaml_spec "7.3.1" 111 "nb-double-one-line",
+  yaml_spec "7.3.1" 112 "s-double-escaped",
+  yaml_spec "7.3.1" 113 "s-double-break"]
 def collectDoubleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
     (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
     Except ScanError (String × ScannerState) :=
@@ -1543,12 +1562,13 @@ def collectDoubleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
 /-- Scan a double-quoted scalar.
 
     **Implements** (YAML 1.2.2 §7.3.1):
-    - `[107] c-double-quoted(n,c)` = `'"' nb-double-text(n,c) '"'`
-    - `[108] nb-double-text(n,c)` = content chars, escape sequences `[61]`, flow folding `[73]`
-    - `[110] nb-double-one-line` / `[111] s-double-escaped(n)` / `[112] s-double-break(n)`
+    - `[109] c-double-quoted(n,c)` = `'"' nb-double-text(n,c) '"'`
     - `[19]  c-double-quote` = `'"'`
 
-    Processes escape sequences via `processEscape`, line folding via `foldQuotedNewlines`.
+    Content-level productions (`[107] nb-double-char`, `[108] ns-double-char`,
+    `[110] nb-double-text`, `[111]`–`[113]`) are implemented in `collectDoubleQuotedLoop`.
+    Escape sequences (`[62] c-ns-esc-char`) are in `processEscape`.
+    Line folding (`[73] b-l-folded`) is in `foldQuotedNewlines`.
 
     **Pre**: Scanner at opening `"`.
     **Post**: Advances past closing `"`, emits `.scalar content .doubleQuoted`.
@@ -1557,7 +1577,8 @@ def collectDoubleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
     `documentMarkerInScalar` (document marker at col 0 inside scalar §9.1.2),
     `underIndentedScalar` (continuation line below current block indent §8.1),
     `trailingContent` (non-whitespace/comment/`:` after closing `"` in block context §7.3.2). -/
-@[yaml_spec "7.3.1" 109 "c-double-quoted"]
+@[yaml_spec "7.3.1" 109 "c-double-quoted",
+  yaml_spec "7.3.1" 19 "c-double-quote"]
 def scanDoubleQuoted (s : ScannerState) : Except ScanError ScannerState := do
   let startPos := s.currentPos
   let s_after_open := s.advance
@@ -1570,6 +1591,9 @@ def scanDoubleQuoted (s : ScannerState) : Except ScanError ScannerState := do
   .ok { s_with_token with simpleKeyAllowed := false }
 
 -- Helper: Collect single-quoted content using structural recursion
+@[yaml_spec "7.3.2" 117 "c-quoted-quote",
+  yaml_spec "7.3.2" 118 "nb-single-char",
+  yaml_spec "7.3.2" 121 "nb-single-text"]
 def collectSingleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
     (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
     Except ScanError (String × ScannerState) :=
@@ -1609,19 +1633,20 @@ def collectSingleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
 /-- Scan a single-quoted scalar.
 
     **Implements** (YAML 1.2.2 §7.3.2):
-    - `[113] c-single-quoted(n,c)` = `"'" nb-single-text(n,c) "'"`
-    - `[114] nb-single-text(n,c)` = content chars, `''` escape, flow folding `[73]`
-    - `[118] c-quoted-quote` = `"''"` (escaped single quote)
+    - `[120] c-single-quoted(n,c)` = `"'" nb-single-text(n,c) "'"`
     - `[18]  c-single-quote` = `"'"`
 
-    The only escape is `''` → `'`.  Line folding is handled by `foldQuotedNewlines`.
+    Content-level productions (`[117] c-quoted-quote`, `[118] nb-single-char`,
+    `[121] nb-single-text`) are implemented in `collectSingleQuotedLoop`.
+    Line folding (`[73] b-l-folded`) is in `foldQuotedNewlines`.
 
     **Pre**: Scanner at opening `'`.
     **Post**: Advances past closing `'`, emits `.scalar content .singleQuoted`.
     Sets `simpleKeyAllowed := false`.
     **Error**: `unterminatedScalar`, `documentMarkerInScalar`, `underIndentedScalar`,
     `trailingContent` (same conditions as `scanDoubleQuoted`). -/
-@[yaml_spec "7.3.2" 120 "c-single-quoted"]
+@[yaml_spec "7.3.2" 120 "c-single-quoted",
+  yaml_spec "7.3.2" 18 "c-single-quote"]
 def scanSingleQuoted (s : ScannerState) : Except ScanError ScannerState := do
   let startPos := s.currentPos
   let s_after_open := s.advance
@@ -2075,7 +2100,9 @@ def scanBlockScalarConsumeNewline (s : ScannerState) : Except ScanError ScannerS
 
     **Pre**: `s_after_newline` is past the header line; `s_orig` provides `currentIndent` and `inputEnd`.
     **Post**: Emits `.scalar content style`, clears simpleKey. -/
-@[yaml_spec "8.1" 170 "c-l+literal"]
+@[yaml_spec "8.1" 163 "c-indentation-indicator",
+  yaml_spec "8.1" 171 "l-nb-literal-text",
+  yaml_spec "8.1" 164 "c-chomping-indicator"]
 def scanBlockScalarBody (s_orig : ScannerState) (s_after_newline : ScannerState)
     (chomp : ChompStyle) (explicitOffset : Option Nat) (isLiteral : Bool) (startPos : YamlPos) :
     Except ScanError ScannerState :=
@@ -2124,7 +2151,13 @@ def scanBlockScalarBody (s_orig : ScannerState) (s_after_newline : ScannerState)
     **Pre**: Scanner at `|` or `>`. `s.col` = `n` (parent indent level).
     **Post**: Scanner past block scalar content. Emits `.scalar content style`.
     **Error**: Missing newline after header. -/
-@[yaml_spec "8.1" 170 "c-l+literal", yaml_spec "8.1" 174 "c-l+folded"]
+@[yaml_spec "8.1" 170 "c-l+literal",
+  yaml_spec "8.1" 174 "c-l+folded",
+  yaml_spec "8.1" 162 "c-b-block-header",
+  yaml_spec "8.1" 163 "c-indentation-indicator",
+  yaml_spec "8.1" 164 "c-chomping-indicator",
+  yaml_spec "8.1" 171 "l-nb-literal-text",
+  yaml_spec "8.1" 63 "s-indent"]
 def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState :=
   let header := parseBlockHeaderLoop s.advance .clip none 2
   let s_after_comment := scanBlockScalarSkipComment (skipWhitespace header.2.2)

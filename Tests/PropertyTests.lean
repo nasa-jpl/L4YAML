@@ -188,11 +188,36 @@ private instance : Nonempty ValidNode := ⟨.emptyNode⟩
 
 private def genPlainBlock (rng : Rng) : Rng × ValidNode :=
   let (rng, content) := genPlainSafe rng
-  (rng, .plainScalarBlock content (by sorry) (by sorry) (by sorry) (by sorry))
+  if h1 : content.length > 0 then
+    if h2 : validPlainFirstBool content false = true then
+      if h3 : noColonSpaceBool content = true then
+        if h4 : noSpaceHashBool content = true then
+          (rng, .plainScalarBlock content h1
+            ((validPlainFirst_iff content false).mp h2)
+            ((noColonSpace_iff content).mp h3)
+            ((noSpaceHash_iff content).mp h4))
+        else (rng, .emptyNode)
+      else (rng, .emptyNode)
+    else (rng, .emptyNode)
+  else (rng, .emptyNode)
 
 private def genPlainFlow (rng : Rng) : Rng × ValidNode :=
   let (rng, content) := genPlainSafe rng
-  (rng, .plainScalarFlow content (by sorry) (by sorry) (by sorry) (by sorry) (by sorry))
+  if h1 : content.length > 0 then
+    if h2 : validPlainFirstBool content true = true then
+      if h3 : noColonSpaceBool content = true then
+        if h4 : noSpaceHashBool content = true then
+          if h5 : noFlowIndicatorsBool content = true then
+            (rng, .plainScalarFlow content h1
+              ((validPlainFirst_iff content true).mp h2)
+              ((noColonSpace_iff content).mp h3)
+              ((noSpaceHash_iff content).mp h4)
+              ((noFlowIndicators_iff content).mp h5))
+          else (rng, .emptyNode)
+        else (rng, .emptyNode)
+      else (rng, .emptyNode)
+    else (rng, .emptyNode)
+  else (rng, .emptyNode)
 
 private def genSingleQuoted' (rng : Rng) : Rng × ValidNode :=
   let (rng, content) := genSingleQuotedContent rng
