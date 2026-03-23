@@ -147,8 +147,8 @@
 
   <div class="stats">
     <div class="stat-box stat-total"><h3>Total Productions</h3><div class="number">211</div></div>
-    <div class="stat-box stat-covered"><h3>Annotated Rules</h3><div class="number">93</div><div class="pct">of 207 in-scope</div></div>
-    <div class="stat-box stat-annotation"><h3>@[yaml_spec] Entries</h3><div class="number">130</div><div class="pct">across 3 modules</div></div>
+    <div class="stat-box stat-covered"><h3>Annotated Rules</h3><div class="number">96</div><div class="pct">of 207 in-scope</div></div>
+    <div class="stat-box stat-annotation"><h3>@[yaml_spec] Entries</h3><div class="number">133</div><div class="pct">across 3 modules</div></div>
     <div class="stat-box stat-grammar"><h3>Grammar Only</h3><div class="number">3</div></div>
     <div class="stat-box stat-oos"><h3>Out of Scope</h3><div class="number">4</div></div>
   </div>
@@ -161,8 +161,8 @@
     </div>
     <div class="chapter-card">
       <div class="chapter-card-name">Ch 6: Basic Structures</div>
-      <div class="chapter-card-stats">16/41 annotated (39.0%)</div>
-      <div class="chapter-bar"><div class="chapter-bar-fill" style="width: 39.0%"></div></div>
+      <div class="chapter-card-stats">19/41 annotated (46.3%)</div>
+      <div class="chapter-bar"><div class="chapter-bar-fill" style="width: 46.3%"></div></div>
     </div>
     <div class="chapter-card">
       <div class="chapter-card-name">Ch 7: Flow Styles</div>
@@ -673,12 +673,12 @@
         <td><span class="badge badge-grammar">Grammar Only</span></td>
         <td><em>Grammar spec only</em></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="6" data-search="66 s-separate-in-line 6.2 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="6" data-search="66 s-separate-in-line 6.2 covered">
         <td>66</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-separate-in-line" target="_blank" class="spec-link">s-separate-in-line</a></td>
         <td>§6.2</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.skipWhitespace</a></td>
       </tr>
       <tr class="prod-row" data-status="uncovered" data-chapter="6" data-search="67 s-line-prefix(n,c) 6.3 uncovered">
         <td>67</td>
@@ -736,12 +736,12 @@
         <td><span class="badge badge-covered">Covered</span></td>
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.foldQuotedNewlines</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="6" data-search="75 c-nb-comment-text 6.6 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="6" data-search="75 c-nb-comment-text 6.6 covered">
         <td>75</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-nb-comment-text" target="_blank" class="spec-link">c-nb-comment-text</a></td>
         <td>§6.6</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.skipToContentComment</a></td>
       </tr>
       <tr class="prod-row" data-status="uncovered" data-chapter="6" data-search="76 b-comment 6.6 uncovered">
         <td>76</td>
@@ -757,12 +757,12 @@
         <td><span class="badge badge-covered">Covered</span></td>
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanBlockScalarSkipComment</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.skipToContentComment</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanBlockScalarConsumeNewline</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="6" data-search="78 l-comment 6.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="6" data-search="78 l-comment 6.7 covered">
         <td>78</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-comment" target="_blank" class="spec-link">l-comment</a></td>
         <td>§6.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.skipToContent</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="79 s-l-comments 6.7 covered">
         <td>79</td>

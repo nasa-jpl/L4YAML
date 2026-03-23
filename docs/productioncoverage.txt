@@ -7,23 +7,23 @@
   ✓ indent-dependent productions: 49
 
 --- Automated @[yaml_spec] discovery ---
-  ✓ @[yaml_spec] entries discovered: 130
-  ✓ unique production rules annotated: 93
+  ✓ @[yaml_spec] entries discovered: 133
+  ✓ unique production rules annotated: 96
   ✓ source modules with annotations: 3
 
 --- Coverage analysis ---
-  ✓ annotated productions: 93/207
-  ✓ unannotated in-scope productions: 114
+  ✓ annotated productions: 96/207
+  ✓ unannotated in-scope productions: 111
   ✓ indent-dependent with annotations: 16/49
 
 --- Per-module annotation counts ---
-  ✓ Lean4Yaml.Scanner: 109 annotations
+  ✓ Lean4Yaml.Scanner: 112 annotations
   ✓ Lean4Yaml.TokenParser: 14 annotations
   ✓ Lean4Yaml.CharPredicates: 7 annotations
 
 --- Per-chapter coverage ---
   ✓ Ch 5 (Characters): 39/59
-  ✓ Ch 6 (Basic Structures): 16/41
+  ✓ Ch 6 (Basic Structures): 19/41
   ✓ Ch 7 (Flow Styles): 21/57
   ✓ Ch 8 (Block Styles): 12/40
   ✓ Ch 9 (Documents): 5/10
@@ -51,14 +51,11 @@
   ✓ [40] ns-tag-char (§5.6) — no @[yaml_spec]
   ✓ [64] s-indent(<n) (§6.1) — no @[yaml_spec]
   ✓ [65] s-indent(≤n) (§6.1) — no @[yaml_spec]
-  ✓ [66] s-separate-in-line (§6.2) — no @[yaml_spec]
   ✓ [67] s-line-prefix(n,c) (§6.3) — no @[yaml_spec]
   ✓ [68] s-block-line-prefix(n) (§6.3) — no @[yaml_spec]
   ✓ [71] b-l-trimmed(n,c) (§6.5) — no @[yaml_spec]
   ✓ [72] b-as-space (§6.5) — no @[yaml_spec]
-  ✓ [75] c-nb-comment-text (§6.6) — no @[yaml_spec]
   ✓ [76] b-comment (§6.6) — no @[yaml_spec]
-  ✓ [78] l-comment (§6.7) — no @[yaml_spec]
   ✓ [80] s-separate(n,c) (§6.7) — no @[yaml_spec]
   ✓ [81] s-separate-lines(n) (§6.7) — no @[yaml_spec]
   ✓ [83] ns-reserved-directive (§6.8) — no @[yaml_spec]
@@ -144,5 +141,5 @@
   ✓ [208] l-explicit-document (§9.1.4) — no @[yaml_spec]
   ✓ [209] l-directive-document (§9.1.5) — no @[yaml_spec]
 
-=== Results: 131/131 passed ===
+=== Results: 128/128 passed ===
   wrote docs/production-coverage.html
