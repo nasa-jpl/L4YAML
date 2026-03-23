@@ -1464,41 +1464,35 @@
   ✓ indent-dependent productions: 49
 
 --- Automated @[yaml_spec] discovery ---
-  ✓ @[yaml_spec] entries discovered: 77
-  ✓ unique production rules annotated: 50
+  ✓ @[yaml_spec] entries discovered: 130
+  ✓ unique production rules annotated: 93
   ✓ source modules with annotations: 3
 
 --- Coverage analysis ---
-  ✓ annotated productions: 50/207
-  ✓ unannotated in-scope productions: 157
-  ✓ indent-dependent with annotations: 11/49
+  ✓ annotated productions: 93/207
+  ✓ unannotated in-scope productions: 114
+  ✓ indent-dependent with annotations: 16/49
 
 --- Per-module annotation counts ---
-  ✓ Lean4Yaml.Scanner: 56 annotations
+  ✓ Lean4Yaml.Scanner: 109 annotations
   ✓ Lean4Yaml.TokenParser: 14 annotations
   ✓ Lean4Yaml.CharPredicates: 7 annotations
 
 --- Per-chapter coverage ---
-  ✓ Ch 5 (Characters): 13/59
-  ✓ Ch 6 (Basic Structures): 12/41
-  ✓ Ch 7 (Flow Styles): 11/57
-  ✓ Ch 8 (Block Styles): 9/40
+  ✓ Ch 5 (Characters): 39/59
+  ✓ Ch 6 (Basic Structures): 16/41
+  ✓ Ch 7 (Flow Styles): 21/57
+  ✓ Ch 8 (Block Styles): 12/40
   ✓ Ch 9 (Documents): 5/10
 
 --- Unannotated productions (gaps) ---
   ✓ [3] c-byte-order-mark (§5.2) — no @[yaml_spec]
   ✓ [4] c-sequence-entry (§5.3) — no @[yaml_spec]
   ✓ [5] c-mapping-key (§5.3) — no @[yaml_spec]
-  ✓ [10] c-mapping-start (§5.3) — no @[yaml_spec]
   ✓ [12] c-comment (§5.3) — no @[yaml_spec]
-  ✓ [13] c-anchor (§5.3) — no @[yaml_spec]
-  ✓ [14] c-alias (§5.3) — no @[yaml_spec]
   ✓ [15] c-tag (§5.3) — no @[yaml_spec]
   ✓ [16] c-literal (§5.3) — no @[yaml_spec]
   ✓ [17] c-folded (§5.3) — no @[yaml_spec]
-  ✓ [18] c-single-quote (§5.3) — no @[yaml_spec]
-  ✓ [19] c-double-quote (§5.3) — no @[yaml_spec]
-  ✓ [20] c-directive (§5.3) — no @[yaml_spec]
   ✓ [24] b-line-feed (§5.4) — no @[yaml_spec]
   ✓ [25] b-carriage-return (§5.4) — no @[yaml_spec]
   ✓ [27] nb-char (§5.4) — no @[yaml_spec]
@@ -1512,36 +1506,13 @@
   ✓ [38] ns-word-char (§5.6) — no @[yaml_spec]
   ✓ [39] ns-uri-char (§5.6) — no @[yaml_spec]
   ✓ [40] ns-tag-char (§5.6) — no @[yaml_spec]
-  ✓ [41] c-escape (§5.7) — no @[yaml_spec]
-  ✓ [42] ns-esc-null (§5.7) — no @[yaml_spec]
-  ✓ [43] ns-esc-bell (§5.7) — no @[yaml_spec]
-  ✓ [44] ns-esc-backspace (§5.7) — no @[yaml_spec]
-  ✓ [45] ns-esc-horizontal-tab (§5.7) — no @[yaml_spec]
-  ✓ [46] ns-esc-line-feed (§5.7) — no @[yaml_spec]
-  ✓ [47] ns-esc-vertical-tab (§5.7) — no @[yaml_spec]
-  ✓ [48] ns-esc-form-feed (§5.7) — no @[yaml_spec]
-  ✓ [49] ns-esc-carriage-return (§5.7) — no @[yaml_spec]
-  ✓ [50] ns-esc-escape (§5.7) — no @[yaml_spec]
-  ✓ [51] ns-esc-space (§5.7) — no @[yaml_spec]
-  ✓ [52] ns-esc-double-quote (§5.7) — no @[yaml_spec]
-  ✓ [53] ns-esc-slash (§5.7) — no @[yaml_spec]
-  ✓ [54] ns-esc-backslash (§5.7) — no @[yaml_spec]
-  ✓ [55] ns-esc-next-line (§5.7) — no @[yaml_spec]
-  ✓ [56] ns-esc-non-breaking-space (§5.7) — no @[yaml_spec]
-  ✓ [57] ns-esc-line-separator (§5.7) — no @[yaml_spec]
-  ✓ [58] ns-esc-paragraph-separator (§5.7) — no @[yaml_spec]
-  ✓ [60] ns-esc-16-bit (§5.7) — no @[yaml_spec]
-  ✓ [61] ns-esc-32-bit (§5.7) — no @[yaml_spec]
   ✓ [64] s-indent(<n) (§6.1) — no @[yaml_spec]
   ✓ [65] s-indent(≤n) (§6.1) — no @[yaml_spec]
   ✓ [66] s-separate-in-line (§6.2) — no @[yaml_spec]
   ✓ [67] s-line-prefix(n,c) (§6.3) — no @[yaml_spec]
   ✓ [68] s-block-line-prefix(n) (§6.3) — no @[yaml_spec]
-  ✓ [69] s-flow-line-prefix(n) (§6.3) — no @[yaml_spec]
-  ✓ [70] l-empty(n,c) (§6.4) — no @[yaml_spec]
   ✓ [71] b-l-trimmed(n,c) (§6.5) — no @[yaml_spec]
   ✓ [72] b-as-space (§6.5) — no @[yaml_spec]
-  ✓ [73] b-l-folded(n,c) (§6.5) — no @[yaml_spec]
   ✓ [75] c-nb-comment-text (§6.6) — no @[yaml_spec]
   ✓ [76] b-comment (§6.6) — no @[yaml_spec]
   ✓ [78] l-comment (§6.7) — no @[yaml_spec]
@@ -1560,23 +1531,12 @@
   ✓ [95] ns-global-tag-prefix (§6.8.2) — no @[yaml_spec]
   ✓ [98] c-verbatim-tag (§6.9) — no @[yaml_spec]
   ✓ [100] c-non-specific-tag (§6.9) — no @[yaml_spec]
-  ✓ [102] ns-anchor-char (§6.9) — no @[yaml_spec]
-  ✓ [104] c-ns-alias-node (§7.1) — no @[yaml_spec]
   ✓ [105] e-scalar (§7.2) — no @[yaml_spec]
   ✓ [106] e-node (§7.2) — no @[yaml_spec]
-  ✓ [107] nb-double-char (§7.3.1) — no @[yaml_spec]
-  ✓ [108] ns-double-char (§7.3.1) — no @[yaml_spec]
-  ✓ [110] nb-double-text(n,c) (§7.3.1) — no @[yaml_spec]
-  ✓ [111] nb-double-one-line (§7.3.1) — no @[yaml_spec]
-  ✓ [112] s-double-escaped(n) (§7.3.1) — no @[yaml_spec]
-  ✓ [113] s-double-break(n) (§7.3.1) — no @[yaml_spec]
   ✓ [114] nb-ns-double-in-line (§7.3.1) — no @[yaml_spec]
   ✓ [115] s-double-next-line(n) (§7.3.1) — no @[yaml_spec]
   ✓ [116] nb-double-multi-line(n) (§7.3.1) — no @[yaml_spec]
-  ✓ [117] c-quoted-quote (§7.3.2) — no @[yaml_spec]
-  ✓ [118] nb-single-char (§7.3.2) — no @[yaml_spec]
   ✓ [119] ns-single-char (§7.3.2) — no @[yaml_spec]
-  ✓ [121] nb-single-text(n,c) (§7.3.2) — no @[yaml_spec]
   ✓ [122] nb-single-one-line (§7.3.2) — no @[yaml_spec]
   ✓ [123] nb-ns-single-in-line (§7.3.2) — no @[yaml_spec]
   ✓ [124] s-single-next-line(n) (§7.3.2) — no @[yaml_spec]
@@ -1607,14 +1567,11 @@
   ✓ [157] c-flow-json-content(n,c) (§7.5) — no @[yaml_spec]
   ✓ [158] ns-flow-content(n,c) (§7.5) — no @[yaml_spec]
   ✓ [159] ns-flow-yaml-node(n,c) (§7.5) — no @[yaml_spec]
-  ✓ [163] c-indentation-indicator (§8.1.1) — no @[yaml_spec]
-  ✓ [164] c-chomping-indicator(t) (§8.1.1) — no @[yaml_spec]
   ✓ [165] b-chomped-last(t) (§8.1.1) — no @[yaml_spec]
   ✓ [166] l-chomped-empty(n,t) (§8.1.1) — no @[yaml_spec]
   ✓ [167] l-strip-empty(n) (§8.1.1) — no @[yaml_spec]
   ✓ [168] l-keep-empty(n) (§8.1.1) — no @[yaml_spec]
   ✓ [169] l-trail-comments(n) (§8.1.1) — no @[yaml_spec]
-  ✓ [171] l-nb-literal-text(n) (§8.1.2) — no @[yaml_spec]
   ✓ [172] b-nb-literal-next(n) (§8.1.2) — no @[yaml_spec]
   ✓ [173] l-literal-content(n,t) (§8.1.2) — no @[yaml_spec]
   ✓ [175] s-nb-folded-text(n) (§8.1.3) — no @[yaml_spec]
@@ -1644,5 +1601,5 @@
   ✓ [208] l-explicit-document (§9.1.4) — no @[yaml_spec]
   ✓ [209] l-directive-document (§9.1.5) — no @[yaml_spec]
 
-=== Results: 174/174 passed ===
+=== Results: 131/131 passed ===
   wrote docs/production-coverage.html

@@ -147,8 +147,8 @@
 
   <div class="stats">
     <div class="stat-box stat-total"><h3>Total Productions</h3><div class="number">211</div></div>
-    <div class="stat-box stat-covered"><h3>Annotated Rules</h3><div class="number">50</div><div class="pct">of 207 in-scope</div></div>
-    <div class="stat-box stat-annotation"><h3>@[yaml_spec] Entries</h3><div class="number">77</div><div class="pct">across 3 modules</div></div>
+    <div class="stat-box stat-covered"><h3>Annotated Rules</h3><div class="number">93</div><div class="pct">of 207 in-scope</div></div>
+    <div class="stat-box stat-annotation"><h3>@[yaml_spec] Entries</h3><div class="number">130</div><div class="pct">across 3 modules</div></div>
     <div class="stat-box stat-grammar"><h3>Grammar Only</h3><div class="number">3</div></div>
     <div class="stat-box stat-oos"><h3>Out of Scope</h3><div class="number">4</div></div>
   </div>
@@ -156,23 +156,23 @@
   <div class="chapter-cards">
     <div class="chapter-card">
       <div class="chapter-card-name">Ch 5: Characters</div>
-      <div class="chapter-card-stats">13/59 annotated (22.0%)</div>
-      <div class="chapter-bar"><div class="chapter-bar-fill" style="width: 22.0%"></div></div>
+      <div class="chapter-card-stats">39/59 annotated (66.1%)</div>
+      <div class="chapter-bar"><div class="chapter-bar-fill" style="width: 66.1%"></div></div>
     </div>
     <div class="chapter-card">
       <div class="chapter-card-name">Ch 6: Basic Structures</div>
-      <div class="chapter-card-stats">12/41 annotated (29.3%)</div>
-      <div class="chapter-bar"><div class="chapter-bar-fill" style="width: 29.3%"></div></div>
+      <div class="chapter-card-stats">16/41 annotated (39.0%)</div>
+      <div class="chapter-bar"><div class="chapter-bar-fill" style="width: 39.0%"></div></div>
     </div>
     <div class="chapter-card">
       <div class="chapter-card-name">Ch 7: Flow Styles</div>
-      <div class="chapter-card-stats">11/57 annotated (19.3%)</div>
-      <div class="chapter-bar"><div class="chapter-bar-fill" style="width: 19.3%"></div></div>
+      <div class="chapter-card-stats">21/57 annotated (36.8%)</div>
+      <div class="chapter-bar"><div class="chapter-bar-fill" style="width: 36.8%"></div></div>
     </div>
     <div class="chapter-card">
       <div class="chapter-card-name">Ch 8: Block Styles</div>
-      <div class="chapter-card-stats">9/40 annotated (22.5%)</div>
-      <div class="chapter-bar"><div class="chapter-bar-fill" style="width: 22.5%"></div></div>
+      <div class="chapter-card-stats">12/40 annotated (30.0%)</div>
+      <div class="chapter-bar"><div class="chapter-bar-fill" style="width: 30.0%"></div></div>
     </div>
     <div class="chapter-card">
       <div class="chapter-card-name">Ch 9: Documents</div>
@@ -281,12 +281,12 @@
         <td><span class="badge badge-covered">Covered</span></td>
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanFlowSequenceEnd</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="10 c-mapping-start 5.3 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="10 c-mapping-start 5.3 covered">
         <td>10</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-mapping-start" target="_blank" class="spec-link">c-mapping-start</a></td>
         <td>§5.3</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanFlowMappingStart</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="11 c-mapping-end 5.3 covered">
         <td>11</td>
@@ -302,19 +302,19 @@
         <td><span class="badge badge-uncovered">No Annotation</span></td>
         <td><em>No @[yaml_spec] annotation</em></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="13 c-anchor 5.3 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="13 c-anchor 5.3 covered">
         <td>13</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-anchor" target="_blank" class="spec-link">c-anchor</a></td>
         <td>§5.3</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectAnchorNameLoop</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="14 c-alias 5.3 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="14 c-alias 5.3 covered">
         <td>14</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-alias" target="_blank" class="spec-link">c-alias</a></td>
         <td>§5.3</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectAnchorNameLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="15 c-tag 5.3 uncovered">
         <td>15</td>
@@ -337,26 +337,26 @@
         <td><span class="badge badge-uncovered">No Annotation</span></td>
         <td><em>No @[yaml_spec] annotation</em></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="18 c-single-quote 5.3 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="18 c-single-quote 5.3 covered">
         <td>18</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-single-quote" target="_blank" class="spec-link">c-single-quote</a></td>
         <td>§5.3</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanSingleQuoted</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="19 c-double-quote 5.3 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="19 c-double-quote 5.3 covered">
         <td>19</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-double-quote" target="_blank" class="spec-link">c-double-quote</a></td>
         <td>§5.3</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanDoubleQuoted</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="20 c-directive 5.3 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="20 c-directive 5.3 covered">
         <td>20</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-directive" target="_blank" class="spec-link">c-directive</a></td>
         <td>§5.3</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanDirective</a></td>
       </tr>
       <tr class="prod-row" data-status="oos" data-chapter="5" data-search="21 c-reserved 5.3 oos">
         <td>21</td>
@@ -498,152 +498,152 @@
         <td><span class="badge badge-uncovered">No Annotation</span></td>
         <td><em>No @[yaml_spec] annotation</em></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="41 c-escape 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="41 c-escape 5.7 covered">
         <td>41</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-escape" target="_blank" class="spec-link">c-escape</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="42 ns-esc-null 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="42 ns-esc-null 5.7 covered">
         <td>42</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-null" target="_blank" class="spec-link">ns-esc-null</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="43 ns-esc-bell 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="43 ns-esc-bell 5.7 covered">
         <td>43</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-bell" target="_blank" class="spec-link">ns-esc-bell</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="44 ns-esc-backspace 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="44 ns-esc-backspace 5.7 covered">
         <td>44</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-backspace" target="_blank" class="spec-link">ns-esc-backspace</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="45 ns-esc-horizontal-tab 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="45 ns-esc-horizontal-tab 5.7 covered">
         <td>45</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-horizontal-tab" target="_blank" class="spec-link">ns-esc-horizontal-tab</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="46 ns-esc-line-feed 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="46 ns-esc-line-feed 5.7 covered">
         <td>46</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-line-feed" target="_blank" class="spec-link">ns-esc-line-feed</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="47 ns-esc-vertical-tab 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="47 ns-esc-vertical-tab 5.7 covered">
         <td>47</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-vertical-tab" target="_blank" class="spec-link">ns-esc-vertical-tab</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="48 ns-esc-form-feed 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="48 ns-esc-form-feed 5.7 covered">
         <td>48</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-form-feed" target="_blank" class="spec-link">ns-esc-form-feed</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="49 ns-esc-carriage-return 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="49 ns-esc-carriage-return 5.7 covered">
         <td>49</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-carriage-return" target="_blank" class="spec-link">ns-esc-carriage-return</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="50 ns-esc-escape 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="50 ns-esc-escape 5.7 covered">
         <td>50</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-escape" target="_blank" class="spec-link">ns-esc-escape</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="51 ns-esc-space 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="51 ns-esc-space 5.7 covered">
         <td>51</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-space" target="_blank" class="spec-link">ns-esc-space</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="52 ns-esc-double-quote 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="52 ns-esc-double-quote 5.7 covered">
         <td>52</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-double-quote" target="_blank" class="spec-link">ns-esc-double-quote</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="53 ns-esc-slash 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="53 ns-esc-slash 5.7 covered">
         <td>53</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-slash" target="_blank" class="spec-link">ns-esc-slash</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="54 ns-esc-backslash 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="54 ns-esc-backslash 5.7 covered">
         <td>54</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-backslash" target="_blank" class="spec-link">ns-esc-backslash</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="55 ns-esc-next-line 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="55 ns-esc-next-line 5.7 covered">
         <td>55</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-next-line" target="_blank" class="spec-link">ns-esc-next-line</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="56 ns-esc-non-breaking-space 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="56 ns-esc-non-breaking-space 5.7 covered">
         <td>56</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-non-breaking-space" target="_blank" class="spec-link">ns-esc-non-breaking-space</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="57 ns-esc-line-separator 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="57 ns-esc-line-separator 5.7 covered">
         <td>57</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-line-separator" target="_blank" class="spec-link">ns-esc-line-separator</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="58 ns-esc-paragraph-separator 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="58 ns-esc-paragraph-separator 5.7 covered">
         <td>58</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-paragraph-separator" target="_blank" class="spec-link">ns-esc-paragraph-separator</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="59 ns-esc-8-bit 5.7 covered">
         <td>59</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-8-bit" target="_blank" class="spec-link">ns-esc-8-bit</a></td>
         <td>§5.7</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.parseHexEscape</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.parseHexEscape</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="60 ns-esc-16-bit 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="60 ns-esc-16-bit 5.7 covered">
         <td>60</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-16-bit" target="_blank" class="spec-link">ns-esc-16-bit</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.parseHexEscape</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="61 ns-esc-32-bit 5.7 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="61 ns-esc-32-bit 5.7 covered">
         <td>61</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-esc-32-bit" target="_blank" class="spec-link">ns-esc-32-bit</a></td>
         <td>§5.7</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.parseHexEscape</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.processEscape</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="62 c-ns-esc-char 5.7 covered">
         <td>62</td>
@@ -657,7 +657,7 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-indent" target="_blank" class="spec-link">s-indent(n)</a></td>
         <td>§6.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.skipSpaces</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.skipSpaces</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanBlockScalar</a></td>
       </tr>
       <tr class="prod-row" data-status="grammar" data-chapter="6" data-search="64 s-indent(&lt;n) 6.1 grammar">
         <td>64</td>
@@ -694,19 +694,19 @@
         <td><span class="badge badge-uncovered">No Annotation</span></td>
         <td><em>No @[yaml_spec] annotation</em></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="6" data-search="69 s-flow-line-prefix(n) 6.3 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="6" data-search="69 s-flow-line-prefix(n) 6.3 covered">
         <td>69</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-flow-line-prefix" target="_blank" class="spec-link">s-flow-line-prefix(n)</a></td>
         <td>§6.3</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.foldQuotedNewlines</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="6" data-search="70 l-empty(n,c) 6.4 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="6" data-search="70 l-empty(n,c) 6.4 covered">
         <td>70</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-empty" target="_blank" class="spec-link">l-empty(n,c)</a></td>
         <td>§6.4</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.foldQuotedNewlines</a></td>
       </tr>
       <tr class="prod-row" data-status="uncovered" data-chapter="6" data-search="71 b-l-trimmed(n,c) 6.5 uncovered">
         <td>71</td>
@@ -722,12 +722,12 @@
         <td><span class="badge badge-uncovered">No Annotation</span></td>
         <td><em>No @[yaml_spec] annotation</em></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="6" data-search="73 b-l-folded(n,c) 6.5 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="6" data-search="73 b-l-folded(n,c) 6.5 covered">
         <td>73</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-b-l-folded" target="_blank" class="spec-link">b-l-folded(n,c)</a></td>
         <td>§6.5</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.foldQuotedNewlines</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="74 s-flow-folded(n) 6.5 covered">
         <td>74</td>
@@ -832,7 +832,7 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-tag-directive" target="_blank" class="spec-link">ns-tag-directive</a></td>
         <td>§6.8.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanTagDirective</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanTagDirective</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanYamlDirective</a></td>
       </tr>
       <tr class="prod-row" data-status="uncovered" data-chapter="6" data-search="89 c-tag-handle 6.8.2 uncovered">
         <td>89</td>
@@ -923,14 +923,14 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-ns-anchor-property" target="_blank" class="spec-link">c-ns-anchor-property</a></td>
         <td>§6.9</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanAnchorOrAlias</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectAnchorNameLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanAnchorOrAlias</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="6" data-search="102 ns-anchor-char 6.9 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="6" data-search="102 ns-anchor-char 6.9 covered">
         <td>102</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-anchor-char" target="_blank" class="spec-link">ns-anchor-char</a></td>
         <td>§6.9</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectAnchorNameLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="6" data-search="103 ns-anchor-name 6.9 covered">
         <td>103</td>
@@ -939,12 +939,12 @@
         <td><span class="badge badge-covered">Covered</span></td>
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectAnchorNameLoop</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="7" data-search="104 c-ns-alias-node 7.1 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="7" data-search="104 c-ns-alias-node 7.1 covered">
         <td>104</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-ns-alias-node" target="_blank" class="spec-link">c-ns-alias-node</a></td>
         <td>§7.1</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectAnchorNameLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="uncovered" data-chapter="7" data-search="105 e-scalar 7.2 uncovered">
         <td>105</td>
@@ -960,19 +960,19 @@
         <td><span class="badge badge-uncovered">No Annotation</span></td>
         <td><em>No @[yaml_spec] annotation</em></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="7" data-search="107 nb-double-char 7.3.1 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="7" data-search="107 nb-double-char 7.3.1 covered">
         <td>107</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-nb-double-char" target="_blank" class="spec-link">nb-double-char</a></td>
         <td>§7.3.1</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectDoubleQuotedLoop</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="7" data-search="108 ns-double-char 7.3.1 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="7" data-search="108 ns-double-char 7.3.1 covered">
         <td>108</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-double-char" target="_blank" class="spec-link">ns-double-char</a></td>
         <td>§7.3.1</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectDoubleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="109 c-double-quoted(n,c) 7.3.1 covered">
         <td>109</td>
@@ -981,33 +981,33 @@
         <td><span class="badge badge-covered">Covered</span></td>
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanDoubleQuoted</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="7" data-search="110 nb-double-text(n,c) 7.3.1 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="7" data-search="110 nb-double-text(n,c) 7.3.1 covered">
         <td>110</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-nb-double-text" target="_blank" class="spec-link">nb-double-text(n,c)</a></td>
         <td>§7.3.1</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectDoubleQuotedLoop</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="7" data-search="111 nb-double-one-line 7.3.1 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="7" data-search="111 nb-double-one-line 7.3.1 covered">
         <td>111</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-nb-double-one-line" target="_blank" class="spec-link">nb-double-one-line</a></td>
         <td>§7.3.1</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectDoubleQuotedLoop</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="7" data-search="112 s-double-escaped(n) 7.3.1 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="7" data-search="112 s-double-escaped(n) 7.3.1 covered">
         <td>112</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-double-escaped" target="_blank" class="spec-link">s-double-escaped(n)</a></td>
         <td>§7.3.1</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectDoubleQuotedLoop</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="7" data-search="113 s-double-break(n) 7.3.1 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="7" data-search="113 s-double-break(n) 7.3.1 covered">
         <td>113</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-s-double-break" target="_blank" class="spec-link">s-double-break(n)</a></td>
         <td>§7.3.1</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectDoubleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="uncovered" data-chapter="7" data-search="114 nb-ns-double-in-line 7.3.1 uncovered">
         <td>114</td>
@@ -1030,19 +1030,19 @@
         <td><span class="badge badge-uncovered">No Annotation</span></td>
         <td><em>No @[yaml_spec] annotation</em></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="7" data-search="117 c-quoted-quote 7.3.2 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="7" data-search="117 c-quoted-quote 7.3.2 covered">
         <td>117</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-quoted-quote" target="_blank" class="spec-link">c-quoted-quote</a></td>
         <td>§7.3.2</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectSingleQuotedLoop</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="7" data-search="118 nb-single-char 7.3.2 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="7" data-search="118 nb-single-char 7.3.2 covered">
         <td>118</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-nb-single-char" target="_blank" class="spec-link">nb-single-char</a></td>
         <td>§7.3.2</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectSingleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="uncovered" data-chapter="7" data-search="119 ns-single-char 7.3.2 uncovered">
         <td>119</td>
@@ -1058,12 +1058,12 @@
         <td><span class="badge badge-covered">Covered</span></td>
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanSingleQuoted</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="7" data-search="121 nb-single-text(n,c) 7.3.2 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="7" data-search="121 nb-single-text(n,c) 7.3.2 covered">
         <td>121</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-nb-single-text" target="_blank" class="spec-link">nb-single-text(n,c)</a></td>
         <td>§7.3.2</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectSingleQuotedLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="uncovered" data-chapter="7" data-search="122 nb-single-one-line 7.3.2 uncovered">
         <td>122</td>
@@ -1350,21 +1350,21 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-b-block-header" target="_blank" class="spec-link">c-b-block-header(t)</a></td>
         <td>§8.1.1</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.parseBlockHeaderLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanBlockScalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.parseBlockHeaderLoop</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="8" data-search="163 c-indentation-indicator 8.1.1 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="8" data-search="163 c-indentation-indicator 8.1.1 covered">
         <td>163</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-indentation-indicator" target="_blank" class="spec-link">c-indentation-indicator</a></td>
         <td>§8.1.1</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanBlockScalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanBlockScalarBody</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="8" data-search="164 c-chomping-indicator(t) 8.1.1 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="8" data-search="164 c-chomping-indicator(t) 8.1.1 covered">
         <td>164</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-chomping-indicator" target="_blank" class="spec-link">c-chomping-indicator(t)</a></td>
         <td>§8.1.1</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanBlockScalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanBlockScalarBody</a></td>
       </tr>
       <tr class="prod-row" data-status="uncovered" data-chapter="8" data-search="165 b-chomped-last(t) 8.1.1 uncovered">
         <td>165</td>
@@ -1406,14 +1406,14 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-l+literal" target="_blank" class="spec-link">c-l+literal(n)</a></td>
         <td>§8.1.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanBlockScalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanBlockScalarBody</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanBlockScalar</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="8" data-search="171 l-nb-literal-text(n) 8.1.2 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="8" data-search="171 l-nb-literal-text(n) 8.1.2 covered">
         <td>171</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-l-nb-literal-text" target="_blank" class="spec-link">l-nb-literal-text(n)</a></td>
         <td>§8.1.2</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanBlockScalar</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanBlockScalarBody</a></td>
       </tr>
       <tr class="prod-row" data-status="uncovered" data-chapter="8" data-search="172 b-nb-literal-next(n) 8.1.2 uncovered">
         <td>172</td>
@@ -1644,7 +1644,7 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-document-end" target="_blank" class="spec-link">c-document-end</a></td>
         <td>§9.1.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.atDocumentEnd</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.atDocumentEnd</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanDocumentEnd</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="9" data-search="205 l-document-suffix 9.1.2 covered">
         <td>205</td>

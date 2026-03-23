@@ -1,5 +1,5 @@
 {
-  "date": "2026-03-22T21:43:20-0700",
+  "date": "2026-03-22T22:47:51-0700",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -8453,7 +8453,7 @@
       {
         "allPass": true,
         "label": "Production Coverage Analysis",
-        "passed": 174,
+        "passed": 131,
         "tests": [
           {
             "category": "Catalog completeness",
@@ -8472,12 +8472,12 @@
           },
           {
             "category": "Automated @[yaml_spec] discovery",
-            "name": "@[yaml_spec] entries discovered: 77",
+            "name": "@[yaml_spec] entries discovered: 130",
             "outcome": "pass"
           },
           {
             "category": "Automated @[yaml_spec] discovery",
-            "name": "unique production rules annotated: 50",
+            "name": "unique production rules annotated: 93",
             "outcome": "pass"
           },
           {
@@ -8487,22 +8487,22 @@
           },
           {
             "category": "Coverage analysis",
-            "name": "annotated productions: 50/207",
+            "name": "annotated productions: 93/207",
             "outcome": "pass"
           },
           {
             "category": "Coverage analysis",
-            "name": "unannotated in-scope productions: 157",
+            "name": "unannotated in-scope productions: 114",
             "outcome": "pass"
           },
           {
             "category": "Coverage analysis",
-            "name": "indent-dependent with annotations: 11/49",
+            "name": "indent-dependent with annotations: 16/49",
             "outcome": "pass"
           },
           {
             "category": "Per-module annotation counts",
-            "name": "Lean4Yaml.Scanner: 56 annotations",
+            "name": "Lean4Yaml.Scanner: 109 annotations",
             "outcome": "pass"
           },
           {
@@ -8517,22 +8517,22 @@
           },
           {
             "category": "Per-chapter coverage",
-            "name": "Ch 5 (Characters): 13/59",
+            "name": "Ch 5 (Characters): 39/59",
             "outcome": "pass"
           },
           {
             "category": "Per-chapter coverage",
-            "name": "Ch 6 (Basic Structures): 12/41",
+            "name": "Ch 6 (Basic Structures): 16/41",
             "outcome": "pass"
           },
           {
             "category": "Per-chapter coverage",
-            "name": "Ch 7 (Flow Styles): 11/57",
+            "name": "Ch 7 (Flow Styles): 21/57",
             "outcome": "pass"
           },
           {
             "category": "Per-chapter coverage",
-            "name": "Ch 8 (Block Styles): 9/40",
+            "name": "Ch 8 (Block Styles): 12/40",
             "outcome": "pass"
           },
           {
@@ -8557,22 +8557,7 @@
           },
           {
             "category": "Unannotated productions (gaps)",
-            "name": "[10] c-mapping-start (§5.3) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
             "name": "[12] c-comment (§5.3) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[13] c-anchor (§5.3) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[14] c-alias (§5.3) — no @[yaml_spec]",
             "outcome": "pass"
           },
           {
@@ -8588,21 +8573,6 @@
           {
             "category": "Unannotated productions (gaps)",
             "name": "[17] c-folded (§5.3) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[18] c-single-quote (§5.3) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[19] c-double-quote (§5.3) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[20] c-directive (§5.3) — no @[yaml_spec]",
             "outcome": "pass"
           },
           {
@@ -8672,106 +8642,6 @@
           },
           {
             "category": "Unannotated productions (gaps)",
-            "name": "[41] c-escape (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[42] ns-esc-null (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[43] ns-esc-bell (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[44] ns-esc-backspace (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[45] ns-esc-horizontal-tab (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[46] ns-esc-line-feed (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[47] ns-esc-vertical-tab (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[48] ns-esc-form-feed (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[49] ns-esc-carriage-return (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[50] ns-esc-escape (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[51] ns-esc-space (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[52] ns-esc-double-quote (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[53] ns-esc-slash (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[54] ns-esc-backslash (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[55] ns-esc-next-line (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[56] ns-esc-non-breaking-space (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[57] ns-esc-line-separator (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[58] ns-esc-paragraph-separator (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[60] ns-esc-16-bit (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[61] ns-esc-32-bit (§5.7) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
             "name": "[64] s-indent(<n) (§6.1) — no @[yaml_spec]",
             "outcome": "pass"
           },
@@ -8797,27 +8667,12 @@
           },
           {
             "category": "Unannotated productions (gaps)",
-            "name": "[69] s-flow-line-prefix(n) (§6.3) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[70] l-empty(n,c) (§6.4) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
             "name": "[71] b-l-trimmed(n,c) (§6.5) — no @[yaml_spec]",
             "outcome": "pass"
           },
           {
             "category": "Unannotated productions (gaps)",
             "name": "[72] b-as-space (§6.5) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[73] b-l-folded(n,c) (§6.5) — no @[yaml_spec]",
             "outcome": "pass"
           },
           {
@@ -8912,52 +8767,12 @@
           },
           {
             "category": "Unannotated productions (gaps)",
-            "name": "[102] ns-anchor-char (§6.9) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[104] c-ns-alias-node (§7.1) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
             "name": "[105] e-scalar (§7.2) — no @[yaml_spec]",
             "outcome": "pass"
           },
           {
             "category": "Unannotated productions (gaps)",
             "name": "[106] e-node (§7.2) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[107] nb-double-char (§7.3.1) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[108] ns-double-char (§7.3.1) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[110] nb-double-text(n,c) (§7.3.1) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[111] nb-double-one-line (§7.3.1) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[112] s-double-escaped(n) (§7.3.1) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[113] s-double-break(n) (§7.3.1) — no @[yaml_spec]",
             "outcome": "pass"
           },
           {
@@ -8977,22 +8792,7 @@
           },
           {
             "category": "Unannotated productions (gaps)",
-            "name": "[117] c-quoted-quote (§7.3.2) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[118] nb-single-char (§7.3.2) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
             "name": "[119] ns-single-char (§7.3.2) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[121] nb-single-text(n,c) (§7.3.2) — no @[yaml_spec]",
             "outcome": "pass"
           },
           {
@@ -9147,16 +8947,6 @@
           },
           {
             "category": "Unannotated productions (gaps)",
-            "name": "[163] c-indentation-indicator (§8.1.1) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[164] c-chomping-indicator(t) (§8.1.1) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
             "name": "[165] b-chomped-last(t) (§8.1.1) — no @[yaml_spec]",
             "outcome": "pass"
           },
@@ -9178,11 +8968,6 @@
           {
             "category": "Unannotated productions (gaps)",
             "name": "[169] l-trail-comments(n) (§8.1.1) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[171] l-nb-literal-text(n) (§8.1.2) — no @[yaml_spec]",
             "outcome": "pass"
           },
           {
@@ -9326,7 +9111,7 @@
             "outcome": "pass"
           }
         ],
-        "total": 174
+        "total": 131
       },
       {
         "allPass": true,
@@ -9372,7 +9157,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 1345,
-    "totalTests": 1345
+    "totalPassed": 1302,
+    "totalTests": 1302
   }
 }
