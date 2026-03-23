@@ -367,6 +367,7 @@ termination_by fuel
 /-- Skip zero or more `s-white` characters (spaces + tabs).
     Implements `s-white*` — use for `s-separate-in-line` ([66]) contexts.
     **Not** for indentation. See `skipSpaces` for `s-indent`. -/
+@[yaml_spec "6.2" 66 "s-separate-in-line"]
 def skipWhitespace (s : ScannerState) : ScannerState :=
   skipWhitespaceLoop s (s.inputEnd - s.offset)
 
@@ -478,7 +479,8 @@ termination_by fuel
 
     Comments are collected into `ScannerState.comments` as a side-channel
     (§6.6: comments have no effect on the serialization tree). -/
-@[yaml_spec "6.7" 77 "s-b-comment"]
+@[yaml_spec "6.6" 75 "c-nb-comment-text",
+  yaml_spec "6.6" 77 "s-b-comment"]
 def skipToContentComment (s : ScannerState) : ScannerState :=
   match s.peek? with
   | some '#' =>
@@ -544,7 +546,8 @@ termination_by fuel
     6. Otherwise: we've reached content — stop.
 
     **Error**: Tab character used as indentation (before content on a new line). -/
-@[yaml_spec "6.7" 79 "s-l-comments"]
+@[yaml_spec "6.6" 79 "s-l-comments",
+  yaml_spec "6.6" 78 "l-comment"]
 def skipToContent (s : ScannerState) : Except ScanError ScannerState :=
   skipToContentLoop s (s.inputEnd - s.offset + 1)
 
@@ -665,7 +668,8 @@ def atDocumentBoundary (s : ScannerState) : Bool :=
 
     **Refactored for verification**: Uses explicit variable names (no shadowing)
     to make token tracking clearer for formal proofs. -/
-@[yaml_spec "7.4.1" 137 "c-flow-sequence", yaml_spec "7.4.1" 8 "c-sequence-start"]
+@[yaml_spec "7.4.1" 137 "c-flow-sequence",
+  yaml_spec "7.4.1" 8 "c-sequence-start"]
 def scanFlowSequenceStart (s : ScannerState) : ScannerState :=
   -- Save the outer simple key so it survives flow nesting.
   -- Example: `[a, b]: value` — the simple key saved before `[` must
@@ -1234,7 +1238,8 @@ def scanTagDirective (s : ScannerState) (s_after_ws : ScannerState) (startPos : 
     **Error**: `directiveAfterContent` (directive after document content without `...`),
     `duplicateYamlDirective` (second `%YAML` in same document),
     `directiveTrailingContent` (content after version string). -/
-@[yaml_spec "6.8" 82 "l-directive", yaml_spec "6.8" 20 "c-directive"]
+@[yaml_spec "6.8" 82 "l-directive",
+  yaml_spec "6.8" 20 "c-directive"]
 def scanDirective (s : ScannerState) : Except ScanError ScannerState :=
   if !s.allowDirectives then
     .error (.directiveAfterContent s.line)
@@ -1299,7 +1304,8 @@ def skipDocEndWhitespace (s : ScannerState) (fuel : Nat) : ScannerState :=
     Sets `allowDirectives := true` (re-enables directives for next document).
     **Error**: `directiveWithoutDocument` (if directives were present but no `---` followed),
     `trailingContentAfterDocEnd` (non-comment content on same line after `...`). -/
-@[yaml_spec "9.1.2" 204 "c-document-end", yaml_spec "9.1.2" 205 "l-document-suffix"]
+@[yaml_spec "9.1.2" 204 "c-document-end",
+  yaml_spec "9.1.2" 205 "l-document-suffix"]
 def scanDocumentEnd (s : ScannerState) : Except ScanError ScannerState := do
   -- §9.1.2: Document end marker `...` requires an open document.
   -- If directives were present but no `---` followed, the `...` cannot
@@ -1352,7 +1358,9 @@ def collectHexDigitsLoop (s : ScannerState) (hex : String) (n : Nat) : String ×
     **Post**: Advances past `n` hex digits, returns the decoded character.
     **Error**: `invalidHexEscape` (fewer than `n` hex digits available),
     `unicodeOutOfRange` (value ≥ U+110000). -/
-@[yaml_spec "5.7" 59 "ns-esc-8-bit", yaml_spec "5.7" 60 "ns-esc-16-bit", yaml_spec "5.7" 61 "ns-esc-32-bit"]
+@[yaml_spec "5.7" 59 "ns-esc-8-bit",
+  yaml_spec "5.7" 60 "ns-esc-16-bit",
+  yaml_spec "5.7" 61 "ns-esc-32-bit"]
 def parseHexEscape (s : ScannerState) (n : Nat) : Except ScanError (Char × ScannerState) := do
   let (hex, s') := collectHexDigitsLoop s "" n
   if hex.length != n then
@@ -1465,7 +1473,7 @@ def foldQuotedNewlinesLoop (s : ScannerState) (emptyCount : Nat) (fuel : Nat) :
     **Error**: `tabInIndentation` if tab found in indentation zone of continuation line (§6.1). -/
 @[yaml_spec "6.5" 73 "b-l-folded",
   yaml_spec "6.5" 74 "s-flow-folded",
- yaml_spec "6.5" 69 "b-l-trimmed",
+  yaml_spec "6.5" 69 "b-l-trimmed",
   yaml_spec "6.5" 70 "b-as-space"]
 def foldQuotedNewlines (s : ScannerState) : Except ScanError (String × ScannerState) := do
   let s' := consumeNewline s
