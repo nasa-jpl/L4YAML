@@ -438,9 +438,10 @@ Running verified test suites...
   Adversarial Grammar-Directed Tests (v0.2.13.1): ✓ 154/154
   Mutation Testing on yaml-test-suite (v0.2.13.2): ✓ 45/45
   Property-Based Round-Trip Tests (v0.2.13.3): ✓ 124/124
+  Production Coverage Analysis: ✓ 174/174
   Demo: ✓ 7/7
 
-Verified: 1171/1171
+Verified: 1345/1345
 
 Generating HTML reports...
   wrote docs/index.html

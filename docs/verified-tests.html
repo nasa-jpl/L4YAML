@@ -65,10 +65,10 @@
   <p class="subtitle">Unit tests, parser tests, verification tests, and string lemma tests — all must pass.</p>
 
   <div class="stats">
-    <div class="stat-box stat-total"><h3>Total</h3><div class="number">1171</div></div>
-    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">1171</div></div>
+    <div class="stat-box stat-total"><h3>Total</h3><div class="number">1345</div></div>
+    <div class="stat-box stat-pass"><h3>Passed</h3><div class="number">1345</div></div>
     <div class="stat-box stat-fail"><h3>Failed</h3><div class="number">0</div></div>
-    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">14</div></div>
+    <div class="stat-box stat-suites"><h3>Suites</h3><div class="number">15</div></div>
   </div>
   <h3>Suites</h3>
   <div class="stage-cards">
@@ -151,6 +151,12 @@
       <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean" target="_blank" class="source-link">📄 Tests/PropertyTests.lean</a></div>
     </div>
     <div class="stage-card" style="border-left-color:var(--color-pass)">
+      <div class="stage-card-name">Production Coverage Analysis</div>
+      <div class="stage-card-stats">174/174 passed (100.0%)</div>
+      <div class="stage-bar"><div class="stage-bar-fill" style="width: 100.0%"></div></div>
+      <div class="stage-card-source"><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean" target="_blank" class="source-link">📄 Tests/ProductionCoverage.lean</a></div>
+    </div>
+    <div class="stage-card" style="border-left-color:var(--color-pass)">
       <div class="stage-card-name">Demo</div>
       <div class="stage-card-stats">7/7 passed (100.0%)</div>
       <div class="stage-bar"><div class="stage-bar-fill" style="width: 100.0%"></div></div>
@@ -182,6 +188,7 @@
         <option value="adversarialtests">Adversarial Grammar-Directed Tests (v0.2.13.1)</option>
         <option value="mutationtests">Mutation Testing on yaml-test-suite (v0.2.13.2)</option>
         <option value="propertytests">Property-Based Round-Trip Tests (v0.2.13.3)</option>
+        <option value="productioncoverage">Production Coverage Analysis</option>
         <option value="demo">Demo</option>
       </select>
     </div>
@@ -189,7 +196,7 @@
       <label>Search:</label>
       <input type="text" class="search-input" placeholder="Category, test name..." oninput="searchTests(this.value)">
     </div>
-    <div class="filter-group"><span>Showing <strong id="visibleCount">1171</strong> of 1171</span></div>
+    <div class="filter-group"><span>Showing <strong id="visibleCount">1345</strong> of 1345</span></div>
   </div>
 
   <table id="testTable">
@@ -8348,6 +8355,1224 @@
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/PropertyTests.lean#L640" target="_blank" class="source-link">Property-Based Round-Trip Tests (v0.2.13.3)</a></td>
         <td>DumpConfig variation round-trip</td>
         <td>node+allow reserved</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage catalog completeness yaml 1.2.2 productions cataloged: 211">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L772" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Catalog completeness</td>
+        <td>YAML 1.2.2 productions cataloged: 211</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage catalog completeness in-scope productions: 207">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L774" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Catalog completeness</td>
+        <td>in-scope productions: 207</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage catalog completeness indent-dependent productions: 49">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L776" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Catalog completeness</td>
+        <td>indent-dependent productions: 49</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage automated @[yaml_spec] discovery @[yaml_spec] entries discovered: 77">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L780" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Automated @[yaml_spec] discovery</td>
+        <td>@[yaml_spec] entries discovered: 77</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage automated @[yaml_spec] discovery unique production rules annotated: 50">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L782" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Automated @[yaml_spec] discovery</td>
+        <td>unique production rules annotated: 50</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage automated @[yaml_spec] discovery source modules with annotations: 3">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L784" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Automated @[yaml_spec] discovery</td>
+        <td>source modules with annotations: 3</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage coverage analysis annotated productions: 50/207">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L788" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Coverage analysis</td>
+        <td>annotated productions: 50/207</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage coverage analysis unannotated in-scope productions: 157">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L790" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Coverage analysis</td>
+        <td>unannotated in-scope productions: 157</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage coverage analysis indent-dependent with annotations: 11/49">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L792" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Coverage analysis</td>
+        <td>indent-dependent with annotations: 11/49</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage per-module annotation counts lean4yaml.scanner: 56 annotations">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L798" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Per-module annotation counts</td>
+        <td>Lean4Yaml.Scanner: 56 annotations</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage per-module annotation counts lean4yaml.tokenparser: 14 annotations">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L798" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Per-module annotation counts</td>
+        <td>Lean4Yaml.TokenParser: 14 annotations</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage per-module annotation counts lean4yaml.charpredicates: 7 annotations">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L798" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Per-module annotation counts</td>
+        <td>Lean4Yaml.CharPredicates: 7 annotations</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage per-chapter coverage ch 5 (characters): 13/59">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L807" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Per-chapter coverage</td>
+        <td>Ch 5 (Characters): 13/59</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage per-chapter coverage ch 6 (basic structures): 12/41">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L807" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Per-chapter coverage</td>
+        <td>Ch 6 (Basic Structures): 12/41</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage per-chapter coverage ch 7 (flow styles): 11/57">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L807" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Per-chapter coverage</td>
+        <td>Ch 7 (Flow Styles): 11/57</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage per-chapter coverage ch 8 (block styles): 9/40">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L807" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Per-chapter coverage</td>
+        <td>Ch 8 (Block Styles): 9/40</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage per-chapter coverage ch 9 (documents): 5/10">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L807" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Per-chapter coverage</td>
+        <td>Ch 9 (Documents): 5/10</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [3] c-byte-order-mark (§5.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[3] c-byte-order-mark (§5.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [4] c-sequence-entry (§5.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[4] c-sequence-entry (§5.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [5] c-mapping-key (§5.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[5] c-mapping-key (§5.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [10] c-mapping-start (§5.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[10] c-mapping-start (§5.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [12] c-comment (§5.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[12] c-comment (§5.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [13] c-anchor (§5.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[13] c-anchor (§5.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [14] c-alias (§5.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[14] c-alias (§5.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [15] c-tag (§5.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[15] c-tag (§5.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [16] c-literal (§5.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[16] c-literal (§5.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [17] c-folded (§5.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[17] c-folded (§5.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [18] c-single-quote (§5.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[18] c-single-quote (§5.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [19] c-double-quote (§5.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[19] c-double-quote (§5.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [20] c-directive (§5.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[20] c-directive (§5.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [24] b-line-feed (§5.4) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[24] b-line-feed (§5.4) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [25] b-carriage-return (§5.4) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[25] b-carriage-return (§5.4) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [27] nb-char (§5.4) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[27] nb-char (§5.4) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [28] b-break (§5.4) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[28] b-break (§5.4) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [29] b-as-line-feed (§5.4) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[29] b-as-line-feed (§5.4) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [30] b-non-content (§5.4) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[30] b-non-content (§5.4) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [32] s-tab (§5.5) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[32] s-tab (§5.5) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [34] ns-char (§5.5) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[34] ns-char (§5.5) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [35] ns-dec-digit (§5.6) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[35] ns-dec-digit (§5.6) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [36] ns-hex-digit (§5.6) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[36] ns-hex-digit (§5.6) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [38] ns-word-char (§5.6) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[38] ns-word-char (§5.6) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [39] ns-uri-char (§5.6) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[39] ns-uri-char (§5.6) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [40] ns-tag-char (§5.6) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[40] ns-tag-char (§5.6) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [41] c-escape (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[41] c-escape (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [42] ns-esc-null (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[42] ns-esc-null (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [43] ns-esc-bell (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[43] ns-esc-bell (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [44] ns-esc-backspace (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[44] ns-esc-backspace (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [45] ns-esc-horizontal-tab (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[45] ns-esc-horizontal-tab (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [46] ns-esc-line-feed (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[46] ns-esc-line-feed (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [47] ns-esc-vertical-tab (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[47] ns-esc-vertical-tab (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [48] ns-esc-form-feed (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[48] ns-esc-form-feed (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [49] ns-esc-carriage-return (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[49] ns-esc-carriage-return (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [50] ns-esc-escape (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[50] ns-esc-escape (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [51] ns-esc-space (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[51] ns-esc-space (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [52] ns-esc-double-quote (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[52] ns-esc-double-quote (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [53] ns-esc-slash (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[53] ns-esc-slash (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [54] ns-esc-backslash (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[54] ns-esc-backslash (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [55] ns-esc-next-line (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[55] ns-esc-next-line (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [56] ns-esc-non-breaking-space (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[56] ns-esc-non-breaking-space (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [57] ns-esc-line-separator (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[57] ns-esc-line-separator (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [58] ns-esc-paragraph-separator (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[58] ns-esc-paragraph-separator (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [60] ns-esc-16-bit (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[60] ns-esc-16-bit (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [61] ns-esc-32-bit (§5.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[61] ns-esc-32-bit (§5.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [64] s-indent(&lt;n) (§6.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[64] s-indent(&lt;n) (§6.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [65] s-indent(≤n) (§6.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[65] s-indent(≤n) (§6.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [66] s-separate-in-line (§6.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[66] s-separate-in-line (§6.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [67] s-line-prefix(n,c) (§6.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[67] s-line-prefix(n,c) (§6.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [68] s-block-line-prefix(n) (§6.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[68] s-block-line-prefix(n) (§6.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [69] s-flow-line-prefix(n) (§6.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[69] s-flow-line-prefix(n) (§6.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [70] l-empty(n,c) (§6.4) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[70] l-empty(n,c) (§6.4) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [71] b-l-trimmed(n,c) (§6.5) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[71] b-l-trimmed(n,c) (§6.5) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [72] b-as-space (§6.5) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[72] b-as-space (§6.5) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [73] b-l-folded(n,c) (§6.5) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[73] b-l-folded(n,c) (§6.5) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [75] c-nb-comment-text (§6.6) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[75] c-nb-comment-text (§6.6) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [76] b-comment (§6.6) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[76] b-comment (§6.6) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [78] l-comment (§6.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[78] l-comment (§6.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [80] s-separate(n,c) (§6.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[80] s-separate(n,c) (§6.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [81] s-separate-lines(n) (§6.7) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[81] s-separate-lines(n) (§6.7) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [83] ns-reserved-directive (§6.8) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[83] ns-reserved-directive (§6.8) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [84] ns-directive-name (§6.8) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[84] ns-directive-name (§6.8) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [85] ns-directive-parameter (§6.8) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[85] ns-directive-parameter (§6.8) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [87] ns-yaml-version (§6.8.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[87] ns-yaml-version (§6.8.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [89] c-tag-handle (§6.8.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[89] c-tag-handle (§6.8.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [90] c-primary-tag-handle (§6.8.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[90] c-primary-tag-handle (§6.8.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [91] c-secondary-tag-handle (§6.8.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[91] c-secondary-tag-handle (§6.8.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [92] c-named-tag-handle (§6.8.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[92] c-named-tag-handle (§6.8.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [93] ns-tag-prefix (§6.8.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[93] ns-tag-prefix (§6.8.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [94] c-ns-local-tag-prefix (§6.8.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[94] c-ns-local-tag-prefix (§6.8.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [95] ns-global-tag-prefix (§6.8.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[95] ns-global-tag-prefix (§6.8.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [98] c-verbatim-tag (§6.9) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[98] c-verbatim-tag (§6.9) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [100] c-non-specific-tag (§6.9) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[100] c-non-specific-tag (§6.9) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [102] ns-anchor-char (§6.9) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[102] ns-anchor-char (§6.9) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [104] c-ns-alias-node (§7.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[104] c-ns-alias-node (§7.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [105] e-scalar (§7.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[105] e-scalar (§7.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [106] e-node (§7.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[106] e-node (§7.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [107] nb-double-char (§7.3.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[107] nb-double-char (§7.3.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [108] ns-double-char (§7.3.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[108] ns-double-char (§7.3.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [110] nb-double-text(n,c) (§7.3.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[110] nb-double-text(n,c) (§7.3.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [111] nb-double-one-line (§7.3.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[111] nb-double-one-line (§7.3.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [112] s-double-escaped(n) (§7.3.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[112] s-double-escaped(n) (§7.3.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [113] s-double-break(n) (§7.3.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[113] s-double-break(n) (§7.3.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [114] nb-ns-double-in-line (§7.3.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[114] nb-ns-double-in-line (§7.3.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [115] s-double-next-line(n) (§7.3.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[115] s-double-next-line(n) (§7.3.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [116] nb-double-multi-line(n) (§7.3.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[116] nb-double-multi-line(n) (§7.3.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [117] c-quoted-quote (§7.3.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[117] c-quoted-quote (§7.3.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [118] nb-single-char (§7.3.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[118] nb-single-char (§7.3.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [119] ns-single-char (§7.3.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[119] ns-single-char (§7.3.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [121] nb-single-text(n,c) (§7.3.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[121] nb-single-text(n,c) (§7.3.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [122] nb-single-one-line (§7.3.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[122] nb-single-one-line (§7.3.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [123] nb-ns-single-in-line (§7.3.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[123] nb-ns-single-in-line (§7.3.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [124] s-single-next-line(n) (§7.3.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[124] s-single-next-line(n) (§7.3.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [125] nb-single-multi-line(n) (§7.3.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[125] nb-single-multi-line(n) (§7.3.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [127] ns-plain-safe(c) (§7.3.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[127] ns-plain-safe(c) (§7.3.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [128] ns-plain-safe-out (§7.3.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[128] ns-plain-safe-out (§7.3.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [129] ns-plain-safe-in (§7.3.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[129] ns-plain-safe-in (§7.3.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [130] ns-plain-char(c) (§7.3.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[130] ns-plain-char(c) (§7.3.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [132] nb-ns-plain-in-line(c) (§7.3.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[132] nb-ns-plain-in-line(c) (§7.3.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [133] ns-plain-one-line(c) (§7.3.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[133] ns-plain-one-line(c) (§7.3.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [134] s-ns-plain-next-line(n,c) (§7.3.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[134] s-ns-plain-next-line(n,c) (§7.3.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [135] ns-plain-multi-line(n,c) (§7.3.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[135] ns-plain-multi-line(n,c) (§7.3.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [136] in-flow(c) (§7.4) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[136] in-flow(c) (§7.4) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [138] ns-s-flow-seq-entries(n,c) (§7.4.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[138] ns-s-flow-seq-entries(n,c) (§7.4.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [139] ns-flow-seq-entry(n,c) (§7.4.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[139] ns-flow-seq-entry(n,c) (§7.4.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [141] ns-s-flow-map-entries(n,c) (§7.4.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[141] ns-s-flow-map-entries(n,c) (§7.4.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [142] ns-flow-map-entry(n,c) (§7.4.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[142] ns-flow-map-entry(n,c) (§7.4.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [143] ns-flow-map-explicit-entry(n,c) (§7.4.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[143] ns-flow-map-explicit-entry(n,c) (§7.4.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [144] ns-flow-map-implicit-entry(n,c) (§7.4.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[144] ns-flow-map-implicit-entry(n,c) (§7.4.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [145] ns-flow-map-yaml-key-entry(n,c) (§7.4.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[145] ns-flow-map-yaml-key-entry(n,c) (§7.4.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [146] c-ns-flow-map-empty-key-entry(n,c) (§7.4.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[146] c-ns-flow-map-empty-key-entry(n,c) (§7.4.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [149] c-ns-flow-map-adjacent-value(n,c) (§7.4.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[149] c-ns-flow-map-adjacent-value(n,c) (§7.4.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [151] ns-flow-pair-entry(n,c) (§7.4.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[151] ns-flow-pair-entry(n,c) (§7.4.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [152] ns-flow-pair-yaml-key-entry(n,c) (§7.4.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[152] ns-flow-pair-yaml-key-entry(n,c) (§7.4.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [153] c-ns-flow-pair-json-key-entry(n,c) (§7.4.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[153] c-ns-flow-pair-json-key-entry(n,c) (§7.4.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [155] c-s-implicit-json-key(c) (§7.4.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[155] c-s-implicit-json-key(c) (§7.4.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [156] ns-flow-yaml-content(n,c) (§7.5) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[156] ns-flow-yaml-content(n,c) (§7.5) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [157] c-flow-json-content(n,c) (§7.5) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[157] c-flow-json-content(n,c) (§7.5) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [158] ns-flow-content(n,c) (§7.5) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[158] ns-flow-content(n,c) (§7.5) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [159] ns-flow-yaml-node(n,c) (§7.5) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[159] ns-flow-yaml-node(n,c) (§7.5) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [163] c-indentation-indicator (§8.1.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[163] c-indentation-indicator (§8.1.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [164] c-chomping-indicator(t) (§8.1.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[164] c-chomping-indicator(t) (§8.1.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [165] b-chomped-last(t) (§8.1.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[165] b-chomped-last(t) (§8.1.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [166] l-chomped-empty(n,t) (§8.1.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[166] l-chomped-empty(n,t) (§8.1.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [167] l-strip-empty(n) (§8.1.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[167] l-strip-empty(n) (§8.1.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [168] l-keep-empty(n) (§8.1.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[168] l-keep-empty(n) (§8.1.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [169] l-trail-comments(n) (§8.1.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[169] l-trail-comments(n) (§8.1.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [171] l-nb-literal-text(n) (§8.1.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[171] l-nb-literal-text(n) (§8.1.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [172] b-nb-literal-next(n) (§8.1.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[172] b-nb-literal-next(n) (§8.1.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [173] l-literal-content(n,t) (§8.1.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[173] l-literal-content(n,t) (§8.1.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [175] s-nb-folded-text(n) (§8.1.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[175] s-nb-folded-text(n) (§8.1.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [176] l-nb-folded-lines(n) (§8.1.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[176] l-nb-folded-lines(n) (§8.1.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [177] s-nb-spaced-text(n) (§8.1.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[177] s-nb-spaced-text(n) (§8.1.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [178] b-l-spaced(n) (§8.1.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[178] b-l-spaced(n) (§8.1.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [179] l-nb-spaced-lines(n) (§8.1.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[179] l-nb-spaced-lines(n) (§8.1.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [180] l-nb-same-lines(n) (§8.1.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[180] l-nb-same-lines(n) (§8.1.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [181] l-nb-diff-lines(n) (§8.1.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[181] l-nb-diff-lines(n) (§8.1.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [182] l-folded-content(n,t) (§8.1.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[182] l-folded-content(n,t) (§8.1.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [185] s-l+block-indented(n,c) (§8.2.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[185] s-l+block-indented(n,c) (§8.2.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [188] ns-l-block-map-entry(n) (§8.2.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[188] ns-l-block-map-entry(n) (§8.2.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [189] c-l-block-map-explicit-entry(n) (§8.2.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[189] c-l-block-map-explicit-entry(n) (§8.2.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [191] l-block-map-explicit-value(n) (§8.2.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[191] l-block-map-explicit-value(n) (§8.2.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [192] ns-l-block-map-implicit-entry(n) (§8.2.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[192] ns-l-block-map-implicit-entry(n) (§8.2.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [193] ns-s-block-map-implicit-key (§8.2.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[193] ns-s-block-map-implicit-key (§8.2.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [194] c-l-block-map-implicit-value(n) (§8.2.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[194] c-l-block-map-implicit-value(n) (§8.2.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [195] ns-l-compact-mapping(n) (§8.2.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[195] ns-l-compact-mapping(n) (§8.2.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [197] s-l+flow-in-block(n) (§8.2.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[197] s-l+flow-in-block(n) (§8.2.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [198] s-l+block-in-block(n,c) (§8.2.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[198] s-l+block-in-block(n,c) (§8.2.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [199] s-l+block-scalar(n,c) (§8.2.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[199] s-l+block-scalar(n,c) (§8.2.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [200] s-l+block-collection(n,c) (§8.2.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[200] s-l+block-collection(n,c) (§8.2.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [201] seq-space(n,c) (§8.2.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[201] seq-space(n,c) (§8.2.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [202] l-document-prefix (§9.1.1) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[202] l-document-prefix (§9.1.1) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [206] c-forbidden (§9.1.2) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[206] c-forbidden (§9.1.2) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [207] l-bare-document (§9.1.3) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[207] l-bare-document (§9.1.3) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [208] l-explicit-document (§9.1.4) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[208] l-explicit-document (§9.1.4) — no @[yaml_spec]</td>
+        <td><span class="badge badge-pass">Pass</span></td>
+        <td></td>
+      </tr>
+      <tr class="test-row" data-outcome="pass" data-suite="productioncoverage" data-search="productioncoverage unannotated productions (gaps) [209] l-directive-document (§9.1.5) — no @[yaml_spec]">
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Tests/ProductionCoverage.lean#L811" target="_blank" class="source-link">Production Coverage Analysis</a></td>
+        <td>Unannotated productions (gaps)</td>
+        <td>[209] l-directive-document (§9.1.5) — no @[yaml_spec]</td>
         <td><span class="badge badge-pass">Pass</span></td>
         <td></td>
       </tr>
