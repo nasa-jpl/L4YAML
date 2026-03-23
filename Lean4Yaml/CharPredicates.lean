@@ -48,10 +48,11 @@ YAML 1.2.2: [24] b-line-feed, [25] b-carriage-return, [26] b-char
 -/
 
 /-- `[26] b-char`: line feed or carriage return (Bool). -/
+@[yaml_spec "5.4" 24 "b-line-feed", yaml_spec "5.4" 25 "b-carriage-return", yaml_spec "5.4" 26 "b-char"]
 def isLineBreakBool (c : Char) : Bool := c == '\n' || c == '\r'
 
 /-- `[26] b-char`: line feed or carriage return (Prop). -/
-@[yaml_spec "5.4" 26 "b-char"]
+@[yaml_spec "5.4" 24 "b-line-feed", yaml_spec "5.4" 25 "b-carriage-return", yaml_spec "5.4" 26 "b-char"]
 def isLineBreakProp (c : Char) : Prop := c == '\n' ∨ c == '\r'
 
 theorem isLineBreak_iff (c : Char) : isLineBreakBool c = true ↔ isLineBreakProp c := by
@@ -66,10 +67,11 @@ YAML 1.2.2: [33] s-white (§5.5, https://yaml.org/spec/1.2.2/#55-white-space-cha
 -/
 
 /-- `[33] s-white`: space or tab (Bool). -/
+@[yaml_spec "5.5" 31 "s-space", yaml_spec "5.5" 32 "s-tab", yaml_spec "5.5" 33 "s-white"]
 def isWhiteSpaceBool (c : Char) : Bool := c == ' ' || c == '\t'
 
 /-- `[33] s-white`: space or tab (Prop). -/
-@[yaml_spec "5.5" 33 "s-white"]
+@[yaml_spec "5.5" 31 "s-space", yaml_spec "5.5" 32 "s-tab", yaml_spec "5.5" 33 "s-white"]
 def isWhiteSpaceProp (c : Char) : Prop := c == ' ' ∨ c == '\t'
 
 theorem isWhiteSpace_iff (c : Char) : isWhiteSpaceBool c = true ↔ isWhiteSpaceProp c := by
@@ -98,10 +100,21 @@ YAML 1.2.2: [23] c-flow-indicator (§5.3, https://yaml.org/spec/1.2.2/#53-indica
 -/
 
 /-- `[23] c-flow-indicator`: `,`, `[`, `]`, `{`, `}` (Bool). -/
+@[yaml_spec "5.3" 7 "c-collect-entry",
+  yaml_spec "5.3" 8 "c-sequence-start",
+  yaml_spec "5.3" 9 "c-sequence-end",
+  yaml_spec "5.3" 10 "c-mapping-start",
+  yaml_spec "5.3" 11 "c-mapping-end",
+  yaml_spec "5.3" 23 "c-flow-indicator"]
 def isFlowIndicatorBool (c : Char) : Bool := c ∈ [',', '[', ']', '{', '}']
 
 /-- `[23] c-flow-indicator`: `,`, `[`, `]`, `{`, `}` (Prop). -/
-@[yaml_spec "5.3" 23 "c-flow-indicator"]
+@[yaml_spec "5.3" 7 "c-collect-entry",
+  yaml_spec "5.3" 8 "c-sequence-start",
+  yaml_spec "5.3" 9 "c-sequence-end",
+  yaml_spec "5.3" 10 "c-mapping-start",
+  yaml_spec "5.3" 11 "c-mapping-end",
+  yaml_spec "5.3" 23 "c-flow-indicator"]
 def isFlowIndicatorProp (c : Char) : Prop := c ∈ [',', '[', ']', '{', '}']
 
 theorem isFlowIndicator_iff (c : Char) :
@@ -117,12 +130,49 @@ YAML 1.2.2: [22] c-indicator (§5.3, https://yaml.org/spec/1.2.2/#53-indicator-c
 -/
 
 /-- `[22] c-indicator`: all YAML indicator characters (Bool). -/
+@[yaml_spec "5.3" 4 "c-sequence-entry",
+  yaml_spec "5.3" 5 "c-mapping-key",
+  yaml_spec "5.3" 6 "c-mapping-value",
+  yaml_spec "5.3" 7 "c-collect-entry",
+  yaml_spec "5.3" 8 "c-sequence-start",
+  yaml_spec "5.3" 9 "c-sequence-end",
+  yaml_spec "5.3" 10 "c-mapping-start",
+  yaml_spec "5.3" 11 "c-mapping-end",
+  yaml_spec "5.3" 12 "c-comment",
+  yaml_spec "5.3" 13 "c-anchor",
+  yaml_spec "5.3" 14 "c-alias",
+  yaml_spec "5.3" 15 "c-tag",
+  yaml_spec "5.3" 16 "c-literal",
+  yaml_spec "5.3" 17 "c-folded",
+  yaml_spec "5.3" 18 "c-single-quote",
+  yaml_spec "5.3" 19 "c-double-quote",
+  yaml_spec "5.3" 20 "c-directive",
+  yaml_spec "5.3" 21 "c-reserved",
+  yaml_spec "5.3" 22 "c-indicator"]
 def isIndicatorBool (c : Char) : Bool :=
   c ∈ ['-', '?', ':', ',', '[', ']', '{', '}', '#', '&', '*', '!', '|', '>',
        '\'', '"', '%', '@', '`']
 
 /-- `[22] c-indicator`: all YAML indicator characters (Prop). -/
-@[yaml_spec "5.3" 22 "c-indicator"]
+@[yaml_spec "5.3" 4 "c-sequence-entry",
+  yaml_spec "5.3" 5 "c-mapping-key",
+  yaml_spec "5.3" 6 "c-mapping-value",
+  yaml_spec "5.3" 7 "c-collect-entry",
+  yaml_spec "5.3" 8 "c-sequence-start",
+  yaml_spec "5.3" 9 "c-sequence-end",
+  yaml_spec "5.3" 10 "c-mapping-start",
+  yaml_spec "5.3" 11 "c-mapping-end",
+  yaml_spec "5.3" 12 "c-comment",
+  yaml_spec "5.3" 13 "c-anchor",
+  yaml_spec "5.3" 14 "c-alias",
+  yaml_spec "5.3" 15 "c-tag",
+  yaml_spec "5.3" 16 "c-literal",
+  yaml_spec "5.3" 17 "c-folded",
+  yaml_spec "5.3" 18 "c-single-quote",
+  yaml_spec "5.3" 19 "c-double-quote",
+  yaml_spec "5.3" 20 "c-directive",
+  yaml_spec "5.3" 21 "c-reserved",
+  yaml_spec "5.3" 22 "c-indicator"]
 def isIndicatorProp (c : Char) : Prop :=
   c ∈ ['-', '?', ':', ',', '[', ']', '{', '}', '#', '&', '*', '!', '|', '>',
        '\'', '"', '%', '@', '`']
@@ -153,10 +203,36 @@ instance (c : Char) : Decidable (isPrintableProp c) := by
   unfold isPrintableProp; infer_instance
 
 /-- `[1] c-printable`: characters that can appear in a YAML stream (Bool). -/
+@[yaml_spec "5.1" 1 "c-printable"]
 def isPrintableBool (c : Char) : Bool := decide (isPrintableProp c)
 
 theorem isPrintable_iff (c : Char) : isPrintableBool c = true ↔ isPrintableProp c := by
   simp [isPrintableBool, decide_eq_true_eq]
+
+/-! ## JSON Characters
+
+YAML 1.2.2: [2] nb-json (§5.1, https://yaml.org/spec/1.2.2/#51-character-set)
+
+`nb-json` = `#x09 | [#x20-#x10FFFF]` — tab plus all non-control Unicode.
+Referenced by `[107] nb-double-char` and `[118] nb-single-char`.
+-/
+
+/-- `[2] nb-json`: `#x09 | [#x20-#x10FFFF]` (Prop).
+    Note: `c.val ≤ 0x10FFFF` is always true for Lean `Char`, but included
+    for spec-faithful correspondence with the YAML 1.2.2 production. -/
+@[yaml_spec "5.1" 2 "nb-json"]
+def isNbJsonProp (c : Char) : Prop :=
+  c == '\t' ∨ (c.val ≥ 0x20 ∧ c.val ≤ 0x10FFFF)
+
+instance (c : Char) : Decidable (isNbJsonProp c) := by
+  unfold isNbJsonProp; infer_instance
+
+/-- `[2] nb-json`: `#x09 | [#x20-#x10FFFF]` (Bool). -/
+@[yaml_spec "5.1" 2 "nb-json"]
+def isNbJsonBool (c : Char) : Bool := decide (isNbJsonProp c)
+
+theorem isNbJson_iff (c : Char) : isNbJsonBool c = true ↔ isNbJsonProp c := by
+  simp [isNbJsonBool, decide_eq_true_eq]
 
 /-! ## Indent Character
 
@@ -164,6 +240,7 @@ YAML 1.2.2: [31] s-space (§6.1, https://yaml.org/spec/1.2.2/#61-indentation-spa
 -/
 
 /-- `[31] s-space`: only the space character is valid for indentation (Bool). -/
+@[yaml_spec "6.1" 31 "s-space"]
 def isIndentCharBool (c : Char) : Bool := c == ' '
 
 /-- `[31] s-space`: only the space character is valid for indentation (Prop). -/
@@ -179,14 +256,15 @@ instance (c : Char) : Decidable (isIndentCharProp c) := by
 
 /-! ## Plain Scalar First Character
 
-YAML 1.2.2: [123] ns-plain-first(c) (§7.3.3, https://yaml.org/spec/1.2.2/#733-plain-style)
+YAML 1.2.2: [126] ns-plain-first(c) (§7.3.3, https://yaml.org/spec/1.2.2/#733-plain-style)
 
 3-argument version matching the full YAML spec: `-`, `?`, `:` are allowed
 when followed by a safe character (non-blank, and in flow context additionally
 non-flow-indicator).
 -/
 
-/-- `[123] ns-plain-first(c)`: can character start a plain scalar? (Bool). -/
+/-- `[126] ns-plain-first(c)`: can character start a plain scalar? (Bool). -/
+@[yaml_spec "7.3.3" 126 "ns-plain-first"]
 def canStartPlainScalarBool (c : Char) (next : Option Char) (inFlow : Bool) : Bool :=
   if c = '-' ∨ c = '?' ∨ c = ':' then
     match next with
@@ -196,7 +274,7 @@ def canStartPlainScalarBool (c : Char) (next : Option Char) (inFlow : Bool) : Bo
     !isIndicatorBool c && !isWhiteSpaceBool c && !isLineBreakBool c
 
 /-- `[126] ns-plain-first(c)`: can character start a plain scalar? (Prop). -/
-@[yaml_spec "7.3.3" 126 "ns-plain-first(c)"]
+@[yaml_spec "7.3.3" 126 "ns-plain-first"]
 def canStartPlainScalarProp (c : Char) (next : Option Char) (inFlow : Bool) : Prop :=
   if c = '-' ∨ c = '?' ∨ c = ':' then
     match next with
@@ -242,20 +320,22 @@ theorem canStartPlainScalar_iff (c : Char) (next : Option Char) (inFlow : Bool) 
 
 /-! ## Plain Safe Character
 
-YAML 1.2.2: [126] ns-plain-safe(c) (§7.3.3)
+YAML 1.2.2: [127] ns-plain-safe(c) (§7.3.3)
 
 In block context: not whitespace, not line break.
 In flow context: additionally not a flow indicator.
 -/
 
-/-- `[126] ns-plain-safe(c)`: safe continuation character for plain scalars (Bool). -/
+/-- `[127] ns-plain-safe(c)`: safe continuation character for plain scalars (Bool). -/
+@[yaml_spec "7.3.3" 127 "ns-plain-safe"]
 def isPlainSafeBool (c : Char) (inFlow : Bool) : Bool :=
   if inFlow then
     !isWhiteSpaceBool c && !isLineBreakBool c && !isFlowIndicatorBool c
   else
     !isWhiteSpaceBool c && !isLineBreakBool c
 
-/-- `[126] ns-plain-safe(c)`: safe continuation character for plain scalars (Prop). -/
+/-- `[127] ns-plain-safe(c)`: safe continuation character for plain scalars (Prop). -/
+@[yaml_spec "7.3.3" 127 "ns-plain-safe"]
 def isPlainSafeProp (c : Char) (inFlow : Bool) : Prop :=
   if inFlow then
     ¬isWhiteSpaceProp c ∧ ¬isLineBreakProp c ∧ ¬isFlowIndicatorProp c
@@ -283,16 +363,17 @@ theorem isPlainSafe_iff (c : Char) (inFlow : Bool) :
 
 /-! ## Valid Plain First (String-Level)
 
-YAML 1.2.2: [123] ns-plain-first(c) applied to the first character(s) of
+YAML 1.2.2: [126] ns-plain-first(c) applied to the first character(s) of
 a string. 2-argument version with flow context.
 -/
 
 /-- First character(s) can start a plain scalar (Bool).
 
-    **YAML 1.2.2 §7.3.3 [123]**: Exception chars (`-`, `?`, `:`) require a
+    **YAML 1.2.2 §7.3.3 [126]**: Exception chars (`-`, `?`, `:`) require a
     following `ns-plain-safe` character in the INPUT context. When the content
     is a single exception char (the safe char was consumed by a terminator),
     the scanner already validated the input context, so we accept it. -/
+@[yaml_spec "7.3.3" 126 "ns-plain-first"]
 def validPlainFirstBool (content : String) (inFlow : Bool) : Bool :=
   match content.toList with
   | c :: n :: _ => canStartPlainScalarBool c (some n) inFlow
@@ -302,10 +383,11 @@ def validPlainFirstBool (content : String) (inFlow : Bool) : Bool :=
 
 /-- First character(s) can start a plain scalar (Prop).
 
-    **YAML 1.2.2 §7.3.3 [123]**: Exception chars (`-`, `?`, `:`) require a
+    **YAML 1.2.2 §7.3.3 [126]**: Exception chars (`-`, `?`, `:`) require a
     following `ns-plain-safe` character in the INPUT context. When the content
     is a single exception char (the safe char was consumed by a terminator),
     the scanner already validated the input context, so we accept it. -/
+@[yaml_spec "7.3.3" 126 "ns-plain-first"]
 def validPlainFirstProp (content : String) (inFlow : Bool) : Prop :=
   match content.toList with
   | c :: n :: _ => canStartPlainScalarProp c (some n) inFlow
@@ -489,15 +571,17 @@ theorem hasAdjacentChars_append (a b : Char) (xs ys : List Char) :
 
 /-! ## No Colon-Space
 
-YAML 1.2.2: [127] ns-plain-char(c) (§7.3.3) — colon may appear in a
+YAML 1.2.2: [130] ns-plain-char(c) (§7.3.3) — colon may appear in a
 plain scalar only when NOT followed by an `s-white` character.
 -/
 
 /-- Content does not contain `: ` (Bool). -/
+@[yaml_spec "7.3.3" 130 "ns-plain-char"]
 def noColonSpaceBool (content : String) : Bool :=
   !hasAdjacentChars ':' ' ' content.toList
 
 /-- Content does not contain `: ` (Prop). -/
+@[yaml_spec "7.3.3" 130 "ns-plain-char"]
 def noColonSpaceProp (content : String) : Prop :=
   ¬ ∃ i, content.toList[i]? = some ':' ∧ content.toList[i + 1]? = some ' '
 
@@ -514,15 +598,17 @@ theorem noColonSpace_iff (content : String) :
 
 /-! ## No Space-Hash
 
-YAML 1.2.2: [127] ns-plain-char(c) (§7.3.3) — `#` may appear in a
+YAML 1.2.2: [130] ns-plain-char(c) (§7.3.3) — `#` may appear in a
 plain scalar only when NOT preceded by an `s-white` character.
 -/
 
 /-- Content does not contain ` #` (Bool). -/
+@[yaml_spec "7.3.3" 130 "ns-plain-char"]
 def noSpaceHashBool (content : String) : Bool :=
   !hasAdjacentChars ' ' '#' content.toList
 
 /-- Content does not contain ` #` (Prop). -/
+@[yaml_spec "7.3.3" 130 "ns-plain-char"]
 def noSpaceHashProp (content : String) : Prop :=
   ¬ ∃ i, content.toList[i]? = some ' ' ∧ content.toList[i + 1]? = some '#'
 
@@ -539,15 +625,17 @@ theorem noSpaceHash_iff (content : String) :
 
 /-! ## No Flow Indicators
 
-YAML 1.2.2: [126] ns-plain-safe(FLOW-IN) (§7.3.3) — in flow context,
+YAML 1.2.2: [127] ns-plain-safe(FLOW-IN) (§7.3.3) — in flow context,
 plain scalars additionally cannot contain flow indicator characters.
 -/
 
 /-- Content contains no flow indicators (Bool). -/
+@[yaml_spec "7.3.3" 127 "ns-plain-safe"]
 def noFlowIndicatorsBool (content : String) : Bool :=
   content.toList.all (fun c => !isFlowIndicatorBool c)
 
 /-- Content contains no flow indicators (Prop). -/
+@[yaml_spec "7.3.3" 127 "ns-plain-safe"]
 def noFlowIndicatorsProp (content : String) : Prop :=
   ∀ c ∈ content.toList, ¬isFlowIndicatorProp c
 

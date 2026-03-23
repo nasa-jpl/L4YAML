@@ -1521,7 +1521,8 @@ def validateTrailingContent (s : ScannerState) (inputEnd : Nat) : Except ScanErr
   yaml_spec "7.3.1" 110 "nb-double-text",
   yaml_spec "7.3.1" 111 "nb-double-one-line",
   yaml_spec "7.3.1" 112 "s-double-escaped",
-  yaml_spec "7.3.1" 113 "s-double-break"]
+  yaml_spec "7.3.1" 113 "s-double-break",
+  yaml_spec "5.1" 2 "nb-json"]
 def collectDoubleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
     (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
     Except ScanError (String × ScannerState) :=
@@ -1562,8 +1563,11 @@ def collectDoubleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
           throw (.underIndentedScalar .doubleQuoted s'.line)
         let content' := content_trimmed ++ folded
         collectDoubleQuotedLoop s' content' fuel' startPos inFlow currentIndent inputEnd
+      else if !isNbJsonBool c then
+        -- C0 control character — [2] nb-json violation (§5.1)
+        .error (.invalidControlChar c .doubleQuoted s.line s.col)
       else
-        -- Regular character
+        -- Regular character (nb-json minus '"' minus '\')
         let content' := content.push c
         collectDoubleQuotedLoop s.advance content' fuel' startPos inFlow currentIndent inputEnd
 
@@ -1601,7 +1605,8 @@ def scanDoubleQuoted (s : ScannerState) : Except ScanError ScannerState := do
 -- Helper: Collect single-quoted content using structural recursion
 @[yaml_spec "7.3.2" 117 "c-quoted-quote",
   yaml_spec "7.3.2" 118 "nb-single-char",
-  yaml_spec "7.3.2" 121 "nb-single-text"]
+  yaml_spec "7.3.2" 121 "nb-single-text",
+  yaml_spec "5.1" 2 "nb-json"]
 def collectSingleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
     (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
     Except ScanError (String × ScannerState) :=
@@ -1633,8 +1638,11 @@ def collectSingleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
           throw (.underIndentedScalar .singleQuoted s'.line)
         let content' := content_trimmed ++ folded
         collectSingleQuotedLoop s' content' fuel' startPos inFlow currentIndent inputEnd
+      else if !isNbJsonBool c then
+        -- C0 control character — [2] nb-json violation (§5.1)
+        .error (.invalidControlChar c .singleQuoted s.line s.col)
       else
-        -- Regular character
+        -- Regular character (nb-json minus "'")
         let content' := content.push c
         collectSingleQuotedLoop s.advance content' fuel' startPos inFlow currentIndent inputEnd
 

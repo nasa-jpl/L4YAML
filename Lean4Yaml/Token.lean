@@ -3,6 +3,7 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml.Types
+import Lean4Yaml.YamlSpec
 
 /-!
 # YAML Token Types
@@ -113,7 +114,7 @@ inductive YamlToken where
   /-- `%TAG !handle! prefix` tag shorthand directive. -/
   | tagDirective (handle tagPrefix : String)
 
-  /- Document markers (§9.1.2, productions [197]–[198]) -/
+  /- Document markers (§9.1.2, productions [203]–[204]) -/
 
   /-- `---` document start marker. -/
   | documentStart
@@ -152,31 +153,31 @@ inductive YamlToken where
   /- Flow indicator tokens (§5.3, productions [7]–[11]) -/
 
   /-- `[` flow sequence start.
-      **YAML 1.2.2**: [7] c-sequence-start -/
+      **YAML 1.2.2**: [8] c-sequence-start -/
   | flowSequenceStart
   /-- `]` flow sequence end.
-      **YAML 1.2.2**: [8] c-sequence-end -/
+      **YAML 1.2.2**: [9] c-sequence-end -/
   | flowSequenceEnd
   /-- `{` flow mapping start.
-      **YAML 1.2.2**: [9] c-mapping-start -/
+      **YAML 1.2.2**: [10] c-mapping-start -/
   | flowMappingStart
   /-- `}` flow mapping end.
-      **YAML 1.2.2**: [10] c-mapping-end -/
+      **YAML 1.2.2**: [11] c-mapping-end -/
   | flowMappingEnd
   /-- `,` flow entry separator.
-      **YAML 1.2.2**: [11] c-collect-entry -/
+      **YAML 1.2.2**: [7] c-collect-entry -/
   | flowEntry
 
-  /- Node property tokens (§6.9, productions [95]–[102]) -/
+  /- Node property tokens (§6.9, productions [96]–[103]) -/
 
   /-- `&name` anchor definition.
       **YAML 1.2.2**: [101] c-ns-anchor-property -/
   | anchor (name : String)
   /-- `*name` alias reference.
-      **YAML 1.2.2**: [103] c-ns-alias-node -/
+      **YAML 1.2.2**: [104] c-ns-alias-node -/
   | alias (name : String)
   /-- Tag: `!suffix`, `!!suffix`, `!handle!suffix`, or `!<uri>`.
-      **YAML 1.2.2**: [96]–[100] c-ns-tag-property -/
+      **YAML 1.2.2**: [97]–[100] c-ns-tag-property -/
   | tag (handle suffix : String)
 
   /- Scalar tokens (§7.3, §8.1, productions [107]–[175])
@@ -188,12 +189,46 @@ inductive YamlToken where
       The `style` records how it appeared in the source for round-trip. -/
   | scalar (value : String) (style : ScalarStyle)
 
-  /- Comment tokens (§6.6, productions [74]–[79]) -/
+  /- Comment tokens (§6.6, productions [75]–[79]) -/
 
   /-- Comment text (excluding the leading `#` and whitespace).
       Preserved for Phase 8 (comment round-trip fidelity). -/
   | comment (text : String)
   deriving Repr, Inhabited, DecidableEq
+
+/-! ## Token–Production Traceability
+
+Link each `YamlToken` constructor to its YAML 1.2.2 production(s).
+-/
+
+-- §5.3 Indicator characters
+attribute [yaml_spec "5.3" 4 "c-sequence-entry"] YamlToken.blockEntry
+attribute [yaml_spec "5.3" 5 "c-mapping-key"] YamlToken.key
+attribute [yaml_spec "5.3" 6 "c-mapping-value"] YamlToken.value
+attribute [yaml_spec "5.3" 7 "c-collect-entry"] YamlToken.flowEntry
+attribute [yaml_spec "5.3" 8 "c-sequence-start"] YamlToken.flowSequenceStart
+attribute [yaml_spec "5.3" 9 "c-sequence-end"] YamlToken.flowSequenceEnd
+attribute [yaml_spec "5.3" 10 "c-mapping-start"] YamlToken.flowMappingStart
+attribute [yaml_spec "5.3" 11 "c-mapping-end"] YamlToken.flowMappingEnd
+-- §6.6 Comments
+attribute [yaml_spec "6.6" 75 "c-nb-comment-text"] YamlToken.comment
+-- §6.8 Directives
+attribute [yaml_spec "6.8.1" 86 "ns-yaml-directive"] YamlToken.versionDirective
+attribute [yaml_spec "6.8.2" 88 "ns-tag-directive"] YamlToken.tagDirective
+-- §6.9 Node properties
+attribute [yaml_spec "6.9" 97 "c-ns-tag-property"] YamlToken.tag
+attribute [yaml_spec "6.9" 101 "c-ns-anchor-property"] YamlToken.anchor
+-- §7.1 Alias nodes
+attribute [yaml_spec "7.1" 104 "c-ns-alias-node"] YamlToken.alias
+-- §7.3 Scalar styles
+attribute [yaml_spec "7.3.1" 109 "c-double-quoted",
+           yaml_spec "7.3.2" 120 "c-single-quoted",
+           yaml_spec "7.3.3" 131 "ns-plain",
+           yaml_spec "8.1.2" 170 "c-l+literal",
+           yaml_spec "8.1.3" 174 "c-l+folded"] YamlToken.scalar
+-- §9.1.2 Document markers
+attribute [yaml_spec "9.1.2" 203 "c-directives-end"] YamlToken.documentStart
+attribute [yaml_spec "9.1.2" 204 "c-document-end"] YamlToken.documentEnd
 
 /-! ## Token Classification -/
 
@@ -291,6 +326,8 @@ inductive ScanError where
   | documentMarkerInFlow (line : Nat)
   /-- Flow content below block indentation level — §8.1 violation. -/
   | underIndentedFlowContent (line col : Nat)
+  /-- C0 control character (not matching `[2] nb-json`) inside quoted scalar — §5.1 violation. -/
+  | invalidControlChar (c : Char) (style : ScalarStyle) (line col : Nat)
 
   /- Grammar-level errors (TokenParser.lean) -/
 
@@ -366,6 +403,9 @@ def ScanError.toString : ScanError → String
   | .underIndentedScalar style l => s!"under-indented continuation line in {repr style} scalar at line {l}"
   | .documentMarkerInFlow l => s!"document marker (--- or ...) inside flow collection at line {l}"
   | .underIndentedFlowContent l c => s!"flow content under-indented at line {l}, column {c}"
+  | .invalidControlChar c .doubleQuoted l col => s!"invalid control character U+{String.ofList (Nat.toDigits 16 c.val.toNat |>.map Char.toUpper)} in double-quoted scalar at line {l}, column {col}"
+  | .invalidControlChar c .singleQuoted l col => s!"invalid control character U+{String.ofList (Nat.toDigits 16 c.val.toNat |>.map Char.toUpper)} in single-quoted scalar at line {l}, column {col}"
+  | .invalidControlChar c style l col => s!"invalid control character U+{String.ofList (Nat.toDigits 16 c.val.toNat |>.map Char.toUpper)} in {repr style} scalar at line {l}, column {col}"
   | .expectedToken desc l (some got) => s!"expected {desc} at line {l}, got {got}"
   | .expectedToken desc _ none => s!"expected {desc} but reached end of tokens"
   | .nestingDepthExceeded l    => s!"maximum nesting depth exceeded at line {l}"
