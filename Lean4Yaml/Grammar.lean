@@ -160,7 +160,7 @@ A character sequence at column 0 is c-forbidden if it begins with
 by whitespace, line break, or end-of-input.
 This is the pure specification of the parser's `atDocumentBoundary` check.
 -/
-@[yaml_spec "9.1.2" 200 "c-forbidden"]
+@[yaml_spec "9.1.2" 206 "c-forbidden"]
 def isCForbiddenPrefix : List Char → Bool
   | '-' :: '-' :: '-' :: rest => isMarkerFollower rest
   | '.' :: '.' :: '.' :: rest => isMarkerFollower rest
@@ -195,7 +195,7 @@ This is the specification against which the parser's `processEscape`
 function (in `Parser/Scalar.lean`) is verified. The 18 named escapes
 follow YAML 1.2.2 §5.7 Table 5.13 exactly.
 -/
-@[yaml_spec "5.7" 61 "c-ns-esc-char"]
+@[yaml_spec "5.7" 62 "c-ns-esc-char"]
 def resolveNamedEscape : Char → Option Char
   | '0'  => some '\x00'   -- [42] ns-esc-null
   | 'a'  => some '\x07'   -- [43] ns-esc-bell
@@ -247,13 +247,13 @@ and block collections (§8: https://yaml.org/spec/1.2.2/#chapter-8-block-style-p
 /--
 A valid YAML node — the top-level grammar production.
 
-**YAML 1.2.2**: [192] s-l+block-node(n,c) / [157] ns-flow-node(n,c)
+**YAML 1.2.2**: [196] s-l+block-node(n,c) / [161] ns-flow-node(n,c)
 
 A node is any valid YAML value: scalar, sequence, or mapping,
 in either block or flow style. Defined as a single inductive to
 avoid mutual recursion between structures.
 -/
-@[yaml_spec "8.2.3" 196 "s-l+block-node(n,c)", yaml_spec "7.5" 157 "ns-flow-node(n,c)"]
+@[yaml_spec "8.2.3" 196 "s-l+block-node(n,c)", yaml_spec "7.5" 161 "ns-flow-node(n,c)"]
 inductive ValidNode where
   /-- [128] ns-plain(n,BLOCK-KEY/BLOCK-OUT) — Plain scalar in block context.
       Carries character-level production-rule constraints:
@@ -304,7 +304,7 @@ Documents may optionally start with `---` and end with `...`.
 stream support. Not yet referenced by proof files — bridge theorems will
 connect when full stream-level parsing proofs are developed.
 -/
-@[yaml_spec "9" 204 "l-any-document"]
+@[yaml_spec "9" 210 "l-any-document"]
 structure ValidDocument where
   /-- The document content -/
   content : ValidNode
@@ -320,7 +320,7 @@ A valid YAML stream — one or more documents.
 by proofs — `checkValidStream` in ScannerCorrectness.lean is a Bool utility
 that shares the name but not the type. Full stream proofs are future work.
 -/
-@[yaml_spec "9" 205 "l-yaml-stream"]
+@[yaml_spec "9" 211 "l-yaml-stream"]
 structure ValidStream where
   documents : List ValidDocument
   nonempty : documents.length > 0
@@ -739,7 +739,7 @@ whitespace/comment/newline).
 
 **Decidable**: used both in proofs and runtime assertions.
 -/
-@[yaml_spec "8.1.1" 158 "c-b-block-header(m,t)"]
+@[yaml_spec "8.1.1" 162 "c-b-block-header(m,t)"]
 def isBlockScalarHeaderChar (c : Char) : Bool :=
   c == '-' || c == '+' || (c >= '1' && c <= '9')
 

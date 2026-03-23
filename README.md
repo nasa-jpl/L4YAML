@@ -736,11 +736,20 @@ When a `YamlValue.sequence .block` appears as a child of a `YamlValue.mapping .f
 
 </details>
 
-##### **Version 0.2.13.5: Production coverage analysis.**
+##### **Version 0.2.13.5: Production coverage analysis.** (completed 2026-03-22)
 
 <details>
 
 Annotate each scanner/parser code path with the spec production it implements. Cross-reference with yaml-test-suite coverage data and internal `#guard` tests to identify productions with zero or insufficient boundary-case coverage. Priority: every indentation-dependent production must have boundary tests for under-indent, over-indent, and tab injection.
+
+**Key results:**
+- 75 `@[yaml_spec]` annotations across 4 files (Scanner: 46, CharPredicates: 7, Grammar: 9, TokenParser: 13)
+- 44 indent-dependent productions cataloged; 14 key productions analyzed in detail
+- 5 fully covered (under+over+tab): [63], [170], [175], [180], [184]
+- 5 with zero boundary tests identified: [67], [68], [72], [80], [179]
+- 4 partially covered: [71], [158], [187], [193]
+- Gap report in `YAML_PRODUCTIONS.md`, compile-time analysis in `Tests/ProductionCoverage.lean`
+- Build: 369/369 jobs, 0 errors; Verified suites: 1199/1199; SuiteRunner: 869/0/151
 
 | # | Item | Status |
 |---|------|--------|
@@ -748,7 +757,7 @@ Annotate each scanner/parser code path with the spec production it implements. C
 | 2 | Implement yaml-test-suite mutation framework (Version 0.2.13.2) | ✅ |
 | 3 | Implement property-based round-trip fuzzer (Version 0.2.13.3) | ✅ |
 | 4 | Fix dumper context-awareness issues (Version 0.2.13.4) | ✅ |
-| 5 | Production coverage analysis and gap report (Version 0.2.13.5) | 🔲 |
+| 5 | Production coverage analysis and gap report (Version 0.2.13.5) | ✅ |
 | 6 | Fix any new leniencies discovered by systematic testing (Version 0.2.13.6) | 🔲 |
 
 </details>
