@@ -1460,21 +1460,21 @@
 
 --- Catalog completeness ---
   ✓ YAML 1.2.2 productions cataloged: 211
-  ✓ in-scope productions: 210
+  ✓ in-scope productions: 211
   ✓ indent-dependent productions: 49
 
 --- Automated @[yaml_spec] discovery ---
-  ✓ @[yaml_spec] entries discovered: 358
-  ✓ unique production rules annotated: 210
+  ✓ @[yaml_spec] entries discovered: 359
+  ✓ unique production rules annotated: 211
   ✓ source modules with annotations: 4
 
 --- Coverage analysis ---
-  ✓ annotated productions: 210/210
+  ✓ annotated productions: 211/211
   ✓ unannotated in-scope productions: 0
   ✓ indent-dependent with annotations: 49/49
 
 --- Per-module annotation counts ---
-  ✓ Lean4Yaml.Scanner: 187 annotations
+  ✓ Lean4Yaml.Scanner: 188 annotations
   ✓ Lean4Yaml.TokenParser: 56 annotations
   ✓ Lean4Yaml.CharPredicates: 94 annotations
   ✓ Lean4Yaml.Token: 21 annotations
@@ -1482,7 +1482,7 @@
 --- Per-chapter coverage ---
   ✓ Ch 5 (Characters): 62/62
   ✓ Ch 6 (Basic Structures): 41/41
-  ✓ Ch 7 (Flow Styles): 57/57
+  ✓ Ch 7 (Flow Styles): 58/58
   ✓ Ch 8 (Block Styles): 40/40
   ✓ Ch 9 (Documents): 10/10
 

@@ -147,10 +147,10 @@
 
   <div class="stats">
     <div class="stat-box stat-total"><h3>Total Productions</h3><div class="number">211</div></div>
-    <div class="stat-box stat-covered"><h3>Annotated Rules</h3><div class="number">210</div><div class="pct">of 210 in-scope</div></div>
-    <div class="stat-box stat-annotation"><h3>@[yaml_spec] Entries</h3><div class="number">358</div><div class="pct">across 4 modules</div></div>
+    <div class="stat-box stat-covered"><h3>Annotated Rules</h3><div class="number">211</div><div class="pct">of 211 in-scope</div></div>
+    <div class="stat-box stat-annotation"><h3>@[yaml_spec] Entries</h3><div class="number">359</div><div class="pct">across 4 modules</div></div>
     <div class="stat-box stat-grammar"><h3>Grammar Only</h3><div class="number">4</div></div>
-    <div class="stat-box stat-oos"><h3>Out of Scope</h3><div class="number">1</div></div>
+    <div class="stat-box stat-oos"><h3>Out of Scope</h3><div class="number">0</div></div>
   </div>
   <h3>Coverage by Chapter</h3>
   <div class="chapter-cards">
@@ -166,7 +166,7 @@
     </div>
     <div class="chapter-card">
       <div class="chapter-card-name">Ch 7: Flow Styles</div>
-      <div class="chapter-card-stats">57/57 annotated (100.0%)</div>
+      <div class="chapter-card-stats">58/58 annotated (100.0%)</div>
       <div class="chapter-bar"><div class="chapter-bar-fill" style="width: 100.0%"></div></div>
     </div>
     <div class="chapter-card">
@@ -1252,7 +1252,7 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-ns-flow-map-json-key-entry" target="_blank" class="spec-link">c-ns-flow-map-json-key-entry(n,c)</a></td>
         <td>§7.4.2</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.isJsonNodeToken</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.isValueCandidate</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="149 c-ns-flow-map-adjacent-value(n,c) 7.4.2 covered">
         <td>149</td>
@@ -1331,12 +1331,12 @@
         <td><span class="badge badge-covered">Covered</span></td>
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/TokenParser.lean" target="_blank" class="impl-link">Lean4Yaml.TokenParser.parseNodeContent._mutual</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/TokenParser.lean" target="_blank" class="impl-link">Lean4Yaml.TokenParser.parseNodeContent</a></td>
       </tr>
-      <tr class="prod-row" data-status="oos" data-chapter="7" data-search="160 c-flow-json-node(n,c) 7.5 oos">
+      <tr class="prod-row" data-status="covered" data-chapter="7" data-search="160 c-flow-json-node(n,c) 7.5 covered">
         <td>160</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-flow-json-node" target="_blank" class="spec-link">c-flow-json-node(n,c)</a></td>
         <td>§7.5</td>
-        <td><span class="badge badge-oos">Out of Scope</span></td>
-        <td>—</td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.isJsonNodeToken</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="161 ns-flow-node(n,c) 7.5 covered">
         <td>161</td>
