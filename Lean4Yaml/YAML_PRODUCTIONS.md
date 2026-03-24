@@ -39,7 +39,7 @@ for spec coverage.
 | [18](https://yaml.org/spec/1.2.2/#rule-c-single-quote) | `c-single-quote` | ✓ P | `Scalar.singleQuotedScalar` (char `'`) |
 | [19](https://yaml.org/spec/1.2.2/#rule-c-double-quote) | `c-double-quote` | ✓ P | `Scalar.doubleQuotedScalar` (char `"`) |
 | [20](https://yaml.org/spec/1.2.2/#rule-c-directive) | `c-directive` | ✓ P | `Document.directive` (char `%`) |
-| [21](https://yaml.org/spec/1.2.2/#rule-c-reserved) | `c-reserved` | ⊘ | `@`, `` ` `` — rejected by indicator check |
+| [21](https://yaml.org/spec/1.2.2/#rule-c-reserved) | `c-reserved` | ✓ P | `@`, `` ` `` — rejected by indicator check (`isIndicatorBool`) |
 | [22](https://yaml.org/spec/1.2.2/#rule-c-indicator) | `c-indicator` | ✓ P | `Combinators.isIndicator` |
 | [23](https://yaml.org/spec/1.2.2/#rule-c-flow-indicator) | `c-flow-indicator` | ✓ GP | `Grammar.isFlowIndicator`, `Combinators.isFlowIndicator` |
 | [24](https://yaml.org/spec/1.2.2/#rule-b-line-feed) | `b-line-feed` | ✓ GP | `Grammar.isLineBreak`, `Combinators.isLineBreak` (char LF) |
