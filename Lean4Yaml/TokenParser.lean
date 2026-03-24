@@ -233,6 +233,8 @@ def parseNodeProperties (ps : ParseState) : Except ScanError (NodeProperties × 
 /-! ## Empty Node -/
 
 /-- YAML's implicit null for absent nodes. -/
+@[yaml_spec "7.2" 105 "e-scalar",
+  yaml_spec "7.2" 106 "e-node"]
 def emptyNode : YamlValue :=
   YamlValue.scalar { content := "", style := .plain }
 
@@ -316,6 +318,10 @@ mutual
     Extracted from `parseNode` — the 7-way content match that handles
     scalar, block/flow sequences, block/flow mappings, implicit block
     sequence, and empty node cases. -/
+@[yaml_spec "7.5" 156 "ns-flow-yaml-content(n,c)",
+  yaml_spec "7.5" 157 "c-flow-json-content(n,c)",
+  yaml_spec "7.5" 158 "ns-flow-content(n,c)",
+  yaml_spec "7.5" 159 "ns-flow-yaml-node(n,c)"]
 def parseNodeContent (ps : ParseState) (fuel : Nat) (props : NodeProperties) :
     Except ScanError (YamlValue × ParseState) :=
   match ps.peek? with
@@ -347,7 +353,14 @@ def parseNodeContent (ps : ParseState) (fuel : Nat) (props : NodeProperties) :
     **Post**: Returns the parsed `YamlValue` and the advanced parse state.
     **Error**: `nestingDepthExceeded` (fuel exhausted), `trailingContent` (properties and block collection on same line),
     `duplicateAnchor` (two anchors on scalar/empty node, §6.9.2). -/
-@[yaml_spec "8.1" 196 "s-l+block-node(n,c)", yaml_spec "7.5" 161 "ns-flow-node(n,c)"]
+@[yaml_spec "8.1" 196 "s-l+block-node(n,c)",
+  yaml_spec "7.5" 161 "ns-flow-node(n,c)",
+  yaml_spec "8.2.3" 197 "s-l+flow-in-block(n)",
+  yaml_spec "8.2.3" 198 "s-l+block-in-block(n,c)",
+  yaml_spec "8.2.3" 199 "s-l+block-scalar(n,c)",
+  yaml_spec "8.2.3" 200 "s-l+block-collection(n,c)",
+  yaml_spec "8.2.1" 185 "s-l+block-indented(n,c)",
+  yaml_spec "8.2.1" 201 "seq-space(n,c)"]
 def parseNode (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
   match fuel with
   | 0 => .error (.nestingDepthExceeded ps.currentLine)
@@ -401,6 +414,7 @@ def parseBlockSequence (ps : ParseState) (fuel : Nat) : Except ScanError (YamlVa
   .ok (YamlValue.sequence .block items, ps)
 
 /-- Tail-recursive loop for block sequence entries. -/
+@[yaml_spec "8.2.1" 184 "c-l-block-seq-entry(n)"]
 def parseBlockSequenceLoop (ps : ParseState) (fuel : Nat)
     (items : Array YamlValue) : Except ScanError (Array YamlValue × ParseState) := do
   match fuel with
@@ -495,6 +509,7 @@ def parseBlockMapping (ps : ParseState) (fuel : Nat) : Except ScanError (YamlVal
 /-- Parse the value in a block mapping entry after the key has been parsed.
     Handles `.value` consumption, indentation validation, and content dispatch.
     Extracted from `handleBlockMappingKeyEntry` for proof tractability. -/
+@[yaml_spec "8.2.2" 188 "ns-l-block-map-entry(n)"]
 def parseBlockMappingEntryValue (ps : ParseState) (fuel : Nat)
     (keyHasContent : Bool) (keyLine keyCol : Nat) : Except ScanError (YamlValue × ParseState) := do
   let (consumed, ps) := ps.tryConsume .value
@@ -528,6 +543,9 @@ def parseBlockMappingEntryValue (ps : ParseState) (fuel : Nat)
     Parses the key node (if present) and delegates value parsing to
     `parseBlockMappingEntryValue`.
     Returns `(key, val, ps')`.  Does NOT do the recursive loop call. -/
+@[yaml_spec "8.2.2" 189 "c-l-block-map-explicit-entry(n)",
+  yaml_spec "8.2.2" 190 "c-l-block-map-explicit-key(n)",
+  yaml_spec "8.2.2" 193 "ns-s-block-map-implicit-key"]
 def handleBlockMappingKeyEntry (ps : ParseState) (fuel : Nat)
     (pairIdx : Nat) : Except ScanError (YamlValue × YamlValue × ParseState) := do
   let keyPos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
@@ -554,6 +572,8 @@ def handleBlockMappingKeyEntry (ps : ParseState) (fuel : Nat)
 
 /-- Handle the `.value` branch of a block mapping iteration (implicit key).
     The key is always `emptyNode`.  Returns `(val, ps')`. -/
+@[yaml_spec "8.2.2" 191 "l-block-map-explicit-value(n)",
+  yaml_spec "8.2.2" 194 "c-l-block-map-implicit-value(n)"]
 def handleBlockMappingValueEntry (ps : ParseState) (fuel : Nat)
     (pairIdx : Nat) : Except ScanError (YamlValue × ParseState) := do
   let ps := ps.advance
@@ -568,6 +588,8 @@ def handleBlockMappingValueEntry (ps : ParseState) (fuel : Nat)
   .ok (val, ps)
 
 /-- Tail-recursive loop for block mapping entries. -/
+@[yaml_spec "8.2.2" 192 "ns-l-block-map-implicit-entry(n)",
+  yaml_spec "8.2.2" 195 "ns-l-compact-mapping(n)"]
 def parseBlockMappingLoop (ps : ParseState) (fuel : Nat)
     (pairs : Array (YamlValue × YamlValue)) : Except ScanError (Array (YamlValue × YamlValue) × ParseState) := do
   match fuel with
@@ -606,6 +628,8 @@ def parseFlowSequence (ps : ParseState) (fuel : Nat) : Except ScanError (YamlVal
   | _ => .error (.expectedToken "']'" ps.currentLine none)
 
 /-- Tail-recursive loop for flow sequence entries. -/
+@[yaml_spec "7.4.1" 138 "ns-s-flow-seq-entries(n,c)",
+  yaml_spec "7.4.1" 139 "ns-flow-seq-entry(n,c)"]
 def parseFlowSequenceLoop (ps : ParseState) (fuel : Nat)
     (items : Array YamlValue) : Except ScanError (Array YamlValue × ParseState) := do
   match fuel with
@@ -664,6 +688,7 @@ def parseFlowMapping (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValu
 /-- Parse the value part of a flow mapping entry.
     After key is parsed, consume optional VALUE token and parse value.
     Returns the value and updated state with currentPath restored. -/
+@[yaml_spec "7.4.2" 149 "c-ns-flow-map-adjacent-value(n,c)"]
 def parseFlowMappingValue (ps : ParseState) (fuel : Nat)
     (savedPath : YamlPath) (keyContent : String)
     : Except ScanError (YamlValue × ParseState) := do
@@ -685,6 +710,7 @@ def parseFlowMappingValue (ps : ParseState) (fuel : Nat)
     After the KEY token is consumed, dispatches:
     - `.value` / `.flowEntry` / `.flowMappingEnd` → emptyNode (no explicit key content)
     - otherwise → parseNode -/
+@[yaml_spec "7.4.2" 143 "ns-flow-map-explicit-entry(n,c)"]
 def parseExplicitKey (ps : ParseState) (fuel : Nat)
     : Except ScanError (YamlValue × ParseState) :=
   match ps.peek? with
@@ -693,6 +719,12 @@ def parseExplicitKey (ps : ParseState) (fuel : Nat)
   | _ => parseNode ps fuel
 
 /-- Tail-recursive loop for flow mapping entries. -/
+@[yaml_spec "7.4.2" 141 "ns-s-flow-map-entries(n,c)",
+  yaml_spec "7.4.2" 142 "ns-flow-map-entry(n,c)",
+  yaml_spec "7.4.2" 144 "ns-flow-map-implicit-entry(n,c)",
+  yaml_spec "7.4.2" 145 "ns-flow-map-yaml-key-entry(n,c)",
+  yaml_spec "7.4.2" 146 "c-ns-flow-map-empty-key-entry(n,c)",
+  yaml_spec "7.4.2" 155 "c-s-implicit-json-key(c)"]
 def parseFlowMappingLoop (ps : ParseState) (fuel : Nat)
     (pairs : Array (YamlValue × YamlValue)) : Except ScanError (Array (YamlValue × YamlValue) × ParseState) := do
   match fuel with
@@ -730,7 +762,10 @@ def parseFlowMappingLoop (ps : ParseState) (fuel : Nat)
 
     **Pre**: Current token is `key` inside a flow sequence.
     **Post**: Consumes key, optional value, returns `YamlValue.mapping .flow #[(key, val)]`. -/
-@[yaml_spec "7.4.1" 150 "ns-flow-pair(n,c)"]
+@[yaml_spec "7.4.1" 150 "ns-flow-pair(n,c)",
+  yaml_spec "7.4.2" 151 "ns-flow-pair-entry(n,c)",
+  yaml_spec "7.4.2" 152 "ns-flow-pair-yaml-key-entry(n,c)",
+  yaml_spec "7.4.2" 153 "c-ns-flow-pair-json-key-entry(n,c)"]
 def parseSinglePairMapping (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × ParseState) := do
   match fuel with
   | 0 => .error (.nestingDepthExceeded ps.currentLine)
@@ -869,6 +904,7 @@ def parseDirectives (ps : ParseState) : (Array Directive × ParseState) := Id.ru
 /-- Prepare document state: parse directives, register tag handles,
     consume optional `---`, and validate block-collection-on-same-line.
     Extracted from `parseDocument` for proof tractability. -/
+@[yaml_spec "9.1.1" 202 "l-document-prefix"]
 def prepareDocumentState (ps : ParseState) :
     Except ScanError (Array Directive × ParseState) := do
   let (dirs, ps) := parseDirectives ps
@@ -903,7 +939,10 @@ def prepareDocumentState (ps : ParseState) :
     **Pre**: Parse state at the first token of a document (directive, `---`, or content).
     **Post**: Returns `YamlDocument` (value + directives + anchors) and advanced state.
     **Error**: `contentOnDocumentStartLine` (block collection on `---` line, §9.1.1). -/
-@[yaml_spec "9.1" 210 "l-any-document"]
+@[yaml_spec "9.1" 210 "l-any-document",
+  yaml_spec "9.1.3" 207 "l-bare-document",
+  yaml_spec "9.1.4" 208 "l-explicit-document",
+  yaml_spec "9.1.5" 209 "l-directive-document"]
 def parseDocument (ps : ParseState) : Except ScanError (YamlDocument × ParseState) := do
   let (dirs, ps) ← prepareDocumentState ps
   let fuel := 4 * ps.tokens.size + 4

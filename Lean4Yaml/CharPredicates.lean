@@ -327,7 +327,9 @@ In flow context: additionally not a flow indicator.
 -/
 
 /-- `[127] ns-plain-safe(c)`: safe continuation character for plain scalars (Bool). -/
-@[yaml_spec "7.3.3" 127 "ns-plain-safe"]
+@[yaml_spec "7.3.3" 127 "ns-plain-safe",
+  yaml_spec "7.3.3" 128 "ns-plain-safe-out",
+  yaml_spec "7.3.3" 129 "ns-plain-safe-in"]
 def isPlainSafeBool (c : Char) (inFlow : Bool) : Bool :=
   if inFlow then
     !isWhiteSpaceBool c && !isLineBreakBool c && !isFlowIndicatorBool c
@@ -335,7 +337,9 @@ def isPlainSafeBool (c : Char) (inFlow : Bool) : Bool :=
     !isWhiteSpaceBool c && !isLineBreakBool c
 
 /-- `[127] ns-plain-safe(c)`: safe continuation character for plain scalars (Prop). -/
-@[yaml_spec "7.3.3" 127 "ns-plain-safe"]
+@[yaml_spec "7.3.3" 127 "ns-plain-safe",
+  yaml_spec "7.3.3" 128 "ns-plain-safe-out",
+  yaml_spec "7.3.3" 129 "ns-plain-safe-in"]
 def isPlainSafeProp (c : Char) (inFlow : Bool) : Prop :=
   if inFlow then
     ¬isWhiteSpaceProp c ∧ ¬isLineBreakProp c ∧ ¬isFlowIndicatorProp c

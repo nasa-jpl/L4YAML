@@ -408,6 +408,8 @@ def skipToEndOfLine (s : ScannerState) : ScannerState :=
 
 /-- Consume a newline (LF, CR, or CRLF), setting `needIndentCheck := true`
     so the next `scanNextToken` processes indentation. -/
+@[yaml_spec "5.4" 28 "b-break",
+  yaml_spec "5.4" 29 "b-as-line-feed"]
 def consumeNewline (s : ScannerState) : ScannerState :=
   match s.peek? with
   | some '\n' => { s.advance with needIndentCheck := true }
@@ -425,7 +427,9 @@ def consumeNewline (s : ScannerState) : ScannerState :=
 
     Refactored from `do`+`mut` to explicit state threading so that `unfold`
     exposes proof-tractable structure (no monadic join points). -/
-@[yaml_spec "6.1"]
+@[yaml_spec "6.1",
+  yaml_spec "6.3" 67 "s-line-prefix(n,c)",
+  yaml_spec "6.3" 68 "s-block-line-prefix(n)"]
 def skipToContentWs (s : ScannerState) : Except ScanError ScannerState :=
   -- After a newline, use skipSpaces for indentation (s-indent [63]: spaces only).
   -- Then check for tab-as-indentation, using currentIndent to determine the
@@ -548,7 +552,9 @@ termination_by fuel
 
     **Error**: Tab character used as indentation (before content on a new line). -/
 @[yaml_spec "6.6" 79 "s-l-comments",
-  yaml_spec "6.6" 78 "l-comment"]
+  yaml_spec "6.6" 78 "l-comment",
+  yaml_spec "6.7" 80 "s-separate(n,c)",
+  yaml_spec "6.7" 81 "s-separate-lines(n)"]
 def skipToContent (s : ScannerState) : Except ScanError ScannerState :=
   skipToContentLoop s (s.inputEnd - s.offset + 1)
 
@@ -1023,6 +1029,7 @@ def scanAnchorOrAlias (s : ScannerState) (isAnchor : Bool) : ScannerState :=
 /-! ## Tag Scanning -/
 
 -- Helper: Collect verbatim tag URI until '>'.
+@[yaml_spec "5.6" 39 "ns-uri-char"]
 def collectVerbatimTagLoop (s : ScannerState) (uri : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
   | 0 => (uri, s)
@@ -1033,6 +1040,8 @@ def collectVerbatimTagLoop (s : ScannerState) (uri : String) (fuel : Nat) : Stri
     | none => (uri, s)
 
 -- Helper: Collect tag suffix characters (non-whitespace, non-flow).
+@[yaml_spec "5.6" 39 "ns-uri-char",
+  yaml_spec "5.6" 40 "ns-tag-char"]
 def collectTagSuffixLoop (s : ScannerState) (suffix : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
   | 0 => (suffix, s)
@@ -1047,6 +1056,7 @@ def collectTagSuffixLoop (s : ScannerState) (suffix : String) (fuel : Nat) : Str
 
 -- Helper: Collect tag handle characters until '!' or invalid char.
 -- Returns (chars_before_bang, found_second_bang, state).
+@[yaml_spec "5.6" 40 "ns-tag-char"]
 def collectTagHandleLoop (s : ScannerState) (chars : String) (fuel : Nat) : String × Bool × ScannerState :=
   match fuel with
   | 0 => (chars, false, s)
@@ -1061,6 +1071,7 @@ def collectTagHandleLoop (s : ScannerState) (chars : String) (fuel : Nat) : Stri
     | none => (chars, false, s)
 
 /-- Scan a verbatim tag `!<uri>`.  Pre: scanner after first `!`, peek = `<`. -/
+@[yaml_spec "6.9" 98 "c-verbatim-tag"]
 def scanVerbatimTag (s : ScannerState) (startPos : YamlPos) : ScannerState :=
   let s_after_open := s.advance
   let fuel := startPos.offset + s.inputEnd - s_after_open.offset  -- conservative fuel
@@ -1068,6 +1079,8 @@ def scanVerbatimTag (s : ScannerState) (startPos : YamlPos) : ScannerState :=
   s_after_uri.emitAt startPos (.tag "" uri)
 
 /-- Scan a secondary tag `!!suffix`.  Pre: scanner after first `!`, peek = `!`. -/
+@[yaml_spec "6.8.2" 91 "c-secondary-tag-handle",
+  yaml_spec "6.9" 99 "c-ns-shorthand-tag"]
 def scanSecondaryTag (s : ScannerState) (startPos : YamlPos) : ScannerState :=
   let s_after_second_bang := s.advance
   let fuel := startPos.offset + s.inputEnd - s_after_second_bang.offset
@@ -1076,6 +1089,10 @@ def scanSecondaryTag (s : ScannerState) (startPos : YamlPos) : ScannerState :=
 
 /-- Scan a named/primary tag `!handle!suffix` or `!suffix`.
     Pre: scanner after first `!`, peek ≠ `<` and ≠ `!`. -/
+@[yaml_spec "6.8.2" 90 "c-primary-tag-handle",
+  yaml_spec "6.8.2" 92 "c-named-tag-handle",
+  yaml_spec "6.9" 99 "c-ns-shorthand-tag",
+  yaml_spec "6.9" 100 "c-non-specific-tag"]
 def scanNamedTag (s : ScannerState) (startPos : YamlPos) (inputEnd : Nat) : ScannerState :=
   let fuel := inputEnd - s.offset
   let (chars, foundBang, s_after_handle) := collectTagHandleLoop s "" fuel
@@ -1107,6 +1124,7 @@ def scanTag (s : ScannerState) : ScannerState :=
 /-! ## Directive Scanning -/
 
 -- Helper: Collect directive name (non-whitespace, non-linebreak characters).
+@[yaml_spec "6.8" 84 "ns-directive-name"]
 def collectDirectiveNameLoop (s : ScannerState) (name : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
   | 0 => (name, s)
@@ -1120,6 +1138,8 @@ def collectDirectiveNameLoop (s : ScannerState) (name : String) (fuel : Nat) : S
     | none => (name, s)
 
 -- Helper: Collect version major digits until '.'.
+@[yaml_spec "6.8.1" 87 "ns-yaml-version",
+  yaml_spec "5.6" 35 "ns-dec-digit"]
 def collectVersionMajorLoop (s : ScannerState) (major : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
   | 0 => (major, s)
@@ -1134,6 +1154,7 @@ def collectVersionMajorLoop (s : ScannerState) (major : String) (fuel : Nat) : S
     | none => (major, s)
 
 -- Helper: Collect version minor digits.
+@[yaml_spec "5.6" 35 "ns-dec-digit"]
 def collectVersionMinorLoop (s : ScannerState) (minor : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
   | 0 => (minor, s)
@@ -1147,6 +1168,7 @@ def collectVersionMinorLoop (s : ScannerState) (minor : String) (fuel : Nat) : S
     | none => (minor, s)
 
 -- Helper: Collect TAG directive handle (non-whitespace characters).
+@[yaml_spec "6.8.2" 89 "c-tag-handle"]
 def collectTagHandleDirectiveLoop (s : ScannerState) (handle : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
   | 0 => (handle, s)
@@ -1160,6 +1182,9 @@ def collectTagHandleDirectiveLoop (s : ScannerState) (handle : String) (fuel : N
     | none => (handle, s)
 
 -- Helper: Collect TAG directive prefix (non-whitespace, non-linebreak characters).
+@[yaml_spec "6.8.2" 93 "ns-tag-prefix",
+  yaml_spec "6.8.2" 94 "c-ns-local-tag-prefix",
+  yaml_spec "6.8.2" 95 "ns-global-tag-prefix"]
 def collectTagPrefixLoop (s : ScannerState) (pfx : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
   | 0 => (pfx, s)
@@ -1181,7 +1206,7 @@ def collectTagPrefixLoop (s : ScannerState) (pfx : String) (fuel : Nat) : String
     **Pre**: `s` is state after `%YAML` + whitespace skip; `startPos` is position of `%`.
     **Post**: Emits `.versionDirective major minor`, sets `seenYamlDirective`.
     **Error**: `duplicateYamlDirective`, `directiveTrailingContent`. -/
-@[yaml_spec "6.8.1" 86 "ns-yaml-directive", yaml_spec "6.8.1" 88 "ns-yaml-version"]
+@[yaml_spec "6.8.1" 86 "ns-yaml-directive", yaml_spec "6.8.1" 87 "ns-yaml-version"]
 def scanYamlDirective (s : ScannerState) (s_after_ws : ScannerState) (startPos : YamlPos) :
     Except ScanError ScannerState := do
   if s.seenYamlDirective then
@@ -1208,7 +1233,9 @@ def scanYamlDirective (s : ScannerState) (s_after_ws : ScannerState) (startPos :
 
     **Pre**: `s_after_ws` is state after `%TAG` + whitespace skip; `startPos` is position of `%`.
     **Post**: Emits `.tagDirective handle prefix`, sets `directivesPresent`. -/
-@[yaml_spec "6.8.2" 88 "ns-tag-directive"]
+@[yaml_spec "6.8.2" 88 "ns-tag-directive",
+  yaml_spec "6.8.2" 89 "c-tag-handle",
+  yaml_spec "6.8.2" 93 "ns-tag-prefix"]
 def scanTagDirective (s : ScannerState) (s_after_ws : ScannerState) (startPos : YamlPos) :
     Except ScanError ScannerState := do
   let fuel_handle := s.inputEnd - s_after_ws.offset
@@ -1240,7 +1267,9 @@ def scanTagDirective (s : ScannerState) (s_after_ws : ScannerState) (startPos : 
     `duplicateYamlDirective` (second `%YAML` in same document),
     `directiveTrailingContent` (content after version string). -/
 @[yaml_spec "6.8" 82 "l-directive",
-  yaml_spec "6.8" 20 "c-directive"]
+  yaml_spec "6.8" 20 "c-directive",
+  yaml_spec "6.8" 83 "ns-reserved-directive",
+  yaml_spec "6.8" 85 "ns-directive-parameter"]
 def scanDirective (s : ScannerState) : Except ScanError ScannerState :=
   if !s.allowDirectives then
     .error (.directiveAfterContent s.line)
@@ -1337,6 +1366,7 @@ def scanDocumentEnd (s : ScannerState) : Except ScanError ScannerState := do
 /-! ## Escape Sequence Processing -/
 
 /-- Helper for parseHexEscape: collect up to `n` hex digits using structural recursion. -/
+@[yaml_spec "5.6" 36 "ns-hex-digit"]
 def collectHexDigitsLoop (s : ScannerState) (hex : String) (n : Nat) : String × ScannerState :=
   match n with
   | 0 => (hex, s)
@@ -1443,6 +1473,7 @@ def trimTrailingWS (s : String) : String :=
     Returns on first non-blank line content or EOF.
 
     **Termination**: Structurally recursive on `fuel`. -/
+@[yaml_spec "6.4" 70 "l-empty(n,c)"]
 def foldQuotedNewlinesLoop (s : ScannerState) (emptyCount : Nat) (fuel : Nat) :
     ScannerState × Nat :=
   match fuel with
@@ -1474,8 +1505,9 @@ def foldQuotedNewlinesLoop (s : ScannerState) (emptyCount : Nat) (fuel : Nat) :
     **Error**: `tabInIndentation` if tab found in indentation zone of continuation line (§6.1). -/
 @[yaml_spec "6.5" 73 "b-l-folded",
   yaml_spec "6.5" 74 "s-flow-folded",
-  yaml_spec "6.5" 69 "b-l-trimmed",
-  yaml_spec "6.5" 70 "b-as-space"]
+  yaml_spec "6.5" 71 "b-l-trimmed(n,c)",
+  yaml_spec "6.5" 72 "b-as-space",
+  yaml_spec "6.3" 69 "s-flow-line-prefix(n)"]
 def foldQuotedNewlines (s : ScannerState) : Except ScanError (String × ScannerState) := do
   let s' := consumeNewline s
   let (s', emptyCount) := foldQuotedNewlinesLoop s' 0 (s.inputEnd - s'.offset + 1)
@@ -1523,6 +1555,9 @@ def validateTrailingContent (s : ScannerState) (inputEnd : Nat) : Except ScanErr
   yaml_spec "7.3.1" 111 "nb-double-one-line",
   yaml_spec "7.3.1" 112 "s-double-escaped",
   yaml_spec "7.3.1" 113 "s-double-break",
+  yaml_spec "7.3.1" 114 "nb-ns-double-in-line",
+  yaml_spec "7.3.1" 115 "s-double-next-line(n)",
+  yaml_spec "7.3.1" 116 "nb-double-multi-line(n)",
   yaml_spec "5.1" 2 "nb-json"]
 def collectDoubleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
     (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
@@ -1606,7 +1641,12 @@ def scanDoubleQuoted (s : ScannerState) : Except ScanError ScannerState := do
 -- Helper: Collect single-quoted content using structural recursion
 @[yaml_spec "7.3.2" 117 "c-quoted-quote",
   yaml_spec "7.3.2" 118 "nb-single-char",
+  yaml_spec "7.3.2" 119 "ns-single-char",
   yaml_spec "7.3.2" 121 "nb-single-text",
+  yaml_spec "7.3.2" 122 "nb-single-one-line",
+  yaml_spec "7.3.2" 123 "nb-ns-single-in-line",
+  yaml_spec "7.3.2" 124 "s-single-next-line(n)",
+  yaml_spec "7.3.2" 125 "nb-single-multi-line(n)",
   yaml_spec "5.1" 2 "nb-json"]
 def collectSingleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
     (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
@@ -1760,6 +1800,10 @@ def collectPlainScalar_handleBlockLineBreak (s : ScannerState)
     some (content', s_after_spaces)
 
 -- Helper: Collect plain scalar content using structural recursion
+@[yaml_spec "7.3.3" 132 "nb-ns-plain-in-line(c)",
+  yaml_spec "7.3.3" 133 "ns-plain-one-line(c)",
+  yaml_spec "7.3.3" 134 "s-ns-plain-next-line(n,c)",
+  yaml_spec "7.3.3" 135 "ns-plain-multi-line(n,c)"]
 def collectPlainScalarLoop (s : ScannerState) (content : String) (spaces : String) (fuel : Nat)
     (inFlow : Bool) (contentIndent : Nat) (inputEnd : Nat) :
     Except ScanError PlainScalarResult :=
@@ -1879,7 +1923,15 @@ inductive FoldState where
     On `\n`: don't emit yet — record blank lines in `pendingNL` count.
     On first non-`\n` char of a new line: emit pending newlines based on
     state and line classification (space-leading → more, otherwise → content). -/
-@[yaml_spec "8.1.3" 174 "c-l+folded"]
+@[yaml_spec "8.1.3" 174 "c-l+folded",
+  yaml_spec "8.1.3" 175 "s-nb-folded-text(n)",
+  yaml_spec "8.1.3" 176 "l-nb-folded-lines(n)",
+  yaml_spec "8.1.3" 177 "s-nb-spaced-text(n)",
+  yaml_spec "8.1.3" 178 "b-l-spaced(n)",
+  yaml_spec "8.1.3" 179 "l-nb-spaced-lines(n)",
+  yaml_spec "8.1.3" 180 "l-nb-same-lines(n)",
+  yaml_spec "8.1.3" 181 "l-nb-diff-lines(n)",
+  yaml_spec "8.1.3" 182 "l-folded-content(n,t)"]
 def foldBlockContent (raw : String) : String :=
   go raw.toList "" .start 0
 where
@@ -2003,6 +2055,8 @@ def collectLineContentLoop (s : ScannerState) (content : String) (fuel : Nat) :
     | none => (content, s)
 
 -- Helper: Collect block scalar raw content using structural recursion
+@[yaml_spec "8.1.2" 172 "b-nb-literal-next(n)",
+  yaml_spec "8.1.2" 173 "l-literal-content(n,t)"]
 def collectBlockScalarLoop (s : ScannerState) (rawContent : String) (fuel : Nat)
     (contentIndent : Nat) (inputEnd : Nat) :
     String × ScannerState :=
@@ -2122,7 +2176,12 @@ def scanBlockScalarConsumeNewline (s : ScannerState) : Except ScanError ScannerS
     **Post**: Emits `.scalar content style`, clears simpleKey. -/
 @[yaml_spec "8.1" 163 "c-indentation-indicator",
   yaml_spec "8.1" 171 "l-nb-literal-text",
-  yaml_spec "8.1" 164 "c-chomping-indicator"]
+  yaml_spec "8.1" 164 "c-chomping-indicator",
+  yaml_spec "8.1.1" 165 "b-chomped-last(t)",
+  yaml_spec "8.1.1" 166 "l-chomped-empty(n,t)",
+  yaml_spec "8.1.1" 167 "l-strip-empty(n)",
+  yaml_spec "8.1.1" 168 "l-keep-empty(n)",
+  yaml_spec "8.1.1" 169 "l-trail-comments(n)"]
 def scanBlockScalarBody (s_orig : ScannerState) (s_after_newline : ScannerState)
     (chomp : ChompStyle) (explicitOffset : Option Nat) (isLiteral : Bool) (startPos : YamlPos) :
     Except ScanError ScannerState :=
@@ -2177,7 +2236,9 @@ def scanBlockScalarBody (s_orig : ScannerState) (s_after_newline : ScannerState)
   yaml_spec "8.1" 163 "c-indentation-indicator",
   yaml_spec "8.1" 164 "c-chomping-indicator",
   yaml_spec "8.1" 171 "l-nb-literal-text",
-  yaml_spec "8.1" 63 "s-indent"]
+  yaml_spec "8.1" 63 "s-indent",
+  yaml_spec "8.1.2" 172 "b-nb-literal-next(n)",
+  yaml_spec "8.1.2" 173 "l-literal-content(n,t)"]
 def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState :=
   let header := parseBlockHeaderLoop s.advance .clip none 2
   let s_after_comment := scanBlockScalarSkipComment (skipWhitespace header.2.2)
@@ -2529,7 +2590,9 @@ termination_by fuel
     All block collections are properly closed via `unwindIndents`.
     **Error**: `unterminatedFlowCollection` (unclosed `[`/`{`),
     `directiveWithoutDocument` (orphan directives), `fuelExhausted`. -/
-@[yaml_spec "9.2" 211 "l-yaml-stream"]
+@[yaml_spec "9.2" 211 "l-yaml-stream",
+  yaml_spec "5.2" 3 "c-byte-order-mark",
+  yaml_spec "9.1.1" 202 "l-document-prefix"]
 def scan (input : String) : Except ScanError (Array (Positioned YamlToken)) :=
   let s := ScannerState.mk' input
   let s := s.emit .streamStart
