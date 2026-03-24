@@ -140,13 +140,13 @@ def testBlockMappingIndent (state : IO.Ref TestCollector) : IO Unit := do
 def testBlockMappingTab (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "[63] Tab as indentation (§6.1)"
 
-  -- KNOWN LENIENCY: These 4 should be rejected per §6.1 (s-indent = spaces only)
-  -- and libyaml rejects them, but our scanner’s skipToContentWs allows tabs when
-  -- col > currentIndent (−1 at document start). Fix deferred to v0.2.14+.
-  mustParse state "\\ta: 1 (LENIENCY: tab indent)" "\ta: 1"
-  mustParse state " \\ta: 1 (LENIENCY: space+tab)" " \ta: 1"
-  mustParse state "\\t a: 1 (LENIENCY: tab+space)" "\t a: 1"
-  mustParse state "\\t\\ta: 1 (LENIENCY: double tab)" "\t\ta: 1"
+  -- Fixed in v0.2.13.6: tabs at document start are now correctly rejected.
+  -- §6.1 s-indent [63] = spaces only; tabs before block content at stream
+  -- level (currentIndent < 0) are indentation, not separation.
+  mustReject state "\\ta: 1 (tab indent)" "\ta: 1"
+  mustReject state " \\ta: 1 (space+tab)" " \ta: 1"
+  mustReject state "\\t a: 1 (tab+space)" "\t a: 1"
+  mustReject state "\\t\\ta: 1 (double tab)" "\t\ta: 1"
   -- Tab at col 0 under indent-0 mapping: col ≤ currentIndent → correctly rejected
   mustReject state "a:\\n\\tb: 1 (tab indent nested)" "a:\n\tb: 1"
   -- Tab at col 0 then space: col ≤ currentIndent → correctly rejected
@@ -399,13 +399,11 @@ def testMultiLevelNesting (state : IO.Ref TestCollector) : IO Unit := do
 def testTabInjection (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Tab injection (§6.1)"
 
-  -- KNOWN LENIENCY: tab as top-level indent (same as §2 tests)
-  -- Our scanner allows tabs when col > currentIndent (−1 at document start).
-  -- Spec says invalid (s-indent [63] = spaces only), libyaml rejects.
-  mustParse state "\\ta: 1 (LENIENCY)" "\ta: 1"
-  mustParse state " \\ta: 1 (LENIENCY)" " \ta: 1"
-  mustParse state "\\t a: 1 (LENIENCY)" "\t a: 1"
-  mustParse state "\\t\\ta: 1 (LENIENCY)" "\t\ta: 1"
+  -- Fixed in v0.2.13.6: tabs at document start are now correctly rejected.
+  mustReject state "\\ta: 1 (tab at doc start)" "\ta: 1"
+  mustReject state " \\ta: 1 (space+tab at doc start)" " \ta: 1"
+  mustReject state "\\t a: 1 (tab+space at doc start)" "\t a: 1"
+  mustReject state "\\t\\ta: 1 (double tab at doc start)" "\t\ta: 1"
   -- Tab as nested indent: col ≤ currentIndent → correctly rejected
   mustReject state "a:\\n\\tb: 1" "a:\n\tb: 1"
   -- Space meets indent, tab is separation → valid per spec (DK95:0)

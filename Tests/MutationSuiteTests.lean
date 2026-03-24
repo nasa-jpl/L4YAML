@@ -328,6 +328,14 @@ def testSpaceToTabLeniencies (state : IO.Ref TestCollector) : IO Unit := do
     "- |\n\t line1\n line2\n"
 
   -- Source: 5MUD:0 — tab indent in flow content
+  -- Fixed in v0.2.13.6: tabs at stream level before block content rejected.
+  -- Note: this is at stream level (currentIndent < 0) in block context (flowLevel = 0
+  -- at the point where \t\t:bar starts, because { opened flow on a previous token parse).
+  -- Actually: scanner processes `{` → flowLevel becomes 1 → inFlow = true on continuation.
+  -- But the continuation \t\t:bar is inside flow, so tabs are valid s-separate-in-line.
+  -- Wait: libyaml rejects this. The issue is the tab comes BEFORE s-indent(n) spaces.
+  -- At n=0, s-indent(0) = 0 spaces, s-separate-in-line allows tabs. So libyaml is strict.
+  -- We mark as LENIENT (matching libyaml's strictness) to maintain compatibility.
   mustParse state "5MUD:0 tab indent flow content (LENIENT: libyaml rejects)"
     "---\n{ \"foo\"\n\t\t:bar }\n"
 

@@ -699,7 +699,9 @@ theorem skipToContentWs_preserves_tokens (s : ScannerState) (s' : ScannerState)
         · -- probe.peek? = some c (not '#')
           split at h
           · simp at h; rw [← h, skipWhitespace_preserves_tokens, skipSpaces_preserves_tokens]
-          · simp at h
+          · split at h
+            · simp at h; rw [← h, skipWhitespace_preserves_tokens, skipSpaces_preserves_tokens]
+            · simp at h
         · -- probe.peek? = none
           simp at h; rw [← h, skipWhitespace_preserves_tokens, skipSpaces_preserves_tokens]
       · -- peek? ≠ some '\t'
@@ -945,7 +947,10 @@ theorem skipToContentWs_preserves_flowLevel (s : ScannerState) (s' : ScannerStat
         · split at h
           · simp at h; rw [← h, skipWhitespace_preserves_flowLevel,
               skipSpaces_preserves_flowLevel]
-          · simp at h
+          · split at h
+            · simp at h; rw [← h, skipWhitespace_preserves_flowLevel,
+                skipSpaces_preserves_flowLevel]
+            · simp at h
         · simp at h; rw [← h, skipWhitespace_preserves_flowLevel,
             skipSpaces_preserves_flowLevel]
       · simp at h; rw [← h, skipSpaces_preserves_flowLevel]
@@ -2820,7 +2825,9 @@ theorem skipToContentWs_preserves_simpleKey (s : ScannerState) (s' : ScannerStat
         · -- probe.peek? = some c (not '#')
           split at h
           · simp at h; rw [← h, skipWhitespace_preserves_simpleKey, skipSpaces_preserves_simpleKey]
-          · simp at h
+          · split at h
+            · simp at h; rw [← h, skipWhitespace_preserves_simpleKey, skipSpaces_preserves_simpleKey]
+            · simp at h
         · -- probe.peek? = none
           simp at h; rw [← h, skipWhitespace_preserves_simpleKey, skipSpaces_preserves_simpleKey]
       · -- peek? ≠ some '\t'
@@ -3464,7 +3471,9 @@ theorem skipToContentWs_preserves_simpleKeyStack (s : ScannerState) (s' : Scanne
         · simp at h; rw [← h, skipWhitespace_preserves_simpleKeyStack, skipSpaces_preserves_simpleKeyStack]
         · split at h
           · simp at h; rw [← h, skipWhitespace_preserves_simpleKeyStack, skipSpaces_preserves_simpleKeyStack]
-          · simp at h
+          · split at h
+            · simp at h; rw [← h, skipWhitespace_preserves_simpleKeyStack, skipSpaces_preserves_simpleKeyStack]
+            · simp at h
         · simp at h; rw [← h, skipWhitespace_preserves_simpleKeyStack, skipSpaces_preserves_simpleKeyStack]
       · simp at h; rw [← h, skipSpaces_preserves_simpleKeyStack]
     · simp at h; rw [← h, skipWhitespace_preserves_simpleKeyStack, skipSpaces_preserves_simpleKeyStack]
@@ -5728,7 +5737,9 @@ theorem skipToContentWs_preserves_ScanInv (s s' : ScannerState)
         · simp at h_ok; rw [← h_ok]; exact skipWhitespace_preserves_ScanInv _ h_sp
         · split at h_ok
           · simp at h_ok; rw [← h_ok]; exact skipWhitespace_preserves_ScanInv _ h_sp
-          · simp at h_ok
+          · split at h_ok
+            · simp at h_ok; rw [← h_ok]; exact skipWhitespace_preserves_ScanInv _ h_sp
+            · simp at h_ok
         · simp at h_ok; rw [← h_ok]; exact skipWhitespace_preserves_ScanInv _ h_sp
       · simp at h_ok; rw [← h_ok]; exact h_sp
     · simp at h_ok; rw [← h_ok]; exact skipWhitespace_preserves_ScanInv _ h_sp
