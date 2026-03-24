@@ -1,5 +1,5 @@
 {
-  "date": "2026-03-24T07:58:44-0700",
+  "date": "2026-03-24T08:49:44-0700",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -8462,7 +8462,7 @@
           },
           {
             "category": "Catalog completeness",
-            "name": "in-scope productions: 208",
+            "name": "in-scope productions: 210",
             "outcome": "pass"
           },
           {
@@ -8472,12 +8472,12 @@
           },
           {
             "category": "Automated @[yaml_spec] discovery",
-            "name": "@[yaml_spec] entries discovered: 348",
+            "name": "@[yaml_spec] entries discovered: 358",
             "outcome": "pass"
           },
           {
             "category": "Automated @[yaml_spec] discovery",
-            "name": "unique production rules annotated: 209",
+            "name": "unique production rules annotated: 210",
             "outcome": "pass"
           },
           {
@@ -8487,7 +8487,7 @@
           },
           {
             "category": "Coverage analysis",
-            "name": "annotated productions: 208/208",
+            "name": "annotated productions: 210/210",
             "outcome": "pass"
           },
           {
@@ -8512,7 +8512,7 @@
           },
           {
             "category": "Per-module annotation counts",
-            "name": "Lean4Yaml.CharPredicates: 84 annotations",
+            "name": "Lean4Yaml.CharPredicates: 94 annotations",
             "outcome": "pass"
           },
           {
@@ -8522,7 +8522,7 @@
           },
           {
             "category": "Per-chapter coverage",
-            "name": "Ch 5 (Characters): 60/60",
+            "name": "Ch 5 (Characters): 62/62",
             "outcome": "pass"
           },
           {

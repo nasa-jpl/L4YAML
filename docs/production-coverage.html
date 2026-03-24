@@ -147,16 +147,16 @@
 
   <div class="stats">
     <div class="stat-box stat-total"><h3>Total Productions</h3><div class="number">211</div></div>
-    <div class="stat-box stat-covered"><h3>Annotated Rules</h3><div class="number">209</div><div class="pct">of 208 in-scope</div></div>
-    <div class="stat-box stat-annotation"><h3>@[yaml_spec] Entries</h3><div class="number">348</div><div class="pct">across 4 modules</div></div>
+    <div class="stat-box stat-covered"><h3>Annotated Rules</h3><div class="number">210</div><div class="pct">of 210 in-scope</div></div>
+    <div class="stat-box stat-annotation"><h3>@[yaml_spec] Entries</h3><div class="number">358</div><div class="pct">across 4 modules</div></div>
     <div class="stat-box stat-grammar"><h3>Grammar Only</h3><div class="number">4</div></div>
-    <div class="stat-box stat-oos"><h3>Out of Scope</h3><div class="number">3</div></div>
+    <div class="stat-box stat-oos"><h3>Out of Scope</h3><div class="number">1</div></div>
   </div>
   <h3>Coverage by Chapter</h3>
   <div class="chapter-cards">
     <div class="chapter-card">
       <div class="chapter-card-name">Ch 5: Characters</div>
-      <div class="chapter-card-stats">60/60 annotated (100.0%)</div>
+      <div class="chapter-card-stats">62/62 annotated (100.0%)</div>
       <div class="chapter-bar"><div class="chapter-bar-fill" style="width: 100.0%"></div></div>
     </div>
     <div class="chapter-card">
@@ -358,11 +358,11 @@
         <td><span class="badge badge-covered">Covered</span></td>
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/CharPredicates.lean" target="_blank" class="impl-link">Lean4Yaml.CharPredicates.isIndicatorBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanDirective</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/CharPredicates.lean" target="_blank" class="impl-link">Lean4Yaml.CharPredicates.isIndicatorProp</a></td>
       </tr>
-      <tr class="prod-row" data-status="oos" data-chapter="5" data-search="21 c-reserved 5.3 oos">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="21 c-reserved 5.3 covered">
         <td>21</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-reserved" target="_blank" class="spec-link">c-reserved</a></td>
         <td>§5.3</td>
-        <td><span class="badge badge-oos">Out of Scope</span></td>
+        <td><span class="badge badge-covered">Covered</span></td>
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/CharPredicates.lean" target="_blank" class="impl-link">Lean4Yaml.CharPredicates.isIndicatorBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/CharPredicates.lean" target="_blank" class="impl-link">Lean4Yaml.CharPredicates.isIndicatorProp</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="22 c-indicator 5.3 covered">
@@ -461,7 +461,7 @@
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-dec-digit" target="_blank" class="spec-link">ns-dec-digit</a></td>
         <td>§5.6</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectVersionMinorLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectVersionMajorLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/CharPredicates.lean" target="_blank" class="impl-link">Lean4Yaml.CharPredicates.isWordCharBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectVersionMinorLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectVersionMajorLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/CharPredicates.lean" target="_blank" class="impl-link">Lean4Yaml.CharPredicates.isWordCharProp</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="36 ns-hex-digit 5.6 covered">
         <td>36</td>
@@ -470,33 +470,33 @@
         <td><span class="badge badge-covered">Covered</span></td>
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectHexDigitsLoop</a></td>
       </tr>
-      <tr class="prod-row" data-status="oos" data-chapter="5" data-search="37 ns-ascii-letter 5.6 oos">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="37 ns-ascii-letter 5.6 covered">
         <td>37</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-ascii-letter" target="_blank" class="spec-link">ns-ascii-letter</a></td>
         <td>§5.6</td>
-        <td><span class="badge badge-oos">Out of Scope</span></td>
-        <td>—</td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/CharPredicates.lean" target="_blank" class="impl-link">Lean4Yaml.CharPredicates.isAsciiLetterBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/CharPredicates.lean" target="_blank" class="impl-link">Lean4Yaml.CharPredicates.isAsciiLetterProp</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="38 ns-word-char 5.6 covered">
         <td>38</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-word-char" target="_blank" class="spec-link">ns-word-char</a></td>
         <td>§5.6</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectTagHandleDirectiveLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectTagHandleDirectiveLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/CharPredicates.lean" target="_blank" class="impl-link">Lean4Yaml.CharPredicates.isWordCharBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectTagHandleLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/CharPredicates.lean" target="_blank" class="impl-link">Lean4Yaml.CharPredicates.isWordCharProp</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="39 ns-uri-char 5.6 covered">
         <td>39</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-uri-char" target="_blank" class="spec-link">ns-uri-char</a></td>
         <td>§5.6</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectVerbatimTagLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectTagSuffixLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/CharPredicates.lean" target="_blank" class="impl-link">Lean4Yaml.CharPredicates.isUriCharBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectVerbatimTagLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/CharPredicates.lean" target="_blank" class="impl-link">Lean4Yaml.CharPredicates.isUriCharProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectTagSuffixLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="40 ns-tag-char 5.6 covered">
         <td>40</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-tag-char" target="_blank" class="spec-link">ns-tag-char</a></td>
         <td>§5.6</td>
         <td><span class="badge badge-covered">Covered</span></td>
-        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectTagHandleLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectTagSuffixLoop</a></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/CharPredicates.lean" target="_blank" class="impl-link">Lean4Yaml.CharPredicates.isTagCharBool</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectTagSuffixLoop</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/CharPredicates.lean" target="_blank" class="impl-link">Lean4Yaml.CharPredicates.isTagCharProp</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="41 c-escape 5.7 covered">
         <td>41</td>
