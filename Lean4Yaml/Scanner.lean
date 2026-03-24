@@ -1054,7 +1054,7 @@ def scanAnchorOrAlias (s : ScannerState) (isAnchor : Bool) : ScannerState :=
 
 /-! ## Tag Scanning -/
 
--- Helper: Collect verbatim tag URI until '>'.
+-- Helper: Collect verbatim tag URI until '>', accepting only ns-uri-char [39].
 @[yaml_spec "5.6" 39 "ns-uri-char"]
 def collectVerbatimTagLoop (s : ScannerState) (uri : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
@@ -1062,10 +1062,14 @@ def collectVerbatimTagLoop (s : ScannerState) (uri : String) (fuel : Nat) : Stri
   | fuel' + 1 =>
     match s.peek? with
     | some '>' => (uri, s.advance)
-    | some c => collectVerbatimTagLoop s.advance (uri.push c) fuel'
+    | some c =>
+      if isUriCharBool c then
+        collectVerbatimTagLoop s.advance (uri.push c) fuel'
+      else
+        (uri, s)
     | none => (uri, s)
 
--- Helper: Collect tag suffix characters (non-whitespace, non-flow).
+-- Helper: Collect tag suffix characters using ns-tag-char [40].
 @[yaml_spec "5.6" 39 "ns-uri-char",
   yaml_spec "5.6" 40 "ns-tag-char"]
 def collectTagSuffixLoop (s : ScannerState) (suffix : String) (fuel : Nat) : String × ScannerState :=
@@ -1074,15 +1078,16 @@ def collectTagSuffixLoop (s : ScannerState) (suffix : String) (fuel : Nat) : Str
   | fuel' + 1 =>
     match s.peek? with
     | some c =>
-      if !isWhiteSpaceBool c && !isLineBreakBool c && !isFlowIndicatorBool c then
+      if isTagCharBool c then
         collectTagSuffixLoop s.advance (suffix.push c) fuel'
       else
         (suffix, s)
     | none => (suffix, s)
 
 -- Helper: Collect tag handle characters until '!' or invalid char.
+-- Between the opening and closing '!', only ns-word-char [38] is valid per [92].
 -- Returns (chars_before_bang, found_second_bang, state).
-@[yaml_spec "5.6" 40 "ns-tag-char"]
+@[yaml_spec "5.6" 38 "ns-word-char"]
 def collectTagHandleLoop (s : ScannerState) (chars : String) (fuel : Nat) : String × Bool × ScannerState :=
   match fuel with
   | 0 => (chars, false, s)
@@ -1090,7 +1095,7 @@ def collectTagHandleLoop (s : ScannerState) (chars : String) (fuel : Nat) : Stri
     match s.peek? with
     | some '!' => (chars, true, s.advance)
     | some c =>
-      if !isWhiteSpaceBool c && !isLineBreakBool c && !isFlowIndicatorBool c then
+      if isWordCharBool c then
         collectTagHandleLoop s.advance (chars.push c) fuel'
       else
         (chars, false, s)
@@ -1194,7 +1199,7 @@ def collectVersionMinorLoop (s : ScannerState) (minor : String) (fuel : Nat) : S
         (minor, s)
     | none => (minor, s)
 
--- Helper: Collect TAG directive handle (non-whitespace characters).
+-- Helper: Collect TAG directive handle: '!' delimiters + ns-word-char [38] per [89]-[92].
 @[yaml_spec "6.8.2" 89 "c-tag-handle",
   yaml_spec "5.6" 38 "ns-word-char"]
 def collectTagHandleDirectiveLoop (s : ScannerState) (handle : String) (fuel : Nat) : String × ScannerState :=
@@ -1203,13 +1208,13 @@ def collectTagHandleDirectiveLoop (s : ScannerState) (handle : String) (fuel : N
   | fuel' + 1 =>
     match s.peek? with
     | some c =>
-      if !isWhiteSpaceBool c then
+      if isWordCharBool c || c == '!' then
         collectTagHandleDirectiveLoop s.advance (handle.push c) fuel'
       else
         (handle, s)
     | none => (handle, s)
 
--- Helper: Collect TAG directive prefix (non-whitespace, non-linebreak characters).
+-- Helper: Collect TAG directive prefix using ns-uri-char [39] per [93]-[95].
 @[yaml_spec "6.8.2" 93 "ns-tag-prefix",
   yaml_spec "6.8.2" 94 "c-ns-local-tag-prefix",
   yaml_spec "6.8.2" 95 "ns-global-tag-prefix"]
@@ -1219,7 +1224,7 @@ def collectTagPrefixLoop (s : ScannerState) (pfx : String) (fuel : Nat) : String
   | fuel' + 1 =>
     match s.peek? with
     | some c =>
-      if !isWhiteSpaceBool c && !isLineBreakBool c then
+      if isUriCharBool c then
         collectTagPrefixLoop s.advance (pfx.push c) fuel'
       else
         (pfx, s)

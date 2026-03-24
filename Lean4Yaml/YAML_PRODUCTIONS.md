@@ -55,10 +55,10 @@ for spec coverage.
 | [34](https://yaml.org/spec/1.2.2/#rule-ns-char) | `ns-char` | ✓ GP | `Grammar.isPrintable` ∧ ¬`isWhiteSpace` (implicit) |
 | [35](https://yaml.org/spec/1.2.2/#rule-ns-dec-digit) | `ns-dec-digit` | ✓ P | Used in `Scalar.escapeSequence` hex parsing |
 | [36](https://yaml.org/spec/1.2.2/#rule-ns-hex-digit) | `ns-hex-digit` | ✓ P | `Scalar.escapeSequence` → `hexDigit` |
-| [37](https://yaml.org/spec/1.2.2/#rule-ns-ascii-letter) | `ns-ascii-letter` | ⊘ | Not used directly |
-| [38](https://yaml.org/spec/1.2.2/#rule-ns-word-char) | `ns-word-char` | ✓ P | `Combinators.isAnchorChar` (superset) |
-| [39](https://yaml.org/spec/1.2.2/#rule-ns-uri-char) | `ns-uri-char` | ✓ P | `Tag.isTagChar` (subset) |
-| [40](https://yaml.org/spec/1.2.2/#rule-ns-tag-char) | `ns-tag-char` | ✓ P | `Tag.isTagChar` |
+| [37](https://yaml.org/spec/1.2.2/#rule-ns-ascii-letter) | `ns-ascii-letter` | ✓ GP | `CharPredicates.isAsciiLetterBool/Prop` |
+| [38](https://yaml.org/spec/1.2.2/#rule-ns-word-char) | `ns-word-char` | ✓ GP | `CharPredicates.isWordCharBool/Prop` |
+| [39](https://yaml.org/spec/1.2.2/#rule-ns-uri-char) | `ns-uri-char` | ✓ GP | `CharPredicates.isUriCharBool/Prop` |
+| [40](https://yaml.org/spec/1.2.2/#rule-ns-tag-char) | `ns-tag-char` | ✓ GP | `CharPredicates.isTagCharBool/Prop` |
 | [41](https://yaml.org/spec/1.2.2/#rule-c-escape) | `c-escape` | ✓ P | `Scalar.escapeSequence` (char `\`) |
 | [42](https://yaml.org/spec/1.2.2/#rule-ns-esc-null) | `ns-esc-null` | ✓ GP | `Grammar.resolveNamedEscape '0'`, `Scalar.escapeSequence` |
 | [43](https://yaml.org/spec/1.2.2/#rule-ns-esc-bell) | `ns-esc-bell` | ✓ GP | `Grammar.resolveNamedEscape 'a'`, `Scalar.escapeSequence` |

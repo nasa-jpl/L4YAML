@@ -1572,7 +1572,9 @@ theorem collectVerbatimTagLoop_preserves_tokens (s : ScannerState) (uri : String
     unfold collectVerbatimTagLoop
     split
     · simp only []; exact advance_preserves_tokens s  -- found '>', return (uri, s.advance)
-    · rw [ih]; exact advance_preserves_tokens s  -- some c (c != '>'), recurse
+    · split  -- isUriCharBool
+      · rw [ih]; exact advance_preserves_tokens s  -- uri char, recurse
+      · rfl  -- not uri char, return (uri, s)
     · simp only []  -- none, return (uri, s)
 
 /-- Helper: collectTagSuffixLoop preserves tokens. -/
@@ -3289,7 +3291,9 @@ theorem collectVerbatimTagLoop_preserves_simpleKey (s : ScannerState) (uri : Str
     unfold collectVerbatimTagLoop
     split
     · simp only []; exact advance_preserves_simpleKey s  -- found '>', return (uri, s.advance)
-    · rw [ih]; exact advance_preserves_simpleKey s  -- some c (c != '>'), recurse
+    · split  -- isUriCharBool
+      · rw [ih]; exact advance_preserves_simpleKey s  -- uri char, recurse
+      · rfl  -- not uri char, return (uri, s)
     · simp only []  -- none, return (uri, s)
 
 
@@ -3921,7 +3925,9 @@ theorem collectVerbatimTagLoop_preserves_simpleKeyStack (s : ScannerState) (uri 
     unfold collectVerbatimTagLoop
     split
     · simp only []; exact advance_preserves_simpleKeyStack s  -- found '>', return (uri, s.advance)
-    · rw [ih]; exact advance_preserves_simpleKeyStack s  -- some c (c != '>'), recurse
+    · split  -- isUriCharBool
+      · rw [ih]; exact advance_preserves_simpleKeyStack s  -- uri char, recurse
+      · rfl  -- not uri char, return (uri, s)
     · simp only []  -- none, return (uri, s)
 
 
@@ -6192,7 +6198,9 @@ theorem collectVerbatimTagLoop_offset_ge (s : ScannerState) (uri : String) (fuel
   | succ n ih =>
     unfold collectVerbatimTagLoop; split
     · exact ScannerProgress.advance_offset_ge s
-    · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _)
+    · split  -- isUriCharBool
+      · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _)
+      · exact Nat.le_refl _
     · exact Nat.le_refl _
 
 theorem collectTagSuffixLoop_offset_ge (s : ScannerState) (suffix : String) (fuel : Nat) :
