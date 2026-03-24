@@ -1081,10 +1081,10 @@
   ✓ 3-key then under-indent
 
 --- [63] Tab as indentation (§6.1) ---
-  ✓ \ta: 1 (LENIENCY: tab indent)
-  ✓  \ta: 1 (LENIENCY: space+tab)
-  ✓ \t a: 1 (LENIENCY: tab+space)
-  ✓ \t\ta: 1 (LENIENCY: double tab)
+  ✓ \ta: 1 (tab indent)
+  ✓  \ta: 1 (space+tab)
+  ✓ \t a: 1 (tab+space)
+  ✓ \t\ta: 1 (double tab)
   ✓ a:\n\tb: 1 (tab indent nested)
   ✓ a:\n\t b: 1 (tab+space nested)
   ✓ a:\n \tb: 1 (space+tab = separation)
@@ -1206,10 +1206,10 @@
   ✓ ? nested then mapping
 
 --- Tab injection (§6.1) ---
-  ✓ \ta: 1 (LENIENCY)
-  ✓  \ta: 1 (LENIENCY)
-  ✓ \t a: 1 (LENIENCY)
-  ✓ \t\ta: 1 (LENIENCY)
+  ✓ \ta: 1 (tab at doc start)
+  ✓  \ta: 1 (space+tab at doc start)
+  ✓ \t a: 1 (tab+space at doc start)
+  ✓ \t\ta: 1 (double tab at doc start)
   ✓ a:\n\tb: 1
   ✓ a:\n \tb: 1 (separation)
   ✓ a:\n\t b: 1
