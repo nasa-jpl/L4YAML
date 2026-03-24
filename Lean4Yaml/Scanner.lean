@@ -284,7 +284,12 @@ def ScannerState.advanceNLoop (s : ScannerState) (n : Nat) : ScannerState :=
 def ScannerState.advanceN (s : ScannerState) (n : Nat) : ScannerState :=
   ScannerState.advanceNLoop s n
 
-/-- Whether the scanner is inside a flow collection (`flowLevel > 0`). -/
+/-- Whether the scanner is inside a flow collection (`flowLevel > 0`).
+
+    **Implements** (YAML 1.2.2 §7.4): `[136] in-flow(c)` context selector.
+    When `flowLevel > 0`, the scanner uses flow-collection rules
+    (FLOW-IN context) rather than block-collection rules (FLOW-OUT). -/
+@[yaml_spec "7.4" 136 "in-flow(c)"]
 def ScannerState.inFlow (s : ScannerState) : Bool :=
   s.flowLevel > 0
 
@@ -657,7 +662,12 @@ def atDocumentEnd (s : ScannerState) : Bool :=
      | none => true
      | some c => isBlankBool c
 
-/-- Check if the scanner is at any document boundary (`---` or `...`). -/
+/-- Check if the scanner is at any document boundary (`---` or `...`).
+
+    **Implements** (YAML 1.2.2 §9.1.2): `[206] c-forbidden` detection.
+    A document marker at column 0 followed by blank/EOF is forbidden
+    inside block content. -/
+@[yaml_spec "9.1.2" 206 "c-forbidden"]
 def atDocumentBoundary (s : ScannerState) : Bool :=
   atDocumentStart s || atDocumentEnd s
 
@@ -1124,7 +1134,8 @@ def scanTag (s : ScannerState) : ScannerState :=
 /-! ## Directive Scanning -/
 
 -- Helper: Collect directive name (non-whitespace, non-linebreak characters).
-@[yaml_spec "6.8" 84 "ns-directive-name"]
+@[yaml_spec "6.8" 84 "ns-directive-name",
+  yaml_spec "5.5" 34 "ns-char"]
 def collectDirectiveNameLoop (s : ScannerState) (name : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
   | 0 => (name, s)
@@ -1168,7 +1179,8 @@ def collectVersionMinorLoop (s : ScannerState) (minor : String) (fuel : Nat) : S
     | none => (minor, s)
 
 -- Helper: Collect TAG directive handle (non-whitespace characters).
-@[yaml_spec "6.8.2" 89 "c-tag-handle"]
+@[yaml_spec "6.8.2" 89 "c-tag-handle",
+  yaml_spec "5.6" 38 "ns-word-char"]
 def collectTagHandleDirectiveLoop (s : ScannerState) (handle : String) (fuel : Nat) : String × ScannerState :=
   match fuel with
   | 0 => (handle, s)
