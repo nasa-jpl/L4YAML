@@ -1,5 +1,5 @@
 {
-  "date": "2026-03-23T20:33:37-0700",
+  "date": "2026-03-23T20:59:43-0700",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -8453,7 +8453,7 @@
       {
         "allPass": true,
         "label": "Production Coverage Analysis",
-        "passed": 20,
+        "passed": 18,
         "tests": [
           {
             "category": "Catalog completeness",
@@ -8472,12 +8472,12 @@
           },
           {
             "category": "Automated @[yaml_spec] discovery",
-            "name": "@[yaml_spec] entries discovered: 346",
+            "name": "@[yaml_spec] entries discovered: 348",
             "outcome": "pass"
           },
           {
             "category": "Automated @[yaml_spec] discovery",
-            "name": "unique production rules annotated: 207",
+            "name": "unique production rules annotated: 209",
             "outcome": "pass"
           },
           {
@@ -8487,22 +8487,22 @@
           },
           {
             "category": "Coverage analysis",
-            "name": "annotated productions: 206/208",
+            "name": "annotated productions: 208/208",
             "outcome": "pass"
           },
           {
             "category": "Coverage analysis",
-            "name": "unannotated in-scope productions: 2",
+            "name": "unannotated in-scope productions: 0",
             "outcome": "pass"
           },
           {
             "category": "Coverage analysis",
-            "name": "indent-dependent with annotations: 47/49",
+            "name": "indent-dependent with annotations: 49/49",
             "outcome": "pass"
           },
           {
             "category": "Per-module annotation counts",
-            "name": "Lean4Yaml.Scanner: 185 annotations",
+            "name": "Lean4Yaml.Scanner: 187 annotations",
             "outcome": "pass"
           },
           {
@@ -8527,7 +8527,7 @@
           },
           {
             "category": "Per-chapter coverage",
-            "name": "Ch 6 (Basic Structures): 39/41",
+            "name": "Ch 6 (Basic Structures): 41/41",
             "outcome": "pass"
           },
           {
@@ -8544,19 +8544,9 @@
             "category": "Per-chapter coverage",
             "name": "Ch 9 (Documents): 10/10",
             "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[64] s-indent(<n) (§6.1) — no @[yaml_spec]",
-            "outcome": "pass"
-          },
-          {
-            "category": "Unannotated productions (gaps)",
-            "name": "[65] s-indent(≤n) (§6.1) — no @[yaml_spec]",
-            "outcome": "pass"
           }
         ],
-        "total": 20
+        "total": 18
       },
       {
         "allPass": true,
@@ -8602,7 +8592,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 1191,
-    "totalTests": 1191
+    "totalPassed": 1189,
+    "totalTests": 1189
   }
 }
