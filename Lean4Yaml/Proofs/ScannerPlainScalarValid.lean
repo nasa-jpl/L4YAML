@@ -2320,8 +2320,9 @@ theorem collectVerbatimTagLoop_preserves_flowLevel (s : ScannerState) (uri : Str
     split
     · -- some '>'
       exact advance_preserves_flowLevel s
-    · -- some c (not '>')
-      rw [ih, advance_preserves_flowLevel]
+    · split  -- isUriCharBool
+      · rw [ih, advance_preserves_flowLevel]  -- uri char, recurse
+      · rfl  -- not uri char, return (uri, s)
     · -- none
       rfl
 

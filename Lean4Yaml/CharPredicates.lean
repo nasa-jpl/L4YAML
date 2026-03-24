@@ -254,6 +254,83 @@ theorem isIndentChar_iff (c : Char) :
 instance (c : Char) : Decidable (isIndentCharProp c) := by
   unfold isIndentCharProp; infer_instance
 
+/-! ## Miscellaneous Character Classes
+
+YAML 1.2.2 §5.6: [37] ns-ascii-letter, [38] ns-word-char,
+[39] ns-uri-char, [40] ns-tag-char
+(https://yaml.org/spec/1.2.2/#56-miscellaneous-characters)
+-/
+
+/-- `[37] ns-ascii-letter`: `[#x41-#x5A] | [#x61-#x7A]` (A-Z | a-z) (Prop). -/
+@[yaml_spec "5.6" 37 "ns-ascii-letter"]
+def isAsciiLetterProp (c : Char) : Prop :=
+  (c.val ≥ 0x41 ∧ c.val ≤ 0x5A) ∨ (c.val ≥ 0x61 ∧ c.val ≤ 0x7A)
+
+instance (c : Char) : Decidable (isAsciiLetterProp c) := by
+  unfold isAsciiLetterProp; infer_instance
+
+/-- `[37] ns-ascii-letter`: `[#x41-#x5A] | [#x61-#x7A]` (A-Z | a-z) (Bool). -/
+@[yaml_spec "5.6" 37 "ns-ascii-letter"]
+def isAsciiLetterBool (c : Char) : Bool := decide (isAsciiLetterProp c)
+
+theorem isAsciiLetter_iff (c : Char) : isAsciiLetterBool c = true ↔ isAsciiLetterProp c := by
+  simp [isAsciiLetterBool, decide_eq_true_eq]
+
+/-- `[38] ns-word-char`: `ns-dec-digit | ns-ascii-letter | '-'` (Prop). -/
+@[yaml_spec "5.6" 35 "ns-dec-digit",
+  yaml_spec "5.6" 38 "ns-word-char"]
+def isWordCharProp (c : Char) : Prop :=
+  (c.val ≥ 0x30 ∧ c.val ≤ 0x39)  -- [35] ns-dec-digit
+  ∨ isAsciiLetterProp c             -- [37] ns-ascii-letter
+  ∨ c = '-'
+
+instance (c : Char) : Decidable (isWordCharProp c) := by
+  unfold isWordCharProp; infer_instance
+
+/-- `[38] ns-word-char`: `ns-dec-digit | ns-ascii-letter | '-'` (Bool). -/
+@[yaml_spec "5.6" 35 "ns-dec-digit",
+  yaml_spec "5.6" 38 "ns-word-char"]
+def isWordCharBool (c : Char) : Bool := decide (isWordCharProp c)
+
+theorem isWordChar_iff (c : Char) : isWordCharBool c = true ↔ isWordCharProp c := by
+  simp [isWordCharBool, decide_eq_true_eq]
+
+/-- `[39] ns-uri-char`: word-char plus URI-special characters and `%` (Prop).
+
+    The spec production `'%' ns-hex-digit ns-hex-digit` is a multi-character
+    sequence; at the single-character level we accept `%` and leave hex-digit
+    validation to the enclosing loop. -/
+@[yaml_spec "5.6" 39 "ns-uri-char"]
+def isUriCharProp (c : Char) : Prop :=
+  isWordCharProp c
+  ∨ c ∈ ['%', '#', ';', '/', '?', ':', '@', '&', '=', '+', '$', ',',
+          '_', '.', '!', '~', '*', '\'', '(', ')']
+
+instance (c : Char) : Decidable (isUriCharProp c) := by
+  unfold isUriCharProp; infer_instance
+
+/-- `[39] ns-uri-char`: word-char plus URI-special characters and `%` (Bool). -/
+@[yaml_spec "5.6" 39 "ns-uri-char"]
+def isUriCharBool (c : Char) : Bool := decide (isUriCharProp c)
+
+theorem isUriChar_iff (c : Char) : isUriCharBool c = true ↔ isUriCharProp c := by
+  simp [isUriCharBool, decide_eq_true_eq]
+
+/-- `[40] ns-tag-char`: `ns-uri-char - '!' - c-flow-indicator` (Prop). -/
+@[yaml_spec "5.6" 40 "ns-tag-char"]
+def isTagCharProp (c : Char) : Prop :=
+  isUriCharProp c ∧ c ≠ '!' ∧ ¬isFlowIndicatorProp c
+
+instance (c : Char) : Decidable (isTagCharProp c) := by
+  unfold isTagCharProp; infer_instance
+
+/-- `[40] ns-tag-char`: `ns-uri-char - '!' - c-flow-indicator` (Bool). -/
+@[yaml_spec "5.6" 40 "ns-tag-char"]
+def isTagCharBool (c : Char) : Bool := decide (isTagCharProp c)
+
+theorem isTagChar_iff (c : Char) : isTagCharBool c = true ↔ isTagCharProp c := by
+  simp [isTagCharBool, decide_eq_true_eq]
+
 /-! ## Plain Scalar First Character
 
 YAML 1.2.2: [126] ns-plain-first(c) (§7.3.3, https://yaml.org/spec/1.2.2/#733-plain-style)
