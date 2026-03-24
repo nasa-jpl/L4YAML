@@ -590,7 +590,9 @@ termination_by fuel
     **Pre**: `col` is the column of the next content character (or -1 for stream/document end).
     **Post**: All indent entries deeper than `col` are popped; a `blockEnd` token is emitted for each.
     **Error**: None (pure computation). -/
-@[yaml_spec "6.1"]
+@[yaml_spec "6.1",
+  yaml_spec "6.1" 64 "s-indent(<n)",
+  yaml_spec "6.1" 65 "s-indent(≤n)"]
 def unwindIndents (s : ScannerState) (col : Int) : ScannerState :=
   unwindIndentsLoop s col s.indents.size
 
