@@ -179,7 +179,7 @@ for spec coverage.
 | [149](https://yaml.org/spec/1.2.2/#rule-c-ns-flow-pair-json-key-entry) | `c-ns-flow-pair-json-key-entry(n,c)` | ✓ P | `Flow.flowSequenceItemsImpl` (JSON key in pair) |
 | [150](https://yaml.org/spec/1.2.2/#rule-ns-s-implicit-yaml-key) | `ns-s-implicit-yaml-key(c)` | ✓ P | Block/Flow implicit key detection |
 | [151](https://yaml.org/spec/1.2.2/#rule-c-s-implicit-json-key) | `c-s-implicit-json-key(c)` | ✓ P | Block/Flow JSON-like key detection |
-| [152](https://yaml.org/spec/1.2.2/#rule-c-flow-json-node) | `c-flow-json-node(n,c)` | ⊘ | Subsumed by `flowValueImpl` |
+| [152](https://yaml.org/spec/1.2.2/#rule-c-flow-json-node) | `c-flow-json-node(n,c)` | ✓ P | `isJsonNodeToken` (JSON content detection for adjacent value) |
 | [153](https://yaml.org/spec/1.2.2/#rule-ns-flow-yaml-node) | `ns-flow-yaml-node(n,c)` | ✓ P | `Flow.flowValueImpl` |
 | [154](https://yaml.org/spec/1.2.2/#rule-c-flow-json-content) | `c-flow-json-content(n,c)` | ✓ P | `Flow.flowValueImpl` (collection dispatch) |
 | [155](https://yaml.org/spec/1.2.2/#rule-ns-flow-content) | `ns-flow-content(n,c)` | ✓ P | `Flow.flowValueImpl` |
