@@ -444,8 +444,13 @@ def skipToContentWs (s : ScannerState) : Except ScanError ScannerState :=
     -- Key insight: once col > currentIndent, we've consumed enough spaces
     -- to be inside the current block's content area. Any tabs here are
     -- s-separate-in-line [66] (legal separation), not indentation.
-    if (s1.col : Int) ≤ s1.currentIndent then
-      -- Still at or below the current block's indent level.
+    -- Special case: when currentIndent < 0 (stream level, before any block
+    -- is opened), col > currentIndent is trivially true for all col ≥ 0,
+    -- so we must check explicitly for tabs that act as block indentation.
+    -- Exception: in flow context, tabs are valid s-separate-in-line [66],
+    -- even at stream level (s-indent(0) = 0 spaces, then tabs are separation).
+    if (!s1.inFlow && s1.currentIndent < 0) || (s1.col : Int) ≤ s1.currentIndent then
+      -- Still at or below the current block's indent level (or stream level).
       -- A tab here would extend into indentation territory — §6.1 violation.
       match s1.peek? with
       | some '\t' =>
@@ -455,8 +460,17 @@ def skipToContentWs (s : ScannerState) : Except ScanError ScannerState :=
         | some '#' => .ok (skipWhitespace s1)      -- tab before comment: allowed
         | some c =>
           if isLineBreakBool c then .ok (skipWhitespace s1)  -- tab on blank line: allowed
+          -- At stream level (currentIndent < 0), tabs before flow indicators
+          -- are valid s-separate-in-line [66] for s-l+flow-in-block [197].
+          -- §6.1 only constrains s-indent(n), not s-separate-in-line.
+          -- Covers: flow openers {[, closers }], quotes "', and
+          -- node properties/alias !&* — all unambiguously flow content.
+          else if s1.currentIndent < 0 &&
+            (c == '{' || c == '[' || c == '}' || c == ']' ||
+             c == '"' || c == '\'' || c == '!' || c == '&' || c == '*')
+            then .ok (skipWhitespace s1)
           else
-            -- Tab followed by content: tab used as indentation — forbidden §6.1
+            -- Tab followed by block content: tab used as indentation — §6.1
             .error (.tabInIndentation s1.line s1.col)
         | none => .ok (skipWhitespace s1)           -- tab before EOF: allowed
       | _ => .ok s1
@@ -1525,6 +1539,9 @@ def foldQuotedNewlinesLoop (s : ScannerState) (emptyCount : Nat) (fuel : Nat) :
 def foldQuotedNewlines (s : ScannerState) : Except ScanError (String × ScannerState) := do
   let s' := consumeNewline s
   let (s', emptyCount) := foldQuotedNewlinesLoop s' 0 (s.inputEnd - s'.offset + 1)
+  -- Consume indentation spaces (s-indent [63]), then any remaining
+  -- tabs/spaces as s-separate-in-line [66].  Quoted scalar continuations
+  -- use s-flow-line-prefix(n) [69] = s-indent(n) s-separate-in-line?.
   -- §6.1: After consuming empty lines and leading spaces on the continuation
   -- line, check for tab-as-indentation.  If we haven't advanced past the
   -- current block indent level, a tab here is in the indentation zone.
