@@ -7,35 +7,31 @@
   ✓ indent-dependent productions: 49
 
 --- Automated @[yaml_spec] discovery ---
-  ✓ @[yaml_spec] entries discovered: 342
-  ✓ unique production rules annotated: 203
+  ✓ @[yaml_spec] entries discovered: 346
+  ✓ unique production rules annotated: 207
   ✓ source modules with annotations: 4
 
 --- Coverage analysis ---
-  ✓ annotated productions: 202/208
-  ✓ unannotated in-scope productions: 6
+  ✓ annotated productions: 206/208
+  ✓ unannotated in-scope productions: 2
   ✓ indent-dependent with annotations: 47/49
 
 --- Per-module annotation counts ---
-  ✓ Lean4Yaml.Scanner: 181 annotations
+  ✓ Lean4Yaml.Scanner: 185 annotations
   ✓ Lean4Yaml.TokenParser: 56 annotations
   ✓ Lean4Yaml.CharPredicates: 84 annotations
   ✓ Lean4Yaml.Token: 21 annotations
 
 --- Per-chapter coverage ---
-  ✓ Ch 5 (Characters): 58/60
+  ✓ Ch 5 (Characters): 60/60
   ✓ Ch 6 (Basic Structures): 39/41
-  ✓ Ch 7 (Flow Styles): 56/57
+  ✓ Ch 7 (Flow Styles): 57/57
   ✓ Ch 8 (Block Styles): 40/40
-  ✓ Ch 9 (Documents): 9/10
+  ✓ Ch 9 (Documents): 10/10
 
 --- Unannotated productions (gaps) ---
-  ✓ [34] ns-char (§5.5) — no @[yaml_spec]
-  ✓ [38] ns-word-char (§5.6) — no @[yaml_spec]
   ✓ [64] s-indent(<n) (§6.1) — no @[yaml_spec]
   ✓ [65] s-indent(≤n) (§6.1) — no @[yaml_spec]
-  ✓ [136] in-flow(c) (§7.4) — no @[yaml_spec]
-  ✓ [206] c-forbidden (§9.1.2) — no @[yaml_spec]
 
-=== Results: 24/24 passed ===
+=== Results: 20/20 passed ===
   wrote docs/production-coverage.html

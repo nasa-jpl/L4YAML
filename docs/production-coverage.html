@@ -147,8 +147,8 @@
 
   <div class="stats">
     <div class="stat-box stat-total"><h3>Total Productions</h3><div class="number">211</div></div>
-    <div class="stat-box stat-covered"><h3>Annotated Rules</h3><div class="number">203</div><div class="pct">of 208 in-scope</div></div>
-    <div class="stat-box stat-annotation"><h3>@[yaml_spec] Entries</h3><div class="number">342</div><div class="pct">across 4 modules</div></div>
+    <div class="stat-box stat-covered"><h3>Annotated Rules</h3><div class="number">207</div><div class="pct">of 208 in-scope</div></div>
+    <div class="stat-box stat-annotation"><h3>@[yaml_spec] Entries</h3><div class="number">346</div><div class="pct">across 4 modules</div></div>
     <div class="stat-box stat-grammar"><h3>Grammar Only</h3><div class="number">4</div></div>
     <div class="stat-box stat-oos"><h3>Out of Scope</h3><div class="number">3</div></div>
   </div>
@@ -156,8 +156,8 @@
   <div class="chapter-cards">
     <div class="chapter-card">
       <div class="chapter-card-name">Ch 5: Characters</div>
-      <div class="chapter-card-stats">58/60 annotated (96.7%)</div>
-      <div class="chapter-bar"><div class="chapter-bar-fill" style="width: 96.7%"></div></div>
+      <div class="chapter-card-stats">60/60 annotated (100.0%)</div>
+      <div class="chapter-bar"><div class="chapter-bar-fill" style="width: 100.0%"></div></div>
     </div>
     <div class="chapter-card">
       <div class="chapter-card-name">Ch 6: Basic Structures</div>
@@ -166,8 +166,8 @@
     </div>
     <div class="chapter-card">
       <div class="chapter-card-name">Ch 7: Flow Styles</div>
-      <div class="chapter-card-stats">56/57 annotated (98.2%)</div>
-      <div class="chapter-bar"><div class="chapter-bar-fill" style="width: 98.2%"></div></div>
+      <div class="chapter-card-stats">57/57 annotated (100.0%)</div>
+      <div class="chapter-bar"><div class="chapter-bar-fill" style="width: 100.0%"></div></div>
     </div>
     <div class="chapter-card">
       <div class="chapter-card-name">Ch 8: Block Styles</div>
@@ -176,8 +176,8 @@
     </div>
     <div class="chapter-card">
       <div class="chapter-card-name">Ch 9: Documents</div>
-      <div class="chapter-card-stats">9/10 annotated (90.0%)</div>
-      <div class="chapter-bar"><div class="chapter-bar-fill" style="width: 90.0%"></div></div>
+      <div class="chapter-card-stats">10/10 annotated (100.0%)</div>
+      <div class="chapter-bar"><div class="chapter-bar-fill" style="width: 100.0%"></div></div>
     </div>
   </div>
 
@@ -449,12 +449,12 @@
         <td><span class="badge badge-covered">Covered</span></td>
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/CharPredicates.lean" target="_blank" class="impl-link">Lean4Yaml.CharPredicates.isWhiteSpaceProp</a><br><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/CharPredicates.lean" target="_blank" class="impl-link">Lean4Yaml.CharPredicates.isWhiteSpaceBool</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="34 ns-char 5.5 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="34 ns-char 5.5 covered">
         <td>34</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-char" target="_blank" class="spec-link">ns-char</a></td>
         <td>§5.5</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectDirectiveNameLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="35 ns-dec-digit 5.6 covered">
         <td>35</td>
@@ -477,12 +477,12 @@
         <td><span class="badge badge-oos">Out of Scope</span></td>
         <td>—</td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="5" data-search="38 ns-word-char 5.6 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="5" data-search="38 ns-word-char 5.6 covered">
         <td>38</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-ns-word-char" target="_blank" class="spec-link">ns-word-char</a></td>
         <td>§5.6</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectTagHandleDirectiveLoop</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="5" data-search="39 ns-uri-char 5.6 covered">
         <td>39</td>
@@ -1163,12 +1163,12 @@
         <td><span class="badge badge-covered">Covered</span></td>
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.collectPlainScalarLoop</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="7" data-search="136 in-flow(c) 7.4 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="7" data-search="136 in-flow(c) 7.4 covered">
         <td>136</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-in-flow" target="_blank" class="spec-link">in-flow(c)</a></td>
         <td>§7.4</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.ScannerState.inFlow</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="7" data-search="137 c-flow-sequence(n,c) 7.4.1 covered">
         <td>137</td>
@@ -1653,12 +1653,12 @@
         <td><span class="badge badge-covered">Covered</span></td>
         <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.scanDocumentEnd</a></td>
       </tr>
-      <tr class="prod-row" data-status="uncovered" data-chapter="9" data-search="206 c-forbidden 9.1.2 uncovered">
+      <tr class="prod-row" data-status="covered" data-chapter="9" data-search="206 c-forbidden 9.1.2 covered">
         <td>206</td>
         <td><a href="https://yaml.org/spec/1.2.2/#rule-c-forbidden" target="_blank" class="spec-link">c-forbidden</a></td>
         <td>§9.1.2</td>
-        <td><span class="badge badge-uncovered">No Annotation</span></td>
-        <td><em>No @[yaml_spec] annotation</em></td>
+        <td><span class="badge badge-covered">Covered</span></td>
+        <td><a href="https://github.jpl.nasa.gov/pass/lean4-yaml-verified/blob/main/Lean4Yaml/Scanner.lean" target="_blank" class="impl-link">Lean4Yaml.Scanner.atDocumentBoundary</a></td>
       </tr>
       <tr class="prod-row" data-status="covered" data-chapter="9" data-search="207 l-bare-document 9.1.3 covered">
         <td>207</td>
