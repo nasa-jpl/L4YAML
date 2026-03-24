@@ -2328,11 +2328,11 @@ def isKeyCandidate (s : ScannerState) : Bool :=
   | some n => isBlankBool n || (s.inFlow && isFlowIndicatorBool n)
   | none => true
 
-/-- Check whether a token is a JSON-like node end.
-    YAML §7.4.2 [148]: `c-ns-flow-map-json-key-entry` allows adjacent value
-    (`:` without following whitespace) after JSON nodes: quoted scalars,
-    flow sequence end `]`, and flow mapping end `}`. -/
-@[yaml_spec "7.4.2" 148 "c-ns-flow-map-json-key-entry"]
+/-- Check whether a token is a JSON-like node end (§7.5 [160] c-flow-json-node).
+    JSON nodes are: quoted scalars (single/double), flow sequence end `]`,
+    and flow mapping end `}`.  Used by `isValueCandidate` to allow adjacent
+    `:` per [148]/[149]. -/
+@[yaml_spec "7.5" 160 "c-flow-json-node"]
 def isJsonNodeToken (tok : YamlToken) : Bool :=
   match tok with
   | .scalar _ .doubleQuoted => true
@@ -2342,18 +2342,28 @@ def isJsonNodeToken (tok : YamlToken) : Bool :=
   | _ => false
 
 /-- Check whether a value indicator (`:`) should be recognized.
-    In flow context with a possible simple key from a preceding token, always true.
-    Otherwise, requires a blank, flow indicator, or EOF after.
-    §7.4.2: In flow context, `:` is adjacent-value only after an actual key
-    (quoted scalar, flow collection, etc.), not when `:` itself was saved as
-    the potential simple key at the current position.  When `saveSimpleKey`
-    overwrites a JSON-key's simple key (e.g., after a newline: `{ "foo"\n :bar }`),
-    the placeholders are at `simpleKey.tokenIndex` and the JSON node token
-    immediately precedes them — check for it. -/
-@[yaml_spec "7.4.2" 147 "c-ns-flow-map-separate-value"]
+    §7.4.2 [147]: For YAML keys in flow context, `:` requires NOT-followed-by
+    ns-plain-safe (blank, flow indicator, or EOF after `:`) — `s-separate`.
+    §7.4.2 [148]/[149]: For JSON keys (quoted scalars, flow collections),
+    `:` may be adjacent (no blank required) — `c-ns-flow-map-adjacent-value`.
+    In block context, `:` requires blank or EOF after (§8.2.2). -/
+@[yaml_spec "7.4.2" 147 "c-ns-flow-map-separate-value",
+  yaml_spec "7.4.2" 148 "c-ns-flow-map-json-key-entry"]
 def isValueCandidate (s : ScannerState) : Bool :=
   if s.inFlow && s.simpleKey.possible then
-    if s.simpleKey.pos.offset != s.offset then true
+    -- Key was saved at a different position (the key content precedes `:`)
+    if s.simpleKey.pos.offset != s.offset then
+      -- Check if the key's last token was a JSON node.
+      -- After saveSimpleKey (at key pos), placeholders are at tokenIndex
+      -- and tokenIndex+1; the key token(s) follow.  The last emitted
+      -- token is the key's end.
+      let isJsonKey := match s.tokens[s.tokens.size - 1]? with
+        | some tok => isJsonNodeToken tok.val
+        | none => false
+      if isJsonKey then true  -- [148]/[149]: adjacent value OK
+      else match s.peekAt? 1 with
+        | some n => isBlankBool n || isFlowIndicatorBool n  -- [147]: separate value
+        | none => true
     else
       -- Simple key was saved at current `:` position (by saveSimpleKey after
       -- a newline reset simpleKeyAllowed).  Check if a JSON node token

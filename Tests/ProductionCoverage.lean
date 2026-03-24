@@ -207,7 +207,7 @@ def yamlProductions : Array YamlProduction := #[
   { number := 157, name := "c-flow-json-content(n,c)",          chapter := "7", specSec := "7.5",   status := "P" },
   { number := 158, name := "ns-flow-content(n,c)",              chapter := "7", specSec := "7.5",   status := "P" },
   { number := 159, name := "ns-flow-yaml-node(n,c)",            chapter := "7", specSec := "7.5",   status := "P" },
-  { number := 160, name := "c-flow-json-node(n,c)",             chapter := "7", specSec := "7.5",   status := "OOS" },
+  { number := 160, name := "c-flow-json-node(n,c)",             chapter := "7", specSec := "7.5",   status := "P" },
   { number := 161, name := "ns-flow-node(n,c)",                 chapter := "7", specSec := "7.5",   status := "P" },
   -- Chapter 8: Block Style Productions (8.1–8.2)
   { number := 162, name := "c-b-block-header(t)",               chapter := "8", specSec := "8.1.1", status := "GP" },
@@ -370,7 +370,7 @@ def coveredIndentProductions : Array Nat :=
 
 -- Catalog completeness
 #guard yamlProductions.size == 211
-#guard inScopeProductions.size == 210  -- 211 - 1 out of scope
+#guard inScopeProductions.size == 211  -- all 211 in scope
 
 -- Dynamic coverage discovery (these will be verified at build time)
 #guard discoveredSpecEntries.size > 0
@@ -772,7 +772,7 @@ def collectTests : IO VerifiedSuiteResult := do
   check state s!"YAML 1.2.2 productions cataloged: {yamlProductions.size}"
     (yamlProductions.size == 211)
   check state s!"in-scope productions: {inScopeProductions.size}"
-    (inScopeProductions.size == 210)
+    (inScopeProductions.size == 211)
   check state s!"indent-dependent productions: {indentProductionNums.size}"
     (indentProductionNums.size == 49)
 

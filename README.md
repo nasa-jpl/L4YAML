@@ -792,8 +792,9 @@ Fixed the tab-at-document-start leniency identified in v0.2.13.1: `skipToContent
 - Mutation tests: 45/45 (was 44/45 before fix)
 - Property-based tests: 124/124
 - Validated tests: 84/84
-- Production coverage: 210/210 in-scope (promoted `c-reserved` [21] and `ns-ascii-letter` [37] from OOS)
+- Production coverage: 211/211 in-scope (promoted `c-flow-json-node` [160], `c-reserved` [21], and `ns-ascii-letter` [37] from OOS)
 - Strict §5.6 character classes: added `isAsciiLetterBool/Prop` [37], `isWordCharBool/Prop` [38], `isUriCharBool/Prop` [39], `isTagCharBool/Prop` [40] to CharPredicates; tightened 5 collector loops (`collectVerbatimTagLoop`, `collectTagSuffixLoop`, `collectTagHandleLoop`, `collectTagHandleDirectiveLoop`, `collectTagPrefixLoop`) from over-generalized non-whitespace checks to spec-correct `ns-word-char`/`ns-uri-char`/`ns-tag-char`
+- Spec-correct flow value indicator: `isValueCandidate` now distinguishes [147] (YAML key: `:` requires following blank/flow-indicator) from [148]/[149] (JSON key: adjacent `:` allowed); `isJsonNodeToken` re-annotated as [160] `c-flow-json-node`
 - Build: 369/369 jobs, 0 errors
 
 </details>
