@@ -792,6 +792,7 @@ Fixed the tab-at-document-start leniency identified in v0.2.13.1: `skipToContent
 - Mutation tests: 45/45 (was 44/45 before fix)
 - Property-based tests: 124/124
 - Validated tests: 84/84
+- Production coverage: 209/209 in-scope (promoted `c-reserved` [21] from OOS — it has `@[yaml_spec]` coverage via `isIndicatorBool`/`isIndicatorProp`)
 - Build: 369/369 jobs, 0 errors
 
 </details>

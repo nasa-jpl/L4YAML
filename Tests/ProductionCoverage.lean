@@ -66,7 +66,7 @@ def yamlProductions : Array YamlProduction := #[
   { number := 18,  name := "c-single-quote",                    chapter := "5", specSec := "5.3",   status := "P" },
   { number := 19,  name := "c-double-quote",                    chapter := "5", specSec := "5.3",   status := "P" },
   { number := 20,  name := "c-directive",                       chapter := "5", specSec := "5.3",   status := "P" },
-  { number := 21,  name := "c-reserved",                        chapter := "5", specSec := "5.3",   status := "OOS" },
+  { number := 21,  name := "c-reserved",                        chapter := "5", specSec := "5.3",   status := "P" },
   { number := 22,  name := "c-indicator",                       chapter := "5", specSec := "5.3",   status := "P" },
   { number := 23,  name := "c-flow-indicator",                  chapter := "5", specSec := "5.3",   status := "GP" },
   { number := 24,  name := "b-line-feed",                       chapter := "5", specSec := "5.4",   status := "GP" },
@@ -370,7 +370,7 @@ def coveredIndentProductions : Array Nat :=
 
 -- Catalog completeness
 #guard yamlProductions.size == 211
-#guard inScopeProductions.size == 208  -- 211 - 3 out of scope
+#guard inScopeProductions.size == 209  -- 211 - 2 out of scope
 
 -- Dynamic coverage discovery (these will be verified at build time)
 #guard discoveredSpecEntries.size > 0
@@ -772,7 +772,7 @@ def collectTests : IO VerifiedSuiteResult := do
   check state s!"YAML 1.2.2 productions cataloged: {yamlProductions.size}"
     (yamlProductions.size == 211)
   check state s!"in-scope productions: {inScopeProductions.size}"
-    (inScopeProductions.size == 208)
+    (inScopeProductions.size == 209)
   check state s!"indent-dependent productions: {indentProductionNums.size}"
     (indentProductionNums.size == 49)
 
