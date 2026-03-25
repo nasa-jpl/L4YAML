@@ -8,9 +8,10 @@ parameterized inductive predicates over positioned character streams, and the
 target theorem `parse_strict : parseYaml s = .ok docs → InYamlLanguage s`.
 
 **Status**: Surface syntax grammar formalized in 6 modules (~1,100 lines),
-18 mutual inductives for the node/collection layer. Build: 385 jobs.
+18 mutual inductives for the node/collection layer. Build: 391 jobs.
 Tests: 869 passed / 0 failed / 151 skipped (no regressions).
-Target theorems stated with `sorry`; coupling proofs under construction.
+Target theorems stated with `sorry`; coupling proof infrastructure built
+(3 modules, ~50 theorems, 0 sorry).
 
 ## Architecture
 
@@ -97,9 +98,22 @@ theorem scan_strict (input : String) (tokens : Array (Positioned YamlToken))
 
 ## What Remains
 
-- [ ] Coupling theorems for scanner functions → basic productions
+- [x] Surface syntax coupling (SurfaceCoupling.lean): 20+ pure SurfPos-level theorems
+- [x] Scanner↔SurfPos bridge (CouplingBridge.lean): CharsFromOffset, ScannerSurfCorr,
+      peek/eof/advance correspondence, production coupling
+- [x] Scanner loop coupling (ScannerCoupling.lean): skipSpacesLoop → SIndent,
+      consumeNewline → SBBreak, fuel budget management
+- [ ] Coupling theorems for remaining scanner functions (skipWhitespace, skipToContent)
 - [ ] Coupling theorems for token parser → node productions
 - [ ] Proof of `scan_strict` (scanner → surface syntax)
 - [ ] Proof of `parse_strict` (full pipeline)
 - [ ] Verify production coverage against YAML 1.2.2 spec numbering
+
+## Coupling Proof Modules
+
+| Module | Theorems | Sorry | Description |
+|--------|----------|-------|-------------|
+| `Proofs/SurfaceCoupling.lean` | 20+ | 0 | Pure SurfPos-level properties: SIndent, SBBreak, SSWhite, GSeq, GStar, GOpt, comments, empty node |
+| `Proofs/CouplingBridge.lean` | 15+ | 0 | Scanner↔SurfPos bridge: `CharsFromOffset` inductive, `ScannerSurfCorr` struct, peek/eof/advance correspondence, production coupling, composition helpers |
+| `Proofs/ScannerCoupling.lean` | 8 | 0 | Scanner loop coupling: `skipSpacesLoop_corr` (induction on fuel → SIndent), `skipSpaces_corr` (top-level wrapper), `consumeNewline_{lf,crlf,cr}_corr` (line breaks → SBBreak), helper lemmas for peek/fuel budget |
 
