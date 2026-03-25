@@ -45,6 +45,7 @@ jobs:
           lake build validationtests dumproundtrip rawparsetests
           lake build specexamples schemadump scannertests scannerspecexamples
           lake build adversarialtests mutationtests propertytests productioncoverage
+          lake build limittests
           lake build flowregressioncheck errorstagediag scalarstagediag
 
       - name: Run unit and integration tests
@@ -93,6 +94,9 @@ jobs:
           echo ""
           echo "=== Production Coverage Analysis ===" | tee docs/productioncoverage.txt
           ./.lake/build/bin/productioncoverage 2>&1 | tee -a docs/productioncoverage.txt
+          echo ""
+          echo "=== Parser Security Limit Tests ===" | tee docs/limittests.txt
+          ./.lake/build/bin/limittests 2>&1 | tee -a docs/limittests.txt
 
       - name: Run diagnostic checks
         run: |
@@ -111,7 +115,7 @@ jobs:
 
       - name: Generate verified tests HTML page
         run: |
-          cat docs/unit-tests.txt docs/demo.txt docs/explicitkeytests.txt docs/flowtests.txt docs/validationtests.txt docs/dumproundtrip.txt docs/rawparsetests.txt docs/specexamples.txt docs/schemadump.txt docs/scannertests.txt docs/scannerspecexamples.txt docs/adversarialtests.txt docs/mutationtests.txt docs/propertytests.txt docs/productioncoverage.txt > docs/all-verified-tests.txt
+          cat docs/unit-tests.txt docs/demo.txt docs/explicitkeytests.txt docs/flowtests.txt docs/validationtests.txt docs/dumproundtrip.txt docs/rawparsetests.txt docs/specexamples.txt docs/schemadump.txt docs/scannertests.txt docs/scannerspecexamples.txt docs/adversarialtests.txt docs/mutationtests.txt docs/propertytests.txt docs/productioncoverage.txt docs/limittests.txt > docs/all-verified-tests.txt
 
       - name: Upload coverage reports as artifact
         uses: actions/upload-artifact@v3

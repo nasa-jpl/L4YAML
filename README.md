@@ -14,6 +14,7 @@ Lean4Yaml/
 ├── TokenParser.lean         # Token → AST grammar parser (S-layer, 54 productions)
 ├── Emitter.lean             # Canonical YAML emitter (YamlValue → String)
 ├── Dump.lean                # Style-aware dump: YamlValue → DumpConfig → String
+├── Limits.lean              # Parser security: limits, tag validation, safe API
 ├── Schema.lean              # Core Schema §10.3: YamlType, resolve, resolveImplicit
 ├── Schema/
 │   ├── FromToYaml.lean      # FromYaml/ToYaml/FromYamlType typeclasses + instances
@@ -165,6 +166,39 @@ theorem parse_strict : parseYaml s = .ok docs → InYamlLanguage s
 In practice, fully formalizing 205 productions is a major undertaking. Version 0.2.11 introduces a **fourth layer** — systematic rejection testing — as the pragmatic complement: using the formal grammar structure to generate boundary-violation test cases that check rejection, even though rejection isn't proved. The generation is principled (grammar-directed, production-aware), the cross-validation is empirical (differential testing against libyaml), and the coverage is measured (production coverage analysis). This semi-formal bridge addresses the verification gap without requiring a full surface-syntax formalization.
 
 For more details, see [Proofs/README](./Lean4Yaml/Proofs/README.md).
+
+## Security: Parser Limits (v0.3.0)
+
+`Lean4Yaml/Limits.lean` provides configurable limits to protect against adversarial input:
+
+| Threat | Limit | Default |
+|---|---|---|
+| Billion-laugh alias expansion | `maxResolvedNodes` on anchor values | 100,000 |
+| Excessive alias depth/count | `maxAliasDepth`, `maxAliasExpansions` | 50 / 10,000 |
+| Deep nesting | `maxDepth` | 100 |
+| Oversized scalars | `maxScalarBytes` | 10 MB |
+| Large collections | `maxSequenceLength`, `maxMappingSize` | 100,000 |
+| Too many documents | `maxDocuments` | 100 |
+| Input size | `maxInputBytes` | 100 MB |
+| Language-specific tags (`!!python/*`) | `rejectLanguageTags` | true |
+| Non-core-schema tags | `TagPolicy.coreSchemaOnly` | default |
+| Custom `%TAG` handles | `rejectCustomHandles` | false |
+
+### Usage
+
+```lean
+import Lean4Yaml
+
+-- Safe mode (recommended for untrusted input):
+let result := parseYamlSafe input                -- default limits
+let result := parseYamlSafe input .strict        -- strict limits (web APIs)
+let result := parseYamlSingleSafe input          -- single-document variant
+
+-- Unlimited mode (backward-compatible, trusted input only):
+let result := parseYaml input                    -- no limits
+```
+
+Four preset configurations: `ParserLimits.strict` (web APIs), default `{}` (general untrusted), `ParserLimits.permissive` (trusted internal), `ParserLimits.unlimited` (testing). See [LIMITS.md](./LIMITS.md) for the full threat model.
 
 ## Key Design Decisions
 
@@ -762,7 +796,7 @@ Annotate each scanner/parser code path with the spec production it implements. C
 
 </details>
 
-##### **Version 0.2.13.6: Fix tab-at-document-start leniency.** (completed 2026-03-25)
+##### **Version 0.2.13.6: Fix tab-at-document-start leniency.** (completed 2026-03-23)
 
 <details>
 <summary>8 leniencies fixed, 21 remaining documented as spec-compliant differences from libyaml</summary>
@@ -801,7 +835,7 @@ Fixed the tab-at-document-start leniency identified in v0.2.13.1: `skipToContent
 
 </details>
 
-#### Version 0.3.0
+#### Version 0.3.0 (completed 2026-03-24)
 <details>
 
 Security mechanisms to prevent **two critical vulnerability classes**:

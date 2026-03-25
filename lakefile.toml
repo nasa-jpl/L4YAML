@@ -140,6 +140,13 @@ name = "Tests.ValidationTests"
 name = "validationtests"
 root = "Tests.ValidationTests.Runner"
 
+[[lean_lib]]
+name = "Tests.LimitTests"
+
+[[lean_exe]]
+name = "limittests"
+root = "Tests.LimitTests.Runner"
+
 [[lean_exe]]
 name = "flowregressioncheck"
 root = "Tests.FlowRegressionCheck"
