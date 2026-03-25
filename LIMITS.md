@@ -12,7 +12,7 @@ The YAML specification (1.2.2) is inherently unsafe when combined with language-
 - **Schema enforcement**: Restricting documents to known-safe types
 - **Defense in depth**: Rejecting malicious patterns before they reach application code
 
-**Status**: Planning document. Implementation deferred until after core verification is complete.
+**Status**: **Implemented** in `Lean4Yaml/Limits.lean` (v0.3.0). See `Tests/LimitTests.lean` for 43 passing tests across all limit categories.
 
 ## Threat Model
 
