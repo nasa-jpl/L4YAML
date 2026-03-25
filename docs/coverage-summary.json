@@ -1,5 +1,5 @@
 {
-  "date": "2026-03-24T20:07:41-0700",
+  "date": "2026-03-24T20:22:01-0700",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -8550,6 +8550,229 @@
       },
       {
         "allPass": true,
+        "label": "Parser Security Limit Tests",
+        "passed": 43,
+        "tests": [
+          {
+            "category": "Alias Limits",
+            "name": "billion-laugh rejected by anchor node count",
+            "outcome": "pass"
+          },
+          {
+            "category": "Alias Limits",
+            "name": "simple alias within limits",
+            "outcome": "pass"
+          },
+          {
+            "category": "Alias Limits",
+            "name": "expansion count limit enforced",
+            "outcome": "pass"
+          },
+          {
+            "category": "Alias Limits",
+            "name": "resolved node count limit enforced",
+            "outcome": "pass"
+          },
+          {
+            "category": "Alias Limits",
+            "name": "anchor count limit enforced",
+            "outcome": "pass"
+          },
+          {
+            "category": "Structural Limits",
+            "name": "deep nesting rejected by shallow depth limit",
+            "outcome": "pass"
+          },
+          {
+            "category": "Structural Limits",
+            "name": "normal nesting within limits",
+            "outcome": "pass"
+          },
+          {
+            "category": "Structural Limits",
+            "name": "oversized scalar rejected",
+            "outcome": "pass"
+          },
+          {
+            "category": "Structural Limits",
+            "name": "sequence length limit enforced",
+            "outcome": "pass"
+          },
+          {
+            "category": "Structural Limits",
+            "name": "mapping size limit enforced",
+            "outcome": "pass"
+          },
+          {
+            "category": "Document Limits",
+            "name": "document count limit enforced",
+            "outcome": "pass"
+          },
+          {
+            "category": "Document Limits",
+            "name": "single document within limits",
+            "outcome": "pass"
+          },
+          {
+            "category": "Document Limits",
+            "name": "input size limit enforced",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tag Security",
+            "name": "python tag rejected by default",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tag Security",
+            "name": "ruby tag rejected by default",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tag Security",
+            "name": "java tag rejected by default",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tag Security",
+            "name": "core schema tags accepted",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tag Security",
+            "name": "non-core custom tag rejected under coreSchemaOnly",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tag Security",
+            "name": "allowAll policy accepts language tags",
+            "outcome": "pass"
+          },
+          {
+            "category": "Tag Security",
+            "name": "rejectAll policy rejects core schema tags",
+            "outcome": "pass"
+          },
+          {
+            "category": "Preset Configurations",
+            "name": "strict preset: normal YAML accepted",
+            "outcome": "pass"
+          },
+          {
+            "category": "Preset Configurations",
+            "name": "permissive preset: normal YAML accepted",
+            "outcome": "pass"
+          },
+          {
+            "category": "Preset Configurations",
+            "name": "unlimited preset: normal YAML accepted",
+            "outcome": "pass"
+          },
+          {
+            "category": "Preset Configurations",
+            "name": "safeTagsOnly preset: normal YAML accepted",
+            "outcome": "pass"
+          },
+          {
+            "category": "Preset Configurations",
+            "name": "strict preset: billion-laugh rejected",
+            "outcome": "pass"
+          },
+          {
+            "category": "Preset Configurations",
+            "name": "unlimited preset: billion-laugh allowed",
+            "outcome": "pass"
+          },
+          {
+            "category": "Normal YAML Passthrough",
+            "name": "empty string",
+            "outcome": "pass"
+          },
+          {
+            "category": "Normal YAML Passthrough",
+            "name": "plain scalar",
+            "outcome": "pass"
+          },
+          {
+            "category": "Normal YAML Passthrough",
+            "name": "simple mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "Normal YAML Passthrough",
+            "name": "simple sequence",
+            "outcome": "pass"
+          },
+          {
+            "category": "Normal YAML Passthrough",
+            "name": "multi-document",
+            "outcome": "pass"
+          },
+          {
+            "category": "Normal YAML Passthrough",
+            "name": "simple anchor/alias",
+            "outcome": "pass"
+          },
+          {
+            "category": "Normal YAML Passthrough",
+            "name": "nested mapping+sequence",
+            "outcome": "pass"
+          },
+          {
+            "category": "Normal YAML Passthrough",
+            "name": "block literal scalar",
+            "outcome": "pass"
+          },
+          {
+            "category": "Normal YAML Passthrough",
+            "name": "block folded scalar",
+            "outcome": "pass"
+          },
+          {
+            "category": "Normal YAML Passthrough",
+            "name": "double-quoted scalar",
+            "outcome": "pass"
+          },
+          {
+            "category": "Normal YAML Passthrough",
+            "name": "single-quoted scalar",
+            "outcome": "pass"
+          },
+          {
+            "category": "Normal YAML Passthrough",
+            "name": "flow sequence",
+            "outcome": "pass"
+          },
+          {
+            "category": "Normal YAML Passthrough",
+            "name": "flow mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "parseYamlSingleSafe",
+            "name": "single doc returns mapping",
+            "outcome": "pass"
+          },
+          {
+            "category": "parseYamlSingleSafe",
+            "name": "empty returns null-like",
+            "outcome": "pass"
+          },
+          {
+            "category": "parseYamlSingleSafe",
+            "name": "multi-doc rejected by single",
+            "outcome": "pass"
+          },
+          {
+            "category": "parseYamlSingleSafe",
+            "name": "tag limits applied in single mode",
+            "outcome": "pass"
+          }
+        ],
+        "total": 43
+      },
+      {
+        "allPass": true,
         "label": "Demo",
         "passed": 7,
         "tests": [
@@ -8592,7 +8815,7 @@
         "total": 7
       }
     ],
-    "totalPassed": 1189,
-    "totalTests": 1189
+    "totalPassed": 1232,
+    "totalTests": 1232
   }
 }

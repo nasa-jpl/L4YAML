@@ -439,9 +439,10 @@ Running verified test suites...
   Mutation Testing on yaml-test-suite (v0.2.13.2): ✓ 45/45
   Property-Based Round-Trip Tests (v0.2.13.3): ✓ 124/124
   Production Coverage Analysis: ✓ 18/18
+  Parser Security Limit Tests: ✓ 43/43
   Demo: ✓ 7/7
 
-Verified: 1189/1189
+Verified: 1232/1232
 
 Generating HTML reports...
   wrote docs/index.html
