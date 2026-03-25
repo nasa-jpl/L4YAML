@@ -995,6 +995,52 @@ Token parser functions coupled (**~48 functions**):
 
 [C and Python APIs for the safe parsing APIs](./C_PYTHON_APIs.md)
 
+##### Phase 1: Lean `@[export]` Wrappers (completed 2026-03-25)
+
+<details>
+<summary>26 exported C-callable functions in Lean4Yaml/FFI.lean, verified in generated C</summary>
+
+Created [Lean4Yaml/FFI.lean](Lean4Yaml/FFI.lean) with `@[export]` wrappers exposing the safe parsing and dumping API through opaque handles and flat C-compatible types (`UInt8`, `UInt32`, `String`).
+
+**Exported functions (26):**
+
+| Category | Functions |
+|----------|-----------|
+| Parsing | `lean4yaml_parse_safe`, `lean4yaml_parse_single_safe` |
+| Result inspection | `lean4yaml_result_is_ok`, `lean4yaml_result_single_is_ok`, `lean4yaml_result_get_error`, `lean4yaml_result_single_get_error`, `lean4yaml_result_get_docs`, `lean4yaml_result_get_value` |
+| Document access | `lean4yaml_docs_count`, `lean4yaml_docs_get`, `lean4yaml_doc_value` |
+| Value inspection | `lean4yaml_value_tag` (kind), `lean4yaml_value_as_string`, `lean4yaml_value_seq_length`, `lean4yaml_value_seq_get`, `lean4yaml_value_map_length`, `lean4yaml_value_map_key`, `lean4yaml_value_map_val`, `lean4yaml_value_lookup`, `lean4yaml_value_yaml_tag`, `lean4yaml_value_anchor` |
+| Option helpers | `lean4yaml_option_is_some`, `lean4yaml_option_get` |
+| Dumping | `lean4yaml_dump`, `lean4yaml_dump_docs` |
+| String utility | `lean4yaml_string_byte_length` |
+
+**Preset encoding:** `UInt8` code selects `ParserLimits` preset (0=default, 1=strict, 2=permissive, 3=unlimited, 4=safeTagsOnly).
+
+**Verification:**
+- Compiles cleanly (847ms), full library build 173/173 jobs with 0 new warnings
+- All 26 symbols confirmed as `LEAN_EXPORT` in generated `.c` file
+- Pre-existing `sorry` in `Surface.lean` unchanged (coupling proofs, not FFI)
+
+</details>
+
+##### Phase 2: C Header & Shared Library
+
+<details>
+
+</details>
+
+##### Phase 3:  Python Package
+
+<details>
+
+</details>
+
+##### Phase 4: Testing & Validation
+
+<details>
+
+</details>
+
 </details>
 
 #### Version 0.6.0

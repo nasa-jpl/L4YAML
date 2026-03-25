@@ -10,6 +10,7 @@ import Lean4Yaml.Limits
 import Lean4Yaml.Surface
 import Lean4Yaml.Emitter
 import Lean4Yaml.Dump
+import Lean4Yaml.FFI
 import Lean4Yaml.Schema
 import Lean4Yaml.Schema.FromToYaml
 import Lean4Yaml.Schema.Struct

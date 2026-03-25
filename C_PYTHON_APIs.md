@@ -639,8 +639,8 @@ Run the yaml-test-suite (311 valid + 158 invalid cases) through the Python API a
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | Create `Lean4Yaml/FFI.lean` with `@[export]` wrappers for safe parse + dump + value navigation | ☐ |
-| 2 | Verify `FFI.lean` compiles and exports appear in `.o` symbol table | ☐ |
+| 1 | Create `Lean4Yaml/FFI.lean` with `@[export]` wrappers for safe parse + dump + value navigation | ☑ |
+| 2 | Verify `FFI.lean` compiles and exports appear in `.o` symbol table | ☑ |
 
 ### Phase 2: C Header & Shared Library
 
