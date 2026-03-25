@@ -846,10 +846,22 @@ Security mechanisms to prevent **two critical vulnerability classes**:
 See [LIMITS](LIMITS.md) for detailed analysis and mitigation strategies.
 </details>
 
-#### Version 0.4.0
+#### Version 0.4.0 (in progress)
 <details>
 
 [Acceptance strictness](./STRICTNESS.md): formalize the YAML 1.2.2 surface syntax as parameterized inductive predicates and prove acceptance strictness: if the parser accepts an input, that input belongs to the formal grammar.
+
+**Surface syntax grammar**: 6 new modules in `Lean4Yaml/Surface/` (~1,100 lines) encode the full YAML 1.2.2 production set [1]–[211] as Lean 4 inductive `Prop`s over positioned character streams (`SurfPos = {chars : List Char, col : Nat}`).
+
+Key design decisions:
+- **18 mutual inductives** for the node/collection layer (flow sequences, flow mappings, block sequences, block mappings, compact notation, implicit keys)
+- **Nested inductive restriction**: Lean 4's kernel forbids `GAlt`/`GOpt`/`GStar` wrapping mutual types — all such patterns inlined as explicit constructors
+- **Column-tracking position model**: column resets to 0 on line breaks, increments per character — sufficient for YAML's indentation-sensitive grammar
+- **Context parameterization**: `YamlContext` (blockOut/blockIn/blockKey/flowOut/flowIn/flowKey) threads through productions governing plain scalar and flow indicator interpretation
+
+Target theorems stated (`parse_strict`, `scan_strict`), coupling proofs under construction.
+
+Build: 385/385 jobs, Tests: 869/0/151 (no regressions from v0.3.0 baseline)
 </details>
 
 #### Version 0.5.0

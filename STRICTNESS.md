@@ -1,91 +1,105 @@
-# Plan: STRICTNESS.md — Formalizing YAML 1.2.2 Surface Syntax
+# STRICTNESS.md — Formalizing YAML 1.2.2 Surface Syntax
 
 ## TL;DR
 
-This document that analyzes the gap between Grammar.lean's output-structure formalization and the input-level surface syntax defined by the 205 YAML 1.2.2 productions. The document explains what's missing, proposes a formalization approach using parameterized inductive predicates over positioned character streams, and shows how this enables proving the acceptance strictness property (`parseYaml s = .ok docs → InYamlLanguage s`).
+This document describes the **acceptance strictness** formalization for v0.4.0:
+encoding the YAML 1.2.2 surface syntax (productions [1]–[211]) as Lean 4
+parameterized inductive predicates over positioned character streams, and the
+target theorem `parse_strict : parseYaml s = .ok docs → InYamlLanguage s`.
 
-## Steps
+**Status**: Surface syntax grammar formalized in 6 modules (~1,100 lines),
+18 mutual inductives for the node/collection layer. Build: 385 jobs.
+Tests: 869 passed / 0 failed / 151 skipped (no regressions).
+Target theorems stated with `sorry`; coupling proofs under construction.
 
-### Phase 1: Document structure and gap analysis
+## Architecture
 
-1. **Section 1 — The Verification Asymmetry**: Explain the current soundness-only verification. Grammar.lean captures output structure (ValidNode, ValidTokenStream) but not input acceptance criteria. Reference the README's existing discussion.
+### Position Model
 
-2. **Section 2 — What's Already Formalized**: Inventory the ~17 `@[yaml_spec]`-tagged definitions covering productions [1], [22], [23], [26], [31], [33], [61], [63], [65], [123], [126], [158], [200], [204], [205]. CharPredicates.lean covers [1]-[33] character classes. Grammar.lean covers [63], [65] (indentation), [200] (c-forbidden), [61] (escapes), [158] (block scalar headers), [196]/[157] (ValidNode), [204]/[205] (documents/streams). Note that these are all *output-structure* or *character-class* predicates, not *input-language* predicates.
+```lean
+structure SurfPos where
+  chars : List Char   -- remaining input
+  col   : Nat         -- current column (0-based)
+```
 
-3. **Section 3 — What's Missing**: The 205 productions grouped into 5 layers, with analysis of each layer's formalization status:
-   - **Layer 1: Character classes [1]-[40]** — ~90% formalized in CharPredicates.lean
-   - **Layer 2: Basic structures [41]-[93]** — Escape sequences ([61] done), comments ([74]-[79] not formalized as input predicates), indentation ([63],[65] done as output predicates), separation ([66]-[70] not formalized), directives ([82]-[93] not formalized)
-   - **Layer 3: Flow styles [94]-[157]** — Tag properties ([96]-[100] not formalized), anchor/alias ([101]-[104] not formalized), flow sequences ([134]-[136] not formalized), flow mappings ([137]-[157] not formalized), plain scalars ([123]-[133] partially via CharPredicates)
-   - **Layer 4: Block styles [158]-[199]** — Block scalars ([158]-[179] partially via header predicates), block sequences ([180]-[183] not formalized as input predicates), block mappings ([184]-[199] not formalized)
-   - **Layer 5: Document/stream [200]-[211]** — c-forbidden ([200] done), document markers ([201]-[205] partially), stream rules ([206]-[211] not formalized)
+Each production is a relation `SurfPos → SurfPos → Prop` matching a prefix
+of the input and advancing the position. Column resets to 0 on line breaks,
+increments by 1 per consumed character. This models YAML's column-sensitive
+indentation without carrying full (line, col) — column suffices since
+productions only look at column alignment, not line numbers.
 
-4. **Section 4 — Why Output Predicates ≠ Input Predicates**: Concrete examples showing the gap:
-   - `ValidNode.blockSeq 2 items` says "block sequence at indent 2" but NOT "input has `-` at column 3 followed by content at column ≥ 4"
-   - `ValidNode.plainScalarBlock content ...` carries character constraints but NOT "content appeared at position (line, col) with indentation n in block context c"
-   - `ValidTokenStream` says tokens are ordered and stream-bounded but NOT "the input characters between token positions are exactly the whitespace/comments that the grammar allows"
+### Module Structure
 
-### Phase 2: Formalization approach
+| Module | Lines | Productions | Description |
+|--------|-------|-------------|-------------|
+| `Surface/Combinators.lean` | ~85 | — | `SurfPos`, `GChar`, `GLit`, `GSeq`, `GAlt`, `GStar`, `GPlus`, `GOpt`, `GEps`, `GNot` |
+| `Surface/Basic.lean` | ~260 | [24]–[101] | Line breaks, whitespace, indentation, comments, separation, directives, node properties |
+| `Surface/Scalars.lean` | ~300 | [104]–[175] | Double-quoted, single-quoted, plain scalars, alias nodes, block scalars |
+| `Surface/Node.lean` | ~370 | [134]–[199] | 18 mutual inductives: flow/block collections + node dispatchers |
+| `Surface/Document.lean` | ~140 | [200]–[211] | Document markers, document types, stream composition |
+| `Surface.lean` | ~120 | — | `InYamlLanguage`, `parse_strict`, `scan_strict` (sorry) |
 
-5. **Section 5 — Positioned Character Streams**: Define the formalization target — predicates over `(String × Nat)` (input string + position offset), not just `List Char`. The YAML grammar is inherently position-sensitive (line, column tracking) so the formalization must carry position.
+### Mutual Inductive Design
 
-6. **Section 6 — Parameterized Inductive Predicates**: Propose encoding each YAML production as a Lean inductive `Prop` parameterized by `(n : Nat)` (indent) and `(c : Context)` (block-out/block-in/flow-out/flow-in/block-key/flow-key). Example encodings for representative productions from each layer:
-   - [63] `s-indent(n)` → `SIndent n input pos` (already close to `Indented`)  
-   - [66] `s-separate-in-line` → `SSeparateInLine input pos pos'`
-   - [134] `c-flow-sequence(n,c)` → `CFlowSequence n c input pos pos'`
-   - [180] `l+block-sequence(n)` → `LBlockSequence n input pos pos'`
-   - [205] `l-yaml-stream` → `LYamlStream input`
+Lean 4's kernel forbids nested inductives whose parameters contain local
+variables from the same mutual block. This prevents using generic combinators
+(`GAlt`, `GOpt`, `GStar`) to wrap mutually-defined types.
 
-7. **Section 7 — Context-Sensitivity**: Explain why YAML is context-sensitive (not CFG) and how the parameterized predicates handle this. The indent parameter `n` threads through the grammar creating indentation-sensitivity. The context parameter `c` determines which characters are legal in plain scalars and whether flow indicators have structural meaning.
+**Solution**: All combinator patterns wrapping mutual types are inlined as
+explicit constructors. Non-mutual combinator usage is preserved.
 
-8. **Section 8 — The Strictness Theorem**: State the target theorem and show how the formalization enables it:
-   ```
-   theorem parse_strict : parseYaml s = .ok docs → LYamlStream s
-   ```
-   Proof strategy: show that each scanner/parser function, when it succeeds, produces output that corresponds to the grammar production it implements. Chain these correspondences through the pipeline.
+Example — `GAlt (SBlockNode n .blockOut) (GSeq SENode SSLComments)` becomes:
+```lean
+| implicitKeyNode  : ... → SBlockNode n .blockOut s₂ s' → SBlockMapEntry n s s'
+| implicitKeyEmpty : ... → SSLComments s₂ s'            → SBlockMapEntry n s s'
+```
 
-### Phase 3: Practical considerations
+The 18 mutual inductives in `Node.lean`:
+- `SBlockNode`, `SBlockIndented`, `SBlockSeqEntries`, `SBlockMapEntry`,
+  `SBlockMapEntries`, `SCompactSeq`, `SCompactSeqTail`, `SCompactMap`,
+  `SCompactMapTail`, `SImplicitKey`
+- `SFlowNode`, `SFlowContent`, `SFlowSequence`, `SFlowSeqEntries`,
+  `SFlowSeqEntry`, `SFlowMapping`, `SFlowMapEntries`, `SFlowMapEntry`
 
-9. **Section 9 — Incremental Strategy**: Propose a bottom-up formalization order:
-   - Phase A: Complete Layer 1 (character classes) — mostly done
-   - Phase B: Layer 2 (separation, comments, directives) 
-   - Phase C: Layer 4 (block structures) — highest strictness-bug density
-   - Phase D: Layer 3 (flow structures)
-   - Phase E: Layer 5 (document/stream composition)
-   Each phase independently useful: even partial formalization catches strictness bugs in the covered subset.
+## Gap Analysis: Output Predicates ≠ Input Predicates
 
-10. **Section 10 — Estimated Scale**: Rough sizing of the formalization effort. ~165 new inductive definitions, ~200 coupling theorems (implementation ↔ spec), ~100 composition lemmas. Compare to existing Grammar.lean (~1000 lines) and CharPredicates.lean (~700 lines).
+Grammar.lean's `ValidNode` captures output structure — "this parse tree
+is a valid YAML value" — but NOT input acceptance — "this character
+sequence conforms to the YAML syntax."
 
-11. **Section 11 — Alternatives Considered**: Why other approaches are insufficient:
-    - Empirical testing only (current v0.2.11 approach): catches bugs but doesn't prove absence
-    - Formalizing the scanner state machine directly: ties proofs to implementation, not spec
-    - CFG approximation: YAML is context-sensitive, CFG loses indentation constraints
+Concrete examples of the gap:
+- `ValidNode.blockSeq 2 items` says the output is a 2-element block
+  sequence, but NOT that the input has `-` at the correct column
+  followed by correctly-indented content
+- `ValidTokenStream` says tokens are ordered and stream-bounded, but
+  NOT that inter-token whitespace/comments follow the grammar
 
-## Relevant files
+The surface syntax predicates close this gap by specifying character-level
+acceptance for every YAML production.
 
-- [Lean4Yaml/Grammar.lean](lean/lean4-yaml-verified.iterators/Lean4Yaml/Grammar.lean) — Current output-structure formalization (ValidNode, ValidTokenStream, etc.)
-- [Lean4Yaml/CharPredicates.lean](lean/lean4-yaml-verified.iterators/Lean4Yaml/CharPredicates.lean) — Bool/Prop character class predicates with coupling theorems
-- [Lean4Yaml/YamlSpec.lean](lean/lean4-yaml-verified.iterators/Lean4Yaml/YamlSpec.lean) — `@[yaml_spec]` attribute system for spec traceability
-- [Lean4Yaml/Token.lean](lean/lean4-yaml-verified.iterators/Lean4Yaml/Token.lean) — YamlToken (23 constructors), ScanError (34 constructors), TokenStream
-- [Lean4Yaml/Scanner.lean](lean/lean4-yaml-verified.iterators/Lean4Yaml/Scanner.lean) — Scanner implementation with 50+ spec production references in comments
-- [Lean4Yaml/TokenParser.lean](lean/lean4-yaml-verified.iterators/Lean4Yaml/TokenParser.lean) — Token-to-AST parser
-- [Lean4Yaml/Proofs/](lean/lean4-yaml-verified.iterators/Lean4Yaml/Proofs/) — 1,769 theorems (soundness direction only)
+## Target Theorems
 
-## Verification
+```lean
+theorem parse_strict (input : String) (docs : Array YamlDocument)
+    (h : parseYaml input = .ok docs) : InYamlLanguage input
 
-1. The document should be reviewed for accuracy against the YAML 1.2.2 spec production numbering
-2. Example production encodings should be checked for faithfulness to the spec
-3. The gap analysis should be cross-checked against `#yaml_spec_coverage` output to ensure no tagged definitions are missed
+theorem scan_strict (input : String) (tokens : Array (Positioned YamlToken))
+    (h : scan input = .ok tokens) :
+    ∃ s', SLYamlStream ⟨input.toList, 0⟩ s'
+```
 
-## Decisions
+**Proof strategy** (bottom-up coupling):
+1. Scanner coupling: each scanner function, when successful, advances
+   through input matching the surface syntax productions it implements
+2. Token parser coupling: token sequence consumption corresponds to
+   node-level productions
+3. Document composition: full pipeline produces `SLYamlStream`
 
-- The document is analysis/planning, not implementation — no Lean code changes
-- Focus on explaining the *conceptual gap* clearly enough that a reader unfamiliar with the codebase understands why 1,769 theorems don't give strictness
-- Include concrete examples showing how a leniency bug (e.g., `? : b` acceptance) is invisible to the current formalization
-- Reference the v0.2.11 leniency audit as motivation
+## What Remains
 
-## Further Considerations
-
-1. **Mutual recursion depth**: Productions [180]-[199] and [134]-[157] are mutually recursive through [196] `s-l+block-node`. Lean 4's `mutual inductive` may need careful structuring to handle ~165 mutually recursive definitions. **Recommendation**: Group into ~10 mutual blocks by layer, with explicit interfaces between layers.
-
-2. **Auto-detection productions**: Some productions like block scalar indentation ([183] `s-b-comment`) involve auto-detection that depends on runtime state. These may need to be formalized as existential quantification (`∃ m, indent = m ∧ ...`) rather than as parametric predicates. **Recommendation**: Document these special cases explicitly.
+- [ ] Coupling theorems for scanner functions → basic productions
+- [ ] Coupling theorems for token parser → node productions
+- [ ] Proof of `scan_strict` (scanner → surface syntax)
+- [ ] Proof of `parse_strict` (full pipeline)
+- [ ] Verify production coverage against YAML 1.2.2 spec numbering
 
