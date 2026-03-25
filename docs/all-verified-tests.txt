@@ -1488,3 +1488,64 @@
 
 === Results: 18/18 passed ===
   wrote docs/production-coverage.html
+=== Parser Security Limit Tests ===
+=== Parser Security Limit Tests ===
+
+--- Alias Limits ---
+  ✓ billion-laugh rejected by anchor node count
+  ✓ simple alias within limits
+  ✓ expansion count limit enforced
+  ✓ resolved node count limit enforced
+  ✓ anchor count limit enforced
+
+--- Structural Limits ---
+  ✓ deep nesting rejected by shallow depth limit
+  ✓ normal nesting within limits
+  ✓ oversized scalar rejected
+  ✓ sequence length limit enforced
+  ✓ mapping size limit enforced
+
+--- Document Limits ---
+  ✓ document count limit enforced
+  ✓ single document within limits
+  ✓ input size limit enforced
+
+--- Tag Security ---
+  ✓ python tag rejected by default
+  ✓ ruby tag rejected by default
+  ✓ java tag rejected by default
+  ✓ core schema tags accepted
+  ✓ non-core custom tag rejected under coreSchemaOnly
+  ✓ allowAll policy accepts language tags
+  ✓ rejectAll policy rejects core schema tags
+
+--- Preset Configurations ---
+  ✓ strict preset: normal YAML accepted
+  ✓ permissive preset: normal YAML accepted
+  ✓ unlimited preset: normal YAML accepted
+  ✓ safeTagsOnly preset: normal YAML accepted
+  ✓ strict preset: billion-laugh rejected
+  ✓ unlimited preset: billion-laugh allowed
+
+--- Normal YAML Passthrough ---
+  ✓ empty string
+  ✓ plain scalar
+  ✓ simple mapping
+  ✓ simple sequence
+  ✓ multi-document
+  ✓ simple anchor/alias
+  ✓ nested mapping+sequence
+  ✓ block literal scalar
+  ✓ block folded scalar
+  ✓ double-quoted scalar
+  ✓ single-quoted scalar
+  ✓ flow sequence
+  ✓ flow mapping
+
+--- parseYamlSingleSafe ---
+  ✓ single doc returns mapping
+  ✓ empty returns null-like
+  ✓ multi-doc rejected by single
+  ✓ tag limits applied in single mode
+
+=== Results: 43/43 passed ===
