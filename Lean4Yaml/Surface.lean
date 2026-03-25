@@ -111,10 +111,23 @@ corresponding surface syntax productions. -/
 /-- The indent consumed by the scanner corresponds to `SIndent n` in
     the surface syntax. This is the simplest coupling theorem and
     serves as a template for more complex ones. -/
-theorem indent_coupling (n : Nat) (cs rest : List Char) (col : Nat) :
+theorem indent_coupling (n : Nat) (cs : List Char) (col : Nat) :
     cs.take n = List.replicate n ' ' →
     cs.length ≥ n →
     SIndent n ⟨cs, col⟩ ⟨cs.drop n, col + n⟩ := by
-  sorry -- Coupling proof to be completed
+  induction n generalizing cs col with
+  | zero => intros; exact SIndent.zero _
+  | succ k ih =>
+    intro hrep hlen
+    match cs, hlen with
+    | c :: rest, hlen =>
+      simp [List.replicate_succ] at hrep
+      obtain ⟨hc, hrest_rep⟩ := hrep
+      subst hc
+      have hlen' : rest.length ≥ k := by simp at hlen; omega
+      have ih_result := ih rest (col + 1) hrest_rep hlen'
+      have hcol : col + 1 + k = col + (k + 1) := by omega
+      rw [hcol] at ih_result
+      exact SIndent.succ k rest col _ ih_result
 
 end Lean4Yaml.Surface

@@ -846,10 +846,10 @@ Security mechanisms to prevent **two critical vulnerability classes**:
 See [LIMITS](LIMITS.md) for detailed analysis and mitigation strategies.
 </details>
 
-#### Version 0.4.0 (in progress)
+#### Version 0.4.0 (completed 2026-03-25)
 <details>
 
-[Acceptance strictness](./STRICTNESS.md): formalize the YAML 1.2.2 surface syntax as parameterized inductive predicates and prove acceptance strictness: if the parser accepts an input, that input belongs to the formal grammar.
+[Acceptance strictness](./STRICTNESS.md): formalize the YAML 1.2.2 surface syntax as parameterized inductive predicates and begin coupling the scanner implementation to the formal grammar.
 
 **Surface syntax grammar**: 6 new modules in `Lean4Yaml/Surface/` (~1,100 lines) encode the full YAML 1.2.2 production set [1]–[211] as Lean 4 inductive `Prop`s over positioned character streams (`SurfPos = {chars : List Char, col : Nat}`).
 
@@ -859,12 +859,145 @@ Key design decisions:
 - **Column-tracking position model**: column resets to 0 on line breaks, increments per character — sufficient for YAML's indentation-sensitive grammar
 - **Context parameterization**: `YamlContext` (blockOut/blockIn/blockKey/flowOut/flowIn/flowKey) threads through productions governing plain scalar and flow indicator interpretation
 
-Target theorems stated (`parse_strict`, `scan_strict`), coupling proofs under construction.
+**Coupling proof infrastructure**: 3 modules in `Lean4Yaml/Proofs/` (~570 lines, ~50 theorems, **0 sorry**) bridge the scanner implementation to the surface syntax:
+- **SurfaceCoupling**: 20+ pure `SurfPos`-level theorems (`SIndent` zero/succ/all_spaces, `SBBreak` lf/cr/crlf, `GChar` column tracking, `SSWhite` space/tab)
+- **CouplingBridge**: Scanner↔SurfPos bridge — `CharsFromOffset` inductive, `ScannerSurfCorr` correspondence struct, peek/eof/advance correspondence, and composition helpers for `SSeparateInLine`, `SSLComments`, `SSBComment`
+- **ScannerCoupling**: Fuel-based scanner loop proofs — `skipSpacesLoop` → `SIndent n`, `skipSpaces` coupling, `consumeNewline` lf/crlf/cr → `SBBreak` correspondence
 
-Build: 385/385 jobs, Tests: 869/0/151 (no regressions from v0.3.0 baseline)
+Target theorems stated (`parse_strict`, `scan_strict`) with `sorry` — to be discharged incrementally in v0.4.1–v0.4.5.
+
+Build: 391/391 jobs, Tests: 869/0/151 (no regressions from v0.3.0 baseline)
+</details>
+
+#### Version 0.4.1
+<details>
+
+**Whitespace, comment & separation coupling** (~600–800 lines of proof)
+
+Extend the coupling infrastructure to cover all whitespace/comment/separation scanner functions — the "glue" that appears between every token.
+
+Scanner functions coupled (**13 functions**):
+- `skipWhitespaceLoop`, `skipWhitespace` → `SSWhite*` / `s-white+`
+- `skipToEndOfLineLoop`, `skipToEndOfLine` → `nb-char*` (comment text content)
+- `collectCommentTextLoop` → `c-nb-comment-text`
+- `skipToContentWs` → `s-indent` + `s-separate-in-line`
+- `skipToContentComment` → `s-b-comment`
+- `skipToContentLoop`, `skipToContent` → `s-l-comments`
+- `advanceNLoop`, `advanceN` → multi-character advance correspondence
+- `hasTabInPrecedingWhitespaceLoop`, `hasTabInPrecedingWhitespace` → tab detection
+
+Surface productions covered: [63]–[80] (`s-indent`, `s-white`, `s-separate-in-line`, `s-l-comments`, `s-b-comment`, `c-nb-comment-text`)
+
+</details>
+
+#### Version 0.4.2
+<details>
+
+**Scalar collection coupling** (~1,000–1,200 lines of proof)
+
+Couple all scalar content collection functions — the most character-intensive part of the scanner.
+
+Scanner functions coupled (**31 functions**):
+
+*Double-quoted scalars*:
+- `collectDoubleQuotedLoop`, `scanDoubleQuoted` → `c-double-quoted` [107]–[116]
+- `collectHexDigitsLoop`, `parseHexEscape`, `processEscape` → `ns-esc-char` escape handling
+- `foldQuotedNewlinesLoop`, `foldQuotedNewlines` → `s-flow-folded`
+- `trimTrailingWS`, `skipTrailingSpaces`, `validateTrailingContent` → whitespace trimming
+
+*Single-quoted scalars*:
+- `collectSingleQuotedLoop`, `scanSingleQuoted` → `c-single-quoted` [117]–[125]
+
+*Plain scalars*:
+- `collectPlainScalar_terminates?`, `collectPlainScalar_handleBlockLineBreak`, `collectPlainScalarLoop`, `scanPlainScalar` → `ns-plain` [126]–[133]
+
+*Block scalars*:
+- `skipBlankLinesLoop` → `l-empty`
+- `foldBlockContent` → block scalar folding
+- `autoDetectBlockScalarIndentLoop`, `autoDetectBlockScalarIndent` → indentation auto-detection
+- `consumeExactSpaces`, `collectLineContentLoop`, `collectBlockScalarLoop` → block scalar body
+- `parseBlockHeaderLoop`, `scanBlockScalarSkipComment`, `scanBlockScalarConsumeNewline`, `scanBlockScalarBody`, `scanBlockScalar` → `c-l+literal` / `c-l+folded` [170]–[182]
+
+Surface productions covered: [107]–[133], [162]–[182] (all four scalar types)
+
+</details>
+
+#### Version 0.4.3
+<details>
+
+**Structure, document & directive coupling** (~800–1,000 lines of proof)
+
+Couple all structural scanning: flow/block indicators, node properties, document boundaries, and directives.
+
+Scanner functions coupled (**~40 functions**):
+
+*Flow indicators (6)*: `scanFlowSequenceStart`/`End`, `scanFlowMappingStart`/`End`, `scanFlowEntry`, `lastRealTokenVal?`
+
+*Block structure (9)*: `scanBlockEntry`, `scanKey`, `scanValue`, `scanValueClearKey`, `scanValueValidate`, `scanValuePrepare`, `scanValueTabCheck`, `saveSimpleKey`, context predicates (`isBlockEntryCandidate`, `isKeyCandidate`, `isJsonNodeToken`, `isValueCandidate`, `validateFlowClose`)
+
+*Node properties (9)*: `collectAnchorNameLoop`, `scanAnchorOrAlias`, `collectVerbatimTagLoop`, `collectTagSuffixLoop`, `collectTagHandleLoop`, `scanVerbatimTag`, `scanSecondaryTag`, `scanNamedTag`, `scanTag`
+
+*Indentation management (4)*: `unwindIndentsLoop`, `unwindIndents`, `pushSequenceIndent`, `pushMappingIndent`
+
+*Document boundaries (6)*: `atDocumentStart`/`End`/`Boundary`, `scanDocumentStart`, `skipDocEndWhitespace`, `scanDocumentEnd`
+
+*Directives (8)*: `collectDirectiveNameLoop`, `collectVersionMajorLoop`/`MinorLoop`, `collectTagHandleDirectiveLoop`, `collectTagPrefixLoop`, `scanYamlDirective`, `scanTagDirective`, `scanDirective`
+
+Surface productions covered: [82]–[103], [134]–[152], [183]–[211]
+
+</details>
+
+#### Version 0.4.4
+<details>
+
+**`scan_strict` proof** (~500–600 lines of proof)
+
+Compose all scanner couplings from v0.4.1–v0.4.3 into the top-level `scan_strict` theorem — the first sorry elimination.
+
+Scanner functions coupled (**~12 functions**):
+- Token dispatch: `scanNextToken_preprocess`, `scanNextToken_dispatchStructural`, `scanNextToken_dispatchFlowIndicators`, `scanNextToken_dispatchBlockIndicators`, `scanNextToken_dispatchContent`, `scanNextToken_checkBlockFlowIndent`, `scanNextToken`
+- Scanning loop: `scanLoop`, `scan`
+- Token emission: `emit`, `emitAt` — token position correspondence
+- State setup: `ScannerState.mk'`, `WellFormed` — initial state coupling
+
+**Result**: `scan_strict` sorry eliminated. Theorem: if `scan` succeeds, the token stream reflects correct lexical decomposition of the input into surface syntax productions.
+
+</details>
+
+#### Version 0.4.5
+<details>
+
+**`parse_strict` proof** (~800–1,000 lines of proof)
+
+Couple the token parser to the surface syntax and prove the full pipeline `parse_strict` theorem — the second and final sorry elimination.
+
+Token parser functions coupled (**~48 functions**):
+
+*State & helpers (13)*: `ParseState.mk'`/`hasMore`/`peek?`/`peekPos?`/`advance`/`lastPos?`/`currentLine`/`expect`/`tryConsume`/`addAnchor`, `resolveTag`, `emptyNode`, `StreamState.validNextToken`
+
+*Node parsing (5)*: `parseNodeProperties`, `applyNodeFinalization`, `validateNodeProps`, `parseNodeContent`, `parseNode`
+
+*Block sequences (4)*: `parseBlockSequence`, `parseBlockSequenceLoop`, `parseImplicitBlockSequence`, `parseImplicitBlockSequenceLoop`
+
+*Block mappings (5)*: `parseBlockMapping`, `parseBlockMappingEntryValue`, `handleBlockMappingKeyEntry`, `handleBlockMappingValueEntry`, `parseBlockMappingLoop`
+
+*Flow collections (7)*: `parseFlowSequence`, `parseFlowSequenceLoop`, `parseFlowMapping`, `parseFlowMappingValue`, `parseExplicitKey`, `parseFlowMappingLoop`, `parseSinglePairMapping`
+
+*Document & stream (8)*: `parseDirectives`, `prepareDocumentState`, `parseDocument`, `parseStreamLoop`, `parseStream`, `scanAndParse`, `parseYamlRaw`, `parseYaml`
+
+**Result**: `parse_strict` sorry eliminated → **0 sorry in entire codebase**. Full acceptance strictness verified: if the parser accepts an input, that input belongs to the YAML 1.2.2 formal grammar.
+
 </details>
 
 #### Version 0.5.0
+
+<details>
+
+[C and Python APIs for the safe parsing APIs](./C_PYTHON_APIs.md)
+
+</details>
+
+#### Version 0.6.0
 <details>
 
 Rejection completeness: if an input does not belong to the formal grammar, the parser rejects it. This is strictly harder than acceptance strictness and may require architectural changes to the parser's error handling.

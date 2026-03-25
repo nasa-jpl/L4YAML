@@ -56,6 +56,9 @@ import Lean4Yaml.Proofs.ScannerProofs
 import Lean4Yaml.Proofs.ScannerScalar
 import Lean4Yaml.Proofs.ScannerSimpleKey
 import Lean4Yaml.Proofs.ScannerWhitespace
+import Lean4Yaml.Proofs.SurfaceCoupling
+import Lean4Yaml.Proofs.CouplingBridge
+import Lean4Yaml.Proofs.ScannerCoupling
 import Lean4Yaml.Proofs.SchemaComposition
 import Lean4Yaml.Proofs.SchemaDump
 import Lean4Yaml.Proofs.SchemaResolution
