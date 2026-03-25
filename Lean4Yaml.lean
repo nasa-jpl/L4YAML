@@ -7,6 +7,7 @@ import Lean4Yaml.Token
 import Lean4Yaml.Scanner
 import Lean4Yaml.TokenParser
 import Lean4Yaml.Limits
+import Lean4Yaml.Surface
 import Lean4Yaml.Emitter
 import Lean4Yaml.Dump
 import Lean4Yaml.Schema
