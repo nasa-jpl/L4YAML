@@ -66,14 +66,14 @@ def parseSingleSafe (input : @& String) (preset : UInt8) : Except ParseError Yam
 /-! ## Result Inspection -/
 
 /-- Check whether a parse result is `Except.ok`.  Returns 1 for ok, 0 for error. -/
-@[export lean4yaml_result_is_ok]
+@[export lean4yaml_result_is_ok_impl]
 def resultIsOk (result : @& Except ParseError (Array YamlDocument)) : UInt8 :=
   match result with
   | .ok _ => 1
   | .error _ => 0
 
 /-- Check whether a single-value parse result is `Except.ok`. -/
-@[export lean4yaml_result_single_is_ok]
+@[export lean4yaml_result_single_is_ok_impl]
 def resultSingleIsOk (result : @& Except ParseError YamlValue) : UInt8 :=
   match result with
   | .ok _ => 1
@@ -96,7 +96,7 @@ def resultSingleGetError (result : @& Except ParseError YamlValue) : String :=
 
 /-- Extract the `Array YamlDocument` from a successful multi-doc result.
     Panics if the result is an error (caller must check `resultIsOk` first). -/
-@[export lean4yaml_result_docs]
+@[export lean4yaml_result_docs_impl]
 def resultGetDocs (result : @& Except ParseError (Array YamlDocument)) : Array YamlDocument :=
   match result with
   | .ok docs => docs
@@ -104,7 +104,7 @@ def resultGetDocs (result : @& Except ParseError (Array YamlDocument)) : Array Y
 
 /-- Extract the `YamlValue` from a successful single-value result.
     Returns `YamlValue.null` if the result is an error. -/
-@[export lean4yaml_result_value]
+@[export lean4yaml_result_value_impl]
 def resultGetValue (result : @& Except ParseError YamlValue) : YamlValue :=
   match result with
   | .ok v => v
@@ -113,25 +113,25 @@ def resultGetValue (result : @& Except ParseError YamlValue) : YamlValue :=
 /-! ## Document Array Access -/
 
 /-- Number of documents in a parsed array. -/
-@[export lean4yaml_docs_count]
+@[export lean4yaml_docs_count_impl]
 def docsCount (docs : @& Array YamlDocument) : UInt32 :=
   docs.size.toUInt32
 
 /-- Get the i-th document from the array.  Returns a default document if out of bounds. -/
-@[export lean4yaml_docs_get]
+@[export lean4yaml_docs_get_impl]
 def docsGet (docs : @& Array YamlDocument) (i : UInt32) : YamlDocument :=
   let idx := i.toNat
   if h : idx < docs.size then docs[idx] else { value := YamlValue.null }
 
 /-- Root value of a document. -/
-@[export lean4yaml_doc_root]
+@[export lean4yaml_doc_root_impl]
 def docValue (doc : @& YamlDocument) : YamlValue :=
   doc.value
 
 /-! ## Value Inspection -/
 
 /-- Node kind tag: 0 = scalar, 1 = sequence, 2 = mapping, 3 = alias. -/
-@[export lean4yaml_value_kind]
+@[export lean4yaml_value_kind_impl]
 def valueTag (val : @& YamlValue) : UInt8 :=
   match val with
   | .scalar _ => 0
@@ -147,7 +147,7 @@ def valueAsString (val : @& YamlValue) : String :=
   | _ => ""
 
 /-- Number of items in a sequence.  Returns 0 for non-sequence values. -/
-@[export lean4yaml_value_seq_length]
+@[export lean4yaml_value_seq_length_impl]
 def valueSeqLength (val : @& YamlValue) : UInt32 :=
   match val with
   | .sequence _ items .. => items.size.toUInt32
@@ -155,7 +155,7 @@ def valueSeqLength (val : @& YamlValue) : UInt32 :=
 
 /-- Get the i-th element from a sequence.  Returns `YamlValue.null` if
     the value is not a sequence or the index is out of bounds. -/
-@[export lean4yaml_value_seq_get]
+@[export lean4yaml_value_seq_get_impl]
 def valueSeqGet (val : @& YamlValue) (i : UInt32) : YamlValue :=
   match val with
   | .sequence _ items .. =>
@@ -164,7 +164,7 @@ def valueSeqGet (val : @& YamlValue) (i : UInt32) : YamlValue :=
   | _ => YamlValue.null
 
 /-- Number of key-value pairs in a mapping.  Returns 0 for non-mapping values. -/
-@[export lean4yaml_value_map_length]
+@[export lean4yaml_value_map_length_impl]
 def valueMapLength (val : @& YamlValue) : UInt32 :=
   match val with
   | .mapping _ pairs .. => pairs.size.toUInt32
@@ -172,7 +172,7 @@ def valueMapLength (val : @& YamlValue) : UInt32 :=
 
 /-- Get the key of the i-th pair in a mapping.  Returns `YamlValue.null` if
     the value is not a mapping or the index is out of bounds. -/
-@[export lean4yaml_value_map_key]
+@[export lean4yaml_value_map_key_impl]
 def valueMapKey (val : @& YamlValue) (i : UInt32) : YamlValue :=
   match val with
   | .mapping _ pairs .. =>
@@ -182,7 +182,7 @@ def valueMapKey (val : @& YamlValue) (i : UInt32) : YamlValue :=
 
 /-- Get the value of the i-th pair in a mapping.  Returns `YamlValue.null` if
     the value is not a mapping or the index is out of bounds. -/
-@[export lean4yaml_value_map_val]
+@[export lean4yaml_value_map_val_impl]
 def valueMapVal (val : @& YamlValue) (i : UInt32) : YamlValue :=
   match val with
   | .mapping _ pairs .. =>
@@ -220,7 +220,7 @@ def valueAnchor (val : @& YamlValue) : Option String :=
 /-! ## Option Inspection (for lookup results) -/
 
 /-- Check whether an `Option YamlValue` is `some`. Returns 1 for some, 0 for none. -/
-@[export lean4yaml_option_is_some]
+@[export lean4yaml_option_is_some_impl]
 def optionIsSome (opt : @& Option YamlValue) : UInt8 :=
   match opt with
   | some _ => 1
@@ -228,7 +228,7 @@ def optionIsSome (opt : @& Option YamlValue) : UInt8 :=
 
 /-- Extract the value from `Option YamlValue`.
     Returns `YamlValue.null` for `none`. -/
-@[export lean4yaml_option_get]
+@[export lean4yaml_option_get_impl]
 def optionGet (opt : @& Option YamlValue) : YamlValue :=
   match opt with
   | some v => v
@@ -249,7 +249,7 @@ def dumpDocs (docs : @& Array YamlDocument) : String :=
 /-! ## String Utilities -/
 
 /-- UTF-8 byte length of a Lean `String`. -/
-@[export lean4yaml_string_byte_length]
+@[export lean4yaml_string_byte_length_impl]
 def stringByteLength (s : @& String) : UInt32 :=
   s.utf8ByteSize.toUInt32
 
@@ -269,7 +269,7 @@ def parseDumpConfigYaml (input : @& String) : Except String DumpConfig :=
   parseConfigYaml DumpConfig input
 
 /-- Check whether a config parse result is ok. -/
-@[export lean4yaml_config_result_is_ok]
+@[export lean4yaml_config_result_is_ok_impl]
 def configResultIsOk (result : @& Except String ParserLimits) : UInt8 :=
   match result with
   | .ok _ => 1
@@ -277,7 +277,7 @@ def configResultIsOk (result : @& Except String ParserLimits) : UInt8 :=
 
 /-- Extract error message from a failed config parse.
     Returns empty string on success. -/
-@[export lean4yaml_config_result_get_error]
+@[export lean4yaml_config_result_get_error_impl]
 def configResultGetError (result : @& Except String ParserLimits) : String :=
   match result with
   | .error e => e
@@ -285,7 +285,7 @@ def configResultGetError (result : @& Except String ParserLimits) : String :=
 
 /-- Extract ParserLimits from a successful config parse.
     Returns default limits if the result is an error. -/
-@[export lean4yaml_config_result_get_limits]
+@[export lean4yaml_config_result_get_limits_impl]
 def configResultGetLimits (result : @& Except String ParserLimits) : ParserLimits :=
   match result with
   | .ok v => v

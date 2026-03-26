@@ -1,0 +1,202 @@
+"""lean4yaml — Python bindings for the verified Lean 4 YAML parser.
+
+Usage::
+
+    import lean4yaml
+
+    value = lean4yaml.load("key: value")
+    assert value["key"].as_str() == "value"
+
+    docs = lean4yaml.load_all("---\\nfirst\\n---\\nsecond")
+    assert docs[0].root.as_str() == "first"
+
+    print(lean4yaml.dump(value))
+"""
+from __future__ import annotations
+
+from lean4yaml import _ffi
+from lean4yaml.exceptions import (
+    ConfigError,
+    Lean4YamlError,
+    LimitError,
+    ParseError,
+)
+from lean4yaml.types import YamlDocument, YamlValue
+
+__all__: list[str] = [
+    "load",
+    "load_all",
+    "dump",
+    "dump_configured",
+    "parse_limits_yaml",
+    "YamlValue",
+    "YamlDocument",
+    "Lean4YamlError",
+    "ParseError",
+    "LimitError",
+    "ConfigError",
+]
+
+# ── Preset mapping ───────────────────────────────────────────────────
+
+_PRESETS: dict[str, int] = {
+    "default": 0,
+    "strict": 1,
+    "permissive": 2,
+    "unlimited": 3,
+    "safe_tags": 4,
+}
+
+
+def _resolve_preset(limits: str) -> int:
+    """Convert a preset name to the C API uint8 constant."""
+    try:
+        return _PRESETS[limits]
+    except KeyError:
+        valid: str = ", ".join(sorted(_PRESETS))
+        raise ValueError(
+            f"Unknown limits preset {limits!r}; choose from: {valid}"
+        ) from None
+
+
+def _check_result(result: int, lib: object) -> None:
+    """Raise ParseError/LimitError if the result handle encodes an error."""
+    ok: int = lib.lean4yaml_result_is_ok(result)
+    if ok:
+        return
+    raw: bytes | None = lib.lean4yaml_result_error_message(result)
+    msg: str = raw.decode("utf-8") if raw else "unknown parse error"
+    lib.lean4yaml_free(result)
+    if "limit" in msg.lower() or "exceeded" in msg.lower():
+        raise LimitError(msg)
+    raise ParseError(msg)
+
+
+# ── Public API ───────────────────────────────────────────────────────
+
+
+def load(input: str, *, limits: str = "default") -> YamlValue:
+    """Parse a YAML string and return the root value.
+
+    Expects exactly one document.
+
+    Args:
+        input: UTF-8 YAML string.
+        limits: Preset name — ``"default"``, ``"strict"``,
+            ``"permissive"``, ``"unlimited"``, or ``"safe_tags"``.
+
+    Returns:
+        The root :class:`YamlValue`.
+
+    Raises:
+        ParseError: On syntax/grammar errors.
+        LimitError: When a security limit is exceeded.
+    """
+    lib = _ffi.ensure_initialized()
+    preset: int = _resolve_preset(limits)
+    data: bytes = input.encode("utf-8")
+    result: int = lib.lean4yaml_parse_single(data, len(data), preset)
+    _check_result(result, lib=lib)
+    val_h: int = lib.lean4yaml_result_value(result)
+    lib.lean4yaml_free(result)
+    return YamlValue(handle=val_h, lib=lib)
+
+
+def load_all(input: str, *, limits: str = "default") -> list[YamlDocument]:
+    """Parse a multi-document YAML string.
+
+    Args:
+        input: UTF-8 YAML string (may contain ``---`` separators).
+        limits: Preset name (see :func:`load`).
+
+    Returns:
+        List of :class:`YamlDocument` objects.
+
+    Raises:
+        ParseError: On syntax/grammar errors.
+        LimitError: When a security limit is exceeded.
+    """
+    lib = _ffi.ensure_initialized()
+    preset: int = _resolve_preset(limits)
+    data: bytes = input.encode("utf-8")
+    result: int = lib.lean4yaml_parse(data, len(data), preset)
+    _check_result(result, lib=lib)
+    docs_h: int = lib.lean4yaml_result_docs(result)
+    count: int = lib.lean4yaml_docs_count(docs_h)
+    docs: list[YamlDocument] = []
+    for i in range(count):
+        dh: int = lib.lean4yaml_docs_get(docs_h, i)
+        docs.append(YamlDocument(handle=dh, lib=lib))
+    lib.lean4yaml_free(docs_h)
+    lib.lean4yaml_free(result)
+    return docs
+
+
+def dump(value: YamlValue) -> str:
+    """Dump a :class:`YamlValue` to a YAML string.
+
+    Uses default dump configuration.
+
+    Args:
+        value: The YAML value to serialize.
+
+    Returns:
+        YAML-formatted string.
+    """
+    lib = _ffi.ensure_initialized()
+    raw: bytes | None = lib.lean4yaml_dump(value._handle)
+    if raw is None:
+        return ""
+    return raw.decode("utf-8")
+
+
+def dump_configured(value: YamlValue, *, config_yaml: str) -> str:
+    """Dump a :class:`YamlValue` using a YAML-based dump configuration.
+
+    Args:
+        value: The YAML value to serialize.
+        config_yaml: YAML string describing the ``DumpConfig``.
+
+    Returns:
+        YAML-formatted string.
+
+    Raises:
+        ConfigError: If *config_yaml* fails to parse.
+    """
+    lib = _ffi.ensure_initialized()
+    cfg: bytes = config_yaml.encode("utf-8")
+    raw: bytes | None = lib.lean4yaml_dump_configured(
+        value._handle, cfg, len(cfg),
+    )
+    if raw is None:
+        raise ConfigError("dump_configured returned null")
+    return raw.decode("utf-8")
+
+
+def parse_limits_yaml(config_yaml: str) -> int:
+    """Parse a YAML string describing ``ParserLimits``.
+
+    Returns an opaque handle suitable for use with
+    :func:`lean4yaml_parse_configured` (low-level).
+
+    Args:
+        config_yaml: YAML string describing parser limits.
+
+    Returns:
+        Opaque limits handle (``int``).
+
+    Raises:
+        ConfigError: If the YAML cannot be parsed into valid limits.
+    """
+    lib = _ffi.ensure_initialized()
+    cfg: bytes = config_yaml.encode("utf-8")
+    result: int = lib.lean4yaml_parse_limits_yaml(cfg, len(cfg))
+    ok: int = lib.lean4yaml_config_is_ok(result)
+    if not ok:
+        raw: bytes | None = lib.lean4yaml_config_error_message(result)
+        msg: str = raw.decode("utf-8") if raw else "unknown config error"
+        lib.lean4yaml_free(result)
+        raise ConfigError(msg)
+    limits_h: int = lib.lean4yaml_config_get_limits(result)
+    lib.lean4yaml_free(result)
+    return limits_h

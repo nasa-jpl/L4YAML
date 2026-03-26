@@ -40,30 +40,60 @@ if(EXISTS "${IR_DIR}/Lean4Yaml.c")
   list(APPEND LEAN_IR_SOURCES "${IR_DIR}/Lean4Yaml.c")
 endif()
 
+# ── Collect Lake dependency IR files ─────────────────────────────────
+set(PACKAGES_DIR "${PROJECT_ROOT}/.lake/packages")
+file(GLOB LAKE_PACKAGE_DIRS "${PACKAGES_DIR}/*")
+set(NATIVE_C_SOURCES "")
+set(NATIVE_ARCHIVES "")
+foreach(PKG_DIR ${LAKE_PACKAGE_DIRS})
+  if(IS_DIRECTORY "${PKG_DIR}")
+    file(GLOB_RECURSE PKG_IR_SOURCES "${PKG_DIR}/.lake/build/ir/*.c")
+    list(APPEND LEAN_IR_SOURCES ${PKG_IR_SOURCES})
+    # Native C libraries (e.g. UnicodeBasic/UnicodeCLib/*.c)
+    file(GLOB_RECURSE PKG_NATIVE_C
+      "${PKG_DIR}/*CLib/*.c"
+      "${PKG_DIR}/*clib/*.c")
+    list(APPEND NATIVE_C_SOURCES ${PKG_NATIVE_C})
+    # Static archives (e.g. MD4Lean libleanmd4c.a)
+    file(GLOB_RECURSE PKG_ARCHIVES "${PKG_DIR}/.lake/build/lib/*.a")
+    list(APPEND NATIVE_ARCHIVES ${PKG_ARCHIVES})
+  endif()
+endforeach()
+
+list(LENGTH NATIVE_C_SOURCES NATIVE_C_COUNT)
+if(NATIVE_C_COUNT GREATER 0)
+  message(STATUS "Found ${NATIVE_C_COUNT} native C source files from dependencies")
+endif()
+list(LENGTH NATIVE_ARCHIVES NATIVE_ARCHIVE_COUNT)
+if(NATIVE_ARCHIVE_COUNT GREATER 0)
+  message(STATUS "Found ${NATIVE_ARCHIVE_COUNT} native archives from dependencies")
+endif()
+
 list(LENGTH LEAN_IR_SOURCES IR_COUNT)
 if(IR_COUNT EQUAL 0)
   message(FATAL_ERROR
     "No Lean IR .c files found under ${IR_DIR}.\n"
     "Run 'lake build Lean4Yaml' first.")
 endif()
-message(STATUS "Found ${IR_COUNT} Lean IR C files")
+message(STATUS "Found ${IR_COUNT} Lean IR C files (including dependencies)")
 
 # ── Shared library target ───────────────────────────────────────────
 add_library(lean4yaml SHARED
   lean4yaml_shim.c
-  ${LEAN_IR_SOURCES})
+  ${LEAN_IR_SOURCES}
+  ${NATIVE_C_SOURCES})
 
 target_include_directories(lean4yaml PRIVATE "${LEAN_INCLUDE_DIR}")
 
-# Suppress warnings from Lean-generated IR code; keep warnings for the shim
-set_source_files_properties(${LEAN_IR_SOURCES}
+# Suppress warnings from Lean-generated IR code and native deps; keep for shim
+set_source_files_properties(${LEAN_IR_SOURCES} ${NATIVE_C_SOURCES}
   PROPERTIES COMPILE_OPTIONS "-w")
 
 target_compile_options(lean4yaml PRIVATE -O2)
 
-# Link against libleanshared and set RPATH so it's found at runtime
+# Link against libleanshared, native archives, and set RPATH
 target_link_directories(lean4yaml PRIVATE "${LEAN_LIB_DIR}")
-target_link_libraries(lean4yaml PRIVATE leanshared)
+target_link_libraries(lean4yaml PRIVATE leanshared ${NATIVE_ARCHIVES})
 set_target_properties(lean4yaml PROPERTIES
   BUILD_RPATH   "${LEAN_LIB_DIR}"
   INSTALL_RPATH "${LEAN_LIB_DIR}")
