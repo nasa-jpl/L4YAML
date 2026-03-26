@@ -1093,9 +1093,19 @@ Created [`python/lean4yaml/`](python/lean4yaml/) package with ctypes bindings to
 
 <details>
 
-Two-crate Rust workspace (`rust/`): `lean4yaml-sys` (raw `bindgen` FFI from `lean4yaml.h`) + `lean4yaml` (safe RAII wrapper with `Drop`, `Result` error mapping, `Index`, `IntoIterator`). Aeneas/Charon verification bridge: translate safe Rust wrapper to Lean 4 pure functions, prove correspondence with underlying verified C API and safety invariants (no use-after-free, no double-free, error completeness).
+Two-crate Rust workspace (`rust/`): `lean4yaml-sys` (raw `bindgen` FFI from `lean4yaml.h`) + `lean4yaml` (safe RAII wrapper with `Drop`, `Result` error mapping, `Index`, `IntoIterator`).
 
-See [C_PYTHON_APIs.md — Phase 4](C_PYTHON_APIs.md) for full design.
+**Rust API:** `load(input, preset)`, `load_all(input, preset)`, `dump(&value)`, `dump_configured(&value, config_yaml)`, `load_configured(input, config_yaml)`, `load_all_configured(input, config_yaml)`. Preset encoding: `LimitsPreset::Default` / `Strict` / `Permissive` / `Unlimited` / `SafeTags`.
+
+**`YamlValue` struct:** `kind()`, `as_str()`, `get(key)`, `keys()`, `items()`, `as_list()`, `seq_get(i)`, `map_key(i)`, `map_val(i)`, `len()`, `is_empty()`, `tag()`, `anchor()`, `Index<&str>`, `Index<usize>`, `IntoIterator`, `Display`, `Drop` (calls `lean4yaml_free`).
+
+**Thread safety:** All types are `!Send + !Sync` via `PhantomData<*mut ()>` — tests must run single-threaded (`cargo test -- --test-threads=1`).
+
+**Tests:** [`rust/lean4yaml/tests/integration.rs`](rust/lean4yaml/tests/integration.rs) — 21 tests: scalar/sequence/mapping parsing, nested structures, multi-document, dump, round-trip, limit presets, error handling, iterators, display, empty values, config-based parsing. All passing in 0.06s.
+
+Aeneas/Charon verification bridge (task 8c) and crates.io publish (task 8e) remain as stretch goals.
+
+See [C_PYTHON_RUST_APIs.md — Phase 4](C_PYTHON_RUST_APIs.md) for full design.
 
 </details>
 

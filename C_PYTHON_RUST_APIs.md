@@ -743,11 +743,42 @@ Created `python/lean4yaml/` package with ctypes bindings to `liblean4yaml.so`, P
 
 | # | Task | Status |
 |---|------|--------|
-| 8a | Create `rust/lean4yaml-sys/` raw FFI bindings crate (`bindgen` from `lean4yaml.h`) | ☐ |
-| 8b | Create `rust/lean4yaml/` safe wrapper crate (RAII handles, `Result` error mapping, iterators) | ☐ |
+| 8a | Create `rust/lean4yaml-sys/` raw FFI bindings crate (`bindgen` from `lean4yaml.h`) | ☑ |
+| 8b | Create `rust/lean4yaml/` safe wrapper crate (RAII handles, `Result` error mapping, iterators) | ☑ |
 | 8c | Translate safe Rust wrapper to Lean via Aeneas/Charon, verify preservation of safety properties | ☐ |
-| 8d | Create `rust/lean4yaml/tests/` integration tests, run `cargo test` | ☐ |
+| 8d | Create `rust/lean4yaml/tests/` integration tests, run `cargo test` | ☑ |
 | 8e | Publish to crates.io (stretch goal) | ☐ |
+
+#### Completion details (2026-03-26)
+
+Created `rust/` two-crate workspace with raw FFI bindings and a safe RAII wrapper, fully tested against `liblean4yaml.so`.
+
+**Files created (10):**
+
+| File | Purpose |
+|------|----------|
+| `rust/Cargo.toml` | Workspace manifest (members: `lean4yaml-sys`, `lean4yaml`) |
+| `rust/.cargo/config.toml` | Build-time rpath for `liblean4yaml.so` + `libleanshared.so` |
+| `rust/lean4yaml-sys/Cargo.toml` | Raw FFI crate, `links = "lean4yaml"`, dep on `bindgen 0.71` |
+| `rust/lean4yaml-sys/build.rs` | Locates `liblean4yaml.so` + `libleanshared.so`, runs `bindgen` on `ffi/lean4yaml.h` |
+| `rust/lean4yaml-sys/src/lib.rs` | `include!` of auto-generated `bindings.rs` |
+| `rust/lean4yaml/Cargo.toml` | Safe wrapper crate, deps: `lean4yaml-sys`, `thiserror 2` |
+| `rust/lean4yaml/src/lib.rs` | Public API: `initialize()`, `finalize()`, `load()`, `load_all()`, `dump()`, `dump_configured()`, `load_configured()`, `load_all_configured()` |
+| `rust/lean4yaml/src/value.rs` | `YamlValue`: RAII `Drop`, `kind()`, `as_str()`, `get()`, `keys()`, `items()`, `as_list()`, `Index<&str>`, `Index<usize>`, `IntoIterator`, `Display` |
+| `rust/lean4yaml/src/document.rs` | `YamlDocument`: RAII `Drop`, `root()` |
+| `rust/lean4yaml/src/error.rs` | `Error` enum (`Parse`, `Limit`, `Config`, `Utf8`, `NullHandle`), `Kind` enum, `thiserror` derives |
+| `rust/lean4yaml/src/config.rs` | `LimitsPreset` enum (5 variants), `ParserLimitsHandle`, `parse_limits_yaml()` |
+| `rust/lean4yaml/tests/integration.rs` | 21 integration tests: scalar/sequence/mapping parsing, nested structures, multi-document, dump, round-trip, limit presets, error handling, iterators, display, empty values, config-based parsing |
+
+**Critical bug fixed during development:**
+
+1. **`load_configured` result type mismatch**: `lean4yaml_parse_configured` returns a multi-doc result (`Except ParseError (Array YamlDocument)`), not a single-doc result. Initially called `lean4yaml_result_value` (single-doc accessor) on it, causing a Lean runtime abort (`SIGABRT`). Fix: use `extract_multi_result` and return first doc's root.
+
+**Thread safety:** `YamlValue`, `YamlDocument`, and `ParserLimitsHandle` are `!Send + !Sync` via `PhantomData<*mut ()>` (stable Rust, no nightly features required).
+
+**Build requirements:** Rust 1.88+, `liblean4yaml.so` (Phase 2), `libleanshared.so` (Lean 4.28 sysroot). Tests must run single-threaded: `cargo test -- --test-threads=1`.
+
+**Verification:** 21/21 integration tests pass (0.06s). All public API functions exercised: `load`, `load_all`, `dump`, `load_configured`, value navigation (`kind`, `as_str`, `get`, `keys`, `items`, `as_list`, `seq_get`, `map_key`, `map_val`), iterators, `Display`, error handling.
 
 #### Design
 

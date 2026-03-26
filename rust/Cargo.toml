@@ -1,0 +1,3 @@
+[workspace]
+members = ["lean4yaml-sys", "lean4yaml"]
+resolver = "2"
