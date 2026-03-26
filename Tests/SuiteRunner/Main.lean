@@ -67,6 +67,40 @@ private def dbg (startMs : Nat) (msg : String) : IO Unit := do
 
 /-! ## Test Execution -/
 
+/-- Parser backend for yaml-test-suite testing.
+    Each backend maps to a different tryparse binary/script. -/
+inductive Backend where
+  | lean   -- native Lean tryparse (.lake/build/bin/tryparse)
+  | c      -- C API tryparse (ffi/out/tryparse_c)
+  | python -- Python API tryparse (Tests/tryparse_python.py)
+  | rust   -- Rust API tryparse (rust/target/release/examples/tryparse)
+  deriving Repr, BEq
+
+instance : ToString Backend where
+  toString
+    | .lean => "lean"
+    | .c => "c"
+    | .python => "python"
+    | .rust => "rust"
+
+/-- Parse a backend name from a CLI argument. -/
+def parseBackend (s : String) : Option Backend :=
+  match s with
+  | "lean" => some .lean
+  | "c" => some .c
+  | "python" => some .python
+  | "rust" => some .rust
+  | _ => none
+
+/-- Return the command and argument prefix for a given backend.
+    The temp file path is appended as the last argument by `runTest`. -/
+def Backend.tryparseCmd (b : Backend) : String × Array String :=
+  match b with
+  | .lean   => (".lake/build/bin/tryparse", #[])
+  | .c      => ("ffi/out/tryparse_c", #[])
+  | .python => ("python3", #["Tests/tryparse_python.py"])
+  | .rust   => ("rust/target/release/examples/tryparse", #[])
+
 /-- Tests tagged `1.3-err`/`1.3-mod` whose YAML 1.2.2 behavior we handle correctly.
     These are included despite the 1.3 tag because the test's expected tree reflects
     the 1.2.2 result. See README P10.6d §2.2 — `foldBlockContent` 4-state machine. -/
@@ -97,7 +131,9 @@ def runTestCore (tc : TestCase) : TestResult :=
 /-- Run a single test case using OS-level process isolation.
     Writes YAML to a temp file, runs `tryparse` via `timeout(1)`,
     and checks exit code: 0 = pass, 1 = parse error, 124 = timeout. -/
-def runTest (tc : TestCase) (timeoutSec : Nat := 2) : IO TestResult := do
+def runTest (tc : TestCase) (timeoutSec : Nat := 2)
+    (backend : Backend := .lean) (limitsPreset : Option String := none)
+    : IO TestResult := do
   let yaml := unescapeTestYaml tc.yaml
   if yaml.isEmpty then return .skip "empty yaml input"
   if tc.tags.any (fun t => t == "1.3-err" || t == "1.3-mod")
@@ -107,10 +143,12 @@ def runTest (tc : TestCase) (timeoutSec : Nat := 2) : IO TestResult := do
   IO.FS.createDirAll "tmp"
   let tmpPath := s!"tmp/yaml_suite_test_{tc.id}.yaml"
   IO.FS.writeFile tmpPath yaml
-  -- Run tryparse with OS-level timeout
+  -- Run the selected backend's tryparse with OS-level timeout
+  let (cmd, baseArgs) := backend.tryparseCmd
   let result ← IO.Process.output {
     cmd := "timeout"
-    args := #[s!"{timeoutSec}", ".lake/build/bin/tryparse", tmpPath]
+    args := #[s!"{timeoutSec}", cmd] ++ baseArgs ++ #[tmpPath]
+           ++ (match limitsPreset with | some p => #[p] | none => #[])
   }
   -- Clean up temp file
   try IO.FS.removeFile tmpPath catch _ => pure ()
@@ -159,7 +197,8 @@ def readTestFiles (suiteDir : String) : IO (Array (String × String)) := do
 
 /-- Run all tests in a given stage and print results. -/
 def runStage (stage : Stage) (testCases : Array TestCase)
-    (verbose : Bool := false) : IO TestStats := do
+    (verbose : Bool := false) (backend : Backend := .lean)
+    (limitsPreset : Option String := none) : IO TestStats := do
   let filtered := testCases.filter (·.inStage stage)
   IO.println s!"Running {filtered.size} tests for stage: {stage}"
   IO.println (String.ofList (List.replicate 60 '-'))
@@ -171,7 +210,7 @@ def runStage (stage : Stage) (testCases : Array TestCase)
     -- Show progress for every test so user can see we're not stuck
     IO.print s!"  [{idx}/{filtered.size}] {tc.id} "
     flushStdout
-    let result ← runTest tc
+    let result ← runTest tc (backend := backend) (limitsPreset := limitsPreset)
     match result with
     | .pass .. =>
       stats := { stats with passed := stats.passed + 1 }
@@ -206,7 +245,9 @@ def parseStageArg (arg : String) : Stage :=
 
 /-- Run all test cases and collect ReportResults for HTML generation. -/
 def runAllForReport (testCases : Array TestCase) (stage : Stage)
-    (timeoutSec : Nat := 2) (startMs : Nat := 0) : IO (Array ReportResult) := do
+    (timeoutSec : Nat := 2) (startMs : Nat := 0)
+    (backend : Backend := .lean)
+    (limitsPreset : Option String := none) : IO (Array ReportResult) := do
   let filtered := if stage == .all then testCases
                   else testCases.filter (fun tc =>
                     tc.stage == stage || (stage != .error && tc.inStage stage))
@@ -217,7 +258,7 @@ def runAllForReport (testCases : Array TestCase) (stage : Stage)
     idx := idx + 1
     IO.print s!"  [{idx}/{filtered.size}] {tc.id} "
     flushStdout
-    let result ← runTest tc timeoutSec
+    let result ← runTest tc timeoutSec backend limitsPreset
     let reportResult : ReportResult := match result with
       | .pass stdout =>
         let po := if stdout.isEmpty then none else some stdout
@@ -266,6 +307,8 @@ def main (args : List String) : IO UInt32 := do
   let mut htmlDir : Option String := none
   let mut jsonDir : Option String := none
   let mut snapshot := false
+  let mut backend : Backend := .lean
+  let mut limitsPreset : Option String := none
   let mut i : Nat := 0
   let mut skipNext := false
   for arg in args do
@@ -283,6 +326,25 @@ def main (args : List String) : IO UInt32 := do
       | [] => IO.eprintln "Error: --json requires a directory argument"; return 1
     else if arg == "--snapshot" then
       snapshot := true
+    else if arg == "--backend" then
+      match args.drop (i + 1) with
+      | name :: _ =>
+        match parseBackend name with
+        | some b => backend := b; skipNext := true
+        | none =>
+          IO.eprintln s!"Error: unknown backend '{name}'; choose from: lean, c, python, rust"
+          return 1
+      | [] => IO.eprintln "Error: --backend requires an argument (lean|c|python|rust)"; return 1
+    else if arg == "--limits" then
+      match args.drop (i + 1) with
+      | name :: _ =>
+        let valid := ["default", "strict", "permissive", "unlimited", "safe_tags"]
+        if valid.contains name then
+          limitsPreset := some name; skipNext := true
+        else
+          IO.eprintln s!"Error: unknown limits preset '{name}'; choose from: {valid}"
+          return 1
+      | [] => IO.eprintln "Error: --limits requires a preset name"; return 1
     else
       stageArg := arg
     i := i + 1
@@ -299,7 +361,8 @@ def main (args : List String) : IO UInt32 := do
     return 1
 
   IO.println "══════════════════════════════════════════════════════════"
-  IO.println "  yaml-test-suite Runner for lean4-yaml-verified"
+  let limitsLabel := match limitsPreset with | some p => s!", limits={p}" | none => ""
+  IO.println s!"  yaml-test-suite Runner for lean4-yaml-verified [{backend}{limitsLabel}]"
   IO.println "══════════════════════════════════════════════════════════"
   IO.println ""
   flushStdout
@@ -372,7 +435,8 @@ def main (args : List String) : IO UInt32 := do
     IO.println s!"Running all tests..."
     IO.println (String.ofList (List.replicate 60 '-'))
     flushStdout
-    let results ← runAllForReport allCases .all (startMs := t0)
+    let results ← runAllForReport allCases .all (startMs := t0) (backend := backend)
+                     (limitsPreset := limitsPreset)
     IO.println (String.ofList (List.replicate 60 '-'))
     flushStdout
     dbg t0 "computing coverage stats"
@@ -416,7 +480,7 @@ def main (args : List String) : IO UInt32 := do
     let mut totalStats : TestStats := {}
     for s in stages do
       if s != .error then  -- Skip error tests in "all" mode for now
-        let stats ← runStage s allCases verbose
+        let stats ← runStage s allCases verbose backend limitsPreset
         totalStats := {
           total := totalStats.total + stats.total
           passed := totalStats.passed + stats.passed
@@ -429,5 +493,5 @@ def main (args : List String) : IO UInt32 := do
     IO.println "══════════════════════════════════════════════════════════"
     return if totalStats.failed == 0 then 0 else 1
   else
-    let stats ← runStage stage allCases verbose
+    let stats ← runStage stage allCases verbose backend limitsPreset
     return if stats.failed == 0 then 0 else 1

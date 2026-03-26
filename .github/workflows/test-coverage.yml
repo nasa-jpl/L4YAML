@@ -109,11 +109,157 @@ jobs:
           echo "=== Scalar Stage Diagnostics ===" | tee docs/scalarstagediag.txt
           ./.lake/build/bin/scalarstagediag 2>&1 | tee -a docs/scalarstagediag.txt
 
-      - name: Build C shared library (liblean4yaml.so)
+      - name: Build C shared library and tryparse binary
         run: |
           cmake -B ffi/build -S ffi
           cmake --build ffi/build
           cp ffi/build/liblean4yaml.so ffi/out/liblean4yaml.so 2>/dev/null || true
+
+      - name: Build Rust tryparse binary
+        run: |
+          cd rust/lean4yaml
+          cargo build --release --example tryparse
+
+      - name: Run cross-language yaml-test-suite comparison
+        run: |
+          echo "=== Cross-Language yaml-test-suite Comparison ===" | tee docs/cross-lang-comparison.txt
+          LEAN4YAML_LIB="$GITHUB_WORKSPACE/ffi/out" \
+          LD_LIBRARY_PATH="$GITHUB_WORKSPACE/ffi/out:${LD_LIBRARY_PATH:-}" \
+          python3 - <<'PYEOF' | tee -a docs/cross-lang-comparison.txt
+          import subprocess, sys, json
+
+          BACKENDS = ["lean", "c", "python", "rust"]
+          PRESETS = ["unlimited", "default", "strict", "permissive", "safe_tags"]
+          suiterunner = ".lake/build/bin/suiterunner"
+          results = {}  # (backend, preset) -> (passed, failed, skipped, total)
+          all_match = True
+
+          for preset in PRESETS:
+              for backend in BACKENDS:
+                  cmd = [suiterunner, "--backend", backend, "--limits", preset]
+                  proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+                  output = proc.stdout + proc.stderr
+                  # Parse "TOTAL: X passed, Y failed, Z skipped (W total)"
+                  for line in output.splitlines():
+                      if "TOTAL:" in line:
+                          parts = line.split()
+                          p, f, s, t = int(parts[1]), int(parts[3]), int(parts[5]), int(parts[7].strip("()"))
+                          results[(backend, preset)] = (p, f, s, t)
+                          break
+                  else:
+                      print(f"ERROR: no TOTAL line for {backend}/{preset}", file=sys.stderr)
+                      results[(backend, preset)] = (0, 0, 0, 0)
+                      all_match = False
+
+              # Check all backends match for this preset
+              vals = [results[(b, preset)] for b in BACKENDS]
+              if len(set(vals)) != 1:
+                  print(f"MISMATCH for preset '{preset}': {dict(zip(BACKENDS, vals))}")
+                  all_match = False
+              else:
+                  p, f, s, t = vals[0]
+                  print(f"{preset:12s}: {p} passed, {f} failed, {s} skipped ({t} total) — all 4 backends identical")
+
+          print()
+          if all_match:
+              print("✓ All backends produce identical results for every preset")
+          else:
+              print("✗ Backend mismatch detected!")
+              sys.exit(1)
+
+          # Write JSON for HTML report generation
+          import pathlib
+          json_data = {}
+          for (backend, preset), (p, f, s, t) in results.items():
+              json_data.setdefault(preset, {})[backend] = {"passed": p, "failed": f, "skipped": s, "total": t}
+          pathlib.Path("docs/cross-lang-results.json").write_text(json.dumps(json_data, indent=2))
+          PYEOF
+
+      - name: Generate cross-language comparison HTML report
+        run: |
+          python3 - <<'PYEOF'
+          import json
+          from pathlib import Path
+          import html as htmlmod
+
+          docs = Path("docs")
+          results_file = docs / "cross-lang-results.json"
+          out = docs / "cross-lang-comparison.html"
+
+          if not results_file.is_file():
+              print("No cross-lang-results.json found, skipping HTML generation")
+              exit(0)
+
+          data = json.loads(results_file.read_text())
+          backends = ["lean", "c", "python", "rust"]
+          presets = ["unlimited", "default", "strict", "permissive", "safe_tags"]
+
+          parts = [
+              "<!DOCTYPE html>",
+              '<html lang="en"><head><meta charset="utf-8">',
+              "<title>Cross-Language yaml-test-suite Comparison</title>",
+              "<style>",
+              "body{font-family:system-ui,sans-serif;margin:2em;background:#f8f9fa}",
+              "h1{color:#1a1a2e} h2{color:#16213e;margin-top:1.5em}",
+              "table{border-collapse:collapse;margin:1em 0}",
+              "th,td{border:1px solid #dee2e6;padding:6px 14px;text-align:right}",
+              "th{background:#343a40;color:#fff;text-align:center}",
+              "td:first-child{text-align:left;font-weight:bold}",
+              ".match{background:#d4edda;color:#155724}",
+              ".mismatch{background:#f8d7da;color:#721c24}",
+              ".summary{font-size:1.1em;margin:1em 0}",
+              "</style></head><body>",
+              "<h1>Cross-Language yaml-test-suite Comparison</h1>",
+              "<p>All four backends (Lean, C, Python, Rust) run the same 1020 yaml-test-suite ",
+              "test cases through the verified parser via their respective FFI layers.</p>",
+          ]
+
+          # Per-preset results table
+          all_match = True
+          parts.append("<h2>Results by Limit Preset</h2>")
+          parts.append("<table><tr><th>Preset</th><th>Passed</th><th>Failed</th>"
+                       "<th>Skipped</th><th>Total</th><th>Backends Match?</th></tr>")
+          for preset in presets:
+              if preset not in data:
+                  continue
+              vals = [tuple(data[preset][b].values()) for b in backends if b in data[preset]]
+              match = len(set(vals)) == 1
+              if not match:
+                  all_match = False
+              css = "match" if match else "mismatch"
+              icon = "✓" if match else "✗"
+              p, f, s, t = vals[0]
+              parts.append(f'<tr><td>{htmlmod.escape(preset)}</td>'
+                           f'<td>{p}</td><td>{f}</td><td>{s}</td><td>{t}</td>'
+                           f'<td class="{css}">{icon} {"All identical" if match else "MISMATCH"}</td></tr>')
+          parts.append("</table>")
+
+          # Per-backend detail table
+          parts.append("<h2>Full Matrix (Backend × Preset)</h2>")
+          parts.append("<table><tr><th>Backend</th>")
+          for preset in presets:
+              parts.append(f"<th>{htmlmod.escape(preset)}</th>")
+          parts.append("</tr>")
+          for backend in backends:
+              parts.append(f"<tr><td>{htmlmod.escape(backend)}</td>")
+              for preset in presets:
+                  if preset in data and backend in data[preset]:
+                      d = data[preset][backend]
+                      parts.append(f'<td>{d["passed"]}/{d["failed"]}/{d["skipped"]}</td>')
+                  else:
+                      parts.append("<td>—</td>")
+              parts.append("</tr>")
+          parts.append("</table>")
+
+          color = "match" if all_match else "mismatch"
+          icon = "✓" if all_match else "✗"
+          parts.append(f'<p class="summary {color}">{icon} '
+                       f'{"All backends produce identical results for every preset" if all_match else "Backend mismatch detected!"}'
+                       f'</p>')
+          parts.append("</body></html>")
+          out.write_text("\n".join(parts))
+          print(f"Generated {out}")
+          PYEOF
 
       - name: Run Python FFI tests
         run: |
@@ -232,7 +378,7 @@ jobs:
 
       - name: Generate verified tests HTML page
         run: |
-          cat docs/unit-tests.txt docs/demo.txt docs/explicitkeytests.txt docs/flowtests.txt docs/validationtests.txt docs/dumproundtrip.txt docs/rawparsetests.txt docs/specexamples.txt docs/schemadump.txt docs/scannertests.txt docs/scannerspecexamples.txt docs/adversarialtests.txt docs/mutationtests.txt docs/propertytests.txt docs/productioncoverage.txt docs/limittests.txt docs/python-ffi-tests.txt docs/python-package-tests.txt > docs/all-verified-tests.txt
+          cat docs/unit-tests.txt docs/demo.txt docs/explicitkeytests.txt docs/flowtests.txt docs/validationtests.txt docs/dumproundtrip.txt docs/rawparsetests.txt docs/specexamples.txt docs/schemadump.txt docs/scannertests.txt docs/scannerspecexamples.txt docs/adversarialtests.txt docs/mutationtests.txt docs/propertytests.txt docs/productioncoverage.txt docs/limittests.txt docs/python-ffi-tests.txt docs/python-package-tests.txt docs/cross-lang-comparison.txt > docs/all-verified-tests.txt
 
       - name: Upload coverage reports as artifact
         uses: actions/upload-artifact@v3
@@ -270,9 +416,19 @@ jobs:
               pythonSummary = `\n\n**Python API Tests:**\n- FFI integration: ${ffiLine}\n- Package tests: ${pkgLine}`;
             } catch (e) { /* Python tests not available */ }
 
+            // Extract cross-language comparison summary
+            let crossLangSummary = '';
+            try {
+              const crossLang = fs.readFileSync('docs/cross-lang-comparison.txt', 'utf8');
+              const lines = crossLang.split('\n').filter(l => l.includes('identical') || l.includes('MISMATCH') || l.includes('✓') || l.includes('✗'));
+              if (lines.length > 0) {
+                crossLangSummary = `\n\n**Cross-Language Comparison (4 backends × 5 presets):**\n\`\`\`\n${lines.join('\n')}\n\`\`\``;
+              }
+            } catch (e) { /* Cross-lang results not available */ }
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## Test Coverage Report\n\n\`\`\`\n${correctLine}\n\`\`\`${pythonSummary}\n\nFull report: [Download artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`
+              body: `## Test Coverage Report\n\n\`\`\`\n${correctLine}\n\`\`\`${pythonSummary}${crossLangSummary}\n\nFull report: [Download artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`
             });

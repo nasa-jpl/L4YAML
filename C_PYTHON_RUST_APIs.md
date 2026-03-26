@@ -646,87 +646,84 @@ See the [Task Checklist — Phase 4](#phase-4-rust-api) below for full design, c
 
 ### Cross-Language yaml-test-suite Comparison
 
-The yaml-test-suite contains 406 `.yaml` files in `yaml-test-suite/src/`, expanding to **1020 test case variants** (some files contain multiple tests). Each test case has:
-- `id` — 4-character identifier (e.g., `229Q`)
-- `yaml` — raw YAML input
-- `tags` — classification (e.g., `sequence`, `mapping`, `error`, `1.3-err`)
-- `fail` — boolean, whether the parser should reject the input
+**Architecture: Lean-orchestrated, single source of truth.**
 
-The native Lean `suiterunner` binary (`.lake/build/bin/suiterunner`) establishes the **baseline**: 869 passed / 0 failed / 151 skipped. The goal of Phase 5 is to verify that the C, Python, and Rust APIs produce **identical outcomes** (pass/fail/skip) for every test case.
+Rather than duplicating the yaml-test-suite metadata parser, skip logic, outcome classification, and reporting in each language, the existing Lean `suiterunner` orchestrates everything. Each language provides only a minimal **tryparse** binary (read file → parse → exit code), and the suiterunner swaps backends via `--backend <lean|c|python|rust>`.
 
-#### Outcome comparison model
+#### tryparse binaries
 
-For each test case, every API produces one of:
-- **pass** — parser accepted the input (expected for non-`fail` tests)
-- **expected_fail** — parser rejected the input (expected for `fail` tests)
-- **fail** — parser produced wrong result (acceptance when failure expected, or vice versa)
-- **skip** — test not applicable (YAML 1.3 specific, empty input, etc.)
-- **error** — API crash, segfault, or timeout (indicates a bug)
+Each tryparse mirrors the Lean `Tests/TryParse.lean` interface exactly:
+- **Input:** single file path argument
+- **Output:** exit 0 (parse success), exit 1 (parse error, message on stderr), exit 2 (usage error)
+- **Limits:** `UNLIMITED` preset (matching Lean's raw `TokenParser.parseYaml`)
+- **Multi-doc:** all backends use multi-document parse (`parse`/`load_all`) since test suite files may contain multiple documents
 
-A test case is **conformant** if the C/Python/Rust outcome matches the Lean `suiterunner` outcome. Any divergence is a bug in the FFI layer.
+| Backend | Binary/Script | API call |
+|---------|--------------|----------|
+| Lean | `.lake/build/bin/tryparse` | `TokenParser.parseYaml` (raw) |
+| C | `ffi/out/tryparse_c` | `lean4yaml_parse(buf, len, UNLIMITED)` |
+| Python | `Tests/tryparse_python.py` | `lean4yaml.load_all(content, limits="unlimited")` |
+| Rust | `rust/target/release/examples/tryparse` | `lean4yaml::load_all(input, Unlimited)` |
 
-#### Test runners
+#### Suiterunner `--backend` flag
 
-Each language needs a runner that reads `yaml-test-suite/src/*.yaml`, extracts test cases (using the same metadata parser as `suiterunner`), calls its parse API, and emits results in a uniform JSON format.
+```bash
+# Run with native Lean parser (default)
+.lake/build/bin/suiterunner --backend lean
 
-**`ffi/suite_runner_c.c`** — C API runner:
-```
-Usage: suite_runner_c <yaml-test-suite-src-dir>
-Output: JSON to stdout with per-test {id, variant, outcome, error_msg}
-```
-1. For each `.yaml` file: parse metadata (id, yaml, fail, tags) using a line-based parser
-2. Call `lean4yaml_parse(yaml, len, LEAN4YAML_LIMITS_DEFAULT)` → check `lean4yaml_result_is_ok`
-3. If `fail` expected: outcome = `is_ok ? "unexpected_pass" : "expected_fail"`
-4. If pass expected: outcome = `is_ok ? "pass" : "fail"`
-5. Skip 1.3-specific tests (matching `suiterunner` skip list)
-6. Emit JSON array with all results
+# Run with C API
+.lake/build/bin/suiterunner --backend c
 
-**`Tests/suite_runner_python.py`** — Python API runner:
-```
-Usage: python Tests/suite_runner_python.py <yaml-test-suite-src-dir>
-Output: JSON to stdout (same schema as C runner)
-```
-1. Uses `yaml` module from stdlib or a minimal metadata parser to extract test cases
-2. Calls `lean4yaml.load(yaml_input, limits="default")` inside `try/except`
-3. Classifies outcome identically to C runner
-4. Skips same tests as `suiterunner`
+# Run with Python API (requires LEAN4YAML_LIB env var)
+.lake/build/bin/suiterunner --backend python
 
-**`rust/lean4yaml/examples/suite_runner.rs`** — Rust API runner:
-```
-Usage: cargo run --example suite_runner -- <yaml-test-suite-src-dir>
-Output: JSON to stdout (same schema)
-```
-1. Reads `.yaml` files, extracts metadata
-2. Calls `lean4yaml::load(input, LimitsPreset::Default)` → `Result`
-3. Classifies outcome identically
-4. Skips same tests
+# Run with Rust API
+.lake/build/bin/suiterunner --backend rust
 
-#### Comparison harness
-
-**`Tests/compare_suite_results.py`** — reads 4 JSON files (Lean, C, Python, Rust) and produces:
-1. A per-test comparison table (HTML + JSON) showing any divergences
-2. Summary counts: `{language: {pass, expected_fail, fail, skip, error, total}}`
-3. Exit code 0 if all APIs match the Lean baseline; non-zero if any divergence
-
-Integrated into CI (`.github/workflows/test-coverage.yml`) as a post-build step:
-```yaml
-- name: Run cross-language yaml-test-suite comparison
-  run: |
-    ./.lake/build/bin/suiterunner --json docs/ > docs/suite-lean.json
-    ./ffi/out/suite_runner_c yaml-test-suite/src/ > docs/suite-c.json
-    python Tests/suite_runner_python.py yaml-test-suite/src/ > docs/suite-python.json
-    cd rust && cargo run --example suite_runner -- ../yaml-test-suite/src/ > ../docs/suite-rust.json
-    python Tests/compare_suite_results.py \
-      docs/suite-lean.json docs/suite-c.json docs/suite-python.json docs/suite-rust.json \
-      --html docs/cross-language-comparison.html
+# Generate JSON/HTML reports for any backend
+.lake/build/bin/suiterunner --json docs/ --backend c
+.lake/build/bin/suiterunner --html docs/ --backend rust
 ```
 
-#### Expected result
+The `--backend` flag works with all existing modes (console stages, `--json`, `--html`). The Lean orchestrator handles all metadata parsing, skip logic, outcome classification, and reporting identically regardless of backend.
 
-All 4 APIs must produce **identical** outcome vectors (869 pass / 0 fail / 151 skip). Any divergence indicates:
-- A bug in the FFI shim (ownership, string conversion, Option handling)
-- A type mismatch between the C API and language binding
-- A missing skip-list entry in a runner
+#### Results (verified 2026-03-26)
+
+**Unlimited preset** (no security limits — matches raw `parseYaml`):
+
+| Backend | Passed | Failed | Skipped | Total |
+|---------|--------|--------|---------|-------|
+| Lean    | 869    | 0      | 151     | 1020  |
+| C       | 869    | 0      | 151     | 1020  |
+| Python  | 869    | 0      | 151     | 1020  |
+| Rust    | 869    | 0      | 151     | 1020  |
+
+**Limit-enforcing presets** (all 4 backends identical per preset):
+
+| Preset     | Passed | Failed | Skipped | Total | Delta vs unlimited |
+|------------|--------|--------|---------|-------|--------------------|
+| unlimited  | 869    | 0      | 151     | 1020  | —                  |
+| default    | 854    | 15     | 151     | 1020  | −15 (tag security) |
+| strict     | 853    | 16     | 151     | 1020  | −16 (tag security + anchor name limits) |
+| permissive | 854    | 15     | 151     | 1020  | −15 (tag security) |
+| safe_tags  | 853    | 16     | 151     | 1020  | −16 (tag security) |
+
+All four backends produce **identical** outcome vectors for every preset.
+The `--limits <preset>` flag passes the preset name to each tryparse binary,
+which maps it to the corresponding `ParserLimits` configuration.
+
+Usage:
+```bash
+.lake/build/bin/suiterunner --backend rust --limits default
+```
+
+#### Key design decisions
+
+1. **No per-language suite runners** — avoided ~500 lines each of brittle metadata parsing in C/Python/Rust
+2. **Lean as single source of truth** — skip lists, tag classification, outcome mapping maintained in one place
+3. **UNLIMITED preset** — tryparse binaries must use unlimited limits to match Lean's raw `parseYaml` (which has no security limits); using DEFAULT caused 15 false failures from tag restrictions
+4. **Multi-document parse** — tryparse binaries must handle multi-doc inputs; using single-doc parse caused 22 false failures from `expected single document, found N` errors
+5. **Process isolation** — each test case runs in its own OS process with `timeout`, so crashes in one backend don't affect others
 
 ---
 
@@ -1030,17 +1027,39 @@ aeneas --backend lean4 lean4yaml.llbc -o ../Lean4Yaml/RustBridge/
 |---|------|--------|
 | 9 | Create `ffi/test_lean4yaml.c`, compile and run C API unit tests | ☐ |
 | 10 | Create `ffi/test_lean4yaml_pool.c`, compile and run fixed-pool tests | ☐ |
-| 11 | Create `ffi/suite_runner_c.c` — C yaml-test-suite runner (JSON output) | ☐ |
-| 12 | Create `Tests/suite_runner_python.py` — Python yaml-test-suite runner (JSON output) | ☐ |
-| 13 | Create `rust/lean4yaml/examples/suite_runner.rs` — Rust yaml-test-suite runner (JSON output) | ☐ |
-| 14 | Create `Tests/compare_suite_results.py` — cross-language comparison harness (HTML + JSON) | ☐ |
-| 15 | Run cross-language comparison: all 4 APIs must match 869/0/151 baseline | ☐ |
-| 16 | Valgrind/ASan pass on C test binary and C suite runner (standard + pool modes) | ☐ |
+| 11 | Create `ffi/tryparse_c.c` — C tryparse binary (UNLIMITED, multi-doc) | ☑ |
+| 12 | Create `Tests/tryparse_python.py` — Python tryparse script (UNLIMITED, multi-doc) | ☑ |
+| 13 | Create `rust/lean4yaml/examples/tryparse.rs` — Rust tryparse binary (UNLIMITED, multi-doc) | ☑ |
+| 14 | Extend `suiterunner` with `--backend <lean\|c\|python\|rust>` flag | ☑ |
+| 15 | Run cross-language comparison: all 4 backends match 869/0/151 baseline | ☑ |
+| 15a | Add `--limits <preset>` to suiterunner and tryparse binaries | ☑ |
+| 15b | Run limit-enforcing comparison: all 5 presets × 4 backends identical | ☑ |
+| 16 | Valgrind/ASan pass on C test binary and C tryparse (standard + pool modes) | ☐ |
 | 17 | Pool fragmentation stress test: 10,000 parse-free cycles | ☐ |
 | 18 | Document pool sizing formula in header comments and README | ☐ |
 | 19 | Integrate cross-language comparison into CI workflow | ☐ |
 | 20 | Update README.md v0.5.0 section with cross-language results | ☐ |
 | 21 | Prototype on VxWorks/RTEMS target (stretch goal) | ☐ |
+
+#### Phase 5 completion details (tasks 11–15b, 2026-03-26)
+
+**Architecture:** Lean-orchestrated. Instead of per-language suite runners (~500 lines each
+of brittle metadata/skip logic), each language provides a minimal tryparse binary (~40 lines)
+and the existing `suiterunner` handles orchestration via `--backend` and `--limits`.
+
+**Files created:**
+- `ffi/tryparse_c.c` — C tryparse: `lean4yaml_parse(buf, len, preset)`, optional `argv[2]` preset
+- `Tests/tryparse_python.py` — Python tryparse: `lean4yaml.load_all(content, limits=preset)`, optional `sys.argv[2]`
+- `rust/lean4yaml/examples/tryparse.rs` — Rust tryparse: `lean4yaml::load_all(input, preset)`, optional `args[2]`
+
+**Files modified:**
+- `Tests/SuiteRunner/Main.lean` — added `Backend` inductive, `--backend` flag parsing, `--limits <preset>` flag, threaded through `runTest`/`runStage`/`runAllForReport`
+- `Tests/TryParse.lean` — added `parsePreset` function, optional second arg uses `parseYamlSafe` with limits
+- `ffi/CMakeLists.txt` — added `tryparse_c` executable target
+
+**Bugs found during integration:**
+- Using `LEAN4YAML_LIMITS_DEFAULT` (preset 0) caused 15 false failures — tag security checks rejected non-core-schema tags. Fixed: use `UNLIMITED` (preset 3) to match Lean's raw `parseYaml`.
+- Using single-doc parse (`load`/`parse_single`) caused 22 false failures — multi-doc test inputs rejected. Fixed: use multi-doc parse (`load_all`/`parse`) in all tryparse binaries.
 
 ---
 
