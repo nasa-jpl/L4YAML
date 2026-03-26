@@ -206,7 +206,7 @@ inductive StructuralLimitError where
   | totalNodesExceeded (count : Nat) (limit : Nat)
   deriving Repr, BEq, Inhabited
 
-private def pathToString (path : YamlPath) : String :=
+def pathToString (path : YamlPath) : String :=
   if path.size == 0 then "root"
   else path.foldl (fun acc seg =>
     match seg with
@@ -373,7 +373,7 @@ def validateDirectives (directives : Array Directive) (limits : TagLimits)
 /-! ## Collecting Tags from a Value Tree -/
 
 /-- Extract the tag from a `YamlValue`, if present. -/
-private def getNodeTag : YamlValue → Option String
+def getNodeTag : YamlValue → Option String
   | .scalar s => s.tag
   | .sequence _ _ tag _ => tag
   | .mapping _ _ tag _ => tag
@@ -406,7 +406,7 @@ def validateValueTags (v : YamlValue) (limits : TagLimits) : Except TagSecurityE
 /-! ## Alias Resolution with Limits -/
 
 /-- Mutable state threaded through limited alias resolution. -/
-private structure AliasResolveState where
+structure AliasResolveState where
   expansions : Nat := 0
   nodeCount : Nat := 0
 

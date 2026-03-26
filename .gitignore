@@ -43,3 +43,6 @@ tmp/
 # Python
 __pycache__/
 .venv
+# CFFI build artifacts
+ffi/build/
+ffi/out
