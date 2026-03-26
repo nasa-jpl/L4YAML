@@ -1549,3 +1549,7 @@
   ✓ tag limits applied in single mode
 
 === Results: 43/43 passed ===
+=== Python FFI Tests ===
+/home/nfr/projects/tlr/integration/.venv/bin/python3: No module named pytest.__main__; 'pytest' is a package and cannot be directly executed
+=== Python Package Tests ===
+/home/nfr/projects/tlr/integration/.venv/bin/python3: No module named pytest.__main__; 'pytest' is a package and cannot be directly executed
