@@ -1092,6 +1092,7 @@ Created [`python/lean4yaml/`](python/lean4yaml/) package with ctypes bindings to
 ##### Phase 4: Rust API
 
 <details>
+<summary>Completed 2026-03-25: safe Rust wrapper with 21 tests, verified Send/Sync safety, 0.06s test suite</summary>
 
 Two-crate Rust workspace (`rust/`): `lean4yaml-sys` (raw `bindgen` FFI from `lean4yaml.h`) + `lean4yaml` (safe RAII wrapper with `Drop`, `Result` error mapping, `Index`, `IntoIterator`).
 

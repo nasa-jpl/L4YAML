@@ -603,7 +603,17 @@ A `lean4yaml.compat` module could provide `yaml.safe_load` / `yaml.safe_dump` si
 
 ---
 
-## Phase 4: Testing
+## Phase 4: Rust APIs
+
+Two-crate Rust workspace (`rust/`) wrapping the Phase 2 C shared library. **Completed 2026-03-26**: tasks 8a, 8b, 8d done; 8c (Aeneas) and 8e (crates.io) remain as stretch goals.
+
+**Call chain:** Rust safe wrapper → Rust raw FFI (`lean4yaml-sys`, `bindgen`) → C ABI (`liblean4yaml.so`) → C shim (`lean_inc` + `_impl` dispatch) → Lean `@[export]` → verified parser.
+
+See the [Task Checklist — Phase 4](#phase-4-rust-api) below for full design, code samples, type mappings, and completion details.
+
+---
+
+## Phase 5: Cross-Language yaml-test-suite Validation
 
 ### C API tests (`ffi/test_lean4yaml.c`)
 
@@ -630,9 +640,93 @@ A `lean4yaml.compat` module could provide `yaml.safe_load` / `yaml.safe_dump` si
 - `test_dump.py` — round-trip fidelity, scalar style preservation
 - `test_roundtrip.py` — parse → dump → parse identity for yaml-test-suite valid cases
 
-### Cross-validation
+### Rust tests (`rust/lean4yaml/tests/`)
 
-Run the yaml-test-suite (311 valid + 158 invalid cases) through the Python API and compare results against the existing Lean `suiterunner`.  The 869/0/151 pass/fail/skip baseline must be preserved.
+- `integration.rs` — 21 tests covering: `load`/`load_all`, `load_configured`/`load_all_configured`, value navigation (`as_str`, `get`, `index`), error cases (invalid YAML, empty input), `Display` formatting, document metadata, multi-document parsing, limits presets, config builder, version/limits-presets queries. **All 21 passing** (must run `--test-threads=1`; Lean runtime is not thread-safe).
+
+### Cross-Language yaml-test-suite Comparison
+
+The yaml-test-suite contains 406 `.yaml` files in `yaml-test-suite/src/`, expanding to **1020 test case variants** (some files contain multiple tests). Each test case has:
+- `id` — 4-character identifier (e.g., `229Q`)
+- `yaml` — raw YAML input
+- `tags` — classification (e.g., `sequence`, `mapping`, `error`, `1.3-err`)
+- `fail` — boolean, whether the parser should reject the input
+
+The native Lean `suiterunner` binary (`.lake/build/bin/suiterunner`) establishes the **baseline**: 869 passed / 0 failed / 151 skipped. The goal of Phase 5 is to verify that the C, Python, and Rust APIs produce **identical outcomes** (pass/fail/skip) for every test case.
+
+#### Outcome comparison model
+
+For each test case, every API produces one of:
+- **pass** — parser accepted the input (expected for non-`fail` tests)
+- **expected_fail** — parser rejected the input (expected for `fail` tests)
+- **fail** — parser produced wrong result (acceptance when failure expected, or vice versa)
+- **skip** — test not applicable (YAML 1.3 specific, empty input, etc.)
+- **error** — API crash, segfault, or timeout (indicates a bug)
+
+A test case is **conformant** if the C/Python/Rust outcome matches the Lean `suiterunner` outcome. Any divergence is a bug in the FFI layer.
+
+#### Test runners
+
+Each language needs a runner that reads `yaml-test-suite/src/*.yaml`, extracts test cases (using the same metadata parser as `suiterunner`), calls its parse API, and emits results in a uniform JSON format.
+
+**`ffi/suite_runner_c.c`** — C API runner:
+```
+Usage: suite_runner_c <yaml-test-suite-src-dir>
+Output: JSON to stdout with per-test {id, variant, outcome, error_msg}
+```
+1. For each `.yaml` file: parse metadata (id, yaml, fail, tags) using a line-based parser
+2. Call `lean4yaml_parse(yaml, len, LEAN4YAML_LIMITS_DEFAULT)` → check `lean4yaml_result_is_ok`
+3. If `fail` expected: outcome = `is_ok ? "unexpected_pass" : "expected_fail"`
+4. If pass expected: outcome = `is_ok ? "pass" : "fail"`
+5. Skip 1.3-specific tests (matching `suiterunner` skip list)
+6. Emit JSON array with all results
+
+**`Tests/suite_runner_python.py`** — Python API runner:
+```
+Usage: python Tests/suite_runner_python.py <yaml-test-suite-src-dir>
+Output: JSON to stdout (same schema as C runner)
+```
+1. Uses `yaml` module from stdlib or a minimal metadata parser to extract test cases
+2. Calls `lean4yaml.load(yaml_input, limits="default")` inside `try/except`
+3. Classifies outcome identically to C runner
+4. Skips same tests as `suiterunner`
+
+**`rust/lean4yaml/examples/suite_runner.rs`** — Rust API runner:
+```
+Usage: cargo run --example suite_runner -- <yaml-test-suite-src-dir>
+Output: JSON to stdout (same schema)
+```
+1. Reads `.yaml` files, extracts metadata
+2. Calls `lean4yaml::load(input, LimitsPreset::Default)` → `Result`
+3. Classifies outcome identically
+4. Skips same tests
+
+#### Comparison harness
+
+**`Tests/compare_suite_results.py`** — reads 4 JSON files (Lean, C, Python, Rust) and produces:
+1. A per-test comparison table (HTML + JSON) showing any divergences
+2. Summary counts: `{language: {pass, expected_fail, fail, skip, error, total}}`
+3. Exit code 0 if all APIs match the Lean baseline; non-zero if any divergence
+
+Integrated into CI (`.github/workflows/test-coverage.yml`) as a post-build step:
+```yaml
+- name: Run cross-language yaml-test-suite comparison
+  run: |
+    ./.lake/build/bin/suiterunner --json docs/ > docs/suite-lean.json
+    ./ffi/out/suite_runner_c yaml-test-suite/src/ > docs/suite-c.json
+    python Tests/suite_runner_python.py yaml-test-suite/src/ > docs/suite-python.json
+    cd rust && cargo run --example suite_runner -- ../yaml-test-suite/src/ > ../docs/suite-rust.json
+    python Tests/compare_suite_results.py \
+      docs/suite-lean.json docs/suite-c.json docs/suite-python.json docs/suite-rust.json \
+      --html docs/cross-language-comparison.html
+```
+
+#### Expected result
+
+All 4 APIs must produce **identical** outcome vectors (869 pass / 0 fail / 151 skip). Any divergence indicates:
+- A bug in the FFI shim (ownership, string conversion, Option handling)
+- A type mismatch between the C API and language binding
+- A missing skip-list entry in a runner
 
 ---
 
@@ -934,14 +1028,19 @@ aeneas --backend lean4 lean4yaml.llbc -o ../Lean4Yaml/RustBridge/
 
 | # | Task | Status |
 |---|------|--------|
-| 9 | Create `ffi/test_lean4yaml.c`, compile and run C API tests | ☐ |
+| 9 | Create `ffi/test_lean4yaml.c`, compile and run C API unit tests | ☐ |
 | 10 | Create `ffi/test_lean4yaml_pool.c`, compile and run fixed-pool tests | ☐ |
-| 11 | Cross-validate Python API against yaml-test-suite (869/0/151 baseline) | ☐ |
-| 12 | Valgrind/ASan pass on C test binary (standard + pool modes) | ☐ |
-| 13 | Pool fragmentation stress test: 10,000 parse-free cycles | ☐ |
-| 14 | Document pool sizing formula in header comments and README | ☐ |
-| 15 | Update README.md v0.4.1 section with results | ☐ |
-| 16 | Prototype on VxWorks/RTEMS target (stretch goal) | ☐ |
+| 11 | Create `ffi/suite_runner_c.c` — C yaml-test-suite runner (JSON output) | ☐ |
+| 12 | Create `Tests/suite_runner_python.py` — Python yaml-test-suite runner (JSON output) | ☐ |
+| 13 | Create `rust/lean4yaml/examples/suite_runner.rs` — Rust yaml-test-suite runner (JSON output) | ☐ |
+| 14 | Create `Tests/compare_suite_results.py` — cross-language comparison harness (HTML + JSON) | ☐ |
+| 15 | Run cross-language comparison: all 4 APIs must match 869/0/151 baseline | ☐ |
+| 16 | Valgrind/ASan pass on C test binary and C suite runner (standard + pool modes) | ☐ |
+| 17 | Pool fragmentation stress test: 10,000 parse-free cycles | ☐ |
+| 18 | Document pool sizing formula in header comments and README | ☐ |
+| 19 | Integrate cross-language comparison into CI workflow | ☐ |
+| 20 | Update README.md v0.5.0 section with cross-language results | ☐ |
+| 21 | Prototype on VxWorks/RTEMS target (stretch goal) | ☐ |
 
 ---
 
