@@ -46,3 +46,7 @@ __pycache__/
 # CFFI build artifacts
 ffi/build/
 ffi/out
+# Rust
+rust/target/
+rust/Cargo.lock
+rust/.cargo/config.toml
