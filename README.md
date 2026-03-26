@@ -864,30 +864,41 @@ Key design decisions:
 - **CouplingBridge**: Scanner↔SurfPos bridge — `CharsFromOffset` inductive, `ScannerSurfCorr` correspondence struct, peek/eof/advance correspondence, and composition helpers for `SSeparateInLine`, `SSLComments`, `SSBComment`
 - **ScannerCoupling**: Fuel-based scanner loop proofs — `skipSpacesLoop` → `SIndent n`, `skipSpaces` coupling, `consumeNewline` lf/crlf/cr → `SBBreak` correspondence
 
-Target theorems stated (`parse_strict`, `scan_strict`) with `sorry` — to be discharged incrementally in v0.4.1–v0.4.5.
+Target theorems stated (`parse_strict`, `scan_strict`) with `sorry` — to be discharged in v0.4.4 and v0.4.5 respectively.
 
 Build: 391/391 jobs, Tests: 869/0/151 (no regressions from v0.3.0 baseline)
 </details>
 
-#### Version 0.4.1
+#### Version 0.4.1 (completed 2026-03-26)
 <details>
 
-**Whitespace, comment & separation coupling** (~600–800 lines of proof)
+**Whitespace, comment & separation coupling** (~700 lines of proof, 0 sorry)
 
-Extend the coupling infrastructure to cover all whitespace/comment/separation scanner functions — the "glue" that appears between every token.
+Extended the coupling infrastructure to cover all whitespace/comment/separation scanner functions — the "glue" that appears between every token. All proofs are sorry-free.
 
-Scanner functions coupled (**13 functions**):
-- `skipWhitespaceLoop`, `skipWhitespace` → `SSWhite*` / `s-white+`
-- `skipToEndOfLineLoop`, `skipToEndOfLine` → `nb-char*` (comment text content)
-- `collectCommentTextLoop` → `c-nb-comment-text`
-- `skipToContentWs` → `s-indent` + `s-separate-in-line`
-- `skipToContentComment` → `s-b-comment`
-- `skipToContentLoop`, `skipToContent` → `s-l-comments`
-- `advanceNLoop`, `advanceN` → multi-character advance correspondence
-- `hasTabInPrecedingWhitespaceLoop`, `hasTabInPrecedingWhitespace` → tab detection
+**Scanner functions coupled (10 functions → 26 theorems):**
+- `skipWhitespaceLoop`, `skipWhitespace` → `GStar SSWhite` / [66] `s-white+`
+- `skipToEndOfLineLoop`, `skipToEndOfLine` → `GStar SNbChar` (comment text content)
+- `collectCommentTextLoop` → [105] `c-nb-comment-text`
+- `skipToContentComment` → `GOpt SCNbCommentText` / [75] `s-b-comment`
+- `skipToContentWs` → `GStar SSWhite` (composes [63] `s-indent` + [66] `s-separate-in-line`)
+- `skipToContentLoop` → [79] `s-l-comments` (recursive whitespace + comment + linebreak loop)
+- `consumeNewline` → unified correspondence for LF, CRLF, and lone CR line breaks
+
+**Monotonicity lemmas (6 theorems):** `skipSpacesLoop`, `skipWhitespaceLoop`, `collectCommentTextLoop`, `skipToContentComment`, `skipToContentWs`, `consumeNewline` — offset non-decreasing + inputEnd preservation for fuel budget arithmetic
+
+**CouplingBridge extensions (11 theorems):**
+- Bool↔Prop character bridging: `isWhiteSpace_gives_SSWhite`, `isWhiteSpace_not_newline`, `not_isLineBreak_not_newline`, `not_isLineBreak_isNbChar`, `not_isLineBreak_gives_SNbChar`
+- GStar composition: `GStar_trans`, `SIndent_gives_GStar_SSWhite`
+- Field update correspondence: `corr_of_comments_update`, `corr_of_needIndentCheck_update`, `corr_of_simpleKeyAllowed_update`
+
+**Remaining scanner functions** (`advanceN`, `hasTabInPrecedingWhitespace`) deferred to v0.4.2–v0.4.3 where first needed.
 
 Surface productions covered: [63]–[80] (`s-indent`, `s-white`, `s-separate-in-line`, `s-l-comments`, `s-b-comment`, `c-nb-comment-text`)
 
+**Sorry status:** 0 sorry in all three proof modules (ScannerCoupling, CouplingBridge, SurfaceCoupling). 2 target-theorem sorry's remain in Surface.lean (`parse_strict` → v0.4.5, `scan_strict` → v0.4.4).
+
+Build: 395/395 jobs, Tests: 869/0/151 (no regressions)
 </details>
 
 #### Version 0.4.2

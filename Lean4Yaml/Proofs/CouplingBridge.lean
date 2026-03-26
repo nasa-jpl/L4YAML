@@ -218,4 +218,73 @@ theorem eof_gives_SBComment (col : Nat) :
 theorem empty_node (s : SurfPos) : SENode s s :=
   GEps.mk s
 
+/-! ## §7 Bool↔Prop Character Bridging -/
+
+/-- If `isWhiteSpaceBool c = true`, then `SSWhite` holds. -/
+theorem isWhiteSpace_gives_SSWhite (c : Char) (rest : List Char) (col : Nat)
+    (h : isWhiteSpaceBool c = true) :
+    SSWhite ⟨c :: rest, col⟩ ⟨rest, col + 1⟩ := by
+  simp [isWhiteSpaceBool, Bool.or_eq_true, beq_iff_eq] at h
+  rcases h with rfl | rfl
+  · exact SSWhite.space rest col
+  · exact SSWhite.tab rest col
+
+/-- A whitespace character (space or tab) is not `\n`. -/
+theorem isWhiteSpace_not_newline (c : Char) (h : isWhiteSpaceBool c = true) : c ≠ '\n' := by
+  simp [isWhiteSpaceBool, Bool.or_eq_true, beq_iff_eq] at h
+  rcases h with rfl | rfl <;> decide
+
+/-- A non-line-break character is not `\n`. -/
+theorem not_isLineBreak_not_newline (c : Char) (h : ¬isLineBreakBool c = true) : c ≠ '\n' := by
+  intro heq; subst heq; simp [isLineBreakBool] at h
+
+/-- A non-line-break character satisfies `isNbChar`. -/
+theorem not_isLineBreak_isNbChar (c : Char) (h : ¬isLineBreakBool c = true) :
+    isNbChar c := by
+  intro hlb
+  exact h ((isLineBreak_iff c).mpr hlb)
+
+/-- A non-line-break character gives `SNbChar` (= `GChar isNbChar`). -/
+theorem not_isLineBreak_gives_SNbChar (c : Char) (rest : List Char) (col : Nat)
+    (h : ¬isLineBreakBool c = true) :
+    GChar isNbChar ⟨c :: rest, col⟩ ⟨rest, col + 1⟩ :=
+  GChar.mk c rest col (not_isLineBreak_isNbChar c h)
+
+/-! ## §8 GStar Composition -/
+
+/-- Transitivity for `GStar`: append two star sequences. -/
+theorem GStar_trans {P : SurfPos → SurfPos → Prop} {s₁ s₂ s₃ : SurfPos}
+    (h₁ : GStar P s₁ s₂) (h₂ : GStar P s₂ s₃) : GStar P s₁ s₃ := by
+  induction h₁ with
+  | nil => exact h₂
+  | cons _ _ _ hp _ ih => exact GStar.cons _ _ _ hp (ih h₂)
+
+/-- `SIndent n` can be viewed as `GStar SSWhite` (each space is whitespace). -/
+theorem SIndent_gives_GStar_SSWhite {n : Nat} {s s' : SurfPos}
+    (h : SIndent n s s') : GStar SSWhite s s' := by
+  induction h with
+  | zero => exact GStar.nil _
+  | succ k rest col _ _ ih =>
+    exact GStar.cons _ _ _ (SSWhite.space rest col) ih
+
+/-! ## §9 Field Update Correspondence -/
+
+/-- Updating `comments` preserves correspondence. -/
+theorem corr_of_comments_update {sc : ScannerState} {sp : SurfPos}
+    (cs : Array (Lean4Yaml.YamlPos × String)) (hcorr : ScannerSurfCorr sc sp) :
+    ScannerSurfCorr { sc with comments := cs } sp :=
+  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
+
+/-- Updating `needIndentCheck` preserves correspondence. -/
+theorem corr_of_needIndentCheck_update {sc : ScannerState} {sp : SurfPos}
+    (b : Bool) (hcorr : ScannerSurfCorr sc sp) :
+    ScannerSurfCorr { sc with needIndentCheck := b } sp :=
+  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
+
+/-- Updating `simpleKeyAllowed` preserves correspondence. -/
+theorem corr_of_simpleKeyAllowed_update {sc : ScannerState} {sp : SurfPos}
+    (b : Bool) (hcorr : ScannerSurfCorr sc sp) :
+    ScannerSurfCorr { sc with simpleKeyAllowed := b } sp :=
+  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
+
 end Lean4Yaml.Proofs.CouplingBridge
