@@ -486,18 +486,21 @@ Thin C wrapper that:
 
 ### Build integration
 
-Add a `liblean4yaml` target in `lakefile.toml`:
-```toml
-[[targets]]
-name = "liblean4yaml"
-type = "shared_lib"
-srcDir = "ffi"
-moreLinkArgs = ["-lleanshared"]
+Build via CMake after `lake build Lean4Yaml` has generated the IR C files:
+
+```sh
+lake build Lean4Yaml          # generate .lake/build/ir/*.c
+cmake -B ffi/out -S ffi       # configure (auto-detects Lean sysroot via elan)
+cmake --build ffi/out          # compile 76 IR files + shim → liblean4yaml.so
 ```
 
-Alternatively, use Lake's `extern_lib` facility and compile via `lake build liblean4yaml`.
+Or with a custom Lean sysroot:
+```sh
+cmake -B ffi/out -S ffi -DLEAN_SYSROOT=/path/to/lean
+cmake --build ffi/out
+```
 
-Deliverables: `liblean4yaml.so` (Linux), `liblean4yaml.dylib` (macOS), `liblean4yaml.a` (static).
+Deliverables: `liblean4yaml.so` (Linux), `liblean4yaml.dylib` (macOS).
 
 ---
 
@@ -646,10 +649,10 @@ Run the yaml-test-suite (311 valid + 158 invalid cases) through the Python API a
 
 | # | Task | Status |
 |---|------|--------|
-| 3 | Create `ffi/lean4yaml.h` public C header (including `lean4yaml_init_fixed_pool`, `lean4yaml_init_static_pool`) | ☐ |
-| 4 | Create `ffi/lean4yaml_shim.c` (runtime init, string conversion, free, pool init) | ☐ |
-| 5 | Add `liblean4yaml` build target to `lakefile.toml` | ☐ |
-| 6 | Build shared library, verify symbols with `nm -D` | ☐ |
+| 3 | Create `ffi/lean4yaml.h` public C header (including `lean4yaml_init_fixed_pool`, `lean4yaml_init_static_pool`) | ☑ |
+| 4 | Create `ffi/lean4yaml_shim.c` (runtime init, string conversion, free, pool init) | ☑ |
+| 5 | Create `ffi/CMakeLists.txt` to compile IR + shim → `liblean4yaml.so` | ☑ |
+| 6 | Build shared library, verify symbols with `nm -D` | ☑ |
 
 ### Phase 3: Python Package
 

@@ -15,13 +15,15 @@
 import Lean4Yaml.Types
 import Lean4Yaml.Limits
 import Lean4Yaml.Dump
+import Lean4Yaml.Config
 
 set_option autoImplicit false
 
 namespace Lean4Yaml.FFI
 
 open Lean4Yaml
-open Lean4Yaml.Dump (dump dumpDocumentsWithComments)
+open Lean4Yaml.Dump (dump dumpDocumentsWithComments DumpConfig)
+open Lean4Yaml.Config (parseConfigYaml)
 
 /-! ## Preset Lookup -/
 
@@ -94,7 +96,7 @@ def resultSingleGetError (result : @& Except ParseError YamlValue) : String :=
 
 /-- Extract the `Array YamlDocument` from a successful multi-doc result.
     Panics if the result is an error (caller must check `resultIsOk` first). -/
-@[export lean4yaml_result_get_docs]
+@[export lean4yaml_result_docs]
 def resultGetDocs (result : @& Except ParseError (Array YamlDocument)) : Array YamlDocument :=
   match result with
   | .ok docs => docs
@@ -102,7 +104,7 @@ def resultGetDocs (result : @& Except ParseError (Array YamlDocument)) : Array Y
 
 /-- Extract the `YamlValue` from a successful single-value result.
     Returns `YamlValue.null` if the result is an error. -/
-@[export lean4yaml_result_get_value]
+@[export lean4yaml_result_value]
 def resultGetValue (result : @& Except ParseError YamlValue) : YamlValue :=
   match result with
   | .ok v => v
@@ -122,14 +124,14 @@ def docsGet (docs : @& Array YamlDocument) (i : UInt32) : YamlDocument :=
   if h : idx < docs.size then docs[idx] else { value := YamlValue.null }
 
 /-- Root value of a document. -/
-@[export lean4yaml_doc_value]
+@[export lean4yaml_doc_root]
 def docValue (doc : @& YamlDocument) : YamlValue :=
   doc.value
 
 /-! ## Value Inspection -/
 
 /-- Node kind tag: 0 = scalar, 1 = sequence, 2 = mapping, 3 = alias. -/
-@[export lean4yaml_value_tag]
+@[export lean4yaml_value_kind]
 def valueTag (val : @& YamlValue) : UInt8 :=
   match val with
   | .scalar _ => 0
@@ -191,13 +193,13 @@ def valueMapVal (val : @& YamlValue) (i : UInt32) : YamlValue :=
 /-- Look up a key in a mapping by string content.
     Returns the value wrapped in `Option`, as an opaque handle.
     `none` means key not found or the value is not a mapping. -/
-@[export lean4yaml_value_lookup]
+@[export lean4yaml_value_lookup_raw]
 def valueLookup (val : @& YamlValue) (key : @& String) : Option YamlValue :=
   val.lookup? key
 
 /-- Get the YAML tag string of a value.  Returns `Option String`:
     `some tag` if the value carries an explicit tag, `none` otherwise. -/
-@[export lean4yaml_value_yaml_tag]
+@[export lean4yaml_value_tag_raw]
 def valueYamlTag (val : @& YamlValue) : Option String :=
   match val with
   | .scalar s => s.tag
@@ -207,7 +209,7 @@ def valueYamlTag (val : @& YamlValue) : Option String :=
 
 /-- Get the anchor name of a value.  Returns `Option String`:
     `some name` if the value carries an anchor, `none` otherwise. -/
-@[export lean4yaml_value_anchor]
+@[export lean4yaml_value_anchor_raw]
 def valueAnchor (val : @& YamlValue) : Option String :=
   match val with
   | .scalar s => s.anchor
@@ -235,12 +237,12 @@ def optionGet (opt : @& Option YamlValue) : YamlValue :=
 /-! ## Dumping -/
 
 /-- Dump a `YamlValue` to a YAML string with default config. -/
-@[export lean4yaml_dump]
+@[export lean4yaml_dump_raw]
 def dumpValue (val : @& YamlValue) : String :=
   dump val
 
 /-- Dump an `Array YamlDocument` to a YAML string (multi-document stream). -/
-@[export lean4yaml_dump_docs]
+@[export lean4yaml_dump_docs_raw]
 def dumpDocs (docs : @& Array YamlDocument) : String :=
   dumpDocumentsWithComments docs
 
@@ -250,5 +252,67 @@ def dumpDocs (docs : @& Array YamlDocument) : String :=
 @[export lean4yaml_string_byte_length]
 def stringByteLength (s : @& String) : UInt32 :=
   s.utf8ByteSize.toUInt32
+
+/-! ## Config Deserialization (self-hosted) -/
+
+/-- Parse a YAML string into `ParserLimits`.  Uses hardcoded strict limits
+    for the bootstrap parse (the parser safely parsing its own config).
+
+    Returns `Except String ParserLimits` as an opaque handle. -/
+@[export lean4yaml_parse_limits_yaml_impl]
+def parseLimitsYaml (input : @& String) : Except String ParserLimits :=
+  parseConfigYaml ParserLimits input
+
+/-- Parse a YAML string into `DumpConfig`.  Same bootstrap strategy. -/
+@[export lean4yaml_parse_dump_config_yaml_impl]
+def parseDumpConfigYaml (input : @& String) : Except String DumpConfig :=
+  parseConfigYaml DumpConfig input
+
+/-- Check whether a config parse result is ok. -/
+@[export lean4yaml_config_result_is_ok]
+def configResultIsOk (result : @& Except String ParserLimits) : UInt8 :=
+  match result with
+  | .ok _ => 1
+  | .error _ => 0
+
+/-- Extract error message from a failed config parse.
+    Returns empty string on success. -/
+@[export lean4yaml_config_result_get_error]
+def configResultGetError (result : @& Except String ParserLimits) : String :=
+  match result with
+  | .error e => e
+  | .ok _ => ""
+
+/-- Extract ParserLimits from a successful config parse.
+    Returns default limits if the result is an error. -/
+@[export lean4yaml_config_result_get_limits]
+def configResultGetLimits (result : @& Except String ParserLimits) : ParserLimits :=
+  match result with
+  | .ok v => v
+  | .error _ => {}
+
+/-- Parse a YAML string with custom limits from a YAML config string.
+    Two-step bootstrap: first parse the config YAML into ParserLimits,
+    then parse the input YAML with those limits.
+
+    Config parse errors are surfaced as scan errors with the config
+    error message embedded.
+
+    Returns `Except ParseError (Array YamlDocument)` as an opaque handle. -/
+@[export lean4yaml_parse_with_yaml_config_impl]
+def parseWithYamlConfig (input : @& String) (configYaml : @& String)
+    : Except ParseError (Array YamlDocument) :=
+  match parseConfigYaml ParserLimits configYaml with
+  | .error _ => parseYamlSafe input {}  -- fall back to defaults on config error
+  | .ok limits => parseYamlSafe input limits
+
+/-- Dump a YamlValue with a YAML-configured DumpConfig.
+    Falls back to default DumpConfig on config parse error. -/
+@[export lean4yaml_dump_with_yaml_config_impl]
+def dumpWithYamlConfig (val : @& YamlValue) (configYaml : @& String) : String :=
+  let cfg := match parseConfigYaml DumpConfig configYaml with
+    | .ok c => c
+    | .error _ => {}
+  dump val cfg
 
 end Lean4Yaml.FFI

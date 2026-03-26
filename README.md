@@ -995,10 +995,11 @@ Token parser functions coupled (**~48 functions**):
 
 [C and Python APIs for the safe parsing APIs](./C_PYTHON_APIs.md)
 
-##### Phase 1: Lean `@[export]` Wrappers (completed 2026-03-25)
+##### Phase 1: Lean `@[export]` Wrappers
 
 <details>
-<summary>26 exported C-callable functions in Lean4Yaml/FFI.lean, verified in generated C</summary>
+<summary>Completed 2026-03-25: 26 exported C-callable functions in Lean4Yaml/FFI.lean, verified in generated C
+</summary>
 
 Created [Lean4Yaml/FFI.lean](Lean4Yaml/FFI.lean) with `@[export]` wrappers exposing the safe parsing and dumping API through opaque handles and flat C-compatible types (`UInt8`, `UInt32`, `String`).
 
@@ -1026,6 +1027,36 @@ Created [Lean4Yaml/FFI.lean](Lean4Yaml/FFI.lean) with `@[export]` wrappers expos
 ##### Phase 2: C Header & Shared Library
 
 <details>
+<summary>completed 2026-03-25</summary>
+
+Created the C ABI layer (`ffi/`) enabling any language with FFI to call the verified parser.
+
+**Files created:**
+
+| File | Purpose |
+|------|---------|
+| `ffi/lean4yaml.h` | Public C header — 26 functions, opaque handle model, limit presets, flight-software pool init |
+| `ffi/lean4yaml_shim.c` | Thin C bridge: `const char *` ↔ Lean String, Option unwrapping, `lean_dec` wrapper, mimalloc arena pool init |
+| `ffi/CMakeLists.txt` | CMake build: compiles 76 Lean IR `.c` files + shim → `ffi/out/liblean4yaml.so` |
+
+**Architecture:**
+- 12 functions pass through directly from Lean `@[export]` (ABI-compatible opaque handles + uint types)
+- 14 functions implemented in the shim (string conversion, Option extraction, pool init, lifecycle)
+- Thread-local string holder ensures `const char *` return values remain valid until the next string-returning call
+
+**Lean FFI renames (Phase 1 → Phase 2 alignment):**
+9 `@[export]` symbols renamed to avoid clashes with C API names (e.g., `lean4yaml_value_tag` → `lean4yaml_value_kind` for node-kind enum; `lean4yaml_dump` → `lean4yaml_dump_raw` for Lean String return)
+
+**Verification:**
+- `liblean4yaml.so` links cleanly against `libleanshared.so` (Lean 4.28 + mimalloc v2.23)
+- All 26 public API symbols confirmed via `nm -D`
+- 0 compiler warnings from shim (1 pre-existing `sorry` in Surface.lean unchanged)
+- Lean library build: 173/173 jobs, 0 new warnings
+
+**Pool init functions:**
+- `lean4yaml_init_fixed_pool(size_t)` — OS-backed via `mi_reserve_os_memory_ex`
+- `lean4yaml_init_static_pool(void *, size_t)` — static buffer via `mi_manage_os_memory_ex`
+- Both disable further OS allocation via `mi_option_set(mi_option_disallow_os_alloc, 1)`
 
 </details>
 
