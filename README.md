@@ -1060,13 +1060,46 @@ Created the C ABI layer (`ffi/`) enabling any language with FFI to call the veri
 
 </details>
 
-##### Phase 3:  Python Package
+##### Phase 3: Python Package
 
 <details>
+<summary>Completed 2026-03-25: Python ctypes package with 5 modules, 78 CI tests passing</summary>
+
+Created [`python/lean4yaml/`](python/lean4yaml/) package with ctypes bindings to `liblean4yaml.so`.
+
+**Package modules (5):**
+
+| Module | Purpose |
+|--------|---------|
+| `__init__.py` | Public API: `load()`, `load_all()`, `dump()`, `dump_configured()`, `parse_limits_yaml()` |
+| `_ffi.py` | ctypes bindings: library discovery, `libleanshared.so` pre-load, 30+ function signatures, lifecycle |
+| `types.py` | `YamlValue` (opaque handle wrapper with full dunder protocol) and `YamlDocument` |
+| `exceptions.py` | `Lean4YamlError`, `ParseError`, `LimitError`, `ConfigError` |
+| `conftest.py` | ROS 2 pytest plugin deconfliction |
+
+**Python API:** `load(yaml, limits="default")`, `load_all(yaml)`, `dump(value)`, `dump_configured(value, config_yaml=...)`, `parse_limits_yaml(config_yaml)`. Preset encoding: `"default"` / `"strict"` / `"permissive"` / `"unlimited"` / `"safe_tags"`.
+
+**`YamlValue` class:** `kind`, `as_str()`, `as_list()`, `as_dict()`, `keys()`, `items()`, `tag`, `anchor`, `__getitem__(str|int)`, `__contains__`, `__iter__`, `__len__`, `__repr__`, `__eq__`, `__hash__`, `__del__` (calls `lean4yaml_free`).
+
+**Critical FFI bugs fixed:**
+1. Lean `@[export]` ownership: all exports consume params via `lean_dec_ref` — shim wrappers now `lean_inc` before calling `_impl` functions
+2. `lean_ptr_tag` → `lean_obj_tag` for `Option.none` (boxed scalar) safety
+
+**Tests:** [`Tests/test_python_ffi.py`](Tests/test_python_ffi.py) — 78 tests across 14 classes (ScalarParsing, SequenceParsing, MappingParsing, NestedStructures, MultiDocument, Dump, RoundTrip, LimitPresets, ConfigYaml, ErrorHandling, TypeSafety, TagAnchor, ValueEquality, MemorySafety). All passing in 0.14s.
 
 </details>
 
-##### Phase 4: Testing & Validation
+##### Phase 4: Rust API
+
+<details>
+
+Two-crate Rust workspace (`rust/`): `lean4yaml-sys` (raw `bindgen` FFI from `lean4yaml.h`) + `lean4yaml` (safe RAII wrapper with `Drop`, `Result` error mapping, `Index`, `IntoIterator`). Aeneas/Charon verification bridge: translate safe Rust wrapper to Lean 4 pure functions, prove correspondence with underlying verified C API and safety invariants (no use-after-free, no double-free, error completeness).
+
+See [C_PYTHON_APIs.md — Phase 4](C_PYTHON_APIs.md) for full design.
+
+</details>
+
+##### Phase 5: Testing & Validation
 
 <details>
 

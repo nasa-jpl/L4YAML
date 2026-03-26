@@ -109,13 +109,130 @@ jobs:
           echo "=== Scalar Stage Diagnostics ===" | tee docs/scalarstagediag.txt
           ./.lake/build/bin/scalarstagediag 2>&1 | tee -a docs/scalarstagediag.txt
 
+      - name: Build C shared library (liblean4yaml.so)
+        run: |
+          cmake -B ffi/build -S ffi
+          cmake --build ffi/build
+          cp ffi/build/liblean4yaml.so ffi/out/liblean4yaml.so 2>/dev/null || true
+
+      - name: Run Python FFI tests
+        run: |
+          echo "=== Python FFI Tests ===" | tee docs/python-ffi-tests.txt
+          cd "$GITHUB_WORKSPACE"
+          python3 -m pytest Tests/test_python_ffi.py \
+            -v --tb=short --no-header \
+            -p no:launch_ros -p no:launch_testing \
+            --junitxml=docs/python-ffi-junit.xml \
+            2>&1 | tee -a docs/python-ffi-tests.txt
+
+      - name: Run Python package tests
+        run: |
+          echo "=== Python Package Tests ===" | tee docs/python-package-tests.txt
+          cd "$GITHUB_WORKSPACE"
+          python3 -m pytest python/tests/ \
+            -v --tb=short --no-header \
+            -p no:launch_ros -p no:launch_testing \
+            --junitxml=docs/python-package-junit.xml \
+            2>&1 | tee -a docs/python-package-tests.txt
+
       - name: Generate HTML coverage reports
         run: |
           ./.lake/build/bin/suiterunner --html docs/ | tee docs/coverage-console.txt
 
+      - name: Generate Python FFI test HTML report
+        run: |
+          python3 - <<'PYEOF'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          import html as htmlmod
+
+          docs = Path("docs")
+          out = docs / "python-ffi-tests.html"
+
+          # Collect results from JUnit XML files
+          sections = []
+          for junit_file, title in [
+              (docs / "python-ffi-junit.xml", "Python FFI Integration Tests (Tests/)"),
+              (docs / "python-package-junit.xml", "Python Package Tests (python/tests/)"),
+          ]:
+              if not junit_file.is_file():
+                  continue
+              tree = ET.parse(str(junit_file))
+              root = tree.getroot()
+              suites = root.findall(".//testsuite") if root.tag != "testsuite" else [root]
+              rows = []
+              total = passed = failed = skipped = 0
+              for suite in suites:
+                  for tc in suite.findall("testcase"):
+                      name = tc.get("classname", "") + "." + tc.get("name", "")
+                      time_s = tc.get("time", "0")
+                      fail_el = tc.find("failure")
+                      skip_el = tc.find("skipped")
+                      total += 1
+                      if fail_el is not None:
+                          status = "FAIL"
+                          css = "fail"
+                          failed += 1
+                      elif skip_el is not None:
+                          status = "SKIP"
+                          css = "skip"
+                          skipped += 1
+                      else:
+                          status = "PASS"
+                          css = "pass"
+                          passed += 1
+                      rows.append((name, status, css, time_s))
+              sections.append((title, rows, total, passed, failed, skipped))
+
+          # Build HTML
+          parts = [
+              "<!DOCTYPE html>",
+              '<html lang="en"><head><meta charset="utf-8">',
+              "<title>Python API Test Results</title>",
+              "<style>",
+              "body{font-family:system-ui,sans-serif;margin:2em;background:#f8f9fa}",
+              "h1{color:#1a1a2e} h2{color:#16213e;margin-top:2em}",
+              "table{border-collapse:collapse;width:100%;margin:1em 0}",
+              "th,td{border:1px solid #dee2e6;padding:6px 12px;text-align:left}",
+              "th{background:#343a40;color:#fff}",
+              ".pass{background:#d4edda;color:#155724}",
+              ".fail{background:#f8d7da;color:#721c24}",
+              ".skip{background:#fff3cd;color:#856404}",
+              ".summary{font-size:1.1em;margin:0.5em 0}",
+              "</style></head><body>",
+              "<h1>Python API Test Results</h1>",
+          ]
+          grand_total = grand_passed = grand_failed = grand_skipped = 0
+          for title, rows, total, passed, failed, skipped in sections:
+              grand_total += total
+              grand_passed += passed
+              grand_failed += failed
+              grand_skipped += skipped
+              parts.append(f"<h2>{htmlmod.escape(title)}</h2>")
+              parts.append(f'<p class="summary">Total: {total} &mdash; '
+                           f'<span class="pass">Passed: {passed}</span> &middot; '
+                           f'<span class="fail">Failed: {failed}</span> &middot; '
+                           f'<span class="skip">Skipped: {skipped}</span></p>')
+              parts.append("<table><tr><th>Test</th><th>Status</th><th>Time (s)</th></tr>")
+              for name, status, css, time_s in rows:
+                  parts.append(f'<tr><td>{htmlmod.escape(name)}</td>'
+                               f'<td class="{css}">{status}</td>'
+                               f'<td>{htmlmod.escape(time_s)}</td></tr>')
+              parts.append("</table>")
+
+          parts.append("<hr>")
+          color = "pass" if grand_failed == 0 else "fail"
+          parts.append(f'<p class="summary {color}">Grand Total: {grand_total} &mdash; '
+                       f'Passed: {grand_passed}, Failed: {grand_failed}, '
+                       f'Skipped: {grand_skipped}</p>')
+          parts.append("</body></html>")
+          out.write_text("\n".join(parts))
+          print(f"Generated {out} ({grand_total} tests)")
+          PYEOF
+
       - name: Generate verified tests HTML page
         run: |
-          cat docs/unit-tests.txt docs/demo.txt docs/explicitkeytests.txt docs/flowtests.txt docs/validationtests.txt docs/dumproundtrip.txt docs/rawparsetests.txt docs/specexamples.txt docs/schemadump.txt docs/scannertests.txt docs/scannerspecexamples.txt docs/adversarialtests.txt docs/mutationtests.txt docs/propertytests.txt docs/productioncoverage.txt docs/limittests.txt > docs/all-verified-tests.txt
+          cat docs/unit-tests.txt docs/demo.txt docs/explicitkeytests.txt docs/flowtests.txt docs/validationtests.txt docs/dumproundtrip.txt docs/rawparsetests.txt docs/specexamples.txt docs/schemadump.txt docs/scannertests.txt docs/scannerspecexamples.txt docs/adversarialtests.txt docs/mutationtests.txt docs/propertytests.txt docs/productioncoverage.txt docs/limittests.txt docs/python-ffi-tests.txt docs/python-package-tests.txt > docs/all-verified-tests.txt
 
       - name: Upload coverage reports as artifact
         uses: actions/upload-artifact@v3
@@ -143,9 +260,19 @@ jobs:
             // Extract the "Correct: X/Y (Z%)" line
             const correctLine = coverage.match(/Correct: .*/)?.[0] || 'Statistics unavailable';
 
+            // Extract Python FFI test summary
+            let pythonSummary = '';
+            try {
+              const ffiTests = fs.readFileSync('docs/python-ffi-tests.txt', 'utf8');
+              const ffiLine = ffiTests.match(/\d+ passed.*/)?.[0] || '';
+              const pkgTests = fs.readFileSync('docs/python-package-tests.txt', 'utf8');
+              const pkgLine = pkgTests.match(/\d+ passed.*/)?.[0] || '';
+              pythonSummary = `\n\n**Python API Tests:**\n- FFI integration: ${ffiLine}\n- Package tests: ${pkgLine}`;
+            } catch (e) { /* Python tests not available */ }
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## Test Coverage Report\n\n\`\`\`\n${correctLine}\n\`\`\`\n\nFull report: [Download artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`
+              body: `## Test Coverage Report\n\n\`\`\`\n${correctLine}\n\`\`\`${pythonSummary}\n\nFull report: [Download artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`
             });

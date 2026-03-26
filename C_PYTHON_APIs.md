@@ -1,6 +1,6 @@
-# C and Python APIs for the safe YAML parser
+# C, Python, and Rust APIs for the safe YAML parser
 
-Version 0.4.1 exposes the safe YAML parsing and dumping functionality (implemented in v0.3.0) through C and Python APIs, enabling non-Lean programs to use the verified parser with full security limit enforcement.
+Version 0.5.0 exposes the safe YAML parsing and dumping functionality (implemented in v0.3.0) through C, Python, and Rust APIs, enabling non-Lean programs to use the verified parser with full security limit enforcement.
 
 ## Motivation
 
@@ -653,15 +653,253 @@ Run the yaml-test-suite (311 valid + 158 invalid cases) through the Python API a
 | 4 | Create `ffi/lean4yaml_shim.c` (runtime init, string conversion, free, pool init) | ☑ |
 | 5 | Create `ffi/CMakeLists.txt` to compile IR + shim → `liblean4yaml.so` | ☑ |
 | 6 | Build shared library, verify symbols with `nm -D` | ☑ |
+| 6a | Self-hosted config deserialization: `Config.lean` + FFI exports + C API | ☑ |
+
+#### Config deserialization (self-hosted bootstrapping)
+
+Created [`Lean4Yaml/Config.lean`](Lean4Yaml/Config.lean) — `FromYaml`/`ToYaml` instances for all config types so the verified parser can parse its own `ParserLimits` and `DumpConfig` from YAML.
+
+**Types with `FromYaml`/`ToYaml` instances (9 types):**
+
+| Type | Strategy |
+|------|----------|
+| `DefaultStyle` | Manual enum (3 variants: `block`, `flow`, `auto`) |
+| `ScalarPref` | Manual enum (4 variants: `plain`, `doubleQuoted`, `singleQuoted`, `auto`) |
+| `DumpConfig` | Manual struct, all 8 fields optional with defaults |
+| `AliasLimits` | Manual struct, all 4 fields optional with defaults |
+| `StructuralLimits` | Manual struct, all 5 fields optional with defaults |
+| `DocumentLimits` | Manual struct, all 3 fields optional with defaults |
+| `TagPolicy` | Manual — scalars for 0-ary (`"coreSchemaOnly"`), single-key mapping for parametric (`{whitelist: [...]}`) |
+| `TagLimits` | Manual struct, all 6 fields optional with defaults |
+| `ParserLimits` | Manual struct, all 5 fields optional with defaults |
+
+**Bootstrap design:** `parseConfigYaml` uses `parseYamlSingleSafe` with hardcoded tight limits (`configParserLimits` — 64 KB max input, depth 10, 1 document, tags rejected) to safely parse config YAML without circular dependency.
+
+**New @[export] functions (7):**
+
+| Lean `@[export]` name | Description |
+|---|---|
+| `lean4yaml_parse_limits_yaml_impl` | Parse YAML string → `Except String ParserLimits` |
+| `lean4yaml_parse_dump_config_yaml_impl` | Parse YAML string → `Except String DumpConfig` |
+| `lean4yaml_config_result_is_ok` | Check config result success |
+| `lean4yaml_config_result_get_error` | Extract error message |
+| `lean4yaml_config_result_get_limits` | Extract `ParserLimits` handle |
+| `lean4yaml_parse_with_yaml_config_impl` | Two-step: parse config YAML → parse input with limits |
+| `lean4yaml_dump_with_yaml_config_impl` | Dump with YAML-configured `DumpConfig` |
+
+**New C API functions (6):**
+
+| C function | Description |
+|---|---|
+| `lean4yaml_parse_limits_yaml(yaml, len)` | Parse YAML config → `ParserLimits` result handle |
+| `lean4yaml_config_is_ok(r)` | Check config parse success (1/0) |
+| `lean4yaml_config_error_message(r)` | Error message or NULL |
+| `lean4yaml_config_get_limits(r)` | Extract `ParserLimits` handle |
+| `lean4yaml_parse_configured(input, len, config_yaml, config_len)` | Parse with YAML-configured limits |
+| `lean4yaml_dump_configured(v, config_yaml, config_len)` | Dump with YAML-configured `DumpConfig` |
+
+**Verification:** `liblean4yaml.so` — 50 symbols total (was 40, +10 new). Build: 395/395 jobs, 0 new warnings.
 
 ### Phase 3: Python Package
 
 | # | Task | Status |
 |---|------|--------|
-| 7 | Create `python/lean4yaml/` package (`_ffi.py`, `types.py`, `exceptions.py`, `__init__.py`) | ☐ |
-| 8 | Create `python/tests/test_*.py`, run pytest | ☐ |
+| 7 | Create `python/lean4yaml/` package (`_ffi.py`, `types.py`, `exceptions.py`, `__init__.py`) | ☑ |
+| 8 | Create `python/tests/test_*.py`, run pytest | ☑ |
 
-### Phase 4: Testing & Validation
+#### Completion details (2026-03-25)
+
+Created `python/lean4yaml/` package with ctypes bindings to `liblean4yaml.so`, Python-native value types, and a public API matching the design spec.
+
+**Files created (5):**
+
+| File | Purpose |
+|------|----------|
+| `python/lean4yaml/__init__.py` | Public API: `load()`, `load_all()`, `dump()`, `dump_configured()`, `parse_limits_yaml()` |
+| `python/lean4yaml/_ffi.py` | ctypes bindings: library discovery, `libleanshared.so` pre-load, 30+ function signatures, runtime lifecycle (`ensure_initialized`, `init_pool`) |
+| `python/lean4yaml/types.py` | `YamlValue` (opaque handle, `__getitem__`, `__contains__`, `__iter__`, `__len__`, `__repr__`, `__eq__`, `as_str`, `as_list`, `as_dict`, `keys`, `items`, `tag`, `anchor`) and `YamlDocument` (`.root`) |
+| `python/lean4yaml/exceptions.py` | `Lean4YamlError` (base), `ParseError`, `LimitError`, `ConfigError` |
+| `python/conftest.py` | pytest config: ROS 2 plugin deconfliction |
+
+**Test files created (6):**
+
+| File | Tests | Coverage |
+|------|-------|----------|
+| `python/tests/test_parse.py` | 12 | Scalar, sequence, mapping parsing; error cases; nested structures |
+| `python/tests/test_limits.py` | 5 | Preset names, invalid presets, strict limits |
+| `python/tests/test_dump.py` | 4 | Scalar/sequence/mapping dump, round-trip |
+| `python/tests/test_roundtrip.py` | 5 | parse→dump→reparse identity for all value types |
+| `Tests/test_python_ffi.py` | 78 | Comprehensive CI suite: 14 classes (ScalarParsing, SequenceParsing, MappingParsing, NestedStructures, MultiDocument, Dump, RoundTrip, LimitPresets, ConfigYaml, ErrorHandling, TypeSafety, TagAnchor, ValueEquality, MemorySafety) |
+| `Tests/conftest.py` | — | pytest config: `sys.path` setup + ROS 2 plugin deconfliction |
+
+**Critical FFI bugs fixed during development:**
+
+1. **Lean `@[export]` ownership model**: All `@[export]` functions consume their arguments via `lean_dec_ref`, regardless of `@&` annotations in Lean source. The shim was not `lean_inc`-ing handles before calling them, causing use-after-free. Fix: renamed 19 exports to `_impl` suffix, wrote C wrappers that `lean_inc` before calling.
+2. **`lean_ptr_tag` on `Option.none`**: `Option.none` = `lean_box(0)` (scalar at address 1). `lean_ptr_tag()` dereferences this → segfault. Fix: replaced with `lean_obj_tag()` which checks `lean_is_scalar()` first.
+
+**Verification:** 78/78 pytest tests pass (0.14s). All Python API functions exercised: `load`, `load_all`, `dump`, `dump_configured`, `parse_limits_yaml`, value navigation, error handling, memory safety.
+
+### Phase 4: Rust API
+
+| # | Task | Status |
+|---|------|--------|
+| 8a | Create `rust/lean4yaml-sys/` raw FFI bindings crate (`bindgen` from `lean4yaml.h`) | ☐ |
+| 8b | Create `rust/lean4yaml/` safe wrapper crate (RAII handles, `Result` error mapping, iterators) | ☐ |
+| 8c | Translate safe Rust wrapper to Lean via Aeneas/Charon, verify preservation of safety properties | ☐ |
+| 8d | Create `rust/lean4yaml/tests/` integration tests, run `cargo test` | ☐ |
+| 8e | Publish to crates.io (stretch goal) | ☐ |
+
+#### Design
+
+The Rust API is a two-crate workspace (`rust/`) that wraps the Phase 2 C shared library:
+
+```
+rust/
+├── Cargo.toml              # workspace
+├── lean4yaml-sys/
+│   ├── Cargo.toml          # links = "lean4yaml"
+│   ├── build.rs            # bindgen from ffi/lean4yaml.h + link liblean4yaml.so
+│   └── src/lib.rs          # raw extern "C" bindings (auto-generated)
+└── lean4yaml/
+    ├── Cargo.toml
+    └── src/
+        ├── lib.rs          # pub API: parse, parse_single, dump, LimitsPreset
+        ├── value.rs        # YamlValue: RAII Drop, kind(), as_str(), index, iter
+        ├── document.rs     # YamlDocument, root()
+        ├── error.rs        # ParseError, LimitError, ConfigError → thiserror
+        └── config.rs       # LimitsPreset, parse_limits_yaml, dump_configured
+```
+
+#### `lean4yaml-sys` — raw bindings
+
+Auto-generated via `bindgen` from `ffi/lean4yaml.h`.  The `build.rs` script:
+1. Locates `liblean4yaml.so` via `LEAN4YAML_LIB_DIR` env or `../ffi/build/`
+2. Runs `bindgen` with `--allowlist-function "lean4yaml_.*"` and `--allowlist-var "LEAN4YAML_.*"`
+3. Emits `cargo:rustc-link-lib=dylib=lean4yaml` + `cargo:rustc-link-search`
+4. Sets `cargo:rustc-link-lib=dylib=leanshared` for transitive Lean runtime dependency
+
+The crate declares `links = "lean4yaml"` to prevent duplicate linking.
+
+#### `lean4yaml` — safe Rust wrapper
+
+```rust
+use lean4yaml::{YamlValue, LimitsPreset};
+
+// Safe parse — recommended
+let value = lean4yaml::load("key: value", LimitsPreset::Default)?;
+assert_eq!(value.kind(), Kind::Mapping);
+assert_eq!(value["key"].as_str()?, "value");
+
+// Strict limits for web APIs
+let value = lean4yaml::load(input, LimitsPreset::Strict)?;
+
+// Multi-document
+let docs = lean4yaml::load_all(multi_doc, LimitsPreset::Default)?;
+assert_eq!(docs.len(), 3);
+
+// Dump round-trip
+let yaml_str = lean4yaml::dump(&value)?;
+
+// Error handling
+match lean4yaml::load(bad_input, LimitsPreset::Strict) {
+    Err(lean4yaml::Error::Parse(e)) => eprintln!("syntax: {e}"),
+    Err(lean4yaml::Error::Limit(e)) => eprintln!("limit: {e}"),
+    Ok(v) => { /* use v */ }
+}
+```
+
+**Key design decisions:**
+
+| Concern | Approach |
+|---------|----------|
+| Ownership | `YamlValue` owns its `lean_object *` via `Drop` calling `lean4yaml_free` |
+| Child values | `value["key"]` returns an **owned** `YamlValue` (C API returns new references) |
+| Thread safety | `YamlValue: !Send + !Sync` — Lean runtime is single-threaded unless task manager initialized |
+| Error mapping | C `result_is_ok` + `error_message` → `Result<T, Error>` with `thiserror` |
+| Lifetimes | No borrowed references across FFI — all values are owned, avoiding lifetime entanglement |
+| Presets | `enum LimitsPreset { Default, Strict, Permissive, Unlimited, SafeTags }` → `u8` |
+| `no_std` | Not initially — requires `std` for `String`, `Vec`, `CStr`. A `no_std` + `alloc` variant is a stretch goal |
+
+**Type mapping:**
+
+| C type | Rust type |
+|--------|----------|
+| `lean4yaml_result_t` | Internal; consumed by `load()`/`load_all()` → `Result<YamlValue, Error>` |
+| `lean4yaml_value_t` | `YamlValue` (RAII, `Drop`) |
+| `lean4yaml_docs_t` | `Vec<YamlDocument>` (eagerly extracted) |
+| `lean4yaml_doc_t` | `YamlDocument { root: YamlValue }` |
+| `uint8_t` kind | `enum Kind { Scalar, Sequence, Mapping, Alias }` |
+| `const char *` | `&str` (via `CStr::from_ptr` + `to_str()`) |
+| `uint8_t` preset | `enum LimitsPreset` |
+
+**`YamlValue` trait implementations:**
+
+```rust
+impl YamlValue {
+    pub fn kind(&self) -> Kind;
+    pub fn as_str(&self) -> Result<&str, Error>;    // borrows from internal C string
+    pub fn as_seq(&self) -> Result<Vec<YamlValue>, Error>;
+    pub fn as_map(&self) -> Result<Vec<(String, YamlValue)>, Error>;
+    pub fn get(&self, key: &str) -> Option<YamlValue>;
+    pub fn tag(&self) -> Option<&str>;
+    pub fn anchor(&self) -> Option<&str>;
+    pub fn len(&self) -> usize;
+    pub fn is_empty(&self) -> bool;
+}
+
+impl std::ops::Index<&str> for YamlValue { ... }     // mapping lookup
+impl std::ops::Index<usize> for YamlValue { ... }    // sequence indexing
+impl IntoIterator for &YamlValue { ... }              // seq items or map (key, val) pairs
+impl std::fmt::Display for YamlValue { ... }          // lean4yaml::dump
+impl Drop for YamlValue { ... }                       // lean4yaml_free
+```
+
+#### Aeneas/Charon verification bridge
+
+[Aeneas](https://github.com/AeneasVerif/aeneas) translates Rust programs (via [Charon](https://github.com/AeneasVerif/charon) MIR extraction) into pure Lean 4 functions, enabling formal verification of Rust code within Lean.
+
+The verification strategy for the Rust wrapper:
+
+1. **Charon extraction**: Run `charon` on the `lean4yaml` crate to produce LLBC (Low-Level Borrow Calculus) IR. This captures ownership, borrowing, and control flow.
+
+2. **Aeneas translation**: Translate LLBC to Lean 4 pure functions. Each Rust function `f` becomes a Lean function `f_lean` with explicit `Result` for fallibility and state-passing for mutable operations.
+
+3. **Correspondence proofs**: Prove that the translated Lean functions correspond to the C API calls they wrap:
+   - `load_lean input preset = lean4yaml_parse_single_safe input (presetToLimits preset)` — the Rust `load()` calls the same verified parser
+   - `YamlValue.drop_lean v` corresponds to `lean4yaml_free` — no resource leaks
+   - `YamlValue.as_str_lean v` returns `Except.ok s ↔ lean4yaml_value_string v = s` — value extraction is faithful
+
+4. **Safety invariants**: Prove that the Rust wrapper maintains:
+   - **No use-after-free**: `Drop` is called exactly once per `YamlValue`, and no method accesses a freed handle
+   - **No double-free**: Owned children cannot alias their parents (the C API returns new references)
+   - **Error completeness**: Every C API error path maps to a Rust `Err` variant
+
+**Limitations:**
+- Aeneas requires Rust code to be in the `supported` subset (no `unsafe` in verified portions) — the `lean4yaml-sys` raw FFI layer is trusted, only the safe wrapper is verified
+- `extern "C"` calls are modeled as opaque axioms in the Lean translation — correctness of the C ↔ Lean correspondence is assumed (already verified by Phase 1–2)
+- Aeneas is under active development; API stability is not guaranteed across versions
+
+#### Build integration
+
+```sh
+# Build the C shared library first
+lake build Lean4Yaml
+cmake -B ffi/build -S ffi && cmake --build ffi/build
+
+# Build and test the Rust crate
+cd rust
+export LEAN4YAML_LIB_DIR="$(pwd)/../ffi/build"
+export LD_LIBRARY_PATH="$LEAN4YAML_LIB_DIR:$(lean --print-prefix)/lib/lean:$LD_LIBRARY_PATH"
+cargo build
+cargo test
+
+# Optional: Aeneas verification
+charon --crate lean4yaml
+aeneas --backend lean4 lean4yaml.llbc -o ../Lean4Yaml/RustBridge/
+# Then verify correspondence in Lean
+```
+
+### Phase 5: Testing & Validation
 
 | # | Task | Status |
 |---|------|--------|
