@@ -101,3 +101,11 @@ set_target_properties(lean4yaml PROPERTIES
 # ── Install (optional) ──────────────────────────────────────────────
 install(TARGETS lean4yaml LIBRARY DESTINATION lib)
 install(FILES lean4yaml.h DESTINATION include)
+
+# ── tryparse_c executable (for cross-language yaml-test-suite) ──────
+add_executable(tryparse_c tryparse_c.c)
+target_include_directories(tryparse_c PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(tryparse_c PRIVATE lean4yaml)
+set_target_properties(tryparse_c PROPERTIES
+  BUILD_RPATH   "$ORIGIN;${LEAN_LIB_DIR}"
+  INSTALL_RPATH "$ORIGIN;${LEAN_LIB_DIR}")

@@ -1113,6 +1113,32 @@ See [C_PYTHON_RUST_APIs.md — Phase 4](C_PYTHON_RUST_APIs.md) for full design.
 ##### Phase 5: Testing & Validation
 
 <details>
+<summary>Completed 2026-03-26: Cross-language yaml-test-suite comparison — all 4 backends × 5 limit presets identical</summary>
+
+Lean-orchestrated cross-language validation: the existing `suiterunner` spawns minimal tryparse binaries for each backend, handling all metadata parsing, skip logic, and outcome classification in one place.
+
+**Tryparse binaries (~40 lines each):**
+
+| Binary | Language | Source |
+|--------|----------|--------|
+| `tryparse` | Lean | [Tests/TryParse.lean](Tests/TryParse.lean) |
+| `tryparse_c` | C | [ffi/tryparse_c.c](ffi/tryparse_c.c) |
+| `tryparse_python.py` | Python | [Tests/tryparse_python.py](Tests/tryparse_python.py) |
+| `tryparse` (Rust) | Rust | [rust/lean4yaml/examples/tryparse.rs](rust/lean4yaml/examples/tryparse.rs) |
+
+**Suiterunner flags:** `--backend <lean|c|python|rust>` selects the tryparse binary; `--limits <preset>` passes a limit preset (`unlimited`, `default`, `strict`, `permissive`, `safe_tags`) as an extra argument.
+
+**Results (all 4 backends identical per preset):**
+
+| Preset | Passed | Failed | Skipped | Total |
+|--------|--------|--------|---------|-------|
+| unlimited | 869 | 0 | 151 | 1020 |
+| default | 854 | 15 | 151 | 1020 |
+| strict | 853 | 16 | 151 | 1020 |
+| permissive | 854 | 15 | 151 | 1020 |
+| safe\_tags | 853 | 16 | 151 | 1020 |
+
+The 15–16 failures under limit-enforcing presets are tag-security rejections (non-core-schema tags) and anchor-name restrictions — correct behavior enforced identically by the verified `ParserLimits` logic across all FFI layers.
 
 </details>
 
