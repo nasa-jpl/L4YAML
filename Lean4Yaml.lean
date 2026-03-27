@@ -40,6 +40,7 @@ import Lean4Yaml.Proofs.ParserSoundness
 import Lean4Yaml.Proofs.ParserWellBehaved
 import Lean4Yaml.Proofs.ParserWfaProofs
 import Lean4Yaml.Proofs.RoundTrip
+import Lean4Yaml.Proofs.ScalarCoupling
 import Lean4Yaml.Proofs.ScannerContracts
 import Lean4Yaml.Proofs.ScannerCorrectness
 import Lean4Yaml.Proofs.ScannerDispatch
