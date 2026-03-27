@@ -901,14 +901,15 @@ Surface productions covered: [63]–[80] (`s-indent`, `s-white`, `s-separate-in-
 Build: 395/395 jobs, Tests: 869/0/151 (no regressions)
 </details>
 
-#### Version 0.4.2
+#### Version 0.4.2 (completed 2026-03-27)
 <details>
+<summary>Scalar collection coupling — 26 theorems, 728 lines of proof, 0 sorry</summary>
 
-**Scalar collection coupling** (~1,000–1,200 lines of proof)
+**Scalar collection coupling** (728 lines of proof)
 
-Couple all scalar content collection functions — the most character-intensive part of the scanner.
+Couple all scalar content collection functions — the most character-intensive part of the scanner. All proofs are sorry-free.
 
-Scanner functions coupled (**31 functions**):
+Scanner functions coupled (**31 functions → 26 theorems**):
 
 *Double-quoted scalars*:
 - `collectDoubleQuotedLoop`, `scanDoubleQuoted` → `c-double-quoted` [107]–[116]
@@ -930,6 +931,56 @@ Scanner functions coupled (**31 functions**):
 - `parseBlockHeaderLoop`, `scanBlockScalarSkipComment`, `scanBlockScalarConsumeNewline`, `scanBlockScalarBody`, `scanBlockScalar` → `c-l+literal` / `c-l+folded` [170]–[182]
 
 Surface productions covered: [107]–[133], [162]–[182] (all four scalar types)
+
+**Sorry status:** 0 sorry in ScalarCoupling.lean. 2 target-theorem sorry's remain in Surface.lean (`parse_strict` → v0.4.5, `scan_strict` → v0.4.4).
+
+Build: 397/397 jobs, Tests: 869/0/151 (no regressions)
+
+##### Reflections — unexpected challenges, simplifications, and idioms
+
+###### Unexpected challenges
+
+1. **`split at h` splits ALL nested matches, not just the outermost.**
+   After `unfold scanBlockScalarBody at hok; dsimp only [] at hok`, the hypothesis contains two nested matches: `match explicitOffset with ... | some m => (..., none) | none => autoDetect...` feeding into `match autoDetectErr? with | some err => .error err | none => body`. A single `split at hok` splits on the *outer* `match autoDetectErr?` only — but the `match explicitOffset` inside `contentIndent` remains un-split, leaving `(match explicitOffset with ...).fst` throughout the goal. This violates the expectation that `split` descends into the first reducible match. The result: `generalize` with wildcards for `contentIndent` fails because Lean can't synthesize the complex match expression from nothing.
+
+   **Fix:** Name the complex sub-expression with `let contentIndent := (match explicitOffset with ...).fst` in the proof, then use it explicitly in `collectBlockScalarLoop_corr`. This "name the mess" pattern avoids fighting with `generalize`'s inability to unify against un-split match expressions.
+
+2. **`repeat (first | split at h; · ... | skip)` is O(2^n) in tactic applications.**
+   The `collectPlainScalar_terminates?` function has 5 nested if/match branches, all returning `state := s` on the `some` path. Proving `terminates_state_eq` (state equality across all branches) with `repeat (first | split at h; · injection h; subst; rfl | skip)` hit `maximum recursion depth` at 1000 and stack overflow at 2000. The `repeat`+`first` combo generates exponential backtracking: each `split` doubles the tactic state, and `first` checkpoints/restores on each failure, building a tactic-state tree of depth 5. An explicit linear chain of 5 sequential `split at h` calls (each followed by `· rfl` or `· injection h; ...`) completes instantly.
+
+   **Lesson:** For multi-branch case analysis, always use explicit sequential `split` chains rather than `repeat (first | tac | skip)`. The `repeat` idiom is safe for ≤2 branches but becomes pathological beyond 3.
+
+3. **`split` targets depend on match expression ordering, not syntactic position.**
+   In `scanBlockScalarSkipComment`, the function has `match peek?` → `let commentOk := match peekBack? with ...` → `if commentOk then ...`. After unfolding and splitting on `peek?`, a second `split` targets `match peekBack?` (the *inner* match), not `if commentOk` (the *outer* control flow). This is correct — `commentOk` is a let binding that reduces to the `match peekBack?`, so `split` sees the match there. But `rename_i hc` then captures the `peekBack?` discriminant, not the `if`-condition. Code that assumed `hc` named the boolean was wrong.
+
+   **Fix:** Split on `peekBack?` explicitly (producing `some c` / `none` cases), then `split` again on the `if` condition. Don't assume correspondence between syntactic if/match nesting and `split` ordering.
+
+4. **Struct updates block `subst` via expansion.**
+   `scanBlockScalarBody` returns `.ok { s_with_token with simpleKeyAllowed := true, simpleKey := ... }`. After `Except.ok.inj hok; subst h`, Lean substitutes `s'` with the entire ScannerState struct literal — every field expanded with the full `collectBlockScalarLoop` expression (hundreds of lines in the goal view). The `ScannerSurfCorr` proof components (`hcorr_loop.chars_from`, etc.) reference `s_after_content`, not the expanded struct, so they can't unify.
+
+   **Fix:** Keep the `subst` but construct the `ScannerSurfCorr` proof with raw field accessors (`⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq⟩`) — this works because `{ s with simpleKeyAllowed := ... }.input = s.input` reduces definitionally (different field), and `(s.emitAt pos tok).input = s.input` also reduces (emitAt only touches tokens). Lean's definitional reduction handles the struct projections even through the massive expansion; the proof term is 1 line.
+
+###### Simplifications
+
+1. **Uniform `_corr` theorem shape enables copy-paste composition.**
+   Every coupling theorem has the signature `f_corr (sc : ScannerState) (sp : SurfPos) (hcorr : ScannerSurfCorr sc sp) ... : ∃ sp', ScannerSurfCorr result sp'`. This uniform shape means composing couplings is mechanical: `obtain ⟨sp', hcorr'⟩ := f_corr sc sp hcorr; obtain ⟨sp'', hcorr''⟩ := g_corr _ sp' hcorr'`. 21 of the 26 theorems follow this exact pattern with no creative proof steps — just unfold, split, compose sub-proofs.
+
+2. **`corr_of_emitAt` + `corr_of_simpleKeyAllowed_update` cover all scalar endings.**
+   Every `scanXScalar` function ends with `{ s_after.emitAt pos (.scalar content style) with simpleKeyAllowed := b }`. The composition `corr_of_simpleKeyAllowed_update b (corr_of_emitAt pos tok hcorr)` closes the final goal in every scalar coupling proof. This 1-line closing pattern, established early in double-quoted scalar proofs, was reused verbatim across all 4 scalar types.
+
+3. **`absurd hok (by simp)` for impossible Except branches.**
+   When `split at hok` produces an `hok : Except.error err = Except.ok s'` case, `exact absurd hok (by simp)` is a universal 1-tactic closer. No need for `cases`, `injection`, or custom discrimination — `simp` knows `Except.error ≠ Except.ok` from the BEq/DecidableEq instances.
+
+###### Idioms
+
+- **`let name := complex_expr` in proofs for naming un-split sub-expressions.**
+  When a `split at h` leaves an unsplit `match` inside `collectBlockScalarLoop`'s arguments, introduce `let contentIndent := (match explicitOffset with ...).fst` in the proof. This gives Lean a concrete name to unify against in subsequent `have` and `exact` calls. The `let` binding is free (reduces away) but saves the elaborator from inferring complex match expressions from wildcards.
+
+- **`generalize hcl : f x y z = p at hok` + `obtain ⟨a, b⟩ := p` for pair-returning functions.**
+  Functions like `collectBlockScalarLoop` return `(String × ScannerState)`. The `generalize` replaces the call in `hok` with `p`, then `obtain` destructs `p`. This abstracts the massive intermediate terms into named variables (`rawContent`, `s_after_content`), making the remaining proof about small named entities rather than expanded function bodies. Used in all 4 block scalar proofs.
+
+- **`have h := Except.ok.inj hok; subst h` + raw field proof for struct-heavy closers.**
+  Rather than avoiding `subst` (which expands structs), embrace it and close with `⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq⟩`. Lean's kernel reduces `{expanded_struct}.input` to `s_after_content.input` definitionally. This is faster than trying to `generalize` or `conv` the struct fields.
 
 </details>
 
