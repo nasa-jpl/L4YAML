@@ -1057,40 +1057,69 @@ Build: 399/399 jobs, Tests: 869/0/151 (no regressions)
 #### Version 0.4.4
 <details>
 
-**`scan_strict` proof** (~500–600 lines of proof)
+**`scan_strict` proof — strengthened to `InYamlLanguage`** (~2,000–2,500 lines of proof)
 
-Compose all scanner couplings from v0.4.1–v0.4.3 into the top-level `scan_strict` theorem — the first sorry elimination.
+> **Scope change**: The original `scan_strict` statement (`∃ s', SLYamlStream ⟨input.toList, 0⟩ s'`) was discovered to be **vacuously true** — `SLYamlStream.single` with all-nil/none fields produces `SLYamlStream s s` for any `s`, making the theorem independent of the scanner hypothesis. The theorem is strengthened to prove `InYamlLanguage input` (full input consumption by a valid grammar derivation), which is the real verification target.
 
-Scanner functions coupled (**~12 functions**):
-- Token dispatch: `scanNextToken_preprocess`, `scanNextToken_dispatchStructural`, `scanNextToken_dispatchFlowIndicators`, `scanNextToken_dispatchBlockIndicators`, `scanNextToken_dispatchContent`, `scanNextToken_checkBlockFlowIndent`, `scanNextToken`
-- Scanning loop: `scanLoop`, `scan`
-- Token emission: `emit`, `emitAt` — token position correspondence
-- State setup: `ScannerState.mk'`, `WellFormed` — initial state coupling
+**Theorem** (strengthened):
+```lean
+theorem scan_strict (input : String) (tokens : Array (Positioned YamlToken))
+    (h : scan input = .ok tokens) : InYamlLanguage input
+```
 
-**Result**: `scan_strict` sorry eliminated. Theorem: if `scan` succeeds, the token stream reflects correct lexical decomposition of the input into surface syntax productions.
+This requires not just composing ScannerSurfCorr position correspondence (done in v0.4.1–v0.4.3), but constructing actual `SLYamlStream` derivation trees from scanner behavior and proving the scanner consumes the entire input.
+
+##### Phase A: Full-consumption & production infrastructure (~200–300 lines)
+
+- Prove `scan` success implies scanner consumed entire input (offset = inputEnd)
+- Bridge lemmas: ScannerSurfCorr + character-consumption evidence → SL* base constructors
+- Strengthen basic couplings: `skipToContent` → `SSLComments`, `advance` → `GLit`
+
+##### Phase B: Scalar productions (~500–700 lines)
+
+Each scalar scanner function additionally produces the corresponding SL* derivation:
+- `collectDoubleQuotedScalarLoop` / `scanDoubleQuotedScalar` → `SCDoubleQuoted`
+- `collectSingleQuotedScalarLoop` / `scanSingleQuotedScalar` → `SCSingleQuoted`
+- `collectPlainScalarLoop` / `scanPlainScalar` → `SNsPlain` / `SNsPlainMultiLine`
+- `collectBlockScalarLoop` / `scanBlockScalarBody` → `SCLLiteral` / `SCLFolded`
+
+##### Phase C: Node property & indicator productions (~300–400 lines)
+
+- Tag scanning → `SCNsTagProperty` (verbatim / secondary / named)
+- Anchor/alias scanning → `SCNsAnchorProperty` / `SCNsAliasNode`
+- Flow indicators → `SFlowSequence` / `SFlowMapping` opening/closing
+- Block indicators → `SBlockSeqEntries` / `SBlockMapEntries` structure
+- Document start/end → `SCDirectivesEnd` / `SCDocumentEnd`
+
+##### Phase D: Document & stream composition (~400–600 lines)
+
+- `scanDocumentStart` → `SLExplicitDocument`
+- `scanDocumentEnd` → `SLDocumentSuffix`
+- `scanDirective` → `SLDirective` → `SLDirectiveDocument`
+- BOM + initial comments → `SLDocumentPrefix`
+- `scanLoop` token sequence → `SLAnyDocument` variants
+- `scan` → `SLYamlStream` (single / suffixContinue / implicitContinue)
+
+##### Phase E: Top-level scan_strict (~100–200 lines)
+
+Compose phases A–D: `scan` success → ScannerSurfCorr chain → SL* production tree → `SLYamlStream` with `s'.chars = []` → `InYamlLanguage input`.
+
+**Surface productions covered**: All 76 SL*/SC*/SB*/SS* types across 5 Surface files, composed through 10 grammar combinators (GStar, GPlus, GOpt, GLit, GChar, GSeq, GAlt, GNot, GEps, GConsumeAll).
+
+**Result**: `scan_strict` sorry eliminated. Theorem: if `scan` succeeds, the input belongs to the YAML 1.2.2 formal language (`InYamlLanguage`). This subsumes much of the originally-planned parser coupling work.
 
 </details>
 
 #### Version 0.4.5
 <details>
 
-**`parse_strict` proof** (~800–1,000 lines of proof)
+**`parse_strict` proof** (~30–50 lines of proof)
 
-Couple the token parser to the surface syntax and prove the full pipeline `parse_strict` theorem — the second and final sorry elimination.
+> **Scope reduction**: Since v0.4.4's `scan_strict` now proves `InYamlLanguage` from scanner success, `parse_strict` reduces to showing that parser success implies scanner success — a short chain of function unfoldings.
 
-Token parser functions coupled (**~48 functions**):
+**Chain**: `parseYaml input = .ok docs` → `parseYamlRaw input = .ok _` → `scanFiltered input = .ok _` → `scan input = .ok _` → `InYamlLanguage input` (via `scan_strict`).
 
-*State & helpers (13)*: `ParseState.mk'`/`hasMore`/`peek?`/`peekPos?`/`advance`/`lastPos?`/`currentLine`/`expect`/`tryConsume`/`addAnchor`, `resolveTag`, `emptyNode`, `StreamState.validNextToken`
-
-*Node parsing (5)*: `parseNodeProperties`, `applyNodeFinalization`, `validateNodeProps`, `parseNodeContent`, `parseNode`
-
-*Block sequences (4)*: `parseBlockSequence`, `parseBlockSequenceLoop`, `parseImplicitBlockSequence`, `parseImplicitBlockSequenceLoop`
-
-*Block mappings (5)*: `parseBlockMapping`, `parseBlockMappingEntryValue`, `handleBlockMappingKeyEntry`, `handleBlockMappingValueEntry`, `parseBlockMappingLoop`
-
-*Flow collections (7)*: `parseFlowSequence`, `parseFlowSequenceLoop`, `parseFlowMapping`, `parseFlowMappingValue`, `parseExplicitKey`, `parseFlowMappingLoop`, `parseSinglePairMapping`
-
-*Document & stream (8)*: `parseDirectives`, `prepareDocumentState`, `parseDocument`, `parseStreamLoop`, `parseStream`, `scanAndParse`, `parseYamlRaw`, `parseYaml`
+Each step is a simple `match` unfolding: if the inner call returned `.error`, the outer call propagates it, contradicting the `.ok` hypothesis.
 
 **Result**: `parse_strict` sorry eliminated → **0 sorry in entire codebase**. Full acceptance strictness verified: if the parser accepts an input, that input belongs to the YAML 1.2.2 formal grammar.
 
