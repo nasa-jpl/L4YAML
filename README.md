@@ -984,10 +984,10 @@ Build: 397/397 jobs, Tests: 869/0/151 (no regressions)
 
 </details>
 
-#### Version 0.4.3
+#### Version 0.4.3 (completed 2026-03-27)
 <details>
 
-**Structure, document & directive coupling** (~800–1,000 lines of proof)
+**Structure, document & directive coupling** (584 lines of proof, 38 theorems)
 
 Couple all structural scanning: flow/block indicators, node properties, document boundaries, and directives.
 
@@ -1006,6 +1006,51 @@ Scanner functions coupled (**~40 functions**):
 *Directives (8)*: `collectDirectiveNameLoop`, `collectVersionMajorLoop`/`MinorLoop`, `collectTagHandleDirectiveLoop`, `collectTagPrefixLoop`, `scanYamlDirective`, `scanTagDirective`, `scanDirective`
 
 Surface productions covered: [82]–[103], [134]–[152], [183]–[211]
+
+**Sorry status:** 0 sorry in StructureCoupling.lean. 2 target-theorem sorry's remain in Surface.lean (`parse_strict` → v0.4.5, `scan_strict` → v0.4.4).
+
+Build: 399/399 jobs, Tests: 869/0/151 (no regressions)
+
+##### Reflections — unexpected challenges, simplifications, and idioms
+
+###### Unexpected challenges
+
+1. **`do`-notation `pure ()` followed by monadic return creates hidden binds.**
+   In `scanDocumentEnd` and `scanYamlDirective`, a validation match (`match s.peek? with | none => pure () | some '#' => pure () | some c => if ... then pure () else throw ...`) precedes the final `.ok result`. After `unfold` + `simp only [bind, Except.bind]`, the `pure PUnit.unit` remains unreduced because `pure` is a typeclass method that resolves to `Except.pure`, not `Except.ok` directly. The `match pure PUnit.unit with | .ok v => ... | .error e => ...` blocks `split at hok` from reaching the inner peek match.
+
+   **Fix:** Add `pure, Except.pure` to the simp lemma set: `simp only [bind, Except.bind, pure, Except.pure]`. This reduces `pure ()` to `Except.ok ()`, allowing iota reduction of the enclosing match. The second `split at hok` then cleanly targets the peek validation match.
+
+2. **3-way match arms: `rename_i c _` captures the wrong variable.**
+   In `collectVerbatimTagLoop` and `collectTagHandleLoop`, the match on `peek?` has three arms: `| some '>' => ...`, `| some c => ...`, `| none => ...`. After `split`, the second arm carries both `c : Char` and a proof `h : ¬(c = '>')`. Using `rename_i c _` captures `h` (the negation proof) as the char and `c` (the actual char) as discarded. The proof then passes the wrong type to `ih`.
+
+   **Fix:** Don't use `rename_i` for 3-way match arms with literal first patterns. Instead, use `split` without naming and pass `_` for arguments where the exact variable isn't needed.
+
+3. **Struct field updates through `emit`/`emitAt`/`advanceN` compose indirectly.**
+   For `scanDocumentStart` and `scanDocumentEnd`, the state chain is `unwindIndents → simpleKey update → emit → advanceN`. The `advanceN_corr` theorem needs the EXACT intermediate state expression — not `sc` but `({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd)`. Lean's kernel does NOT see through the struct update chain definitionally (`.advance` depends on `.offset` and `.inputEnd`, which project through `emit`/struct-update only by iota reduction). Mismatched intermediate expressions cause silent type errors.
+
+   **Fix:** Always pass the full intermediate-state expression to `advance_corr`/`advanceN_corr`, matching the source code's struct-update chain exactly. Use `⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq⟩` to bridge through non-tracked field updates.
+
+###### Simplifications
+
+1. **Uniform `_corr` shape scales to 38 theorems with minimal creativity.**
+   The coupling template from v0.4.2 (unfold → split → compose sub-proofs) directly applied to all 38 theorems. The 4-field `ScannerSurfCorr` window (input, offset, col, inputEnd) is narrow enough that ~30 of the ~40 target functions only modify non-tracked fields, making their coupling proofs trivial 1–3 line compositions.
+
+2. **`absurd hok (by simp)` universally closes error branches.**
+   Every `Except.error err = Except.ok s'` case from `split at hok` is closed by `exact absurd hok (by simp)`. This pattern appeared 15+ times across the file with zero failures.
+
+3. **Pure-function coupling proofs are 3 lines.**
+   Functions like `scanFlowSequenceStart` (advance with struct updates but no branching) follow: `unfold f; obtain ⟨sp', hcorr'⟩ := advance_corr INTERMEDIATE sp ⟨...⟩; exact ⟨sp', ⟨...⟩⟩`. Five flow indicator proofs are identically structured.
+
+###### Idioms
+
+- **`simp only [bind, Except.bind, pure, Except.pure]` for `do`-block hypotheses.**
+  The extended simp set handles both `>>=` desugaring (`bind`/`Except.bind`) and `pure ()` bridge returns (`pure`/`Except.pure`). Required for any `do` block ending with a validation match + final `.ok result`. The standard 2-lemma set (`bind, Except.bind`) suffices when there are no intermediate `pure ()` calls.
+
+- **`split at hok` cascades for nested validation matches.**
+  Functions like `scanDocumentEnd` and `scanTag` have a computational core followed by a validation match that only checks (doesn't modify) the result. After the first `split at hok` for the if-guard, a second `split at hok` targets the validation match. Each resulting branch has `hok : .ok result = .ok s'`, and `Except.ok.inj hok; subst h` closes it. Error branches from validation (`throw`) are closed by `absurd hok (by simp)`.
+
+- **Existential threading for loop + wrapper pairs.**
+  Loop functions (`collectAnchorNameLoop`, `collectVersionMajorLoop`) return bare `ScannerState`, while their wrappers (`scanAnchorOrAlias`, `scanYamlDirective`) return `Except`. The loop `_corr` theorem gives `∃ sp', ScannerSurfCorr (loop ...).snd sp'`, and the wrapper proof destructures this with `obtain ⟨sp', hcorr'⟩ := loop_corr ...` then threads `hcorr'` through the remaining validation and emit steps. This 2-level pattern (loop corr → wrapper corr) is used 8 times.
 
 </details>
 
