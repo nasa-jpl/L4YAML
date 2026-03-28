@@ -1069,11 +1069,94 @@ theorem scan_strict (input : String) (tokens : Array (Positioned YamlToken))
 
 This requires not just composing ScannerSurfCorr position correspondence (done in v0.4.1–v0.4.3), but constructing actual `SLYamlStream` derivation trees from scanner behavior and proving the scanner consumes the entire input.
 
-##### Phase A: Full-consumption & production infrastructure (~200–300 lines)
+##### Phase A: Full-consumption & production infrastructure (completed 2026-03-27)
 
-- Prove `scan` success implies scanner consumed entire input (offset = inputEnd)
-- Bridge lemmas: ScannerSurfCorr + character-consumption evidence → SL* base constructors
-- Strengthen basic couplings: `skipToContent` → `SSLComments`, `advance` → `GLit`
+<details>
+
+**Full-consumption proof chain** (485 lines of proof, 18 theorems)
+
+Compose the 80+ leaf coupling theorems from CouplingBridge, ScannerCoupling, ScalarCoupling, and StructureCoupling into top-level theorems showing that `scan` consumes all input characters.
+
+**Theorems (18):**
+
+*Preservation lemmas (7)*: `unwindIndentsLoop_offset`/`inputEnd`/`input` (fuel induction), `saveSimpleKey_offset`/`inputEnd`/`input` (3-way split), `saveSimpleKey_peek` (simp rewrite through preservation chain)
+
+*Dispatch couplings (4)*: `scanNextToken_dispatchStructural_corr` (document markers, directives), `_dispatchFlowIndicators_corr` (`[ ] { } ,`), `_dispatchBlockIndicators_corr` (`- ? :`), `_dispatchContent_corr` (`& * ! | > " '` + plain scalars) — each unfolds dispatch + splits on conditionals, applies leaf `_corr` theorems
+
+*Preprocess coupling (2)*: `scanNextToken_preprocess_corr` (ok some path: skipToContent + unwindIndents + saveSimpleKey), `scanNextToken_preprocess_none_consumed` (ok none path: EOF via `eof_corr`, peek?=none contradiction via preservation + hasMore)
+
+*Token step (2)*: `scanNextToken_corr` (2-level split: Except then Option, composes preprocess + 4 dispatches, handles `allowDirectives` struct update), `scanNextToken_none_consumed` (2-level split, preprocess none → EOF, all dispatch paths produce some → contradictions via `nofun`)
+
+*Loop and top-level (2)*: `scanLoop_full_consumption` (fuel induction, threads ScannerSurfCorr via `scanNextToken_corr`), `scan_full_consumption` (initial_corr + BOM handling + scanLoop)
+
+*Bridge (1)*: `chars_from_zero_toList` — String ↔ CharsFromOffset bridge (1 sorry; requires proving byte-position iteration via get/next matches String.toList via String.Internal.toArray)
+
+**Sorry status:** 1 sorry (`chars_from_zero_toList` — String internals bridge). Build: 401/401 jobs, 0 errors.
+
+###### Reflections — unexpected challenges, simplifications, and idioms
+
+###### Unexpected challenges
+
+1. **Except+Option requires 2-level splitting, not 3-way.**
+   `scanNextToken` returns `Except String (Option ScannerState)`. The initial assumption was that `split at hok` on `match ← preprocess` would give 3 cases (error, none, some). Actually, `split at hok` gives 2 cases (`Except.error` and `Except.ok v`), then a *second* `split at hok` is needed to case-split `v` as `Option.none` vs `Option.some`. Attempting to handle all three in one `split` produces unsolvable goals because Lean's kernel sees the `Except` match first.
+
+   **Fix:** Always split Except+Option in two stages: first `split at hok` for Except, then a second `split at hok` for Option within the `.ok` branch.
+
+2. **`Option.noConfusion` has universe constraints that `nofun` avoids.**
+   Closing `hok : none = some _` or `some _ = none` with `Option.noConfusion` triggers universe mismatch (`Eq.{1}` vs `Eq.{?u + 2}`). The issue is that `Option.noConfusion` is universe-polymorphic and the motive is underspecified when the target is a mixed Except+Option term.
+
+   **Fix:** Use `nofun` — it universally closes impossible pattern matches without universe issues. Applied 4 times in `scanNextToken_none_consumed` to close branches where dispatches return `some` but the hypothesis expects `none`.
+
+3. **One-liner `split` chains work in tmp/ files but fail in namespaced builds.**
+   `| succ n ih => unfold f; split; · exact ih _; · rfl` compiles in standalone tmp/ files but produces "No goals to be solved" in the real build under `namespace Lean4Yaml.Proofs.ScanStrictCoupling`. The semicolons in one-liner format interact differently with namespace resolution, causing `dsimp only []` to close goals that the trailing `rfl` then can't find.
+
+   **Fix:** Always use multiline tactic format in production files:
+   ```lean
+   | succ n ih =>
+     unfold f; split
+     · exact ih _
+     · rfl
+   ```
+
+4. **Content dispatch `&` case has struct update not matching `_corr` shape.**
+   `scanAnchorOrAlias_corr sc sp hcorr` returns `∀ (isAnchor : Bool), ∃ sp', ScannerSurfCorr (scanAnchorOrAlias sc isAnchor) sp'` but the `&` branch in the dispatch produces `ScannerSurfCorr { result with definedAnchors := ... }`. The struct update adds a non-tracked field (`definedAnchors`), but the existential's witness `sp'` is bound to the un-updated result.
+
+   **Fix:** Supply the explicit Boolean (`scanAnchorOrAlias_corr sc sp hcorr true`), destructure, then re-pack with field extraction: `⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq⟩`. The struct projection through the `definedAnchors` update reduces definitionally since `definedAnchors` is not a tracked field.
+
+5. **`peek?` preservation through `saveSimpleKey` requires 3-step chaining.**
+   Proving `(saveSimpleKey s).peek? = s.peek?` is needed for the preprocess none-consumed path (contradiction when peek? = none but hasMore = true). `peek?` depends on `offset`, `inputEnd`, and `input` — all three must be shown preserved through `saveSimpleKey` first.
+
+   **Fix:** Prove `saveSimpleKey_offset`, `saveSimpleKey_inputEnd`, `saveSimpleKey_input` as separate lemmas, then derive `saveSimpleKey_peek` via `simp only [saveSimpleKey_offset, saveSimpleKey_inputEnd, saveSimpleKey_input]`.
+
+###### Simplifications
+
+1. **`nofun` is a universal impossible-case closer.**
+   Every `Except.ok.inj hok` producing a contradictory equation (`none = some _`, `some _ = none`) is closed by `exact absurd (Except.ok.inj hok) nofun`. No need for `cases`, `injection`, `Option.noConfusion`, or custom discrimination lemmas. Used 4 times in `scanNextToken_none_consumed` and never failed.
+
+2. **`split <;> (try split) <;> (try split) <;> rfl` for saveSimpleKey preservation.**
+   `saveSimpleKey` has a 3-level nested if/match structure. Rather than manually tracing each branch, the chained `split <;> (try split)` pattern exhaustively case-splits all branches, and `rfl` closes every leaf because none of the branches modify `offset`/`inputEnd`/`input`. Pattern reused directly from `ScannerProgress.lean` (L141–155). Applied identically for all 3 preservation lemmas.
+
+3. **Fuel induction for `scanLoop` is entirely mechanical.**
+   The `scanLoop_full_consumption` proof is textbook fuel induction: `zero` case contradicts `.ok` by `simp [scanLoop]`; `succ` case splits on `scanNextToken` result — error contradicts `.ok`, none reaches EOF via `scanNextToken_none_consumed`, some recurses via `ih` after threading `ScannerSurfCorr` through `scanNextToken_corr`. No creative proof steps needed.
+
+4. **`allowDirectives` struct update is a 2-case `split`.**
+   `scanNextToken` conditionally sets `allowDirectives := false` before dispatch. The coupling proof handles this with a simple `split; · exact ⟨hcorr_pre.chars_from, hcorr_pre.col_eq, hcorr_pre.end_eq⟩; · exact hcorr_pre` — the `true` branch needs field re-packing (non-tracked field changed), the `false` branch is identity.
+
+###### Idioms
+
+- **`simp at hok` as universal error-branch closer.**
+  In dispatch proofs, `split at hok` frequently produces `hok : Except.error err = Except.ok s'` branches. In Phase A, `simp at hok` replaces the v0.4.3 pattern `exact absurd hok (by simp)` — the hypothesis is directly in scope, so `simp` closes it without the `absurd` wrapper. Used 20+ times across the 4 dispatch proofs.
+
+- **`exact absurd (Except.ok.inj hok) nofun` for Option contradictions.**
+  When `Except.ok.inj hok` produces `Option.none = Option.some _`, `nofun` closes the absurdity. This avoids `injection`/`cases`/`noConfusion` and their universe issues entirely.
+
+- **`rename_i` + `‹_›` for anonymous hypotheses from `split`.**
+  After `split at hok`, anonymous hypotheses from match arms (like `atDocumentBoundary sc = true`) are referenced via `‹_›` in leaf theorem calls: `scanDocumentEnd_corr sc sp hcorr _ ‹_›`. This avoids fragile `rename_i` naming while keeping proofs concise.
+
+- **2-level `split at hok` for Except(Option T).**
+  Pattern for all `scanNextToken` proofs: first `split at hok` gives `Except.error`/`Except.ok v`, second `split at hok` within the `.ok` branch gives `Option.none`/`Option.some s'`. This 2-level approach cleanly separates error handling from option dispatch.
+
+</details>
 
 ##### Phase B: Scalar productions (~500–700 lines)
 
