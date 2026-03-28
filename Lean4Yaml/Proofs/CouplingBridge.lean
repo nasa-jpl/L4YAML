@@ -51,6 +51,98 @@ inductive CharsFromOffset (input : String) : Nat → List Char → Prop where
       (hrest : CharsFromOffset input (String.Pos.Raw.next input ⟨p⟩).byteIdx rest) :
       CharsFromOffset input p (c :: rest)
 
+/-! ### Byte-size helpers for CharsFromOffset ↔ toList bridge -/
+
+/-- Sum of UTF-8 byte sizes of characters in a list. -/
+def listByteSize : List Char → Nat
+  | [] => 0
+  | c :: rest => c.utf8Size + listByteSize rest
+
+theorem listByteSize_append (l₁ l₂ : List Char) :
+    listByteSize (l₁ ++ l₂) = listByteSize l₁ + listByteSize l₂ := by
+  induction l₁ with
+  | nil => simp [listByteSize]
+  | cons c cs ih => simp [listByteSize, ih]; omega
+
+/-- `utf8GetAux` returns the character at the byte boundary of a prefix. -/
+theorem utf8GetAux_at_boundary (pre : List Char) (c : Char) (suf : List Char)
+    (base : String.Pos.Raw) :
+    String.Pos.Raw.utf8GetAux (pre ++ c :: suf) base
+      ⟨base.byteIdx + listByteSize pre⟩ = c := by
+  induction pre generalizing base with
+  | nil =>
+    simp [listByteSize]
+    rw [String.Pos.Raw.utf8GetAux.eq_2]
+    simp
+  | cons p ps ih =>
+    simp only [List.cons_append, listByteSize]
+    rw [String.Pos.Raw.utf8GetAux.eq_2]
+    have hne : base ≠ ⟨base.byteIdx + (p.utf8Size + listByteSize ps)⟩ := by
+      intro heq
+      have := congrArg String.Pos.Raw.byteIdx heq
+      simp at this
+      have := Char.utf8Size_pos p
+      omega
+    simp [hne]
+    rw [show (⟨base.byteIdx + (p.utf8Size + listByteSize ps)⟩ : String.Pos.Raw) =
+            ⟨(base + p).byteIdx + listByteSize ps⟩ from by ext; simp; omega]
+    exact ih (base + p)
+
+theorem toByteArray_eq_utf8Encode (input : String) :
+    input.toByteArray = input.toList.utf8Encode := by
+  have h := String.ofList_toList (s := input)
+  have h2 : (String.ofList input.toList).toByteArray = input.toList.utf8Encode := by
+    unfold String.ofList; rfl
+  rw [h] at h2; exact h2
+
+/-- String byte size equals the sum of character byte sizes. -/
+theorem utf8ByteSize_eq_listByteSize (input : String) :
+    input.utf8ByteSize = listByteSize input.toList := by
+  show input.toByteArray.size = listByteSize input.toList
+  rw [toByteArray_eq_utf8Encode]
+  unfold List.utf8Encode
+  rw [List.size_toByteArray, List.length_flatMap]
+  simp only [String.length_utf8EncodeChar]
+  generalize input.toList = l
+  induction l with
+  | nil => simp [listByteSize]
+  | cons c cs ih => simp [listByteSize, ih]
+
+theorem get_eq_utf8GetAux (input : String) (p : Nat) :
+    String.Pos.Raw.get input ⟨p⟩ = String.Pos.Raw.utf8GetAux input.toList 0 ⟨p⟩ := rfl
+
+theorem next_byteIdx (input : String) (p : Nat) :
+    (String.Pos.Raw.next input ⟨p⟩).byteIdx =
+    p + (String.Pos.Raw.get input ⟨p⟩).utf8Size := rfl
+
+/-- Starting at byte offset 0, iterating get/next yields `input.toList`. -/
+theorem chars_from_zero_toList (input : String) :
+    CharsFromOffset input 0 input.toList := by
+  suffices h : ∀ (pre suf : List Char), input.toList = pre ++ suf →
+      CharsFromOffset input (listByteSize pre) suf from
+    h [] input.toList (by simp)
+  intro pre suf hsplit
+  induction suf generalizing pre with
+  | nil =>
+    apply CharsFromOffset.at_end
+    rw [utf8ByteSize_eq_listByteSize, hsplit, listByteSize_append]
+    simp [listByteSize]
+  | cons c cs ih =>
+    apply CharsFromOffset.cons
+    · rw [utf8ByteSize_eq_listByteSize, hsplit, listByteSize_append]
+      simp [listByteSize]; have := Char.utf8Size_pos c; omega
+    · rw [get_eq_utf8GetAux, hsplit]
+      have h := utf8GetAux_at_boundary pre c cs (0 : String.Pos.Raw)
+      simp at h; exact h
+    · have hget : String.Pos.Raw.get input ⟨listByteSize pre⟩ = c := by
+        rw [get_eq_utf8GetAux, hsplit]
+        have h := utf8GetAux_at_boundary pre c cs (0 : String.Pos.Raw)
+        simp at h; exact h
+      rw [next_byteIdx, hget]
+      rw [show listByteSize pre + c.utf8Size = listByteSize (pre ++ [c]) from by
+            rw [listByteSize_append]; simp [listByteSize]]
+      exact ih (pre ++ [c]) (by rw [hsplit, List.append_assoc]; rfl)
+
 /-! ## §2 State Correspondence -/
 
 /-- Scanner state and surface position correspond when the remaining
@@ -100,25 +192,32 @@ then the main correspondence theorems. -/
 
 theorem advance_input (s : ScannerState) : s.advance.input = s.input := by
   unfold ScannerState.advance; split
-  · dsimp only []; split <;> rfl
+  · dsimp only []; split
+    · rfl
+    · split <;> rfl
   · rfl
 
 theorem advance_inputEnd (s : ScannerState) : s.advance.inputEnd = s.inputEnd := by
   unfold ScannerState.advance; split
-  · dsimp only []; split <;> rfl
+  · dsimp only []; split
+    · rfl
+    · split <;> rfl
   · rfl
 
 theorem advance_offset_eq (s : ScannerState) (h : s.offset < s.inputEnd) :
     s.advance.offset = (String.Pos.Raw.next s.input ⟨s.offset⟩).byteIdx := by
   unfold ScannerState.advance; split
-  · dsimp only []; split <;> rfl
+  · dsimp only []; split
+    · rfl
+    · split <;> rfl
   · omega
 
 theorem advance_col_non_newline (s : ScannerState) (h : s.offset < s.inputEnd)
-    (hnl : ¬ (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\n') = true) :
+    (hnl : ¬ (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\n') = true)
+    (hcr : ¬ (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\r') = true) :
     s.advance.col = s.col + 1 := by
   unfold ScannerState.advance; split
-  · dsimp only []; simp [hnl]
+  · dsimp only []; simp [hnl, hcr]
   · omega
 
 theorem advance_col_newline (s : ScannerState) (h : s.offset < s.inputEnd)
@@ -128,20 +227,33 @@ theorem advance_col_newline (s : ScannerState) (h : s.offset < s.inputEnd)
   · dsimp only []; simp [hyes]
   · omega
 
-/-- Advance past non-newline preserves correspondence. -/
+theorem advance_col_cr (s : ScannerState) (h : s.offset < s.inputEnd)
+    (hcr : (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\r') = true) :
+    s.advance.col = 0 := by
+  have hnl : (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\n') = false := by
+    have : String.Pos.Raw.get s.input ⟨s.offset⟩ = '\r' := beq_iff_eq.mp hcr
+    rw [this]; decide
+  unfold ScannerState.advance; split
+  · dsimp only []; simp [hnl, hcr]
+  · omega
+
+/-- Advance past non-newline, non-CR preserves correspondence. -/
 theorem advance_non_newline_corr (sc : ScannerState) (c : Char) (rest : List Char)
     (hcorr : ScannerSurfCorr sc ⟨c :: rest, sc.col⟩)
     (hmore : sc.offset < sc.inputEnd)
-    (hnl : c ≠ '\n') :
+    (hnl : c ≠ '\n')
+    (hcr : c ≠ '\r') :
     ScannerSurfCorr sc.advance ⟨rest, sc.col + 1⟩ := by
   have hcf := hcorr.chars_from
   match hcf with
   | .cons _ hlt _ _ hc hrest =>
     have hnl_bool : ¬ (String.Pos.Raw.get sc.input ⟨sc.offset⟩ == '\n') = true := by
       rw [hc]; simp [hnl]
+    have hcr_bool : ¬ (String.Pos.Raw.get sc.input ⟨sc.offset⟩ == '\r') = true := by
+      rw [hc]; simp [hcr]
     constructor
     · rw [advance_input, advance_offset_eq sc hmore]; exact hrest
-    · exact (advance_col_non_newline sc hmore hnl_bool).symm
+    · exact (advance_col_non_newline sc hmore hnl_bool hcr_bool).symm
     · rw [advance_inputEnd, advance_input]; exact hcorr.end_eq
 
 /-- Advance past `\n` preserves correspondence with column reset. -/
@@ -158,6 +270,38 @@ theorem advance_newline_corr (sc : ScannerState) (rest : List Char)
     · rw [advance_input, advance_offset_eq sc hmore]; exact hrest
     · exact (advance_col_newline sc hmore hyes).symm
     · rw [advance_inputEnd, advance_input]; exact hcorr.end_eq
+
+/-- Advance past `\r` preserves correspondence with column reset. -/
+theorem advance_cr_corr (sc : ScannerState) (rest : List Char)
+    (hcorr : ScannerSurfCorr sc ⟨'\r' :: rest, sc.col⟩)
+    (hmore : sc.offset < sc.inputEnd) :
+    ScannerSurfCorr sc.advance ⟨rest, 0⟩ := by
+  have hcf := hcorr.chars_from
+  match hcf with
+  | .cons _ hlt _ _ hc hrest =>
+    have hcr : (String.Pos.Raw.get sc.input ⟨sc.offset⟩ == '\r') = true := by
+      rw [hc]; decide
+    constructor
+    · rw [advance_input, advance_offset_eq sc hmore]; exact hrest
+    · exact (advance_col_cr sc hmore hcr).symm
+    · rw [advance_inputEnd, advance_input]; exact hcorr.end_eq
+
+/-- Skip one character by raw offset increment, preserving correspondence.
+    Used for the `\n` byte in CRLF sequences where line counting was already
+    handled by the preceding `\r` advance. -/
+theorem skip_byte_corr (sc : ScannerState) (c : Char) (rest : List Char) (col : Nat)
+    (hcorr : ScannerSurfCorr sc ⟨c :: rest, col⟩)
+    (_hmore : sc.offset < sc.inputEnd) :
+    ScannerSurfCorr
+      { sc with offset := (String.Pos.Raw.next sc.input ⟨sc.offset⟩).byteIdx }
+      ⟨rest, col⟩ := by
+  have hcf := hcorr.chars_from
+  match hcf with
+  | .cons _ _ _ _ _ hrest =>
+    constructor
+    · exact hrest
+    · exact hcorr.col_eq
+    · exact hcorr.end_eq
 
 /-! ## §5 Production Coupling (Scanner → Surface) -/
 
@@ -234,8 +378,17 @@ theorem isWhiteSpace_not_newline (c : Char) (h : isWhiteSpaceBool c = true) : c 
   simp [isWhiteSpaceBool, Bool.or_eq_true, beq_iff_eq] at h
   rcases h with rfl | rfl <;> decide
 
+/-- A whitespace character (space or tab) is not `\r`. -/
+theorem isWhiteSpace_not_cr (c : Char) (h : isWhiteSpaceBool c = true) : c ≠ '\r' := by
+  simp [isWhiteSpaceBool, Bool.or_eq_true, beq_iff_eq] at h
+  rcases h with rfl | rfl <;> decide
+
 /-- A non-line-break character is not `\n`. -/
 theorem not_isLineBreak_not_newline (c : Char) (h : ¬isLineBreakBool c = true) : c ≠ '\n' := by
+  intro heq; subst heq; simp [isLineBreakBool] at h
+
+/-- A non-line-break character is not `\r`. -/
+theorem not_isLineBreak_not_cr (c : Char) (h : ¬isLineBreakBool c = true) : c ≠ '\r' := by
   intro heq; subst heq; simp [isLineBreakBool] at h
 
 /-- A non-line-break character satisfies `isNbChar`. -/

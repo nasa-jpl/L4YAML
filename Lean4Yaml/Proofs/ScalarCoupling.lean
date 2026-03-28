@@ -71,8 +71,11 @@ theorem advance_corr (sc : ScannerState) (sp : SurfPos)
     by_cases hnl : c = '\n'
     · subst hnl
       exact ⟨⟨rest, 0⟩, advance_newline_corr sc rest hcorr hmore⟩
-    · exact ⟨⟨rest, sc.col + 1⟩,
-             advance_non_newline_corr sc c rest hcorr hmore hnl⟩
+    · by_cases hcr : c = '\r'
+      · subst hcr
+        exact ⟨⟨rest, 0⟩, advance_cr_corr sc rest hcorr hmore⟩
+      · exact ⟨⟨rest, sc.col + 1⟩,
+               advance_non_newline_corr sc c rest hcorr hmore hnl hcr⟩
   · have : sc.advance = sc := by unfold ScannerState.advance; simp [hmore]
     rw [this]; exact ⟨sp, hcorr⟩
 
@@ -89,9 +92,18 @@ theorem consumeNewline_unconditional_corr (sc : ScannerState) (sp : SurfPos)
     obtain ⟨sp1, hcorr1⟩ := advance_corr sc sp hcorr
     dsimp only []  -- inline let s' := sc.advance
     split
-    · -- CRLF
-      obtain ⟨sp2, hcorr2⟩ := advance_corr sc.advance sp1 hcorr1
-      exact ⟨sp2, corr_of_needIndentCheck_update true hcorr2⟩
+    · -- CRLF: raw offset skip (not another advance)
+      rename_i hpeek2
+      have hmore2 : sc.advance.offset < sc.advance.inputEnd :=
+        peek_some_hasMore sc.advance '\n' hpeek2
+      obtain ⟨c2, rest2, hchars2, _⟩ := peek_corr sc.advance sp1 hcorr1 hmore2
+      have hcol1 := hcorr1.col_eq
+      have hsp1_eq : sp1 = ⟨c2 :: rest2, sc.advance.col⟩ := by
+        cases sp1 with | mk cs cl =>
+        simp only [] at hchars2 hcol1; subst hchars2; subst hcol1; rfl
+      subst hsp1_eq
+      have hskip := skip_byte_corr sc.advance c2 rest2 sc.advance.col hcorr1 hmore2
+      exact ⟨⟨rest2, sc.advance.col⟩, corr_of_needIndentCheck_update true hskip⟩
     · -- lone CR
       exact ⟨sp1, corr_of_needIndentCheck_update true hcorr1⟩
   · -- not a line break: identity

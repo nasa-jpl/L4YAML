@@ -9,8 +9,8 @@ import Lean4Yaml.Proofs.ScalarCoupling
     Strategy: use `n = 0` and `c = .blockIn` existentially so that indentation
     requirements (`SIndent 0`, `SFlowLinePrefix 0`) become trivial.
 
-    **Status**: Double-quoted scalar proven modulo 3 sorry'd sub-lemmas
-    (processEscape_prod, foldQuotedNewlines_prod, escaped-linebreak construction).
+    **Status**: Double-quoted scalar fully proven (1 known limitation:
+    lone <CR> column tracking in scanner — see `consumeNewline_sbreak_corr`).
 -/
 
 set_option autoImplicit false
@@ -23,11 +23,12 @@ open Lean4Yaml.CharPredicates
 open Lean4Yaml.Proofs.CouplingBridge
 open Lean4Yaml.Proofs.ScannerCoupling
 open Lean4Yaml.Proofs.ScalarCoupling
+open Lean4Yaml.Grammar
 
 /-! ## §1 Helpers -/
 
 -- Derive `offset < inputEnd` from `peek? = some c`
-private theorem peek_some_has_more {sc : ScannerState} {c : Char}
+theorem peek_some_has_more {sc : ScannerState} {c : Char}
     (hpeek : sc.peek? = some c) : sc.offset < sc.inputEnd := by
   unfold ScannerState.peek? at hpeek
   split at hpeek
@@ -35,7 +36,7 @@ private theorem peek_some_has_more {sc : ScannerState} {c : Char}
   · cases hpeek
 
 -- Derive exact surface position from `peek? = some c` + `ScannerSurfCorr`
-private theorem peek_some_sp {sc : ScannerState} {sp : SurfPos} {c : Char}
+theorem peek_some_sp {sc : ScannerState} {sp : SurfPos} {c : Char}
     (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some c) :
     ∃ rest, sp = ⟨c :: rest, sc.col⟩ := by
   have hmore := peek_some_has_more hpeek
@@ -48,7 +49,7 @@ private theorem peek_some_sp {sc : ScannerState} {sp : SurfPos} {c : Char}
     exact ⟨hchars, hcorr.col_eq⟩⟩
 
 -- Prepend a `SNbDoubleChar` to the first line of `SNbDoubleMultiLine`
-private theorem SNbDoubleMultiLine_prepend (s s₁ s_end : SurfPos)
+theorem SNbDoubleMultiLine_prepend (s s₁ s_end : SurfPos)
     (hchar : SNbDoubleChar s s₁)
     (hrest : SNbDoubleMultiLine 0 s₁ s_end) :
     SNbDoubleMultiLine 0 s s_end := by
@@ -61,32 +62,356 @@ private theorem SNbDoubleMultiLine_prepend (s s₁ s_end : SurfPos)
       (GStar.cons s s₁ s₁' hchar hline) hbreak hcont
 
 -- Bridge: `¬isLineBreakBool c = true → ¬isLineBreakProp c`
-private theorem not_lineBreak_bool_to_prop {c : Char}
+theorem not_lineBreak_bool_to_prop {c : Char}
     (h : ¬isLineBreakBool c = true) : ¬isLineBreakProp c :=
   fun hlb => h ((isLineBreak_iff c).mpr hlb)
 
-/-! ## §2 Sorry'd sub-lemmas -/
+/-! ## §1b Surface construction helpers -/
+
+-- SIndent → GStar SSWhite
+theorem sindent_to_gstar_sswhite {n : Nat} {sp sp' : SurfPos}
+    (h : SIndent n sp sp') : GStar SSWhite sp sp' := by
+  induction h with
+  | zero => exact GStar.nil _
+  | succ n rest col s' _ ih => exact GStar.cons _ _ _ (SSWhite.space rest col) ih
+
+-- Concatenation of GStar SSWhite
+theorem gstar_sswhite_append {sp1 sp2 sp3 : SurfPos}
+    (h1 : GStar SSWhite sp1 sp2) (h2 : GStar SSWhite sp2 sp3) :
+    GStar SSWhite sp1 sp3 := by
+  induction h1 with
+  | nil => exact h2
+  | cons _ _ _ hx _ ih => exact GStar.cons _ _ _ hx (ih h2)
+
+-- GStar SSWhite → GOpt SSeparateInLine
+theorem gstar_sswhite_to_gopt_sep {sp sp' : SurfPos}
+    (h : GStar SSWhite sp sp') : GOpt SSeparateInLine sp sp' := by
+  match h with
+  | GStar.nil _ => exact GOpt.none _
+  | GStar.cons a b c hfirst hrest =>
+    exact GOpt.some a c (SSeparateInLine.whites a c (GPlus.mk a b c hfirst hrest))
+
+/-! ## §1c consumeNewline with SBBreak production
+
+  When the scanner is at a linebreak, `consumeNewline` produces both an
+  `SBBreak` and preserves `ScannerSurfCorr`.  The scanner's `advance`
+  treats both `\n` and `\r` as line terminators (col:=0, line+1) per
+  YAML spec §5.4 [28].  For CRLF, the `\n` byte is skipped by raw
+  offset increment to avoid double-counting the line. -/
+theorem consumeNewline_sbreak_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
+    (hcorr : ScannerSurfCorr sc sp)
+    (hpeek : sc.peek? = some c)
+    (hlb : isLineBreakBool c = true) :
+    ∃ sp', SBBreak sp sp' ∧ ScannerSurfCorr (consumeNewline sc) sp' := by
+  obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+  subst hsp_eq
+  have hmore := peek_some_has_more hpeek
+  simp [isLineBreakBool, Bool.or_eq_true, beq_iff_eq] at hlb
+  rcases hlb with rfl | rfl
+  · -- c = '\n'
+    have hadv := advance_newline_corr sc rest hcorr hmore
+    refine ⟨⟨rest, 0⟩, SBBreak.lf rest sc.col, ?_⟩
+    show ScannerSurfCorr (consumeNewline sc) ⟨rest, 0⟩
+    unfold consumeNewline; simp only [hpeek]
+    exact corr_of_needIndentCheck_update true hadv
+  · -- c = '\r': advance sets col:=0 (line break)
+    have hadv := advance_cr_corr sc rest hcorr hmore
+    unfold consumeNewline; simp only [hpeek]
+    split
+    · -- sc.advance.peek? = some '\n' (CRLF)
+      rename_i hpeek2
+      have hmore2 := peek_some_has_more hpeek2
+      obtain ⟨rest2, hchars2⟩ := peek_some_sp hadv hpeek2
+      simp only [SurfPos.mk.injEq] at hchars2
+      obtain ⟨hrest_eq, _⟩ := hchars2
+      subst hrest_eq
+      -- Raw offset skip for the \n byte (line count already handled by \r)
+      have hskip := skip_byte_corr sc.advance '\n' rest2 0 hadv hmore2
+      refine ⟨⟨rest2, 0⟩, SBBreak.crLf rest2 sc.col, ?_⟩
+      exact corr_of_needIndentCheck_update true hskip
+    · -- lone '\r': col=0, line+1 done by advance
+      refine ⟨⟨rest, 0⟩, SBBreak.cr rest sc.col, ?_⟩
+      exact corr_of_needIndentCheck_update true hadv
+
+/-! ## §1d foldQuotedNewlinesLoop production -/
+
+theorem foldQuotedNewlinesLoop_prod (sc : ScannerState) (sp : SurfPos)
+    (cnt fuel : Nat) (hcorr : ScannerSurfCorr sc sp) :
+    ∃ sp', GStar (SLEmpty 0 .flowIn) sp sp' ∧
+           ScannerSurfCorr (foldQuotedNewlinesLoop sc cnt fuel).1 sp' := by
+  induction fuel generalizing sc sp cnt with
+  | zero =>
+    simp [foldQuotedNewlinesLoop]
+    exact ⟨sp, GStar.nil _, hcorr⟩
+  | succ fuel' ih =>
+    unfold foldQuotedNewlinesLoop; dsimp only []
+    obtain ⟨n_sk, sp_sk, h_indent, hcorr_sk⟩ := skipSpaces_corr sc sp hcorr
+    split
+    · rename_i c hpeek; split
+      · rename_i hlb
+        obtain ⟨sp_cn, h_sbreak, hcorr_cn⟩ :=
+          consumeNewline_sbreak_corr (skipSpaces sc) sp_sk c hcorr_sk hpeek hlb
+        have h_gstar_ws := sindent_to_gstar_sswhite h_indent
+        have h_gopt_sep := gstar_sswhite_to_gopt_sep h_gstar_ws
+        have h_flp : SFlowLinePrefix 0 sp sp_sk :=
+          SFlowLinePrefix.mk 0 sp sp sp_sk (SIndent.zero sp) h_gopt_sep
+        have h_lempty : SLEmpty 0 .flowIn sp sp_cn :=
+          SLEmpty.flow 0 sp sp_sk sp_cn .flowIn (Or.inr rfl)
+            (GOpt.some sp sp_sk h_flp) h_sbreak
+        obtain ⟨sp_rest, h_gstar_rest, hcorr_rest⟩ :=
+          ih (consumeNewline (skipSpaces sc)) sp_cn (cnt + 1) hcorr_cn
+        exact ⟨sp_rest,
+               GStar.cons sp sp_cn sp_rest h_lempty h_gstar_rest,
+               hcorr_rest⟩
+      · exact ⟨sp, GStar.nil _, hcorr⟩
+    · exact ⟨sp, GStar.nil _, hcorr⟩
+
+/-! ## §1e Hex escape helpers -/
+
+theorem scanner_hex_to_surface_hex (c : Char)
+    (h : (c.isDigit || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) = true) :
+    isNsHexDigit c := by
+  unfold isNsHexDigit; unfold Char.isDigit at h
+  simp only [Bool.or_eq_true, Bool.and_eq_true, decide_eq_true_eq] at h ⊢
+  rcases h with (⟨h1, h2⟩ | h) | h
+  · left; exact ⟨h1, h2⟩
+  · right; left; exact h
+  · right; right; exact h
+
+theorem hex_char_ne_newline (c : Char)
+    (h : (c.isDigit || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) = true) :
+    c ≠ '\n' := by
+  intro heq; subst heq; simp [Char.isDigit] at h
+
+theorem hex_char_ne_cr (c : Char)
+    (h : (c.isDigit || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) = true) :
+    c ≠ '\r' := by
+  intro heq; subst heq; simp [Char.isDigit] at h
+
+theorem collectHexDigitsLoop_prod (sc : ScannerState) (chars : List Char) (col : Nat)
+    (hex : String) (n : Nat)
+    (hcorr : ScannerSurfCorr sc ⟨chars, col⟩)
+    (hlen : (collectHexDigitsLoop sc hex n).1.length = hex.length + n) :
+    ∃ consumed rest,
+      chars = consumed ++ rest ∧
+      consumed.length = n ∧
+      (∀ c, c ∈ consumed → isNsHexDigit c) ∧
+      ScannerSurfCorr (collectHexDigitsLoop sc hex n).2 ⟨rest, col + n⟩ := by
+  induction n generalizing sc chars col hex with
+  | zero =>
+    simp only [collectHexDigitsLoop] at hlen ⊢
+    exact ⟨[], chars, rfl, rfl, (fun _ h => nomatch h), hcorr⟩
+  | succ n ih =>
+    cases hpeek_eq : sc.peek? with
+    | none =>
+      simp only [collectHexDigitsLoop, hpeek_eq] at hlen; omega
+    | some c =>
+      by_cases hhex : (c.isDigit || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) = true
+      · have hstep : collectHexDigitsLoop sc hex (n + 1) =
+            collectHexDigitsLoop sc.advance (hex.push c) n := by
+          simp only [collectHexDigitsLoop, hpeek_eq, hhex, ite_true]
+        rw [hstep] at hlen ⊢
+        obtain ⟨rest_after, hsp_eq⟩ := peek_some_sp hcorr hpeek_eq
+        obtain ⟨hchars_eq, hcol_eq⟩ : chars = c :: rest_after ∧ col = sc.col := by
+          exact ⟨by injection hsp_eq, by injection hsp_eq⟩
+        subst hchars_eq; subst hcol_eq
+        have hmore := peek_some_has_more hpeek_eq
+        have hcorr_adv := advance_non_newline_corr sc c rest_after hcorr hmore
+          (hex_char_ne_newline c hhex) (hex_char_ne_cr c hhex)
+        have hlen_ih : (collectHexDigitsLoop sc.advance (hex.push c) n).1.length
+            = (hex.push c).length + n := by
+          have : (hex.push c).length = hex.length + 1 := String.length_push c; omega
+        obtain ⟨consumed', rest', hchars', hlen_c', hhex_c', hcorr'⟩ :=
+          ih sc.advance rest_after (sc.col + 1) (hex.push c) hcorr_adv hlen_ih
+        exact ⟨c :: consumed', rest',
+          by simp [hchars'],
+          by simp [hlen_c'],
+          (fun d hd => by cases hd with
+            | head => exact scanner_hex_to_surface_hex c hhex
+            | tail _ hm => exact hhex_c' d hm),
+          by rw [show sc.col + (n + 1) = sc.col + 1 + n from by omega]; exact hcorr'⟩
+      · have hhex_f : (c.isDigit || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) = false :=
+          Bool.not_eq_true _ |>.mp hhex
+        simp [collectHexDigitsLoop, hpeek_eq, hhex_f] at hlen
+
+theorem parseHexEscape_prod (sc : ScannerState) (chars : List Char) (col : Nat)
+    (n : Nat) {ch : Char} {s' : ScannerState}
+    (hcorr : ScannerSurfCorr sc ⟨chars, col⟩)
+    (hok : parseHexEscape sc n = .ok (ch, s')) :
+    ∃ consumed rest,
+      chars = consumed ++ rest ∧
+      consumed.length = n ∧
+      (∀ c, c ∈ consumed → isNsHexDigit c) ∧
+      ScannerSurfCorr s' ⟨rest, col + n⟩ := by
+  unfold parseHexEscape at hok
+  dsimp only [] at hok
+  split at hok
+  · simp at hok
+  · rename_i hlen_ok
+    split at hok
+    · obtain ⟨-, rfl⟩ := hok
+      have hlen : (collectHexDigitsLoop sc "" n).1.length = "".length + n := by
+        simp [bne] at hlen_ok
+        have : ("" : String).length = 0 := rfl; omega
+      exact collectHexDigitsLoop_prod sc chars col "" n hcorr hlen
+    · simp at hok
+
+theorem list_eq_cons {α : Type} {n : Nat} {l : List α} (h : l.length = n + 1) :
+    ∃ a t, l = a :: t ∧ t.length = n := by
+  cases l with | nil => simp at h | cons a t => exact ⟨a, t, rfl, by simpa using h⟩
+
+/-! ## §2 Sub-lemmas -/
+
+-- Abbreviation for the loop result expression
+abbrev loopResult (sc : ScannerState) :=
+  foldQuotedNewlinesLoop (consumeNewline sc) 0 (sc.inputEnd - (consumeNewline sc).offset + 1)
 
 -- When `foldQuotedNewlines` succeeds at a line-break position,
 -- the consumed chars form an `SSDoubleBreak`.
--- **TODO**: prove by decomposing consumeNewline + foldQuotedNewlinesLoop + skipWhitespace
--- into SBBreak + GStar SLEmpty + SFlowLinePrefix
 theorem foldQuotedNewlines_prod (sc : ScannerState) (sp : SurfPos)
+    (c : Char)
     {content : String} {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
+    (hpeek : sc.peek? = some c)
+    (hlb : isLineBreakBool c = true)
     (hfold : foldQuotedNewlines sc = .ok (content, s')) :
     ∃ sp', SSDoubleBreak 0 sp sp' ∧ ScannerSurfCorr s' sp' := by
-  sorry
+  -- Step 1: consumeNewline → SBBreak
+  obtain ⟨sp_cn, h_sbreak, hcorr_cn⟩ :=
+    consumeNewline_sbreak_corr sc sp c hcorr hpeek hlb
+  -- Step 2: foldQuotedNewlinesLoop → GStar (SLEmpty 0 .flowIn)
+  obtain ⟨sp_loop, h_gstar_empty, hcorr_loop⟩ :=
+    foldQuotedNewlinesLoop_prod (consumeNewline sc) sp_cn 0 _ hcorr_cn
+  -- Step 3: skipSpaces on loop result → SIndent
+  obtain ⟨n_sk2, sp_sk2, h_indent2, hcorr_sk2⟩ :=
+    skipSpaces_corr (loopResult sc).1 sp_loop hcorr_loop
+  -- Unfold to trace through the do-notation
+  unfold foldQuotedNewlines at hfold; dsimp only [] at hfold
+  split at hfold
+  · -- tab check branch
+    split at hfold
+    · simp only [bind, Except.bind] at hfold; simp at hfold
+    · obtain ⟨sp_ws, h_gstar_ws, hcorr_ws⟩ :=
+        skipWhitespace_corr _ sp_sk2 hcorr_sk2
+      have h_all_ws := gstar_sswhite_append
+        (sindent_to_gstar_sswhite h_indent2) h_gstar_ws
+      have h_gopt := gstar_sswhite_to_gopt_sep h_all_ws
+      have h_flp : SFlowLinePrefix 0 sp_loop sp_ws :=
+        SFlowLinePrefix.mk 0 sp_loop sp_loop sp_ws (SIndent.zero sp_loop) h_gopt
+      have h_break : SSDoubleBreak 0 sp sp_ws :=
+        SSDoubleBreak.flowFold 0 sp sp_cn sp_loop sp_ws
+          h_sbreak h_gstar_empty h_flp
+      split at hfold
+      · have hinj := Except.ok.inj hfold
+        obtain ⟨_, rfl⟩ := Prod.mk.inj hinj
+        exact ⟨sp_ws, h_break, hcorr_ws⟩
+      · have hinj := Except.ok.inj hfold
+        obtain ⟨_, rfl⟩ := Prod.mk.inj hinj
+        exact ⟨sp_ws, h_break, hcorr_ws⟩
+  · -- no tab check branch
+    obtain ⟨sp_ws, h_gstar_ws, hcorr_ws⟩ :=
+      skipWhitespace_corr _ sp_sk2 hcorr_sk2
+    have h_all_ws := gstar_sswhite_append
+      (sindent_to_gstar_sswhite h_indent2) h_gstar_ws
+    have h_gopt := gstar_sswhite_to_gopt_sep h_all_ws
+    have h_flp : SFlowLinePrefix 0 sp_loop sp_ws :=
+      SFlowLinePrefix.mk 0 sp_loop sp_loop sp_ws (SIndent.zero sp_loop) h_gopt
+    have h_break : SSDoubleBreak 0 sp sp_ws :=
+      SSDoubleBreak.flowFold 0 sp sp_cn sp_loop sp_ws
+        h_sbreak h_gstar_empty h_flp
+    split at hfold
+    · have hinj := Except.ok.inj hfold
+      obtain ⟨_, rfl⟩ := Prod.mk.inj hinj
+      exact ⟨sp_ws, h_break, hcorr_ws⟩
+    · have hinj := Except.ok.inj hfold
+      obtain ⟨_, rfl⟩ := Prod.mk.inj hinj
+      exact ⟨sp_ws, h_break, hcorr_ws⟩
 
 -- When `processEscape` succeeds, the `\` + escape chars form a valid `SNbDoubleChar`
 -- starting from `⟨'\\' :: rest, col⟩`.
--- **TODO**: prove by case analysis on escape type (named / hex2 / hex4 / hex8)
 theorem processEscape_prod (sc_bs : ScannerState) (rest : List Char) (col : Nat)
     {ch : Char} {s' : ScannerState}
     (hcorr_bs : ScannerSurfCorr sc_bs ⟨rest, col + 1⟩)
     (hproc : processEscape sc_bs = .ok (ch, s')) :
     ∃ sp', SNbDoubleChar ⟨'\\' :: rest, col⟩ sp' ∧ ScannerSurfCorr s' sp' := by
-  sorry
+  unfold processEscape at hproc
+  split at hproc
+  · simp at hproc
+  · rename_i c_esc hpeek
+    obtain ⟨rest_tail, hsp_eq⟩ := peek_some_sp hcorr_bs hpeek
+    injection hsp_eq with h_rest h_col
+    subst h_rest
+    have h_col_eq : sc_bs.col = col + 1 := h_col.symm
+    have hcorr_sc : ScannerSurfCorr sc_bs ⟨c_esc :: rest_tail, sc_bs.col⟩ := by
+      rw [h_col_eq]; exact hcorr_bs
+    have hmore := peek_some_has_more hpeek
+    dsimp only [] at hproc
+    split at hproc <;> (first
+      | (obtain ⟨-, rfl⟩ := hproc; try subst_vars
+         have ha := advance_non_newline_corr sc_bs _ rest_tail hcorr_sc hmore (by decide) (by decide)
+         rw [h_col_eq] at ha
+         exact ⟨⟨rest_tail, col + 2⟩,
+                SNbDoubleChar.escape _ rest_tail col (by decide),
+                ha⟩)
+      | skip)
+    · -- 'x': hex escape (n=2)
+      try subst_vars
+      have ha := advance_non_newline_corr sc_bs 'x' rest_tail hcorr_sc hmore (by decide) (by decide)
+      rw [h_col_eq] at ha
+      obtain ⟨consumed, rest_hex, hchars_hex, hlen_c, hhex_all, hcorr_hex⟩ :=
+        parseHexEscape_prod sc_bs.advance rest_tail (col + 2) 2 ha hproc
+      obtain ⟨h1, tl1, rfl, htl1⟩ := list_eq_cons hlen_c
+      obtain ⟨h2, tl2, rfl, htl2⟩ := list_eq_cons htl1
+      cases tl2 with | cons => simp at htl2 | nil =>
+      simp only [List.cons_append, List.nil_append] at hchars_hex
+      subst hchars_hex
+      exact ⟨⟨rest_hex, col + 4⟩,
+             SNbDoubleChar.hexEscape2 rest_hex col h1 h2
+               (hhex_all h1 (by simp)) (hhex_all h2 (by simp)),
+             hcorr_hex⟩
+    · -- 'u': hex escape (n=4)
+      try subst_vars
+      have ha := advance_non_newline_corr sc_bs 'u' rest_tail hcorr_sc hmore (by decide) (by decide)
+      rw [h_col_eq] at ha
+      obtain ⟨consumed, rest_hex, hchars_hex, hlen_c, hhex_all, hcorr_hex⟩ :=
+        parseHexEscape_prod sc_bs.advance rest_tail (col + 2) 4 ha hproc
+      obtain ⟨h1, tl4, rfl, htl4⟩ := list_eq_cons hlen_c
+      obtain ⟨h2, tl3, rfl, htl3⟩ := list_eq_cons htl4
+      obtain ⟨h3, tl2, rfl, htl2⟩ := list_eq_cons htl3
+      obtain ⟨h4, tl1, rfl, htl1⟩ := list_eq_cons htl2
+      cases tl1 with | cons => simp at htl1 | nil =>
+      simp only [List.cons_append, List.nil_append] at hchars_hex
+      subst hchars_hex
+      exact ⟨⟨rest_hex, col + 6⟩,
+             SNbDoubleChar.hexEscape4 rest_hex col h1 h2 h3 h4
+               (hhex_all h1 (by simp)) (hhex_all h2 (by simp))
+               (hhex_all h3 (by simp)) (hhex_all h4 (by simp)),
+             hcorr_hex⟩
+    · -- 'U': hex escape (n=8)
+      try subst_vars
+      have ha := advance_non_newline_corr sc_bs 'U' rest_tail hcorr_sc hmore (by decide) (by decide)
+      rw [h_col_eq] at ha
+      obtain ⟨consumed, rest_hex, hchars_hex, hlen_c, hhex_all, hcorr_hex⟩ :=
+        parseHexEscape_prod sc_bs.advance rest_tail (col + 2) 8 ha hproc
+      obtain ⟨h1, tl8, rfl, htl8⟩ := list_eq_cons hlen_c
+      obtain ⟨h2, tl7, rfl, htl7⟩ := list_eq_cons htl8
+      obtain ⟨h3, tl6, rfl, htl6⟩ := list_eq_cons htl7
+      obtain ⟨h4, tl5, rfl, htl5⟩ := list_eq_cons htl6
+      obtain ⟨h5, tl4, rfl, htl4⟩ := list_eq_cons htl5
+      obtain ⟨h6, tl3, rfl, htl3⟩ := list_eq_cons htl4
+      obtain ⟨h7, tl2, rfl, htl2⟩ := list_eq_cons htl3
+      obtain ⟨h8, tl1, rfl, htl1⟩ := list_eq_cons htl2
+      cases tl1 with | cons => simp at htl1 | nil =>
+      simp only [List.cons_append, List.nil_append] at hchars_hex
+      subst hchars_hex
+      exact ⟨⟨rest_hex, col + 10⟩,
+             SNbDoubleChar.hexEscape8 rest_hex col h1 h2 h3 h4 h5 h6 h7 h8
+               (hhex_all h1 (by simp)) (hhex_all h2 (by simp))
+               (hhex_all h3 (by simp)) (hhex_all h4 (by simp))
+               (hhex_all h5 (by simp)) (hhex_all h6 (by simp))
+               (hhex_all h7 (by simp)) (hhex_all h8 (by simp)),
+             hcorr_hex⟩
+    · simp at hproc
 
 /-! ## §3 Double-Quoted Scalar -/
 
@@ -121,28 +446,45 @@ theorem collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
              SNbDoubleMultiLine.single 0 _ _ (GStar.nil _),
              GLit.mk rest sc.col,
              advance_non_newline_corr sc '"' rest hcorr
-               (peek_some_has_more hpeek) (by decide)⟩
+               (peek_some_has_more hpeek) (by decide) (by decide)⟩
     · -- peek? = some '\\': escape sequence
       rename_i _ hpeek
       obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
       subst hsp_eq
       have hcorr_adv :=
         advance_non_newline_corr sc '\\' rest hcorr
-          (peek_some_has_more hpeek) (by decide)
+          (peek_some_has_more hpeek) (by decide) (by decide)
       dsimp only [] at hok
       split at hok
       · -- next peek = some c2
         rename_i c2 hpeek2
         split at hok
         · -- isLineBreakBool c2: escaped newline → multiline break
-          obtain ⟨sp_cn, hcorr_cn⟩ :=
-            consumeNewline_unconditional_corr sc.advance ⟨rest, sc.col + 1⟩ hcorr_adv
-          obtain ⟨sp_ws, _, hcorr_ws⟩ :=
+          rename_i hlb2
+          obtain ⟨sp_cn, h_break_nl, hcorr_cn⟩ :=
+            consumeNewline_sbreak_corr sc.advance ⟨rest, sc.col + 1⟩ c2 hcorr_adv hpeek2 hlb2
+          obtain ⟨sp_ws, h_gstar_ws, hcorr_ws⟩ :=
             skipWhitespace_corr (consumeNewline sc.advance) sp_cn hcorr_cn
           obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
             ih _ sp_ws content hcorr_ws hok
-          -- Need SSDoubleBreak.escaped from ⟨'\\' :: rest, sc.col⟩ to sp_ws
-          sorry -- constructing SSDoubleBreak.escaped (deferred)
+          -- Build SSDoubleEscaped: no leading ws, backslash, linebreak, no empty lines, flow prefix
+          have h_gopt := gstar_sswhite_to_gopt_sep h_gstar_ws
+          have h_flp : SFlowLinePrefix 0 sp_cn sp_ws :=
+            SFlowLinePrefix.mk 0 sp_cn sp_cn sp_ws (SIndent.zero sp_cn) h_gopt
+          have h_escaped : SSDoubleEscaped 0 ⟨'\\' :: rest, sc.col⟩ sp_ws :=
+            SSDoubleEscaped.mk 0
+              ⟨'\\' :: rest, sc.col⟩ ⟨'\\' :: rest, sc.col⟩
+              ⟨rest, sc.col + 1⟩ sp_cn sp_cn sp_ws
+              (GStar.nil _) (GLit.mk rest sc.col) h_break_nl
+              (GStar.nil sp_cn) h_flp
+          exact ⟨sp_body, sp_close,
+                 SNbDoubleMultiLine.multi 0
+                   ⟨'\\' :: rest, sc.col⟩ ⟨'\\' :: rest, sc.col⟩
+                   sp_ws ⟨[], 0⟩ sp_body
+                   (GStar.nil _)
+                   (SSDoubleBreak.escaped 0 _ _ h_escaped)
+                   h_body,
+                 h_glit, h_corr⟩
         · -- not line break: processEscape → SNbDoubleChar
           simp only [bind, Except.bind] at hok
           split at hok
@@ -163,12 +505,13 @@ theorem collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
       have hmore := peek_some_has_more hpeek
       split at hok
       · -- isLineBreakBool c: fold newlines → SNbDoubleMultiLine.multi
+        rename_i hlb
         simp only [bind, Except.bind] at hok
         split at hok
         · exact absurd hok (by simp)  -- fold error
         · rename_i fold_result hfold
           obtain ⟨sp_fold, h_break, hcorr_fold⟩ :=
-            foldQuotedNewlines_prod sc ⟨c :: rest, sc.col⟩ hcorr hfold
+            foldQuotedNewlines_prod sc ⟨c :: rest, sc.col⟩ c hcorr hpeek hlb hfold
           split at hok  -- doc marker guard
           · simp at hok
           · split at hok  -- underIndented guard
@@ -189,8 +532,9 @@ theorem collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
         · -- valid char: advance + recurse
           rename_i hne_lb hne_ctrl
           have h_not_nl : c ≠ '\n' := not_isLineBreak_not_newline c hne_lb
+          have h_not_cr : c ≠ '\r' := not_isLineBreak_not_cr c hne_lb
           have hcorr_adv :=
-            advance_non_newline_corr sc c rest hcorr hmore h_not_nl
+            advance_non_newline_corr sc c rest hcorr hmore h_not_nl h_not_cr
           obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
             ih sc.advance ⟨rest, sc.col + 1⟩ _ hcorr_adv hok
           have h_dq_char : SNbDoubleChar ⟨c :: rest, sc.col⟩ ⟨rest, sc.col + 1⟩ :=
@@ -215,7 +559,7 @@ theorem scanDoubleQuoted_prod (sc : ScannerState) (sp : SurfPos)
   subst hsp_eq
   have hmore := peek_some_has_more hpeek_dq
   have hcorr_adv :=
-    advance_non_newline_corr sc '"' rest hcorr hmore (by decide)
+    advance_non_newline_corr sc '"' rest hcorr hmore (by decide) (by decide)
   -- Loop: collectDoubleQuotedLoop
   split at hok
   · simp at hok  -- loop error

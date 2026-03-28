@@ -47,9 +47,12 @@ open Lean4Yaml.Proofs.ScannerLoopInvariant
 
 /-! ## §1  consumeNewline — Field Preservation (universal)
 
-`consumeNewline` matches on `peek?` and applies 1–2 `advance` calls
-plus `{ s with needIndentCheck := true }`.  The `with` record update
-only modifies `needIndentCheck`, preserving all `WellFormed` fields.
+`consumeNewline` matches on `peek?` and applies `advance` for the
+line break character, plus `{ s with needIndentCheck := true }`.
+For CRLF, the `\r` is handled by `advance` (which counts the line),
+and the `\n` is consumed by a raw offset skip (to avoid double-counting).
+The `with` record update only modifies `needIndentCheck` (and `offset`
+for CRLF), preserving all `WellFormed` fields.
 
 Structure:
 ```
@@ -58,7 +61,9 @@ match s.peek? with
 | some '\r' =>
     let s' := s.advance
     match s'.peek? with
-    | some '\n' => { s'.advance with needIndentCheck := true }
+    | some '\n' =>
+      { s' with offset := (String.Pos.Raw.next s'.input ⟨s'.offset⟩).byteIdx,
+        needIndentCheck := true }
     | _ => { s' with needIndentCheck := true }
 | _ => s
 ```
@@ -74,8 +79,8 @@ theorem consumeNewline_preserves_indents (s : ScannerState) :
   · -- some '\r' => let s' := s.advance; match s'.peek? with ...
     dsimp only []
     split
-    · -- s.advance.peek? = some '\n'
-      rw [advance_indents, advance_indents]
+    · -- s.advance.peek? = some '\n' (CRLF: raw offset skip preserves indents)
+      exact advance_indents s
     · -- _ => { s.advance with needIndentCheck := true }
       exact advance_indents s
   · -- _ => s
@@ -89,7 +94,8 @@ theorem consumeNewline_preserves_flowLevel (s : ScannerState) :
   · exact advance_flowLevel s
   · dsimp only []
     split
-    · rw [advance_flowLevel, advance_flowLevel]
+    · -- CRLF: raw offset skip preserves flowLevel
+      exact advance_flowLevel s
     · exact advance_flowLevel s
   · rfl
 
@@ -101,7 +107,8 @@ theorem consumeNewline_preserves_flowStack (s : ScannerState) :
   · exact advance_flowStack s
   · dsimp only []
     split
-    · rw [advance_flowStack, advance_flowStack]
+    · -- CRLF: raw offset skip preserves flowStack
+      exact advance_flowStack s
     · exact advance_flowStack s
   · rfl
 
@@ -113,7 +120,8 @@ theorem consumeNewline_preserves_simpleKeyStack (s : ScannerState) :
   · exact advance_simpleKeyStack s
   · dsimp only []
     split
-    · rw [advance_simpleKeyStack, advance_simpleKeyStack]
+    · -- CRLF: raw offset skip preserves simpleKeyStack
+      exact advance_simpleKeyStack s
     · exact advance_simpleKeyStack s
   · rfl
 
@@ -125,7 +133,8 @@ theorem consumeNewline_preserves_inputEnd (s : ScannerState) :
   · exact advance_inputEnd s
   · dsimp only []
     split
-    · rw [advance_inputEnd, advance_inputEnd]
+    · -- CRLF: raw offset skip preserves inputEnd
+      exact advance_inputEnd s
     · exact advance_inputEnd s
   · rfl
 
@@ -137,7 +146,8 @@ theorem consumeNewline_preserves_input (s : ScannerState) :
   · exact advance_input s
   · dsimp only []
     split
-    · rw [advance_input, advance_input]
+    · -- CRLF: raw offset skip preserves input
+      exact advance_input s
     · exact advance_input s
   · rfl
 
@@ -171,4 +181,3 @@ Verify the *behavior* of the whitespace functions, not just WellFormed.
 
 
 end Lean4Yaml.Proofs.ScannerWhitespace
-

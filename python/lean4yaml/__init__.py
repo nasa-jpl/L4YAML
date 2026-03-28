@@ -35,6 +35,7 @@ __all__: list[str] = [
     "ParseError",
     "LimitError",
     "ConfigError",
+    "compat",
 ]
 
 # ── Preset mapping ───────────────────────────────────────────────────

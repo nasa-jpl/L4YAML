@@ -126,7 +126,9 @@ theorem advance_preserves_flowLevel (s : ScannerState) :
   unfold ScannerState.advance
   split
   · simp only []
-    split <;> rfl
+    split
+    · rfl
+    · split <;> rfl
   · rfl
 
 /-- Helper: `advance` preserves flowStack. -/
@@ -135,7 +137,9 @@ theorem advance_preserves_flowStack (s : ScannerState) :
   unfold ScannerState.advance
   split
   · simp only []
-    split <;> rfl
+    split
+    · rfl
+    · split <;> rfl
   · rfl
 
 /-- Helper: `emit` preserves simpleKeyStack. -/
@@ -150,7 +154,9 @@ theorem advance_preserves_simpleKeyStack (s : ScannerState) :
   unfold ScannerState.advance
   split
   · simp only []
-    split <;> rfl
+    split
+    · rfl
+    · split <;> rfl
   · rfl
 
 /-- `scanFlowSequenceStart` increments `flowLevel` by exactly 1. -/

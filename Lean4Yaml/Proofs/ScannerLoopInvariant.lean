@@ -181,42 +181,54 @@ theorem advance_indents (s : ScannerState) :
     s.advance.indents = s.indents := by
   unfold ScannerState.advance
   split <;> simp_all
-  split <;> rfl
+  split
+  · rfl
+  · split <;> rfl
 
 /-- `advance` preserves the `flowLevel` field. -/
 theorem advance_flowLevel (s : ScannerState) :
     s.advance.flowLevel = s.flowLevel := by
   unfold ScannerState.advance
   split <;> simp_all
-  split <;> rfl
+  split
+  · rfl
+  · split <;> rfl
 
 /-- `advance` preserves the `flowStack` field. -/
 theorem advance_flowStack (s : ScannerState) :
     s.advance.flowStack = s.flowStack := by
   unfold ScannerState.advance
   split <;> simp_all
-  split <;> rfl
+  split
+  · rfl
+  · split <;> rfl
 
 /-- `advance` preserves the `simpleKeyStack` field. -/
 theorem advance_simpleKeyStack (s : ScannerState) :
     s.advance.simpleKeyStack = s.simpleKeyStack := by
   unfold ScannerState.advance
   split <;> simp_all
-  split <;> rfl
+  split
+  · rfl
+  · split <;> rfl
 
 /-- `advance` preserves the `inputEnd` field. -/
 theorem advance_inputEnd (s : ScannerState) :
     s.advance.inputEnd = s.inputEnd := by
   unfold ScannerState.advance
   split <;> simp_all
-  split <;> rfl
+  split
+  · rfl
+  · split <;> rfl
 
 /-- `advance` preserves the `input` field. -/
 theorem advance_input (s : ScannerState) :
     s.advance.input = s.input := by
   unfold ScannerState.advance
   split <;> simp_all
-  split <;> rfl
+  split
+  · rfl
+  · split <;> rfl
 
 /-- When the scanner has more input and the offset is at a valid UTF-8
     position, `advance` keeps the offset within bounds.
@@ -238,7 +250,7 @@ theorem advance_offset_le (s : ScannerState)
     dsimp only []
     split
     · rw [hend]; omega
-    · rw [hend]; omega
+    · split <;> (rw [hend]; omega)
   case isFalse _ =>
     -- offset ≥ inputEnd, advance is identity
     exact hwf

@@ -110,7 +110,10 @@ open Lean4Yaml.Proofs.ScannerLoopInvariant
     from `ScannerLoopInvariant`. -/
 theorem advance_tokens (s : ScannerState) :
     s.advance.tokens = s.tokens := by
-  unfold ScannerState.advance; split <;> simp_all; split <;> rfl
+  unfold ScannerState.advance; split <;> simp_all
+  split
+  · rfl
+  · split <;> rfl
 
 /-! ## Token count: each flow function adds exactly one token -/
 
@@ -148,7 +151,9 @@ theorem advance_preserves_flowLevel (s : ScannerState) :
   unfold ScannerState.advance
   split
   · simp only []
-    split <;> rfl
+    split
+    · rfl
+    · split <;> rfl
   · rfl
 
 /-- When `flowLevel > 0`, `scanFlowSequenceEnd` decrements it by 1. -/
@@ -179,7 +184,9 @@ theorem advance_preserves_flowStack (s : ScannerState) :
   unfold ScannerState.advance
   split
   · simp only []
-    split <;> rfl
+    split
+    · rfl
+    · split <;> rfl
   · rfl
 
 /-- `scanFlowSequenceEnd` preserves `flowLevel = flowStack.size` when `flowLevel > 0`. -/
@@ -264,4 +271,3 @@ theorem scanFlowEntry_tokens_size (s : ScannerState) (s' : ScannerState)
 
 
 end Lean4Yaml.Proofs.ScannerFlowCollection
-

@@ -11,7 +11,7 @@ that must be freed independently.
 from __future__ import annotations
 
 import ctypes
-from typing import Iterator
+from typing import Any, Iterator
 
 from lean4yaml import _ffi
 from lean4yaml.exceptions import Lean4YamlError
@@ -243,6 +243,17 @@ class YamlValue:
 
     def __hash__(self) -> int:
         return hash(repr(self))
+
+    def to_python(self) -> Any:
+        """Recursively convert to native Python objects.
+
+        Scalars are coerced per the YAML 1.2 Core Schema:
+        ``int``, ``float``, ``bool``, ``None``, or ``str``.
+        Sequences become ``list``, mappings become ``dict``.
+        """
+        from lean4yaml.compat import to_python
+
+        return to_python(self)
 
 
 class YamlDocument:

@@ -78,7 +78,9 @@ theorem advance_peek_eq_peekAt_one (s : ScannerState) (c : Char)
   split at h
   · rename_i hlt
     simp only [hlt, ↓reduceIte]
-    split <;> (unfold ScannerState.peekAt?Loop; simp_all)
+    split
+    · unfold ScannerState.peekAt?Loop; simp_all
+    · split <;> (unfold ScannerState.peekAt?Loop; simp_all)
   · contradiction
 
 /-- When `_terminates?` returns `none` and `c = ':'`, the next char (`peekAt? 1`)

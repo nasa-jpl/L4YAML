@@ -99,7 +99,7 @@ theorem skipSpacesLoop_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
         simp only [] at hchars hcol
         subst hchars; subst hcol; rfl
       subst hsp_eq
-      have hadv := advance_non_newline_corr sc ' ' rest hcorr hmore (by decide)
+      have hadv := advance_non_newline_corr sc ' ' rest hcorr hmore (by decide) (by decide)
       have hfuel' := advance_fuel_budget sc fuel' hmore hfuel
       obtain ⟨n, sp', hindent, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv hfuel'
       exact ⟨n + 1, sp', SIndent.succ n rest sc.col sp' hindent, hcorr'⟩
@@ -173,19 +173,17 @@ theorem consumeNewline_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
       (advance_newline_corr sc rest hcorr hmore)⟩
   · -- c = '\r': dispatch on next character
     simp only [hpeek]
-    have hadv := advance_non_newline_corr sc '\r' rest hcorr hmore (by decide)
+    have hadv := advance_cr_corr sc rest hcorr hmore
     split
-    · -- sc.advance.peek? = some '\n' (CRLF)
+    · -- sc.advance.peek? = some '\n' (CRLF): raw offset skip
       rename_i hpeek2
       have hmore2 := peek_some_hasMore sc.advance '\n' hpeek2
-      obtain ⟨rest2, hchars2⟩ := peek_some_chars sc.advance ⟨rest, sc.col + 1⟩ '\n' hadv hpeek2
+      obtain ⟨rest2, hchars2⟩ := peek_some_chars sc.advance ⟨rest, 0⟩ '\n' hadv hpeek2
       subst hchars2
-      have hadv' : ScannerSurfCorr sc.advance ⟨'\n' :: rest2, sc.advance.col⟩ :=
-        ⟨hadv.chars_from, rfl, hadv.end_eq⟩
-      exact ⟨⟨rest2, 0⟩, corr_of_needIndentCheck_update true
-        (advance_newline_corr sc.advance rest2 hadv' hmore2)⟩
+      have hskip := skip_byte_corr sc.advance '\n' rest2 0 hadv hmore2
+      exact ⟨⟨rest2, 0⟩, corr_of_needIndentCheck_update true hskip⟩
     · -- lone '\r' (or end of input): returns { sc.advance with needIndentCheck := true }
-      exact ⟨⟨rest, sc.col + 1⟩, corr_of_needIndentCheck_update true hadv⟩
+      exact ⟨⟨rest, 0⟩, corr_of_needIndentCheck_update true hadv⟩
 
 /-! ## §4 skipWhitespaceLoop Coupling -/
 
@@ -217,7 +215,8 @@ theorem skipWhitespaceLoop_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
           subst hchars; subst hcol; rfl
         subst hsp_eq
         have hnl := isWhiteSpace_not_newline c hws
-        have hadv := advance_non_newline_corr sc c rest hcorr hmore hnl
+        have hcr := isWhiteSpace_not_cr c hws
+        have hadv := advance_non_newline_corr sc c rest hcorr hmore hnl hcr
         have hfuel' := advance_fuel_budget sc fuel' hmore hfuel
         obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv hfuel'
         exact ⟨sp', GStar.cons _ _ _ (isWhiteSpace_gives_SSWhite c rest sc.col hws) hstar, hcorr'⟩
@@ -264,7 +263,8 @@ theorem skipToEndOfLineLoop_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
           subst hchars; subst hcol; rfl
         subst hsp_eq
         have hnl := not_isLineBreak_not_newline c hnlb
-        have hadv := advance_non_newline_corr sc c rest hcorr hmore hnl
+        have hcr := not_isLineBreak_not_cr c hnlb
+        have hadv := advance_non_newline_corr sc c rest hcorr hmore hnl hcr
         have hfuel' := advance_fuel_budget sc fuel' hmore hfuel
         obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv hfuel'
         exact ⟨sp', GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar c rest sc.col hnlb) hstar, hcorr'⟩
@@ -312,7 +312,8 @@ theorem collectCommentTextLoop_corr (sc : ScannerState) (sp : SurfPos)
           subst hchars; subst hcol; rfl
         subst hsp_eq
         have hnl := not_isLineBreak_not_newline c hnlb
-        have hadv := advance_non_newline_corr sc c rest hcorr hmore hnl
+        have hcr := not_isLineBreak_not_cr c hnlb
+        have hadv := advance_non_newline_corr sc c rest hcorr hmore hnl hcr
         have hfuel' := advance_fuel_budget sc fuel' hmore hfuel
         obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ (text.push c) hadv hfuel'
         exact ⟨sp', GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar c rest sc.col hnlb) hstar, hcorr'⟩
@@ -353,7 +354,7 @@ theorem skipToContentComment_corr (sc : ScannerState) (sp : SurfPos)
           simp only [] at hchars hcol
           subst hchars; subst hcol; rfl
         subst hsp_eq
-        have hadv := advance_non_newline_corr sc '#' rest hcorr hmore (by decide)
+        have hadv := advance_non_newline_corr sc '#' rest hcorr hmore (by decide) (by decide)
         have hfuel : sc.advance.inputEnd - sc.advance.offset ≥
                      sc.advance.inputEnd - sc.advance.offset := Nat.le_refl _
         obtain ⟨sp', hstar, hcorr'⟩ :=
@@ -374,7 +375,7 @@ theorem skipToContentComment_corr (sc : ScannerState) (sp : SurfPos)
           simp only [] at hchars hcol
           subst hchars; subst hcol; rfl
         subst hsp_eq
-        have hadv := advance_non_newline_corr sc '#' rest hcorr hmore (by decide)
+        have hadv := advance_non_newline_corr sc '#' rest hcorr hmore (by decide) (by decide)
         have hfuel : sc.advance.inputEnd - sc.advance.offset ≥
                      sc.advance.inputEnd - sc.advance.offset := Nat.le_refl _
         obtain ⟨sp', hstar, hcorr'⟩ :=
@@ -587,13 +588,8 @@ theorem consumeNewline_offset_advance (sc : ScannerState) (c : Char)
     · have h1 : sc.advance.offset > sc.offset := by
         rw [advance_offset_eq sc hmore]; exact raw_next_gt _ _
       split
-      · -- CRLF: advance twice
-        rename_i hpeek2
-        have hmore2 : sc.advance.offset < sc.advance.inputEnd :=
-          peek_some_hasMore sc.advance '\n' hpeek2
-        have h2 : sc.advance.advance.offset > sc.advance.offset := by
-          rw [advance_offset_eq sc.advance hmore2]; exact raw_next_gt _ _
-        show sc.advance.advance.offset > sc.offset; omega
+      · -- CRLF: advance + raw offset skip
+        exact Nat.lt_trans h1 (raw_next_gt sc.advance.input sc.advance.offset)
       · -- lone CR: advance once
         exact h1
     · split

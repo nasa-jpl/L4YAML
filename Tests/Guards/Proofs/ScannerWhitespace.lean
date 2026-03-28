@@ -197,14 +197,41 @@ open Lean4Yaml.Proofs.ScannerLoopInvariant
 #guard (skipToEndOfLine (ScannerState.mk' "\nabc")).col == 0
 #guard (skipToEndOfLine (ScannerState.mk' "abcdef")).col == 6
 
--- consumeNewline line tracking
+-- consumeNewline line tracking (YAML §5.4 [28]: \n, \r\n, \r are all line terminators)
+-- LF: line+1, col=0
 #guard (consumeNewline (ScannerState.mk' "\nabc")).line == 1
 #guard (consumeNewline (ScannerState.mk' "\nabc")).col == 0
+-- CRLF: line+1 (not +2), col=0
 #guard (consumeNewline (ScannerState.mk' "\r\nabc")).line == 1
 #guard (consumeNewline (ScannerState.mk' "\r\nabc")).col == 0
-#guard (consumeNewline (ScannerState.mk' "\rabc")).line == 0  -- CR alone: advance doesn't bump line
+-- Lone CR: line+1, col=0 (per YAML §5.4 [28])
+#guard (consumeNewline (ScannerState.mk' "\rabc")).line == 1
+#guard (consumeNewline (ScannerState.mk' "\rabc")).col == 0
+-- Non-newline: identity
 #guard (consumeNewline (ScannerState.mk' "abc")).line == 0
 #guard (consumeNewline (ScannerState.mk' "abc")).col == 0
+
+-- Advance line/col tracking for each line break form
+-- `advance` on \n → line+1, col=0
+#guard (ScannerState.mk' "\nabc").advance.line == 1
+#guard (ScannerState.mk' "\nabc").advance.col == 0
+-- `advance` on \r → line+1, col=0
+#guard (ScannerState.mk' "\rabc").advance.line == 1
+#guard (ScannerState.mk' "\rabc").advance.col == 0
+-- `advance` on regular char → line=0, col+1
+#guard (ScannerState.mk' "abc").advance.line == 0
+#guard (ScannerState.mk' "abc").advance.col == 1
+
+-- After all three break forms, 'b' is at line=1 col=0 → advance to col=1
+-- "a\nb": advance past 'a' → (0,1), advance past '\n' → (1,0), advance past 'b' → (1,1)
+#guard (ScannerState.mk' "a\nb").advance.advance.line == 1
+#guard (ScannerState.mk' "a\nb").advance.advance.col == 0
+-- "a\r\nb": advance past 'a' → (0,1), advance past '\r' → (1,0), skip '\n' via consumeNewline
+#guard (consumeNewline (ScannerState.mk' "a\r\nb").advance).line == 1
+#guard (consumeNewline (ScannerState.mk' "a\r\nb").advance).col == 0
+-- "a\rb": advance past 'a' → (0,1), advance past '\r' → (1,0)
+#guard (ScannerState.mk' "a\rb").advance.advance.line == 1
+#guard (ScannerState.mk' "a\rb").advance.advance.col == 0
 
 -- advanceN position tracking
 #guard ((ScannerState.mk' "abcdef").advanceN 3).col == 3
