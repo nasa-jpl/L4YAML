@@ -211,11 +211,13 @@ def resolveNamedEscape : Char → Option Char
   | '"'  => some '"'      -- [53] ns-esc-double-quote
   | '/'  => some '/'      -- [54] ns-esc-slash
   | '\\' => some '\\'     -- [55] ns-esc-backslash
-  | 'N'  => some '\x85'   -- [56] ns-esc-next-line
-  | '_'  => some '\xa0'   -- [57] ns-esc-non-breaking-space
-  | 'x'  => none          -- [58] ns-esc-8-bit (hex, not named)
-  | 'u'  => none          -- [59] ns-esc-16-bit (hex, not named)
-  | 'U'  => none          -- [60] ns-esc-32-bit (hex, not named)
+  | 'N'  => some '\x85'   -- [55] ns-esc-next-line
+  | '_'  => some '\xa0'   -- [56] ns-esc-non-breaking-space
+  | 'L'  => some (Char.ofNat 0x2028) -- [57] ns-esc-line-separator
+  | 'P'  => some (Char.ofNat 0x2029) -- [58] ns-esc-paragraph-separator
+  | 'x'  => none          -- [59] ns-esc-8-bit (hex, not named)
+  | 'u'  => none          -- [60] ns-esc-16-bit (hex, not named)
+  | 'U'  => none          -- [61] ns-esc-32-bit (hex, not named)
   | _    => none           -- unknown escape
 
 /-- The set of named escape input characters (§5.7 Table 5.13). -/

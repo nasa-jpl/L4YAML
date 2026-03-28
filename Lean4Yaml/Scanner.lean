@@ -260,12 +260,15 @@ def ScannerState.peekBack? (s : ScannerState) : Option Char :=
     none
 
 /-- Advance past the current character, updating offset/line/col.
-    Newlines (`\n`) reset col to 0 and increment line. -/
+    Line breaks (`\n` and `\r`) reset col to 0 and increment line.
+    Per YAML spec §5.4 [28], both CR and LF are line terminators. -/
 def ScannerState.advance (s : ScannerState) : ScannerState :=
   if s.offset < s.inputEnd then
     let c := String.Pos.Raw.get s.input ⟨s.offset⟩
     let nextPos := String.Pos.Raw.next s.input ⟨s.offset⟩
     if c == '\n' then
+      { s with offset := nextPos.byteIdx, line := s.line + 1, col := 0 }
+    else if c == '\r' then
       { s with offset := nextPos.byteIdx, line := s.line + 1, col := 0 }
     else
       { s with offset := nextPos.byteIdx, col := s.col + 1 }
@@ -412,7 +415,9 @@ def skipToEndOfLine (s : ScannerState) : ScannerState :=
   skipToEndOfLineLoop s (s.inputEnd - s.offset)
 
 /-- Consume a newline (LF, CR, or CRLF), setting `needIndentCheck := true`
-    so the next `scanNextToken` processes indentation. -/
+    so the next `scanNextToken` processes indentation.
+    For CRLF, the `\r` advance handles line counting; the `\n` byte is
+    skipped by raw offset increment to avoid double-counting the line. -/
 @[yaml_spec "5.4" 28 "b-break",
   yaml_spec "5.4" 29 "b-as-line-feed"]
 def consumeNewline (s : ScannerState) : ScannerState :=
@@ -421,7 +426,12 @@ def consumeNewline (s : ScannerState) : ScannerState :=
   | some '\r' =>
     let s' := s.advance
     match s'.peek? with
-    | some '\n' => { s'.advance with needIndentCheck := true }
+    | some '\n' =>
+      -- CRLF: skip the \n byte without calling advance (which would
+      -- double-count the line, since \r already incremented it).
+      { s' with
+        offset := (String.Pos.Raw.next s'.input ⟨s'.offset⟩).byteIdx,
+        needIndentCheck := true }
     | _ => { s' with needIndentCheck := true }
   | _ => s
 

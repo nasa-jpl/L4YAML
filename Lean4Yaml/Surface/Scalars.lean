@@ -57,13 +57,15 @@ inductive SNbDoubleChar : SurfPos → SurfPos → Prop where
         ⟨rest, col + 10⟩
 
 /-- [112] s-double-escaped(n): escaped line break in double-quoted scalar.
-    Optional white space + '\' + b-non-content + optional empty lines + indent. -/
+    Optional white space + '\' + b-non-content + optional empty lines +
+    flow line prefix (indent + optional whitespace). -/
 inductive SSDoubleEscaped : Nat → SurfPos → SurfPos → Prop where
-  | mk (n : Nat) (s s₁ s₂ s₃ s' : SurfPos) :
+  | mk (n : Nat) (s s₁ s₂ s₃ s₄ s' : SurfPos) :
       GStar SSWhite s s₁ →
       GLit '\\' s₁ s₂ →
       SBNonContent s₂ s₃ →
-      GStar (SLEmpty n .flowIn) s₃ s' →
+      GStar (SLEmpty n .flowIn) s₃ s₄ →
+      SFlowLinePrefix n s₄ s' →
       SSDoubleEscaped n s s'
 
 /-- [113] s-double-break(n): line break in double-quoted scalar.

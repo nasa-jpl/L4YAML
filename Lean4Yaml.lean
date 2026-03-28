@@ -43,6 +43,7 @@ import Lean4Yaml.Proofs.RoundTrip
 import Lean4Yaml.Proofs.ScalarCoupling
 import Lean4Yaml.Proofs.ScalarProduction
 import Lean4Yaml.Proofs.StructureCoupling
+import Lean4Yaml.Proofs.StructureProduction
 import Lean4Yaml.Proofs.ScannerContracts
 import Lean4Yaml.Proofs.ScannerCorrectness
 import Lean4Yaml.Proofs.ScannerDispatch

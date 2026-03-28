@@ -15,11 +15,11 @@ properties for the old character-level parser.
 1. **`advance_space_col`**: When `advance` consumes a space, `col`
    increases by exactly 1 and `line` stays the same.
 
-2. **`advance_nonNewline_col`**: When `advance` consumes any non-newline
-   character, `col` increases by 1.
+2. **`advance_nonNewline_col`**: When `advance` consumes any character
+   that is neither `\n` nor `\r`, `col` increases by 1.
 
-3. **`advance_newline_col`**: When `advance` consumes a newline, `col`
-   resets to 0 and `line` increments by 1.
+3. **`advance_newline_col`/`advance_cr_col`**: When `advance` consumes
+   a newline or carriage return, `col` resets to 0 and `line` increments by 1.
 
 4. **`advanceN_spaces_col`**: After advancing over `n` consecutive space
    characters, `col` increases by exactly `n`.
@@ -32,7 +32,8 @@ properties for the old character-level parser.
 The proofs operate directly on `ScannerState.advance`, which computes:
 ```
 if c == '\n' then { s with col := 0, line := s.line + 1 }
-else              { s with col := s.col + 1 }
+else if c == '\r' then { s with col := 0, line := s.line + 1 }
+else                    { s with col := s.col + 1 }
 ```
 This is a pure state transformation — no monad, no fuel, no backtracking.
 -/
@@ -72,30 +73,58 @@ theorem advance_space_line (s : ScannerState)
   simp [hBounds, hChar]
 
 /--
-When the current character is not a newline, `advance` increases `col` by 1.
+When the current character is not a newline (`\n`) and not a carriage return (`\r`),
+`advance` increases `col` by 1.
 -/
 theorem advance_nonNewline_col (s : ScannerState)
     (hBounds : s.offset < s.inputEnd)
-    (hNotNl : String.Pos.Raw.get s.input ⟨s.offset⟩ ≠ '\n') :
+    (hNotNl : String.Pos.Raw.get s.input ⟨s.offset⟩ ≠ '\n')
+    (hNotCr : String.Pos.Raw.get s.input ⟨s.offset⟩ ≠ '\r') :
     s.advance.col = s.col + 1 := by
   unfold ScannerState.advance
   simp only [hBounds]
   have : (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\n') = false :=
     Bool.eq_false_iff.mpr (by simpa using hNotNl)
-  simp [this]
+  have : (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\r') = false :=
+    Bool.eq_false_iff.mpr (by simpa using hNotCr)
+  simp [*]
 
 /--
-When the current character is not a newline, `advance` preserves `line`.
+When the current character is not a newline (`\n`) and not a carriage return (`\r`),
+`advance` preserves `line`.
 -/
 theorem advance_nonNewline_line (s : ScannerState)
     (hBounds : s.offset < s.inputEnd)
-    (hNotNl : String.Pos.Raw.get s.input ⟨s.offset⟩ ≠ '\n') :
+    (hNotNl : String.Pos.Raw.get s.input ⟨s.offset⟩ ≠ '\n')
+    (hNotCr : String.Pos.Raw.get s.input ⟨s.offset⟩ ≠ '\r') :
     s.advance.line = s.line := by
   unfold ScannerState.advance
   simp only [hBounds]
   have : (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\n') = false :=
     Bool.eq_false_iff.mpr (by simpa using hNotNl)
-  simp [this]
+  have : (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\r') = false :=
+    Bool.eq_false_iff.mpr (by simpa using hNotCr)
+  simp [*]
+
+/--
+When the current character is a carriage return, `advance` resets `col` to 0.
+-/
+theorem advance_cr_col (s : ScannerState)
+    (hBounds : s.offset < s.inputEnd)
+    (hCr : String.Pos.Raw.get s.input ⟨s.offset⟩ = '\r') :
+    s.advance.col = 0 := by
+  unfold ScannerState.advance
+  simp [hBounds, hCr]
+
+/--
+When the current character is a carriage return, `advance` increments `line` by 1.
+-/
+theorem advance_cr_line (s : ScannerState)
+    (hBounds : s.offset < s.inputEnd)
+    (hCr : String.Pos.Raw.get s.input ⟨s.offset⟩ = '\r') :
+    s.advance.line = s.line + 1 := by
+  unfold ScannerState.advance
+  simp [hBounds, hCr]
 
 /--
 When the current character is a newline, `advance` resets `col` to 0.

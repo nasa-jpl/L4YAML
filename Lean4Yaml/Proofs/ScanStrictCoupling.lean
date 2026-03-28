@@ -53,8 +53,8 @@ open Lean4Yaml.Proofs.StructureCoupling
 -- String.toList iterates using String.Internal.toArray.
 -- Both traverse valid UTF-8 and produce identical character sequences.
 theorem chars_from_zero_toList (input : String) :
-    CharsFromOffset input 0 input.toList := by
-  sorry
+    CharsFromOffset input 0 input.toList :=
+  CouplingBridge.chars_from_zero_toList input
 
 /-! ## §1.5 Preservation Lemmas
 

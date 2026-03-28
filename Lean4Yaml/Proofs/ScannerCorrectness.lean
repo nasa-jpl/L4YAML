@@ -100,8 +100,10 @@ theorem advance_preserves_tokens (s : ScannerState) :
   · -- Case: s.offset < s.inputEnd
     -- Simplify the let bindings and structure updates
     simp only []
-    -- The tokens field appears unchanged in both branches
-    split <;> rfl
+    -- The tokens field appears unchanged in all three branches
+    split
+    · rfl
+    · split <;> rfl
   · -- Case: s.offset >= s.inputEnd
     rfl
 
@@ -113,7 +115,9 @@ theorem advance_preserves_flowLevel (s : ScannerState) :
   unfold ScannerState.advance
   split
   · simp only []
-    split <;> rfl
+    split
+    · rfl
+    · split <;> rfl
   · rfl
 
 /-- The `advance` operation preserves flowStack.
@@ -124,7 +128,9 @@ theorem advance_preserves_flowStack (s : ScannerState) :
   unfold ScannerState.advance
   split
   · simp only []
-    split <;> rfl
+    split
+    · rfl
+    · split <;> rfl
   · rfl
 
 /-- The `emit` operation preserves flowLevel.
@@ -584,8 +590,8 @@ theorem consumeNewline_preserves_tokens (s : ScannerState) :
   · -- some '\r' => ...
     dsimp only []
     split
-    · -- s.advance.peek? = some '\n'
-      rw [advance_preserves_tokens, advance_preserves_tokens]
+    · -- CRLF: raw offset skip preserves tokens
+      exact advance_preserves_tokens s
     · -- _ => { s.advance with needIndentCheck := true }
       exact advance_preserves_tokens s
   · -- _ => s
@@ -809,7 +815,7 @@ theorem consumeNewline_preserves_flowLevel (s : ScannerState) :
   · exact advance_preserves_flowLevel s
   · dsimp only []
     split
-    · rw [advance_preserves_flowLevel, advance_preserves_flowLevel]
+    · exact advance_preserves_flowLevel s
     · exact advance_preserves_flowLevel s
   · rfl
 
@@ -2766,7 +2772,7 @@ theorem scanNextToken_adds_tokens (s : ScannerState) (s' : ScannerState) :
 
 theorem advance_preserves_simpleKey (s : ScannerState) :
     s.advance.simpleKey = s.simpleKey := by
-  unfold ScannerState.advance; dsimp only []; split <;> (try split) <;> rfl
+  unfold ScannerState.advance; dsimp only []; split <;> (try split) <;> (try split) <;> rfl
 
 theorem emit_preserves_simpleKey (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).simpleKey = s.simpleKey := by
@@ -2881,7 +2887,7 @@ theorem consumeNewline_preserves_simpleKey (s : ScannerState) :
   split
   · exact advance_preserves_simpleKey s
   · simp only []; split
-    · exact (advance_preserves_simpleKey _).trans (advance_preserves_simpleKey _)
+    · exact advance_preserves_simpleKey _
     · exact advance_preserves_simpleKey _
   · rfl
 
@@ -3402,7 +3408,7 @@ theorem skipDocEndWhitespace_preserves_simpleKey (s : ScannerState) (fuel : Nat)
 
 theorem advance_preserves_simpleKeyStack (s : ScannerState) :
     s.advance.simpleKeyStack = s.simpleKeyStack := by
-  unfold ScannerState.advance; dsimp only []; split <;> (try split) <;> rfl
+  unfold ScannerState.advance; dsimp only []; split <;> (try split) <;> (try split) <;> rfl
 
 theorem emit_preserves_simpleKeyStack (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).simpleKeyStack = s.simpleKeyStack := by
@@ -3508,7 +3514,7 @@ theorem consumeNewline_preserves_simpleKeyStack (s : ScannerState) :
   split
   · exact advance_preserves_simpleKeyStack s
   · simp only []; split
-    · exact (advance_preserves_simpleKeyStack _).trans (advance_preserves_simpleKeyStack _)
+    · exact advance_preserves_simpleKeyStack _
     · exact advance_preserves_simpleKeyStack _
   · rfl
 
@@ -5261,13 +5267,13 @@ theorem scan_first_is_streamStart (input : String) (tokens : Array (Positioned Y
       exfalso
       revert h_poss; show ¬ _
       dsimp only [s_after_bom, ScannerState.advance, ScannerState.emit, ScannerState.mk']
-      split <;> (try split) <;> (try split) <;> simp
+      split <;> (try split) <;> (try split) <;> (try split) <;> simp
     · -- simpleKeyStack is empty
       intro j h_j
       exfalso
       revert h_j; show ¬ _
       dsimp only [s_after_bom, ScannerState.advance, ScannerState.emit, ScannerState.mk']
-      split <;> (try split) <;> (try split) <;> simp
+      split <;> (try split) <;> (try split) <;> (try split) <;> simp
   -- Apply scanLoop_preserves_tokens with n = 1
   have ⟨h_0_lt_tokens, h_preserved⟩ :=
     scanLoop_preserves_tokens s_after_bom _ tokens 1
@@ -5449,6 +5455,14 @@ theorem field_update_preserves_ScanInv (s s' : ScannerState)
     (h : ScanInv s) (h_tok : s'.tokens = s.tokens) (h_off : s'.offset = s.offset) :
     ScanInv s' := by
   unfold ScanInv ScanInv'; rw [h_tok, h_off]; exact h
+
+-- Field updates that only increase offset preserve ScanInv.
+theorem offset_ge_preserves_ScanInv (s s' : ScannerState)
+    (h : ScanInv s) (h_tok : s'.tokens = s.tokens) (h_off : s'.offset ≥ s.offset) :
+    ScanInv s' := by
+  obtain ⟨h_ord, h_bnd⟩ := h
+  unfold ScanInv ScanInv'; rw [h_tok]
+  exact ⟨h_ord, fun ⟨i, hi⟩ => Nat.le_trans (h_bnd ⟨i, hi⟩) h_off⟩
 
 -- unwindIndentsLoop preserves ScanInv (emits blockEnd at current offset).
 theorem unwindIndentsLoop_preserves_ScanInv (s : ScannerState) (col : Int) (fuel : Nat)
@@ -5723,8 +5737,10 @@ theorem consumeNewline_preserves_ScanInv (s : ScannerState) (h : ScanInv s) :
   unfold consumeNewline; split
   · exact field_update_preserves_ScanInv _ _ (advance_preserves_ScanInv _ h) rfl rfl
   · dsimp only []; split
-    · exact field_update_preserves_ScanInv _ _
-        (advance_preserves_ScanInv _ (advance_preserves_ScanInv _ h)) rfl rfl
+    · -- CRLF: advance preserves ScanInv, raw offset skip only increases offset
+      exact offset_ge_preserves_ScanInv _ _
+        (advance_preserves_ScanInv _ h) rfl
+        (by dsimp only []; have : s.advance.offset < (String.Pos.Raw.next s.advance.input ⟨s.advance.offset⟩).byteIdx := String.Pos.Raw.byteIdx_lt_byteIdx_next s.advance.input ⟨s.advance.offset⟩; omega)
     · exact field_update_preserves_ScanInv _ _ (advance_preserves_ScanInv _ h) rfl rfl
   · exact h
 
@@ -6140,7 +6156,9 @@ theorem consumeNewline_offset_ge (s : ScannerState) :
     -- The inner match is on s.advance.peek?
     simp only []
     split
-    · exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ScannerProgress.advance_offset_ge _)
+    · -- CRLF: raw offset skip increases offset beyond advance
+      exact Nat.le_trans (ScannerProgress.advance_offset_ge s)
+        (by dsimp only []; have : s.advance.offset < (String.Pos.Raw.next s.advance.input ⟨s.advance.offset⟩).byteIdx := String.Pos.Raw.byteIdx_lt_byteIdx_next s.advance.input ⟨s.advance.offset⟩; omega)
     · exact ScannerProgress.advance_offset_ge s
   · exact Nat.le_refl _
 
@@ -6799,7 +6817,10 @@ theorem advance_preserves_inFlow (s : ScannerState) :
     s.advance.inFlow = s.inFlow := by
   unfold ScannerState.advance ScannerState.inFlow
   split
-  · dsimp only []; split <;> rfl
+  · dsimp only []
+    split
+    · rfl
+    · split <;> rfl
   · rfl
 
 theorem emit_preserves_inFlow (s : ScannerState) (tok : YamlToken) :

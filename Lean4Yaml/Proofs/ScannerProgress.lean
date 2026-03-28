@@ -70,7 +70,9 @@ theorem advance_offset_lt (s : ScannerState)
   -- where nextPos := String.Pos.Raw.next s.input ⟨s.offset⟩
   -- String.Pos.Raw.lt_next gives ⟨s.offset⟩ < nextPos, i.e. s.offset < nextPos.byteIdx
   have hprog := String.Pos.Raw.lt_next s.input (String.Pos.Raw.mk s.offset)
-  split <;> exact hprog
+  split
+  · exact hprog
+  · split <;> exact hprog
 
 /-- `advance` monotonically increases `offset` (non-strict; identity when at end). -/
 theorem advance_offset_ge (s : ScannerState) :
@@ -173,7 +175,9 @@ theorem scanFlowSequenceStart_offset_lt (s : ScannerState)
   unfold ScannerState.advance
   simp only
   split
-  · split <;> exact hprog
+  · split
+    · exact hprog
+    · split <;> exact hprog
   · omega
 
 /-- `scanFlowMappingStart` strictly advances offset when `offset < inputEnd`. -/
@@ -187,7 +191,9 @@ theorem scanFlowMappingStart_offset_lt (s : ScannerState)
   unfold ScannerState.advance
   simp only
   split
-  · split <;> exact hprog
+  · split
+    · exact hprog
+    · split <;> exact hprog
   · omega
 
 /-- `scanFlowSequenceEnd` strictly advances offset when `offset < inputEnd`. -/
@@ -202,7 +208,9 @@ theorem scanFlowSequenceEnd_offset_lt (s : ScannerState)
   unfold ScannerState.advance
   simp only
   split
-  · split <;> exact hprog
+  · split
+    · exact hprog
+    · split <;> exact hprog
   · omega
 
 /-- `scanFlowMappingEnd` strictly advances offset when `offset < inputEnd`. -/
@@ -216,7 +224,9 @@ theorem scanFlowMappingEnd_offset_lt (s : ScannerState)
   unfold ScannerState.advance
   simp only
   split
-  · split <;> exact hprog
+  · split
+    · exact hprog
+    · split <;> exact hprog
   · omega
 
 /-! ## §4  scanFlowEntry / scanBlockEntry / scanKey Progress (concrete)
@@ -297,4 +307,3 @@ increasing offset position in the input.
 
 
 end Lean4Yaml.Proofs.ScannerProgress
-

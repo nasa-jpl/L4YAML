@@ -129,7 +129,9 @@ theorem scanFlowSequenceStart_preserves_indents (s : ScannerState)
   unfold scanFlowSequenceStart
   simp only [ScannerState.emit, ScannerState.advance]
   split
-  · split <;> exact h
+  · split
+    · exact h
+    · split <;> exact h
   · exact h
 
 /-- `scanFlowMappingStart` preserves C1 (`indents.size ≥ 1`). -/
@@ -139,7 +141,9 @@ theorem scanFlowMappingStart_preserves_indents (s : ScannerState)
   unfold scanFlowMappingStart
   simp only [ScannerState.emit, ScannerState.advance]
   split
-  · split <;> exact h
+  · split
+    · exact h
+    · split <;> exact h
   · exact h
 
 

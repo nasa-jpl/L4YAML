@@ -1176,11 +1176,11 @@ Each scalar scanner function additionally produces the corresponding SL* derivat
 
 *Helpers (4)*: `peek_some_has_more` (peek? = some c → offset < inputEnd, by unfolding peek? and splitting), `peek_some_sp` (ScannerSurfCorr + peek? = some c → sp = ⟨c :: rest, sc.col⟩, linking scanner position to surface position), `SNbDoubleMultiLine_prepend` (prepend a single `SNbDoubleChar` to the first line of a multiline body, by cases on `single`/`multi`), `not_lineBreak_bool_to_prop` (bool→prop bridge for line-break predicates)
 
-*Sorry'd sub-lemmas (2)*: `foldQuotedNewlines_prod` (fold success → `SSDoubleBreak 0`, requires decomposing consumeNewline + foldQuotedNewlinesLoop + skipWhitespace into `SBBreak` + `GStar SLEmpty` + `SFlowLinePrefix`), `processEscape_prod` (escape success → `SNbDoubleChar`, requires case analysis on 20 named escapes + 3 hex escape lengths)
+*Previously sorry'd sub-lemmas, now proven (2)*: `foldQuotedNewlines_prod` (fold success → `SSDoubleBreak 0`, decomposes consumeNewline + foldQuotedNewlinesLoop + skipWhitespace into `SBBreak` + `GStar SLEmpty` + `SFlowLinePrefix`), `processEscape_prod` (escape success → `SNbDoubleChar`, case analysis on 20 named escapes + 3 hex escape lengths)
 
 *Main theorems (2)*: `collectDoubleQuotedLoop_prod` (fuel induction, 4-arm split mirroring `_corr` proof: EOF error / close quote / escape / regular char, produces `SNbDoubleMultiLine 0 sp sp_body ∧ GLit '"' sp_body sp_close ∧ ScannerSurfCorr s' sp_close`), `scanDoubleQuoted_prod` (wrapper: opening `GLit '"'` + loop body + closing `GLit '"'` → `SCDoubleQuoted 0 .blockIn`, handles validateTrailingContent via 2-way split)
 
-**Sorry status:** 3 sorry (2 sub-lemma theorems + 1 escaped-linebreak construction in loop). Build: 403/403 jobs, 0 errors.
+**Sorry status:** 0 sorry. Build: 405/405 jobs, 0 errors.
 
 ###### Reflections — unexpected challenges, simplifications, and idioms
 
@@ -1201,6 +1201,16 @@ Each scalar scanner function additionally produces the corresponding SL* derivat
 
    **Fix:** Pass a dummy value `⟨[], 0⟩` for the unused `s₃`. This works because no component type references `s₃`, so any value is acceptable.
 
+4. **`\r` (carriage return) not treated as line break in `ScannerState.advance` — YAML spec §5.4 [28] violation.**
+   The scanner's `advance` function only reset `col := 0` and incremented `line` for `\n`, treating `\r` as a regular character. This meant lone `\r` and CRLF sequences produced incorrect column/line tracking. The `consumeNewline_sbreak_corr` theorem was blocked by `sorry` because `advance_cr_corr` didn't exist — advancing past `\r` gave `col + 1` instead of `col := 0`. Additionally, `consumeNewline`'s CRLF path called `s.advance.advance` (two advances), which double-counted the line.
+
+   **Fix (3 parts):**
+   1. *`ScannerState.advance`*: Changed from 2-way `if c == '\n' then ... else ...` to 3-way `if c == '\n' then {col:=0, line+1} else if c == '\r' then {col:=0, line+1} else {col+1}`. This makes `\r` a proper line terminator.
+   2. *`consumeNewline` CRLF*: Replaced double-advance (`s.advance.advance`) with single advance + raw offset skip (`{ s.advance with offset := (String.Pos.Raw.next s.advance.input ⟨s.advance.offset⟩).byteIdx, needIndentCheck := true }`). The `\r` advance handles line counting; the raw skip just moves past the `\n` byte without re-counting.
+   3. *Proof ripple (19 files, +780/−134 lines)*: Every proof that `unfold ScannerState.advance; split <;> rfl` needed an extra split level for the new `\r` branch. Every CRLF preservation proof that used `rw [advance_X, advance_X]` (double-advance) changed to `exact advance_X s` (raw skip preserves fields). New theorems: `advance_cr_col`, `advance_cr_line`, `advance_cr_corr`, `skip_byte_corr`. `advance_non_newline_corr` gained an `hcr : c ≠ '\r'` precondition.
+
+   The fix closed the `consumeNewline_sbreak_corr` sorry and enabled `SBBreak.cr` / `SBBreak.crLf` surface productions.
+
 ###### Simplifications
 
 1. **`_prod` proof structure mirrors `_corr` proof almost line-for-line.**
@@ -1210,7 +1220,7 @@ Each scalar scanner function additionally produces the corresponding SL* derivat
    For regular characters (not `"`, not `\`, not line break), the surface syntax is `SNbDoubleChar.plain c rest sc.col (not_lineBreak) (not_backslash) (not_dquote)` → `SNbDoubleMultiLine_prepend`. The three negation hypotheses come directly from the `split` arm conditions (`hne_lb`, `hne_bs`, `hne_dq`). No creative proof steps needed — the match discrimination provides exactly the predicates the surface constructor requires.
 
 3. **Closing quote branch is the simplest: empty body + GLit.**
-   When `peek? = some '"'`, the body is `SNbDoubleMultiLine.single (GStar.nil _)` (zero-length first line) and the close is `GLit.mk rest sc.col`. Both are single-constructor applications with no case analysis. The `advance_non_newline_corr` call for `'"'` uses `(by decide)` to show `'"' ≠ '\n'`.
+   When `peek? = some '"'`, the body is `SNbDoubleMultiLine.single (GStar.nil _)` (zero-length first line) and the close is `GLit.mk rest sc.col`. Both are single-constructor applications with no case analysis. The `advance_non_newline_corr` call for `'"'` uses `(by decide)` twice to show `'"' ≠ '\n'` and `'"' ≠ '\r'`.
 
 4. **`scanDoubleQuoted_prod` wrapper composes mechanically from loop result.**
    The wrapper proof follows the same 2-level `split at hok` pattern as `scanDoubleQuoted_corr` (Except bind for loop, then if/match for validateTrailingContent). The only addition is constructing `SCDoubleQuoted.mk 0 .blockIn` from the three components (opening GLit, loop body, closing GLit). Both the `!inFlow = true` and `!inFlow = false` branches produce identical `SCDoubleQuoted` terms — only the `ScannerSurfCorr` threading differs (validation vs no-validation).
@@ -1220,14 +1230,14 @@ Each scalar scanner function additionally produces the corresponding SL* derivat
 - **`peek_some_sp` + `subst` as universal position extraction.**
   Every branch that processes a character follows the same 3-line pattern: `obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek; subst hsp_eq`. This converts the existential surface position `sp` into the concrete `⟨c :: rest, sc.col⟩`, making `rest` available for `advance_non_newline_corr` and surface constructor arguments. Used 4 times in the main loop proof.
 
-- **`advance_non_newline_corr` for every non-newline character advance.**
-  Unlike `advance_corr` (which only gives existential `∃ sp'`), `advance_non_newline_corr sc c rest hcorr hmore hne_nl` gives the EXACT next position `⟨rest, sc.col + 1⟩`. This is essential for surface productions because `SNbDoubleChar.plain` and `GLit.mk` both need the explicit `rest` and `col + 1`. Pattern: `have hcorr_adv := advance_non_newline_corr sc c rest hcorr (peek_some_has_more hpeek) (by decide)` for known characters.
+- **`advance_non_newline_corr` for every non-newline/non-CR character advance.**
+  Unlike `advance_corr` (which only gives existential `∃ sp'`), `advance_non_newline_corr sc c rest hcorr hmore hne_nl hne_cr` gives the EXACT next position `⟨rest, sc.col + 1⟩`. This is essential for surface productions because `SNbDoubleChar.plain` and `GLit.mk` both need the explicit `rest` and `col + 1`. Pattern: `have hcorr_adv := advance_non_newline_corr sc c rest hcorr (peek_some_has_more hpeek) (by decide) (by decide)` for known characters.
 
 - **`SNbDoubleMultiLine_prepend` as universal char-to-body composition.**
   After proving a single `SNbDoubleChar` for the current character and obtaining the IH result for the tail, `SNbDoubleMultiLine_prepend _ _ _ h_dq_char h_body` composes them without case analysis at the call site. The helper internally cases on `single`/`multi` to either extend an existing `GStar` or insert before a break. Used in both the escape branch and the plain char branch.
 
 - **`(by decide)` for character inequality witnesses.**
-  Surface constructors require proofs like `'"' ≠ '\n'`, `'\\' ≠ '\n'`. Since these are concrete character comparisons, `(by decide)` closes them instantly. Used 3 times in the proof.
+  Surface constructors require proofs like `'"' ≠ '\n'`, `'"' ≠ '\r'`, `'\\' ≠ '\n'`. Since these are concrete character comparisons, `(by decide)` closes them instantly. After the §5.4 [28] fix, `advance_non_newline_corr` requires two `(by decide)` arguments (one for `\n`, one for `\r`).
 
 </details>
 

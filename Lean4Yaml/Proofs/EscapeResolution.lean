@@ -269,6 +269,8 @@ theorem isNamedEscapeChar_slash     : isNamedEscapeChar '/'  := by native_decide
 theorem isNamedEscapeChar_backslash : isNamedEscapeChar '\\' := by native_decide
 theorem isNamedEscapeChar_nel       : isNamedEscapeChar 'N'  := by native_decide
 theorem isNamedEscapeChar_nbsp      : isNamedEscapeChar '_'  := by native_decide
+theorem isNamedEscapeChar_lsep      : isNamedEscapeChar 'L'  := by native_decide
+theorem isNamedEscapeChar_psep      : isNamedEscapeChar 'P'  := by native_decide
 
 /-- Hex escape prefixes are NOT named escapes. -/
 theorem not_isNamedEscapeChar_x : ¬isNamedEscapeChar 'x' := by native_decide
