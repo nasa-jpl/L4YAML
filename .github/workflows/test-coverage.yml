@@ -121,6 +121,30 @@ jobs:
           cd rust/lean4yaml
           cargo build --release --example tryparse
 
+      - name: Run Python FFI tests
+        run: |
+          echo "=== Python FFI Tests ===" | tee docs/python-ffi-tests.txt
+          cd "$GITHUB_WORKSPACE"
+          LEAN4YAML_LIB="$GITHUB_WORKSPACE/ffi/out" \
+          LD_LIBRARY_PATH="$GITHUB_WORKSPACE/ffi/out:${LD_LIBRARY_PATH:-}" \
+          python3 -m pytest Tests/test_python_ffi.py \
+            -v --tb=short --no-header \
+            -p no:launch_ros -p no:launch_testing \
+            --junitxml=docs/python-ffi-junit.xml \
+            2>&1 | tee -a docs/python-ffi-tests.txt
+
+      - name: Run Python package tests
+        run: |
+          echo "=== Python Package Tests ===" | tee docs/python-package-tests.txt
+          cd "$GITHUB_WORKSPACE"
+          LEAN4YAML_LIB="$GITHUB_WORKSPACE/ffi/out" \
+          LD_LIBRARY_PATH="$GITHUB_WORKSPACE/ffi/out:${LD_LIBRARY_PATH:-}" \
+          python3 -m pytest python/tests/ \
+            -v --tb=short --no-header \
+            -p no:launch_ros -p no:launch_testing \
+            --junitxml=docs/python-package-junit.xml \
+            2>&1 | tee -a docs/python-package-tests.txt
+
       - name: Run cross-language yaml-test-suite comparison
         run: |
           echo "=== Cross-Language yaml-test-suite Comparison ===" | tee docs/cross-lang-comparison.txt
@@ -261,26 +285,6 @@ jobs:
           out.write_text("\n".join(parts))
           print(f"Generated {out}")
           PYEOF
-
-      - name: Run Python FFI tests
-        run: |
-          echo "=== Python FFI Tests ===" | tee docs/python-ffi-tests.txt
-          cd "$GITHUB_WORKSPACE"
-          python3 -m pytest Tests/test_python_ffi.py \
-            -v --tb=short --no-header \
-            -p no:launch_ros -p no:launch_testing \
-            --junitxml=docs/python-ffi-junit.xml \
-            2>&1 | tee -a docs/python-ffi-tests.txt
-
-      - name: Run Python package tests
-        run: |
-          echo "=== Python Package Tests ===" | tee docs/python-package-tests.txt
-          cd "$GITHUB_WORKSPACE"
-          python3 -m pytest python/tests/ \
-            -v --tb=short --no-header \
-            -p no:launch_ros -p no:launch_testing \
-            --junitxml=docs/python-package-junit.xml \
-            2>&1 | tee -a docs/python-package-tests.txt
 
       - name: Generate HTML coverage reports
         run: |
