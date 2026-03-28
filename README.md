@@ -1241,13 +1241,80 @@ Each scalar scanner function additionally produces the corresponding SL* derivat
 
 </details>
 
-##### Phase C: Node property & indicator productions (~300–400 lines)
+##### Phase C: Node property & indicator productions (in progress)
 
-- Tag scanning → `SCNsTagProperty` (verbatim / secondary / named)
-- Anchor/alias scanning → `SCNsAnchorProperty` / `SCNsAliasNode`
-- Flow indicators → `SFlowSequence` / `SFlowMapping` opening/closing
-- Block indicators → `SBlockSeqEntries` / `SBlockMapEntries` structure
-- Document start/end → `SCDirectivesEnd` / `SCDocumentEnd`
+<details>
+
+**Block indicator and anchor/alias production coupling** (398 lines of proof, 19 theorems)
+
+Strengthen the `_corr` theorems from `StructureCoupling.lean` to additionally produce surface-syntax derivation trees. Block indicators produce `GLit` witnesses for `-`, `?`, `:`. Anchor/alias scanning produces `GLit marker ∧ GStar (GChar isNsAnchorChar)` — the `&`/`*` indicator followed by zero-or-more anchor-name characters matching the surface predicate.
+
+**Theorems (19):**
+
+*Helpers (4)*: `corr_nonempty_has_more` (derive `offset < inputEnd` from ScannerSurfCorr with nonempty chars, for intermediate states where `peek_some_has_more` doesn't apply), `not_of_bool_false` (Prop negation from Bool=false via Iff bridge), `bool_not_true_imp_false` (`(!b) = true → b = false` via `cases b`), `isNsAnchorChar_of_scanner_cond` (scanner's `!isFlowIndicatorBool && !isWhiteSpaceBool && !isLineBreakBool` → surface `isNsAnchorChar` via 3 correspondence lemmas)
+
+*Flow indicators (5, unchanged from v0.4.3)*: `scanFlowSequenceStart_prod` (`GLit '['`), `scanFlowSequenceEnd_prod` (`GLit ']'`), `scanFlowMappingStart_prod` (`GLit '{'`), `scanFlowMappingEnd_prod` (`GLit '}'`), `scanFlowEntry_prod` (delegates to `_corr`)
+
+*Block indicators (3, strengthened)*: `scanBlockEntry_prod` (`GLit '-'`), `scanKey_prod` (`GLit '?'`), `scanValue_prod` (`GLit ':'`) — each threads through `pushSequenceIndent`/`pushMappingIndent`/`scanValuePrepare`/`scanValueClearKey` (non-tracked field updates), then `advance_non_newline_corr` for the exact position
+
+*Anchor/alias (2, strengthened)*: `collectAnchorNameLoop_prod` (fuel induction → `GStar (GChar isNsAnchorChar)`, bridges scanner Bool condition to surface Prop via `isNsAnchorChar_of_scanner_cond`), `scanAnchorOrAlias_prod` (`GLit marker ∧ GStar (GChar isNsAnchorChar)`, composes advance past `&`/`*` + loop)
+
+*Delegates (5)*: `scanTag_prod`, `scanDocumentStart_prod`, `scanDocumentEnd_prod`, `scanDirective_prod` — preserve correspondence via `_corr` (surface type production deferred to later phases)
+
+**Remaining targets:**
+- Tag scanning → `SCNsTagProperty` (verbatim / secondary / named / nonSpecific) — 4-variant `match peek?` analysis
+- Document start/end → `SCDirectivesEnd` / `SCDocumentEnd` — 3-char advance `advanceN 3` with known characters
+- Anchor `GPlus` upgrade — requires non-empty-name precondition (scanner doesn't enforce minimum name length)
+
+**Sorry status:** 0 sorry. Build: 405/405 jobs, 0 errors.
+
+###### Reflections — unexpected challenges, simplifications, and idioms
+
+###### Unexpected challenges
+
+1. **`Bool.not` + `simp` — dependent elimination failure on `match` in hypotheses.**
+   `simp only [Bool.not_eq_true'] at hcond` where `hcond` contains `!isLineBreakBool c` causes `simp` to expand `Bool.not` into `match b with | true => false | false => true`, then `cases` on the match discriminant fails with "Dependent elimination failed: Failed to solve equation `false = match c == '\n' with ...`".
+
+   **Fix:** Use `Bool.and_eq_true_iff.mp` to decompose the `&&` conjunction into `.1`/`.2` without touching `!`, then `bool_not_true_imp_false` (custom helper: `(!b) = true → b = false` via `cases b <;> simp_all`) to convert each `!x = true` to `x = false`. Note: `Bool.and_eq_true.mp` does NOT exist as a method — `Bool.and_eq_true` is a `Prop` equality not an `Iff`; use `Bool.and_eq_true_iff.mp` instead.
+
+2. **`&&` left-associativity changes decomposition order.**
+   `a && b && c` is `(a && b) && c` (left-associative). So `Bool.and_eq_true_iff.mp h` gives `.1 : (a && b) = true` and `.2 : c = true`, NOT `.1 : a = true` and `.2 : (b && c) = true`. The initial code assumed right-associativity and failed with "type mismatch: has type `(!isLineBreakBool c) = true` but expected `(?m && ?m) = true`".
+
+   **Fix:** Pull the LAST conjunct with `.2`, then decompose `.1` again.
+
+3. **Struct projection through `{ x with field := v }` blocks `omega`.**
+   After `subst h` on `Except.ok.inj hok`, the goal contains `{ big_struct_literal with simpleKeyAllowed := true, ... }.col` which `omega` treats as opaque — it can't resolve the `.col` projection through the struct update. This happens for `scanValue_prod` (but not `scanBlockEntry_prod`) because `scanValuePrepare`/`scanValueClearKey` create deeper intermediate expressions.
+
+   **Fix:** Extract `.col_eq` fields from `ScannerSurfCorr` values into named `have` hypotheses, then `dsimp only [] at *` reduces all struct projections, making all terms visible to `omega`.
+
+4. **`pushSequenceIndent`/`pushMappingIndent` block definitional col equality.**
+   Flow indicator proofs pass `hmore := peek_some_has_more hpeek` directly to `advance_non_newline_corr` because `{ sc with simpleKey := ... }.emit tok` has `offset`/`inputEnd`/`col` definitionally equal to `sc`'s. Block indicators use `pushSequenceIndent sc col` which has an internal `if` blocking definitional reduction of `.col`.
+
+   **Fix:** Repack `ScannerSurfCorr` with `⟨chars_from, rfl, end_eq⟩` to make `col_eq` trivially `rfl` (since `chars_from` doesn't depend on col). Use `corr_nonempty_has_more` to derive `hmore` from the non-empty char list in the repacked corr. Final col proof: extract both `col_eq` as `have` and close with `dsimp only [] at *; omega`.
+
+###### Simplifications
+
+1. **`native_decide` for character-level Bool evaluation.**
+   `c ≠ '\n'` from `isLineBreakBool c = false` is proven by `intro heq; rw [heq] at hlb; exact absurd hlb (by native_decide)`. The `rw [heq]` substitutes the concrete character, then `native_decide` evaluates `isLineBreakBool '\n' = true` and derives `¬(true = false)`. The kernel-level `decide` fails on the same term due to `Bool.or` match reduction issues, but `native_decide` handles it.
+
+2. **`isNsAnchorChar_of_scanner_cond` composes 3 correspondence lemmas.**
+   The bridge from scanner Bool condition to surface Prop is: decompose `&&` conjunction → `bool_not_true_imp_false` on each → `not_of_bool_false` with `isLineBreak_correspondence`/`isWhiteSpace_correspondence`/`isFlowIndicator_correspondence`. This 3-step pattern is reusable for any scanner predicate that's a conjunction of negated Bool classifiers.
+
+3. **Loop production mirrors `_corr` exactly.**
+   `collectAnchorNameLoop_prod` has the same fuel induction structure as `collectAnchorNameLoop_corr`: zero→base, succ→unfold→split peek→split condition→recurse/stop. The only additions per branch: `peek_some_sp` + `subst` for position, `advance_non_newline_corr` for exact advance, `GChar.mk` + `GStar.cons` for production. ~30 lines vs ~15 lines for `_corr`.
+
+###### Idioms
+
+- **`dsimp only [] at *; omega` for col equalities through struct updates.**
+  When `col_eq` from intermediate `ScannerSurfCorr` values can't be used directly (struct projections not reduced), this 2-step pattern works universally: `have h1 := hcorr_emit.col_eq; have h2 := hcorr_adv.col_eq; dsimp only [] at *; omega`. Used 5 times across the 3 block indicator proofs.
+
+- **`corr_nonempty_has_more` for intermediate-state `hmore`.**
+  When `peek_some_has_more` applies to the original state but `advance_non_newline_corr` needs `hmore` for the intermediate state (after `pushSequenceIndent`/`emit`), repack the corr with `⟨chars_from, rfl, end_eq⟩` and then `corr_nonempty_has_more` derives `offset < inputEnd` from the non-empty char list.
+
+- **`rw [heq] at hlb; exact absurd hlb (by native_decide)` for char inequality.**
+  Proving `c ≠ '\n'` from `isLineBreakBool c = false`: `rw` substitutes the concrete character, then `native_decide` evaluates the Bool function. Avoids `subst` which has kernel issues with `match` expressions.
+
+</details>
 
 ##### Phase D: Document & stream composition (~400–600 lines)
 
