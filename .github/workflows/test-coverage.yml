@@ -109,10 +109,11 @@ jobs:
           echo "=== Scalar Stage Diagnostics ===" | tee docs/scalarstagediag.txt
           ./.lake/build/bin/scalarstagediag 2>&1 | tee -a docs/scalarstagediag.txt
 
-      - name: Build C shared library and tryparse binary
+      - name: Build C shared library
         run: |
           cmake -B ffi/build -S ffi
           cmake --build ffi/build
+          mkdir -p ffi/out
           cp ffi/build/liblean4yaml.so ffi/out/liblean4yaml.so 2>/dev/null || true
 
       - name: Build Rust tryparse binary
