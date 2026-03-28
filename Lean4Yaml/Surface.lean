@@ -100,7 +100,7 @@ theorem scan_strict
     (input : String)
     (tokens : Array (Lean4Yaml.Positioned Lean4Yaml.YamlToken))
     (h : Lean4Yaml.Scanner.scan input = .ok tokens) :
-    ∃ s' : SurfPos, SLYamlStream ⟨input.toList, 0⟩ s' := by
+    InYamlLanguage input := by
   sorry -- Partial result: scanner produces valid surface syntax
 
 /-! ## Coupling Infrastructure
