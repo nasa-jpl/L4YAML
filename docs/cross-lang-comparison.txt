@@ -1,0 +1,8 @@
+=== Cross-Language yaml-test-suite Comparison ===
+MISMATCH for preset 'unlimited': {'lean': (869, 0, 151, 1020), 'c': (66, 803, 151, 1020), 'python': (66, 803, 151, 1020), 'rust': (66, 803, 151, 1020)}
+MISMATCH for preset 'default': {'lean': (854, 15, 151, 1020), 'c': (66, 803, 151, 1020), 'python': (66, 803, 151, 1020), 'rust': (66, 803, 151, 1020)}
+MISMATCH for preset 'strict': {'lean': (853, 16, 151, 1020), 'c': (66, 803, 151, 1020), 'python': (66, 803, 151, 1020), 'rust': (66, 803, 151, 1020)}
+MISMATCH for preset 'permissive': {'lean': (854, 15, 151, 1020), 'c': (66, 803, 151, 1020), 'python': (66, 803, 151, 1020), 'rust': (66, 803, 151, 1020)}
+MISMATCH for preset 'safe_tags': {'lean': (853, 16, 151, 1020), 'c': (66, 803, 151, 1020), 'python': (66, 803, 151, 1020), 'rust': (66, 803, 151, 1020)}
+
+✗ Backend mismatch detected!

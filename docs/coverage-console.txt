@@ -1,5 +1,5 @@
 ══════════════════════════════════════════════════════════
-  yaml-test-suite Runner for lean4-yaml-verified
+  yaml-test-suite Runner for lean4-yaml-verified [lean]
 ══════════════════════════════════════════════════════════
 
 Loading test files... 406 test cases from 351 files
