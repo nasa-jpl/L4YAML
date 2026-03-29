@@ -21,9 +21,11 @@ import Lean4Yaml.Schema.Dump
 import Lean4Yaml.Proofs.BlockScalarContracts
 import Lean4Yaml.Proofs.CharClass
 import Lean4Yaml.Proofs.CommentProperties
+import Lean4Yaml.Proofs.CommentRoundTrip
 import Lean4Yaml.Proofs.Completeness
 import Lean4Yaml.Proofs.Composition
 import Lean4Yaml.Proofs.DocumentContracts
+import Lean4Yaml.Proofs.DocumentProduction
 import Lean4Yaml.Proofs.DumpRoundTrip
 import Lean4Yaml.Proofs.EndToEndCorrectness
 import Lean4Yaml.Proofs.ErrorProperties
@@ -39,9 +41,11 @@ import Lean4Yaml.Proofs.ParserNodeProofs
 import Lean4Yaml.Proofs.ParserSoundness
 import Lean4Yaml.Proofs.ParserWellBehaved
 import Lean4Yaml.Proofs.ParserWfaProofs
+import Lean4Yaml.Proofs.PreprocessProduction
 import Lean4Yaml.Proofs.RoundTrip
 import Lean4Yaml.Proofs.ScalarCoupling
 import Lean4Yaml.Proofs.ScalarProduction
+import Lean4Yaml.Proofs.StreamAccum
 import Lean4Yaml.Proofs.NodeProduction
 import Lean4Yaml.Proofs.StructureCoupling
 import Lean4Yaml.Proofs.StructureProduction
