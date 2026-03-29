@@ -864,7 +864,7 @@ Key design decisions:
 - **CouplingBridge**: Scanner↔SurfPos bridge — `CharsFromOffset` inductive, `ScannerSurfCorr` correspondence struct, peek/eof/advance correspondence, and composition helpers for `SSeparateInLine`, `SSLComments`, `SSBComment`
 - **ScannerCoupling**: Fuel-based scanner loop proofs — `skipSpacesLoop` → `SIndent n`, `skipSpaces` coupling, `consumeNewline` lf/crlf/cr → `SBBreak` correspondence
 
-Target theorems stated (`parse_strict`, `scan_strict`) with `sorry` — to be discharged in v0.4.4 and v0.4.5 respectively.
+Target theorems stated (`parse_strict`, `scan_strict`) — discharged in v0.4.4 Phase D+E via `DocumentProduction.lean`.
 
 Build: 391/391 jobs, Tests: 869/0/151 (no regressions from v0.3.0 baseline)
 </details>
@@ -896,7 +896,7 @@ Extended the coupling infrastructure to cover all whitespace/comment/separation 
 
 Surface productions covered: [63]–[80] (`s-indent`, `s-white`, `s-separate-in-line`, `s-l-comments`, `s-b-comment`, `c-nb-comment-text`)
 
-**Sorry status:** 0 sorry in all three proof modules (ScannerCoupling, CouplingBridge, SurfaceCoupling). 2 target-theorem sorry's remain in Surface.lean (`parse_strict` → v0.4.5, `scan_strict` → v0.4.4).
+**Sorry status:** 0 sorry in all three proof modules (ScannerCoupling, CouplingBridge, SurfaceCoupling). Surface.lean `parse_strict`/`scan_strict` now delegate to `DocumentProduction.lean` (v0.4.4 Phase D+E).
 
 Build: 395/395 jobs, Tests: 869/0/151 (no regressions)
 </details>
@@ -932,7 +932,7 @@ Scanner functions coupled (**31 functions → 26 theorems**):
 
 Surface productions covered: [107]–[133], [162]–[182] (all four scalar types)
 
-**Sorry status:** 0 sorry in ScalarCoupling.lean. 2 target-theorem sorry's remain in Surface.lean (`parse_strict` → v0.4.5, `scan_strict` → v0.4.4).
+**Sorry status:** 0 sorry in ScalarCoupling.lean. Surface.lean `parse_strict`/`scan_strict` now delegate to `DocumentProduction.lean` (v0.4.4 Phase D+E).
 
 Build: 397/397 jobs, Tests: 869/0/151 (no regressions)
 
@@ -1007,7 +1007,7 @@ Scanner functions coupled (**~40 functions**):
 
 Surface productions covered: [82]–[103], [134]–[152], [183]–[211]
 
-**Sorry status:** 0 sorry in StructureCoupling.lean. 2 target-theorem sorry's remain in Surface.lean (`parse_strict` → v0.4.5, `scan_strict` → v0.4.4).
+**Sorry status:** 0 sorry in StructureCoupling.lean. Surface.lean `parse_strict`/`scan_strict` now delegate to `DocumentProduction.lean` (v0.4.4 Phase D+E).
 
 Build: 399/399 jobs, Tests: 869/0/151 (no regressions)
 
@@ -1054,7 +1054,7 @@ Build: 399/399 jobs, Tests: 869/0/151 (no regressions)
 
 </details>
 
-#### Version 0.4.4
+#### Version 0.4.4 (completed 2026-03-28)
 <details>
 
 **`scan_strict` proof — strengthened to `InYamlLanguage`** (~2,000–2,500 lines of proof)
@@ -1320,37 +1320,163 @@ Strengthen the `_corr` theorems from `StructureCoupling.lean` to additionally pr
 
 </details>
 
-##### Phase D: Document & stream composition (~400–600 lines)
+##### Phase D + E: Document & stream composition + `scan_strict` + `parse_strict` (completed 2026-03-28)
 
-- `scanDocumentStart` → `SLExplicitDocument`
-- `scanDocumentEnd` → `SLDocumentSuffix`
-- `scanDirective` → `SLDirective` → `SLDirectiveDocument`
-- BOM + initial comments → `SLDocumentPrefix`
-- `scanLoop` token sequence → `SLAnyDocument` variants
-- `scan` → `SLYamlStream` (single / suffixContinue / implicitContinue)
+<details>
 
-##### Phase E: Top-level scan_strict (~100–200 lines)
+**Document/stream production + strictness proofs** (192 lines of proof, 14 theorems)
 
-Compose phases A–D: `scan` success → ScannerSurfCorr chain → SL* production tree → `SLYamlStream` with `s'.chars = []` → `InYamlLanguage input`.
+Compose Phase A (full consumption) with stream-level and document-level surface syntax constructions. The `scan_strict` and `parse_strict` target theorems in `Surface.lean` now delegate to `DocumentProduction.lean` proofs rather than using `sorry`.
 
-**Surface productions covered**: All 76 SL*/SC*/SB*/SS* types across 5 Surface files, composed through 10 grammar combinators (GStar, GPlus, GOpt, GLit, GChar, GSeq, GAlt, GNot, GEps, GConsumeAll).
+**Theorems (14):**
 
-**Result**: `scan_strict` sorry eliminated. Theorem: if `scan` succeeds, the input belongs to the YAML 1.2.2 formal language (`InYamlLanguage`). This subsumes much of the originally-planned parser coupling work.
+*Stream constructions (2)*: `empty_yaml_stream` (`SLYamlStream` for empty input via `single` with nil/none combinators), `empty_InYamlLanguage` (`InYamlLanguage ""`)
+
+*Document prefix helpers (2)*: `trivial_prefix` (zero-width `SLDocumentPrefix` with no BOM and no comments), `bom_gives_prefix` (BOM `\uFEFF` → `SLDocumentPrefix.bom`)
+
+*Document suffix helpers (3)*: `doc_end_comments_give_suffix` (`SCDocumentEnd` + `SSLComments` → `SLDocumentSuffix`), `doc_end_break_suffix` (`'...'` + line break → suffix), `doc_end_eof_suffix` (`'...'` at EOF → suffix)
+
+*Comment helpers (3)*: `start_of_line_comments` (column 0 → `SSLComments.startOfLine`), `eof_comments` (empty chars → `SSLComments` via `SBComment.eof`), `break_gives_comments` (`SBBreak` → `SSLComments`)
+
+*Explicit document helper (1)*: `directives_end_comments_give_explicit` (`SCDirectivesEnd` + `SSLComments` → `SLExplicitDocument.withContent` with `SENode`/`SSLComments` right alt)
+
+*Stream construction gap (1, private, 1 sorry)*: `scan_content_gives_stream` — constructs `SLYamlStream` from scanner success. This isolates the sole remaining sorry: building full `SBlockNode` content derivation trees requires production coupling for all content types (plain/single-quoted/block scalars, flow/block collections). Only double-quoted scalars have this coupling (Phase B).
+
+*Strictness proofs (2)*: `scan_strict_proof` (composes `scan_full_consumption` + `scan_content_gives_stream` → `InYamlLanguage`), `parse_strict_proof` (decomposes `parseYaml` → `parseYamlRaw` → `scanFiltered` → `scan` via `Composition.parseYamlRaw_ok_decompose`, then delegates to `scan_strict_proof`)
+
+**Architecture**: `Surface.lean` now imports `DocumentProduction.lean` and delegates:
+- `parse_strict` = `DocumentProduction.parse_strict_proof`
+- `scan_strict` = `DocumentProduction.scan_strict_proof`
+
+The 2 sorry's previously in `Surface.lean` are eliminated. The single remaining sorry in the codebase is `scan_content_gives_stream` (private, in `DocumentProduction.lean`) — the gap between full character consumption and full grammar derivation tree construction.
+
+**Sorry status:** 1 sorry (`scan_content_gives_stream` — content node production gap). Build: 407/407 jobs, 0 errors.
+
+###### Reflections — unexpected challenges, simplifications, and idioms
+
+###### Unexpected challenges
+
+1. **Import cycle between `Surface.lean` and proof files.**
+   `Surface.lean` defined `InYamlLanguage` and the `sorry`-stub theorems. To discharge the sorry's, it would need to import `DocumentProduction.lean`, which imports `ScanStrictCoupling.lean`, which imports `CouplingBridge.lean`, which imported `Surface.lean` — creating a cycle.
+
+   **Fix (3-part refactoring):**
+   - Moved `InYamlLanguage` from `Surface.lean` to `Surface/Document.lean` (where `SLYamlStream` lives)
+   - Moved `indent_coupling` theorem from `Surface.lean` to `CouplingBridge.lean` (only depends on `SIndent`)
+   - Changed `CouplingBridge.lean` and `SurfaceCoupling.lean` imports from `Lean4Yaml.Surface` to `Lean4Yaml.Surface.Document`
+   - `Surface.lean` now imports `Proofs.DocumentProduction` without cycle
+
+2. **`GAlt`/`GSeq`/`GStar` constructors take explicit `SurfPos` arguments.**
+   The combinators in `Surface/Combinators.lean` have constructors like `GAlt.right (s s' : SurfPos) : Q s s' → GAlt P Q s s'` with explicit position parameters. Writing `GAlt.right proof` fails because Lean matches the proof against the first `SurfPos` argument.
+
+   **Fix:** Always supply position arguments explicitly: `GAlt.right sp₁ sp' (GSeq.mk sp₁ sp₁ sp' ...)`.
+
+3. **Full grammar derivation tree is fundamentally harder than full consumption.**
+   `scan_full_consumption` (Phase A) proves all input characters are consumed — a position-tracking property threaded through `ScannerSurfCorr`. But `InYamlLanguage` requires `SLYamlStream` — a full parse tree showing HOW characters decompose into documents, nodes, scalars, etc. This requires production coupling for every content type, not just position correspondence. The gap is isolated in `scan_content_gives_stream`.
+
+###### Simplifications
+
+1. **`parse_strict` reduces to `scan_strict` via pipeline decomposition.**
+   The `parseYaml → parseYamlRaw → scanFiltered → scan` chain is 4 function unfoldings. `Composition.parseYamlRaw_ok_decompose` handles the first two steps, then `unfold Scanner.scanFiltered; split` extracts the scan result. The entire `parse_strict_proof` is ~15 lines.
+
+2. **Empty-stream base case is a single constructor application.**
+   `SLYamlStream.single` with `GStar.nil`/`GOpt.none`/`GStar.nil` proves `SLYamlStream ⟨[], 0⟩ ⟨[], 0⟩` in one line. This handles the empty-input case of `InYamlLanguage` trivially.
+
+3. **Document prefix/suffix helpers compose mechanically.**
+   Each helper is a direct constructor application threading `SCDocumentEnd`/`SCDirectivesEnd` + `SSLComments`. No case analysis or induction needed — just plumbing surface positions through 2-3 constructors.
+
+###### Idioms
+
+- **`unfold f; split; · ...; · contradiction` for pipeline decomposition.**
+  Pattern for extracting successful sub-calls from monadic pipelines: unfold the outer function, split on the inner call result, handle `.ok` case, dismiss `.error` case with `contradiction`. Used 3 times in `parse_strict_proof`.
+
+- **`Composition.parseYamlRaw_ok_decompose` as reusable pipeline lemma.**
+  Rather than manually unfolding `parseYamlRaw`'s `do`-notation, the existing composition theorem in `Composition.lean` directly provides `∃ tokens, scanFiltered = .ok tokens ∧ parseStream = .ok docs`. This avoids duplicating the bind/match reasoning.
+
+- **`SBComment.eof _` with underscore for inferrable column.**
+  `SBComment.eof` takes a column parameter that Lean infers from the context. Using `_` avoids hard-coding column numbers in helpers.
 
 </details>
 
-#### Version 0.4.5
+</details>
+
+#### Version 0.4.5 (completed 2026-03-28)
 <details>
 
-**`parse_strict` proof** (~30–50 lines of proof)
+**`parse_strict` proof — merged into v0.4.4 Phase D+E**
 
-> **Scope reduction**: Since v0.4.4's `scan_strict` now proves `InYamlLanguage` from scanner success, `parse_strict` reduces to showing that parser success implies scanner success — a short chain of function unfoldings.
+> The `parse_strict` proof was simpler than anticipated (~15 lines) and is included in `DocumentProduction.lean` alongside `scan_strict`. The `parseYaml → parseYamlRaw → scanFiltered → scan` chain decomposes via existing `Composition.parseYamlRaw_ok_decompose`, then delegates to `scan_strict_proof`.
 
-**Chain**: `parseYaml input = .ok docs` → `parseYamlRaw input = .ok _` → `scanFiltered input = .ok _` → `scan input = .ok _` → `InYamlLanguage input` (via `scan_strict`).
+**Result**: `parse_strict` sorry eliminated. Both `Surface.lean` target theorems now delegate to `DocumentProduction.lean`. The remaining sorry is isolated in a single private helper (`scan_content_gives_stream`) for content-node grammar derivation.
 
-Each step is a simple `match` unfolding: if the inner call returned `.error`, the outer call propagates it, contradicting the `.ok` hypothesis.
+</details>
 
-**Result**: `parse_strict` sorry eliminated → **0 sorry in entire codebase**. Full acceptance strictness verified: if the parser accepts an input, that input belongs to the YAML 1.2.2 formal grammar.
+
+#### Version 0.4.6
+<details>
+
+**Goal:** Eliminate the last sorry (`scan_content_gives_stream`) — prove that scanner success implies a full `SLYamlStream` grammar derivation tree, achieving 0 sorry in all proof files.
+
+**Architecture:** Three layers, each building on the previous.
+
+##### Layer 1: Leaf `_prod` theorems — scalar production coupling
+
+Extend Phase B's `scanDoubleQuoted_prod` pattern to the remaining three content scanner functions. Each theorem proves that when the scanner function succeeds, the consumed characters form a valid surface-syntax derivation tree. All use the `n = 0, c = .blockIn` existential trick so `SIndent 0` and `SFlowLinePrefix 0` are trivially satisfiable.
+
+| Theorem | Scanner function | Surface type produced | Complexity |
+|---|---|---|---|
+| `scanSingleQuoted_prod` | `collectSingleQuotedLoop` → `scanSingleQuoted` | `SCSingleQuoted 0 .blockIn` | Low — structurally identical to double-quoted but simpler (2 char cases: `plain` and `escapedQuote ''`, no backslash escapes). Fold handling uses `SBBreak + GStar SLEmpty + SFlowLinePrefix` directly. |
+| `scanPlainScalar_prod` | `collectPlainScalarLoop` → `scanPlainScalar` | `SNsPlain 0 .blockIn` (= `SNsPlainMultiLine`) | Medium — context-dependent termination (` #`, `: `, flow indicators), `handleBlockLineBreak` must produce `SSNsPlainNextLine`, `SNsPlainFirst` has 4 constructors. |
+| `scanBlockScalar_prod` | `collectBlockScalarLoop` → `scanBlockScalar` | `SCLLiteral 0` / `SCLFolded 0` | Medium-high — `parseBlockHeaderLoop` → `SCBBlockHeader`, indent auto-detection → `SIndent (n+m)` with correct `m`, and `collectBlockScalarLoop` is total (not `Except`) so proof shape differs. |
+
+**File:** [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) — extends existing Phase B infrastructure, reuses `peek_some_sp`, `advance_corr`, `consumeNewline_sbreak_corr`, `foldQuotedNewlines_prod`.
+
+##### Layer 2: Node composition — scalars/indicators into `SBlockNode`
+
+Compose Layer 1 scalar `_prod` theorems and Phase C structural `_prod` theorems into the `SBlockNode` / `SFlowNode` hierarchy:
+
+```
+scanDoubleQuoted_prod → SCDoubleQuoted → SFlowYamlContent.doubleQuoted
+scanSingleQuoted_prod → SCSingleQuoted → SFlowYamlContent.singleQuoted
+scanPlainScalar_prod  → SNsPlain       → SFlowYamlContent.plain
+  all three → SFlowContent.yaml → SFlowNode.content → SBlockNode.flowInBlock
+
+scanBlockScalar_prod  → SCLLiteral/SCLFolded → SBlockNode.blockLiteral/blockFolded
+```
+
+For collections (`SBlockNode.blockSeq`/`blockMap`), the composition is harder because a sequence/mapping spans multiple `scanNextToken` calls (block entry `-`, key `?`, value `:` interleaved with content). This cannot be proved per-token — it requires accumulating structure across loop iterations.
+
+**File:** New `Lean4Yaml/Proofs/NodeProduction.lean` — imports `ScalarProduction` + `StructureProduction`.
+
+##### Layer 3: Scan loop grammar accumulation — `scanLoop` → `SLYamlStream`
+
+Strengthen `scanLoop_full_consumption` to additionally produce `SLYamlStream`. Currently the loop threads `ScannerSurfCorr` (position correspondence) via fuel induction. Layer 3 adds a **grammar accumulator** threaded alongside:
+
+```
+ScannerSurfCorr  (position)     → already threaded (Phase A)
+GrammarAccum     (partial tree)  → new: tracks partial SLYamlStream
+```
+
+The accumulator must track:
+- Current partial `SLYamlStream` (prefixes consumed, documents accumulated)
+- Current open document's partial `SBlockNode` (entries for seq/map)
+- Indent stack ↔ grammar nesting correspondence
+
+At each `scanNextToken` step, the Layer 2 `_prod` theorem for that step advances the accumulator. At loop termination (EOF), the accumulator is finalized into a complete `SLYamlStream`, discharging the sorry in `scan_content_gives_stream`.
+
+**File:** [DocumentProduction.lean](Lean4Yaml/Proofs/DocumentProduction.lean) — replaces the sorry; parallels `ScanStrictCoupling.scanLoop_full_consumption` but with grammar accumulation. Import chain: `ScalarProduction → NodeProduction → DocumentProduction`.
+
+##### Estimated scope
+
+| Layer | Est. lines | Risk |
+|---|---|---|
+| Layer 1 (leaf `_prod`) | ~500 | Low — mechanical, mirrors existing `scanDoubleQuoted_prod` |
+| Layer 2 (node composition) | ~200 | Low — constructor plumbing |
+| Layer 3 (loop accumulation) | ~400-800 | High — novel accumulator design, multi-token collection proofs |
+| **Total** | **~1100-1500** | |
+
+**Execution order:** Layer 1 first (independent, lowest risk). Within Layer 1, start with `scanSingleQuoted_prod` (simplest). Layer 2 can begin after any Layer 1 theorem. Layer 3 requires both Layer 1 and Layer 2.
+
+**Sorry status (target):** 0 sorry. Build: 407+/407+ jobs, 0 errors.
 
 </details>
 
@@ -1385,7 +1511,7 @@ Created [Lean4Yaml/FFI.lean](Lean4Yaml/FFI.lean) with `@[export]` wrappers expos
 **Verification:**
 - Compiles cleanly (847ms), full library build 173/173 jobs with 0 new warnings
 - All 26 symbols confirmed as `LEAN_EXPORT` in generated `.c` file
-- Pre-existing `sorry` in `Surface.lean` unchanged (coupling proofs, not FFI)
+- `Surface.lean` sorry's later discharged in v0.4.4 Phase D+E (coupling proofs, not FFI)
 
 </details>
 
@@ -1415,7 +1541,7 @@ Created the C ABI layer (`ffi/`) enabling any language with FFI to call the veri
 **Verification:**
 - `liblean4yaml.so` links cleanly against `libleanshared.so` (Lean 4.28 + mimalloc v2.23)
 - All 26 public API symbols confirmed via `nm -D`
-- 0 compiler warnings from shim (1 pre-existing `sorry` in Surface.lean unchanged)
+- 0 compiler warnings from shim (`Surface.lean` sorry's later discharged in v0.4.4 Phase D+E)
 - Lean library build: 173/173 jobs, 0 new warnings
 
 **Pool init functions:**

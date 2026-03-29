@@ -3,15 +3,13 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml.Surface.Document
-import Lean4Yaml.TokenParser
-import Lean4Yaml.Scanner
+import Lean4Yaml.Proofs.DocumentProduction
 
 /-!
 # Surface Syntax — Top-Level Definitions & Strictness Theorem
 
 This module ties together all surface syntax productions and defines
-the top-level predicate `InYamlLanguage` and the acceptance strictness
-theorem statement.
+the acceptance strictness theorem statements.
 
 ## The Acceptance Strictness Property
 
@@ -45,34 +43,18 @@ The surface syntax is organized in five layers:
    and node productions (the core of the YAML grammar).
 
 5. **Document** (`Surface.Document`): Document markers, document types,
-   and the stream-level composition.
+   stream-level composition, and `InYamlLanguage`.
 -/
 
 set_option autoImplicit false
 
 namespace Lean4Yaml.Surface
 
-/-! ## Top-Level Predicate -/
+/-! ## Acceptance Strictness Theorems
 
-/-- A string is a valid YAML stream according to the surface syntax grammar.
-
-    This is the input-level specification: the string's characters conform
-    to the YAML 1.2.2 productions [1]–[211], consuming the entire input. -/
-def InYamlLanguage (s : String) : Prop :=
-  ∃ s' : SurfPos,
-    SLYamlStream ⟨s.toList, 0⟩ s' ∧ s'.chars = []
-
-/-! ## Acceptance Strictness Theorem (Statement)
-
-The theorem connects the parser implementation to the formal grammar.
-The proof requires coupling theorems for every scanner/parser function,
-showing that successful parsing implies the input matches the surface syntax.
-
-Proof strategy (bottom-up):
-1. Scanner produces tokens → input characters match basic productions
-2. Token parser consumes tokens → token sequences match node productions
-3. Document/stream composition → full input matches stream production
--/
+The proofs for these theorems are constructed bottom-up through the
+coupling infrastructure in the Proofs/ directory. See
+`DocumentProduction.lean` for the composition of phases A–D. -/
 
 /-- **Acceptance strictness**: if the parser successfully parses a string,
     the input belongs to the formal YAML 1.2.2 surface syntax.
@@ -84,14 +66,8 @@ theorem parse_strict
     (input : String)
     (docs : Array Lean4Yaml.YamlDocument)
     (h : Lean4Yaml.TokenParser.parseYaml input = .ok docs) :
-    InYamlLanguage input := by
-  sorry -- Target theorem: proof to be constructed from coupling lemmas
-
-/-! ## Partial Strictness Results
-
-While the full theorem is under construction, we can prove strictness
-for specific production layers. These partial results are independently
-useful and serve as building blocks for the complete proof. -/
+    InYamlLanguage input :=
+  Lean4Yaml.Proofs.DocumentProduction.parse_strict_proof input docs h
 
 /-- Scanner strictness: if scanning succeeds, the input matches
     the character-level and whitespace surface syntax productions
@@ -100,34 +76,7 @@ theorem scan_strict
     (input : String)
     (tokens : Array (Lean4Yaml.Positioned Lean4Yaml.YamlToken))
     (h : Lean4Yaml.Scanner.scan input = .ok tokens) :
-    InYamlLanguage input := by
-  sorry -- Partial result: scanner produces valid surface syntax
-
-/-! ## Coupling Infrastructure
-
-Coupling theorems connect each layer of the parser pipeline to the
-corresponding surface syntax productions. -/
-
-/-- The indent consumed by the scanner corresponds to `SIndent n` in
-    the surface syntax. This is the simplest coupling theorem and
-    serves as a template for more complex ones. -/
-theorem indent_coupling (n : Nat) (cs : List Char) (col : Nat) :
-    cs.take n = List.replicate n ' ' →
-    cs.length ≥ n →
-    SIndent n ⟨cs, col⟩ ⟨cs.drop n, col + n⟩ := by
-  induction n generalizing cs col with
-  | zero => intros; exact SIndent.zero _
-  | succ k ih =>
-    intro hrep hlen
-    match cs, hlen with
-    | c :: rest, hlen =>
-      simp [List.replicate_succ] at hrep
-      obtain ⟨hc, hrest_rep⟩ := hrep
-      subst hc
-      have hlen' : rest.length ≥ k := by simp at hlen; omega
-      have ih_result := ih rest (col + 1) hrest_rep hlen'
-      have hcol : col + 1 + k = col + (k + 1) := by omega
-      rw [hcol] at ih_result
-      exact SIndent.succ k rest col _ ih_result
+    InYamlLanguage input :=
+  Lean4Yaml.Proofs.DocumentProduction.scan_strict_proof input tokens h
 
 end Lean4Yaml.Surface

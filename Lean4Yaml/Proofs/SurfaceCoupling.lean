@@ -2,7 +2,7 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Lean4Yaml.Surface
+import Lean4Yaml.Surface.Document
 
 /-!
 # Surface Syntax Coupling Proofs
@@ -134,7 +134,7 @@ theorem spaces_give_SIndent (n : Nat) (chars : List Char) (col : Nat)
     (hpre : chars.take n = List.replicate n ' ')
     (hlen : chars.length ≥ n) :
     SIndent n ⟨chars, col⟩ ⟨chars.drop n, col + n⟩ :=
-  indent_coupling n chars col hpre hlen
+  Surface.indent_coupling n chars col hpre hlen
 
 /-! ## §4 Line Break Coupling (Scanner → Surface)
 
