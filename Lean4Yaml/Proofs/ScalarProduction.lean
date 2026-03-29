@@ -808,14 +808,14 @@ theorem isPlainSafe_not_newline {c : Char} {inFlow : Bool}
   `GStar (GChar (fun c => isBlockScalarHeaderChar c = true))`. -/
 
 -- Header chars are not newlines: used for advance_non_newline_corr.
-private theorem blockHeaderChar_not_newline {c : Char}
+theorem blockHeaderChar_not_newline {c : Char}
     (h : Grammar.isBlockScalarHeaderChar c = true) : c ≠ '\n' ∧ c ≠ '\r' := by
   constructor
   · intro heq; subst heq; simp [Grammar.isBlockScalarHeaderChar] at h
   · intro heq; subst heq; simp [Grammar.isBlockScalarHeaderChar] at h
 
 -- isDigit && != '0' → isBlockScalarHeaderChar (digit 1-9 is a header char).
-private theorem isDigitNotZero_isBlockHeaderChar {c : Char}
+theorem isDigitNotZero_isBlockHeaderChar {c : Char}
     (h : (c.isDigit && (c != '0')) = true) :
     Grammar.isBlockScalarHeaderChar c = true := by
   have ⟨hdig, hne⟩ := Bool.and_eq_true_iff.mp h

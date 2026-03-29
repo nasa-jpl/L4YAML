@@ -1645,15 +1645,22 @@ Complete the per-scanner-function production coupling for the 7 missing content 
 - [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) §5: isPlainSafe bridge lemmas (6 theorems, 52 lines)
 - [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) §6: Block header production (3 theorems, 55 lines)
 
-**Sub-layer 4b: Preprocessing production coupling**
+**Sub-layer 4b: Preprocessing production coupling** ✅ Complete (8 theorems, 280 lines, 0 sorry)
 
-Connect the scanner's whitespace/comment-skipping preprocessing to grammar elements:
+Connect the scanner's whitespace/comment-skipping preprocessing to grammar elements. The planned 3-theorem breakdown was replaced by a finer decomposition that separates the grammar endpoint (`sp_mid`) from the scanner endpoint (`sp'`), since `skipToContentLoop` consumes trailing whitespace beyond the last `SLComment`.
 
-| Theorem | Scanner function | Surface type | Est. lines |
-|---|---|---|---|
-| `skipToContent_prefix_prod` | `skipToContentLoop` | `SLDocumentPrefix` / `SSLComments` | ~80 |
-| `scanNextToken_preprocess_separate_prod` | `scanNextToken_preprocess` | `SSeparate n c` (whitespace before content) | ~60 |
-| `documentMarker_prod` | `scanNextToken` (`---`/`...` branches) | `SCDirectivesEnd` / `SCDocumentEnd` | ~40 |
+| Theorem | Scanner function | Surface type | Lines | Status |
+|---|---|---|---|---|
+| `GStar_SSWhite_to_SSeparateInLine_col0` | (combinator) | `SSeparateInLine` from `GStar SSWhite` at col=0 | ~8 | ✅ Done |
+| `consumeNewline_break_prod` | `consumeNewline` | `SBBreak` + col=0 guarantee | ~25 | ✅ Done |
+| `skipToContentLoop_col0_prod` | `skipToContentLoop` | `GStar SLComment sp sp_mid ∧ ScannerSurfCorr s sp'` | ~80 | ✅ Done |
+| `skipToContent_col0_prod` | `skipToContent` | (wrapper for above) | ~5 | ✅ Done |
+| `skipToContent_documentPrefix_prod` | `skipToContent` | `SLDocumentPrefix sp sp_mid` | ~8 | ✅ Done |
+| `skipToContentLoop_after_break_prod` | `skipToContentLoop` | `SSLComments.withComment` | ~8 | ✅ Done |
+| `skipToContentLoop_startOfLine_prod` | `skipToContentLoop` | `SSLComments.startOfLine` | ~10 | ✅ Done |
+| `skipToContent_startOfLine_comments_prod` | `skipToContent` | `SSLComments` (wrapper) | ~5 | ✅ Done |
+
+Notes: `scanNextToken_preprocess_separate_prod` was not needed as a separate theorem — the existing `skipToContentWs_ok_corr` + `skipToContentComment_corr` from ScannerCoupling.lean suffice for `scanNextToken_preprocess`'s whitespace/comment consumption. `documentMarker_prod` was already done as `scanDocumentStart_prod` / `scanDocumentEnd_prod` in StructureProduction.lean (Layer 4a).
 
 **Sub-layer 4c: Stream accumulator**
 
@@ -1719,13 +1726,13 @@ Sub-layer 4d (BlockAccum) ──────────────┘
 - [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) — extend with `scanPlainScalar_prod`, `scanBlockScalar_prod`
 - [NodeProduction.lean](Lean4Yaml/Proofs/NodeProduction.lean) — extend with flow collection composition
 - [DocumentProduction.lean](Lean4Yaml/Proofs/DocumentProduction.lean) — `StreamAccum`, `BlockAccum`, replaces sorry
-- New file: `PreprocessProduction.lean` — preprocessing → grammar coupling (sub-layer 4b)
+- New file: [PreprocessProduction.lean](Lean4Yaml/Proofs/PreprocessProduction.lean) — preprocessing → grammar coupling (sub-layer 4b)
 
 **Execution order:**
 1. `scanAnchorOrAlias_nonempty` (lowest risk, ~30 lines)
 2. `scanPlainScalar_prod` (medium, extends existing pattern)
 3. `scanBlockScalar_prod` (medium, parallel with plain)
-4. Sub-layer 4b preprocessing coupling (independent of 1–3)
+4. ~~Sub-layer 4b preprocessing coupling (independent of 1–3)~~ ✅ Complete (8 theorems, 0 sorry)
 5. `scanFlowSequence_prod` + `scanFlowMapping_prod` (high, recursive)
 6. Sub-layer 4d `BlockAccum` design + `blockIndicator_extends_accum` (novel)
 7. Sub-layer 4c `StreamAccum` integration (depends on all above)
@@ -1740,14 +1747,40 @@ Sub-layer 4d (BlockAccum) ──────────────┘
 | Layer 2 (node composition) | ~200 | 158 (18 theorems, 0 sorry) | ✅ Complete |
 | Layer 3 (loop accumulation) | ~400-800 | 4 lemmas + sorry scoped (see gap table) | ✅ Complete (sorry precisely scoped) |
 | Layer 4a (remaining leaf `_prod`) | ~1,180 | 168 actual (10 done, 6 pending) | ✅ Foundations complete; plain/block scalar `_prod` + collections pending |
-| Layer 4b (preprocessing coupling) | ~180 | — | Low–Medium |
+| Layer 4b (preprocessing coupling) | ~180 | 280 actual (8 theorems, 0 sorry) | ✅ Complete |
 | Layer 4c (StreamAccum) | ~320 | — | High — novel accumulator design |
 | Layer 4d (BlockAccum) | ~190 | — | High — multi-token block collection accumulation |
-| **Total** | **~3,050-3,550** | **489 actual** | |
+| **Total** | **~3,050-3,550** | **769 actual** | |
 
-**Execution order:** Layers 1–3 complete. Layer 4a foundations complete (anchor/alias converters, isPlainSafe bridges, block header parsing — 15 new theorems). Remaining Layer 4a: `scanPlainScalar_prod` (medium), `scanBlockScalar_prod` (medium), flow/block collections (high). Layer 4b is independent. Layer 4c+4d require all of 4a+4b.
+**Execution order:** Layers 1–3 complete. Layer 4a foundations complete (anchor/alias converters, isPlainSafe bridges, block header parsing — 15 new theorems). Layer 4b complete (preprocessing coupling — 8 new theorems). Remaining Layer 4a: `scanPlainScalar_prod` (medium), `scanBlockScalar_prod` (medium), flow/block collections (high). Layer 4c+4d require all of 4a+4b.
 
 **Sorry status (current):** 1 sorry (`scan_content_gives_stream`). Build: 409/409 jobs, 0 errors. Target: 0 sorry after Layer 4 complete.
+
+**Layer 4b reflections (8 theorems proven, 0 sorry):**
+
+1. **Grammar/scanner position gap in `skipToContentLoop`.** Each loop iteration consumes whitespace (via `skipToContentWs`) + optional comment (via `skipToContentComment`) + optional break. Complete iterations (those ending with a break) produce `SLComment`. The **final** iteration (ending at non-break content or EOF) consumes whitespace/comment that is NOT part of any `SLComment` — it becomes indentation for the following content production. This forced the return type to separate `sp_mid` (where grammar productions like `GStar SLComment` end) from `sp'` (where `ScannerSurfCorr` holds). The consumer uses `GStar SLComment sp sp_mid` for `SLDocumentPrefix` and `ScannerSurfCorr s_result sp'` for continuing. The `sp_mid → sp'` gap represents trailing whitespace absorbed by subsequent indentation/separation.
+
+2. **Nat subtraction and `omega` fuel bounds.** Proving `fuel' ≥ cn.inputEnd - cn.offset + 1` requires knowing `cn.offset ≤ cn.inputEnd` (otherwise Nat subtraction underflows to 0 and the `+1` makes it 1, which may exceed `fuel'`). The scanner doesn't maintain `offset ≤ inputEnd` as a formal invariant. Fix: case-split with `by_cases hle : cn.offset ≤ sc.inputEnd`, then in the overflow case the Nat subtraction is 0 and `fuel' ≥ 1` follows from `sc.offset < sc.inputEnd` (from `peek_some_hasMore`). In the normal case, `omega` chains the monotonicity inequalities.
+
+3. **`documentMarker_prod` was already done.** The planned `documentMarker_prod` theorem turned out to already exist as `scanDocumentStart_prod` and `scanDocumentEnd_prod` in StructureProduction.lean (Layer 4a). Similarly, `SLDocumentSuffix` composition was already in DocumentProduction.lean. This discovery simplified the layer — only the preprocessing loop coupling was genuinely new.
+
+4. **`push_neg` is Mathlib-only.** When case-splitting on `¬(cn.offset ≤ sc.inputEnd)`, the natural `push_neg` tactic is unavailable without Mathlib. Fix: introduce an explicit `have hgt : cn.offset > sc.inputEnd := by omega` instead.
+
+5. **Column-0 invariant propagation.** The `skipToContentLoop_col0_prod` theorem maintains `sp_mid.col = 0` across iterations. This works because every `SBBreak` resets column to 0, and the induction hypothesis requires `sp.col = 0` as a precondition. The invariant trivially holds at the base case (stop cases return `sp_mid = sp` where `sp.col = 0` was the input). This enables `SSeparateInLine.startOfLine` construction in every iteration.
+
+**New files:**
+- [PreprocessProduction.lean](Lean4Yaml/Proofs/PreprocessProduction.lean) — 280 lines, 8 theorems, 0 sorry
+
+| Theorem | Surface type produced | Lines |
+|---|---|---|
+| `GStar_SSWhite_to_SSeparateInLine_col0` | `SSeparateInLine` from `GStar SSWhite` at col=0 | ~8 |
+| `consumeNewline_break_prod` | `SBBreak` + col=0 guarantee | ~25 |
+| `skipToContentLoop_col0_prod` | `GStar SLComment sp sp_mid` + `ScannerSurfCorr s_result sp'` | ~80 |
+| `skipToContent_col0_prod` | (wrapper) | ~5 |
+| `skipToContent_documentPrefix_prod` | `SLDocumentPrefix sp sp_mid` | ~8 |
+| `skipToContentLoop_after_break_prod` | `SSLComments` (after break) | ~8 |
+| `skipToContentLoop_startOfLine_prod` | `SSLComments` (from col=0) | ~10 |
+| `skipToContent_startOfLine_comments_prod` | `SSLComments` (wrapper) | ~5 |
 
 </details>
 
