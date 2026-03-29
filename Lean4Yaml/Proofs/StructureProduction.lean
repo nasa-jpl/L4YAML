@@ -364,7 +364,92 @@ theorem scanAnchorOrAlias_prod (sc : ScannerState) (sp : SurfPos)
   unfold scanAnchorOrAlias
   exact ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq⟩
 
--- `scanTag` preserves correspondence.
+/-! ### Tag suffix loop production -/
+
+-- `collectTagSuffixLoop` produces `GStar (GChar isTagCharProp)`.
+theorem collectTagSuffixLoop_prod (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp) (suffix : String) (fuel : Nat) :
+    ∃ sp', GStar (GChar isTagCharProp) sp sp' ∧
+           ScannerSurfCorr (collectTagSuffixLoop sc suffix fuel).snd sp' := by
+  induction fuel generalizing sc sp suffix with
+  | zero => exact ⟨sp, GStar.nil sp, hcorr⟩
+  | succ fuel' ih =>
+    unfold collectTagSuffixLoop; split
+    · rename_i c hpeek; split
+      · -- tag char: advance and recurse
+        rename_i hcond
+        obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+        subst hsp_eq
+        have hmore := peek_some_has_more hpeek
+        have htag : isTagCharProp c := (isTagChar_iff c).mp hcond
+        have hne_nl : c ≠ '\n' := by
+          intro heq; rw [heq] at hcond; exact absurd hcond (by native_decide)
+        have hne_cr : c ≠ '\r' := by
+          intro heq; rw [heq] at hcond; exact absurd hcond (by native_decide)
+        have hcorr_adv := advance_non_newline_corr sc c rest hcorr
+          hmore hne_nl hne_cr
+        obtain ⟨sp', h_tail, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩
+          hcorr_adv (suffix.push c)
+        exact ⟨sp',
+               GStar.cons _ _ _
+                 (GChar.mk c rest sc.col htag)
+                 h_tail,
+               hcorr'⟩
+      · -- not tag char: stop
+        exact ⟨sp, GStar.nil sp, hcorr⟩
+    · -- none: stop
+      exact ⟨sp, GStar.nil sp, hcorr⟩
+
+-- `scanTag` on the secondary branch (`!!suffix`) produces `SCNsTagProperty.secondary`.
+-- Preconditions: first char `!`, second char `!`.
+theorem scanTag_secondary_prod (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp)
+    (hpeek : sc.peek? = some '!') (hpeek2 : sc.advance.peek? = some '!') :
+    ∃ sp', SCNsTagProperty sp sp' ∧ ScannerSurfCorr (scanTag sc) sp' := by
+  -- Decompose first `!`
+  obtain ⟨rest1, hsp_eq1⟩ := peek_some_sp hcorr hpeek
+  subst hsp_eq1
+  have hmore1 := peek_some_has_more hpeek
+  have hcorr_bang := advance_non_newline_corr sc '!' rest1 hcorr
+    hmore1 (by decide) (by decide)
+  -- Decompose second `!`
+  obtain ⟨srest, hrest1_eq⟩ := peek_some_sp hcorr_bang hpeek2
+  have hchars_eq := congrArg SurfPos.chars hrest1_eq
+  dsimp only [] at hchars_eq; subst hchars_eq
+  -- Now sp = ⟨'!' :: '!' :: srest, sc.col⟩
+  -- Repack hcorr_bang with rfl col for advance_non_newline_corr
+  have hcorr_bang' : ScannerSurfCorr sc.advance ⟨'!' :: srest, sc.advance.col⟩ :=
+    ⟨hcorr_bang.chars_from, rfl, hcorr_bang.end_eq⟩
+  have hmore2 := peek_some_has_more hpeek2
+  have hcorr_bang2 := advance_non_newline_corr sc.advance '!' srest hcorr_bang'
+    hmore2 (by decide) (by decide)
+  -- Repack for suffix loop with rfl col
+  have hcorr_bang2' : ScannerSurfCorr sc.advance.advance
+      ⟨srest, sc.advance.advance.col⟩ :=
+    ⟨hcorr_bang2.chars_from, rfl, hcorr_bang2.end_eq⟩
+  -- Unfold scanTag and resolve match to secondary branch
+  unfold scanTag; dsimp only []
+  split
+  · -- some '<': contradicts hpeek2
+    rename_i h_lt
+    exact absurd (h_lt ▸ hpeek2) (by decide)
+  · -- some '!': secondary tag
+    unfold scanSecondaryTag; dsimp only []
+    obtain ⟨sp', h_gstar, hcorr_sfx⟩ :=
+      collectTagSuffixLoop_prod sc.advance.advance ⟨srest, sc.advance.advance.col⟩
+        hcorr_bang2' "" _
+    -- Bridge col: sc.advance.advance.col = sc.col + 2
+    have hcol_bridge : sc.advance.advance.col = sc.col + 2 := by
+      have := hcorr_bang.col_eq; have := hcorr_bang2.col_eq
+      dsimp only [] at *; omega
+    rw [hcol_bridge] at h_gstar
+    refine ⟨sp', SCNsTagProperty.secondary srest sc.col sp' h_gstar, ?_⟩
+    exact ⟨hcorr_sfx.chars_from, hcorr_sfx.col_eq, hcorr_sfx.end_eq⟩
+  · -- fallthrough: contradicts hpeek2
+    rename_i _ h_not_bang
+    exact absurd hpeek2 h_not_bang
+
+-- `scanTag` preserves correspondence on all branches.
 theorem scanTag_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', ScannerSurfCorr (scanTag sc) sp' :=
@@ -373,20 +458,166 @@ theorem scanTag_prod (sc : ScannerState) (sp : SurfPos)
 /-! ## §4 Document Marker Productions
 
 `scanDocumentStart` and `scanDocumentEnd` advance 3 characters past
-`---` and `...` respectively. They preserve correspondence. -/
+`---` and `...` respectively. When the start position has `col = 0`
+and the chars are the expected marker sequence, these produce
+`SCDirectivesEnd` / `SCDocumentEnd` witnesses.
 
--- `scanDocumentStart` preserves correspondence.
+Helper: `unwindIndents_corr_exact` shows `unwindIndents` preserves the
+exact surface position (not just existential). -/
+
+-- `unwindIndentsLoop` preserves the exact surface position.
+private theorem unwindIndentsLoop_corr_exact (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp) (col : Int) (fuel : Nat) :
+    ScannerSurfCorr (unwindIndentsLoop sc col fuel) sp := by
+  induction fuel generalizing sc with
+  | zero => simp [unwindIndentsLoop]; exact hcorr
+  | succ fuel' ih =>
+    unfold unwindIndentsLoop; split
+    · exact ih { (sc.emit .blockEnd) with indents := _ }
+        ⟨(corr_of_emit .blockEnd hcorr).chars_from,
+         (corr_of_emit .blockEnd hcorr).col_eq,
+         (corr_of_emit .blockEnd hcorr).end_eq⟩
+    · exact hcorr
+
+-- `unwindIndents` preserves the exact surface position.
+private theorem unwindIndents_corr_exact (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp) (col : Int) :
+    ScannerSurfCorr (unwindIndents sc col) sp := by
+  unfold unwindIndents
+  exact unwindIndentsLoop_corr_exact sc sp hcorr col _
+
+-- `scanDocumentStart` produces `SCDirectivesEnd` when chars = `---rest` at col 0.
 theorem scanDocumentStart_prod (sc : ScannerState) (sp : SurfPos)
-    (hcorr : ScannerSurfCorr sc sp) :
-    ∃ sp', ScannerSurfCorr (scanDocumentStart sc) sp' :=
-  scanDocumentStart_corr sc sp hcorr
+    (hcorr : ScannerSurfCorr sc sp)
+    (rest : List Char) (hchars : sp.chars = '-' :: '-' :: '-' :: rest)
+    (hcol : sp.col = 0) :
+    ∃ sp', SCDirectivesEnd sp sp' ∧ ScannerSurfCorr (scanDocumentStart sc) sp' := by
+  cases sp with | mk chars col =>
+  dsimp only [] at hchars hcol ⊢
+  subst hchars; subst hcol
+  refine ⟨⟨rest, 3⟩, SCDirectivesEnd.mk rest, ?_⟩
+  unfold scanDocumentStart
+  simp only [ScannerState.advanceN, ScannerState.advanceNLoop]
+  -- Thread through unwindIndents (preserves exact position)
+  have hcorr_uw := unwindIndents_corr_exact sc ⟨'-' :: '-' :: '-' :: rest, 0⟩ hcorr (-1)
+  have hcorr_key : ScannerSurfCorr
+      { (unwindIndents sc (-1)) with simpleKey := { possible := false } }
+      ⟨'-' :: '-' :: '-' :: rest, 0⟩ :=
+    ⟨hcorr_uw.chars_from, hcorr_uw.col_eq, hcorr_uw.end_eq⟩
+  have hcorr_emit := corr_of_emit .documentStart hcorr_key
+  -- Advance past first '-'
+  have hcorr_at1 : ScannerSurfCorr
+      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart)
+      ⟨'-' :: '-' :: '-' :: rest,
+       ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).col⟩ :=
+    ⟨hcorr_emit.chars_from, rfl, hcorr_emit.end_eq⟩
+  have hmore1 := corr_nonempty_has_more hcorr_at1
+  have hcorr_adv1 := advance_non_newline_corr
+    ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart)
+    '-' ('-' :: '-' :: rest) hcorr_at1 hmore1 (by decide) (by decide)
+  -- Advance past second '-'
+  have hcorr_at2 : ScannerSurfCorr
+      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).advance
+      ⟨'-' :: '-' :: rest,
+       ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).advance.col⟩ :=
+    ⟨hcorr_adv1.chars_from, rfl, hcorr_adv1.end_eq⟩
+  have hmore2 := corr_nonempty_has_more hcorr_at2
+  have hcorr_adv2 := advance_non_newline_corr
+    ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).advance
+    '-' ('-' :: rest) hcorr_at2 hmore2 (by decide) (by decide)
+  -- Advance past third '-'
+  have hcorr_at3 : ScannerSurfCorr
+      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).advance.advance
+      ⟨'-' :: rest,
+       ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).advance.advance.col⟩ :=
+    ⟨hcorr_adv2.chars_from, rfl, hcorr_adv2.end_eq⟩
+  have hmore3 := corr_nonempty_has_more hcorr_at3
+  have hcorr_adv3 := advance_non_newline_corr
+    ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).advance.advance
+    '-' rest hcorr_at3 hmore3 (by decide) (by decide)
+  -- Final: ScannerSurfCorr (scanDocumentStart sc) ⟨rest, 3⟩
+  exact ⟨hcorr_adv3.chars_from,
+         by have h0 := hcorr_emit.col_eq
+            have h1 := hcorr_adv1.col_eq
+            have h2 := hcorr_adv2.col_eq
+            have h3 := hcorr_adv3.col_eq
+            dsimp only [] at *; omega,
+         hcorr_adv3.end_eq⟩
 
--- `scanDocumentEnd` preserves correspondence on success.
+-- `scanDocumentEnd` produces `SCDocumentEnd` when chars = `...rest` at col 0.
 theorem scanDocumentEnd_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
+    (rest : List Char) (hchars : sp.chars = '.' :: '.' :: '.' :: rest)
+    (hcol : sp.col = 0)
     (s' : ScannerState) (hok : scanDocumentEnd sc = .ok s') :
-    ∃ sp', ScannerSurfCorr s' sp' :=
-  scanDocumentEnd_corr sc sp hcorr s' hok
+    ∃ sp', SCDocumentEnd sp sp' ∧ ScannerSurfCorr s' sp' := by
+  cases sp with | mk chars col =>
+  dsimp only [] at hchars hcol ⊢
+  subst hchars; subst hcol
+  refine ⟨⟨rest, 3⟩, SCDocumentEnd.mk rest, ?_⟩
+  -- Unfold and handle Except
+  unfold scanDocumentEnd at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · -- Build correspondence through unwindIndents + emit + advanceN 3
+    have hcorr_uw := unwindIndents_corr_exact sc
+      ⟨'.' :: '.' :: '.' :: rest, 0⟩ hcorr (-1)
+    have hcorr_key : ScannerSurfCorr
+        { (unwindIndents sc (-1)) with simpleKey := { possible := false } }
+        ⟨'.' :: '.' :: '.' :: rest, 0⟩ :=
+      ⟨hcorr_uw.chars_from, hcorr_uw.col_eq, hcorr_uw.end_eq⟩
+    have hcorr_emit := corr_of_emit .documentEnd hcorr_key
+    -- Advance past first '.'
+    have hcorr_at1 : ScannerSurfCorr
+        ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd)
+        ⟨'.' :: '.' :: '.' :: rest,
+         ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).col⟩ :=
+      ⟨hcorr_emit.chars_from, rfl, hcorr_emit.end_eq⟩
+    have hmore1 := corr_nonempty_has_more hcorr_at1
+    have hcorr_adv1 := advance_non_newline_corr
+      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd)
+      '.' ('.' :: '.' :: rest) hcorr_at1 hmore1 (by decide) (by decide)
+    -- Advance past second '.'
+    have hcorr_at2 : ScannerSurfCorr
+        ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance
+        ⟨'.' :: '.' :: rest,
+         ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance.col⟩ :=
+      ⟨hcorr_adv1.chars_from, rfl, hcorr_adv1.end_eq⟩
+    have hmore2 := corr_nonempty_has_more hcorr_at2
+    have hcorr_adv2 := advance_non_newline_corr
+      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance
+      '.' ('.' :: rest) hcorr_at2 hmore2 (by decide) (by decide)
+    -- Advance past third '.'
+    have hcorr_at3 : ScannerSurfCorr
+        ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance.advance
+        ⟨'.' :: rest,
+         ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance.advance.col⟩ :=
+      ⟨hcorr_adv2.chars_from, rfl, hcorr_adv2.end_eq⟩
+    have hmore3 := corr_nonempty_has_more hcorr_at3
+    have hcorr_adv3 := advance_non_newline_corr
+      ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance.advance
+      '.' rest hcorr_at3 hmore3 (by decide) (by decide)
+    -- Handle the validation match (all OK paths yield s' = result)
+    -- Each OK branch gives s' = result; derive correspondence
+    have mk_corr : ScannerSurfCorr
+        { ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance.advance.advance with
+          simpleKeyAllowed := true, allowDirectives := true,
+          directivesPresent := false, definedAnchors := #[] }
+        ⟨rest, 3⟩ := by
+      exact ⟨hcorr_adv3.chars_from,
+             by have h0 := hcorr_emit.col_eq
+                have h1 := hcorr_adv1.col_eq
+                have h2 := hcorr_adv2.col_eq
+                have h3 := hcorr_adv3.col_eq
+                dsimp only [] at *; omega,
+             hcorr_adv3.end_eq⟩
+    split at hok
+    · have h := Except.ok.inj hok; subst h; exact mk_corr
+    · have h := Except.ok.inj hok; subst h; exact mk_corr
+    · split at hok
+      · have h := Except.ok.inj hok; subst h; exact mk_corr
+      · exact absurd hok (by simp)
 
 -- `scanDirective` preserves correspondence on success.
 theorem scanDirective_prod (sc : ScannerState) (sp : SurfPos)

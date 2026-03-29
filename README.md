@@ -1241,30 +1241,34 @@ Each scalar scanner function additionally produces the corresponding SL* derivat
 
 </details>
 
-##### Phase C: Node property & indicator productions (in progress)
+##### Phase C: Node property, indicator & document marker productions (completed 2026-03-28)
 
 <details>
 
-**Block indicator and anchor/alias production coupling** (398 lines of proof, 19 theorems)
+**Full indicator, anchor, tag, and document marker production coupling** (629 lines of proof, 23 theorems)
 
-Strengthen the `_corr` theorems from `StructureCoupling.lean` to additionally produce surface-syntax derivation trees. Block indicators produce `GLit` witnesses for `-`, `?`, `:`. Anchor/alias scanning produces `GLit marker ∧ GStar (GChar isNsAnchorChar)` — the `&`/`*` indicator followed by zero-or-more anchor-name characters matching the surface predicate.
+Strengthen the `_corr` theorems from `StructureCoupling.lean` to additionally produce surface-syntax derivation trees. Flow and block indicators produce `GLit` witnesses. Anchor/alias scanning produces `GLit marker ∧ GStar (GChar isNsAnchorChar)`. Tag scanning on the secondary branch (`!!suffix`) produces `SCNsTagProperty.secondary`. Document start/end produce `SCDirectivesEnd` / `SCDocumentEnd` with 3-char advance tracking.
 
-**Theorems (19):**
+**Theorems (23):**
 
-*Helpers (4)*: `corr_nonempty_has_more` (derive `offset < inputEnd` from ScannerSurfCorr with nonempty chars, for intermediate states where `peek_some_has_more` doesn't apply), `not_of_bool_false` (Prop negation from Bool=false via Iff bridge), `bool_not_true_imp_false` (`(!b) = true → b = false` via `cases b`), `isNsAnchorChar_of_scanner_cond` (scanner's `!isFlowIndicatorBool && !isWhiteSpaceBool && !isLineBreakBool` → surface `isNsAnchorChar` via 3 correspondence lemmas)
+*Helpers (6)*: `corr_nonempty_has_more` (derive `offset < inputEnd` from ScannerSurfCorr with nonempty chars), `not_of_bool_false` (Prop negation from Bool=false via Iff bridge), `bool_not_true_imp_false` (`(!b) = true → b = false`), `isNsAnchorChar_of_scanner_cond` (scanner Bool conjunction → surface `isNsAnchorChar`), `unwindIndentsLoop_corr_exact` (unwindIndents preserves exact SurfPos, not existential), `unwindIndents_corr_exact` (wrapper)
 
-*Flow indicators (5, unchanged from v0.4.3)*: `scanFlowSequenceStart_prod` (`GLit '['`), `scanFlowSequenceEnd_prod` (`GLit ']'`), `scanFlowMappingStart_prod` (`GLit '{'`), `scanFlowMappingEnd_prod` (`GLit '}'`), `scanFlowEntry_prod` (delegates to `_corr`)
+*Flow indicators (5, unchanged from v0.4.3)*: `scanFlowSequenceStart_prod` (`GLit '['`), `scanFlowSequenceEnd_prod` (`GLit ']'`), `scanFlowMappingStart_prod` (`GLit '{'`), `scanFlowMappingEnd_prod` (`GLit '}'`), `scanFlowEntry_prod` (delegates)
 
-*Block indicators (3, strengthened)*: `scanBlockEntry_prod` (`GLit '-'`), `scanKey_prod` (`GLit '?'`), `scanValue_prod` (`GLit ':'`) — each threads through `pushSequenceIndent`/`pushMappingIndent`/`scanValuePrepare`/`scanValueClearKey` (non-tracked field updates), then `advance_non_newline_corr` for the exact position
+*Block indicators (3, strengthened)*: `scanBlockEntry_prod` (`GLit '-'`), `scanKey_prod` (`GLit '?'`), `scanValue_prod` (`GLit ':'`) — each threads through `pushSequenceIndent`/`pushMappingIndent`/`scanValuePrepare`/`scanValueClearKey`, then `advance_non_newline_corr`
 
-*Anchor/alias (2, strengthened)*: `collectAnchorNameLoop_prod` (fuel induction → `GStar (GChar isNsAnchorChar)`, bridges scanner Bool condition to surface Prop via `isNsAnchorChar_of_scanner_cond`), `scanAnchorOrAlias_prod` (`GLit marker ∧ GStar (GChar isNsAnchorChar)`, composes advance past `&`/`*` + loop)
+*Anchor/alias (2, strengthened)*: `collectAnchorNameLoop_prod` (fuel induction → `GStar (GChar isNsAnchorChar)`), `scanAnchorOrAlias_prod` (`GLit marker ∧ GStar (GChar isNsAnchorChar)`)
 
-*Delegates (5)*: `scanTag_prod`, `scanDocumentStart_prod`, `scanDocumentEnd_prod`, `scanDirective_prod` — preserve correspondence via `_corr` (surface type production deferred to later phases)
+*Tag scanning (3, new)*: `collectTagSuffixLoop_prod` (fuel induction → `GStar (GChar isTagCharProp)`, bridges `isTagChar_iff` from `CharPredicates.lean`), `scanTag_secondary_prod` (`SCNsTagProperty.secondary` — dispatches on `peek2 = '!'`, advances past `!!`, collects suffix), `scanTag_prod` (correspondence delegate for all branches)
 
-**Remaining targets:**
-- Tag scanning → `SCNsTagProperty` (verbatim / secondary / named / nonSpecific) — 4-variant `match peek?` analysis
-- Document start/end → `SCDirectivesEnd` / `SCDocumentEnd` — 3-char advance `advanceN 3` with known characters
-- Anchor `GPlus` upgrade — requires non-empty-name precondition (scanner doesn't enforce minimum name length)
+*Document markers (2, strengthened)*: `scanDocumentStart_prod` (preconditions `col = 0` + chars `---rest` → `SCDirectivesEnd.mk rest`, 3× `advance_non_newline_corr` through `unwindIndents_corr_exact` + `corr_of_emit`), `scanDocumentEnd_prod` (preconditions `col = 0` + chars `...rest` → `SCDocumentEnd.mk rest`, same 3-advance pattern + Except handling with per-branch subst)
+
+*Delegate (1)*: `scanDirective_prod` — preserves correspondence via `_corr` (directive loop analysis deferred to Phase D)
+
+**Scope notes:**
+- Tag verbatim (`!<uri>`) and named (`!handle!suffix`) variants require `GPlus` (non-empty) preconditions that the scanner doesn't enforce — deferred
+- Anchor `GPlus` upgrade similarly requires a non-empty-name precondition — the scanner allows empty anchor names
+- `scanDirective` involves YAML/TAG directive parsing with multiple sub-loops — more naturally Phase D material
 
 **Sorry status:** 0 sorry. Build: 405/405 jobs, 0 errors.
 
@@ -1273,46 +1277,46 @@ Strengthen the `_corr` theorems from `StructureCoupling.lean` to additionally pr
 ###### Unexpected challenges
 
 1. **`Bool.not` + `simp` — dependent elimination failure on `match` in hypotheses.**
-   `simp only [Bool.not_eq_true'] at hcond` where `hcond` contains `!isLineBreakBool c` causes `simp` to expand `Bool.not` into `match b with | true => false | false => true`, then `cases` on the match discriminant fails with "Dependent elimination failed: Failed to solve equation `false = match c == '\n' with ...`".
+   `simp only [Bool.not_eq_true'] at hcond` where `hcond` contains `!isLineBreakBool c` causes `simp` to expand `Bool.not` into `match b with | true => false | false => true`, then `cases` on the match discriminant fails with "Dependent elimination failed".
 
-   **Fix:** Use `Bool.and_eq_true_iff.mp` to decompose the `&&` conjunction into `.1`/`.2` without touching `!`, then `bool_not_true_imp_false` (custom helper: `(!b) = true → b = false` via `cases b <;> simp_all`) to convert each `!x = true` to `x = false`. Note: `Bool.and_eq_true.mp` does NOT exist as a method — `Bool.and_eq_true` is a `Prop` equality not an `Iff`; use `Bool.and_eq_true_iff.mp` instead.
+   **Fix:** Use `Bool.and_eq_true_iff.mp` to decompose without touching `!`, then `bool_not_true_imp_false` helper.
 
 2. **`&&` left-associativity changes decomposition order.**
-   `a && b && c` is `(a && b) && c` (left-associative). So `Bool.and_eq_true_iff.mp h` gives `.1 : (a && b) = true` and `.2 : c = true`, NOT `.1 : a = true` and `.2 : (b && c) = true`. The initial code assumed right-associativity and failed with "type mismatch: has type `(!isLineBreakBool c) = true` but expected `(?m && ?m) = true`".
-
-   **Fix:** Pull the LAST conjunct with `.2`, then decompose `.1` again.
+   `a && b && c` is `(a && b) && c`. `.2` gives `c`, not `(b && c)`.
 
 3. **Struct projection through `{ x with field := v }` blocks `omega`.**
-   After `subst h` on `Except.ok.inj hok`, the goal contains `{ big_struct_literal with simpleKeyAllowed := true, ... }.col` which `omega` treats as opaque — it can't resolve the `.col` projection through the struct update. This happens for `scanValue_prod` (but not `scanBlockEntry_prod`) because `scanValuePrepare`/`scanValueClearKey` create deeper intermediate expressions.
-
-   **Fix:** Extract `.col_eq` fields from `ScannerSurfCorr` values into named `have` hypotheses, then `dsimp only [] at *` reduces all struct projections, making all terms visible to `omega`.
+   **Fix:** Extract `.col_eq` into `have` hypotheses, then `dsimp only [] at *; omega`.
 
 4. **`pushSequenceIndent`/`pushMappingIndent` block definitional col equality.**
-   Flow indicator proofs pass `hmore := peek_some_has_more hpeek` directly to `advance_non_newline_corr` because `{ sc with simpleKey := ... }.emit tok` has `offset`/`inputEnd`/`col` definitionally equal to `sc`'s. Block indicators use `pushSequenceIndent sc col` which has an internal `if` blocking definitional reduction of `.col`.
+   **Fix:** Repack `ScannerSurfCorr` with `⟨chars_from, rfl, end_eq⟩`.
 
-   **Fix:** Repack `ScannerSurfCorr` with `⟨chars_from, rfl, end_eq⟩` to make `col_eq` trivially `rfl` (since `chars_from` doesn't depend on col). Use `corr_nonempty_has_more` to derive `hmore` from the non-empty char list in the repacked corr. Final col proof: extract both `col_eq` as `have` and close with `dsimp only [] at *; omega`.
+5. **`advanceN 3` opaque to `omega` — recursive `advanceNLoop` doesn't reduce.**
+   After `unfold scanDocumentStart`, the goal has `(s_emit.advanceN 3).col` which `omega` treats as opaque because `advanceN` → `advanceNLoop` requires 4 recursive iota reductions that `dsimp only []` doesn't perform.
+
+   **Fix:** `simp only [ScannerState.advanceN, ScannerState.advanceNLoop]` after `unfold scanDocumentStart` to reduce `advanceN 3` to `advance.advance.advance`. For `scanDocumentEnd`, prove `mk_corr` with the explicit `advance.advance.advance` term, then `subst` in each Except branch.
+
+6. **`subst` on struct equality from `peek_some_sp` — not a simple variable equality.**
+   `peek_some_sp hcorr_bang hpeek2` returns `⟨srest, h⟩` where `h : ⟨rest1, sc.col + 1⟩ = ⟨'!' :: srest, sc.advance.col⟩`. `subst h` fails because it's not `x = t` form.
+
+   **Fix:** `congrArg SurfPos.chars` to extract `rest1 = '!' :: srest`, `subst` that, then repack with `rfl` col separately. Bridge cols (`sc.advance.advance.col = sc.col + 2`) via `dsimp only [] at *; omega` and `rw` on the `GStar` witness.
 
 ###### Simplifications
 
-1. **`native_decide` for character-level Bool evaluation.**
-   `c ≠ '\n'` from `isLineBreakBool c = false` is proven by `intro heq; rw [heq] at hlb; exact absurd hlb (by native_decide)`. The `rw [heq]` substitutes the concrete character, then `native_decide` evaluates `isLineBreakBool '\n' = true` and derives `¬(true = false)`. The kernel-level `decide` fails on the same term due to `Bool.or` match reduction issues, but `native_decide` handles it.
+1. **`native_decide` for character-level Bool evaluation.** Same pattern as Phase B — `rw [heq] at hcond; exact absurd hcond (by native_decide)`.
 
-2. **`isNsAnchorChar_of_scanner_cond` composes 3 correspondence lemmas.**
-   The bridge from scanner Bool condition to surface Prop is: decompose `&&` conjunction → `bool_not_true_imp_false` on each → `not_of_bool_false` with `isLineBreak_correspondence`/`isWhiteSpace_correspondence`/`isFlowIndicator_correspondence`. This 3-step pattern is reusable for any scanner predicate that's a conjunction of negated Bool classifiers.
+2. **`isTagChar_iff` from `CharPredicates.lean` directly bridges Bool→Prop.** Unlike anchor chars (which need 3 correspondence lemmas composed manually), tag/URI/word char predicates are defined as `decide (XProp c)` with built-in `_iff` theorems. So `(isTagChar_iff c).mp hcond` gives `isTagCharProp c` in one step.
 
-3. **Loop production mirrors `_corr` exactly.**
-   `collectAnchorNameLoop_prod` has the same fuel induction structure as `collectAnchorNameLoop_corr`: zero→base, succ→unfold→split peek→split condition→recurse/stop. The only additions per branch: `peek_some_sp` + `subst` for position, `advance_non_newline_corr` for exact advance, `GChar.mk` + `GStar.cons` for production. ~30 lines vs ~15 lines for `_corr`.
+3. **`unwindIndents_corr_exact` — exact position preservation.** The existing `unwindIndents_corr` returns `∃ sp'`, but `unwindIndentsLoop` only modifies tokens/indents, preserving all correspondence fields. The stronger `_exact` version returns the same `sp`, enabling document marker proofs to track exact character positions.
 
 ###### Idioms
 
-- **`dsimp only [] at *; omega` for col equalities through struct updates.**
-  When `col_eq` from intermediate `ScannerSurfCorr` values can't be used directly (struct projections not reduced), this 2-step pattern works universally: `have h1 := hcorr_emit.col_eq; have h2 := hcorr_adv.col_eq; dsimp only [] at *; omega`. Used 5 times across the 3 block indicator proofs.
+- **`dsimp only [] at *; omega` for col equalities through struct updates.** Used 5+ times across block indicators and document markers.
 
-- **`corr_nonempty_has_more` for intermediate-state `hmore`.**
-  When `peek_some_has_more` applies to the original state but `advance_non_newline_corr` needs `hmore` for the intermediate state (after `pushSequenceIndent`/`emit`), repack the corr with `⟨chars_from, rfl, end_eq⟩` and then `corr_nonempty_has_more` derives `offset < inputEnd` from the non-empty char list.
+- **`corr_nonempty_has_more` for intermediate-state `hmore`.** Repack corr with `⟨chars_from, rfl, end_eq⟩`, then derive `offset < inputEnd` from the non-empty char list.
 
-- **`rw [heq] at hlb; exact absurd hlb (by native_decide)` for char inequality.**
-  Proving `c ≠ '\n'` from `isLineBreakBool c = false`: `rw` substitutes the concrete character, then `native_decide` evaluates the Bool function. Avoids `subst` which has kernel issues with `match` expressions.
+- **`simp only [ScannerState.advanceN, ScannerState.advanceNLoop]` for multi-advance reduction.** Reduces `advanceN 3` to `advance.advance.advance` via recursive equation lemmas. Essential for document marker col proofs.
+
+- **`mk_corr` pattern for Except branches.** Pre-prove correspondence for the concrete result value with explicit `advance.advance.advance` term, then `subst` in each `split at hok` branch. Avoids duplicating the col proof across 3-4 branches.
 
 </details>
 
