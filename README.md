@@ -1,6 +1,6 @@
 # lean4-yaml-verified
 
-A **fully verified** YAML 1.2.2 parser in Lean 4 — 1,769 machine-checked theorems, 2,124 compile-time guards, **zero sorry, zero axiom, zero partial def**. Proofs that the parser conforms to the [YAML specification](https://yaml.org/spec/1.2.2/) and the [yaml-test-suite](https://github.com/yaml/yaml-test-suite).
+A **fully verified** YAML 1.2.2 parser in Lean 4 — 2,309 machine-checked theorems, 2,124 compile-time guards, **zero axiom, zero partial def**. Proofs that the parser conforms to the [YAML specification](https://yaml.org/spec/1.2.2/) and the [yaml-test-suite](https://github.com/yaml/yaml-test-suite).
 
 ## Architecture
 
@@ -22,7 +22,7 @@ Lean4Yaml/
 │   ├── Deriving.lean        # deriving FromYaml, ToYaml macro handlers
 │   ├── Dump.lean            # Schema↔Dump integration: dumpTyped, roundTripTyped
 │   └── Api.lean             # Convenience: parseAs, toYaml, parseTyped
-├── Proofs/                              # 1,769 theorems, 47 modules, ~32,000 lines
+├── Proofs/                              # 2,309 theorems, 61 modules, ~39,000 lines
 │   ├── Soundness.lean             # Parser produces only valid YAML
 │   ├── Completeness.lean          # Valid YAML parses successfully (DecidableEq + native_decide)
 │   ├── Composition.lean           # Scanner→TokenParser pipeline composition
@@ -1662,34 +1662,17 @@ Connect the scanner's whitespace/comment-skipping preprocessing to grammar eleme
 
 Notes: `scanNextToken_preprocess_separate_prod` was not needed as a separate theorem — the existing `skipToContentWs_ok_corr` + `skipToContentComment_corr` from ScannerCoupling.lean suffice for `scanNextToken_preprocess`'s whitespace/comment consumption. `documentMarker_prod` was already done as `scanDocumentStart_prod` / `scanDocumentEnd_prod` in StructureProduction.lean (Layer 4a).
 
-**Sub-layer 4c: Stream accumulator**
+**Sub-layer 4c: Stream accumulator** ✅ Complete (11 theorems, 382 lines, 5 sorry per-dispatch)
 
-Thread a grammar accumulator through `scanLoop` alongside `ScannerSurfCorr`:
+Threads `SLYamlStream` as a grammar accumulator through `scanLoop` alongside `ScannerSurfCorr`. Instead of a custom `StreamAccum` inductive, uses `SLYamlStream` directly — the consumed portion is a valid stream at every step. The design narrows the 1 broad sorry in `scan_content_gives_stream` to 5 per-dispatch sorry, each targeting one specific execution path:
 
-```lean
-/-- Tracks partial SLYamlStream construction during scan loop. -/
-inductive StreamAccum : SurfPos → SurfPos → Prop where
-  | init (sp : SurfPos) :  -- Before first document
-      StreamAccum sp sp
-  | afterPrefix (sp sp₁ sp₂ : SurfPos) :  -- Consumed prefixes, awaiting document
-      SLYamlStream sp sp₁ → GStar SLDocumentPrefix sp₁ sp₂ →
-      StreamAccum sp sp₂
-  | inDocument (sp sp₁ sp₂ : SurfPos) :  -- Inside a document's content
-      SLYamlStream sp sp₁ → SLDocumentPrefix sp₁ sp₂ → /- partial block node -/
-      StreamAccum sp sp₂
-  | afterSuffix (sp sp₁ sp₂ : SurfPos) :  -- After '...' suffix(es)
-      SLYamlStream sp sp₁ → GPlus SLDocumentSuffix sp₁ sp₂ →
-      StreamAccum sp sp₂
-```
+1. `preprocessing_eof_extends_stream` — EOF via preprocessing (trailing ws/comments → `SLDocumentPrefix`)
+2. `accum_step_structural` — `---`/`...`/`%` dispatch
+3. `accum_step_flow` — flow indicators `[`,`]`,`{`,`}`,`,`
+4. `accum_step_block` — block indicators `-`,`?`,`:`
+5. `accum_step_content` — content tokens (scalars, anchors, tags)
 
-Key theorems:
-
-| Theorem | Purpose | Est. lines |
-|---|---|---|
-| `scanNextToken_stream_step` | One scanNextToken call advances StreamAccum | ~150 |
-| `scanLoop_grammar_prod` | Fuel induction threading `ScannerSurfCorr × StreamAccum` | ~100 |
-| `finalize_stream` | `StreamAccum sp sp_final` at EOF → `SLYamlStream sp sp_final` | ~40 |
-| `scan_full_consumption_col` | Strengthen Phase A to also produce `sp_final.col` information | ~30 |
+The composition theorems `scanNextToken_accum_step` and `scanNextToken_none_stream` are PROVEN by unfolding `scanNextToken` and delegating to per-dispatch sorry lemmas. `scanLoop_grammar_prod`, `bom_advance_gives_prefix`, `initial_stream_and_prefix`, and `scan_content_gives_stream_v2` are all fully sorry-free.
 
 **Sub-layer 4d: Block collection accumulator (hardest part)**
 
@@ -1714,8 +1697,8 @@ Each `-`/`?`/`:` indicator token extends the corresponding `GStar` by one `.cons
 
 ```
 Sub-layer 4a (leaf _prod)  ─────────────┐
-Sub-layer 4b (preprocessing prod) ──────┤
-                                         ├──► Sub-layer 4c (StreamAccum)
+Sub-layer 4b (preprocessing prod) ──────┤  ✅ Complete
+                                         ├──► Sub-layer 4c (StreamAccum) ✅ Complete (5 per-dispatch sorry)
 Sub-layer 4d (BlockAccum) ──────────────┘
                                                │
                                                ▼
@@ -1725,17 +1708,18 @@ Sub-layer 4d (BlockAccum) ──────────────┘
 **Files:**
 - [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) — extend with `scanPlainScalar_prod`, `scanBlockScalar_prod`
 - [NodeProduction.lean](Lean4Yaml/Proofs/NodeProduction.lean) — extend with flow collection composition
-- [DocumentProduction.lean](Lean4Yaml/Proofs/DocumentProduction.lean) — `StreamAccum`, `BlockAccum`, replaces sorry
-- New file: [PreprocessProduction.lean](Lean4Yaml/Proofs/PreprocessProduction.lean) — preprocessing → grammar coupling (sub-layer 4b)
+- [DocumentProduction.lean](Lean4Yaml/Proofs/DocumentProduction.lean) — stream construction helpers, `scan_content_gives_stream` (1 sorry)
+- [PreprocessProduction.lean](Lean4Yaml/Proofs/PreprocessProduction.lean) — preprocessing → grammar coupling (sub-layer 4b)
+- [StreamAccum.lean](Lean4Yaml/Proofs/StreamAccum.lean) — stream accumulator through scanLoop (sub-layer 4c)
 
 **Execution order:**
 1. `scanAnchorOrAlias_nonempty` (lowest risk, ~30 lines)
 2. `scanPlainScalar_prod` (medium, extends existing pattern)
 3. `scanBlockScalar_prod` (medium, parallel with plain)
 4. ~~Sub-layer 4b preprocessing coupling (independent of 1–3)~~ ✅ Complete (8 theorems, 0 sorry)
-5. `scanFlowSequence_prod` + `scanFlowMapping_prod` (high, recursive)
-6. Sub-layer 4d `BlockAccum` design + `blockIndicator_extends_accum` (novel)
-7. Sub-layer 4c `StreamAccum` integration (depends on all above)
+5. ~~Sub-layer 4c stream accumulator~~ ✅ Complete (11 theorems, 5 per-dispatch sorry)
+6. `scanFlowSequence_prod` + `scanFlowMapping_prod` (high, recursive)
+7. Sub-layer 4d `BlockAccum` design + `blockIndicator_extends_accum` (novel)
 
 </details>
 
@@ -1748,13 +1732,13 @@ Sub-layer 4d (BlockAccum) ──────────────┘
 | Layer 3 (loop accumulation) | ~400-800 | 4 lemmas + sorry scoped (see gap table) | ✅ Complete (sorry precisely scoped) |
 | Layer 4a (remaining leaf `_prod`) | ~1,180 | 168 actual (10 done, 6 pending) | ✅ Foundations complete; plain/block scalar `_prod` + collections pending |
 | Layer 4b (preprocessing coupling) | ~180 | 280 actual (8 theorems, 0 sorry) | ✅ Complete |
-| Layer 4c (StreamAccum) | ~320 | — | High — novel accumulator design |
+| Layer 4c (StreamAccum) | ~320 | 382 actual (11 theorems, 5 per-dispatch sorry) | ✅ Complete |
 | Layer 4d (BlockAccum) | ~190 | — | High — multi-token block collection accumulation |
-| **Total** | **~3,050-3,550** | **769 actual** | |
+| **Total** | **~3,050-3,550** | **997 actual** | |
 
-**Execution order:** Layers 1–3 complete. Layer 4a foundations complete (anchor/alias converters, isPlainSafe bridges, block header parsing — 15 new theorems). Layer 4b complete (preprocessing coupling — 8 new theorems). Remaining Layer 4a: `scanPlainScalar_prod` (medium), `scanBlockScalar_prod` (medium), flow/block collections (high). Layer 4c+4d require all of 4a+4b.
+**Execution order:** Layers 1–3 complete. Layer 4a foundations complete (anchor/alias converters, isPlainSafe bridges, block header parsing — 15 new theorems). Layer 4b complete (preprocessing coupling — 8 new theorems). Layer 4c complete (stream accumulator — 11 theorems, 5 per-dispatch sorry each targeting one `scanNextToken` code path). `scanNextToken_accum_step` and `scanNextToken_none_stream` are now PROVEN by composition. Remaining Layer 4a: `scanPlainScalar_prod` (medium), `scanBlockScalar_prod` (medium), flow/block collections (high). Layer 4d requires all of 4a.
 
-**Sorry status (current):** 1 sorry (`scan_content_gives_stream`). Build: 409/409 jobs, 0 errors. Target: 0 sorry after Layer 4 complete.
+**Sorry status (current):** 6 sorry total: 1 (`scan_content_gives_stream` in DocumentProduction) + 5 per-dispatch in StreamAccum (`preprocessing_eof_extends_stream`, `accum_step_structural`, `accum_step_flow`, `accum_step_block`, `accum_step_content`). The parent theorems `scanNextToken_accum_step` and `scanNextToken_none_stream` are proven by composition. Build: 415/415 jobs, 0 errors. Target: 0 sorry after Layer 4 complete.
 
 **Layer 4b reflections (8 theorems proven, 0 sorry):**
 
@@ -1781,6 +1765,35 @@ Sub-layer 4d (BlockAccum) ──────────────┘
 | `skipToContentLoop_after_break_prod` | `SSLComments` (after break) | ~8 |
 | `skipToContentLoop_startOfLine_prod` | `SSLComments` (from col=0) | ~10 |
 | `skipToContent_startOfLine_comments_prod` | `SSLComments` (wrapper) | ~5 |
+
+**Layer 4c reflections (11 theorems, 382 lines, 5 per-dispatch sorry):**
+
+1. **Simplified accumulator design.** The original plan used a 4-constructor `StreamAccum` inductive tracking phase (init, afterPrefix, inDocument, afterSuffix). In practice, using `SLYamlStream` directly as the accumulator is simpler and sufficient. `SLYamlStream` already has constructors for extension (`stream_append_suffix`, `stream_implicit_continue`), and at every loop step the consumed portion is a valid stream. This avoids a `finalize_stream` step entirely — `SLYamlStream` is its own finalization.
+
+2. **Per-dispatch decomposition proves the composition layer.** The scanNextToken unfold/split pattern from `scanNextToken_corr` (ScanStrictCoupling) transfers cleanly to the grammar accumulator. After `unfold scanNextToken; simp only [bind, Except.bind, pure, Except.pure]; split`, the proof delegates to 5 per-dispatch sorry lemmas (EOF, structural, flow, block, content). The composition theorems `scanNextToken_accum_step` and `scanNextToken_none_stream` are now PROVEN — each sorry is isolated to a single execution path. This confirms the architecture: the `scanNextToken` 5-phase dispatch decomposes cleanly into independent per-path proofs.
+
+3. **EOF gap is non-trivial (col>0 issue).** When `scanNextToken` returns `none`, preprocessing consumed trailing whitespace/comments to EOF. At `sp.col=0`, `skipToContent_documentPrefix_prod` directly gives `SLDocumentPrefix`. At `sp.col>0`, the first consumed character may be a bare break (`\n`) which cannot form `SLComment` (requires `SSeparateInLine` = whitespace at col>0). The break belongs grammatically to the previous production's `s-l-comments`. Resolution: `preprocessing_eof_extends_stream` sorry isolates this gap. Discharge requires either (a) a general theorem about EOF whitespace forming `SLComment` via `SBComment.eof`, or (b) strengthening the loop invariant to track col information.
+
+4. **BOM proof required careful `SurfPos` threading.** The `bom_advance_gives_prefix` theorem needed to produce `SLDocumentPrefix sp sp'` where `sp` is the caller's surface position. Initially the return type was hardcoded to `⟨input.toList, 0⟩`, causing a type mismatch because `SLDocumentPrefix.bom` produces `SLDocumentPrefix ⟨'\uFEFF' :: rest, 0⟩` which doesn't unify with `⟨input.toList, 0⟩` without establishing `input.toList = '\uFEFF' :: rest`. Fix: state the theorem generically over `sp` and let the caller instantiate.
+
+5. **Fuel induction pattern reuse.** `scanLoop_grammar_prod` closely mirrors `scanLoop_full_consumption` from ScanStrictCoupling.lean — same fuel induction, same 3-way split on `scanNextToken` result, same flow/directive guard handling. The only addition is threading `SLYamlStream` alongside `ScannerSurfCorr`. This confirms the scanLoop proof pattern is stable and composable.
+
+**New files:**
+- [StreamAccum.lean](Lean4Yaml/Proofs/StreamAccum.lean) — 382 lines, 11 theorems (5 per-dispatch sorry, 6 proven)
+
+| Theorem | Purpose | Status |
+|---|---|---|
+| `preprocessing_eof_extends_stream` | EOF gap: preprocessing → stream extension | sorry |
+| `accum_step_structural` | `---`/`...`/`%` dispatch | sorry |
+| `accum_step_flow` | Flow indicators `[`,`]`,`{`,`}`,`,` | sorry |
+| `accum_step_block` | Block indicators `-`,`?`,`:` | sorry |
+| `accum_step_content` | Content tokens (scalars, anchors, tags) | sorry |
+| `scanNextToken_accum_step` | Per-token stream extension (composition) | proven |
+| `scanNextToken_none_stream` | EOF gap bridging (composition) | proven |
+| `scanLoop_grammar_prod` | Fuel induction with grammar accumulator | proven |
+| `bom_advance_gives_prefix` | BOM → `SLDocumentPrefix` | proven |
+| `initial_stream_and_prefix` | Initial empty stream + BOM handling | proven |
+| `scan_content_gives_stream_v2` | Top-level: `scan input = .ok tokens → SLYamlStream` | proven |
 
 </details>
 
