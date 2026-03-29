@@ -1,5 +1,6 @@
 import Lean4Yaml.Proofs.ScanStrictCoupling
 import Lean4Yaml.Proofs.StructureProduction
+import Lean4Yaml.Proofs.NodeProduction
 import Lean4Yaml.Proofs.Composition
 
 /-! # Document & Stream Production (Phase D of v0.4.4)
@@ -117,26 +118,100 @@ theorem directives_end_comments_give_explicit (sp sp₁ sp' : SurfPos)
   SLExplicitDocument.withContent sp sp₁ sp' h_end
     (GAlt.right sp₁ sp' (GSeq.mk sp₁ sp₁ sp' (GEps.mk sp₁) h_comments))
 
-/-! ## §6 Stream Composition from Scanner -/
+/-! ## §6 Stream Composition from Scanner (Layer 3) -/
 
--- The core gap: building SLYamlStream from scanner success.
+-- Layer 3 architecture: decompose scanner success into SLYamlStream.
 --
--- Phase A proves that scan success → all input characters consumed
--- (scan_full_consumption: ∃ sp_final, sp_final.chars = []).
+-- The scanner processes input in a loop:
+--   scanNextToken_preprocess → skip whitespace/comments → (s', c) or EOF
+--   dispatch c → structural (---/...) | flow ([]{}:) | block (-?:) | content
 --
--- To construct InYamlLanguage, we need SLYamlStream ⟨input.toList, 0⟩ sp_final.
--- This requires building the full grammar derivation tree, including:
--- - SLDocumentPrefix for BOM + leading comments
--- - SLAnyDocument for each document's content (SBlockNode, flow nodes, scalars)
--- - SLDocumentSuffix for '...' markers
+-- Each category maps to a grammar element:
+--   whitespace/comments  → SLDocumentPrefix.comments | SSLComments
+--   '---'                → SCDirectivesEnd → SLExplicitDocument
+--   '...'                → SCDocumentEnd → SLDocumentSuffix
+--   content tokens       → SBlockNode (via Layer 1/2 _prod theorems)
 --
--- The document content (SBlockNode) requires production coupling for ALL
--- content types: plain scalars, single-quoted, block literal/folded,
--- flow sequences/mappings, block sequences/mappings, etc.
--- Currently only double-quoted scalars have production coupling (Phase B).
+-- The stream is built by composing these pieces into SLYamlStream
+-- constructors (single | suffixContinue | implicitContinue).
+
+/-! ### §6a Stream Extension Lemmas -/
+
+-- One bare document forms a stream (no prefix, no suffix).
+theorem bare_to_stream (s s' : SurfPos)
+    (h_bare : SLBareDocument s s') :
+    SLYamlStream s s' :=
+  SLYamlStream.single s s s' s'
+    (GStar.nil _)
+    (GOpt.some _ _ (SLAnyDocument.bare s s' h_bare))
+    (GStar.nil _)
+
+-- Empty document at any position forms a stream.
+-- Used when all content has been consumed by prefixes/suffixes.
+theorem empty_to_stream (sp : SurfPos) :
+    SLYamlStream sp sp :=
+  SLYamlStream.single sp sp sp sp
+    (GStar.nil _)
+    (GOpt.none _)
+    (GStar.nil _)
+
+-- Extend a stream with suffix(es) (after '...').
+theorem stream_append_suffix (s s₁ s₂ : SurfPos)
+    (h_stream : SLYamlStream s s₁)
+    (h_suffixes : GPlus SLDocumentSuffix s₁ s₂) :
+    SLYamlStream s s₂ :=
+  SLYamlStream.suffixContinue s s₁ s₂ s₂ s₂ s₂
+    h_stream h_suffixes
+    (GStar.nil _) (GOpt.none _) (GStar.nil _)
+
+-- Extend a stream with an implicit continuation (after prefix(es) + explicit doc).
+theorem stream_implicit_continue (s s₁ s₂ s₃ : SurfPos)
+    (h_stream : SLYamlStream s s₁)
+    (h_prefixes : GStar SLDocumentPrefix s₁ s₂)
+    (h_doc : SLExplicitDocument s₂ s₃) :
+    SLYamlStream s s₃ :=
+  SLYamlStream.implicitContinue s s₁ s₂ s₃ s₃
+    h_stream h_prefixes
+    (GOpt.some _ _ h_doc)
+    (GStar.nil _)
+
+/-! ### §6b Content Production Gap -/
+
+-- The precise gap: given that the scanner consumed all characters from
+-- sp to sp_final (where sp_final.chars = []), prove that the character
+-- sequence forms a valid SLYamlStream.
 --
--- This is the sole remaining sorry in the acceptance strictness chain.
--- Eliminating it requires extending Phase B's approach to all content types.
+-- This requires per-content-type production coupling for ALL scanner
+-- content dispatch branches:
+--
+-- | Content type     | Scanner function      | _prod theorem          | Status      |
+-- |------------------|-----------------------|------------------------|-------------|
+-- | Double-quoted    | scanDoubleQuoted      | scanDoubleQuoted_prod  | ✅ Done     |
+-- | Single-quoted    | scanSingleQuoted      | scanSingleQuoted_prod  | ✅ Done     |
+-- | Plain scalar     | scanPlainScalar       | scanPlainScalar_prod   | ❌ Missing  |
+-- | Block scalar     | scanBlockScalar       | scanBlockScalar_prod   | ❌ Missing  |
+-- | Anchor           | scanAnchorOrAlias     | alias_to_flowNode      | ❌ Partial  |
+-- | Tag              | scanTag               | scanTag_prod (→ props) | ✅ Done     |
+-- | Flow sequence    | (via scanNextToken)   | —                      | ❌ Missing  |
+-- | Flow mapping     | (via scanNextToken)   | —                      | ❌ Missing  |
+-- | Block sequence   | (multi-token)         | —                      | ❌ Missing  |
+-- | Block mapping    | (multi-token)         | —                      | ❌ Missing  |
+--
+-- Additionally, the stream-level composition requires:
+-- (1) Preprocessing characters → SLDocumentPrefix / SSLComments
+-- (2) Document marker dispatch → SCDirectivesEnd / SCDocumentEnd
+-- (3) Block collection accumulation across multiple scanNextToken calls
+--
+-- The sorry below captures this entire gap. When all _prod theorems
+-- are completed and the loop accumulator is implemented, this sorry
+-- is replaced by the composition proof.
+--
+-- Architecture for eventually eliminating the sorry:
+--   scanLoop_grammar_prod : fuel induction threading (ScannerSurfCorr × StreamAccum)
+--   StreamAccum : inductive tracking partial SLYamlStream + open document + open block
+--   scanNextToken_stream_step : extends StreamAccum for one token
+--   finalize_stream : StreamAccum at EOF → SLYamlStream
+
 theorem scan_content_gives_stream
     (input : String)
     (tokens : Array (Positioned YamlToken))
