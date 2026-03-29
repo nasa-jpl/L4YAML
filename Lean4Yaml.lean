@@ -42,6 +42,7 @@ import Lean4Yaml.Proofs.ParserWfaProofs
 import Lean4Yaml.Proofs.RoundTrip
 import Lean4Yaml.Proofs.ScalarCoupling
 import Lean4Yaml.Proofs.ScalarProduction
+import Lean4Yaml.Proofs.NodeProduction
 import Lean4Yaml.Proofs.StructureCoupling
 import Lean4Yaml.Proofs.StructureProduction
 import Lean4Yaml.Proofs.ScannerContracts

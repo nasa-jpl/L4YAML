@@ -1473,20 +1473,66 @@ Extend Phase B's `scanDoubleQuoted_prod` pattern to the remaining three content 
 
 ##### Layer 2: Node composition — scalars/indicators into `SBlockNode`
 
-Compose Layer 1 scalar `_prod` theorems and Phase C structural `_prod` theorems into the `SBlockNode` / `SFlowNode` hierarchy:
+<details>
+<summary>Completed: 18 theorems in NodeProduction.lean (158 lines, 0 sorry)</summary>
+
+Compose Layer 1 scalar `_prod` theorems and Phase C structural `_prod` theorems into the `SFlowContent` / `SFlowNode` / `SBlockNode` hierarchy:
 
 ```
-scanDoubleQuoted_prod → SCDoubleQuoted → SFlowYamlContent.doubleQuoted
-scanSingleQuoted_prod → SCSingleQuoted → SFlowYamlContent.singleQuoted
-scanPlainScalar_prod  → SNsPlain       → SFlowYamlContent.plain
-  all three → SFlowContent.yaml → SFlowNode.content → SBlockNode.flowInBlock
+scanDoubleQuoted_prod → SCDoubleQuoted → SFlowContent.doubleQ
+scanSingleQuoted_prod → SCSingleQuoted → SFlowContent.singleQ
+  both → SFlowContent → SFlowNode.content
 
-scanBlockScalar_prod  → SCLLiteral/SCLFolded → SBlockNode.blockLiteral/blockFolded
+SSeparate + SFlowNode + SSLComments → SBlockNode.flowInBlock
+SSeparate + props + SCLLiteral      → SBlockNode.blockLiteral
+SSeparate + props + SCLFolded       → SBlockNode.blockFolded
+SSLComments                         → SBlockNode.emptyNode
 ```
 
-For collections (`SBlockNode.blockSeq`/`blockMap`), the composition is harder because a sequence/mapping spans multiple `scanNextToken` calls (block entry `-`, key `?`, value `:` interleaved with content). This cannot be proved per-token — it requires accumulating structure across loop iterations.
+**File:** [NodeProduction.lean](Lean4Yaml/Proofs/NodeProduction.lean) — imports `ScalarProduction` + `StructureProduction`.
 
-**File:** New `Lean4Yaml/Proofs/NodeProduction.lean` — imports `ScalarProduction` + `StructureProduction`.
+**Theorem inventory (18):**
+
+| § | Theorem | Surface type |
+|---|---|---|
+| §1 | `doubleQuoted_flowContent` | `SCDoubleQuoted n c → SFlowContent n c` |
+| §1 | `singleQuoted_flowContent` | `SCSingleQuoted n c → SFlowContent n c` |
+| §1 | `plain_flowContent` | `SNsPlain n c → SFlowContent n c` |
+| §1 | `flowSeq_flowContent` | `SFlowSequence n c → SFlowContent n c` |
+| §1 | `flowMap_flowContent` | `SFlowMapping n c → SFlowContent n c` |
+| §2 | `flowContent_flowNode` | `SFlowContent n c → SFlowNode n c` |
+| §2 | `alias_flowNode` | `SCNsAliasNode → SFlowNode n c` |
+| §2 | `propsContent_flowNode` | `SCNsProperties + SSeparate + SFlowContent → SFlowNode n c` |
+| §2 | `propsEmpty_flowNode` | `SCNsProperties → SFlowNode n c` |
+| §3 | `flowInBlock_blockNode` | `SSeparate + SFlowNode + SSLComments → SBlockNode n c` |
+| §3 | `literal_blockNode` | `SSeparate + GOpt props + SCLLiteral → SBlockNode n c` |
+| §3 | `folded_blockNode` | `SSeparate + GOpt props + SCLFolded → SBlockNode n c` |
+| §3 | `emptyNode_blockNode` | `SSLComments → SBlockNode n c` |
+| §4 | `scanDoubleQuoted_flowContent_prod` | scanner → `SFlowContent 0 .blockIn` |
+| §4 | `scanSingleQuoted_flowContent_prod` | scanner → `SFlowContent 0 .blockIn` |
+| §5 | `scanDoubleQuoted_flowNode_prod` | scanner → `SFlowNode 0 .blockIn` |
+| §5 | `scanSingleQuoted_flowNode_prod` | scanner → `SFlowNode 0 .blockIn` |
+| alias | (deferred) | `GStar` → `GPlus` non-emptiness needed |
+
+**Build:** 409/409 jobs, 0 errors, 1 sorry (unchanged — `scan_content_gives_stream`).
+
+**Reflections:**
+
+1. **Parametric vs. existential n/c is the key design choice.** The §1–§3 pure composition lemmas are parametric in `n` and `c` — they work at any indentation level and context. The §4–§5 scanner-to-node lemmas use `n=0, c=.blockIn` (the existential trick from Layer 1). Layer 3 must bridge this gap: either generalize the `_prod` theorems to produce at the actual `n` and `c`, or prove monotonicity lemmas showing `SFlowContent 0 .blockIn sp sp' → SFlowContent n c sp sp'` for specific content shapes.
+
+2. **`SBlockNode.flowInBlock` needs loop-level context, not per-token proofs.** The `SSeparate` comes from `scanNextToken_preprocess` (skip whitespace), and `SSLComments` comes from post-content processing. Neither is available to the content-scanning function. So `SBlockNode` assembly fundamentally requires Layer 3's loop accumulation to supply the context around each content token.
+
+3. **Alias lifting is blocked by GPlus vs. GStar.** `scanAnchorOrAlias_prod` returns `GStar (GChar isNsAnchorChar)`, but `SCNsAliasNode` needs `GPlus` (at least one char). The scanner validates non-emptiness at runtime (error on `*` with no name), but connecting this validation to the `GStar` output requires additional coupling proof — not a simple wrapping exercise.
+
+4. **Collection composition (`blockSeq`/`blockMap`) is genuinely multi-token.** A block sequence like `- a\n- b` involves at least 4 `scanNextToken` calls (`-`, `a`, `-`, `b`). There is no per-token composition that produces `SBlockSeqEntries` — this must be accumulated across iterations, making it a Layer 3 concern.
+
+**Idioms:**
+
+- **Trivial wrappings as named lemmas.** Even though `doubleQuoted_flowContent` is literally `SFlowContent.doubleQ n c s s' h`, naming it provides a stable API for Layer 3. If the surface type hierarchy changes, only NodeProduction.lean needs updating.
+
+- **Separate parametric and existential layers.** §1–§3 are reusable at any `n/c`; §4–§5 are scanner-specific at `n=0`. This separation lets Layer 3 choose: use the parametric lemmas with actual `n/c` (if generalizing `_prod`), or use the existential lemmas with the `n=0` trick (for simple documents).
+
+</details>
 
 ##### Layer 3: Scan loop grammar accumulation — `scanLoop` → `SLYamlStream`
 
@@ -1508,16 +1554,16 @@ At each `scanNextToken` step, the Layer 2 `_prod` theorem for that step advances
 
 ##### Estimated scope
 
-| Layer | Est. lines | Risk |
-|---|---|---|
-| Layer 1 (leaf `_prod`) | ~500 | Low — mechanical, mirrors existing `scanDoubleQuoted_prod` |
-| Layer 2 (node composition) | ~200 | Low — constructor plumbing |
-| Layer 3 (loop accumulation) | ~400-800 | High — novel accumulator design, multi-token collection proofs |
-| **Total** | **~1100-1500** | |
+| Layer | Est. lines | Actual | Risk |
+|---|---|---|---|
+| Layer 1 (leaf `_prod`) | ~500 | 163 (single-quoted done; plain, block pending) | Low — mechanical |
+| Layer 2 (node composition) | ~200 | 158 (18 theorems, 0 sorry) | ✅ Complete |
+| Layer 3 (loop accumulation) | ~400-800 | — | High — novel accumulator design |
+| **Total** | **~1100-1500** | **321 so far** | |
 
 **Execution order:** Layer 1 first (independent, lowest risk). Within Layer 1, start with `scanSingleQuoted_prod` (simplest). Layer 2 can begin after any Layer 1 theorem. Layer 3 requires both Layer 1 and Layer 2.
 
-**Sorry status (target):** 0 sorry. Build: 407+/407+ jobs, 0 errors.
+**Sorry status (current):** 1 sorry (`scan_content_gives_stream`). Build: 409/409 jobs, 0 errors.
 
 </details>
 
