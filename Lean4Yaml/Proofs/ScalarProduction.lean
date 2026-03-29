@@ -752,4 +752,150 @@ theorem scanSingleQuoted_prod (sc : ScannerState) (sp : SurfPos)
                  (GLit.mk rest sc.col) h_text h_glit_close,
                corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
 
+/-! ## §5 Plain-safe bridge (Layer 4a)
+
+  Connect scanner's `isPlainSafeBool c inFlow` to the surface grammar's
+  `isNsPlainSafe ctx ch`. The Bool predicate decomposes as
+  `¬WS ∧ ¬LB [∧ ¬flow]`; the surface predicate uses `isNsChar = ¬LB ∧ ¬WS`
+  (flipped conjunction), plus `¬flow` for flow contexts. -/
+
+-- Bool → Prop for block context: `isPlainSafeBool c false ↔ isNsChar c`.
+theorem isPlainSafe_block_to_nsChar {c : Char}
+    (h : isPlainSafeBool c false = true) : isNsChar c := by
+  have hp := (isPlainSafe_iff c false).mp h
+  simp only [isPlainSafeProp] at hp
+  exact ⟨hp.2, hp.1⟩
+
+-- Bool → surface Prop for blockIn: `isPlainSafeBool c false → isNsPlainSafe .blockIn c`.
+theorem isPlainSafe_to_nsPlainSafe_blockIn {c : Char}
+    (h : isPlainSafeBool c false = true) : isNsPlainSafe .blockIn c :=
+  isPlainSafe_block_to_nsChar h
+
+-- Bool → surface Prop for blockOut: same as blockIn.
+theorem isPlainSafe_to_nsPlainSafe_blockOut {c : Char}
+    (h : isPlainSafeBool c false = true) : isNsPlainSafe .blockOut c :=
+  isPlainSafe_block_to_nsChar h
+
+-- Bool → surface Prop for flowIn: adds flow indicator exclusion.
+theorem isPlainSafe_to_nsPlainSafe_flowIn {c : Char}
+    (h : isPlainSafeBool c true = true) : isNsPlainSafe .flowIn c := by
+  have hp := (isPlainSafe_iff c true).mp h
+  simp only [isPlainSafeProp] at hp
+  exact ⟨⟨hp.2.1, hp.1⟩, hp.2.2⟩
+
+-- isPlainSafeBool c inFlow → c is not a linebreak (useful for advance proofs).
+theorem isPlainSafe_not_linebreak {c : Char} {inFlow : Bool}
+    (h : isPlainSafeBool c inFlow = true) : ¬isLineBreakProp c := by
+  have hp := (isPlainSafe_iff c inFlow).mp h
+  cases inFlow
+  · -- false (block): hp : ¬isWhiteSpaceProp c ∧ ¬isLineBreakProp c
+    simp only [isPlainSafeProp] at hp; exact hp.2
+  · -- true (flow): hp : ¬isWhiteSpaceProp c ∧ ¬isLineBreakProp c ∧ ¬isFlowIndicatorProp c
+    simp only [isPlainSafeProp] at hp; exact hp.2.1
+
+-- isPlainSafeBool c inFlow → c ≠ '\n' ∧ c ≠ '\r' (for advance_non_newline_corr).
+theorem isPlainSafe_not_newline {c : Char} {inFlow : Bool}
+    (h : isPlainSafeBool c inFlow = true) : c ≠ '\n' ∧ c ≠ '\r' := by
+  have hlb := isPlainSafe_not_linebreak h
+  constructor
+  · intro heq; subst heq; exact hlb (by unfold isLineBreakProp; left; native_decide)
+  · intro heq; subst heq; exact hlb (by unfold isLineBreakProp; right; native_decide)
+
+/-! ## §6 Block header loop production (Layer 4a)
+
+  `parseBlockHeaderLoop` reads 0–2 header indicator characters (`-`/`+`/digit),
+  each of which satisfies `isBlockScalarHeaderChar`. This produces
+  `GStar (GChar (fun c => isBlockScalarHeaderChar c = true))`. -/
+
+-- Header chars are not newlines: used for advance_non_newline_corr.
+private theorem blockHeaderChar_not_newline {c : Char}
+    (h : Grammar.isBlockScalarHeaderChar c = true) : c ≠ '\n' ∧ c ≠ '\r' := by
+  constructor
+  · intro heq; subst heq; simp [Grammar.isBlockScalarHeaderChar] at h
+  · intro heq; subst heq; simp [Grammar.isBlockScalarHeaderChar] at h
+
+-- isDigit && != '0' → isBlockScalarHeaderChar (digit 1-9 is a header char).
+private theorem isDigitNotZero_isBlockHeaderChar {c : Char}
+    (h : (c.isDigit && (c != '0')) = true) :
+    Grammar.isBlockScalarHeaderChar c = true := by
+  have ⟨hdig, hne⟩ := Bool.and_eq_true_iff.mp h
+  have hne' : c ≠ '0' := by intro heq; subst heq; simp at hne
+  simp only [Char.isDigit, Bool.and_eq_true, decide_eq_true_eq] at hdig
+  simp only [Grammar.isBlockScalarHeaderChar, Bool.or_eq_true, beq_iff_eq,
+             Bool.and_eq_true, decide_eq_true_eq]
+  right
+  refine ⟨?_, hdig.2⟩
+  -- '1' ≤ c from '0' ≤ c and c ≠ '0': reduce to Nat via UInt32.toNat
+  simp only [Char.le_def, UInt32.le_iff_toNat_le] at hdig ⊢
+  have h0_val : ('0' : Char).val.toNat = 48 := by native_decide
+  have h1_val : ('1' : Char).val.toNat = 49 := by native_decide
+  rw [h0_val] at hdig; rw [h1_val]
+  have h2' : c.val.toNat ≠ 48 := by
+    intro heq; apply hne'
+    exact Char.ext (UInt32.toNat_inj.mp (by omega))
+  omega
+
+-- `parseBlockHeaderLoop` produces `GStar (GChar isBlockScalarHeaderChar)`.
+theorem parseBlockHeaderLoop_prod (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp) (chomp : ChompStyle)
+    (explicitOffset : Option Nat) (fuel : Nat) :
+    let (_, _, sc') := parseBlockHeaderLoop sc chomp explicitOffset fuel
+    ∃ sp', GStar (GChar (fun c => Grammar.isBlockScalarHeaderChar c = true)) sp sp' ∧
+           ScannerSurfCorr sc' sp' := by
+  induction fuel generalizing sc sp chomp explicitOffset with
+  | zero =>
+    simp only [parseBlockHeaderLoop]
+    exact ⟨sp, GStar.nil sp, hcorr⟩
+  | succ fuel' ih =>
+    simp only [parseBlockHeaderLoop]
+    split
+    · -- peek? = some '-'
+      rename_i hpeek
+      obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+      subst hsp_eq
+      have hmore := peek_some_has_more hpeek
+      have hcorr_adv := advance_non_newline_corr sc '-' rest hcorr
+        hmore (by decide) (by decide)
+      obtain ⟨sp', h_tail, hcorr'⟩ :=
+        ih sc.advance ⟨rest, sc.col + 1⟩ hcorr_adv .strip explicitOffset
+      exact ⟨sp',
+             GStar.cons _ ⟨rest, sc.col + 1⟩ _
+               (GChar.mk '-' rest sc.col (by native_decide)) h_tail,
+             hcorr'⟩
+    · -- peek? = some '+'
+      rename_i hpeek
+      obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+      subst hsp_eq
+      have hmore := peek_some_has_more hpeek
+      have hcorr_adv := advance_non_newline_corr sc '+' rest hcorr
+        hmore (by decide) (by decide)
+      obtain ⟨sp', h_tail, hcorr'⟩ :=
+        ih sc.advance ⟨rest, sc.col + 1⟩ hcorr_adv .keep explicitOffset
+      exact ⟨sp',
+             GStar.cons _ ⟨rest, sc.col + 1⟩ _
+               (GChar.mk '+' rest sc.col (by native_decide)) h_tail,
+             hcorr'⟩
+    · -- peek? = some c (potentially digit)
+      rename_i c hpeek_ne_minus hpeek_ne_plus hpeek
+      split
+      · -- isDigit c ∧ c ≠ '0': header char
+        rename_i hdigit
+        obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+        subst hsp_eq
+        have hmore := peek_some_has_more hpeek
+        have hHdr := isDigitNotZero_isBlockHeaderChar hdigit
+        have ⟨hne_nl, hne_cr⟩ := blockHeaderChar_not_newline hHdr
+        have hcorr_adv := advance_non_newline_corr sc c rest hcorr
+          hmore hne_nl hne_cr
+        obtain ⟨sp', h_tail, hcorr'⟩ :=
+          ih sc.advance ⟨rest, sc.col + 1⟩ hcorr_adv chomp (some (c.toNat - '0'.toNat))
+        exact ⟨sp',
+               GStar.cons _ ⟨rest, sc.col + 1⟩ _
+                 (GChar.mk c rest sc.col hHdr) h_tail,
+               hcorr'⟩
+      · -- not a header char: stop
+        exact ⟨sp, GStar.nil sp, hcorr⟩
+    · -- peek? = none: stop
+      exact ⟨sp, GStar.nil sp, hcorr⟩
+
 end Lean4Yaml.Proofs.ScalarProduction

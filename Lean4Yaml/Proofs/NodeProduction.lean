@@ -174,11 +174,74 @@ theorem scanSingleQuoted_flowNode_prod (sc : ScannerState) (sp : SurfPos)
   obtain ⟨sp', h_fc, hcorr'⟩ := scanSingleQuoted_flowContent_prod sc sp hcorr hpeek_sq hok
   exact ⟨sp', flowContent_flowNode h_fc, hcorr'⟩
 
--- Alias: scanAnchorOrAlias with isAnchor = false produces
--- `GLit '*' sp sp_mid ∧ GStar (GChar isNsAnchorChar) sp_mid sp'`.
--- Building `SCNsAliasNode` additionally requires proving the name is
--- non-empty (GPlus, not GStar). The scanner validates this at runtime;
--- the proof that `GStar` is non-empty requires connecting scanner validation
--- to the loop output. Deferred to Layer 3.
+/-! ## §6 GStar/GPlus Lifting and Alias/Anchor Conversion (Layer 4a) -/
+
+-- General combinator: convert GStar to GPlus given proof of non-emptiness.
+-- The non-emptiness evidence is `s ≠ s'` (the start ≠ end position).
+theorem GStar_to_GPlus {P : SurfPos → SurfPos → Prop} {s s' : SurfPos}
+    (h : GStar P s s') (hne : s ≠ s') : GPlus P s s' := by
+  match h with
+  | .nil _ => exact absurd rfl hne
+  | .cons _ sp_mid _ h_head h_tail => exact GPlus.mk _ sp_mid _ h_head h_tail
+
+-- Alias node: GLit '*' + GPlus anchor chars → SCNsAliasNode.
+-- Takes destructured GLit output + GPlus name.
+theorem aliasNode_of_glit_gplus {rest : List Char} {col : Nat} {sp' : SurfPos}
+    (h_gplus : GPlus (GChar isNsAnchorChar) ⟨rest, col + 1⟩ sp') :
+    SCNsAliasNode ⟨'*' :: rest, col⟩ sp' :=
+  SCNsAliasNode.mk rest col sp' h_gplus
+
+-- Anchor property: GLit '&' + GPlus anchor chars → SCNsAnchorProperty.
+theorem anchorProp_of_glit_gplus {rest : List Char} {col : Nat} {sp' : SurfPos}
+    (h_gplus : GPlus (GChar isNsAnchorChar) ⟨rest, col + 1⟩ sp') :
+    SCNsAnchorProperty ⟨'&' :: rest, col⟩ sp' :=
+  SCNsAnchorProperty.mk rest col sp' h_gplus
+
+-- scanAnchorOrAlias with non-empty name → SCNsAliasNode.
+-- Hypothesis: sp_mid ≠ sp' (scanner collected ≥1 anchor char after '*').
+theorem scanAnchorOrAlias_aliasNode_prod (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp)
+    (hpeek : sc.peek? = some '*') :
+    ∃ sp_mid sp', GLit '*' sp sp_mid ∧
+                  GStar (GChar isNsAnchorChar) sp_mid sp' ∧
+                  (sp_mid ≠ sp' → SCNsAliasNode sp sp') ∧
+                  ScannerSurfCorr (scanAnchorOrAlias sc false) sp' := by
+  obtain ⟨sp_mid, sp', h_glit, h_gstar, hcorr'⟩ :=
+    scanAnchorOrAlias_prod sc sp hcorr false '*' hpeek (by decide) (by decide)
+  refine ⟨sp_mid, sp', h_glit, h_gstar, ?_, hcorr'⟩
+  intro hne
+  cases h_glit with
+  | mk rest col =>
+    exact aliasNode_of_glit_gplus (GStar_to_GPlus h_gstar hne)
+
+-- scanAnchorOrAlias with non-empty name → SCNsAnchorProperty.
+-- Hypothesis: sp_mid ≠ sp' (scanner collected ≥1 anchor char after '&').
+theorem scanAnchorOrAlias_anchorProp_prod (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp)
+    (hpeek : sc.peek? = some '&') :
+    ∃ sp_mid sp', GLit '&' sp sp_mid ∧
+                  GStar (GChar isNsAnchorChar) sp_mid sp' ∧
+                  (sp_mid ≠ sp' → SCNsAnchorProperty sp sp') ∧
+                  ScannerSurfCorr (scanAnchorOrAlias sc true) sp' := by
+  obtain ⟨sp_mid, sp', h_glit, h_gstar, hcorr'⟩ :=
+    scanAnchorOrAlias_prod sc sp hcorr true '&' hpeek (by decide) (by decide)
+  refine ⟨sp_mid, sp', h_glit, h_gstar, ?_, hcorr'⟩
+  intro hne
+  cases h_glit with
+  | mk rest col =>
+    exact anchorProp_of_glit_gplus (GStar_to_GPlus h_gstar hne)
+
+-- scanAnchorOrAlias with non-empty name → SFlowNode (alias).
+theorem scanAnchorOrAlias_flowNode_prod (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp)
+    (hpeek : sc.peek? = some '*') :
+    ∃ sp_mid sp', GLit '*' sp sp_mid ∧
+                  GStar (GChar isNsAnchorChar) sp_mid sp' ∧
+                  (sp_mid ≠ sp' → SFlowNode 0 .blockIn sp sp') ∧
+                  ScannerSurfCorr (scanAnchorOrAlias sc false) sp' := by
+  obtain ⟨sp_mid, sp', h_glit, h_gstar, h_alias, hcorr'⟩ :=
+    scanAnchorOrAlias_aliasNode_prod sc sp hcorr hpeek
+  exact ⟨sp_mid, sp', h_glit, h_gstar,
+         fun hne => alias_flowNode (h_alias hne), hcorr'⟩
 
 end Lean4Yaml.Proofs.NodeProduction

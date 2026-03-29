@@ -1571,9 +1571,9 @@ At each `scanNextToken` step, the Layer 2 `_prod` theorem for that step advances
 | Double-quoted | `scanDoubleQuoted` | `scanDoubleQuoted_prod` | ✅ Done |
 | Single-quoted | `scanSingleQuoted` | `scanSingleQuoted_prod` | ✅ Done |
 | Tag | `scanTag` | `scanTag_prod` | ✅ Done |
-| Plain scalar | `scanPlainScalar` | `scanPlainScalar_prod` | ❌ Missing |
-| Block scalar | `scanBlockScalar` | `scanBlockScalar_prod` | ❌ Missing |
-| Anchor | `scanAnchorOrAlias` | (GPlus non-emptiness) | ❌ Partial |
+| Plain scalar | `scanPlainScalar` | `scanPlainScalar_prod` | ❌ Missing (bridge lemmas done) |
+| Block scalar | `scanBlockScalar` | `scanBlockScalar_prod` | ❌ Missing (header parsing done) |
+| Anchor/Alias | `scanAnchorOrAlias` | `scanAnchorOrAlias_{aliasNode,anchorProp,flowNode}_prod` | ✅ Done (conditional on name non-emptiness) |
 | Flow sequence | (via `scanNextToken`) | — | ❌ Missing |
 | Flow mapping | (via `scanNextToken`) | — | ❌ Missing |
 | Block sequence | (multi-token) | — | ❌ Missing |
@@ -1609,15 +1609,41 @@ Close the sorry in `scan_content_gives_stream` by completing the remaining conte
 
 Complete the per-scanner-function production coupling for the 7 missing content types. Each theorem proves: scanner function succeeds → consumed characters form a valid surface-syntax derivation tree.
 
-| Theorem | Scanner function | Surface type | Est. lines | Difficulty |
-|---|---|---|---|---|
-| `scanPlainScalar_prod` | `collectPlainScalarLoop` → `scanPlainScalar` | `SNsPlain 0 .blockIn` (= `SNsPlainMultiLine`) | ~200 | Medium — multi-line plain has complex break-folding and indicator-termination rules |
-| `scanBlockScalar_prod` | `collectBlockScalarLoop` → `scanBlockScalar` | `SCLLiteral 0` / `SCLFolded 0` | ~250 | Medium — chomping indicators, indentation detection, keep/strip/clip semantics |
-| `scanAnchorOrAlias_nonempty` | `scanAnchorOrAlias` | `GPlus (GChar isNsAnchorChar)` (lifts `GStar` → `GPlus`) | ~30 | Low — extract non-emptiness from scanner error guard on `*`/`&` with no name |
-| `scanFlowSequence_prod` | (multi-token) | `SFlowSequence n c` | ~150 | High — recursive flow entries, separator handling, nested flow context |
-| `scanFlowMapping_prod` | (multi-token) | `SFlowMapping n c` | ~150 | High — flow mapping entries, implicit keys, nested flow context |
-| `scanBlockSequence_prod` | (multi-token) | `SBlockSequence n` | ~200 | High — multi-token `- entry` accumulation across scanNextToken iterations |
-| `scanBlockMapping_prod` | (multi-token) | `SBlockMapping n` | ~200 | High — multi-token key-value accumulation, implicit/explicit keys |
+| Theorem | Scanner function | Surface type | Est. lines | Difficulty | Status |
+|---|---|---|---|---|---|
+| `GStar_to_GPlus` | (combinator) | `GStar P s s' → s ≠ s' → GPlus P s s'` | ~15 | Low | ✅ Done |
+| `scanAnchorOrAlias_aliasNode_prod` | `scanAnchorOrAlias` | `SCNsAliasNode` (conditional on name non-emptiness) | ~15 | Low | ✅ Done |
+| `scanAnchorOrAlias_anchorProp_prod` | `scanAnchorOrAlias` | `SCNsAnchorProperty` (conditional on name non-emptiness) | ~10 | Low | ✅ Done |
+| `scanAnchorOrAlias_flowNode_prod` | `scanAnchorOrAlias` | `SFlowNode` (alias, conditional) | ~10 | Low | ✅ Done |
+| `isPlainSafe_block_to_nsChar` | (bridge) | `isPlainSafeBool c false → isNsChar c` | ~8 | Low | ✅ Done |
+| `isPlainSafe_to_nsPlainSafe_{blockIn,blockOut,flowIn}` | (bridge) | `isPlainSafeBool → isNsPlainSafe` | ~15 | Low | ✅ Done |
+| `isPlainSafe_not_linebreak` / `_not_newline` | (bridge) | negation lemmas for advance proofs | ~20 | Medium | ✅ Done |
+| `blockHeaderChar_not_newline` | (bridge) | `isBlockScalarHeaderChar c → c ≠ '\n' ∧ c ≠ '\r'` | ~5 | Low | ✅ Done |
+| `isDigitNotZero_isBlockHeaderChar` | (bridge) | `c.isDigit ∧ c ≠ '0' → isBlockScalarHeaderChar c` | ~20 | Medium | ✅ Done |
+| `parseBlockHeaderLoop_prod` | `parseBlockHeaderLoop` | `GStar (GChar isBlockScalarHeaderChar) ∧ ScannerSurfCorr` | ~50 | Medium | ✅ Done |
+| `scanPlainScalar_prod` | `collectPlainScalarLoop` → `scanPlainScalar` | `SNsPlain 0 .blockIn` (= `SNsPlainMultiLine`) | ~200 | Medium | ❌ Pending |
+| `scanBlockScalar_prod` | `collectBlockScalarLoop` → `scanBlockScalar` | `SCLLiteral 0` / `SCLFolded 0` | ~250 | Medium | ❌ Pending |
+| `scanFlowSequence_prod` | (multi-token) | `SFlowSequence n c` | ~150 | High | ❌ Pending |
+| `scanFlowMapping_prod` | (multi-token) | `SFlowMapping n c` | ~150 | High | ❌ Pending |
+| `scanBlockSequence_prod` | (multi-token) | `SBlockSequence n` | ~200 | High | ❌ Pending |
+| `scanBlockMapping_prod` | (multi-token) | `SBlockMapping n` | ~200 | High | ❌ Pending |
+
+**Layer 4a reflections (15 theorems proven, 0 sorry):**
+
+1. **`UInt32` uses `BitVec 32` in Lean 4.28 — no `UInt32.val` field.** Character arithmetic proofs require a 4-step chain: `Char.le_def` (Char→UInt32) → `UInt32.le_iff_toNat_le` (UInt32→Nat) → `native_decide` for concrete values (e.g., `'0'.val.toNat = 48`) → `omega` on Nat. The `isDigitNotZero_isBlockHeaderChar` proof discovered and documented this chain.
+
+2. **Scanner anchor validation gap — `scanAnchorOrAlias` is total.** The scanner function never errors on empty anchor/alias names; it simply returns `sp_mid = sp'`. The `GStar → GPlus` lift requires external `sp_mid ≠ sp'` evidence from the call site (the scanner's error guard at a higher level). All three `scanAnchorOrAlias_*_prod` theorems return conditional results: `sp_mid ≠ sp' → SurfaceType sp sp'`.
+
+3. **`isLineBreakProp` uses `==` (BEq), not `=` (Eq).** The definition `isLineBreakProp c ↔ c == '\n' ∨ c == '\r'` coerces BEq to Prop. Proofs using `left; rfl` fail because `rfl` proves `=`, not `==`. Fix: `subst heq` to get `isLineBreakProp '\n'` concretely, then `native_decide`.
+
+4. **`cases with` naming doesn't work for indexed inductive `GStar`.** `cases h with | cons s₁ s₂ s₃ h_head h_tail =>` fails to introduce constructor parameters. Lean 4.28's `cases with` only introduces non-index arguments. Fix: use `match` pattern matching: `| .cons _ sp_mid _ h_head h_tail =>`.
+
+5. **`Bool.or` is left-associative.** After `Bool.or_eq_true` simplification, `a || b || c` becomes `(a || b) || c` which gives 2-level `Or`, not 3-level. Only one `Or.inr` is needed to reach the last disjunct, not two.
+
+**New files/sections:**
+- [NodeProduction.lean](Lean4Yaml/Proofs/NodeProduction.lean) §6: GStar/GPlus lifting + anchor/alias converters (6 theorems, 61 lines)
+- [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) §5: isPlainSafe bridge lemmas (6 theorems, 52 lines)
+- [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) §6: Block header production (3 theorems, 55 lines)
 
 **Sub-layer 4b: Preprocessing production coupling**
 
@@ -1713,13 +1739,13 @@ Sub-layer 4d (BlockAccum) ──────────────┘
 | Layer 1 (leaf `_prod`) | ~500 | 163 (single-quoted done; plain, block pending) | Low — mechanical |
 | Layer 2 (node composition) | ~200 | 158 (18 theorems, 0 sorry) | ✅ Complete |
 | Layer 3 (loop accumulation) | ~400-800 | 4 lemmas + sorry scoped (see gap table) | ✅ Complete (sorry precisely scoped) |
-| Layer 4a (remaining leaf `_prod`) | ~1,180 | — | Medium–High (plain/block medium; flow/block collections high) |
+| Layer 4a (remaining leaf `_prod`) | ~1,180 | 168 actual (10 done, 6 pending) | ✅ Foundations complete; plain/block scalar `_prod` + collections pending |
 | Layer 4b (preprocessing coupling) | ~180 | — | Low–Medium |
 | Layer 4c (StreamAccum) | ~320 | — | High — novel accumulator design |
 | Layer 4d (BlockAccum) | ~190 | — | High — multi-token block collection accumulation |
-| **Total** | **~3,050-3,550** | **325 actual** | |
+| **Total** | **~3,050-3,550** | **489 actual** | |
 
-**Execution order:** Layers 1–3 complete. Layer 4a items are mostly independent (start with `scanAnchorOrAlias_nonempty`, then plain/block scalars). Layer 4b is independent. Layer 4c+4d require all of 4a+4b.
+**Execution order:** Layers 1–3 complete. Layer 4a foundations complete (anchor/alias converters, isPlainSafe bridges, block header parsing — 15 new theorems). Remaining Layer 4a: `scanPlainScalar_prod` (medium), `scanBlockScalar_prod` (medium), flow/block collections (high). Layer 4b is independent. Layer 4c+4d require all of 4a+4b.
 
 **Sorry status (current):** 1 sorry (`scan_content_gives_stream`). Build: 409/409 jobs, 0 errors. Target: 0 sorry after Layer 4 complete.
 
