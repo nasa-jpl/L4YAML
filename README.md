@@ -1536,6 +1536,9 @@ SSLComments                         → SBlockNode.emptyNode
 
 ##### Layer 3: Scan loop grammar accumulation — `scanLoop` → `SLYamlStream`
 
+<details>
+<summary>Completed: stream extension lemmas + precisely scoped sorry in DocumentProduction.lean</summary>
+
 Strengthen `scanLoop_full_consumption` to additionally produce `SLYamlStream`. Currently the loop threads `ScannerSurfCorr` (position correspondence) via fuel induction. Layer 3 adds a **grammar accumulator** threaded alongside:
 
 ```
@@ -1550,7 +1553,158 @@ The accumulator must track:
 
 At each `scanNextToken` step, the Layer 2 `_prod` theorem for that step advances the accumulator. At loop termination (EOF), the accumulator is finalized into a complete `SLYamlStream`, discharging the sorry in `scan_content_gives_stream`.
 
-**File:** [DocumentProduction.lean](Lean4Yaml/Proofs/DocumentProduction.lean) — replaces the sorry; parallels `ScanStrictCoupling.scanLoop_full_consumption` but with grammar accumulation. Import chain: `ScalarProduction → NodeProduction → DocumentProduction`.
+**File:** [DocumentProduction.lean](Lean4Yaml/Proofs/DocumentProduction.lean) — contains stream extension lemmas (§6a) and the precisely scoped sorry (§6b); parallels `ScanStrictCoupling.scanLoop_full_consumption` but with grammar accumulation. Import chain: `ScalarProduction → NodeProduction → DocumentProduction`.
+
+**New theorems (4):**
+
+| § | Theorem | Type |
+|---|---|---|
+| §6a | `bare_to_stream` | `SLBareDocument s s' → SLYamlStream s s'` |
+| §6a | `empty_to_stream` | `SLYamlStream sp sp` (identity stream) |
+| §6a | `stream_append_suffix` | `SLYamlStream s s₁ → GPlus SLDocumentSuffix s₁ s₂ → SLYamlStream s s₂` |
+| §6a | `stream_implicit_continue` | `SLYamlStream s s₁ → GStar SLDocumentPrefix s₁ s₂ → SLExplicitDocument s₂ s₃ → SLYamlStream s s₃` |
+
+**Content production gap table (§6b):**
+
+| Content type | Scanner function | `_prod` theorem | Status |
+|---|---|---|---|
+| Double-quoted | `scanDoubleQuoted` | `scanDoubleQuoted_prod` | ✅ Done |
+| Single-quoted | `scanSingleQuoted` | `scanSingleQuoted_prod` | ✅ Done |
+| Tag | `scanTag` | `scanTag_prod` | ✅ Done |
+| Plain scalar | `scanPlainScalar` | `scanPlainScalar_prod` | ❌ Missing |
+| Block scalar | `scanBlockScalar` | `scanBlockScalar_prod` | ❌ Missing |
+| Anchor | `scanAnchorOrAlias` | (GPlus non-emptiness) | ❌ Partial |
+| Flow sequence | (via `scanNextToken`) | — | ❌ Missing |
+| Flow mapping | (via `scanNextToken`) | — | ❌ Missing |
+| Block sequence | (multi-token) | — | ❌ Missing |
+| Block mapping | (multi-token) | — | ❌ Missing |
+
+**Reflections:**
+
+1. **`SLYamlStream` is NOT an append structure.** Unlike `GStar` which has `.nil`/`.cons` for free extension, `SLYamlStream`'s three constructors (`single`, `suffixContinue`, `implicitContinue`) each embed document-level structure. You cannot "extend" a stream with arbitrary content — you must know whether it's a suffix continuation (`...` + next doc) or an implicit continuation (prefix + explicit doc with `---`). This means the grammar accumulator must track the current document boundary state, not just a list of consumed characters.
+
+2. **`GConsumeAll` cannot substitute for missing content proofs.** We initially explored using `GConsumeAll` (defined in `Combinators.lean`) as a catch-all to consume remaining characters without grammar structure. It turns out `GConsumeAll` tracks columns as always `col + 1` per character, never resetting on newlines — making it disagreement with the scanner's actual column tracking. Moreover, `GConsumeAll` is not referenced by any `SLYamlStream` constructor or descendant, so it cannot participate in a valid derivation tree.
+
+3. **`SSLComments` cannot consume arbitrary content.** Another attempted shortcut was wrapping non-whitespace content in `SSLComments` or `SLComment`. But `SLComment` requires `SSeparateInLine + GOpt SCNbCommentText + SBComment`, and `SCNbCommentText` requires a `#` prefix. Content characters like `a`, `"`, `'`, `-` etc. cannot satisfy these requirements. This is by design — the grammar is context-sensitive and each character must be consumed by the correct production.
+
+4. **The empty-input case is non-trivial.** For empty input (`input.toList = []`), `scan_full_consumption` gives `∃ sp_final, sp_final.chars = []` but does NOT constrain `sp_final.col`. We need `SLYamlStream ⟨[], 0⟩ sp_final`, but `empty_to_stream` gives `SLYamlStream ⟨[], 0⟩ ⟨[], 0⟩`. If `sp_final.col ≠ 0`, this doesn't match. Fully proving even the empty case requires threading column information through `scan_full_consumption`, which would need verifying that `scanLoop` on empty input terminates at col 0.
+
+5. **The sorry is precisely scoped.** The restructured proof isolates the gap to a single `sorry` in `scan_content_gives_stream` with a detailed table of exactly which `_prod` theorems are needed. The surrounding infrastructure (§1–§5 document helpers, §6a stream extension lemmas, §7 parse-strict composition) is all sorry-free. Eliminating the sorry requires: (a) all 10 content-type `_prod` theorems, (b) a `StreamAccum` inductive threaded through `scanLoop`, (c) a `scanNextToken_stream_step` that advances the accumulator per token, (d) a `finalize_stream` that closes the accumulator at EOF.
+
+6. **Block collections require multi-token accumulation.** A block sequence `- a\n- b` spans ≥4 `scanNextToken` calls. There is no per-token theorem that produces `SBlockSeqEntries` — it must accumulate across iterations. This is the deepest part of the gap and requires novel inductive design, making it fundamentally different from the mechanical per-function `_prod` pattern used in Layers 1–2.
+
+**Idioms:**
+
+- **Position-parametric GOpt/GStar for identity extension.** `GOpt.none sp` gives a zero-width optional; `GStar.nil sp` gives a zero-width repetition. Combined with `SLYamlStream.suffixContinue ... (GStar.nil _) (GOpt.none _) (GStar.nil _)`, this extends a stream with a suffix section that has no additional prefix/doc/suffix — just the required suffixes themselves. This pattern is reusable for any stream extension where only one component is non-trivial.
+
+</details>
+
+##### Layer 4: Content production gap — remaining `_prod` + `StreamAccum` → 0 sorry
+
+Close the sorry in `scan_content_gives_stream` by completing the remaining content-type production coupling and the scan-loop grammar accumulator.
+
+<details>
+
+**Sub-layer 4a: Leaf `_prod` theorems (extends Layer 1)**
+
+Complete the per-scanner-function production coupling for the 7 missing content types. Each theorem proves: scanner function succeeds → consumed characters form a valid surface-syntax derivation tree.
+
+| Theorem | Scanner function | Surface type | Est. lines | Difficulty |
+|---|---|---|---|---|
+| `scanPlainScalar_prod` | `collectPlainScalarLoop` → `scanPlainScalar` | `SNsPlain 0 .blockIn` (= `SNsPlainMultiLine`) | ~200 | Medium — multi-line plain has complex break-folding and indicator-termination rules |
+| `scanBlockScalar_prod` | `collectBlockScalarLoop` → `scanBlockScalar` | `SCLLiteral 0` / `SCLFolded 0` | ~250 | Medium — chomping indicators, indentation detection, keep/strip/clip semantics |
+| `scanAnchorOrAlias_nonempty` | `scanAnchorOrAlias` | `GPlus (GChar isNsAnchorChar)` (lifts `GStar` → `GPlus`) | ~30 | Low — extract non-emptiness from scanner error guard on `*`/`&` with no name |
+| `scanFlowSequence_prod` | (multi-token) | `SFlowSequence n c` | ~150 | High — recursive flow entries, separator handling, nested flow context |
+| `scanFlowMapping_prod` | (multi-token) | `SFlowMapping n c` | ~150 | High — flow mapping entries, implicit keys, nested flow context |
+| `scanBlockSequence_prod` | (multi-token) | `SBlockSequence n` | ~200 | High — multi-token `- entry` accumulation across scanNextToken iterations |
+| `scanBlockMapping_prod` | (multi-token) | `SBlockMapping n` | ~200 | High — multi-token key-value accumulation, implicit/explicit keys |
+
+**Sub-layer 4b: Preprocessing production coupling**
+
+Connect the scanner's whitespace/comment-skipping preprocessing to grammar elements:
+
+| Theorem | Scanner function | Surface type | Est. lines |
+|---|---|---|---|
+| `skipToContent_prefix_prod` | `skipToContentLoop` | `SLDocumentPrefix` / `SSLComments` | ~80 |
+| `scanNextToken_preprocess_separate_prod` | `scanNextToken_preprocess` | `SSeparate n c` (whitespace before content) | ~60 |
+| `documentMarker_prod` | `scanNextToken` (`---`/`...` branches) | `SCDirectivesEnd` / `SCDocumentEnd` | ~40 |
+
+**Sub-layer 4c: Stream accumulator**
+
+Thread a grammar accumulator through `scanLoop` alongside `ScannerSurfCorr`:
+
+```lean
+/-- Tracks partial SLYamlStream construction during scan loop. -/
+inductive StreamAccum : SurfPos → SurfPos → Prop where
+  | init (sp : SurfPos) :  -- Before first document
+      StreamAccum sp sp
+  | afterPrefix (sp sp₁ sp₂ : SurfPos) :  -- Consumed prefixes, awaiting document
+      SLYamlStream sp sp₁ → GStar SLDocumentPrefix sp₁ sp₂ →
+      StreamAccum sp sp₂
+  | inDocument (sp sp₁ sp₂ : SurfPos) :  -- Inside a document's content
+      SLYamlStream sp sp₁ → SLDocumentPrefix sp₁ sp₂ → /- partial block node -/
+      StreamAccum sp sp₂
+  | afterSuffix (sp sp₁ sp₂ : SurfPos) :  -- After '...' suffix(es)
+      SLYamlStream sp sp₁ → GPlus SLDocumentSuffix sp₁ sp₂ →
+      StreamAccum sp sp₂
+```
+
+Key theorems:
+
+| Theorem | Purpose | Est. lines |
+|---|---|---|
+| `scanNextToken_stream_step` | One scanNextToken call advances StreamAccum | ~150 |
+| `scanLoop_grammar_prod` | Fuel induction threading `ScannerSurfCorr × StreamAccum` | ~100 |
+| `finalize_stream` | `StreamAccum sp sp_final` at EOF → `SLYamlStream sp sp_final` | ~40 |
+| `scan_full_consumption_col` | Strengthen Phase A to also produce `sp_final.col` information | ~30 |
+
+**Sub-layer 4d: Block collection accumulator (hardest part)**
+
+Block sequences and mappings span multiple `scanNextToken` calls. A block sequence `- a\n- b` involves ≥4 tokens. This requires a nested accumulator inside `StreamAccum`:
+
+```lean
+/-- Tracks partial block collection during scan loop. -/
+inductive BlockAccum : (n : Nat) → SurfPos → SurfPos → Prop where
+  | seqEntries : GStar (SBlockSeqEntry n) sp sp' → BlockAccum n sp sp'
+  | mapEntries : GStar (SBlockMapEntry n) sp sp' → BlockAccum n sp sp'
+```
+
+Each `-`/`?`/`:` indicator token extends the corresponding `GStar` by one `.cons`. At dedent or EOF, the accumulator is finalized into `SBlockSequence`/`SBlockMapping` → `SBlockNode`.
+
+| Theorem | Purpose | Est. lines |
+|---|---|---|
+| `blockIndicator_extends_accum` | `-`/`?`/`:` token extends `BlockAccum` | ~80 |
+| `content_closes_entry` | Content token completes current seq/map entry | ~60 |
+| `dedent_finalizes_block` | Indentation decrease finalizes `BlockAccum` → `SBlockNode` | ~50 |
+
+**Dependency graph:**
+
+```
+Sub-layer 4a (leaf _prod)  ─────────────┐
+Sub-layer 4b (preprocessing prod) ──────┤
+                                         ├──► Sub-layer 4c (StreamAccum)
+Sub-layer 4d (BlockAccum) ──────────────┘
+                                               │
+                                               ▼
+                                    scan_content_gives_stream (0 sorry)
+```
+
+**Files:**
+- [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) — extend with `scanPlainScalar_prod`, `scanBlockScalar_prod`
+- [NodeProduction.lean](Lean4Yaml/Proofs/NodeProduction.lean) — extend with flow collection composition
+- [DocumentProduction.lean](Lean4Yaml/Proofs/DocumentProduction.lean) — `StreamAccum`, `BlockAccum`, replaces sorry
+- New file: `PreprocessProduction.lean` — preprocessing → grammar coupling (sub-layer 4b)
+
+**Execution order:**
+1. `scanAnchorOrAlias_nonempty` (lowest risk, ~30 lines)
+2. `scanPlainScalar_prod` (medium, extends existing pattern)
+3. `scanBlockScalar_prod` (medium, parallel with plain)
+4. Sub-layer 4b preprocessing coupling (independent of 1–3)
+5. `scanFlowSequence_prod` + `scanFlowMapping_prod` (high, recursive)
+6. Sub-layer 4d `BlockAccum` design + `blockIndicator_extends_accum` (novel)
+7. Sub-layer 4c `StreamAccum` integration (depends on all above)
+
+</details>
 
 ##### Estimated scope
 
@@ -1558,12 +1712,16 @@ At each `scanNextToken` step, the Layer 2 `_prod` theorem for that step advances
 |---|---|---|---|
 | Layer 1 (leaf `_prod`) | ~500 | 163 (single-quoted done; plain, block pending) | Low — mechanical |
 | Layer 2 (node composition) | ~200 | 158 (18 theorems, 0 sorry) | ✅ Complete |
-| Layer 3 (loop accumulation) | ~400-800 | — | High — novel accumulator design |
-| **Total** | **~1100-1500** | **321 so far** | |
+| Layer 3 (loop accumulation) | ~400-800 | 4 lemmas + sorry scoped (see gap table) | ✅ Complete (sorry precisely scoped) |
+| Layer 4a (remaining leaf `_prod`) | ~1,180 | — | Medium–High (plain/block medium; flow/block collections high) |
+| Layer 4b (preprocessing coupling) | ~180 | — | Low–Medium |
+| Layer 4c (StreamAccum) | ~320 | — | High — novel accumulator design |
+| Layer 4d (BlockAccum) | ~190 | — | High — multi-token block collection accumulation |
+| **Total** | **~3,050-3,550** | **325 actual** | |
 
-**Execution order:** Layer 1 first (independent, lowest risk). Within Layer 1, start with `scanSingleQuoted_prod` (simplest). Layer 2 can begin after any Layer 1 theorem. Layer 3 requires both Layer 1 and Layer 2.
+**Execution order:** Layers 1–3 complete. Layer 4a items are mostly independent (start with `scanAnchorOrAlias_nonempty`, then plain/block scalars). Layer 4b is independent. Layer 4c+4d require all of 4a+4b.
 
-**Sorry status (current):** 1 sorry (`scan_content_gives_stream`). Build: 409/409 jobs, 0 errors.
+**Sorry status (current):** 1 sorry (`scan_content_gives_stream`). Build: 409/409 jobs, 0 errors. Target: 0 sorry after Layer 4 complete.
 
 </details>
 
