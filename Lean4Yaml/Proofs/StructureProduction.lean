@@ -466,7 +466,7 @@ Helper: `unwindIndents_corr_exact` shows `unwindIndents` preserves the
 exact surface position (not just existential). -/
 
 -- `unwindIndentsLoop` preserves the exact surface position.
-private theorem unwindIndentsLoop_corr_exact (sc : ScannerState) (sp : SurfPos)
+theorem unwindIndentsLoop_corr_exact (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (col : Int) (fuel : Nat) :
     ScannerSurfCorr (unwindIndentsLoop sc col fuel) sp := by
   induction fuel generalizing sc with
@@ -480,7 +480,7 @@ private theorem unwindIndentsLoop_corr_exact (sc : ScannerState) (sp : SurfPos)
     · exact hcorr
 
 -- `unwindIndents` preserves the exact surface position.
-private theorem unwindIndents_corr_exact (sc : ScannerState) (sp : SurfPos)
+theorem unwindIndents_corr_exact (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (col : Int) :
     ScannerSurfCorr (unwindIndents sc col) sp := by
   unfold unwindIndents

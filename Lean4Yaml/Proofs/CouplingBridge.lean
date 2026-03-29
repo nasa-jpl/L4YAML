@@ -2,7 +2,7 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Lean4Yaml.Surface
+import Lean4Yaml.Surface.Document
 import Lean4Yaml.Scanner
 
 /-!
@@ -310,7 +310,7 @@ theorem skipSpaces_gives_SIndent (n : Nat) (sp : SurfPos)
     (hpre : sp.chars.take n = List.replicate n ' ')
     (hlen : sp.chars.length ≥ n) :
     SIndent n sp ⟨sp.chars.drop n, sp.col + n⟩ :=
-  indent_coupling n sp.chars sp.col hpre hlen
+  Surface.indent_coupling n sp.chars sp.col hpre hlen
 
 /-- `\n` gives `SBBreak`. -/
 theorem lf_gives_SBBreak (sp : SurfPos) (rest : List Char)
