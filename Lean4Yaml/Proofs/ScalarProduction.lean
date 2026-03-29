@@ -267,7 +267,7 @@ abbrev loopResult (sc : ScannerState) :=
   foldQuotedNewlinesLoop (consumeNewline sc) 0 (sc.inputEnd - (consumeNewline sc).offset + 1)
 
 -- When `foldQuotedNewlines` succeeds at a line-break position,
--- the consumed chars form an `SSDoubleBreak`.
+-- the consumed chars form a flow-folded break: `SBBreak + GStar SLEmpty + SFlowLinePrefix`.
 theorem foldQuotedNewlines_prod (sc : ScannerState) (sp : SurfPos)
     (c : Char)
     {content : String} {s' : ScannerState}
@@ -275,7 +275,11 @@ theorem foldQuotedNewlines_prod (sc : ScannerState) (sp : SurfPos)
     (hpeek : sc.peek? = some c)
     (hlb : isLineBreakBool c = true)
     (hfold : foldQuotedNewlines sc = .ok (content, s')) :
-    ∃ sp', SSDoubleBreak 0 sp sp' ∧ ScannerSurfCorr s' sp' := by
+    ∃ sp₁ sp₂ sp',
+      SBBreak sp sp₁ ∧
+      GStar (SLEmpty 0 .flowIn) sp₁ sp₂ ∧
+      SFlowLinePrefix 0 sp₂ sp' ∧
+      ScannerSurfCorr s' sp' := by
   -- Step 1: consumeNewline → SBBreak
   obtain ⟨sp_cn, h_sbreak, hcorr_cn⟩ :=
     consumeNewline_sbreak_corr sc sp c hcorr hpeek hlb
@@ -298,16 +302,13 @@ theorem foldQuotedNewlines_prod (sc : ScannerState) (sp : SurfPos)
       have h_gopt := gstar_sswhite_to_gopt_sep h_all_ws
       have h_flp : SFlowLinePrefix 0 sp_loop sp_ws :=
         SFlowLinePrefix.mk 0 sp_loop sp_loop sp_ws (SIndent.zero sp_loop) h_gopt
-      have h_break : SSDoubleBreak 0 sp sp_ws :=
-        SSDoubleBreak.flowFold 0 sp sp_cn sp_loop sp_ws
-          h_sbreak h_gstar_empty h_flp
       split at hfold
       · have hinj := Except.ok.inj hfold
         obtain ⟨_, rfl⟩ := Prod.mk.inj hinj
-        exact ⟨sp_ws, h_break, hcorr_ws⟩
+        exact ⟨sp_cn, sp_loop, sp_ws, h_sbreak, h_gstar_empty, h_flp, hcorr_ws⟩
       · have hinj := Except.ok.inj hfold
         obtain ⟨_, rfl⟩ := Prod.mk.inj hinj
-        exact ⟨sp_ws, h_break, hcorr_ws⟩
+        exact ⟨sp_cn, sp_loop, sp_ws, h_sbreak, h_gstar_empty, h_flp, hcorr_ws⟩
   · -- no tab check branch
     obtain ⟨sp_ws, h_gstar_ws, hcorr_ws⟩ :=
       skipWhitespace_corr _ sp_sk2 hcorr_sk2
@@ -316,16 +317,13 @@ theorem foldQuotedNewlines_prod (sc : ScannerState) (sp : SurfPos)
     have h_gopt := gstar_sswhite_to_gopt_sep h_all_ws
     have h_flp : SFlowLinePrefix 0 sp_loop sp_ws :=
       SFlowLinePrefix.mk 0 sp_loop sp_loop sp_ws (SIndent.zero sp_loop) h_gopt
-    have h_break : SSDoubleBreak 0 sp sp_ws :=
-      SSDoubleBreak.flowFold 0 sp sp_cn sp_loop sp_ws
-        h_sbreak h_gstar_empty h_flp
     split at hfold
     · have hinj := Except.ok.inj hfold
       obtain ⟨_, rfl⟩ := Prod.mk.inj hinj
-      exact ⟨sp_ws, h_break, hcorr_ws⟩
+      exact ⟨sp_cn, sp_loop, sp_ws, h_sbreak, h_gstar_empty, h_flp, hcorr_ws⟩
     · have hinj := Except.ok.inj hfold
       obtain ⟨_, rfl⟩ := Prod.mk.inj hinj
-      exact ⟨sp_ws, h_break, hcorr_ws⟩
+      exact ⟨sp_cn, sp_loop, sp_ws, h_sbreak, h_gstar_empty, h_flp, hcorr_ws⟩
 
 -- When `processEscape` succeeds, the `\` + escape chars form a valid `SNbDoubleChar`
 -- starting from `⟨'\\' :: rest, col⟩`.
@@ -510,7 +508,7 @@ theorem collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
         split at hok
         · exact absurd hok (by simp)  -- fold error
         · rename_i fold_result hfold
-          obtain ⟨sp_fold, h_break, hcorr_fold⟩ :=
+          obtain ⟨sp_cn, sp_loop, sp_fold, h_sbreak, h_gstar_empty, h_flp, hcorr_fold⟩ :=
             foldQuotedNewlines_prod sc ⟨c :: rest, sc.col⟩ c hcorr hpeek hlb hfold
           split at hok  -- doc marker guard
           · simp at hok
@@ -524,7 +522,10 @@ theorem collectDoubleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
                        SNbDoubleMultiLine.multi 0
                          ⟨c :: rest, sc.col⟩ ⟨c :: rest, sc.col⟩
                          sp_fold ⟨[], 0⟩ _
-                         (GStar.nil _) h_break h_body,
+                         (GStar.nil _)
+                         (SSDoubleBreak.flowFold 0 _ sp_cn sp_loop _
+                           h_sbreak h_gstar_empty h_flp)
+                         h_body,
                        h_glit, h_corr⟩
       · -- not line break: control char check
         split at hok
@@ -586,6 +587,169 @@ theorem scanDoubleQuoted_prod (sc : ScannerState) (sp : SurfPos)
         exact ⟨sp_close,
                SCDoubleQuoted.mk 0 .blockIn _ _ _ _
                  (GLit.mk rest sc.col) h_body h_glit_close,
+               corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
+
+/-! ## §4 Single-Quoted Scalar -/
+
+-- Prepend a `SNbSingleChar` to the first line of `SNbSingleMultiLine`
+theorem SNbSingleMultiLine_prepend (s s₁ s_end : SurfPos)
+    (hchar : SNbSingleChar s s₁)
+    (hrest : SNbSingleMultiLine 0 s₁ s_end) :
+    SNbSingleMultiLine 0 s s_end := by
+  cases hrest with
+  | single _ _ hline =>
+    exact SNbSingleMultiLine.single 0 s s_end
+      (GStar.cons s s₁ s_end hchar hline)
+  | multi _ s₁' s₂ s₃ s₄ _ hline hbreak hgstar hflp hcont =>
+    exact SNbSingleMultiLine.multi 0 s s₁' s₂ s₃ s₄ s_end
+      (GStar.cons s s₁ s₁' hchar hline) hbreak hgstar hflp hcont
+
+-- `collectSingleQuotedLoop` success produces:
+-- 1. Body: `SNbSingleMultiLine 0` from current position to before closing `'`
+-- 2. Close: `GLit '\'' ` consuming the closing `'`
+-- 3. `ScannerSurfCorr` preserved after closing `'`
+theorem collectSingleQuotedLoop_prod (sc : ScannerState) (sp : SurfPos)
+    (content : String) (fuel : Nat)
+    (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat)
+    {result_content : String} {s' : ScannerState}
+    (hcorr : ScannerSurfCorr sc sp)
+    (hok : collectSingleQuotedLoop sc content fuel startPos inFlow currentIndent inputEnd
+           = .ok (result_content, s')) :
+    ∃ sp_body sp_close,
+      SNbSingleMultiLine 0 sp sp_body ∧
+      GLit '\'' sp_body sp_close ∧
+      ScannerSurfCorr s' sp_close := by
+  induction fuel generalizing sc sp content with
+  | zero => simp [collectSingleQuotedLoop] at hok
+  | succ fuel' ih =>
+    unfold collectSingleQuotedLoop at hok
+    split at hok
+    · exact absurd hok (by simp)  -- none → error
+    · -- peek? = some '\'': could be closing quote or escaped ''
+      rename_i _ hpeek
+      obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+      subst hsp_eq
+      have hmore := peek_some_has_more hpeek
+      dsimp only [] at hok
+      split at hok
+      · -- next peek = some '\'': escaped quote ''
+        rename_i hpeek2
+        have hcorr_adv :=
+          advance_non_newline_corr sc '\'' rest hcorr hmore (by decide) (by decide)
+        obtain ⟨rest2, hsp_adv⟩ := peek_some_sp hcorr_adv hpeek2
+        injection hsp_adv with h_rest2 h_col2
+        subst h_rest2
+        -- h_col2 : sc.col + 1 = sc.advance.col
+        rw [h_col2] at hcorr_adv
+        have hmore2 := peek_some_has_more hpeek2
+        have hcorr_adv2 :=
+          advance_non_newline_corr sc.advance '\'' rest2 hcorr_adv hmore2 (by decide) (by decide)
+        rw [show sc.advance.col + 1 = sc.col + 2 from by omega] at hcorr_adv2
+        obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
+          ih sc.advance.advance ⟨rest2, sc.col + 2⟩ _ hcorr_adv2 hok
+        have h_esc : SNbSingleChar ⟨'\'' :: '\'' :: rest2, sc.col⟩ ⟨rest2, sc.col + 2⟩ :=
+          SNbSingleChar.escapedQuote rest2 sc.col
+        exact ⟨sp_body, sp_close,
+               SNbSingleMultiLine_prepend _ _ _ h_esc h_body,
+               h_glit, h_corr⟩
+      · -- closing quote (next peek ≠ '\'')
+        simp only [Except.ok.injEq, Prod.mk.injEq] at hok
+        obtain ⟨-, rfl⟩ := hok
+        exact ⟨⟨'\'' :: rest, sc.col⟩, ⟨rest, sc.col + 1⟩,
+               SNbSingleMultiLine.single 0 _ _ (GStar.nil _),
+               GLit.mk rest sc.col,
+               advance_non_newline_corr sc '\'' rest hcorr hmore (by decide) (by decide)⟩
+    · -- peek? = some c (not '\'')
+      rename_i c hne_sq hpeek
+      obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+      subst hsp_eq
+      have hmore := peek_some_has_more hpeek
+      split at hok
+      · -- isLineBreakBool c: fold newlines → SNbSingleMultiLine.multi
+        rename_i hlb
+        simp only [bind, Except.bind] at hok
+        split at hok
+        · exact absurd hok (by simp)  -- fold error
+        · rename_i fold_result hfold
+          obtain ⟨sp_cn, sp_loop, sp_fold, h_sbreak, h_gstar_empty, h_flp, hcorr_fold⟩ :=
+            foldQuotedNewlines_prod sc ⟨c :: rest, sc.col⟩ c hcorr hpeek hlb hfold
+          split at hok  -- doc marker guard
+          · simp at hok
+          · split at hok  -- underIndented guard
+            · simp at hok
+            · split at hok  -- do-notation residue
+              · simp at hok
+              · obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
+                  ih _ sp_fold _ hcorr_fold hok
+                exact ⟨sp_body, sp_close,
+                       SNbSingleMultiLine.multi 0
+                         ⟨c :: rest, sc.col⟩ ⟨c :: rest, sc.col⟩
+                         sp_cn sp_loop sp_fold _
+                         (GStar.nil _)
+                         h_sbreak h_gstar_empty h_flp
+                         h_body,
+                       h_glit, h_corr⟩
+      · split at hok
+        · simp at hok  -- invalid control char → error
+        · -- valid char: advance + recurse
+          rename_i hne_lb hne_ctrl
+          have h_not_nl : c ≠ '\n' := not_isLineBreak_not_newline c hne_lb
+          have h_not_cr : c ≠ '\r' := not_isLineBreak_not_cr c hne_lb
+          have hcorr_adv :=
+            advance_non_newline_corr sc c rest hcorr hmore h_not_nl h_not_cr
+          obtain ⟨sp_body, sp_close, h_body, h_glit, h_corr⟩ :=
+            ih sc.advance ⟨rest, sc.col + 1⟩ _ hcorr_adv hok
+          have h_sq_char : SNbSingleChar ⟨c :: rest, sc.col⟩ ⟨rest, sc.col + 1⟩ :=
+            SNbSingleChar.plain c rest sc.col
+              (not_lineBreak_bool_to_prop hne_lb) hne_sq
+          exact ⟨sp_body, sp_close,
+                 SNbSingleMultiLine_prepend _ _ _ h_sq_char h_body,
+                 h_glit, h_corr⟩
+
+-- `scanSingleQuoted` success produces a complete `SCSingleQuoted 0 .blockIn`.
+-- Precondition: `sc.peek? = some '\''` (from scanner dispatch).
+theorem scanSingleQuoted_prod (sc : ScannerState) (sp : SurfPos)
+    {s' : ScannerState}
+    (hcorr : ScannerSurfCorr sc sp)
+    (hpeek_sq : sc.peek? = some '\'')
+    (hok : scanSingleQuoted sc = .ok s') :
+    ∃ sp', SCSingleQuoted 0 .blockIn sp sp' ∧ ScannerSurfCorr s' sp' := by
+  unfold scanSingleQuoted at hok
+  simp only [bind, Except.bind] at hok
+  -- Extract opening quote position
+  obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek_sq
+  subst hsp_eq
+  have hmore := peek_some_has_more hpeek_sq
+  have hcorr_adv :=
+    advance_non_newline_corr sc '\'' rest hcorr hmore (by decide) (by decide)
+  -- Loop: collectSingleQuotedLoop
+  split at hok
+  · simp at hok  -- loop error
+  · rename_i pair hloop
+    obtain ⟨content, s_after_close⟩ := pair
+    simp only [] at hloop hok
+    obtain ⟨sp_body, sp_close, h_body, h_glit_close, hcorr_close⟩ :=
+      collectSingleQuotedLoop_prod sc.advance ⟨rest, sc.col + 1⟩ "" _ _ _ _ _
+        hcorr_adv hloop
+    -- SNbSingleText 0 .blockIn = SNbSingleMultiLine 0
+    have h_text : SNbSingleText 0 .blockIn ⟨rest, sc.col + 1⟩ sp_body := h_body
+    -- validateTrailingContent: do-notation bind on Except Unit
+    split at hok  -- if !sc.inFlow
+    · -- !inFlow = true: validate
+      split at hok  -- match on validateTrailingContent result
+      · simp at hok  -- validation error
+      · have h := Except.ok.inj hok; subst h
+        exact ⟨sp_close,
+               SCSingleQuoted.mk 0 .blockIn _ _ _ _
+                 (GLit.mk rest sc.col) h_text h_glit_close,
+               corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
+    · -- !inFlow = false: no validate
+      split at hok
+      · simp at hok
+      · have h := Except.ok.inj hok; subst h
+        exact ⟨sp_close,
+               SCSingleQuoted.mk 0 .blockIn _ _ _ _
+                 (GLit.mk rest sc.col) h_text h_glit_close,
                corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
 
 end Lean4Yaml.Proofs.ScalarProduction

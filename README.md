@@ -1418,17 +1418,58 @@ The 2 sorry's previously in `Surface.lean` are eliminated. The single remaining 
 
 **Architecture:** Three layers, each building on the previous.
 
-##### Layer 1: Leaf `_prod` theorems — scalar production coupling
+##### Layer 1: Leaf `_prod` theorems — scalar production coupling (in progress)
 
 Extend Phase B's `scanDoubleQuoted_prod` pattern to the remaining three content scanner functions. Each theorem proves that when the scanner function succeeds, the consumed characters form a valid surface-syntax derivation tree. All use the `n = 0, c = .blockIn` existential trick so `SIndent 0` and `SFlowLinePrefix 0` are trivially satisfiable.
 
-| Theorem | Scanner function | Surface type produced | Complexity |
+| Theorem | Scanner function | Surface type produced | Status |
 |---|---|---|---|
-| `scanSingleQuoted_prod` | `collectSingleQuotedLoop` → `scanSingleQuoted` | `SCSingleQuoted 0 .blockIn` | Low — structurally identical to double-quoted but simpler (2 char cases: `plain` and `escapedQuote ''`, no backslash escapes). Fold handling uses `SBBreak + GStar SLEmpty + SFlowLinePrefix` directly. |
-| `scanPlainScalar_prod` | `collectPlainScalarLoop` → `scanPlainScalar` | `SNsPlain 0 .blockIn` (= `SNsPlainMultiLine`) | Medium — context-dependent termination (` #`, `: `, flow indicators), `handleBlockLineBreak` must produce `SSNsPlainNextLine`, `SNsPlainFirst` has 4 constructors. |
-| `scanBlockScalar_prod` | `collectBlockScalarLoop` → `scanBlockScalar` | `SCLLiteral 0` / `SCLFolded 0` | Medium-high — `parseBlockHeaderLoop` → `SCBBlockHeader`, indent auto-detection → `SIndent (n+m)` with correct `m`, and `collectBlockScalarLoop` is total (not `Except`) so proof shape differs. |
+| `scanSingleQuoted_prod` | `collectSingleQuotedLoop` → `scanSingleQuoted` | `SCSingleQuoted 0 .blockIn` | **Done** (163 lines, 0 sorry) |
+| `scanPlainScalar_prod` | `collectPlainScalarLoop` → `scanPlainScalar` | `SNsPlain 0 .blockIn` (= `SNsPlainMultiLine`) | Not started |
+| `scanBlockScalar_prod` | `collectBlockScalarLoop` → `scanBlockScalar` | `SCLLiteral 0` / `SCLFolded 0` | Not started |
 
-**File:** [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) — extends existing Phase B infrastructure, reuses `peek_some_sp`, `advance_corr`, `consumeNewline_sbreak_corr`, `foldQuotedNewlines_prod`.
+**File:** [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) (755 lines, 0 sorry) — extends existing Phase B infrastructure, reuses `peek_some_sp`, `advance_corr`, `consumeNewline_sbreak_corr`, `foldQuotedNewlines_prod`.
+
+**Sorry status:** 0 sorry in ScalarProduction.lean. 1 sorry total (`scan_content_gives_stream`). Build: 407/407 jobs, 0 errors.
+
+<details>
+<summary>scanSingleQuoted_prod — completed 2026-03-29</summary>
+
+**New theorems (3):** `SNbSingleMultiLine_prepend` (helper — prepend `SNbSingleChar` to first line of multi-line body), `collectSingleQuotedLoop_prod` (fuel induction — loop body → `SNbSingleMultiLine 0` + closing `GLit '\''`), `scanSingleQuoted_prod` (wrapper — `SCSingleQuoted 0 .blockIn` from opening `'` through loop through trailing validation).
+
+**Refactored (1):** `foldQuotedNewlines_prod` — return type changed from `∃ sp', SSDoubleBreak 0 sp sp' ∧ ScannerSurfCorr s' sp'` to `∃ sp₁ sp₂ sp', SBBreak sp sp₁ ∧ GStar (SLEmpty 0 .flowIn) sp₁ sp₂ ∧ SFlowLinePrefix 0 sp₂ sp' ∧ ScannerSurfCorr s' sp'`. Returns the three break components (`SBBreak + GStar SLEmpty + SFlowLinePrefix`) directly instead of wrapping in `SSDoubleBreak`. Motivation: single-quoted multi-line uses these components directly in `SNbSingleMultiLine.multi`; the old return type forced matching on `SSDoubleBreak` constructors and eliminating the impossible `escaped` case. The double-quoted call site now wraps in `SSDoubleBreak.flowFold` at point of use.
+
+###### Reflections
+
+**Unexpected challenges:**
+
+1. **`sc.col` vs `sc.advance.col` — non-definitional column equality after advance.**
+   `advance_non_newline_corr sc '\'' rest hcorr hmore` produces `ScannerSurfCorr sc.advance ⟨rest, sc.col + 1⟩`, but the second call `advance_non_newline_corr sc.advance '\'' rest2 hcorr_adv hmore2` expects `ScannerSurfCorr sc.advance ⟨'\'' :: rest2, sc.advance.col⟩` — and `sc.col + 1 ≠ sc.advance.col` definitionally (`.col` unfolds through `if isNewline then 0 else col+1`).
+   **Fix:** After `injection hsp_adv with h_rest2 h_col2` gives `h_col2 : sc.col + 1 = sc.advance.col`, use `rw [h_col2] at hcorr_adv` to align the types before the second advance. Then `rw [show sc.advance.col + 1 = sc.col + 2 from by omega]` to align for the recursive call.
+
+2. **`rename_i` ordering after nested `split at hok` — negation before equality.**
+   In `collectSingleQuotedLoop`, the scanner tests `peek? = some c` in a `match` with one literal pattern (`'\''`). After `split at hok`, the non-literal arm introduces `rename_i c hne_sq hpeek` — the negation hypothesis (`c = '\'' → False`) appears BEFORE the match equality (`sc.peek? = some c`). This differs from the double-quoted proof where `'"'` and `'\\'` are separate literal arms.
+   **Fix:** Use `rename_i c hne_sq hpeek` (not `c hpeek hne_sq`).
+
+3. **`SSDoubleBreak` return type forces impossible case elimination.**
+   `foldQuotedNewlines_prod` originally returned `SSDoubleBreak 0`, which has two constructors: `.escaped` (backslash-newline) and `.flowFold` (bare newline). Single-quoted scalars never use backslash escapes, so the `.escaped` case is impossible — but `cases h_dbreak` still generates it, requiring either `assumption` plumbing or an explicit impossibility proof.
+   **Fix:** Refactored return type to expose `SBBreak + GStar SLEmpty + SFlowLinePrefix` directly (see above). The double-quoted call site wraps these in `SSDoubleBreak.flowFold` at point of use. This avoids the impossible case entirely and makes both call sites cleaner.
+
+**Simplifications:**
+
+1. **`SNbSingleText 0 .blockIn` = `SNbSingleMultiLine 0` definitionally.** The `SNbSingleText` definition matches on context: `.flowKey → SNbSingleOneLine`, `_ → SNbSingleMultiLine n`. Since `.blockIn ≠ .flowKey`, `SNbSingleText 0 .blockIn` reduces to `SNbSingleMultiLine 0` without any explicit coercion. `have h_text : SNbSingleText 0 .blockIn sp sp' := h_body` just works.
+
+2. **Closing-quote branch is identical to double-quoted.** `GStar.nil _` for empty body + `GLit.mk rest sc.col` for the `'` + `advance_non_newline_corr` — same 3-line pattern.
+
+3. **`SNbSingleMultiLine_prepend` mirrors `SNbDoubleMultiLine_prepend` exactly.** Same two cases (`single` → extend star, `multi` → extend first-line star), just with `SNbSingleChar` instead of `SNbDoubleChar`.
+
+**Idioms:**
+
+- **`rw [h_col2] at hcorr_adv` for column alignment through double advance.** When two successive `advance_non_newline_corr` calls each increment column by 1, the intermediate column `sc.advance.col` must be related to `sc.col + 1` via `peek_some_sp`'s injection. Rewriting the hypothesis avoids type mismatches without `conv` or `show`.
+
+- **Component-level return types for reusable lemmas.** Returning `SBBreak + GStar SLEmpty + SFlowLinePrefix` instead of `SSDoubleBreak` allows callers (single-quoted, double-quoted, potentially plain-scalar) to compose the components differently. The double-quoted path wraps in `SSDoubleBreak.flowFold`; the single-quoted path feeds them directly to `SNbSingleMultiLine.multi`.
+
+</details>
 
 ##### Layer 2: Node composition — scalars/indicators into `SBlockNode`
 
@@ -3810,7 +3851,7 @@ Resolves the open questions from the original plan: batch scanning, explicit sta
 
 ### Motivation
 
-The current single-pass character-level parser implements all 205 YAML 1.2.2
+The current single-pass character-level parser implements all 211 YAML 1.2.2
 productions as interleaved parsers. Grammar-level decisions that require
 character-level lookahead produce false positives — the `detectMappingKeyImpl`
 pre-check in `Block.lean` scans raw characters for `: ` and cannot distinguish
