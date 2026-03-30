@@ -269,7 +269,197 @@ theorem skipToContent_startOfLine_comments_prod
 -- - `saveSimpleKey` (doesn't modify offset/col/input)
 -- The grammar output is `SSLComments` or `SLDocumentPrefix` from §2–§4.
 
-/-! ## §6 Document marker productions (status note)
+/-! ## §6 EOF-Complete SSLComments from skipToContent
+
+    When `skipToContentLoop` at col=0 terminates because the scanner
+    has no more input, the ENTIRE content (including the final iteration's
+    whitespace and optional comment) forms `SSLComments`.
+
+    Unlike `skipToContentLoop_col0_prod` (which leaves the final iteration
+    as an uncovered gap between `sp_mid` and `sp'`), this theorem uses
+    `SBComment.eof` to incorporate the terminal whitespace into an
+    `SLComment`, yielding `SSLComments` with `sp_final.chars = []`. -/
+
+/-- Convert `SSBComment` to `SLComment` when starting at column 0.
+    `SSBComment.withSep` already has `SSeparateInLine`; `SSBComment.noSep`
+    gets `SSeparateInLine.startOfLine` manufactured from the col=0 invariant. -/
+theorem SSBComment_to_SLComment_col0 (sp sp' : SurfPos) (hcol : sp.col = 0)
+    (h : SSBComment sp sp') : SLComment sp sp' := by
+  cases h
+  case withSep s₁ s₂ hsep hopt hbreak =>
+    exact SLComment.mk sp s₁ s₂ sp' hsep hopt hbreak
+  case noSep hbreak =>
+    cases sp with | mk chars col =>
+    dsimp only [] at hcol; subst hcol
+    exact SLComment.mk ⟨chars, 0⟩ ⟨chars, 0⟩ ⟨chars, 0⟩ sp'
+      (SSeparateInLine.startOfLine chars) (GOpt.none _) hbreak
+
+/-- Extract `GStar SLComment` from `SSLComments` when starting at column 0.
+    `SSLComments.startOfLine` already carries `GStar SLComment`;
+    `SSLComments.withComment` has `SSBComment` + `GStar SLComment`,
+    and the `SSBComment` converts to `SLComment` at col=0. -/
+theorem SSLComments_to_GStar_col0 (sp sp' : SurfPos) (hcol : sp.col = 0)
+    (h : SSLComments sp sp') : GStar SLComment sp sp' := by
+  cases h
+  case withComment s₁ hsbc hstar =>
+    exact GStar.cons sp s₁ sp' (SSBComment_to_SLComment_col0 sp s₁ hcol hsbc) hstar
+  case startOfLine chars hstar =>
+    exact hstar
+
+/-- `skipToContentLoop` at col=0, terminating at EOF, produces `SSLComments`
+    covering all remaining characters (including the final iteration's
+    whitespace) with `sp_final.chars = []`.
+
+    Proof: induction on fuel, same structure as `skipToContentLoop_col0_prod`.
+    - Break iteration: builds `SLComment`, recurses to get `SSLComments`,
+      extracts `GStar SLComment`, prepends, re-wraps as `SSLComments.startOfLine`.
+    - EOF iteration (peek? = none): builds single `SLComment` using
+      `SBComment.eof`, wraps in `SSLComments.startOfLine`.
+    - Non-break iteration (peek? = some, not break): contradicts `heof`
+      since the content character implies `hasMore`. -/
+theorem skipToContentLoop_eof_ssl_comments_col0
+    (sc : ScannerState) (sp : SurfPos) (fuel : Nat) (s_result : ScannerState)
+    (hcorr : ScannerSurfCorr sc sp)
+    (hcol : sp.col = 0)
+    (hfuel : fuel ≥ sc.inputEnd - sc.offset + 1)
+    (hok : skipToContentLoop sc fuel = .ok s_result)
+    (heof : ¬s_result.hasMore) :
+    ∃ sp_final, SSLComments sp sp_final ∧ sp_final.chars = [] := by
+  induction fuel generalizing sc sp s_result with
+  | zero =>
+    simp [skipToContentLoop] at hok; subst hok
+    have heof' : ¬sc.offset < sc.inputEnd := by
+      simp [ScannerState.hasMore] at heof; omega
+    have hempty := eof_corr sc sp hcorr heof'
+    cases sp with | mk chars col =>
+    dsimp only [] at hcol hempty; subst hcol; subst hempty
+    exact ⟨⟨[], 0⟩,
+      SSLComments.withComment ⟨[], 0⟩ ⟨[], 0⟩ ⟨[], 0⟩
+        (SSBComment.noSep _ _ (SBComment.eof _)) (GStar.nil _),
+      rfl⟩
+  | succ fuel' ih =>
+    unfold skipToContentLoop at hok
+    dsimp only [] at hok
+    split at hok
+    · -- skipToContentWs = .error
+      simp at hok
+    · -- skipToContentWs = .ok s1
+      rename_i s1 hok_ws
+      obtain ⟨sp_ws, hstar_ws, hcorr_ws⟩ := skipToContentWs_ok_corr sc sp s1 hcorr hok_ws
+      obtain ⟨sp_cmt, hopt_cmt, hcorr_cmt⟩ := skipToContentComment_corr s1 sp_ws hcorr_ws
+      split at hok
+      · -- peek? = some c
+        rename_i c hpeek
+        split at hok
+        · -- isLineBreakBool c = true → break → recurse
+          rename_i hlb
+          obtain ⟨sp_brk, h_break, hcol_brk, hcorr_brk⟩ :=
+            consumeNewline_break_prod (skipToContentComment s1) sp_cmt c hcorr_cmt hpeek hlb
+          -- Build SLComment from this iteration
+          have h_sep : SSeparateInLine sp sp_ws :=
+            GStar_SSWhite_to_SSeparateInLine_col0 sp sp_ws hstar_ws hcol
+          have h_lcomment : SLComment sp sp_brk :=
+            SLComment.mk sp sp_ws sp_cmt sp_brk h_sep hopt_cmt
+              (SBComment.break _ _ h_break)
+          -- Fuel budget for recursion (same as skipToContentLoop_col0_prod)
+          have ⟨h_ws_off, h_ws_end⟩ := skipToContentWs_offset_mono sc s1 hok_ws
+          have ⟨h_sc_off, h_sc_end⟩ := skipToContentComment_offset_mono s1
+          have ⟨h_cn_off, h_cn_end⟩ :=
+            consumeNewline_offset_advance (skipToContentComment s1) c hpeek hlb
+          have h_scc_lt : (skipToContentComment s1).offset < (skipToContentComment s1).inputEnd :=
+            peek_some_hasMore (skipToContentComment s1) c hpeek
+          have h_cn_inputEnd : (consumeNewline (skipToContentComment s1)).inputEnd = sc.inputEnd := by
+            rw [h_cn_end, h_sc_end, h_ws_end]
+          have h_scc_end_eq : (skipToContentComment s1).inputEnd = sc.inputEnd := by
+            rw [h_sc_end, h_ws_end]
+          have h_sc_lt_inputEnd : sc.offset < sc.inputEnd := by omega
+          have hfuel' : fuel' ≥ (consumeNewline (skipToContentComment s1)).inputEnd -
+                                 (consumeNewline (skipToContentComment s1)).offset + 1 := by
+            rw [h_cn_inputEnd]
+            by_cases hle : (consumeNewline (skipToContentComment s1)).offset ≤ sc.inputEnd
+            · omega
+            · have hgt : (consumeNewline (skipToContentComment s1)).offset > sc.inputEnd := by
+                omega
+              have : sc.inputEnd - (consumeNewline (skipToContentComment s1)).offset = 0 := by omega
+              rw [this]; omega
+          -- Recurse — two sub-cases from the if
+          split at hok
+          · -- !isInFlowSequence: simpleKeyAllowed update
+            have hcorr_next : ScannerSurfCorr
+                { consumeNewline (skipToContentComment s1) with simpleKeyAllowed := true }
+                ⟨sp_brk.chars, 0⟩ := by
+              rw [← show sp_brk.col = 0 from hcol_brk]
+              cases sp_brk; dsimp only [] at hcol_brk ⊢
+              subst hcol_brk
+              exact corr_of_simpleKeyAllowed_update true hcorr_brk
+            obtain ⟨sp_final, h_ssl_rec, h_empty⟩ := ih _ ⟨sp_brk.chars, 0⟩ s_result
+              hcorr_next rfl hfuel' hok heof
+            -- Compose: SLComment sp sp_brk + SSLComments sp_brk sp_final → SSLComments sp sp_final
+            have h_gstar_rec := SSLComments_to_GStar_col0 ⟨sp_brk.chars, 0⟩ sp_final rfl h_ssl_rec
+            cases sp with | mk chars col =>
+            dsimp only [] at hcol; subst hcol
+            have h_lcomment' : SLComment ⟨chars, 0⟩ ⟨sp_brk.chars, 0⟩ := by
+              cases sp_brk; dsimp only [] at hcol_brk ⊢; subst hcol_brk; exact h_lcomment
+            exact ⟨sp_final,
+              SSLComments.startOfLine chars sp_final
+                (GStar.cons ⟨chars, 0⟩ ⟨sp_brk.chars, 0⟩ sp_final h_lcomment' h_gstar_rec),
+              h_empty⟩
+          · -- isInFlowSequence
+            obtain ⟨sp_final, h_ssl_rec, h_empty⟩ := ih _ sp_brk s_result
+              hcorr_brk hcol_brk hfuel' hok heof
+            have h_gstar_rec := SSLComments_to_GStar_col0 sp_brk sp_final hcol_brk h_ssl_rec
+            cases sp with | mk chars col =>
+            dsimp only [] at hcol; subst hcol
+            exact ⟨sp_final,
+              SSLComments.startOfLine chars sp_final
+                (GStar.cons ⟨chars, 0⟩ sp_brk sp_final h_lcomment h_gstar_rec),
+              h_empty⟩
+        · -- isLineBreakBool c = false → non-break stop
+          -- peek? = some c means (skipToContentComment s1).hasMore
+          -- So s_result = skipToContentComment s1 and s_result.hasMore = true
+          -- This contradicts heof
+          have hinj := Except.ok.inj hok; subst hinj
+          have h_lt := peek_some_hasMore (skipToContentComment s1) c hpeek
+          simp [ScannerState.hasMore] at heof
+          exact absurd h_lt (by omega)
+      · -- peek? = none → EOF in this iteration
+        -- s_result = skipToContentComment s1, and sp_cmt.chars = []
+        have hinj := Except.ok.inj hok; subst hinj
+        have hpeek_none : (skipToContentComment s1).peek? = none := by assumption
+        have heof_sc : ¬(skipToContentComment s1).offset < (skipToContentComment s1).inputEnd := by
+          unfold ScannerState.peek? at hpeek_none
+          split at hpeek_none
+          · cases hpeek_none
+          · assumption
+        have hempty := eof_corr (skipToContentComment s1) sp_cmt hcorr_cmt heof_sc
+        -- Build SLComment: SSeparateInLine + GOpt SCNbCommentText + SBComment.eof
+        have h_sep : SSeparateInLine sp sp_ws :=
+          GStar_SSWhite_to_SSeparateInLine_col0 sp sp_ws hstar_ws hcol
+        -- sp_cmt.chars = [] so sp_cmt = ⟨[], sp_cmt.col⟩
+        cases sp_cmt with | mk cmt_chars cmt_col =>
+        dsimp only [] at hempty; subst hempty
+        have h_eof_break : SBComment ⟨[], cmt_col⟩ ⟨[], cmt_col⟩ := SBComment.eof cmt_col
+        have h_lcomment : SLComment sp ⟨[], cmt_col⟩ :=
+          SLComment.mk sp sp_ws ⟨[], cmt_col⟩ ⟨[], cmt_col⟩ h_sep hopt_cmt h_eof_break
+        cases sp with | mk chars col =>
+        dsimp only [] at hcol; subst hcol
+        exact ⟨⟨[], cmt_col⟩,
+          SSLComments.startOfLine chars ⟨[], cmt_col⟩
+            (GStar.cons ⟨chars, 0⟩ ⟨[], cmt_col⟩ ⟨[], cmt_col⟩ h_lcomment (GStar.nil _)),
+          rfl⟩
+
+/-- Top-level: `skipToContent` at col=0, reaching EOF, produces `SSLComments`. -/
+theorem skipToContent_eof_ssl_comments_col0
+    (sc : ScannerState) (sp : SurfPos) (s_result : ScannerState)
+    (hcorr : ScannerSurfCorr sc sp)
+    (hcol : sp.col = 0)
+    (hok : skipToContent sc = .ok s_result)
+    (heof : ¬s_result.hasMore) :
+    ∃ sp_final, SSLComments sp sp_final ∧ sp_final.chars = [] := by
+  unfold skipToContent at hok
+  exact skipToContentLoop_eof_ssl_comments_col0 sc sp _ s_result hcorr hcol (by omega) hok heof
+
+/-! ## §7 Document marker productions (status note)
 
     `scanDocumentStart_prod` and `scanDocumentEnd_prod` already exist in
     StructureProduction.lean (Layer 4a). `SLDocumentSuffix` composition

@@ -140,6 +140,88 @@ inductive BlockStack : SurfPos → SurfPos → Prop where
   | mapLevel (col : Int) (sp sp_mid sp' : SurfPos) :
       BlockStack sp sp_mid → BlockStack sp sp'
 
+/-! ## §0c Helpers for §1a (EOF Stream Extension)
+
+    Two helpers needed to discharge the `nil + noPending + col=0` case of §1a:
+    1. `preprocess_none_ssl_comments_col0`: unfolds `scanNextToken_preprocess`,
+       shows only `!hasMore` path fires, delegates to `skipToContent_eof_ssl_comments_col0`
+    2. `ssl_comments_extend_stream_col0`: converts `SSLComments` → `GStar SLComment`
+       → `SLDocumentPrefix` → extends `SLYamlStream` via `implicitContinue`
+
+    Together these prove: at col=0, preprocessing EOF extends the stream. -/
+
+/-- When `scanNextToken_preprocess` returns `none` (EOF) and the scanner
+    is at col=0, the remaining characters form `SSLComments`. -/
+theorem preprocess_none_ssl_comments_col0 (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp)
+    (hcol : sp.col = 0)
+    (hok : scanNextToken_preprocess sc = .ok none) :
+    ∃ sp_final, SSLComments sp sp_final ∧ sp_final.chars = [] := by
+  unfold scanNextToken_preprocess at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  split at hok
+  · simp at hok
+  · rename_i s_content h_skip
+    split at hok
+    · -- !s_content.hasMore → EOF on skipToContent (the only reachable path)
+      rename_i h_notMore
+      have heof : ¬s_content.hasMore := by
+        simp only [Bool.not_eq_eq_eq_not, Bool.not_true] at h_notMore
+        exact fun h => by simp [h] at h_notMore
+      exact skipToContent_eof_ssl_comments_col0 sc sp s_content hcorr hcol
+        (show skipToContent sc = .ok s_content by unfold skipToContent; exact h_skip) heof
+    · -- s_content.hasMore: all branches return (some ...) or error, not none.
+      -- Proof: unwindIndents/saveSimpleKey preserve offset/input, so peek? is
+      -- still some (since hasMore). The peek?=none branches are absurd.
+      rename_i h_hasMore
+      split at hok
+      · split at hok
+        · simp at hok
+        · split at hok
+          · rename_i h_indent h_no_trailing h_peek_none
+            exfalso; rw [saveSimpleKey_peek] at h_peek_none
+            unfold ScannerState.peek? at h_peek_none; dsimp only [] at h_peek_none
+            unfold unwindIndents at h_peek_none
+            simp only [unwindIndentsLoop_offset, unwindIndentsLoop_inputEnd,
+              unwindIndentsLoop_input] at h_peek_none
+            split at h_peek_none
+            · cases h_peek_none
+            · rename_i h_not_lt
+              simp only [Bool.not_eq_eq_eq_not, Bool.not_true] at h_hasMore
+              simp [ScannerState.hasMore] at h_hasMore
+              exact h_not_lt h_hasMore
+          · cases hok
+      · split at hok
+        · simp at hok
+        · split at hok
+          · rename_i h_no_indent h_no_trailing h_peek_none
+            exfalso; rw [saveSimpleKey_peek] at h_peek_none
+            unfold ScannerState.peek? at h_peek_none
+            split at h_peek_none
+            · cases h_peek_none
+            · rename_i h_not_lt
+              simp only [Bool.not_eq_eq_eq_not, Bool.not_true] at h_hasMore
+              simp [ScannerState.hasMore] at h_hasMore
+              exact h_not_lt h_hasMore
+          · cases hok
+
+/-- Extend `SLYamlStream` with `SSLComments` at col=0.
+
+    `SSLComments` → `GStar SLComment` → `SLDocumentPrefix.comments`
+    → `SLYamlStream.implicitContinue` with no explicit document. -/
+theorem ssl_comments_extend_stream_col0
+    (sp_start sp sp_final : SurfPos)
+    (hcol : sp.col = 0)
+    (h_stream : SLYamlStream sp_start sp)
+    (h_ssl : SSLComments sp sp_final) :
+    SLYamlStream sp_start sp_final := by
+  have h_gstar := SSLComments_to_GStar_col0 sp sp_final hcol h_ssl
+  exact SLYamlStream.implicitContinue sp_start sp sp_final sp_final sp_final
+    h_stream
+    (GStar.cons sp sp_final sp_final (SLDocumentPrefix.comments sp sp_final h_gstar) (GStar.nil _))
+    (GOpt.none _)
+    (GStar.nil _)
+
 /-! ## §1 Per-Dispatch Grammar Accumulator Lemmas
 
     Each dispatcher has a sorry lemma that:
@@ -153,7 +235,17 @@ inductive BlockStack : SurfPos → SurfPos → Prop where
 
     When `scanNextToken_preprocess` returns `none`, the scanner reached EOF.
     Close all pending state — unwind entire BlockStack, close PendingNode,
-    and finalize the stream. -/
+    and finalize the stream.
+
+    **Proven case**: `BlockStack.nil` + `PendingNode.noPending` + col=0.
+    This is the primary path for non-BOM inputs. Uses
+    `preprocess_none_ssl_comments_col0` → `ssl_comments_extend_stream_col0`.
+
+    **Sorry case**: col≠0 (BOM edge case) or non-nil stack/pending (from §1b–§1e).
+    The col≠0 sorry is a genuine YAML grammar limitation — `SSeparateInLine`
+    requires either `s-white+` or start-of-line, and after BOM at col=1 with
+    a bare break, neither applies. See §0c docstring.
+    The non-nil stack/pending cases are downstream of §1b–§1e sorry. -/
 
 theorem preprocessing_eof_extends_stream (sc : ScannerState)
     (sp_start sp_gram sp_block sp_scan : SurfPos)
@@ -163,14 +255,30 @@ theorem preprocessing_eof_extends_stream (sc : ScannerState)
     (h_corr : ScannerSurfCorr sc sp_scan)
     (h_preprocess : scanNextToken_preprocess sc = .ok none) :
     ∃ sp_final, SLYamlStream sp_start sp_final ∧ sp_final.chars = [] := by
-  -- At EOF, preprocessing consumed all remaining input.
-  -- 1. SSLComments from remaining whitespace/comments/breaks closes PendingNode.
-  -- 2. unwindIndents pops ALL indent levels → BlockStack fully unwound.
-  --    Each pop: accumulated entries → SBlockSeqEntries/SBlockMapEntries
-  --    → SBlockNode.blockSeq/.blockMap → extends SLYamlStream.
-  -- 3. For noPending + nil: remaining chars form SLDocumentPrefix.
-  -- 4. Stream finalized with empty GOpt/GStar suffix sections.
-  sorry
+  cases h_stack with
+  | nil =>
+    cases h_pending with
+    | noPending =>
+      -- sp_gram = sp_block = sp_scan (all identified by nil+noPending)
+      by_cases hcol : sp_gram.col = 0
+      · -- PROVEN: non-BOM path (col=0)
+        obtain ⟨sp_final, h_ssl, h_empty⟩ :=
+          preprocess_none_ssl_comments_col0 sc sp_gram h_corr hcol h_preprocess
+        exact ⟨sp_final, ssl_comments_extend_stream_col0 sp_start sp_gram sp_final
+          hcol h_stream h_ssl, h_empty⟩
+      · -- BOM edge case (col≠0): SSeparateInLine requires s-white+ or start-of-line,
+        -- but after BOM at col=1 with bare break, neither applies.
+        -- This is a genuine YAML grammar formalization limitation.
+        sorry
+    | pendingContent | pendingDocEnd | pendingDocStart
+    | pendingDirective | pendingFlow | pendingBlock =>
+      -- Non-trivial pending state at EOF: closing requires evidence from §1b–§1e
+      -- (upstream sorry). These cases are unreachable until §1b–§1e are discharged.
+      all_goals sorry
+  | seqLevel | mapLevel =>
+    -- Non-nil block stack at EOF: requires BlockStack unwinding evidence.
+    -- Downstream of §1b–§1d sorry (which create/modify stack levels).
+    all_goals sorry
 
 /-! ### §1b Preprocessing + Structural Dispatch
 
@@ -522,21 +630,37 @@ theorem scan_content_gives_stream_v2
 
 /-! ## §6 Gap Analysis
 
-    Five sorry lemmas remain, each precisely scoped to one dispatch path.
-    All are architecturally provable — the lagging quad (SLYamlStream +
-    BlockStack + PendingNode + ScannerSurfCorr) correctly models the
-    multi-token protocol for block collections.
+    Five sorry lemmas remain in this file, each precisely scoped to one dispatch
+    path. The lagging quad (SLYamlStream + BlockStack + PendingNode +
+    ScannerSurfCorr) correctly models the multi-token protocol.
 
     The BlockStack component (sub-layer 4e) addresses the hardest remaining
     gap: block sequences and mappings spanning multiple `scanNextToken` calls.
 
-    **Discharge strategy per sorry:**
+    **Proven branches (v0.4.6):**
 
-    1. `preprocessing_eof_extends_stream` (§1a): Case-split on BlockStack depth.
-       - nil: remaining chars → SLDocumentPrefix → extend stream.
-       - seqLevel/mapLevel: each level forms SBlockSeqEntries/SBlockMapEntries
-         → SBlockNode.blockSeq/.blockMap → extend stream. Recurse on stack.
-       Then case-split on PendingNode to close the innermost gap.
+    `preprocessing_eof_extends_stream` (§1a) is partially proven:
+    - `BlockStack.nil + PendingNode.noPending + col=0`: FULLY PROVEN ✅
+      Uses `preprocess_none_ssl_comments_col0` (unfolds `scanNextToken_preprocess`,
+      shows only `!hasMore` path fires, delegates to `skipToContent_eof_ssl_comments_col0`)
+      then `ssl_comments_extend_stream_col0` (converts `SSLComments` → `GStar SLComment`
+      → `SLDocumentPrefix.comments` → `SLYamlStream.implicitContinue`).
+      This is the primary path for all non-BOM inputs from the initial state.
+
+    **Remaining sorry branches in §1a:**
+    - `col≠0` (BOM edge case): Genuine YAML grammar limitation.
+      `SSeparateInLine` requires `s-white+` or `start-of-line`, but after BOM
+      at col=1 with a bare break (no preceding whitespace), neither applies.
+      The `SLComment` production [78] mandates `s-separate-in-line` [66] before
+      `c-nb-comment-text?` [75], and this cannot be satisfied at col≠0 without
+      whitespace. Only reachable from BOM-starting inputs.
+    - Non-nil stack / non-trivial pending: Downstream of §1b–§1e sorry.
+      These cases are unreachable until §1b–§1e are discharged.
+
+    **Discharge strategy per remaining sorry:**
+
+    1. `preprocessing_eof_extends_stream` (§1a) non-BOM sorry branches:
+       only reachable through §1b–§1e, so they resolve when those are proven.
 
     2. `accum_step_structural` (§1b): Close previous pending + BlockStack.
        Structural tokens (`---`/`...`/`%`) only appear at col 0, causing
@@ -560,12 +684,14 @@ theorem scan_content_gives_stream_v2
        Missing _prod theorems: `scanPlainScalar_prod` ❌, `scanBlockScalar_prod` ❌.
 
     **Proven (composition-only, delegating to above sorry):**
+    - `preprocess_none_ssl_comments_col0` (§0c): unfolds preprocessing, gets SSLComments
+    - `ssl_comments_extend_stream_col0` (§0c): SSLComments → stream extension
     - `scanNextToken_accum_step` (§1f): unfolds `scanNextToken`, dispatches
     - `scanNextToken_none_stream` (§2): unfolds `scanNextToken`, EOF path
     - `scanLoop_grammar_prod` (§3): fuel induction with lagging quad
     - `scan_content_gives_stream_v2` (§5): top-level composition
 
-    Total sorry: 5 (architecturally provable with BlockStack).
+    Total sorry: 5 (in §1a–§1e), with §1a partially proven for the primary path.
 -/
 
 end Lean4Yaml.Proofs.StreamAccum

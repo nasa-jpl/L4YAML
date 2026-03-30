@@ -1871,6 +1871,47 @@ Remaining _prod theorems ───────────────┘       
 
 5. **`scanValue` has retroactive indent push.** Unlike `scanBlockEntry` (which calls `pushSequenceIndent` at the start) and `scanKey` (which calls `pushMappingIndent` at the start), `scanValue` calls `scanValuePrepare` which may emit `.blockMappingStart` retroactively. This means the `BlockStack` push for implicit mapping keys doesn't always happen at the indicator token — it can happen at the value indicator. The `accum_step_block` sorry must handle this retroactive push. This is tracked by position boundaries in `BlockStack.mapLevel` but doesn't change the composition layer.
 
+###### Remaining work
+
+Tier 1 — Tractable now (no new _prod theorems needed):
+
+preprocessing_eof_extends_stream — EOF handling: close pending node + finalize stream with existing preprocessing lemmas
+accum_step_structural — ---/.../% dispatch: uses existing scanDocumentStart_prod, scanDocumentEnd_prod, PendingNode case-split
+
+**Tier 1 reflections (v0.4.6, 2026-03-29):**
+
+Partially discharged `preprocessing_eof_extends_stream` (§1a). The `BlockStack.nil + PendingNode.noPending + col=0` branch is FULLY PROVEN — this is the primary path for all non-BOM inputs. Two new private helpers in StreamAccum.lean §0c. Sorry count unchanged at 6 (the proven branch was part of an existing sorry). Build: 415/415 jobs, 0 errors.
+
+*New theorems:*
+
+| Theorem | Location | Purpose |
+|---|---|---|
+| `preprocess_none_ssl_comments_col0` | StreamAccum.lean §0c | Unfolds `scanNextToken_preprocess`, shows only `!hasMore` path fires at EOF, delegates to `skipToContent_eof_ssl_comments_col0` |
+| `ssl_comments_extend_stream_col0` | StreamAccum.lean §0c | Converts `SSLComments → GStar SLComment → SLDocumentPrefix.comments → SLYamlStream.implicitContinue` |
+
+*Reflections:*
+
+1. **BOM edge case is a genuine YAML grammar formalization limitation.** After BOM (`\uFEFF`) at offset 0, the scanner is at col=1. If the remaining content is just a bare break (`\n`) followed by comments, converting `SSLComments` to `GStar SLComment` fails because `SLComment` (spec [78]) requires `SSeparateInLine` (spec [66]), which at col≠0 demands `s-white+` (at least one whitespace character). A bare break at col=1 provides neither whitespace nor start-of-line. This is not a proof gap but a fundamental mismatch between the YAML grammar's column assumptions and the BOM's column displacement. The sorry is isolated and documented.
+
+2. **Variable unification after case elimination surprises.** After `cases h_stack with | nil => cases h_pending with | noPending =>`, the type equalities `sp_gram = sp_block = sp_scan` are resolved. The surviving variable name is `sp_gram` (from the first parameter to `BlockStack.nil`). Referencing `sp_scan` after this point causes "unknown identifier" — a subtle consequence of Lean 4's dependent pattern matching unifying the indices. Fix: use `sp_gram` exclusively after the case split.
+
+3. **Module boundary constrains helper placement.** `preprocess_none_ssl_comments_col0` needs `saveSimpleKey_peek` and `unwindIndentsLoop_offset/inputEnd/input` from `ScanStrictCoupling`. Initially attempted to add it to `PreprocessProduction.lean`, which doesn't import `ScanStrictCoupling`. Moving it to `StreamAccum.lean` (which already opens `ScanStrictCoupling`) resolved the issue without adding new import edges. Lesson: check import graphs before choosing where to place helper theorems.
+
+4. **GramGap approach analyzed and rejected.** Considered replacing `BlockStack + PendingNode` with a single `GramGap` inductive tracking all possible gap states. Analysis showed this would require a new `GramGap.closure` sorry for the BOM col≠0 case PLUS all existing sorry — net increase or no change. The four-component decomposition (lagging quad) remains the right factoring because each component has independent invariants.
+
+5. **The `!hasMore` branch is the only reachable EOF path in `scanNextToken_preprocess`.** When `scanNextToken_preprocess` returns `none`, it must be because `!s_content.hasMore` after `skipToContent`. The alternative path (`peek? = none` after `unwindIndents`/`saveSimpleKey`) is absurd: `unwindIndents` preserves `offset`/`inputEnd`/`input` (proven by `unwindIndentsLoop_offset` etc.), `saveSimpleKey` preserves `peek?` (proven by `saveSimpleKey_peek`), so if `hasMore` was true after `skipToContent`, `peek?` is still `some`. This absurdity argument appears twice (for the two indent-check branches) and follows the same pattern as `scanNextToken_preprocess_none_consumed` in `ScanStrictCoupling.lean`.
+
+Tier 2 — Remaining scalar _prod (unblocks accum_step_content):
+3. scanPlainScalar_prod (200 lines) — extends collectPlainScalarLoop pattern, bridge lemmas already done in 4a
+4. scanBlockScalar_prod (250 lines) — parseBlockHeaderLoop_prod already done, extends block scalar loop
+
+Tier 3 — Discharge with new _prod:
+5. accum_step_content — tractable once plain + block scalar _prod exist
+
+Tier 4 — Hardest (multi-token collections):
+6. scanFlowSequence_prod + scanFlowMapping_prod + discharge accum_step_flow
+7. scanBlockSequence_prod + scanBlockMapping_prod + discharge accum_step_block
+
 </details>
 
 #### Version 0.5.0
