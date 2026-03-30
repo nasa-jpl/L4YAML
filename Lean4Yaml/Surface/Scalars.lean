@@ -190,20 +190,32 @@ inductive SNsPlainChar : Lean4Yaml.YamlContext → SurfPos → SurfPos → Prop 
       -- '#' preceded by non-space (approximated by col > 0)
       SNsPlainChar c ⟨'#' :: rest, col⟩ ⟨rest, col + 1⟩
 
-/-- [130] ns-plain-one-line(c): plain scalar content on a single line. -/
+/-- [129] nb-ns-plain-in-line(c) entry: `s-white* ns-plain-char(c)`.
+    One unit of the intra-line repetition: optional whitespace followed by a
+    plain content character. -/
+inductive SNbNsPlainInLineEntry : Lean4Yaml.YamlContext → SurfPos → SurfPos → Prop where
+  | mk (c : Lean4Yaml.YamlContext) (s s₁ s' : SurfPos) :
+      GStar SSWhite s s₁ →
+      SNsPlainChar c s₁ s' →
+      SNbNsPlainInLineEntry c s s'
+
+/-- [130] ns-plain-one-line(c): plain scalar content on a single line.
+    `ns-plain-first(c) nb-ns-plain-in-line(c)` where
+    `nb-ns-plain-in-line(c) = ( s-white* ns-plain-char(c) )*`. -/
 inductive SNsPlainOneLine : Lean4Yaml.YamlContext → SurfPos → SurfPos → Prop where
   | mk (c : Lean4Yaml.YamlContext) (s s₁ s' : SurfPos) :
       SNsPlainFirst c s s₁ →
-      GStar (SNsPlainChar c) s₁ s' →
+      GStar (SNbNsPlainInLineEntry c) s₁ s' →
       SNsPlainOneLine c s s'
 
-/-- [131] s-ns-plain-next-line(n,c): continuation line in multi-line plain scalar. -/
+/-- [131] s-ns-plain-next-line(n,c): continuation line in multi-line plain scalar.
+    `s-flow-folded(n) ns-plain-char(c) nb-ns-plain-in-line(c)`. -/
 inductive SSNsPlainNextLine : Nat → Lean4Yaml.YamlContext → SurfPos → SurfPos → Prop where
   | mk (n : Nat) (c : Lean4Yaml.YamlContext) (s s₁ s₂ s₃ s' : SurfPos) :
       SBBreak s s₁ →
       GStar (SLEmpty n c) s₁ s₂ →
       SFlowLinePrefix n s₂ s₃ →
-      GPlus (SNsPlainChar c) s₃ s' →
+      GPlus (SNbNsPlainInLineEntry c) s₃ s' →
       SSNsPlainNextLine n c s s'
 
 /-- [132] ns-plain-multi-line(n,c): multi-line plain scalar. -/

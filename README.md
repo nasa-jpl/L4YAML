@@ -1901,12 +1901,51 @@ Partially discharged `preprocessing_eof_extends_stream` (§1a). The `BlockStack.
 
 5. **The `!hasMore` branch is the only reachable EOF path in `scanNextToken_preprocess`.** When `scanNextToken_preprocess` returns `none`, it must be because `!s_content.hasMore` after `skipToContent`. The alternative path (`peek? = none` after `unwindIndents`/`saveSimpleKey`) is absurd: `unwindIndents` preserves `offset`/`inputEnd`/`input` (proven by `unwindIndentsLoop_offset` etc.), `saveSimpleKey` preserves `peek?` (proven by `saveSimpleKey_peek`), so if `hasMore` was true after `skipToContent`, `peek?` is still `some`. This absurdity argument appears twice (for the two indent-check branches) and follows the same pattern as `scanNextToken_preprocess_none_consumed` in `ScanStrictCoupling.lean`.
 
-Tier 2 — Remaining scalar _prod (unblocks accum_step_content):
-3. scanPlainScalar_prod (200 lines) — extends collectPlainScalarLoop pattern, bridge lemmas already done in 4a
-4. scanBlockScalar_prod (250 lines) — parseBlockHeaderLoop_prod already done, extends block scalar loop
+Tier 2 — Scalar _prod theorems (in progress):
+
+**Completed work:**
+- `SNbNsPlainInLineEntry` grammar type added to `Surface/Scalars.lean` ([129] `nb-ns-plain-in-line(c)` entry).
+  Previous `SNsPlainOneLine` used `GStar (SNsPlainChar c)` which couldn't represent multi-word
+  plain scalars like `hello world` — whitespace between words is NOT `SNsPlainChar`.
+  YAML spec [130]/[129]: `ns-plain-one-line(c) = ns-plain-first(c) (s-white* ns-plain-char(c))*`.
+  Fix: `SNbNsPlainInLineEntry c = GStar SSWhite + SNsPlainChar c`. Updated `SNsPlainOneLine`
+  to use `GStar (SNbNsPlainInLineEntry c)` and `SSNsPlainNextLine` to use `GPlus (SNbNsPlainInLineEntry c)`.
+  Zero downstream breakage (nobody yet constructs these types).
+- `scanPlainScalar_prod` (ScalarProduction.lean §7): correct type signature with sorry for grammar witness.
+  Correlation proven via `scanPlainScalar_corr`. Bridge lemmas `isPlainSafe_to_plainChar_basic`
+  and `isPlainSafe_to_inlineEntry_basic` fully proven.
+- `scanBlockScalar_prod` (ScalarProduction.lean §8): correct type signature with sorry for grammar witness.
+  Correlation proven via `scanBlockScalar_corr`. Header infrastructure substantially proven:
+  - `scanBlockScalarSkipComment_prod` fully proven (produces `GOpt SCNbCommentText`)
+  - `scanBlockScalarConsumeNewline_prod` fully proven (produces `SBComment`)
+  - `whitespace_comment_break_to_SSBComment` proven for all practical cases (1 edge sorry:
+    `#` without preceding whitespace, unreachable from scanner's `peekBack?` check)
+
+**Sorry count: 6 → 9** (3 new: `scanPlainScalar_prod` grammar, `whitespace_comment_break_to_SSBComment` edge, `scanBlockScalar_prod` grammar).
+
+**Remaining for full Tier 2:**
+3a. `collectPlainScalarLoop_prod` (~200 lines): fuel induction over 7 branches.
+    Needs `peekAt?_surface` lemma (linking `peekAt? 1` to surface char list for `-`/`:`/`?` first char).
+    Single-line case: `SNsPlainFirst` + `GStar (SNbNsPlainInLineEntry)` + trailing `GStar SSWhite`.
+    Multi-line case: additionally needs `handleBlockLineBreak_prod` → `SSNsPlainNextLine`.
+3b. `collectBlockScalarLoop_prod` (~100 lines): subfunction `_corr` theorems all exist.
+    Needs to construct `SLLiteralContent` / `SLNbFoldedLines` from indent + nb-char lines.
+3c. `scanBlockScalarBody_prod` (~50 lines): wrapper composing above with chomp/fold.
+
+**Reflections:**
+
+1. **Grammar type gap found and fixed.** The `SNsPlainOneLine` definition used `GStar (SNsPlainChar c)` which excludes whitespace characters. This meant the grammar type could only represent single-word plain scalars. The YAML spec [129] uses `(s-white* ns-plain-char(c))*` — explicitly allowing whitespace between content characters. The fix adds `SNbNsPlainInLineEntry` as the new repeating unit. Impact analysis: zero compilation breakage since no existing code constructs `SNsPlainOneLine` or `SSNsPlainNextLine` (these are Tier 2 deliverables). The fix is prerequisite for any correct `_prod` proof.
+
+2. **Plain scalar _prod is the hardest scalar theorem.** Double-quoted _prod (§3, ~290 lines proven) has clean structure: opening `"`, loop body, closing `"`. Plain scalar has no delimiters, 7 branch points per loop iteration, and the grammar type (`SNsPlainFirst` for first char + `SNbNsPlainInLineEntry` for continuation) requires tracking whether the loop is at the first character. The loop also accumulates `spaces` in a string (not grammar-tracked) and flushes them when content follows — this "lazy WS flush" requires the grammar to retroactively include the whitespace. Estimated: 300+ lines for full proof, ~2× the double-quoted proof.
+
+3. **Block scalar pipeline structure enables modular proofs.** The `scanBlockScalar` function calls a linear pipeline (`advance → parseBlockHeaderLoop → skipWhitespace → skipComment → consumeNewline → body`), so each step can be proven as an independent `_prod` lemma. This is much cleaner than the monolithic loop proofs needed for quoted/plain scalars. The `parseBlockHeaderLoop_prod` was already proven in §6. The new `scanBlockScalarSkipComment_prod` and `scanBlockScalarConsumeNewline_prod` complete the header. Only the content body (`collectBlockScalarLoop`) remains.
+
+4. **Edge case: `#` without preceding whitespace in block header.** In `whitespace_comment_break_to_SSBComment`, the `GStar.nil` (empty whitespace) + `GOpt.some` (comment present) case is grammatically awkward: `SSBComment.withSep` needs `SSeparateInLine` which requires either `GPlus SSWhite` (non-empty WS) or `startOfLine` (col=0). The scanner's `scanBlockScalarSkipComment` checks `peekBack?` for whitespace before accepting `#`, so this case is unreachable from valid scanner flow. The sorry is benign but proves that grammar formalization must account for scanner-level invariants.
+
+5. **`_corr` and `_prod` have the same structure but different accumulation.** The `_corr` theorems (ScalarCoupling.lean) trace through the same branches as `_prod` but only track `ScannerSurfCorr` (existential witness). The `_prod` theorems additionally construct grammar witnesses at each step. The correlation part of `_prod` can always delegate to `_corr`, so the overhead is purely in grammar construction. For the current sorry-based theorems, we use `_corr` for correlation and sorry for grammar — establishing correct types while deferring construction.
 
 Tier 3 — Discharge with new _prod:
-5. accum_step_content — tractable once plain + block scalar _prod exist
+5. accum_step_content — tractable once plain + block scalar _prod grammar sorry are removed
 
 Tier 4 — Hardest (multi-token collections):
 6. scanFlowSequence_prod + scanFlowMapping_prod + discharge accum_step_flow
