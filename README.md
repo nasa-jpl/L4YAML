@@ -1911,26 +1911,56 @@ Tier 2 — Scalar _prod theorems (in progress):
   Fix: `SNbNsPlainInLineEntry c = GStar SSWhite + SNsPlainChar c`. Updated `SNsPlainOneLine`
   to use `GStar (SNbNsPlainInLineEntry c)` and `SSNsPlainNextLine` to use `GPlus (SNbNsPlainInLineEntry c)`.
   Zero downstream breakage (nobody yet constructs these types).
-- `scanPlainScalar_prod` (ScalarProduction.lean §7): correct type signature with sorry for grammar witness.
-  Correlation proven via `scanPlainScalar_corr`. Bridge lemmas `isPlainSafe_to_plainChar_basic`
-  and `isPlainSafe_to_inlineEntry_basic` fully proven.
-- `scanBlockScalar_prod` (ScalarProduction.lean §8): correct type signature with sorry for grammar witness.
-  Correlation proven via `scanBlockScalar_corr`. Header infrastructure substantially proven:
-  - `scanBlockScalarSkipComment_prod` fully proven (produces `GOpt SCNbCommentText`)
-  - `scanBlockScalarConsumeNewline_prod` fully proven (produces `SBComment`)
-  - `whitespace_comment_break_to_SSBComment` proven for all practical cases (1 edge sorry:
-    `#` without preceding whitespace, unreachable from scanner's `peekBack?` check)
+- Sub-function grammar helpers (ScalarProduction.lean §6b), all **fully proven**:
+  - `consumeExactSpaces_sindent_prod` — `SIndent count` from count spaces consumed
+  - `collectLineContentLoop_nbchar_prod` — `GStar SNbChar` from content chars
+  - `gstar_to_gplus_from_first` — `GPlus` from first element + `GStar` rest
+  - `collectLineContentLoop_gplus_prod` — `GPlus SNbChar` when first char known
+  - Helper lemmas: `consumeExactSpaces_succ_space_fst/snd`, `consumeExactSpaces_succ_not_space`
+- `collectPlainScalarLoop_inline_prod` (ScalarProduction.lean §7): fuel induction producing
+  `GStar (SNbNsPlainInLineEntry .blockIn)`. Decomposed into 3 targeted sorry:
+  - Multi-line break handling (flow: `foldQuotedNewlines`, block: `handleBlockLineBreak`)
+  - Whitespace accumulation grammar (leading WS → `GStar SSWhite` within entry)
+  - `:` and `#` special cases → `SNsPlainChar.colonSafe` / `SNsPlainChar.hashAfterNs`
+- `scanPlainScalar_prod` (ScalarProduction.lean §7): delegates to `collectPlainScalarLoop_inline_prod`.
+  Sorry for `SNsPlainFirst` extraction and `SNsPlainMultiLine` composition.
+- `collectBlockScalarLoop_prod` (ScalarProduction.lean §8b): fuel induction with same case
+  structure as `collectBlockScalarLoop_corr`. Base cases (fuel=0, doc boundary, under-indent)
+  produce empty `SLLiteralContent`. Recursive cases use `consumeNewline_corr` +
+  `collectLineContentLoop_corr` with sorry for grammar fragment composition (~6 locations).
+- `scanBlockScalarBody_prod` (ScalarProduction.lean §8b): existential wrapper returning
+  `∃ (m : Nat) (sp' : SurfPos), m ≥ 1 ∧ SLLiteralContent m sp sp'`. Delegates to `_corr`.
+- `scanBlockScalar_prod` header (ScalarProduction.lean §8c): **FULLY PROVEN** header composition:
+  advance past `|`/`>` → `parseBlockHeaderLoop_prod` → `skipWhitespace_corr` →
+  `scanBlockScalarSkipComment_prod` → `scanBlockScalarConsumeNewline_prod` →
+  `whitespace_comment_break_to_SSBComment` → `SCBBlockHeader`. Body + literal/folded dispatch: sorry.
+- `scanBlockScalarSkipComment_prod` fully proven (produces `GOpt SCNbCommentText`)
+- `scanBlockScalarConsumeNewline_prod` fully proven (produces `SBComment`)
+- `whitespace_comment_break_to_SSBComment` proven for all practical cases (1 edge sorry:
+  `#` without preceding whitespace, unreachable from scanner's `peekBack?` check)
 
-**Sorry count: 6 → 9** (3 new: `scanPlainScalar_prod` grammar, `whitespace_comment_break_to_SSBComment` edge, `scanBlockScalar_prod` grammar).
+**Sorry count: 6 base + 6 scalar = 12 total** (ScalarProduction.lean: `collectPlainScalarLoop_inline_prod` ×3,
+`scanPlainScalar_prod` ×1, `collectBlockScalarLoop_prod` + `scanBlockScalarBody_prod` ×1,
+`scanBlockScalar_prod` ×1; base: DocumentProduction.lean ×1, StreamAccum.lean ×5).
 
-**Remaining for full Tier 2:**
-3a. `collectPlainScalarLoop_prod` (~200 lines): fuel induction over 7 branches.
-    Needs `peekAt?_surface` lemma (linking `peekAt? 1` to surface char list for `-`/`:`/`?` first char).
-    Single-line case: `SNsPlainFirst` + `GStar (SNbNsPlainInLineEntry)` + trailing `GStar SSWhite`.
-    Multi-line case: additionally needs `handleBlockLineBreak_prod` → `SSNsPlainNextLine`.
-3b. `collectBlockScalarLoop_prod` (~100 lines): subfunction `_corr` theorems all exist.
-    Needs to construct `SLLiteralContent` / `SLNbFoldedLines` from indent + nb-char lines.
-3c. `scanBlockScalarBody_prod` (~50 lines): wrapper composing above with chomp/fold.
+**Decomposition vs monolithic sorry:** Previous session had 3 monolithic sorry (one each for
+`scanPlainScalar_prod`, `scanBlockScalar_prod`, and `whitespace_comment_break_to_SSBComment`).
+These have been decomposed into 6 sorry targeting specific sub-problems:
+- **Grammar fragment composition** (block scalar loop): how to assemble `SIndent` + `GPlus SNbChar` +
+  `SBAsLineFeed` into `SLNbLiteralText` / `SBNbLiteralNext`, and accumulate across iterations
+  into `SLLiteralContent`. The first-line vs continuation-line distinction in the grammar doesn't
+  match the uniform loop structure.
+- **Multi-line plain scalar** continuation: `handleBlockLineBreak` / `foldQuotedNewlines` produce
+  content + new state, need `SSNsPlainNextLine` grammar witness.
+- **First char extraction** (`SNsPlainFirst`): the loop proves `GStar (SNbNsPlainInLineEntry)` but
+  `SNsPlainOneLine` requires the first character to be extracted as `SNsPlainFirst`.
+- **Literal/folded dispatch**: `scanBlockScalar_prod` needs to extract `peek? = '|'` or `'>'`
+  from the initial scanner state to choose `SCLLiteral` vs `SCLFolded`.
+
+**Remaining for full Tier 2 closure:**
+- Close the 6 ScalarProduction.lean sorry (grammar construction at each location)
+- Most tractable: literal/folded dispatch (extract initial char from scanner state)
+- Hardest: grammar fragment accumulation across loop iterations
 
 **Reflections:**
 
@@ -1943,6 +1973,10 @@ Tier 2 — Scalar _prod theorems (in progress):
 4. **Edge case: `#` without preceding whitespace in block header.** In `whitespace_comment_break_to_SSBComment`, the `GStar.nil` (empty whitespace) + `GOpt.some` (comment present) case is grammatically awkward: `SSBComment.withSep` needs `SSeparateInLine` which requires either `GPlus SSWhite` (non-empty WS) or `startOfLine` (col=0). The scanner's `scanBlockScalarSkipComment` checks `peekBack?` for whitespace before accepting `#`, so this case is unreachable from valid scanner flow. The sorry is benign but proves that grammar formalization must account for scanner-level invariants.
 
 5. **`_corr` and `_prod` have the same structure but different accumulation.** The `_corr` theorems (ScalarCoupling.lean) trace through the same branches as `_prod` but only track `ScannerSurfCorr` (existential witness). The `_prod` theorems additionally construct grammar witnesses at each step. The correlation part of `_prod` can always delegate to `_corr`, so the overhead is purely in grammar construction. For the current sorry-based theorems, we use `_corr` for correlation and sorry for grammar — establishing correct types while deferring construction.
+
+6. **`let`-bound pair destructuring blocks `omega`/`simp`.** After `unfold consumeExactSpaces`, the pair `let (consumed, s') := rec_call; (consumed + 1, s')` introduces a `match` on the pair that `omega` cannot see through. Solution: write helper lemmas (`consumeExactSpaces_succ_space_fst/snd`) that use `generalize h : rec_call = p` BEFORE `unfold` so both sides stay in sync, then `rw [h]` closes the goal. Using `generalize` after `unfold` fails because the RHS still has the un-unfolded term. This pattern applies to any recursive function returning a pair through `let` destructuring.
+
+7. **Grammar structure vs loop structure mismatch is the core difficulty.** `SLLiteralContent` distinguishes the first content line (`SLNbLiteralText`) from continuation lines (`SBNbLiteralNext`), but `collectBlockScalarLoop` treats all iterations uniformly. Similarly, `SNsPlainMultiLine` requires `SNsPlainFirst` for the first character but the loop produces uniform `GStar (SNbNsPlainInLineEntry)`. Converting loop-uniform output to grammar-structured output requires either: (a) accumulator-aware induction tracking first-vs-rest, or (b) post-hoc structural conversion lemmas. Both add significant proof overhead.
 
 Tier 3 — Discharge with new _prod:
 5. accum_step_content — tractable once plain + block scalar _prod grammar sorry are removed
