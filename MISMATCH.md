@@ -204,6 +204,74 @@ execution.
    pattern likely applies to any verified scanner proving grammar
    conformance.
 
+## Postscript: The Converse — When Boundaries Are Right
+
+The resolution of the mismatch (sub-layers 4d and 4e) produced an
+unexpected positive result that is worth documenting alongside the
+negative lesson.
+
+Sub-layer 4e was expected to be the **hardest part** of the entire
+proof effort. Block collections (`- a\n- b`) span multiple
+`scanNextToken` calls, requiring a nested accumulator to track
+partially-built `SBlockSeqEntries` and `SBlockMapEntries` across
+iterations. The README estimated it at "High" difficulty with "novel
+inductive design."
+
+In practice, 4e was completed quickly and mechanically. The `BlockStack`
+inductive (3 constructors: `nil`, `seqLevel`, `mapLevel`) slotted into
+the existing composition layer with only parameter additions. All six
+proven composition theorems reproved with the same `unfold/split`
+skeleton used in 4c and 4d. The sorry lemma signatures gained one extra
+existential variable (`sp_block'`) and one extra hypothesis (`h_stack`).
+No proof content changed.
+
+This was possible because the 4d resolution — the lagging invariant —
+had established the **right abstraction boundary**. Specifically:
+
+1. **Orthogonal concerns compose.** The lagging invariant separated
+   "immediate token lag" (`PendingNode`) from "grammar accumulation"
+   (`SLYamlStream`) from "scanner correspondence" (`ScannerSurfCorr`).
+   Adding a fourth concern ("block nesting depth" via `BlockStack`)
+   required no restructuring — it inserted between `SLYamlStream` and
+   `PendingNode` as an independent component. The four-part state
+   (`SLYamlStream ∧ BlockStack ∧ PendingNode ∧ ScannerSurfCorr`)
+   is a product of independent concerns, not a monolithic invariant.
+
+2. **Evidence-free inductives are rewrite-resilient.** All three
+   iterations (4c, 4d, 4e) kept the accumulator types evidence-free
+   (tracking positions only, not grammar witnesses). This meant each
+   rewrite only changed type signatures and existential unpacking in
+   the composition layer — never proof content. The cost of adding
+   `BlockStack` was proportional to the number of *type signatures*
+   that mentioned position variables, not the number of *proofs*.
+
+3. **The composition layer is structurally invariant.** The
+   `unfold scanNextToken; simp only [bind, Except.bind]; split`
+   pattern that decomposes `scanNextToken` into 5 dispatch paths is
+   determined by the *code's* control flow, not by the *invariant's*
+   structure. Changing the invariant from a triple to a quad changed
+   what gets passed to each sorry lemma, but not how many sorry
+   lemmas exist or how the delegation works. This is a hallmark of
+   correct abstraction: the composition structure is stable under
+   refinement of the components it composes.
+
+**The lesson is the converse of the mismatch:** architecture mismatch
+makes simple properties impossible to prove (the 4c sorry obligations
+were provably unprovable). But once the abstraction boundaries are
+correctly aligned, even the "hardest" extensions become mechanical
+(4e slotted in without restructuring). The cost of finding the right
+boundary (4c's failure → MISMATCH.md → 4d's redesign) was high, but
+the ongoing cost of working within it is low. This suggests that in
+verified systems, **investing in abstraction boundary design has
+superlinear returns** — a correct boundary not only resolves the
+current mismatch but makes future extensions cheap.
+
+This also provides a **diagnostic criterion**: if adding a new concern
+to a proof requires restructuring existing proofs rather than extending
+them, the abstraction boundary may be misaligned. Conversely, if a new
+concern slots in as an independent component with only type-signature
+changes to the composition layer, the boundary is likely correct.
+
 ## References
 
 - D. Garlan, R. Allen, J. Ockerbloom. "Architectural Mismatch: Why

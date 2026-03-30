@@ -1,36 +1,42 @@
 import Lean4Yaml.Proofs.DocumentProduction
 import Lean4Yaml.Proofs.PreprocessProduction
 
-/-! # Stream Grammar Accumulator (Layer 4c → 4d: Lagging Grammar)
+/-! # Stream Grammar Accumulator (Layer 4d + 4e: Lagging Grammar with Block Stack)
 
     Threads a grammar accumulator through `scanLoop` alongside `ScannerSurfCorr`,
     narrowing the sorry in `scan_content_gives_stream` to per-dispatch lemmas.
 
-    ## Architecture: The Lagging Invariant
+    ## Architecture: The Lagging Invariant with Block Stack
 
     Scanner token boundaries don't align with grammar production boundaries
     (see MISMATCH.md). Grammar productions like `SBlockNode.flowInBlock` require
     prefix (`SSeparate`) + content (`SFlowNode`) + postfix (`SSLComments`), but
     the postfix is consumed during the NEXT token's preprocessing.
 
-    The fix: a **lagging grammar accumulator** where the grammar position trails
-    the scanner by one `SSLComments`:
+    Additionally, block collections (`SBlockSeqEntries`, `SBlockMapEntries`) span
+    multiple `scanNextToken` calls. A block sequence `- a\n- b` involves ≥4 tokens.
+    The scanner tracks this via an indent stack; the grammar needs a corresponding
+    `BlockStack`.
+
+    The fix: a **four-component state** (the "lagging quad"):
 
         ∀ token step:
           SLYamlStream sp_start sp_gram  ∧      -- grammar up to here
-          PendingNode sp_gram sp_scan    ∧      -- open grammar gap
+          BlockStack sp_gram sp_block    ∧      -- nested block collections
+          PendingNode sp_block sp_scan   ∧      -- immediate pending state
           ScannerSurfCorr sc sp_scan            -- scanner ahead
 
     At each step:
-    1. Preprocessing of token N+1 provides `SSLComments` to close token N's node
-    2. Content dispatch of token N+1 opens a new `PendingNode`
-    At EOF, the final `PendingNode` is closed with EOF-derived `SSLComments`.
+    1. Preprocessing of token N+1 provides `SSLComments` to close token N
+    2. `unwindIndents` may pop `BlockStack` levels (forming `SBlockNode`)
+    3. `pushSequenceIndent`/`pushMappingIndent` may push `BlockStack` levels
+    4. Content dispatch of token N+1 opens a new `PendingNode`
+    At EOF, the final `BlockStack` is fully unwound and `PendingNode` closed.
 
     ## Sorry narrowing
 
-    Five per-dispatch sorry lemmas (§1a–§1e), each architecturally provable
-    (unlike the 4c version where they were provably impossible). The composition
-    layer (§1f, §2, §3, §5) is fully proven by delegation.
+    Five per-dispatch sorry lemmas (§1a–§1e), each architecturally provable.
+    The composition layer (§1f, §2, §3, §5) is fully proven by delegation.
 -/
 
 set_option autoImplicit false
@@ -46,172 +52,265 @@ open Lean4Yaml.Proofs.ScalarCoupling
 open Lean4Yaml.Proofs.DocumentProduction
 open Lean4Yaml.Proofs.PreprocessProduction
 
-/-! ## §0 PendingNode — Lagging Grammar State
+/-! ## §0a PendingNode — Immediate Pending State
 
-    Tracks the grammar gap between `sp_gram` (where `SLYamlStream` ends)
-    and `sp_scan` (where `ScannerSurfCorr` is). The gap represents characters
-    consumed by the scanner that haven't yet been incorporated into a grammar
-    production because the trailing `SSLComments` hasn't arrived yet.
+    Tracks the gap between the `BlockStack` top (`sp_block`) and the scanner
+    position (`sp_scan`). This gap contains the most recent token's characters
+    that haven't yet been incorporated into either a block collection entry
+    or a standalone grammar production.
 
     When the next preprocessing step provides `SSLComments`, the pending node
-    is "closed" — incorporated into the grammar — and `SLYamlStream` advances. -/
+    is "closed" — incorporated into the grammar — and the state advances. -/
 
 inductive PendingNode : SurfPos → SurfPos → Prop where
-  /-- No pending gap. Grammar and scanner at same position.
-      Occurs at stream start, between documents, and after document suffixes
-      whose trailing SSLComments has already been absorbed. -/
+  /-- No pending gap. Block stack top and scanner at same position.
+      Occurs at stream start, between documents, after document suffixes
+      whose trailing SSLComments has already been absorbed, and at the
+      start of a new block collection level (before any entry content). -/
   | noPending (sp : SurfPos) : PendingNode sp sp
   /-- Content token scanned (scalar, anchor, alias, tag).
-      The gap sp_gram → sp_scan contains SSeparate + content.
+      The gap sp_block → sp_scan contains SSeparate + content.
       Awaiting SSLComments sp_scan sp' to close into SBlockNode. -/
-  | pendingContent (sp_gram sp_scan : SurfPos) : PendingNode sp_gram sp_scan
+  | pendingContent (sp_block sp_scan : SurfPos) : PendingNode sp_block sp_scan
   /-- Document end `...` scanned. The gap contains SCDocumentEnd.
       Awaiting SSLComments to form SLDocumentSuffix. -/
-  | pendingDocEnd (sp_gram sp_scan : SurfPos) : PendingNode sp_gram sp_scan
+  | pendingDocEnd (sp_block sp_scan : SurfPos) : PendingNode sp_block sp_scan
   /-- Document start `---` scanned. The gap contains SCDirectivesEnd.
       Awaiting content or SSLComments to complete the explicit document. -/
-  | pendingDocStart (sp_gram sp_scan : SurfPos) : PendingNode sp_gram sp_scan
+  | pendingDocStart (sp_block sp_scan : SurfPos) : PendingNode sp_block sp_scan
   /-- Directive `%` scanned. The gap contains directive content.
       Awaiting next directive or `---`. -/
-  | pendingDirective (sp_gram sp_scan : SurfPos) : PendingNode sp_gram sp_scan
+  | pendingDirective (sp_block sp_scan : SurfPos) : PendingNode sp_block sp_scan
   /-- Flow indicator scanned (`[`, `]`, `{`, `}`, `,`).
-      Multi-token production, deferred to sub-layer 4e. -/
-  | pendingFlow (sp_gram sp_scan : SurfPos) : PendingNode sp_gram sp_scan
+      Multi-token flow collection production (future work). -/
+  | pendingFlow (sp_block sp_scan : SurfPos) : PendingNode sp_block sp_scan
   /-- Block indicator scanned (`-`, `?`, `:`).
-      Multi-token production, deferred to sub-layer 4e. -/
-  | pendingBlock (sp_gram sp_scan : SurfPos) : PendingNode sp_gram sp_scan
+      The gap sp_block → sp_scan contains the indicator character.
+      The block nesting is tracked separately by `BlockStack`. -/
+  | pendingBlock (sp_block sp_scan : SurfPos) : PendingNode sp_block sp_scan
+
+/-! ## §0b BlockStack — Nested Block Collection Accumulator
+
+    Tracks partially-accumulated block collections being built across
+    multiple `scanNextToken` calls. Mirrors the scanner's indent stack
+    (minus the sentinel entry at column -1).
+
+    Each level records:
+    - `col`: The column where this block collection starts (matching
+      scanner's `IndentEntry.column`)
+    - Whether it's a sequence or mapping (matching `IndentEntry.isSequence`)
+    - Position boundaries for this nesting level's character coverage
+
+    The actual grammar types are:
+    - `SBlockSeqEntries n` (`single | cons`): entries for block sequences
+    - `SBlockMapEntries n` (`single | cons`): entries for block mappings
+    - `SBlockNode.blockSeq`: wraps `SBlockSeqEntries` with `GOpt props + SSLComments`
+    - `SBlockNode.blockMap`: wraps `SBlockMapEntries` with `GOpt props + SSLComments`
+
+    **Protocol (mirrors scanner's indent stack operations):**
+
+    - **Push** (`pushSequenceIndent`/`pushMappingIndent`): When `col > currentIndent`,
+      a new indent entry is pushed and `.blockSequenceStart`/`.blockMappingStart`
+      is emitted. `BlockStack` gets a corresponding `.seqLevel`/`.mapLevel`.
+
+    - **Pop** (`unwindIndents` in preprocessing): When content moves to a lower
+      column, indent entries are popped and `.blockEnd` tokens emitted. Each pop
+      finalizes the block collection into `SBlockNode.blockSeq`/`.blockMap`,
+      potentially extending `SLYamlStream`.
+
+    - **Same-level entry** (e.g., second `-` at same indent): The current level's
+      accumulated entries grow by one (`SBlockSeqEntries.cons` / `SBlockMapEntries.cons`).
+      No push/pop occurs.
+
+    Evidence-free: positions and columns only. Grammar witnesses
+    (`SBlockSeqEntries`, `SBlockMapEntries`) are constructed when sorry
+    lemmas are discharged. -/
+
+inductive BlockStack : SurfPos → SurfPos → Prop where
+  /-- No active block collections. At document level or stream start. -/
+  | nil (sp : SurfPos) : BlockStack sp sp
+  /-- Block sequence being accumulated at column `col`.
+      Outer stack covers sp → sp_mid. This level's character coverage
+      is sp_mid → sp'. Entries will form `SBlockSeqEntries (seqSpaces n c)`
+      where `n` is determined by `col`. -/
+  | seqLevel (col : Int) (sp sp_mid sp' : SurfPos) :
+      BlockStack sp sp_mid → BlockStack sp sp'
+  /-- Block mapping being accumulated at column `col`.
+      Entries will form `SBlockMapEntries n`. -/
+  | mapLevel (col : Int) (sp sp_mid sp' : SurfPos) :
+      BlockStack sp sp_mid → BlockStack sp sp'
 
 /-! ## §1 Per-Dispatch Grammar Accumulator Lemmas
 
     Each dispatcher has a sorry lemma that:
     1. Closes the previous `PendingNode` using `SSLComments` from preprocessing
-    2. Opens a new `PendingNode` for the dispatched token
-    3. Extends `SLYamlStream` as appropriate
+    2. May pop `BlockStack` levels if `unwindIndents` fired (dedent)
+    3. May push `BlockStack` levels if `pushSequenceIndent`/`pushMappingIndent` fired
+    4. Opens a new `PendingNode` for the dispatched token
+    5. Extends `SLYamlStream` as needed (dedent closures, document boundaries)
 
     ### §1a Preprocessing + EOF
 
     When `scanNextToken_preprocess` returns `none`, the scanner reached EOF.
-    Close the pending node with EOF-derived `SSLComments` and finalize. -/
+    Close all pending state — unwind entire BlockStack, close PendingNode,
+    and finalize the stream. -/
 
 theorem preprocessing_eof_extends_stream (sc : ScannerState)
-    (sp_start sp_gram sp_scan : SurfPos)
+    (sp_start sp_gram sp_block sp_scan : SurfPos)
     (h_stream : SLYamlStream sp_start sp_gram)
-    (h_pending : PendingNode sp_gram sp_scan)
+    (h_stack : BlockStack sp_gram sp_block)
+    (h_pending : PendingNode sp_block sp_scan)
     (h_corr : ScannerSurfCorr sc sp_scan)
     (h_preprocess : scanNextToken_preprocess sc = .ok none) :
     ∃ sp_final, SLYamlStream sp_start sp_final ∧ sp_final.chars = [] := by
-  -- Preprocessing consumed all remaining input (whitespace, comments, breaks).
-  -- The pending node is closed with EOF-derived SSLComments:
-  --   At col=0: SSLComments.startOfLine with GStar SLComment from remaining chars
-  --   At col>0: break → SSBComment → SSLComments.withComment
-  -- For noPending: remaining chars form SLDocumentPrefix extending the stream.
-  -- For pendingContent: SSLComments closes SBlockNode.flowInBlock.
-  -- For pendingDocEnd: SSLComments forms SLDocumentSuffix.
-  -- For pendingDocStart: SSLComments forms empty SBlockNode → explicit doc.
+  -- At EOF, preprocessing consumed all remaining input.
+  -- 1. SSLComments from remaining whitespace/comments/breaks closes PendingNode.
+  -- 2. unwindIndents pops ALL indent levels → BlockStack fully unwound.
+  --    Each pop: accumulated entries → SBlockSeqEntries/SBlockMapEntries
+  --    → SBlockNode.blockSeq/.blockMap → extends SLYamlStream.
+  -- 3. For noPending + nil: remaining chars form SLDocumentPrefix.
+  -- 4. Stream finalized with empty GOpt/GStar suffix sections.
   sorry
 
 /-! ### §1b Preprocessing + Structural Dispatch
 
     `scanNextToken_dispatchStructural` handles `---`, `...`, `%`-directives.
     Preprocessing provides SSLComments to close the previous pending node.
+    If indent levels decreased, BlockStack pops accordingly.
     The structural token opens a new pending state. -/
 
 theorem accum_step_structural (sc : ScannerState)
-    (sp_start sp_gram sp_scan : SurfPos)
+    (sp_start sp_gram sp_block sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char)
     (h_stream : SLYamlStream sp_start sp_gram)
-    (h_pending : PendingNode sp_gram sp_scan)
+    (h_stack : BlockStack sp_gram sp_block)
+    (h_pending : PendingNode sp_block sp_scan)
     (h_corr : ScannerSurfCorr sc sp_scan)
     (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
     (h_dispatch : scanNextToken_dispatchStructural s_prep c = .ok (some s')) :
-    ∃ sp_gram' sp_scan',
+    ∃ sp_gram' sp_block' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
-      PendingNode sp_gram' sp_scan' ∧
+      BlockStack sp_gram' sp_block' ∧
+      PendingNode sp_block' sp_scan' ∧
       ScannerSurfCorr s' sp_scan' := by
-  -- Close phase: preprocessing → SSLComments closes previous pending node.
+  -- Close phase: preprocessing → SSLComments closes previous PendingNode.
+  --   If unwindIndents fired → BlockStack pops, forming SBlockNode entries.
   -- Open phase:
   --   `---` → scanDocumentStart_prod → SCDirectivesEnd → pendingDocStart
   --   `...` → scanDocumentEnd_prod → SCDocumentEnd → pendingDocEnd
   --   `%`  → scanDirective_prod → pendingDirective
+  --   Structural tokens at col 0 cause full dedent → BlockStack becomes nil.
   sorry
 
 /-! ### §1c Preprocessing + Flow Indicator Dispatch
 
     `scanNextToken_dispatchFlowIndicators` handles `[`, `]`, `{`, `}`, `,`.
-    Multi-token productions — pending state deferred to sub-layer 4e. -/
+    Multi-token flow collection productions (future work). -/
 
 theorem accum_step_flow (sc : ScannerState)
-    (sp_start sp_gram sp_scan : SurfPos)
+    (sp_start sp_gram sp_block sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char)
     (h_stream : SLYamlStream sp_start sp_gram)
-    (h_pending : PendingNode sp_gram sp_scan)
+    (h_stack : BlockStack sp_gram sp_block)
+    (h_pending : PendingNode sp_block sp_scan)
     (h_corr : ScannerSurfCorr sc sp_scan)
     (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
     (h_dispatch : scanNextToken_dispatchFlowIndicators
         (if s_prep.allowDirectives then
           { s_prep with allowDirectives := false, documentEverStarted := true }
         else s_prep) c = .ok (some s')) :
-    ∃ sp_gram' sp_scan',
+    ∃ sp_gram' sp_block' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
-      PendingNode sp_gram' sp_scan' ∧
+      BlockStack sp_gram' sp_block' ∧
+      PendingNode sp_block' sp_scan' ∧
       ScannerSurfCorr s' sp_scan' := by
   -- Flow indicators are part of multi-token flow collections.
-  -- Close phase: preprocessing → SSLComments closes previous pending node.
-  -- Open phase: pendingFlow (deferred to 4e).
+  -- Close phase: preprocessing → SSLComments closes previous PendingNode.
+  --   If unwindIndents fired → BlockStack pops.
+  -- Open phase: pendingFlow (flow accumulation is future work).
   sorry
 
 /-! ### §1d Preprocessing + Block Indicator Dispatch
 
     `scanNextToken_dispatchBlockIndicators` handles `-`, `?`, `:`.
-    Multi-token productions — pending state deferred to sub-layer 4e. -/
+    This is the core of block collection accumulation:
+
+    1. Preprocessing may unwind indent levels → BlockStack pops
+    2. `pushSequenceIndent`/`pushMappingIndent` may push → BlockStack pushes
+    3. The indicator character is consumed → pendingBlock
+
+    **Scanner → BlockStack correspondence:**
+    - `scanBlockEntry` calls `pushSequenceIndent s s.col`:
+      If `col > currentIndent` → `.seqLevel col` pushed onto BlockStack
+    - `scanKey` calls `pushMappingIndent s s.col`:
+      If `col > currentIndent` → `.mapLevel col` pushed onto BlockStack
+    - `scanValue` calls `scanValuePrepare` which may retroactively emit
+      `.blockMappingStart` → `.mapLevel` pushed if needed -/
 
 theorem accum_step_block (sc : ScannerState)
-    (sp_start sp_gram sp_scan : SurfPos)
+    (sp_start sp_gram sp_block sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char)
     (h_stream : SLYamlStream sp_start sp_gram)
-    (h_pending : PendingNode sp_gram sp_scan)
+    (h_stack : BlockStack sp_gram sp_block)
+    (h_pending : PendingNode sp_block sp_scan)
     (h_corr : ScannerSurfCorr sc sp_scan)
     (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
     (h_dispatch : scanNextToken_dispatchBlockIndicators
         (if s_prep.allowDirectives then
           { s_prep with allowDirectives := false, documentEverStarted := true }
         else s_prep) c = .ok (some s')) :
-    ∃ sp_gram' sp_scan',
+    ∃ sp_gram' sp_block' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
-      PendingNode sp_gram' sp_scan' ∧
+      BlockStack sp_gram' sp_block' ∧
+      PendingNode sp_block' sp_scan' ∧
       ScannerSurfCorr s' sp_scan' := by
-  -- Block indicators are part of multi-token block collections.
-  -- Close phase: preprocessing → SSLComments closes previous pending node.
-  -- Open phase: pendingBlock (deferred to 4e).
+  -- Close phase:
+  --   1. SSLComments from preprocessing closes previous PendingNode
+  --   2. If unwindIndents popped indent levels, BlockStack pops correspondingly.
+  --      Each pop: accumulated entries form SBlockSeqEntries/SBlockMapEntries
+  --      → SBlockNode.blockSeq/.blockMap → may extend SLYamlStream
+  -- Open phase:
+  --   3. If pushSequenceIndent/pushMappingIndent pushed (col > currentIndent):
+  --      BlockStack gets new .seqLevel/.mapLevel
+  --   4. The `-`/`?`/`:` indicator + advance → pendingBlock
   sorry
 
 /-! ### §1e Preprocessing + Content Dispatch
 
     `scanNextToken_dispatchContent` handles all content tokens:
     `&` anchor, `*` alias, `!` tag, `|`/`>` block scalar, `"` double-quoted,
-    `'` single-quoted, plain scalar. Never returns `none`. -/
+    `'` single-quoted, plain scalar. Never returns `none`.
+
+    When inside an active BlockStack, the content token contributes to the
+    current block entry's `SBlockIndented` component. The BlockStack itself
+    doesn't change — only PendingNode transitions to pendingContent. -/
 
 theorem accum_step_content (sc : ScannerState)
-    (sp_start sp_gram sp_scan : SurfPos)
+    (sp_start sp_gram sp_block sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char)
     (h_stream : SLYamlStream sp_start sp_gram)
-    (h_pending : PendingNode sp_gram sp_scan)
+    (h_stack : BlockStack sp_gram sp_block)
+    (h_pending : PendingNode sp_block sp_scan)
     (h_corr : ScannerSurfCorr sc sp_scan)
     (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
     (h_dispatch : scanNextToken_dispatchContent
         (if s_prep.allowDirectives then
           { s_prep with allowDirectives := false, documentEverStarted := true }
         else s_prep) c = .ok s') :
-    ∃ sp_gram' sp_scan',
+    ∃ sp_gram' sp_block' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
-      PendingNode sp_gram' sp_scan' ∧
+      BlockStack sp_gram' sp_block' ∧
+      PendingNode sp_block' sp_scan' ∧
       ScannerSurfCorr s' sp_scan' := by
-  -- Close phase: preprocessing → SSLComments closes previous pending node.
-  -- Open phase: content produces SFlowNode/SCLLiteral/etc. → pendingContent
-  --   scanDoubleQuoted_prod ✅, scanSingleQuoted_prod ✅,
-  --   scanAnchorOrAlias_*_prod ✅, scanTag_prod ✅,
-  --   scanPlainScalar_prod ❌, scanBlockScalar_prod ❌,
-  --   flow collection _prod ❌, block collection _prod ❌
+  -- Close phase: preprocessing → SSLComments closes previous PendingNode.
+  --   If unwindIndents fired → BlockStack pops.
+  -- Open phase: content produces the token's grammar witness → pendingContent.
+  --   BlockStack may be unchanged (content inside current entry) or
+  --   newly nil (content at document level after all blocks closed).
+  --   Existing _prod theorems:
+  --     scanDoubleQuoted_prod ✅, scanSingleQuoted_prod ✅,
+  --     scanTag_prod ✅, scanAnchorOrAlias_*_prod ✅.
+  --   Missing: scanPlainScalar_prod ❌, scanBlockScalar_prod ❌.
   sorry
 
 /-! ### §1f Composition: Per-Dispatch → Full accum_step
@@ -220,15 +319,17 @@ theorem accum_step_content (sc : ScannerState)
     and delegate to the per-dispatch sorry lemmas above. -/
 
 theorem scanNextToken_accum_step (sc : ScannerState)
-    (sp_start sp_gram sp_scan : SurfPos)
+    (sp_start sp_gram sp_block sp_scan : SurfPos)
     (s' : ScannerState)
     (h_stream : SLYamlStream sp_start sp_gram)
-    (h_pending : PendingNode sp_gram sp_scan)
+    (h_stack : BlockStack sp_gram sp_block)
+    (h_pending : PendingNode sp_block sp_scan)
     (h_corr : ScannerSurfCorr sc sp_scan)
     (h_ok : scanNextToken sc = .ok (some s')) :
-    ∃ sp_gram' sp_scan',
+    ∃ sp_gram' sp_block' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
-      PendingNode sp_gram' sp_scan' ∧
+      BlockStack sp_gram' sp_block' ∧
+      PendingNode sp_block' sp_scan' ∧
       ScannerSurfCorr s' sp_scan' := by
   unfold scanNextToken at h_ok
   simp only [bind, Except.bind, pure, Except.pure] at h_ok
@@ -242,8 +343,8 @@ theorem scanNextToken_accum_step (sc : ScannerState)
       · split at h_ok
         · rename_i s_str h_str
           have h := Except.ok.inj h_ok; injection h with h; subst h
-          exact accum_step_structural sc sp_start sp_gram sp_scan s_pre s_str c_pre
-            h_stream h_pending h_corr h_pre h_str
+          exact accum_step_structural sc sp_start sp_gram sp_block sp_scan s_pre s_str c_pre
+            h_stream h_stack h_pending h_corr h_pre h_str
         · -- Past structural dispatch: allowDirectives update
           split at h_ok
           · simp at h_ok
@@ -253,32 +354,33 @@ theorem scanNextToken_accum_step (sc : ScannerState)
             · split at h_ok
               · rename_i s_flow h_flow
                 have h := Except.ok.inj h_ok; injection h with h; subst h
-                exact accum_step_flow sc sp_start sp_gram sp_scan s_pre s_flow c_pre
-                  h_stream h_pending h_corr h_pre h_flow
+                exact accum_step_flow sc sp_start sp_gram sp_block sp_scan s_pre s_flow c_pre
+                  h_stream h_stack h_pending h_corr h_pre h_flow
               · split at h_ok
                 · simp at h_ok
                 · split at h_ok
                   · rename_i s_blk h_blk
                     have h := Except.ok.inj h_ok; injection h with h; subst h
-                    exact accum_step_block sc sp_start sp_gram sp_scan s_pre s_blk c_pre
-                      h_stream h_pending h_corr h_pre h_blk
+                    exact accum_step_block sc sp_start sp_gram sp_block sp_scan s_pre s_blk c_pre
+                      h_stream h_stack h_pending h_corr h_pre h_blk
                   · split at h_ok
                     · simp at h_ok
                     · rename_i s_cnt h_cnt
                       have h := Except.ok.inj h_ok; injection h with h; subst h
-                      exact accum_step_content sc sp_start sp_gram sp_scan s_pre s_cnt c_pre
-                        h_stream h_pending h_corr h_pre h_cnt
+                      exact accum_step_content sc sp_start sp_gram sp_block sp_scan s_pre s_cnt c_pre
+                        h_stream h_stack h_pending h_corr h_pre h_cnt
 
 /-! ## §2 EOF Step: scanNextToken returns none
 
     When `scanNextToken` returns `.ok none`, the only code path is through
     `scanNextToken_preprocess` returning `none` (EOF detected).
-    The pending node is closed with EOF-derived SSLComments. -/
+    All BlockStack levels are unwound and PendingNode closed. -/
 
 theorem scanNextToken_none_stream (sc : ScannerState)
-    (sp_start sp_gram sp_scan : SurfPos)
+    (sp_start sp_gram sp_block sp_scan : SurfPos)
     (h_stream : SLYamlStream sp_start sp_gram)
-    (h_pending : PendingNode sp_gram sp_scan)
+    (h_stack : BlockStack sp_gram sp_block)
+    (h_pending : PendingNode sp_block sp_scan)
     (h_corr : ScannerSurfCorr sc sp_scan)
     (h_ok : scanNextToken sc = .ok none) :
     ∃ sp_final : SurfPos, SLYamlStream sp_start sp_final ∧ sp_final.chars = [] := by
@@ -288,8 +390,8 @@ theorem scanNextToken_none_stream (sc : ScannerState)
   · simp at h_ok
   · split at h_ok
     · rename_i h_pre
-      exact preprocessing_eof_extends_stream sc sp_start sp_gram sp_scan
-        h_stream h_pending h_corr h_pre
+      exact preprocessing_eof_extends_stream sc sp_start sp_gram sp_block sp_scan
+        h_stream h_stack h_pending h_corr h_pre
     · split at h_ok
       · simp at h_ok
       · split at h_ok
@@ -310,18 +412,19 @@ theorem scanNextToken_none_stream (sc : ScannerState)
 
 /-! ## §3 scanLoop with Grammar Accumulation
 
-    Fuel induction threading `SLYamlStream`, `PendingNode`, and
-    `ScannerSurfCorr` — the lagging triple. -/
+    Fuel induction threading the lagging quad:
+    `SLYamlStream`, `BlockStack`, `PendingNode`, and `ScannerSurfCorr`. -/
 
 theorem scanLoop_grammar_prod (sc : ScannerState)
-    (sp_start sp_gram sp_scan : SurfPos)
+    (sp_start sp_gram sp_block sp_scan : SurfPos)
     (fuel : Nat) (tokens : Array (Positioned YamlToken))
     (h_stream : SLYamlStream sp_start sp_gram)
-    (h_pending : PendingNode sp_gram sp_scan)
+    (h_stack : BlockStack sp_gram sp_block)
+    (h_pending : PendingNode sp_block sp_scan)
     (h_corr : ScannerSurfCorr sc sp_scan)
     (h_ok : scanLoop sc fuel = .ok tokens) :
     ∃ sp_final : SurfPos, SLYamlStream sp_start sp_final ∧ sp_final.chars = [] := by
-  induction fuel generalizing sc sp_gram sp_scan tokens with
+  induction fuel generalizing sc sp_gram sp_block sp_scan tokens with
   | zero => simp [scanLoop] at h_ok
   | succ fuel' ih =>
     simp only [scanLoop] at h_ok
@@ -333,20 +436,22 @@ theorem scanLoop_grammar_prod (sc : ScannerState)
       -- Validate flow/directive checks (they don't affect grammar)
       split at h_ok <;> try (simp at h_ok; done)
       split at h_ok <;> try (simp at h_ok; done)
-      -- Scanner reached EOF — close pending node and finalize stream
-      exact scanNextToken_none_stream sc sp_start sp_gram sp_scan
-        h_stream h_pending h_corr h_none
+      -- Scanner reached EOF — unwind BlockStack, close PendingNode, finalize stream
+      exact scanNextToken_none_stream sc sp_start sp_gram sp_block sp_scan
+        h_stream h_stack h_pending h_corr h_none
     · -- scanNextToken = .ok (some s') → one step + recurse
       rename_i s_next h_next
-      obtain ⟨sp_gram', sp_scan', h_stream', h_pending', h_corr'⟩ :=
-        scanNextToken_accum_step sc sp_start sp_gram sp_scan s_next
-          h_stream h_pending h_corr h_next
-      exact ih s_next sp_gram' sp_scan' tokens h_stream' h_pending' h_corr' h_ok
+      obtain ⟨sp_gram', sp_block', sp_scan', h_stream', h_stack', h_pending', h_corr'⟩ :=
+        scanNextToken_accum_step sc sp_start sp_gram sp_block sp_scan s_next
+          h_stream h_stack h_pending h_corr h_next
+      exact ih s_next sp_gram' sp_block' sp_scan' tokens
+        h_stream' h_stack' h_pending' h_corr' h_ok
 
 /-! ## §4 Initial Stream + BOM Handling
 
     Establish the initial `SLYamlStream` and `ScannerSurfCorr` for `scan`.
-    The initial state has `PendingNode.noPending` — no grammar gap. -/
+    The initial state has `BlockStack.nil` and `PendingNode.noPending` —
+    no grammar gap, no active block collections. -/
 
 /-- BOM at position 0: `'\uFEFF'` gives `SLDocumentPrefix.bom`. -/
 theorem bom_advance_gives_prefix (input : String) (sp : SurfPos)
@@ -401,7 +506,7 @@ theorem initial_stream_and_prefix (input : String) :
 /-! ## §5 Top-Level Composition: scan → SLYamlStream
 
     Compose initial stream + scanLoop_grammar_prod to prove scan_content_gives_stream.
-    Initial state uses `PendingNode.noPending` — no grammar gap at start. -/
+    Initial state uses `BlockStack.nil` and `PendingNode.noPending` — no gap. -/
 
 theorem scan_content_gives_stream_v2
     (input : String)
@@ -412,44 +517,55 @@ theorem scan_content_gives_stream_v2
   unfold scan at h
   simp only [] at h
   obtain ⟨sp, h_stream, h_corr⟩ := initial_stream_and_prefix input
-  exact scanLoop_grammar_prod _ ⟨input.toList, 0⟩ sp sp _ tokens
-    h_stream (PendingNode.noPending sp) h_corr h
+  exact scanLoop_grammar_prod _ ⟨input.toList, 0⟩ sp sp sp _ tokens
+    h_stream (BlockStack.nil sp) (PendingNode.noPending sp) h_corr h
 
 /-! ## §6 Gap Analysis
 
     Five sorry lemmas remain, each precisely scoped to one dispatch path.
-    Unlike the 4c version, these are **architecturally provable** — the
-    lagging invariant correctly models the one-token lag between scanner
-    and grammar positions.
+    All are architecturally provable — the lagging quad (SLYamlStream +
+    BlockStack + PendingNode + ScannerSurfCorr) correctly models the
+    multi-token protocol for block collections.
 
-    1. `preprocessing_eof_extends_stream` (§1a): Close pending node at EOF
-       using EOF-derived `SSLComments`. Requires case-split on `PendingNode`
-       constructor (noPending: extend with prefix; pendingContent: close
-       SBlockNode; pendingDocEnd: close SLDocumentSuffix; etc.).
+    The BlockStack component (sub-layer 4e) addresses the hardest remaining
+    gap: block sequences and mappings spanning multiple `scanNextToken` calls.
 
-    2. `accum_step_structural` (§1b): Close previous pending + open new.
-       `---` → pendingDocStart, `...` → pendingDocEnd, `%` → pendingDirective.
-       Existing theorems: `scanDocumentStart_prod` ✅, `scanDocumentEnd_prod` ✅,
+    **Discharge strategy per sorry:**
+
+    1. `preprocessing_eof_extends_stream` (§1a): Case-split on BlockStack depth.
+       - nil: remaining chars → SLDocumentPrefix → extend stream.
+       - seqLevel/mapLevel: each level forms SBlockSeqEntries/SBlockMapEntries
+         → SBlockNode.blockSeq/.blockMap → extend stream. Recurse on stack.
+       Then case-split on PendingNode to close the innermost gap.
+
+    2. `accum_step_structural` (§1b): Close previous pending + BlockStack.
+       Structural tokens (`---`/`...`/`%`) only appear at col 0, causing
+       full dedent. So BlockStack becomes nil after preprocessing.
+       Existing `scanDocumentStart_prod` ✅, `scanDocumentEnd_prod` ✅,
        `scanDirective_prod` ✅.
 
-    3. `accum_step_flow` (§1c): Close previous pending + pendingFlow.
-       Multi-token — discharge deferred to sub-layer 4e.
+    3. `accum_step_flow` (§1c): Close previous pending + BlockStack pops
+       if needed. Flow indicator → pendingFlow (flow accumulation future work).
 
-    4. `accum_step_block` (§1d): Close previous pending + pendingBlock.
-       Multi-token — discharge deferred to sub-layer 4e.
+    4. `accum_step_block` (§1d): The core of 4e.
+       - Close: SSLComments + BlockStack pops for dedent.
+       - Push: If `pushSequenceIndent`/`pushMappingIndent` fires,
+         new `.seqLevel`/`.mapLevel` pushed.
+       - Each `-` at same level: extends the current seqLevel's entries.
+       - The `-`/`?`/`:` chars → pendingBlock.
 
-    5. `accum_step_content` (§1e): Close previous pending + pendingContent.
-       Existing: `scanDoubleQuoted_prod` ✅, `scanSingleQuoted_prod` ✅,
-       `scanTag_prod` ✅, `scanAnchorOrAlias_*_prod` ✅.
-       Missing: `scanPlainScalar_prod` ❌, `scanBlockScalar_prod` ❌.
+    5. `accum_step_content` (§1e): Close previous pending.
+       BlockStack may shrink (dedent during preprocessing) but not grow.
+       Content token → pendingContent. BlockStack threaded through.
+       Missing _prod theorems: `scanPlainScalar_prod` ❌, `scanBlockScalar_prod` ❌.
 
-    Proven (composition-only, delegating to above sorry):
+    **Proven (composition-only, delegating to above sorry):**
     - `scanNextToken_accum_step` (§1f): unfolds `scanNextToken`, dispatches
     - `scanNextToken_none_stream` (§2): unfolds `scanNextToken`, EOF path
-    - `scanLoop_grammar_prod` (§3): fuel induction with lagging triple
+    - `scanLoop_grammar_prod` (§3): fuel induction with lagging quad
     - `scan_content_gives_stream_v2` (§5): top-level composition
 
-    Total sorry: 5 (same count as 4c, but now architecturally provable).
+    Total sorry: 5 (architecturally provable with BlockStack).
 -/
 
 end Lean4Yaml.Proofs.StreamAccum
