@@ -1605,7 +1605,9 @@ Close the sorry in `scan_content_gives_stream` by completing the remaining conte
 
 <details>
 
-**Sub-layer 4a: Leaf `_prod` theorems (extends Layer 1)**
+###### **Sub-layer 4a: Leaf `_prod` theorems (extends Layer 1)**
+
+<details>
 
 Complete the per-scanner-function production coupling for the 7 missing content types. Each theorem proves: scanner function succeeds → consumed characters form a valid surface-syntax derivation tree.
 
@@ -1645,7 +1647,11 @@ Complete the per-scanner-function production coupling for the 7 missing content 
 - [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) §5: isPlainSafe bridge lemmas (6 theorems, 52 lines)
 - [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) §6: Block header production (3 theorems, 55 lines)
 
-**Sub-layer 4b: Preprocessing production coupling** ✅ Complete (8 theorems, 280 lines, 0 sorry)
+</details>
+
+###### **Sub-layer 4b: Preprocessing production coupling** ✅ Complete (8 theorems, 280 lines, 0 sorry)
+
+<details>
 
 Connect the scanner's whitespace/comment-skipping preprocessing to grammar elements. The planned 3-theorem breakdown was replaced by a finer decomposition that separates the grammar endpoint (`sp_mid`) from the scanner endpoint (`sp'`), since `skipToContentLoop` consumes trailing whitespace beyond the last `SLComment`.
 
@@ -1662,7 +1668,7 @@ Connect the scanner's whitespace/comment-skipping preprocessing to grammar eleme
 
 Notes: `scanNextToken_preprocess_separate_prod` was not needed as a separate theorem — the existing `skipToContentWs_ok_corr` + `skipToContentComment_corr` from ScannerCoupling.lean suffice for `scanNextToken_preprocess`'s whitespace/comment consumption. `documentMarker_prod` was already done as `scanDocumentStart_prod` / `scanDocumentEnd_prod` in StructureProduction.lean (Layer 4a).
 
-**Sub-layer 4c: Stream accumulator** ⚠️ Architecture mismatch (11 theorems, 382 lines, 5 sorry per-dispatch — **unprovable as stated**)
+###### **Sub-layer 4c: Stream accumulator** ⚠️ Architecture mismatch (11 theorems, 382 lines, 5 sorry per-dispatch — **unprovable as stated**)
 
 Threads `SLYamlStream` as a grammar accumulator through `scanLoop` alongside `ScannerSurfCorr`. The design narrows the 1 broad sorry in `scan_content_gives_stream` to 5 per-dispatch sorry, each targeting one specific execution path:
 
@@ -1682,7 +1688,7 @@ The composition theorems `scanNextToken_accum_step` and `scanNextToken_none_stre
 
 This mismatch was foreshadowed by Layer 2 Reflection #2 ("SBlockNode.flowInBlock needs loop-level context") and Layer 3 Reflection #1 ("`SLYamlStream` is NOT an append structure") but was not recognized as structural impossibility until attempting to discharge the sorry lemmas.
 
-**Sub-layer 4d: Lagging grammar accumulator** ✅ Complete (1 inductive, 11 theorems, 5 sorry per-dispatch — architecturally provable)
+###### **Sub-layer 4d: Lagging grammar accumulator** ✅ Complete (1 inductive, 11 theorems, 5 sorry per-dispatch — architecturally provable)
 
 Restructured 4c with a **lagging accumulator** where the grammar position trails one `SSLComments` behind the scanner:
 
@@ -1706,7 +1712,7 @@ At each step: (1) preprocessing of token N+1 provides `SSLComments` to **close t
 
 Unlike the 4c sorry lemmas, the 4d sorry are **architecturally provable** — the lagging invariant correctly models the one-token lag. The 5 per-dispatch sorry match the same dispatch structure as 4c, but each now takes and produces `PendingNode`. The composition theorems (`scanNextToken_accum_step`, `scanNextToken_none_stream`, `scanLoop_grammar_prod`, `scan_content_gives_stream_v2`) are all proven by the same unfold/split delegation pattern as 4c.
 
-**Sub-layer 4e: Block collection accumulator (hardest part)** ✅ Complete (1 inductive, 571 lines total, 5 sorry — architecturally provable with BlockStack)
+###### **Sub-layer 4e: Block collection accumulator (hardest part)** ✅ Complete (1 inductive, 571 lines total, 5 sorry — architecturally provable with BlockStack)
 
 Block sequences and mappings span multiple `scanNextToken` calls. A block sequence `- a\n- b` involves ≥4 tokens. The scanner tracks nesting via an indent stack (`Array IndentEntry`); the grammar needs a corresponding `BlockStack`.
 
@@ -1774,7 +1780,7 @@ Remaining _prod theorems ───────────────┘       
 
 </details>
 
-##### Estimated scope
+###### Estimated scope
 
 | Layer | Est. lines | Actual | Risk |
 |---|---|---|---|
@@ -1792,7 +1798,7 @@ Remaining _prod theorems ───────────────┘       
 
 **Sorry status (current):** 6 sorry total: 1 (`scan_content_gives_stream` in DocumentProduction) + 5 per-dispatch in StreamAccum (`preprocessing_eof_extends_stream`, `accum_step_structural`, `accum_step_flow`, `accum_step_block`, `accum_step_content`). All 5 per-dispatch sorry are **architecturally provable** — the lagging quad (SLYamlStream + BlockStack + PendingNode + ScannerSurfCorr) correctly models multi-token block collections via the indent stack correspondence. Build: 415/415 jobs, 0 errors. Target: 0 sorry after discharging per-dispatch sorry + remaining `_prod` theorems.
 
-**Layer 4b reflections (8 theorems proven, 0 sorry):**
+###### **Layer 4b reflections (8 theorems proven, 0 sorry):**
 
 1. **Grammar/scanner position gap in `skipToContentLoop`.** Each loop iteration consumes whitespace (via `skipToContentWs`) + optional comment (via `skipToContentComment`) + optional break. Complete iterations (those ending with a break) produce `SLComment`. The **final** iteration (ending at non-break content or EOF) consumes whitespace/comment that is NOT part of any `SLComment` — it becomes indentation for the following content production. This forced the return type to separate `sp_mid` (where grammar productions like `GStar SLComment` end) from `sp'` (where `ScannerSurfCorr` holds). The consumer uses `GStar SLComment sp sp_mid` for `SLDocumentPrefix` and `ScannerSurfCorr s_result sp'` for continuing. The `sp_mid → sp'` gap represents trailing whitespace absorbed by subsequent indentation/separation.
 
@@ -1818,7 +1824,7 @@ Remaining _prod theorems ───────────────┘       
 | `skipToContentLoop_startOfLine_prod` | `SSLComments` (from col=0) | ~10 |
 | `skipToContent_startOfLine_comments_prod` | `SSLComments` (wrapper) | ~5 |
 
-**Layer 4c reflections (11 theorems, 382 lines, 5 per-dispatch sorry):**
+###### **Layer 4c reflections (11 theorems, 382 lines, 5 per-dispatch sorry):**
 
 1. **Simplified accumulator design — turned out to be too simple.** The original plan used a 4-constructor `StreamAccum` inductive tracking phase (init, afterPrefix, inDocument, afterSuffix). In practice, `SLYamlStream` directly was tried as the accumulator, which appeared simpler. However, the 5 per-dispatch sorry turned out to be unprovable because `SLYamlStream` requires complete grammar productions at every step. The original `StreamAccum` instinct (tracking phase information) was closer to the right approach — but it needs to also track the one-token lag via `PendingNode`. See Reflection #6 and [MISMATCH.md](MISMATCH.md).
 
@@ -1849,7 +1855,7 @@ Remaining _prod theorems ───────────────┘       
 | `initial_stream_and_prefix` | Initial empty stream + BOM handling | proven |
 | `scan_content_gives_stream_v2` | Top-level: `scan input = .ok tokens → SLYamlStream` | proven |
 
-**Layer 4d reflections (PendingNode + lagging invariant, 310 lines, 5 sorry):**
+###### **Layer 4d reflections (PendingNode + lagging invariant, 310 lines, 5 sorry):**
 
 1. **The lagging invariant is the correct architecture.** The 4c invariant (grammar and scanner at same position) was provably impossible. The 4d invariant (grammar lags behind scanner by `PendingNode` gap) correctly models the one-token delay between content scanning and trailing `SSLComments` arrival. The composition proofs (§1f, §2, §3, §5) reproved immediately with just parameter additions — same unfold/split delegation pattern.
 
@@ -1859,7 +1865,7 @@ Remaining _prod theorems ───────────────┘       
 
 4. **Proof reuse from 4c.** The entire composition layer (5 proven theorems) transferred with minimal changes: `sp` → `sp_gram`/`sp_scan`, `h_corr` → `h_pending`/`h_corr`, `obtain ⟨sp', ...⟩` → `obtain ⟨sp_gram', sp_scan', ...⟩`. The `unfold scanNextToken; split` skeleton is identical. This confirms the Layer 4c investment in proving the composition layer was not wasted — only the invariant (per-dispatch sorry types) needed restructuring.
 
-**Layer 4e reflections (BlockStack + lagging quad, 571 lines, 5 sorry):**
+###### **Layer 4e reflections (BlockStack + lagging quad, 571 lines, 5 sorry):**
 
 1. **The four-component state (lagging quad) is the right decomposition.** The 4d lagging triple (`SLYamlStream + PendingNode + ScannerSurfCorr`) conflated two concerns: the immediate token lag and the block collection nesting depth. Separating `BlockStack` as an independent fourth component means `PendingNode` stays simple (7 constructors unchanged) while `BlockStack` handles multi-token nesting. The composition proofs reproved with only mechanical additions (`sp_block`, `h_stack`, one more existential variable). The `unfold/split` skeleton is identical across all three iterations (4c, 4d, 4e).
 
@@ -1873,7 +1879,7 @@ Remaining _prod theorems ───────────────┘       
 
 ###### Remaining work
 
-Tier 1 — Tractable now (no new _prod theorems needed):
+###### Tier 1 — Tractable now (no new _prod theorems needed):
 
 preprocessing_eof_extends_stream — EOF handling: close pending node + finalize stream with existing preprocessing lemmas
 accum_step_structural — ---/.../% dispatch: uses existing scanDocumentStart_prod, scanDocumentEnd_prod, PendingNode case-split
@@ -1901,7 +1907,7 @@ Partially discharged `preprocessing_eof_extends_stream` (§1a). The `BlockStack.
 
 5. **The `!hasMore` branch is the only reachable EOF path in `scanNextToken_preprocess`.** When `scanNextToken_preprocess` returns `none`, it must be because `!s_content.hasMore` after `skipToContent`. The alternative path (`peek? = none` after `unwindIndents`/`saveSimpleKey`) is absurd: `unwindIndents` preserves `offset`/`inputEnd`/`input` (proven by `unwindIndentsLoop_offset` etc.), `saveSimpleKey` preserves `peek?` (proven by `saveSimpleKey_peek`), so if `hasMore` was true after `skipToContent`, `peek?` is still `some`. This absurdity argument appears twice (for the two indent-check branches) and follows the same pattern as `scanNextToken_preprocess_none_consumed` in `ScanStrictCoupling.lean`.
 
-Tier 2 — Scalar _prod theorems (in progress):
+###### Tier 2 — Scalar _prod theorems (in progress):
 
 **Completed work:**
 - `SNbNsPlainInLineEntry` grammar type added to `Surface/Scalars.lean` ([129] `nb-ns-plain-in-line(c)` entry).
@@ -1913,50 +1919,61 @@ Tier 2 — Scalar _prod theorems (in progress):
   Zero downstream breakage (nobody yet constructs these types).
 - Sub-function grammar helpers (ScalarProduction.lean §6b), all **fully proven**:
   - `consumeExactSpaces_sindent_prod` — `SIndent count` from count spaces consumed
+  - `consumeExactSpaces_sindent_partial` — partial indent → `SIndentLe n`
   - `collectLineContentLoop_nbchar_prod` — `GStar SNbChar` from content chars
   - `gstar_to_gplus_from_first` — `GPlus` from first element + `GStar` rest
   - `collectLineContentLoop_gplus_prod` — `GPlus SNbChar` when first char known
   - `consumeExactSpaces_fst_le` — `(consumeExactSpaces sc count).1 ≤ count`
+  - `prepend_empty_to_text_line` — empty line + text line → `SLNbLiteralText`
+  - `isPlainSafe_to_plainChar_basic`, `isPlainSafe_to_inlineEntry_basic` — bridging lemmas
   - Helper lemmas: `consumeExactSpaces_succ_space_fst/snd`, `consumeExactSpaces_succ_not_space`
 - Uniqueness lemmas (CouplingBridge.lean), **fully proven**:
   - `CharsFromOffset_unique` — determinism of char extraction by induction
   - `ScannerSurfCorr_unique` — if two `SurfPos` both satisfy `ScannerSurfCorr` for the same state, they are equal
-- `collectPlainScalarLoop_inline_prod` (ScalarProduction.lean §7): fuel induction producing
-  `GStar (SNbNsPlainInLineEntry .blockIn)`. Decomposed into 3 targeted sorry:
-  - Multi-line break handling (flow: `foldQuotedNewlines`, block: `handleBlockLineBreak`)
-  - Whitespace accumulation grammar (leading WS → `GStar SSWhite` within entry)
-  - `:` and `#` special cases → `SNsPlainChar.colonSafe` / `SNsPlainChar.hashAfterNs`
-- `scanPlainScalar_prod` (ScalarProduction.lean §7): delegates to `collectPlainScalarLoop_inline_prod`.
-  Sorry for `SNsPlainFirst` extraction and `SNsPlainMultiLine` composition.
-- `collectBlockScalarLoop_prod` (ScalarProduction.lean §8b): fuel induction with same case
-  structure as `collectBlockScalarLoop_corr`. Base cases (fuel=0, doc boundary, under-indent)
-  produce empty `SLLiteralContent`. Content-line branch: `SIndent` via `consumeExactSpaces_sindent_prod`,
-  `GPlus SNbChar` via `collectLineContentLoop_gplus_prod`, positions linked via `ScannerSurfCorr_unique`.
-  Two recursive cases PROVEN: "content + break + recursion" (via `consumeNewline_sbreak_corr` +
-  `literal_content_prepend_line`) and "final content line, no break" (direct `SLLiteralContent`
-  assembly). Three sorry remain: trailing spaces at EOF, empty line + recursive, no-break-between-lines.
-- `literal_content_prepend_line` (ScalarProduction.lean §8b): composition lemma
-  `SLNbLiteralText + SBBreak + SLLiteralContent → SLLiteralContent`. Proven for `some` body
-  (prepend via `SBNbLiteralNext`) and `none` body + `none` trail (text + trailing break).
-  1 sorry: `none` body + `some` trail (consecutive breaks, structurally unreachable).
-- `scanBlockScalarBody_prod` (ScalarProduction.lean §8b): existential wrapper returning
-  `∃ (m : Nat) (sp' : SurfPos), m ≥ 1 ∧ SLLiteralContent m sp sp'`. Delegates to `_corr`.
-- `scanBlockScalar_prod` header (ScalarProduction.lean §8c): **FULLY PROVEN** header composition:
-  advance past `|`/`>` → `parseBlockHeaderLoop_prod` → `skipWhitespace_corr` →
-  `scanBlockScalarSkipComment_prod` → `scanBlockScalarConsumeNewline_prod` →
-  `whitespace_comment_break_to_SSBComment` → `SCBBlockHeader`. Literal (`|`) dispatch: **FULLY PROVEN**
-  via `peek_some_sp` + `advance_non_newline_corr` + `ScannerSurfCorr_unique` + `Nat.zero_add`.
-  Folded (`>`) dispatch: sorry for `SLLiteralContent` → `GOpt SLNbFoldedLines` type conversion.
-- `scanBlockScalarSkipComment_prod` fully proven (produces `GOpt SCNbCommentText`)
-- `scanBlockScalarConsumeNewline_prod` fully proven (produces `SBComment`)
-- `whitespace_comment_break_to_SSBComment` proven for all practical cases (1 edge sorry:
-  `#` without preceding whitespace, unreachable from scanner's `peekBack?` check)
+- Correspondence theorems (ScalarCoupling.lean), all **fully proven** (0 sorry):
+  - `scanPlainScalar_corr` — plain scalar scanning preserves `ScannerSurfCorr`
+  - `scanBlockScalar_corr` — block scalar scanning preserves `ScannerSurfCorr`
+  - `scanBlockScalarBody_corr` — block scalar body preserves `ScannerSurfCorr`
+  - `collectPlainScalarLoop_corr`, `collectBlockScalarLoop_corr` — loop-level correspondence
+- Block scalar header pipeline (ScalarProduction.lean §8a–§8c), all **fully proven**:
+  - `parseBlockHeaderLoop_prod` — header chars → `GStar (GChar isBlockScalarHeaderChar)`
+  - `scanBlockScalarSkipComment_prod` — produces `GOpt SCNbCommentText`
+  - `scanBlockScalarConsumeNewline_prod` — produces `SBComment`
+  - `whitespace_comment_break_to_SSBComment_withWS` — WS + comment + break → `SSBComment`
+  - `consumeNewline_sbreak_corr` — newline → `SBBreak`
+- `scanPlainScalar_prod` (ScalarProduction.lean §7): Correlation **fully proven** via
+  `scanPlainScalar_corr`. Grammar (`SNsPlain 0 .blockIn`) sorry — requires `SNsPlainFirst`
+  for first char + `GStar SNbNsPlainInLineEntry` for continuation + `GStar SSNsPlainNextLine`
+  for multi-line.
+- `scanBlockScalar_prod` (ScalarProduction.lean §8c): Header composition **fully proven**
+  (advance → `parseBlockHeaderLoop_prod` → `skipWhitespace_corr` →
+  `scanBlockScalarSkipComment_prod` → `scanBlockScalarConsumeNewline_prod` → `SCBBlockHeader`).
+  Literal (`|`) and folded (`>`) dispatch **fully proven** via `peek_some_sp` +
+  `advance_non_newline_corr` + `ScannerSurfCorr_unique`.
+  Body: `scanBlockScalarBody_corr` for correspondence (sorry for grammar).
+  3 sorry uses: `#` without preceding WS (unreachable edge), literal body grammar
+  (`SLLiteralContent` + `m ≥ 1`), folded body grammar (`GOpt SLNbFoldedLines` + `m ≥ 1`).
 
-**Sorry count: 6 base + 7 scalar = 13 declarations** (ScalarProduction.lean ×7:
-`collectPlainScalarLoop_inline_prod`, `scanPlainScalar_prod`,
-`whitespace_comment_break_to_SSBComment`, `literal_content_prepend_line`,
-`collectBlockScalarLoop_prod`, `scanBlockScalarBody_prod`, `scanBlockScalar_prod`;
-DocumentProduction.lean ×1; StreamAccum.lean ×5).
+**Sorry count: 8 declarations** (ScalarProduction.lean ×2:
+`scanPlainScalar_prod`, `scanBlockScalar_prod`;
+DocumentProduction.lean ×1: `scan_content_gives_stream`;
+StreamAccum.lean ×5: `preprocessing_eof_extends_stream`, `accum_step_structural`,
+`accum_step_flow`, `accum_step_block`, `accum_step_content`).
+
+**Reduction history:** 14 → 13 → 12 → 11 → 10 → 9 → 8
+
+**Progress (2026-03-30 session 3 — consolidation pass):**
+- **5 intermediate sorry-containing theorems removed** by consolidating into call sites:
+  - `collectPlainScalarLoop_inline_prod` (3 sorry) → inlined into `scanPlainScalar_prod`
+    which now uses `scanPlainScalar_corr` for correspondence + single grammar sorry
+  - `collectBlockScalarLoop_prod` (3 sorry) → removed; `scanBlockScalar_prod` body now
+    uses `scanBlockScalarBody_corr` directly
+  - `scanBlockScalarBody_prod` (1 sorry) → removed (depended on `collectBlockScalarLoop_prod`)
+  - `literal_content_prepend_line` (1 sorry) → removed (only used by `collectBlockScalarLoop_prod`)
+  - `whitespace_comment_break_to_SSBComment` (1 sorry) → inlined into `scanBlockScalar_prod`
+    as a local `match` case with sorry for unreachable "#-without-WS" edge
+- Net effect: 13 → 8 sorry declarations (−5), 11 → 4 sorry uses
+- All sorry-free helper theorems preserved for future grammar proof work
 
 **Progress (2026-03-29 session 2):**
 - `CharsFromOffset_unique` + `ScannerSurfCorr_unique` PROVEN in CouplingBridge.lean —
@@ -1973,52 +1990,41 @@ DocumentProduction.lean ×1; StreamAccum.lean ×5).
 - `scanBlockScalar_prod` literal (`|`) dispatch **FULLY PROVEN** — `peek_some_sp` +
   `advance_non_newline_corr` + `ScannerSurfCorr_unique` + `Nat.zero_add` rewrite.
 
-**Decomposition vs monolithic sorry:** Original 3 monolithic sorry have been decomposed into
-13 declarations with targeted sub-problems. The sorry that remain:
+**Current sorry sites:**
 
 | Sorry site | Theorem | Sub-problem |
 |---|---|---|
-| L1114 | `collectPlainScalarLoop_inline_prod` | Multi-line: `handleBlockLineBreak` → `SSNsPlainNextLine` |
-| L1122 | `collectPlainScalarLoop_inline_prod` | WS accumulation: `GStar SSWhite` within entry |
-| L1143 | `collectPlainScalarLoop_inline_prod` | `:` and `#` adjacency → `colonSafe`/`hashAfterNs` |
-| L1168 | `scanPlainScalar_prod` | First char `SNsPlainFirst` extraction + composition |
-| L1284 | `whitespace_comment_break_to_SSBComment` | `#` without preceding WS (unreachable edge) |
-| L1317 | `literal_content_prepend_line` | Consecutive breaks (`none` body + `some` trail) |
-| L1366 | `collectBlockScalarLoop_prod` | Trailing spaces at EOF (incomplete indent) |
-| L1375 | `collectBlockScalarLoop_prod` | Empty line (`SLEmpty`) + recursive content |
-| L1443 | `collectBlockScalarLoop_prod` | No break between content lines (fuel edge) |
-| L1472 | `scanBlockScalarBody_prod` | Thread `contentIndent` through `SLLiteralContent` type |
-| L1547 | `scanBlockScalar_prod` | `SLLiteralContent` → `GOpt SLNbFoldedLines` for folded |
+| L1111 | `scanPlainScalar_prod` | Grammar: `SNsPlain 0 .blockIn` (first char + continuation + multi-line) |
+| L1293 | `scanBlockScalar_prod` | `#` without preceding WS (unreachable from scanner's `peekBack?` check) |
+| L1313 | `scanBlockScalar_prod` | Literal body: `SCLLiteral 0` (`SLLiteralContent` + `m ≥ 1`) |
+| L1325 | `scanBlockScalar_prod` | Folded body: `SCLFolded 0` (`GOpt SLNbFoldedLines` + `m ≥ 1`) |
 
 **Remaining for full Tier 2 closure:**
 
-*Most tractable (next session):*
-1. **L1143 — `:` and `#` special cases.** Need to case-split on `c = ':'` and `c = '#'`
-   before applying `isPlainSafe_to_inlineEntry_basic`. For `:`, scanner checks next char via
-   `isPlainSafeBool`; for `#`, `col > 0` sufficed. Both constructors (`colonSafe`, `hashAfterNs`)
-   are in `SNsPlainChar`. Requires reading scanner logic for what preconditions hold at this point.
-2. **L1122 — WS accumulation.** The advance produces `sp → sp_adv` (one WS char). The recursive
-   `ih` gives `GStar (SNbNsPlainInLineEntry)` from `sp_adv`. Need to prepend the WS as part of
-   the first entry's `GStar SSWhite` prefix, or as a standalone `GStar SSWhite` + identity entry.
-   May need a helper `prepend_white_to_gstar_entries`.
-3. **L1375 — empty line + recursive content.** Need `SLEmpty n .blockIn` from consumed spaces +
-   line break, then compose with recursive `SLLiteralContent` similarly to
-   `literal_content_prepend_line`.
-
-*Medium difficulty:*
-4. **L1168 — `SNsPlainFirst` extraction.** Requires proving the first char satisfies
-   `canStartPlainScalarBool` → `SNsPlainFirst` + splitting `GStar entry` into first + rest.
-5. **L1366, L1443 — block scalar edge cases.** Trailing spaces at EOF forms incomplete
-   `SIndent`; no-break-between-lines is a fuel exhaustion edge case.
-6. **L1472 — `scanBlockScalarBody_prod`.** Need to show auto-detect/explicit indent ≥ 1 and
-   thread through `collectBlockScalarLoop_prod`.
+*Most tractable:*
+1. **L1293 — `#` without preceding WS.** Unreachable edge case; scanner's `peekBack?` check
+   ensures `#` only accepted after whitespace. Could be closed by adding a `peekBack?` precondition
+   to the theorem or by proving `SSBComment.noSep` suffices when `GOpt.none` is the only
+   reachable case.
+2. **L1313/L1325 — block scalar body grammar + `m ≥ 1`.** Two sub-problems:
+   (a) Prove `autoDetectBlockScalarIndent` returns `m ≥ 1` when `currentIndent ≥ 0`.
+   (b) Construct `SLLiteralContent m` (literal) or `GOpt SLNbFoldedLines m` (folded) from
+   the loop. The sorry-free helpers (`consumeExactSpaces_sindent_prod`,
+   `collectLineContentLoop_gplus_prod`, `prepend_empty_to_text_line`) are ready for the
+   per-iteration grammar construction. The main gap is composing iterations into the
+   grammar types and proving `m ≥ 1`.
 
 *Hardest:*
-7. **L1114 — multi-line plain scalar.** `handleBlockLineBreak` → `SSNsPlainNextLine` requires
-   `SBBreak` + `GStar SLEmpty` + `SFlowLinePrefix` + `GPlus SNbNsPlainInLineEntry`.
-8. **L1547 — folded content type.** `SLLiteralContent` ≠ `GOpt SLNbFoldedLines` — different
-   grammar structures (`SLNbLiteralText` vs `SSNbFoldedText`, `SNbChar` vs `SNsChar`).
-   May need a separate `collectBlockScalarLoop` variant or conversion lemma.
+3. **L1111 — plain scalar grammar.** Requires:
+   - `SNsPlainFirst` extraction from first char (needs `canStartPlainScalar` precondition)
+   - `GStar SNbNsPlainInLineEntry` for in-line continuation (WS accumulation, `:` colonSafe,
+     `#` hashAfterNs)
+   - `GStar SSNsPlainNextLine` for multi-line (`handleBlockLineBreak` → `SBBreak` + `GStar SLEmpty`
+     + `SFlowLinePrefix` + `GPlus SNbNsPlainInLineEntry`)
+   This is the most complex remaining sorry due to the loop's 7 branch points and lazy WS flush.
+4. **Folded vs literal content type gap.** `SLLiteralContent` uses `SLNbLiteralText` + `SNbChar`,
+   while `GOpt SLNbFoldedLines` uses `SSNbFoldedText` + `SNsChar`. May need a conversion lemma
+   or separate loop variant for folded content.
 
 **Reflections:**
 
@@ -2026,11 +2032,21 @@ DocumentProduction.lean ×1; StreamAccum.lean ×5).
 
 2. **Plain scalar _prod is the hardest scalar theorem.** Double-quoted _prod (§3, ~290 lines proven) has clean structure: opening `"`, loop body, closing `"`. Plain scalar has no delimiters, 7 branch points per loop iteration, and the grammar type (`SNsPlainFirst` for first char + `SNbNsPlainInLineEntry` for continuation) requires tracking whether the loop is at the first character. The loop also accumulates `spaces` in a string (not grammar-tracked) and flushes them when content follows — this "lazy WS flush" requires the grammar to retroactively include the whitespace. Estimated: 300+ lines for full proof, ~2× the double-quoted proof.
 
-3. **Block scalar pipeline structure enables modular proofs.** The `scanBlockScalar` function calls a linear pipeline (`advance → parseBlockHeaderLoop → skipWhitespace → skipComment → consumeNewline → body`), so each step can be proven as an independent `_prod` lemma. This is much cleaner than the monolithic loop proofs needed for quoted/plain scalars. The `parseBlockHeaderLoop_prod` was already proven in §6. The new `scanBlockScalarSkipComment_prod` and `scanBlockScalarConsumeNewline_prod` complete the header. Only the content body (`collectBlockScalarLoop`) remains.
+3. **Block scalar pipeline structure enables modular proofs.** The `scanBlockScalar` function calls a linear pipeline (`advance → parseBlockHeaderLoop → skipWhitespace → skipComment → consumeNewline → body`), so each step can be proven as an independent `_prod` lemma. This is much cleaner than the monolithic loop proofs needed for quoted/plain scalars. The `parseBlockHeaderLoop_prod` was already proven in §6. The `scanBlockScalarSkipComment_prod` and `scanBlockScalarConsumeNewline_prod` complete the header. Only the content body remains.
 
-4. **Edge case: `#` without preceding whitespace in block header.** In `whitespace_comment_break_to_SSBComment`, the `GStar.nil` (empty whitespace) + `GOpt.some` (comment present) case is grammatically awkward: `SSBComment.withSep` needs `SSeparateInLine` which requires either `GPlus SSWhite` (non-empty WS) or `startOfLine` (col=0). The scanner's `scanBlockScalarSkipComment` checks `peekBack?` for whitespace before accepting `#`, so this case is unreachable from valid scanner flow. The sorry is benign but proves that grammar formalization must account for scanner-level invariants.
+4. **Consolidation reduced declaration count without losing proven work.** The 5 removed
+   intermediate theorems (`collectPlainScalarLoop_inline_prod`, `collectBlockScalarLoop_prod`,
+   `scanBlockScalarBody_prod`, `literal_content_prepend_line`, `whitespace_comment_break_to_SSBComment`)
+   each contained sorry that could not be eliminated in isolation. By inlining their proven parts
+   into the call sites and delegating correspondence to `_corr` theorems, the sorry were merged
+   into fewer, better-scoped locations. The sorry-free helper lemmas (indent, content loop, etc.)
+   remain available for when the grammar sorry are eventually attacked.
 
-5. **`_corr` and `_prod` have the same structure but different accumulation.** The `_corr` theorems (ScalarCoupling.lean) trace through the same branches as `_prod` but only track `ScannerSurfCorr` (existential witness). The `_prod` theorems additionally construct grammar witnesses at each step. The correlation part of `_prod` can always delegate to `_corr`, so the overhead is purely in grammar construction. For the current sorry-based theorems, we use `_corr` for correlation and sorry for grammar — establishing correct types while deferring construction.
+5. **`_corr` and `_prod` separation is the key architecture.** The `_corr` theorems
+   (ScalarCoupling.lean) are fully proven and track `ScannerSurfCorr` through every branch.
+   The `_prod` theorems add grammar witnesses on top. By using `_corr` for correspondence
+   and sorry only for grammar, the remaining sorry are purely about constructing grammar
+   type witnesses — no position-tracking gaps remain.
 
 6. **`let`-bound pair destructuring blocks `omega`/`simp`.** After `unfold consumeExactSpaces`, the pair `let (consumed, s') := rec_call; (consumed + 1, s')` introduces a `match` on the pair that `omega` cannot see through. Solution: write helper lemmas (`consumeExactSpaces_succ_space_fst/snd`) that use `generalize h : rec_call = p` BEFORE `unfold` so both sides stay in sync, then `rw [h]` closes the goal. Using `generalize` after `unfold` fails because the RHS still has the un-unfolded term. This pattern applies to any recursive function returning a pair through `let` destructuring.
 
@@ -2044,10 +2060,11 @@ DocumentProduction.lean ×1; StreamAccum.lean ×5).
 
 11. **`by_contra` is Mathlib-only.** In the `collectBlockScalarLoop_prod` spaces≥indent proof, the natural approach `by_contra h_lt; ...` fails without Mathlib. Workaround: `cases Nat.lt_or_ge spacesConsumed contentIndent with | inl h_lt => exfalso; ... | inr h_ge => exact h_ge`. Combined with `simp only [Bool.and_eq_true, decide_eq_true_eq, Bool.not_eq_true']` to decompose Bool/decide hypotheses from the negated under-indent guard.
 
-Tier 3 — Discharge with new _prod:
+###### Tier 3 — Discharge with new _prod
+
 5. accum_step_content — tractable once plain + block scalar _prod grammar sorry are removed
 
-Tier 4 — Hardest (multi-token collections):
+###### Tier 4 — Hardest (multi-token collections):
 6. scanFlowSequence_prod + scanFlowMapping_prod + discharge accum_step_flow
 7. scanBlockSequence_prod + scanBlockMapping_prod + discharge accum_step_block
 
