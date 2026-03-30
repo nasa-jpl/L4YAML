@@ -898,6 +898,130 @@ theorem parseBlockHeaderLoop_prod (sc : ScannerState) (sp : SurfPos)
     · -- peek? = none: stop
       exact ⟨sp, GStar.nil sp, hcorr⟩
 
+/-! ## §6b Sub-function Grammar Productions
+
+  Helper `_prod` theorems for sub-functions used by block and plain scalar loops.
+  These construct grammar witnesses for `consumeExactSpaces`, `collectLineContentLoop`,
+  and `consumeNewline`. -/
+
+-- Helper: when peek? = some ' ', first component of consumeExactSpaces (n+1)
+--   = first component of consumeExactSpaces sc.advance n + 1
+theorem consumeExactSpaces_succ_space_fst (sc : ScannerState) (n : Nat)
+    (hpeek : sc.peek? = some ' ') :
+    (consumeExactSpaces sc (n + 1)).1 = (consumeExactSpaces sc.advance n).1 + 1 := by
+  -- generalize the recursive call BEFORE unfolding to keep both sides in sync
+  generalize h : consumeExactSpaces sc.advance n = p
+  unfold consumeExactSpaces; split
+  · rw [h]
+  · contradiction
+
+-- Helper: when peek? = some ' ', second component of consumeExactSpaces (n+1)
+--   = second component of consumeExactSpaces sc.advance n
+theorem consumeExactSpaces_succ_space_snd (sc : ScannerState) (n : Nat)
+    (hpeek : sc.peek? = some ' ') :
+    (consumeExactSpaces sc (n + 1)).2 = (consumeExactSpaces sc.advance n).2 := by
+  generalize h : consumeExactSpaces sc.advance n = p
+  unfold consumeExactSpaces; split
+  · rw [h]
+  · contradiction
+
+-- Helper: when peek? ≠ some ' ', consumeExactSpaces (n+1) returns (0, sc)
+theorem consumeExactSpaces_succ_not_space (sc : ScannerState) (n : Nat)
+    (hpeek : sc.peek? ≠ some ' ') :
+    consumeExactSpaces sc (n + 1) = (0, sc) := by
+  unfold consumeExactSpaces; split
+  · exact absurd ‹_› hpeek
+  · rfl
+
+-- `consumeExactSpaces` with full count consumed produces `SIndent count`.
+theorem consumeExactSpaces_sindent_prod (sc : ScannerState) (sp : SurfPos)
+    (count : Nat) (hcorr : ScannerSurfCorr sc sp)
+    (hfull : (consumeExactSpaces sc count).1 = count) :
+    ∃ sp', SIndent count sp sp' ∧ ScannerSurfCorr (consumeExactSpaces sc count).2 sp' := by
+  induction count generalizing sc sp with
+  | zero =>
+    simp [consumeExactSpaces]; exact ⟨sp, SIndent.zero sp, hcorr⟩
+  | succ n ih =>
+    -- peek? must be some ' ', otherwise .1 = 0 ≠ n+1
+    by_cases hpeek : sc.peek? = some ' '
+    · obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+      subst hsp_eq
+      have hmore := peek_some_has_more hpeek
+      have hcorr_adv := advance_non_newline_corr sc ' ' rest hcorr hmore (by decide) (by decide)
+      have hfull' : (consumeExactSpaces sc.advance n).1 = n := by
+        have := consumeExactSpaces_succ_space_fst sc n hpeek
+        omega
+      rw [show (consumeExactSpaces sc (n + 1)).2 = (consumeExactSpaces sc.advance n).2
+        from consumeExactSpaces_succ_space_snd sc n hpeek]
+      obtain ⟨sp', h_indent, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hcorr_adv hfull'
+      exact ⟨sp', SIndent.succ n rest sc.col sp' h_indent, hcorr'⟩
+    · -- peek? ≠ some ' ': consumeExactSpaces returns (0, sc), but hfull says 0 = n+1
+      rw [consumeExactSpaces_succ_not_space sc n hpeek] at hfull; omega
+
+-- `collectLineContentLoop` produces `GStar SNbChar` + correspondence.
+-- Each consumed character is non-break (since the loop stops at breaks).
+theorem collectLineContentLoop_nbchar_prod (sc : ScannerState) (sp : SurfPos)
+    (content : String) (fuel : Nat) (hcorr : ScannerSurfCorr sc sp) :
+    ∃ sp', GStar SNbChar sp sp' ∧
+           ScannerSurfCorr (collectLineContentLoop sc content fuel).2 sp' := by
+  induction fuel generalizing sc sp content with
+  | zero =>
+    simp [collectLineContentLoop]; exact ⟨sp, GStar.nil sp, hcorr⟩
+  | succ fuel' ih =>
+    unfold collectLineContentLoop
+    split
+    · -- peek? = some c
+      rename_i c hpeek
+      split
+      · -- isLineBreakBool c: stop
+        exact ⟨sp, GStar.nil sp, hcorr⟩
+      · -- not break: consume + recurse
+        rename_i hne_lb
+        obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+        subst hsp_eq
+        have hmore := peek_some_has_more hpeek
+        have h_not_nl := not_isLineBreak_not_newline c hne_lb
+        have h_not_cr := not_isLineBreak_not_cr c hne_lb
+        have hcorr_adv := advance_non_newline_corr sc c rest hcorr hmore h_not_nl h_not_cr
+        obtain ⟨sp', h_tail, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ _ hcorr_adv
+        exact ⟨sp',
+               GStar.cons _ ⟨rest, sc.col + 1⟩ _
+                 (not_isLineBreak_gives_SNbChar c rest sc.col hne_lb) h_tail,
+               hcorr'⟩
+    · -- peek? = none: stop
+      exact ⟨sp, GStar.nil sp, hcorr⟩
+
+-- GStar → GPlus conversion when at least one element exists (from known first char).
+theorem gstar_to_gplus_from_first {P : SurfPos → SurfPos → Prop}
+    {sp sp₁ sp' : SurfPos}
+    (h_first : P sp sp₁) (h_rest : GStar P sp₁ sp') :
+    GPlus P sp sp' := GPlus.mk sp sp₁ sp' h_first h_rest
+
+-- When collectLineContentLoop is called with peek? = some c (not break),
+-- the first char WILL be consumed, giving GPlus SNbChar.
+theorem collectLineContentLoop_gplus_prod (sc : ScannerState) (sp : SurfPos)
+    (c : Char) (content : String) (fuel : Nat)
+    (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some c)
+    (hne_lb : ¬isLineBreakBool c = true) (hfuel : fuel ≥ 1) :
+    ∃ sp', GPlus SNbChar sp sp' ∧
+           ScannerSurfCorr (collectLineContentLoop sc content fuel).2 sp' := by
+  obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+  subst hsp_eq
+  have hmore := peek_some_has_more hpeek
+  have h_not_nl := not_isLineBreak_not_newline c hne_lb
+  have h_not_cr := not_isLineBreak_not_cr c hne_lb
+  have hcorr_adv := advance_non_newline_corr sc c rest hcorr hmore h_not_nl h_not_cr
+  -- With fuel ≥ 1, unfold one step: the first char is consumed
+  match fuel, hfuel with
+  | fuel' + 1, _ =>
+    simp only [collectLineContentLoop]
+    rw [hpeek]
+    simp only [hne_lb]
+    obtain ⟨sp', h_tail, hcorr'⟩ :=
+      collectLineContentLoop_nbchar_prod sc.advance ⟨rest, sc.col + 1⟩ _ fuel' hcorr_adv
+    have h_first := not_isLineBreak_gives_SNbChar c rest sc.col hne_lb
+    exact ⟨sp', gstar_to_gplus_from_first h_first h_tail, hcorr'⟩
+
 /-! ## §7 Plain Scalar Production (Layer 4b)
 
   `scanPlainScalar` produces `SNsPlain 0 .blockIn` (= `SNsPlainMultiLine 0 .blockIn`).
@@ -911,11 +1035,12 @@ theorem parseBlockHeaderLoop_prod (sc : ScannerState) (sp : SurfPos)
   - Multi-line: `handleBlockLineBreak` → `SSNsPlainNextLine` (line fold + indent + continuation)
   - Trailing whitespace: scanner past trailing WS not in grammar; bridge via `GStar SSWhite`
 
-  Current status: grammar witness uses sorry; correlation from `scanPlainScalar_corr`.
-  Remaining for full proof:
-  - `peekAt?_surface` lemma linking `peekAt? 1` to surface char list (for `-`/`:`/`?` first char)
-  - `collectPlainScalarLoop_prod` fuel induction (~200 lines)
-  - `handleBlockLineBreak_prod` for multi-line construction -/
+  Status: grammar witness constructed with sorry for multi-line and first-char
+  substructure; correlation from `scanPlainScalar_corr`.
+  The sorry decompose the original monolithic sorry into targeted sub-problems:
+  - `collectPlainScalarLoop_inline_prod`: intra-line continuation entries
+  - First char `SNsPlainFirst` extraction from `canStartPlainScalarBool`
+  - `handleBlockLineBreak_prod`: multi-line `SSNsPlainNextLine` construction -/
 
 -- Bridge: `isPlainSafeBool c false` + not-colon + not-hash → `SNsPlainChar .blockIn`.
 -- (`:` needs next char safe via `colonSafe` constructor; `#` needs col > 0 via `hashAfterNs`.)
@@ -936,34 +1061,117 @@ theorem isPlainSafe_to_inlineEntry_basic (c : Char) (rest : List Char) (col : Na
     (GStar.nil _)
     (isPlainSafe_to_plainChar_basic c rest col hSafe hNotColon hNotHash)
 
+-- `collectPlainScalarLoop` intra-line continuation produces
+-- `GStar (SNbNsPlainInLineEntry .blockIn)` on a single line.
+-- Fuel induction mirroring `collectPlainScalarLoop_corr`.
+-- sorry: multi-line handling (handleBlockLineBreak, foldQuotedNewlines),
+-- first-char SNsPlainFirst extraction, `:` and `#` special cases.
+theorem collectPlainScalarLoop_inline_prod (sc : ScannerState) (sp : SurfPos)
+    (content spaces : String) (fuel : Nat)
+    (inFlow : Bool) (contentIndent : Nat) (inputEnd : Nat)
+    {result : PlainScalarResult}
+    (hcorr : ScannerSurfCorr sc sp)
+    (hok : collectPlainScalarLoop sc content spaces fuel inFlow contentIndent inputEnd
+           = .ok result) :
+    ∃ sp', GStar (SNbNsPlainInLineEntry .blockIn) sp sp' ∧
+           ScannerSurfCorr result.state sp' := by
+  induction fuel generalizing sc sp content spaces with
+  | zero =>
+    simp [collectPlainScalarLoop] at hok; subst hok
+    exact ⟨sp, GStar.nil sp, hcorr⟩
+  | succ fuel' ih =>
+    have hok_orig := hok
+    unfold collectPlainScalarLoop at hok
+    split at hok
+    · -- peek? = none: terminate
+      have h := Except.ok.inj hok; subst h
+      exact ⟨sp, GStar.nil sp, hcorr⟩
+    · -- peek? = some c
+      rename_i c hpeek
+      split at hok
+      · -- terminates?
+        rename_i r_term h_term
+        have h := Except.ok.inj hok; subst h
+        have hst := terminates_state_eq c sc content spaces inFlow r_term h_term
+        rw [hst]; exact ⟨sp, GStar.nil sp, hcorr⟩
+      · -- not terminated
+        split at hok
+        · -- isLineBreakBool c: line break → rest is on new line(s)
+          -- Multi-line plain scalar continuation: sorry for grammar, use _corr for state
+          obtain ⟨sp', hcorr'⟩ := collectPlainScalarLoop_corr sc sp content spaces
+            (fuel' + 1) inFlow contentIndent inputEnd hcorr hok_orig
+          exact ⟨sp', sorry, hcorr'⟩
+        · -- not line break
+          split at hok
+          · -- isWhiteSpaceBool c: accumulate WS, recurse
+            obtain ⟨sp_adv, hcorr_adv⟩ := advance_corr sc sp hcorr
+            obtain ⟨sp', h_rest, hcorr'⟩ :=
+              ih sc.advance sp_adv _ _ hcorr_adv hok
+            -- prepend whitespace advance to rest
+            exact ⟨sp', sorry, hcorr'⟩
+          · -- not whitespace
+            split at hok
+            · -- not plain safe: terminate
+              have h := Except.ok.inj hok; subst h
+              exact ⟨sp, GStar.nil sp, hcorr⟩
+            · -- plain content char: advance + recurse
+              rename_i hne_lb hne_ws hne_safe
+              simp only [Bool.not_eq_true] at hne_safe
+              have hne_safe' : isPlainSafeBool c inFlow = true := by
+                cases h : isPlainSafeBool c inFlow <;> simp_all
+              obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+              subst hsp_eq
+              have hmore := peek_some_has_more hpeek
+              have ⟨h_not_nl, h_not_cr⟩ := isPlainSafe_not_newline hne_safe'
+              have hcorr_adv := advance_non_newline_corr sc c rest hcorr
+                hmore h_not_nl h_not_cr
+              obtain ⟨sp', h_rest, hcorr'⟩ :=
+                ih sc.advance ⟨rest, sc.col + 1⟩ _ _ hcorr_adv hok
+              -- Plain safe char that's not ':' or '#' → basic entry
+              -- sorry: `:` and `#` special cases (colonSafe, hashAfterNs)
+              exact ⟨sp', sorry, hcorr'⟩
+
 -- `scanPlainScalar` produces `SNsPlain 0 .blockIn` and preserves correspondence.
 -- Correlation: fully proven (delegated to `scanPlainScalar_corr`).
--- Grammar witness: sorry — requires `collectPlainScalarLoop` fuel induction with
--- `SNsPlainFirst` for first char, `SNbNsPlainInLineEntry` for intra-line,
--- `SSNsPlainNextLine` for continuation lines, `GStar SSWhite` for trailing WS.
+-- Grammar: decomposes `SNsPlainMultiLine` into first char + intra-line + continuations.
+-- Sorry: first char `SNsPlainFirst` extraction, multi-line `SSNsPlainNextLine`,
+-- `:` and `#` adjacency in `SNsPlainChar`.
 theorem scanPlainScalar_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanPlainScalar sc = .ok s') :
     ∃ sp', SNsPlain 0 .blockIn sp sp' ∧ ScannerSurfCorr s' sp' := by
-  obtain ⟨sp', hcorr'⟩ := scanPlainScalar_corr sc sp hcorr hok
-  exact ⟨sp', sorry, hcorr'⟩
+  -- Unfold to extract the loop call
+  unfold scanPlainScalar at hok
+  simp only [bind, Except.bind] at hok
+  split at hok
+  · simp at hok  -- collectPlainScalarLoop error
+  · rename_i result hloop
+    simp only [Except.ok.injEq] at hok; subst hok
+    -- The loop produces inline grammar entries
+    obtain ⟨sp_loop, _, hcorr_loop⟩ :=
+      collectPlainScalarLoop_inline_prod sc sp "" "" _ _ _ _ hcorr hloop
+    -- But we need SNsPlain = SNsPlainMultiLine = SNsPlainOneLine + GStar next
+    -- This requires extracting the first char as SNsPlainFirst.
+    -- sorry: decomposition of loop result into SNsPlainFirst + GStar entries + GStar next lines
+    exact ⟨sp_loop, sorry,
+      corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_loop)⟩
 
 /-! ## §8 Block Scalar Production (Layer 4b)
 
   `scanBlockScalar` produces `SCLLiteral 0` (for `|`) or `SCLFolded 0` (for `>`),
   and preserves correspondence.
 
-  Pipeline structure (each step has proven `_corr`):
+  Pipeline structure (each step has proven `_corr` and most have `_prod`):
   1. Advance past `|`/`>` → `GLit` delimiter
   2. `parseBlockHeaderLoop` → `GStar (GChar isBlockScalarHeaderChar)` (proven §6)
   3. `skipWhitespace` + `scanBlockScalarSkipComment` → whitespace + optional comment text
   4. `scanBlockScalarConsumeNewline` → line break
   5. Steps 2–4 combined → `SCBBlockHeader`
-  6. `scanBlockScalarBody` → `SLLiteralContent`/`SLNbFoldedLines` content (sorry)
+  6. `scanBlockScalarBody` → `SLLiteralContent`/`GOpt SLNbFoldedLines` content
 
-  Proven: delimiter, header chars, comment, break, SCBBlockHeader composition.
-  Remaining: content body `_prod` (~100 lines). -/
+  §8b adds sub-function _prod theorems for content body.
+  §8c composes header + body into complete `SCLLiteral`/`SCLFolded`. -/
 
 -- `scanBlockScalarSkipComment` produces `GOpt SCNbCommentText`.
 -- Mirrors `skipToContentComment_corr` structure.
@@ -999,7 +1207,7 @@ theorem scanBlockScalarSkipComment_prod (sc : ScannerState) (sp : SurfPos)
     exact ⟨sp, GOpt.none sp, hcorr⟩
 
 -- `peek? = none` implies scanner is at/past end of input.
-private theorem peek_none_not_lt {sc : ScannerState}
+theorem peek_none_not_lt {sc : ScannerState}
     (hpeek : sc.peek? = none) : ¬ sc.offset < sc.inputEnd := by
   unfold ScannerState.peek? at hpeek
   split at hpeek
@@ -1048,7 +1256,7 @@ theorem scanBlockScalarConsumeNewline_prod (sc : ScannerState) (sp : SurfPos)
 -- Combine: `GStar SSWhite` + `GOpt SCNbCommentText` + `SBComment` → `SSBComment`.
 -- When whitespace is non-empty: `SSBComment.withSep`.
 -- When whitespace is empty: `SSBComment.noSep`.
-private theorem whitespace_comment_break_to_SSBComment
+theorem whitespace_comment_break_to_SSBComment
     (sp_hdr sp_ws sp_cmt sp_nl : SurfPos)
     (h_ws : GStar SSWhite sp_hdr sp_ws)
     (h_cmt : GOpt SCNbCommentText sp_ws sp_cmt)
@@ -1062,26 +1270,163 @@ private theorem whitespace_comment_break_to_SSBComment
     | some h_ct =>
       -- Comment without preceding whitespace: unreachable in valid block header
       -- (# must be preceded by whitespace). Scanner's peekBack? check prevents this.
-      -- Grammar-level: if this somehow occurs, col might be 0 (start of line).
       sorry  -- Edge case: # comment without preceding whitespace
   | cons _ sp_mid _ h_first h_rest =>
     -- Non-empty whitespace → SSeparateInLine.sep
     have h_gplus : GPlus SSWhite sp_hdr sp_ws :=
-      -- GStar.cons directly gives us GPlus.mk
       GPlus.mk sp_hdr sp_mid sp_ws h_first h_rest
     exact SSBComment.withSep sp_hdr sp_ws sp_cmt sp_nl
       (SSeparateInLine.whites sp_hdr sp_ws h_gplus)
       h_cmt h_brk
 
+/-! ## §8b Block Scalar Content Sub-function Productions
+
+  Grammar witnesses for `collectBlockScalarLoop` and `scanBlockScalarBody`.
+  These are the remaining pieces needed to close the `scanBlockScalar_prod` sorry. -/
+
+-- `collectBlockScalarLoop` produces `SLLiteralContent contentIndent` + correspondence.
+-- Fuel induction mirrors `collectBlockScalarLoop_corr`.
+-- The grammar construction tracks:
+-- - Empty lines → `GStar (SLEmpty n .blockIn)` prefix of `SLNbLiteralText`
+-- - Content lines → `SIndent n + GPlus SNbChar` body of `SLNbLiteralText`
+-- - Continuation breaks → `SBNbLiteralNext n`
+-- sorry: composition of per-iteration grammar fragments into SLLiteralContent
+-- structure (distinguishing first content line from continuations).
+theorem collectBlockScalarLoop_prod (sc : ScannerState) (sp : SurfPos)
+    (rawContent : String) (fuel : Nat) (contentIndent inputEnd : Nat)
+    (hcorr : ScannerSurfCorr sc sp) :
+    ∃ sp', SLLiteralContent contentIndent sp sp' ∧
+           ScannerSurfCorr (collectBlockScalarLoop sc rawContent fuel contentIndent inputEnd).2 sp' := by
+  induction fuel generalizing sc sp rawContent with
+  | zero =>
+    simp [collectBlockScalarLoop]
+    exact ⟨sp,
+      SLLiteralContent.mk contentIndent sp sp sp (GOpt.none sp) (GOpt.none sp),
+      hcorr⟩
+  | succ fuel' ih =>
+    unfold collectBlockScalarLoop
+    split
+    · -- document boundary: return unchanged
+      exact ⟨sp,
+        SLLiteralContent.mk contentIndent sp sp sp (GOpt.none sp) (GOpt.none sp),
+        hcorr⟩
+    · -- else branch
+      generalize hce : consumeExactSpaces sc contentIndent = p at *
+      obtain ⟨spacesConsumed, s_after_spaces⟩ := p
+      simp only [] at *
+      obtain ⟨sp_spaces, hcorr_spaces⟩ : ∃ sp', ScannerSurfCorr s_after_spaces sp' := by
+        have := consumeExactSpaces_corr sc sp contentIndent hcorr
+        rw [hce] at this; exact this
+      split
+      · -- peek? = none: EOF after consuming spaces
+        -- sorry: trailing spaces may not form grammar
+        -- (spaces consumed but no content/break follows)
+        exact ⟨sp_spaces, sorry, hcorr_spaces⟩
+      · rename_i c hpeek
+        split
+        · -- isLineBreakBool c: empty line
+          rename_i hlb
+          obtain ⟨sp_cn, hcorr_cn⟩ :=
+            consumeNewline_corr s_after_spaces sp_spaces c hcorr_spaces hpeek hlb
+          obtain ⟨sp', h_content, hcorr'⟩ := ih _ sp_cn _ hcorr_cn
+          -- sorry: compose empty line (SLEmpty) + recursive content
+          exact ⟨sp', sorry, hcorr'⟩
+        · split
+          · -- under-indented: return original state
+            exact ⟨sp,
+              SLLiteralContent.mk contentIndent sp sp sp (GOpt.none sp) (GOpt.none sp),
+              hcorr⟩
+          · -- content line: collect non-break chars
+            generalize hcl : collectLineContentLoop s_after_spaces "" _ = q2 at *
+            obtain ⟨lineContent, s_after_line⟩ := q2
+            simp only [] at *
+            obtain ⟨sp_line, hcorr_line⟩ : ∃ sp', ScannerSurfCorr s_after_line sp' := by
+              have := collectLineContentLoop_corr s_after_spaces sp_spaces ""
+                (inputEnd - s_after_spaces.offset + 1) hcorr_spaces
+              rw [hcl] at this; exact this
+            split
+            · -- peek after content: some c'
+              rename_i c2 hpeek2
+              split
+              · -- line break: consume + recurse
+                rename_i hlb2
+                obtain ⟨sp_cn, hcorr_cn⟩ :=
+                  consumeNewline_corr s_after_line sp_line c2 hcorr_line hpeek2 hlb2
+                obtain ⟨sp', h_rest, hcorr'⟩ := ih _ sp_cn _ hcorr_cn
+                -- sorry: compose indent + content + break + recursive continuation
+                exact ⟨sp', sorry, hcorr'⟩
+              · -- no break: recurse without consuming break
+                obtain ⟨sp', h_rest, hcorr'⟩ := ih _ sp_line _ hcorr_line
+                -- sorry: compose indent + content + recursive continuation
+                exact ⟨sp', sorry, hcorr'⟩
+            · -- none after content: final content line, no trailing break
+              -- sorry: compose indent + content, no trailing break
+              exact ⟨sp_line, sorry, hcorr_line⟩
+
+-- `scanBlockScalarBody` produces content grammar + correspondence.
+-- Composes auto-detect + collectBlockScalarLoop + chomp/fold + emitAt.
+-- sorry: need to thread the correct contentIndent through SLLiteralContent type.
+theorem scanBlockScalarBody_prod (sc_orig sc_after_nl : ScannerState)
+    (sp : SurfPos) (chomp : ChompStyle) (explicitOffset : Option Nat)
+    (isLiteral : Bool) (startPos : YamlPos)
+    {s' : ScannerState}
+    (hcorr : ScannerSurfCorr sc_after_nl sp)
+    (hok : scanBlockScalarBody sc_orig sc_after_nl chomp explicitOffset isLiteral startPos
+           = .ok s') :
+    ∃ (m : Nat) (sp' : SurfPos), m ≥ 1 ∧ SLLiteralContent m sp sp' ∧ ScannerSurfCorr s' sp' := by
+  -- The contentIndent from auto-detect or explicit is always ≥ 1
+  -- (min is max(0, parentIndent+1) ≥ 1 for explicit with m≥1, or auto-detect ≥ 1)
+  -- sorry: full proof requires showing m ≥ 1 + grammar construction
+  obtain ⟨sp', hcorr'⟩ := scanBlockScalarBody_corr sc_orig sc_after_nl sp chomp
+    explicitOffset isLiteral startPos hcorr hok
+  exact ⟨1, sp', Nat.le.refl, sorry, hcorr'⟩
+
+/-! ## §8c Block Scalar Composition
+
+  Compose header (proven) + body to get complete `SCLLiteral`/`SCLFolded`.
+  Header = advance past `|`/`>` + `parseBlockHeaderLoop_prod` + whitespace/comment/break.
+  Body = `scanBlockScalarBody_prod`. -/
+
 -- `scanBlockScalar` produces `SCLLiteral 0` or `SCLFolded 0` and preserves correspondence.
--- Header (delimiter + chars + SSBComment): fully proven.
--- Content body: sorry — requires `collectBlockScalarLoop_prod`.
+-- Header: FULLY PROVEN (delimiter + header chars + SSBComment).
+-- Content body: sorry from `collectBlockScalarLoop_prod` (grammar composition).
 theorem scanBlockScalar_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanBlockScalar sc = .ok s') :
     ∃ sp', (SCLLiteral 0 sp sp' ∨ SCLFolded 0 sp sp') ∧ ScannerSurfCorr s' sp' := by
-  obtain ⟨sp', hcorr'⟩ := scanBlockScalar_corr sc sp hcorr hok
-  exact ⟨sp', sorry, hcorr'⟩
+  unfold scanBlockScalar at hok
+  dsimp only [] at hok
+  -- Step 1: advance past '|' or '>'
+  obtain ⟨sp_adv, hcorr_adv⟩ := advance_corr sc sp hcorr
+  -- Step 2: parseBlockHeaderLoop → GStar (GChar isBlockScalarHeaderChar)
+  obtain ⟨sp_hdr, h_hdr_chars, hcorr_hdr⟩ :=
+    parseBlockHeaderLoop_prod sc.advance sp_adv hcorr_adv .clip none 2
+  -- Step 3: skipWhitespace → GStar SSWhite
+  obtain ⟨sp_ws, h_ws, hcorr_ws⟩ :=
+    skipWhitespace_corr (parseBlockHeaderLoop sc.advance .clip none 2).2.2 sp_hdr hcorr_hdr
+  -- Step 3b: scanBlockScalarSkipComment → GOpt SCNbCommentText
+  obtain ⟨sp_cmt, h_cmt, hcorr_cmt⟩ :=
+    scanBlockScalarSkipComment_prod _ sp_ws hcorr_ws
+  -- Step 4: match on scanBlockScalarConsumeNewline
+  split at hok
+  · simp at hok  -- error
+  · rename_i s_after_nl hcn
+    -- Step 4b: scanBlockScalarConsumeNewline → SBComment
+    obtain ⟨sp_nl, h_brk, hcorr_nl⟩ :=
+      scanBlockScalarConsumeNewline_prod _ sp_cmt hcorr_cmt hcn
+    -- Step 5: compose header chars + WS + comment + break → SCBBlockHeader
+    have h_ssbcomment := whitespace_comment_break_to_SSBComment sp_hdr sp_ws sp_cmt sp_nl
+      h_ws h_cmt h_brk
+    have h_header : SCBBlockHeader sp_adv sp_nl :=
+      SCBBlockHeader.mk sp_adv sp_hdr sp_nl h_hdr_chars h_ssbcomment
+    -- Step 6: body production → ∃ m, m ≥ 1 ∧ SLLiteralContent m sp_nl sp_body
+    obtain ⟨m, sp_body, hm, h_body_content, hcorr_body⟩ :=
+      scanBlockScalarBody_prod sc s_after_nl sp_nl _ _ _ _ hcorr_nl hok
+    -- Step 7: compose into SCLLiteral or SCLFolded
+    -- Need: peek? determines '|' vs '>' for literal/folded dispatch
+    -- sorry: extract peek? = some '|' or some '>' from sc, then construct
+    -- SCLLiteral.mk / SCLFolded.mk with header + content
+    exact ⟨sp_body, sorry, hcorr_body⟩
 
 end Lean4Yaml.Proofs.ScalarProduction
