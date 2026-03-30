@@ -152,6 +152,36 @@ structure ScannerSurfCorr (sc : ScannerState) (sp : SurfPos) : Prop where
   col_eq : sp.col = sc.col
   end_eq : sc.inputEnd = sc.input.utf8ByteSize
 
+/-- CharsFromOffset is a function: given `input` and `offset`, the
+    character list is uniquely determined. -/
+theorem CharsFromOffset_unique {input : String} {p : Nat}
+    {cs₁ cs₂ : List Char}
+    (h₁ : CharsFromOffset input p cs₁)
+    (h₂ : CharsFromOffset input p cs₂) : cs₁ = cs₂ := by
+  induction h₁ generalizing cs₂ with
+  | at_end _ hp₁ =>
+    cases h₂ with
+    | at_end => rfl
+    | cons _ hp₂ => omega
+  | cons _ hp₁ c₁ _ hc₁ _ ih =>
+    cases h₂ with
+    | at_end _ hp₂ => omega
+    | cons _ _ c₂ _ hc₂ hrest₂ =>
+      have : c₁ = c₂ := by rw [← hc₁, ← hc₂]
+      subst this
+      congr 1
+      exact ih hrest₂
+
+/-- Surface position correspondence is unique: given a scanner state,
+    at most one surface position corresponds to it. -/
+theorem ScannerSurfCorr_unique {sc : ScannerState} {sp₁ sp₂ : SurfPos}
+    (h₁ : ScannerSurfCorr sc sp₁) (h₂ : ScannerSurfCorr sc sp₂) :
+    sp₁ = sp₂ := by
+  have hchars := CharsFromOffset_unique h₁.chars_from h₂.chars_from
+  have hcol : sp₁.col = sp₂.col := by rw [h₁.col_eq, h₂.col_eq]
+  cases sp₁; cases sp₂; simp only [SurfPos.mk.injEq] at hchars hcol ⊢
+  exact ⟨hchars, hcol⟩
+
 /-- Initial state correspondence. -/
 theorem initial_corr (input : String) (cs : List Char)
     (hcs : CharsFromOffset input 0 cs) :

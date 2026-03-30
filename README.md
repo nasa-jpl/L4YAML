@@ -1916,7 +1916,11 @@ Tier 2 — Scalar _prod theorems (in progress):
   - `collectLineContentLoop_nbchar_prod` — `GStar SNbChar` from content chars
   - `gstar_to_gplus_from_first` — `GPlus` from first element + `GStar` rest
   - `collectLineContentLoop_gplus_prod` — `GPlus SNbChar` when first char known
+  - `consumeExactSpaces_fst_le` — `(consumeExactSpaces sc count).1 ≤ count`
   - Helper lemmas: `consumeExactSpaces_succ_space_fst/snd`, `consumeExactSpaces_succ_not_space`
+- Uniqueness lemmas (CouplingBridge.lean), **fully proven**:
+  - `CharsFromOffset_unique` — determinism of char extraction by induction
+  - `ScannerSurfCorr_unique` — if two `SurfPos` both satisfy `ScannerSurfCorr` for the same state, they are equal
 - `collectPlainScalarLoop_inline_prod` (ScalarProduction.lean §7): fuel induction producing
   `GStar (SNbNsPlainInLineEntry .blockIn)`. Decomposed into 3 targeted sorry:
   - Multi-line break handling (flow: `foldQuotedNewlines`, block: `handleBlockLineBreak`)
@@ -1926,41 +1930,95 @@ Tier 2 — Scalar _prod theorems (in progress):
   Sorry for `SNsPlainFirst` extraction and `SNsPlainMultiLine` composition.
 - `collectBlockScalarLoop_prod` (ScalarProduction.lean §8b): fuel induction with same case
   structure as `collectBlockScalarLoop_corr`. Base cases (fuel=0, doc boundary, under-indent)
-  produce empty `SLLiteralContent`. Recursive cases use `consumeNewline_corr` +
-  `collectLineContentLoop_corr` with sorry for grammar fragment composition (~6 locations).
+  produce empty `SLLiteralContent`. Content-line branch: `SIndent` via `consumeExactSpaces_sindent_prod`,
+  `GPlus SNbChar` via `collectLineContentLoop_gplus_prod`, positions linked via `ScannerSurfCorr_unique`.
+  Two recursive cases PROVEN: "content + break + recursion" (via `consumeNewline_sbreak_corr` +
+  `literal_content_prepend_line`) and "final content line, no break" (direct `SLLiteralContent`
+  assembly). Three sorry remain: trailing spaces at EOF, empty line + recursive, no-break-between-lines.
+- `literal_content_prepend_line` (ScalarProduction.lean §8b): composition lemma
+  `SLNbLiteralText + SBBreak + SLLiteralContent → SLLiteralContent`. Proven for `some` body
+  (prepend via `SBNbLiteralNext`) and `none` body + `none` trail (text + trailing break).
+  1 sorry: `none` body + `some` trail (consecutive breaks, structurally unreachable).
 - `scanBlockScalarBody_prod` (ScalarProduction.lean §8b): existential wrapper returning
   `∃ (m : Nat) (sp' : SurfPos), m ≥ 1 ∧ SLLiteralContent m sp sp'`. Delegates to `_corr`.
 - `scanBlockScalar_prod` header (ScalarProduction.lean §8c): **FULLY PROVEN** header composition:
   advance past `|`/`>` → `parseBlockHeaderLoop_prod` → `skipWhitespace_corr` →
   `scanBlockScalarSkipComment_prod` → `scanBlockScalarConsumeNewline_prod` →
-  `whitespace_comment_break_to_SSBComment` → `SCBBlockHeader`. Body + literal/folded dispatch: sorry.
+  `whitespace_comment_break_to_SSBComment` → `SCBBlockHeader`. Literal (`|`) dispatch: **FULLY PROVEN**
+  via `peek_some_sp` + `advance_non_newline_corr` + `ScannerSurfCorr_unique` + `Nat.zero_add`.
+  Folded (`>`) dispatch: sorry for `SLLiteralContent` → `GOpt SLNbFoldedLines` type conversion.
 - `scanBlockScalarSkipComment_prod` fully proven (produces `GOpt SCNbCommentText`)
 - `scanBlockScalarConsumeNewline_prod` fully proven (produces `SBComment`)
 - `whitespace_comment_break_to_SSBComment` proven for all practical cases (1 edge sorry:
   `#` without preceding whitespace, unreachable from scanner's `peekBack?` check)
 
-**Sorry count: 6 base + 6 scalar = 12 total** (ScalarProduction.lean: `collectPlainScalarLoop_inline_prod` ×3,
-`scanPlainScalar_prod` ×1, `collectBlockScalarLoop_prod` + `scanBlockScalarBody_prod` ×1,
-`scanBlockScalar_prod` ×1; base: DocumentProduction.lean ×1, StreamAccum.lean ×5).
+**Sorry count: 6 base + 7 scalar = 13 declarations** (ScalarProduction.lean ×7:
+`collectPlainScalarLoop_inline_prod`, `scanPlainScalar_prod`,
+`whitespace_comment_break_to_SSBComment`, `literal_content_prepend_line`,
+`collectBlockScalarLoop_prod`, `scanBlockScalarBody_prod`, `scanBlockScalar_prod`;
+DocumentProduction.lean ×1; StreamAccum.lean ×5).
 
-**Decomposition vs monolithic sorry:** Previous session had 3 monolithic sorry (one each for
-`scanPlainScalar_prod`, `scanBlockScalar_prod`, and `whitespace_comment_break_to_SSBComment`).
-These have been decomposed into 6 sorry targeting specific sub-problems:
-- **Grammar fragment composition** (block scalar loop): how to assemble `SIndent` + `GPlus SNbChar` +
-  `SBAsLineFeed` into `SLNbLiteralText` / `SBNbLiteralNext`, and accumulate across iterations
-  into `SLLiteralContent`. The first-line vs continuation-line distinction in the grammar doesn't
-  match the uniform loop structure.
-- **Multi-line plain scalar** continuation: `handleBlockLineBreak` / `foldQuotedNewlines` produce
-  content + new state, need `SSNsPlainNextLine` grammar witness.
-- **First char extraction** (`SNsPlainFirst`): the loop proves `GStar (SNbNsPlainInLineEntry)` but
-  `SNsPlainOneLine` requires the first character to be extracted as `SNsPlainFirst`.
-- **Literal/folded dispatch**: `scanBlockScalar_prod` needs to extract `peek? = '|'` or `'>'`
-  from the initial scanner state to choose `SCLLiteral` vs `SCLFolded`.
+**Progress (2026-03-29 session 2):**
+- `CharsFromOffset_unique` + `ScannerSurfCorr_unique` PROVEN in CouplingBridge.lean —
+  enables linking `_corr` existential witnesses with `_prod` specific positions.
+- `consumeExactSpaces_fst_le` PROVEN — upper bound on spaces consumed.
+- `literal_content_prepend_line` MOSTLY PROVEN — composes text line + break + recursive
+  `SLLiteralContent`. 1 sorry remains (consecutive breaks edge case: `none` body + `some` trail
+  in recursive content, structurally unreachable from scanner output).
+- `collectBlockScalarLoop_prod` two sorry CLOSED:
+  - "final content line, no break" — assembles `SLNbLiteralText` + `SLLiteralContent` with
+    `GOpt.some`/`GOpt.none`.
+  - "content + break + recursion" — uses `consumeNewline_sbreak_corr` (returns `SBBreak`) +
+    `literal_content_prepend_line` to compose.
+- `scanBlockScalar_prod` literal (`|`) dispatch **FULLY PROVEN** — `peek_some_sp` +
+  `advance_non_newline_corr` + `ScannerSurfCorr_unique` + `Nat.zero_add` rewrite.
+
+**Decomposition vs monolithic sorry:** Original 3 monolithic sorry have been decomposed into
+13 declarations with targeted sub-problems. The sorry that remain:
+
+| Sorry site | Theorem | Sub-problem |
+|---|---|---|
+| L1114 | `collectPlainScalarLoop_inline_prod` | Multi-line: `handleBlockLineBreak` → `SSNsPlainNextLine` |
+| L1122 | `collectPlainScalarLoop_inline_prod` | WS accumulation: `GStar SSWhite` within entry |
+| L1143 | `collectPlainScalarLoop_inline_prod` | `:` and `#` adjacency → `colonSafe`/`hashAfterNs` |
+| L1168 | `scanPlainScalar_prod` | First char `SNsPlainFirst` extraction + composition |
+| L1284 | `whitespace_comment_break_to_SSBComment` | `#` without preceding WS (unreachable edge) |
+| L1317 | `literal_content_prepend_line` | Consecutive breaks (`none` body + `some` trail) |
+| L1366 | `collectBlockScalarLoop_prod` | Trailing spaces at EOF (incomplete indent) |
+| L1375 | `collectBlockScalarLoop_prod` | Empty line (`SLEmpty`) + recursive content |
+| L1443 | `collectBlockScalarLoop_prod` | No break between content lines (fuel edge) |
+| L1472 | `scanBlockScalarBody_prod` | Thread `contentIndent` through `SLLiteralContent` type |
+| L1547 | `scanBlockScalar_prod` | `SLLiteralContent` → `GOpt SLNbFoldedLines` for folded |
 
 **Remaining for full Tier 2 closure:**
-- Close the 6 ScalarProduction.lean sorry (grammar construction at each location)
-- Most tractable: literal/folded dispatch (extract initial char from scanner state)
-- Hardest: grammar fragment accumulation across loop iterations
+
+*Most tractable (next session):*
+1. **L1143 — `:` and `#` special cases.** Need to case-split on `c = ':'` and `c = '#'`
+   before applying `isPlainSafe_to_inlineEntry_basic`. For `:`, scanner checks next char via
+   `isPlainSafeBool`; for `#`, `col > 0` sufficed. Both constructors (`colonSafe`, `hashAfterNs`)
+   are in `SNsPlainChar`. Requires reading scanner logic for what preconditions hold at this point.
+2. **L1122 — WS accumulation.** The advance produces `sp → sp_adv` (one WS char). The recursive
+   `ih` gives `GStar (SNbNsPlainInLineEntry)` from `sp_adv`. Need to prepend the WS as part of
+   the first entry's `GStar SSWhite` prefix, or as a standalone `GStar SSWhite` + identity entry.
+   May need a helper `prepend_white_to_gstar_entries`.
+3. **L1375 — empty line + recursive content.** Need `SLEmpty n .blockIn` from consumed spaces +
+   line break, then compose with recursive `SLLiteralContent` similarly to
+   `literal_content_prepend_line`.
+
+*Medium difficulty:*
+4. **L1168 — `SNsPlainFirst` extraction.** Requires proving the first char satisfies
+   `canStartPlainScalarBool` → `SNsPlainFirst` + splitting `GStar entry` into first + rest.
+5. **L1366, L1443 — block scalar edge cases.** Trailing spaces at EOF forms incomplete
+   `SIndent`; no-break-between-lines is a fuel exhaustion edge case.
+6. **L1472 — `scanBlockScalarBody_prod`.** Need to show auto-detect/explicit indent ≥ 1 and
+   thread through `collectBlockScalarLoop_prod`.
+
+*Hardest:*
+7. **L1114 — multi-line plain scalar.** `handleBlockLineBreak` → `SSNsPlainNextLine` requires
+   `SBBreak` + `GStar SLEmpty` + `SFlowLinePrefix` + `GPlus SNbNsPlainInLineEntry`.
+8. **L1547 — folded content type.** `SLLiteralContent` ≠ `GOpt SLNbFoldedLines` — different
+   grammar structures (`SLNbLiteralText` vs `SSNbFoldedText`, `SNbChar` vs `SNsChar`).
+   May need a separate `collectBlockScalarLoop` variant or conversion lemma.
 
 **Reflections:**
 
@@ -1977,6 +2035,14 @@ These have been decomposed into 6 sorry targeting specific sub-problems:
 6. **`let`-bound pair destructuring blocks `omega`/`simp`.** After `unfold consumeExactSpaces`, the pair `let (consumed, s') := rec_call; (consumed + 1, s')` introduces a `match` on the pair that `omega` cannot see through. Solution: write helper lemmas (`consumeExactSpaces_succ_space_fst/snd`) that use `generalize h : rec_call = p` BEFORE `unfold` so both sides stay in sync, then `rw [h]` closes the goal. Using `generalize` after `unfold` fails because the RHS still has the un-unfolded term. This pattern applies to any recursive function returning a pair through `let` destructuring.
 
 7. **Grammar structure vs loop structure mismatch is the core difficulty.** `SLLiteralContent` distinguishes the first content line (`SLNbLiteralText`) from continuation lines (`SBNbLiteralNext`), but `collectBlockScalarLoop` treats all iterations uniformly. Similarly, `SNsPlainMultiLine` requires `SNsPlainFirst` for the first character but the loop produces uniform `GStar (SNbNsPlainInLineEntry)`. Converting loop-uniform output to grammar-structured output requires either: (a) accumulator-aware induction tracking first-vs-rest, or (b) post-hoc structural conversion lemmas. Both add significant proof overhead.
+
+8. **`ScannerSurfCorr_unique` bridges `_corr` and `_prod` results.** When `_corr` gives `ScannerSurfCorr s sp₁` and `_prod` gives `ScannerSurfCorr s sp₂`, uniqueness proves `sp₁ = sp₂`. This is essential when composing: e.g., `consumeExactSpaces_sindent_prod` gives `SIndent n sp sp_ind` with `ScannerSurfCorr s_after sp_ind`, and `consumeExactSpaces_corr` (called separately) gives `ScannerSurfCorr s_after sp_spaces`. Without `ScannerSurfCorr_unique`, we cannot equate `sp_ind = sp_spaces` to thread the grammar witnesses together. The underlying `CharsFromOffset_unique` requires `induction h₁ generalizing cs₂` — the `generalizing` is critical because the induction hypothesis must apply to ANY second derivation, not just the original `cs₂`.
+
+9. **`0 + m ≠ m` definitionally in Lean 4.** `Nat.add` pattern-matches on its second argument, so `0 + m` does not reduce to `m`. This causes `SLLiteralContent (0 + m) sp sp'` and `SLLiteralContent m sp sp'` to be different types. Fix: explicit `rw [Nat.zero_add]` or `have h : SLLiteralContent (0 + m) ... := by rw [Nat.zero_add]; exact h_content`. This appears in `scanBlockScalar_prod` where `SCLLiteral.mk n m` needs `SLLiteralContent (n + m)` but `scanBlockScalarBody_prod` returns `SLLiteralContent m` at `n = 0`.
+
+10. **`cases` vs `match` on indexed inductives.** `cases h_rest with | mk sp_start sp_mid sp_end ... =>` gives "Too many variable names" because matched indices (e.g., `n`, `s`, `s'` in `SLLiteralContent n s s'`) are unified by the `cases` tactic, not exposed as matchable variables. Only free constructor arguments appear. Solution: use `match h_rest with | .mk _ _ sp_mid _ h_body h_trail =>` which explicitly provides ALL constructor arguments (including indices as `_`). This was needed throughout `literal_content_prepend_line`.
+
+11. **`by_contra` is Mathlib-only.** In the `collectBlockScalarLoop_prod` spaces≥indent proof, the natural approach `by_contra h_lt; ...` fails without Mathlib. Workaround: `cases Nat.lt_or_ge spacesConsumed contentIndent with | inl h_lt => exfalso; ... | inr h_ge => exact h_ge`. Combined with `simp only [Bool.and_eq_true, decide_eq_true_eq, Bool.not_eq_true']` to decompose Bool/decide hypotheses from the negated under-indent guard.
 
 Tier 3 — Discharge with new _prod:
 5. accum_step_content — tractable once plain + block scalar _prod grammar sorry are removed
