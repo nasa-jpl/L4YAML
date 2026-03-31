@@ -839,6 +839,43 @@ theorem isDigitNotZero_isBlockHeaderChar {c : Char}
     exact Char.ext (UInt32.toNat_inj.mp (by omega))
   omega
 
+-- `parseBlockHeaderLoop` preserves or sets `explicitOffset` to `some d` with `d ≥ 1`.
+-- Starting with `none`, any digit sets d = c.toNat - '0'.toNat ≥ 1.
+-- Starting with `some d` where `d ≥ 1`, the value is preserved or overwritten with ≥ 1.
+theorem parseBlockHeaderLoop_offset_preserves (sc : ScannerState) (chomp : ChompStyle)
+    (off : Option Nat) (fuel : Nat)
+    (hoff : ∀ d, off = some d → d ≥ 1) :
+    ∀ d, (parseBlockHeaderLoop sc chomp off fuel).2.1 = some d → d ≥ 1 := by
+  induction fuel generalizing sc chomp off with
+  | zero => simp only [parseBlockHeaderLoop]; exact hoff
+  | succ fuel' ih =>
+    simp only [parseBlockHeaderLoop]
+    split
+    · exact ih sc.advance .strip off hoff  -- '-': same offset
+    · exact ih sc.advance .keep off hoff   -- '+': same offset
+    · rename_i c _ _ _
+      split
+      · -- digit 1–9: offset becomes some (c.toNat - '0'.toNat)
+        rename_i hdigit
+        exact ih sc.advance chomp (some (c.toNat - '0'.toNat)) (fun d h => by
+          have heq := Option.some.inj h; subst heq
+          -- c.isDigit && c != '0' implies c ∈ {'1',...,'9'}, so c.toNat - '0'.toNat ≥ 1
+          have hne' : c ≠ '0' := by intro heq; subst heq; simp at hdigit
+          have hdig : c.isDigit = true := by
+            have := Bool.and_eq_true_iff.mp hdigit; exact this.1
+          simp only [Char.isDigit, Bool.and_eq_true, decide_eq_true_eq,
+                     UInt32.le_iff_toNat_le] at hdig
+          have h0_val : ('0' : Char).val.toNat = 48 := by native_decide
+          rw [h0_val] at hdig
+          have h_ne_48 : c.val.toNat ≠ 48 := by
+            intro heq; apply hne'
+            exact Char.ext (UInt32.toNat_inj.mp (by omega))
+          show c.toNat - '0'.toNat ≥ 1
+          simp only [Char.toNat, h0_val]
+          omega)
+      · exact hoff  -- non-header: returns unchanged offset
+    · exact hoff    -- none: returns unchanged offset
+
 -- `parseBlockHeaderLoop` produces `GStar (GChar isBlockScalarHeaderChar)`.
 theorem parseBlockHeaderLoop_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (chomp : ChompStyle)
@@ -1229,6 +1266,87 @@ theorem whitespace_comment_break_to_SSBComment_withWS
   Grammar witnesses for `collectBlockScalarLoop` and `scanBlockScalarBody`.
   These are the remaining pieces needed to close the `scanBlockScalar_prod` sorry. -/
 
+-- `autoDetectBlockScalarIndentLoop` returns indent ≥ minContentIndent when no error.
+theorem autoDetectBlockScalarIndentLoop_ge_min
+    (probe : ScannerState) (maxWSCol maxWSLine min fuel ie : Nat) :
+    (autoDetectBlockScalarIndentLoop probe maxWSCol maxWSLine min fuel ie).2.2.2 = none →
+    (autoDetectBlockScalarIndentLoop probe maxWSCol maxWSLine min fuel ie).1 ≥ min := by
+  induction fuel generalizing probe maxWSCol maxWSLine with
+  | zero =>
+    unfold autoDetectBlockScalarIndentLoop
+    split <;> omega
+  | succ fuel' ih =>
+    unfold autoDetectBlockScalarIndentLoop
+    dsimp only []
+    split
+    · -- peek? = some c
+      split
+      · intro h; cases h  -- tab error: none ≠ some
+      · split
+        · -- linebreak: recurse
+          exact ih _ _ _
+        · -- content line
+          split
+          · intro h; cases h  -- indent mismatch: none ≠ some
+          · intro _; exact Nat.le_max_left min _
+    · -- peek? = none
+      split <;> omega
+
+-- `autoDetectBlockScalarIndent` returns indent ≥ minContentIndent when no error.
+theorem autoDetectBlockScalarIndent_ge_min
+    (s : ScannerState) (min ie : Nat) :
+    (autoDetectBlockScalarIndent s min ie).2 = none →
+    (autoDetectBlockScalarIndent s min ie).1 ≥ min := by
+  unfold autoDetectBlockScalarIndent
+  simp only []
+  generalize hq : autoDetectBlockScalarIndentLoop s 0 0 min (ie - s.offset + 1) ie = q
+  obtain ⟨indent, wsLine, probe', err⟩ := q
+  simp only [] at *
+  intro h_none; subst h_none
+  have := autoDetectBlockScalarIndentLoop_ge_min s 0 0 min (ie - s.offset + 1) ie
+  rw [hq] at this
+  exact this rfl
+
+-- `scanBlockScalarBody` on success implies the content indent is ≥ 1
+-- when the parent indent is ≥ 0 and any explicit offset is ≥ 1.
+private theorem scanBlockScalarBody_indent_ge_one
+    (sc_orig sc_after_nl : ScannerState)
+    (chomp : ChompStyle) (explicitOffset : Option Nat)
+    (isLiteral : Bool) (startPos : YamlPos) {s' : ScannerState}
+    (hIndent : sc_orig.currentIndent ≥ 0)
+    (hOff : ∀ d, explicitOffset = some d → d ≥ 1)
+    (hok : scanBlockScalarBody sc_orig sc_after_nl chomp explicitOffset isLiteral startPos
+           = .ok s') :
+    ∃ m, m ≥ 1 := by
+  unfold scanBlockScalarBody at hok
+  dsimp only [] at hok
+  cases hoff_eq : explicitOffset with
+  | some d =>
+    rw [hoff_eq] at hok
+    -- autoDetectErr? = none, so the match reduces directly
+    -- contentIndent = (max 0 (parentIndent + d)).toNat
+    exact ⟨(max 0 (sc_orig.currentIndent + (↑d : Int))).toNat, by
+      have := hOff d hoff_eq; omega⟩
+  | none =>
+    rw [hoff_eq] at hok
+    -- (contentIndent, autoDetectErr?) = autoDetectBlockScalarIndent ...
+    generalize h_auto : autoDetectBlockScalarIndent sc_after_nl
+      (max 0 (sc_orig.currentIndent + 1)).toNat sc_orig.inputEnd = auto_res at hok
+    obtain ⟨ci, err⟩ := auto_res
+    simp only [] at h_auto hok
+    cases h_err : err with
+    | some e =>
+      simp only [h_err] at hok
+      cases hok  -- Except.error ≠ Except.ok
+    | none =>
+      simp only [h_err] at hok
+      exact ⟨ci, by
+        have h_min : (max 0 (sc_orig.currentIndent + 1)).toNat ≥ 1 := by omega
+        have h_ge := autoDetectBlockScalarIndent_ge_min sc_after_nl
+          (max 0 (sc_orig.currentIndent + 1)).toNat sc_orig.inputEnd
+        rw [h_auto] at h_ge; simp only [] at h_ge
+        exact Nat.le_trans h_min (h_ge h_err)⟩
+
 -- Compose: text line + break + recursive SLLiteralContent → SLLiteralContent.
 -- The first line becomes the head of the GSeq, and if the recursive content
 -- has text lines they become SBNbLiteralNext entries in the GStar tail.
@@ -1389,12 +1507,14 @@ private theorem scanBlockScalar_unreachable_comment_without_ws
 
 -- `scanBlockScalar` produces `SCLLiteral 0` or `SCLFolded 0` and preserves correspondence.
 -- Header: FULLY PROVEN (delimiter + header chars + SSBComment).
--- Body grammar: sorry (composition of per-iteration fragments into SLLiteralContent).
--- Dispatch: FULLY PROVEN for literal (`|`), sorry for folded (`>`) content type conversion.
+-- Body grammar: sorry (SLLiteralContent / GOpt SLNbFoldedLines only).
+-- m ≥ 1: FULLY PROVEN (autoDetect ≥ min ≥ 1, explicit offset ≥ 1).
+-- Dispatch: FULLY PROVEN for literal (`|`) and folded (`>`).
 theorem scanBlockScalar_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hchar : sc.peek? = some '|' ∨ sc.peek? = some '>')
+    (hIndent : sc.currentIndent ≥ 0)
     (hok : scanBlockScalar sc = .ok s') :
     ∃ sp', (SCLLiteral 0 sp sp' ∨ SCLFolded 0 sp sp') ∧ ScannerSurfCorr s' sp' := by
   unfold scanBlockScalar at hok
@@ -1442,9 +1562,12 @@ theorem scanBlockScalar_prod (sc : ScannerState) (sp : SurfPos)
       | cons _ sp_mid _ h_first h_rest =>
         exact whitespace_comment_break_to_SSBComment_withWS
           sp_hdr sp_mid sp_ws sp_cmt sp_nl h_first h_rest h_cmt h_brk
-    -- Step 6: body correspondence (grammar sorry)
+    -- Step 6: body correspondence + m ≥ 1
     obtain ⟨sp_body, hcorr_body⟩ :=
       scanBlockScalarBody_corr sc s_after_nl sp_nl _ _ _ _ hcorr_nl hok
+    have hOff := parseBlockHeaderLoop_offset_preserves sc.advance .clip none 2
+      (fun _ h => by cases h)
+    obtain ⟨m, hm⟩ := scanBlockScalarBody_indent_ge_one sc s_after_nl _ _ _ _ hIndent hOff hok
     -- Step 7: dispatch on '|' vs '>' to construct literal or folded
     rcases hchar with hlit | hfold
     · -- Literal: sc.peek? = some '|'
@@ -1457,8 +1580,10 @@ theorem scanBlockScalar_prod (sc : ScannerState) (sp : SurfPos)
       rw [hsp_adv_eq] at h_hdr_chars
       have h_header : SCBBlockHeader ⟨rest, sc.col + 1⟩ sp_nl :=
         SCBBlockHeader.mk ⟨rest, sc.col + 1⟩ sp_hdr sp_nl h_hdr_chars h_ssbcomment
-      -- sorry: body grammar (SLLiteralContent) + m ≥ 1
-      exact ⟨sp_body, Or.inl sorry, hcorr_body⟩
+      -- sorry: body grammar only (SLLiteralContent m)
+      exact ⟨sp_body,
+             Or.inl (SCLLiteral.mk 0 m rest sc.col sp_nl sp_body hm h_header sorry),
+             hcorr_body⟩
     · -- Folded: sc.peek? = some '>'
       obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hfold
       subst hsp_eq
@@ -1469,7 +1594,9 @@ theorem scanBlockScalar_prod (sc : ScannerState) (sp : SurfPos)
       rw [hsp_adv_eq] at h_hdr_chars
       have h_header : SCBBlockHeader ⟨rest, sc.col + 1⟩ sp_nl :=
         SCBBlockHeader.mk ⟨rest, sc.col + 1⟩ sp_hdr sp_nl h_hdr_chars h_ssbcomment
-      -- sorry: body grammar (GOpt SLNbFoldedLines) + m ≥ 1
-      exact ⟨sp_body, Or.inr sorry, hcorr_body⟩
+      -- sorry: body grammar only (GOpt SLNbFoldedLines m)
+      exact ⟨sp_body,
+             Or.inr (SCLFolded.mk 0 m rest sc.col sp_nl sp_body hm h_header sorry),
+             hcorr_body⟩
 
 end Lean4Yaml.Proofs.ScalarProduction

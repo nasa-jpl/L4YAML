@@ -1955,14 +1955,14 @@ Partially discharged `preprocessing_eof_extends_stream` (§1a). The `BlockStack.
   (`SLLiteralContent` + `m ≥ 1`), folded body grammar (`GOpt SLNbFoldedLines` + `m ≥ 1`).
   `#` without preceding WS was closed (see L1293 below).
 
-**Sorry count: 7 declarations** (ScalarProduction.lean ×2:
+**Sorry count: 8 declarations** (ScalarProduction.lean ×2:
 `scanPlainScalar_prod`, `scanBlockScalar_prod`;
 DocumentProduction.lean ×1: `scan_content_gives_stream`;
 StreamAccum.lean ×5: `preprocessing_eof_extends_stream`, `accum_step_structural`,
 `accum_step_flow`, `accum_step_block`, `accum_step_content`).
-Note: `scanBlockScalar_prod` sorry count reduced from 3 to 2 (L1293 closed).
+Note: `scanBlockScalar_prod` has 2 sorry uses (literal body, folded body) within 1 declaration.
 
-**Reduction history:** 14 → 13 → 12 → 11 → 10 → 9 → 8 → 7
+**Reduction history:** 14 → 13 → 12 → 11 → 10 → 9 → 8
 
 **Progress (2026-03-30 session 3 — consolidation pass):**
 - **5 intermediate sorry-containing theorems removed** by consolidating into call sites:
@@ -1996,10 +1996,10 @@ Note: `scanBlockScalar_prod` sorry count reduced from 3 to 2 (L1293 closed).
 
 | Sorry site | Theorem | Sub-problem |
 |---|---|---|
-| L1115 | `scanPlainScalar_prod` | Grammar: `SNsPlain 0 .blockIn` (first char + continuation + multi-line) |
+| L1152 | `scanPlainScalar_prod` | Grammar: `SNsPlain 0 .blockIn` (first char + continuation + multi-line) |
 | ~~L1293~~ | ~~`scanBlockScalar_prod`~~ | ~~`#` without preceding WS~~ — **CLOSED** (2026-03-31, `peekBack?` infrastructure) |
-| L1461 | `scanBlockScalar_prod` | Literal body: `SCLLiteral 0` (`SLLiteralContent` + `m ≥ 1`) |
-| L1473 | `scanBlockScalar_prod` | Folded body: `SCLFolded 0` (`GOpt SLNbFoldedLines` + `m ≥ 1`) |
+| L1585 | `scanBlockScalar_prod` | Literal body: `SLLiteralContent m` only (`m ≥ 1` **PROVEN**, header **PROVEN**) |
+| L1599 | `scanBlockScalar_prod` | Folded body: `GOpt (SLNbFoldedLines m)` only (`m ≥ 1` **PROVEN**, header **PROVEN**) |
 
 **Remaining for full Tier 2 closure:**
 
@@ -2010,13 +2010,16 @@ Note: `scanBlockScalar_prod` sorry count reduced from 3 to 2 (L1293 closed).
    (peekBack ≠ WS ⇒ noop) → `ScannerSurfCorr_unique` + `scNbCommentText_irrefl` (sp=sp ⇒ ⊥).
    Required adding `input_prefix` field to `ScannerSurfCorr` and 11 helper lemmas across
    CouplingBridge.lean (§11–§14) and ScalarProduction.lean (§8d). See reflections below.
-2. **L1461/L1473 — block scalar body grammar + `m ≥ 1`.** Two sub-problems:
-   (a) Prove `autoDetectBlockScalarIndent` returns `m ≥ 1` when `currentIndent ≥ 0`.
-   (b) Construct `SLLiteralContent m` (literal) or `GOpt SLNbFoldedLines m` (folded) from
+2. **L1585/L1599 — block scalar body grammar.** ~~Two sub-problems:~~
+   ~~(a) Prove `autoDetectBlockScalarIndent` returns `m ≥ 1` when `currentIndent ≥ 0`.~~
+   ✅ **(a) PROVEN** (2026-03-31): `autoDetectBlockScalarIndentLoop_ge_min` + `autoDetectBlockScalarIndent_ge_min`
+   + `parseBlockHeaderLoop_offset_preserves` + `scanBlockScalarBody_indent_ge_one`.
+   `scanBlockScalar_prod` now has `hIndent : sc.currentIndent ≥ 0` precondition.
+   (b) Construct `SLLiteralContent m` (literal) or `GOpt (SLNbFoldedLines m)` (folded) from
    the loop. The sorry-free helpers (`consumeExactSpaces_sindent_prod`,
    `collectLineContentLoop_gplus_prod`, `prepend_empty_to_text_line`) are ready for the
-   per-iteration grammar construction. The main gap is composing iterations into the
-   grammar types and proving `m ≥ 1`.
+   per-iteration grammar construction. **This is the only remaining gap** — composing
+   loop iterations into the grammar types.
 
 *Hardest:*
 3. **L1111 — plain scalar grammar.** Requires:
