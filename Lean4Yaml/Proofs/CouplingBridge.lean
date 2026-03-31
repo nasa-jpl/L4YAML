@@ -88,6 +88,63 @@ theorem utf8GetAux_at_boundary (pre : List Char) (c : Char) (suf : List Char)
             ⟨(base + p).byteIdx + listByteSize ps⟩ from by ext; simp; omega]
     exact ih (base + p)
 
+/-- `utf8PrevAux` returns the start position of the character at a given boundary.
+    Dual of `utf8GetAux_at_boundary`: prev at the end of character `c` returns its start. -/
+theorem utf8PrevAux_at_boundary (pre : List Char) (c : Char) (suf : List Char)
+    (base_n : Nat) :
+    String.Pos.Raw.utf8PrevAux (pre ++ c :: suf) ⟨base_n⟩
+      ⟨base_n + listByteSize pre + c.utf8Size⟩ =
+    ⟨base_n + listByteSize pre⟩ := by
+  induction pre generalizing base_n with
+  | nil =>
+    simp only [List.nil_append, listByteSize, Nat.add_zero]
+    rw [String.Pos.Raw.utf8PrevAux.eq_2]
+    split
+    · rfl
+    · rename_i h; exfalso; exact h (Nat.le_refl _)
+  | cons p ps ih =>
+    simp only [List.cons_append, listByteSize]
+    rw [String.Pos.Raw.utf8PrevAux.eq_2]
+    split
+    · exfalso; rename_i h
+      have h_nat : base_n + (p.utf8Size + listByteSize ps) + c.utf8Size ≤
+                   base_n + p.utf8Size := h
+      have := Char.utf8Size_pos c; omega
+    · rename_i _h
+      rw [show (⟨base_n⟩ : String.Pos.Raw) + p = ⟨base_n + p.utf8Size⟩ from rfl]
+      have h1 : (⟨base_n + (p.utf8Size + listByteSize ps) + c.utf8Size⟩ : String.Pos.Raw) =
+                 ⟨base_n + p.utf8Size + listByteSize ps + c.utf8Size⟩ := by
+        show String.Pos.Raw.mk _ = String.Pos.Raw.mk _; congr 1; omega
+      have h2 : (⟨base_n + (p.utf8Size + listByteSize ps)⟩ : String.Pos.Raw) =
+                 ⟨base_n + p.utf8Size + listByteSize ps⟩ := by
+        show String.Pos.Raw.mk _ = String.Pos.Raw.mk _; congr 1; omega
+      rw [h1, h2]
+      exact ih (base_n + p.utf8Size)
+
+/-- prev(next(p)) = p when the character list prefix is known.
+    Uses `utf8PrevAux_at_boundary` with the concrete prefix. -/
+theorem prev_next_with_prefix (input : String) (pre : List Char)
+    (c : Char) (rest : List Char)
+    (hsplit : input.toList = pre ++ c :: rest) :
+    String.Pos.Raw.prev input (String.Pos.Raw.next input ⟨listByteSize pre⟩) =
+      ⟨listByteSize pre⟩ := by
+  show String.Pos.Raw.utf8PrevAux input.toList 0
+    (String.Pos.Raw.next input ⟨listByteSize pre⟩) = ⟨listByteSize pre⟩
+  have hget : String.Pos.Raw.get input ⟨listByteSize pre⟩ = c := by
+    show String.Pos.Raw.utf8GetAux input.toList 0 ⟨listByteSize pre⟩ = c
+    rw [hsplit]
+    have := utf8GetAux_at_boundary pre c rest (0 : String.Pos.Raw)
+    simp at this; exact this
+  rw [show String.Pos.Raw.next input ⟨listByteSize pre⟩ =
+          ⟨listByteSize pre + c.utf8Size⟩ from by
+            ext; show (String.Pos.Raw.next input ⟨listByteSize pre⟩).byteIdx =
+              listByteSize pre + c.utf8Size
+            unfold String.Pos.Raw.next; simp [hget]]
+  rw [hsplit]
+  have h := utf8PrevAux_at_boundary pre c rest 0
+  simp at h
+  exact h
+
 theorem toByteArray_eq_utf8Encode (input : String) :
     input.toByteArray = input.toList.utf8Encode := by
   have h := String.ofList_toList (s := input)
@@ -146,11 +203,17 @@ theorem chars_from_zero_toList (input : String) :
 /-! ## §2 State Correspondence -/
 
 /-- Scanner state and surface position correspond when the remaining
-    characters match and columns agree. -/
+    characters match and columns agree.
+
+    The `input_prefix` field witnesses that `sc.offset` is at a valid UTF-8
+    character boundary and that `sp.chars` is the suffix of `input.toList`
+    starting there.  This is needed for `peekBack?` reasoning
+    (see `prev_next_with_prefix`). -/
 structure ScannerSurfCorr (sc : ScannerState) (sp : SurfPos) : Prop where
   chars_from : CharsFromOffset sc.input sc.offset sp.chars
   col_eq : sp.col = sc.col
   end_eq : sc.inputEnd = sc.input.utf8ByteSize
+  input_prefix : ∃ pre, sc.input.toList = pre ++ sp.chars ∧ listByteSize pre = sc.offset
 
 /-- CharsFromOffset is a function: given `input` and `offset`, the
     character list is uniquely determined. -/
@@ -186,7 +249,8 @@ theorem ScannerSurfCorr_unique {sc : ScannerState} {sp₁ sp₂ : SurfPos}
 theorem initial_corr (input : String) (cs : List Char)
     (hcs : CharsFromOffset input 0 cs) :
     ScannerSurfCorr (ScannerState.mk' input) ⟨cs, 0⟩ :=
-  ⟨hcs, rfl, rfl⟩
+  have heq : cs = input.toList := CharsFromOffset_unique hcs (chars_from_zero_toList input)
+  ⟨hcs, rfl, rfl, ⟨[], by subst heq; exact ⟨rfl, rfl⟩⟩⟩
 
 /-! ## §3 Peek/EOF Correspondence -/
 
@@ -281,10 +345,16 @@ theorem advance_non_newline_corr (sc : ScannerState) (c : Char) (rest : List Cha
       rw [hc]; simp [hnl]
     have hcr_bool : ¬ (String.Pos.Raw.get sc.input ⟨sc.offset⟩ == '\r') = true := by
       rw [hc]; simp [hcr]
-    constructor
-    · rw [advance_input, advance_offset_eq sc hmore]; exact hrest
-    · exact (advance_col_non_newline sc hmore hnl_bool hcr_bool).symm
-    · rw [advance_inputEnd, advance_input]; exact hcorr.end_eq
+    exact {
+      chars_from := by rw [advance_input, advance_offset_eq sc hmore]; exact hrest
+      col_eq := (advance_col_non_newline sc hmore hnl_bool hcr_bool).symm
+      end_eq := by rw [advance_inputEnd, advance_input]; exact hcorr.end_eq
+      input_prefix := by
+        obtain ⟨pre, hsplit, hoff⟩ := hcorr.input_prefix
+        exact ⟨pre ++ [c], by rw [advance_input, hsplit, List.append_assoc]; rfl,
+               by rw [advance_offset_eq sc hmore, next_byteIdx, hc,
+                      listByteSize_append]; simp [listByteSize]; omega⟩
+    }
 
 /-- Advance past `\n` preserves correspondence with column reset. -/
 theorem advance_newline_corr (sc : ScannerState) (rest : List Char)
@@ -296,10 +366,16 @@ theorem advance_newline_corr (sc : ScannerState) (rest : List Char)
   | .cons _ hlt _ _ hc hrest =>
     have hyes : (String.Pos.Raw.get sc.input ⟨sc.offset⟩ == '\n') = true := by
       rw [hc]; decide
-    constructor
-    · rw [advance_input, advance_offset_eq sc hmore]; exact hrest
-    · exact (advance_col_newline sc hmore hyes).symm
-    · rw [advance_inputEnd, advance_input]; exact hcorr.end_eq
+    exact {
+      chars_from := by rw [advance_input, advance_offset_eq sc hmore]; exact hrest
+      col_eq := (advance_col_newline sc hmore hyes).symm
+      end_eq := by rw [advance_inputEnd, advance_input]; exact hcorr.end_eq
+      input_prefix := by
+        obtain ⟨pre, hsplit, hoff⟩ := hcorr.input_prefix
+        exact ⟨pre ++ ['\n'], by rw [advance_input, hsplit, List.append_assoc]; rfl,
+               by rw [advance_offset_eq sc hmore, next_byteIdx, hc,
+                      listByteSize_append]; simp [listByteSize]; omega⟩
+    }
 
 /-- Advance past `\r` preserves correspondence with column reset. -/
 theorem advance_cr_corr (sc : ScannerState) (rest : List Char)
@@ -311,10 +387,16 @@ theorem advance_cr_corr (sc : ScannerState) (rest : List Char)
   | .cons _ hlt _ _ hc hrest =>
     have hcr : (String.Pos.Raw.get sc.input ⟨sc.offset⟩ == '\r') = true := by
       rw [hc]; decide
-    constructor
-    · rw [advance_input, advance_offset_eq sc hmore]; exact hrest
-    · exact (advance_col_cr sc hmore hcr).symm
-    · rw [advance_inputEnd, advance_input]; exact hcorr.end_eq
+    exact {
+      chars_from := by rw [advance_input, advance_offset_eq sc hmore]; exact hrest
+      col_eq := (advance_col_cr sc hmore hcr).symm
+      end_eq := by rw [advance_inputEnd, advance_input]; exact hcorr.end_eq
+      input_prefix := by
+        obtain ⟨pre, hsplit, hoff⟩ := hcorr.input_prefix
+        exact ⟨pre ++ ['\r'], by rw [advance_input, hsplit, List.append_assoc]; rfl,
+               by rw [advance_offset_eq sc hmore, next_byteIdx, hc,
+                      listByteSize_append]; simp [listByteSize]; omega⟩
+    }
 
 /-- Skip one character by raw offset increment, preserving correspondence.
     Used for the `\n` byte in CRLF sequences where line counting was already
@@ -327,11 +409,17 @@ theorem skip_byte_corr (sc : ScannerState) (c : Char) (rest : List Char) (col : 
       ⟨rest, col⟩ := by
   have hcf := hcorr.chars_from
   match hcf with
-  | .cons _ _ _ _ _ hrest =>
-    constructor
-    · exact hrest
-    · exact hcorr.col_eq
-    · exact hcorr.end_eq
+  | .cons _ _ _ _ hc hrest =>
+    exact {
+      chars_from := hrest
+      col_eq := hcorr.col_eq
+      end_eq := hcorr.end_eq
+      input_prefix := by
+        obtain ⟨pre, hsplit, hoff⟩ := hcorr.input_prefix
+        exact ⟨pre ++ [c], by rw [hsplit, List.append_assoc]; rfl,
+               by rw [next_byteIdx, hc,
+                      listByteSize_append]; simp [listByteSize]; omega⟩
+    }
 
 /-! ## §5 Production Coupling (Scanner → Surface) -/
 
@@ -456,18 +544,143 @@ theorem SIndent_gives_GStar_SSWhite {n : Nat} {s s' : SurfPos}
 theorem corr_of_comments_update {sc : ScannerState} {sp : SurfPos}
     (cs : Array (Lean4Yaml.YamlPos × String)) (hcorr : ScannerSurfCorr sc sp) :
     ScannerSurfCorr { sc with comments := cs } sp :=
-  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
+  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
 
 /-- Updating `needIndentCheck` preserves correspondence. -/
 theorem corr_of_needIndentCheck_update {sc : ScannerState} {sp : SurfPos}
     (b : Bool) (hcorr : ScannerSurfCorr sc sp) :
     ScannerSurfCorr { sc with needIndentCheck := b } sp :=
-  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
+  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
 
 /-- Updating `simpleKeyAllowed` preserves correspondence. -/
 theorem corr_of_simpleKeyAllowed_update {sc : ScannerState} {sp : SurfPos}
     (b : Bool) (hcorr : ScannerSurfCorr sc sp) :
     ScannerSurfCorr { sc with simpleKeyAllowed := b } sp :=
-  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
+  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+
+/-! ## §10 PeekBack Reasoning -/
+
+theorem listByteSize_pos_of_ne_nil {l : List Char} (h : l ≠ []) :
+    listByteSize l > 0 := by
+  match l with
+  | [] => exact absurd rfl h
+  | c :: cs => simp [listByteSize]; have := Char.utf8Size_pos c; omega
+
+theorem listByteSize_dropLast_add_getLast (l : List Char) (h : l ≠ []) :
+    listByteSize l.dropLast + (l.getLast h).utf8Size = listByteSize l := by
+  induction l with
+  | nil => exact absurd rfl h
+  | cons c cs ih =>
+    cases cs with
+    | nil => simp [List.dropLast, List.getLast, listByteSize]
+    | cons d ds =>
+      have hne : d :: ds ≠ [] := List.cons_ne_nil d ds
+      have h_ih := ih hne
+      have h_getLast : (c :: d :: ds).getLast h = (d :: ds).getLast hne := by
+        rfl
+      have h_dropLast : (c :: d :: ds).dropLast = c :: (d :: ds).dropLast := by
+        rfl
+      rw [h_getLast, h_dropLast]
+      simp only [listByteSize]
+      have h2 : listByteSize (d :: ds) = d.utf8Size + listByteSize ds := rfl
+      rw [h2] at h_ih
+      omega
+
+/-- `peekBack?` returns the last character of the input prefix.
+    When the scanner offset is positive, `prev` lands at the start of the
+    last character before the current position, and `get` recovers it. -/
+theorem peekBack_eq_last_prefix {sc : ScannerState} {sp : SurfPos}
+    {pre : List Char}
+    (hsplit : sc.input.toList = pre ++ sp.chars)
+    (hoff : listByteSize pre = sc.offset)
+    (hne : pre ≠ []) :
+    sc.peekBack? = some (pre.getLast hne) := by
+  have hpos : sc.offset > 0 := by
+    rw [← hoff]; exact listByteSize_pos_of_ne_nil hne
+  have hdrop : pre = pre.dropLast ++ [pre.getLast hne] :=
+    (List.dropLast_concat_getLast hne).symm
+  have h_split2 : sc.input.toList = pre.dropLast ++ (pre.getLast hne :: sp.chars) := by
+    rw [hsplit, show pre.getLast hne :: sp.chars = [pre.getLast hne] ++ sp.chars from rfl,
+        ← List.append_assoc, List.dropLast_concat_getLast hne]
+  have h_prev : String.Pos.Raw.prev sc.input ⟨sc.offset⟩ =
+      ⟨listByteSize pre.dropLast⟩ := by
+    rw [← hoff]
+    have h_bs : listByteSize pre = listByteSize pre.dropLast + (pre.getLast hne).utf8Size := by
+      have := listByteSize_dropLast_add_getLast pre hne; omega
+    show String.Pos.Raw.utf8PrevAux sc.input.toList 0 ⟨listByteSize pre⟩ =
+      ⟨listByteSize pre.dropLast⟩
+    rw [h_split2, h_bs]
+    have h := utf8PrevAux_at_boundary pre.dropLast (pre.getLast hne) sp.chars 0
+    simp at h; exact h
+  have h_get : String.Pos.Raw.get sc.input ⟨listByteSize pre.dropLast⟩ = pre.getLast hne := by
+    show String.Pos.Raw.utf8GetAux sc.input.toList 0 ⟨listByteSize pre.dropLast⟩ = _
+    rw [h_split2]
+    have := utf8GetAux_at_boundary pre.dropLast (pre.getLast hne) sp.chars (0 : String.Pos.Raw)
+    simp at this; exact this
+  unfold ScannerState.peekBack?
+  simp only [hpos, ↓reduceIte, h_prev, h_get]
+
+/-! ## §11 PeekBack After Advance -/
+
+/-- Predicate: character is not whitespace, not line-break, not BOM. -/
+def notWsLbBom (c : Char) : Prop :=
+  isWhiteSpaceBool c = false ∧ isLineBreakBool c = false ∧ (c == '\uFEFF') = false
+
+/-- After `advance` past a non-newline character `c`, `peekBack?` returns `c`. -/
+theorem advance_peekBack_eq_peek {sc : ScannerState} {c : Char} {rest : List Char}
+    (hcorr : ScannerSurfCorr sc ⟨c :: rest, sc.col⟩)
+    (hmore : sc.offset < sc.inputEnd)
+    (hnl : c ≠ '\n') (hcr : c ≠ '\r') :
+    sc.advance.peekBack? = some c := by
+  have hcorr_adv := advance_non_newline_corr sc c rest hcorr hmore hnl hcr
+  obtain ⟨pre_adv, hsplit_adv, hoff_adv⟩ := hcorr_adv.input_prefix
+  obtain ⟨pre, hsplit, hoff⟩ := hcorr.input_prefix
+  have h_pre_adv : pre_adv = pre ++ [c] := by
+    have h_rhs : sc.advance.input.toList = (pre ++ [c]) ++ rest := by
+      rw [advance_input, hsplit, List.append_assoc]; rfl
+    exact List.append_cancel_right (hsplit_adv.symm.trans h_rhs)
+  subst h_pre_adv
+  have h_ne : pre ++ [c] ≠ [] := by simp
+  have h := peekBack_eq_last_prefix hsplit_adv hoff_adv h_ne
+  suffices (pre ++ [c]).getLast h_ne = c by rw [this] at h; exact h
+  simp
+
+/-! ## §12 SkipWhitespace Input Preservation -/
+
+theorem skipWhitespaceLoop_input (sc : ScannerState) (fuel : Nat) :
+    (skipWhitespaceLoop sc fuel).input = sc.input := by
+  induction fuel generalizing sc with
+  | zero => simp [skipWhitespaceLoop]
+  | succ n ih =>
+    unfold skipWhitespaceLoop; split
+    · split
+      · rw [ih, advance_input]
+      · rfl
+    · rfl
+
+theorem skipWhitespace_input (sc : ScannerState) :
+    (skipWhitespace sc).input = sc.input := by
+  unfold skipWhitespace; exact skipWhitespaceLoop_input sc _
+
+/-! ## §13 Offset Uniqueness from SurfPos -/
+
+theorem ScannerSurfCorr_same_offset {sc1 sc2 : ScannerState} {sp : SurfPos}
+    (h1 : ScannerSurfCorr sc1 sp) (h2 : ScannerSurfCorr sc2 sp)
+    (h_input : sc1.input = sc2.input) :
+    sc1.offset = sc2.offset := by
+  obtain ⟨pre1, hsplit1, hoff1⟩ := h1.input_prefix
+  obtain ⟨pre2, hsplit2, hoff2⟩ := h2.input_prefix
+  rw [← hoff1, ← hoff2,
+    show pre1 = pre2 from List.append_cancel_right
+      ((show sc2.input.toList = pre1 ++ sp.chars from by rw [← h_input]; exact hsplit1).symm.trans hsplit2)]
+
+/-! ## §14 GStar Column Monotonicity -/
+
+theorem gstar_gchar_col_le {p : Char → Prop} {s1 s2 : SurfPos}
+    (h : GStar (GChar p) s1 s2) : s2.col ≥ s1.col := by
+  induction h with
+  | nil => omega
+  | cons _ _ _ hfirst _ ih =>
+    cases hfirst with | mk c rest col _ => exact Nat.le_trans (Nat.le_succ col) ih
 
 end Lean4Yaml.Proofs.CouplingBridge

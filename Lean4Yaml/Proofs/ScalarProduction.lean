@@ -1,4 +1,5 @@
 import Lean4Yaml.Proofs.ScalarCoupling
+import Lean4Yaml.Proofs.ScannerCorrectness
 
 /-! # Scalar Production Coupling (Phase B of v0.4.4)
 
@@ -24,6 +25,9 @@ open Lean4Yaml.Proofs.CouplingBridge
 open Lean4Yaml.Proofs.ScannerCoupling
 open Lean4Yaml.Proofs.ScalarCoupling
 open Lean4Yaml.Grammar
+open Lean4Yaml (ChompStyle)
+open Lean4Yaml.Proofs.ScannerProgress (advance_offset_lt)
+open Lean4Yaml.Proofs.ScannerCorrectness (skipWhitespaceLoop_offset_ge)
 
 /-! ## §1 Helpers -/
 
@@ -1253,6 +1257,136 @@ theorem prepend_empty_to_text_line {n : Nat}
   - `prepend_empty_to_text_line`: empty line + text line → `SLNbLiteralText`
   - `consumeNewline_sbreak_corr`: newline → `SBBreak` -/
 
+-- Block scalar header chars are not whitespace, line-break, or BOM.
+private theorem headerChar_notWsLbBom (c : Char)
+    (h : Grammar.isBlockScalarHeaderChar c = true) : notWsLbBom c := by
+  unfold notWsLbBom Grammar.isBlockScalarHeaderChar at *
+  simp only [Bool.or_eq_true, beq_iff_eq, Bool.and_eq_true, decide_eq_true_eq] at h
+  rcases h with (rfl | rfl) | ⟨h1, h2⟩
+  · exact ⟨by native_decide, by native_decide, by native_decide⟩
+  · exact ⟨by native_decide, by native_decide, by native_decide⟩
+  · simp only [isWhiteSpaceBool, isLineBreakBool, Bool.or_eq_false_iff, beq_eq_false_iff_ne]
+    refine ⟨⟨?_, ?_⟩, ⟨?_, ?_⟩, ?_⟩ <;> (intro heq; subst heq; simp at h1 h2 <;> omega)
+
+-- `parseBlockHeaderLoop` preserves the property that `peekBack?` is not ws/lb/BOM.
+theorem parseBlockHeaderLoop_preserves_peekBack_not_ws
+    (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp) (chomp : ChompStyle) (off : Option Nat) (fuel : Nat)
+    (h_pb : ∀ c, sc.peekBack? = some c → notWsLbBom c) :
+    ∀ c, (parseBlockHeaderLoop sc chomp off fuel).2.2.peekBack? = some c → notWsLbBom c := by
+  induction fuel generalizing sc sp chomp off with
+  | zero => simp only [parseBlockHeaderLoop]; exact h_pb
+  | succ fuel' ih =>
+    simp only [parseBlockHeaderLoop]
+    split
+    · rename_i hpeek
+      obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek; subst hsp_eq
+      have hmore := peek_some_has_more hpeek
+      exact ih sc.advance ⟨rest, sc.col + 1⟩
+        (advance_non_newline_corr sc '-' rest hcorr hmore (by decide) (by decide))
+        .strip off (fun c hc => by
+          rw [advance_peekBack_eq_peek hcorr hmore (by decide) (by decide)] at hc
+          cases hc; exact ⟨by decide, by decide, by decide⟩)
+    · rename_i hpeek
+      obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek; subst hsp_eq
+      have hmore := peek_some_has_more hpeek
+      exact ih sc.advance ⟨rest, sc.col + 1⟩
+        (advance_non_newline_corr sc '+' rest hcorr hmore (by decide) (by decide))
+        .keep off (fun c hc => by
+          rw [advance_peekBack_eq_peek hcorr hmore (by decide) (by decide)] at hc
+          cases hc; exact ⟨by decide, by decide, by decide⟩)
+    · rename_i c_peek _ _ hpeek
+      split
+      · rename_i hdigit
+        obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek; subst hsp_eq
+        have hmore := peek_some_has_more hpeek
+        have hBlockHdr := isDigitNotZero_isBlockHeaderChar hdigit
+        have ⟨hnl, hcr⟩ := blockHeaderChar_not_newline hBlockHdr
+        exact ih sc.advance ⟨rest, sc.col + 1⟩
+          (advance_non_newline_corr sc c_peek rest hcorr hmore hnl hcr) chomp
+          (some (c_peek.toNat - '0'.toNat)) (fun c hc => by
+            rw [advance_peekBack_eq_peek hcorr hmore hnl hcr] at hc
+            cases hc; exact headerChar_notWsLbBom c_peek hBlockHdr)
+      · exact h_pb
+    · exact h_pb
+
+-- `skipWhitespace` is identity when the SurfPos is unchanged across it.
+private theorem skipWhitespace_eq_of_same_surfpos {sc : ScannerState} {sp : SurfPos}
+    (hcorr : ScannerSurfCorr sc sp)
+    (hcorr' : ScannerSurfCorr (skipWhitespace sc) sp) :
+    skipWhitespace sc = sc := by
+  have h_off := ScannerSurfCorr_same_offset hcorr' hcorr (skipWhitespace_input sc)
+  apply skipWhitespace_noop
+  generalize hm : sc.peek? = p; cases p with
+  | none => trivial
+  | some c =>
+    show isWhiteSpaceBool c = false
+    cases hws : isWhiteSpaceBool c with
+    | false => rfl
+    | true =>
+      exfalso
+      have h_has := peek_some_hasMore sc c hm
+      unfold skipWhitespace at h_off
+      obtain ⟨fuel', hfuel_eq⟩ := Nat.exists_eq_succ_of_ne_zero
+        (show sc.inputEnd - sc.offset ≠ 0 from by omega)
+      rw [hfuel_eq] at h_off
+      unfold skipWhitespaceLoop at h_off
+      simp only [hm, hws, ↓reduceIte] at h_off
+      have := skipWhitespaceLoop_offset_ge sc.advance fuel'
+      have := advance_offset_lt sc h_has
+      omega
+
+-- `scanBlockScalarSkipComment` is identity when `peekBack?` returns a non-ws/lb/BOM char.
+private theorem scanBlockScalarSkipComment_noop (sc : ScannerState)
+    (h : ∀ c, sc.peekBack? = some c → notWsLbBom c) :
+    scanBlockScalarSkipComment sc = sc := by
+  unfold scanBlockScalarSkipComment
+  split
+  · dsimp only []
+    split
+    · rename_i c hpb
+      have ⟨h1, h2, h3⟩ := h c hpb
+      simp only [h1, h2, h3, Bool.or_false, Bool.false_eq_true, ↓reduceIte]
+    · rfl
+  · rfl
+
+-- `SCNbCommentText sp sp` is impossible (column contradiction).
+private theorem scNbCommentText_irrefl (sp : SurfPos) : ¬ SCNbCommentText sp sp := by
+  intro h
+  match h with
+  | .mk rest col _ hstar =>
+    have : col ≥ col + 1 := gstar_gchar_col_le hstar
+    omega
+
+-- Unreachability: `#` comment without preceding whitespace after block header.
+private theorem scanBlockScalar_unreachable_comment_without_ws
+    (sc : ScannerState) (sp_adv sp_hdr sp_cmt : SurfPos)
+    (c₀ : Char) (rest : List Char)
+    (hcorr : ScannerSurfCorr sc ⟨c₀ :: rest, sc.col⟩)
+    (hmore : sc.offset < sc.inputEnd)
+    (hnl : c₀ ≠ '\n') (hcr : c₀ ≠ '\r')
+    (hc₀_not_ws : notWsLbBom c₀)
+    (hcorr_adv : ScannerSurfCorr sc.advance sp_adv)
+    (hcorr_hdr : ScannerSurfCorr (parseBlockHeaderLoop sc.advance .clip none 2).2.2 sp_hdr)
+    (hcorr_ws : ScannerSurfCorr (skipWhitespace (parseBlockHeaderLoop sc.advance .clip none 2).2.2) sp_hdr)
+    (hcorr_cmt : ScannerSurfCorr (scanBlockScalarSkipComment (skipWhitespace (parseBlockHeaderLoop sc.advance .clip none 2).2.2)) sp_cmt)
+    (hcnt : SCNbCommentText sp_hdr sp_cmt)
+    : False := by
+  have h_pb_adv : sc.advance.peekBack? = some c₀ :=
+    advance_peekBack_eq_peek hcorr hmore hnl hcr
+  have hcorr_adv' := advance_non_newline_corr sc c₀ rest hcorr hmore hnl hcr
+  have h_sp_adv : sp_adv = ⟨rest, sc.col + 1⟩ := ScannerSurfCorr_unique hcorr_adv hcorr_adv'
+  subst h_sp_adv
+  have h_pb_hdr : ∀ c, (parseBlockHeaderLoop sc.advance .clip none 2).2.2.peekBack? = some c → notWsLbBom c :=
+    parseBlockHeaderLoop_preserves_peekBack_not_ws sc.advance ⟨rest, sc.col + 1⟩
+      hcorr_adv' .clip none 2 (fun c hc => by rw [h_pb_adv] at hc; cases hc; exact hc₀_not_ws)
+  have h_ws_eq := skipWhitespace_eq_of_same_surfpos hcorr_hdr hcorr_ws
+  rw [h_ws_eq] at hcorr_cmt
+  rw [scanBlockScalarSkipComment_noop _ h_pb_hdr] at hcorr_cmt
+  have := ScannerSurfCorr_unique hcorr_hdr hcorr_cmt
+  subst this
+  exact scNbCommentText_irrefl sp_hdr hcnt
+
 -- `scanBlockScalar` produces `SCLLiteral 0` or `SCLFolded 0` and preserves correspondence.
 -- Header: FULLY PROVEN (delimiter + header chars + SSBComment).
 -- Body grammar: sorry (composition of per-iteration fragments into SLLiteralContent).
@@ -1290,7 +1424,21 @@ theorem scanBlockScalar_prod (sc : ScannerState) (sp : SurfPos)
         -- No whitespace: comment must be none (scanner: peekBack? not whitespace)
         match h_cmt with
         | .none _ => exact SSBComment.noSep sp_hdr sp_nl h_brk
-        | .some _ _ _ => sorry  -- unreachable: # without preceding whitespace
+        | .some _ _ hcnt =>
+          exfalso
+          rcases hchar with hlit | hfold
+          · obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hlit; subst hsp_eq
+            exact scanBlockScalar_unreachable_comment_without_ws
+              sc sp_adv_gen sp_hdr sp_cmt '|' rest
+              hcorr (peek_some_has_more hlit) (by decide) (by decide)
+              ⟨by native_decide, by native_decide, by native_decide⟩
+              hcorr_adv hcorr_hdr hcorr_ws hcorr_cmt hcnt
+          · obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hfold; subst hsp_eq
+            exact scanBlockScalar_unreachable_comment_without_ws
+              sc sp_adv_gen sp_hdr sp_cmt '>' rest
+              hcorr (peek_some_has_more hfold) (by decide) (by decide)
+              ⟨by native_decide, by native_decide, by native_decide⟩
+              hcorr_adv hcorr_hdr hcorr_ws hcorr_cmt hcnt
       | cons _ sp_mid _ h_first h_rest =>
         exact whitespace_comment_break_to_SSBComment_withWS
           sp_hdr sp_mid sp_ws sp_cmt sp_nl h_first h_rest h_cmt h_brk

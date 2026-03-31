@@ -37,7 +37,7 @@ theorem corr_of_emit {sc : ScannerState} {sp : SurfPos}
     (tok : YamlToken)
     (hcorr : ScannerSurfCorr sc sp) :
     ScannerSurfCorr (sc.emit tok) sp :=
-  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
+  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
 
 /-- `advanceNLoop` preserves correspondence by composing `advance_corr`. -/
 theorem advanceNLoop_corr (sc : ScannerState) (sp : SurfPos)
@@ -65,16 +65,16 @@ theorem scanFlowSequenceStart_corr (sc : ScannerState) (sp : SurfPos)
   unfold scanFlowSequenceStart
   obtain ⟨sp', hcorr'⟩ := advance_corr
     ({ sc with simpleKey := { possible := false } }.emit .flowSequenceStart) sp
-    ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
-  exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq⟩⟩
+    ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+  exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix⟩⟩
 
 theorem scanFlowSequenceEnd_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', ScannerSurfCorr (scanFlowSequenceEnd sc) sp' := by
   unfold scanFlowSequenceEnd
   obtain ⟨sp', hcorr'⟩ := advance_corr (sc.emit .flowSequenceEnd) sp
-    ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
-  exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq⟩⟩
+    ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+  exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix⟩⟩
 
 theorem scanFlowMappingStart_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
@@ -82,16 +82,16 @@ theorem scanFlowMappingStart_corr (sc : ScannerState) (sp : SurfPos)
   unfold scanFlowMappingStart
   obtain ⟨sp', hcorr'⟩ := advance_corr
     ({ sc with simpleKey := { possible := false } }.emit .flowMappingStart) sp
-    ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
-  exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq⟩⟩
+    ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+  exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix⟩⟩
 
 theorem scanFlowMappingEnd_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', ScannerSurfCorr (scanFlowMappingEnd sc) sp' := by
   unfold scanFlowMappingEnd
   obtain ⟨sp', hcorr'⟩ := advance_corr (sc.emit .flowMappingEnd) sp
-    ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
-  exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq⟩⟩
+    ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+  exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix⟩⟩
 
 theorem scanFlowEntry_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
@@ -104,12 +104,12 @@ theorem scanFlowEntry_corr (sc : ScannerState) (sp : SurfPos)
     · exact absurd hok (by simp)
     · have h := Except.ok.inj hok; subst h
       obtain ⟨sp', hcorr'⟩ := advance_corr (sc.emit .flowEntry) sp
-        ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
-      exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq⟩⟩
+        ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+      exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix⟩⟩
   · have h := Except.ok.inj hok; subst h
     obtain ⟨sp', hcorr'⟩ := advance_corr (sc.emit .flowEntry) sp
-      ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
-    exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq⟩⟩
+      ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+    exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix⟩⟩
 
 /-! ## §3 Indentation Management -/
 
@@ -122,7 +122,7 @@ theorem unwindIndentsLoop_corr (sc : ScannerState) (sp : SurfPos)
     unfold unwindIndentsLoop; split
     · have hcorr_emit := corr_of_emit .blockEnd hcorr
       exact ih { (sc.emit .blockEnd) with indents := _ } sp
-        ⟨hcorr_emit.chars_from, hcorr_emit.col_eq, hcorr_emit.end_eq⟩
+        ⟨hcorr_emit.chars_from, hcorr_emit.col_eq, hcorr_emit.end_eq, hcorr_emit.input_prefix⟩
     · exact ⟨sp, hcorr⟩
 
 theorem unwindIndents_corr (sc : ScannerState) (sp : SurfPos)
@@ -135,14 +135,14 @@ theorem pushSequenceIndent_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (col : Int) :
     ScannerSurfCorr (pushSequenceIndent sc col) sp := by
   unfold pushSequenceIndent; split
-  · exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
+  · exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
   · exact hcorr
 
 theorem pushMappingIndent_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (col : Int) :
     ScannerSurfCorr (pushMappingIndent sc col) sp := by
   unfold pushMappingIndent; split
-  · exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
+  · exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
   · exact hcorr
 
 /-! ## §4 Node Properties: Anchor & Tag Collection Loops -/
@@ -170,7 +170,7 @@ theorem scanAnchorOrAlias_corr (sc : ScannerState) (sp : SurfPos)
   -- emitAt only changes tokens; the if-then-else on isAnchor produces
   -- different token values but the state effect is the same.
   -- Final struct update: simpleKeyAllowed := false (not tracked)
-  exact ⟨sp_name, ⟨hcorr_name.chars_from, hcorr_name.col_eq, hcorr_name.end_eq⟩⟩
+  exact ⟨sp_name, ⟨hcorr_name.chars_from, hcorr_name.col_eq, hcorr_name.end_eq, hcorr_name.input_prefix⟩⟩
 
 theorem collectVerbatimTagLoop_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (uri : String) (fuel : Nat) :
@@ -228,7 +228,7 @@ theorem scanVerbatimTag_corr (sc : ScannerState) (sp : SurfPos)
   obtain ⟨sp_adv, hcorr_adv⟩ := advance_corr sc sp hcorr
   obtain ⟨sp_uri, hcorr_uri⟩ :=
     collectVerbatimTagLoop_corr sc.advance sp_adv hcorr_adv "" _
-  exact ⟨sp_uri, ⟨hcorr_uri.chars_from, hcorr_uri.col_eq, hcorr_uri.end_eq⟩⟩
+  exact ⟨sp_uri, ⟨hcorr_uri.chars_from, hcorr_uri.col_eq, hcorr_uri.end_eq, hcorr_uri.input_prefix⟩⟩
 
 theorem scanSecondaryTag_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (startPos : YamlPos) :
@@ -237,7 +237,7 @@ theorem scanSecondaryTag_corr (sc : ScannerState) (sp : SurfPos)
   obtain ⟨sp_adv, hcorr_adv⟩ := advance_corr sc sp hcorr
   obtain ⟨sp_sfx, hcorr_sfx⟩ :=
     collectTagSuffixLoop_corr sc.advance sp_adv hcorr_adv "" _
-  exact ⟨sp_sfx, ⟨hcorr_sfx.chars_from, hcorr_sfx.col_eq, hcorr_sfx.end_eq⟩⟩
+  exact ⟨sp_sfx, ⟨hcorr_sfx.chars_from, hcorr_sfx.col_eq, hcorr_sfx.end_eq, hcorr_sfx.input_prefix⟩⟩
 
 theorem scanNamedTag_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (startPos : YamlPos) (inputEnd : Nat) :
@@ -249,9 +249,9 @@ theorem scanNamedTag_corr (sc : ScannerState) (sp : SurfPos)
   · -- foundBang = true: collect suffix
     obtain ⟨sp_sfx, hcorr_sfx⟩ :=
       collectTagSuffixLoop_corr _ sp_hdl hcorr_hdl "" _
-    exact ⟨sp_sfx, ⟨hcorr_sfx.chars_from, hcorr_sfx.col_eq, hcorr_sfx.end_eq⟩⟩
+    exact ⟨sp_sfx, ⟨hcorr_sfx.chars_from, hcorr_sfx.col_eq, hcorr_sfx.end_eq, hcorr_sfx.input_prefix⟩⟩
   · -- foundBang = false
-    exact ⟨sp_hdl, ⟨hcorr_hdl.chars_from, hcorr_hdl.col_eq, hcorr_hdl.end_eq⟩⟩
+    exact ⟨sp_hdl, ⟨hcorr_hdl.chars_from, hcorr_hdl.col_eq, hcorr_hdl.end_eq, hcorr_hdl.input_prefix⟩⟩
 
 theorem scanTag_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
@@ -260,11 +260,11 @@ theorem scanTag_corr (sc : ScannerState) (sp : SurfPos)
   obtain ⟨sp_bang, hcorr_bang⟩ := advance_corr sc sp hcorr
   split
   · obtain ⟨sp', hcorr'⟩ := scanVerbatimTag_corr sc.advance sp_bang hcorr_bang _
-    exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq⟩⟩
+    exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix⟩⟩
   · obtain ⟨sp', hcorr'⟩ := scanSecondaryTag_corr sc.advance sp_bang hcorr_bang _
-    exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq⟩⟩
+    exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix⟩⟩
   · obtain ⟨sp', hcorr'⟩ := scanNamedTag_corr sc.advance sp_bang hcorr_bang sc.currentPos sc.inputEnd
-    exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq⟩⟩
+    exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix⟩⟩
 
 /-! ## §6 Block Structure -/
 
@@ -274,9 +274,9 @@ theorem scanValueClearKey_corr (sc : ScannerState) (sp : SurfPos)
   unfold scanValueClearKey
   split
   · split
-    · exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
+    · exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
     · split
-      · exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
+      · exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
       · exact hcorr
   · exact hcorr
 
@@ -290,14 +290,14 @@ theorem scanValuePrepare_corr (sc : ScannerState) (sp : SurfPos)
     · -- !inFlow
       split
       · -- col > currentIndent
-        exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
+        exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
       · -- col ≤ currentIndent
-        exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
+        exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
     · -- inFlow
-      exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
+      exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
   · -- !simpleKey.possible
     split
-    · exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
+    · exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
     · split
       · exact pushMappingIndent_corr sc sp hcorr _
       · exact hcorr
@@ -309,7 +309,7 @@ theorem saveSimpleKey_corr (sc : ScannerState) (sp : SurfPos)
   split
   · exact hcorr
   · split
-    · exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
+    · exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
     · exact hcorr
 
 theorem scanBlockEntry_corr (sc : ScannerState) (sp : SurfPos)
@@ -326,13 +326,13 @@ theorem scanBlockEntry_corr (sc : ScannerState) (sp : SurfPos)
       have hcorr_ind := pushSequenceIndent_corr sc sp hcorr (sc.col : Int)
       obtain ⟨sp', hcorr'⟩ := advance_corr
         ((pushSequenceIndent sc (sc.col : Int)).emit .blockEntry) sp
-        ⟨hcorr_ind.chars_from, hcorr_ind.col_eq, hcorr_ind.end_eq⟩
-      exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq⟩⟩
+        ⟨hcorr_ind.chars_from, hcorr_ind.col_eq, hcorr_ind.end_eq, hcorr_ind.input_prefix⟩
+      exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix⟩⟩
   · -- inFlow
     have h := Except.ok.inj hok; subst h
     obtain ⟨sp', hcorr'⟩ := advance_corr (sc.emit .blockEntry) sp
-      ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
-    exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq⟩⟩
+      ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+    exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix⟩⟩
 
 theorem scanKey_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
@@ -347,25 +347,25 @@ theorem scanKey_corr (sc : ScannerState) (sp : SurfPos)
     have hcorr_ind := pushMappingIndent_corr sc sp hcorr (sc.col : Int)
     obtain ⟨sp_adv, hcorr_adv⟩ := advance_corr
       ((pushMappingIndent sc (sc.col : Int)).emit .key) sp
-      ⟨hcorr_ind.chars_from, hcorr_ind.col_eq, hcorr_ind.end_eq⟩
+      ⟨hcorr_ind.chars_from, hcorr_ind.col_eq, hcorr_ind.end_eq, hcorr_ind.input_prefix⟩
     -- Tab check after advance (still in !inFlow branch)
     split at hok
     · split at hok
       · exact absurd hok (by simp)
       · have h := Except.ok.inj hok; subst h
-        exact ⟨sp_adv, ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq⟩⟩
+        exact ⟨sp_adv, ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix⟩⟩
     · have h := Except.ok.inj hok; subst h
-      exact ⟨sp_adv, ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq⟩⟩
+      exact ⟨sp_adv, ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix⟩⟩
   · -- inFlow
     obtain ⟨sp_adv, hcorr_adv⟩ := advance_corr (sc.emit .key) sp
-      ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq⟩
+      ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
     split at hok
     · split at hok
       · exact absurd hok (by simp)
       · have h := Except.ok.inj hok; subst h
-        exact ⟨sp_adv, ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq⟩⟩
+        exact ⟨sp_adv, ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix⟩⟩
     · have h := Except.ok.inj hok; subst h
-      exact ⟨sp_adv, ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq⟩⟩
+      exact ⟨sp_adv, ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix⟩⟩
 
 theorem scanValue_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
@@ -384,8 +384,8 @@ theorem scanValue_corr (sc : ScannerState) (sp : SurfPos)
       have hcorr_prep := scanValuePrepare_corr (scanValueClearKey sc) sp hcorr_ck
       obtain ⟨sp', hcorr'⟩ := advance_corr
         ((scanValuePrepare (scanValueClearKey sc)).emit .value) sp
-        ⟨hcorr_prep.chars_from, hcorr_prep.col_eq, hcorr_prep.end_eq⟩
-      exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq⟩⟩
+        ⟨hcorr_prep.chars_from, hcorr_prep.col_eq, hcorr_prep.end_eq, hcorr_prep.input_prefix⟩
+      exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix⟩⟩
 
 /-! ## §7 Document Boundaries -/
 
@@ -409,8 +409,8 @@ theorem scanDocumentStart_corr (sc : ScannerState) (sp : SurfPos)
   obtain ⟨sp_uw, hcorr_uw⟩ := unwindIndents_corr sc sp hcorr (-1)
   obtain ⟨sp_adv, hcorr_adv⟩ := advanceN_corr
     ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart)
-    sp_uw ⟨hcorr_uw.chars_from, hcorr_uw.col_eq, hcorr_uw.end_eq⟩ 3
-  exact ⟨sp_adv, ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq⟩⟩
+    sp_uw ⟨hcorr_uw.chars_from, hcorr_uw.col_eq, hcorr_uw.end_eq, hcorr_uw.input_prefix⟩ 3
+  exact ⟨sp_adv, ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix⟩⟩
 
 theorem scanDocumentEnd_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
@@ -423,16 +423,16 @@ theorem scanDocumentEnd_corr (sc : ScannerState) (sp : SurfPos)
   · obtain ⟨sp_uw, hcorr_uw⟩ := unwindIndents_corr sc sp hcorr (-1)
     obtain ⟨sp_adv, hcorr_adv⟩ := advanceN_corr
       ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd)
-      sp_uw ⟨hcorr_uw.chars_from, hcorr_uw.col_eq, hcorr_uw.end_eq⟩ 3
+      sp_uw ⟨hcorr_uw.chars_from, hcorr_uw.col_eq, hcorr_uw.end_eq, hcorr_uw.input_prefix⟩ 3
     -- The match s''.peek? only validates; result is returned unchanged
     split at hok
     · have h := Except.ok.inj hok; subst h
-      exact ⟨sp_adv, ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq⟩⟩
+      exact ⟨sp_adv, ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix⟩⟩
     · have h := Except.ok.inj hok; subst h
-      exact ⟨sp_adv, ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq⟩⟩
+      exact ⟨sp_adv, ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix⟩⟩
     · split at hok
       · have h := Except.ok.inj hok; subst h
-        exact ⟨sp_adv, ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq⟩⟩
+        exact ⟨sp_adv, ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix⟩⟩
       · exact absurd hok (by simp)
 
 /-! ## §8 Directive Collection Loops -/
@@ -530,15 +530,15 @@ theorem scanYamlDirective_corr (sc : ScannerState)
       split at hok
       · exact absurd hok (by simp)
       · have h := Except.ok.inj hok; subst h
-        exact ⟨sp_ws2, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq⟩⟩
+        exact ⟨sp_ws2, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix⟩⟩
     · -- some c
       split at hok
       · exact absurd hok (by simp)
       · have h := Except.ok.inj hok; subst h
-        exact ⟨sp_ws2, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq⟩⟩
+        exact ⟨sp_ws2, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix⟩⟩
     · -- none
       have h := Except.ok.inj hok; subst h
-      exact ⟨sp_ws2, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq⟩⟩
+      exact ⟨sp_ws2, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix⟩⟩
 
 theorem scanTagDirective_corr (sc : ScannerState) (sp : SurfPos)
     (_hcorr : ScannerSurfCorr sc sp) (s_after_ws : ScannerState) (sp_ws : SurfPos)
@@ -555,7 +555,7 @@ theorem scanTagDirective_corr (sc : ScannerState) (sp : SurfPos)
     skipWhitespace_corr _ sp_hdl hcorr_hdl
   obtain ⟨sp_pfx, hcorr_pfx⟩ :=
     collectTagPrefixLoop_corr _ sp_ws2 hcorr_ws2 "" _
-  exact ⟨sp_pfx, ⟨hcorr_pfx.chars_from, hcorr_pfx.col_eq, hcorr_pfx.end_eq⟩⟩
+  exact ⟨sp_pfx, ⟨hcorr_pfx.chars_from, hcorr_pfx.col_eq, hcorr_pfx.end_eq, hcorr_pfx.input_prefix⟩⟩
 
 theorem scanDirective_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
