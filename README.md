@@ -1951,16 +1951,18 @@ Partially discharged `preprocessing_eof_extends_stream` (§1a). The `BlockStack.
   Literal (`|`) and folded (`>`) dispatch **fully proven** via `peek_some_sp` +
   `advance_non_newline_corr` + `ScannerSurfCorr_unique`.
   Body: `scanBlockScalarBody_corr` for correspondence (sorry for grammar).
-  3 sorry uses: `#` without preceding WS (unreachable edge), literal body grammar
+  2 sorry uses: literal body grammar
   (`SLLiteralContent` + `m ≥ 1`), folded body grammar (`GOpt SLNbFoldedLines` + `m ≥ 1`).
+  `#` without preceding WS was closed (see L1293 below).
 
-**Sorry count: 8 declarations** (ScalarProduction.lean ×2:
+**Sorry count: 7 declarations** (ScalarProduction.lean ×2:
 `scanPlainScalar_prod`, `scanBlockScalar_prod`;
 DocumentProduction.lean ×1: `scan_content_gives_stream`;
 StreamAccum.lean ×5: `preprocessing_eof_extends_stream`, `accum_step_structural`,
 `accum_step_flow`, `accum_step_block`, `accum_step_content`).
+Note: `scanBlockScalar_prod` sorry count reduced from 3 to 2 (L1293 closed).
 
-**Reduction history:** 14 → 13 → 12 → 11 → 10 → 9 → 8
+**Reduction history:** 14 → 13 → 12 → 11 → 10 → 9 → 8 → 7
 
 **Progress (2026-03-30 session 3 — consolidation pass):**
 - **5 intermediate sorry-containing theorems removed** by consolidating into call sites:
@@ -1994,19 +1996,21 @@ StreamAccum.lean ×5: `preprocessing_eof_extends_stream`, `accum_step_structural
 
 | Sorry site | Theorem | Sub-problem |
 |---|---|---|
-| L1111 | `scanPlainScalar_prod` | Grammar: `SNsPlain 0 .blockIn` (first char + continuation + multi-line) |
-| L1293 | `scanBlockScalar_prod` | `#` without preceding WS (unreachable from scanner's `peekBack?` check) |
-| L1313 | `scanBlockScalar_prod` | Literal body: `SCLLiteral 0` (`SLLiteralContent` + `m ≥ 1`) |
-| L1325 | `scanBlockScalar_prod` | Folded body: `SCLFolded 0` (`GOpt SLNbFoldedLines` + `m ≥ 1`) |
+| L1115 | `scanPlainScalar_prod` | Grammar: `SNsPlain 0 .blockIn` (first char + continuation + multi-line) |
+| ~~L1293~~ | ~~`scanBlockScalar_prod`~~ | ~~`#` without preceding WS~~ — **CLOSED** (2026-03-31, `peekBack?` infrastructure) |
+| L1461 | `scanBlockScalar_prod` | Literal body: `SCLLiteral 0` (`SLLiteralContent` + `m ≥ 1`) |
+| L1473 | `scanBlockScalar_prod` | Folded body: `SCLFolded 0` (`GOpt SLNbFoldedLines` + `m ≥ 1`) |
 
 **Remaining for full Tier 2 closure:**
 
 *Most tractable:*
-1. **L1293 — `#` without preceding WS.** Unreachable edge case; scanner's `peekBack?` check
-   ensures `#` only accepted after whitespace. Could be closed by adding a `peekBack?` precondition
-   to the theorem or by proving `SSBComment.noSep` suffices when `GOpt.none` is the only
-   reachable case.
-2. **L1313/L1325 — block scalar body grammar + `m ≥ 1`.** Two sub-problems:
+1. ~~**L1293 — `#` without preceding WS.**~~ ✅ **CLOSED (2026-03-31).** Proved unreachable
+   via `peekBack?` infrastructure: `advance_peekBack_eq_peek` → `parseBlockHeaderLoop_preserves_peekBack_not_ws`
+   → `skipWhitespace_eq_of_same_surfpos` (GStar.nil ⇒ identity) → `scanBlockScalarSkipComment_noop`
+   (peekBack ≠ WS ⇒ noop) → `ScannerSurfCorr_unique` + `scNbCommentText_irrefl` (sp=sp ⇒ ⊥).
+   Required adding `input_prefix` field to `ScannerSurfCorr` and 11 helper lemmas across
+   CouplingBridge.lean (§11–§14) and ScalarProduction.lean (§8d). See reflections below.
+2. **L1461/L1473 — block scalar body grammar + `m ≥ 1`.** Two sub-problems:
    (a) Prove `autoDetectBlockScalarIndent` returns `m ≥ 1` when `currentIndent ≥ 0`.
    (b) Construct `SLLiteralContent m` (literal) or `GOpt SLNbFoldedLines m` (folded) from
    the loop. The sorry-free helpers (`consumeExactSpaces_sindent_prod`,
@@ -2025,6 +2029,42 @@ StreamAccum.lean ×5: `preprocessing_eof_extends_stream`, `accum_step_structural
 4. **Folded vs literal content type gap.** `SLLiteralContent` uses `SLNbLiteralText` + `SNbChar`,
    while `GOpt SLNbFoldedLines` uses `SSNbFoldedText` + `SNsChar`. May need a conversion lemma
    or separate loop variant for folded content.
+
+**Progress (2026-03-31 — L1293 `peekBack?` infrastructure):**
+- **L1293 sorry CLOSED** — proved `#` without preceding whitespace is unreachable in `scanBlockScalar_prod`.
+- **`input_prefix` field added to `ScannerSurfCorr`** — `∃ pre, sc.input.toList = pre ++ sp.chars ∧ listByteSize pre = sc.offset`. Required updating ~40 construction sites across 6 files (CouplingBridge, ScannerCoupling, ScalarCoupling, StructureCoupling, StructureProduction). All closed, 0 sorry.
+- **11 new helper theorems** across CouplingBridge.lean (§11–§14) and ScalarProduction.lean (§8d):
+
+| Theorem | File | Purpose |
+|---|---|---|
+| `notWsLbBom` | CouplingBridge §11 | Predicate: ¬whitespace ∧ ¬linebreak ∧ ¬BOM |
+| `advance_peekBack_eq_peek` | CouplingBridge §11 | After advance, `peekBack?` returns the char we advanced past |
+| `skipWhitespaceLoop_input` | CouplingBridge §12 | `skipWhitespace` preserves `.input` |
+| `skipWhitespace_input` | CouplingBridge §12 | (wrapper for above) |
+| `ScannerSurfCorr_same_offset` | CouplingBridge §13 | Same `SurfPos` + same `.input` → same `.offset` |
+| `gstar_gchar_col_le` | CouplingBridge §14 | `GStar (GChar p)` monotonically increases col |
+| `headerChar_notWsLbBom` | ScalarProduction §8d | `isBlockScalarHeaderChar c → notWsLbBom c` |
+| `parseBlockHeaderLoop_preserves_peekBack_not_ws` | ScalarProduction §8d | Preserves non-ws `peekBack?` through header loop |
+| `skipWhitespace_eq_of_same_surfpos` | ScalarProduction §8d | `GStar.nil` (no WS consumed) → `skipWhitespace` is identity |
+| `scanBlockScalarSkipComment_noop` | ScalarProduction §8d | `peekBack? ≠ ws` → `scanBlockScalarSkipComment` is noop |
+| `scNbCommentText_irrefl` | ScalarProduction §8d | `SCNbCommentText sp sp → False` (zero-width comment is impossible) |
+
+- **Also fixed `utf8PrevAux_at_boundary` cons case** in CouplingBridge.lean — changed `base` type from `String.Pos.Raw` to `Nat` so `omega` can close the equality.
+- **Build: 415/415 jobs, 0 errors, 7 sorry declarations** (down from 8).
+
+###### L1293 reflections
+
+1. **`peekBack?` reasoning requires `input_prefix`.** The scanner's `peekBack?` returns the character before the current position by calling `String.Pos.Raw.utf8PrevAux` on the raw input bytes. To connect this to grammar-level character lists, we need to know which prefix of the input has been consumed. The `input_prefix` field `∃ pre, sc.input.toList = pre ++ sp.chars ∧ listByteSize pre = sc.offset` bridges the byte-level offset with the character-level prefix. Without it, there is no way to connect `peekBack?`'s result to any known character in the surface position's char list.
+
+2. **`String.Pos.Raw` wrapping blocks `omega`.** `utf8PrevAux_at_boundary` induction needed `show String.Pos.Raw.mk _ = String.Pos.Raw.mk _; congr 1; omega` because `omega` cannot see through the `String.Pos.Raw` (= `@[reducible] def String.Pos.Raw := Nat`) wrapper in equalities with `.mk`. The fix: change the base parameter type from `String.Pos.Raw` to `Nat` directly, making the inductive hypothesis and goal both operate on bare `Nat` where `omega` works.
+
+3. **The unreachability chain is 6 lemmas deep.** The proof that `SCNbCommentText sp_hdr sp_cmt` is contradictory when `GStar.nil` (no whitespace) requires threading `peekBack?` information through 6 composition steps: `advance` (sets peekBack to header indicator `|`/`>`) → `parseBlockHeaderLoop` (preserves non-ws peekBack) → `skipWhitespace` at `GStar.nil` (identity, preserves everything) → `scanBlockScalarSkipComment` (noop when peekBack ≠ ws) → `ScannerSurfCorr_unique` (forces sp equality) → `scNbCommentText_irrefl` (sp=sp ⇒ ⊥). Each step is a small reusable lemma. The composition in `scanBlockScalar_unreachable_comment_without_ws` is 25 lines.
+
+4. **`ScannerSurfCorr_same_offset` bridges identity scanner steps.** When `skipWhitespace` is a noop (`GStar.nil`), we need `skipWhitespace sc = sc` — but this is not true definitionally (struct update creates a new value). Instead, `ScannerSurfCorr_same_offset` proves that if two scanner states map to the same `SurfPos` and have the same `.input`, they have the same `.offset`. Combined with `skipWhitespace_input` (preserves `.input`), this lets us prove the skip-comment function sees the same `peekBack?` value as the header loop exit.
+
+5. **`parseBlockHeaderLoop_preserves_peekBack_not_ws` uses `gstar_gchar_col_le`.** The loop consumes 0+ header chars. If 0 chars consumed (`GStar.nil`), `peekBack?` is unchanged (trivial). If ≥1 char consumed, the last char consumed becomes `peekBack?` (via `advance_peekBack_eq_peek` at the last iteration). The last char satisfies `isBlockScalarHeaderChar` → `notWsLbBom` (via `headerChar_notWsLbBom`). The proof needs `gstar_gchar_col_le` to show column monotonicity across the consumed chars, threading the induction.
+
+6. **`input_prefix` propagation through struct updates.** Scanner state updates like `{ sc with comments := ... }` preserve `.input`, so `input_prefix` propagates trivially: `⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩`. The ~40 update sites across 6 files were mechanical — each just adds `, hcorr.input_prefix` or `, prev_hcorr.input_prefix` to the existing constructor call. None required new proofs.
 
 **Reflections:**
 

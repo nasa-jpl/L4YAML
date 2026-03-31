@@ -227,7 +227,7 @@ theorem scanNextToken_dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c
   split at hok
   · have h := Except.ok.inj hok; subst h
     obtain ⟨sp', hcorr'⟩ := scanAnchorOrAlias_corr sc sp hcorr true
-    exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq⟩⟩
+    exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix⟩⟩
   · split at hok
     · split at hok
       · simp at hok
@@ -247,7 +247,7 @@ theorem scanNextToken_dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c
             · have h := Except.ok.inj hok; subst h
               obtain ⟨sp', hcorr'⟩ := scanDoubleQuoted_corr sc sp hcorr ‹_›
               split
-              · exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq⟩⟩
+              · exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix⟩⟩
               · exact ⟨sp', hcorr'⟩
           · split at hok
             · split at hok
@@ -255,7 +255,7 @@ theorem scanNextToken_dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c
               · have h := Except.ok.inj hok; subst h
                 obtain ⟨sp', hcorr'⟩ := scanSingleQuoted_corr sc sp hcorr ‹_›
                 split
-                · exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq⟩⟩
+                · exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix⟩⟩
                 · exact ⟨sp', hcorr'⟩
             · split at hok
               · split at hok
@@ -291,7 +291,7 @@ theorem scanNextToken_preprocess_corr (sc : ScannerState) (sp : SurfPos)
             have hcorr3 : ScannerSurfCorr
                 { (unwindIndents s_content ↑s_content.col) with
                   needIndentCheck := false } sp2 :=
-              ⟨hcorr2.chars_from, hcorr2.col_eq, hcorr2.end_eq⟩
+              ⟨hcorr2.chars_from, hcorr2.col_eq, hcorr2.end_eq, hcorr2.input_prefix⟩
             exact ⟨sp2, saveSimpleKey_corr _ sp2 hcorr3⟩
       · split at hok
         · simp at hok
@@ -374,7 +374,7 @@ theorem scanNextToken_corr (sc : ScannerState) (sp : SurfPos)
                   { s_pre with allowDirectives := false, documentEverStarted := true }
                 else s_pre) sp_pre := by
               split
-              · exact ⟨hcorr_pre.chars_from, hcorr_pre.col_eq, hcorr_pre.end_eq⟩
+              · exact ⟨hcorr_pre.chars_from, hcorr_pre.col_eq, hcorr_pre.end_eq, hcorr_pre.input_prefix⟩
               · exact hcorr_pre
             split at hok
             · simp at hok
@@ -470,7 +470,7 @@ theorem scan_full_consumption (input : String)
   have h_init := initial_corr input input.toList h_chars
   have h_emit : ScannerSurfCorr ((ScannerState.mk' input).emit .streamStart)
       ⟨input.toList, 0⟩ :=
-    ⟨h_init.chars_from, h_init.col_eq, h_init.end_eq⟩
+    ⟨h_init.chars_from, h_init.col_eq, h_init.end_eq, h_init.input_prefix⟩
   -- BOM handling preserves ScannerSurfCorr
   have h_bom : ∃ sp, ScannerSurfCorr
       (match (ScannerState.mk' input |>.emit .streamStart).peek? with

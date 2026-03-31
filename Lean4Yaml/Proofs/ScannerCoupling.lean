@@ -134,6 +134,7 @@ theorem consumeNewline_lf_corr (sc : ScannerState) (rest : List Char)
     · exact hadv.chars_from
     · exact hadv.col_eq
     · exact hadv.end_eq
+    · exact hadv.input_prefix
 
 /-- `consumeNewline` when peeking `\r` followed by `\n` (CRLF). -/
 theorem consumeNewline_crlf_corr (sc : ScannerState) (rest : List Char)
@@ -492,6 +493,59 @@ theorem skipWhitespaceLoop_offset_mono (sc : ScannerState) (fuel : Nat) :
         exact ⟨Nat.le_refl _, rfl⟩
     · -- none
       exact ⟨Nat.le_refl _, rfl⟩
+
+/-- If `skipWhitespaceLoop` doesn't change the offset, it returns the input state.
+    Proof: if any whitespace was consumed, `advance` would strictly increase the
+    offset, and the recursive call can only increase further (by monotonicity).
+    So offset equality implies no WS was consumed → state unchanged. -/
+theorem skipWhitespaceLoop_eq_of_same_offset (sc : ScannerState) (fuel : Nat)
+    (heq : (skipWhitespaceLoop sc fuel).offset = sc.offset) :
+    skipWhitespaceLoop sc fuel = sc := by
+  induction fuel generalizing sc with
+  | zero => simp [skipWhitespaceLoop]
+  | succ n ih =>
+    unfold skipWhitespaceLoop
+    split
+    · -- peek? = some c
+      rename_i c hpeek
+      split
+      · -- isWhiteSpaceBool c = true: advance + recurse
+        exfalso
+        have hmore := peek_some_hasMore sc c hpeek
+        have hadv_gt : sc.advance.offset > sc.offset := by
+          rw [advance_offset_eq sc hmore]; exact raw_next_gt _ _
+        have ⟨hmono, _⟩ := skipWhitespaceLoop_offset_mono sc.advance n
+        -- heq says the result offset = sc.offset, but it's ≥ advance.offset > sc.offset
+        simp only [skipWhitespaceLoop] at heq
+        simp only [hpeek, ite_true, ‹isWhiteSpaceBool c = true›] at heq
+        omega
+      · -- not whitespace: returns sc
+        rfl
+    · -- peek? = none: returns sc
+      rfl
+
+/-- If the current char is not whitespace (or at EOF), `skipWhitespaceLoop` is a no-op. -/
+theorem skipWhitespaceLoop_noop_of_not_ws (sc : ScannerState) (fuel : Nat)
+    (h : match sc.peek? with | some c => isWhiteSpaceBool c = false | none => True) :
+    skipWhitespaceLoop sc fuel = sc := by
+  cases fuel with
+  | zero => simp [skipWhitespaceLoop]
+  | succ n =>
+    unfold skipWhitespaceLoop
+    split
+    · rename_i c hpeek
+      simp [hpeek] at h
+      split
+      · rename_i hws; simp [h] at hws
+      · rfl
+    · rfl
+
+/-- `skipWhitespace` returns the input state when the first char is not whitespace. -/
+theorem skipWhitespace_noop (sc : ScannerState)
+    (h : match sc.peek? with | some c => isWhiteSpaceBool c = false | none => True) :
+    skipWhitespace sc = sc := by
+  unfold skipWhitespace
+  exact skipWhitespaceLoop_noop_of_not_ws sc _ h
 
 /-- Monotonicity: `collectCommentTextLoop` does not decrease the offset. -/
 theorem collectCommentTextLoop_offset_mono (sc : ScannerState) (text : String) (fuel : Nat) :

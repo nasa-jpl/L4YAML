@@ -597,7 +597,7 @@ theorem initial_stream_and_prefix (input : String) :
   have h_init := initial_corr input input.toList h_chars
   have h_emit : ScannerSurfCorr ((ScannerState.mk' input).emit .streamStart)
       ⟨input.toList, 0⟩ :=
-    ⟨h_init.chars_from, h_init.col_eq, h_init.end_eq⟩
+    ⟨h_init.chars_from, h_init.col_eq, h_init.end_eq, h_init.input_prefix⟩
   split
   · -- BOM present
     rename_i h_peek
