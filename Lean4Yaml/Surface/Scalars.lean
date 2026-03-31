@@ -270,11 +270,14 @@ inductive SBNbLiteralNext : Nat → SurfPos → SurfPos → Prop where
       SBNbLiteralNext n s s'
 
 /-- l-literal-content(n,t): full literal scalar content.
-    Optional first line + continuation lines + optional final break. -/
+    Optional first line + continuation lines + optional trailing break,
+    plus l-chomped-empty(n,t): trailing empty lines + optional partial indent at EOF. -/
 inductive SLLiteralContent : Nat → SurfPos → SurfPos → Prop where
-  | mk (n : Nat) (s s₁ s' : SurfPos) :
+  | mk (n : Nat) (s s₁ s₂ s₃ s' : SurfPos) :
       GOpt (GSeq (SLNbLiteralText n) (GStar (SBNbLiteralNext n))) s s₁ →
-      GOpt SBBreak s₁ s' →
+      GOpt SBBreak s₁ s₂ →
+      GStar (SLEmpty n .blockIn) s₂ s₃ →
+      GOpt (SIndentLe n) s₃ s' →
       SLLiteralContent n s s'
 
 /-- [170] c-l+literal(n): complete literal block scalar.
@@ -304,10 +307,11 @@ inductive SLNbFoldedLines : Nat → SurfPos → SurfPos → Prop where
     Content structure is complex (spaced/trimmed/folded sections);
     simplified here to indent(n+m) + nb-char lines. -/
 inductive SCLFolded : Nat → SurfPos → SurfPos → Prop where
-  | mk (n : Nat) (m : Nat) (rest : List Char) (col : Nat) (s₁ s' : SurfPos)
+  | mk (n : Nat) (m : Nat) (rest : List Char) (col : Nat) (s₁ s₂ s' : SurfPos)
       (hm : m ≥ 1) :
       SCBBlockHeader ⟨rest, col + 1⟩ s₁ →
-      GOpt (SLNbFoldedLines (n + m)) s₁ s' →
+      GOpt (SLNbFoldedLines (n + m)) s₁ s₂ →
+      GOpt (SIndentLe (n + m)) s₂ s' →
       SCLFolded n ⟨'>' :: rest, col⟩ s'
 
 end Lean4Yaml.Surface

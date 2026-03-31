@@ -1951,18 +1951,35 @@ Partially discharged `preprocessing_eof_extends_stream` (§1a). The `BlockStack.
   Literal (`|`) and folded (`>`) dispatch **fully proven** via `peek_some_sp` +
   `advance_non_newline_corr` + `ScannerSurfCorr_unique`.
   Body: `scanBlockScalarBody_corr` for correspondence (sorry for grammar).
-  2 sorry uses: literal body grammar
-  (`SLLiteralContent` + `m ≥ 1`), folded body grammar (`GOpt SLNbFoldedLines` + `m ≥ 1`).
+  Literal body **PROVEN** via `collectBlockScalarLoop_literal_prod` + `scanBlockScalarBody_literal_prod`.
+  1 sorry use: folded body grammar (`GOpt SLNbFoldedLines` + `m ≥ 1`).
   `#` without preceding WS was closed (see L1293 below).
 
-**Sorry count: 8 declarations** (ScalarProduction.lean ×2:
-`scanPlainScalar_prod`, `scanBlockScalar_prod`;
+**Sorry count: 9 declarations** (ScalarProduction.lean ×3:
+`scanPlainScalar_prod`, `prefix_text_literal_content`, `scanBlockScalar_prod`;
 DocumentProduction.lean ×1: `scan_content_gives_stream`;
 StreamAccum.lean ×5: `preprocessing_eof_extends_stream`, `accum_step_structural`,
 `accum_step_flow`, `accum_step_block`, `accum_step_content`).
-Note: `scanBlockScalar_prod` has 2 sorry uses (literal body, folded body) within 1 declaration.
+Note: `scanBlockScalar_prod` has 1 sorry use (folded body only; literal body **CLOSED**).
+Note: `prefix_text_literal_content` has 1 sorry (consecutive text lines edge case; structurally unreachable from scanner output).
 
-**Reduction history:** 14 → 13 → 12 → 11 → 10 → 9 → 8
+**Reduction history:** 14 → 13 → 12 → 11 → 10 → 9 → 8 → 9 (literal body sorry closed but `prefix_text_literal_content` added)
+
+**Progress (2026-04-01 — literal body sorry CLOSED):**
+- **Literal body sorry in `scanBlockScalar_prod` CLOSED** — the `|` case is now fully proven.
+- **`collectBlockScalarLoop_literal_prod`**: Main loop theorem by induction on fuel. Each iteration
+  either stops (empty content), processes an empty line (`prepend_empty_to_literal_content`),
+  processes content + break (`content_break_tail_to_literal`), or processes final content
+  (`content_only_to_literal` / `prefix_text_literal_content`).
+- **`scanBlockScalarBody_literal_prod`**: Wrapper combining auto-detect + loop + `m ≥ 1`.
+  Returns 5-tuple `(sp', contentIndent, contentIndent ≥ 1, SLLiteralContent, ScannerSurfCorr)`.
+- **7 grammar composition helpers** added (`empty_literal_content`, `indent_only_literal_content`,
+  `prepend_empty_to_literal_content`, `content_only_to_literal`, `content_break_tail_to_literal`,
+  `prefix_text_literal_content`, `suffix_gstar_empty_literal_content`).
+- **`prefix_text_literal_content` has 1 sorry** — consecutive text lines without intervening break
+  is structurally unreachable from scanner output (the loop always ends at break/EOF between
+  content lines). This is a "provably dead code" sorry.
+- **Build: 415/415 jobs, 0 errors, 9 sorry declarations**.
 
 **Progress (2026-03-30 session 3 — consolidation pass):**
 - **5 intermediate sorry-containing theorems removed** by consolidating into call sites:
@@ -1998,8 +2015,9 @@ Note: `scanBlockScalar_prod` has 2 sorry uses (literal body, folded body) within
 |---|---|---|
 | L1152 | `scanPlainScalar_prod` | Grammar: `SNsPlain 0 .blockIn` (first char + continuation + multi-line) |
 | ~~L1293~~ | ~~`scanBlockScalar_prod`~~ | ~~`#` without preceding WS~~ — **CLOSED** (2026-03-31, `peekBack?` infrastructure) |
-| L1585 | `scanBlockScalar_prod` | Literal body: `SLLiteralContent m` only (`m ≥ 1` **PROVEN**, header **PROVEN**) |
-| L1599 | `scanBlockScalar_prod` | Folded body: `GOpt (SLNbFoldedLines m)` only (`m ≥ 1` **PROVEN**, header **PROVEN**) |
+| L1478 | `prefix_text_literal_content` | Consecutive text lines without intervening break (structurally unreachable) |
+| ~~L1585~~ | ~~`scanBlockScalar_prod`~~ | ~~Literal body: `SLLiteralContent m`~~ — **CLOSED** (2026-04-01, `collectBlockScalarLoop_literal_prod`) |
+| L1879 | `scanBlockScalar_prod` | Folded body: `GOpt (SLNbFoldedLines m)` only (`m ≥ 1` **PROVEN**, header **PROVEN**) |
 
 **Remaining for full Tier 2 closure:**
 
@@ -2015,11 +2033,16 @@ Note: `scanBlockScalar_prod` has 2 sorry uses (literal body, folded body) within
    ✅ **(a) PROVEN** (2026-03-31): `autoDetectBlockScalarIndentLoop_ge_min` + `autoDetectBlockScalarIndent_ge_min`
    + `parseBlockHeaderLoop_offset_preserves` + `scanBlockScalarBody_indent_ge_one`.
    `scanBlockScalar_prod` now has `hIndent : sc.currentIndent ≥ 0` precondition.
-   (b) Construct `SLLiteralContent m` (literal) or `GOpt (SLNbFoldedLines m)` (folded) from
-   the loop. The sorry-free helpers (`consumeExactSpaces_sindent_prod`,
-   `collectLineContentLoop_gplus_prod`, `prepend_empty_to_text_line`) are ready for the
-   per-iteration grammar construction. **This is the only remaining gap** — composing
-   loop iterations into the grammar types.
+   ~~(b) Construct `SLLiteralContent m` (literal) or `GOpt (SLNbFoldedLines m)` (folded) from
+   the loop.~~
+   ✅ **(b-literal) PROVEN** (2026-04-01): `collectBlockScalarLoop_literal_prod` (loop induction)
+   + `scanBlockScalarBody_literal_prod` (wrapper with auto-detect + `m ≥ 1`). Literal case in
+   `scanBlockScalar_prod` now sorry-free. Grammar composition uses 7 helper theorems
+   (`empty_literal_content`, `indent_only_literal_content`, `prepend_empty_to_literal_content`,
+   `content_only_to_literal`, `content_break_tail_to_literal`, `prefix_text_literal_content`,
+   `suffix_gstar_empty_literal_content`).
+   (b-folded) **TODO**: `GOpt (SLNbFoldedLines m)` — requires separate loop variant for
+   folded content (`SSNbFoldedText` uses `SNsChar` vs `SNbChar` in literal).
 
 *Hardest:*
 3. **L1111 — plain scalar grammar.** Requires:
@@ -2053,7 +2076,7 @@ Note: `scanBlockScalar_prod` has 2 sorry uses (literal body, folded body) within
 | `scNbCommentText_irrefl` | ScalarProduction §8d | `SCNbCommentText sp sp → False` (zero-width comment is impossible) |
 
 - **Also fixed `utf8PrevAux_at_boundary` cons case** in CouplingBridge.lean — changed `base` type from `String.Pos.Raw` to `Nat` so `omega` can close the equality.
-- **Build: 415/415 jobs, 0 errors, 7 sorry declarations** (down from 8).
+- **Build: 415/415 jobs, 0 errors, 7 sorry declarations** (down from 8; now 9 after literal body work added `prefix_text_literal_content`).
 
 ###### L1293 reflections
 
