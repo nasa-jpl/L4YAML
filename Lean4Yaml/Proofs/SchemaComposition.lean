@@ -195,7 +195,7 @@ theorem resolve_toYaml_nat (n : Nat)
     resolve (toYaml n) = .int (Int.ofNat n) := by
   show resolveImplicit (toString n) = .int (Int.ofNat n)
   unfold resolveImplicit
-  simp [h1, h2, h3]
+  grind
 
 /-- Concrete: `resolve (toYaml 42) = .int 42`. -/
 theorem resolve_toYaml_nat_42 : resolve (toYaml (42 : Nat)) = .int 42 :=

@@ -5254,7 +5254,8 @@ theorem scan_first_is_streamStart (input : String) (tokens : Array (Positioned Y
 
   have h_after_bom_token : (s_after_bom.tokens[0]'h_0_lt_after_bom).val = YamlToken.streamStart := by
     -- s_after_bom.tokens = ((ScannerState.mk' input).emit .streamStart).tokens
-    simp only [h_bom_eq, h_init_token]
+    simp only [h_bom_eq]
+    grind
 
   -- Step 4: scanLoop preserves token[0]
   -- The SimpleKeyAbove invariant holds vacuously: simpleKey.possible = false
@@ -8213,7 +8214,6 @@ theorem scan_positions_ordered (input : String) (tokens : Array (Positioned Yaml
       have h_i0 : i = 0 := by omega
       subst h_i0
       simp [ScannerState.emit, ScannerState.mk', ScannerState.currentPos]
-      rfl
   -- BOM handling preserves ScanInv
   have h_inv : ScanInv (match (ScannerState.mk' input).emit .streamStart |>.peek? with
       | some '\uFEFF' => ((ScannerState.mk' input).emit .streamStart).advance
