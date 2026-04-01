@@ -260,6 +260,57 @@ theorem ssl_comments_extend_stream_col0
     (GOpt.none _)
     (GStar.nil _)
 
+/-! ## §0d Preprocessing → SSLComments for `some` result at col=0
+
+    When `scanNextToken_preprocess` returns `some (s_prep, c)` and the
+    scanner starts at col=0, the characters consumed by `skipToContent`
+    form `SSLComments`. This is the key building block for closing pending
+    nodes: the SSLComments is provided to `h_closable` of the previous
+    `PendingNode` to extend the stream.
+
+    The `sp_mid` returned is the SSLComments boundary (where comment lines
+    end), and `sp_prep` is the scanner's final position (which may be past
+    `sp_mid` due to trailing whitespace from the last `skipToContent` iteration). -/
+
+/-- When preprocessing returns `some` at col=0, extract `SSLComments` from the
+    consumed characters plus `ScannerSurfCorr` for the resulting state. -/
+theorem preprocess_some_ssl_comments_col0 (sc : ScannerState) (sp : SurfPos)
+    (s_prep : ScannerState) (c : Char)
+    (hcorr : ScannerSurfCorr sc sp)
+    (hcol : sp.col = 0)
+    (hok : scanNextToken_preprocess sc = .ok (some (s_prep, c))) :
+    ∃ sp_mid sp_prep, SSLComments sp sp_mid ∧ sp_mid.col = 0 ∧
+                      ScannerSurfCorr s_prep sp_prep := by
+  unfold scanNextToken_preprocess at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  split at hok
+  · simp at hok
+  · rename_i s_content h_skip
+    obtain ⟨sp_mid, sp_sc, h_ssl, hcol_mid, hcorr_sc⟩ :=
+      skipToContent_startOfLine_comments_prod sc sp s_content hcorr hcol h_skip
+    split at hok
+    · simp at hok
+    · split at hok
+      · split at hok
+        · simp at hok
+        · split at hok
+          · simp at hok
+          · have h := Except.ok.inj hok; injection h with h
+            obtain ⟨h1, h2⟩ := Prod.mk.inj h; subst h1; subst h2
+            obtain ⟨sp2, hcorr2⟩ := unwindIndents_corr s_content sp_sc hcorr_sc (↑s_content.col)
+            have hcorr3 : ScannerSurfCorr
+                { (unwindIndents s_content ↑s_content.col) with
+                  needIndentCheck := false } sp2 :=
+              ⟨hcorr2.chars_from, hcorr2.col_eq, hcorr2.end_eq, hcorr2.input_prefix⟩
+            exact ⟨sp_mid, sp2, h_ssl, hcol_mid, saveSimpleKey_corr _ sp2 hcorr3⟩
+      · split at hok
+        · simp at hok
+        · split at hok
+          · simp at hok
+          · have h := Except.ok.inj hok; injection h with h
+            obtain ⟨h1, h2⟩ := Prod.mk.inj h; subst h1; subst h2
+            exact ⟨sp_mid, sp_sc, h_ssl, hcol_mid, saveSimpleKey_corr _ sp_sc hcorr_sc⟩
+
 /-! ## §1 Per-Dispatch Grammar Accumulator Lemmas
 
     Each dispatcher has a sorry lemma that:
@@ -462,13 +513,19 @@ theorem accum_step_structural (sc : ScannerState)
     | pendingContent h_closable_old | pendingDocEnd h_closable_old
     | pendingDocStart h_closable_old | pendingDirective h_closable_old
     | pendingFlow h_closable_old | pendingBlock h_closable_old =>
-      -- Non-trivial pending: SSLComments closes the pending, then dispatch opens new.
-      -- Requires grammar evidence from the previous token.
-      all_goals sorry
+      -- Close old pending via SSLComments from preprocessing, then open new.
+      all_goals (
+        rename_i h_closable_old
+        by_cases hcol : sp_scan.col = 0
+        · obtain ⟨sp_mid, _, h_ssl, hcol_mid, _⟩ :=
+            preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
+          exact ⟨sp_mid, sp_mid, sp_scan',
+                 h_closable_old sp_start sp_mid h_stream h_ssl,
+                 BlockStack.nil sp_mid,
+                 PendingNode.pendingDocStart sp_mid sp_scan'
+                   (fun _ _ h_str h_ssl => sorry), hcorr_result⟩
+        · sorry)
   | seqLevel | mapLevel =>
-    -- Non-nil block stack: unwindIndents pops levels during preprocessing.
-    -- Structural tokens at col 0 → full dedent → stack becomes nil.
-    -- Requires BlockStack unwinding evidence.
     all_goals sorry
 
 /-! ### §1c Preprocessing + Flow Indicator Dispatch
@@ -557,7 +614,17 @@ theorem accum_step_flow (sc : ScannerState)
     | pendingContent h_closable_old | pendingDocEnd h_closable_old
     | pendingDocStart h_closable_old | pendingDirective h_closable_old
     | pendingFlow h_closable_old | pendingBlock h_closable_old =>
-      all_goals sorry
+      all_goals (
+        rename_i h_closable_old
+        by_cases hcol : sp_scan.col = 0
+        · obtain ⟨sp_mid, _, h_ssl, hcol_mid, _⟩ :=
+            preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
+          exact ⟨sp_mid, sp_mid, sp_scan',
+                 h_closable_old sp_start sp_mid h_stream h_ssl,
+                 BlockStack.nil sp_mid,
+                 PendingNode.pendingFlow sp_mid sp_scan'
+                   (fun _ _ h_str h_ssl => sorry), hcorr_result⟩
+        · sorry)
   | seqLevel | mapLevel =>
     all_goals sorry
 
@@ -646,7 +713,17 @@ theorem accum_step_block (sc : ScannerState)
     | pendingContent h_closable_old | pendingDocEnd h_closable_old
     | pendingDocStart h_closable_old | pendingDirective h_closable_old
     | pendingFlow h_closable_old | pendingBlock h_closable_old =>
-      all_goals sorry
+      all_goals (
+        rename_i h_closable_old
+        by_cases hcol : sp_scan.col = 0
+        · obtain ⟨sp_mid, _, h_ssl, hcol_mid, _⟩ :=
+            preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
+          exact ⟨sp_mid, sp_mid, sp_scan',
+                 h_closable_old sp_start sp_mid h_stream h_ssl,
+                 BlockStack.nil sp_mid,
+                 PendingNode.pendingBlock sp_mid sp_scan'
+                   (fun _ _ h_str h_ssl => sorry), hcorr_result⟩
+        · sorry)
   | seqLevel | mapLevel =>
     all_goals sorry
 
@@ -768,14 +845,18 @@ theorem accum_step_content (sc : ScannerState)
     | pendingContent h_closable_old | pendingDocEnd h_closable_old
     | pendingDocStart h_closable_old | pendingDirective h_closable_old
     | pendingFlow h_closable_old | pendingBlock h_closable_old =>
-      -- Non-trivial pending: SSLComments from preprocessing closes it,
-      -- extending the stream. Requires evidence-bearing PendingNode
-      -- to reconstruct grammar witness (see §6 Gap Analysis).
-      all_goals sorry
+      all_goals (
+        rename_i h_closable_old
+        by_cases hcol : sp_scan.col = 0
+        · obtain ⟨sp_mid, _, h_ssl, hcol_mid, _⟩ :=
+            preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
+          exact ⟨sp_mid, sp_mid, sp_scan',
+                 h_closable_old sp_start sp_mid h_stream h_ssl,
+                 BlockStack.nil sp_mid,
+                 PendingNode.pendingContent sp_mid sp_scan'
+                   (fun _ _ h_str h_ssl => sorry), hcorr_result⟩
+        · sorry)
   | seqLevel | mapLevel =>
-    -- Non-nil block stack: content within block entry.
-    -- BlockStack unchanged, pending transitions to pendingContent.
-    -- Requires grammar evidence from preprocessing + previous pending.
     all_goals sorry
 
 /-! ### §1f Composition: Per-Dispatch → Full accum_step
@@ -1018,7 +1099,11 @@ theorem scan_content_gives_stream_v2
     - `nil + noPending`: PROVEN ✅ (stream unchanged, new PendingNode opened)
       h_closable in the new PendingNode is `sorry` — requires grammar
       composition from `_prod` theorems (see below)
-    - `nil + pendingX` (all 6 variants): sorry (close old pending, open new)
+    - `nil + pendingX + col=0` (all 6 variants): PROVEN ✅ (old pending closed
+      via `preprocess_some_ssl_comments_col0` + h_closable). New PendingNode
+      opened with h_closable sorry (same root cause as noPending).
+    - `nil + pendingX + col≠0`: sorry (preprocessing SSLComments not available
+      at non-zero column — flow context or BOM edge case)
     - `seqLevel | mapLevel`: sorry (stack operations)
 
     **Sorry root causes (3 independent):**
@@ -1050,9 +1135,17 @@ theorem scan_content_gives_stream_v2
     - `scanLoop_grammar_prod` (§3): fuel induction with lagging quad
     - `scan_content_gives_stream_v2` (§5): top-level entry point
 
+    **New helper (v0.4.8):**
+    - `preprocess_some_ssl_comments_col0` (§0d): PROVEN ✅. Extracts
+      SSLComments from `scanNextToken_preprocess` when col=0, threading
+      ScannerSurfCorr through skipToContent → unwindIndents → saveSimpleKey.
+
     Total sorry declarations: 5 (in §1a–§1e).
-    Total sorry sites: ~20 (decomposed across branches).
-    New in v0.4.7: 6 EOF pending cases at col=0 now PROVEN via h_closable.
+    Total sorry source sites: 24 (8 in §1a + 4×4 in §1b–§1e).
+    New in v0.4.7: 6 EOF pending cases at col=0 PROVEN via h_closable.
+    New in v0.4.8: 24 pending-at-col=0 cases (6×4 dispatch) PROVEN for
+      old-pending closure; h_closable for new PendingNode remains sorry
+      (same root cause as noPending h_closable).
 -/
 
 end Lean4Yaml.Proofs.StreamAccum
