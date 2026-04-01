@@ -20,23 +20,25 @@ DO-178C Level A requires the highest assurance for software whose failure is **c
 
 ### Medical-Grade Certification: Life-Critical Devices
 
-IEC 62304 Class C (life-critical), FDA 510(k)/PMA for software-intensive medical devices like pacemakers, insulin pumps, surgical robots. These require:
-- **Traceability** from requirements to verified implementation
-- **Evidence that the software cannot enter unsafe states** — not just that it hasn't yet
-- Static analysis and testing are necessary but **insufficient** for the highest safety classes
+IEC 62304 Class C (life-critical), FDA 510(k)/PMA for software-intensive medical devices like pacemakers, insulin pumps, surgical robots.
 
-**JPL's current practices produce excellent test artifacts. Medical regulators increasingly want mathematical proof.**
+**Why JPL can't compete here today:**
+- **Traceability** from requirements to verified implementation — JPL traces requirements to *tests*, not to *proofs*. Regulators increasingly recognize the difference.
+- **Evidence that the software cannot enter unsafe states** — testing shows the software *hasn't yet* entered an unsafe state. Formal methods prove it *cannot*.
+- Static analysis and testing are necessary but **insufficient** for the highest safety classes — formal methods are necessary, but currently not standard practice at JPL
 
-### Competitive Bids: Proving Safety of Autonomous Systems
+### Competitive Bids: Autonomous Systems — Our Biggest Threat
 
-The highest levels of assurance in competitive proposals — defense, space, critical infrastructure — increasingly require **mathematical proofs of key properties**:
-- **Safety**: The system never enters a catastrophic state
-- **Progress**: The system always eventually accomplishes its objectives
-- **Reachability**: The system can reach any required state from any valid initial state
+Companies building assurance cases for **autonomous vehicles on Earth** — Waymo, Cruise, Aurora, Mobileye — are developing formal verification toolchains, safety cases, and regulatory relationships at industrial scale. **That same expertise transfers directly to autonomous space vehicles.**
 
-These properties are **increasingly harder to prove for autonomous systems** where the state space is vast, the environment is adversarial, and the control logic is learned or adaptive. Test-based V&V cannot credibly claim these properties hold for all inputs. **Mathematical proof can.**
+**Why this is JPL's biggest competitiveness threat:**
+- These companies prove **safety** (the system never enters a catastrophic state), **progress** (the system always eventually accomplishes its objectives), and **reachability** (the system can reach any required state from any valid initial state) — the exact properties needed for autonomous spacecraft
+- They operate in an environment where formal methods are **a competitive differentiator**, not an academic curiosity — and they are hiring the talent, building the tools, and establishing the track record
+- When a defense or space prime issues an RFP requiring mathematical safety proofs for autonomous systems, these companies can respond. **JPL currently cannot.**
 
-> **The question is not whether formal verification will become standard practice for safety-critical software. The question is whether JPL will lead or follow.**
+The state space is vast, the environment is adversarial, and the control logic is increasingly learned or adaptive. Test-based V&V cannot credibly claim safety properties hold for all inputs. The autonomous vehicle industry knows this — and they are already building the alternative.
+
+> **The question is not whether formal verification will become standard practice for safety-critical software. The question is whether JPL will lead or follow — and whether terrestrial autonomy companies will enter our market before we adopt their methods.**
 
 ---
 
@@ -93,7 +95,36 @@ The verified Lean parser compiles to C via Lean's code generator. A thin FFI lay
 
 ---
 
-## 3: What We Prove — And Why Testing Can't
+## 3: What We Prove — And Why It Matters
+
+### The Proven Properties
+
+lean4-yaml-verified is not a parser with a few spot-checks. It is a parser where **every behavior** has a mathematical proof. Here are the specific properties proven and why each matters in practice:
+
+| Property | Formal Statement | Why It Matters |
+|----------|-----------------|----------------|
+| **Termination** | Every `def` (zero `partial def`) — Lean's kernel rejects non-terminating code | The parser **cannot hang** on any input. No infinite loop DoS is possible, on any input, ever. This is not a test result — it is a mathematical impossibility. |
+| **Soundness** | `parseYaml s = .ok docs → ValidYaml s docs` | If the parser accepts input, the output is a **valid YAML 1.2.2 data structure**. No silent misinterpretation, no corrupted AST, no phantom keys or values. |
+| **Completeness** | `ValidYaml s docs → parseYaml s = .ok docs` (via `DecidableEq` + `native_decide`) | The parser **never rejects valid YAML**. If input conforms to the spec, it parses. No false negatives. |
+| **Acceptance strictness** | `parseYaml s = .ok docs → InYamlLanguage s` | If the parser accepts input, that input **belongs to the formal YAML 1.2.2 grammar** — all 205 productions. The parser doesn't silently accept malformed input. |
+| **Round-trip correctness** | `parse(emit(data)) = data` (58 theorems + 63 guards) | **No data corruption** through serialization cycles. What you write is what you read back. |
+| **Schema resolution** | 35 theorems proving `resolve` maps tags to canonical types per §10.3 | Tag resolution (e.g., `!!int`, `!!bool`, `!!null`) **matches the spec exactly** — no edge cases where `"true"` becomes a string or `"1.0"` becomes an integer. |
+| **Error discriminability** | `scan_error_ne_schema_error`, constructor injectivity | Error types are **provably distinct** — pattern matching on errors is exhaustive and correct. No conflated error categories. |
+| **LawfulBEq** | 32 proofs across the entire AST hierarchy | Equality comparison is **reflexive, symmetric, transitive** — `v == v` is always `true`, `v₁ == v₂ → v₁ = v₂`. Required for correct hash maps, deduplication, caching. |
+| **Value algebra** | Algebraic properties of `YamlValue` operations | Structural operations (merge, lookup, update) **preserve invariants** — no silent corruption of nested structures. |
+| **Valid token streams** | `scan ok → ValidTokenStreamProp` (size ≥ 2, ordered positions, stream start/end markers) | The scanner **always produces well-formed token streams** — no missing delimiters, no out-of-order positions, no truncated output. |
+| **Valid documents** | `parseYaml ok → ValidDocumentProp ∧ ValidStreamProp` | Every parsed document has a **valid node tree** and the document array forms a **valid multi-document stream** per §9. |
+| **Resource limits** | `ParserLimits` enforcement (configurable bounds) | Alias expansion, nesting depth, scalar size, collection size, and input size are **bounded** — billion laughs attacks hit a configurable wall. |
+
+### Why These Properties Matter — The Practical Impact
+
+**Termination + Resource Limits = DoS Immunity.** A crafted YAML file cannot hang your parser or exhaust your memory. For a service that accepts YAML from untrusted sources (Kubernetes admission controllers, CI/CD pipelines, web APIs), this is the difference between "we fuzz-tested and hope it's safe" and "it is mathematically impossible to DoS through the parser."
+
+**Soundness + Acceptance Strictness = No Silent Corruption.** The parser never produces an invalid AST (soundness), and it never accepts input that doesn't belong to the YAML grammar (strictness). Together, these mean: if your config file parses, it's valid YAML, and the resulting data structure faithfully represents its content. For a pacemaker's configuration or a spacecraft's parameter file, "silently misinterpreted" is unacceptable.
+
+**Round-Trip Correctness = Data Integrity.** When your deployment pipeline reads a YAML config, modifies a parameter, and writes it back, the unmodified fields are **provably unchanged**. No whitespace-induced data loss, no scalar style corruption, no anchor/alias resolution artifacts.
+
+**Completeness = No False Rejections.** Valid YAML always parses. Your users never hit "parse error" on a file that conforms to the spec. For a configuration management system, false rejections are operationally indistinguishable from bugs.
 
 ### The Fundamental Asymmetry
 
@@ -104,6 +135,30 @@ The verified Lean parser compiles to C via Lean's code generator. A thin FFI lay
 | "Fast on these files" | "**Never** crashes or hangs" |
 | "Handles known attack vectors" | "**No unknown** attack vectors remain" |
 | "Survived 10 years in production" | "Will survive 100,000 years" |
+
+### Comparison: Verified vs. Compact Unverified Parsers
+
+Small, well-written YAML parsers exist. [yaml-rust2](https://github.com/ethiraric/yaml-rust2) (~5K LOC Rust) and [libfyaml](https://github.com/pantoniou/libfyaml) (~30K LOC C) are actively maintained, performant, and widely used. Why isn't "small and well-tested" enough?
+
+| Dimension | [yaml-rust2](https://github.com/ethiraric/yaml-rust2) (Rust) | [libfyaml](https://github.com/pantoniou/libfyaml) (C) | **lean4-yaml-verified** (Lean 4) |
+|-----------|------|--------|------|
+| **LOC** | ~5K | ~30K | ~2K parser + ~32K proofs |
+| **Language safety** | Memory-safe (borrow checker) | Manual memory mgmt (C) | Memory-safe + functionally verified |
+| **Termination** | Not proven — `loop`/`while` could hang on crafted input | Not proven — `while` loops, recursion | **Proven** — zero `partial def`, Lean kernel rejects non-terminating code |
+| **Soundness** | Tested on yaml-test-suite | Tested on yaml-test-suite | **Proven** — `parseYaml ok → ValidYaml` theorem |
+| **Completeness** | Unknown — may reject valid YAML | Unknown — may reject valid YAML | **Proven** — `ValidYaml → parseYaml ok` |
+| **Acceptance strictness** | Unknown — may accept invalid YAML | Unknown — may accept invalid YAML | **Proven** — `parseYaml ok → InYamlLanguage` |
+| **Round-trip** | Tested on examples | Tested on examples | **Proven** — `parse(emit(data)) = data` (58 theorems) |
+| **DoS protection** | Partial (some limits) | Partial (some limits) | **Proven** — configurable `ParserLimits` with enforcement proofs |
+| **Spec conformance** | yaml-test-suite (empirical) | yaml-test-suite (empirical) | yaml-test-suite (empirical) **+ 1,769 machine-checked theorems** |
+| **Latent CVE risk** | Unknown — Rust prevents memory bugs but not logic bugs | Unknown — C has both memory and logic bug risk | **Zero parser logic CVEs possible** — all behaviors proven |
+| **Formal grammar coupling** | None — code is the spec | None — code is the spec | **205 YAML productions formalized** as Lean Props; scanner coupled to formal grammar |
+
+**The key insight**: yaml-rust2 and libfyaml are excellent engineering. Their test suites are thorough. But tests are **finite samples from an infinite input space**. Between any two tested inputs lies an untested region where bugs can hide — and have hidden, for years, in every YAML parser ever written (PyYAML: 8 years to CVE-2020-14343; snakeyaml: production deployment to CVE-2022-38749).
+
+lean4-yaml-verified's 1,769 theorems don't sample the input space — they **cover it entirely**. The termination proof doesn't check a billion inputs for hangs; it proves hanging is structurally impossible. The soundness theorem doesn't validate a thousand parse trees; it proves every parse tree is valid. This is the difference between "we looked hard and found nothing" and "there is nothing to find."
+
+**Compact code is not verified code.** yaml-rust2's 5K LOC is admirably small, but every line is an unverified claim about YAML semantics. lean4-yaml-verified's 2K LOC of parser code makes the same claims — and then proves each one with 32K LOC of machine-checked mathematical proof. The 16:1 proof-to-code ratio is the cost of certainty. For most applications, yaml-rust2's engineering quality is sufficient. For applications where "sufficient" means "provably correct" — avionics, medical devices, interstellar missions — it is not.
 
 ### Three Proof Layers — Each Eliminates a Vulnerability Class
 
@@ -147,10 +202,10 @@ Layer 3: Grammar-Level (Eliminates: Misinterpretation, silent corruption)
 
 ### Why C, Python, Go, Rust Parsers Can't Do This
 
-- **C** (libyaml): Manual memory management, undefined behavior, no proof language — auditing 10K LOC of pointer arithmetic is intractable
+- **C** (libyaml, libfyaml): Manual memory management, undefined behavior, no proof language — auditing 30K LOC of pointer arithmetic is intractable. libfyaml is well-engineered but every `while` loop is an unverified termination claim.
 - **Python** (PyYAML, ruamel.yaml): Dynamic typing, mutable state, runtime errors — `pytest` checks examples, can't express `∀ input`
 - **Go** (go-yaml): Garbage-collected but no dependent types — can't express or check invariants at compile time
-- **Rust** (serde-yaml): Borrow checker proves memory safety, not functional correctness — can parse safely but can't prove it parses *correctly*
+- **Rust** (yaml-rust2, serde-yaml): Borrow checker proves memory safety, not functional correctness — yaml-rust2 can parse safely but can't prove it parses *correctly* or that it won't hang on crafted input
 
 **Lean 4 is unique**: it is simultaneously a general-purpose programming language (with native code generation to C) and an interactive theorem prover (with dependent types and a trusted kernel). This is not a tradeoff — it is both at once. Crucially, Lean 4 is the **only** language in this class whose kernel has [multiple independent implementations](https://leodemoura.github.io/blog/2026-3-16-who-watches-the-provers/) — written in Rust, C, Lean itself, and others — that are **nightly cross-tested** against each other. No other theorem prover (Coq, Agda, Isabelle, F*) subjects its trusted core to this level of independent V&V.
 
@@ -195,14 +250,16 @@ Layer 3: Grammar-Level (Eliminates: Misinterpretation, silent corruption)
 
 ### Comparison to Industry Verified Systems
 
-| System | Domain | Code | Proofs | Deployed |
-|--------|--------|------|--------|----------|
-| **seL4** | Verified OS kernel | ~200K LOC | ~480K LOC | Defense systems |
-| **CompCert** | Verified C compiler | ~60K LOC | ~100K LOC | Airbus avionics |
-| **AWS Cedar** | Verified authorization | ~20K LOC | ~40K LOC | Cloud security |
-| **lean4-yaml-verified** | **Verified YAML parser** | **~2K LOC** | **~32K LOC** | **Aerospace configs (C, Python, Rust)** |
+| System | Domain | Code | Proofs | Team | Timeline | Deployed |
+|--------|--------|------|--------|------|----------|----------|
+| **seL4** | Verified OS kernel | ~200K LOC | ~480K LOC | 12–15 researchers (NICTA/Data61), ~20 person-years | 2004–2009 (5 yrs to first proof) | Defense systems |
+| **CompCert** | Verified C compiler | ~60K LOC | ~100K LOC | 7 core (INRIA, led by Leroy), ~6–8 person-years | 2005–2008 (3 yrs to first release) | Airbus avionics |
+| **AWS Cedar** | Verified authorization | ~20K LOC | ~40K LOC | 63 contributors, est. 5–15 core (AWS) | 2021–2023 (2+ yrs to announcement) | Cloud security |
+| **lean4-yaml-verified** | **Verified YAML parser** | **~2K LOC** | **~32K LOC** | **1 engineer + GenAI** | **2024–2025 (~18 months)** | **Aerospace configs (C, Python, Rust)** |
 
 Same class of rigor. Same trusted-kernel verification. **Only verified YAML parser in any language.**
+
+The comparison is stark: seL4 required 12–15 researchers and 20 person-years. CompCert required 7 core researchers and 6–8 person-years. **lean4-yaml-verified was built by one engineer with GenAI assistance in ~18 months.** The parser is smaller than a kernel or compiler, but the methodology — GenAI-accelerated proof engineering in Lean 4 — represents a step change in what is achievable by a small team.
 
 ---
 
