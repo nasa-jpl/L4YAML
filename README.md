@@ -1793,7 +1793,7 @@ Remaining _prod theorems ───────────────┘       
 | Layer 4b (preprocessing coupling) | ~180 | 280 actual (8 theorems, 0 sorry) | ✅ Complete |
 | Layer 4c (StreamAccum) | ~320 | 382 (superseded) | ⚠️ Superseded by 4d+4e |
 | Layer 4d (Lagging Grammar) | ~400-600 | (merged into 4e) | ✅ Merged into 4e |
-| Layer 4e (BlockStack + Lagging Quad) | ~190 | 986 actual (2 inductives, 15 theorems, 5 sorry) | ✅ All nil+noPending proven; dispatch _corr theorems |
+| Layer 4e (BlockStack + Lagging Quad) | ~190 | 1058 actual (2 inductives, 15 theorems, 5 sorry) | ✅ Evidence-bearing PendingNode; nil+noPending + EOF pending proven |
 | **Total** | **~3,050-3,550** | **1,258 actual** | |
 
 **Execution order:** Layers 1–3 complete. Layer 4a foundations complete (all `_prod` theorems proven, 0 sorry). Layer 4b complete (8 theorems). Layer 4c→4d→4e complete — restructured from broken same-position invariant (4c) through lagging triple (4d) to lagging quad with `BlockStack` (4e). 5 per-dispatch sorry are architecturally provable. All individual scalar/tag/anchor `_prod` theorems now **FULLY PROVEN**. `scan_content_gives_stream` eliminated by import reversal (DocumentProduction imports StreamAccum). Next steps: discharge per-dispatch sorry (`accum_step_structural` and `preprocessing_eof_extends_stream` are tractable first targets). Flow collection accumulation (analogous to `BlockStack` for `FlowStack`) is future work.
