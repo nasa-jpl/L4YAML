@@ -84,6 +84,61 @@ theorem consumeNewline_break_prod (sc : ScannerState) (sp : SurfPos) (c : Char)
       exact ⟨⟨rest, 0⟩, SBBreak.cr rest sc.col, rfl,
         corr_of_needIndentCheck_update true hadv⟩
 
+/-! ## §1b Column-monotonicity lemmas for whitespace/comment productions
+
+    SSWhite and SCNbCommentText strictly increment column. GStar SSWhite
+    is therefore col-monotone. When both endpoints are at col=0,
+    GStar SSWhite and GOpt SCNbCommentText must be nil/none. -/
+
+theorem sswhite_col_succ (sp sp' : SurfPos) (h : SSWhite sp sp') : sp'.col = sp.col + 1 := by
+  cases h <;> rfl
+
+theorem gstar_sswhite_col_ge (sp sp' : SurfPos) (h : GStar SSWhite sp sp') :
+    sp'.col ≥ sp.col := by
+  induction h with
+  | nil => exact Nat.le_refl _
+  | cons _ s₁ _ hw _ ih =>
+    have := sswhite_col_succ _ s₁ hw
+    omega
+
+/-- If GStar SSWhite starts and ends at the same column, it must be nil. -/
+theorem gstar_sswhite_col_eq_nil (sp sp' : SurfPos)
+    (hcol : sp.col = sp'.col) (h : GStar SSWhite sp sp') : sp' = sp := by
+  cases h with
+  | nil => rfl
+  | cons _ s₁ _ hw hrest =>
+    exfalso
+    have h1 := sswhite_col_succ _ s₁ hw
+    have h2 := gstar_sswhite_col_ge s₁ sp' hrest
+    omega
+
+theorem snbchar_col_succ (sp sp' : SurfPos) (h : SNbChar sp sp') : sp'.col = sp.col + 1 := by
+  cases h <;> rfl
+
+theorem gstar_snbchar_col_ge (sp sp' : SurfPos) (h : GStar SNbChar sp sp') :
+    sp'.col ≥ sp.col := by
+  induction h with
+  | nil => exact Nat.le_refl _
+  | cons _ s₁ _ hc _ ih =>
+    have := snbchar_col_succ _ s₁ hc
+    omega
+
+/-- SCNbCommentText strictly increments column (consumes '#' + body). -/
+theorem scnb_comment_col_gt (sp sp' : SurfPos)
+    (h : SCNbCommentText sp sp') : sp'.col > sp.col := by
+  cases h
+  rename_i rest col hstar
+  have := gstar_snbchar_col_ge ⟨rest, col + 1⟩ sp' hstar
+  dsimp only [] at this ⊢; omega
+
+/-- GOpt SCNbCommentText at same column implies none. -/
+theorem gopt_comment_col_eq_none (sp sp' : SurfPos)
+    (hcol : sp.col = sp'.col) (h : GOpt SCNbCommentText sp sp') : sp' = sp := by
+  cases h
+  · rfl
+  · rename_i hc
+    exfalso; have := scnb_comment_col_gt _ _ hc; omega
+
 /-! ## §2 skipToContentLoop at col=0 → GStar SLComment
 
     When entering at column 0, each iteration produces one `SLComment`
