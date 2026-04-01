@@ -279,6 +279,195 @@ theorem eof_corr (sc : ScannerState) (sp : SurfPos)
   | [], _ => rfl
   | _ :: _, CharsFromOffset.cons _ hp _ _ _ _ => exact absurd hp (by omega)
 
+/-! ### peekAt? ↔ CharsFromOffset bridge -/
+
+theorem peekAtLoop_cons {input : String} {inputEnd p : Nat}
+    {c : Char} {rest : List Char}
+    (hlt : p < inputEnd)
+    (hcf : CharsFromOffset input p (c :: rest)) :
+    ScannerState.peekAt?Loop input inputEnd ⟨p⟩ 0 = some c := by
+  cases hcf with
+  | cons _ hp _ _ hc hrest =>
+    simp [ScannerState.peekAt?Loop, show p < inputEnd from hlt, hc]
+
+theorem peekAtLoop_step {input : String} {inputEnd p : Nat} {n : Nat}
+    (hlt : p < inputEnd) :
+    ScannerState.peekAt?Loop input inputEnd ⟨p⟩ (n + 1) =
+    ScannerState.peekAt?Loop input inputEnd
+      (String.Pos.Raw.next input ⟨p⟩) n := by
+  simp [ScannerState.peekAt?Loop, show p < inputEnd from hlt]
+
+/-- When the surface chars begin with `c :: rest`, `peekAt? 0 = some c`. -/
+theorem peekAt_zero_corr (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp)
+    (c : Char) (rest : List Char) (hchars : sp.chars = c :: rest) :
+    sc.peekAt? 0 = some c := by
+  unfold ScannerState.peekAt?
+  have hlt : sc.offset < sc.inputEnd := by
+    rw [hcorr.end_eq]
+    have hcf := hcorr.chars_from; rw [hchars] at hcf
+    exact match hcf with | .cons _ h _ _ _ _ => h
+  exact peekAtLoop_cons hlt (hchars ▸ hcorr.chars_from)
+
+/-- Extract `CharsFromOffset` for the tail after a cons. -/
+theorem chars_from_cons_tail {input : String} {p : Nat}
+    {c : Char} {rest : List Char}
+    (hcf : CharsFromOffset input p (c :: rest)) :
+    CharsFromOffset input (String.Pos.Raw.next input ⟨p⟩).byteIdx rest := by
+  cases hcf with | cons _ _ _ _ _ hrest => exact hrest
+
+/-- `atDocumentStart` + `ScannerSurfCorr` implies chars begin with `---`.
+    Extracts the char pattern needed by `scanDocumentStart_prod`. -/
+theorem option_beq_some_eq {c d : Char} (h : (some c == some d) = true) : c = d := by
+  simp [beq_iff_eq] at h; exact h
+
+theorem option_beq_none_absurd {d : Char} (h : (none == some d) = true) : False := by
+  simp [] at h
+
+/-- Extract hypotheses from `atDocumentStart sc = true`. -/
+theorem atDocumentStart_decompose {sc : ScannerState}
+    (h : atDocumentStart sc = true) :
+    sc.col = 0 ∧ sc.peekAt? 0 = some '-' ∧
+    sc.peekAt? 1 = some '-' ∧ sc.peekAt? 2 = some '-' := by
+  unfold atDocumentStart at h
+  simp only [Bool.and_eq_true] at h
+  obtain ⟨⟨⟨⟨hcol, hp0⟩, hp1⟩, hp2⟩, _⟩ := h
+  refine ⟨by exact beq_iff_eq.mp hcol, ?_, ?_, ?_⟩
+  · generalize hv : sc.peekAt? 0 = v at hp0
+    cases v with
+    | none => exact absurd hp0 (by decide)
+    | some c => rw [show c = '-' from option_beq_some_eq hp0]
+  · generalize hv : sc.peekAt? 1 = v at hp1
+    cases v with
+    | none => exact absurd hp1 (by decide)
+    | some c => rw [show c = '-' from option_beq_some_eq hp1]
+  · generalize hv : sc.peekAt? 2 = v at hp2
+    cases v with
+    | none => exact absurd hp2 (by decide)
+    | some c => rw [show c = '-' from option_beq_some_eq hp2]
+
+/-- Extract hypotheses from `atDocumentEnd sc = true`. -/
+theorem atDocumentEnd_decompose {sc : ScannerState}
+    (h : atDocumentEnd sc = true) :
+    sc.col = 0 ∧ sc.peekAt? 0 = some '.' ∧
+    sc.peekAt? 1 = some '.' ∧ sc.peekAt? 2 = some '.' := by
+  unfold atDocumentEnd at h
+  simp only [Bool.and_eq_true] at h
+  obtain ⟨⟨⟨⟨hcol, hp0⟩, hp1⟩, hp2⟩, _⟩ := h
+  refine ⟨by exact beq_iff_eq.mp hcol, ?_, ?_, ?_⟩
+  · generalize hv : sc.peekAt? 0 = v at hp0
+    cases v with
+    | none => exact absurd hp0 (by decide)
+    | some c => rw [show c = '.' from option_beq_some_eq hp0]
+  · generalize hv : sc.peekAt? 1 = v at hp1
+    cases v with
+    | none => exact absurd hp1 (by decide)
+    | some c => rw [show c = '.' from option_beq_some_eq hp1]
+  · generalize hv : sc.peekAt? 2 = v at hp2
+    cases v with
+    | none => exact absurd hp2 (by decide)
+    | some c => rw [show c = '.' from option_beq_some_eq hp2]
+
+/-- When `peekAt? n` returns `some c`, the character at offset+n positions
+    in the chars list equals `c`. Helper lemma for extracting chars from
+    `peekAt?`. -/
+theorem peekAtLoop_some_chars {input : String} {inputEnd p : Nat}
+    {n : Nat} {c : Char}
+    (hend : inputEnd = input.utf8ByteSize)
+    (hok : ScannerState.peekAt?Loop input inputEnd ⟨p⟩ n = some c)
+    (cs : List Char) (hcf : CharsFromOffset input p cs) :
+    ∃ pre rest, cs = pre ++ c :: rest ∧ pre.length = n := by
+  induction n generalizing p cs with
+  | zero =>
+    unfold ScannerState.peekAt?Loop at hok
+    split at hok
+    · -- p < inputEnd branch
+      cases hcf with
+      | at_end _ hp => exact absurd (show p < input.utf8ByteSize from hend ▸ ‹_›) (by omega)
+      | cons _ _ c' rest hc' hrest =>
+        have hinj := Option.some.inj hok
+        have : c' = c := by rw [← hc']; exact hinj
+        exact ⟨[], rest, by subst this; rfl, rfl⟩
+    · exact absurd hok nofun
+  | succ n ih =>
+    unfold ScannerState.peekAt?Loop at hok
+    split at hok
+    · -- p < inputEnd branch
+      cases hcf with
+      | at_end _ hp => exact absurd (show p < input.utf8ByteSize from hend ▸ ‹_›) (by omega)
+      | cons _ _ c' rest hc' hrest =>
+        -- hok : peekAtLoop ... (next input ⟨p⟩) n = some c
+        obtain ⟨pre', rest', heq, hlen⟩ := ih hok rest hrest
+        exact ⟨c' :: pre', rest', by simp [heq], by simp; exact hlen⟩
+    · exact absurd hok nofun
+
+/-- When we have `peekAt? 0/1/2` all returning `some`, extract the first three
+    chars from `sp.chars`.  Used by `atDocumentStart_chars` and `atDocumentEnd_chars`. -/
+theorem three_peekAt_to_chars {sc : ScannerState} {sp : SurfPos} {c0 c1 c2 : Char}
+    (hcorr : ScannerSurfCorr sc sp)
+    (hp0 : sc.peekAt? 0 = some c0)
+    (hp1 : sc.peekAt? 1 = some c1)
+    (hp2 : sc.peekAt? 2 = some c2) :
+    ∃ rest, sp.chars = c0 :: c1 :: c2 :: rest := by
+  unfold ScannerState.peekAt? at hp0 hp1 hp2
+  obtain ⟨pre0, rest0, hcs0, hlen0⟩ :=
+    peekAtLoop_some_chars hcorr.end_eq hp0 sp.chars hcorr.chars_from
+  obtain ⟨pre1, rest1, hcs1, hlen1⟩ :=
+    peekAtLoop_some_chars hcorr.end_eq hp1 sp.chars hcorr.chars_from
+  obtain ⟨pre2, rest2, hcs2, hlen2⟩ :=
+    peekAtLoop_some_chars hcorr.end_eq hp2 sp.chars hcorr.chars_from
+  -- pre0 = [] (length 0)
+  have h0 : pre0 = [] := by
+    cases pre0 with
+    | nil => rfl
+    | cons _ _ => simp at hlen0
+  subst h0; simp only [List.nil_append] at hcs0
+  rw [hcs0] at hcs1 hcs2
+  -- pre1 has 1 element
+  have h1 : ∃ a, pre1 = [a] := by
+    cases pre1 with
+    | nil => simp at hlen1
+    | cons a as =>
+      cases as with
+      | nil => exact ⟨a, rfl⟩
+      | cons _ _ => simp at hlen1
+  obtain ⟨a, rfl⟩ := h1
+  simp at hcs1; obtain ⟨rfl, rfl⟩ := hcs1
+  -- pre2 has 2 elements
+  have h2 : ∃ b d, pre2 = [b, d] := by
+    cases pre2 with
+    | nil => simp at hlen2
+    | cons b bs =>
+      cases bs with
+      | nil => simp at hlen2
+      | cons d ds =>
+        cases ds with
+        | nil => exact ⟨b, d, rfl⟩
+        | cons _ _ => simp at hlen2
+  obtain ⟨b, d, rfl⟩ := h2
+  simp at hcs2; obtain ⟨rfl, rfl, rfl⟩ := hcs2
+  exact ⟨rest2, hcs0⟩
+
+theorem atDocumentStart_chars (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp)
+    (h_at : atDocumentStart sc = true) :
+    ∃ rest, sp.chars = '-' :: '-' :: '-' :: rest ∧ sp.col = 0 := by
+  obtain ⟨hcol, hp0, hp1, hp2⟩ := atDocumentStart_decompose h_at
+  have hcol_sp : sp.col = 0 := by rw [hcorr.col_eq]; exact_mod_cast hcol
+  obtain ⟨rest, hchars⟩ := three_peekAt_to_chars hcorr hp0 hp1 hp2
+  exact ⟨rest, hchars, hcol_sp⟩
+
+/-- `atDocumentEnd` + `ScannerSurfCorr` implies chars begin with `...`.
+    Extracts the char pattern needed by `scanDocumentEnd_prod`. -/
+theorem atDocumentEnd_chars (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp)
+    (h_at : atDocumentEnd sc = true) :
+    ∃ rest, sp.chars = '.' :: '.' :: '.' :: rest ∧ sp.col = 0 := by
+  obtain ⟨hcol, hp0, hp1, hp2⟩ := atDocumentEnd_decompose h_at
+  have hcol_sp : sp.col = 0 := by rw [hcorr.col_eq]; exact_mod_cast hcol
+  obtain ⟨rest, hchars⟩ := three_peekAt_to_chars hcorr hp0 hp1 hp2
+  exact ⟨rest, hchars, hcol_sp⟩
+
 /-! ## §4 Advance Correspondence
 
 Helper lemmas extracting field projections from `ScannerState.advance`,
