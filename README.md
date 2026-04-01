@@ -1954,15 +1954,16 @@ Partially discharged `preprocessing_eof_extends_stream` (§1a). The `BlockStack.
   Folded body: `scanBlockScalarBody_folded_prod` (after simplifying `SCLFolded` to use `SLLiteralContent`).
   `#` without preceding WS closed (see L1293 below).
 
-**Sorry count: 7 declarations** (ScalarProduction.lean ×1:
-`scanPlainScalar_prod`;
+**Sorry count: 8 declarations** (ScalarProduction.lean ×2:
+`collectPlainScalarLoop_inline_prod`, `scanPlainScalar_prod`;
 DocumentProduction.lean ×1: `scan_content_gives_stream`;
 StreamAccum.lean ×5: `preprocessing_eof_extends_stream`, `accum_step_structural`,
 `accum_step_flow`, `accum_step_block`, `accum_step_content`).
 Note: `scanBlockScalar_prod` is now **FULLY PROVEN** (both `|` literal and `>` folded).
 Note: `prefix_text_literal_content` sorry **CLOSED** via grammar composition (`GPlus_extend_GStar`).
+Note: `collectPlainScalarLoop_inline_prod` re-introduced as separate theorem (5/6 branches proven).
 
-**Reduction history:** 14 → 13 → 12 → 11 → 10 → 9 → 8 → 9 → 7 (folded body + prefix_text closed)
+**Reduction history:** 14 → 13 → 12 → 11 → 10 → 9 → 8 → 9 → 7 → 8 (loop re-introduced)
 
 **Progress (2026-04-01 — literal body sorry CLOSED):**
 - **Literal body sorry in `scanBlockScalar_prod` CLOSED** — the `|` case is now fully proven.
@@ -1992,6 +1993,35 @@ Note: `prefix_text_literal_content` sorry **CLOSED** via grammar composition (`G
 - **`scanBlockScalar_prod` is now FULLY PROVEN** — 0 sorry, both `|` (literal) and `>` (folded).
 - **Tier 2 block scalar sorry: ALL CLOSED.** Only `scanPlainScalar_prod` remains in Tier 2.
 - **Build: 415/415 jobs, 0 errors, 7 sorry declarations** (down from 9).
+
+**Progress (2026-04-01 session 3 — plain scalar loop branches):**
+- **`collectPlainScalarLoop_inline_prod` re-introduced** as a standalone theorem (previously
+  inlined into `scanPlainScalar_prod` during consolidation). The theorem proves that the
+  loop produces `GStar SNbNsPlainInLineEntry` + `GStar SSNsPlainNextLine` + `GStar SSWhite`
+  (trailing) + `ScannerSurfCorr`. Added `hcol_pos : sp.col > 0` precondition (for `#` case).
+- **5 of 6 single-line branches FULLY PROVEN** in `collectPlainScalarLoop_inline_prod`:
+  - EOF: trivial (all `GStar.nil`)
+  - Termination: trivial + `terminates_state_eq` for state rewrite
+  - Whitespace accumulation: `SSWhite.space`/`.tab` via `simp [isWhiteSpaceBool, beq_iff_eq]`
+    case split. Inlines case analysis (nil → trailing WS grows; cons → extends first entry's
+    WS prefix via `GStar.cons`)
+  - Safe char: 3-way case split `by_cases hc : c = ':'` → `by_cases hh : c = '#'` → basic:
+    - Basic: `isPlainSafe_to_plainChar_basic` (immediate)
+    - Colon: `colon_not_terminated_next` + `peekAtLoop_some_chars` → `SNsPlainChar.colonSafe`
+      with `not_blank_to_nsChar` for next-char proof
+    - Hash: `SNsPlainChar.hashAfterNs` with `hcol_pos` precondition
+  - Line break none: `handleBlockLineBreak = none` → terminate
+- **1 sorry remains**: multi-line continuation (`handleBlockLineBreak = some`). Requires
+  `SSNsPlainNextLine` construction from `SBBreak` + `GStar SLEmpty` + `SFlowLinePrefix` +
+  `GPlus SNbNsPlainInLineEntry`.
+- **`scanPlainScalar_prod`**: `SNsPlainFirst` extraction proven via
+  `canStartPlainScalar_to_SNsPlainFirst`. Composition sorry remains (6-step plan documented
+  in code).
+- **3 new helper theorems** added:
+  - `colon_not_terminated_next`: `terminates? = none` at `:` → `∃ n, peekAt? 1 = some n ∧ ¬isBlankBool n`
+  - `not_blank_to_nsChar`: `isBlankBool c = false → isNsChar c`
+  - `canStartPlainScalar_to_SNsPlainFirst`: `canStartPlainScalarBool` → `SNsPlainFirst`
+- **Build: 415/415 jobs, 0 errors, 8 sorry declarations** (7 → 8 from re-introduction).
 
 **Progress (2026-03-30 session 3 — consolidation pass):**
 - **5 intermediate sorry-containing theorems removed** by consolidating into call sites:
@@ -2025,7 +2055,8 @@ Note: `prefix_text_literal_content` sorry **CLOSED** via grammar composition (`G
 
 | Sorry site | Theorem | Sub-problem |
 |---|---|---|
-| L1152 | `scanPlainScalar_prod` | Grammar: `SNsPlain 0 .blockIn` (first char + continuation + multi-line) |
+| L1258 | `collectPlainScalarLoop_inline_prod` | Multi-line continuation (`handleBlockLineBreak = some`); 5/6 branches proven |
+| L1408 | `scanPlainScalar_prod` | Composition: unfold first iteration + loop theorem + `SNsPlain` assembly |
 | ~~L1293~~ | ~~`scanBlockScalar_prod`~~ | ~~`#` without preceding WS~~ — **CLOSED** (2026-03-31, `peekBack?` infrastructure) |
 | ~~L1478~~ | ~~`prefix_text_literal_content`~~ | ~~Consecutive text lines without intervening break~~ — **CLOSED** (2026-04-01, grammar composition via `GPlus_extend_GStar`) |
 | ~~L1585~~ | ~~`scanBlockScalar_prod`~~ | ~~Literal body: `SLLiteralContent m`~~ — **CLOSED** (2026-04-01, `collectBlockScalarLoop_literal_prod`) |
@@ -2054,17 +2085,27 @@ Note: `prefix_text_literal_content` sorry **CLOSED** via grammar composition (`G
    to use `SLLiteralContent` instead of separate `GOpt (SLNbFoldedLines m)`. No conversion
    lemma or separate loop variant needed.
 
-**Tier 2 is now COMPLETE.** `scanBlockScalar_prod` is fully proven (both `|` and `>`). Only
-`scanPlainScalar_prod` remains as a scalar _prod sorry — this is Tier 2's sole remaining target.
+**Tier 2 block scalar: COMPLETE.** `scanBlockScalar_prod` is fully proven (both `|` and `>`).
+`scanPlainScalar_prod` remains as the sole scalar _prod sorry, with substantial progress:
 
-*Remaining scalar sorry:*
-5. **L1152 — plain scalar grammar.** Requires:
-   - `SNsPlainFirst` extraction from first char (needs `canStartPlainScalar` precondition)
-   - `GStar SNbNsPlainInLineEntry` for in-line continuation (WS accumulation, `:` colonSafe,
-     `#` hashAfterNs)
-   - `GStar SSNsPlainNextLine` for multi-line (`handleBlockLineBreak` → `SBBreak` + `GStar SLEmpty`
-     + `SFlowLinePrefix` + `GPlus SNbNsPlainInLineEntry`)
-   This is the most complex remaining sorry due to the loop's 7 branch points and lazy WS flush.
+*Remaining plain scalar sorry (2 declarations):*
+5. **L1258 — `collectPlainScalarLoop_inline_prod` multi-line branch.** The `handleBlockLineBreak
+   = some` case is the only remaining branch. Requires:
+   - `SBBreak` from `consumeNewline` (existing `consumeNewline_break_prod`)
+   - `GStar SLEmpty` for empty lines (existing pattern from block scalar)
+   - `SFlowLinePrefix` for indentation (existing `consumeExactSpaces_sindent_prod`)
+   - `GPlus SNbNsPlainInLineEntry` for continuation line content
+   - Compose into `SSNsPlainNextLine` + prepend to `GStar SSNsPlainNextLine` from IH
+   The single-line branches (EOF, termination, whitespace, safe char ×3, line-break-none)
+   are all fully proven.
+6. **L1408 — `scanPlainScalar_prod` composition.** 6-step plan documented in code:
+   (1) Unfold `scanPlainScalar` to extract `collectPlainScalarLoop` call
+   (2) Unfold first loop iteration (first char → `SNsPlainFirst`, not `SNbNsPlainInLineEntry`)
+   (3) Show first char doesn't trigger `terminates?` (needs `¬(sc.col = 0 ∧ atDocumentBoundary sc)`)
+   (4) Apply `collectPlainScalarLoop_inline_prod` to recursive call (with `hcol_pos` from advance)
+   (5) Build `SNsPlainOneLine` (h_first + inline entries) → `SNsPlain` (one-line + nil next-lines)
+   (6) Handle `emitAt`/`simpleKeyAllowed` state transforms
+   `SNsPlainFirst` extraction already proven via `canStartPlainScalar_to_SNsPlainFirst`.
 
 **Progress (2026-03-31 — L1293 `peekBack?` infrastructure):**
 - **L1293 sorry CLOSED** — proved `#` without preceding whitespace is unreachable in `scanBlockScalar_prod`.
@@ -2307,6 +2348,14 @@ The 15–16 failures under limit-enforcing presets are tag-security rejections (
 Rejection completeness: if an input does not belong to the formal grammar, the parser rejects it. This is strictly harder than acceptance strictness and may require architectural changes to the parser's error handling.
 </details>
 
+</details>
+
+#### Version 0.7.0
+
+<details>
+Schema-aware duplicate key detection with proofs of key equivalence.
+
+See [DUPLICATE_KEYS.md](DUPLICATE_KEYS.md)
 </details>
 
 ### Position-Aware Stream

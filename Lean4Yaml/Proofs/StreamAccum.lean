@@ -301,14 +301,40 @@ theorem accum_step_structural (sc : ScannerState)
       BlockStack sp_gram' sp_block' ∧
       PendingNode sp_block' sp_scan' ∧
       ScannerSurfCorr s' sp_scan' := by
-  -- Close phase: preprocessing → SSLComments closes previous PendingNode.
-  --   If unwindIndents fired → BlockStack pops, forming SBlockNode entries.
-  -- Open phase:
-  --   `---` → scanDocumentStart_prod → SCDirectivesEnd → pendingDocStart
-  --   `...` → scanDocumentEnd_prod → SCDocumentEnd → pendingDocEnd
-  --   `%`  → scanDirective_prod → pendingDirective
-  --   Structural tokens at col 0 cause full dedent → BlockStack becomes nil.
-  sorry
+  -- Structural dispatch only succeeds at col=0 (guards in dispatchStructural).
+  -- Get ScannerSurfCorr s_prep sp_prep from preprocessing.
+  obtain ⟨sp_prep, hcorr_prep⟩ :=
+    scanNextToken_preprocess_corr sc sp_scan h_corr s_prep c h_preprocess
+  -- Close phase: preprocessing consumed characters from sp_scan to sp_prep.
+  --   These characters form SSLComments (when sp_scan.col = 0) or
+  --   SSeparateInLine + optional comment (general case).
+  --   The SSLComments closes the previous PendingNode.
+  -- Open phase: dispatch to the three structural token branches.
+  cases h_stack with
+  | nil =>
+    cases h_pending with
+    | noPending =>
+      -- Simplest case: sp_gram = sp_block = sp_scan, no pending to close.
+      -- Preprocessing: skipToContent at col=0 → SSLComments sp_scan sp_mid.
+      -- Stream extended to sp_mid. Then dispatch gives new pending.
+      -- The structural dispatch gives ScannerSurfCorr s' sp_scan'.
+      -- New state: stream extended, BlockStack.nil, new PendingNode.
+      --
+      -- Sub-sorry: need `skipToContent → SSLComments` for **non-EOF** path,
+      -- plus dispatch branch analysis (---, ..., %).
+      -- Currently: preprocessing extraction (`skipToContent_startOfLine_comments_prod`)
+      -- available at col=0. General col case needs new infrastructure.
+      sorry
+    | pendingContent | pendingDocEnd | pendingDocStart
+    | pendingDirective | pendingFlow | pendingBlock =>
+      -- Non-trivial pending: SSLComments closes the pending, then dispatch opens new.
+      -- Requires grammar evidence from the previous token (upstream §1e/§1d).
+      all_goals sorry
+  | seqLevel | mapLevel =>
+    -- Non-nil block stack: unwindIndents pops levels during preprocessing.
+    -- Structural tokens at col 0 → full dedent → stack becomes nil.
+    -- Requires BlockStack unwinding evidence.
+    all_goals sorry
 
 /-! ### §1c Preprocessing + Flow Indicator Dispatch
 
@@ -417,8 +443,9 @@ theorem accum_step_content (sc : ScannerState)
   --   newly nil (content at document level after all blocks closed).
   --   Existing _prod theorems:
   --     scanDoubleQuoted_prod ✅, scanSingleQuoted_prod ✅,
-  --     scanTag_prod ✅, scanAnchorOrAlias_*_prod ✅.
-  --   Missing: scanPlainScalar_prod ❌, scanBlockScalar_prod ❌.
+  --     scanTag_prod ✅, scanAnchorOrAlias_*_prod ✅,
+  --     scanBlockScalar_prod ✅.
+  --   Missing: scanPlainScalar_prod ❌ (statement updated, needs loop theorem).
   sorry
 
 /-! ### §1f Composition: Per-Dispatch → Full accum_step
@@ -681,7 +708,8 @@ theorem scan_content_gives_stream_v2
     5. `accum_step_content` (§1e): Close previous pending.
        BlockStack may shrink (dedent during preprocessing) but not grow.
        Content token → pendingContent. BlockStack threaded through.
-       Missing _prod theorems: `scanPlainScalar_prod` ❌, `scanBlockScalar_prod` ❌.
+       Missing _prod theorems: `scanPlainScalar_prod` ❌ (statement updated,
+       needs loop theorem `collectPlainScalarLoop_prod`).
 
     **Proven (composition-only, delegating to above sorry):**
     - `preprocess_none_ssl_comments_col0` (§0c): unfolds preprocessing, gets SSLComments
