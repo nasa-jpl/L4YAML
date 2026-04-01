@@ -2,6 +2,7 @@ import Lean4Yaml.Proofs.ScanStrictCoupling
 import Lean4Yaml.Proofs.StructureProduction
 import Lean4Yaml.Proofs.NodeProduction
 import Lean4Yaml.Proofs.Composition
+import Lean4Yaml.Proofs.StreamAccum
 
 /-! # Document & Stream Production (Phase D of v0.4.4)
 
@@ -33,6 +34,7 @@ open Lean4Yaml.Surface
 open Lean4Yaml.Scanner
 open Lean4Yaml.Proofs.CouplingBridge
 open Lean4Yaml.Proofs.ScanStrictCoupling
+open Lean4Yaml.Proofs.StreamAccum
 
 /-! ## §1 Trivial Stream Constructions -/
 
@@ -212,27 +214,13 @@ theorem stream_implicit_continue (s s₁ s₂ s₃ : SurfPos)
 --   scanNextToken_stream_step : extends StreamAccum for one token
 --   finalize_stream : StreamAccum at EOF → SLYamlStream
 
-theorem scan_content_gives_stream
-    (input : String)
-    (tokens : Array (Positioned YamlToken))
-    (h : scan input = .ok tokens)
-    (sp_final : SurfPos)
-    (h_empty : sp_final.chars = []) :
-    SLYamlStream ⟨input.toList, 0⟩ sp_final := by
-  sorry
-
-/-- **Scanner strictness**: if the scanner successfully processes a string,
-    the input belongs to the formal YAML 1.2.2 surface syntax.
-
-    Proof composes Phase A (full consumption) with Phase D (stream construction).
-    The stream construction has 1 sorry for SBlockNode content production. -/
 theorem scan_strict_proof
     (input : String)
     (tokens : Array (Positioned YamlToken))
     (h : scan input = .ok tokens) :
     InYamlLanguage input := by
-  obtain ⟨sp_final, h_empty⟩ := scan_full_consumption input tokens h
-  exact ⟨sp_final, scan_content_gives_stream input tokens h sp_final h_empty, h_empty⟩
+  obtain ⟨sp_final, h_stream, h_empty⟩ := scan_content_gives_stream_v2 input tokens h
+  exact ⟨sp_final, h_stream, h_empty⟩
 
 /-! ## §7 Parse Strictness from Scan Strictness -/
 
