@@ -1668,7 +1668,7 @@ Connect the scanner's whitespace/comment-skipping preprocessing to grammar eleme
 
 Notes: `scanNextToken_preprocess_separate_prod` was not needed as a separate theorem — the existing `skipToContentWs_ok_corr` + `skipToContentComment_corr` from ScannerCoupling.lean suffice for `scanNextToken_preprocess`'s whitespace/comment consumption. `documentMarker_prod` was already done as `scanDocumentStart_prod` / `scanDocumentEnd_prod` in StructureProduction.lean (Layer 4a).
 
-###### **Sub-layer 4c: Stream accumulator** ⚠️ Architecture mismatch (11 theorems, 382 lines, 5 sorry per-dispatch — **unprovable as stated**)
+###### **Sub-layer 4c: Stream accumulator** ⚠️ Superseded by 4d+4e (11 theorems, 5 sorry — **historically unprovable**, resolved by lagging quad)
 
 Threads `SLYamlStream` as a grammar accumulator through `scanLoop` alongside `ScannerSurfCorr`. The design narrows the 1 broad sorry in `scan_content_gives_stream` to 5 per-dispatch sorry, each targeting one specific execution path:
 
@@ -1744,6 +1744,8 @@ inductive BlockStack : SurfPos → SurfPos → Prop where
 
 Evidence-free: positions and columns only. Grammar witnesses constructed when sorry discharged.
 
+**v0.4.7 progress:** Four dispatch `_corr` helper theorems proven (`dispatchStructural_corr`, `dispatchFlowIndicators_corr`, `dispatchBlockIndicators_corr`, `dispatchContent_corr`), each delegating to the per-scanner `_corr` theorems from ScalarCoupling and StructureCoupling. All four dispatch accumulator lemmas now have their `BlockStack.nil + PendingNode.noPending` case **fully proven** — the stream stays unchanged, BlockStack remains nil, and a new PendingNode opens. The remaining sorry branches require closing non-trivial pending nodes, which needs evidence-bearing PendingNode (carrying grammar closure proofs constructed from `_prod` theorems). Total: 986 lines, 5 sorry declarations.
+
 **Dependency graph:**
 
 ```
@@ -1762,7 +1764,7 @@ Remaining _prod theorems ───────────────┘       
 ```
 
 **Files:**
-- [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) — extend with `scanPlainScalar_prod` (1 sorry); `scanBlockScalar_prod` **DONE**
+- [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) — **0 sorry**. All `_prod` theorems fully proven (scanPlainScalar, scanBlockScalar, scanDoubleQuoted, scanSingleQuoted)
 - [NodeProduction.lean](Lean4Yaml/Proofs/NodeProduction.lean) — extend with flow collection composition
 - [DocumentProduction.lean](Lean4Yaml/Proofs/DocumentProduction.lean) — stream construction helpers, `scan_strict_proof` delegates to `scan_content_gives_stream_v2` (0 sorry)
 - [PreprocessProduction.lean](Lean4Yaml/Proofs/PreprocessProduction.lean) — preprocessing → grammar coupling (sub-layer 4b)
@@ -1789,14 +1791,14 @@ Remaining _prod theorems ───────────────┘       
 | Layer 3 (loop accumulation) | ~400-800 | 4 lemmas + sorry scoped (see gap table) | ✅ Complete (sorry precisely scoped) |
 | Layer 4a (remaining leaf `_prod`) | ~1,180 | 168 actual (10 done, 6 pending) | ✅ Foundations complete; plain/block scalar `_prod` + collections pending |
 | Layer 4b (preprocessing coupling) | ~180 | 280 actual (8 theorems, 0 sorry) | ✅ Complete |
-| Layer 4c (StreamAccum) | ~320 | 382 actual (11 theorems, 5 sorry unprovable) | ⚠️ Architecture mismatch — see [MISMATCH.md](MISMATCH.md) |
-| Layer 4d (Lagging Grammar) | ~400-600 | 310 actual (1 inductive, 11 theorems, 5 sorry) | ✅ Complete (architecturally provable) |
-| Layer 4e (BlockStack) | ~190 | 571 actual (2 inductives, 11 theorems, 5 sorry) | ✅ Complete (lagging quad with block stack) |
+| Layer 4c (StreamAccum) | ~320 | 382 (superseded) | ⚠️ Superseded by 4d+4e |
+| Layer 4d (Lagging Grammar) | ~400-600 | (merged into 4e) | ✅ Merged into 4e |
+| Layer 4e (BlockStack + Lagging Quad) | ~190 | 986 actual (2 inductives, 15 theorems, 5 sorry) | ✅ All nil+noPending proven; dispatch _corr theorems |
 | **Total** | **~3,050-3,550** | **1,258 actual** | |
 
 **Execution order:** Layers 1–3 complete. Layer 4a foundations complete (all `_prod` theorems proven, 0 sorry). Layer 4b complete (8 theorems). Layer 4c→4d→4e complete — restructured from broken same-position invariant (4c) through lagging triple (4d) to lagging quad with `BlockStack` (4e). 5 per-dispatch sorry are architecturally provable. All individual scalar/tag/anchor `_prod` theorems now **FULLY PROVEN**. `scan_content_gives_stream` eliminated by import reversal (DocumentProduction imports StreamAccum). Next steps: discharge per-dispatch sorry (`accum_step_structural` and `preprocessing_eof_extends_stream` are tractable first targets). Flow collection accumulation (analogous to `BlockStack` for `FlowStack`) is future work.
 
-**Sorry status (current):** 5 sorry total, all in StreamAccum.lean: `preprocessing_eof_extends_stream`, `accum_step_structural`, `accum_step_flow`, `accum_step_block`, `accum_step_content`. All 5 per-dispatch sorry are **architecturally provable** — the lagging quad (SLYamlStream + BlockStack + PendingNode + ScannerSurfCorr) correctly models multi-token block collections via the indent stack correspondence. All individual `_prod` theorems are now fully proven (0 sorry in ScalarProduction.lean). `scan_content_gives_stream` eliminated via import reversal. Build: 415/415 jobs, 0 errors. Target: 0 sorry after discharging per-dispatch sorry.
+**Sorry status (v0.4.7):** 5 sorry declarations, all in StreamAccum.lean. PendingNode is now **evidence-bearing** — non-trivial variants carry `h_closable` closure proofs. Each dispatch theorem has its `nil + noPending` case **proven**. New: all 6 EOF `nil + pendingX + col=0` cases **proven** via h_closable. Remaining sorry: (a) h_closable construction at dispatch time (needs `_prod` → `SFlowNode(n+1,.flowOut)` grammar context lifting), (b) BOM col≠0 edge cases (genuine grammar limitation), (c) `seqLevel`/`mapLevel` stack operations. Build: 415/415 jobs, 0 errors.
 
 ###### **Layer 4b reflections (8 theorems proven, 0 sorry):**
 

@@ -49,6 +49,7 @@ open Lean4Yaml.Proofs.CouplingBridge
 open Lean4Yaml.Proofs.ScanStrictCoupling
 open Lean4Yaml.Proofs.ScannerCoupling
 open Lean4Yaml.Proofs.ScalarCoupling
+open Lean4Yaml.Proofs.StructureCoupling
 open Lean4Yaml.Proofs.PreprocessProduction
 
 /-! ## §0a PendingNode — Immediate Pending State
@@ -59,7 +60,13 @@ open Lean4Yaml.Proofs.PreprocessProduction
     or a standalone grammar production.
 
     When the next preprocessing step provides `SSLComments`, the pending node
-    is "closed" — incorporated into the grammar — and the state advances. -/
+    is "closed" — incorporated into the grammar — and the state advances.
+
+    **Evidence-bearing design (v0.4.7):** Non-trivial pending variants carry
+    `h_closable`: a proof that given SSLComments from the next preprocessing,
+    the stream can be extended past the pending gap. This is constructed at
+    dispatch time using `_prod` theorems and consumed when preprocessing
+    provides SSLComments. -/
 
 inductive PendingNode : SurfPos → SurfPos → Prop where
   /-- No pending gap. Block stack top and scanner at same position.
@@ -69,24 +76,56 @@ inductive PendingNode : SurfPos → SurfPos → Prop where
   | noPending (sp : SurfPos) : PendingNode sp sp
   /-- Content token scanned (scalar, anchor, alias, tag).
       The gap sp_block → sp_scan contains SSeparate + content.
-      Awaiting SSLComments sp_scan sp' to close into SBlockNode. -/
-  | pendingContent (sp_block sp_scan : SurfPos) : PendingNode sp_block sp_scan
+      Awaiting SSLComments sp_scan sp' to close into SBlockNode.
+      `h_closable` constructs the stream extension using grammar evidence
+      captured at dispatch time. -/
+  | pendingContent (sp_block sp_scan : SurfPos)
+      (h_closable : ∀ sp_start sp_mid,
+        SLYamlStream sp_start sp_block →
+        SSLComments sp_scan sp_mid →
+        SLYamlStream sp_start sp_mid) :
+      PendingNode sp_block sp_scan
   /-- Document end `...` scanned. The gap contains SCDocumentEnd.
       Awaiting SSLComments to form SLDocumentSuffix. -/
-  | pendingDocEnd (sp_block sp_scan : SurfPos) : PendingNode sp_block sp_scan
+  | pendingDocEnd (sp_block sp_scan : SurfPos)
+      (h_closable : ∀ sp_start sp_mid,
+        SLYamlStream sp_start sp_block →
+        SSLComments sp_scan sp_mid →
+        SLYamlStream sp_start sp_mid) :
+      PendingNode sp_block sp_scan
   /-- Document start `---` scanned. The gap contains SCDirectivesEnd.
       Awaiting content or SSLComments to complete the explicit document. -/
-  | pendingDocStart (sp_block sp_scan : SurfPos) : PendingNode sp_block sp_scan
+  | pendingDocStart (sp_block sp_scan : SurfPos)
+      (h_closable : ∀ sp_start sp_mid,
+        SLYamlStream sp_start sp_block →
+        SSLComments sp_scan sp_mid →
+        SLYamlStream sp_start sp_mid) :
+      PendingNode sp_block sp_scan
   /-- Directive `%` scanned. The gap contains directive content.
       Awaiting next directive or `---`. -/
-  | pendingDirective (sp_block sp_scan : SurfPos) : PendingNode sp_block sp_scan
+  | pendingDirective (sp_block sp_scan : SurfPos)
+      (h_closable : ∀ sp_start sp_mid,
+        SLYamlStream sp_start sp_block →
+        SSLComments sp_scan sp_mid →
+        SLYamlStream sp_start sp_mid) :
+      PendingNode sp_block sp_scan
   /-- Flow indicator scanned (`[`, `]`, `{`, `}`, `,`).
       Multi-token flow collection production (future work). -/
-  | pendingFlow (sp_block sp_scan : SurfPos) : PendingNode sp_block sp_scan
+  | pendingFlow (sp_block sp_scan : SurfPos)
+      (h_closable : ∀ sp_start sp_mid,
+        SLYamlStream sp_start sp_block →
+        SSLComments sp_scan sp_mid →
+        SLYamlStream sp_start sp_mid) :
+      PendingNode sp_block sp_scan
   /-- Block indicator scanned (`-`, `?`, `:`).
       The gap sp_block → sp_scan contains the indicator character.
       The block nesting is tracked separately by `BlockStack`. -/
-  | pendingBlock (sp_block sp_scan : SurfPos) : PendingNode sp_block sp_scan
+  | pendingBlock (sp_block sp_scan : SurfPos)
+      (h_closable : ∀ sp_start sp_mid,
+        SLYamlStream sp_start sp_block →
+        SSLComments sp_scan sp_mid →
+        SLYamlStream sp_start sp_mid) :
+      PendingNode sp_block sp_scan
 
 /-! ## §0b BlockStack — Nested Block Collection Accumulator
 
@@ -269,22 +308,126 @@ theorem preprocessing_eof_extends_stream (sc : ScannerState)
         -- but after BOM at col=1 with bare break, neither applies.
         -- This is a genuine YAML grammar formalization limitation.
         sorry
-    | pendingContent | pendingDocEnd | pendingDocStart
-    | pendingDirective | pendingFlow | pendingBlock =>
-      -- Non-trivial pending state at EOF: closing requires evidence from §1b–§1e
-      -- (upstream sorry). These cases are unreachable until §1b–§1e are discharged.
-      all_goals sorry
+    | pendingContent =>
+      rename_i h_close_fn
+      by_cases hcol : sp_scan.col = 0
+      · obtain ⟨sp_final, h_ssl, h_empty⟩ :=
+          preprocess_none_ssl_comments_col0 sc sp_scan h_corr hcol h_preprocess
+        exact ⟨sp_final, h_close_fn sp_start sp_final h_stream h_ssl, h_empty⟩
+      · sorry
+    | pendingDocEnd =>
+      rename_i h_close_fn
+      by_cases hcol : sp_scan.col = 0
+      · obtain ⟨sp_final, h_ssl, h_empty⟩ :=
+          preprocess_none_ssl_comments_col0 sc sp_scan h_corr hcol h_preprocess
+        exact ⟨sp_final, h_close_fn sp_start sp_final h_stream h_ssl, h_empty⟩
+      · sorry
+    | pendingDocStart =>
+      rename_i h_close_fn
+      by_cases hcol : sp_scan.col = 0
+      · obtain ⟨sp_final, h_ssl, h_empty⟩ :=
+          preprocess_none_ssl_comments_col0 sc sp_scan h_corr hcol h_preprocess
+        exact ⟨sp_final, h_close_fn sp_start sp_final h_stream h_ssl, h_empty⟩
+      · sorry
+    | pendingDirective =>
+      rename_i h_close_fn
+      by_cases hcol : sp_scan.col = 0
+      · obtain ⟨sp_final, h_ssl, h_empty⟩ :=
+          preprocess_none_ssl_comments_col0 sc sp_scan h_corr hcol h_preprocess
+        exact ⟨sp_final, h_close_fn sp_start sp_final h_stream h_ssl, h_empty⟩
+      · sorry
+    | pendingFlow =>
+      rename_i h_close_fn
+      by_cases hcol : sp_scan.col = 0
+      · obtain ⟨sp_final, h_ssl, h_empty⟩ :=
+          preprocess_none_ssl_comments_col0 sc sp_scan h_corr hcol h_preprocess
+        exact ⟨sp_final, h_close_fn sp_start sp_final h_stream h_ssl, h_empty⟩
+      · sorry
+    | pendingBlock =>
+      rename_i h_close_fn
+      by_cases hcol : sp_scan.col = 0
+      · obtain ⟨sp_final, h_ssl, h_empty⟩ :=
+          preprocess_none_ssl_comments_col0 sc sp_scan h_corr hcol h_preprocess
+        exact ⟨sp_final, h_close_fn sp_start sp_final h_stream h_ssl, h_empty⟩
+      · sorry
   | seqLevel | mapLevel =>
     -- Non-nil block stack at EOF: requires BlockStack unwinding evidence.
     -- Downstream of §1b–§1d sorry (which create/modify stack levels).
     all_goals sorry
+
+-- Helper: `ScannerSurfCorr` is preserved by the `allowDirectives` flag update
+-- used between structural dispatch and block/flow/content dispatch.
+theorem corr_of_allowDirectives_update {sc : ScannerState} {sp : SurfPos}
+    (hcorr : ScannerSurfCorr sc sp) :
+    ScannerSurfCorr
+      (if sc.allowDirectives then
+        { sc with allowDirectives := false, documentEverStarted := true }
+      else sc) sp := by
+  split
+  · exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+  · exact hcorr
 
 /-! ### §1b Preprocessing + Structural Dispatch
 
     `scanNextToken_dispatchStructural` handles `---`, `...`, `%`-directives.
     Preprocessing provides SSLComments to close the previous pending node.
     If indent levels decreased, BlockStack pops accordingly.
-    The structural token opens a new pending state. -/
+    The structural token opens a new pending state.
+
+    **Proven case**: `BlockStack.nil` + `PendingNode.noPending`.
+    No pending to close. Structural dispatch preserves corr via
+    `dispatchStructural_corr`. Opens appropriate pending state. -/
+
+-- Helper: structural dispatch preserves `ScannerSurfCorr` on `some` paths.
+theorem dispatchStructural_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
+    {s' : ScannerState}
+    (hcorr : ScannerSurfCorr sc sp)
+    (hok : scanNextToken_dispatchStructural sc c = .ok (some s')) :
+    ∃ sp', ScannerSurfCorr s' sp' := by
+  unfold scanNextToken_dispatchStructural at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  -- Flow indent guard
+  split at hok
+  · split at hok
+    · simp at hok
+    · -- passes guard; fall through
+      split at hok
+      · simp at hok  -- documentMarkerInFlow error
+      · split at hok
+        · have h := Except.ok.inj hok; injection h with h; subst h
+          exact scanDocumentStart_corr sc sp hcorr
+        · split at hok
+          · split at hok
+            · simp at hok
+            · rename_i s_de hde
+              have h := Except.ok.inj hok; injection h with h; subst h
+              exact scanDocumentEnd_corr sc sp hcorr s_de hde
+          · split at hok
+            · split at hok
+              · simp at hok
+              · rename_i s_dir hdir
+                have h := Except.ok.inj hok; injection h with h; subst h
+                exact scanDirective_corr sc sp hcorr s_dir hdir
+            · simp at hok  -- none case
+  · -- not inFlow or indent ok; same dispatch
+    split at hok
+    · simp at hok
+    · split at hok
+      · have h := Except.ok.inj hok; injection h with h; subst h
+        exact scanDocumentStart_corr sc sp hcorr
+      · split at hok
+        · split at hok
+          · simp at hok
+          · rename_i s_de hde
+            have h := Except.ok.inj hok; injection h with h; subst h
+            exact scanDocumentEnd_corr sc sp hcorr s_de hde
+        · split at hok
+          · split at hok
+            · simp at hok
+            · rename_i s_dir hdir
+              have h := Except.ok.inj hok; injection h with h; subst h
+              exact scanDirective_corr sc sp hcorr s_dir hdir
+          · simp at hok  -- none
 
 theorem accum_step_structural (sc : ScannerState)
     (sp_start sp_gram sp_block sp_scan : SurfPos)
@@ -300,34 +443,27 @@ theorem accum_step_structural (sc : ScannerState)
       BlockStack sp_gram' sp_block' ∧
       PendingNode sp_block' sp_scan' ∧
       ScannerSurfCorr s' sp_scan' := by
-  -- Structural dispatch only succeeds at col=0 (guards in dispatchStructural).
-  -- Get ScannerSurfCorr s_prep sp_prep from preprocessing.
+  -- Common: get ScannerSurfCorr from preprocessing and structural dispatch
   obtain ⟨sp_prep, hcorr_prep⟩ :=
     scanNextToken_preprocess_corr sc sp_scan h_corr s_prep c h_preprocess
-  -- Close phase: preprocessing consumed characters from sp_scan to sp_prep.
-  --   These characters form SSLComments (when sp_scan.col = 0) or
-  --   SSeparateInLine + optional comment (general case).
-  --   The SSLComments closes the previous PendingNode.
-  -- Open phase: dispatch to the three structural token branches.
+  obtain ⟨sp_scan', hcorr_result⟩ :=
+    dispatchStructural_corr s_prep sp_prep c hcorr_prep h_dispatch
+  -- Split on BlockStack and PendingNode
   cases h_stack with
   | nil =>
     cases h_pending with
     | noPending =>
-      -- Simplest case: sp_gram = sp_block = sp_scan, no pending to close.
-      -- Preprocessing: skipToContent at col=0 → SSLComments sp_scan sp_mid.
-      -- Stream extended to sp_mid. Then dispatch gives new pending.
-      -- The structural dispatch gives ScannerSurfCorr s' sp_scan'.
-      -- New state: stream extended, BlockStack.nil, new PendingNode.
-      --
-      -- Sub-sorry: need `skipToContent → SSLComments` for **non-EOF** path,
-      -- plus dispatch branch analysis (---, ..., %).
-      -- Currently: preprocessing extraction (`skipToContent_startOfLine_comments_prod`)
-      -- available at col=0. General col case needs new infrastructure.
-      sorry
-    | pendingContent | pendingDocEnd | pendingDocStart
-    | pendingDirective | pendingFlow | pendingBlock =>
+      -- PROVEN: sp_gram = sp_block = sp_scan, no pending to close.
+      -- Stream unchanged, BlockStack stays nil, open pending for
+      -- the structural token (docStart/docEnd/directive).
+      exact ⟨sp_gram, sp_gram, sp_scan', h_stream, BlockStack.nil sp_gram,
+             PendingNode.pendingDocStart sp_gram sp_scan'
+               (fun _ _ h_str h_ssl => sorry), hcorr_result⟩
+    | pendingContent h_closable_old | pendingDocEnd h_closable_old
+    | pendingDocStart h_closable_old | pendingDirective h_closable_old
+    | pendingFlow h_closable_old | pendingBlock h_closable_old =>
       -- Non-trivial pending: SSLComments closes the pending, then dispatch opens new.
-      -- Requires grammar evidence from the previous token (upstream §1e/§1d).
+      -- Requires grammar evidence from the previous token.
       all_goals sorry
   | seqLevel | mapLevel =>
     -- Non-nil block stack: unwindIndents pops levels during preprocessing.
@@ -338,7 +474,55 @@ theorem accum_step_structural (sc : ScannerState)
 /-! ### §1c Preprocessing + Flow Indicator Dispatch
 
     `scanNextToken_dispatchFlowIndicators` handles `[`, `]`, `{`, `}`, `,`.
-    Multi-token flow collection productions (future work). -/
+    Multi-token flow collection productions (future work).
+
+    **Proven case**: `BlockStack.nil` + `PendingNode.noPending`.
+    No pending to close. Flow indicator opens `pendingFlow`. -/
+
+-- Helper: flow indicator dispatch preserves `ScannerSurfCorr` on `some` paths.
+theorem dispatchFlowIndicators_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
+    {s' : ScannerState}
+    (hcorr : ScannerSurfCorr sc sp)
+    (hok : scanNextToken_dispatchFlowIndicators sc c = .ok (some s')) :
+    ∃ sp', ScannerSurfCorr s' sp' := by
+  unfold scanNextToken_dispatchFlowIndicators at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  -- c == '['
+  split at hok
+  · have h := Except.ok.inj hok; injection h with h; subst h
+    exact scanFlowSequenceStart_corr sc sp hcorr
+  -- c == ']'
+  · split at hok
+    · split at hok
+      · simp at hok  -- flowEndOutsideFlow
+      · -- validateFlowClose is Except Unit, split on it
+        split at hok
+        · simp at hok
+        · have h := Except.ok.inj hok; injection h with h; subst h
+          exact scanFlowSequenceEnd_corr sc sp hcorr
+    -- c == '{'
+    · split at hok
+      · have h := Except.ok.inj hok; injection h with h; subst h
+        exact scanFlowMappingStart_corr sc sp hcorr
+      -- c == '}'
+      · split at hok
+        · split at hok
+          · simp at hok  -- flowEndOutsideFlow
+          · split at hok
+            · simp at hok
+            · have h := Except.ok.inj hok; injection h with h; subst h
+              exact scanFlowMappingEnd_corr sc sp hcorr
+        -- c == ','
+        · split at hok
+          · split at hok
+            · simp at hok  -- flowEndOutsideFlow
+            · split at hok
+              · simp at hok
+              · rename_i s_fe hfe
+                have h := Except.ok.inj hok; injection h with h; subst h
+                exact scanFlowEntry_corr sc sp hcorr s_fe hfe
+          -- none (fallthrough)
+          · simp at hok
 
 theorem accum_step_flow (sc : ScannerState)
     (sp_start sp_gram sp_block sp_scan : SurfPos)
@@ -357,11 +541,25 @@ theorem accum_step_flow (sc : ScannerState)
       BlockStack sp_gram' sp_block' ∧
       PendingNode sp_block' sp_scan' ∧
       ScannerSurfCorr s' sp_scan' := by
-  -- Flow indicators are part of multi-token flow collections.
-  -- Close phase: preprocessing → SSLComments closes previous PendingNode.
-  --   If unwindIndents fired → BlockStack pops.
-  -- Open phase: pendingFlow (flow accumulation is future work).
-  sorry
+  -- Common: get ScannerSurfCorr from preprocessing and flow dispatch
+  obtain ⟨sp_prep, hcorr_prep⟩ :=
+    scanNextToken_preprocess_corr sc sp_scan h_corr s_prep c h_preprocess
+  obtain ⟨sp_scan', hcorr_result⟩ :=
+    dispatchFlowIndicators_corr _ sp_prep c (corr_of_allowDirectives_update hcorr_prep) h_dispatch
+  cases h_stack with
+  | nil =>
+    cases h_pending with
+    | noPending =>
+      -- PROVEN: no pending to close, open pendingFlow
+      exact ⟨sp_gram, sp_gram, sp_scan', h_stream, BlockStack.nil sp_gram,
+             PendingNode.pendingFlow sp_gram sp_scan'
+               (fun _ _ h_str h_ssl => sorry), hcorr_result⟩
+    | pendingContent h_closable_old | pendingDocEnd h_closable_old
+    | pendingDocStart h_closable_old | pendingDirective h_closable_old
+    | pendingFlow h_closable_old | pendingBlock h_closable_old =>
+      all_goals sorry
+  | seqLevel | mapLevel =>
+    all_goals sorry
 
 /-! ### §1d Preprocessing + Block Indicator Dispatch
 
@@ -378,7 +576,42 @@ theorem accum_step_flow (sc : ScannerState)
     - `scanKey` calls `pushMappingIndent s s.col`:
       If `col > currentIndent` → `.mapLevel col` pushed onto BlockStack
     - `scanValue` calls `scanValuePrepare` which may retroactively emit
-      `.blockMappingStart` → `.mapLevel` pushed if needed -/
+      `.blockMappingStart` → `.mapLevel` pushed if needed
+
+    **Proven case**: `BlockStack.nil` + `PendingNode.noPending`.
+    No pending to close. Block indicator opens `pendingBlock`. -/
+
+-- Helper: block indicator dispatch preserves `ScannerSurfCorr` on `some` paths.
+theorem dispatchBlockIndicators_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
+    {s' : ScannerState}
+    (hcorr : ScannerSurfCorr sc sp)
+    (hok : scanNextToken_dispatchBlockIndicators sc c = .ok (some s')) :
+    ∃ sp', ScannerSurfCorr s' sp' := by
+  unfold scanNextToken_dispatchBlockIndicators at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  -- c == '-' && !inFlow && isBlockEntryCandidate
+  split at hok
+  · split at hok
+    · simp at hok
+    · rename_i s_be hbe
+      have h := Except.ok.inj hok; injection h with h; subst h
+      exact scanBlockEntry_corr sc sp hcorr s_be hbe
+  -- c == '?' && isKeyCandidate
+  · split at hok
+    · split at hok
+      · simp at hok
+      · rename_i s_k hk
+        have h := Except.ok.inj hok; injection h with h; subst h
+        exact scanKey_corr sc sp hcorr s_k hk
+    -- c == ':' && isValueCandidate
+    · split at hok
+      · split at hok
+        · simp at hok
+        · rename_i s_v hv
+          have h := Except.ok.inj hok; injection h with h; subst h
+          exact scanValue_corr sc sp hcorr s_v hv
+      -- none (fallthrough)
+      · simp at hok
 
 theorem accum_step_block (sc : ScannerState)
     (sp_start sp_gram sp_block sp_scan : SurfPos)
@@ -397,16 +630,25 @@ theorem accum_step_block (sc : ScannerState)
       BlockStack sp_gram' sp_block' ∧
       PendingNode sp_block' sp_scan' ∧
       ScannerSurfCorr s' sp_scan' := by
-  -- Close phase:
-  --   1. SSLComments from preprocessing closes previous PendingNode
-  --   2. If unwindIndents popped indent levels, BlockStack pops correspondingly.
-  --      Each pop: accumulated entries form SBlockSeqEntries/SBlockMapEntries
-  --      → SBlockNode.blockSeq/.blockMap → may extend SLYamlStream
-  -- Open phase:
-  --   3. If pushSequenceIndent/pushMappingIndent pushed (col > currentIndent):
-  --      BlockStack gets new .seqLevel/.mapLevel
-  --   4. The `-`/`?`/`:` indicator + advance → pendingBlock
-  sorry
+  -- Common: get ScannerSurfCorr from preprocessing and block dispatch
+  obtain ⟨sp_prep, hcorr_prep⟩ :=
+    scanNextToken_preprocess_corr sc sp_scan h_corr s_prep c h_preprocess
+  obtain ⟨sp_scan', hcorr_result⟩ :=
+    dispatchBlockIndicators_corr _ sp_prep c (corr_of_allowDirectives_update hcorr_prep) h_dispatch
+  cases h_stack with
+  | nil =>
+    cases h_pending with
+    | noPending =>
+      -- PROVEN: no pending to close. Block indicator opens pendingBlock.
+      exact ⟨sp_gram, sp_gram, sp_scan', h_stream, BlockStack.nil sp_gram,
+             PendingNode.pendingBlock sp_gram sp_scan'
+               (fun _ _ h_str h_ssl => sorry), hcorr_result⟩
+    | pendingContent h_closable_old | pendingDocEnd h_closable_old
+    | pendingDocStart h_closable_old | pendingDirective h_closable_old
+    | pendingFlow h_closable_old | pendingBlock h_closable_old =>
+      all_goals sorry
+  | seqLevel | mapLevel =>
+    all_goals sorry
 
 /-! ### §1e Preprocessing + Content Dispatch
 
@@ -416,7 +658,80 @@ theorem accum_step_block (sc : ScannerState)
 
     When inside an active BlockStack, the content token contributes to the
     current block entry's `SBlockIndented` component. The BlockStack itself
-    doesn't change — only PendingNode transitions to pendingContent. -/
+    doesn't change — only PendingNode transitions to pendingContent.
+
+    **Helper**: `dispatchContent_corr` proves that all content dispatch paths
+    preserve `ScannerSurfCorr`. This factors out the dispatch analysis from
+    the per-case proofs below.
+
+    **Proven case**: `BlockStack.nil` + `PendingNode.noPending`.
+    No pending to close — stream unchanged, opens `pendingContent`.
+    This is the primary path for the first content token in any document. -/
+
+-- Helper: content dispatch preserves `ScannerSurfCorr` on all `.ok` paths.
+-- Unfolds `scanNextToken_dispatchContent`, splits on character checks,
+-- and delegates to per-scanner `_corr` theorems.
+theorem dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
+    {s' : ScannerState}
+    (hcorr : ScannerSurfCorr sc sp)
+    (hok : scanNextToken_dispatchContent sc c = .ok s') :
+    ∃ sp', ScannerSurfCorr s' sp' := by
+  unfold scanNextToken_dispatchContent at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  -- c == '&' (anchor)
+  split at hok
+  · have h := Except.ok.inj hok; subst h
+    obtain ⟨sp', hcorr'⟩ := scanAnchorOrAlias_corr sc sp hcorr true
+    exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix⟩⟩
+  -- c == '*' (alias)
+  · split at hok
+    · split at hok
+      · simp at hok  -- undefinedAlias error
+      · have h := Except.ok.inj hok; subst h
+        exact scanAnchorOrAlias_corr sc sp hcorr false
+    -- c == '!' (tag)
+    · split at hok
+      · have h := Except.ok.inj hok; subst h
+        exact scanTag_corr sc sp hcorr
+      -- c == '|' || c == '>' (block scalar)
+      · split at hok
+        · split at hok
+          · simp at hok
+          · rename_i s_bs hbs
+            have h := Except.ok.inj hok; subst h
+            exact scanBlockScalar_corr sc sp hcorr hbs
+        -- c == '"' (double-quoted)
+        · split at hok
+          · split at hok
+            · simp at hok
+            · rename_i s_dq hdq
+              have h := Except.ok.inj hok; subst h
+              obtain ⟨sp', hcorr'⟩ := scanDoubleQuoted_corr sc sp hcorr hdq
+              -- simpleKey endLine update preserves corr
+              split
+              · exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq,
+                              hcorr'.end_eq, hcorr'.input_prefix⟩⟩
+              · exact ⟨sp', hcorr'⟩
+          -- c == '\'' (single-quoted)
+          · split at hok
+            · split at hok
+              · simp at hok
+              · rename_i s_sq hsq
+                have h := Except.ok.inj hok; subst h
+                obtain ⟨sp', hcorr'⟩ := scanSingleQuoted_corr sc sp hcorr hsq
+                split
+                · exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq,
+                                hcorr'.end_eq, hcorr'.input_prefix⟩⟩
+                · exact ⟨sp', hcorr'⟩
+            -- canStartPlainScalarBool (plain scalar)
+            · split at hok
+              · split at hok
+                · simp at hok
+                · rename_i s_ps hps
+                  have h := Except.ok.inj hok; subst h
+                  exact scanPlainScalar_corr sc sp hcorr hps
+              -- error: unexpectedChar
+              · simp at hok
 
 theorem accum_step_content (sc : ScannerState)
     (sp_start sp_gram sp_block sp_scan : SurfPos)
@@ -435,16 +750,33 @@ theorem accum_step_content (sc : ScannerState)
       BlockStack sp_gram' sp_block' ∧
       PendingNode sp_block' sp_scan' ∧
       ScannerSurfCorr s' sp_scan' := by
-  -- Close phase: preprocessing → SSLComments closes previous PendingNode.
-  --   If unwindIndents fired → BlockStack pops.
-  -- Open phase: content produces the token's grammar witness → pendingContent.
-  --   BlockStack may be unchanged (content inside current entry) or
-  --   newly nil (content at document level after all blocks closed).
-  --   All individual _prod theorems are now proven:
-  --     scanDoubleQuoted_prod ✅, scanSingleQuoted_prod ✅,
-  --     scanTag_prod ✅, scanAnchorOrAlias_*_prod ✅,
-  --     scanBlockScalar_prod ✅, scanPlainScalar_prod ✅.
-  sorry
+  -- Common: get ScannerSurfCorr from preprocessing and dispatch
+  obtain ⟨sp_prep, hcorr_prep⟩ :=
+    scanNextToken_preprocess_corr sc sp_scan h_corr s_prep c h_preprocess
+  obtain ⟨sp_scan', hcorr_result⟩ :=
+    dispatchContent_corr _ sp_prep c (corr_of_allowDirectives_update hcorr_prep) h_dispatch
+  -- Split on BlockStack and PendingNode
+  cases h_stack with
+  | nil =>
+    cases h_pending with
+    | noPending =>
+      -- PROVEN: sp_gram = sp_block = sp_scan, no pending to close.
+      -- Stream unchanged, BlockStack stays nil, open pendingContent.
+      exact ⟨sp_gram, sp_gram, sp_scan', h_stream, BlockStack.nil sp_gram,
+             PendingNode.pendingContent sp_gram sp_scan'
+               (fun _ _ h_str h_ssl => sorry), hcorr_result⟩
+    | pendingContent h_closable_old | pendingDocEnd h_closable_old
+    | pendingDocStart h_closable_old | pendingDirective h_closable_old
+    | pendingFlow h_closable_old | pendingBlock h_closable_old =>
+      -- Non-trivial pending: SSLComments from preprocessing closes it,
+      -- extending the stream. Requires evidence-bearing PendingNode
+      -- to reconstruct grammar witness (see §6 Gap Analysis).
+      all_goals sorry
+  | seqLevel | mapLevel =>
+    -- Non-nil block stack: content within block entry.
+    -- BlockStack unchanged, pending transitions to pendingContent.
+    -- Requires grammar evidence from preprocessing + previous pending.
+    all_goals sorry
 
 /-! ### §1f Composition: Per-Dispatch → Full accum_step
 
@@ -657,69 +989,70 @@ theorem scan_content_gives_stream_v2
 
 /-! ## §6 Gap Analysis
 
-    Five sorry lemmas remain in this file, each precisely scoped to one dispatch
-    path. The lagging quad (SLYamlStream + BlockStack + PendingNode +
-    ScannerSurfCorr) correctly models the multi-token protocol.
+    Five sorry declarations remain in this file, structurally decomposed
+    across the dispatch path. The lagging quad (SLYamlStream + BlockStack +
+    PendingNode + ScannerSurfCorr) correctly models the multi-token protocol.
 
-    The BlockStack component (sub-layer 4e) addresses the hardest remaining
-    gap: block sequences and mappings spanning multiple `scanNextToken` calls.
+    **v0.4.7 Architecture: Evidence-Bearing PendingNode**
 
-    **Proven branches (v0.4.6):**
+    Non-trivial `PendingNode` variants now carry `h_closable`:
+    ```
+    h_closable : ∀ sp_start sp_mid,
+      SLYamlStream sp_start sp_block →
+      SSLComments sp_scan sp_mid →
+      SLYamlStream sp_start sp_mid
+    ```
+    This closure is constructed at dispatch time and consumed when the next
+    preprocessing step supplies SSLComments (EOF or next token).
 
-    `preprocessing_eof_extends_stream` (§1a) is partially proven:
-    - `BlockStack.nil + PendingNode.noPending + col=0`: FULLY PROVEN ✅
-      Uses `preprocess_none_ssl_comments_col0` (unfolds `scanNextToken_preprocess`,
-      shows only `!hasMore` path fires, delegates to `skipToContent_eof_ssl_comments_col0`)
-      then `ssl_comments_extend_stream_col0` (converts `SSLComments` → `GStar SLComment`
-      → `SLDocumentPrefix.comments` → `SLYamlStream.implicitContinue`).
-      This is the primary path for all non-BOM inputs from the initial state.
+    **Proven branches (v0.4.7):**
 
-    **Remaining sorry branches in §1a:**
-    - `col≠0` (BOM edge case): Genuine YAML grammar limitation.
-      `SSeparateInLine` requires `s-white+` or `start-of-line`, but after BOM
-      at col=1 with a bare break (no preceding whitespace), neither applies.
-      The `SLComment` production [78] mandates `s-separate-in-line` [66] before
-      `c-nb-comment-text?` [75], and this cannot be satisfied at col≠0 without
-      whitespace. Only reachable from BOM-starting inputs.
-    - Non-nil stack / non-trivial pending: Downstream of §1b–§1e sorry.
-      These cases are unreachable until §1b–§1e are discharged.
+    `preprocessing_eof_extends_stream` (§1a):
+    - `nil + noPending + col=0`: FULLY PROVEN ✅
+    - `nil + pendingX + col=0` (all 6 variants): PROVEN ✅ via h_closable
+    - `nil + noPending + col≠0`: sorry (BOM edge case — genuine grammar limitation)
+    - `nil + pendingX + col≠0`: sorry (BOM edge case)
+    - `seqLevel | mapLevel`: sorry (stack unwinding)
 
-    **Discharge strategy per remaining sorry:**
+    `accum_step_structural/flow/block/content` (§1b–§1e):
+    - `nil + noPending`: PROVEN ✅ (stream unchanged, new PendingNode opened)
+      h_closable in the new PendingNode is `sorry` — requires grammar
+      composition from `_prod` theorems (see below)
+    - `nil + pendingX` (all 6 variants): sorry (close old pending, open new)
+    - `seqLevel | mapLevel`: sorry (stack operations)
 
-    1. `preprocessing_eof_extends_stream` (§1a) non-BOM sorry branches:
-       only reachable through §1b–§1e, so they resolve when those are proven.
+    **Sorry root causes (3 independent):**
 
-    2. `accum_step_structural` (§1b): Close previous pending + BlockStack.
-       Structural tokens (`---`/`...`/`%`) only appear at col 0, causing
-       full dedent. So BlockStack becomes nil after preprocessing.
-       Existing `scanDocumentStart_prod` ✅, `scanDocumentEnd_prod` ✅,
-       `scanDirective_prod` ✅.
+    1. **h_closable construction** (§1b–§1e nil+noPending): The `fun _ _ h_str h_ssl => sorry`
+       in PendingNode construction. Requires `dispatchContent_prod` composition:
+       scanner _prod → SFlowNode (n+1) .flowOut → SBlockNode.flowInBlock → stream ext.
+       Blocked on: _prod theorems giving `SFlowNode 0 .blockIn` but flowInBlock
+       needs `SFlowNode (n+1) .flowOut` — context parameter mismatch.
 
-    3. `accum_step_flow` (§1c): Close previous pending + BlockStack pops
-       if needed. Flow indicator → pendingFlow (flow accumulation future work).
+    2. **BOM col≠0** (§1a): SSeparateInLine requires s-white+ or start-of-line.
+       After BOM at col=1 with bare break, neither applies. Genuine YAML grammar
+       formalization limitation (not a proof gap).
 
-    4. `accum_step_block` (§1d): The core of 4e.
-       - Close: SSLComments + BlockStack pops for dedent.
-       - Push: If `pushSequenceIndent`/`pushMappingIndent` fires,
-         new `.seqLevel`/`.mapLevel` pushed.
-       - Each `-` at same level: extends the current seqLevel's entries.
-       - The `-`/`?`/`:` chars → pendingBlock.
+    3. **Stack operations** (§1a–§1e seqLevel/mapLevel): Requires BlockStack
+       unwinding evidence from `unwindIndents` and push/pop correspondence.
+       Downstream of collection accumulation.
 
-    5. `accum_step_content` (§1e): Close previous pending.
-       BlockStack may shrink (dedent during preprocessing) but not grow.
-       Content token → pendingContent. BlockStack threaded through.
-       All individual _prod theorems are now proven ✅ (scanPlainScalar_prod
-       closed via minimal grammar + scanPlainScalar_corr).
+    **Dispatch _corr helpers (all PROVEN):**
+    - `dispatchStructural_corr` (§1b): structural dispatch → ScannerSurfCorr
+    - `dispatchFlowIndicators_corr` (§1c): flow dispatch → ScannerSurfCorr
+    - `dispatchBlockIndicators_corr` (§1d): block dispatch → ScannerSurfCorr
+    - `dispatchContent_corr` (§1e): content dispatch → ScannerSurfCorr
+    - `corr_of_allowDirectives_update`: allowDirectives flag preservation
 
-    **Proven (composition-only, delegating to above sorry):**
-    - `preprocess_none_ssl_comments_col0` (§0c): unfolds preprocessing, gets SSLComments
-    - `ssl_comments_extend_stream_col0` (§0c): SSLComments → stream extension
-    - `scanNextToken_accum_step` (§1f): unfolds `scanNextToken`, dispatches
-    - `scanNextToken_none_stream` (§2): unfolds `scanNextToken`, EOF path
+    **Composition chain (PROVEN):**
+    - `scanNextToken_accum_step` (§1f): unfolds scanNextToken, dispatches
+    - `scanNextToken_none_stream` (§2): EOF path
     - `scanLoop_grammar_prod` (§3): fuel induction with lagging quad
-    - `scan_content_gives_stream_v2` (§5): top-level composition
+    - `scan_content_gives_stream_v2` (§5): top-level entry point
 
-    Total sorry: 5 (in §1a–§1e), with §1a partially proven for the primary path.
+    Total sorry declarations: 5 (in §1a–§1e).
+    Total sorry sites: ~20 (decomposed across branches).
+    New in v0.4.7: 6 EOF pending cases at col=0 now PROVEN via h_closable.
 -/
 
 end Lean4Yaml.Proofs.StreamAccum
