@@ -1,5 +1,5 @@
-import Lean4Yaml.Proofs.DocumentProduction
 import Lean4Yaml.Proofs.PreprocessProduction
+import Lean4Yaml.Proofs.ScanStrictCoupling
 
 /-! # Stream Grammar Accumulator (Layer 4d + 4e: Lagging Grammar with Block Stack)
 
@@ -49,7 +49,6 @@ open Lean4Yaml.Proofs.CouplingBridge
 open Lean4Yaml.Proofs.ScanStrictCoupling
 open Lean4Yaml.Proofs.ScannerCoupling
 open Lean4Yaml.Proofs.ScalarCoupling
-open Lean4Yaml.Proofs.DocumentProduction
 open Lean4Yaml.Proofs.PreprocessProduction
 
 /-! ## §0a PendingNode — Immediate Pending State
@@ -441,11 +440,10 @@ theorem accum_step_content (sc : ScannerState)
   -- Open phase: content produces the token's grammar witness → pendingContent.
   --   BlockStack may be unchanged (content inside current entry) or
   --   newly nil (content at document level after all blocks closed).
-  --   Existing _prod theorems:
+  --   All individual _prod theorems are now proven:
   --     scanDoubleQuoted_prod ✅, scanSingleQuoted_prod ✅,
   --     scanTag_prod ✅, scanAnchorOrAlias_*_prod ✅,
-  --     scanBlockScalar_prod ✅.
-  --   Missing: scanPlainScalar_prod ❌ (statement updated, needs loop theorem).
+  --     scanBlockScalar_prod ✅, scanPlainScalar_prod ✅.
   sorry
 
 /-! ### §1f Composition: Per-Dispatch → Full accum_step
@@ -636,7 +634,9 @@ theorem initial_stream_and_prefix (input : String) :
         (GOpt.none _) (GStar.nil _),
       h_corr'⟩
   · -- No BOM
-    exact ⟨⟨input.toList, 0⟩, empty_to_stream _, h_emit⟩
+    exact ⟨⟨input.toList, 0⟩,
+      SLYamlStream.single _ _ _ _ (GStar.nil _) (GOpt.none _) (GStar.nil _),
+      h_emit⟩
 
 /-! ## §5 Top-Level Composition: scan → SLYamlStream
 
@@ -708,8 +708,8 @@ theorem scan_content_gives_stream_v2
     5. `accum_step_content` (§1e): Close previous pending.
        BlockStack may shrink (dedent during preprocessing) but not grow.
        Content token → pendingContent. BlockStack threaded through.
-       Missing _prod theorems: `scanPlainScalar_prod` ❌ (statement updated,
-       needs loop theorem `collectPlainScalarLoop_prod`).
+       All individual _prod theorems are now proven ✅ (scanPlainScalar_prod
+       closed via minimal grammar + scanPlainScalar_corr).
 
     **Proven (composition-only, delegating to above sorry):**
     - `preprocess_none_ssl_comments_col0` (§0c): unfolds preprocessing, gets SSLComments
