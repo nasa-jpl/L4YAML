@@ -1221,8 +1221,9 @@ theorem finalEmit_preserves_PlainScalarsValid (s : ScannerState)
     · rw [emit_preserves_tokens_at _ .streamEnd j h_lt]
       exact psv_of_not_plain _ (unwindIndents_new_tokens_not_plain s (-1) j h_lt hge)
     · have h_j : j = (unwindIndents s (-1)).tokens.size := by
-        rw [emit_tokens_size] at hj; omega
-      subst h_j; unfold ScannerState.emit; simp only [Array.getElem_push_eq]
+        rw [emit_tokens_size] at hj
+        omega
+      subst h_j; simp [ScannerState.emit, Array.getElem_push_eq]
 
 theorem scanLoop_preserves_PlainScalarsValid
     (s : ScannerState) (fuel : Nat)
@@ -1503,7 +1504,7 @@ theorem flowNesting_go_split
     have : pos = mid := by omega
     subst this
     have h_inner : flowNesting.go tokens pos pos depth = depth := by
-      unfold flowNesting.go; simp [show pos ≥ pos from Nat.le_refl pos]
+      unfold flowNesting.go; simp
     rw [h_inner]
   | succ n ih =>
     have h_lt_mid : pos < mid := by omega
@@ -4887,7 +4888,7 @@ theorem finalEmit_preserves_FlowContextPSV (s : ScannerState)
     · -- Token is .streamEnd
       have h_j : j = (unwindIndents s (-1)).tokens.size := by
         rw [emit_tokens_size] at hj; omega
-      subst h_j; unfold ScannerState.emit; simp only [Array.getElem_push_eq]
+      subst h_j; simp [ScannerState.emit, Array.getElem_push_eq]
 
 theorem scanLoop_preserves_FlowInv
     (s : ScannerState) (fuel : Nat)

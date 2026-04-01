@@ -2378,6 +2378,12 @@ Schema-aware duplicate key detection with proofs of key equivalence.
 See [DUPLICATE_KEYS.md](DUPLICATE_KEYS.md)
 </details>
 
+### Version 0.8.0
+
+<details>
+YAML merge operation support, see [YAML_MERGE.md](YAML_MERGE.md)
+</details>
+
 ### Position-Aware Stream
 <details>
 
