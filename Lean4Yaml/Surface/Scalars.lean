@@ -305,13 +305,14 @@ inductive SLNbFoldedLines : Nat → SurfPos → SurfPos → Prop where
 /-- [175] c-l+folded(n): complete folded block scalar.
     '>' + header + content at auto-detected indent m ≥ 1.
     Content structure is complex (spaced/trimmed/folded sections);
-    simplified here to indent(n+m) + nb-char lines. -/
+    simplified here: the scanner uses the same `collectBlockScalarLoop` for both
+    literal and folded, producing identical output structure. We use `SLLiteralContent`
+    for both, deferring the literal-vs-folded distinction to semantic interpretation. -/
 inductive SCLFolded : Nat → SurfPos → SurfPos → Prop where
-  | mk (n : Nat) (m : Nat) (rest : List Char) (col : Nat) (s₁ s₂ s' : SurfPos)
+  | mk (n : Nat) (m : Nat) (rest : List Char) (col : Nat) (s₁ s' : SurfPos)
       (hm : m ≥ 1) :
       SCBBlockHeader ⟨rest, col + 1⟩ s₁ →
-      GOpt (SLNbFoldedLines (n + m)) s₁ s₂ →
-      GOpt (SIndentLe (n + m)) s₂ s' →
+      SLLiteralContent (n + m) s₁ s' →
       SCLFolded n ⟨'>' :: rest, col⟩ s'
 
 end Lean4Yaml.Surface

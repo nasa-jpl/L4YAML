@@ -1475,6 +1475,33 @@ theorem content_break_indent_to_literal {n : Nat}
 -- Prefix a text line to `SLLiteralContent` when no break separates them.
 -- (The "tail has text" sub-case is unreachable when contentIndent ≥ 1 and
 -- collectLineContentLoop has sufficient fuel — it always ends at break/EOF.)
+
+-- SIndent n converts to GStar SNbChar (each indent space is non-break).
+theorem SIndent_gives_GStar_SNbChar {n : Nat} {sp sp' : SurfPos}
+    (h : SIndent n sp sp') : GStar SNbChar sp sp' := by
+  induction h with
+  | zero => exact GStar.nil _
+  | succ k rest col _ _ ih =>
+    exact GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar ' ' rest col (by decide)) ih
+
+-- SIndentLe n converts to GStar SNbChar.
+theorem SIndentLe_gives_GStar_SNbChar {n : Nat} {sp sp' : SurfPos}
+    (h : SIndentLe n sp sp') : GStar SNbChar sp sp' := by
+  obtain ⟨_, _, h_indent⟩ := h
+  exact SIndent_gives_GStar_SNbChar h_indent
+
+-- Extend GPlus with additional GStar elements.
+theorem GPlus_extend_GStar {P : SurfPos → SurfPos → Prop} {sp₁ sp₂ sp₃ : SurfPos}
+    (h₁ : GPlus P sp₁ sp₂) (h₂ : GStar P sp₂ sp₃) : GPlus P sp₁ sp₃ :=
+  match h₁ with
+  | .mk _ sp_m _ h_first h_rest => GPlus.mk _ sp_m _ h_first (GStar_trans h_rest h₂)
+
+-- Convert GPlus to GStar.
+theorem GPlus_to_GStar {P : SurfPos → SurfPos → Prop} {sp₁ sp₂ : SurfPos}
+    (h : GPlus P sp₁ sp₂) : GStar P sp₁ sp₂ :=
+  match h with
+  | .mk _ _ _ h_first h_rest => GStar.cons _ _ _ h_first h_rest
+
 theorem prefix_text_literal_content {n : Nat}
     {sp sp₁ sp' : SurfPos}
     (h_text : SLNbLiteralText n sp sp₁)
@@ -1487,10 +1514,61 @@ theorem prefix_text_literal_content {n : Nat}
       exact SLLiteralContent.mk n sp sp₁ sp_t2 sp_t3 sp'
         (GOpt.some sp sp₁ (GSeq.mk sp sp₁ sp₁ h_text (GStar.nil sp₁)))
         h_opt_break h_trail_empties h_trail_indent
-    | .some _ _ _ =>
-      -- Unreachable: no break between consecutive text lines.
-      -- Requires fuel-sufficiency proof for collectLineContentLoop.
-      exact sorry
+    | .some _ _ h_gseq =>
+      -- The tail starts with text: compose h_text with the tail's text
+      match h_gseq with
+      | GSeq.mk _ sp_m _ h_text2 h_conts =>
+        match h_text with
+        | SLNbLiteralText.mk _ _ sp_e1 _ h_empties1 h_seq1 =>
+          match h_seq1 with
+          | GSeq.mk _ sp_i1 _ h_indent1 h_chars1 =>
+            match h_text2 with
+            | SLNbLiteralText.mk _ _ sp_e2 _ h_empties2 h_seq2 =>
+              match h_seq2 with
+              | GSeq.mk _ sp_i2 _ h_indent2 h_chars2 =>
+                match h_empties2 with
+                | GStar.nil _ =>
+                  -- No empties between texts: merge GPlus spans through indent
+                  exact SLLiteralContent.mk n sp sp_t1 sp_t2 sp_t3 sp'
+                    (GOpt.some sp sp_t1
+                      (GSeq.mk sp sp_m sp_t1
+                        (SLNbLiteralText.mk n sp sp_e1 sp_m h_empties1
+                          (GSeq.mk sp_e1 sp_i1 sp_m h_indent1
+                            (GPlus_extend_GStar h_chars1
+                              (GStar_trans (SIndent_gives_GStar_SNbChar h_indent2)
+                                (GPlus_to_GStar h_chars2)))))
+                        h_conts))
+                    h_opt_break h_trail_empties h_trail_indent
+                | GStar.cons _ sp_f _ h_first_empty h_rest_empties =>
+                  -- Has empties: first empty contains a break we can use
+                  match h_first_empty with
+                  | SLEmpty.block _ _ sp_x _ _ _ h_opt_ile h_break =>
+                    have new_text : SLNbLiteralText n sp_f sp_m :=
+                      SLNbLiteralText.mk n sp_f sp_e2 sp_m h_rest_empties
+                        (GSeq.mk sp_e2 sp_i2 sp_m h_indent2 h_chars2)
+                    have cont_line : SBNbLiteralNext n sp_x sp_m :=
+                      SBNbLiteralNext.mk n sp_x sp_f sp_m h_break new_text
+                    match h_opt_ile with
+                    | GOpt.none _ =>
+                      -- No indent before break: use h_text as-is
+                      exact SLLiteralContent.mk n sp sp_t1 sp_t2 sp_t3 sp'
+                        (GOpt.some sp sp_t1
+                          (GSeq.mk sp sp₁ sp_t1 h_text
+                            (GStar.cons sp₁ sp_m sp_t1 cont_line h_conts)))
+                        h_opt_break h_trail_empties h_trail_indent
+                    | GOpt.some _ _ h_ile =>
+                      -- Absorb indent-le spaces into GPlus, extend text to sp_x
+                      exact SLLiteralContent.mk n sp sp_t1 sp_t2 sp_t3 sp'
+                        (GOpt.some sp sp_t1
+                          (GSeq.mk sp sp_x sp_t1
+                            (SLNbLiteralText.mk n sp sp_e1 sp_x h_empties1
+                              (GSeq.mk sp_e1 sp_i1 sp_x h_indent1
+                                (GPlus_extend_GStar h_chars1
+                                  (SIndentLe_gives_GStar_SNbChar h_ile))))
+                            (GStar.cons sp_x sp_m sp_t1 cont_line h_conts)))
+                        h_opt_break h_trail_empties h_trail_indent
+                  | .flow _ _ _ _ _ hc _ _ =>
+                    exact absurd hc (by obtain h | h := hc <;> cases h)
 
 /-! ### §8b-main collectBlockScalarLoop literal production
 
@@ -1780,9 +1858,56 @@ theorem scanBlockScalarBody_literal_prod (sc_orig sc_after_nl : ScannerState)
       exact ⟨sp_loop, ci, Nat.le_trans h_min (h_ge h_err), h_lit_content,
              ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix⟩⟩
 
+-- `scanBlockScalarBody` for folded also produces `SLLiteralContent` + correspondence.
+-- The scanner uses the same `collectBlockScalarLoop` for both literal and folded;
+-- the only difference is post-processing of the collected content string.
+theorem scanBlockScalarBody_folded_prod (sc_orig sc_after_nl : ScannerState)
+    (sp : SurfPos) (chomp : ChompStyle) (explicitOffset : Option Nat)
+    (startPos : YamlPos) {s' : ScannerState}
+    (hcorr : ScannerSurfCorr sc_after_nl sp)
+    (hIndent : sc_orig.currentIndent ≥ 0)
+    (hOff : ∀ d, explicitOffset = some d → d ≥ 1)
+    (hok : scanBlockScalarBody sc_orig sc_after_nl chomp explicitOffset false startPos = .ok s') :
+    ∃ sp' contentIndent, contentIndent ≥ 1 ∧
+      SLLiteralContent contentIndent sp sp' ∧ ScannerSurfCorr s' sp' := by
+  unfold scanBlockScalarBody at hok
+  dsimp only [] at hok
+  cases hoff_eq : explicitOffset with
+  | some d =>
+    rw [hoff_eq] at hok
+    let contentIndent := (max 0 (sc_orig.currentIndent + (↑d : Int))).toNat
+    let fuel := sc_orig.inputEnd - sc_after_nl.offset + 1
+    obtain ⟨sp_loop, h_lit_content, hcorr_loop⟩ :=
+      collectBlockScalarLoop_literal_prod sc_after_nl sp "" fuel contentIndent sc_orig.inputEnd hcorr
+    have h := Except.ok.inj hok; subst h
+    exact ⟨sp_loop, contentIndent, by have := hOff d hoff_eq; omega, h_lit_content,
+           ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix⟩⟩
+  | none =>
+    rw [hoff_eq] at hok
+    generalize h_auto : autoDetectBlockScalarIndent sc_after_nl
+      (max 0 (sc_orig.currentIndent + 1)).toNat sc_orig.inputEnd = auto_res at hok
+    obtain ⟨ci, err⟩ := auto_res
+    simp only [] at h_auto hok
+    cases h_err : err with
+    | some e =>
+      simp only [h_err] at hok
+      cases hok
+    | none =>
+      simp only [h_err] at hok
+      let fuel := sc_orig.inputEnd - sc_after_nl.offset + 1
+      obtain ⟨sp_loop, h_lit_content, hcorr_loop⟩ :=
+        collectBlockScalarLoop_literal_prod sc_after_nl sp "" fuel ci sc_orig.inputEnd hcorr
+      have h := Except.ok.inj hok; subst h
+      have h_min : (max 0 (sc_orig.currentIndent + 1)).toNat ≥ 1 := by omega
+      have h_ge := autoDetectBlockScalarIndent_ge_min sc_after_nl
+        (max 0 (sc_orig.currentIndent + 1)).toNat sc_orig.inputEnd
+      rw [h_auto] at h_ge; simp only [] at h_ge
+      exact ⟨sp_loop, ci, Nat.le_trans h_min (h_ge h_err), h_lit_content,
+             ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix⟩⟩
+
 -- `scanBlockScalar` produces `SCLLiteral 0` or `SCLFolded 0` and preserves correspondence.
 -- Header: FULLY PROVEN (delimiter + header chars + SSBComment).
--- Body: literal PROVEN via `collectBlockScalarLoop_literal_prod`; folded sorry.
+-- Body: FULLY PROVEN for both literal and folded via `collectBlockScalarLoop_literal_prod`.
 -- m ≥ 1: FULLY PROVEN (autoDetect ≥ min ≥ 1, explicit offset ≥ 1).
 -- Dispatch: FULLY PROVEN for literal (`|`) and folded (`>`).
 theorem scanBlockScalar_prod (sc : ScannerState) (sp : SurfPos)
@@ -1873,9 +1998,16 @@ theorem scanBlockScalar_prod (sc : ScannerState) (sp : SurfPos)
       rw [hsp_adv_eq] at h_hdr_chars
       have h_header : SCBBlockHeader ⟨rest, sc.col + 1⟩ sp_nl :=
         SCBBlockHeader.mk ⟨rest, sc.col + 1⟩ sp_hdr sp_nl h_hdr_chars h_ssbcomment
-      -- m ≥ 1 for folded
-      obtain ⟨m, hm⟩ := scanBlockScalarBody_indent_ge_one sc s_after_nl _ _ _ _ hIndent hOff hok
-      -- sorry: body grammar only (GOpt SLNbFoldedLines m)
-      sorry
+      -- Body grammar via scanBlockScalarBody_folded_prod (gives m ≥ 1 + SLLiteralContent)
+      have h_is_fld : (sc.peek? == some '|') = false := by rw [hfold]; decide
+      rw [h_is_fld] at hok
+      obtain ⟨sp_body, contentIndent, h_ci_ge, h_literal_content, hcorr_body⟩ :=
+        scanBlockScalarBody_folded_prod sc s_after_nl sp_nl _ _ _ hcorr_nl hIndent hOff hok
+      have h_literal_content' : SLLiteralContent (0 + contentIndent) sp_nl sp_body := by
+        rw [Nat.zero_add]; exact h_literal_content
+      exact ⟨sp_body,
+             Or.inr (SCLFolded.mk 0 contentIndent rest sc.col sp_nl sp_body h_ci_ge h_header
+               h_literal_content'),
+             hcorr_body⟩
 
 end Lean4Yaml.Proofs.ScalarProduction
