@@ -136,6 +136,10 @@ inductive SLEmpty : Nat → YamlContext → SurfPos → SurfPos → Prop where
       (c : YamlContext) (hc : c = .flowOut ∨ c = .flowIn) :
       GOpt (SFlowLinePrefix n) s s₁ → SBAsLineFeed s₁ s' →
       SLEmpty n c s s'
+  | flowLt (n : Nat) (s s₁ s' : SurfPos)
+      (c : YamlContext) (hc : c = .flowOut ∨ c = .flowIn) :
+      SIndentLt n s s₁ → SBAsLineFeed s₁ s' →
+      SLEmpty n c s s'
 
 /-! ## §5 Comments [75]–[81] -/
 

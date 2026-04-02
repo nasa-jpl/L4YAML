@@ -174,6 +174,69 @@ theorem scanSingleQuoted_flowNode_prod (sc : ScannerState) (sp : SurfPos)
   obtain ⟨sp', h_fc, hcorr'⟩ := scanSingleQuoted_flowContent_prod sc sp hcorr hpeek_sq hok
   exact ⟨sp', flowContent_flowNode h_fc, hcorr'⟩
 
+/-! ## §5a Context Compatibility: Lifting across YamlContext (Layer 4i building blocks)
+
+    For double-quoted and single-quoted scalars, the body text production
+    (`SNbDoubleText`/`SNbSingleText`) dispatches on context `c`:
+      - `.flowKey` → one-line body
+      - `_`        → multi-line body (parameterized only by `n`)
+    Since all non-flowKey contexts reduce to the SAME multi-line body,
+    these scalar types can be freely lifted across non-flowKey contexts.
+
+    This is a building block for Layer 4i (context parameter lifting).
+    Once `_prod` theorems are strengthened to produce at the scanner's
+    actual indent `n`, these lifts bridge `.blockIn → .flowOut` for free.
+
+    Note: `SSeparate n c` for non-key contexts (blockOut/blockIn/flowOut/flowIn)
+    all reduce to `SSeparateLines n` definitionally. No explicit lemma needed.
+
+    Note: Plain scalar (`SNsPlain n c`) context lift does NOT hold in the
+    `.blockIn → .flowOut` direction because `isNsPlainSafe .blockIn` allows
+    flow indicator characters that `isNsPlainSafe .flowOut` forbids.
+    The reverse direction (`.flowOut → .blockIn`) holds but is not needed. -/
+
+-- [107] c-double-quoted context lift: any non-flowKey → any non-flowKey (same n).
+-- SNbDoubleText n c reduces to SNbDoubleMultiLine n for all c ≠ .flowKey.
+theorem SCDoubleQuoted_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : SurfPos}
+    (h : SCDoubleQuoted n c₁ s s') (hc₁ : c₁ ≠ .flowKey) (hc₂ : c₂ ≠ .flowKey) :
+    SCDoubleQuoted n c₂ s s' := by
+  obtain ⟨_, _, _, h_open, h_text, h_close⟩ := h
+  refine SCDoubleQuoted.mk n c₂ _ _ _ _ h_open ?_ h_close
+  cases c₁ <;> cases c₂ <;> simp_all [SNbDoubleText]
+
+-- [118] c-single-quoted context lift: any non-flowKey → any non-flowKey (same n).
+-- SNbSingleText n c reduces to SNbSingleMultiLine n for all c ≠ .flowKey.
+theorem SCSingleQuoted_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : SurfPos}
+    (h : SCSingleQuoted n c₁ s s') (hc₁ : c₁ ≠ .flowKey) (hc₂ : c₂ ≠ .flowKey) :
+    SCSingleQuoted n c₂ s s' := by
+  obtain ⟨_, _, _, h_open, h_text, h_close⟩ := h
+  refine SCSingleQuoted.mk n c₂ _ _ _ _ h_open ?_ h_close
+  cases c₁ <;> cases c₂ <;> simp_all [SNbSingleText]
+
+-- SFlowContent context lift for quoted scalars.
+-- Works for double-quoted, single-quoted, and alias (which has no context).
+-- Does NOT work for plain scalars or flow collections in general.
+theorem SFlowContent_doubleQ_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : SurfPos}
+    (h : SCDoubleQuoted n c₁ s s') (hc₁ : c₁ ≠ .flowKey) (hc₂ : c₂ ≠ .flowKey) :
+    SFlowContent n c₂ s s' :=
+  doubleQuoted_flowContent (SCDoubleQuoted_ctx_lift h hc₁ hc₂)
+
+theorem SFlowContent_singleQ_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : SurfPos}
+    (h : SCSingleQuoted n c₁ s s') (hc₁ : c₁ ≠ .flowKey) (hc₂ : c₂ ≠ .flowKey) :
+    SFlowContent n c₂ s s' :=
+  singleQuoted_flowContent (SCSingleQuoted_ctx_lift h hc₁ hc₂)
+
+-- SFlowNode context lift for quoted scalars (bare content, no properties).
+theorem SFlowNode_doubleQ_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : SurfPos}
+    (h : SCDoubleQuoted n c₁ s s') (hc₁ : c₁ ≠ .flowKey) (hc₂ : c₂ ≠ .flowKey) :
+    SFlowNode n c₂ s s' :=
+  flowContent_flowNode (SFlowContent_doubleQ_ctx_lift h hc₁ hc₂)
+
+theorem SFlowNode_singleQ_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : SurfPos}
+    (h : SCSingleQuoted n c₁ s s') (hc₁ : c₁ ≠ .flowKey) (hc₂ : c₂ ≠ .flowKey) :
+    SFlowNode n c₂ s s' :=
+  flowContent_flowNode (SFlowContent_singleQ_ctx_lift h hc₁ hc₂)
+
 /-! ## §6 GStar/GPlus Lifting and Alias/Anchor Conversion (Layer 4a) -/
 
 -- General combinator: convert GStar to GPlus given proof of non-emptiness.
