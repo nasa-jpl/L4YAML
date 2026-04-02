@@ -801,10 +801,15 @@ theorem accum_step_structural (sc : ScannerState)
 /-! ### §1c Preprocessing + Flow Indicator Dispatch
 
     `scanNextToken_dispatchFlowIndicators` handles `[`, `]`, `{`, `}`, `,`.
-    Multi-token flow collection productions (future work).
+    Flow collection tracking via FlowStack:
+    - `[`/`{`: push FlowStack level (flowSeqLevel/flowMapLevel)
+    - `]`/`}`: close flow collection (FlowStack popped at next absorption)
+    - `,`: entry separator within current flow level
 
-    **Proven case**: `BlockStack.nil` + `PendingNode.noPending`.
-    No pending to close. Flow indicator opens `pendingFlow`. -/
+    **Architecture (4h.2):** Character-dependent FlowStack construction.
+    A local helper `new_flow_state` case-splits on `c` to determine
+    whether to push a FlowStack level (`[`/`{`) or produce nil with
+    `PendingNode.pendingFlow` (`]`/`}`/`,`). -/
 
 -- Helper: flow indicator dispatch preserves `ScannerSurfCorr` on `some` paths.
 theorem dispatchFlowIndicators_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
@@ -873,12 +878,31 @@ private theorem accum_flow_pending (sc : ScannerState)
     scanNextToken_preprocess_corr sc sp_scan h_corr s_prep c h_preprocess
   obtain ⟨sp_scan', hcorr_result⟩ :=
     dispatchFlowIndicators_corr _ sp_prep c (corr_of_allowDirectives_update hcorr_prep) h_dispatch
+  -- Character-dependent FlowStack + PendingNode construction (4h.2).
+  -- For `[`/`{`: push FlowStack level + PendingNode.noPending (clean state inside flow).
+  -- For `]`/`}`/`,`: FlowStack.nil + PendingNode.pendingFlow (flow contribution pending).
+  have new_flow_state : ∀ (sp_mid : SurfPos),
+      ∃ sp_flow', FlowStack sp_mid sp_flow' ∧ PendingNode sp_flow' sp_scan' := by
+    intro sp_mid
+    by_cases hc_seq : c = '['
+    · exact ⟨sp_scan',
+             FlowStack.flowSeqLevel sp_mid sp_mid sp_scan' (FlowStack.nil sp_mid)
+               (fun _ h_str => sorry),
+             PendingNode.noPending sp_scan'⟩
+    · by_cases hc_map : c = '{'
+      · exact ⟨sp_scan',
+               FlowStack.flowMapLevel sp_mid sp_mid sp_scan' (FlowStack.nil sp_mid)
+                 (fun _ h_str => sorry),
+               PendingNode.noPending sp_scan'⟩
+      · exact ⟨sp_mid,
+               FlowStack.nil sp_mid,
+               PendingNode.pendingFlow sp_mid sp_scan'
+                 (fun _ _ h_str h_ssl => sorry)⟩
   cases h_pending with
   | noPending =>
-    exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block, BlockStack.nil sp_block,
-           FlowStack.nil sp_block,
-           PendingNode.pendingFlow sp_block sp_scan'
-             (fun _ _ h_str h_ssl => sorry), hcorr_result⟩
+    obtain ⟨sp_flow', h_flow', h_pend'⟩ := new_flow_state sp_block
+    exact ⟨sp_block, sp_block, sp_flow', sp_scan', h_stream_block,
+           BlockStack.nil sp_block, h_flow', h_pend', hcorr_result⟩
   | pendingDocEnd =>
     rename_i h_marker_old
     by_cases hcol : sp_scan.col = 0
@@ -890,10 +914,9 @@ private theorem accum_flow_pending (sc : ScannerState)
         SLYamlStream.suffixContinue sp_start sp_block sp_mid sp_mid sp_mid sp_mid
           h_stream_block (GPlus.mk sp_block sp_mid sp_mid h_suffix (GStar.nil _))
           (GStar.nil _) (GOpt.none _) (GStar.nil _)
-      exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', h_stream', BlockStack.nil sp_mid,
-             FlowStack.nil sp_mid,
-             PendingNode.pendingFlow sp_mid sp_scan'
-               (fun _ _ h_str h_ssl => sorry), hcorr_result⟩
+      obtain ⟨sp_flow', h_flow', h_pend'⟩ := new_flow_state sp_mid
+      exact ⟨sp_mid, sp_mid, sp_flow', sp_scan', h_stream',
+             BlockStack.nil sp_mid, h_flow', h_pend', hcorr_result⟩
     · sorry
   | pendingDocStart =>
     rename_i h_marker_old
@@ -907,10 +930,9 @@ private theorem accum_flow_pending (sc : ScannerState)
       have h_stream' : SLYamlStream sp_start sp_mid :=
         SLYamlStream.implicitContinue sp_start sp_block sp_block sp_mid sp_mid
           h_stream_block (GStar.nil _) (GOpt.some sp_block sp_mid h_explicit) (GStar.nil _)
-      exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', h_stream', BlockStack.nil sp_mid,
-             FlowStack.nil sp_mid,
-             PendingNode.pendingFlow sp_mid sp_scan'
-               (fun _ _ h_str h_ssl => sorry), hcorr_result⟩
+      obtain ⟨sp_flow', h_flow', h_pend'⟩ := new_flow_state sp_mid
+      exact ⟨sp_mid, sp_mid, sp_flow', sp_scan', h_stream',
+             BlockStack.nil sp_mid, h_flow', h_pend', hcorr_result⟩
     · sorry
   | pendingContent h_closable_old | pendingDirective h_closable_old
   | pendingFlow h_closable_old | pendingBlock h_closable_old =>
@@ -919,12 +941,10 @@ private theorem accum_flow_pending (sc : ScannerState)
       by_cases hcol : sp_scan.col = 0
       · obtain ⟨sp_mid, _, _, h_ssl, hcol_mid, _, _, _⟩ :=
           preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
-        exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
+        obtain ⟨sp_flow', h_flow', h_pend'⟩ := new_flow_state sp_mid
+        exact ⟨sp_mid, sp_mid, sp_flow', sp_scan',
                h_closable_old sp_start sp_mid h_stream_block h_ssl,
-               BlockStack.nil sp_mid,
-               FlowStack.nil sp_mid,
-               PendingNode.pendingFlow sp_mid sp_scan'
-                 (fun _ _ h_str h_ssl => sorry), hcorr_result⟩
+               BlockStack.nil sp_mid, h_flow', h_pend', hcorr_result⟩
       · sorry)
 
 theorem accum_step_flow (sc : ScannerState)
@@ -1537,7 +1557,7 @@ theorem scan_content_gives_stream_v2
     - `nil + nil + pendingX + col≠0`: sorry (BOM edge case)
     - `seqLevel | mapLevel` (BlockStack or FlowStack): absorbed by `absorb_stacks`
 
-    `accum_step_structural/flow/block/content` (§1b–§1e):
+    `accum_step_structural/block/content` (§1b, §1d, §1e):
     - `absorbed + noPending`: PROVEN ✅ (stream unchanged, new PendingNode opened)
       h_closable in the new PendingNode is `sorry` — requires grammar
       composition from `_prod` theorems (see below)
@@ -1548,13 +1568,23 @@ theorem scan_content_gives_stream_v2
       available at non-zero column — flow context or BOM edge case)
     - BlockStack/FlowStack levels: absorbed by `absorb_stacks` (no case split)
 
+    `accum_step_flow` (§1c) — character-dependent FlowStack (4h.2):
+    - `absorbed + noPending + c='['`: PROVEN ✅ FlowStack.flowSeqLevel pushed,
+      PendingNode.noPending (clean state inside flow). FlowStack h_closable sorry.
+    - `absorbed + noPending + c='{'`: PROVEN ✅ FlowStack.flowMapLevel pushed.
+    - `absorbed + noPending + other`: PROVEN ✅ FlowStack.nil, PendingNode.pendingFlow sorry.
+    - `absorbed + pendingX + col=0 + c='['/'{'`: PROVEN ✅ FlowStack level pushed.
+    - `absorbed + pendingX + col=0 + other`: PROVEN ✅ FlowStack.nil, PendingNode.pendingFlow sorry.
+    - `absorbed + pendingX + col≠0`: sorry (same BOM root cause)
+
     **Sorry root causes (3 independent):**
 
     1. **h_closable construction** (§1b–§1e noPending): The `fun _ _ h_str h_ssl => sorry`
-       in PendingNode construction. Requires `dispatchContent_prod` composition:
-       scanner _prod → SFlowNode (n+1) .flowOut → SBlockNode.flowInBlock → stream ext.
-       Blocked on: _prod theorems giving `SFlowNode 0 .blockIn` but flowInBlock
-       needs `SFlowNode (n+1) .flowOut` — context parameter mismatch.
+       in PendingNode construction (§1b,§1d,§1e) and `fun _ h_str => sorry` in
+       FlowStack construction (§1c, for `[`/`{`). Requires `dispatchContent_prod`
+       composition: scanner _prod → SFlowNode (n+1) .flowOut → SBlockNode.flowInBlock
+       → stream ext. Blocked on 4i: _prod theorems give `SFlowNode 0 .blockIn`
+       but flowInBlock needs `SFlowNode (n+1) .flowOut`.
 
     2. **BOM col≠0** (§1a): SSeparateInLine requires s-white+ or start-of-line.
        After BOM at col=1 with bare break, neither applies. Genuine YAML grammar
@@ -1591,6 +1621,11 @@ theorem scan_content_gives_stream_v2
       eliminates all BlockStack/FlowStack case splits (3×3 → 1 call).
       Each accum_step_* simplified from 3-case to 1-line. §3 comment
       updated: lagging quad → lagging quint.
+    New in v0.4.9 (4h.2): Flow dispatch §1c now character-dependent.
+      `[`/`{` push FlowStack level (flowSeqLevel/flowMapLevel with sorry
+      h_closable) + PendingNode.noPending. `]`/`}`/`,` produce FlowStack.nil
+      + PendingNode.pendingFlow sorry. Entry accumulation (4h.3) and flow
+      finalization (4h.4) blocked on 4i (context parameter lifting).
 -/
 
 end Lean4Yaml.Proofs.StreamAccum

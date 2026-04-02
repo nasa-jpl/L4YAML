@@ -1032,9 +1032,9 @@ FlowStack mirrors the scanner's `flowLevel` counter. Each `[`/`{` pushes a level
 | # | Work | Status | Description |
 |---|---|---|---|
 | 4h.1 | `FlowStack` inductive + loop invariant update | ✅ done | Design inductive, add as 5th component, update composition theorems |
-| 4h.2 | Flow open: `[`/`{` → push FlowStack level | | Handle flow indicator dispatch in `accum_flow_pending` |
-| 4h.3 | Flow entry accumulation through `,` tokens | | `,` closes current entry, opens next within same FlowStack level |
-| 4h.4 | Flow close: `]`/`}` → pop FlowStack, finalize | | Close `SFlowSequence`/`SFlowMapping`, produce `SFlowContent` |
+| 4h.2 | Flow open: `[`/`{` → push FlowStack level | ✅ done | Character-dependent FlowStack in `accum_flow_pending` via `new_flow_state` helper |
+| 4h.3 | Flow entry accumulation through `,` tokens | ⏳ blocked on 4i | Real entry closing needs `SFlowNode n c` evidence; sorry model already covered by `new_flow_state` other-chars branch |
+| 4h.4 | Flow close: `]`/`}` → pop FlowStack, finalize | ⏳ blocked on 4i | Real `SFlowSequence`/`SFlowMapping` finalization needs grammar evidence; sorry model already covered |
 
 **Reflections on 4h.1** (FlowStack inductive + loop invariant update)
 
@@ -1046,11 +1046,33 @@ Build: 415/415 jobs, 0 errors, 6 sorry declarations (unchanged — FlowStack lev
 
 Lean 4 `cases` arity note: FlowStack.flowSeqLevel has 5 explicit constructor args but `cases` expects 4 names (one index-determined SurfPos is auto-unified). BlockStack.seqLevel with 6 args gets 6 names due to its extra `col : Int` field.
 
-**Reflections on 4h.2** 
+**Reflections on 4h.2** (completed 2026-04-01)
 
-**Reflections on 4h.3** 
+Refactored `accum_flow_pending` to distinguish flow indicator characters via a local `have new_flow_state` helper. The helper case-splits on `c`:
 
-**Reflections on 4h.4** 
+1. **`c = '['`**: Produces `FlowStack.flowSeqLevel sp_mid sp_mid sp_scan' (FlowStack.nil sp_mid) (fun _ h_str => sorry)` + `PendingNode.noPending sp_scan'`. The FlowStack level tracks the opening of a flow sequence, and `noPending` correctly represents "no content dispatched inside the flow yet."
+
+2. **`c = '{'`**: Same pattern with `FlowStack.flowMapLevel` for flow mapping.
+
+3. **Other (`]`, `}`, `,`)**: Produces `FlowStack.nil sp_mid` + `PendingNode.pendingFlow sp_mid sp_scan' (sorry)` — same as pre-4h.2 behavior for all characters.
+
+Key design: The `new_flow_state` helper takes only `sp_mid` (the stream position after old pending closure) and produces `∃ sp_flow', FlowStack sp_mid sp_flow' ∧ PendingNode sp_flow' sp_scan'`. This separates two concerns: (1) PendingNode closure logic (per-PendingNode, 7 cases) and (2) new FlowStack+PendingNode construction (per-character, 3 cases). The helper is called once per PendingNode case via `obtain`, eliminating what would have been a 7×3 = 21 case cross-product.
+
+Position typing forces the right semantics: For `[`/`{`, `sp_flow' = sp_scan'` (FlowStack top = scanner position), so `PendingNode sp_scan' sp_scan'` accepts only `noPending` (which has equal positions). For other chars, `sp_flow' = sp_mid` (FlowStack nil), so `PendingNode sp_mid sp_scan'` requires `pendingFlow` to bridge the gap.
+
+Build: 415/415 jobs, 0 errors, 6 sorry declarations (unchanged). The FlowStack sorry is on h_closable (`fun _ h_str => sorry`), which will eventually compose `GLit '[' + entries + GLit ']'` into `SFlowSequence`. The PendingNode sorry for other chars is the same root cause as before 4h.2.
+
+**Reflections on 4h.3** (analysis complete, blocked on 4i)
+
+Entry separator `,` is already handled by the `new_flow_state` other-chars branch (produces `FlowStack.nil + PendingNode.pendingFlow sorry`). Real entry accumulation — closing the current `SFlowSequenceEntry`/`SFlowMappingEntry` and opening the next within the same FlowStack level — requires `SFlowNode n c` evidence for the entry's content. This evidence comes from content dispatch h_closable, which depends on context parameter lifting (4i.1: `SFlowContent 0 .blockIn → SFlowContent n c`).
+
+Without 4i, the `,` handling is observationally identical to a sorry: the FlowStack level from `[` was absorbed at the previous step (via sorry h_closable), so there's no level to accumulate entries in.
+
+**Reflections on 4h.4** (analysis complete, blocked on 4i)
+
+Flow close `]`/`}` is handled by the same other-chars branch. Real finalization — composing accumulated entries into `SFlowSequence`/`SFlowMapping`, popping FlowStack, and producing `SFlowContent` — requires the entries to have grammar evidence, which depends on 4i.
+
+The absorb-then-reconstruct architecture means FlowStack levels are ephemeral: pushed at open, absorbed at the next step (via sorry h_closable), and the close sees `FlowStack.nil`. This is architecturally correct with sorry — the sorry h_closable covers the entire flow collection closure. With real evidence (post-4i), the FlowStack level would persist across multiple steps, accumulating entries through h_closable updates at each `,`, and finalizing at `]`/`}`.
 
 ###### Layer 4i: Context parameter lifting + content h_closable
 
