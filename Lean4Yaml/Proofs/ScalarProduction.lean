@@ -72,6 +72,23 @@ theorem not_lineBreak_bool_to_prop {c : Char}
 
 /-! ## §1b Surface construction helpers -/
 
+-- SIndent split: SIndent (m + k) → ∃ sp_mid, SIndent m ∧ SIndent k.
+-- Building block for making _prod theorems parametric in n.
+theorem sindent_split {m k : Nat} {sp sp' : SurfPos}
+    (h : SIndent (m + k) sp sp') :
+    ∃ sp_mid, SIndent m sp sp_mid ∧ SIndent k sp_mid sp' := by
+  induction m generalizing sp with
+  | zero =>
+    have : 0 + k = k := Nat.zero_add k
+    exact ⟨sp, SIndent.zero sp, this ▸ h⟩
+  | succ m' ih =>
+    have heq : m' + 1 + k = (m' + k) + 1 := by omega
+    rw [heq] at h
+    cases h with
+    | succ n rest col s' h_tail =>
+      obtain ⟨sp_mid, h_first, h_second⟩ := ih h_tail
+      exact ⟨sp_mid, SIndent.succ m' rest col sp_mid h_first, h_second⟩
+
 -- SIndent → GStar SSWhite
 theorem sindent_to_gstar_sswhite {n : Nat} {sp sp' : SurfPos}
     (h : SIndent n sp sp') : GStar SSWhite sp sp' := by
@@ -94,6 +111,18 @@ theorem gstar_sswhite_to_gopt_sep {sp sp' : SurfPos}
   | GStar.nil _ => exact GOpt.none _
   | GStar.cons a b c hfirst hrest =>
     exact GOpt.some a c (SSeparateInLine.whites a c (GPlus.mk a b c hfirst hrest))
+
+-- SIndent with n_sk spaces → SFlowLinePrefix n for any n ≤ n_sk.
+-- Decomposes spaces into SIndent n (indent) + remaining as GOpt SSeparateInLine.
+theorem sindent_to_flowlineprefix {n n_sk : Nat} {sp sp' : SurfPos}
+    (h : SIndent n_sk sp sp') (hle : n ≤ n_sk) :
+    SFlowLinePrefix n sp sp' := by
+  have h_eq : n_sk = n + (n_sk - n) := by omega
+  rw [h_eq] at h
+  obtain ⟨sp_mid, h_indent_n, h_indent_rest⟩ := sindent_split h
+  have h_gstar := sindent_to_gstar_sswhite h_indent_rest
+  have h_gopt := gstar_sswhite_to_gopt_sep h_gstar
+  exact SFlowLinePrefix.mk n sp sp_mid sp' h_indent_n h_gopt
 
 /-! ## §1c consumeNewline with SBBreak production
 
@@ -1716,6 +1745,8 @@ theorem prefix_text_literal_content {n : Nat}
                             (GStar.cons sp_x sp_m sp_t1 cont_line h_conts)))
                         h_opt_break h_trail_empties h_trail_indent
                   | .flow _ _ _ _ _ hc _ _ =>
+                    exact absurd hc (by obtain h | h := hc <;> cases h)
+                  | .flowLt _ _ _ _ _ hc _ _ =>
                     exact absurd hc (by obtain h | h := hc <;> cases h)
 
 /-! ### §8b-main collectBlockScalarLoop literal production
