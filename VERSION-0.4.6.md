@@ -1353,7 +1353,7 @@ Subsumes deferred 4g.3/4g.4. Full grammar evidence for block collections (`SBloc
 | 4l.1d | Content-inside-entry composition | ✅ done | `accum_content_pending` pendingBlock: `SBlockNode.flowInBlock` composed inside h_close for double/single-quoted scalars. Other content types use sorry. |
 | 4l.2 | `SBlockSeqEntries_snoc` lemma | ✅ done | Grammar-level: append entry to existing block sequence entries. 0 sorry. |
 | 4l.3a | Entry accumulation: `h_close_entry` in `pendingBlock` | ✅ done | Same-level `-` accumulates `SBlockSeqEntries` via `SBlockSeqEntries_snoc`. 0 new sorry. |
-| 4l.3b | Content-through-entry accumulation | ⏳ deferred | Thread `h_close_entry` through `pendingContent` so content-filled entries also accumulate |
+| 4l.3b | Content-through-entry accumulation | ✅ done | New `pendingBlockContent` constructor threads entry closure through content |
 | 4l.3c | BlockStack level push/pop | ⏳ deferred | Create `BlockStack.seqLevel` on first `-`, pop on `unwindIndents` |
 
 **Reflections on 4l.1** (first block entry h_closable — completed 2026-04-02)
@@ -1467,5 +1467,5 @@ Added to NodeProduction.lean §6. No sorry, no new warnings.
 **Build**: 415/415, 10 sorry warnings (unchanged).
 
 **Remaining work**:
-- **4l.3b (deferred)**: Thread `h_close_entry` through `pendingContent` so that `- "hello"\n- "world"\n` accumulates both entries (currently, content-filled entries close to stream via `h_close_old`).
+- **4l.3b (done)**: New `pendingBlockContent` constructor carries both `h_closable` (stream closure) and `h_closable_entry` (entry closure). Content-inside-block-entry (`accum_content_pending` pendingBlock) now creates `pendingBlockContent` instead of `pendingContent` for double/single-quoted scalars, threading both closures. When another `-` follows (`accum_block_pending` pendingBlockContent), the entry closure extracts accumulated entries and snocs a new one — same accumulation logic as `pendingBlock` but taking `SSLComments` instead of `SBlockNode`. At all other consumption sites (structural, flow, eof, content-after-content), `pendingBlockContent` closes to stream via `h_closable` (first field), ignoring the entry closure. Key `rename_i` lesson: `rename_i` names inaccessible hypotheses from the END of the local context, so `rename_i x` names the LAST inaccessible, and `rename_i x _` names the 2nd-to-last (skipping the last). With 2 fields, `pendingBlockContent` cannot share combined `all_goals` patterns with single-field `pendingContent/pendingFlow` — must have its own case with `rename_i h_closable_old _`.
 - **4l.3c (deferred)**: `BlockStack.seqLevel` push/pop for indent-based finalization. Still needed for nested sequences and `unwindIndents` — the closure approach handles same-level accumulation but not cross-level finalization.
