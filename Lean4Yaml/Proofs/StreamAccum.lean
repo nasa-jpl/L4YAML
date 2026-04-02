@@ -459,7 +459,7 @@ theorem preprocess_some_ssl_comments_col0 (sc : ScannerState) (sp : SurfPos)
             have hcorr3 : ScannerSurfCorr
                 { (unwindIndents s_content ↑s_content.col) with
                   needIndentCheck := false } sp_sc :=
-              ⟨hcorr2.chars_from, hcorr2.col_eq, hcorr2.end_eq, hcorr2.input_prefix⟩
+              ⟨hcorr2.chars_from, hcorr2.col_eq, hcorr2.end_eq, hcorr2.input_prefix, hcorr2.indent_cols_nonneg⟩
             exact ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, saveSimpleKey_corr _ sp_sc hcorr3⟩
       · split at hok
         · simp at hok
@@ -541,7 +541,7 @@ theorem preprocess_some_ssl_comments_anyCol (sc : ScannerState) (sp : SurfPos)
             have hcorr3 : ScannerSurfCorr
                 { (unwindIndents s_content ↑s_content.col) with
                   needIndentCheck := false } sp_sc :=
-              ⟨hcorr2.chars_from, hcorr2.col_eq, hcorr2.end_eq, hcorr2.input_prefix⟩
+              ⟨hcorr2.chars_from, hcorr2.col_eq, hcorr2.end_eq, hcorr2.input_prefix, hcorr2.indent_cols_nonneg⟩
             exact ⟨sp_mid, sp_ws, sp_sc, h_disj, hws, hcmt, saveSimpleKey_corr _ sp_sc hcorr3⟩
       · split at hok
         · simp at hok
@@ -716,7 +716,7 @@ theorem corr_of_allowDirectives_update {sc : ScannerState} {sp : SurfPos}
         { sc with allowDirectives := false, documentEverStarted := true }
       else sc) sp := by
   split
-  · exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+  · exact ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
   · exact hcorr
 
 /-! ### §1b Preprocessing + Structural Dispatch
@@ -1787,7 +1787,7 @@ theorem dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
   split at hok
   · have h := Except.ok.inj hok; subst h
     obtain ⟨sp', hcorr'⟩ := scanAnchorOrAlias_corr sc sp hcorr true
-    exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix⟩⟩
+    exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
   -- c == '*' (alias)
   · split at hok
     · split at hok
@@ -1815,7 +1815,7 @@ theorem dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
               -- simpleKey endLine update preserves corr
               split
               · exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq,
-                              hcorr'.end_eq, hcorr'.input_prefix⟩⟩
+                              hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
               · exact ⟨sp', hcorr'⟩
           -- c == '\'' (single-quoted)
           · split at hok
@@ -1826,7 +1826,7 @@ theorem dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
                 obtain ⟨sp', hcorr'⟩ := scanSingleQuoted_corr sc sp hcorr hsq
                 split
                 · exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq,
-                                hcorr'.end_eq, hcorr'.input_prefix⟩⟩
+                                hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
                 · exact ⟨sp', hcorr'⟩
             -- canStartPlainScalarBool (plain scalar)
             · split at hok
@@ -1871,7 +1871,7 @@ theorem dispatchContent_doubleQuoted_prod (sc : ScannerState) (sp : SurfPos)
                 -- simpleKey endLine update preserves ScannerSurfCorr
                 split
                 · exact ⟨hcorr'.chars_from, hcorr'.col_eq,
-                         hcorr'.end_eq, hcorr'.input_prefix⟩
+                         hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩
                 · exact hcorr'⟩
           · rename_i h_neq; exact absurd rfl h_neq
 
@@ -1905,7 +1905,7 @@ theorem dispatchContent_singleQuoted_prod (sc : ScannerState) (sp : SurfPos)
                 exact ⟨sp', h_gram, by
                   split
                   · exact ⟨hcorr'.chars_from, hcorr'.col_eq,
-                           hcorr'.end_eq, hcorr'.input_prefix⟩
+                           hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩
                   · exact hcorr'⟩
             · rename_i h_neq; exact absurd rfl h_neq
 
@@ -2331,7 +2331,7 @@ theorem initial_stream_and_prefix (input : String) :
   have h_init := initial_corr input input.toList h_chars
   have h_emit : ScannerSurfCorr ((ScannerState.mk' input).emit .streamStart)
       ⟨input.toList, 0⟩ :=
-    ⟨h_init.chars_from, h_init.col_eq, h_init.end_eq, h_init.input_prefix⟩
+    ⟨h_init.chars_from, h_init.col_eq, h_init.end_eq, h_init.input_prefix, h_init.indent_cols_nonneg⟩
   split
   · -- BOM present
     rename_i h_peek

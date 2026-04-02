@@ -2025,7 +2025,7 @@ theorem scanBlockScalarBody_literal_prod (sc_orig sc_after_nl : ScannerState)
       collectBlockScalarLoop_literal_prod sc_after_nl sp "" fuel contentIndent sc_orig.inputEnd hcorr
     have h := Except.ok.inj hok; subst h
     exact ⟨sp_loop, contentIndent, by have := hOff d hoff_eq; omega, h_lit_content,
-           ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix⟩⟩
+           ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix, hcorr_loop.indent_cols_nonneg⟩⟩
   | none =>
     rw [hoff_eq] at hok
     generalize h_auto : autoDetectBlockScalarIndent sc_after_nl
@@ -2047,7 +2047,7 @@ theorem scanBlockScalarBody_literal_prod (sc_orig sc_after_nl : ScannerState)
         (max 0 (sc_orig.currentIndent + 1)).toNat sc_orig.inputEnd
       rw [h_auto] at h_ge; simp only [] at h_ge
       exact ⟨sp_loop, ci, Nat.le_trans h_min (h_ge h_err), h_lit_content,
-             ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix⟩⟩
+             ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix, hcorr_loop.indent_cols_nonneg⟩⟩
 
 -- `scanBlockScalarBody` for folded also produces `SLLiteralContent` + correspondence.
 -- The scanner uses the same `collectBlockScalarLoop` for both literal and folded;
@@ -2072,7 +2072,7 @@ theorem scanBlockScalarBody_folded_prod (sc_orig sc_after_nl : ScannerState)
       collectBlockScalarLoop_literal_prod sc_after_nl sp "" fuel contentIndent sc_orig.inputEnd hcorr
     have h := Except.ok.inj hok; subst h
     exact ⟨sp_loop, contentIndent, by have := hOff d hoff_eq; omega, h_lit_content,
-           ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix⟩⟩
+           ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix, hcorr_loop.indent_cols_nonneg⟩⟩
   | none =>
     rw [hoff_eq] at hok
     generalize h_auto : autoDetectBlockScalarIndent sc_after_nl
@@ -2094,7 +2094,7 @@ theorem scanBlockScalarBody_folded_prod (sc_orig sc_after_nl : ScannerState)
         (max 0 (sc_orig.currentIndent + 1)).toNat sc_orig.inputEnd
       rw [h_auto] at h_ge; simp only [] at h_ge
       exact ⟨sp_loop, ci, Nat.le_trans h_min (h_ge h_err), h_lit_content,
-             ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix⟩⟩
+             ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix, hcorr_loop.indent_cols_nonneg⟩⟩
 
 -- `scanBlockScalar` produces `SCLLiteral 0` or `SCLFolded 0` and preserves correspondence.
 -- Header: FULLY PROVEN (delimiter + header chars + SSBComment).

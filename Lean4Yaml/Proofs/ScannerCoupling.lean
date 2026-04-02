@@ -135,6 +135,8 @@ theorem consumeNewline_lf_corr (sc : ScannerState) (rest : List Char)
     · exact hadv.col_eq
     · exact hadv.end_eq
     · exact hadv.input_prefix
+    · intro i hi h0; simp only [advance_indents] at hi ⊢
+      exact hcorr.indent_cols_nonneg i hi h0
 
 /-- `consumeNewline` when peeking `\r` followed by `\n` (CRLF). -/
 theorem consumeNewline_crlf_corr (sc : ScannerState) (rest : List Char)

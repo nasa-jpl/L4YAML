@@ -1497,6 +1497,77 @@ Added to NodeProduction.lean §6. No sorry, no new warnings.
 
 The block entry accumulation chain (4l.1–4l.3) is complete for the core use case: top-level block sequences with double/single-quoted scalar content. The remaining sorry fall into five independent categories:
 
+#### Architectural Changes (pre-category prerequisites)
+
+Three architectural changes are needed before tackling the content categories. Each removes a structural blocker that would otherwise block multiple sorry sites.
+
+##### A1: Add `currentIndent` field to `ScannerSurfCorr` ✅
+
+**Problem**: `scanBlockScalar_prod` requires `sc.currentIndent ≥ 0` as a precondition. After `pushSequenceIndent` at col=0, `currentIndent = 0`, but this fact cannot be derived from the existing `ScannerSurfCorr` (which only tracks `chars_from`, `col_eq`, `end_eq`, `input_prefix`). Without it, block scalars (`|`/`>`) inside block sequences are unprovable.
+
+**Solution**: Add `indent_eq : sc.currentIndent = sp.indent` (or similar) to `ScannerSurfCorr`, with a corresponding `indent` field in `SurfPos`. Alternatively, add a standalone `currentIndent_ge : sc.currentIndent ≥ expectedIndent` field. Propagate through ~40 construction sites across 6 proof files.
+
+**Scope**: ~40 construction sites in CouplingBridge, ScannerCoupling, ScalarCoupling, StructureCoupling, StructureProduction, PreprocessProduction. Mechanical — each site adds one field to the constructor call.
+
+**Unblocks**: Category 1 block scalar (`|`/`>`) support.
+
+###### Accomplishments for A1
+
+- Added `indent_cols_nonneg : ∀ (i : Nat) (hi : i < sc.indents.size), i > 0 → sc.indents[i].column ≥ 0` field to `ScannerSurfCorr`
+- Added `ScannerSurfCorr.currentIndent_nonneg` helper theorem: derives `currentIndent ≥ 0` from `indents.size > 1`
+- Added `advance_indents` lemma: `s.advance.indents = s.indents` (needed because `ScannerState.advance` has branching that blocks definitional equality)
+- Updated `initial_corr` with vacuous proof (single sentinel at index 0 has column `-1`, guard `i > 0` makes it vacuously true)
+- Updated 4 advance helpers (`advance_non_newline_corr`, `advance_newline_corr`, `advance_cr_corr`, `skip_byte_corr`) with `advance_indents` rewriting
+- ~115 forwarding sites updated via two-pass Python regex script across 7 files (StructureCoupling, StructureProduction, CouplingBridge, StreamAccum, ScanStrictCoupling, ScalarProduction, ScalarCoupling)
+- Updated `pushSequenceIndent_corr`/`pushMappingIndent_corr` signatures with `(hcol : col ≥ 0)` parameter; push branch uses `Array.getElem_push_lt`/`Array.getElem_push_eq`
+- Updated 5 push call sites with `(Int.natCast_nonneg _)` (formerly `Int.ofNat_nonneg`, deprecated in 4.29)
+- Fixed `unwindIndentsLoop_corr_exact` (StructureProduction) and `unwindIndentsLoop_corr` (StructureCoupling) pop cases with `Array.getElem_pop` + `Array.size_pop`
+- Fixed hidden push in `scanValuePrepare_corr` (inline `getElem_push_lt`/`getElem_push_eq` logic)
+- Fixed `consumeNewline_lf_corr` in ScannerCoupling (missing 5th field)
+- Build: 415/415, **10 sorry warnings** (unchanged from pre-A1 baseline)
+
+###### Reflections on A1
+
+**Design choice — per-element invariant, not `currentIndent`**: Chose `∀ i, i < size → i > 0 → column[i] ≥ 0` over directly tracking `currentIndent` because: (a) `currentIndent ≥ -1` is always true but useless, (b) `indents.size > 0 → currentIndent ≥ 0` isn't strong enough for `unwindIndents` (popping needs per-element guarantee for the NEW back element), (c) per-element is the strongest provable property that implies `currentIndent ≥ 0` via `back?`.
+
+**Sentinel at index 0**: `ScannerState.mk'` initializes `indents := #[{ column := -1, isSequence := false }]`. This sentinel has `column = -1`, violating `column ≥ 0`. The `i > 0` guard accommodates it — all entries pushed by `pushSequenceIndent`/`pushMappingIndent` have `column = ↑(sc.col : Nat) ≥ 0`, so only the sentinel at index 0 can be negative. The helper `currentIndent_nonneg` requires `size > 1` (not `> 0`) because `back?` at size 1 returns the sentinel.
+
+**`advance` doesn't preserve `indents` definitionally**: `ScannerState.advance` branches on `offset < inputEnd` then on `c == '\n'`/`c == '\r'`. All branches use `{ s with ... }` preserving `indents`, but Lean can't see through the branching — `hcorr.indent_cols_nonneg` has type `... sc.indents ...` but the goal wants `... sc.advance.indents ...`. Fixed by adding `advance_indents : s.advance.indents = s.indents` (trivial proof by `unfold; split; split; rfl`) and rewriting with `simp only [advance_indents] at hi ⊢`.
+
+**Pop case subtlety**: `Array.getElem_pop` equates `xs.pop[i] = xs[i]` (with adjusted bound). Without it, Lean sees `(sc.emit .blockEnd).indents.pop[i]` vs `sc.indents[i]` and can't unify. The `ScannerState.emit` wrapper also needs `simp only [ScannerState.emit]` to expose `.indents` before `Array.getElem_pop` fires.
+
+**Bulk script pattern**: Two-pass regex because `\w+` doesn't match apostrophe in identifiers like `hcorr'`. First pass: `(\w+)\.input_prefix⟩` → 94 matches. Second pass: `([\w']+)\.input_prefix⟩` → 21 more. Total: 115 forwarding sites.
+
+**`Array.getElem?_lt` renamed**: In Lean 4.29, `Array.getElem?_lt` no longer exists. The correct lemma is `Array.getElem?_eq_getElem`. Discovered when `currentIndent_nonneg` failed to compile.
+
+##### A2: Add BOM-transparent `SSeparateInLine` constructor ⏳
+
+**Problem**: `SSeparateInLine` has only two constructors: `whites` (requires `GPlus SSWhite`) and `startOfLine` (requires `col = 0`). After BOM (`\uFEFF`) at offset 0, the scanner is at col=1. If the next char is `#` (comment), neither constructor applies — `whites` needs whitespace before `#`, and `startOfLine` needs col=0. This blocks ~20 col≠0 sorry sites across all dispatch theorems.
+
+**Solution**: Add a `bomPreceded` constructor (or equivalent) to `SSeparateInLine` that allows col≠0 positions when preceded by BOM. This cascades through `SSeparateLines`, `SSeparate`, `SFlowLinePrefix`, and proofs that case-split on `SSeparateInLine` constructors. The grammar algebra must be strengthened even if it requires significant rework of existing proofs.
+
+**Scope**: Grammar definition change in `Surface/Basic.lean` + cascade through all proofs using `SSeparateInLine`. Estimated ~50-100 lines of proof updates.
+
+**Unblocks**: Category 2 (~20 col≠0 sorry across all 9 StreamAccum theorems).
+
+###### Accomplishments for A2
+
+###### Reflections on A2
+
+##### A3: Alias `*` wiring through `accum_content_pending` ⏳
+
+**Problem**: `SFlowNode.alias` takes `SCNsAliasNode` which is context-free (no `n`/`c` dependency in evidence), so `SFlowNode 0 .flowOut` can be constructed directly without a context lift. However, alias is not yet wired through `dispatchContent_prod` or `accum_content_pending`. The dispatch path is clean (pure function, not `Except`), and the grammar evidence is direct.
+
+**Solution**: Add `dispatchContent_alias_prod` (analogous to `dispatchContent_doubleQuoted_prod`). Wire through `accum_content_pending` for both `noPending` and `pendingBlock` cases. Need to prove `sp_mid ≠ sp'` (name non-emptiness) from scanner validation (the `definedAnchors.any` check implies non-empty name since empty names are never registered as anchors).
+
+**Scope**: ~40 lines in StreamAccum.lean + ~15 lines in NodeProduction.lean. Low risk — all building blocks exist.
+
+**Unblocks**: Category 1 alias (`*`) content type.
+
+###### Accomplishments for A3
+
+###### Reflections on A3
+
 #### Category 1: Other content types (~6 sorry sites in `accum_content_pending`)
 
 Only double-quoted (`'"'`) and single-quoted (`'\''`) scalars have full grammar production proofs. Other content types need per-type `_prod` theorems:
