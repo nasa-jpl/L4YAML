@@ -1347,9 +1347,12 @@ Subsumes deferred 4g.3/4g.4. Full grammar evidence for block collections (`SBloc
 
 | # | Work | Status | Description |
 |---|---|---|---|
-| 4l.1 | Block entry h_closable construction | ✅ `-` at col=0 done | `accum_block_pending` noPending: real h_closable for `-` at col=0 (empty entry → blockSeq → bare doc → stream) |
-| 4l.2 | Block entry accumulation through `-`/`?`/`:` | | Append entries to current block collection evidence |
-| 4l.3 | `unwindIndents` → BlockStack pop with finalization | | Close `SBlockSequence`/`SBlockMapping`, extend stream |
+| 4l.1a | Block entry h_closable (empty entry) | ✅ done | `accum_block_pending` noPending: h_closable for `-` at col=0, empty entry |
+| 4l.1b | `pendingBlock` type refinement: `SSLComments → SBlockNode` | ✅ done | Changed h_close to take `SBlockNode` instead of `SSLComments`; enables content-inside-entry |
+| 4l.1c | `preprocess_some_separate_0_anyCol` | ✅ done | General-column `SSeparateLines 0` from preprocessing (no col=0 requirement). 2 sorry subcases (inr no-break, comment-with-content) |
+| 4l.1d | Content-inside-entry composition | ✅ done | `accum_content_pending` pendingBlock: `SBlockNode.flowInBlock` composed inside h_close for double/single-quoted scalars. Other content types use sorry. |
+| 4l.2 | `SBlockSeqEntries_snoc` lemma | ⏳ | Grammar-level: append entry to existing block sequence entries |
+| 4l.3 | `unwindIndents` → BlockStack pop with finalization | ⏳ deferred | Close `SBlockSequence`/`SBlockMapping`, extend stream (requires seqLevel persistence across iterations) |
 
 **Reflections on 4l.1** (first block entry h_closable — completed 2026-04-02)
 
@@ -1379,7 +1382,46 @@ h_closable : ∀ sp_final, SSLComments sp_scan' sp_final → SLYamlStream sp_sta
 - Comment text before `-`: unreachable (scanner greedily consumes comments). Same sorry as in `preprocess_some_separate_lines_0`.
 - `c ≠ '-'` (key `?` or value `:`): needs `SBlockMapEntries` infrastructure.
 
-**Grammar nesting note**: When content follows `-` (e.g., `- "value"`), the empty-entry h_closable creates `SBlockSeqEntries.single ... SBlockIndented.empty`, then content dispatch creates a SEPARATE `PendingNode.pendingContent` with its own `SBlockNode.flowInBlock`. Grammatically, the content should be INSIDE the entry's `SBlockIndented`, not as a separate document. This is position-correct but grammar-imprecise. To fix: `PendingNode.pendingBlock` would need to carry explicit entry evidence (indent, dash, gnot) so `accum_content_pending` can compose content into the entry instead of closing it empty. Deferred.
+**Grammar nesting note**: When content follows `-` (e.g., `- "value"`), the empty-entry h_closable creates `SBlockSeqEntries.single ... SBlockIndented.empty`, then content dispatch creates a SEPARATE `PendingNode.pendingContent` with its own `SBlockNode.flowInBlock`. Grammatically, the content should be INSIDE the entry's `SBlockIndented`, not as a separate document. This is position-correct but grammar-imprecise.
+
+**4l.1b–d resolution**: Change `PendingNode.pendingBlock`'s h_closable from `SSLComments → SLYamlStream` to `SBlockNode → SLYamlStream`. The closure captures entry opener evidence (SSLComments, SIndent, GLit '-', GNot, stream) and takes the entry CONTENT as `SBlockNode`. This enables:
+- **Empty entry**: caller provides `SBlockNode.emptyNode 0 .blockIn sp h_ssl` (wrapping SSLComments)
+- **Content entry**: caller provides `SBlockNode.flowInBlock 0 .blockIn sp ... h_sep h_flow h_ssl` (full content)
+
+Both produce the same `SBlockSeqEntries.single → SBlockNode.blockSeq → SLBareDocument → SLYamlStream.implicitContinue` inside the closure, but with `SBlockIndented.node` (content) instead of `SBlockIndented.empty` (empty).
+
+**4l.1c**: `preprocess_some_separate_0_anyCol` provides `SSeparateLines 0` from any starting column. Key: `SSeparateLines.commented 0 (GStar.nil sp) (SFlowLinePrefix.mk 0 sp sp (SIndent.zero sp) ...)` works at any column because `SIndent 0` is zero-width and doesn't check column. This enables content composition after `-` at col=0 (where the content scan position is col=1).
+
+**4l.1d architecture**:
+```
+accum_content_pending for pendingBlock h_close_old:
+  h_sep  : SSeparateLines 0 sp_scan sp_prep    ← preprocess_some_separate_0_anyCol
+  h_flow : SFlowNode 0 .flowOut sp_prep sp_scan' ← dispatchContent_*_prod + ctx_lift
+  -- DON'T close pendingBlock yet — compose content inside entry:
+  PendingNode.pendingContent sp_start sp_block sp_scan'
+    (fun sp_final h_ssl_trailing =>
+      h_close_old sp_final
+        (SBlockNode.flowInBlock ... sp_scan sp_prep sp_scan' sp_final
+          h_sep h_flow h_ssl_trailing))
+```
+
+**4l.2**: `SBlockSeqEntries_snoc : SBlockSeqEntries n s s_mid → SIndent n s_mid s₁ → GLit '-' s₁ s₂ → GNot SNsChar s₂ → SBlockIndented n .blockIn s₂ s' → SBlockSeqEntries n s s'`. Converts `single` to `cons` or extends `cons` recursively. Proven by induction on `SBlockSeqEntries`.
+
+**4l.3 analysis**: `unwindIndents` preserves `ScannerSurfCorr` at the same position (no characters consumed). Grammar effect is indirect: indent stack pop changes which block indicators are valid in future iterations. For `BlockStack.seqLevel` finalization, need: (a) seqLevel to PERSIST across iterations (currently absorbed by `absorb_stacks`), (b) when indent decreases, close the seqLevel's accumulated entries. Requires either: modifying `absorb_stacks` to not absorb active seqLevels, or threading BlockStack through `accum_*_pending` without absorption. Architecturally significant — deferred to future session.
+
+**Reflections on 4l.1b-d** (pendingBlock type refinement + content composition — completed 2026-04-04)
+
+**Implementation summary:**
+- Changed `PendingNode.pendingBlock.h_close` from `SSLComments sp_scan sp_mid → SLYamlStream` to `SBlockNode 0 .blockIn sp_scan sp_mid → SLYamlStream`
+- Updated 1 construction site (`accum_block_pending` noPending): `SBlockIndented.empty → SBlockIndented.node`
+- Updated 5 consumption sites (`eof_pending`, `accum_structural_pending`, `accum_flow_pending`, `accum_block_pending`, `accum_content_pending`): wrap ssl in `SBlockNode.emptyNode` for non-content cases; compose `SBlockNode.flowInBlock` for quoted content
+- Added `preprocess_some_ssl_comments_anyCol`: general-column version of `preprocess_some_ssl_comments_col0`, returns disjunction `(SSLComments ∧ col=0) ∨ (sp_mid = sp)`
+- Added `preprocess_some_separate_0_anyCol`: builds `SSeparateLines 0` from the `inl` disjunct; `inr` case (no break) is sorry
+
+**Key "gotcha" — `subst h` direction in Lean 4:**
+`subst h` where `h : a = b` eliminates `b` (the RIGHT side), keeping `a`. This means after `obtain ⟨sp_new, ...⟩; have hsp_eq := unique h1 h2; subst hsp_eq` where `hsp_eq : sp_old = sp_new`, `sp_new` is REMOVED and `sp_old` survives. All subsequent code must reference `sp_old`, not `sp_new`. This bit us in 3 locations.
+
+**Build:** 415/415, 10 sorry warnings (was 9; +1 from `preprocess_some_separate_0_anyCol`).
 
 **Reflections on 4l.2** 
 
