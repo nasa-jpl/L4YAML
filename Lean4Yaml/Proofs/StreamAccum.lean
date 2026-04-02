@@ -1149,6 +1149,41 @@ theorem dispatchBlockIndicators_corr (sc : ScannerState) (sp : SurfPos) (c : Cha
       -- none (fallthrough)
       · simp at hok
 
+-- Block entry dispatch full production: GLit '-' + GNot SNsChar + ScannerSurfCorr.
+-- Unfolds dispatchBlockIndicators for the '-' case. The result includes:
+-- 1) A literal dash character
+-- 2) Negative lookahead: the char after '-' is not ns-char
+-- 3) Scanner/surface correspondence after the dash
+theorem dispatchBlockEntry_full_prod (sc : ScannerState) (sp : SurfPos)
+    {s' : ScannerState}
+    (hcorr : ScannerSurfCorr sc sp)
+    (hpeek : sc.peek? = some '-')
+    (hok : scanNextToken_dispatchBlockIndicators sc '-' = .ok (some s')) :
+    ∃ sp', GLit '-' sp sp' ∧ GNot SNsChar sp' ∧ ScannerSurfCorr s' sp' := by
+  obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+  subst hsp_eq
+  unfold scanNextToken_dispatchBlockIndicators at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  split at hok
+  · -- '-' == '-' && ... is true: enter scanBlockEntry path
+    rename_i h_entry_cond
+    have h_candidate : isBlockEntryCandidate sc = true := by
+      simp [Bool.and_eq_true] at h_entry_cond; exact h_entry_cond.2
+    split at hok
+    · simp at hok
+    · rename_i s_be hbe
+      have h := Except.ok.inj hok; injection h with h; subst h
+      obtain ⟨sp', h_lit, hcorr'⟩ := scanBlockEntry_prod sc ⟨'-' :: rest, sc.col⟩
+        hcorr hpeek s_be hbe
+      cases h_lit
+      exact ⟨⟨rest, sc.col + 1⟩, GLit.mk rest sc.col,
+             blockEntryCandidate_gnot sc rest sc.col hcorr h_candidate, hcorr'⟩
+  · -- First branch failed: '-' ≠ '?' and '-' ≠ ':' means remaining dispatch returns none
+    have hq : ('-' == '?' : Bool) = false := by native_decide
+    have hc : ('-' == ':' : Bool) = false := by native_decide
+    simp only [hq, hc, Bool.false_and, if_neg Bool.false_ne_true] at hok
+    simp at hok
+
 -- Helper: handles all PendingNode cases for block dispatch given stream at sp_block.
 theorem accum_block_pending (sc : ScannerState)
     (sp_start sp_block sp_scan : SurfPos)
@@ -1173,10 +1208,77 @@ theorem accum_block_pending (sc : ScannerState)
     dispatchBlockIndicators_corr _ sp_prep c (corr_of_allowDirectives_update hcorr_prep) h_dispatch
   cases h_pending with
   | noPending =>
-    exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block, BlockStack.nil sp_block,
-           FlowStack.nil sp_block,
-           PendingNode.pendingBlock sp_start sp_block sp_scan'
-             (fun sp_mid h_ssl => sorry), hcorr_result⟩
+    by_cases hcol : sp_block.col = 0
+    · by_cases hc : c = '-'
+      · -- Block entry '-' at col=0: build real h_closable (empty entry)
+        subst hc
+        -- Extract block entry evidence from dispatch
+        have hpeek_disp : (if s_prep.allowDirectives then
+            { s_prep with allowDirectives := false, documentEverStarted := true }
+          else s_prep).peek? = some '-' := by
+          have := preprocess_some_peek h_preprocess
+          split
+          · show s_prep.peek? = some '-'; exact this
+          · exact this
+        obtain ⟨sp_dash, h_dash, h_gnot, hcorr_dash⟩ :=
+          dispatchBlockEntry_full_prod _ sp_prep
+            (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
+        have hsp_dash_eq := ScannerSurfCorr_unique hcorr_dash hcorr_result
+        rw [hsp_dash_eq] at h_dash h_gnot
+        -- Extract preprocessing evidence
+        obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl_pre, hcol_mid, hws, hcmt, hcorr_sc⟩ :=
+          preprocess_some_ssl_comments_col0 sc sp_block s_prep '-' h_corr hcol h_preprocess
+        have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
+        subst hsp_sc_eq
+        -- Case-split on whitespace: need sp_mid = sp_prep for SIndent 0
+        cases hws with
+        | nil =>
+          cases hcmt with
+          | none =>
+            -- sp_prep = sp_mid at col=0: dash is at column 0
+            -- h_dash : GLit '-' sp_mid sp_scan'
+            -- h_gnot : GNot SNsChar sp_scan'
+            exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
+                   BlockStack.nil sp_block, FlowStack.nil sp_block,
+                   PendingNode.pendingBlock sp_start sp_block sp_scan'
+                     (fun sp_final h_ssl_final =>
+                       have h_indented :=
+                         SBlockIndented.empty 0 .blockIn sp_scan' sp_final h_ssl_final
+                       have h_entry :=
+                         SBlockSeqEntries.single 0 sp_mid sp_mid sp_scan' sp_scan' sp_final
+                           (SIndent.zero sp_mid) h_dash h_gnot h_indented
+                       have h_block :=
+                         SBlockNode.blockSeq 0 .blockIn sp_block sp_block sp_mid sp_final
+                           (GOpt.none sp_block) h_ssl_pre h_entry
+                       have h_bare := SLBareDocument.mk sp_block sp_final h_block
+                       SLYamlStream.implicitContinue sp_start sp_block sp_block sp_final sp_final
+                         h_stream_block (GStar.nil _)
+                         (GOpt.some sp_block sp_final
+                           (SLAnyDocument.bare sp_block sp_final h_bare))
+                         (GStar.nil _)),
+                   hcorr_result⟩
+          | some =>
+            -- Comment text before '-' — unreachable (scanner greedily consumes comments)
+            exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
+                   BlockStack.nil sp_block, FlowStack.nil sp_block,
+                   PendingNode.pendingBlock sp_start sp_block sp_scan'
+                     (fun sp_mid2 h_ssl => sorry), hcorr_result⟩
+        | cons =>
+          -- Whitespace before '-': dash at col > 0, can't build SBlockSeqEntries 0
+          exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
+                 BlockStack.nil sp_block, FlowStack.nil sp_block,
+                 PendingNode.pendingBlock sp_start sp_block sp_scan'
+                   (fun sp_mid2 h_ssl => sorry), hcorr_result⟩
+      · -- c ≠ '-': block key (?) or value (:) — grammar evidence deferred
+        exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
+               BlockStack.nil sp_block, FlowStack.nil sp_block,
+               PendingNode.pendingBlock sp_start sp_block sp_scan'
+                 (fun sp_mid h_ssl => sorry), hcorr_result⟩
+    · -- col ≠ 0: deferred
+      exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
+             BlockStack.nil sp_block, FlowStack.nil sp_block,
+             PendingNode.pendingBlock sp_start sp_block sp_scan'
+               (fun sp_mid h_ssl => sorry), hcorr_result⟩
   | pendingDocEnd =>
     rename_i h_marker_old
     by_cases hcol : sp_scan.col = 0

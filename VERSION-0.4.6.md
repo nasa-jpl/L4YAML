@@ -1347,11 +1347,39 @@ Subsumes deferred 4g.3/4g.4. Full grammar evidence for block collections (`SBloc
 
 | # | Work | Status | Description |
 |---|---|---|---|
-| 4l.1 | Block entry h_closable construction | | `pushSequenceIndent`/`pushMappingIndent` → create `BlockStack.seqLevel`/`.mapLevel` with real h_closable |
+| 4l.1 | Block entry h_closable construction | ✅ `-` at col=0 done | `accum_block_pending` noPending: real h_closable for `-` at col=0 (empty entry → blockSeq → bare doc → stream) |
 | 4l.2 | Block entry accumulation through `-`/`?`/`:` | | Append entries to current block collection evidence |
 | 4l.3 | `unwindIndents` → BlockStack pop with finalization | | Close `SBlockSequence`/`SBlockMapping`, extend stream |
 
-**Reflections on 4l.1** 
+**Reflections on 4l.1** (first block entry h_closable — completed 2026-04-02)
+
+Three new theorems enable the real h_closable construction in `accum_block_pending`:
+
+1. **`blank_to_not_nsChar`** (StructureProduction.lean): Bridge `isBlankBool c = true → ¬isNsChar c`. Converse of existing `not_blank_to_nsChar`. Proof: `simp` unfolds all definitions, `rcases` on the disjunction (`c = ' ' ∨ c = '\t' ∨ c = '\n' ∨ c = '\r'`), each case contradicts a negation or matches the goal.
+
+2. **`blockEntryCandidate_gnot`** (StructureProduction.lean): `isBlockEntryCandidate sc → GNot SNsChar sp'` at the position after `-`. Proof: case-split on `rest` (empty ⇒ trivial, cons ⇒ extract `peekAt? 1 = some c` via `peekAtLoop_step` + `peekAtLoop_cons` + `chars_from_cons_tail`, then apply `blank_to_not_nsChar`).
+
+3. **`dispatchBlockEntry_full_prod`** (StreamAccum.lean): Combined `GLit '-' + GNot SNsChar + ScannerSurfCorr` from `scanNextToken_dispatchBlockIndicators`. Unfolds dispatch, first `split` extracts the `-` branch condition, `rename_i` captures it. For the impossible `?`/`:` branches: `('-' == '?') = false` and `('-' == ':') = false` via `native_decide`, then `Bool.false_and` + `if_neg Bool.false_ne_true` collapse the remaining dispatch to `none`, contradicting `some s'`.
+
+**Architecture for empty block entry h_closable:**
+```
+h_closable : ∀ sp_final, SSLComments sp_scan' sp_final → SLYamlStream sp_start sp_final
+  SBlockIndented.empty 0 .blockIn sp_scan' sp_final h_ssl_final
+  → SBlockSeqEntries.single 0 sp_mid sp_mid sp_scan' _ sp_final
+        (SIndent.zero sp_mid) h_dash h_gnot h_indented
+  → SBlockNode.blockSeq 0 .blockIn sp_block sp_block sp_mid sp_final
+        (GOpt.none sp_block) h_ssl_pre h_entry
+  → SLBareDocument.mk → SLYamlStream.implicitContinue
+```
+
+**Position chain**: `sp_block` →[SSLComments]→ `sp_mid` (col=0) →[SIndent 0, zero-width]→ `sp_mid` →[GLit '-']→ `sp_scan'` →[SSLComments from h_closable arg]→ `sp_final`.
+
+**Limitations**: Only handles `noPending + col=0 + c='-'` with no whitespace before `-` (`GStar SSWhite` nil + `GOpt SCNbCommentText` none). Three remaining sorry sub-cases:
+- Whitespace before `-` (dash at col > 0): can't build `SBlockSeqEntries 0` since `SIndent 0` is zero-width. Would need `SBlockNode n .blockIn` with `n = col`. Genuine grammar mismatch for top-level.
+- Comment text before `-`: unreachable (scanner greedily consumes comments). Same sorry as in `preprocess_some_separate_lines_0`.
+- `c ≠ '-'` (key `?` or value `:`): needs `SBlockMapEntries` infrastructure.
+
+**Grammar nesting note**: When content follows `-` (e.g., `- "value"`), the empty-entry h_closable creates `SBlockSeqEntries.single ... SBlockIndented.empty`, then content dispatch creates a SEPARATE `PendingNode.pendingContent` with its own `SBlockNode.flowInBlock`. Grammatically, the content should be INSIDE the entry's `SBlockIndented`, not as a separate document. This is position-correct but grammar-imprecise. To fix: `PendingNode.pendingBlock` would need to carry explicit entry evidence (indent, dash, gnot) so `accum_content_pending` can compose content into the entry instead of closing it empty. Deferred.
 
 **Reflections on 4l.2** 
 

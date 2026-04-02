@@ -185,6 +185,42 @@ theorem scanBlockEntry_prod (sc : ScannerState) (sp : SurfPos)
       (sc.emit .blockEntry) '-' rest hcorr_emit hmore (by decide) (by decide)
     exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix⟩
 
+-- Bridge: isBlankBool c → ¬isNsChar c (converse of not_blank_to_nsChar in ScalarProduction).
+theorem blank_to_not_nsChar {c : Char}
+    (h : isBlankBool c = true) : ¬isNsChar c := by
+  simp [isNsChar, isLineBreakProp, isWhiteSpaceProp, isBlankBool, isWhiteSpaceBool,
+    isLineBreakBool, beq_iff_eq] at *
+  intro h1 h2 h3
+  rcases h with (rfl | rfl) | rfl | rfl <;> first | contradiction | rfl
+
+-- GNot SNsChar at position after block entry indicator, given isBlockEntryCandidate.
+-- The scanner checks `peekAt? 1` = blank/EOF. After advancing past `-`, the head
+-- of the remaining chars is the character that was at `peekAt? 1`.
+theorem blockEntryCandidate_gnot (sc : ScannerState) (rest : List Char) (col : Nat)
+    (hcorr : ScannerSurfCorr sc ⟨'-' :: rest, col⟩)
+    (h_candidate : isBlockEntryCandidate sc = true) :
+    GNot SNsChar ⟨rest, col + 1⟩ := by
+  intro s' h_ns
+  cases rest with
+  | nil => cases h_ns
+  | cons c rest' =>
+    cases h_ns with
+    | mk c' rest'' col' h_pred =>
+      have h_peekAt : sc.peekAt? 1 = some c := by
+        unfold ScannerState.peekAt?
+        have hlt : sc.offset < sc.inputEnd := by
+          rw [hcorr.end_eq]
+          exact match hcorr.chars_from with | .cons _ h _ _ _ _ => h
+        rw [peekAtLoop_step hlt]
+        have hcf_tail := chars_from_cons_tail hcorr.chars_from
+        have hlt_next : (String.Pos.Raw.next sc.input ⟨sc.offset⟩).byteIdx < sc.inputEnd := by
+          rw [hcorr.end_eq]
+          exact match hcf_tail with | .cons _ h _ _ _ _ => h
+        exact peekAtLoop_cons hlt_next hcf_tail
+      unfold isBlockEntryCandidate at h_candidate
+      rw [h_peekAt] at h_candidate
+      exact blank_to_not_nsChar h_candidate h_pred
+
 -- `scanKey` produces `GLit '?'`.
 theorem scanKey_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some '?')
