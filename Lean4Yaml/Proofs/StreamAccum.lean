@@ -291,7 +291,7 @@ theorem absorb_stacks (sp_start sp_gram sp_block sp_flow : SurfPos)
     Two helpers needed to discharge the `nil + noPending + col=0` case of §1a:
     1. `preprocess_none_ssl_comments_col0`: unfolds `scanNextToken_preprocess`,
        shows only `!hasMore` path fires, delegates to `skipToContent_eof_ssl_comments_col0`
-    2. `ssl_comments_extend_stream_col0`: converts `SSLComments` → `GStar SLComment`
+    2. `ssl_comments_extend_stream`: converts `SSLComments` → `GStar SLComment`
        → `SLDocumentPrefix` → extends `SLYamlStream` via `implicitContinue`
 
     Together these prove: at col=0, preprocessing EOF extends the stream. -/
@@ -400,17 +400,16 @@ theorem preprocess_none_ssl_comments (sc : ScannerState) (sp : SurfPos)
               exact h_not_lt h_hasMore
           · cases hok
 
-/-- Extend `SLYamlStream` with `SSLComments` at col=0.
+/-- Extend `SLYamlStream` with `SSLComments`.
 
     `SSLComments` → `GStar SLComment` → `SLDocumentPrefix.comments`
     → `SLYamlStream.implicitContinue` with no explicit document. -/
-theorem ssl_comments_extend_stream_col0
+theorem ssl_comments_extend_stream
     (sp_start sp sp_final : SurfPos)
-    (hcol : sp.col = 0)
     (h_stream : SLYamlStream sp_start sp)
     (h_ssl : SSLComments sp sp_final) :
     SLYamlStream sp_start sp_final := by
-  have h_gstar := SSLComments_to_GStar_col0 sp sp_final hcol h_ssl
+  have h_gstar := SSLComments_to_GStar sp sp_final h_ssl
   exact SLYamlStream.implicitContinue sp_start sp sp_final sp_final sp_final
     h_stream
     (GStar.cons sp sp_final sp_final (SLDocumentPrefix.comments sp sp_final h_gstar) (GStar.nil _))
@@ -574,10 +573,12 @@ theorem preprocess_some_separate_0_anyCol (sc : ScannerState) (sp : SurfPos)
             (ScalarProduction.gstar_sswhite_to_gopt_sep h_ws)),
         hcorr_out⟩
     | inr h_eq =>
-      subst h_eq
-      -- No break consumed (sp_mid = sp). Need SSeparateLines 0 sp_mid sp_ws
-      -- but SSLComments requires break. Would need SSeparateInLine (whites/startOfLine).
-      exact ⟨sp_ws, sorry, hcorr_out⟩
+      rw [h_eq] at h_ws
+      -- No break consumed (sp_mid = sp). Build SSeparateInLine from GStar SSWhite.
+      exact ⟨sp_ws,
+        SSeparateLines.inline 0 sp sp_ws
+          (GStar_SSWhite_to_SSeparateInLine sp sp_ws h_ws),
+        hcorr_out⟩
   | some =>
     exact ⟨sp_prep, sorry, hcorr_out⟩
 
@@ -616,14 +617,10 @@ theorem preprocess_some_peek {sc s_prep : ScannerState} {c : Char}
     Close all pending state — unwind entire BlockStack, close PendingNode,
     and finalize the stream.
 
-    **Proven case**: `BlockStack.nil` + `PendingNode.noPending` + col=0.
-    This is the primary path for non-BOM inputs. Uses
-    `preprocess_none_ssl_comments_col0` → `ssl_comments_extend_stream_col0`.
+    **Proven case**: `BlockStack.nil` + `PendingNode.noPending` (any column).
+    Uses `preprocess_none_ssl_comments` → `ssl_comments_extend_stream`.
 
-    **Sorry case**: col≠0 (BOM edge case) or non-nil stack/pending (from §1b–§1e).
-    The col≠0 sorry is a genuine YAML grammar limitation — `SSeparateInLine`
-    requires either `s-white+` or start-of-line, and after BOM at col=1 with
-    a bare break, neither applies. See §0c docstring.
+    **Sorry case**: non-nil stack/pending (from §1b–§1e).
     The non-nil stack/pending cases are downstream of §1b–§1e sorry. -/
 
 -- Helper: handles all PendingNode cases for EOF given stream at sp_block.
@@ -636,12 +633,10 @@ theorem eof_pending (sc : ScannerState)
     ∃ sp_final, SLYamlStream sp_start sp_final ∧ sp_final.chars = [] := by
   cases h_pending with
   | noPending =>
-    by_cases hcol : sp_block.col = 0
-    · obtain ⟨sp_final, h_ssl, h_empty⟩ :=
-        preprocess_none_ssl_comments_col0 sc sp_block h_corr hcol h_preprocess
-      exact ⟨sp_final, ssl_comments_extend_stream_col0 sp_start sp_block sp_final
-        hcol h_stream_block h_ssl, h_empty⟩
-    · sorry
+    obtain ⟨sp_final, h_ssl, h_empty⟩ :=
+      preprocess_none_ssl_comments sc sp_block h_corr h_preprocess
+    exact ⟨sp_final, ssl_comments_extend_stream sp_start sp_block sp_final
+      h_stream_block h_ssl, h_empty⟩
   | pendingContent =>
     rename_i h_close_fn
     obtain ⟨sp_final, h_ssl, h_empty⟩ :=
@@ -947,7 +942,7 @@ theorem accum_structural_pending (sc : ScannerState)
     · obtain ⟨sp_mid, sp_ws, sp_gap, h_ssl, hcol_mid, hws, hcmt, hcorr_gap⟩ :=
         preprocess_some_ssl_comments_col0 sc sp_block s_prep c h_corr hcol h_preprocess
       have h_stream_mid : SLYamlStream sp_start sp_mid :=
-        ssl_comments_extend_stream_col0 sp_start sp_block sp_mid hcol h_stream_block h_ssl
+        ssl_comments_extend_stream sp_start sp_block sp_mid h_stream_block h_ssl
       exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', h_stream_mid, BlockStack.nil sp_mid,
              FlowStack.nil sp_mid,
              dispatch_new_pending s_prep s' c sp_start sp_mid sp_ws sp_gap sp_prep sp_scan'

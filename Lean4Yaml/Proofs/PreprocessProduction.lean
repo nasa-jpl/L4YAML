@@ -38,16 +38,13 @@ open Lean4Yaml.Proofs.NodeProduction
 
 /-! ## §1 Helpers -/
 
-/-- `GStar SSWhite` at col=0 gives `SSeparateInLine`. -/
-theorem GStar_SSWhite_to_SSeparateInLine_col0 (sp sp' : SurfPos)
-    (h_ws : GStar SSWhite sp sp') (hcol : sp.col = 0) :
+/-- `GStar SSWhite` gives `SSeparateInLine` (zero-width startOfLine if nil). -/
+theorem GStar_SSWhite_to_SSeparateInLine (sp sp' : SurfPos)
+    (h_ws : GStar SSWhite sp sp') :
     SSeparateInLine sp sp' := by
   by_cases h : sp = sp'
-  · subst h
-    cases sp with | mk chars col =>
-    dsimp only [] at hcol; subst hcol
-    exact SSeparateInLine.startOfLine chars
-  · exact SSeparateInLine.whites sp sp' (GStar_to_GPlus h_ws h)
+  · subst h; exact .startOfLine sp
+  · exact .whites sp sp' (GStar_to_GPlus h_ws h)
 
 /-- Strengthened `consumeNewline`: produces `SBBreak` and land at col=0. -/
 theorem consumeNewline_break_prod (sc : ScannerState) (sp : SurfPos) (c : Char)
@@ -181,13 +178,13 @@ theorem collectCommentTextLoop_stops_at_break_or_eof
     gap between the scanner and the formalized grammar. We capture it in
     a single sorry theorem used by multiple proofs. -/
 
--- BOM grammar gap: comment at col≠0 without preceding whitespace.
--- SSBComment.withSep needs SSeparateInLine which can't be built
--- without whitespace at col≠0; SSBComment.noSep needs SBComment
--- at the start position, but the start has '#' (not a break/eof).
+-- BOM grammar gap (now closed): comment preceding whitespace at any column.
+-- With column-independent SSeparateInLine.startOfLine, zero-width separation
+-- suffices to build SSBComment.withSep.
 theorem bom_noWhitespace_ssbcomment (sp sp_cmt sp_end : SurfPos)
     (h_cmtv : SCNbCommentText sp sp_cmt) (h_break : SBComment sp_cmt sp_end) :
-    SSBComment sp sp_end := sorry
+    SSBComment sp sp_end :=
+  .withSep sp sp sp_cmt sp_end (.startOfLine sp) (.some sp sp_cmt h_cmtv) h_break
 
 /-! ## §2 skipToContentLoop at col=0 → GStar SLComment
 
@@ -238,7 +235,7 @@ theorem skipToContentLoop_col0_prod
             consumeNewline_break_prod (skipToContentComment s1) sp_cmt c hcorr_cmt hpeek hlb
           -- Build SLComment from this iteration
           have h_sep : SSeparateInLine sp sp_ws :=
-            GStar_SSWhite_to_SSeparateInLine_col0 sp sp_ws hstar_ws hcol
+            GStar_SSWhite_to_SSeparateInLine sp sp_ws hstar_ws
           have h_lcomment : SLComment sp sp_brk :=
             SLComment.mk sp sp_ws sp_cmt sp_brk h_sep hopt_cmt
               (SBComment.break _ _ h_break)
@@ -511,29 +508,27 @@ theorem skipToContent_anyCol_prod
     `SBComment.eof` to incorporate the terminal whitespace into an
     `SLComment`, yielding `SSLComments` with `sp_final.chars = []`. -/
 
-/-- Convert `SSBComment` to `SLComment` when starting at column 0.
+/-- Convert `SSBComment` to `SLComment` at any column.
     `SSBComment.withSep` already has `SSeparateInLine`; `SSBComment.noSep`
-    gets `SSeparateInLine.startOfLine` manufactured from the col=0 invariant. -/
-theorem SSBComment_to_SLComment_col0 (sp sp' : SurfPos) (hcol : sp.col = 0)
+    gets `SSeparateInLine.startOfLine` (zero-width, column-independent). -/
+theorem SSBComment_to_SLComment (sp sp' : SurfPos)
     (h : SSBComment sp sp') : SLComment sp sp' := by
   cases h
   case withSep s₁ s₂ hsep hopt hbreak =>
     exact SLComment.mk sp s₁ s₂ sp' hsep hopt hbreak
   case noSep hbreak =>
-    cases sp with | mk chars col =>
-    dsimp only [] at hcol; subst hcol
-    exact SLComment.mk ⟨chars, 0⟩ ⟨chars, 0⟩ ⟨chars, 0⟩ sp'
-      (SSeparateInLine.startOfLine chars) (GOpt.none _) hbreak
+    exact SLComment.mk sp sp sp sp'
+      (.startOfLine sp) (GOpt.none _) hbreak
 
-/-- Extract `GStar SLComment` from `SSLComments` when starting at column 0.
+/-- Extract `GStar SLComment` from `SSLComments` at any column.
     `SSLComments.startOfLine` already carries `GStar SLComment`;
     `SSLComments.withComment` has `SSBComment` + `GStar SLComment`,
-    and the `SSBComment` converts to `SLComment` at col=0. -/
-theorem SSLComments_to_GStar_col0 (sp sp' : SurfPos) (hcol : sp.col = 0)
+    and the `SSBComment` converts to `SLComment`. -/
+theorem SSLComments_to_GStar (sp sp' : SurfPos)
     (h : SSLComments sp sp') : GStar SLComment sp sp' := by
   cases h
   case withComment s₁ hsbc hstar =>
-    exact GStar.cons sp s₁ sp' (SSBComment_to_SLComment_col0 sp s₁ hcol hsbc) hstar
+    exact GStar.cons sp s₁ sp' (SSBComment_to_SLComment sp s₁ hsbc) hstar
   case startOfLine chars hstar =>
     exact hstar
 
@@ -588,7 +583,7 @@ theorem skipToContentLoop_eof_ssl_comments_col0
             consumeNewline_break_prod (skipToContentComment s1) sp_cmt c hcorr_cmt hpeek hlb
           -- Build SLComment from this iteration
           have h_sep : SSeparateInLine sp sp_ws :=
-            GStar_SSWhite_to_SSeparateInLine_col0 sp sp_ws hstar_ws hcol
+            GStar_SSWhite_to_SSeparateInLine sp sp_ws hstar_ws
           have h_lcomment : SLComment sp sp_brk :=
             SLComment.mk sp sp_ws sp_cmt sp_brk h_sep hopt_cmt
               (SBComment.break _ _ h_break)
@@ -626,7 +621,7 @@ theorem skipToContentLoop_eof_ssl_comments_col0
             obtain ⟨sp_final, h_ssl_rec, h_empty⟩ := ih _ ⟨sp_brk.chars, 0⟩ s_result
               hcorr_next rfl hfuel' hok heof
             -- Compose: SLComment sp sp_brk + SSLComments sp_brk sp_final → SSLComments sp sp_final
-            have h_gstar_rec := SSLComments_to_GStar_col0 ⟨sp_brk.chars, 0⟩ sp_final rfl h_ssl_rec
+            have h_gstar_rec := SSLComments_to_GStar ⟨sp_brk.chars, 0⟩ sp_final h_ssl_rec
             cases sp with | mk chars col =>
             dsimp only [] at hcol; subst hcol
             have h_lcomment' : SLComment ⟨chars, 0⟩ ⟨sp_brk.chars, 0⟩ := by
@@ -638,7 +633,7 @@ theorem skipToContentLoop_eof_ssl_comments_col0
           · -- isInFlowSequence
             obtain ⟨sp_final, h_ssl_rec, h_empty⟩ := ih _ sp_brk s_result
               hcorr_brk hcol_brk hfuel' hok heof
-            have h_gstar_rec := SSLComments_to_GStar_col0 sp_brk sp_final hcol_brk h_ssl_rec
+            have h_gstar_rec := SSLComments_to_GStar sp_brk sp_final h_ssl_rec
             cases sp with | mk chars col =>
             dsimp only [] at hcol; subst hcol
             exact ⟨sp_final,
@@ -665,7 +660,7 @@ theorem skipToContentLoop_eof_ssl_comments_col0
         have hempty := eof_corr (skipToContentComment s1) sp_cmt hcorr_cmt heof_sc
         -- Build SLComment: SSeparateInLine + GOpt SCNbCommentText + SBComment.eof
         have h_sep : SSeparateInLine sp sp_ws :=
-          GStar_SSWhite_to_SSeparateInLine_col0 sp sp_ws hstar_ws hcol
+          GStar_SSWhite_to_SSeparateInLine sp sp_ws hstar_ws
         -- sp_cmt.chars = [] so sp_cmt = ⟨[], sp_cmt.col⟩
         cases sp_cmt with | mk cmt_chars cmt_col =>
         dsimp only [] at hempty; subst hempty
@@ -724,7 +719,7 @@ theorem skipToContent_eof_ssl_comments
     | inl h =>
       -- Break was consumed: SSLComments sp sp_mid at col=0, extend with eof SLComment
       obtain ⟨h_ssl, hcol_mid⟩ := h
-      have h_sep := GStar_SSWhite_to_SSeparateInLine_col0 sp_mid sp_ws hws hcol_mid
+      have h_sep := GStar_SSWhite_to_SSeparateInLine sp_mid sp_ws hws
       cases sp' with | mk chars' col' =>
       simp only [] at hchars; subst hchars
       exact ⟨⟨[], col'⟩,

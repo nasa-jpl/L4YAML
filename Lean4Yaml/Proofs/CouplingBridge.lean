@@ -666,10 +666,10 @@ theorem cr_gives_SBBreak (sp : SurfPos) (rest : List Char)
 
 /-! ## §6 Composition Helpers -/
 
-/-- Start-of-line gives `SSeparateInLine`. -/
+/-- Start-of-line gives `SSeparateInLine` (zero-width, any column). -/
 theorem start_of_line_gives_SSeparateInLine (rest : List Char) :
     SSeparateInLine ⟨rest, 0⟩ ⟨rest, 0⟩ :=
-  SSeparateInLine.startOfLine rest
+  SSeparateInLine.startOfLine ⟨rest, 0⟩
 
 /-- Space gives `SSeparateInLine`. -/
 theorem space_gives_SSeparateInLine (rest : List Char) (col : Nat) :
