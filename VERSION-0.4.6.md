@@ -878,7 +878,7 @@ Three lines of composition replace the opaque sorry-closure.
 | 4f.2 | Structural dispatch (noPending) | ✅ Done | Absorb SSLComments into stream via `ssl_comments_extend_stream_col0`, use `scanDocumentStart_prod`/`scanDocumentEnd_prod` to construct marker evidence. Factored out `dispatch_new_pending` helper. |
 | 4f.3 | Structural dispatch (close old pending) | ✅ Done | Per-constructor consumption: compose marker + SSLComments → `SLExplicitDocument`/`SLDocumentSuffix` → `SLYamlStream` extension. All 6 nil-stack col=0 branches use `dispatch_new_pending`. |
 | 4f.4 | BOM col≠0 → `SSLComments` via `SSBComment.noSep` | ⏳ Deferred to 4g+ | Genuine BOM+`#` grammar gap: `SSeparateInLine` has no BOM-transparent constructor. Needs grammar definition change cascading through existing proofs. ~35 sorry share this root cause across 5 dispatch theorems. |
-| 4f.5 | Directive `h_closable` construction | ✅ Narrowed | `sp.col=0` and `ScannerSurfCorr` proven via `scanDirective_corr`. Only `h_closable` closure remains sorry — needs `scanDirective_prod` (Phase D). Deferred to Phase D. |
+| 4f.5 | Directive `h_closable` construction | ✅ Narrowed | `sp.col=0` and `ScannerSurfCorr` proven via `scanDirective_corr`. Only `h_closable` closure remains sorry — needs `scanDirective_prod` (future work: directive grammar evidence). Deferred. |
 
 **Priority:** 4f.1–4f.3 first (structural markers, most tractable). Then 4f.4 (BOM). Then 4f.5 (content/flow/block closures).
 
@@ -945,7 +945,7 @@ Three lines of composition replace the opaque sorry-closure.
 
 **Reflections on 4f.5** (completed 2026-04-01)
 
-1. **`scanDirective_corr` exists but `scanDirective_prod` does not.** The correspondence theorem (in StructureCoupling.lean L560) gives `ScannerSurfCorr s' sp'` but produces no grammar evidence. This means `PendingNode.pendingDirective sp sp' h_closable` can't get a real `h_closable` — it stays as sorry. The README notes "scanDirective_prod — directive loop analysis deferred to Phase D."
+1. **`scanDirective_corr` exists but `scanDirective_prod` does not.** The correspondence theorem (in StructureCoupling.lean L560) gives `ScannerSurfCorr s' sp'` but produces no grammar evidence. This means `PendingNode.pendingDirective sp sp' h_closable` can't get a real `h_closable` — it stays as sorry. The README notes "scanDirective_prod — directive loop analysis deferred" (v0.4.4 §C wording).
 
 2. **Directive sorry narrowed from full goal to just `h_closable`.** Before: `sorry` replaced the entire `∃ sp', sp.col = 0 ∧ PendingNode sp sp' ∧ ScannerSurfCorr s' sp'`. After: `sp.col = 0` is proven (from `c == '%' && s_prep.col == 0` condition + `hcorr.col_eq`), `ScannerSurfCorr` is proven (via `scanDirective_corr`), and only the closure `h_closable : ∀ sp_start sp_mid, SLYamlStream → SSLComments → SLYamlStream` remains sorry.
 
@@ -961,24 +961,24 @@ Addresses root cause 3 (BlockStack operations). Originally planned as the hardes
 |---|---|---|---|
 | 4g.1 | Compositional h_closable on `BlockStack` | ✅ Done | Added `h_closable : ∀ sp_start, SLYamlStream sp_start sp → SLYamlStream sp_start sp'` to `seqLevel`/`mapLevel`. Eliminates all 5 `seqLevel \| mapLevel => all_goals sorry`. |
 | 4g.2 | Extract per-dispatch PendingNode helpers | ✅ Done | `eof_pending`, `accum_structural_pending`, `accum_flow_pending`, `accum_block_pending`, `accum_content_pending` — each handles all 7 PendingNode variants uniformly for both nil and non-nil stacks. |
-| 4g.3 | Full grammar evidence (`SBlockSeqEntries`/`SBlockMapEntries`) | ⏳ Deferred to Phase D | Requires connecting `PendingNode.h_closable` with block-entry evidence, which needs content-level proof resolution first. |
-| 4g.4 | `pushSequenceIndent`/`pushMappingIndent` correspondence | ⏳ Deferred to Phase D | Constructing `BlockStack.seqLevel`/`.mapLevel` with real h_closable requires block entry evidence from scanner dispatch. |
+| 4g.3 | Full grammar evidence (`SBlockSeqEntries`/`SBlockMapEntries`) | ⏳ Deferred (future work) | Requires connecting `PendingNode.h_closable` with block-entry evidence, which needs content-level proof resolution first. |
+| 4g.4 | `pushSequenceIndent`/`pushMappingIndent` correspondence | ⏳ Deferred (future work) | Constructing `BlockStack.seqLevel`/`.mapLevel` with real h_closable requires block entry evidence from scanner dispatch. |
 
 **Impact:** All `seqLevel`/`mapLevel` cases now proven via h_closable delegation. Sorry count unchanged (6 declarations), but sorry scope narrowed: only col≠0 BOM edge case + inner h_closable on new PendingNode remain.
 
 **Reflections on 4g.1** (completed 2026-04-01)
 
-1. **Compositional closure is the key insight.** The original plan (4g.1-old) called for enriching BlockStack with explicit `SBlockSeqEntries`/`SBlockMapEntries` grammar witnesses. Analysis revealed this requires FULL content evidence per entry (`SBlockIndented`, `SBlockMapEntry`), which depends on resolving the `PendingNode.h_closable` sorry chain (Phase D work). The compositional closure approach sidesteps this: instead of carrying grammar witnesses, each level carries a function that CAN extend the stream. The function's internals are opaque — they'll be constructed with real grammar evidence later.
+1. **Compositional closure is the key insight.** The original plan (4g.1-old) called for enriching BlockStack with explicit `SBlockSeqEntries`/`SBlockMapEntries` grammar witnesses. Analysis revealed this requires FULL content evidence per entry (`SBlockIndented`, `SBlockMapEntry`), which depends on resolving the `PendingNode.h_closable` sorry chain (future work: content evidence resolution). The compositional closure approach sidesteps this: instead of carrying grammar witnesses, each level carries a function that CAN extend the stream. The function's internals are opaque — they'll be constructed with real grammar evidence later.
 
-2. **Zero-cost enrichment.** Adding h_closable to `seqLevel`/`mapLevel` constructors introduces ZERO new sorry because these constructors are never instantiated in the current codebase. All proven paths produce `BlockStack.nil`. The h_closable is only consumed (destructed), never constructed. It's a pure future obligation for Phase D.
+2. **Zero-cost enrichment.** Adding h_closable to `seqLevel`/`mapLevel` constructors introduces ZERO new sorry because these constructors are never instantiated in the current codebase. All proven paths produce `BlockStack.nil`. The h_closable is only consumed (destructed), never constructed. It's a pure future obligation (content evidence resolution).
 
 3. **seqLevel/mapLevel cases are isomorphic to nil cases.** The critical observation: with h_closable, the seqLevel/mapLevel proof is identical to the nil proof, with `h_closable sp_start h_stream` replacing `h_stream`. This is because h_closable bridges the position gap between `sp_gram` (stream end) and `sp_block` (BlockStack top), turning `SLYamlStream sp_start sp_gram` into `SLYamlStream sp_start sp_block`. Once this bridge is built, all PendingNode cases proceed identically.
 
 4. **Helper extraction eliminates code duplication.** Rather than duplicating the 7-case PendingNode analysis for nil vs seqLevel vs mapLevel (which would triple the code), each dispatch theorem now delegates to a single helper that takes `h_stream_block : SLYamlStream sp_start sp_block`. The main theorem is a thin 8-line wrapper that case-splits on BlockStack and computes h_stream_block.
 
-5. **Architectural issue identified: PendingNode.h_closable produces SLYamlStream, not block-level evidence.** For correct block collection accumulation (Phase D), the PendingNode's closure should produce content-in-block evidence (e.g., `SBlockIndented`), not stream-level evidence. The current h_closable signature `∀ sp_start sp_close, SLYamlStream sp_start sp_block → SSLComments sp_scan sp_close → SLYamlStream sp_start sp_close` works when the pending is at document level (BlockStack.nil), but inside a block level, closing the pending contributes to a block ENTRY, not directly to the stream. Resolving this requires either: (a) parameterizing PendingNode on its output type, or (b) splitting PendingNode into document-level and block-level variants. This is Phase D territory.
+5. **Architectural issue identified: PendingNode.h_closable produces SLYamlStream, not block-level evidence.** For correct block collection accumulation (future work), the PendingNode's closure should produce content-in-block evidence (e.g., `SBlockIndented`), not stream-level evidence. The current h_closable signature `∀ sp_start sp_close, SLYamlStream sp_start sp_block → SSLComments sp_scan sp_close → SLYamlStream sp_start sp_close` works when the pending is at document level (BlockStack.nil), but inside a block level, closing the pending contributes to a block ENTRY, not directly to the stream. Resolving this requires either: (a) parameterizing PendingNode on its output type, or (b) splitting PendingNode into document-level and block-level variants. This is future work territory.
 
-6. **Scanner indent stack correspondence is deferred.** The original 4g.2-4g.4 involved connecting the scanner's `unwindIndents`/`pushSequenceIndent`/`pushMappingIndent` operations to BlockStack push/pop. This requires constructing seqLevel/mapLevel with real h_closable, which depends on Phase D. The connection theorems exist (`pushSequenceIndent_corr`, `pushMappingIndent_corr`, `unwindIndents_corr_exact` — all proven, preserving ScannerSurfCorr) but aren't used yet because nobody creates non-nil BlockStack.
+6. **Scanner indent stack correspondence is deferred.** The original 4g.2-4g.4 involved connecting the scanner's `unwindIndents`/`pushSequenceIndent`/`pushMappingIndent` operations to BlockStack push/pop. This requires constructing seqLevel/mapLevel with real h_closable, which depends on content evidence resolution (future work). The connection theorems exist (`pushSequenceIndent_corr`, `pushMappingIndent_corr`, `unwindIndents_corr_exact` — all proven, preserving ScannerSurfCorr) but aren't used yet because nobody creates non-nil BlockStack.
 
 **Reflections on 4g.2** (completed 2026-04-01)
 
@@ -991,7 +991,7 @@ The helper extraction pattern is highly regular. Each dispatch type's helper fol
 
 A further refactoring opportunity: extract a COMMON helper that handles PendingNode closure (the 7-case analysis) and returns `SLYamlStream sp_start sp_mid`, parameterized on the "new pending" construction. This would reduce the 5 helpers to 1. Not done because the diminishing returns don't justify the abstraction complexity.
 
-**Reflections on 4g.3** (deferred to Phase D, analysis 2026-04-01)
+**Reflections on 4g.3** (deferred — future work, analysis 2026-04-01)
 
 Full grammar evidence in BlockStack requires `SBlockSeqEntries n`/`SBlockMapEntries n` witnesses accumulated incrementally across tokens. The accumulation pattern is:
 1. Token `-`: creates `seqLevel`, opens entry for content
@@ -999,9 +999,9 @@ Full grammar evidence in BlockStack requires `SBlockSeqEntries n`/`SBlockMapEntr
 3. Token `-`: closes previous entry → `SBlockSeqEntries.cons`, opens next
 4. Dedent/EOF: wraps entries as `SBlockNode.blockSeq` → extends stream
 
-Step 2 requires the content's grammar evidence, which comes from `PendingNode.h_closable` — exactly the Phase D work. The circular dependency is: block-level evidence ← content evidence ← h_closable ← block-level evidence (the content IS the block entry).
+Step 2 requires the content's grammar evidence, which comes from `PendingNode.h_closable` — exactly the future content evidence work. The circular dependency is: block-level evidence ← content evidence ← h_closable ← block-level evidence (the content IS the block entry).
 
-**Reflections on 4g.4** (deferred to Phase D, analysis 2026-04-01)
+**Reflections on 4g.4** (deferred — future work, analysis 2026-04-01)
 
 Scanner indent stack operations have proven correspondence theorems:
 - `pushSequenceIndent_corr`/`pushMappingIndent_corr`: preserve ScannerSurfCorr at same SurfPos
@@ -1010,22 +1010,111 @@ Scanner indent stack operations have proven correspondence theorems:
 - `scanKey_prod`: produces `GLit '?'` evidence
 - `scanValue_prod`: produces `GLit ':'` evidence
 
-These are the building blocks for Phase D's entry accumulation. When `pushSequenceIndent` fires (col > currentIndent), a new `BlockStack.seqLevel` should be constructed with an initial h_closable that wraps the first entry's content as `SBlockSeqEntries.single`. Each subsequent same-level `-` would update the h_closable to `SBlockSeqEntries.cons`. When `unwindIndents` pops a level, the h_closable is applied to close the block collection. All the scanner-side pieces exist; what's missing is the grammar composition to build the closure internals.
+These are the building blocks for future entry accumulation work. When `pushSequenceIndent` fires (col > currentIndent), a new `BlockStack.seqLevel` should be constructed with an initial h_closable that wraps the first entry's content as `SBlockSeqEntries.single`. Each subsequent same-level `-` would update the h_closable to `SBlockSeqEntries.cons`. When `unwindIndents` pops a level, the h_closable is applied to close the block collection. All the scanner-side pieces exist; what's missing is the grammar composition to build the closure internals.
 
-###### Layer 4h (conditional): Flow collection accumulation
+###### Layer 4h: Flow collection accumulation
 
-Multi-token flow productions (`[...]`, `{...}`) may need analogous accumulation to BlockStack. Needed only if 4g reveals that flow indicator h_closable cannot be closed without full flow collection evidence.
+Multi-token flow productions (`[...]`, `{...}`) require accumulation analogous to BlockStack. Flow indicators (`[`, `]`, `{`, `}`, `,`) are dispatched individually by the scanner; the grammar needs complete `SFlowSequence`/`SFlowMapping` spanning from opening to closing bracket. Investigation during 4f.3 confirmed that `pendingFlow` h_closable cannot close without tracking: flow indicators open/close multi-token grammar productions that the current PendingNode-only model cannot represent.
 
-| # | Work | Description |
-|---|---|---|
-| 4h.1 | `FlowStack` tracking nested `[`/`{` with entry evidence | Analogous to `BlockStack` for flow context |
-| 4h.2 | Flow entry accumulation through `,` tokens | `scanFlowEntry_prod` → append entry |
-| 4h.3 | Flow close: `]`/`}` → finalize collection evidence | Close `SFlowSequence`/`SFlowMapping` |
+**Architecture:** Add `FlowStack` as a 5th component of the loop invariant (lagging quint):
+```
+SLYamlStream sp_start sp_gram  ∧   -- grammar up to here
+BlockStack sp_gram sp_block    ∧   -- nested block collections
+FlowStack sp_block sp_flow     ∧   -- nested flow collections ([...], {...})
+PendingNode sp_flow sp_scan    ∧   -- immediate pending state
+ScannerSurfCorr sc sp_scan         -- scanner ahead
+```
 
-**Contingency:** `pendingFlow` h_closable might close without full flow collection evidence if the flow indicator characters can be absorbed into a containing `SBlockNode` wrapper. Investigation needed during 4f.3.
+FlowStack mirrors the scanner's `flowLevel` counter. Each `[`/`{` pushes a level; each `]`/`}` pops one. Content inside a flow collection creates PendingNode relative to the FlowStack top.
 
-**Reflections on 4h.1** 
+**Dependency:** Requires 4i (context parameter lifting) for `SFlowNode n c` at correct `n`/`c` when constructing entry evidence.
+
+| # | Work | Status | Description |
+|---|---|---|---|
+| 4h.1 | `FlowStack` inductive + loop invariant update | ✅ done | Design inductive, add as 5th component, update composition theorems |
+| 4h.2 | Flow open: `[`/`{` → push FlowStack level | | Handle flow indicator dispatch in `accum_flow_pending` |
+| 4h.3 | Flow entry accumulation through `,` tokens | | `,` closes current entry, opens next within same FlowStack level |
+| 4h.4 | Flow close: `]`/`}` → pop FlowStack, finalize | | Close `SFlowSequence`/`SFlowMapping`, produce `SFlowContent` |
+
+**Reflections on 4h.1** (FlowStack inductive + loop invariant update)
+
+Completed. `FlowStack` added as a 3-constructor inductive (nil, flowSeqLevel, flowMapLevel) mirroring BlockStack's h_closable pattern but without the `col : Int` field (flow collections don't have indent-based nesting). Position chain: `SLYamlStream → BlockStack → FlowStack → PendingNode → ScannerSurfCorr`.
+
+Key design: `absorb_stacks` private theorem case-splits on BlockStack (3) × FlowStack (3) = 9 cases, composing h_closable chains in one place. Each `accum_step_*` theorem SIMPLIFIED from 3-case BlockStack split to a single `absorb_stacks` call + delegation. Net code reduction despite adding a 5th invariant component.
+
+Build: 415/415 jobs, 0 errors, 6 sorry declarations (unchanged — FlowStack levels are never constructed yet, only `FlowStack.nil` produced at every dispatch). §3 scanLoop: "lagging quad" → "lagging quint". §6 Gap Analysis updated.
+
+Lean 4 `cases` arity note: FlowStack.flowSeqLevel has 5 explicit constructor args but `cases` expects 4 names (one index-determined SurfPos is auto-unified). BlockStack.seqLevel with 6 args gets 6 names due to its extra `col : Int` field.
 
 **Reflections on 4h.2** 
 
 **Reflections on 4h.3** 
+
+**Reflections on 4h.4** 
+
+###### Layer 4i: Context parameter lifting + content h_closable
+
+The most tractable sorry root cause. All `_prod` theorems give `SFlowNode 0 .blockIn`, but `SBlockNode.flowInBlock` needs `SFlowNode (n+1) .flowOut`. Resolving this context parameter mismatch enables content dispatch h_closable construction using existing `_prod` theorems. Once resolved, single-token content dispatch (scalars, anchors, tags) can construct real h_closable without multi-token tracking.
+
+| # | Work | Status | Description |
+|---|---|---|---|
+| 4i.1 | Context monotonicity lemma | | `SFlowContent 0 .blockIn sp sp' → SFlowContent n c sp sp'` (or targeted lifting for each scalar type) |
+| 4i.2 | `SSeparate` extraction from preprocessing | | Integrate with `preprocess_some_ssl_comments_col0` to provide `SSeparate` for `SBlockNode` assembly |
+| 4i.3 | Content h_closable composition | | `SSeparate + SFlowNode + SSLComments → SBlockNode.flowInBlock → SLYamlStream` extension |
+| 4i.4 | Wire into `accum_content_pending` | | Replace `fun _ _ h_str h_ssl => sorry` with real closure in content dispatch |
+
+**Reflections on 4i.1** 
+
+**Reflections on 4i.2** 
+
+**Reflections on 4i.3** 
+
+**Reflections on 4i.4** 
+
+###### Layer 4j: Directive grammar evidence + h_closable
+
+`scanDirective_corr` exists but `scanDirective_prod` does not. The directive (`%TAG`, `%YAML`) h_closable in `structural_dispatch_to_pending` (L569/L599) remains sorry.
+
+| # | Work | Status | Description |
+|---|---|---|---|
+| 4j.1 | `scanDirective_prod` | | Directive loop analysis → grammar evidence for `%TAG`/`%YAML` directives |
+| 4j.2 | Directive h_closable construction | | Build closure from `scanDirective_prod` evidence |
+| 4j.3 | Wire into `structural_dispatch_to_pending` | | Replace L569/L599 sorry with real h_closable |
+
+**Reflections on 4j.1** 
+
+**Reflections on 4j.2** 
+
+**Reflections on 4j.3** 
+
+###### Layer 4k: BOM col≠0 grammar fix
+
+`SSeparateInLine` has no BOM-transparent constructor. After BOM at col=1 with bare `#`, neither `whites` nor `startOfLine` applies. Genuine YAML grammar formalization gap affecting ~35 sorry across all 5+1 dispatch theorems.
+
+| # | Work | Status | Description |
+|---|---|---|---|
+| 4k.1 | Grammar definition change | | Add `SSeparateInLine.bomPreceded` constructor or equivalent. Cascading through existing proofs. |
+| 4k.2 | `skipToContentLoop_anyCol_prod` | | General-column preprocessing theorem (extends `skipToContentLoop_col0_prod`) |
+| 4k.3 | Update dispatch theorems | | Replace col≠0 sorry in all 5+1 dispatch theorems |
+
+**Reflections on 4k.1** 
+
+**Reflections on 4k.2** 
+
+**Reflections on 4k.3** 
+
+###### Layer 4l: Block entry accumulation
+
+Subsumes deferred 4g.3/4g.4. Full grammar evidence for block collections (`SBlockSeqEntries`/`SBlockMapEntries`) constructed incrementally across tokens via `BlockStack`. Requires content h_closable (4i) to produce entry evidence.
+
+| # | Work | Status | Description |
+|---|---|---|---|
+| 4l.1 | Block entry h_closable construction | | `pushSequenceIndent`/`pushMappingIndent` → create `BlockStack.seqLevel`/`.mapLevel` with real h_closable |
+| 4l.2 | Block entry accumulation through `-`/`?`/`:` | | Append entries to current block collection evidence |
+| 4l.3 | `unwindIndents` → BlockStack pop with finalization | | Close `SBlockSequence`/`SBlockMapping`, extend stream |
+
+**Reflections on 4l.1** 
+
+**Reflections on 4l.2** 
+
+**Reflections on 4l.3** 
