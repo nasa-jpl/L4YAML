@@ -53,6 +53,8 @@ open Lean4Yaml.Proofs.ScalarCoupling
 open Lean4Yaml.Proofs.StructureCoupling
 open Lean4Yaml.Proofs.PreprocessProduction
 open Lean4Yaml.Proofs.StructureProduction
+open Lean4Yaml.Proofs.ScalarProduction
+open Lean4Yaml.Proofs.NodeProduction
 
 /-! ## §0a PendingNode — Immediate Pending State
 
@@ -418,6 +420,26 @@ theorem preprocess_some_separate_lines_0 (sc : ScannerState) (sp : SurfPos)
     -- but scanNextToken_preprocess returned a non-break content character).
     -- Deferred: requires peek? preservation through skipToContentComment struct update.
     exact ⟨sp_prep, sorry, hcorr_out⟩
+
+/-- When `scanNextToken_preprocess` returns `some (s_prep, c)`, the resulting
+    scanner state has `s_prep.peek? = some c`. This follows from the definition's
+    final `match s.peek? with | some c => return some (s, c)`. -/
+theorem preprocess_some_peek {sc s_prep : ScannerState} {c : Char}
+    (hok : scanNextToken_preprocess sc = .ok (some (s_prep, c))) :
+    s_prep.peek? = some c := by
+  unfold scanNextToken_preprocess at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  split at hok  -- skipToContent
+  · simp at hok
+  · split at hok  -- hasMore
+    · simp at hok
+    · split at hok  -- indent handling
+      all_goals (  -- both indent branches have identical structure
+        split at hok  -- trailing content check
+        <;> (try simp at hok)  -- error case
+        <;> (split at hok  -- peek? match
+          <;> (try simp at hok)  -- none case
+          <;> (obtain ⟨h1, h2⟩ := hok; subst h1; subst h2; assumption)))
 
 /-! ## §1 Per-Dispatch Grammar Accumulator Lemmas
 
@@ -1243,6 +1265,77 @@ theorem dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
               -- error: unexpectedChar
               · simp at hok
 
+-- Content dispatch for double-quoted: returns `SCDoubleQuoted 0 .blockIn` grammar evidence.
+-- Needed for Layer 4i h_closable composition (quoted scalar → SBlockNode → stream).
+-- Unfolds `scanNextToken_dispatchContent` for `c = '"'`, applies `scanDoubleQuoted_prod`,
+-- and handles the simpleKey endLine update that follows.
+theorem dispatchContent_doubleQuoted_prod (sc : ScannerState) (sp : SurfPos)
+    {s' : ScannerState}
+    (hcorr : ScannerSurfCorr sc sp)
+    (hpeek : sc.peek? = some '"')
+    (hok : scanNextToken_dispatchContent sc '"' = .ok s') :
+    ∃ sp', SCDoubleQuoted 0 .blockIn sp sp' ∧ ScannerSurfCorr s' sp' := by
+  unfold scanNextToken_dispatchContent at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  -- Skip false character checks: '&', '*', '!', '|'/'>'
+  split at hok
+  · rename_i h_eq; exact absurd h_eq (by decide)
+  · split at hok
+    · rename_i h_eq; exact absurd h_eq (by decide)
+    · split at hok
+      · rename_i h_eq; exact absurd h_eq (by decide)
+      · split at hok
+        · rename_i h_eq; exact absurd h_eq (by decide)
+        · -- '"' == '"' = true: this branch
+          split at hok
+          · split at hok  -- bind on scanDoubleQuoted
+            · simp at hok
+            · rename_i s_dq hdq
+              have h := Except.ok.inj hok; subst h
+              obtain ⟨sp', h_gram, hcorr'⟩ :=
+                scanDoubleQuoted_prod sc sp hcorr hpeek hdq
+              exact ⟨sp', h_gram, by
+                -- simpleKey endLine update preserves ScannerSurfCorr
+                split
+                · exact ⟨hcorr'.chars_from, hcorr'.col_eq,
+                         hcorr'.end_eq, hcorr'.input_prefix⟩
+                · exact hcorr'⟩
+          · rename_i h_neq; exact absurd rfl h_neq
+
+-- Content dispatch for single-quoted: returns `SCSingleQuoted 0 .blockIn` grammar evidence.
+theorem dispatchContent_singleQuoted_prod (sc : ScannerState) (sp : SurfPos)
+    {s' : ScannerState}
+    (hcorr : ScannerSurfCorr sc sp)
+    (hpeek : sc.peek? = some '\'')
+    (hok : scanNextToken_dispatchContent sc '\'' = .ok s') :
+    ∃ sp', SCSingleQuoted 0 .blockIn sp sp' ∧ ScannerSurfCorr s' sp' := by
+  unfold scanNextToken_dispatchContent at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  split at hok
+  · rename_i h_eq; exact absurd h_eq (by decide)
+  · split at hok
+    · rename_i h_eq; exact absurd h_eq (by decide)
+    · split at hok
+      · rename_i h_eq; exact absurd h_eq (by decide)
+      · split at hok
+        · rename_i h_eq; exact absurd h_eq (by decide)
+        · split at hok
+          · rename_i h_eq; exact absurd h_eq (by decide)
+          · -- '\'' == '\'' = true: this branch
+            split at hok
+            · split at hok  -- bind on scanSingleQuoted
+              · simp at hok
+              · rename_i s_sq hsq
+                have h := Except.ok.inj hok; subst h
+                obtain ⟨sp', h_gram, hcorr'⟩ :=
+                  scanSingleQuoted_prod sc sp hcorr hpeek hsq
+                exact ⟨sp', h_gram, by
+                  split
+                  · exact ⟨hcorr'.chars_from, hcorr'.col_eq,
+                           hcorr'.end_eq, hcorr'.input_prefix⟩
+                  · exact hcorr'⟩
+            · rename_i h_neq; exact absurd rfl h_neq
+
 -- Helper: handles all PendingNode cases for content dispatch given stream at sp_block.
 theorem accum_content_pending (sc : ScannerState)
     (sp_start sp_block sp_scan : SurfPos)
@@ -1267,10 +1360,75 @@ theorem accum_content_pending (sc : ScannerState)
     dispatchContent_corr _ sp_prep c (corr_of_allowDirectives_update hcorr_prep) h_dispatch
   cases h_pending with
   | noPending =>
-    exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block, BlockStack.nil sp_block,
-           FlowStack.nil sp_block,
-           PendingNode.pendingContent sp_start sp_block sp_scan'
-             (fun sp_mid h_ssl => sorry), hcorr_result⟩
+    by_cases hcol : sp_block.col = 0
+    · -- col = 0: can build SSeparateLines 0 and compose grammar for quoted scalars
+      obtain ⟨sp_sep, h_sep, hcorr_sep⟩ :=
+        preprocess_some_separate_lines_0 sc sp_block s_prep c h_corr hcol h_preprocess
+      have hsp_eq := ScannerSurfCorr_unique hcorr_prep hcorr_sep; subst hsp_eq
+      -- h_sep : SSeparateLines 0 sp_block sp_prep (= SSeparate 0 .flowOut)
+      have hpeek : s_prep.peek? = some c := preprocess_some_peek h_preprocess
+      -- Dispatch peek? preserved through allowDirectives update
+      have hpeek_disp : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).peek? = some c := by
+        split
+        · show s_prep.peek? = some c; exact hpeek
+        · exact hpeek
+      by_cases hc_dq : c = '"'
+      · -- DOUBLE-QUOTED SCALAR: full grammar composition
+        subst hc_dq
+        obtain ⟨sp_dq, h_dq_gram, hcorr_dq⟩ :=
+          dispatchContent_doubleQuoted_prod _ sp_prep
+            (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
+        have hsp_dq_eq := ScannerSurfCorr_unique hcorr_dq hcorr_result
+        rw [hsp_dq_eq] at h_dq_gram hcorr_dq
+        -- h_dq_gram : SCDoubleQuoted 0 .blockIn sp_prep sp_scan'
+        have h_flow : SFlowNode 0 .flowOut sp_prep sp_scan' :=
+          SFlowNode_doubleQ_ctx_lift h_dq_gram (by decide) (by decide)
+        exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
+               BlockStack.nil sp_block, FlowStack.nil sp_block,
+               PendingNode.pendingContent sp_start sp_block sp_scan'
+                 (fun sp_mid h_ssl =>
+                   have h_blockNode :=
+                     flowInBlock_blockNode h_sep h_flow h_ssl
+                   have h_bare := SLBareDocument.mk sp_block sp_mid h_blockNode
+                   SLYamlStream.implicitContinue sp_start sp_block sp_block sp_mid sp_mid
+                     h_stream_block (GStar.nil _)
+                     (GOpt.some sp_block sp_mid
+                       (SLAnyDocument.bare sp_block sp_mid h_bare))
+                     (GStar.nil _)),
+               hcorr_result⟩
+      · by_cases hc_sq : c = '\''
+        · -- SINGLE-QUOTED SCALAR: symmetric to double-quoted
+          subst hc_sq
+          obtain ⟨sp_sq, h_sq_gram, hcorr_sq⟩ :=
+            dispatchContent_singleQuoted_prod _ sp_prep
+              (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
+          have hsp_sq_eq := ScannerSurfCorr_unique hcorr_sq hcorr_result
+          rw [hsp_sq_eq] at h_sq_gram hcorr_sq
+          have h_flow : SFlowNode 0 .flowOut sp_prep sp_scan' :=
+            SFlowNode_singleQ_ctx_lift h_sq_gram (by decide) (by decide)
+          exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
+                 BlockStack.nil sp_block, FlowStack.nil sp_block,
+                 PendingNode.pendingContent sp_start sp_block sp_scan'
+                   (fun sp_mid h_ssl =>
+                     have h_blockNode :=
+                       flowInBlock_blockNode h_sep h_flow h_ssl
+                     have h_bare := SLBareDocument.mk sp_block sp_mid h_blockNode
+                     SLYamlStream.implicitContinue sp_start sp_block sp_block sp_mid sp_mid
+                       h_stream_block (GStar.nil _)
+                       (GOpt.some sp_block sp_mid
+                         (SLAnyDocument.bare sp_block sp_mid h_bare))
+                       (GStar.nil _)),
+                 hcorr_result⟩
+        · -- Other content types (anchor, alias, tag, block scalar, plain scalar):
+          -- grammar composition deferred to later iterations
+          exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
+                 BlockStack.nil sp_block, FlowStack.nil sp_block,
+                 PendingNode.pendingContent sp_start sp_block sp_scan'
+                   (fun sp_mid h_ssl => sorry), hcorr_result⟩
+    · -- col ≠ 0: deferred (BOM edge case)
+      sorry
   | pendingDocEnd =>
     rename_i h_marker_old
     by_cases hcol : sp_scan.col = 0

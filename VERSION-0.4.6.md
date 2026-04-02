@@ -1104,9 +1104,9 @@ Combined effect: the indent lifting problem (`n=0 → n+1`) is **eliminated**. S
 | 4i.5 | `SSeparateLines 0` from preprocessing | ✅ done | `preprocess_some_separate_lines_0` in StreamAccum.lean; +1 sorry for unreachable `GOpt.some` case |
 | 4i.6 | Content h_closable composition | ✅ **unblocked** | Stream extension problem RESOLVED by implicitContinue spec fix + PendingNode sp_start capture (v0.4.10) |
 | 4i.7 | Wire into `accum_content_pending` | ⏳ ready | Replace `fun sp_mid h_ssl => sorry` with real closure (no longer blocked) |
-| 4i.8 | `dispatchContent_prod` — grammar evidence from dispatch | ⏳ not started | Case-split on `c` in `scanNextToken_dispatchContent`, thread `_prod` theorems per branch. Returns `SBlockNode 0 .blockIn` (or deferred builder). Quoted + block scalar branches ready; plain/anchor/tag sorry. |
-| 4i.9 | `preprocess_some_separate_lines_0` in `noPending` + col≠0 branches | ⏳ not started | Extract `SSeparateLines 0` in the `noPending` case (currently only used in col=0 branches of other PendingNode cases). Col≠0 remains sorry (layer 4k — BOM grammar gap). |
-| 4i.10 | Compose h_closable for quoted + block scalar branches | ⏳ blocked on 4i.8, 4i.9 | Full end-to-end composition: `SSeparateLines 0` + `SFlowNode 0 .flowOut` (ctx lift) + `SSLComments` → `SBlockNode.flowInBlock` → `SLBareDocument` → `SLYamlStream.implicitContinue`. Covers `'"'`, `'\''`, `'|'`, `'>'` branches. |
+| 4i.8 | `dispatchContent_prod` — grammar evidence from dispatch | ✅ quoted done | `dispatchContent_doubleQuoted_prod` and `dispatchContent_singleQuoted_prod` proven. Unfold dispatch, skip false char checks via `split`+`absurd`, apply `_prod`, handle simpleKey endLine struct update. Block/plain/anchor/tag deferred. |
+| 4i.9 | `preprocess_some_separate_lines_0` in `noPending` + col≠0 branches | ✅ noPending done | `preprocess_some_separate_lines_0` called in `noPending` case. `preprocess_some_peek` proven (extracts `s_prep.peek? = some c`). Col≠0 remains sorry (layer 4k). |
+| 4i.10 | Compose h_closable for quoted scalar branches | ✅ quoted done | Full end-to-end composition proven for `'"'` and `'\''` in `noPending + col=0`. Chain: `preprocess_some_separate_lines_0` → `ScannerSurfCorr_unique` → `preprocess_some_peek` → `dispatchContent_{double,single}Quoted_prod` → `SFlowNode_{doubleQ,singleQ}_ctx_lift` → `flowInBlock_blockNode` → `SLBareDocument.mk` → `SLYamlStream.implicitContinue`. Block scalars deferred: (1) `SBlockNode.blockLiteral/blockFolded` don't include `SSLComments`, (2) `scanBlockScalar_prod` requires `currentIndent ≥ 0`. |
 
 **Reflections on 4i.0** (SIndent_split — completed 2026-04-01)
 
@@ -1238,6 +1238,52 @@ h_stream'    : SLYamlStream sp_start sp_mid              ← SLYamlStream.implic
 For block scalars (`|`/`>`), the path is similar but uses `SBlockNode.blockLiteral`/`SBlockNode.blockFolded` instead of `flowInBlock_blockNode`. Block scalars go through `SSeparate` + properties (none) + scalar body.
 
 This covers the most common YAML content types. Plain scalars (the remaining common type) need a stronger `scanPlainScalar_prod` that covers all consumed characters AND a context lift that handles flow-indicator-free plain scalars specifically.
+
+**Reflections on 4i.8** (dispatchContent_prod — quoted scalars done 2026-04-02)
+
+Two theorems proven in StreamAccum.lean:
+- `dispatchContent_doubleQuoted_prod`: Unfolds `scanNextToken_dispatchContent` for `c='"'`, skips 6+ false character checks via sequential `split at hok` + `absurd hcdc h`, reaches `scanDoubleQuoted` call. Applies `scanDoubleQuoted_prod` to get `SCDoubleQuoted 0 .blockIn`. Handles simpleKey endLine struct update via `split` on `if s_dq.simpleKey.possible` — both branches reconstruct `ScannerSurfCorr` via `⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix⟩` since `simpleKey` fields don't affect surface position.
+- `dispatchContent_singleQuoted_prod`: Symmetric for `c='\''`. Skips 7+ false char checks (one more than double-quoted since `'"'` check is first).
+
+**Key insight**: The dispatch function is a sequential if-chain. Each additional character requires one more `split at hok` + `absurd` to skip past. Single-quoted requires more skips than double-quoted since `'"'` check comes first in the chain.
+
+**Helper theorem**: `preprocess_some_peek` extracts `s_prep.peek? = some c` from `scanNextToken_preprocess sc = .ok (some (s_prep, c))`. Proof: unfold `scanNextToken_preprocess`, do-notation `simp only [bind, Except.bind]`, split through monad binds, terminal case gives conjunction that `obtain ⟨h1, h2⟩` decomposes. This is needed because `dispatchContent_*_prod` takes a `peek?` hypothesis, not the preprocessing result directly.
+
+**`peek?` preservation**: `ScannerState.peek?` depends only on `offset`, `inputEnd`, `input`. The `allowDirectives` struct update (`{s_prep with allowDirectives := true, documentEverStarted := true}`) doesn't affect these fields, so `peek?` is preserved definitionally — handled by `split` on the `if s_prep.allowDirectives` condition.
+
+Block scalar dispatch (`'|'`/`'>'`) deferred: (1) `SBlockNode.blockLiteral/blockFolded` constructors don't include trailing `SSLComments` — the production ends at the scalar body, unlike `flowInBlock` which absorbs `SSLComments` as part of the `SBlockNode`. (2) `scanBlockScalar_prod` requires `currentIndent ≥ 0` which fails at top level (`currentIndent = -1`). Needs either grammar restructuring or alternative h_closable pattern.
+
+**Reflections on 4i.9** (preprocessing in noPending — done 2026-04-02)
+
+`preprocess_some_separate_lines_0` is now called in the `noPending` case, providing `SSeparateLines 0 sp_block sp_prep` as input to the h_closable composition. The extraction is the same as in other PendingNode cases — thread `h_prep`, `hcol` (col=0), and `hcorr_sep` through the existing theorem.
+
+Col≠0 branches remain sorry (layer 4k — BOM grammar gap). The `noPending` col≠0 case is split off via `by_cases hcol : sp_block.col = 0` — the `hcol = false` branch is a single sorry.
+
+**Reflections on 4i.10** (h_closable composition — quoted scalars proven 2026-04-02)
+
+The full end-to-end composition chain is now proven for the `noPending + col=0` case with `c='"'` and `c='\''`. Key technical decisions:
+
+1. **`ScannerSurfCorr_unique` for position alignment**: The preprocessing theorem gives `ScannerSurfCorr s_prep sp_prep`, and the dispatch theorem expects a corr hypothesis too. `ScannerSurfCorr_unique` equates the surface positions from different sources. Argument order matters for `subst` direction — putting the "keep" corr first avoids losing needed variables.
+
+2. **`rw` instead of `subst` for dispatch corr alignment**: After `dispatchContent_*_prod` gives `sp_dq` and the loop invariant has `sp_scan'`, `ScannerSurfCorr_unique` gives `sp_dq = sp_scan'`. Using `subst` would eliminate `sp_scan'` (needed in the closure). Instead, `rw [hsp_eq] at h_gram hcorr` rewrites within hypotheses, keeping `sp_scan'` alive.
+
+3. **Explicit type annotation for context lift**: `SFlowNode_doubleQ_ctx_lift h_gram (by decide) (by decide)` has an uninferable output context `c₂`. Adding `have h_flow : SFlowNode 0 .flowOut sp_prep sp_scan' := ...` resolves the metavariable.
+
+4. **`SSeparate 0 .flowOut = SSeparateLines 0` definitionally**: The `SSeparate` pattern match on `n` and `c` reduces for `n=0` and non-key contexts. This means `SSeparateLines 0` (from preprocessing) is directly usable as input to `flowInBlock_blockNode` which expects `SSeparate n c` — no conversion needed.
+
+The proven closure body has the form:
+```lean
+PendingNode.pendingContent sp_start sp_block sp_scan'
+  (fun sp_mid h_ssl =>
+    have h_blockNode := flowInBlock_blockNode h_sep h_flow h_ssl
+    have h_bare := SLBareDocument.mk sp_block sp_mid h_blockNode
+    SLYamlStream.implicitContinue sp_start sp_block sp_block sp_mid sp_mid
+      h_stream_block (GStar.nil _)
+      (GOpt.some sp_block sp_mid (SLAnyDocument.bare sp_block sp_mid h_bare))
+      (GStar.nil _))
+```
+
+Remaining branches in `noPending + col=0`: anchor (`'&'`), alias (`'*'`), tag (`'!'`), block scalar (`'|'`/`'>'`), plain scalar, and other characters — all sorry. These are structurally similar but need their respective `_prod` theorems and/or grammar infrastructure.
 
 ###### Layer 4j: Directive grammar evidence + h_closable
 
