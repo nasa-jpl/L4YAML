@@ -884,6 +884,75 @@ Three lines of composition replace the opaque sorry-closure.
 
 **Impact:** After 4f.1–4f.3, all `pendingDocStart`/`pendingDocEnd` sorry are eliminated. After 4f.4, all `col≠0` sorry are eliminated. Remaining sorry: `seqLevel`/`mapLevel` BlockStack + content/flow/block closure construction.
 
+**Reflections on 4f.1** (completed 2026-04-01)
+
+1. **`cases h_stack with | nil =>` substitutes `sp_block` to `sp_gram`.** After case-splitting `BlockStack sp_gram sp_block` with `| nil =>`, the `sp_block` variable is unified with `sp_gram` and disappears from context. All subsequent code in the `nil` branch must use `sp_gram` where `sp_block` was. This caused "Unknown identifier `sp_block`" errors in every dispatch.
+
+2. **Constructor field binding requires `rename_i` for marker fields.** `cases h_pending with | pendingDocEnd h_marker =>` does NOT bind `h_marker` to the `SCDocumentEnd` field — only explicit params are bound by `cases`. Must use `| pendingDocEnd => rename_i h_marker` to access the evidence field. This differs from closure-bearing constructors where `| pendingContent h_closable =>` works because `h_closable` is the first (and only) non-index argument.
+
+3. **`GPlus.single` does not exist.** The `GPlus` type has only `GPlus.mk sp₁ sp_mid sp₂ h_first h_rest` (one element + `GStar` tail). For a singleton, use `GPlus.mk sp₁ sp₂ sp₂ h_first (GStar.nil _)`.
+
+4. **`SLYamlStream.implicitContinue` positional args for empty prefix.** With `GStar.nil _` for prefixes, the 3rd positional arg (prefix endpoint) must equal the 2nd (grammar endpoint = `sp_gram`), not `sp_mid`. Correct: `implicitContinue sp_start sp_gram sp_gram sp_mid sp_mid`. The suffix pattern `suffixContinue` does not have this issue since `GPlus` already spans from `sp_gram`.
+
+5. **4f.1 was purely mechanical — no sorry change.** The refactoring changed constructor types and updated all 5 consumption sites (EOF + 4 dispatches) but kept sorry count at 5. The value is enabling 4f.2/4f.3: construction and consumption sites can now compose markers directly instead of threading through opaque closures.
+
+**Reflections on 4f.2** (completed 2026-04-01)
+
+1. **Position unification gap: `sp_mid` vs `sp_prep`.** `preprocess_some_ssl_comments_col0` returns `sp_mid` (SSLComments endpoint) and `sp_prep` (ScannerSurfCorr position). The gap between them is `GStar SSWhite sp_mid sp_ws ∧ GOpt SCNbCommentText sp_ws sp_prep`. When col=0, the gap closes: `gstar_sswhite_col_eq_nil` forces `sp_ws = sp_mid` (whitespace at col 0 must be empty), and `gopt_comment_col_eq_none` forces no comment either (comment never starts at col 0 since `#` is not a document indicator). This required strengthening 6 theorems in PreprocessProduction.lean to propagate gap evidence.
+
+2. **`split at h` on Bool `if` consumes the condition.** After `split at h_dispatch` on `if (cond : Bool) then T else F`, the `true` branch has `h_dispatch : T = ...` but the condition `cond = true` is only available as an anonymous hypothesis. With nested splits (docStart → docEnd → directive), `rename_i` counting becomes unreliable because each `split` introduces 0 or 1 anonymous hypotheses depending on the branch.
+
+3. **`by_cases` + `if_pos`/`if_neg` is the clean pattern.** Instead of `split at h_dispatch` for Bool conditions where the condition needs to be named, use `by_cases h_cond : condition = true` followed by `rw [if_pos h_cond] at h_dispatch` (true branch) or `rw [if_neg h_cond] at h_dispatch` (false branch). This directly rewrites the `ite` in the hypothesis without consuming the condition, and `h_cond` remains available for decomposition via `rw [Bool.and_eq_true]`.
+
+4. **`dsimp only []` does NOT reduce `if true = true then T else F`.** After `generalize + cases b | true =>`, the hypothesis `h_dispatch` contains `@ite _ (instDecidableEqBool true true) _ T F`. `dsimp only []` fails ("made no progress") because the `DecidableEq Bool` instance doesn't reduce through `dsimp`. `simp only [ite_true]` also fails because `ite_true` requires `ite True` (propositional), not `ite (true = true)`. The `if_pos`/`if_neg` approach avoids this entirely.
+
+5. **`subst h_eq` direction matters for variable survival.** Given `h_eq : s' = s_de`, `subst h_eq` replaces `s_de` with `s'` in all hypotheses (since `s_de` was introduced after `s'`). After substitution, `s_de` is gone. All subsequent proof terms must use `s'`, not `s_de`. The `scanDocumentEnd_prod ... s_de hde` must become `scanDocumentEnd_prod ... s' hde`.
+
+6. **`structural_dispatch_to_pending` helper avoids duplicating proof logic.** The `scanNextToken_dispatchStructural` function has 2 outer branches (inFlow/not-inFlow) × 4 inner conditions (docStart/docEnd/directive/none). The docStart and docEnd proofs are identical across the inFlow branches. A `suffices doc_start_tac ... by ... suffices doc_end_tac ... by ...` pattern lets the dispatch case-split call the reusable subproofs, proving 4 docStart + 4 docEnd branches with only 2 proof bodies.
+
+7. **Sorry count: 5 → 6.** The new `structural_dispatch_to_pending` theorem adds 4 sorry for directive branches (2 inFlow + 2 not-inFlow), counted as 1 declaration sorry. The noPending col=0 case is now fully proven except for the directive path. Net: 1 new sorry declaration (directive), 0 removed (noPending col=0 was already sorry-free after 4f.1).
+
+**Reflections on 4f.3** (completed 2026-04-01)
+
+1. **`dispatch_new_pending` factors out the gap-closing + dispatch chain.** The pattern — (a) `ScannerSurfCorr_unique` to equate `sp_gap = sp_prep`, (b) call `structural_dispatch_to_pending` for new PendingNode, (c) `ScannerSurfCorr_unique` for `sp_disp = sp_scan'`, (d) gap closure via `gstar_sswhite_col_eq_nil` + `scnb_comment_col_gt`, (e) rewrite positions — appears in ALL 6 nil-stack col=0 branches (noPending + 5 pending variants). Extracting it into `dispatch_new_pending` reduced each branch from ~20 lines to ~5 lines of pending-specific old-closure logic + one helper call.
+
+2. **`lemma` is NOT a keyword in Lean 4.29.0.** Use `theorem` instead. The error message "unexpected identifier; expected 'abbrev', 'axiom', ..." explicitly lists valid declaration keywords, and `lemma` is not among them. (Mathlib adds `lemma` via attribute/macro, but this project doesn't use Mathlib.)
+
+3. **Old-pending closure is per-constructor but new-pending construction is uniform.** Each pending case has unique logic for closing the old pending:
+   - `pendingDocEnd`: `SLDocumentSuffix.mk` + `SLYamlStream.suffixContinue` (suffix wrapping)
+   - `pendingDocStart`: `SLExplicitDocument.withContent` + `SLYamlStream.implicitContinue` (explicit doc)
+   - `pendingContent/Directive/Flow/Block`: `h_closable_old sp_start sp_mid h_stream h_ssl` (closure application)
+   But ALL cases produce the same new pending via `dispatch_new_pending`.
+
+4. **Sorry count unchanged at 6.** The 3 explicit `PendingNode.pendingDocStart ... sorry` instances were eliminated, but they were already counted under `accum_step_structural`'s single sorry declaration. The sorry now flows transitively through `dispatch_new_pending` → `structural_dispatch_to_pending` (directive branches only).
+
+**Reflections on 4f.4** (analysis complete 2026-04-01, deferred to 4g+)
+
+1. **Col≠0 requires `skipToContentLoop_anyCol_prod` — significant new proof work.** The existing `skipToContentLoop_col0_prod` (90 lines) constructs `GStar SLComment` via `SSeparateInLine.startOfLine` which needs col=0 at each iteration start. A general-col theorem would need induction with different SSBComment construction per iteration.
+
+2. **Three col≠0 subcases, one has a genuine gap:**
+   - *Break at col≠0 (no preceding `#`)*: `SSBComment.noSep (SBComment.break ...)` works — break IS at the starting position. PROVABLE.
+   - *Whitespace then `#`/break*: `SSBComment.withSep (SSeparateInLine.whites ...)` works — whitespace satisfies `GPlus SSWhite`. PROVABLE.
+   - *`#` at col≠0 without preceding whitespace*: GENUINE GAP. `SSeparateInLine` needs `whites` or `startOfLine`; neither available. `SSBComment.noSep` needs break at `sp` but `sp.chars` starts with `#`. Only reachable after BOM: `\uFEFF#comment\n---`.
+
+3. **BOM transparency is the root cause.** `skipToContentComment` (L518-531) uses `peekBack? == '\uFEFF'` to allow `#` after BOM as a comment, per YAML spec §5.2. But the grammar's `SSeparateInLine` has no BOM-transparent constructor. Resolution needs either: (a) add `SSeparateInLine.bomPreceded` constructor, or (b) compiler-side fix to reject `#` after BOM without whitespace.
+
+4. **Col≠0 + structural dispatch `some` ⇒ preprocessing crossed a break.** The dispatch requires `s_prep.col = 0`. Since `unwindIndents` and `saveSimpleKey` don't change col, `skipToContent` must have ended at col=0. If it started at col≠0, it crossed a break. So SSLComments EXISTS in principle — the proof gap is only in constructing it for the BOM+`#` edge case.
+
+5. **Impact: ~35 sorry across 5 dispatch theorems share this root cause.** All `by_cases hcol : sp.col = 0; · sorry` branches in `preprocessing_eof_extends_stream`, `accum_step_structural`, `accum_step_flow`, `accum_step_block`, `accum_step_content` need the same general-col preprocessing theorem. Fixing the BOM+`#` gap in the grammar would unblock all of them simultaneously.
+
+6. **Decision: defer to 4g+ (after BlockStack work).** The col≠0 sorry is architecturally independent of the structural marker work (4f.2-4f.3) and the directive work (4f.5). Fixing it requires grammar definition changes (`SSeparateInLine`) which would cascade through many existing proofs. Better to batch with 4g's broader grammar changes.
+
+**Reflections on 4f.5** (completed 2026-04-01)
+
+1. **`scanDirective_corr` exists but `scanDirective_prod` does not.** The correspondence theorem (in StructureCoupling.lean L560) gives `ScannerSurfCorr s' sp'` but produces no grammar evidence. This means `PendingNode.pendingDirective sp sp' h_closable` can't get a real `h_closable` — it stays as sorry. The README notes "scanDirective_prod — directive loop analysis deferred to Phase D."
+
+2. **Directive sorry narrowed from full goal to just `h_closable`.** Before: `sorry` replaced the entire `∃ sp', sp.col = 0 ∧ PendingNode sp sp' ∧ ScannerSurfCorr s' sp'`. After: `sp.col = 0` is proven (from `c == '%' && s_prep.col == 0` condition + `hcorr.col_eq`), `ScannerSurfCorr` is proven (via `scanDirective_corr`), and only the closure `h_closable : ∀ sp_start sp_mid, SLYamlStream → SSLComments → SLYamlStream` remains sorry.
+
+3. **Same `by_cases + if_pos/if_neg` pattern works for directive condition.** The condition `(c == '%' && s_prep.col == 0) = true` is handled by `by_cases h_dir : ... = true` followed by `rw [if_pos h_dir]`/`rw [if_neg h_dir]`. In the false branch, `simp at h_dispatch` closes (dispatch returns `none`). In the true branch, `rw [Bool.and_eq_true]` decomposes the conjunction.
+
+4. **Sorry count unchanged at 6.** The directive sorry is still under `structural_dispatch_to_pending` (L504). The sorry scope is now tighter but doesn't change the declaration count.
+
 ###### Layer 4g: BlockStack evidence + collection accumulation
 
 Addresses root cause 3 (BlockStack operations). Architecturally the hardest layer.
