@@ -133,11 +133,21 @@ inductive PendingNode : SurfPos → SurfPos → SurfPos → Prop where
       `SBlockNode.emptyNode ... h_ssl`; for content entries, the caller
       provides `SBlockNode.flowInBlock ...` etc. The closure captures
       entry opener evidence (indent, dash/key/value, preprocessing) and
-      the stream at the dispatch point. -/
+      the stream at the dispatch point.
+      `h_close_entry` is the **entry-level** variant: instead of producing
+      the full stream, it returns the accumulated `SBlockSeqEntries` and a
+      continuation that can produce the stream from any extended entries.
+      This enables same-level `-` to snoc new entries via
+      `SBlockSeqEntries_snoc` without closing the sequence. -/
   | pendingBlock (sp_start sp_block sp_scan : SurfPos)
       (h_close : ∀ sp_mid,
         SBlockNode 0 .blockIn sp_scan sp_mid →
-        SLYamlStream sp_start sp_mid) :
+        SLYamlStream sp_start sp_mid)
+      (h_close_entry : ∀ sp_mid,
+        SBlockNode 0 .blockIn sp_scan sp_mid →
+        ∃ sp_first,
+          SBlockSeqEntries 0 sp_first sp_mid ∧
+          (∀ sp_end, SBlockSeqEntries 0 sp_first sp_end → SLYamlStream sp_start sp_end)) :
       PendingNode sp_start sp_block sp_scan
 
 /-! ## §0b BlockStack — Nested Block Collection Accumulator
@@ -657,7 +667,7 @@ theorem eof_pending (sc : ScannerState)
       preprocess_none_ssl_comments sc sp_scan h_corr h_preprocess
     exact ⟨sp_final, h_close_fn sp_final h_ssl, h_empty⟩
   | pendingBlock =>
-    rename_i h_close_fn
+    rename_i h_close_fn _
     obtain ⟨sp_final, h_ssl, h_empty⟩ :=
       preprocess_none_ssl_comments sc sp_scan h_corr h_preprocess
     exact ⟨sp_final,
@@ -980,7 +990,7 @@ theorem accum_structural_pending (sc : ScannerState)
                hcorr_result⟩
       · sorry)
   | pendingBlock =>
-    rename_i h_close_old
+    rename_i h_close_old _
     by_cases hcol : sp_scan.col = 0
     · obtain ⟨sp_mid, sp_ws, sp_gap, h_ssl, hcol_mid, hws, hcmt, hcorr_gap⟩ :=
         preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
@@ -1168,7 +1178,7 @@ theorem accum_flow_pending (sc : ScannerState)
                BlockStack.nil sp_mid, h_flow', h_pend', hcorr_result⟩
       · sorry)
   | pendingBlock =>
-    rename_i h_close_old
+    rename_i h_close_old _
     by_cases hcol : sp_scan.col = 0
     · obtain ⟨sp_mid, _, _, h_ssl, hcol_mid, _, _, _⟩ :=
         preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
@@ -1361,29 +1371,49 @@ theorem accum_block_pending (sc : ScannerState)
                          h_stream_block (GStar.nil _)
                          (GOpt.some sp_block sp_final
                            (SLAnyDocument.bare sp_block sp_final h_bare))
-                         (GStar.nil _)),
+                         (GStar.nil _))
+                     (fun sp_final (h_node : SBlockNode 0 .blockIn sp_scan' sp_final) =>
+                       have h_indented :=
+                         SBlockIndented.node 0 .blockIn sp_scan' sp_final h_node
+                       have h_entry :=
+                         SBlockSeqEntries.single 0 sp_mid sp_mid sp_scan' sp_scan' sp_final
+                           (SIndent.zero sp_mid) h_dash h_gnot h_indented
+                       ⟨sp_mid, h_entry, fun sp_end h_entries =>
+                         have h_block :=
+                           SBlockNode.blockSeq 0 .blockIn sp_block sp_block sp_mid sp_end
+                             (GOpt.none sp_block) h_ssl_pre h_entries
+                         have h_bare := SLBareDocument.mk sp_block sp_end h_block
+                         SLYamlStream.implicitContinue sp_start sp_block sp_block sp_end sp_end
+                           h_stream_block (GStar.nil _)
+                           (GOpt.some sp_block sp_end
+                             (SLAnyDocument.bare sp_block sp_end h_bare))
+                           (GStar.nil _)⟩),
                    hcorr_result⟩
           | some =>
             -- Comment text before '-' — unreachable (scanner greedily consumes comments)
             exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
                    BlockStack.nil sp_block, FlowStack.nil sp_block,
                    PendingNode.pendingBlock sp_start sp_block sp_scan'
+                     (fun sp_mid2 _h_node => sorry)
                      (fun sp_mid2 _h_node => sorry), hcorr_result⟩
         | cons =>
           -- Whitespace before '-': dash at col > 0, can't build SBlockSeqEntries 0
           exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
                  BlockStack.nil sp_block, FlowStack.nil sp_block,
                  PendingNode.pendingBlock sp_start sp_block sp_scan'
+                   (fun sp_mid2 _h_node => sorry)
                    (fun sp_mid2 _h_node => sorry), hcorr_result⟩
       · -- c ≠ '-': block key (?) or value (:) — grammar evidence deferred
         exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
                BlockStack.nil sp_block, FlowStack.nil sp_block,
                PendingNode.pendingBlock sp_start sp_block sp_scan'
+                 (fun sp_mid _h_node => sorry)
                  (fun sp_mid _h_node => sorry), hcorr_result⟩
     · -- col ≠ 0: deferred
       exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
              BlockStack.nil sp_block, FlowStack.nil sp_block,
              PendingNode.pendingBlock sp_start sp_block sp_scan'
+               (fun sp_mid _h_node => sorry)
                (fun sp_mid _h_node => sorry), hcorr_result⟩
   | pendingDocEnd =>
     rename_i h_marker_old
@@ -1399,6 +1429,7 @@ theorem accum_block_pending (sc : ScannerState)
       exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', h_stream', BlockStack.nil sp_mid,
              FlowStack.nil sp_mid,
              PendingNode.pendingBlock sp_start sp_mid sp_scan'
+               (fun sp_mid2 _h_node => sorry)
                (fun sp_mid2 _h_node => sorry), hcorr_result⟩
     · sorry
   | pendingDocStart =>
@@ -1416,6 +1447,7 @@ theorem accum_block_pending (sc : ScannerState)
       exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', h_stream', BlockStack.nil sp_mid,
              FlowStack.nil sp_mid,
              PendingNode.pendingBlock sp_start sp_mid sp_scan'
+               (fun sp_mid2 _h_node => sorry)
                (fun sp_mid2 _h_node => sorry), hcorr_result⟩
     · sorry
   | pendingDirective =>
@@ -1433,19 +1465,80 @@ theorem accum_block_pending (sc : ScannerState)
                BlockStack.nil sp_mid,
                FlowStack.nil sp_mid,
                PendingNode.pendingBlock sp_start sp_mid sp_scan'
+                 (fun sp_mid2 _h_node => sorry)
                  (fun sp_mid2 _h_node => sorry), hcorr_result⟩
       · sorry)
   | pendingBlock =>
-    rename_i h_close_old
+    rename_i h_close_old h_close_entry_old
     by_cases hcol : sp_scan.col = 0
-    · obtain ⟨sp_mid, _, _, h_ssl, hcol_mid, _, _, _⟩ :=
-        preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
-      exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
-             h_close_old sp_mid (SBlockNode.emptyNode 0 .blockIn sp_scan sp_mid h_ssl),
-             BlockStack.nil sp_mid,
-             FlowStack.nil sp_mid,
-             PendingNode.pendingBlock sp_start sp_mid sp_scan'
-               (fun sp_mid2 _h_node => sorry), hcorr_result⟩
+    · by_cases hc : c = '-'
+      · -- Same-level '-': accumulate entries via h_close_entry_old
+        subst hc
+        obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, hcorr_sc⟩ :=
+          preprocess_some_ssl_comments_col0 sc sp_scan s_prep '-' h_corr hcol h_preprocess
+        have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
+        subst hsp_sc_eq
+        have h_node_old : SBlockNode 0 .blockIn sp_scan sp_mid :=
+          SBlockNode.emptyNode 0 .blockIn sp_scan sp_mid h_ssl
+        cases hws with
+        | nil =>
+          cases hcmt with
+          | none =>
+            -- sp_sc = sp_mid: dash is at column 0
+            have hpeek_disp : (if s_prep.allowDirectives then
+                { s_prep with allowDirectives := false, documentEverStarted := true }
+              else s_prep).peek? = some '-' := by
+              have := preprocess_some_peek h_preprocess
+              split
+              · show s_prep.peek? = some '-'; exact this
+              · exact this
+            obtain ⟨sp_dash2, h_dash2, h_gnot2, hcorr_dash2⟩ :=
+              dispatchBlockEntry_full_prod _ sp_mid
+                (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
+            have hsp_dash2_eq := ScannerSurfCorr_unique hcorr_dash2 hcorr_result
+            rw [hsp_dash2_eq] at h_dash2 h_gnot2
+            -- Accumulate: extend entries from previous iteration
+            obtain ⟨sp_first, h_entries_old, h_cont⟩ :=
+              h_close_entry_old sp_mid h_node_old
+            exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
+                   BlockStack.nil sp_block, FlowStack.nil sp_block,
+                   PendingNode.pendingBlock sp_start sp_block sp_scan'
+                     (fun sp_final (h_node : SBlockNode 0 .blockIn sp_scan' sp_final) =>
+                       have h_indented :=
+                         SBlockIndented.node 0 .blockIn sp_scan' sp_final h_node
+                       h_cont sp_final (SBlockSeqEntries_snoc h_entries_old
+                         (SIndent.zero sp_mid) h_dash2 h_gnot2 h_indented))
+                     (fun sp_final (h_node : SBlockNode 0 .blockIn sp_scan' sp_final) =>
+                       have h_indented :=
+                         SBlockIndented.node 0 .blockIn sp_scan' sp_final h_node
+                       ⟨sp_first, SBlockSeqEntries_snoc h_entries_old
+                         (SIndent.zero sp_mid) h_dash2 h_gnot2 h_indented, h_cont⟩),
+                   hcorr_result⟩
+          | some =>
+            -- Comment before dash — sorry
+            exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
+                   h_close_old sp_mid h_node_old,
+                   BlockStack.nil sp_mid, FlowStack.nil sp_mid,
+                   PendingNode.pendingBlock sp_start sp_mid sp_scan'
+                     (fun sp_mid2 _h_node => sorry)
+                     (fun sp_mid2 _h_node => sorry), hcorr_result⟩
+        | cons =>
+          -- Whitespace before dash — sorry
+          exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
+                 h_close_old sp_mid h_node_old,
+                 BlockStack.nil sp_mid, FlowStack.nil sp_mid,
+                 PendingNode.pendingBlock sp_start sp_mid sp_scan'
+                   (fun sp_mid2 _h_node => sorry)
+                   (fun sp_mid2 _h_node => sorry), hcorr_result⟩
+      · -- c ≠ '-': close old entry to stream
+        obtain ⟨sp_mid, _, _, h_ssl, hcol_mid, _, _, _⟩ :=
+          preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
+        exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
+               h_close_old sp_mid (SBlockNode.emptyNode 0 .blockIn sp_scan sp_mid h_ssl),
+               BlockStack.nil sp_mid, FlowStack.nil sp_mid,
+               PendingNode.pendingBlock sp_start sp_mid sp_scan'
+                 (fun sp_mid2 _h_node => sorry)
+                 (fun sp_mid2 _h_node => sorry), hcorr_result⟩
     · sorry
 
 theorem accum_step_block (sc : ScannerState)
@@ -1769,7 +1862,7 @@ theorem accum_content_pending (sc : ScannerState)
                  (fun sp_mid2 h_ssl => sorry), hcorr_result⟩
       · sorry)
   | pendingBlock =>
-    rename_i h_close_old
+    rename_i h_close_old _
     -- Block entry pending: compose content INSIDE the block entry.
     -- Use general-column SSeparateLines 0 (works at any col after dash).
     obtain ⟨sp_prep', h_sep, hcorr_sep⟩ :=
