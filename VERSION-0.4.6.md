@@ -1573,30 +1573,42 @@ Three architectural changes are needed before tackling the content categories. E
 
 **Sorry accounting**: Closed 2 sorry (`bom_noWhitespace_ssbcomment`, `eof_pending` noPending col≠0), but the `preprocess_some_separate_0_anyCol` `GOpt.some` case remains (unreachable comment, same root cause as `preprocess_some_separate_lines_0`). Net: 10 → 9 sorry warnings. The `eof_pending` closure was removing a sorry that didn't have its own warning (it was inside a theorem that had other sorry), so only the `bom_noWhitespace_ssbcomment` closure reduced the warning count.
 
-##### A3: Alias `*` wiring through `accum_content_pending` ⏳
+##### A3: Alias `*` wiring through `accum_content_pending` ✅
 
 **Problem**: `SFlowNode.alias` takes `SCNsAliasNode` which is context-free (no `n`/`c` dependency in evidence), so `SFlowNode 0 .flowOut` can be constructed directly without a context lift. However, alias is not yet wired through `dispatchContent_prod` or `accum_content_pending`. The dispatch path is clean (pure function, not `Except`), and the grammar evidence is direct.
 
-**Solution**: Add `dispatchContent_alias_prod` (analogous to `dispatchContent_doubleQuoted_prod`). Wire through `accum_content_pending` for both `noPending` and `pendingBlock` cases. Need to prove `sp_mid ≠ sp'` (name non-emptiness) from scanner validation (the `definedAnchors.any` check implies non-empty name since empty names are never registered as anchors).
+**Solution**: Added `dispatchContent_alias_prod` theorem (analogous to `dispatchContent_doubleQuoted_prod`) that unfolds `scanNextToken_dispatchContent` for `c = '*'`, handles the `definedAnchors.any` check (error branch is impossible since we have `.ok`), and produces `SFlowNode 0 .flowOut` via `scanAnchorOrAlias_aliasNode_prod` + `alias_flowNode`. Wired through `accum_content_pending` for both `noPending` col=0 and `pendingBlock` cases.
 
-**Scope**: ~40 lines in StreamAccum.lean + ~15 lines in NodeProduction.lean. Low risk — all building blocks exist.
+**Key insight**: Alias is truly context-free — `SCNsAliasNode` has no `n`/`c` parameters in evidence, so `alias_flowNode` lifts directly to any desired `SFlowNode n c` without a context-lift theorem (unlike double/single-quoted which need `SFlowNode_doubleQ_ctx_lift`/`SFlowNode_singleQ_ctx_lift`).
+
+**Remaining sorry**: The degenerate case where `sp_mid = sp'` (empty alias name after `*`) — the YAML spec requires `c-ns-alias-node ::= '*' ns-anchor-name` where `ns-anchor-name ::= ns-anchor-char+`, but the scanner doesn't validate minimum length. The `definedAnchors.any` check doesn't prevent this because empty names CAN be registered via `& ` (ampersand followed by non-anchor-char). This is a scanner validation gap, not a proof gap.
+
+**Build**: 415/415, 10 sorry (up from 9 — the new `dispatchContent_alias_prod` declaration adds 1 sorry for the degenerate empty-name case).
 
 **Unblocks**: Category 1 alias (`*`) content type.
 
 ###### Accomplishments for A3
 
+- `dispatchContent_alias_prod`: New theorem in StreamAccum.lean (~30 lines). Unfolds dispatch for `'*'`, handles `definedAnchors.any` check (error branch eliminated by `.ok` hypothesis), applies `scanAnchorOrAlias_aliasNode_prod` + `alias_flowNode` for grammar evidence. Sorry only for the degenerate empty-name case (`sp_mid = sp'`).
+- Wired alias into `accum_content_pending` `noPending` col=0 case (~18 lines): Uses `dispatchContent_alias_prod` to get `SFlowNode 0 .flowOut`, composes with `flowInBlock_blockNode` + `SLBareDocument.mk` + `SLYamlStream.implicitContinue`. No context lift needed (alias is context-free).
+- Wired alias into `accum_content_pending` `pendingBlock` case (~18 lines): Uses `dispatchContent_alias_prod` to get `SFlowNode 0 .flowOut`, composes inside block entry via `SBlockNode.flowInBlock` + `PendingNode.pendingBlockContent`.
+- Catch-all sorry branches now cover fewer content types: "anchor, tag, block scalar, plain scalar" (alias removed from the list).
+
 ###### Reflections on A3
+
+- **Context-free advantage is real**: Alias being context-free (`SCNsAliasNode` has no `n`/`c` in evidence) made this dramatically simpler than quoted scalars. No context-lift theorem needed — `alias_flowNode` works for ANY `n c`. This pattern will NOT generalize to anchor properties or tags, which require node-property composition.
+- **Scanner validation gaps surface**: The `sp_mid ≠ sp'` condition (name non-emptiness) can't be proven from the current scanner because: (a) `collectAnchorNameLoop` can return `""`, (b) the `definedAnchors` list can contain `""` from prior `& ` sequences, (c) the theorem `collectAnchorNameLoop_prod` doesn't relate the string name to the `GStar` extent. Adding a scanner invariant (`∀ a ∈ definedAnchors, a ≠ ""`) or a correlation theorem (`name.length > 0 ↔ sp_mid ≠ sp'`) would close this sorry but requires additional infrastructure.
+- **Pattern established for remaining content types**: The `by_cases hc_alias : c = '*'` pattern inside `accum_content_pending` is now proven for 3 content types (`'"'`, `'\''`, `'*'`). Each new content type adds ~15-20 lines of wiring plus a `dispatch_*_prod` theorem.
 
 #### Category 1: Other content types (~6 sorry sites in `accum_content_pending`)
 
-Only double-quoted (`'"'`) and single-quoted (`'\''`) scalars have full grammar production proofs. Other content types need per-type `_prod` theorems:
+Only double-quoted (`'"'`), single-quoted (`'\''`), and alias (`'*'`) have full grammar production proofs. Other content types need per-type `_prod` theorems:
 
 | Content type | Scanner function | Grammar production | Blocker | Priority |
 |---|---|---|---|---|
 | Block scalar `\|`/`>` | `scanBlockScalar` | `SCLLiteral`/`SCLFolded` | `currentIndent ≥ 0` fails at top level (`-1`) | Medium |
 | Plain scalar | `scanPlainScalar` | Only 1-char witness exists | `.blockIn → .flowOut` context lift fails (flow indicators) | Medium |
 | Anchor `&` | `scanAnchorOrAlias` | Anchor property, not standalone node | Need node property composition | Low |
-| Alias `*` | `scanAnchorOrAlias` | Alias property, not standalone node | Need node property composition | Low |
 | Tag `!` | `scanTag` | Tag property, not standalone node | Need node property composition | Low |
 
 **Recommended next**: Block scalar or plain scalar support, as they're the most common non-quoted content types.
