@@ -320,6 +320,55 @@ theorem preprocess_none_ssl_comments_col0 (sc : ScannerState) (sp : SurfPos)
               exact h_not_lt h_hasMore
           · cases hok
 
+-- General version: no col=0 requirement.
+theorem preprocess_none_ssl_comments (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp)
+    (hok : scanNextToken_preprocess sc = .ok none) :
+    ∃ sp_final, SSLComments sp sp_final ∧ sp_final.chars = [] := by
+  unfold scanNextToken_preprocess at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  split at hok
+  · simp at hok
+  · rename_i s_content h_skip
+    split at hok
+    · rename_i h_notMore
+      have heof : ¬s_content.hasMore := by
+        simp only [Bool.not_eq_eq_eq_not, Bool.not_true] at h_notMore
+        exact fun h => by simp [h] at h_notMore
+      exact skipToContent_eof_ssl_comments sc sp s_content hcorr
+        (show skipToContent sc = .ok s_content by unfold skipToContent; exact h_skip) heof
+    · rename_i h_hasMore
+      split at hok
+      · split at hok
+        · simp at hok
+        · split at hok
+          · rename_i h_indent h_no_trailing h_peek_none
+            exfalso; rw [saveSimpleKey_peek] at h_peek_none
+            unfold ScannerState.peek? at h_peek_none; dsimp only [] at h_peek_none
+            unfold unwindIndents at h_peek_none
+            simp only [unwindIndentsLoop_offset, unwindIndentsLoop_inputEnd,
+              unwindIndentsLoop_input] at h_peek_none
+            split at h_peek_none
+            · cases h_peek_none
+            · rename_i h_not_lt
+              simp only [Bool.not_eq_eq_eq_not, Bool.not_true] at h_hasMore
+              simp [ScannerState.hasMore] at h_hasMore
+              exact h_not_lt h_hasMore
+          · cases hok
+      · split at hok
+        · simp at hok
+        · split at hok
+          · rename_i h_no_indent h_no_trailing h_peek_none
+            exfalso; rw [saveSimpleKey_peek] at h_peek_none
+            unfold ScannerState.peek? at h_peek_none
+            split at h_peek_none
+            · cases h_peek_none
+            · rename_i h_not_lt
+              simp only [Bool.not_eq_eq_eq_not, Bool.not_true] at h_hasMore
+              simp [ScannerState.hasMore] at h_hasMore
+              exact h_not_lt h_hasMore
+          · cases hok
+
 /-- Extend `SLYamlStream` with `SSLComments` at col=0.
 
     `SSLComments` → `GStar SLComment` → `SLDocumentPrefix.comments`
@@ -493,58 +542,48 @@ theorem eof_pending (sc : ScannerState)
     · sorry
   | pendingContent =>
     rename_i h_close_fn
-    by_cases hcol : sp_scan.col = 0
-    · obtain ⟨sp_final, h_ssl, h_empty⟩ :=
-        preprocess_none_ssl_comments_col0 sc sp_scan h_corr hcol h_preprocess
-      exact ⟨sp_final, h_close_fn sp_final h_ssl, h_empty⟩
-    · sorry
+    obtain ⟨sp_final, h_ssl, h_empty⟩ :=
+      preprocess_none_ssl_comments sc sp_scan h_corr h_preprocess
+    exact ⟨sp_final, h_close_fn sp_final h_ssl, h_empty⟩
   | pendingDocEnd =>
     rename_i h_marker
-    by_cases hcol : sp_scan.col = 0
-    · obtain ⟨sp_final, h_ssl, h_empty⟩ :=
-        preprocess_none_ssl_comments_col0 sc sp_scan h_corr hcol h_preprocess
-      have h_suffix : SLDocumentSuffix sp_block sp_final :=
-        SLDocumentSuffix.mk sp_block sp_scan sp_final h_marker h_ssl
-      exact ⟨sp_final,
-        SLYamlStream.suffixContinue sp_start sp_block sp_final sp_final sp_final sp_final
-          h_stream_block
-          (GPlus.mk sp_block sp_final sp_final h_suffix (GStar.nil _))
-          (GStar.nil _) (GOpt.none _) (GStar.nil _),
-        h_empty⟩
-    · sorry
+    obtain ⟨sp_final, h_ssl, h_empty⟩ :=
+      preprocess_none_ssl_comments sc sp_scan h_corr h_preprocess
+    have h_suffix : SLDocumentSuffix sp_block sp_final :=
+      SLDocumentSuffix.mk sp_block sp_scan sp_final h_marker h_ssl
+    exact ⟨sp_final,
+      SLYamlStream.suffixContinue sp_start sp_block sp_final sp_final sp_final sp_final
+        h_stream_block
+        (GPlus.mk sp_block sp_final sp_final h_suffix (GStar.nil _))
+        (GStar.nil _) (GOpt.none _) (GStar.nil _),
+      h_empty⟩
   | pendingDocStart =>
     rename_i h_doc_builder
-    by_cases hcol : sp_scan.col = 0
-    · obtain ⟨sp_final, h_ssl, h_empty⟩ :=
-        preprocess_none_ssl_comments_col0 sc sp_scan h_corr hcol h_preprocess
-      have h_any_doc : SLAnyDocument sp_block sp_final :=
-        h_doc_builder sp_final
-          (GAlt.right sp_scan sp_final
-            (GSeq.mk sp_scan sp_scan sp_final (GEps.mk sp_scan) h_ssl))
-      exact ⟨sp_final,
-        SLYamlStream.implicitContinue sp_start sp_block sp_block sp_final sp_final
-          h_stream_block
-          (GStar.nil _) (GOpt.some sp_block sp_final h_any_doc) (GStar.nil _),
-        h_empty⟩
-    · sorry
+    obtain ⟨sp_final, h_ssl, h_empty⟩ :=
+      preprocess_none_ssl_comments sc sp_scan h_corr h_preprocess
+    have h_any_doc : SLAnyDocument sp_block sp_final :=
+      h_doc_builder sp_final
+        (GAlt.right sp_scan sp_final
+          (GSeq.mk sp_scan sp_scan sp_final (GEps.mk sp_scan) h_ssl))
+    exact ⟨sp_final,
+      SLYamlStream.implicitContinue sp_start sp_block sp_block sp_final sp_final
+        h_stream_block
+        (GStar.nil _) (GOpt.some sp_block sp_final h_any_doc) (GStar.nil _),
+      h_empty⟩
   | pendingDirective =>
     -- Directive at EOF without `---` is invalid YAML; sorry
     rename_i h_dir_acc h_stream_cap
     sorry
   | pendingFlow =>
     rename_i h_close_fn
-    by_cases hcol : sp_scan.col = 0
-    · obtain ⟨sp_final, h_ssl, h_empty⟩ :=
-        preprocess_none_ssl_comments_col0 sc sp_scan h_corr hcol h_preprocess
-      exact ⟨sp_final, h_close_fn sp_final h_ssl, h_empty⟩
-    · sorry
+    obtain ⟨sp_final, h_ssl, h_empty⟩ :=
+      preprocess_none_ssl_comments sc sp_scan h_corr h_preprocess
+    exact ⟨sp_final, h_close_fn sp_final h_ssl, h_empty⟩
   | pendingBlock =>
     rename_i h_close_fn
-    by_cases hcol : sp_scan.col = 0
-    · obtain ⟨sp_final, h_ssl, h_empty⟩ :=
-        preprocess_none_ssl_comments_col0 sc sp_scan h_corr hcol h_preprocess
-      exact ⟨sp_final, h_close_fn sp_final h_ssl, h_empty⟩
-    · sorry
+    obtain ⟨sp_final, h_ssl, h_empty⟩ :=
+      preprocess_none_ssl_comments sc sp_scan h_corr h_preprocess
+    exact ⟨sp_final, h_close_fn sp_final h_ssl, h_empty⟩
 
 theorem preprocessing_eof_extends_stream (sc : ScannerState)
     (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)

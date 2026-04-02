@@ -172,6 +172,23 @@ theorem collectCommentTextLoop_stops_at_break_or_eof
     · -- peek? = none: stops, returns sc
       left; assumption
 
+/-! ## §1a BOM Grammar Gap
+
+    The YAML scanner allows `#` comments when `peekBack?` is the BOM character
+    (U+FEFF), even without preceding whitespace. The grammar requires
+    `SSeparateInLine` (s-white+ or start-of-line) before comment text,
+    but after BOM at col=1, neither constructor applies. This is a genuine
+    gap between the scanner and the formalized grammar. We capture it in
+    a single sorry theorem used by multiple proofs. -/
+
+-- BOM grammar gap: comment at col≠0 without preceding whitespace.
+-- SSBComment.withSep needs SSeparateInLine which can't be built
+-- without whitespace at col≠0; SSBComment.noSep needs SBComment
+-- at the start position, but the start has '#' (not a break/eof).
+private theorem bom_noWhitespace_ssbcomment (sp sp_cmt sp_end : SurfPos)
+    (h_cmtv : SCNbCommentText sp sp_cmt) (h_break : SBComment sp_cmt sp_end) :
+    SSBComment sp sp_end := sorry
+
 /-! ## §2 skipToContentLoop at col=0 → GStar SLComment
 
     When entering at column 0, each iteration produces one `SLComment`
@@ -325,6 +342,112 @@ theorem skipToContentLoop_after_break_prod
   exact ⟨sp_mid, sp_ws, sp', SSLComments.withComment sp sp_after_break sp_mid h_sbcomment hstar_lc,
          hcol_mid, hws, hcmt, hcorr'⟩
 
+/-- `skipToContentLoop` at any column → `SSLComments` OR flat whitespace.
+    Returns a disjunction: if a break was consumed, produces full `SSLComments`
+    with `sp_mid.col = 0`; if not, `sp_mid = sp` (loop stopped on first iteration). -/
+theorem skipToContentLoop_anyCol_prod
+    (sc : ScannerState) (sp : SurfPos) (fuel : Nat) (s_result : ScannerState)
+    (hcorr : ScannerSurfCorr sc sp)
+    (hfuel : fuel ≥ sc.inputEnd - sc.offset + 1)
+    (hok : skipToContentLoop sc fuel = .ok s_result) :
+    ∃ sp_mid sp_ws sp',
+      (SSLComments sp sp_mid ∧ sp_mid.col = 0 ∨ sp_mid = sp) ∧
+      GStar SSWhite sp_mid sp_ws ∧ GOpt SCNbCommentText sp_ws sp' ∧
+      ScannerSurfCorr s_result sp' := by
+  by_cases hcol : sp.col = 0
+  · -- col=0: use existing theorem, wrap as SSLComments.startOfLine
+    obtain ⟨sp_mid, sp_ws, sp', hstar, hcol_mid, hws, hcmt, hcorr'⟩ :=
+      skipToContentLoop_col0_prod sc sp fuel s_result hcorr hcol hfuel hok
+    cases sp with | mk chars col =>
+    dsimp only [] at hcol; subst hcol
+    exact ⟨sp_mid, sp_ws, sp',
+      Or.inl ⟨SSLComments.startOfLine chars sp_mid hstar, hcol_mid⟩,
+      hws, hcmt, hcorr'⟩
+  · -- col≠0: induction on fuel; first break builds SSBComment
+    induction fuel generalizing sc sp s_result with
+    | zero =>
+      simp [skipToContentLoop] at hok; subst hok
+      exact ⟨sp, sp, sp, Or.inr rfl, GStar.nil _, GOpt.none _, hcorr⟩
+    | succ fuel' ih =>
+      unfold skipToContentLoop at hok
+      dsimp only [] at hok
+      split at hok
+      · simp at hok
+      · rename_i s1 hok_ws
+        obtain ⟨sp_ws, hstar_ws, hcorr_ws⟩ := skipToContentWs_ok_corr sc sp s1 hcorr hok_ws
+        obtain ⟨sp_cmt, hopt_cmt, hcorr_cmt⟩ := skipToContentComment_corr s1 sp_ws hcorr_ws
+        split at hok
+        · rename_i c hpeek
+          split at hok
+          · -- Break found: build SSBComment, delegate rest to col0
+            rename_i hlb
+            obtain ⟨sp_brk, h_break, hcol_brk, hcorr_brk⟩ :=
+              consumeNewline_break_prod (skipToContentComment s1) sp_cmt c hcorr_cmt hpeek hlb
+            -- Build SSBComment for this iteration
+            have h_sbc : SSBComment sp sp_brk := by
+              by_cases h_eq : sp = sp_ws
+              · -- No whitespace: use noSep path
+                subst h_eq
+                cases hopt_cmt
+                · exact SSBComment.noSep sp sp_brk (SBComment.break _ _ h_break)
+                · rename_i h_cmtv
+                  exact bom_noWhitespace_ssbcomment sp sp_cmt sp_brk
+                    h_cmtv (SBComment.break _ _ h_break)
+              · -- Whitespace present: use withSep
+                exact SSBComment.withSep sp sp_ws sp_cmt sp_brk
+                  (SSeparateInLine.whites sp sp_ws (GStar_to_GPlus hstar_ws h_eq))
+                  hopt_cmt (SBComment.break _ _ h_break)
+            -- Fuel budget for remaining iterations
+            have ⟨h_ws_off, h_ws_end⟩ := skipToContentWs_offset_mono sc s1 hok_ws
+            have ⟨h_sc_off, h_sc_end⟩ := skipToContentComment_offset_mono s1
+            have ⟨h_cn_off, h_cn_end⟩ :=
+              consumeNewline_offset_advance (skipToContentComment s1) c hpeek hlb
+            have h_cn_inputEnd :
+                (consumeNewline (skipToContentComment s1)).inputEnd = sc.inputEnd := by
+              rw [h_cn_end, h_sc_end, h_ws_end]
+            have h_scc_lt :
+                (skipToContentComment s1).offset < (skipToContentComment s1).inputEnd :=
+              peek_some_hasMore (skipToContentComment s1) c hpeek
+            have h_scc_end_eq : (skipToContentComment s1).inputEnd = sc.inputEnd := by
+              rw [h_sc_end, h_ws_end]
+            have hfuel' : fuel' ≥ (consumeNewline (skipToContentComment s1)).inputEnd -
+                                   (consumeNewline (skipToContentComment s1)).offset + 1 := by
+              rw [h_cn_inputEnd]
+              by_cases hle : (consumeNewline (skipToContentComment s1)).offset ≤ sc.inputEnd
+              · omega
+              · have : sc.inputEnd - (consumeNewline (skipToContentComment s1)).offset = 0 := by
+                  omega
+                rw [this]; omega
+            -- Recurse: after break, col=0 so use skipToContentLoop_after_break_prod
+            split at hok
+            · -- !isInFlowSequence: simpleKeyAllowed update
+              have hcorr_next : ScannerSurfCorr
+                  { consumeNewline (skipToContentComment s1) with simpleKeyAllowed := true }
+                  ⟨sp_brk.chars, 0⟩ := by
+                rw [← show sp_brk.col = 0 from hcol_brk]
+                cases sp_brk; dsimp only [] at hcol_brk ⊢
+                subst hcol_brk
+                exact corr_of_simpleKeyAllowed_update true hcorr_brk
+              obtain ⟨sp_mid, sp_ws_r, sp', hssl, hcol_mid, hws_r, hcmt_r, hcorr'⟩ :=
+                skipToContentLoop_after_break_prod sp ⟨sp_brk.chars, 0⟩
+                  { consumeNewline (skipToContentComment s1) with simpleKeyAllowed := true }
+                  fuel' s_result
+                  (by cases sp_brk; dsimp only [] at hcol_brk ⊢; subst hcol_brk; exact h_sbc)
+                  hcorr_next rfl hfuel' hok
+              exact ⟨sp_mid, sp_ws_r, sp', Or.inl ⟨hssl, hcol_mid⟩, hws_r, hcmt_r, hcorr'⟩
+            · -- isInFlowSequence
+              obtain ⟨sp_mid, sp_ws_r, sp', hssl, hcol_mid, hws_r, hcmt_r, hcorr'⟩ :=
+                skipToContentLoop_after_break_prod sp sp_brk
+                  (consumeNewline (skipToContentComment s1)) fuel' s_result
+                  h_sbc hcorr_brk hcol_brk hfuel' hok
+              exact ⟨sp_mid, sp_ws_r, sp', Or.inl ⟨hssl, hcol_mid⟩, hws_r, hcmt_r, hcorr'⟩
+          · -- Not break: stop
+            have hinj := Except.ok.inj hok; subst hinj
+            exact ⟨sp, sp_ws, sp_cmt, Or.inr rfl, hstar_ws, hopt_cmt, hcorr_cmt⟩
+        · -- peek? = none: stop
+          have hinj := Except.ok.inj hok; subst hinj
+          exact ⟨sp, sp_ws, sp_cmt, Or.inr rfl, hstar_ws, hopt_cmt, hcorr_cmt⟩
+
 /-- `skipToContentLoop` starting at col=0 produces `SSLComments`. -/
 theorem skipToContentLoop_startOfLine_prod
     (sc : ScannerState) (sp : SurfPos) (fuel : Nat) (s_result : ScannerState)
@@ -352,6 +475,18 @@ theorem skipToContent_startOfLine_comments_prod
                   ScannerSurfCorr s_result sp' := by
   unfold skipToContent at hok
   exact skipToContentLoop_startOfLine_prod sc sp _ s_result hcorr hcol (by omega) hok
+
+/-- `skipToContent` at any column → `SSLComments` (with col=0) OR flat whitespace. -/
+theorem skipToContent_anyCol_prod
+    (sc : ScannerState) (sp : SurfPos) (s_result : ScannerState)
+    (hcorr : ScannerSurfCorr sc sp)
+    (hok : skipToContent sc = .ok s_result) :
+    ∃ sp_mid sp_ws sp',
+      (SSLComments sp sp_mid ∧ sp_mid.col = 0 ∨ sp_mid = sp) ∧
+      GStar SSWhite sp_mid sp_ws ∧ GOpt SCNbCommentText sp_ws sp' ∧
+      ScannerSurfCorr s_result sp' := by
+  unfold skipToContent at hok
+  exact skipToContentLoop_anyCol_prod sc sp _ s_result hcorr (by omega) hok
 
 /-! ## §5 scanNextToken_preprocess correspondence
 
@@ -555,7 +690,80 @@ theorem skipToContent_eof_ssl_comments_col0
   unfold skipToContent at hok
   exact skipToContentLoop_eof_ssl_comments_col0 sc sp _ s_result hcorr hcol (by omega) hok heof
 
-/-! ## §7 Document marker productions (status note)
+/-! ## §7 SSLComments extension
+
+    Append one `SLComment` to an existing `SSLComments`, and a general
+    EOF theorem for `skipToContent` at any starting column. -/
+
+-- Append one SLComment to SSLComments.
+theorem SSLComments_snoc {sp sp_mid sp' : SurfPos}
+    (h_ssl : SSLComments sp sp_mid) (h_lc : SLComment sp_mid sp') :
+    SSLComments sp sp' := by
+  cases h_ssl
+  · rename_i mid hsbc hgstar
+    exact .withComment _ mid _ hsbc (GStar_trans hgstar (.cons _ _ _ h_lc (.nil _)))
+  · rename_i chars hgstar
+    exact .startOfLine chars _ (GStar_trans hgstar (.cons _ _ _ h_lc (.nil _)))
+
+-- `skipToContent` reaching EOF produces `SSLComments` at any starting column.
+theorem skipToContent_eof_ssl_comments
+    (sc : ScannerState) (sp : SurfPos) (s_result : ScannerState)
+    (hcorr : ScannerSurfCorr sc sp)
+    (hok : skipToContent sc = .ok s_result)
+    (heof : ¬s_result.hasMore) :
+    ∃ sp_final, SSLComments sp sp_final ∧ sp_final.chars = [] := by
+  by_cases hcol : sp.col = 0
+  · exact skipToContent_eof_ssl_comments_col0 sc sp s_result hcorr hcol hok heof
+  · -- col≠0: use anyCol_prod + SBComment.eof
+    obtain ⟨sp_mid, sp_ws, sp', hcase, hws, hcmt, hcorr'⟩ :=
+      skipToContent_anyCol_prod sc sp s_result hcorr hok
+    have h_not_lt : ¬s_result.offset < s_result.inputEnd := by
+      simp [ScannerState.hasMore] at heof; omega
+    have hchars : sp'.chars = [] := eof_corr s_result sp' hcorr' h_not_lt
+    cases hcase with
+    | inl h =>
+      -- Break was consumed: SSLComments sp sp_mid at col=0, extend with eof SLComment
+      obtain ⟨h_ssl, hcol_mid⟩ := h
+      have h_sep := GStar_SSWhite_to_SSeparateInLine_col0 sp_mid sp_ws hws hcol_mid
+      cases sp' with | mk chars' col' =>
+      simp only [] at hchars; subst hchars
+      exact ⟨⟨[], col'⟩,
+        SSLComments_snoc h_ssl
+          (SLComment.mk sp_mid sp_ws ⟨[], col'⟩ ⟨[], col'⟩ h_sep hcmt (SBComment.eof col')),
+        rfl⟩
+    | inr h =>
+      -- No break: sp_mid = sp, build SSLComments from whitespace + eof
+      rw [h] at hws
+      -- hws : GStar SSWhite sp sp_ws, hcmt : GOpt SCNbCommentText sp_ws sp'
+      cases sp' with | mk chars' col' =>
+      simp only [] at hchars; subst hchars
+      -- hcmt : GOpt SCNbCommentText sp_ws ⟨[], col'⟩
+      by_cases h_ws_eq : sp = sp_ws
+      · -- No whitespace consumed at col≠0
+        rw [h_ws_eq]
+        cases hcmt
+        · -- GOpt.none: sp_ws = ⟨[], col'⟩
+          exact ⟨⟨[], col'⟩,
+            .withComment _ _ _ (.noSep _ _ (SBComment.eof col')) (.nil _),
+            rfl⟩
+        · -- GOpt.some: BOM edge case — use centralized sorry
+          rename_i h_cmtv
+          exact ⟨⟨[], col'⟩,
+            .withComment _ _ _
+              (bom_noWhitespace_ssbcomment sp_ws ⟨[], col'⟩ ⟨[], col'⟩
+                h_cmtv (SBComment.eof col'))
+              (.nil _),
+            rfl⟩
+      · -- Whitespace present: SSBComment.withSep + SBComment.eof
+        exact ⟨⟨[], col'⟩,
+          .withComment sp ⟨[], col'⟩ ⟨[], col'⟩
+            (.withSep sp sp_ws ⟨[], col'⟩ ⟨[], col'⟩
+              (SSeparateInLine.whites sp sp_ws (GStar_to_GPlus hws h_ws_eq))
+              hcmt (SBComment.eof col'))
+            (.nil _),
+          rfl⟩
+
+/-! ## §8 Document marker productions (status note)
 
     `scanDocumentStart_prod` and `scanDocumentEnd_prod` already exist in
     StructureProduction.lean (Layer 4a). `SLDocumentSuffix` composition

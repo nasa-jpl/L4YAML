@@ -385,7 +385,7 @@ Remaining _prod theorems ───────────────┘       
 
 **Execution order:** Layers 1–3 complete. Layer 4a foundations complete (all `_prod` theorems proven, 0 sorry). Layer 4b complete (8 theorems). Layer 4c→4d→4e complete — restructured from broken same-position invariant (4c) through lagging triple (4d) to lagging quad with `BlockStack` (4e). 5 per-dispatch sorry are architecturally provable. All individual scalar/tag/anchor `_prod` theorems now **FULLY PROVEN**. `scan_content_gives_stream` eliminated by import reversal (DocumentProduction imports StreamAccum). Next steps: discharge per-dispatch sorry (`accum_step_structural` and `preprocessing_eof_extends_stream` are tractable first targets). Flow collection accumulation (analogous to `BlockStack` for `FlowStack`) is future work.
 
-**Sorry status (v0.4.8):** 5 sorry declarations, all in StreamAccum.lean. PendingNode is now **evidence-bearing** — non-trivial variants carry `h_closable` closure proofs. Each dispatch theorem has its `nil + noPending` case **proven**. EOF `nil + pendingX + col=0` cases **proven** via h_closable. New: dispatch pending-at-col=0 cases (6 variants × 4 dispatchers = 24) now **proven** for old-pending closure — `preprocess_some_ssl_comments_col0` extracts `SSLComments` from preprocessing at col=0, and `h_closable_old` closes the old pending. The new PendingNode's `h_closable` remains sorry (same root cause as noPending). Remaining sorry: (a) h_closable construction at dispatch time (needs `_prod` → `SFlowNode(n+1,.flowOut)` grammar context lifting), (b) col≠0 cases (BOM edge case / flow context — genuine grammar limitation), (c) `seqLevel`/`mapLevel` stack operations. Build: 415/415 jobs, 0 errors.
+**Sorry status (v0.4.8):** 5 sorry declarations, all in StreamAccum.lean. PendingNode is now **evidence-bearing** — non-trivial variants carry `h_closable` closure proofs. Each dispatch theorem has its `nil + noPending` case **proven**. EOF `nil + pendingX + col=0` cases **proven** via h_closable. **EOF `nil + pendingX` cases (all cols) now proven** — `preprocess_none_ssl_comments` eliminated the col=0 requirement for `pendingContent/DocEnd/DocStart/Flow/Block` closures. New: dispatch pending-at-col=0 cases (6 variants × 4 dispatchers = 24) now **proven** for old-pending closure — `preprocess_some_ssl_comments_col0` extracts `SSLComments` from preprocessing at col=0, and `h_closable_old` closes the old pending. The new PendingNode's `h_closable` remains sorry (same root cause as noPending). Remaining sorry: (a) h_closable construction at dispatch time (needs `_prod` → `SFlowNode(n+1,.flowOut)` grammar context lifting), (b) col≠0 cases in `some` path (same-line tokens can't provide `SSLComments` to close pending), (c) `seqLevel`/`mapLevel` stack operations, (d) BOM grammar gap (1 sorry in PreprocessProduction.lean). Build: 415/415 jobs, 9 sorry warnings (+1 from centralized BOM sorry).
 
 ###### **Layer 4b reflections (8 theorems proven, 0 sorry):**
 
@@ -1307,21 +1307,39 @@ Discovery: `PendingNode.pendingDirective`'s `h_closable → SLYamlStream` was an
 
 **Reflections on 4j.5**: The extra sorry (+1) is localized to `dispatch_new_pending` and can be eliminated by extracting a `dispatchStructural_col0` lemma that proves `sp.col = 0` directly from the dispatch success, breaking the circular dependency.
 
-###### Layer 4k: BOM col≠0 grammar fix
+###### Layer 4k: BOM col≠0 grammar gap + general-column preprocessing
 
-`SSeparateInLine` has no BOM-transparent constructor. After BOM at col=1 with bare `#`, neither `whites` nor `startOfLine` applies. Genuine YAML grammar formalization gap affecting ~35 sorry across all 5+1 dispatch theorems.
+`SSeparateInLine` has no BOM-transparent constructor. After BOM at col=1 with bare `#`, neither `whites` nor `startOfLine` applies. Genuine YAML grammar formalization gap affecting sorry across dispatch theorems. NOT a grammar encoding bug — `SSBComment.noSep` handles bare breaks at any column; the issue is only the BOM+`#` edge case.
 
 | # | Work | Status | Description |
 |---|---|---|---|
-| 4k.1 | Grammar definition change | | Add `SSeparateInLine.bomPreceded` constructor or equivalent. Cascading through existing proofs. |
-| 4k.2 | `skipToContentLoop_anyCol_prod` | | General-column preprocessing theorem (extends `skipToContentLoop_col0_prod`) |
-| 4k.3 | Update dispatch theorems | | Replace col≠0 sorry in all 5+1 dispatch theorems |
+| 4k.1 | `bom_noWhitespace_ssbcomment` | ✅ done | Centralized sorry for BOM edge case — single private theorem used by all callers |
+| 4k.2 | `skipToContentLoop_anyCol_prod` | ✅ done | General-column loop: `SSLComments ∧ col=0 ∨ sp_mid=sp` disjunction, induction on fuel |
+| 4k.3 | `skipToContent_anyCol_prod` | ✅ done | Wrapper: unfolds `skipToContent`, delegates to loop theorem |
+| 4k.4 | `SSLComments_snoc` | ✅ done | Append one `SLComment` to `SSLComments` via `GStar_trans` |
+| 4k.5 | `skipToContent_eof_ssl_comments` | ✅ done | General-column EOF: delegates col=0 to existing, col≠0 uses `anyCol_prod + SBComment.eof` |
+| 4k.6 | `preprocess_none_ssl_comments` | ✅ done | General EOF preprocessing: no col=0 requirement, delegates to `skipToContent_eof_ssl_comments` |
+| 4k.7 | Update `eof_pending` | ✅ done | 5 of 7 pending cases proven (pendingContent/DocEnd/DocStart/Flow/Block); noPending+col≠0 stays sorry (stream extension gap), pendingDirective stays sorry (invalid YAML) |
 
-**Reflections on 4k.1** 
+Build: 415/415, **9 sorry warnings** (1 PreprocessProduction: `bom_noWhitespace_ssbcomment`; 8 StreamAccum: unchanged)
 
-**Reflections on 4k.2** 
+**Reflections on 4k research:** Discovered 4 surprises during deep analysis:
+1. col≠0 is NOT just BOM — happens after ANY token (e.g., `"hello"` ends at col=7)
+2. NOT a grammar definition bug — `SSBComment.noSep` handles bare breaks at any column
+3. Impact on warning count is ZERO for StreamAccum — every theorem with col≠0 sorry has other sorry sources
+4. Mid-line col≠0 stays sorry: no newline consumed → can't build `SSLComments sp sp` at col≠0
 
-**Reflections on 4k.3** 
+**Reflections on 4k.1:** Consolidating all BOM sorry into one `private theorem bom_noWhitespace_ssbcomment` reduced warnings from 10 to 9 — callers (`skipToContentLoop_anyCol_prod`, `skipToContent_eof_ssl_comments`) become sorry-free by calling the opaque private theorem.
+
+**Reflections on 4k.2:** The general-column version can't REPLACE `skipToContentLoop_col0_prod` because: (a) the col=0 version serves as its own IH (recursive call after break always at col=0), (b) it returns `GStar SLComment` (needed for recursive accumulation), while the general version returns `SSLComments` (different type). Solution: keep col=0 version as workhorse, add general wrapper that delegates.
+
+**Reflections on 4k.5:** The EOF case at col≠0 produces three sub-cases: (a) break consumed → extend existing `SSLComments` with `SLComment + SBComment.eof` via `SSLComments_snoc` — PROVEN, (b) no break + whitespace → `SSBComment.withSep + SBComment.eof` — PROVEN, (c) no break + no whitespace + comment (BOM edge) → delegates to `bom_noWhitespace_ssbcomment` — sorry.
+
+**Reflections on 4k.7:** For `eof_pending`, the `pendingContent/Flow/Block` cases use `h_close_fn : ∀ sp, SSLComments sp_scan sp → SLYamlStream sp_start sp`. The general `preprocess_none_ssl_comments` provides `SSLComments` without col=0 requirement, so these cases are now fully proven. The `noPending` case at col≠0 remains sorry because extending `SLYamlStream` with `SSLComments` requires converting to `GStar SLComment` which needs `SSBComment_to_SLComment_col0` (requires col=0). The `SLYamlStream` grammar (`l-yaml-stream`) uses `l-comment*` (requires `s-separate-in-line`, needs whitespace or col=0) rather than `s-l-comments` (uses `s-b-comment`, allows bare breaks).
+
+**Remaining col≠0 sorry (14 sites in StreamAccum):** All in `by_cases hcol` branches within `accum_structural/flow/block/content_pending`. A general `preprocess_some_ssl_comments` (for the `some` preprocessing result) would handle the `inl` case (break consumed → `SSLComments` available). The `inr` case (no break → same-line tokens) can't produce `SSLComments` without a break, so `PendingNode`'s `h_closable` can't be invoked. For structural dispatch, the `inr` case should be provably absurd (structural tokens require col=0, which forces a break), but proving this needs column-monotonicity lemmas for `SSWhite`/`SCNbCommentText`.
+
+**Warning delta:** 8 warnings → **9** (+1 from `bom_noWhitespace_ssbcomment` in PreprocessProduction.lean). The StreamAccum warnings are architecturally unchanged — each of the 8 theorems has non-col≠0 sorry sources (directive, h_closable construction, etc.) that prevent the warning from being eliminated even if all col≠0 sorry were resolved.
 
 ###### Layer 4l: Block entry accumulation
 
