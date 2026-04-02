@@ -152,19 +152,22 @@ theorem gopt_comment_col_eq_none (sp sp' : SurfPos)
     that becomes indentation/separation for the following content production. -/
 
 /-- `skipToContentLoop` at col=0 produces comment lines + correspondence.
-    `sp_mid` is where comment lines end; `sp'` is the scanner's final position. -/
+    `sp_mid` is where comment lines end; `sp_ws` is after trailing whitespace;
+    `sp'` is after optional comment. The gap `sp_mid → sp_ws → sp'` is the
+    final iteration’s whitespace + comment that is NOT part of `GStar SLComment`. -/
 theorem skipToContentLoop_col0_prod
     (sc : ScannerState) (sp : SurfPos) (fuel : Nat) (s_result : ScannerState)
     (hcorr : ScannerSurfCorr sc sp)
     (hcol : sp.col = 0)
     (hfuel : fuel ≥ sc.inputEnd - sc.offset + 1)
     (hok : skipToContentLoop sc fuel = .ok s_result) :
-    ∃ sp_mid sp', GStar SLComment sp sp_mid ∧ sp_mid.col = 0 ∧
+    ∃ sp_mid sp_ws sp', GStar SLComment sp sp_mid ∧ sp_mid.col = 0 ∧
+                  GStar SSWhite sp_mid sp_ws ∧ GOpt SCNbCommentText sp_ws sp' ∧
                   ScannerSurfCorr s_result sp' := by
   induction fuel generalizing sc sp s_result with
   | zero =>
     simp [skipToContentLoop] at hok; subst hok
-    exact ⟨sp, sp, GStar.nil _, hcol, hcorr⟩
+    exact ⟨sp, sp, sp, GStar.nil _, hcol, GStar.nil _, GOpt.none _, hcorr⟩
   | succ fuel' ih =>
     unfold skipToContentLoop at hok
     dsimp only [] at hok
@@ -221,22 +224,22 @@ theorem skipToContentLoop_col0_prod
               cases sp_brk; dsimp only [] at hcol_brk ⊢
               subst hcol_brk
               exact corr_of_simpleKeyAllowed_update true hcorr_brk
-            obtain ⟨sp_mid, sp', hstar_lc, hcol_mid, hcorr'⟩ := ih _ ⟨sp_brk.chars, 0⟩ s_result
-              hcorr_next rfl hfuel' hok
-            exact ⟨sp_mid, sp', GStar.cons _ ⟨sp_brk.chars, 0⟩ _
+            obtain ⟨sp_mid, sp_ws_r, sp', hstar_lc, hcol_mid, hws_r, hcmt_r, hcorr'⟩ :=
+              ih _ ⟨sp_brk.chars, 0⟩ s_result hcorr_next rfl hfuel' hok
+            exact ⟨sp_mid, sp_ws_r, sp', GStar.cons _ ⟨sp_brk.chars, 0⟩ _
               (by cases sp_brk; dsimp only [] at hcol_brk ⊢; subst hcol_brk; exact h_lcomment)
-              hstar_lc, hcol_mid, hcorr'⟩
+              hstar_lc, hcol_mid, hws_r, hcmt_r, hcorr'⟩
           · -- isInFlowSequence
-            obtain ⟨sp_mid, sp', hstar_lc, hcol_mid, hcorr'⟩ := ih _ sp_brk s_result
-              hcorr_brk hcol_brk hfuel' hok
-            exact ⟨sp_mid, sp', GStar.cons _ sp_brk _ h_lcomment hstar_lc,
-                   hcol_mid, hcorr'⟩
+            obtain ⟨sp_mid, sp_ws_r, sp', hstar_lc, hcol_mid, hws_r, hcmt_r, hcorr'⟩ :=
+              ih _ sp_brk s_result hcorr_brk hcol_brk hfuel' hok
+            exact ⟨sp_mid, sp_ws_r, sp', GStar.cons _ sp_brk _ h_lcomment hstar_lc,
+                   hcol_mid, hws_r, hcmt_r, hcorr'⟩
         · -- not line break → stop (trailing ws from final iteration)
           have hinj := Except.ok.inj hok; subst hinj
-          exact ⟨sp, sp_cmt, GStar.nil _, hcol, hcorr_cmt⟩
+          exact ⟨sp, sp_ws, sp_cmt, GStar.nil _, hcol, hstar_ws, hopt_cmt, hcorr_cmt⟩
       · -- peek? = none → stop (EOF, trailing ws/comment from final iteration)
         have hinj := Except.ok.inj hok; subst hinj
-        exact ⟨sp, sp_cmt, GStar.nil _, hcol, hcorr_cmt⟩
+        exact ⟨sp, sp_ws, sp_cmt, GStar.nil _, hcol, hstar_ws, hopt_cmt, hcorr_cmt⟩
 
 /-- Top-level: `skipToContent` at col=0 produces `GStar SLComment` + correspondence. -/
 theorem skipToContent_col0_prod
@@ -244,7 +247,8 @@ theorem skipToContent_col0_prod
     (hcorr : ScannerSurfCorr sc sp)
     (hcol : sp.col = 0)
     (hok : skipToContent sc = .ok s_result) :
-    ∃ sp_mid sp', GStar SLComment sp sp_mid ∧ sp_mid.col = 0 ∧
+    ∃ sp_mid sp_ws sp', GStar SLComment sp sp_mid ∧ sp_mid.col = 0 ∧
+                  GStar SSWhite sp_mid sp_ws ∧ GOpt SCNbCommentText sp_ws sp' ∧
                   ScannerSurfCorr s_result sp' := by
   unfold skipToContent at hok
   exact skipToContentLoop_col0_prod sc sp _ s_result hcorr hcol (by omega) hok
@@ -259,11 +263,12 @@ theorem skipToContent_documentPrefix_prod
     (hcorr : ScannerSurfCorr sc sp)
     (hcol : sp.col = 0)
     (hok : skipToContent sc = .ok s_result) :
-    ∃ sp_mid sp', SLDocumentPrefix sp sp_mid ∧ sp_mid.col = 0 ∧
+    ∃ sp_mid sp_ws sp', SLDocumentPrefix sp sp_mid ∧ sp_mid.col = 0 ∧
+                  GStar SSWhite sp_mid sp_ws ∧ GOpt SCNbCommentText sp_ws sp' ∧
                   ScannerSurfCorr s_result sp' := by
-  obtain ⟨sp_mid, sp', hstar, hcol_mid, hcorr'⟩ :=
+  obtain ⟨sp_mid, sp_ws, sp', hstar, hcol_mid, hws, hcmt, hcorr'⟩ :=
     skipToContent_col0_prod sc sp s_result hcorr hcol hok
-  exact ⟨sp_mid, sp', SLDocumentPrefix.comments sp sp_mid hstar, hcol_mid, hcorr'⟩
+  exact ⟨sp_mid, sp_ws, sp', SLDocumentPrefix.comments sp sp_mid hstar, hcol_mid, hws, hcmt, hcorr'⟩
 
 /-! ## §4 skipToContentLoop after break → SSLComments
 
@@ -279,12 +284,13 @@ theorem skipToContentLoop_after_break_prod
     (hcol : sp_after_break.col = 0)
     (hfuel : fuel ≥ sc.inputEnd - sc.offset + 1)
     (hok : skipToContentLoop sc fuel = .ok s_result) :
-    ∃ sp_mid sp', SSLComments sp sp_mid ∧ sp_mid.col = 0 ∧
+    ∃ sp_mid sp_ws sp', SSLComments sp sp_mid ∧ sp_mid.col = 0 ∧
+                  GStar SSWhite sp_mid sp_ws ∧ GOpt SCNbCommentText sp_ws sp' ∧
                   ScannerSurfCorr s_result sp' := by
-  obtain ⟨sp_mid, sp', hstar_lc, hcol_mid, hcorr'⟩ :=
+  obtain ⟨sp_mid, sp_ws, sp', hstar_lc, hcol_mid, hws, hcmt, hcorr'⟩ :=
     skipToContentLoop_col0_prod sc sp_after_break fuel s_result hcorr hcol hfuel hok
-  exact ⟨sp_mid, sp', SSLComments.withComment sp sp_after_break sp_mid h_sbcomment hstar_lc,
-         hcol_mid, hcorr'⟩
+  exact ⟨sp_mid, sp_ws, sp', SSLComments.withComment sp sp_after_break sp_mid h_sbcomment hstar_lc,
+         hcol_mid, hws, hcmt, hcorr'⟩
 
 /-- `skipToContentLoop` starting at col=0 produces `SSLComments`. -/
 theorem skipToContentLoop_startOfLine_prod
@@ -293,13 +299,14 @@ theorem skipToContentLoop_startOfLine_prod
     (hcol : sp.col = 0)
     (hfuel : fuel ≥ sc.inputEnd - sc.offset + 1)
     (hok : skipToContentLoop sc fuel = .ok s_result) :
-    ∃ sp_mid sp', SSLComments sp sp_mid ∧ sp_mid.col = 0 ∧
+    ∃ sp_mid sp_ws sp', SSLComments sp sp_mid ∧ sp_mid.col = 0 ∧
+                  GStar SSWhite sp_mid sp_ws ∧ GOpt SCNbCommentText sp_ws sp' ∧
                   ScannerSurfCorr s_result sp' := by
-  obtain ⟨sp_mid, sp', hstar_lc, hcol_mid, hcorr'⟩ :=
+  obtain ⟨sp_mid, sp_ws, sp', hstar_lc, hcol_mid, hws, hcmt, hcorr'⟩ :=
     skipToContentLoop_col0_prod sc sp fuel s_result hcorr hcol hfuel hok
   cases sp with | mk chars col =>
   dsimp only [] at hcol; subst hcol
-  exact ⟨sp_mid, sp', SSLComments.startOfLine chars sp_mid hstar_lc, hcol_mid, hcorr'⟩
+  exact ⟨sp_mid, sp_ws, sp', SSLComments.startOfLine chars sp_mid hstar_lc, hcol_mid, hws, hcmt, hcorr'⟩
 
 /-- `skipToContent` starting at col=0 produces `SSLComments`. -/
 theorem skipToContent_startOfLine_comments_prod
@@ -307,7 +314,8 @@ theorem skipToContent_startOfLine_comments_prod
     (hcorr : ScannerSurfCorr sc sp)
     (hcol : sp.col = 0)
     (hok : skipToContent sc = .ok s_result) :
-    ∃ sp_mid sp', SSLComments sp sp_mid ∧ sp_mid.col = 0 ∧
+    ∃ sp_mid sp_ws sp', SSLComments sp sp_mid ∧ sp_mid.col = 0 ∧
+                  GStar SSWhite sp_mid sp_ws ∧ GOpt SCNbCommentText sp_ws sp' ∧
                   ScannerSurfCorr s_result sp' := by
   unfold skipToContent at hok
   exact skipToContentLoop_startOfLine_prod sc sp _ s_result hcorr hcol (by omega) hok
