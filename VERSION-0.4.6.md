@@ -1354,7 +1354,7 @@ Subsumes deferred 4g.3/4g.4. Full grammar evidence for block collections (`SBloc
 | 4l.2 | `SBlockSeqEntries_snoc` lemma | ✅ done | Grammar-level: append entry to existing block sequence entries. 0 sorry. |
 | 4l.3a | Entry accumulation: `h_close_entry` in `pendingBlock` | ✅ done | Same-level `-` accumulates `SBlockSeqEntries` via `SBlockSeqEntries_snoc`. 0 new sorry. |
 | 4l.3b | Content-through-entry accumulation | ✅ done | New `pendingBlockContent` constructor threads entry closure through content |
-| 4l.3c | BlockStack level push/pop | ⏳ deferred | Create `BlockStack.seqLevel` on first `-`, pop on `unwindIndents` |
+| 4l.3c | BlockStack level push/pop | ✅ analysis done | Superseded at col=0 by closure approach; nested levels blocked on col≠0. Filled pendingContent/Flow closures for `-`. |
 
 **Reflections on 4l.1** (first block entry h_closable — completed 2026-04-02)
 
@@ -1468,4 +1468,89 @@ Added to NodeProduction.lean §6. No sorry, no new warnings.
 
 **Remaining work**:
 - **4l.3b (done)**: New `pendingBlockContent` constructor carries both `h_closable` (stream closure) and `h_closable_entry` (entry closure). Content-inside-block-entry (`accum_content_pending` pendingBlock) now creates `pendingBlockContent` instead of `pendingContent` for double/single-quoted scalars, threading both closures. When another `-` follows (`accum_block_pending` pendingBlockContent), the entry closure extracts accumulated entries and snocs a new one — same accumulation logic as `pendingBlock` but taking `SSLComments` instead of `SBlockNode`. At all other consumption sites (structural, flow, eof, content-after-content), `pendingBlockContent` closes to stream via `h_closable` (first field), ignoring the entry closure. Key `rename_i` lesson: `rename_i` names inaccessible hypotheses from the END of the local context, so `rename_i x` names the LAST inaccessible, and `rename_i x _` names the 2nd-to-last (skipping the last). With 2 fields, `pendingBlockContent` cannot share combined `all_goals` patterns with single-field `pendingContent/pendingFlow` — must have its own case with `rename_i h_closable_old _`.
-- **4l.3c (deferred)**: `BlockStack.seqLevel` push/pop for indent-based finalization. Still needed for nested sequences and `unwindIndents` — the closure approach handles same-level accumulation but not cross-level finalization.
+- **4l.3c (analysis complete — superseded/blocked)**: `BlockStack.seqLevel` push/pop was the original plan for entry accumulation across tokens. Analysis found three blockers:
+
+  1. **`absorb_stacks` eagerly collapses BlockStack**: Every `accum_step_*` theorem calls `absorb_stacks` as its first action, converting `BlockStack sp_gram sp_block → SLYamlStream sp_start sp_flow`. Any `seqLevel` returned by one step gets absorbed at the start of the next step. To persist across iterations, `absorb_stacks` would need restructuring to NOT collapse block levels — and all `accum_*_pending` functions would need to take `BlockStack` as input instead of a single `SLYamlStream`. This is a major refactor across ~40 construction sites and ~10 consumption sites.
+
+  2. **`seqLevel`'s completion-closure can't be constructed incrementally**: `BlockStack.seqLevel`'s closure has type `∀ sp_start, SLYamlStream sp_start sp → SLYamlStream sp_start sp'`, producing a COMPLETE stream extension from `sp` to `sp'`. But `sp'` (the sequence endpoint) isn't known until all entries are collected. The closure approach in `PendingNode` handles this by deferring — closures take FUTURE evidence (`SBlockNode` for the current entry) and produce the result. `BlockStack.seqLevel` would need a similar incremental type, duplicating `PendingNode`'s role.
+
+  3. **Nested sequences require col≠0 support**: The motivation for `BlockStack.seqLevel` was nested sequences (e.g., `- - inner\n- outer`). The inner `-` at col=2 would need `SBlockSeqEntries 2` with `SIndent 2`. But ALL col≠0 branches are sorry (BOM grammar gap, layer 4k). Until col≠0 is resolved, `seqLevel` at col>0 would just wrap sorry — no grammar improvement.
+
+  **Concrete improvement made**: Filled `h_close`/`h_close_entry` closures in `accum_block_pending` for `pendingContent/pendingFlow + c='-' + col=0` (nil whitespace, no comment). Uses `SSLComments.startOfLine` for zero-width SSLComments at the stream endpoint. These were previously sorry; now they construct real `SBlockSeqEntries.single → SBlockNode.blockSeq → SLYamlStream.implicitContinue`. Enables the accumulation chain for multi-document sequences like `"hello"\n- "world"\n- "foo"\n`.
+
+  **End-to-end sorry-free path**: `- "quoted"\n- "quoted"\n...- "quoted"\nEOF` is fully proven with real grammar evidence:
+  - Step 1: `noPending + '-'` → `pendingBlock` (real closures) ✅
+  - Step 2: `pendingBlock + '"'` → `pendingBlockContent` (real closures, 4l.1d+3b) ✅
+  - Step 3: `pendingBlockContent + '-'` → `pendingBlock` (accumulates entries, 4l.3b) ✅
+  - Steps 4–N: repeat steps 2–3 for arbitrary entry count ✅
+  - EOF: `eof_pending` with `pendingBlockContent` → `h_closable` → stream ✅
+  - Structural: `accum_structural_pending` with `pendingBlockContent` → close to stream ✅
+  Also proven: `pendingContent/pendingFlow + '-'` → `pendingBlock` with real closures (new this iteration)
+
+  **BlockStack.seqLevel disposition**: The constructors remain in the type definition for future use when col≠0 is supported. No code uses them. They may need type changes (incremental closures) before they're actually useful.
+
+**Build**: 415/415, 10 sorry warnings (unchanged).
+
+---
+
+### Next Steps Analysis (post-4l)
+
+The block entry accumulation chain (4l.1–4l.3) is complete for the core use case: top-level block sequences with double/single-quoted scalar content. The remaining sorry fall into five independent categories:
+
+#### Category 1: Other content types (~6 sorry sites in `accum_content_pending`)
+
+Only double-quoted (`'"'`) and single-quoted (`'\''`) scalars have full grammar production proofs. Other content types need per-type `_prod` theorems:
+
+| Content type | Scanner function | Grammar production | Blocker | Priority |
+|---|---|---|---|---|
+| Block scalar `\|`/`>` | `scanBlockScalar` | `SCLLiteral`/`SCLFolded` | `currentIndent ≥ 0` fails at top level (`-1`) | Medium |
+| Plain scalar | `scanPlainScalar` | Only 1-char witness exists | `.blockIn → .flowOut` context lift fails (flow indicators) | Medium |
+| Anchor `&` | `scanAnchorOrAlias` | Anchor property, not standalone node | Need node property composition | Low |
+| Alias `*` | `scanAnchorOrAlias` | Alias property, not standalone node | Need node property composition | Low |
+| Tag `!` | `scanTag` | Tag property, not standalone node | Need node property composition | Low |
+
+**Recommended next**: Block scalar or plain scalar support, as they're the most common non-quoted content types.
+
+#### Category 2: col≠0 / BOM edge case (~20 sorry sites across all dispatch theorems)
+
+`SSeparateInLine` has no BOM-transparent constructor. After BOM at col≠1 with bare `#`, neither `whites` nor `startOfLine` applies. This is a genuine YAML grammar formalization gap. All `by_cases hcol : sp_scan.col = 0` branches with `· sorry` share this root cause.
+
+**Impact**: Each of the 9 StreamAccum theorems with sorry has at least one col≠0 sorry, but ALSO has sorry from other categories. Resolving col≠0 alone would NOT reduce warning count.
+
+**Resolution**: Requires grammar definition change (`SSeparateInLine.bomPreceded` or equivalent) cascading through existing proofs. Deferred to a future layer.
+
+#### Category 3: Directive infrastructure (~6 sorry sites)
+
+`pendingDirective` case is sorry across all 5 dispatch theorems. Needs `scanDirective_prod` to produce `GPlus SNbChar` (directive content evidence) from the scanner's `scanDirective` function. Also needs the `dispatch_new_pending` structural-to-directive transition.
+
+**Impact**: Architectural, not content-intensive. Could become its own focused layer.
+
+#### Category 4: Block indicator types `?`/`:` (mapping entries)
+
+All `c ≠ '-'` branches in `accum_block_pending` use sorry closures. Needs `SBlockMapEntries` infrastructure parallel to `SBlockSeqEntries`:
+- `dispatchBlockKey_full_prod` and `dispatchBlockValue_full_prod` (analogous to `dispatchBlockEntry_full_prod`)
+- `SBlockMapEntries_snoc` (analogous to `SBlockSeqEntries_snoc`)
+- `PendingNode.pendingBlock` would need to handle both seq and map entries
+
+**Priority**: Medium — block mappings are common in YAML but the infrastructure parallels what's already built for sequences.
+
+#### Category 5: Flow indicators `[`, `{`, `]`, `}`, `,` (~3 sorry sites in `accum_flow_pending`)
+
+`FlowStack.flowSeqLevel`/`flowMapLevel` closures need `SFlowContent` composition. The `new_flow_state` helper creates FlowStack/PendingNode with sorry closures.
+
+**Priority**: Low — flow collections are less common in typical YAML and the FlowStack infrastructure is less developed.
+
+#### Unreachable comment sorry (1 site in `preprocess_some_separate_lines_0`)
+
+The `GOpt.some` comment case is unreachable because the scanner greedily consumes comments before returning a content character. Proving unreachability needs `peek?` preservation through the `skipToContentComment` chain.
+
+**Priority**: Low — only 1 sorry site, doesn't reduce warning count.
+
+#### Recommended implementation order
+
+1. **Block scalar `\|`/`>` support** (Category 1) — needs resolving `currentIndent ≥ 0` requirement
+2. **Plain scalar support** (Category 1) — needs stronger `scanPlainScalar_prod`
+3. **Mapping entries `?`/`:`** (Category 4) — parallel to sequence infrastructure
+4. **Directive infrastructure** (Category 3) — focused layer
+5. **Flow indicators** (Category 5) — lower priority
+6. **col≠0 BOM** (Category 2) — grammar definition change, deferred

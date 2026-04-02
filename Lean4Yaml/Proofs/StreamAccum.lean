@@ -1503,15 +1503,94 @@ theorem accum_block_pending (sc : ScannerState)
     all_goals (
       rename_i h_closable_old
       by_cases hcol : sp_scan.col = 0
-      · obtain ⟨sp_mid, _, _, h_ssl, hcol_mid, _, _, _⟩ :=
-          preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
-        exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
-               h_closable_old sp_mid h_ssl,
-               BlockStack.nil sp_mid,
-               FlowStack.nil sp_mid,
-               PendingNode.pendingBlock sp_start sp_mid sp_scan'
-                 (fun sp_mid2 _h_node => sorry)
-                 (fun sp_mid2 _h_node => sorry), hcorr_result⟩
+      · by_cases hc : c = '-'
+        · -- '-' at col=0: close old pending, start new block sequence with real closures
+          subst hc
+          obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, hcorr_sc⟩ :=
+            preprocess_some_ssl_comments_col0 sc sp_scan s_prep '-' h_corr hcol h_preprocess
+          have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
+          subst hsp_sc_eq
+          have h_stream_new := h_closable_old sp_mid h_ssl
+          cases hws with
+          | nil =>
+            cases hcmt with
+            | none =>
+              -- sp_mid at col=0, dash at sp_mid
+              have hpeek_disp : (if s_prep.allowDirectives then
+                  { s_prep with allowDirectives := false, documentEverStarted := true }
+                else s_prep).peek? = some '-' := by
+                have := preprocess_some_peek h_preprocess
+                split
+                · show s_prep.peek? = some '-'; exact this
+                · exact this
+              obtain ⟨sp_dash, h_dash, h_gnot, hcorr_dash⟩ :=
+                dispatchBlockEntry_full_prod _ sp_mid
+                  (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
+              have hsp_dash_eq := ScannerSurfCorr_unique hcorr_dash hcorr_result
+              rw [hsp_dash_eq] at h_dash h_gnot
+              -- Build zero-width SSLComments at col=0
+              have hcol_eq : sp_mid = ⟨sp_mid.chars, 0⟩ := by
+                cases sp_mid; simp at hcol_mid; simp [hcol_mid]
+              have h_ssl_zero : SSLComments sp_mid sp_mid :=
+                hcol_eq ▸ SSLComments.startOfLine sp_mid.chars ⟨sp_mid.chars, 0⟩
+                  (GStar.nil ⟨sp_mid.chars, 0⟩)
+              exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', h_stream_new,
+                     BlockStack.nil sp_mid, FlowStack.nil sp_mid,
+                     PendingNode.pendingBlock sp_start sp_mid sp_scan'
+                       (fun sp_final (h_node : SBlockNode 0 .blockIn sp_scan' sp_final) =>
+                         have h_indented :=
+                           SBlockIndented.node 0 .blockIn sp_scan' sp_final h_node
+                         have h_entry :=
+                           SBlockSeqEntries.single 0 sp_mid sp_mid sp_scan' sp_scan' sp_final
+                             (SIndent.zero sp_mid) h_dash h_gnot h_indented
+                         have h_block :=
+                           SBlockNode.blockSeq 0 .blockIn sp_mid sp_mid sp_mid sp_final
+                             (GOpt.none sp_mid) h_ssl_zero h_entry
+                         have h_bare := SLBareDocument.mk sp_mid sp_final h_block
+                         SLYamlStream.implicitContinue sp_start sp_mid sp_mid sp_final sp_final
+                           h_stream_new (GStar.nil _)
+                           (GOpt.some sp_mid sp_final
+                             (SLAnyDocument.bare sp_mid sp_final h_bare))
+                           (GStar.nil _))
+                       (fun sp_final (h_node : SBlockNode 0 .blockIn sp_scan' sp_final) =>
+                         have h_indented :=
+                           SBlockIndented.node 0 .blockIn sp_scan' sp_final h_node
+                         have h_entry :=
+                           SBlockSeqEntries.single 0 sp_mid sp_mid sp_scan' sp_scan' sp_final
+                             (SIndent.zero sp_mid) h_dash h_gnot h_indented
+                         ⟨sp_mid, h_entry, fun sp_end h_entries =>
+                           have h_block :=
+                             SBlockNode.blockSeq 0 .blockIn sp_mid sp_mid sp_mid sp_end
+                               (GOpt.none sp_mid) h_ssl_zero h_entries
+                           have h_bare := SLBareDocument.mk sp_mid sp_end h_block
+                           SLYamlStream.implicitContinue sp_start sp_mid sp_mid sp_end sp_end
+                             h_stream_new (GStar.nil _)
+                             (GOpt.some sp_mid sp_end
+                               (SLAnyDocument.bare sp_mid sp_end h_bare))
+                             (GStar.nil _)⟩),
+                     hcorr_result⟩
+            | some =>
+              exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', h_stream_new,
+                     BlockStack.nil sp_mid, FlowStack.nil sp_mid,
+                     PendingNode.pendingBlock sp_start sp_mid sp_scan'
+                       (fun sp_mid2 _h_node => sorry)
+                       (fun sp_mid2 _h_node => sorry), hcorr_result⟩
+          | cons =>
+            exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', h_stream_new,
+                   BlockStack.nil sp_mid, FlowStack.nil sp_mid,
+                   PendingNode.pendingBlock sp_start sp_mid sp_scan'
+                     (fun sp_mid2 _h_node => sorry)
+                     (fun sp_mid2 _h_node => sorry), hcorr_result⟩
+        · -- c ≠ '-': close old pending, new block with sorry closures
+          obtain ⟨sp_mid, _, _, h_ssl, hcol_mid, _, _, _⟩ :=
+            preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
+          exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
+                 h_closable_old sp_mid h_ssl,
+                 BlockStack.nil sp_mid,
+                 FlowStack.nil sp_mid,
+                 PendingNode.pendingBlock sp_start sp_mid sp_scan'
+                   (fun sp_mid2 _h_node => sorry)
+                   (fun sp_mid2 _h_node => sorry), hcorr_result⟩
       · sorry)
   | pendingBlockContent =>
     rename_i h_closable_old h_entry_old
