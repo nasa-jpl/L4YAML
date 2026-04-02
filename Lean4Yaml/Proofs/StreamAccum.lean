@@ -1904,6 +1904,38 @@ theorem dispatchContent_singleQuoted_prod (sc : ScannerState) (sp : SurfPos)
                   · exact hcorr'⟩
             · rename_i h_neq; exact absurd rfl h_neq
 
+-- Content dispatch for alias: returns `SFlowNode 0 .flowOut` grammar evidence.
+-- Alias is context-free: `SCNsAliasNode` has no `n`/`c` dependency, so
+-- `alias_flowNode` lifts directly to any desired context.
+-- The `sp_mid ≠ sp'` (non-empty name) condition is sorry'd for the degenerate case.
+theorem dispatchContent_alias_prod (sc : ScannerState) (sp : SurfPos)
+    {s' : ScannerState}
+    (hcorr : ScannerSurfCorr sc sp)
+    (hpeek : sc.peek? = some '*')
+    (hok : scanNextToken_dispatchContent sc '*' = .ok s') :
+    ∃ sp', SFlowNode 0 .flowOut sp sp' ∧ ScannerSurfCorr s' sp' := by
+  unfold scanNextToken_dispatchContent at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  -- Skip '&' check
+  split at hok
+  · rename_i h_eq; exact absurd h_eq (by decide)
+  · -- '*' == '*' = true: this branch
+    split at hok
+    · -- Inside '*' branch: handle definedAnchors check
+      split at hok
+      · -- !(definedAnchors.any ...) = true → .error, but we have .ok
+        simp at hok
+      · -- definedAnchors found → return scanAnchorOrAlias s false
+        have h := Except.ok.inj hok; subst h
+        obtain ⟨sp_mid, sp', h_glit, h_gstar, h_alias, hcorr'⟩ :=
+          scanAnchorOrAlias_aliasNode_prod sc sp hcorr hpeek
+        by_cases hne : sp_mid ≠ sp'
+        · exact ⟨sp', alias_flowNode (h_alias hne), hcorr'⟩
+        · -- Degenerate case: empty alias name after '*'.
+          -- Scanner accepted it but spec requires ≥1 anchor char.
+          exact ⟨sp', sorry, hcorr'⟩
+    · rename_i h_neq; exact absurd rfl h_neq
+
 -- Helper: handles all PendingNode cases for content dispatch given stream at sp_block.
 theorem accum_content_pending (sc : ScannerState)
     (sp_start sp_block sp_scan : SurfPos)
@@ -1989,12 +2021,34 @@ theorem accum_content_pending (sc : ScannerState)
                          (SLAnyDocument.bare sp_block sp_mid h_bare))
                        (GStar.nil _)),
                  hcorr_result⟩
-        · -- Other content types (anchor, alias, tag, block scalar, plain scalar):
-          -- grammar composition deferred to later iterations
-          exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
-                 BlockStack.nil sp_block, FlowStack.nil sp_block,
-                 PendingNode.pendingContent sp_start sp_block sp_scan'
-                   (fun sp_mid h_ssl => sorry), hcorr_result⟩
+        · by_cases hc_alias : c = '*'
+          · -- ALIAS: context-free, no lift needed
+            subst hc_alias
+            obtain ⟨sp_al, h_al_gram, hcorr_al⟩ :=
+              dispatchContent_alias_prod _ sp_prep
+                (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
+            have hsp_al_eq := ScannerSurfCorr_unique hcorr_al hcorr_result
+            rw [hsp_al_eq] at h_al_gram hcorr_al
+            -- h_al_gram : SFlowNode 0 .flowOut sp_prep sp_scan'
+            exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
+                   BlockStack.nil sp_block, FlowStack.nil sp_block,
+                   PendingNode.pendingContent sp_start sp_block sp_scan'
+                     (fun sp_mid h_ssl =>
+                       have h_blockNode :=
+                         flowInBlock_blockNode h_sep h_al_gram h_ssl
+                       have h_bare := SLBareDocument.mk sp_block sp_mid h_blockNode
+                       SLYamlStream.implicitContinue sp_start sp_block sp_block sp_mid sp_mid
+                         h_stream_block (GStar.nil _)
+                         (GOpt.some sp_block sp_mid
+                           (SLAnyDocument.bare sp_block sp_mid h_bare))
+                         (GStar.nil _)),
+                   hcorr_result⟩
+          · -- Other content types (anchor, tag, block scalar, plain scalar):
+            -- grammar composition deferred to later iterations
+            exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
+                   BlockStack.nil sp_block, FlowStack.nil sp_block,
+                   PendingNode.pendingContent sp_start sp_block sp_scan'
+                     (fun sp_mid h_ssl => sorry), hcorr_result⟩
     · -- col ≠ 0: deferred (BOM edge case)
       sorry
   | pendingDocEnd =>
@@ -2117,11 +2171,31 @@ theorem accum_content_pending (sc : ScannerState)
                      (SBlockNode.flowInBlock 0 .blockIn sp_scan sp_prep sp_scan' sp_final
                        h_sep h_flow h_ssl)),
                hcorr_result⟩
-      · -- Other content: sorry (anchor, alias, tag, block scalar, plain scalar)
-        exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
-               BlockStack.nil sp_block, FlowStack.nil sp_block,
-               PendingNode.pendingContent sp_start sp_block sp_scan'
-                 (fun sp_final h_ssl => sorry), hcorr_result⟩
+      · by_cases hc_alias : c = '*'
+        · -- ALIAS: context-free, compose inside block entry
+          subst hc_alias
+          obtain ⟨sp_al, h_al_gram, hcorr_al⟩ :=
+            dispatchContent_alias_prod _ sp_prep
+              (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
+          have hsp_al_eq := ScannerSurfCorr_unique hcorr_al hcorr_result
+          rw [hsp_al_eq] at h_al_gram hcorr_al
+          exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
+                 BlockStack.nil sp_block, FlowStack.nil sp_block,
+                 PendingNode.pendingBlockContent sp_start sp_block sp_scan'
+                   (fun sp_final h_ssl =>
+                     h_close_old sp_final
+                       (SBlockNode.flowInBlock 0 .blockIn sp_scan sp_prep sp_scan' sp_final
+                         h_sep h_al_gram h_ssl))
+                   (fun sp_final h_ssl =>
+                     h_close_entry_old sp_final
+                       (SBlockNode.flowInBlock 0 .blockIn sp_scan sp_prep sp_scan' sp_final
+                         h_sep h_al_gram h_ssl)),
+                 hcorr_result⟩
+        · -- Other content: sorry (anchor, tag, block scalar, plain scalar)
+          exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
+                 BlockStack.nil sp_block, FlowStack.nil sp_block,
+                 PendingNode.pendingContent sp_start sp_block sp_scan'
+                   (fun sp_final h_ssl => sorry), hcorr_result⟩
 
 theorem accum_step_content (sc : ScannerState)
     (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
