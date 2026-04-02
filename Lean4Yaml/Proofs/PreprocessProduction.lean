@@ -185,7 +185,7 @@ theorem collectCommentTextLoop_stops_at_break_or_eof
 -- SSBComment.withSep needs SSeparateInLine which can't be built
 -- without whitespace at col≠0; SSBComment.noSep needs SBComment
 -- at the start position, but the start has '#' (not a break/eof).
-private theorem bom_noWhitespace_ssbcomment (sp sp_cmt sp_end : SurfPos)
+theorem bom_noWhitespace_ssbcomment (sp sp_cmt sp_end : SurfPos)
     (h_cmtv : SCNbCommentText sp sp_cmt) (h_break : SBComment sp_cmt sp_end) :
     SSBComment sp sp_end := sorry
 
