@@ -168,9 +168,12 @@ theorem consumeNewline_sbreak_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
 
 /-! ## §1d foldQuotedNewlinesLoop production -/
 
-theorem foldQuotedNewlinesLoop_prod (sc : ScannerState) (sp : SurfPos)
+-- Parametric version: produces `GStar (SLEmpty n .flowIn)` for any `n`.
+-- When spaces ≥ n: uses `SLEmpty.flow` via `sindent_to_flowlineprefix`.
+-- When spaces < n: uses `SLEmpty.flowLt` via `SIndentLt`.
+theorem foldQuotedNewlinesLoop_prod (n : Nat) (sc : ScannerState) (sp : SurfPos)
     (cnt fuel : Nat) (hcorr : ScannerSurfCorr sc sp) :
-    ∃ sp', GStar (SLEmpty 0 .flowIn) sp sp' ∧
+    ∃ sp', GStar (SLEmpty n .flowIn) sp sp' ∧
            ScannerSurfCorr (foldQuotedNewlinesLoop sc cnt fuel).1 sp' := by
   induction fuel generalizing sc sp cnt with
   | zero =>
@@ -184,13 +187,15 @@ theorem foldQuotedNewlinesLoop_prod (sc : ScannerState) (sp : SurfPos)
       · rename_i hlb
         obtain ⟨sp_cn, h_sbreak, hcorr_cn⟩ :=
           consumeNewline_sbreak_corr (skipSpaces sc) sp_sk c hcorr_sk hpeek hlb
-        have h_gstar_ws := sindent_to_gstar_sswhite h_indent
-        have h_gopt_sep := gstar_sswhite_to_gopt_sep h_gstar_ws
-        have h_flp : SFlowLinePrefix 0 sp sp_sk :=
-          SFlowLinePrefix.mk 0 sp sp sp_sk (SIndent.zero sp) h_gopt_sep
-        have h_lempty : SLEmpty 0 .flowIn sp sp_cn :=
-          SLEmpty.flow 0 sp sp_sk sp_cn .flowIn (Or.inr rfl)
-            (GOpt.some sp sp_sk h_flp) h_sbreak
+        have h_lempty : SLEmpty n .flowIn sp sp_cn := by
+          by_cases h : n ≤ n_sk
+          · -- Enough spaces: SFlowLinePrefix n via sindent_to_flowlineprefix
+            exact SLEmpty.flow n sp sp_sk sp_cn .flowIn (Or.inr rfl)
+              (GOpt.some sp sp_sk (sindent_to_flowlineprefix h_indent h)) h_sbreak
+          · -- Fewer than n spaces: SIndentLt n
+            have h_lt : n_sk < n := by omega
+            exact SLEmpty.flowLt n sp sp_sk sp_cn .flowIn (Or.inr rfl)
+              ⟨n_sk, h_lt, h_indent⟩ h_sbreak
         obtain ⟨sp_rest, h_gstar_rest, hcorr_rest⟩ :=
           ih (consumeNewline (skipSpaces sc)) sp_cn (cnt + 1) hcorr_cn
         exact ⟨sp_rest,
@@ -301,6 +306,8 @@ abbrev loopResult (sc : ScannerState) :=
 
 -- When `foldQuotedNewlines` succeeds at a line-break position,
 -- the consumed chars form a flow-folded break: `SBBreak + GStar SLEmpty + SFlowLinePrefix`.
+-- Uses n=0 (universally satisfiable): the grammar n+1→n fix means flowInBlock 0
+-- needs SFlowNode 0 directly, so no parametric indent lifting is needed.
 theorem foldQuotedNewlines_prod (sc : ScannerState) (sp : SurfPos)
     (c : Char)
     {content : String} {s' : ScannerState}
@@ -318,7 +325,7 @@ theorem foldQuotedNewlines_prod (sc : ScannerState) (sp : SurfPos)
     consumeNewline_sbreak_corr sc sp c hcorr hpeek hlb
   -- Step 2: foldQuotedNewlinesLoop → GStar (SLEmpty 0 .flowIn)
   obtain ⟨sp_loop, h_gstar_empty, hcorr_loop⟩ :=
-    foldQuotedNewlinesLoop_prod (consumeNewline sc) sp_cn 0 _ hcorr_cn
+    foldQuotedNewlinesLoop_prod 0 (consumeNewline sc) sp_cn 0 _ hcorr_cn
   -- Step 3: skipSpaces on loop result → SIndent
   obtain ⟨n_sk2, sp_sk2, h_indent2, hcorr_sk2⟩ :=
     skipSpaces_corr (loopResult sc).1 sp_loop hcorr_loop

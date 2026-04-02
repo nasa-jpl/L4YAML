@@ -100,8 +100,8 @@ theorem propsEmpty_flowNode {n : Nat} {c : YamlContext} {s s' : SurfPos}
 -- [195] s-l+flow-in-block(n,c): separator + flow node + comments.
 theorem flowInBlock_blockNode {n : Nat} {c : YamlContext}
     {s s₁ s₂ s' : SurfPos}
-    (h_sep : SSeparate (n + 1) .flowOut s s₁)
-    (h_flow : SFlowNode (n + 1) .flowOut s₁ s₂)
+    (h_sep : SSeparate n .flowOut s s₁)
+    (h_flow : SFlowNode n .flowOut s₁ s₂)
     (h_comments : SSLComments s₂ s') :
     SBlockNode n c s s' :=
   SBlockNode.flowInBlock n c s s₁ s₂ s' h_sep h_flow h_comments
@@ -109,8 +109,8 @@ theorem flowInBlock_blockNode {n : Nat} {c : YamlContext}
 -- [198] s-l+block-scalar: separator + optional properties + literal scalar.
 theorem literal_blockNode {n : Nat} {c : YamlContext}
     {s s₁ s₂ s' : SurfPos}
-    (h_sep : SSeparate (n + 1) c s s₁)
-    (h_props : GOpt (GSeq (SCNsProperties (n + 1) c) (SSeparate (n + 1) c)) s₁ s₂)
+    (h_sep : SSeparate n c s s₁)
+    (h_props : GOpt (GSeq (SCNsProperties n c) (SSeparate n c)) s₁ s₂)
     (h_lit : SCLLiteral n s₂ s') :
     SBlockNode n c s s' :=
   SBlockNode.blockLiteral n c s s₁ s₂ s' h_sep h_props h_lit
@@ -118,8 +118,8 @@ theorem literal_blockNode {n : Nat} {c : YamlContext}
 -- [198] s-l+block-scalar: separator + optional properties + folded scalar.
 theorem folded_blockNode {n : Nat} {c : YamlContext}
     {s s₁ s₂ s' : SurfPos}
-    (h_sep : SSeparate (n + 1) c s s₁)
-    (h_props : GOpt (GSeq (SCNsProperties (n + 1) c) (SSeparate (n + 1) c)) s₁ s₂)
+    (h_sep : SSeparate n c s s₁)
+    (h_props : GOpt (GSeq (SCNsProperties n c) (SSeparate n c)) s₁ s₂)
     (h_fold : SCLFolded n s₂ s') :
     SBlockNode n c s s' :=
   SBlockNode.blockFolded n c s s₁ s₂ s' h_sep h_props h_fold

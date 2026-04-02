@@ -139,6 +139,39 @@ theorem gopt_comment_col_eq_none (sp sp' : SurfPos)
   · rename_i hc
     exfalso; have := scnb_comment_col_gt _ _ hc; omega
 
+/-! ## §1c collectCommentTextLoop stops at break or EOF
+
+    The scanner's `collectCommentTextLoop` greedily consumes all non-break
+    characters. After it stops, the scanner's `peek?` returns either `none`
+    (EOF/end-of-input) or `some c` where `c` is a line break. -/
+
+/-- After `collectCommentTextLoop`, the next character is a line break or EOF. -/
+theorem collectCommentTextLoop_stops_at_break_or_eof
+    (sc : ScannerState) (text : String) (fuel : Nat)
+    (hfuel : fuel ≥ sc.inputEnd - sc.offset) :
+    let s' := (collectCommentTextLoop sc text fuel).2
+    s'.peek? = none ∨ ∃ c, s'.peek? = some c ∧ isLineBreakBool c = true := by
+  induction fuel generalizing sc text with
+  | zero =>
+    -- fuel = 0: returns sc unchanged. hfuel → offset ≥ inputEnd → peek? = none
+    unfold collectCommentTextLoop; dsimp only []
+    left; unfold ScannerState.peek?; split
+    · exfalso; omega
+    · rfl
+  | succ n ih =>
+    unfold collectCommentTextLoop; dsimp only []
+    split
+    · -- peek? = some c
+      rename_i c hpeek
+      split
+      · -- isLineBreakBool c = true: stops, returns sc
+        right; exact ⟨c, hpeek, ‹_›⟩
+      · -- ¬isLineBreakBool: advance and recurse
+        exact ih sc.advance (text.push c)
+          (advance_fuel_budget sc n (peek_some_hasMore sc c hpeek) hfuel)
+    · -- peek? = none: stops, returns sc
+      left; assumption
+
 /-! ## §2 skipToContentLoop at col=0 → GStar SLComment
 
     When entering at column 0, each iteration produces one `SLComment`

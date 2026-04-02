@@ -1076,51 +1076,40 @@ The absorb-then-reconstruct architecture means FlowStack levels are ephemeral: p
 
 ###### Layer 4i: Context parameter lifting + content h_closable
 
-**Two components** in the sorry root cause for content h_closable:
+**Two components** in the sorry root cause for content h_closable (BOTH RESOLVED):
 
-1. **Context lift (`.blockIn → .flowOut`)**: ✅ SOLVED. `SCDoubleQuoted_ctx_lift` and `SCSingleQuoted_ctx_lift` proven in NodeProduction.lean §5a. For non-flowKey contexts, `SNbDoubleText n c` and `SNbSingleText n c` reduce to the same multi-line production definitionally. `SSeparate n c` for non-key contexts all reduce to `SSeparateLines n`.
+1. **Context lift (`.blockIn → .flowOut`)**: ✅ SOLVED. `SCDoubleQuoted_ctx_lift` and `SCSingleQuoted_ctx_lift` proven in NodeProduction.lean §5a.
 
-2. **Indent lift (`n=0 → n+1`)**: ❌ IMPOSSIBLE with current grammar encoding. This is a definitional limitation, not a proof difficulty:
+2. **Indent lift (`n=0 → n+1`)**: ✅ ELIMINATED by grammar fix. Two issues found and fixed:
+   - `SLEmpty.flow` was missing `SIndentLt n` alternative (spec [67] `s-indent(<n)`). Fixed by adding `SLEmpty.flowLt` constructor.
+   - `SBlockNode` constructors used `n+1` for content indent (double-counting the Nat shift). Fixed by changing all `n+1` to `n` (22 occurrences in Node.lean). Now `flowInBlock 0` needs `SFlowNode 0 .flowOut`, directly satisfiable from scanner `_prod` at n=0 + context lift.
 
-   - `SBlockNode.flowInBlock` requires `SFlowNode (n+1) .flowOut` where `n+1` threads through `SSDoubleBreak (n+1)` → `SFlowLinePrefix (n+1)` → `SIndent (n+1)` (exactly n+1 spaces) and `SLEmpty (n+1) .flowIn` → `GOpt (SFlowLinePrefix (n+1))`.
-   - `SLEmpty n .flowIn` uses `GOpt (SFlowLinePrefix n)`. Lines with 0 < k < n spaces can't be encoded: `GOpt.none` requires the next char to be a line break (fails when spaces exist), and `GOpt.some (SFlowLinePrefix n)` requires exactly n spaces (fails when k < n).
-   - The YAML spec [67] handles this via `( s-line-prefix(n,c) | s-indent(<n) ) b-as-line-feed`, where `s-indent(<n)` covers k < n spaces. Our grammar encoding uses `GOpt (SFlowLinePrefix n)` which omits the `s-indent(<n)` alternative for flow context.
-   - For `n=0`, `SFlowLinePrefix 0 = SIndent 0 + GOpt SSeparateInLine` covers any number of spaces (zero-width indent + all spaces as optional whitespace). So `n=0` is universally satisfiable.
-   - Strengthening `_prod` to `n > 0` would require fixing the `SLEmpty.flow` encoding to include `SIndentLt n` as an alternative, cascading to reprove all existing theorems that use `SLEmpty`.
+**Remaining work**: 4i.5 (SSeparate 0 from preprocessing) → 4i.6 (h_closable composition) → 4i.7 (wire into sorry).
 
-**Two viable forward paths**:
+**Resolution** (completed 2026-04-01): BOTH fixes applied:
 
-**Path A: Fix `SLEmpty.flow` grammar encoding** (preferred, higher impact):
-- Add a third constructor to `SLEmpty`: `| flowLt (n : Nat) ... : SIndentLt n s s₁ → SBAsLineFeed s₁ s' → SLEmpty n c s s'`
-- Or change `flow` to use `GAlt (SFlowLinePrefix n) (SIndentLt n)` instead of `GOpt (SFlowLinePrefix n)`
-- This cascading change touches: `SLEmpty`, `foldQuotedNewlinesLoop_prod`, `foldQuotedNewlines_prod`, `SSDoubleBreak`, `SNbDoubleMultiLine`, `SNbSingleMultiLine`, `SNsPlainMultiLine`
-- After fix: `_prod` theorems CAN be made parametric in `n`
-- Estimated scope: ~100 lines of definition changes, ~50 lines of proof updates
+1. **`SLEmpty.flowLt`** (4i.2a): Added third constructor matching YAML spec [67]. One existing match updated (contradiction on context).
+2. **`SBlockNode` `n+1` → `n`** (4i.2b): Fixed off-by-one in Node.lean (22 occurrences) and NodeProduction.lean (6 occurrences). `flowInBlock 0` now needs `SFlowNode 0` (not `SFlowNode 1`).
 
-**Path B: Accept `n=0` and restructure `SBlockNode.flowInBlock`**:
-- Prove `SFlowNode 0 .flowOut → SBlockNode 0 .blockIn` directly, bypassing `flowInBlock`'s `n+1` requirement
-- Would need a new `SBlockNode` constructor for zero-indent flow content
-- Or prove that `SBlockNode.flowInBlock` at `n=0` is satisfiable with `SFlowNode 1 .flowOut` by showing content is always indented ≥ 1 (requires strengthening only the FINAL flow line prefix, not empty lines)
-- Estimated scope: depends on approach
+Combined effect: the indent lifting problem (`n=0 → n+1`) is **eliminated**. Scanner `_prod` at `n=0` + context lift `.blockIn → .flowOut` directly satisfies `flowInBlock 0`. No parametric `_prod` needed.
 
 | # | Work | Status | Description |
 |---|---|---|---|
 | 4i.0 | `SIndent_split` + `sindent_to_flowlineprefix` | ✅ done | Building blocks proven in ScalarProduction.lean §1b |
 | 4i.1 | Context lift lemmas | ✅ done | `SCDoubleQuoted_ctx_lift`, `SCSingleQuoted_ctx_lift`, `SFlowNode_*_ctx_lift` in NodeProduction.lean §5a |
-| 4i.2 | Grammar encoding fix for `SLEmpty.flow` | ⏳ not started | Add `SIndentLt` alternative to match YAML spec [67] |
-| 4i.3 | Parametric `foldQuotedNewlinesLoop_prod` | ⏳ blocked on 4i.2 | Thread `n` through loop body with `SLEmpty n .flowIn` for each empty line |
-| 4i.4 | Parametric `scanDoubleQuoted_prod` + `scanSingleQuoted_prod` | ⏳ blocked on 4i.3 | Returns `SCDoubleQuoted n c` instead of `0 .blockIn` |
-| 4i.5 | `SSeparate` extraction from preprocessing | ⏳ not started | Show preprocessing whitespace satisfies `SSeparateLines (n+1)` |
-| 4i.6 | Content h_closable composition | ⏳ blocked on 4i.4+4i.5 | `SSeparate + SFlowNode + SSLComments → SBlockNode.flowInBlock → SLYamlStream` |
-| 4i.7 | Wire into `accum_content_pending` | ⏳ blocked on 4i.6 | Replace `fun _ _ h_str h_ssl => sorry` with real closure |
+| 4i.2a | Grammar encoding fix for `SLEmpty.flow` | ✅ done | Added `flowLt` constructor with `SIndentLt n` alternative, matching YAML spec [67] |
+| 4i.2b | Grammar off-by-one fix: `SBlockNode` `n+1` → `n` | ✅ done | All constructors now use `n` directly (convention: `n_lean = n_spec + 1`) |
+| 4i.3 | Parametric `foldQuotedNewlinesLoop_prod` | ✅ done | Takes `n` parameter; uses `flowLt` for lines with < n spaces |
+| 4i.4 | ~~Parametric scanDoubleQuoted/SingleQuoted~~ | ✅ eliminated | Grammar fix makes n=0 work directly — `flowInBlock 0` needs `SFlowNode 0`, not `SFlowNode 1` |
+| 4i.5 | `SSeparateLines 0` from preprocessing | ✅ done | `preprocess_some_separate_lines_0` in StreamAccum.lean; +1 sorry for unreachable `GOpt.some` case |
+| 4i.6 | Content h_closable composition | ✅ **unblocked** | Stream extension problem RESOLVED by implicitContinue spec fix + PendingNode sp_start capture (v0.4.10) |
+| 4i.7 | Wire into `accum_content_pending` | ⏳ ready | Replace `fun sp_mid h_ssl => sorry` with real closure (no longer blocked) |
 
 **Reflections on 4i.0** (SIndent_split — completed 2026-04-01)
 
 Two building blocks proven in ScalarProduction.lean §1b:
 - `sindent_split`: `SIndent (m + k) sp sp' → ∃ sp_mid, SIndent m sp sp_mid ∧ SIndent k sp_mid sp'`. Induction on `m`; base case needs `Nat.zero_add ▸` for type coercion.
 - `sindent_to_flowlineprefix`: `SIndent n_sk sp sp' → n ≤ n_sk → SFlowLinePrefix n sp sp'`. Uses `sindent_split` to decompose, then existing `sindent_to_gstar_sswhite` + `gstar_sswhite_to_gopt_sep` for the remainder.
-
-These enable decomposing actual skipped spaces into indent portion + optional whitespace, and are prerequisite for making any `_prod` theorem parametric in `n` (once `SLEmpty.flow` is fixed).
 
 **Reflections on 4i.1** (context lift — completed 2026-04-01)
 
@@ -1130,23 +1119,78 @@ Proven in NodeProduction.lean §5a. For quoted scalars, `SNbDoubleText n c` disp
 
 So `.blockIn → .flowOut` produces definitionally the same `SNbDoubleMultiLine n`. The lift destructures `SCDoubleQuoted` into `GLit + text + GLit`, passes `text` through unchanged, and reconstructs. Proof: `cases c₁ <;> cases c₂ <;> simp_all [SNbDoubleText]`.
 
-Plain scalar (`SNsPlain n c`) context lift does NOT hold in `.blockIn → .flowOut`direction because `isNsPlainSafe .blockIn` allows flow indicator characters (`[`, `]`, `{`, `}`, `,`) that `isNsPlainSafe .flowOut` forbids.
+Plain scalar (`SNsPlain n c`) context lift does NOT hold in `.blockIn → .flowOut` direction because `isNsPlainSafe .blockIn` allows flow indicator characters (`[`, `]`, `{`, `}`, `,`) that `isNsPlainSafe .flowOut` forbids.
 
-`SSeparate n c` for non-key contexts reduces to `SSeparateLines n` definitionally.
+**Reflections on 4i.2a** (SLEmpty.flow grammar fix — completed 2026-04-01)
 
-**Reflections on 4i.2** (grammar encoding — analysis complete, not started)
+Added third constructor `SLEmpty.flowLt`: `SIndentLt n s s₁ → SBAsLineFeed s₁ s' → SLEmpty n c s s'`. This matches YAML spec [67] which has `s-line-prefix(n,c) | s-indent(<n)` — our `flow` constructor covers the first alternative, `flowLt` covers the second. Only 1 existing match in ScalarProduction.lean needed updating (literal scalar proof where context is `.blockIn`, discharged by `absurd hc`).
 
-Discovery: `SLEmpty.flow` uses `GOpt (SFlowLinePrefix n)` which CANNOT encode empty lines with 0 < k < n spaces. The YAML spec [67] uses `s-line-prefix(n,c) | s-indent(<n)` where `s-indent(<n)` covers exactly those cases. Our `SLEmpty.block` does include `GOpt (SIndentLe n)` which correctly handles the block context. The flow context encoding is an oversight.
+**Reflections on 4i.2b** (n+1 off-by-one — completed 2026-04-01)
 
-Impact: Until this is fixed, `_prod` theorems MUST use `n=0` because only `SFlowLinePrefix 0` can encode arbitrary amounts of whitespace (via `SIndent 0` (zero-width) + `GOpt SSeparateInLine` (all spaces as whitespace)). With `n > 0`, empty lines in quoted scalars with fewer than `n` spaces cannot be represented.
+**Critical discovery**: All `SBlockNode` constructors used `n + 1` for content indent, matching the YAML spec's `s-l+flow-in-block(n) ::= ... ns-flow-node(n+1, FLOW-OUT)`. But since `SLBareDocument` uses `SBlockNode 0` (Nat can't represent spec's -1), the convention is `n_lean = n_spec + 1`. This means the spec's `n+1` is already our `n` — adding another `+1` was double-counting.
 
-Fix approach: Change `SLEmpty.flow` to use `GOpt (GAlt (SFlowLinePrefix n) (SIndentLt n))` or add a third constructor `flowLt`. The `SIndentLt` definition already exists in Basic.lean L106.
+Concretely: `flowInBlock 0` required `SFlowNode 1 .flowOut`, but top-level flow content is at indent 0. The scanner produces `SFlowNode 0 .blockIn` (context-liftable to `.flowOut`), creating an impossible n=0→n=1 lifting requirement.
 
-**Reflections on 4i.3–4i.4** — blocked on 4i.2
+**Fix**: Changed ALL `n + 1` to `n` in `SBlockNode`, `SBlockIndented`, `SBlockSeqEntries`, `SBlockMapEntries` constructors (22 occurrences in Node.lean, 6 in NodeProduction.lean). Now `flowInBlock 0` needs `SFlowNode 0 .flowOut` — directly satisfiable from scanner `_prod` + context lift.
 
-**Reflections on 4i.5** — not yet attempted: `preprocess_some_ssl_comments_col0` gives `SSLComments sp_scan sp_mid`, but we also need `SSeparateLines (n+1) sp_scan sp_prep` from preprocessing. `SSeparateLines` is `SSLComments + SFlowLinePrefix n | SSeparateInLine`. The comments-then-indent path needs proving that preprocessing at col=0 includes `SFlowLinePrefix (n+1)` for the continuation line.
+This fix **eliminates the entire indent lifting problem**. Steps 4i.3 (parametric loop) and 4i.4 (parametric scanDoubleQuoted) are no longer needed for the h_closable proof. The `_prod` theorems can stay at `n = 0`.
 
-**Reflections on 4i.6–4i.7** — blocked on 4i.4+4i.5
+Verification: `seqSpaces` returns correct values after fix. `SBlockSeqEntries n` now has entries at `SIndent n` (was `SIndent (n+1)`). For BLOCK-IN at our `n_lean`: entries at `n_lean` = `n_spec + 1`, matching spec's `seq-spaces(n_spec, BLOCK-IN) + 1 = n_spec + 1`. For BLOCK-OUT: entries at `n_lean - 1` = `n_spec`, matching spec's `(n_spec - 1) + 1 = n_spec`. ✓
+
+**Reflections on 4i.3** (parametric foldQuotedNewlinesLoop — completed 2026-04-01, NOW OPTIONAL)
+
+Made `foldQuotedNewlinesLoop_prod` parametric in `n` (takes explicit `n : Nat`). Uses `by_cases n ≤ n_sk` to choose between `SLEmpty.flow` (enough spaces) and `SLEmpty.flowLt` (fewer than n spaces). This is strictly more general than the n=0 version but NOT required for the h_closable proof path (since the grammar fix makes n=0 sufficient). Callers pass `0`.
+
+**Reflections on 4i.5** (SSeparateLines 0 — completed 2026-04-01)
+
+Proven as `preprocess_some_separate_lines_0` in StreamAccum.lean. Uses `preprocess_some_ssl_comments_col0` to extract `SSLComments sp sp_mid` (at col=0), then builds `SSeparateLines.commented 0` via:
+- `SFlowLinePrefix.mk 0 sp_mid sp_mid sp_ws (SIndent.zero sp_mid) (gstar_sswhite_to_gopt_sep ...)` — zero-width indent + optional whitespace from `GStar SSWhite`
+
+The `GOpt.some (SCNbCommentText)` case is unreachable: after `collectCommentTextLoop`, `peek?` returns break/EOF (proven in `collectCommentTextLoop_stops_at_break_or_eof` in PreprocessProduction.lean §1c). But `scanNextToken_preprocess` returning `some (s_prep, c)` implies `peek?` returned a non-break character (the loop's stopping condition). Formally connecting these through the `skipToContentComment` struct update (`{ s with comments := ... }`) is blocked by Lean's reluctance to reduce `peek?` through struct updates with opaque base terms. Currently deferred as a non-structural sorry (+1 to sorry count: 6→7).
+
+**Reflections on 4i.6** (Content h_closable composition — **RESOLVED** via v0.4.10: implicitContinue spec fix + PendingNode sp_start capture)
+
+With 4i.0–4i.5 complete, all grammar building blocks are available:
+- `SSeparateLines 0 sp_block sp_prep` from preprocessing (4i.5)
+- `SFlowNode 0 .flowOut sp_prep sp_scan'` from scanner `_prod` + context lift (4i.1)
+- `SSLComments sp_scan' sp_mid` from closure argument
+- `SBlockNode.flowInBlock 0 .blockIn sp_block sp_prep sp_scan' sp_mid` composes them all
+- `SLBareDocument.mk`: wraps `SBlockNode` into bare document
+
+**The blocker was**: extending `SLYamlStream sp_start sp_block` with `SLBareDocument sp_block sp_mid`.
+
+**Root cause**: `SLYamlStream.implicitContinue` required `GOpt SLExplicitDocument` instead of `GOpt SLAnyDocument` — a spec deviation from YAML [211] which says `l-document-prefix* l-any-document?`. This prevented bare documents from being appended to existing streams.
+
+**Resolution** (v0.4.10, two coordinated changes):
+
+1. **`SLYamlStream.implicitContinue` spec fix** (Document.lean): Changed from `GOpt SLExplicitDocument` to `GOpt SLAnyDocument`. Now bare documents can extend an existing stream via `implicitContinue ... (GOpt.some (SLAnyDocument.bare h_bare))`. All 5 call sites updated to wrap explicit documents in `SLAnyDocument.explicit`.
+
+2. **`PendingNode` captures `sp_start`** (StreamAccum.lean): Type changed from `SurfPos → SurfPos → Prop` to `SurfPos → SurfPos → SurfPos → Prop`. The h_closable signature simplified from `∀ sp_start sp_mid, SLYamlStream sp_start sp_block → SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid` to `∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid`. The stream is captured inside the closure at construction time, not passed at consumption time. All ~15 construction sites, ~7 consumption sites, and theorem signatures updated.
+
+**Combined effect**: h_closable closures can now construct their stream extension directly:
+- For first document (sp_start = stream start): build `SLYamlStream.single` with `SLBareDocument` or `SLExplicitDocument`
+- For subsequent documents: use `SLYamlStream.implicitContinue` to extend the captured stream with `SLAnyDocument.bare`/`.explicit`/`.directive`
+
+**Previous proposed solutions** (for historical context):
+
+1. **Change h_closable output to `SBlockNode`** instead of `SLYamlStream`:
+   ```lean
+   h_closable : ∀ sp_mid, SSLComments sp_scan sp_mid → SBlockNode 0 .blockIn sp_block sp_mid
+   ```
+   The stream extension would happen at the consumption site (which has `sp_start` and the stream). But the consumption site STILL faces the same stream extension problem.
+
+2. **Capture `sp_start` in PendingNode**: Remove `∀ sp_start` from h_closable, add `sp_start` as a PendingNode parameter. The closure would build `SLYamlStream.single` directly for bare documents. Requires tracking `sp_start` through the accumulator loop invariant.
+
+3. **Add a `bareContinue` constructor to `SLYamlStream`**:
+   ```lean
+   | bareContinue (s s₁ s₂ s' : SurfPos) :
+       SLYamlStream s s₁ → GStar SLDocumentPrefix s₁ s₂ → SLBareDocument s₂ s' → SLYamlStream s s'
+   ```
+   This extends the grammar to allow bare documents after existing content. This is a grammar EXTENSION beyond the YAML spec — possibly acceptable since it's strictly more permissive, not less.
+
+4. **Defer**: Leave h_closable sorry in place. The existing 5 sorry declarations all trace to this root cause. The grammar/context/indent issues are all resolved — the remaining blocker is purely architectural (stream extension).
+
+**Reflections on 4i.7** — unblocked by 4i.6 resolution. Wiring is straightforward: replace `fun sp_mid h_ssl => sorry` with the composed closure from 4i.6. The closure has the stream captured at construction time and needs only `SSLComments` to complete the grammar derivation.
 
 ###### Layer 4j: Directive grammar evidence + h_closable
 

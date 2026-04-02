@@ -59,33 +59,35 @@ mutual
   /-- [196] s-l+block-node(n,c): block-context YAML node.
       Can be a block scalar, block collection, flow node, or empty node. -/
   inductive SBlockNode : Nat → YamlContext → SurfPos → SurfPos → Prop where
-    /-- [198] Block scalar: separator + optional properties + literal or folded. -/
+    /-- [198] Block scalar: separator + optional properties + literal or folded.
+        Note: n is the content indent level (= spec's n+1, since we use
+        n_lean = n_spec + 1 to avoid Int). -/
     | blockLiteral (n : Nat) (c : YamlContext) (s s₁ s₂ s' : SurfPos) :
-        SSeparate (n + 1) c s s₁ →
-        GOpt (GSeq (SCNsProperties (n + 1) c) (SSeparate (n + 1) c)) s₁ s₂ →
+        SSeparate n c s s₁ →
+        GOpt (GSeq (SCNsProperties n c) (SSeparate n c)) s₁ s₂ →
         SCLLiteral n s₂ s' →
         SBlockNode n c s s'
     | blockFolded (n : Nat) (c : YamlContext) (s s₁ s₂ s' : SurfPos) :
-        SSeparate (n + 1) c s s₁ →
-        GOpt (GSeq (SCNsProperties (n + 1) c) (SSeparate (n + 1) c)) s₁ s₂ →
+        SSeparate n c s s₁ →
+        GOpt (GSeq (SCNsProperties n c) (SSeparate n c)) s₁ s₂ →
         SCLFolded n s₂ s' →
         SBlockNode n c s s'
     /-- [199] Block sequence: optional properties + comments + sequence. -/
     | blockSeq (n : Nat) (c : YamlContext) (s s₁ s₂ s' : SurfPos) :
-        GOpt (GSeq (SSeparate (n + 1) c) (SCNsProperties (n + 1) c)) s s₁ →
+        GOpt (GSeq (SSeparate n c) (SCNsProperties n c)) s s₁ →
         SSLComments s₁ s₂ →
         SBlockSeqEntries (seqSpaces n c) s₂ s' →
         SBlockNode n c s s'
     /-- [199] Block mapping: optional properties + comments + mapping. -/
     | blockMap (n : Nat) (c : YamlContext) (s s₁ s₂ s' : SurfPos) :
-        GOpt (GSeq (SSeparate (n + 1) c) (SCNsProperties (n + 1) c)) s s₁ →
+        GOpt (GSeq (SSeparate n c) (SCNsProperties n c)) s s₁ →
         SSLComments s₁ s₂ →
         SBlockMapEntries n s₂ s' →
         SBlockNode n c s s'
     /-- [195] Flow-in-block: separator + flow node + comments. -/
     | flowInBlock (n : Nat) (c : YamlContext) (s s₁ s₂ s' : SurfPos) :
-        SSeparate (n + 1) .flowOut s s₁ →
-        SFlowNode (n + 1) .flowOut s₁ s₂ →
+        SSeparate n .flowOut s s₁ →
+        SFlowNode n .flowOut s₁ s₂ →
         SSLComments s₂ s' →
         SBlockNode n c s s'
     /-- [72] Empty node + trailing comments. -/
@@ -96,15 +98,15 @@ mutual
   /-- [182] s-l+block-indented(n,c): content inside a block entry.
       Can be compact notation, a regular block node, or empty. -/
   inductive SBlockIndented : Nat → YamlContext → SurfPos → SurfPos → Prop where
-    /-- Compact sequence: indent(m) + compact-sequence(n+1+m). -/
+    /-- Compact sequence: indent(m) + compact-sequence(n+m). -/
     | compactSeq (n : Nat) (c : YamlContext) (m : Nat) (s s₁ s' : SurfPos) :
         SIndent m s s₁ →
-        SCompactSeq (n + 1 + m) s₁ s' →
+        SCompactSeq (n + m) s₁ s' →
         SBlockIndented n c s s'
-    /-- Compact mapping: indent(m) + compact-mapping(n+1+m). -/
+    /-- Compact mapping: indent(m) + compact-mapping(n+m). -/
     | compactMap (n : Nat) (c : YamlContext) (m : Nat) (s s₁ s' : SurfPos) :
         SIndent m s s₁ →
-        SCompactMap (n + 1 + m) s₁ s' →
+        SCompactMap (n + m) s₁ s' →
         SBlockIndented n c s s'
     /-- Regular block node. -/
     | node (n : Nat) (c : YamlContext) (s s' : SurfPos) :
@@ -121,16 +123,16 @@ mutual
       block entry from plain scalar starting with '-'). -/
   inductive SBlockSeqEntries : Nat → SurfPos → SurfPos → Prop where
     | single (n : Nat) (s s₁ s₂ s₃ s' : SurfPos) :
-        SIndent (n + 1) s s₁ →
+        SIndent n s s₁ →
         GLit '-' s₁ s₂ →
         GNot SNsChar s₂ →
-        SBlockIndented (n + 1) .blockIn s₂ s' →
+        SBlockIndented n .blockIn s₂ s' →
         SBlockSeqEntries n s s'
     | cons (n : Nat) (s s₁ s₂ s₃ s' : SurfPos) :
-        SIndent (n + 1) s s₁ →
+        SIndent n s s₁ →
         GLit '-' s₁ s₂ →
         GNot SNsChar s₂ →
-        SBlockIndented (n + 1) .blockIn s₂ s₃ →
+        SBlockIndented n .blockIn s₂ s₃ →
         SBlockSeqEntries n s₃ s' →
         SBlockSeqEntries n s s'
 
@@ -170,12 +172,12 @@ mutual
   /-- [184] l+block-mapping(n): one or more block mapping entries. -/
   inductive SBlockMapEntries : Nat → SurfPos → SurfPos → Prop where
     | single (n : Nat) (s s₁ s' : SurfPos) :
-        SIndent (n + 1) s s₁ →
-        SBlockMapEntry (n + 1) s₁ s' →
+        SIndent n s s₁ →
+        SBlockMapEntry n s₁ s' →
         SBlockMapEntries n s s'
     | cons (n : Nat) (s s₁ s₂ s' : SurfPos) :
-        SIndent (n + 1) s s₁ →
-        SBlockMapEntry (n + 1) s₁ s₂ →
+        SIndent n s s₁ →
+        SBlockMapEntry n s₁ s₂ →
         SBlockMapEntries n s₂ s' →
         SBlockMapEntries n s s'
 
