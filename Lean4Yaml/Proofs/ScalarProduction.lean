@@ -1353,6 +1353,9 @@ theorem scanPlainScalar_prod (sc : ScannerState) (sp : SurfPos)
 
 -- `scanBlockScalarSkipComment` produces `GOpt SCNbCommentText`.
 -- Mirrors `skipToContentComment_corr` structure.
+-- Proof that if the comment is successfully consumed,
+-- the characters strictly form a GOpt SCNbCommentText derivation tree
+-- and preserve scanner-surface correspondence.
 theorem scanBlockScalarSkipComment_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', GOpt SCNbCommentText sp sp' ∧
@@ -1945,7 +1948,9 @@ theorem skipWhitespace_eq_of_same_surfpos {sc : ScannerState} {sp : SurfPos}
       have := advance_offset_lt sc h_has
       omega
 
--- `scanBlockScalarSkipComment` is identity when `peekBack?` returns a non-ws/lb/BOM char.
+-- Proof that `scanBlockScalarSkipComment` is identity
+-- when `peekBack?` returns a non-ws/lb/BOM char
+-- and that it consumes nothing.
 theorem scanBlockScalarSkipComment_noop (sc : ScannerState)
     (h : ∀ c, sc.peekBack? = some c → notWsLbBom c) :
     scanBlockScalarSkipComment sc = sc := by
@@ -1967,7 +1972,7 @@ theorem scNbCommentText_irrefl (sp : SurfPos) : ¬ SCNbCommentText sp sp := by
     have : col ≥ col + 1 := gstar_gchar_col_le hstar
     omega
 
--- Unreachability: `#` comment without preceding whitespace after block header.
+-- Mathematical unreachability: `#` comment without preceding whitespace after block header.
 theorem scanBlockScalar_unreachable_comment_without_ws
     (sc : ScannerState) (sp_adv sp_hdr sp_cmt : SurfPos)
     (c₀ : Char) (rest : List Char)

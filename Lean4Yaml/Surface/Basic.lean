@@ -197,10 +197,12 @@ and ends with comments. The detailed directive validation is handled by
 the scanner/parser — the surface syntax just needs to recognize the shape. -/
 
 /-- [82] l-directive: directive line starting with '%'.
-    Simplified encoding: '%' + non-break characters + s-l-comments. -/
+    Simplified encoding: '%' + non-break characters + s-l-comments.
+    Uses SNbChar (non-break) rather than SNsChar (non-space) because
+    directive content includes spaces (e.g., `%YAML 1.2`, `%TAG !e! prefix`). -/
 inductive SLDirective : SurfPos → SurfPos → Prop where
   | mk (rest : List Char) (col : Nat) (s₁ s' : SurfPos) :
-      GPlus SNsChar ⟨rest, col + 1⟩ s₁ →
+      GPlus SNbChar ⟨rest, col + 1⟩ s₁ →
       SSLComments s₁ s' →
       SLDirective ⟨'%' :: rest, col⟩ s'
 

@@ -1285,21 +1285,27 @@ PendingNode.pendingContent sp_start sp_block sp_scan'
 
 Remaining branches in `noPending + col=0`: anchor (`'&'`), alias (`'*'`), tag (`'!'`), block scalar (`'|'`/`'>'`), plain scalar, and other characters — all sorry. These are structurally similar but need their respective `_prod` theorems and/or grammar infrastructure.
 
-###### Layer 4j: Directive grammar evidence + h_closable
+###### Layer 4j: Directive grammar evidence + PendingNode refactoring
 
-`scanDirective_corr` exists but `scanDirective_prod` does not. The directive (`%TAG`, `%YAML`) h_closable in `structural_dispatch_to_pending` (L569/L599) remains sorry.
+Discovery: `PendingNode.pendingDirective`'s `h_closable → SLYamlStream` was an architectural dead end. `SLDirectiveDocument = GPlus SLDirective + SLExplicitDocument` requires BOTH directives AND `---`, but a standalone pending directive can't form a complete document. Also, `SLDirective.mk` used `GPlus SNsChar` (non-space) which excludes spaces in `%YAML 1.2` — fixed to `GPlus SNbChar` (non-break).
+
+**Refactoring**: Changed `PendingNode.pendingDocStart` from carrying `SCDirectivesEnd` marker to a `h_doc_builder` closure that produces `SLAnyDocument` from content evidence. This abstracts whether the document is explicit (standalone `---`) or directive-preceded. Changed `PendingNode.pendingDirective` from `h_closable → SLYamlStream` to `h_dir_acc → GPlus SLDirective` + `h_stream : SLYamlStream` (captured). When `---` arrives after directives, the builder can form `SLDirectiveDocument`.
 
 | # | Work | Status | Description |
 |---|---|---|---|
-| 4j.1 | `scanDirective_prod` | | Directive loop analysis → grammar evidence for `%TAG`/`%YAML` directives |
-| 4j.2 | Directive h_closable construction | | Build closure from `scanDirective_prod` evidence |
-| 4j.3 | Wire into `structural_dispatch_to_pending` | | Replace L569/L599 sorry with real h_closable |
+| 4j.1 | `SLDirective` grammar fix | ✅ done | `GPlus SNsChar` → `GPlus SNbChar` in Basic.lean |
+| 4j.2 | `scanDirective_prod` extension | deferred | Needs `GStar SNbChar` evidence from scanner loops |
+| 4j.3 | PendingNode type refactoring | ✅ done | `pendingDocStart`: marker → builder; `pendingDirective`: closable → accumulator + stream |
+| 4j.4 | Wire through all consumption sites | ✅ done | `eof_pending`, `structural/flow/block/content_pending`, `dispatch_new_pending` |
+| 4j.5 | Build clean | ✅ done | 415/415, 8 sorry warnings (was 7; +1 from circular position dependency in `dispatch_new_pending`) |
 
-**Reflections on 4j.1** 
+**Reflections on 4j.1**: `SNsChar` (non-space) was too restrictive for directive content that includes spaces. `SNbChar` (non-break, includes space) matches the actual YAML spec for directive content.
 
-**Reflections on 4j.2** 
+**Reflections on 4j.3**: The builder closure pattern for `pendingDocStart` is cleaner than carrying raw markers — the caller just provides content evidence, and the builder handles whether this is an explicit or directive document. For `pendingDirective`, separating the stream capture from the directive accumulator makes the type honest about what evidence exists at each point.
 
-**Reflections on 4j.3** 
+**Reflections on 4j.4**: Four accum functions (structural, flow, block, content) each needed: (1) `pendingDocStart` case rewritten from `h_marker_old` → `h_doc_builder_old`, (2) `pendingDirective` separated from the `all_goals` block into its own `sorry` case, (3) remaining closable cases get `h_stream_new` variable for `dispatch_new_pending`. The `dispatch_new_pending` body has a circular dependency: needs `sp_mid = sp_prep` to pass the stream, but that equality requires `hcol_prep` from `structural_dispatch_to_pending` which needs the stream. Resolved with `sorry` for now — only affects the directive case which is already sorry'd.
+
+**Reflections on 4j.5**: The extra sorry (+1) is localized to `dispatch_new_pending` and can be eliminated by extracting a `dispatchStructural_col0` lemma that proves `sp.col = 0` directly from the dispatch success, breaking the circular dependency.
 
 ###### Layer 4k: BOM col≠0 grammar fix
 
