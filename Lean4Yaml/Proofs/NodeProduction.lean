@@ -307,4 +307,71 @@ theorem scanAnchorOrAlias_flowNode_prod (sc : ScannerState) (sp : SurfPos)
   exact ⟨sp_mid, sp', h_glit, h_gstar,
          fun hne => alias_flowNode (h_alias hne), hcorr'⟩
 
+/-! ## §6 Block Collection Lemmas -/
+
+/-- Append one entry to the end of a block sequence.
+
+    This is an example of a non-trivial grammar operation whose proof is
+    made short (10 lines) by the foundational design choices upstream.
+    The hard work was in the definitions, not the proof.
+
+    **Key foundations this depends on:**
+
+    1. **List-like structure of `SBlockSeqEntries`** (`Node.lean`):
+       The type has exactly two constructors — `single` (base) and `cons`
+       (recursive) — mirroring a cons-list. This is a design choice: the
+       YAML spec phrase "one or more entries" could also be encoded as
+       `GPlus (SIndent × GLit × GNot × SBlockIndented)`, but the explicit
+       `single`/`cons` split makes snoc a direct structural recursion.
+
+    2. **Self-contained entry evidence**: Each entry in `single`/`cons`
+       carries all four components (`SIndent n`, `GLit '-'`, `GNot SNsChar`,
+       `SBlockIndented n .blockIn`) independently. No shared state or
+       context threading between entries — the new entry just needs its own
+       four witnesses to slot in.
+
+    3. **`SurfPos`-indexed types**: Position tracking via indices means
+       composition is type-checked: the new entry's `SIndent n s_mid s₁`
+       must start exactly where the old sequence ended (`s_mid`). No
+       runtime position arithmetic — the type system enforces adjacency.
+
+    **Why term-mode `match` instead of `induction`:**
+    `SBlockSeqEntries` is part of an 11-type mutual inductive block (with
+    `SBlockNode`, `SBlockIndented`, `SBlockMapEntries`, etc.). Lean's
+    `induction` tactic does not support mutual inductives — it fails with
+    "does not support the type ... because it is mutually inductive".
+    Even `cases` + recursive call fails: Lean tries well-founded recursion
+    on `SurfPos` and asks to prove `sizeOf s₃' < sizeOf s`, which doesn't
+    hold in general for surface positions.
+
+    Term-mode `match` works because Lean's equation compiler recognizes
+    that the recursive call passes `h_tail : SBlockSeqEntries n s₃' s_mid`,
+    which is a strict subterm of the `cons` pattern's original
+    `h_entries : SBlockSeqEntries n s s_mid`. This is **structural recursion
+    on the proof term itself** — no termination annotation needed. The
+    compiler generates the recursion principle automatically from the
+    subterm relationship, bypassing the mutual-inductive restriction that
+    blocks the `induction` tactic.
+
+    **Proof idea:** The `single` case converts to `cons` (original entry
+    stays as head, new entry becomes a `single` tail). The `cons` case
+    keeps the head entry and recurses on the tail. -/
+theorem SBlockSeqEntries_snoc {n : Nat} {s s_mid s₁ s₂ s' : SurfPos}
+    (h_entries : SBlockSeqEntries n s s_mid)
+    (h_indent : SIndent n s_mid s₁)
+    (h_dash : GLit '-' s₁ s₂)
+    (h_gnot : GNot SNsChar s₂)
+    (h_indented : SBlockIndented n .blockIn s₂ s') :
+    SBlockSeqEntries n s s' :=
+  match h_entries with
+  | .single _ _ s₁' s₂' _ _ h_indent' h_dash' h_gnot' h_body =>
+    .cons _ _ s₁' s₂' s_mid s'
+      h_indent' h_dash' h_gnot' h_body
+      (.single _ s_mid s₁ s₂ s₂ s'
+        h_indent h_dash h_gnot h_indented)
+  | .cons _ _ s₁' s₂' s₃' _ h_indent' h_dash' h_gnot' h_body h_tail =>
+    .cons _ _ s₁' s₂' s₃' s'
+      h_indent' h_dash' h_gnot' h_body
+      (SBlockSeqEntries_snoc h_tail h_indent h_dash h_gnot h_indented)
+
 end Lean4Yaml.Proofs.NodeProduction

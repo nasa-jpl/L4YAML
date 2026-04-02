@@ -1351,7 +1351,7 @@ Subsumes deferred 4g.3/4g.4. Full grammar evidence for block collections (`SBloc
 | 4l.1b | `pendingBlock` type refinement: `SSLComments → SBlockNode` | ✅ done | Changed h_close to take `SBlockNode` instead of `SSLComments`; enables content-inside-entry |
 | 4l.1c | `preprocess_some_separate_0_anyCol` | ✅ done | General-column `SSeparateLines 0` from preprocessing (no col=0 requirement). 2 sorry subcases (inr no-break, comment-with-content) |
 | 4l.1d | Content-inside-entry composition | ✅ done | `accum_content_pending` pendingBlock: `SBlockNode.flowInBlock` composed inside h_close for double/single-quoted scalars. Other content types use sorry. |
-| 4l.2 | `SBlockSeqEntries_snoc` lemma | ⏳ | Grammar-level: append entry to existing block sequence entries |
+| 4l.2 | `SBlockSeqEntries_snoc` lemma | ✅ done | Grammar-level: append entry to existing block sequence entries. 0 sorry. |
 | 4l.3 | `unwindIndents` → BlockStack pop with finalization | ⏳ deferred | Close `SBlockSequence`/`SBlockMapping`, extend stream (requires seqLevel persistence across iterations) |
 
 **Reflections on 4l.1** (first block entry h_closable — completed 2026-04-02)
@@ -1423,6 +1423,12 @@ accum_content_pending for pendingBlock h_close_old:
 
 **Build:** 415/415, 10 sorry warnings (was 9; +1 from `preprocess_some_separate_0_anyCol`).
 
-**Reflections on 4l.2** 
+**Reflections on 4l.2** (SBlockSeqEntries_snoc — completed 2026-04-04)
+
+`SBlockSeqEntries_snoc` appends one entry to the end of a block sequence. Proof by term-mode `match` (not `induction`) because `SBlockSeqEntries` is part of an 11-type mutual inductive and `induction` tactic doesn't support mutual inductives. The `cases` tactic also failed due to well-founded recursion on `SurfPos` (no size decrease). Term-mode `match` with explicit recursive call works because Lean can verify structural decrease on the `SBlockSeqEntries` argument.
+
+Key pattern-matching detail: constructor `single` has 6 explicit position parameters (n, s, s₁, s₂, s₃, s') before 4 field arguments. Missing one wildcard for the unused `s₃` causes Lean to misalign fields with positions — a confusing type mismatch on the `SIndent` field.
+
+Added to NodeProduction.lean §6. No sorry, no new warnings.
 
 **Reflections on 4l.3** 
