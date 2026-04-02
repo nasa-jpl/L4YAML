@@ -174,7 +174,7 @@ theorem stream_implicit_continue (s s₁ s₂ s₃ : SurfPos)
     SLYamlStream s s₃ :=
   SLYamlStream.implicitContinue s s₁ s₂ s₃ s₃
     h_stream h_prefixes
-    (GOpt.some _ _ h_doc)
+    (GOpt.some _ _ (SLAnyDocument.explicit _ _ h_doc))
     (GStar.nil _)
 
 /-! ### §6b Content Production Gap -/

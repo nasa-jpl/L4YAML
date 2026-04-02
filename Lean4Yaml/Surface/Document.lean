@@ -61,8 +61,9 @@ inductive SCDocumentEnd : SurfPos → SurfPos → Prop where
 
 /-- [203] l-bare-document: document without explicit markers.
     Content is a block node at indent -1 (top level).
-    We use indent = 0 since Nat can't represent -1; the spec's n=-1
-    means the first block content determines its indent. -/
+    We use indent = 0 since Nat can't represent -1; hence n_lean = n_spec + 1
+    throughout (spec's -1 maps to our 0, spec's 0 maps to our 1, etc.).
+    SBlockNode constructors use n directly (not n+1) to match this convention. -/
 inductive SLBareDocument : SurfPos → SurfPos → Prop where
   | mk (s s' : SurfPos) :
       SBlockNode 0 .blockIn s s' →
@@ -137,11 +138,13 @@ inductive SLYamlStream : SurfPos → SurfPos → Prop where
       GOpt SLAnyDocument s₃ s₄ →
       GStar SLDocumentSuffix s₄ s' →
       SLYamlStream s s'
-  /-- Implicit continuation: previous stream + prefix(es) + explicit document. -/
+  /-- Implicit continuation: previous stream + prefix(es) + any document.
+      Matches spec [211] `l-document-prefix* l-any-document?` branch.
+      This includes bare documents (no `---` marker). -/
   | implicitContinue (s s₁ s₂ s₃ s' : SurfPos) :
       SLYamlStream s s₁ →
       GStar SLDocumentPrefix s₁ s₂ →
-      GOpt SLExplicitDocument s₂ s₃ →
+      GOpt SLAnyDocument s₂ s₃ →
       GStar SLDocumentSuffix s₃ s' →
       SLYamlStream s s'
 
