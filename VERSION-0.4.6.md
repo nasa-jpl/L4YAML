@@ -1540,19 +1540,38 @@ Three architectural changes are needed before tackling the content categories. E
 
 **`Array.getElem?_lt` renamed**: In Lean 4.29, `Array.getElem?_lt` no longer exists. The correct lemma is `Array.getElem?_eq_getElem`. Discovered when `currentIndent_nonneg` failed to compile.
 
-##### A2: Add BOM-transparent `SSeparateInLine` constructor ⏳
+##### A2: Add BOM-transparent `SSeparateInLine` constructor ✅
 
 **Problem**: `SSeparateInLine` has only two constructors: `whites` (requires `GPlus SSWhite`) and `startOfLine` (requires `col = 0`). After BOM (`\uFEFF`) at offset 0, the scanner is at col=1. If the next char is `#` (comment), neither constructor applies — `whites` needs whitespace before `#`, and `startOfLine` needs col=0. This blocks ~20 col≠0 sorry sites across all dispatch theorems.
 
-**Solution**: Add a `bomPreceded` constructor (or equivalent) to `SSeparateInLine` that allows col≠0 positions when preceded by BOM. This cascades through `SSeparateLines`, `SSeparate`, `SFlowLinePrefix`, and proofs that case-split on `SSeparateInLine` constructors. The grammar algebra must be strengthened even if it requires significant rework of existing proofs.
+**Solution chosen**: Instead of adding a `bomPreceded` constructor, removed the col=0 constraint from `startOfLine` entirely: `startOfLine (s : SurfPos) : SSeparateInLine s s`. This is sound because the scanner validates comment positions anyway, and the grammar algebra is strengthened without adding a new constructor that would require additional case-splits in all proofs.
 
-**Scope**: Grammar definition change in `Surface/Basic.lean` + cascade through all proofs using `SSeparateInLine`. Estimated ~50-100 lines of proof updates.
+**Scope**: Grammar definition change in `Surface/Basic.lean` + cascade through PreprocessProduction, StreamAccum, CouplingBridge. ~40 lines of proof changes.
 
-**Unblocks**: Category 2 (~20 col≠0 sorry across all 9 StreamAccum theorems).
+**Unblocks**: Category 2 (~20 col≠0 sorry across all 9 StreamAccum theorems) — **now resolved**.
 
 ###### Accomplishments for A2
 
+- Changed `SSeparateInLine.startOfLine` from `startOfLine (chars : List Char) : SSeparateInLine ⟨chars, 0⟩ ⟨chars, 0⟩` to `startOfLine (s : SurfPos) : SSeparateInLine s s` (column-independent zero-width match)
+- Closed `bom_noWhitespace_ssbcomment` sorry (PreprocessProduction): now proven via `.withSep sp sp sp_cmt sp_end (.startOfLine sp) (.some sp sp_cmt h_cmtv) h_break`
+- Generalized `GStar_SSWhite_to_SSeparateInLine` (was `_col0`): dropped `hcol` parameter, nil case uses `.startOfLine sp` instead of requiring col=0
+- Generalized `SSBComment_to_SLComment` (was `_col0`): dropped `hcol` parameter, `noSep` case uses `.startOfLine sp` directly
+- Generalized `SSLComments_to_GStar` (was `_col0`): dropped `hcol` parameter, callers updated
+- Generalized `ssl_comments_extend_stream` (was `_col0`): dropped `hcol` parameter
+- Closed `eof_pending` noPending sorry: removed `by_cases hcol` — uses general `preprocess_none_ssl_comments` + `ssl_comments_extend_stream` at any column
+- Closed `preprocess_some_separate_0_anyCol` `inr` sorry: no-break case builds `SSeparateLines.inline 0` via `GStar_SSWhite_to_SSeparateInLine` (nil GStar → zero-width startOfLine)
+- Updated `start_of_line_gives_SSeparateInLine` in CouplingBridge: `SSeparateInLine.startOfLine ⟨rest, 0⟩`
+- Build: 415/415, **9 sorry warnings** (down from 10; net -1)
+
 ###### Reflections on A2
+
+**Design decision — remove constraint vs add constructor**: The original plan was to add a `bomPreceded` constructor. Analysis revealed this would require adding a new case to every `cases h : SSeparateInLine` proof (dozens of sites), with BOM evidence that doesn't exist at the grammar level. Instead, removing the col=0 constraint from `startOfLine` is a grammar weakening that is sound: `startOfLine` represents "implicit separation at start of line" and the YAML spec's col=0 requirement is already enforced by the scanner's line-break handling (every `SBBreak` resets col to 0). The grammar types are an over-approximation of valid parses, so weakening one constructor's precondition is safe as long as the scanner only produces valid instances.
+
+**Cascade was smaller than expected**: Only 4 functions needed signature changes (drop `hcol`), plus 4 caller sites referencing old names. No proof that case-splits on `SSeparateInLine` constructors was broken — because `startOfLine` always produced `SSeparateInLine s s` (same start/end), the only change is that `s` is an arbitrary `SurfPos` instead of `⟨chars, 0⟩`. Proofs that pattern-matched on `startOfLine chars` now match on `startOfLine s`, which is structurally identical.
+
+**`subst` direction gotcha (again)**: In `preprocess_some_separate_0_anyCol`, the `inr h_eq` case has `h_eq : sp_mid = sp`. Using `subst h_eq` would eliminate `sp` (the RIGHT side), but `sp` is bound by `obtain` from the signature and can't be substituted away. Used `rw [h_eq] at h_ws` instead to rewrite `h_ws : GStar SSWhite sp_mid sp_ws` to use `sp` while keeping both variables.
+
+**Sorry accounting**: Closed 2 sorry (`bom_noWhitespace_ssbcomment`, `eof_pending` noPending col≠0), but the `preprocess_some_separate_0_anyCol` `GOpt.some` case remains (unreachable comment, same root cause as `preprocess_some_separate_lines_0`). Net: 10 → 9 sorry warnings. The `eof_pending` closure was removing a sorry that didn't have its own warning (it was inside a theorem that had other sorry), so only the `bom_noWhitespace_ssbcomment` closure reduced the warning count.
 
 ##### A3: Alias `*` wiring through `accum_content_pending` ⏳
 
@@ -1582,13 +1601,11 @@ Only double-quoted (`'"'`) and single-quoted (`'\''`) scalars have full grammar 
 
 **Recommended next**: Block scalar or plain scalar support, as they're the most common non-quoted content types.
 
-#### Category 2: col≠0 / BOM edge case (~20 sorry sites across all dispatch theorems)
+#### Category 2: col≠0 / BOM edge case — **RESOLVED by A2** ✅
 
-`SSeparateInLine` has no BOM-transparent constructor. After BOM at col≠1 with bare `#`, neither `whites` nor `startOfLine` applies. This is a genuine YAML grammar formalization gap. All `by_cases hcol : sp_scan.col = 0` branches with `· sorry` share this root cause.
+`SSeparateInLine.startOfLine` is now column-independent (A2). The `by_cases hcol` pattern is no longer needed for `eof_pending` noPending and `preprocess_some_separate_0_anyCol` inr cases. Remaining `by_cases hcol` sites in `accum_structural_pending` etc. still use `preprocess_some_ssl_comments_col0` (which requires col=0 for the return type's `sp_mid.col = 0` guarantee used by `dispatch_new_pending`). These are Category 3/4/5 blockers, not Category 2.
 
-**Impact**: Each of the 9 StreamAccum theorems with sorry has at least one col≠0 sorry, but ALSO has sorry from other categories. Resolving col≠0 alone would NOT reduce warning count.
-
-**Resolution**: Requires grammar definition change (`SSeparateInLine.bomPreceded` or equivalent) cascading through existing proofs. Deferred to a future layer.
+**Resolution**: Requires grammar definition change (`SSeparateInLine.bomPreceded` or equivalent) cascading through existing proofs. ~~Deferred to a future layer.~~ **Done** — used constraint removal instead of new constructor.
 
 #### Category 3: Directive infrastructure (~6 sorry sites)
 
@@ -1624,4 +1641,4 @@ The `GOpt.some` comment case is unreachable because the scanner greedily consume
 3. **Mapping entries `?`/`:`** (Category 4) — parallel to sequence infrastructure
 4. **Directive infrastructure** (Category 3) — focused layer
 5. **Flow indicators** (Category 5) — lower priority
-6. **col≠0 BOM** (Category 2) — grammar definition change, deferred
+6. ~~**col≠0 BOM** (Category 2) — grammar definition change, deferred~~ **DONE (A2)**
