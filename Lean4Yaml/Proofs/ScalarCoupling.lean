@@ -114,7 +114,7 @@ theorem corr_of_emitAt {sc : ScannerState} {sp : SurfPos}
     (pos : YamlPos) (tok : YamlToken)
     (hcorr : ScannerSurfCorr sc sp) :
     ScannerSurfCorr (sc.emitAt pos tok) sp :=
-  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
 
 /-! ## §2 Utility Loops -/
 
@@ -657,7 +657,7 @@ theorem scanBlockScalarSkipComment_corr (sc : ScannerState) (sp : SurfPos)
         obtain ⟨sp_ct, _, hcorr_ct⟩ :=
           collectCommentTextLoop_corr sc.advance sp_adv ""
             (sc.advance.inputEnd - sc.advance.offset) hcorr_adv (Nat.le.refl)
-        exact ⟨sp_ct, ⟨hcorr_ct.chars_from, hcorr_ct.col_eq, hcorr_ct.end_eq, hcorr_ct.input_prefix⟩⟩
+        exact ⟨sp_ct, ⟨hcorr_ct.chars_from, hcorr_ct.col_eq, hcorr_ct.end_eq, hcorr_ct.input_prefix, hcorr_ct.indent_cols_nonneg⟩⟩
       · -- commentOk = false
         exact ⟨sp, hcorr⟩
     · -- peekBack? = none → commentOk = false
@@ -711,7 +711,7 @@ theorem scanBlockScalarBody_corr (sc_orig sc_after_nl : ScannerState)
       collectBlockScalarLoop_corr sc_after_nl sp "" fuel contentIndent sc_orig.inputEnd hcorr
     obtain ⟨sp_loop, hcorr_loop⟩ := hcorr_res
     have h := Except.ok.inj hok; subst h
-    exact ⟨sp_loop, ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix⟩⟩
+    exact ⟨sp_loop, ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix, hcorr_loop.indent_cols_nonneg⟩⟩
 
 /-- `scanBlockScalar` preserves correspondence on `.ok` paths. -/
 theorem scanBlockScalar_corr (sc : ScannerState) (sp : SurfPos)

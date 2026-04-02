@@ -51,11 +51,11 @@ theorem scanFlowSequenceStart_prod (sc : ScannerState) (sp : SurfPos)
   have hcorr_emit : ScannerSurfCorr
       ({ sc with simpleKey := { possible := false } }.emit .flowSequenceStart)
       ⟨'[' :: rest, sc.col⟩ :=
-    ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+    ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
   have hcorr_adv := advance_non_newline_corr
     ({ sc with simpleKey := { possible := false } }.emit .flowSequenceStart)
     '[' rest hcorr_emit hmore (by decide) (by decide)
-  exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix⟩
+  exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
 
 -- `scanFlowSequenceEnd` produces `GLit ']'`.
 theorem scanFlowSequenceEnd_prod (sc : ScannerState) (sp : SurfPos)
@@ -69,11 +69,11 @@ theorem scanFlowSequenceEnd_prod (sc : ScannerState) (sp : SurfPos)
   have hcorr_emit : ScannerSurfCorr
       (sc.emit .flowSequenceEnd)
       ⟨']' :: rest, sc.col⟩ :=
-    ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+    ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
   have hcorr_adv := advance_non_newline_corr
     (sc.emit .flowSequenceEnd)
     ']' rest hcorr_emit hmore (by decide) (by decide)
-  exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix⟩
+  exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
 
 -- `scanFlowMappingStart` produces `GLit '{'`.
 theorem scanFlowMappingStart_prod (sc : ScannerState) (sp : SurfPos)
@@ -87,11 +87,11 @@ theorem scanFlowMappingStart_prod (sc : ScannerState) (sp : SurfPos)
   have hcorr_emit : ScannerSurfCorr
       ({ sc with simpleKey := { possible := false } }.emit .flowMappingStart)
       ⟨'{' :: rest, sc.col⟩ :=
-    ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+    ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
   have hcorr_adv := advance_non_newline_corr
     ({ sc with simpleKey := { possible := false } }.emit .flowMappingStart)
     '{' rest hcorr_emit hmore (by decide) (by decide)
-  exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix⟩
+  exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
 
 -- `scanFlowMappingEnd` produces `GLit '}'`.
 theorem scanFlowMappingEnd_prod (sc : ScannerState) (sp : SurfPos)
@@ -105,11 +105,11 @@ theorem scanFlowMappingEnd_prod (sc : ScannerState) (sp : SurfPos)
   have hcorr_emit : ScannerSurfCorr
       (sc.emit .flowMappingEnd)
       ⟨'}' :: rest, sc.col⟩ :=
-    ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+    ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
   have hcorr_adv := advance_non_newline_corr
     (sc.emit .flowMappingEnd)
     '}' rest hcorr_emit hmore (by decide) (by decide)
-  exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix⟩
+  exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
 
 -- `scanFlowEntry` preserves correspondence on success.
 theorem scanFlowEntry_prod (sc : ScannerState) (sp : SurfPos)
@@ -156,17 +156,17 @@ theorem scanBlockEntry_prod (sc : ScannerState) (sp : SurfPos)
     · simp at hok
     · have h := Except.ok.inj hok; subst h
       have hcorr_ind := pushSequenceIndent_corr sc
-        ⟨'-' :: rest, sc.col⟩ hcorr (sc.col : Int)
+        ⟨'-' :: rest, sc.col⟩ hcorr (sc.col : Int) (Int.natCast_nonneg _)
       have hcorr_emit : ScannerSurfCorr
           ((pushSequenceIndent sc (sc.col : Int)).emit .blockEntry)
           ⟨'-' :: rest, sc.col⟩ :=
-        ⟨hcorr_ind.chars_from, hcorr_ind.col_eq, hcorr_ind.end_eq, hcorr_ind.input_prefix⟩
+        ⟨hcorr_ind.chars_from, hcorr_ind.col_eq, hcorr_ind.end_eq, hcorr_ind.input_prefix, hcorr_ind.indent_cols_nonneg⟩
       -- Repack with sc_mid.col to satisfy advance_non_newline_corr
       have hcorr_at : ScannerSurfCorr
           ((pushSequenceIndent sc (sc.col : Int)).emit .blockEntry)
           ⟨'-' :: rest,
            ((pushSequenceIndent sc (sc.col : Int)).emit .blockEntry).col⟩ :=
-        ⟨hcorr_emit.chars_from, rfl, hcorr_emit.end_eq, hcorr_emit.input_prefix⟩
+        ⟨hcorr_emit.chars_from, rfl, hcorr_emit.end_eq, hcorr_emit.input_prefix, hcorr_emit.indent_cols_nonneg⟩
       have hmore := corr_nonempty_has_more hcorr_at
       have hcorr_adv := advance_non_newline_corr
         ((pushSequenceIndent sc (sc.col : Int)).emit .blockEntry)
@@ -174,16 +174,16 @@ theorem scanBlockEntry_prod (sc : ScannerState) (sp : SurfPos)
       exact ⟨hcorr_adv.chars_from,
              by have h1 := hcorr_emit.col_eq; have h2 := hcorr_adv.col_eq
                 dsimp only [] at *; omega,
-             hcorr_adv.end_eq, hcorr_adv.input_prefix⟩
+             hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
   · -- inFlow: no pushSequenceIndent
     have h := Except.ok.inj hok; subst h
     have hmore := peek_some_has_more hpeek
     have hcorr_emit : ScannerSurfCorr
         (sc.emit .blockEntry) ⟨'-' :: rest, sc.col⟩ :=
-      ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+      ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
     have hcorr_adv := advance_non_newline_corr
       (sc.emit .blockEntry) '-' rest hcorr_emit hmore (by decide) (by decide)
-    exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix⟩
+    exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
 
 -- Bridge: isBlankBool c → ¬isNsChar c (converse of not_blank_to_nsChar in ScalarProduction).
 theorem blank_to_not_nsChar {c : Char}
@@ -234,16 +234,16 @@ theorem scanKey_prod (sc : ScannerState) (sp : SurfPos)
   split at hok
   · -- !inFlow: pushMappingIndent
     have hcorr_ind := pushMappingIndent_corr sc
-      ⟨'?' :: rest, sc.col⟩ hcorr (sc.col : Int)
+      ⟨'?' :: rest, sc.col⟩ hcorr (sc.col : Int) (Int.natCast_nonneg _)
     have hcorr_emit : ScannerSurfCorr
         ((pushMappingIndent sc (sc.col : Int)).emit .key)
         ⟨'?' :: rest, sc.col⟩ :=
-      ⟨hcorr_ind.chars_from, hcorr_ind.col_eq, hcorr_ind.end_eq, hcorr_ind.input_prefix⟩
+      ⟨hcorr_ind.chars_from, hcorr_ind.col_eq, hcorr_ind.end_eq, hcorr_ind.input_prefix, hcorr_ind.indent_cols_nonneg⟩
     have hcorr_at : ScannerSurfCorr
         ((pushMappingIndent sc (sc.col : Int)).emit .key)
         ⟨'?' :: rest,
          ((pushMappingIndent sc (sc.col : Int)).emit .key).col⟩ :=
-      ⟨hcorr_emit.chars_from, rfl, hcorr_emit.end_eq, hcorr_emit.input_prefix⟩
+      ⟨hcorr_emit.chars_from, rfl, hcorr_emit.end_eq, hcorr_emit.input_prefix, hcorr_emit.indent_cols_nonneg⟩
     have hmore := corr_nonempty_has_more hcorr_at
     have hcorr_adv := advance_non_newline_corr
       ((pushMappingIndent sc (sc.col : Int)).emit .key)
@@ -256,26 +256,26 @@ theorem scanKey_prod (sc : ScannerState) (sp : SurfPos)
         exact ⟨hcorr_adv.chars_from,
                by have h1 := hcorr_emit.col_eq; have h2 := hcorr_adv.col_eq
                   dsimp only [] at *; omega,
-               hcorr_adv.end_eq, hcorr_adv.input_prefix⟩
+               hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
     · have h := Except.ok.inj hok; subst h
       exact ⟨hcorr_adv.chars_from,
              by have h1 := hcorr_emit.col_eq; have h2 := hcorr_adv.col_eq
                 dsimp only [] at *; omega,
-             hcorr_adv.end_eq, hcorr_adv.input_prefix⟩
+             hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
   · -- inFlow
     have hmore := peek_some_has_more hpeek
     have hcorr_emit : ScannerSurfCorr
         (sc.emit .key) ⟨'?' :: rest, sc.col⟩ :=
-      ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+      ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
     have hcorr_adv := advance_non_newline_corr
       (sc.emit .key) '?' rest hcorr_emit hmore (by decide) (by decide)
     split at hok
     · split at hok
       · simp at hok
       · have h := Except.ok.inj hok; subst h
-        exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix⟩
+        exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
     · have h := Except.ok.inj hok; subst h
-      exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix⟩
+      exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
 
 -- `scanValue` produces `GLit ':'`.
 theorem scanValue_prod (sc : ScannerState) (sp : SurfPos)
@@ -300,12 +300,12 @@ theorem scanValue_prod (sc : ScannerState) (sp : SurfPos)
       have hcorr_emit : ScannerSurfCorr
           ((scanValuePrepare (scanValueClearKey sc)).emit .value)
           ⟨':' :: rest, sc.col⟩ :=
-        ⟨hcorr_prep.chars_from, hcorr_prep.col_eq, hcorr_prep.end_eq, hcorr_prep.input_prefix⟩
+        ⟨hcorr_prep.chars_from, hcorr_prep.col_eq, hcorr_prep.end_eq, hcorr_prep.input_prefix, hcorr_prep.indent_cols_nonneg⟩
       have hcorr_at : ScannerSurfCorr
           ((scanValuePrepare (scanValueClearKey sc)).emit .value)
           ⟨':' :: rest,
            ((scanValuePrepare (scanValueClearKey sc)).emit .value).col⟩ :=
-        ⟨hcorr_emit.chars_from, rfl, hcorr_emit.end_eq, hcorr_emit.input_prefix⟩
+        ⟨hcorr_emit.chars_from, rfl, hcorr_emit.end_eq, hcorr_emit.input_prefix, hcorr_emit.indent_cols_nonneg⟩
       have hmore := corr_nonempty_has_more hcorr_at
       have hcorr_adv := advance_non_newline_corr
         ((scanValuePrepare (scanValueClearKey sc)).emit .value)
@@ -313,7 +313,7 @@ theorem scanValue_prod (sc : ScannerState) (sp : SurfPos)
       exact ⟨hcorr_adv.chars_from,
              by have h1 := hcorr_emit.col_eq; have h2 := hcorr_adv.col_eq
                 dsimp only [] at *; omega,
-             hcorr_adv.end_eq, hcorr_adv.input_prefix⟩
+             hcorr_adv.end_eq, hcorr_adv.input_prefix, hcorr_adv.indent_cols_nonneg⟩
 
 /-! ## §3 Node Property Productions
 
@@ -398,7 +398,7 @@ theorem scanAnchorOrAlias_prod (sc : ScannerState) (sp : SurfPos)
     collectAnchorNameLoop_prod sc.advance ⟨rest, sc.col + 1⟩ hcorr_adv "" _
   refine ⟨⟨rest, sc.col + 1⟩, sp', GLit.mk rest sc.col, h_gstar, ?_⟩
   unfold scanAnchorOrAlias
-  exact ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix⟩
+  exact ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩
 
 /-! ### Tag suffix loop production -/
 
@@ -455,14 +455,14 @@ theorem scanTag_secondary_prod (sc : ScannerState) (sp : SurfPos)
   -- Now sp = ⟨'!' :: '!' :: srest, sc.col⟩
   -- Repack hcorr_bang with rfl col for advance_non_newline_corr
   have hcorr_bang' : ScannerSurfCorr sc.advance ⟨'!' :: srest, sc.advance.col⟩ :=
-    ⟨hcorr_bang.chars_from, rfl, hcorr_bang.end_eq, hcorr_bang.input_prefix⟩
+    ⟨hcorr_bang.chars_from, rfl, hcorr_bang.end_eq, hcorr_bang.input_prefix, hcorr_bang.indent_cols_nonneg⟩
   have hmore2 := peek_some_has_more hpeek2
   have hcorr_bang2 := advance_non_newline_corr sc.advance '!' srest hcorr_bang'
     hmore2 (by decide) (by decide)
   -- Repack for suffix loop with rfl col
   have hcorr_bang2' : ScannerSurfCorr sc.advance.advance
       ⟨srest, sc.advance.advance.col⟩ :=
-    ⟨hcorr_bang2.chars_from, rfl, hcorr_bang2.end_eq, hcorr_bang2.input_prefix⟩
+    ⟨hcorr_bang2.chars_from, rfl, hcorr_bang2.end_eq, hcorr_bang2.input_prefix, hcorr_bang2.indent_cols_nonneg⟩
   -- Unfold scanTag and resolve match to secondary branch
   unfold scanTag; dsimp only []
   split
@@ -480,7 +480,7 @@ theorem scanTag_secondary_prod (sc : ScannerState) (sp : SurfPos)
       dsimp only [] at *; omega
     rw [hcol_bridge] at h_gstar
     refine ⟨sp', SCNsTagProperty.secondary srest sc.col sp' h_gstar, ?_⟩
-    exact ⟨hcorr_sfx.chars_from, hcorr_sfx.col_eq, hcorr_sfx.end_eq, hcorr_sfx.input_prefix⟩
+    exact ⟨hcorr_sfx.chars_from, hcorr_sfx.col_eq, hcorr_sfx.end_eq, hcorr_sfx.input_prefix, hcorr_sfx.indent_cols_nonneg⟩
   · -- fallthrough: contradicts hpeek2
     rename_i _ h_not_bang
     exact absurd hpeek2 h_not_bang
@@ -512,7 +512,11 @@ theorem unwindIndentsLoop_corr_exact (sc : ScannerState) (sp : SurfPos)
     · exact ih { (sc.emit .blockEnd) with indents := _ }
         ⟨(corr_of_emit .blockEnd hcorr).chars_from,
          (corr_of_emit .blockEnd hcorr).col_eq,
-         (corr_of_emit .blockEnd hcorr).end_eq, (corr_of_emit .blockEnd hcorr).input_prefix⟩
+         (corr_of_emit .blockEnd hcorr).end_eq, (corr_of_emit .blockEnd hcorr).input_prefix,
+         fun i hi h0 => by
+           simp only [ScannerState.emit] at hi ⊢
+           rw [Array.getElem_pop]
+           exact hcorr.indent_cols_nonneg i (by simp [Array.size_pop] at hi; omega) h0⟩
     · exact hcorr
 
 -- `unwindIndents` preserves the exact surface position.
@@ -539,14 +543,14 @@ theorem scanDocumentStart_prod (sc : ScannerState) (sp : SurfPos)
   have hcorr_key : ScannerSurfCorr
       { (unwindIndents sc (-1)) with simpleKey := { possible := false } }
       ⟨'-' :: '-' :: '-' :: rest, 0⟩ :=
-    ⟨hcorr_uw.chars_from, hcorr_uw.col_eq, hcorr_uw.end_eq, hcorr_uw.input_prefix⟩
+    ⟨hcorr_uw.chars_from, hcorr_uw.col_eq, hcorr_uw.end_eq, hcorr_uw.input_prefix, hcorr_uw.indent_cols_nonneg⟩
   have hcorr_emit := corr_of_emit .documentStart hcorr_key
   -- Advance past first '-'
   have hcorr_at1 : ScannerSurfCorr
       ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart)
       ⟨'-' :: '-' :: '-' :: rest,
        ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).col⟩ :=
-    ⟨hcorr_emit.chars_from, rfl, hcorr_emit.end_eq, hcorr_emit.input_prefix⟩
+    ⟨hcorr_emit.chars_from, rfl, hcorr_emit.end_eq, hcorr_emit.input_prefix, hcorr_emit.indent_cols_nonneg⟩
   have hmore1 := corr_nonempty_has_more hcorr_at1
   have hcorr_adv1 := advance_non_newline_corr
     ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart)
@@ -556,7 +560,7 @@ theorem scanDocumentStart_prod (sc : ScannerState) (sp : SurfPos)
       ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).advance
       ⟨'-' :: '-' :: rest,
        ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).advance.col⟩ :=
-    ⟨hcorr_adv1.chars_from, rfl, hcorr_adv1.end_eq, hcorr_adv1.input_prefix⟩
+    ⟨hcorr_adv1.chars_from, rfl, hcorr_adv1.end_eq, hcorr_adv1.input_prefix, hcorr_adv1.indent_cols_nonneg⟩
   have hmore2 := corr_nonempty_has_more hcorr_at2
   have hcorr_adv2 := advance_non_newline_corr
     ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).advance
@@ -566,7 +570,7 @@ theorem scanDocumentStart_prod (sc : ScannerState) (sp : SurfPos)
       ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).advance.advance
       ⟨'-' :: rest,
        ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).advance.advance.col⟩ :=
-    ⟨hcorr_adv2.chars_from, rfl, hcorr_adv2.end_eq, hcorr_adv2.input_prefix⟩
+    ⟨hcorr_adv2.chars_from, rfl, hcorr_adv2.end_eq, hcorr_adv2.input_prefix, hcorr_adv2.indent_cols_nonneg⟩
   have hmore3 := corr_nonempty_has_more hcorr_at3
   have hcorr_adv3 := advance_non_newline_corr
     ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentStart).advance.advance
@@ -578,7 +582,7 @@ theorem scanDocumentStart_prod (sc : ScannerState) (sp : SurfPos)
             have h2 := hcorr_adv2.col_eq
             have h3 := hcorr_adv3.col_eq
             dsimp only [] at *; omega,
-         hcorr_adv3.end_eq, hcorr_adv3.input_prefix⟩
+         hcorr_adv3.end_eq, hcorr_adv3.input_prefix, hcorr_adv3.indent_cols_nonneg⟩
 
 -- `scanDocumentEnd` produces `SCDocumentEnd` when chars = `...rest` at col 0.
 theorem scanDocumentEnd_prod (sc : ScannerState) (sp : SurfPos)
@@ -602,14 +606,14 @@ theorem scanDocumentEnd_prod (sc : ScannerState) (sp : SurfPos)
     have hcorr_key : ScannerSurfCorr
         { (unwindIndents sc (-1)) with simpleKey := { possible := false } }
         ⟨'.' :: '.' :: '.' :: rest, 0⟩ :=
-      ⟨hcorr_uw.chars_from, hcorr_uw.col_eq, hcorr_uw.end_eq, hcorr_uw.input_prefix⟩
+      ⟨hcorr_uw.chars_from, hcorr_uw.col_eq, hcorr_uw.end_eq, hcorr_uw.input_prefix, hcorr_uw.indent_cols_nonneg⟩
     have hcorr_emit := corr_of_emit .documentEnd hcorr_key
     -- Advance past first '.'
     have hcorr_at1 : ScannerSurfCorr
         ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd)
         ⟨'.' :: '.' :: '.' :: rest,
          ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).col⟩ :=
-      ⟨hcorr_emit.chars_from, rfl, hcorr_emit.end_eq, hcorr_emit.input_prefix⟩
+      ⟨hcorr_emit.chars_from, rfl, hcorr_emit.end_eq, hcorr_emit.input_prefix, hcorr_emit.indent_cols_nonneg⟩
     have hmore1 := corr_nonempty_has_more hcorr_at1
     have hcorr_adv1 := advance_non_newline_corr
       ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd)
@@ -619,7 +623,7 @@ theorem scanDocumentEnd_prod (sc : ScannerState) (sp : SurfPos)
         ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance
         ⟨'.' :: '.' :: rest,
          ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance.col⟩ :=
-      ⟨hcorr_adv1.chars_from, rfl, hcorr_adv1.end_eq, hcorr_adv1.input_prefix⟩
+      ⟨hcorr_adv1.chars_from, rfl, hcorr_adv1.end_eq, hcorr_adv1.input_prefix, hcorr_adv1.indent_cols_nonneg⟩
     have hmore2 := corr_nonempty_has_more hcorr_at2
     have hcorr_adv2 := advance_non_newline_corr
       ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance
@@ -629,7 +633,7 @@ theorem scanDocumentEnd_prod (sc : ScannerState) (sp : SurfPos)
         ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance.advance
         ⟨'.' :: rest,
          ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance.advance.col⟩ :=
-      ⟨hcorr_adv2.chars_from, rfl, hcorr_adv2.end_eq, hcorr_adv2.input_prefix⟩
+      ⟨hcorr_adv2.chars_from, rfl, hcorr_adv2.end_eq, hcorr_adv2.input_prefix, hcorr_adv2.indent_cols_nonneg⟩
     have hmore3 := corr_nonempty_has_more hcorr_at3
     have hcorr_adv3 := advance_non_newline_corr
       ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance.advance
@@ -647,7 +651,7 @@ theorem scanDocumentEnd_prod (sc : ScannerState) (sp : SurfPos)
                 have h2 := hcorr_adv2.col_eq
                 have h3 := hcorr_adv3.col_eq
                 dsimp only [] at *; omega,
-             hcorr_adv3.end_eq, hcorr_adv3.input_prefix⟩
+             hcorr_adv3.end_eq, hcorr_adv3.input_prefix, hcorr_adv3.indent_cols_nonneg⟩
     split at hok
     · have h := Except.ok.inj hok; subst h; exact mk_corr
     · have h := Except.ok.inj hok; subst h; exact mk_corr

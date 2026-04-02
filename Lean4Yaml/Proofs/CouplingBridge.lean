@@ -214,6 +214,18 @@ structure ScannerSurfCorr (sc : ScannerState) (sp : SurfPos) : Prop where
   col_eq : sp.col = sc.col
   end_eq : sc.inputEnd = sc.input.utf8ByteSize
   input_prefix : ∃ pre, sc.input.toList = pre ++ sp.chars ∧ listByteSize pre = sc.offset
+  indent_cols_nonneg : ∀ (i : Nat) (hi : i < sc.indents.size), i > 0 → sc.indents[i].column ≥ 0
+
+-- Derive `currentIndent ≥ 0` from `ScannerSurfCorr` when indent stack has non-sentinel entries.
+theorem ScannerSurfCorr.currentIndent_nonneg {sc : ScannerState} {sp : SurfPos}
+    (hcorr : ScannerSurfCorr sc sp) (hne : sc.indents.size > 1) :
+    sc.currentIndent ≥ 0 := by
+  simp only [ScannerState.currentIndent]
+  have hback : sc.indents.back? = some sc.indents[sc.indents.size - 1] := by
+    rw [Array.back?_eq_getElem?]
+    simp [Array.getElem?_eq_getElem (by omega : sc.indents.size - 1 < sc.indents.size)]
+  rw [hback]
+  exact hcorr.indent_cols_nonneg _ (by omega) (by omega)
 
 /-- CharsFromOffset is a function: given `input` and `offset`, the
     character list is uniquely determined. -/
@@ -250,7 +262,8 @@ theorem initial_corr (input : String) (cs : List Char)
     (hcs : CharsFromOffset input 0 cs) :
     ScannerSurfCorr (ScannerState.mk' input) ⟨cs, 0⟩ :=
   have heq : cs = input.toList := CharsFromOffset_unique hcs (chars_from_zero_toList input)
-  ⟨hcs, rfl, rfl, ⟨[], by subst heq; exact ⟨rfl, rfl⟩⟩⟩
+  ⟨hcs, rfl, rfl, ⟨[], by subst heq; exact ⟨rfl, rfl⟩⟩,
+   fun i hi h0 => by simp [ScannerState.mk'] at hi; omega⟩
 
 /-! ## §3 Peek/EOF Correspondence -/
 
@@ -520,6 +533,13 @@ theorem advance_col_cr (s : ScannerState) (h : s.offset < s.inputEnd)
   · dsimp only []; simp [hnl, hcr]
   · omega
 
+theorem advance_indents (s : ScannerState) : s.advance.indents = s.indents := by
+  unfold ScannerState.advance; split
+  · dsimp only []; split
+    · rfl
+    · split <;> rfl
+  · rfl
+
 /-- Advance past non-newline, non-CR preserves correspondence. -/
 theorem advance_non_newline_corr (sc : ScannerState) (c : Char) (rest : List Char)
     (hcorr : ScannerSurfCorr sc ⟨c :: rest, sc.col⟩)
@@ -543,6 +563,8 @@ theorem advance_non_newline_corr (sc : ScannerState) (c : Char) (rest : List Cha
         exact ⟨pre ++ [c], by rw [advance_input, hsplit, List.append_assoc]; rfl,
                by rw [advance_offset_eq sc hmore, next_byteIdx, hc,
                       listByteSize_append]; simp [listByteSize]; omega⟩
+      indent_cols_nonneg := fun i hi h0 => by
+        simp only [advance_indents] at hi ⊢; exact hcorr.indent_cols_nonneg i hi h0
     }
 
 /-- Advance past `\n` preserves correspondence with column reset. -/
@@ -564,6 +586,8 @@ theorem advance_newline_corr (sc : ScannerState) (rest : List Char)
         exact ⟨pre ++ ['\n'], by rw [advance_input, hsplit, List.append_assoc]; rfl,
                by rw [advance_offset_eq sc hmore, next_byteIdx, hc,
                       listByteSize_append]; simp [listByteSize]; omega⟩
+      indent_cols_nonneg := fun i hi h0 => by
+        simp only [advance_indents] at hi ⊢; exact hcorr.indent_cols_nonneg i hi h0
     }
 
 /-- Advance past `\r` preserves correspondence with column reset. -/
@@ -585,6 +609,8 @@ theorem advance_cr_corr (sc : ScannerState) (rest : List Char)
         exact ⟨pre ++ ['\r'], by rw [advance_input, hsplit, List.append_assoc]; rfl,
                by rw [advance_offset_eq sc hmore, next_byteIdx, hc,
                       listByteSize_append]; simp [listByteSize]; omega⟩
+      indent_cols_nonneg := fun i hi h0 => by
+        simp only [advance_indents] at hi ⊢; exact hcorr.indent_cols_nonneg i hi h0
     }
 
 /-- Skip one character by raw offset increment, preserving correspondence.
@@ -608,6 +634,7 @@ theorem skip_byte_corr (sc : ScannerState) (c : Char) (rest : List Char) (col : 
         exact ⟨pre ++ [c], by rw [hsplit, List.append_assoc]; rfl,
                by rw [next_byteIdx, hc,
                       listByteSize_append]; simp [listByteSize]; omega⟩
+      indent_cols_nonneg := hcorr.indent_cols_nonneg
     }
 
 /-! ## §5 Production Coupling (Scanner → Surface) -/
@@ -733,19 +760,19 @@ theorem SIndent_gives_GStar_SSWhite {n : Nat} {s s' : SurfPos}
 theorem corr_of_comments_update {sc : ScannerState} {sp : SurfPos}
     (cs : Array (Lean4Yaml.YamlPos × String)) (hcorr : ScannerSurfCorr sc sp) :
     ScannerSurfCorr { sc with comments := cs } sp :=
-  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
 
 /-- Updating `needIndentCheck` preserves correspondence. -/
 theorem corr_of_needIndentCheck_update {sc : ScannerState} {sp : SurfPos}
     (b : Bool) (hcorr : ScannerSurfCorr sc sp) :
     ScannerSurfCorr { sc with needIndentCheck := b } sp :=
-  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
 
 /-- Updating `simpleKeyAllowed` preserves correspondence. -/
 theorem corr_of_simpleKeyAllowed_update {sc : ScannerState} {sp : SurfPos}
     (b : Bool) (hcorr : ScannerSurfCorr sc sp) :
     ScannerSurfCorr { sc with simpleKeyAllowed := b } sp :=
-  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix⟩
+  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
 
 /-! ## §10 PeekBack Reasoning -/
 
