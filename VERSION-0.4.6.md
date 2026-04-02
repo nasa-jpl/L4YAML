@@ -1104,6 +1104,9 @@ Combined effect: the indent lifting problem (`n=0 → n+1`) is **eliminated**. S
 | 4i.5 | `SSeparateLines 0` from preprocessing | ✅ done | `preprocess_some_separate_lines_0` in StreamAccum.lean; +1 sorry for unreachable `GOpt.some` case |
 | 4i.6 | Content h_closable composition | ✅ **unblocked** | Stream extension problem RESOLVED by implicitContinue spec fix + PendingNode sp_start capture (v0.4.10) |
 | 4i.7 | Wire into `accum_content_pending` | ⏳ ready | Replace `fun sp_mid h_ssl => sorry` with real closure (no longer blocked) |
+| 4i.8 | `dispatchContent_prod` — grammar evidence from dispatch | ⏳ not started | Case-split on `c` in `scanNextToken_dispatchContent`, thread `_prod` theorems per branch. Returns `SBlockNode 0 .blockIn` (or deferred builder). Quoted + block scalar branches ready; plain/anchor/tag sorry. |
+| 4i.9 | `preprocess_some_separate_lines_0` in `noPending` + col≠0 branches | ⏳ not started | Extract `SSeparateLines 0` in the `noPending` case (currently only used in col=0 branches of other PendingNode cases). Col≠0 remains sorry (layer 4k — BOM grammar gap). |
+| 4i.10 | Compose h_closable for quoted + block scalar branches | ⏳ blocked on 4i.8, 4i.9 | Full end-to-end composition: `SSeparateLines 0` + `SFlowNode 0 .flowOut` (ctx lift) + `SSLComments` → `SBlockNode.flowInBlock` → `SLBareDocument` → `SLYamlStream.implicitContinue`. Covers `'"'`, `'\''`, `'|'`, `'>'` branches. |
 
 **Reflections on 4i.0** (SIndent_split — completed 2026-04-01)
 
@@ -1191,6 +1194,50 @@ With 4i.0–4i.5 complete, all grammar building blocks are available:
 4. **Defer**: Leave h_closable sorry in place. The existing 5 sorry declarations all trace to this root cause. The grammar/context/indent issues are all resolved — the remaining blocker is purely architectural (stream extension).
 
 **Reflections on 4i.7** — unblocked by 4i.6 resolution. Wiring is straightforward: replace `fun sp_mid h_ssl => sorry` with the composed closure from 4i.6. The closure has the stream captured at construction time and needs only `SSLComments` to complete the grammar derivation.
+
+**Reflections on 4i.8** (dispatchContent_prod — analysis complete 2026-04-01)
+
+The key missing infrastructure is a `dispatchContent_prod` theorem that case-splits on the dispatched character `c` and threads grammar evidence from the individual scanner `_prod` theorems. Currently `dispatchContent_corr` (L1184) only produces `ScannerSurfCorr`, not grammar evidence. Per-branch readiness:
+
+| Dispatch branch | `_prod` theorem | Grammar evidence | Context lift? | Ready? |
+|---|---|---|---|---|
+| `'"'` double-quoted | `scanDoubleQuoted_flowNode_prod` | `SFlowNode 0 .blockIn` | `SFlowNode_doubleQ_ctx_lift` ✅ | **YES** |
+| `'\''` single-quoted | `scanSingleQuoted_flowNode_prod` | `SFlowNode 0 .blockIn` | `SFlowNode_singleQ_ctx_lift` ✅ | **YES** |
+| `'\|'`/`'>'` block scalar | `scanBlockScalar_prod` | `SCLLiteral 0` / `SCLFolded 0` | N/A (uses `SBlockNode.blockLiteral/blockFolded` directly) | **YES** |
+| plain scalar | `scanPlainScalar_prod` | Only 1-char witness; gap between grammar endpoint and scanner endpoint | `.blockIn → .flowOut` FAILS (flow indicators) | **NO** |
+| `'&'` anchor | partial `scanAnchorOrAlias_flowNode_prod` | Anchor property, not standalone node | partial | **NO** |
+| `'!'` tag | partial `scanTag_prod` | Tag property, not standalone node | partial | **NO** |
+
+The theorem should return a deferred block-node builder: `∃ sp', (SSLComments sp' sp_mid → SBlockNode 0 .blockIn sp_sep sp_mid) ∧ ScannerSurfCorr s' sp'` — i.e., given `SSLComments` it produces a `SBlockNode`. This separates dispatch-level evidence from stream-level composition. Sorry for plain/anchor/tag branches.
+
+Additional consideration: `peek?` preservation through the `allowDirectives` struct update — the _prod theorems need `sc.peek? = some c` but the dispatch state is `if s_prep.allowDirectives then {s_prep with ...} else s_prep`. Since `allowDirectives` doesn't affect the input buffer, `peek?` is preserved, but may need a trivial lemma.
+
+**Reflections on 4i.9** (preprocessing extraction + col≠0)
+
+Two sub-items:
+1. **`noPending` extraction**: `preprocess_some_separate_lines_0` is currently only called in the col=0 branches of `pendingDocEnd`/`pendingDocStart`/`pendingContent`/etc. It needs to also be called in the `noPending` case to provide `SSeparateLines 0 sp_block sp_prep` as input to the h_closable composition. This is straightforward — add the call and thread the evidence.
+
+2. **Col≠0 branches**: ALL col≠0 sorry branches across all 5+1 dispatch theorems share the same root cause: `SSeparateInLine` has no BOM-transparent constructor (layer 4k). After BOM at col≠0 with bare `#`, neither `whites` nor `startOfLine` applies. This is a grammar formalization gap affecting ~35 sorry. Resolution requires grammar definition change (`SSeparateInLine.bomPreceded` or equivalent) — deferred to layer 4k.
+
+**Reflections on 4i.10** (end-to-end composition for quoted + block scalars)
+
+The complete composition chain for quoted scalars (double/single) at col=0:
+```
+h_separate   : SSeparateLines 0 sp_block sp_prep        ← 4i.9 (preprocess extraction)
+h_flow_bi    : SFlowNode 0 .blockIn sp_prep sp_scan'    ← 4i.8 (dispatchContent_prod)
+h_flow_fo    : SFlowNode 0 .flowOut sp_prep sp_scan'    ← ctx_lift (4i.1)
+h_ssl        : SSLComments sp_scan' sp_mid               ← closure argument
+h_block      : SBlockNode 0 .blockIn sp_block sp_mid    ← flowInBlock_blockNode h_separate h_flow_fo h_ssl
+h_bare       : SLBareDocument sp_block sp_mid            ← SLBareDocument.mk h_block
+h_stream'    : SLYamlStream sp_start sp_mid              ← SLYamlStream.implicitContinue
+                 h_stream_block (GStar.nil _)
+                 (GOpt.some (SLAnyDocument.bare h_bare))
+                 (GStar.nil _)
+```
+
+For block scalars (`|`/`>`), the path is similar but uses `SBlockNode.blockLiteral`/`SBlockNode.blockFolded` instead of `flowInBlock_blockNode`. Block scalars go through `SSeparate` + properties (none) + scalar body.
+
+This covers the most common YAML content types. Plain scalars (the remaining common type) need a stronger `scanPlainScalar_prod` that covers all consumed characters AND a context lift that handles flow-indicator-free plain scalars specifically.
 
 ###### Layer 4j: Directive grammar evidence + h_closable
 
