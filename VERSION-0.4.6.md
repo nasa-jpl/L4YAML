@@ -1352,7 +1352,9 @@ Subsumes deferred 4g.3/4g.4. Full grammar evidence for block collections (`SBloc
 | 4l.1c | `preprocess_some_separate_0_anyCol` | ✅ done | General-column `SSeparateLines 0` from preprocessing (no col=0 requirement). 2 sorry subcases (inr no-break, comment-with-content) |
 | 4l.1d | Content-inside-entry composition | ✅ done | `accum_content_pending` pendingBlock: `SBlockNode.flowInBlock` composed inside h_close for double/single-quoted scalars. Other content types use sorry. |
 | 4l.2 | `SBlockSeqEntries_snoc` lemma | ✅ done | Grammar-level: append entry to existing block sequence entries. 0 sorry. |
-| 4l.3 | `unwindIndents` → BlockStack pop with finalization | ⏳ deferred | Close `SBlockSequence`/`SBlockMapping`, extend stream (requires seqLevel persistence across iterations) |
+| 4l.3a | Entry accumulation: `h_close_entry` in `pendingBlock` | ✅ done | Same-level `-` accumulates `SBlockSeqEntries` via `SBlockSeqEntries_snoc`. 0 new sorry. |
+| 4l.3b | Content-through-entry accumulation | ⏳ deferred | Thread `h_close_entry` through `pendingContent` so content-filled entries also accumulate |
+| 4l.3c | BlockStack level push/pop | ⏳ deferred | Create `BlockStack.seqLevel` on first `-`, pop on `unwindIndents` |
 
 **Reflections on 4l.1** (first block entry h_closable — completed 2026-04-02)
 
@@ -1407,7 +1409,16 @@ accum_content_pending for pendingBlock h_close_old:
 
 **4l.2**: `SBlockSeqEntries_snoc : SBlockSeqEntries n s s_mid → SIndent n s_mid s₁ → GLit '-' s₁ s₂ → GNot SNsChar s₂ → SBlockIndented n .blockIn s₂ s' → SBlockSeqEntries n s s'`. Converts `single` to `cons` or extends `cons` recursively. Proven by induction on `SBlockSeqEntries`.
 
-**4l.3 analysis**: `unwindIndents` preserves `ScannerSurfCorr` at the same position (no characters consumed). Grammar effect is indirect: indent stack pop changes which block indicators are valid in future iterations. For `BlockStack.seqLevel` finalization, need: (a) seqLevel to PERSIST across iterations (currently absorbed by `absorb_stacks`), (b) when indent decreases, close the seqLevel's accumulated entries. Requires either: modifying `absorb_stacks` to not absorb active seqLevels, or threading BlockStack through `accum_*_pending` without absorption. Architecturally significant — deferred to future session.
+**4l.3 analysis**: `unwindIndents` preserves `ScannerSurfCorr` at the same position (no characters consumed). Grammar effect is indirect: indent stack pop changes which block indicators are valid in future iterations. For `BlockStack.seqLevel` finalization, need: (a) seqLevel to PERSIST across iterations (currently absorbed by `absorb_stacks`), (b) when indent decreases, close the seqLevel's accumulated entries. The original plan required either modifying `absorb_stacks` or threading `BlockStack` through `accum_*_pending`. However, 4l.3a found a **closure-based approach** that avoids both.
+
+**4l.3a architecture**: Instead of persisting entries in `BlockStack`, entries accumulate INSIDE `pendingBlock` closures. A new field `h_close_entry` returns `SBlockSeqEntries` + a continuation (entries→stream). When the next `-` at the same level arrives:
+1. Close the old entry → `SBlockNode` → `SBlockIndented`
+2. Call `h_close_entry_old` to extract `⟨sp_first, h_entries_old, h_cont⟩`
+3. `SBlockSeqEntries_snoc h_entries_old ... h_indented_new` → extended entries
+4. New `h_close` calls `h_cont` with the snoc'd entries
+5. New `h_close_entry` returns `⟨sp_first, snoc'd_entries, h_cont⟩` for further extension
+
+This keeps `BlockStack.nil` throughout — entries are in closures, stream stays unchanged, `absorb_stacks` untouched.
 
 **Reflections on 4l.1b-d** (pendingBlock type refinement + content composition — completed 2026-04-04)
 
@@ -1431,4 +1442,30 @@ Key pattern-matching detail: constructor `single` has 6 explicit position parame
 
 Added to NodeProduction.lean §6. No sorry, no new warnings.
 
-**Reflections on 4l.3** 
+**Reflections on 4l.3** (entry accumulation — completed 2026-04-04)
+
+**The key insight**: `pendingBlock.h_close` (entry→stream) is a CLOSED closure — once composed, you can't extract the `SBlockSeqEntries` from it to snoc more entries. The solution: add a parallel `h_close_entry` closure that returns the entries AND a continuation (entries→stream). The continuation is the same context-closure that `h_close` uses internally, but exposed for reuse.
+
+**Type change to `PendingNode.pendingBlock`**:
+```lean
+| pendingBlock (sp_start sp_block sp_scan : SurfPos)
+    (h_close : ∀ sp_mid, SBlockNode 0 .blockIn sp_scan sp_mid → SLYamlStream sp_start sp_mid)
+    (h_close_entry : ∀ sp_mid, SBlockNode 0 .blockIn sp_scan sp_mid →
+      ∃ sp_first,
+        SBlockSeqEntries 0 sp_first sp_mid ∧
+        (∀ sp_end, SBlockSeqEntries 0 sp_first sp_end → SLYamlStream sp_start sp_end))
+```
+
+**Why closures for entry accumulation instead of `BlockStack`**: The closure-based approach avoids changing `BlockStack`, `absorb_stacks`, or any of the `accum_step_*` wrappers. Entries are invisible to the main loop — the stream position doesn't advance until the sequence is finalized. All accumulation happens inside the `pendingBlock` closures, which are recreated on each same-level `-`.
+
+**Position invariant**: The stream stays at `sp_block` (the position BEFORE the first entry's SSLComments). The first entry's opener evidence (SIndent, GLit, GNot), preamble (GOpt, SSLComments), and document context (stream) are all captured in the continuation `h_cont`. Each iteration snocs one entry.
+
+**Proven case**: `pendingBlock → accum_block_pending → pendingBlock` at col=0 with `-`, nil whitespace, none comment. Uses `dispatchBlockEntry_full_prod` for the new entry's opener evidence, `SBlockSeqEntries_snoc` for accumulation, and the existing `h_cont` for the stream context.
+
+**Gotcha — `rename_i` vs named patterns**: `| pendingBlock h_close_old _ =>` in `cases ... with` doesn't work — Lean can't bind the fields as named patterns in this context. Must use `| pendingBlock => rename_i h_close_old _` instead. This is specific to `cases ... with` (named patterns work fine in `match`).
+
+**Build**: 415/415, 10 sorry warnings (unchanged).
+
+**Remaining work**:
+- **4l.3b (deferred)**: Thread `h_close_entry` through `pendingContent` so that `- "hello"\n- "world"\n` accumulates both entries (currently, content-filled entries close to stream via `h_close_old`).
+- **4l.3c (deferred)**: `BlockStack.seqLevel` push/pop for indent-based finalization. Still needed for nested sequences and `unwindIndents` — the closure approach handles same-level accumulation but not cross-level finalization.
