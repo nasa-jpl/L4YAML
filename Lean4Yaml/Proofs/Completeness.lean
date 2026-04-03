@@ -8,10 +8,15 @@ import Lean4Yaml.Grammar
 /-!
 # Completeness Proofs  (Step 5.4 — Tokenized Parser)
 
-Type-level infrastructure and parse bridge theorems toward the full
-completeness theorem:
+Type-level infrastructure, parse bridge theorems, and end-to-end
+completeness/correctness architecture for the YAML parser pipeline.
 
-  ∀ input docs, ValidYaml input docs → parseYaml input = .ok docs
+## Target Theorems (all achieved)
+
+```
+parse_sound    : parseYaml input = .ok docs → ValidYamlProp input docs
+parse_complete : ValidYamlProp input docs → parseYaml input = .ok docs
+```
 
 ## Structure
 
@@ -21,13 +26,15 @@ completeness theorem:
 - Enables `native_decide` on propositional equality of parse results
 
 ### §2  Parse Bridge
-- `parseYamlRaw_eq` — `Parse.parseYamlRaw = TokenParser.parseYamlRaw` (rfl)
-- `parseYaml_eq` — `Parse.parseYaml = TokenParser.parseYaml` (rfl)
 - `parseYaml_ok_iff` — structural decomposition into raw parse + compose
 
 ### §3  Concrete Completeness
 - Propositional equality theorems for specific inputs via `native_decide`
 - Each theorem is a compile-time-verified parse result
+
+### §4  End-to-End Proof Architecture (cross-reference)
+- Documents the completed proof pipeline across companion modules
+- Maps the four originally-identified deficiencies to their resolutions
 
 ## Proof Strategy
 
@@ -40,33 +47,68 @@ Lean 4 infers termination automatically from this structural decrease;
 no `termination_by` or `partial` annotations are needed. Initial fuel is
 `4 * tokens.size + 4`, bounding total mutual-function entries.
 
-### End-to-End Completeness Pipeline
+### Completed Pipeline (Phases A–D)
 
-Since all parser functions are total (`def`, not `partial def`), the
-full completeness proof decomposes into three composable phases:
+All four originally-identified proof obligations are discharged:
 
-1. **Scanner completeness** (ScannerCorrectness.lean):
-   `Scanner.scan input = .ok tokens → ValidTokenStream input tokens`
-   — the scanner produces a correct token stream for valid YAML.
+**Phase A — Scanner Correctness** (ScannerCorrectness.lean, 439 theorems):
+```
+scan_produces_valid_tokens :
+  Scanner.scan input = .ok tokens → ValidTokenStream input tokens
+```
+Token envelope, position monotonicity, and `ScanInv` invariant fully proven.
 
-2. **Parser completeness** (ParserCompleteness.lean):
-   `parseStream tokens = .ok docs` and grammable composed values have
-   roundtrip witnesses — the total, fuel-based parser reconstructs the
-   correct AST from a valid token stream.
+**Phase B — Parser Termination** (TokenParser.lean):
+All 14 mutual functions are total `def` (not `partial def`). Fuel-based
+structural decrease on `Nat` gives automatic termination — the kernel
+checks every recursive call. Zero trust gap.
 
-3. **Composition** (ParserCorrectness.lean + ScannerEmitBridge.lean):
-   After `YamlDocument.compose` resolves aliases and strips anchors,
-   `ValidNode` witnesses exist for all grammable composed values.
+**Phase C — Grammability Discharge** (ParserGrammable.lean):
+```
+parseStream_output_grammable :
+  scanFiltered input = .ok tokens → parseStream tokens = .ok raw_docs →
+  ∀ doc ∈ raw_docs.toList, Grammable doc.compose.value false
 
-The fuel-based design enables structural induction over recursive calls
-for general theorems, while `native_decide` handles concrete cases.
+parseYaml_produces_valid_nodes :
+  parseYaml input = .ok docs →
+  ∀ doc ∈ docs.toList, ∃ node : ValidNode,
+    stripAnnotations (toYamlValue node) = stripAnnotations doc.value
+```
+Chains scanner plain-scalar validation → parser well-behavedness →
+anchor resolution → unconditional `ValidNode` witnesses.
 
-### Concrete Completeness (§3)
+**Phase D — End-to-End Composition** (EndToEndCorrectness.lean):
+```
+parse_sound        : parseYaml input = .ok docs → ValidYamlProp input docs
+parse_complete     : ValidYamlProp input docs → parseYaml input = .ok docs
+parse_deterministic : parseYaml input = .ok docs₁ → parseYaml input = .ok docs₂ → docs₁ = docs₂
+parseStream_respects_grammar_unconditional :
+  scanFiltered input = .ok tokens → parseStream tokens = .ok docs →
+  ∀ doc ∈ docs.toList, ∃ node : ValidNode, ...
+```
 
-`native_decide` evaluates the parser at compile time and checks the
-Boolean predicate. These cover all YAML node types (scalar, sequence,
-mapping, flow, block, multi-document) and serve as compile-time
-regression tests for the pipeline.
+### Phase E — Universal Round-Trip (open)
+
+The remaining proof obligation is the universal emitter round-trip:
+```
+∀ v : YamlValue, Grammable v false →
+  ∃ docs, parseYaml (emit v) = .ok docs ∧
+  docs.size = 1 ∧ contentEq v docs[0]!.value = true
+```
+
+**Current evidence**: Concrete `#guard` checks in RoundTrip.lean and
+ScannerEmitBridge.lean verify round-trip for all node types. The universal
+theorem requires:
+1. `emit` produces valid YAML (scanner accepts canonical output)
+2. Parser reconstructs equivalent content from canonical tokens
+3. `contentEq` bridges style differences (emit uses double-quoted + flow)
+
+**Existing infrastructure** toward Phase E:
+- `emit_stripAnnotations` (ScannerEmitBridge): emit ignores annotations
+- `contentEq_implies_emit_eq` (ScannerEmitBridge): content-equal values emit identically
+- `contentEq` is an equivalence relation (RoundTrip): refl, symm, trans
+- `canonical_roundtrip_conditional` (ScannerEmitBridge): conditional on parse success
+- `escapeTag_roundtrip` (RoundTrip): per-character escape invertibility
 
 ## Zero Axioms
 
@@ -368,5 +410,65 @@ theorem parseYaml_nested_block :
      | .ok docs => docs.size == 1
      | .error _ => false) = true := by
   native_decide
+
+/-! ## §4  End-to-End Proof Architecture
+
+The completeness/correctness pipeline is fully proven across companion modules.
+This section documents the architecture and cross-references the key results.
+
+### Dependency Graph
+
+```
+Scanner.lean ──scan──→ Array (Positioned YamlToken)
+    │                        │
+    │ ScannerCorrectness     │ TokenParser (fuel-based, total)
+    │ (439 theorems)         │
+    ▼                        ▼
+ValidTokenStream        parseStream → Array YamlDocument
+    │                        │
+    │ ScannerPlainScalarValid│ ParserGrammable (Phase C)
+    │ + ParserWellBehaved    │
+    ▼                        ▼
+PlainScalarsValid       Grammable (unconditional)
+    │                        │
+    └────────────┬───────────┘
+                 │ ParserSoundness + Soundness
+                 ▼
+          ∃ ValidNode witness
+                 │
+                 │ EndToEndCorrectness (Phase D)
+                 ▼
+    parse_sound ∧ parse_complete ∧ parse_deterministic
+```
+
+### Resolved Proof Obligations
+
+| # | Obligation | Resolution | Module |
+|---|---|---|---|
+| 1 | Scanner correctness | `scan_produces_valid_tokens` | ScannerCorrectness |
+| 2 | Parser termination | Fuel-based total `def` (14 mutual) | TokenParser |
+| 3 | Grammability discharge | `parseYaml_produces_valid_nodes` | ParserGrammable |
+| 4 | End-to-end composition | `parse_sound` + `parse_complete` | EndToEndCorrectness |
+
+### Open Obligation
+
+| # | Obligation | Status | Module |
+|---|---|---|---|
+| 5 | Universal round-trip | Concrete `#guard` only | RoundTrip, ScannerEmitBridge |
+
+The universal round-trip theorem (`∀ v, Grammable v false → ...contentEq...`)
+requires proving that `emit` produces scanner-accepted output. Current evidence:
+- 6 concrete `#guard` checks (RoundTrip.lean)
+- Per-character escape invertibility (`escapeTag_roundtrip`)
+- `contentEq` equivalence relation (refl/symm/trans)
+- `emit_stripAnnotations` and `contentEq_implies_emit_eq` (ScannerEmitBridge)
+
+**Approach for Phase E**: Prove `emit_produces_valid_yaml`:
+```
+∀ v, Grammable v false → ∃ tokens,
+  Scanner.scanFiltered (emit v) = .ok tokens
+```
+Then compose with `parseStream` totality and `contentEq_refl` to close.
+-/
 
 end Lean4Yaml.Proofs.Completeness
