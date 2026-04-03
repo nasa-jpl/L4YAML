@@ -1855,7 +1855,7 @@ theorem dispatchContent_singleQuoted_prod (sc : ScannerState) (sp : SurfPos)
 -- Content dispatch for alias: returns `SFlowNode 0 .flowOut` grammar evidence.
 -- Alias is context-free: `SCNsAliasNode` has no `n`/`c` dependency, so
 -- `alias_flowNode` lifts directly to any desired context.
--- The `sp_mid ≠ sp'` (non-empty name) condition is sorry'd for the degenerate case.
+-- Since A10 Except conversion, `.ok` guarantees non-empty name unconditionally.
 theorem dispatchContent_alias_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
@@ -1880,13 +1880,9 @@ theorem dispatchContent_alias_prod (sc : ScannerState) (sp : SurfPos)
         | ok s_anch =>
           dsimp only [] at hok
           simp only [Except.ok.injEq] at hok; subst hok
-          obtain ⟨sp_mid, sp', h_glit, h_gstar, h_alias, hcorr'⟩ :=
+          obtain ⟨sp', h_alias, hcorr'⟩ :=
             scanAnchorOrAlias_aliasNode_prod sc sp hcorr hpeek s_anch h_alias
-          by_cases hne : sp_mid ≠ sp'
-          · exact ⟨sp', alias_flowNode (h_alias hne), hcorr'⟩
-          · -- Degenerate case: empty alias name after '*'.
-            -- Scanner accepted it but spec requires ≥1 anchor char.
-            exact ⟨sp', sorry, hcorr'⟩
+          exact ⟨sp', alias_flowNode h_alias, hcorr'⟩
     · rename_i h_neq; exact absurd rfl h_neq
 
 -- Content dispatch for block scalar: returns `SCLLiteral 0 ∨ SCLFolded 0` grammar evidence.
@@ -1989,8 +1985,9 @@ theorem dispatchContent_plainScalar_prod (sc : ScannerState) (sp : SurfPos)
                 simp at hok
 
 -- Content dispatch for anchor: returns `SFlowNode 0 .flowOut` grammar evidence.
+-- Content dispatch for anchor: returns `SFlowNode 0 .flowOut` grammar evidence.
 -- Anchor `&name` produces `SCNsAnchorProperty` → `SCNsProperties.anchorFirst` → `SFlowNode.propsEmpty`.
--- Sorry for degenerate empty anchor name (scanner accepts `& `, grammar requires ≥1 char).
+-- Since A10 Except conversion, `.ok` guarantees non-empty name unconditionally.
 theorem dispatchContent_anchor_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
@@ -2007,17 +2004,11 @@ theorem dispatchContent_anchor_prod (sc : ScannerState) (sp : SurfPos)
     | ok s_anch =>
       change Except.ok _ = Except.ok s' at hok
       have h := Except.ok.inj hok; subst h
-      obtain ⟨sp_mid, sp', h_glit, h_gstar, h_anchor, hcorr'⟩ :=
+      obtain ⟨sp', h_anchor, hcorr'⟩ :=
         scanAnchorOrAlias_anchorProp_prod sc sp hcorr hpeek s_anch h_anch
-      by_cases hne : sp_mid ≠ sp'
-      · -- Non-empty anchor name: build SFlowNode.propsEmpty from SCNsProperties.anchorFirst
-        exact ⟨sp', SFlowNode.propsEmpty 0 .flowOut sp sp'
-          (SCNsProperties.anchorFirst 0 .flowOut sp sp' sp' (h_anchor hne) (GOpt.none _)),
-          ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
-      · -- Degenerate case: empty anchor name after '&'.
-        -- Scanner accepted it but spec requires ≥1 anchor char.
-        exact ⟨sp', sorry,
-          ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
+      exact ⟨sp', SFlowNode.propsEmpty 0 .flowOut sp sp'
+        (SCNsProperties.anchorFirst 0 .flowOut sp sp' sp' h_anchor (GOpt.none _)),
+        ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
   · rename_i h_neq; exact absurd rfl h_neq
 
 -- Content dispatch for tag: returns `SFlowNode 0 .flowOut` grammar evidence.
