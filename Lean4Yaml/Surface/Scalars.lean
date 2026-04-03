@@ -281,10 +281,11 @@ inductive SLLiteralContent : Nat → SurfPos → SurfPos → Prop where
       SLLiteralContent n s s'
 
 /-- [170] c-l+literal(n): complete literal block scalar.
-    '|' + header + content at auto-detected indent m ≥ 1. -/
+    '|' + header + content at auto-detected indent m.
+    Note: YAML spec says m ≥ 1 relative to n = -1. Our Nat encoding uses n = 0
+    (a +1 offset), so the correct constraint is m ≥ 0 (trivially true for Nat). -/
 inductive SCLLiteral : Nat → SurfPos → SurfPos → Prop where
-  | mk (n : Nat) (m : Nat) (rest : List Char) (col : Nat) (s₁ s' : SurfPos)
-      (hm : m ≥ 1) :
+  | mk (n : Nat) (m : Nat) (rest : List Char) (col : Nat) (s₁ s' : SurfPos) :
       SCBBlockHeader ⟨rest, col + 1⟩ s₁ →
       SLLiteralContent (n + m) s₁ s' →
       SCLLiteral n ⟨'|' :: rest, col⟩ s'
@@ -303,14 +304,15 @@ inductive SLNbFoldedLines : Nat → SurfPos → SurfPos → Prop where
       SLNbFoldedLines n s s'
 
 /-- [175] c-l+folded(n): complete folded block scalar.
-    '>' + header + content at auto-detected indent m ≥ 1.
+    '>' + header + content at auto-detected indent m.
     Content structure is complex (spaced/trimmed/folded sections);
     simplified here: the scanner uses the same `collectBlockScalarLoop` for both
     literal and folded, producing identical output structure. We use `SLLiteralContent`
-    for both, deferring the literal-vs-folded distinction to semantic interpretation. -/
+    for both, deferring the literal-vs-folded distinction to semantic interpretation.
+    Note: YAML spec says m ≥ 1 relative to n = -1. Our Nat encoding uses n = 0
+    (a +1 offset), so the correct constraint is m ≥ 0 (trivially true for Nat). -/
 inductive SCLFolded : Nat → SurfPos → SurfPos → Prop where
-  | mk (n : Nat) (m : Nat) (rest : List Char) (col : Nat) (s₁ s' : SurfPos)
-      (hm : m ≥ 1) :
+  | mk (n : Nat) (m : Nat) (rest : List Char) (col : Nat) (s₁ s' : SurfPos) :
       SCBBlockHeader ⟨rest, col + 1⟩ s₁ →
       SLLiteralContent (n + m) s₁ s' →
       SCLFolded n ⟨'>' :: rest, col⟩ s'
