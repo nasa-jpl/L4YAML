@@ -1300,6 +1300,7 @@ theorem collectPlainScalarLoop_prod (sc : ScannerState) (sp : SurfPos)
     (sp_ent : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (h_ws : GStar SSWhite sp_ent sp)
+    (h_hash_col : sc.peek? = some '#' → spaces.length = 0 → sc.col > 0)
     {result : PlainScalarResult}
     (hok : collectPlainScalarLoop sc content spaces fuel false contentIndent inputEnd
            = .ok result) :
@@ -1346,6 +1347,7 @@ theorem collectPlainScalarLoop_prod (sc : ScannerState) (sp : SurfPos)
               · exact SSWhite.tab rest sc.col
             exact ih sc.advance ⟨rest, sc.col + 1⟩ content (spaces.push c) sp_ent
               hcorr_adv (gstar_sswhite_append h_ws (GStar.cons _ _ _ hw (GStar.nil _)))
+              (fun _ hlen => by simp [String.length_push] at hlen)
               hok
           · -- not whitespace
             split at hok
@@ -1380,19 +1382,28 @@ theorem collectPlainScalarLoop_prod (sc : ScannerState) (sp : SurfPos)
                   exact SNsPlainChar.colonSafe .blockIn '_' n rest' sc.col
                     (not_blank_to_nsChar hnb)
                 · by_cases hhash : c = '#'
-                  · -- '#' at col=0: unreachable (# is indicator, excluded by
-                    -- canStartPlainScalarBool; after any content char col ≥ 1)
+                  · -- '#' at col=0: use h_hash_col precondition
                     subst hhash
-                    exact if h : sc.col > 0
-                      then SNsPlainChar.hashAfterNs .blockIn rest sc.col h
-                      else sorry
+                    have h_sp_zero : spaces.length = 0 := by
+                      suffices ¬(spaces.length > 0) by omega
+                      intro h_pos
+                      have h_dec : decide (spaces.length > 0) = true :=
+                        decide_eq_true_eq.mpr h_pos
+                      unfold collectPlainScalar_terminates? at h_term_none
+                      simp [h_dec] at h_term_none
+                    have h_col_pos : sc.col > 0 := h_hash_col hpeek h_sp_zero
+                    exact SNsPlainChar.hashAfterNs .blockIn rest sc.col h_col_pos
                   · -- safe: not ':' and not '#'
                     exact SNsPlainChar.safe .blockIn c rest sc.col
                       (isPlainSafe_to_nsPlainSafe_blockIn h_safe) hcolon hhash
               -- Recursive call with empty WS accumulator
               obtain ⟨sp_entries, sp', h_ent_rest, h_ws_rest, hcorr_rest⟩ :=
                 ih sc.advance ⟨rest, sc.col + 1⟩ _ "" ⟨rest, sc.col + 1⟩
-                  hcorr_adv (GStar.nil _) hok
+                  hcorr_adv (GStar.nil _)
+                  (fun _ _ => by
+                    have h : sc.col + 1 = sc.advance.col := hcorr_adv.col_eq
+                    omega)
+                  hok
               exact ⟨sp_entries, sp',
                 GStar.cons sp_ent ⟨rest, sc.col + 1⟩ sp_entries
                   (SNbNsPlainInLineEntry.mk .blockIn sp_ent ⟨c :: rest, sc.col⟩
@@ -1505,7 +1516,16 @@ theorem scanPlainScalar_to_flowNode (sc : ScannerState) (sp : SurfPos)
     -- Loop production: entries + trailing WS + corr
     obtain ⟨sp_entries, sp', h_entries, h_trail, hcorr_result⟩ :=
       collectPlainScalarLoop_prod sc ⟨c :: rest, sc.col⟩ "" "" _ _ _
-        ⟨c :: rest, sc.col⟩ hcorr (GStar.nil _) hloop
+        ⟨c :: rest, sc.col⟩ hcorr (GStar.nil _)
+        (fun h_hash_peek _ => by
+          have hceq : c = '#' := by rw [hpeek] at h_hash_peek; injection h_hash_peek
+          subst hceq
+          unfold canStartPlainScalarBool at hstart
+          split at hstart
+          · rename_i h_exc; exact absurd h_exc (by decide)
+          · have : isIndicatorBool '#' = true := by native_decide
+            simp [this] at hstart)
+        hloop
     -- Analyze entries
     match h_entries with
     | GStar.nil _ =>
@@ -2247,7 +2267,6 @@ theorem scanBlockScalarBody_literal_prod (sc_orig sc_after_nl : ScannerState)
     (sp : SurfPos) (chomp : ChompStyle) (explicitOffset : Option Nat)
     (startPos : YamlPos) {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc_after_nl sp)
-    (hOff : ∀ d, explicitOffset = some d → d ≥ 1)
     (hok : scanBlockScalarBody sc_orig sc_after_nl chomp explicitOffset true startPos = .ok s') :
     ∃ sp' contentIndent,
       SLLiteralContent contentIndent sp sp' ∧ ScannerSurfCorr s' sp' := by
@@ -2290,7 +2309,6 @@ theorem scanBlockScalarBody_folded_prod (sc_orig sc_after_nl : ScannerState)
     (sp : SurfPos) (chomp : ChompStyle) (explicitOffset : Option Nat)
     (startPos : YamlPos) {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc_after_nl sp)
-    (hOff : ∀ d, explicitOffset = some d → d ≥ 1)
     (hok : scanBlockScalarBody sc_orig sc_after_nl chomp explicitOffset false startPos = .ok s') :
     ∃ sp' contentIndent,
       SLLiteralContent contentIndent sp sp' ∧ ScannerSurfCorr s' sp' := by
@@ -2381,10 +2399,7 @@ theorem scanBlockScalar_prod (sc : ScannerState) (sp : SurfPos)
       | cons _ sp_mid _ h_first h_rest =>
         exact whitespace_comment_break_to_SSBComment_withWS
           sp_hdr sp_mid sp_ws sp_cmt sp_nl h_first h_rest h_cmt h_brk
-    -- Step 6: offset preservation for body
-    have hOff := parseBlockHeaderLoop_offset_preserves sc.advance .clip none 2
-      (fun _ h => by cases h)
-    -- Step 7: dispatch on '|' vs '>' to construct literal or folded
+    -- Step 6: dispatch on '|' vs '>' to construct literal or folded
     rcases hchar with hlit | hfold
     · -- Literal: sc.peek? = some '|'
       obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hlit
@@ -2400,7 +2415,7 @@ theorem scanBlockScalar_prod (sc : ScannerState) (sp : SurfPos)
       have h_is_lit : (sc.peek? == some '|') = true := by rw [hlit]; decide
       rw [h_is_lit] at hok
       obtain ⟨sp_body, contentIndent, h_literal_content, hcorr_body⟩ :=
-        scanBlockScalarBody_literal_prod sc s_after_nl sp_nl _ _ _ hcorr_nl hOff hok
+        scanBlockScalarBody_literal_prod sc s_after_nl sp_nl _ _ _ hcorr_nl hok
       have h_literal_content' : SLLiteralContent (0 + contentIndent) sp_nl sp_body := by
         rw [Nat.zero_add]; exact h_literal_content
       exact ⟨sp_body,
@@ -2421,7 +2436,7 @@ theorem scanBlockScalar_prod (sc : ScannerState) (sp : SurfPos)
       have h_is_fld : (sc.peek? == some '|') = false := by rw [hfold]; decide
       rw [h_is_fld] at hok
       obtain ⟨sp_body, contentIndent, h_literal_content, hcorr_body⟩ :=
-        scanBlockScalarBody_folded_prod sc s_after_nl sp_nl _ _ _ hcorr_nl hOff hok
+        scanBlockScalarBody_folded_prod sc s_after_nl sp_nl _ _ _ hcorr_nl hok
       have h_literal_content' : SLLiteralContent (0 + contentIndent) sp_nl sp_body := by
         rw [Nat.zero_add]; exact h_literal_content
       exact ⟨sp_body,
