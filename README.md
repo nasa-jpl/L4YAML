@@ -1419,6 +1419,15 @@ See [VERSION-0.4.6.md](VERSION-0.4.6.md)
 
 </details>
 
+#### Version 0.4.7
+
+<details>
+<summary>Universal round-trip correctness (Phase E) — prove <code>∀ v, Grammable v → parseYaml (emit v) ≈ v</code></summary>
+
+See [VERSION-0.4.7.md](VERSION-0.4.7.md)
+
+</details>
+
 #### Version 0.5.0
 
 <details>
