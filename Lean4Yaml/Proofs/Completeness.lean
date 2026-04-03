@@ -454,7 +454,7 @@ PlainScalarsValid       Grammable (unconditional)
 
 | # | Obligation | Status | Module |
 |---|---|---|---|
-| 5 | Universal round-trip | Concrete `#guard` only | RoundTrip, ScannerEmitBridge |
+| 5 | Universal round-trip | Planned for v0.4.7 — see `VERSION-0.4.7.md` | RoundTrip, ScannerEmitBridge |
 
 The universal round-trip theorem (`∀ v, Grammable v false → ...contentEq...`)
 requires proving that `emit` produces scanner-accepted output. Current evidence:
