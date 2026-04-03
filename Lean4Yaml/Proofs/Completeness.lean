@@ -31,18 +31,42 @@ completeness theorem:
 
 ## Proof Strategy
 
-The tokenized parser (`TokenParser.lean`) uses `partial def` with a
-`maxDepth` guard for stack overflow protection.  There is no explicit
-`fuel : Nat` parameter.  Completeness proofs therefore take a two-phase
-form:
-1. **Scanner completeness**: `Scanner.scan input` produces a correct
-   token stream for any `ValidYaml input docs`.
-2. **Parser completeness**: `TokenParser.parseStream tokens` reconstructs
-   the correct AST from a valid token stream.
+### Termination
 
-The concrete `native_decide` theorems in §3 provide compile-time
-verification that specific inputs parse correctly, covering all YAML
-node types (scalar, sequence, mapping, flow, block, multi-document).
+The tokenized parser (`TokenParser.lean`) uses **fuel-based structural
+recursion** — all 14 mutual functions take a `fuel : Nat` parameter that
+decreases by 1 at each entry via `match fuel with | fuel + 1 => ...`.
+Lean 4 infers termination automatically from this structural decrease;
+no `termination_by` or `partial` annotations are needed. Initial fuel is
+`4 * tokens.size + 4`, bounding total mutual-function entries.
+
+### End-to-End Completeness Pipeline
+
+Since all parser functions are total (`def`, not `partial def`), the
+full completeness proof decomposes into three composable phases:
+
+1. **Scanner completeness** (ScannerCorrectness.lean):
+   `Scanner.scan input = .ok tokens → ValidTokenStream input tokens`
+   — the scanner produces a correct token stream for valid YAML.
+
+2. **Parser completeness** (ParserCompleteness.lean):
+   `parseStream tokens = .ok docs` and grammable composed values have
+   roundtrip witnesses — the total, fuel-based parser reconstructs the
+   correct AST from a valid token stream.
+
+3. **Composition** (ParserCorrectness.lean + ScannerEmitBridge.lean):
+   After `YamlDocument.compose` resolves aliases and strips anchors,
+   `ValidNode` witnesses exist for all grammable composed values.
+
+The fuel-based design enables structural induction over recursive calls
+for general theorems, while `native_decide` handles concrete cases.
+
+### Concrete Completeness (§3)
+
+`native_decide` evaluates the parser at compile time and checks the
+Boolean predicate. These cover all YAML node types (scalar, sequence,
+mapping, flow, block, multi-document) and serve as compile-time
+regression tests for the pipeline.
 
 ## Zero Axioms
 
@@ -252,8 +276,8 @@ def parseYamlEq (input : String) (expected : Array YamlDocument) : Bool :=
   | .ok docs => docs == expected
   | .error _ => false
 
--- We use Bool predicates + native_decide because YamlValue lacks
--- DecidableEq (needed for propositional equality on Except/Array).
+-- We use Bool predicates + native_decide for convenience; DecidableEq
+-- is available (§1) for propositional equality proofs when needed.
 
 /-- Plain scalar `"a"` parses successfully. -/
 theorem parseYaml_a_ok :

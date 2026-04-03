@@ -95,11 +95,17 @@ This is the **standard pattern** in the codebase:
 
 **Why conditional**: Proving the grammability hypothesis requires analyzing:
 - Scanner's `scanPlainScalar` validates `validPlainFirstProp`, `noColonSpace`, `noSpaceHash`
-- TokenParser's 7 `partial def` functions preserve token properties
+- TokenParser's 14 fuel-based mutual `def` functions preserve token properties
 - `YamlValue.resolveAliases` produces valid values
 
 This is ~200-300 lines of implementation-level proof. The conditional form
 isolates the grammar-level reasoning from implementation details.
+
+**Termination**: All parser functions are total (no `partial`). The mutual
+block uses structural decrease on a `fuel : Nat` parameter, with
+`fuel := 4 * tokens.size + 4` set at `parseDocument`. Lean 4 infers
+termination automatically from the `match fuel with | fuel + 1 => ...`
+pattern — no `termination_by` annotations needed.
 
 **Empirical validation**: 787 `#guard` checks in Proofs/SuiteGuards/*.lean
 successfully parse and compose the yaml-test-suite, providing strong evidence
