@@ -190,10 +190,50 @@ theorem scanSingleQuoted_flowNode_prod (sc : ScannerState) (sp : SurfPos)
     Note: `SSeparate n c` for non-key contexts (blockOut/blockIn/flowOut/flowIn)
     all reduce to `SSeparateLines n` definitionally. No explicit lemma needed.
 
-    Note: Plain scalar (`SNsPlain n c`) context lift does NOT hold in the
-    `.blockIn → .flowOut` direction because `isNsPlainSafe .blockIn` allows
-    flow indicator characters that `isNsPlainSafe .flowOut` forbids.
-    The reverse direction (`.flowOut → .blockIn`) holds but is not needed. -/
+    Note: Plain scalar (`SNsPlain n c`) context lift DOES hold for
+    `.blockIn → .flowOut` because `isNsPlainSafe .blockIn` and
+    `isNsPlainSafe .flowOut` are both `isNsChar ch` (same match arm).
+    It does NOT hold for `.blockIn → .flowIn` (flow indicators forbidden).
+    The general multi-line lift requires `SLEmpty` conversion
+    (`.block` → `.flow` constructor change), but for the minimal witness
+    (first char only, `GStar.nil` continuations) it's trivial.
+    `SNsPlain_blockIn_to_flowOut_minimal` handles the minimal-witness case. -/
+
+-- Plain scalar first-char context lift: `.blockIn → .flowOut`.
+-- Works because `isNsPlainSafe .blockIn ch = isNsPlainSafe .flowOut ch` definitionally.
+theorem SNsPlainFirst_blockIn_to_flowOut {s s' : SurfPos}
+    (h : SNsPlainFirst .blockIn s s') : SNsPlainFirst .flowOut s s' := by
+  cases h with
+  | nonIndicator ch rest col hSafe hNotInd =>
+    exact SNsPlainFirst.nonIndicator .flowOut ch rest col hSafe hNotInd
+  | dashSafe next rest col hSafe =>
+    exact SNsPlainFirst.dashSafe .flowOut next rest col hSafe
+  | colonSafe next rest col hSafe =>
+    exact SNsPlainFirst.colonSafe .flowOut next rest col hSafe
+  | questionSafe next rest col hSafe =>
+    exact SNsPlainFirst.questionSafe .flowOut next rest col hSafe
+
+-- Plain scalar minimal witness context lift: `.blockIn → .flowOut`.
+-- Works for the minimal witness from `scanPlainScalar_prod` which has
+-- `GStar.nil` for both inline entries and continuation lines.
+-- Converts: SNsPlainMultiLine.mk 0 .blockIn s s₁ s₁
+--             (SNsPlainOneLine.mk .blockIn s s₁ s₁ h_first (GStar.nil _))
+--             (GStar.nil _)
+-- to the .flowOut version.
+theorem SNsPlain_blockIn_to_flowOut_minimal {s s₁ : SurfPos}
+    (h_first : SNsPlainFirst .blockIn s s₁) :
+    SNsPlain 0 .flowOut s s₁ :=
+  SNsPlainMultiLine.mk 0 .flowOut s s₁ s₁
+    (SNsPlainOneLine.mk .flowOut s s₁ s₁
+      (SNsPlainFirst_blockIn_to_flowOut h_first) (GStar.nil _))
+    (GStar.nil _)
+
+-- Plain scalar → SFlowNode context lift for minimal witness.
+-- Composes: SNsPlainFirst .blockIn → SNsPlain 0 .flowOut → SFlowContent → SFlowNode.
+theorem SFlowNode_plain_blockIn_to_flowOut_minimal {s s₁ : SurfPos}
+    (h_first : SNsPlainFirst .blockIn s s₁) :
+    SFlowNode 0 .flowOut s s₁ :=
+  flowContent_flowNode (plain_flowContent (SNsPlain_blockIn_to_flowOut_minimal h_first))
 
 -- [107] c-double-quoted context lift: any non-flowKey → any non-flowKey (same n).
 -- SNbDoubleText n c reduces to SNbDoubleMultiLine n for all c ≠ .flowKey.

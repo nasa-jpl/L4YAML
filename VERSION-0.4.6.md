@@ -12,12 +12,12 @@ Extend Phase B's `scanDoubleQuoted_prod` pattern to the remaining three content 
 | Theorem | Scanner function | Surface type produced | Status |
 |---|---|---|---|
 | `scanSingleQuoted_prod` | `collectSingleQuotedLoop` → `scanSingleQuoted` | `SCSingleQuoted 0 .blockIn` | **Done** (163 lines, 0 sorry) |
-| `scanPlainScalar_prod` | `collectPlainScalarLoop` → `scanPlainScalar` | `SNsPlain 0 .blockIn` (= `SNsPlainMultiLine`) | Not started |
+| `scanPlainScalar_prod` | `collectPlainScalarLoop` → `scanPlainScalar` | `SNsPlain 0 .blockIn` (= `SNsPlainMultiLine`) | **Done** (minimal 1-char witness, 0 sorry) |
 | `scanBlockScalar_prod` | `collectBlockScalarLoop` → `scanBlockScalar` | `SCLLiteral 0` / `SCLFolded 0` | **Done** (0 sorry) |
 
 **File:** [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) — extends existing Phase B infrastructure, reuses `peek_some_sp`, `advance_corr`, `consumeNewline_sbreak_corr`, `foldQuotedNewlines_prod`.
 
-**Sorry status:** 1 sorry in ScalarProduction.lean (`scanPlainScalar_prod`). Build: 415/415 jobs, 0 errors.
+**Sorry status:** 0 sorry in ScalarProduction.lean. Build: 415/415 jobs, 0 errors, 13 sorry warnings (all in StreamAccum.lean).
 
 <details>
 <summary>scanSingleQuoted_prod — completed 2026-03-29</summary>
@@ -1600,18 +1600,68 @@ Three architectural changes are needed before tackling the content categories. E
 - **Scanner validation gaps surface**: The `sp_mid ≠ sp'` condition (name non-emptiness) can't be proven from the current scanner because: (a) `collectAnchorNameLoop` can return `""`, (b) the `definedAnchors` list can contain `""` from prior `& ` sequences, (c) the theorem `collectAnchorNameLoop_prod` doesn't relate the string name to the `GStar` extent. Adding a scanner invariant (`∀ a ∈ definedAnchors, a ≠ ""`) or a correlation theorem (`name.length > 0 ↔ sp_mid ≠ sp'`) would close this sorry but requires additional infrastructure.
 - **Pattern established for remaining content types**: The `by_cases hc_alias : c = '*'` pattern inside `accum_content_pending` is now proven for 3 content types (`'"'`, `'\''`, `'*'`). Each new content type adds ~15-20 lines of wiring plus a `dispatch_*_prod` theorem.
 
-#### Category 1: Other content types (~6 sorry sites in `accum_content_pending`)
+#### Category 1: Other content types
 
-Only double-quoted (`'"'`), single-quoted (`'\''`), and alias (`'*'`) have full grammar production proofs. Other content types need per-type `_prod` theorems:
+`dispatchContent_evidence` (Wadler-style unified extraction) now handles ALL content types uniformly:
 
-| Content type | Scanner function | Grammar production | Blocker | Priority |
-|---|---|---|---|---|
-| Block scalar `\|`/`>` | `scanBlockScalar` | `SCLLiteral`/`SCLFolded` | `currentIndent ≥ 0` fails at top level (`-1`) | Medium |
-| Plain scalar | `scanPlainScalar` | Only 1-char witness exists | `.blockIn → .flowOut` context lift fails (flow indicators) | Medium |
-| Anchor `&` | `scanAnchorOrAlias` | Anchor property, not standalone node | Need node property composition | Low |
-| Tag `!` | `scanTag` | Tag property, not standalone node | Need node property composition | Low |
+| Content type | Grammar production | Status |
+|---|---|---|
+| Double-quoted `"` | `SCDoubleQuoted 0 .blockIn` → `SFlowNode 0 .flowOut` | ✅ Sorry-free |
+| Single-quoted `'` | `SCSingleQuoted 0 .blockIn` → `SFlowNode 0 .flowOut` | ✅ Sorry-free |
+| Alias `*` | `SCNsAliasNode` → `SFlowNode 0 .flowOut` | ✅ 1 sorry (empty alias name) |
+| Block scalar `\|`/`>` | `SCLLiteral 0` / `SCLFolded 0` | ✅ 2 sorry (`currentIndent ≥ 0`) |
+| Plain scalar | `SNsPlain 0 .blockIn` → `SFlowNode 0 .flowOut` | **NEW** — 1 sorry (full-scan grammar gap) |
+| Anchor `&` | Node property, not standalone | 1 sorry (grammar production) |
+| Tag `!` | Node property, not standalone | 1 sorry (grammar production) |
 
-**Recommended next**: Block scalar or plain scalar support, as they're the most common non-quoted content types.
+**Recommended next**: Anchor `&` and tag `!` grammar production; `currentIndent ≥ 0` invariant proof.
+
+##### Accomplishments on Category 1
+
+**A5 — Wadler-style refactoring of `accum_content_pending` + plain scalar wiring** (2026-04-06)
+
+1. **Plain scalar context lift theorems** (NodeProduction.lean, 3 theorems, 0 sorry):
+   - `SNsPlainFirst_blockIn_to_flowOut`: Cases on all 4 constructors, rebuilds with `.flowOut`. Works because `isNsPlainSafe .blockIn` and `isNsPlainSafe .flowOut` are definitionally equal (same match arm in definition: both = `isNsChar ch`).
+   - `SNsPlain_blockIn_to_flowOut_minimal`: Wraps first-char lift into minimal `SNsPlainMultiLine 0 .flowOut` with `GStar.nil` continuations.
+   - `SFlowNode_plain_blockIn_to_flowOut_minimal`: Composes through `plain_flowContent` + `flowContent_flowNode`.
+   - **Key insight**: The existing note in NodeProduction.lean claiming `.blockIn → .flowOut` lift "does NOT hold" was WRONG. Corrected.
+
+2. **`dispatchContent_plainScalar_prod`** (~45 lines, 1 sorry): New theorem returning `∃ sp', SFlowNode 0 .flowOut sp sp' ∧ ScannerSurfCorr s' sp'`. Navigates past character guards (`&`, `*`, `!`, `|`/`>`, `"`, `'`) to reach `canStartPlainScalarBool` branch. Sorry for full-scan grammar coverage — `scanPlainScalar_prod` returns a 1-char minimal witness `SNsPlain 0 .blockIn` whose endpoint `sp_gram` differs from scanner endpoint `sp'`.
+
+3. **`dispatchContent_evidence`** (Wadler-style unified extraction, ~40 lines, 1 sorry declaration containing 3 sorry sites): Produces `SFlowNode 0 .flowOut ∨ (SCLLiteral 0 ∨ SCLFolded 0)` for ANY content dispatch. Delegates to per-type `_prod` theorems for `"`, `'`, `*`, `|`/`>`, and plain scalar; uses sorry for `&` and `!` (anchor/tag grammar production deferred).
+
+4. **Refactored `accum_content_pending`**: Replaced duplicated evidence extraction cascades in `noPending` col=0 and `pendingBlock` with single calls to `dispatchContent_evidence`. Each case now has two branches (flow content vs block scalar) instead of 5+ nested `by_cases`. ~120 lines of duplicated cascade eliminated.
+
+**Build**: 415/415 jobs, 0 errors, 13 sorry warnings (+2 from `dispatchContent_plainScalar_prod` and `dispatchContent_evidence`).
+
+**Net effect on sorry**:
+- **Removed**: 1 sorry (catch-all "other content types" in `noPending` col=0 — now handled by evidence extraction)
+- **Removed**: 1 sorry (catch-all "other content types" in `pendingBlock` — now handled by evidence extraction)
+- **Added**: 1 sorry in `dispatchContent_plainScalar_prod` (full-scan grammar gap)
+- **Added**: 1 sorry declaration in `dispatchContent_evidence` (anchor `&` + tag `!` grammar)
+- **Total**: +0 net sorry sites eliminated from catch-all, +2 new sorry declarations (more precise)
+
+**A4 — Block scalar `|`/`>` wiring into `accum_content_pending`** (2026-04-03)
+
+1. **`dispatchContent_blockScalar_prod`** (~60 lines): New theorem returning `∃ sp', (SCLLiteral 0 sp sp' ∨ SCLFolded 0 sp sp') ∧ ScannerSurfCorr s' sp'`. Handles both `|` and `>` via `cases hchar`. Each branch unfolds `scanNextToken_dispatchContent`, skips `&`/`*`/`!` guards via `split + absurd`, reaches the `scanBlockScalar` bind, and delegates to `scanBlockScalar_prod`. Has 2 sorry sites for `currentIndent ≥ 0` (one per branch).
+
+2. **`noPending` col=0 block scalar branch**: Added `by_cases hc_bs : c = '|' ∨ c = '>'` before the catch-all. Builds `SBlockNode` via `literal_blockNode`/`folded_blockNode` with `GOpt.none` (no properties), wraps in `SLBareDocument`, extends to `SLYamlStream.implicitContinue`, then uses `ssl_comments_extend_stream` for trailing `SSLComments`. Returns `PendingNode.pendingContent` with closure.
+
+3. **`pendingBlock` block scalar branch**: Added `by_cases hc_bs : c = '|' ∨ c = '>'` before the catch-all. Closes block entry IMMEDIATELY via `h_close_old sp_scan' h_blockNode`, returns `PendingNode.pendingContent` with `ssl_comments_extend_stream` closure. Loses entry accumulation (acceptable — same pattern as the existing catch-all).
+
+**Build**: 415/415 jobs, 0 errors, 11 sorry warnings (+1 from new `dispatchContent_blockScalar_prod` declaration).
+
+##### Reflections about Category 1
+
+1. **`SSLComments` structural mismatch resolved via "build-then-extend" pattern.** `SBlockNode.blockLiteral`/`.blockFolded` do NOT include trailing `SSLComments` (unlike `SBlockNode.flowInBlock`). Solution: build the `SBlockNode` spanning `sp_block → sp_scan'` without comments, use it for `SLBareDocument`/`h_close_old`, then bridge `sp_scan' → sp_mid` with `ssl_comments_extend_stream`. This pattern generalizes to any content type whose grammar production doesn't include trailing comments.
+
+2. **`currentIndent ≥ 0` is a genuine limitation at 2 sorry sites.** At top level (`noPending`), `currentIndent = -1` (sentinel). After `pushSequenceIndent`/`pushMappingIndent` in `pendingBlock`, `currentIndent` should be ≥ 0 but proving this requires tracking through `scanNextToken_preprocess`'s `unwindIndents` chain. Resolving this needs either (a) a `ScannerSurfCorr` invariant linking indent stack state to `currentIndent ≥ 0` after push, or (b) strengthening `dispatchContent_blockScalar_prod` to prove the precondition from the caller's context.
+
+3. **Entry accumulation loss for block scalars in `pendingBlock` is acceptable.** By closing immediately via `h_close_old`, we lose `SBlockSeqEntries_snoc` accumulation for subsequent `-` tokens. However, the previous catch-all already produced `PendingNode.pendingContent` without entry accumulation, so this is no regression.
+
+4. **Plain scalar UNBLOCKED.** ~~`scanPlainScalar_prod` only produces `SNsPlain 0 .blockIn`, but grammar needs `.flowOut`. The `.blockIn → .flowOut` context lift fails because `isNsPlainSafe .blockIn` allows flow indicators.~~ **Corrected**: `isNsPlainSafe .blockIn` and `isNsPlainSafe .flowOut` are in the SAME match arm (both = `isNsChar ch`). The context lift is valid. The remaining blocker is the full-scan grammar gap: `scanPlainScalar_prod`'s minimal 1-char witness doesn't cover the full scanner output range. Resolving this needs either (a) a full multi-line `scanPlainScalar_prod` that returns grammar matching the scanner endpoint, or (b) a "grammar subsumption" lemma showing partial grammar derivations are sufficient.
+
+5. **Catch-all sorry sites reduced.** The `noPending` and `pendingBlock` catch-all comments now say "anchor, tag, plain scalar" instead of "anchor, tag, block scalar, plain scalar". Block scalar is fully wired (modulo `currentIndent ≥ 0` sorry in the dispatch theorem).
 
 #### Category 2: col≠0 / BOM edge case — **RESOLVED by A2** ✅
 
@@ -1648,9 +1698,11 @@ The `GOpt.some` comment case is unreachable because the scanner greedily consume
 
 #### Recommended implementation order
 
-1. **Block scalar `\|`/`>` support** (Category 1) — needs resolving `currentIndent ≥ 0` requirement
-2. **Plain scalar support** (Category 1) — needs stronger `scanPlainScalar_prod`
-3. **Mapping entries `?`/`:`** (Category 4) — parallel to sequence infrastructure
-4. **Directive infrastructure** (Category 3) — focused layer
-5. **Flow indicators** (Category 5) — lower priority
-6. ~~**col≠0 BOM** (Category 2) — grammar definition change, deferred~~ **DONE (A2)**
+1. ~~**Block scalar `\|`/`>` support** (Category 1)~~ — **DONE (A4)**. 2 sorry remain for `currentIndent ≥ 0` in `dispatchContent_blockScalar_prod`.
+2. ~~**Plain scalar support** (Category 1)~~ — **DONE (A5)**. Wired through `dispatchContent_evidence`. 1 sorry for full-scan grammar gap.
+3. **Full-scan plain scalar grammar** (Category 1) — strengthen `scanPlainScalar_prod` to cover full scanner output range
+4. **Anchor `&` / tag `!` grammar** (Category 1) — node property composition theorems
+5. **Mapping entries `?`/`:`** (Category 4) — parallel to sequence infrastructure
+6. **Directive infrastructure** (Category 3) — focused layer
+7. **Flow indicators** (Category 5) — lower priority
+8. ~~**col≠0 BOM** (Category 2) — grammar definition change, deferred~~ **DONE (A2)**
