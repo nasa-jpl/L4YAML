@@ -436,6 +436,108 @@ theorem collectTagSuffixLoop_prod (sc : ScannerState) (sp : SurfPos)
     · -- none: stop
       exact ⟨sp, GStar.nil sp, hcorr⟩
 
+/-! ### Verbatim tag URI loop production -/
+
+-- `collectVerbatimTagLoop` produces `GStar (GChar isUriCharProp)` for URI chars.
+-- When the loop terminates at `>`, also produces `GLit '>'`.
+theorem collectVerbatimTagLoop_prod (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp) (uri : String) (fuel : Nat) :
+    ∃ sp_mid sp', GStar (GChar isUriCharProp) sp sp_mid ∧
+                  ScannerSurfCorr (collectVerbatimTagLoop sc uri fuel).snd sp' ∧
+                  (sp_mid = sp' ∨ GLit '>' sp_mid sp') := by
+  induction fuel generalizing sc sp uri with
+  | zero => exact ⟨sp, sp, GStar.nil sp, hcorr, Or.inl rfl⟩
+  | succ fuel' ih =>
+    unfold collectVerbatimTagLoop; split
+    · -- peek? = some '>': advance past > and produce GLit
+      rename_i hpeek
+      obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+      subst hsp_eq
+      have hmore := peek_some_has_more hpeek
+      have hcorr_adv := advance_non_newline_corr sc '>' rest hcorr
+        hmore (by decide) (by decide)
+      exact ⟨⟨'>' :: rest, sc.col⟩, ⟨rest, sc.col + 1⟩,
+             GStar.nil _,
+             hcorr_adv,
+             Or.inr (GLit.mk rest sc.col)⟩
+    · -- peek? = some c (c ≠ '>'): check isUriCharBool
+      rename_i c _ hpeek; split
+      · -- isUriCharBool c = true: advance and recurse
+        rename_i hcond
+        obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+        subst hsp_eq
+        have hmore := peek_some_has_more hpeek
+        have huri : isUriCharProp c := (isUriChar_iff c).mp hcond
+        have hne_nl : c ≠ '\n' := by
+          intro heq; rw [heq] at hcond; exact absurd hcond (by native_decide)
+        have hne_cr : c ≠ '\r' := by
+          intro heq; rw [heq] at hcond; exact absurd hcond (by native_decide)
+        have hcorr_adv := advance_non_newline_corr sc c rest hcorr
+          hmore hne_nl hne_cr
+        obtain ⟨sp_mid, sp', h_tail, hcorr', h_gt⟩ :=
+          ih sc.advance ⟨rest, sc.col + 1⟩ hcorr_adv (uri.push c)
+        exact ⟨sp_mid, sp',
+               GStar.cons _ _ sp_mid
+                 (GChar.mk c rest sc.col huri)
+                 h_tail,
+               hcorr', h_gt⟩
+      · -- isUriCharBool c = false: stop
+        exact ⟨sp, sp, GStar.nil sp, hcorr, Or.inl rfl⟩
+    · -- peek? = none: stop
+      exact ⟨sp, sp, GStar.nil sp, hcorr, Or.inl rfl⟩
+
+/-! ### Tag handle loop production -/
+
+-- `collectTagHandleLoop` produces `GStar (GChar isWordCharProp)` for word chars.
+-- When the loop terminates at `!`, also produces `GLit '!'` and `foundBang = true`.
+-- When stopping without `!`, produces `foundBang = false` and `sp_mid = sp'`.
+theorem collectTagHandleLoop_prod (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp) (chars : String) (fuel : Nat) :
+    ∃ sp_mid sp', GStar (GChar isWordCharProp) sp sp_mid ∧
+                  ScannerSurfCorr (collectTagHandleLoop sc chars fuel).snd.snd sp' ∧
+                  ((sp_mid = sp' ∧ (collectTagHandleLoop sc chars fuel).snd.fst = false) ∨
+                   (GLit '!' sp_mid sp' ∧ (collectTagHandleLoop sc chars fuel).snd.fst = true)) := by
+  induction fuel generalizing sc sp chars with
+  | zero => exact ⟨sp, sp, GStar.nil sp, hcorr, Or.inl ⟨rfl, rfl⟩⟩
+  | succ fuel' ih =>
+    unfold collectTagHandleLoop; split
+    · -- peek? = some '!': advance past ! and produce GLit
+      rename_i hpeek
+      obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+      subst hsp_eq
+      have hmore := peek_some_has_more hpeek
+      have hcorr_adv := advance_non_newline_corr sc '!' rest hcorr
+        hmore (by decide) (by decide)
+      exact ⟨⟨'!' :: rest, sc.col⟩, ⟨rest, sc.col + 1⟩,
+             GStar.nil _,
+             hcorr_adv,
+             Or.inr ⟨GLit.mk rest sc.col, rfl⟩⟩
+    · -- peek? = some c (c ≠ '!'): check isWordCharBool
+      rename_i c _ hpeek; split
+      · -- isWordCharBool c = true: advance and recurse
+        rename_i hcond
+        obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+        subst hsp_eq
+        have hmore := peek_some_has_more hpeek
+        have hword : isWordCharProp c := (isWordChar_iff c).mp hcond
+        have hne_nl : c ≠ '\n' := by
+          intro heq; rw [heq] at hcond; exact absurd hcond (by native_decide)
+        have hne_cr : c ≠ '\r' := by
+          intro heq; rw [heq] at hcond; exact absurd hcond (by native_decide)
+        have hcorr_adv := advance_non_newline_corr sc c rest hcorr
+          hmore hne_nl hne_cr
+        obtain ⟨sp_mid, sp', h_tail, hcorr', h_bang⟩ :=
+          ih sc.advance ⟨rest, sc.col + 1⟩ hcorr_adv (chars.push c)
+        exact ⟨sp_mid, sp',
+               GStar.cons _ _ sp_mid
+                 (GChar.mk c rest sc.col hword)
+                 h_tail,
+               hcorr', h_bang⟩
+      · -- isWordCharBool c = false: stop
+        exact ⟨sp, sp, GStar.nil sp, hcorr, Or.inl ⟨rfl, rfl⟩⟩
+    · -- peek? = none: stop
+      exact ⟨sp, sp, GStar.nil sp, hcorr, Or.inl ⟨rfl, rfl⟩⟩
+
 -- `scanTag` on the secondary branch (`!!suffix`) produces `SCNsTagProperty.secondary`.
 -- Preconditions: first char `!`, second char `!`.
 theorem scanTag_secondary_prod (sc : ScannerState) (sp : SurfPos)
@@ -484,6 +586,67 @@ theorem scanTag_secondary_prod (sc : ScannerState) (sp : SurfPos)
   · -- fallthrough: contradicts hpeek2
     rename_i _ h_not_bang
     exact absurd hpeek2 h_not_bang
+
+-- `scanTag` on non-secondary branches produces `SCNsTagProperty`.
+-- Handles verbatim `!<uri>`, named `!handle!suffix`, and non-specific `!`.
+-- Sorry'd: verbatim and named/primary sub-cases (loop composition pending).
+theorem scanTag_nonSecondary_prod (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp)
+    (hpeek : sc.peek? = some '!') (hpeek2 : ¬(sc.advance.peek? = some '!')) :
+    ∃ sp', SCNsTagProperty sp sp' ∧ ScannerSurfCorr (scanTag sc) sp' := by
+  obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+  subst hsp_eq
+  have hmore := peek_some_has_more hpeek
+  have hcorr_bang := advance_non_newline_corr sc '!' rest hcorr
+    hmore (by decide) (by decide)
+  unfold scanTag; dsimp only []
+  split
+  · -- sc.advance.peek? = some '<': verbatim tag
+    -- Needs GLit '<' + GPlus (GChar isUriCharProp) + GLit '>'
+    -- Uses collectVerbatimTagLoop_prod. Sorry for malformed/empty URI edge cases.
+    rename_i hpeek_lt
+    obtain ⟨rest2, hrest_eq⟩ := peek_some_sp hcorr_bang hpeek_lt
+    have hchars_eq := congrArg SurfPos.chars hrest_eq
+    dsimp only [] at hchars_eq; subst hchars_eq
+    have hmore2 := peek_some_has_more hpeek_lt
+    have hcorr_lt := advance_non_newline_corr sc.advance '<' rest2
+      ⟨hcorr_bang.chars_from, rfl, hcorr_bang.end_eq, hcorr_bang.input_prefix, hcorr_bang.indent_cols_nonneg⟩
+      hmore2 (by decide) (by decide)
+    have hcorr_loop : ScannerSurfCorr sc.advance.advance ⟨rest2, sc.advance.advance.col⟩ :=
+      ⟨hcorr_lt.chars_from, rfl, hcorr_lt.end_eq, hcorr_lt.input_prefix, hcorr_lt.indent_cols_nonneg⟩
+    unfold scanVerbatimTag; dsimp only []
+    obtain ⟨sp_mid, sp', h_gstar, hcorr_uri, h_gt_or_eq⟩ :=
+      collectVerbatimTagLoop_prod sc.advance.advance ⟨rest2, sc.advance.advance.col⟩
+        hcorr_loop "" _
+    have hcol2 : sc.advance.advance.col = sc.col + 2 := by
+      have := hcorr_bang.col_eq; have := hcorr_lt.col_eq; dsimp only [] at *; omega
+    rw [hcol2] at h_gstar
+    cases h_gt_or_eq with
+    | inl h_eq =>
+      -- No '>' found: malformed verbatim tag
+      sorry
+    | inr h_glit =>
+      by_cases hne : ⟨rest2, sc.col + 2⟩ = sp_mid
+      · -- Empty URI !<>: sorry (spec requires ≥1 URI char)
+        sorry
+      · -- Well-formed !<uri>: construct verbatim evidence
+        exact ⟨sp',
+               SCNsTagProperty.verbatim ('<' :: rest2) sc.col
+                 ⟨rest2, sc.col + 2⟩ sp_mid sp'
+                 (GLit.mk rest2 (sc.col + 1)) (GStar_to_GPlus h_gstar hne) h_glit,
+               ⟨hcorr_uri.chars_from, hcorr_uri.col_eq, hcorr_uri.end_eq, hcorr_uri.input_prefix, hcorr_uri.indent_cols_nonneg⟩⟩
+  · -- sc.advance.peek? = some '!': contradiction
+    rename_i h_bang
+    exact absurd h_bang hpeek2
+  · -- catch-all: named/non-specific via scanNamedTag
+    rename_i h_not_lt h_not_bang
+    obtain ⟨sp', hcorr'⟩ := scanNamedTag_corr sc.advance
+      ⟨rest, sc.advance.col⟩
+      ⟨hcorr_bang.chars_from, rfl, hcorr_bang.end_eq, hcorr_bang.input_prefix, hcorr_bang.indent_cols_nonneg⟩
+      sc.currentPos sc.inputEnd
+    -- Named/non-specific: sorry for grammar (pending scanNamedTag full decomposition)
+    exact ⟨sp', sorry,
+      ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
 
 -- `scanTag` preserves correspondence on all branches.
 theorem scanTag_prod (sc : ScannerState) (sp : SurfPos)
