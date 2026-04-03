@@ -17,7 +17,7 @@ Extend Phase B's `scanDoubleQuoted_prod` pattern to the remaining three content 
 
 **File:** [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) — extends existing Phase B infrastructure, reuses `peek_some_sp`, `advance_corr`, `consumeNewline_sbreak_corr`, `foldQuotedNewlines_prod`.
 
-**Sorry status:** 2 sorry in ScalarProduction.lean (`collectPlainScalarLoop_prod` line break + `scanPlainScalar_to_flowNode` doc boundary). Build: 415/415 jobs, 0 errors, 12 sorry warnings (2 in ScalarProduction.lean, 9 in StreamAccum.lean, 1 in StructureProduction.lean). **A12**: Closed S7/S8/S9/alias sorry sites by contradiction (14→12 warnings). **A11**: Removed `hm : m ≥ 1` from grammar constructors (compensating for Nat encoding offset), closing S1/S2. **A10**: Scanner Except conversion makes S7/S8/S9/alias sorry sites closable by contradiction.
+**Sorry status:** 2 sorry in ScalarProduction.lean (`collectPlainScalarLoop_prod` line break + `scanPlainScalar_to_flowNode` doc boundary). Build: 415/415 jobs, 0 errors, 12 sorry warnings (2 in ScalarProduction.lean, 9 in StreamAccum.lean, 1 in StructureProduction.lean). **A13**: Closed S4 (`#` at col=0) via `h_hash_col` precondition — sorry count unchanged since S3/S4 share the same theorem. **A12**: Closed S7/S8/S9/alias sorry sites by contradiction (14→12 warnings). **A11**: Removed `hm : m ≥ 1` from grammar constructors (compensating for Nat encoding offset), closing S1/S2. **A10**: Scanner Except conversion makes S7/S8/S9/alias sorry sites closable by contradiction.
 
 <details>
 <summary>scanSingleQuoted_prod — completed 2026-03-29</summary>
@@ -1623,7 +1623,7 @@ Three architectural changes are needed before tackling the content categories. E
 | S1 | `dispatchContent_blockScalar_prod` | StreamAccum | ~~`currentIndent ≥ 0` for `\|`~~ | ~~A: Indent~~ **CLOSED (A11)** — `hm : m ≥ 1` removed from grammar |
 | S2 | `dispatchContent_blockScalar_prod` | StreamAccum | ~~`currentIndent ≥ 0` for `>`~~ | ~~A: Indent~~ **CLOSED (A11)** — `hm : m ≥ 1` removed from grammar |
 | S3 | `collectPlainScalarLoop_prod` | ScalarProduction | Line break multi-line continuation | B: Loop |
-| S4 | `collectPlainScalarLoop_prod` | ScalarProduction | `#` at col=0 (unreachable from callers) | B: Loop |
+| S4 | `collectPlainScalarLoop_prod` | ScalarProduction | ~~`#` at col=0 (unreachable from callers)~~ | **CLOSED (A13)** — added `h_hash_col` precondition; proved `spaces.length = 0` from `terminates? = none`; col>0 from precondition at each recursive site |
 | S5 | `scanPlainScalar_to_flowNode` | ScalarProduction | Doc boundary first-char termination (`GStar.nil` match) | B: Loop |
 | S6 | `dispatchContent_plainScalar_prod` | StreamAccum | Flow context plain scalar (3 sorry sites in 1 expr) | C: Context |
 | S7 | `dispatchContent_anchor_prod` | StreamAccum | ~~Empty anchor name (`& ` — `sp_mid = sp'`)~~ | **CLOSED (A12)** — `scanAnchorOrAlias_prod` strengthened to return `sp_mid ≠ sp'` unconditionally; `_anchorProp_prod` now unconditional |
@@ -1634,7 +1634,7 @@ Three architectural changes are needed before tackling the content categories. E
 Additionally, the alias empty-name sorry in `dispatchContent_alias_prod` (StreamAccum) is also **CLOSED (A12)** — `scanAnchorOrAlias_aliasNode_prod` now returns unconditional `SCNsAliasNode` (no `sp_mid ≠ sp'` condition).
 
 **Dependency graph**:
-- **S4 → S5 → S6**: Closing the col invariant (S4) enables first-char-consumed (S5), which enables flow parameterization (S6). Critical path unlocking 5 sorries.
+- **S4 → S5 → S6**: ~~Closing the col invariant (S4) enables first-char-consumed (S5), which enables flow parameterization (S6). Critical path unlocking 5 sorries.~~ **S4 CLOSED (A13)**. S5 next on critical path.
 - **S7 + S9 + S8 + alias**: ~~Share the "scanner loop produces ≥1 char" pattern.~~ ~~**Resolved by A10** — scanner Except conversion makes these closable by contradiction.~~ **CLOSED (A12)** — strengthened `collectAnchorNameLoop_prod` and `collectVerbatimTagLoop_prod` with position-to-value linking conjuncts; made `_aliasNode_prod`/`_anchorProp_prod` unconditional; replaced sorry with contradiction proofs. −2 sorry warnings (14→12).
 - ~~**S1, S2**: Independent — just need `indents.size > 1` from preprocessing context to invoke existing `currentIndent_nonneg`.~~ **CLOSED (A11)** — removed `hm : m ≥ 1` from grammar constructors.
 - **S3**: Independent, hardest — needs `handleBlockLineBreak_prod` + multi-line continuation grammar.
@@ -1642,7 +1642,7 @@ Additionally, the alias empty-name sorry in `dispatchContent_alias_prod` (Stream
 
 **Wadler-style architectural opportunities**:
 
-1. ~~**Scanner loop non-emptiness lemma family** (closes S7, S9; pattern reusable for S4).~~ **Superseded by A10** — the Except conversion at the scanner level is a superior solution. Instead of proving loop non-emptiness post-hoc, the scanner validates input and rejects degenerate cases, making the sorry branches unreachable in proof. The non-emptiness pattern may still be useful for S4 (col ≥ 1 after content char), but S7/S9 no longer need it.
+1. ~~**Scanner loop non-emptiness lemma family** (closes S7, S9; pattern reusable for S4).~~ **Superseded by A10** — the Except conversion at the scanner level is a superior solution. ~~The non-emptiness pattern may still be useful for S4 (col ≥ 1 after content char)~~ **S4 CLOSED (A13)** via `h_hash_col` precondition instead.
 2. **Context-parameterized `collectPlainScalarLoop_prod`** (closes S6 once S5 is closed). Parameterize over `FlowContext` — only difference is `isPlainSafeBool c false` vs `isPlainSafeBool c true`. Block and flow proofs share 90% of structure.
 3. **First-char-consumed lemma** (closes S5). `canStartPlainScalarBool c next false = true → terminates? c sc content spaces false = none ∨ loop-consumes-entry`. Bridges the two scanner phases.
 
@@ -1651,14 +1651,14 @@ Additionally, the alias empty-name sorry in `dispatchContent_alias_prod` (Stream
 | Priority | IDs | Effort | Impact | Rationale |
 |----------|-----|--------|--------|-----------|
 | ~~1~~ | ~~S7, S8, S9, alias~~ | — | ~~−3 sorry (−4 sites)~~ | **CLOSED (A12)** — strengthened `_prod` theorems with position-to-value linkage. −2 sorry warnings (14→12). |
-| 2 | S4 | ~30 min | −1 sorry, enables S5 | Col invariant: `col ≥ 1` after any content char in loop |
+| ~~2~~ | ~~S4~~ | — | ~~−1 sorry~~, enables S5 | **CLOSED (A13)** — `h_hash_col` precondition + `spaces.length = 0` extraction from `terminates? = none`. Warning count unchanged (S3/S4 share theorem). |
 | 3 | S5 | ~1 hr | −1 sorry, enables S6 | First-char-consumed: `canStartPlainScalar ⟹ terminates?` doesn't fire on first char |
 | 4 | S10 | ~2 hr | −1 sorry | `scanNamedTag_prod`: compose existing handle + suffix loop theorems |
 | ~~5~~ | ~~S1, S2~~ | — | ~~−2 sorry~~ | **CLOSED (A11)** — removed `hm : m ≥ 1` from `SCLLiteral`/`SCLFolded` grammar constructors |
 | 6 | S6 | ~2 hr | −3 sorry sites | Parameterize `collectPlainScalarLoop_prod` over `FlowContext` for `.flowIn` |
 | 7 | S3 | ~4 hr | −1 sorry | Multi-line plain scalar. Hardest — `handleBlockLineBreak_prod` + `SNsPlainNextLine` |
 
-**Critical path**: S4 → S5 → S6 (chain unlocks 5 sorries). ~~S7/S8/S9/alias are now trivially closable after A10.~~ **S7/S8/S9/alias CLOSED by A12.** ~~S1/S2 deferred — see analysis below.~~ **S1/S2 CLOSED by A11.**
+**Critical path**: ~~S4 →~~ S5 → S6 (chain unlocks 4 sorries). **S4 CLOSED by A13.** ~~S7/S8/S9/alias are now trivially closable after A10.~~ **S7/S8/S9/alias CLOSED by A12.** ~~S1/S2 deferred — see analysis below.~~ **S1/S2 CLOSED by A11.**
 
 ##### S1/S2 design analysis: indent tracking for block scalars
 
@@ -1926,6 +1926,40 @@ Closed 4 sorry sites (S7, S8, S9, alias empty-name) by strengthening production 
 - **Eliminated**: 4 sorry sites (S7, S8, S9, alias empty-name)
 - **Added**: 0 sorry
 - **Warning count**: 12 (−2)
+
+##### A13: Closed S4 — `#` at col=0 via `h_hash_col` precondition
+
+**Problem**: In `collectPlainScalarLoop_prod`, the `SNsPlainChar.hashAfterNs` constructor requires `col > 0`, but the proof had no way to establish this at the `#` content-char branch. The sorry was at `else sorry` in the `by_cases hhash : c = '#'` arm.
+
+**Solution**: Added induction-compatible precondition `(h_hash_col : sc.peek? = some '#' → spaces.length = 0 → sc.col > 0)`. This states: if the current character is `#` and no whitespace has been accumulated, then we must already be past column 0.
+
+**Why it works** — three-way induction discharge:
+1. **Content char recursive call** (`spaces = ""`): `sc.advance.col = sc.col + 1 > 0` via `hcorr_adv.col_eq` — after consuming any character, column advances past 0.
+2. **Whitespace recursive call** (`spaces = spaces.push c`): vacuously true — `(spaces.push c).length = spaces.length + 1 ≠ 0`, so the second premise is always false.
+3. **Initial caller** (`scanPlainScalar_to_flowNode`): `canStartPlainScalarBool '#' _ false = false` since `#` is an indicator — contradicts `hstart`.
+
+**Key proof technique** — extracting `spaces.length = 0` from `terminates? = none`:
+- `collectPlainScalar_terminates? '#' sc content spaces false` checks `'#' == '#' && spaces.length > 0` first
+- If `spaces.length > 0`, the function returns `some _`, contradicting `h_term_none : ... = none`
+- Used `suffices ¬(spaces.length > 0) by omega` + `unfold collectPlainScalar_terminates?` + `simp [h_dec]`
+
+**Files modified**: 1 (`ScalarProduction.lean`)
+
+**Changes in `collectPlainScalarLoop_prod`**:
+- Added parameter: `(h_hash_col : sc.peek? = some '#' → spaces.length = 0 → sc.col > 0)`
+- Replaced `if h : sc.col > 0 then ... else sorry` with derivation via `h_hash_col hpeek h_sp_zero`
+- Whitespace recursive: added `(fun _ hlen => by simp [String.length_push] at hlen)` — vacuously true
+- Content char recursive: added `(fun _ _ => by have h : sc.col + 1 = sc.advance.col := hcorr_adv.col_eq; omega)` — col monotonicity
+
+**Changes in `scanPlainScalar_to_flowNode`**:
+- Added caller proof: derives contradiction from `canStartPlainScalarBool '#' _ false = true` (since `#` is an indicator, `isIndicatorBool '#' = true`, so `canStart = false`)
+
+**Build**: 415/415 jobs, 0 errors, 12 sorry warnings (unchanged — S3 and S4 were in the same theorem `collectPlainScalarLoop_prod`; removing S4 alone doesn't reduce the declaration-level warning count).
+
+**Net sorry accounting**:
+- **Eliminated**: 1 sorry site (S4)
+- **Added**: 0 sorry
+- **Warning count**: 12 (±0, since S3 remains in same theorem)
 
 #### Category 2: col≠0 / BOM edge case — **RESOLVED by A2** ✅
 
