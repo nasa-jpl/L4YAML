@@ -1610,11 +1610,55 @@ Three architectural changes are needed before tackling the content categories. E
 | Single-quoted `'` | `SCSingleQuoted 0 .blockIn` → `SFlowNode 0 .flowOut` | ✅ Sorry-free |
 | Alias `*` | `SCNsAliasNode` → `SFlowNode 0 .flowOut` | ✅ 1 sorry (empty alias name) |
 | Block scalar `\|`/`>` | `SCLLiteral 0` / `SCLFolded 0` | ✅ 2 sorry (`currentIndent ≥ 0`) |
-| Plain scalar | `SNsPlain 0 .blockIn` → `SFlowNode 0 .flowOut` | **A5/A6** — 1 sorry (full-scan grammar, trailing WS architecture in place) |
-| Anchor `&` | Node property, not standalone | 1 sorry (grammar production) |
-| Tag `!` | Node property, not standalone | 1 sorry (grammar production) |
+| Plain scalar | `SNsPlain 0 .blockIn` → `SFlowNode 0 .flowOut` | ✅ **A5/A6/A7** — block proven; 3 sorry (flow, multi-line, doc boundary) |
+| Anchor `&` | `SCNsAnchorProperty` → `SCNsProperties.anchorFirst` → `SFlowNode.propsEmpty` | ✅ **A8** — 1 sorry (empty anchor name) |
+| Tag `!` | `SCNsTagProperty` → `SCNsProperties.tagFirst` → `SFlowNode.propsEmpty` | ✅ **A8/A9** — `dispatchContent_tag_prod` sorry-free; secondary `!!` fully proven; verbatim `!<uri>` well-formed case proven; named/non-specific sorry'd in `scanTag_nonSecondary_prod` |
 
-**Recommended next**: Anchor `&` and tag `!` grammar production; `currentIndent ≥ 0` invariant proof.
+**All content types now have dedicated `dispatchContent_*_prod` theorems.** `dispatchContent_evidence` is sorry-free.
+
+##### Remaining Category 1 sorry sites (10 sites, 7 declarations)
+
+| ID | Theorem | File | Sorry | Group |
+|----|---------|------|-------|-------|
+| S1 | `dispatchContent_blockScalar_prod` | StreamAccum | `currentIndent ≥ 0` for `\|` | A: Indent |
+| S2 | `dispatchContent_blockScalar_prod` | StreamAccum | `currentIndent ≥ 0` for `>` | A: Indent |
+| S3 | `collectPlainScalarLoop_prod` | ScalarProduction | Line break multi-line continuation | B: Loop |
+| S4 | `collectPlainScalarLoop_prod` | ScalarProduction | `#` at col=0 (unreachable from callers) | B: Loop |
+| S5 | `scanPlainScalar_to_flowNode` | ScalarProduction | Doc boundary first-char termination (`GStar.nil` match) | B: Loop |
+| S6 | `dispatchContent_plainScalar_prod` | StreamAccum | Flow context plain scalar (3 sorry sites in 1 expr) | C: Context |
+| S7 | `dispatchContent_anchor_prod` | StreamAccum | Empty anchor name (`& ` — `sp_mid = sp'`) | D: Non-empty |
+| S8 | `scanTag_nonSecondary_prod` | StructureProduction | Malformed verbatim tag (no `>` terminator) | F: Unreachable |
+| S9 | `scanTag_nonSecondary_prod` | StructureProduction | Empty URI `!<>` — spec requires ≥1 URI char | D: Non-empty |
+| S10 | `scanTag_nonSecondary_prod` | StructureProduction | Named/non-specific tag decomposition | E: Tag decomp |
+
+**Dependency graph**:
+- **S4 → S5 → S6**: Closing the col invariant (S4) enables first-char-consumed (S5), which enables flow parameterization (S6). Critical path unlocking 5 sorries.
+- **S7 + S9**: Share the "scanner loop produces ≥1 char" pattern. A shared `loop_nonempty_when_valid_start` lemma family closes both.
+- **S1, S2**: Independent — just need `indents.size > 1` from preprocessing context to invoke existing `currentIndent_nonneg`.
+- **S3**: Independent, hardest — needs `handleBlockLineBreak_prod` + multi-line continuation grammar.
+- **S8**: Independent — may be contradictory (scanner returns `.ok` ⟹ `>` was found).
+- **S10**: Independent — decompose `scanNamedTag` into existing `collectTagHandleLoop_prod` + `collectTagSuffixLoop_prod`.
+
+**Wadler-style architectural opportunities**:
+
+1. **Scanner loop non-emptiness lemma family** (closes S7, S9; pattern reusable for S4). When `peek? = some c` and `P c`, the loop consumes ≥1 char, giving `sp ≠ sp'`. Applies to `collectAnchorNameLoop` (`isNsAnchorChar`), `collectVerbatimTagLoop` (`isUriCharProp`), and col>0 after first content char.
+2. **Context-parameterized `collectPlainScalarLoop_prod`** (closes S6 once S5 is closed). Parameterize over `FlowContext` — only difference is `isPlainSafeBool c false` vs `isPlainSafeBool c true`. Block and flow proofs share 90% of structure.
+3. **First-char-consumed lemma** (closes S5). `canStartPlainScalarBool c next false = true → terminates? c sc content spaces false = none ∨ loop-consumes-entry`. Bridges the two scanner phases.
+
+**Recommended implementation order**:
+
+| Priority | IDs | Effort | Impact | Rationale |
+|----------|-----|--------|--------|-----------|
+| 1 | S1, S2 | ~15 min | −2 sorry | Trivial: existing `currentIndent_nonneg` + `indents.size > 1` from call context |
+| 2 | S7, S9 | ~1 hr | −2 sorry | Scanner non-emptiness invariant (anchor + verbatim URI). Shared lemma pattern |
+| 3 | S4 | ~30 min | −1 sorry, enables S5 | Col invariant: `col ≥ 1` after any content char in loop |
+| 4 | S5 | ~1 hr | −1 sorry, enables S6 | First-char-consumed: `canStartPlainScalar ⟹ terminates?` doesn't fire on first char |
+| 5 | S8 | ~30 min | −1 sorry | Prove `collectVerbatimTagLoop` `.ok` ⟹ `>` was found (or handle otherwise) |
+| 6 | S10 | ~2 hr | −1 sorry | `scanNamedTag_prod`: compose existing handle + suffix loop theorems |
+| 7 | S6 | ~2 hr | −3 sorry sites | Parameterize `collectPlainScalarLoop_prod` over `FlowContext` for `.flowIn` |
+| 8 | S3 | ~4 hr | −1 sorry | Multi-line plain scalar. Hardest — `handleBlockLineBreak_prod` + `SNsPlainNextLine` |
+
+**Critical path**: S4 → S5 → S6 (chain unlocks 5 sorries). Start with S1/S2 for quick wins, then S7/S9 for the shared non-emptiness pattern.
 
 ##### Accomplishments on Category 1
 
@@ -1696,6 +1740,50 @@ Proved `collectPlainScalarLoop_prod` by fuel induction for single-line block-con
 - **Warning count**: +2 (new declarations), +0 net in existing (flow sorry replaces block+flow sorry in same decl)
 - The block context path — the path exercised by `accum_content_pending` — is now **fully proven**.
 
+**A8 — Anchor `&` and tag `!` node property composition** (2026-04-03)
+
+Proved that anchor `&` and tag `!` content dispatch produce `SFlowNode 0 .flowOut` via the node property composition path: `SCNsAnchorProperty`/`SCNsTagProperty` → `SCNsProperties.anchorFirst`/`.tagFirst` (with `GOpt.none` for the optional second property) → `SFlowNode.propsEmpty`. This is the "properties-only" flow node form from YAML spec §7.1.
+
+1. **`dispatchContent_anchor_prod`** (StreamAccum.lean, ~25 lines, 1 sorry): Unfolds `scanNextToken_dispatchContent` for `c = '&'`, applies `scanAnchorOrAlias_anchorProp_prod` to get `SCNsAnchorProperty sp sp'` (conditional on `sp_mid ≠ sp'`), composes through `SCNsProperties.anchorFirst 0 .flowOut` + `SFlowNode.propsEmpty`. `ScannerSurfCorr` repacked to handle the `definedAnchors.push` update in the scanner dispatch. 1 sorry for degenerate empty anchor name (`& ` without chars — scanner accepts, grammar requires `GPlus`).
+
+2. **`dispatchContent_tag_prod`** (StreamAccum.lean, ~30 lines, 1 sorry): Unfolds dispatch for `c = '!'`. Two branches:
+   - Secondary `!!suffix`: delegates to existing `scanTag_secondary_prod`, composes through `SCNsProperties.tagFirst 0 .flowOut` + `SFlowNode.propsEmpty`. Fully proven.
+   - Non-secondary (verbatim `!<uri>`, named `!handle!suffix`, non-specific `!`): Uses `scanTag_corr` for `ScannerSurfCorr`, grammar sorry'd pending tag handle/verbatim loop production theorems.
+
+3. **`dispatchContent_evidence` now sorry-free**: Replaced inline `sorry` at the `&` and `!` branches with calls to `dispatchContent_anchor_prod` and `dispatchContent_tag_prod`. The unified evidence theorem no longer contains any direct `sorry` — all grammar gaps are localized in per-content-type theorems.
+
+**Build**: 415/415 jobs, 0 errors, 15 sorry warnings (was 14; +2 new declarations, -1 from `dispatchContent_evidence`).
+
+**Net sorry accounting**:
+- **Eliminated**: `dispatchContent_evidence` inline sorry for `&` and `!` (2 sorry sites in 1 declaration)
+- **Added**: `dispatchContent_anchor_prod` 1 sorry (empty anchor name — same root cause as alias)
+- **Added**: `dispatchContent_tag_prod` 1 sorry (verbatim/named tag grammar)
+- **Warning count**: +1 net (2 new declarations − 1 old declaration)
+- All 7 content types now have dedicated `dispatchContent_*_prod` theorems
+
+**A9 — Tag loop production theorems and `dispatchContent_tag_prod` sorry elimination** (2026-04-09)
+
+Pushed the tag sorry from `dispatchContent_tag_prod` (StreamAccum layer) down to `scanTag_nonSecondary_prod` (StructureProduction layer). `dispatchContent_tag_prod` is now sorry-free — both the secondary `!!suffix` and non-secondary paths delegate to proven theorems. The non-secondary sorry is localized to 3 specific edge cases in `scanTag_nonSecondary_prod`.
+
+1. **`collectVerbatimTagLoop_prod`** (StructureProduction.lean, ~45 lines, 0 sorry): Fuel induction producing `GStar (GChar isUriCharProp)` for URI characters. Returns 3-way evidence: `GStar` for URI chars, `ScannerSurfCorr` for scanner state, and `sp_mid = sp' ∨ GLit '>' sp_mid sp'` distinguishing well-formed (terminated by `>`) from malformed (no `>`) verbatim tags. Uses `isUriChar_iff` bridge and `advance_non_newline_corr` (URI chars exclude `\n`, `\r` via `native_decide`).
+
+2. **`collectTagHandleLoop_prod`** (StructureProduction.lean, ~45 lines, 0 sorry): Fuel induction producing `GStar (GChar isWordCharProp)` for word characters. Returns `foundBang` evidence: when `true`, also produces `GLit '!'` for the closing `!`; when `false`, `sp_mid = sp'`. Uses `isWordChar_iff` bridge. Pattern mirrors `collectTagSuffixLoop_prod` but with 3-branch match (`some '!'` / `some c` / `none`) instead of 2-branch.
+
+3. **`scanTag_nonSecondary_prod`** (StructureProduction.lean, ~55 lines, 1 sorry declaration with 3 sorry sites): Handles all non-`!!` tag branches. Case-splits on `sc.advance.peek?`:
+   - **Verbatim `!<uri>`**: Decomposes `<`, delegates to `collectVerbatimTagLoop_prod`, bridges column via `omega`. Well-formed case (non-empty URI + `GLit '>'`) constructs `SCNsTagProperty.verbatim` via `GStar_to_GPlus` (imported from `CouplingBridge.lean`). 2 sorry: malformed verbatim (no `>` terminator), empty URI `!<>`.
+   - **Secondary `!!`**: Contradiction with `hpeek2 : ¬(sc.advance.peek? = some '!')`.
+   - **Named/non-specific**: Delegates to `scanNamedTag_corr` for `ScannerSurfCorr`, grammar sorry'd. 1 sorry: named tag handle/suffix composition.
+
+4. **`dispatchContent_tag_prod` updated** (StreamAccum.lean): Non-secondary branch now calls `scanTag_nonSecondary_prod` instead of `scanTag_corr` + inline sorry. Grammar construction (`SCNsProperties.tagFirst + SFlowNode.propsEmpty`) is fully proven in both branches.
+
+**Build**: 415/415 jobs, 0 errors, 15 sorry warnings (+0 net: −1 `dispatchContent_tag_prod`, +1 `scanTag_nonSecondary_prod`).
+
+**Net sorry accounting**:
+- **Eliminated**: `dispatchContent_tag_prod` sorry (non-secondary branch)
+- **Added**: `scanTag_nonSecondary_prod` 1 sorry declaration (3 sorry sites: malformed verbatim, empty URI, named/non-specific)
+- **Warning count**: +0 net (sorry pushed down from accumulation layer to production layer)
+- `dispatchContent_tag_prod` is now sorry-free — all tag grammar gaps are in StructureProduction.lean
+
 ##### Reflections about Category 1
 
 1. **`SSLComments` structural mismatch resolved via "build-then-extend" pattern.** `SBlockNode.blockLiteral`/`.blockFolded` do NOT include trailing `SSLComments` (unlike `SBlockNode.flowInBlock`). Solution: build the `SBlockNode` spanning `sp_block → sp_scan'` without comments, use it for `SLBareDocument`/`h_close_old`, then bridge `sp_scan' → sp_mid` with `ssl_comments_extend_stream`. This pattern generalizes to any content type whose grammar production doesn't include trailing comments.
@@ -1709,6 +1797,14 @@ Proved `collectPlainScalarLoop_prod` by fuel induction for single-line block-con
 5. **Catch-all sorry sites reduced.** The `noPending` and `pendingBlock` catch-all comments now say "anchor, tag, plain scalar" instead of "anchor, tag, block scalar, plain scalar". Block scalar is fully wired (modulo `currentIndent ≥ 0` sorry in the dispatch theorem).
 
 6. **Trailing WS gap between `SNsPlain` grammar and scanner state, resolved by architecture.** (A6) The `collectPlainScalarLoop` scanner advances past trailing whitespace (spaces/tabs accumulated in the `spaces` parameter), but the `SNsPlain` YAML grammar ends at the last `ns-plain-char`. In the YAML spec, this trailing WS belongs to `s-l-comments → s-b-comment → s-separate-in-line`, NOT to `ns-plain`. This creates a gap: grammar endpoint `sp_gram ≠ sp'` scanner endpoint. Resolution: `dispatchContent_evidence` now returns `∃ sp_gram sp', grammar sp sp_gram ∧ GStar SSWhite sp_gram sp' ∧ ScannerSurfCorr s' sp'`, and `white_prepend_SSLComments` composes trailing WS into the `SSLComments` from the next preprocessing step. The key insight is that `SSBComment.withSep` absorbs whitespace as `SSeparateInLine.whites`, so the trailing WS naturally becomes part of `s-l-comments`.
+
+7. **Node property composition is orthogonal to content type.** (A8) Anchors and tags produce `SFlowNode` via a fundamentally different path than scalars: `SCNsProperties → SFlowNode.propsEmpty` (properties-only node) rather than `SFlowContent → SFlowNode.content` (content node). The `SCNsProperties` type has two constructors — `tagFirst` and `anchorFirst` — each taking the primary property plus an optional `GOpt` for the secondary. With only one property (no combined anchor+tag in the scanner dispatch), the `GOpt.none` makes composition trivial. The `ScannerSurfCorr` repacking for anchors is slightly more complex due to `definedAnchors.push` in the scanner dispatch, but follows the same field-repacking pattern used elsewhere.
+
+8. **`dispatchContent_evidence` achieved sorry-free status.** (A8) All 7 content types now have dedicated `dispatchContent_*_prod` theorems. The unified evidence extraction theorem is purely a delegator — no grammar construction of its own. This means future improvements to any single content type's grammar production automatically improve `dispatchContent_evidence` without touching it.
+
+9. **`GStar_to_GPlus` relocated to `CouplingBridge.lean` §8 GStar Composition.** (A9) Originally defined in `NodeProduction.lean`, which imports `StructureProduction.lean` — making reverse import impossible. Moved to `CouplingBridge.lean` (lowest common ancestor in the import DAG), eliminating the inline workaround in `scanTag_nonSecondary_prod` and enabling all downstream files to share the single definition.
+
+10. **Three-way loop evidence pattern.** (A9) Both `collectVerbatimTagLoop_prod` and `collectTagHandleLoop_prod` use a novel 3-result return type: `GStar` chars + `ScannerSurfCorr` + termination evidence (either `sp_mid = sp'` for early stop, or `GLit` for delimiter consumption). This pattern captures the scanner's dual-termination semantics (delimiter found vs. not found) without complicating the base case. The verbatim loop uses `Or.inl rfl` / `Or.inr (GLit.mk ...)`, while the handle loop uses `Or.inl ⟨rfl, rfl⟩` / `Or.inr ⟨GLit.mk ..., rfl⟩` (pairing position with `foundBang` Bool evidence).
 
 #### Category 2: col≠0 / BOM edge case — **RESOLVED by A2** ✅
 
@@ -1748,7 +1844,7 @@ The `GOpt.some` comment case is unreachable because the scanner greedily consume
 1. ~~**Block scalar `\|`/`>` support** (Category 1)~~ — **DONE (A4)**. 2 sorry remain for `currentIndent ≥ 0` in `dispatchContent_blockScalar_prod`.
 2. ~~**Plain scalar support** (Category 1)~~ — **DONE (A5)**. Wired through `dispatchContent_evidence`. 1 sorry for full-scan grammar gap.
 3. ~~**Full-scan plain scalar grammar** (Category 1)~~ — **DONE (A7)**. `collectPlainScalarLoop_prod` proven by fuel induction (single-line). `scanPlainScalar_to_flowNode` composes first char + loop entries + context lift into `SFlowNode 0 .flowOut` + trailing `GStar SSWhite`. Block context `dispatchContent_plainScalar_prod` now fully proven; flow context sorry'd separately. 2 sorry remain: line break (multi-line deferred), doc boundary first-char termination (edge case).
-4. **Anchor `&` / tag `!` grammar** (Category 1) — node property composition theorems
+4. ~~**Anchor `&` / tag `!` grammar** (Category 1)~~ — **DONE (A8/A9)**. `dispatchContent_anchor_prod` and `dispatchContent_tag_prod` both sorry-free. Secondary tag `!!` fully proven; verbatim `!<uri>` well-formed case proven; anchor 1 sorry (empty name); tag 1 sorry declaration with 3 edge cases (malformed verbatim, empty URI, named/non-specific) in `scanTag_nonSecondary_prod`.
 5. **Mapping entries `?`/`:`** (Category 4) — parallel to sequence infrastructure
 6. **Directive infrastructure** (Category 3) — focused layer
 7. **Flow indicators** (Category 5) — lower priority

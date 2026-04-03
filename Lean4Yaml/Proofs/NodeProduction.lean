@@ -279,14 +279,6 @@ theorem SFlowNode_singleQ_ctx_lift {n : Nat} {c₁ c₂ : YamlContext} {s s' : S
 
 /-! ## §6 GStar/GPlus Lifting and Alias/Anchor Conversion (Layer 4a) -/
 
--- General combinator: convert GStar to GPlus given proof of non-emptiness.
--- The non-emptiness evidence is `s ≠ s'` (the start ≠ end position).
-theorem GStar_to_GPlus {P : SurfPos → SurfPos → Prop} {s s' : SurfPos}
-    (h : GStar P s s') (hne : s ≠ s') : GPlus P s s' := by
-  match h with
-  | .nil _ => exact absurd rfl hne
-  | .cons _ sp_mid _ h_head h_tail => exact GPlus.mk _ sp_mid _ h_head h_tail
-
 -- Alias node: GLit '*' + GPlus anchor chars → SCNsAliasNode.
 -- Takes destructured GLit output + GPlus name.
 theorem aliasNode_of_glit_gplus {rest : List Char} {col : Nat} {sp' : SurfPos}

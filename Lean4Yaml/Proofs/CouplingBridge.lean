@@ -746,6 +746,13 @@ theorem GStar_trans {P : SurfPos → SurfPos → Prop} {s₁ s₂ s₃ : SurfPos
   | nil => exact h₂
   | cons _ _ _ hp _ ih => exact GStar.cons _ _ _ hp (ih h₂)
 
+/-- Non-emptiness evidence `s ≠ s'` lifts `GStar` to `GPlus`. -/
+theorem GStar_to_GPlus {P : SurfPos → SurfPos → Prop} {s s' : SurfPos}
+    (h : GStar P s s') (hne : s ≠ s') : GPlus P s s' := by
+  match h with
+  | .nil _ => exact absurd rfl hne
+  | .cons _ sp_mid _ h_head h_tail => exact GPlus.mk _ sp_mid _ h_head h_tail
+
 /-- `SIndent n` can be viewed as `GStar SSWhite` (each space is whitespace). -/
 theorem SIndent_gives_GStar_SSWhite {n : Nat} {s s' : SurfPos}
     (h : SIndent n s s') : GStar SSWhite s s' := by

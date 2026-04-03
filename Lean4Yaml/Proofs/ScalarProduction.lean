@@ -1452,7 +1452,7 @@ theorem GStar_entries_blockIn_to_flowOut {sp sp' : SurfPos}
 
 -- Context lift: SNsPlainFirst .blockIn → .flowOut (avoids circular import
 -- with NodeProduction.lean which has the same theorem).
-private theorem SNsPlainFirst_blockIn_to_flowOut' {s s' : SurfPos}
+theorem SNsPlainFirst_blockIn_to_flowOut' {s s' : SurfPos}
     (h : SNsPlainFirst .blockIn s s') : SNsPlainFirst .flowOut s s' := by
   cases h with
   | nonIndicator ch rest col hSafe hNotInd =>
