@@ -396,6 +396,78 @@ given a missing invariant. If they succeed in closing the goal, no impasse.
 If they fail but the goal has a simple arithmetic structure, flag as a
 potential impasse.
 
+#### Pattern 6: Wadler-style "theorems for free" on inductive constructors — parametric closing
+
+**What to detect:** A theorem whose proof cases-splits on an inductive type
+(e.g., `PendingNode`), and then performs **identical evidence extraction**
+in multiple branches before diverging only in the final "closing strategy."
+The evidence extraction is parametric — it doesn't depend on which constructor
+was matched — but gets duplicated because the proof is organized by constructor
+rather than by evidence.
+
+**Why it matters:** This is the inductive-type analogue of Wadler's parametricity
+principle for polymorphic functions. Just as `f : ∀ α, F α → G α` is constrained
+by parametricity (the function can't inspect `α`), constructors that share a
+closure interface (e.g., `h_closable : ∀ sp, SSLComments sp_scan sp → SLYamlStream`)
+are parametric in how they close — evidence extraction should happen once,
+and each constructor only contributes its closing strategy.
+
+**Canonical example:** `accum_content_pending` in StreamAccum.lean (~300 lines).
+For the `noPending` col=0 case and the `pendingBlock` case, the **same**
+evidence extraction is repeated verbatim for each content type:
+
+```lean
+-- This 8-line block appears IDENTICALLY for each content type × each PendingNode case:
+obtain ⟨sp_dq, h_dq_gram, hcorr_dq⟩ :=
+  dispatchContent_doubleQuoted_prod _ sp_prep
+    (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
+have hsp_dq_eq := ScannerSurfCorr_unique hcorr_dq hcorr_result
+rw [hsp_dq_eq] at h_dq_gram hcorr_dq
+have h_flow : SFlowNode 0 .flowOut sp_prep sp_scan' :=
+  SFlowNode_doubleQ_ctx_lift h_dq_gram (by decide) (by decide)
+```
+
+Only the **closing strategy** differs:
+- `noPending`: `SBlockNode → SLBareDocument → SLYamlStream.implicitContinue → pendingContent`
+- `pendingBlock`: `SBlockNode.flowInBlock → h_close_old → pendingBlockContent`
+
+**Mitigation:** Factor out a **unified evidence extraction theorem** that
+produces a disjunction over all supported content types:
+
+```lean
+-- Proven ONCE, covering all content types:
+theorem dispatchContent_evidence (...) :
+    (∃ sp', SFlowNode 0 .flowOut sp_prep sp' ∧ ScannerSurfCorr s' sp')
+  ∨ (∃ sp', (SCLLiteral 0 sp_prep sp' ∨ SCLFolded 0 sp_prep sp') ∧ ScannerSurfCorr s' sp')
+  ∨ sorry  -- catch-all for not-yet-proven types
+```
+
+Then each `PendingNode` constructor contributes only its closing strategy
+(~5-10 lines), and adding a new content type requires changes only in the
+evidence theorem.
+
+**Relationship to Wadler:** In the original "Theorems for Free" (Wadler 1989),
+a polymorphic type `∀ α. F α → G α` constrains the function's behavior:
+it must work uniformly across all `α`, yielding relational properties for free.
+Here, the "type variable" is the `PendingNode` constructor, and the "free
+theorem" is: *any constructor that provides a closing interface
+(`SSLComments → SLYamlStream` or `SBlockNode → SLYamlStream`) can be served
+by the same evidence extraction.* The proof structure should reflect this
+parametricity by factoring evidence extraction from closing strategy.
+
+**Detection sketch:**
+
+```lean
+/-- Check whether a theorem that cases-splits on an inductive has
+    duplicated sub-proofs across multiple branches. -/
+def checkParametricClosing (decl : ConstantInfo) : MetaM (Array Warning) := do
+  -- 1. Find `cases` / `match` on an inductive in the proof term
+  -- 2. For each branch pair, check if the initial obtain/have chain
+  --    is syntactically identical (modulo alpha-renaming)
+  -- 3. If >50% of the branch body is shared, flag as parametric
+  return warnings
+```
+
 ### Scope and Limitations
 
 **In scope:**
@@ -404,7 +476,8 @@ potential impasse.
 - Pattern 3 (WHNF expansion of compound sub-expressions inside `split`)
 - Pattern 4 (complexity explosion in monolithic loop bodies)
 - Pattern 5 (semantic impasse from specification-level invariant gaps)
-- All five are specific to the parser's `ParseState` + `Scannable`
+- Pattern 6 (parametric closing — duplicated evidence across inductive branches)
+- All six are specific to the parser's `ParseState` + `Scannable`
   architecture, but the detection algorithms generalize
 
 **Out of scope (initially):**
@@ -424,6 +497,7 @@ potential impasse.
 | I4 | Pattern 3 detector (WHNF expansion hazard) | Medium |
 | I5 | Pattern 4 detector (complexity explosion in loop bodies) | Medium |
 | I6 | Pattern 5 detector (arithmetic impasse / invariant gap) | Medium |
+| I6b | Pattern 6 detector (parametric closing / duplicated evidence) | Medium |
 | I7 | `#check_wb_interactions` command wiring | Small |
 | I8 | Run on all 7 G5c-modified functions, validate results | Small |
 | I9 | Document false-positive patterns and suppression mechanism | Small |
@@ -432,17 +506,18 @@ potential impasse.
 
 Running the analysis on the 7 G5c-modified functions (BRIDGING.md §G5c):
 
-| Function | P1 (struct-with) | P2 (flow return) | P3 (WHNF hazard) | P4 (loop explosion) | P5 (impasse) |
+| Function | P1 (struct-with) | P2 (flow return) | P3 (WHNF hazard) | P4 (loop explosion) | P5 (impasse) | P6 (parametric) |
 |----------|-----------------|-----------------|------------------|--------------------|--------------| 
-| `parseBlockSequenceLoop` | ✓ (currentPath before parseNode — but parseNode takes ps directly, so lemmas still apply) | ✗ (returns array, not flow collection) | ✗ (no compound scrutinee) | ✗ (single branch) | ✗ |
-| `parseImplicitBlockSequenceLoop` | ✓ (same as above) | ✗ | ✗ | ✗ (single branch) | ✗ |
-| `parseBlockMappingLoop` | ✓ (currentPath before BEV/parseNode) | ✗ (block mapping) | ✗ | ✗ (extracted to `handleBlockMapping*Entry`) | ✗ |
-| `parseFlowSequenceLoop` | ✓ (currentPath before parseNode + parseSinglePairMapping) | ✗ (returns array) | ✗ | ✗ (3 simple branches) | ✗ |
-| `parseFlowMappingLoop` | ✓ (currentPath before parseNode + tryConsume) | ✗ (returns array) | **✓** (tryConsume on struct-with feeds into `if consumed`) | **✓** (2 entry × 4 key × 2 consumed × 4 value = explosion) | ✗ |
-| `parseSinglePairMapping` | **✓ CONFIRMED** (currentPath before tryConsume) | **✓ CONFIRMED** (.mapping .flow return) | **✓ CONFIRMED** (tryConsume internal match found before consumed dispatch) | ✗ (single entry) | ✗ |
-| `parseDocument` | ✓ (currentPath before parseNode) | ✗ | ✗ | ✗ | ✗ |
-| `parseFlowSequence` (wrapper) | ✗ | ✗ | ✗ | ✗ | **✓** (`flowNesting ps.pos + 1 = flowNesting ps.pos` in else branch) |
-| `parseFlowMapping` (wrapper) | ✗ | ✗ | ✗ | ✗ | **✓** (same `flowNesting` impasse as `parseFlowSequence`) |
+| `parseBlockSequenceLoop` | ✓ (currentPath before parseNode — but parseNode takes ps directly, so lemmas still apply) | ✗ (returns array, not flow collection) | ✗ (no compound scrutinee) | ✗ (single branch) | ✗ | ✗ |
+| `parseImplicitBlockSequenceLoop` | ✓ (same as above) | ✗ | ✗ | ✗ (single branch) | ✗ | ✗ |
+| `parseBlockMappingLoop` | ✓ (currentPath before BEV/parseNode) | ✗ (block mapping) | ✗ | ✗ (extracted to `handleBlockMapping*Entry`) | ✗ | ✗ |
+| `parseFlowSequenceLoop` | ✓ (currentPath before parseNode + parseSinglePairMapping) | ✗ (returns array) | ✗ | ✗ (3 simple branches) | ✗ | ✗ |
+| `parseFlowMappingLoop` | ✓ (currentPath before parseNode + tryConsume) | ✗ (returns array) | **✓** (tryConsume on struct-with feeds into `if consumed`) | **✓** (2 entry × 4 key × 2 consumed × 4 value = explosion) | ✗ | ✗ |
+| `parseSinglePairMapping` | **✓ CONFIRMED** (currentPath before tryConsume) | **✓ CONFIRMED** (.mapping .flow return) | **✓ CONFIRMED** (tryConsume internal match found before consumed dispatch) | ✗ (single entry) | ✗ | ✗ |
+| `parseDocument` | ✓ (currentPath before parseNode) | ✗ | ✗ | ✗ | ✗ | ✗ |
+| `parseFlowSequence` (wrapper) | ✗ | ✗ | ✗ | ✗ | **✓** (`flowNesting ps.pos + 1 = flowNesting ps.pos` in else branch) | ✗ |
+| `parseFlowMapping` (wrapper) | ✗ | ✗ | ✗ | ✗ | **✓** (same `flowNesting` impasse as `parseFlowSequence`) | ✗ |
+| `accum_content_pending` (StreamAccum) | ✗ | ✗ | ✗ | ✗ | ✗ | **✓ CONFIRMED** (evidence extraction duplicated across noPending + pendingBlock × 4 content types = ~200 lines of duplication) |
 
 Note: For most functions, Pattern 1 manifests as `{ ps with currentPath := ... }`
 before `parseNode`, but `parseNode` takes `ps : ParseState` as a regular
