@@ -385,10 +385,11 @@ theorem collectAnchorNameLoop_prod (sc : ScannerState) (sp : SurfPos)
 theorem scanAnchorOrAlias_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (isAnchor : Bool)
     (marker : Char) (hpeek : sc.peek? = some marker)
-    (hne_nl : marker ≠ '\n') (hne_cr : marker ≠ '\r') :
+    (hne_nl : marker ≠ '\n') (hne_cr : marker ≠ '\r')
+    (s' : ScannerState) (hok : scanAnchorOrAlias sc isAnchor = .ok s') :
     ∃ sp_mid sp', GLit marker sp sp_mid ∧
                   GStar (GChar isNsAnchorChar) sp_mid sp' ∧
-                  ScannerSurfCorr (scanAnchorOrAlias sc isAnchor) sp' := by
+                  ScannerSurfCorr s' sp' := by
   obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
   subst hsp_eq
   have hmore := peek_some_has_more hpeek
@@ -397,8 +398,11 @@ theorem scanAnchorOrAlias_prod (sc : ScannerState) (sp : SurfPos)
   obtain ⟨sp', h_gstar, hcorr'⟩ :=
     collectAnchorNameLoop_prod sc.advance ⟨rest, sc.col + 1⟩ hcorr_adv "" _
   refine ⟨⟨rest, sc.col + 1⟩, sp', GLit.mk rest sc.col, h_gstar, ?_⟩
-  unfold scanAnchorOrAlias
-  exact ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩
+  unfold scanAnchorOrAlias at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · have h := Except.ok.inj hok; subst h
+    exact ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩
 
 /-! ### Tag suffix loop production -/
 
@@ -443,7 +447,7 @@ theorem collectTagSuffixLoop_prod (sc : ScannerState) (sp : SurfPos)
 theorem collectVerbatimTagLoop_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (uri : String) (fuel : Nat) :
     ∃ sp_mid sp', GStar (GChar isUriCharProp) sp sp_mid ∧
-                  ScannerSurfCorr (collectVerbatimTagLoop sc uri fuel).snd sp' ∧
+                  ScannerSurfCorr (collectVerbatimTagLoop sc uri fuel).snd.snd sp' ∧
                   (sp_mid = sp' ∨ GLit '>' sp_mid sp') := by
   induction fuel generalizing sc sp uri with
   | zero => exact ⟨sp, sp, GStar.nil sp, hcorr, Or.inl rfl⟩
@@ -542,8 +546,9 @@ theorem collectTagHandleLoop_prod (sc : ScannerState) (sp : SurfPos)
 -- Preconditions: first char `!`, second char `!`.
 theorem scanTag_secondary_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
-    (hpeek : sc.peek? = some '!') (hpeek2 : sc.advance.peek? = some '!') :
-    ∃ sp', SCNsTagProperty sp sp' ∧ ScannerSurfCorr (scanTag sc) sp' := by
+    (hpeek : sc.peek? = some '!') (hpeek2 : sc.advance.peek? = some '!')
+    (s' : ScannerState) (hok : scanTag sc = .ok s') :
+    ∃ sp', SCNsTagProperty sp sp' ∧ ScannerSurfCorr s' sp' := by
   -- Decompose first `!`
   obtain ⟨rest1, hsp_eq1⟩ := peek_some_sp hcorr hpeek
   subst hsp_eq1
@@ -566,12 +571,13 @@ theorem scanTag_secondary_prod (sc : ScannerState) (sp : SurfPos)
       ⟨srest, sc.advance.advance.col⟩ :=
     ⟨hcorr_bang2.chars_from, rfl, hcorr_bang2.end_eq, hcorr_bang2.input_prefix, hcorr_bang2.indent_cols_nonneg⟩
   -- Unfold scanTag and resolve match to secondary branch
-  unfold scanTag; dsimp only []
-  split
+  unfold scanTag at hok; dsimp only [] at hok
+  split at hok
   · -- some '<': contradicts hpeek2
     rename_i h_lt
     exact absurd (h_lt ▸ hpeek2) (by decide)
   · -- some '!': secondary tag
+    have h_inj := Except.ok.inj hok; subst h_inj
     unfold scanSecondaryTag; dsimp only []
     obtain ⟨sp', h_gstar, hcorr_sfx⟩ :=
       collectTagSuffixLoop_prod sc.advance.advance ⟨srest, sc.advance.advance.col⟩
@@ -592,15 +598,16 @@ theorem scanTag_secondary_prod (sc : ScannerState) (sp : SurfPos)
 -- Sorry'd: verbatim and named/primary sub-cases (loop composition pending).
 theorem scanTag_nonSecondary_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
-    (hpeek : sc.peek? = some '!') (hpeek2 : ¬(sc.advance.peek? = some '!')) :
-    ∃ sp', SCNsTagProperty sp sp' ∧ ScannerSurfCorr (scanTag sc) sp' := by
+    (hpeek : sc.peek? = some '!') (hpeek2 : ¬(sc.advance.peek? = some '!'))
+    (s' : ScannerState) (hok : scanTag sc = .ok s') :
+    ∃ sp', SCNsTagProperty sp sp' ∧ ScannerSurfCorr s' sp' := by
   obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
   subst hsp_eq
   have hmore := peek_some_has_more hpeek
   have hcorr_bang := advance_non_newline_corr sc '!' rest hcorr
     hmore (by decide) (by decide)
-  unfold scanTag; dsimp only []
-  split
+  unfold scanTag at hok; dsimp only [] at hok
+  split at hok
   · -- sc.advance.peek? = some '<': verbatim tag
     -- Needs GLit '<' + GPlus (GChar isUriCharProp) + GLit '>'
     -- Uses collectVerbatimTagLoop_prod. Sorry for malformed/empty URI edge cases.
@@ -614,32 +621,53 @@ theorem scanTag_nonSecondary_prod (sc : ScannerState) (sp : SurfPos)
       hmore2 (by decide) (by decide)
     have hcorr_loop : ScannerSurfCorr sc.advance.advance ⟨rest2, sc.advance.advance.col⟩ :=
       ⟨hcorr_lt.chars_from, rfl, hcorr_lt.end_eq, hcorr_lt.input_prefix, hcorr_lt.indent_cols_nonneg⟩
-    unfold scanVerbatimTag; dsimp only []
-    obtain ⟨sp_mid, sp', h_gstar, hcorr_uri, h_gt_or_eq⟩ :=
-      collectVerbatimTagLoop_prod sc.advance.advance ⟨rest2, sc.advance.advance.col⟩
-        hcorr_loop "" _
-    have hcol2 : sc.advance.advance.col = sc.col + 2 := by
-      have := hcorr_bang.col_eq; have := hcorr_lt.col_eq; dsimp only [] at *; omega
-    rw [hcol2] at h_gstar
-    cases h_gt_or_eq with
-    | inl h_eq =>
-      -- No '>' found: malformed verbatim tag
-      sorry
-    | inr h_glit =>
-      by_cases hne : ⟨rest2, sc.col + 2⟩ = sp_mid
-      · -- Empty URI !<>: sorry (spec requires ≥1 URI char)
-        sorry
-      · -- Well-formed !<uri>: construct verbatim evidence
-        exact ⟨sp',
-               SCNsTagProperty.verbatim ('<' :: rest2) sc.col
-                 ⟨rest2, sc.col + 2⟩ sp_mid sp'
-                 (GLit.mk rest2 (sc.col + 1)) (GStar_to_GPlus h_gstar hne) h_glit,
-               ⟨hcorr_uri.chars_from, hcorr_uri.col_eq, hcorr_uri.end_eq, hcorr_uri.input_prefix, hcorr_uri.indent_cols_nonneg⟩⟩
+    -- Separate the monadic bind from scanTag's do block
+    simp only [bind, Except.bind] at hok
+    generalize h_verb : scanVerbatimTag sc.advance sc.currentPos = verb_result at hok
+    cases verb_result with
+    | error e => simp at hok
+    | ok s_verb =>
+      -- hok has Pure.pure wrapped; normalize to Except.ok for injection
+      change Except.ok { s_verb with simpleKeyAllowed := false } = Except.ok s' at hok
+      have hok_eq := Except.ok.inj hok; subst hok_eq
+      -- s' = { s_verb with simpleKeyAllowed := false }, s_verb is a local variable
+      -- Unfold scanVerbatimTag at the clean h_verb (no Bind.bind wrapper)
+      unfold scanVerbatimTag at h_verb; dsimp only [] at h_verb
+      split at h_verb
+      · exact absurd h_verb (by simp)  -- unterminatedVerbatimTag error
+      · split at h_verb
+        · exact absurd h_verb (by simp)  -- emptyVerbatimTagURI error
+        · -- ok branch: h_verb : .ok (...) = .ok s_verb
+          have h_sv := Except.ok.inj h_verb
+          obtain ⟨sp_mid, sp', h_gstar, hcorr_uri, h_gt_or_eq⟩ :=
+            collectVerbatimTagLoop_prod sc.advance.advance ⟨rest2, sc.advance.advance.col⟩
+              hcorr_loop "" _
+          have hcol2 : sc.advance.advance.col = sc.col + 2 := by
+            have := hcorr_bang.col_eq; have := hcorr_lt.col_eq; dsimp only [] at *; omega
+          rw [hcol2] at h_gstar
+          -- Build ScannerSurfCorr for { s_verb with simpleKeyAllowed := false }
+          have hcorr_sv : ScannerSurfCorr s_verb sp' := by
+            rw [← h_sv]; exact corr_of_emitAt _ _ hcorr_uri
+          cases h_gt_or_eq with
+          | inl h_eq =>
+            -- No '>' found: malformed verbatim tag — impossible in ok branch
+            sorry
+          | inr h_glit =>
+            by_cases hne : ⟨rest2, sc.col + 2⟩ = sp_mid
+            · -- Empty URI !<>: impossible in ok branch
+              sorry
+            · -- Well-formed !<uri>: construct verbatim evidence
+              exact ⟨sp',
+                     SCNsTagProperty.verbatim ('<' :: rest2) sc.col
+                       ⟨rest2, sc.col + 2⟩ sp_mid sp'
+                       (GLit.mk rest2 (sc.col + 1)) (GStar_to_GPlus h_gstar hne) h_glit,
+                     corr_of_simpleKeyAllowed_update false hcorr_sv⟩
   · -- sc.advance.peek? = some '!': contradiction
     rename_i h_bang
     exact absurd h_bang hpeek2
   · -- catch-all: named/non-specific via scanNamedTag
     rename_i h_not_lt h_not_bang
+    have h_inj := Except.ok.inj hok; subst h_inj
     obtain ⟨sp', hcorr'⟩ := scanNamedTag_corr sc.advance
       ⟨rest, sc.advance.col⟩
       ⟨hcorr_bang.chars_from, rfl, hcorr_bang.end_eq, hcorr_bang.input_prefix, hcorr_bang.indent_cols_nonneg⟩
@@ -650,9 +678,10 @@ theorem scanTag_nonSecondary_prod (sc : ScannerState) (sp : SurfPos)
 
 -- `scanTag` preserves correspondence on all branches.
 theorem scanTag_prod (sc : ScannerState) (sp : SurfPos)
-    (hcorr : ScannerSurfCorr sc sp) :
-    ∃ sp', ScannerSurfCorr (scanTag sc) sp' :=
-  scanTag_corr sc sp hcorr
+    (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
+    (hok : scanTag sc = .ok s') :
+    ∃ sp', ScannerSurfCorr s' sp' :=
+  scanTag_corr sc sp hcorr s' hok
 
 /-! ## §4 Document Marker Productions
 

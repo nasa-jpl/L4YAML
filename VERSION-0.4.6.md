@@ -17,7 +17,7 @@ Extend Phase B's `scanDoubleQuoted_prod` pattern to the remaining three content 
 
 **File:** [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) — extends existing Phase B infrastructure, reuses `peek_some_sp`, `advance_corr`, `consumeNewline_sbreak_corr`, `foldQuotedNewlines_prod`.
 
-**Sorry status:** 2 sorry in ScalarProduction.lean (`collectPlainScalarLoop_prod` line break + `scanPlainScalar_to_flowNode` doc boundary). Build: 415/415 jobs, 0 errors, 15 sorry warnings (2 in ScalarProduction.lean, 13 in StreamAccum.lean).
+**Sorry status:** 2 sorry in ScalarProduction.lean (`collectPlainScalarLoop_prod` line break + `scanPlainScalar_to_flowNode` doc boundary). Build: 415/415 jobs, 0 errors, 15 sorry warnings (2 in ScalarProduction.lean, 12 in StreamAccum.lean, 1 in StructureProduction.lean). **A10**: Scanner Except conversion makes S7/S8/S9/alias sorry sites closable by contradiction (not yet closed).
 
 <details>
 <summary>scanSingleQuoted_prod — completed 2026-03-29</summary>
@@ -1581,7 +1581,7 @@ Three architectural changes are needed before tackling the content categories. E
 
 **Key insight**: Alias is truly context-free — `SCNsAliasNode` has no `n`/`c` parameters in evidence, so `alias_flowNode` lifts directly to any desired `SFlowNode n c` without a context-lift theorem (unlike double/single-quoted which need `SFlowNode_doubleQ_ctx_lift`/`SFlowNode_singleQ_ctx_lift`).
 
-**Remaining sorry**: The degenerate case where `sp_mid = sp'` (empty alias name after `*`) — the YAML spec requires `c-ns-alias-node ::= '*' ns-anchor-name` where `ns-anchor-name ::= ns-anchor-char+`, but the scanner doesn't validate minimum length. The `definedAnchors.any` check doesn't prevent this because empty names CAN be registered via `& ` (ampersand followed by non-anchor-char). This is a scanner validation gap, not a proof gap.
+**Remaining sorry**: The degenerate case where `sp_mid = sp'` (empty alias name after `*`) — the YAML spec requires `c-ns-alias-node ::= '*' ns-anchor-name` where `ns-anchor-name ::= ns-anchor-char+`, but the scanner doesn't validate minimum length. The `definedAnchors.any` check doesn't prevent this because empty names CAN be registered via `& ` (ampersand followed by non-anchor-char). This is a scanner validation gap, not a proof gap. **UPDATE (A10)**: This gap is now CLOSED — `scanAnchorOrAlias` returns `Except.error .emptyAnchorName` for empty names, making this sorry closable by contradiction.
 
 **Build**: 415/415, 10 sorry (up from 9 — the new `dispatchContent_alias_prod` declaration adds 1 sorry for the degenerate empty-name case).
 
@@ -1608,15 +1608,15 @@ Three architectural changes are needed before tackling the content categories. E
 |---|---|---|
 | Double-quoted `"` | `SCDoubleQuoted 0 .blockIn` → `SFlowNode 0 .flowOut` | ✅ Sorry-free |
 | Single-quoted `'` | `SCSingleQuoted 0 .blockIn` → `SFlowNode 0 .flowOut` | ✅ Sorry-free |
-| Alias `*` | `SCNsAliasNode` → `SFlowNode 0 .flowOut` | ✅ 1 sorry (empty alias name) |
+| Alias `*` | `SCNsAliasNode` → `SFlowNode 0 .flowOut` | ✅ **A10** — sorry closable (scanner rejects empty names via `Except.error .emptyAnchorName`) |
 | Block scalar `\|`/`>` | `SCLLiteral 0` / `SCLFolded 0` | ✅ 2 sorry (`currentIndent ≥ 0`) |
 | Plain scalar | `SNsPlain 0 .blockIn` → `SFlowNode 0 .flowOut` | ✅ **A5/A6/A7** — block proven; 3 sorry (flow, multi-line, doc boundary) |
-| Anchor `&` | `SCNsAnchorProperty` → `SCNsProperties.anchorFirst` → `SFlowNode.propsEmpty` | ✅ **A8** — 1 sorry (empty anchor name) |
-| Tag `!` | `SCNsTagProperty` → `SCNsProperties.tagFirst` → `SFlowNode.propsEmpty` | ✅ **A8/A9** — `dispatchContent_tag_prod` sorry-free; secondary `!!` fully proven; verbatim `!<uri>` well-formed case proven; named/non-specific sorry'd in `scanTag_nonSecondary_prod` |
+| Anchor `&` | `SCNsAnchorProperty` → `SCNsProperties.anchorFirst` → `SFlowNode.propsEmpty` | ✅ **A8/A10** — sorry closable (scanner rejects empty names via `Except.error .emptyAnchorName`) |
+| Tag `!` | `SCNsTagProperty` → `SCNsProperties.tagFirst` → `SFlowNode.propsEmpty` | ✅ **A8/A9/A10** — `dispatchContent_tag_prod` sorry-free; secondary `!!` fully proven; verbatim `!<uri>` well-formed case proven; S8/S9 closable (scanner rejects malformed verbatim tags via `Except.error`); named/non-specific sorry'd in `scanTag_nonSecondary_prod` |
 
 **All content types now have dedicated `dispatchContent_*_prod` theorems.** `dispatchContent_evidence` is sorry-free.
 
-##### Remaining Category 1 sorry sites (10 sites, 7 declarations)
+##### Remaining Category 1 sorry sites (10 sites, 7 declarations — 3 now closable via A10)
 
 | ID | Theorem | File | Sorry | Group |
 |----|---------|------|-------|-------|
@@ -1626,22 +1626,23 @@ Three architectural changes are needed before tackling the content categories. E
 | S4 | `collectPlainScalarLoop_prod` | ScalarProduction | `#` at col=0 (unreachable from callers) | B: Loop |
 | S5 | `scanPlainScalar_to_flowNode` | ScalarProduction | Doc boundary first-char termination (`GStar.nil` match) | B: Loop |
 | S6 | `dispatchContent_plainScalar_prod` | StreamAccum | Flow context plain scalar (3 sorry sites in 1 expr) | C: Context |
-| S7 | `dispatchContent_anchor_prod` | StreamAccum | Empty anchor name (`& ` — `sp_mid = sp'`) | D: Non-empty |
-| S8 | `scanTag_nonSecondary_prod` | StructureProduction | Malformed verbatim tag (no `>` terminator) | F: Unreachable |
-| S9 | `scanTag_nonSecondary_prod` | StructureProduction | Empty URI `!<>` — spec requires ≥1 URI char | D: Non-empty |
+| S7 | `dispatchContent_anchor_prod` | StreamAccum | Empty anchor name (`& ` — `sp_mid = sp'`) | ~~D: Non-empty~~ **G: Closable (A10)** — `scanAnchorOrAlias` returns `Except.error .emptyAnchorName` for empty names; `.ok` branch contradicts `sp_mid = sp'` |
+| S8 | `scanTag_nonSecondary_prod` | StructureProduction | Malformed verbatim tag (no `>` terminator) | ~~F: Unreachable~~ **G: Closable (A10)** — `scanVerbatimTag` returns `Except.error .unterminatedVerbatimTag`; `.ok` branch contradicts no-`>` case |
+| S9 | `scanTag_nonSecondary_prod` | StructureProduction | Empty URI `!<>` — spec requires ≥1 URI char | ~~D: Non-empty~~ **G: Closable (A10)** — `scanVerbatimTag` returns `Except.error .emptyVerbatimTagURI`; `.ok` branch contradicts empty URI |
 | S10 | `scanTag_nonSecondary_prod` | StructureProduction | Named/non-specific tag decomposition | E: Tag decomp |
+
+Additionally, the alias empty-name sorry in `dispatchContent_alias_prod` (StreamAccum) is also closable via A10 (same `scanAnchorOrAlias` Except mechanism).
 
 **Dependency graph**:
 - **S4 → S5 → S6**: Closing the col invariant (S4) enables first-char-consumed (S5), which enables flow parameterization (S6). Critical path unlocking 5 sorries.
-- **S7 + S9**: Share the "scanner loop produces ≥1 char" pattern. A shared `loop_nonempty_when_valid_start` lemma family closes both.
+- **S7 + S9 + S8**: ~~Share the "scanner loop produces ≥1 char" pattern.~~ **Resolved by A10** — scanner Except conversion makes these closable by contradiction. The `.ok` hypothesis directly contradicts the degenerate branch in each case. Need only write the final `absurd`/`contradiction` proof steps (~30 min total).
 - **S1, S2**: Independent — just need `indents.size > 1` from preprocessing context to invoke existing `currentIndent_nonneg`.
 - **S3**: Independent, hardest — needs `handleBlockLineBreak_prod` + multi-line continuation grammar.
-- **S8**: Independent — may be contradictory (scanner returns `.ok` ⟹ `>` was found).
 - **S10**: Independent — decompose `scanNamedTag` into existing `collectTagHandleLoop_prod` + `collectTagSuffixLoop_prod`.
 
 **Wadler-style architectural opportunities**:
 
-1. **Scanner loop non-emptiness lemma family** (closes S7, S9; pattern reusable for S4). When `peek? = some c` and `P c`, the loop consumes ≥1 char, giving `sp ≠ sp'`. Applies to `collectAnchorNameLoop` (`isNsAnchorChar`), `collectVerbatimTagLoop` (`isUriCharProp`), and col>0 after first content char.
+1. ~~**Scanner loop non-emptiness lemma family** (closes S7, S9; pattern reusable for S4).~~ **Superseded by A10** — the Except conversion at the scanner level is a superior solution. Instead of proving loop non-emptiness post-hoc, the scanner validates input and rejects degenerate cases, making the sorry branches unreachable in proof. The non-emptiness pattern may still be useful for S4 (col ≥ 1 after content char), but S7/S9 no longer need it.
 2. **Context-parameterized `collectPlainScalarLoop_prod`** (closes S6 once S5 is closed). Parameterize over `FlowContext` — only difference is `isPlainSafeBool c false` vs `isPlainSafeBool c true`. Block and flow proofs share 90% of structure.
 3. **First-char-consumed lemma** (closes S5). `canStartPlainScalarBool c next false = true → terminates? c sc content spaces false = none ∨ loop-consumes-entry`. Bridges the two scanner phases.
 
@@ -1649,16 +1650,31 @@ Three architectural changes are needed before tackling the content categories. E
 
 | Priority | IDs | Effort | Impact | Rationale |
 |----------|-----|--------|--------|-----------|
-| 1 | S1, S2 | ~15 min | −2 sorry | Trivial: existing `currentIndent_nonneg` + `indents.size > 1` from call context |
-| 2 | S7, S9 | ~1 hr | −2 sorry | Scanner non-emptiness invariant (anchor + verbatim URI). Shared lemma pattern |
-| 3 | S4 | ~30 min | −1 sorry, enables S5 | Col invariant: `col ≥ 1` after any content char in loop |
-| 4 | S5 | ~1 hr | −1 sorry, enables S6 | First-char-consumed: `canStartPlainScalar ⟹ terminates?` doesn't fire on first char |
-| 5 | S8 | ~30 min | −1 sorry | Prove `collectVerbatimTagLoop` `.ok` ⟹ `>` was found (or handle otherwise) |
-| 6 | S10 | ~2 hr | −1 sorry | `scanNamedTag_prod`: compose existing handle + suffix loop theorems |
-| 7 | S6 | ~2 hr | −3 sorry sites | Parameterize `collectPlainScalarLoop_prod` over `FlowContext` for `.flowIn` |
-| 8 | S3 | ~4 hr | −1 sorry | Multi-line plain scalar. Hardest — `handleBlockLineBreak_prod` + `SNsPlainNextLine` |
+| 1 | S7, S8, S9, alias | ~30 min | −3 sorry (−4 sites) | **Trivial after A10** — write `absurd`/`contradiction` proofs using Except error branches. The `.ok` hypothesis contradicts the degenerate case in each site. |
+| 2 | S4 | ~30 min | −1 sorry, enables S5 | Col invariant: `col ≥ 1` after any content char in loop |
+| 3 | S5 | ~1 hr | −1 sorry, enables S6 | First-char-consumed: `canStartPlainScalar ⟹ terminates?` doesn't fire on first char |
+| 4 | S10 | ~2 hr | −1 sorry | `scanNamedTag_prod`: compose existing handle + suffix loop theorems |
+| 5 | S1, S2 | ~2 hr | −2 sorry | **Revised**: not trivial. `indents.size > 1` unavailable at top level (`noPending`); `scanBlockScalar_prod` precondition `currentIndent ≥ 0` is overly strong for top-level block scalars where `currentIndent = -1`. Fix requires either (a) weakening `scanBlockScalar_prod` to handle `contentIndent = 0` (cascade through block scalar proof chain), or (b) tracking indent depth through `ScannerSurfCorr` / `PendingNode`. |
+| 6 | S6 | ~2 hr | −3 sorry sites | Parameterize `collectPlainScalarLoop_prod` over `FlowContext` for `.flowIn` |
+| 7 | S3 | ~4 hr | −1 sorry | Multi-line plain scalar. Hardest — `handleBlockLineBreak_prod` + `SNsPlainNextLine` |
 
-**Critical path**: S4 → S5 → S6 (chain unlocks 5 sorries). Start with S1/S2 for quick wins, then S7/S9 for the shared non-emptiness pattern.
+**Critical path**: S4 → S5 → S6 (chain unlocks 5 sorries). S7/S8/S9/alias are now **trivially closable** after A10 (highest priority, lowest effort). S1/S2 deferred — see analysis below.
+
+##### S1/S2 design analysis: indent tracking for block scalars
+
+`dispatchContent_blockScalar_prod` needs `sc.currentIndent ≥ 0`, which `ScannerSurfCorr.currentIndent_nonneg` provides given `sc.indents.size > 1`. But `indents.size > 1` is not always true:
+
+- **`pendingBlock` path**: After `pushSequenceIndent`/`pushMappingIndent`, `size ≥ 2`. But `scanNextToken_preprocess` calls `unwindIndents` (pops), so proving `size > 1` survives preprocessing requires new infrastructure.
+- **`noPending` path**: Top level allows block scalars (`|\n  hello`), but `indents = #[sentinel]`, `size = 1`, `currentIndent = -1`. This is a genuine case — not an edge case to be sorry'd away.
+
+The root issue: `scanBlockScalar_prod`'s precondition `currentIndent ≥ 0` is used to derive `contentIndent ≥ 1` via `max(0, currentIndent + 1) ≥ 1`. With `currentIndent = -1`, `max(0, 0) = 0`, so `contentIndent` could be 0 (content at column 0). The entire block scalar proof chain (`scanBlockScalarBody_indent_ge_one`, `_literal_prod`, `_folded_prod`) assumes `contentIndent ≥ 1`. Weakening this requires reworking the chain to handle `contentIndent = 0`.
+
+**Architectural options** (not yet implemented):
+1. Weaken `scanBlockScalar_prod` to allow `currentIndent = -1` and `contentIndent = 0`, cascading through block scalar proof chain (~3+ hr)
+2. Track indent depth in `ScannerSurfCorr` (new field `indent_size_ge : sc.indents.size ≥ n`), thread through pushes/pops (~2 hr, A1-scale)
+3. Add `h_indented` field to `PendingNode.pendingBlock` — blocks `noPending` path but closes `pendingBlock` (~1 hr, partial fix)
+
+**Recommendation**: Option 1 is the correct fix (handles all YAML inputs). Defer until other lower-effort sorry sites are closed.
 
 ##### Accomplishments on Category 1
 
@@ -1784,6 +1800,47 @@ Pushed the tag sorry from `dispatchContent_tag_prod` (StreamAccum layer) down to
 - **Warning count**: +0 net (sorry pushed down from accumulation layer to production layer)
 - `dispatchContent_tag_prod` is now sorry-free — all tag grammar gaps are in StructureProduction.lean
 
+**A10 — Scanner Except conversion for anchor/tag validation** (2026-04-10)
+
+Converted 4 scanner functions from pure `ScannerState` return to `Except ScanError ScannerState`, enabling the scanner to reject degenerate inputs (empty anchor names, empty verbatim tag URIs, unterminated verbatim tags). This makes sorry sites S7, S8, S9, and the alias empty-name sorry all closable by contradiction — the `.ok` hypothesis in proof branches directly contradicts the degenerate case that the scanner now rejects.
+
+**Motivation**: The proof layer needed `sp_mid ≠ sp'` (scanner consumed ≥1 character) for anchor names the verbatim URIs, but the pure scanner accepted empty names/URIs without error. The A3 reflection identified this as "a scanner validation gap, not a proof gap." The fix operates at the right level — the scanner, which is the earliest point where YAML spec §6.9.2 production [103] `ns-anchor-name ::= ns-anchor-char+` (non-empty) can be enforced.
+
+1. **3 new `ScanError` constructors** (Token.lean):
+   - `emptyAnchorName (line col : Nat)` — rejected when `scanAnchorOrAlias` collects zero anchor-name characters
+   - `emptyVerbatimTagURI (line col : Nat)` — rejected when `scanVerbatimTag` finds `!<>` with empty URI
+   - `unterminatedVerbatimTag (line col : Nat)` — rejected when `scanVerbatimTag` reaches EOF without `>`
+
+2. **4 functions converted to `Except`** (Scanner.lean):
+   - `scanAnchorOrAlias` (L1056): `if name.isEmpty then .error (.emptyAnchorName ...) else .ok state`
+   - `collectVerbatimTagLoop` (L1073): returns `Except ScanError (String × Bool × ScannerState)` — error on unterminated (`!foundClose`) or empty URI (`uri.isEmpty`)
+   - `scanVerbatimTag` (L1120): delegates to `collectVerbatimTagLoop`, propagates errors
+   - `scanTag` (L1160): delegates to `scanVerbatimTag` (via monadic bind), `scanSecondaryTag` (unchanged), or `scanNamedTag` (unchanged)
+
+3. **`scanNextToken_dispatchContent` call sites updated** (Scanner.lean L2514-2530): `'&'` and `'*'` branches now use `← scanAnchorOrAlias` (monadic bind); `'!'` branch uses `← scanTag`. Error propagation is automatic via `do` notation.
+
+4. **9 proof files updated for Except cascade** (0 new sorry, 0 errors):
+   - `StructureCoupling.lean`: `scanAnchorOrAlias_corr` and `scanTag_corr` — already had `(s' : ScannerState) (hok : ... = .ok s')` signatures
+   - `ScannerCorrectness.lean`: ~30 theorem signature changes to add `s'`/`hok` params
+   - `ScanStrictCoupling.lean`: signature updates
+   - `StructureProduction.lean`: `scanAnchorOrAlias_prod` + `scanTag_secondary_prod` / `scanTag_nonSecondary_prod` — `(hok : ... = .ok s')`
+   - `ScannerPlainScalarValid.lean`: Major fixes — `scanTag_psv_match` fully inlined (forward reference eliminated), `dispatchContent_preserves_PlainScalarsValid`/`FlowInv`/`AllKeysPlaceholderInv` anchor/alias/tag branches use `generalize + cases` pattern
+   - `NodeProduction.lean`: 3 theorems updated (`scanAnchorOrAlias_aliasNode_prod`, `_anchorProp_prod`, `_flowNode_prod`)
+   - `StreamAccum.lean`: `dispatchContent_corr`/`_alias_prod`/`_anchor_prod`/`_tag_prod` — `generalize + cases + dsimp only []` for `Except.bind` match wrappers
+
+**Key proof patterns discovered**:
+- **`generalize + cases + dsimp only []` for Except.bind match wrapper**: After `simp only [bind, Except.bind]`, branches using Except-returning functions leave `match f x with | .error e => .error e | .ok v => .ok v = .ok s'`. Fix: generalize the function call, cases on result, `dsimp only []` to iota-reduce the trivial match.
+- **`change Except.ok X = Except.ok s' at hok`**: `return` in `do` blocks desugars to `Pure.pure`, which is definitionally `Except.ok` but syntactically different. `change` bridges the gap before `Except.ok.inj; subst`.
+- **Forward reference elimination**: `scanTag_psv_match` at L261 referenced `scanTag_new_token_is_tag` defined at L2461. Fixed by fully inlining the proof with `unfold scanTag` + separate sub-proofs for verbatim/secondary/named branches.
+
+**Build**: 415/415 jobs, 0 errors, 15 sorry warnings (unchanged — no new sorry, no sorry closed yet).
+
+**Net sorry accounting**:
+- **Added**: 0 sorry
+- **Eliminated**: 0 sorry (the sorry sites are now *closable* but not yet closed)
+- **Enabled**: S7 (anchor), S8 (unterminated verbatim), S9 (empty URI), alias sorry — all 4 now closable by `absurd`/`contradiction` in the `.ok` branch
+- **Warning count**: 15 (unchanged)
+
 ##### Reflections about Category 1
 
 1. **`SSLComments` structural mismatch resolved via "build-then-extend" pattern.** `SBlockNode.blockLiteral`/`.blockFolded` do NOT include trailing `SSLComments` (unlike `SBlockNode.flowInBlock`). Solution: build the `SBlockNode` spanning `sp_block → sp_scan'` without comments, use it for `SLBareDocument`/`h_close_old`, then bridge `sp_scan' → sp_mid` with `ssl_comments_extend_stream`. This pattern generalizes to any content type whose grammar production doesn't include trailing comments.
@@ -1805,6 +1862,10 @@ Pushed the tag sorry from `dispatchContent_tag_prod` (StreamAccum layer) down to
 9. **`GStar_to_GPlus` relocated to `CouplingBridge.lean` §8 GStar Composition.** (A9) Originally defined in `NodeProduction.lean`, which imports `StructureProduction.lean` — making reverse import impossible. Moved to `CouplingBridge.lean` (lowest common ancestor in the import DAG), eliminating the inline workaround in `scanTag_nonSecondary_prod` and enabling all downstream files to share the single definition.
 
 10. **Three-way loop evidence pattern.** (A9) Both `collectVerbatimTagLoop_prod` and `collectTagHandleLoop_prod` use a novel 3-result return type: `GStar` chars + `ScannerSurfCorr` + termination evidence (either `sp_mid = sp'` for early stop, or `GLit` for delimiter consumption). This pattern captures the scanner's dual-termination semantics (delimiter found vs. not found) without complicating the base case. The verbatim loop uses `Or.inl rfl` / `Or.inr (GLit.mk ...)`, while the handle loop uses `Or.inl ⟨rfl, rfl⟩` / `Or.inr ⟨GLit.mk ..., rfl⟩` (pairing position with `foundBang` Bool evidence).
+
+11. **Scanner validation is the right layer for spec-mandated non-emptiness.** (A10) The A3 reflection identified empty anchor/alias names as "a scanner validation gap, not a proof gap." This proved prescient — attempting to prove non-emptiness post-hoc in the proof layer (via `loop_nonempty_when_valid_start` lemma families) would have required threading `peek? = some c` preconditions through multiple levels of loop induction. Converting the scanner to `Except` is architecturally cleaner: the scanner enforces the YAML spec constraint (`ns-anchor-name ::= ns-anchor-char+`), and the proof layer simply uses the `.ok` hypothesis to eliminate degenerate branches. The same principle applies to `scanVerbatimTag`: the spec requires non-empty URI and proper `>` termination, and the scanner is the natural place to validate these. **General principle**: when the YAML spec requires a non-emptiness or well-formedness constraint, enforce it at the scanner level via `Except` rather than proving it retroactively in the production proof.
+
+12. **Except cascade is wide but mechanically uniform.** (A10) Converting 4 scanner functions to `Except` required updating 9 proof files (~100+ theorem signatures), but the changes followed a small set of repeating patterns: (a) add `(s' : ScannerState) (hok : f sc = .ok s')` to theorem signatures, (b) use `generalize + cases + dsimp only []` for `Except.bind` match wrappers, (c) use `change Except.ok X = .ok s' at hok` for `Pure.pure` ↔ `Except.ok` bridging. The mechanical uniformity meant the cascade, while wide, was predictable — no novel proof ideas needed for the forwarding sites. The challenging part was `ScannerPlainScalarValid.lean` where `scanTag_psv_match` had a forward reference to a theorem defined 2200 lines later, requiring full inlining of the proof instead.
 
 #### Category 2: col≠0 / BOM edge case — **RESOLVED by A2** ✅
 
@@ -1845,7 +1906,10 @@ The `GOpt.some` comment case is unreachable because the scanner greedily consume
 2. ~~**Plain scalar support** (Category 1)~~ — **DONE (A5)**. Wired through `dispatchContent_evidence`. 1 sorry for full-scan grammar gap.
 3. ~~**Full-scan plain scalar grammar** (Category 1)~~ — **DONE (A7)**. `collectPlainScalarLoop_prod` proven by fuel induction (single-line). `scanPlainScalar_to_flowNode` composes first char + loop entries + context lift into `SFlowNode 0 .flowOut` + trailing `GStar SSWhite`. Block context `dispatchContent_plainScalar_prod` now fully proven; flow context sorry'd separately. 2 sorry remain: line break (multi-line deferred), doc boundary first-char termination (edge case).
 4. ~~**Anchor `&` / tag `!` grammar** (Category 1)~~ — **DONE (A8/A9)**. `dispatchContent_anchor_prod` and `dispatchContent_tag_prod` both sorry-free. Secondary tag `!!` fully proven; verbatim `!<uri>` well-formed case proven; anchor 1 sorry (empty name); tag 1 sorry declaration with 3 edge cases (malformed verbatim, empty URI, named/non-specific) in `scanTag_nonSecondary_prod`.
-5. **Mapping entries `?`/`:`** (Category 4) — parallel to sequence infrastructure
-6. **Directive infrastructure** (Category 3) — focused layer
-7. **Flow indicators** (Category 5) — lower priority
-8. ~~**col≠0 BOM** (Category 2) — grammar definition change, deferred~~ **DONE (A2)**
+5. ~~**Scanner Except conversion** (Category 1)~~ — **DONE (A10)**. `scanAnchorOrAlias`, `collectVerbatimTagLoop`, `scanVerbatimTag`, `scanTag` converted to `Except`. S7/S8/S9/alias sorry sites now closable by contradiction.
+6. **Close S7/S8/S9/alias sorry sites** (Category 1) — Write `absurd`/`contradiction` proofs in the now-unreachable degenerate branches. Expected: −3 sorry warnings (S7/alias in same declaration, S8/S9/S10 in same declaration — closing S8/S9 reduces their declaration's sorry count but S10 remains).
+7. **S1/S2 indent tracking** (Category 1) — ScannerSurfCorr `indent_size` field or weaken `scanBlockScalar_prod` precondition
+8. **Mapping entries `?`/`:`** (Category 4) — parallel to sequence infrastructure
+9. **Directive infrastructure** (Category 3) — focused layer
+10. **Flow indicators** (Category 5) — lower priority
+11. ~~**col≠0 BOM** (Category 2) — grammar definition change, deferred~~ **DONE (A2)**

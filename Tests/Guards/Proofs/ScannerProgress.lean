@@ -159,11 +159,15 @@ private def checkBlockScalarProgress (input : String) : Bool :=
 -- scanAnchorOrAlias
 private def checkAnchorProgress (input : String) : Bool :=
   let s := ScannerState.mk' input
-  (scanAnchorOrAlias s true).offset > s.offset
+  match scanAnchorOrAlias s true with
+  | .ok s' => s'.offset > s.offset
+  | .error _ => true
 
 private def checkAliasProgress (input : String) : Bool :=
   let s := ScannerState.mk' input
-  (scanAnchorOrAlias s false).offset > s.offset
+  match scanAnchorOrAlias s false with
+  | .ok s' => s'.offset > s.offset
+  | .error _ => true
 
 #guard checkAnchorProgress "&anchor rest"
 #guard checkAnchorProgress "&a "
@@ -173,7 +177,9 @@ private def checkAliasProgress (input : String) : Bool :=
 -- scanTag
 private def checkTagProgress (input : String) : Bool :=
   let s := ScannerState.mk' input
-  (scanTag s).offset > s.offset
+  match scanTag s with
+  | .ok s' => s'.offset > s.offset
+  | .error _ => true
 
 #guard checkTagProgress "!!str rest"
 #guard checkTagProgress "!<uri> rest"

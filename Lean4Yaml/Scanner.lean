@@ -1053,31 +1053,35 @@ def collectAnchorNameLoop (s : ScannerState) (name : String) (fuel : Nat) : Stri
     | none => (name, s)
 
 @[yaml_spec "6.9" 101 "c-ns-anchor-property"]
-def scanAnchorOrAlias (s : ScannerState) (isAnchor : Bool) : ScannerState :=
+def scanAnchorOrAlias (s : ScannerState) (isAnchor : Bool) : Except ScanError ScannerState :=
   let startPos := s.currentPos
   let s_after_marker := s.advance
   let fuel := s.inputEnd - s_after_marker.offset
   let (name, s_after_name) := collectAnchorNameLoop s_after_marker "" fuel
-  let token := if isAnchor then YamlToken.anchor name else YamlToken.alias name
-  let s_with_token := s_after_name.emitAt startPos token
-  { s_with_token with simpleKeyAllowed := false }
+  if name.isEmpty then
+    .error (.emptyAnchorName startPos.line startPos.col)
+  else
+    let token := if isAnchor then YamlToken.anchor name else YamlToken.alias name
+    let s_with_token := s_after_name.emitAt startPos token
+    .ok { s_with_token with simpleKeyAllowed := false }
 
 /-! ## Tag Scanning -/
 
 -- Helper: Collect verbatim tag URI until '>', accepting only ns-uri-char [39].
+-- Returns (uri, foundClose, state) where foundClose is true iff '>' was consumed.
 @[yaml_spec "5.6" 39 "ns-uri-char"]
-def collectVerbatimTagLoop (s : ScannerState) (uri : String) (fuel : Nat) : String × ScannerState :=
+def collectVerbatimTagLoop (s : ScannerState) (uri : String) (fuel : Nat) : String × Bool × ScannerState :=
   match fuel with
-  | 0 => (uri, s)
+  | 0 => (uri, false, s)
   | fuel' + 1 =>
     match s.peek? with
-    | some '>' => (uri, s.advance)
+    | some '>' => (uri, true, s.advance)
     | some c =>
       if isUriCharBool c then
         collectVerbatimTagLoop s.advance (uri.push c) fuel'
       else
-        (uri, s)
-    | none => (uri, s)
+        (uri, false, s)
+    | none => (uri, false, s)
 
 -- Helper: Collect tag suffix characters using ns-tag-char [40].
 @[yaml_spec "5.6" 39 "ns-uri-char",
@@ -1113,11 +1117,16 @@ def collectTagHandleLoop (s : ScannerState) (chars : String) (fuel : Nat) : Stri
 
 /-- Scan a verbatim tag `!<uri>`.  Pre: scanner after first `!`, peek = `<`. -/
 @[yaml_spec "6.9" 98 "c-verbatim-tag"]
-def scanVerbatimTag (s : ScannerState) (startPos : YamlPos) : ScannerState :=
+def scanVerbatimTag (s : ScannerState) (startPos : YamlPos) : Except ScanError ScannerState :=
   let s_after_open := s.advance
   let fuel := startPos.offset + s.inputEnd - s_after_open.offset  -- conservative fuel
-  let (uri, s_after_uri) := collectVerbatimTagLoop s_after_open "" fuel
-  s_after_uri.emitAt startPos (.tag "" uri)
+  let (uri, foundClose, s_after_uri) := collectVerbatimTagLoop s_after_open "" fuel
+  if !foundClose then
+    .error (.unterminatedVerbatimTag startPos.line startPos.col)
+  else if uri.isEmpty then
+    .error (.emptyVerbatimTagURI startPos.line startPos.col)
+  else
+    .ok (s_after_uri.emitAt startPos (.tag "" uri))
 
 /-- Scan a secondary tag `!!suffix`.  Pre: scanner after first `!`, peek = `!`. -/
 @[yaml_spec "6.8.2" 91 "c-secondary-tag-handle",
@@ -1153,14 +1162,19 @@ def scanNamedTag (s : ScannerState) (startPos : YamlPos) (inputEnd : Nat) : Scan
 /-- Scan a tag property (`!`, `!!suffix`, `!handle!suffix`, `!<uri>`).
     Dispatches to `scanVerbatimTag`, `scanSecondaryTag`, or `scanNamedTag`. -/
 @[yaml_spec "6.9" 97 "c-ns-tag-property"]
-def scanTag (s : ScannerState) : ScannerState :=
+def scanTag (s : ScannerState) : Except ScanError ScannerState :=
   let startPos := s.currentPos
   let s_after_bang := s.advance  -- consume `!`
-  let s_inner := match s_after_bang.peek? with
-    | some '<' => scanVerbatimTag s_after_bang startPos
-    | some '!' => scanSecondaryTag s_after_bang startPos
-    | _        => scanNamedTag s_after_bang startPos s.inputEnd
-  { s_inner with simpleKeyAllowed := false }
+  match s_after_bang.peek? with
+  | some '<' => do
+    let s_inner ← scanVerbatimTag s_after_bang startPos
+    return { s_inner with simpleKeyAllowed := false }
+  | some '!' =>
+    let s_inner := scanSecondaryTag s_after_bang startPos
+    .ok { s_inner with simpleKeyAllowed := false }
+  | _ =>
+    let s_inner := scanNamedTag s_after_bang startPos s.inputEnd
+    .ok { s_inner with simpleKeyAllowed := false }
 
 /-! ## Directive Scanning -/
 
@@ -2498,7 +2512,7 @@ def scanNextToken_dispatchBlockIndicators (s : ScannerState) (c : Char) :
 def scanNextToken_dispatchContent (s : ScannerState) (c : Char) :
     Except ScanError ScannerState := do
   if c == '&' then
-    let s' := scanAnchorOrAlias s true
+    let s' ← scanAnchorOrAlias s true
     let name := (collectAnchorNameLoop s.advance "" (s.inputEnd - s.advance.offset)).fst
     return { s' with definedAnchors := s'.definedAnchors.push name }
   if c == '*' then
@@ -2506,8 +2520,11 @@ def scanNextToken_dispatchContent (s : ScannerState) (c : Char) :
     if !(s.definedAnchors.any (· == name)) then
       .error (.undefinedAlias name s.currentPos.line s.currentPos.col)
     else
-      return scanAnchorOrAlias s false
-  if c == '!' then return scanTag s
+      let s' ← scanAnchorOrAlias s false
+      return s'
+  if c == '!' then
+    let s' ← scanTag s
+    return s'
   if c == '|' || c == '>' then
     let s' ← scanBlockScalar s
     return s'
