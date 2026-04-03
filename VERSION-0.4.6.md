@@ -17,7 +17,7 @@ Extend Phase B's `scanDoubleQuoted_prod` pattern to the remaining three content 
 
 **File:** [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) — extends existing Phase B infrastructure, reuses `peek_some_sp`, `advance_corr`, `consumeNewline_sbreak_corr`, `foldQuotedNewlines_prod`.
 
-**Sorry status:** 2 sorry in ScalarProduction.lean (`collectPlainScalarLoop_prod` line break + `scanPlainScalar_to_flowNode` doc boundary). Build: 415/415 jobs, 0 errors, 14 sorry warnings (2 in ScalarProduction.lean, 11 in StreamAccum.lean, 1 in StructureProduction.lean). **A11**: Removed `hm : m ≥ 1` from grammar constructors (compensating for Nat encoding offset), closing S1/S2. **A10**: Scanner Except conversion makes S7/S8/S9/alias sorry sites closable by contradiction (not yet closed).
+**Sorry status:** 2 sorry in ScalarProduction.lean (`collectPlainScalarLoop_prod` line break + `scanPlainScalar_to_flowNode` doc boundary). Build: 415/415 jobs, 0 errors, 12 sorry warnings (2 in ScalarProduction.lean, 9 in StreamAccum.lean, 1 in StructureProduction.lean). **A12**: Closed S7/S8/S9/alias sorry sites by contradiction (14→12 warnings). **A11**: Removed `hm : m ≥ 1` from grammar constructors (compensating for Nat encoding offset), closing S1/S2. **A10**: Scanner Except conversion makes S7/S8/S9/alias sorry sites closable by contradiction.
 
 <details>
 <summary>scanSingleQuoted_prod — completed 2026-03-29</summary>
@@ -385,7 +385,7 @@ Remaining _prod theorems ───────────────┘       
 
 **Execution order:** Layers 1–3 complete. Layer 4a foundations complete (all `_prod` theorems proven, 0 sorry). Layer 4b complete (8 theorems). Layer 4c→4d→4e complete — restructured from broken same-position invariant (4c) through lagging triple (4d) to lagging quad with `BlockStack` (4e). 5 per-dispatch sorry are architecturally provable. All individual scalar/tag/anchor `_prod` theorems now **FULLY PROVEN**. `scan_content_gives_stream` eliminated by import reversal (DocumentProduction imports StreamAccum). Next steps: discharge per-dispatch sorry (`accum_step_structural` and `preprocessing_eof_extends_stream` are tractable first targets). Flow collection accumulation (analogous to `BlockStack` for `FlowStack`) is future work.
 
-**Sorry status (v0.4.8):** 5 sorry declarations, all in StreamAccum.lean. PendingNode is now **evidence-bearing** — non-trivial variants carry `h_closable` closure proofs. Each dispatch theorem has its `nil + noPending` case **proven**. EOF `nil + pendingX + col=0` cases **proven** via h_closable. **EOF `nil + pendingX` cases (all cols) now proven** — `preprocess_none_ssl_comments` eliminated the col=0 requirement for `pendingContent/DocEnd/DocStart/Flow/Block` closures. New: dispatch pending-at-col=0 cases (6 variants × 4 dispatchers = 24) now **proven** for old-pending closure — `preprocess_some_ssl_comments_col0` extracts `SSLComments` from preprocessing at col=0, and `h_closable_old` closes the old pending. The new PendingNode's `h_closable` remains sorry (same root cause as noPending). Remaining sorry: (a) h_closable construction at dispatch time (needs `_prod` → `SFlowNode(n+1,.flowOut)` grammar context lifting), (b) col≠0 cases in `some` path (same-line tokens can't provide `SSLComments` to close pending), (c) `seqLevel`/`mapLevel` stack operations, (d) BOM grammar gap (1 sorry in PreprocessProduction.lean). Build: 415/415 jobs, 9 sorry warnings (+1 from centralized BOM sorry).
+**Sorry status (v0.4.8):** 5 sorry declarations, all in StreamAccum.lean. PendingNode is now **evidence-bearing** — non-trivial variants carry `h_closable` closure proofs. Each dispatch theorem has its `nil + noPending` case **proven**. EOF `nil + pendingX + col=0` cases **proven** via h_closable. **EOF `nil + pendingX` cases (all cols) now proven** — `preprocess_none_ssl_comments` eliminated the col=0 requirement for `pendingContent/DocEnd/DocStart/Flow/Block` closures. New: dispatch pending-at-col=0 cases (6 variants × 4 dispatchers = 24) now **proven** for old-pending closure — `preprocess_some_ssl_comments_col0` extracts `SSLComments` from preprocessing at col=0, and `h_closable_old` closes the old pending. The new PendingNode's `h_closable` remains sorry (same root cause as noPending). Remaining sorry: (a) h_closable construction at dispatch time (needs `_prod` → `SFlowNode(n+1,.flowOut)` grammar context lifting), (b) col≠0 cases in `some` path (same-line tokens can't provide `SSLComments` to close pending), (c) `seqLevel`/`mapLevel` stack operations, (d) BOM grammar gap (1 sorry in PreprocessProduction.lean). Build: 415/415 jobs, 12 sorry warnings (2 ScalarProduction + 9 StreamAccum + 1 StructureProduction). **A12**: S7/S8/S9/alias CLOSED (−2 warnings from StreamAccum).
 
 ###### **Layer 4b reflections (8 theorems proven, 0 sorry):**
 
@@ -1581,9 +1581,9 @@ Three architectural changes are needed before tackling the content categories. E
 
 **Key insight**: Alias is truly context-free — `SCNsAliasNode` has no `n`/`c` parameters in evidence, so `alias_flowNode` lifts directly to any desired `SFlowNode n c` without a context-lift theorem (unlike double/single-quoted which need `SFlowNode_doubleQ_ctx_lift`/`SFlowNode_singleQ_ctx_lift`).
 
-**Remaining sorry**: The degenerate case where `sp_mid = sp'` (empty alias name after `*`) — the YAML spec requires `c-ns-alias-node ::= '*' ns-anchor-name` where `ns-anchor-name ::= ns-anchor-char+`, but the scanner doesn't validate minimum length. The `definedAnchors.any` check doesn't prevent this because empty names CAN be registered via `& ` (ampersand followed by non-anchor-char). This is a scanner validation gap, not a proof gap. **UPDATE (A10)**: This gap is now CLOSED — `scanAnchorOrAlias` returns `Except.error .emptyAnchorName` for empty names, making this sorry closable by contradiction.
+**Remaining sorry**: ~~The degenerate case where `sp_mid = sp'` (empty alias name after `*`) — the YAML spec requires `c-ns-alias-node ::= '*' ns-anchor-name` where `ns-anchor-name ::= ns-anchor-char+`, but the scanner doesn't validate minimum length. The `definedAnchors.any` check doesn't prevent this because empty names CAN be registered via `& ` (ampersand followed by non-anchor-char). This is a scanner validation gap, not a proof gap.~~ **CLOSED (A12)** — `scanAnchorOrAlias_prod` now returns `sp_mid ≠ sp'` unconditionally. The strengthened `collectAnchorNameLoop_prod` links position equality to value equality (`sp = sp' → result.fst = name`), and the scanner's `Except.error .emptyAnchorName` rejects the degenerate case.
 
-**Build**: 415/415, 10 sorry (up from 9 — the new `dispatchContent_alias_prod` declaration adds 1 sorry for the degenerate empty-name case).
+**Build**: 415/415, ~~10 sorry (up from 9 — the new `dispatchContent_alias_prod` declaration adds 1 sorry for the degenerate empty-name case)~~ **12 sorry (A12 closed the alias sorry)**.
 
 **Unblocks**: Category 1 alias (`*`) content type.
 
@@ -1608,15 +1608,15 @@ Three architectural changes are needed before tackling the content categories. E
 |---|---|---|
 | Double-quoted `"` | `SCDoubleQuoted 0 .blockIn` → `SFlowNode 0 .flowOut` | ✅ Sorry-free |
 | Single-quoted `'` | `SCSingleQuoted 0 .blockIn` → `SFlowNode 0 .flowOut` | ✅ Sorry-free |
-| Alias `*` | `SCNsAliasNode` → `SFlowNode 0 .flowOut` | ✅ **A10** — sorry closable (scanner rejects empty names via `Except.error .emptyAnchorName`) |
+| Alias `*` | `SCNsAliasNode` → `SFlowNode 0 .flowOut` | ✅ **A12** — sorry CLOSED (scanner rejects empty names; `scanAnchorOrAlias_prod` now returns `sp_mid ≠ sp'` unconditionally) |
 | Block scalar `\|`/`>` | `SCLLiteral 0` / `SCLFolded 0` | ✅ Sorry-free (A11 removed `hm` constraint) |
 | Plain scalar | `SNsPlain 0 .blockIn` → `SFlowNode 0 .flowOut` | ✅ **A5/A6/A7** — block proven; 3 sorry (flow, multi-line, doc boundary) |
-| Anchor `&` | `SCNsAnchorProperty` → `SCNsProperties.anchorFirst` → `SFlowNode.propsEmpty` | ✅ **A8/A10** — sorry closable (scanner rejects empty names via `Except.error .emptyAnchorName`) |
-| Tag `!` | `SCNsTagProperty` → `SCNsProperties.tagFirst` → `SFlowNode.propsEmpty` | ✅ **A8/A9/A10** — `dispatchContent_tag_prod` sorry-free; secondary `!!` fully proven; verbatim `!<uri>` well-formed case proven; S8/S9 closable (scanner rejects malformed verbatim tags via `Except.error`); named/non-specific sorry'd in `scanTag_nonSecondary_prod` |
+| Anchor `&` | `SCNsAnchorProperty` → `SCNsProperties.anchorFirst` → `SFlowNode.propsEmpty` | ✅ **A12** — sorry CLOSED (scanner rejects empty names; `scanAnchorOrAlias_prod` now returns `sp_mid ≠ sp'` unconditionally) |
+| Tag `!` | `SCNsTagProperty` → `SCNsProperties.tagFirst` → `SFlowNode.propsEmpty` | ✅ **A12** — S8/S9 CLOSED; secondary `!!` fully proven; verbatim `!<uri>` well-formed case proven; S10 (named/non-specific) remains sorry in `scanTag_nonSecondary_prod` |
 
 **All content types now have dedicated `dispatchContent_*_prod` theorems.** `dispatchContent_evidence` is sorry-free.
 
-##### Remaining Category 1 sorry sites (8 sites, 6 declarations — S1/S2 closed by A11, 3 closable via A10)
+##### Remaining Category 1 sorry sites (8 sites, 6 declarations — S1/S2 closed by A11, S7/S8/S9/alias closed by A12)
 
 | ID | Theorem | File | Sorry | Group |
 |----|---------|------|-------|-------|
@@ -1626,16 +1626,16 @@ Three architectural changes are needed before tackling the content categories. E
 | S4 | `collectPlainScalarLoop_prod` | ScalarProduction | `#` at col=0 (unreachable from callers) | B: Loop |
 | S5 | `scanPlainScalar_to_flowNode` | ScalarProduction | Doc boundary first-char termination (`GStar.nil` match) | B: Loop |
 | S6 | `dispatchContent_plainScalar_prod` | StreamAccum | Flow context plain scalar (3 sorry sites in 1 expr) | C: Context |
-| S7 | `dispatchContent_anchor_prod` | StreamAccum | Empty anchor name (`& ` — `sp_mid = sp'`) | ~~D: Non-empty~~ **G: Closable (A10)** — `scanAnchorOrAlias` returns `Except.error .emptyAnchorName` for empty names; `.ok` branch contradicts `sp_mid = sp'` |
-| S8 | `scanTag_nonSecondary_prod` | StructureProduction | Malformed verbatim tag (no `>` terminator) | ~~F: Unreachable~~ **G: Closable (A10)** — `scanVerbatimTag` returns `Except.error .unterminatedVerbatimTag`; `.ok` branch contradicts no-`>` case |
-| S9 | `scanTag_nonSecondary_prod` | StructureProduction | Empty URI `!<>` — spec requires ≥1 URI char | ~~D: Non-empty~~ **G: Closable (A10)** — `scanVerbatimTag` returns `Except.error .emptyVerbatimTagURI`; `.ok` branch contradicts empty URI |
+| S7 | `dispatchContent_anchor_prod` | StreamAccum | ~~Empty anchor name (`& ` — `sp_mid = sp'`)~~ | **CLOSED (A12)** — `scanAnchorOrAlias_prod` strengthened to return `sp_mid ≠ sp'` unconditionally; `_anchorProp_prod` now unconditional |
+| S8 | `scanTag_nonSecondary_prod` | StructureProduction | ~~Malformed verbatim tag (no `>` terminator)~~ | **CLOSED (A12)** — `collectVerbatimTagLoop_prod` strengthened with `(sp_mid = sp' → foundClose = false)`; contradiction via `simp [h_close_link h_eq] at h_fc_true` |
+| S9 | `scanTag_nonSecondary_prod` | StructureProduction | ~~Empty URI `!<>` — spec requires ≥1 URI char~~ | **CLOSED (A12)** — `collectVerbatimTagLoop_prod` strengthened with `(sp = sp_mid → uri_result = uri)`; contradiction via `simp [h_uri_link hne] at h_uri_ne` |
 | S10 | `scanTag_nonSecondary_prod` | StructureProduction | Named/non-specific tag decomposition | E: Tag decomp |
 
-Additionally, the alias empty-name sorry in `dispatchContent_alias_prod` (StreamAccum) is also closable via A10 (same `scanAnchorOrAlias` Except mechanism).
+Additionally, the alias empty-name sorry in `dispatchContent_alias_prod` (StreamAccum) is also **CLOSED (A12)** — `scanAnchorOrAlias_aliasNode_prod` now returns unconditional `SCNsAliasNode` (no `sp_mid ≠ sp'` condition).
 
 **Dependency graph**:
 - **S4 → S5 → S6**: Closing the col invariant (S4) enables first-char-consumed (S5), which enables flow parameterization (S6). Critical path unlocking 5 sorries.
-- **S7 + S9 + S8**: ~~Share the "scanner loop produces ≥1 char" pattern.~~ **Resolved by A10** — scanner Except conversion makes these closable by contradiction. The `.ok` hypothesis directly contradicts the degenerate branch in each case. Need only write the final `absurd`/`contradiction` proof steps (~30 min total).
+- **S7 + S9 + S8 + alias**: ~~Share the "scanner loop produces ≥1 char" pattern.~~ ~~**Resolved by A10** — scanner Except conversion makes these closable by contradiction.~~ **CLOSED (A12)** — strengthened `collectAnchorNameLoop_prod` and `collectVerbatimTagLoop_prod` with position-to-value linking conjuncts; made `_aliasNode_prod`/`_anchorProp_prod` unconditional; replaced sorry with contradiction proofs. −2 sorry warnings (14→12).
 - ~~**S1, S2**: Independent — just need `indents.size > 1` from preprocessing context to invoke existing `currentIndent_nonneg`.~~ **CLOSED (A11)** — removed `hm : m ≥ 1` from grammar constructors.
 - **S3**: Independent, hardest — needs `handleBlockLineBreak_prod` + multi-line continuation grammar.
 - **S10**: Independent — decompose `scanNamedTag` into existing `collectTagHandleLoop_prod` + `collectTagSuffixLoop_prod`.
@@ -1650,7 +1650,7 @@ Additionally, the alias empty-name sorry in `dispatchContent_alias_prod` (Stream
 
 | Priority | IDs | Effort | Impact | Rationale |
 |----------|-----|--------|--------|-----------|
-| 1 | S7, S8, S9, alias | ~30 min | −3 sorry (−4 sites) | **Trivial after A10** — write `absurd`/`contradiction` proofs using Except error branches. The `.ok` hypothesis contradicts the degenerate case in each site. |
+| ~~1~~ | ~~S7, S8, S9, alias~~ | — | ~~−3 sorry (−4 sites)~~ | **CLOSED (A12)** — strengthened `_prod` theorems with position-to-value linkage. −2 sorry warnings (14→12). |
 | 2 | S4 | ~30 min | −1 sorry, enables S5 | Col invariant: `col ≥ 1` after any content char in loop |
 | 3 | S5 | ~1 hr | −1 sorry, enables S6 | First-char-consumed: `canStartPlainScalar ⟹ terminates?` doesn't fire on first char |
 | 4 | S10 | ~2 hr | −1 sorry | `scanNamedTag_prod`: compose existing handle + suffix loop theorems |
@@ -1658,7 +1658,7 @@ Additionally, the alias empty-name sorry in `dispatchContent_alias_prod` (Stream
 | 6 | S6 | ~2 hr | −3 sorry sites | Parameterize `collectPlainScalarLoop_prod` over `FlowContext` for `.flowIn` |
 | 7 | S3 | ~4 hr | −1 sorry | Multi-line plain scalar. Hardest — `handleBlockLineBreak_prod` + `SNsPlainNextLine` |
 
-**Critical path**: S4 → S5 → S6 (chain unlocks 5 sorries). S7/S8/S9/alias are now **trivially closable** after A10 (highest priority, lowest effort). ~~S1/S2 deferred — see analysis below.~~ **S1/S2 CLOSED by A11.**
+**Critical path**: S4 → S5 → S6 (chain unlocks 5 sorries). ~~S7/S8/S9/alias are now trivially closable after A10.~~ **S7/S8/S9/alias CLOSED by A12.** ~~S1/S2 deferred — see analysis below.~~ **S1/S2 CLOSED by A11.**
 
 ##### S1/S2 design analysis: indent tracking for block scalars
 
@@ -1893,6 +1893,40 @@ Removed the `hm : m ≥ 1` constraint from `SCLLiteral.mk` and `SCLFolded.mk` gr
 
 13. **Early architectural resolution pays off.** (A11) The S1/S2 sorry sites were initially estimated at ~3 hr ("not trivial... cascade through block scalar proof chain"). In practice, the cascade touched exactly 4 theorems across 2 files and took ~20 min. The user's instinct to "resolve the architecture options early" was correct — the deep analysis of the proof chain (Layer 1–7, grammar constructors, encoding offset) revealed that the `hm : m ≥ 1` removal was the right fix, not a weakening. Deferring would have risked building further proof infrastructure on top of the over-strong constraint. **General principle**: when an architectural option has been fully analyzed and the cascade is well-understood, implement it immediately rather than accumulating technical debt.
 
+14. **Position-to-value linkage via column monotonicity.** (A12) The key technique for closing S7/S8/S9/alias was *strengthening loop `_prod` theorems* with conjuncts like `(sp = sp' → result.fst = name)`. These are proven vacuously in the recursive (char-consumed) case: `gstar_gchar_col_le h_tail` gives `sp'.col ≥ sc.col + 1`, making `sp = sp'` impossible (column would need to be both `sc.col` and `≥ sc.col + 1`). In the base cases (zero fuel, no match), the conjuncts are trivially `fun _ => rfl`. This pattern — linking grammar position equality to scanner-level value equality, then using column monotonicity for vacuous truth — is reusable for any loop that consumes at least one character. **General principle**: when a degenerate case (`sp = sp'`, meaning zero characters consumed) blocks grammar construction, strengthen the loop theorem to carry a value-linking implication and prove it vacuously via column monotonicity.
+
+15. **Strengthening upstream beats conditioning downstream.** (A12) The original approach (A3/A10) kept `_aliasNode_prod` and `_anchorProp_prod` conditional: `sp_mid ≠ sp' → grammar`. All callers needed `by_cases hne : sp_mid ≠ sp'` with sorry for the `sp_mid = sp'` branch. The A12 approach strengthened `scanAnchorOrAlias_prod` to return `sp_mid ≠ sp'` unconditionally (via the scanner's `Except.error .emptyAnchorName` rejection + the position-to-name linkage), making `_aliasNode_prod`/`_anchorProp_prod` unconditional. This eliminated the `by_cases` and sorry from ALL callers simultaneously. **General principle**: when multiple downstream theorems condition on the same hypothesis, prove it once at the source and simplify all downstream callsites.
+
+**A12 — Close S7/S8/S9/alias sorry sites** (2026-04-10)
+
+Closed 4 sorry sites (S7, S8, S9, alias empty-name) by strengthening production theorems with position-to-value linkage. −2 sorry warnings (14→12): `dispatchContent_alias_prod` (−1), `dispatchContent_anchor_prod` (−1). S8/S9 were in `scanTag_nonSecondary_prod` which still has S10, so that declaration's warning persists.
+
+**Approach**: Instead of writing `absurd`/`contradiction` at each sorry site (as originally planned), strengthened the underlying loop `_prod` theorems with additional conjuncts that link grammar position equality to scanner-level value equality. This made the conditional theorems unconditional, eliminating sorry at all callsites simultaneously.
+
+**Files modified (3):**
+
+1. **`StructureProduction.lean`** — 4 theorems updated:
+   - `collectAnchorNameLoop_prod`: Return type strengthened from `∃ sp', GStar ∧ ScannerSurfCorr` to `∃ sp', GStar ∧ ScannerSurfCorr ∧ (sp = sp' → result.fst = name)`. Third conjunct proven vacuously in recursive case via `gstar_gchar_col_le` column monotonicity; trivially `fun _ => rfl` in base cases.
+   - `scanAnchorOrAlias_prod`: Return type strengthened to include `sp_mid ≠ sp'`. Proof: position-to-name linkage gives `name = ""` when `sp = sp'`; `unfold scanAnchorOrAlias; rw [h_name_empty]; simp` contradicts the `.ok` hypothesis (scanner error branch fires for empty names).
+   - `collectVerbatimTagLoop_prod`: Return type strengthened with `(sp_mid = sp' → foundClose = false)` and `(sp = sp_mid → uri_result = uri)`. Same vacuous proof pattern as anchor name loop.
+   - `scanTag_nonSecondary_prod`: S8 sorry replaced with `exfalso; simp [h_close_link h_eq] at h_fc_true`; S9 sorry replaced with `exfalso; simp [h_uri_link hne] at h_uri_ne`.
+
+2. **`NodeProduction.lean`** — 3 theorems simplified:
+   - `scanAnchorOrAlias_aliasNode_prod`: Changed from conditional `(sp_mid ≠ sp' → SCNsAliasNode)` to unconditional `∃ sp', SCNsAliasNode sp sp' ∧ ScannerSurfCorr s' sp'`. Uses `h_ne` from strengthened `_prod`.
+   - `scanAnchorOrAlias_anchorProp_prod`: Same unconditional simplification.
+   - `scanAnchorOrAlias_flowNode_prod`: Simplified to unconditional.
+
+3. **`StreamAccum.lean`** — 2 sorry sites removed:
+   - `dispatchContent_alias_prod`: Removed `by_cases hne : sp_mid ≠ sp'` + sorry. Now directly obtains unconditional `SCNsAliasNode` from `_aliasNode_prod`.
+   - `dispatchContent_anchor_prod`: Same removal. Directly obtains unconditional `SCNsAnchorProperty` from `_anchorProp_prod`.
+
+**Build**: 415/415 jobs, 0 errors, 12 sorry warnings (−2 from 14).
+
+**Net sorry accounting**:
+- **Eliminated**: 4 sorry sites (S7, S8, S9, alias empty-name)
+- **Added**: 0 sorry
+- **Warning count**: 12 (−2)
+
 #### Category 2: col≠0 / BOM edge case — **RESOLVED by A2** ✅
 
 `SSeparateInLine.startOfLine` is now column-independent (A2). The `by_cases hcol` pattern is no longer needed for `eof_pending` noPending and `preprocess_some_separate_0_anyCol` inr cases. Remaining `by_cases hcol` sites in `accum_structural_pending` etc. still use `preprocess_some_ssl_comments_col0` (which requires col=0 for the return type's `sp_mid.col = 0` guarantee used by `dispatch_new_pending`). These are Category 3/4/5 blockers, not Category 2.
@@ -1933,7 +1967,7 @@ The `GOpt.some` comment case is unreachable because the scanner greedily consume
 3. ~~**Full-scan plain scalar grammar** (Category 1)~~ — **DONE (A7)**. `collectPlainScalarLoop_prod` proven by fuel induction (single-line). `scanPlainScalar_to_flowNode` composes first char + loop entries + context lift into `SFlowNode 0 .flowOut` + trailing `GStar SSWhite`. Block context `dispatchContent_plainScalar_prod` now fully proven; flow context sorry'd separately. 2 sorry remain: line break (multi-line deferred), doc boundary first-char termination (edge case).
 4. ~~**Anchor `&` / tag `!` grammar** (Category 1)~~ — **DONE (A8/A9)**. `dispatchContent_anchor_prod` and `dispatchContent_tag_prod` both sorry-free. Secondary tag `!!` fully proven; verbatim `!<uri>` well-formed case proven; anchor 1 sorry (empty name); tag 1 sorry declaration with 3 edge cases (malformed verbatim, empty URI, named/non-specific) in `scanTag_nonSecondary_prod`.
 5. ~~**Scanner Except conversion** (Category 1)~~ — **DONE (A10)**. `scanAnchorOrAlias`, `collectVerbatimTagLoop`, `scanVerbatimTag`, `scanTag` converted to `Except`. S7/S8/S9/alias sorry sites now closable by contradiction.
-6. **Close S7/S8/S9/alias sorry sites** (Category 1) — Write `absurd`/`contradiction` proofs in the now-unreachable degenerate branches. Expected: −3 sorry warnings (S7/alias in same declaration, S8/S9/S10 in same declaration — closing S8/S9 reduces their declaration's sorry count but S10 remains).
+6. ~~**Close S7/S8/S9/alias sorry sites** (Category 1)~~ — **DONE (A12)**. Strengthened `collectAnchorNameLoop_prod` and `collectVerbatimTagLoop_prod` with position-to-value linkage conjuncts. Made `scanAnchorOrAlias_aliasNode_prod`/`_anchorProp_prod` unconditional. Closed S7/S8/S9/alias sorry (−2 warnings, 14→12).
 7. ~~**S1/S2 indent tracking** (Category 1) — ScannerSurfCorr `indent_size` field or weaken `scanBlockScalar_prod` precondition~~ **DONE (A11)**. Removed `hm : m ≥ 1` from grammar constructors. S1/S2 closed (−1 sorry warning, 15→14).
 8. **Mapping entries `?`/`:`** (Category 4) — parallel to sequence infrastructure
 9. **Directive infrastructure** (Category 3) — focused layer

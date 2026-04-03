@@ -292,55 +292,41 @@ theorem anchorProp_of_glit_gplus {rest : List Char} {col : Nat} {sp' : SurfPos}
     SCNsAnchorProperty ⟨'&' :: rest, col⟩ sp' :=
   SCNsAnchorProperty.mk rest col sp' h_gplus
 
--- scanAnchorOrAlias with non-empty name → SCNsAliasNode.
--- Hypothesis: sp_mid ≠ sp' (scanner collected ≥1 anchor char after '*').
+-- scanAnchorOrAlias → SCNsAliasNode (unconditional).
+-- Since A10 Except conversion, `.ok` guarantees non-empty name, so sp_mid ≠ sp'.
 theorem scanAnchorOrAlias_aliasNode_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '*')
     (s' : ScannerState) (hok : scanAnchorOrAlias sc false = .ok s') :
-    ∃ sp_mid sp', GLit '*' sp sp_mid ∧
-                  GStar (GChar isNsAnchorChar) sp_mid sp' ∧
-                  (sp_mid ≠ sp' → SCNsAliasNode sp sp') ∧
-                  ScannerSurfCorr s' sp' := by
-  obtain ⟨sp_mid, sp', h_glit, h_gstar, hcorr'⟩ :=
+    ∃ sp', SCNsAliasNode sp sp' ∧ ScannerSurfCorr s' sp' := by
+  obtain ⟨sp_mid, sp', h_glit, h_gstar, h_ne, hcorr'⟩ :=
     scanAnchorOrAlias_prod sc sp hcorr false '*' hpeek (by decide) (by decide) s' hok
-  refine ⟨sp_mid, sp', h_glit, h_gstar, ?_, hcorr'⟩
-  intro hne
   cases h_glit with
   | mk rest col =>
-    exact aliasNode_of_glit_gplus (GStar_to_GPlus h_gstar hne)
+    exact ⟨sp', aliasNode_of_glit_gplus (GStar_to_GPlus h_gstar h_ne), hcorr'⟩
 
--- scanAnchorOrAlias with non-empty name → SCNsAnchorProperty.
--- Hypothesis: sp_mid ≠ sp' (scanner collected ≥1 anchor char after '&').
+-- scanAnchorOrAlias → SCNsAnchorProperty (unconditional).
+-- Since A10 Except conversion, `.ok` guarantees non-empty name, so sp_mid ≠ sp'.
 theorem scanAnchorOrAlias_anchorProp_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '&')
     (s' : ScannerState) (hok : scanAnchorOrAlias sc true = .ok s') :
-    ∃ sp_mid sp', GLit '&' sp sp_mid ∧
-                  GStar (GChar isNsAnchorChar) sp_mid sp' ∧
-                  (sp_mid ≠ sp' → SCNsAnchorProperty sp sp') ∧
-                  ScannerSurfCorr s' sp' := by
-  obtain ⟨sp_mid, sp', h_glit, h_gstar, hcorr'⟩ :=
+    ∃ sp', SCNsAnchorProperty sp sp' ∧ ScannerSurfCorr s' sp' := by
+  obtain ⟨sp_mid, sp', h_glit, h_gstar, h_ne, hcorr'⟩ :=
     scanAnchorOrAlias_prod sc sp hcorr true '&' hpeek (by decide) (by decide) s' hok
-  refine ⟨sp_mid, sp', h_glit, h_gstar, ?_, hcorr'⟩
-  intro hne
   cases h_glit with
   | mk rest col =>
-    exact anchorProp_of_glit_gplus (GStar_to_GPlus h_gstar hne)
+    exact ⟨sp', anchorProp_of_glit_gplus (GStar_to_GPlus h_gstar h_ne), hcorr'⟩
 
--- scanAnchorOrAlias with non-empty name → SFlowNode (alias).
+-- scanAnchorOrAlias → SFlowNode (alias, unconditional).
 theorem scanAnchorOrAlias_flowNode_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '*')
     (s' : ScannerState) (hok : scanAnchorOrAlias sc false = .ok s') :
-    ∃ sp_mid sp', GLit '*' sp sp_mid ∧
-                  GStar (GChar isNsAnchorChar) sp_mid sp' ∧
-                  (sp_mid ≠ sp' → SFlowNode 0 .blockIn sp sp') ∧
-                  ScannerSurfCorr s' sp' := by
-  obtain ⟨sp_mid, sp', h_glit, h_gstar, h_alias, hcorr'⟩ :=
+    ∃ sp', SFlowNode 0 .blockIn sp sp' ∧ ScannerSurfCorr s' sp' := by
+  obtain ⟨sp', h_alias, hcorr'⟩ :=
     scanAnchorOrAlias_aliasNode_prod sc sp hcorr hpeek s' hok
-  exact ⟨sp_mid, sp', h_glit, h_gstar,
-         fun hne => alias_flowNode (h_alias hne), hcorr'⟩
+  exact ⟨sp', alias_flowNode h_alias, hcorr'⟩
 
 /-! ## §6 Block Collection Lemmas -/
 
