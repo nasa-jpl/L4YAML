@@ -400,6 +400,58 @@ theorem preprocess_none_ssl_comments (sc : ScannerState) (sp : SurfPos)
               exact h_not_lt h_hasMore
           · cases hok
 
+/-- Prepend trailing whitespace into `SSLComments`.
+
+    Bridges the gap between a grammar endpoint (e.g., end of `SNsPlain`)
+    and the scanner state endpoint (past trailing WS consumed by the scanner).
+    The trailing WS becomes part of `s-b-comment → s-separate-in-line`
+    per YAML 1.2.2 §6.5.
+
+    Used by `accum_content_pending` for plain scalars, where the scanner
+    advances past trailing whitespace that the grammar doesn't cover. -/
+theorem white_prepend_SSLComments {sp sp' sp_mid : SurfPos}
+    (h_ws : GStar SSWhite sp sp')
+    (h_ssl : SSLComments sp' sp_mid) :
+    SSLComments sp sp_mid := by
+  cases h_ws with
+  | nil => exact h_ssl
+  | cons _ sp_w _ h_first h_rest =>
+    -- Non-empty WS: build GPlus SSWhite sp sp' for SSeparateInLine
+    have h_gplus : GPlus SSWhite sp sp' := GPlus.mk sp sp_w sp' h_first h_rest
+    cases h_ssl
+    case withComment s₁ h_sbc h_lcomments =>
+      cases h_sbc
+      case withSep s₂ s₃ h_sep h_opt h_break =>
+        -- Concatenate our WS with existing SSeparateInLine
+        cases h_sep
+        case whites h_gplus' =>
+          -- Combine GPlus: ours + theirs
+          have h_combined : GPlus SSWhite sp s₂ :=
+            GPlus_extend_GStar h_gplus (GPlus_to_GStar h_gplus')
+          exact SSLComments.withComment sp s₁ sp_mid
+            (SSBComment.withSep sp s₂ s₃ s₁
+              (SSeparateInLine.whites sp s₂ h_combined) h_opt h_break)
+            h_lcomments
+        case startOfLine =>
+          -- Their sep is identity (s₂ = sp'), use our WS directly
+          exact SSLComments.withComment sp s₁ sp_mid
+            (SSBComment.withSep sp sp' s₃ s₁
+              (SSeparateInLine.whites sp sp' h_gplus) h_opt h_break)
+            h_lcomments
+      case noSep h_break =>
+        -- No existing sep: add our WS as sep
+        exact SSLComments.withComment sp s₁ sp_mid
+          (SSBComment.withSep sp sp' sp' s₁
+            (SSeparateInLine.whites sp sp' h_gplus) (GOpt.none _) h_break)
+          h_lcomments
+    case startOfLine chars h_lcomments =>
+      -- startOfLine requires col=0, but non-empty WS forces col ≥ 1
+      exfalso
+      have h1 := sswhite_col_succ sp sp_w h_first
+      have h2 := gstar_sswhite_col_ge sp_w ⟨chars, 0⟩ h_rest
+      simp only [SurfPos.col] at h2
+      omega
+
 /-- Extend `SLYamlStream` with `SSLComments`.
 
     `SSLComments` → `GStar SLComment` → `SLDocumentPrefix.comments`
@@ -1985,12 +2037,12 @@ theorem dispatchContent_blockScalar_prod (sc : ScannerState) (sp : SurfPos)
               exact scanBlockScalar_prod sc sp hcorr (Or.inr hpeek) hIndent hbs
           · rename_i h_neq; exact absurd rfl h_neq
 
--- Content dispatch for plain scalar: returns `SFlowNode 0 .flowOut` grammar evidence.
--- Uses the minimal witness (first char only) from `scanPlainScalar_prod`,
--- then lifts `.blockIn → .flowOut` via `SFlowNode_plain_blockIn_to_flowOut_minimal`.
--- NOTE: the grammar endpoint (sp_gram) covers only the first character,
--- and the scanner endpoint (sp') may extend further. We use sorry for
--- `SFlowNode 0 .flowOut sp sp'` since the full multi-line production is not yet proven.
+-- Content dispatch for plain scalar: returns `SFlowNode 0 .flowOut` grammar
+-- evidence with separate grammar and scanner endpoints.
+-- The grammar covers `sp → sp_gram` (plain scalar content), trailing WS
+-- covers `sp_gram → sp'` (whitespace consumed by scanner but not in grammar),
+-- and `ScannerSurfCorr s' sp'` tracks the scanner position.
+-- Both the grammar and trailing WS are sorry'd pending `collectPlainScalarLoop_prod`.
 theorem dispatchContent_plainScalar_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState} {c : Char}
     (hcorr : ScannerSurfCorr sc sp)
@@ -1998,7 +2050,9 @@ theorem dispatchContent_plainScalar_prod (sc : ScannerState) (sp : SurfPos)
     (hnotAmpersand : c ≠ '&') (hnotStar : c ≠ '*') (hnotBang : c ≠ '!')
     (hnotPipe : c ≠ '|') (hnotGt : c ≠ '>') (hnotDQ : c ≠ '"') (hnotSQ : c ≠ '\'')
     (hok : scanNextToken_dispatchContent sc c = .ok s') :
-    ∃ sp', SFlowNode 0 .flowOut sp sp' ∧ ScannerSurfCorr s' sp' := by
+    ∃ sp_gram sp', SFlowNode 0 .flowOut sp sp_gram ∧
+                   GStar SSWhite sp_gram sp' ∧
+                   ScannerSurfCorr s' sp' := by
   unfold scanNextToken_dispatchContent at hok
   simp only [bind, Except.bind, pure, Except.pure] at hok
   -- Skip all character checks before plain scalar
@@ -2024,43 +2078,52 @@ theorem dispatchContent_plainScalar_prod (sc : ScannerState) (sp : SurfPos)
               · -- canStartPlainScalarBool = true: scanPlainScalar
                 split at hok
                 · simp at hok
-                · rename_i hstart s_ps hps
+                · -- scanPlainScalar succeeded
                   have h := Except.ok.inj hok; subst h
-                  -- Full-scan grammar coverage: sorry (first-char minimal witness ≠ full scan)
-                  -- The sorry bridges SFlowNode 0 .flowOut sp sp' for the full scanner output range.
-                  obtain ⟨sp', hcorr'⟩ := scanPlainScalar_corr sc sp hcorr hps
-                  exact ⟨sp', sorry, hcorr'⟩
+                  by_cases h_block : sc.inFlow = false
+                  · -- Block context: full grammar + trailing WS via loop production
+                    exact scanPlainScalar_to_flowNode sc sp hcorr hpeek
+                      (by rwa [← h_block]) h_block (by assumption)
+                  · -- Flow context: sorry (flow plain scalar grammar not yet supported)
+                    obtain ⟨sp', hcorr'⟩ := scanPlainScalar_corr sc sp hcorr (by assumption)
+                    exact ⟨sorry, sp', sorry, sorry, hcorr'⟩
               · -- canStartPlainScalarBool = false: .error
                 simp at hok
 
 -- Unified content evidence extraction (Wadler-style "theorems for free").
 -- All content dispatch paths either produce `SFlowNode 0 .flowOut` (flow content:
 -- double-quoted, single-quoted, alias, plain) or `SCLLiteral 0 ∨ SCLFolded 0`
--- (block scalar). Proven ONCE, used by all PendingNode constructors.
+-- (block scalar). Returns separate grammar and scanner endpoints with trailing
+-- WS evidence bridging them. For non-plain-scalar paths, the WS is trivial
+-- (`GStar.nil`); for plain scalars, it covers the trailing whitespace gap.
+-- Proven ONCE, used by all PendingNode constructors.
 theorem dispatchContent_evidence (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState} (c : Char)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some c)
     (hok : scanNextToken_dispatchContent sc c = .ok s') :
-    ∃ sp',
-      (SFlowNode 0 .flowOut sp sp' ∨ (SCLLiteral 0 sp sp' ∨ SCLFolded 0 sp sp')) ∧
+    ∃ sp_gram sp',
+      (SFlowNode 0 .flowOut sp sp_gram ∨ (SCLLiteral 0 sp sp_gram ∨ SCLFolded 0 sp sp_gram)) ∧
+      GStar SSWhite sp_gram sp' ∧
       ScannerSurfCorr s' sp' := by
   by_cases hc_dq : c = '"'
   · subst hc_dq
     obtain ⟨sp', h_gram, hcorr'⟩ := dispatchContent_doubleQuoted_prod sc sp hcorr hpeek hok
-    exact ⟨sp', Or.inl (SFlowNode_doubleQ_ctx_lift h_gram (by decide) (by decide)), hcorr'⟩
+    exact ⟨sp', sp', Or.inl (SFlowNode_doubleQ_ctx_lift h_gram (by decide) (by decide)),
+           GStar.nil _, hcorr'⟩
   · by_cases hc_sq : c = '\''
     · subst hc_sq
       obtain ⟨sp', h_gram, hcorr'⟩ := dispatchContent_singleQuoted_prod sc sp hcorr hpeek hok
-      exact ⟨sp', Or.inl (SFlowNode_singleQ_ctx_lift h_gram (by decide) (by decide)), hcorr'⟩
+      exact ⟨sp', sp', Or.inl (SFlowNode_singleQ_ctx_lift h_gram (by decide) (by decide)),
+             GStar.nil _, hcorr'⟩
     · by_cases hc_alias : c = '*'
       · subst hc_alias
         obtain ⟨sp', h_gram, hcorr'⟩ := dispatchContent_alias_prod sc sp hcorr hpeek hok
-        exact ⟨sp', Or.inl h_gram, hcorr'⟩
+        exact ⟨sp', sp', Or.inl h_gram, GStar.nil _, hcorr'⟩
       · by_cases hc_bs : c = '|' ∨ c = '>'
         · obtain ⟨sp', h_gram, hcorr'⟩ :=
             dispatchContent_blockScalar_prod sc sp hcorr hpeek hc_bs hok
-          exact ⟨sp', Or.inr h_gram, hcorr'⟩
+          exact ⟨sp', sp', Or.inr h_gram, GStar.nil _, hcorr'⟩
         · -- Remaining cases: '&' (anchor), '!' (tag), plain scalar, error
           have hnotPipe : c ≠ '|' := fun h => hc_bs (Or.inl h)
           have hnotGt : c ≠ '>' := fun h => hc_bs (Or.inr h)
@@ -2068,17 +2131,17 @@ theorem dispatchContent_evidence (sc : ScannerState) (sp : SurfPos)
           · -- Anchor: grammar evidence is sorry'd (category 1 remaining)
             subst hc_amp
             obtain ⟨sp', hcorr'⟩ := dispatchContent_corr sc sp '&' hcorr hok
-            exact ⟨sp', Or.inl sorry, hcorr'⟩
+            exact ⟨sp', sp', Or.inl sorry, GStar.nil _, hcorr'⟩
           · by_cases hc_bang : c = '!'
             · -- Tag: grammar evidence is sorry'd (category 1 remaining)
               subst hc_bang
               obtain ⟨sp', hcorr'⟩ := dispatchContent_corr sc sp '!' hcorr hok
-              exact ⟨sp', Or.inl sorry, hcorr'⟩
+              exact ⟨sp', sp', Or.inl sorry, GStar.nil _, hcorr'⟩
             · -- Plain scalar (or error — but .ok means it succeeded)
-              obtain ⟨sp', h_gram, hcorr'⟩ :=
+              obtain ⟨sp_gram, sp', h_gram, h_ws, hcorr'⟩ :=
                 dispatchContent_plainScalar_prod sc sp hcorr hpeek
                   hc_amp hc_alias hc_bang hnotPipe hnotGt hc_dq hc_sq hok
-              exact ⟨sp', Or.inl h_gram, hcorr'⟩
+              exact ⟨sp_gram, sp', Or.inl h_gram, h_ws, hcorr'⟩
 
 -- Helper: handles all PendingNode cases for content dispatch given stream at sp_block.
 theorem accum_content_pending (sc : ScannerState)
@@ -2117,19 +2180,22 @@ theorem accum_content_pending (sc : ScannerState)
         · show s_prep.peek? = some c; exact hpeek
         · exact hpeek
       -- Unified evidence extraction: flow content OR block scalar
-      obtain ⟨sp_ev, h_ev, hcorr_ev⟩ := dispatchContent_evidence _ sp_prep c
+      obtain ⟨sp_gram, sp_ev, h_ev, h_trailing_ws, hcorr_ev⟩ :=
+          dispatchContent_evidence _ sp_prep c
           (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
       have hsp_ev_eq := ScannerSurfCorr_unique hcorr_ev hcorr_result
-      rw [hsp_ev_eq] at h_ev hcorr_ev
+      rw [hsp_ev_eq] at h_trailing_ws hcorr_ev
       cases h_ev with
       | inl h_flow =>
         -- Flow content (double-quoted, single-quoted, alias, plain scalar)
+        -- Compose trailing WS into SSLComments via white_prepend_SSLComments
         exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
                BlockStack.nil sp_block, FlowStack.nil sp_block,
                PendingNode.pendingContent sp_start sp_block sp_scan'
                  (fun sp_mid h_ssl =>
+                   have h_ssl_ext := white_prepend_SSLComments h_trailing_ws h_ssl
                    have h_blockNode :=
-                     flowInBlock_blockNode h_sep h_flow h_ssl
+                     flowInBlock_blockNode h_sep h_flow h_ssl_ext
                    have h_bare := SLBareDocument.mk sp_block sp_mid h_blockNode
                    SLYamlStream.implicitContinue sp_start sp_block sp_block sp_mid sp_mid
                      h_stream_block (GStar.nil _)
@@ -2139,22 +2205,24 @@ theorem accum_content_pending (sc : ScannerState)
                hcorr_result⟩
       | inr h_block =>
         -- Block scalar (literal or folded)
+        -- Compose trailing WS into SSLComments (trivial for block scalars)
         exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
                BlockStack.nil sp_block, FlowStack.nil sp_block,
                PendingNode.pendingContent sp_start sp_block sp_scan'
                  (fun sp_mid h_ssl =>
-                   have h_blockNode : SBlockNode 0 .blockIn sp_block sp_scan' :=
+                   have h_ssl_ext := white_prepend_SSLComments h_trailing_ws h_ssl
+                   have h_blockNode : SBlockNode 0 .blockIn sp_block sp_gram :=
                      h_block.elim
                        (fun h_lit => literal_blockNode h_sep (GOpt.none sp_prep) h_lit)
                        (fun h_fld => folded_blockNode h_sep (GOpt.none sp_prep) h_fld)
-                   have h_bare := SLBareDocument.mk sp_block sp_scan' h_blockNode
+                   have h_bare := SLBareDocument.mk sp_block sp_gram h_blockNode
                    have h_stream' := SLYamlStream.implicitContinue
-                     sp_start sp_block sp_block sp_scan' sp_scan'
+                     sp_start sp_block sp_block sp_gram sp_gram
                      h_stream_block (GStar.nil _)
-                     (GOpt.some sp_block sp_scan'
-                       (SLAnyDocument.bare sp_block sp_scan' h_bare))
+                     (GOpt.some sp_block sp_gram
+                       (SLAnyDocument.bare sp_block sp_gram h_bare))
                      (GStar.nil _)
-                   ssl_comments_extend_stream sp_start sp_scan' sp_mid h_stream' h_ssl),
+                   ssl_comments_extend_stream sp_start sp_gram sp_mid h_stream' h_ssl_ext),
                hcorr_result⟩
     · -- col ≠ 0: deferred (BOM edge case)
       sorry
@@ -2235,38 +2303,45 @@ theorem accum_content_pending (sc : ScannerState)
       · show s_prep.peek? = some c; exact hpeek
       · exact hpeek
     -- Unified evidence extraction: flow content OR block scalar
-    obtain ⟨sp_ev, h_ev, hcorr_ev⟩ := dispatchContent_evidence _ sp_prep c
+    obtain ⟨sp_gram, sp_ev, h_ev, h_trailing_ws, hcorr_ev⟩ :=
+        dispatchContent_evidence _ sp_prep c
         (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
     have hsp_ev_eq := ScannerSurfCorr_unique hcorr_ev hcorr_result
-    rw [hsp_ev_eq] at h_ev hcorr_ev
+    rw [hsp_ev_eq] at h_trailing_ws hcorr_ev
     cases h_ev with
     | inl h_flow =>
       -- Flow content inside block entry → pendingBlockContent
+      -- Compose trailing WS into SSLComments
       exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
              BlockStack.nil sp_block, FlowStack.nil sp_block,
              PendingNode.pendingBlockContent sp_start sp_block sp_scan'
                (fun sp_final h_ssl =>
+                 have h_ssl_ext := white_prepend_SSLComments h_trailing_ws h_ssl
                  h_close_old sp_final
-                   (SBlockNode.flowInBlock 0 .blockIn sp_scan sp_prep sp_scan' sp_final
-                     h_sep h_flow h_ssl))
+                   (SBlockNode.flowInBlock 0 .blockIn sp_scan sp_prep sp_gram sp_final
+                     h_sep h_flow h_ssl_ext))
                (fun sp_final h_ssl =>
+                 have h_ssl_ext := white_prepend_SSLComments h_trailing_ws h_ssl
                  h_close_entry_old sp_final
-                   (SBlockNode.flowInBlock 0 .blockIn sp_scan sp_prep sp_scan' sp_final
-                     h_sep h_flow h_ssl)),
+                   (SBlockNode.flowInBlock 0 .blockIn sp_scan sp_prep sp_gram sp_final
+                     h_sep h_flow h_ssl_ext)),
              hcorr_result⟩
     | inr h_block =>
       -- Block scalar inside block entry: close entry immediately
-      have h_blockNode : SBlockNode 0 .blockIn sp_scan sp_scan' :=
+      have h_blockNode : SBlockNode 0 .blockIn sp_scan sp_gram :=
         h_block.elim
           (fun h_lit => literal_blockNode h_sep (GOpt.none sp_prep) h_lit)
           (fun h_fld => folded_blockNode h_sep (GOpt.none sp_prep) h_fld)
-      have h_stream' : SLYamlStream sp_start sp_scan' :=
-        h_close_old sp_scan' h_blockNode
-      exact ⟨sp_scan', sp_scan', sp_scan', sp_scan', h_stream',
-             BlockStack.nil sp_scan', FlowStack.nil sp_scan',
-             PendingNode.pendingContent sp_start sp_scan' sp_scan'
+      -- For block scalars, trailing WS is trivially empty (sp_gram = sp_scan')
+      -- Construct stream ending at sp_gram, then extend past trailing WS
+      have h_stream' : SLYamlStream sp_start sp_gram :=
+        h_close_old sp_gram h_blockNode
+      exact ⟨sp_gram, sp_gram, sp_gram, sp_scan', h_stream',
+             BlockStack.nil sp_gram, FlowStack.nil sp_gram,
+             PendingNode.pendingContent sp_start sp_gram sp_scan'
                (fun sp_final h_ssl =>
-                 ssl_comments_extend_stream sp_start sp_scan' sp_final h_stream' h_ssl),
+                 have h_ssl_ext := white_prepend_SSLComments h_trailing_ws h_ssl
+                 ssl_comments_extend_stream sp_start sp_gram sp_final h_stream' h_ssl_ext),
              hcorr_result⟩
 
 theorem accum_step_content (sc : ScannerState)

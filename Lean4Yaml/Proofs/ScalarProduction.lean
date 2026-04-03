@@ -1288,11 +1288,250 @@ theorem prepend_char_to_continuation
    GStar.cons _ _ _ (SNbNsPlainInLineEntry.mk .blockIn sp _ _ (GStar.nil _) hchar) h_ent,
    h_trail⟩
 
--- `collectPlainScalarLoop_inline_prod` (multi-line loop grammar) was removed after
--- `scanPlainScalar_prod` was proven without it (via minimal grammar + scanPlainScalar_corr).
--- The helper theorems above (colon_not_terminated_next, not_blank_to_nsChar,
--- prepend_white/char_to_continuation, isPlainSafe_to_plainChar_basic, etc.) are retained
--- for potential future use in a stronger multi-line grammar proof.
+-- Full production for `collectPlainScalarLoop`: given accumulated whitespace
+-- `GStar SSWhite sp_ent sp`, produces inline entries and trailing WS.
+-- Single-line only: line-break branches are sorry.
+-- The `#` at col=0 case (unreachable from `scanPlainScalar` since `#` is an
+-- indicator excluded by `canStartPlainScalarBool`, and after any content char
+-- col ≥ 1) is sorry'd as well.
+theorem collectPlainScalarLoop_prod (sc : ScannerState) (sp : SurfPos)
+    (content spaces : String) (fuel : Nat)
+    (contentIndent inputEnd : Nat)
+    (sp_ent : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp)
+    (h_ws : GStar SSWhite sp_ent sp)
+    {result : PlainScalarResult}
+    (hok : collectPlainScalarLoop sc content spaces fuel false contentIndent inputEnd
+           = .ok result) :
+    ∃ sp_entries sp',
+      GStar (SNbNsPlainInLineEntry .blockIn) sp_ent sp_entries ∧
+      GStar SSWhite sp_entries sp' ∧
+      ScannerSurfCorr result.state sp' := by
+  induction fuel generalizing sc sp content spaces sp_ent with
+  | zero =>
+    simp [collectPlainScalarLoop] at hok; subst hok
+    exact ⟨sp_ent, sp, GStar.nil _, h_ws, hcorr⟩
+  | succ fuel' ih =>
+    unfold collectPlainScalarLoop at hok
+    split at hok
+    · -- peek? = none (EOF)
+      have h := Except.ok.inj hok; subst h
+      exact ⟨sp_ent, sp, GStar.nil _, h_ws, hcorr⟩
+    · -- peek? = some c
+      rename_i c hpeek
+      obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+      have hmore := peek_some_has_more hpeek
+      subst hsp_eq
+      split at hok
+      · -- terminates? = some
+        rename_i r_term h_term
+        have h := Except.ok.inj hok; subst h
+        rw [terminates_state_eq c sc content spaces false r_term h_term]
+        exact ⟨sp_ent, ⟨c :: rest, sc.col⟩, GStar.nil _, h_ws, hcorr⟩
+      · -- terminates? = none
+        rename_i h_term_none
+        split at hok
+        · sorry -- line break: multi-line deferred
+        · -- not line break
+          split at hok
+          · -- whitespace: extend accumulated WS and recurse
+            have hws_char : isWhiteSpaceBool c = true := by assumption
+            have hnl := isWhiteSpace_not_newline c hws_char
+            have hcr := isWhiteSpace_not_cr c hws_char
+            have hcorr_adv := advance_non_newline_corr sc c rest hcorr hmore hnl hcr
+            have hw : SSWhite ⟨c :: rest, sc.col⟩ ⟨rest, sc.col + 1⟩ := by
+              simp [isWhiteSpaceBool, Bool.or_eq_true, beq_iff_eq] at hws_char
+              rcases hws_char with rfl | rfl
+              · exact SSWhite.space rest sc.col
+              · exact SSWhite.tab rest sc.col
+            exact ih sc.advance ⟨rest, sc.col + 1⟩ content (spaces.push c) sp_ent
+              hcorr_adv (gstar_sswhite_append h_ws (GStar.cons _ _ _ hw (GStar.nil _)))
+              hok
+          · -- not whitespace
+            split at hok
+            · -- not plain safe: terminate
+              have h := Except.ok.inj hok; subst h
+              exact ⟨sp_ent, ⟨c :: rest, sc.col⟩, GStar.nil _, h_ws, hcorr⟩
+            · -- content char: form grammar entry and recurse
+              have h_safe : isPlainSafeBool c false = true := by
+                cases hb : isPlainSafeBool c false <;> simp_all
+              have hnl := (isPlainSafe_not_newline h_safe).1
+              have hcr := (isPlainSafe_not_newline h_safe).2
+              have hcorr_adv := advance_non_newline_corr sc c rest hcorr hmore hnl hcr
+              -- Construct SNsPlainChar for the content character
+              have hchar : SNsPlainChar .blockIn ⟨c :: rest, sc.col⟩
+                  ⟨rest, sc.col + 1⟩ := by
+                by_cases hcolon : c = ':'
+                · -- ':' followed by ns-plain-safe (colonSafe)
+                  subst hcolon
+                  obtain ⟨n, hpn, hnb⟩ :=
+                    colon_not_terminated_next sc content spaces h_term_none
+                  unfold ScannerState.peekAt? at hpn
+                  obtain ⟨pre, rest', hcs, hlen⟩ :=
+                    peekAtLoop_some_chars hcorr.end_eq hpn (':' :: rest) hcorr.chars_from
+                  have ⟨a, ha⟩ : ∃ a, pre = [a] := by
+                    cases pre with
+                    | nil => simp at hlen
+                    | cons a as => cases as with
+                      | nil => exact ⟨a, rfl⟩
+                      | cons => simp at hlen
+                  subst ha; simp at hcs
+                  obtain ⟨ha', hrst⟩ := hcs; subst ha'; subst hrst
+                  exact SNsPlainChar.colonSafe .blockIn '_' n rest' sc.col
+                    (not_blank_to_nsChar hnb)
+                · by_cases hhash : c = '#'
+                  · -- '#' at col=0: unreachable (# is indicator, excluded by
+                    -- canStartPlainScalarBool; after any content char col ≥ 1)
+                    subst hhash
+                    exact if h : sc.col > 0
+                      then SNsPlainChar.hashAfterNs .blockIn rest sc.col h
+                      else sorry
+                  · -- safe: not ':' and not '#'
+                    exact SNsPlainChar.safe .blockIn c rest sc.col
+                      (isPlainSafe_to_nsPlainSafe_blockIn h_safe) hcolon hhash
+              -- Recursive call with empty WS accumulator
+              obtain ⟨sp_entries, sp', h_ent_rest, h_ws_rest, hcorr_rest⟩ :=
+                ih sc.advance ⟨rest, sc.col + 1⟩ _ "" ⟨rest, sc.col + 1⟩
+                  hcorr_adv (GStar.nil _) hok
+              exact ⟨sp_entries, sp',
+                GStar.cons sp_ent ⟨rest, sc.col + 1⟩ sp_entries
+                  (SNbNsPlainInLineEntry.mk .blockIn sp_ent ⟨c :: rest, sc.col⟩
+                    ⟨rest, sc.col + 1⟩ h_ws hchar)
+                  h_ent_rest,
+                h_ws_rest, hcorr_rest⟩
+
+-- Helper: canStartPlainScalar → first char is not whitespace.
+theorem canStartPlainScalar_not_ws {c : Char} {next : Option Char}
+    (h : canStartPlainScalarBool c next false = true) : isWhiteSpaceBool c = false := by
+  unfold canStartPlainScalarBool at h
+  split at h
+  · rename_i hexc; rcases hexc with rfl | rfl | rfl <;> native_decide
+  · revert h; cases isWhiteSpaceBool c <;> simp
+
+-- Helper: GStar SSWhite starting at a non-WS char must be nil.
+theorem gstar_sswhite_at_non_ws {c : Char} {rest : List Char} {col : Nat} {s₁ : SurfPos}
+    (h : GStar SSWhite ⟨c :: rest, col⟩ s₁)
+    (h_nws : isWhiteSpaceBool c = false) :
+    s₁ = ⟨c :: rest, col⟩ := by
+  cases h
+  · rfl
+  · rename_i sp_mid hw _; exfalso; cases hw <;> simp [isWhiteSpaceBool] at h_nws
+
+-- Helper: SNsPlainChar at ⟨c :: rest, col⟩ always produces ⟨rest, col + 1⟩.
+theorem SNsPlainChar_at_head {c : Char} {rest : List Char} {col : Nat} {sp' : SurfPos}
+    (h : SNsPlainChar .blockIn ⟨c :: rest, col⟩ sp') :
+    sp' = ⟨rest, col + 1⟩ := by
+  cases h <;> rfl
+
+-- Context lift: SNsPlainChar .blockIn → .flowOut (definitional: isNsPlainSafe
+-- .blockIn = isNsPlainSafe .flowOut = isNsChar for non-flow contexts).
+theorem SNsPlainChar_blockIn_to_flowOut {sp sp' : SurfPos}
+    (h : SNsPlainChar .blockIn sp sp') : SNsPlainChar .flowOut sp sp' := by
+  cases h with
+  | safe ch rest col hS hNC hNH =>
+    exact SNsPlainChar.safe .flowOut ch rest col hS hNC hNH
+  | colonSafe prev next rest col hS =>
+    exact SNsPlainChar.colonSafe .flowOut prev next rest col hS
+  | hashAfterNs rest col hC => exact SNsPlainChar.hashAfterNs .flowOut rest col hC
+
+-- Context lift: SNbNsPlainInLineEntry .blockIn → .flowOut.
+theorem SNbNsPlainInLineEntry_blockIn_to_flowOut {sp sp' : SurfPos}
+    (h : SNbNsPlainInLineEntry .blockIn sp sp') : SNbNsPlainInLineEntry .flowOut sp sp' :=
+  match h with
+  | SNbNsPlainInLineEntry.mk _ _ s₁ _ ws_pre char =>
+    SNbNsPlainInLineEntry.mk .flowOut _ s₁ _ ws_pre (SNsPlainChar_blockIn_to_flowOut char)
+
+-- Context lift: GStar (SNbNsPlainInLineEntry .blockIn) → GStar (...flowOut).
+theorem GStar_entries_blockIn_to_flowOut {sp sp' : SurfPos}
+    (h : GStar (SNbNsPlainInLineEntry .blockIn) sp sp') :
+    GStar (SNbNsPlainInLineEntry .flowOut) sp sp' := by
+  induction h with
+  | nil => exact GStar.nil _
+  | cons s₁ s₂ s₃ entry _ ih =>
+    exact GStar.cons s₁ s₂ s₃ (SNbNsPlainInLineEntry_blockIn_to_flowOut entry) ih
+
+-- Context lift: SNsPlainFirst .blockIn → .flowOut (avoids circular import
+-- with NodeProduction.lean which has the same theorem).
+private theorem SNsPlainFirst_blockIn_to_flowOut' {s s' : SurfPos}
+    (h : SNsPlainFirst .blockIn s s') : SNsPlainFirst .flowOut s s' := by
+  cases h with
+  | nonIndicator ch rest col hSafe hNotInd =>
+    exact SNsPlainFirst.nonIndicator .flowOut ch rest col hSafe hNotInd
+  | dashSafe next rest col hSafe => exact SNsPlainFirst.dashSafe .flowOut next rest col hSafe
+  | colonSafe next rest col hSafe => exact SNsPlainFirst.colonSafe .flowOut next rest col hSafe
+  | questionSafe next rest col hSafe =>
+    exact SNsPlainFirst.questionSafe .flowOut next rest col hSafe
+
+-- Full production: scanPlainScalar → SFlowNode 0 .flowOut + trailing WS + corr.
+-- Composes: canStartPlainScalar → SNsPlainFirst, loop → entries + trailing WS,
+-- entry decomposition → SNsPlainOneLine, context lift → SFlowNode .flowOut.
+-- Sorry'd: terminates? on first char (doc boundary edge), multi-line (line breaks),
+-- # at col=0 (unreachable from callers).
+theorem scanPlainScalar_to_flowNode (sc : ScannerState) (sp : SurfPos)
+    {s' : ScannerState} {c : Char}
+    (hcorr : ScannerSurfCorr sc sp)
+    (hpeek : sc.peek? = some c)
+    (hstart : canStartPlainScalarBool c (sc.peekAt? 1) false = true)
+    (h_block : sc.inFlow = false)
+    (hok : scanPlainScalar sc = .ok s') :
+    ∃ sp_gram sp', SFlowNode 0 .flowOut sp sp_gram ∧
+                   GStar SSWhite sp_gram sp' ∧
+                   ScannerSurfCorr s' sp' := by
+  obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+  have hrest_head : ∀ n, sc.peekAt? 1 = some n → ∃ rest', rest = n :: rest' := by
+    intro n hn; unfold ScannerState.peekAt? at hn
+    have hcorr' := hsp_eq ▸ hcorr
+    obtain ⟨pre, rest', hcs, hlen⟩ :=
+      peekAtLoop_some_chars hcorr'.end_eq hn (c :: rest) hcorr'.chars_from
+    have ⟨a, ha⟩ : ∃ a, pre = [a] := by
+      cases pre with
+      | nil => simp at hlen
+      | cons a as => cases as with
+        | nil => exact ⟨a, rfl⟩
+        | cons => simp at hlen
+    subst ha; simp at hcs; obtain ⟨_, rfl⟩ := hcs; exact ⟨rest', rfl⟩
+  rw [hsp_eq]; rw [hsp_eq] at hcorr
+  have h_first : SNsPlainFirst .blockIn ⟨c :: rest, sc.col⟩ ⟨rest, sc.col + 1⟩ :=
+    canStartPlainScalar_to_SNsPlainFirst c rest sc.col (sc.peekAt? 1) hstart hrest_head
+  -- Unfold scanPlainScalar to extract loop
+  unfold scanPlainScalar at hok
+  simp only [bind, Except.bind] at hok
+  split at hok
+  · simp at hok
+  · rename_i result hloop
+    simp only [Except.ok.injEq] at hok; subst hok
+    -- Normalize inFlow in hloop
+    rw [h_block] at hloop
+    -- Loop production: entries + trailing WS + corr
+    obtain ⟨sp_entries, sp', h_entries, h_trail, hcorr_result⟩ :=
+      collectPlainScalarLoop_prod sc ⟨c :: rest, sc.col⟩ "" "" _ _ _
+        ⟨c :: rest, sc.col⟩ hcorr (GStar.nil _) hloop
+    -- Analyze entries
+    match h_entries with
+    | GStar.nil _ =>
+      -- No entries consumed (doc boundary edge case)
+      sorry
+    | GStar.cons _ sp_mid _ first_entry rest_entries =>
+      -- Decompose first entry to recover sp_mid = ⟨rest, sc.col + 1⟩
+      have h_nws := canStartPlainScalar_not_ws hstart
+      match first_entry with
+      | SNbNsPlainInLineEntry.mk _ _ ws_end _ ws_pre char =>
+        have h_s1 := gstar_sswhite_at_non_ws ws_pre h_nws
+        subst h_s1
+        have h_mid := SNsPlainChar_at_head char
+        subst h_mid
+        -- Build: SNsPlainFirst + rest entries → SNsPlain 0 .flowOut → SFlowNode
+        have h_plain : SNsPlain 0 .flowOut ⟨c :: rest, sc.col⟩ sp_entries :=
+          SNsPlainMultiLine.mk 0 .flowOut _ _ sp_entries
+            (SNsPlainOneLine.mk .flowOut _ ⟨rest, sc.col + 1⟩ sp_entries
+              (SNsPlainFirst_blockIn_to_flowOut' h_first)
+              (GStar_entries_blockIn_to_flowOut rest_entries))
+            (GStar.nil _)
+        exact ⟨sp_entries, sp',
+          SFlowNode.content 0 .flowOut _ sp_entries
+            (SFlowContent.plain 0 .flowOut _ sp_entries h_plain),
+          h_trail,
+          corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_result)⟩
 
 theorem scanPlainScalar_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState} {c : Char}
