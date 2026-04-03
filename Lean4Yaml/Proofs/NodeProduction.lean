@@ -296,13 +296,14 @@ theorem anchorProp_of_glit_gplus {rest : List Char} {col : Nat} {sp' : SurfPos}
 -- Hypothesis: sp_mid ≠ sp' (scanner collected ≥1 anchor char after '*').
 theorem scanAnchorOrAlias_aliasNode_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
-    (hpeek : sc.peek? = some '*') :
+    (hpeek : sc.peek? = some '*')
+    (s' : ScannerState) (hok : scanAnchorOrAlias sc false = .ok s') :
     ∃ sp_mid sp', GLit '*' sp sp_mid ∧
                   GStar (GChar isNsAnchorChar) sp_mid sp' ∧
                   (sp_mid ≠ sp' → SCNsAliasNode sp sp') ∧
-                  ScannerSurfCorr (scanAnchorOrAlias sc false) sp' := by
+                  ScannerSurfCorr s' sp' := by
   obtain ⟨sp_mid, sp', h_glit, h_gstar, hcorr'⟩ :=
-    scanAnchorOrAlias_prod sc sp hcorr false '*' hpeek (by decide) (by decide)
+    scanAnchorOrAlias_prod sc sp hcorr false '*' hpeek (by decide) (by decide) s' hok
   refine ⟨sp_mid, sp', h_glit, h_gstar, ?_, hcorr'⟩
   intro hne
   cases h_glit with
@@ -313,13 +314,14 @@ theorem scanAnchorOrAlias_aliasNode_prod (sc : ScannerState) (sp : SurfPos)
 -- Hypothesis: sp_mid ≠ sp' (scanner collected ≥1 anchor char after '&').
 theorem scanAnchorOrAlias_anchorProp_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
-    (hpeek : sc.peek? = some '&') :
+    (hpeek : sc.peek? = some '&')
+    (s' : ScannerState) (hok : scanAnchorOrAlias sc true = .ok s') :
     ∃ sp_mid sp', GLit '&' sp sp_mid ∧
                   GStar (GChar isNsAnchorChar) sp_mid sp' ∧
                   (sp_mid ≠ sp' → SCNsAnchorProperty sp sp') ∧
-                  ScannerSurfCorr (scanAnchorOrAlias sc true) sp' := by
+                  ScannerSurfCorr s' sp' := by
   obtain ⟨sp_mid, sp', h_glit, h_gstar, hcorr'⟩ :=
-    scanAnchorOrAlias_prod sc sp hcorr true '&' hpeek (by decide) (by decide)
+    scanAnchorOrAlias_prod sc sp hcorr true '&' hpeek (by decide) (by decide) s' hok
   refine ⟨sp_mid, sp', h_glit, h_gstar, ?_, hcorr'⟩
   intro hne
   cases h_glit with
@@ -329,13 +331,14 @@ theorem scanAnchorOrAlias_anchorProp_prod (sc : ScannerState) (sp : SurfPos)
 -- scanAnchorOrAlias with non-empty name → SFlowNode (alias).
 theorem scanAnchorOrAlias_flowNode_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
-    (hpeek : sc.peek? = some '*') :
+    (hpeek : sc.peek? = some '*')
+    (s' : ScannerState) (hok : scanAnchorOrAlias sc false = .ok s') :
     ∃ sp_mid sp', GLit '*' sp sp_mid ∧
                   GStar (GChar isNsAnchorChar) sp_mid sp' ∧
                   (sp_mid ≠ sp' → SFlowNode 0 .blockIn sp sp') ∧
-                  ScannerSurfCorr (scanAnchorOrAlias sc false) sp' := by
+                  ScannerSurfCorr s' sp' := by
   obtain ⟨sp_mid, sp', h_glit, h_gstar, h_alias, hcorr'⟩ :=
-    scanAnchorOrAlias_aliasNode_prod sc sp hcorr hpeek
+    scanAnchorOrAlias_aliasNode_prod sc sp hcorr hpeek s' hok
   exact ⟨sp_mid, sp', h_glit, h_gstar,
          fun hne => alias_flowNode (h_alias hne), hcorr'⟩
 

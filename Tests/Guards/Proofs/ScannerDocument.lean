@@ -10,10 +10,12 @@ open Lean4Yaml.Proofs.ScannerScalar
 
 -- WellFormed preservation (anchor)
 private def checkAnchorWF (input : String) : Bool :=
-  let s := scanAnchorOrAlias (ScannerState.mk' input) true
-  s.indents.size ≥ 1 && s.flowLevel == s.flowStack.size
-  && s.simpleKeyStack.size == s.flowStack.size
-  && s.offset ≤ s.inputEnd
+  match scanAnchorOrAlias (ScannerState.mk' input) true with
+  | .ok s =>
+    s.indents.size ≥ 1 && s.flowLevel == s.flowStack.size
+    && s.simpleKeyStack.size == s.flowStack.size
+    && s.offset ≤ s.inputEnd
+  | .error _ => true
 
 #guard checkAnchorWF "&name rest"
 #guard checkAnchorWF "&a"
@@ -24,10 +26,12 @@ private def checkAnchorWF (input : String) : Bool :=
 
 -- WellFormed preservation (alias)
 private def checkAliasWF (input : String) : Bool :=
-  let s := scanAnchorOrAlias (ScannerState.mk' input) false
-  s.indents.size ≥ 1 && s.flowLevel == s.flowStack.size
-  && s.simpleKeyStack.size == s.flowStack.size
-  && s.offset ≤ s.inputEnd
+  match scanAnchorOrAlias (ScannerState.mk' input) false with
+  | .ok s =>
+    s.indents.size ≥ 1 && s.flowLevel == s.flowStack.size
+    && s.simpleKeyStack.size == s.flowStack.size
+    && s.offset ≤ s.inputEnd
+  | .error _ => true
 
 #guard checkAliasWF "*name rest"
 #guard checkAliasWF "*a"
@@ -37,32 +41,38 @@ private def checkAliasWF (input : String) : Bool :=
 
 -- Token content verification
 private def anchorToken (input : String) : Option YamlToken :=
-  let s := scanAnchorOrAlias (ScannerState.mk' input) true
-  match s.tokens.back? with
-  | some tok => some tok.val
-  | none => none
+  match scanAnchorOrAlias (ScannerState.mk' input) true with
+  | .ok s =>
+    match s.tokens.back? with
+    | some tok => some tok.val
+    | none => none
+  | .error _ => none
 
 private def aliasToken (input : String) : Option YamlToken :=
-  let s := scanAnchorOrAlias (ScannerState.mk' input) false
-  match s.tokens.back? with
-  | some tok => some tok.val
-  | none => none
+  match scanAnchorOrAlias (ScannerState.mk' input) false with
+  | .ok s =>
+    match s.tokens.back? with
+    | some tok => some tok.val
+    | none => none
+  | .error _ => none
 
 #guard anchorToken "&myanchor rest" == some (.anchor "myanchor")
 #guard anchorToken "&a" == some (.anchor "a")
-#guard anchorToken "& " == some (.anchor "")
+#guard anchorToken "& " == none  -- empty anchor name is now an error
 #guard aliasToken "*myalias rest" == some (.alias "myalias")
 #guard aliasToken "*a" == some (.alias "a")
 
 -- simpleKeyAllowed set to false
-#guard !(scanAnchorOrAlias (ScannerState.mk' "&name") true).simpleKeyAllowed
-#guard !(scanAnchorOrAlias (ScannerState.mk' "*name") false).simpleKeyAllowed
+#guard (match scanAnchorOrAlias (ScannerState.mk' "&name") true with | .ok s => !s.simpleKeyAllowed | .error _ => true)
+#guard (match scanAnchorOrAlias (ScannerState.mk' "*name") false with | .ok s => !s.simpleKeyAllowed | .error _ => true)
 -- WellFormed preservation
 private def checkTagWF (input : String) : Bool :=
-  let s := scanTag (ScannerState.mk' input)
-  s.indents.size ≥ 1 && s.flowLevel == s.flowStack.size
-  && s.simpleKeyStack.size == s.flowStack.size
-  && s.offset ≤ s.inputEnd
+  match scanTag (ScannerState.mk' input) with
+  | .ok s =>
+    s.indents.size ≥ 1 && s.flowLevel == s.flowStack.size
+    && s.simpleKeyStack.size == s.flowStack.size
+    && s.offset ≤ s.inputEnd
+  | .error _ => true
 
 -- Verbatim tag: !<uri>
 #guard checkTagWF "!<tag:yaml.org,2002:str> rest"
@@ -84,10 +94,12 @@ private def checkTagWF (input : String) : Bool :=
 
 -- Token content verification
 private def tagToken (input : String) : Option YamlToken :=
-  let s := scanTag (ScannerState.mk' input)
-  match s.tokens.back? with
-  | some tok => some tok.val
-  | none => none
+  match scanTag (ScannerState.mk' input) with
+  | .ok s =>
+    match s.tokens.back? with
+    | some tok => some tok.val
+    | none => none
+  | .error _ => none
 
 -- Verbatim tag
 #guard tagToken "!<tag:yaml.org,2002:str>" == some (.tag "" "tag:yaml.org,2002:str")
@@ -103,9 +115,9 @@ private def tagToken (input : String) : Option YamlToken :=
 #guard tagToken "! " == some (.tag "!" "")
 
 -- simpleKeyAllowed set to false
-#guard (scanTag (ScannerState.mk' "!!str")).simpleKeyAllowed == false
-#guard (scanTag (ScannerState.mk' "!<uri>")).simpleKeyAllowed == false
-#guard (scanTag (ScannerState.mk' "!local")).simpleKeyAllowed == false
+#guard (match scanTag (ScannerState.mk' "!!str") with | .ok s => s.simpleKeyAllowed == false | .error _ => true)
+#guard (match scanTag (ScannerState.mk' "!<uri>") with | .ok s => s.simpleKeyAllowed == false | .error _ => true)
+#guard (match scanTag (ScannerState.mk' "!local") with | .ok s => s.simpleKeyAllowed == false | .error _ => true)
 -- Helper: check WellFormed for directive results
 private def checkDirectiveWF (input : String) : Bool :=
   let s := { ScannerState.mk' input with allowDirectives := true }

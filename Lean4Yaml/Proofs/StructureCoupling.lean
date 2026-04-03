@@ -179,20 +179,22 @@ theorem collectAnchorNameLoop_corr (sc : ScannerState) (sp : SurfPos)
     · exact ⟨sp, hcorr⟩
 
 theorem scanAnchorOrAlias_corr (sc : ScannerState) (sp : SurfPos)
-    (hcorr : ScannerSurfCorr sc sp) (isAnchor : Bool) :
-    ∃ sp', ScannerSurfCorr (scanAnchorOrAlias sc isAnchor) sp' := by
-  unfold scanAnchorOrAlias
-  obtain ⟨sp_adv, hcorr_adv⟩ := advance_corr sc sp hcorr
-  obtain ⟨sp_name, hcorr_name⟩ :=
-    collectAnchorNameLoop_corr sc.advance sp_adv hcorr_adv "" _
-  -- emitAt only changes tokens; the if-then-else on isAnchor produces
-  -- different token values but the state effect is the same.
-  -- Final struct update: simpleKeyAllowed := false (not tracked)
-  exact ⟨sp_name, ⟨hcorr_name.chars_from, hcorr_name.col_eq, hcorr_name.end_eq, hcorr_name.input_prefix, hcorr_name.indent_cols_nonneg⟩⟩
+    (hcorr : ScannerSurfCorr sc sp) (isAnchor : Bool) (s' : ScannerState)
+    (hok : scanAnchorOrAlias sc isAnchor = .ok s') :
+    ∃ sp', ScannerSurfCorr s' sp' := by
+  unfold scanAnchorOrAlias at hok
+  dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · have h := Except.ok.inj hok; subst h
+    obtain ⟨sp_adv, hcorr_adv⟩ := advance_corr sc sp hcorr
+    obtain ⟨sp_name, hcorr_name⟩ :=
+      collectAnchorNameLoop_corr sc.advance sp_adv hcorr_adv "" _
+    exact ⟨sp_name, ⟨hcorr_name.chars_from, hcorr_name.col_eq, hcorr_name.end_eq, hcorr_name.input_prefix, hcorr_name.indent_cols_nonneg⟩⟩
 
 theorem collectVerbatimTagLoop_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (uri : String) (fuel : Nat) :
-    ∃ sp', ScannerSurfCorr (collectVerbatimTagLoop sc uri fuel).snd sp' := by
+    ∃ sp', ScannerSurfCorr (collectVerbatimTagLoop sc uri fuel).snd.snd sp' := by
   induction fuel generalizing sc sp uri with
   | zero => simp [collectVerbatimTagLoop]; exact ⟨sp, hcorr⟩
   | succ fuel' ih =>
@@ -240,13 +242,20 @@ theorem collectTagHandleLoop_corr (sc : ScannerState) (sp : SurfPos)
 /-! ## §5 Node Properties: Tag Scanning -/
 
 theorem scanVerbatimTag_corr (sc : ScannerState) (sp : SurfPos)
-    (hcorr : ScannerSurfCorr sc sp) (startPos : YamlPos) :
-    ∃ sp', ScannerSurfCorr (scanVerbatimTag sc startPos) sp' := by
-  unfold scanVerbatimTag
-  obtain ⟨sp_adv, hcorr_adv⟩ := advance_corr sc sp hcorr
-  obtain ⟨sp_uri, hcorr_uri⟩ :=
-    collectVerbatimTagLoop_corr sc.advance sp_adv hcorr_adv "" _
-  exact ⟨sp_uri, ⟨hcorr_uri.chars_from, hcorr_uri.col_eq, hcorr_uri.end_eq, hcorr_uri.input_prefix, hcorr_uri.indent_cols_nonneg⟩⟩
+    (hcorr : ScannerSurfCorr sc sp) (startPos : YamlPos) (s' : ScannerState)
+    (hok : scanVerbatimTag sc startPos = .ok s') :
+    ∃ sp', ScannerSurfCorr s' sp' := by
+  unfold scanVerbatimTag at hok
+  dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · split at hok
+    · exact absurd hok (by simp)
+    · have h := Except.ok.inj hok; subst h
+      obtain ⟨sp_adv, hcorr_adv⟩ := advance_corr sc sp hcorr
+      obtain ⟨sp_uri, hcorr_uri⟩ :=
+        collectVerbatimTagLoop_corr sc.advance sp_adv hcorr_adv "" _
+      exact ⟨sp_uri, ⟨hcorr_uri.chars_from, hcorr_uri.col_eq, hcorr_uri.end_eq, hcorr_uri.input_prefix, hcorr_uri.indent_cols_nonneg⟩⟩
 
 theorem scanSecondaryTag_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (startPos : YamlPos) :
@@ -272,16 +281,27 @@ theorem scanNamedTag_corr (sc : ScannerState) (sp : SurfPos)
     exact ⟨sp_hdl, ⟨hcorr_hdl.chars_from, hcorr_hdl.col_eq, hcorr_hdl.end_eq, hcorr_hdl.input_prefix, hcorr_hdl.indent_cols_nonneg⟩⟩
 
 theorem scanTag_corr (sc : ScannerState) (sp : SurfPos)
-    (hcorr : ScannerSurfCorr sc sp) :
-    ∃ sp', ScannerSurfCorr (scanTag sc) sp' := by
-  unfold scanTag; dsimp only []
+    (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
+    (hok : scanTag sc = .ok s') :
+    ∃ sp', ScannerSurfCorr s' sp' := by
+  unfold scanTag at hok; dsimp only [] at hok
   obtain ⟨sp_bang, hcorr_bang⟩ := advance_corr sc sp hcorr
-  split
-  · obtain ⟨sp', hcorr'⟩ := scanVerbatimTag_corr sc.advance sp_bang hcorr_bang _
+  split at hok
+  · -- verbatim: do-block with ← scanVerbatimTag
+    simp only [bind, Except.bind] at hok
+    generalize hv : scanVerbatimTag sc.advance sc.currentPos = result at hok
+    cases result with
+    | error e => simp at hok
+    | ok s_verb =>
+      dsimp only [] at hok
+      have h := Except.ok.inj hok; subst h
+      obtain ⟨sp', hcorr'⟩ := scanVerbatimTag_corr sc.advance sp_bang hcorr_bang _ s_verb hv
+      exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
+  · have h := Except.ok.inj hok; subst h
+    obtain ⟨sp', hcorr'⟩ := scanSecondaryTag_corr sc.advance sp_bang hcorr_bang _
     exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
-  · obtain ⟨sp', hcorr'⟩ := scanSecondaryTag_corr sc.advance sp_bang hcorr_bang _
-    exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
-  · obtain ⟨sp', hcorr'⟩ := scanNamedTag_corr sc.advance sp_bang hcorr_bang sc.currentPos sc.inputEnd
+  · have h := Except.ok.inj hok; subst h
+    obtain ⟨sp', hcorr'⟩ := scanNamedTag_corr sc.advance sp_bang hcorr_bang sc.currentPos sc.inputEnd
     exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
 
 /-! ## §6 Block Structure -/

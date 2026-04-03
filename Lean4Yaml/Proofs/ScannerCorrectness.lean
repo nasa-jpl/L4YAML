@@ -1560,18 +1560,21 @@ theorem scanDirective_monotonic (s : ScannerState) (s' : ScannerState)
             advance_preserves_tokens]
         omega
 
-/-- scanAnchorOrAlias adds exactly one token. -/
-theorem scanAnchorOrAlias_adds_one_token (s : ScannerState) (isAnchor : Bool) :
-    (scanAnchorOrAlias s isAnchor).tokens.size = s.tokens.size + 1 := by
-  unfold scanAnchorOrAlias
-  have h_collect := collectAnchorNameLoop_preserves_tokens s.advance "" (s.inputEnd - s.advance.offset)
-  have h_adv := advance_preserves_tokens s
-  simp only []
-  rw [emitAt_tokens_size, h_collect, h_adv]
+/-- scanAnchorOrAlias adds exactly one token (on success). -/
+theorem scanAnchorOrAlias_adds_one_token (s : ScannerState) (isAnchor : Bool)
+    (s' : ScannerState) (hok : scanAnchorOrAlias s isAnchor = .ok s') :
+    s'.tokens.size = s.tokens.size + 1 := by
+  unfold scanAnchorOrAlias at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    have h_collect := collectAnchorNameLoop_preserves_tokens s.advance "" (s.inputEnd - s.advance.offset)
+    have h_adv := advance_preserves_tokens s
+    rw [emitAt_tokens_size, h_collect, h_adv]
 
 /-- Helper: collectVerbatimTagLoop preserves tokens. -/
 theorem collectVerbatimTagLoop_preserves_tokens (s : ScannerState) (uri : String) (fuel : Nat) :
-    (collectVerbatimTagLoop s uri fuel).snd.tokens = s.tokens := by
+    (collectVerbatimTagLoop s uri fuel).snd.snd.tokens = s.tokens := by
   induction fuel generalizing s uri with
   | zero => unfold collectVerbatimTagLoop; rfl
   | succ fuel' ih =>
@@ -1610,11 +1613,17 @@ theorem collectTagHandleLoop_preserves_tokens (s : ScannerState) (chars : String
       · simp only []  -- not word char, return
     · simp only []  -- none, return
 
-/-- scanVerbatimTag adds exactly one token. -/
-theorem scanVerbatimTag_adds_one_token (s : ScannerState) (pos : YamlPos) :
-    (scanVerbatimTag s pos).tokens.size = s.tokens.size + 1 := by
-  unfold scanVerbatimTag
-  simp only [emitAt_tokens_size, collectVerbatimTagLoop_preserves_tokens, advance_preserves_tokens]
+/-- scanVerbatimTag adds exactly one token (on success). -/
+theorem scanVerbatimTag_adds_one_token (s : ScannerState) (pos : YamlPos)
+    (s' : ScannerState) (hok : scanVerbatimTag s pos = .ok s') :
+    s'.tokens.size = s.tokens.size + 1 := by
+  unfold scanVerbatimTag at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · split at hok
+    · exact absurd hok (by simp)
+    · have h := Except.ok.inj hok; subst h
+      simp only [emitAt_tokens_size, collectVerbatimTagLoop_preserves_tokens, advance_preserves_tokens]
 
 /-- scanSecondaryTag adds exactly one token. -/
 theorem scanSecondaryTag_adds_one_token (s : ScannerState) (pos : YamlPos) :
@@ -1633,14 +1642,26 @@ theorem scanNamedTag_adds_one_token (s : ScannerState) (pos : YamlPos) (inputEnd
     rw [emitAt_tokens_size, h_suffix, h_handle]
   · rw [emitAt_tokens_size, h_handle]
 
-/-- scanTag adds exactly one token. -/
-theorem scanTag_adds_one_token (s : ScannerState) :
-    (scanTag s).tokens.size = s.tokens.size + 1 := by
-  unfold scanTag; simp only []
-  split
-  · rw [scanVerbatimTag_adds_one_token, advance_preserves_tokens]
-  · rw [scanSecondaryTag_adds_one_token, advance_preserves_tokens]
-  · rw [scanNamedTag_adds_one_token, advance_preserves_tokens]
+/-- scanTag adds exactly one token (on success). -/
+theorem scanTag_adds_one_token (s : ScannerState)
+    (s' : ScannerState) (hok : scanTag s = .ok s') :
+    s'.tokens.size = s.tokens.size + 1 := by
+  unfold scanTag at hok; dsimp only [] at hok
+  split at hok
+  · -- verbatim
+    simp only [bind, Except.bind] at hok
+    generalize hv : scanVerbatimTag s.advance s.currentPos = result at hok
+    cases result with
+    | error e => simp at hok
+    | ok s_verb =>
+      dsimp only [] at hok
+      have h := Except.ok.inj hok; subst h; dsimp only []
+      have := scanVerbatimTag_adds_one_token s.advance s.currentPos s_verb hv
+      simp [this, advance_preserves_tokens]
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    rw [scanSecondaryTag_adds_one_token, advance_preserves_tokens]
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    rw [scanNamedTag_adds_one_token, advance_preserves_tokens]
 
 /-- `parseBlockHeaderLoop` preserves tokens (structural recursion on fuel). -/
 theorem parseBlockHeaderLoop_preserves_tokens (s : ScannerState) (chomp : ChompStyle)
@@ -1938,10 +1959,10 @@ theorem dispatchContent_tokens_mono (s : ScannerState) (c : Char) (s' : ScannerS
     | (have := scanDoubleQuoted_adds_one_token s _ (by assumption); simp_all <;> omega)
     | (have := scanSingleQuoted_adds_one_token s _ (by assumption); simp_all <;> omega)
     | (have := scanPlainScalar_adds_one_token s _ (by assumption); simp_all <;> omega)
-    | (have := scanAnchorOrAlias_adds_one_token s true;
-       simp only [Except.ok.injEq] at h; subst h; dsimp only []; omega)
-    | (have := scanAnchorOrAlias_adds_one_token s false; simp_all <;> omega)
-    | (have := scanTag_adds_one_token s; simp_all <;> omega)
+    | (simp only [Except.ok.injEq] at h; subst h; dsimp only [];
+       have := scanAnchorOrAlias_adds_one_token s true _ (by assumption); omega)
+    | (have := scanAnchorOrAlias_adds_one_token s false _ (by assumption); simp_all <;> omega)
+    | (have := scanTag_adds_one_token s _ (by assumption); simp_all <;> omega)
     | (simp_all <;> omega)
 
 /-! ### Preprocess monotonicity and prefix preservation -/
@@ -2305,22 +2326,30 @@ theorem scanKey_preserves_prefix (s s' : ScannerState)
       simp only [advance_preserves_tokens]
       exact emit_preserves_tokens_at s .key i h_i
 
-/-- scanAnchorOrAlias preserves token prefix. -/
+/-- scanAnchorOrAlias preserves token prefix (on success). -/
 theorem scanAnchorOrAlias_preserves_prefix (s : ScannerState) (isAnchor : Bool)
+    (s' : ScannerState) (hok : scanAnchorOrAlias s isAnchor = .ok s')
     (i : Nat) (h_i : i < s.tokens.size) :
-    (scanAnchorOrAlias s isAnchor).tokens[i]'(by
-      have := scanAnchorOrAlias_adds_one_token s isAnchor; omega) = s.tokens[i] := by
-  unfold scanAnchorOrAlias; dsimp only []
-  apply emitAt_chain_preserves_prefix
-  rw [collectAnchorNameLoop_preserves_tokens, advance_preserves_tokens]
+    s'.tokens[i]'(by have := scanAnchorOrAlias_adds_one_token s isAnchor s' hok; omega) = s.tokens[i] := by
+  unfold scanAnchorOrAlias at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    apply emitAt_chain_preserves_prefix
+    rw [collectAnchorNameLoop_preserves_tokens, advance_preserves_tokens]
 
 theorem scanVerbatimTag_preserves_prefix (s : ScannerState) (pos : YamlPos)
+    (s' : ScannerState) (hok : scanVerbatimTag s pos = .ok s')
     (i : Nat) (h_i : i < s.tokens.size) :
-    (scanVerbatimTag s pos).tokens[i]'(by
-      have := scanVerbatimTag_adds_one_token s pos; omega) = s.tokens[i] := by
-  unfold scanVerbatimTag
-  apply emitAt_chain_preserves_prefix
-  rw [collectVerbatimTagLoop_preserves_tokens, advance_preserves_tokens]
+    s'.tokens[i]'(by have := scanVerbatimTag_adds_one_token s pos s' hok; omega) = s.tokens[i] := by
+  unfold scanVerbatimTag at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · split at hok
+    · exact absurd hok (by simp)
+    · have h := Except.ok.inj hok; subst h
+      apply emitAt_chain_preserves_prefix
+      rw [collectVerbatimTagLoop_preserves_tokens, advance_preserves_tokens]
 
 theorem scanSecondaryTag_preserves_prefix (s : ScannerState) (pos : YamlPos)
     (i : Nat) (h_i : i < s.tokens.size) :
@@ -2342,23 +2371,31 @@ theorem scanNamedTag_preserves_prefix (s : ScannerState) (pos : YamlPos) (inputE
   · apply emitAt_chain_preserves_prefix
     rw [h_handle]
 
-/-- scanTag preserves token prefix. -/
+/-- scanTag preserves token prefix (on success). -/
 theorem scanTag_preserves_prefix (s : ScannerState)
+    (s_ok : ScannerState) (hok : scanTag s = .ok s_ok)
     (i : Nat) (h_i : i < s.tokens.size) :
-    (scanTag s).tokens[i]'(by have := scanTag_adds_one_token s; omega) = s.tokens[i] := by
-  have h_bound : i < (scanTag s).tokens.size := by have := scanTag_adds_one_token s; omega
-  show (scanTag s).tokens[i]'h_bound = s.tokens[i]
-  unfold scanTag at h_bound ⊢
-  dsimp only [] at h_bound ⊢
+    s_ok.tokens[i]'(by have := scanTag_adds_one_token s s_ok hok; omega) = s.tokens[i] := by
+  unfold scanTag at hok; dsimp only [] at hok
   have h_adv := advance_preserves_tokens s
-  revert h_bound; split <;> intro h_bound
-  · have := scanVerbatimTag_preserves_prefix s.advance s.currentPos i
+  split at hok
+  · -- verbatim
+    simp only [bind, Except.bind] at hok
+    generalize hv : scanVerbatimTag s.advance s.currentPos = result at hok
+    cases result with
+    | error e => simp at hok
+    | ok s_verb =>
+      dsimp only [] at hok
+      have h := Except.ok.inj hok; subst h; dsimp only []
+      have := scanVerbatimTag_preserves_prefix s.advance s.currentPos s_verb hv i
+        (by rw [h_adv]; exact h_i)
+      simp_all
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    have := scanSecondaryTag_preserves_prefix s.advance s.currentPos i
       (by rw [h_adv]; exact h_i)
     simp_all
-  · have := scanSecondaryTag_preserves_prefix s.advance s.currentPos i
-      (by rw [h_adv]; exact h_i)
-    simp_all
-  · have := scanNamedTag_preserves_prefix s.advance s.currentPos s.inputEnd i
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    have := scanNamedTag_preserves_prefix s.advance s.currentPos s.inputEnd i
       (by rw [h_adv]; exact h_i)
     simp_all
 
@@ -2697,21 +2734,46 @@ theorem dispatchContent_preserves_prefix (s : ScannerState) (c : Char) (s' : Sca
   unfold scanNextToken_dispatchContent at h
   simp only [bind, bind_ok_simp, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
-  repeat (any_goals (split at h))
-  any_goals contradiction
-  all_goals (try simp only [Except.ok.injEq] at *)
-  all_goals (try contradiction)
-  all_goals (try subst_vars)
-  all_goals (try dsimp only [])
-  all_goals first
-    | exact scanAnchorOrAlias_preserves_prefix s true i h_i
-    | exact scanAnchorOrAlias_preserves_prefix s false i h_i
-    | exact scanTag_preserves_prefix s i h_i
-    | exact scanBlockScalar_preserves_prefix s _ (by assumption) i h_i
-    | exact scanDoubleQuoted_preserves_prefix s _ (by assumption) i h_i
-    | exact scanSingleQuoted_preserves_prefix s _ (by assumption) i h_i
-    | exact scanPlainScalar_preserves_prefix s _ (by assumption) i h_i
-    | (simp_all; done)
+  -- Handle anchor/alias/tag with explicit generalize to keep ok-equation
+  split at h
+  · -- '&': scanAnchorOrAlias bind
+    generalize h_anch : scanAnchorOrAlias s true = result at h
+    cases result with
+    | error e => simp at h
+    | ok s_a =>
+      simp only [Except.ok.injEq] at h; subst h; dsimp only []
+      exact scanAnchorOrAlias_preserves_prefix s true s_a h_anch i h_i
+  · split at h
+    · -- '*': alias
+      split at h
+      · simp at h
+      · generalize h_anch : scanAnchorOrAlias s false = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_a =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact scanAnchorOrAlias_preserves_prefix s false s_a h_anch i h_i
+    · split at h
+      · -- '!': tag
+        generalize h_tag : scanTag s = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_t =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact scanTag_preserves_prefix s s_t h_tag i h_i
+      · -- remaining: block scalar, quoted, plain
+        repeat (any_goals (split at h))
+        any_goals contradiction
+        all_goals (try simp only [Except.ok.injEq] at *)
+        all_goals (try contradiction)
+        all_goals (try subst_vars)
+        all_goals (try dsimp only [])
+        all_goals first
+          | exact scanBlockScalar_preserves_prefix s _ (by assumption) i h_i
+          | exact scanDoubleQuoted_preserves_prefix s _ (by assumption) i h_i
+          | exact scanSingleQuoted_preserves_prefix s _ (by assumption) i h_i
+          | exact scanPlainScalar_preserves_prefix s _ (by assumption) i h_i
+          | (simp_all; done)
 
 end ScanHelpers
 
@@ -3290,7 +3352,7 @@ theorem collectTagPrefixLoop_preserves_simpleKey (s : ScannerState) (pfx : Strin
 
 
 theorem collectVerbatimTagLoop_preserves_simpleKey (s : ScannerState) (uri : String) (fuel : Nat) :
-    (collectVerbatimTagLoop s uri fuel).snd.simpleKey = s.simpleKey := by
+    (collectVerbatimTagLoop s uri fuel).snd.snd.simpleKey = s.simpleKey := by
   induction fuel generalizing s uri with
   | zero => unfold collectVerbatimTagLoop; rfl
   | succ fuel' ih =>
@@ -3924,7 +3986,7 @@ theorem collectTagPrefixLoop_preserves_simpleKeyStack (s : ScannerState) (pfx : 
 
 
 theorem collectVerbatimTagLoop_preserves_simpleKeyStack (s : ScannerState) (uri : String) (fuel : Nat) :
-    (collectVerbatimTagLoop s uri fuel).snd.simpleKeyStack = s.simpleKeyStack := by
+    (collectVerbatimTagLoop s uri fuel).snd.snd.simpleKeyStack = s.simpleKeyStack := by
   induction fuel generalizing s uri with
   | zero => unfold collectVerbatimTagLoop; rfl
   | succ fuel' ih =>
@@ -4571,29 +4633,49 @@ theorem scanBlockEntry_preserves_simpleKeyStack (s : ScannerState) (s' : Scanner
   all_goals simp [advance_preserves_simpleKeyStack, emit_preserves_simpleKeyStack,
                   pushSequenceIndent_preserves_simpleKeyStack]
 
-theorem scanAnchorOrAlias_preserves_simpleKey (s : ScannerState) (isAnchor : Bool) :
-    (scanAnchorOrAlias s isAnchor).simpleKey = s.simpleKey := by
-  unfold scanAnchorOrAlias
-  simp [emitAt_preserves_simpleKey, collectAnchorNameLoop_preserves_simpleKey,
-        advance_preserves_simpleKey]
+theorem scanAnchorOrAlias_preserves_simpleKey (s : ScannerState) (isAnchor : Bool)
+    (s' : ScannerState) (hok : scanAnchorOrAlias s isAnchor = .ok s') :
+    s'.simpleKey = s.simpleKey := by
+  unfold scanAnchorOrAlias at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    simp [emitAt_preserves_simpleKey, collectAnchorNameLoop_preserves_simpleKey,
+          advance_preserves_simpleKey]
 
-theorem scanAnchorOrAlias_preserves_simpleKeyStack (s : ScannerState) (isAnchor : Bool) :
-    (scanAnchorOrAlias s isAnchor).simpleKeyStack = s.simpleKeyStack := by
-  unfold scanAnchorOrAlias
-  simp [emitAt_preserves_simpleKeyStack, collectAnchorNameLoop_preserves_simpleKeyStack,
-        advance_preserves_simpleKeyStack]
+theorem scanAnchorOrAlias_preserves_simpleKeyStack (s : ScannerState) (isAnchor : Bool)
+    (s' : ScannerState) (hok : scanAnchorOrAlias s isAnchor = .ok s') :
+    s'.simpleKeyStack = s.simpleKeyStack := by
+  unfold scanAnchorOrAlias at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    simp [emitAt_preserves_simpleKeyStack, collectAnchorNameLoop_preserves_simpleKeyStack,
+          advance_preserves_simpleKeyStack]
 
-theorem scanVerbatimTag_preserves_simpleKey (s : ScannerState) (startPos : YamlPos) :
-    (scanVerbatimTag s startPos).simpleKey = s.simpleKey := by
-  unfold scanVerbatimTag
-  simp [emitAt_preserves_simpleKey, collectVerbatimTagLoop_preserves_simpleKey,
-        advance_preserves_simpleKey]
+theorem scanVerbatimTag_preserves_simpleKey (s : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState) (hok : scanVerbatimTag s startPos = .ok s') :
+    s'.simpleKey = s.simpleKey := by
+  unfold scanVerbatimTag at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · split at hok
+    · exact absurd hok (by simp)
+    · have h := Except.ok.inj hok; subst h
+      simp [emitAt_preserves_simpleKey, collectVerbatimTagLoop_preserves_simpleKey,
+            advance_preserves_simpleKey]
 
-theorem scanVerbatimTag_preserves_simpleKeyStack (s : ScannerState) (startPos : YamlPos) :
-    (scanVerbatimTag s startPos).simpleKeyStack = s.simpleKeyStack := by
-  unfold scanVerbatimTag
-  simp [emitAt_preserves_simpleKeyStack, collectVerbatimTagLoop_preserves_simpleKeyStack,
-        advance_preserves_simpleKeyStack]
+theorem scanVerbatimTag_preserves_simpleKeyStack (s : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState) (hok : scanVerbatimTag s startPos = .ok s') :
+    s'.simpleKeyStack = s.simpleKeyStack := by
+  unfold scanVerbatimTag at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · split at hok
+    · exact absurd hok (by simp)
+    · have h := Except.ok.inj hok; subst h
+      simp [emitAt_preserves_simpleKeyStack, collectVerbatimTagLoop_preserves_simpleKeyStack,
+            advance_preserves_simpleKeyStack]
 
 theorem scanSecondaryTag_preserves_simpleKey (s : ScannerState) (startPos : YamlPos) :
     (scanSecondaryTag s startPos).simpleKey = s.simpleKey := by
@@ -4625,21 +4707,41 @@ theorem scanNamedTag_preserves_simpleKeyStack (s : ScannerState) (startPos : Yam
           collectTagHandleLoop_preserves_simpleKeyStack]
   · simp [emitAt_preserves_simpleKeyStack, collectTagHandleLoop_preserves_simpleKeyStack]
 
-theorem scanTag_preserves_simpleKey (s : ScannerState) :
-    (scanTag s).simpleKey = s.simpleKey := by
-  simp only [scanTag]
-  split
-  · simp [scanVerbatimTag_preserves_simpleKey, advance_preserves_simpleKey]
-  · simp [scanSecondaryTag_preserves_simpleKey, advance_preserves_simpleKey]
-  · simp [scanNamedTag_preserves_simpleKey, advance_preserves_simpleKey]
+theorem scanTag_preserves_simpleKey (s : ScannerState)
+    (s' : ScannerState) (hok : scanTag s = .ok s') :
+    s'.simpleKey = s.simpleKey := by
+  unfold scanTag at hok; dsimp only [] at hok
+  split at hok
+  · simp only [bind, Except.bind] at hok
+    generalize hv : scanVerbatimTag s.advance s.currentPos = result at hok
+    cases result with
+    | error e => simp at hok
+    | ok s_verb =>
+      dsimp only [] at hok; have h := Except.ok.inj hok; subst h; dsimp only []
+      simp [scanVerbatimTag_preserves_simpleKey s.advance s.currentPos s_verb hv,
+            advance_preserves_simpleKey]
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    simp [scanSecondaryTag_preserves_simpleKey, advance_preserves_simpleKey]
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    simp [scanNamedTag_preserves_simpleKey, advance_preserves_simpleKey]
 
-theorem scanTag_preserves_simpleKeyStack (s : ScannerState) :
-    (scanTag s).simpleKeyStack = s.simpleKeyStack := by
-  simp only [scanTag]
-  split
-  · simp [scanVerbatimTag_preserves_simpleKeyStack, advance_preserves_simpleKeyStack]
-  · simp [scanSecondaryTag_preserves_simpleKeyStack, advance_preserves_simpleKeyStack]
-  · simp [scanNamedTag_preserves_simpleKeyStack, advance_preserves_simpleKeyStack]
+theorem scanTag_preserves_simpleKeyStack (s : ScannerState)
+    (s' : ScannerState) (hok : scanTag s = .ok s') :
+    s'.simpleKeyStack = s.simpleKeyStack := by
+  unfold scanTag at hok; dsimp only [] at hok
+  split at hok
+  · simp only [bind, Except.bind] at hok
+    generalize hv : scanVerbatimTag s.advance s.currentPos = result at hok
+    cases result with
+    | error e => simp at hok
+    | ok s_verb =>
+      dsimp only [] at hok; have h := Except.ok.inj hok; subst h; dsimp only []
+      simp [scanVerbatimTag_preserves_simpleKeyStack s.advance s.currentPos s_verb hv,
+            advance_preserves_simpleKeyStack]
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    simp [scanSecondaryTag_preserves_simpleKeyStack, advance_preserves_simpleKeyStack]
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    simp [scanNamedTag_preserves_simpleKeyStack, advance_preserves_simpleKeyStack]
 
 theorem scanPlainScalar_preserves_simpleKey (s : ScannerState) (s' : ScannerState)
     (h : scanPlainScalar s = .ok s') : s'.simpleKey = s.simpleKey := by
@@ -4950,25 +5052,46 @@ theorem dispatchContent_maintains_simpleKeyAbove (s : ScannerState) (c : Char) (
     SimpleKeyAbove s' n := by
   unfold scanNextToken_dispatchContent at h
   simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
-  repeat (any_goals (split at h))
-  all_goals (try contradiction)
-  all_goals (try (simp only [Except.ok.injEq] at h; subst h))
-  -- At this point we have goals for each successful scan function path.
-  -- Goals with scanDoubleQuoted/scanSingleQuoted have been split on the endLine update condition.
-  -- Use a helper function to close goals by trying various strategies.
-  all_goals (
-    first
-    | -- Anchor with definedAnchors struct update: bridge through pure result
-      exact SimpleKeyAbove_of_preserved _ (scanAnchorOrAlias s true) n rfl rfl
+  -- Handle anchor/alias/tag explicitly (need generalize for ok-equation)
+  split at h
+  · -- '&': scanAnchorOrAlias bind
+    generalize h_anch : scanAnchorOrAlias s true = result at h
+    cases result with
+    | error e => simp at h
+    | ok s_a =>
+      simp only [Except.ok.injEq] at h; subst h
+      exact SimpleKeyAbove_of_preserved _ _ n rfl rfl
         (SimpleKeyAbove_of_preserved _ s n
-          (scanAnchorOrAlias_preserves_simpleKey s true)
-          (scanAnchorOrAlias_preserves_simpleKeyStack s true) h_inv)
-    | -- Pure functions (scanAnchorOrAlias alias, scanTag): preserves both
-      exact SimpleKeyAbove_of_preserved _ s n
-        (scanAnchorOrAlias_preserves_simpleKey s _)
-        (scanAnchorOrAlias_preserves_simpleKeyStack s _) h_inv
-    | exact SimpleKeyAbove_of_preserved _ s n
-        (scanTag_preserves_simpleKey s) (scanTag_preserves_simpleKeyStack s) h_inv
+          (scanAnchorOrAlias_preserves_simpleKey s true s_a h_anch)
+          (scanAnchorOrAlias_preserves_simpleKeyStack s true s_a h_anch) h_inv)
+  · split at h
+    · -- '*': alias
+      split at h
+      · contradiction
+      · generalize h_anch : scanAnchorOrAlias s false = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_a =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact SimpleKeyAbove_of_preserved _ s n
+            (scanAnchorOrAlias_preserves_simpleKey s false s_a h_anch)
+            (scanAnchorOrAlias_preserves_simpleKeyStack s false s_a h_anch) h_inv
+    · split at h
+      · -- '!': tag
+        generalize h_tag : scanTag s = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_t =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact SimpleKeyAbove_of_preserved _ s n
+            (scanTag_preserves_simpleKey s s_t h_tag)
+            (scanTag_preserves_simpleKeyStack s s_t h_tag) h_inv
+      · -- remaining: block scalar, quoted, plain
+        repeat (any_goals (split at h))
+        all_goals (try contradiction)
+        all_goals (try (simp only [Except.ok.injEq] at h; subst h))
+        all_goals (
+          first
     | -- Monadic functions that clear simpleKey
       (rename_i h_eq; exact SimpleKeyAbove_of_cleared_preserved _ s n
         (scanBlockScalar_clears_simpleKey s _ h_eq)
@@ -6211,7 +6334,7 @@ theorem collectAnchorNameLoop_offset_ge (s : ScannerState) (name : String) (fuel
     · exact Nat.le_refl _
 
 theorem collectVerbatimTagLoop_offset_ge (s : ScannerState) (uri : String) (fuel : Nat) :
-    (collectVerbatimTagLoop s uri fuel).snd.offset ≥ s.offset := by
+    (collectVerbatimTagLoop s uri fuel).snd.snd.offset ≥ s.offset := by
   induction fuel generalizing s uri with
   | zero => unfold collectVerbatimTagLoop; exact Nat.le_refl _
   | succ n ih =>
@@ -7011,46 +7134,56 @@ theorem dispatchBlockIndicators_preserves_ScanInv (s : ScannerState) (c : Char)
 
 -- Phase 2e: Content dispatcher ScanInv theorems.
 
--- scanAnchorOrAlias preserves ScanInv (pure function).
+-- scanAnchorOrAlias preserves ScanInv (Except function).
 theorem scanAnchorOrAlias_preserves_ScanInv (s : ScannerState) (isAnchor : Bool)
-    (h : ScanInv s) : ScanInv (scanAnchorOrAlias s isAnchor) := by
-  unfold scanAnchorOrAlias
-  apply field_update_preserves_ScanInv _ _ _ rfl rfl
-  apply emitAt_preserves_ScanInv
-  · exact ScanInv_mono (advance_preserves_ScanInv s h)
-      (ScanHelpers.collectAnchorNameLoop_preserves_tokens _ _ _)
-      (collectAnchorNameLoop_offset_ge _ _ _)
-  · -- startPos.offset (= s.offset) ≤ s_loop.offset
-    show s.currentPos.offset ≤ _
-    simp only [ScannerState.currentPos]
-    exact Nat.le_trans (ScannerProgress.advance_offset_ge s)
-      (collectAnchorNameLoop_offset_ge _ _ _)
-  · -- all tokens ≤ startPos.offset
-    intro ⟨i, hi⟩
-    have h_tok := ScanHelpers.collectAnchorNameLoop_preserves_tokens s.advance "" (s.inputEnd - s.advance.offset)
-    have h_adv := advance_preserves_tokens s
-    simp only [h_tok, h_adv] at hi ⊢
-    show s.tokens[i].pos.offset ≤ s.currentPos.offset
-    simp only [ScannerState.currentPos]
-    exact h.2 ⟨i, hi⟩
+    (h : ScanInv s) (s' : ScannerState) (hok : scanAnchorOrAlias s isAnchor = .ok s') :
+    ScanInv s' := by
+  unfold scanAnchorOrAlias at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · have heq := Except.ok.inj hok; subst heq
+    apply field_update_preserves_ScanInv _ _ _ rfl rfl
+    apply emitAt_preserves_ScanInv
+    · exact ScanInv_mono (advance_preserves_ScanInv s h)
+        (ScanHelpers.collectAnchorNameLoop_preserves_tokens _ _ _)
+        (collectAnchorNameLoop_offset_ge _ _ _)
+    · -- startPos.offset (= s.offset) ≤ s_loop.offset
+      show s.currentPos.offset ≤ _
+      simp only [ScannerState.currentPos]
+      exact Nat.le_trans (ScannerProgress.advance_offset_ge s)
+        (collectAnchorNameLoop_offset_ge _ _ _)
+    · -- all tokens ≤ startPos.offset
+      intro ⟨i, hi⟩
+      have h_tok := ScanHelpers.collectAnchorNameLoop_preserves_tokens s.advance "" (s.inputEnd - s.advance.offset)
+      have h_adv := advance_preserves_tokens s
+      simp only [h_tok, h_adv] at hi ⊢
+      show s.tokens[i].pos.offset ≤ s.currentPos.offset
+      simp only [ScannerState.currentPos]
+      exact h.2 ⟨i, hi⟩
 
--- scanVerbatimTag preserves ScanInv (pure function).
+-- scanVerbatimTag preserves ScanInv (Except function).
 theorem scanVerbatimTag_preserves_ScanInv (s : ScannerState) (startPos : YamlPos)
     (h : ScanInv s) (h_pos : startPos.offset ≤ s.offset)
-    (h_ge : ∀ i : Fin s.tokens.size, s.tokens[i].pos.offset ≤ startPos.offset) :
-    ScanInv (scanVerbatimTag s startPos) := by
-  unfold scanVerbatimTag
-  apply emitAt_preserves_ScanInv
-  · exact ScanInv_mono (advance_preserves_ScanInv s h)
-      (ScanHelpers.collectVerbatimTagLoop_preserves_tokens _ _ _)
-      (collectVerbatimTagLoop_offset_ge _ _ _)
-  · exact Nat.le_trans h_pos (Nat.le_trans (ScannerProgress.advance_offset_ge s)
-      (collectVerbatimTagLoop_offset_ge _ _ _))
-  · intro ⟨i, hi⟩
-    have h_tok := ScanHelpers.collectVerbatimTagLoop_preserves_tokens s.advance "" (startPos.offset + s.inputEnd - s.advance.offset)
-    have h_adv := advance_preserves_tokens s
-    simp only [h_tok, h_adv] at hi ⊢
-    exact h_ge ⟨i, hi⟩
+    (h_ge : ∀ i : Fin s.tokens.size, s.tokens[i].pos.offset ≤ startPos.offset)
+    (s' : ScannerState) (hok : scanVerbatimTag s startPos = .ok s') :
+    ScanInv s' := by
+  unfold scanVerbatimTag at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · split at hok
+    · exact absurd hok (by simp)
+    · have heq := Except.ok.inj hok; subst heq
+      apply emitAt_preserves_ScanInv
+      · exact ScanInv_mono (advance_preserves_ScanInv s h)
+          (ScanHelpers.collectVerbatimTagLoop_preserves_tokens _ _ _)
+          (collectVerbatimTagLoop_offset_ge _ _ _)
+      · exact Nat.le_trans h_pos (Nat.le_trans (ScannerProgress.advance_offset_ge s)
+          (collectVerbatimTagLoop_offset_ge _ _ _))
+      · intro ⟨i, hi⟩
+        have h_tok := ScanHelpers.collectVerbatimTagLoop_preserves_tokens s.advance "" (startPos.offset + s.inputEnd - s.advance.offset)
+        have h_adv := advance_preserves_tokens s
+        simp only [h_tok, h_adv] at hi ⊢
+        exact h_ge ⟨i, hi⟩
 
 -- scanSecondaryTag preserves ScanInv (pure function).
 theorem scanSecondaryTag_preserves_ScanInv (s : ScannerState) (startPos : YamlPos)
@@ -7105,10 +7238,11 @@ theorem scanNamedTag_preserves_ScanInv (s : ScannerState) (startPos : YamlPos)
       simp only [h_tok] at hi ⊢
       exact h_ge ⟨i, hi⟩
 
--- scanTag preserves ScanInv (pure function).
+-- scanTag preserves ScanInv (Except function).
 theorem scanTag_preserves_ScanInv (s : ScannerState)
-    (h : ScanInv s) : ScanInv (scanTag s) := by
-  unfold scanTag; simp only []
+    (h : ScanInv s) (s' : ScannerState) (hok : scanTag s = .ok s') :
+    ScanInv s' := by
+  unfold scanTag at hok; dsimp only [] at hok
   have h_adv : ScanInv s.advance := advance_preserves_ScanInv s h
   have h_pos : s.currentPos.offset ≤ s.advance.offset := by
     simp only [ScannerState.currentPos]; exact ScannerProgress.advance_offset_ge s
@@ -7116,11 +7250,22 @@ theorem scanTag_preserves_ScanInv (s : ScannerState)
     intro ⟨i, hi⟩
     simp only [advance_preserves_tokens, ScannerState.currentPos] at hi ⊢
     exact h.2 ⟨i, hi⟩
-  apply field_update_preserves_ScanInv _ _ _ rfl rfl
-  split
-  · exact scanVerbatimTag_preserves_ScanInv s.advance s.currentPos h_adv h_pos h_ge
-  · exact scanSecondaryTag_preserves_ScanInv s.advance s.currentPos h_adv h_pos h_ge
-  · exact scanNamedTag_preserves_ScanInv s.advance s.currentPos s.inputEnd h_adv h_pos h_ge
+  split at hok
+  · -- verbatim
+    simp only [bind, Except.bind] at hok
+    generalize hv : scanVerbatimTag s.advance s.currentPos = result at hok
+    cases result with
+    | error e => simp at hok
+    | ok s_verb =>
+      dsimp only [] at hok; have heq := Except.ok.inj hok; subst heq
+      apply field_update_preserves_ScanInv _ _ _ rfl rfl
+      exact scanVerbatimTag_preserves_ScanInv s.advance s.currentPos h_adv h_pos h_ge s_verb hv
+  · have heq := Except.ok.inj hok; subst heq
+    apply field_update_preserves_ScanInv _ _ _ rfl rfl
+    exact scanSecondaryTag_preserves_ScanInv s.advance s.currentPos h_adv h_pos h_ge
+  · have heq := Except.ok.inj hok; subst heq
+    apply field_update_preserves_ScanInv _ _ _ rfl rfl
+    exact scanNamedTag_preserves_ScanInv s.advance s.currentPos s.inputEnd h_adv h_pos h_ge
 
 -- scanDoubleQuoted preserves ScanInv (Except function).
 theorem scanDoubleQuoted_preserves_ScanInv (s s' : ScannerState)
@@ -7326,20 +7471,35 @@ theorem dispatchContent_preserves_ScanInv (s : ScannerState) (c : Char)
   simp only [bind, Except.bind, pure, Except.pure] at h_ok
   -- c == '&'
   split at h_ok
-  · simp only [Except.ok.injEq] at h_ok; subst h_ok
-    exact field_update_preserves_ScanInv _ _
-      (scanAnchorOrAlias_preserves_ScanInv s true h) rfl rfl
+  · -- scanAnchorOrAlias bind
+    generalize h_anch : scanAnchorOrAlias s true = result at h_ok
+    cases result with
+    | error e => simp at h_ok
+    | ok s_a =>
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      exact field_update_preserves_ScanInv _ _
+        (scanAnchorOrAlias_preserves_ScanInv s true h s_a h_anch) rfl rfl
   · -- c == '*'
     split at h_ok
     · -- inner split: alias validation check
       split at h_ok
       · contradiction
-      · simp only [Except.ok.injEq] at h_ok; subst h_ok
-        exact scanAnchorOrAlias_preserves_ScanInv s false h
+      · -- scanAnchorOrAlias bind
+        generalize h_anch : scanAnchorOrAlias s false = result at h_ok
+        cases result with
+        | error e => simp at h_ok
+        | ok s_a =>
+          simp only [Except.ok.injEq] at h_ok; subst h_ok
+          exact scanAnchorOrAlias_preserves_ScanInv s false h s_a h_anch
     · -- c == '!'
       split at h_ok
-      · simp only [Except.ok.injEq] at h_ok; subst h_ok
-        exact scanTag_preserves_ScanInv s h
+      · -- scanTag bind
+        generalize h_tag : scanTag s = result at h_ok
+        cases result with
+        | error e => simp at h_ok
+        | ok s_t =>
+          simp only [Except.ok.injEq] at h_ok; subst h_ok
+          exact scanTag_preserves_ScanInv s h s_t h_tag
       · -- c == '|' || c == '>'
         split at h_ok
         · split at h_ok <;> try contradiction
@@ -7926,32 +8086,38 @@ theorem dispatchContent_preserves_AllKeysValid (s : ScannerState) (c : Char)
   simp only [bind, Except.bind, pure, Except.pure] at h
   split at h
   · -- c == '&': anchor with definedAnchors update
-    simp only [Except.ok.injEq] at h; subst h
-    have h_akv_base := AllKeysValid_mono s (scanAnchorOrAlias s true) h_akv
-      (scanAnchorOrAlias_preserves_simpleKey s true)
-      (scanAnchorOrAlias_preserves_simpleKeyStack s true)
-      (by have := ScanHelpers.scanAnchorOrAlias_adds_one_token s true; omega)
-      (fun i hi => ScanHelpers.scanAnchorOrAlias_preserves_prefix s true i hi)
-    exact AllKeysValid_mono (scanAnchorOrAlias s true) _ h_akv_base rfl rfl
-      (Nat.le_refl _) (fun i hi => rfl)
+    split at h
+    · contradiction
+    · simp only [Except.ok.injEq] at h; subst h
+      have h_akv_base := AllKeysValid_mono s _ h_akv
+        (scanAnchorOrAlias_preserves_simpleKey s true _ (by assumption))
+        (scanAnchorOrAlias_preserves_simpleKeyStack s true _ (by assumption))
+        (by have := ScanHelpers.scanAnchorOrAlias_adds_one_token s true _ (by assumption); omega)
+        (fun i hi => ScanHelpers.scanAnchorOrAlias_preserves_prefix s true _ (by assumption) i hi)
+      exact AllKeysValid_mono _ _ h_akv_base rfl rfl
+        (Nat.le_refl _) (fun i hi => rfl)
   · split at h
     · -- c == '*': alias (with alias validation check)
       split at h
       · contradiction
-      · simp only [Except.ok.injEq] at h; subst h
-        exact AllKeysValid_mono s _ h_akv
-          (scanAnchorOrAlias_preserves_simpleKey s false)
-          (scanAnchorOrAlias_preserves_simpleKeyStack s false)
-          (by have := ScanHelpers.scanAnchorOrAlias_adds_one_token s false; omega)
-          (fun i hi => ScanHelpers.scanAnchorOrAlias_preserves_prefix s false i hi)
+      · split at h
+        · contradiction
+        · simp only [Except.ok.injEq] at h; subst h
+          exact AllKeysValid_mono s _ h_akv
+            (scanAnchorOrAlias_preserves_simpleKey s false _ (by assumption))
+            (scanAnchorOrAlias_preserves_simpleKeyStack s false _ (by assumption))
+            (by have := ScanHelpers.scanAnchorOrAlias_adds_one_token s false _ (by assumption); omega)
+            (fun i hi => ScanHelpers.scanAnchorOrAlias_preserves_prefix s false _ (by assumption) i hi)
     · split at h
       · -- c == '!': tag
-        simp only [Except.ok.injEq] at h; subst h
-        exact AllKeysValid_mono s _ h_akv
-          (scanTag_preserves_simpleKey s)
-          (scanTag_preserves_simpleKeyStack s)
-          (by have := ScanHelpers.scanTag_adds_one_token s; omega)
-          (fun i hi => ScanHelpers.scanTag_preserves_prefix s i hi)
+        split at h
+        · contradiction
+        · simp only [Except.ok.injEq] at h; subst h
+          exact AllKeysValid_mono s _ h_akv
+            (scanTag_preserves_simpleKey s _ (by assumption))
+            (scanTag_preserves_simpleKeyStack s _ (by assumption))
+            (by have := ScanHelpers.scanTag_adds_one_token s _ (by assumption); omega)
+            (fun i hi => ScanHelpers.scanTag_preserves_prefix s _ (by assumption) i hi)
       · split at h
         · -- c == '|' || c == '>': block scalar (clears key)
           split at h <;> try contradiction

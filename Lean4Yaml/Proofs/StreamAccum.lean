@@ -1712,19 +1712,35 @@ theorem dispatchContent_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
   simp only [bind, Except.bind, pure, Except.pure] at hok
   -- c == '&' (anchor)
   split at hok
-  · have h := Except.ok.inj hok; subst h
-    obtain ⟨sp', hcorr'⟩ := scanAnchorOrAlias_corr sc sp hcorr true
-    exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
+  · generalize h_anch : scanAnchorOrAlias sc true = anch_result at hok
+    cases anch_result with
+    | error => simp at hok
+    | ok s_anch =>
+      change Except.ok _ = Except.ok s' at hok
+      have h := Except.ok.inj hok; subst h
+      obtain ⟨sp', hcorr'⟩ := scanAnchorOrAlias_corr sc sp hcorr true s_anch h_anch
+      exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
   -- c == '*' (alias)
   · split at hok
     · split at hok
       · simp at hok  -- undefinedAlias error
-      · have h := Except.ok.inj hok; subst h
-        exact scanAnchorOrAlias_corr sc sp hcorr false
+      · -- hok has redundant match wrapper from Except.bind; reduce it
+        generalize h_alias : scanAnchorOrAlias sc false = alias_result at hok
+        cases alias_result with
+        | error => simp at hok
+        | ok s_val =>
+          dsimp only [] at hok
+          have h := Except.ok.inj hok; subst h
+          exact scanAnchorOrAlias_corr sc sp hcorr false s_val h_alias
     -- c == '!' (tag)
     · split at hok
-      · have h := Except.ok.inj hok; subst h
-        exact scanTag_corr sc sp hcorr
+      · generalize h_tag : scanTag sc = tag_result at hok
+        cases tag_result with
+        | error => simp at hok
+        | ok s_val =>
+          dsimp only [] at hok
+          have h := Except.ok.inj hok; subst h
+          exact scanTag_corr sc sp hcorr s_val h_tag
       -- c == '|' || c == '>' (block scalar)
       · split at hok
         · split at hok
@@ -1858,14 +1874,19 @@ theorem dispatchContent_alias_prod (sc : ScannerState) (sp : SurfPos)
       · -- !(definedAnchors.any ...) = true → .error, but we have .ok
         simp at hok
       · -- definedAnchors found → return scanAnchorOrAlias s false
-        have h := Except.ok.inj hok; subst h
-        obtain ⟨sp_mid, sp', h_glit, h_gstar, h_alias, hcorr'⟩ :=
-          scanAnchorOrAlias_aliasNode_prod sc sp hcorr hpeek
-        by_cases hne : sp_mid ≠ sp'
-        · exact ⟨sp', alias_flowNode (h_alias hne), hcorr'⟩
-        · -- Degenerate case: empty alias name after '*'.
-          -- Scanner accepted it but spec requires ≥1 anchor char.
-          exact ⟨sp', sorry, hcorr'⟩
+        generalize h_alias : scanAnchorOrAlias sc false = alias_result at hok
+        cases alias_result with
+        | error => simp at hok
+        | ok s_anch =>
+          dsimp only [] at hok
+          simp only [Except.ok.injEq] at hok; subst hok
+          obtain ⟨sp_mid, sp', h_glit, h_gstar, h_alias, hcorr'⟩ :=
+            scanAnchorOrAlias_aliasNode_prod sc sp hcorr hpeek s_anch h_alias
+          by_cases hne : sp_mid ≠ sp'
+          · exact ⟨sp', alias_flowNode (h_alias hne), hcorr'⟩
+          · -- Degenerate case: empty alias name after '*'.
+            -- Scanner accepted it but spec requires ≥1 anchor char.
+            exact ⟨sp', sorry, hcorr'⟩
     · rename_i h_neq; exact absurd rfl h_neq
 
 -- Content dispatch for block scalar: returns `SCLLiteral 0 ∨ SCLFolded 0` grammar evidence.
@@ -1983,18 +2004,23 @@ theorem dispatchContent_anchor_prod (sc : ScannerState) (sp : SurfPos)
   simp only [bind, Except.bind, pure, Except.pure] at hok
   -- '&' == '&' = true: anchor branch
   split at hok
-  · have h := Except.ok.inj hok; subst h
-    obtain ⟨sp_mid, sp', h_glit, h_gstar, h_anchor, hcorr'⟩ :=
-      scanAnchorOrAlias_anchorProp_prod sc sp hcorr hpeek
-    by_cases hne : sp_mid ≠ sp'
-    · -- Non-empty anchor name: build SFlowNode.propsEmpty from SCNsProperties.anchorFirst
-      exact ⟨sp', SFlowNode.propsEmpty 0 .flowOut sp sp'
-        (SCNsProperties.anchorFirst 0 .flowOut sp sp' sp' (h_anchor hne) (GOpt.none _)),
-        ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
-    · -- Degenerate case: empty anchor name after '&'.
-      -- Scanner accepted it but spec requires ≥1 anchor char.
-      exact ⟨sp', sorry,
-        ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
+  · generalize h_anch : scanAnchorOrAlias sc true = anch_result at hok
+    cases anch_result with
+    | error => simp at hok
+    | ok s_anch =>
+      change Except.ok _ = Except.ok s' at hok
+      have h := Except.ok.inj hok; subst h
+      obtain ⟨sp_mid, sp', h_glit, h_gstar, h_anchor, hcorr'⟩ :=
+        scanAnchorOrAlias_anchorProp_prod sc sp hcorr hpeek s_anch h_anch
+      by_cases hne : sp_mid ≠ sp'
+      · -- Non-empty anchor name: build SFlowNode.propsEmpty from SCNsProperties.anchorFirst
+        exact ⟨sp', SFlowNode.propsEmpty 0 .flowOut sp sp'
+          (SCNsProperties.anchorFirst 0 .flowOut sp sp' sp' (h_anchor hne) (GOpt.none _)),
+          ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
+      · -- Degenerate case: empty anchor name after '&'.
+        -- Scanner accepted it but spec requires ≥1 anchor char.
+        exact ⟨sp', sorry,
+          ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
   · rename_i h_neq; exact absurd rfl h_neq
 
 -- Content dispatch for tag: returns `SFlowNode 0 .flowOut` grammar evidence.
@@ -2016,18 +2042,22 @@ theorem dispatchContent_tag_prod (sc : ScannerState) (sp : SurfPos)
     · rename_i h_eq; exact absurd h_eq (by decide)
     · -- '!' == '!' = true: tag branch
       split at hok
-      · have h := Except.ok.inj hok; subst h
-        by_cases hpeek2 : sc.advance.peek? = some '!'
-        · -- Secondary tag `!!suffix`: fully proven
-          obtain ⟨sp', h_tag, hcorr'⟩ := scanTag_secondary_prod sc sp hcorr hpeek hpeek2
-          exact ⟨sp', SFlowNode.propsEmpty 0 .flowOut sp sp'
-            (SCNsProperties.tagFirst 0 .flowOut sp sp' sp' h_tag (GOpt.none _)),
-            ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
-        · -- Verbatim `!<uri>` or named `!handle!suffix` or non-specific `!`:
-          obtain ⟨sp', h_tag, hcorr'⟩ := scanTag_nonSecondary_prod sc sp hcorr hpeek hpeek2
-          exact ⟨sp', SFlowNode.propsEmpty 0 .flowOut sp sp'
-            (SCNsProperties.tagFirst 0 .flowOut sp sp' sp' h_tag (GOpt.none _)),
-            ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
+      · generalize h_tag : scanTag sc = tag_result at hok
+        cases tag_result with
+        | error => simp at hok
+        | ok s_tag =>
+          simp only [Except.ok.injEq] at hok; subst hok
+          by_cases hpeek2 : sc.advance.peek? = some '!'
+          · -- Secondary tag `!!suffix`: fully proven
+            obtain ⟨sp', h_tag_prop, hcorr'⟩ := scanTag_secondary_prod sc sp hcorr hpeek hpeek2 s_tag h_tag
+            exact ⟨sp', SFlowNode.propsEmpty 0 .flowOut sp sp'
+              (SCNsProperties.tagFirst 0 .flowOut sp sp' sp' h_tag_prop (GOpt.none _)),
+              ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
+          · -- Verbatim `!<uri>` or named `!handle!suffix` or non-specific `!`:
+            obtain ⟨sp', h_tag_prop, hcorr'⟩ := scanTag_nonSecondary_prod sc sp hcorr hpeek hpeek2 s_tag h_tag
+            exact ⟨sp', SFlowNode.propsEmpty 0 .flowOut sp sp'
+              (SCNsProperties.tagFirst 0 .flowOut sp sp' sp' h_tag_prop (GOpt.none _)),
+              ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
       · rename_i h_neq; exact absurd rfl h_neq
 
 -- Unified content evidence extraction (Wadler-style "theorems for free").

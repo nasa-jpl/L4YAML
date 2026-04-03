@@ -371,6 +371,14 @@ inductive ScanError where
       §8.2.2 [197]: `l-block-map-explicit-value(n)` has `l-` prefix
       (line-start); `:` as explicit value must be on its own line. -/
   | sameLineExplicitValue (line col : Nat)
+  /-- Anchor `&` or alias `*` followed by no name characters — §6.9 violation.
+      `ns-anchor-name` [103] requires at least one `ns-anchor-char` [102]. -/
+  | emptyAnchorName (line col : Nat)
+  /-- Verbatim tag `!<...>` with empty URI — §6.9 [98] violation.
+      `c-verbatim-tag` requires at least one `ns-uri-char` [39]. -/
+  | emptyVerbatimTagURI (line col : Nat)
+  /-- Verbatim tag `!<...` missing closing `>` — §6.9 [98] violation. -/
+  | unterminatedVerbatimTag (line col : Nat)
   deriving Repr, BEq, Inhabited, DecidableEq
 
 /-- Human-readable error message, separated from error construction.
@@ -422,6 +430,9 @@ def ScanError.toString : ScanError → String
   | .undefinedAlias name l c => s!"undefined alias '*{name}' at line {l}, column {c} — no preceding '&{name}' anchor in this document (§7.1)"
   | .misindentedExplicitValue l c exp => s!"value indicator ':' at line {l}, column {c} has wrong indentation — expected column {exp} to match block mapping indent (§8.2.2 [197])"
   | .sameLineExplicitValue l c => s!"value indicator ':' at line {l}, column {c} cannot appear on same line as '?' — explicit value must start on its own line (§8.2.2 [197])"
+  | .emptyAnchorName l c => s!"empty anchor/alias name at line {l}, column {c} — at least one ns-anchor-char required (§6.9 [103])"
+  | .emptyVerbatimTagURI l c => s!"empty verbatim tag URI at line {l}, column {c} — !<> requires at least one ns-uri-char (§6.9 [98])"
+  | .unterminatedVerbatimTag l c => s!"unterminated verbatim tag at line {l}, column {c} — missing closing '>' (§6.9 [98])"
 
 instance : ToString ScanError := ⟨ScanError.toString⟩
 
