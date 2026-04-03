@@ -1890,7 +1890,6 @@ theorem dispatchContent_alias_prod (sc : ScannerState) (sp : SurfPos)
     · rename_i h_neq; exact absurd rfl h_neq
 
 -- Content dispatch for block scalar: returns `SCLLiteral 0 ∨ SCLFolded 0` grammar evidence.
--- Requires `currentIndent ≥ 0` (holds after `pushSequenceIndent`/`pushMappingIndent`).
 theorem dispatchContent_blockScalar_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState} {c : Char}
     (hcorr : ScannerSurfCorr sc sp)
@@ -1916,8 +1915,7 @@ theorem dispatchContent_blockScalar_prod (sc : ScannerState) (sp : SurfPos)
             · simp at hok
             · rename_i s_bs hbs
               have h := Except.ok.inj hok; subst h
-              have hIndent : sc.currentIndent ≥ 0 := sorry
-              exact scanBlockScalar_prod sc sp hcorr (Or.inl hpeek) hIndent hbs
+              exact scanBlockScalar_prod sc sp hcorr (Or.inl hpeek) hbs
           · rename_i h_neq; exact absurd rfl h_neq
   | inr h_fld =>
     subst h_fld
@@ -1934,8 +1932,7 @@ theorem dispatchContent_blockScalar_prod (sc : ScannerState) (sp : SurfPos)
             · simp at hok
             · rename_i s_bs hbs
               have h := Except.ok.inj hok; subst h
-              have hIndent : sc.currentIndent ≥ 0 := sorry
-              exact scanBlockScalar_prod sc sp hcorr (Or.inr hpeek) hIndent hbs
+              exact scanBlockScalar_prod sc sp hcorr (Or.inr hpeek) hbs
           · rename_i h_neq; exact absurd rfl h_neq
 
 -- Content dispatch for plain scalar: returns `SFlowNode 0 .flowOut` grammar

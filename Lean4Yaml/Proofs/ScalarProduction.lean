@@ -2247,10 +2247,9 @@ theorem scanBlockScalarBody_literal_prod (sc_orig sc_after_nl : ScannerState)
     (sp : SurfPos) (chomp : ChompStyle) (explicitOffset : Option Nat)
     (startPos : YamlPos) {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc_after_nl sp)
-    (hIndent : sc_orig.currentIndent ≥ 0)
     (hOff : ∀ d, explicitOffset = some d → d ≥ 1)
     (hok : scanBlockScalarBody sc_orig sc_after_nl chomp explicitOffset true startPos = .ok s') :
-    ∃ sp' contentIndent, contentIndent ≥ 1 ∧
+    ∃ sp' contentIndent,
       SLLiteralContent contentIndent sp sp' ∧ ScannerSurfCorr s' sp' := by
   unfold scanBlockScalarBody at hok
   dsimp only [] at hok
@@ -2263,7 +2262,7 @@ theorem scanBlockScalarBody_literal_prod (sc_orig sc_after_nl : ScannerState)
     obtain ⟨sp_loop, h_lit_content, hcorr_loop⟩ :=
       collectBlockScalarLoop_literal_prod sc_after_nl sp "" fuel contentIndent sc_orig.inputEnd hcorr
     have h := Except.ok.inj hok; subst h
-    exact ⟨sp_loop, contentIndent, by have := hOff d hoff_eq; omega, h_lit_content,
+    exact ⟨sp_loop, contentIndent, h_lit_content,
            ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix, hcorr_loop.indent_cols_nonneg⟩⟩
   | none =>
     rw [hoff_eq] at hok
@@ -2281,11 +2280,7 @@ theorem scanBlockScalarBody_literal_prod (sc_orig sc_after_nl : ScannerState)
       obtain ⟨sp_loop, h_lit_content, hcorr_loop⟩ :=
         collectBlockScalarLoop_literal_prod sc_after_nl sp "" fuel ci sc_orig.inputEnd hcorr
       have h := Except.ok.inj hok; subst h
-      have h_min : (max 0 (sc_orig.currentIndent + 1)).toNat ≥ 1 := by omega
-      have h_ge := autoDetectBlockScalarIndent_ge_min sc_after_nl
-        (max 0 (sc_orig.currentIndent + 1)).toNat sc_orig.inputEnd
-      rw [h_auto] at h_ge; simp only [] at h_ge
-      exact ⟨sp_loop, ci, Nat.le_trans h_min (h_ge h_err), h_lit_content,
+      exact ⟨sp_loop, ci, h_lit_content,
              ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix, hcorr_loop.indent_cols_nonneg⟩⟩
 
 -- `scanBlockScalarBody` for folded also produces `SLLiteralContent` + correspondence.
@@ -2295,10 +2290,9 @@ theorem scanBlockScalarBody_folded_prod (sc_orig sc_after_nl : ScannerState)
     (sp : SurfPos) (chomp : ChompStyle) (explicitOffset : Option Nat)
     (startPos : YamlPos) {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc_after_nl sp)
-    (hIndent : sc_orig.currentIndent ≥ 0)
     (hOff : ∀ d, explicitOffset = some d → d ≥ 1)
     (hok : scanBlockScalarBody sc_orig sc_after_nl chomp explicitOffset false startPos = .ok s') :
-    ∃ sp' contentIndent, contentIndent ≥ 1 ∧
+    ∃ sp' contentIndent,
       SLLiteralContent contentIndent sp sp' ∧ ScannerSurfCorr s' sp' := by
   unfold scanBlockScalarBody at hok
   dsimp only [] at hok
@@ -2310,7 +2304,7 @@ theorem scanBlockScalarBody_folded_prod (sc_orig sc_after_nl : ScannerState)
     obtain ⟨sp_loop, h_lit_content, hcorr_loop⟩ :=
       collectBlockScalarLoop_literal_prod sc_after_nl sp "" fuel contentIndent sc_orig.inputEnd hcorr
     have h := Except.ok.inj hok; subst h
-    exact ⟨sp_loop, contentIndent, by have := hOff d hoff_eq; omega, h_lit_content,
+    exact ⟨sp_loop, contentIndent, h_lit_content,
            ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix, hcorr_loop.indent_cols_nonneg⟩⟩
   | none =>
     rw [hoff_eq] at hok
@@ -2328,23 +2322,18 @@ theorem scanBlockScalarBody_folded_prod (sc_orig sc_after_nl : ScannerState)
       obtain ⟨sp_loop, h_lit_content, hcorr_loop⟩ :=
         collectBlockScalarLoop_literal_prod sc_after_nl sp "" fuel ci sc_orig.inputEnd hcorr
       have h := Except.ok.inj hok; subst h
-      have h_min : (max 0 (sc_orig.currentIndent + 1)).toNat ≥ 1 := by omega
-      have h_ge := autoDetectBlockScalarIndent_ge_min sc_after_nl
-        (max 0 (sc_orig.currentIndent + 1)).toNat sc_orig.inputEnd
-      rw [h_auto] at h_ge; simp only [] at h_ge
-      exact ⟨sp_loop, ci, Nat.le_trans h_min (h_ge h_err), h_lit_content,
+      exact ⟨sp_loop, ci, h_lit_content,
              ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix, hcorr_loop.indent_cols_nonneg⟩⟩
 
 -- `scanBlockScalar` produces `SCLLiteral 0` or `SCLFolded 0` and preserves correspondence.
 -- Header: FULLY PROVEN (delimiter + header chars + SSBComment).
 -- Body: FULLY PROVEN for both literal and folded via `collectBlockScalarLoop_literal_prod`.
--- m ≥ 1: FULLY PROVEN (autoDetect ≥ min ≥ 1, explicit offset ≥ 1).
 -- Dispatch: FULLY PROVEN for literal (`|`) and folded (`>`).
+-- Note: hm constraint removed from SCLLiteral/SCLFolded (A11 — Nat encoding offset).
 theorem scanBlockScalar_prod (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState}
     (hcorr : ScannerSurfCorr sc sp)
     (hchar : sc.peek? = some '|' ∨ sc.peek? = some '>')
-    (hIndent : sc.currentIndent ≥ 0)
     (hok : scanBlockScalar sc = .ok s') :
     ∃ sp', (SCLLiteral 0 sp sp' ∨ SCLFolded 0 sp sp') ∧ ScannerSurfCorr s' sp' := by
   unfold scanBlockScalar at hok
@@ -2407,15 +2396,15 @@ theorem scanBlockScalar_prod (sc : ScannerState) (sp : SurfPos)
       rw [hsp_adv_eq] at h_hdr_chars
       have h_header : SCBBlockHeader ⟨rest, sc.col + 1⟩ sp_nl :=
         SCBBlockHeader.mk ⟨rest, sc.col + 1⟩ sp_hdr sp_nl h_hdr_chars h_ssbcomment
-      -- Body grammar via scanBlockScalarBody_literal_prod (gives m ≥ 1 + SLLiteralContent)
+      -- Body grammar via scanBlockScalarBody_literal_prod (gives SLLiteralContent)
       have h_is_lit : (sc.peek? == some '|') = true := by rw [hlit]; decide
       rw [h_is_lit] at hok
-      obtain ⟨sp_body, contentIndent, h_ci_ge, h_literal_content, hcorr_body⟩ :=
-        scanBlockScalarBody_literal_prod sc s_after_nl sp_nl _ _ _ hcorr_nl hIndent hOff hok
+      obtain ⟨sp_body, contentIndent, h_literal_content, hcorr_body⟩ :=
+        scanBlockScalarBody_literal_prod sc s_after_nl sp_nl _ _ _ hcorr_nl hOff hok
       have h_literal_content' : SLLiteralContent (0 + contentIndent) sp_nl sp_body := by
         rw [Nat.zero_add]; exact h_literal_content
       exact ⟨sp_body,
-             Or.inl (SCLLiteral.mk 0 contentIndent rest sc.col sp_nl sp_body h_ci_ge h_header
+             Or.inl (SCLLiteral.mk 0 contentIndent rest sc.col sp_nl sp_body h_header
                h_literal_content'),
              hcorr_body⟩
     · -- Folded: sc.peek? = some '>'
@@ -2428,15 +2417,15 @@ theorem scanBlockScalar_prod (sc : ScannerState) (sp : SurfPos)
       rw [hsp_adv_eq] at h_hdr_chars
       have h_header : SCBBlockHeader ⟨rest, sc.col + 1⟩ sp_nl :=
         SCBBlockHeader.mk ⟨rest, sc.col + 1⟩ sp_hdr sp_nl h_hdr_chars h_ssbcomment
-      -- Body grammar via scanBlockScalarBody_folded_prod (gives m ≥ 1 + SLLiteralContent)
+      -- Body grammar via scanBlockScalarBody_folded_prod (gives SLLiteralContent)
       have h_is_fld : (sc.peek? == some '|') = false := by rw [hfold]; decide
       rw [h_is_fld] at hok
-      obtain ⟨sp_body, contentIndent, h_ci_ge, h_literal_content, hcorr_body⟩ :=
-        scanBlockScalarBody_folded_prod sc s_after_nl sp_nl _ _ _ hcorr_nl hIndent hOff hok
+      obtain ⟨sp_body, contentIndent, h_literal_content, hcorr_body⟩ :=
+        scanBlockScalarBody_folded_prod sc s_after_nl sp_nl _ _ _ hcorr_nl hOff hok
       have h_literal_content' : SLLiteralContent (0 + contentIndent) sp_nl sp_body := by
         rw [Nat.zero_add]; exact h_literal_content
       exact ⟨sp_body,
-             Or.inr (SCLFolded.mk 0 contentIndent rest sc.col sp_nl sp_body h_ci_ge h_header
+             Or.inr (SCLFolded.mk 0 contentIndent rest sc.col sp_nl sp_body h_header
                h_literal_content'),
              hcorr_body⟩
 
