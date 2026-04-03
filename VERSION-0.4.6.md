@@ -17,7 +17,7 @@ Extend Phase B's `scanDoubleQuoted_prod` pattern to the remaining three content 
 
 **File:** [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) — extends existing Phase B infrastructure, reuses `peek_some_sp`, `advance_corr`, `consumeNewline_sbreak_corr`, `foldQuotedNewlines_prod`.
 
-**Sorry status:** 0 sorry in ScalarProduction.lean. Build: 415/415 jobs, 0 errors, 13 sorry warnings (all in StreamAccum.lean).
+**Sorry status:** 2 sorry in ScalarProduction.lean (`collectPlainScalarLoop_prod` line break + `scanPlainScalar_to_flowNode` doc boundary). Build: 415/415 jobs, 0 errors, 15 sorry warnings (2 in ScalarProduction.lean, 13 in StreamAccum.lean).
 
 <details>
 <summary>scanSingleQuoted_prod — completed 2026-03-29</summary>
@@ -1610,7 +1610,7 @@ Three architectural changes are needed before tackling the content categories. E
 | Single-quoted `'` | `SCSingleQuoted 0 .blockIn` → `SFlowNode 0 .flowOut` | ✅ Sorry-free |
 | Alias `*` | `SCNsAliasNode` → `SFlowNode 0 .flowOut` | ✅ 1 sorry (empty alias name) |
 | Block scalar `\|`/`>` | `SCLLiteral 0` / `SCLFolded 0` | ✅ 2 sorry (`currentIndent ≥ 0`) |
-| Plain scalar | `SNsPlain 0 .blockIn` → `SFlowNode 0 .flowOut` | **NEW** — 1 sorry (full-scan grammar gap) |
+| Plain scalar | `SNsPlain 0 .blockIn` → `SFlowNode 0 .flowOut` | **A5/A6** — 1 sorry (full-scan grammar, trailing WS architecture in place) |
 | Anchor `&` | Node property, not standalone | 1 sorry (grammar production) |
 | Tag `!` | Node property, not standalone | 1 sorry (grammar production) |
 
@@ -1651,6 +1651,51 @@ Three architectural changes are needed before tackling the content categories. E
 
 **Build**: 415/415 jobs, 0 errors, 11 sorry warnings (+1 from new `dispatchContent_blockScalar_prod` declaration).
 
+**A6 — Trailing WS architecture for plain scalar grammar** (2026-04-07)
+
+Discovered and resolved the trailing whitespace gap between the `SNsPlain` YAML grammar endpoint and the scanner state endpoint. The scanner's `collectPlainScalarLoop` advances past trailing whitespace (spaces/tabs accumulated in the `spaces` parameter), but the grammar ends at the last content character. In the YAML spec (§6.5), this trailing WS is part of `s-l-comments`, not the scalar.
+
+1. **`white_prepend_SSLComments`** (StreamAccum.lean, ~35 lines, 0 sorry): New theorem composing trailing WS into `SSLComments`. Given `GStar SSWhite sp sp'` and `SSLComments sp' sp_mid`, produces `SSLComments sp sp_mid`. Proof handles 5 sub-cases by structural analysis:
+   - Nil WS: trivial identity
+   - Non-empty WS + `withComment/withSep/whites`: concatenate `GPlus` via `GPlus_extend_GStar`
+   - Non-empty WS + `withComment/withSep/startOfLine`: use WS as the new `SSeparateInLine`
+   - Non-empty WS + `withComment/noSep`: create `SSBComment.withSep` with WS as separator
+   - Non-empty WS + `startOfLine`: impossible — `sswhite_col_succ` + `gstar_sswhite_col_ge` prove `col ≥ 1`, contradicting `col = 0`
+
+2. **`dispatchContent_plainScalar_prod`**: Changed return type from `∃ sp', SFlowNode sp sp' ∧ ScannerSurfCorr s' sp'` to `∃ sp_gram sp', SFlowNode sp sp_gram ∧ GStar SSWhite sp_gram sp' ∧ ScannerSurfCorr s' sp'`. The sorry is now properly structured: separate existentials for grammar endpoint and scanner endpoint, with trailing WS bridge.
+
+3. **`dispatchContent_evidence`**: Changed return type to `∃ sp_gram sp', grammar sp sp_gram ∧ GStar SSWhite sp_gram sp' ∧ ScannerSurfCorr s' sp'`. For non-plain-scalar paths (quoted, alias, block scalar), `sp_gram = sp'` with `GStar.nil`. For plain scalar, the WS bridge is non-trivial.
+
+4. **`accum_content_pending`** (both `noPending` col=0 and `pendingBlock`): Updated to compose trailing WS into SSLComments via `white_prepend_SSLComments h_trailing_ws h_ssl`. The WS evidence is captured in `PendingNode.pendingContent` closures. No change to `PendingNode` definition — compositi done inside the closure.
+
+**Build**: 415/415 jobs, 0 errors, 13 sorry warnings (+0 net). Sorry count unchanged — the refactoring split one sorry into properly structured sorrys within the same declaration.
+
+**A7 — Full-scan plain scalar grammar production** (2026-04-08)
+
+Proved `collectPlainScalarLoop_prod` by fuel induction for single-line block-context plain scalars. The theorem produces `GStar (SNbNsPlainInLineEntry .blockIn)` (inline entries) + `GStar SSWhite` (trailing WS) + `ScannerSurfCorr` from the loop's `.ok` result. Composed into `scanPlainScalar_to_flowNode` which provides `SFlowNode 0 .flowOut` + trailing WS + corr suitable for `dispatchContent_plainScalar_prod`.
+
+1. **`collectPlainScalarLoop_prod`** (ScalarProduction.lean, ~85 lines, 2 sorry): Fuel induction mirroring `collectPlainScalarLoop_corr`. Handles 6 terminal cases (EOF, terminates?, !plainSafe) with `GStar.nil` entries + accumulated WS + corr. Whitespace branch extends `GStar SSWhite` accumulator via `gstar_sswhite_append`. Content char branch: case analysis on `c = ':'` (colonSafe via `colon_not_terminated_next` + `peekAtLoop_some_chars`), `c = '#'` (hashAfterNs with col > 0; col = 0 sorry'd as unreachable), other (safe). Forms `SNbNsPlainInLineEntry` from accumulated WS + `SNsPlainChar`, prepends to IH entries. Sorry: (a) line break multi-line, (b) `#` at col=0 (unreachable — `#` is indicator, excluded by `canStartPlainScalarBool`; after any content char col ≥ 1).
+
+2. **Helper lemmas** (ScalarProduction.lean, ~45 lines, 0 sorry):
+   - `canStartPlainScalar_not_ws`: `canStartPlainScalarBool c next false → isWhiteSpaceBool c = false`
+   - `gstar_sswhite_at_non_ws`: `GStar SSWhite ⟨c :: rest, col⟩ s₁ → ¬WS c → s₁ = ⟨c :: rest, col⟩`
+   - `SNsPlainChar_at_head`: All `SNsPlainChar` constructors at `⟨c :: rest, col⟩` produce `⟨rest, col + 1⟩`
+   - Context lifts: `SNsPlainChar_blockIn_to_flowOut`, `SNbNsPlainInLineEntry_blockIn_to_flowOut`, `GStar_entries_blockIn_to_flowOut`, `SNsPlainFirst_blockIn_to_flowOut'`
+
+3. **`scanPlainScalar_to_flowNode`** (ScalarProduction.lean, ~60 lines, 1 sorry): Unfolds `scanPlainScalar`, applies `collectPlainScalarLoop_prod`, decomposes the first entry (proving `sp_mid = ⟨rest, sc.col + 1⟩` via `gstar_sswhite_at_non_ws` + `SNsPlainChar_at_head`), composes `SNsPlainFirst` (from `canStartPlainScalar_to_SNsPlainFirst`) + tail entries into `SNsPlainOneLine → SNsPlainMultiLine → SNsPlain 0 .flowOut → SFlowContent.plain → SFlowNode.content`. Corr preserved via `corr_of_emitAt` + `corr_of_simpleKeyAllowed_update`. Requires `h_block : sc.inFlow = false`. Sorry: doc boundary first-char termination (entries GStar is nil when terminates? fires on first char).
+
+4. **`dispatchContent_plainScalar_prod`** (StreamAccum.lean, modified): Block context case (`sc.inFlow = false`) now fully proven via `scanPlainScalar_to_flowNode`. Flow context case retains sorry (flow plain scalar grammar not yet supported). Uses `by_cases h_block` to split; `rwa [← h_block]` bridges `canStartPlainScalarBool` from `sc.inFlow` to `false` via assumption rewriting.
+
+**Build**: 415/415 jobs, 0 errors, 15 sorry warnings (was 13; +2 from new `collectPlainScalarLoop_prod` and `scanPlainScalar_to_flowNode` declarations).
+
+**Net sorry accounting**:
+- **Eliminated**: Block context `dispatchContent_plainScalar_prod` sorry (grammar + trailing WS — 3 sorry sites in 1 declaration)
+- **Added**: `collectPlainScalarLoop_prod` 2 sorry (line break multi-line + `#` at col=0)
+- **Added**: `scanPlainScalar_to_flowNode` 1 sorry (doc boundary nil entries)
+- **Added**: `dispatchContent_plainScalar_prod` flow case 3 sorry (same pattern as before, narrowed scope)
+- **Warning count**: +2 (new declarations), +0 net in existing (flow sorry replaces block+flow sorry in same decl)
+- The block context path — the path exercised by `accum_content_pending` — is now **fully proven**.
+
 ##### Reflections about Category 1
 
 1. **`SSLComments` structural mismatch resolved via "build-then-extend" pattern.** `SBlockNode.blockLiteral`/`.blockFolded` do NOT include trailing `SSLComments` (unlike `SBlockNode.flowInBlock`). Solution: build the `SBlockNode` spanning `sp_block → sp_scan'` without comments, use it for `SLBareDocument`/`h_close_old`, then bridge `sp_scan' → sp_mid` with `ssl_comments_extend_stream`. This pattern generalizes to any content type whose grammar production doesn't include trailing comments.
@@ -1662,6 +1707,8 @@ Three architectural changes are needed before tackling the content categories. E
 4. **Plain scalar UNBLOCKED.** ~~`scanPlainScalar_prod` only produces `SNsPlain 0 .blockIn`, but grammar needs `.flowOut`. The `.blockIn → .flowOut` context lift fails because `isNsPlainSafe .blockIn` allows flow indicators.~~ **Corrected**: `isNsPlainSafe .blockIn` and `isNsPlainSafe .flowOut` are in the SAME match arm (both = `isNsChar ch`). The context lift is valid. The remaining blocker is the full-scan grammar gap: `scanPlainScalar_prod`'s minimal 1-char witness doesn't cover the full scanner output range. Resolving this needs either (a) a full multi-line `scanPlainScalar_prod` that returns grammar matching the scanner endpoint, or (b) a "grammar subsumption" lemma showing partial grammar derivations are sufficient.
 
 5. **Catch-all sorry sites reduced.** The `noPending` and `pendingBlock` catch-all comments now say "anchor, tag, plain scalar" instead of "anchor, tag, block scalar, plain scalar". Block scalar is fully wired (modulo `currentIndent ≥ 0` sorry in the dispatch theorem).
+
+6. **Trailing WS gap between `SNsPlain` grammar and scanner state, resolved by architecture.** (A6) The `collectPlainScalarLoop` scanner advances past trailing whitespace (spaces/tabs accumulated in the `spaces` parameter), but the `SNsPlain` YAML grammar ends at the last `ns-plain-char`. In the YAML spec, this trailing WS belongs to `s-l-comments → s-b-comment → s-separate-in-line`, NOT to `ns-plain`. This creates a gap: grammar endpoint `sp_gram ≠ sp'` scanner endpoint. Resolution: `dispatchContent_evidence` now returns `∃ sp_gram sp', grammar sp sp_gram ∧ GStar SSWhite sp_gram sp' ∧ ScannerSurfCorr s' sp'`, and `white_prepend_SSLComments` composes trailing WS into the `SSLComments` from the next preprocessing step. The key insight is that `SSBComment.withSep` absorbs whitespace as `SSeparateInLine.whites`, so the trailing WS naturally becomes part of `s-l-comments`.
 
 #### Category 2: col≠0 / BOM edge case — **RESOLVED by A2** ✅
 
@@ -1700,7 +1747,7 @@ The `GOpt.some` comment case is unreachable because the scanner greedily consume
 
 1. ~~**Block scalar `\|`/`>` support** (Category 1)~~ — **DONE (A4)**. 2 sorry remain for `currentIndent ≥ 0` in `dispatchContent_blockScalar_prod`.
 2. ~~**Plain scalar support** (Category 1)~~ — **DONE (A5)**. Wired through `dispatchContent_evidence`. 1 sorry for full-scan grammar gap.
-3. **Full-scan plain scalar grammar** (Category 1) — strengthen `scanPlainScalar_prod` to cover full scanner output range
+3. ~~**Full-scan plain scalar grammar** (Category 1)~~ — **DONE (A7)**. `collectPlainScalarLoop_prod` proven by fuel induction (single-line). `scanPlainScalar_to_flowNode` composes first char + loop entries + context lift into `SFlowNode 0 .flowOut` + trailing `GStar SSWhite`. Block context `dispatchContent_plainScalar_prod` now fully proven; flow context sorry'd separately. 2 sorry remain: line break (multi-line deferred), doc boundary first-char termination (edge case).
 4. **Anchor `&` / tag `!` grammar** (Category 1) — node property composition theorems
 5. **Mapping entries `?`/`:`** (Category 4) — parallel to sequence infrastructure
 6. **Directive infrastructure** (Category 3) — focused layer
