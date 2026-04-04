@@ -417,6 +417,28 @@ theorem scanAnchorOrAlias_prod (sc : ScannerState) (sp : SurfPos)
     · have h := Except.ok.inj hok; subst h
       exact ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩
 
+/-! ### Tag char predicate bridges -/
+
+-- Word chars are tag chars: ns-word-char ⊂ ns-tag-char.
+theorem isWordCharProp_to_isTagCharProp {c : Char} (hw : isWordCharProp c) :
+    isTagCharProp c := by
+  refine ⟨Or.inl hw, ?_, ?_⟩ <;> intro h
+  · subst h; simp [isWordCharProp, isAsciiLetterProp] at hw
+  · simp only [isFlowIndicatorProp, List.mem_cons, List.mem_nil_iff, or_false] at h
+    rcases h with rfl | rfl | rfl | rfl | rfl <;>
+      simp [isWordCharProp, isAsciiLetterProp] at hw
+
+-- Lift `GStar (GChar P)` through predicate implication.
+theorem GStar_gchar_lift {P Q : Char → Prop} (h : ∀ c, P c → Q c)
+    {sp sp' : SurfPos} (hg : GStar (GChar P) sp sp') :
+    GStar (GChar Q) sp sp' := by
+  induction hg with
+  | nil => exact GStar.nil _
+  | cons _ _ _ hchar hrest ih =>
+    cases hchar with
+    | mk c rest col hpc =>
+      exact GStar.cons _ _ _ (GChar.mk c rest col (h c hpc)) ih
+
 /-! ### Tag suffix loop production -/
 
 -- `collectTagSuffixLoop` produces `GStar (GChar isTagCharProp)`.
@@ -615,10 +637,66 @@ theorem scanTag_secondary_prod (sc : ScannerState) (sp : SurfPos)
     rename_i _ h_not_bang
     exact absurd hpeek2 h_not_bang
 
+-- Named/non-specific tag grammar + correspondence.
+-- Pre: scanner after first `!`, at ⟨rest, col+1⟩, peek ≠ `!`.
+theorem scanNamedTag_prod (sc : ScannerState) (rest : List Char) (col : Nat)
+    (hcorr : ScannerSurfCorr sc ⟨rest, col + 1⟩)
+    (hpeek_not_bang : ¬(sc.peek? = some '!'))
+    (startPos : YamlPos) (inputEnd : Nat) :
+    ∃ sp', SCNsTagProperty ⟨'!' :: rest, col⟩ sp' ∧
+           ScannerSurfCorr (scanNamedTag sc startPos inputEnd) sp' := by
+  unfold scanNamedTag; dsimp only []
+  obtain ⟨sp_mid, sp_hdl, h_gstar_word, hcorr_hdl, h_bang_cases⟩ :=
+    collectTagHandleLoop_prod sc ⟨rest, col + 1⟩ hcorr "" _
+  split
+  · -- foundBang = true → named tag (handle + suffix)
+    rename_i h_fb_true
+    -- Resolve h_bang_cases to inr (foundBang = true)
+    rcases h_bang_cases with ⟨_, h_fb⟩ | ⟨h_glit, _⟩
+    · exact absurd (h_fb.symm.trans h_fb_true) (by decide)
+    · -- h_glit : GLit '!' sp_mid sp_hdl
+      -- sp ≠ sp_mid: if sp = sp_mid then rest starts with '!',
+      -- contradicting hpeek_not_bang
+      have h_ne : ⟨rest, col + 1⟩ ≠ sp_mid := by
+        intro h_eq
+        -- GLit says sp_mid.chars starts with '!'
+        have h_sp_chars : ∃ rest', sp_mid.chars = '!' :: rest' := by
+          cases h_glit with | mk r c => exact ⟨r, rfl⟩
+        obtain ⟨rest', h_chars_eq⟩ := h_sp_chars
+        rw [← h_eq] at h_chars_eq
+        -- rest = '!' :: rest'
+        dsimp only [] at h_chars_eq
+        have hmore : sc.offset < sc.inputEnd := by
+          rw [hcorr.end_eq]; rw [h_chars_eq] at hcorr
+          exact match hcorr.chars_from with | .cons _ h _ _ _ _ => h
+        obtain ⟨c, _, h_cs, h_peek⟩ := peek_corr sc ⟨rest, col + 1⟩ hcorr hmore
+        rw [h_chars_eq] at h_cs
+        have : c = '!' := by injection h_cs with h; exact h.symm
+        rw [this] at h_peek
+        exact hpeek_not_bang h_peek
+      have h_gplus := GStar_to_GPlus h_gstar_word h_ne
+      -- Suffix production
+      obtain ⟨sp', h_gstar_tag, hcorr_sfx⟩ :=
+        collectTagSuffixLoop_prod _ sp_hdl hcorr_hdl "" _
+      exact ⟨sp', SCNsTagProperty.named rest col sp_mid sp_hdl sp' h_gplus h_glit h_gstar_tag,
+             corr_of_emitAt _ _ hcorr_sfx⟩
+  · -- foundBang = false → primary/non-specific tag
+    rename_i h_fb_false
+    -- Resolve h_bang_cases to inl (foundBang = false)
+    have h_eq : sp_mid = sp_hdl := by
+      rcases h_bang_cases with ⟨h, _⟩ | ⟨_, h_fb⟩
+      · exact h
+      · exact absurd h_fb h_fb_false
+    subst h_eq
+    -- Lift GStar wordChar → GStar tagChar
+    have h_gstar_tag := GStar_gchar_lift (fun c => isWordCharProp_to_isTagCharProp) h_gstar_word
+    exact ⟨sp_mid, SCNsTagProperty.primary rest col sp_mid h_gstar_tag,
+           corr_of_emitAt _ _ hcorr_hdl⟩
+
 -- `scanTag` on non-secondary branches produces `SCNsTagProperty`.
 -- Handles verbatim `!<uri>`, named `!handle!suffix`, and non-specific `!`.
 -- Verbatim well-formed case fully proven. S8/S9 closed via A10 Except + linking lemmas.
--- S10 (named/non-specific) still sorry'd.
+-- S10 closed via A16 scanNamedTag_prod decomposition.
 theorem scanTag_nonSecondary_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '!') (hpeek2 : ¬(sc.advance.peek? = some '!'))
@@ -691,13 +769,12 @@ theorem scanTag_nonSecondary_prod (sc : ScannerState) (sp : SurfPos)
   · -- catch-all: named/non-specific via scanNamedTag
     rename_i h_not_lt h_not_bang
     have h_inj := Except.ok.inj hok; subst h_inj
-    obtain ⟨sp', hcorr'⟩ := scanNamedTag_corr sc.advance
-      ⟨rest, sc.advance.col⟩
-      ⟨hcorr_bang.chars_from, rfl, hcorr_bang.end_eq, hcorr_bang.input_prefix, hcorr_bang.indent_cols_nonneg⟩
-      sc.currentPos sc.inputEnd
-    -- S10: Named/non-specific: sorry for grammar (pending scanNamedTag full decomposition)
-    exact ⟨sp', sorry,
-      ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
+    have hcorr_adv : ScannerSurfCorr sc.advance ⟨rest, sc.col + 1⟩ :=
+      ⟨hcorr_bang.chars_from, hcorr_bang.col_eq,
+       hcorr_bang.end_eq, hcorr_bang.input_prefix, hcorr_bang.indent_cols_nonneg⟩
+    obtain ⟨sp', h_tag, hcorr'⟩ := scanNamedTag_prod sc.advance rest sc.col
+      hcorr_adv hpeek2 sc.currentPos sc.inputEnd
+    exact ⟨sp', h_tag, corr_of_simpleKeyAllowed_update false hcorr'⟩
 
 -- `scanTag` preserves correspondence on all branches.
 theorem scanTag_prod (sc : ScannerState) (sp : SurfPos)

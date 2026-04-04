@@ -233,6 +233,9 @@ inductive SCNsTagProperty : SurfPos → SurfPos → Prop where
       SCNsTagProperty ⟨'!' :: rest, col⟩ s'
   | nonSpecific (rest : List Char) (col : Nat) :
       SCNsTagProperty ⟨'!' :: rest, col⟩ ⟨rest, col + 1⟩
+  | primary (rest : List Char) (col : Nat) (s' : SurfPos) :
+      GStar (GChar isTagCharProp) ⟨rest, col + 1⟩ s' →
+      SCNsTagProperty ⟨'!' :: rest, col⟩ s'
 
 /-- [101] c-ns-anchor-property: anchor starting with '&'. -/
 inductive SCNsAnchorProperty : SurfPos → SurfPos → Prop where
