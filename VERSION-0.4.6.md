@@ -17,7 +17,7 @@ Extend Phase B's `scanDoubleQuoted_prod` pattern to the remaining three content 
 
 **File:** [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) — extends existing Phase B infrastructure, reuses `peek_some_sp`, `advance_corr`, `consumeNewline_sbreak_corr`, `foldQuotedNewlines_prod`.
 
-**Sorry status:** 1 sorry in ScalarProduction.lean (`collectPlainScalarLoop_prod` line break). Build: 415/415 jobs, 0 errors, 11 sorry warnings (1 in ScalarProduction.lean, 9 in StreamAccum.lean, 1 in StructureProduction.lean). **A14**: Closed S5 (doc boundary first-char termination) via `h_not_doc` precondition + `collectPlainScalarLoop_content_first_step` — sorry count 12→11. **A13**: Closed S4 (`#` at col=0) via `h_hash_col` precondition — sorry count unchanged since S3/S4 share the same theorem. **A12**: Closed S7/S8/S9/alias sorry sites by contradiction (14→12 warnings). **A11**: Removed `hm : m ≥ 1` from grammar constructors (compensating for Nat encoding offset), closing S1/S2. **A10**: Scanner Except conversion makes S7/S8/S9/alias sorry sites closable by contradiction.
+**Sorry status:** 1 sorry in ScalarProduction.lean (`collectPlainScalarLoop_prod` line break). Build: 415/415 jobs, 0 errors, 11 sorry warnings (1 in ScalarProduction.lean, 9 in StreamAccum.lean, 1 in StructureProduction.lean). **A15**: Closed S6 (flow context plain scalar) by parameterizing `collectPlainScalarLoop_prod`, helpers, and `scanPlainScalar_to_flowNode` over `inFlow : Bool` — eliminated 3 sorry sites, warning count unchanged (11). **A14**: Closed S5 (doc boundary first-char termination) via `h_not_doc` precondition + `collectPlainScalarLoop_content_first_step` — sorry count 12→11. **A13**: Closed S4 (`#` at col=0) via `h_hash_col` precondition — sorry count unchanged since S3/S4 share the same theorem. **A12**: Closed S7/S8/S9/alias sorry sites by contradiction (14→12 warnings). **A11**: Removed `hm : m ≥ 1` from grammar constructors (compensating for Nat encoding offset), closing S1/S2. **A10**: Scanner Except conversion makes S7/S8/S9/alias sorry sites closable by contradiction.
 
 <details>
 <summary>scanSingleQuoted_prod — completed 2026-03-29</summary>
@@ -1610,7 +1610,7 @@ Three architectural changes are needed before tackling the content categories. E
 | Single-quoted `'` | `SCSingleQuoted 0 .blockIn` → `SFlowNode 0 .flowOut` | ✅ Sorry-free |
 | Alias `*` | `SCNsAliasNode` → `SFlowNode 0 .flowOut` | ✅ **A12** — sorry CLOSED (scanner rejects empty names; `scanAnchorOrAlias_prod` now returns `sp_mid ≠ sp'` unconditionally) |
 | Block scalar `\|`/`>` | `SCLLiteral 0` / `SCLFolded 0` | ✅ Sorry-free (A11 removed `hm` constraint) |
-| Plain scalar | `SNsPlain 0 .blockIn` → `SFlowNode 0 .flowOut` | ✅ **A5/A6/A7/A14** — block proven; 2 sorry (flow, multi-line) |
+| Plain scalar | `SNsPlain 0 .blockIn` → `SFlowNode 0 .flowOut` | ✅ **A5/A6/A7/A14/A15** — block+flow proven; 1 sorry (multi-line S3) |
 | Anchor `&` | `SCNsAnchorProperty` → `SCNsProperties.anchorFirst` → `SFlowNode.propsEmpty` | ✅ **A12** — sorry CLOSED (scanner rejects empty names; `scanAnchorOrAlias_prod` now returns `sp_mid ≠ sp'` unconditionally) |
 | Tag `!` | `SCNsTagProperty` → `SCNsProperties.tagFirst` → `SFlowNode.propsEmpty` | ✅ **A12** — S8/S9 CLOSED; secondary `!!` fully proven; verbatim `!<uri>` well-formed case proven; S10 (named/non-specific) remains sorry in `scanTag_nonSecondary_prod` |
 
@@ -1625,7 +1625,7 @@ Three architectural changes are needed before tackling the content categories. E
 | S3 | `collectPlainScalarLoop_prod` | ScalarProduction | Line break multi-line continuation | B: Loop |
 | S4 | `collectPlainScalarLoop_prod` | ScalarProduction | ~~`#` at col=0 (unreachable from callers)~~ | **CLOSED (A13)** — added `h_hash_col` precondition; proved `spaces.length = 0` from `terminates? = none`; col>0 from precondition at each recursive site |
 | S5 | `scanPlainScalar_to_flowNode` | ScalarProduction | ~~Doc boundary first-char termination (`GStar.nil` match)~~ | **CLOSED (A14)** — added `h_not_doc` precondition + `canStartPlain_first_not_terminates` helper; restructured proof to handle first char directly via `collectPlainScalarLoop_content_first_step`, eliminating `GStar.nil` case entirely |
-| S6 | `dispatchContent_plainScalar_prod` | StreamAccum | Flow context plain scalar (3 sorry sites in 1 expr) | C: Context |
+| S6 | `dispatchContent_plainScalar_prod` | StreamAccum | ~~Flow context plain scalar (3 sorry sites in 1 expr)~~ | **CLOSED (A15)** — parameterized `collectPlainScalarLoop_prod` + `scanPlainScalar_to_flowNode` over `inFlow : Bool`; `ctxOfInFlow` maps `false → .blockIn`, `true → .flowIn`; added flow→flowOut context lifts |
 | S7 | `dispatchContent_anchor_prod` | StreamAccum | ~~Empty anchor name (`& ` — `sp_mid = sp'`)~~ | **CLOSED (A12)** — `scanAnchorOrAlias_prod` strengthened to return `sp_mid ≠ sp'` unconditionally; `_anchorProp_prod` now unconditional |
 | S8 | `scanTag_nonSecondary_prod` | StructureProduction | ~~Malformed verbatim tag (no `>` terminator)~~ | **CLOSED (A12)** — `collectVerbatimTagLoop_prod` strengthened with `(sp_mid = sp' → foundClose = false)`; contradiction via `simp [h_close_link h_eq] at h_fc_true` |
 | S9 | `scanTag_nonSecondary_prod` | StructureProduction | ~~Empty URI `!<>` — spec requires ≥1 URI char~~ | **CLOSED (A12)** — `collectVerbatimTagLoop_prod` strengthened with `(sp = sp_mid → uri_result = uri)`; contradiction via `simp [h_uri_link hne] at h_uri_ne` |
@@ -1634,7 +1634,7 @@ Three architectural changes are needed before tackling the content categories. E
 Additionally, the alias empty-name sorry in `dispatchContent_alias_prod` (StreamAccum) is also **CLOSED (A12)** — `scanAnchorOrAlias_aliasNode_prod` now returns unconditional `SCNsAliasNode` (no `sp_mid ≠ sp'` condition).
 
 **Dependency graph**:
-- **S4 → S5 → S6**: ~~Closing the col invariant (S4) enables first-char-consumed (S5), which enables flow parameterization (S6). Critical path unlocking 5 sorries.~~ **S4 CLOSED (A13)**. **S5 CLOSED (A14)**. S6 next on critical path.
+- **S4 → S5 → S6**: ~~Closing the col invariant (S4) enables first-char-consumed (S5), which enables flow parameterization (S6). Critical path unlocking 5 sorries.~~ **S4 CLOSED (A13)**. **S5 CLOSED (A14)**. **S6 CLOSED (A15)** — critical path complete.
 - **S7 + S9 + S8 + alias**: ~~Share the "scanner loop produces ≥1 char" pattern.~~ ~~**Resolved by A10** — scanner Except conversion makes these closable by contradiction.~~ **CLOSED (A12)** — strengthened `collectAnchorNameLoop_prod` and `collectVerbatimTagLoop_prod` with position-to-value linking conjuncts; made `_aliasNode_prod`/`_anchorProp_prod` unconditional; replaced sorry with contradiction proofs. −2 sorry warnings (14→12).
 - ~~**S1, S2**: Independent — just need `indents.size > 1` from preprocessing context to invoke existing `currentIndent_nonneg`.~~ **CLOSED (A11)** — removed `hm : m ≥ 1` from grammar constructors.
 - **S3**: Independent, hardest — needs `handleBlockLineBreak_prod` + multi-line continuation grammar.
@@ -1643,7 +1643,7 @@ Additionally, the alias empty-name sorry in `dispatchContent_alias_prod` (Stream
 **Wadler-style architectural opportunities**:
 
 1. ~~**Scanner loop non-emptiness lemma family** (closes S7, S9; pattern reusable for S4).~~ **Superseded by A10** — the Except conversion at the scanner level is a superior solution. ~~The non-emptiness pattern may still be useful for S4 (col ≥ 1 after content char)~~ **S4 CLOSED (A13)** via `h_hash_col` precondition instead.
-2. **Context-parameterized `collectPlainScalarLoop_prod`** (closes S6 once ~~S5 is closed~~ **S5 CLOSED by A14**). Parameterize over `FlowContext` — only difference is `isPlainSafeBool c false` vs `isPlainSafeBool c true`. Block and flow proofs share 90% of structure.
+2. ~~**Context-parameterized `collectPlainScalarLoop_prod`** (closes S6 once ~~S5 is closed~~ **S5 CLOSED by A14**). Parameterize over `FlowContext` — only difference is `isPlainSafeBool c false` vs `isPlainSafeBool c true`. Block and flow proofs share 90% of structure.~~ **DONE (A15)** — `ctxOfInFlow` mapping + flow context lifts + parameterized helpers.
 3. ~~**First-char-consumed lemma** (closes S5). `canStartPlainScalarBool c next false = true → terminates? c sc content spaces false = none ∨ loop-consumes-entry`. Bridges the two scanner phases.~~ **DONE (A14)** — `canStartPlain_first_not_terminates` + `collectPlainScalarLoop_content_first_step` eliminate the `GStar.nil` case.
 
 **Recommended implementation order**:
@@ -1655,10 +1655,10 @@ Additionally, the alias empty-name sorry in `dispatchContent_alias_prod` (Stream
 | ~~3~~ | ~~S5~~ | — | ~~−1 sorry~~, enables S6 | **CLOSED (A14)** — `canStartPlain_first_not_terminates` + `collectPlainScalarLoop_content_first_step` + `h_not_doc` precondition |
 | 4 | S10 | ~2 hr | −1 sorry | `scanNamedTag_prod`: compose existing handle + suffix loop theorems |
 | ~~5~~ | ~~S1, S2~~ | — | ~~−2 sorry~~ | **CLOSED (A11)** — removed `hm : m ≥ 1` from `SCLLiteral`/`SCLFolded` grammar constructors |
-| 6 | S6 | ~2 hr | −3 sorry sites | Parameterize `collectPlainScalarLoop_prod` over `FlowContext` for `.flowIn` |
+| ~~6~~ | ~~S6~~ | — | ~~−3 sorry sites~~ | **CLOSED (A15)** — parameterized over `inFlow`. Warning count unchanged (3 sorry sites in same declaration as `h_not_doc` sorry). |
 | 7 | S3 | ~4 hr | −1 sorry | Multi-line plain scalar. Hardest — `handleBlockLineBreak_prod` + `SNsPlainNextLine` |
 
-**Critical path**: ~~S4 →~~ ~~S5 →~~ S6 (chain unlocks 4 sorries). **S4 CLOSED by A13.** **S5 CLOSED by A14.** ~~S7/S8/S9/alias are now trivially closable after A10.~~ **S7/S8/S9/alias CLOSED by A12.** ~~S1/S2 deferred — see analysis below.~~ **S1/S2 CLOSED by A11.**
+**Critical path**: ~~S4 →~~ ~~S5 →~~ ~~S6~~ (chain complete — all closed). **S4 CLOSED by A13.** **S5 CLOSED by A14.** **S6 CLOSED by A15.** ~~S7/S8/S9/alias are now trivially closable after A10.~~ **S7/S8/S9/alias CLOSED by A12.** ~~S1/S2 deferred — see analysis below.~~ **S1/S2 CLOSED by A11.**
 
 ##### S1/S2 design analysis: indent tracking for block scalars
 
@@ -2039,4 +2039,41 @@ Closed the `GStar.nil` sorry in `scanPlainScalar_to_flowNode` (ScalarProduction.
 **Caller update**: `dispatchContent_plainScalar_prod` (StreamAccum.lean) passes `sorry` for `h_not_doc` — the preprocessing/structural dispatch guarantees the scanner is not at a doc boundary when reaching content dispatch, but formalizing this requires infrastructure in `scanNextToken_preprocess_corr`. Since the theorem already has sorry in the flow context branch, the additional sorry doesn't increase the warning count.
 
 **Build**: 415/415 jobs, 0 errors, 11 sorry warnings (was 12; −1 from `scanPlainScalar_to_flowNode` becoming sorry-free).
+**A15 — S6 CLOSED: Flow context plain scalar parameterization** (2026-04-07)
+
+Eliminated 3 sorry sites in `dispatchContent_plainScalar_prod` (StreamAccum.lean) by parameterizing the plain scalar proof infrastructure over `inFlow : Bool`, enabling a single unified call to `scanPlainScalar_to_flowNode` for both block and flow contexts. Sorry warning count unchanged at 11 (the 3 eliminated sites shared a declaration with the pre-existing `h_not_doc` sorry).
+
+**Problem**: `scanPlainScalar_to_flowNode` and its dependencies (`collectPlainScalarLoop_prod`, `canStartPlainScalar_to_SNsPlainFirst`, etc.) were hardcoded for `inFlow = false` / `.blockIn` context. The flow branch of `dispatchContent_plainScalar_prod` had `exact ⟨sorry, sp', sorry, sorry, hcorr'⟩` — 3 sorry sites for the flow node witness, flow grammar evidence, and trailing whitespace grammar.
+
+**Key insight**: Block and flow plain scalar proofs are 95%+ identical. The only divergence points are:
+- `isNsPlainSafe .flowIn ch = isNsChar ch ∧ ¬isFlowIndicatorProp ch` (more restrictive than `.blockIn` = `isNsChar ch`)
+- Flow indicators terminate scanning in flow context
+- `:` + flow indicator terminates in flow context
+- `canStartPlainScalarBool` exception chars additionally require `¬isFlowIndicatorBool` in flow
+
+**Solution**: Introduced `ctxOfInFlow : Bool → YamlContext` mapping (`false → .blockIn`, `true → .flowIn`) and parameterized ~15 theorems over `inFlow`:
+
+1. **New bridge lemmas**:
+   - `ctxOfInFlow` — Bool→YamlContext mapping
+   - `isPlainSafe_to_nsPlainSafe` — generic `isPlainSafeBool c inFlow → isNsPlainSafe (ctxOfInFlow inFlow) c`
+   - `flowIndicatorProp_to_indicatorProp` — `isFlowIndicatorProp c → isIndicatorProp c` via `List.Subset` + `by decide`
+
+2. **Parameterized theorems** (all now take `inFlow : Bool`):
+   - `isPlainSafe_to_plainChar_basic`, `isPlainSafe_to_inlineEntry_basic`
+   - `canStartPlainScalar_to_SNsPlainFirst` — exception chars use `cases inFlow` for `isNsPlainSafe`
+   - `colon_not_terminated_next` — enhanced return type includes `(inFlow = true → isFlowIndicatorBool n = false)`
+   - `collectPlainScalarLoop_prod` — colon case builds `isNsPlainSafe` via `cases inFlow`
+   - `canStartPlainScalar_not_ws`, `canStartPlain_implies_safe`, `canStartPlain_not_linebreak`
+   - `canStartPlain_first_not_terminates` — flow indicator branch: `canStartPlainScalar_iff` + `flowIndicatorProp_to_indicatorProp` for contradiction
+   - `collectPlainScalarLoop_content_first_step`
+
+3. **Flow→flowOut context lifts** (new):
+   - `SNsPlainChar_flowIn_to_flowOut`, `SNbNsPlainInLineEntry_flowIn_to_flowOut`
+   - `GStar_entries_flowIn_to_flowOut`, `SNsPlainFirst_flowIn_to_flowOut`
+   - Generic dispatchers: `SNsPlainFirst_ctxOfInFlow_to_flowOut`, `GStar_entries_ctxOfInFlow_to_flowOut`
+
+4. **Caller simplification**: `dispatchContent_plainScalar_prod` no longer splits on `by_cases h_block : sc.inFlow = false`. Single unified call to `scanPlainScalar_to_flowNode` (which now accepts any `sc.inFlow` value).
+
+**Build**: 415/415 jobs, 0 errors, 11 sorry warnings (3 sorry sites eliminated, warning count unchanged due to shared declaration).
+
 11. ~~**col≠0 BOM** (Category 2) — grammar definition change, deferred~~ **DONE (A2)**
