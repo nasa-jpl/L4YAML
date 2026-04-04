@@ -2398,8 +2398,8 @@ h_closable_directive: permanently deferred (2 sites)
 
 | Layer | Focus | Sites closed | Approach |
 |-------|-------|-------------|----------|
-| 4t | routing consolidation + analysis | −1 warning | `accum_block_pending` sorry-free via closeThenBlock routing (DONE) |
-| 4u | PendingNode generalization | ~16 | Generalize pendingBlock to n>0 + SBlockMapEntries |
+| 4t | routing consolidation + analysis | −1 warning (DONE)| `accum_block_pending` sorry-free via closeThenBlock routing (DONE) |
+| 4u | PendingNode generalization | ~16 | Generalize pendingBlock to n>0 + SBlockMapEntries (DONE) |
 | 4v | content h_closable extraction | ~3 | Reusable helper from accum_content_on_noPending |
 | 4w | col≠0 preprocessing | ~13 | General SSLComments or BOM unreachability |
 | 4x | flow grammar accumulation | ~2 | SFlowSequence/SFlowMapping infrastructure |
@@ -2457,7 +2457,23 @@ h_closable_directive: permanently deferred (2 sites)
 
 ###### Layer 4v accomplishments
 
+1. **Created `content_dispatch_after_close` helper theorem.** Extracted the content-dispatch-to-pendingContent closure pattern from `accum_content_on_noPending` into a reusable theorem. Takes `SLYamlStream sp_start sp_block`, `SSeparateLines 0 sp_block sp_prep`, and content dispatch parameters; produces the existential with sorry-free `PendingNode.pendingContent` h_closable closure. Handles both flow (via `flowInBlock_blockNode`) and block scalar (via `literal_blockNode`/`folded_blockNode`) cases.
+
+2. **Eliminated 2 content_close sorry sites in `accum_content_pending`.** Both the `pendingDirective` arm and the grouped multi-case arm (`pendingDocEnd`/`pendingDocStart`/`pendingContent`/`pendingFlow`/`pendingBlockContent`) now have real h_closable closures instead of sorry. Each uses `SSeparateLines.inline` with `GStar_SSWhite_to_SSeparateInLine` to build the separator from `sp_mid` to `sp_prep`.
+
+3. **Key architectural insight: `SSeparateLines.inline` enables content dispatch from `sp_mid`.** After closing old pending via `SSLComments sp_scan sp_mid`, the whitespace `GStar SSWhite sp_mid sp_prep` converts to `SSeparateInLine sp_mid sp_prep` → `SSeparateLines.inline 0 sp_mid sp_prep`. This is a valid `SSeparate 0 .flowOut` for `flowInBlock_blockNode`, avoiding the need for a line break between `sp_mid` and `sp_prep`.
+
+4. **`sp_prep = sp_ws` resolution is required.** The `preprocess_some_ssl_comments_col0` output has `GOpt SCNbCommentText sp_ws sp_prep` and `sp_prep = sp_ws ∨ peek? = none`. Since `preprocess_some_peek` gives `peek? = some c`, the `peek? = none` branch is contradictory, forcing `sp_prep = sp_ws`. After `subst`, the `GStar SSWhite sp_mid sp_prep` directly provides the separator material.
+
+5. **Build: 415/415, 10 sorry warnings** (unchanged — both arms still have col≠0 sorry within the same declaration).
+
 ###### Layer 4v reflections
+
+1. **The h_closable closure pattern is fundamentally about composition.** The old pending's content and the new content need separate documents in the stream. The old pending is closed to a stream at `sp_mid`, then the new content starts a fresh document at `sp_mid` via `SLYamlStream.implicitContinue`. The separator from `sp_mid` needs no line break because `SSeparateLines.inline` accepts pure whitespace.
+
+2. **`dispatchContent_evidence` vs `preprocess_some_separate_lines_0`.** The helper bypasses `preprocess_some_separate_lines_0` entirely (which needs `ScannerSurfCorr sc sp_block` for the scanner at the block position). Instead, it takes a pre-constructed `SSeparateLines 0` separator. This decouples the separator construction from the scanner state, enabling reuse across different separator construction methods.
+
+3. **Sorry term count is a better progress measure than declaration count.** Removed 2 sorry proof terms from h_closable closures, but the declaration-level warning count stayed at 10 because `accum_content_pending` still has col≠0 and n_old≠0 sorry. Actual sorry terms: ~38 (down from ~40).
 
 ###### Layer 4w accomplishments
 
