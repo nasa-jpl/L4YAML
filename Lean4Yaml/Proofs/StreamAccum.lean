@@ -1951,6 +1951,28 @@ theorem dispatchContent_blockScalar_prod (sc : ScannerState) (sp : SurfPos)
               exact scanBlockScalar_prod sc sp hcorr (Or.inr hpeek) hbs
           · rename_i h_neq; exact absurd rfl h_neq
 
+-- If structural dispatch returns .ok none, the scanner is not at a document boundary
+-- when col=0.  This follows from the definition: the none path skips all doc marker
+-- checks, meaning atDocumentStart and atDocumentEnd were both false.
+theorem dispatchStructural_none_not_doc_boundary
+    {s : ScannerState} {c : Char}
+    (h : scanNextToken_dispatchStructural s c = .ok none)
+    (hcol : s.col = 0) : atDocumentBoundary s = false := by
+  -- Strategy: case-split on atDocumentBoundary itself.
+  -- In the true case, atDocumentStart or atDocumentEnd is true,
+  -- which forces dispatchStructural to return .ok (some _) or .error,
+  -- contradicting .ok none.
+  cases h_ab : atDocumentBoundary s with
+  | false => rfl
+  | true =>
+    exfalso
+    unfold atDocumentBoundary at h_ab
+    unfold scanNextToken_dispatchStructural at h
+    simp only [bind, Except.bind, pure, Except.pure] at h
+    -- Case-split on atDocumentStart/End to resolve conditions in h
+    cases h_as : atDocumentStart s <;> cases h_ae : atDocumentEnd s <;> simp_all <;>
+      repeat (first | exact absurd (Except.ok.inj h) nofun | simp at h | split at h)
+
 -- Content dispatch for plain scalar: returns `SFlowNode 0 .flowOut` grammar
 -- evidence with separate grammar and scanner endpoints.
 -- The grammar covers `sp → sp_gram` (plain scalar content), trailing WS
@@ -1963,6 +1985,7 @@ theorem dispatchContent_plainScalar_prod (sc : ScannerState) (sp : SurfPos)
     (hpeek : sc.peek? = some c)
     (hnotAmpersand : c ≠ '&') (hnotStar : c ≠ '*') (hnotBang : c ≠ '!')
     (hnotPipe : c ≠ '|') (hnotGt : c ≠ '>') (hnotDQ : c ≠ '"') (hnotSQ : c ≠ '\'')
+    (h_not_doc : sc.col = 0 → atDocumentBoundary sc = false)
     (hok : scanNextToken_dispatchContent sc c = .ok s') :
     ∃ sp_gram sp', SFlowNode 0 .flowOut sp sp_gram ∧
                    GStar SSWhite sp_gram sp' ∧
@@ -1996,7 +2019,7 @@ theorem dispatchContent_plainScalar_prod (sc : ScannerState) (sp : SurfPos)
                   have h := Except.ok.inj hok; subst h
                   exact scanPlainScalar_to_flowNode sc sp hcorr hpeek
                     (by assumption)
-                    (sorry)  -- h_not_doc: from preprocessing, not at doc boundary
+                    h_not_doc
                     (by assumption)
               · -- canStartPlainScalarBool = false: .error
                 simp at hok
@@ -2076,6 +2099,7 @@ theorem dispatchContent_evidence (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState} (c : Char)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some c)
+    (h_not_doc : sc.col = 0 → atDocumentBoundary sc = false)
     (hok : scanNextToken_dispatchContent sc c = .ok s') :
     ∃ sp_gram sp',
       (SFlowNode 0 .flowOut sp sp_gram ∨ (SCLLiteral 0 sp sp_gram ∨ SCLFolded 0 sp sp_gram)) ∧
@@ -2115,7 +2139,7 @@ theorem dispatchContent_evidence (sc : ScannerState) (sp : SurfPos)
             · -- Plain scalar (or error — but .ok means it succeeded)
               obtain ⟨sp_gram, sp', h_gram, h_ws, hcorr'⟩ :=
                 dispatchContent_plainScalar_prod sc sp hcorr hpeek
-                  hc_amp hc_alias hc_bang hnotPipe hnotGt hc_dq hc_sq hok
+                  hc_amp hc_alias hc_bang hnotPipe hnotGt hc_dq hc_sq h_not_doc hok
               exact ⟨sp_gram, sp', Or.inl h_gram, h_ws, hcorr'⟩
 
 -- Helper: handles all PendingNode cases for content dispatch given stream at sp_block.
@@ -2126,6 +2150,12 @@ theorem accum_content_pending (sc : ScannerState)
     (h_pending : PendingNode sp_start sp_block sp_scan)
     (h_corr : ScannerSurfCorr sc sp_scan)
     (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_not_doc : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).col = 0 →
+      atDocumentBoundary (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) = false)
     (h_dispatch : scanNextToken_dispatchContent
         (if s_prep.allowDirectives then
           { s_prep with allowDirectives := false, documentEverStarted := true }
@@ -2161,7 +2191,7 @@ theorem accum_content_pending (sc : ScannerState)
       -- Unified evidence extraction: flow content OR block scalar
       obtain ⟨sp_gram, sp_ev, h_ev, h_trailing_ws, hcorr_ev⟩ :=
           dispatchContent_evidence _ sp_prep c
-          (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
+          (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_not_doc h_dispatch
       have hsp_ev_eq := ScannerSurfCorr_unique hcorr_ev hcorr_result
       rw [hsp_ev_eq] at h_trailing_ws hcorr_ev
       cases h_ev with
@@ -2242,7 +2272,7 @@ theorem accum_content_pending (sc : ScannerState)
     -- Unified evidence extraction: flow content OR block scalar
     obtain ⟨sp_gram, sp_ev, h_ev, h_trailing_ws, hcorr_ev⟩ :=
         dispatchContent_evidence _ sp_prep c
-        (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
+        (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_not_doc h_dispatch
     have hsp_ev_eq := ScannerSurfCorr_unique hcorr_ev hcorr_result
     rw [hsp_ev_eq] at h_trailing_ws hcorr_ev
     cases h_ev with
@@ -2293,7 +2323,13 @@ theorem accum_step_content (sc : ScannerState)
     (h_dispatch : scanNextToken_dispatchContent
         (if s_prep.allowDirectives then
           { s_prep with allowDirectives := false, documentEverStarted := true }
-        else s_prep) c = .ok s') :
+        else s_prep) c = .ok s')
+    (h_not_doc : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).col = 0 →
+      atDocumentBoundary (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) = false) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -2302,7 +2338,7 @@ theorem accum_step_content (sc : ScannerState)
       ScannerSurfCorr s' sp_scan' := by
   exact accum_content_pending sc sp_start sp_flow sp_scan s_prep s' c
     (absorb_stacks sp_start sp_gram sp_block sp_flow h_stream h_stack h_flow)
-    h_pending h_corr h_preprocess h_dispatch
+    h_pending h_corr h_preprocess h_not_doc h_dispatch
 
 /-! ### §1f Composition: Per-Dispatch → Full accum_step
 
@@ -2331,13 +2367,15 @@ theorem scanNextToken_accum_step (sc : ScannerState)
   · split at h_ok
     · exact absurd (Except.ok.inj h_ok) nofun
     · rename_i s_pre c_pre h_pre
+      -- Capture structural dispatch result for h_not_doc derivation in content branch
+      generalize h_str_eq : scanNextToken_dispatchStructural s_pre c_pre = str_res at h_ok
       split at h_ok
       · simp at h_ok
       · split at h_ok
-        · rename_i s_str h_str
+        · rename_i s_str
           have h := Except.ok.inj h_ok; injection h with h; subst h
           exact accum_step_structural sc sp_start sp_gram sp_block sp_flow sp_scan s_pre s_str c_pre
-            h_stream h_stack h_flow h_pending h_corr h_pre h_str
+            h_stream h_stack h_flow h_pending h_corr h_pre h_str_eq
         · -- Past structural dispatch: allowDirectives update
           split at h_ok
           · simp at h_ok
@@ -2360,8 +2398,27 @@ theorem scanNextToken_accum_step (sc : ScannerState)
                     · simp at h_ok
                     · rename_i s_cnt h_cnt
                       have h := Except.ok.inj h_ok; injection h with h; subst h
+                      -- Derive h_not_doc: structural dispatch returned none on s_pre,
+                      -- so s_pre is not at a document boundary when col=0.
+                      -- The allowDirectives update preserves col and boundary checks.
+                      have h_not_doc : (if s_pre.allowDirectives then
+                            { s_pre with allowDirectives := false, documentEverStarted := true }
+                          else s_pre).col = 0 →
+                        atDocumentBoundary (if s_pre.allowDirectives then
+                            { s_pre with allowDirectives := false, documentEverStarted := true }
+                          else s_pre) = false := by
+                        split
+                        · intro hcol
+                          have : atDocumentBoundary
+                            { s_pre with allowDirectives := false, documentEverStarted := true }
+                            = atDocumentBoundary s_pre := by
+                            unfold atDocumentBoundary atDocumentStart atDocumentEnd
+                              ScannerState.peekAt?; rfl
+                          rw [this]
+                          exact dispatchStructural_none_not_doc_boundary h_str_eq hcol
+                        · exact dispatchStructural_none_not_doc_boundary h_str_eq
                       exact accum_step_content sc sp_start sp_gram sp_block sp_flow sp_scan s_pre s_cnt c_pre
-                        h_stream h_stack h_flow h_pending h_corr h_pre h_cnt
+                        h_stream h_stack h_flow h_pending h_corr h_pre h_cnt h_not_doc
 
 /-! ## §2 EOF Step: scanNextToken returns none
 

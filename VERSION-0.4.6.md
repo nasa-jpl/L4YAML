@@ -2129,17 +2129,19 @@ Closed both sorry sites for multi-line plain scalar continuation lines: the bloc
 
 6. **Caller bridge fix** — Replaced the `GStar.nil _` in `SNsPlainMultiLine` with `GStar_SSNsPlainNextLine_ctxOfInFlow_to_flowOut _h_next_lines`, and replaced the sorry'd `h_ws_bridge` with `h_trail` (trailing WS starts at `sp_next`, the endpoint of next-lines). Grammar endpoint changes from `sp_entries` to `sp_next` throughout.
 
-**Build**: 415/415 jobs, 0 errors, 7 sorry warnings (was 9; −2 from Layer 4m eliminating "unreachable comment" sorry sites #1 and #2).
+**Build**: 415/415 jobs, 0 errors, 6 sorry warnings (was 7; −1 from Layer 4n closing `h_not_doc` sorry #8).
 
 11. ~~**col≠0 BOM** (Category 2) — grammar definition change, deferred~~ **DONE (A2)**
 
-12. **Layer 4m: Unreachable comment contradiction** (sorry #1, #2) — **DONE**. Added `skipToContentComment_identity_of_content_peek` theorem to PreprocessProduction.lean: when `(skipToContentComment sc).peek? = some c` with `¬(isLineBreakBool c = true)`, the function was identity (`skipToContentComment sc = sc`). The proof unfolds `skipToContentComment`, case-splits on `sc.peek?` and `commentOk`, and in the `commentOk = true` branch derives contradiction via `collectCommentTextLoop_stops_at_break_or_eof` (loop output is break/EOF, contradicting non-break `c`). Propagated `(sp' = sp_ws ∨ s_result.peek? = none)` conjunct through ~10 `skipToContentLoop`/`skipToContent` wrapper theorems. In the sorry sites, resolved the peek disjunction (`preprocess_some_peek` shows `s_prep.peek? = some c ≠ none`), then used `scNbCommentText_irrefl` to close the `GOpt.some` case as impossible (column self-increase contradiction).
+12. **Layer 4m: Unreachable comment contradiction** (sorry #1, #2) — **DONE**.
+
+13. **Layer 4n: Plain scalar `h_not_doc` precondition** (sorry #8) — **DONE**. Added `dispatchStructural_none_not_doc_boundary` theorem: when `scanNextToken_dispatchStructural s c = .ok none` and `s.col = 0`, proves `atDocumentBoundary s = false`. Proof strategy: case-split on `atDocumentBoundary s` (false → rfl; true → exfalso via Bool case analysis on `atDocumentStart`/`atDocumentEnd` contradicting the `.ok none` return). Threaded `h_not_doc` precondition through `dispatchContent_evidence` → `accum_content_pending` → `accum_step_content` → `scanNextToken_accum_step`. In `scanNextToken_accum_step`, derived `h_not_doc` from `dispatchStructural_none_not_doc_boundary` + allowDirectives bridge (`atDocumentBoundary` preserved across `{ s with allowDirectives := false, documentEverStarted := true }` by `unfold ... ; rfl`). Added `skipToContentComment_identity_of_content_peek` theorem to PreprocessProduction.lean: when `(skipToContentComment sc).peek? = some c` with `¬(isLineBreakBool c = true)`, the function was identity (`skipToContentComment sc = sc`). The proof unfolds `skipToContentComment`, case-splits on `sc.peek?` and `commentOk`, and in the `commentOk = true` branch derives contradiction via `collectCommentTextLoop_stops_at_break_or_eof` (loop output is break/EOF, contradicting non-break `c`). Propagated `(sp' = sp_ws ∨ s_result.peek? = none)` conjunct through ~10 `skipToContentLoop`/`skipToContent` wrapper theorems. In the sorry sites, resolved the peek disjunction (`preprocess_some_peek` shows `s_prep.peek? = some c ≠ none`), then used `scNbCommentText_irrefl` to close the `GOpt.some` case as impossible (column self-increase contradiction).
 
 ---
 
 ### Remaining StreamAccum Sorry Plan (Layers 4n–4r)
 
-**Current state:** 7 sorry declarations in StreamAccum.lean, containing ~38 individual sorry sites. All other proof files are sorry-free. Build: 415/415 jobs, 7 sorry warnings.
+**Current state:** 6 sorry declarations in StreamAccum.lean, containing ~37 individual sorry sites. All other proof files are sorry-free. Build: 415/415 jobs, 6 sorry warnings.
 
 **Sorry inventory:**
 
@@ -2152,7 +2154,7 @@ Closed both sorry sites for multi-line plain scalar continuation lines: the bloc
 | 5 | `accum_structural_pending` | 996 | 3 | Directive (#3) + col≠0 | Medium |
 | 6 | `accum_flow_pending` | 1135 | 5 | Flow closures + directive (#3) + col≠0 | High |
 | 7 | `accum_block_pending` | 1316 | ~20 | Block closures (non-`-`, ws-before-`-`) | Very high |
-| 8 | `dispatchContent_plainScalar_prod` | 1960 | 1 | `h_not_doc` precondition | Medium |
+| ~~8~~ | ~~`dispatchContent_plainScalar_prod`~~ | ~~1960~~ | ~~1~~ | ~~`h_not_doc` precondition~~ | ~~DONE (4n)~~ |
 | 9 | `accum_content_pending` | 2122 | 4 | Directive (#3) + content closures (#8) + col≠0 | High |
 
 **Root cause summary:**
@@ -2161,7 +2163,7 @@ Closed both sorry sites for multi-line plain scalar continuation lines: the bloc
 |---|---|---|
 | ~~Unreachable comment contradiction~~ | ~~#1, #2~~ | ~~DONE (Layer 4m)~~ |
 | `scanDirective_prod` evidence | #3, #4, #5, #6, #9 | — (new theorem needed) |
-| `h_not_doc` precondition | #8 | — (independent) |
+| ~~`h_not_doc` precondition~~ | ~~#8~~ | ~~DONE (Layer 4n)~~ |
 | Flow collection closures | #6 (L1145/L1150/L1155) | — (independent) |
 | Block closure at non-`-` / ws-before-`-` | #7 (all ~20 sites) | — (independent) |
 | col≠0 edge cases | #5, #6, #7, #9 (subset of each) | — (deferred, low impact) |
@@ -2169,7 +2171,7 @@ Closed both sorry sites for multi-line plain scalar continuation lines: the bloc
 **Dependency graph:**
 ```
 Layer 4m: #1, #2 (unreachable comment) ─── DONE, -2 warnings (9→7)
-Layer 4n: #8 (h_not_doc) ──────────────── independent, -1 warning
+Layer 4n: #8 (h_not_doc) ──────────────── DONE, -1 warning (7→6)
 Layer 4o: #3 (scanDirective_prod) ─────── new theorem, high effort
 Layer 4p: #4 (dispatch_new_pending) ───── depends on 4o, -1 warning
 Layer 4q: #5, #6 partial, #9 partial ─── depends on 4o (directive cases)
@@ -2187,16 +2189,17 @@ Layer 4r: #6 (flow closures) + #7 (block closures) ── independent, hardest
 | 4m.3 | Close `preprocess_some_separate_lines_0` sorry | DONE | Uses 4m.1 + `ScannerSurfCorr_unique` + 4m.2 |
 | 4m.4 | Close `preprocess_some_separate_0_anyCol` sorry | DONE | Same technique as 4m.3 |
 
-###### Layer 4n: Plain scalar `h_not_doc` precondition (sorry #8)
+###### Layer 4n: Plain scalar `h_not_doc` precondition (sorry #8) — DONE ✓
 
-**Goal:** Close the `h_not_doc` sorry in `dispatchContent_plainScalar_prod`. Expected: −1 sorry warning (7→6).
+**Goal:** Close the `h_not_doc` sorry in `dispatchContent_plainScalar_prod`. **Result:** −1 sorry warning (7→6).
 
 **Architecture:** `scanPlainScalar_to_flowNode` requires `h_not_doc : sc.col = 0 → atDocumentBoundary sc = false` to eliminate the degenerate first-iteration termination case. When `dispatchContent_plainScalar_prod` is called from content dispatch, the scanner has already passed structural dispatch (which handles `---`/`...`/`%`). Therefore the scanner is NOT at a document boundary. The proof needs to connect the structural dispatch's negative evidence to `atDocumentBoundary`.
 
 | # | Work | Status | Description |
 |---|---|---|---|
-| 4n.1 | `structural_dispatch_none_not_doc_boundary` | not started | When `scanNextToken_dispatchStructural` returns `none`, prove `atDocumentBoundary s_prep = false` (or `col ≠ 0 ∨ ¬atDocumentBoundary`) |
-| 4n.2 | Close `dispatchContent_plainScalar_prod` sorry | not started | Use 4n.1 to provide `h_not_doc` |
+| 4n.1 | `dispatchStructural_none_not_doc_boundary` | DONE | Cases on `atDocumentBoundary s`, false→rfl, true→exfalso via Bool case analysis |
+| 4n.2 | Close `dispatchContent_plainScalar_prod` sorry | DONE | Thread `h_not_doc` through call chain: `dispatchContent_evidence` → `accum_content_pending` → `accum_step_content` → `scanNextToken_accum_step` |
+| 4n.3 | allowDirectives bridge | DONE | `atDocumentBoundary` preserved across `allowDirectives := false` update (`unfold ... ; rfl`) |
 
 ###### Layer 4o: Directive evidence — `scanDirective_prod` (sorry #3)
 
