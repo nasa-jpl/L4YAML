@@ -2308,6 +2308,80 @@ theorem dispatchContent_evidence (sc : ScannerState) (sp : SurfPos)
     shared preamble. Trivial-close constructors and `pendingDirective`
     remain inline. -/
 
+-- Content dispatch with stream at sp_block and separator already constructed.
+-- Shared by accum_content_on_noPending (SSeparateLines.commented) and
+-- accum_content_pending's transition-close arms (SSeparateLines.inline).
+theorem content_dispatch_after_close
+    (sp_start sp_block : SurfPos)
+    (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos)
+    (h_stream_block : SLYamlStream sp_start sp_block)
+    (h_sep : SSeparateLines 0 sp_block sp_prep)
+    (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
+    (hcorr_result : ScannerSurfCorr s' sp_scan')
+    (h_not_doc : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).col = 0 →
+      atDocumentBoundary (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) = false)
+    (hpeek : s_prep.peek? = some c)
+    (h_dispatch : scanNextToken_dispatchContent
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok s') :
+    ∃ sp_gram' sp_block' sp_flow' sp_scan',
+      SLYamlStream sp_start sp_gram' ∧
+      BlockStack sp_gram' sp_block' ∧
+      FlowStack sp_block' sp_flow' ∧
+      PendingNode sp_start sp_flow' sp_scan' ∧
+      ScannerSurfCorr s' sp_scan' := by
+  have hpeek_disp : (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep).peek? = some c := by
+    split
+    · show s_prep.peek? = some c; exact hpeek
+    · exact hpeek
+  obtain ⟨sp_gram, sp_ev, h_ev, h_trailing_ws, hcorr_ev⟩ :=
+      dispatchContent_evidence _ sp_prep c
+      (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_not_doc h_dispatch
+  have hsp_ev_eq := ScannerSurfCorr_unique hcorr_ev hcorr_result
+  rw [hsp_ev_eq] at h_trailing_ws hcorr_ev
+  cases h_ev with
+  | inl h_flow =>
+    exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
+           BlockStack.nil sp_block, FlowStack.nil sp_block,
+           PendingNode.pendingContent sp_start sp_block sp_scan'
+             (fun sp_mid h_ssl =>
+               have h_ssl_ext := white_prepend_SSLComments h_trailing_ws h_ssl
+               have h_blockNode :=
+                 flowInBlock_blockNode h_sep h_flow h_ssl_ext
+               have h_bare := SLBareDocument.mk sp_block sp_mid h_blockNode
+               SLYamlStream.implicitContinue sp_start sp_block sp_block sp_mid sp_mid
+                 h_stream_block (GStar.nil _)
+                 (GOpt.some sp_block sp_mid
+                   (SLAnyDocument.bare sp_block sp_mid h_bare))
+                 (GStar.nil _)),
+           hcorr_result⟩
+  | inr h_block =>
+    exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
+           BlockStack.nil sp_block, FlowStack.nil sp_block,
+           PendingNode.pendingContent sp_start sp_block sp_scan'
+             (fun sp_mid h_ssl =>
+               have h_ssl_ext := white_prepend_SSLComments h_trailing_ws h_ssl
+               have h_blockNode : SBlockNode 0 .blockIn sp_block sp_gram :=
+                 h_block.elim
+                   (fun h_lit => literal_blockNode h_sep (GOpt.none sp_prep) h_lit)
+                   (fun h_fld => folded_blockNode h_sep (GOpt.none sp_prep) h_fld)
+               have h_bare := SLBareDocument.mk sp_block sp_gram h_blockNode
+               have h_stream' := SLYamlStream.implicitContinue
+                 sp_start sp_block sp_block sp_gram sp_gram
+                 h_stream_block (GStar.nil _)
+                 (GOpt.some sp_block sp_gram
+                   (SLAnyDocument.bare sp_block sp_gram h_bare))
+                 (GStar.nil _)
+               ssl_comments_extend_stream sp_start sp_gram sp_mid h_stream' h_ssl_ext),
+           hcorr_result⟩
+
 -- Content dispatch with noPending: build separate lines + grammar evidence.
 theorem accum_content_on_noPending
     (sc : ScannerState) (sp_start sp_block : SurfPos)
@@ -2502,14 +2576,20 @@ theorem accum_content_pending (sc : ScannerState)
     rename_i h_stream_old h_dir_acc_old h_closable_old
     -- Directive continuation: close old directive via SSLComments.
     by_cases hcol : sp_scan.col = 0
-    · obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _, _⟩ :=
+    · obtain ⟨sp_mid, sp_ws, sp_prep2, h_ssl, hcol_mid, h_ws, h_cmt, hcorr_prep2, h_pk⟩ :=
         preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
+      have hsp_eq2 := ScannerSurfCorr_unique hcorr_prep hcorr_prep2; subst hsp_eq2
+      have h_eq : sp_prep = sp_ws := by
+        cases h_pk with
+        | inl h => exact h
+        | inr h => rw [preprocess_some_peek h_preprocess] at h; cases h
+      subst h_eq
       have h_stream_mid : SLYamlStream sp_start sp_mid := h_closable_old sp_mid h_ssl
-      exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', h_stream_mid,
-             BlockStack.nil sp_mid, FlowStack.nil sp_mid,
-             PendingNode.pendingContent sp_start sp_mid sp_scan'
-               (fun sp_final h_ssl => sorry),
-             hcorr_result⟩
+      have h_sep := SSeparateLines.inline 0 sp_mid sp_prep
+        (GStar_SSWhite_to_SSeparateInLine sp_mid sp_prep h_ws)
+      exact content_dispatch_after_close sp_start sp_mid s_prep s' c sp_prep sp_scan'
+        h_stream_mid h_sep hcorr_prep hcorr_result h_not_doc
+        (preprocess_some_peek h_preprocess) h_dispatch
     · sorry
   | pendingDocEnd _
   | pendingDocStart _
@@ -2518,13 +2598,20 @@ theorem accum_content_pending (sc : ScannerState)
   | pendingBlockContent _ _ _ =>
     all_goals (
       by_cases hcol : sp_scan.col = 0
-      · obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _, _⟩ :=
+      · obtain ⟨sp_mid, sp_ws, sp_prep2, h_ssl, hcol_mid, h_ws, h_cmt, hcorr_prep2, h_pk⟩ :=
           preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
-        exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
-               h_close_pending sp_mid h_ssl,
-               BlockStack.nil sp_mid, FlowStack.nil sp_mid,
-               PendingNode.pendingContent sp_start sp_mid sp_scan'
-                 (fun sp_mid2 h_ssl => sorry), hcorr_result⟩
+        have hsp_eq2 := ScannerSurfCorr_unique hcorr_prep hcorr_prep2; subst hsp_eq2
+        have h_eq : sp_prep = sp_ws := by
+          cases h_pk with
+          | inl h => exact h
+          | inr h => rw [preprocess_some_peek h_preprocess] at h; cases h
+        subst h_eq
+        have h_stream_mid := h_close_pending sp_mid h_ssl
+        have h_sep := SSeparateLines.inline 0 sp_mid sp_prep
+          (GStar_SSWhite_to_SSeparateInLine sp_mid sp_prep h_ws)
+        exact content_dispatch_after_close sp_start sp_mid s_prep s' c sp_prep sp_scan'
+          h_stream_mid h_sep hcorr_prep hcorr_result h_not_doc
+          (preprocess_some_peek h_preprocess) h_dispatch
       · sorry)
   | pendingBlock =>
     rename_i n_old h_close_old h_close_entry_old
