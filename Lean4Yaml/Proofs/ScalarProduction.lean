@@ -1320,9 +1320,85 @@ theorem prepend_char_to_continuation
    GStar.cons _ _ _ (SNbNsPlainInLineEntry.mk .blockIn sp _ _ (GStar.nil _) hchar) h_ent,
    h_trail⟩
 
+/-! ## §5b skipBlankLinesLoop production (block context blank lines)
+
+  Analogous to `foldQuotedNewlinesLoop_prod` (§1d) but for the block-context
+  `skipBlankLinesLoop`.  Each iteration consumes `skipSpaces + consumeNewline`,
+  producing one `SLEmpty 0 .flowIn` per blank line.  Uses `.flowIn` context
+  because `s-flow-folded(n)` (YAML §6.8 [75]) always uses `l-empty(n, flow-in)`
+  regardless of outer context. -/
+theorem skipBlankLinesLoop_prod (sc : ScannerState) (sp : SurfPos)
+    (cnt fuel : Nat) (inputEnd : Nat)
+    (hcorr : ScannerSurfCorr sc sp) :
+    ∃ sp', GStar (SLEmpty 0 .flowIn) sp sp' ∧
+           ScannerSurfCorr (skipBlankLinesLoop sc cnt fuel inputEnd).2 sp' := by
+  induction fuel generalizing sc sp cnt with
+  | zero =>
+    simp [skipBlankLinesLoop]
+    exact ⟨sp, GStar.nil _, hcorr⟩
+  | succ fuel' ih =>
+    unfold skipBlankLinesLoop; dsimp only []
+    obtain ⟨n_sk, sp_sk, h_indent, hcorr_sk⟩ := skipSpaces_corr sc sp hcorr
+    split
+    · rename_i c hpeek; split
+      · rename_i hlb
+        obtain ⟨sp_cn, h_sbreak, hcorr_cn⟩ :=
+          consumeNewline_sbreak_corr (skipSpaces sc) sp_sk c hcorr_sk hpeek hlb
+        have h_lempty : SLEmpty 0 .flowIn sp sp_cn :=
+          SLEmpty.flow 0 sp sp_sk sp_cn .flowIn (Or.inr rfl)
+            (GOpt.some sp sp_sk (sindent_to_flowlineprefix h_indent (Nat.zero_le _))) h_sbreak
+        obtain ⟨sp_rest, h_gstar_rest, hcorr_rest⟩ :=
+          ih (consumeNewline (skipSpaces sc)) sp_cn (cnt + 1) hcorr_cn
+        exact ⟨sp_rest,
+               GStar.cons sp sp_cn sp_rest h_lempty h_gstar_rest,
+               hcorr_rest⟩
+      · exact ⟨sp, GStar.nil _, hcorr⟩
+    · exact ⟨sp, GStar.nil _, hcorr⟩
+
+/-! ## §5c handleBlockLineBreak production
+
+  Production theorem for `collectPlainScalar_handleBlockLineBreak`:
+  `SBBreak + GStar (SLEmpty 0 .flowIn) + SFlowLinePrefix 0 + corr`.
+  Analogous to `foldQuotedNewlines_prod` (§1e) for flow context. -/
+theorem handleBlockLineBreak_prod (sc : ScannerState) (sp : SurfPos) (c : Char)
+    (content : String) (contentIndent inputEnd : Nat)
+    {content' : String} {s' : ScannerState}
+    (hcorr : ScannerSurfCorr sc sp)
+    (hpeek : sc.peek? = some c)
+    (hlb : isLineBreakBool c = true)
+    (hblk : collectPlainScalar_handleBlockLineBreak sc content contentIndent inputEnd
+            = some (content', s')) :
+    ∃ sp₁ sp₂ sp',
+      SBBreak sp sp₁ ∧
+      GStar (SLEmpty 0 .flowIn) sp₁ sp₂ ∧
+      SFlowLinePrefix 0 sp₂ sp' ∧
+      ScannerSurfCorr s' sp' := by
+  -- Step 1: consumeNewline → SBBreak
+  obtain ⟨sp_cn, h_sbreak, hcorr_cn⟩ :=
+    consumeNewline_sbreak_corr sc sp c hcorr hpeek hlb
+  -- Step 2: skipBlankLinesLoop → GStar (SLEmpty 0 .flowIn)
+  obtain ⟨sp_loop, h_gstar_empty, hcorr_loop⟩ :=
+    skipBlankLinesLoop_prod (consumeNewline sc) sp_cn 0 _ inputEnd hcorr_cn
+  -- Step 3: skipSpaces → SIndent → SFlowLinePrefix 0
+  obtain ⟨n_sk, sp_sk, h_indent, hcorr_sk⟩ :=
+    skipSpaces_corr
+      (skipBlankLinesLoop (consumeNewline sc) 0
+        (inputEnd - (consumeNewline sc).offset + 1) inputEnd).2
+      sp_loop hcorr_loop
+  -- Unfold to trace through the definition
+  unfold collectPlainScalar_handleBlockLineBreak at hblk
+  dsimp only [] at hblk
+  split at hblk
+  · exact absurd hblk (by simp)
+  · split at hblk
+    · exact absurd hblk (by simp)
+    · simp only [Option.some.injEq, Prod.mk.injEq] at hblk
+      obtain ⟨-, rfl⟩ := hblk
+      exact ⟨sp_cn, sp_loop, sp_sk, h_sbreak, h_gstar_empty,
+             sindent_to_flowlineprefix h_indent (Nat.zero_le _), hcorr_sk⟩
+
 -- Full production for `collectPlainScalarLoop`: given accumulated whitespace
 -- `GStar SSWhite sp_ent sp`, produces inline entries and trailing WS.
--- Single-line only: line-break branches are sorry.
 -- Parameterized over `inFlow` for both block and flow contexts.
 theorem collectPlainScalarLoop_prod (sc : ScannerState) (sp : SurfPos)
     (content spaces : String) (fuel : Nat)
@@ -1435,10 +1511,26 @@ theorem collectPlainScalarLoop_prod (sc : ScannerState) (sp : SurfPos)
                     exact ⟨sp_ent, sp_ent, ⟨c :: rest, sc.col⟩, GStar.nil _, GStar.nil _, h_ws, hcorr⟩
                   · -- > prevLen: content grew → block multi-line production
                     have h_eq := Except.ok.inj hok; subst h_eq
-                    -- Block case: needs handleBlockLineBreak_prod theorem
-                    -- (SBBreak + GStar SLEmpty + SFlowLinePrefix for block context)
-                    -- and skipBlankLinesLoop_prod for blank line grammar.
-                    sorry
+                    have hlb : isLineBreakBool c = true := by assumption
+                    -- Get block line break production
+                    obtain ⟨sp₁, sp₂, sp_fold, h_sbreak, h_gstar_empty, h_flp, hcorr_fold⟩ :=
+                      handleBlockLineBreak_prod sc ⟨c :: rest, sc.col⟩ c content
+                        contentIndent inputEnd hcorr hpeek hlb hblk
+                    -- Get IH result for recursive call
+                    obtain ⟨sp_entries_ih, sp_next_ih, sp_trail_ih,
+                            h_entries_ih, h_next_ih, h_ws_ih, hcorr_ih⟩ :=
+                      ih s' sp_fold content' "" sp_fold hcorr_fold (GStar.nil _)
+                        (fun hpk _ => absurd hpk hblkpeek) h_loop
+                    -- Build SSNsPlainNextLine 0 (ctxOfInFlow inFlow)
+                    exact ⟨sp_ent, sp_next_ih, sp_trail_ih,
+                           GStar.nil _,
+                           GStar.cons sp_ent sp_entries_ih sp_next_ih
+                             (SSNsPlainNextLine.mk 0 (ctxOfInFlow inFlow)
+                               sp_ent ⟨c :: rest, sc.col⟩ sp₁ sp₂ sp_fold sp_entries_ih
+                               h_ws h_sbreak h_gstar_empty h_flp h_entries_ih)
+                             h_next_ih,
+                           h_ws_ih,
+                           hcorr_ih⟩
                 | error e => simp at hok
         · -- not line break
           split at hok
@@ -1641,6 +1733,27 @@ theorem GStar_entries_ctxOfInFlow_to_flowOut {sp sp' : SurfPos} {inFlow : Bool}
   | false => exact GStar_entries_blockIn_to_flowOut h
   | true => exact GStar_entries_flowIn_to_flowOut h
 
+-- Context lift: SSNsPlainNextLine n (ctxOfInFlow inFlow) → SSNsPlainNextLine n .flowOut.
+-- Only the entries component depends on context; SLEmpty uses hardcoded .flowIn.
+theorem SSNsPlainNextLine_ctxOfInFlow_to_flowOut {n : Nat} {s s' : SurfPos} {inFlow : Bool}
+    (h : SSNsPlainNextLine n (ctxOfInFlow inFlow) s s') :
+    SSNsPlainNextLine n .flowOut s s' := by
+  cases h with
+  | mk s_ws s₁ s₂ s₃ _ h_ws h_break h_empty h_flp h_entries =>
+    exact SSNsPlainNextLine.mk n .flowOut _ _ _ _ _ _
+      h_ws h_break h_empty h_flp
+      (GStar_entries_ctxOfInFlow_to_flowOut h_entries)
+
+-- Context lift for GStar of next-lines.
+theorem GStar_SSNsPlainNextLine_ctxOfInFlow_to_flowOut
+    {n : Nat} {s s' : SurfPos} {inFlow : Bool}
+    (h : GStar (SSNsPlainNextLine n (ctxOfInFlow inFlow)) s s') :
+    GStar (SSNsPlainNextLine n .flowOut) s s' := by
+  induction h with
+  | nil => exact GStar.nil _
+  | cons _ _ _ hfirst _ ih =>
+    exact GStar.cons _ _ _ (SSNsPlainNextLine_ctxOfInFlow_to_flowOut hfirst) ih
+
 -- canStartPlainScalar → isPlainSafeBool (first char is plain safe)
 theorem canStartPlain_implies_safe {c : Char} {next : Option Char} {inFlow : Bool}
     (h : canStartPlainScalarBool c next inFlow = true) :
@@ -1828,23 +1941,17 @@ theorem scanPlainScalar_to_flowNode (sc : ScannerState) (sp : SurfPos)
           have h : sc.col + 1 = sc.advance.col := hcorr_adv.col_eq
           omega)
         hloop'
-    -- Step 3: Build grammar from first char + remaining entries
-    -- TODO: include next-lines in grammar (needs context conversion flowIn→flowOut)
-    have h_plain : SNsPlain 0 .flowOut ⟨c :: rest, sc.col⟩ sp_entries :=
-      SNsPlainMultiLine.mk 0 .flowOut _ _ sp_entries
+    -- Step 3: Build grammar from first char + entries + next-lines
+    have h_plain : SNsPlain 0 .flowOut ⟨c :: rest, sc.col⟩ sp_next :=
+      SNsPlainMultiLine.mk 0 .flowOut _ _ sp_next
         (SNsPlainOneLine.mk .flowOut _ ⟨rest, sc.col + 1⟩ sp_entries
           (SNsPlainFirst_ctxOfInFlow_to_flowOut h_first)
           (GStar_entries_ctxOfInFlow_to_flowOut h_entries))
-        (GStar.nil _)
-    -- Bridge: sp_entries → sp_next (next-lines) → sp_trail (trailing WS)
-    have h_ws_bridge : GStar SSWhite sp_entries sp_trail := by
-      cases _h_next_lines with
-      | nil => exact h_trail
-      | cons => sorry -- TODO: context conversion for multi-line case
-    exact ⟨sp_entries, sp_trail,
-      SFlowNode.content 0 .flowOut _ sp_entries
-        (SFlowContent.plain 0 .flowOut _ sp_entries h_plain),
-      h_ws_bridge,
+        (GStar_SSNsPlainNextLine_ctxOfInFlow_to_flowOut _h_next_lines)
+    exact ⟨sp_next, sp_trail,
+      SFlowNode.content 0 .flowOut _ sp_next
+        (SFlowContent.plain 0 .flowOut _ sp_next h_plain),
+      h_trail,
       corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_result)⟩
 
 theorem scanPlainScalar_prod (sc : ScannerState) (sp : SurfPos)

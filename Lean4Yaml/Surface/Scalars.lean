@@ -214,6 +214,8 @@ inductive SNsPlainOneLine : Lean4Yaml.YamlContext → SurfPos → SurfPos → Pr
     line, matching YAML spec §6.8 `s-flow-folded(n)` which starts with
     `s-separate-in-line?` before the line break.  This enables proper chaining
     in `GStar (SSNsPlainNextLine n c)`.
+    NOTE: `SLEmpty` uses `.flowIn` context per YAML spec §6.8 (`s-flow-folded`
+    always uses `b-l-trimmed(n, flow-in)` regardless of outer context `c`).
     NOTE: Uses `GStar` instead of `GPlus` for entries. The YAML spec requires
     at least one `ns-plain-char`, which is enforced by the scanner's
     content-length check. TODO: strengthen to `GPlus` once proved. -/
@@ -221,7 +223,7 @@ inductive SSNsPlainNextLine : Nat → Lean4Yaml.YamlContext → SurfPos → Surf
   | mk (n : Nat) (c : Lean4Yaml.YamlContext) (s s_ws s₁ s₂ s₃ s' : SurfPos) :
       GStar SSWhite s s_ws →
       SBBreak s_ws s₁ →
-      GStar (SLEmpty n c) s₁ s₂ →
+      GStar (SLEmpty n .flowIn) s₁ s₂ →
       SFlowLinePrefix n s₂ s₃ →
       GStar (SNbNsPlainInLineEntry c) s₃ s' →
       SSNsPlainNextLine n c s s'

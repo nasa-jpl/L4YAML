@@ -1656,9 +1656,9 @@ Additionally, the alias empty-name sorry in `dispatchContent_alias_prod` (Stream
 | ~~4~~ | ~~S10~~ | — | ~~−1 sorry~~ | **CLOSED (A16)** — `scanNamedTag_prod` + `SCNsTagProperty.primary` constructor + `isWordCharProp_to_isTagCharProp` + `GStar_gchar_lift` |
 | ~~5~~ | ~~S1, S2~~ | — | ~~−2 sorry~~ | **CLOSED (A11)** — removed `hm : m ≥ 1` from `SCLLiteral`/`SCLFolded` grammar constructors |
 | ~~6~~ | ~~S6~~ | — | ~~−3 sorry sites~~ | **CLOSED (A15)** — parameterized over `inFlow`. Warning count unchanged (3 sorry sites in same declaration as `h_not_doc` sorry). |
-| 7 | S3 | ~4 hr | −1 sorry | Multi-line plain scalar. Hardest — `handleBlockLineBreak_prod` + `SNsPlainNextLine` |
+| ~~7~~ | ~~S3~~ | — | ~~−2 sorry~~ | **CLOSED (A17)** — `skipBlankLinesLoop_prod` + `handleBlockLineBreak_prod` + `SSNsPlainNextLine_ctxOfInFlow_to_flowOut`; grammar fix: `SLEmpty` uses `.flowIn` per YAML spec §6.8 |
 
-**Critical path**: ~~S4 →~~ ~~S5 →~~ ~~S6~~ (chain complete — all closed). **S4 CLOSED by A13.** **S5 CLOSED by A14.** **S6 CLOSED by A15.** ~~S7/S8/S9/alias are now trivially closable after A10.~~ **S7/S8/S9/alias CLOSED by A12.** ~~S1/S2 deferred — see analysis below.~~ **S1/S2 CLOSED by A11.** **S10 CLOSED by A16.**
+**Critical path**: ~~S4 →~~ ~~S5 →~~ ~~S6~~ (chain complete — all closed). **S4 CLOSED by A13.** **S5 CLOSED by A14.** **S6 CLOSED by A15.** ~~S7/S8/S9/alias are now trivially closable after A10.~~ **S7/S8/S9/alias CLOSED by A12.** ~~S1/S2 deferred — see analysis below.~~ **S1/S2 CLOSED by A11.** **S10 CLOSED by A16.** **S3 CLOSED by A17.**
 
 ##### S1/S2 design analysis: indent tracking for block scalars
 
@@ -2104,5 +2104,31 @@ Closed the sorry in `scanTag_nonSecondary_prod` (StructureProduction.lean) for t
 **Caller update**: `scanTag_nonSecondary_prod` catch-all branch now calls `scanNamedTag_prod` + `corr_of_simpleKeyAllowed_update`, replacing the sorry.
 
 **Build**: 415/415 jobs, 0 errors, 10 sorry warnings (was 11; −1 from `scanTag_nonSecondary_prod` becoming sorry-free).
+
+**A17 — S3 CLOSED: Multi-line plain scalar line break continuation** (2026-04-03)
+
+Closed both sorry sites for multi-line plain scalar continuation lines: the block content-growth case in `collectPlainScalarLoop_prod` and the caller bridge in `scanPlainScalar_to_flowNode`. Sorry count: 11→9. ScalarProduction.lean is now sorry-free.
+
+**Problem**: The `collectPlainScalarLoop_prod` theorem had a sorry for the `isLineBreakBool c = true ∧ inFlow = false` (block context) case where `handleBlockLineBreak` succeeds and the recursive call adds content. Additionally, `scanPlainScalar_to_flowNode` had a sorry for the multi-line case where `GStar (SSNsPlainNextLine ...)` was non-empty — it was ignored in the grammar (`GStar.nil _` passed to `SNsPlainMultiLine`) and the gap couldn't be bridged with `GStar SSWhite`.
+
+**Root cause #1 (grammar)**: `SSNsPlainNextLine.mk` used `GStar (SLEmpty n c)` where `c` was the outer context parameter. For block context (`c = .blockIn`), `SLEmpty.block` uses `GOpt (SIndentLe n)` which at `n=0` only allows zero spaces. But blank lines between continuation lines can have arbitrary spaces (consumed by `skipSpaces`). The YAML spec §6.8 `s-flow-folded(n)` always uses `l-empty(n, flow-in)` regardless of outer context — the `SLEmpty` should use `.flowIn`.
+
+**Root cause #2 (caller bridge)**: The caller `scanPlainScalar_to_flowNode` needed to include next-lines in the grammar, requiring a context lift from `SSNsPlainNextLine 0 (ctxOfInFlow sc.inFlow)` to `SSNsPlainNextLine 0 .flowOut`.
+
+**Solution** (6 parts):
+
+1. **Grammar fix** (Surface/Scalars.lean) — Changed `GStar (SLEmpty n c) s₁ s₂` to `GStar (SLEmpty n .flowIn) s₁ s₂` in `SSNsPlainNextLine.mk`. This aligns with the YAML spec: `s-flow-folded` always uses `flow-in` context for empty lines. The flow case proof is unchanged (was already using `.flowIn`).
+
+2. **`skipBlankLinesLoop_prod`** (ScalarProduction.lean, ~30 lines) — Production theorem for `skipBlankLinesLoop`: produces `GStar (SLEmpty 0 .flowIn)`. Follows the exact same induction pattern as `foldQuotedNewlinesLoop_prod` (§1d). Each iteration: `skipSpaces_corr` → `SIndent`, `consumeNewline_sbreak_corr` → `SBBreak`, compose into `SLEmpty.flow` via `sindent_to_flowlineprefix` (n=0 ≤ n_sk always holds).
+
+3. **`handleBlockLineBreak_prod`** (ScalarProduction.lean, ~35 lines) — Production theorem for `collectPlainScalar_handleBlockLineBreak`: `SBBreak + GStar (SLEmpty 0 .flowIn) + SFlowLinePrefix 0 + corr`. Follows the same decomposition as `foldQuotedNewlines_prod` (§1e): Step 1: `consumeNewline_sbreak_corr`, Step 2: `skipBlankLinesLoop_prod`, Step 3: `skipSpaces_corr` → `sindent_to_flowlineprefix`. Unfolds `handleBlockLineBreak` and eliminates `none` cases by contradiction.
+
+4. **Block content-growth case** — Replaced sorry with: `handleBlockLineBreak_prod` → decompose into `SBBreak + GStar SLEmpty + SFlowLinePrefix + corr`, then `ih` on recursive call → entries + next-lines + WS + corr, compose into `SSNsPlainNextLine.mk` and prepend to `GStar`. Follows the exact same pattern as the proven flow case.
+
+5. **`SSNsPlainNextLine_ctxOfInFlow_to_flowOut` + `GStar_SSNsPlainNextLine_ctxOfInFlow_to_flowOut`** (ScalarProduction.lean, ~15 lines each) — Context lift theorems. With the grammar fix, only `GStar (SNbNsPlainInLineEntry c)` depends on context — reuses existing `GStar_entries_ctxOfInFlow_to_flowOut`. The `GStar` version lifts element-wise by induction.
+
+6. **Caller bridge fix** — Replaced the `GStar.nil _` in `SNsPlainMultiLine` with `GStar_SSNsPlainNextLine_ctxOfInFlow_to_flowOut _h_next_lines`, and replaced the sorry'd `h_ws_bridge` with `h_trail` (trailing WS starts at `sp_next`, the endpoint of next-lines). Grammar endpoint changes from `sp_entries` to `sp_next` throughout.
+
+**Build**: 415/415 jobs, 0 errors, 9 sorry warnings (was 11; −2 from ScalarProduction.lean becoming sorry-free).
 
 11. ~~**col≠0 BOM** (Category 2) — grammar definition change, deferred~~ **DONE (A2)**
