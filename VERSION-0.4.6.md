@@ -2547,3 +2547,124 @@ h_closable_directive: permanently deferred (2 sites)
 
 All 4 declarations represent genuine architectural gaps requiring multi-session effort.
 The 11 remaining sorry proof terms are concentrated in these 4 declarations.
+
+
+###### Layer 4y architecture rework
+
+**Goal**: Restructure types and scanner validation to make the 11 remaining sorry proof terms provable. Expected result: 11→≤4 sorry.
+
+**4y.1: TAG directive trailing content validation (−2 sorry)**
+
+Problem: `scanTagDirective` doesn't validate trailing content after tag prefix (unlike `scanYamlDirective` and reserved directives). After `%TAG ! tag:uri trailing_stuff`, the scanner is at `trailing_stuff` with col≠0. `skipToContent` finds non-break content → `preprocess_some_ssl_comments_anyCol` returns right disjunct (no break) → `pendingDirective` no-break case is reachable at L1347 and L2763.
+
+Fix: Add validation in `scanTagDirective` — after tag prefix, check next char is whitespace/`#`/break/EOF (matching `scanYamlDirective` behavior). Return error otherwise. Add `scanDirective_breaks_line` lemma: after any directive type, `skipToContent` always consumes a break → SSLComments available → left disjunct always holds. Replace sorry at L1347 and L2763 with contradiction.
+
+Files: Scanner.lean, StructureProduction.lean, StreamAccum.lean.
+
+**4y.2: Remove h_closable from pendingDirective (−2 sorry, possibly +1)**
+
+Problem: `pendingDirective` carries `h_closable : ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid` but this is unprovable at construction time — `SLDirectiveDocument` requires `SCDirectivesEnd` (`---`) not yet seen. The 2 sorry at L914/L956 in `structural_dispatch_to_pending` construct this unprovable closure.
+
+Fix: Remove `h_closable` from the constructor; retain only `h_dir_acc` and `h_stream`:
+```lean
+| pendingDirective (sp_start sp_block sp_scan : SurfPos)
+    (h_dir_acc : ∀ sp_mid, SSLComments sp_scan sp_mid →
+      GPlus SLDirective sp_block sp_mid)
+    (h_stream : SLYamlStream sp_start sp_block) :
+    PendingNode sp_start sp_block sp_scan
+```
+
+Transition handling (no h_closable needed):
+- `pendingDirective` + `---`: compose `h_dir_acc` + `SCDirectivesEnd` → `pendingDocStart.h_doc_builder` that builds `SLDirectiveDocument` when body arrives.
+- `pendingDirective` + `%`: snoc new directive onto `h_dir_acc`, create new `pendingDirective`.
+- `pendingDirective` + flow/content/block: contradictory after 4y.1 (directives always break line, so SSLComments is available → goes through `inl` branch, not `inr`).
+- `pendingDirective` + EOF: `close_with_ssl` needs alternative. Options: (a) add scanner error for directive-without-`---` making case unreachable, or (b) extend `SLYamlStream` grammar with bare-directive absorption. Option (a) preferred — matches YAML spec behavior.
+
+Files: StreamAccum.lean (PendingNode, close_with_ssl, structural_dispatch_to_pending, all pending dispatchers matching pendingDirective), possibly Scanner.lean (EOF error for bare directives).
+
+**4y.3: FlowStack partial evidence (−2 sorry, risk of new sorry in absorb_stacks)**
+
+Problem: `FlowStack.flowSeqLevel`/`flowMapLevel` carry `h_closable : ∀ sp_start, SLYamlStream sp_start sp → SLYamlStream sp_start sp'` requiring complete `SFlowSequence`/`SFlowMapping` at bracket-open time. Impossible since entries haven't been scanned. Sorry at L1307/L1312.
+
+Fix: Replace closures with bracket character evidence:
+```lean
+| flowSeqLevel (sp sp_mid sp' : SurfPos) :
+    FlowStack sp sp_mid →
+    GLit '[' sp_mid sp' →
+    FlowStack sp sp'
+| flowMapLevel (sp sp_mid sp' : SurfPos) :
+    FlowStack sp sp_mid →
+    GLit '{' sp_mid sp' →
+    FlowStack sp sp'
+```
+
+`absorb_stacks` restructuring: can no longer directly compose FlowStack into stream (no closure). Two options:
+(a) Change `absorb_stacks` to return `GLit` evidence that callers use for composition — complex but clean.
+(b) Defer FlowStack levels entirely — `absorb_stacks` only applies BlockStack; FlowStack evidence stored separately and composed at close-bracket time.
+
+New lemma needed: `dispatchFlowIndicators_glit` — when `c = '['`, provide `GLit '[' sp sp'` from `ScannerSurfCorr` + dispatch success. Constructible from `ScannerSurfCorr.chars_from` + the `if c == '['` branch evidence.
+
+Files: StreamAccum.lean (FlowStack, absorb_stacks, accum_flow_pending).
+
+**4y.4: pendingFlow + block_dispatch_deferred (−3 sorry)**
+
+Problem: `pendingFlow.h_closable` sorry at L1317. `block_dispatch_deferred` h_close/h_close_entry sorry at L1512×2.
+
+Fix for pendingFlow: carry indicator category evidence (close/comma) instead of stream-extension closure. At consume time, compose indicator + accumulated content → flow entry production.
+
+Fix for block_dispatch_deferred: carry actual block indicator evidence (dash/key/value position + indent check result) instead of sorry closures. Requires stronger `dispatchBlockIndicators_evidence` lemma providing indent level and indicator identity. Split per-indicator case (`-` at col=0 n=0 already proven in `accum_block_on_noPending`; extend to other indicators/nesting levels).
+
+Files: StreamAccum.lean (PendingNode, block_dispatch_deferred, accum_block_pending).
+
+**4y.5: Other-pending no-break inline handling (−2 sorry or deferred)**
+
+Problem: L1376 (accum_flow_pending) and L2804 (accum_content_pending) sorry for non-directive pending types when no break consumed. Grouped case: pendingDocEnd, pendingDocStart, pendingContent, pendingFlow, pendingBlockContent, pendingBlock.
+
+Analysis per type (all reachable for inline YAML):
+- `pendingDocStart`: `--- [1,2]` — doc start with immediate flow content ✓
+- `pendingBlock`: `- [1,2]` — block entry with inline flow content ✓
+- `pendingContent`: `1, 2` in `[1, 2]` — inline flow separation ✓
+- `pendingFlow`: `], }` sequences ✓
+- `pendingDocEnd`: `... stuff` — technically invalid but scanner allows
+- `pendingBlockContent`: content continuation on same line ✓
+
+Fix: Split grouped `all_goals` per constructor. For each: compose old pending's closure into new pending's closure. The new pending "absorbs" the old pending — when SSLComments eventually arrives (at line end or EOF), the composed closure closes both new and old tokens.
+
+Alternative (pragmatic): use fallback stream pattern from 4x (h_stream_block as stream, construct sorry-bearing pending via block_dispatch_deferred or similar consolidation helper). This is already done for blocks; extend to flow/content contexts.
+
+Risk: This is the most architecturally complex change. Grammar composition proofs for inline token sequences (e.g., proving `- [1,2]` produces `SBlockSeqEntry` containing `SFlowSequence`) are substantial. May be partially deferred to 4z.
+
+Files: StreamAccum.lean (accum_flow_pending, accum_content_pending).
+
+**4y dependency order**: 4y.1 → 4y.2 → 4y.5 (pendingDirective removed from grouped case). 4y.3 and 4y.4 are independent.
+
+**4y target**: 11→≤4 sorry (conservative). 4y.1 (−2) + 4y.2 (−2) are high confidence. 4y.3 (−2 but may introduce new). 4y.4 + 4y.5 depend on proof complexity.
+
+###### Layer 4y accomplishments
+
+###### Layer 4y reflections
+
+###### Layer 4z: remaining sorry cleanup
+
+**Scope**: Complete proofs for sorry introduced or deferred by 4y architectural changes.
+
+**4z.1: FlowStack close-bracket composition**
+At `]` time: pop FlowStack, compose `GLit '['` + accumulated entries + `GLit ']'` → `SFlowSequence.empty` or `SFlowSequence.nonempty`. Requires entry accumulation tracking (how many entries between `[` and `]`).
+
+**4z.2: pendingDirective EOF stream extension**
+If 4y.2 defers the EOF case (rather than making it unreachable via scanner error): prove that `h_dir_acc` + `h_stream` can extend through directives at EOF. May require grammar production for bare-directive absorption, or proving that directive-at-EOF implies scanner error earlier.
+
+**4z.3: Block node construction**
+Complete `block_dispatch_deferred` closures. For each block indicator type (`-`, `?`, `:`), construct actual `SBlockNode` → `SLYamlStream` proofs using indent tracking and entry accumulation evidence from 4y.4.
+
+**4z.4: Inline transition composition**
+For any 4y.5 sorry remaining: prove grammar composition for inline token sequences. Key cases:
+- `pendingBlock` + inline flow content → `SBlockSeqEntry` containing `SFlowNode`
+- `pendingContent` + flow separator → close flow entry, open next
+- `pendingDocStart` + inline content → document body starts immediately after `---`
+
+**4z target**: 0 sorry, 0 warnings.
+
+###### Layer 4z accomplishments
+
+###### Layer 4z reflections
