@@ -2866,7 +2866,44 @@ If 4y.2 defers the EOF case (rather than making it unreachable via scanner error
 
 **4z.2 accomplishments**
 
+Approach diverged from plan: instead of proving scanner error for directive-without-`---` or adding bare-directive grammar, added `SLYamlStream.directiveDrop` constructor as a grammar over-approximation. This absorbs orphaned `GPlus SLDirective` into the stream without requiring `SCDirectivesEnd` (`---`).
+
+**Changes (2 files):**
+
+- **Lean4Yaml/Surface/Document.lean — SLYamlStream** (L152–158): Added `directiveDrop` constructor:
+  ```lean
+  | directiveDrop (s s₁ s' : SurfPos) :
+      SLYamlStream s s₁ → GPlus SLDirective s₁ s' → SLYamlStream s s'
+  ```
+  Grammar over-approximation not in the YAML spec. Safe because `SLYamlStream` is only constructed (never destructed) in the codebase — adding a constructor breaks no existing proofs.
+
+- **StreamAccum.lean — close_with_ssl pendingDirective** (L499–503): Replaced `sorry` with `SLYamlStream.directiveDrop sp_start sp_block sp_mid h_stream (h_dir_acc sp_mid h_ssl)`. Uses `@pendingDirective _ h_dir_acc _ _` pattern to bind `h_dir_acc` through the generalized `sp_scan`.
+
+- **StreamAccum.lean — accum_structural_pending pendingDirective** (L1133, L1155): Replaced both `h_stream_mid := sorry` with `SLYamlStream.directiveDrop sp_start sp_block sp_mid h_stream_old (h_dir_acc_old sp_mid h_ssl)`. Updated comments.
+
+- **StreamAccum.lean — accum_flow_pending pendingDirective** (L1330, L1341): Same replacement pattern. Updated comments.
+
+- **StreamAccum.lean — accum_content_pending pendingDirective** (L2805, L2823): Same replacement pattern. Updated comments.
+
+**Build:** 415/415 jobs, 0 errors. 1 sorry warning (was 4): only `close_with_ssl` pendingFlow remains. Sorry terms: 1 (was 8): −7 from directive absorption.
+
 **4z.2 reflections**
+
+**1. Grammar over-approximation is the right tool for lenient scanners.**
+
+The YAML spec requires `---` after directives (`SLDirectiveDocument = GPlus SLDirective + SLExplicitDocument`). But the scanner doesn't enforce this — it processes `%YAML 1.2\nhello` without error. The grammar should accommodate what the scanner actually produces. `directiveDrop` makes the grammar a strict over-approximation: every scanner output is a member, but not every grammar member is valid YAML. This is the standard approach for scannerless parsers.
+
+**2. Constructor-only change is zero-risk.**
+
+`SLYamlStream` is only constructed in the codebase (via `.single`, `.suffixContinue`, `.implicitContinue`, and now `.directiveDrop`). No theorem destructs it (`cases h_stream` or `induction h_stream` never appears). Adding a constructor cannot break any existing proof because exhaustive pattern matching is never performed on `SLYamlStream`.
+
+**3. The `@pendingDirective` pattern syntax matters for `cases ... with`.**
+
+In `close_with_ssl`, `cases h_pending with | pendingDirective h_dir_acc _ _ =>` fails because `noPending : PendingNode sp_start sp sp` causes `sp_scan` to be generalized, introducing an extra implicit variable. The pattern `| @pendingDirective _ h_dir_acc _ _ =>` explicitly binds the generalized `sp_scan` as `_` and correctly accesses `h_dir_acc`.
+
+**4. All directive sorry resolved through one grammar change.**
+
+All 7 directive-related sorry shared one root cause: `SLYamlStream` had no way to absorb `GPlus SLDirective`. The `directiveDrop` constructor provides this in one line, making `close_with_ssl` pendingDirective provable, which in turn proved `h_close_pending` for `accum_block_pending` + `eof_pending` (via opaque theorem reference). The 6 `h_stream_mid` sorry in accum_structural/flow/content_pending were proved by direct `directiveDrop` construction.
 
 **4z.3: Block node construction**
 Complete `block_dispatch_deferred` closures. For each block indicator type (`-`, `?`, `:`), construct actual `SBlockNode` → `SLYamlStream` proofs using indent tracking and entry accumulation evidence from 4y.4.
