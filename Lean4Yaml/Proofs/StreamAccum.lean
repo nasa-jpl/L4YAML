@@ -1485,17 +1485,36 @@ theorem dispatchBlockEntry_full_prod (sc : ScannerState) (sp : SurfPos)
     simp only [hq, hc, Bool.false_and, if_neg Bool.false_ne_true] at hok
     simp at hok
 
-/-! #### Wadler-style per-constructor theorems for block dispatch (Layer 4o)
+/-! #### Wadler-style per-constructor theorems for block dispatch (Layer 4o/4x)
 
     Each theorem handles one substantial `PendingNode` constructor case for
     `accum_block_pending`. The main theorem delegates to these after the
-    shared preamble (corr extraction + `h_close_pending`). Trivial-close
-    constructors (`pendingDocEnd`/`pendingDocStart`) and `pendingDirective`
-    remain inline. -/
+    shared preamble (corr extraction + `h_close_pending`). Non-proven
+    branches (cons/c≠'-'/col≠0/n≠0) delegate to `block_dispatch_deferred`. -/
+
+-- Deferred sorry: constructs block PendingNode with sorry closures.
+-- Concentrates all block-dispatch catch-all sorry into one declaration.
+-- Called for: whitespace-before-dash (cons), non-dash indicators (c≠'-'),
+-- col≠0 no-break, and n≠0 pending cases.
+theorem block_dispatch_deferred
+    (sp_start sp_X sp_scan' : SurfPos) (s' : ScannerState)
+    (h_stream : SLYamlStream sp_start sp_X)
+    (hcorr : ScannerSurfCorr s' sp_scan') :
+    ∃ sp_gram' sp_block' sp_flow' sp_scan',
+      SLYamlStream sp_start sp_gram' ∧
+      BlockStack sp_gram' sp_block' ∧
+      FlowStack sp_block' sp_flow' ∧
+      PendingNode sp_start sp_flow' sp_scan' ∧
+      ScannerSurfCorr s' sp_scan' :=
+  ⟨sp_X, sp_X, sp_X, sp_scan', h_stream,
+   BlockStack.nil sp_X, FlowStack.nil sp_X,
+   PendingNode.pendingBlock sp_start sp_X sp_scan' 0
+     (fun _ _ => sorry) (fun _ _ => sorry),
+   hcorr⟩
 
 -- Block dispatch with noPending: fresh block entry.
--- Handles '-' at col=0 with full closures, plus sorry branches for
--- col≠0, c≠'-', comment-before-dash, and whitespace-before-dash.
+-- Handles '-' at col=0 with full closures; non-proven branches delegate
+-- to block_dispatch_deferred.
 theorem accum_block_on_noPending
     (sc : ScannerState) (sp_start sp_block : SurfPos)
     (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos)
@@ -1577,28 +1596,17 @@ theorem accum_block_on_noPending
           have h_eq := h_pk.resolve_right (by simp [preprocess_some_peek h_preprocess])
           exact absurd (h_eq ▸ hc) (scNbCommentText_irrefl sp_mid)
       | cons =>
-        exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
-               BlockStack.nil sp_block, FlowStack.nil sp_block,
-               PendingNode.pendingBlock sp_start sp_block sp_scan' 0
-                 (fun sp_mid2 _h_node => sorry)
-                 (fun sp_mid2 _h_node => sorry), hcorr_result⟩
-    · exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
-             BlockStack.nil sp_block, FlowStack.nil sp_block,
-             PendingNode.pendingBlock sp_start sp_block sp_scan' 0
-               (fun sp_mid _h_node => sorry)
-               (fun sp_mid _h_node => sorry), hcorr_result⟩
-  · exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
-           BlockStack.nil sp_block, FlowStack.nil sp_block,
-           PendingNode.pendingBlock sp_start sp_block sp_scan' 0
-             (fun sp_mid _h_node => sorry)
-             (fun sp_mid _h_node => sorry), hcorr_result⟩
+        exact block_dispatch_deferred sp_start sp_block sp_scan' s' h_stream_block hcorr_result
+    · exact block_dispatch_deferred sp_start sp_block sp_scan' s' h_stream_block hcorr_result
+  · exact block_dispatch_deferred sp_start sp_block sp_scan' s' h_stream_block hcorr_result
 
 -- Block dispatch after closing old pending: '-' at col=0 opens new block sequence.
 -- Shared by pendingContent and pendingFlow constructors.
 theorem accum_block_on_closeThenBlock
-    (sc : ScannerState) (sp_start sp_scan : SurfPos)
+    (sc : ScannerState) (sp_start sp_block_ctx sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos)
     (h_close_pending : ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid)
+    (h_stream_fallback : SLYamlStream sp_start sp_block_ctx)
     (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
     (hcorr_result : ScannerSurfCorr s' sp_scan')
     (h_corr : ScannerSurfCorr sc sp_scan)
@@ -1682,28 +1690,29 @@ theorem accum_block_on_closeThenBlock
           have h_eq := h_pk.resolve_right (by simp [preprocess_some_peek h_preprocess])
           exact absurd (h_eq ▸ hc) (scNbCommentText_irrefl sp_mid)
       | cons =>
-        exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', h_stream_new,
-               BlockStack.nil sp_mid, FlowStack.nil sp_mid,
-               PendingNode.pendingBlock sp_start sp_mid sp_scan' 0
-                 (fun sp_mid2 _h_node => sorry)
-                 (fun sp_mid2 _h_node => sorry), hcorr_result⟩
+        exact block_dispatch_deferred sp_start sp_mid sp_scan' s' h_stream_new hcorr_result
     · obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _, _⟩ :=
         preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
-      exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
-             h_close_pending sp_mid h_ssl,
-             BlockStack.nil sp_mid,
-             FlowStack.nil sp_mid,
-             PendingNode.pendingBlock sp_start sp_mid sp_scan' 0
-               (fun sp_mid2 _h_node => sorry)
-               (fun sp_mid2 _h_node => sorry), hcorr_result⟩
-  · sorry
+      exact block_dispatch_deferred sp_start sp_mid sp_scan' s'
+        (h_close_pending sp_mid h_ssl) hcorr_result
+  · obtain ⟨sp_mid, _, _, h_disj, _, _, _, _⟩ :=
+      preprocess_some_ssl_comments_anyCol sc sp_scan s_prep c h_corr h_preprocess
+    cases h_disj with
+    | inl h_ssl_col =>
+      exact block_dispatch_deferred sp_start sp_mid sp_scan' s'
+        (h_close_pending sp_mid h_ssl_col.1) hcorr_result
+    | inr h_mid_eq =>
+      subst h_mid_eq
+      exact block_dispatch_deferred sp_start sp_block_ctx sp_scan' s'
+        h_stream_fallback hcorr_result
 
 -- Block dispatch with pendingBlockContent: accumulate entries via h_entry_old.
 theorem accum_block_on_pendingBlockContent
-    (sc : ScannerState) (sp_start sp_block sp_scan : SurfPos)
+    (sc : ScannerState) (sp_start sp_block sp_block_ctx sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos)
     (h_stream_block : SLYamlStream sp_start sp_block)
     (h_close_pending : ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid)
+    (h_stream_fallback : SLYamlStream sp_start sp_block_ctx)
     (h_closable : ∀ (sp : SurfPos), SSLComments sp_scan sp → SLYamlStream sp_start sp)
     (h_entry_old : ∀ (sp : SurfPos), SSLComments sp_scan sp →
       ∃ sp_first, SBlockSeqEntries 0 sp_first sp ∧
@@ -1767,28 +1776,30 @@ theorem accum_block_on_pendingBlockContent
           have h_eq := h_pk.resolve_right (by simp [preprocess_some_peek h_preprocess])
           exact absurd (h_eq ▸ hc) (scNbCommentText_irrefl sp_mid)
       | cons =>
-        exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
-               h_close_pending sp_mid h_ssl,
-               BlockStack.nil sp_mid, FlowStack.nil sp_mid,
-               PendingNode.pendingBlock sp_start sp_mid sp_scan' 0
-                 (fun sp_mid2 _h_node => sorry)
-                 (fun sp_mid2 _h_node => sorry), hcorr_result⟩
+        exact block_dispatch_deferred sp_start sp_mid sp_scan' s'
+          (h_close_pending sp_mid h_ssl) hcorr_result
     · obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _, _⟩ :=
         preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
-      exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
-             h_close_pending sp_mid h_ssl,
-             BlockStack.nil sp_mid, FlowStack.nil sp_mid,
-             PendingNode.pendingBlock sp_start sp_mid sp_scan' 0
-               (fun sp_mid2 _h_node => sorry)
-               (fun sp_mid2 _h_node => sorry), hcorr_result⟩
-  · sorry
+      exact block_dispatch_deferred sp_start sp_mid sp_scan' s'
+        (h_close_pending sp_mid h_ssl) hcorr_result
+  · obtain ⟨sp_mid, _, _, h_disj, _, _, _, _⟩ :=
+      preprocess_some_ssl_comments_anyCol sc sp_scan s_prep c h_corr h_preprocess
+    cases h_disj with
+    | inl h_ssl_col =>
+      exact block_dispatch_deferred sp_start sp_mid sp_scan' s'
+        (h_close_pending sp_mid h_ssl_col.1) hcorr_result
+    | inr h_mid_eq =>
+      subst h_mid_eq
+      exact block_dispatch_deferred sp_start sp_block_ctx sp_scan' s'
+        h_stream_fallback hcorr_result
 
 -- Block dispatch with pendingBlock: accumulate entries via h_close_entry_old.
 theorem accum_block_on_pendingBlock
-    (sc : ScannerState) (sp_start sp_block sp_scan : SurfPos)
+    (sc : ScannerState) (sp_start sp_block sp_block_ctx sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char) (sp_prep sp_scan' : SurfPos)
     (h_stream_block : SLYamlStream sp_start sp_block)
     (h_close_pending : ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid)
+    (h_stream_fallback : SLYamlStream sp_start sp_block_ctx)
     (h_close_old : ∀ (sp : SurfPos), SBlockNode 0 .blockIn sp_scan sp → SLYamlStream sp_start sp)
     (h_close_entry_old : ∀ (sp : SurfPos), SBlockNode 0 .blockIn sp_scan sp →
       ∃ sp_first, SBlockSeqEntries 0 sp_first sp ∧
@@ -1854,21 +1865,22 @@ theorem accum_block_on_pendingBlock
           have h_eq := h_pk.resolve_right (by simp [preprocess_some_peek h_preprocess])
           exact absurd (h_eq ▸ hc) (scNbCommentText_irrefl sp_mid)
       | cons =>
-        exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
-               h_close_pending sp_mid h_ssl,
-               BlockStack.nil sp_mid, FlowStack.nil sp_mid,
-               PendingNode.pendingBlock sp_start sp_mid sp_scan' 0
-                 (fun sp_mid2 _h_node => sorry)
-                 (fun sp_mid2 _h_node => sorry), hcorr_result⟩
+        exact block_dispatch_deferred sp_start sp_mid sp_scan' s'
+          (h_close_pending sp_mid h_ssl) hcorr_result
     · obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _, _⟩ :=
         preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
-      exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
-             h_close_pending sp_mid h_ssl,
-             BlockStack.nil sp_mid, FlowStack.nil sp_mid,
-             PendingNode.pendingBlock sp_start sp_mid sp_scan' 0
-               (fun sp_mid2 _h_node => sorry)
-               (fun sp_mid2 _h_node => sorry), hcorr_result⟩
-  · sorry
+      exact block_dispatch_deferred sp_start sp_mid sp_scan' s'
+        (h_close_pending sp_mid h_ssl) hcorr_result
+  · obtain ⟨sp_mid, _, _, h_disj, _, _, _, _⟩ :=
+      preprocess_some_ssl_comments_anyCol sc sp_scan s_prep c h_corr h_preprocess
+    cases h_disj with
+    | inl h_ssl_col =>
+      exact block_dispatch_deferred sp_start sp_mid sp_scan' s'
+        (h_close_pending sp_mid h_ssl_col.1) hcorr_result
+    | inr h_mid_eq =>
+      subst h_mid_eq
+      exact block_dispatch_deferred sp_start sp_block_ctx sp_scan' s'
+        h_stream_fallback hcorr_result
 
 -- Helper: handles all PendingNode cases for block dispatch given stream at sp_block.
 theorem accum_block_pending (sc : ScannerState)
@@ -1903,29 +1915,29 @@ theorem accum_block_pending (sc : ScannerState)
   | pendingDocStart _
   | pendingDirective =>
     all_goals
-      exact accum_block_on_closeThenBlock sc sp_start sp_scan s_prep s' c sp_prep sp_scan'
-        h_close_pending hcorr_prep hcorr_result h_corr h_preprocess h_dispatch
+      exact accum_block_on_closeThenBlock sc sp_start sp_block sp_scan s_prep s' c sp_prep sp_scan'
+        h_close_pending h_stream_block hcorr_prep hcorr_result h_corr h_preprocess h_dispatch
   | pendingContent _
   | pendingFlow _ =>
     all_goals
-      exact accum_block_on_closeThenBlock sc sp_start sp_scan s_prep s' c sp_prep sp_scan'
-        h_close_pending hcorr_prep hcorr_result h_corr h_preprocess h_dispatch
+      exact accum_block_on_closeThenBlock sc sp_start sp_block sp_scan s_prep s' c sp_prep sp_scan'
+        h_close_pending h_stream_block hcorr_prep hcorr_result h_corr h_preprocess h_dispatch
   | pendingBlockContent =>
     rename_i n_old h_closable h_entry_old
     by_cases hn : n_old = 0
     · subst hn
-      exact accum_block_on_pendingBlockContent sc sp_start sp_block sp_scan s_prep s' c sp_prep
-        sp_scan' h_stream_block h_close_pending h_closable h_entry_old
+      exact accum_block_on_pendingBlockContent sc sp_start sp_block sp_block sp_scan s_prep s' c
+        sp_prep sp_scan' h_stream_block h_close_pending h_stream_block h_closable h_entry_old
         hcorr_prep hcorr_result h_corr h_preprocess h_dispatch
-    · sorry
+    · exact block_dispatch_deferred sp_start sp_block sp_scan' s' h_stream_block hcorr_result
   | pendingBlock =>
     rename_i n_old h_close_old h_close_entry_old
     by_cases hn : n_old = 0
     · subst hn
-      exact accum_block_on_pendingBlock sc sp_start sp_block sp_scan s_prep s' c sp_prep sp_scan'
-        h_stream_block h_close_pending h_close_old h_close_entry_old
+      exact accum_block_on_pendingBlock sc sp_start sp_block sp_block sp_scan s_prep s' c sp_prep
+        sp_scan' h_stream_block h_close_pending h_stream_block h_close_old h_close_entry_old
         hcorr_prep hcorr_result h_corr h_preprocess h_dispatch
-    · sorry
+    · exact block_dispatch_deferred sp_start sp_block sp_scan' s' h_stream_block hcorr_result
 
 theorem accum_step_block (sc : ScannerState)
     (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
@@ -2797,7 +2809,8 @@ theorem accum_content_pending (sc : ScannerState)
       exact accum_content_on_pendingBlock sc sp_start sp_block sp_scan s_prep s' c sp_prep sp_scan'
         h_stream_block h_close_old h_close_entry_old
         hcorr_prep hcorr_result h_corr h_preprocess h_not_doc h_dispatch
-    · sorry
+    · exact block_dispatch_deferred sp_start sp_block sp_scan' s'
+        h_stream_block hcorr_result
 
 theorem accum_step_content (sc : ScannerState)
     (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
@@ -3064,10 +3077,9 @@ theorem scan_content_gives_stream_v2
 
 /-! ## §6 Gap Analysis
 
-    Six sorry declarations remain in this file, structurally decomposed
-    across the dispatch path. The lagging quint (SLYamlStream + BlockStack +
-    FlowStack + PendingNode + ScannerSurfCorr) correctly models the
-    multi-token protocol.
+    Four sorry declarations remain in this file after Layer 4x consolidation.
+    The lagging quint (SLYamlStream + BlockStack + FlowStack + PendingNode +
+    ScannerSurfCorr) correctly models the multi-token protocol.
 
     **v0.4.9 Architecture: FlowStack (Layer 4h.1)**
 
