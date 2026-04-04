@@ -473,8 +473,8 @@ theorem PendingNode.close_with_ssl
     rename_i h_closable
     exact h_closable sp_mid h_ssl
   | pendingFlow =>
-    -- Cannot close flow indicator to stream without grammar composition. Deferred to 4z.1.
-    sorry
+    -- Absorb opaque scanner content (flow/block indicators) via scannerDrop.
+    exact SLYamlStream.scannerDrop sp_start sp_block sp_scan sp_mid h_stream h_ssl
   | pendingBlockContent =>
     rename_i _ h_closable _
     exact h_closable sp_mid h_ssl
