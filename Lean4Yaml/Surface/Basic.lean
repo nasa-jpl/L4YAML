@@ -205,7 +205,7 @@ the scanner/parser — the surface syntax just needs to recognize the shape. -/
     directive content includes spaces (e.g., `%YAML 1.2`, `%TAG !e! prefix`). -/
 inductive SLDirective : SurfPos → SurfPos → Prop where
   | mk (rest : List Char) (col : Nat) (s₁ s' : SurfPos) :
-      GPlus SNbChar ⟨rest, col + 1⟩ s₁ →
+      GStar SNbChar ⟨rest, col + 1⟩ s₁ →
       SSLComments s₁ s' →
       SLDirective ⟨'%' :: rest, col⟩ s'
 

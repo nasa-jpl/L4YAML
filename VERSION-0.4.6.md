@@ -2294,14 +2294,26 @@ Layer 4s: #6 (flow closures) + #7 (block closures) ── independent, hardest
 
 | # | Work | Status | Description |
 |---|---|---|---|
-| 4r.1 | `accum_structural_pending` directive case | not started | Wire `PendingNode.pendingDirective` with real closures |
-| 4r.2 | `accum_flow_pending` L1166 | not started | Same directive wiring |
-| 4r.3 | `accum_content_pending` L2190 | not started | Same directive wiring |
-| 4r.4 | col≠0 cases | deferred | All `by_cases hcol` branches — low impact, complex |
+| 4r.1 | `SLDirective` grammar fix | done | Changed `GPlus SNbChar` → `GStar SNbChar` to handle `%\n` (empty directive) |
+| 4r.2 | `structural_dispatch_to_pending` `h_dir_acc` | done | Real `GPlus SLDirective` via `scanDirective_prod` + `SLDirective.mk` + `GPlus.mk` |
+| 4r.3 | `accum_structural_pending` directive case | done | Close directive via `preprocess_some_ssl_comments_col0` + `h_closable_old` (col=0) |
+| 4r.4 | `accum_flow_pending` directive case | done | Same pattern: SSLComments → h_closable → stream → new_flow_state |
+| 4r.5 | `accum_content_pending` directive case | done | Same pattern: SSLComments → h_closable → stream → pendingContent |
+| 4r.6 | col≠0 cases | deferred | All `by_cases hcol` branches — low impact, complex |
 
 ###### Layer 4r accomplishments
 
+- `SLDirective.mk` (Basic.lean): Changed from `GPlus SNbChar` to `GStar SNbChar`. The `%\n` case (empty directive name) produces zero non-break chars after `%`, which is `GStar.nil`, not representable as `GPlus`. `SLDirective` is never pattern-matched downstream (only used in `GPlus SLDirective`), so this is safe.
+- `structural_dispatch_to_pending`: Added `hpeek : s_prep.peek? = some c` parameter. Both directive branches (inFlow and not-inFlow) now produce real `h_dir_acc` closures: `scanDirective_prod` → `SLDirective.mk` → `GPlus.mk`. The `h_closable` fields remain `sorry` (architecturally impossible: need `SLDirectiveDocument` which requires `---` not yet seen).
+- `dispatch_new_pending`: Cascaded `hpeek` parameter through to `structural_dispatch_to_pending`.
+- All three accum theorems (`accum_structural_pending`, `accum_flow_pending`, `accum_content_pending`): `pendingDirective` cases now have real proofs for col=0 using `preprocess_some_ssl_comments_col0` → `h_closable_old sp_mid h_ssl` → `SLYamlStream sp_start sp_mid`. The col≠0 branch is `sorry` (matches existing pattern for other pending cases).
+- Build: 415/415 jobs, 10 sorry warnings (unchanged — the same declarations contributed sorry both before and after).
+
 ###### Layer 4r reflections
+
+- **`rename_i` ordering**: In Lean 4, `rename_i` for `pendingDirective` names inaccessible variables in REVERSE constructor order: `h_stream, h_dir_acc, h_closable` (not `h_dir_acc, h_closable, h_stream`). Pattern naming like `| pendingDirective h1 h2 h3 =>` in `cases ... with` consumes index positions first (3 SurfPos), so only works with 6 names, not 3. Use `rename_i` with reversed order.
+- **GPlus.mk s₂ argument**: `GPlus.mk s₁ s₂ s₃ (h : P s₁ s₂) (tail : GStar P s₂ s₃)` — the s₂ must match where the first P element ENDS. `SLDirective.mk` ends at `sp_mid` (SSLComments endpoint), not `sp_dir` (GStar SNbChar endpoint). So `GPlus.mk _ sp_mid sp_mid (SLDirective.mk ...) (GStar.nil _)`.
+- **Sorry count unchanged but quality improved**: The `h_dir_acc` sorry sites in `structural_dispatch_to_pending` are replaced with real grammar constructions. The remaining sorry sites are `h_closable` (architecturally deferred) and col≠0 cases (consistent with all other pending cases).
 
 ###### Layer 4s: Flow + block accumulation closures (sorry #6 partial, #7)
 

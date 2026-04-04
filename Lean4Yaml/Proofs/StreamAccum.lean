@@ -855,10 +855,11 @@ theorem dispatchStructural_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
 -- Every `.ok (some _)` branch of `scanNextToken_dispatchStructural` requires
 -- `s.col = 0`, and the marker is either `SCDirectivesEnd` (for `---`) or
 -- `SCDocumentEnd` (for `...`). Directive (`%`) produces pendingDirective
--- with sorry for the accumulator (future: scanDirective_prod).
+-- with `h_dir_acc` closure from `scanDirective_prod`.
 theorem structural_dispatch_to_pending
     (s_prep s' : ScannerState) (c : Char) (sp_start sp : SurfPos)
     (hcorr : ScannerSurfCorr s_prep sp)
+    (hpeek : s_prep.peek? = some c)
     (h_stream : SLYamlStream sp_start sp)
     (h_dispatch : scanNextToken_dispatchStructural s_prep c = .ok (some s')) :
     ∃ sp', sp.col = 0 ∧ PendingNode sp_start sp sp' ∧ ScannerSurfCorr s' sp' := by
@@ -903,10 +904,20 @@ theorem structural_dispatch_to_pending
                   · rename_i s_dir h_dir_ok
                     have h := Except.ok.inj h_dispatch; injection h with h; subst h
                     have hcol : sp.col = 0 := by rw [hcorr.col_eq]; exact beq_iff_eq.mp h_dir.2
-                    obtain ⟨sp', hcorr'⟩ := scanDirective_corr s_prep sp hcorr s_dir h_dir_ok
-                    exact ⟨sp', hcol,
-                      PendingNode.pendingDirective sp_start sp sp' sorry sorry h_stream,
-                      hcorr'⟩
+                    have hpeek_pct : s_prep.peek? = some '%' := by
+                      rw [show c = '%' from beq_iff_eq.mp h_dir.1] at hpeek; exact hpeek
+                    obtain ⟨rest, sp_dir, hchars, hgstar, hcorr_dir⟩ :=
+                      scanDirective_prod s_prep sp hcorr hpeek_pct s_dir h_dir_ok
+                    refine ⟨sp_dir, hcol,
+                      PendingNode.pendingDirective sp_start sp sp_dir
+                        (fun sp_mid hssl => ?_)
+                        sorry
+                        h_stream,
+                      hcorr_dir⟩
+                    obtain ⟨sp_chars, sp_col⟩ := sp
+                    subst hchars
+                    exact GPlus.mk _ sp_mid sp_mid
+                      (SLDirective.mk rest sp_col sp_dir sp_mid hgstar hssl) (GStar.nil _)
                 · rw [if_neg h_dir] at h_dispatch
                   simp at h_dispatch
       · split at h_dispatch
@@ -935,10 +946,20 @@ theorem structural_dispatch_to_pending
                 · rename_i s_dir h_dir_ok
                   have h := Except.ok.inj h_dispatch; injection h with h; subst h
                   have hcol : sp.col = 0 := by rw [hcorr.col_eq]; exact beq_iff_eq.mp h_dir.2
-                  obtain ⟨sp', hcorr'⟩ := scanDirective_corr s_prep sp hcorr s_dir h_dir_ok
-                  exact ⟨sp', hcol,
-                    PendingNode.pendingDirective sp_start sp sp' sorry sorry h_stream,
-                    hcorr'⟩
+                  have hpeek_pct : s_prep.peek? = some '%' := by
+                    rw [show c = '%' from beq_iff_eq.mp h_dir.1] at hpeek; exact hpeek
+                  obtain ⟨rest, sp_dir, hchars, hgstar, hcorr_dir⟩ :=
+                    scanDirective_prod s_prep sp hcorr hpeek_pct s_dir h_dir_ok
+                  refine ⟨sp_dir, hcol,
+                    PendingNode.pendingDirective sp_start sp sp_dir
+                      (fun sp_mid hssl => ?_)
+                      sorry
+                      h_stream,
+                    hcorr_dir⟩
+                  obtain ⟨sp_chars, sp_col⟩ := sp
+                  subst hchars
+                  exact GPlus.mk _ sp_mid sp_mid
+                    (SLDirective.mk rest sp_col sp_dir sp_mid hgstar hssl) (GStar.nil _)
               · rw [if_neg h_dir] at h_dispatch
                 simp at h_dispatch
     -- Proof of doc_end_tac
@@ -1012,6 +1033,7 @@ theorem dispatch_new_pending
     (hws : GStar SSWhite sp_mid sp_ws)
     (hcmt : GOpt SCNbCommentText sp_ws sp_gap)
     (h_stream_mid : SLYamlStream sp_start sp_mid)
+    (hpeek : s_prep.peek? = some c)
     (h_dispatch : scanNextToken_dispatchStructural s_prep c = .ok (some s')) :
     PendingNode sp_start sp_mid sp_scan' := by
   have h_gap_eq : sp_gap = sp_prep := ScannerSurfCorr_unique hcorr_gap hcorr_prep
@@ -1029,7 +1051,7 @@ theorem dispatch_new_pending
       exfalso; have := scnb_comment_col_gt sp_ws sp_gap hc; omega
   have h_stream_prep : SLYamlStream sp_start sp_prep := h_mid_prep ▸ h_stream_mid
   obtain ⟨sp_disp, _, h_pending_new, hcorr_disp⟩ :=
-    structural_dispatch_to_pending s_prep s' c sp_start sp_prep hcorr_prep h_stream_prep h_dispatch
+    structural_dispatch_to_pending s_prep s' c sp_start sp_prep hcorr_prep hpeek h_stream_prep h_dispatch
   have h_disp_eq : sp_disp = sp_scan' := ScannerSurfCorr_unique hcorr_disp hcorr_result
   rw [← h_mid_prep, h_disp_eq] at h_pending_new
   exact h_pending_new
@@ -1054,6 +1076,7 @@ theorem accum_structural_pending (sc : ScannerState)
     scanNextToken_preprocess_corr sc sp_scan h_corr s_prep c h_preprocess
   obtain ⟨sp_scan', hcorr_result⟩ :=
     dispatchStructural_corr s_prep sp_prep c hcorr_prep h_dispatch
+  have hpeek : s_prep.peek? = some c := preprocess_some_peek h_preprocess
   -- Capture closing strategy before case-split (Pattern 6: parametric closing)
   have h_close_pending : ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid :=
     fun sp_mid h_ssl => h_pending.close_with_ssl h_stream_block h_ssl
@@ -1067,12 +1090,22 @@ theorem accum_structural_pending (sc : ScannerState)
       exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', h_stream_mid, BlockStack.nil sp_mid,
              FlowStack.nil sp_mid,
              dispatch_new_pending s_prep s' c sp_start sp_mid sp_ws sp_gap sp_prep sp_scan'
-               hcorr_prep hcorr_gap hcorr_result hcol_mid hws hcmt h_stream_mid h_dispatch,
+               hcorr_prep hcorr_gap hcorr_result hcol_mid hws hcmt h_stream_mid hpeek h_dispatch,
              hcorr_result⟩
     · sorry
   | pendingDirective =>
-    rename_i h_dir_acc_old _ h_stream_old
-    sorry
+    rename_i h_stream_old h_dir_acc_old h_closable_old
+    -- Directive continuation: close old directive via SSLComments, then dispatch.
+    by_cases hcol : sp_scan.col = 0
+    · obtain ⟨sp_mid, sp_ws, sp_gap, h_ssl, hcol_mid, hws, hcmt, hcorr_gap, _⟩ :=
+        preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
+      have h_stream_mid : SLYamlStream sp_start sp_mid := h_closable_old sp_mid h_ssl
+      exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', h_stream_mid,
+             BlockStack.nil sp_mid, FlowStack.nil sp_mid,
+             dispatch_new_pending s_prep s' c sp_start sp_mid sp_ws sp_gap sp_prep sp_scan'
+               hcorr_prep hcorr_gap hcorr_result hcol_mid hws hcmt h_stream_mid hpeek h_dispatch,
+             hcorr_result⟩
+    · sorry
   -- Transition cases: close old pending via Pattern 6 (parametric closing).
   -- All non-noPending, non-directive constructors share the same col=0 pattern:
   -- extract SSLComments → close pending to stream → dispatch_new_pending.
@@ -1092,7 +1125,7 @@ theorem accum_structural_pending (sc : ScannerState)
                FlowStack.nil sp_mid,
                dispatch_new_pending s_prep s' c sp_start sp_mid sp_ws sp_gap sp_prep sp_scan'
                  hcorr_prep hcorr_gap hcorr_result hcol_mid hws hcmt
-                 (h_close_pending sp_mid h_ssl) h_dispatch,
+                 (h_close_pending sp_mid h_ssl) hpeek h_dispatch,
                hcorr_result⟩
       · sorry)
 
@@ -1225,8 +1258,16 @@ theorem accum_flow_pending (sc : ScannerState)
     exact ⟨sp_block, sp_block, sp_flow', sp_scan', h_stream_block,
            BlockStack.nil sp_block, h_flow', h_pend', hcorr_result⟩
   | pendingDirective =>
-    rename_i h_dir_acc_old _ h_stream_old
-    sorry
+    rename_i h_stream_old h_dir_acc_old h_closable_old
+    -- Directive continuation: close old directive via SSLComments, then flow state.
+    by_cases hcol : sp_scan.col = 0
+    · obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _, _⟩ :=
+        preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
+      have h_stream_mid : SLYamlStream sp_start sp_mid := h_closable_old sp_mid h_ssl
+      obtain ⟨sp_flow', h_flow', h_pend'⟩ := new_flow_state sp_mid h_stream_mid
+      exact ⟨sp_mid, sp_mid, sp_flow', sp_scan', h_stream_mid,
+             BlockStack.nil sp_mid, h_flow', h_pend', hcorr_result⟩
+    · sorry
   -- Transition cases: close old pending via Pattern 6, then apply new_flow_state.
   | pendingDocEnd _
   | pendingDocStart _
@@ -2472,8 +2513,18 @@ theorem accum_content_pending (sc : ScannerState)
     exact accum_content_on_noPending sc sp_start sp_block s_prep s' c sp_prep sp_scan'
       h_stream_block hcorr_prep hcorr_result h_corr h_preprocess h_not_doc h_dispatch
   | pendingDirective =>
-    rename_i h_dir_acc_old _ h_stream_old
-    sorry
+    rename_i h_stream_old h_dir_acc_old h_closable_old
+    -- Directive continuation: close old directive via SSLComments.
+    by_cases hcol : sp_scan.col = 0
+    · obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _, _⟩ :=
+        preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
+      have h_stream_mid : SLYamlStream sp_start sp_mid := h_closable_old sp_mid h_ssl
+      exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', h_stream_mid,
+             BlockStack.nil sp_mid, FlowStack.nil sp_mid,
+             PendingNode.pendingContent sp_start sp_mid sp_scan'
+               (fun sp_final h_ssl => sorry),
+             hcorr_result⟩
+    · sorry
   | pendingDocEnd _
   | pendingDocStart _
   | pendingContent _
