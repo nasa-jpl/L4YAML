@@ -147,6 +147,15 @@ inductive SLYamlStream : SurfPos → SurfPos → Prop where
       GOpt SLAnyDocument s₂ s₃ →
       GStar SLDocumentSuffix s₃ s' →
       SLYamlStream s s'
+  /-- Directive absorption: previous stream + orphaned directives.
+      Accommodates lenient scanners that process `%YAML`/`%TAG` directives
+      without a following `c-directives-end` (`---`). The directives are
+      absorbed into the stream without forming a document.
+      This is a grammar over-approximation not in the YAML spec. -/
+  | directiveDrop (s s₁ s' : SurfPos) :
+      SLYamlStream s s₁ →
+      GPlus SLDirective s₁ s' →
+      SLYamlStream s s'
 
 /-! ## Top-Level Predicate -/
 
