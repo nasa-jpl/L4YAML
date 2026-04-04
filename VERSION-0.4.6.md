@@ -2172,7 +2172,7 @@ Closed both sorry sites for multi-line plain scalar continuation lines: the bloc
 ```
 Layer 4m: #1, #2 (unreachable comment) ─── DONE, -2 warnings (9→7)
 Layer 4n: #8 (h_not_doc) ──────────────── DONE, -1 warning (7→6)
-Layer 4o: Wadler-style constructor decomposition ── refactor, no sorry change
+Layer 4o: Wadler-style constructor decomposition ── DONE, refactor (6→11 warnings cosmetic)
 Layer 4p: #3 (scanDirective_prod) ─────── new theorem, high effort
 Layer 4q: #4 (dispatch_new_pending) ───── depends on 4p, -1 warning
 Layer 4r: #5, #6 partial, #9 partial ─── depends on 4p (directive cases)
@@ -2210,11 +2210,28 @@ Layer 4s: #6 (flow closures) + #7 (block closures) ── independent, hardest
 
 | # | Work | Status | Description |
 |---|---|---|---|
-| 4o.1 | `accum_block_on_noPending` | not started | Fresh block entry at col=0 with `-` (largest case, ~120 lines) |
-| 4o.2 | `accum_block_on_pendingBlockContent` | not started | Entry accumulation via `h_entry_old` (~80 lines) |
-| 4o.3 | `accum_block_on_pendingBlock` | not started | Entry accumulation via `h_close_entry_old` (~80 lines) |
-| 4o.4 | `accum_content_on_noPending` | not started | Fresh content dispatch with grammar evidence (~80 lines) |
-| 4o.5 | `accum_content_on_pendingBlock` | not started | Content inside block entry composition (~60 lines) |
+| 4o.1 | `accum_block_on_noPending` | DONE | Fresh block entry at col=0 with `-` (~120 lines) |
+| 4o.2 | `accum_block_on_closeThenBlock` | DONE | Close old pending + new block (shared by pendingContent/pendingFlow, ~100 lines) |
+| 4o.3 | `accum_block_on_pendingBlockContent` | DONE | Entry accumulation via `h_entry_old` (~80 lines) |
+| 4o.4 | `accum_block_on_pendingBlock` | DONE | Entry accumulation via `h_close_entry_old` (~80 lines) |
+| 4o.5 | `accum_content_on_noPending` | DONE | Fresh content dispatch with grammar evidence (~80 lines) |
+| 4o.6 | `accum_content_on_pendingBlock` | DONE | Content inside block entry composition (~60 lines) |
+
+###### ** Layer 4o accomplishments **
+
+- Extracted 6 standalone per-constructor theorems from `accum_block_pending` (4) and `accum_content_pending` (2)
+- `accum_block_pending` reduced from ~400 lines to ~40-line thin dispatcher
+- `accum_content_pending` reduced from ~180 lines to ~30-line thin dispatcher
+- Pure refactoring: no new sorry sites, no sorry sites removed
+- Warning count increased 6→11 because sorry sites now live in standalone theorems (each counts as separate warning) rather than being aggregated inside a single parent theorem
+- Fixed `SBlockSeqEntries` arity bug in extracted theorem signatures (3 args: n, start, end)
+
+###### ** Layer 4o reflections **
+
+- The Wadler-style decomposition pattern works well: preamble (corr extraction + `h_close_pending`) stays in the main theorem, per-constructor complexity goes to private helpers
+- `accum_block_on_closeThenBlock` cleanly shares code between `pendingContent` and `pendingFlow` via `h_close_pending` abstraction — both constructors route to the same helper since their close-then-reopen logic is identical
+- Warning count inflation is cosmetic: the actual sorry SITES are unchanged. Once Layer 4s closes the block/flow closures, the extracted theorems become sorry-free and warnings drop
+- Key insight for future layers: each extracted theorem is now independently provable. Layers 4p–4s can target specific helper theorems without touching the dispatcher
 
 ###### Layer 4p: Directive evidence — `scanDirective_prod` (sorry #3)
 
