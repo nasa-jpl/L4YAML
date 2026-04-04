@@ -2624,7 +2624,47 @@ Files: StreamAccum.lean (PendingNode, close_with_ssl, structural_dispatch_to_pen
 
 **4y.2: Accomplishments**
 
+Removed `h_closable` field from `PendingNode.pendingDirective`. This field (`∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid`) was unprovable at construction time because `SLDirectiveDocument` requires `SCDirectivesEnd` (`---`) which has not yet been scanned when a directive is first encountered.
+
+**Changes (1 file, StreamAccum.lean):**
+
+- **PendingNode.pendingDirective** (L113–127): Removed `h_closable` field. Constructor now has 3 non-index fields: `h_dir_acc`, `h_stream`, `h_at_line_end`. Updated docstring.
+
+- **structural_dispatch_to_pending** (L948, L991): Removed 2 `sorry` terms. The `pendingDirective` construction no longer needs `h_closable`, so the unprovable field is simply gone.
+
+- **close_with_ssl** (L529): `pendingDirective` case → `sorry`. Cannot close directives to stream without `SCDirectivesEnd`; deferred to 4z.2.
+
+- **accum_structural_pending** (L1155–1190): Updated `@pendingDirective` pattern (4→3 non-index bindings). Replaced `h_closable_old sp_mid h_ssl` with `sorry` in both col=0 and col≠0 branches. The sorry was transitively present before (via h_closable from structural_dispatch_to_pending's sorry), but is now explicit.
+
+- **accum_flow_pending** (L1363–1380): Same pattern update. Replaced `h_closable_old sp_mid h_ssl` with `sorry` in both col=0 and col≠0/inl branches. The `inr` (no-break) branch remains `exfalso` from 4y.1.
+
+- **accum_content_pending** (L2827–2860): Same pattern update and sorry replacement in both branches.
+
+- **accum_block_pending** (L2018): No changes needed — uses simple `| pendingDirective =>` pattern (no field bindings) and delegates to `accum_block_on_closeThenBlock` via `h_close_pending`, which calls `close_with_ssl` opaquely.
+
+**Build:** 415/415 jobs, 0 errors. 5 sorry warnings (was 4): `structural_dispatch_to_pending` warning removed (−1), `close_with_ssl` warning added (+1), `accum_structural_pending` warning added (+1). Sorry terms: 2 removed from construction, 7 added at consumption sites (1 in close_with_ssl, 2 each in accum_structural/flow/content_pending). Net +5 terms but architecturally correct — sorry moved from impossible-to-prove construction sites to consumption sites that genuinely require `SCDirectivesEnd`.
+
 **4y.2: Reflections**
+
+**1. Construction-site sorry vs consumption-site sorry: architectural significance.**
+
+Before: `h_closable` was a sorry field in the `pendingDirective` CONSTRUCTOR (built in `structural_dispatch_to_pending`). The sorry flowed transitively through all consumption sites, making them appear proven while actually depending on sorry. After: the constructor is sorry-free, and consumption sites have EXPLICIT sorry where the proof obligation genuinely exists (closing directives to stream requires `---`). This makes the sorry locations architecturally honest — they mark the actual proof gap, not an inherited one.
+
+**2. Warning count increased but sorry is better localized.**
+
+4→5 warnings (+1) because `close_with_ssl` and `accum_structural_pending` gained explicit sorry. Previously these had transitive sorry via `h_closable` from `structural_dispatch_to_pending`, which didn't generate warnings in those callers (Lean 4 only warns at declarations with direct `sorry` terms, not transitive users of sorry theorems). The +5 sorry terms are the cost of making the proof gap visible at every consumption site.
+
+**3. The plan's claim about flow/content/block being "contradictory" was imprecise.**
+
+The plan stated: "pendingDirective + flow/content/block: contradictory after 4y.1." This is true ONLY for the `inr` (no-break) sub-case — which was already proved contradictory in 4y.1 via `h_at_line_end`. The `inl` (break consumed, SSLComments available) sub-case is genuinely reachable: after `%YAML 1.2\nhello`, content dispatch handles `hello` with SSLComments available. The `inl` branch still needs `h_closable`-equivalent functionality to close the directive, which requires `sorry` after the field removal.
+
+**4. `accum_block_pending` required no changes.**
+
+The `| pendingDirective =>` simple pattern (no `@`, no field bindings) works with any constructor arity. The body delegates to `accum_block_on_closeThenBlock` via `h_close_pending`, which calls `close_with_ssl` — an opaque theorem. Adding sorry to `close_with_ssl`'s `pendingDirective` case doesn't affect `accum_block_pending`'s proof term or warning status, because Lean 4 treats theorem references as opaque.
+
+**5. Deferred to 4z.2: directive closing without `---`.**
+
+All consumption-site sorry share one root cause: closing `GPlus SLDirective sp_block sp_mid` + `SLYamlStream sp_start sp_block` into `SLYamlStream sp_start sp_mid` requires `SLDirectiveDocument`, which requires `SCDirectivesEnd` (not available at closing time). Two resolution paths remain: (a) scanner error for directive-without-`---` making EOF+content+flow+block after directive unreachable, or (b) grammar production for bare-directive absorption (`SLYamlStream` extended to accept trailing directives). The `pendingDirective + ---` transition was NOT affected — it correctly produces `pendingDocStart` with directive-aware `h_doc_builder` via `dispatch_new_pending → structural_dispatch_to_pending`.
 
 **4y.3: FlowStack partial evidence (−2 sorry, risk of new sorry in absorb_stacks)**
 
