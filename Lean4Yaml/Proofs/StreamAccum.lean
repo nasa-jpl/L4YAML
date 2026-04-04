@@ -124,12 +124,11 @@ inductive PendingNode : SurfPos → SurfPos → SurfPos → Prop where
       (h_at_line_end : sp_scan.chars = [] ∨
         ∃ ch rest', sp_scan.chars = ch :: rest' ∧ isLineBreakBool ch = true) :
       PendingNode sp_start sp_block sp_scan
-  /-- Flow indicator scanned (`[`, `]`, `{`, `}`, `,`).
-      Multi-token flow collection production (future work). -/
+  /-- Flow indicator scanned (`]`, `}`, `,`), or deferred block dispatch.
+      Carries stream at block level. Closing requires grammar composition
+      (flow collection + SSLComments) — deferred to consumption site. -/
   | pendingFlow (sp_start sp_block sp_scan : SurfPos)
-      (h_closable : ∀ sp_mid,
-        SSLComments sp_scan sp_mid →
-        SLYamlStream sp_start sp_mid) :
+      (h_stream : SLYamlStream sp_start sp_block) :
       PendingNode sp_start sp_block sp_scan
   /-- Content token scanned INSIDE a block entry (e.g., `- "hello"`).
       Like `pendingContent`, but additionally carries entry-level evidence
@@ -501,8 +500,8 @@ theorem PendingNode.close_with_ssl
     rename_i h_closable
     exact h_closable sp_mid h_ssl
   | pendingFlow =>
-    rename_i h_closable
-    exact h_closable sp_mid h_ssl
+    -- Cannot close flow indicator to stream without grammar composition. Deferred to 4z.1.
+    sorry
   | pendingBlockContent =>
     rename_i _ h_closable _
     exact h_closable sp_mid h_ssl
@@ -1412,8 +1411,7 @@ theorem accum_flow_pending (sc : ScannerState)
                PendingNode.noPending sp_start sp_scan'⟩
       · exact ⟨sp_mid,
                FlowStack.nil sp_mid,
-               PendingNode.pendingFlow sp_start sp_mid sp_scan'
-                 (fun sp_mid2 h_ssl => sorry)⟩
+               PendingNode.pendingFlow sp_start sp_mid sp_scan' h_str_mid⟩
   -- Capture closing strategy before case-split (Pattern 6: parametric closing)
   have h_close_pending : ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid :=
     fun sp_mid h_ssl => h_pending.close_with_ssl h_stream_block h_ssl
@@ -1536,7 +1534,10 @@ theorem accum_flow_pending (sc : ScannerState)
                  h_stream_mid,
                  BlockStack.nil sp_mid, h_flow', h_pend', hcorr_result⟩
         | inr h_mid_eq =>
-          sorry) -- no break consumed: pending still open
+          exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
+                 BlockStack.nil sp_block, FlowStack.nil sp_block,
+                 PendingNode.pendingFlow sp_start sp_block sp_scan' h_stream_block,
+                 hcorr_result⟩)
 
 theorem accum_step_flow (sc : ScannerState)
     (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
@@ -1655,8 +1656,8 @@ theorem dispatchBlockEntry_full_prod (sc : ScannerState) (sp : SurfPos)
     shared preamble (corr extraction + `h_close_pending`). Non-proven
     branches (cons/c≠'-'/col≠0/n≠0) delegate to `block_dispatch_deferred`. -/
 
--- Deferred sorry: constructs block PendingNode with sorry closures.
--- Concentrates all block-dispatch catch-all sorry into one declaration.
+-- Deferred sorry: constructs pendingFlow with stream evidence.
+-- Concentrates all block-dispatch catch-all sorry into close_with_ssl.
 -- Called for: whitespace-before-dash (cons), non-dash indicators (c≠'-'),
 -- col≠0 no-break, and n≠0 pending cases.
 theorem block_dispatch_deferred
@@ -1671,8 +1672,7 @@ theorem block_dispatch_deferred
       ScannerSurfCorr s' sp_scan' :=
   ⟨sp_X, sp_X, sp_X, sp_scan', h_stream,
    BlockStack.nil sp_X, FlowStack.nil sp_X,
-   PendingNode.pendingBlock sp_start sp_X sp_scan' 0
-     (fun _ _ => sorry) (fun _ _ => sorry),
+   PendingNode.pendingFlow sp_start sp_X sp_scan' h_stream,
    hcorr⟩
 
 -- Block dispatch with noPending: fresh block entry.
@@ -3027,7 +3027,7 @@ theorem accum_content_pending (sc : ScannerState)
             h_stream_mid h_sep hcorr_prep hcorr_result h_not_doc
             (preprocess_some_peek h_preprocess) h_dispatch
         | inr h_mid_eq =>
-          sorry) -- no break consumed: pending still open
+          exact block_dispatch_deferred sp_start sp_block sp_scan' s' h_stream_block hcorr_result)
   | pendingBlock =>
     rename_i n_old h_close_old h_close_entry_old
     by_cases hn : n_old = 0
