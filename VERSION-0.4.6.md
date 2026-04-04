@@ -2400,7 +2400,7 @@ h_closable_directive: permanently deferred (2 sites)
 |-------|-------|-------------|----------|
 | 4t | routing consolidation + analysis | −1 warning (DONE)| `accum_block_pending` sorry-free via closeThenBlock routing (DONE) |
 | 4u | PendingNode generalization | ~16 | Generalize pendingBlock to n>0 + SBlockMapEntries (DONE) |
-| 4v | content h_closable extraction | ~3 | Reusable helper from accum_content_on_noPending |
+| 4v | content h_closable extraction | ~3 | Reusable helper from accum_content_on_noPending (DONE)|
 | 4w | col≠0 preprocessing | ~13 | General SSLComments or BOM unreachability |
 | 4x | flow grammar accumulation | ~2 | SFlowSequence/SFlowMapping infrastructure |
 
@@ -2477,7 +2477,29 @@ h_closable_directive: permanently deferred (2 sites)
 
 ###### Layer 4w accomplishments
 
+1. **`accum_content_on_noPending` col≠0 eliminated.** Replaced `preprocess_some_separate_lines_0` (col=0 only) with `preprocess_some_separate_0_anyCol` (any column). The proof body is identical — `SSeparateLines 0` inline constructor has no column requirement. Declaration now sorry-free.
+
+2. **`accum_structural_pending` col≠0 fully eliminated (3 sites).** For `noPending`, `pendingDirective`, and grouped cases: used `preprocess_some_ssl_comments_anyCol` to get SSLComments disjunction. Left disjunct (SSLComments available) follows the col=0 pattern exactly. Right disjunct (no break consumed, `sp_mid = sp`) proved contradictory via column monotonicity: `dispatchStructural_col0` forces `sp_prep.col = 0`, but `gstar_sswhite_col_ge` + `scnb_comment_col_gt` show `sp_prep.col ≥ sp_scan.col ≥ 1` when there's no break. Declaration now sorry-free. Warning count 10→8.
+
+3. **`accum_content_pending` col≠0 narrowed (2 sites).** `pendingDirective` and grouped cases now handle the left disjunct of `anyCol` (SSLComments available → close old pending → `content_dispatch_after_close`). Only the right disjunct (`sp_mid = sp`, no break consumed) remains as sorry. This narrows the remaining sorry from "entire col≠0 case" to "no-break sub-case only."
+
+4. **`accum_flow_pending` col≠0 narrowed (2 sites).** Same pattern: left disjunct handled (SSLComments → close pending → `new_flow_state`), right disjunct remains sorry.
+
+5. **Key monotonicity lemma pattern.** Three existing lemmas compose to prove the right-disjunct contradiction for structural: `gstar_sswhite_col_ge` (whites preserve col), `scnb_comment_col_gt` (comments strictly increase col), `dispatchStructural_col0` (structural dispatch requires col=0). Used `rw` instead of `subst` to avoid scoping issues with `all_goals` blocks.
+
+6. **Build: 415/415, 8 sorry warnings** (down from 10).
+
 ###### Layer 4w reflections
+
+1. **`subst` vs `rw` inside `all_goals`.** `subst h_eq` failed inside `all_goals` blocks when the equality target (`sp_scan`) had complex dependencies across multiple constructor goals. Switching to `rw [h_eq] at hws` avoided the issue because `rw` doesn't eliminate the variable from scope.
+
+2. **GOpt pattern matching in `cases`.** `cases hcmt with | some h_c => ...` failed with "Unknown identifier `h_c`" for `GOpt.some a b h` constructor. Fixed by using `cases hcmt <;> (first | omega | (rename_i h_c; ...))` pattern, which lets `rename_i` correctly bind the proof field after `cases` introduces unnamed hypotheses.
+
+3. **Content/flow col≠0 "no break" sub-case is the fundamental blocker.** When `sp_mid = sp` (no break consumed), the old pending's closable requires `SSLComments` which can't be constructed without a break. This isn't a simple contradiction — flow/content dispatch can succeed at col > 0. The approach would require either: (a) proving the scenario unreachable under specific pending types, (b) building a "combined pending" that defers old closure, or (c) showing that all pending types with col≠0 must have SSLComments available.
+
+4. **Structural dispatch's col=0 guarantee is the key differentiator.** `dispatchStructural_col0` proves ALL successful structural dispatches require `s.col = 0`. This property doesn't hold for flow/content dispatch (flow indicators like `[`, `{` can appear mid-line). This is why structural col≠0 is provably contradictory while flow/content is not.
+
+5. **`preprocess_some_separate_0_anyCol` is more general than `preprocess_some_separate_lines_0`.** The anyCol version subsumes the col=0 version entirely — both return `SSeparateLines 0` and `ScannerSurfCorr`. The col=0 version could be replaced by anyCol everywhere, but minimizing churn was preferred.
 
 ###### Layer 4x accomplishments
 
