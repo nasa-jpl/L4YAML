@@ -1811,30 +1811,11 @@ theorem accum_block_pending (sc : ScannerState)
     exact accum_block_on_noPending sc sp_start sp_block s_prep s' c sp_prep sp_scan'
       h_stream_block hcorr_prep hcorr_result h_corr h_preprocess h_dispatch
   | pendingDocEnd _
-  | pendingDocStart _ =>
-    all_goals (
-      by_cases hcol : sp_scan.col = 0
-      · obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _, _⟩ :=
-          preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
-        exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
-               h_close_pending sp_mid h_ssl,
-               BlockStack.nil sp_mid, FlowStack.nil sp_mid,
-               PendingNode.pendingBlock sp_start sp_mid sp_scan'
-                 (fun sp_mid2 _h_node => sorry)
-                 (fun sp_mid2 _h_node => sorry), hcorr_result⟩
-      · sorry)
+  | pendingDocStart _
   | pendingDirective =>
-    rename_i h_dir_acc_old _ h_stream_old
-    by_cases hcol : sp_scan.col = 0
-    · obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _, _⟩ :=
-        preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
-      exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
-             h_close_pending sp_mid h_ssl,
-             BlockStack.nil sp_mid, FlowStack.nil sp_mid,
-             PendingNode.pendingBlock sp_start sp_mid sp_scan'
-               (fun sp_mid2 _h_node => sorry)
-               (fun sp_mid2 _h_node => sorry), hcorr_result⟩
-    · sorry
+    all_goals
+      exact accum_block_on_closeThenBlock sc sp_start sp_scan s_prep s' c sp_prep sp_scan'
+        h_close_pending hcorr_prep hcorr_result h_corr h_preprocess h_dispatch
   | pendingContent _
   | pendingFlow _ =>
     all_goals

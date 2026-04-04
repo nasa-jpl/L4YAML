@@ -2352,7 +2352,7 @@ Layer 4s: #6 (flow closures) + #7 (block closures) ── independent, hardest
    - **content_close** (4 sites, L2524/2526/2540/2541): `fun sp_final h_ssl => sorry`
    - **h_closable** (2 sites, L914/956): `SLDirectiveDocument` — architecturally requires `---` not yet seen
 
-###### Layer 4t: Planning
+###### Planning
 
 **Goal:** Close remaining sorry sites systematically. 42 non-comment sorry terms remain, in 6 categories across 10 sorry-using declarations.
 
@@ -2369,21 +2369,25 @@ Layer 4s: #6 (flow closures) + #7 (block closures) ── independent, hardest
 
 **Dependency analysis:**
 ```
-4t (block_close h_close/h_entry in cons/c≠'-' branches)
- ├── Needs: SIndent at col>0, SBlockMapEntries for ?/:
- └── Unblocks: 16 sorry sites (8 from cons, 8 from c≠'-')
+4t (routing consolidation) ── DONE (accum_block_pending sorry-free)
 
-4u (content_close)
+4u (PendingNode generalization)
+ ├── Needs: generalize pendingBlock from SBlockSeqEntries 0 to SBlockSeqEntries n / SBlockMapEntries n
+ ├── Needs: SIndent n for n > 0
+ ├── Needs: SBlockMapEntries infrastructure (type + snoc lemma)
+ └── Unblocks: ~16 sorry sites (8 cons + 8 c≠'-')
+
+4v (content_close)
  ├── Needs: extract content evidence pattern as reusable helper
  ├── Needs: preprocess_some_separate_lines_0 at sp_mid (after old-pending close)
  └── Unblocks: 3 sorry sites
 
-4v (col≠0)
+4w (col≠0)
  ├── Needs: general SSLComments construction at arbitrary column
  ├── May partially require proving BOM+bare-break unreachability
  └── Unblocks: 13 sorry sites
 
-4w (flow_close)
+4x (flow_close)
  ├── Needs: SFlowSequence/SFlowMapping grammar evidence (multi-token)
  └── Unblocks: 2 sorry sites
 
@@ -2394,11 +2398,49 @@ h_closable_directive: permanently deferred (2 sites)
 
 | Layer | Focus | Sites closed | Approach |
 |-------|-------|-------------|----------|
-| 4t | block entry closures (cons + c≠'-') | ~16 | SIndent at col>0, SBlockMapEntries snoc |
-| 4u | content h_closable extraction | ~3 | Reusable helper from accum_content_on_noPending |
-| 4v | col≠0 preprocessing | ~13 | General SSLComments or BOM unreachability |
-| 4w | flow grammar accumulation | ~2 | SFlowSequence/SFlowMapping infrastructure |
+| 4t | routing consolidation + analysis | −1 warning | `accum_block_pending` sorry-free via closeThenBlock routing |
+| 4u | PendingNode generalization | ~16 | Generalize pendingBlock to n>0 + SBlockMapEntries |
+| 4v | content h_closable extraction | ~3 | Reusable helper from accum_content_on_noPending |
+| 4w | col≠0 preprocessing | ~13 | General SSLComments or BOM unreachability |
+| 4x | flow grammar accumulation | ~2 | SFlowSequence/SFlowMapping infrastructure |
 
 ###### Layer 4t accomplishments
 
+- **`accum_block_pending` made sorry-free** — routed `pendingDocEnd`/`pendingDocStart`/`pendingDirective` through `accum_block_on_closeThenBlock` instead of inline sorry. These 3 constructors follow the exact same "close old pending + open new block" pattern as `pendingContent`/`pendingFlow` (already delegated). Warning count 10→9.
+- **Deep analysis of all remaining block sorry sites (30+ sorry terms across 4 block theorems).** Categorized into:
+  - **Category A** (`| cons =>`, ws-before-dash): 8 sorry (4 pairs h_close/h_close_entry). Requires `SIndent n` for `n > 0` but `PendingNode.pendingBlock` hardcodes `SBlockSeqEntries 0`.
+  - **Category B** (`c ≠ '-'`): 8 sorry. Requires `SBlockMapEntries` for `?`/`:` indicators but `PendingNode.pendingBlock.h_close_entry` returns `SBlockSeqEntries 0`.
+  - **Category C** (`col ≠ 0`): 7 sorry. BOM edge case — needs `SSLComments` construction at col>0 with `SSeparateInLine` = `GPlus SSWhite`.
+  - **Category D** (inline doc/directive at col=0): Routed through closeThenBlock (see above).
+- **Cross-dispatcher check**: Examined `accum_structural_pending`, `accum_flow_pending`, `accum_content_pending` for similar routing opportunities — none found (their sorry are col≠0 or flow_close/content_close categories with no shared helper pattern).
+- **Build:** 415/415 jobs, 0 errors, **9 sorry warnings** (down from 10).
+
 ###### Layer 4t reflections
+
+1. **Routing improvement was clean and immediate.** All 3 routed constructors (`pendingDocEnd`/`pendingDocStart`/`pendingDirective`) match `accum_block_on_closeThenBlock`'s `h_close_pending` parameter exactly — `PendingNode.close_with_ssl` handles all 8 pending constructors uniformly. No type gymnastics needed.
+
+2. **The original 4t plan (SIndent at col>0, SBlockMapEntries snoc — ~16 sorry) is architecturally blocked.** The fundamental issue is `PendingNode.pendingBlock` carrying `SBlockSeqEntries 0` (sequences at indent 0). This hardcoding blocks both col>0 sequences (need `SBlockSeqEntries n`) and mapping indicators (need `SBlockMapEntries`). Fixing this requires: (a) generalizing `PendingNode.pendingBlock` to carry either `SBlockSeqEntries n` or `SBlockMapEntries n` for arbitrary `n`, (b) cascading changes through all construction/consumption sites, (c) `SIndent n` evidence for `n > 0`.
+
+3. **Category A (`| cons =>`) IS reachable.** At col=0, `SSLComments sp_block sp_mid` with `hws = cons` means whitespace exists before the dash, pushing `sp_mid.col > 0`. Input like `\n  - item` triggers this. The dash at col>0 needs `SBlockSeqEntries (sp_mid.col)`, not `SBlockSeqEntries 0`.
+
+4. **Category B (c≠'-') needs a PendingNode type variant.** The `?` and `:` indicators produce `SBlockMapEntry` (5 constructors: explicit, implicitKeyNode, implicitKeyEmpty, emptyKeyNode, emptyKeyEmpty), which compose into `SBlockMapEntries`. But `PendingNode.pendingBlock`'s type signature only supports sequences. Either add `PendingNode.pendingBlockMap` or generalize `pendingBlock` with a sum type.
+
+5. **Sorry declaration count underestimates improvement.** Routing 3 constructors through `accum_block_on_closeThenBlock` removed ~6 sorry terms from `accum_block_pending` (col≠0 branches + inline h_closable construction) but only reduced declaration warnings by 1. The removed sorry were absorbed by `closeThenBlock`'s existing sorry at the SAME sites (cons/c≠'-'/col≠0). This is consolidation, not elimination.
+
+6. **No other dispatchers benefit from similar routing.** `accum_structural_pending` only has col≠0 sorry (no helper to route through). `accum_flow_pending` has flow_close sorry that requires `SFlowSequence`/`SFlowMapping` grammar evidence. `accum_content_pending` has content_close sorry that requires `SBlockNode` → `SLBareDocument` composition from within the h_closable closure.
+
+###### Layer 4u accomplishments
+
+###### Layer 4u reflections
+
+###### Layer 4v accomplishments
+
+###### Layer 4v reflections
+
+###### Layer 4w accomplishments
+
+###### Layer 4w reflections
+
+###### Layer 4x accomplishments
+
+###### Layer 4x reflections
