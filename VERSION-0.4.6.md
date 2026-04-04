@@ -2398,7 +2398,7 @@ h_closable_directive: permanently deferred (2 sites)
 
 | Layer | Focus | Sites closed | Approach |
 |-------|-------|-------------|----------|
-| 4t | routing consolidation + analysis | −1 warning | `accum_block_pending` sorry-free via closeThenBlock routing |
+| 4t | routing consolidation + analysis | −1 warning | `accum_block_pending` sorry-free via closeThenBlock routing (DONE) |
 | 4u | PendingNode generalization | ~16 | Generalize pendingBlock to n>0 + SBlockMapEntries |
 | 4v | content h_closable extraction | ~3 | Reusable helper from accum_content_on_noPending |
 | 4w | col≠0 preprocessing | ~13 | General SSLComments or BOM unreachability |
@@ -2431,7 +2431,29 @@ h_closable_directive: permanently deferred (2 sites)
 
 ###### Layer 4u accomplishments
 
+1. **PendingNode generalization: added `(n : Nat)` parameter to `pendingBlock` and `pendingBlockContent`.** Both constructors now carry `SBlockNode n .blockIn` and `SBlockSeqEntries n` instead of hardcoded `0`. This is the infrastructure needed to support block sequences at arbitrary indent levels.
+
+2. **All 14 construction sites updated to pass `n = 0`.** The helper theorems (`accum_block_on_noPending`, `accum_block_on_closeThenBlock`, `accum_block_on_pendingBlockContent`, `accum_block_on_pendingBlock`, `accum_content_on_pendingBlock`) keep `0` in their parameter types — no proven branches were broken.
+
+3. **Dispatch sites use `by_cases hn : n_old = 0; · subst hn; <existing>; · sorry` pattern.** In `accum_block_pending` (both `pendingBlockContent` and `pendingBlock` arms) and `accum_content_pending` (`pendingBlock` arm), the `n_old ≠ 0` case is deferred as sorry. After `subst hn`, `n_old` becomes `0` and existing helper theorem calls type-check unchanged.
+
+4. **`close_with_ssl` works for any `n` unchanged.** `SBlockNode.emptyNode n .blockIn sp_scan sp_mid h_ssl` is parametric in `n`, so no `by_cases` needed there.
+
+5. **All grouped pattern-match sites updated**: `accum_structural_pending`, `accum_flow_pending`, `accum_content_pending` now use `_ _ _` (3 wildcards: `n`, `h1`, `h2`) instead of `_ _`.
+
+6. **Build: 415/415, 10 sorry warnings** (up from 9 — the net new sorry declaration comes from the `n_old ≠ 0` branches in dispatch).
+
 ###### Layer 4u reflections
+
+1. **Constructor argument ordering matters.** The `n : Nat` parameter is positioned AFTER the three `SurfPos` indices in the constructor definition (`pendingBlock (sp_start sp_block sp_scan : SurfPos) (n : Nat) ...`), not before them. Initial placement before `sp_start` caused `OfNat SurfPos 0` type errors.
+
+2. **Keeping helper theorems at `n = 0` was the right call.** Generalizing them would have broken proven `SIndent.zero` branches (which only works for `n = 0`) and required cascading changes to `_prod` theorems. The `by_cases` pattern at dispatch sites cleanly separates proven (`n = 0`) from deferred (`n ≠ 0`) work.
+
+3. **The `n ≠ 0` sorry sites are genuinely hard.** They require: (a) `SIndent n` evidence for whitespace before dash at col > 0, (b) connecting `n` to the scanner's indent stack to prove the correct indent level, (c) `SSeparate (n+1)` for `SBlockNode n .blockIn`. These are blocked until indent stack tracking is added to `ScannerSurfCorr`.
+
+4. **Tab-in-indentation gap persists.** `SSWhite` accepts tabs but `SIndent` requires literal spaces (`' '`). The YAML spec prohibits tabs in indentation but the scanner doesn't enforce it, creating a formal gap that would need explicit tab-rejection evidence or a `SIndent` generalization.
+
+5. **Net sorry count impact is minimal (+1 declaration) but structural impact is significant.** The type infrastructure now supports arbitrary indent levels, unblocking future work on nested block sequences. When indent stack tracking is added, the `n ≠ 0` branches can be filled without further type changes.
 
 ###### Layer 4v accomplishments
 
