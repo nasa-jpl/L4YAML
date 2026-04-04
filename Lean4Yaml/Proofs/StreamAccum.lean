@@ -112,15 +112,14 @@ inductive PendingNode : SurfPos → SurfPos → SurfPos → Prop where
       Awaiting next `%` (accumulate) or `---` (form directive document).
       Carries an accumulator that, given SSLComments, produces
       `GPlus SLDirective` covering all directives so far.
-      Also carries a closable (like `pendingContent`) for stream extension,
-      and captures the stream at the point before the first directive. -/
+      Captures the stream at the point before the first directive.
+      Does NOT carry h_closable — cannot close directives without
+      `---` (SCDirectivesEnd), which has not yet been scanned.
+      Closing is deferred to the `---` transition (→ pendingDocStart). -/
   | pendingDirective (sp_start sp_block sp_scan : SurfPos)
       (h_dir_acc : ∀ sp_mid,
         SSLComments sp_scan sp_mid →
         GPlus SLDirective sp_block sp_mid)
-      (h_closable : ∀ sp_mid,
-        SSLComments sp_scan sp_mid →
-        SLYamlStream sp_start sp_mid)
       (h_stream : SLYamlStream sp_start sp_block)
       (h_at_line_end : sp_scan.chars = [] ∨
         ∃ ch rest', sp_scan.chars = ch :: rest' ∧ isLineBreakBool ch = true) :
@@ -525,8 +524,9 @@ theorem PendingNode.close_with_ssl
   | pendingBlock =>
     rename_i n h_close _
     exact h_close sp_mid (SBlockNode.emptyNode n .blockIn sp_scan sp_mid h_ssl)
-  | pendingDirective _ _ h_closable _ =>
-    exact h_closable sp_mid h_ssl
+  | pendingDirective _ _ _ =>
+    -- Cannot close directive without SCDirectivesEnd (---). Deferred to 4z.2.
+    sorry
 
 /-! ## §0d Preprocessing → SSLComments for `some` result at col=0
 
@@ -948,7 +948,6 @@ theorem structural_dispatch_to_pending
                     refine ⟨sp_dir, hcol,
                       PendingNode.pendingDirective sp_start sp sp_dir
                         (fun sp_mid hssl => ?_)
-                        sorry
                         h_stream
                         h_at_break,
                       hcorr_dir⟩
@@ -991,7 +990,6 @@ theorem structural_dispatch_to_pending
                   refine ⟨sp_dir, hcol,
                     PendingNode.pendingDirective sp_start sp sp_dir
                       (fun sp_mid hssl => ?_)
-                      sorry
                       h_stream
                       h_at_break,
                     hcorr_dir⟩
@@ -1154,12 +1152,13 @@ theorem accum_structural_pending (sc : ScannerState)
              dispatch_new_pending s_prep s' c sp_start sp_mid sp_ws sp_gap sp_prep sp_scan'
                hcorr_prep hcorr_gap hcorr_result hcol_mid hws hcmt h_stream_mid hpeek h_dispatch,
              hcorr_result⟩
-  | @pendingDirective sp_scan h_dir_acc_old h_closable_old h_stream_old h_at_line_end_old =>
-    -- Directive continuation: close old directive via SSLComments, then dispatch.
+  | @pendingDirective sp_scan h_dir_acc_old h_stream_old h_at_line_end_old =>
+    -- Directive continuation: cannot close without SCDirectivesEnd (---).
+    -- Use sorry for h_stream_mid; deferred to 4z.2 (scanner validation or grammar extension).
     by_cases hcol : sp_scan.col = 0
     · obtain ⟨sp_mid, sp_ws, sp_gap, h_ssl, hcol_mid, hws, hcmt, hcorr_gap, _⟩ :=
         preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
-      have h_stream_mid : SLYamlStream sp_start sp_mid := h_closable_old sp_mid h_ssl
+      have h_stream_mid : SLYamlStream sp_start sp_mid := sorry
       exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', h_stream_mid,
              BlockStack.nil sp_mid, FlowStack.nil sp_mid,
              dispatch_new_pending s_prep s' c sp_start sp_mid sp_ws sp_gap sp_prep sp_scan'
@@ -1181,7 +1180,7 @@ theorem accum_structural_pending (sc : ScannerState)
           have h2 : sp_prep.col ≥ sp_ws.col := by
             cases hcmt <;> (first | omega | (rename_i h_c; have := scnb_comment_col_gt _ _ h_c; omega))
           omega
-      have h_stream_mid : SLYamlStream sp_start sp_mid := h_closable_old sp_mid h_ssl
+      have h_stream_mid : SLYamlStream sp_start sp_mid := sorry
       exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', h_stream_mid,
              BlockStack.nil sp_mid, FlowStack.nil sp_mid,
              dispatch_new_pending s_prep s' c sp_start sp_mid sp_ws sp_gap sp_prep sp_scan'
@@ -1361,12 +1360,12 @@ theorem accum_flow_pending (sc : ScannerState)
     obtain ⟨sp_flow', h_flow', h_pend'⟩ := new_flow_state sp_block h_stream_block
     exact ⟨sp_block, sp_block, sp_flow', sp_scan', h_stream_block,
            BlockStack.nil sp_block, h_flow', h_pend', hcorr_result⟩
-  | @pendingDirective sp_scan h_dir_acc_old h_closable_old h_stream_old h_at_line_end_old =>
-    -- Directive continuation: close old directive via SSLComments, then flow state.
+  | @pendingDirective sp_scan h_dir_acc_old h_stream_old h_at_line_end_old =>
+    -- Directive continuation: cannot close without SCDirectivesEnd (---).
     by_cases hcol : sp_scan.col = 0
     · obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _, _⟩ :=
         preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
-      have h_stream_mid : SLYamlStream sp_start sp_mid := h_closable_old sp_mid h_ssl
+      have h_stream_mid : SLYamlStream sp_start sp_mid := sorry
       obtain ⟨sp_flow', h_flow', h_pend'⟩ := new_flow_state sp_mid h_stream_mid
       exact ⟨sp_mid, sp_mid, sp_flow', sp_scan', h_stream_mid,
              BlockStack.nil sp_mid, h_flow', h_pend', hcorr_result⟩
@@ -1376,7 +1375,7 @@ theorem accum_flow_pending (sc : ScannerState)
       cases h_disj with
       | inl h_ssl_col =>
         obtain ⟨h_ssl, _⟩ := h_ssl_col
-        have h_stream_mid : SLYamlStream sp_start sp_mid := h_closable_old sp_mid h_ssl
+        have h_stream_mid : SLYamlStream sp_start sp_mid := sorry
         obtain ⟨sp_flow', h_flow', h_pend'⟩ := new_flow_state sp_mid h_stream_mid
         exact ⟨sp_mid, sp_mid, sp_flow', sp_scan', h_stream_mid,
                BlockStack.nil sp_mid, h_flow', h_pend', hcorr_result⟩
@@ -2825,8 +2824,8 @@ theorem accum_content_pending (sc : ScannerState)
   | noPending =>
     exact accum_content_on_noPending sc sp_start sp_block s_prep s' c sp_prep sp_scan'
       h_stream_block hcorr_prep hcorr_result h_corr h_preprocess h_not_doc h_dispatch
-  | @pendingDirective sp_scan h_dir_acc_old h_closable_old h_stream_old h_at_line_end_old =>
-    -- Directive continuation: close old directive via SSLComments.
+  | @pendingDirective sp_scan h_dir_acc_old h_stream_old h_at_line_end_old =>
+    -- Directive continuation: cannot close without SCDirectivesEnd (---).
     by_cases hcol : sp_scan.col = 0
     · obtain ⟨sp_mid, sp_ws, sp_prep2, h_ssl, hcol_mid, h_ws, h_cmt, hcorr_prep2, h_pk⟩ :=
         preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
@@ -2836,7 +2835,7 @@ theorem accum_content_pending (sc : ScannerState)
         | inl h => exact h
         | inr h => rw [preprocess_some_peek h_preprocess] at h; cases h
       subst h_eq
-      have h_stream_mid : SLYamlStream sp_start sp_mid := h_closable_old sp_mid h_ssl
+      have h_stream_mid : SLYamlStream sp_start sp_mid := sorry
       have h_sep := SSeparateLines.inline 0 sp_mid sp_prep
         (GStar_SSWhite_to_SSeparateInLine sp_mid sp_prep h_ws)
       exact content_dispatch_after_close sp_start sp_mid s_prep s' c sp_prep sp_scan'
@@ -2854,7 +2853,7 @@ theorem accum_content_pending (sc : ScannerState)
           | inl h => exact h
           | inr h => rw [preprocess_some_peek h_preprocess] at h; cases h
         subst h_eq
-        have h_stream_mid : SLYamlStream sp_start sp_mid := h_closable_old sp_mid h_ssl
+        have h_stream_mid : SLYamlStream sp_start sp_mid := sorry
         have h_sep := SSeparateLines.inline 0 sp_mid sp_prep
           (GStar_SSWhite_to_SSeparateInLine sp_mid sp_prep h_ws)
         exact content_dispatch_after_close sp_start sp_mid s_prep s' c sp_prep sp_scan'
