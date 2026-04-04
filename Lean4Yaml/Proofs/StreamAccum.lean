@@ -253,20 +253,20 @@ inductive FlowStack : SurfPos → SurfPos → Prop where
   | nil (sp : SurfPos) : FlowStack sp sp
   /-- Flow sequence `[...]` being accumulated.
       Outer stack covers sp → sp_mid. This level covers sp_mid → sp'.
+      `sp_lit` is where `[` was consumed (between sp_mid and sp').
       Entries will form `SFlowSequence n c`.
-      `h_closable`: given any stream ending at `sp`, extends it to `sp'`
-      by incorporating the outer stack + this level's accumulated entries. -/
-  | flowSeqLevel (sp sp_mid sp' : SurfPos) :
+      `h_glit`: evidence that `[` was consumed at `sp_lit → sp'`. -/
+  | flowSeqLevel (sp sp_mid sp_lit sp' : SurfPos) :
       FlowStack sp sp_mid →
-      (∀ (sp_start : SurfPos), SLYamlStream sp_start sp → SLYamlStream sp_start sp') →
+      GLit '[' sp_lit sp' →
       FlowStack sp sp'
   /-- Flow mapping `{...}` being accumulated.
+      `sp_lit` is where `{` was consumed (between sp_mid and sp').
       Entries will form `SFlowMapping n c`.
-      `h_closable`: given any stream ending at `sp`, extends it to `sp'`
-      by incorporating the outer stack + this level's accumulated entries. -/
-  | flowMapLevel (sp sp_mid sp' : SurfPos) :
+      `h_glit`: evidence that `{` was consumed at `sp_lit → sp'`. -/
+  | flowMapLevel (sp sp_mid sp_lit sp' : SurfPos) :
       FlowStack sp sp_mid →
-      (∀ (sp_start : SurfPos), SLYamlStream sp_start sp → SLYamlStream sp_start sp') →
+      GLit '{' sp_lit sp' →
       FlowStack sp sp'
 
 /-- Absorb both BlockStack and FlowStack into the stream via h_closable.
@@ -279,18 +279,18 @@ theorem absorb_stacks (sp_start sp_gram sp_block sp_flow : SurfPos)
   | nil =>
     cases h_flow with
     | nil => exact h_stream
-    | flowSeqLevel _ _ _ h_cl => exact h_cl sp_start h_stream
-    | flowMapLevel _ _ _ h_cl => exact h_cl sp_start h_stream
+    | flowSeqLevel _ _ _ _ h_glit => sorry
+    | flowMapLevel _ _ _ _ h_glit => sorry
   | seqLevel _ _ _ _ _ h_cl_b =>
     cases h_flow with
     | nil => exact h_cl_b sp_start h_stream
-    | flowSeqLevel _ _ _ h_cl => exact h_cl sp_start (h_cl_b sp_start h_stream)
-    | flowMapLevel _ _ _ h_cl => exact h_cl sp_start (h_cl_b sp_start h_stream)
+    | flowSeqLevel _ _ _ _ h_glit => sorry
+    | flowMapLevel _ _ _ _ h_glit => sorry
   | mapLevel _ _ _ _ _ h_cl_b =>
     cases h_flow with
     | nil => exact h_cl_b sp_start h_stream
-    | flowSeqLevel _ _ _ h_cl => exact h_cl sp_start (h_cl_b sp_start h_stream)
-    | flowMapLevel _ _ _ h_cl => exact h_cl sp_start (h_cl_b sp_start h_stream)
+    | flowSeqLevel _ _ _ _ h_glit => sorry
+    | flowMapLevel _ _ _ _ h_glit => sorry
 
 /-! ## §0c Helpers for §1a (EOF Stream Extension)
 
@@ -1310,6 +1310,34 @@ theorem dispatchFlowIndicators_corr (sc : ScannerState) (sp : SurfPos) (c : Char
           -- none (fallthrough)
           · simp at hok
 
+-- Helper: when dispatch receives '[', result is scanFlowSequenceStart.
+theorem dispatch_flow_seq_eq {sc s' : ScannerState}
+    (hok : scanNextToken_dispatchFlowIndicators sc '[' = .ok (some s')) :
+    s' = scanFlowSequenceStart sc := by
+  unfold scanNextToken_dispatchFlowIndicators at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  split at hok
+  · exact (Option.some.inj (Except.ok.inj hok)).symm
+  · rename_i h
+    exact absurd (by native_decide : (('[' : Char) == '[') = true) h
+
+-- Helper: when dispatch receives '{', result is scanFlowMappingStart.
+theorem dispatch_flow_map_eq {sc s' : ScannerState}
+    (hok : scanNextToken_dispatchFlowIndicators sc '{' = .ok (some s')) :
+    s' = scanFlowMappingStart sc := by
+  unfold scanNextToken_dispatchFlowIndicators at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  split at hok
+  · rename_i heq
+    exact absurd heq (by native_decide : ¬(('{' : Char) == '[') = true)
+  · split at hok
+    · rename_i heq
+      exact absurd heq (by native_decide : ¬(('{' : Char) == ']') = true)
+    · split at hok
+      · exact (Option.some.inj (Except.ok.inj hok)).symm
+      · rename_i heq
+        exact absurd (by native_decide : (('{' : Char) == '{') = true) heq
+
 -- Helper: handles all PendingNode cases for flow dispatch given stream at sp_block.
 theorem accum_flow_pending (sc : ScannerState)
     (sp_start sp_block sp_scan : SurfPos)
@@ -1332,21 +1360,55 @@ theorem accum_flow_pending (sc : ScannerState)
     scanNextToken_preprocess_corr sc sp_scan h_corr s_prep c h_preprocess
   obtain ⟨sp_scan', hcorr_result⟩ :=
     dispatchFlowIndicators_corr _ sp_prep c (corr_of_allowDirectives_update hcorr_prep) h_dispatch
-  -- Character-dependent FlowStack + PendingNode construction (4h.2).
-  -- For `[`/`{`: push FlowStack level + PendingNode.noPending (clean state inside flow).
+  -- Character-dependent FlowStack + PendingNode construction (4h.2 → 4y.3).
+  -- For `[`/`{`: push FlowStack level with GLit evidence + PendingNode.noPending.
   -- For `]`/`}`/`,`: FlowStack.nil + PendingNode.pendingFlow (flow contribution pending).
+  -- GLit evidence from scanFlowSequenceStart_prod / scanFlowMappingStart_prod.
+  have hpeek := preprocess_some_peek h_preprocess
+  have hpeek_disp : (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep).peek? = some c := by
+    split
+    · show s_prep.peek? = some c; exact hpeek
+    · exact hpeek
   have new_flow_state : ∀ (sp_mid : SurfPos) (h_str_mid : SLYamlStream sp_start sp_mid),
       ∃ sp_flow', FlowStack sp_mid sp_flow' ∧ PendingNode sp_start sp_flow' sp_scan' := by
     intro sp_mid h_str_mid
     by_cases hc_seq : c = '['
-    · exact ⟨sp_scan',
-             FlowStack.flowSeqLevel sp_mid sp_mid sp_scan' (FlowStack.nil sp_mid)
-               (fun _ h_str => sorry),
+    · -- c = '[': dispatch gives scanFlowSequenceStart, extract GLit.
+      have h_dispatch_seq : scanNextToken_dispatchFlowIndicators
+          (if s_prep.allowDirectives then
+            { s_prep with allowDirectives := false, documentEverStarted := true }
+          else s_prep) '[' = .ok (some s') := by rw [← hc_seq]; exact h_dispatch
+      have hpeek_seq : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).peek? = some '[' := by rw [← hc_seq]; exact hpeek_disp
+      have h_s'_eq := dispatch_flow_seq_eq h_dispatch_seq
+      obtain ⟨sp_lit, h_glit, hcorr_sfs⟩ :=
+        scanFlowSequenceStart_prod _ sp_prep (corr_of_allowDirectives_update hcorr_prep) hpeek_seq
+      have hsp_eq : sp_lit = sp_scan' :=
+        ScannerSurfCorr_unique hcorr_sfs (h_s'_eq ▸ hcorr_result)
+      exact ⟨sp_scan',
+             FlowStack.flowSeqLevel sp_mid sp_mid sp_prep sp_scan' (FlowStack.nil sp_mid)
+               (hsp_eq ▸ h_glit),
              PendingNode.noPending sp_start sp_scan'⟩
     · by_cases hc_map : c = '{'
-      · exact ⟨sp_scan',
-               FlowStack.flowMapLevel sp_mid sp_mid sp_scan' (FlowStack.nil sp_mid)
-                 (fun _ h_str => sorry),
+      · -- c = '{': dispatch gives scanFlowMappingStart, extract GLit.
+        have h_dispatch_map : scanNextToken_dispatchFlowIndicators
+            (if s_prep.allowDirectives then
+              { s_prep with allowDirectives := false, documentEverStarted := true }
+            else s_prep) '{' = .ok (some s') := by rw [← hc_map]; exact h_dispatch
+        have hpeek_map : (if s_prep.allowDirectives then
+            { s_prep with allowDirectives := false, documentEverStarted := true }
+          else s_prep).peek? = some '{' := by rw [← hc_map]; exact hpeek_disp
+        have h_s'_eq := dispatch_flow_map_eq h_dispatch_map
+        obtain ⟨sp_lit, h_glit, hcorr_sfs⟩ :=
+          scanFlowMappingStart_prod _ sp_prep (corr_of_allowDirectives_update hcorr_prep) hpeek_map
+        have hsp_eq : sp_lit = sp_scan' :=
+          ScannerSurfCorr_unique hcorr_sfs (h_s'_eq ▸ hcorr_result)
+        exact ⟨sp_scan',
+               FlowStack.flowMapLevel sp_mid sp_mid sp_prep sp_scan' (FlowStack.nil sp_mid)
+                 (hsp_eq ▸ h_glit),
                PendingNode.noPending sp_start sp_scan'⟩
       · exact ⟨sp_mid,
                FlowStack.nil sp_mid,
