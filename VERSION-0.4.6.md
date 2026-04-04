@@ -17,7 +17,7 @@ Extend Phase B's `scanDoubleQuoted_prod` pattern to the remaining three content 
 
 **File:** [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) — extends existing Phase B infrastructure, reuses `peek_some_sp`, `advance_corr`, `consumeNewline_sbreak_corr`, `foldQuotedNewlines_prod`.
 
-**Sorry status:** 1 sorry in ScalarProduction.lean (`collectPlainScalarLoop_prod` line break). Build: 415/415 jobs, 0 errors, 11 sorry warnings (1 in ScalarProduction.lean, 9 in StreamAccum.lean, 1 in StructureProduction.lean). **A15**: Closed S6 (flow context plain scalar) by parameterizing `collectPlainScalarLoop_prod`, helpers, and `scanPlainScalar_to_flowNode` over `inFlow : Bool` — eliminated 3 sorry sites, warning count unchanged (11). **A14**: Closed S5 (doc boundary first-char termination) via `h_not_doc` precondition + `collectPlainScalarLoop_content_first_step` — sorry count 12→11. **A13**: Closed S4 (`#` at col=0) via `h_hash_col` precondition — sorry count unchanged since S3/S4 share the same theorem. **A12**: Closed S7/S8/S9/alias sorry sites by contradiction (14→12 warnings). **A11**: Removed `hm : m ≥ 1` from grammar constructors (compensating for Nat encoding offset), closing S1/S2. **A10**: Scanner Except conversion makes S7/S8/S9/alias sorry sites closable by contradiction.
+**Sorry status:** 1 sorry in ScalarProduction.lean (`collectPlainScalarLoop_prod` line break). Build: 415/415 jobs, 0 errors, 10 sorry warnings (1 in ScalarProduction.lean, 9 in StreamAccum.lean). **A16**: Closed S10 (named/non-specific tag) via `scanNamedTag_prod` decomposition — sorry count 11→10, StructureProduction.lean now sorry-free. **A15**: Closed S6 (flow context plain scalar) by parameterizing `collectPlainScalarLoop_prod`, helpers, and `scanPlainScalar_to_flowNode` over `inFlow : Bool` — eliminated 3 sorry sites, warning count unchanged (11). **A14**: Closed S5 (doc boundary first-char termination) via `h_not_doc` precondition + `collectPlainScalarLoop_content_first_step` — sorry count 12→11. **A13**: Closed S4 (`#` at col=0) via `h_hash_col` precondition — sorry count unchanged since S3/S4 share the same theorem. **A12**: Closed S7/S8/S9/alias sorry sites by contradiction (14→12 warnings). **A11**: Removed `hm : m ≥ 1` from grammar constructors (compensating for Nat encoding offset), closing S1/S2. **A10**: Scanner Except conversion makes S7/S8/S9/alias sorry sites closable by contradiction.
 
 <details>
 <summary>scanSingleQuoted_prod — completed 2026-03-29</summary>
@@ -1612,7 +1612,7 @@ Three architectural changes are needed before tackling the content categories. E
 | Block scalar `\|`/`>` | `SCLLiteral 0` / `SCLFolded 0` | ✅ Sorry-free (A11 removed `hm` constraint) |
 | Plain scalar | `SNsPlain 0 .blockIn` → `SFlowNode 0 .flowOut` | ✅ **A5/A6/A7/A14/A15** — block+flow proven; 1 sorry (multi-line S3) |
 | Anchor `&` | `SCNsAnchorProperty` → `SCNsProperties.anchorFirst` → `SFlowNode.propsEmpty` | ✅ **A12** — sorry CLOSED (scanner rejects empty names; `scanAnchorOrAlias_prod` now returns `sp_mid ≠ sp'` unconditionally) |
-| Tag `!` | `SCNsTagProperty` → `SCNsProperties.tagFirst` → `SFlowNode.propsEmpty` | ✅ **A12** — S8/S9 CLOSED; secondary `!!` fully proven; verbatim `!<uri>` well-formed case proven; S10 (named/non-specific) remains sorry in `scanTag_nonSecondary_prod` |
+| Tag `!` | `SCNsTagProperty` → `SCNsProperties.tagFirst` → `SFlowNode.propsEmpty` | ✅ **A12** — S8/S9 CLOSED; secondary `!!` fully proven; verbatim `!<uri>` well-formed case proven; **A16** — S10 CLOSED (named/non-specific tag decomposition via `scanNamedTag_prod`) |
 
 **All content types now have dedicated `dispatchContent_*_prod` theorems.** `dispatchContent_evidence` is sorry-free.
 
@@ -1629,7 +1629,7 @@ Three architectural changes are needed before tackling the content categories. E
 | S7 | `dispatchContent_anchor_prod` | StreamAccum | ~~Empty anchor name (`& ` — `sp_mid = sp'`)~~ | **CLOSED (A12)** — `scanAnchorOrAlias_prod` strengthened to return `sp_mid ≠ sp'` unconditionally; `_anchorProp_prod` now unconditional |
 | S8 | `scanTag_nonSecondary_prod` | StructureProduction | ~~Malformed verbatim tag (no `>` terminator)~~ | **CLOSED (A12)** — `collectVerbatimTagLoop_prod` strengthened with `(sp_mid = sp' → foundClose = false)`; contradiction via `simp [h_close_link h_eq] at h_fc_true` |
 | S9 | `scanTag_nonSecondary_prod` | StructureProduction | ~~Empty URI `!<>` — spec requires ≥1 URI char~~ | **CLOSED (A12)** — `collectVerbatimTagLoop_prod` strengthened with `(sp = sp_mid → uri_result = uri)`; contradiction via `simp [h_uri_link hne] at h_uri_ne` |
-| S10 | `scanTag_nonSecondary_prod` | StructureProduction | Named/non-specific tag decomposition | E: Tag decomp |
+| S10 | `scanTag_nonSecondary_prod` | StructureProduction | ~~Named/non-specific tag decomposition~~ | **CLOSED (A16)** — `scanNamedTag_prod` decomposes into `collectTagHandleLoop_prod` + `collectTagSuffixLoop_prod`; added `SCNsTagProperty.primary` constructor + `isWordCharProp_to_isTagCharProp` bridge |
 
 Additionally, the alias empty-name sorry in `dispatchContent_alias_prod` (StreamAccum) is also **CLOSED (A12)** — `scanAnchorOrAlias_aliasNode_prod` now returns unconditional `SCNsAliasNode` (no `sp_mid ≠ sp'` condition).
 
@@ -1638,7 +1638,7 @@ Additionally, the alias empty-name sorry in `dispatchContent_alias_prod` (Stream
 - **S7 + S9 + S8 + alias**: ~~Share the "scanner loop produces ≥1 char" pattern.~~ ~~**Resolved by A10** — scanner Except conversion makes these closable by contradiction.~~ **CLOSED (A12)** — strengthened `collectAnchorNameLoop_prod` and `collectVerbatimTagLoop_prod` with position-to-value linking conjuncts; made `_aliasNode_prod`/`_anchorProp_prod` unconditional; replaced sorry with contradiction proofs. −2 sorry warnings (14→12).
 - ~~**S1, S2**: Independent — just need `indents.size > 1` from preprocessing context to invoke existing `currentIndent_nonneg`.~~ **CLOSED (A11)** — removed `hm : m ≥ 1` from grammar constructors.
 - **S3**: Independent, hardest — needs `handleBlockLineBreak_prod` + multi-line continuation grammar.
-- **S10**: Independent — decompose `scanNamedTag` into existing `collectTagHandleLoop_prod` + `collectTagSuffixLoop_prod`.
+- ~~**S10**: Independent — decompose `scanNamedTag` into existing `collectTagHandleLoop_prod` + `collectTagSuffixLoop_prod`.~~ **S10 CLOSED by A16.**
 
 **Wadler-style architectural opportunities**:
 
@@ -1653,12 +1653,12 @@ Additionally, the alias empty-name sorry in `dispatchContent_alias_prod` (Stream
 | ~~1~~ | ~~S7, S8, S9, alias~~ | — | ~~−3 sorry (−4 sites)~~ | **CLOSED (A12)** — strengthened `_prod` theorems with position-to-value linkage. −2 sorry warnings (14→12). |
 | ~~2~~ | ~~S4~~ | — | ~~−1 sorry~~, enables S5 | **CLOSED (A13)** — `h_hash_col` precondition + `spaces.length = 0` extraction from `terminates? = none`. Warning count unchanged (S3/S4 share theorem). |
 | ~~3~~ | ~~S5~~ | — | ~~−1 sorry~~, enables S6 | **CLOSED (A14)** — `canStartPlain_first_not_terminates` + `collectPlainScalarLoop_content_first_step` + `h_not_doc` precondition |
-| 4 | S10 | ~2 hr | −1 sorry | `scanNamedTag_prod`: compose existing handle + suffix loop theorems |
+| ~~4~~ | ~~S10~~ | — | ~~−1 sorry~~ | **CLOSED (A16)** — `scanNamedTag_prod` + `SCNsTagProperty.primary` constructor + `isWordCharProp_to_isTagCharProp` + `GStar_gchar_lift` |
 | ~~5~~ | ~~S1, S2~~ | — | ~~−2 sorry~~ | **CLOSED (A11)** — removed `hm : m ≥ 1` from `SCLLiteral`/`SCLFolded` grammar constructors |
 | ~~6~~ | ~~S6~~ | — | ~~−3 sorry sites~~ | **CLOSED (A15)** — parameterized over `inFlow`. Warning count unchanged (3 sorry sites in same declaration as `h_not_doc` sorry). |
 | 7 | S3 | ~4 hr | −1 sorry | Multi-line plain scalar. Hardest — `handleBlockLineBreak_prod` + `SNsPlainNextLine` |
 
-**Critical path**: ~~S4 →~~ ~~S5 →~~ ~~S6~~ (chain complete — all closed). **S4 CLOSED by A13.** **S5 CLOSED by A14.** **S6 CLOSED by A15.** ~~S7/S8/S9/alias are now trivially closable after A10.~~ **S7/S8/S9/alias CLOSED by A12.** ~~S1/S2 deferred — see analysis below.~~ **S1/S2 CLOSED by A11.**
+**Critical path**: ~~S4 →~~ ~~S5 →~~ ~~S6~~ (chain complete — all closed). **S4 CLOSED by A13.** **S5 CLOSED by A14.** **S6 CLOSED by A15.** ~~S7/S8/S9/alias are now trivially closable after A10.~~ **S7/S8/S9/alias CLOSED by A12.** ~~S1/S2 deferred — see analysis below.~~ **S1/S2 CLOSED by A11.** **S10 CLOSED by A16.**
 
 ##### S1/S2 design analysis: indent tracking for block scalars
 
@@ -2075,5 +2075,34 @@ Eliminated 3 sorry sites in `dispatchContent_plainScalar_prod` (StreamAccum.lean
 4. **Caller simplification**: `dispatchContent_plainScalar_prod` no longer splits on `by_cases h_block : sc.inFlow = false`. Single unified call to `scanPlainScalar_to_flowNode` (which now accepts any `sc.inFlow` value).
 
 **Build**: 415/415 jobs, 0 errors, 11 sorry warnings (3 sorry sites eliminated, warning count unchanged due to shared declaration).
+
+**A16 — S10 CLOSED: Named/non-specific tag decomposition** (2026-04-03)
+
+Closed the sorry in `scanTag_nonSecondary_prod` (StructureProduction.lean) for the named/non-specific tag branch. Sorry count: 11→10. StructureProduction.lean is now sorry-free.
+
+**Problem**: `scanNamedTag` handles both named tags (`!handle!suffix`) and non-specific/primary tags (`!` or `!suffix`). The grammar type `SCNsTagProperty` had constructors for `verbatim`, `secondary`, `named`, and `nonSpecific`, but no constructor for primary shorthand tags (`!suffix` where suffix consists of word chars without a second `!`). The proof had `exact ⟨sp', sorry, ...⟩` for the grammar evidence.
+
+**Root cause**: `collectTagHandleLoop` collects word chars looking for a second `!`. When `foundBang = false`, the collected word chars become the tag suffix with handle `!`. When `foundBang = true`, the word chars form the handle name preceding the second `!`. The `foundBang = false` case with non-empty chars produced a primary shorthand tag that had no matching grammar constructor.
+
+**Solution** (4 parts):
+
+1. **`SCNsTagProperty.primary` constructor** (Surface/Basic.lean) — New grammar constructor:
+   ```
+   | primary (rest) (col) (s') : GStar (GChar isTagCharProp) ⟨rest, col+1⟩ s' →
+       SCNsTagProperty ⟨'!' :: rest, col⟩ s'
+   ```
+   Subsumes `nonSpecific` when `GStar.nil`. Safe to add since `SCNsTagProperty` is never pattern-matched on constructors downstream.
+
+2. **`isWordCharProp_to_isTagCharProp`** — Bridge lemma proving word chars are tag chars: `isWordCharProp c → isTagCharProp c`. Proof: word chars are URI chars (`Or.inl`), not `!` (by `simp`), and not flow indicators (by case analysis on flow indicator membership `',', '[', ']', '{', '}'` — none overlap with `[0-9A-Za-z-]`).
+
+3. **`GStar_gchar_lift`** — Generic lifting lemma: given `∀ c, P c → Q c`, lifts `GStar (GChar P) sp sp'` to `GStar (GChar Q) sp sp'`. Proof by induction on GStar, `cases` on GChar to extract the char and apply the predicate implication.
+
+4. **`scanNamedTag_prod`** — Main decomposition theorem. Unfolds `scanNamedTag`, applies `collectTagHandleLoop_prod`, then splits on the `if foundBang` branch:
+   - **`foundBang = true`** (named tag): Proves `⟨rest, col+1⟩ ≠ sp_mid` by contradiction — if equal, `GLit '!'` says `rest` starts with `!`, so `peek? = some '!'`, contradicting precondition `hpeek_not_bang`. Converts `GStar` to `GPlus` via `GStar_to_GPlus`. Applies `collectTagSuffixLoop_prod` for suffix. Constructs `SCNsTagProperty.named`.
+   - **`foundBang = false`** (primary/non-specific): Lifts `GStar (GChar isWordCharProp)` to `GStar (GChar isTagCharProp)` via `GStar_gchar_lift` + `isWordCharProp_to_isTagCharProp`. Constructs `SCNsTagProperty.primary`.
+
+**Caller update**: `scanTag_nonSecondary_prod` catch-all branch now calls `scanNamedTag_prod` + `corr_of_simpleKeyAllowed_update`, replacing the sorry.
+
+**Build**: 415/415 jobs, 0 errors, 10 sorry warnings (was 11; −1 from `scanTag_nonSecondary_prod` becoming sorry-free).
 
 11. ~~**col≠0 BOM** (Category 2) — grammar definition change, deferred~~ **DONE (A2)**
