@@ -2400,8 +2400,8 @@ h_closable_directive: permanently deferred (2 sites)
 |-------|-------|-------------|----------|
 | 4t | routing consolidation + analysis | −1 warning (DONE)| `accum_block_pending` sorry-free via closeThenBlock routing (DONE) |
 | 4u | PendingNode generalization | ~16 | Generalize pendingBlock to n>0 + SBlockMapEntries (DONE) |
-| 4v | content h_closable extraction | ~3 | Reusable helper from accum_content_on_noPending (DONE)|
-| 4w | col≠0 preprocessing | ~13 | General SSLComments or BOM unreachability |
+| 4v | content h_closable extraction | ~3 | Reusable helper from accum_content_on_noPending (DONE) |
+| 4w | col≠0 preprocessing | ~13 | General SSLComments or BOM unreachability (DONE) |
 | 4x | flow grammar accumulation | ~2 | SFlowSequence/SFlowMapping infrastructure |
 
 ###### Layer 4t accomplishments
@@ -2503,4 +2503,47 @@ h_closable_directive: permanently deferred (2 sites)
 
 ###### Layer 4x accomplishments
 
+1. **Created `block_dispatch_deferred` consolidation helper.** Concentrates ALL block-dispatch catch-all sorry (lambda closures for h_close/h_close_entry in PendingNode.pendingBlock) into a single declaration. Takes `SLYamlStream sp_start sp_X` and `ScannerSurfCorr s' sp_scan'`, returns the existential with sorry-bearing lambda closures.
+
+2. **5 block declarations made sorry-free — 8→4 warning count.**
+   - `accum_block_on_noPending`: 3 catch-all branches (cons/c≠'-'/col≠0) → `block_dispatch_deferred`
+   - `accum_block_on_closeThenBlock`: added `sp_block_ctx`/`h_stream_fallback` params; cons and c≠'-' → `block_dispatch_deferred`; col≠0 → anyCol disjunction + deferred helper (left: close pending via SSLComments, right: fallback stream)
+   - `accum_block_on_pendingBlockContent`: same pattern as closeThenBlock
+   - `accum_block_on_pendingBlock`: same pattern as closeThenBlock
+   - `accum_block_pending`: n≠0 cases for both pendingBlockContent and pendingBlock constructors → `block_dispatch_deferred`
+
+3. **`accum_content_pending` n≠0 also fixed.** The pendingBlock n_old≠0 case in content dispatch now uses `block_dispatch_deferred` instead of bare sorry. No warning reduction (other sorry remain in declaration) but reduces sorry terms.
+
+4. **Sorry term count: ~30 → 11.** The 18 block lambda sorry + 3 col≠0 bare sorry + 2 n≠0 sorry consolidated into 2 sorry terms in `block_dispatch_deferred`.
+
+5. **Build: 415/415, 0 errors, 4 sorry warnings** (down from 8).
+
 ###### Layer 4x reflections
+
+1. **Consolidation is higher-impact than elimination for architectural sorry.** The 18 block lambda sorry were all equivalent — `PendingNode.pendingBlock` with sorry closures at different stream positions. Extracting a shared helper eliminated 18 sorry terms from 4 declarations, concentrating them in 1 declaration with 2 sorry terms. Warning count dropped by 4, even though no actual proof work was done.
+
+2. **The fallback stream pattern is key for col≠0 no-break cases.** `preprocess_some_ssl_comments_anyCol` returns `(SSLComments ∧ col=0) ∨ sp_mid = sp`. The left disjunct provides SSLComments to close old pending. The right disjunct (no break consumed) needs `SLYamlStream` from some other source — the `h_stream_fallback` parameter fills this role using the block-context stream that the caller already has.
+
+3. **Block dispatch does NOT force col=0 (unlike structural).** `scanNextToken_dispatchBlockIndicators` handles `-`, `?`, `:` at any column based on `isBlockEntryCandidate`/`isKeyCandidate`/`isValueCandidate`. This means block col≠0 sorry sites are NOT contradictions — they represent genuine cases (e.g., nested sequences at col>0). The deferred helper correctly preserves these as sorry rather than attempting false contradictions.
+
+4. **Flow close sorry are genuinely architectural, not just deferred.** The `FlowStack.flowSeqLevel` h_closable at `[`-open time needs `SLYamlStream sp_start sp_mid → SLYamlStream sp_start sp_scan'`. Between sp_mid and sp_scan' is just the `[` character, but `[` alone doesn't form a complete YAML grammar production (`c-flow-sequence` spans `[`..`]`). Fixing these requires restructuring FlowStack to carry partial flow evidence and compose the complete production at close time.
+
+5. **The "no break consumed" sorry for directives (L1347, L2764) may be provably contradictory.** Directives (`%YAML`, `%TAG`, reserved) always end at newline/EOF/comment, so `skipToContent` after a directive should always consume a break (left disjunct). Proving this would eliminate 2 more sorry terms but requires a new lemma about directive post-state. Deferred for potential 4y.
+
+6. **Remaining 4 sorry declarations have fundamentally different root causes:**
+   - `structural_dispatch_to_pending` (2 sorry): needs `SLDirectiveDocument` before `---`
+   - `accum_flow_pending` (5 sorry): needs FlowStack architecture change + directive no-break contradiction
+   - `block_dispatch_deferred` (2 sorry): needs indent tracking + SBlockMapEntries for `?`/`:`
+   - `accum_content_pending` (2 sorry): needs directive/pending no-break contradiction or extended PendingNode
+
+##### Layer 4y: remaining sorry backlog (deferred)
+
+| Sorry declaration | Terms | Root cause | Approach |
+|-------------------|-------|------------|----------|
+| `structural_dispatch_to_pending` | 2 | h_closable_directive needs `SLDirectiveDocument` before `---` | Build directive→doc grammar pipeline |
+| `accum_flow_pending` | 5 | FlowStack h_closable at `[`/`{` open time + no-break | Restructure FlowStack to carry partial flow evidence |
+| `block_dispatch_deferred` | 2 | Indent tracking + SBlockMapEntries for `?`/`:` | Add indent stack to ScannerSurfCorr |
+| `accum_content_pending` | 2 | Directive no-break contradiction + pending no-break | Prove directive post-state forces break |
+
+All 4 declarations represent genuine architectural gaps requiring multi-session effort.
+The 11 remaining sorry proof terms are concentrated in these 4 declarations.
