@@ -2150,7 +2150,7 @@ Closed both sorry sites for multi-line plain scalar continuation lines: the bloc
 | ~~1~~ | ~~`preprocess_some_separate_lines_0`~~ | ~~599~~ | ~~1~~ | ~~Unreachable comment~~ | ~~DONE (4m)~~ |
 | ~~2~~ | ~~`preprocess_some_separate_0_anyCol`~~ | ~~668~~ | ~~1~~ | ~~Unreachable comment~~ | ~~DONE (4m)~~ |
 | 3 | `structural_dispatch_to_pending` | 859 | 4 | Directive evidence | High |
-| 4 | `dispatch_new_pending` | 965 | 1 | Proof ordering (needs #3) | Low |
+| ~~4~~ | ~~`dispatch_new_pending`~~ | ~~965~~ | ~~1~~ | ~~Proof ordering (needs #3)~~ | ~~DONE (4q)~~ |
 | 5 | `accum_structural_pending` | 996 | 3 | Directive (#3) + col≠0 | Medium |
 | 6 | `accum_flow_pending` | 1135 | 5 | Flow closures + directive (#3) + col≠0 | High |
 | 7 | `accum_block_pending` | 1316 | ~20 | Block closures (non-`-`, ws-before-`-`) | Very high |
@@ -2202,7 +2202,7 @@ Layer 4s: #6 (flow closures) + #7 (block closures) ── independent, hardest
 | 4n.2 | Close `dispatchContent_plainScalar_prod` sorry | DONE | Thread `h_not_doc` through call chain: `dispatchContent_evidence` → `accum_content_pending` → `accum_step_content` → `scanNextToken_accum_step` |
 | 4n.3 | allowDirectives bridge | DONE | `atDocumentBoundary` preserved across `allowDirectives := false` update (`unfold ... ; rfl`) |
 
-###### Layer 4o: Wadler-style per-constructor decomposition
+###### Layer 4o: Wadler-style per-constructor decomposition — DONE ✓
 
 **Goal:** Break `accum_block_pending` (~400 lines) and `accum_content_pending` (~180 lines) into per-constructor theorems for maintainability. No sorry count change — pure refactoring.
 
@@ -2233,7 +2233,7 @@ Layer 4s: #6 (flow closures) + #7 (block closures) ── independent, hardest
 - Warning count inflation is cosmetic: the actual sorry SITES are unchanged. Once Layer 4s closes the block/flow closures, the extracted theorems become sorry-free and warnings drop
 - Key insight for future layers: each extracted theorem is now independently provable. Layers 4p–4s can target specific helper theorems without touching the dispatcher
 
-###### Layer 4p: Directive evidence — `scanDirective_prod` (sorry #3)
+###### Layer 4p: Directive evidence — `scanDirective_prod` (sorry #3) — DONE ✓
 
 **Goal:** Prove `scanDirective_prod`: when `scanDirective` returns `.ok s'`, the consumed characters form `GPlus SNbChar` (directive content) + `ScannerSurfCorr s' sp'`. This unblocks #4, #5, #6, #9 directive sorry sites (Layers 4q–4r).
 
@@ -2265,16 +2265,28 @@ Layer 4s: #6 (flow closures) + #7 (block closures) ── independent, hardest
 - Wiring into `structural_dispatch_to_pending` requires `hpeek : s_prep.peek? = some c`, which cascades through `dispatch_new_pending` and upward. This is Layer 4q/4r scope.
 - The degenerate `%\n` case (empty directive name) means `GStar` can be nil, so `GPlus` construction needs `by_cases` on the GStar being nil.
 
-###### Layer 4q: Proof reordering in `dispatch_new_pending` (sorry #4)
+###### Layer 4q: Proof reordering in `dispatch_new_pending` (sorry #4) — DONE ✓
 
-**Goal:** Fix the `sp_mid = sp_prep` circular dependency in `dispatch_new_pending`. Expected: −1 sorry warning after 4p.
+**Goal:** Fix the `sp_mid = sp_prep` circular dependency in `dispatch_new_pending`. Result: −1 sorry warning (11→10).
 
-**Architecture:** Currently, `dispatch_new_pending` passes `sorry` for `h_stream` to `structural_dispatch_to_pending` because `sp_mid = sp_prep` is needed to derive `h_stream` but that equality requires `structural_dispatch_to_pending`'s output. Fix: extract `dispatchStructural_col0` that proves `sp.col = 0` directly, breaking the circularity.
+**Architecture:** `dispatch_new_pending` passed `sorry` for `h_stream : SLYamlStream sp_start sp_prep` to `structural_dispatch_to_pending` because: (1) proving `sp_mid = sp_prep` needed `sp_prep.col = 0`, (2) which came from `structural_dispatch_to_pending`'s output `hcol_prep`, creating a circular dependency. Fix: extract `dispatchStructural_col0` proving `s.col = 0` directly from `scanNextToken_dispatchStructural s c = .ok (some s')`, then derive `sp_mid = sp_prep` BEFORE calling `structural_dispatch_to_pending`, and transport `h_stream_mid` to `h_stream_prep` via rewrite.
 
 | # | Work | Status | Description |
 |---|---|---|---|
-| 4q.1 | `dispatchStructural_col0` | not started | Prove `sp.col = 0` from `scanNextToken_dispatchStructural = .ok (some s')` |
-| 4q.2 | Reorder proof | not started | Derive `sp_mid = sp_prep` before calling `structural_dispatch_to_pending` |
+| 4q.1 | `dispatchStructural_col0` | done | Proves `s.col = 0` from dispatch returning `.ok (some s')` |
+| 4q.2 | Reorder proof | done | Derive `sp_mid = sp_prep` before calling `structural_dispatch_to_pending` |
+
+###### Layer 4q accomplishments
+
+- `dispatchStructural_col0`: standalone lemma proving `s.col = 0` from `scanNextToken_dispatchStructural s c = .ok (some s')`. Proof follows the same case-split structure as `structural_dispatch_to_pending` but extracts only the `col = 0` evidence from each branch's condition (`s.col == 0 && ...`).
+- `dispatch_new_pending` reordered: (1) `dispatchStructural_col0` → `hcol_prep`, (2) existing gap/comment case analysis → `h_mid_prep`, (3) rewrite `h_stream_mid` → `h_stream_prep`, (4) call `structural_dispatch_to_pending` with real evidence instead of `sorry`.
+- Build: 415/415 jobs, 10 sorry warnings (was 11; −1 from `dispatch_new_pending` becoming sorry-free).
+
+###### Layer 4q reflections
+
+- The circularity was simpler than expected: just a proof ordering issue. The `sp.col = 0` evidence was derivable from the dispatch condition alone, not needing the full `structural_dispatch_to_pending` output.
+- The inFlow branch of the function has a `do`-notation join point from `if cond1 then (if cond2 then return error)` that creates an `Except.bind` + `match` in the desugared term. After `simp only [bind, Except.bind, ...]`, this `match` becomes the first `split at h` target in the inFlow branch. The not-inFlow branch doesn't have this extra level (it skips the first if-if block).
+- `rename_i` counts must match the existing `structural_dispatch_to_pending` proof exactly: 3 underscores for inFlow docStart (`_ _ _ h_cond`), 2 underscores for not-inFlow docStart (`_ _ h_cond`).
 
 ###### Layer 4r: Directive + col≠0 cleanup in `accum_*_pending` (sorry #5, #6 partial, #9 partial)
 
@@ -2286,6 +2298,10 @@ Layer 4s: #6 (flow closures) + #7 (block closures) ── independent, hardest
 | 4r.2 | `accum_flow_pending` L1166 | not started | Same directive wiring |
 | 4r.3 | `accum_content_pending` L2190 | not started | Same directive wiring |
 | 4r.4 | col≠0 cases | deferred | All `by_cases hcol` branches — low impact, complex |
+
+###### Layer 4r accomplishments
+
+###### Layer 4r reflections
 
 ###### Layer 4s: Flow + block accumulation closures (sorry #6 partial, #7)
 
@@ -2303,3 +2319,7 @@ Layer 4s: #6 (flow closures) + #7 (block closures) ── independent, hardest
 | 4s.4 | Block ws-before-dash closures | not started | `SIndent n` with `n = col` for dash at `col > 0` |
 | 4s.5 | Flow collection infrastructure | not started | `SFlowSequence`, `SFlowMapping` grammar evidence |
 | 4s.6 | `accum_content_pending` L2206 closure | not started | Plain scalar + flow content dispatch closures |
+
+###### Layer 4s accomplishments
+
+###### Layer 4s reflections

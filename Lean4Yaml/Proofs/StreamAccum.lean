@@ -958,6 +958,46 @@ theorem structural_dispatch_to_pending
           (SLExplicitDocument.withContent sp sp' sp_end h_marker h_content)),
     hcorr'⟩
 
+-- Every `.ok (some _)` branch of `scanNextToken_dispatchStructural` requires
+-- `s.col = 0`. Standalone lemma breaking the circular dependency in
+-- `dispatch_new_pending` (where `structural_dispatch_to_pending` needs
+-- `SLYamlStream` which needs `sp_mid = sp_prep` which needs `sp.col = 0`).
+theorem dispatchStructural_col0
+    (s s' : ScannerState) (c : Char)
+    (h : scanNextToken_dispatchStructural s c = .ok (some s')) :
+    s.col = 0 := by
+  unfold scanNextToken_dispatchStructural at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h
+  · -- inFlow
+    split at h
+    · simp at h
+    · split at h
+      · simp at h
+      · split at h
+        · -- atDocumentStart
+          rename_i _ _ _ h_cond
+          rw [Bool.and_eq_true] at h_cond; exact beq_iff_eq.mp h_cond.1
+        · by_cases hde : (s.col == 0 && atDocumentEnd s) = true
+          · rw [Bool.and_eq_true] at hde; exact beq_iff_eq.mp hde.1
+          · rw [if_neg hde] at h
+            by_cases hdi : (c == '%' && s.col == 0) = true
+            · rw [Bool.and_eq_true] at hdi; exact beq_iff_eq.mp hdi.2
+            · rw [if_neg hdi] at h; simp at h
+  · -- not inFlow
+    split at h
+    · simp at h
+    · split at h
+      · -- atDocumentStart
+        rename_i _ _ h_cond
+        rw [Bool.and_eq_true] at h_cond; exact beq_iff_eq.mp h_cond.1
+      · by_cases hde : (s.col == 0 && atDocumentEnd s) = true
+        · rw [Bool.and_eq_true] at hde; exact beq_iff_eq.mp hde.1
+        · rw [if_neg hde] at h
+          by_cases hdi : (c == '%' && s.col == 0) = true
+          · rw [Bool.and_eq_true] at hdi; exact beq_iff_eq.mp hdi.2
+          · rw [if_neg hdi] at h; simp at h
+
 -- Helper (4f.3): gap closure + dispatch → PendingNode at SSLComments midpoint.
 -- Factors out the shared pattern: close the position gap between sp_mid (SSLComments
 -- endpoint) and sp_prep (ScannerSurfCorr position) using col=0 evidence, then
@@ -975,10 +1015,9 @@ theorem dispatch_new_pending
     (h_dispatch : scanNextToken_dispatchStructural s_prep c = .ok (some s')) :
     PendingNode sp_start sp_mid sp_scan' := by
   have h_gap_eq : sp_gap = sp_prep := ScannerSurfCorr_unique hcorr_gap hcorr_prep
-  obtain ⟨sp_disp, hcol_prep, h_pending_new, hcorr_disp⟩ :=
-    -- sorry: h_stream needs sp_mid=sp_prep equality proved first (only affects directive case)
-    structural_dispatch_to_pending s_prep s' c sp_start sp_prep hcorr_prep sorry h_dispatch
-  have h_disp_eq : sp_disp = sp_scan' := ScannerSurfCorr_unique hcorr_disp hcorr_result
+  -- Break circularity: prove sp_mid = sp_prep BEFORE calling structural_dispatch_to_pending
+  have hcol_prep : sp_prep.col = 0 := by
+    rw [hcorr_prep.col_eq]; exact dispatchStructural_col0 s_prep s' c h_dispatch
   have h_mid_prep : sp_mid = sp_prep := by
     have hcol_gap : sp_gap.col = 0 := h_gap_eq ▸ hcol_prep
     cases hcmt with
@@ -988,6 +1027,10 @@ theorem dispatch_new_pending
     | some =>
       rename_i hc
       exfalso; have := scnb_comment_col_gt sp_ws sp_gap hc; omega
+  have h_stream_prep : SLYamlStream sp_start sp_prep := h_mid_prep ▸ h_stream_mid
+  obtain ⟨sp_disp, _, h_pending_new, hcorr_disp⟩ :=
+    structural_dispatch_to_pending s_prep s' c sp_start sp_prep hcorr_prep h_stream_prep h_dispatch
+  have h_disp_eq : sp_disp = sp_scan' := ScannerSurfCorr_unique hcorr_disp hcorr_result
   rw [← h_mid_prep, h_disp_eq] at h_pending_new
   exact h_pending_new
 
