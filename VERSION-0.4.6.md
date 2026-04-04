@@ -2139,7 +2139,7 @@ Closed both sorry sites for multi-line plain scalar continuation lines: the bloc
 
 ---
 
-### Remaining StreamAccum Sorry Plan (Layers 4n–4r)
+### Remaining StreamAccum Sorry Plan (Layers 4n–4s)
 
 **Current state:** 6 sorry declarations in StreamAccum.lean, containing ~37 individual sorry sites. All other proof files are sorry-free. Build: 415/415 jobs, 6 sorry warnings.
 
@@ -2172,10 +2172,11 @@ Closed both sorry sites for multi-line plain scalar continuation lines: the bloc
 ```
 Layer 4m: #1, #2 (unreachable comment) ─── DONE, -2 warnings (9→7)
 Layer 4n: #8 (h_not_doc) ──────────────── DONE, -1 warning (7→6)
-Layer 4o: #3 (scanDirective_prod) ─────── new theorem, high effort
-Layer 4p: #4 (dispatch_new_pending) ───── depends on 4o, -1 warning
-Layer 4q: #5, #6 partial, #9 partial ─── depends on 4o (directive cases)
-Layer 4r: #6 (flow closures) + #7 (block closures) ── independent, hardest
+Layer 4o: Wadler-style constructor decomposition ── refactor, no sorry change
+Layer 4p: #3 (scanDirective_prod) ─────── new theorem, high effort
+Layer 4q: #4 (dispatch_new_pending) ───── depends on 4p, -1 warning
+Layer 4r: #5, #6 partial, #9 partial ─── depends on 4p (directive cases)
+Layer 4s: #6 (flow closures) + #7 (block closures) ── independent, hardest
 ```
 
 ###### Layer 4m: Unreachable comment contradiction (sorry #1, #2) — DONE ✓
@@ -2201,40 +2202,54 @@ Layer 4r: #6 (flow closures) + #7 (block closures) ── independent, hardest
 | 4n.2 | Close `dispatchContent_plainScalar_prod` sorry | DONE | Thread `h_not_doc` through call chain: `dispatchContent_evidence` → `accum_content_pending` → `accum_step_content` → `scanNextToken_accum_step` |
 | 4n.3 | allowDirectives bridge | DONE | `atDocumentBoundary` preserved across `allowDirectives := false` update (`unfold ... ; rfl`) |
 
-###### Layer 4o: Directive evidence — `scanDirective_prod` (sorry #3)
+###### Layer 4o: Wadler-style per-constructor decomposition
 
-**Goal:** Prove `scanDirective_prod`: when `scanDirective` returns `.ok s'`, the consumed characters form `GPlus SNbChar` (directive content) + `ScannerSurfCorr s' sp'`. This unblocks #4, #5, #6, #9 directive sorry sites.
+**Goal:** Break `accum_block_pending` (~400 lines) and `accum_content_pending` (~180 lines) into per-constructor theorems for maintainability. No sorry count change — pure refactoring.
+
+**Architecture:** Both theorems share: (1) preamble extracting `hcorr_prep`/`hcorr_result`, (2) `h_close_pending` via `close_with_ssl`, (3) `cases h_pending with` splitting into 9 `PendingNode` branches. Extract the substantial branches as standalone theorems; keep trivial-close groups (`pendingDocEnd`/`pendingDocStart`/`pendingContent`/`pendingFlow`/`pendingBlockContent`) in shared `all_goals` blocks.
+
+| # | Work | Status | Description |
+|---|---|---|---|
+| 4o.1 | `accum_block_on_noPending` | not started | Fresh block entry at col=0 with `-` (largest case, ~120 lines) |
+| 4o.2 | `accum_block_on_pendingBlockContent` | not started | Entry accumulation via `h_entry_old` (~80 lines) |
+| 4o.3 | `accum_block_on_pendingBlock` | not started | Entry accumulation via `h_close_entry_old` (~80 lines) |
+| 4o.4 | `accum_content_on_noPending` | not started | Fresh content dispatch with grammar evidence (~80 lines) |
+| 4o.5 | `accum_content_on_pendingBlock` | not started | Content inside block entry composition (~60 lines) |
+
+###### Layer 4p: Directive evidence — `scanDirective_prod` (sorry #3)
+
+**Goal:** Prove `scanDirective_prod`: when `scanDirective` returns `.ok s'`, the consumed characters form `GPlus SNbChar` (directive content) + `ScannerSurfCorr s' sp'`. This unblocks #4, #5, #6, #9 directive sorry sites (Layers 4q–4r).
 
 **Architecture:** `scanDirective` processes YAML `%TAG` and `%YAML` directives. The content after `%` consists of non-break characters. `GPlus SNbChar` = one or more characters satisfying `¬isLineBreakProp`. Proof structure: unfold `scanDirective`, case-split on directive type, then show each branch consumes non-break chars.
 
 | # | Work | Status | Description |
 |---|---|---|---|
-| 4o.1 | `scanDirective_prod` theorem | not started | Fuel induction over directive parsing loop |
-| 4o.2 | `PendingNode.pendingDirective` closure construction | not started | Wire `scanDirective_prod` into `structural_dispatch_to_pending` sorry sites |
+| 4p.1 | `scanDirective_prod` theorem | not started | Fuel induction over directive parsing loop |
+| 4p.2 | `PendingNode.pendingDirective` closure construction | not started | Wire `scanDirective_prod` into `structural_dispatch_to_pending` sorry sites |
 
-###### Layer 4p: Proof reordering in `dispatch_new_pending` (sorry #4)
+###### Layer 4q: Proof reordering in `dispatch_new_pending` (sorry #4)
 
-**Goal:** Fix the `sp_mid = sp_prep` circular dependency in `dispatch_new_pending`. Expected: −1 sorry warning after 4o.
+**Goal:** Fix the `sp_mid = sp_prep` circular dependency in `dispatch_new_pending`. Expected: −1 sorry warning after 4p.
 
 **Architecture:** Currently, `dispatch_new_pending` passes `sorry` for `h_stream` to `structural_dispatch_to_pending` because `sp_mid = sp_prep` is needed to derive `h_stream` but that equality requires `structural_dispatch_to_pending`'s output. Fix: extract `dispatchStructural_col0` that proves `sp.col = 0` directly, breaking the circularity.
 
 | # | Work | Status | Description |
 |---|---|---|---|
-| 4p.1 | `dispatchStructural_col0` | not started | Prove `sp.col = 0` from `scanNextToken_dispatchStructural = .ok (some s')` |
-| 4p.2 | Reorder proof | not started | Derive `sp_mid = sp_prep` before calling `structural_dispatch_to_pending` |
+| 4q.1 | `dispatchStructural_col0` | not started | Prove `sp.col = 0` from `scanNextToken_dispatchStructural = .ok (some s')` |
+| 4q.2 | Reorder proof | not started | Derive `sp_mid = sp_prep` before calling `structural_dispatch_to_pending` |
 
-###### Layer 4q: Directive + col≠0 cleanup in `accum_*_pending` (sorry #5, #6 partial, #9 partial)
+###### Layer 4r: Directive + col≠0 cleanup in `accum_*_pending` (sorry #5, #6 partial, #9 partial)
 
-**Goal:** Close directive sorry sites in `accum_structural_pending`, `accum_flow_pending`, `accum_content_pending`. Depends on 4o.
+**Goal:** Close directive sorry sites in `accum_structural_pending`, `accum_flow_pending`, `accum_content_pending`. Depends on 4p.
 
 | # | Work | Status | Description |
 |---|---|---|---|
-| 4q.1 | `accum_structural_pending` directive case | not started | Wire `PendingNode.pendingDirective` with real closures |
-| 4q.2 | `accum_flow_pending` L1166 | not started | Same directive wiring |
-| 4q.3 | `accum_content_pending` L2190 | not started | Same directive wiring |
-| 4q.4 | col≠0 cases | deferred | All `by_cases hcol` branches — low impact, complex |
+| 4r.1 | `accum_structural_pending` directive case | not started | Wire `PendingNode.pendingDirective` with real closures |
+| 4r.2 | `accum_flow_pending` L1166 | not started | Same directive wiring |
+| 4r.3 | `accum_content_pending` L2190 | not started | Same directive wiring |
+| 4r.4 | col≠0 cases | deferred | All `by_cases hcol` branches — low impact, complex |
 
-###### Layer 4r: Flow + block accumulation closures (sorry #6 partial, #7)
+###### Layer 4s: Flow + block accumulation closures (sorry #6 partial, #7)
 
 **Goal:** Prove the `h_close`/`h_close_entry` closures in `accum_flow_pending` and `accum_block_pending` for non-sequence block indicators and flow collection grammar. Hardest remaining work.
 
@@ -2244,9 +2259,9 @@ Layer 4r: #6 (flow closures) + #7 (block closures) ── independent, hardest
 
 | # | Work | Status | Description |
 |---|---|---|---|
-| 4r.1 | `SBlockMapEntries` infrastructure | not started | Type definition + snoc lemma, parallel to `SBlockSeqEntries` |
-| 4r.2 | `dispatchBlockKey_full_prod` | not started | Grammar evidence for `?` indicator |
-| 4r.3 | `dispatchBlockValue_full_prod` | not started | Grammar evidence for `:` indicator |
-| 4r.4 | Block ws-before-dash closures | not started | `SIndent n` with `n = col` for dash at `col > 0` |
-| 4r.5 | Flow collection infrastructure | not started | `SFlowSequence`, `SFlowMapping` grammar evidence |
-| 4r.6 | `accum_content_pending` L2206 closure | not started | Plain scalar + flow content dispatch closures |
+| 4s.1 | `SBlockMapEntries` infrastructure | not started | Type definition + snoc lemma, parallel to `SBlockSeqEntries` |
+| 4s.2 | `dispatchBlockKey_full_prod` | not started | Grammar evidence for `?` indicator |
+| 4s.3 | `dispatchBlockValue_full_prod` | not started | Grammar evidence for `:` indicator |
+| 4s.4 | Block ws-before-dash closures | not started | `SIndent n` with `n = col` for dash at `col > 0` |
+| 4s.5 | Flow collection infrastructure | not started | `SFlowSequence`, `SFlowMapping` grammar evidence |
+| 4s.6 | `accum_content_pending` L2206 closure | not started | Plain scalar + flow content dispatch closures |
