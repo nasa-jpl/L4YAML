@@ -2334,4 +2334,71 @@ Layer 4s: #6 (flow closures) + #7 (block closures) ── independent, hardest
 
 ###### Layer 4s accomplishments
 
+- **Category A (unreachable comment branch) — 8 sorry closures eliminated.** In the `cases hws with | nil => cases hcmt with | some =>` branch, the `SCNbCommentText sp_mid sp_mid` is contradicted by `scNbCommentText_irrefl`. The key was binding `h_pk` from `preprocess_some_ssl_comments_col0` (previously discarded as `_`), using `h_pk.resolve_right (by simp [preprocess_some_peek h_preprocess])` to derive `sp_prep = sp_mid`, then `exact absurd (h_eq ▸ hc) (scNbCommentText_irrefl sp_mid)`. Applied to 4 theorems: `accum_block_on_noPending`, `accum_block_on_closeThenBlock`, `accum_block_on_pendingBlockContent`, `accum_block_on_pendingBlock`.
+- **`accum_block_pending` pendingDirective case expanded** from monolithic `sorry` to standard `by_cases hcol : sp_scan.col = 0` pattern with `preprocess_some_ssl_comments_col0` + `h_close_pending` for the col=0 arm. Aligns with `pendingDocEnd`/`pendingDocStart` handling.
+- **Variable naming lesson:** After `cases hws with | nil =>`, `sp_ws` is unified with `sp_mid` and eliminated from scope. Must use `sp_mid` in the `| some =>` branch, not `sp_ws`.
+- **Build:** 415/415 jobs, 0 errors, 10 sorry warnings (unchanged — Category A fixes removed sorry from inside lambda bodies, not standalone declaration-level sorry).
+
 ###### Layer 4s reflections
+
+1. **Category A is a pattern, not individual fixes.** All 4 block theorems had identical unreachable-comment branches. The fix is mechanical once the pattern is recognized: bind `h_pk` → `resolve_right` → `absurd` + `scNbCommentText_irrefl`. This suggests a tactic or macro could automate it for future similar branches.
+
+2. **Sorry count vs sorry declaration count.** Removing 8 sorry proof terms from lambda bodies didn't reduce the declaration-level warning count (10→10) because each declaration was already flagged. The actual sorry term count decreased from ~38 to ~34 (net: -8 removed + ~4 added from pendingDirective expansion). Declaration-level tracking underestimates progress on closure proofs.
+
+3. **Remaining sorry categories after 4s:**
+   - **col≠0** (~12 sites): `by_cases hcol : sp_scan.col = 0` false branches across all dispatch theorems
+   - **h_closable in pendingBlock** (~16 sites): `fun sp_mid2 _h_node => sorry` in new `PendingNode.pendingBlock` construction
+   - **flow_close** (3 sites, L1241/1246/1251): `fun _ h_str => sorry` / `fun sp_mid2 h_ssl => sorry`
+   - **content_close** (4 sites, L2524/2526/2540/2541): `fun sp_final h_ssl => sorry`
+   - **h_closable** (2 sites, L914/956): `SLDirectiveDocument` — architecturally requires `---` not yet seen
+
+###### Layer 4t: Planning
+
+**Goal:** Close remaining sorry sites systematically. 42 non-comment sorry terms remain, in 6 categories across 10 sorry-using declarations.
+
+**Remaining sorry site inventory (post-4s):**
+
+| Category | Count | Root cause | Difficulty |
+|----------|-------|------------|------------|
+| h_closable_directive | 2 | Need `SLDirectiveDocument`; requires `---` not yet seen | Architecturally deferred |
+| col≠0 | 13 | BOM edge case: `SSLComments` construction at col>0 needs `SSeparateInLine` = `GPlus SSWhite` but bare break after content has no whitespace | Hard (may be unreachable) |
+| flow_close | 2 | `FlowStack.flowSeqLevel/.flowMapLevel` h_closable: close flow to `SLYamlStream` | Hard (needs `SFlowSequence`/`SFlowMapping` grammar) |
+| block_close_h_close | 11 | 1st lambda of `PendingNode.pendingBlock`: `SBlockNode → SLYamlStream` | Medium (pattern from proven `| nil => | none =>` branches) |
+| block_close_h_entry | 11 | 2nd lambda of `PendingNode.pendingBlock`: `SBlockNode → ∃ SBlockSeqEntries ∧ continuation` | Medium (pattern from proven snoc branches) |
+| content_close | 3 | `PendingNode.pendingContent/Flow` h_closable after old-pending close + content dispatch | Medium (extract from `accum_content_on_noPending` pattern) |
+
+**Dependency analysis:**
+```
+4t (block_close h_close/h_entry in cons/c≠'-' branches)
+ ├── Needs: SIndent at col>0, SBlockMapEntries for ?/:
+ └── Unblocks: 16 sorry sites (8 from cons, 8 from c≠'-')
+
+4u (content_close)
+ ├── Needs: extract content evidence pattern as reusable helper
+ ├── Needs: preprocess_some_separate_lines_0 at sp_mid (after old-pending close)
+ └── Unblocks: 3 sorry sites
+
+4v (col≠0)
+ ├── Needs: general SSLComments construction at arbitrary column
+ ├── May partially require proving BOM+bare-break unreachability
+ └── Unblocks: 13 sorry sites
+
+4w (flow_close)
+ ├── Needs: SFlowSequence/SFlowMapping grammar evidence (multi-token)
+ └── Unblocks: 2 sorry sites
+
+h_closable_directive: permanently deferred (2 sites)
+```
+
+**Planned execution:**
+
+| Layer | Focus | Sites closed | Approach |
+|-------|-------|-------------|----------|
+| 4t | block entry closures (cons + c≠'-') | ~16 | SIndent at col>0, SBlockMapEntries snoc |
+| 4u | content h_closable extraction | ~3 | Reusable helper from accum_content_on_noPending |
+| 4v | col≠0 preprocessing | ~13 | General SSLComments or BOM unreachability |
+| 4w | flow grammar accumulation | ~2 | SFlowSequence/SFlowMapping infrastructure |
+
+###### Layer 4t accomplishments
+
+###### Layer 4t reflections

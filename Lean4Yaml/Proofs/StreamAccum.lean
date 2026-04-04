@@ -1440,7 +1440,7 @@ theorem accum_block_on_noPending
           (corr_of_allowDirectives_update hcorr_prep) hpeek_disp h_dispatch
       have hsp_dash_eq := ScannerSurfCorr_unique hcorr_dash hcorr_result
       rw [hsp_dash_eq] at h_dash h_gnot
-      obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl_pre, hcol_mid, hws, hcmt, hcorr_sc, _⟩ :=
+      obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl_pre, hcol_mid, hws, hcmt, hcorr_sc, h_pk⟩ :=
         preprocess_some_ssl_comments_col0 sc sp_block s_prep '-' h_corr hcol h_preprocess
       have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
       subst hsp_sc_eq
@@ -1484,11 +1484,9 @@ theorem accum_block_on_noPending
                          (GStar.nil _)⟩),
                  hcorr_result⟩
         | some =>
-          exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
-                 BlockStack.nil sp_block, FlowStack.nil sp_block,
-                 PendingNode.pendingBlock sp_start sp_block sp_scan'
-                   (fun sp_mid2 _h_node => sorry)
-                   (fun sp_mid2 _h_node => sorry), hcorr_result⟩
+          rename_i hc
+          have h_eq := h_pk.resolve_right (by simp [preprocess_some_peek h_preprocess])
+          exact absurd (h_eq ▸ hc) (scNbCommentText_irrefl sp_mid)
       | cons =>
         exact ⟨sp_block, sp_block, sp_block, sp_scan', h_stream_block,
                BlockStack.nil sp_block, FlowStack.nil sp_block,
@@ -1529,7 +1527,7 @@ theorem accum_block_on_closeThenBlock
   by_cases hcol : sp_scan.col = 0
   · by_cases hc : c = '-'
     · subst hc
-      obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, hcorr_sc, _⟩ :=
+      obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, hcorr_sc, h_pk⟩ :=
         preprocess_some_ssl_comments_col0 sc sp_scan s_prep '-' h_corr hcol h_preprocess
       have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
       subst hsp_sc_eq
@@ -1591,11 +1589,9 @@ theorem accum_block_on_closeThenBlock
                          (GStar.nil _)⟩),
                  hcorr_result⟩
         | some =>
-          exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', h_stream_new,
-                 BlockStack.nil sp_mid, FlowStack.nil sp_mid,
-                 PendingNode.pendingBlock sp_start sp_mid sp_scan'
-                   (fun sp_mid2 _h_node => sorry)
-                   (fun sp_mid2 _h_node => sorry), hcorr_result⟩
+          rename_i hc
+          have h_eq := h_pk.resolve_right (by simp [preprocess_some_peek h_preprocess])
+          exact absurd (h_eq ▸ hc) (scNbCommentText_irrefl sp_mid)
       | cons =>
         exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', h_stream_new,
                BlockStack.nil sp_mid, FlowStack.nil sp_mid,
@@ -1641,7 +1637,7 @@ theorem accum_block_on_pendingBlockContent
   by_cases hcol : sp_scan.col = 0
   · by_cases hc : c = '-'
     · subst hc
-      obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, hcorr_sc, _⟩ :=
+      obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, hcorr_sc, h_pk⟩ :=
         preprocess_some_ssl_comments_col0 sc sp_scan s_prep '-' h_corr hcol h_preprocess
       have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
       subst hsp_sc_eq
@@ -1678,12 +1674,9 @@ theorem accum_block_on_pendingBlockContent
                        (SIndent.zero sp_mid) h_dash2 h_gnot2 h_indented, h_cont⟩),
                  hcorr_result⟩
         | some =>
-          exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
-                 h_close_pending sp_mid h_ssl,
-                 BlockStack.nil sp_mid, FlowStack.nil sp_mid,
-                 PendingNode.pendingBlock sp_start sp_mid sp_scan'
-                   (fun sp_mid2 _h_node => sorry)
-                   (fun sp_mid2 _h_node => sorry), hcorr_result⟩
+          rename_i hc
+          have h_eq := h_pk.resolve_right (by simp [preprocess_some_peek h_preprocess])
+          exact absurd (h_eq ▸ hc) (scNbCommentText_irrefl sp_mid)
       | cons =>
         exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
                h_close_pending sp_mid h_ssl,
@@ -1729,7 +1722,7 @@ theorem accum_block_on_pendingBlock
   by_cases hcol : sp_scan.col = 0
   · by_cases hc : c = '-'
     · subst hc
-      obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, hcorr_sc, _⟩ :=
+      obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, hcorr_sc, h_pk⟩ :=
         preprocess_some_ssl_comments_col0 sc sp_scan s_prep '-' h_corr hcol h_preprocess
       have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
       subst hsp_sc_eq
@@ -1768,12 +1761,9 @@ theorem accum_block_on_pendingBlock
                        (SIndent.zero sp_mid) h_dash2 h_gnot2 h_indented, h_cont⟩),
                  hcorr_result⟩
         | some =>
-          exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
-                 h_close_pending sp_mid h_ssl,
-                 BlockStack.nil sp_mid, FlowStack.nil sp_mid,
-                 PendingNode.pendingBlock sp_start sp_mid sp_scan'
-                   (fun sp_mid2 _h_node => sorry)
-                   (fun sp_mid2 _h_node => sorry), hcorr_result⟩
+          rename_i hc
+          have h_eq := h_pk.resolve_right (by simp [preprocess_some_peek h_preprocess])
+          exact absurd (h_eq ▸ hc) (scNbCommentText_irrefl sp_mid)
       | cons =>
         exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
                h_close_pending sp_mid h_ssl,
@@ -1835,7 +1825,16 @@ theorem accum_block_pending (sc : ScannerState)
       · sorry)
   | pendingDirective =>
     rename_i h_dir_acc_old _ h_stream_old
-    sorry
+    by_cases hcol : sp_scan.col = 0
+    · obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _, _⟩ :=
+        preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
+      exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
+             h_close_pending sp_mid h_ssl,
+             BlockStack.nil sp_mid, FlowStack.nil sp_mid,
+             PendingNode.pendingBlock sp_start sp_mid sp_scan'
+               (fun sp_mid2 _h_node => sorry)
+               (fun sp_mid2 _h_node => sorry), hcorr_result⟩
+    · sorry
   | pendingContent _
   | pendingFlow _ =>
     all_goals
