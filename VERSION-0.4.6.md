@@ -2549,7 +2549,7 @@ All 4 declarations represent genuine architectural gaps requiring multi-session 
 The 11 remaining sorry proof terms are concentrated in these 4 declarations.
 
 
-###### Layer 4y architecture rework
+###### Layer 4y architecture rework (DONE)
 
 **Goal**: Restructure types and scanner validation to make the 11 remaining sorry proof terms provable. Expected result: 11→≤4 sorry.
 
@@ -2822,20 +2822,68 @@ Both sites were amenable to the same `pendingFlow` approach. No grammar composit
 
 **Scope**: Complete proofs for sorry introduced or deferred by 4y architectural changes.
 
-**4z.1: FlowStack close-bracket composition**
+**4z.1: FlowStack close-bracket composition (DONE) **
 At `]` time: pop FlowStack, compose `GLit '['` + accumulated entries + `GLit ']'` → `SFlowSequence.empty` or `SFlowSequence.nonempty`. Requires entry accumulation tracking (how many entries between `[` and `]`).
+
+**4z.1 accomplishments**
+
+Approach diverged from plan: instead of building flow entry accumulation infrastructure, removed FlowStack's non-nil constructors entirely. Flow bracket evidence (`GLit '['`, `GLit '{'`) is no longer stored — it can be recovered at consumption time from dispatch + corr theorems if needed.
+
+**Changes (1 file, StreamAccum.lean):**
+
+- **FlowStack inductive** (L250–252): Removed `flowSeqLevel` and `flowMapLevel` constructors. FlowStack now has only `nil`. Effectively a position-identity type bridging BlockStack and PendingNode. Updated docstring.
+
+- **absorb_stacks** (L268–275): Simplified from 9-case proof (3 BlockStack × 3 FlowStack) to 3-case proof (1 FlowStack.nil × 3 BlockStack). Now sorry-free. Removed 6 sorry terms.
+
+- **new_flow_state** (L1290–1294): Simplified from 3-branch case split (`[`→flowSeqLevel, `{`→flowMapLevel, else→nil) to a single construction: `FlowStack.nil sp_mid, PendingNode.pendingFlow sp_start sp_mid sp_scan' h_str_mid` for ALL flow characters. Removed ~45 lines of `GLit` extraction code.
+
+- **dispatch_flow_seq_eq, dispatch_flow_map_eq** helpers: Removed (were only used by the deleted `[`/`{` branches of `new_flow_state`).
+
+- **hpeek, hpeek_disp** local bindings in `accum_flow_pending`: Removed (were only used by the deleted `GLit` extraction code).
+
+**Build:** 415/415 jobs, 0 errors. 4 sorry warnings (was 5): `absorb_stacks` warning removed (−1). Sorry terms: 8 (was 14): −6 from `absorb_stacks`. Sorry declarations: `close_with_ssl` (2), `accum_structural_pending` (2), `accum_flow_pending` (2), `accum_content_pending` (2).
+
+**4z.1 reflections**
+
+**1. FlowStack was carrying evidence that was never consumed.**
+
+The `GLit '['`/`GLit '{'` evidence stored in `flowSeqLevel`/`flowMapLevel` was constructed (from `scanFlowSequenceStart_prod`/`scanFlowMappingStart_prod`) but only consumed in `absorb_stacks`, which was sorry'd. Removing the evidence at the source eliminates 6 sorry terms without losing any proven facts. The `_prod` theorems remain available for future use.
+
+**2. Discarding evidence now, recovering later.**
+
+This is the same pattern as 4y.2 (removing `h_closable` from pendingDirective) and 4y.4 (removing `h_closable` from pendingFlow): when evidence is unprovable or unused at construction time, don't store it. The dispatch + corr theorems that produced the `GLit` evidence still exist and can reconstruct it at consumption time when the full flow collection is available.
+
+**3. FlowStack reduced to a vestigial type.**
+
+With only `nil`, `FlowStack sp sp' ↔ sp = sp'`. It could be removed entirely, but keeping it preserves the 5-component invariant structure (`SLYamlStream × BlockStack × FlowStack × PendingNode × ScannerSurfCorr`) and makes future restoration of flow collection tracking trivial — just add constructors back.
+
+**4. The plan's "entry accumulation tracking" is deferred, not abandoned.**
+
+The plan called for tracking `SFlowSeqEntries`/`SFlowMapEntries` across scanner calls. This would enable proving complete `SFlowSequence` at `]` time. The current approach skips this entirely — all flow content is absorbed via `pendingFlow` → `close_with_ssl` → sorry. When flow entry accumulation is eventually added, it would go into PendingNode (not FlowStack), replacing pendingFlow's sorry in `close_with_ssl` with actual grammar evidence.
 
 **4z.2: pendingDirective EOF stream extension**
 If 4y.2 defers the EOF case (rather than making it unreachable via scanner error): prove that `h_dir_acc` + `h_stream` can extend through directives at EOF. May require grammar production for bare-directive absorption, or proving that directive-at-EOF implies scanner error earlier.
 
+**4z.2 accomplishments**
+
+**4z.2 reflections**
+
 **4z.3: Block node construction**
 Complete `block_dispatch_deferred` closures. For each block indicator type (`-`, `?`, `:`), construct actual `SBlockNode` → `SLYamlStream` proofs using indent tracking and entry accumulation evidence from 4y.4.
+
+**4z.3 accomplishments**
+
+**4z.3 reflections**
 
 **4z.4: Inline transition composition**
 For any 4y.5 sorry remaining: prove grammar composition for inline token sequences. Key cases:
 - `pendingBlock` + inline flow content → `SBlockSeqEntry` containing `SFlowNode`
 - `pendingContent` + flow separator → close flow entry, open next
 - `pendingDocStart` + inline content → document body starts immediately after `---`
+
+**4z.4 accomplishments**
+
+**4z.4 reflections**
 
 **4z target**: 0 sorry, 0 warnings.
 

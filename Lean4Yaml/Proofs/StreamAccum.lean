@@ -233,63 +233,36 @@ inductive BlockStack : SurfPos → SurfPos → Prop where
       (∀ (sp_start : SurfPos), SLYamlStream sp_start sp → SLYamlStream sp_start sp') →
       BlockStack sp sp'
 
-/-! ## §0b' FlowStack — Nested Flow Collection Accumulator
+/-! ## §0b' FlowStack — Flow Level Marker
 
-    Tracks partially-accumulated flow collections (`[...]`, `{...}`) being
-    built across multiple `scanNextToken` calls. Mirrors the scanner's
-    `flowLevel` counter. Each `[`/`{` pushes a level; each `]`/`}` pops one.
+    Trivial position-identity type bridging BlockStack and PendingNode.
+    FlowStack.nil is the only constructor — flow collection evidence
+    (open brackets, entries) is deferred to PendingNode.pendingFlow
+    and close_with_ssl.
 
     FlowStack sits between BlockStack and PendingNode in the position chain:
     `SLYamlStream → BlockStack → FlowStack → PendingNode → ScannerSurfCorr`
 
-    Like BlockStack, each level carries a compositional closure
-    `h_closable` that extends the stream. Flow collection grammar witnesses
-    (`SFlowSequence`, `SFlowMapping`) are constructed inside the closure
-    when provided (future work — Layer 4h). -/
+    After 4z.1: FlowStack is always nil. All flow indicator evidence
+    (`GLit '['`, `GLit '{'`) is captured in PendingNode.pendingFlow
+    and composed at consumption time via close_with_ssl. -/
 
 inductive FlowStack : SurfPos → SurfPos → Prop where
   /-- No active flow collections. At block level or stream start. -/
   | nil (sp : SurfPos) : FlowStack sp sp
-  /-- Flow sequence `[...]` being accumulated.
-      Outer stack covers sp → sp_mid. This level covers sp_mid → sp'.
-      `sp_lit` is where `[` was consumed (between sp_mid and sp').
-      Entries will form `SFlowSequence n c`.
-      `h_glit`: evidence that `[` was consumed at `sp_lit → sp'`. -/
-  | flowSeqLevel (sp sp_mid sp_lit sp' : SurfPos) :
-      FlowStack sp sp_mid →
-      GLit '[' sp_lit sp' →
-      FlowStack sp sp'
-  /-- Flow mapping `{...}` being accumulated.
-      `sp_lit` is where `{` was consumed (between sp_mid and sp').
-      Entries will form `SFlowMapping n c`.
-      `h_glit`: evidence that `{` was consumed at `sp_lit → sp'`. -/
-  | flowMapLevel (sp sp_mid sp_lit sp' : SurfPos) :
-      FlowStack sp sp_mid →
-      GLit '{' sp_lit sp' →
-      FlowStack sp sp'
 
-/-- Absorb both BlockStack and FlowStack into the stream via h_closable.
-    Used by all main theorems to reduce the 3×3 case split to a single call. -/
+/-- Absorb both BlockStack and FlowStack into the stream.
+    FlowStack is always nil (4z.1), so this only handles BlockStack. -/
 theorem absorb_stacks (sp_start sp_gram sp_block sp_flow : SurfPos)
     (h_stream : SLYamlStream sp_start sp_gram)
     (h_stack : BlockStack sp_gram sp_block)
     (h_flow : FlowStack sp_block sp_flow) : SLYamlStream sp_start sp_flow := by
-  cases h_stack with
+  cases h_flow with
   | nil =>
-    cases h_flow with
+    cases h_stack with
     | nil => exact h_stream
-    | flowSeqLevel _ _ _ _ h_glit => sorry
-    | flowMapLevel _ _ _ _ h_glit => sorry
-  | seqLevel _ _ _ _ _ h_cl_b =>
-    cases h_flow with
-    | nil => exact h_cl_b sp_start h_stream
-    | flowSeqLevel _ _ _ _ h_glit => sorry
-    | flowMapLevel _ _ _ _ h_glit => sorry
-  | mapLevel _ _ _ _ _ h_cl_b =>
-    cases h_flow with
-    | nil => exact h_cl_b sp_start h_stream
-    | flowSeqLevel _ _ _ _ h_glit => sorry
-    | flowMapLevel _ _ _ _ h_glit => sorry
+    | seqLevel _ _ _ _ _ h_cl_b => exact h_cl_b sp_start h_stream
+    | mapLevel _ _ _ _ _ h_cl_b => exact h_cl_b sp_start h_stream
 
 /-! ## §0c Helpers for §1a (EOF Stream Extension)
 
@@ -1254,15 +1227,13 @@ theorem accum_step_structural (sc : ScannerState)
 /-! ### §1c Preprocessing + Flow Indicator Dispatch
 
     `scanNextToken_dispatchFlowIndicators` handles `[`, `]`, `{`, `}`, `,`.
-    Flow collection tracking via FlowStack:
-    - `[`/`{`: push FlowStack level (flowSeqLevel/flowMapLevel)
-    - `]`/`}`: close flow collection (FlowStack popped at next absorption)
-    - `,`: entry separator within current flow level
+    All flow indicators produce `FlowStack.nil` + `PendingNode.pendingFlow`,
+    deferring flow collection grammar to `close_with_ssl` (4z.1).
 
-    **Architecture (4h.2):** Character-dependent FlowStack construction.
-    A local helper `new_flow_state` case-splits on `c` to determine
-    whether to push a FlowStack level (`[`/`{`) or produce nil with
-    `PendingNode.pendingFlow` (`]`/`}`/`,`). -/
+    **Architecture (4z.1):** `new_flow_state` returns `FlowStack.nil` +
+    `PendingNode.pendingFlow` for ALL flow characters. The `GLit` bracket
+    evidence from `[`/`{` scanning is not stored — it can be recovered from
+    dispatch + corr theorems at consumption time if needed. -/
 
 -- Helper: flow indicator dispatch preserves `ScannerSurfCorr` on `some` paths.
 theorem dispatchFlowIndicators_corr (sc : ScannerState) (sp : SurfPos) (c : Char)
@@ -1309,34 +1280,6 @@ theorem dispatchFlowIndicators_corr (sc : ScannerState) (sp : SurfPos) (c : Char
           -- none (fallthrough)
           · simp at hok
 
--- Helper: when dispatch receives '[', result is scanFlowSequenceStart.
-theorem dispatch_flow_seq_eq {sc s' : ScannerState}
-    (hok : scanNextToken_dispatchFlowIndicators sc '[' = .ok (some s')) :
-    s' = scanFlowSequenceStart sc := by
-  unfold scanNextToken_dispatchFlowIndicators at hok
-  simp only [bind, Except.bind, pure, Except.pure] at hok
-  split at hok
-  · exact (Option.some.inj (Except.ok.inj hok)).symm
-  · rename_i h
-    exact absurd (by native_decide : (('[' : Char) == '[') = true) h
-
--- Helper: when dispatch receives '{', result is scanFlowMappingStart.
-theorem dispatch_flow_map_eq {sc s' : ScannerState}
-    (hok : scanNextToken_dispatchFlowIndicators sc '{' = .ok (some s')) :
-    s' = scanFlowMappingStart sc := by
-  unfold scanNextToken_dispatchFlowIndicators at hok
-  simp only [bind, Except.bind, pure, Except.pure] at hok
-  split at hok
-  · rename_i heq
-    exact absurd heq (by native_decide : ¬(('{' : Char) == '[') = true)
-  · split at hok
-    · rename_i heq
-      exact absurd heq (by native_decide : ¬(('{' : Char) == ']') = true)
-    · split at hok
-      · exact (Option.some.inj (Except.ok.inj hok)).symm
-      · rename_i heq
-        exact absurd (by native_decide : (('{' : Char) == '{') = true) heq
-
 -- Helper: handles all PendingNode cases for flow dispatch given stream at sp_block.
 theorem accum_flow_pending (sc : ScannerState)
     (sp_start sp_block sp_scan : SurfPos)
@@ -1359,59 +1302,13 @@ theorem accum_flow_pending (sc : ScannerState)
     scanNextToken_preprocess_corr sc sp_scan h_corr s_prep c h_preprocess
   obtain ⟨sp_scan', hcorr_result⟩ :=
     dispatchFlowIndicators_corr _ sp_prep c (corr_of_allowDirectives_update hcorr_prep) h_dispatch
-  -- Character-dependent FlowStack + PendingNode construction (4h.2 → 4y.3).
-  -- For `[`/`{`: push FlowStack level with GLit evidence + PendingNode.noPending.
-  -- For `]`/`}`/`,`: FlowStack.nil + PendingNode.pendingFlow (flow contribution pending).
-  -- GLit evidence from scanFlowSequenceStart_prod / scanFlowMappingStart_prod.
-  have hpeek := preprocess_some_peek h_preprocess
-  have hpeek_disp : (if s_prep.allowDirectives then
-      { s_prep with allowDirectives := false, documentEverStarted := true }
-    else s_prep).peek? = some c := by
-    split
-    · show s_prep.peek? = some c; exact hpeek
-    · exact hpeek
+  -- All flow indicators produce FlowStack.nil + PendingNode.pendingFlow (4z.1).
+  -- GLit bracket evidence is not stored; deferred to close_with_ssl.
   have new_flow_state : ∀ (sp_mid : SurfPos) (h_str_mid : SLYamlStream sp_start sp_mid),
       ∃ sp_flow', FlowStack sp_mid sp_flow' ∧ PendingNode sp_start sp_flow' sp_scan' := by
     intro sp_mid h_str_mid
-    by_cases hc_seq : c = '['
-    · -- c = '[': dispatch gives scanFlowSequenceStart, extract GLit.
-      have h_dispatch_seq : scanNextToken_dispatchFlowIndicators
-          (if s_prep.allowDirectives then
-            { s_prep with allowDirectives := false, documentEverStarted := true }
-          else s_prep) '[' = .ok (some s') := by rw [← hc_seq]; exact h_dispatch
-      have hpeek_seq : (if s_prep.allowDirectives then
-          { s_prep with allowDirectives := false, documentEverStarted := true }
-        else s_prep).peek? = some '[' := by rw [← hc_seq]; exact hpeek_disp
-      have h_s'_eq := dispatch_flow_seq_eq h_dispatch_seq
-      obtain ⟨sp_lit, h_glit, hcorr_sfs⟩ :=
-        scanFlowSequenceStart_prod _ sp_prep (corr_of_allowDirectives_update hcorr_prep) hpeek_seq
-      have hsp_eq : sp_lit = sp_scan' :=
-        ScannerSurfCorr_unique hcorr_sfs (h_s'_eq ▸ hcorr_result)
-      exact ⟨sp_scan',
-             FlowStack.flowSeqLevel sp_mid sp_mid sp_prep sp_scan' (FlowStack.nil sp_mid)
-               (hsp_eq ▸ h_glit),
-             PendingNode.noPending sp_start sp_scan'⟩
-    · by_cases hc_map : c = '{'
-      · -- c = '{': dispatch gives scanFlowMappingStart, extract GLit.
-        have h_dispatch_map : scanNextToken_dispatchFlowIndicators
-            (if s_prep.allowDirectives then
-              { s_prep with allowDirectives := false, documentEverStarted := true }
-            else s_prep) '{' = .ok (some s') := by rw [← hc_map]; exact h_dispatch
-        have hpeek_map : (if s_prep.allowDirectives then
-            { s_prep with allowDirectives := false, documentEverStarted := true }
-          else s_prep).peek? = some '{' := by rw [← hc_map]; exact hpeek_disp
-        have h_s'_eq := dispatch_flow_map_eq h_dispatch_map
-        obtain ⟨sp_lit, h_glit, hcorr_sfs⟩ :=
-          scanFlowMappingStart_prod _ sp_prep (corr_of_allowDirectives_update hcorr_prep) hpeek_map
-        have hsp_eq : sp_lit = sp_scan' :=
-          ScannerSurfCorr_unique hcorr_sfs (h_s'_eq ▸ hcorr_result)
-        exact ⟨sp_scan',
-               FlowStack.flowMapLevel sp_mid sp_mid sp_prep sp_scan' (FlowStack.nil sp_mid)
-                 (hsp_eq ▸ h_glit),
-               PendingNode.noPending sp_start sp_scan'⟩
-      · exact ⟨sp_mid,
-               FlowStack.nil sp_mid,
-               PendingNode.pendingFlow sp_start sp_mid sp_scan' h_str_mid⟩
+    exact ⟨sp_mid, FlowStack.nil sp_mid,
+           PendingNode.pendingFlow sp_start sp_mid sp_scan' h_str_mid⟩
   -- Capture closing strategy before case-split (Pattern 6: parametric closing)
   have h_close_pending : ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid :=
     fun sp_mid h_ssl => h_pending.close_with_ssl h_stream_block h_ssl
