@@ -17,7 +17,7 @@ Extend Phase B's `scanDoubleQuoted_prod` pattern to the remaining three content 
 
 **File:** [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) — extends existing Phase B infrastructure, reuses `peek_some_sp`, `advance_corr`, `consumeNewline_sbreak_corr`, `foldQuotedNewlines_prod`.
 
-**Sorry status:** 1 sorry in ScalarProduction.lean (`collectPlainScalarLoop_prod` line break). Build: 415/415 jobs, 0 errors, 10 sorry warnings (1 in ScalarProduction.lean, 9 in StreamAccum.lean). **A16**: Closed S10 (named/non-specific tag) via `scanNamedTag_prod` decomposition — sorry count 11→10, StructureProduction.lean now sorry-free. **A15**: Closed S6 (flow context plain scalar) by parameterizing `collectPlainScalarLoop_prod`, helpers, and `scanPlainScalar_to_flowNode` over `inFlow : Bool` — eliminated 3 sorry sites, warning count unchanged (11). **A14**: Closed S5 (doc boundary first-char termination) via `h_not_doc` precondition + `collectPlainScalarLoop_content_first_step` — sorry count 12→11. **A13**: Closed S4 (`#` at col=0) via `h_hash_col` precondition — sorry count unchanged since S3/S4 share the same theorem. **A12**: Closed S7/S8/S9/alias sorry sites by contradiction (14→12 warnings). **A11**: Removed `hm : m ≥ 1` from grammar constructors (compensating for Nat encoding offset), closing S1/S2. **A10**: Scanner Except conversion makes S7/S8/S9/alias sorry sites closable by contradiction.
+**Sorry status:** Build: 415/415 jobs, 0 errors, **9 sorry warnings** (all in StreamAccum.lean). ScalarProduction.lean, StructureProduction.lean, NodeProduction.lean, PreprocessProduction.lean, ScannerCorrectness.lean — all sorry-free. **A17**: Closed S3 (multi-line plain scalar line break) — ScalarProduction.lean now sorry-free, sorry count 11→9. **A16**: Closed S10 (named/non-specific tag) via `scanNamedTag_prod` decomposition — sorry count 11→10, StructureProduction.lean now sorry-free. **A15**: Closed S6 (flow context plain scalar) by parameterizing `collectPlainScalarLoop_prod`, helpers, and `scanPlainScalar_to_flowNode` over `inFlow : Bool` — eliminated 3 sorry sites, warning count unchanged (11). **A14**: Closed S5 (doc boundary first-char termination) via `h_not_doc` precondition + `collectPlainScalarLoop_content_first_step` — sorry count 12→11. **A13**: Closed S4 (`#` at col=0) via `h_hash_col` precondition — sorry count unchanged since S3/S4 share the same theorem. **A12**: Closed S7/S8/S9/alias sorry sites by contradiction (14→12 warnings). **A11**: Removed `hm : m ≥ 1` from grammar constructors (compensating for Nat encoding offset), closing S1/S2. **A10**: Scanner Except conversion makes S7/S8/S9/alias sorry sites closable by contradiction.
 
 <details>
 <summary>scanSingleQuoted_prod — completed 2026-03-29</summary>
@@ -2129,6 +2129,121 @@ Closed both sorry sites for multi-line plain scalar continuation lines: the bloc
 
 6. **Caller bridge fix** — Replaced the `GStar.nil _` in `SNsPlainMultiLine` with `GStar_SSNsPlainNextLine_ctxOfInFlow_to_flowOut _h_next_lines`, and replaced the sorry'd `h_ws_bridge` with `h_trail` (trailing WS starts at `sp_next`, the endpoint of next-lines). Grammar endpoint changes from `sp_entries` to `sp_next` throughout.
 
-**Build**: 415/415 jobs, 0 errors, 9 sorry warnings (was 11; −2 from ScalarProduction.lean becoming sorry-free).
+**Build**: 415/415 jobs, 0 errors, 7 sorry warnings (was 9; −2 from Layer 4m eliminating "unreachable comment" sorry sites #1 and #2).
 
 11. ~~**col≠0 BOM** (Category 2) — grammar definition change, deferred~~ **DONE (A2)**
+
+12. **Layer 4m: Unreachable comment contradiction** (sorry #1, #2) — **DONE**. Added `skipToContentComment_identity_of_content_peek` theorem to PreprocessProduction.lean: when `(skipToContentComment sc).peek? = some c` with `¬(isLineBreakBool c = true)`, the function was identity (`skipToContentComment sc = sc`). The proof unfolds `skipToContentComment`, case-splits on `sc.peek?` and `commentOk`, and in the `commentOk = true` branch derives contradiction via `collectCommentTextLoop_stops_at_break_or_eof` (loop output is break/EOF, contradicting non-break `c`). Propagated `(sp' = sp_ws ∨ s_result.peek? = none)` conjunct through ~10 `skipToContentLoop`/`skipToContent` wrapper theorems. In the sorry sites, resolved the peek disjunction (`preprocess_some_peek` shows `s_prep.peek? = some c ≠ none`), then used `scNbCommentText_irrefl` to close the `GOpt.some` case as impossible (column self-increase contradiction).
+
+---
+
+### Remaining StreamAccum Sorry Plan (Layers 4n–4r)
+
+**Current state:** 7 sorry declarations in StreamAccum.lean, containing ~38 individual sorry sites. All other proof files are sorry-free. Build: 415/415 jobs, 7 sorry warnings.
+
+**Sorry inventory:**
+
+| # | Declaration | Line | Sorry sites | Root cause | Effort |
+|---|---|---|---|---|---|
+| ~~1~~ | ~~`preprocess_some_separate_lines_0`~~ | ~~599~~ | ~~1~~ | ~~Unreachable comment~~ | ~~DONE (4m)~~ |
+| ~~2~~ | ~~`preprocess_some_separate_0_anyCol`~~ | ~~668~~ | ~~1~~ | ~~Unreachable comment~~ | ~~DONE (4m)~~ |
+| 3 | `structural_dispatch_to_pending` | 859 | 4 | Directive evidence | High |
+| 4 | `dispatch_new_pending` | 965 | 1 | Proof ordering (needs #3) | Low |
+| 5 | `accum_structural_pending` | 996 | 3 | Directive (#3) + col≠0 | Medium |
+| 6 | `accum_flow_pending` | 1135 | 5 | Flow closures + directive (#3) + col≠0 | High |
+| 7 | `accum_block_pending` | 1316 | ~20 | Block closures (non-`-`, ws-before-`-`) | Very high |
+| 8 | `dispatchContent_plainScalar_prod` | 1960 | 1 | `h_not_doc` precondition | Medium |
+| 9 | `accum_content_pending` | 2122 | 4 | Directive (#3) + content closures (#8) + col≠0 | High |
+
+**Root cause summary:**
+
+| Root cause | Instances | Blocked by |
+|---|---|---|
+| ~~Unreachable comment contradiction~~ | ~~#1, #2~~ | ~~DONE (Layer 4m)~~ |
+| `scanDirective_prod` evidence | #3, #4, #5, #6, #9 | — (new theorem needed) |
+| `h_not_doc` precondition | #8 | — (independent) |
+| Flow collection closures | #6 (L1145/L1150/L1155) | — (independent) |
+| Block closure at non-`-` / ws-before-`-` | #7 (all ~20 sites) | — (independent) |
+| col≠0 edge cases | #5, #6, #7, #9 (subset of each) | — (deferred, low impact) |
+
+**Dependency graph:**
+```
+Layer 4m: #1, #2 (unreachable comment) ─── DONE, -2 warnings (9→7)
+Layer 4n: #8 (h_not_doc) ──────────────── independent, -1 warning
+Layer 4o: #3 (scanDirective_prod) ─────── new theorem, high effort
+Layer 4p: #4 (dispatch_new_pending) ───── depends on 4o, -1 warning
+Layer 4q: #5, #6 partial, #9 partial ─── depends on 4o (directive cases)
+Layer 4r: #6 (flow closures) + #7 (block closures) ── independent, hardest
+```
+
+###### Layer 4m: Unreachable comment contradiction (sorry #1, #2) — DONE ✓
+
+**Result:** −2 sorry warnings (9→7). Added `skipToContentComment_identity_of_content_peek` (PreprocessProduction.lean): proves `skipToContentComment sc = sc` when output peek is non-break content, using `collectCommentTextLoop_stops_at_break_or_eof` for contradiction. Propagated `(sp' = sp_ws ∨ s_result.peek? = none)` through skipToContent chain. Sorry sites resolved via `preprocess_some_peek` + `scNbCommentText_irrefl`.
+
+| # | Work | Status | Description |
+|---|---|---|---|
+| 4m.1 | `skipToContentComment_identity_of_content_peek` | DONE | Proves identity when output peek is non-break content |
+| 4m.2 | `scNbCommentText_irrefl` | existing | Already in ScalarProduction.lean |
+| 4m.3 | Close `preprocess_some_separate_lines_0` sorry | DONE | Uses 4m.1 + `ScannerSurfCorr_unique` + 4m.2 |
+| 4m.4 | Close `preprocess_some_separate_0_anyCol` sorry | DONE | Same technique as 4m.3 |
+
+###### Layer 4n: Plain scalar `h_not_doc` precondition (sorry #8)
+
+**Goal:** Close the `h_not_doc` sorry in `dispatchContent_plainScalar_prod`. Expected: −1 sorry warning (7→6).
+
+**Architecture:** `scanPlainScalar_to_flowNode` requires `h_not_doc : sc.col = 0 → atDocumentBoundary sc = false` to eliminate the degenerate first-iteration termination case. When `dispatchContent_plainScalar_prod` is called from content dispatch, the scanner has already passed structural dispatch (which handles `---`/`...`/`%`). Therefore the scanner is NOT at a document boundary. The proof needs to connect the structural dispatch's negative evidence to `atDocumentBoundary`.
+
+| # | Work | Status | Description |
+|---|---|---|---|
+| 4n.1 | `structural_dispatch_none_not_doc_boundary` | not started | When `scanNextToken_dispatchStructural` returns `none`, prove `atDocumentBoundary s_prep = false` (or `col ≠ 0 ∨ ¬atDocumentBoundary`) |
+| 4n.2 | Close `dispatchContent_plainScalar_prod` sorry | not started | Use 4n.1 to provide `h_not_doc` |
+
+###### Layer 4o: Directive evidence — `scanDirective_prod` (sorry #3)
+
+**Goal:** Prove `scanDirective_prod`: when `scanDirective` returns `.ok s'`, the consumed characters form `GPlus SNbChar` (directive content) + `ScannerSurfCorr s' sp'`. This unblocks #4, #5, #6, #9 directive sorry sites.
+
+**Architecture:** `scanDirective` processes YAML `%TAG` and `%YAML` directives. The content after `%` consists of non-break characters. `GPlus SNbChar` = one or more characters satisfying `¬isLineBreakProp`. Proof structure: unfold `scanDirective`, case-split on directive type, then show each branch consumes non-break chars.
+
+| # | Work | Status | Description |
+|---|---|---|---|
+| 4o.1 | `scanDirective_prod` theorem | not started | Fuel induction over directive parsing loop |
+| 4o.2 | `PendingNode.pendingDirective` closure construction | not started | Wire `scanDirective_prod` into `structural_dispatch_to_pending` sorry sites |
+
+###### Layer 4p: Proof reordering in `dispatch_new_pending` (sorry #4)
+
+**Goal:** Fix the `sp_mid = sp_prep` circular dependency in `dispatch_new_pending`. Expected: −1 sorry warning after 4o.
+
+**Architecture:** Currently, `dispatch_new_pending` passes `sorry` for `h_stream` to `structural_dispatch_to_pending` because `sp_mid = sp_prep` is needed to derive `h_stream` but that equality requires `structural_dispatch_to_pending`'s output. Fix: extract `dispatchStructural_col0` that proves `sp.col = 0` directly, breaking the circularity.
+
+| # | Work | Status | Description |
+|---|---|---|---|
+| 4p.1 | `dispatchStructural_col0` | not started | Prove `sp.col = 0` from `scanNextToken_dispatchStructural = .ok (some s')` |
+| 4p.2 | Reorder proof | not started | Derive `sp_mid = sp_prep` before calling `structural_dispatch_to_pending` |
+
+###### Layer 4q: Directive + col≠0 cleanup in `accum_*_pending` (sorry #5, #6 partial, #9 partial)
+
+**Goal:** Close directive sorry sites in `accum_structural_pending`, `accum_flow_pending`, `accum_content_pending`. Depends on 4o.
+
+| # | Work | Status | Description |
+|---|---|---|---|
+| 4q.1 | `accum_structural_pending` directive case | not started | Wire `PendingNode.pendingDirective` with real closures |
+| 4q.2 | `accum_flow_pending` L1166 | not started | Same directive wiring |
+| 4q.3 | `accum_content_pending` L2190 | not started | Same directive wiring |
+| 4q.4 | col≠0 cases | deferred | All `by_cases hcol` branches — low impact, complex |
+
+###### Layer 4r: Flow + block accumulation closures (sorry #6 partial, #7)
+
+**Goal:** Prove the `h_close`/`h_close_entry` closures in `accum_flow_pending` and `accum_block_pending` for non-sequence block indicators and flow collection grammar. Hardest remaining work.
+
+**Architecture:** 
+- **Flow closures** (#6 L1145/L1150/L1155): Need `SFlowSequence`/`SFlowMapping` grammar evidence when flow indicators `[`, `{`, `]`, `}`, `,` are processed. Requires flow collection grammar infrastructure.
+- **Block closures** (#7): Need `SBlockMapEntries` infrastructure for `?`/`:` indicators, parallel to existing `SBlockSeqEntries`. Also need block entry at non-zero indent (`SIndent n` with `n > 0`) and whitespace-before-dash handling.
+
+| # | Work | Status | Description |
+|---|---|---|---|
+| 4r.1 | `SBlockMapEntries` infrastructure | not started | Type definition + snoc lemma, parallel to `SBlockSeqEntries` |
+| 4r.2 | `dispatchBlockKey_full_prod` | not started | Grammar evidence for `?` indicator |
+| 4r.3 | `dispatchBlockValue_full_prod` | not started | Grammar evidence for `:` indicator |
+| 4r.4 | Block ws-before-dash closures | not started | `SIndent n` with `n = col` for dash at `col > 0` |
+| 4r.5 | Flow collection infrastructure | not started | `SFlowSequence`, `SFlowMapping` grammar evidence |
+| 4r.6 | `accum_content_pending` L2206 closure | not started | Plain scalar + flow content dispatch closures |

@@ -546,13 +546,14 @@ theorem preprocess_some_ssl_comments_col0 (sc : ScannerState) (sp : SurfPos)
     (hok : scanNextToken_preprocess sc = .ok (some (s_prep, c))) :
     ∃ sp_mid sp_ws sp_prep, SSLComments sp sp_mid ∧ sp_mid.col = 0 ∧
                       GStar SSWhite sp_mid sp_ws ∧ GOpt SCNbCommentText sp_ws sp_prep ∧
-                      ScannerSurfCorr s_prep sp_prep := by
+                      ScannerSurfCorr s_prep sp_prep ∧
+                      (sp_prep = sp_ws ∨ s_prep.peek? = none) := by
   unfold scanNextToken_preprocess at hok
   simp only [bind, Except.bind, pure, Except.pure] at hok
   split at hok
   · simp at hok
   · rename_i s_content h_skip
-    obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, hcorr_sc⟩ :=
+    obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, hcorr_sc, h_pk⟩ :=
       skipToContent_startOfLine_comments_prod sc sp s_content hcorr hcol h_skip
     split at hok
     · simp at hok
@@ -568,14 +569,39 @@ theorem preprocess_some_ssl_comments_col0 (sc : ScannerState) (sp : SurfPos)
                 { (unwindIndents s_content ↑s_content.col) with
                   needIndentCheck := false } sp_sc :=
               ⟨hcorr2.chars_from, hcorr2.col_eq, hcorr2.end_eq, hcorr2.input_prefix, hcorr2.indent_cols_nonneg⟩
-            exact ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, saveSimpleKey_corr _ sp_sc hcorr3⟩
+            exact ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, saveSimpleKey_corr _ sp_sc hcorr3,
+                   h_pk.imp_right (fun h => by
+                     rw [saveSimpleKey_peek]; unfold ScannerState.peek? unwindIndents
+                     simp only [unwindIndentsLoop_offset, unwindIndentsLoop_inputEnd, unwindIndentsLoop_input]
+                     unfold ScannerState.peek? at h; exact h)⟩
       · split at hok
         · simp at hok
         · split at hok
           · simp at hok
           · have h := Except.ok.inj hok; injection h with h
             obtain ⟨h1, h2⟩ := Prod.mk.inj h; subst h1; subst h2
-            exact ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, saveSimpleKey_corr _ sp_sc hcorr_sc⟩
+            exact ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, saveSimpleKey_corr _ sp_sc hcorr_sc,
+                   h_pk.imp_right (fun h => by rw [saveSimpleKey_peek]; exact h)⟩
+
+/-- When `scanNextToken_preprocess` returns `some (s_prep, c)`, the resulting
+    scanner state has `s_prep.peek? = some c`. This follows from the definition's
+    final `match s.peek? with | some c => return some (s, c)`. -/
+theorem preprocess_some_peek {sc s_prep : ScannerState} {c : Char}
+    (hok : scanNextToken_preprocess sc = .ok (some (s_prep, c))) :
+    s_prep.peek? = some c := by
+  unfold scanNextToken_preprocess at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  split at hok  -- skipToContent
+  · simp at hok
+  · split at hok  -- hasMore
+    · simp at hok
+    · split at hok  -- indent handling
+      all_goals (  -- both indent branches have identical structure
+        split at hok  -- trailing content check
+        <;> (try simp at hok)  -- error case
+        <;> (split at hok  -- peek? match
+          <;> (try simp at hok)  -- none case
+          <;> (obtain ⟨h1, h2⟩ := hok; subst h1; subst h2; assumption)))
 
 /-- Preprocessing at col=0 with content character produces `SSeparateLines 0`.
 
@@ -602,8 +628,13 @@ theorem preprocess_some_separate_lines_0 (sc : ScannerState) (sp : SurfPos)
     (hcol : sp.col = 0)
     (hok : scanNextToken_preprocess sc = .ok (some (s_prep, c))) :
     ∃ sp_prep, SSeparateLines 0 sp sp_prep ∧ ScannerSurfCorr s_prep sp_prep := by
-  obtain ⟨sp_mid, sp_ws, sp_prep, h_ssl, hcol_mid, h_ws, h_cmt, hcorr_out⟩ :=
+  obtain ⟨sp_mid, sp_ws, sp_prep, h_ssl, hcol_mid, h_ws, h_cmt, hcorr_out, h_pk⟩ :=
     preprocess_some_ssl_comments_col0 sc sp s_prep c hcorr hcol hok
+  -- Resolve the peek disjunction: sp_prep = sp_ws (since peek? ≠ none)
+  have h_eq : sp_prep = sp_ws := by
+    cases h_pk with
+    | inl h => exact h
+    | inr h => rw [preprocess_some_peek hok] at h; cases h
   cases h_cmt with
   | none =>
     -- GOpt.none: sp_ws = sp_prep. Build SSeparateLines.commented 0.
@@ -611,12 +642,11 @@ theorem preprocess_some_separate_lines_0 (sc : ScannerState) (sp : SurfPos)
       SSeparateLines.commented 0 sp sp_mid sp_ws h_ssl
         (SFlowLinePrefix.mk 0 sp_mid sp_mid sp_ws (SIndent.zero sp_mid)
           (ScalarProduction.gstar_sswhite_to_gopt_sep h_ws)),
-      hcorr_out⟩
-  | some h_comment_text =>
-    -- GOpt.some: unreachable (scanner's comment loop is greedy, stops at break/EOF,
-    -- but scanNextToken_preprocess returned a non-break content character).
-    -- Deferred: requires peek? preservation through skipToContentComment struct update.
-    exact ⟨sp_prep, sorry, hcorr_out⟩
+      h_eq ▸ hcorr_out⟩
+  | some _ h =>
+    -- GOpt.some: unreachable — SCNbCommentText sp_ws sp_ws is impossible
+    have : SCNbCommentText sp_ws sp_ws := h_eq ▸ h
+    exact absurd this (scNbCommentText_irrefl sp_ws)
 
 /-- General-column version of `preprocess_some_ssl_comments_col0`.
     When preprocessing returns `some`, extract `SSLComments` disjunction plus
@@ -628,13 +658,14 @@ theorem preprocess_some_ssl_comments_anyCol (sc : ScannerState) (sp : SurfPos)
     ∃ sp_mid sp_ws sp_prep,
       (SSLComments sp sp_mid ∧ sp_mid.col = 0 ∨ sp_mid = sp) ∧
       GStar SSWhite sp_mid sp_ws ∧ GOpt SCNbCommentText sp_ws sp_prep ∧
-      ScannerSurfCorr s_prep sp_prep := by
+      ScannerSurfCorr s_prep sp_prep ∧
+      (sp_prep = sp_ws ∨ s_prep.peek? = none) := by
   unfold scanNextToken_preprocess at hok
   simp only [bind, Except.bind, pure, Except.pure] at hok
   split at hok
   · simp at hok
   · rename_i s_content h_skip
-    obtain ⟨sp_mid, sp_ws, sp_sc, h_disj, hws, hcmt, hcorr_sc⟩ :=
+    obtain ⟨sp_mid, sp_ws, sp_sc, h_disj, hws, hcmt, hcorr_sc, h_pk⟩ :=
       skipToContent_anyCol_prod sc sp s_content hcorr h_skip
     split at hok
     · simp at hok
@@ -650,28 +681,35 @@ theorem preprocess_some_ssl_comments_anyCol (sc : ScannerState) (sp : SurfPos)
                 { (unwindIndents s_content ↑s_content.col) with
                   needIndentCheck := false } sp_sc :=
               ⟨hcorr2.chars_from, hcorr2.col_eq, hcorr2.end_eq, hcorr2.input_prefix, hcorr2.indent_cols_nonneg⟩
-            exact ⟨sp_mid, sp_ws, sp_sc, h_disj, hws, hcmt, saveSimpleKey_corr _ sp_sc hcorr3⟩
+            exact ⟨sp_mid, sp_ws, sp_sc, h_disj, hws, hcmt, saveSimpleKey_corr _ sp_sc hcorr3,
+                   h_pk.imp_right (fun h => by
+                     rw [saveSimpleKey_peek]; unfold ScannerState.peek? unwindIndents
+                     simp only [unwindIndentsLoop_offset, unwindIndentsLoop_inputEnd, unwindIndentsLoop_input]
+                     unfold ScannerState.peek? at h; exact h)⟩
       · split at hok
         · simp at hok
         · split at hok
           · simp at hok
           · have h := Except.ok.inj hok; injection h with h
             obtain ⟨h1, h2⟩ := Prod.mk.inj h; subst h1; subst h2
-            exact ⟨sp_mid, sp_ws, sp_sc, h_disj, hws, hcmt, saveSimpleKey_corr _ sp_sc hcorr_sc⟩
+            exact ⟨sp_mid, sp_ws, sp_sc, h_disj, hws, hcmt, saveSimpleKey_corr _ sp_sc hcorr_sc,
+                   h_pk.imp_right (fun h => by rw [saveSimpleKey_peek]; exact h)⟩
 
 /-- General-column `SSeparateLines 0` from preprocessing with content.
     Works at any starting column — uses nil `SSLComments` when no break consumed,
-    and `SIndent 0` (zero-width) which has no column requirement.
-
-    Like `preprocess_some_separate_lines_0`, the `GOpt.some` comment case is
-    unreachable but deferred (same root cause). -/
+    and `SIndent 0` (zero-width) which has no column requirement. -/
 theorem preprocess_some_separate_0_anyCol (sc : ScannerState) (sp : SurfPos)
     (s_prep : ScannerState) (c : Char)
     (hcorr : ScannerSurfCorr sc sp)
     (hok : scanNextToken_preprocess sc = .ok (some (s_prep, c))) :
     ∃ sp_prep, SSeparateLines 0 sp sp_prep ∧ ScannerSurfCorr s_prep sp_prep := by
-  obtain ⟨sp_mid, sp_ws, sp_prep, h_disj, h_ws, h_cmt, hcorr_out⟩ :=
+  obtain ⟨sp_mid, sp_ws, sp_prep, h_disj, h_ws, h_cmt, hcorr_out, h_pk⟩ :=
     preprocess_some_ssl_comments_anyCol sc sp s_prep c hcorr hok
+  -- Resolve the peek disjunction: sp_prep = sp_ws (since peek? ≠ none)
+  have h_eq : sp_prep = sp_ws := by
+    cases h_pk with
+    | inl h => exact h
+    | inr h => rw [preprocess_some_peek hok] at h; cases h
   cases h_cmt with
   | none =>
     cases h_disj with
@@ -680,36 +718,18 @@ theorem preprocess_some_separate_0_anyCol (sc : ScannerState) (sp : SurfPos)
         SSeparateLines.commented 0 sp sp_mid sp_ws h_ssl_col.1
           (SFlowLinePrefix.mk 0 sp_mid sp_mid sp_ws (SIndent.zero sp_mid)
             (ScalarProduction.gstar_sswhite_to_gopt_sep h_ws)),
-        hcorr_out⟩
-    | inr h_eq =>
-      rw [h_eq] at h_ws
+        h_eq ▸ hcorr_out⟩
+    | inr h_mid_eq =>
+      rw [h_mid_eq] at h_ws
       -- No break consumed (sp_mid = sp). Build SSeparateInLine from GStar SSWhite.
       exact ⟨sp_ws,
         SSeparateLines.inline 0 sp sp_ws
           (GStar_SSWhite_to_SSeparateInLine sp sp_ws h_ws),
-        hcorr_out⟩
-  | some =>
-    exact ⟨sp_prep, sorry, hcorr_out⟩
-
-/-- When `scanNextToken_preprocess` returns `some (s_prep, c)`, the resulting
-    scanner state has `s_prep.peek? = some c`. This follows from the definition's
-    final `match s.peek? with | some c => return some (s, c)`. -/
-theorem preprocess_some_peek {sc s_prep : ScannerState} {c : Char}
-    (hok : scanNextToken_preprocess sc = .ok (some (s_prep, c))) :
-    s_prep.peek? = some c := by
-  unfold scanNextToken_preprocess at hok
-  simp only [bind, Except.bind, pure, Except.pure] at hok
-  split at hok  -- skipToContent
-  · simp at hok
-  · split at hok  -- hasMore
-    · simp at hok
-    · split at hok  -- indent handling
-      all_goals (  -- both indent branches have identical structure
-        split at hok  -- trailing content check
-        <;> (try simp at hok)  -- error case
-        <;> (split at hok  -- peek? match
-          <;> (try simp at hok)  -- none case
-          <;> (obtain ⟨h1, h2⟩ := hok; subst h1; subst h2; assumption)))
+        h_eq ▸ hcorr_out⟩
+  | some _ h =>
+    -- GOpt.some: unreachable — SCNbCommentText sp_ws sp_ws is impossible
+    have : SCNbCommentText sp_ws sp_ws := h_eq ▸ h
+    exact absurd this (scNbCommentText_irrefl sp_ws)
 
 /-! ## §1 Per-Dispatch Grammar Accumulator Lemmas
 
@@ -997,7 +1017,7 @@ theorem accum_structural_pending (sc : ScannerState)
   cases h_pending with
   | noPending =>
     by_cases hcol : sp_block.col = 0
-    · obtain ⟨sp_mid, sp_ws, sp_gap, h_ssl, hcol_mid, hws, hcmt, hcorr_gap⟩ :=
+    · obtain ⟨sp_mid, sp_ws, sp_gap, h_ssl, hcol_mid, hws, hcmt, hcorr_gap, _⟩ :=
         preprocess_some_ssl_comments_col0 sc sp_block s_prep c h_corr hcol h_preprocess
       have h_stream_mid : SLYamlStream sp_start sp_mid :=
         ssl_comments_extend_stream sp_start sp_block sp_mid h_stream_block h_ssl
@@ -1021,7 +1041,7 @@ theorem accum_structural_pending (sc : ScannerState)
   | pendingBlock _ _ =>
     all_goals (
       by_cases hcol : sp_scan.col = 0
-      · obtain ⟨sp_mid, sp_ws, sp_gap, h_ssl, hcol_mid, hws, hcmt, hcorr_gap⟩ :=
+      · obtain ⟨sp_mid, sp_ws, sp_gap, h_ssl, hcol_mid, hws, hcmt, hcorr_gap, _⟩ :=
           preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
         exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
                h_close_pending sp_mid h_ssl,
@@ -1173,7 +1193,7 @@ theorem accum_flow_pending (sc : ScannerState)
   | pendingBlock _ _ =>
     all_goals (
       by_cases hcol : sp_scan.col = 0
-      · obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _⟩ :=
+      · obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _, _⟩ :=
           preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
         have h_stream_mid := h_close_pending sp_mid h_ssl
         obtain ⟨sp_flow', h_flow', h_pend'⟩ := new_flow_state sp_mid h_stream_mid
@@ -1337,7 +1357,7 @@ theorem accum_block_pending (sc : ScannerState)
         have hsp_dash_eq := ScannerSurfCorr_unique hcorr_dash hcorr_result
         rw [hsp_dash_eq] at h_dash h_gnot
         -- Extract preprocessing evidence
-        obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl_pre, hcol_mid, hws, hcmt, hcorr_sc⟩ :=
+        obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl_pre, hcol_mid, hws, hcmt, hcorr_sc, _⟩ :=
           preprocess_some_ssl_comments_col0 sc sp_block s_prep '-' h_corr hcol h_preprocess
         have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
         subst hsp_sc_eq
@@ -1414,7 +1434,7 @@ theorem accum_block_pending (sc : ScannerState)
   | pendingDocStart _ =>
     all_goals (
       by_cases hcol : sp_scan.col = 0
-      · obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _⟩ :=
+      · obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _, _⟩ :=
           preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
         exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
                h_close_pending sp_mid h_ssl,
@@ -1433,7 +1453,7 @@ theorem accum_block_pending (sc : ScannerState)
       · by_cases hc : c = '-'
         · -- '-' at col=0: close old pending, start new block sequence with real closures
           subst hc
-          obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, hcorr_sc⟩ :=
+          obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, hcorr_sc, _⟩ :=
             preprocess_some_ssl_comments_col0 sc sp_scan s_prep '-' h_corr hcol h_preprocess
           have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
           subst hsp_sc_eq
@@ -1509,7 +1529,7 @@ theorem accum_block_pending (sc : ScannerState)
                      (fun sp_mid2 _h_node => sorry)
                      (fun sp_mid2 _h_node => sorry), hcorr_result⟩
         · -- c ≠ '-': close old pending, new block with sorry closures
-          obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _⟩ :=
+          obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _, _⟩ :=
             preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
           exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
                  h_close_pending sp_mid h_ssl,
@@ -1525,7 +1545,7 @@ theorem accum_block_pending (sc : ScannerState)
     · by_cases hc : c = '-'
       · -- Same-level '-': accumulate entries via h_entry_old (content variant)
         subst hc
-        obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, hcorr_sc⟩ :=
+        obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, hcorr_sc, _⟩ :=
           preprocess_some_ssl_comments_col0 sc sp_scan s_prep '-' h_corr hcol h_preprocess
         have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
         subst hsp_sc_eq
@@ -1577,7 +1597,7 @@ theorem accum_block_pending (sc : ScannerState)
                    (fun sp_mid2 _h_node => sorry)
                    (fun sp_mid2 _h_node => sorry), hcorr_result⟩
       · -- c ≠ '-': close content to stream
-        obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _⟩ :=
+        obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _, _⟩ :=
           preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
         exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
                h_close_pending sp_mid h_ssl,
@@ -1592,7 +1612,7 @@ theorem accum_block_pending (sc : ScannerState)
     · by_cases hc : c = '-'
       · -- Same-level '-': accumulate entries via h_close_entry_old
         subst hc
-        obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, hcorr_sc⟩ :=
+        obtain ⟨sp_mid, sp_ws, sp_sc, h_ssl, hcol_mid, hws, hcmt, hcorr_sc, _⟩ :=
           preprocess_some_ssl_comments_col0 sc sp_scan s_prep '-' h_corr hcol h_preprocess
         have hsp_sc_eq := ScannerSurfCorr_unique hcorr_sc hcorr_prep
         subst hsp_sc_eq
@@ -1649,7 +1669,7 @@ theorem accum_block_pending (sc : ScannerState)
                    (fun sp_mid2 _h_node => sorry)
                    (fun sp_mid2 _h_node => sorry), hcorr_result⟩
       · -- c ≠ '-': close old entry to stream
-        obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _⟩ :=
+        obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _, _⟩ :=
           preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
         exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
                h_close_pending sp_mid h_ssl,
@@ -2197,7 +2217,7 @@ theorem accum_content_pending (sc : ScannerState)
   | pendingBlockContent _ _ =>
     all_goals (
       by_cases hcol : sp_scan.col = 0
-      · obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _⟩ :=
+      · obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _, _⟩ :=
           preprocess_some_ssl_comments_col0 sc sp_scan s_prep c h_corr hcol h_preprocess
         exact ⟨sp_mid, sp_mid, sp_mid, sp_scan',
                h_close_pending sp_mid h_ssl,
