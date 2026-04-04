@@ -951,11 +951,259 @@ theorem scanDocumentEnd_prod (sc : ScannerState) (sp : SurfPos)
       · have h := Except.ok.inj hok; subst h; exact mk_corr
       · exact absurd hok (by simp)
 
--- `scanDirective` preserves correspondence on success.
+/-! ## §12 Directive scanning — grammar evidence
+
+    Upgrade `scanDirective_prod` to return `GStar SNbChar` evidence:
+    all characters consumed after `%` are non-break.
+
+    Each collect*Loop_prod is a fuel-induction mirror of the _corr version in
+    StructureCoupling.lean, using `advance_non_newline_corr` (exact position)
+    instead of `advance_corr` (existential position), and collecting
+    `GStar SNbChar` evidence at each step.
+
+    The whitespace-to-nbchar bridge converts `GStar SSWhite → GStar SNbChar`
+    (whitespace chars are non-break). -/
+
+theorem GStar_SSWhite_to_GStar_SNbChar {sp sp' : SurfPos}
+    (h : GStar SSWhite sp sp') : GStar SNbChar sp sp' := by
+  induction h with
+  | nil => exact GStar.nil _
+  | cons _ _ _ hw _ ih =>
+    cases hw with
+    | space rest col =>
+      exact GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar ' ' rest col (by decide)) ih
+    | tab rest col =>
+      exact GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar '\t' rest col (by decide)) ih
+
+theorem collectDirectiveNameLoop_prod (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp) (name : String) (fuel : Nat) :
+    ∃ sp', GStar SNbChar sp sp' ∧
+      ScannerSurfCorr (collectDirectiveNameLoop sc name fuel).snd sp' := by
+  induction fuel generalizing sc sp name with
+  | zero => simp [collectDirectiveNameLoop]; exact ⟨sp, GStar.nil _, hcorr⟩
+  | succ fuel' ih =>
+    unfold collectDirectiveNameLoop; split
+    · rename_i c hpeek; split
+      · -- !isWhiteSpaceBool c && !isLineBreakBool c = true → advance
+        rename_i h_pred
+        have h_nlb : ¬isLineBreakBool c = true := by
+          intro h; simp [h] at h_pred
+        obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
+        have hmore := corr_nonempty_has_more hcorr
+        have hadv := advance_non_newline_corr sc c rest hcorr hmore
+          (not_isLineBreak_not_newline c h_nlb) (not_isLineBreak_not_cr c h_nlb)
+        obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv (name.push c)
+        exact ⟨sp', GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar c rest sc.col h_nlb) hstar, hcorr'⟩
+      · exact ⟨sp, GStar.nil _, hcorr⟩
+    · exact ⟨sp, GStar.nil _, hcorr⟩
+
+theorem isDigit_not_isLineBreak (c : Char) (h : c.isDigit = true) :
+    ¬isLineBreakBool c = true := by
+  intro hlb; simp [isLineBreakBool] at hlb
+  cases hlb with
+  | inl h1 => subst h1; simp [Char.isDigit] at h
+  | inr h1 => subst h1; simp [Char.isDigit] at h
+
+theorem collectVersionMajorLoop_prod (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp) (major : String) (fuel : Nat) :
+    ∃ sp', GStar SNbChar sp sp' ∧
+      ScannerSurfCorr (collectVersionMajorLoop sc major fuel).snd sp' := by
+  induction fuel generalizing sc sp major with
+  | zero => simp [collectVersionMajorLoop]; exact ⟨sp, GStar.nil _, hcorr⟩
+  | succ fuel' ih =>
+    unfold collectVersionMajorLoop; split
+    · -- peek? = some '.'
+      rename_i hpeek
+      obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
+      have hmore := corr_nonempty_has_more hcorr
+      have hadv := advance_non_newline_corr sc '.' rest hcorr hmore (by decide) (by decide)
+      exact ⟨⟨rest, sc.col + 1⟩, GStar.cons _ _ _
+        (not_isLineBreak_gives_SNbChar '.' rest sc.col (by decide)) (GStar.nil _), hadv⟩
+    · -- peek? = some c (c ≠ '.')
+      rename_i c _ hpeek; split
+      · -- isDigit
+        rename_i h_dig
+        have h_nlb := isDigit_not_isLineBreak c h_dig
+        obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
+        have hmore := corr_nonempty_has_more hcorr
+        have hadv := advance_non_newline_corr sc c rest hcorr hmore
+          (not_isLineBreak_not_newline c h_nlb) (not_isLineBreak_not_cr c h_nlb)
+        obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv _
+        exact ⟨sp', GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar c rest sc.col h_nlb) hstar, hcorr'⟩
+      · exact ⟨sp, GStar.nil _, hcorr⟩
+    · exact ⟨sp, GStar.nil _, hcorr⟩
+
+theorem collectVersionMinorLoop_prod (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp) (minor : String) (fuel : Nat) :
+    ∃ sp', GStar SNbChar sp sp' ∧
+      ScannerSurfCorr (collectVersionMinorLoop sc minor fuel).snd sp' := by
+  induction fuel generalizing sc sp minor with
+  | zero => simp [collectVersionMinorLoop]; exact ⟨sp, GStar.nil _, hcorr⟩
+  | succ fuel' ih =>
+    unfold collectVersionMinorLoop; split
+    · rename_i c hpeek; split
+      · rename_i h_dig
+        have h_nlb := isDigit_not_isLineBreak c h_dig
+        obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
+        have hmore := corr_nonempty_has_more hcorr
+        have hadv := advance_non_newline_corr sc c rest hcorr hmore
+          (not_isLineBreak_not_newline c h_nlb) (not_isLineBreak_not_cr c h_nlb)
+        obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv (minor.push c)
+        exact ⟨sp', GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar c rest sc.col h_nlb) hstar, hcorr'⟩
+      · exact ⟨sp, GStar.nil _, hcorr⟩
+    · exact ⟨sp, GStar.nil _, hcorr⟩
+
+theorem isWordCharOrBang_not_isLineBreak (c : Char)
+    (h : (isWordCharBool c || c == '!') = true) :
+    ¬isLineBreakBool c = true := by
+  intro hlb; simp [isLineBreakBool] at hlb
+  simp [isWordCharBool, isWordCharProp, isAsciiLetterProp] at h
+  rcases hlb with rfl | rfl <;> simp_all
+
+theorem collectTagHandleDirectiveLoop_prod (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp) (handle : String) (fuel : Nat) :
+    ∃ sp', GStar SNbChar sp sp' ∧
+      ScannerSurfCorr (collectTagHandleDirectiveLoop sc handle fuel).snd sp' := by
+  induction fuel generalizing sc sp handle with
+  | zero => simp [collectTagHandleDirectiveLoop]; exact ⟨sp, GStar.nil _, hcorr⟩
+  | succ fuel' ih =>
+    unfold collectTagHandleDirectiveLoop; split
+    · rename_i c hpeek; split
+      · rename_i h_pred
+        have h_nlb := isWordCharOrBang_not_isLineBreak c h_pred
+        obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
+        have hmore := corr_nonempty_has_more hcorr
+        have hadv := advance_non_newline_corr sc c rest hcorr hmore
+          (not_isLineBreak_not_newline c h_nlb) (not_isLineBreak_not_cr c h_nlb)
+        obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv (handle.push c)
+        exact ⟨sp', GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar c rest sc.col h_nlb) hstar, hcorr'⟩
+      · exact ⟨sp, GStar.nil _, hcorr⟩
+    · exact ⟨sp, GStar.nil _, hcorr⟩
+
+theorem isUriChar_not_isLineBreak (c : Char)
+    (h : isUriCharBool c = true) :
+    ¬isLineBreakBool c = true := by
+  intro hlb; simp [isLineBreakBool] at hlb
+  simp [isUriCharBool, isUriCharProp, isWordCharProp, isAsciiLetterProp] at h
+  rcases hlb with rfl | rfl <;> simp_all
+
+theorem collectTagPrefixLoop_prod (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp) (pfx : String) (fuel : Nat) :
+    ∃ sp', GStar SNbChar sp sp' ∧
+      ScannerSurfCorr (collectTagPrefixLoop sc pfx fuel).snd sp' := by
+  induction fuel generalizing sc sp pfx with
+  | zero => simp [collectTagPrefixLoop]; exact ⟨sp, GStar.nil _, hcorr⟩
+  | succ fuel' ih =>
+    unfold collectTagPrefixLoop; split
+    · rename_i c hpeek; split
+      · rename_i h_pred
+        have h_nlb := isUriChar_not_isLineBreak c h_pred
+        obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
+        have hmore := corr_nonempty_has_more hcorr
+        have hadv := advance_non_newline_corr sc c rest hcorr hmore
+          (not_isLineBreak_not_newline c h_nlb) (not_isLineBreak_not_cr c h_nlb)
+        obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv (pfx.push c)
+        exact ⟨sp', GStar.cons _ _ _ (not_isLineBreak_gives_SNbChar c rest sc.col h_nlb) hstar, hcorr'⟩
+      · exact ⟨sp, GStar.nil _, hcorr⟩
+    · exact ⟨sp, GStar.nil _, hcorr⟩
+
+theorem scanYamlDirective_prod (sc : ScannerState)
+    (s_after_ws : ScannerState) (sp_ws : SurfPos)
+    (hcorr_ws : ScannerSurfCorr s_after_ws sp_ws)
+    (startPos : YamlPos) (s' : ScannerState)
+    (hok : scanYamlDirective sc s_after_ws startPos = .ok s') :
+    ∃ sp', GStar SNbChar sp_ws sp' ∧ ScannerSurfCorr s' sp' := by
+  unfold scanYamlDirective at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · obtain ⟨sp_major, h_nb_maj, hcorr_major⟩ :=
+      collectVersionMajorLoop_prod s_after_ws sp_ws hcorr_ws "" _
+    obtain ⟨sp_minor, h_nb_min, hcorr_minor⟩ :=
+      collectVersionMinorLoop_prod _ sp_major hcorr_major "" _
+    obtain ⟨sp_ws2, h_ws, hcorr_ws2⟩ :=
+      skipWhitespace_corr _ sp_minor hcorr_minor
+    have h_nb_ws := GStar_SSWhite_to_GStar_SNbChar h_ws
+    -- Compose all GStar SNbChar evidence
+    have h_total := GStar_trans (GStar_trans h_nb_maj h_nb_min) (GStar_trans h_nb_ws (GStar.nil _))
+    -- Validation doesn't change position
+    split at hok
+    · split at hok
+      · exact absurd hok (by simp)
+      · have h := Except.ok.inj hok; subst h
+        exact ⟨sp_ws2, h_total, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix, hcorr_ws2.indent_cols_nonneg⟩⟩
+    · split at hok
+      · exact absurd hok (by simp)
+      · have h := Except.ok.inj hok; subst h
+        exact ⟨sp_ws2, h_total, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix, hcorr_ws2.indent_cols_nonneg⟩⟩
+    · have h := Except.ok.inj hok; subst h
+      exact ⟨sp_ws2, h_total, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix, hcorr_ws2.indent_cols_nonneg⟩⟩
+
+theorem scanTagDirective_prod
+    (s_after_ws : ScannerState) (sp_ws : SurfPos)
+    (hcorr_ws : ScannerSurfCorr s_after_ws sp_ws)
+    (sc : ScannerState) (startPos : YamlPos) (s' : ScannerState)
+    (hok : scanTagDirective sc s_after_ws startPos = .ok s') :
+    ∃ sp', GStar SNbChar sp_ws sp' ∧ ScannerSurfCorr s' sp' := by
+  unfold scanTagDirective at hok
+  have h := Except.ok.inj hok; subst h
+  obtain ⟨sp_hdl, h_nb_hdl, hcorr_hdl⟩ :=
+    collectTagHandleDirectiveLoop_prod s_after_ws sp_ws hcorr_ws "" _
+  obtain ⟨sp_ws2, h_ws, hcorr_ws2⟩ :=
+    skipWhitespace_corr _ sp_hdl hcorr_hdl
+  have h_nb_ws := GStar_SSWhite_to_GStar_SNbChar h_ws
+  obtain ⟨sp_pfx, h_nb_pfx, hcorr_pfx⟩ :=
+    collectTagPrefixLoop_prod _ sp_ws2 hcorr_ws2 "" _
+  exact ⟨sp_pfx, GStar_trans h_nb_hdl (GStar_trans h_nb_ws h_nb_pfx),
+    ⟨hcorr_pfx.chars_from, hcorr_pfx.col_eq, hcorr_pfx.end_eq, hcorr_pfx.input_prefix, hcorr_pfx.indent_cols_nonneg⟩⟩
+
+-- `scanDirective` produces `GStar SNbChar` evidence: all characters after `%`
+-- up to the line break are non-break characters.
+-- Requires `hpeek` (the caller dispatches on `sc.peek? = some '%'`).
 theorem scanDirective_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
+    (hpeek : sc.peek? = some '%')
     (s' : ScannerState) (hok : scanDirective sc = .ok s') :
-    ∃ sp', ScannerSurfCorr s' sp' :=
-  scanDirective_corr sc sp hcorr s' hok
+    ∃ rest sp',
+      sp.chars = '%' :: rest ∧
+      GStar SNbChar ⟨rest, sp.col + 1⟩ sp' ∧
+      ScannerSurfCorr s' sp' := by
+  obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
+  suffices h : ∃ sp', GStar SNbChar ⟨rest, sc.col + 1⟩ sp' ∧ ScannerSurfCorr s' sp' by
+    obtain ⟨sp', hg, hc⟩ := h; exact ⟨rest, sp', rfl, hg, hc⟩
+  unfold scanDirective at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · dsimp only [] at hok
+    -- Advance past '%'
+    have hmore := corr_nonempty_has_more hcorr
+    have hcorr_pct := advance_non_newline_corr sc '%' rest
+      ⟨hcorr.chars_from, rfl, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
+      hmore (by decide) (by decide)
+    -- Thread through name loop
+    obtain ⟨sp_name, h_nb_name, hcorr_name⟩ :=
+      collectDirectiveNameLoop_prod sc.advance ⟨rest, sc.col + 1⟩ hcorr_pct "" _
+    -- Thread through whitespace
+    obtain ⟨sp_ws, h_ws, hcorr_ws⟩ :=
+      skipWhitespace_corr _ sp_name hcorr_name
+    have h_nb_ws := GStar_SSWhite_to_GStar_SNbChar h_ws
+    -- Compose name + whitespace GStar evidence
+    have h_pre := GStar_trans h_nb_name h_nb_ws
+    -- Branch on directive type
+    split at hok
+    · -- YAML directive
+      obtain ⟨sp', h_nb_yaml, hcorr'⟩ :=
+        scanYamlDirective_prod sc _ sp_ws hcorr_ws _ _ hok
+      exact ⟨sp', GStar_trans h_pre h_nb_yaml, hcorr'⟩
+    · split at hok
+      · -- TAG directive
+        obtain ⟨sp', h_nb_tag, hcorr'⟩ :=
+          scanTagDirective_prod _ sp_ws hcorr_ws sc _ _ hok
+        exact ⟨sp', GStar_trans h_pre h_nb_tag, hcorr'⟩
+      · -- Reserved: skipToEndOfLine
+        have h := Except.ok.inj hok; subst h
+        obtain ⟨sp', h_nb_skip, hcorr'⟩ :=
+          skipToEndOfLine_corr _ sp_ws hcorr_ws
+        exact ⟨sp', GStar_trans h_pre h_nb_skip, hcorr'⟩
 
 end Lean4Yaml.Proofs.StructureProduction
