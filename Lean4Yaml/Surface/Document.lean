@@ -156,6 +156,16 @@ inductive SLYamlStream : SurfPos → SurfPos → Prop where
       SLYamlStream s s₁ →
       GPlus SLDirective s₁ s' →
       SLYamlStream s s'
+  /-- Scanner content absorption: previous stream + opaque scanned content
+      + trailing SSLComments. When the scanner processes flow indicators
+      (`[`, `{`, `]`, `}`, `,`) or block indicators (`-`, `?`, `:`) that
+      don't correspond to a complete grammar production at closing time, the
+      stream absorbs the gap. The SSLComments evidence anchors the endpoint.
+      Grammar over-approximation — the gap s₁→s₂ is opaque. -/
+  | scannerDrop (s s₁ s₂ s' : SurfPos) :
+      SLYamlStream s s₁ →
+      SSLComments s₂ s' →
+      SLYamlStream s s'
 
 /-! ## Top-Level Predicate -/
 
