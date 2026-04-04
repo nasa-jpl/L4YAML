@@ -503,8 +503,17 @@ theorem collectPlainScalarLoop_corr (sc : ScannerState) (sp : SurfPos)
             · rename_i fold_result hfold
               obtain ⟨sp_fold, hcorr_fold⟩ := foldQuotedNewlines_corr sc sp hcorr hfold
               split at hok
-              · have h := Except.ok.inj hok; subst h; exact ⟨sp_fold, hcorr_fold⟩  -- '#'
-              · exact ih _ sp_fold _ _ hcorr_fold hok
+              · have h := Except.ok.inj hok; subst h; exact ⟨sp, hcorr⟩  -- '#' → state = s
+              · -- recurse with content-length check
+                generalize h_loop : collectPlainScalarLoop _ _ "" fuel' inFlow contentIndent inputEnd = cont_result at hok
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at hok
+                  split at hok
+                  · have h := Except.ok.inj hok; subst h; exact ⟨sp, hcorr⟩
+                  · have h_eq := Except.ok.inj hok; subst h_eq
+                    exact ih _ sp_fold _ _ hcorr_fold h_loop
+                | error e => simp at hok
           · -- not inFlow: handleBlockLineBreak
             split at hok
             · -- none
@@ -514,8 +523,17 @@ theorem collectPlainScalarLoop_corr (sc : ScannerState) (sp : SurfPos)
               obtain ⟨sp_hb, hcorr_hb⟩ :=
                 handleBlockLineBreak_corr sc sp content contentIndent inputEnd hcorr hhandle
               split at hok
-              · have h := Except.ok.inj hok; subst h; exact ⟨sp_hb, hcorr_hb⟩  -- '#'
-              · exact ih _ sp_hb _ _ hcorr_hb hok
+              · have h := Except.ok.inj hok; subst h; exact ⟨sp, hcorr⟩  -- '#' → state = s
+              · -- recurse with content-length check
+                generalize h_loop : collectPlainScalarLoop _ _ "" fuel' inFlow contentIndent inputEnd = cont_result at hok
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at hok
+                  split at hok
+                  · have h := Except.ok.inj hok; subst h; exact ⟨sp, hcorr⟩
+                  · have h_eq := Except.ok.inj hok; subst h_eq
+                    exact ih _ sp_hb _ _ hcorr_hb h_loop
+                | error e => simp at hok
         · -- not line break
           split at hok
           · -- isWhiteSpaceBool c

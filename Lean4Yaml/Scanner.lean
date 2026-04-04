@@ -1881,10 +1881,16 @@ def collectPlainScalarLoop (s : ScannerState) (content : String) (spaces : Strin
             let (folded, s_after_fold) ← foldQuotedNewlines s
             match s_after_fold.peek? with
             | some '#' =>
-              .ok { content, spaces, state := s_after_fold, terminated := true }
+              .ok { content, spaces, state := s, terminated := true }
             | _ =>
               let content' := content ++ folded
-              collectPlainScalarLoop s_after_fold content' "" fuel' inFlow contentIndent inputEnd
+              let prevLen := content'.length
+              match collectPlainScalarLoop s_after_fold content' "" fuel' inFlow contentIndent inputEnd with
+              | .ok result =>
+                if result.content.length ≤ prevLen then
+                  .ok { content, spaces, state := s, terminated := true }
+                else .ok result
+              | .error e => .error e
           else
             match collectPlainScalar_handleBlockLineBreak s content contentIndent inputEnd with
             | none =>
@@ -1892,9 +1898,15 @@ def collectPlainScalarLoop (s : ScannerState) (content : String) (spaces : Strin
             | some (content', s') =>
               match s'.peek? with
               | some '#' =>
-                .ok { content, spaces, state := s', terminated := true }
+                .ok { content, spaces, state := s, terminated := true }
               | _ =>
-                collectPlainScalarLoop s' content' "" fuel' inFlow contentIndent inputEnd
+                let prevLen := content'.length
+                match collectPlainScalarLoop s' content' "" fuel' inFlow contentIndent inputEnd with
+                | .ok result =>
+                  if result.content.length ≤ prevLen then
+                    .ok { content, spaces, state := s, terminated := true }
+                  else .ok result
+                | .error e => .error e
         else if isWhiteSpaceBool c then
           collectPlainScalarLoop s.advance content (spaces.push c) fuel' inFlow contentIndent inputEnd
         else

@@ -117,15 +117,31 @@ theorem collectPlainScalarLoop_content_isPrefix
             | mk folded s_fold =>
               split at h
               · injection h with h_eq; cases h_eq; exact List.prefix_rfl
-              · exact List.IsPrefix.trans ⟨folded.toList, String.toList_append.symm⟩
-                  (ih s_fold (content ++ folded) "" h)
+              · generalize h_loop : collectPlainScalarLoop s_fold (content ++ folded) "" fuel' inFlow contentIndent inputEnd = cont_result at h
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at h
+                  split at h
+                  · injection h with h_eq; cases h_eq; exact List.prefix_rfl
+                  · have h_eq := Except.ok.inj h; subst h_eq
+                    exact List.IsPrefix.trans ⟨folded.toList, String.toList_append.symm⟩
+                      (ih s_fold (content ++ folded) "" h_loop)
+                | error e => simp at h
           · split at h
             · injection h with h_eq; cases h_eq; exact List.prefix_rfl
             · rename_i content' s' hblk; split at h
               · injection h with h_eq; cases h_eq; exact List.prefix_rfl
-              · have hform := handleBlockLineBreak_content_form s content contentIndent inputEnd content' s' hblk
-                rcases hform with rfl | ⟨n, _, rfl⟩
-                all_goals exact List.IsPrefix.trans ⟨_, String.toList_append.symm⟩ (ih _ _ "" h)
+              · generalize h_loop : collectPlainScalarLoop s' content' "" fuel' inFlow contentIndent inputEnd = cont_result at h
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at h
+                  split at h
+                  · injection h with h_eq; cases h_eq; exact List.prefix_rfl
+                  · have h_eq := Except.ok.inj h; subst h_eq
+                    have hform := handleBlockLineBreak_content_form s content contentIndent inputEnd content' s' hblk
+                    rcases hform with rfl | ⟨n, _, rfl⟩
+                    all_goals exact List.IsPrefix.trans ⟨_, String.toList_append.symm⟩ (ih _ _ "" h_loop)
+                | error e => simp at h
         · split at h
           · exact ih s.advance content (spaces.push c) h
           · split at h
