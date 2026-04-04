@@ -2241,8 +2241,29 @@ Layer 4s: #6 (flow closures) + #7 (block closures) ── independent, hardest
 
 | # | Work | Status | Description |
 |---|---|---|---|
-| 4p.1 | `scanDirective_prod` theorem | not started | Fuel induction over directive parsing loop |
-| 4p.2 | `PendingNode.pendingDirective` closure construction | not started | Wire `scanDirective_prod` into `structural_dispatch_to_pending` sorry sites |
+| 4p.1 | `scanDirective_prod` theorem | done | Returns `GStar SNbChar` evidence for all chars after `%` |
+| 4p.2 | Collect loop `_prod` theorems | done | `collectDirectiveNameLoop_prod`, `collectVersionMajor/Minor_prod`, `collectTagHandle/Prefix_prod` |
+| 4p.3 | `scanYamlDirective_prod` + `scanTagDirective_prod` | done | Compose sub-loop evidence with `GStar_trans` |
+| 4p.4 | `GStar_SSWhite_to_GStar_SNbChar` bridge | done | Whitespace chars are non-break |
+| 4p.5 | Char class lemmas | done | `isDigit_not_isLineBreak`, `isWordCharOrBang_not_isLineBreak`, `isUriChar_not_isLineBreak` |
+| 4p.6 | Wire into `structural_dispatch_to_pending` | deferred | Needs `hpeek` precondition cascade — future 4q/4r work |
+
+###### Layer 4p accomplishments
+
+- Built complete `_prod` infrastructure for directive scanning:
+  - 5 collect loop `_prod` theorems (name, version major, version minor, tag handle, tag prefix)
+  - 3 char class bridge lemmas (digit, word+bang, URI chars all imply non-break)
+  - `GStar_SSWhite_to_GStar_SNbChar` bridge (whitespace ⊂ non-break)
+  - `scanYamlDirective_prod` and `scanTagDirective_prod` composites
+  - Top-level `scanDirective_prod` returning `∃ rest sp', sp.chars = '%' :: rest ∧ GStar SNbChar ⟨rest, sp.col + 1⟩ sp' ∧ ScannerSurfCorr s' sp'`
+- All theorems are sorry-free. Build: 415/415 jobs, 11 sorry warnings (unchanged).
+
+###### Layer 4p reflections
+
+- The `peek_some_sp` helper (from ScalarProduction) was essential — it eliminated the manual `cases sp; simp ... at hcorr.col_eq` pattern.
+- `rename_i` variable ordering for 3-way match with literal pattern first requires careful counting: after `split` for `some '.' | some c | none`, the second branch has `(c : Char) (_ : c✝ = '.' → False) (hpeek : peek? = some c)` — character comes BEFORE the negation proof.
+- Wiring into `structural_dispatch_to_pending` requires `hpeek : s_prep.peek? = some c`, which cascades through `dispatch_new_pending` and upward. This is Layer 4q/4r scope.
+- The degenerate `%\n` case (empty directive name) means `GStar` can be nil, so `GPlus` construction needs `by_cases` on the GStar being nil.
 
 ###### Layer 4q: Proof reordering in `dispatch_new_pending` (sorry #4)
 
