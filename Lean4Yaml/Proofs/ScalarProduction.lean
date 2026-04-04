@@ -1153,26 +1153,47 @@ theorem collectLineContentLoop_gplus_prod (sc : ScannerState) (sp : SurfPos)
   - First char `SNsPlainFirst` extraction from `canStartPlainScalarBool`
   - `handleBlockLineBreak_prod`: multi-line `SSNsPlainNextLine` construction -/
 
--- Bridge: `isPlainSafeBool c false` + not-colon + not-hash → `SNsPlainChar .blockIn`.
+/-- Maps scanner's `inFlow : Bool` to the grammar context for plain scalars. -/
+def ctxOfInFlow : Bool → YamlContext
+  | false => .blockIn
+  | true => .flowIn
+
+-- Bridge: `isPlainSafeBool c inFlow` → `isNsPlainSafe (ctxOfInFlow inFlow) c`.
+theorem isPlainSafe_to_nsPlainSafe {c : Char} {inFlow : Bool}
+    (h : isPlainSafeBool c inFlow = true) : isNsPlainSafe (ctxOfInFlow inFlow) c := by
+  cases inFlow with
+  | false => exact isPlainSafe_to_nsPlainSafe_blockIn h
+  | true => exact isPlainSafe_to_nsPlainSafe_flowIn h
+
+-- Bridge: `isFlowIndicatorProp c → isIndicatorProp c`.
+theorem flowIndicatorProp_to_indicatorProp {c : Char}
+    (h : isFlowIndicatorProp c) : isIndicatorProp c := by
+  unfold isFlowIndicatorProp isIndicatorProp at *
+  have hsub : [',', '[', ']', '{', '}'] ⊆
+    ['-', '?', ':', ',', '[', ']', '{', '}', '#', '&', '*', '!', '|', '>',
+     '\'', '"', '%', '@', '`'] := by decide
+  exact hsub h
+
+-- Bridge: `isPlainSafeBool c inFlow` + not-colon + not-hash → `SNsPlainChar (ctxOfInFlow inFlow)`.
 -- (`:` needs next char safe via `colonSafe` constructor; `#` needs col > 0 via `hashAfterNs`.)
-theorem isPlainSafe_to_plainChar_basic (c : Char) (rest : List Char) (col : Nat)
-    (hSafe : isPlainSafeBool c false = true)
+theorem isPlainSafe_to_plainChar_basic (c : Char) (rest : List Char) (col : Nat) (inFlow : Bool)
+    (hSafe : isPlainSafeBool c inFlow = true)
     (hNotColon : c ≠ ':') (hNotHash : c ≠ '#') :
-    SNsPlainChar .blockIn ⟨c :: rest, col⟩ ⟨rest, col + 1⟩ :=
-  SNsPlainChar.safe .blockIn c rest col
-    (isPlainSafe_to_nsPlainSafe_blockIn hSafe) hNotColon hNotHash
+    SNsPlainChar (ctxOfInFlow inFlow) ⟨c :: rest, col⟩ ⟨rest, col + 1⟩ :=
+  SNsPlainChar.safe (ctxOfInFlow inFlow) c rest col
+    (isPlainSafe_to_nsPlainSafe hSafe) hNotColon hNotHash
 
--- Bridge: `isPlainSafeBool c false` + not-colon + not-hash →
--- `SNbNsPlainInLineEntry .blockIn` with empty whitespace prefix.
-theorem isPlainSafe_to_inlineEntry_basic (c : Char) (rest : List Char) (col : Nat)
-    (hSafe : isPlainSafeBool c false = true)
+-- Bridge: `isPlainSafeBool c inFlow` + not-colon + not-hash →
+-- `SNbNsPlainInLineEntry (ctxOfInFlow inFlow)` with empty whitespace prefix.
+theorem isPlainSafe_to_inlineEntry_basic (c : Char) (rest : List Char) (col : Nat) (inFlow : Bool)
+    (hSafe : isPlainSafeBool c inFlow = true)
     (hNotColon : c ≠ ':') (hNotHash : c ≠ '#') :
-    SNbNsPlainInLineEntry .blockIn ⟨c :: rest, col⟩ ⟨rest, col + 1⟩ :=
-  SNbNsPlainInLineEntry.mk .blockIn ⟨c :: rest, col⟩ ⟨c :: rest, col⟩ ⟨rest, col + 1⟩
+    SNbNsPlainInLineEntry (ctxOfInFlow inFlow) ⟨c :: rest, col⟩ ⟨rest, col + 1⟩ :=
+  SNbNsPlainInLineEntry.mk (ctxOfInFlow inFlow) ⟨c :: rest, col⟩ ⟨c :: rest, col⟩ ⟨rest, col + 1⟩
     (GStar.nil _)
-    (isPlainSafe_to_plainChar_basic c rest col hSafe hNotColon hNotHash)
+    (isPlainSafe_to_plainChar_basic c rest col inFlow hSafe hNotColon hNotHash)
 
--- Bridge: `canStartPlainScalarBool` → `SNsPlainFirst .blockIn`.
+-- Bridge: `canStartPlainScalarBool` → `SNsPlainFirst (ctxOfInFlow inFlow)`.
 -- Connects the scanner's first-char predicate to the surface grammar type.
 -- For non-indicator chars: uses `nonIndicator` constructor.
 -- For `-`/`?`/`:`: uses `dashSafe`/`questionSafe`/`colonSafe` with the
@@ -1184,11 +1205,11 @@ theorem isPlainSafe_to_inlineEntry_basic (c : Char) (rest : List Char) (col : Na
 -- When `next = none`, the exception branch of canStart returns false, so
 -- the hypothesis is contradictory for exception chars.
 theorem canStartPlainScalar_to_SNsPlainFirst (c : Char) (rest : List Char)
-    (col : Nat) (next : Option Char)
-    (hstart : canStartPlainScalarBool c next false = true)
+    (col : Nat) (next : Option Char) (inFlow : Bool)
+    (hstart : canStartPlainScalarBool c next inFlow = true)
     (hrest_head : ∀ n, next = some n → ∃ rest', rest = n :: rest') :
-    SNsPlainFirst .blockIn ⟨c :: rest, col⟩ ⟨rest, col + 1⟩ := by
-  have hprop := (canStartPlainScalar_iff c next false).mp hstart
+    SNsPlainFirst (ctxOfInFlow inFlow) ⟨c :: rest, col⟩ ⟨rest, col + 1⟩ := by
+  have hprop := (canStartPlainScalar_iff c next inFlow).mp hstart
   unfold canStartPlainScalarProp at hprop
   split at hprop
   · -- Exception char: c ∈ {'-', '?', ':'}
@@ -1198,20 +1219,24 @@ theorem canStartPlainScalar_to_SNsPlainFirst (c : Char) (rest : List Char)
     | some n =>
       obtain ⟨rest', hrst⟩ := hrest_head n rfl
       subst hrst
-      obtain ⟨h_nws, h_nlb, _⟩ := hprop
-      have h_safe : isNsPlainSafe .blockIn n := by
-        unfold isNsPlainSafe
-        exact ⟨fun hlb => h_nlb hlb, fun hws => h_nws hws⟩
+      obtain ⟨h_nws, h_nlb, h_nfi⟩ := hprop
+      have h_safe : isNsPlainSafe (ctxOfInFlow inFlow) n := by
+        cases inFlow with
+        | false => exact ⟨fun hlb => h_nlb hlb, fun hws => h_nws hws⟩
+        | true => exact ⟨⟨fun hlb => h_nlb hlb, fun hws => h_nws hws⟩, h_nfi rfl⟩
       rcases hexc with rfl | rfl | rfl
-      · exact SNsPlainFirst.dashSafe .blockIn n rest' col h_safe
-      · exact SNsPlainFirst.questionSafe .blockIn n rest' col h_safe
-      · exact SNsPlainFirst.colonSafe .blockIn n rest' col h_safe
+      · exact SNsPlainFirst.dashSafe (ctxOfInFlow inFlow) n rest' col h_safe
+      · exact SNsPlainFirst.questionSafe (ctxOfInFlow inFlow) n rest' col h_safe
+      · exact SNsPlainFirst.colonSafe (ctxOfInFlow inFlow) n rest' col h_safe
   · -- Non-exception: non-indicator, non-whitespace, non-linebreak
     obtain ⟨h_ni, h_nws, h_nlb⟩ := hprop
-    have h_safe : isNsPlainSafe .blockIn c := by
-      unfold isNsPlainSafe
-      exact ⟨fun hlb => h_nlb hlb, fun hws => h_nws hws⟩
-    exact SNsPlainFirst.nonIndicator .blockIn c rest col h_safe h_ni
+    have h_safe : isNsPlainSafe (ctxOfInFlow inFlow) c := by
+      cases inFlow with
+      | false => exact ⟨fun hlb => h_nlb hlb, fun hws => h_nws hws⟩
+      | true =>
+        exact ⟨⟨fun hlb => h_nlb hlb, fun hws => h_nws hws⟩,
+               fun hfi => h_ni (flowIndicatorProp_to_indicatorProp hfi)⟩
+    exact SNsPlainFirst.nonIndicator (ctxOfInFlow inFlow) c rest col h_safe h_ni
 
 -- `scanPlainScalar` produces `SNsPlain 0 .blockIn` + trailing WS and preserves
 -- correspondence.
@@ -1232,18 +1257,25 @@ theorem canStartPlainScalar_to_SNsPlainFirst (c : Char) (rest : List Char)
 -- remaining: loop theorem (`collectPlainScalarLoop_prod`), `:` colonSafe,
 -- `#` hashAfterNs, multi-line (`handleBlockLineBreak_prod`).
 
--- Bridge: terminates?=none at ':' → next char exists and is not blank.
-theorem colon_not_terminated_next (sc : ScannerState) (content spaces : String)
-    (h : collectPlainScalar_terminates? ':' sc content spaces false = none) :
-    ∃ n, sc.peekAt? 1 = some n ∧ isBlankBool n = false := by
+-- Bridge: terminates?=none at ':' → next char exists and is not blank
+-- (and in flow context, not a flow indicator).
+theorem colon_not_terminated_next (sc : ScannerState) (content spaces : String) (inFlow : Bool)
+    (h : collectPlainScalar_terminates? ':' sc content spaces inFlow = none) :
+    ∃ n, sc.peekAt? 1 = some n ∧ isBlankBool n = false ∧
+         (inFlow = true → isFlowIndicatorBool n = false) := by
   simp [collectPlainScalar_terminates?] at h
-  -- h : (match sc.peekAt? 1 with | some n => isBlankBool n | none => true) = false
   split at h
   · -- peekAt? 1 = some n
     rename_i n hn
-    exact ⟨n, hn, h⟩
+    cases inFlow with
+    | false =>
+      simp only [Bool.false_and, Bool.or_false] at h
+      exact ⟨n, hn, h, fun h => absurd h (by decide)⟩
+    | true =>
+      simp only [Bool.true_and, Bool.or_eq_false_iff] at h
+      exact ⟨n, hn, h.1, fun _ => h.2⟩
   · -- peekAt? 1 = none → true = false → contradiction
-    exact absurd h (by decide)
+    cases inFlow <;> simp at h
 
 -- Bridge: ¬isBlankBool → isNsChar (for colonSafe)
 theorem not_blank_to_nsChar {c : Char} (h : isBlankBool c = false) : isNsChar c := by
@@ -1291,21 +1323,19 @@ theorem prepend_char_to_continuation
 -- Full production for `collectPlainScalarLoop`: given accumulated whitespace
 -- `GStar SSWhite sp_ent sp`, produces inline entries and trailing WS.
 -- Single-line only: line-break branches are sorry.
--- The `#` at col=0 case (unreachable from `scanPlainScalar` since `#` is an
--- indicator excluded by `canStartPlainScalarBool`, and after any content char
--- col ≥ 1) is sorry'd as well.
+-- Parameterized over `inFlow` for both block and flow contexts.
 theorem collectPlainScalarLoop_prod (sc : ScannerState) (sp : SurfPos)
     (content spaces : String) (fuel : Nat)
     (contentIndent inputEnd : Nat)
-    (sp_ent : SurfPos)
+    (sp_ent : SurfPos) (inFlow : Bool)
     (hcorr : ScannerSurfCorr sc sp)
     (h_ws : GStar SSWhite sp_ent sp)
     (h_hash_col : sc.peek? = some '#' → spaces.length = 0 → sc.col > 0)
     {result : PlainScalarResult}
-    (hok : collectPlainScalarLoop sc content spaces fuel false contentIndent inputEnd
+    (hok : collectPlainScalarLoop sc content spaces fuel inFlow contentIndent inputEnd
            = .ok result) :
     ∃ sp_entries sp',
-      GStar (SNbNsPlainInLineEntry .blockIn) sp_ent sp_entries ∧
+      GStar (SNbNsPlainInLineEntry (ctxOfInFlow inFlow)) sp_ent sp_entries ∧
       GStar SSWhite sp_entries sp' ∧
       ScannerSurfCorr result.state sp' := by
   induction fuel generalizing sc sp content spaces sp_ent with
@@ -1327,7 +1357,7 @@ theorem collectPlainScalarLoop_prod (sc : ScannerState) (sp : SurfPos)
       · -- terminates? = some
         rename_i r_term h_term
         have h := Except.ok.inj hok; subst h
-        rw [terminates_state_eq c sc content spaces false r_term h_term]
+        rw [terminates_state_eq c sc content spaces inFlow r_term h_term]
         exact ⟨sp_ent, ⟨c :: rest, sc.col⟩, GStar.nil _, h_ws, hcorr⟩
       · -- terminates? = none
         rename_i h_term_none
@@ -1355,19 +1385,19 @@ theorem collectPlainScalarLoop_prod (sc : ScannerState) (sp : SurfPos)
               have h := Except.ok.inj hok; subst h
               exact ⟨sp_ent, ⟨c :: rest, sc.col⟩, GStar.nil _, h_ws, hcorr⟩
             · -- content char: form grammar entry and recurse
-              have h_safe : isPlainSafeBool c false = true := by
-                cases hb : isPlainSafeBool c false <;> simp_all
+              have h_safe : isPlainSafeBool c inFlow = true := by
+                cases hb : isPlainSafeBool c inFlow <;> simp_all
               have hnl := (isPlainSafe_not_newline h_safe).1
               have hcr := (isPlainSafe_not_newline h_safe).2
               have hcorr_adv := advance_non_newline_corr sc c rest hcorr hmore hnl hcr
               -- Construct SNsPlainChar for the content character
-              have hchar : SNsPlainChar .blockIn ⟨c :: rest, sc.col⟩
+              have hchar : SNsPlainChar (ctxOfInFlow inFlow) ⟨c :: rest, sc.col⟩
                   ⟨rest, sc.col + 1⟩ := by
                 by_cases hcolon : c = ':'
                 · -- ':' followed by ns-plain-safe (colonSafe)
                   subst hcolon
-                  obtain ⟨n, hpn, hnb⟩ :=
-                    colon_not_terminated_next sc content spaces h_term_none
+                  obtain ⟨n, hpn, hnb, hfi⟩ :=
+                    colon_not_terminated_next sc content spaces inFlow h_term_none
                   unfold ScannerState.peekAt? at hpn
                   obtain ⟨pre, rest', hcs, hlen⟩ :=
                     peekAtLoop_some_chars hcorr.end_eq hpn (':' :: rest) hcorr.chars_from
@@ -1379,8 +1409,16 @@ theorem collectPlainScalarLoop_prod (sc : ScannerState) (sp : SurfPos)
                       | cons => simp at hlen
                   subst ha; simp at hcs
                   obtain ⟨ha', hrst⟩ := hcs; subst ha'; subst hrst
-                  exact SNsPlainChar.colonSafe .blockIn '_' n rest' sc.col
-                    (not_blank_to_nsChar hnb)
+                  have h_ns_safe : isNsPlainSafe (ctxOfInFlow inFlow) n := by
+                    cases inFlow with
+                    | false => exact not_blank_to_nsChar hnb
+                    | true =>
+                      exact ⟨not_blank_to_nsChar hnb, fun hfp => by
+                        have h1 := hfi rfl
+                        have h2 := (isFlowIndicator_iff n).mpr hfp
+                        simp [h1] at h2⟩
+                  exact SNsPlainChar.colonSafe (ctxOfInFlow inFlow) '_' n rest' sc.col
+                    h_ns_safe
                 · by_cases hhash : c = '#'
                   · -- '#' at col=0: use h_hash_col precondition
                     subst hhash
@@ -1392,10 +1430,10 @@ theorem collectPlainScalarLoop_prod (sc : ScannerState) (sp : SurfPos)
                       unfold collectPlainScalar_terminates? at h_term_none
                       simp [h_dec] at h_term_none
                     have h_col_pos : sc.col > 0 := h_hash_col hpeek h_sp_zero
-                    exact SNsPlainChar.hashAfterNs .blockIn rest sc.col h_col_pos
+                    exact SNsPlainChar.hashAfterNs (ctxOfInFlow inFlow) rest sc.col h_col_pos
                   · -- safe: not ':' and not '#'
-                    exact SNsPlainChar.safe .blockIn c rest sc.col
-                      (isPlainSafe_to_nsPlainSafe_blockIn h_safe) hcolon hhash
+                    exact SNsPlainChar.safe (ctxOfInFlow inFlow) c rest sc.col
+                      (isPlainSafe_to_nsPlainSafe h_safe) hcolon hhash
               -- Recursive call with empty WS accumulator
               obtain ⟨sp_entries, sp', h_ent_rest, h_ws_rest, hcorr_rest⟩ :=
                 ih sc.advance ⟨rest, sc.col + 1⟩ _ "" ⟨rest, sc.col + 1⟩
@@ -1406,14 +1444,14 @@ theorem collectPlainScalarLoop_prod (sc : ScannerState) (sp : SurfPos)
                   hok
               exact ⟨sp_entries, sp',
                 GStar.cons sp_ent ⟨rest, sc.col + 1⟩ sp_entries
-                  (SNbNsPlainInLineEntry.mk .blockIn sp_ent ⟨c :: rest, sc.col⟩
+                  (SNbNsPlainInLineEntry.mk (ctxOfInFlow inFlow) sp_ent ⟨c :: rest, sc.col⟩
                     ⟨rest, sc.col + 1⟩ h_ws hchar)
                   h_ent_rest,
                 h_ws_rest, hcorr_rest⟩
 
 -- Helper: canStartPlainScalar → first char is not whitespace.
-theorem canStartPlainScalar_not_ws {c : Char} {next : Option Char}
-    (h : canStartPlainScalarBool c next false = true) : isWhiteSpaceBool c = false := by
+theorem canStartPlainScalar_not_ws {c : Char} {next : Option Char} {inFlow : Bool}
+    (h : canStartPlainScalarBool c next inFlow = true) : isWhiteSpaceBool c = false := by
   unfold canStartPlainScalarBool at h
   split at h
   · rename_i hexc; rcases hexc with rfl | rfl | rfl <;> native_decide
@@ -1473,31 +1511,90 @@ theorem SNsPlainFirst_blockIn_to_flowOut' {s s' : SurfPos}
   | questionSafe next rest col hSafe =>
     exact SNsPlainFirst.questionSafe .flowOut next rest col hSafe
 
--- canStartPlainScalar → isPlainSafeBool (first char is plain safe in block context)
-theorem canStartPlain_implies_safe {c : Char} {next : Option Char}
-    (h : canStartPlainScalarBool c next false = true) :
-    isPlainSafeBool c false = true := by
+-- Context lift: SNsPlainChar .flowIn → .flowOut (flowIn is more restrictive,
+-- so isNsPlainSafe .flowIn c → isNsPlainSafe .flowOut c by dropping flow indicator exclusion).
+theorem SNsPlainChar_flowIn_to_flowOut {sp sp' : SurfPos}
+    (h : SNsPlainChar .flowIn sp sp') : SNsPlainChar .flowOut sp sp' := by
+  cases h with
+  | safe ch rest col hS hNC hNH =>
+    exact SNsPlainChar.safe .flowOut ch rest col hS.1 hNC hNH
+  | colonSafe prev next rest col hS =>
+    exact SNsPlainChar.colonSafe .flowOut prev next rest col hS.1
+  | hashAfterNs rest col hC => exact SNsPlainChar.hashAfterNs .flowOut rest col hC
+
+-- Context lift: SNbNsPlainInLineEntry .flowIn → .flowOut.
+theorem SNbNsPlainInLineEntry_flowIn_to_flowOut {sp sp' : SurfPos}
+    (h : SNbNsPlainInLineEntry .flowIn sp sp') : SNbNsPlainInLineEntry .flowOut sp sp' :=
+  match h with
+  | SNbNsPlainInLineEntry.mk _ _ s₁ _ ws_pre char =>
+    SNbNsPlainInLineEntry.mk .flowOut _ s₁ _ ws_pre (SNsPlainChar_flowIn_to_flowOut char)
+
+-- Context lift: GStar (SNbNsPlainInLineEntry .flowIn) → GStar (...flowOut).
+theorem GStar_entries_flowIn_to_flowOut {sp sp' : SurfPos}
+    (h : GStar (SNbNsPlainInLineEntry .flowIn) sp sp') :
+    GStar (SNbNsPlainInLineEntry .flowOut) sp sp' := by
+  induction h with
+  | nil => exact GStar.nil _
+  | cons s₁ s₂ s₃ entry _ ih =>
+    exact GStar.cons s₁ s₂ s₃ (SNbNsPlainInLineEntry_flowIn_to_flowOut entry) ih
+
+-- Context lift: SNsPlainFirst .flowIn → .flowOut.
+theorem SNsPlainFirst_flowIn_to_flowOut {s s' : SurfPos}
+    (h : SNsPlainFirst .flowIn s s') : SNsPlainFirst .flowOut s s' := by
+  cases h with
+  | nonIndicator ch rest col hSafe hNotInd =>
+    exact SNsPlainFirst.nonIndicator .flowOut ch rest col hSafe.1 hNotInd
+  | dashSafe next rest col hSafe => exact SNsPlainFirst.dashSafe .flowOut next rest col hSafe.1
+  | colonSafe next rest col hSafe => exact SNsPlainFirst.colonSafe .flowOut next rest col hSafe.1
+  | questionSafe next rest col hSafe =>
+    exact SNsPlainFirst.questionSafe .flowOut next rest col hSafe.1
+
+-- Generic context lift: ctxOfInFlow inFlow → .flowOut (dispatches to block/flow lifts).
+theorem SNsPlainFirst_ctxOfInFlow_to_flowOut {s s' : SurfPos} {inFlow : Bool}
+    (h : SNsPlainFirst (ctxOfInFlow inFlow) s s') : SNsPlainFirst .flowOut s s' := by
+  cases inFlow with
+  | false => exact SNsPlainFirst_blockIn_to_flowOut' h
+  | true => exact SNsPlainFirst_flowIn_to_flowOut h
+
+theorem GStar_entries_ctxOfInFlow_to_flowOut {sp sp' : SurfPos} {inFlow : Bool}
+    (h : GStar (SNbNsPlainInLineEntry (ctxOfInFlow inFlow)) sp sp') :
+    GStar (SNbNsPlainInLineEntry .flowOut) sp sp' := by
+  cases inFlow with
+  | false => exact GStar_entries_blockIn_to_flowOut h
+  | true => exact GStar_entries_flowIn_to_flowOut h
+
+-- canStartPlainScalar → isPlainSafeBool (first char is plain safe)
+theorem canStartPlain_implies_safe {c : Char} {next : Option Char} {inFlow : Bool}
+    (h : canStartPlainScalarBool c next inFlow = true) :
+    isPlainSafeBool c inFlow = true := by
   simp only [canStartPlainScalarBool] at h
-  simp only [isPlainSafeBool, ite_false]
-  split at h
-  · rename_i hexc; rcases hexc with rfl | rfl | rfl <;> native_decide
-  · revert h; cases isWhiteSpaceBool c <;> cases isLineBreakBool c <;> simp
+  cases inFlow with
+  | false =>
+    simp only [isPlainSafeBool, ite_false]
+    split at h
+    · rename_i hexc; rcases hexc with rfl | rfl | rfl <;> native_decide
+    · revert h; cases isWhiteSpaceBool c <;> cases isLineBreakBool c <;> simp
+  | true =>
+    simp only [isPlainSafeBool, ite_true]
+    split at h
+    · rename_i hexc; rcases hexc with rfl | rfl | rfl <;> native_decide
+    · revert h; cases isWhiteSpaceBool c <;> cases isLineBreakBool c <;> simp_all [isFlowIndicatorBool, isIndicatorBool]
 
 -- canStartPlainScalar → not a line break (Bool form)
-theorem canStartPlain_not_linebreak {c : Char} {next : Option Char}
-    (h : canStartPlainScalarBool c next false = true) :
+theorem canStartPlain_not_linebreak {c : Char} {next : Option Char} {inFlow : Bool}
+    (h : canStartPlainScalarBool c next inFlow = true) :
     isLineBreakBool c = false := by
   have hs := canStartPlain_implies_safe h
-  simp only [isPlainSafeBool, ite_false] at hs
-  revert hs; cases isLineBreakBool c <;> simp
+  cases inFlow <;> simp only [isPlainSafeBool, ite_false, ite_true] at hs <;>
+    (revert hs; cases isLineBreakBool c <;> simp)
 
 -- First char satisfying canStartPlainScalar doesn't trigger terminates?
 -- (given no document boundary at column 0).
-theorem canStartPlain_first_not_terminates (c : Char) (sc : ScannerState)
-    (hstart : canStartPlainScalarBool c (sc.peekAt? 1) false = true)
+theorem canStartPlain_first_not_terminates (c : Char) (sc : ScannerState) (inFlow : Bool)
+    (hstart : canStartPlainScalarBool c (sc.peekAt? 1) inFlow = true)
     (h_not_doc : sc.col = 0 → atDocumentBoundary sc = false) :
-    collectPlainScalar_terminates? c sc "" "" false = none := by
-  match h : collectPlainScalar_terminates? c sc "" "" false with
+    collectPlainScalar_terminates? c sc "" "" inFlow = none := by
+  match h : collectPlainScalar_terminates? c sc "" "" inFlow with
   | none => rfl
   | some r =>
     exfalso
@@ -1513,23 +1610,49 @@ theorem canStartPlain_first_not_terminates (c : Char) (sc : ScannerState)
         dsimp only [] at h
         split at h  -- match peekAt? 1
         · rename_i n hn
-          simp only [Bool.false_and, Bool.or_false] at h
-          split at h  -- if isBlankBool n
-          · -- isBlankBool n = true: but canStart ':' (some n) false → n not blank
-            rw [hn] at hstart
-            rename_i h_blank
-            simp only [canStartPlainScalarBool, true_or, or_true, ↓reduceIte,
-                        Bool.false_and, Bool.and_true, Bool.and_eq_true,
-                        Bool.not_eq_true'] at hstart
-            simp only [isBlankBool, Bool.or_eq_true] at h_blank
-            rcases h_blank with h | h <;> simp_all
-          · simp at h
-        · -- peekAt? 1 = none: canStart ':' none false = false → contradiction
+          rw [hn] at hstart
+          cases inFlow with
+          | false =>
+            simp only [Bool.false_and, Bool.or_false] at h
+            split at h
+            · rename_i h_blank
+              simp only [canStartPlainScalarBool, true_or, or_true, ↓reduceIte,
+                          Bool.false_and, Bool.and_true, Bool.and_eq_true,
+                          Bool.not_eq_true'] at hstart
+              simp only [isBlankBool, Bool.or_eq_true] at h_blank
+              rcases h_blank with h | h <;> simp_all
+            · simp at h
+          | true =>
+            simp only [Bool.true_and] at h
+            split at h
+            · rename_i h_blank
+              simp only [canStartPlainScalarBool, true_or, or_true, ↓reduceIte,
+                          Bool.true_and, Bool.and_eq_true, Bool.not_eq_true'] at hstart
+              simp only [isBlankBool, Bool.or_eq_true] at h_blank
+              rcases h_blank with h | h <;> simp_all
+            · simp at h
+        · -- peekAt? 1 = none: canStart ':' none inFlow = false → contradiction
           rename_i h_none; rw [h_none] at hstart
           simp [canStartPlainScalarBool] at hstart
       · split at h
-        · -- false && isFlowIndicator: impossible (inFlow=false)
-          simp at *
+        · -- inFlow && isFlowIndicator
+          rename_i h_flow_ind
+          cases inFlow with
+          | false => simp at h_flow_ind
+          | true =>
+            simp only [Bool.true_and] at h_flow_ind
+            -- c is a flow indicator but canStart excludes indicators
+            have hprop := (canStartPlainScalar_iff c (sc.peekAt? 1) true).mp hstart
+            unfold canStartPlainScalarProp at hprop
+            split at hprop
+            · -- exception char: c ∈ {-, ?, :} — these are not flow indicators
+              rename_i hexc
+              rcases hexc with rfl | rfl | rfl <;>
+                simp [isFlowIndicatorBool] at h_flow_ind
+            · -- non-exception: ¬isIndicatorProp c
+              have := hprop.1
+              have := flowIndicatorProp_to_indicatorProp ((isFlowIndicator_iff c).mp h_flow_ind)
+              contradiction
         · split at h
           · -- col == 0 && docBoundary: use h_not_doc
             rename_i h_doc
@@ -1541,14 +1664,14 @@ theorem canStartPlain_first_not_terminates (c : Char) (sc : ScannerState)
 -- recursive call from collectPlainScalarLoop at fuel (n+1).
 theorem collectPlainScalarLoop_content_first_step
     {c : Char} {sc : ScannerState} {fuel ci ie : Nat}
-    {result : PlainScalarResult}
+    {result : PlainScalarResult} {inFlow : Bool}
     (hpeek : sc.peek? = some c)
-    (h_term : collectPlainScalar_terminates? c sc "" "" false = none)
+    (h_term : collectPlainScalar_terminates? c sc "" "" inFlow = none)
     (h_nlb : isLineBreakBool c = false)
     (h_nws : isWhiteSpaceBool c = false)
-    (h_safe : isPlainSafeBool c false = true)
-    (hok : collectPlainScalarLoop sc "" "" (fuel + 1) false ci ie = .ok result) :
-    collectPlainScalarLoop sc.advance (String.singleton c) "" fuel false ci ie
+    (h_safe : isPlainSafeBool c inFlow = true)
+    (hok : collectPlainScalarLoop sc "" "" (fuel + 1) inFlow ci ie = .ok result) :
+    collectPlainScalarLoop sc.advance (String.singleton c) "" fuel inFlow ci ie
       = .ok result := by
   unfold collectPlainScalarLoop at hok
   -- fuel + 1 matches succ branch; sc.peek? = some c
@@ -1571,12 +1694,12 @@ theorem collectPlainScalarLoop_content_first_step
 -- entry decomposition → SNsPlainOneLine, context lift → SFlowNode .flowOut.
 -- Requires: not at document boundary at column 0 (callers check this via
 -- scanNextToken_dispatchStructural before reaching content dispatch).
+-- Parameterized over inFlow: works for both block and flow contexts.
 theorem scanPlainScalar_to_flowNode (sc : ScannerState) (sp : SurfPos)
     {s' : ScannerState} {c : Char}
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some c)
-    (hstart : canStartPlainScalarBool c (sc.peekAt? 1) false = true)
-    (h_block : sc.inFlow = false)
+    (hstart : canStartPlainScalarBool c (sc.peekAt? 1) sc.inFlow = true)
     (h_not_doc : sc.col = 0 → atDocumentBoundary sc = false)
     (hok : scanPlainScalar sc = .ok s') :
     ∃ sp_gram sp', SFlowNode 0 .flowOut sp sp_gram ∧
@@ -1596,8 +1719,8 @@ theorem scanPlainScalar_to_flowNode (sc : ScannerState) (sp : SurfPos)
         | cons => simp at hlen
     subst ha; simp at hcs; obtain ⟨_, rfl⟩ := hcs; exact ⟨rest', rfl⟩
   rw [hsp_eq]; rw [hsp_eq] at hcorr
-  have h_first : SNsPlainFirst .blockIn ⟨c :: rest, sc.col⟩ ⟨rest, sc.col + 1⟩ :=
-    canStartPlainScalar_to_SNsPlainFirst c rest sc.col (sc.peekAt? 1) hstart hrest_head
+  have h_first : SNsPlainFirst (ctxOfInFlow sc.inFlow) ⟨c :: rest, sc.col⟩ ⟨rest, sc.col + 1⟩ :=
+    canStartPlainScalar_to_SNsPlainFirst c rest sc.col (sc.peekAt? 1) sc.inFlow hstart hrest_head
   -- Unfold scanPlainScalar to extract loop
   unfold scanPlainScalar at hok
   simp only [bind, Except.bind] at hok
@@ -1605,10 +1728,8 @@ theorem scanPlainScalar_to_flowNode (sc : ScannerState) (sp : SurfPos)
   · simp at hok
   · rename_i result hloop
     simp only [Except.ok.injEq] at hok; subst hok
-    -- Normalize inFlow in hloop
-    rw [h_block] at hloop
     -- Step 1: First char is valid content — extract recursive call from loop
-    have h_term_none := canStartPlain_first_not_terminates c sc hstart h_not_doc
+    have h_term_none := canStartPlain_first_not_terminates c sc sc.inFlow hstart h_not_doc
     have h_safe := canStartPlain_implies_safe hstart
     have h_nws := canStartPlainScalar_not_ws hstart
     have h_nlb := canStartPlain_not_linebreak hstart
@@ -1624,7 +1745,7 @@ theorem scanPlainScalar_to_flowNode (sc : ScannerState) (sp : SurfPos)
       (isPlainSafe_not_newline h_safe).1 (isPlainSafe_not_newline h_safe).2
     obtain ⟨sp_entries, sp', h_entries, h_trail, hcorr_result⟩ :=
       collectPlainScalarLoop_prod sc.advance ⟨rest, sc.col + 1⟩ _ "" _ _ _
-        ⟨rest, sc.col + 1⟩ hcorr_adv (GStar.nil _)
+        ⟨rest, sc.col + 1⟩ sc.inFlow hcorr_adv (GStar.nil _)
         (fun _ _ => by
           have h : sc.col + 1 = sc.advance.col := hcorr_adv.col_eq
           omega)
@@ -1633,8 +1754,8 @@ theorem scanPlainScalar_to_flowNode (sc : ScannerState) (sp : SurfPos)
     have h_plain : SNsPlain 0 .flowOut ⟨c :: rest, sc.col⟩ sp_entries :=
       SNsPlainMultiLine.mk 0 .flowOut _ _ sp_entries
         (SNsPlainOneLine.mk .flowOut _ ⟨rest, sc.col + 1⟩ sp_entries
-          (SNsPlainFirst_blockIn_to_flowOut' h_first)
-          (GStar_entries_blockIn_to_flowOut h_entries))
+          (SNsPlainFirst_ctxOfInFlow_to_flowOut h_first)
+          (GStar_entries_ctxOfInFlow_to_flowOut h_entries))
         (GStar.nil _)
     exact ⟨sp_entries, sp',
       SFlowNode.content 0 .flowOut _ sp_entries
@@ -1672,7 +1793,7 @@ theorem scanPlainScalar_prod (sc : ScannerState) (sp : SurfPos)
   -- Get SNsPlainFirst for the first character
   rw [hsp_eq]
   have h_first : SNsPlainFirst .blockIn ⟨c :: rest, sc.col⟩ ⟨rest, sc.col + 1⟩ :=
-    canStartPlainScalar_to_SNsPlainFirst c rest sc.col (sc.peekAt? 1) hstart hrest_head
+    canStartPlainScalar_to_SNsPlainFirst c rest sc.col (sc.peekAt? 1) false hstart hrest_head
   -- Grammar: wrap first char in SNsPlainOneLine → SNsPlainMultiLine = SNsPlain 0 .blockIn
   -- This is a valid (minimal) derivation covering at least the first character.
   have h_gram : SNsPlainMultiLine 0 .blockIn ⟨c :: rest, sc.col⟩ ⟨rest, sc.col + 1⟩ :=

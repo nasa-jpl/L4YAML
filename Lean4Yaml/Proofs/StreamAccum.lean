@@ -1974,15 +1974,10 @@ theorem dispatchContent_plainScalar_prod (sc : ScannerState) (sp : SurfPos)
                 · simp at hok
                 · -- scanPlainScalar succeeded
                   have h := Except.ok.inj hok; subst h
-                  by_cases h_block : sc.inFlow = false
-                  · -- Block context: full grammar + trailing WS via loop production
-                    exact scanPlainScalar_to_flowNode sc sp hcorr hpeek
-                      (by rwa [← h_block]) h_block
-                      (sorry)  -- h_not_doc: from preprocessing, not at doc boundary
-                      (by assumption)
-                  · -- Flow context: sorry (flow plain scalar grammar not yet supported)
-                    obtain ⟨sp', hcorr'⟩ := scanPlainScalar_corr sc sp hcorr (by assumption)
-                    exact ⟨sorry, sp', sorry, sorry, hcorr'⟩
+                  exact scanPlainScalar_to_flowNode sc sp hcorr hpeek
+                    (by assumption)
+                    (sorry)  -- h_not_doc: from preprocessing, not at doc boundary
+                    (by assumption)
               · -- canStartPlainScalarBool = false: .error
                 simp at hok
 
