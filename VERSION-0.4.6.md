@@ -2561,6 +2561,46 @@ Fix: Add validation in `scanTagDirective` — after tag prefix, check next char 
 
 Files: Scanner.lean, StructureProduction.lean, StreamAccum.lean.
 
+**4y.1: Accomplishments**
+
+Approach diverged from plan: instead of modifying Scanner.lean to add TAG directive validation, strengthened the `pendingDirective` invariant to carry line-end evidence directly.
+
+**Changes (4 files):**
+
+- **StreamAccum.lean** — Added `h_at_line_end` field to `PendingNode.pendingDirective`: `sp_scan.chars = [] ∨ ∃ ch rest', sp_scan.chars = ch :: rest' ∧ isLineBreakBool ch = true`. Added `open Lean4Yaml.CharPredicates` (L58). Updated `close_with_ssl` pattern (L528). Updated 2 construction sites to pass `h_at_break` evidence from `scanDirective_prod`. Updated 3 pattern-match sites to use `@pendingDirective` explicit pattern syntax for correct binding. Wrote `preprocess_some_not_break` theorem (L613–646). Proved 2 contradiction proofs replacing sorry:
+  - `accum_flow_pending` pendingDirective `inr` case (L1383–1448): EOF branch closes with `peek? = none` vs `preprocess_some_peek`; break branch closes with `isLineBreakBool ch = true` vs `preprocess_some_not_break`.
+  - `accum_content_on_pending` pendingDirective `inr` case (L2864–2929): same proof structure.
+
+- **PreprocessProduction.lean** — Added `skipToContentLoop_peek_not_break` (L860–911): fuel induction proving `skipToContent` doesn't stop at break characters. Added `skipToContent_peek_not_break` wrapper (L913–919).
+
+- **ScannerPlainScalarValid.lean** — (Prior session) 7 proofs for plain scalar validation.
+
+- **ScannerCorrectness.lean** — (Prior session) 8 theorems.
+
+**Build:** 415/415 jobs, 0 errors. 4 sorry warnings (unchanged — sorry terms eliminated were within declarations that still contain other sorry terms). 2 sorry terms removed (pendingDirective `inr h_mid_eq` in both flow and content dispatch).
+
+**4y.1: Reflections**
+
+**1. Lean 4 `cases` on indexed inductive with shared indices — generalization hazard.**
+
+When `PendingNode : SurfPos → SurfPos → SurfPos → Prop` has `noPending` unifying its 2nd and 3rd index (`PendingNode sp_start sp sp`), `cases h_pending` generalizes the 3rd index (`sp_scan`) across ALL branches — even `pendingDirective` where the indices are independent. This makes `h_at_line_end_old` (which references the generalized `sp_scan`) inaccessible (`h_at_line_end✝`). Fix: use `@pendingDirective sp_scan ...` pattern syntax to name the generalized index. With `@`, the argument count is +1 vs without (5 vs 4 for a 4-field constructor).
+
+**2. `rw` fails on generalized variables; `simp only` works.**
+
+`rw [← h_mid_eq] at h_at_line_end_old` returns "Did not find occurrence" when `h_at_line_end_old` references a generalized pattern variable. But `simp only [← h_mid_eq] at h_at_line_end_old` succeeds — `simp`'s congruence lemma engine handles the index variable where `rw`'s direct pattern matching cannot.
+
+**3. `subst` direction — pattern variables may be eliminated over `obtain` variables.**
+
+`subst h_mid_eq : sp_mid = sp_scan` eliminates `sp_scan` (introduced by the `@pendingDirective` pattern, thus earlier in context) and keeps `sp_mid` (from `obtain`, later). This is opposite to the expected "eliminate left side" behavior — Lean 4's `subst` eliminates the variable with the SMALLER de Bruijn index when both sides are free variables. After `subst`, `sp_scan` is gone and all hypotheses reference `sp_mid`. Solution: avoid `subst h_mid_eq` entirely, use `simp only [← h_mid_eq]` to transport targeted hypotheses.
+
+**4. Structure field access after `simp only` — use `▸` transport.**
+
+`simp only [h_eq] at hcorr_prep` rewrites the hypothesis via `Eq.mpr`, which breaks subsequent `hcorr_prep.chars_from` field access. Fix: either (a) extract fields BEFORE rewriting (`have h_cf := hcorr_prep.chars_from; simp only [h_eq] at h_cf`), or (b) use term-level transport (`h_eq ▸ hcorr_prep`) to create a new, cleanly-typed hypothesis.
+
+**5. SSWhite/SCNbCommentText character contradiction pattern.**
+
+After `cases hw with | space ws_rest ws_col =>`, `sp_mid` is unified with `⟨' ' :: ws_rest, ws_col⟩`, transforming `h_chars` to `' ' :: ws_rest = ch :: rest'`. Extract the character equation via `have hlist : ' ' :: ws_rest = ch :: rest' := h_chars; injection hlist with hch _`, then `simp [← hch, isLineBreakBool] at h_lb` closes with `isLineBreakBool ' ' = false ≠ true`. Same pattern for `\t` and `#` (SCNbCommentText.mk).
+
 **4y.2: Remove h_closable from pendingDirective (−2 sorry, possibly +1)**
 
 Problem: `pendingDirective` carries `h_closable : ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid` but this is unprovable at construction time — `SLDirectiveDocument` requires `SCDirectivesEnd` (`---`) not yet seen. The 2 sorry at L914/L956 in `structural_dispatch_to_pending` construct this unprovable closure.
@@ -2581,6 +2621,10 @@ Transition handling (no h_closable needed):
 - `pendingDirective` + EOF: `close_with_ssl` needs alternative. Options: (a) add scanner error for directive-without-`---` making case unreachable, or (b) extend `SLYamlStream` grammar with bare-directive absorption. Option (a) preferred — matches YAML spec behavior.
 
 Files: StreamAccum.lean (PendingNode, close_with_ssl, structural_dispatch_to_pending, all pending dispatchers matching pendingDirective), possibly Scanner.lean (EOF error for bare directives).
+
+**4y.2: Accomplishments**
+
+**4y.2: Reflections**
 
 **4y.3: FlowStack partial evidence (−2 sorry, risk of new sorry in absorb_stacks)**
 
@@ -2606,6 +2650,10 @@ New lemma needed: `dispatchFlowIndicators_glit` — when `c = '['`, provide `GLi
 
 Files: StreamAccum.lean (FlowStack, absorb_stacks, accum_flow_pending).
 
+**4y.3: Accomplishments**
+
+**4y.3: Reflections**
+
 **4y.4: pendingFlow + block_dispatch_deferred (−3 sorry)**
 
 Problem: `pendingFlow.h_closable` sorry at L1317. `block_dispatch_deferred` h_close/h_close_entry sorry at L1512×2.
@@ -2615,6 +2663,10 @@ Fix for pendingFlow: carry indicator category evidence (close/comma) instead of 
 Fix for block_dispatch_deferred: carry actual block indicator evidence (dash/key/value position + indent check result) instead of sorry closures. Requires stronger `dispatchBlockIndicators_evidence` lemma providing indent level and indicator identity. Split per-indicator case (`-` at col=0 n=0 already proven in `accum_block_on_noPending`; extend to other indicators/nesting levels).
 
 Files: StreamAccum.lean (PendingNode, block_dispatch_deferred, accum_block_pending).
+
+**4y.4: Accomplishments**
+
+**4y.4: Reflections**
 
 **4y.5: Other-pending no-break inline handling (−2 sorry or deferred)**
 
@@ -2636,13 +2688,13 @@ Risk: This is the most architecturally complex change. Grammar composition proof
 
 Files: StreamAccum.lean (accum_flow_pending, accum_content_pending).
 
+**4y.5: Accomplishments**
+
+**4y.5: Reflections**
+
 **4y dependency order**: 4y.1 → 4y.2 → 4y.5 (pendingDirective removed from grouped case). 4y.3 and 4y.4 are independent.
 
 **4y target**: 11→≤4 sorry (conservative). 4y.1 (−2) + 4y.2 (−2) are high confidence. 4y.3 (−2 but may introduce new). 4y.4 + 4y.5 depend on proof complexity.
-
-###### Layer 4y accomplishments
-
-###### Layer 4y reflections
 
 ###### Layer 4z: remaining sorry cleanup
 

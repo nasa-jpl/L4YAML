@@ -964,6 +964,73 @@ theorem scanDocumentEnd_prod (sc : ScannerState) (sp : SurfPos)
     The whitespace-to-nbchar bridge converts `GStar SSWhite → GStar SNbChar`
     (whitespace chars are non-break). -/
 
+-- After `skipToEndOfLine`, the scanner is at a line break or EOF.
+-- Converts peek-level information to surface-position chars evidence.
+-- Used by `scanDirective_prod` to give the break/EOF postcondition.
+theorem skipToEndOfLineLoop_at_break_or_eof (sc : ScannerState) (fuel : Nat)
+    (h_fuel : sc.offset + fuel ≥ sc.inputEnd) :
+    let s' := skipToEndOfLineLoop sc fuel
+    s'.peek? = none ∨ ∃ c, s'.peek? = some c ∧ isLineBreakBool c = true := by
+  induction fuel generalizing sc with
+  | zero =>
+    simp [skipToEndOfLineLoop]
+    left
+    unfold ScannerState.peek?
+    split
+    · omega
+    · rfl
+  | succ fuel' ih =>
+    simp only [skipToEndOfLineLoop]
+    split
+    · -- peek? = some c
+      rename_i c hpeek
+      split
+      · -- isLineBreakBool c → return sc
+        rename_i hlb
+        exact Or.inr ⟨c, hpeek, hlb⟩
+      · -- ¬isLineBreakBool c → recurse with advance
+        exact ih sc.advance (by
+          have h_lt := peek_some_has_more hpeek
+          have h_ie := advance_inputEnd sc
+          have h_adv := ScannerProgress.advance_offset_lt sc h_lt
+          omega)
+    · -- peek? = none → return sc
+      exact Or.inl ‹_›
+
+theorem skipToEndOfLine_at_break_or_eof (sc : ScannerState) :
+    let s' := skipToEndOfLine sc
+    s'.peek? = none ∨ ∃ c, s'.peek? = some c ∧ isLineBreakBool c = true := by
+  unfold skipToEndOfLine
+  exact skipToEndOfLineLoop_at_break_or_eof sc _ (by omega)
+
+-- Surface-position version: after `skipToEndOfLine`, the surface position
+-- has empty chars (EOF) or starts with a break character.
+theorem skipToEndOfLine_at_break_or_eof_chars (sc : ScannerState)
+    (sp' : SurfPos)
+    (hcorr' : ScannerSurfCorr (skipToEndOfLine sc) sp') :
+    sp'.chars = [] ∨ ∃ ch rest, sp'.chars = ch :: rest ∧ isLineBreakBool ch = true := by
+  have h_peek := skipToEndOfLine_at_break_or_eof sc
+  cases h_peek with
+  | inl h_none =>
+    -- peek? = none → chars = []
+    have h_cf := hcorr'.chars_from
+    cases sp' with | mk chars col =>
+    dsimp only [] at h_cf h_none ⊢
+    cases chars with
+    | nil => exact Or.inl rfl
+    | cons c rest =>
+      -- CharsFromOffset gives offset < utf8ByteSize, but peek? = none → offset ≥ inputEnd
+      cases h_cf with
+      | cons _ h_lt _ _ _ _ =>
+        have h_bound : (skipToEndOfLine sc).offset < (skipToEndOfLine sc).inputEnd := by
+          rw [hcorr'.end_eq]; exact h_lt
+        unfold ScannerState.peek? at h_none
+        simp [h_bound] at h_none
+  | inr h_break =>
+    obtain ⟨c, hpeek, hlb⟩ := h_break
+    obtain ⟨rest', rfl⟩ := peek_some_sp hcorr' hpeek
+    exact Or.inr ⟨c, rest', rfl, hlb⟩
+
 theorem GStar_SSWhite_to_GStar_SNbChar {sp sp' : SurfPos}
     (h : GStar SSWhite sp sp') : GStar SNbChar sp sp' := by
   induction h with
@@ -1146,7 +1213,7 @@ theorem scanTagDirective_prod
     (hok : scanTagDirective sc s_after_ws startPos = .ok s') :
     ∃ sp', GStar SNbChar sp_ws sp' ∧ ScannerSurfCorr s' sp' := by
   unfold scanTagDirective at hok
-  have h := Except.ok.inj hok; subst h
+  simp only [bind, Except.bind, pure, Except.pure] at hok
   obtain ⟨sp_hdl, h_nb_hdl, hcorr_hdl⟩ :=
     collectTagHandleDirectiveLoop_prod s_after_ws sp_ws hcorr_ws "" _
   obtain ⟨sp_ws2, h_ws, hcorr_ws2⟩ :=
@@ -1154,11 +1221,27 @@ theorem scanTagDirective_prod
   have h_nb_ws := GStar_SSWhite_to_GStar_SNbChar h_ws
   obtain ⟨sp_pfx, h_nb_pfx, hcorr_pfx⟩ :=
     collectTagPrefixLoop_prod _ sp_ws2 hcorr_ws2 "" _
-  exact ⟨sp_pfx, GStar_trans h_nb_hdl (GStar_trans h_nb_ws h_nb_pfx),
-    ⟨hcorr_pfx.chars_from, hcorr_pfx.col_eq, hcorr_pfx.end_eq, hcorr_pfx.input_prefix, hcorr_pfx.indent_cols_nonneg⟩⟩
+  -- Trailing content validation (added in 4y.1)
+  obtain ⟨sp_val, h_ws_val, hcorr_val⟩ :=
+    skipWhitespace_corr _ sp_pfx hcorr_pfx
+  have h_nb_val := GStar_SSWhite_to_GStar_SNbChar h_ws_val
+  have h_total := GStar_trans h_nb_hdl (GStar_trans h_nb_ws (GStar_trans h_nb_pfx h_nb_val))
+  -- Validation doesn't change position
+  split at hok
+  · split at hok
+    · exact absurd hok (by simp)
+    · have h := Except.ok.inj hok; subst h
+      exact ⟨sp_val, h_total, ⟨hcorr_val.chars_from, hcorr_val.col_eq, hcorr_val.end_eq, hcorr_val.input_prefix, hcorr_val.indent_cols_nonneg⟩⟩
+  · split at hok
+    · exact absurd hok (by simp)
+    · have h := Except.ok.inj hok; subst h
+      exact ⟨sp_val, h_total, ⟨hcorr_val.chars_from, hcorr_val.col_eq, hcorr_val.end_eq, hcorr_val.input_prefix, hcorr_val.indent_cols_nonneg⟩⟩
+  · have h := Except.ok.inj hok; subst h
+    exact ⟨sp_val, h_total, ⟨hcorr_val.chars_from, hcorr_val.col_eq, hcorr_val.end_eq, hcorr_val.input_prefix, hcorr_val.indent_cols_nonneg⟩⟩
 
 -- `scanDirective` produces `GStar SNbChar` evidence: all characters after `%`
--- up to the line break are non-break characters.
+-- up to the line break are non-break characters.  After 4y.1, all directive
+-- branches end with `skipToEndOfLine`, so the scanner is always at break/EOF.
 -- Requires `hpeek` (the caller dispatches on `sc.peek? = some '%'`).
 theorem scanDirective_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
@@ -1167,10 +1250,12 @@ theorem scanDirective_prod (sc : ScannerState) (sp : SurfPos)
     ∃ rest sp',
       sp.chars = '%' :: rest ∧
       GStar SNbChar ⟨rest, sp.col + 1⟩ sp' ∧
-      ScannerSurfCorr s' sp' := by
+      ScannerSurfCorr s' sp' ∧
+      (sp'.chars = [] ∨ ∃ ch rest', sp'.chars = ch :: rest' ∧ isLineBreakBool ch = true) := by
   obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
-  suffices h : ∃ sp', GStar SNbChar ⟨rest, sc.col + 1⟩ sp' ∧ ScannerSurfCorr s' sp' by
-    obtain ⟨sp', hg, hc⟩ := h; exact ⟨rest, sp', rfl, hg, hc⟩
+  suffices h : ∃ sp', GStar SNbChar ⟨rest, sc.col + 1⟩ sp' ∧ ScannerSurfCorr s' sp' ∧
+      (sp'.chars = [] ∨ ∃ ch rest', sp'.chars = ch :: rest' ∧ isLineBreakBool ch = true) by
+    obtain ⟨sp', hg, hc, hle⟩ := h; exact ⟨rest, sp', rfl, hg, hc, hle⟩
   unfold scanDirective at hok
   split at hok
   · exact absurd hok (by simp)
@@ -1191,19 +1276,34 @@ theorem scanDirective_prod (sc : ScannerState) (sp : SurfPos)
     have h_pre := GStar_trans h_nb_name h_nb_ws
     -- Branch on directive type
     split at hok
-    · -- YAML directive
-      obtain ⟨sp', h_nb_yaml, hcorr'⟩ :=
-        scanYamlDirective_prod sc _ sp_ws hcorr_ws _ _ hok
-      exact ⟨sp', GStar_trans h_pre h_nb_yaml, hcorr'⟩
+    · -- YAML directive (now wrapped with skipToEndOfLine)
+      split at hok
+      · rename_i s_yaml h_yaml_ok
+        have h_eol := Except.ok.inj hok; subst h_eol
+        obtain ⟨sp_yaml, h_nb_yaml, hcorr_yaml⟩ :=
+          scanYamlDirective_prod sc _ sp_ws hcorr_ws _ s_yaml h_yaml_ok
+        obtain ⟨sp', h_nb_eol, hcorr'⟩ :=
+          skipToEndOfLine_corr _ sp_yaml hcorr_yaml
+        exact ⟨sp', GStar_trans h_pre (GStar_trans h_nb_yaml h_nb_eol), hcorr',
+          skipToEndOfLine_at_break_or_eof_chars _ sp' hcorr'⟩
+      · simp at hok
     · split at hok
-      · -- TAG directive
-        obtain ⟨sp', h_nb_tag, hcorr'⟩ :=
-          scanTagDirective_prod _ sp_ws hcorr_ws sc _ _ hok
-        exact ⟨sp', GStar_trans h_pre h_nb_tag, hcorr'⟩
-      · -- Reserved: skipToEndOfLine
+      · -- TAG directive (now wrapped with skipToEndOfLine)
+        split at hok
+        · rename_i s_tag h_tag_ok
+          have h_eol := Except.ok.inj hok; subst h_eol
+          obtain ⟨sp_tag, h_nb_tag, hcorr_tag⟩ :=
+            scanTagDirective_prod _ sp_ws hcorr_ws sc _ s_tag h_tag_ok
+          obtain ⟨sp', h_nb_eol, hcorr'⟩ :=
+            skipToEndOfLine_corr _ sp_tag hcorr_tag
+          exact ⟨sp', GStar_trans h_pre (GStar_trans h_nb_tag h_nb_eol), hcorr',
+            skipToEndOfLine_at_break_or_eof_chars _ sp' hcorr'⟩
+        · simp at hok
+      · -- Reserved: skipToEndOfLine (unchanged)
         have h := Except.ok.inj hok; subst h
         obtain ⟨sp', h_nb_skip, hcorr'⟩ :=
           skipToEndOfLine_corr _ sp_ws hcorr_ws
-        exact ⟨sp', GStar_trans h_pre h_nb_skip, hcorr'⟩
+        exact ⟨sp', GStar_trans h_pre h_nb_skip, hcorr',
+          skipToEndOfLine_at_break_or_eof_chars _ sp' hcorr'⟩
 
 end Lean4Yaml.Proofs.StructureProduction

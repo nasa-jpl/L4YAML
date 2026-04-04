@@ -55,6 +55,7 @@ open Lean4Yaml.Proofs.PreprocessProduction
 open Lean4Yaml.Proofs.StructureProduction
 open Lean4Yaml.Proofs.ScalarProduction
 open Lean4Yaml.Proofs.NodeProduction
+open Lean4Yaml.CharPredicates
 
 /-! ## §0a PendingNode — Immediate Pending State
 
@@ -120,7 +121,9 @@ inductive PendingNode : SurfPos → SurfPos → SurfPos → Prop where
       (h_closable : ∀ sp_mid,
         SSLComments sp_scan sp_mid →
         SLYamlStream sp_start sp_mid)
-      (h_stream : SLYamlStream sp_start sp_block) :
+      (h_stream : SLYamlStream sp_start sp_block)
+      (h_at_line_end : sp_scan.chars = [] ∨
+        ∃ ch rest', sp_scan.chars = ch :: rest' ∧ isLineBreakBool ch = true) :
       PendingNode sp_start sp_block sp_scan
   /-- Flow indicator scanned (`[`, `]`, `{`, `}`, `,`).
       Multi-token flow collection production (future work). -/
@@ -522,7 +525,7 @@ theorem PendingNode.close_with_ssl
   | pendingBlock =>
     rename_i n h_close _
     exact h_close sp_mid (SBlockNode.emptyNode n .blockIn sp_scan sp_mid h_ssl)
-  | pendingDirective _ _ h_closable =>
+  | pendingDirective _ _ h_closable _ =>
     exact h_closable sp_mid h_ssl
 
 /-! ## §0d Preprocessing → SSLComments for `some` result at col=0
@@ -602,6 +605,40 @@ theorem preprocess_some_peek {sc s_prep : ScannerState} {c : Char}
         <;> (split at hok  -- peek? match
           <;> (try simp at hok)  -- none case
           <;> (obtain ⟨h1, h2⟩ := hok; subst h1; subst h2; assumption)))
+
+-- The preprocessing character is never a line break. This follows from
+-- `skipToContentLoop` continuing past breaks and only stopping at non-break chars.
+theorem preprocess_some_not_break {sc s_prep : ScannerState} {c : Char}
+    (hok : scanNextToken_preprocess sc = .ok (some (s_prep, c))) :
+    isLineBreakBool c = false := by
+  have hpeek := preprocess_some_peek hok  -- s_prep.peek? = some c
+  unfold scanNextToken_preprocess at hok
+  simp only [bind, Except.bind, pure, Except.pure] at hok
+  split at hok
+  · simp at hok
+  · rename_i s_content h_skip
+    split at hok
+    · simp at hok
+    · -- Derive s_content.peek? = some c by tracing peek? preservation
+      -- through unwindIndents + saveSimpleKey + indent handling
+      have h_sc_peek : s_content.peek? = some c := by
+        split at hok  -- indent handling (two branches)
+        all_goals (
+          split at hok  -- trailing content check
+          <;> (try simp at hok)
+          <;> (split at hok  -- peek? match
+            <;> (try simp at hok)
+            <;> (obtain ⟨h1, _⟩ := hok; subst h1
+                 first
+                 | (-- indent branch: strip saveSimpleKey + unwindIndents
+                    rw [saveSimpleKey_peek] at hpeek
+                    unfold ScannerState.peek? unwindIndents at hpeek
+                    simp only [unwindIndentsLoop_offset, unwindIndentsLoop_inputEnd,
+                      unwindIndentsLoop_input] at hpeek
+                    exact hpeek)
+                 | (-- no-indent branch: strip saveSimpleKey only
+                    rw [saveSimpleKey_peek] at hpeek; exact hpeek))))
+      exact skipToContent_peek_not_break sc s_content c h_skip h_sc_peek
 
 /-- Preprocessing at col=0 with content character produces `SSeparateLines 0`.
 
@@ -906,13 +943,14 @@ theorem structural_dispatch_to_pending
                     have hcol : sp.col = 0 := by rw [hcorr.col_eq]; exact beq_iff_eq.mp h_dir.2
                     have hpeek_pct : s_prep.peek? = some '%' := by
                       rw [show c = '%' from beq_iff_eq.mp h_dir.1] at hpeek; exact hpeek
-                    obtain ⟨rest, sp_dir, hchars, hgstar, hcorr_dir⟩ :=
+                    obtain ⟨rest, sp_dir, hchars, hgstar, hcorr_dir, h_at_break⟩ :=
                       scanDirective_prod s_prep sp hcorr hpeek_pct s_dir h_dir_ok
                     refine ⟨sp_dir, hcol,
                       PendingNode.pendingDirective sp_start sp sp_dir
                         (fun sp_mid hssl => ?_)
                         sorry
-                        h_stream,
+                        h_stream
+                        h_at_break,
                       hcorr_dir⟩
                     obtain ⟨sp_chars, sp_col⟩ := sp
                     subst hchars
@@ -948,13 +986,14 @@ theorem structural_dispatch_to_pending
                   have hcol : sp.col = 0 := by rw [hcorr.col_eq]; exact beq_iff_eq.mp h_dir.2
                   have hpeek_pct : s_prep.peek? = some '%' := by
                     rw [show c = '%' from beq_iff_eq.mp h_dir.1] at hpeek; exact hpeek
-                  obtain ⟨rest, sp_dir, hchars, hgstar, hcorr_dir⟩ :=
+                  obtain ⟨rest, sp_dir, hchars, hgstar, hcorr_dir, h_at_break⟩ :=
                     scanDirective_prod s_prep sp hcorr hpeek_pct s_dir h_dir_ok
                   refine ⟨sp_dir, hcol,
                     PendingNode.pendingDirective sp_start sp sp_dir
                       (fun sp_mid hssl => ?_)
                       sorry
-                      h_stream,
+                      h_stream
+                      h_at_break,
                     hcorr_dir⟩
                   obtain ⟨sp_chars, sp_col⟩ := sp
                   subst hchars
@@ -1115,8 +1154,7 @@ theorem accum_structural_pending (sc : ScannerState)
              dispatch_new_pending s_prep s' c sp_start sp_mid sp_ws sp_gap sp_prep sp_scan'
                hcorr_prep hcorr_gap hcorr_result hcol_mid hws hcmt h_stream_mid hpeek h_dispatch,
              hcorr_result⟩
-  | pendingDirective =>
-    rename_i h_stream_old h_dir_acc_old h_closable_old
+  | @pendingDirective sp_scan h_dir_acc_old h_closable_old h_stream_old h_at_line_end_old =>
     -- Directive continuation: close old directive via SSLComments, then dispatch.
     by_cases hcol : sp_scan.col = 0
     · obtain ⟨sp_mid, sp_ws, sp_gap, h_ssl, hcol_mid, hws, hcmt, hcorr_gap, _⟩ :=
@@ -1323,8 +1361,7 @@ theorem accum_flow_pending (sc : ScannerState)
     obtain ⟨sp_flow', h_flow', h_pend'⟩ := new_flow_state sp_block h_stream_block
     exact ⟨sp_block, sp_block, sp_flow', sp_scan', h_stream_block,
            BlockStack.nil sp_block, h_flow', h_pend', hcorr_result⟩
-  | pendingDirective =>
-    rename_i h_stream_old h_dir_acc_old h_closable_old
+  | @pendingDirective sp_scan h_dir_acc_old h_closable_old h_stream_old h_at_line_end_old =>
     -- Directive continuation: close old directive via SSLComments, then flow state.
     by_cases hcol : sp_scan.col = 0
     · obtain ⟨sp_mid, _, _, h_ssl, _, _, _, _, _⟩ :=
@@ -1334,7 +1371,7 @@ theorem accum_flow_pending (sc : ScannerState)
       exact ⟨sp_mid, sp_mid, sp_flow', sp_scan', h_stream_mid,
              BlockStack.nil sp_mid, h_flow', h_pend', hcorr_result⟩
     · -- col≠0: use anyCol, close directive if SSLComments available.
-      obtain ⟨sp_mid, _, _, h_disj, _, _, _, _⟩ :=
+      obtain ⟨sp_mid, sp_ws, sp_prep, h_disj, hws, hcmt, hcorr_prep, _⟩ :=
         preprocess_some_ssl_comments_anyCol sc sp_scan s_prep c h_corr h_preprocess
       cases h_disj with
       | inl h_ssl_col =>
@@ -1344,7 +1381,72 @@ theorem accum_flow_pending (sc : ScannerState)
         exact ⟨sp_mid, sp_mid, sp_flow', sp_scan', h_stream_mid,
                BlockStack.nil sp_mid, h_flow', h_pend', hcorr_result⟩
       | inr h_mid_eq =>
-        sorry -- no break consumed: directive still open
+        exfalso
+        simp only [← h_mid_eq] at h_at_line_end_old
+        have hpeek := preprocess_some_peek h_preprocess
+        have h_nb := preprocess_some_not_break h_preprocess
+        cases h_at_line_end_old with
+        | inl h_eof =>
+          -- sp_mid.chars = [] → no whitespace/comment → sp_prep.chars = []
+          have hws_nil : sp_ws = sp_mid := by
+            cases hws with
+            | nil => rfl
+            | cons _ _ _ hw _ => cases hw <;> simp_all
+          have hcmt_nil : sp_prep = sp_ws := by
+            cases hcmt with
+            | none => rfl
+            | some _ hc =>
+              simp only [hws_nil] at hc
+              cases hc; simp_all
+          have h_prep_eof : sp_prep.chars = [] := by
+            simp only [hcmt_nil, hws_nil]; exact h_eof
+          have h_cf := hcorr_prep.chars_from
+          simp only [h_prep_eof] at h_cf
+          cases h_cf with
+          | at_end _ hge =>
+            have : ¬ s_prep.offset < s_prep.inputEnd := by
+              rw [hcorr_prep.end_eq]; omega
+            unfold ScannerState.peek? at hpeek
+            simp [this] at hpeek
+        | inr h_brk =>
+          obtain ⟨ch, rest', h_chars, h_lb⟩ := h_brk
+          have hws_nil : sp_ws = sp_mid := by
+            cases hws with
+            | nil => rfl
+            | cons _ _ _ hw _ =>
+              exfalso; cases hw with
+              | space ws_rest ws_col =>
+                have hlist : ' ' :: ws_rest = ch :: rest' := h_chars
+                injection hlist with hch _
+                simp [← hch, isLineBreakBool] at h_lb
+              | tab ws_rest ws_col =>
+                have hlist : '\t' :: ws_rest = ch :: rest' := h_chars
+                injection hlist with hch _
+                simp [← hch, isLineBreakBool] at h_lb
+          have hcmt_nil : sp_prep = sp_ws := by
+            cases hcmt with
+            | none => rfl
+            | some _ hc =>
+              exfalso; simp only [hws_nil] at hc
+              cases hc with
+              | mk cmt_rest cmt_col =>
+                have hlist : '#' :: cmt_rest = ch :: rest' := by
+                  have := h_chars; dsimp only [] at this; exact this
+                injection hlist with hch _
+                simp [← hch, isLineBreakBool] at h_lb
+          have h_prep_chars : sp_prep.chars = ch :: rest' := by
+            simp only [hcmt_nil, hws_nil]; exact h_chars
+          have h_sp_eq : sp_prep = ⟨ch :: rest', sp_prep.col⟩ := by
+            cases sp_prep; simp at h_prep_chars ⊢; exact h_prep_chars
+          have hcorr_mid := h_sp_eq ▸ hcorr_prep
+          have hmore := corr_nonempty_has_more hcorr_mid
+          obtain ⟨c', _, hc_chars, hpeek'⟩ := peek_corr s_prep _ hcorr_mid hmore
+          have hc_eq : c' = ch := by
+            simp at hc_chars; exact hc_chars.1.symm
+          rw [hc_eq] at hpeek'
+          rw [hpeek'] at hpeek
+          have : c = ch := Option.some.inj hpeek.symm
+          rw [this] at h_nb; simp [h_lb] at h_nb
   -- Transition cases: close old pending via Pattern 6, then apply new_flow_state.
   | pendingDocEnd _
   | pendingDocStart _
@@ -2723,8 +2825,7 @@ theorem accum_content_pending (sc : ScannerState)
   | noPending =>
     exact accum_content_on_noPending sc sp_start sp_block s_prep s' c sp_prep sp_scan'
       h_stream_block hcorr_prep hcorr_result h_corr h_preprocess h_not_doc h_dispatch
-  | pendingDirective =>
-    rename_i h_stream_old h_dir_acc_old h_closable_old
+  | @pendingDirective sp_scan h_dir_acc_old h_closable_old h_stream_old h_at_line_end_old =>
     -- Directive continuation: close old directive via SSLComments.
     by_cases hcol : sp_scan.col = 0
     · obtain ⟨sp_mid, sp_ws, sp_prep2, h_ssl, hcol_mid, h_ws, h_cmt, hcorr_prep2, h_pk⟩ :=
@@ -2760,7 +2861,71 @@ theorem accum_content_pending (sc : ScannerState)
           h_stream_mid h_sep hcorr_prep hcorr_result h_not_doc
           (preprocess_some_peek h_preprocess) h_dispatch
       | inr h_mid_eq =>
-        sorry -- no break consumed: directive still open, content on same line
+        exfalso
+        simp only [← h_mid_eq] at h_at_line_end_old
+        have hpeek := preprocess_some_peek h_preprocess
+        have h_nb := preprocess_some_not_break h_preprocess
+        cases h_at_line_end_old with
+        | inl h_eof =>
+          have hws_nil : sp_ws = sp_mid := by
+            cases h_ws with
+            | nil => rfl
+            | cons _ _ _ hw _ => cases hw <;> simp_all
+          have hcmt_nil : sp_prep = sp_ws := by
+            cases h_cmt with
+            | none => rfl
+            | some _ hc =>
+              simp only [hws_nil] at hc
+              cases hc; simp_all
+          have h_prep_eof : sp_prep.chars = [] := by
+            simp only [hcmt_nil, hws_nil]; exact h_eof
+          have h_cf := hcorr_prep.chars_from
+          simp only [h_prep_eof] at h_cf
+          cases h_cf with
+          | at_end _ hge =>
+            have : ¬ s_prep.offset < s_prep.inputEnd := by
+              rw [hcorr_prep.end_eq]; omega
+            unfold ScannerState.peek? at hpeek
+            simp [this] at hpeek
+        | inr h_brk =>
+          obtain ⟨ch, rest', h_chars, h_lb⟩ := h_brk
+          have hws_nil : sp_ws = sp_mid := by
+            cases h_ws with
+            | nil => rfl
+            | cons _ _ _ hw _ =>
+              exfalso; cases hw with
+              | space ws_rest ws_col =>
+                have hlist : ' ' :: ws_rest = ch :: rest' := h_chars
+                injection hlist with hch _
+                simp [← hch, isLineBreakBool] at h_lb
+              | tab ws_rest ws_col =>
+                have hlist : '\t' :: ws_rest = ch :: rest' := h_chars
+                injection hlist with hch _
+                simp [← hch, isLineBreakBool] at h_lb
+          have hcmt_nil : sp_prep = sp_ws := by
+            cases h_cmt with
+            | none => rfl
+            | some _ hc =>
+              exfalso; simp only [hws_nil] at hc
+              cases hc with
+              | mk cmt_rest cmt_col =>
+                have hlist : '#' :: cmt_rest = ch :: rest' := by
+                  have := h_chars; dsimp only [] at this; exact this
+                injection hlist with hch _
+                simp [← hch, isLineBreakBool] at h_lb
+          have h_prep_chars : sp_prep.chars = ch :: rest' := by
+            simp only [hcmt_nil, hws_nil]; exact h_chars
+          have h_sp_eq : sp_prep = ⟨ch :: rest', sp_prep.col⟩ := by
+            cases sp_prep; simp at h_prep_chars ⊢; exact h_prep_chars
+          have hcorr_mid := h_sp_eq ▸ hcorr_prep
+          have hmore := corr_nonempty_has_more hcorr_mid
+          obtain ⟨c', _, hc_chars, hpeek'⟩ := peek_corr s_prep _ hcorr_mid hmore
+          have hc_eq : c' = ch := by
+            simp at hc_chars; exact hc_chars.1.symm
+          rw [hc_eq] at hpeek'
+          rw [hpeek'] at hpeek
+          have : c = ch := Option.some.inj hpeek.symm
+          rw [this] at h_nb; simp [h_lb] at h_nb
   | pendingDocEnd _
   | pendingDocStart _
   | pendingContent _

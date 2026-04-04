@@ -591,15 +591,27 @@ theorem scanTagDirective_corr (sc : ScannerState) (sp : SurfPos)
     (hok : scanTagDirective sc s_after_ws startPos = .ok s') :
     ∃ sp', ScannerSurfCorr s' sp' := by
   unfold scanTagDirective at hok
-  -- scanTagDirective is pure (no bind/throw), just let bindings ending in .ok
-  have h := Except.ok.inj hok; subst h
+  simp only [bind, Except.bind, pure, Except.pure] at hok
   obtain ⟨sp_hdl, hcorr_hdl⟩ :=
     collectTagHandleDirectiveLoop_corr s_after_ws sp_ws hcorr_ws "" _
   obtain ⟨sp_ws2, _, hcorr_ws2⟩ :=
     skipWhitespace_corr _ sp_hdl hcorr_hdl
   obtain ⟨sp_pfx, hcorr_pfx⟩ :=
     collectTagPrefixLoop_corr _ sp_ws2 hcorr_ws2 "" _
-  exact ⟨sp_pfx, ⟨hcorr_pfx.chars_from, hcorr_pfx.col_eq, hcorr_pfx.end_eq, hcorr_pfx.input_prefix, hcorr_pfx.indent_cols_nonneg⟩⟩
+  -- Trailing content validation (4y.1)
+  obtain ⟨sp_val, _, hcorr_val⟩ :=
+    skipWhitespace_corr _ sp_pfx hcorr_pfx
+  split at hok
+  · split at hok
+    · exact absurd hok (by simp)
+    · have h := Except.ok.inj hok; subst h
+      exact ⟨sp_val, ⟨hcorr_val.chars_from, hcorr_val.col_eq, hcorr_val.end_eq, hcorr_val.input_prefix, hcorr_val.indent_cols_nonneg⟩⟩
+  · split at hok
+    · exact absurd hok (by simp)
+    · have h := Except.ok.inj hok; subst h
+      exact ⟨sp_val, ⟨hcorr_val.chars_from, hcorr_val.col_eq, hcorr_val.end_eq, hcorr_val.input_prefix, hcorr_val.indent_cols_nonneg⟩⟩
+  · have h := Except.ok.inj hok; subst h
+    exact ⟨sp_val, ⟨hcorr_val.chars_from, hcorr_val.col_eq, hcorr_val.end_eq, hcorr_val.input_prefix, hcorr_val.indent_cols_nonneg⟩⟩
 
 theorem scanDirective_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
@@ -615,11 +627,23 @@ theorem scanDirective_corr (sc : ScannerState) (sp : SurfPos)
     obtain ⟨sp_ws, _, hcorr_ws⟩ :=
       skipWhitespace_corr _ sp_name hcorr_name
     split at hok
-    · -- YAML directive
-      exact scanYamlDirective_corr sc _ sp_ws hcorr_ws _ _ hok
+    · -- YAML directive (now wrapped with skipToEndOfLine)
+      split at hok
+      · rename_i s_yaml h_yaml
+        have h_eq := Except.ok.inj hok; subst h_eq
+        obtain ⟨sp_yaml, hcorr_yaml⟩ := scanYamlDirective_corr sc _ sp_ws hcorr_ws _ s_yaml h_yaml
+        obtain ⟨sp', _, hcorr'⟩ := skipToEndOfLine_corr _ sp_yaml hcorr_yaml
+        exact ⟨sp', hcorr'⟩
+      · simp at hok
     · split at hok
-      · -- TAG directive
-        exact scanTagDirective_corr sc sp hcorr _ sp_ws hcorr_ws _ _ hok
+      · -- TAG directive (now wrapped with skipToEndOfLine)
+        split at hok
+        · rename_i s_tag h_tag
+          have h_eq := Except.ok.inj hok; subst h_eq
+          obtain ⟨sp_tag, hcorr_tag⟩ := scanTagDirective_corr sc sp hcorr _ sp_ws hcorr_ws _ s_tag h_tag
+          obtain ⟨sp', _, hcorr'⟩ := skipToEndOfLine_corr _ sp_tag hcorr_tag
+          exact ⟨sp', hcorr'⟩
+        · simp at hok
       · -- reserved directive: skipToEndOfLine
         have h := Except.ok.inj hok; subst h
         obtain ⟨sp', _, hcorr'⟩ := skipToEndOfLine_corr _ sp_ws hcorr_ws

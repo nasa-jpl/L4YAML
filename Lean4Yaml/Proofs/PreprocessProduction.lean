@@ -852,6 +852,76 @@ theorem skipToContent_eof_ssl_comments
             (.nil _),
           rfl⟩
 
+/-! ## §7 skipToContent non-break guarantee
+
+    `skipToContentLoop` only stops at non-break characters or EOF.
+    When it returns with `peek? = some c`, `c` is NOT a line break. -/
+
+-- skipToContentLoop returns at non-break chars (given sufficient fuel).
+theorem skipToContentLoop_peek_not_break
+    (sc : ScannerState) (fuel : Nat) (s_result : ScannerState) (c : Char)
+    (hfuel : fuel ≥ sc.inputEnd - sc.offset + 1)
+    (hok : skipToContentLoop sc fuel = .ok s_result)
+    (hpeek : s_result.peek? = some c) :
+    isLineBreakBool c = false := by
+  induction fuel generalizing sc s_result with
+  | zero =>
+    -- fuel ≥ inputEnd - offset + 1 ≥ 1, contradicting fuel = 0
+    simp [skipToContentLoop] at hok; subst hok
+    have : sc.inputEnd - sc.offset + 1 ≤ 0 := hfuel
+    omega
+  | succ fuel' ih =>
+    unfold skipToContentLoop at hok
+    dsimp only [] at hok
+    split at hok
+    · simp at hok
+    · rename_i s1 hok_ws
+      split at hok
+      · rename_i c' hpeek_c'
+        split at hok
+        · -- Break: consume newline and recurse
+          rename_i hlb
+          have ⟨h_ws_off, h_ws_end⟩ := skipToContentWs_offset_mono sc s1 hok_ws
+          have ⟨h_sc_off, h_sc_end⟩ := skipToContentComment_offset_mono s1
+          have ⟨h_cn_off, h_cn_end⟩ :=
+            consumeNewline_offset_advance (skipToContentComment s1) c' hpeek_c' hlb
+          have h_cn_inputEnd :
+              (consumeNewline (skipToContentComment s1)).inputEnd = sc.inputEnd := by
+            rw [h_cn_end, h_sc_end, h_ws_end]
+          have hfuel' : fuel' ≥ (consumeNewline (skipToContentComment s1)).inputEnd -
+                                 (consumeNewline (skipToContentComment s1)).offset + 1 := by
+            have h_scc_lt := peek_some_hasMore (skipToContentComment s1) c' hpeek_c'
+            have : sc.offset < sc.inputEnd := by
+              have : (skipToContentComment s1).inputEnd = sc.inputEnd := by rw [h_sc_end, h_ws_end]
+              omega
+            have : (consumeNewline (skipToContentComment s1)).offset ≥ sc.offset + 1 := by omega
+            rw [h_cn_inputEnd]; omega
+          split at hok
+          · -- !isInFlowSequence: simpleKeyAllowed update
+            exact ih
+              { consumeNewline (skipToContentComment s1) with simpleKeyAllowed := true }
+              s_result hfuel' hok hpeek
+          · -- isInFlowSequence
+            exact ih (consumeNewline (skipToContentComment s1)) s_result hfuel' hok hpeek
+        · -- Not a break: stop and return
+          rename_i hnlb
+          have hinj := Except.ok.inj hok; subst hinj
+          have : c = c' := Option.some.inj (hpeek.symm.trans hpeek_c')
+          subst this; exact Bool.eq_false_iff.mpr hnlb
+      · -- peek? = none: stop — contradicts hpeek
+        rename_i hpeek_none
+        have hinj := Except.ok.inj hok; subst hinj
+        rw [hpeek_none] at hpeek; exact absurd hpeek (by simp)
+
+-- skipToContent returns at non-break chars.
+theorem skipToContent_peek_not_break
+    (sc s_result : ScannerState) (c : Char)
+    (hok : skipToContent sc = .ok s_result)
+    (hpeek : s_result.peek? = some c) :
+    isLineBreakBool c = false := by
+  unfold skipToContent at hok
+  exact skipToContentLoop_peek_not_break sc _ s_result c (by omega) hok hpeek
+
 /-! ## §8 Document marker productions (status note)
 
     `scanDocumentStart_prod` and `scanDocumentEnd_prod` already exist in

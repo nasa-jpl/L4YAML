@@ -1289,7 +1289,8 @@ def scanYamlDirective (s : ScannerState) (s_after_ws : ScannerState) (startPos :
     - `[88]  ns-tag-directive` = `"TAG" s-separate-in-line c-tag-handle s-separate-in-line ns-tag-prefix`
 
     **Pre**: `s_after_ws` is state after `%TAG` + whitespace skip; `startPos` is position of `%`.
-    **Post**: Emits `.tagDirective handle prefix`, sets `directivesPresent`. -/
+    **Post**: Emits `.tagDirective handle prefix`, sets `directivesPresent`.
+    **Error**: `directiveTrailingContent` (non-comment content after prefix). -/
 @[yaml_spec "6.8.2" 88 "ns-tag-directive",
   yaml_spec "6.8.2" 89 "c-tag-handle",
   yaml_spec "6.8.2" 93 "ns-tag-prefix"]
@@ -1304,7 +1305,16 @@ def scanTagDirective (s : ScannerState) (s_after_ws : ScannerState) (startPos : 
   let result2 := collectTagPrefixLoop s_after_ws2 "" fuel_prefix
   let tagPrefix := result2.1
   let s_after_prefix := result2.2
-  let s_with_token := s_after_prefix.emitAt startPos (.tagDirective handle tagPrefix)
+  -- Validate trailing content (match scanYamlDirective behavior)
+  let colBeforeWs := s_after_prefix.col
+  let s_validated := skipWhitespace s_after_prefix
+  match s_validated.peek? with
+  | some '#' =>
+    if s_validated.col == colBeforeWs then
+      throw (.directiveTrailingContent s_validated.line s_validated.col)
+  | some c => if !isLineBreakBool c then throw (.directiveTrailingContent s_validated.line s_validated.col)
+  | none => pure ()
+  let s_with_token := s_validated.emitAt startPos (.tagDirective handle tagPrefix)
   .ok { s_with_token with directivesPresent := true }
 
 /-- Scan a directive (`%YAML` or `%TAG`).
@@ -1337,9 +1347,13 @@ def scanDirective (s : ScannerState) : Except ScanError ScannerState :=
     let (name, s_after_name) := collectDirectiveNameLoop s_after_percent "" fuel
     let s_after_ws := skipWhitespace s_after_name
     if name == "YAML" then
-      scanYamlDirective s s_after_ws startPos
+      match scanYamlDirective s s_after_ws startPos with
+      | .ok s' => .ok (skipToEndOfLine s')
+      | .error e => .error e
     else if name == "TAG" then
-      scanTagDirective s s_after_ws startPos
+      match scanTagDirective s s_after_ws startPos with
+      | .ok s' => .ok (skipToEndOfLine s')
+      | .error e => .error e
     else
       .ok (skipToEndOfLine s_after_ws)
 
