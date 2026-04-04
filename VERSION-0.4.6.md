@@ -2402,7 +2402,7 @@ h_closable_directive: permanently deferred (2 sites)
 | 4u | PendingNode generalization | ~16 | Generalize pendingBlock to n>0 + SBlockMapEntries (DONE) |
 | 4v | content h_closable extraction | ~3 | Reusable helper from accum_content_on_noPending (DONE) |
 | 4w | col≠0 preprocessing | ~13 | General SSLComments or BOM unreachability (DONE) |
-| 4x | flow grammar accumulation | ~2 | SFlowSequence/SFlowMapping infrastructure |
+| 4x | flow grammar accumulation | ~2 | SFlowSequence/SFlowMapping infrastructure (DONE) |
 
 ###### Layer 4t accomplishments
 
@@ -2553,7 +2553,7 @@ The 11 remaining sorry proof terms are concentrated in these 4 declarations.
 
 **Goal**: Restructure types and scanner validation to make the 11 remaining sorry proof terms provable. Expected result: 11→≤4 sorry.
 
-**4y.1: TAG directive trailing content validation (−2 sorry)**
+**4y.1: TAG directive trailing content validation (−2 sorry) (DONE) **
 
 Problem: `scanTagDirective` doesn't validate trailing content after tag prefix (unlike `scanYamlDirective` and reserved directives). After `%TAG ! tag:uri trailing_stuff`, the scanner is at `trailing_stuff` with col≠0. `skipToContent` finds non-break content → `preprocess_some_ssl_comments_anyCol` returns right disjunct (no break) → `pendingDirective` no-break case is reachable at L1347 and L2763.
 
@@ -2601,7 +2601,7 @@ When `PendingNode : SurfPos → SurfPos → SurfPos → Prop` has `noPending` un
 
 After `cases hw with | space ws_rest ws_col =>`, `sp_mid` is unified with `⟨' ' :: ws_rest, ws_col⟩`, transforming `h_chars` to `' ' :: ws_rest = ch :: rest'`. Extract the character equation via `have hlist : ' ' :: ws_rest = ch :: rest' := h_chars; injection hlist with hch _`, then `simp [← hch, isLineBreakBool] at h_lb` closes with `isLineBreakBool ' ' = false ≠ true`. Same pattern for `\t` and `#` (SCNbCommentText.mk).
 
-**4y.2: Remove h_closable from pendingDirective (−2 sorry, possibly +1)**
+**4y.2: Remove h_closable from pendingDirective (−2 sorry, possibly +1) (DONE) **
 
 Problem: `pendingDirective` carries `h_closable : ∀ sp_mid, SSLComments sp_scan sp_mid → SLYamlStream sp_start sp_mid` but this is unprovable at construction time — `SLDirectiveDocument` requires `SCDirectivesEnd` (`---`) not yet seen. The 2 sorry at L914/L956 in `structural_dispatch_to_pending` construct this unprovable closure.
 
@@ -2666,7 +2666,7 @@ The `| pendingDirective =>` simple pattern (no `@`, no field bindings) works wit
 
 All consumption-site sorry share one root cause: closing `GPlus SLDirective sp_block sp_mid` + `SLYamlStream sp_start sp_block` into `SLYamlStream sp_start sp_mid` requires `SLDirectiveDocument`, which requires `SCDirectivesEnd` (not available at closing time). Two resolution paths remain: (a) scanner error for directive-without-`---` making EOF+content+flow+block after directive unreachable, or (b) grammar production for bare-directive absorption (`SLYamlStream` extended to accept trailing directives). The `pendingDirective + ---` transition was NOT affected — it correctly produces `pendingDocStart` with directive-aware `h_doc_builder` via `dispatch_new_pending → structural_dispatch_to_pending`.
 
-**4y.3: FlowStack partial evidence (−2 sorry, risk of new sorry in absorb_stacks)**
+**4y.3: FlowStack partial evidence (−2 sorry, risk of new sorry in absorb_stacks) (DONE) **
 
 Problem: `FlowStack.flowSeqLevel`/`flowMapLevel` carry `h_closable : ∀ sp_start, SLYamlStream sp_start sp → SLYamlStream sp_start sp'` requiring complete `SFlowSequence`/`SFlowMapping` at bracket-open time. Impossible since entries haven't been scanned. Sorry at L1307/L1312.
 
@@ -2692,7 +2692,39 @@ Files: StreamAccum.lean (FlowStack, absorb_stacks, accum_flow_pending).
 
 **4y.3: Accomplishments**
 
+1. Changed `FlowStack.flowSeqLevel`/`flowMapLevel` from `h_closable` closures to `GLit` bracket evidence:
+   - Added explicit `sp_lit : SurfPos` position parameter for bracket location
+   - `flowSeqLevel` carries `GLit '[' sp_lit sp'` — evidence that `[` was consumed
+   - `flowMapLevel` carries `GLit '{' sp_lit sp'` — evidence that `{` was consumed
+   - 4-position constructors: `(sp sp_mid sp_lit sp' : SurfPos)` instead of 3
+
+2. Created dispatch-level helper lemmas for scanner state extraction:
+   - `dispatch_flow_seq_eq`: when `c = '['`, proves `s' = scanFlowSequenceStart sc`
+   - `dispatch_flow_map_eq`: when `c = '{'`, proves `s' = scanFlowMappingStart sc` (3 split-levels through if-chain, `native_decide` for char inequality)
+   - Unfolding chain: `unfold` → `simp [bind, Except.bind]` → `split at hok` per `if`
+
+3. Updated `new_flow_state` to construct actual `GLit` evidence (0 sorry in `[`/`{` branches):
+   - Local copies of dispatch hypotheses (`h_dispatch_seq`/`h_dispatch_map`) via `rw [← hc_seq]` to avoid modifying captured outer hypotheses (which would destroy `sp_scan'`)
+   - Chain: `dispatch_flow_seq_eq` → `scanFlowSequenceStart_prod` → `ScannerSurfCorr_unique` → `sp_lit = sp_scan'` → `▸` transport for GLit
+   - `GLit` evidence at `sp_prep` position (preprocessing output), not `sp_mid` (stream endpoint)
+
+4. Updated `absorb_stacks` with sorry for non-nil FlowStack branches (6 cases: 2 FlowStack × 3 BlockStack)
+
+5. Build: 415/415, 6 sorry warnings (was 5). Net: −2 construction sorry + 1 new declaration with sorry (`absorb_stacks`).
+
 **4y.3: Reflections**
+
+**Key challenge — Lean 4 `subst`/`rw` scope in `have` blocks:**
+Inside `have ... := by`, `rw [h] at outer_hyp` can cause dependent hypotheses to be reverted, destroying named variables like `sp_scan'`. Solution: create LOCAL copies of hypotheses (`have h' : T := by rw [...]; exact h`) rather than modifying captured outer hypotheses. The `▸` transport (`h_eq ▸ proof`) works cleanly in term mode for `ScannerSurfCorr_unique` when the expected type fully determines the motive.
+
+**Char equality in Lean 4:**
+- `(by native_decide : T)` ascription syntax fails when `T` contains `=` due to parser ambiguity with `:=`
+- `show T from e` also fails similarly
+- Working pattern: `(by native_decide : ((c₁ : Char) == c₂) = true/false)` with explicit parentheses around the `BEq.beq` application
+- `split at hok` on `if` chain: one split per `if` level, `rename_i` captures the condition, `absurd` + `native_decide` closes impossible branches
+
+**GLit position gap:**
+The `GLit '[' sp_prep sp_scan'` evidence is between the preprocessing position and dispatch result, not between the stream position (`sp_mid`) and result. The FlowStack stores `sp_lit = sp_prep` as a separate position parameter. The gap `sp_mid → sp_prep` (whitespace/comments) will be handled at flow-close time when the full `SFlowSequence` is constructed.
 
 **4y.4: pendingFlow + block_dispatch_deferred (−3 sorry)**
 
