@@ -354,29 +354,38 @@ theorem collectPlainScalarLoop_preserves_contentInv
             cases fold_result with
             | mk folded s_fold =>
               split at h
-              · -- s_fold.peek? = some '#' → terminate
+              · -- s_fold.peek? = some '#' → terminate with state = s
+                injection h with h_eq; cases h_eq; exact inv
+              · -- recurse with content-length check
                 rename_i hfoldpeek
-                injection h with h_eq; cases h_eq
-                exact inv.transfer_nonblank_peek s_fold '#' hfoldpeek hash_not_blank
-              · -- recurse with content ++ folded, "" → need PlainContentInv for new content
-                rename_i hfoldpeek
-                have hc_lb : isLineBreakProp c := by
-                  have : isLineBreakBool c = true := by assumption
-                  exact (isLineBreak_iff c).mp this
-                have hfold := foldQuotedNewlines_result_form s folded s_fold heq
-                have hpeek_ne : ∀ n, s_fold.peek? = some n → n ≠ '#' := by
-                  intro n hn heq'; rw [heq'] at hn; exact hfoldpeek hn
-                rcases hfold with rfl | ⟨n, hn, rfl⟩
-                · apply ih s_fold (content ++ " ") ""
-                  · exact PlainContentInv.of_fold inv c hpeek hc_lb " " (.inl rfl) hpeek_ne
-                  · intro _ _; exact hpeek_ne
-                  · exact h
-                · apply ih s_fold (content ++ String.ofList (List.replicate n '\n')) ""
-                  · exact PlainContentInv.of_fold inv c hpeek hc_lb _ (.inr ⟨n, hn, rfl⟩) hpeek_ne
-                  · intro hlast _
-                    rw [getLast_append_replicate_newline content n hn] at hlast
-                    exact absurd hlast (by decide)
-                  · exact h
+                dsimp only [] at h
+                generalize h_loop : collectPlainScalarLoop s_fold _ "" fuel' inFlow contentIndent inputEnd = cont_result at h
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at h
+                  split at h
+                  · -- ≤ prevLen → state = s, content unchanged
+                    injection h with h_eq; cases h_eq; exact inv
+                  · -- > prevLen → use ih
+                    have h_eq := Except.ok.inj h; subst h_eq
+                    have hc_lb : isLineBreakProp c := by
+                      have : isLineBreakBool c = true := by assumption
+                      exact (isLineBreak_iff c).mp this
+                    have hfold := foldQuotedNewlines_result_form s folded s_fold heq
+                    have hpeek_ne : ∀ n, s_fold.peek? = some n → n ≠ '#' := by
+                      intro n hn heq'; rw [heq'] at hn; exact hfoldpeek hn
+                    rcases hfold with rfl | ⟨n, hn, rfl⟩
+                    · apply ih s_fold (content ++ " ") ""
+                      · exact PlainContentInv.of_fold inv c hpeek hc_lb " " (.inl rfl) hpeek_ne
+                      · intro _ _; exact hpeek_ne
+                      · exact h_loop
+                    · apply ih s_fold (content ++ String.ofList (List.replicate n '\n')) ""
+                      · exact PlainContentInv.of_fold inv c hpeek hc_lb _ (.inr ⟨n, hn, rfl⟩) hpeek_ne
+                      · intro hlast _
+                        rw [getLast_append_replicate_newline content n hn] at hlast
+                        exact absurd hlast (by decide)
+                      · exact h_loop
+                | error e => simp at h
           · -- !inFlow: block line break
             split at h
             · -- _handleBlockLineBreak = none → terminate
@@ -384,29 +393,38 @@ theorem collectPlainScalarLoop_preserves_contentInv
             · -- _handleBlockLineBreak = some (content', s')
               rename_i content' s' hblk
               split at h
-              · -- s'.peek? = some '#' → terminate
+              · -- s'.peek? = some '#' → terminate with state = s
+                injection h with h_eq; cases h_eq; exact inv
+              · -- recurse with content-length check
                 rename_i hblkpeek
-                injection h with h_eq; cases h_eq
-                exact inv.transfer_nonblank_peek s' '#' hblkpeek hash_not_blank
-              · -- recurse with content', "" → need PlainContentInv for new content
-                rename_i hblkpeek
-                have hc_lb : isLineBreakProp c := by
-                  have : isLineBreakBool c = true := by assumption
-                  exact (isLineBreak_iff c).mp this
-                have hfold := handleBlockLineBreak_content_form s content contentIndent inputEnd content' s' hblk
-                have hpeek_ne : ∀ n, s'.peek? = some n → n ≠ '#' := by
-                  intro n hn heq; rw [heq] at hn; exact hblkpeek hn
-                rcases hfold with rfl | ⟨n, hn, rfl⟩
-                · apply ih s' (content ++ " ") ""
-                  · exact PlainContentInv.of_fold inv c hpeek hc_lb " " (.inl rfl) hpeek_ne
-                  · intro _ _; exact hpeek_ne
-                  · exact h
-                · apply ih s' (content ++ String.ofList (List.replicate n '\n')) ""
-                  · exact PlainContentInv.of_fold inv c hpeek hc_lb _ (.inr ⟨n, hn, rfl⟩) hpeek_ne
-                  · intro hlast _
-                    rw [getLast_append_replicate_newline content n hn] at hlast
-                    exact absurd hlast (by decide)
-                  · exact h
+                dsimp only [] at h
+                generalize h_loop : collectPlainScalarLoop s' content' "" fuel' inFlow contentIndent inputEnd = cont_result at h
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at h
+                  split at h
+                  · -- ≤ prevLen → state = s, content unchanged
+                    injection h with h_eq; cases h_eq; exact inv
+                  · -- > prevLen → use ih
+                    have h_eq := Except.ok.inj h; subst h_eq
+                    have hc_lb : isLineBreakProp c := by
+                      have : isLineBreakBool c = true := by assumption
+                      exact (isLineBreak_iff c).mp this
+                    have hfold := handleBlockLineBreak_content_form s content contentIndent inputEnd content' s' hblk
+                    have hpeek_ne : ∀ n, s'.peek? = some n → n ≠ '#' := by
+                      intro n hn heq; rw [heq] at hn; exact hblkpeek hn
+                    rcases hfold with rfl | ⟨n, hn, rfl⟩
+                    · apply ih s' (content ++ " ") ""
+                      · exact PlainContentInv.of_fold inv c hpeek hc_lb " " (.inl rfl) hpeek_ne
+                      · intro _ _; exact hpeek_ne
+                      · exact h_loop
+                    · apply ih s' (content ++ String.ofList (List.replicate n '\n')) ""
+                      · exact PlainContentInv.of_fold inv c hpeek hc_lb _ (.inr ⟨n, hn, rfl⟩) hpeek_ne
+                      · intro hlast _
+                        rw [getLast_append_replicate_newline content n hn] at hlast
+                        exact absurd hlast (by decide)
+                      · exact h_loop
+                | error e => simp at h
         · split at h
           · -- isWhiteSpace c → spaces grows, content unchanged
             rename_i hws

@@ -3041,42 +3041,50 @@ theorem collectPlainScalarLoop_preserves_flowLevel (s : ScannerState) (content s
             rename_i folded_result heq_fold
             have h_fl_fold := foldQuotedNewlines_preserves_flowLevel _ _ heq_fold
             split at h
-            · -- peek after fold is some '#': terminates
-              injection h with h_eq; subst h_eq
-              exact h_fl_fold
-            · -- continues
-              exact ih _ _ _ h |>.trans h_fl_fold
+            · -- peek after fold is some '#': terminates → state = s
+              injection h with h_eq; subst h_eq; rfl
+            · -- recurse with content-length check
+              generalize h_loop : collectPlainScalarLoop _ _ "" fuel' inFlow contentIndent inputEnd = cont_result at h
+              cases cont_result with
+              | ok inner_result =>
+                dsimp only [] at h
+                split at h
+                · -- ≤ prevLen → state = s
+                  injection h with h_eq; subst h_eq; rfl
+                · -- > prevLen → use ih
+                  have h_eq := Except.ok.inj h; subst h_eq
+                  exact ih _ _ _ h_loop |>.trans h_fl_fold
+              | error e => simp at h
           · -- inFlow = false: handle block line break
             split at h
             · -- handleBlockLineBreak returns none: terminates
               injection h with h_eq; subst h_eq; rfl
             · -- handleBlockLineBreak returns some: continues
               split at h
-              · -- peek is some '#': terminates
-                injection h with h_eq; subst h_eq
-                simp only [collectPlainScalar_handleBlockLineBreak] at *
-                split at * <;> try contradiction
-                split at * <;> try contradiction
-                rename_i heq_handle
-                injection heq_handle with h_pair_eq
-                cases h_pair_eq
-                simp [skipBlankLinesLoop_preserves_flowLevel, skipSpaces_preserves_flowLevel,
-                      consumeNewline_preserves_flowLevel]
-              · -- continues scanning
-                simp only [collectPlainScalar_handleBlockLineBreak] at *
-                split at * <;> try contradiction
-                split at * <;> try contradiction
-                rename_i heq_handle
-                injection heq_handle with h_pair_eq
-                cases h_pair_eq
-                -- Now we know the state after handleBlockLineBreak
-                -- The inductive hypothesis h gives: result.state.flowLevel = (state after handle).flowLevel
-                -- We need to show: result.state.flowLevel = s.flowLevel
-                have h_fl : (skipSpaces (skipBlankLinesLoop (consumeNewline s) 0 (inputEnd - (consumeNewline s).offset + 1) inputEnd).snd).flowLevel = s.flowLevel := by
-                  rw [skipSpaces_preserves_flowLevel,
-                      skipBlankLinesLoop_preserves_flowLevel (consumeNewline s) 0 (inputEnd - (consumeNewline s).offset + 1) inputEnd,
-                      consumeNewline_preserves_flowLevel]
-                exact ih _ _ _ h |>.trans h_fl
+              · -- peek is some '#': terminates → state = s
+                injection h with h_eq; subst h_eq; rfl
+              · -- recurse with content-length check
+                generalize h_loop : collectPlainScalarLoop _ _ "" fuel' inFlow contentIndent inputEnd = cont_result at h
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at h
+                  split at h
+                  · -- ≤ prevLen → state = s
+                    injection h with h_eq; subst h_eq; rfl
+                  · -- > prevLen → use ih
+                    have h_eq := Except.ok.inj h; subst h_eq
+                    simp only [collectPlainScalar_handleBlockLineBreak] at *
+                    split at * <;> try contradiction
+                    split at * <;> try contradiction
+                    rename_i heq_handle
+                    injection heq_handle with h_pair_eq
+                    cases h_pair_eq
+                    have h_fl : (skipSpaces (skipBlankLinesLoop (consumeNewline s) 0 (inputEnd - (consumeNewline s).offset + 1) inputEnd).snd).flowLevel = s.flowLevel := by
+                      rw [skipSpaces_preserves_flowLevel,
+                          skipBlankLinesLoop_preserves_flowLevel (consumeNewline s) 0 (inputEnd - (consumeNewline s).offset + 1) inputEnd,
+                          consumeNewline_preserves_flowLevel]
+                    exact ih _ _ _ h_loop |>.trans h_fl
+                | error e => simp at h
         · -- isWhiteSpaceBool c = true
           split at h
           · -- continues with spaces

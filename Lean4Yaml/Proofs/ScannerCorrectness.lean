@@ -1194,8 +1194,18 @@ theorem collectPlainScalarLoop_preserves_tokens (s : ScannerState) (content last
             | mk content_fold s_fold =>
               have h_fold := foldQuotedNewlines_preserves_tokens s s_fold content_fold heq
               split at h
-              · injection h with h_eq; cases h_eq; rw [h_fold]
-              · rw [ih s_fold (content ++ content_fold) "" h, h_fold]
+              · injection h with h_eq; cases h_eq; rfl  -- '#' → state = s
+              · -- recurse with content-length check
+                dsimp only [] at h
+                generalize h_loop : collectPlainScalarLoop s_fold (content ++ content_fold) "" fuel' inFlow contentIndent inputEnd = cont_result at h
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at h
+                  split at h
+                  · injection h with h_eq; cases h_eq; rfl
+                  · have h_eq := Except.ok.inj h; subst h_eq
+                    rw [ih s_fold (content ++ content_fold) "" h_loop, h_fold]
+                | error e => simp at h
           · -- !inFlow: block line break
             split at h
             · -- _handleBlockLineBreak = none → terminate
@@ -1212,9 +1222,18 @@ theorem collectPlainScalarLoop_preserves_tokens (s : ScannerState) (content last
                     skipBlankLinesLoop_preserves_tokens, consumeNewline_preserves_tokens]
               split at h
               · -- s'.peek? = some '#' → terminate
-                injection h with h_eq; cases h_eq; rw [hprop]
-              · -- s'.peek? = _ → recurse
-                rw [ih _ _ _ h, hprop]
+                injection h with h_eq; cases h_eq; rfl
+              · -- s'.peek? = _ → recurse with content-length check
+                dsimp only [] at h
+                generalize h_loop : collectPlainScalarLoop s' content' "" fuel' inFlow contentIndent inputEnd = cont_result at h
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at h
+                  split at h
+                  · injection h with h_eq; cases h_eq; rfl
+                  · have h_eq := Except.ok.inj h; subst h_eq
+                    rw [ih _ _ _ h_loop, hprop]
+                | error e => simp at h
         · split at h
           · -- isWhiteSpace c
             have h_adv := advance_preserves_tokens s
@@ -3139,8 +3158,18 @@ theorem collectPlainScalarLoop_preserves_simpleKey (s : ScannerState) (content l
             | mk content_fold s_fold =>
               have h_fold := foldQuotedNewlines_preserves_simpleKey s s_fold content_fold heq
               split at h
-              · injection h with h_eq; cases h_eq; rw [h_fold]
-              · rw [ih s_fold (content ++ content_fold) "" h, h_fold]
+              · injection h with h_eq; cases h_eq; rfl  -- '#' → state = s
+              · -- recurse with content-length check
+                dsimp only [] at h
+                generalize h_loop : collectPlainScalarLoop s_fold (content ++ content_fold) "" fuel' inFlow contentIndent inputEnd = cont_result at h
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at h
+                  split at h
+                  · injection h with h_eq; cases h_eq; rfl
+                  · have h_eq := Except.ok.inj h; subst h_eq
+                    rw [ih s_fold (content ++ content_fold) "" h_loop, h_fold]
+                | error e => simp at h
           · -- !inFlow: block line break
             split at h
             · -- _handleBlockLineBreak = none → terminate
@@ -3156,8 +3185,17 @@ theorem collectPlainScalarLoop_preserves_simpleKey (s : ScannerState) (content l
                 rw [← this.2, skipSpaces_preserves_simpleKey,
                     skipBlankLinesLoop_preserves_simpleKey, consumeNewline_preserves_simpleKey]
               split at h
-              · injection h with h_eq; cases h_eq; rw [hprop]
-              · rw [ih _ _ _ h, hprop]
+              · injection h with h_eq; cases h_eq; rfl  -- '#' → state = s
+              · dsimp only [] at h
+                generalize h_loop : collectPlainScalarLoop s' content' "" fuel' inFlow contentIndent inputEnd = cont_result at h
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at h
+                  split at h
+                  · injection h with h_eq; cases h_eq; rfl
+                  · have h_eq := Except.ok.inj h; subst h_eq
+                    rw [ih _ _ _ h_loop, hprop]
+                | error e => simp at h
         · split at h
           · -- isWhiteSpace c
             have h_adv := advance_preserves_simpleKey s
@@ -3772,8 +3810,17 @@ theorem collectPlainScalarLoop_preserves_simpleKeyStack (s : ScannerState) (cont
             | mk content_fold s_fold =>
               have h_fold := foldQuotedNewlines_preserves_simpleKeyStack s s_fold content_fold heq
               split at h
-              · injection h with h_eq; cases h_eq; rw [h_fold]
-              · rw [ih s_fold (content ++ content_fold) "" h, h_fold]
+              · injection h with h_eq; cases h_eq; rfl  -- '#' → state = s
+              · dsimp only [] at h
+                generalize h_loop : collectPlainScalarLoop s_fold (content ++ content_fold) "" fuel' inFlow contentIndent inputEnd = cont_result at h
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at h
+                  split at h
+                  · injection h with h_eq; cases h_eq; rfl
+                  · have h_eq := Except.ok.inj h; subst h_eq
+                    rw [ih s_fold (content ++ content_fold) "" h_loop, h_fold]
+                | error e => simp at h
           · -- !inFlow: block line break
             split at h
             · -- _handleBlockLineBreak = none → terminate
@@ -3790,8 +3837,17 @@ theorem collectPlainScalarLoop_preserves_simpleKeyStack (s : ScannerState) (cont
                     skipBlankLinesLoop_preserves_simpleKeyStack,
                     consumeNewline_preserves_simpleKeyStack]
               split at h
-              · injection h with h_eq; cases h_eq; rw [hprop]
-              · rw [ih _ _ _ h, hprop]
+              · injection h with h_eq; cases h_eq; rfl  -- '#' → state = s
+              · dsimp only [] at h
+                generalize h_loop : collectPlainScalarLoop s' content' "" fuel' inFlow contentIndent inputEnd = cont_result at h
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at h
+                  split at h
+                  · injection h with h_eq; cases h_eq; rfl
+                  · have h_eq := Except.ok.inj h; subst h_eq
+                    rw [ih _ _ _ h_loop, hprop]
+                | error e => simp at h
         · split at h
           · -- isWhiteSpace c
             have h_adv := advance_preserves_simpleKeyStack s
@@ -6651,12 +6707,21 @@ theorem collectPlainScalarLoop_offset_ge (s : ScannerState) (content spaces : St
             cases fold_result with
             | mk folded s_fold =>
               split at h
-              · -- some '#': terminate at s_fold
+              · -- some '#': terminate → state = s
                 simp only [Except.ok.injEq] at h; subst h
-                exact foldQuotedNewlines_offset_ge s folded s_fold heq
-              · -- recurse
-                exact Nat.le_trans
-                  (foldQuotedNewlines_offset_ge s folded s_fold heq) (ih _ _ _ h)
+                exact Nat.le_refl _
+              · -- recurse with content-length check
+                dsimp only [] at h
+                generalize h_loop : collectPlainScalarLoop s_fold (content ++ folded) "" n inFlow contentIndent inputEnd = cont_result at h
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at h
+                  split at h
+                  · simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
+                  · have h_eq := Except.ok.inj h; subst h_eq
+                    exact Nat.le_trans
+                      (foldQuotedNewlines_offset_ge s folded s_fold heq) (ih _ _ _ h_loop)
+                | error e => simp at h
           · -- !inFlow: block line break
             split at h
             · -- _handleBlockLineBreak = none → terminate
@@ -6674,10 +6739,19 @@ theorem collectPlainScalarLoop_offset_ge (s : ScannerState) (content spaces : St
                   (Nat.le_trans (skipBlankLinesLoop_offset_ge _ _ _ _)
                   (skipSpaces_offset_ge _))
               split at h
-              · -- s'.peek? = some '#' → terminate
-                simp only [Except.ok.injEq] at h; subst h; exact hoff
-              · -- s'.peek? = _ → recurse
-                exact Nat.le_trans hoff (ih _ _ _ h)
+              · -- s'.peek? = some '#' → terminate → state = s
+                simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
+              · -- s'.peek? = _ → recurse with content-length check
+                dsimp only [] at h
+                generalize h_loop : collectPlainScalarLoop s' content' "" n inFlow contentIndent inputEnd = cont_result at h
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at h
+                  split at h
+                  · simp only [Except.ok.injEq] at h; subst h; exact Nat.le_refl _
+                  · have h_eq := Except.ok.inj h; subst h_eq
+                    exact Nat.le_trans hoff (ih _ _ _ h_loop)
+                | error e => simp at h
         · split at h
           · -- isWhiteSpace: advance → recurse
             exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (ih _ _ _ h)

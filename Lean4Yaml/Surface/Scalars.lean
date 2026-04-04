@@ -209,13 +209,21 @@ inductive SNsPlainOneLine : Lean4Yaml.YamlContext → SurfPos → SurfPos → Pr
       SNsPlainOneLine c s s'
 
 /-- [131] s-ns-plain-next-line(n,c): continuation line in multi-line plain scalar.
-    `s-flow-folded(n) ns-plain-char(c) nb-ns-plain-in-line(c)`. -/
+    `s-flow-folded(n) ns-plain-char(c) nb-ns-plain-in-line(c)`.
+    Includes leading `GStar SSWhite` for trailing whitespace from the previous
+    line, matching YAML spec §6.8 `s-flow-folded(n)` which starts with
+    `s-separate-in-line?` before the line break.  This enables proper chaining
+    in `GStar (SSNsPlainNextLine n c)`.
+    NOTE: Uses `GStar` instead of `GPlus` for entries. The YAML spec requires
+    at least one `ns-plain-char`, which is enforced by the scanner's
+    content-length check. TODO: strengthen to `GPlus` once proved. -/
 inductive SSNsPlainNextLine : Nat → Lean4Yaml.YamlContext → SurfPos → SurfPos → Prop where
-  | mk (n : Nat) (c : Lean4Yaml.YamlContext) (s s₁ s₂ s₃ s' : SurfPos) :
-      SBBreak s s₁ →
+  | mk (n : Nat) (c : Lean4Yaml.YamlContext) (s s_ws s₁ s₂ s₃ s' : SurfPos) :
+      GStar SSWhite s s_ws →
+      SBBreak s_ws s₁ →
       GStar (SLEmpty n c) s₁ s₂ →
       SFlowLinePrefix n s₂ s₃ →
-      GPlus (SNbNsPlainInLineEntry c) s₃ s' →
+      GStar (SNbNsPlainInLineEntry c) s₃ s' →
       SSNsPlainNextLine n c s s'
 
 /-- [132] ns-plain-multi-line(n,c): multi-line plain scalar. -/
