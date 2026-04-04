@@ -1541,13 +1541,39 @@ theorem scanTagDirective_monotonic (s : ScannerState) (s_after_ws : ScannerState
     s'.tokens.size ≥ s.tokens.size := by
   unfold scanTagDirective at h
   dsimp only [] at h
-  injection h with h_eq; subst h_eq; dsimp only []
-  rw [emitAt_tokens_size,
-      collectTagPrefixLoop_preserves_tokens,
-      skipWhitespace_preserves_tokens,
-      collectTagHandleDirectiveLoop_preserves_tokens,
-      h_ws]
-  omega
+  simp only [bind, Except.bind] at h
+  split at h
+  · -- some '#'
+    split at h
+    · contradiction
+    · injection h with h_eq; subst h_eq; dsimp only []
+      rw [emitAt_tokens_size,
+          skipWhitespace_preserves_tokens,
+          collectTagPrefixLoop_preserves_tokens,
+          skipWhitespace_preserves_tokens,
+          collectTagHandleDirectiveLoop_preserves_tokens,
+          h_ws]
+      omega
+  · -- some c (not '#')
+    split at h
+    · contradiction
+    · injection h with h_eq; subst h_eq; dsimp only []
+      rw [emitAt_tokens_size,
+          skipWhitespace_preserves_tokens,
+          collectTagPrefixLoop_preserves_tokens,
+          skipWhitespace_preserves_tokens,
+          collectTagHandleDirectiveLoop_preserves_tokens,
+          h_ws]
+      omega
+  · -- none
+    injection h with h_eq; subst h_eq; dsimp only []
+    rw [emitAt_tokens_size,
+        skipWhitespace_preserves_tokens,
+        collectTagPrefixLoop_preserves_tokens,
+        skipWhitespace_preserves_tokens,
+        collectTagHandleDirectiveLoop_preserves_tokens,
+        h_ws]
+    omega
 
 /-- scanDirective is monotonic in token count (YAML/TAG add one, unknown preserves). -/
 theorem scanDirective_monotonic (s : ScannerState) (s' : ScannerState)
@@ -1563,14 +1589,24 @@ theorem scanDirective_monotonic (s : ScannerState) (s' : ScannerState)
         rw [skipWhitespace_preserves_tokens,
             collectDirectiveNameLoop_preserves_tokens,
             advance_preserves_tokens]
-      exact scanYamlDirective_monotonic s _ _ s' h_ws h
+      split at h
+      · rename_i s_inner h_inner
+        have h_eq := Except.ok.inj h; subst h_eq
+        rw [skipToEndOfLine_preserves_tokens]
+        exact scanYamlDirective_monotonic s _ _ s_inner h_ws h_inner
+      · contradiction
     · split at h
       · -- TAG
         have h_ws : (skipWhitespace (collectDirectiveNameLoop s.advance "" (s.inputEnd - s.advance.offset)).2).tokens = s.tokens := by
           rw [skipWhitespace_preserves_tokens,
               collectDirectiveNameLoop_preserves_tokens,
               advance_preserves_tokens]
-        exact scanTagDirective_monotonic s _ _ s' h_ws h
+        split at h
+        · rename_i s_inner h_inner
+          have h_eq := Except.ok.inj h; subst h_eq
+          rw [skipToEndOfLine_preserves_tokens]
+          exact scanTagDirective_monotonic s _ _ s_inner h_ws h_inner
+        · contradiction
       · -- unknown directive
         injection h with h_eq; subst h_eq
         rw [skipToEndOfLine_preserves_tokens,
@@ -2219,10 +2255,27 @@ theorem scanTagDirective_preserves_prefix (s s_after_ws : ScannerState)
     s'.tokens[i]'(by have := scanTagDirective_monotonic s s_after_ws startPos s' h_ws h; omega)
     = s.tokens[i] := by
   unfold scanTagDirective at h; dsimp only [] at h
-  injection h with h_eq; subst h_eq; dsimp only []
-  apply emitAt_chain_preserves_prefix
-  rw [collectTagPrefixLoop_preserves_tokens, skipWhitespace_preserves_tokens,
-      collectTagHandleDirectiveLoop_preserves_tokens, h_ws]
+  simp only [bind, Except.bind] at h
+  split at h
+  · -- some '#'
+    split at h
+    · contradiction
+    · injection h with h_eq; subst h_eq; dsimp only []
+      apply emitAt_chain_preserves_prefix
+      rw [skipWhitespace_preserves_tokens, collectTagPrefixLoop_preserves_tokens,
+          skipWhitespace_preserves_tokens, collectTagHandleDirectiveLoop_preserves_tokens, h_ws]
+  · -- some c
+    split at h
+    · contradiction
+    · injection h with h_eq; subst h_eq; dsimp only []
+      apply emitAt_chain_preserves_prefix
+      rw [skipWhitespace_preserves_tokens, collectTagPrefixLoop_preserves_tokens,
+          skipWhitespace_preserves_tokens, collectTagHandleDirectiveLoop_preserves_tokens, h_ws]
+  · -- none
+    injection h with h_eq; subst h_eq; dsimp only []
+    apply emitAt_chain_preserves_prefix
+    rw [skipWhitespace_preserves_tokens, collectTagPrefixLoop_preserves_tokens,
+        skipWhitespace_preserves_tokens, collectTagHandleDirectiveLoop_preserves_tokens, h_ws]
 
 /-- scanDirective preserves token prefix. -/
 theorem scanDirective_preserves_prefix (s s' : ScannerState)
@@ -2236,9 +2289,26 @@ theorem scanDirective_preserves_prefix (s s' : ScannerState)
       rw [skipWhitespace_preserves_tokens, collectDirectiveNameLoop_preserves_tokens,
           advance_preserves_tokens]
     split at h
-    · exact scanYamlDirective_preserves_prefix s _ _ s' h_ws h i h_i
+    · -- YAML
+      split at h
+      · rename_i s_inner h_inner
+        have h_eq := Except.ok.inj h; subst h_eq
+        have h_tok : (skipToEndOfLine s_inner).tokens = s_inner.tokens :=
+          skipToEndOfLine_preserves_tokens s_inner
+        have h_mono := scanYamlDirective_monotonic s _ _ s_inner h_ws h_inner
+        simp only [h_tok]
+        exact scanYamlDirective_preserves_prefix s _ _ s_inner h_ws h_inner i h_i
+      · contradiction
     · split at h
-      · exact scanTagDirective_preserves_prefix s _ _ s' h_ws h i h_i
+      · -- TAG
+        split at h
+        · rename_i s_inner h_inner
+          have h_eq := Except.ok.inj h; subst h_eq
+          have h_tok : (skipToEndOfLine s_inner).tokens = s_inner.tokens :=
+            skipToEndOfLine_preserves_tokens s_inner
+          simp only [h_tok]
+          exact scanTagDirective_preserves_prefix s _ _ s_inner h_ws h_inner i h_i
+        · contradiction
       · -- Unknown directive: tokens fully preserved
         injection h with h_eq; subst h_eq
         have h_tok : (skipToEndOfLine (skipWhitespace (collectDirectiveNameLoop s.advance ""
@@ -4597,26 +4667,40 @@ theorem scanDirective_preserves_simpleKey (s : ScannerState) (s' : ScannerState)
   · contradiction
   · simp only [] at h
     split at h
-    · -- YAML directive
-      unfold scanYamlDirective at h
-      simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
-      split at h <;> try contradiction
-      repeat (any_goals (split at h))
-      all_goals (try contradiction)
-      all_goals (simp only [Except.ok.injEq] at h; subst h)
-      all_goals (try simp [emitAt_preserves_simpleKey, skipWhitespace_preserves_simpleKey,
-            collectVersionMinorLoop_preserves_simpleKey,
-            collectVersionMajorLoop_preserves_simpleKey])
-      all_goals (rw [collectDirectiveNameLoop_preserves_simpleKey, advance_preserves_simpleKey])
+    · -- YAML directive (match wrapper)
+      split at h
+      · rename_i s_inner h_inner
+        have h_eq := Except.ok.inj h; subst h_eq
+        rw [skipToEndOfLine_preserves_simpleKey]
+        unfold scanYamlDirective at h_inner
+        simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_inner
+        split at h_inner <;> try contradiction
+        repeat (any_goals (split at h_inner))
+        all_goals (try contradiction)
+        all_goals (simp only [Except.ok.injEq] at h_inner; subst h_inner)
+        all_goals (try simp [emitAt_preserves_simpleKey, skipWhitespace_preserves_simpleKey,
+              collectVersionMinorLoop_preserves_simpleKey,
+              collectVersionMajorLoop_preserves_simpleKey])
+        all_goals (rw [collectDirectiveNameLoop_preserves_simpleKey, advance_preserves_simpleKey])
+      · contradiction
     · split at h
-      · -- TAG directive
-        unfold scanTagDirective at h
-        simp only [Except.ok.injEq] at h; subst h
-        simp [emitAt_preserves_simpleKey, collectTagPrefixLoop_preserves_simpleKey,
-              skipWhitespace_preserves_simpleKey,
-              collectTagHandleDirectiveLoop_preserves_simpleKey,
-              collectDirectiveNameLoop_preserves_simpleKey,
-              advance_preserves_simpleKey]
+      · -- TAG directive (match wrapper)
+        split at h
+        · rename_i s_inner h_inner
+          have h_eq := Except.ok.inj h; subst h_eq
+          rw [skipToEndOfLine_preserves_simpleKey]
+          unfold scanTagDirective at h_inner
+          dsimp only [] at h_inner
+          simp only [bind, Except.bind] at h_inner
+          split at h_inner <;> try (split at h_inner <;> try contradiction)
+          all_goals (try contradiction)
+          all_goals (simp only [pure, Except.pure, Pure.pure, Except.ok.injEq] at h_inner; subst h_inner)
+          all_goals simp [emitAt_preserves_simpleKey, collectTagPrefixLoop_preserves_simpleKey,
+                skipWhitespace_preserves_simpleKey,
+                collectTagHandleDirectiveLoop_preserves_simpleKey,
+                collectDirectiveNameLoop_preserves_simpleKey,
+                advance_preserves_simpleKey]
+        · contradiction
       · -- unknown directive → skipToEndOfLine
         simp only [Except.ok.injEq] at h; subst h
         simp [skipToEndOfLine_preserves_simpleKey, skipWhitespace_preserves_simpleKey,
@@ -4629,24 +4713,40 @@ theorem scanDirective_preserves_simpleKeyStack (s : ScannerState) (s' : ScannerS
   · contradiction
   · simp only [] at h
     split at h
-    · unfold scanYamlDirective at h
-      simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
-      split at h <;> try contradiction
-      repeat (any_goals (split at h))
-      all_goals (try contradiction)
-      all_goals (simp only [Except.ok.injEq] at h; subst h)
-      all_goals (try simp [emitAt_preserves_simpleKeyStack, skipWhitespace_preserves_simpleKeyStack,
-            collectVersionMinorLoop_preserves_simpleKeyStack,
-            collectVersionMajorLoop_preserves_simpleKeyStack])
-      all_goals (rw [collectDirectiveNameLoop_preserves_simpleKeyStack, advance_preserves_simpleKeyStack])
+    · -- YAML directive (match wrapper)
+      split at h
+      · rename_i s_inner h_inner
+        have h_eq := Except.ok.inj h; subst h_eq
+        rw [skipToEndOfLine_preserves_simpleKeyStack]
+        unfold scanYamlDirective at h_inner
+        simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h_inner
+        split at h_inner <;> try contradiction
+        repeat (any_goals (split at h_inner))
+        all_goals (try contradiction)
+        all_goals (simp only [Except.ok.injEq] at h_inner; subst h_inner)
+        all_goals (try simp [emitAt_preserves_simpleKeyStack, skipWhitespace_preserves_simpleKeyStack,
+              collectVersionMinorLoop_preserves_simpleKeyStack,
+              collectVersionMajorLoop_preserves_simpleKeyStack])
+        all_goals (rw [collectDirectiveNameLoop_preserves_simpleKeyStack, advance_preserves_simpleKeyStack])
+      · contradiction
     · split at h
-      · unfold scanTagDirective at h
-        simp only [Except.ok.injEq] at h; subst h
-        simp [emitAt_preserves_simpleKeyStack, collectTagPrefixLoop_preserves_simpleKeyStack,
-              skipWhitespace_preserves_simpleKeyStack,
-              collectTagHandleDirectiveLoop_preserves_simpleKeyStack,
-              collectDirectiveNameLoop_preserves_simpleKeyStack,
-              advance_preserves_simpleKeyStack]
+      · -- TAG directive (match wrapper)
+        split at h
+        · rename_i s_inner h_inner
+          have h_eq := Except.ok.inj h; subst h_eq
+          rw [skipToEndOfLine_preserves_simpleKeyStack]
+          unfold scanTagDirective at h_inner
+          dsimp only [] at h_inner
+          simp only [bind, Except.bind] at h_inner
+          split at h_inner <;> try (split at h_inner <;> try contradiction)
+          all_goals (try contradiction)
+          all_goals (simp only [pure, Except.pure, Pure.pure, Except.ok.injEq] at h_inner; subst h_inner)
+          all_goals simp [emitAt_preserves_simpleKeyStack, collectTagPrefixLoop_preserves_simpleKeyStack,
+                skipWhitespace_preserves_simpleKeyStack,
+                collectTagHandleDirectiveLoop_preserves_simpleKeyStack,
+                collectDirectiveNameLoop_preserves_simpleKeyStack,
+                advance_preserves_simpleKeyStack]
+        · contradiction
       · simp only [Except.ok.injEq] at h; subst h
         simp [skipToEndOfLine_preserves_simpleKeyStack, skipWhitespace_preserves_simpleKeyStack,
               collectDirectiveNameLoop_preserves_simpleKeyStack, advance_preserves_simpleKeyStack]
@@ -6904,20 +7004,67 @@ theorem scanTagDirective_preserves_ScanInv (s s_after_ws : ScannerState)
     (s' : ScannerState) (h_ok : scanTagDirective s s_after_ws startPos = .ok s') :
     ScanInv s' := by
   unfold scanTagDirective at h_ok
-  simp only [Except.ok.injEq] at h_ok; subst h_ok
-  apply field_update_preserves_ScanInv _ _ _ rfl rfl
-  apply emitAt_preserves_ScanInv
-  · exact collectTagPrefixLoop_preserves_ScanInv _ _ _
-      (skipWhitespace_preserves_ScanInv _
-        (collectTagHandleDirectiveLoop_preserves_ScanInv _ _ _ h_inv))
-  · exact Nat.le_trans h_pos_ge
-      (Nat.le_trans (collectTagHandleDirectiveLoop_offset_ge _ _ _)
-      (Nat.le_trans (skipWhitespace_offset_ge _)
-      (collectTagPrefixLoop_offset_ge _ _ _)))
-  · exact tokens_bounded_through_chain _ s_after_ws _ h_tok_bnd
-      (by rw [ScanHelpers.collectTagPrefixLoop_preserves_tokens,
-               skipWhitespace_preserves_tokens,
-               ScanHelpers.collectTagHandleDirectiveLoop_preserves_tokens])
+  dsimp only [] at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · -- some '#'
+    split at h_ok
+    · contradiction
+    · simp only [pure, Except.pure, Pure.pure, Except.ok.injEq] at h_ok; subst h_ok
+      apply field_update_preserves_ScanInv _ _ _ rfl rfl
+      apply emitAt_preserves_ScanInv
+      · exact skipWhitespace_preserves_ScanInv _
+          (collectTagPrefixLoop_preserves_ScanInv _ _ _
+            (skipWhitespace_preserves_ScanInv _
+              (collectTagHandleDirectiveLoop_preserves_ScanInv _ _ _ h_inv)))
+      · exact Nat.le_trans h_pos_ge
+          (Nat.le_trans (collectTagHandleDirectiveLoop_offset_ge _ _ _)
+          (Nat.le_trans (skipWhitespace_offset_ge _)
+          (Nat.le_trans (collectTagPrefixLoop_offset_ge _ _ _)
+          (skipWhitespace_offset_ge _))))
+      · exact tokens_bounded_through_chain _ s_after_ws _ h_tok_bnd
+          (by rw [skipWhitespace_preserves_tokens,
+                   ScanHelpers.collectTagPrefixLoop_preserves_tokens,
+                   skipWhitespace_preserves_tokens,
+                   ScanHelpers.collectTagHandleDirectiveLoop_preserves_tokens])
+  · -- some c
+    split at h_ok
+    · contradiction
+    · simp only [pure, Except.pure, Pure.pure, Except.ok.injEq] at h_ok; subst h_ok
+      apply field_update_preserves_ScanInv _ _ _ rfl rfl
+      apply emitAt_preserves_ScanInv
+      · exact skipWhitespace_preserves_ScanInv _
+          (collectTagPrefixLoop_preserves_ScanInv _ _ _
+            (skipWhitespace_preserves_ScanInv _
+              (collectTagHandleDirectiveLoop_preserves_ScanInv _ _ _ h_inv)))
+      · exact Nat.le_trans h_pos_ge
+          (Nat.le_trans (collectTagHandleDirectiveLoop_offset_ge _ _ _)
+          (Nat.le_trans (skipWhitespace_offset_ge _)
+          (Nat.le_trans (collectTagPrefixLoop_offset_ge _ _ _)
+          (skipWhitespace_offset_ge _))))
+      · exact tokens_bounded_through_chain _ s_after_ws _ h_tok_bnd
+          (by rw [skipWhitespace_preserves_tokens,
+                   ScanHelpers.collectTagPrefixLoop_preserves_tokens,
+                   skipWhitespace_preserves_tokens,
+                   ScanHelpers.collectTagHandleDirectiveLoop_preserves_tokens])
+  · -- none
+    simp only [pure, Except.pure, Pure.pure, Except.ok.injEq] at h_ok; subst h_ok
+    apply field_update_preserves_ScanInv _ _ _ rfl rfl
+    apply emitAt_preserves_ScanInv
+    · exact skipWhitespace_preserves_ScanInv _
+        (collectTagPrefixLoop_preserves_ScanInv _ _ _
+          (skipWhitespace_preserves_ScanInv _
+            (collectTagHandleDirectiveLoop_preserves_ScanInv _ _ _ h_inv)))
+    · exact Nat.le_trans h_pos_ge
+        (Nat.le_trans (collectTagHandleDirectiveLoop_offset_ge _ _ _)
+        (Nat.le_trans (skipWhitespace_offset_ge _)
+        (Nat.le_trans (collectTagPrefixLoop_offset_ge _ _ _)
+        (skipWhitespace_offset_ge _))))
+    · exact tokens_bounded_through_chain _ s_after_ws _ h_tok_bnd
+        (by rw [skipWhitespace_preserves_tokens,
+                 ScanHelpers.collectTagPrefixLoop_preserves_tokens,
+                 skipWhitespace_preserves_tokens,
+                 ScanHelpers.collectTagHandleDirectiveLoop_preserves_tokens])
 
 -- scanDirective preserves ScanInv.
 theorem scanDirective_preserves_ScanInv (s s' : ScannerState)
@@ -6951,9 +7098,21 @@ theorem scanDirective_preserves_ScanInv (s s' : ScannerState)
     dsimp only [] at h_ok
     -- Dispatch on directive name
     split at h_ok
-    · exact scanYamlDirective_preserves_ScanInv s _ _ h_ws_inv h_pos_ge h_tok_bnd s' h_ok
+    · -- YAML (match wrapper)
+      split at h_ok
+      · rename_i s_inner h_inner
+        have h_eq := Except.ok.inj h_ok; subst h_eq
+        exact skipToEndOfLine_preserves_ScanInv _
+          (scanYamlDirective_preserves_ScanInv s _ _ h_ws_inv h_pos_ge h_tok_bnd s_inner h_inner)
+      · contradiction
     · split at h_ok
-      · exact scanTagDirective_preserves_ScanInv s _ _ h_ws_inv h_pos_ge h_tok_bnd s' h_ok
+      · -- TAG (match wrapper)
+        split at h_ok
+        · rename_i s_inner h_inner
+          have h_eq := Except.ok.inj h_ok; subst h_eq
+          exact skipToEndOfLine_preserves_ScanInv _
+            (scanTagDirective_preserves_ScanInv s _ _ h_ws_inv h_pos_ge h_tok_bnd s_inner h_inner)
+        · contradiction
       · -- Unknown directive: skipToEndOfLine
         simp only [Except.ok.injEq] at h_ok; subst h_ok
         exact skipToEndOfLine_preserves_ScanInv _ h_ws_inv
