@@ -58,6 +58,7 @@ namespace Lean4Yaml.Proofs.EmitterScannability
 
 open Lean4Yaml
 open Lean4Yaml.Emit
+open Lean4Yaml.Proofs.RoundTrip
 open Lean4Yaml.Scanner
 open Lean4Yaml.Grammar
 open Lean4Yaml.TokenParser
@@ -79,14 +80,53 @@ the scanner's `collectDoubleQuotedLoop`. We need two properties:
 theorem escapeChar_passthrough_is_valid (c : Char)
     (h_not_escaped : escapeChar c = c.toString) :
     isNbJsonBool c = true ∧ c ≠ '"' ∧ c ≠ '\\' := by
-  sorry
+  unfold escapeChar at h_not_escaped
+  split at h_not_escaped
+  -- 11 named arms: each maps to a concrete multi-char string ≠ c.toString
+  all_goals (first | exact absurd h_not_escaped (by native_decide) | skip)
+  -- Default arm: if c.val.toNat < 0x20 then escapeHex2 c else c.toString
+  split at h_not_escaped
+  · -- escapeHex2 c = c.toString: impossible for c.val.toNat < 0x20
+    rename_i h_lt
+    exfalso
+    have h_bounded : ∀ n : Fin 32,
+        escapeHex2 (Char.ofNat n.val) ≠ (Char.ofNat n.val).toString := by native_decide
+    have h_ne := h_bounded ⟨c.toNat, by simp [Char.toNat]; omega⟩
+    rw [Char.ofNat_toNat] at h_ne
+    exact h_ne h_not_escaped
+  · -- passthrough: c.val.toNat ≥ 0x20
+    rename_i h_ge; simp only [Nat.not_lt] at h_ge
+    refine ⟨?_, ?_, ?_⟩
+    · simp only [isNbJsonBool, isNbJsonProp, decide_eq_true_eq]
+      right; constructor
+      · show c.val.toNat ≥ 0x20; omega
+      · show c.val.toNat ≤ 0x10FFFF
+        have hv := c.valid; unfold UInt32.isValidChar at hv
+        rcases hv with h1 | ⟨_, h3⟩ <;> omega
+    · assumption
+    · assumption
 
 /-- Every character of `escapeChar c` is a valid `nb-json` character.
     This is needed because `collectDoubleQuotedLoop` checks `isNbJsonBool`
     on each character it encounters. -/
 theorem escapeChar_output_nbJson (c : Char) :
     ∀ ch ∈ (escapeChar c).toList, isNbJsonBool ch = true := by
-  sorry
+  by_cases h_val : c.val.toNat < 128
+  · -- ASCII range: native_decide over Fin 128 covers all cases
+    have h_bounded : ∀ n : Fin 128, ∀ ch ∈ (escapeChar (Char.ofNat n.val)).toList,
+        isNbJsonBool ch = true := by native_decide
+    have h_spec := h_bounded ⟨c.toNat, by simp [Char.toNat]; omega⟩
+    rw [Char.ofNat_toNat] at h_spec
+    exact h_spec
+  · -- Non-ASCII (c.val.toNat ≥ 128): escapeChar c = c.toString (passthrough)
+    simp only [Nat.not_lt] at h_val
+    have h_not_esc : isEscapedChar c = false := by
+      unfold isEscapedChar; split <;> simp_all <;> omega
+    rw [escapeChar_identity c h_not_esc]
+    intro ch h_mem
+    simp only [Char.toString, String.toList_singleton, List.mem_singleton] at h_mem
+    rw [h_mem]
+    exact (escapeChar_passthrough_is_valid c (escapeChar_identity c h_not_esc)).1
 
 /-! ## §2  Emitter Output Properties
 
@@ -96,7 +136,12 @@ scanner acceptance.
 
 /-- The output of `emit v` is non-empty for any value. -/
 theorem emit_nonempty (v : YamlValue) : (emit v).length > 0 := by
-  sorry
+  have : ("\"" : String).length = 1 := by native_decide
+  have : ("[" : String).length = 1 := by native_decide
+  have : ("]" : String).length = 1 := by native_decide
+  have : ("{" : String).length = 1 := by native_decide
+  have : ("}" : String).length = 1 := by native_decide
+  cases v <;> simp_all [emit, emitScalar, String.length_append] <;> omega
 
 /-! ## §3  Scanner Acceptance of Canonical Output (Step 1)
 
