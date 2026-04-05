@@ -211,4 +211,49 @@ theorem emit_parsed_grammable (v : YamlValue) (hg : Grammable v false)
     ∀ doc ∈ docs.toList, Grammable doc.value false := by
   sorry
 
+/-- **Content fidelity**: Parsing canonical emitter output recovers content
+    equivalent to the original value.
+
+    The canonical emitter produces double-quoted scalars, flow-style
+    collections, and no aliases/tags/anchors. Parsing this output yields
+    values with the same string content for scalars and the same tree
+    structure for collections, differing only in style annotations.
+    Since `contentEq` ignores style, the parsed result is
+    content-equivalent to the original.
+
+    **Proof strategy**: Structural induction on `v`:
+    - Scalar: `escapeString` round-trips through the scanner's
+      `collectDoubleQuotedLoop` + `processEscape`, recovering the
+      original content string. `contentEq` ignores scalar style.
+    - Sequence: By IH each element round-trips content-equivalently.
+      The parser reconstructs the list from flow tokens.
+    - Mapping: By IH each key/value round-trips content-equivalently.
+      The parser reconstructs pairs from flow tokens. -/
+theorem emit_roundtrip_content_eq (v : YamlValue) (hg : Grammable v false)
+    (raw_docs : Array YamlDocument)
+    (h_raw : parseYamlRaw (emit v) = .ok raw_docs)
+    (h_size : raw_docs.size = 1) :
+    contentEq v (raw_docs.map YamlDocument.compose)[0]!.value = true := by
+  sorry
+
+/-- **Universal round-trip**: For every grammable YAML value, emitting it
+    and re-parsing produces a single document whose value is
+    content-equivalent to the original.
+
+    This is the main theorem of v0.4.7 (Phase E). It composes:
+    - Step 1: `emit_produces_valid_yaml` (scanner accepts emitter output)
+    - Step 2: `parseStream_accepts_emit_tokens` (parser accepts scanned tokens)
+    - Step 3a: `emit_produces_single_document` (exactly one document)
+    - Step 3b: `emit_roundtrip_content_eq` (content fidelity) -/
+theorem universal_roundtrip (v : YamlValue) (hg : Grammable v false) :
+    ∃ docs, parseYaml (emit v) = .ok docs ∧
+            docs.size = 1 ∧
+            contentEq v docs[0]!.value = true := by
+  obtain ⟨raw_docs, h_raw⟩ := emit_parse_succeeds v hg
+  have h_raw_size := emit_produces_single_document v hg raw_docs h_raw
+  refine ⟨raw_docs.map YamlDocument.compose, ?_, ?_, ?_⟩
+  · simp only [parseYaml, h_raw]
+  · simp [Array.size_map, h_raw_size]
+  · exact emit_roundtrip_content_eq v hg raw_docs h_raw h_raw_size
+
 end Lean4Yaml.Proofs.EmitterScannability
