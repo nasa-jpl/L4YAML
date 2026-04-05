@@ -386,9 +386,9 @@ Prove the parsed output is content-equivalent to the original value. This is the
 
 | # | Stub | Step | Tier | Status | Est. LOC |
 |---|------|------|------|--------|----------|
-| 1 | `escapeChar_passthrough_is_valid` | 4 | 0 | sorry | 30–50 |
-| 2 | `escapeChar_output_nbJson` | 4 | 0 | sorry | 50–80 |
-| 3 | `emit_nonempty` | 4 | 0 | sorry | 15–25 |
+| 1 | `escapeChar_passthrough_is_valid` | 4 | 0 | **proven** (25 LOC) | 30–50 |
+| 2 | `escapeChar_output_nbJson` | 4 | 0 | **proven** (20 LOC) | 50–80 |
+| 3 | `emit_nonempty` | 4 | 0 | **proven** (8 LOC) | 15–25 |
 | 4 | `scan_accepts_emitScalar` | 5 | 1 | sorry | 150–300 |
 | 5 | `emit_produces_valid_yaml` | 5 | 1 | sorry | 300–600 |
 | 6 | `parseStream_accepts_emit_tokens` | 6 | 2 | sorry | 200–400 |
