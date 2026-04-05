@@ -175,18 +175,17 @@ theorem escapeChar_identity' (c : Char) (h : isEscapedChar c = false) :
     escapeChar c = c.toString :=
   escapeChar_identity c h
 
-/-! ## §4  escapeTag ↔ isEscapedChar Correspondence
+/-! ## §4  escapeTag → isEscapedChar Correspondence
 
-The `escapeTag` witness function and the `isEscapedChar` predicate
-characterize exactly the same set of characters.
+The `escapeTag` witness function covers the named escapes, which are
+a subset of characters that `isEscapedChar` recognizes (named escapes
+plus remaining C0 control chars escaped as `\xHH`).
 -/
 
-/-- `escapeTag c` is `some` if and only if `c` is an escaped character. -/
-theorem escapeTag_isSome_iff_isEscapedChar (c : Char) :
-    (escapeTag c).isSome = true ↔ isEscapedChar c = true := by
-  constructor
-  · intro h; unfold escapeTag isEscapedChar at *; split at h <;> simp_all
-  · intro h; unfold escapeTag isEscapedChar at *; split at h <;> simp_all
+/-- Named-escape characters (those with an `escapeTag`) are always escaped. -/
+theorem escapeTag_isSome_implies_isEscapedChar (c : Char) :
+    (escapeTag c).isSome = true → isEscapedChar c = true := by
+  intro h; unfold escapeTag isEscapedChar at *; split at h <;> simp_all
 
 /-! ## §5  escapeChar Output Safety
 
@@ -195,27 +194,65 @@ This ensures that `scanDoubleQuoted` stays on a single logical line
 when processing canonically emitted content (no flow folding triggered).
 -/
 
+/-! ### Bounded `escapeHex2` Properties
+
+The `\xHH` hex escape output for C0 control characters. Properties are
+verified by `native_decide` over the bounded domain `Fin 32` (all possible
+C0 inputs), then lifted to arbitrary `Char` via `Char.ofNat_toNat`. -/
+
+theorem escapeHex2_no_newline_bounded :
+    ∀ n : Fin 32, ¬('\n' ∈ (escapeHex2 (Char.ofNat n.val)).toList) := by native_decide
+
+theorem escapeHex2_no_cr_bounded :
+    ∀ n : Fin 32, ¬('\r' ∈ (escapeHex2 (Char.ofNat n.val)).toList) := by native_decide
+
+theorem escapeHex2_head_bounded :
+    ∀ n : Fin 32, (escapeHex2 (Char.ofNat n.val)).toList.head? = some '\\' := by native_decide
+
+theorem escapeHex2_no_newline (c : Char) (h : c.val.toNat < 32) :
+    ¬('\n' ∈ (escapeHex2 c).toList) := by
+  have := escapeHex2_no_newline_bounded ⟨c.toNat, by simp [Char.toNat]; omega⟩
+  rwa [Char.ofNat_toNat] at this
+
+theorem escapeHex2_no_cr (c : Char) (h : c.val.toNat < 32) :
+    ¬('\r' ∈ (escapeHex2 c).toList) := by
+  have := escapeHex2_no_cr_bounded ⟨c.toNat, by simp [Char.toNat]; omega⟩
+  rwa [Char.ofNat_toNat] at this
+
+theorem escapeHex2_head (c : Char) (h : c.val.toNat < 32) :
+    (escapeHex2 c).toList.head? = some '\\' := by
+  have := escapeHex2_head_bounded ⟨c.toNat, by simp [Char.toNat]; omega⟩
+  rwa [Char.ofNat_toNat] at this
+
 /-- `escapeChar c` never contains a bare newline (`\n`). -/
 theorem escapeChar_no_newline (c : Char) : ¬('\n' ∈ (escapeChar c).toList) := by
   unfold escapeChar; split
-  all_goals (first
+  all_goals first
     | decide
-    | (simp only [Char.toString, String.toList_singleton, List.mem_singleton]
-       intro heq; exact absurd heq.symm (by assumption)))
+    | (simp only [Char.toString]
+       intro heq; exact absurd heq.symm (by assumption))
+    | (split
+       · exact escapeHex2_no_newline _ (by omega)
+       · simp only [Char.toString, String.toList_singleton, List.mem_singleton]
+         intro heq; exact absurd heq.symm (by assumption))
 
 /-- `escapeChar c` never contains a bare carriage return (`\r`). -/
 theorem escapeChar_no_cr (c : Char) : ¬('\r' ∈ (escapeChar c).toList) := by
   unfold escapeChar; split
-  all_goals (first
+  all_goals first
     | decide
-    | (simp only [Char.toString, String.toList_singleton, List.mem_singleton]
-       intro heq; exact absurd heq.symm (by assumption)))
+    | (simp only [Char.toString]
+       intro heq; exact absurd heq.symm (by assumption))
+    | (split
+       · exact escapeHex2_no_cr _ (by omega)
+       · simp only [Char.toString, String.toList_singleton, List.mem_singleton]
+         intro heq; exact absurd heq.symm (by assumption))
 
 /-- For escaped characters, `escapeChar` produces a string starting with `\\`. -/
 theorem escapeChar_escaped_starts_backslash (c : Char) (h : isEscapedChar c = true) :
     (escapeChar c).toList.head? = some '\\' := by
   unfold isEscapedChar escapeChar at *
-  split at h <;> simp_all <;> decide
+  split at h <;> simp_all <;> (first | decide | exact escapeHex2_head _ (by omega))
 
 /-- `emitScalar content` wraps `escapeString content` in double quotes. -/
 theorem emitScalar_eq (content : String) :
