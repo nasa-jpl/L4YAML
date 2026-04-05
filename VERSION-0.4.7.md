@@ -530,7 +530,94 @@ Prove the parser succeeds on scanner output from canonical emitter input, produc
 
 #### Accomplishments (Step 6)
 
+1. **`scanDoubleQuoted_preserves_dp` — PROVEN.** Full directivesPresent preservation
+   proof chain mirroring the existing `flowLevel` preservation pattern. Required 12
+   private helper lemmas: `advance_preserves_dp`, `consumeNewline_preserves_dp`,
+   `skipSpaces_preserves_dp`, `skipWhitespace_preserves_dp`, `emitAt_preserves_dp`,
+   `collectHexDigitsLoop_preserves_dp`, `parseHexEscape_preserves_dp`,
+   `processEscape_preserves_dp`, `foldQuotedNewlinesLoop_preserves_dp`,
+   `foldQuotedNewlines_preserves_dp`, `collectDoubleQuotedLoop_preserves_dp`.
+   The key insight: `directivesPresent` is NEVER modified by any function in the
+   `scanDoubleQuoted` call chain — only `scanYamlDirective`, `scanTagDirective`,
+   `scanDocumentStart`, `scanDocumentEnd` modify it.
+
+2. **`scanNextToken_emitScalar_init` preprocessing — PROVEN.** Eliminated the last
+   sorry in the first-scanNextToken proof by tracing `scanNextToken_preprocess` on
+   the initial emitScalar state. This required:
+   - General helpers: `skipWhitespace_of_not_ws`, `skipSpaces_of_not_space`,
+     `skipToContent_of_content_char`, `saveSimpleKey_preserves_peek`
+   - Discovering that `ScannerState.needIndentCheck` defaults to `true` (not `false`),
+     requiring the `skipToContent` helper to handle both `needIndentCheck` branches
+   - Step-by-step do-notation reduction using `rw`, `simp only`, and targeted field
+     facts (`hasMore`, `inFlow`, `unwindIndents`, trailing content check, `saveSimpleKey`)
+   - The preprocessing witness is `saveSimpleKey { s₀ with needIndentCheck := false }`
+     (not `saveSimpleKey s₀`) because the `!inFlow && needIndentCheck` branch fires
+
+3. **Sorry count reduced: 6 → 4.** Remaining sorrys:
+   - `emit_produces_valid_yaml` seq/map cases (scanner compositionality for flow collections)
+   - `parseStream_accepts_emit_tokens` (Stub 6: parser acceptance)
+   - `emit_produces_single_document` (Stub 7: single document property)
+   - `emit_roundtrip_content_eq` (Stub 9: content fidelity)
+
+4. **Stub 8 (`emit_parsed_grammable`) — previously PROVEN.** Confirmed working.
+
+5. **`parseStreamLoop_single_doc` — PROVEN (Challenge 2).** The `parseStreamLoop`
+   state machine trace for a single implicit document. Given that the parser sees
+   a content token (not streamEnd), `parseDocument` succeeds leaving `peek?` at
+   streamEnd, then `parseStreamLoop` produces exactly `#[doc]`. This required:
+   - Handling Lean 4's match compilation for `YamlToken`: the compiled match uses
+     `YamlToken.casesOn` which produces ~23 subgoals under `cases tok`, not 2.
+     Solution: `cases tok <;> first | exact absurd rfl h_not_se | skip` closes
+     the `.streamEnd` case and `all_goals (...)` handles all other constructors
+     uniformly (identical proof for all non-streamEnd tokens).
+   - Verifying `tryConsume .documentEnd` doesn't consume (peek? is streamEnd,
+     `BEq.beq .streamEnd .documentEnd = false` by `decide`).
+   - The stuck check produces identical branches (both `Except.ok (#[].push doc)`)
+     because the second iteration of `parseStreamLoop` also returns `.ok #[doc]`
+     when peek? = streamEnd. Closed with `split <;> rfl`.
+   - This lemma is reusable: applicable to scalar, sequence, and mapping cases
+     once token characterization and parseDocument acceptance are established.
+   - The `h_advance` (position advancement) hypothesis was initially included
+     but turned out unnecessary: both branches of the stuck check produce
+     identical results, so the if-condition is irrelevant. The lemma only requires
+     `h_fuel`, `h_peek`, `h_not_se`, `h_doc`, and `h_peek'`.
+
 #### Reflections (Step 6)
+
+1. **Struct projection reduction in Lean 4.** The kernel's definitional reduction for
+   struct field access through `{ s with f := v }` updates introduces `let __src := s`
+   bindings that can block `rfl`, `simp`, and `.trans`. The workaround: provide
+   explicit `have` statements for field values (e.g., `have h_inFlow : s₀.inFlow = false
+   := by rfl`) and use `simp only` with these facts. Term-mode `rfl` is weaker than
+   tactic-mode `by rfl` for struct projections through function definitions.
+
+2. **Literal character matching.** Lean 4's match compiler for `match x with |
+   some '#' => ... | _ => ...` doesn't iota-reduce for variable characters. The
+   pattern `split; · rename_i h; rw [h_pk] at h; exact absurd (Option.some.inj h)
+   h_ne; · rfl` handles literal char matches. For general matches (`| some c => ...
+   | none => ...`), `simp [h_pk, h_nws]` works because `simp` can substitute and
+   reduce through the general binding.
+
+3. **Do-notation desugaring.** `unfold` on a `do`-notation function exposes `Bind.bind`,
+   `Pure.pure`, and `have __do_jp` join points. Resolution strategy: `rw [h_stc]` for
+   the first bind, `simp only [bind, Except.bind, pure, Except.pure]` for monadic ops,
+   then `simp only [h_fact, Bool.*, ↓reduceIte]` for if-checks. Using the full `simp`
+   (not `simp only`) can unintentionally modify the RHS witness, breaking `refine` goals.
+
+4. **Remaining stubs require deep compositionality.** Stubs 5-seq/map, 6, 7, and 9 all
+   require reasoning about scanner state threading through flow collections or parser
+   token consumption — fundamentally different from the scalar case which only needed
+   one `scanNextToken` call. These require either (a) scanner compositionality theorems
+   showing how `scanLoop` threads state through multiple tokens, or (b) token sequence
+   characterization that abstracts away scanner internals.
+
+5. **YamlToken match compilation in Lean 4.** `match tok with | .streamEnd => A |
+   tok' => B tok'` compiles into `YamlToken.casesOn tok (case_per_constructor)`, NOT
+   into a 2-branch if/else. After `unfold` + `split`, this generates ~23 subgoals
+   (one per `YamlToken` constructor), not 2. The fix: use `cases tok <;> first |
+   exact absurd rfl h_neg | skip` to close the target constructor and leave all
+   others, then `all_goals (...)` to apply a uniform proof. This is a general Lean 4
+   pattern for match-with-catch-all on inductive types with many constructors.
 
 ### Step 7: Content Fidelity — Stub 9 (Hardest)
 
