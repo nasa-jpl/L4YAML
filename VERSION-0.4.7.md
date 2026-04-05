@@ -9,22 +9,24 @@ theorem universal_roundtrip (v : YamlValue) (hg : Grammable v false) :
             contentEq v docs[0]!.value = true
 ```
 
-**Status:** Open. This is the sole remaining proof obligation in the completeness/correctness pipeline. Phases A–D are fully proven with 0 sorry.
+**Status:** Open. This is the sole remaining proof obligation in the completeness/correctness pipeline.
+
+**Codebase baseline (post-v0.4.6):** 61 proof modules, 47k LOC proof, 2,268 theorems, 0 sorry, 0 axiom, 0 admit. Build: 415/415 jobs, 0 warnings.
 
 ---
 
-## Background: Deficiency Assessment
+## Background: What v0.4.6 Proved
 
-An earlier assessment identified four deficiencies in the proof architecture. Three are already resolved:
+The v0.4.6 proof suite (61 modules, 2,268 theorems, 0 sorry) establishes the full pipeline from scanner through parser:
 
-| # | Deficiency | Resolution | Module |
-|---|---|---|---|
-| 1 | Scanner correctness unproven | `scan_produces_valid_tokens` (439 theorems) | ScannerCorrectness |
-| 2 | `partial def` trust gap in parser | Fuel-based total `def` (14 mutual functions, `fuel := 4 * tokens.size + 4`) | TokenParser |
-| 3 | Universal completeness not composed | `parseYaml_produces_valid_nodes` (unconditional) | ParserGrammable |
-| 4 | **Universal round-trip not proven** | **Concrete `#guard` / `native_decide` checks only** | **RoundTrip, ScannerEmitBridge** |
+| Property | Key theorem/def | Module |
+|---|---|---|
+| Scanner produces valid token streams | `scan_produces_valid_tokens` (def, constructs `ValidTokenStream` witness); `scan_valid_token_stream` (theorem, `ValidTokenStreamProp`) | ScannerCorrectness |
+| Parser produces valid nodes | `parseYaml_produces_valid_nodes` (unconditional — discharges the `h_grammable` hypothesis from `parseStream_respects_grammar`) | ParserGrammable |
+| Acceptance strictness | `scan_strict_proof` (`scan .ok → InYamlLanguage`), `parse_strict_proof` (`parseYaml .ok → InYamlLanguage`) | DocumentProduction |
+| Soundness, completeness, determinism | `parse_sound`, `parse_complete`, `parse_deterministic` | EndToEndCorrectness |
 
-The current proof suite spans 53 modules (~32K LOC), 1,654 theorems, 2,083 `#guard` checks, and 0 sorry/axiom/admit (excluding 5 sorry in StreamAccum.lean for v0.4.6 surface grammar work, unrelated to round-trip).
+**`scan_strict_proof` bonus for round-trip:** Once Step 1 proves `Scanner.scanFiltered (emit v) = .ok tokens`, we also obtain `InYamlLanguage (emit v)` for free — emitter output is provably in the YAML 1.2.2 formal language. The round-trip theorem doesn't *require* grammar membership (it only needs parse success), but this strengthens the result.
 
 ---
 
@@ -121,6 +123,10 @@ theorem emit_produces_valid_yaml (v : YamlValue) (hg : Grammable v false) :
 | `scan_flow_sequence` | Scanner accepts `[tok₁, tok₂, ...]` when each `tokᵢ` is scanner-accepted |
 | `scan_flow_mapping` | Scanner accepts `{k₁: v₁, k₂: v₂, ...}` when each `kᵢ`, `vᵢ` is scanner-accepted |
 
+#### Accomplishments
+
+#### Reflections
+
 ### Step 2: Compose with Parse Pipeline
 
 Once `emit_produces_valid_yaml` is proven, compose with existing infrastructure:
@@ -139,13 +145,18 @@ The composition chain:
 ```
 emit v
   → Scanner.scanFiltered (emit v) = .ok tokens     [Step 1: emit_produces_valid_yaml]
-  → parseStream tokens = .ok docs                   [TokenParser totality + scanner validity]
+  → parseStream tokens = .ok docs                   [Step 2a: parse_emitted_tokens]
   → ∀ doc ∈ docs, Grammable doc.value false         [parseStream_output_grammable]
   → ∀ doc ∈ docs, ∃ node, strip (toYaml node) = strip doc.value
                                                      [parseYaml_produces_valid_nodes]
   → contentEq v docs[0]!.value = true               [contentEq_refl + emit_stripAnnotations
                                                       + contentEq_implies_emit_eq]
 ```
+
+**Step 2a gap — `parseStream` success:** Scanner success (`scanFiltered = .ok tokens`) does NOT automatically imply parser success (`parseStream tokens = .ok docs`). The `parseStream` function is total (fuel-based, always terminates), but it can return `.error` for syntactically valid but semantically ill-formed token sequences. For emitter output, we need to show that the scanner produces well-formed tokens that the parser will accept. Two approaches:
+
+1. **Direct:** Prove `parseStream` succeeds on tokens from canonical emitter output (characterize the token sequence `emit` produces and show `parseStream` accepts it).
+2. **Via `parseYamlRaw`:** Show `parseYamlRaw (emit v) = .ok docs` directly, which bundles scan + parse. The existing `canonical_roundtrip_conditional` and `emit_parse_has_witness` are already conditioned on this — discharging it is the real work.
 
 ### Step 3: Close the Universal Round-Trip
 
@@ -166,8 +177,9 @@ The existing `canonical_roundtrip_conditional` already captures steps 2–4 cond
 |---|---|---|
 | Scanner tokenization proof is complex for double-quoted strings | Medium | Limited to one scalar style; `escapeTag_roundtrip` already inverts escapes |
 | Flow collection nesting requires inductive scanner acceptance | Medium | Canonical emitter produces flat output; nesting depth bounded by `Grammable` |
-| `parseStream` may produce multiple docs for single-value input | Low | `emit` produces no document markers (`---`/`...`); single implicit document |
+| `parseStream` success gap (scan `.ok` ≠ parse `.ok`) | Medium | Emitter output is structurally simple; characterize exact token sequence |
 | `contentEq` bridge from parsed result back to original value | Low | `emit_stripAnnotations` + `contentEq_implies_emit_eq` already proven |
+| `parseStream` may produce multiple docs for single-value input | Low | `emit` produces no document markers (`---`/`...`); single implicit document |
 
 ---
 

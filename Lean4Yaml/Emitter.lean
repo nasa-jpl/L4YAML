@@ -47,11 +47,32 @@ and `Grammar.resolveNamedEscape` specification.
 -/
 
 /--
+Convert a nibble (0–15) to its uppercase hex character.
+-/
+def hexNibble (n : Nat) : Char :=
+  if n < 10 then Char.ofNat (0x30 + n)  -- '0'-'9'
+  else Char.ofNat (0x41 + n - 10)        -- 'A'-'F'
+
+/--
+Emit a `\xHH` hex escape for a character in the range `x00-xFF`.
+Used for non-printable characters that lack a named escape (§5.7 [59]).
+-/
+def escapeHex2 (c : Char) : String :=
+  let n := c.val.toNat
+  "\\" ++ "x" ++ (hexNibble (n / 16)).toString ++ (hexNibble (n % 16)).toString
+
+/--
 Escape a single character for inclusion in a double-quoted scalar.
 
 Maps control characters to their YAML named escape sequences (§5.7)
 and escapes `\` and `"` which have special meaning in double-quoted context.
-All other characters pass through unchanged.
+Non-printable characters without a named escape are emitted as `\xHH` (§5.7 [59]).
+All other characters (nb-json minus `\` and `"`) pass through unchanged.
+
+**YAML 1.2.2 §5.1**: On output, characters outside `c-printable` must be
+presented using escape sequences. **§7.3.1 [107]**: Inside double-quoted
+scalars, only `nb-json` characters (minus `\` and `"`) or escape sequences
+are valid.
 -/
 def escapeChar (c : Char) : String :=
   match c with
@@ -66,7 +87,8 @@ def escapeChar (c : Char) : String :=
   | '\x1b' => "\\e"    -- escape
   | '\\'   => "\\\\"   -- backslash
   | '"'    => "\\\"" -- double quote
-  | c      => c.toString
+  | c      => if c.val.toNat < 0x20 then escapeHex2 c  -- remaining C0 controls (§5.1)
+              else c.toString
 
 /--
 Escape a string for inclusion in a double-quoted scalar.

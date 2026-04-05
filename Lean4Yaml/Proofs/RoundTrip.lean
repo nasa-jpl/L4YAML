@@ -610,18 +610,20 @@ for all 11 escaped characters. This connects the emitter to the parser specifica
 at the character level.
 -/
 
-/-- The set of characters that `escapeChar` escapes (produces a `\X` sequence). -/
+/-- The set of characters that `escapeChar` escapes (produces a `\X` or `\xHH` sequence).
+    Includes the 11 named escapes plus any remaining C0 control chars (§5.1). -/
 def isEscapedChar (c : Char) : Bool :=
   match c with
   | '\x00' | '\x07' | '\x08' | '\t' | '\n'
   | '\x0b' | '\x0c' | '\r' | '\x1b' | '\\' | '"' => true
-  | _ => false
+  | c => c.val.toNat < 0x20
 
 /-- For non-escaped characters, `escapeChar c` is `c.toString`. -/
 theorem escapeChar_identity (c : Char) (h : isEscapedChar c = false) :
     escapeChar c = c.toString := by
-  unfold escapeChar isEscapedChar at *
-  split <;> simp_all
+  unfold escapeChar
+  split <;> (unfold isEscapedChar at h; simp_all)
+  omega
 
 /-- The mapping from escaped characters to their YAML escape tags.
 
