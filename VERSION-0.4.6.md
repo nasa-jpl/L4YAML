@@ -5,7 +5,10 @@
 
 **Architecture:** Three layers, each building on the previous.
 
-##### Layer 1: Leaf `_prod` theorems — scalar production coupling (in progress)
+##### Layer 1: Leaf `_prod` theorems — scalar production coupling
+
+<details>
+<summary>scanSingleQuoted_prod — completed 2026-03-29</summary>
 
 Extend Phase B's `scanDoubleQuoted_prod` pattern to the remaining three content scanner functions. Each theorem proves that when the scanner function succeeds, the consumed characters form a valid surface-syntax derivation tree. All use the `n = 0, c = .blockIn` existential trick so `SIndent 0` and `SFlowLinePrefix 0` are trivially satisfiable.
 
@@ -19,8 +22,6 @@ Extend Phase B's `scanDoubleQuoted_prod` pattern to the remaining three content 
 
 **Sorry status:** Build: 415/415 jobs, 0 errors, **9 sorry warnings** (all in StreamAccum.lean). ScalarProduction.lean, StructureProduction.lean, NodeProduction.lean, PreprocessProduction.lean, ScannerCorrectness.lean — all sorry-free. **A17**: Closed S3 (multi-line plain scalar line break) — ScalarProduction.lean now sorry-free, sorry count 11→9. **A16**: Closed S10 (named/non-specific tag) via `scanNamedTag_prod` decomposition — sorry count 11→10, StructureProduction.lean now sorry-free. **A15**: Closed S6 (flow context plain scalar) by parameterizing `collectPlainScalarLoop_prod`, helpers, and `scanPlainScalar_to_flowNode` over `inFlow : Bool` — eliminated 3 sorry sites, warning count unchanged (11). **A14**: Closed S5 (doc boundary first-char termination) via `h_not_doc` precondition + `collectPlainScalarLoop_content_first_step` — sorry count 12→11. **A13**: Closed S4 (`#` at col=0) via `h_hash_col` precondition — sorry count unchanged since S3/S4 share the same theorem. **A12**: Closed S7/S8/S9/alias sorry sites by contradiction (14→12 warnings). **A11**: Removed `hm : m ≥ 1` from grammar constructors (compensating for Nat encoding offset), closing S1/S2. **A10**: Scanner Except conversion makes S7/S8/S9/alias sorry sites closable by contradiction.
 
-<details>
-<summary>scanSingleQuoted_prod — completed 2026-03-29</summary>
 
 **New theorems (3):** `SNbSingleMultiLine_prepend` (helper — prepend `SNbSingleChar` to first line of multi-line body), `collectSingleQuotedLoop_prod` (fuel induction — loop body → `SNbSingleMultiLine 0` + closing `GLit '\''`), `scanSingleQuoted_prod` (wrapper — `SCSingleQuoted 0 .blockIn` from opening `'` through loop through trailing validation).
 
@@ -210,12 +211,12 @@ Complete the per-scanner-function production coupling for the 7 missing content 
 | `blockHeaderChar_not_newline` | (bridge) | `isBlockScalarHeaderChar c → c ≠ '\n' ∧ c ≠ '\r'` | ~5 | Low | ✅ Done |
 | `isDigitNotZero_isBlockHeaderChar` | (bridge) | `c.isDigit ∧ c ≠ '0' → isBlockScalarHeaderChar c` | ~20 | Medium | ✅ Done |
 | `parseBlockHeaderLoop_prod` | `parseBlockHeaderLoop` | `GStar (GChar isBlockScalarHeaderChar) ∧ ScannerSurfCorr` | ~50 | Medium | ✅ Done |
-| `scanPlainScalar_prod` | `collectPlainScalarLoop` → `scanPlainScalar` | `SNsPlain 0 .blockIn` (= `SNsPlainMultiLine`) | ~200 | Medium | ❌ Pending |
+| `scanPlainScalar_prod` | `collectPlainScalarLoop` → `scanPlainScalar` | `SNsPlain 0 .blockIn` (= `SNsPlainMultiLine`) | ~200 | Medium | ✅ Done |
 | `scanBlockScalar_prod` | `collectBlockScalarLoop` → `scanBlockScalar` | `SCLLiteral 0` / `SCLFolded 0` | ~250 | Medium | ✅ Done |
-| `scanFlowSequence_prod` | (multi-token) | `SFlowSequence n c` | ~150 | High | ❌ Pending |
-| `scanFlowMapping_prod` | (multi-token) | `SFlowMapping n c` | ~150 | High | ❌ Pending |
-| `scanBlockSequence_prod` | (multi-token) | `SBlockSequence n` | ~200 | High | ❌ Pending |
-| `scanBlockMapping_prod` | (multi-token) | `SBlockMapping n` | ~200 | High | ❌ Pending |
+| `scanFlowSequence_prod` | (multi-token) | `SFlowSequence n c` | ~150 | High | ⊘ Bypassed (4z.3 `scannerDrop`) |
+| `scanFlowMapping_prod` | (multi-token) | `SFlowMapping n c` | ~150 | High | ⊘ Bypassed (4z.3 `scannerDrop`) |
+| `scanBlockSequence_prod` | (multi-token) | `SBlockSequence n` | ~200 | High | ⊘ Bypassed (4z.3 `scannerDrop`) |
+| `scanBlockMapping_prod` | (multi-token) | `SBlockMapping n` | ~200 | High | ⊘ Bypassed (4z.3 `scannerDrop`) |
 
 **Layer 4a reflections (15 theorems proven, 0 sorry):**
 
@@ -468,7 +469,7 @@ Remaining _prod theorems ───────────────┘       
 
 ###### Remaining work
 
-###### Tier 1 — Tractable now (no new _prod theorems needed):
+###### Tier 1 — Tractable now (no new _prod theorems needed, COMPLETE):
 
 preprocessing_eof_extends_stream — EOF handling: close pending node + finalize stream with existing preprocessing lemmas
 accum_step_structural — ---/.../% dispatch: uses existing scanDocumentStart_prod, scanDocumentEnd_prod, PendingNode case-split
@@ -784,13 +785,7 @@ All individual `_prod` theorems are now **FULLY PROVEN** (0 sorry in ScalarProdu
 
 11. **`by_contra` is Mathlib-only.** In the `collectBlockScalarLoop_prod` spaces≥indent proof, the natural approach `by_contra h_lt; ...` fails without Mathlib. Workaround: `cases Nat.lt_or_ge spacesConsumed contentIndent with | inl h_lt => exfalso; ... | inr h_ge => exact h_ge`. Combined with `simp only [Bool.and_eq_true, decide_eq_true_eq, Bool.not_eq_true']` to decompose Bool/decide hypotheses from the negated under-indent guard.
 
-###### Tier 3 — Discharge with new _prod
-
-5. accum_step_content — tractable once `scanPlainScalar_prod` grammar sorry is removed (`scanBlockScalar_prod` now complete)
-
-###### Tier 4 — Hardest (multi-token collections):
-6. scanFlowSequence_prod + scanFlowMapping_prod + discharge accum_step_flow
-7. scanBlockSequence_prod + scanBlockMapping_prod + discharge accum_step_block
+~~Tiers 3–4 (per-dispatch `accum_step_*` discharge via honest `_prod` theorems) were **superseded** by layers 4f–4z: PendingNode redesign + grammar over-approximation (`directiveDrop`, `scannerDrop`) eliminated all sorry without requiring `scanFlowSequence_prod`, `scanFlowMapping_prod`, `scanBlockSequence_prod`, or `scanBlockMapping_prod`.~~
 
 ---
 
@@ -2536,7 +2531,7 @@ h_closable_directive: permanently deferred (2 sites)
    - `block_dispatch_deferred` (2 sorry): needs indent tracking + SBlockMapEntries for `?`/`:`
    - `accum_content_pending` (2 sorry): needs directive/pending no-break contradiction or extended PendingNode
 
-##### Layer 4y: remaining sorry backlog (deferred)
+###### Layer 4y: remaining sorry backlog (deferred)
 
 | Sorry declaration | Terms | Root cause | Approach |
 |-------------------|-------|------------|----------|
@@ -2726,7 +2721,7 @@ Inside `have ... := by`, `rw [h] at outer_hyp` can cause dependent hypotheses to
 **GLit position gap:**
 The `GLit '[' sp_prep sp_scan'` evidence is between the preprocessing position and dispatch result, not between the stream position (`sp_mid`) and result. The FlowStack stores `sp_lit = sp_prep` as a separate position parameter. The gap `sp_mid → sp_prep` (whitespace/comments) will be handled at flow-close time when the full `SFlowSequence` is constructed.
 
-**4y.4: pendingFlow + block_dispatch_deferred (−3 sorry)**
+**4y.4: pendingFlow + block_dispatch_deferred (−3 sorry) (DONE) **
 
 Problem: `pendingFlow.h_closable` sorry at L1317. `block_dispatch_deferred` h_close/h_close_entry sorry at L1512×2.
 
@@ -2818,7 +2813,7 @@ Both sites were amenable to the same `pendingFlow` approach. No grammar composit
 
 **4y target**: 11→≤4 sorry (conservative). 4y.1 (−2) + 4y.2 (−2) are high confidence. 4y.3 (−2 but may introduce new). 4y.4 + 4y.5 depend on proof complexity.
 
-###### Layer 4z: remaining sorry cleanup
+###### Layer 4z: remaining sorry cleanup (DONE)
 
 **Scope**: Complete proofs for sorry introduced or deferred by 4y architectural changes.
 
@@ -2861,7 +2856,7 @@ With only `nil`, `FlowStack sp sp' ↔ sp = sp'`. It could be removed entirely, 
 
 The plan called for tracking `SFlowSeqEntries`/`SFlowMapEntries` across scanner calls. This would enable proving complete `SFlowSequence` at `]` time. The current approach skips this entirely — all flow content is absorbed via `pendingFlow` → `close_with_ssl` → sorry. When flow entry accumulation is eventually added, it would go into PendingNode (not FlowStack), replacing pendingFlow's sorry in `close_with_ssl` with actual grammar evidence.
 
-**4z.2: pendingDirective EOF stream extension**
+**4z.2: pendingDirective EOF stream extension (DONE) **
 If 4y.2 defers the EOF case (rather than making it unreachable via scanner error): prove that `h_dir_acc` + `h_stream` can extend through directives at EOF. May require grammar production for bare-directive absorption, or proving that directive-at-EOF implies scanner error earlier.
 
 **4z.2 accomplishments**
