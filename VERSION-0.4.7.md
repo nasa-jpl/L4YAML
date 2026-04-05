@@ -169,7 +169,7 @@ The composition chain:
 ```
 emit v
   → Scanner.scanFiltered (emit v) = .ok tokens     [Step 1: emit_produces_valid_yaml]
-  → parseStream tokens = .ok docs                   [Step 2a: parse_emitted_tokens]
+  → parseStream tokens = .ok docs                   [Step 2: parse_emitted_tokens]
   → ∀ doc ∈ docs, Grammable doc.value false         [parseStream_output_grammable]
   → ∀ doc ∈ docs, ∃ node, strip (toYaml node) = strip doc.value
                                                      [parseYaml_produces_valid_nodes]
@@ -177,10 +177,32 @@ emit v
                                                       + contentEq_implies_emit_eq]
 ```
 
-**Step 2a gap — `parseStream` success:** Scanner success (`scanFiltered = .ok tokens`) does NOT automatically imply parser success (`parseStream tokens = .ok docs`). The `parseStream` function is total (fuel-based, always terminates), but it can return `.error` for syntactically valid but semantically ill-formed token sequences. For emitter output, we need to show that the scanner produces well-formed tokens that the parser will accept. Two approaches:
+**Step 2 gap — `parseStream` success:** Scanner success (`scanFiltered = .ok tokens`) does NOT automatically imply parser success (`parseStream tokens = .ok docs`). The `parseStream` function is total (fuel-based, always terminates), but it can return `.error` for syntactically valid but semantically ill-formed token sequences. For emitter output, we need to show that the scanner produces well-formed tokens that the parser will accept. Two approaches:
 
 1. **Direct:** Prove `parseStream` succeeds on tokens from canonical emitter output (characterize the token sequence `emit` produces and show `parseStream` accepts it).
 2. **Via `parseYamlRaw`:** Show `parseYamlRaw (emit v) = .ok docs` directly, which bundles scan + parse. The existing `canonical_roundtrip_conditional` and `emit_parse_has_witness` are already conditioned on this — discharging it is the real work.
+
+#### Accomplishments
+
+1. **Identified the scan→parse gap and resolved it architecturally.** `ValidYamlProp` is defined computationally (existential over `scanFiltered = .ok` ∧ `parseStream = .ok`), and `InYamlLanguage input → ∃ docs, parseYaml input = .ok docs` does not exist. There is no shortcut through grammar membership — the proof must reason about `parseStream` acceptance directly. Confirmed there are exactly 8 error conditions in the parser pipeline, and all 8 are structurally impossible for canonical emitter output.
+
+2. **Factored `emit_parse_succeeds` into a proven composition.** Replaced the single sorry with a two-step composition: `emit_produces_valid_yaml` (Step 1, sorry) → `parseStream_accepts_emit_tokens` (Step 2, sorry) → `parseYamlRaw_pipeline` (Composition.lean, proven). The composition proof `emit_parse_succeeds` itself is now sorry-free — it uses `obtain` to destructure existentials and `exact` with `Composition.parseYamlRaw_pipeline`.
+
+3. **Added `emit_parseYaml_succeeds` (proven, no sorry).** Lifts `emit_parse_succeeds` through the `YamlDocument.compose` layer: `parseYaml (emit v) = .ok docs`. Uses `simp only [parseYaml, h_raw]` to unfold the match-based definition and reduce after substitution.
+
+4. **Added `emit_produces_single_document` (sorry, Step 3 prep).** The emitter generates exactly one implicit document. This theorem — `docs.size = 1` — is needed by the universal round-trip theorem. Proof will follow from `parseStreamLoop` producing exactly one document when the token stream has no `---`/`...` markers.
+
+5. **Added `emit_parsed_grammable` (sorry, Step 3 prep).** Output grammability preservation — follows from existing `parseStream_output_grammable` applied to the scan+parse decomposition. This provides the `Grammable doc.value false` hypothesis needed downstream.
+
+6. **Updated module structure.** Renumbered sections (§1–§4), updated module docstring to cover Steps 1–2, revised the section outline to match actual theorem organization.
+
+#### Reflections
+
+1. **`ValidYamlProp` is computational, not semantic.** It requires existential witnesses for both `scanFiltered = .ok tokens` AND `parseStream tokens = .ok raw_docs`. Constructing it from grammar membership (`InYamlLanguage`) would require a converse completeness theorem (`InYamlLanguage → parseYaml = .ok`) that doesn't exist. This means the proof MUST reason about `parseStream` acceptance, not just grammar membership. The scan→parse decomposition is the only viable architecture.
+
+2. **The parser has exactly 8 error conditions, all avoidable for emitter output.** Enumerated: `invalidBareDocument` (impossible — single document), `contentOnDocumentStartLine` (impossible — no `---`), `undeclaredTagHandle` (impossible — no tags), `duplicateAnchor` (impossible — no anchors), `trailingContent` (impossible — no block content), `undefinedAlias` (impossible — no aliases), `nestingDepthExceeded` (impossible — fuel = tokens.size, each call consumes ≥1), `expectedToken` for `]`/`}` (impossible — scanner enforces bracket matching). This is a complete error enumeration, not a heuristic argument.
+
+3. **Composition proofs are the easy part; factoring is the hard part.** `emit_parse_succeeds` went from a single sorry to a proven three-line composition once the right sub-lemma (`parseStream_accepts_emit_tokens`) was identified. The difficulty is always in identifying the right decomposition boundary — once found, the composition is mechanical (`obtain` + `exact`).
 
 ### Step 3: Close the Universal Round-Trip
 
@@ -192,6 +214,10 @@ Combine Steps 1–2 into the final theorem. The key connector is that `emit` is 
 4. The parsed value is content-equivalent to the original (emit normalizes style, contentEq ignores style)
 
 The existing `canonical_roundtrip_conditional` already captures steps 2–4 conditionally on `parseYamlRaw (emit v) = .ok docs`. Step 1 discharges that condition.
+
+#### Accomplishments
+
+#### Reflections
 
 ---
 

@@ -1457,6 +1457,15 @@ See [VERSION-0.4.7.md](VERSION-0.4.7.md)
 
 </details>
 
+#### Version 0.4.8
+
+<details>
+<summary>Grammar completeness (converse acceptance strictness) — prove <code>InYamlLanguage input → ∃ docs, parseYaml input = .ok docs</code></summary>
+
+See [VERSION-0.4.8.md](VERSION-0.4.8.md)
+
+</details>
+
 #### Version 0.5.0
 
 <details>

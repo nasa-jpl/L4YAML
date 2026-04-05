@@ -11,12 +11,18 @@ import Lean4Yaml.Proofs.ScannerEmitBridge
 import Lean4Yaml.Proofs.RoundTrip
 
 /-!
-# Emitter Scannability (Phase E, Step 1)
+# Emitter Scannability (Phase E, Steps 1–2)
 
-Proof that the canonical emitter's output is accepted by the scanner:
+Step 1 — Proof that the canonical emitter's output is accepted by the scanner:
 
 ```
 ∀ v, Grammable v false → ∃ tokens, Scanner.scanFiltered (emit v) = .ok tokens
+```
+
+Step 2 — Composition with the parser to prove the full pipeline succeeds:
+
+```
+∀ v, Grammable v false → ∃ docs, parseYamlRaw (emit v) = .ok docs
 ```
 
 ## Architecture
@@ -37,10 +43,11 @@ The proof proceeds by structural induction on `YamlValue`:
 
 **§1** — Escape character validity: each `escapeChar c` produces output that
          `collectDoubleQuotedLoop` accepts.
-**§2** — Scalar scannability: `scanFiltered (emitScalar s)` succeeds for all `s`.
-**§3** — Flow collection scannability: `scanFiltered (emit v)` succeeds for
-         sequences and mappings (by IH on elements).
-**§4** — Main theorem: `emit_produces_valid_yaml`.
+**§2** — Emitter output properties: non-emptiness and structural facts.
+**§3** — Scanner acceptance (Step 1): `scan_accepts_emitScalar` and
+         `emit_produces_valid_yaml`.
+**§4** — Full pipeline composition (Step 2): parse acceptance,
+         single-document guarantee, and grammability preservation.
 
 ## Zero Axioms
 
@@ -91,7 +98,7 @@ scanner acceptance.
 theorem emit_nonempty (v : YamlValue) : (emit v).length > 0 := by
   sorry
 
-/-! ## §3  Scanner Acceptance of Canonical Output
+/-! ## §3  Scanner Acceptance of Canonical Output (Step 1)
 
 The main technical content: proving the scanner accepts emitter output.
 -/
@@ -118,15 +125,90 @@ theorem emit_produces_valid_yaml (v : YamlValue) (hg : Grammable v false) :
 
 /-! ## §4  Full Pipeline: Emit → Scan → Parse
 
-Combining scanner acceptance with parser success.
+Combining scanner acceptance (Step 1) with parser acceptance (Step 2).
+
+### Step 2 Architecture
+
+Step 1 gives us `scanFiltered (emit v) = .ok tokens`. Step 2 must show
+that `parseStream` also succeeds on those tokens. The key argument:
+
+1. **Stream boundaries**: `scanFiltered` always produces `streamStart` as
+   the first token and `streamEnd` as the last (by scanner construction).
+2. **Single implicit document**: The emitter produces no `---`/`...` markers
+   and no directives, so `parseStreamLoop` in `.initial` state sees bare
+   content → enters `parseDocument` with no directive overhead.
+3. **No bare-document violation**: After the single document is parsed, only
+   `streamEnd` remains. `StreamState.validNextToken .afterDocument .streamEnd`
+   is always `true`, so `invalidBareDocument` cannot fire.
+4. **Parser dispatch succeeds**: `parseNode` dispatches on token type:
+   - `scalar` (double-quoted) → single token consumption, always succeeds
+   - `flowSequenceStart` → `parseFlowSequence` handles `[`, `,`, `]`
+   - `flowMappingStart` → `parseFlowMapping` handles `{`, `:`, `,`, `}`
+5. **Fuel sufficiency**: `parseStream` allocates `tokens.size` fuel.
+   Each recursive `parseNode` call consumes ≥1 token, so fuel cannot
+   be exhausted for well-formed flow output.
+6. **No semantic errors**: The emitter produces no anchors (no
+   `duplicateAnchor`), no aliases (no `undefinedAlias`), no tags (no
+   `undeclaredTagHandle`), and no block content (no `trailingContent`
+   on document start line).
 -/
 
-/-- **Full pipeline**: The canonical emitter's output parses successfully.
+/-- **Parse acceptance** (Step 2): The parser accepts the token sequence
+    produced by scanning canonical emitter output.
 
-    Combines `emit_produces_valid_yaml` (scanner acceptance) with
-    parser success to show `parseYamlRaw (emit v) = .ok docs`. -/
+    Given that the scanner successfully tokenized emitter output,
+    `parseStream` also succeeds. The emitter's restricted output format
+    (double-quoted scalars, flow-only collections, single implicit document)
+    avoids all `parseStream` error conditions. -/
+theorem parseStream_accepts_emit_tokens (v : YamlValue) (hg : Grammable v false)
+    (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered (emit v) = .ok tokens) :
+    ∃ docs, parseStream tokens = .ok docs := by
+  sorry
+
+/-- **Full pipeline (raw)**: The canonical emitter's output parses
+    successfully through `parseYamlRaw`.
+
+    Composes Step 1 (`emit_produces_valid_yaml`: scanner acceptance) with
+    Step 2 (`parseStream_accepts_emit_tokens`: parser acceptance) via
+    `parseYamlRaw_pipeline` (scan + parse → pipeline success). -/
 theorem emit_parse_succeeds (v : YamlValue) (hg : Grammable v false) :
     ∃ docs, parseYamlRaw (emit v) = .ok docs := by
+  obtain ⟨tokens, h_scan⟩ := emit_produces_valid_yaml v hg
+  obtain ⟨docs, h_parse⟩ := parseStream_accepts_emit_tokens v hg tokens h_scan
+  exact ⟨docs, Composition.parseYamlRaw_pipeline (emit v) tokens docs h_scan h_parse⟩
+
+/-- **Full pipeline (with compose)**: Emitter output parses successfully
+    through `parseYaml`, which resolves aliases via `YamlDocument.compose`.
+
+    Since the emitter produces no aliases (`Grammable` excludes `.alias`
+    nodes), compose is effectively the identity on values, but the
+    types require going through this step. -/
+theorem emit_parseYaml_succeeds (v : YamlValue) (hg : Grammable v false) :
+    ∃ docs, parseYaml (emit v) = .ok docs := by
+  obtain ⟨raw_docs, h_raw⟩ := emit_parse_succeeds v hg
+  exact ⟨raw_docs.map YamlDocument.compose, by simp only [parseYaml, h_raw]⟩
+
+/-- **Single document**: The canonical emitter's output produces exactly one
+    document when parsed.
+
+    The emitter generates a single implicit document (no `---` markers, no
+    multiple-document output), so `parseStreamLoop` produces `#[doc]`.
+    This is needed for the universal round-trip theorem which asserts
+    `docs.size = 1`. -/
+theorem emit_produces_single_document (v : YamlValue) (hg : Grammable v false)
+    (docs : Array YamlDocument)
+    (h : parseYamlRaw (emit v) = .ok docs) :
+    docs.size = 1 := by
+  sorry
+
+/-- **Grammability preservation**: The parsed output of emitter output
+    is grammable. Follows from `parseStream_output_grammable` applied
+    to the scan+parse decomposition. -/
+theorem emit_parsed_grammable (v : YamlValue) (hg : Grammable v false)
+    (docs : Array YamlDocument)
+    (h : parseYaml (emit v) = .ok docs) :
+    ∀ doc ∈ docs.toList, Grammable doc.value false := by
   sorry
 
 end Lean4Yaml.Proofs.EmitterScannability
