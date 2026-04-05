@@ -231,6 +231,101 @@ theorem escapeChar_head_not_linebreak (c : Char) :
     rw [Bool.or_eq_false_iff]
     exact ⟨beq_eq_false_iff_ne.mpr h1, beq_eq_false_iff_ne.mpr h2⟩
 
+/-- No character of `escapeChar c` is a line break.
+    Stronger than `escapeChar_head_not_linebreak` — covers ALL output chars. -/
+theorem escapeChar_output_no_linebreak (c : Char) :
+    ∀ ch ∈ (escapeChar c).toList, isLineBreakBool ch = false := by
+  by_cases h_val : c.val.toNat < 128
+  · have h_bounded : ∀ n : Fin 128, ∀ ch ∈ (escapeChar (Char.ofNat n.val)).toList,
+        isLineBreakBool ch = false := by native_decide
+    have h_spec := h_bounded ⟨c.toNat, by simp [Char.toNat]; omega⟩
+    rw [Char.ofNat_toNat] at h_spec
+    exact h_spec
+  · simp only [Nat.not_lt] at h_val
+    have h_not_esc : isEscapedChar c = false := by
+      unfold isEscapedChar; split <;> simp_all <;> omega
+    rw [escapeChar_identity c h_not_esc]
+    intro ch h_mem
+    simp only [Char.toString, String.toList_singleton, List.mem_singleton] at h_mem
+    rw [h_mem]
+    show (c == '\n' || c == '\r') = false
+    have h1 : c ≠ '\n' := fun h => by subst h; exact absurd h_val (by native_decide)
+    have h2 : c ≠ '\r' := fun h => by subst h; exact absurd h_val (by native_decide)
+    rw [Bool.or_eq_false_iff]
+    exact ⟨beq_eq_false_iff_ne.mpr h1, beq_eq_false_iff_ne.mpr h2⟩
+
+/-- The output of `escapeChar c` is non-empty. -/
+theorem escapeChar_nonempty (c : Char) : (escapeChar c).toList ≠ [] := by
+  by_cases h_val : c.val.toNat < 128
+  · have : ∀ n : Fin 128, (escapeChar (Char.ofNat n.val)).toList ≠ [] := by native_decide
+    have := this ⟨c.toNat, by simp [Char.toNat]; omega⟩
+    rwa [Char.ofNat_toNat] at this
+  · simp only [Nat.not_lt] at h_val
+    have h_not_esc : isEscapedChar c = false := by
+      unfold isEscapedChar; split <;> simp_all <;> omega
+    rw [escapeChar_identity c h_not_esc]
+    simp [Char.toString]
+
+/-! ### §2.3  `escapeString` Character Properties
+
+Since `escapeString s = s.foldl (fun acc c => acc ++ escapeChar c) ""`,
+every character of the output is a character of some `escapeChar c`.
+We lift per-character properties from `escapeChar` to `escapeString`.
+-/
+
+/-- Generic: `foldl` with string append equals `flatMap` on character lists. -/
+theorem foldl_append_toList_eq_flatMap (chars : List Char) (f : Char → String) :
+    (chars.foldl (fun (acc : String) c => acc ++ f c) "").toList =
+    chars.flatMap (fun c => (f c).toList) := by
+  suffices h : ∀ init : String,
+      (chars.foldl (fun acc c => acc ++ f c) init).toList =
+      init.toList ++ chars.flatMap (fun c => (f c).toList) by
+    have := h ""
+    simp at this
+    exact this
+  induction chars with
+  | nil => intro init; simp
+  | cons c cs ih =>
+    intro init
+    simp only [List.foldl_cons, List.flatMap_cons]
+    rw [ih (init ++ f c)]
+    simp [String.toList_append]
+
+/-- A character is in `escapeString content` iff it is in some `escapeChar c`
+    for `c` in `content`. -/
+theorem escapeString_mem_iff (content : String) (ch : Char) :
+    ch ∈ (escapeString content).toList ↔
+    ∃ c ∈ content.toList, ch ∈ (escapeChar c).toList := by
+  constructor
+  · intro h_mem
+    unfold escapeString at h_mem
+    rw [string_foldl_toList] at h_mem
+    rw [foldl_append_toList_eq_flatMap] at h_mem
+    simp [List.mem_flatMap] at h_mem
+    exact h_mem
+  · intro ⟨c, h_c_mem, h_ch_mem⟩
+    unfold escapeString
+    rw [string_foldl_toList]
+    rw [foldl_append_toList_eq_flatMap]
+    simp [List.mem_flatMap]
+    exact ⟨c, h_c_mem, h_ch_mem⟩
+
+/-- All chars of `escapeString content` are valid `nb-json` characters. -/
+theorem escapeString_all_nbJson (content : String) :
+    ∀ ch ∈ (escapeString content).toList, isNbJsonBool ch = true := by
+  intro ch h_mem
+  rw [escapeString_mem_iff] at h_mem
+  obtain ⟨c, _, h_ch_mem⟩ := h_mem
+  exact escapeChar_output_nbJson c ch h_ch_mem
+
+/-- No character of `escapeString content` is a line break. -/
+theorem escapeString_no_linebreak (content : String) :
+    ∀ ch ∈ (escapeString content).toList, isLineBreakBool ch = false := by
+  intro ch h_mem
+  rw [escapeString_mem_iff] at h_mem
+  obtain ⟨c, _, h_ch_mem⟩ := h_mem
+  exact escapeChar_output_no_linebreak c ch h_ch_mem
+
 /-! ## §3  Scanner Acceptance of Canonical Output (Step 1)
 
 The main technical content: proving the scanner accepts emitter output.
@@ -254,7 +349,20 @@ theorem scan_accepts_emitScalar (content : String) :
     - Alias case: impossible (excluded by `Grammable`) -/
 theorem emit_produces_valid_yaml (v : YamlValue) (hg : Grammable v false) :
     ∃ tokens, scanFiltered (emit v) = .ok tokens := by
-  sorry
+  cases hg with
+  | scalar s _ h =>
+    -- emit (.scalar s) = emitScalar s.content
+    exact scan_accepts_emitScalar s.content
+  | sequence style items tag anchor _ h =>
+    -- emit (.sequence style items tag anchor) = "[" ++ emitList items.toList ++ "]"
+    -- Requires scanner compositionality for flow sequences:
+    -- scanner threads state through [, comma-separated items, ]
+    sorry
+  | mapping style pairs tag anchor _ hk hv =>
+    -- emit (.mapping style pairs tag anchor) = "{" ++ emitPairList pairs.toList ++ "}"
+    -- Requires scanner compositionality for flow mappings:
+    -- scanner threads state through {, colon/comma-separated pairs, }
+    sorry
 
 /-! ## §4  Full Pipeline: Emit → Scan → Parse
 
