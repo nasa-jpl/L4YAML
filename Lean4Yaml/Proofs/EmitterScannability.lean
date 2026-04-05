@@ -9,6 +9,8 @@ import Lean4Yaml.TokenParser
 import Lean4Yaml.CharPredicates
 import Lean4Yaml.Proofs.ScannerEmitBridge
 import Lean4Yaml.Proofs.RoundTrip
+import Lean4Yaml.Proofs.CouplingBridge
+import Lean4Yaml.Proofs.ScalarCoupling
 
 /-!
 # Emitter Scannability (Phase E, Steps 1–2)
@@ -63,6 +65,8 @@ open Lean4Yaml.Scanner
 open Lean4Yaml.Grammar
 open Lean4Yaml.TokenParser
 open Lean4Yaml.CharPredicates
+open Lean4Yaml.Proofs.CouplingBridge
+open Lean4Yaml.Proofs.ScalarCoupling
 
 /-! ## §1  Escape Character Properties
 
@@ -325,6 +329,359 @@ theorem escapeString_no_linebreak (content : String) :
   rw [escapeString_mem_iff] at h_mem
   obtain ⟨c, _, h_ch_mem⟩ := h_mem
   exact escapeChar_output_no_linebreak c ch h_ch_mem
+
+/-! ### §2.4  `collectDoubleQuotedLoop` Acceptance of Escaped Strings
+
+The core lemma: `collectDoubleQuotedLoop` succeeds on
+`escapeString content ++ "\""` for any content string. This is the
+key step in proving scanner acceptance of canonical emitter output.
+
+The proof proceeds by induction on `content.toList`:
+- **Base case**: `escapeString "" = ""`, remaining is `['"']` → close quote.
+- **Inductive step**: `escapeString (c :: cs) = escapeChar c ++ escapeString cs`.
+  Three sub-cases for `escapeChar c`:
+  - **Passthrough** (`escapeChar c = c.toString`): regular char branch, 1 fuel unit.
+  - **Named escape** (`escapeTag c = some tag`): escape branch, `processEscape`
+    consumes tag, 1 fuel unit.
+  - **Hex escape** (`c.val.toNat < 0x20`, no named tag): escape branch,
+    `processEscape` consumes `\xHH`, 1 fuel unit.
+-/
+
+/-- Derive `peek?` from `ScannerSurfCorr` when the surface position starts
+    with a known character. Column can be arbitrary. -/
+theorem peek_of_chars_cons (sc : ScannerState) (c : Char) (rest : List Char)
+    (col : Nat) (hcorr : ScannerSurfCorr sc ⟨c :: rest, col⟩) :
+    sc.peek? = some c ∧ sc.offset < sc.inputEnd := by
+  by_cases h_lt : sc.offset < sc.inputEnd
+  · obtain ⟨c', _, h_eq, h_peek⟩ := peek_corr sc ⟨c :: rest, col⟩ hcorr h_lt
+    exact ⟨(List.cons.inj h_eq).1 ▸ h_peek, h_lt⟩
+  · exact absurd (eof_corr sc _ hcorr h_lt) (List.cons_ne_nil c rest)
+
+/-- `processEscape` succeeds when peeking at a named escape tag
+    (one of `escapeTag`'s output characters). Returns `(decoded, sc.advance)`. -/
+theorem processEscape_named_ok (sc : ScannerState) (c tag : Char)
+    (h_tag : escapeTag c = some tag) (h_peek : sc.peek? = some tag) :
+    ∃ decoded, processEscape sc = .ok (decoded, sc.advance) := by
+  unfold processEscape; rw [h_peek]; dsimp only []
+  -- Split on inner match over tag
+  split
+  -- All .ok arms: immediate
+  all_goals (first | exact ⟨_, rfl⟩ | skip)
+  -- Remaining arms (x/u/U/wildcard): tag can't be these per escapeTag
+  all_goals exfalso
+  all_goals (unfold escapeTag at h_tag; split at h_tag
+    <;> simp_all <;> (try subst_vars) <;> contradiction)
+
+/-- Named escape tags are never line breaks — needed to distinguish
+    escape from escaped-newline in the scanner. -/
+theorem escapeTag_not_linebreak (c tag : Char)
+    (h_tag : escapeTag c = some tag) : isLineBreakBool tag = false := by
+  unfold escapeTag at h_tag; split at h_tag
+  all_goals first | exact Option.noConfusion h_tag | skip
+  all_goals (injection h_tag; try subst_vars; try native_decide)
+
+/-- `escapeChar` for passthrough characters produces a single-element
+    char list equal to `[c]`. -/
+theorem escapeChar_passthrough_toList (c : Char) (h : isEscapedChar c = false) :
+    (escapeChar c).toList = [c] := by
+  rw [escapeChar_identity c h]; simp [Char.toString]
+
+/-- `escapeChar` for named escapes produces exactly `['\\', tag]`. -/
+theorem escapeChar_named_toList (c tag : Char) (h : escapeTag c = some tag) :
+    (escapeChar c).toList = ['\\', tag] := by
+  have ⟨h_eq, _⟩ := escapeTag_roundtrip c tag h
+  rw [h_eq]; simp [Char.toString]
+
+/-- Scanner's hex digit check, matching `collectHexDigitsLoop`'s condition. -/
+def scannerHexCheck (c : Char) : Bool :=
+  c.isDigit || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
+
+theorem hexNibble_is_hex : ∀ n : Fin 16, scannerHexCheck (hexNibble n.val) = true := by
+  native_decide
+
+theorem hexNibble_lt128 : ∀ n : Fin 16, (hexNibble n.val).toNat < 128 := by
+  native_decide
+
+/-- For any two hex chars (each with toNat < 128 and scannerHexCheck = true),
+    the 2-digit hex foldl value is < 0x110000. -/
+theorem hex_two_foldl_bound : ∀ (n1 n2 : Fin 128),
+    scannerHexCheck (Char.ofNat n1.val) = true →
+    scannerHexCheck (Char.ofNat n2.val) = true →
+    (("".push (Char.ofNat n1.val)).push (Char.ofNat n2.val)).foldl (fun acc c =>
+      acc * 16 + if c.isDigit then c.toNat - '0'.toNat
+                 else if c >= 'a' then c.toNat - 'a'.toNat + 10
+                 else c.toNat - 'A'.toNat + 10) 0 < 0x110000 := by native_decide
+
+/-- `escapeChar` output for hex-escaped characters (C0 controls with no named tag)
+    has the form `['\\', 'x', h1, h2]` where h1, h2 are hex digits with toNat < 128. -/
+theorem escapeChar_hex_structure (c : Char)
+    (h_lt : c.val.toNat < 0x20) (h_no_tag : escapeTag c = none) :
+    ∃ h1 h2 : Char,
+      (escapeChar c).toList = ['\\', 'x', h1, h2] ∧
+      h1 ≠ '\n' ∧ h1 ≠ '\r' ∧ h2 ≠ '\n' ∧ h2 ≠ '\r' ∧
+      scannerHexCheck h1 = true ∧ scannerHexCheck h2 = true ∧
+      h1.toNat < 128 ∧ h2.toNat < 128 := by
+  have h_struct : ∀ n : Fin 32, escapeTag (Char.ofNat n.val) = none →
+      (escapeChar (Char.ofNat n.val)).toList =
+        ['\\', 'x', hexNibble (n.val / 16), hexNibble (n.val % 16)] := by native_decide
+  have h_hex_nn : ∀ n : Fin 16, hexNibble n.val ≠ '\n' := by native_decide
+  have h_hex_cr : ∀ n : Fin 16, hexNibble n.val ≠ '\r' := by native_decide
+  have h_spec := h_struct ⟨c.toNat, by simp [Char.toNat]; omega⟩ (by rwa [Char.ofNat_toNat])
+  rw [Char.ofNat_toNat] at h_spec
+  exact ⟨_, _, h_spec,
+    h_hex_nn ⟨c.toNat / 16, by simp [Char.toNat]; omega⟩,
+    h_hex_cr ⟨c.toNat / 16, by simp [Char.toNat]; omega⟩,
+    h_hex_nn ⟨c.toNat % 16, by simp [Char.toNat]; omega⟩,
+    h_hex_cr ⟨c.toNat % 16, by simp [Char.toNat]; omega⟩,
+    hexNibble_is_hex ⟨c.toNat / 16, by simp [Char.toNat]; omega⟩,
+    hexNibble_is_hex ⟨c.toNat % 16, by simp [Char.toNat]; omega⟩,
+    hexNibble_lt128 ⟨c.toNat / 16, by simp [Char.toNat]; omega⟩,
+    hexNibble_lt128 ⟨c.toNat % 16, by simp [Char.toNat]; omega⟩⟩
+
+/-- `processEscape` succeeds on hex escape sequences produced by `escapeHex2`.
+    When the scanner is positioned at `'x' :: h1 :: h2 :: rest`, processEscape
+    reads `x`, then `parseHexEscape` consumes `h1 h2`. -/
+theorem processEscape_hex_ok (sc : ScannerState) (h1 h2 : Char)
+    (rest : List Char) (col : Nat)
+    (hcorr : ScannerSurfCorr sc ⟨'x' :: h1 :: h2 :: rest, col⟩)
+    (h_h1_nn : h1 ≠ '\n') (h_h1_cr : h1 ≠ '\r')
+    (h_h2_nn : h2 ≠ '\n') (h_h2_cr : h2 ≠ '\r')
+    (h_h1_hex : scannerHexCheck h1 = true) (h_h2_hex : scannerHexCheck h2 = true)
+    (h_h1_lt128 : h1.toNat < 128) (h_h2_lt128 : h2.toNat < 128) :
+    ∃ decoded s',
+      processEscape sc = .ok (decoded, s') ∧
+      ScannerSurfCorr s' ⟨rest, col + 3⟩ ∧
+      s'.inputEnd = sc.inputEnd := by
+  -- Normalize col to sc.col
+  have h_col_eq : col = sc.col := hcorr.col_eq
+  subst h_col_eq
+  -- Step 1: processEscape peeks 'x', matches → parseHexEscape sc.advance 2
+  have ⟨h_peek_x, h_lt_x⟩ := peek_of_chars_cons sc 'x' (h1 :: h2 :: rest) sc.col hcorr
+  -- Step 2: advance past 'x'
+  have hcorr_x := advance_non_newline_corr sc 'x' (h1 :: h2 :: rest) hcorr h_lt_x
+    (by decide) (by decide)
+  -- hcorr_x : ScannerSurfCorr sc.advance ⟨h1 :: h2 :: rest, sc.col + 1⟩
+  have h_col_x : (sc.col + 1 : Nat) = sc.advance.col := hcorr_x.col_eq
+  rw [h_col_x] at hcorr_x
+  -- Step 3: advance past h1
+  have ⟨h_peek_h1, h_lt_h1⟩ := peek_of_chars_cons sc.advance h1 (h2 :: rest) sc.advance.col hcorr_x
+  have hcorr_h1 := advance_non_newline_corr sc.advance h1 (h2 :: rest) hcorr_x h_lt_h1
+    h_h1_nn h_h1_cr
+  -- hcorr_h1 : ScannerSurfCorr sc.advance.advance ⟨h2 :: rest, sc.advance.col + 1⟩
+  have h_col_h1 : (sc.advance.col + 1 : Nat) = sc.advance.advance.col := hcorr_h1.col_eq
+  rw [h_col_h1] at hcorr_h1
+  -- Step 4: advance past h2
+  have ⟨h_peek_h2, h_lt_h2⟩ := peek_of_chars_cons sc.advance.advance h2 rest sc.advance.advance.col hcorr_h1
+  have hcorr_h2 := advance_non_newline_corr sc.advance.advance h2 rest hcorr_h1 h_lt_h2
+    h_h2_nn h_h2_cr
+  -- hcorr_h2 : ScannerSurfCorr sc.advance.advance.advance ⟨rest, sc.advance.advance.col + 1⟩
+  -- Step 5: show collectHexDigitsLoop produces 2-char hex string
+  unfold scannerHexCheck at h_h1_hex h_h2_hex
+  have h_collect : collectHexDigitsLoop sc.advance "" 2 =
+      (("".push h1).push h2, sc.advance.advance.advance) := by
+    unfold collectHexDigitsLoop; dsimp only []; rw [h_peek_h1]; dsimp only []
+    simp only [h_h1_hex, if_true]
+    unfold collectHexDigitsLoop; dsimp only []; rw [h_peek_h2]; dsimp only []
+    simp only [h_h2_hex, if_true]
+    unfold collectHexDigitsLoop; dsimp only []
+  -- Step 6: show foldl value < 0x110000
+  have h_val_lt := hex_two_foldl_bound ⟨h1.toNat, h_h1_lt128⟩ ⟨h2.toNat, h_h2_lt128⟩
+    (by rwa [Char.ofNat_toNat]) (by rwa [Char.ofNat_toNat])
+  rw [Char.ofNat_toNat, Char.ofNat_toNat] at h_val_lt
+  -- Step 7: unfold processEscape and parseHexEscape, apply results
+  unfold processEscape; rw [h_peek_x]; dsimp only []
+  unfold parseHexEscape; simp only [h_collect]
+  -- Reduce length check: ("".push h1).push h2 has length 2
+  have h_len : (("".push h1).push h2).length = 2 := by
+    simp [String.length, String.toList_push]
+  simp only [h_len, Nat.reduceBNe, Bool.false_eq_true, ↓reduceIte]
+  -- Reduce val < 0x110000 check
+  simp only [h_val_lt, ↓reduceIte]
+  -- Goal: ScannerSurfCorr sc.advance.advance.advance ⟨rest, sc.col + 3⟩
+  -- hcorr_h2 has col = sc.advance.advance.col + 1
+  -- Need: sc.advance.advance.col + 1 = sc.col + 3
+  -- From h_col_x: sc.col + 1 = sc.advance.col
+  -- From h_col_h1: sc.advance.col + 1 = sc.advance.advance.col
+  -- So sc.advance.advance.col + 1 = sc.col + 3
+  have h_col_final : sc.advance.advance.col + 1 = sc.col + 3 := by omega
+  rw [h_col_final] at hcorr_h2
+  exact ⟨_, _, rfl, hcorr_h2,
+    by rw [advance_inputEnd, advance_inputEnd, advance_inputEnd]⟩
+
+/-- The core loop lemma: `collectDoubleQuotedLoop` succeeds on
+    `escapeString content ++ "\""` for any content string.
+
+    By induction on the characters of `content`:
+    - Base: closing `"` → loop terminates.
+    - Passthrough char: regular char branch → recurse.
+    - Named escape: `\tag` → processEscape → recurse.
+    - Hex escape: `\xHH` → processEscape → recurse. -/
+theorem collectDoubleQuotedLoop_escapeString_succeeds
+    (sc : ScannerState) (content_rest : List Char)
+    (acc : String) (fuel : Nat)
+    (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int)
+    (hcorr : ScannerSurfCorr sc
+      ⟨(escapeString (String.ofList content_rest)).toList ++ ['"'], sc.col⟩)
+    (h_fuel : fuel ≥ content_rest.length + 1) :
+    ∃ result s',
+      collectDoubleQuotedLoop sc acc fuel startPos inFlow currentIndent sc.inputEnd =
+      .ok (result, s') := by
+  induction content_rest generalizing sc acc fuel with
+  | nil =>
+    -- Remaining chars: escapeString "" ++ "\"" = "\""
+    have h_ofnil : (String.ofList ([] : List Char)) = "" := rfl
+    rw [h_ofnil, escapeString_nil] at hcorr
+    simp only [String.toList_empty, List.nil_append] at hcorr
+    have ⟨h_peek, _⟩ := peek_of_chars_cons sc '"' [] _ hcorr
+    match fuel, h_fuel with
+    | fuel' + 1, _ =>
+      unfold collectDoubleQuotedLoop; rw [h_peek]; dsimp only []
+      exact ⟨acc, sc.advance, rfl⟩
+  | cons c cs ih =>
+    -- Remaining chars: escapeChar c ++ escapeString cs ++ "\""
+    rw [escapeString_cons, String.toList_append, List.append_assoc] at hcorr
+    -- Case split: passthrough vs escape
+    by_cases h_esc : isEscapedChar c
+    · -- ESCAPE: escapeTag c = some tag (named) or c.val.toNat < 0x20 (hex)
+      by_cases h_tag_some : (escapeTag c).isSome
+      · -- NAMED ESCAPE: escapeChar c = "\\" ++ tag.toString
+        obtain ⟨tag, h_tag⟩ := Option.isSome_iff_exists.mp h_tag_some
+        rw [escapeChar_named_toList c tag h_tag] at hcorr
+        simp only [List.cons_append] at hcorr
+        -- Now: ScannerSurfCorr sc ⟨'\\' :: tag :: (escapeString cs).toList ++ ['"'], sc.col⟩
+        have ⟨h_peek_bs, h_lt_bs⟩ := peek_of_chars_cons sc '\\' _ _ hcorr
+        match fuel, h_fuel with
+        | fuel' + 1, h_f =>
+          unfold collectDoubleQuotedLoop; rw [h_peek_bs]; dsimp only []
+          -- Scanner sees '\\' → escape branch, advance past '\\'
+          have hcorr_bs := advance_non_newline_corr sc '\\' _ hcorr h_lt_bs
+            (by decide) (by decide)
+          -- hcorr_bs : ScannerSurfCorr sc.advance ⟨tag :: ... ++ ['"'], sc.col + 1⟩
+          have ⟨h_peek_tag, h_lt_tag⟩ := peek_of_chars_cons sc.advance tag _ _ hcorr_bs
+          rw [h_peek_tag]; dsimp only []
+          -- Check: tag is not a linebreak
+          have h_tag_nlb := escapeTag_not_linebreak c tag h_tag
+          rw [h_tag_nlb, if_neg Bool.false_ne_true]
+          -- processEscape succeeds with named tag
+          obtain ⟨decoded, h_proc⟩ := processEscape_named_ok sc.advance c tag h_tag h_peek_tag
+          simp only [bind, Except.bind, h_proc]
+          -- Adjust column for chained advance
+          have h_col_bs : (sc.col + 1 : Nat) = sc.advance.col := hcorr_bs.col_eq
+          rw [h_col_bs] at hcorr_bs
+          have hcorr_tag := advance_non_newline_corr sc.advance tag _ hcorr_bs h_lt_tag
+            (fun h => by subst h; exact absurd h_tag_nlb (by decide))
+            (fun h => by subst h; exact absurd h_tag_nlb (by decide))
+          -- Adjust column for IH
+          have h_col_tag : (sc.advance.col + 1 : Nat) = sc.advance.advance.col := hcorr_tag.col_eq
+          rw [h_col_tag] at hcorr_tag
+          -- Apply IH (bridge inputEnd: advance preserves it)
+          rw [show sc.inputEnd = sc.advance.advance.inputEnd from
+            by rw [advance_inputEnd, advance_inputEnd]]
+          exact ih sc.advance.advance (acc.push decoded) fuel'
+            hcorr_tag (by simp [List.length_cons] at h_f; omega)
+      · -- HEX ESCAPE: escapeChar c = "\\xHH"
+        have h_tag_none : escapeTag c = none := by
+          cases h : escapeTag c
+          · rfl
+          · exact absurd (show (escapeTag c).isSome = true by rw [h]; rfl) h_tag_some
+        have h_lt_c : c.val.toNat < 0x20 := by
+          have h_lt128 : c.val.toNat < 128 := by
+            cases Nat.lt_or_ge c.val.toNat 128 with
+            | inl h => exact h
+            | inr hge =>
+              exfalso
+              have : isEscapedChar c = false := by
+                unfold isEscapedChar; split
+                all_goals (simp_all (config := { decide := true }) <;> omega)
+              simp [this] at h_esc
+          have : ∀ n : Fin 128,
+              isEscapedChar (Char.ofNat n.val) = true →
+              escapeTag (Char.ofNat n.val) = none →
+              n.val < 0x20 := by native_decide
+          exact this ⟨c.toNat, by simp [Char.toNat]; omega⟩
+            (by rwa [Char.ofNat_toNat]) (by rwa [Char.ofNat_toNat])
+        obtain ⟨d1, d2, h_ec_list, h_d1_nn, h_d1_cr, h_d2_nn, h_d2_cr, h_d1_hex, h_d2_hex,
+            h_d1_lt128, h_d2_lt128⟩ :=
+          escapeChar_hex_structure c h_lt_c h_tag_none
+        rw [h_ec_list] at hcorr
+        simp only [List.cons_append] at hcorr
+        have ⟨h_peek_bs, h_lt_bs⟩ := peek_of_chars_cons sc '\\' _ _ hcorr
+        match fuel, h_fuel with
+        | fuel' + 1, h_f =>
+          unfold collectDoubleQuotedLoop; rw [h_peek_bs]; dsimp only []
+          have hcorr_bs := advance_non_newline_corr sc '\\' _ hcorr h_lt_bs
+            (by decide) (by decide)
+          have ⟨h_peek_x, _⟩ := peek_of_chars_cons sc.advance 'x' _ _ hcorr_bs
+          rw [h_peek_x]; dsimp only []
+          rw [show isLineBreakBool 'x' = false from by decide, if_neg Bool.false_ne_true]
+          -- processEscape handles 'x' → parseHexEscape
+          have h_col_bs : (sc.col + 1 : Nat) = sc.advance.col := hcorr_bs.col_eq
+          rw [h_col_bs] at hcorr_bs
+          obtain ⟨decoded, s_after, h_proc, hcorr_after, h_ie_after⟩ :=
+            processEscape_hex_ok sc.advance d1 d2 _ _ hcorr_bs
+              h_d1_nn h_d1_cr h_d2_nn h_d2_cr h_d1_hex h_d2_hex h_d1_lt128 h_d2_lt128
+          simp only [bind, Except.bind, h_proc]
+          -- Column and inputEnd adjustment for IH
+          have h_col_after : (sc.advance.col + 3 : Nat) = s_after.col := hcorr_after.col_eq
+          rw [h_col_after] at hcorr_after
+          rw [show sc.inputEnd = s_after.inputEnd from
+            by rw [← advance_inputEnd sc]; exact h_ie_after.symm]
+          exact ih s_after (acc.push decoded) fuel' hcorr_after
+            (by simp [List.length_cons] at h_f; omega)
+    · -- PASSTHROUGH: escapeChar c = c.toString
+      -- h_esc here : ¬(isEscapedChar c = true) or isEscapedChar c = false
+      have h_ef : isEscapedChar c = false := by
+        cases hv : isEscapedChar c
+        · rfl
+        · exact absurd hv h_esc
+      rw [escapeChar_passthrough_toList c h_ef] at hcorr
+      simp only [List.singleton_append] at hcorr
+      have ⟨h_peek_c, h_lt_c⟩ := peek_of_chars_cons sc c _ _ hcorr
+      match fuel, h_fuel with
+      | fuel' + 1, h_f =>
+        unfold collectDoubleQuotedLoop; rw [h_peek_c]
+        -- c must reach catch-all arm (not '"' or '\\', both escaped)
+        split
+        · simp at *
+        · rename_i h; have := Option.some.inj h; subst this
+          exact absurd h_ef (by decide)
+        · rename_i h; have := Option.some.inj h; subst this
+          exact absurd h_ef (by decide)
+        · -- Catch-all: regular char c
+          rename_i c' h_match; have := Option.some.inj h_match; subst this
+          -- isLineBreakBool c = false (c ≠ '\n', c ≠ '\r')
+          have h_ne_nl : c ≠ '\n' := fun h => by subst h; exact absurd h_ef (by decide)
+          have h_ne_cr : c ≠ '\r' := fun h => by subst h; exact absurd h_ef (by decide)
+          have h_nlb : isLineBreakBool c = false := by
+            unfold isLineBreakBool; simp [beq_eq_false_iff_ne, h_ne_nl, h_ne_cr]
+          rw [h_nlb, if_neg Bool.false_ne_true]
+          -- isNbJsonBool c = true (c.val ≥ 0x20)
+          have h_json : isNbJsonBool c = true := by
+            have h_ascii : ∀ n : Fin 128, isEscapedChar (Char.ofNat n.val) = false →
+                isNbJsonBool (Char.ofNat n.val) = true := by native_decide
+            by_cases h128 : c.toNat < 128
+            · have := h_ascii ⟨c.toNat, by simp [Char.toNat] at h128 ⊢; omega⟩
+                (by rwa [Char.ofNat_toNat])
+              rwa [Char.ofNat_toNat] at this
+            · -- c.toNat ≥ 128: always nb-json valid
+              have h128' : c.val.toNat ≥ 128 := by
+                change ¬(c.val.toNat < 128) at h128; omega
+              suffices isNbJsonProp c by simp [isNbJsonBool, this]
+              unfold isNbJsonProp; right
+              constructor
+              · change (0x20 : Nat) ≤ c.val.toNat; omega
+              · change c.val.toNat ≤ (0x10FFFF : Nat)
+                have := c.valid; unfold UInt32.isValidChar at this; omega
+          simp only [h_json, Bool.not_true]; rw [if_neg Bool.false_ne_true]
+          -- Advance and apply IH
+          have hcorr_c := advance_non_newline_corr sc c _ hcorr h_lt_c
+            (fun h => by subst h; exact absurd h_ef (by decide))
+            (fun h => by subst h; exact absurd h_ef (by decide))
+          have h_col_c : (sc.col + 1 : Nat) = sc.advance.col := hcorr_c.col_eq
+          rw [h_col_c] at hcorr_c
+          rw [show sc.inputEnd = sc.advance.inputEnd from by rw [advance_inputEnd]]
+          exact ih sc.advance (acc.push c) fuel' hcorr_c
+            (by simp [List.length_cons] at h_f; omega)
 
 /-! ## §3  Scanner Acceptance of Canonical Output (Step 1)
 
