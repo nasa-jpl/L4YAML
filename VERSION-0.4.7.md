@@ -249,7 +249,7 @@ emit_roundtrip_content_eq       →  contentEq v docs[0]!.value = true
 
 3. **The composition itself is trivially correct.** Once the right decomposition was found, the `universal_roundtrip` proof was 5 lines with no non-trivial reasoning. This confirms the v0.4.7 architecture: all difficulty is in the sorry stubs (characterizing scanner/parser behavior on canonical emitter output), not in the theorem composition.
 
-### Step 4: Escape Character Properties — Stubs 1–3
+### Step 4: Escape Character Properties — Stubs 1–3 (DONE)
 
 Discharge the three independent, easy sorry stubs that have no dependencies on scanner/parser internals.
 
@@ -272,7 +272,23 @@ Discharge the three independent, easy sorry stubs that have no dependencies on s
 
 #### Accomplishments
 
+1. **3 sorry stubs discharged in ~53 LOC** (vs estimated 95–155 LOC). `escapeChar_passthrough_is_valid` (25 LOC), `escapeChar_output_nbJson` (20 LOC), `emit_nonempty` (8 LOC). Sorry count: 10 → 6 warnings. Build: 422/422 modules, 0 errors.
+
+2. **Bounded `native_decide` on `Fin 32`/`Fin 128`** proved both escape character lemmas. For `escapeChar_passthrough_is_valid`: named arms closed by `native_decide`, `escapeHex2` arm by `Fin 32` bounded `native_decide` showing `escapeHex2 c ≠ c.toString` for all C0 chars, passthrough arm by `omega` + `c.valid` for char bounds. For `escapeChar_output_nbJson`: ASCII range (`Fin 128`) `native_decide` covers all 128 cases, non-ASCII uses `escapeChar_identity` + `escapeChar_passthrough_is_valid`.
+
+3. **`emit_nonempty` proved by `cases v` + `simp_all`**: String length reasoning required concrete `native_decide` witnesses for `"\"".length = 1`, `"[".length = 1`, etc. — `omega` cannot evaluate `String.length` on opaque string literals in Lean 4.29.
+
+4. **Opened `Lean4Yaml.Proofs.RoundTrip` namespace** for access to `isEscapedChar` and `escapeChar_identity` — needed by `escapeChar_output_nbJson`'s non-ASCII passthrough case.
+
 #### Reflections
+
+1. **UInt32/Nat bridging for `omega`.** `omega` can't evaluate `UInt32.toNat` or `(0x10FFFF : UInt32).toNat` — it sees them as opaque. Fix: use `show c.val.toNat ≥ 0x20` (Nat literal) instead of `c.val ≥ (0x20 : UInt32)`. For the upper bound: `have hv := c.valid; unfold UInt32.isValidChar at hv; rcases hv with h1 | ⟨_, h3⟩ <;> omega`.
+
+2. **`subst` direction gotcha.** `simp only [List.mem_singleton] at h_mem` may produce `ch = c` or `c = ch` depending on fvar ordering. `subst` eliminates the LHS variable — if it produces `c = ch`, it eliminates `c` (the function parameter), making later references to `c` fail. Fix: use `rw [h_mem]` instead of `subst h_mem`.
+
+3. **String length in Lean 4.29 (byte-array repr).** `String.length` on a literal like `"\""` is NOT reduced by `simp` or `decide` — it goes through UTF-8 byte counting internals. `native_decide` handles it. Pattern: `have : ("\"" : String).length = 1 := by native_decide`.
+
+4. **Actual LOC was ~55% of lower estimate.** The bounded `native_decide` approach eliminated most per-arm reasoning. `escapeChar_output_nbJson` was 20 LOC vs estimated 50–80 because the `by_cases c.val.toNat < 128` split reduced the problem to a single `native_decide` + a 5-line non-ASCII case.
 
 ### Step 5: Scanner Acceptance — Stubs 4–5 (Bottleneck)
 

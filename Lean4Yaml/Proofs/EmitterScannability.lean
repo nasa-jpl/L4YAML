@@ -143,6 +143,94 @@ theorem emit_nonempty (v : YamlValue) : (emit v).length > 0 := by
   have : ("}" : String).length = 1 := by native_decide
   cases v <;> simp_all [emit, emitScalar, String.length_append] <;> omega
 
+/-! ### §2.1  `escapeString` Decomposition
+
+Helper lemmas for inductive reasoning about `escapeString` output.
+The key fact: `escapeString` is a monoid homomorphism that concatenates
+`escapeChar c` for each character `c` in the input.
+-/
+
+-- Bridge: `String.foldl` in Lean 4.29 goes through `Std.Iter.fold` on
+-- `Slice.chars`, NOT `List.foldl`.  We prove the equivalence via
+-- `Iter.foldl_toList` and `String.toList_chars` (both `@[simp]`).
+theorem string_foldl_toList {α : Type _}
+    (f : α → Char → α) (init : α) (s : String) :
+    s.foldl f init = s.toList.foldl f init := by
+  simp [String.foldl, String.Slice.foldl, ← Std.Iter.foldl_toList]
+
+/-- The accumulator-shift property for `escapeString`'s foldl: prepending
+    to the accumulator is the same as prepending to the result. -/
+theorem escapeString_foldl_shift (chars : List Char) (init : String) :
+    chars.foldl (fun acc c => acc ++ escapeChar c) init =
+    init ++ chars.foldl (fun acc c => acc ++ escapeChar c) "" := by
+  induction chars generalizing init with
+  | nil => simp
+  | cons c cs ih =>
+    simp only [List.foldl_cons, String.empty_append]
+    rw [ih (init ++ escapeChar c), ih (escapeChar c)]
+    simp [String.append_assoc]
+
+/-- `escapeString` on empty string. -/
+theorem escapeString_nil : escapeString "" = "" := by
+  unfold escapeString
+  rw [string_foldl_toList]
+  simp
+
+/-- `escapeString` distributes over cons: the output is the escape of the
+    first character followed by the escape of the rest. -/
+theorem escapeString_cons (c : Char) (cs : List Char) :
+    escapeString (String.ofList (c :: cs)) =
+    escapeChar c ++ escapeString (String.ofList cs) := by
+  unfold escapeString
+  rw [string_foldl_toList, string_foldl_toList]
+  simp only [String.toList_ofList, List.foldl_cons, String.empty_append]
+  rw [escapeString_foldl_shift cs (escapeChar c)]
+
+/-! ### §2.2  First-Character Properties
+
+The first character of `escapeChar c` output determines which branch
+of `collectDoubleQuotedLoop` processes it.
+-/
+
+/-- The first character of `escapeChar c` is never `"`.
+    This ensures the scanner never mistakes escape output for a closing quote. -/
+theorem escapeChar_head_not_quote (c : Char) :
+    (escapeChar c).toList.head? ≠ some '"' := by
+  by_cases h_val : c.val.toNat < 128
+  · have : ∀ n : Fin 128,
+        (escapeChar (Char.ofNat n.val)).toList.head? ≠ some '"' := by native_decide
+    have := this ⟨c.toNat, by simp [Char.toNat]; omega⟩
+    rwa [Char.ofNat_toNat] at this
+  · simp only [Nat.not_lt] at h_val
+    have h_not_esc : isEscapedChar c = false := by
+      unfold isEscapedChar; split <;> simp_all <;> omega
+    rw [escapeChar_identity c h_not_esc]
+    simp only [Char.toString, String.toList_singleton, List.head?_cons]
+    intro heq; injection heq with heq; subst heq
+    exact absurd h_val (by native_decide)
+
+/-- The first character of `escapeChar c` is never a line break.
+    This ensures `collectDoubleQuotedLoop` never takes the newline-fold branch. -/
+theorem escapeChar_head_not_linebreak (c : Char) :
+    ∀ ch, (escapeChar c).toList.head? = some ch → isLineBreakBool ch = false := by
+  by_cases h_val : c.val.toNat < 128
+  · have : ∀ n : Fin 128, ∀ ch,
+        (escapeChar (Char.ofNat n.val)).toList.head? = some ch →
+        isLineBreakBool ch = false := by native_decide
+    have := this ⟨c.toNat, by simp [Char.toNat]; omega⟩
+    rwa [Char.ofNat_toNat] at this
+  · simp only [Nat.not_lt] at h_val
+    have h_not_esc : isEscapedChar c = false := by
+      unfold isEscapedChar; split <;> simp_all <;> omega
+    rw [escapeChar_identity c h_not_esc]
+    simp only [Char.toString, String.toList_singleton, List.head?_cons]
+    intro ch heq; injection heq with heq; subst heq
+    show (c == '\n' || c == '\r') = false
+    have h1 : c ≠ '\n' := fun h => by subst h; exact absurd h_val (by native_decide)
+    have h2 : c ≠ '\r' := fun h => by subst h; exact absurd h_val (by native_decide)
+    rw [Bool.or_eq_false_iff]
+    exact ⟨beq_eq_false_iff_ne.mpr h1, beq_eq_false_iff_ne.mpr h2⟩
+
 /-! ## §3  Scanner Acceptance of Canonical Output (Step 1)
 
 The main technical content: proving the scanner accepts emitter output.
