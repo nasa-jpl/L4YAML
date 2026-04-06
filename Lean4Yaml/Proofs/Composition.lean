@@ -1,7 +1,6 @@
 import Lean4Yaml.TokenParser
 import Lean4Yaml.Scanner
 import Lean4Yaml.Grammar
-import Lean4Yaml.Proofs.Completeness
 
 /-!
 # Composition Theorems

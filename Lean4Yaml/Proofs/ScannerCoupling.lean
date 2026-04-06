@@ -3,7 +3,6 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lean4Yaml.Proofs.CouplingBridge
-import Lean4Yaml.Proofs.SurfaceCoupling
 
 /-!
 # Scanner Loop Coupling
@@ -34,7 +33,6 @@ open Lean4Yaml.Surface
 open Lean4Yaml.Scanner
 open Lean4Yaml.CharPredicates
 open Lean4Yaml.Proofs.CouplingBridge
-open Lean4Yaml.Proofs.SurfaceCoupling
 
 /-! ## §1 Helpers -/
 

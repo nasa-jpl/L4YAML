@@ -373,6 +373,16 @@ theorem processEscape_named_ok (sc : ScannerState) (c tag : Char)
   all_goals (unfold escapeTag at h_tag; split at h_tag
     <;> simp_all <;> (try subst_vars) <;> contradiction)
 
+/-- **Strengthened named escape**: `processEscape` on a named escape tag
+    returns the ORIGINAL character `c`, not just some existential decoded value.
+    This is the content-preservation key for the round-trip proof. -/
+theorem processEscape_named_content (sc : ScannerState) (c tag : Char)
+    (h_tag : escapeTag c = some tag) (h_peek : sc.peek? = some tag) :
+    processEscape sc = .ok (c, sc.advance) := by
+  unfold escapeTag at h_tag; split at h_tag <;> simp_all
+  all_goals (subst_vars; unfold processEscape; rw [h_peek]; dsimp only [])
+  all_goals (first | rfl | (split <;> first | rfl | (exfalso; simp_all (config := { decide := true }))))
+
 /-- Named escape tags are never line breaks — needed to distinguish
     escape from escaped-newline in the scanner. -/
 theorem escapeTag_not_linebreak (c tag : Char)
@@ -509,6 +519,27 @@ theorem processEscape_hex_ok (sc : ScannerState) (h1 h2 : Char)
   exact ⟨_, _, rfl, hcorr_h2,
     by rw [advance_inputEnd, advance_inputEnd, advance_inputEnd]⟩
 
+-- String helper: s.push c ++ String.ofList cs = s ++ String.ofList (c :: cs)
+theorem push_append_ofList_eq (s : String) (c : Char) (cs : List Char) :
+    s.push c ++ String.ofList cs = s ++ String.ofList (c :: cs) := by
+  apply String.ext
+  simp only [String.toList_append, String.toList_push, String.toList_ofList,
+             List.append_assoc, List.singleton_append]
+
+-- String helper: s ++ String.ofList [] = s
+theorem append_ofList_nil (s : String) : s ++ String.ofList [] = s := by
+  apply String.ext; simp
+
+-- Hex foldl roundtrip for control characters (c.val.toNat < 0x20)
+theorem hex_foldl_roundtrip : ∀ n : Fin 32,
+    let h1 := hexNibble (n.val / 16)
+    let h2 := hexNibble (n.val % 16)
+    (("".push h1).push h2).foldl (fun acc c =>
+      acc * 16 + if c.isDigit then c.toNat - '0'.toNat
+                 else if c >= 'a' then c.toNat - 'a'.toNat + 10
+                 else c.toNat - 'A'.toNat + 10) 0 = n.val := by
+  native_decide
+
 /-- The core loop lemma: `collectDoubleQuotedLoop` succeeds on
     `escapeString content ++ "\""` for any content string.
 
@@ -524,9 +555,9 @@ theorem collectDoubleQuotedLoop_escapeString_succeeds
     (hcorr : ScannerSurfCorr sc
       ⟨(escapeString (String.ofList content_rest)).toList ++ ['"'], sc.col⟩)
     (h_fuel : fuel ≥ content_rest.length + 1) :
-    ∃ result s',
+    ∃ s',
       collectDoubleQuotedLoop sc acc fuel startPos inFlow currentIndent sc.inputEnd =
-      .ok (result, s') ∧ s'.peek? = none := by
+      .ok (acc ++ String.ofList content_rest, s') ∧ s'.peek? = none := by
   induction content_rest generalizing sc acc fuel with
   | nil =>
     -- Remaining chars: escapeString "" ++ "\"" = "\""
@@ -537,7 +568,8 @@ theorem collectDoubleQuotedLoop_escapeString_succeeds
     match fuel, h_fuel with
     | fuel' + 1, _ =>
       unfold collectDoubleQuotedLoop; rw [h_peek]; dsimp only []
-      refine ⟨acc, sc.advance, rfl, ?_⟩
+      rw [show acc ++ String.ofList [] = acc from append_ofList_nil acc]
+      refine ⟨sc.advance, rfl, ?_⟩
       -- After closing quote advance, we're at EOF → peek? = none
       have hcorr_adv := advance_non_newline_corr sc '"' [] hcorr h_lt
         (by decide) (by decide)
@@ -571,8 +603,8 @@ theorem collectDoubleQuotedLoop_escapeString_succeeds
           -- Check: tag is not a linebreak
           have h_tag_nlb := escapeTag_not_linebreak c tag h_tag
           rw [h_tag_nlb, if_neg Bool.false_ne_true]
-          -- processEscape succeeds with named tag
-          obtain ⟨decoded, h_proc⟩ := processEscape_named_ok sc.advance c tag h_tag h_peek_tag
+          -- processEscape succeeds with named tag and returns original char c
+          have h_proc := processEscape_named_content sc.advance c tag h_tag h_peek_tag
           simp only [bind, Except.bind, h_proc]
           -- Adjust column for chained advance
           have h_col_bs : (sc.col + 1 : Nat) = sc.advance.col := hcorr_bs.col_eq
@@ -586,7 +618,9 @@ theorem collectDoubleQuotedLoop_escapeString_succeeds
           -- Apply IH (bridge inputEnd: advance preserves it)
           rw [show sc.inputEnd = sc.advance.advance.inputEnd from
             by rw [advance_inputEnd, advance_inputEnd]]
-          exact ih sc.advance.advance (acc.push decoded) fuel'
+          rw [show acc ++ String.ofList (c :: cs) = acc.push c ++ String.ofList cs
+            from (push_append_ofList_eq acc c cs).symm]
+          exact ih sc.advance.advance (acc.push c) fuel'
             hcorr_tag (by simp [List.length_cons] at h_f; omega)
       · -- HEX ESCAPE: escapeChar c = "\\xHH"
         have h_tag_none : escapeTag c = none := by
@@ -629,13 +663,79 @@ theorem collectDoubleQuotedLoop_escapeString_succeeds
           obtain ⟨decoded, s_after, h_proc, hcorr_after, h_ie_after⟩ :=
             processEscape_hex_ok sc.advance d1 d2 _ _ hcorr_bs
               h_d1_nn h_d1_cr h_d2_nn h_d2_cr h_d1_hex h_d2_hex h_d1_lt128 h_d2_lt128
+          -- decoded = c via hex escape roundtrip
+          have h_decoded_eq : decoded = c := by
+            -- Step 1: Identify d1 and d2 as specific hexNibble values
+            have h_struct : ∀ n : Fin 32, escapeTag (Char.ofNat n.val) = none →
+                (escapeChar (Char.ofNat n.val)).toList =
+                  ['\\', 'x', hexNibble (n.val / 16), hexNibble (n.val % 16)] := by native_decide
+            have h_spec := h_struct ⟨c.toNat, by simp [Char.toNat]; omega⟩
+              (by rwa [Char.ofNat_toNat])
+            rw [Char.ofNat_toNat] at h_spec
+            have h_comb := h_ec_list.symm.trans h_spec
+            simp only [List.cons.injEq, and_true] at h_comb
+            have h_d1_eq : d1 = hexNibble (c.val.toNat / 16) := h_comb.2.2.1
+            have h_d2_eq : d2 = hexNibble (c.val.toNat % 16) := h_comb.2.2.2
+            -- Step 2: Derive peeks for d1 and d2 (col adjusted for advance_non_newline_corr)
+            have ⟨_, h_lt_x'⟩ := peek_of_chars_cons sc.advance 'x'
+              (d1 :: d2 :: (escapeString (String.ofList cs)).toList ++ ['"']) _ hcorr_bs
+            have hcorr_x_raw := advance_non_newline_corr sc.advance 'x'
+              (d1 :: d2 :: (escapeString (String.ofList cs)).toList ++ ['"'])
+              hcorr_bs h_lt_x' (by decide) (by decide)
+            have hcorr_x' : ScannerSurfCorr sc.advance.advance
+                ⟨d1 :: d2 :: (escapeString (String.ofList cs)).toList ++ ['"'],
+                 sc.advance.advance.col⟩ := by
+              rw [← hcorr_x_raw.col_eq]; exact hcorr_x_raw
+            have ⟨h_peek_d1', h_lt_d1'⟩ := peek_of_chars_cons sc.advance.advance d1
+              (d2 :: (escapeString (String.ofList cs)).toList ++ ['"']) _ hcorr_x'
+            have hcorr_d1_raw := advance_non_newline_corr sc.advance.advance d1
+              (d2 :: (escapeString (String.ofList cs)).toList ++ ['"']) hcorr_x' h_lt_d1'
+              h_d1_nn h_d1_cr
+            have hcorr_d1' : ScannerSurfCorr sc.advance.advance.advance
+                ⟨d2 :: (escapeString (String.ofList cs)).toList ++ ['"'],
+                 sc.advance.advance.advance.col⟩ := by
+              rw [← hcorr_d1_raw.col_eq]; exact hcorr_d1_raw
+            have ⟨h_peek_d2', _⟩ := peek_of_chars_cons sc.advance.advance.advance d2
+              ((escapeString (String.ofList cs)).toList ++ ['"']) _ hcorr_d1'
+            -- Step 3: Unfold processEscape at h_proc to expose parseHexEscape
+            unfold processEscape at h_proc; rw [h_peek_x] at h_proc; dsimp only [] at h_proc
+            unfold parseHexEscape at h_proc
+            -- Step 4: Show collectHexDigitsLoop reads d1,d2
+            have h_d1_hex' := h_d1_hex; have h_d2_hex' := h_d2_hex
+            unfold scannerHexCheck at h_d1_hex' h_d2_hex'
+            have h_coll : collectHexDigitsLoop sc.advance.advance "" 2 =
+                (("".push d1).push d2, sc.advance.advance.advance.advance) := by
+              unfold collectHexDigitsLoop; dsimp only []; rw [h_peek_d1']; dsimp only []
+              simp only [h_d1_hex', if_true]
+              unfold collectHexDigitsLoop; dsimp only []; rw [h_peek_d2']; dsimp only []
+              simp only [h_d2_hex', if_true]
+              unfold collectHexDigitsLoop; dsimp only []
+            simp only [h_coll] at h_proc
+            -- Step 5: Reduce length check and value bound
+            have h_len : (("".push d1).push d2).length = 2 := by
+              simp [String.length, String.toList_push]
+            simp only [h_len, Nat.reduceBNe, Bool.false_eq_true, ↓reduceIte] at h_proc
+            have h_vlt := hex_two_foldl_bound ⟨d1.toNat, h_d1_lt128⟩ ⟨d2.toNat, h_d2_lt128⟩
+              (by rwa [Char.ofNat_toNat]) (by rwa [Char.ofNat_toNat])
+            rw [Char.ofNat_toNat, Char.ofNat_toNat] at h_vlt
+            simp only [h_vlt, ↓reduceIte] at h_proc
+            -- Step 6: Extract decoded = Char.ofNat (foldl d1 d2)
+            have h_pair := Except.ok.inj h_proc
+            have h_fst := congrArg Prod.fst h_pair; dsimp only [] at h_fst
+            -- Step 7: Rewrite d1,d2 to hexNibble form and apply roundtrip
+            rw [← h_fst, h_d1_eq, h_d2_eq]
+            have h_rt := hex_foldl_roundtrip ⟨c.val.toNat, by omega⟩
+            simp only at h_rt; rw [h_rt]; exact (Char.ofNat_toNat c).symm ▸ rfl
+          rw [h_decoded_eq] at h_proc
           simp only [bind, Except.bind, h_proc]
           -- Column and inputEnd adjustment for IH
           have h_col_after : (sc.advance.col + 3 : Nat) = s_after.col := hcorr_after.col_eq
           rw [h_col_after] at hcorr_after
           rw [show sc.inputEnd = s_after.inputEnd from
             by rw [← advance_inputEnd sc]; exact h_ie_after.symm]
-          exact ih s_after (acc.push decoded) fuel' hcorr_after
+          rw [show acc ++ String.ofList (c :: cs) = acc.push c ++ String.ofList cs
+            from (push_append_ofList_eq acc c cs).symm]
+          exact ih s_after (acc.push c) fuel' hcorr_after
             (by simp [List.length_cons] at h_f; omega)
     · -- PASSTHROUGH: escapeChar c = c.toString
       -- h_esc here : ¬(isEscapedChar c = true) or isEscapedChar c = false
@@ -689,6 +789,8 @@ theorem collectDoubleQuotedLoop_escapeString_succeeds
           have h_col_c : (sc.col + 1 : Nat) = sc.advance.col := hcorr_c.col_eq
           rw [h_col_c] at hcorr_c
           rw [show sc.inputEnd = sc.advance.inputEnd from by rw [advance_inputEnd]]
+          rw [show acc ++ String.ofList (c :: cs) = acc.push c ++ String.ofList cs
+            from (push_append_ofList_eq acc c cs).symm]
           exact ih sc.advance (acc.push c) fuel' hcorr_c
             (by simp [List.length_cons] at h_f; omega)
 
@@ -760,7 +862,8 @@ theorem scanDoubleQuoted_emitScalar_ok (sc : ScannerState)
     (hcorr : ScannerSurfCorr sc
       ⟨['"'] ++ (escapeString content).toList ++ ['"'], sc.col⟩)
     (h_not_flow : sc.inFlow = false) :
-    ∃ s', scanDoubleQuoted sc = .ok s' ∧ s'.peek? = none := by
+    ∃ s', scanDoubleQuoted sc = .ok s' ∧ s'.peek? = none
+      ∧ s'.tokens = sc.tokens.push { pos := sc.currentPos, val := .scalar content .doubleQuoted } := by
   -- Surface after advancing past opening quote
   have ⟨_, h_lt⟩ := peek_of_chars_cons sc '"'
     ((escapeString content).toList ++ ['"']) _ hcorr
@@ -778,23 +881,36 @@ theorem scanDoubleQuoted_emitScalar_ok (sc : ScannerState)
     omega
   -- Loop succeeds and leaves scanner at EOF
   have h_ie : sc.inputEnd = sc.advance.inputEnd := by rw [advance_inputEnd]
-  obtain ⟨result, s_after, h_loop, h_peek_none⟩ :=
+  obtain ⟨s_after, h_loop, h_peek_none⟩ :=
     collectDoubleQuotedLoop_escapeString_succeeds sc.advance content.toList "" _
       sc.currentPos sc.inFlow sc.currentIndent
       (by rw [String.ofList_toList]; exact hcorr_adv) h_fuel
   -- Validate trailing content succeeds at EOF
   have h_vtc := validateTrailingContent_peek_none s_after sc.advance.inputEnd h_peek_none
-  -- Build the result state and prove both conjuncts
-  refine ⟨{ (s_after.emitAt sc.currentPos (.scalar result .doubleQuoted))
-              with simpleKeyAllowed := false }, ?_, ?_⟩
+  -- The loop returns content = "" ++ String.ofList content.toList = content
+  have h_content_eq : "" ++ String.ofList content.toList = content := by
+    apply String.ext; simp
+  -- Token preservation: loop and advance don't modify tokens
+  have h_tok_pres : s_after.tokens = sc.tokens :=
+    (ScannerCorrectness.ScanHelpers.collectDoubleQuotedLoop_preserves_tokens
+      _ _ _ _ _ _ _ _ h_loop).trans
+      (ScannerCorrectness.advance_preserves_tokens sc)
+  -- Build the result state and prove all conjuncts
+  refine ⟨{ (s_after.emitAt sc.currentPos (.scalar content .doubleQuoted))
+              with simpleKeyAllowed := false }, ?_, ?_, ?_⟩
   · -- scanDoubleQuoted sc = .ok _
     simp only [scanDoubleQuoted, bind, Except.bind]
-    rw [h_ie, h_loop]
+    rw [h_ie]
+    rw [h_content_eq] at h_loop
+    rw [h_loop]
     simp [h_not_flow, h_vtc]
   · -- peek? = none (emitAt and simpleKeyAllowed don't change peek?)
     unfold ScannerState.emitAt ScannerState.peek?
     unfold ScannerState.peek? at h_peek_none
     split at h_peek_none <;> simp_all
+  · -- tokens characterization
+    show s_after.tokens.push _ = sc.tokens.push _
+    rw [h_tok_pres]
 
 -- scanNextToken returns none when scanner is at EOF
 theorem scanNextToken_eof (s : ScannerState) (h_peek : s.peek? = none) :
@@ -892,6 +1008,7 @@ theorem emitScalar_utf8ByteSize_ge (content : String) :
   omega
 
 -- scanLoop with exactly 2 iterations (scanNextToken returns some then none)
+-- Returns the exact token array produced.
 theorem scanLoop_two_iter {s₀ s₁ : ScannerState} {fuel : Nat}
     (h_fuel : fuel ≥ 2)
     (h_snt0 : scanNextToken s₀ = .ok (some s₁))
@@ -908,6 +1025,72 @@ theorem scanLoop_two_iter {s₀ s₁ : ScannerState} {fuel : Nat}
     simp only [scanLoop, h_snt1, h_flow, h_dp, Bool.false_and]
     exact ⟨_, rfl⟩
   rw [h1]; exact h2
+
+-- scanLoop actually computes to the concrete token array
+theorem scanLoop_two_iter_eq {s₀ s₁ : ScannerState} {fuel : Nat}
+    (h_fuel : fuel ≥ 2)
+    (h_snt0 : scanNextToken s₀ = .ok (some s₁))
+    (h_snt1 : scanNextToken s₁ = .ok none)
+    (h_flow : s₁.flowLevel = 0)
+    (h_dp : s₁.directivesPresent = false) :
+    scanLoop s₀ fuel = .ok ((unwindIndents s₁ (-1)).emit .streamEnd).tokens := by
+  obtain ⟨f, rfl⟩ : ∃ n, fuel = n + 2 := ⟨fuel - 2, by omega⟩
+  simp only [scanLoop, h_snt0, h_snt1, h_flow, h_dp, Bool.false_and]
+  simp (config := { decide := true }) only [ite_false]
+
+-- ═══ scanLoop compositionality ═══
+-- Forward composition: one scanNextToken step + remaining loop = full loop.
+-- Enables proving scanner acceptance for multi-token emitter output by
+-- chaining individual scanNextToken steps.
+
+/-- **Forward step**: If `scanNextToken` produces a new state `s₁`, and
+    `scanLoop s₁ fuel` succeeds, then `scanLoop s₀ (fuel + 1)` succeeds
+    with the same result.
+
+    This is the key compositionality lemma for scanner acceptance proofs:
+    compose N steps backwards from `scanLoop_two_iter` (or `scanLoop_eof`)
+    using repeated applications of `scanLoop_step_eq`. -/
+theorem scanLoop_step_eq {s₀ s₁ : ScannerState} {fuel : Nat}
+    {toks : Array (Positioned YamlToken)}
+    (h_snt : scanNextToken s₀ = .ok (some s₁))
+    (h_loop : scanLoop s₁ fuel = .ok toks) :
+    scanLoop s₀ (fuel + 1) = .ok toks := by
+  simp only [scanLoop, h_snt]; exact h_loop
+
+/-- Existential version of `scanLoop_step_eq`. -/
+theorem scanLoop_step {s₀ s₁ : ScannerState} {fuel : Nat}
+    (h_snt : scanNextToken s₀ = .ok (some s₁))
+    (h_loop : ∃ toks, scanLoop s₁ fuel = .ok toks) :
+    ∃ toks, scanLoop s₀ (fuel + 1) = .ok toks := by
+  obtain ⟨toks, h⟩ := h_loop
+  exact ⟨toks, scanLoop_step_eq h_snt h⟩
+
+/-- **Fuel monotonicity**: If `scanLoop` succeeds with `fuel₁`,
+    it succeeds with any larger fuel `fuel₂ ≥ fuel₁`, producing
+    the same token array.
+
+    Proof by induction on `fuel₁`. Each `scanLoop` iteration
+    either terminates (EOF/error → fuel irrelevant) or recurses with
+    one less fuel (→ inductive hypothesis). -/
+theorem scanLoop_fuel_mono {s : ScannerState} {fuel₁ fuel₂ : Nat}
+    {toks : Array (Positioned YamlToken)}
+    (h : scanLoop s fuel₁ = .ok toks) (h_le : fuel₁ ≤ fuel₂) :
+    scanLoop s fuel₂ = .ok toks := by
+  induction fuel₁ generalizing s fuel₂ toks with
+  | zero =>
+    -- scanLoop s 0 = .error (.fuelExhausted ...), contradicts h
+    unfold scanLoop at h; cases h
+  | succ m IH =>
+    obtain ⟨n, rfl⟩ : ∃ n, fuel₂ = n + 1 := ⟨fuel₂ - 1, by omega⟩
+    -- Both scanLoop s (m+1) and scanLoop s (n+1) unfold to matching on scanNextToken s
+    unfold scanLoop at h ⊢
+    -- Generalize the shared discriminant, then case-split to reduce both matches
+    generalize scanNextToken s = snt_result at h ⊢
+    cases snt_result with
+    | error e => cases h
+    | ok res => cases res with
+      | none => exact h
+      | some s' => exact IH h (by omega)
 
 -- ═══ directivesPresent preservation helpers ═══
 -- None of advance/emitAt/consumeNewline/skipSpaces/skipWhitespace/processEscape/
@@ -1109,6 +1292,199 @@ theorem scanDoubleQuoted_preserves_dp (s s' : ScannerState)
   · injection h_ok with h_eq; subst h_eq
     simp [emitAt_preserves_dp, h_dp_collect, advance_preserves_dp]
 
+-- ═══ indents preservation helpers ═══
+-- Structurally identical to directivesPresent: none of advance/emitAt/consumeNewline/
+-- skipSpaces/skipWhitespace/processEscape/foldQuotedNewlines/collectDoubleQuotedLoop
+-- modify indents.
+
+theorem advance_preserves_indents (s : ScannerState) :
+    s.advance.indents = s.indents := by
+  unfold ScannerState.advance
+  split
+  · simp only []
+    split
+    · rfl
+    · split <;> rfl
+  · rfl
+
+theorem consumeNewline_preserves_indents (s : ScannerState) :
+    (consumeNewline s).indents = s.indents := by
+  unfold consumeNewline
+  split
+  · exact advance_preserves_indents s
+  · dsimp only []
+    split
+    · exact advance_preserves_indents s
+    · exact advance_preserves_indents s
+  · rfl
+
+theorem skipSpaces_preserves_indents (s : ScannerState) :
+    (skipSpaces s).indents = s.indents := by
+  unfold skipSpaces
+  generalize s.inputEnd - s.offset = fuel
+  induction fuel generalizing s with
+  | zero => unfold skipSpacesLoop; rfl
+  | succ _ ih =>
+    unfold skipSpacesLoop; split
+    · rw [ih, advance_preserves_indents]
+    · rfl
+
+theorem skipWhitespace_preserves_indents (s : ScannerState) :
+    (skipWhitespace s).indents = s.indents := by
+  unfold skipWhitespace
+  generalize s.inputEnd - s.offset = fuel
+  induction fuel generalizing s with
+  | zero => unfold skipWhitespaceLoop; rfl
+  | succ _ ih =>
+    unfold skipWhitespaceLoop; split
+    · split
+      · rw [ih, advance_preserves_indents]
+      · rfl
+    · rfl
+
+theorem collectHexDigitsLoop_preserves_indents (s : ScannerState) (hex : String) (n : Nat) :
+    (collectHexDigitsLoop s hex n).snd.indents = s.indents := by
+  induction n generalizing s hex with
+  | zero => unfold collectHexDigitsLoop; rfl
+  | succ _ ih =>
+    unfold collectHexDigitsLoop
+    split
+    · split
+      · rw [ih, advance_preserves_indents]
+      · rfl
+    · rfl
+
+theorem parseHexEscape_preserves_indents (s : ScannerState) (digits : Nat)
+    (result : Char × ScannerState) (h : parseHexEscape s digits = .ok result) :
+    result.snd.indents = s.indents := by
+  unfold parseHexEscape at h
+  simp only [] at h
+  split at h
+  · contradiction
+  · split at h
+    · injection h with h_eq; subst h_eq
+      exact collectHexDigitsLoop_preserves_indents s "" digits
+    · contradiction
+
+theorem processEscape_preserves_indents (s : ScannerState) (result : Char × ScannerState)
+    (h : processEscape s = .ok result) :
+    result.snd.indents = s.indents := by
+  unfold processEscape at h
+  split at h <;> try contradiction
+  split at h
+  · injection h with h_eq; subst h_eq; exact advance_preserves_indents s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_indents s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_indents s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_indents s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_indents s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_indents s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_indents s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_indents s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_indents s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_indents s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_indents s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_indents s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_indents s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_indents s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_indents s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_indents s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_indents s
+  · injection h with h_eq; subst h_eq; exact advance_preserves_indents s
+  · simp only [] at h; exact parseHexEscape_preserves_indents _ _ _ h |>.trans (advance_preserves_indents s)
+  · simp only [] at h; exact parseHexEscape_preserves_indents _ _ _ h |>.trans (advance_preserves_indents s)
+  · simp only [] at h; exact parseHexEscape_preserves_indents _ _ _ h |>.trans (advance_preserves_indents s)
+  · contradiction
+
+theorem foldQuotedNewlinesLoop_preserves_indents (s : ScannerState) (emptyCount fuel : Nat) :
+    (foldQuotedNewlinesLoop s emptyCount fuel).fst.indents = s.indents := by
+  induction fuel generalizing s emptyCount with
+  | zero => unfold foldQuotedNewlinesLoop; rfl
+  | succ _ ih =>
+    unfold foldQuotedNewlinesLoop
+    simp only []
+    split
+    · split
+      · rw [ih, consumeNewline_preserves_indents, skipSpaces_preserves_indents]
+      · rfl
+    · rfl
+
+theorem foldQuotedNewlines_preserves_indents (s : ScannerState) (result : String × ScannerState)
+    (h : foldQuotedNewlines s = .ok result) :
+    result.snd.indents = s.indents := by
+  unfold foldQuotedNewlines at h
+  simp only [] at h
+  split at h
+  · split at h <;> try contradiction
+    split at h
+    · injection h with h_eq; subst h_eq
+      simp [skipWhitespace_preserves_indents, skipSpaces_preserves_indents,
+            foldQuotedNewlinesLoop_preserves_indents, consumeNewline_preserves_indents]
+    · injection h with h_eq; subst h_eq
+      simp [skipWhitespace_preserves_indents, skipSpaces_preserves_indents,
+            foldQuotedNewlinesLoop_preserves_indents, consumeNewline_preserves_indents]
+  · split at h
+    · injection h with h_eq; subst h_eq
+      simp [skipWhitespace_preserves_indents, skipSpaces_preserves_indents,
+            foldQuotedNewlinesLoop_preserves_indents, consumeNewline_preserves_indents]
+    · injection h with h_eq; subst h_eq
+      simp [skipWhitespace_preserves_indents, skipSpaces_preserves_indents,
+            foldQuotedNewlinesLoop_preserves_indents, consumeNewline_preserves_indents]
+
+theorem collectDoubleQuotedLoop_preserves_indents (s : ScannerState) (content : String)
+    (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat)
+    (result : String × ScannerState)
+    (h : collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result) :
+    result.snd.indents = s.indents := by
+  induction fuel generalizing s content with
+  | zero => unfold collectDoubleQuotedLoop at h; contradiction
+  | succ fuel' ih =>
+    unfold collectDoubleQuotedLoop at h
+    split at h <;> try contradiction
+    · -- closing quote
+      injection h with h_eq; subst h_eq
+      exact advance_preserves_indents s
+    · -- escape
+      simp only [] at h
+      split at h <;> try contradiction
+      · split at h
+        · exact (ih _ _ h).trans (skipWhitespace_preserves_indents _)
+                |>.trans (consumeNewline_preserves_indents _) |>.trans (advance_preserves_indents s)
+        · simp only [bind, Except.bind] at h
+          split at h <;> try contradiction
+          rename_i escape_result heq_escape
+          cases escape_result
+          exact (ih _ _ h).trans (processEscape_preserves_indents _ _ heq_escape)
+                |>.trans (advance_preserves_indents s)
+    · -- regular character
+      split at h
+      · simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i fold_result heq_fold
+        split at h <;> try contradiction
+        split at h <;> try contradiction
+        simp only [] at h
+        split at h <;> try contradiction
+        exact (ih _ _ h).trans (foldQuotedNewlines_preserves_indents _ _ heq_fold)
+      · split at h <;> try contradiction
+        exact (ih _ _ h).trans (advance_preserves_indents s)
+
+theorem scanDoubleQuoted_preserves_indents (s s' : ScannerState)
+    (h_ok : scanDoubleQuoted s = .ok s') :
+    s'.indents = s.indents := by
+  unfold scanDoubleQuoted at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok <;> try contradiction
+  rename_i result heq
+  have h_ids_collect := collectDoubleQuotedLoop_preserves_indents _ _ _ _ _ _ _ _ heq
+  split at h_ok
+  · split at h_ok <;> try contradiction
+    injection h_ok with h_eq; subst h_eq
+    unfold ScannerState.emitAt
+    exact h_ids_collect.trans (advance_preserves_indents s)
+  · injection h_ok with h_eq; subst h_eq
+    unfold ScannerState.emitAt
+    exact h_ids_collect.trans (advance_preserves_indents s)
+
 -- Helper: skipWhitespace is identity when first char is not whitespace
 theorem skipWhitespace_of_not_ws (s : ScannerState) (c : Char)
     (h_pk : s.peek? = some c) (h_nws : isWhiteSpaceBool c = false)
@@ -1180,11 +1556,27 @@ theorem saveSimpleKey_preserves_peek (s : ScannerState) :
     · dsimp only []; rfl
     · rfl
 
+-- saveSimpleKey only adds placeholder tokens, so filtering them out is invariant.
+theorem saveSimpleKey_filter_placeholder (s : ScannerState) :
+    (saveSimpleKey s).tokens.filter (fun t => t.val != .placeholder)
+    = s.tokens.filter (fun t => t.val != .placeholder) := by
+  unfold saveSimpleKey
+  split
+  · rfl
+  · split
+    · dsimp only []
+      simp
+    · rfl
+
 -- The first scanNextToken call on the initial emitScalar state
 -- dispatches to scanDoubleQuoted and succeeds.
 theorem scanNextToken_emitScalar_init (content : String) :
     ∃ s₁, scanNextToken ((ScannerState.mk' (emitScalar content)).emit .streamStart) = .ok (some s₁)
-      ∧ s₁.peek? = none ∧ s₁.flowLevel = 0 ∧ s₁.directivesPresent = false := by
+      ∧ s₁.peek? = none ∧ s₁.flowLevel = 0 ∧ s₁.directivesPresent = false
+      ∧ (∃ tok ∈ s₁.tokens, tok.val = .scalar content .doubleQuoted)
+      ∧ s₁.indents = #[{column := -1, isSequence := false}]
+      ∧ (s₁.tokens.filter (fun t => t.val != .placeholder)).map (·.val)
+          = #[.streamStart, .scalar content .doubleQuoted] := by
   -- Build ScannerSurfCorr for the initial state
   have h_chars := chars_from_zero_toList (emitScalar content)
   rw [emitScalar_toList] at h_chars
@@ -1200,7 +1592,8 @@ theorem scanNextToken_emitScalar_init (content : String) :
     ∧ s_pp.col = 0
     ∧ s_pp.indents = #[{column := -1, isSequence := false}]
     ∧ s_pp.flowLevel = 0 ∧ s_pp.directivesPresent = false
-    ∧ s_pp.allowDirectives = true ∧ s_pp.currentIndent = -1 := by
+    ∧ s_pp.allowDirectives = true ∧ s_pp.currentIndent = -1
+    ∧ (s_pp.tokens.filter (fun t => t.val != .placeholder)).map (·.val) = #[.streamStart] := by
     -- Get peek? for initial state
     have h_corr_s₀ : ScannerSurfCorr
         ((ScannerState.mk' (emitScalar content)).emit .streamStart)
@@ -1216,38 +1609,46 @@ theorem scanNextToken_emitScalar_init (content : String) :
     -- (default needIndentCheck is true; the if-branch sets it to false after unwindIndents)
     refine ⟨saveSimpleKey { (ScannerState.mk' (emitScalar content)).emit .streamStart
               with needIndentCheck := false },
-      ?_, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
-    -- Prove: scanNextToken_preprocess = .ok (some (saveSimpleKey {...}, '"'))
-    unfold scanNextToken_preprocess
-    -- Step 1: resolve skipToContent bind
-    rw [h_stc]; simp only [bind, Except.bind, pure, Except.pure]
-    -- Step 2: resolve hasMore
-    have h_hm : ((ScannerState.mk' (emitScalar content)).emit .streamStart).hasMore = true := by
-      unfold ScannerState.hasMore; exact decide_eq_true (by omega)
-    simp only [h_hm, Bool.not_true, Bool.false_eq_true, ite_false]
-    -- Step 3: resolve unwindIndents (identity since currentIndent = -1 < col = 0)
-    have h_uwi : unwindIndents ((ScannerState.mk' (emitScalar content)).emit .streamStart)
-        ↑((ScannerState.mk' (emitScalar content)).emit .streamStart).col
-        = (ScannerState.mk' (emitScalar content)).emit .streamStart := by
-      unfold unwindIndents unwindIndentsLoop; split <;> rfl
-    simp only [h_uwi]
-    -- Step 4: resolve if-checks and remaining computation
-    have h_inFlow : ((ScannerState.mk' (emitScalar content)).emit .streamStart).inFlow = false := by rfl
-    have h_nic_true : ((ScannerState.mk' (emitScalar content)).emit .streamStart).needIndentCheck = true := by rfl
-    have h_no_trailing : ¬(((ScannerState.mk' (emitScalar content)).emit .streamStart).indents.size <
-        ((ScannerState.mk' (emitScalar content)).emit .streamStart).indents.size) := by omega
-    simp only [h_inFlow, h_nic_true, Bool.not_false, Bool.true_and,
-               h_no_trailing, decide_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
-    -- Prove peek? of saveSimpleKey result = some '"'
-    have h_sk_peek : (saveSimpleKey { (ScannerState.mk' (emitScalar content)).emit .streamStart
-        with needIndentCheck := false }).peek?
-        = some '"' := by
-      rw [saveSimpleKey_preserves_peek]
-      exact h_pk₀
-    -- Rewrite the peek? in the match to resolve it
-    rw [h_sk_peek]
+      ?_, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, ?_⟩
+    · -- Prove: scanNextToken_preprocess = .ok (some (saveSimpleKey {...}, '"'))
+      unfold scanNextToken_preprocess
+      -- Step 1: resolve skipToContent bind
+      rw [h_stc]; simp only [bind, Except.bind, pure, Except.pure]
+      -- Step 2: resolve hasMore
+      have h_hm : ((ScannerState.mk' (emitScalar content)).emit .streamStart).hasMore = true := by
+        unfold ScannerState.hasMore; exact decide_eq_true (by omega)
+      simp only [h_hm, Bool.not_true, Bool.false_eq_true, ite_false]
+      -- Step 3: resolve unwindIndents (identity since currentIndent = -1 < col = 0)
+      have h_uwi : unwindIndents ((ScannerState.mk' (emitScalar content)).emit .streamStart)
+          ↑((ScannerState.mk' (emitScalar content)).emit .streamStart).col
+          = (ScannerState.mk' (emitScalar content)).emit .streamStart := by
+        unfold unwindIndents unwindIndentsLoop; split <;> rfl
+      simp only [h_uwi]
+      -- Step 4: resolve if-checks and remaining computation
+      have h_inFlow : ((ScannerState.mk' (emitScalar content)).emit .streamStart).inFlow = false := by rfl
+      have h_nic_true : ((ScannerState.mk' (emitScalar content)).emit .streamStart).needIndentCheck = true := by rfl
+      have h_no_trailing : ¬(((ScannerState.mk' (emitScalar content)).emit .streamStart).indents.size <
+          ((ScannerState.mk' (emitScalar content)).emit .streamStart).indents.size) := by omega
+      simp only [h_inFlow, h_nic_true, Bool.not_false, Bool.true_and,
+                 h_no_trailing, decide_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
+      -- Prove peek? of saveSimpleKey result = some '"'
+      have h_sk_peek : (saveSimpleKey { (ScannerState.mk' (emitScalar content)).emit .streamStart
+          with needIndentCheck := false }).peek?
+          = some '"' := by
+        rw [saveSimpleKey_preserves_peek]
+        exact h_pk₀
+      -- Rewrite the peek? in the match to resolve it
+      rw [h_sk_peek]
+    · -- Filter property: saveSimpleKey preserves filtered tokens
+      unfold saveSimpleKey
+      split
+      · simp [ScannerState.emit, ScannerState.mk']
+      · split
+        · dsimp only []
+          simp [ScannerState.emit, ScannerState.mk']
+        · simp [ScannerState.emit, ScannerState.mk']
   obtain ⟨s_pp, h_pp_eq, h_inp, h_off, h_ie, h_col_pp, h_ids,
-          h_fl_pp, h_dp_pp, h_ad_pp, h_ci_pp⟩ := h_pp
+          h_fl_pp, h_dp_pp, h_ad_pp, h_ci_pp, h_filt_pp⟩ := h_pp
   -- ═══ Step 2: build ScannerSurfCorr for s_pp from field equalities ═══
   have h_corr_pp : ScannerSurfCorr s_pp
       ⟨['"'] ++ (escapeString content).toList ++ ['"'], s_pp.col⟩ := by
@@ -1284,26 +1685,48 @@ theorem scanNextToken_emitScalar_init (content : String) :
   -- ═══ Step 5: dispatchContent produces final state with right properties ═══
   have h_dc : ∃ s_final, scanNextToken_dispatchContent s_ad '"' = .ok s_final
     ∧ s_final.peek? = none ∧ s_final.flowLevel = 0
-    ∧ s_final.directivesPresent = false := by
+    ∧ s_final.directivesPresent = false
+    ∧ (∃ tok ∈ s_final.tokens, tok.val = .scalar content .doubleQuoted)
+    ∧ s_final.indents = s_ad.indents
+    ∧ (s_final.tokens.filter (fun t => t.val != .placeholder)).map (·.val)
+        = #[.streamStart, .scalar content .doubleQuoted] := by
     -- scanDoubleQuoted succeeds and preserves fields
-    obtain ⟨s_dq, h_dq, h_pk_dq⟩ := scanDoubleQuoted_emitScalar_ok s_ad content h_corr_ad h_inFlow
+    obtain ⟨s_dq, h_dq, h_pk_dq, h_tok_dq⟩ := scanDoubleQuoted_emitScalar_ok s_ad content h_corr_ad h_inFlow
     have h_fl_dq : s_dq.flowLevel = 0 :=
       (Lean4Yaml.Proofs.ScannerPlainScalarValid.scanDoubleQuoted_preserves_flowLevel
         s_ad s_dq h_dq).trans h_fl_ad
     have h_dp_dq : s_dq.directivesPresent = false :=
       (scanDoubleQuoted_preserves_dp s_ad s_dq h_dq).trans h_dp_pp
+    have h_ids_dq : s_dq.indents = s_ad.indents :=
+      scanDoubleQuoted_preserves_indents s_ad s_dq h_dq
+    -- Token membership: scalar is in s_dq.tokens
+    have h_tok_mem : ∃ tok ∈ s_dq.tokens, tok.val = .scalar content .doubleQuoted :=
+      ⟨_, by rw [h_tok_dq]; exact Array.mem_push_self, rfl⟩
+    -- Extend filtered tokens: s_dq.tokens = s_ad.tokens.push {scalar}, s_ad.tokens = s_pp.tokens
+    have h_filt_dq :
+        (s_dq.tokens.filter (fun t => t.val != .placeholder)).map (·.val)
+          = #[.streamStart, .scalar content .doubleQuoted] := by
+      rw [h_tok_dq]
+      simp only [Array.filter_push,
+        show (YamlToken.scalar content .doubleQuoted != .placeholder) = true from rfl,
+        ite_true, Array.map_push,
+        show s_ad.tokens = s_pp.tokens from rfl, h_filt_pp]
+      rfl
     -- Unfold dispatchContent: all if-branches except '"' are eliminated by decide
     unfold scanNextToken_dispatchContent
     simp (config := { decide := true }) only [bind, Except.bind, pure, h_dq]
-    -- The simpleKey update preserves peek?/flowLevel/directivesPresent.
+    -- The simpleKey update preserves peek?/flowLevel/directivesPresent/tokens/indents.
     -- Use Bool.rec to avoid dependent elimination issues with cases.
     exact ⟨_, rfl,
       s_dq.simpleKey.possible.rec h_pk_dq h_pk_dq,
       s_dq.simpleKey.possible.rec h_fl_dq h_fl_dq,
-      s_dq.simpleKey.possible.rec h_dp_dq h_dp_dq⟩
-  obtain ⟨s_final, h_dc_eq, h_pkf, h_flf, h_dpf⟩ := h_dc
+      s_dq.simpleKey.possible.rec h_dp_dq h_dp_dq,
+      s_dq.simpleKey.possible.rec h_tok_mem h_tok_mem,
+      s_dq.simpleKey.possible.rec h_ids_dq h_ids_dq,
+      s_dq.simpleKey.possible.rec h_filt_dq h_filt_dq⟩
+  obtain ⟨s_final, h_dc_eq, h_pkf, h_flf, h_dpf, h_tokf, h_idsf, h_filtf⟩ := h_dc
   -- ═══ Step 6: compose all steps through scanNextToken ═══
-  refine ⟨s_final, ?_, h_pkf, h_flf, h_dpf⟩
+  refine ⟨s_final, ?_, h_pkf, h_flf, h_dpf, h_tokf, h_idsf.trans h_ids, h_filtf⟩
   -- Reduce: scanNextToken = preprocess →ᵦ dispatchStructural →ᵦ allowDirectives →
   --   checkBlockFlowIndent →ᵦ dispatchFlowIndicators →ᵦ dispatchBlockIndicators →ᵦ dispatchContent
   unfold scanNextToken
@@ -1323,7 +1746,7 @@ theorem scan_accepts_emitScalar (content : String) :
     obtain ⟨toks, h⟩ := h
     exact ⟨toks.filter fun t => t.val != .placeholder, by rw [h]⟩
   -- First scanNextToken: dispatches to scanDoubleQuoted, succeeds
-  obtain ⟨s₁, h_snt1, h_peek1, h_flow1, h_dp1⟩ := scanNextToken_emitScalar_init content
+  obtain ⟨s₁, h_snt1, h_peek1, h_flow1, h_dp1, _h_tok1, _, _⟩ := scanNextToken_emitScalar_init content
   -- Second scanNextToken: EOF → .ok none
   have h_snt2 : scanNextToken s₁ = .ok none := scanNextToken_eof s₁ h_peek1
   have h_size := emitScalar_utf8ByteSize_ge content
@@ -1444,6 +1867,427 @@ theorem parseStreamLoop_single_doc
         -- Both if-branches are identical (stuck or not, result is same)
         split <;> rfl)
 
+/-- **Grammability preservation**: The parsed output of emitter output
+    is grammable. Follows from `parseStream_output_grammable` applied
+    to the scan+parse decomposition. -/
+theorem emit_parsed_grammable (v : YamlValue)
+    (docs : Array YamlDocument)
+    (h : parseYaml (emit v) = .ok docs) :
+    ∀ doc ∈ docs.toList, Grammable doc.value false := by
+  simp only [parseYaml] at h
+  split at h
+  · rename_i raw_docs h_raw
+    injection h with h_eq
+    have ⟨tokens, h_scan, h_parse⟩ := Composition.parseYamlRaw_ok_decompose (emit v) raw_docs h_raw
+    have h_gram := ParserGrammable.parseStream_output_grammable (emit v) tokens raw_docs h_scan h_parse
+    intro doc hdoc
+    rw [← h_eq] at hdoc
+    simp only [Array.toList_map] at hdoc
+    obtain ⟨raw_doc, h_raw_mem, h_compose_eq⟩ := List.mem_map.mp hdoc
+    subst h_compose_eq
+    exact h_gram raw_doc h_raw_mem
+  · simp at h
+
+/-! ## §5  Content Fidelity Infrastructure
+
+Helper lemmas for the content fidelity proof (`emit_roundtrip_content_eq`).
+
+### §5.1  Compose invariance for scalars
+
+`YamlDocument.compose` applies `resolveAliases` and `stripAnchors`.
+For scalars, `resolveAliases` is identity and `stripAnchors` only clears
+the anchor field. Since `contentEq` ignores anchors, compose doesn't
+affect content equivalence for scalars.
+-/
+
+-- resolveAliases is identity on scalars
+theorem resolveAliases_scalar (s : Scalar)
+    (anchors : Array (String × YamlValue)) :
+    (YamlValue.scalar s).resolveAliases anchors = .scalar s := by
+  unfold YamlValue.resolveAliases; rfl
+
+-- stripAnchors on scalar just clears the anchor
+theorem stripAnchors_scalar (s : Scalar) :
+    (YamlValue.scalar s).stripAnchors = .scalar { s with anchor := none } := by
+  unfold YamlValue.stripAnchors; rfl
+
+-- compose on a scalar document preserves the content field
+theorem compose_scalar_content (doc : YamlDocument) (s : Scalar)
+    (h_val : doc.value = .scalar s) :
+    (doc.compose).value = .scalar { s with anchor := none } := by
+  unfold YamlDocument.compose; dsimp only []
+  rw [h_val, resolveAliases_scalar, stripAnchors_scalar]
+
+-- contentEq for scalars only depends on content string
+theorem contentEq_scalar_content (s₁ s₂ : Scalar)
+    (h : s₁.content = s₂.content) : contentEq (.scalar s₁) (.scalar s₂) = true := by
+  unfold contentEq; simp [h]
+
+-- contentEq through compose for scalars: original vs composed
+theorem contentEq_scalar_compose (s_orig : Scalar) (s_parsed : Scalar)
+    (h_content : s_orig.content = s_parsed.content) :
+    contentEq (.scalar s_orig) (.scalar { s_parsed with anchor := none }) = true := by
+  exact contentEq_scalar_content s_orig { s_parsed with anchor := none } h_content
+
+/-! ### §5.2  Scanner content preservation
+
+The scanner's double-quoted collector recovers the original content string
+from the emitter's escape-encoded output. This is the key roundtrip property.
+-/
+
+-- Hex foldl roundtrip for control characters (c.val.toNat < 0x20)
+/-- **Scanner content preservation**: scanning `emitScalar content` produces
+    a token stream where the scalar token's content equals the original.
+
+    This bridges the emitter's `escapeString` encoding with the scanner's
+    `collectDoubleQuotedLoop` + `processEscape` decoding. The proof follows
+    from `collectDoubleQuotedLoop_escapeString_succeeds` strengthened with
+    content equality (the loop accumulator reconstructs the original string). -/
+theorem scanFiltered_emitScalar_content (content : String) (tokens : Array (Positioned YamlToken))
+    (h_scan : scanFiltered (emitScalar content) = .ok tokens) :
+    ∃ i, i < tokens.size ∧ tokens[i]!.val = .scalar content .doubleQuoted := by
+  -- Get scanner state with token membership
+  obtain ⟨s₁, h_snt1, h_peek1, h_flow1, h_dp1, ⟨tok, h_tok_mem, h_tok_val⟩, h_ids1, _⟩ :=
+    scanNextToken_emitScalar_init content
+  have h_snt2 : scanNextToken s₁ = .ok none := scanNextToken_eof s₁ h_peek1
+  -- Compute the raw scan result
+  have h_size := emitScalar_utf8ByteSize_ge content
+  have h_fuel : ((emitScalar content).utf8ByteSize + 1) * 4 ≥ 2 := by omega
+  -- scan reduces to scanLoop on the initial state
+  have h_scan_eq : scan (emitScalar content)
+      = scanLoop ((ScannerState.mk' (emitScalar content)).emit .streamStart)
+          (((emitScalar content).utf8ByteSize + 1) * 4) := by
+    have h_chars := chars_from_zero_toList (emitScalar content)
+    rw [emitScalar_toList] at h_chars
+    have h_corr := initial_corr (emitScalar content) _ h_chars
+    have ⟨h_pk, _⟩ := peek_of_chars_cons (ScannerState.mk' (emitScalar content)) '"'
+      ((escapeString content).toList ++ ['"']) 0 h_corr
+    have h_pk_emit : ((ScannerState.mk' (emitScalar content)).emit .streamStart).peek?
+        = (ScannerState.mk' (emitScalar content)).peek? := rfl
+    unfold scan; dsimp only []
+    rw [h_pk_emit, h_pk]
+    split <;> first | rfl | exact absurd ‹_› (by decide)
+  -- Get concrete token array via scanLoop_two_iter_eq
+  have h_loop_eq := scanLoop_two_iter_eq h_fuel h_snt1 h_snt2 h_flow1 h_dp1
+  -- The raw scan result is ((unwindIndents s₁ (-1)).emit .streamEnd).tokens
+  have h_scan_raw : scan (emitScalar content) =
+      .ok ((unwindIndents s₁ (-1)).emit .streamEnd).tokens := by
+    rw [h_scan_eq, h_loop_eq]
+  -- Scalar token survives through unwindIndents (prefix preservation)
+  have h_tok_in_uwi : tok ∈ (unwindIndents s₁ (-1)).tokens := by
+    obtain ⟨i, hi, rfl⟩ := Array.mem_iff_getElem.mp h_tok_mem
+    rw [Array.mem_iff_getElem]
+    have h_sz := ScannerCorrectness.unwindIndents_adds_tokens s₁ (-1)
+    have h_pref := ScannerCorrectness.unwindIndents_preserves_prefix s₁ (-1) i hi
+    exact ⟨i, by omega, h_pref⟩
+  -- Scalar token survives through .emit .streamEnd (push preserves membership)
+  have h_tok_in_raw : tok ∈ ((unwindIndents s₁ (-1)).emit .streamEnd).tokens := by
+    exact Array.mem_push_of_mem _ h_tok_in_uwi
+  -- Scalar token survives through filter (scalar ≠ placeholder)
+  have h_tok_filtered : tok ∈ ((unwindIndents s₁ (-1)).emit .streamEnd).tokens.filter
+      (fun t => t.val != .placeholder) := by
+    rw [Array.mem_filter]
+    refine ⟨h_tok_in_raw, ?_⟩
+    rw [h_tok_val]
+    -- Different constructors: .scalar vs .placeholder → beq = false → bne = true
+    rfl
+  -- Link filtered result to `tokens` via h_scan
+  have h_tokens_eq : tokens = ((unwindIndents s₁ (-1)).emit .streamEnd).tokens.filter
+      (fun t => t.val != .placeholder) := by
+    simp only [scanFiltered, h_scan_raw] at h_scan
+    exact (Except.ok.inj h_scan).symm
+  -- Extract index from membership
+  rw [h_tokens_eq]
+  obtain ⟨i, hi, rfl⟩ := Array.mem_iff_getElem.mp h_tok_filtered
+  exact ⟨i, hi, by rw [getElem!_pos]; exact h_tok_val⟩
+
+/-- Token structure: the filtered scan of `emitScalar content` produces
+    exactly 3 tokens: `streamStart`, `scalar content .doubleQuoted`, `streamEnd`.
+    This follows from the scanner producing `[streamStart, ph, ph, scalar, streamEnd]`
+    (where `ph` are saveSimpleKey placeholders) and filtering removes placeholders. -/
+theorem scanFiltered_emitScalar_vals (content : String) (tokens : Array (Positioned YamlToken))
+    (h_scan : scanFiltered (emitScalar content) = .ok tokens) :
+    tokens.size = 3 ∧ tokens[0]!.val = .streamStart ∧
+    tokens[1]!.val = .scalar content .doubleQuoted ∧ tokens[2]!.val = .streamEnd := by
+  -- Reuse scanner infrastructure from scanFiltered_emitScalar_content
+  obtain ⟨s₁, h_snt1, h_peek1, h_flow1, h_dp1, ⟨tok, h_tok_mem, h_tok_val⟩, h_ids1, h_filt1⟩ :=
+    scanNextToken_emitScalar_init content
+  have h_snt2 : scanNextToken s₁ = .ok none := scanNextToken_eof s₁ h_peek1
+  have h_fuel : ((emitScalar content).utf8ByteSize + 1) * 4 ≥ 2 := by
+    have := emitScalar_utf8ByteSize_ge content; omega
+  -- Compute raw scan and unwindIndents identity
+  have h_scan_eq : scan (emitScalar content)
+      = scanLoop ((ScannerState.mk' (emitScalar content)).emit .streamStart)
+          (((emitScalar content).utf8ByteSize + 1) * 4) := by
+    have h_chars := chars_from_zero_toList (emitScalar content)
+    rw [emitScalar_toList] at h_chars
+    have h_corr := initial_corr (emitScalar content) _ h_chars
+    have ⟨h_pk, _⟩ := peek_of_chars_cons (ScannerState.mk' (emitScalar content)) '"'
+      ((escapeString content).toList ++ ['"']) 0 h_corr
+    have h_pk_emit : ((ScannerState.mk' (emitScalar content)).emit .streamStart).peek?
+        = (ScannerState.mk' (emitScalar content)).peek? := rfl
+    unfold scan; dsimp only []; rw [h_pk_emit, h_pk]
+    split <;> first | rfl | exact absurd ‹_› (by decide)
+  have h_ci : s₁.currentIndent = -1 := by
+    unfold ScannerState.currentIndent; rw [h_ids1]; rfl
+  have h_uwi : unwindIndents s₁ (-1) = s₁ := by
+    unfold unwindIndents
+    rw [show s₁.indents.size = 1 from by rw [h_ids1]; rfl]
+    unfold unwindIndentsLoop; simp [h_ci]
+  have h_scan_raw : scan (emitScalar content) =
+      .ok (s₁.emit .streamEnd).tokens := by
+    rw [h_scan_eq, scanLoop_two_iter_eq h_fuel h_snt1 h_snt2 h_flow1 h_dp1, h_uwi]
+  have h_tokens_eq : tokens = (s₁.emit .streamEnd).tokens.filter
+      (fun t => t.val != .placeholder) := by
+    simp only [scanFiltered, h_scan_raw] at h_scan
+    exact (Except.ok.inj h_scan).symm
+  -- Now characterize the token structure using the filtered token values from h_filt1.
+  -- (s₁.emit .streamEnd).tokens = s₁.tokens.push {streamEnd_tok}
+  -- After filter (since streamEnd ≠ placeholder): (s₁.tokens.filter p).push {streamEnd_tok}
+  -- After map: [streamStart, scalar, streamEnd] (3 elements)
+  have h_filt_full : tokens.map (·.val)
+      = #[.streamStart, .scalar content .doubleQuoted, .streamEnd] := by
+    rw [h_tokens_eq]
+    -- Unfold emit to expose push, then distribute filter and map
+    show ((s₁.tokens.push ⟨s₁.currentPos, .streamEnd, s₁.currentPos⟩).filter
+          (fun t => t.val != .placeholder)).map (·.val) = _
+    simp only [Array.filter_push,
+      show (YamlToken.streamEnd != .placeholder) = true from rfl,
+      ite_true, Array.map_push, h_filt1]
+    rfl
+  have h_sz : tokens.size = 3 := by
+    have := congrArg Array.size h_filt_full; rwa [Array.size_map] at this
+  refine ⟨h_sz, ?_, ?_, ?_⟩
+  · rw [show tokens[0]! = tokens[0]'(by omega) from getElem!_pos tokens 0 (by omega)]
+    have h := Array.getElem_map (f := (·.val)) (xs := tokens) (i := 0)
+      (show 0 < (tokens.map _).size from by rw [Array.size_map]; omega)
+    simp only [h_filt_full] at h; exact h.symm
+  · rw [show tokens[1]! = tokens[1]'(by omega) from getElem!_pos tokens 1 (by omega)]
+    have h := Array.getElem_map (f := (·.val)) (xs := tokens) (i := 1)
+      (show 1 < (tokens.map _).size from by rw [Array.size_map]; omega)
+    simp only [h_filt_full] at h; exact h.symm
+  · rw [show tokens[2]! = tokens[2]'(by omega) from getElem!_pos tokens 2 (by omega)]
+    have h := Array.getElem_map (f := (·.val)) (xs := tokens) (i := 2)
+      (show 2 < (tokens.map _).size from by rw [Array.size_map]; omega)
+    simp only [h_filt_full] at h; exact h.symm
+
+/-- When `parseDirectives` sees a non-directive token, it returns immediately
+    with empty directives and unchanged state.
+    The `for _ in [:fuel] do` loop breaks on the first iteration because
+    `peek?` matches `| _ => break`. -/
+theorem parseDirectives_skip (ps : ParseState)
+    (h : match ps.peek? with
+        | some (.versionDirective _ _) | some (.tagDirective _ _) => False
+        | _ => True) :
+    parseDirectives ps = (#[], ps) := by
+  unfold parseDirectives
+  simp only [Id.run]
+  rw [Std.Legacy.Range.forIn_eq_forIn_range']
+  simp only [Std.Legacy.Range.size, Nat.sub_zero, Nat.add_sub_cancel, Nat.div_one]
+  generalize ps.tokens.size - ps.pos = fuel
+  cases fuel with
+  | zero =>
+    simp only [List.range', List.forIn_nil]
+    rfl
+  | succ n =>
+    simp only [List.range'_succ, List.forIn_cons, pure, bind]
+    split
+    · rename_i minor h_done
+      split at h_done
+      · cases h_done
+      · cases h_done
+      · cases h_done; rfl
+    · rename_i b h_yield
+      split at h_yield
+      · exfalso; revert h; simp_all
+      · exfalso; revert h; simp_all
+      · cases h_yield
+
+-- When `parseNodeProperties` sees a non-anchor/tag token, it returns
+-- immediately with empty properties and unchanged state.
+-- The `for _ in [:2] do` loop breaks on the first iteration because
+-- `peek?` matches `| _ => break`.
+set_option maxHeartbeats 3200000 in
+theorem parseNodeProperties_skip (ps : ParseState)
+    (h : match ps.peek? with
+        | some (.anchor _) | some (.tag _ _) => False
+        | _ => True) :
+    parseNodeProperties ps = .ok ({}, ps) := by
+  unfold parseNodeProperties
+  dsimp only []
+  simp only [Std.Legacy.Range.forIn_eq_forIn_range',
+             Std.Legacy.Range.size, Nat.sub_zero, Nat.add_sub_cancel, Nat.div_one,
+             show List.range' 0 2 1 = 0 :: List.range' 1 1 1 from by decide,
+             List.forIn_cons, bind, Except.bind, pure, Except.pure]
+  cases hpk : ps.peek?
+  case none => simp_all
+  case some tok => cases tok <;> simp_all
+
+-- **Parser trace on three-token scalar stream**: Given a token array with
+-- values `[streamStart, scalar content .doubleQuoted, streamEnd]`,
+-- `parseStream` produces exactly one document whose value is
+-- `YamlValue.scalar { content := content, style := .doubleQuoted }`.
+set_option maxHeartbeats 6400000 in
+theorem parseStream_three_tokens_scalar (content : String)
+    (tokens : Array (Positioned YamlToken))
+    (h_sz : tokens.size = 3)
+    (h_t0 : tokens[0]!.val = .streamStart)
+    (h_t1 : tokens[1]!.val = .scalar content .doubleQuoted)
+    (h_t2 : tokens[2]!.val = .streamEnd) :
+    ∃ (docs : Array YamlDocument),
+      parseStream tokens = .ok docs ∧ docs.size = 1 ∧
+      docs[0]!.value = .scalar (Scalar.mk content .doubleQuoted none none none) := by
+  -- Establish index bounds
+  have h0 : (0 : Nat) < tokens.size := by omega
+  have h1 : (1 : Nat) < tokens.size := by omega
+  have h2 : (2 : Nat) < tokens.size := by omega
+  -- Convert getElem! to getElem in hypotheses
+  have h_gei : ∀ (i : Nat) (hi : i < tokens.size),
+      tokens[i]!.val = tokens[i].val := by
+    intro i hi; simp [getElem!_pos, hi]
+  have h_t1' : tokens[1].val = .scalar content .doubleQuoted := by rw [← h_gei 1 h1]; exact h_t1
+  have h_t2' : tokens[2].val = .streamEnd := by rw [← h_gei 2 h2]; exact h_t2
+  -- Step 1: Unfold parseStream and dispatch expect .streamStart
+  unfold parseStream
+  simp only [bind, Except.bind]
+  unfold ParseState.expect
+  simp only [ParseState.peek?]
+  simp only [show (0 : Nat) < tokens.size from by omega, ↓reduceIte, h_t0]
+  simp only [show BEq.beq YamlToken.streamStart YamlToken.streamStart = true from by decide,
+             ↓reduceIte]
+  -- After expect step, introduce ps1 = advance of initial state
+  let ps1 : ParseState := ({ tokens := tokens } : ParseState).advance
+  show ∃ docs, parseStreamLoop ps1 #[] StreamState.initial tokens.size = Except.ok docs ∧
+    docs.size = 1 ∧ docs[0]!.value = .scalar (Scalar.mk content .doubleQuoted none none none)
+  -- peek? facts for ps1
+  have h_peek1 : ps1.peek? = some (.scalar content .doubleQuoted) := by
+    simp only [ps1, ParseState.peek?, ParseState.advance, h1, ↓reduceIte]
+    simp only [show (0 : Nat) + 1 = 1 from rfl, h_gei 1 h1, h_t1']
+  have h_peek_not_dir : match ps1.peek? with
+      | some (.versionDirective _ _) | some (.tagDirective _ _) => False
+      | _ => True := by rw [h_peek1]; trivial
+  have h_peek_not_anctag : match ps1.peek? with
+      | some (.anchor _) | some (.tag _ _) => False
+      | _ => True := by rw [h_peek1]; trivial
+  -- parseDirectives and prepareDocumentState
+  have h_pd : parseDirectives ps1 = (#[], ps1) := parseDirectives_skip ps1 h_peek_not_dir
+  have h_pds : prepareDocumentState ps1 = .ok (#[], ps1) := by
+    unfold prepareDocumentState
+    simp only [bind, Except.bind, pure, Except.pure, h_pd, Array.filterMap_empty]
+    have h_th : { ps1 with tagHandles := #[] } = ps1 := by
+      simp [ps1, ParseState.advance]
+    rw [h_th, h_peek1]
+    unfold ParseState.tryConsume
+    rw [h_peek1]; simp
+  -- parseNodeProperties skip
+  have h_np : parseNodeProperties ps1 = .ok ({}, ps1) :=
+    parseNodeProperties_skip ps1 h_peek_not_anctag
+  -- parseNode
+  have h_parseNode : parseNode ps1 (4 * ps1.tokens.size + 4) = .ok
+      (applyNodeFinalization
+        (.scalar { content, style := .doubleQuoted, tag := none, anchor := none })
+        ps1.advance {} (ps1.peekPos?.getD { offset := 0, line := 0, col := 0 })) := by
+    cases h_f : 4 * ps1.tokens.size + 4 with
+    | zero => simp [ps1, ParseState.advance] at h_f
+    | succ n =>
+      unfold parseNode
+      simp only [bind, Except.bind, pure, Except.pure]
+      rw [h_peek1]; simp only []
+      rw [h_np]; simp only []
+      unfold validateNodeProps
+      simp only [bind, Except.bind, pure, Except.pure]
+      rw [h_peek1]; simp only []
+      unfold parseNodeContent
+      rw [h_peek1]; rfl
+  -- applyNodeFinalization (scalar with empty props and trackPositions=false)
+  have h_finalize : applyNodeFinalization
+      (.scalar { content, style := .doubleQuoted, tag := none, anchor := none })
+      ps1.advance {} (ps1.peekPos?.getD { offset := 0, line := 0, col := 0 })
+      = (.scalar { content, style := .doubleQuoted, tag := none, anchor := none }, ps1.advance) := by
+    unfold applyNodeFinalization
+    simp [ps1, ParseState.advance]
+  -- Combine into parseDocument
+  have h_doc_val : parseDocument ps1 = .ok
+      ({ value := .scalar { content, style := .doubleQuoted, tag := none, anchor := none },
+         directives := #[], anchors := ps1.advance.anchors,
+         nodePositions := ps1.advance.nodePositions }, ps1.advance) := by
+    unfold parseDocument
+    simp only [bind, Except.bind, h_pds, h_peek1, h_parseNode, h_finalize]
+  -- ps1.advance.peek? = some .streamEnd
+  have h_peek2 : ps1.advance.peek? = some .streamEnd := by
+    simp only [ps1, ParseState.peek?, ParseState.advance, h2, ↓reduceIte]
+    simp only [show (0 : Nat) + 1 + 1 = 2 from rfl, h_gei 2 h2, h_t2']
+  -- Apply parseStreamLoop_single_doc
+  have h_fuel_ge : tokens.size ≥ 2 := by omega
+  have h_loop := parseStreamLoop_single_doc ps1 tokens.size h_fuel_ge
+    (.scalar content .doubleQuoted) h_peek1 (by intro h; cases h)
+    { value := .scalar { content, style := .doubleQuoted, tag := none, anchor := none },
+      directives := #[], anchors := ps1.advance.anchors, nodePositions := ps1.advance.nodePositions }
+    ps1.advance h_doc_val h_peek2
+  -- Provide the witness
+  exact ⟨_, h_loop, rfl, by simp [getElem!_pos]⟩
+
+/-- **parseYamlRaw on emitScalar produces scalar value**: When `parseYamlRaw`
+    succeeds on emitter scalar output, the first document's value is a scalar
+    with the original content. -/
+theorem parseYamlRaw_emitScalar_value (content : String)
+    (raw_docs : Array YamlDocument)
+    (h_raw : parseYamlRaw (emitScalar content) = .ok raw_docs) :
+    ∃ s : Scalar, raw_docs[0]!.value = .scalar s ∧ s.content = content := by
+  -- Decompose into scan + parse
+  obtain ⟨tokens, h_scan, h_parse⟩ :=
+    Composition.parseYamlRaw_ok_decompose _ _ h_raw
+  -- Token structure from scanner
+  obtain ⟨h_sz3, h_t0, h_t1, h_t2⟩ := scanFiltered_emitScalar_vals content tokens h_scan
+  -- Parser trace on [streamStart, scalar, streamEnd]
+  obtain ⟨docs, h_ps, _, h_dv⟩ :=
+    parseStream_three_tokens_scalar content tokens h_sz3 h_t0 h_t1 h_t2
+  -- Unify raw_docs with docs
+  have h_eq : raw_docs = docs := Except.ok.inj (h_parse.symm.trans h_ps)
+  subst h_eq
+  exact ⟨Scalar.mk content .doubleQuoted none none none, h_dv, rfl⟩
+
+/-- Combined scanner characterization and parser acceptance for flow sequences.
+    Given that scanning the emitted sequence succeeds, the parser pipeline
+    produces exactly one document.
+
+    **Proof obligations** (currently sorry'd):
+    1. Scanner tracing: `emit (.sequence ...)` starts with `[`, producing
+       `flowSequenceStart` as the second token after `streamStart`.
+       Analogous to `scanNextToken_emitScalar_init` but for `[` dispatch.
+    2. Parser fuel sufficiency: `parseFlowSequenceLoop` terminates on
+       well-bracketed input within `4 * tokens.size + 4` fuel.
+    3. Complete consumption: after parsing the flow sequence, the parser
+       position is at `streamEnd`, so `parseStreamLoop` returns `#[doc]`.
+
+    Available infrastructure:
+    - `scanFiltered_produces_valid_tokens`: VTS with sizeGe2, first=streamStart,
+      last=streamEnd, positions ordered
+    - `parseStreamLoop_single_doc`: if peek ≠ streamEnd ∧ parseDocument succeeds
+      leaving peek at streamEnd, then loop returns #[doc]
+    - `scan_flow_brackets_matched`: FlowBracketsMatched for scanned tokens
+    - `parseFlowSequence_wb`: properties of successful flow sequence parses -/
+theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlValue)
+    (tag anchor : Option String) {tokens : Array (Positioned YamlToken)}
+    (h_scan : Scanner.scanFiltered (emit (.sequence style items tag anchor)) = .ok tokens)
+    (h_items : ∀ (i : Fin items.size), Grammable items[i] (false || style == CollectionStyle.flow)) :
+    ∃ docs, parseStream tokens = .ok docs ∧ docs.size = 1 := by
+  sorry
+
+/-- Combined scanner characterization and parser acceptance for flow mappings.
+    Analogous to `parseStream_emitSequence` but for `emit (.mapping ...)`.
+
+    Same proof obligations: scanner tracing for `{` → `flowMappingStart`,
+    parser fuel sufficiency for `parseFlowMappingLoop`, and complete
+    consumption leaving peek at `streamEnd`. -/
+theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
+    (tag anchor : Option String) {tokens : Array (Positioned YamlToken)}
+    (h_scan : Scanner.scanFiltered (emit (.mapping style pairs tag anchor)) = .ok tokens)
+    (hk : ∀ (i : Fin pairs.size), Grammable pairs[i].fst (false || style == CollectionStyle.flow))
+    (hv : ∀ (i : Fin pairs.size), Grammable pairs[i].snd (false || style == CollectionStyle.flow)) :
+    ∃ docs, parseStream tokens = .ok docs ∧ docs.size = 1 := by
+  sorry
+
 /-- **Parse acceptance** (Step 2): The parser accepts the token sequence
     produced by scanning canonical emitter output.
 
@@ -1455,7 +2299,56 @@ theorem parseStream_accepts_emit_tokens (v : YamlValue) (hg : Grammable v false)
     (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered (emit v) = .ok tokens) :
     ∃ docs, parseStream tokens = .ok docs := by
-  sorry
+  cases hg with
+  | scalar s _ h =>
+    -- Recover the 3-token structure [streamStart, scalar, streamEnd] from the scanner
+    obtain ⟨h_sz, h_t0, h_t1, h_t2⟩ := scanFiltered_emitScalar_vals s.content tokens h_scan
+    -- Apply the parser trace for the 3-token scalar stream
+    obtain ⟨docs, h_ps, _, _⟩ := parseStream_three_tokens_scalar s.content tokens h_sz h_t0 h_t1 h_t2
+    exact ⟨docs, h_ps⟩
+
+  | sequence style items tag anchor _ h_items =>
+    obtain ⟨docs, h_ps, _⟩ := parseStream_emitSequence style items tag anchor h_scan h_items
+    exact ⟨docs, h_ps⟩
+
+  | mapping style pairs tag anchor _ hk hv =>
+    obtain ⟨docs, h_ps, _⟩ := parseStream_emitMapping style pairs tag anchor h_scan hk hv
+    exact ⟨docs, h_ps⟩
+
+/-- **Single document**: The canonical emitter's output produces exactly one
+    document when parsed.
+
+    The emitter generates a single implicit document (no `---` markers, no
+    multiple-document output), so `parseStreamLoop` produces `#[doc]`.
+    This is needed for the universal round-trip theorem which asserts
+    `docs.size = 1`. -/
+theorem emit_produces_single_document (v : YamlValue) (hg : Grammable v false)
+    (docs : Array YamlDocument)
+    (h : parseYamlRaw (emit v) = .ok docs) :
+    docs.size = 1 := by
+  cases hg with
+  | scalar s _ h_sc =>
+    -- Decompose parseYamlRaw into its scanner and parser components
+    obtain ⟨tokens, h_scan, h_parse⟩ := Composition.parseYamlRaw_ok_decompose _ _ h
+    -- Get token boundaries
+    obtain ⟨h_sz, h_t0, h_t1, h_t2⟩ := scanFiltered_emitScalar_vals s.content tokens h_scan
+    -- Apply the parser trace to get the target output (docs') and its length
+    obtain ⟨docs', h_ps, h_docs_sz, _⟩ := parseStream_three_tokens_scalar s.content tokens h_sz h_t0 h_t1 h_t2
+    -- Unify the decomposition parse result with the trace parse result
+    have h_eq : docs = docs' := Except.ok.inj (h_parse.symm.trans h_ps)
+    rwa [h_eq]
+
+  | sequence style items tag anchor _ h_items =>
+    obtain ⟨tokens, h_scan, h_parse⟩ := Composition.parseYamlRaw_ok_decompose _ _ h
+    obtain ⟨docs', h_ps, h_docs_sz⟩ := parseStream_emitSequence style items tag anchor h_scan h_items
+    have h_eq : docs = docs' := Except.ok.inj (h_parse.symm.trans h_ps)
+    rwa [h_eq]
+
+  | mapping style pairs tag anchor _ hk hv =>
+    obtain ⟨tokens, h_scan, h_parse⟩ := Composition.parseYamlRaw_ok_decompose _ _ h
+    obtain ⟨docs', h_ps, h_docs_sz⟩ := parseStream_emitMapping style pairs tag anchor h_scan hk hv
+    have h_eq : docs = docs' := Except.ok.inj (h_parse.symm.trans h_ps)
+    rwa [h_eq]
 
 /-- **Full pipeline (raw)**: The canonical emitter's output parses
     successfully through `parseYamlRaw`.
@@ -1480,39 +2373,37 @@ theorem emit_parseYaml_succeeds (v : YamlValue) (hg : Grammable v false) :
   obtain ⟨raw_docs, h_raw⟩ := emit_parse_succeeds v hg
   exact ⟨raw_docs.map YamlDocument.compose, by simp only [parseYaml, h_raw]⟩
 
-/-- **Single document**: The canonical emitter's output produces exactly one
-    document when parsed.
+-- ==========================================
+-- Helper Lemmas for Content Fidelity
+-- ==========================================
 
-    The emitter generates a single implicit document (no `---` markers, no
-    multiple-document output), so `parseStreamLoop` produces `#[doc]`.
-    This is needed for the universal round-trip theorem which asserts
-    `docs.size = 1`. -/
-theorem emit_produces_single_document (v : YamlValue) (hg : Grammable v false)
-    (docs : Array YamlDocument)
-    (h : parseYamlRaw (emit v) = .ok docs) :
-    docs.size = 1 := by
+/-- Proves that parsing the emitted tokens for a flow sequence recovers a content-equivalent sequence. -/
+theorem emit_roundtrip_sequence_content_eq {inFlow : Bool} (style : CollectionStyle) (items : Array YamlValue)
+    (tag anchor : Option String) (raw_docs : Array YamlDocument)
+    (h_raw : parseYamlRaw (emit (.sequence style items tag anchor)) = .ok raw_docs)
+    (h_size : raw_docs.size = 1)
+    (h_items : ∀ (i : Fin items.size), Grammable items[i] (inFlow || style == CollectionStyle.flow))
+    (ih : ∀ (i : Fin items.size) (raw_docs' : Array YamlDocument),
+            parseYamlRaw (emit items[i]) = .ok raw_docs' → raw_docs'.size = 1 →
+            contentEq items[i] (raw_docs'.map YamlDocument.compose)[0]!.value = true) :
+    contentEq (.sequence style items tag anchor) (raw_docs.map YamlDocument.compose)[0]!.value = true := by
   sorry
 
-/-- **Grammability preservation**: The parsed output of emitter output
-    is grammable. Follows from `parseStream_output_grammable` applied
-    to the scan+parse decomposition. -/
-theorem emit_parsed_grammable (v : YamlValue)
-    (docs : Array YamlDocument)
-    (h : parseYaml (emit v) = .ok docs) :
-    ∀ doc ∈ docs.toList, Grammable doc.value false := by
-  simp only [parseYaml] at h
-  split at h
-  · rename_i raw_docs h_raw
-    injection h with h_eq
-    have ⟨tokens, h_scan, h_parse⟩ := Composition.parseYamlRaw_ok_decompose (emit v) raw_docs h_raw
-    have h_gram := ParserGrammable.parseStream_output_grammable (emit v) tokens raw_docs h_scan h_parse
-    intro doc hdoc
-    rw [← h_eq] at hdoc
-    simp only [Array.toList_map] at hdoc
-    obtain ⟨raw_doc, h_raw_mem, h_compose_eq⟩ := List.mem_map.mp hdoc
-    subst h_compose_eq
-    exact h_gram raw_doc h_raw_mem
-  · simp at h
+/-- Proves that parsing the emitted tokens for a flow mapping recovers a content-equivalent mapping. -/
+theorem emit_roundtrip_mapping_content_eq {inFlow : Bool} (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
+    (tag anchor : Option String) (raw_docs : Array YamlDocument)
+    (h_raw : parseYamlRaw (emit (.mapping style pairs tag anchor)) = .ok raw_docs)
+    (h_size : raw_docs.size = 1)
+    (hk : ∀ (i : Fin pairs.size), Grammable pairs[i].fst (inFlow || style == CollectionStyle.flow))
+    (hv : ∀ (i : Fin pairs.size), Grammable pairs[i].snd (inFlow || style == CollectionStyle.flow))
+    (ihk : ∀ (i : Fin pairs.size) (raw_docs' : Array YamlDocument),
+            parseYamlRaw (emit pairs[i].fst) = .ok raw_docs' → raw_docs'.size = 1 →
+            contentEq pairs[i].fst (raw_docs'.map YamlDocument.compose)[0]!.value = true)
+    (ihv : ∀ (i : Fin pairs.size) (raw_docs' : Array YamlDocument),
+            parseYamlRaw (emit pairs[i].snd) = .ok raw_docs' → raw_docs'.size = 1 →
+            contentEq pairs[i].snd (raw_docs'.map YamlDocument.compose)[0]!.value = true) :
+    contentEq (.mapping style pairs tag anchor) (raw_docs.map YamlDocument.compose)[0]!.value = true := by
+  sorry
 
 /-- **Content fidelity**: Parsing canonical emitter output recovers content
     equivalent to the original value.
@@ -1532,12 +2423,43 @@ theorem emit_parsed_grammable (v : YamlValue)
       The parser reconstructs the list from flow tokens.
     - Mapping: By IH each key/value round-trips content-equivalently.
       The parser reconstructs pairs from flow tokens. -/
-theorem emit_roundtrip_content_eq (v : YamlValue) (hg : Grammable v false)
+theorem emit_roundtrip_content_eq (v : YamlValue) {b : Bool} (hg : Grammable v b)
     (raw_docs : Array YamlDocument)
     (h_raw : parseYamlRaw (emit v) = .ok raw_docs)
     (h_size : raw_docs.size = 1) :
     contentEq v (raw_docs.map YamlDocument.compose)[0]!.value = true := by
-  sorry
+  induction hg generalizing raw_docs with
+  | scalar s _ h_scannable =>
+    -- emit (.scalar s) = emitScalar s.content
+    -- The scanner produces tokens with the original content
+    -- The parser produces a scalar value with the original content
+    -- compose preserves content (only clears anchor)
+    -- contentEq ignores style/tag/anchor, compares content only
+    change contentEq (.scalar s) _ = true
+    obtain ⟨s_parsed, h_val, h_content⟩ :=
+      parseYamlRaw_emitScalar_value s.content raw_docs
+        (by show parseYamlRaw (emit (.scalar s)) = _; exact h_raw)
+    have h_compose := compose_scalar_content raw_docs[0]! s_parsed h_val
+    -- (raw_docs.map YamlDocument.compose)[0]!.value = (raw_docs[0]!.compose).value
+    have h0 : (0 : Nat) < raw_docs.size := by omega
+    have h0' : (0 : Nat) < (raw_docs.map YamlDocument.compose).size := by
+      rw [Array.size_map]; omega
+    rw [show (raw_docs.map YamlDocument.compose)[0]!.value =
+        (raw_docs[0]!.compose).value from by
+      show (if h : 0 < (raw_docs.map YamlDocument.compose).size
+            then (raw_docs.map YamlDocument.compose)[0] else default).value =
+           (if h : 0 < raw_docs.size then raw_docs[0] else default).compose.value
+      rw [dif_pos h0', dif_pos h0, Array.getElem_map]]
+    rw [h_compose]
+    exact contentEq_scalar_compose s { s_parsed with anchor := none } (by simp [h_content])
+
+  | sequence style items tag anchor _ h_items ih =>
+    -- IH is now available: each child element round-trips content-equivalently
+    exact emit_roundtrip_sequence_content_eq style items tag anchor raw_docs h_raw h_size h_items ih
+
+  | mapping style pairs tag anchor _ hk hv ihk ihv =>
+    -- IHs are now available: each key and value round-trips content-equivalently
+    exact emit_roundtrip_mapping_content_eq style pairs tag anchor raw_docs h_raw h_size hk hv ihk ihv
 
 /-- **Universal round-trip**: For every grammable YAML value, emitting it
     and re-parsing produces a single document whose value is
