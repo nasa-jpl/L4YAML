@@ -495,7 +495,7 @@ Once `emit_parseYamlRaw_succeeds` is proven, it directly gives stubs 4–7:
 
 6. **`native_decide` over `Fin N × Fin M` is powerful for bounded universal statements.** `hex_two_foldl_bound` quantifies over all `Fin 128 × Fin 128` pairs (16,384 cases) and Lean evaluates it in under 1 second. This pattern — proving universally quantified bounds by exhaustive evaluation — eliminates complex manual case analysis for bounded domains. Used for both hex digit bounds and nibble properties.
 
-### Step 6: Parser Acceptance + Document Properties — Stubs 6–8
+### Step 6: Parser Acceptance + Document Properties — Stubs 6–8 (DONE)
 
 **Status:** Superseded by Step 5b mega-theorem approach. If Step 5b succeeds, stubs 6–8
 are discharged as corollaries. If Step 5b's mega-approach proves infeasible, revert to the
@@ -668,105 +668,119 @@ Prove the parser succeeds on scanner output from canonical emitter input, produc
    hypotheses provide enough information to derive needed intermediate facts
    (`FlowBracketsMatched`, `FlowAwarePSV`, `ValidTokenStream`, etc.).
 
-### Step 7: Flow Collection Scanner/Parser Acceptance
+### Step 7: Flow Collection Scanner/Parser Acceptance — Infrastructure (DONE)
 
-**Status:** Infrastructure laid (compositionality lemmas, combined lemma signatures).
-Remaining work is the bulk of the flow collection proofs.
+**Status:** DONE. Infrastructure laid; empty collection cases proven; loop lemma generalized.
 
-**Goal:** Discharge the 5 remaining sorry-using declarations:
+**Goal:** Lay infrastructure for discharging the 5 remaining sorry-using declarations.
+Detailed proof strategies are in Step 8.
 
-| # | Declaration | What's needed | Est. LOC |
-|---|---|---|---|
-| 1 | `emit_produces_valid_yaml` seq/map | Scanner accepts `"[...]"` / `"{...}"`. Per-step `scanNextToken` theorems for `[`, `]`, `{`, `}`, `,`, `:` in flow context, composed via `scanLoop_step` + `scanLoop_fuel_mono`. | 300–600 |
-| 2 | `parseStream_emitSequence` | Parser produces 1 doc from scanned sequence. Needs second-token identity + `parseDocument` dispatch through `parseFlowSequence` + fuel sufficiency. | 200–400 |
-| 3 | `parseStream_emitMapping` | Same for mappings via `parseFlowMapping`. | 200–400 |
-| 4 | `emit_roundtrip_sequence_content_eq` | Content fidelity: parsed sequence items match originals by IH. | 150–300 |
-| 5 | `emit_roundtrip_mapping_content_eq` | Content fidelity: parsed mapping pairs match originals by IH. | 150–300 |
+**Delivered:**
+- Generalized `collectDoubleQuotedLoop_escapeString_succeeds` with `(rest : List Char)` parameter
+- 11 `@[simp]` `saveSimpleKey_preserves_*` field-preservation lemmas
+- Empty collection cases (`"[]"`, `"{}"`) proven via `native_decide`
+- `scanFiltered_exists_of_isOk` helper (`.toBool = true` → `∃ tokens`)
+- `scanNextToken_preprocess_init_state` build fix
+- Deep infrastructure assessment: scanner pipeline, `ScannerSurfCorr` trailing-input pattern, `inFlow` sensitivity
+- `ScanChain` inductive + compositionality lemmas (`scanLoop_step_eq`, `scanLoop_step`, `scanLoop_fuel_mono`)
+- `scanNextToken_via_flow_dispatch` (5-stage factoring)
+- 5 `native_decide` regression tests (`scan_emptySeq_test` through `scan_nestedSeq_test`)
 
-**Proof strategy for scanner acceptance (`emit_produces_valid_yaml` seq/map):**
+#### Accomplishments (Step 7)
 
-The scalar case used `scanNextToken_emitScalar_init` (a single `scanNextToken` call)
-followed by `scanLoop_two_iter`. Flow collections need N+2 steps (streamStart is implicit
-in `scan`; then `[`/`{` + N item/pair tokens + `]`/`}` + EOF).
+1. **Generalized `collectDoubleQuotedLoop_escapeString_succeeds`** — Added `(rest : List Char)` parameter so the loop lemma works when there is trailing input after the closing `"`. This is the critical enabler for proving scanner acceptance of double-quoted strings inside flow collections (where `inFlow = true` and more chars follow). The proof required refactoring the `List.append_assoc` strategy: replaced `rw [List.append_assoc]` with targeted `simp only [List.cons_append, List.nil_append]` to maintain left-associated form compatible with the IH signature.
 
-1. **`scanNextToken_emitFlowCollectionStart`** (~150 LOC): Analogous to
-   `scanNextToken_emitScalar_init` but for input starting with `[` or `{`.
-   Traces preprocessing → `dispatchFlowIndicators` → `scanFlowSequenceStart`/
-   `scanFlowMappingStart`. Produces a state `s₁` with:
-   - `s₁.flowLevel = 1` (incremented from 0)
-   - `s₁.peek?` pointing at the first item's first character
-   - Token emitted: `.flowSequenceStart` or `.flowMappingStart`
-   Existing infrastructure: `scanFlowSequenceStart_corr`, `scanFlowSequenceStart_prod`,
-   `scanFlowSequenceStart_adds_one_token`, `scanFlowSequenceStart_preserves_prefix`,
-   `scanFlowSequenceStart_preserves_ScanInv`, `dispatchFlowIndicators_corr`.
+2. **11 `@[simp]` `saveSimpleKey_preserves_*` lemmas** — Field-preservation lemmas (`_input`, `_offset`, `_inputEnd`, `_col`, `_line`, `_inFlow`, `_indents`, `_allowDirectives`, `_directivesPresent`, `_flowStack`, `_needIndentCheck`) enabling `simp` to resolve field accesses through `saveSimpleKey`. All proven with `unfold saveSimpleKey; split <;> (try rfl); split <;> rfl`.
 
-2. **Inner item scanning** (inductive): For each item `emit v_i` within the flow
-   collection, show scanner processes it and advances state. Two sub-strategies:
-   - **(a) Direct composition**: Prove `scanNextToken` steps for each sub-expression
-     character by character. This is what `scanNextToken_emitScalar_init` does for
-     double-quoted scalars. For nested collections, this requires recursive argument.
-   - **(b) `scanLoop` sub-invocation**: Show `scanLoop s_inner fuel_inner = .ok _`
-     for the inner expression, then use `scanLoop_step` to compose with the outer
-     loop. This avoids re-proving scanner internals for nested values but requires
-     a `scanLoop` splitting lemma (not yet available).
-   Strategy (a) is more direct for leaf scalars; strategy (b) may be needed for
-   nested collections. **Key insight**: All items are `Grammable v (inFlow || ...)`,
-   so the IH from `emit_produces_valid_yaml` gives scanner acceptance of each item
-   as a standalone string — but scanner state DIFFERS in flow context (flowLevel > 0).
-   A **flow-context scanner acceptance** lemma may be needed:
-   `scan_accepts_in_flow_context (v : YamlValue) (hg : Grammable v true) (s : ScannerState)
-   (h_flow : s.flowLevel > 0) : ∃ s', scanLoop s fuel = .ok s'.tokens`
+3. **Empty collection scanner acceptance** — `emit_produces_valid_yaml` now handles the `items.toList = []` (resp. `pairs.toList = []`) cases for sequences and mappings via `native_decide` on the concrete strings `"[]"` and `"{}"`. Added `scanFiltered_exists_of_isOk` helper to convert `.toBool = true` to an existential.
 
-3. **Separator scanning** (~50 LOC per separator): `,` between items/pairs, `: ` between
-   keys and values. `scanFlowEntry` for commas (existing: `scanFlowEntry_corr`,
-   `scanFlowEntry_adds_one_token`, `scanFlowEntry_preserves_prefix`). Value indicator
-   `:` requires `scanValue` in flow context.
+4. **`scanNextToken_preprocess_init_state` build fix** — Fixed the `saveSimpleKey` field-access pattern using separate `have h_sk_peek` with `saveSimpleKey_preserves_peek` + kernel definitional equality, then `rw`.
 
-4. **End bracket scanning** (~50 LOC): `]`/`}` via `scanFlowSequenceEnd`/`scanFlowMappingEnd`.
-   Existing infrastructure parallels start-bracket theorems.
+5. **Infrastructure assessment** — Deep analysis of proof strategy for flow collections. Mapped the scanner pipeline (`scanNextToken` → preprocess → dispatch → flow indicators → content), identified `scanDoubleQuoted_corr` (ScalarCoupling.lean) for ScannerSurfCorr preservation, and documented the `inFlow` sensitivity of `validateTrailingContent`.
 
-5. **Composition**: Chain all steps via `scanLoop_step_eq` + `scanLoop_fuel_mono`:
-   ```
-   scanLoop s₀ fuel₀ = .ok tokens  (by scanLoop_fuel_mono from:)
-   scanLoop s₀ (N+2) = .ok tokens  (by N+2 applications of scanLoop_step_eq:)
-   scanNextToken s₀ = .ok (some s₁)   -- flowSequenceStart
-   scanNextToken s₁ = .ok (some s₂)   -- first item (recursively)
-   ...                                 -- separators + remaining items
-   scanNextToken sₙ = .ok (some sₙ₊₁) -- flowSequenceEnd
-   scanNextToken sₙ₊₁ = .ok none      -- EOF
-   ```
+#### Reflections (Step 7)
 
-**Proof strategy for parser acceptance (`parseStream_emitSequence`/`parseStream_emitMapping`):**
+1. **`ScannerSurfCorr` trailing-input generalization was the key blocker.** The original `collectDoubleQuotedLoop_escapeString_succeeds` concluded `s'.peek? = none` (at EOF), making it unusable in flow context where chars follow the closing `"`. Generalizing to `ScannerSurfCorr s' ⟨rest, s'.col⟩` required careful `List.append_assoc` management — using `simp only [List.cons_append, List.nil_append]` instead of `rw [List.append_assoc]` to keep the left-associated normal form that matches the IH.
+
+2. **`inFlow` sensitivity splits the proof world.** When `inFlow = true`, `scanDoubleQuoted` skips `validateTrailingContent` (simpler). When `inFlow = false`, validation requires EOF. This means standalone scalar scanning (`scanDoubleQuoted_emitScalar_ok`) and in-context scanning need DIFFERENT lemmas. The generalized loop lemma enables both.
+
+3. **Non-empty flow collections require full scanner compositionality.** The remaining sorrys (5 total, 2 scanner + 2 parser + 1 content fidelity, same count as before but now partitioned into empty-proven and non-empty-sorry) require proving that `scanNextToken` dispatches correctly for `[`, `]`, `{`, `}`, `,` in flow context, and composing via `ScanChain`. This is ~1000+ LOC of additional infrastructure.
+
+4. **`native_decide` is effective for base cases.** The empty collection cases (`"[]"`, `"{}"`) are proven entirely by `native_decide`, avoiding manual scanner tracing. This pattern works wherever `emit v` reduces to a concrete string.
+
+### Step 8: Non-empty Flow Collection Proofs (5 remaining sorrys)
+
+**Status:** Not started. This step covers ALL remaining sorry-using declarations.
+
+**Goal:** Discharge the 5 remaining sorry-using declarations to reach 0-sorry.
+
+| # | Declaration | Layer | What's needed | Est. LOC |
+|---|---|---|---|---|
+| 1 | `emit_produces_valid_yaml` (seq non-empty) | Scanner | `scanNextToken` dispatches for `[`, `]`, `,` in flow context; item scanning via generalized `collectDoubleQuotedLoop`; `ScanChain` composition over item list | 300–600 |
+| 2 | `emit_produces_valid_yaml` (map non-empty) | Scanner | Same as #1 but `{`, `}`, `,`, `:` dispatches; key-value pair scanning with colon separator | 300–600 |
+| 3 | `parseStream_emitSequence` | Parser | Token stream → `parseFlowSequenceLoop` succeeds with fuel; second-token identity + `parseDocument` dispatch; `parseFlowSequenceLoop_reaches_end` fuel sufficiency | 200–400 |
+| 4 | `parseStream_emitMapping` | Parser | Same for `parseFlowMappingLoop`; colon token dispatch within loop; parser fuel sufficiency | 200–400 |
+| 5a | `emit_roundtrip_sequence_content_eq` | Content | Parsed sequence items match originals; structural decomposition of `parseFlowSequence` result + IH | 150–300 |
+| 5b | `emit_roundtrip_mapping_content_eq` | Content | Parsed mapping pairs match originals; structural decomposition of `parseFlowMapping` result + IH | 150–300 |
+
+#### Layer 1: Scanner acceptance of non-empty flow collections
+
+**Key infrastructure built in Step 7:**
+- `collectDoubleQuotedLoop_escapeString_succeeds` generalized with `(rest : List Char)` — enables double-quoted string scanning with trailing input
+- 11 `@[simp]` `saveSimpleKey_preserves_*` lemmas — field access through `saveSimpleKey`
+- `scanNextToken_preprocess_init_state` — preprocessing on initial scanner state
+- `scanNextToken_via_flow_dispatch` — factoring `scanNextToken` into 5 pipeline stages
+- `ScanChain` inductive + `trans`, `single`, `to_scanLoop`, `to_scanLoop_exists`
+- `scanLoop_step_eq`, `scanLoop_step`, `scanLoop_fuel_mono` — compositionality
+- Empty seq/map proven via `native_decide` on `"[]"` and `"{}"`
+
+**What's still needed:**
+
+1. **`scanNextToken` dispatch for flow indicators** (~150 LOC each for `[`, `]`, `{`, `}`, `,`):
+   Trace `scanNextToken` through preprocessing → `dispatchFlowIndicators` → `scanFlowSequenceStart`/
+   `scanFlowSequenceEnd`/`scanFlowEntry` etc. Produces state with correct `flowLevel`, token, and
+   `ScannerSurfCorr` at next character. Existing infrastructure: `scanFlowSequenceStart_corr`,
+   `scanFlowSequenceStart_adds_one_token`, `dispatchFlowIndicators_corr`, etc.
+
+2. **`scanDoubleQuoted_in_context_ok`** (~100 LOC): `scanDoubleQuoted` succeeds when `inFlow = true`
+   with trailing input. Uses generalized `collectDoubleQuotedLoop_escapeString_succeeds`. Simpler
+   than `scanDoubleQuoted_emitScalar_ok` because `validateTrailingContent` is skipped in flow context.
+
+3. **Inductive composition** (~200 LOC per collection type): Compose bracket + items + close via
+   `ScanChain`. For non-empty collections, induction on items list. Each item requires
+   `scanDoubleQuoted_in_context_ok` (leaf scalars) or recursive IH argument (nested collections).
+   Key challenge: bridging standalone `emit_produces_valid_yaml` (scans full input) with
+   in-context scanning (processes substring within larger input).
+
+#### Layer 2: Parser acceptance
+
+**Proof strategy for `parseStream_emitSequence` / `parseStream_emitMapping`:**
 
 1. Extract `ValidTokenStream` from `h_scan` via `scanFiltered_produces_valid_tokens`.
-2. Extract `FlowBracketsMatched` from `h_scan` via `scanFiltered_FlowBracketsMatched`.
-3. Extract `FlowAwarePSV` from `h_scan` via `scanFiltered_produces_FlowAwarePSV` (if available)
-   or derive from `ValidTokenStream` + flow nesting invariants.
-4. Show `parseDocument` succeeds: `prepareDocumentState` is identity (no directives),
+2. Show `parseDocument` succeeds: `prepareDocumentState` is identity (no directives),
    `parseNode` dispatches to `parseFlowSequence`/`parseFlowMapping` on second token.
-5. Show `parseFlowSequence`/`parseFlowMapping` succeeds: requires fuel sufficiency
-   argument — `parseFlowSequenceLoop` terminates within `4 * tokens.size + 4` fuel
-   because each iteration consumes ≥1 token. **Blocked by**: `parseFlowSequenceLoop_reaches_end`
-   (currently sorry'd in ParserGrammable.lean).
-6. Show post-parse state has `peek? = some .streamEnd`, enabling `parseStreamLoop_single_doc`.
+3. Show `parseFlowSequence`/`parseFlowMapping` succeeds: requires fuel sufficiency
+   argument — each loop iteration consumes ≥1 token (position monotonicity).
+4. Show post-parse state has `peek? = some .streamEnd`, enabling `parseStreamLoop_single_doc`.
 
-**Proof strategy for content fidelity (`emit_roundtrip_*_content_eq`):**
+**Key blocker:** `parseFlowSequenceLoop_reaches_end` — the fuel sufficiency lemma for
+the parser's flow sequence loop (currently sorry'd in ParserGrammable.lean). Each loop
+iteration advances position by ≥1, so fuel = `tokens.size` suffices. Needs position
+monotonicity proof through `parseNode` dispatch.
+
+#### Layer 3: Content fidelity
+
+**Proof strategy for `emit_roundtrip_*_content_eq`:**
 
 1. Decompose `parseYamlRaw` via `Composition.parseYamlRaw_ok_decompose` to get tokens + parsed docs.
-2. Use `parseStream_emitSequence`/`parseStream_emitMapping` for `docs.size = 1`.
-3. Show the parsed value has the correct structure:
+2. Show the parsed value has the correct structure:
    - Sequence: `docs[0].value = .sequence .flow items' none none none` where `items'.size = items.size`
    - Mapping: `docs[0].value = .mapping .flow pairs' none none none` where `pairs'.size = pairs.size`
-4. Show element-wise `contentEq` using the inductive hypothesis `ih` / `ihk` / `ihv`.
-5. Compose via `contentEq` definition: size match + `∀ i, contentEq items[i] items'[i] = true`.
+3. Show element-wise `contentEq` using the inductive hypothesis `ih` / `ihk` / `ihv`.
+4. Compose via `contentEq` definition: size match + `∀ i, contentEq items[i] items'[i] = true`.
 
-**Key blocker:** `parseFlowSequenceLoop_reaches_end` (ParserGrammable.lean) — the fuel
-sufficiency lemma for the parser's flow sequence loop. This is sorry'd and represents
-the deepest remaining challenge. All other sorry-using declarations either depend on it
-or on the scanner flow-context acceptance (which requires `scanNextToken` tracing
-analogous to the scalar case but for N iterations instead of 1).
+#### Existing proven infrastructure to leverage
 
-**Existing proven infrastructure to leverage:**
 - `scanLoop_step_eq`, `scanLoop_step`, `scanLoop_fuel_mono` (compositionality)
 - `scanFiltered_produces_valid_tokens` → `ValidTokenStream` (sizeGe2, first=streamStart, last=streamEnd)
 - `scanFiltered_FlowBracketsMatched` → `FlowBracketsMatched tokens`
@@ -777,21 +791,15 @@ analogous to the scalar case but for N iterations instead of 1).
 - `parseDirectives_skip`, `parseNodeProperties_skip` (for canonical emitter output)
 - All `scanFlow*Start/End_*` lemmas (corr, prod, adds_one_token, preserves_prefix, preserves_ScanInv)
 - All `dispatchFlowIndicators_*` lemmas (corr, tokens_mono, preserves_prefix, preserves_ScanInv, preserves_FlowInv)
+- `collectDoubleQuotedLoop_escapeString_succeeds` (generalized with rest param)
+- `scanDoubleQuoted_emitScalar_ok` (standalone, inFlow=false)
+- `scanDoubleQuoted_corr` (preserves ScannerSurfCorr on success, any inFlow)
 
-**Total: ~1000–2000 LOC**
+**Total: ~1,000–2,000 LOC**
 
-#### Accomplishments (Step 7)
+#### Accomplishments (Step 8)
 
-#### Reflections (Step 7)
-
-### Step 8: Content Fidelity — Stub 9
-
-**Status:** Superseded by Step 7, which covers content fidelity for sequences/mappings
-as stubs 9c/9d (`emit_roundtrip_sequence_content_eq`, `emit_roundtrip_mapping_content_eq`).
-The scalar case of `emit_roundtrip_content_eq` is already proven (Step 6). The main
-theorem delegates to per-constructor helpers.
-
-**Remaining content fidelity work is tracked in Step 7.**
+#### Reflections (Step 8)
 
 ---
 
@@ -803,15 +811,15 @@ theorem delegates to per-constructor helpers.
 | 2 | `escapeChar_output_nbJson` | 4 | 0 | **proven** (20 LOC) | 50–80 |
 | 3 | `emit_nonempty` | 4 | 0 | **proven** (8 LOC) | 15–25 |
 | 4 | `scan_accepts_emitScalar` | 5b | 1 | **proven** | 150–300 |
-| 5 | `emit_produces_valid_yaml` | 5b/7 | 1 | sorry (seq/map cases; scalar+alias done) | 300–600 |
+| 5 | `emit_produces_valid_yaml` | 5b/7 | 1 | **partial** (scalar+alias+empty seq/map done; non-empty → Step 8) | 300–600 |
 | 6 | `parseStream_accepts_emit_tokens` | 6 | 2 | **proven** (delegates to combined lemmas) | — |
 | 7 | `emit_produces_single_document` | 6 | 2 | **proven** (delegates to combined lemmas) | — |
 | 8 | `emit_parsed_grammable` | 5b/6 | 2 | **proven** | 60–120 |
 | 9 | `emit_roundtrip_content_eq` | 6 | 3 | **proven** (scalar; delegates to helpers for seq/map) | — |
-| 9a | `parseStream_emitSequence` | 7 | 1 | sorry (combined scanner+parser for sequences) | 200–400 |
-| 9b | `parseStream_emitMapping` | 7 | 1 | sorry (combined scanner+parser for mappings) | 200–400 |
-| 9c | `emit_roundtrip_sequence_content_eq` | 7 | 3 | sorry (content fidelity for sequences) | 150–300 |
-| 9d | `emit_roundtrip_mapping_content_eq` | 7 | 3 | sorry (content fidelity for mappings) | 150–300 |
+| 9a | `parseStream_emitSequence` | 8 | 1 | sorry (combined scanner+parser for sequences) | 200–400 |
+| 9b | `parseStream_emitMapping` | 8 | 1 | sorry (combined scanner+parser for mappings) | 200–400 |
+| 9c | `emit_roundtrip_sequence_content_eq` | 8 | 3 | sorry (content fidelity for sequences) | 150–300 |
+| 9d | `emit_roundtrip_mapping_content_eq` | 8 | 3 | sorry (content fidelity for mappings) | 150–300 |
 | — | `universal_roundtrip` | 3 | — | **proven** (depends on 1–9) | 5 |
 | — | `emit_parse_succeeds` | 2 | — | **proven** (depends on 5, 6) | 3 |
 | — | `emit_parseYaml_succeeds` | 2 | — | **proven** (depends on above) | 2 |
@@ -826,14 +834,14 @@ Tier 0: stubs 1, 2, 3 (independent)                    [Step 4, DONE]
 Tier 0.5: §2.2–§2.3 helper lemmas (escape properties)  [Step 5, DONE]
   ↓
 Tier 1a: stub 4 scan_accepts_emitScalar                 [Step 5b, DONE]
-Tier 1b: stub 5 emit_produces_valid_yaml seq/map        [Step 7, TODO — scanner flow acceptance]
+Tier 1b: stub 5 emit_produces_valid_yaml seq/map        [Step 8, TODO — scanner flow acceptance]
   ↓
-Tier 2a: stubs 9a, 9b (combined scanner+parser)         [Step 7, TODO — needs 5 + parser fuel]
+Tier 2a: stubs 9a, 9b (combined scanner+parser)         [Step 8, TODO — needs 5 + parser fuel]
   → stubs 6, 7 discharged (delegates to 9a/9b)
   ↓
 Tier 2b: stub 8 emit_parsed_grammable                   [DONE]
   ↓
-Tier 3: stubs 9c, 9d (content fidelity)                 [Step 7, TODO — needs 9a/9b + IH]
+Tier 3: stubs 9c, 9d (content fidelity)                 [Step 8, TODO — needs 9a/9b + IH]
   → stub 9 discharged (delegates to 9c/9d for seq/map)
 ```
 
