@@ -541,7 +541,8 @@ theorem hex_foldl_roundtrip : ∀ n : Fin 32,
   native_decide
 
 /-- The core loop lemma: `collectDoubleQuotedLoop` succeeds on
-    `escapeString content ++ "\""` for any content string.
+    `escapeString content ++ "\"" ++ rest` for any content string,
+    leaving the scanner with `ScannerSurfCorr` at `rest`.
 
     By induction on the characters of `content`:
     - Base: closing `"` → loop terminates.
@@ -549,38 +550,35 @@ theorem hex_foldl_roundtrip : ∀ n : Fin 32,
     - Named escape: `\tag` → processEscape → recurse.
     - Hex escape: `\xHH` → processEscape → recurse. -/
 theorem collectDoubleQuotedLoop_escapeString_succeeds
-    (sc : ScannerState) (content_rest : List Char)
+    (sc : ScannerState) (content_rest : List Char) (rest : List Char)
     (acc : String) (fuel : Nat)
     (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int)
     (hcorr : ScannerSurfCorr sc
-      ⟨(escapeString (String.ofList content_rest)).toList ++ ['"'], sc.col⟩)
+      ⟨(escapeString (String.ofList content_rest)).toList ++ ['"'] ++ rest, sc.col⟩)
     (h_fuel : fuel ≥ content_rest.length + 1) :
     ∃ s',
       collectDoubleQuotedLoop sc acc fuel startPos inFlow currentIndent sc.inputEnd =
-      .ok (acc ++ String.ofList content_rest, s') ∧ s'.peek? = none := by
+      .ok (acc ++ String.ofList content_rest, s') ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩ := by
   induction content_rest generalizing sc acc fuel with
   | nil =>
-    -- Remaining chars: escapeString "" ++ "\"" = "\""
+    -- Remaining chars: escapeString "" ++ "\"" ++ rest = '"' :: rest
     have h_ofnil : (String.ofList ([] : List Char)) = "" := rfl
     rw [h_ofnil, escapeString_nil] at hcorr
     simp only [String.toList_empty, List.nil_append] at hcorr
-    have ⟨h_peek, h_lt⟩ := peek_of_chars_cons sc '"' [] _ hcorr
+    have ⟨h_peek, h_lt⟩ := peek_of_chars_cons sc '"' rest _ hcorr
     match fuel, h_fuel with
     | fuel' + 1, _ =>
       unfold collectDoubleQuotedLoop; rw [h_peek]; dsimp only []
       rw [show acc ++ String.ofList [] = acc from append_ofList_nil acc]
       refine ⟨sc.advance, rfl, ?_⟩
-      -- After closing quote advance, we're at EOF → peek? = none
-      have hcorr_adv := advance_non_newline_corr sc '"' [] hcorr h_lt
+      -- After closing quote advance, ScannerSurfCorr at rest
+      have hcorr_adv := advance_non_newline_corr sc '"' rest hcorr h_lt
         (by decide) (by decide)
-      have h_ge : sc.advance.offset ≥ sc.advance.input.utf8ByteSize := by
-        cases hcorr_adv.chars_from with | at_end _ hge => exact hge
-      have h_not_lt : ¬(sc.advance.offset < sc.advance.inputEnd) := by
-        rw [hcorr_adv.end_eq]; omega
-      simp [ScannerState.peek?, h_not_lt]
+      have h_col_adv : (sc.col + 1 : Nat) = sc.advance.col := hcorr_adv.col_eq
+      rw [h_col_adv] at hcorr_adv; exact hcorr_adv
   | cons c cs ih =>
-    -- Remaining chars: escapeChar c ++ escapeString cs ++ "\""
-    rw [escapeString_cons, String.toList_append, List.append_assoc] at hcorr
+    -- Remaining chars: escapeChar c ++ escapeString cs ++ "\"" ++ rest
+    rw [escapeString_cons, String.toList_append] at hcorr
     -- Case split: passthrough vs escape
     by_cases h_esc : isEscapedChar c
     · -- ESCAPE: escapeTag c = some tag (named) or c.val.toNat < 0x20 (hex)
@@ -588,7 +586,7 @@ theorem collectDoubleQuotedLoop_escapeString_succeeds
       · -- NAMED ESCAPE: escapeChar c = "\\" ++ tag.toString
         obtain ⟨tag, h_tag⟩ := Option.isSome_iff_exists.mp h_tag_some
         rw [escapeChar_named_toList c tag h_tag] at hcorr
-        simp only [List.cons_append] at hcorr
+        simp only [List.cons_append, List.nil_append] at hcorr
         -- Now: ScannerSurfCorr sc ⟨'\\' :: tag :: (escapeString cs).toList ++ ['"'], sc.col⟩
         have ⟨h_peek_bs, h_lt_bs⟩ := peek_of_chars_cons sc '\\' _ _ hcorr
         match fuel, h_fuel with
@@ -647,7 +645,7 @@ theorem collectDoubleQuotedLoop_escapeString_succeeds
             h_d1_lt128, h_d2_lt128⟩ :=
           escapeChar_hex_structure c h_lt_c h_tag_none
         rw [h_ec_list] at hcorr
-        simp only [List.cons_append] at hcorr
+        simp only [List.cons_append, List.nil_append] at hcorr
         have ⟨h_peek_bs, h_lt_bs⟩ := peek_of_chars_cons sc '\\' _ _ hcorr
         match fuel, h_fuel with
         | fuel' + 1, h_f =>
@@ -677,26 +675,22 @@ theorem collectDoubleQuotedLoop_escapeString_succeeds
             have h_d1_eq : d1 = hexNibble (c.val.toNat / 16) := h_comb.2.2.1
             have h_d2_eq : d2 = hexNibble (c.val.toNat % 16) := h_comb.2.2.2
             -- Step 2: Derive peeks for d1 and d2 (col adjusted for advance_non_newline_corr)
-            have ⟨_, h_lt_x'⟩ := peek_of_chars_cons sc.advance 'x'
-              (d1 :: d2 :: (escapeString (String.ofList cs)).toList ++ ['"']) _ hcorr_bs
-            have hcorr_x_raw := advance_non_newline_corr sc.advance 'x'
-              (d1 :: d2 :: (escapeString (String.ofList cs)).toList ++ ['"'])
+            have ⟨_, h_lt_x'⟩ := peek_of_chars_cons sc.advance 'x' _ _ hcorr_bs
+            have hcorr_x_raw := advance_non_newline_corr sc.advance 'x' _
               hcorr_bs h_lt_x' (by decide) (by decide)
             have hcorr_x' : ScannerSurfCorr sc.advance.advance
-                ⟨d1 :: d2 :: (escapeString (String.ofList cs)).toList ++ ['"'],
+                ⟨d1 :: d2 :: (escapeString (String.ofList cs)).toList ++ ['"'] ++ rest,
                  sc.advance.advance.col⟩ := by
               rw [← hcorr_x_raw.col_eq]; exact hcorr_x_raw
-            have ⟨h_peek_d1', h_lt_d1'⟩ := peek_of_chars_cons sc.advance.advance d1
-              (d2 :: (escapeString (String.ofList cs)).toList ++ ['"']) _ hcorr_x'
-            have hcorr_d1_raw := advance_non_newline_corr sc.advance.advance d1
-              (d2 :: (escapeString (String.ofList cs)).toList ++ ['"']) hcorr_x' h_lt_d1'
+            have ⟨h_peek_d1', h_lt_d1'⟩ := peek_of_chars_cons sc.advance.advance d1 _ _ hcorr_x'
+            have hcorr_d1_raw := advance_non_newline_corr sc.advance.advance d1 _
+              hcorr_x' h_lt_d1'
               h_d1_nn h_d1_cr
             have hcorr_d1' : ScannerSurfCorr sc.advance.advance.advance
-                ⟨d2 :: (escapeString (String.ofList cs)).toList ++ ['"'],
+                ⟨d2 :: (escapeString (String.ofList cs)).toList ++ ['"'] ++ rest,
                  sc.advance.advance.advance.col⟩ := by
               rw [← hcorr_d1_raw.col_eq]; exact hcorr_d1_raw
-            have ⟨h_peek_d2', _⟩ := peek_of_chars_cons sc.advance.advance.advance d2
-              ((escapeString (String.ofList cs)).toList ++ ['"']) _ hcorr_d1'
+            have ⟨h_peek_d2', _⟩ := peek_of_chars_cons sc.advance.advance.advance d2 _ _ hcorr_d1'
             -- Step 3: Unfold processEscape at h_proc to expose parseHexEscape
             unfold processEscape at h_proc; rw [h_peek_x] at h_proc; dsimp only [] at h_proc
             unfold parseHexEscape at h_proc
@@ -744,7 +738,7 @@ theorem collectDoubleQuotedLoop_escapeString_succeeds
         · rfl
         · exact absurd hv h_esc
       rw [escapeChar_passthrough_toList c h_ef] at hcorr
-      simp only [List.singleton_append] at hcorr
+      simp only [List.cons_append, List.nil_append] at hcorr
       have ⟨h_peek_c, h_lt_c⟩ := peek_of_chars_cons sc c _ _ hcorr
       match fuel, h_fuel with
       | fuel' + 1, h_f =>
@@ -881,10 +875,17 @@ theorem scanDoubleQuoted_emitScalar_ok (sc : ScannerState)
     omega
   -- Loop succeeds and leaves scanner at EOF
   have h_ie : sc.inputEnd = sc.advance.inputEnd := by rw [advance_inputEnd]
-  obtain ⟨s_after, h_loop, h_peek_none⟩ :=
-    collectDoubleQuotedLoop_escapeString_succeeds sc.advance content.toList "" _
+  obtain ⟨s_after, h_loop, hcorr_loop⟩ :=
+    collectDoubleQuotedLoop_escapeString_succeeds sc.advance content.toList [] "" _
       sc.currentPos sc.inFlow sc.currentIndent
-      (by rw [String.ofList_toList]; exact hcorr_adv) h_fuel
+      (by simp only [List.append_nil]; rw [String.ofList_toList]; exact hcorr_adv) h_fuel
+  -- Derive peek? = none from ScannerSurfCorr at empty rest
+  have h_peek_none : s_after.peek? = none := by
+    have h_ge : s_after.offset ≥ s_after.input.utf8ByteSize := by
+      cases hcorr_loop.chars_from with | at_end _ hge => exact hge
+    have h_not_lt : ¬(s_after.offset < s_after.inputEnd) := by
+      rw [hcorr_loop.end_eq]; omega
+    simp [ScannerState.peek?, h_not_lt]
   -- Validate trailing content succeeds at EOF
   have h_vtc := validateTrailingContent_peek_none s_after sc.advance.inputEnd h_peek_none
   -- The loop returns content = "" ++ String.ofList content.toList = content
@@ -1091,6 +1092,87 @@ theorem scanLoop_fuel_mono {s : ScannerState} {fuel₁ fuel₂ : Nat}
     | ok res => cases res with
       | none => exact h
       | some s' => exact IH h (by omega)
+
+-- ═══ ScanChain: composition of N successful scanNextToken calls ═══
+
+/-- `ScanChain s n s'` means `n` successive `scanNextToken` calls starting
+    from `s` each return `.ok (some ...)`, with the final state being `s'`.
+    Used to express that the scanner processes a multi-token sub-expression
+    (e.g., `emit v` within a flow collection). -/
+inductive ScanChain : ScannerState → Nat → ScannerState → Prop where
+  | zero {s : ScannerState} : ScanChain s 0 s
+  | step {s s_mid s' : ScannerState} {n : Nat} :
+         scanNextToken s = .ok (some s_mid) →
+         ScanChain s_mid n s' →
+         ScanChain s (n + 1) s'
+
+/-- Transitivity: concatenate two scan chains. -/
+theorem ScanChain.trans {s₁ s₂ s₃ : ScannerState} {n₁ n₂ : Nat}
+    (h1 : ScanChain s₁ n₁ s₂) (h2 : ScanChain s₂ n₂ s₃) :
+    ScanChain s₁ (n₁ + n₂) s₃ := by
+  induction h1 with
+  | zero => simpa using h2
+  | @step s s_mid s₂ k h_snt h_rest ih =>
+    have h_ih := ih h2
+    have : k + 1 + n₂ = (k + n₂) + 1 := by omega
+    rw [this]
+    exact .step h_snt h_ih
+
+/-- A single scanNextToken step as a ScanChain. -/
+theorem ScanChain.single {s s' : ScannerState}
+    (h : scanNextToken s = .ok (some s')) :
+    ScanChain s 1 s' :=
+  .step h .zero
+
+/-- Connect a ScanChain to scanLoop: if N steps succeed reaching s',
+    and scanLoop s' fuel succeeds, then scanLoop s (fuel + N) succeeds
+    with the same result. -/
+theorem ScanChain.to_scanLoop {s s' : ScannerState} {n fuel : Nat}
+    {toks : Array (Positioned YamlToken)}
+    (h_chain : ScanChain s n s')
+    (h_loop : scanLoop s' fuel = .ok toks) :
+    scanLoop s (fuel + n) = .ok toks := by
+  induction h_chain with
+  | zero => exact h_loop
+  | @step s s_mid s' k h_snt h_rest ih =>
+    have h_ih := ih h_loop
+    have : fuel + (k + 1) = (fuel + k) + 1 := by omega
+    rw [this]
+    exact scanLoop_step_eq h_snt h_ih
+
+/-- Connect a ScanChain to scanLoop (existential version). -/
+theorem ScanChain.to_scanLoop_exists {s s' : ScannerState} {n : Nat}
+    (h_chain : ScanChain s n s')
+    (h_loop : ∃ fuel toks, scanLoop s' fuel = .ok toks) :
+    ∃ fuel toks, scanLoop s fuel = .ok toks := by
+  obtain ⟨fuel, toks, h⟩ := h_loop
+  exact ⟨fuel + n, toks, h_chain.to_scanLoop h⟩
+
+-- ═══ scanNextToken pipeline factoring ═══
+-- The scanNextToken pipeline has 5 stages:
+--   preprocess → structural → allowDirectives → checkBlockFlowIndent → flow/block/content
+-- These factoring lemmas let us compose results from individual stages.
+
+/-- When preprocessing succeeds, structural dispatch returns none, and flow
+    indicator dispatch produces a result, then scanNextToken returns that result.
+    This captures the common case for flow indicator characters [`[`, `]`, `{`, `}`, `,`].
+
+    `s_ad` is the state after the allowDirectives update, defined as:
+    `if s_pp.allowDirectives then { s_pp with allowDirectives := false, documentEverStarted := true } else s_pp` -/
+theorem scanNextToken_via_flow_dispatch (s s_pp s_ad s_result : ScannerState) (c : Char)
+    (h_pp : scanNextToken_preprocess s = .ok (some (s_pp, c)))
+    (h_struct : scanNextToken_dispatchStructural s_pp c = .ok none)
+    (h_ad_eq : s_ad = if s_pp.allowDirectives then
+      { s_pp with allowDirectives := false, documentEverStarted := true } else s_pp)
+    (h_check : scanNextToken_checkBlockFlowIndent s_ad c = .ok ())
+    (h_flow : scanNextToken_dispatchFlowIndicators s_ad c = .ok (some s_result)) :
+    scanNextToken s = .ok (some s_result) := by
+  unfold scanNextToken; dsimp only []
+  simp only [bind, Except.bind, h_pp, h_struct, pure, Except.pure]
+  -- After preprocessing and structural dispatch, the allowDirectives conditional
+  -- and remaining dispatch stages are visible. Substitute s_ad.
+  rw [← h_ad_eq]
+  simp only [h_check, h_flow]
 
 -- ═══ directivesPresent preservation helpers ═══
 -- None of advance/emitAt/consumeNewline/skipSpaces/skipWhitespace/processEscape/
@@ -1556,6 +1638,41 @@ theorem saveSimpleKey_preserves_peek (s : ScannerState) :
     · dsimp only []; rfl
     · rfl
 
+-- saveSimpleKey preserves all non-token/key fields
+@[simp] theorem saveSimpleKey_preserves_input (s : ScannerState) :
+    (saveSimpleKey s).input = s.input := by
+  unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
+@[simp] theorem saveSimpleKey_preserves_offset (s : ScannerState) :
+    (saveSimpleKey s).offset = s.offset := by
+  unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
+@[simp] theorem saveSimpleKey_preserves_inputEnd (s : ScannerState) :
+    (saveSimpleKey s).inputEnd = s.inputEnd := by
+  unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
+@[simp] theorem saveSimpleKey_preserves_col (s : ScannerState) :
+    (saveSimpleKey s).col = s.col := by
+  unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
+@[simp] theorem saveSimpleKey_preserves_line (s : ScannerState) :
+    (saveSimpleKey s).line = s.line := by
+  unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
+@[simp] theorem saveSimpleKey_preserves_inFlow (s : ScannerState) :
+    (saveSimpleKey s).inFlow = s.inFlow := by
+  unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
+@[simp] theorem saveSimpleKey_preserves_indents (s : ScannerState) :
+    (saveSimpleKey s).indents = s.indents := by
+  unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
+@[simp] theorem saveSimpleKey_preserves_allowDirectives (s : ScannerState) :
+    (saveSimpleKey s).allowDirectives = s.allowDirectives := by
+  unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
+@[simp] theorem saveSimpleKey_preserves_directivesPresent (s : ScannerState) :
+    (saveSimpleKey s).directivesPresent = s.directivesPresent := by
+  unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
+@[simp] theorem saveSimpleKey_preserves_flowStack (s : ScannerState) :
+    (saveSimpleKey s).flowStack = s.flowStack := by
+  unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
+@[simp] theorem saveSimpleKey_preserves_needIndentCheck (s : ScannerState) :
+    (saveSimpleKey s).needIndentCheck = s.needIndentCheck := by
+  unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
+
 -- saveSimpleKey only adds placeholder tokens, so filtering them out is invariant.
 theorem saveSimpleKey_filter_placeholder (s : ScannerState) :
     (saveSimpleKey s).tokens.filter (fun t => t.val != .placeholder)
@@ -1567,6 +1684,78 @@ theorem saveSimpleKey_filter_placeholder (s : ScannerState) :
     · dsimp only []
       simp
     · rfl
+
+-- ═══ Factored preprocessing for initial scanner state ═══
+
+/-- Preprocessing on the initial scanner state returns the first character.
+
+    For any non-empty input string starting with a non-blank, non-comment,
+    non-line-break character `c`, preprocessing the initial state
+    `(ScannerState.mk' input).emit .streamStart` succeeds and returns
+    `(s_pp, c)` with all position/metadata fields preserved.
+
+    This is the common first step for all `scanNextToken_emit*_init` proofs. -/
+theorem scanNextToken_preprocess_init_state (input : String) (c : Char)
+    (rest : List Char)
+    (h_toList : input.toList = c :: rest)
+    (h_nws : isWhiteSpaceBool c = false)
+    (h_nlb : isLineBreakBool c = false)
+    (h_nc : c ≠ '#') :
+    ∃ s_pp, scanNextToken_preprocess ((ScannerState.mk' input).emit .streamStart)
+          = .ok (some (s_pp, c))
+      ∧ s_pp.flowLevel = 0
+      ∧ s_pp.inFlow = false
+      ∧ s_pp.currentIndent = -1
+      ∧ s_pp.col = 0
+      ∧ s_pp.allowDirectives = true
+      ∧ s_pp.directivesPresent = false
+      ∧ s_pp.indents = #[{column := -1, isSequence := false}]
+      ∧ s_pp.input = input
+      ∧ s_pp.offset = 0
+      ∧ s_pp.inputEnd = input.utf8ByteSize := by
+  -- Build ScannerSurfCorr for the initial state
+  have h_chars := chars_from_zero_toList input
+  rw [h_toList] at h_chars
+  have h_corr₀ := initial_corr input _ h_chars
+  have h_corr_s₀ : ScannerSurfCorr
+      ((ScannerState.mk' input).emit .streamStart) ⟨c :: rest, 0⟩ :=
+    ScannerSurfCorr_transfer h_corr₀ rfl rfl rfl rfl rfl
+  have ⟨h_pk₀, _⟩ := peek_of_chars_cons _ c _ 0 h_corr_s₀
+  have h_size : input.utf8ByteSize ≥ 1 := by
+    rw [utf8ByteSize_eq_listByteSize, h_toList, listByteSize]
+    have := Char.utf8Size_pos c; omega
+  -- skipToContent is identity (c is not whitespace/linebreak/comment)
+  have h_stc : skipToContent ((ScannerState.mk' input).emit .streamStart)
+      = .ok ((ScannerState.mk' input).emit .streamStart) :=
+    skipToContent_of_content_char _ c h_pk₀ h_nws h_nlb h_nc (by omega)
+  -- Construct the witness
+  refine ⟨saveSimpleKey { (ScannerState.mk' input).emit .streamStart
+    with needIndentCheck := false },
+    ?_, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  -- Prove: scanNextToken_preprocess = .ok (some (saveSimpleKey {...}, c))
+  unfold scanNextToken_preprocess
+  rw [h_stc]; simp only [bind, Except.bind, pure, Except.pure]
+  have h_hm : ((ScannerState.mk' input).emit .streamStart).hasMore = true := by
+    unfold ScannerState.hasMore; exact decide_eq_true (by omega)
+  simp only [h_hm, Bool.not_true, Bool.false_eq_true, ite_false]
+  -- unwindIndents is identity since currentIndent = -1 < col = 0
+  have h_uwi : unwindIndents ((ScannerState.mk' input).emit .streamStart)
+      ↑((ScannerState.mk' input).emit .streamStart).col
+      = (ScannerState.mk' input).emit .streamStart := by
+    unfold unwindIndents unwindIndentsLoop; split <;> rfl
+  simp only [h_uwi]
+  -- inFlow = false, needIndentCheck = true → enters the branch
+  have h_inFlow : ((ScannerState.mk' input).emit .streamStart).inFlow = false := rfl
+  have h_nic_true : ((ScannerState.mk' input).emit .streamStart).needIndentCheck = true := rfl
+  have h_no_shrink : ¬(((ScannerState.mk' input).emit .streamStart).indents.size <
+      ((ScannerState.mk' input).emit .streamStart).indents.size) := by omega
+  simp only [h_inFlow, h_nic_true, Bool.not_false, Bool.true_and,
+             h_no_shrink, decide_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
+  -- peek? of saveSimpleKey result = some c
+  have h_sk_peek : (saveSimpleKey { (ScannerState.mk' input).emit .streamStart
+      with needIndentCheck := false }).peek? = some c := by
+    rw [saveSimpleKey_preserves_peek]; exact h_pk₀
+  rw [h_sk_peek]
 
 -- The first scanNextToken call on the initial emitScalar state
 -- dispatches to scanDoubleQuoted and succeeds.
@@ -1771,6 +1960,34 @@ theorem scan_accepts_emitScalar (content : String) :
   rw [h_scan_eq]
   exact scanLoop_two_iter h_fuel h_snt1 h_snt2 h_flow1 h_dp1
 
+-- ═══ Flow collection scanner acceptance ═══
+-- Infrastructure for proving that the scanner accepts emitted flow collections.
+
+-- Test: can we evaluate scanFiltered on small flow collections?
+theorem scan_emptySeq_test :
+    (Scanner.scanFiltered "[]").isOk = true := by native_decide
+
+theorem scan_emptyMap_test :
+    (Scanner.scanFiltered "{}").isOk = true := by native_decide
+
+theorem scan_singleScalarSeq_test :
+    (Scanner.scanFiltered "[\"hello\"]").isOk = true := by native_decide
+
+theorem scan_twoScalarSeq_test :
+    (Scanner.scanFiltered "[\"a\", \"b\"]").isOk = true := by native_decide
+
+theorem scan_nestedSeq_test :
+    (Scanner.scanFiltered "[[\"a\"]]").isOk = true := by native_decide
+
+-- Helper: extract existential from isOk
+theorem scanFiltered_exists_of_isOk {s : String}
+    (h : (Scanner.scanFiltered s).toBool = true) :
+    ∃ tokens, Scanner.scanFiltered s = .ok tokens := by
+  cases h_eq : Scanner.scanFiltered s with
+  | ok tokens => exact ⟨tokens, rfl⟩
+  | error _ =>
+    exfalso; revert h; simp [h_eq]; rfl
+
 /-- **Main theorem**: The scanner accepts any canonical emitter output.
 
     For any grammable `YamlValue`, `scanFiltered (emit v)` succeeds.
@@ -1780,23 +1997,46 @@ theorem scan_accepts_emitScalar (content : String) :
     - Scalar case: delegates to `scan_accepts_emitScalar`
     - Sequence/mapping cases: delegates to scanner acceptance of
       flow collections with inductively-accepted sub-expressions
-    - Alias case: impossible (excluded by `Grammable`) -/
-theorem emit_produces_valid_yaml (v : YamlValue) (hg : Grammable v false) :
+    - Alias case: impossible (excluded by `Grammable`)
+
+    Note: generalized to arbitrary `inFlow` to enable structural induction
+    on `Grammable`. The `emit` function ignores `inFlow` (always produces
+    flow format), so scanner acceptance is independent of the flow context
+    under which the value is grammable. -/
+theorem emit_produces_valid_yaml (v : YamlValue) {inFlow : Bool} (hg : Grammable v inFlow) :
     ∃ tokens, scanFiltered (emit v) = .ok tokens := by
-  cases hg with
+  induction hg with
   | scalar s _ h =>
     -- emit (.scalar s) = emitScalar s.content
     exact scan_accepts_emitScalar s.content
-  | sequence style items tag anchor _ h =>
+  | sequence style items tag anchor _ h ih =>
     -- emit (.sequence style items tag anchor) = "[" ++ emitList items.toList ++ "]"
-    -- Requires scanner compositionality for flow sequences:
-    -- scanner threads state through [, comma-separated items, ]
-    sorry
-  | mapping style pairs tag anchor _ hk hv =>
+    change ∃ tokens, scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens
+    match h_items : items.toList with
+    | [] =>
+      simp only [emit.emitList]
+      exact scanFiltered_exists_of_isOk (by native_decide)
+    | _ :: _ =>
+      -- Non-empty: requires scanner compositionality for flow sequences.
+      -- The scanner threads state through [, per-item quoted strings
+      -- separated by ", ", then ]. Each item is processed by
+      -- scanDoubleQuoted in flow context (inFlow = true).
+      -- Proof requires: collectDoubleQuotedLoop_escapeString_succeeds (generalized),
+      -- scanNextToken dispatch for [ ] and , in flow context,
+      -- and ScanChain composition over the item list.
+      sorry
+  | mapping style pairs tag anchor _ hk hv ihk ihv =>
     -- emit (.mapping style pairs tag anchor) = "{" ++ emitPairList pairs.toList ++ "}"
-    -- Requires scanner compositionality for flow mappings:
-    -- scanner threads state through {, colon/comma-separated pairs, }
-    sorry
+    change ∃ tokens, scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens
+    match h_pairs : pairs.toList with
+    | [] =>
+      simp only [emit.emitPairList]
+      exact scanFiltered_exists_of_isOk (by native_decide)
+    | _ :: _ =>
+      -- Non-empty: requires scanner compositionality for flow mappings.
+      -- Similar to sequences but with key: value pairs and additional
+      -- ":" separator tokens.
+      sorry
 
 /-! ## §4  Full Pipeline: Emit → Scan → Parse
 
