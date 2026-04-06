@@ -1,4 +1,4 @@
-name = "lean4-yaml-verified"
+name = "Lean4Yaml"
 defaultTargets = [
   "Lean4Yaml",
   "Tests.Guards",
@@ -38,12 +38,12 @@ rev = "main"
 [[require]]
 name = "importGraph"
 git = "https://github.com/leanprover-community/import-graph"
-rev = "v4.28.0"
+rev = "v4.29.0"
 
 [[require]]
 name = "DocGen4"
 git = "https://github.com/leanprover/doc-gen4"
-rev = "v4.28.0"
+rev = "v4.29.0"
 
 [[lean_lib]]
 name = "Lean4Yaml"
@@ -183,6 +183,11 @@ root = "Tests.SpecExamples.Runner"
 [[lean_exe]]
 name = "extractSpecExamples"
 root = "ExtractSpecExamples"
+srcDir = "tools"
+
+[[lean_exe]]
+name = "depgraph"
+root = "ExtractDepGraph"
 srcDir = "tools"
 
 [[lean_lib]]
