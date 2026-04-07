@@ -875,12 +875,12 @@ type system changes (Layer 1.1) needed for `emitPairList_scans_nonempty` and fue
 
 #### Layer 1.1: type system changes
 
-**Status:** Not started. Prerequisite for `emitPairList_scans_nonempty` and fuel bounds.
+**Status:** Change A complete. Change B in progress. Change C not started.
 
 **Goal:** Extend type postconditions and add infrastructure to unblock the 3 remaining
 Layer 1 sorrys.
 
-**Change A: Add `s'.explicitKeyLine = none` postcondition to flow scanning types**
+**Change A: Add `s'.explicitKeyLine = s.explicitKeyLine` postcondition — DONE**
 
 `scanNextToken_flow_value` requires `h_ek : s.explicitKeyLine = none` on its input state.
 This must propagate from the preceding scan step (key scanning). Currently `EmitScansInFlow`,
@@ -996,7 +996,70 @@ Total estimated: ~300–400 lines of proof modifications/additions.
 
 ##### Layer 1.1 accomplishments
 
+1. **Change A completed with stronger postcondition than originally planned.** The plan called
+   for `s'.explicitKeyLine = none` (hardcoded value), but we implemented
+   `s'.explicitKeyLine = s.explicitKeyLine` (preservation) for all flow scanning theorems,
+   with `s.explicitKeyLine = none →` as precondition on the type definitions. This is strictly
+   more general — it establishes that flow scanning preserves whatever `explicitKeyLine` value
+   was present, not just that it stays `none`. The `none`-specific property then follows from
+   the initial state having `explicitKeyLine = none` (default field value in `ScannerState`).
+
+2. **Full primitive preservation chain built bottom-up (~180 lines).** 12 `_preserves_ek` helper
+   lemmas were added for the entire scanning call hierarchy: `consumeNewline`, `skipSpaces`,
+   `skipWhitespace`, `emitAt`, `collectHexDigitsLoop`, `parseHexEscape`, `processEscape`,
+   `foldQuotedNewlinesLoop`, `foldQuotedNewlines`, `collectDoubleQuotedLoop`,
+   `scanDoubleQuoted`, plus the 4 flow bracket functions (`scanFlowSequenceStart/End`,
+   `scanFlowMappingStart/End`). All proven with `unfold` + `simp [advance_explicitKeyLine]` or
+   structural induction mirroring the existing `_preserves_dp` chain.
+
+3. **`scanNextToken_preprocess_init_state` extended with `explicitKeyLine = none`.** The initial
+   state preprocessing theorem now includes `s_pp.explicitKeyLine = none` as a postcondition,
+   which flows through to both `scanNextToken_flow_open_init` and
+   `scanNextToken_flow_open_mapping_init`. These `_init` theorems now conclude with
+   `s'.explicitKeyLine = none`, providing the base case for ek tracking in
+   `emit_produces_valid_yaml`.
+
+4. **All composition proofs updated end-to-end.** The ek precondition/postcondition was threaded
+   through `emitList_scans_empty`, `emitList_scans_nonempty` (singleton and multi-item cases),
+   `emitPairList_scans_empty`, all 3 cases of `emit_scans_in_flow`, and both sequence/mapping
+   branches of `emit_produces_valid_yaml`. The key chaining pattern:
+   `h_ek₃.trans (h_ek₂.trans h_ek₁)` for composing preservation through comma + space + body.
+
+5. **Build remains clean: 0 errors, 6 sorry warnings (unchanged count).** All changes are
+   backward-compatible — no existing proofs broken. The 6 sorrys are the same ones from
+   before Change A: `emitPairList_scans_nonempty`, 2 fuel bounds in `emit_produces_valid_yaml`,
+   and 3 parser/content Layer 2/3 sorrys.
+
 ##### Layer 1.1 reflections
+
+1. **Preservation (`s' = s`) is strictly better than value-fixing (`s' = none`).** The original
+   plan called for tracking `s'.explicitKeyLine = none`. Instead, adding
+   `s'.explicitKeyLine = s.explicitKeyLine` as postcondition + `s.explicitKeyLine = none` as
+   precondition gives a cleaner separation: each theorem says "I preserve this field"
+   independent of what value it holds. The `none` property then follows by transitivity from
+   the initial state. This pattern generalizes better if we later need ek tracking in non-flow
+   contexts.
+
+2. **The `h_ad_ek` pattern for `saveSimpleKey`/`allowDirectives` was the trickiest part.** Every
+   `scanNextToken_flow_*` theorem has a `let s_ad := if s_pp.allowDirectives then ...`
+   intermediate state. Proving `s_ad.explicitKeyLine = s.explicitKeyLine` required:
+   `simp only [s_ad]; split; · show (saveSimpleKey s).explicitKeyLine = _; unfold saveSimpleKey; split <;> (try rfl); split <;> rfl; · unfold saveSimpleKey; split <;> (try rfl); split <;> rfl`.
+   This 3-line pattern was repeated 7 times, always identical. A dedicated helper lemma
+   (`saveSimpleKey_preserves_explicitKeyLine`) would have saved repetition but wasn't worth
+   adding given the `@[simp]` lemma set didn't cover `explicitKeyLine`.
+
+3. **Downstream pattern updates were mechanical but error-prone.** Updating destructuring
+   patterns (`obtain ⟨..., h_ek₁, ...⟩`) across ~20 sites required precise insertion position.
+   The main pitfall: identical conclusion text in `close_seq_nested` and `close_mapping_nested`
+   caused a replacement to target the wrong theorem. Using more specific context (the `']'` vs
+   `'}'` character literal) resolved the ambiguity.
+
+4. **Planning accuracy was high.** The original estimate of "~150 lines across 12 theorems" was
+   close to actual (~200 lines across 15+ sites). The additional work beyond the estimate came
+   from: (a) the `_init` theorems needing updates (not in original plan), (b) `emit_produces_valid_yaml`
+   needing ek destructuring at 2 sites, and (c) the primitive `_preserves_ek` chain being
+   larger than anticipated (12 helpers vs. implied 4–5). The plan correctly identified every
+   theorem that needed updating and the proof pattern for each.
 
 #### Layer 2: Parser acceptance
 
