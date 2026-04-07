@@ -1257,31 +1257,77 @@ composition layer, then proving `scanValueValidate` succeeds using the line inva
    [h_svp_flow, ...]; split <;> (try (split <;> rfl)); rfl` is identical to `h_prep_fl`,
    `h_prep_dp`, etc. This confirms `scanValuePrepare` never touches `line` in any branch.
 
-##### **Phase 3: scanValueValidate discharge**
+##### **Phase 3: scanValueValidate discharge (revised)**
 
-`scanValueValidate` (Scanner.lean:943–983) has 5 error conditions. With `inFlow = true`,
-`ek = none`, and `s'.line = s.line` (from Phase 2), all 5 pass:
+`scanValueValidate` (Scanner.lean:943–983) has 5 error conditions. After architectural
+review, we know `simpleKey.possible = true` at the sorry sites (set by `saveSimpleKey` with
+`simpleKeyAllowed = true` during preprocessing). The existing
+`scanValueValidate_ok_of_not_possible_ek_none` lemma does NOT apply.
 
-1. `simpleKey.possible && !s.inFlow && ...` → **passes** (`!inFlow = false`)
-2. `simpleKey.possible && isInFlowSequence && ek.isNone && endLine != s.line` → **passes**
-   (`endLine = s.line` from: `saveSimpleKey` sets `endLine = s_init.line` during key
-   preprocessing; line preservation through key scanning gives `s_init.line = s₁.line`)
-3. `simpleKey.possible && !s.inFlow && ...` → **passes** (`!inFlow = false`)
-4. `simpleKey.possible && inFlow && tokenIndex > 0 && prevTok.val == .value && prevTok.pos.line != s.line` →
-   **passes** (`prevTok.pos.line = s.line` from: token emitted at `s.line` during key
-   scanning; line preservation gives `s.line = s₁.line`)
+**Key insight:** The emitter produces single-line output. All tokens emitted during flow
+scanning have `pos.line = s.line`. This is the fundamental invariant needed for both
+check 2 (`endLine ≠ line`) and check 4 (`tokens[tokenIndex-1].pos.line ≠ line`).
+
+**Approach: `AllTokensOnLine` invariant + `endLine` tracking.**
+
+With `inFlow = true`, `ek = none`, `AllTokensOnLine s s.line`, and
+`simpleKey.possible → simpleKey.endLine = s.line`, all 5 checks pass:
+
+1. `possible && !inFlow && ...` → **passes** (`!inFlow = false`)
+2. `possible && isInFlowSequence && ek.isNone && endLine ≠ line` →
+   **passes** (`endLine = line` from `EndLineOnLine` postcondition)
+3. `possible && !inFlow && ...` → **passes** (`!inFlow = false`)
+4. `possible && inFlow && tokenIndex > 0 && prevTok.val == .value && prevTok.pos.line ≠ line` →
+   **passes** (`prevTok.pos.line = line` from `AllTokensOnLine`)
 5. `ek.isSome && ...` → **passes** (`ek = none`)
 
 | Item | Change | Est. effort |
 |------|--------|-------------|
-| `scanValueValidate_ok_of_flow_same_line` | New lemma: `inFlow → ek = none → endLine = line → prevTok.pos.line = line → ok ()` | ~30 lines |
-| `saveSimpleKey_endLine_eq` | Prove `(saveSimpleKey s).simpleKey.endLine = s.line` when `simpleKeyAllowed = true` | ~15 lines |
-| `saveSimpleKey_prevTok_line_eq` | Prove `prevTok.pos.line = s.line` (token emitted at current line) | ~15 lines |
-| Discharge 2 sorrys | Apply `scanValueValidate_ok_of_flow_same_line` with line chain | ~10 lines each |
+| `AllTokensOnLine` | New predicate: `∀ i, (h : i < s.tokens.size) → s.tokens[i].pos.line = l` | ~3 lines |
+| `scanValueValidate_ok_of_flow_allTokensOnLine` | New lemma using `AllTokensOnLine + endLine = line + inFlow + ek = none` | ~40 lines |
+| Add `AllTokensOnLine` to `EmitScansInFlow` | Precondition + postcondition (also `EmitListScansInFlow`, `EmitPairListScansInFlow`) | ~6 lines per type |
+| Add `EndLineOnLine` to `EmitScansInFlow` | Postcondition: `s'.simpleKey.possible → s'.simpleKey.endLine = s'.line` | ~2 lines per type |
+| Thread through `emitList_scans_nonempty` | Add `AllTokensOnLine` to obtain/refine patterns | ~15 lines |
+| Thread through `emitPairList_scans_nonempty` | Add `AllTokensOnLine` to obtain/refine patterns | ~20 lines |
+| Thread through `emit_scans_in_flow` | Add `AllTokensOnLine` to obtain/refine patterns | ~15 lines |
+| Prove `AllTokensOnLine` in `scanNextToken_flow_*` | Each scanner step preserves the invariant | ~20 lines each × 6 |
+| Discharge 2 sorrys | Apply `scanValueValidate_ok_of_flow_allTokensOnLine` | ~5 lines each |
 
 ###### Phase 3 accomplishments
 
+- **AllTokensOnLine + EndLineOnLine predicates defined** (lines 2133–2140):
+  - `AllTokensOnLine s l := ∀ i, (h : i < s.tokens.size) → s.tokens[i].pos.line = l`
+  - `EndLineOnLine s := s.simpleKey.possible → s.simpleKey.endLine = s.line`
+- **Key lemma `scanValueValidate_ok_of_flow_allTokensOnLine` proven** (~30 lines, line 2142):
+  Discharges all 5 scanValueValidate checks given inFlow + ek=none + AllTokensOnLine + EndLineOnLine.
+- **Type definitions updated**: Added `AllTokensOnLine s s.line` precondition and
+  `AllTokensOnLine s' s'.line` postcondition to all 3 Emit types. Added `EndLineOnLine s'`
+  postcondition to `EmitScansInFlow`.
+- **Cascade threaded**: All 10+ call sites updated to pass AllTokensOnLine through obtain/refine
+  patterns. Build clean (0 errors).
+- **scanValueValidate sorrys DISCHARGED** (original Phase 3 target):
+  Both sorrys in `emitPairList_scans_nonempty` (singleton + multi-pair) replaced with
+  `exact scanValueValidate_ok_of_flow_allTokensOnLine s₁ h_flow₁ (by rw [h_ek₁]; exact h_ek)
+  h_atol₁ h_endline₁` using AllTokensOnLine + EndLineOnLine from key scanning result.
+- **New sorry debt**: 10 AllTokensOnLine/EndLineOnLine sorrys introduced as placeholders
+  pending `scanNextToken_flow_*` postcondition augmentation. These are in 4 declarations:
+  `emitList_scans_nonempty`, `emitPairList_scans_nonempty`, `emit_scans_in_flow`,
+  `scanFiltered_value_flow`. Net sorry-declaration count: 8 (was 6 before Phase 3;
+  +2 from AllTokensOnLine needs, -0 since the 2 scanValueValidate sorrys were in a
+  declaration that still has other sorrys).
+- **Build status**: 0 errors, 8 sorry-using declarations, 10 sorry instances (AllTokensOnLine)
+  + 4 Layer 2/3 sorrys (unchanged).
+
 ###### Phase 3 reflections
+
+- The AllTokensOnLine invariant cleanly captures the single-line emitter output property.
+- scanValueValidate discharge works exactly as designed: AllTokensOnLine + EndLineOnLine
+  from the EmitScansInFlow result directly satisfies all 5 checks.
+- The new AllTokensOnLine sorry debt (10 instances) requires augmenting the 6-8
+  `scanNextToken_flow_*` theorems with AllTokensOnLine postconditions. Each needs to show
+  that pushed tokens have `pos.line = s.line`. This is Phase 3.1 work.
+- The init-context AllTokensOnLine sorrys (flow_open_init/flow_open_mapping_init) may be
+  simpler since the initial state starts with `tokens = #[]` before the open bracket push.
 
 ##### **Phase 4: Change C — fuel bounds (from Layer 1.1)**
 
