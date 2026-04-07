@@ -725,7 +725,7 @@ Detailed proof strategies are in Step 8.
 
 #### Layer 1: Scanner acceptance of non-empty flow collections
 
-**Key infrastructure built in Step 7:**
+**Key infrastructure built in Steps 7–8:**
 - `collectDoubleQuotedLoop_escapeString_succeeds` generalized with `(rest : List Char)` — enables double-quoted string scanning with trailing input
 - 11 `@[simp]` `saveSimpleKey_preserves_*` lemmas — field access through `saveSimpleKey`
 - `scanNextToken_preprocess_init_state` — preprocessing on initial scanner state
@@ -734,23 +734,97 @@ Detailed proof strategies are in Step 8.
 - `scanLoop_step_eq`, `scanLoop_step`, `scanLoop_fuel_mono` — compositionality
 - Empty seq/map proven via `native_decide` on `"[]"` and `"{}"`
 
+**Flow indicator dispatch (all proven):**
+- `scanNextToken_flow_open_init` — `[` at flowLevel=0 from initial state
+- `scanNextToken_flow_open_nested` — `[` when already in flow context (flowLevel > 0)
+- `scanNextToken_flow_comma` — `,` in flow context (1 internal sorry for `saveSimpleKey_preserves_lastRealTokenVal`)
+- `scanNextToken_flow_close_seq_nested` — `]` when flowLevel ≥ 2
+- `scanNextToken_flow_close_seq_outermost` — `]` when flowLevel = 1 with EOF after
+
+**`EmitScansInFlow` induction framework (partially proven):**
+- `EmitScansInFlow` type definition — scanning any emitter output in flow context
+- `EmitListScansInFlow` type definition — scanning comma-separated list body
+- `emitList_scans_empty` — empty list body is 0-step chain (proven)
+- `emit_scans_in_flow` scalar case — dispatches to `scanNextToken_flow_scanDoubleQuoted` (1 sorry: col positivity)
+- `emit_scans_in_flow` sequence case — fully composed: `[` + list body + `]` via `ScanChain.trans` (delegates to `emitList_scans_nonempty`)
+
+**Supporting infrastructure (all proven):**
+- `scanFlowSequenceEnd_detail/preserves_dp/indents/flowLevel/peek` — field preservation
+- `scanFlowEntry_ok/detail` — comma token handling
+- `validateFlowClose_pass_nested/eof` — validateFlowClose for both nested and outermost
+- `skipTrailingSpaces_at_eof` — no-op at EOF
+- `peek_none_of_empty_surf` — ScannerSurfCorr with empty chars → peek? = none
+- `scanLoop_eof` + `scanFiltered_of_chain` — connecting ScanChain to scanFiltered success
+- `nat_beq_zero_false/true` — helpers for Nat BEq with 0
+
 **What's still needed:**
 
-1. **`scanNextToken` dispatch for flow indicators** (~150 LOC each for `[`, `]`, `{`, `}`, `,`):
-   Trace `scanNextToken` through preprocessing → `dispatchFlowIndicators` → `scanFlowSequenceStart`/
-   `scanFlowSequenceEnd`/`scanFlowEntry` etc. Produces state with correct `flowLevel`, token, and
-   `ScannerSurfCorr` at next character. Existing infrastructure: `scanFlowSequenceStart_corr`,
-   `scanFlowSequenceStart_adds_one_token`, `dispatchFlowIndicators_corr`, etc.
+1. **Space-after-comma handling** (~80 LOC): After scanning `,` from `", "`, the scanner state
+   points at `' ' :: (emit v).toList ++ rest`. But `EmitScansInFlow` expects state at
+   `(emit v).toList ++ rest` — no leading space. The space is absorbed by `skipToContent`
+   during the *next* `scanNextToken`'s preprocessing. Need either:
+   (a) Prove `scanNextToken_preprocess_flow` handles a leading space and returns the same
+       `saveSimpleKey` result with chars advanced by 1, or
+   (b) Define an `EmitScansInFlow_with_leading_space` wrapper that includes 1 preprocessing
+       step before delegating to the inner `EmitScansInFlow`.
 
-2. **`scanDoubleQuoted_in_context_ok`** (~100 LOC): `scanDoubleQuoted` succeeds when `inFlow = true`
-   with trailing input. Uses generalized `collectDoubleQuotedLoop_escapeString_succeeds`. Simpler
-   than `scanDoubleQuoted_emitScalar_ok` because `validateTrailingContent` is skipped in flow context.
+2. **`emitList_scans_nonempty`** (~100 LOC): List induction composing
+   `EmitScansInFlow v` + comma + space + recursive tail. Depends on #1.
 
-3. **Inductive composition** (~200 LOC per collection type): Compose bracket + items + close via
-   `ScanChain`. For non-empty collections, induction on items list. Each item requires
-   `scanDoubleQuoted_in_context_ok` (leaf scalars) or recursive IH argument (nested collections).
-   Key challenge: bridging standalone `emit_produces_valid_yaml` (scans full input) with
-   in-context scanning (processes substring within larger input).
+3. **Col positivity after `scanDoubleQuoted`** (~30 LOC): The scalar case of `emit_scans_in_flow`
+   has a sorry for `s'.col > 0`. Need to show `scanDoubleQuoted` advances col past the closing `"`.
+
+4. **Mapping dispatch lemmas** (~200 LOC): `{`/`}` analogs of the sequence bracket lemmas.
+   Straightforward copies with `scanFlowMappingStart`/`scanFlowMappingEnd` + colon separator.
+
+5. **`emit_produces_valid_yaml` seq/map non-empty** (~50 LOC each): Once `emit_scans_in_flow`
+   is complete, compose: initial `[`/`{` at flowLevel=0 → `emit_scans_in_flow` → outermost
+   `]`/`}` + `scanFiltered_of_chain`.
+
+##### Layer 1 Accomplishments
+
+1. **All flow indicator dispatches proven.** `scanNextToken` traced through the full 5-stage
+   pipeline for `[`, `]`, `,` in flow context, with both nested (flowLevel ≥ 2) and outermost
+   (flowLevel = 1) close-bracket variants. Key technique: `scanNextToken_via_flow_dispatch`
+   composes preprocessing + structural dispatch + allowDirectives + checkBlockFlowIndent +
+   flow dispatch into a single pipeline, avoiding 50+ lines of raw `unfold`/`simp`.
+
+2. **`EmitScansInFlow` induction framework established.** The sequence case of `emit_scans_in_flow`
+   is fully composed: `scanNextToken_flow_open_nested` (1 step) + `EmitListScansInFlow` (n steps) +
+   `scanNextToken_flow_close_seq_nested` (1 step), with all invariants (flowLevel, directivesPresent,
+   indents, inFlow, currentIndent) proven through the composition chain. The remaining gap is
+   `emitList_scans_nonempty`, which is the comma+space handling for list body scanning.
+
+3. **String.toList distribution pattern.** `emit (.sequence ...)` doesn't reduce to char lists
+   directly. The pattern `simp only [emit, String.toList_append]; rfl` distributes `String.toList`
+   over `++` concatenation, then `rfl` resolves `"\"".toList = ['"']` etc. For `ScannerSurfCorr`
+   matching, `rw [h_chars] at hcorr` is cleaner than constructing a new hypothesis (avoids
+   `['['] ++ xs` vs `'[' :: xs` syntactic mismatch).
+
+4. **`scanFlowSequenceEnd_peek` is `rfl`.** The struct-with in `scanFlowSequenceEnd` only modifies
+   `flowLevel`, `simpleKeyAllowed`, and `tokens` — none of which affect `peek?` (which reads
+   `offset`, `inputEnd`, `input`). So `(scanFlowSequenceEnd s).peek? = (s.emit .flowSequenceEnd).advance.peek?`
+   holds definitionally.
+
+##### Layer 1 Reflections
+
+1. **Space-after-comma is the critical blocker.** The emitter outputs `", "` between items (comma
+   then space). After `scanNextToken_flow_comma` scans the comma, the state points at the space.
+   The next `scanNextToken` call's preprocessing (`skipToContent`) absorbs the space before
+   dispatching on the first char of the next item. This means `EmitScansInFlow` can't be applied
+   directly — need to account for the preprocessing space absorption. This is the deepest remaining
+   gap in Layer 1.
+
+2. **List.append_assoc matters for ScannerSurfCorr.** `ScannerSurfCorr s ⟨xs ++ [']'] ++ rest, col⟩`
+   and `ScannerSurfCorr s ⟨xs ++ ([']'] ++ rest), col⟩` are NOT definitionally equal — requires
+   explicit `rw [List.append_assoc]`. This came up when passing `h_corr₁` from the `[` step to
+   the list body step.
+
+3. **Array↔List conversion for IH.** The `Grammable` inductive gives `ih : ∀ i : Fin items.size,
+   EmitScansInFlow items[i]` indexed by `Fin`. The list induction in `emitList_scans_nonempty`
+   gives `∀ v ∈ items, EmitScansInFlow v` via membership. Bridging requires
+   `List.getElem_of_mem` + `Array.length_toList` + subst. This is a recurring pain point in
+   Lean 4 proofs that mix array-indexed and list-indexed reasoning.
 
 #### Layer 2: Parser acceptance
 
