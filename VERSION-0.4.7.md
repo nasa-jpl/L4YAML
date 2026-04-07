@@ -1144,7 +1144,7 @@ the 2 `scanValueValidate` sorrys in `emitPairList_scans_nonempty`.
 as a postcondition. The remaining work is propagating this through the type system and
 composition layer, then proving `scanValueValidate` succeeds using the line invariant.
 
-**Phase 1: Type definition updates**
+##### **Phase 1: Type definition updates**
 
 | Item | Change | Est. effort |
 |------|--------|-------------|
@@ -1154,7 +1154,52 @@ composition layer, then proving `scanValueValidate` succeeds using the line inva
 | `emitList_scans_empty` | Add `rfl` for line postcondition | 1 line |
 | `emitPairList_scans_empty` | Add `rfl` for line postcondition | 1 line |
 
-**Phase 2: Composition proof threading**
+###### Phase 1 accomplishments
+
+1. **All 3 type definitions extended with `∧ s'.line = s.line`.** `EmitScansInFlow` (inserted
+   after `currentIndent`, before `simpleKeyAllowed`), `EmitListScansInFlow` (appended as last
+   conjunct), `EmitPairListScansInFlow` (appended as last conjunct).
+
+2. **Both empty-case proofs updated with `rfl`.** `emitList_scans_empty` and
+   `emitPairList_scans_empty` — trivial since `s' = s` in both cases.
+
+3. **All downstream obtain pattern mismatches resolved.** 14 sites needed updates:
+   - `emitList_scans_nonempty` (singleton + multi-item): added `h_line_v`, `_h_line₁`, and
+     `h_line_end` bindings; added `· rw [h_line_end, _h_line₃, _h_line₂, _h_line₁]` chain.
+   - `emitPairList_scans_nonempty` (singleton + multi-pair): added `_h_line₁`, `h_line_end`,
+     `_h_line_v`; line goals temporarily `sorry`'d (blocked by missing
+     `scanNextToken_flow_value` line postcondition — Phase 3 dependency).
+   - `emit_scans_in_flow` (scalar + sequence + mapping): added `_h_line'`, `_h_line₂` to
+     refine and obtain patterns; line goals proven via `rw` chains.
+   - `emit_produces_valid_yaml` (sequence + mapping): added `_h_line₂` to body scanning obtain.
+
+4. **Build clean: 0 errors, 6 sorry-using declarations (count unchanged).** The 2 new line
+   sorrys in `emitPairList_scans_nonempty` are in a declaration that already had 2 sorrys
+   (scanValueValidate). Net sorry *instance* count: 6 → 8, but sorry *declaration* count
+   unchanged at 6. These will be resolved in Phase 3.
+
+###### Phase 1 reflections
+
+1. **Phase 1 was broader than planned.** The plan listed 5 items (3 type defs + 2 empty proofs),
+   but the cascading obtain pattern updates touched 14 additional sites across
+   `emitList_scans_nonempty`, `emitPairList_scans_nonempty`, `emit_scans_in_flow`, and
+   `emit_produces_valid_yaml`. This was anticipated in the Phase 2 plan — the Phase 1/2
+   boundary is somewhat artificial since type changes immediately break downstream proofs.
+   In practice, Phases 1+2 are a single unit of work.
+
+2. **Line position in `EmitScansInFlow` matters.** Inserting `∧ s'.line = s.line` *before*
+   `∧ s'.simpleKeyAllowed = false` (in `EmitScansInFlow` only) rather than after all existing
+   fields means obtain patterns like `..., h_indent₁, h_ska₁, h_last₁⟩` became
+   `..., h_indent₁, _h_line₁, h_ska₁, h_last₁⟩`. Placing it at the end would've minimized
+   disruption but would break the pattern of grouping preservation properties together.
+
+3. **`emitPairList_scans_nonempty` line proofs need `scanNextToken_flow_value` line
+   postcondition.** The chain `s_end.line = s₃.line → s₃.line = s₂.line → s₂.line = s₁.line → s₁.line = s.line`
+   has a gap at `s₂.line = s₁.line` because `scanNextToken_flow_value` doesn't yet track
+   line. Adding this postcondition is straightforward (`:` is non-newline, same pattern as
+   other flow indicators) and is part of Phase 2/3.
+
+##### **Phase 2: Composition proof threading**
 
 | Item | Change | Est. effort |
 |------|--------|-------------|
@@ -1165,7 +1210,11 @@ composition layer, then proving `scanValueValidate` succeeds using the line inva
 | `emitPairList_scans_nonempty` | Thread line through both cases; chain key + value + comma lines | ~20 lines |
 | `emit_produces_valid_yaml` seq/map | Update obtain patterns for line postcondition | ~10 lines |
 
-**Phase 3: scanValueValidate discharge**
+###### Phase 2 accomplishments
+
+###### Phase 2 reflections
+
+##### **Phase 3: scanValueValidate discharge**
 
 `scanValueValidate` (Scanner.lean:943–983) has 5 error conditions. With `inFlow = true`,
 `ek = none`, and `s'.line = s.line` (from Phase 2), all 5 pass:
@@ -1187,7 +1236,11 @@ composition layer, then proving `scanValueValidate` succeeds using the line inva
 | `saveSimpleKey_prevTok_line_eq` | Prove `prevTok.pos.line = s.line` (token emitted at current line) | ~15 lines |
 | Discharge 2 sorrys | Apply `scanValueValidate_ok_of_flow_same_line` with line chain | ~10 lines each |
 
-**Phase 4: Change C — fuel bounds (from Layer 1.1)**
+###### Phase 3 accomplishments
+
+###### Phase 3 reflections
+
+##### **Phase 4: Change C — fuel bounds (from Layer 1.1)**
 
 The fuel bound `n + 1 ≤ (input.utf8ByteSize + 1) * 4` appears in `emit_produces_valid_yaml`
 for sequence/mapping cases.
@@ -1207,9 +1260,9 @@ Estimated total: ~90 lines.
 (the 2 scanValueValidate sorrys discharged; 1 fuel sorry per seq/map remains until
 Phase 4).**
 
-##### Layer 1.2 accomplishments
+###### Phase 4 accomplishments
 
-##### Layer 1.2 remaining work
+###### Phase 4 reflections
 
 #### Layer 2: Parser acceptance
 
