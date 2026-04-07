@@ -875,7 +875,7 @@ type system changes (Layer 1.1) needed for `emitPairList_scans_nonempty` and fue
 
 #### Layer 1.1: type system changes
 
-**Status:** Change A complete. Change B structural proof complete, scanValueValidate discharge pending. Change C not started.
+**Status:** Complete. Change A (explicitKeyLine preservation) and Change B (simpleKeyAllowed tracking + line preservation primitives) done. scanValueValidate discharge and fuel bounds deferred to Layer 1.2.
 
 **Goal:** Extend type postconditions and add infrastructure to unblock the 3 remaining
 Layer 1 sorrys.
@@ -911,48 +911,55 @@ Changes needed:
 
 Estimated total: ~150 lines of proof modifications across 12 theorems.
 
-**Change B: Derive `scanValueValidate` success from tracked postconditions**
+**Change B: Derive `scanValueValidate` success via line preservation (B1a)**
 
 `scanNextToken_flow_value` requires `h_sv : scanValueValidate (saveSimpleKey s) = .ok ()`.
-Rather than tracking this opaque condition through all types, prove a standalone derivation
-lemma.
+The strategy: prove `s'.line = s.line` (line preservation) through all flow scanning steps,
+then derive `scanValueValidate` success from this single invariant.
 
 `scanValueValidate` (Scanner.lean:943–983) has 5 error conditions:
-1. `simpleKey.possible && !s.inFlow && simpleKey.pos.line != s.line` — **passes** (we have `inFlow = true`)
-2. `simpleKey.possible && s.isInFlowSequence && s.explicitKeyLine.isNone && simpleKey.endLine != s.line` — **needs analysis**
+1. `simpleKey.possible && !s.inFlow && simpleKey.pos.line != s.line` — **passes** (`inFlow = true`)
+2. `simpleKey.possible && s.isInFlowSequence && s.explicitKeyLine.isNone && simpleKey.endLine != s.line` — **passes** (`endLine = s.line` from line preservation)
 3. `simpleKey.possible && !s.inFlow && ...` — **passes** (`inFlow = true`)
-4. `simpleKey.possible && s.inFlow && simpleKey.tokenIndex > 0 && ...` — **needs analysis**
+4. `simpleKey.possible && s.inFlow && simpleKey.tokenIndex > 0 && prevTok.val == .value && prevTok.pos.line != s.line` — **passes** (`prevTok.pos.line = s.line` from line preservation)
 5. `s.explicitKeyLine.isSome && ...` — **passes** (`explicitKeyLine = none`)
 
-Checks 2 and 4 depend on `simpleKey` state. Two approaches:
+**Why line preservation:** The canonical flow emitter never produces literal newline characters.
+`escapeString` replaces `'\n'` with `"\\n"` (escaped), and all structural characters
+(`[]{},:" "`) are non-newline. Since `advance` only increments `line` when consuming a
+newline (via `consumeNewline`), the scanner's `line` field is invariant across all flow
+emission scanning.
 
-*Approach B1 — Track `simpleKey.possible = false`:*
-- After `scanDoubleQuoted`, the scanner sets `simpleKeyAllowed := false`
-- Preprocessing for the next token calls `saveSimpleKey` which is identity when `simpleKeyAllowed = false`
-- If `simpleKey.possible = false`, checks 1–4 all trivially pass
-- Add `¬ s'.simpleKey.possible` (or equivalent) as postcondition to `EmitScansInFlow`
-- Then prove: `scanValueValidate_ok_of_flow_nokey : s.inFlow = true → s.explicitKeyLine = none → ¬ s.simpleKey.possible → scanValueValidate (saveSimpleKey s) = .ok ()`
-- Pro: clean separation, generally useful invariant
-- Con: need to verify and track `simpleKey.possible` through all scanning steps
+This is a **spec-grounded** invariant: YAML flow content is single-line by design
+(multi-line flow content uses escape sequences, not literal newlines). The proof captures
+this structural property once, eliminating both checks 2 and 4 simultaneously.
 
-*Approach B2 — Weaker: track `scanValueValidate` directly:*
-- Add `scanValueValidate (saveSimpleKey s') = .ok ()` as postcondition
-- Pro: directly usable, no analysis of `simpleKey` internals needed
-- Con: opaque, couples types to scanner internals
+*Completed work (simpleKeyAllowed tracking):* As a first step toward Change B,
+`simpleKeyAllowed = false` was tracked through `EmitScansInFlow` and all flow scanning
+theorems. This establishes that `saveSimpleKey` is the identity after key scanning
+(via `saveSimpleKey_id_of_flow_ska_false_ek_none`), which is needed to show that
+`simpleKey` state at `scanValueValidate` time reflects what `saveSimpleKey` set during
+key preprocessing. The full structural proof of `emitPairList_scans_nonempty` (~180 lines)
+is written with 2 targeted sorrys for `scanValueValidate s₁ = .ok ()`.
 
-**Recommended: B1** — Track `¬ s'.simpleKey.possible` (or the weaker condition
-`s'.simpleKeyAllowed = false` which implies it via `saveSimpleKey`). This is a clean
-invariant that holds after any token emission and is preserved by preprocessing.
-
-Changes needed:
+*Remaining work (line preservation):*
 
 | Item | Change | Est. effort |
 |------|--------|-------------|
-| Helper lemma `scanValueValidate_ok_of_flow_nokey` | New standalone lemma in EmitterScannability | ~30 lines |
-| Verify `simpleKey.possible` / `simpleKeyAllowed` behavior through each flow scanning step | Analysis + optional postcondition tracking | ~50 lines |
-| Or: just discharge `h_sv` inline in `emitPairList_scans_nonempty` | If simpler, prove `scanValueValidate (saveSimpleKey s_key) = .ok ()` directly from the key-scanning result | ~20 lines |
+| `advance_preserves_line_of_not_newline` | `c ≠ '\n' → (advance s).line = s.line` (key primitive) | ~10 lines |
+| `collectDoubleQuotedLoop_preserves_line` | Induction mirroring `_preserves_ek` chain; all escaped chars are non-newline | ~40 lines |
+| `scanDoubleQuoted_preserves_line` | Composition through `collectDoubleQuotedLoop` | ~10 lines |
+| `scanFlowSequenceStart/End_preserves_line` | Single advance of `[`/`]` (non-newline) | ~5 lines each |
+| `scanFlowMappingStart/End_preserves_line` | Single advance of `{`/`}` (non-newline) | ~5 lines each |
+| `scanFlowEntry_preserves_line` | Single advance of `,` (non-newline) | ~5 lines |
+| `scanNextToken_flow_*` theorems (7) | Add `s'.line = s.line` postcondition using primitives above | ~10 lines each |
+| `EmitScansInFlow` / `EmitListScansInFlow` / `EmitPairListScansInFlow` | Add `s'.line = s.line` to type defs | 3 lines |
+| `emit_scans_in_flow` (3 cases) | Thread line preservation | ~15 lines each |
+| `emitList_scans_nonempty` | Thread through induction | ~15 lines |
+| `scanValueValidate_ok_of_flow_same_line` | `inFlow → ek = none → s.line = s_init.line → ...` | ~30 lines |
+| Discharge 2 sorrys in `emitPairList_scans_nonempty` | Apply `scanValueValidate_ok_of_flow_same_line` | ~5 lines each |
 
-Estimated total: 30–80 lines depending on approach.
+Estimated total: ~160 lines of new proofs + ~80 lines of modifications.
 
 **Change C: `ScanChain` offset advancement for fuel bounds**
 
@@ -1089,30 +1096,120 @@ Total estimated: ~300–400 lines of proof modifications/additions.
 
 4. **`scanValueValidate` discharge identified as requiring additional infrastructure.**
    With `inFlow = true` and `ek = none`, checks 1, 3, 5 pass trivially. Check 2 requires
-   `isInFlowSequence = false` (needs `flowStack` tracking through EmitScansInFlow).
-   Check 4 (T833: missing comma detection) requires either `line` preservation
-   (emitter output has no newlines) or token-position tracking (prev token ≠ `.value`).
-   Both approaches are viable but require ~150 lines of additional postcondition
-   plumbing similar to Change A.
+   `simpleKey.endLine = s.line` (needs line preservation). Check 4 requires
+   `prevTok.pos.line = s.line` (also needs line preservation). Both are discharged by the
+   B1a approach (track `s'.line = s.line` through all flow scanning). Deferred to Layer 1.2.
 
-##### Change B remaining work
+5. **Line preservation (`s'.line = s.line`) proven for all 8 individual flow theorems.**
+   Bottom-up chain built from `advance_line_of_peek` (non-newline advance preserves line)
+   through `processEscape_hex_ok`, `collectDoubleQuotedLoop_escapeString_succeeds`,
+   `scanDoubleQuoted_flow_ok`, and all 7 `scanNextToken_flow_*` theorems. Two standalone
+   helper lemmas added: `scanFlowSequenceStart_line_eq` and `scanFlowMappingStart_line_eq`
+   (needed because `scanFlowXxxStart` has intermediate `s_key_disabled` binding that blocks
+   `show`/`rfl` — required full `simp only [def, emit, advance]; split <;> rfl`). All 13
+   downstream caller obtain patterns updated with `_h_line*` bindings.
 
-The 2 sorrys in `emitPairList_scans_nonempty` need `scanValueValidate s₁ = .ok ()`
-where `s₁` is the state after key scanning. Two viable approaches:
+##### Layer 1.1 reflections (Change B)
 
-**Approach B1a — Track `s'.line = s.line` through EmitScansInFlow:**
-- Emitter output contains no newline characters → `advance` never increments `line`
-- If `s₁.line = s.line` (initial line), then all token positions have `pos.line = s.line`
-- Check 4's `prevTok.pos.line != s.line` becomes false → check passes
-- Check 2's `endLine != s.line` becomes false → check passes
-- Pro: eliminates both checks 2 and 4 at once
-- Con: requires proving `collectDoubleQuotedLoop` preserves line for escaped content
+1. **B1a (line preservation) is spec-grounded and eliminates two checks simultaneously.** The
+   canonical flow emitter never produces literal newline characters (`escapeString` replaces
+   `'\n'` with `"\\n"`). Since `advance` only increments `line` on newline consumption,
+   `s'.line = s.line` is invariant across all flow scanning. This single property eliminates
+   both `scanValueValidate` checks 2 (`simpleKey.endLine != s.line`) and 4
+   (`prevTok.pos.line != s.line`), avoiding the need for `flowStack` tracking or
+   token-content analysis.
 
-**Approach B1b — Track `isInFlowSequence` + token-before-simpleKey:**
-- `isInFlowSequence = false` (mappings push `false` on flowStack) → eliminates check 2
-- Token at `simpleKey.tokenIndex - 1` is `flowMappingStart` or `flowEntry` → eliminates check 4
-- Pro: doesn't need line tracking
-- Con: requires `flowStack` preservation + token content tracking through EmitScansInFlow
+2. **Start vs End functions need different proof strategies.** `scanFlowSequenceEnd` and
+   `scanFlowMappingEnd` allow `show (s.emit .token).advance.line = s.line` + `rw` because
+   the definition is simple. `scanFlowSequenceStart` and `scanFlowMappingStart` have an
+   intermediate `s_key_disabled` struct copy that blocks `show`/`rfl`/`dsimp` -- required
+   standalone lemmas with `simp only [def, emit, advance]; split <;> rfl`.
+
+3. **The preservation-threading pattern is now well-established.** After Change A
+   (`explicitKeyLine`) and Change B (`simpleKeyAllowed` + `line`), the pattern is:
+   (a) prove primitive preservation for each scanner function, (b) add postcondition to
+   each `scanNextToken_flow_*` theorem, (c) update downstream obtain patterns, (d) add to
+   type definitions, (e) thread through composition proofs. Each iteration is faster as the
+   scaffolding exists.
+
+#### Layer 1.2: Line preservation threading + scanValueValidate discharge
+
+**Status:** Not started.
+
+**Goal:** Thread `s'.line = s.line` from individual flow theorems (proven in Layer 1.1)
+into the type definitions and composition proofs, then use line preservation to discharge
+the 2 `scanValueValidate` sorrys in `emitPairList_scans_nonempty`.
+
+**Context:** All 8 individual `scanNextToken_flow_*` theorems now have `∧ s'.line = s.line`
+as a postcondition. The remaining work is propagating this through the type system and
+composition layer, then proving `scanValueValidate` succeeds using the line invariant.
+
+**Phase 1: Type definition updates**
+
+| Item | Change | Est. effort |
+|------|--------|-------------|
+| `EmitScansInFlow` type def | Add `∧ s'.line = s.line` to existential | 1 line |
+| `EmitListScansInFlow` type def | Add `∧ s'.line = s.line` | 1 line |
+| `EmitPairListScansInFlow` type def | Add `∧ s'.line = s.line` | 1 line |
+| `emitList_scans_empty` | Add `rfl` for line postcondition | 1 line |
+| `emitPairList_scans_empty` | Add `rfl` for line postcondition | 1 line |
+
+**Phase 2: Composition proof threading**
+
+| Item | Change | Est. effort |
+|------|--------|-------------|
+| `emit_scans_in_flow` scalar case | Use existing `_h_line'` from obtain; add to refine tuple | ~5 lines |
+| `emit_scans_in_flow` sequence case | Chain `_h_line₁` (open) + line from `EmitListScansInFlow` + `_h_line₃` (close); update `h_list_scan` obtain | ~15 lines |
+| `emit_scans_in_flow` mapping case | Same pattern with `EmitPairListScansInFlow` | ~15 lines |
+| `emitList_scans_nonempty` | Thread line through singleton + multi-item inductive cases; chain `h_line_body.trans h_line_comma` etc. | ~20 lines |
+| `emitPairList_scans_nonempty` | Thread line through both cases; chain key + value + comma lines | ~20 lines |
+| `emit_produces_valid_yaml` seq/map | Update obtain patterns for line postcondition | ~10 lines |
+
+**Phase 3: scanValueValidate discharge**
+
+`scanValueValidate` (Scanner.lean:943–983) has 5 error conditions. With `inFlow = true`,
+`ek = none`, and `s'.line = s.line` (from Phase 2), all 5 pass:
+
+1. `simpleKey.possible && !s.inFlow && ...` → **passes** (`!inFlow = false`)
+2. `simpleKey.possible && isInFlowSequence && ek.isNone && endLine != s.line` → **passes**
+   (`endLine = s.line` from: `saveSimpleKey` sets `endLine = s_init.line` during key
+   preprocessing; line preservation through key scanning gives `s_init.line = s₁.line`)
+3. `simpleKey.possible && !s.inFlow && ...` → **passes** (`!inFlow = false`)
+4. `simpleKey.possible && inFlow && tokenIndex > 0 && prevTok.val == .value && prevTok.pos.line != s.line` →
+   **passes** (`prevTok.pos.line = s.line` from: token emitted at `s.line` during key
+   scanning; line preservation gives `s.line = s₁.line`)
+5. `ek.isSome && ...` → **passes** (`ek = none`)
+
+| Item | Change | Est. effort |
+|------|--------|-------------|
+| `scanValueValidate_ok_of_flow_same_line` | New lemma: `inFlow → ek = none → endLine = line → prevTok.pos.line = line → ok ()` | ~30 lines |
+| `saveSimpleKey_endLine_eq` | Prove `(saveSimpleKey s).simpleKey.endLine = s.line` when `simpleKeyAllowed = true` | ~15 lines |
+| `saveSimpleKey_prevTok_line_eq` | Prove `prevTok.pos.line = s.line` (token emitted at current line) | ~15 lines |
+| Discharge 2 sorrys | Apply `scanValueValidate_ok_of_flow_same_line` with line chain | ~10 lines each |
+
+**Phase 4: Change C — fuel bounds (from Layer 1.1)**
+
+The fuel bound `n + 1 ≤ (input.utf8ByteSize + 1) * 4` appears in `emit_produces_valid_yaml`
+for sequence/mapping cases.
+
+| Item | Change | Est. effort |
+|------|--------|-------------|
+| `scanNextToken_offset_advance` | Per-step: `.ok (some s') → s'.offset ≥ s.offset + 1` | ~50 lines |
+| `ScanChain_offset_bound` | Chain: `ScanChain s n s' → s'.offset ≥ s.offset + n` | ~20 lines |
+| `ScanChain_fuel_bound` | Derivation: chain + ScannerSurfCorr → fuel inequality | ~15 lines |
+| `emit_produces_valid_yaml` fuel bounds | Replace `(by sorry)` with `ScanChain_fuel_bound` | ~5 lines |
+
+Estimated total: ~90 lines.
+
+**Execution order:** Phase 1 → Phase 2 → Phase 3 → Phase 4
+
+**Estimated total: ~250 lines of new/modified proofs. Expected sorry reduction: 6 → 2
+(the 2 scanValueValidate sorrys discharged; 1 fuel sorry per seq/map remains until
+Phase 4).**
+
+##### Layer 1.2 accomplishments
+
+##### Layer 1.2 remaining work
 
 #### Layer 2: Parser acceptance
 
