@@ -875,7 +875,7 @@ type system changes (Layer 1.1) needed for `emitPairList_scans_nonempty` and fue
 
 #### Layer 1.1: type system changes
 
-**Status:** Change A complete. Change B in progress. Change C not started.
+**Status:** Change A complete. Change B structural proof complete, scanValueValidate discharge pending. Change C not started.
 
 **Goal:** Extend type postconditions and add infrastructure to unblock the 3 remaining
 Layer 1 sorrys.
@@ -1060,6 +1060,59 @@ Total estimated: ~300–400 lines of proof modifications/additions.
    needing ek destructuring at 2 sites, and (c) the primitive `_preserves_ek` chain being
    larger than anticipated (12 helpers vs. implied 4–5). The plan correctly identified every
    theorem that needed updating and the proof pattern for each.
+
+##### Change B accomplishments
+
+1. **`simpleKeyAllowed = false` tracking added to `EmitScansInFlow` and all flow scanning
+   theorems.** Following the same preservation pattern as Change A, added
+   `s'.simpleKeyAllowed = false` postcondition to: `scanDoubleQuoted_flow_ok`,
+   `scanNextToken_flow_scanDoubleQuoted`, `scanNextToken_flow_close_seq_nested`,
+   `scanNextToken_flow_close_mapping_nested`. All three cases of `emit_scans_in_flow`
+   (scalar, sequence, mapping) now provide this postcondition. Key insight:
+   `scanDoubleQuoted` explicitly sets `simpleKeyAllowed := false` in its result struct,
+   and both `scanFlowSequenceEnd`/`scanFlowMappingEnd` do the same — so the proof is
+   `rfl` in each primitive case.
+
+2. **Helper lemmas for `saveSimpleKey` identity and `scanValueValidate` pass conditions.**
+   Proved `saveSimpleKey_id_of_flow_ska_false_ek_none`: when `inFlow = true`,
+   `simpleKeyAllowed = false`, and `explicitKeyLine = none`, `saveSimpleKey` is the identity.
+   Also proved `scanValueValidate_ok_of_not_possible_ek_none` for the case when
+   `simpleKey.possible = false` (not directly applicable since `possible = true` after
+   key scanning, but useful for other contexts).
+
+3. **Full structural proof of `emitPairList_scans_nonempty` written (~180 lines).** Both
+   singleton and multi-pair inductive cases are complete with proper chain composition:
+   key scan → saveSimpleKey identity → value scan via `scanNextToken_flow_value` →
+   space preprocessing → value EmitScansInFlow → comma + recursive call.
+   Only 2 targeted sorrys remain for `scanValueValidate s₁ = .ok ()` (one per case),
+   replacing the previous single sorry that covered the entire theorem.
+
+4. **`scanValueValidate` discharge identified as requiring additional infrastructure.**
+   With `inFlow = true` and `ek = none`, checks 1, 3, 5 pass trivially. Check 2 requires
+   `isInFlowSequence = false` (needs `flowStack` tracking through EmitScansInFlow).
+   Check 4 (T833: missing comma detection) requires either `line` preservation
+   (emitter output has no newlines) or token-position tracking (prev token ≠ `.value`).
+   Both approaches are viable but require ~150 lines of additional postcondition
+   plumbing similar to Change A.
+
+##### Change B remaining work
+
+The 2 sorrys in `emitPairList_scans_nonempty` need `scanValueValidate s₁ = .ok ()`
+where `s₁` is the state after key scanning. Two viable approaches:
+
+**Approach B1a — Track `s'.line = s.line` through EmitScansInFlow:**
+- Emitter output contains no newline characters → `advance` never increments `line`
+- If `s₁.line = s.line` (initial line), then all token positions have `pos.line = s.line`
+- Check 4's `prevTok.pos.line != s.line` becomes false → check passes
+- Check 2's `endLine != s.line` becomes false → check passes
+- Pro: eliminates both checks 2 and 4 at once
+- Con: requires proving `collectDoubleQuotedLoop` preserves line for escaped content
+
+**Approach B1b — Track `isInFlowSequence` + token-before-simpleKey:**
+- `isInFlowSequence = false` (mappings push `false` on flowStack) → eliminates check 2
+- Token at `simpleKey.tokenIndex - 1` is `flowMappingStart` or `flowEntry` → eliminates check 4
+- Pro: doesn't need line tracking
+- Con: requires `flowStack` preservation + token content tracking through EmitScansInFlow
 
 #### Layer 2: Parser acceptance
 
