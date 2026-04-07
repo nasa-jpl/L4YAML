@@ -710,7 +710,8 @@ Detailed proof strategies are in Step 8.
 
 ### Step 8: Non-empty Flow Collection Proofs (5 remaining sorrys)
 
-**Status:** Not started. This step covers ALL remaining sorry-using declarations.
+**Status:** In progress — Layer 1 individual dispatch theorems and type definitions complete;
+type system changes (Layer 1.1) needed for `emitPairList_scans_nonempty` and fuel bounds.
 
 **Goal:** Discharge the 5 remaining sorry-using declarations to reach 0-sorry.
 
@@ -737,16 +738,45 @@ Detailed proof strategies are in Step 8.
 **Flow indicator dispatch (all proven):**
 - `scanNextToken_flow_open_init` — `[` at flowLevel=0 from initial state
 - `scanNextToken_flow_open_nested` — `[` when already in flow context (flowLevel > 0)
-- `scanNextToken_flow_comma` — `,` in flow context (1 internal sorry for `saveSimpleKey_preserves_lastRealTokenVal`)
+- `scanNextToken_flow_comma` — `,` in flow context
 - `scanNextToken_flow_close_seq_nested` — `]` when flowLevel ≥ 2
 - `scanNextToken_flow_close_seq_outermost` — `]` when flowLevel = 1 with EOF after
 
-**`EmitScansInFlow` induction framework (partially proven):**
+**Mapping bracket dispatch (all proven):**
+- `scanFlowMappingStart_detail`, `_preserves_dp`, `_preserves_indents`, `_flowLevel_eq` — `{` field preservation
+- `scanFlowMappingEnd_detail`, `_preserves_dp`, `_preserves_indents`, `_flowLevel`, `_lastRealTokenVal`, `_peek` — `}` field preservation
+- `dispatchFlowIndicators_brace` — `{` dispatches to `scanFlowMappingStart` (required explicit char comparison lemmas: `{` is 3rd case in dispatch)
+- `checkBlockFlowIndent_ok_close_brace` — `}` passes indent check
+- `dispatchFlowIndicators_close_brace_nested` / `_close_brace_outermost` — `}` flow dispatch
+- `scanNextToken_flow_close_mapping_nested` — `}` when flowLevel ≥ 2 (7 postconditions incl. `lastRealTokenVal?`)
+- `scanNextToken_flow_close_mapping_outermost` — `}` when flowLevel = 1 with EOF after
+- `scanNextToken_flow_open_mapping_nested` — `{` in flow context
+- `scanNextToken_flow_open_mapping_init` — `{` at flowLevel=0 from initial state (with `dispatchStructural_none_brace_init`, `checkBlockFlowIndent_brace_init`)
+
+**Value indicator `:` dispatch (proven):**
+- `scanNextToken_via_block_dispatch` — pipeline composition for block dispatch (`:` goes through block, not flow)
+- `dispatchBlockIndicators_colon_value` — `:` dispatches to `scanValue` when `isValueCandidate` holds
+- `isValueCandidate_space_after` — `isValueCandidate` returns true when next char after `:` is a space
+- `scanValue_flow_ok` — `scanValue` succeeds in flow context, preserving invariants
+- `scanNextToken_flow_value` — full `scanNextToken` for `:` in flow context after a key
+
+**`EmitScansInFlow` induction framework (fully proven):**
 - `EmitScansInFlow` type definition — scanning any emitter output in flow context
 - `EmitListScansInFlow` type definition — scanning comma-separated list body
 - `emitList_scans_empty` — empty list body is 0-step chain (proven)
-- `emit_scans_in_flow` scalar case — dispatches to `scanNextToken_flow_scanDoubleQuoted` (1 sorry: col positivity)
-- `emit_scans_in_flow` sequence case — fully composed: `[` + list body + `]` via `ScanChain.trans` (delegates to `emitList_scans_nonempty`)
+- `emitList_scans_nonempty` — Non-empty list scanning via induction (proven)
+- `emit_scans_in_flow` scalar case — dispatches to `scanNextToken_flow_scanDoubleQuoted`
+- `emit_scans_in_flow` sequence case — fully composed: `[` + list body + `]` via `ScanChain.trans`
+- `emit_scans_in_flow` mapping case — fully composed: `{` + pair body + `}` via `ScanChain.trans`
+
+**Pair list scanning framework (blocked on Layer 1.1 type changes):**
+- `EmitPairListScansInFlow` type definition — scanning key-value pair body in flow context
+- `emitPairList_first_char` — first char analysis of pair list output
+- `emitPairList_scans_empty` — empty pair list is 0-step chain
+- `emitPairList_scans_nonempty` — **sorry** — Non-empty pair list scanning; proof strategy clear (induction mirroring `emitList_scans_nonempty`) but blocked: `scanNextToken_flow_value` requires `h_ek : s.explicitKeyLine = none` and `h_sv : scanValueValidate (saveSimpleKey s) = .ok ()`, neither tracked by `EmitScansInFlow` postconditions
+
+**Top-level theorem (2 sorry dependencies remain):**
+- `emit_produces_valid_yaml` — scanner accepts any canonical emitter output; structural composition proven for all 3 constructors but sequence and mapping cases have `(by sorry)` fuel bounds requiring `ScanChain` offset advancement infrastructure
 
 **Supporting infrastructure (all proven):**
 - `scanFlowSequenceEnd_detail/preserves_dp/indents/flowLevel/peek` — field preservation
@@ -757,74 +787,216 @@ Detailed proof strategies are in Step 8.
 - `scanLoop_eof` + `scanFiltered_of_chain` — connecting ScanChain to scanFiltered success
 - `nat_beq_zero_false/true` — helpers for Nat BEq with 0
 
-**What's still needed:**
-
-1. **Space-after-comma handling** (~80 LOC): After scanning `,` from `", "`, the scanner state
-   points at `' ' :: (emit v).toList ++ rest`. But `EmitScansInFlow` expects state at
-   `(emit v).toList ++ rest` — no leading space. The space is absorbed by `skipToContent`
-   during the *next* `scanNextToken`'s preprocessing. Need either:
-   (a) Prove `scanNextToken_preprocess_flow` handles a leading space and returns the same
-       `saveSimpleKey` result with chars advanced by 1, or
-   (b) Define an `EmitScansInFlow_with_leading_space` wrapper that includes 1 preprocessing
-       step before delegating to the inner `EmitScansInFlow`.
-
-2. **`emitList_scans_nonempty`** (~100 LOC): List induction composing
-   `EmitScansInFlow v` + comma + space + recursive tail. Depends on #1.
-
-3. **Col positivity after `scanDoubleQuoted`** (~30 LOC): The scalar case of `emit_scans_in_flow`
-   has a sorry for `s'.col > 0`. Need to show `scanDoubleQuoted` advances col past the closing `"`.
-
-4. **Mapping dispatch lemmas** (~200 LOC): `{`/`}` analogs of the sequence bracket lemmas.
-   Straightforward copies with `scanFlowMappingStart`/`scanFlowMappingEnd` + colon separator.
-
-5. **`emit_produces_valid_yaml` seq/map non-empty** (~50 LOC each): Once `emit_scans_in_flow`
-   is complete, compose: initial `[`/`{` at flowLevel=0 → `emit_scans_in_flow` → outermost
-   `]`/`}` + `scanFiltered_of_chain`.
-
 ##### Layer 1 Accomplishments
 
 1. **All flow indicator dispatches proven.** `scanNextToken` traced through the full 5-stage
-   pipeline for `[`, `]`, `,` in flow context, with both nested (flowLevel ≥ 2) and outermost
+   pipeline for `[`, `]`, `{`, `}`, `,` in flow context, with both nested (flowLevel ≥ 2) and outermost
    (flowLevel = 1) close-bracket variants. Key technique: `scanNextToken_via_flow_dispatch`
    composes preprocessing + structural dispatch + allowDirectives + checkBlockFlowIndent +
    flow dispatch into a single pipeline, avoiding 50+ lines of raw `unfold`/`simp`.
 
-2. **`EmitScansInFlow` induction framework established.** The sequence case of `emit_scans_in_flow`
-   is fully composed: `scanNextToken_flow_open_nested` (1 step) + `EmitListScansInFlow` (n steps) +
-   `scanNextToken_flow_close_seq_nested` (1 step), with all invariants (flowLevel, directivesPresent,
-   indents, inFlow, currentIndent) proven through the composition chain. The remaining gap is
-   `emitList_scans_nonempty`, which is the comma+space handling for list body scanning.
+2. **Block indicator dispatch for value `:` proven.** Unlike `[`, `]`, `{`, `}`, `,` which are handled
+   by flow dispatch, `:` goes through the block dispatch stage (`scanNextToken_dispatchBlockIndicators`).
+   This required a new `scanNextToken_via_block_dispatch` composition lemma, plus decomposing
+   `isValueCandidate` (which checks JSON key adjacency in flow context) and `scanValue` (which
+   has 5 sub-steps: clearKey, validate, prepare, emit, advance). The key insight: `isValueCandidate`
+   always returns true when the character after `:` is a blank (space), regardless of `simpleKey`
+   state — and the emitter always produces `": "` (colon-space). Five new advance preservation
+   lemmas (`advance_inFlow`, `advance_flowLevel`, `advance_dp`, `advance_explicitKeyLine`,
+   `advance_offset_of_eq`) were added to CouplingBridge.lean to support the 8-postcondition proof.
 
-3. **String.toList distribution pattern.** `emit (.sequence ...)` doesn't reduce to char lists
-   directly. The pattern `simp only [emit, String.toList_append]; rfl` distributes `String.toList`
-   over `++` concatenation, then `rfl` resolves `"\"".toList = ['"']` etc. For `ScannerSurfCorr`
-   matching, `rw [h_chars] at hcorr` is cleaner than constructing a new hypothesis (avoids
-   `['['] ++ xs` vs `'[' :: xs` syntactic mismatch).
+3. **Mapping infrastructure is symmetric to sequences.** All 17 mapping bracket theorems mirror
+   the sequence ones. The only non-trivial difference: `{` is the 3rd case in
+   `scanNextToken_dispatchFlowIndicators`, requiring explicit character comparison lemmas
+   (`show ('{' == '[') = false from by decide`, etc.) rather than a simple `simp [pure, Except.pure]`.
 
-4. **`scanFlowSequenceEnd_peek` is `rfl`.** The struct-with in `scanFlowSequenceEnd` only modifies
-   `flowLevel`, `simpleKeyAllowed`, and `tokens` — none of which affect `peek?` (which reads
-   `offset`, `inputEnd`, `input`). So `(scanFlowSequenceEnd s).peek? = (s.emit .flowSequenceEnd).advance.peek?`
-   holds definitionally.
+4. **`EmitScansInFlow` induction proven for scalar, sequence, and mapping cases.** The `emit_scans_in_flow`
+   theorem handles all three `Grammable` constructors. The sequence case chains `emitList_scans_nonempty`;
+   the mapping case chains `EmitPairListScansInFlow` for the body. However, `emitPairList_scans_nonempty`
+   itself remains sorry'd — its proof structure mirrors `emitList_scans_nonempty` but is blocked on
+   `EmitScansInFlow` not tracking `explicitKeyLine` and `scanValueValidate` postconditions needed by
+   `scanNextToken_flow_value` (see Layer 1.1).
+
+5. **`emit_produces_valid_yaml` structurally complete with 3 sorry dependencies.** The top-level
+   theorem's proof structure is fully assembled for all 3 constructors: initial bracket at flowLevel=0
+   → body scanning → outermost close bracket → EOF → `scanFiltered_of_chain`. The scalar case is
+   fully proven. The sequence and mapping cases have `(by sorry)` fuel bounds (`n + 1 ≤
+   (input.utf8ByteSize + 1) * 4`) that require `ScanChain` offset advancement infrastructure.
+   The mapping case additionally depends on `emitPairList_scans_nonempty` (see Layer 1.1).
+
+6. **`scanNextToken_flow_value` fully proven with 9 postconditions.** The value indicator proof
+   is the most complex single-step theorem, requiring 8 stages through the `scanNextToken`
+   pipeline (preprocess → structural dispatch → allowDirectives → checkBlockFlowIndent →
+   flow dispatch skip → block dispatch → scanValue decomposition → postcondition assembly).
+   It traces through `scanValueClearKey` (identity when `explicitKeyLine = none`),
+   `scanValueValidate`, `scanValuePrepare` (only modifies tokens/simpleKey in flow),
+   emit `.value`, advance, `scanValueTabCheck` (trivial in flow), and the final field update.
+   Postconditions include `ScannerSurfCorr`, `flowLevel`/`directivesPresent`/`indents` preservation,
+   `col = s.col + 1`, `inFlow = true`, `currentIndent < 0`, and `explicitKeyLine = none`.
 
 ##### Layer 1 Reflections
 
-1. **Space-after-comma is the critical blocker.** The emitter outputs `", "` between items (comma
-   then space). After `scanNextToken_flow_comma` scans the comma, the state points at the space.
+1. **Space-after-comma was the first deep blocker.** The emitter outputs `", "` between items.
+   After `scanNextToken_flow_comma` scans the comma, the state points at the space.
    The next `scanNextToken` call's preprocessing (`skipToContent`) absorbs the space before
-   dispatching on the first char of the next item. This means `EmitScansInFlow` can't be applied
-   directly — need to account for the preprocessing space absorption. This is the deepest remaining
-   gap in Layer 1.
+   dispatching on the first char of the next item. The `scanNextToken_preprocess_flow_ws1`
+   lemma handles this by showing the space-prefixed state preprocesses identically to the
+   non-space-prefixed state, modulo a col+1 offset.
 
-2. **List.append_assoc matters for ScannerSurfCorr.** `ScannerSurfCorr s ⟨xs ++ [']'] ++ rest, col⟩`
+2. **Value indicator `:` was the second deep blocker.** Unlike flow indicators (`[]{},'`) which
+   are simple single-char dispatches, `:` goes through `isValueCandidate` (which examines
+   `simpleKey` state and last token type) and `scanValue` (5 sub-steps with multiple error
+   checks). The fallback path in `isValueCandidate` — checking `peekAt? 1` for a blank — was
+   the key to keeping the proof manageable without tracking `simpleKey` through the entire chain.
+
+3. **Scanner-internal state complicates flow proofs.** `scanValue` checks `explicitKeyLine`,
+   `isInFlowSequence`, `simpleKey.possible`, `simpleKey.endLine`, and token array contents.
+   These are not tracked by `EmitScansInFlow`'s postconditions. The approach: add minimal
+   hypotheses to `scanNextToken_flow_value` that the emitter context always satisfies
+   (e.g., `explicitKeyLine = none`, space after `:`).
+
+4. **List.append_assoc matters for ScannerSurfCorr.** `ScannerSurfCorr s ⟨xs ++ [']'] ++ rest, col⟩`
    and `ScannerSurfCorr s ⟨xs ++ ([']'] ++ rest), col⟩` are NOT definitionally equal — requires
-   explicit `rw [List.append_assoc]`. This came up when passing `h_corr₁` from the `[` step to
-   the list body step.
+   explicit `rw [List.append_assoc]`.
 
-3. **Array↔List conversion for IH.** The `Grammable` inductive gives `ih : ∀ i : Fin items.size,
-   EmitScansInFlow items[i]` indexed by `Fin`. The list induction in `emitList_scans_nonempty`
-   gives `∀ v ∈ items, EmitScansInFlow v` via membership. Bridging requires
-   `List.getElem_of_mem` + `Array.length_toList` + subst. This is a recurring pain point in
-   Lean 4 proofs that mix array-indexed and list-indexed reasoning.
+5. **Array↔List conversion for IH.** The `Grammable` inductive gives indices via `Fin`. The list
+   induction gives membership via `∈`. Bridging requires `List.getElem_of_mem` +
+   `Array.length_toList` + subst. For mappings, both `ihk` and `ihv` need this bridge.
+
+6. **Type system gap is the final Layer 1 bottleneck.** Proving `emitPairList_scans_nonempty`
+   is structurally straightforward (it mirrors `emitList_scans_nonempty`), but composing the
+   key → `:` → value chain requires `scanNextToken_flow_value`, which needs `explicitKeyLine = none`
+   and `scanValueValidate (saveSimpleKey s) = .ok ()` — properties not tracked by the current
+   `EmitScansInFlow` postconditions. This is not a fundamental difficulty but a type system
+   bookkeeping problem: the scanner functions (`scanDoubleQuoted`, `scanFlowSequenceEnd`,
+   `scanFlowEntry`, etc.) all preserve `explicitKeyLine`, and `scanValueValidate` succeeds
+   when `explicitKeyLine = none` + `inFlow = true`. The work is mechanical — add postconditions
+   to types, update ~10 existing proofs to establish them — but touches many theorems.
+
+#### Layer 1.1: type system changes
+
+**Status:** Not started. Prerequisite for `emitPairList_scans_nonempty` and fuel bounds.
+
+**Goal:** Extend type postconditions and add infrastructure to unblock the 3 remaining
+Layer 1 sorrys.
+
+**Change A: Add `s'.explicitKeyLine = none` postcondition to flow scanning types**
+
+`scanNextToken_flow_value` requires `h_ek : s.explicitKeyLine = none` on its input state.
+This must propagate from the preceding scan step (key scanning). Currently `EmitScansInFlow`,
+`EmitListScansInFlow`, and `EmitPairListScansInFlow` do not track `explicitKeyLine`.
+
+*Verified precondition:* None of `scanDoubleQuoted`, `scanFlowSequenceEnd`,
+`scanFlowMappingEnd`, `scanFlowEntry`, `skipToContent`, or `saveSimpleKey` modify
+`explicitKeyLine`. Only `scanValue` and `scanKey` explicitly set it. The emitter context
+never emits `?` (explicit key), so once `explicitKeyLine = none`, it stays `none` through
+all flow scanning steps.
+
+Changes needed:
+
+| Item | Change | Est. effort |
+|------|--------|-------------|
+| `EmitScansInFlow` type def | Add `∧ s'.explicitKeyLine = none` to existential | 1 line |
+| `EmitListScansInFlow` type def | Add `∧ s'.explicitKeyLine = none` | 1 line |
+| `EmitPairListScansInFlow` type def | Add `∧ s'.explicitKeyLine = none` | 1 line |
+| `scanNextToken_flow_scanDoubleQuoted` | Add postcondition `∧ s'.explicitKeyLine = none` + prove (double-quoted scanning doesn't touch `explicitKeyLine`) | ~15 lines |
+| `scanNextToken_flow_open_nested` | Add postcondition `∧ s'.explicitKeyLine = none` | ~10 lines |
+| `scanNextToken_flow_open_mapping_nested` | Add postcondition | ~10 lines |
+| `scanNextToken_flow_close_seq_nested` | Add postcondition | ~10 lines |
+| `scanNextToken_flow_close_mapping_nested` | Add postcondition | ~10 lines |
+| `scanNextToken_flow_comma` | Add postcondition (may also need `∧ s'.inFlow = true` etc. if not already present) | ~10 lines |
+| `scanNextToken_preprocess_flow_ws1` | Add `∧ s₁.explicitKeyLine = s.explicitKeyLine` (preprocessing preserves `explicitKeyLine` — `skipToContent` verified to not modify it) | ~15 lines |
+| `emit_scans_in_flow` scalar/seq/map | Propagate through proof | ~20 lines each |
+| `emitList_scans_nonempty` | Propagate through induction | ~15 lines |
+
+Estimated total: ~150 lines of proof modifications across 12 theorems.
+
+**Change B: Derive `scanValueValidate` success from tracked postconditions**
+
+`scanNextToken_flow_value` requires `h_sv : scanValueValidate (saveSimpleKey s) = .ok ()`.
+Rather than tracking this opaque condition through all types, prove a standalone derivation
+lemma.
+
+`scanValueValidate` (Scanner.lean:943–983) has 5 error conditions:
+1. `simpleKey.possible && !s.inFlow && simpleKey.pos.line != s.line` — **passes** (we have `inFlow = true`)
+2. `simpleKey.possible && s.isInFlowSequence && s.explicitKeyLine.isNone && simpleKey.endLine != s.line` — **needs analysis**
+3. `simpleKey.possible && !s.inFlow && ...` — **passes** (`inFlow = true`)
+4. `simpleKey.possible && s.inFlow && simpleKey.tokenIndex > 0 && ...` — **needs analysis**
+5. `s.explicitKeyLine.isSome && ...` — **passes** (`explicitKeyLine = none`)
+
+Checks 2 and 4 depend on `simpleKey` state. Two approaches:
+
+*Approach B1 — Track `simpleKey.possible = false`:*
+- After `scanDoubleQuoted`, the scanner sets `simpleKeyAllowed := false`
+- Preprocessing for the next token calls `saveSimpleKey` which is identity when `simpleKeyAllowed = false`
+- If `simpleKey.possible = false`, checks 1–4 all trivially pass
+- Add `¬ s'.simpleKey.possible` (or equivalent) as postcondition to `EmitScansInFlow`
+- Then prove: `scanValueValidate_ok_of_flow_nokey : s.inFlow = true → s.explicitKeyLine = none → ¬ s.simpleKey.possible → scanValueValidate (saveSimpleKey s) = .ok ()`
+- Pro: clean separation, generally useful invariant
+- Con: need to verify and track `simpleKey.possible` through all scanning steps
+
+*Approach B2 — Weaker: track `scanValueValidate` directly:*
+- Add `scanValueValidate (saveSimpleKey s') = .ok ()` as postcondition
+- Pro: directly usable, no analysis of `simpleKey` internals needed
+- Con: opaque, couples types to scanner internals
+
+**Recommended: B1** — Track `¬ s'.simpleKey.possible` (or the weaker condition
+`s'.simpleKeyAllowed = false` which implies it via `saveSimpleKey`). This is a clean
+invariant that holds after any token emission and is preserved by preprocessing.
+
+Changes needed:
+
+| Item | Change | Est. effort |
+|------|--------|-------------|
+| Helper lemma `scanValueValidate_ok_of_flow_nokey` | New standalone lemma in EmitterScannability | ~30 lines |
+| Verify `simpleKey.possible` / `simpleKeyAllowed` behavior through each flow scanning step | Analysis + optional postcondition tracking | ~50 lines |
+| Or: just discharge `h_sv` inline in `emitPairList_scans_nonempty` | If simpler, prove `scanValueValidate (saveSimpleKey s_key) = .ok ()` directly from the key-scanning result | ~20 lines |
+
+Estimated total: 30–80 lines depending on approach.
+
+**Change C: `ScanChain` offset advancement for fuel bounds**
+
+The fuel bound `n + 1 ≤ (input.utf8ByteSize + 1) * 4` appears in `emit_produces_valid_yaml`
+for sequence/mapping cases. The strategy:
+
+1. **Per-step offset advancement:** `scanNextToken s = .ok (some s') → s'.offset ≥ s.offset + 1`
+   - Existing infrastructure: `advance_offset_lt` (ScannerProgress.lean:64), per-branch
+     `scanFlowSequenceStart_offset_lt`, etc.
+   - Need: unified lemma covering all dispatch branches, or prove for each branch
+     used in the emitter context
+
+2. **Chain offset bound:** `ScanChain s n s' → s'.offset ≥ s.offset + n`
+   - Induction on `ScanChain`: base case trivial, step case uses per-step lemma
+
+3. **Fuel derivation:** From chain bound + `ScannerSurfCorr` properties:
+   - `s'.offset ≤ s'.inputEnd = input.utf8ByteSize` (from `end_eq`)
+   - `s_init.offset = 0` for initial scanner state
+   - `n ≤ input.utf8ByteSize`
+   - `n + 1 ≤ input.utf8ByteSize + 1 ≤ (input.utf8ByteSize + 1) * 4`
+
+Changes needed:
+
+| Item | Change | Est. effort |
+|------|--------|-------------|
+| `scanNextToken_offset_advance` | Per-step: `.ok (some s') → s'.offset ≥ s.offset + 1` — may need per-dispatch-branch proofs | ~50 lines |
+| `ScanChain_offset_bound` | Chain: `ScanChain s n s' → s'.offset ≥ s.offset + n` (induction) | ~20 lines |
+| `ScanChain_fuel_bound` | Derivation: chain + ScannerSurfCorr → fuel inequality | ~15 lines |
+| `emit_produces_valid_yaml` fuel bounds | Replace `(by sorry)` with `ScanChain_fuel_bound` application | ~5 lines |
+
+Estimated total: ~90 lines of new infrastructure.
+
+**Execution order:**
+1. Change A (explicitKeyLine) — unblocks Change B
+2. Change B (scanValueValidate) — unblocks `emitPairList_scans_nonempty`
+3. Prove `emitPairList_scans_nonempty`
+4. Change C (fuel bounds) — unblocks `emit_produces_valid_yaml` fuel sorrys
+5. Close fuel bound sorrys
+
+Total estimated: ~300–400 lines of proof modifications/additions.
+
+##### Layer 1.1 accomplishments
+
+##### Layer 1.1 reflections
 
 #### Layer 2: Parser acceptance
 
