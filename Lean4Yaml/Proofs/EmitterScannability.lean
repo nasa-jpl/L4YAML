@@ -12,6 +12,7 @@ import Lean4Yaml.Proofs.RoundTrip
 import Lean4Yaml.Proofs.CouplingBridge
 import Lean4Yaml.Proofs.ScalarCoupling
 import Lean4Yaml.Proofs.ParserGrammable
+import Lean4Yaml.Proofs.ScannerPlainContent
 
 /-!
 # Emitter Scannability (Phase E, Steps 1–2)
@@ -1650,7 +1651,7 @@ theorem scanDoubleQuoted_preserves_indents (s s' : ScannerState)
 
 -- Helper: lastRealTokenVal? on array.push tok when tok.val ≠ .placeholder returns tok.val.
 -- Placed here (before scanDoubleQuoted_flow_ok) so it can be used in flow proofs.
-private theorem lastRealTokenVal_push_non_ph'
+theorem lastRealTokenVal_push_non_ph'
     (tokens : Array (Positioned YamlToken))
     (tok : Positioned YamlToken) (h_nph : tok.val ≠ .placeholder) :
     lastRealTokenVal? (tokens.push tok) = some tok.val := by
@@ -2451,6 +2452,24 @@ theorem scanNextToken_via_content_dispatch (s s_pp s_ad s_result : ScannerState)
   simp only [bind, Except.bind, h_pp, h_struct, pure, Except.pure]
   rw [← h_ad_eq]
   simp only [h_check, h_flow, h_block, h_content]
+
+/-- When preprocessing succeeds, structural/flow dispatches return none,
+    and block indicator dispatch produces a result, then scanNextToken
+    returns that result. This is used for `:` (value indicator) in flow context,
+    which goes through `scanNextToken_dispatchBlockIndicators`. -/
+theorem scanNextToken_via_block_dispatch (s s_pp s_ad s_result : ScannerState) (c : Char)
+    (h_pp : scanNextToken_preprocess s = .ok (some (s_pp, c)))
+    (h_struct : scanNextToken_dispatchStructural s_pp c = .ok none)
+    (h_ad_eq : s_ad = if s_pp.allowDirectives then
+      { s_pp with allowDirectives := false, documentEverStarted := true } else s_pp)
+    (h_check : scanNextToken_checkBlockFlowIndent s_ad c = .ok ())
+    (h_flow : scanNextToken_dispatchFlowIndicators s_ad c = .ok none)
+    (h_block : scanNextToken_dispatchBlockIndicators s_ad c = .ok (some s_result)) :
+    scanNextToken s = .ok (some s_result) := by
+  unfold scanNextToken; dsimp only []
+  simp only [bind, Except.bind, h_pp, h_struct, pure, Except.pure]
+  rw [← h_ad_eq]
+  simp only [h_check, h_flow, h_block]
 
 -- ═══ Flow-context scanDoubleQuoted dispatch ═══
 
@@ -3962,27 +3981,310 @@ theorem emitPairList_first_char (p : YamlValue × YamlValue) (ps : List (YamlVal
     exact ⟨c, ev_rest ++ (": " ++ emit p.2 ++ ", " ++ emit.emitPairList (p' :: ps')).toList,
       by simp, h_nws, h_nlb, h_nc⟩
 
+-- isValueCandidate returns true when peekAt? 1 is a space (blank).
+-- This works through ALL branches of isValueCandidate because each branch
+-- has a peekAt? 1 fallback path.
+theorem isValueCandidate_of_peekAt_blank (s : ScannerState)
+    (h : s.peekAt? 1 = some ' ') :
+    isValueCandidate s = true := by
+  unfold isValueCandidate
+  split
+  · split
+    · -- offset ≠: match tokens[size-1]?; if isJsonNodeToken then true else peekAt fallback
+      dsimp only []
+      split  -- match tokens[...]?
+      · split  -- if isJsonNodeToken tok.val
+        · dsimp only []  -- reduces true = true
+        · rw [h]; decide
+      · rw [h]; decide
+    · -- offset =: similar
+      dsimp only []
+      split
+      · split
+        · dsimp only []
+        · rw [h]; decide
+      · rw [h]; decide
+  · rw [h]; dsimp only []; simp [isBlankBool, isWhiteSpaceBool]
+
+-- Value indicator `:` scanning in flow context.
 -- Value indicator `:` scanning in flow context.
 -- After scanning a key (e.g., double-quoted scalar), `:` dispatches through
--- isValueCandidate → scanValue, emitting a .value token and advancing.
--- TODO: Full proof requires decomposing isValueCandidate and scanValue.
+-- isValueCandidate → scanValue, emitting a .value token and advancing past `:`.
+-- Requires space after `:` (emitter always produces ": ") for isValueCandidate
+-- to hold in all simpleKey branches via peekAt? fallback.
+-- Result state is at `' ' :: rest'` (space not yet consumed).
 theorem scanNextToken_flow_value (s : ScannerState)
-    (rest : List Char)
-    (hcorr : ScannerSurfCorr s ⟨':' :: rest, s.col⟩)
+    (rest' : List Char)
+    (hcorr : ScannerSurfCorr s ⟨':' :: ' ' :: rest', s.col⟩)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
     (h_col_pos : s.col > 0)
-    (h_last : ∀ t, lastRealTokenVal? s.tokens = some t →
-      t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry) :
+    (h_ek : s.explicitKeyLine = none)
+    (h_sv : scanValueValidate (saveSimpleKey s) = .ok ()) :
     ∃ s', scanNextToken s = .ok (some s')
-      ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
+      ∧ ScannerSurfCorr s' ⟨' ' :: rest', s'.col⟩
       ∧ s'.flowLevel = s.flowLevel
       ∧ s'.directivesPresent = s.directivesPresent
       ∧ s'.indents = s.indents
       ∧ s'.col = s.col + 1
       ∧ s'.inFlow = true
-      ∧ s'.currentIndent < 0 := by
-  sorry
+      ∧ s'.currentIndent < 0
+      ∧ s'.explicitKeyLine = none := by
+  -- Step 1: Preprocessing — `:` is non-ws content char
+  have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, ':')) :=
+    scanNextToken_preprocess_flow s ':' (' ' :: rest') s.col hcorr h_flow
+      (by decide) (by decide) (by decide)
+  -- Step 2: Structural dispatch returns none
+  have h_sk_flow : (saveSimpleKey s).inFlow = s.inFlow := saveSimpleKey_preserves_inFlow s
+  have h_sk_indent : (saveSimpleKey s).currentIndent = s.currentIndent := by
+    unfold ScannerState.currentIndent; rw [saveSimpleKey_preserves_indents]
+  have h_sk_col : (saveSimpleKey s).col = s.col := saveSimpleKey_preserves_col s
+  have h_struct : scanNextToken_dispatchStructural (saveSimpleKey s) ':' = .ok none :=
+    dispatchStructural_none_flow _ _ (h_sk_flow ▸ h_flow) (h_sk_indent ▸ h_indent) (h_sk_col ▸ h_col_pos)
+  -- Step 3: allowDirectives update
+  let s_ad := if (saveSimpleKey s).allowDirectives then
+    { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
+  else saveSimpleKey s
+  -- Step 4: checkBlockFlowIndent passes in flow
+  have h_ad_flow : s_ad.inFlow = s.inFlow := by
+    simp only [s_ad]; split <;> exact h_sk_flow
+  have h_check : scanNextToken_checkBlockFlowIndent s_ad ':' = .ok () :=
+    checkBlockFlowIndent_ok_flow _ _ (h_ad_flow ▸ h_flow)
+  -- Step 5: Flow dispatch returns none (`:` is not a flow indicator)
+  have h_flow_none : scanNextToken_dispatchFlowIndicators s_ad ':' = .ok none :=
+    dispatchFlowIndicators_none _ _ (by decide) (by decide) (by decide) (by decide) (by decide)
+  -- Step 6: isValueCandidate via peekAt? 1 = space fallback
+  have h_ad_offset : s_ad.offset = s.offset := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_offset s
+  have h_ad_input : s_ad.input = s.input := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_input s
+  have h_ad_inputEnd : s_ad.inputEnd = s.inputEnd := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_inputEnd s
+  have ⟨h_pk_colon, h_lt_colon⟩ := peek_of_chars_cons s ':' (' ' :: rest') s.col hcorr
+  have h_adv_corr := advance_non_newline_corr s ':' (' ' :: rest') hcorr h_lt_colon
+    (by decide) (by decide)
+  have ⟨h_pk_space, _⟩ := peek_of_chars_cons s.advance ' ' rest' (s.col + 1) h_adv_corr
+  have h_peekAt1 : s.peekAt? 1 = some ' ' := by
+    rw [← Lean4Yaml.Proofs.ScannerPlainContent.advance_peek_eq_peekAt_one s ':' h_pk_colon]
+    exact h_pk_space
+  have h_ad_peekAt1 : s_ad.peekAt? 1 = some ' ' := by
+    unfold ScannerState.peekAt? ScannerState.peekAt?Loop
+    rw [h_ad_offset, h_ad_input, h_ad_inputEnd]
+    change ScannerState.peekAt?Loop s.input s.inputEnd ⟨s.offset⟩ 1 = some ' '
+    unfold ScannerState.peekAt? ScannerState.peekAt?Loop at h_peekAt1; exact h_peekAt1
+  have h_vc : isValueCandidate s_ad = true :=
+    isValueCandidate_of_peekAt_blank s_ad h_ad_peekAt1
+  -- Step 7: Block dispatch yields scanValue
+  have h_block_eq : scanNextToken_dispatchBlockIndicators s_ad ':' =
+      (scanValue s_ad >>= fun s' => .ok (some s')) := by
+    unfold scanNextToken_dispatchBlockIndicators
+    simp only [show (':' == '-') = false from by decide, Bool.false_and,
+               show (':' == '?') = false from by decide,
+               show (':' == ':') = true from by decide, Bool.true_and, h_vc, ite_true]
+    rfl
+  -- Step 8: scanValue decomposition
+  have h_ad_ek : s_ad.explicitKeyLine = none := by
+    simp only [s_ad]; split
+    · show (saveSimpleKey s).explicitKeyLine = none
+      unfold saveSimpleKey; split <;> (try exact h_ek) <;> split <;> exact h_ek
+    · unfold saveSimpleKey; split <;> (try exact h_ek) <;> split <;> exact h_ek
+  have h_ckr : scanValueClearKey s_ad = s_ad := by
+    unfold scanValueClearKey; rw [h_ad_ek]
+  have h_validate : scanValueValidate s_ad = .ok () := by
+    -- scanValueValidate only reads simpleKey, tokens, inFlow, isInFlowSequence,
+    -- explicitKeyLine, line, col, currentIndent — none affected by allowDirectives
+    have : scanValueValidate s_ad = scanValueValidate (saveSimpleKey s) := by
+      simp only [s_ad]; split <;> (unfold scanValueValidate; rfl)
+    rw [this]; exact h_sv
+  -- scanValueTabCheck is identity in flow
+  have h_ad_inFlow : s_ad.inFlow = true := h_ad_flow ▸ h_flow
+  -- Unfold scanValue, building the result state
+  -- scanValue s_ad = do
+  --   let s_kc := scanValueClearKey s_ad  -- = s_ad (since ek = none)
+  --   scanValueValidate s_kc              -- .ok ()
+  --   let s_prep := scanValuePrepare s_kc
+  --   let s_tok := s_prep.emit .value
+  --   let s_adv := s_tok.advance
+  --   scanValueTabCheck s_ad.col s_ad.currentIndent s_adv  -- .ok () in flow
+  --   .ok { s_adv with simpleKeyAllowed := true, explicitKeyLine := none }
+  let s_prep := scanValuePrepare s_ad
+  let s_tok := s_prep.emit .value
+  let s_adv := s_tok.advance
+  have h_scanValue_result : scanValue s_ad =
+      (scanValueTabCheck (s_ad.col : Int) s_ad.currentIndent s_adv >>= fun () =>
+        .ok { s_adv with simpleKeyAllowed := true, explicitKeyLine := none }) := by
+    unfold scanValue
+    dsimp only []  -- zeta-reduce let bindings in the unfolded body
+    rw [h_ckr, h_validate]
+    dsimp only [Bind.bind, Except.bind]
+  -- scanValueTabCheck is .ok () since !s_adv.inFlow = false
+  -- s_adv.inFlow = s_prep.inFlow = s_ad.inFlow = true (through emit and advance)
+  have h_prep_inFlow : s_prep.inFlow = s_ad.inFlow := by
+    show (scanValuePrepare s_ad).inFlow = s_ad.inFlow
+    unfold scanValuePrepare
+    split <;> (split <;> try split) <;> simp_all [ScannerState.inFlow]
+  have h_tok_inFlow : s_tok.inFlow = s_prep.inFlow := by
+    show (s_prep.emit .value).inFlow = s_prep.inFlow
+    simp only [ScannerState.emit, ScannerState.inFlow]; rfl
+  have h_adv_inFlow : s_adv.inFlow = s_tok.inFlow := by
+    show s_tok.advance.inFlow = s_tok.inFlow
+    exact advance_inFlow s_tok
+  have h_tab_ok : scanValueTabCheck (s_ad.col : Int) s_ad.currentIndent s_adv = .ok () := by
+    unfold scanValueTabCheck
+    have : s_adv.inFlow = true := by
+      rw [h_adv_inFlow, h_tok_inFlow, h_prep_inFlow]; exact h_ad_inFlow
+    simp [this]
+  -- Derive scanValue s_ad = .ok s_final
+  let s_final : ScannerState := { s_adv with simpleKeyAllowed := true, explicitKeyLine := none }
+  have h_scanValue_ok : scanValue s_ad = .ok s_final := by
+    rw [h_scanValue_result, h_tab_ok]; dsimp only [Bind.bind, Except.bind]
+  -- Derive block dispatch result
+  have h_block_result : scanNextToken_dispatchBlockIndicators s_ad ':' = .ok (some s_final) := by
+    rw [h_block_eq, h_scanValue_ok]; dsimp only [Bind.bind, Except.bind]
+  -- Compose pipeline
+  have h_snt : scanNextToken s = .ok (some s_final) :=
+    scanNextToken_via_block_dispatch s (saveSimpleKey s) s_ad s_final ':'
+      h_pp h_struct (by rfl) h_check h_flow_none h_block_result
+  -- scanValuePrepare preserves key fields in flow context
+  -- (only modifies tokens and simpleKey when inFlow = true)
+  have h_svp_flow := h_ad_inFlow
+  have h_prep_fl : s_prep.flowLevel = s_ad.flowLevel := by
+    show (scanValuePrepare s_ad).flowLevel = s_ad.flowLevel
+    unfold scanValuePrepare
+    simp only [h_svp_flow, Bool.not_true, Bool.false_eq_true, ite_false]
+    split <;> (try (split <;> rfl)); rfl
+  have h_prep_dp : s_prep.directivesPresent = s_ad.directivesPresent := by
+    show (scanValuePrepare s_ad).directivesPresent = s_ad.directivesPresent
+    unfold scanValuePrepare
+    simp only [h_svp_flow, Bool.not_true, Bool.false_eq_true, ite_false]
+    split <;> (try (split <;> rfl)); rfl
+  have h_prep_indents : s_prep.indents = s_ad.indents := by
+    show (scanValuePrepare s_ad).indents = s_ad.indents
+    unfold scanValuePrepare
+    simp only [h_svp_flow, Bool.not_true, Bool.false_eq_true, ite_false]
+    split <;> (try (split <;> rfl)); rfl
+  have h_prep_col : s_prep.col = s_ad.col := by
+    show (scanValuePrepare s_ad).col = s_ad.col
+    unfold scanValuePrepare
+    simp only [h_svp_flow, Bool.not_true, Bool.false_eq_true, ite_false]
+    split <;> (try (split <;> rfl)); rfl
+  have h_prep_offset : s_prep.offset = s_ad.offset := by
+    show (scanValuePrepare s_ad).offset = s_ad.offset
+    unfold scanValuePrepare
+    simp only [h_svp_flow, Bool.not_true, Bool.false_eq_true, ite_false]
+    split <;> (try (split <;> rfl)); rfl
+  have h_prep_input : s_prep.input = s_ad.input := by
+    show (scanValuePrepare s_ad).input = s_ad.input
+    unfold scanValuePrepare
+    simp only [h_svp_flow, Bool.not_true, Bool.false_eq_true, ite_false]
+    split <;> (try (split <;> rfl)); rfl
+  have h_prep_inputEnd : s_prep.inputEnd = s_ad.inputEnd := by
+    show (scanValuePrepare s_ad).inputEnd = s_ad.inputEnd
+    unfold scanValuePrepare
+    simp only [h_svp_flow, Bool.not_true, Bool.false_eq_true, ite_false]
+    split <;> (try (split <;> rfl)); rfl
+  -- s_ad fields equal s fields (through allowDirectives branch + saveSimpleKey)
+  have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowLevel s
+  have h_ad_dp : s_ad.directivesPresent = s.directivesPresent := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_directivesPresent s
+  have h_ad_indents : s_ad.indents = s.indents := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_indents s
+  have h_ad_col : s_ad.col = s.col := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_col s
+  -- Surface field equalities between s_final/s_adv and s.advance
+  have h_final_input : s_final.input = s.advance.input := by
+    show s_adv.input = s.advance.input
+    rw [show s_adv.input = s_tok.input from advance_input s_tok]
+    show s_prep.input = s.advance.input
+    rw [h_prep_input, h_ad_input, advance_input s]
+  have h_final_offset : s_final.offset = s.advance.offset := by
+    show s_adv.offset = s.advance.offset
+    exact advance_offset_of_eq s_tok s
+      (by show s_prep.input = s.input; rw [h_prep_input, h_ad_input])
+      (by show s_prep.offset = s.offset; rw [h_prep_offset, h_ad_offset])
+      (by show s_prep.inputEnd = s.inputEnd; rw [h_prep_inputEnd, h_ad_inputEnd])
+  have h_final_inputEnd : s_final.inputEnd = s.advance.inputEnd := by
+    show s_adv.inputEnd = s.advance.inputEnd
+    rw [show s_adv.inputEnd = s_tok.inputEnd from advance_inputEnd s_tok]
+    show s_prep.inputEnd = s.advance.inputEnd
+    rw [h_prep_inputEnd, h_ad_inputEnd, advance_inputEnd s]
+  have h_final_indents : s_final.indents = s.advance.indents := by
+    show s_adv.indents = s.advance.indents
+    rw [advance_indents s_tok]
+    show s_prep.indents = s.advance.indents
+    rw [h_prep_indents, h_ad_indents, advance_indents s]
+  refine ⟨s_final, h_snt, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · -- ScannerSurfCorr s_final ⟨' ' :: rest', s_final.col⟩
+    exact {
+      chars_from := by rw [h_final_input, h_final_offset]; exact h_adv_corr.chars_from
+      col_eq := rfl
+      end_eq := by rw [h_final_inputEnd, h_final_input]; exact h_adv_corr.end_eq
+      input_prefix := by rw [h_final_input, h_final_offset]; exact h_adv_corr.input_prefix
+      indent_cols_nonneg := by
+        intro i hi h0
+        have hi' : i < s.advance.indents.size := by
+          rw [← h_final_indents]; exact hi
+        have : s_final.indents[i] = s.advance.indents[i]'hi' := by
+          simp only [h_final_indents]
+        rw [this]; exact h_adv_corr.indent_cols_nonneg i hi' h0
+    }
+  · -- s_final.flowLevel = s.flowLevel
+    show s_adv.flowLevel = s.flowLevel
+    rw [show s_adv.flowLevel = s_tok.flowLevel from advance_flowLevel s_tok]
+    show s_prep.flowLevel = s.flowLevel
+    rw [h_prep_fl, h_ad_fl]
+  · -- s_final.directivesPresent = s.directivesPresent
+    show s_adv.directivesPresent = s.directivesPresent
+    rw [show s_adv.directivesPresent = s_tok.directivesPresent from advance_dp s_tok]
+    show s_prep.directivesPresent = s.directivesPresent
+    rw [h_prep_dp, h_ad_dp]
+  · -- s_final.indents = s.indents
+    show s_adv.indents = s.indents
+    rw [show s_adv.indents = s_tok.indents from advance_indents s_tok]
+    show s_prep.indents = s.indents
+    rw [h_prep_indents, h_ad_indents]
+  · -- s_final.col = s.col + 1
+    show s_adv.col = s.col + 1
+    -- s_adv = s_tok.advance, s_tok at ':' (non-newline), advance increments col
+    have h_tok_col : s_tok.col = s.col := by
+      show s_prep.col = s.col; rw [h_prep_col, h_ad_col]
+    have h_tok_offset : s_tok.offset = s.offset := by
+      show s_prep.offset = s.offset; rw [h_prep_offset, h_ad_offset]
+    have h_tok_input : s_tok.input = s.input := by
+      show s_prep.input = s.input; rw [h_prep_input, h_ad_input]
+    have h_tok_inputEnd : s_tok.inputEnd = s.inputEnd := by
+      show s_prep.inputEnd = s.inputEnd; rw [h_prep_inputEnd, h_ad_inputEnd]
+    have h_tok_lt : s_tok.offset < s_tok.inputEnd := by
+      rw [h_tok_offset, h_tok_inputEnd]; exact h_lt_colon
+    -- Character at s_tok's position is `:`
+    have h_s_char : String.Pos.Raw.get s.input ⟨s.offset⟩ = ':' := by
+      have h_pk := h_pk_colon; unfold ScannerState.peek? at h_pk
+      simp only [show s.offset < s.inputEnd from h_lt_colon, ite_true] at h_pk
+      exact Option.some.inj h_pk
+    have h_tok_char : String.Pos.Raw.get s_tok.input ⟨s_tok.offset⟩ = ':' := by
+      rw [h_tok_input, h_tok_offset]; exact h_s_char
+    rw [show s_adv.col = s_tok.advance.col from rfl]
+    rw [advance_col_non_newline s_tok h_tok_lt
+      (by rw [h_tok_char]; decide)
+      (by rw [h_tok_char]; decide)]
+    rw [h_tok_col]
+  · -- s_final.inFlow = true
+    show s_adv.inFlow = true
+    rw [h_adv_inFlow, h_tok_inFlow, h_prep_inFlow]; exact h_ad_inFlow
+  · -- s_final.currentIndent < 0
+    show s_adv.currentIndent < 0
+    have h_adv_indents : s_adv.indents = s.indents := by
+      show s_tok.advance.indents = s.indents
+      rw [advance_indents s_tok]
+      show s_prep.indents = s.indents
+      rw [h_prep_indents, h_ad_indents]
+    unfold ScannerState.currentIndent
+    rw [h_adv_indents]
+    unfold ScannerState.currentIndent at h_indent
+    exact h_indent
+  · -- s_final.explicitKeyLine = none
+    rfl
 
 /-- `EmitPairListScansInFlow pairs` asserts that scanning the
     emitPairList output succeeds in flow context, preserving invariants.

@@ -508,6 +508,20 @@ theorem advance_offset_eq (s : ScannerState) (h : s.offset < s.inputEnd) :
     · split <;> rfl
   · omega
 
+theorem advance_offset_of_eq (s1 s2 : ScannerState)
+    (h_input : s1.input = s2.input) (h_offset : s1.offset = s2.offset)
+    (h_inputEnd : s1.inputEnd = s2.inputEnd) :
+    s1.advance.offset = s2.advance.offset := by
+  have h1 := advance_offset_eq s1
+  have h2 := advance_offset_eq s2
+  by_cases h : s1.offset < s1.inputEnd
+  · rw [h1 h, h2 (by rw [← h_offset, ← h_inputEnd]; exact h), h_input, h_offset]
+  · have h1' : s1.advance.offset = s1.offset := by
+      unfold ScannerState.advance; simp [show ¬(s1.offset < s1.inputEnd) from h]
+    have h2' : s2.advance.offset = s2.offset := by
+      unfold ScannerState.advance; simp [show ¬(s2.offset < s2.inputEnd) from by rw [← h_offset, ← h_inputEnd]; exact h]
+    rw [h1', h2', h_offset]
+
 theorem advance_col_non_newline (s : ScannerState) (h : s.offset < s.inputEnd)
     (hnl : ¬ (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\n') = true)
     (hcr : ¬ (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\r') = true) :
@@ -539,6 +553,44 @@ theorem advance_indents (s : ScannerState) : s.advance.indents = s.indents := by
     · rfl
     · split <;> rfl
   · rfl
+
+theorem advance_inFlow (s : ScannerState) : s.advance.inFlow = s.inFlow := by
+  unfold ScannerState.advance; split
+  · dsimp only []; split
+    · rfl
+    · split <;> rfl
+  · rfl
+
+theorem advance_flowLevel (s : ScannerState) : s.advance.flowLevel = s.flowLevel := by
+  unfold ScannerState.advance; split
+  · dsimp only []; split
+    · rfl
+    · split <;> rfl
+  · rfl
+
+theorem advance_dp (s : ScannerState) : s.advance.directivesPresent = s.directivesPresent := by
+  unfold ScannerState.advance; split
+  · dsimp only []; split
+    · rfl
+    · split <;> rfl
+  · rfl
+
+theorem advance_explicitKeyLine (s : ScannerState) :
+    s.advance.explicitKeyLine = s.explicitKeyLine := by
+  unfold ScannerState.advance; split
+  · dsimp only []; split
+    · rfl
+    · split <;> rfl
+  · rfl
+
+/-- Advance past a non-newline, non-CR character preserves line number. -/
+theorem advance_line_non_newline (s : ScannerState) (h : s.offset < s.inputEnd)
+    (hnl : ¬ (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\n') = true)
+    (hcr : ¬ (String.Pos.Raw.get s.input ⟨s.offset⟩ == '\r') = true) :
+    s.advance.line = s.line := by
+  unfold ScannerState.advance; split
+  · dsimp only []; simp [hnl, hcr]
+  · omega
 
 /-- Advance past non-newline, non-CR preserves correspondence. -/
 theorem advance_non_newline_corr (sc : ScannerState) (c : Char) (rest : List Char)
