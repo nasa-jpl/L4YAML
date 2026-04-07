@@ -453,7 +453,7 @@ theorem escapeChar_hex_structure (c : Char)
 -- ═══ line preservation helper ═══
 -- When we know peek? = some c and c is not a newline/CR, advance preserves line.
 -- This bridges ScannerSurfCorr-level character identity with advance_line_non_newline.
-private theorem advance_line_of_peek (s : ScannerState) (c : Char)
+theorem advance_line_of_peek (s : ScannerState) (c : Char)
     (h_lt : s.offset < s.inputEnd) (h_peek : s.peek? = some c)
     (hnl : c ≠ '\n') (hcr : c ≠ '\r') :
     s.advance.line = s.line := by
@@ -4446,7 +4446,8 @@ theorem scanNextToken_flow_value (s : ScannerState)
       ∧ s'.col = s.col + 1
       ∧ s'.inFlow = true
       ∧ s'.currentIndent < 0
-      ∧ s'.explicitKeyLine = none := by
+      ∧ s'.explicitKeyLine = none
+      ∧ s'.line = s.line := by
   -- Step 1: Preprocessing — `:` is non-ws content char
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, ':')) :=
     scanNextToken_preprocess_flow s ':' (' ' :: rest') s.col hcorr h_flow
@@ -4631,7 +4632,15 @@ theorem scanNextToken_flow_value (s : ScannerState)
     rw [advance_indents s_tok]
     show s_prep.indents = s.advance.indents
     rw [h_prep_indents, h_ad_indents, advance_indents s]
-  refine ⟨s_final, h_snt, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  -- Line preservation
+  have h_ad_line : s_ad.line = s.line := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_line s
+  have h_prep_line : s_prep.line = s_ad.line := by
+    show (scanValuePrepare s_ad).line = s_ad.line
+    unfold scanValuePrepare
+    simp only [h_svp_flow, Bool.not_true, Bool.false_eq_true, ite_false]
+    split <;> (try (split <;> rfl)); rfl
+  refine ⟨s_final, h_snt, ?_, ?_, ?_, ?_, ?_, ?_, ?_, rfl, ?_⟩
   · -- ScannerSurfCorr s_final ⟨' ' :: rest', s_final.col⟩
     exact {
       chars_from := by rw [h_final_input, h_final_offset]; exact h_adv_corr.chars_from
@@ -4700,8 +4709,23 @@ theorem scanNextToken_flow_value (s : ScannerState)
     rw [h_adv_indents]
     unfold ScannerState.currentIndent at h_indent
     exact h_indent
-  · -- s_final.explicitKeyLine = none
-    rfl
+  · -- s_final.line = s.line
+    show s_adv.line = s.line
+    have h_tok_offset : s_tok.offset = s.offset := by
+      show s_prep.offset = s.offset; rw [h_prep_offset, h_ad_offset]
+    have h_tok_input : s_tok.input = s.input := by
+      show s_prep.input = s.input; rw [h_prep_input, h_ad_input]
+    have h_tok_inputEnd : s_tok.inputEnd = s.inputEnd := by
+      show s_prep.inputEnd = s.inputEnd; rw [h_prep_inputEnd, h_ad_inputEnd]
+    have h_tok_lt : s_tok.offset < s_tok.inputEnd := by
+      rw [h_tok_offset, h_tok_inputEnd]; exact h_lt_colon
+    have h_tok_peek : s_tok.peek? = some ':' := by
+      unfold ScannerState.peek? at h_pk_colon ⊢
+      rw [h_tok_offset, h_tok_inputEnd, h_tok_input]
+      simp only [show s.offset < s.inputEnd from h_lt_colon, ite_true] at h_pk_colon ⊢
+      exact h_pk_colon
+    rw [advance_line_of_peek s_tok ':' h_tok_lt h_tok_peek (by decide) (by decide)]
+    show s_prep.line = s.line; rw [h_prep_line, h_ad_line]
 
 /-- `EmitPairListScansInFlow pairs` asserts that scanning the
     emitPairList output succeeds in flow context, preserving invariants.
@@ -4766,9 +4790,11 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
         rw [h_sk_id]; sorry -- TODO: scanValueValidate in flow mapping context
       -- Step 3: Scan ':' via scanNextToken_flow_value
       obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_col₂,
-              h_flow₂, h_indent₂, h_ek₂⟩ :=
+              h_flow₂, h_indent₂, h_ek_line₂⟩ :=
         scanNextToken_flow_value s₁ ((emit p.2).toList ++ rest_chars)
           h_corr₁ h_flow₁ h_indent₁ h_col₁ (by rw [h_ek₁]; exact h_ek) h_sv
+      have h_ek₂ := h_ek_line₂.1
+      have _h_line₂ := h_ek_line₂.2
       -- Step 4: Handle leading space before value via preprocessing equality
       obtain ⟨c_v, rest_v, h_first_v, h_nws_v, h_nlb_v, h_nc_v⟩ := emit_first_char p.2
       have h_corr₂_ws : ScannerSurfCorr s₂
@@ -4824,8 +4850,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       · rw [h_dp_end, h_dp₃, h_dp₂, h_dp₁]
       · rw [h_ids_end, h_ids₃, h_ids₂, h_ids₁]
       · rw [h_ek_end, h_ek₃, h_ek₂]; exact h_ek.symm
-      · -- line preserved (pending scanNextToken_flow_value line postcondition)
-        sorry
+      · rw [h_line_end, _h_line₃, _h_line₂, _h_line₁]
     | p' :: ps, ih =>
       -- ══ Multi-pair: emit k ++ ": " ++ emit v ++ ", " ++ emitPairList (p' :: ps) ══
       have h_eq : (emit.emitPairList (p :: p' :: ps)).toList ++ rest_chars =
@@ -4847,11 +4872,13 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
         rw [h_sk_id]; sorry -- TODO: scanValueValidate in flow mapping context
       -- Step 3: Scan ':' via scanNextToken_flow_value
       obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_col₂,
-              h_flow₂, h_indent₂, h_ek₂⟩ :=
+              h_flow₂, h_indent₂, h_ek_line₂⟩ :=
         scanNextToken_flow_value s₁
           ((emit p.2).toList ++
             [',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr₁ h_flow₁ h_indent₁ h_col₁ (by rw [h_ek₁]; exact h_ek) h_sv
+      have h_ek₂ := h_ek_line₂.1
+      have _h_line₂ := h_ek_line₂.2
       -- Step 4: Handle leading space before value
       obtain ⟨c_v, rest_v, h_first_v, h_nws_v, h_nlb_v, h_nc_v⟩ := emit_first_char p.2
       have h_corr₂_ws : ScannerSurfCorr s₂
@@ -4992,8 +5019,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
         rw [h_ids_end, h_ids_pp, h_ids_c, h_ids_v, h_ids₃, h_ids₂, h_ids₁]
       · -- explicitKeyLine preserved
         rw [h_ek_end, h_ek_pp, h_ek_c, h_ek_v, h_ek₃, h_ek₂]; exact h_ek.symm
-      · -- line preserved (pending scanNextToken_flow_value line postcondition)
-        sorry
+      · rw [h_line_end, _h_line_pp, _h_line_c, _h_line_v, _h_line₃, _h_line₂, _h_line₁]
 
 /-- Every grammable value satisfies `EmitScansInFlow`. -/
 theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inFlow) :

@@ -1212,7 +1212,50 @@ composition layer, then proving `scanValueValidate` succeeds using the line inva
 
 ###### Phase 2 accomplishments
 
+1. **`scanNextToken_flow_value` extended with `∧ s'.line = s.line` postcondition.** This was the
+   one missing line postcondition among the flow scanning theorems. Proof follows the
+   established pattern: `saveSimpleKey_preserves_line` → `scanValuePrepare` preserves line
+   (via `unfold scanValuePrepare; simp; split <;> rfl`) → `advance_line_of_peek` for `':'`
+   (non-newline). Required `rfl`-inlining in the refine tuple to avoid the `Eq.refl` anonymous
+   constructor issue (see reflections).
+
+2. **Both `emitPairList_scans_nonempty` line sorrys discharged.** Singleton case: chain
+   `rw [h_line_end, _h_line₃, _h_line₂, _h_line₁]` (4 steps: value body → preprocess →
+   flow_value → key). Multi-pair case: chain
+   `rw [h_line_end, _h_line_pp, _h_line_c, _h_line_v, _h_line₃, _h_line₂, _h_line₁]`
+   (7 steps: recursive body → preprocess → comma → value body → preprocess → flow_value → key).
+
+3. **All Phase 2 plan items already completed.** The 6 items in the Phase 2 table were mostly
+   done during Phase 1 cascading fixes. Phase 2 execution only required the
+   `scanNextToken_flow_value` line postcondition (prerequisite) and the 2 sorry replacements
+   in `emitPairList_scans_nonempty`.
+
+4. **Sorry instance count reduced: 10 → 8.** The 2 line sorrys at lines ~4828 and ~4996 were
+   eliminated. Sorry declaration count unchanged at 6 (same declarations, just fewer instances
+   in `emitPairList_scans_nonempty`). Remaining: 2 `scanValueValidate` sorrys (Phase 3),
+   2 fuel bound sorrys (Phase 4), 4 parser/content sorrys (Layers 2/3).
+
 ###### Phase 2 reflections
+
+1. **`obtain` + `Eq.refl` + trailing conjuncts causes dependent elimination failure.** When
+   `scanNextToken_flow_value` had `∧ s'.explicitKeyLine = none ∧ s'.line = s.line` as the last
+   two conjuncts, `obtain ⟨..., h_ek₂, _h_line₂⟩` failed with "Dependent elimination failed:
+   Failed to solve equation `none = s₂.18` at case `Eq.refl`". Root cause: `rcases` uses
+   `cases` to split the inner `And`, and `cases` on `Eq` tries `Eq.refl` pattern which requires
+   unifying `none` with the abstract projection `s₂.explicitKeyLine`. **Fix:** Stop destructuring
+   before the `Eq` conjunct: `obtain ⟨..., h_ek_line₂⟩` then `have h_ek₂ := h_ek_line₂.1` /
+   `have _h_line₂ := h_ek_line₂.2`. Same issue required inlining `rfl` in the `refine` tuple
+   rather than using a separate `?_` goal.
+
+2. **Phase 1/2 boundary was correctly identified as artificial.** As predicted in Phase 1
+   reflections, Phase 2 was nearly empty: most composition threading was forced by Phase 1's
+   type definition changes. The actual Phase 2 delta was ~25 lines: `scanNextToken_flow_value`
+   line postcondition proof (~15 lines) + 2 line chain `rw` replacements (~5 lines each).
+
+3. **`scanValuePrepare` line preservation mirrors the existing `h_prep_*` pattern.** The proof
+   `show (scanValuePrepare s_ad).line = s_ad.line; unfold scanValuePrepare; simp only
+   [h_svp_flow, ...]; split <;> (try (split <;> rfl)); rfl` is identical to `h_prep_fl`,
+   `h_prep_dp`, etc. This confirms `scanValuePrepare` never touches `line` in any branch.
 
 ##### **Phase 3: scanValueValidate discharge**
 
