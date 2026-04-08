@@ -32,7 +32,7 @@ extern void lean_initialize_runtime_module(void);
 
 /* ── Forward-declare Lean module initializer ─────────────────────── */
 
-extern lean_obj_res initialize_lean4_x2dyaml_x2dverified_Lean4Yaml(uint8_t builtin, lean_obj_arg);
+extern lean_obj_res initialize_Lean4Yaml_Lean4Yaml(uint8_t builtin);
 
 /* ── Forward-declare Lean @[export] functions (all take OWNED args) ─ */
 
@@ -121,7 +121,7 @@ static const char *extract_option_string(lean_object *opt) {
 void lean4yaml_initialize(void) {
     lean_initialize_runtime_module();
     lean_init_task_manager();
-    lean_object *r = initialize_lean4_x2dyaml_x2dverified_Lean4Yaml(1 /* builtin */, lean_io_mk_world());
+    lean_object *r = initialize_Lean4Yaml_Lean4Yaml(1 /* builtin */);
     if (lean_io_result_is_ok(r)) {
         lean_dec(r);
     } else {
