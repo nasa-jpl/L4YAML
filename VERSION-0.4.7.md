@@ -1579,7 +1579,87 @@ Estimated total: ~380 lines. Expected result: 2 sorry reduction (9 → 7 declara
    low-risk.
 
 
-#### **Phase 4.2: remaining work**
+#### **Phase 4.2: Layer 1 sorry elimination**
+
+**Objective:** Eliminate all 12 Layer 1 sorry instances across 4 declarations in
+EmitterScannability.lean. Current sorry accounting: 8 declarations with sorry.
+
+**Sorry inventory (12 instances in 4 declarations):**
+
+| Declaration | Line | Sorry count | Category |
+|---|---|---|---|
+| `scanNextToken_preserves_bound` | 1239 | 1 | offset upper bound |
+| `emitList_scans_nonempty` | 4755 | 1 | EndLineOnLine through comma+preprocess |
+| `emitPairList_scans_nonempty` | 5277-5442 | 4 | ATL+EndLineOnLine through value+preprocess |
+| `emit_scans_in_flow` | 5572-5634 | 6 | ATL+EndLineOnLine through flow close nested |
+
+**Sub-phase 4.2.A — WellFormed invariant threading (1 sorry)**
+
+Prove `scanNextToken_preserves_bound` via WellFormed invariant approach (option b from
+Phase 4.1 reflections), rather than unfolding through all dispatch branches.
+
+1. **Prove `scanNextToken_preserves_WellFormed`**: `WellFormed s → scanNextToken s = .ok (some s') → WellFormed s'`.
+   Foundation already exists:
+   - `advance_preserves_wellFormed`, `emit_preserves_wellFormed` (ScannerLoopInvariant.lean)
+   - `with_needIndentCheck_preserves_wellFormed`, `with_allowDirectives_false_preserves_wellFormed`,
+     etc. (ScannerDispatch.lean — 5 field-update lemmas)
+   - `emitAt_preserves_wellFormed`, `emitAt_then_setFlags_preserves_wellFormed`, etc.
+     (ScannerScalar.lean — 5 lemmas)
+   - `with_docStart_flags_preserves_wellFormed`, etc. (ScannerDocument.lean — 5 lemmas)
+   - Strategy: thread WellFormed through preprocess → structural → block/flow → content
+     dispatch pipeline. Each branch is a composition of the above primitives.
+2. **Extract offset bound**: `s'.offset ≤ s'.inputEnd` from `WellFormed.4` (conjunct C4).
+3. **Prove `s'.inputEnd = s.inputEnd ∧ s'.input = s.input`**: inputEnd/input are never
+   reassigned after `mk'`. Per-branch reasoning shows each dispatch preserves these fields
+   (advance, emit, and field updates don't touch input/inputEnd).
+
+**Sub-phase 4.2.B — Augment flow close nested postconditions (4 sorrys)**
+
+Augment `scanNextToken_flow_close_seq_nested` (line 3882) and
+`scanNextToken_flow_close_mapping_nested` (line 4201) with two new postconditions:
+- `AllTokensOnLine s' s'.line`
+- `EndLineOnLine s'`
+
+These are used in `emit_scans_in_flow` (lines 5572-5573 for seq, 5633-5634 for mapping).
+The pattern is established by the flow_open variants (`scanNextToken_flow_open_nested` and
+`scanNextToken_flow_open_mapping_nested`) which already carry both postconditions. The flow
+close path goes through: saveSimpleKey → allowDirectives → checkBlockFlowIndent →
+dispatchFlowIndicators → scanFlowSequenceEnd/scanFlowMappingEnd. Transfer lemmas exist for
+AllTokensOnLine through each of these steps (`AllTokensOnLine_scanFlowSequenceEnd`,
+`AllTokensOnLine_scanFlowMappingEnd`). Need to add/prove EndLineOnLine transfer for the
+flow close path (the close operation resets simpleKey, making EndLineOnLine trivially true).
+
+**Sub-phase 4.2.C — EndLineOnLine transfer lemmas (7 sorrys)**
+
+The remaining sorrys require EndLineOnLine (and some AllTokensOnLine) preservation through
+comma scanning, value scanning, and preprocessing steps.
+
+1. **Augment `scanNextToken_flow_comma`** (line 3685): Add `EndLineOnLine s'` postcondition.
+   Currently has `AllTokensOnLine s' s'.line` but not EndLineOnLine. The comma path goes
+   through scanFlowEntry which sets `simpleKeyAllowed := true` and creates a new simpleKey —
+   EndLineOnLine should hold since the new simpleKey is on the current line.
+   → Unblocks: `emitList_scans_nonempty` line 4755 (1 sorry).
+
+2. **Augment `scanNextToken_flow_value`** (line 4847): Add `EndLineOnLine s'` postcondition.
+   Currently has `AllTokensOnLine s' s'.line` but not EndLineOnLine. The value path goes
+   through scanValue which sets `simpleKeyAllowed := false` and disables simpleKey —
+   EndLineOnLine should hold trivially since `simpleKey.possible = false`.
+   → Unblocks: `emitPairList_scans_nonempty` lines 5277-5278 (2 sorrys) and lines
+     5376-5377 (2 sorrys, multi-pair case).
+
+3. **Prove `EndLineOnLine` preservation through preprocessing**: Add `EndLineOnLine s →
+   EndLineOnLine s₁` (or implication form) to `scanNextToken_preprocess_flow_ws1` (line 2782).
+   Currently has `AllTokensOnLine s s.line → AllTokensOnLine s₁ s₁.line` but not the
+   EndLineOnLine counterpart. Preprocessing only advances past whitespace (tokens and
+   simpleKey unchanged), so EndLineOnLine transfers directly.
+   → Unblocks: `emitPairList_scans_nonempty` lines 5441-5442 (2 sorrys, recursive case
+     where ATL+EndLineOnLine must pass through value → comma → preprocess).
+
+**Dependency order:** 4.2.B and 4.2.C are independent and can be done in either order.
+4.2.A is also independent but is the highest-value single-sorry fix since it unblocks
+`ScanChain.fuel_bound` from its last admitted dependency.
+
+**Expected outcome:** Sorry declarations drop from 8 → 4 (Layer 2 and Layer 3 remain).
 
 ##### **Phase 4.2: accomplishments**
 
