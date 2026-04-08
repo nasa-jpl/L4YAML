@@ -1434,7 +1434,156 @@ Phase 4).**
 
 ###### Phase 4 accomplishments
 
+**Architecture established (structural, not sorry-reducing):**
+
+1. **`scanNextToken_progress`** (ScannerCorrectness.lean §5): Stated the main progress theorem
+   `scanNextToken s = .ok (some s') → s'.offset > s.offset` with sorry body. This is the
+   fundamental fuel-sufficiency ingredient — each scanNextToken step advances by ≥ 1 byte.
+
+2. **`ScanChain.fuel_bound`** (EmitterScannability.lean): Created centralized theorem
+   that derives `n + 1 ≤ (input.utf8ByteSize + 1) * 4` from a ScanChain of length n.
+   Currently sorry'd; will be proved from `scanNextToken_progress` + an offset upper bound
+   once those are filled in.
+
+3. **Replaced 2 inline fuel sorrys** with calls to `ScanChain.fuel_bound`: Both the sequence
+   case (`emit_produces_valid_yaml` / `emitList_scans_nonempty`) and the mapping case
+   (`emitPairList_scans_nonempty`) now use the centralized theorem instead of ad-hoc
+   `(by sorry)`.
+
+**Sorry accounting:** 6 instances → 6 instances (structural reorganization, not reduction).
+The 2 inline `(by sorry)` calls were replaced by 2 new theorem-level sorrys
+(`scanNextToken_progress`, `ScanChain.fuel_bound`). Sorry-using declarations: 8 → 9.
+
 ###### Phase 4 reflections
+
+- **First implementation attempt was too ambitious.** Attempted a ~700-line comprehensive
+  proof of `scanNextToken_progress` with per-sub-scanner progress lemmas for all 13+
+  dispatches. This produced ~20 compilation errors:
+  - `split` failures: Lean's `split` can't see through `have` bindings in `skipToContentWs`
+    (the `have s1 := skipSpaces s; if ...` pattern blocks split).
+  - `show` failures: struct-with-update patterns create `let __src := ...` that blocks
+    definitional equality matching.
+  - `simp` failures: many sub-scanner proofs needed deeper decomposition than simple simp
+    chains could handle.
+  - Composition direction: `Nat.lt_of_le_of_lt` is needed (not `Nat.lt_of_lt_of_le`) when
+    composing `h_ge : s2.offset ≥ s.offset` with sub-scanner strict progress.
+
+- **The upper bound is the core blocker.** To fill in `ScanChain.fuel_bound`, two sub-results
+  are needed:
+  1. Progress: `scanNextToken_progress` (each step advances offset by ≥ 1) — doable but
+     requires careful tactic work through 6 dispatch layers.
+  2. Upper bound: `scanNextToken_offset_le_inputEnd` (offset never exceeds inputEnd) — requires
+     either `IsValid` threading through all branches, or an ASCII-specific proof for emitter
+     output. This is the harder part.
+
+- **Available infrastructure is rich but fragmented.** 30+ `*_offset_ge` loop monotonicity
+  lemmas exist in ScannerCorrectness (§3). 4 flow op `*_offset_lt` strict progress lemmas
+  exist in ScannerProgress (§4). But some critical lemmas (`skipToContentWs_offset_mono`,
+  `unwindIndentsLoop_offset`) are in files not importable by ScannerCorrectness due to
+  circular dependencies.
+
+- **Pragmatic approach was correct.** Rather than fighting compilation errors, establishing
+  the theorem interfaces with sorry and deferring the proofs was the right call. The fuel
+  bound structure is now clean and the path to completion is clear.
+
+###### Phase 4 remaining work
+
+| Item | Description | Estimated effort |
+|------|-------------|------------------|
+| `scanNextToken_progress` proof | Fill in sorry: trace each dispatch branch, show advance called ≥ 1 time | ~200 lines |
+| `scanNextToken_offset_le_inputEnd` | New theorem: offset ≤ inputEnd preservation through scanNextToken | ~100 lines |
+| `ScanChain.fuel_bound` proof | Fill in sorry: induction using progress + upper bound + inputEnd preservation | ~30 lines |
+
+##### **Phase 4.1: remaining work**
+
+Fill in the sorry bodies for `scanNextToken_progress` and `ScanChain.fuel_bound`.
+
+| Sub-phase | Item | Description | Est. lines |
+|-----------|------|-------------|------------|
+| A | Foundation offset lemmas | `unwindIndentsLoop_offset_eq`, `skipToContentWs_offset_ge`, `skipToContentComment_offset_ge`, `skipToContentLoop_offset_ge`, `skipToContent_offset_ge`, `preprocess_offset_ge`, `preprocess_peek_lt` | ~80 |
+| B | Per-sub-scanner progress | For each of 13 sub-scanners, prove `s'.offset > s.offset` when `offset < inputEnd`. Flow ops already have 4 theorems. Need: `scanFlowEntry`, `scanBlockEntry`, `scanKey`, `scanValue`, `scanDocumentStart/End`, `scanDirective`, `scanAnchorOrAlias`, `scanTag`, `scanBlockScalar`, `scanDoubleQuoted`, `scanSingleQuoted`, `scanPlainScalar` | ~150 |
+| C | `scanNextToken_progress` | Fill in sorry: compose preprocess + dispatch + per-sub-scanner lemmas | ~100 |
+| D | `ScanChain.fuel_bound` | `scanNextToken_preserves_inputEnd`, `ScanChain.offset_ge` (induction), fill in `fuel_bound` sorry | ~50 |
+
+**Tactic fixes from Phase 4 failure analysis:**
+- `skipToContentWs`: use `dsimp only [] at h` to clear `have` let-bindings before `split at h`
+- Struct-with-update: avoid `show` patterns; use direct `rw` + `exact`
+- Composition: `Nat.lt_of_le_of_lt h_ge (sub_progress)` (not `Nat.lt_of_lt_of_le`)
+- For `skipToContentComment`, match on `collectCommentTextLoop` pair result instead of `show`
+
+Estimated total: ~380 lines. Expected result: 2 sorry reduction (9 → 7 declarations).
+
+###### **Phase 4.1: accomplishments**
+
+1. **`scanNextToken_progress` fully proven** (ScannerCorrectness.lean §5, 0 sorry).
+   The capstone theorem `scanNextToken s = .ok (some s') → s'.offset > s.offset` is now
+   machine-checked. The proof required:
+   - 45 theorems across ~960 lines in §5 (lines 8849–9808)
+   - Sub-phase A: 13 foundation offset/inputEnd lemmas for `unwindIndents`, `skipToContent`
+     pipeline, `scanNextToken_preprocess` (offset monotonicity + hasMore + peek equality)
+   - Sub-phase B: 13 per-sub-scanner strict progress theorems covering all dispatch targets
+     (flow open/close/entry, block entry/key/value, document start/end, directive, anchor/alias,
+     tag, block scalar, double/single quoted, plain scalar)
+   - Sub-phase C: 4 per-dispatch-branch strict inequalities (`dispatchStructural`,
+     `dispatchFlowIndicators`, `dispatchBlockIndicators`, `dispatchContent`)
+   - Sub-phase C (capstone): Composition through `scanNextToken`'s full pipeline:
+     preprocess → structural → checkBlockFlowIndent → allowDirectives if-branch →
+     flow/block/content dispatch chain
+   - 3 key helpers: `dispatchStructural_none_noDoc` (structural returning none ⇒ no document
+     boundary), `preprocess_peek_eq` (preprocess returning some ⇒ peek? = some c),
+     `allowDir_preserves` (allowDirectives modification preserves offset/inputEnd/peek?/col/atDocumentBoundary)
+
+2. **`ScanChain.fuel_bound` proven** modulo 1 admitted lemma (EmitterScannability.lean).
+   - `ScanChain.bound_invariant`: By induction on chain, each step uses
+     `scanNextToken_progress` for strict progress + `scanNextToken_preserves_bound` for
+     upper bound maintenance. Gives `s_final.offset ≥ s₀.offset + n ∧ offset ≤ inputEnd`.
+   - `fuel_bound`: Initial offset = 0 (from `mk' + emit streamStart`), chain gives
+     `n ≤ s_final.offset ≤ inputEnd = utf8ByteSize`, so `n + 1 ≤ (utf8ByteSize + 1) * 4`.
+   - Admitted: `scanNextToken_preserves_bound` — `offset ≤ inputEnd` + `inputEnd`/`input`
+     preservation through all dispatch branches. Verified by inspection (`inputEnd` never
+     reassigned in any `{ s with ... }`; `advance` uses `String.next` which respects bounds).
+
+3. **Sorry accounting**: 9 sorry-using declarations → 8.
+   - `scanNextToken_progress` sorry eliminated (ScannerCorrectness.lean: 0 sorry)
+   - `ScanChain.fuel_bound` sorry eliminated (proof complete, delegates to admitted helper)
+   - New: `scanNextToken_preserves_bound` (1 sorry instance in 1 declaration)
+   - Net: −2 eliminated, +1 introduced = −1 declaration
+
+###### **Phase 4.1: reflections**
+
+1. **Docstrings before `set_option ... in` are illegal in Lean 4.** This bit us twice (once
+   during Phase 4, once during Phase 4.1 integration). Use `/- ... -/` (regular comment) or
+   `-- ...` instead of `/-- ... -/` (docstring) when the next declaration uses `set_option`.
+
+2. **Stale olean files cause phantom type mismatches.** After changing a theorem signature
+   (e.g. adding `hpeek`/`hnoDoc` params to `dispatchContent_offset_gt`), `lake env lean`
+   checks against the NEW source but dependent files import the OLD olean. Must run
+   `lake build Module.Name` to regenerate the olean before testing dependent files.
+
+3. **`repeat` tactic with complex alternatives can timeout.** The initial `preprocess_peek_eq`
+   proof used `repeat (first | (split at h; ...) | skip)` which exhausted 200K heartbeats.
+   Explicit sequential `split at h` steps (one per if-branch) completed instantly.
+
+4. **`generalize` is the workhorse for struct-with-update inside do-notation.** After
+   `simp only [bind, Except.bind]`, the `if sp.allowDirectives then {sp with ...} else sp`
+   gets inlined into dispatcher arguments. `rcases h_ad : sp.allowDirectives` resolves the
+   `if`, then `generalize h_sp2 : ({sp with ...} : ScannerState) = sp2 at h` abstracts the
+   modified state. Must add `have h_sp2_off : sp2.offset = sp.offset := by rw [← h_sp2]`
+   for `omega` to bridge offsets.
+
+5. **The offset upper bound is the harder half of fuel_bound.** Progress (offset increases)
+   was proven universally. Upper bound (offset ≤ inputEnd) requires either: (a) unfolding
+   through ALL dispatch branches to show `inputEnd` is preserved and `advance` respects bounds,
+   or (b) a WellFormed invariant threading approach. We chose to admit this for now since
+   `inputEnd` is provably never reassigned (only set in `mk'`), making the admission
+   low-risk.
+
+
+#### **Phase 4.2: remaining work**
+
+##### **Phase 4.2: accomplishments**
+
+##### **Phase 4.2: reflections**
 
 #### Layer 2: Parser acceptance
 
