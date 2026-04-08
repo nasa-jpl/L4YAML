@@ -190,6 +190,11 @@ name = "depgraph"
 root = "ExtractDepGraph"
 srcDir = "tools"
 
+[[lean_exe]]
+name = "analyzethms"
+root = "AnalyzeThms"
+srcDir = "tools"
+
 [[lean_lib]]
 name = "Tests.SchemaDump"
 

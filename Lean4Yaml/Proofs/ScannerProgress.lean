@@ -239,6 +239,21 @@ is combinatorially expensive as a universal proof, so we validate
 on representative concrete states.
 -/
 
+/-- `scanFlowEntry` strictly advances offset when `offset < inputEnd`. -/
+theorem scanFlowEntry_offset_lt (s s' : ScannerState)
+    (hlt : s.offset < s.inputEnd)
+    (h : scanFlowEntry s = .ok s') :
+    s.offset < s'.offset := by
+  unfold scanFlowEntry at h
+  simp only [bind, Except.bind] at h
+  split at h
+  · split at h <;> (try contradiction)
+    injection h with h_eq; subst h_eq
+    have h1 := advance_offset_lt (s.emit .flowEntry) (by rw [emit_offset, emit_inputEnd]; exact hlt)
+    rw [emit_offset] at h1; exact h1
+  · injection h with h_eq; subst h_eq
+    have h1 := advance_offset_lt (s.emit .flowEntry) (by rw [emit_offset, emit_inputEnd]; exact hlt)
+    rw [emit_offset] at h1; exact h1
 
 /-! ## §5  scanValue Progress (concrete)
 
@@ -248,6 +263,80 @@ on representative concrete states.
 Full universal proof requires decomposing the `do`-block; verified
 on concrete states.
 -/
+
+/-- `advanceNLoop` preserves offset monotonically. -/
+theorem advanceNLoop_offset_ge (s : ScannerState) (n : Nat) :
+    s.offset ≤ (ScannerState.advanceNLoop s n).offset := by
+  induction n generalizing s with
+  | zero => unfold ScannerState.advanceNLoop; exact Nat.le_refl _
+  | succ n ih => unfold ScannerState.advanceNLoop; exact Nat.le_trans (advance_offset_ge s) (ih _)
+
+/-- `advanceN (n+1)` strict progress when `offset < inputEnd`. -/
+theorem advanceN_succ_offset_lt (s : ScannerState) (n : Nat)
+    (hlt : s.offset < s.inputEnd) :
+    s.offset < (s.advanceN (n + 1)).offset := by
+  unfold ScannerState.advanceN ScannerState.advanceNLoop
+  exact Nat.lt_of_lt_of_le (advance_offset_lt s hlt) (advanceNLoop_offset_ge _ _)
+
+/-- Helper: `advance` on emitted state gives strict progress. -/
+theorem advance_emit_offset_lt (s : ScannerState) (tok : YamlToken)
+    (hlt : s.offset < s.inputEnd) :
+    s.offset < (s.emit tok).advance.offset := by
+  have h1 := advance_offset_lt (s.emit tok) (by rw [emit_offset, emit_inputEnd]; exact hlt)
+  rw [emit_offset] at h1; exact h1
+
+set_option maxHeartbeats 400000 in
+/-- `scanBlockEntry` strictly advances offset when `offset < inputEnd`. -/
+theorem scanBlockEntry_offset_lt (s s' : ScannerState)
+    (hlt : s.offset < s.inputEnd)
+    (h : scanBlockEntry s = .ok s') :
+    s.offset < s'.offset := by
+  unfold scanBlockEntry at h
+  simp only [bind, Except.bind] at h
+  split at h
+  · split at h <;> (try contradiction)
+    injection h with h_eq; subst h_eq
+    have h_pi : (pushSequenceIndent s s.col).offset = s.offset := pushSequenceIndent_offset s _
+    have h_pie : (pushSequenceIndent s s.col).inputEnd = s.inputEnd := pushSequenceIndent_inputEnd s _
+    have h1 := advance_offset_lt ((pushSequenceIndent s s.col).emit .blockEntry)
+      (by rw [emit_offset, emit_inputEnd, h_pi, h_pie]; exact hlt)
+    rw [emit_offset, h_pi] at h1; exact h1
+  · injection h with h_eq; subst h_eq
+    exact advance_emit_offset_lt s _ hlt
+
+set_option maxHeartbeats 400000 in
+/-- `scanKey` strictly advances offset when `offset < inputEnd`. -/
+theorem scanKey_offset_lt (s s' : ScannerState)
+    (hlt : s.offset < s.inputEnd)
+    (h : scanKey s = .ok s') :
+    s.offset < s'.offset := by
+  unfold scanKey at h
+  simp only [bind, Except.bind] at h
+  split at h  -- !s.inFlow (pushMappingIndent branch)
+  · -- block: s_with_indent = pushMappingIndent s s.col
+    split at h  -- !s_after_advance.inFlow (tab check)
+    · split at h  -- match peek? for tab detection
+      · cases h  -- some '\t' → error contradiction
+      · injection h with h_eq; subst h_eq
+        have h_pi : (pushMappingIndent s s.col).offset = s.offset := pushMappingIndent_offset s _
+        have h_pie : (pushMappingIndent s s.col).inputEnd = s.inputEnd := pushMappingIndent_inputEnd s _
+        have h1 := advance_offset_lt ((pushMappingIndent s s.col).emit .key)
+          (by rw [emit_offset, emit_inputEnd, h_pi, h_pie]; exact hlt)
+        rw [emit_offset, h_pi] at h1; exact h1
+    · injection h with h_eq; subst h_eq
+      have h_pi : (pushMappingIndent s s.col).offset = s.offset := pushMappingIndent_offset s _
+      have h_pie : (pushMappingIndent s s.col).inputEnd = s.inputEnd := pushMappingIndent_inputEnd s _
+      have h1 := advance_offset_lt ((pushMappingIndent s s.col).emit .key)
+        (by rw [emit_offset, emit_inputEnd, h_pi, h_pie]; exact hlt)
+      rw [emit_offset, h_pi] at h1; exact h1
+  · -- flow: s_with_indent = s
+    split at h
+    · split at h
+      · cases h
+      · injection h with h_eq; subst h_eq
+        exact advance_emit_offset_lt s _ hlt
+    · injection h with h_eq; subst h_eq
+      exact advance_emit_offset_lt s _ hlt
 
 
 /-! ## §6  skipToContent Offset Monotonicity (concrete)

@@ -8832,5 +8832,977 @@ def checkValidStream (input : String) : Bool :=
       (if _h : tokens.size > 0 then tokens[tokens.size - 1]!.val == .streamEnd else false)
   | .error _ => false
 
+/-! ### §5  Scanner Progress — `scanNextToken` Advances Offset
+
+**Goal**: Prove that every successful `scanNextToken` call that returns
+`some s'` has `s'.offset > s.offset`. This is the key termination
+argument for `ScanChain.fuel_bound`.
+
+**Structure**:
+- §5.1: `unwindIndents` preserves offset/inputEnd/input
+- §5.2: `skipToContent` pipeline offset monotonicity
+- §5.3: `scanNextToken_preprocess` offset monotonicity + hasMore
+- §5.4: Per-dispatch-branch offset strict inequality
+- §5.5: `scanNextToken_progress` capstone
+-/
+
+/-! #### §5.1  `unwindIndents` Preserves offset/inputEnd/input
+
+`unwindIndentsLoop` only calls `emit .blockEnd` and pops `indents`.
+Neither operation touches `offset`, `inputEnd`, or `input`. -/
+
+theorem unwindIndentsLoop_offset_eq (s : ScannerState) (col : Int) (fuel : Nat) :
+    (unwindIndentsLoop s col fuel).offset = s.offset := by
+  induction fuel generalizing s with
+  | zero => unfold unwindIndentsLoop; rfl
+  | succ fuel' ih =>
+    unfold unwindIndentsLoop
+    split
+    · -- condition true: emit blockEnd, pop indents, recurse
+      rw [ih]; rfl
+    · -- condition false: identity
+      rfl
+
+theorem unwindIndents_offset_eq (s : ScannerState) (col : Int) :
+    (unwindIndents s col).offset = s.offset :=
+  unwindIndentsLoop_offset_eq s col s.indents.size
+
+theorem unwindIndentsLoop_inputEnd_eq (s : ScannerState) (col : Int) (fuel : Nat) :
+    (unwindIndentsLoop s col fuel).inputEnd = s.inputEnd := by
+  induction fuel generalizing s with
+  | zero => unfold unwindIndentsLoop; rfl
+  | succ fuel' ih =>
+    unfold unwindIndentsLoop
+    split
+    · rw [ih]; rfl
+    · rfl
+
+theorem unwindIndents_inputEnd_eq (s : ScannerState) (col : Int) :
+    (unwindIndents s col).inputEnd = s.inputEnd :=
+  unwindIndentsLoop_inputEnd_eq s col s.indents.size
+
+theorem unwindIndentsLoop_input_eq (s : ScannerState) (col : Int) (fuel : Nat) :
+    (unwindIndentsLoop s col fuel).input = s.input := by
+  induction fuel generalizing s with
+  | zero => unfold unwindIndentsLoop; rfl
+  | succ fuel' ih =>
+    unfold unwindIndentsLoop
+    split
+    · rw [ih]; rfl
+    · rfl
+
+theorem unwindIndents_input_eq (s : ScannerState) (col : Int) :
+    (unwindIndents s col).input = s.input :=
+  unwindIndentsLoop_input_eq s col s.indents.size
+
+/-! #### §5.2  `skipToContent` Pipeline Offset Monotonicity
+
+Each phase of the skipToContent pipeline preserves or increases offset:
+- `skipToContentWs`: may advance past whitespace (offset ≥)
+- `skipToContentComment`: may advance past comment (offset ≥)
+- `consumeNewline`: may advance past newline (offset ≥)
+- `skipToContentLoop`: composition, monotone by induction
+- `skipToContent`: trivial wrapper -/
+
+-- skipToContentWs: on success, offset ≥
+theorem skipToContentWs_offset_ge (s s' : ScannerState)
+    (h : skipToContentWs s = .ok s') : s'.offset ≥ s.offset := by
+  unfold skipToContentWs at h
+  simp (config := { zetaDelta := true }) only [] at h
+  split at h  -- if s.needIndentCheck
+  · -- needIndentCheck = true: let s1 := skipSpaces s; ...
+    split at h  -- if (!inFlow && indent < 0) || col ≤ indent
+    · -- condition true
+      split at h  -- match (skipSpaces s).peek?
+      · -- some '\t'
+        split at h  -- match (skipWhitespace (skipSpaces s)).peek?
+        · injection h with h; rw [← h]
+          exact Nat.le_trans (skipSpaces_offset_ge s) (skipWhitespace_offset_ge _)
+        · split at h  -- if isLineBreakBool c
+          · injection h with h; rw [← h]
+            exact Nat.le_trans (skipSpaces_offset_ge s) (skipWhitespace_offset_ge _)
+          · split at h  -- if indent < 0 && flow indicators
+            · injection h with h; rw [← h]
+              exact Nat.le_trans (skipSpaces_offset_ge s) (skipWhitespace_offset_ge _)
+            · simp at h
+        · injection h with h; rw [← h]
+          exact Nat.le_trans (skipSpaces_offset_ge s) (skipWhitespace_offset_ge _)
+      · -- _ (not tab) → .ok (skipSpaces s)
+        injection h with h; rw [← h]; exact skipSpaces_offset_ge s
+    · -- past indentation → .ok (skipWhitespace (skipSpaces s))
+      injection h with h; rw [← h]
+      exact Nat.le_trans (skipSpaces_offset_ge s) (skipWhitespace_offset_ge _)
+  · -- needIndentCheck = false → .ok (skipWhitespace s)
+    injection h with h; rw [← h]; exact skipWhitespace_offset_ge s
+
+-- skipToContentComment: offset ≥ (pure function, no Except)
+theorem skipToContentComment_offset_ge (s : ScannerState) :
+    (skipToContentComment s).offset ≥ s.offset := by
+  unfold skipToContentComment
+  split  -- match s.peek?
+  · -- some '#'
+    dsimp only []  -- zeta-reduce let bindings
+    split  -- match s.peekBack? (inside the if condition)
+    · -- peekBack? = some c
+      split  -- if (s.col == 0 || (pred c)) = true
+      · show (collectCommentTextLoop s.advance "" (s.advance.inputEnd - s.advance.offset)).2.offset ≥ s.offset
+        exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (collectCommentTextLoop_offset_ge _ _ _)
+      · exact Nat.le_refl _
+    · -- peekBack? = none: commentOk = s.col == 0 || true
+      split  -- if condition
+      · show (collectCommentTextLoop s.advance "" (s.advance.inputEnd - s.advance.offset)).2.offset ≥ s.offset
+        exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (collectCommentTextLoop_offset_ge _ _ _)
+      · rename_i h_false; simp at h_false
+  · exact Nat.le_refl _
+
+-- skipToContentLoop: by induction on fuel, offset monotone
+theorem skipToContentLoop_offset_ge (s s' : ScannerState) (fuel : Nat)
+    (h : skipToContentLoop s fuel = .ok s') : s'.offset ≥ s.offset := by
+  induction fuel generalizing s with
+  | zero => unfold skipToContentLoop at h; injection h with h; rw [← h]; exact Nat.le_refl _
+  | succ n ih =>
+    unfold skipToContentLoop at h
+    -- match skipToContentWs s
+    split at h
+    · simp at h  -- error case
+    · -- ok s1
+      rename_i s1 h_ws
+      -- Now: let s2 := skipToContentComment s1; match s2.peek? with ...
+      -- simp only [] to reduce the let binding
+      simp only [] at h
+      have h1 : s1.offset ≥ s.offset := skipToContentWs_offset_ge s s1 h_ws
+      have h2 : (skipToContentComment s1).offset ≥ s1.offset :=
+        skipToContentComment_offset_ge s1
+      -- match (skipToContentComment s1).peek?
+      split at h
+      · -- some c
+        split at h
+        · -- isLineBreak? c = true
+          -- consumeNewline → possible struct update → recurse
+          split at h
+          · -- not in flow sequence → simpleKeyAllowed := true
+            -- The struct update { s3 with simpleKeyAllowed := true } preserves offset
+            have h3 : (consumeNewline (skipToContentComment s1)).offset ≥
+                (skipToContentComment s1).offset := consumeNewline_offset_ge _
+            -- Let Lean infer the struct argument from h to avoid type mismatch
+            have h4 := ih _ h
+            -- h4.offset reduces through the struct projection since simpleKeyAllowed ≠ offset
+            exact Nat.le_trans (Nat.le_trans h1 h2) (Nat.le_trans h3 h4)
+          · -- in flow sequence → no struct update
+            have h3 : (consumeNewline (skipToContentComment s1)).offset ≥
+                (skipToContentComment s1).offset := consumeNewline_offset_ge _
+            exact Nat.le_trans (Nat.le_trans h1 h2) (Nat.le_trans h3 (ih _ h))
+        · -- isLineBreak? c = false → return s2
+          injection h with h; rw [← h]; exact Nat.le_trans h1 h2
+      · -- none → return s2
+        injection h with h; rw [← h]; exact Nat.le_trans h1 h2
+
+-- skipToContent: trivial wrapper
+theorem skipToContent_offset_ge (s s' : ScannerState)
+    (h : skipToContent s = .ok s') : s'.offset ≥ s.offset := by
+  unfold skipToContent at h
+  exact skipToContentLoop_offset_ge s s' _ h
+
+/-! #### §5.3  `scanNextToken_preprocess` Offset Monotonicity
+
+`scanNextToken_preprocess` runs skipToContent + unwindIndents + saveSimpleKey.
+All three preserve or increase offset. When it returns `some (s', c)`,
+`s'.peek? = some c`, which means `s'.hasMore`. -/
+
+theorem preprocess_offset_ge (s s' : ScannerState) (c : Char)
+    (h : scanNextToken_preprocess s = .ok (some (s', c))) :
+    s'.offset ≥ s.offset := by
+  unfold scanNextToken_preprocess at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h  -- match skipToContent s
+  · simp at h
+  · rename_i s_skip h_skip
+    have h_ge : s_skip.offset ≥ s.offset := skipToContent_offset_ge s s_skip h_skip
+    split at h  -- if !s_skip.hasMore
+    · simp at h
+    · split at h  -- if !inFlow && needIndentCheck
+      · -- unwindIndents path: trailing content check
+        split at h
+        · simp at h
+        · split at h  -- match peek?
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            rw [ScannerProgress.saveSimpleKey_offset]
+            show ({ unwindIndents s_skip ↑s_skip.col with needIndentCheck := false }).offset ≥ s.offset
+            show (unwindIndents s_skip ↑s_skip.col).offset ≥ s.offset
+            rw [unwindIndents_offset_eq]; exact h_ge
+      · -- no unwindIndents path: trailing content check
+        split at h
+        · simp at h
+        · split at h  -- match peek?
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            rw [ScannerProgress.saveSimpleKey_offset]; exact h_ge
+
+theorem preprocess_hasMore (s s' : ScannerState) (c : Char)
+    (h : scanNextToken_preprocess s = .ok (some (s', c))) :
+    s'.offset < s'.inputEnd := by
+  unfold scanNextToken_preprocess at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h
+  · simp at h
+  · split at h
+    · simp at h
+    · split at h  -- if !inFlow && needIndentCheck
+      · split at h  -- trailing content
+        · simp at h
+        · split at h  -- match peek?
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, rfl⟩ := h
+            simp only [ScannerState.peek?] at *
+            rename_i h_peek
+            split at h_peek
+            · assumption
+            · simp at h_peek
+      · split at h  -- trailing content
+        · simp at h
+        · split at h  -- match peek?
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, rfl⟩ := h
+            simp only [ScannerState.peek?] at *
+            rename_i h_peek
+            split at h_peek
+            · assumption
+            · simp at h_peek
+
+/-! #### §5.3.5  Sub-Scanner Offset Progress (Strict)
+
+Each sub-scanner called by the dispatch functions strictly advances
+offset. These use `advance_offset_lt` from ScannerProgress for the
+first `advance`, and the `_offset_ge` helpers from §A for subsequent
+operations.
+-/
+
+-- scanValueClearKey preserves offset
+theorem svck_offset (s : ScannerState) :
+    (scanValueClearKey s).offset = s.offset := by
+  unfold scanValueClearKey
+  split <;> (try split) <;> (try split) <;> rfl
+theorem svck_inputEnd (s : ScannerState) :
+    (scanValueClearKey s).inputEnd = s.inputEnd := by
+  unfold scanValueClearKey
+  split <;> (try split) <;> (try split) <;> rfl
+
+-- scanValuePrepare preserves offset
+theorem svp_offset (s : ScannerState) :
+    (scanValuePrepare s).offset = s.offset := by
+  unfold scanValuePrepare
+  simp (config := { zetaDelta := true }) only []
+  split
+  · split
+    · split <;> rfl
+    · rfl
+  · split; · rfl
+    · split
+      · exact ScannerProgress.pushMappingIndent_offset s _
+      · rfl
+theorem svp_inputEnd (s : ScannerState) :
+    (scanValuePrepare s).inputEnd = s.inputEnd := by
+  unfold scanValuePrepare
+  simp (config := { zetaDelta := true }) only []
+  split
+  · split
+    · split <;> rfl
+    · rfl
+  · split; · rfl
+    · split
+      · exact ScannerProgress.pushMappingIndent_inputEnd s _
+      · rfl
+
+set_option maxHeartbeats 800000 in
+/-- `scanValue` strictly advances offset when `offset < inputEnd`. -/
+theorem scanValue_offset_lt (s s' : ScannerState)
+    (hlt : s.offset < s.inputEnd) (h : scanValue s = .ok s') :
+    s.offset < s'.offset := by
+  unfold scanValue at h
+  simp only [bind, Except.bind] at h
+  split at h
+  · cases h
+  · split at h
+    · cases h
+    · injection h with h_eq; subst h_eq
+      have hck := svck_offset s; have hcke := svck_inputEnd s
+      have hvp : (scanValuePrepare (scanValueClearKey s)).offset = s.offset := by rw [svp_offset, hck]
+      have hvpe : (scanValuePrepare (scanValueClearKey s)).inputEnd = s.inputEnd := by rw [svp_inputEnd, hcke]
+      have h1 := ScannerProgress.advance_offset_lt ((scanValuePrepare (scanValueClearKey s)).emit .value)
+        (by rw [ScannerProgress.emit_offset, ScannerProgress.emit_inputEnd, hvp, hvpe]; exact hlt)
+      rw [ScannerProgress.emit_offset, hvp] at h1; exact h1
+
+set_option maxHeartbeats 800000 in
+/-- `scanDocumentStart` strictly advances offset when `offset < inputEnd`. -/
+theorem scanDocumentStart_offset_lt (s : ScannerState) (hlt : s.offset < s.inputEnd) :
+    s.offset < (scanDocumentStart s).offset := by
+  unfold scanDocumentStart; dsimp only []
+  generalize h_su : unwindIndents s (-1) = s_u
+  have h_off : s_u.offset = s.offset := h_su ▸ unwindIndents_offset_eq s _
+  have h_end : s_u.inputEnd = s.inputEnd := h_su ▸ unwindIndents_inputEnd_eq s _
+  rw [← h_off]
+  let s_kd : ScannerState := { s_u with simpleKey := { possible := false } }
+  show s_u.offset < ((s_kd.emit .documentStart).advanceN 3).offset
+  refine ScannerProgress.advanceN_succ_offset_lt (s_kd.emit .documentStart) 2 ?_
+  rw [ScannerProgress.emit_offset, ScannerProgress.emit_inputEnd]
+  show s_u.offset < s_u.inputEnd; rw [h_off, h_end]; exact hlt
+
+theorem docEnd_core (s : ScannerState) (hlt : s.offset < s.inputEnd) :
+    ∀ s_u, unwindIndents s (-1) = s_u →
+    s.offset < (({ s_u with simpleKey := ({ possible := false } : SimpleKeyState) }.emit .documentEnd).advanceN 3).offset := by
+  intro s_u h_su
+  have h_off := (h_su ▸ unwindIndents_offset_eq s _ : s_u.offset = s.offset)
+  have h_end := (h_su ▸ unwindIndents_inputEnd_eq s _ : s_u.inputEnd = s.inputEnd)
+  rw [← h_off]
+  exact ScannerProgress.advanceN_succ_offset_lt
+    ({ s_u with simpleKey := ({ possible := false } : SimpleKeyState) }.emit .documentEnd) 2
+    (by rw [ScannerProgress.emit_offset, ScannerProgress.emit_inputEnd]; show s_u.offset < s_u.inputEnd; rw [h_off, h_end]; exact hlt)
+
+set_option maxHeartbeats 6400000 in
+/-- `scanDocumentEnd` strictly advances offset when `offset < inputEnd`. -/
+theorem scanDocumentEnd_offset_lt (s s' : ScannerState)
+    (hlt : s.offset < s.inputEnd) (h : scanDocumentEnd s = .ok s') :
+    s.offset < s'.offset := by
+  unfold scanDocumentEnd at h; dsimp only [] at h
+  split at h
+  · cases h
+  · split at h
+    · simp only [pure, Except.pure, Bind.bind, Except.bind, Except.ok.injEq] at h
+      subst h; dsimp only []; exact docEnd_core s hlt _ rfl
+    · simp only [pure, Except.pure, Bind.bind, Except.bind, Except.ok.injEq] at h
+      subst h; dsimp only []; exact docEnd_core s hlt _ rfl
+    · split at h
+      · simp only [pure, Except.pure, Bind.bind, Except.bind, Except.ok.injEq] at h
+        subst h; dsimp only []; exact docEnd_core s hlt _ rfl
+      · simp only [Bind.bind, Except.bind] at h; cases h
+
+set_option maxHeartbeats 800000 in
+/-- `scanAnchorOrAlias` strictly advances offset when `offset < inputEnd`. -/
+theorem scanAnchorOrAlias_offset_lt (s s' : ScannerState) (isAnchor : Bool)
+    (hlt : s.offset < s.inputEnd) (h : scanAnchorOrAlias s isAnchor = .ok s') :
+    s.offset < s'.offset := by
+  unfold scanAnchorOrAlias at h; dsimp only [] at h
+  split at h
+  · cases h
+  · simp only [Except.ok.injEq] at h; subst h
+    exact Nat.lt_of_lt_of_le (ScannerProgress.advance_offset_lt s hlt)
+      (collectAnchorNameLoop_offset_ge _ _ _)
+
+theorem scanYamlDirective_offset_ge' (s s_after_ws : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState)
+    (h : scanYamlDirective s s_after_ws startPos = .ok s') :
+    s'.offset ≥ s_after_ws.offset := by
+  unfold scanYamlDirective at h
+  dsimp only [] at h
+  simp only [bind, Except.bind] at h
+  split at h
+  · contradiction
+  · split at h
+    · contradiction
+    · split at h
+      · split at h
+        · contradiction
+        · injection h with h_eq; subst h_eq; dsimp only []
+          exact Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
+            (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _))
+      · split at h
+        · contradiction
+        · split at h <;> try contradiction
+          all_goals (injection h with h_eq; subst h_eq; dsimp only []
+                     exact Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
+                       (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _)))
+      · injection h with h_eq; subst h_eq; dsimp only []
+        exact Nat.le_trans (collectVersionMajorLoop_offset_ge _ _ _)
+          (Nat.le_trans (collectVersionMinorLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _))
+
+theorem scanTagDirective_offset_ge' (s s_after_ws : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState)
+    (h : scanTagDirective s s_after_ws startPos = .ok s') :
+    s'.offset ≥ s_after_ws.offset := by
+  unfold scanTagDirective at h
+  dsimp only [] at h
+  simp only [bind, Except.bind] at h
+  split at h
+  · split at h
+    · contradiction
+    · injection h with h_eq; subst h_eq; dsimp only []
+      exact Nat.le_trans (collectTagHandleDirectiveLoop_offset_ge _ _ _)
+        (Nat.le_trans (skipWhitespace_offset_ge _)
+          (Nat.le_trans (collectTagPrefixLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _)))
+  · split at h
+    · contradiction
+    · split at h <;> try contradiction
+      all_goals (injection h with h_eq; subst h_eq; dsimp only []
+                 exact Nat.le_trans (collectTagHandleDirectiveLoop_offset_ge _ _ _)
+                   (Nat.le_trans (skipWhitespace_offset_ge _)
+                     (Nat.le_trans (collectTagPrefixLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _))))
+  · injection h with h_eq; subst h_eq; dsimp only []
+    exact Nat.le_trans (collectTagHandleDirectiveLoop_offset_ge _ _ _)
+      (Nat.le_trans (skipWhitespace_offset_ge _)
+        (Nat.le_trans (collectTagPrefixLoop_offset_ge _ _ _) (skipWhitespace_offset_ge _)))
+
+set_option maxHeartbeats 1600000 in
+/-- `scanDirective` strictly advances offset when `offset < inputEnd`. -/
+theorem scanDirective_offset_lt (s s' : ScannerState)
+    (hlt : s.offset < s.inputEnd) (h : scanDirective s = .ok s') :
+    s.offset < s'.offset := by
+  unfold scanDirective at h
+  split at h
+  · nomatch h
+  · dsimp only [] at h
+    have h_adv := ScannerProgress.advance_offset_lt s hlt
+    have h_ws_ge : (skipWhitespace (collectDirectiveNameLoop s.advance "" (s.inputEnd - s.advance.offset)).snd).offset
+        ≥ s.advance.offset :=
+      Nat.le_trans (collectDirectiveNameLoop_offset_ge s.advance "" _) (skipWhitespace_offset_ge _)
+    split at h
+    · generalize h_yd : scanYamlDirective _ _ _ = yd at h
+      cases yd with
+      | error e => simp at h
+      | ok s_yd =>
+        simp only [Except.ok.injEq] at h; subst h
+        exact Nat.lt_of_lt_of_le h_adv
+          (Nat.le_trans h_ws_ge (Nat.le_trans (scanYamlDirective_offset_ge' _ _ _ _ h_yd) (skipToEndOfLine_offset_ge _)))
+    · split at h
+      · generalize h_td : scanTagDirective _ _ _ = td at h
+        cases td with
+        | error e => simp at h
+        | ok s_td =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact Nat.lt_of_lt_of_le h_adv
+            (Nat.le_trans h_ws_ge (Nat.le_trans (scanTagDirective_offset_ge' _ _ _ _ h_td) (skipToEndOfLine_offset_ge _)))
+      · simp only [Except.ok.injEq] at h; subst h
+        exact Nat.lt_of_lt_of_le h_adv (Nat.le_trans h_ws_ge (skipToEndOfLine_offset_ge _))
+
+theorem scanVerbatimTag_offset_ge (s : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState) (h : scanVerbatimTag s startPos = .ok s') :
+    s'.offset ≥ s.offset := by
+  unfold scanVerbatimTag at h; dsimp only [] at h
+  split at h
+  · cases h
+  · split at h
+    · cases h
+    · simp only [Except.ok.injEq] at h; subst h
+      exact Nat.le_trans (ScannerProgress.advance_offset_ge s)
+        (collectVerbatimTagLoop_offset_ge _ _ _)
+
+theorem scanSecondaryTag_offset_ge (s : ScannerState) (startPos : YamlPos) :
+    (scanSecondaryTag s startPos).offset ≥ s.offset := by
+  unfold scanSecondaryTag; dsimp only []
+  show ((_ : ScannerState).emitAt _ _).offset ≥ s.offset
+  exact Nat.le_trans (ScannerProgress.advance_offset_ge s) (collectTagSuffixLoop_offset_ge _ _ _)
+
+theorem scanNamedTag_offset_ge (s : ScannerState) (startPos : YamlPos) (inputEnd : Nat) :
+    (scanNamedTag s startPos inputEnd).offset ≥ s.offset := by
+  unfold scanNamedTag; dsimp only []
+  show ((_ : ScannerState).emitAt _ _).offset ≥ s.offset
+  split
+  · exact Nat.le_trans (collectTagHandleLoop_offset_ge s "" _)
+      (collectTagSuffixLoop_offset_ge _ _ _)
+  · exact collectTagHandleLoop_offset_ge s "" _
+
+set_option maxHeartbeats 800000 in
+/-- `scanTag` strictly advances offset when `offset < inputEnd`. -/
+theorem scanTag_offset_lt (s s' : ScannerState)
+    (hlt : s.offset < s.inputEnd) (h : scanTag s = .ok s') :
+    s.offset < s'.offset := by
+  unfold scanTag at h; dsimp only [] at h
+  split at h
+  · -- verbatim tag (monadic)
+    simp only [bind, Except.bind, pure, Except.pure] at h
+    split at h
+    · cases h
+    · simp only [Except.ok.injEq] at h; subst h; dsimp only []
+      exact Nat.lt_of_lt_of_le (ScannerProgress.advance_offset_lt s hlt)
+        (scanVerbatimTag_offset_ge _ _ _ ‹_›)
+  · -- secondary tag (pure)
+    simp only [Except.ok.injEq] at h; subst h; dsimp only []
+    exact Nat.lt_of_lt_of_le (ScannerProgress.advance_offset_lt s hlt)
+      (scanSecondaryTag_offset_ge _ _)
+  · -- named tag (pure)
+    simp only [Except.ok.injEq] at h; subst h; dsimp only []
+    exact Nat.lt_of_lt_of_le (ScannerProgress.advance_offset_lt s hlt)
+      (scanNamedTag_offset_ge _ _ _)
+
+/-- `scanDoubleQuoted` strictly advances offset when `offset < inputEnd`. -/
+theorem scanDoubleQuoted_offset_lt (s s' : ScannerState)
+    (hlt : s.offset < s.inputEnd) (h : scanDoubleQuoted s = .ok s') :
+    s.offset < s'.offset := by
+  unfold scanDoubleQuoted at h
+  simp only [bind, Except.bind] at h
+  split at h
+  · cases h
+  · rename_i content_state heq
+    obtain ⟨content, s_after_close⟩ := content_state
+    simp only [] at h heq
+    have h_chain : s.offset < s_after_close.offset :=
+      Nat.lt_of_lt_of_le (ScannerProgress.advance_offset_lt s hlt)
+        (collectDoubleQuotedLoop_offset_ge _ _ _ _ _ _ _ _ _ heq)
+    split at h
+    · split at h
+      · cases h
+      · injection h with h; subst h; exact h_chain
+    · injection h with h; subst h; exact h_chain
+
+/-- `scanSingleQuoted` strictly advances offset when `offset < inputEnd`. -/
+theorem scanSingleQuoted_offset_lt (s s' : ScannerState)
+    (hlt : s.offset < s.inputEnd) (h : scanSingleQuoted s = .ok s') :
+    s.offset < s'.offset := by
+  unfold scanSingleQuoted at h
+  simp only [bind, Except.bind] at h
+  split at h
+  · cases h
+  · rename_i content_state heq
+    obtain ⟨content, s_after_close⟩ := content_state
+    simp only [] at h heq
+    have h_chain : s.offset < s_after_close.offset :=
+      Nat.lt_of_lt_of_le (ScannerProgress.advance_offset_lt s hlt)
+        (collectSingleQuotedLoop_offset_ge _ _ _ _ _ _ _ _ _ heq)
+    split at h
+    · split at h
+      · cases h
+      · simp only [Except.ok.injEq] at h; subst h; exact h_chain
+    · injection h with h; subst h; exact h_chain
+
+theorem scanBlockScalarBody_offset_ge (s_orig s_nl : ScannerState)
+    (chomp : ChompStyle) (expl : Option Nat) (isLit : Bool) (startPos : YamlPos)
+    (s' : ScannerState)
+    (h : scanBlockScalarBody s_orig s_nl chomp expl isLit startPos = .ok s') :
+    s'.offset ≥ s_nl.offset := by
+  unfold scanBlockScalarBody at h; dsimp only [] at h
+  split at h
+  · cases h
+  · simp only [Except.ok.injEq] at h; subst h
+    exact collectBlockScalarLoop_offset_ge _ _ _ _ _
+
+/-- `scanBlockScalar` strictly advances offset when `offset < inputEnd`. -/
+theorem scanBlockScalar_offset_lt (s s' : ScannerState)
+    (hlt : s.offset < s.inputEnd) (h : scanBlockScalar s = .ok s') :
+    s.offset < s'.offset := by
+  unfold scanBlockScalar at h; dsimp only [] at h
+  generalize h_cn : scanBlockScalarConsumeNewline _ = cn at h
+  cases cn with
+  | error e => simp at h
+  | ok s_nl =>
+    have h_pre : s.advance.offset ≤ s_nl.offset :=
+      Nat.le_trans (parseBlockHeaderLoop_offset_ge _ _ _ _)
+        (Nat.le_trans (skipWhitespace_offset_ge _)
+          (Nat.le_trans (scanBlockScalarSkipComment_offset_ge _)
+            (scanBlockScalarConsumeNewline_offset_ge _ _ h_cn)))
+    have h_body := scanBlockScalarBody_offset_ge _ _ _ _ _ _ _ h
+    exact Nat.lt_of_lt_of_le (ScannerProgress.advance_offset_lt s hlt) (Nat.le_trans h_pre h_body)
+
+-- Helpers for scanPlainScalar_offset_lt
+
+theorem flowIndicator_isIndicator' (c : Char) (h : isFlowIndicatorBool c = true) :
+    isIndicatorBool c = true := by
+  simp [isFlowIndicatorBool, List.mem_cons] at h
+  rcases h with rfl | rfl | rfl | rfl | rfl; all_goals decide
+
+theorem canStart_not_lb (c : Char) (next : Option Char) (inFlow : Bool)
+    (hcan : canStartPlainScalarBool c next inFlow = true) :
+    isLineBreakBool c = false := by
+  unfold canStartPlainScalarBool at hcan; split at hcan
+  · rename_i hc; rcases hc with rfl | rfl | rfl <;> decide
+  · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan; exact hcan.2
+
+theorem canStart_not_ws (c : Char) (next : Option Char) (inFlow : Bool)
+    (hcan : canStartPlainScalarBool c next inFlow = true) :
+    isWhiteSpaceBool c = false := by
+  unfold canStartPlainScalarBool at hcan; split at hcan
+  · rename_i hc; rcases hc with rfl | rfl | rfl <;> decide
+  · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan; exact hcan.1.2
+
+theorem canStart_plainSafe (c : Char) (next : Option Char) (inFlow : Bool)
+    (hcan : canStartPlainScalarBool c next inFlow = true) :
+    isPlainSafeBool c inFlow = true := by
+  have hws := canStart_not_ws c next inFlow hcan
+  have hlb := canStart_not_lb c next inFlow hcan
+  simp only [isPlainSafeBool]; split
+  · simp [hws, hlb]; cases h_fi : isFlowIndicatorBool c
+    · rfl
+    · unfold canStartPlainScalarBool at hcan; split at hcan
+      · rename_i hc; rcases hc with rfl | rfl | rfl <;> simp [isFlowIndicatorBool] at h_fi
+      · simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan
+        exact absurd (flowIndicator_isIndicator' c h_fi) (by simp [hcan.1.1])
+  · simp [hws, hlb]
+
+set_option maxHeartbeats 1600000 in
+theorem canStart_terminates_none (c : Char) (s : ScannerState) (inFlow : Bool)
+    (hcan : canStartPlainScalarBool c (s.peekAt? 1) inFlow = true)
+    (hnoDoc : (s.col == 0 && atDocumentBoundary s) = false) :
+    collectPlainScalar_terminates? c s "" "" inFlow = none := by
+  unfold collectPlainScalar_terminates?
+  have h_not_hash : (c == '#' && decide ("".length > 0)) = false := by simp
+  cases h_colon : (c == ':') with
+  | false =>
+    have hnofi : (inFlow && isFlowIndicatorBool c) = false := by
+      cases h_fi : isFlowIndicatorBool c with
+      | false => simp
+      | true =>
+        have hind : isIndicatorBool c = true := flowIndicator_isIndicator' c h_fi
+        have hnd : c ≠ '-' := by intro hh; rw [hh] at h_fi; simp [isFlowIndicatorBool] at h_fi
+        have hnq : c ≠ '?' := by intro hh; rw [hh] at h_fi; simp [isFlowIndicatorBool] at h_fi
+        have hnc : c ≠ ':' := by intro hh; rw [hh] at h_colon; simp at h_colon
+        unfold canStartPlainScalarBool at hcan
+        simp only [hnd, hnq, hnc, false_or, ↓reduceIte, Bool.and_eq_true, Bool.not_eq_true'] at hcan
+        simp [hind] at hcan
+    simp only [h_not_hash, hnofi, hnoDoc, ↓reduceIte, Bool.false_eq_true]
+  | true =>
+    have hceq : c = ':' := eq_of_beq h_colon
+    subst hceq; dsimp only []
+    simp only [h_not_hash, ↓reduceIte, Bool.false_eq_true]
+    split
+    · rename_i n hn
+      unfold canStartPlainScalarBool at hcan
+      rw [if_pos (Or.inr (Or.inr rfl)), hn] at hcan
+      simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan
+      obtain ⟨⟨hws, hlb⟩, hflow⟩ := hcan
+      simp [isBlankBool, hws, hlb, hflow]
+    · rename_i hn
+      unfold canStartPlainScalarBool at hcan
+      rw [if_pos (Or.inr (Or.inr rfl)), hn] at hcan
+      contradiction
+
+-- `scanPlainScalar` strictly advances offset when `offset < inputEnd`,
+-- the first character can start a plain scalar, and there is no document
+-- boundary at column 0.
+set_option maxHeartbeats 3200000 in
+theorem scanPlainScalar_offset_lt (s s' : ScannerState) (c : Char)
+    (hlt : s.offset < s.inputEnd) (hpeek : s.peek? = some c)
+    (hcan : canStartPlainScalarBool c (s.peekAt? 1) s.inFlow = true)
+    (hnoDoc : (s.col == 0 && atDocumentBoundary s) = false)
+    (h : scanPlainScalar s = .ok s') :
+    s.offset < s'.offset := by
+  unfold scanPlainScalar at h; dsimp only [] at h
+  simp only [bind, Except.bind] at h
+  generalize h_loop : collectPlainScalarLoop s "" "" _ s.inFlow _ s.inputEnd = loop_res at h
+  cases loop_res with
+  | error e => simp at h
+  | ok result =>
+    simp only [Except.ok.injEq] at h; subst h; dsimp only []
+    conv at h_loop => lhs; unfold collectPlainScalarLoop
+    dsimp only [] at h_loop
+    have h_term := canStart_terminates_none c s s.inFlow hcan hnoDoc
+    have h_not_lb := canStart_not_lb c (s.peekAt? 1) s.inFlow hcan
+    have h_not_ws := canStart_not_ws c (s.peekAt? 1) s.inFlow hcan
+    have h_ps := canStart_plainSafe c (s.peekAt? 1) s.inFlow hcan
+    simp only [hpeek, h_term, h_not_lb, h_not_ws, h_ps, ↓reduceIte, Bool.false_eq_true] at h_loop
+    exact Nat.lt_of_lt_of_le (ScannerProgress.advance_offset_lt s hlt)
+      (collectPlainScalarLoop_offset_ge _ _ _ _ _ _ _ _ h_loop)
+
+/-! #### §5.4  Per-Dispatch Offset Strict Inequality
+
+Each dispatch function that returns `some s'` calls `advance` at
+least once on a state with `hasMore`, giving `s'.offset > s_in.offset`.
+-/
+
+set_option maxHeartbeats 1600000 in
+theorem dispatchStructural_offset_gt (s s' : ScannerState) (c : Char)
+    (h_hm : s.offset < s.inputEnd)
+    (h : scanNextToken_dispatchStructural s c = .ok (some s')) :
+    s'.offset > s.offset := by
+  unfold scanNextToken_dispatchStructural at h
+  simp only [bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at h
+  split at h  -- s.inFlow && indent check
+  · split at h  -- c != ']' && c != '}'
+    · cases h
+    · split at h  -- s.col == 0 && s.inFlow && (atDocumentStart || atDocumentEnd)
+      · cases h
+      · split at h  -- s.col == 0 && atDocumentStart
+        · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+          exact scanDocumentStart_offset_lt s h_hm
+        · split at h  -- s.col == 0 && atDocumentEnd
+          · split at h
+            · cases h
+            · injection h with h; injection h with h; subst h
+              exact scanDocumentEnd_offset_lt s _ h_hm ‹_›
+          · split at h  -- c == '%' && s.col == 0
+            · split at h
+              · cases h
+              · injection h with h; injection h with h; subst h
+                exact scanDirective_offset_lt s _ h_hm ‹_›
+            · nomatch h
+  · split at h  -- s.col == 0 && s.inFlow && (atDocumentStart || atDocumentEnd)
+    · cases h
+    · split at h  -- s.col == 0 && atDocumentStart
+      · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+        exact scanDocumentStart_offset_lt s h_hm
+      · split at h  -- s.col == 0 && atDocumentEnd
+        · split at h  -- scanDocumentEnd result
+          · cases h
+          · injection h with h; injection h with h; subst h
+            exact scanDocumentEnd_offset_lt s _ h_hm ‹_›
+        · split at h  -- c == '%' && s.col == 0
+          · split at h  -- scanDirective result
+            · cases h
+            · injection h with h; injection h with h; subst h
+              exact scanDirective_offset_lt s _ h_hm ‹_›
+          · nomatch h
+
+theorem dispatchFlowIndicators_offset_gt (s s' : ScannerState) (c : Char)
+    (h_hm : s.offset < s.inputEnd)
+    (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s')) :
+    s'.offset > s.offset := by
+  unfold scanNextToken_dispatchFlowIndicators at h
+  simp only [bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at h
+  split at h
+  · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+    exact ScannerProgress.scanFlowSequenceStart_offset_lt s h_hm
+  · split at h
+    · split at h
+      · cases h
+      · split at h
+        · cases h
+        · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+          exact ScannerProgress.scanFlowSequenceEnd_offset_lt s h_hm
+    · split at h
+      · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+        exact ScannerProgress.scanFlowMappingStart_offset_lt s h_hm
+      · split at h
+        · split at h
+          · cases h
+          · split at h
+            · cases h
+            · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+              exact ScannerProgress.scanFlowMappingEnd_offset_lt s h_hm
+        · split at h
+          · split at h
+            · cases h
+            · split at h
+              · cases h
+              · injection h with h; injection h with h; subst h
+                exact ScannerProgress.scanFlowEntry_offset_lt s _ h_hm ‹_›
+          · nomatch h
+
+theorem dispatchBlockIndicators_offset_gt (s s' : ScannerState) (c : Char)
+    (h_hm : s.offset < s.inputEnd)
+    (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s')) :
+    s'.offset > s.offset := by
+  unfold scanNextToken_dispatchBlockIndicators at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h  -- c == '-' && ...
+  · split at h
+    · cases h
+    · injection h with h; injection h with h; subst h
+      exact ScannerProgress.scanBlockEntry_offset_lt s _ h_hm ‹_›
+  · split at h  -- c == '?' && ...
+    · split at h
+      · cases h
+      · injection h with h; injection h with h; subst h
+        exact ScannerProgress.scanKey_offset_lt s _ h_hm ‹_›
+    · split at h  -- c == ':' && ...
+      · split at h
+        · cases h
+        · injection h with h; injection h with h; subst h
+          exact scanValue_offset_lt s _ h_hm ‹_›
+      · nomatch h
+
+set_option maxHeartbeats 1600000 in
+theorem dispatchContent_offset_gt (s s' : ScannerState) (c : Char)
+    (h_hm : s.offset < s.inputEnd)
+    (hpeek : s.peek? = some c)
+    (hnoDoc : (s.col == 0 && atDocumentBoundary s) = false)
+    (h : scanNextToken_dispatchContent s c = .ok s') :
+    s'.offset > s.offset := by
+  unfold scanNextToken_dispatchContent at h
+  simp only [bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at h
+  split at h  -- c == '&'
+  · split at h
+    · cases h
+    · simp only [Except.ok.injEq] at h; subst h; dsimp only []
+      exact scanAnchorOrAlias_offset_lt s _ true h_hm ‹_›
+  · split at h  -- c == '*'
+    · split at h
+      · cases h
+      · split at h
+        · cases h
+        · simp only [Except.ok.injEq] at h; subst h
+          exact scanAnchorOrAlias_offset_lt s _ false h_hm ‹_›
+    · split at h  -- c == '!'
+      · split at h
+        · cases h
+        · simp only [Except.ok.injEq] at h; subst h
+          exact scanTag_offset_lt s _ h_hm ‹_›
+      · split at h  -- c == '|' || c == '>'
+        · split at h
+          · cases h
+          · simp only [Except.ok.injEq] at h; subst h
+            exact scanBlockScalar_offset_lt s _ h_hm ‹_›
+        · split at h  -- c == '"'
+          · split at h
+            · cases h
+            · simp only [Except.ok.injEq] at h
+              split at h
+              · subst h; dsimp only []; exact scanDoubleQuoted_offset_lt s _ h_hm ‹_›
+              · subst h; exact scanDoubleQuoted_offset_lt s _ h_hm ‹_›
+          · split at h  -- c == '\''
+            · split at h
+              · cases h
+              · simp only [Except.ok.injEq] at h
+                split at h
+                · subst h; dsimp only []; exact scanSingleQuoted_offset_lt s _ h_hm ‹_›
+                · subst h; exact scanSingleQuoted_offset_lt s _ h_hm ‹_›
+            · split at h  -- canStartPlainScalarBool
+              · split at h
+                · cases h
+                · simp only [Except.ok.injEq] at h; subst h
+                  exact scanPlainScalar_offset_lt s _ c h_hm hpeek
+                    (by assumption) hnoDoc (by assumption)
+              · cases h
+
+/-! #### §5.5  `scanNextToken_progress` — Capstone
+
+Every successful `scanNextToken` call returning `some s'` has
+`s'.offset > s.offset`. This is the key termination argument. -/
+
+-- Helper: dispatchStructural returning none means no document boundary
+theorem dispatchStructural_none_noDoc (s : ScannerState) (c : Char)
+    (h : scanNextToken_dispatchStructural s c = .ok none) :
+    (s.col == 0 && atDocumentBoundary s) = false := by
+  unfold atDocumentBoundary
+  rcases hcol : (s.col == 0) with _ | _
+  · simp
+  · simp only [Bool.true_and]
+    rcases hds : atDocumentStart s with _ | _
+    · simp only [Bool.false_or]
+      rcases hde : atDocumentEnd s with _ | _
+      · rfl
+      · exfalso
+        unfold scanNextToken_dispatchStructural at h
+        simp only [bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at h
+        simp only [hcol, hde, hds, Bool.true_and, Bool.or_true] at h
+        repeat (first | (split at h; all_goals try simp at h) | simp at h)
+    · exfalso
+      unfold scanNextToken_dispatchStructural at h
+      simp only [bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at h
+      simp only [hcol, hds, Bool.true_and] at h
+      repeat (first | (split at h; all_goals try simp at h) | simp at h)
+
+-- Helper: preprocess returning some gives peek?
+theorem preprocess_peek_eq (s s' : ScannerState) (c : Char)
+    (h : scanNextToken_preprocess s = .ok (some (s', c))) :
+    s'.peek? = some c := by
+  unfold scanNextToken_preprocess at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h
+  · simp at h
+  · split at h
+    · simp at h
+    · split at h
+      · split at h
+        · simp at h
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, rfl⟩ := h; rename_i h_peek; exact h_peek
+      · split at h
+        · simp at h
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, rfl⟩ := h; rename_i h_peek; exact h_peek
+
+/- **Scanner progress**: `scanNextToken` strictly advances offset.
+
+    Every dispatch branch of `scanNextToken` calls `advance` at least once
+    on a state where `offset < inputEnd` (guaranteed by `peek? = some c`
+    from preprocessing). Combined with preprocessing's offset monotonicity,
+    this gives `s'.offset > s.offset`.
+
+    **Used by**: `ScanChain.fuel_bound` in EmitterScannability.lean to
+    establish that the fuel `(input.utf8ByteSize + 1) * 4` suffices. -/
+set_option maxHeartbeats 800000 in
+theorem scanNextToken_progress (s s' : ScannerState)
+    (h : scanNextToken s = .ok (some s')) :
+    s'.offset > s.offset := by
+  unfold scanNextToken at h
+  simp only [bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at h
+  -- Split on preprocess result
+  split at h
+  · cases h
+  · split at h
+    · simp at h
+    · rename_i sp c h_pre
+      have h_ge := preprocess_offset_ge s sp c h_pre
+      have h_hm := preprocess_hasMore s sp c h_pre
+      -- Split on dispatchStructural
+      split at h
+      · cases h
+      · split at h
+        · -- some s1 (structural handled it)
+          simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+          exact Nat.lt_of_le_of_lt h_ge (dispatchStructural_offset_gt sp _ c h_hm ‹_›)
+        · -- none (structural passed, continue to flow/block/content)
+          rename_i h_struct
+          have hnoDoc := dispatchStructural_none_noDoc sp c h_struct
+          have h_peek := preprocess_peek_eq s sp c h_pre
+          -- Outermost match is checkBlockFlowIndent
+          split at h
+          · cases h
+          · -- Case-split on allowDirectives to resolve the if-expression
+            rcases h_ad : sp.allowDirectives with _ | _
+            <;> simp only [h_ad, Bool.false_eq_true, ↓reduceIte] at h
+            · -- false case: dispatchers use sp directly
+              generalize h_fi : scanNextToken_dispatchFlowIndicators sp c = fi at h
+              cases fi with
+              | error => cases h
+              | ok fi_opt =>
+                cases fi_opt with
+                | some s_fi =>
+                  simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                  have := dispatchFlowIndicators_offset_gt sp _ c h_hm h_fi; omega
+                | none =>
+                  generalize h_bi : scanNextToken_dispatchBlockIndicators sp c = bi at h
+                  cases bi with
+                  | error => cases h
+                  | ok bi_opt =>
+                    cases bi_opt with
+                    | some s_bi =>
+                      simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                      have := dispatchBlockIndicators_offset_gt sp _ c h_hm h_bi; omega
+                    | none =>
+                      generalize h_dc : scanNextToken_dispatchContent sp c = dc at h
+                      cases dc with
+                      | error => cases h
+                      | ok s_dc =>
+                        have h1 := @dispatchContent_offset_gt sp s_dc c h_hm h_peek hnoDoc h_dc
+                        simp only [Except.ok.injEq, Option.some.injEq] at h; subst h; omega
+            · -- true case: dispatchers use { sp with ... }
+              generalize h_sp2 : (({ sp with allowDirectives := false, documentEverStarted := true } : ScannerState)) = sp2 at h
+              have h_hm2 : sp2.offset < sp2.inputEnd := by rw [← h_sp2]; exact h_hm
+              have h_peek2 : sp2.peek? = some c := by rw [← h_sp2]; exact h_peek
+              have hnoDoc2 : (sp2.col == 0 && atDocumentBoundary sp2) = false := by
+                rw [← h_sp2]; exact hnoDoc
+              have h_sp2_off : sp2.offset = sp.offset := by rw [← h_sp2]
+              generalize h_fi : scanNextToken_dispatchFlowIndicators sp2 c = fi at h
+              cases fi with
+              | error => cases h
+              | ok fi_opt =>
+                cases fi_opt with
+                | some s_fi =>
+                  simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                  have := dispatchFlowIndicators_offset_gt sp2 _ c h_hm2 h_fi; omega
+                | none =>
+                  generalize h_bi : scanNextToken_dispatchBlockIndicators sp2 c = bi at h
+                  cases bi with
+                  | error => cases h
+                  | ok bi_opt =>
+                    cases bi_opt with
+                    | some s_bi =>
+                      simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                      have := dispatchBlockIndicators_offset_gt sp2 _ c h_hm2 h_bi; omega
+                    | none =>
+                      generalize h_dc : scanNextToken_dispatchContent sp2 c = dc at h
+                      cases dc with
+                      | error => cases h
+                      | ok s_dc =>
+                        simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                        have := dispatchContent_offset_gt sp2 _ c h_hm2 h_peek2 hnoDoc2 h_dc
+                        omega
 
 end Lean4Yaml.Proofs.ScannerCorrectness
