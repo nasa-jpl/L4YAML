@@ -1329,6 +1329,89 @@ With `inFlow = true`, `ek = none`, `AllTokensOnLine s s.line`, and
 - The init-context AllTokensOnLine sorrys (flow_open_init/flow_open_mapping_init) may be
   simpler since the initial state starts with `tokens = #[]` before the open bracket push.
 
+##### **Phase 3.1: AllTokensOnLine propagation through scanNextToken_flow_* theorems**
+
+Phase 3 introduced 10 AllTokensOnLine/EndLineOnLine sorrys as placeholders. These require
+augmenting the `scanNextToken_flow_*` theorems to propagate the AllTokensOnLine invariant.
+
+**Key insight**: Each scanner step either (a) doesn't touch tokens (preprocess), or
+(b) pushes tokens at `currentPos` where `currentPos.line = s.line`. Combined with the
+existing `s'.line = s.line` postcondition, AllTokensOnLine carries through.
+
+**Approach:**
+1. Write transfer lemmas (`AllTokensOnLine_emit`, `AllTokensOnLine_saveSimpleKey`, etc.)
+2. Add `AllTokensOnLine s s.line` precondition + `AllTokensOnLine s' s'.line` postcondition
+   to each flow theorem. Add `EndLineOnLine s'` where needed (DQ, close_seq, close_mapping).
+3. Add `s₁.tokens = s.tokens` postcondition to `preprocess_flow_ws1` (no token change).
+4. For init theorems, prove AllTokensOnLine from initial state (tokens = streamStart + bracket).
+5. Replace all 10 sorry placeholders at the caller sites.
+
+| Item | Change | Est. effort |
+|------|--------|-------------|
+| `AllTokensOnLine_emit` | Transfer: `AllTokensOnLine s l → s.currentPos.line = l → AllTokensOnLine (s.emit tok) l` | ~12 lines |
+| `AllTokensOnLine_saveSimpleKey` | Transfer: through saveSimpleKey (0 or 2 pushes at currentPos) | ~15 lines |
+| `EndLineOnLine_saveSimpleKey` | Transfer: saveSimpleKey sets `endLine = s.line` | ~10 lines |
+| `preprocess_flow_ws1` | Add postcondition `s₁.tokens = s.tokens` | ~3 lines |
+| `flow_comma` | Add pre/postcondition AllTokensOnLine | ~8 lines |
+| `flow_scanDoubleQuoted` | Add pre/postcondition AllTokensOnLine + EndLineOnLine | ~10 lines |
+| `flow_open_nested` | Add pre/postcondition AllTokensOnLine | ~8 lines |
+| `flow_open_mapping_nested` | Add pre/postcondition AllTokensOnLine | ~8 lines |
+| `flow_close_seq_nested` | Add pre/postcondition AllTokensOnLine + EndLineOnLine | ~10 lines |
+| `flow_close_mapping_nested` | Add pre/postcondition AllTokensOnLine + EndLineOnLine | ~10 lines |
+| `flow_value` | Add pre/postcondition AllTokensOnLine + EndLineOnLine | ~10 lines |
+| `flow_open_init` | Add postcondition AllTokensOnLine (from initial state) | ~10 lines |
+| `flow_open_mapping_init` | Add postcondition AllTokensOnLine | ~10 lines |
+| Caller site updates | Replace 10 sorrys with proofs using new postconditions | ~20 lines |
+
+Estimated total: ~145 lines. Expected sorry reduction: 8 → 6 declarations (10 instances eliminated).
+
+###### **Phase 3.1 Accomplishments**
+
+- **Transfer lemmas proven** (7 lemmas, lines ~2198–2345):
+  - `AllTokensOnLine_emit`, `AllTokensOnLine_emitAt`, `AllTokensOnLine_advance` —
+    operation-level AllTokensOnLine preservation through token push and advance
+  - `AllTokensOnLine_saveSimpleKey` — through 0-or-2-placeholder push at currentPos
+  - `EndLineOnLine_saveSimpleKey_flow` — establishes endLine=line, pos.line=line from
+    currentPos definition
+  - `AllTokensOnLine_scanValuePrepare_flow` — through setIfInBounds replacement
+  - `simpleKey_possible_false_after_scanFlowSequenceStart/scanFlowMappingStart` —
+    helper lemmas for trivial EndLineOnLine discharge after flow open
+- **AllTokensOnLine_scanDoubleQuoted proven** (~20 lines):
+  Unfolds `scanDoubleQuoted`, uses `collectDoubleQuotedLoop_preserves_tokens` to show
+  the loop preserves all existing tokens, then `AllTokensOnLine_emitAt` for the new
+  token at `startPos` where `startPos.line = s.line`.
+- **scanDoubleQuoted_preserves_simpleKey** — delegated to existing `ScannerCorrectness`
+  theorem (no `h_flow` hypothesis needed).
+- **EndLineOnLine `possible=true` branch** at line 3126 — proven via chaining:
+  `EndLineOnLine_saveSimpleKey_flow` → `saveSimpleKey_preserves_line` →
+  `h_ad_line.symm.trans h_dq_line.symm`. The endLine is set to `s_dq.line` by the
+  `dispatchContent` update, and `pos.line = s_dq.line` follows from simpleKey being
+  preserved through scanDoubleQuoted back to saveSimpleKey which set `pos := currentPos`.
+- **Flow theorem postconditions added** (AllTokensOnLine and/or EndLineOnLine):
+  `flow_open_init`, `flow_open_mapping_init`, `flow_open_nested`,
+  `flow_open_mapping_nested`, `flow_comma`, `preprocess_flow_ws1`,
+  `flow_value`, `flow_scanDoubleQuoted` — all proven.
+- **EndLineOnLine cascade through Emit types**: Added `EndLineOnLine s` as precondition
+  and `EndLineOnLine s'` as postcondition to `EmitScansInFlow`, `EmitListScansInFlow`,
+  `EmitPairListScansInFlow`. All 10+ caller sites updated.
+- **All 10 AllTokensOnLine/EndLineOnLine sorrys from Phase 3 eliminated**.
+- **Build status**: 0 errors, 8 sorry-using declarations (down from 10 after Phase 3),
+  6 sorry instances. Remaining: 2 fuel bounds (Phase 4), 4 Layer 2/3 sorrys (unchanged).
+
+###### **Phase 3.1 Reflections**
+
+- The transfer lemma pattern (one lemma per scanner operation) scales cleanly. Each
+  lemma is 5–15 lines and composes via simple rewriting.
+- `EndLineOnLine` needed strengthening from single-conjunct (`endLine = line`) to
+  pair-conjunct (`endLine = line ∧ pos.line = line`) because `scanValuePrepare` uses
+  `setIfInBounds` on tokens using `simpleKey.pos`, not just `simpleKey.endLine`.
+- Delegating `scanDoubleQuoted_preserves_simpleKey` to ScannerCorrectness was cleaner
+  than re-proving it, demonstrating good layer separation.
+- The init flow_open AllTokensOnLine sorrys were trivial since the initial state has
+  exactly 2 tokens (streamStart + bracket), both at line 0.
+- EndLineOnLine after flow_open is trivially `impossible` since `simpleKey.possible = false`
+  after flow open brackets (proven via the `simpleKey_possible_false_after_*` helpers).
+
 ##### **Phase 4: Change C — fuel bounds (from Layer 1.1)**
 
 The fuel bound `n + 1 ≤ (input.utf8ByteSize + 1) * 4` appears in `emit_produces_valid_yaml`
