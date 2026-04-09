@@ -35,8 +35,14 @@ jobs:
           elan show
 
       - name: Install weasyprint for PDF generation
+        id: weasyprint
         run: |
-          pip3 install --user weasyprint || true
+          # weasyprint requires system libraries: pango, cairo, gdk-pixbuf
+          if command -v apt-get &>/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev libcairo2 2>/dev/null || true
+          fi
+          pip3 install --user weasyprint 2>&1 && echo "has_weasyprint=true" >> $GITHUB_OUTPUT || echo "has_weasyprint=false" >> $GITHUB_OUTPUT
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       # -------------------------------------------------------
@@ -184,6 +190,7 @@ jobs:
       # Phase 5: Generate PDF from HTML
       # -------------------------------------------------------
       - name: Generate PDF documentation
+        if: steps.weasyprint.outputs.has_weasyprint == 'true'
         run: |
           python3 scripts/html-to-pdf.py \
             docs \
