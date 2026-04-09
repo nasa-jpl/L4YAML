@@ -34,8 +34,8 @@ adds at least 1 byte (`Char.utf8Size_pos`), giving strict progress.
 
 The intermediate operations (`skipToContent`, `unwindIndents`,
 `saveSimpleKey`, `pushSequenceIndent`, `pushMappingIndent`, `emit`,
-`emitAt`, `insertAt`) all preserve `offset`, so they don't affect
-the progress argument.
+`emitAt`, `scanValueClearKey`, `scanValuePrepare`) all preserve
+`offset`, so they don't affect the progress argument.
 
 ## Zero Axioms
 
@@ -257,11 +257,12 @@ theorem scanFlowEntry_offset_lt (s s' : ScannerState)
 
 /-! ## §5  scanValue Progress (concrete)
 
-`scanValue` has the most complex control flow (simple key resolution,
-`insertAt`, multiple error guards), but all paths end with
-`(s'.emit .value).advance`. The intermediate operations preserve offset.
-Full universal proof requires decomposing the `do`-block; verified
-on concrete states.
+`scanValue` has the most complex control flow (simple key resolution via
+`scanValueClearKey`/`scanValuePrepare`, multiple error guards), but all
+paths end with `(s'.emit .value).advance`. The intermediate operations
+(`scanValueClearKey`, `scanValuePrepare` via `setIfInBounds`) preserve
+offset. Full universal proof requires decomposing the `do`-block;
+verified on concrete states.
 -/
 
 /-- `advanceNLoop` preserves offset monotonically. -/
