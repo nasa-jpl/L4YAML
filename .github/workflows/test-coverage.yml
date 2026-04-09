@@ -85,8 +85,8 @@ jobs:
       # -------------------------------------------------------
       - name: Run Lean test suites
         run: |
-          mkdir -p docs/test-results
-          bash scripts/run-all-tests.sh docs/test-results
+          mkdir -p docs/reports
+          bash scripts/run-all-tests.sh docs/reports
 
       - name: Build C shared library
         run: |
@@ -102,7 +102,7 @@ jobs:
 
       - name: Run Python FFI tests
         run: |
-          RESULTS="docs/test-results"
+          RESULTS="docs/reports"
           echo "=== Python FFI Tests ===" | tee "$RESULTS/python-ffi-tests.txt"
           cd "$GITHUB_WORKSPACE"
           LEAN4YAML_LIB="$GITHUB_WORKSPACE/ffi/out" \
@@ -115,7 +115,7 @@ jobs:
 
       - name: Run Python package tests
         run: |
-          RESULTS="docs/test-results"
+          RESULTS="docs/reports"
           echo "=== Python Package Tests ===" | tee "$RESULTS/python-package-tests.txt"
           cd "$GITHUB_WORKSPACE"
           LEAN4YAML_LIB="$GITHUB_WORKSPACE/ffi/out" \
@@ -128,7 +128,7 @@ jobs:
 
       - name: Run cross-language yaml-test-suite comparison
         run: |
-          RESULTS="docs/test-results"
+          RESULTS="docs/reports"
           echo "=== Cross-Language yaml-test-suite Comparison ===" | tee "$RESULTS/cross-lang-comparison.txt"
           LEAN4YAML_LIB="$GITHUB_WORKSPACE/ffi/out" \
           LD_LIBRARY_PATH="$GITHUB_WORKSPACE/ffi/out:${LD_LIBRARY_PATH:-}" \
@@ -184,7 +184,7 @@ jobs:
       # -------------------------------------------------------
       - name: Generate test result HTML reports
         run: |
-          python3 scripts/generate-test-reports.py docs/test-results
+          python3 scripts/generate-test-reports.py docs/reports
 
       # -------------------------------------------------------
       # Phase 5: Generate PDF from HTML
@@ -225,22 +225,22 @@ jobs:
 
             let coverageLine = 'Statistics unavailable';
             try {
-              const coverage = fs.readFileSync('docs/test-results/coverage-console.txt', 'utf8');
+              const coverage = fs.readFileSync('docs/reports/coverage-console.txt', 'utf8');
               coverageLine = coverage.match(/Correct: .*/)?.[0] || coverageLine;
             } catch (e) {}
 
             let pythonSummary = '';
             try {
-              const ffiTests = fs.readFileSync('docs/test-results/python-ffi-tests.txt', 'utf8');
+              const ffiTests = fs.readFileSync('docs/reports/python-ffi-tests.txt', 'utf8');
               const ffiLine = ffiTests.match(/\d+ passed.*/)?.[0] || '';
-              const pkgTests = fs.readFileSync('docs/test-results/python-package-tests.txt', 'utf8');
+              const pkgTests = fs.readFileSync('docs/reports/python-package-tests.txt', 'utf8');
               const pkgLine = pkgTests.match(/\d+ passed.*/)?.[0] || '';
               pythonSummary = `\n\n**Python API Tests:**\n- FFI integration: ${ffiLine}\n- Package tests: ${pkgLine}`;
             } catch (e) {}
 
             let crossLangSummary = '';
             try {
-              const crossLang = fs.readFileSync('docs/test-results/cross-lang-comparison.txt', 'utf8');
+              const crossLang = fs.readFileSync('docs/reports/cross-lang-comparison.txt', 'utf8');
               const lines = crossLang.split('\n').filter(l => l.includes('identical') || l.includes('MISMATCH') || l.includes('✓') || l.includes('✗'));
               if (lines.length > 0) {
                 crossLangSummary = `\n\n**Cross-Language Comparison (4 backends × 5 presets):**\n\`\`\`\n${lines.join('\n')}\n\`\`\``;
