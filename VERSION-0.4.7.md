@@ -1671,7 +1671,59 @@ flow close path (the close operation resets simpleKey, making EndLineOnLine triv
 
 ***Sub-phase 4.2.B — Accomplishments***
 
+Eliminated 4 sorry instances from `emit_scans_in_flow` (sequence lines 5572–5573, mapping
+lines 5633–5634) by augmenting flow close nested theorems with AllTokensOnLine and EndLineOnLine
+postconditions and threading simpleKeyStack preservation through the entire flow scanning
+infrastructure.
+
+- **StackEndLineOnLine mechanism**: Flow close operations restore `simpleKey` from the stack
+  (via `scanFlowSequenceEnd_simpleKey_restored` / `scanFlowMappingEnd_simpleKey_restored`).
+  EndLineOnLine after close requires `StackEndLineOnLine s l` — a new predicate asserting the
+  stack's back element satisfies the endLine/pos.line = line condition. Added as precondition
+  to `scanNextToken_flow_close_seq_nested` and `scanNextToken_flow_close_mapping_nested`.
+
+- **simpleKeyStack preservation cascade** (~16 edit points): To derive `StackEndLineOnLine`
+  at close call sites in `emit_scans_in_flow`, needed `s'.simpleKeyStack = s.simpleKeyStack`
+  through all body-scanning operations. Added this postcondition to:
+  - `scanNextToken_preprocess_flow_ws1`, `scanNextToken_flow_scanDoubleQuoted`
+  - `scanNextToken_flow_comma`, `scanNextToken_flow_value`
+  - `scanNextToken_flow_open_nested`, `scanNextToken_flow_open_mapping_nested` (as `.pop`)
+  - `EmitScansInFlow`, `EmitListScansInFlow`, `EmitPairListScansInFlow` type definitions
+  - All empty/nonempty proofs for emitList and emitPairList
+
+- **EndLineOnLine after flow_value**: Proven vacuously — `scanValuePrepare` in flow mode
+  always produces `simpleKey.possible = false` across all three branches (possible=true resets
+  to `{}`, ek.isSome resets to `{}`, identity preserves possible=false from condition guard).
+
+- **`emit_scans_in_flow` updates**: All 3 cases (scalar, sequence, mapping) updated. Sequence
+  and mapping cases derive `StackEndLineOnLine` from `EndLineOnLine` at open + stack push/pop
+  chain, then pass to close theorem which provides AllTokensOnLine + EndLineOnLine.
+
 ***Sub-phase 4.2.B — Reflections***
+
+- **Cascade scope**: The initial plan estimated ~30 lines for augmenting 2 close theorems.
+  The actual scope was ~16 edit points across type definitions, empty/nonempty proofs, and
+  all three emit_scans_in_flow cases, because `StackEndLineOnLine` at close requires
+  `simpleKeyStack` preservation through the entire body-scanning pipeline.
+
+- **Vacuous EndLineOnLine for flow_value**: The EndLineOnLine proof for `scanNextToken_flow_value`
+  was initially attempted by chaining `s_final.simpleKey = s_ad.simpleKey` through
+  scanValuePrepare. This is FALSE in the `possible = true` branch (which resets simpleKey).
+  The correct approach is `exfalso`: all three branches of scanValuePrepare in flow mode
+  yield `possible = false`, making EndLineOnLine vacuously true.
+
+- **struct projection through `{ expr with field := val }.otherField`**: The `possible = true`
+  branch of scanValuePrepare creates `{ (s.emit tok) with simpleKey := {} }` where `s.emit tok`
+  expands to `{ s with tokens := s.tokens.setIfInBounds ... }`. Proving `.simpleKey.possible`
+  through this double struct update required careful `unfold` + `split` rather than `rfl`.
+
+- **`split at h_poss ⊢` is illegal in Lean 4**: Must use `split at *` or split hypothesis
+  and goal separately. Lean's `split` tactic only accepts one target.
+
+- **`rw` on `simpleKey_restored` must target both hypothesis and goal**: The flow close
+  EndLineOnLine proof rewrites `(scanFlowSeqEnd s).simpleKey` to `s.simpleKeyStack.back?.getD {}`.
+  Must include `⊢` in `rw [...] at h_poss ⊢` — otherwise the goal still has the unrewritten
+  form and `exact h_stack_endline h_poss` fails with type mismatch.
 
 **Sub-phase 4.2.C — EndLineOnLine transfer lemmas (7 sorrys)**
 
