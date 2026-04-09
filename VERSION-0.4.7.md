@@ -1753,7 +1753,48 @@ comma scanning, value scanning, and preprocessing steps.
 
 ***Sub-phase 4.2.C — Accomplishments***
 
+Eliminated all 7 sorry instances from `emitList_scans_nonempty` (1 sorry) and
+`emitPairList_scans_nonempty` (6 sorries) by adding EndLineOnLine postconditions to
+`scanNextToken_flow_comma` and `scanNextToken_preprocess_flow_ws1`.
+
+- **`scanNextToken_flow_comma` augmented** with `h_endline : EndLineOnLine s` precondition
+  and `EndLineOnLine s'` postcondition. Proof chains simpleKey preservation through
+  `allowDirectives` → `emit` → `advance` → `{with simpleKeyAllowed}` back to `saveSimpleKey s`,
+  then applies `EndLineOnLine_saveSimpleKey_flow`.
+
+- **`scanNextToken_preprocess_flow_ws1` augmented** with `(EndLineOnLine s → EndLineOnLine s₁)`
+  transfer function postcondition. Proof: added `s₁.simpleKey = s.simpleKey` to the inner
+  `h_stc_exists` result (via `advance_preserves_simpleKey` since `s₁ = s.advance`), then
+  `EndLineOnLine` transfers immediately since both `simpleKey` and `line` are preserved.
+
+- **Caller site updates** (6 destructure patterns updated, 7 sorries replaced):
+  - `emitList_scans_nonempty`: comma destructure +`h_endline₂`, preprocess +`h_endline_transfer₃`,
+    sorry → `h_endline_transfer₃ h_endline₂`
+  - `emitPairList_scans_nonempty` singleton: preprocess +`h_endline_transfer₃`,
+    2 sorries → `h_atol_transfer₃ h_atol₂` + `h_endline_transfer₃ h_endline₂`
+  - `emitPairList_scans_nonempty` multi-pair value: preprocess +`h_endline_transfer₃`,
+    2 sorries → same pattern
+  - `emitPairList_scans_nonempty` multi-pair recursive: comma +`h_endline_c`,
+    preprocess +`h_endline_transfer_pp`, 2 sorries → `h_atol_transfer_pp h_atol_c` +
+    `h_endline_transfer_pp h_endline_c`
+
 ***Sub-phase 4.2.C — Reflections***
+
+- **The 3 AllTokensOnLine sorries were already solvable** without any theorem changes — the
+  transfer function `h_atol_transfer₃` and its precondition `h_atol₂` were both available
+  at each call site. These could have been fixed in Phase 4.2.B or even earlier with a
+  single-line substitution `h_atol_transfer₃ h_atol₂`.
+
+- **EndLineOnLine transfer through preprocessing was trivial** because `skipToContent` for a
+  single space only calls `advance`, which preserves both `simpleKey` and `line` — the same
+  two fields that define `EndLineOnLine`. Adding `s₁.simpleKey = s.simpleKey` to the inner
+  proof made the transfer a one-liner.
+
+- **Uniform pattern**: All 7 sorry replacements followed the same pattern —
+  `h_transfer h_source` where `h_transfer` is from preprocess and `h_source` is from the
+  preceding scanner theorem. This uniformity suggests the sorries could have been avoided
+  from the start if the EndLineOnLine postcondition pattern had been established alongside
+  the AllTokensOnLine pattern in Phase 3.1.
 
 **Dependency order:** 4.2.B and 4.2.C are independent and can be done in either order.
 4.2.A is also independent but is the highest-value single-sorry fix since it unblocks
@@ -1763,7 +1804,38 @@ comma scanning, value scanning, and preprocessing steps.
 
 ##### **Phase 4.2: accomplishments**
 
+All 12 Layer 1 sorry instances across 4 declarations eliminated. EmitterScannability.lean
+now has 4 sorry-using declarations (down from 8), all in Layer 2/3 (parser acceptance and
+content fidelity). ScannerBound.lean has 5 sorry-using declarations (internal sub-scanner
+bound proofs that don't affect EmitterScannability).
+
+| Sub-phase | Sorries eliminated | Declarations affected |
+|-----------|-------------------|-----------------------|
+| 4.2.A | 1 | `scanNextToken_preserves_bound` |
+| 4.2.B | 4 | `emit_scans_in_flow` (seq+mapping AllTokensOnLine+EndLineOnLine) |
+| 4.2.C | 7 | `emitList_scans_nonempty` (1), `emitPairList_scans_nonempty` (6) |
+
+**Build status**: 0 errors, 9 sorry-using declarations (5 ScannerBound + 4 EmitterScannability).
+EmitterScannability sorry instances: 4 (Layer 2/3 only).
+
 ##### **Phase 4.2: reflections**
+
+- **Cascading scope growth**: Phase 4.2.B was estimated at ~30 lines for 2 close theorems,
+  but cascaded to ~16 edit points because `StackEndLineOnLine` at close requires
+  `simpleKeyStack` preservation through the entire body-scanning pipeline (types, empty/nonempty
+  proofs, all emit_scans_in_flow cases).
+
+- **Post-hoc postcondition threading is expensive**: Phases 4.2.B and 4.2.C both follow
+  the pattern "add postcondition to theorem → update all callers → replace sorries." Each
+  postcondition addition requires updating every destructure pattern at every call site.
+  Had EndLineOnLine been included alongside AllTokensOnLine from Phase 3.1, the 11 sorries
+  from 4.2.B+4.2.C would never have existed.
+
+- **Layer 1 is complete**: All scanner-level proof obligations (AllTokensOnLine, EndLineOnLine,
+  simpleKeyStack preservation, offset bounds) are now fully discharged. The remaining work
+  is in fundamentally different domains: parser acceptance (Layer 2) requires fuel sufficiency
+  for `parseFlowSequenceLoop`/`parseFlowMappingLoop`, and content fidelity (Layer 3) requires
+  exact parsed value extraction.
 
 #### Layer 2: Parser acceptance
 
