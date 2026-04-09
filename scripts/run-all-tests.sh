@@ -2,7 +2,8 @@
 # scripts/run-all-tests.sh — Run all L4YAML test suites and capture output
 #
 # Usage: scripts/run-all-tests.sh [OUTPUT_DIR]
-#   OUTPUT_DIR defaults to "docs" for backward compatibility.
+#   OUTPUT_DIR defaults to "docs".
+#   CI uses "docs/reports" to avoid clashing with Verso's docs/Test-Results/.
 #
 # The script assumes lake build has already been run.
 
