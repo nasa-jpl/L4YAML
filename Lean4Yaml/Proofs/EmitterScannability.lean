@@ -13,6 +13,7 @@ import Lean4Yaml.Proofs.CouplingBridge
 import Lean4Yaml.Proofs.ScalarCoupling
 import Lean4Yaml.Proofs.ParserGrammable
 import Lean4Yaml.Proofs.ScannerPlainContent
+import Lean4Yaml.Proofs.ScannerBound
 
 /-!
 # Emitter Scannability (Phase E, Steps 1–2)
@@ -1226,23 +1227,27 @@ theorem ScanChain.to_scanLoop_exists {s s' : ScannerState} {n : Nat}
     5. `s_final.inputEnd = input.utf8ByteSize` (from inputEnd preservation)
     6. Combining: `n ≤ utf8ByteSize ≤ (utf8ByteSize + 1) * 4` -/
 
--- Admitted: scanNextToken preserves key offset/inputEnd invariants.
--- This follows from two facts verified by inspection of Scanner.lean:
---   (a) `inputEnd` is never assigned in any `{ s with ... }` update
+-- scanNextToken preserves key offset/inputEnd invariants.
+-- This follows from the BoundInv framework in ScannerBound.lean:
+--   (a) `inputEnd` and `input` are never assigned in any `{ s with ... }` update
 --   (b) `advance` respects `offset ≤ inputEnd` via `String.next` bounds
--- Full formal proof requires unfolding through all dispatch branches.
+--   (c) UTF-8 position validity (`IsValid`) is preserved through all operations
+-- Proof delegates to ScannerBound.scanNextToken_preserves_bound.
 theorem scanNextToken_preserves_bound (s s' : ScannerState)
     (h : scanNextToken s = .ok (some s'))
     (h_le : s.offset ≤ s.inputEnd)
-    (h_ie : s.inputEnd = s.input.utf8ByteSize) :
-    s'.offset ≤ s'.inputEnd ∧ s'.inputEnd = s.inputEnd ∧ s'.input = s.input := by
-  sorry
+    (h_ie : s.inputEnd = s.input.utf8ByteSize)
+    (h_iv : String.Pos.Raw.IsValid s.input ⟨s.offset⟩) :
+    s'.offset ≤ s'.inputEnd ∧ s'.inputEnd = s.inputEnd ∧ s'.input = s.input
+    ∧ String.Pos.Raw.IsValid s'.input ⟨s'.offset⟩ :=
+  ScannerBound.scanNextToken_preserves_bound s s' h h_le h_ie h_iv
 
 -- Chain invariant: offset increases, stays bounded, inputEnd preserved
 theorem ScanChain.bound_invariant {s₀ s_final : ScannerState} {n : Nat}
     (h_chain : ScanChain s₀ n s_final)
     (h_le : s₀.offset ≤ s₀.inputEnd)
-    (h_ie : s₀.inputEnd = s₀.input.utf8ByteSize) :
+    (h_ie : s₀.inputEnd = s₀.input.utf8ByteSize)
+    (h_iv : String.Pos.Raw.IsValid s₀.input ⟨s₀.offset⟩) :
     s_final.offset ≥ s₀.offset + n ∧
     s_final.offset ≤ s_final.inputEnd ∧
     s_final.inputEnd = s₀.inputEnd := by
@@ -1250,10 +1255,12 @@ theorem ScanChain.bound_invariant {s₀ s_final : ScannerState} {n : Nat}
   | zero => exact ⟨by omega, h_le, rfl⟩
   | @step s s_mid s_final k h_snt h_rest ih =>
     have h_prog := ScannerCorrectness.scanNextToken_progress s s_mid h_snt
-    have ⟨h_le', h_ie', h_inp'⟩ := scanNextToken_preserves_bound s s_mid h_snt h_le h_ie
+    have ⟨h_le', h_ie', h_inp', h_iv'⟩ :=
+      scanNextToken_preserves_bound s s_mid h_snt h_le h_ie h_iv
     have h_ie_mid : s_mid.inputEnd = s_mid.input.utf8ByteSize := by
       rw [h_ie', h_inp']; exact h_ie
-    have ⟨h_ge, h_le_final, h_ie_final⟩ := ih h_le' h_ie_mid
+    have h_iv_mid : String.Pos.Raw.IsValid s_mid.input ⟨s_mid.offset⟩ := h_iv'
+    have ⟨h_ge, h_le_final, h_ie_final⟩ := ih h_le' h_ie_mid h_iv_mid
     exact ⟨by omega, h_le_final, by rw [h_ie_final, h_ie']⟩
 
 theorem ScanChain.fuel_bound (input : String)
@@ -1266,8 +1273,10 @@ theorem ScanChain.fuel_bound (input : String)
   have h_s0_off : s₀.offset = 0 := by subst h_s0; rfl
   have h_s0_le : s₀.offset ≤ s₀.inputEnd := by subst h_s0; omega
   have h_s0_ie : s₀.inputEnd = s₀.input.utf8ByteSize := by subst h_s0; rfl
+  have h_s0_iv : String.Pos.Raw.IsValid s₀.input ⟨s₀.offset⟩ := by
+    subst h_s0; exact ScannerLoopInvariant.isValid_at_zero _
   -- Chain invariant gives offset bounds
-  have ⟨h_ge, h_le, h_ie⟩ := ScanChain.bound_invariant h_chain h_s0_le h_s0_ie
+  have ⟨h_ge, h_le, h_ie⟩ := ScanChain.bound_invariant h_chain h_s0_le h_s0_ie h_s0_iv
   -- s_final.offset ≥ n (since s₀.offset = 0)
   rw [h_s0_off] at h_ge; simp at h_ge
   -- s_final.offset ≤ inputEnd = input.utf8ByteSize

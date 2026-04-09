@@ -171,6 +171,106 @@ theorem raw_next_le_utf8ByteSize (s : String) (p : String.Pos.Raw)
   rw [utf8ByteSize_eq_sum s₂, hcs₂, List.map_cons, List.sum_cons]
   omega
 
+/-! ## §3b  IsValid Preservation Through next
+
+When advancing from a valid position within the string, the resulting
+position is also valid (or at the string end). -/
+
+-- Helper: utf8ByteSize of singleton character
+theorem utf8ByteSize_singleton (c : Char) :
+    (String.singleton c).utf8ByteSize = c.utf8Size := by
+  rw [utf8ByteSize_eq_sum]; simp [String.toList_singleton]
+
+/-- Advancing from a valid UTF-8 position within the string yields another
+    valid position (possibly at the end of the string).
+
+    Proof: decompose `s = s₁ ++ s₂` at position `p = s₁.rawEndPos`. Since
+    `s₂` is non-empty, it has head `c` and tail `rest`. After `next`, the
+    position is `s₁.utf8ByteSize + c.utf8Size = (s₁ ++ singleton c).utf8ByteSize`,
+    which witnesses `IsValid` with `s₁' = s₁ ++ singleton c`, `s₂' = ofList rest`. -/
+theorem next_isValid (s : String) (p : String.Pos.Raw)
+    (hv : String.Pos.Raw.IsValid s p) (hlt : p.byteIdx < s.utf8ByteSize) :
+    String.Pos.Raw.IsValid s (String.Pos.Raw.next s p) := by
+  rw [String.Pos.Raw.isValid_iff_exists_append] at hv ⊢
+  obtain ⟨s₁, s₂, hs, hp⟩ := hv
+  subst hs; subst hp
+  simp only [String.rawEndPos, String.utf8ByteSize_append] at hlt
+  -- s₂ is non-empty
+  have hs2_ne : s₂.toList ≠ [] := by
+    intro hempty
+    have h0 : s₂.utf8ByteSize = 0 := by rw [utf8ByteSize_eq_sum s₂]; simp [hempty]
+    omega
+  obtain ⟨c, cs₂, hcs₂⟩ := List.exists_cons_of_ne_nil hs2_ne
+  -- Witnesses: s₁' = s₁ ++ singleton c, s₂' = String.ofList cs₂
+  refine ⟨s₁ ++ String.singleton c, String.ofList cs₂, ?_, ?_⟩
+  · -- s₁ ++ s₂ = (s₁ ++ singleton c) ++ ofList cs₂
+    simp [String.ext_iff, String.toList_append, hcs₂, List.append_assoc, String.toList_ofList]
+  · -- next position = (s₁ ++ singleton c).rawEndPos
+    -- Both sides are String.Pos; use ext to reduce to Nat equality
+    ext
+    show s₁.utf8ByteSize +
+      (String.Pos.Raw.get (s₁ ++ s₂) ⟨s₁.utf8ByteSize⟩).utf8Size =
+      (s₁ ++ String.singleton c).utf8ByteSize
+    rw [String.utf8ByteSize_append, utf8ByteSize_singleton]
+    congr 1
+    -- get at s₁.utf8ByteSize returns c
+    show (String.Pos.Raw.utf8GetAux ((s₁ ++ s₂).toList) ⟨0⟩ ⟨s₁.utf8ByteSize⟩).utf8Size =
+      c.utf8Size
+    rw [String.toList_append, utf8ByteSize_eq_sum s₁,
+        utf8GetAux_skip_zero s₁.toList s₂.toList, hcs₂, utf8GetAux_head]
+
+/-- `advance` preserves `IsValid` when the scanner has more input.
+    Combined with `advance_offset_le`, this enables threading the
+    bound invariant through scanner loops. -/
+theorem advance_preserves_isValid (s : ScannerState)
+    (hv : String.Pos.Raw.IsValid s.input ⟨s.offset⟩)
+    (hlt : s.offset < s.inputEnd)
+    (hend : s.inputEnd = s.input.utf8ByteSize) :
+    String.Pos.Raw.IsValid s.advance.input ⟨s.advance.offset⟩ := by
+  unfold ScannerState.advance
+  split
+  case isTrue h =>
+    dsimp only []
+    split
+    · exact next_isValid s.input ⟨s.offset⟩ hv (show s.offset < s.input.utf8ByteSize by omega)
+    · split
+      · exact next_isValid s.input ⟨s.offset⟩ hv (show s.offset < s.input.utf8ByteSize by omega)
+      · exact next_isValid s.input ⟨s.offset⟩ hv (show s.offset < s.input.utf8ByteSize by omega)
+  case isFalse h => exact absurd hlt (by omega)
+
+/-- When `offset = inputEnd`, the position is valid (it's the end-of-string
+    position, witnessed by s₁ = input, s₂ = ""). -/
+theorem isValid_at_inputEnd (s : ScannerState)
+    (h_eq : s.offset = s.inputEnd)
+    (hend : s.inputEnd = s.input.utf8ByteSize) :
+    String.Pos.Raw.IsValid s.input ⟨s.offset⟩ := by
+  rw [String.Pos.Raw.isValid_iff_exists_append]
+  exact ⟨s.input, "", by simp, by rw [h_eq, hend]; rfl⟩
+
+/-- Position 0 is always valid (witnessed by s₁ = "", s₂ = s). -/
+theorem isValid_at_zero (s : String) : String.Pos.Raw.IsValid s ⟨0⟩ := by
+  rw [String.Pos.Raw.isValid_iff_exists_append]
+  exact ⟨"", s, by simp, rfl⟩
+
+/-- When advance is identity (offset ≥ inputEnd), IsValid is preserved. -/
+theorem advance_isValid_of_ge (s : ScannerState)
+    (hv : String.Pos.Raw.IsValid s.input ⟨s.offset⟩)
+    (hge : s.offset ≥ s.inputEnd) :
+    String.Pos.Raw.IsValid s.advance.input ⟨s.advance.offset⟩ := by
+  unfold ScannerState.advance
+  split
+  case isTrue h => omega
+  case isFalse _ => exact hv
+
+/-- Combined: advance preserves IsValid regardless of whether it advances. -/
+theorem advance_isValid (s : ScannerState)
+    (hv : String.Pos.Raw.IsValid s.input ⟨s.offset⟩)
+    (hend : s.inputEnd = s.input.utf8ByteSize) :
+    String.Pos.Raw.IsValid s.advance.input ⟨s.advance.offset⟩ := by
+  by_cases hlt : s.offset < s.inputEnd
+  · exact advance_preserves_isValid s hv hlt hend
+  · exact advance_isValid_of_ge s hv (by omega)
+
 /-! ## §4  Advance Preserves WellFormed
 
 Application of `raw_next_le_utf8ByteSize` to the scanner's `advance` function.
