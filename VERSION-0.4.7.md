@@ -1853,6 +1853,61 @@ the parser's flow sequence loop (currently sorry'd in ParserGrammable.lean). Eac
 iteration advances position by ≥1, so fuel = `tokens.size` suffices. Needs position
 monotonicity proof through `parseNode` dispatch.
 
+##### Layer 2: Accomplishments
+
+1. **Empty flow collection cases fully proven via `native_decide`.** Introduced combined
+   Bool pipeline checks (`checkFullSeq`, `checkFullMap`) that compute `Scanner.scanFiltered`
+   and `parseStream` on the concrete inputs `"[]"` and `"{}"`, verified by `native_decide`.
+   The existential extraction uses `match` + `simp only` to bridge from Bool check to Prop.
+
+2. **Proof architecture for `parseStream_emitSequence` / `parseStream_emitMapping`.**
+   Both theorems now case-split on `items.toList` / `pairs.toList`:
+   - **Empty case** (`[]`): Fully proven. Rewrites emitter output to `"[]"` / `"{}"` via
+     `native_decide` for string equality, then uses `checkFullSeq_true` / `checkFullMap_true`.
+   - **Non-empty case** (`_ :: _`): `exact sorry` — requires parser fuel sufficiency.
+
+3. **Key technique: combined scan-parse Bool checks.** Initial attempt used separate
+   `scan_emptySeq : Scanner.scanFiltered "[]" = .ok emptySeqTokens` with concrete token
+   arrays, but this required `DecidableEq (Except ScanError (Array (Positioned YamlToken)))`
+   which Lean 4 doesn't synthesize automatically (missing `DecidableEq` for `Except` and
+   `Array`). The combined `checkFullSeq : Bool` approach avoids all `DecidableEq` requirements
+   by staying in `Bool` throughout the `native_decide` computation.
+
+4. **Build status:** 0 errors, 4 sorry-using declarations (2 Layer 2 non-empty cases,
+   2 Layer 3 content fidelity). Sorry count unchanged from Phase 4.2 (the empty cases were
+   previously part of the same `exact sorry` that covered both empty and non-empty).
+
+##### Layer 2: Reflections
+
+1. **`native_decide` is surprisingly effective for concrete pipeline verification.** The full
+   scanner + parser pipeline on `"[]"` (scan → 4 tokens → parseStream → 1 document) executes
+   in ~18s build time. This approach could extend to other small concrete inputs (e.g.,
+   `"[\"hello\"]"`, `"{\"a\": \"b\"}"`) to prove non-empty cases for specific sizes, though
+   the general case still requires structural induction.
+
+2. **Lean 4's `match h : e with` specializes both the goal AND the hypothesis `h`.** The
+   `match` tactic replaces the discriminant in the goal (substituting `parseStream tokens` →
+   `.ok docs`), so `rfl` proves the equality in the existential rather than `h_ps`. This
+   caught us off-guard initially when `h_ps` had the right content but the wrong type
+   (goal expected `.ok docs = .ok docs`, not `parseStream tokens = .ok docs`).
+
+3. **`simp only [h]` after match does both rewriting and iota reduction.** Using
+   `simp only [h_scan] at h_full` after `unfold checkFullSeq at h_full` performs two
+   operations in one step: rewrites `Scanner.scanFiltered "[]"` → `.ok tokens` via `h_scan`,
+   then iota-reduces the surrounding `match`. This avoids needing separate `dsimp` calls.
+
+4. **Non-empty case remains the core challenge.** The position monotonicity proof through
+   `parseNode` dispatch is the fundamental blocker. Each `parseFlowSequenceLoop` iteration
+   calls `parseNode` which must advance position by ≥1 token, ensuring fuel sufficiency.
+   The `ParseNodeWB` infrastructure proves scannability and flowNesting preservation but
+   NOT position advancement. This requires a new `parseNode_advances_position` lemma.
+
+5. **`DecidableEq` gaps in Lean 4 core.** `Except`, `Array`, and `Positioned` all lack
+   `DecidableEq` instances in Lean 4.29 core. While `DecidableEq (Positioned YamlToken)` is
+   trivial to add (3 nested `if h : ... then`), `Except` and `Array` would need similar
+   boilerplate. The Bool-based approach is cleaner and should be preferred whenever
+   `native_decide` verification is the goal.
+
 #### Layer 3: Content fidelity
 
 **Proof strategy for `emit_roundtrip_*_content_eq`:**
