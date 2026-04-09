@@ -25,7 +25,7 @@
    "type": "git",
    "subDir": null,
    "scope": "",
-   "rev": "f2133b3eb4930a01acee87897b1b152076fea89a",
+   "rev": "1c6339e4417cfb86a79fc13219f7601a312e441e",
    "name": "LeanPrism",
    "manifestFile": "lake-manifest.json",
    "inputRev": "main",

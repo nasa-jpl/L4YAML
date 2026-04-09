@@ -1,0 +1,17 @@
+name = "L4YamlDoc"
+
+[leanOptions]
+"autoImplicit" = false
+
+[[require]]
+name = "verso"
+git = "https://github.com/leanprover/verso.git"
+rev = "v4.29.0"
+
+[[lean_lib]]
+name = "Doc.L4YAML"
+
+[[lean_exe]]
+name = "l4yaml-doc"
+root = "Doc.Main"
+supportInterpreter = true

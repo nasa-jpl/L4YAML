@@ -1,4 +1,4 @@
-name: Generate Test Coverage Report
+name: Build Documentation and Test Coverage
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  test-coverage:
+  docs-and-tests:
     runs-on: self-hosted
 
     permissions:
@@ -34,9 +34,14 @@ jobs:
           fi
           elan show
 
-      - name: Create docs directory
-        run: mkdir -p docs
+      - name: Install weasyprint for PDF generation
+        run: |
+          pip3 install --user weasyprint || true
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
+      # -------------------------------------------------------
+      # Phase 1: Build everything
+      # -------------------------------------------------------
       - name: Build parser and test tools
         run: |
           lake build Lean4Yaml
@@ -48,66 +53,34 @@ jobs:
           lake build limittests
           lake build flowregressioncheck errorstagediag scalarstagediag
 
-      - name: Run unit and integration tests
+      - name: Build documentation (doc/ sub-project)
         run: |
-          echo "=== Unit Tests ===" | tee docs/unit-tests.txt
-          ./.lake/build/bin/tests 2>&1 | tee -a docs/unit-tests.txt
-          echo ""
-          echo "=== Demo ===" | tee docs/demo.txt
-          ./.lake/build/bin/demo 2>&1 | tee -a docs/demo.txt
-          echo ""
-          echo "=== Explicit Key Tests ===" | tee docs/explicitkeytests.txt
-          ./.lake/build/bin/explicitkeytests 2>&1 | tee -a docs/explicitkeytests.txt
-          echo ""
-          echo "=== Flow Completeness Tests ===" | tee docs/flowtests.txt
-          ./.lake/build/bin/flowtests 2>&1 | tee -a docs/flowtests.txt
-          echo ""
-          echo "=== Validation Tests ===" | tee docs/validationtests.txt
-          ./.lake/build/bin/validationtests 2>&1 | tee -a docs/validationtests.txt
-          echo ""
-          echo "=== Dump Round-Trip Tests ===" | tee docs/dumproundtrip.txt
-          ./.lake/build/bin/dumproundtrip 2>&1 | tee -a docs/dumproundtrip.txt
-          echo ""
-          echo "=== Raw Parse Tests ===" | tee docs/rawparsetests.txt
-          ./.lake/build/bin/rawparsetests 2>&1 | tee -a docs/rawparsetests.txt
-          echo ""
-          echo "=== Spec Examples ===" | tee docs/specexamples.txt
-          ./.lake/build/bin/specexamples 2>&1 | tee -a docs/specexamples.txt
-          echo ""
-          echo "=== Schema Dump Tests ===" | tee docs/schemadump.txt
-          ./.lake/build/bin/schemadump 2>&1 | tee -a docs/schemadump.txt
-          echo ""
-          echo "=== Scanner Tests ===" | tee docs/scannertests.txt
-          ./.lake/build/bin/scannertests 2>&1 | tee -a docs/scannertests.txt
-          echo ""
-          echo "=== Scanner Spec Examples ===" | tee docs/scannerspecexamples.txt
-          ./.lake/build/bin/scannerspecexamples 2>&1 | tee -a docs/scannerspecexamples.txt
-          echo ""
-          echo "=== Adversarial Grammar Tests ===" | tee docs/adversarialtests.txt
-          ./.lake/build/bin/adversarialtests 2>&1 | tee -a docs/adversarialtests.txt
-          echo ""
-          echo "=== Mutation Suite Tests ===" | tee docs/mutationtests.txt
-          ./.lake/build/bin/mutationtests 2>&1 | tee -a docs/mutationtests.txt
-          echo ""
-          echo "=== Property-Based Round-Trip Tests ===" | tee docs/propertytests.txt
-          ./.lake/build/bin/propertytests 2>&1 | tee -a docs/propertytests.txt
-          echo ""
-          echo "=== Production Coverage Analysis ===" | tee docs/productioncoverage.txt
-          ./.lake/build/bin/productioncoverage 2>&1 | tee -a docs/productioncoverage.txt
-          echo ""
-          echo "=== Parser Security Limit Tests ===" | tee docs/limittests.txt
-          ./.lake/build/bin/limittests 2>&1 | tee -a docs/limittests.txt
+          cd doc
+          lake update
+          lake build l4yaml-doc
 
-      - name: Run diagnostic checks
+      # -------------------------------------------------------
+      # Phase 2: Generate Verso HTML documentation
+      # -------------------------------------------------------
+      - name: Generate Verso documentation
         run: |
-          echo "=== Flow Regression Check ===" | tee docs/flowregressioncheck.txt
-          ./.lake/build/bin/flowregressioncheck 2>&1 | tee -a docs/flowregressioncheck.txt
-          echo ""
-          echo "=== Error Stage Diagnostics ===" | tee docs/errorstagediag.txt
-          ./.lake/build/bin/errorstagediag 2>&1 | tee -a docs/errorstagediag.txt
-          echo ""
-          echo "=== Scalar Stage Diagnostics ===" | tee docs/scalarstagediag.txt
-          ./.lake/build/bin/scalarstagediag 2>&1 | tee -a docs/scalarstagediag.txt
+          cd doc
+          lake exe l4yaml-doc
+          echo "Verso HTML generated in doc/_out/html-multi/"
+
+      - name: Copy Verso output to docs/
+        run: |
+          rm -rf docs
+          cp -r doc/_out/html-multi docs
+          echo "Verso HTML copied to docs/"
+
+      # -------------------------------------------------------
+      # Phase 3: Run all test suites
+      # -------------------------------------------------------
+      - name: Run Lean test suites
+        run: |
+          mkdir -p docs/test-results
+          bash scripts/run-all-tests.sh docs/test-results
 
       - name: Build C shared library
         run: |
@@ -123,40 +96,44 @@ jobs:
 
       - name: Run Python FFI tests
         run: |
-          echo "=== Python FFI Tests ===" | tee docs/python-ffi-tests.txt
+          RESULTS="docs/test-results"
+          echo "=== Python FFI Tests ===" | tee "$RESULTS/python-ffi-tests.txt"
           cd "$GITHUB_WORKSPACE"
           LEAN4YAML_LIB="$GITHUB_WORKSPACE/ffi/out" \
           LD_LIBRARY_PATH="$GITHUB_WORKSPACE/ffi/out:${LD_LIBRARY_PATH:-}" \
           python3 -m pytest Tests/test_python_ffi.py \
             -v --tb=short --no-header \
             -p no:launch_ros -p no:launch_testing \
-            --junitxml=docs/python-ffi-junit.xml \
-            2>&1 | tee -a docs/python-ffi-tests.txt
+            --junitxml="$RESULTS/python-ffi-junit.xml" \
+            2>&1 | tee -a "$RESULTS/python-ffi-tests.txt"
 
       - name: Run Python package tests
         run: |
-          echo "=== Python Package Tests ===" | tee docs/python-package-tests.txt
+          RESULTS="docs/test-results"
+          echo "=== Python Package Tests ===" | tee "$RESULTS/python-package-tests.txt"
           cd "$GITHUB_WORKSPACE"
           LEAN4YAML_LIB="$GITHUB_WORKSPACE/ffi/out" \
           LD_LIBRARY_PATH="$GITHUB_WORKSPACE/ffi/out:${LD_LIBRARY_PATH:-}" \
           python3 -m pytest python/tests/ \
             -v --tb=short --no-header \
             -p no:launch_ros -p no:launch_testing \
-            --junitxml=docs/python-package-junit.xml \
-            2>&1 | tee -a docs/python-package-tests.txt
+            --junitxml="$RESULTS/python-package-junit.xml" \
+            2>&1 | tee -a "$RESULTS/python-package-tests.txt"
 
       - name: Run cross-language yaml-test-suite comparison
         run: |
-          echo "=== Cross-Language yaml-test-suite Comparison ===" | tee docs/cross-lang-comparison.txt
+          RESULTS="docs/test-results"
+          echo "=== Cross-Language yaml-test-suite Comparison ===" | tee "$RESULTS/cross-lang-comparison.txt"
           LEAN4YAML_LIB="$GITHUB_WORKSPACE/ffi/out" \
           LD_LIBRARY_PATH="$GITHUB_WORKSPACE/ffi/out:${LD_LIBRARY_PATH:-}" \
-          python3 - <<'PYEOF' | tee -a docs/cross-lang-comparison.txt
-          import subprocess, sys, json
+          python3 - "$RESULTS" <<'PYEOF' | tee -a "$RESULTS/cross-lang-comparison.txt"
+          import subprocess, sys, json, pathlib
 
+          results_dir = pathlib.Path(sys.argv[1])
           BACKENDS = ["lean", "c", "python", "rust"]
           PRESETS = ["unlimited", "default", "strict", "permissive", "safe_tags"]
           suiterunner = ".lake/build/bin/suiterunner"
-          results = {}  # (backend, preset) -> (passed, failed, skipped, total)
+          results = {}
           all_match = True
 
           for preset in PRESETS:
@@ -164,7 +141,6 @@ jobs:
                   cmd = [suiterunner, "--backend", backend, "--limits", preset]
                   proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
                   output = proc.stdout + proc.stderr
-                  # Parse "TOTAL: X passed, Y failed, Z skipped (W total)"
                   for line in output.splitlines():
                       if "TOTAL:" in line:
                           parts = line.split()
@@ -176,7 +152,6 @@ jobs:
                       results[(backend, preset)] = (0, 0, 0, 0)
                       all_match = False
 
-              # Check all backends match for this preset
               vals = [results[(b, preset)] for b in BACKENDS]
               if len(set(vals)) != 1:
                   print(f"MISMATCH for preset '{preset}': {dict(zip(BACKENDS, vals))}")
@@ -192,213 +167,46 @@ jobs:
               print("✗ Backend mismatch detected!")
               sys.exit(1)
 
-          # Write JSON for HTML report generation
-          import pathlib
           json_data = {}
           for (backend, preset), (p, f, s, t) in results.items():
               json_data.setdefault(preset, {})[backend] = {"passed": p, "failed": f, "skipped": s, "total": t}
-          pathlib.Path("docs/cross-lang-results.json").write_text(json.dumps(json_data, indent=2))
+          (results_dir / "cross-lang-results.json").write_text(json.dumps(json_data, indent=2))
           PYEOF
 
-      - name: Generate cross-language comparison HTML report
+      # -------------------------------------------------------
+      # Phase 4: Generate HTML reports from test data
+      # -------------------------------------------------------
+      - name: Generate test result HTML reports
         run: |
-          python3 - <<'PYEOF'
-          import json
-          from pathlib import Path
-          import html as htmlmod
+          python3 scripts/generate-test-reports.py docs/test-results
 
-          docs = Path("docs")
-          results_file = docs / "cross-lang-results.json"
-          out = docs / "cross-lang-comparison.html"
-
-          if not results_file.is_file():
-              print("No cross-lang-results.json found, skipping HTML generation")
-              exit(0)
-
-          data = json.loads(results_file.read_text())
-          backends = ["lean", "c", "python", "rust"]
-          presets = ["unlimited", "default", "strict", "permissive", "safe_tags"]
-
-          parts = [
-              "<!DOCTYPE html>",
-              '<html lang="en"><head><meta charset="utf-8">',
-              "<title>Cross-Language yaml-test-suite Comparison</title>",
-              "<style>",
-              "body{font-family:system-ui,sans-serif;margin:2em;background:#f8f9fa}",
-              "h1{color:#1a1a2e} h2{color:#16213e;margin-top:1.5em}",
-              "table{border-collapse:collapse;margin:1em 0}",
-              "th,td{border:1px solid #dee2e6;padding:6px 14px;text-align:right}",
-              "th{background:#343a40;color:#fff;text-align:center}",
-              "td:first-child{text-align:left;font-weight:bold}",
-              ".match{background:#d4edda;color:#155724}",
-              ".mismatch{background:#f8d7da;color:#721c24}",
-              ".summary{font-size:1.1em;margin:1em 0}",
-              "</style></head><body>",
-              "<h1>Cross-Language yaml-test-suite Comparison</h1>",
-              "<p>All four backends (Lean, C, Python, Rust) run the same 1020 yaml-test-suite ",
-              "test cases through the verified parser via their respective FFI layers.</p>",
-          ]
-
-          # Per-preset results table
-          all_match = True
-          parts.append("<h2>Results by Limit Preset</h2>")
-          parts.append("<table><tr><th>Preset</th><th>Passed</th><th>Failed</th>"
-                       "<th>Skipped</th><th>Total</th><th>Backends Match?</th></tr>")
-          for preset in presets:
-              if preset not in data:
-                  continue
-              vals = [tuple(data[preset][b].values()) for b in backends if b in data[preset]]
-              match = len(set(vals)) == 1
-              if not match:
-                  all_match = False
-              css = "match" if match else "mismatch"
-              icon = "✓" if match else "✗"
-              p, f, s, t = vals[0]
-              parts.append(f'<tr><td>{htmlmod.escape(preset)}</td>'
-                           f'<td>{p}</td><td>{f}</td><td>{s}</td><td>{t}</td>'
-                           f'<td class="{css}">{icon} {"All identical" if match else "MISMATCH"}</td></tr>')
-          parts.append("</table>")
-
-          # Per-backend detail table
-          parts.append("<h2>Full Matrix (Backend × Preset)</h2>")
-          parts.append("<table><tr><th>Backend</th>")
-          for preset in presets:
-              parts.append(f"<th>{htmlmod.escape(preset)}</th>")
-          parts.append("</tr>")
-          for backend in backends:
-              parts.append(f"<tr><td>{htmlmod.escape(backend)}</td>")
-              for preset in presets:
-                  if preset in data and backend in data[preset]:
-                      d = data[preset][backend]
-                      parts.append(f'<td>{d["passed"]}/{d["failed"]}/{d["skipped"]}</td>')
-                  else:
-                      parts.append("<td>—</td>")
-              parts.append("</tr>")
-          parts.append("</table>")
-
-          color = "match" if all_match else "mismatch"
-          icon = "✓" if all_match else "✗"
-          parts.append(f'<p class="summary {color}">{icon} '
-                       f'{"All backends produce identical results for every preset" if all_match else "Backend mismatch detected!"}'
-                       f'</p>')
-          parts.append("</body></html>")
-          out.write_text("\n".join(parts))
-          print(f"Generated {out}")
-          PYEOF
-
-      - name: Generate HTML coverage reports
+      # -------------------------------------------------------
+      # Phase 5: Generate PDF from HTML
+      # -------------------------------------------------------
+      - name: Generate PDF documentation
         run: |
-          ./.lake/build/bin/suiterunner --html docs/ | tee docs/coverage-console.txt
+          python3 scripts/html-to-pdf.py \
+            docs \
+            docs/L4YAML.pdf
+          echo "PDF generated: docs/L4YAML.pdf"
 
-      - name: Generate Python FFI test HTML report
-        run: |
-          python3 - <<'PYEOF'
-          import xml.etree.ElementTree as ET
-          from pathlib import Path
-          import html as htmlmod
-
-          docs = Path("docs")
-          out = docs / "python-ffi-tests.html"
-
-          # Collect results from JUnit XML files
-          sections = []
-          for junit_file, title in [
-              (docs / "python-ffi-junit.xml", "Python FFI Integration Tests (Tests/)"),
-              (docs / "python-package-junit.xml", "Python Package Tests (python/tests/)"),
-          ]:
-              if not junit_file.is_file():
-                  continue
-              tree = ET.parse(str(junit_file))
-              root = tree.getroot()
-              suites = root.findall(".//testsuite") if root.tag != "testsuite" else [root]
-              rows = []
-              total = passed = failed = skipped = 0
-              for suite in suites:
-                  for tc in suite.findall("testcase"):
-                      name = tc.get("classname", "") + "." + tc.get("name", "")
-                      time_s = tc.get("time", "0")
-                      fail_el = tc.find("failure")
-                      skip_el = tc.find("skipped")
-                      total += 1
-                      if fail_el is not None:
-                          status = "FAIL"
-                          css = "fail"
-                          failed += 1
-                      elif skip_el is not None:
-                          status = "SKIP"
-                          css = "skip"
-                          skipped += 1
-                      else:
-                          status = "PASS"
-                          css = "pass"
-                          passed += 1
-                      rows.append((name, status, css, time_s))
-              sections.append((title, rows, total, passed, failed, skipped))
-
-          # Build HTML
-          parts = [
-              "<!DOCTYPE html>",
-              '<html lang="en"><head><meta charset="utf-8">',
-              "<title>Python API Test Results</title>",
-              "<style>",
-              "body{font-family:system-ui,sans-serif;margin:2em;background:#f8f9fa}",
-              "h1{color:#1a1a2e} h2{color:#16213e;margin-top:2em}",
-              "table{border-collapse:collapse;width:100%;margin:1em 0}",
-              "th,td{border:1px solid #dee2e6;padding:6px 12px;text-align:left}",
-              "th{background:#343a40;color:#fff}",
-              ".pass{background:#d4edda;color:#155724}",
-              ".fail{background:#f8d7da;color:#721c24}",
-              ".skip{background:#fff3cd;color:#856404}",
-              ".summary{font-size:1.1em;margin:0.5em 0}",
-              "</style></head><body>",
-              "<h1>Python API Test Results</h1>",
-          ]
-          grand_total = grand_passed = grand_failed = grand_skipped = 0
-          for title, rows, total, passed, failed, skipped in sections:
-              grand_total += total
-              grand_passed += passed
-              grand_failed += failed
-              grand_skipped += skipped
-              parts.append(f"<h2>{htmlmod.escape(title)}</h2>")
-              parts.append(f'<p class="summary">Total: {total} &mdash; '
-                           f'<span class="pass">Passed: {passed}</span> &middot; '
-                           f'<span class="fail">Failed: {failed}</span> &middot; '
-                           f'<span class="skip">Skipped: {skipped}</span></p>')
-              parts.append("<table><tr><th>Test</th><th>Status</th><th>Time (s)</th></tr>")
-              for name, status, css, time_s in rows:
-                  parts.append(f'<tr><td>{htmlmod.escape(name)}</td>'
-                               f'<td class="{css}">{status}</td>'
-                               f'<td>{htmlmod.escape(time_s)}</td></tr>')
-              parts.append("</table>")
-
-          parts.append("<hr>")
-          color = "pass" if grand_failed == 0 else "fail"
-          parts.append(f'<p class="summary {color}">Grand Total: {grand_total} &mdash; '
-                       f'Passed: {grand_passed}, Failed: {grand_failed}, '
-                       f'Skipped: {grand_skipped}</p>')
-          parts.append("</body></html>")
-          out.write_text("\n".join(parts))
-          print(f"Generated {out} ({grand_total} tests)")
-          PYEOF
-
-      - name: Generate verified tests HTML page
-        run: |
-          cat docs/unit-tests.txt docs/demo.txt docs/explicitkeytests.txt docs/flowtests.txt docs/validationtests.txt docs/dumproundtrip.txt docs/rawparsetests.txt docs/specexamples.txt docs/schemadump.txt docs/scannertests.txt docs/scannerspecexamples.txt docs/adversarialtests.txt docs/mutationtests.txt docs/propertytests.txt docs/productioncoverage.txt docs/limittests.txt docs/python-ffi-tests.txt docs/python-package-tests.txt docs/cross-lang-comparison.txt > docs/all-verified-tests.txt
-
-      - name: Upload coverage reports as artifact
+      # -------------------------------------------------------
+      # Phase 6: Publish
+      # -------------------------------------------------------
+      - name: Upload documentation as artifact
         uses: actions/upload-artifact@v3
         with:
-          name: coverage-reports
+          name: l4yaml-docs
           path: docs/
           retention-days: 30
 
-      - name: Commit coverage reports to main branch
+      - name: Commit documentation to main branch
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/
-          git diff --staged --quiet || git commit -m "Update coverage reports: ${{ github.sha }}"
+          git diff --staged --quiet || git commit -m "Update docs and test reports: ${{ github.sha }}"
           git push
 
       - name: Comment on PR with coverage summary
@@ -407,33 +215,34 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const coverage = fs.readFileSync('docs/coverage-console.txt', 'utf8');
-            // Extract the "Correct: X/Y (Z%)" line
-            const correctLine = coverage.match(/Correct: .*/)?.[0] || 'Statistics unavailable';
 
-            // Extract Python FFI test summary
+            let coverageLine = 'Statistics unavailable';
+            try {
+              const coverage = fs.readFileSync('docs/test-results/coverage-console.txt', 'utf8');
+              coverageLine = coverage.match(/Correct: .*/)?.[0] || coverageLine;
+            } catch (e) {}
+
             let pythonSummary = '';
             try {
-              const ffiTests = fs.readFileSync('docs/python-ffi-tests.txt', 'utf8');
+              const ffiTests = fs.readFileSync('docs/test-results/python-ffi-tests.txt', 'utf8');
               const ffiLine = ffiTests.match(/\d+ passed.*/)?.[0] || '';
-              const pkgTests = fs.readFileSync('docs/python-package-tests.txt', 'utf8');
+              const pkgTests = fs.readFileSync('docs/test-results/python-package-tests.txt', 'utf8');
               const pkgLine = pkgTests.match(/\d+ passed.*/)?.[0] || '';
               pythonSummary = `\n\n**Python API Tests:**\n- FFI integration: ${ffiLine}\n- Package tests: ${pkgLine}`;
-            } catch (e) { /* Python tests not available */ }
+            } catch (e) {}
 
-            // Extract cross-language comparison summary
             let crossLangSummary = '';
             try {
-              const crossLang = fs.readFileSync('docs/cross-lang-comparison.txt', 'utf8');
+              const crossLang = fs.readFileSync('docs/test-results/cross-lang-comparison.txt', 'utf8');
               const lines = crossLang.split('\n').filter(l => l.includes('identical') || l.includes('MISMATCH') || l.includes('✓') || l.includes('✗'));
               if (lines.length > 0) {
                 crossLangSummary = `\n\n**Cross-Language Comparison (4 backends × 5 presets):**\n\`\`\`\n${lines.join('\n')}\n\`\`\``;
               }
-            } catch (e) { /* Cross-lang results not available */ }
+            } catch (e) {}
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## Test Coverage Report\n\n\`\`\`\n${correctLine}\n\`\`\`${pythonSummary}${crossLangSummary}\n\nFull report: [Download artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`
+              body: `## L4YAML Documentation & Test Coverage\n\n\`\`\`\n${coverageLine}\n\`\`\`${pythonSummary}${crossLangSummary}\n\n📄 [Download documentation artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`
             });

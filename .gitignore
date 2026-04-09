@@ -1,10 +1,12 @@
 ## macOS
 .DS_Store
 ## Lake
+doc/.lake/*
 .lake/*
 .cache/*
 ## temporary files
 tmp/
+_out/
 ## Test Coverage Reports
 # docs/ folder is now committed to main branch for GitHub Pages
 # Ignore individual HTML files to prevent accidental commits outside docs/
