@@ -445,15 +445,15 @@ Running verified test suites...
 Verified: 1232/1232
 
 Generating HTML reports...
-  wrote docs/test-results/index.html
-  wrote docs/test-results/coverage-all.html
-  wrote docs/test-results/coverage-scalar.html
-  wrote docs/test-results/coverage-flow.html
-  wrote docs/test-results/coverage-block.html
-  wrote docs/test-results/coverage-document.html
-  wrote docs/test-results/coverage-advanced.html
-  wrote docs/test-results/coverage-error.html
-  wrote docs/test-results/verified-tests.html
-  wrote docs/test-results/coverage-summary.json
+  wrote docs/reports/index.html
+  wrote docs/reports/coverage-all.html
+  wrote docs/reports/coverage-scalar.html
+  wrote docs/reports/coverage-flow.html
+  wrote docs/reports/coverage-block.html
+  wrote docs/reports/coverage-document.html
+  wrote docs/reports/coverage-advanced.html
+  wrote docs/reports/coverage-error.html
+  wrote docs/reports/verified-tests.html
+  wrote docs/reports/coverage-summary.json
 
-HTML reports written to docs/test-results/
+HTML reports written to docs/reports/
