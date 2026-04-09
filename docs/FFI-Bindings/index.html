@@ -8,9 +8,9 @@
     window.location.replace(`${proto}//${hostName}${path}/${srch}${hsh}`);
   }
 })()</script>
-    <base href="./"><meta charset="utf-8">
+    <base href="./../"><meta charset="utf-8">
     <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
-    <title>L4YAML: A Verified YAML 1.2.2 Parser in Lean 4</title><link rel="stylesheet" href="book.css">
+    <title>FFI Bindings</title><link rel="stylesheet" href="book.css">
     <link rel="stylesheet" href="verso-vars.css">
     <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js" integrity="sha384-zbcZAIxlvJtNE3Dp5nxLXdXtXyxwOdnILY1TDPVmKFhl4r4nSUG1r8bcFXGVa4Te" crossorigin="anonymous"></script>
     <script src="-verso-search/elasticlunr.min.js"></script>
@@ -167,57 +167,44 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
             <div class="split-toc book">
               <div class="title">
                 <label for="--verso-manual-toc-----bookRoot" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-----bookRoot" checked="checked"></label><span class="">Table of Contents</span></div>
-              <table><tr class="numbered"><td class="num">1.</td><td><a href="Overview/#overview">Overview</a></td></tr><tr class="numbered"><td class="num">2.</td><td><a href="Architecture/#architecture">Architecture</a></td></tr><tr class="numbered"><td class="num">3.</td><td><a href="Verification/#verification">Verification</a></td></tr><tr class="numbered"><td class="num">4.</td><td><a href="Security/#security">Security</a></td></tr><tr class="numbered"><td class="num">5.</td><td><a href="FFI-Bindings/#ffi">FFI Bindings</a></td></tr><tr class="numbered"><td class="num">6.</td><td><a href="Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="Test-Results/#test-results">Test Results</a></td></tr><tr class="unnumbered"><td class="num"><td><a href="Index/#index">Index</a></td></tr></table></div>
+              <table><tr class="numbered"><td class="num">1.</td><td><a href="Overview/#overview">Overview</a></td></tr><tr class="numbered"><td class="num">2.</td><td><a href="Architecture/#architecture">Architecture</a></td></tr><tr class="numbered"><td class="num">3.</td><td><a href="Verification/#verification">Verification</a></td></tr><tr class="numbered"><td class="num">4.</td><td><a href="Security/#security">Security</a></td></tr><tr class="current numbered"><td class="num">5.</td><td><a href="FFI-Bindings/#ffi">FFI Bindings</a></td></tr><tr class="numbered"><td class="num">6.</td><td><a href="Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="Test-Results/#test-results">Test Results</a></td></tr><tr class="unnumbered"><td class="num"><td><a href="Index/#index">Index</a></td></tr></table></div>
+            <div class="split-toc">
+              <div class="title">
+                <label for="--verso-manual-toc-ffi" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-ffi" checked="checked"></label><span class="number">5.</span> <span class="current"><a href="FFI-Bindings/#ffi">FFI Bindings</a></span></div>
+              <table><tr class="numbered"><td class="num">5.1.</td><td><a href="FFI-Bindings/Dependency-Graph/#ffi-graph">Dependency Graph</a></td></tr><tr class="numbered"><td class="num">5.2.</td><td><a href="FFI-Bindings/C-API/#c-api">C API</a></td></tr><tr class="numbered"><td class="num">5.3.</td><td><a href="FFI-Bindings/Python-API/#python-api">Python API</a></td></tr><tr class="numbered"><td class="num">5.4.</td><td><a href="FFI-Bindings/Rust-API/#rust-api">Rust API</a></td></tr><tr class="numbered"><td class="num">5.5.</td><td><a href="FFI-Bindings/Adding-FFI-Bindings/#adding-ffi">Adding FFI Bindings</a></td></tr></table></div>
             </div>
           </div>
         <div class="last"></div>
         </nav>
       <main><div class="content-wrapper">
           <nav class="prev-next-buttons">
-            <div></div>
-            <a class="local-button active" href="Overview/#overview" rel="next" title="1. Overview"><span class="where">1. Overview</span><span class="arrow">→</span></a></nav>
+            <a class="local-button active" href="Security/Verification-of-Security-Properties/#security-verification" rel="prev" title="4.4. Verification of Security Properties"><span class="arrow">←</span><span class="where">4.4. Verification of Security Properties</span></a><a class="local-button active" href="FFI-Bindings/Dependency-Graph/#ffi-graph" rel="next" title="5.1. Dependency Graph"><span class="where">5.1. Dependency Graph</span><span class="arrow">→</span></a></nav>
           <section>
-            <div class="titlepage">
-              <h1>
-                 L4YAML: A Verified YAML 1.2.2 Parser in Lean 4<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4" title="Permalink">🔗</a></span></h1>
-              <div class="authors">
-                <span class="author">the L4YAML contributors</span></div>
-              <p>
-                L4YAML is a fully verified YAML 1.2.2 parser written in pure Lean 4.
-It delivers 2,309 machine-checked theorems across 61 proof modules,
-zero axioms, zero <code>sorry</code>, and zero <code>partial def</code> — while passing
-100% of the YAML 1.2.2 specification examples and 100% of the
-applicable yaml-test-suite test IDs (225/225).</p>
-              <p>
-                This manual documents the project's architecture, verification
-strategy, security model, and FFI bindings for C, Python, and Rust.</p>
-              </div>
-            <section>
-              <h2>
-                Contents</h2>
-              <ol class="section-toc">
-                <li>
-                  <a href="Overview/#overview"><span class="number">1.</span> Overview</a></li>
-                <li>
-                  <a href="Architecture/#architecture"><span class="number">2.</span> Architecture</a></li>
-                <li>
-                  <a href="Verification/#verification"><span class="number">3.</span> Verification</a></li>
-                <li>
-                  <a href="Security/#security"><span class="number">4.</span> Security</a></li>
-                <li>
-                  <a href="FFI-Bindings/#ffi"><span class="number">5.</span> FFI Bindings</a></li>
-                <li>
-                  <a href="Testing/#testing"><span class="number">6.</span> Testing</a></li>
-                <li>
-                  <a href="Test-Results/#test-results"><span class="number">7.</span> Test Results</a></li>
-                <li>
-                  <a href="Index/#index"><span class="unnumbered"></span>Index</a></li>
-                </ol>
-              </section>
+            <h1>
+              5. FFI Bindings<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=ffi" title="Permalink">🔗</a></span></h1>
+            <p>
+              <span id="--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"></span>
+L4YAML provides foreign function interface bindings for C, Python,
+and Rust, enabling the verified parser to be used from mainstream
+languages.
+The FFI layer sits above the full parser pipeline — callers get
+the same verified parsing logic, security limits, and schema
+resolution available in Lean.</p>
+            <ol class="section-toc">
+              <li>
+                <a href="FFI-Bindings/Dependency-Graph/#ffi-graph"><span class="number">5.1.</span> Dependency Graph</a></li>
+              <li>
+                <a href="FFI-Bindings/C-API/#c-api"><span class="number">5.2.</span> C API</a></li>
+              <li>
+                <a href="FFI-Bindings/Python-API/#python-api"><span class="number">5.3.</span> Python API</a></li>
+              <li>
+                <a href="FFI-Bindings/Rust-API/#rust-api"><span class="number">5.4.</span> Rust API</a></li>
+              <li>
+                <a href="FFI-Bindings/Adding-FFI-Bindings/#adding-ffi"><span class="number">5.5.</span> Adding FFI Bindings</a></li>
+              </ol>
             </section>
           <nav class="prev-next-buttons">
-            <div></div>
-            <a class="local-button active" href="Overview/#overview" rel="next" title="1. Overview"><span class="where">1. Overview</span><span class="arrow">→</span></a></nav>
+            <a class="local-button active" href="Security/Verification-of-Security-Properties/#security-verification" rel="prev" title="4.4. Verification of Security Properties"><span class="arrow">←</span><span class="where">4.4. Verification of Security Properties</span></a><a class="local-button active" href="FFI-Bindings/Dependency-Graph/#ffi-graph" rel="next" title="5.1. Dependency Graph"><span class="where">5.1. Dependency Graph</span><span class="arrow">→</span></a></nav>
           </div>
         </main></div>
     </body>

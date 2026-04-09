@@ -1,0 +1,13 @@
+=== demo ===
+=== Demo ===
+
+--- Parser examples ---
+  ✓ Plain scalar
+  ✓ Flow sequence
+  ✓ Flow mapping
+  ✓ Block mapping
+  ✓ Nested block structure
+  ✓ Double-quoted scalar
+  ✓ Multi-document stream
+
+=== Results: 7/7 passed ===

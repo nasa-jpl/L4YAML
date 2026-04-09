@@ -8,9 +8,9 @@
     window.location.replace(`${proto}//${hostName}${path}/${srch}${hsh}`);
   }
 })()</script>
-    <base href="./"><meta charset="utf-8">
+    <base href="./../../"><meta charset="utf-8">
     <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
-    <title>L4YAML: A Verified YAML 1.2.2 Parser in Lean 4</title><link rel="stylesheet" href="book.css">
+    <title>Proof Engineering Patterns</title><link rel="stylesheet" href="book.css">
     <link rel="stylesheet" href="verso-vars.css">
     <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js" integrity="sha384-zbcZAIxlvJtNE3Dp5nxLXdXtXyxwOdnILY1TDPVmKFhl4r4nSUG1r8bcFXGVa4Te" crossorigin="anonymous"></script>
     <script src="-verso-search/elasticlunr.min.js"></script>
@@ -166,58 +166,60 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
             </a><div class="split-tocs">
             <div class="split-toc book">
               <div class="title">
-                <label for="--verso-manual-toc-----bookRoot" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-----bookRoot" checked="checked"></label><span class="">Table of Contents</span></div>
-              <table><tr class="numbered"><td class="num">1.</td><td><a href="Overview/#overview">Overview</a></td></tr><tr class="numbered"><td class="num">2.</td><td><a href="Architecture/#architecture">Architecture</a></td></tr><tr class="numbered"><td class="num">3.</td><td><a href="Verification/#verification">Verification</a></td></tr><tr class="numbered"><td class="num">4.</td><td><a href="Security/#security">Security</a></td></tr><tr class="numbered"><td class="num">5.</td><td><a href="FFI-Bindings/#ffi">FFI Bindings</a></td></tr><tr class="numbered"><td class="num">6.</td><td><a href="Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="Test-Results/#test-results">Test Results</a></td></tr><tr class="unnumbered"><td class="num"><td><a href="Index/#index">Index</a></td></tr></table></div>
+                <label for="--verso-manual-toc-----bookRoot" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-----bookRoot"></label><span class="">Table of Contents</span></div>
+              <table><tr class="numbered"><td class="num">1.</td><td><a href="Overview/#overview">Overview</a></td></tr><tr class="numbered"><td class="num">2.</td><td><a href="Architecture/#architecture">Architecture</a></td></tr><tr class="current numbered"><td class="num">3.</td><td><a href="Verification/#verification">Verification</a></td></tr><tr class="numbered"><td class="num">4.</td><td><a href="Security/#security">Security</a></td></tr><tr class="numbered"><td class="num">5.</td><td><a href="FFI-Bindings/#ffi">FFI Bindings</a></td></tr><tr class="numbered"><td class="num">6.</td><td><a href="Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="Test-Results/#test-results">Test Results</a></td></tr><tr class="unnumbered"><td class="num"><td><a href="Index/#index">Index</a></td></tr></table></div>
+            <div class="split-toc">
+              <div class="title">
+                <label for="--verso-manual-toc-verification" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-verification" checked="checked"></label><span class="number">3.</span> <span class=""><a href="Verification/#verification">Verification</a></span></div>
+              <table><tr class="numbered"><td class="num">3.1.</td><td><a href="Verification/Three-Layer-Strategy/#three-layer-strategy">Three-Layer Strategy</a></td></tr><tr class="numbered"><td class="num">3.2.</td><td><a href="Verification/Key-Proof-Modules/#proof-modules">Key Proof Modules</a></td></tr><tr class="current numbered"><td class="num">3.3.</td><td><a href="Verification/Proof-Engineering-Patterns/#proof-patterns">Proof Engineering Patterns</a></td></tr><tr class="numbered"><td class="num">3.4.</td><td><a href="Verification/Zero-Axiom-Policy/#zero-axiom">Zero-Axiom Policy</a></td></tr></table></div>
+            <div class="split-toc">
+              <div class="title">
+                <span class="no-toggle"></span><span class="number">3.3.</span> <span class="current"><a href="Verification/Proof-Engineering-Patterns/#proof-patterns">Proof Engineering Patterns</a></span></div>
+              </div>
             </div>
           </div>
         <div class="last"></div>
         </nav>
       <main><div class="content-wrapper">
           <nav class="prev-next-buttons">
-            <div></div>
-            <a class="local-button active" href="Overview/#overview" rel="next" title="1. Overview"><span class="where">1. Overview</span><span class="arrow">→</span></a></nav>
+            <a class="local-button active" href="Verification/Key-Proof-Modules/#proof-modules" rel="prev" title="3.2. Key Proof Modules"><span class="arrow">←</span><span class="where">3.2. Key Proof Modules</span></a><a class="local-button active" href="Verification/Zero-Axiom-Policy/#zero-axiom" rel="next" title="3.4. Zero-Axiom Policy"><span class="where">3.4. Zero-Axiom Policy</span><span class="arrow">→</span></a></nav>
           <section>
-            <div class="titlepage">
-              <h1>
-                 L4YAML: A Verified YAML 1.2.2 Parser in Lean 4<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4" title="Permalink">🔗</a></span></h1>
-              <div class="authors">
-                <span class="author">the L4YAML contributors</span></div>
-              <p>
-                L4YAML is a fully verified YAML 1.2.2 parser written in pure Lean 4.
-It delivers 2,309 machine-checked theorems across 61 proof modules,
-zero axioms, zero <code>sorry</code>, and zero <code>partial def</code> — while passing
-100% of the YAML 1.2.2 specification examples and 100% of the
-applicable yaml-test-suite test IDs (225/225).</p>
-              <p>
-                This manual documents the project's architecture, verification
-strategy, security model, and FFI bindings for C, Python, and Rust.</p>
-              </div>
-            <section>
-              <h2>
-                Contents</h2>
-              <ol class="section-toc">
-                <li>
-                  <a href="Overview/#overview"><span class="number">1.</span> Overview</a></li>
-                <li>
-                  <a href="Architecture/#architecture"><span class="number">2.</span> Architecture</a></li>
-                <li>
-                  <a href="Verification/#verification"><span class="number">3.</span> Verification</a></li>
-                <li>
-                  <a href="Security/#security"><span class="number">4.</span> Security</a></li>
-                <li>
-                  <a href="FFI-Bindings/#ffi"><span class="number">5.</span> FFI Bindings</a></li>
-                <li>
-                  <a href="Testing/#testing"><span class="number">6.</span> Testing</a></li>
-                <li>
-                  <a href="Test-Results/#test-results"><span class="number">7.</span> Test Results</a></li>
-                <li>
-                  <a href="Index/#index"><span class="unnumbered"></span>Index</a></li>
-                </ol>
-              </section>
+            <h1>
+              3.3. Proof Engineering Patterns<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=proof-patterns" title="Permalink">🔗</a></span></h1>
+            <p>
+              <span id="--index--next-next-next-next-next-next-next-next-next-next-next-next-next"></span>
+Several patterns emerged during the verification effort:</p>
+            <ul>
+              <li>
+                <p>
+                  <em>Decomposition</em> — large functions are decomposed into
+   validation (error guards), state transformation (pure updates),
+   and emission (token output) phases, each proved independently
+   then composed.</p>
+                </li>
+              <li>
+                <p>
+                  <em>Append-only invariant</em> — the switch from <code>insertAt</code> to
+   placeholder reservation slots with <code>setIfInBounds</code> backpatching
+   eliminated the hardest class of proof obligations (index shifting).</p>
+                </li>
+              <li>
+                <p>
+                  <em>Monotonic progress</em> — proving <code>offset_lt</code> (strict increase)
+   for every scanner operation provides termination and guarantees
+   no infinite loops.</p>
+                </li>
+              <li>
+                <p>
+                  <em>Well-formedness threading</em> — a <code>WellFormed</code> predicate on
+   scanner state is threaded through every operation, establishing
+   that invariants are maintained from <code>scannerInit</code> through
+   <code>scanNextToken</code> to stream completion.</p>
+                </li>
+              </ul>
             </section>
           <nav class="prev-next-buttons">
-            <div></div>
-            <a class="local-button active" href="Overview/#overview" rel="next" title="1. Overview"><span class="where">1. Overview</span><span class="arrow">→</span></a></nav>
+            <a class="local-button active" href="Verification/Key-Proof-Modules/#proof-modules" rel="prev" title="3.2. Key Proof Modules"><span class="arrow">←</span><span class="where">3.2. Key Proof Modules</span></a><a class="local-button active" href="Verification/Zero-Axiom-Policy/#zero-axiom" rel="next" title="3.4. Zero-Axiom Policy"><span class="where">3.4. Zero-Axiom Policy</span><span class="arrow">→</span></a></nav>
           </div>
         </main></div>
     </body>

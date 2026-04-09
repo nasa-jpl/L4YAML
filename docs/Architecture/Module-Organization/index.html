@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+      (function(){
+  const {protocol:proto, host:hostName, pathname:path, search:srch, hash:hsh} = window.location;
+  if (!(path.endsWith("/") || path.endsWith(".html"))) {
+    window.location.replace(`${proto}//${hostName}${path}/${srch}${hsh}`);
+  }
+})()</script>
+    <base href="./../../"><meta charset="utf-8">
+    <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+    <title>Module Organization</title><link rel="stylesheet" href="book.css">
+    <link rel="stylesheet" href="verso-vars.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js" integrity="sha384-zbcZAIxlvJtNE3Dp5nxLXdXtXyxwOdnILY1TDPVmKFhl4r4nSUG1r8bcFXGVa4Te" crossorigin="anonymous"></script>
+    <script src="-verso-search/elasticlunr.min.js"></script>
+    <script src="-verso-search/fuzzysort.min.js"></script>
+    <script src="-verso-search/searchIndex.js"></script>
+    <script type="module" src="-verso-search/search-init.js"></script>
+    <link rel="stylesheet" href="-verso-search/search-box.css">
+    <link rel="stylesheet" href="-verso-search/search-highlight.css">
+    <link rel="stylesheet" href="-verso-search/domain-display.css">
+    <script src="-verso-data/katex/katex.js"></script>
+    <script src="-verso-data/katex/math.js"></script>
+    <link rel="stylesheet" href="-verso-data/katex/katex.css">
+    <style>
+table.tabular {
+  margin: auto;
+  border-spacing: 1rem;
+}
+table.tabular.left-align {
+  margin-right: auto;
+  margin-left: 0;
+}
+table.tabular.center-align {
+  margin: auto;
+}
+table.tabular.right-align {
+  margin-left auto;
+  margin-right: 0;
+}
+table.tabular td, table.tabular th {
+  text-align: left;
+  vertical-align: top;
+}
+table.tabular td > p:first-child, table.tabular th > p:first-child {
+  margin-top: 0;
+}
+table.tabular td > p:last-child, table.tabular th > p:first-child {
+  margin-bottom: 0;
+}
+</style><style>
+    main .theIndex {
+      padding-left: 0;
+      font-family: var(--verso-text-font-family);
+    }
+
+    main .theIndex nav {
+      position: sticky;
+      top: var(--verso-header-height);
+      background: white;
+      font-family: var(--verso-structure-font-family);
+    }
+
+    main .theIndex [id] {
+      /* This needs the combined height of the index header and the page header. We
+         know the height of the page header, but the index header height varies, so
+         we use the maximum height it gets which also works well for readers with
+         wide screens */
+      scroll-margin-top: calc(var(--verso-header-height) + 7.5rem);
+    }
+
+    @media screen and (max-width: 700px) {
+      /* On mobile, the sticky index takes up half the screen. */
+      main .theIndex nav {
+        position: static;
+      }
+
+      main .theIndex [id] {
+        /* On mobile, the index header is not sticky, so we just need to
+        be below the page header. */
+        scroll-margin-top: var(--verso-header-height);
+      }
+    }
+
+    main .theIndex nav ol {
+      padding: 0;
+    }
+
+    main .theIndex nav ol li {
+      display: inline-block;
+    }
+
+    main .theIndex nav ol li a {
+      /* Padding instead of margin to have a bigger click target */
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+    /* Increase the size of the touch target on phones */
+    @media screen and (max-width: 700px) {
+      main .theIndex nav ol li a {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+      }
+    }
+
+    main .theIndex nav ol li:first-child a {
+      padding-left: 0;
+    }
+
+    main .theIndex nav ol li + li:before {
+      content: "|";
+    }
+
+    main .theIndex h1,
+    main .theIndex h2,
+    main .theIndex h3,
+    main .theIndex h4,
+    main .theIndex h5,
+    main .theIndex h6 {
+      margin-top: 0;
+    }
+
+    main .theIndex ol {
+      list-style-type: none;
+    }
+
+    main .theIndex .division > ol {
+      padding-left: 0;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+      overflow-wrap: break-word;
+    }
+
+   main .theIndex .division > ol > li {
+      margin-bottom: 0.5rem;
+    }
+
+    main .theIndex .division ol ol {
+      padding-left: 1rem;
+    }
+
+    main .theIndex .division {
+      break-inside: avoid;
+      counter-reset: none;
+      max-width: none;
+      width: auto;
+    }
+    </style><script src="-verso-search/search-highlight.js" defer="defer"></script>
+    </head>
+  <body>
+    <header>
+      <div class="header-logo-wrapper"></div>
+      <div class="header-title-wrapper">
+        <a href="" class="header-title"><h1>
+            L4YAML</h1>
+          </a></div>
+      </header>
+    <label for="toggle-toc" id="toggle-toc-click"><span class="line line1"></span><span class="line line2"></span><span class="line line3"></span></label><div class="with-toc">
+      <div class="toc-backdrop" onclick="document.getElementById('toggle-toc-click')?.click()"></div>
+      <nav id="toc">
+        <input type="checkbox" id="toggle-toc"><div class="first">
+          <a href="" class="toc-title"><h1>
+              L4YAML</h1>
+            </a><div class="split-tocs">
+            <div class="split-toc book">
+              <div class="title">
+                <label for="--verso-manual-toc-----bookRoot" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-----bookRoot"></label><span class="">Table of Contents</span></div>
+              <table><tr class="numbered"><td class="num">1.</td><td><a href="Overview/#overview">Overview</a></td></tr><tr class="current numbered"><td class="num">2.</td><td><a href="Architecture/#architecture">Architecture</a></td></tr><tr class="numbered"><td class="num">3.</td><td><a href="Verification/#verification">Verification</a></td></tr><tr class="numbered"><td class="num">4.</td><td><a href="Security/#security">Security</a></td></tr><tr class="numbered"><td class="num">5.</td><td><a href="FFI-Bindings/#ffi">FFI Bindings</a></td></tr><tr class="numbered"><td class="num">6.</td><td><a href="Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="Test-Results/#test-results">Test Results</a></td></tr><tr class="unnumbered"><td class="num"><td><a href="Index/#index">Index</a></td></tr></table></div>
+            <div class="split-toc">
+              <div class="title">
+                <label for="--verso-manual-toc-architecture" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-architecture" checked="checked"></label><span class="number">2.</span> <span class=""><a href="Architecture/#architecture">Architecture</a></span></div>
+              <table><tr class="numbered"><td class="num">2.1.</td><td><a href="Architecture/Scanner-_LPAR_Lexical-Layer_RPAR_/#scanner">Scanner (Lexical Layer)</a></td></tr><tr class="numbered"><td class="num">2.2.</td><td><a href="Architecture/Token-Parser-_LPAR_Syntactic-Layer_RPAR_/#token-parser">Token Parser (Syntactic Layer)</a></td></tr><tr class="numbered"><td class="num">2.3.</td><td><a href="Architecture/Type-System/#type-system">Type System</a></td></tr><tr class="current numbered"><td class="num">2.4.</td><td><a href="Architecture/Module-Organization/#module-organization">Module Organization</a></td></tr><tr class="numbered"><td class="num">2.5.</td><td><a href="Architecture/Import-Graph/#import-graph">Import Graph</a></td></tr></table></div>
+            <div class="split-toc">
+              <div class="title">
+                <span class="no-toggle"></span><span class="number">2.4.</span> <span class="current"><a href="Architecture/Module-Organization/#module-organization">Module Organization</a></span></div>
+              </div>
+            </div>
+          </div>
+        <div class="last"></div>
+        </nav>
+      <main><div class="content-wrapper">
+          <nav class="prev-next-buttons">
+            <a class="local-button active" href="Architecture/Type-System/#type-system" rel="prev" title="2.3. Type System"><span class="arrow">←</span><span class="where">2.3. Type System</span></a><a class="local-button active" href="Architecture/Import-Graph/#import-graph" rel="next" title="2.5. Import Graph"><span class="where">2.5. Import Graph</span><span class="arrow">→</span></a></nav>
+          <section>
+            <h1>
+              2.4. Module Organization<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=module-organization" title="Permalink">🔗</a></span></h1>
+            <p>
+              <span id="--index--next-next-next-next-next-next-next-next"></span>
+The project is organized into several module groups:</p>
+            <table class="tabular"><thead><tr><th><p>
+                      Group</p>
+                    </th><th><p>
+                      Key Modules</p>
+                    </th><th><p>
+                      Purpose
+</p>
+                    </th></tr></thead><tr><td><p>
+                    Core</p>
+                  </td><td><p>
+                    <code>Types.lean</code>, <code>Token.lean</code>, <code>Grammar.lean</code>, <code>YamlSpec.lean</code>, <code>CharPredicates.lean</code></p>
+                  </td><td><p>
+                    Type definitions, token types, grammar inductive, spec production predicates
+</p>
+                  </td></tr><tr><td><p>
+                    Scanner</p>
+                  </td><td><p>
+                    <code>Scanner.lean</code>, <code>Scanner/Whitespace.lean</code>, <code>Scanner/Scalar.lean</code>, ...</p>
+                  </td><td><p>
+                    Character-to-token conversion with full state management
+</p>
+                  </td></tr><tr><td><p>
+                    Parser</p>
+                  </td><td><p>
+                    <code>TokenParser.lean</code>, <code>NodeParser.lean</code></p>
+                  </td><td><p>
+                    Token-to-AST recursive descent
+</p>
+                  </td></tr><tr><td><p>
+                    Validation</p>
+                  </td><td><p>
+                    <code>Limits.lean</code>, <code>Schema.lean</code></p>
+                  </td><td><p>
+                    Security limits, Core Schema type resolution
+</p>
+                  </td></tr><tr><td><p>
+                    Output</p>
+                  </td><td><p>
+                    <code>Emitter.lean</code>, <code>Dump.lean</code>, <code>RoundTrip.lean</code></p>
+                  </td><td><p>
+                    Canonical emitter (~164L), style-aware dump, round-trip properties
+</p>
+                  </td></tr><tr><td><p>
+                    FFI</p>
+                  </td><td><p>
+                    <code>FFI.lean</code>, <code>ffi/</code>, <code>python/</code>, <code>rust/</code></p>
+                  </td><td><p>
+                    C/Python/Rust bindings via <code>@[export]</code>
+</p>
+                  </td></tr><tr><td><p>
+                    Proofs</p>
+                  </td><td><p>
+                    <code>Proofs/</code> (61 modules, ~47,000 lines)</p>
+                  </td><td><p>
+                    Machine-checked theorems for soundness, completeness, progress, well-formedness</p>
+                  </td></tr></table></section>
+          <nav class="prev-next-buttons">
+            <a class="local-button active" href="Architecture/Type-System/#type-system" rel="prev" title="2.3. Type System"><span class="arrow">←</span><span class="where">2.3. Type System</span></a><a class="local-button active" href="Architecture/Import-Graph/#import-graph" rel="next" title="2.5. Import Graph"><span class="where">2.5. Import Graph</span><span class="arrow">→</span></a></nav>
+          </div>
+        </main></div>
+    </body>
+  </html>
+

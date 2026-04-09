@@ -8,9 +8,9 @@
     window.location.replace(`${proto}//${hostName}${path}/${srch}${hsh}`);
   }
 })()</script>
-    <base href="./"><meta charset="utf-8">
+    <base href="./../"><meta charset="utf-8">
     <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
-    <title>L4YAML: A Verified YAML 1.2.2 Parser in Lean 4</title><link rel="stylesheet" href="book.css">
+    <title>Testing</title><link rel="stylesheet" href="book.css">
     <link rel="stylesheet" href="verso-vars.css">
     <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js" integrity="sha384-zbcZAIxlvJtNE3Dp5nxLXdXtXyxwOdnILY1TDPVmKFhl4r4nSUG1r8bcFXGVa4Te" crossorigin="anonymous"></script>
     <script src="-verso-search/elasticlunr.min.js"></script>
@@ -167,57 +167,37 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
             <div class="split-toc book">
               <div class="title">
                 <label for="--verso-manual-toc-----bookRoot" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-----bookRoot" checked="checked"></label><span class="">Table of Contents</span></div>
-              <table><tr class="numbered"><td class="num">1.</td><td><a href="Overview/#overview">Overview</a></td></tr><tr class="numbered"><td class="num">2.</td><td><a href="Architecture/#architecture">Architecture</a></td></tr><tr class="numbered"><td class="num">3.</td><td><a href="Verification/#verification">Verification</a></td></tr><tr class="numbered"><td class="num">4.</td><td><a href="Security/#security">Security</a></td></tr><tr class="numbered"><td class="num">5.</td><td><a href="FFI-Bindings/#ffi">FFI Bindings</a></td></tr><tr class="numbered"><td class="num">6.</td><td><a href="Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="Test-Results/#test-results">Test Results</a></td></tr><tr class="unnumbered"><td class="num"><td><a href="Index/#index">Index</a></td></tr></table></div>
+              <table><tr class="numbered"><td class="num">1.</td><td><a href="Overview/#overview">Overview</a></td></tr><tr class="numbered"><td class="num">2.</td><td><a href="Architecture/#architecture">Architecture</a></td></tr><tr class="numbered"><td class="num">3.</td><td><a href="Verification/#verification">Verification</a></td></tr><tr class="numbered"><td class="num">4.</td><td><a href="Security/#security">Security</a></td></tr><tr class="numbered"><td class="num">5.</td><td><a href="FFI-Bindings/#ffi">FFI Bindings</a></td></tr><tr class="current numbered"><td class="num">6.</td><td><a href="Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="Test-Results/#test-results">Test Results</a></td></tr><tr class="unnumbered"><td class="num"><td><a href="Index/#index">Index</a></td></tr></table></div>
+            <div class="split-toc">
+              <div class="title">
+                <label for="--verso-manual-toc-testing" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-testing" checked="checked"></label><span class="number">6.</span> <span class="current"><a href="Testing/#testing">Testing</a></span></div>
+              <table><tr class="numbered"><td class="num">6.1.</td><td><a href="Testing/Specification-Coverage/#spec-coverage">Specification Coverage</a></td></tr><tr class="numbered"><td class="num">6.2.</td><td><a href="Testing/Test-Suites/#test-suites">Test Suites</a></td></tr><tr class="numbered"><td class="num">6.3.</td><td><a href="Testing/Running-Tests/#running-tests">Running Tests</a></td></tr></table></div>
             </div>
           </div>
         <div class="last"></div>
         </nav>
       <main><div class="content-wrapper">
           <nav class="prev-next-buttons">
-            <div></div>
-            <a class="local-button active" href="Overview/#overview" rel="next" title="1. Overview"><span class="where">1. Overview</span><span class="arrow">→</span></a></nav>
+            <a class="local-button active" href="FFI-Bindings/Adding-FFI-Bindings/#adding-ffi" rel="prev" title="5.5. Adding FFI Bindings"><span class="arrow">←</span><span class="where">5.5. Adding FFI Bindings</span></a><a class="local-button active" href="Testing/Specification-Coverage/#spec-coverage" rel="next" title="6.1. Specification Coverage"><span class="where">6.1. Specification Coverage</span><span class="arrow">→</span></a></nav>
           <section>
-            <div class="titlepage">
-              <h1>
-                 L4YAML: A Verified YAML 1.2.2 Parser in Lean 4<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4" title="Permalink">🔗</a></span></h1>
-              <div class="authors">
-                <span class="author">the L4YAML contributors</span></div>
-              <p>
-                L4YAML is a fully verified YAML 1.2.2 parser written in pure Lean 4.
-It delivers 2,309 machine-checked theorems across 61 proof modules,
-zero axioms, zero <code>sorry</code>, and zero <code>partial def</code> — while passing
-100% of the YAML 1.2.2 specification examples and 100% of the
-applicable yaml-test-suite test IDs (225/225).</p>
-              <p>
-                This manual documents the project's architecture, verification
-strategy, security model, and FFI bindings for C, Python, and Rust.</p>
-              </div>
-            <section>
-              <h2>
-                Contents</h2>
-              <ol class="section-toc">
-                <li>
-                  <a href="Overview/#overview"><span class="number">1.</span> Overview</a></li>
-                <li>
-                  <a href="Architecture/#architecture"><span class="number">2.</span> Architecture</a></li>
-                <li>
-                  <a href="Verification/#verification"><span class="number">3.</span> Verification</a></li>
-                <li>
-                  <a href="Security/#security"><span class="number">4.</span> Security</a></li>
-                <li>
-                  <a href="FFI-Bindings/#ffi"><span class="number">5.</span> FFI Bindings</a></li>
-                <li>
-                  <a href="Testing/#testing"><span class="number">6.</span> Testing</a></li>
-                <li>
-                  <a href="Test-Results/#test-results"><span class="number">7.</span> Test Results</a></li>
-                <li>
-                  <a href="Index/#index"><span class="unnumbered"></span>Index</a></li>
-                </ol>
-              </section>
+            <h1>
+              6. Testing<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=testing" title="Permalink">🔗</a></span></h1>
+            <p>
+              <span id="--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"></span>
+Beyond the 2,309 formal theorems, L4YAML maintains extensive
+runtime and compile-time test suites that validate the parser
+against real-world YAML inputs and the official specification.</p>
+            <ol class="section-toc">
+              <li>
+                <a href="Testing/Specification-Coverage/#spec-coverage"><span class="number">6.1.</span> Specification Coverage</a></li>
+              <li>
+                <a href="Testing/Test-Suites/#test-suites"><span class="number">6.2.</span> Test Suites</a></li>
+              <li>
+                <a href="Testing/Running-Tests/#running-tests"><span class="number">6.3.</span> Running Tests</a></li>
+              </ol>
             </section>
           <nav class="prev-next-buttons">
-            <div></div>
-            <a class="local-button active" href="Overview/#overview" rel="next" title="1. Overview"><span class="where">1. Overview</span><span class="arrow">→</span></a></nav>
+            <a class="local-button active" href="FFI-Bindings/Adding-FFI-Bindings/#adding-ffi" rel="prev" title="5.5. Adding FFI Bindings"><span class="arrow">←</span><span class="where">5.5. Adding FFI Bindings</span></a><a class="local-button active" href="Testing/Specification-Coverage/#spec-coverage" rel="next" title="6.1. Specification Coverage"><span class="where">6.1. Specification Coverage</span><span class="arrow">→</span></a></nav>
           </div>
         </main></div>
     </body>

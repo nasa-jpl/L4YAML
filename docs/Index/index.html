@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+      (function(){
+  const {protocol:proto, host:hostName, pathname:path, search:srch, hash:hsh} = window.location;
+  if (!(path.endsWith("/") || path.endsWith(".html"))) {
+    window.location.replace(`${proto}//${hostName}${path}/${srch}${hsh}`);
+  }
+})()</script>
+    <base href="./../"><meta charset="utf-8">
+    <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+    <title>Index</title><link rel="stylesheet" href="book.css">
+    <link rel="stylesheet" href="verso-vars.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js" integrity="sha384-zbcZAIxlvJtNE3Dp5nxLXdXtXyxwOdnILY1TDPVmKFhl4r4nSUG1r8bcFXGVa4Te" crossorigin="anonymous"></script>
+    <script src="-verso-search/elasticlunr.min.js"></script>
+    <script src="-verso-search/fuzzysort.min.js"></script>
+    <script src="-verso-search/searchIndex.js"></script>
+    <script type="module" src="-verso-search/search-init.js"></script>
+    <link rel="stylesheet" href="-verso-search/search-box.css">
+    <link rel="stylesheet" href="-verso-search/search-highlight.css">
+    <link rel="stylesheet" href="-verso-search/domain-display.css">
+    <script src="-verso-data/katex/katex.js"></script>
+    <script src="-verso-data/katex/math.js"></script>
+    <link rel="stylesheet" href="-verso-data/katex/katex.css">
+    <style>
+table.tabular {
+  margin: auto;
+  border-spacing: 1rem;
+}
+table.tabular.left-align {
+  margin-right: auto;
+  margin-left: 0;
+}
+table.tabular.center-align {
+  margin: auto;
+}
+table.tabular.right-align {
+  margin-left auto;
+  margin-right: 0;
+}
+table.tabular td, table.tabular th {
+  text-align: left;
+  vertical-align: top;
+}
+table.tabular td > p:first-child, table.tabular th > p:first-child {
+  margin-top: 0;
+}
+table.tabular td > p:last-child, table.tabular th > p:first-child {
+  margin-bottom: 0;
+}
+</style><style>
+    main .theIndex {
+      padding-left: 0;
+      font-family: var(--verso-text-font-family);
+    }
+
+    main .theIndex nav {
+      position: sticky;
+      top: var(--verso-header-height);
+      background: white;
+      font-family: var(--verso-structure-font-family);
+    }
+
+    main .theIndex [id] {
+      /* This needs the combined height of the index header and the page header. We
+         know the height of the page header, but the index header height varies, so
+         we use the maximum height it gets which also works well for readers with
+         wide screens */
+      scroll-margin-top: calc(var(--verso-header-height) + 7.5rem);
+    }
+
+    @media screen and (max-width: 700px) {
+      /* On mobile, the sticky index takes up half the screen. */
+      main .theIndex nav {
+        position: static;
+      }
+
+      main .theIndex [id] {
+        /* On mobile, the index header is not sticky, so we just need to
+        be below the page header. */
+        scroll-margin-top: var(--verso-header-height);
+      }
+    }
+
+    main .theIndex nav ol {
+      padding: 0;
+    }
+
+    main .theIndex nav ol li {
+      display: inline-block;
+    }
+
+    main .theIndex nav ol li a {
+      /* Padding instead of margin to have a bigger click target */
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+    /* Increase the size of the touch target on phones */
+    @media screen and (max-width: 700px) {
+      main .theIndex nav ol li a {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+      }
+    }
+
+    main .theIndex nav ol li:first-child a {
+      padding-left: 0;
+    }
+
+    main .theIndex nav ol li + li:before {
+      content: "|";
+    }
+
+    main .theIndex h1,
+    main .theIndex h2,
+    main .theIndex h3,
+    main .theIndex h4,
+    main .theIndex h5,
+    main .theIndex h6 {
+      margin-top: 0;
+    }
+
+    main .theIndex ol {
+      list-style-type: none;
+    }
+
+    main .theIndex .division > ol {
+      padding-left: 0;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+      overflow-wrap: break-word;
+    }
+
+   main .theIndex .division > ol > li {
+      margin-bottom: 0.5rem;
+    }
+
+    main .theIndex .division ol ol {
+      padding-left: 1rem;
+    }
+
+    main .theIndex .division {
+      break-inside: avoid;
+      counter-reset: none;
+      max-width: none;
+      width: auto;
+    }
+    </style><script src="-verso-search/search-highlight.js" defer="defer"></script>
+    </head>
+  <body>
+    <header>
+      <div class="header-logo-wrapper"></div>
+      <div class="header-title-wrapper">
+        <a href="" class="header-title"><h1>
+            L4YAML</h1>
+          </a></div>
+      </header>
+    <label for="toggle-toc" id="toggle-toc-click"><span class="line line1"></span><span class="line line2"></span><span class="line line3"></span></label><div class="with-toc">
+      <div class="toc-backdrop" onclick="document.getElementById('toggle-toc-click')?.click()"></div>
+      <nav id="toc">
+        <input type="checkbox" id="toggle-toc"><div class="first">
+          <a href="" class="toc-title"><h1>
+              L4YAML</h1>
+            </a><div class="split-tocs">
+            <div class="split-toc book">
+              <div class="title">
+                <label for="--verso-manual-toc-----bookRoot" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-----bookRoot" checked="checked"></label><span class="">Table of Contents</span></div>
+              <table><tr class="numbered"><td class="num">1.</td><td><a href="Overview/#overview">Overview</a></td></tr><tr class="numbered"><td class="num">2.</td><td><a href="Architecture/#architecture">Architecture</a></td></tr><tr class="numbered"><td class="num">3.</td><td><a href="Verification/#verification">Verification</a></td></tr><tr class="numbered"><td class="num">4.</td><td><a href="Security/#security">Security</a></td></tr><tr class="numbered"><td class="num">5.</td><td><a href="FFI-Bindings/#ffi">FFI Bindings</a></td></tr><tr class="numbered"><td class="num">6.</td><td><a href="Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="Test-Results/#test-results">Test Results</a></td></tr><tr class="current unnumbered"><td class="num"><td><a href="Index/#index">Index</a></td></tr></table></div>
+            <div class="split-toc">
+              <div class="title">
+                <span class="no-toggle"></span><span class="unnumbered"></span><span class="current"><a href="Index/#index">Index</a></span></div>
+              </div>
+            </div>
+          </div>
+        <div class="last"></div>
+        </nav>
+      <main><div class="content-wrapper">
+          <nav class="prev-next-buttons">
+            <a class="local-button active" href="Test-Results/yaml-test-suite-Coverage/#suite-coverage-results" rel="prev" title="7.4. yaml-test-suite Coverage"><span class="arrow">←</span><span class="where">7.4. yaml-test-suite Coverage</span></a><div></div>
+            </nav>
+          <section>
+            <h1>
+              Index<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=index" title="Permalink">🔗</a></span></h1>
+            <div class="theIndex">
+              <nav>
+                <ol>
+                  <li>
+                    <a href="Index/#---index-hdr-A">A</a></li>
+                  <li>
+                    <a href="Index/#---index-hdr-C">C</a></li>
+                  <li>
+                    <a href="Index/#---index-hdr-D">D</a></li>
+                  <li>
+                    <a href="Index/#---index-hdr-F">F</a></li>
+                  <li>
+                    <a href="Index/#---index-hdr-L">L</a></li>
+                  <li>
+                    <a href="Index/#---index-hdr-M">M</a></li>
+                  <li>
+                    <a href="Index/#---index-hdr-P">P</a></li>
+                  <li>
+                    <a href="Index/#---index-hdr-R">R</a></li>
+                  <li>
+                    <a href="Index/#---index-hdr-S">S</a></li>
+                  <li>
+                    <a href="Index/#---index-hdr-T">T</a></li>
+                  <li>
+                    <a href="Index/#---index-hdr-V">V</a></li>
+                  <li>
+                    <a href="Index/#---index-hdr-Y">Y</a></li>
+                  <li>
+                    <a href="Index/#---index-hdr-Z">Z</a></li>
+                  </ol>
+                </nav>
+              <div class="division">
+                <h2 id="---index-hdr-A">
+                  A</h2>
+                <ol>
+                  <li>
+                    <a href="Architecture/Scanner-_LPAR_Lexical-Layer_RPAR_/#--index--next-next-next-next-next"><span id="---entry-append-only-tokens">append-only tokens</span></a></li>
+                  <li>
+                    <a href="Architecture/#--index--next-next"><span id="---entry-architecture">architecture</span></a></li>
+                  </ol>
+                </div>
+              <div class="division">
+                <h2 id="---index-hdr-C">
+                  C</h2>
+                <ol>
+                  <li>
+                    <a href="FFI-Bindings/C-API/#--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-C-API">C API</span></a></li>
+                  <li>
+                    <a href="Verification/Three-Layer-Strategy/#--index--next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-compile-time-guards">compile-time guards</span></a></li>
+                  <li>
+                    <a href="Test-Results/FFI-Test-Results/#--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-cross-language-comparison">cross-language comparison</span></a></li>
+                  </ol>
+                </div>
+              <div class="division">
+                <h2 id="---index-hdr-D">
+                  D</h2>
+                <ol>
+                  <li>
+                    <a href="Test-Results/Diagnostic-Checks/#--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-diagnostic-results">diagnostic results</span></a></li>
+                  </ol>
+                </div>
+              <div class="division">
+                <h2 id="---index-hdr-F">
+                  F</h2>
+                <ol>
+                  <li>
+                    <a href="FFI-Bindings/#--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-FFI">FFI</span></a></li>
+                  <li>
+                    <a href="Test-Results/FFI-Test-Results/#--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-FFI-test-results">FFI test results</span></a></li>
+                  </ol>
+                </div>
+              <div class="division">
+                <h2 id="---index-hdr-L">
+                  L</h2>
+                <ol>
+                  <li>
+                    <a href="Overview/#--index-"><span id="---entry-L4YAML">L4YAML</span></a></li>
+                  <li>
+                    <a href="Test-Results/Lean-Test-Suites/#--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-Lean-test-results">Lean test results</span></a></li>
+                  </ol>
+                </div>
+              <div class="division">
+                <h2 id="---index-hdr-M">
+                  M</h2>
+                <ol>
+                  <li>
+                    <a href="Verification/Three-Layer-Strategy/#--index--next-next-next-next-next-next-next-next-next-next"><span id="---entry-machine-checked-proofs">machine-checked proofs</span></a></li>
+                  <li>
+                    <a href="Architecture/Module-Organization/#--index--next-next-next-next-next-next-next-next"><span id="---entry-module-organization">module organization</span></a></li>
+                  </ol>
+                </div>
+              <div class="division">
+                <h2 id="---index-hdr-P">
+                  P</h2>
+                <ol>
+                  <li>
+                    <a href="Security/ParserLimits/#--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-ParserLimits">ParserLimits</span></a></li>
+                  <li>
+                    <a href="FFI-Bindings/Python-API/#--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-Python-API">Python API</span></a></li>
+                  <li>
+                    <a href="Security/Preset-Configurations/#--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-presets">presets</span></a></li>
+                  <li>
+                    <a href="Verification/Proof-Engineering-Patterns/#--index--next-next-next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-proof-engineering">proof engineering</span></a></li>
+                  </ol>
+                </div>
+              <div class="division">
+                <h2 id="---index-hdr-R">
+                  R</h2>
+                <ol>
+                  <li>
+                    <a href="FFI-Bindings/Rust-API/#--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-Rust-API">Rust API</span></a></li>
+                  <li>
+                    <a href="Verification/Three-Layer-Strategy/#--index--next-next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-runtime-tests">runtime tests</span></a></li>
+                  </ol>
+                </div>
+              <div class="division">
+                <h2 id="---index-hdr-S">
+                  S</h2>
+                <ol>
+                  <li>
+                    <a href="Architecture/Scanner-_LPAR_Lexical-Layer_RPAR_/#--index--next-next-next"><span id="---entry-scanner">scanner</span></a></li>
+                  <li>
+                    <a href="Security/#--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-security">security</span></a></li>
+                  <li>
+                    <a href="Testing/Specification-Coverage/#--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-specification-coverage">specification coverage</span></a></li>
+                  </ol>
+                </div>
+              <div class="division">
+                <h2 id="---index-hdr-T">
+                  T</h2>
+                <ol>
+                  <li>
+                    <a href="Test-Results/#--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-test-results">test results</span></a></li>
+                  <li>
+                    <a href="Testing/Test-Suites/#--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-test-suites">test suites</span></a></li>
+                  <li>
+                    <a href="Testing/#--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-testing">testing</span></a></li>
+                  <li>
+                    <a href="Architecture/Token-Parser-_LPAR_Syntactic-Layer_RPAR_/#--index--next-next-next-next-next-next"><span id="---entry-token-parser">token parser</span></a></li>
+                  </ol>
+                </div>
+              <div class="division">
+                <h2 id="---index-hdr-V">
+                  V</h2>
+                <ol>
+                  <li>
+                    <a href="Verification/#--index--next-next-next-next-next-next-next-next-next"><span id="---entry-verification">verification</span></a></li>
+                  </ol>
+                </div>
+              <div class="division">
+                <h2 id="---index-hdr-Y">
+                  Y</h2>
+                <ol>
+                  <li>
+                    <a href="Overview/#--index--next"><span id="---entry-YAML-1___2___2">YAML 1.2.2</span></a></li>
+                  <li>
+                    <a href="Architecture/Scanner-_LPAR_Lexical-Layer_RPAR_/#--index--next-next-next-next"><span id="---entry-YamlToken">YamlToken</span></a></li>
+                  <li>
+                    <a href="Architecture/Type-System/#--index--next-next-next-next-next-next-next"><span id="---entry-YamlValue">YamlValue</span></a></li>
+                  <li>
+                    <a href="Test-Results/yaml-test-suite-Coverage/#--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-yaml-test-suite-coverage">yaml-test-suite coverage</span></a></li>
+                  </ol>
+                </div>
+              <div class="division">
+                <h2 id="---index-hdr-Z">
+                  Z</h2>
+                <ol>
+                  <li>
+                    <a href="Verification/Zero-Axiom-Policy/#--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next"><span id="---entry-zero-axioms">zero axioms</span></a></li>
+                  </ol>
+                </div>
+              </div>
+            </section>
+          <nav class="prev-next-buttons">
+            <a class="local-button active" href="Test-Results/yaml-test-suite-Coverage/#suite-coverage-results" rel="prev" title="7.4. yaml-test-suite Coverage"><span class="arrow">←</span><span class="where">7.4. yaml-test-suite Coverage</span></a><div></div>
+            </nav>
+          </div>
+        </main></div>
+    </body>
+  </html>
+

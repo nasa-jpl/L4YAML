@@ -1,0 +1,133 @@
+=== dumproundtrip ===
+=== Dump Round-Trip Tests ===
+
+--- Structural properties ---
+  ✓ plain scalar → content itself
+  ✓ empty string → double-quoted ""
+  ✓ reserved 'true' → auto-quoted
+  ✓ reserved 'null' → auto-quoted
+  ✓ reserved 'yes' → auto-quoted
+  ✓ empty flow sequence → []
+  ✓ empty flow mapping → {}
+  ✓ empty block sequence → [] (degenerate)
+  ✓ empty block mapping → {} (degenerate)
+  ✓ alias → *name
+  ✓ plain scalar output non-empty
+  ✓ empty scalar output non-empty (quotes)
+  ✓ flow sequence output non-empty
+  ✓ flow mapping output non-empty
+
+--- Content analysis (isPlainSafe) ---
+  ✓ simple word is plain-safe
+  ✓ number is plain-safe
+  ✓ mixed alphanum is plain-safe
+  ✓ interior space is plain-safe
+  ✓ empty string not plain-safe
+  ✓ leading space not plain-safe
+  ✓ trailing space not plain-safe
+  ✓ newline not plain-safe
+  ✓ ': ' (colon-space) not plain-safe
+  ✓ ' #' (space-hash) not plain-safe
+  ✓ '{' not plain-safe
+  ✓ '[' not plain-safe
+  ✓ 'true' not plain-safe
+  ✓ 'false' not plain-safe
+  ✓ 'null' not plain-safe
+  ✓ '~' not plain-safe
+  ✓ 'Yes' not plain-safe
+  ✓ 'NO' not plain-safe
+  ✓ '-item' not plain-safe
+  ✓ '?key' not plain-safe
+  ✓ ':val' not plain-safe
+  ✓ '&anchor' not plain-safe
+  ✓ '*alias' not plain-safe
+  ✓ '!tag' not plain-safe
+  ✓ '|literal' not plain-safe
+  ✓ '>folded' not plain-safe
+  ✓ single-quote leader not plain-safe
+  ✓ double-quote leader not plain-safe
+  ✓ '%directive' not plain-safe
+  ✓ '@reserved' not plain-safe
+  ✓ '`reserved' not plain-safe
+
+--- Style preservation ---
+  ✓ config doubleQuoted forces quoting
+  ✓ config singleQuoted forces quoting
+  ✓ singleQuoted falls back to double for newlines
+  ✓ literal block scalar honored
+  ✓ folded block scalar honored
+  ✓ literal strip chomp (|-)
+  ✓ literal keep chomp (|+)
+  ✓ config flow overrides block sequence
+  ✓ config flow overrides block mapping
+  ✓ flow annotation preserved with block config
+  ✓ anchor emitted
+  ✓ tag emitted
+  ✓ tag + anchor both emitted
+
+--- Dump→Parse round-trip ---
+  ✓ plain 'hello' round-trips
+  ✓ plain 'two words' round-trips
+  ✓ plain '123' round-trips
+  ✓ reserved 'true' round-trips
+  ✓ reserved 'false' round-trips
+  ✓ reserved 'null' round-trips
+  ✓ reserved 'yes' round-trips
+  ✓ reserved '~' round-trips
+  ✓ empty string round-trips
+  ✓ 'key: value' round-trips
+  ✓ 'has #comment' round-trips
+  ✓ '{flow}' round-trips
+  ✓ '[array]' round-trips
+  ✓ double-quoted config round-trips
+  ✓ single-quoted config round-trips
+  ✓ empty flow seq round-trips
+  ✓ flow seq [a] round-trips
+  ✓ flow seq [a, b] round-trips
+  ✓ empty flow map round-trips
+  ✓ flow map {k: v} round-trips
+  ✓ flow map 2 pairs round-trips
+  ✓ block seq [a] round-trips
+  ✓ block seq [a, b] round-trips
+  ✓ block map {key: val} round-trips
+  ✓ block map 2 pairs round-trips
+  ✓ mapping with seq value round-trips
+  ✓ nested mapping round-trips
+  ✓ mixed block/flow round-trips
+  ✓ nested flow round-trips
+  ✓ tab escape round-trips
+  ✓ backslash round-trips
+  ✓ embedded quotes round-trips
+  ✓ flow config on block seq round-trips
+  ✓ flow config on block map round-trips
+  ✓ custom indent round-trips
+
+--- Document dump ---
+  ✓ dumpDirective YAML
+  ✓ dumpDirective TAG
+  ✓ document no directives
+  ✓ document with YAML directive
+  ✓ document multiple directives
+  ✓ dumpDocuments empty
+  ✓ dumpDocuments single
+  ✓ dumpDocuments two → ---/...
+  ✓ dumpDocuments three
+
+--- Flow-context edge cases (v0.2.13.4) ---
+  ✓ flow seq: colon in value quotes
+  ✓ flow seq: trailing colon quotes
+  ✓ flow map: colon in value quotes
+  ✓ flow seq: key:value pattern quotes
+  ✓ flow map: colon-only value quotes
+  ✓ block seq in flow map → flow
+  ✓ block map in flow seq → flow
+  ✓ block-in-flow-in-block round-trip
+  ✓ block seq in flow renders as flow brackets
+  ✓ flow seq: multiline scalar double-quoted
+  ✓ flow seq: trailing dash quotes
+  ✓ flow config forces all to flow
+  ✓ flow seq: hash in value quotes
+  ✓ block seq: trailing colon quotes
+  ✓ block map key: trailing colon quotes
+
+=== Results: 117/117 passed ===

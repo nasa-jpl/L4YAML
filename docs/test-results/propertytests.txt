@@ -1,0 +1,144 @@
+=== propertytests ===
+=== Property-Based Round-Trip Tests (v0.2.13.3) ===
+
+--- Basic dump→parse round-trip ---
+  ✓ 100/100 random nodes round-trip successfully
+
+--- Flow-style dump→parse round-trip ---
+  ✓ 50/50 flow-style nodes round-trip
+
+--- Double-quoted dump→parse round-trip ---
+  ✓ 50/50 double-quoted nodes round-trip
+
+--- Scalar edge cases ---
+  ✓ emptyNode round-trips
+  ✓ singleQuoted empty
+  ✓ singleQuoted 'hello'
+  ✓ singleQuoted with colon-space
+  ✓ singleQuoted with hash
+  ✓ singleQuoted with flow chars
+  ✓ singleQuoted with indicators
+  ✓ doubleQuoted empty
+  ✓ doubleQuoted 'hello'
+  ✓ doubleQuoted with colon
+  ✓ doubleQuoted with braces
+  ✓ doubleQuoted with all indicators
+  ✓ doubleQuoted reserved 'true'
+  ✓ doubleQuoted reserved 'null'
+  ✓ doubleQuoted reserved 'false'
+  ✓ doubleQuoted numeric '42'
+
+--- Collection structure round-trip ---
+  ✓ block seq [a, b, c]
+  ✓ block map {key1: val1, key2: val2}
+  ✓ flow seq [x, y]
+  ✓ flow map {a: 1, b: 2}
+  ✓ nested block map with seq value
+  ✓ block seq of maps
+  ✓ flow collections inside block
+  ✓ empty flow seq []
+  ✓ empty flow map {}
+  ✓ 3-level deep nesting
+
+--- Mutation resilience ---
+  ✓ indent mutations: 18/18 handled consistently
+  ✓ tab mutations: 9/9 handled consistently
+  ✓ newline mutations: 9/9 handled consistently
+  ✓ colon mutations: 9/9 handled consistently
+
+--- Diverse seed coverage ---
+  ✓ seed 0: 5/5 round-trip
+  ✓ seed 1: 5/5 round-trip
+  ✓ seed 7: 5/5 round-trip
+  ✓ seed 13: 5/5 round-trip
+  ✓ seed 42: 5/5 round-trip
+  ✓ seed 97: 5/5 round-trip
+  ✓ seed 137: 5/5 round-trip
+  ✓ seed 271: 5/5 round-trip
+  ✓ seed 314: 5/5 round-trip
+  ✓ seed 577: 5/5 round-trip
+  ✓ seed 691: 5/5 round-trip
+  ✓ seed 997: 5/5 round-trip
+  ✓ seed 1234: 5/5 round-trip
+  ✓ seed 2718: 5/5 round-trip
+  ✓ seed 3141: 5/5 round-trip
+  ✓ seed 4242: 5/5 round-trip
+  ✓ seed 6174: 5/5 round-trip
+  ✓ seed 7919: 5/5 round-trip
+  ✓ seed 8675: 5/5 round-trip
+  ✓ seed 9999: 5/5 round-trip
+  ✓ total: 100/100 across 20 seeds
+
+--- DumpConfig variation round-trip ---
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+  ✓ node+default
+  ✓ node+indent=1
+  ✓ node+indent=4
+  ✓ node+flow style
+  ✓ node+double-quoted
+  ✓ node+single-quoted
+  ✓ node+allow reserved
+
+=== Results: 124/124 passed ===
