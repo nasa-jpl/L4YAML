@@ -2806,7 +2806,8 @@ theorem scanNextToken_preprocess_flow_ws1 (s : ScannerState) (c : Char)
       ∧ s₁.explicitKeyLine = s.explicitKeyLine
       ∧ s₁.line = s.line
       ∧ scanNextToken_preprocess s = scanNextToken_preprocess s₁
-      ∧ (AllTokensOnLine s s.line → AllTokensOnLine s₁ s₁.line) := by
+      ∧ (AllTokensOnLine s s.line → AllTokensOnLine s₁ s₁.line)
+      ∧ s₁.simpleKeyStack = s.simpleKeyStack := by
   -- Key: skipToContent absorbs the single space. We decompose the proof:
   -- (a) skipToContent s = .ok s₁ for some s₁ at c :: rest with field preservation
   -- (b) skipToContent s₁ = .ok s₁ (identity, via skipToContent_of_content_char)
@@ -2822,7 +2823,8 @@ theorem scanNextToken_preprocess_flow_ws1 (s : ScannerState) (c : Char)
       ∧ s₁.explicitKeyLine = s.explicitKeyLine
       ∧ s₁.col = s.col + 1
       ∧ s₁.line = s.line
-      ∧ s₁.tokens = s.tokens := by
+      ∧ s₁.tokens = s.tokens
+      ∧ s₁.simpleKeyStack = s.simpleKeyStack := by
     -- Both needIndentCheck branches yield s.advance. Proof via advance lemmas.
     have ⟨h_pk_space, h_lt⟩ := peek_of_chars_cons s ' ' (c :: rest) s.col hcorr
     -- s.advance is at c :: rest with col + 1
@@ -2880,7 +2882,8 @@ theorem scanNextToken_preprocess_flow_ws1 (s : ScannerState) (c : Char)
     refine ⟨s.advance, ?_, h_adv_corr', ScannerCorrectness.advance_preserves_flowLevel s,
       advance_indents s, advance_preserves_dp s, advance_explicitKeyLine s, h_adv_col,
       advance_line_of_peek s ' ' h_lt h_pk_space (by decide) (by decide),
-      ScannerCorrectness.advance_preserves_tokens s⟩
+      ScannerCorrectness.advance_preserves_tokens s,
+      ScannerCorrectness.advance_preserves_simpleKeyStack s⟩
     -- skipToContent s = .ok s.advance
     unfold skipToContent
     obtain ⟨m, hm⟩ : ∃ m, s.inputEnd - s.offset + 1 = m + 1 :=
@@ -2889,7 +2892,7 @@ theorem scanNextToken_preprocess_flow_ws1 (s : ScannerState) (c : Char)
     simp only [h_ws]
     -- skipToContentComment s.advance: c ≠ '#' → identity
     unfold skipToContentComment; rw [h_pk_adv]; simp [h_nc, h_pk_adv, h_nlb]
-  obtain ⟨s₁, h_stc_ok, h_corr₁, h_fl₁, h_ids₁, h_dp₁, h_ek₁, h_col₁, h_line₁, h_toks₁⟩ := h_stc_exists
+  obtain ⟨s₁, h_stc_ok, h_corr₁, h_fl₁, h_ids₁, h_dp₁, h_ek₁, h_col₁, h_line₁, h_toks₁, h_stack₁⟩ := h_stc_exists
   -- Part (b): derive further properties of s₁
   have h_flow₁ : s₁.inFlow = true := by
     unfold ScannerState.inFlow
@@ -2918,7 +2921,8 @@ theorem scanNextToken_preprocess_flow_ws1 (s : ScannerState) (c : Char)
     rw [saveSimpleKey_preserves_peek, h_pk₁]
   exact ⟨s₁, h_corr₁, h_flow₁, h_fl₁, h_indent₁, h_col₁, h_dp₁, h_ids₁, h_ek₁, h_line₁,
     by rw [h_pp_s, h_pp_s₁],
-    fun h_a => by unfold AllTokensOnLine at h_a ⊢; simp only [h_line₁, h_toks₁]; exact h_a⟩
+    fun h_a => by unfold AllTokensOnLine at h_a ⊢; simp only [h_line₁, h_toks₁]; exact h_a,
+    h_stack₁⟩
 
 -- ═══ Flow-context dispatch lemmas ═══
 
@@ -3101,7 +3105,8 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       ∧ s'.simpleKeyAllowed = false
       ∧ s'.line = s.line
       ∧ AllTokensOnLine s' s'.line
-      ∧ EndLineOnLine s' := by
+      ∧ EndLineOnLine s'
+      ∧ s'.simpleKeyStack = s.simpleKeyStack := by
   -- Step 1: preprocessing
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '"')) :=
     scanNextToken_preprocess_flow s '"' ((escapeString content).toList ++ ['"'] ++ rest) s.col
@@ -3174,7 +3179,8 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       ∧ s_final.simpleKeyAllowed = false
       ∧ s_final.line = s.line
       ∧ AllTokensOnLine s_final s.line
-      ∧ EndLineOnLine s_final := by
+      ∧ EndLineOnLine s_final
+      ∧ s_final.simpleKeyStack = s.simpleKeyStack := by
     unfold scanNextToken_dispatchContent
     simp (config := { decide := true }) only [bind, Except.bind, pure, Except.pure, h_dq]
     -- AllTokensOnLine for s_dq: scanDoubleQuoted preserves AllTokensOnLine
@@ -3190,6 +3196,10 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
         s.line h_atol_ad h_ad_line
     have h_sk_dq : s_dq.simpleKey = s_ad.simpleKey :=
       scanDoubleQuoted_preserves_simpleKey s_ad s_dq h_dq
+    have h_dq_stack : s_dq.simpleKeyStack = s_ad.simpleKeyStack :=
+      ScannerCorrectness.scanDoubleQuoted_preserves_simpleKeyStack s_ad s_dq h_dq
+    have h_ad_stack : s_ad.simpleKeyStack = s.simpleKeyStack := by
+      simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
     -- After scanDoubleQuoted, simpleKey.possible branches
     cases h_skp : s_dq.simpleKey.possible
     · -- simpleKey.possible = false: s' = s_dq
@@ -3197,7 +3207,7 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
       refine ⟨_, rfl, h_dq_corr,
         h_dq_fl.trans h_ad_fl, h_dq_dp.trans h_ad_dp, h_dq_ids.trans h_ad_ids,
         h_dq_ek.trans h_ad_ek, h_dq_col, h_dq_tokens, h_dq_ska,
-        h_dq_line.trans h_ad_line, h_atol_dq, ?_⟩
+        h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack⟩
       · intro h_poss; rw [h_skp] at h_poss; exact absurd h_poss (by decide)
     · -- simpleKey.possible = true: s' = { s_dq with simpleKey endLine update }
       simp only [↓reduceIte]
@@ -3206,7 +3216,7 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
          h_dq_corr.input_prefix, h_dq_corr.indent_cols_nonneg⟩,
         h_dq_fl.trans h_ad_fl, h_dq_dp.trans h_ad_dp, h_dq_ids.trans h_ad_ids,
         h_dq_ek.trans h_ad_ek, h_dq_col, h_dq_tokens, h_dq_ska,
-        h_dq_line.trans h_ad_line, h_atol_dq, ?_⟩
+        h_dq_line.trans h_ad_line, h_atol_dq, ?_, h_dq_stack.trans h_ad_stack⟩
       · -- EndLineOnLine: endLine just set to s_dq.line, pos from saveSimpleKey
         intro _
         constructor
@@ -3221,12 +3231,12 @@ theorem scanNextToken_flow_scanDoubleQuoted (s : ScannerState)
             rw [← h_ad_sk, ← h_sk_dq]; exact h_skp
           exact (h_eol_sk h_sk_poss).2 |>.trans (saveSimpleKey_preserves_line s)
             |>.trans (h_dq_line.trans h_ad_line).symm
-  obtain ⟨s_final, h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f, h_tok_f, h_ska_f, h_line_f, h_atol_f, h_endline_f⟩ := h_content
+  obtain ⟨s_final, h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f, h_tok_f, h_ska_f, h_line_f, h_atol_f, h_endline_f, h_stack_f⟩ := h_content
   -- Step 8: compose through scanNextToken
   exact ⟨s_final, scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl h_check
     h_flow_none h_block_none h_dc_eq, h_corr_f, h_fl_f, h_dp_f, h_ids_f, h_ek_f, h_col_f,
     fun t ht => by rw [h_tok_f] at ht; injection ht with ht; subst ht; exact ⟨nofun, nofun, nofun⟩,
-    h_ska_f, h_line_f, (by rw [h_line_f]; exact h_atol_f), h_endline_f⟩
+    h_ska_f, h_line_f, (by rw [h_line_f]; exact h_atol_f), h_endline_f, h_stack_f⟩
 
 -- ═══ scanNextToken for '[' from initial state ═══
 
@@ -3389,7 +3399,8 @@ theorem scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
     (h_col_pos : s.col > 0)
-    (h_atol : AllTokensOnLine s s.line) :
+    (h_atol : AllTokensOnLine s s.line)
+    (h_endline : EndLineOnLine s) :
     ∃ s', scanNextToken s = .ok (some s')
       ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
       ∧ s'.flowLevel = s.flowLevel + 1
@@ -3399,7 +3410,9 @@ theorem scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
       ∧ s'.col = s.col + 1
       ∧ s'.line = s.line
       ∧ AllTokensOnLine s' s'.line
-      ∧ EndLineOnLine s' := by
+      ∧ EndLineOnLine s'
+      ∧ StackEndLineOnLine s' s'.line
+      ∧ s'.simpleKeyStack.pop = s.simpleKeyStack := by
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '[')) :=
     scanNextToken_preprocess_flow s '[' rest s.col hcorr h_flow
       (by decide) (by decide) (by decide)
@@ -3455,7 +3468,7 @@ theorem scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
     rw [scanFlowSequenceStart_line_eq]
     exact (advance_line_of_peek s_ad '[' h_lt_ad h_peek_ad (by decide) (by decide)).trans h_ad_line
   refine ⟨_, h_snt, ?_, h_fl_f.trans (congrArg (· + 1) h_ad_fl),
-    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_⟩
+    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_col_f, h_ad_col]
   · rw [h_line_f]
@@ -3466,6 +3479,20 @@ theorem scanNextToken_flow_open_nested (s : ScannerState) (rest : List Char)
     intro h_poss
     rw [scanFlowSequenceStart_simpleKey_not_possible] at h_poss
     exact absurd h_poss (by decide)
+  · -- StackEndLineOnLine: pushed savedKey = s_ad.simpleKey satisfies EndLineOnLine at s'.line
+    unfold StackEndLineOnLine
+    rw [ScannerCorrectness.scanFlowSequenceStart_stack_pushed, Array.back?_push, h_line_f]
+    intro h_poss
+    have h_ad_endline : EndLineOnLine s_ad := by
+      simp only [s_ad]; split
+      · show EndLineOnLine { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
+        exact EndLineOnLine_saveSimpleKey_flow s h_endline
+      · exact EndLineOnLine_saveSimpleKey_flow s h_endline
+    exact ⟨(h_ad_endline h_poss).1.trans h_ad_line, (h_ad_endline h_poss).2.trans h_ad_line⟩
+  · -- simpleKeyStack.pop = s.simpleKeyStack
+    rw [ScannerCorrectness.scanFlowSequenceStart_stack_pushed, Array.pop_push]
+    show s_ad.simpleKeyStack = s.simpleKeyStack
+    simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
 
 -- ═══ Block indicators: concrete none lemmas ═══
 
@@ -3708,7 +3735,8 @@ theorem scanNextToken_flow_comma (s : ScannerState)
       ∧ s'.explicitKeyLine = s.explicitKeyLine
       ∧ s'.col = s.col + 1
       ∧ s'.line = s.line
-      ∧ AllTokensOnLine s' s'.line := by
+      ∧ AllTokensOnLine s' s'.line
+      ∧ s'.simpleKeyStack = s.simpleKeyStack := by
   -- Step 1: preprocessing
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, ',')) :=
     scanNextToken_preprocess_flow s ',' rest s.col hcorr h_flow
@@ -3773,13 +3801,19 @@ theorem scanNextToken_flow_comma (s : ScannerState)
     rw [advance_line_of_peek (s_ad.emit .flowEntry) ',' h_lt_ad h_peek_ad (by decide) (by decide)]
     exact h_ad_line
   refine ⟨_, h_snt, ?_, h_fl_f.trans h_ad_fl, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids,
-    h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_⟩
+    h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_col_f, h_ad_col]
   · rw [h_line_f]
     exact AllTokensOnLine_advance _ _ (AllTokensOnLine_emit _ _ _
       (AllTokensOnLine_allowDirectives _ _
         (AllTokensOnLine_saveSimpleKey _ _ h_atol rfl)) h_ad_line)
+  · -- simpleKeyStack preserved: scanFlowEntry doesn't touch stack
+    show ({ (s_ad.emit .flowEntry).advance with simpleKeyAllowed := true }).simpleKeyStack = s.simpleKeyStack
+    dsimp only []
+    rw [ScannerCorrectness.advance_preserves_simpleKeyStack, ScannerCorrectness.emit_preserves_simpleKeyStack]
+    show s_ad.simpleKeyStack = s.simpleKeyStack
+    simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
 
 -- ═══ Flow close bracket: scanFlowSequenceEnd dispatch ═══
 
@@ -3894,7 +3928,9 @@ theorem scanNextToken_flow_close_seq_nested (s : ScannerState)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
     (h_col_pos : s.col > 0)
-    (h_fl_ge2 : s.flowLevel ≥ 2) :
+    (h_fl_ge2 : s.flowLevel ≥ 2)
+    (h_atol : AllTokensOnLine s s.line)
+    (h_stack_endline : StackEndLineOnLine s s.line) :
     ∃ s', scanNextToken s = .ok (some s')
       ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
       ∧ s'.flowLevel = s.flowLevel - 1
@@ -3905,7 +3941,10 @@ theorem scanNextToken_flow_close_seq_nested (s : ScannerState)
       ∧ (∀ t, lastRealTokenVal? s'.tokens = some t →
           t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry)
       ∧ s'.simpleKeyAllowed = false
-      ∧ s'.line = s.line := by
+      ∧ s'.line = s.line
+      ∧ AllTokensOnLine s' s'.line
+      ∧ EndLineOnLine s'
+      ∧ s'.simpleKeyStack = s.simpleKeyStack.pop := by
   -- Step 1: preprocessing
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, ']')) :=
     scanNextToken_preprocess_flow s ']' rest s.col hcorr h_flow
@@ -3960,7 +3999,7 @@ theorem scanNextToken_flow_close_seq_nested (s : ScannerState)
     show (s_ad.emit .flowSequenceEnd).advance.line = s.line
     rw [advance_line_of_peek (s_ad.emit .flowSequenceEnd) ']' h_lt_ad h_peek_ad (by decide) (by decide)]
     exact h_ad_line
-  refine ⟨_, h_snt, ?_, ?_, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, ?_, ?_, h_line_f⟩
+  refine ⟨_, h_snt, ?_, ?_, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, ?_, ?_, h_line_f, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_fl_f]; split
     · rw [h_ad_fl]
@@ -3974,6 +4013,30 @@ theorem scanNextToken_flow_close_seq_nested (s : ScannerState)
   · -- simpleKeyAllowed = false
     show (scanFlowSequenceEnd s_ad).simpleKeyAllowed = false
     rfl
+  · -- AllTokensOnLine
+    rw [h_line_f]
+    exact AllTokensOnLine_scanFlowSequenceEnd s_ad s.line
+      (AllTokensOnLine_allowDirectives _ _
+        (AllTokensOnLine_saveSimpleKey _ _ h_atol rfl)) h_ad_line
+  · -- EndLineOnLine: simpleKey restored from stack
+    intro h_poss
+    rw [ScannerCorrectness.scanFlowSequenceEnd_simpleKey_restored] at h_poss ⊢
+    have h_ad_stack : s_ad.simpleKeyStack = s.simpleKeyStack := by
+      simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
+    rw [h_ad_stack] at h_poss ⊢
+    unfold StackEndLineOnLine at h_stack_endline
+    rw [h_line_f]
+    cases h_back : s.simpleKeyStack.back? with
+    | none => rw [h_back] at h_poss; simp [Option.getD] at h_poss
+    | some sk =>
+      rw [h_back] at h_poss h_stack_endline; simp [Option.getD] at h_poss
+      exact h_stack_endline h_poss
+  · -- simpleKeyStack.pop
+    show (scanFlowSequenceEnd s_ad).simpleKeyStack = s.simpleKeyStack.pop
+    rw [ScannerCorrectness.scanFlowSequenceEnd_stack_popped]
+    show s_ad.simpleKeyStack.pop = s.simpleKeyStack.pop
+    congr 1
+    simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
 
 -- ═══ Outermost flow close: ] at flowLevel = 1 ═══
 
@@ -4213,7 +4276,9 @@ theorem scanNextToken_flow_close_mapping_nested (s : ScannerState)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
     (h_col_pos : s.col > 0)
-    (h_fl_ge2 : s.flowLevel ≥ 2) :
+    (h_fl_ge2 : s.flowLevel ≥ 2)
+    (h_atol : AllTokensOnLine s s.line)
+    (h_stack_endline : StackEndLineOnLine s s.line) :
     ∃ s', scanNextToken s = .ok (some s')
       ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
       ∧ s'.flowLevel = s.flowLevel - 1
@@ -4224,7 +4289,10 @@ theorem scanNextToken_flow_close_mapping_nested (s : ScannerState)
       ∧ (∀ t, lastRealTokenVal? s'.tokens = some t →
           t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry)
       ∧ s'.simpleKeyAllowed = false
-      ∧ s'.line = s.line := by
+      ∧ s'.line = s.line
+      ∧ AllTokensOnLine s' s'.line
+      ∧ EndLineOnLine s'
+      ∧ s'.simpleKeyStack = s.simpleKeyStack.pop := by
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '}')) :=
     scanNextToken_preprocess_flow s '}' rest s.col hcorr h_flow
       (by decide) (by decide) (by decide)
@@ -4270,7 +4338,7 @@ theorem scanNextToken_flow_close_mapping_nested (s : ScannerState)
     show (s_ad.emit .flowMappingEnd).advance.line = s.line
     rw [advance_line_of_peek (s_ad.emit .flowMappingEnd) '}' h_lt_ad h_peek_ad (by decide) (by decide)]
     exact h_ad_line
-  refine ⟨_, h_snt, ?_, ?_, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, ?_, ?_, h_line_f⟩
+  refine ⟨_, h_snt, ?_, ?_, h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, ?_, ?_, h_line_f, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_fl_f]; split
     · rw [h_ad_fl]
@@ -4283,6 +4351,30 @@ theorem scanNextToken_flow_close_mapping_nested (s : ScannerState)
   · -- simpleKeyAllowed = false
     show (scanFlowMappingEnd s_ad).simpleKeyAllowed = false
     rfl
+  · -- AllTokensOnLine
+    rw [h_line_f]
+    exact AllTokensOnLine_scanFlowMappingEnd s_ad s.line
+      (AllTokensOnLine_allowDirectives _ _
+        (AllTokensOnLine_saveSimpleKey _ _ h_atol rfl)) h_ad_line
+  · -- EndLineOnLine: simpleKey restored from stack
+    intro h_poss
+    rw [ScannerCorrectness.scanFlowMappingEnd_simpleKey_restored] at h_poss ⊢
+    have h_ad_stack : s_ad.simpleKeyStack = s.simpleKeyStack := by
+      simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
+    rw [h_ad_stack] at h_poss ⊢
+    unfold StackEndLineOnLine at h_stack_endline
+    rw [h_line_f]
+    cases h_back : s.simpleKeyStack.back? with
+    | none => rw [h_back] at h_poss; simp [Option.getD] at h_poss
+    | some sk =>
+      rw [h_back] at h_poss h_stack_endline; simp [Option.getD] at h_poss
+      exact h_stack_endline h_poss
+  · -- simpleKeyStack.pop
+    show (scanFlowMappingEnd s_ad).simpleKeyStack = s.simpleKeyStack.pop
+    rw [ScannerCorrectness.scanFlowMappingEnd_stack_popped]
+    show s_ad.simpleKeyStack.pop = s.simpleKeyStack.pop
+    congr 1
+    simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
 
 theorem dispatchFlowIndicators_close_brace_outermost (s : ScannerState)
     (h_fl : s.flowLevel = 1)
@@ -4371,7 +4463,8 @@ theorem scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List C
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
     (h_col_pos : s.col > 0)
-    (h_atol : AllTokensOnLine s s.line) :
+    (h_atol : AllTokensOnLine s s.line)
+    (h_endline : EndLineOnLine s) :
     ∃ s', scanNextToken s = .ok (some s')
       ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
       ∧ s'.flowLevel = s.flowLevel + 1
@@ -4381,7 +4474,9 @@ theorem scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List C
       ∧ s'.col = s.col + 1
       ∧ s'.line = s.line
       ∧ AllTokensOnLine s' s'.line
-      ∧ EndLineOnLine s' := by
+      ∧ EndLineOnLine s'
+      ∧ StackEndLineOnLine s' s'.line
+      ∧ s'.simpleKeyStack.pop = s.simpleKeyStack := by
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '{')) :=
     scanNextToken_preprocess_flow s '{' rest s.col hcorr h_flow
       (by decide) (by decide) (by decide)
@@ -4430,7 +4525,7 @@ theorem scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List C
     rw [scanFlowMappingStart_line_eq]
     exact (advance_line_of_peek s_ad '{' h_lt_ad h_peek_ad (by decide) (by decide)).trans h_ad_line
   refine ⟨_, h_snt, ?_, h_fl_f.trans (congrArg (· + 1) h_ad_fl),
-    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_⟩
+    h_dp_f.trans h_ad_dp, h_ids_f.trans h_ad_ids, h_ek_f.trans h_ad_ek, ?_, h_line_f, ?_, ?_, ?_, ?_⟩
   · rw [h_col_f]; exact h_corr_f
   · rw [h_col_f, h_ad_col]
   · rw [h_line_f]
@@ -4441,6 +4536,20 @@ theorem scanNextToken_flow_open_mapping_nested (s : ScannerState) (rest : List C
     intro h_poss
     rw [scanFlowMappingStart_simpleKey_not_possible] at h_poss
     exact absurd h_poss (by decide)
+  · -- StackEndLineOnLine: pushed savedKey = s_ad.simpleKey satisfies EndLineOnLine at s'.line
+    unfold StackEndLineOnLine
+    rw [ScannerCorrectness.scanFlowMappingStart_stack_pushed, Array.back?_push, h_line_f]
+    intro h_poss
+    have h_ad_endline : EndLineOnLine s_ad := by
+      simp only [s_ad]; split
+      · show EndLineOnLine { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
+        exact EndLineOnLine_saveSimpleKey_flow s h_endline
+      · exact EndLineOnLine_saveSimpleKey_flow s h_endline
+    exact ⟨(h_ad_endline h_poss).1.trans h_ad_line, (h_ad_endline h_poss).2.trans h_ad_line⟩
+  · -- simpleKeyStack.pop = s.simpleKeyStack
+    rw [ScannerCorrectness.scanFlowMappingStart_stack_pushed, Array.pop_push]
+    show s_ad.simpleKeyStack = s.simpleKeyStack
+    simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
 
 -- ═══ Init flow open: `{` — mapping at top level ═══
 
@@ -4652,6 +4761,7 @@ def EmitScansInFlow (v : YamlValue) : Prop :=
           t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry)
       ∧ AllTokensOnLine s' s'.line
       ∧ EndLineOnLine s'
+      ∧ s'.simpleKeyStack = s.simpleKeyStack
 
 /-- `EmitListScansInFlow items` asserts that scanning the comma-separated
     emitList output succeeds in flow context, preserving invariants.
@@ -4678,6 +4788,7 @@ def EmitListScansInFlow (items : List YamlValue) : Prop :=
       ∧ s'.line = s.line
       ∧ AllTokensOnLine s' s'.line
       ∧ EndLineOnLine s'
+      ∧ s'.simpleKeyStack = s.simpleKeyStack
 
 /-- Empty list body is trivially scanned (0-step chain). -/
 theorem emitList_scans_empty : EmitListScansInFlow [] := by
@@ -4686,7 +4797,7 @@ theorem emitList_scans_empty : EmitListScansInFlow [] := by
   have h_eq : (emit.emitList ([] : List YamlValue)).toList ++ rest = rest := by
     simp only [emit.emitList]; rfl
   rw [h_eq] at hcorr
-  exact ⟨0, s, .zero, hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl, h_atol, h_endline⟩
+  exact ⟨0, s, .zero, hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl, h_atol, h_endline, rfl⟩
 
 /-- Non-empty list scanning via induction on the item list.
     Structure: singleton case uses EmitScansInFlow directly;
@@ -4704,9 +4815,9 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       have h_eq : (emit.emitList [v]).toList = (emit v).toList := by
         simp only [emit.emitList]
       rw [h_eq] at hcorr
-      obtain ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent', h_line_v, _, _, h_atol', h_endline'⟩ :=
+      obtain ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent', h_line_v, _, _, h_atol', h_endline', h_stack'⟩ :=
         h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
-      exact ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent', h_line_v, h_atol', h_endline'⟩
+      exact ⟨n, s', h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow', h_indent', h_line_v, h_atol', h_endline', h_stack'⟩
     | v' :: vs, ih =>
       -- Multi-item: emitList (v :: v' :: vs) = emit v ++ ", " ++ emitList (v' :: vs)
       -- Rewrite chars to decompose
@@ -4716,11 +4827,11 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       rw [h_eq] at hcorr
       -- Step 1: Scan emit v via EmitScansInFlow
       have h_ev : EmitScansInFlow v := h_all v (.head _)
-      obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, h_flow₁, h_indent₁, _h_line₁, _, h_last₁, h_atol₁, h_endline₁⟩ :=
+      obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, h_flow₁, h_indent₁, _h_line₁, _, h_last₁, h_atol₁, h_endline₁, h_stack₁⟩ :=
         h_ev s ([',', ' '] ++ (emit.emitList (v' :: vs)).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       -- Step 2: Scan ',' via scanNextToken_flow_comma
-      obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, _h_line₂, h_atol₂⟩ :=
+      obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, _h_line₂, h_atol₂, h_stack₂⟩ :=
         scanNextToken_flow_comma s₁
           (' ' :: (emit.emitList (v' :: vs)).toList ++ rest_chars)
           h_corr₁ h_flow₁ h_indent₁ h_col₁
@@ -4739,7 +4850,7 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       have h_s2_indent : s₂.currentIndent < 0 := by
         unfold ScannerState.currentIndent; rw [h_ids₂]; exact h_indent₁
       have h_s2_col : s₂.col > 0 := by rw [h_col₂]; omega
-      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃⟩ :=
+      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_stack_pp₃⟩ :=
         scanNextToken_preprocess_flow_ws1 s₂ c (rest' ++ rest_chars) h_corr₂_ws
           h_s2_flow h_nws h_nlb h_nc h_s2_indent
       -- s₃ at c :: rest' ++ rest_chars = (emitList (v' :: vs)).toList ++ rest_chars
@@ -4754,7 +4865,7 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       have h_ih_list : EmitListScansInFlow (v' :: vs) :=
         ih (by simp) h_tail_all
       obtain ⟨n₃, s_end, h_chain₃, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
-              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end, h_endline_end⟩ :=
+              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end, h_endline_end, h_stack_end⟩ :=
         h_ih_list s₃ rest_chars h_corr₃'
           h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
           (by rw [h_indent₃]; exact h_s2_indent)
@@ -4786,7 +4897,7 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
       have h_chain_all := h_chain₁.trans ((ScanChain.single h_snt₂).trans h_chain_ws)
       have h_arith : n₁ + (1 + (n₃' + 1)) = n₁ + 1 + (n₃' + 1) := by omega
       refine ⟨n₁ + 1 + (n₃' + 1), s_end, h_arith ▸ h_chain_all,
-        h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end, h_endline_end⟩
+        h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end, h_endline_end, ?_⟩
       · -- flowLevel preserved
         rw [h_fl_end, h_fl₃, h_fl₂, h_fl₁]
       · -- directivesPresent preserved
@@ -4797,6 +4908,8 @@ theorem emitList_scans_nonempty (items : List YamlValue) (h_ne : items ≠ [])
         rw [h_ek_end, h_ek₃, h_ek₂, h_ek₁]
       · -- line preserved
         rw [h_line_end, _h_line₃, _h_line₂, _h_line₁]
+      · -- simpleKeyStack preserved
+        rw [h_stack_end, h_stack_pp₃, h_stack₂, h_stack₁]
 
 -- ═══ Flow mapping pair list scanning ═══
 
@@ -4873,7 +4986,9 @@ theorem scanNextToken_flow_value (s : ScannerState)
       ∧ s'.currentIndent < 0
       ∧ s'.explicitKeyLine = none
       ∧ s'.line = s.line
-      ∧ AllTokensOnLine s' s'.line := by
+      ∧ AllTokensOnLine s' s'.line
+      ∧ EndLineOnLine s'
+      ∧ s'.simpleKeyStack = s.simpleKeyStack := by
   -- Step 1: Preprocessing — `:` is non-ws content char
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, ':')) :=
     scanNextToken_preprocess_flow s ':' (' ' :: rest') s.col hcorr h_flow
@@ -5066,7 +5181,7 @@ theorem scanNextToken_flow_value (s : ScannerState)
     unfold scanValuePrepare
     simp only [h_svp_flow, Bool.not_true, Bool.false_eq_true, ite_false]
     split <;> (try (split <;> rfl)); rfl
-  refine ⟨s_final, h_snt, ?_, ?_, ?_, ?_, ?_, ?_, ?_, rfl, ?_, ?_⟩
+  refine ⟨s_final, h_snt, ?_, ?_, ?_, ?_, ?_, ?_, ?_, rfl, ?_, ?_, ?_, ?_⟩
   · -- ScannerSurfCorr s_final ⟨' ' :: rest', s_final.col⟩
     exact {
       chars_from := by rw [h_final_input, h_final_offset]; exact h_adv_corr.chars_from
@@ -5183,6 +5298,33 @@ theorem scanNextToken_flow_value (s : ScannerState)
             (AllTokensOnLine_saveSimpleKey _ _ h_atol rfl))
           h_ad_line h_ad_inFlow h_ad_ek h_ad_endline)
         (by rw [h_prep_line, h_ad_line]))
+  · -- EndLineOnLine s_final — vacuously true: scanValuePrepare in flow always gives possible = false
+    intro h_poss
+    exfalso
+    have h_chain : s_final.simpleKey = (scanValuePrepare s_ad).simpleKey := by
+      show s_adv.simpleKey = _
+      rw [ScannerCorrectness.advance_preserves_simpleKey, ScannerCorrectness.emit_preserves_simpleKey]
+    have h_false : s_final.simpleKey.possible = false := by
+      rw [h_chain]
+      unfold scanValuePrepare
+      simp only [h_svp_flow, Bool.not_true, Bool.false_eq_true, ite_false]
+      split
+      · rfl
+      · split
+        · rfl
+        · simp_all
+    rw [h_false] at h_poss; exact absurd h_poss (by decide)
+  · -- s_final.simpleKeyStack = s.simpleKeyStack
+    show s_adv.simpleKeyStack = s.simpleKeyStack
+    rw [ScannerCorrectness.advance_preserves_simpleKeyStack, ScannerCorrectness.emit_preserves_simpleKeyStack]
+    have h_svp_stack : (scanValuePrepare s_ad).simpleKeyStack = s_ad.simpleKeyStack := by
+      unfold scanValuePrepare
+      simp only [h_svp_flow, Bool.not_true, Bool.false_eq_true, ite_false]
+      split
+      · rfl
+      · split <;> rfl
+    rw [h_svp_stack]
+    simp only [s_ad]; split <;> exact ScannerCorrectness.saveSimpleKey_preserves_simpleKeyStack s
 
 /-- `EmitPairListScansInFlow pairs` asserts that scanning the
     emitPairList output succeeds in flow context, preserving invariants.
@@ -5209,12 +5351,13 @@ def EmitPairListScansInFlow (pairs : List (YamlValue × YamlValue)) : Prop :=
       ∧ s'.line = s.line
       ∧ AllTokensOnLine s' s'.line
       ∧ EndLineOnLine s'
+      ∧ s'.simpleKeyStack = s.simpleKeyStack
 
 theorem emitPairList_scans_empty : EmitPairListScansInFlow [] := by
   intro s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
   have h_eq : (emit.emitPairList ([] : List (YamlValue × YamlValue))).toList ++ rest = rest := by
     simp [emit.emitPairList]
-  exact ⟨0, s, .zero, h_eq ▸ hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl, h_atol, h_endline⟩
+  exact ⟨0, s, .zero, h_eq ▸ hcorr, rfl, rfl, rfl, rfl, h_col, h_flow, h_indent, rfl, h_atol, h_endline, rfl⟩
 
 -- Non-empty pair list scanning: each pair contributes key + ":" + space + value steps.
 -- Uses emitPairList_first_char, scanNextToken_flow_value, scanNextToken_flow_comma,
@@ -5241,7 +5384,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       -- Step 1: Scan key via EmitScansInFlow
       have h_ek_key : EmitScansInFlow p.1 := h_all_k p (.head _)
       obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁,
-              h_flow₁, h_indent₁, _h_line₁, h_ska₁, _, h_atol₁, h_endline₁⟩ :=
+              h_flow₁, h_indent₁, _h_line₁, h_ska₁, _, h_atol₁, h_endline₁, h_stack₁⟩ :=
         h_ek_key s ([':',  ' '] ++ (emit p.2).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
       -- Step 2: Derive saveSimpleKey identity and scanValueValidate
@@ -5253,7 +5396,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
           (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁
       -- Step 3: Scan ':' via scanNextToken_flow_value
       obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_col₂,
-              h_flow₂, h_indent₂, h_ek₂, _h_line₂, h_atol₂⟩ :=
+              h_flow₂, h_indent₂, h_ek₂, _h_line₂, h_atol₂, h_endline₂, h_stack_v₂⟩ :=
         scanNextToken_flow_value s₁ ((emit p.2).toList ++ rest_chars)
           h_corr₁ h_flow₁ h_indent₁ h_col₁ (by rw [h_ek₁]; exact h_ek) h_sv
           h_atol₁ h_endline₁
@@ -5265,7 +5408,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
             (' ' :: c_v :: (rest_v ++ rest_chars)) := by
           congr 1; rw [h_first_v]; simp only [List.cons_append]
         exact h_eq_chars ▸ h_corr₂
-      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃⟩ :=
+      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_stack_pp₃⟩ :=
         scanNextToken_preprocess_flow_ws1 s₂ c_v (rest_v ++ rest_chars) h_corr₂_ws
           h_flow₂ h_nws_v h_nlb_v h_nc_v h_indent₂
       have h_corr₃' : ScannerSurfCorr s₃
@@ -5277,7 +5420,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       -- Step 5: Scan value via EmitScansInFlow
       have h_ev : EmitScansInFlow p.2 := h_all_v p (.head _)
       obtain ⟨n₃, s_end, h_chain₃, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
-              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, _, _, h_atol_end, h_endline_end⟩ :=
+              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, _, _, h_atol_end, h_endline_end, h_stack_end⟩ :=
         h_ev s₃ rest_chars h_corr₃'
           h_flow₃ (by rw [h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
           (by rw [h_indent₃]; exact h_indent₂)
@@ -5309,12 +5452,13 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       have h_chain_all := h_chain₁.trans ((ScanChain.single h_snt₂).trans h_chain_ws)
       have h_arith : n₁ + (1 + (n₃' + 1)) = n₁ + 1 + (n₃' + 1) := by omega
       refine ⟨n₁ + 1 + (n₃' + 1), s_end, h_arith ▸ h_chain_all,
-        h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end, h_endline_end⟩
+        h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end, h_endline_end, ?_⟩
       · rw [h_fl_end, h_fl₃, h_fl₂, h_fl₁]
       · rw [h_dp_end, h_dp₃, h_dp₂, h_dp₁]
       · rw [h_ids_end, h_ids₃, h_ids₂, h_ids₁]
       · rw [h_ek_end, h_ek₃, h_ek₂]; exact h_ek.symm
       · rw [h_line_end, _h_line₃, _h_line₂, _h_line₁]
+      · rw [h_stack_end, h_stack_pp₃, h_stack_v₂, h_stack₁]
     | p' :: ps, ih =>
       -- ══ Multi-pair: emit k ++ ": " ++ emit v ++ ", " ++ emitPairList (p' :: ps) ══
       have h_eq : (emit.emitPairList (p :: p' :: ps)).toList ++ rest_chars =
@@ -5325,7 +5469,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       -- Step 1: Scan key via EmitScansInFlow
       have h_ek_key : EmitScansInFlow p.1 := h_all_k p (.head _)
       obtain ⟨n₁, s₁, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁,
-              h_flow₁, h_indent₁, _h_line₁, h_ska₁, h_last₁, h_atol₁, h_endline₁⟩ :=
+              h_flow₁, h_indent₁, _h_line₁, h_ska₁, h_last₁, h_atol₁, h_endline₁, h_stack₁⟩ :=
         h_ek_key s ([':',  ' '] ++ (emit p.2).toList ++
             [',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
@@ -5338,7 +5482,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
           (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁
       -- Step 3: Scan ':' via scanNextToken_flow_value
       obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_col₂,
-              h_flow₂, h_indent₂, h_ek₂, _h_line₂, h_atol₂⟩ :=
+              h_flow₂, h_indent₂, h_ek₂, _h_line₂, h_atol₂, h_endline₂, h_stack_v₂⟩ :=
         scanNextToken_flow_value s₁
           ((emit p.2).toList ++
             [',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
@@ -5355,7 +5499,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
             [',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)) := by
           congr 1; rw [h_first_v]; simp only [List.cons_append, List.append_assoc]
         exact h_eq_chars ▸ h_corr₂
-      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃⟩ :=
+      obtain ⟨s₃, h_corr₃, h_flow₃, h_fl₃, h_indent₃, h_col₃, h_dp₃, h_ids₃, h_ek₃, _h_line₃, h_pp_eq, h_atol_transfer₃, h_stack_pp₃⟩ :=
         scanNextToken_preprocess_flow_ws1 s₂ c_v
           (rest_v ++ [',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr₂_ws h_flow₂ h_nws_v h_nlb_v h_nc_v h_indent₂
@@ -5374,7 +5518,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
           ⟨(emit p.2).toList ++ ([',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars), s₃.col⟩ := by
         simp only [List.append_assoc] at h_corr₃' ⊢; exact h_corr₃'
       obtain ⟨n_v, s_v, h_chain_v, h_corr_v, h_fl_v, h_dp_v, h_ids_v,
-              h_ek_v, h_col_v, h_flow_v, h_indent_v, _h_line_v, _, h_last_v, h_atol_v, h_endline_v⟩ :=
+              h_ek_v, h_col_v, h_flow_v, h_indent_v, _h_line_v, _, h_last_v, h_atol_v, h_endline_v, h_stack_v⟩ :=
         h_ev s₃
           ([',',  ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr₃_assoc
@@ -5405,7 +5549,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       have h_chain_ws_v : ScanChain s₂ (n_v' + 1) s_v :=
         ScanChain_of_scanNextToken_eq h_snt_eq_v h_chain_v
       -- Step 6: Scan ',' via scanNextToken_flow_comma
-      obtain ⟨s_c, h_snt_c, h_corr_c, h_fl_c, h_dp_c, h_ids_c, h_ek_c, h_col_c, _h_line_c, h_atol_c⟩ :=
+      obtain ⟨s_c, h_snt_c, h_corr_c, h_fl_c, h_dp_c, h_ids_c, h_ek_c, h_col_c, _h_line_c, h_atol_c, h_stack_c⟩ :=
         scanNextToken_flow_comma s_v
           (' ' :: (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr_v h_flow_v h_indent_v h_col_v h_last_v h_atol_v
@@ -5423,7 +5567,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       have h_sc_indent : s_c.currentIndent < 0 := by
         unfold ScannerState.currentIndent; rw [h_ids_c]; exact h_indent_v
       obtain ⟨s_pp, h_corr_pp, h_flow_pp, h_fl_pp, h_indent_pp, h_col_pp,
-              h_dp_pp, h_ids_pp, h_ek_pp, _h_line_pp, h_pp_eq_r, h_atol_transfer_pp⟩ :=
+              h_dp_pp, h_ids_pp, h_ek_pp, _h_line_pp, h_pp_eq_r, h_atol_transfer_pp, h_stack_pp⟩ :=
         scanNextToken_preprocess_flow_ws1 s_c c_p (rest_p ++ rest_chars) h_corr_c_ws
           h_sc_flow h_nws_p h_nlb_p h_nc_p h_sc_indent
       have h_corr_pp' : ScannerSurfCorr s_pp
@@ -5440,7 +5584,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       have h_ih_list : EmitPairListScansInFlow (p' :: ps) :=
         ih (by simp) h_tail_all_k h_tail_all_v
       obtain ⟨n_r, s_end, h_chain_r, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
-              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end, h_endline_end⟩ :=
+              h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, h_atol_end, h_endline_end, h_stack_end⟩ :=
         h_ih_list s_pp rest_chars h_corr_pp'
           h_flow_pp
           (by rw [h_fl_pp, h_fl_c]; rw [h_fl_v, h_fl₃, h_fl₂, h_fl₁]; exact h_fl)
@@ -5479,7 +5623,7 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
           n₁ + 1 + (n_v' + 1) + 1 + (n_r' + 1) := by omega
       refine ⟨n₁ + 1 + (n_v' + 1) + 1 + (n_r' + 1), s_end,
         h_arith ▸ h_chain_all,
-        h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end, h_endline_end⟩
+        h_corr_end, ?_, ?_, ?_, ?_, h_col_end, h_flow_end, h_indent_end, ?_, h_atol_end, h_endline_end, ?_⟩
       · -- flowLevel preserved
         rw [h_fl_end, h_fl_pp, h_fl_c, h_fl_v, h_fl₃, h_fl₂, h_fl₁]
       · -- directivesPresent preserved
@@ -5489,6 +5633,8 @@ theorem emitPairList_scans_nonempty (pairs : List (YamlValue × YamlValue))
       · -- explicitKeyLine preserved
         rw [h_ek_end, h_ek_pp, h_ek_c, h_ek_v, h_ek₃, h_ek₂]; exact h_ek.symm
       · rw [h_line_end, _h_line_pp, _h_line_c, _h_line_v, _h_line₃, _h_line₂, _h_line₁]
+      · -- simpleKeyStack preserved
+        rw [h_stack_end, h_stack_pp, h_stack_c, h_stack_v, h_stack_pp₃, h_stack_v₂, h_stack₁]
 
 /-- Every grammable value satisfies `EmitScansInFlow`. -/
 theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inFlow) :
@@ -5504,10 +5650,10 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     have hcorr' : ScannerSurfCorr s_state
         ⟨['"'] ++ (escapeString s.content).toList ++ ['"'] ++ rest, s_state.col⟩ := by
       rwa [← h_chars]
-    obtain ⟨s', h_snt, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_tok', h_ska', _h_line', h_atol', h_endline'⟩ :=
+    obtain ⟨s', h_snt, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_tok', h_ska', _h_line', h_atol', h_endline', h_stack'⟩ :=
       scanNextToken_flow_scanDoubleQuoted s_state s.content rest hcorr' h_flow h_indent h_col
         h_atol (by intro h_poss; exact h_endline h_poss)
-    refine ⟨1, s', .single h_snt, h_corr', h_fl', h_dp', h_ids', h_ek', ?_, ?_, ?_, _h_line', h_ska', ?_, ?_, ?_⟩
+    refine ⟨1, s', .single h_snt, h_corr', h_fl', h_dp', h_ids', h_ek', ?_, ?_, ?_, _h_line', h_ska', ?_, ?_, ?_, ?_⟩
     · exact h_col'
     · unfold ScannerState.inFlow; rw [h_fl']
       unfold ScannerState.inFlow at h_flow; exact h_flow
@@ -5515,6 +5661,7 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     · exact h_tok'
     · exact h_atol'
     · exact h_endline'
+    · exact h_stack'
   | sequence style items tag anchor _ h ih =>
     intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
     -- emit (.sequence ...) = "[" ++ emitList items.toList ++ "]"
@@ -5525,10 +5672,10 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     have hcorr₀ := hcorr; rw [h_chars] at hcorr₀
     -- hcorr₀ now has ['['] ++ ... which is def-eq to '[' :: ...
     -- Step 1: Scan '[' with nested flow open
-    obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁, h_endline₁⟩ :=
+    obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁, h_endline₁, h_stack_endline₁, h_stack_pop₁⟩ :=
       scanNextToken_flow_open_nested s_state
         ((emit.emitList items.toList).toList ++ [']'] ++ rest) hcorr₀ h_flow h_indent h_col
-        h_atol
+        h_atol h_endline
     have h_fl₁_ge2 : s₁.flowLevel ≥ 2 := by rw [h_fl₁]; omega
     have h_s1_inflow : s₁.inFlow = true := by
       unfold ScannerState.inFlow; exact decide_eq_true (by rw [h_fl₁]; omega)
@@ -5550,19 +5697,24 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     have h_corr₁_assoc : ScannerSurfCorr s₁
         ⟨(emit.emitList items.toList).toList ++ ([']'] ++ rest), s₁.col⟩ := by
       rw [List.append_assoc] at h_corr₁; exact h_corr₁
-    obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂⟩ :=
+    obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂⟩ :=
       h_list_scan s₁ ([']'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
         (by rw [h_ek₁]; exact h_ek)
         h_atol₁ -- AllTokensOnLine s₁ s₁.line (from flow_open_nested postcondition)
         h_endline₁ -- EndLineOnLine s₁ (from flow_open_nested postcondition)
     -- Step 3: Scan ']' with nested close (flowLevel ≥ 2)
     have h_fl₂_ge2 : s₂.flowLevel ≥ 2 := by rw [h_fl₂, h_fl₁]; omega
-    obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃, _h_line₃⟩ :=
+    -- Derive StackEndLineOnLine s₂ s₂.line from open theorem's postcondition
+    have h_stack_endline₂ : StackEndLineOnLine s₂ s₂.line := by
+      unfold StackEndLineOnLine at h_stack_endline₁ ⊢
+      rw [h_stack₂, _h_line₂]; exact h_stack_endline₁
+    obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃, _h_line₃, h_atol₃, h_endline₃, h_stack₃⟩ :=
       scanNextToken_flow_close_seq_nested s₂ rest h_corr₂ h_s2_inflow h_s2_indent h_col₂ h_fl₂_ge2
+        h_atol₂ h_stack_endline₂
     -- Compose: [ (1 step) + list body (n₂ steps) + ] (1 step)
     refine ⟨(1 + n₂) + 1, s₃,
       (ScanChain.single h_snt₁).trans (h_chain₂.trans (ScanChain.single h_snt₃)),
-      h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_ska₃, h_tok₃, ?_, ?_⟩
+      h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_ska₃, h_tok₃, ?_, ?_, ?_⟩
     · -- flowLevel: (fl+1) - 1 = fl
       rw [h_fl₃, h_fl₂, h_fl₁]; omega
     · rw [h_dp₃, h_dp₂, h_dp₁]
@@ -5578,8 +5730,13 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       unfold ScannerState.currentIndent; rw [h_ids₃, h_ids₂, h_ids₁]; exact h_indent
     · -- line preserved
       rw [_h_line₃, _h_line₂, _h_line₁]
-    · sorry -- AllTokensOnLine s₃ s₃.line (pending scanNextToken_flow_close_seq_nested postcondition)
-    · sorry -- EndLineOnLine s₃ (pending scanNextToken_flow_close_seq_nested postcondition)
+    · -- AllTokensOnLine s₃ s₃.line (from close theorem postcondition)
+      exact h_atol₃
+    · -- EndLineOnLine s₃ (from close theorem postcondition)
+      exact h_endline₃
+    · -- simpleKeyStack: s₃.simpleKeyStack = s_state.simpleKeyStack
+      -- Chain: close pops → list preserved → open pushed then pop cancels
+      rw [h_stack₃, h_stack₂, h_stack_pop₁]
   | mapping style pairs tag anchor _ hk hv ihk ihv =>
     intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline
     -- emit (.mapping ...) = "{" ++ emitPairList pairs.toList ++ "}"
@@ -5588,10 +5745,10 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
       simp only [emit, String.toList_append]; rfl
     have hcorr₀ := hcorr; rw [h_chars] at hcorr₀
     -- Step 1: Scan '{' with nested flow open
-    obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁, h_endline₁⟩ :=
+    obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁, h_endline₁, h_stack_endline₁, h_stack_pop₁⟩ :=
       scanNextToken_flow_open_mapping_nested s_state
         ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest) hcorr₀ h_flow h_indent h_col
-        h_atol
+        h_atol h_endline
     have h_fl₁_ge2 : s₁.flowLevel ≥ 2 := by rw [h_fl₁]; omega
     have h_s1_inflow : s₁.inFlow = true := by
       unfold ScannerState.inFlow; exact decide_eq_true (by rw [h_fl₁]; omega)
@@ -5615,19 +5772,24 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     have h_corr₁_assoc : ScannerSurfCorr s₁
         ⟨(emit.emitPairList pairs.toList).toList ++ (['}'] ++ rest), s₁.col⟩ := by
       rw [List.append_assoc] at h_corr₁; exact h_corr₁
-    obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂⟩ :=
+    obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂⟩ :=
       h_pair_scan s₁ (['}'] ++ rest) h_corr₁_assoc h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
         (by rw [h_ek₁]; exact h_ek)
         h_atol₁
         h_endline₁ -- EndLineOnLine s₁ (from flow_open_mapping_nested postcondition)
     -- Step 3: Scan '}' with nested close (flowLevel ≥ 2)
     have h_fl₂_ge2 : s₂.flowLevel ≥ 2 := by rw [h_fl₂, h_fl₁]; omega
-    obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃, _h_line₃⟩ :=
+    -- Derive StackEndLineOnLine s₂ s₂.line from open theorem's postcondition
+    have h_stack_endline₂ : StackEndLineOnLine s₂ s₂.line := by
+      unfold StackEndLineOnLine at h_stack_endline₁ ⊢
+      rw [h_stack₂, _h_line₂]; exact h_stack_endline₁
+    obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃, _h_line₃, h_atol₃, h_endline₃, h_stack₃⟩ :=
       scanNextToken_flow_close_mapping_nested s₂ rest h_corr₂ h_s2_inflow h_s2_indent h_col₂ h_fl₂_ge2
+        h_atol₂ h_stack_endline₂
     -- Compose: { (1 step) + pair body (n₂ steps) + } (1 step)
     refine ⟨(1 + n₂) + 1, s₃,
       (ScanChain.single h_snt₁).trans (h_chain₂.trans (ScanChain.single h_snt₃)),
-      h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_ska₃, h_tok₃, ?_, ?_⟩
+      h_corr₃, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, h_ska₃, h_tok₃, ?_, ?_, ?_⟩
     · rw [h_fl₃, h_fl₂, h_fl₁]; omega
     · rw [h_dp₃, h_dp₂, h_dp₁]
     · rw [h_ids₃, h_ids₂, h_ids₁]
@@ -5639,8 +5801,12 @@ theorem emit_scans_in_flow (v : YamlValue) {inFlow : Bool} (hg : Grammable v inF
     · unfold ScannerState.currentIndent; rw [h_ids₃, h_ids₂, h_ids₁]; exact h_indent
     · -- line preserved
       rw [_h_line₃, _h_line₂, _h_line₁]
-    · sorry -- AllTokensOnLine s₃ s₃.line (pending scanNextToken_flow_close_mapping_nested postcondition)
-    · sorry -- EndLineOnLine s₃ (pending scanNextToken_flow_close_mapping_nested postcondition)
+    · -- AllTokensOnLine s₃ s₃.line (from close theorem postcondition)
+      exact h_atol₃
+    · -- EndLineOnLine s₃ (from close theorem postcondition)
+      exact h_endline₃
+    · -- simpleKeyStack: s₃.simpleKeyStack = s_state.simpleKeyStack
+      rw [h_stack₃, h_stack₂, h_stack_pop₁]
 
 -- Helper: extract existential from isOk
 theorem scanFiltered_exists_of_isOk {s : String}
@@ -5700,7 +5866,7 @@ theorem emit_produces_valid_yaml (v : YamlValue) {inFlow : Bool} (hg : Grammable
           exact h_eq ▸ emit_scans_in_flow items[i] (h ⟨i, h_sz⟩))
       -- Step 4: Apply body scanning (emitList → ScanChain through body)
       obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
-              h_ek₂, h_col₂, h_inflow₂, h_indent₂, _h_line₂, _, _⟩ :=
+              h_ek₂, h_col₂, h_inflow₂, h_indent₂, _h_line₂, _, _, _⟩ :=
         h_list_scan s₁ [']'] h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega)
           h_indent₁ (by rw [h_col₁]; omega) h_ek₁
           (h_line₁ ▸ h_atol₁) -- AllTokensOnLine s₁ s₁.line
@@ -5756,7 +5922,7 @@ theorem emit_produces_valid_yaml (v : YamlValue) {inFlow : Bool} (hg : Grammable
           exact h_eq ▸ emit_scans_in_flow pairs[i].2 (hv ⟨i, h_sz⟩))
       -- Step 4: Apply body scanning
       obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
-              h_ek₂, h_col₂, h_inflow₂, h_indent₂, _h_line₂, _, _⟩ :=
+              h_ek₂, h_col₂, h_inflow₂, h_indent₂, _h_line₂, _, _, _⟩ :=
         h_pair_scan s₁ ['}'] h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega)
           h_indent₁ (by rw [h_col₁]; omega) h_ek₁
           (h_line₁ ▸ h_atol₁) -- AllTokensOnLine s₁ s₁.line
