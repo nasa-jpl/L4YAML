@@ -6416,46 +6416,111 @@ theorem parseYamlRaw_emitScalar_value (content : String)
   subst h_eq
   exact ⟨Scalar.mk content .doubleQuoted none none none, h_dv, rfl⟩
 
+-- ═══ Helper infrastructure for flow collection parser acceptance ═══
+
+-- Combined scanner-parser pipeline Bool checks for "[]" and "{}".
+-- Using native_decide on Bool expressions avoids needing DecidableEq instances
+-- for Except, Array, etc.
+def checkFullSeq : Bool :=
+  match Scanner.scanFiltered "[]" with
+  | .ok tokens =>
+    match parseStream tokens with
+    | .ok docs => docs.size == 1
+    | .error _ => false
+  | .error _ => false
+
+def checkFullMap : Bool :=
+  match Scanner.scanFiltered "{}" with
+  | .ok tokens =>
+    match parseStream tokens with
+    | .ok docs => docs.size == 1
+    | .error _ => false
+  | .error _ => false
+
+theorem checkFullSeq_true : checkFullSeq = true := by native_decide
+theorem checkFullMap_true : checkFullMap = true := by native_decide
+
 /-- Combined scanner characterization and parser acceptance for flow sequences.
     Given that scanning the emitted sequence succeeds, the parser pipeline
     produces exactly one document.
 
-    **Proof obligations** (currently sorry'd):
-    1. Scanner tracing: `emit (.sequence ...)` starts with `[`, producing
-       `flowSequenceStart` as the second token after `streamStart`.
-       Analogous to `scanNextToken_emitScalar_init` but for `[` dispatch.
-    2. Parser fuel sufficiency: `parseFlowSequenceLoop` terminates on
-       well-bracketed input within `4 * tokens.size + 4` fuel.
-    3. Complete consumption: after parsing the flow sequence, the parser
-       position is at `streamEnd`, so `parseStreamLoop` returns `#[doc]`.
-
-    Available infrastructure:
-    - `scanFiltered_produces_valid_tokens`: VTS with sizeGe2, first=streamStart,
-      last=streamEnd, positions ordered
-    - `parseStreamLoop_single_doc`: if peek ≠ streamEnd ∧ parseDocument succeeds
-      leaving peek at streamEnd, then loop returns #[doc]
-    - `scan_flow_brackets_matched`: FlowBracketsMatched for scanned tokens
-    - `parseFlowSequence_wb`: properties of successful flow sequence parses -/
+    - **Empty case** (`items = #[]`): Fully proven via `native_decide` on the
+      concrete 4-token stream `[streamStart, flowSequenceStart, flowSequenceEnd, streamEnd]`.
+    - **Non-empty case**: Requires parser fuel sufficiency for `parseFlowSequenceLoop`
+      on well-bracketed tokens — each loop iteration consumes ≥1 token via `parseNode`,
+      so fuel = `4 * tokens.size + 4` suffices. Currently sorry'd pending position
+      monotonicity proof through `parseNode` dispatch. -/
 theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlValue)
     (tag anchor : Option String) {tokens : Array (Positioned YamlToken)}
     (h_scan : Scanner.scanFiltered (emit (.sequence style items tag anchor)) = .ok tokens)
     (h_items : ∀ (i : Fin items.size), Grammable items[i] (false || style == CollectionStyle.flow)) :
     ∃ docs, parseStream tokens = .ok docs ∧ docs.size = 1 := by
-  exact sorry
+  -- emit ignores style/tag/anchor: always produces "[" ++ emitList items.toList ++ "]"
+  have h_emit : emit (.sequence style items tag anchor) =
+      "[" ++ emit.emitList items.toList ++ "]" := rfl
+  rw [h_emit] at h_scan
+  match h_list : items.toList with
+  | [] =>
+    -- Empty sequence: emit produces "[]", native_decide verifies full pipeline
+    rw [h_list] at h_scan
+    have h_str : ("[" ++ emit.emitList ([] : List YamlValue) ++ "]") = "[]" := by native_decide
+    rw [h_str] at h_scan
+    -- h_scan : Scanner.scanFiltered "[]" = .ok tokens
+    have h_full := checkFullSeq_true
+    unfold checkFullSeq at h_full
+    simp only [h_scan] at h_full
+    -- h_full : (match parseStream tokens with | .ok docs => docs.size == 1 | ...) = true
+    match h_ps : parseStream tokens with
+    | .ok docs =>
+      simp only [h_ps] at h_full
+      exact ⟨docs, rfl, by simpa using h_full⟩
+    | .error _ => simp [h_ps] at h_full
+  | _ :: _ =>
+    -- Non-empty: requires parseFlowSequenceLoop fuel sufficiency.
+    -- Each loop iteration advances parser position by ≥1 token (via parseNode on
+    -- the emitter's double-quoted scalars or nested flow collections), so the loop
+    -- terminates within tokens.size iterations. The fuel 4*tokens.size+4 from
+    -- parseDocument is sufficient. Pending position monotonicity proof.
+    exact sorry
 
 /-- Combined scanner characterization and parser acceptance for flow mappings.
     Analogous to `parseStream_emitSequence` but for `emit (.mapping ...)`.
 
-    Same proof obligations: scanner tracing for `{` → `flowMappingStart`,
-    parser fuel sufficiency for `parseFlowMappingLoop`, and complete
-    consumption leaving peek at `streamEnd`. -/
+    - **Empty case** (`pairs = #[]`): Fully proven via `native_decide` on the
+      concrete 4-token stream `[streamStart, flowMappingStart, flowMappingEnd, streamEnd]`.
+    - **Non-empty case**: Requires parser fuel sufficiency for `parseFlowMappingLoop`
+      on well-bracketed tokens. Currently sorry'd pending position monotonicity proof. -/
 theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
     (tag anchor : Option String) {tokens : Array (Positioned YamlToken)}
     (h_scan : Scanner.scanFiltered (emit (.mapping style pairs tag anchor)) = .ok tokens)
     (hk : ∀ (i : Fin pairs.size), Grammable pairs[i].fst (false || style == CollectionStyle.flow))
     (hv : ∀ (i : Fin pairs.size), Grammable pairs[i].snd (false || style == CollectionStyle.flow)) :
     ∃ docs, parseStream tokens = .ok docs ∧ docs.size = 1 := by
-  exact sorry
+  -- emit ignores style/tag/anchor: always produces "{" ++ emitPairList pairs.toList ++ "}"
+  have h_emit : emit (.mapping style pairs tag anchor) =
+      "{" ++ emit.emitPairList pairs.toList ++ "}" := rfl
+  rw [h_emit] at h_scan
+  match h_list : pairs.toList with
+  | [] =>
+    -- Empty mapping: emit produces "{}", native_decide verifies full pipeline
+    rw [h_list] at h_scan
+    have h_str : ("{" ++ emit.emitPairList ([] : List (YamlValue × YamlValue)) ++ "}") = "{}" := by native_decide
+    rw [h_str] at h_scan
+    -- h_scan : Scanner.scanFiltered "{}" = .ok tokens
+    have h_full := checkFullMap_true
+    unfold checkFullMap at h_full
+    simp only [h_scan] at h_full
+    match h_ps : parseStream tokens with
+    | .ok docs =>
+      simp only [h_ps] at h_full
+      exact ⟨docs, rfl, by simpa using h_full⟩
+    | .error _ => simp [h_ps] at h_full
+  | _ :: _ =>
+    -- Non-empty: requires parseFlowMappingLoop fuel sufficiency.
+    -- Each loop iteration advances parser position by ≥2 tokens (key + value via
+    -- parseNode), so the loop terminates within tokens.size iterations.
+    -- Pending position monotonicity proof.
+    exact sorry
 
 /-- **Parse acceptance** (Step 2): The parser accepts the token sequence
     produced by scanning canonical emitter output.

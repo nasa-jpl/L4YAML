@@ -6,108 +6,109 @@ A **fully verified** YAML 1.2.2 parser in Lean 4 — 2,309 machine-checked theor
 
 ```
 Lean4Yaml/
-├── Types.lean               # YamlValue AST, YamlPos position tracking
-├── YamlSpec.lean            # YAML 1.2.2 spec cross-references
-├── Grammar.lean             # Formal YAML grammar as Lean Props
-├── Token.lean               # YamlToken inductive + Positioned + TokenStream
-├── Scanner.lean             # Character → Token scanner (L-layer, 132 productions)
-├── TokenParser.lean         # Token → AST grammar parser (S-layer, 54 productions)
-├── Emitter.lean             # Canonical YAML emitter (YamlValue → String)
-├── Dump.lean                # Style-aware dump: YamlValue → DumpConfig → String
-├── Limits.lean              # Parser security: limits, tag validation, safe API
-├── Schema.lean              # Core Schema §10.3: YamlType, resolve, resolveImplicit
+├── YamlSpec.lean                       # YAML 1.2.2 spec cross-references
+├── CharPredicates.lean                 # YAML 1.2.2 character rules
+├── Types.lean                          # YamlValue AST, YamlPos position tracking
+├── Token.lean                          # YamlToken inductive + Positioned + TokenStream
+├── Scanner.lean                        # Character → Token scanner (L-layer, 132 productions)
+├── TokenParser.lean                    # Token → AST grammar parser (S-layer, 54 productions)
+├── Limits.lean                         # Parser security: limits, tag validation, safe API
+├── Emitter.lean                        # Canonical YAML emitter (YamlValue → String)
+├── Dump.lean                           # Style-aware dump: YamlValue → DumpConfig → String
+├── Schema.lean                         # Core Schema §10.3: YamlType, resolve, resolveImplicit
 ├── Schema/
-│   ├── FromToYaml.lean      # FromYaml/ToYaml/FromYamlType typeclasses + instances
-│   ├── Struct.lean          # Mapping helpers: getField, addField, mkMapping
-│   ├── Deriving.lean        # deriving FromYaml, ToYaml macro handlers
-│   ├── Dump.lean            # Schema↔Dump integration: dumpTyped, roundTripTyped
-│   └── Api.lean             # Convenience: parseAs, toYaml, parseTyped
-├── Proofs/                              # 2,309 theorems, 61 modules, ~39,000 lines
-│   ├── Soundness.lean             # Parser produces only valid YAML
-│   ├── Completeness.lean          # Valid YAML parses successfully (DecidableEq + native_decide)
-│   ├── Composition.lean           # Scanner→TokenParser pipeline composition
-│   ├── RoundTrip.lean             # Round-trip: parse ∘ emit = id (58 theorems + 63 guards)
-│   ├── BlockScalarContracts.lean  # Block scalar A/G contracts (axiom-free)
-│   ├── DocumentContracts.lean     # Document parser A/G contracts
-│   ├── CharClass.lean             # Character classification proofs
-│   ├── StringProperties.lean      # String manipulation proofs
-│   ├── EscapeResolution.lean      # Escape sequence resolution proofs
-│   ├── FoldNewlines.lean          # Newline folding proofs
-│   ├── ScannerIndent.lean         # Scanner indentation tracking proofs
-│   ├── ScannerIndentStack.lean    # Scanner indent stack invariants
-│   ├── ScannerContracts.lean      # Scanner structural contracts
-│   ├── ScannerCorrectness.lean    # Scanner correctness proofs (~8,300 lines)
-│   ├── ScannerDispatch.lean       # Scanner dispatch proofs
-│   ├── ScannerDocument.lean       # Scanner document boundary proofs
-│   ├── ScannerDoubleQuoted.lean   # Scanner double-quoted string proofs
-│   ├── ScannerEmitBridge.lean     # Scanner emit bridge proofs
-│   ├── ScannerFlowCollection.lean # Scanner flow collection proofs
-│   ├── ScannerLoopInvariant.lean  # Scanner loop invariant proofs
-│   ├── ScannerPlainContent.lean   # Scanner plain content proofs
-│   ├── ScannerPlainScalar.lean    # Scanner plain scalar proofs
-│   ├── ScannerPlainScalarValid.lean # Scanner plain scalar validity (~5,400 lines)
-│   ├── ScannerProgress.lean       # Scanner progress proofs
-│   ├── ScannerProofs.lean         # Scanner property proofs
-│   ├── ScannerScalar.lean         # Scanner scalar proofs
-│   ├── ScannerSimpleKey.lean      # Scanner simple key proofs
-│   ├── ScannerWhitespace.lean     # Scanner whitespace proofs
-│   ├── SchemaResolution.lean      # Schema resolution proofs (35 theorems)
-│   ├── SchemaDump.lean            # Schema↔Dump proofs (40 theorems)
-│   ├── DumpRoundTrip.lean         # Dump round-trip proofs
-│   ├── CommentProperties.lean     # Comment handling + dump proofs (60 theorems)
-│   ├── TagResolution.lean         # %TAG directive resolution proofs (12 theorems)
-│   ├── EndToEndCorrectness.lean   # End-to-end correctness proofs
-│   ├── ValueAlgebra.lean          # YamlValue algebraic properties
-│   ├── ParserSoundness.lean       # Token parser soundness proofs
-│   ├── ParserCompleteness.lean    # Token parser completeness proofs
-│   ├── ParserCorrectness.lean     # Token parser correctness proofs
-│   ├── ParserGrammableBase.lean   # Parser grammable base infrastructure
-│   ├── ParserGrammable.lean       # Parser grammable proofs
-│   ├── ParserWellBehaved.lean     # Parser well-behavedness proofs (~3,100 lines)
-│   ├── ParserAnchorProofs.lean    # Anchor/alias validation proofs
-│   ├── ParserNodeProofs.lean      # parseNode anchors-grow + aliases-resolve proofs
-│   ├── ParserWfaProofs.lean       # Well-formed anchors + token preservation proofs
-│   ├── ErrorProperties.lean       # Error type discriminability, coverage, lifting (12 theorems)
-│   ├── LawfulBEq.lean            # LawfulBEq for entire AST hierarchy (32 proofs)
-│   └── SuiteGuards/               # Auto-generated #guard tests (362 tests, 6 files)
-│       ├── Scalar.lean            # 58 scalar stage guards
-│       ├── Flow.lean              # 44 flow stage guards
-│       ├── Block.lean             # 83 block stage guards
-│       ├── Document.lean          # 16 document stage guards
-│       ├── Advanced.lean          # 65 advanced stage guards
-│       └── Error.lean             # 96 error stage guards
+│   ├── FromToYaml.lean                 # FromYaml/ToYaml/FromYamlType typeclasses + instances
+│   ├── Struct.lean                     # Mapping helpers: getField, addField, mkMapping
+│   ├── Deriving.lean                   # deriving FromYaml, ToYaml macro handlers
+│   ├── Dump.lean                       # Schema↔Dump integration: dumpTyped, roundTripTyped
+│   └── Api.lean                        # Convenience: parseAs, toYaml, parseTyped
+├── Grammar.lean                        # Formal YAML grammar as Lean Props
+├── Proofs/                             # 2,309 theorems, 61 modules, ~39,000 lines
+│   ├── Soundness.lean                  # Parser produces only valid YAML
+│   ├── Completeness.lean               # Valid YAML parses successfully (DecidableEq + native_decide)
+│   ├── Composition.lean                # Scanner→TokenParser pipeline composition
+│   ├── RoundTrip.lean                  # Round-trip: parse ∘ emit = id (58 theorems + 63 guards)
+│   ├── BlockScalarContracts.lean       # Block scalar A/G contracts (axiom-free)
+│   ├── DocumentContracts.lean          # Document parser A/G contracts
+│   ├── CharClass.lean                  # Character classification proofs
+│   ├── StringProperties.lean           # String manipulation proofs
+│   ├── EscapeResolution.lean           # Escape sequence resolution proofs
+│   ├── FoldNewlines.lean               # Newline folding proofs
+│   ├── ScannerIndent.lean              # Scanner indentation tracking proofs
+│   ├── ScannerIndentStack.lean         # Scanner indent stack invariants
+│   ├── ScannerContracts.lean           # Scanner structural contracts
+│   ├── ScannerCorrectness.lean         # Scanner correctness proofs (~8,300 lines)
+│   ├── ScannerDispatch.lean            # Scanner dispatch proofs
+│   ├── ScannerDocument.lean            # Scanner document boundary proofs
+│   ├── ScannerDoubleQuoted.lean        # Scanner double-quoted string proofs
+│   ├── ScannerEmitBridge.lean          # Scanner emit bridge proofs
+│   ├── ScannerFlowCollection.lean      # Scanner flow collection proofs
+│   ├── ScannerLoopInvariant.lean       # Scanner loop invariant proofs
+│   ├── ScannerPlainContent.lean        # Scanner plain content proofs
+│   ├── ScannerPlainScalar.lean         # Scanner plain scalar proofs
+│   ├── ScannerPlainScalarValid.lean    # Scanner plain scalar validity (~5,400 lines)
+│   ├── ScannerProgress.lean            # Scanner progress proofs
+│   ├── ScannerProofs.lean              # Scanner property proofs
+│   ├── ScannerScalar.lean              # Scanner scalar proofs
+│   ├── ScannerSimpleKey.lean           # Scanner simple key proofs
+│   ├── ScannerWhitespace.lean          # Scanner whitespace proofs
+│   ├── SchemaResolution.lean           # Schema resolution proofs (35 theorems)
+│   ├── SchemaDump.lean                 # Schema↔Dump proofs (40 theorems)
+│   ├── DumpRoundTrip.lean              # Dump round-trip proofs
+│   ├── CommentProperties.lean          # Comment handling + dump proofs (60 theorems)
+│   ├── TagResolution.lean              # %TAG directive resolution proofs (12 theorems)
+│   ├── EndToEndCorrectness.lean        # End-to-end correctness proofs
+│   ├── ValueAlgebra.lean               # YamlValue algebraic properties
+│   ├── ParserSoundness.lean            # Token parser soundness proofs
+│   ├── ParserCompleteness.lean         # Token parser completeness proofs
+│   ├── ParserCorrectness.lean          # Token parser correctness proofs
+│   ├── ParserGrammableBase.lean        # Parser grammable base infrastructure
+│   ├── ParserGrammable.lean            # Parser grammable proofs
+│   ├── ParserWellBehaved.lean          # Parser well-behavedness proofs (~3,100 lines)
+│   ├── ParserAnchorProofs.lean         # Anchor/alias validation proofs
+│   ├── ParserNodeProofs.lean           # parseNode anchors-grow + aliases-resolve proofs
+│   ├── ParserWfaProofs.lean            # Well-formed anchors + token preservation proofs
+│   ├── ErrorProperties.lean            # Error type discriminability, coverage, lifting (12 theorems)
+│   ├── LawfulBEq.lean                  # LawfulBEq for entire AST hierarchy (32 proofs)
+│   └── SuiteGuards/                    # Auto-generated #guard tests (362 tests, 6 files)
+│       ├── Scalar.lean                 # 58 scalar stage guards
+│       ├── Flow.lean                   # 44 flow stage guards
+│       ├── Block.lean                  # 83 block stage guards
+│       ├── Document.lean               # 16 document stage guards
+│       ├── Advanced.lean               # 65 advanced stage guards
+│       └── Error.lean                  # 96 error stage guards
 └── Tests/
-    ├── VerifiedResult.lean  # Shared result types (VerifiedSuiteResult, TestCollector)
-    ├── Main.lean            # Unit tests (types + position)
-    ├── ValidationTests.lean # Structural validation tests
-    ├── ExplicitKeyTests.lean # Explicit key tests (66 tests)
-    ├── FlowTests.lean       # Flow completeness tests (88 tests)
-    ├── FlowRegressionCheck.lean # Flow regression diagnostics
-    ├── ErrorStageDiag.lean  # Error-stage pipeline diagnostic
-    ├── RawParseTests.lean   # Raw parse tests
-    ├── DumpRoundTrip.lean   # Dump round-trip tests
-    ├── SpecExamples.lean    # YAML 1.2.2 spec example parse tests (132 examples)
-    ├── ScannerSpecExamples.lean # Spec examples via scanner/parser pipeline (132 examples)
-    ├── ScannerTests.lean    # Scanner/parser pipeline tests (33 tests)
-    ├── SchemaDump.lean      # Schema↔Dump integration tests (68 tests)
-    ├── TryParse.lean        # Single-file parse binary (subprocess isolation)
-    ├── TryRoundTrip.lean    # Round-trip test binary
-    ├── TryDump.lean         # Dump test binary
+    ├── VerifiedResult.lean             # Shared result types (VerifiedSuiteResult, TestCollector)
+    ├── Main.lean                       # Unit tests (types + position)
+    ├── ValidationTests.lean            # Structural validation tests
+    ├── ExplicitKeyTests.lean           # Explicit key tests (66 tests)
+    ├── FlowTests.lean                  # Flow completeness tests (88 tests)
+    ├── FlowRegressionCheck.lean        # Flow regression diagnostics
+    ├── ErrorStageDiag.lean             # Error-stage pipeline diagnostic
+    ├── RawParseTests.lean              # Raw parse tests
+    ├── DumpRoundTrip.lean              # Dump round-trip tests
+    ├── SpecExamples.lean               # YAML 1.2.2 spec example parse tests (132 examples)
+    ├── ScannerSpecExamples.lean        # Spec examples via scanner/parser pipeline (132 examples)
+    ├── ScannerTests.lean               # Scanner/parser pipeline tests (33 tests)
+    ├── SchemaDump.lean                 # Schema↔Dump integration tests (68 tests)
+    ├── TryParse.lean                   # Single-file parse binary (subprocess isolation)
+    ├── TryRoundTrip.lean               # Round-trip test binary
+    ├── TryDump.lean                    # Dump test binary
     └── SuiteRunner/
-        ├── Meta.lean        # Line-based yaml-test-suite file parser
-        ├── Main.lean        # Programmatic yaml-test-suite runner
-        └── HtmlReport.lean  # Interactive HTML coverage reports
+        ├── Meta.lean                   # Line-based yaml-test-suite file parser
+        ├── Main.lean                   # Programmatic yaml-test-suite runner
+        └── HtmlReport.lean             # Interactive HTML coverage reports
 tools/
-└── ExtractSpecExamples.lean  # Scrape yaml.org/spec/1.2.2 → examples/ directory
-examples/                        # YAML 1.2.2 spec examples (§2–§10, 132 files)
-├── 2/                           # §2 Preview (28 examples)
-├── 5/                           # §5 Characters (14 examples)
-├── 6/                           # §6 Basic Structures (29 examples)
-├── 7/                           # §7 Flow Styles (24 examples)
-├── 8/                           # §8 Block Styles (22 examples)
-├── 9/                           # §9 Document Stream (6 examples)
-└── 10/                          # §10 Schemas (9 examples)
-Demo.lean                    # End-to-end demo examples (7 tests)
+└── ExtractSpecExamples.lean            # Scrape yaml.org/spec/1.2.2 → examples/ directory
+examples/                               # YAML 1.2.2 spec examples (§2–§10, 132 files)
+├── 2/                                  # §2 Preview (28 examples)
+├── 5/                                  # §5 Characters (14 examples)
+├── 6/                                  # §6 Basic Structures (29 examples)
+├── 7/                                  # §7 Flow Styles (24 examples)
+├── 8/                                  # §8 Block Styles (22 examples)
+├── 9/                                  # §9 Document Stream (6 examples)
+└── 10/                                 # §10 Schemas (9 examples)
+Demo.lean                               # End-to-end demo examples (7 tests)
 ```
 
 ### Three-Layer Verification Strategy
