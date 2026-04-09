@@ -186,8 +186,9 @@ ScannerLoopInvariant), `advance`, and `simpleKeyAllowed` (non-WellFormed).
 /-! ## §5  scanKey / scanValue — WellFormed Preservation (concrete)
 
 `scanKey` and `scanValue` have complex control flow with error guards,
-`pushMappingIndent`, `insertAt`, and conditional record updates.
-Building blocks are proven in ScannerSimpleKey and ScannerIndentStack.
+`pushMappingIndent`, `scanValueClearKey`, `scanValuePrepare` (which
+overwrites placeholder slots via `setIfInBounds`), and conditional record
+updates. Building blocks are proven in ScannerSimpleKey and ScannerIndentStack.
 Full universal WellFormed proofs require `do`-block monadic decomposition;
 comprehensive `#guard` checks validate the property on concrete states.
 -/

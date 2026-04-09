@@ -21,13 +21,12 @@ Three functions are covered:
 - `scanKey` — processes an explicit `?` key indicator
 - `scanValue` — processes a `:` value indicator (most complex scanner function)
 
-Additionally, `insertAt` (retroactive token insertion used by `scanValue`)
-is proved to preserve all WellFormed fields.
-
 ## Key Insight
 
-**saveSimpleKey** is pure and only modifies `simpleKey` — a field not
-mentioned in any WellFormed conjunct.  Preservation is trivial.
+**saveSimpleKey** pushes 2 placeholder tokens (reservation slots for a
+potential `blockMappingStart` + `key`) and records the current position
+in `simpleKey`.  Only `tokens` and `simpleKey` are modified — neither
+appears in any WellFormed conjunct.  Preservation is trivial.
 
 **scanKey** composes `pushMappingIndent` (proved in P10.10b) with `emit`
 and `advance` (proved in P10.8f.1), followed by a record update that
@@ -36,9 +35,10 @@ of which appear in WellFormed.
 
 **scanValue** is the scanner's most complex function (~70 LOC).  Error
 paths throw and need no WellFormed proof.  The success path uses
-`insertAt` (proved here to preserve WellFormed) and conditionally pushes
-indents (proved in P10.10b), then calls `emit` + `advance`.  The final
-record update only touches `simpleKeyAllowed` and `explicitKeyLine`.
+`scanValueClearKey` + `scanValuePrepare` (which overwrites placeholder
+slots via `setIfInBounds` — no index shifting), then calls `emit` +
+`advance` + `scanValueTabCheck`.  The final record update only touches
+`simpleKeyAllowed` and `explicitKeyLine`.
 
 ## Zero Axioms
 
@@ -129,13 +129,14 @@ theorem saveSimpleKey_preserves_wellFormed (s : ScannerState)
 
 ```
 def scanKey (s : ScannerState) : Except ScanError ScannerState := do
-  let s' := if !s.inFlow then pushMappingIndent s s.col else s
-  let s' := (s'.emit .key).advance
-  if !s'.inFlow then
-    if let some '\t' := s'.peek? then
-      throw (.tabInIndentation s'.line s'.col)
-  .ok { s' with simpleKeyAllowed := true, explicitKeyLine := some s.line,
-                simpleKey := { possible := false } }
+  let s_with_indent := if !s.inFlow then pushMappingIndent s s.col else s
+  let s_with_token := s_with_indent.emit .key
+  let s_after_advance := s_with_token.advance
+  if !s_after_advance.inFlow then
+    if let some '\t' := s_after_advance.peek? then
+      throw (.tabInIndentation s_after_advance.line s_after_advance.col)
+  .ok { s_after_advance with simpleKeyAllowed := true, explicitKeyLine := some s.line,
+                             simpleKey := { possible := false } }
 ```
 
 Error paths throw — WellFormed not needed.  The success path:
