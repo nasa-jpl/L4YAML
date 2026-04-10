@@ -2043,7 +2043,57 @@ bootstraps from the concrete case.
 
 *** Sub-phase 4.4.A Accomplishments***
 
+1. **Extended `scanNextToken_preprocess_init_state` with filtered-token postcondition.** Added
+   `s_pp.tokens.filter (fun t => t.val != .placeholder) = s₀.tokens.filter (fun t => t.val != .placeholder)`
+   to the existential. This bridges the scanner preprocessing (which adds placeholder tokens via
+   `saveSimpleKey`) to the original initial state, proving that filtering out placeholders recovers
+   the pre-preprocessing token content. Proof uses existing `saveSimpleKey_filter_placeholder`.
+
+2. **Proved filtered-token characterization for `scanNextToken_flow_open_init` (sequence case).**
+   Added postcondition: `(s'.tokens.filter (fun t => t.val != .placeholder)).map (·.val) =
+   #[.streamStart, .flowSequenceStart]`. This proves that after the FIRST `scanNextToken` on `[`
+   at stream start, the non-placeholder tokens are exactly `streamStart` followed by `flowSequenceStart`.
+   Proof chain: `scanFlowSequenceStart` token structure → `advance_preserves_tokens` →
+   `Array.filter_push` → `h_pp_filt` from preprocessing → concrete computation via `simp`.
+
+3. **Proved filtered-token characterization for `scanNextToken_flow_open_mapping_init` (mapping case).**
+   Parallel to sequence case with `flowMappingStart` instead of `flowSequenceStart`.
+   Same proof structure, same postcondition shape.
+
+4. **Updated callers in `emit_produces_valid_yaml` (seq and map branches)** to destructure
+   the new `h_filt₁` hypothesis from both theorem invocations. Build: 0 errors, 4 sorry warnings
+   (all pre-existing, in the non-empty flow collection branches).
+
 *** Sub-phase 4.4.A Reflections***
+
+1. **Existential witnesses from `obtain` are opaque.** After `obtain ⟨s_pp, h_pp_eq, ...⟩ := h_pp`,
+   `s_pp` is a fresh variable — NOT definitionally equal to the existential witness
+   (`saveSimpleKey { s₀ with needIndentCheck := false }`). This is fundamental to Lean 4's
+   existential elimination: `Exists.casesOn` introduces a universally quantified variable,
+   not a reference to the witness term. Consequence: any property of `s_pp` that depends on
+   its concrete construction must be proved INSIDE the existential's proof and propagated
+   as a postcondition. The `change` tactic cannot bridge the gap because definitional equality
+   is checked against the case-eliminated variable, not the original witness.
+
+2. **`{ s₀ with field := v }.other_field` and let-binding interactions.**
+   `{ s₀ with needIndentCheck := false }.tokens = s₀.tokens` is `rfl` when `s₀` is a local
+   variable (iota reduction on the struct constructor). But `saveSimpleKey_filter_placeholder`
+   applied to `{ s₀ with needIndentCheck := false }` produces a term with type mentioning
+   `{ s₀ with ... }.tokens.filter _`, and this unifies with the `s₀.tokens.filter _` target
+   via `rfl` in the `.trans rfl` pattern. This connection worked inside the existential proof
+   body (where the witness IS the constructor term) but NOT outside it (where `s_pp` is opaque).
+
+3. **`simp only` with rewrite hypotheses in the argument list is the cleanest composition pattern.**
+   The working proof uses `simp only [Array.filter_push, show ... from rfl, ite_true, Array.map_push,
+   show s_ad.tokens = s_pp.tokens from h_ad_tokens, h_pp_filt]` — combining array lemmas,
+   concrete computations, and hypothesis rewrites in a single `simp only` call. This avoids
+   intermediate `rw` steps that can fail when the target pattern is buried inside a larger term.
+
+4. **`ScannerState.currentPos` must be in the simp set when proving token-push equalities.**
+   After unfolding `ScannerState.emit`, the pushed token has `.pos := { s_ad with simpleKey := _ }.currentPos`.
+   Since `currentPos` only accesses `offset`, `line`, `col` (not `simpleKey`), this should equal
+   `s_ad.currentPos`. But `simp` doesn't reduce through the struct update unless `ScannerState.currentPos`
+   is explicitly in the simp set (it's not `@[simp]` by default).
 
 ---
 
