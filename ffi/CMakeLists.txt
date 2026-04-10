@@ -1,7 +1,7 @@
 # ffi/CMakeLists.txt — Build libl4yaml.so from Lean IR + C shim
 #
 # Prerequisites:
-#   lake build Lean4Yaml    (generates .lake/build/ir/*.c)
+#   lake build L4YAML    (generates .lake/build/ir/*.c)
 #
 # Usage:
 #   cmake -B ffi/out -S ffi
@@ -35,9 +35,9 @@ endif()
 set(PROJECT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
 set(IR_DIR "${PROJECT_ROOT}/.lake/build/ir")
 
-file(GLOB_RECURSE LEAN_IR_SOURCES "${IR_DIR}/Lean4Yaml/*.c")
-if(EXISTS "${IR_DIR}/Lean4Yaml.c")
-  list(APPEND LEAN_IR_SOURCES "${IR_DIR}/Lean4Yaml.c")
+file(GLOB_RECURSE LEAN_IR_SOURCES "${IR_DIR}/L4YAML/*.c")
+if(EXISTS "${IR_DIR}/L4YAML.c")
+  list(APPEND LEAN_IR_SOURCES "${IR_DIR}/L4YAML.c")
 endif()
 
 # ── Collect Lake dependency IR files ─────────────────────────────────
@@ -73,7 +73,7 @@ list(LENGTH LEAN_IR_SOURCES IR_COUNT)
 if(IR_COUNT EQUAL 0)
   message(FATAL_ERROR
     "No Lean IR .c files found under ${IR_DIR}.\n"
-    "Run 'lake build Lean4Yaml' first.")
+    "Run 'lake build L4YAML' first.")
 endif()
 message(STATUS "Found ${IR_COUNT} Lean IR C files (including dependencies)")
 
