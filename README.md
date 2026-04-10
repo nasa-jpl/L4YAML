@@ -111,6 +111,26 @@ examples/                               # YAML 1.2.2 spec examples (§2–§10, 
 Demo.lean                               # End-to-end demo examples (7 tests)
 ```
 
+## CI
+
+### Self-Hosted Runner Prerequisites
+
+The CI workflow (`test-coverage.yml`) runs on a self-hosted GitHub Actions runner. The following must be pre-installed on the runner host (RHEL 9):
+
+**System packages** (install as root):
+```bash
+dnf install -y pango cairo gdk-pixbuf2 libffi-devel python3 python3-pip cmake cargo
+```
+
+**Python packages** (install as the runner user):
+```bash
+sudo -u runner python3 -m pip install --user weasyprint pytest
+```
+
+The `weasyprint` package is required for PDF documentation generation. If it is missing, the CI workflow will skip PDF generation and the documentation site will not include a PDF download link.
+
+> **Note:** On RHEL 9, `/usr/bin/python3` is Python 3.9 by default. The CI workflow uses `python3 -m pip` (not bare `pip3`) to ensure packages are installed for the correct Python version. The runner user does not have passwordless sudo, so system packages must be installed separately by an administrator.
+
 ### Three-Layer Verification Strategy
 
 Verification uses a deliberate 3-layer approach:
