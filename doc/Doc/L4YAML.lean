@@ -34,6 +34,9 @@ applicable yaml-test-suite test IDs (225/225).
 This manual documents the project's architecture, verification
 strategy, security model, and FFI bindings for C, Python, and Rust.
 
+A PDF version of this manual is available for download:
+[L4YAML.pdf](L4YAML.pdf).
+
 {include 0 Doc.L4YAML.Overview}
 
 {include 0 Doc.L4YAML.Architecture}

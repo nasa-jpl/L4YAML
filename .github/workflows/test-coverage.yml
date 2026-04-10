@@ -41,8 +41,13 @@ jobs:
           if command -v apt-get &>/dev/null; then
             sudo apt-get update -qq
             sudo apt-get install -y -qq libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev libcairo2 2>/dev/null || true
+          elif command -v dnf &>/dev/null; then
+            sudo dnf install -y pango cairo gdk-pixbuf2 libffi-devel 2>/dev/null || true
+          elif command -v yum &>/dev/null; then
+            sudo yum install -y pango cairo gdk-pixbuf2 libffi-devel 2>/dev/null || true
           fi
-          pip3 install --user weasyprint 2>&1 && echo "has_weasyprint=true" >> $GITHUB_OUTPUT || echo "has_weasyprint=false" >> $GITHUB_OUTPUT
+          # Use python3 -m pip to avoid python3/pip3 version mismatch on RHEL
+          python3 -m pip install --user weasyprint 2>&1 && echo "has_weasyprint=true" >> $GITHUB_OUTPUT || echo "has_weasyprint=false" >> $GITHUB_OUTPUT
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       # -------------------------------------------------------
