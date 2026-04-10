@@ -51,11 +51,14 @@ jobs:
           else
             echo "No passwordless sudo — skipping system package install (must be pre-installed)"
           fi
-          # Install weasyprint: try without --user first (works in virtualenvs),
-          # fall back to --user for bare Python installs.
-          if python3 -m pip install weasyprint 2>/dev/null; then
+          # Check if weasyprint is already available (e.g. pre-installed in venv),
+          # otherwise try to install it.
+          if python3 -c "import weasyprint" 2>/dev/null; then
+            echo "weasyprint already available"
             echo "has_weasyprint=true" >> "$GITHUB_OUTPUT"
-          elif python3 -m pip install --user weasyprint 2>/dev/null; then
+          elif python3 -m pip install weasyprint; then
+            echo "has_weasyprint=true" >> "$GITHUB_OUTPUT"
+          elif python3 -m pip install --user weasyprint; then
             echo "has_weasyprint=true" >> "$GITHUB_OUTPUT"
           else
             echo "::warning::weasyprint install failed — PDF generation will be skipped"
