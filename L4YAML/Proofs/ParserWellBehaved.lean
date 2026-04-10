@@ -3099,4 +3099,302 @@ theorem parseStream_output_scannable
   exact parseDocument_scannable tokens ps doc ps' h_fpsv h_matched h_eq h_ok
 
 
+/-! ### §5f  Parser position monotonicity
+
+Every successfully-parsed call to `parseNode` (and its sub-parsers) returns
+a state whose `.pos` is ≥ the input `.pos`. No parser function ever
+*decreases* the parse position.
+
+This is needed for fuel-sufficiency arguments: each iteration of a flow
+loop advances position by ≥1 token, so the loop terminates within
+`tokens.size` iterations.
+
+The proof is by strong induction on fuel, mirroring `parseNode_wb_all`. -/
+
+/-- Position monotonicity property for `parseNode` at fuel ≤ n. -/
+def ParseNodePosMono (n : Nat) : Prop :=
+  ∀ (ps : ParseState) (m : Nat) (val : YamlValue) (ps' : ParseState),
+    m ≤ n → parseNode ps m = .ok (val, ps') → ps'.pos ≥ ps.pos
+
+/-- Projection helper for `ParseNodePosMono`. -/
+theorem parseNodePosMono_apply {n : Nat} (h_ih : ParseNodePosMono n)
+    {ps : ParseState} {m : Nat} {v : YamlValue × ParseState}
+    (h_ok : parseNode ps m = .ok v)
+    (h_le : m ≤ n := by omega) :
+    v.2.pos ≥ ps.pos :=
+  h_ih ps m v.1 v.2 h_le h_ok
+
+/-- `tryConsume` doesn't decrease position. -/
+theorem tryConsume_pos_mono (ps : ParseState) (tok : YamlToken) :
+    (ps.tryConsume tok).2.pos ≥ ps.pos := by
+  unfold ParseState.tryConsume
+  split
+  · split
+    · simp [ParseState.advance]
+    · exact Nat.le_refl _
+  · exact Nat.le_refl _
+
+-- `parseNodeProperties` doesn't decrease position.
+set_option maxRecDepth 10000 in
+set_option maxHeartbeats 800000000 in
+theorem parseNodeProperties_pos_mono (ps : ParseState)
+    (props : NodeProperties) (ps' : ParseState)
+    (h : parseNodeProperties ps = .ok (props, ps')) :
+    ps'.pos ≥ ps.pos := by
+  -- parseNodeProperties only modifies pos via advance (for anchor/tag tokens).
+  -- The loop runs 0–2 iterations, each advancing 0 or 1 times.
+  -- Reuse the token-preservation proof structure.
+  unfold parseNodeProperties at h
+  unfold ForIn.forIn instForInOfForIn' at h
+  unfold ForIn'.forIn' Std.Legacy.Range.instForIn'NatInferInstanceMembershipOfMonad at h
+  unfold Std.Legacy.Range.forIn' at h
+  unfold_loop_at h
+  simp (config := { decide := true, iota := false }) only [] at h
+  unfold_loop_at h
+  simp (config := { decide := true, iota := false }) only [] at h
+  try unfold_loop_at h
+  simp (config := { decide := true, iota := false }) only [
+    bind, Except.bind, pure, Except.pure, dite_true] at h
+  try unfold_loop_at h
+  try simp (config := { decide := true, iota := false }) only [
+    bind, Except.bind, pure, Except.pure] at h
+  -- Split outermost Except (final result)
+  split at h
+  · contradiction
+  · simp only [Except.ok.injEq, Prod.mk.injEq] at h
+    obtain ⟨_hfst, rfl⟩ := h
+    rename_i heq
+    split at heq
+    · contradiction
+    · rename_i v heq_first
+      cases v with
+      | done x =>
+        simp (config := { iota := true }) only [] at heq
+        simp only [Except.ok.injEq] at heq; subst heq
+        -- break on first iteration — no advance or 0 advances
+        all_goals (first | contradiction | split at heq_first | skip)
+        all_goals (first | contradiction | split at heq_first | skip)
+        all_goals (first | contradiction | split at heq_first | skip)
+        all_goals (first | contradiction | split at heq_first | skip)
+        all_goals (first | contradiction | split at heq_first | skip)
+        all_goals (first | contradiction | split at heq_first | skip)
+        all_goals (try contradiction)
+        all_goals (try simp only [Except.ok.injEq, ForInStep.done.injEq] at heq_first)
+        all_goals (try cases heq_first)
+        all_goals (try subst heq_first)
+        all_goals (simp; try omega)
+      | yield x =>
+        simp (config := { iota := true }) only [] at heq
+        split at heq
+        · contradiction
+        · rename_i v2 heq_second
+          cases v2 with
+          | done y =>
+            simp (config := { iota := true }) only [] at heq
+            simp only [Except.ok.injEq] at heq; subst heq
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (try contradiction)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (try contradiction)
+            all_goals (try cases heq_first)
+            all_goals (try cases heq_second)
+            all_goals (try simp at *)
+            all_goals (try subst_vars)
+            try all_goals (simp [ParseState.advance]; try omega)
+          | yield y =>
+            simp only [dite_false] at heq
+            simp only [Except.ok.injEq] at heq; subst heq
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (first | contradiction | split at heq_second | skip)
+            all_goals (try contradiction)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (first | contradiction | split at heq_first | skip)
+            all_goals (try contradiction)
+            all_goals (try cases heq_first)
+            all_goals (try cases heq_second)
+            all_goals (try simp at *)
+            all_goals (try subst_vars)
+            all_goals (simp [ParseState.advance]; try omega)
+
+/-! #### Block sequence position monotonicity -/
+
+theorem parseBlockSequenceLoop_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState) (items : Array YamlValue)
+    (result : Array YamlValue × ParseState)
+    (h_ok : parseBlockSequenceLoop ps fuel items = .ok result) :
+    result.2.pos ≥ ps.pos := by
+  sorry
+
+theorem parseBlockSequence_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState) (result : YamlValue × ParseState)
+    (h_ok : parseBlockSequence ps fuel = .ok result) :
+    result.2.pos ≥ ps.pos := by
+  sorry
+
+/-! #### Implicit block sequence position monotonicity -/
+
+theorem parseImplicitBlockSequenceLoop_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState) (items : Array YamlValue)
+    (result : Array YamlValue × ParseState)
+    (h_ok : parseImplicitBlockSequenceLoop ps fuel items = .ok result) :
+    result.2.pos ≥ ps.pos := by
+  sorry
+
+theorem parseImplicitBlockSequence_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState) (result : YamlValue × ParseState)
+    (h_ok : parseImplicitBlockSequence ps fuel = .ok result) :
+    result.2.pos ≥ ps.pos := by
+  sorry
+
+/-! #### Block mapping position monotonicity -/
+
+theorem parseBlockMappingEntryValue_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState) (keyHasContent : Bool) (keyLine keyCol : Nat)
+    (result : YamlValue × ParseState)
+    (h_ok : parseBlockMappingEntryValue ps fuel keyHasContent keyLine keyCol = .ok result) :
+    result.2.pos ≥ ps.pos := by
+  sorry
+
+theorem handleBlockMappingKeyEntry_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState) (pairIdx : Nat)
+    (result : YamlValue × YamlValue × ParseState)
+    (h_ok : handleBlockMappingKeyEntry ps fuel pairIdx = .ok result) :
+    result.2.2.pos ≥ ps.pos := by
+  sorry
+
+theorem handleBlockMappingValueEntry_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState) (pairIdx : Nat)
+    (result : YamlValue × ParseState)
+    (h_ok : handleBlockMappingValueEntry ps fuel pairIdx = .ok result) :
+    result.2.pos ≥ ps.pos := by
+  sorry
+
+theorem parseBlockMappingLoop_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState) (pairs : Array (YamlValue × YamlValue))
+    (result : Array (YamlValue × YamlValue) × ParseState)
+    (h_ok : parseBlockMappingLoop ps fuel pairs = .ok result) :
+    result.2.pos ≥ ps.pos := by
+  sorry
+
+theorem parseBlockMapping_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState) (result : YamlValue × ParseState)
+    (h_ok : parseBlockMapping ps fuel = .ok result) :
+    result.2.pos ≥ ps.pos := by
+  sorry
+
+/-! #### Flow sequence position monotonicity -/
+
+theorem parseFlowSequenceLoop_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState) (items : Array YamlValue)
+    (result : Array YamlValue × ParseState)
+    (h_ok : parseFlowSequenceLoop ps fuel items = .ok result) :
+    result.2.pos ≥ ps.pos := by
+  sorry
+
+theorem parseFlowSequence_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState) (result : YamlValue × ParseState)
+    (h_ok : parseFlowSequence ps fuel = .ok result) :
+    result.2.pos ≥ ps.pos := by
+  sorry
+
+/-! #### Flow mapping position monotonicity -/
+
+theorem parseFlowMappingValue_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState) (savedPath : YamlPath) (keyContent : String)
+    (result : YamlValue × ParseState)
+    (h_ok : parseFlowMappingValue ps fuel savedPath keyContent = .ok result) :
+    result.2.pos ≥ ps.pos := by
+  sorry
+
+theorem parseExplicitKey_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState)
+    (result : YamlValue × ParseState)
+    (h_ok : parseExplicitKey ps fuel = .ok result) :
+    result.2.pos ≥ ps.pos := by
+  sorry
+
+theorem parseSinglePairMapping_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState) (result : YamlValue × ParseState)
+    (h_ok : parseSinglePairMapping ps fuel = .ok result) :
+    result.2.pos ≥ ps.pos := by
+  sorry
+
+theorem parseFlowMappingLoop_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState) (pairs : Array (YamlValue × YamlValue))
+    (result : Array (YamlValue × YamlValue) × ParseState)
+    (h_ok : parseFlowMappingLoop ps fuel pairs = .ok result) :
+    result.2.pos ≥ ps.pos := by
+  sorry
+
+theorem parseFlowMapping_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState) (result : YamlValue × ParseState)
+    (h_ok : parseFlowMapping ps fuel = .ok result) :
+    result.2.pos ≥ ps.pos := by
+  sorry
+
+/-! #### Content dispatch and main induction -/
+
+/-- `parseNodeContent` doesn't decrease position, given `ParseNodePosMono` IH. -/
+theorem parseNodeContent_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState) (props : NodeProperties)
+    (result : YamlValue × ParseState)
+    (h_ok : parseNodeContent ps fuel props = .ok result) :
+    result.2.pos ≥ ps.pos := by
+  sorry
+theorem parseNode_pos_mono_all : ∀ n, ParseNodePosMono n := by
+  sorry
+
+/-! #### Emitter-specific strict position advancement -/
+
+/-- For emitter-produced tokens (scalar, flowSequenceStart, flowMappingStart),
+    `parseNode` strictly advances position. These are exactly the content tokens
+    the canonical emitter produces — no aliases, anchors, tags, or block constructs.
+
+    - **Scalar**: `parseNodeContent` → `ps.advance`, giving `pos' = pos + 1`
+    - **Flow collection**: `parseFlowSequence`/`parseFlowMapping` starts with
+      `ps.advance`, so `pos' ≥ pos + 1` even before the loop -/
+theorem parseNode_emitter_advances (ps : ParseState) (fuel : Nat)
+    (val : YamlValue) (ps' : ParseState)
+    (h_ok : parseNode ps (fuel + 1) = .ok (val, ps'))
+    (h_emit_tok : (∃ s, ps.peek? = some (.scalar s .doubleQuoted)) ∨
+                  ps.peek? = some .flowSequenceStart ∨
+                  ps.peek? = some .flowMappingStart) :
+    ps'.pos > ps.pos := by
+  sorry
+
 end L4YAML.Proofs.ParserGrammable
