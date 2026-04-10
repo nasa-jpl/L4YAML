@@ -202,6 +202,15 @@ jobs:
             docs/L4YAML.pdf
           echo "PDF generated: docs/L4YAML.pdf"
 
+      - name: Add PDF download link to documentation
+        if: steps.weasyprint.outputs.has_weasyprint == 'true'
+        run: |
+          if [ -f docs/L4YAML.pdf ]; then
+            # Inject PDF download link into the landing page after the intro paragraph
+            sed -i 's|strategy, security model, and FFI bindings for C, Python, and Rust.</p>|strategy, security model, and FFI bindings for C, Python, and Rust.</p>\n              <p>\n                A PDF version of this manual is available for download:\n<a href="L4YAML.pdf">L4YAML.pdf</a>.</p>|' docs/index.html
+            echo "PDF download link added to docs/index.html"
+          fi
+
       # -------------------------------------------------------
       # Phase 6: Publish
       # -------------------------------------------------------

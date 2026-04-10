@@ -1984,6 +1984,244 @@ monotonicity proof through `parseNode` dispatch.
    A cleaner solution would be to move the `native_decide` checks to a separate module, but
    the added module management overhead isn't worth it for 4 definitions.
 
+
+#### Layer 4: Non-empty flow collection round-trip (4 sorrys)
+
+**Goal:** Eliminate the 4 remaining sorry instances (EmitterScannability.lean lines 6504,
+6543, 6709, 6749) — all in non-empty branches of flow collection proofs.
+
+**Core insight:** The emitter produces *canonical* output — all scalars double-quoted, all
+collections flow-style, single-line, no aliases/anchors/tags. This means the token stream
+from `scanFiltered (emit v)` has a rigid, predictable structure:
+
+```
+streamStart, flowSeqStart, <item₁ tokens>, flowEntry, <item₂ tokens>, ..., flowSeqEnd, streamEnd
+```
+
+The parser traces this token structure deterministically. No ambiguity, no block-context
+dispatches, no directives, no document markers. Every `parseNode` call within the flow loop
+sees either a double-quoted scalar (1 token consumed) or a nested flow collection
+(`flowSeqStart`/`flowMapStart` bracket group consumed).
+
+**Strategy:** Rather than proving general position-monotonicity for `parseNode` across all
+input types (which would be ~500+ LOC touching block scalars, implicit keys, etc.), we
+prove a *restricted position-advancement lemma* for `parseNode` on emitter-produced tokens
+only. The emitter's output constraints (no block constructs, no aliases, no node properties)
+mean `parseNode` takes the simplest dispatch path every time.
+
+---
+
+**Sub-phase 4.4.A — Token structure characterization (~200-300 LOC)**
+
+Prove that `scanFiltered (emit (.sequence style items tag anchor))` produces a token array
+with known structure when `items.toList = v :: vs`:
+
+```lean
+theorem scanFiltered_emitSeq_structure (items : Array YamlValue) (h_ne : items.size > 0)
+    (h_gram : ∀ i : Fin items.size, Grammable items[i] true)
+    {tokens : Array (Positioned YamlToken)}
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens) :
+    tokens[0]!.val = .streamStart ∧
+    tokens[1]!.val = .flowSequenceStart ∧
+    tokens[tokens.size - 2]!.val = .flowSequenceEnd ∧
+    tokens[tokens.size - 1]!.val = .streamEnd ∧
+    tokens.size ≥ 6  -- at minimum: streamStart, flowSeqStart, scalar, flowSeqEnd, streamEnd + 1
+```
+
+Similarly for `scanFiltered_emitMap_structure`.
+
+*Approach:* Leverage `emit_produces_valid_yaml` (proven — gives `∃ tokens, scanFiltered ... = .ok tokens`)
+plus `scanFiltered_produces_valid_tokens` (gives `ValidTokenStream`: size ≥ 2, first = streamStart,
+last = streamEnd) plus `scanFiltered_FlowBracketsMatched` (brackets are paired). The flow-open
+token is at position 1 because `scanNextToken` on `[` at the stream start emits `flowSequenceStart`
+after `streamStart`.
+
+*Alternative approach (simpler):* Extend the `checkFull` pattern to small non-empty cases.
+Define `checkFullSeq1` for `["\"\""]` (single empty-string element), verify by `native_decide`,
+then prove by structural induction that additional elements don't break the pattern. This
+bootstraps from the concrete case.
+
+*** Sub-phase 4.4.A Accomplishments***
+
+*** Sub-phase 4.4.A Reflections***
+
+---
+
+**Sub-phase 4.4.B — Parser position advancement on emitter output (~200-300 LOC)**
+
+Prove that `parseNode` on emitter-produced tokens advances `ps.pos` by at least 1:
+
+```lean
+theorem parseNode_emitter_advances (ps : ParseState) (fuel : Nat)
+    (val : YamlValue) (ps' : ParseState)
+    (h_ok : parseNode ps (fuel + 1) = .ok (val, ps'))
+    (h_emit_tok : EmitterToken ps)  -- current token is from emitter output
+    : ps'.pos > ps.pos
+```
+
+where `EmitterToken ps` asserts that `ps.peek?` is one of:
+- `some (.scalar _ .doubleQuoted)` — scalar: consumed in 1 step
+- `some .flowSequenceStart` — nested sequence: consumed by `parseFlowSequence`
+- `some .flowMappingStart` — nested mapping: consumed by `parseFlowMapping`
+
+For scalars: `parseNode` unfolds to `parseNodeContent` → scalar branch → `advance` → `pos + 1`.
+For nested collections: `parseFlowSequence`/`parseFlowMapping` consumes the full bracket group.
+Position advancement follows from the bracket structure (at minimum: `flowSeqStart` + `flowSeqEnd`
+= 2 tokens consumed).
+
+*Key constraint:* The emitter never produces anchors, tags, aliases, or block constructs.
+So `parseNodeProperties` is a no-op (`props = {}`), and `parseNodeContent` dispatches directly
+to the content branch. This eliminates most of `parseNode`'s complexity.
+
+*** Sub-phase 4.4.B Accomplishments***
+
+*** Sub-phase 4.4.B Reflections***
+
+---
+
+**Sub-phase 4.4.C — Flow loop fuel sufficiency (~150-250 LOC)**
+
+Prove that `parseFlowSequenceLoop` terminates successfully on emitter-produced tokens:
+
+```lean
+theorem parseFlowSequenceLoop_emitter_ok (ps : ParseState) (fuel : Nat)
+    (items_acc : Array YamlValue)
+    (h_fuel : fuel ≥ ps.tokens.size - ps.pos)
+    (h_bracket : ∃ j, j > ps.pos ∧ j < ps.tokens.size ∧
+                       ps.tokens[j].val = .flowSequenceEnd)
+    (h_emitter : EmitterTokenStream ps)
+    : ∃ items ps', parseFlowSequenceLoop ps fuel items_acc = .ok (items, ps')
+                   ∧ ps'.peek? = some .flowSequenceEnd
+```
+
+*Approach:* By strong induction on `fuel`. Each iteration:
+1. Peeks: not `flowSequenceEnd` (there are items remaining)
+2. Optionally consumes `flowEntry` separator (pos += 1)
+3. Calls `parseNode` (pos += ≥1 by Sub-phase 4.4.B)
+4. Recurses with strictly decreased `fuel` (since pos increased, `tokens.size - pos` decreased)
+
+The bracket matching from `scanFiltered_FlowBracketsMatched` ensures `flowSequenceEnd` is
+eventually reached before tokens run out.
+
+Similarly `parseFlowMappingLoop_emitter_ok` — each iteration consumes key + value (≥2 tokens
+via two `parseNode` calls plus `tryConsume .key` and `parseFlowMappingValue`).
+
+*** Sub-phase 4.4.C Accomplishments***
+
+*** Sub-phase 4.4.C Reflections***
+
+---
+
+**Sub-phase 4.4.D — Layer 2 non-empty cases (~100-200 LOC)**
+
+With Subs A-C, close `parseStream_emitSequence` and `parseStream_emitMapping` non-empty:
+
+```lean
+| _ :: _ =>
+    -- Token structure from Sub-phase A
+    have h_struct := scanFiltered_emitSeq_structure items ... h_scan
+    -- Parser trace: streamStart → advance → parseDocument → parseNode → parseFlowSequence
+    -- parseFlowSequence calls parseFlowSequenceLoop (Sub-phase C)
+    -- Loop succeeds, consumes through flowSequenceEnd
+    -- parseStream wraps in single document (parseStreamLoop_single_doc)
+    ...
+```
+
+*Pattern:* Mimic `parseStream_three_tokens_scalar` but for flow collections. Unfold
+`parseStream` → `expect .streamStart` → `parseStreamLoop` → `parseDocument`. Inside
+`parseDocument`: `parseDirectives_skip` (no directives), `prepareDocumentState` (identity),
+`parseNodeProperties_skip` (no properties), `parseNodeContent` dispatches to
+`parseFlowSequence`/`parseFlowMapping`. Then apply the loop fuel sufficiency from Sub-phase C.
+
+*** Sub-phase 4.4.D Accomplishments***
+
+*** Sub-phase 4.4.D Reflections***
+
+---
+
+**Sub-phase 4.4.E — Layer 3 non-empty cases (~200-400 LOC)**
+
+Close `emit_roundtrip_sequence_content_eq` and `emit_roundtrip_mapping_content_eq` non-empty:
+
+1. **Decompose the pipeline:** `parseYamlRaw` → `scanFiltered` + `parseStream` via
+   `parseYamlRaw_ok_decompose`.
+
+2. **Extract parsed value structure:** From Sub-phase D we know parsing succeeds and
+   produces 1 document. Need the stronger result that:
+   ```lean
+   docs[0].value = .sequence .flow items' (tag := none) (anchor := none)
+   ```
+   where `items'.size = items.size` and each `items'[i]` comes from `parseNode` on
+   the sub-token-stream for `emit items[i]`.
+
+   *Approach:* Strengthen the flow loop lemma from Sub-phase C to also extract the
+   parsed values (not just existence of success). Each `parseNode` call on
+   `emit items[i]`'s tokens produces a value satisfying the inductive hypothesis `ih`.
+
+3. **Content equivalence:** After compose (which strips anchors — trivial for emitter output
+   since there are none), apply `contentEq_sequence_items` to reduce to:
+   - Size equality: `items'.size = items.size` (from the loop structure)
+   - Element-wise: `contentEq items[i] (compose items'[i]) = true` (from IH `ih`)
+
+   The IH application needs: `parseYamlRaw (emit items[i]) = .ok raw_docs'` — this requires
+   showing that the sub-token-stream for each item is independently parseable. Since
+   `emit items[i]` is itself valid emitter output, `emit_produces_valid_yaml` gives scanner
+   success, and Sub-phase D gives parser success.
+
+*** Sub-phase 4.4.E Accomplishments***
+
+*** Sub-phase 4.4.E Reflections***
+
+---
+
+**Dependency graph:**
+
+```
+4.4.A (token structure)
+  ↓
+4.4.B (position advancement) ← uses A for token classification
+  ↓
+4.4.C (loop fuel sufficiency) ← uses B for per-iteration progress
+  ↓
+4.4.D (Layer 2 non-empty) ← uses C for loop success
+  ↓
+4.4.E (Layer 3 non-empty) ← uses D + IH for content equivalence
+```
+
+All sub-phases are sequential. A → B → C → D → E.
+
+**Estimated total: ~850-1450 LOC** across Sub-phases A-E.
+
+**Alternative fast-path (if position advancement is too difficult):**
+
+If proving `parseNode_emitter_advances` from scratch is blocked, consider:
+
+1. **Concrete `native_decide` for small sizes.** Extend `checkFullSeq`/`checkContentSeq`
+   to 1-element and 2-element cases with specific scalar content. This proves the theorems
+   for arbitrarily-chosen small sequences, establishing the pattern. Then:
+
+2. **Inductive composition.** Show that `emit (items ++ [v])` = `emit items` with `, emit v`
+   inserted before `]`. If parsing succeeds for `items` (IH) and `emit v` scans correctly
+   (from `emit_scans_in_flow`), then parsing succeeds for `items ++ [v]`.
+
+This avoids proving anything about parser internals — it uses the scanner's `ScanChain`
+composition to build the token stream incrementally and verifies parser acceptance
+inductively. The cost is that it requires an inductive strengthening of the `ScanChain`
+to carry token-level information.
+
+**Risk assessment for Layer 4:**
+
+| Risk | Likelihood | Mitigation |
+|------|-----------|------------|
+| `parseNode` unfolding too complex for non-trivial cases | Medium | Restrict to emitter output: no block/alias/tag paths taken |
+| Token structure characterization requires deep scanner trace | Medium | Leverage existing `ScanChain` + `EmitScansInFlow` composition |
+| IH application for content equivalence requires `parseYamlRaw` per-element | High | Each `emit items[i]` is independent emitter output — proven scannable |
+| Fuel arithmetic interactions between loop nesting levels | Medium | Concrete fuel: `4 * tokens.size + 4` ≫ what's needed for flat collections |
+
+##### Layer 4 Accomplishments
+
+##### Layer 4 Reflections
+
 #### Existing proven infrastructure to leverage
 
 - `scanLoop_step_eq`, `scanLoop_step`, `scanLoop_fuel_mono` (compositionality)
