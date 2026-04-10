@@ -2480,7 +2480,10 @@ theorem scanNextToken_preprocess_init_state (input : String) (c : Char)
       ∧ s_pp.inputEnd = input.utf8ByteSize
       ∧ s_pp.explicitKeyLine = none
       ∧ s_pp.line = 0
-      ∧ AllTokensOnLine s_pp s_pp.line := by
+      ∧ AllTokensOnLine s_pp s_pp.line
+      ∧ s_pp.tokens.filter (fun t => t.val != .placeholder)
+          = ((ScannerState.mk' input).emit .streamStart).tokens.filter
+              (fun t => t.val != .placeholder) := by
   -- Build ScannerSurfCorr for the initial state
   have h_chars := chars_from_zero_toList input
   rw [h_toList] at h_chars
@@ -2503,7 +2506,8 @@ theorem scanNextToken_preprocess_init_state (input : String) (c : Char)
     by exact AllTokensOnLine_saveSimpleKey _ 0
          (AllTokensOnLine_emit _ _ 0
            (by intro i h_bound; have : 0 = (ScannerState.mk' input).tokens.size := rfl; omega) rfl)
-         rfl⟩
+         rfl,
+    saveSimpleKey_filter_placeholder _⟩
   -- Prove: scanNextToken_preprocess = .ok (some (saveSimpleKey {...}, c))
   unfold scanNextToken_preprocess
   rw [h_stc]; simp only [bind, Except.bind, pure, Except.pure]
@@ -3288,14 +3292,16 @@ theorem scanNextToken_flow_open_init (input : String) (rest : List Char)
       ∧ s'.explicitKeyLine = none
       ∧ s'.line = 0
       ∧ AllTokensOnLine s' 0
-      ∧ EndLineOnLine s' := by
+      ∧ EndLineOnLine s'
+      ∧ (s'.tokens.filter (fun t => t.val != .placeholder)).map (·.val)
+          = #[.streamStart, .flowSequenceStart] := by
   intro s₀
   -- Step 1: preprocessing
   have h_pp := scanNextToken_preprocess_init_state input '[' rest h_toList
     (by decide) (by decide) (by decide)
   obtain ⟨s_pp, h_pp_eq, h_fl_pp, h_inflow_pp, h_ci_pp, h_col_pp,
           h_ad_pp, h_dp_pp, h_ids, h_inp, h_off, h_ie, h_ek_pp,
-          h_line_pp, h_atol_pp⟩ := h_pp
+          h_line_pp, h_atol_pp, h_pp_filt⟩ := h_pp
   -- Step 2: ScannerSurfCorr for s_pp
   have h_chars := chars_from_zero_toList input
   rw [h_toList] at h_chars
@@ -3384,7 +3390,24 @@ theorem scanNextToken_flow_open_init (input : String) (rest : List Char)
               (by simp only [s_ad]; split <;> exact h_line_pp),
          by intro h_poss
             rw [scanFlowSequenceStart_simpleKey_not_possible] at h_poss
-            exact absurd h_poss (by decide)⟩
+            exact absurd h_poss (by decide),
+         by -- Filtered token characterization:
+            have h_fss_tokens : (scanFlowSequenceStart s_ad).tokens
+                = s_ad.tokens.push ⟨s_ad.currentPos, .flowSequenceStart, s_ad.currentPos⟩ := by
+              show ({ ({ s_ad with simpleKey := _ }.emit .flowSequenceStart).advance with
+                  flowLevel := _, simpleKeyAllowed := _,
+                  flowStack := _, simpleKeyStack := _ }).tokens = _
+              simp only [ScannerCorrectness.advance_preserves_tokens,
+                         ScannerState.emit, ScannerState.currentPos]
+            have h_ad_tokens : s_ad.tokens = s_pp.tokens := by
+              simp only [s_ad]; split <;> rfl
+            rw [h_fss_tokens]
+            simp only [Array.filter_push,
+              show (YamlToken.flowSequenceStart != YamlToken.placeholder) = true from rfl,
+              ite_true, Array.map_push,
+              show s_ad.tokens = s_pp.tokens from h_ad_tokens,
+              h_pp_filt]
+            simp [ScannerState.mk', ScannerState.emit]⟩
 
 -- Helper: Nat BEq with 0
 theorem nat_beq_zero_false (n : Nat) (h : n > 0) : (n == 0) = false := by
@@ -4606,14 +4629,16 @@ theorem scanNextToken_flow_open_mapping_init (input : String) (rest : List Char)
       ∧ s'.explicitKeyLine = none
       ∧ s'.line = 0
       ∧ AllTokensOnLine s' 0
-      ∧ EndLineOnLine s' := by
+      ∧ EndLineOnLine s'
+      ∧ (s'.tokens.filter (fun t => t.val != .placeholder)).map (·.val)
+          = #[.streamStart, .flowMappingStart] := by
   intro s₀
   -- Step 1: preprocessing
   have h_pp := scanNextToken_preprocess_init_state input '{' rest h_toList
     (by decide) (by decide) (by decide)
   obtain ⟨s_pp, h_pp_eq, h_fl_pp, h_inflow_pp, h_ci_pp, h_col_pp,
           h_ad_pp, h_dp_pp, h_ids, h_inp, h_off, h_ie, h_ek_pp,
-          h_line_pp, h_atol_pp⟩ := h_pp
+          h_line_pp, h_atol_pp, h_pp_filt⟩ := h_pp
   -- Step 2: ScannerSurfCorr for s_pp
   have h_chars := chars_from_zero_toList input
   rw [h_toList] at h_chars
@@ -4700,7 +4725,24 @@ theorem scanNextToken_flow_open_mapping_init (input : String) (rest : List Char)
               (by simp only [s_ad]; split <;> exact h_line_pp),
          by intro h_poss
             rw [scanFlowMappingStart_simpleKey_not_possible] at h_poss
-            exact absurd h_poss (by decide)⟩
+            exact absurd h_poss (by decide),
+         by -- Filtered token characterization for mapping (mirrors sequence case)
+            have h_fms_tokens : (scanFlowMappingStart s_ad).tokens
+                = s_ad.tokens.push ⟨s_ad.currentPos, .flowMappingStart, s_ad.currentPos⟩ := by
+              show ({ ({ s_ad with simpleKey := _ }.emit .flowMappingStart).advance with
+                  flowLevel := _, simpleKeyAllowed := _,
+                  flowStack := _, simpleKeyStack := _ }).tokens = _
+              simp only [ScannerCorrectness.advance_preserves_tokens,
+                         ScannerState.emit, ScannerState.currentPos]
+            have h_ad_tokens : s_ad.tokens = s_pp.tokens := by
+              simp only [s_ad]; split <;> rfl
+            rw [h_fms_tokens]
+            simp only [Array.filter_push,
+              show (YamlToken.flowMappingStart != YamlToken.placeholder) = true from rfl,
+              ite_true, Array.map_push,
+              show s_ad.tokens = s_pp.tokens from h_ad_tokens,
+              h_pp_filt]
+            simp [ScannerState.mk', ScannerState.emit]⟩
 
 -- ═══ Emit output first-char analysis ═══
 
@@ -5873,7 +5915,7 @@ theorem emit_produces_valid_yaml (v : YamlValue) {inFlow : Bool} (hg : Grammable
         simp only [String.toList_append]; rfl
       -- Step 2: Scan '[' from initial state via flow_open_init
       obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
-              h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁⟩ :=
+              h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, _h_filt₁⟩ :=
         scanNextToken_flow_open_init ("[" ++ emit.emitList items.toList ++ "]")
           ((emit.emitList items.toList).toList ++ [']']) h_toList
       -- Step 3: Build EmitListScansInFlow for non-empty items list
@@ -5926,7 +5968,7 @@ theorem emit_produces_valid_yaml (v : YamlValue) {inFlow : Bool} (hg : Grammable
         simp only [String.toList_append]; rfl
       -- Step 2: Scan '{' from initial state via flow_open_mapping_init
       obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
-              h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁⟩ :=
+              h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, _h_filt₁⟩ :=
         scanNextToken_flow_open_mapping_init ("{" ++ emit.emitPairList pairs.toList ++ "}")
           ((emit.emitPairList pairs.toList).toList ++ ['}']) h_toList
       -- Step 3: Build EmitPairListScansInFlow for non-empty pair list
