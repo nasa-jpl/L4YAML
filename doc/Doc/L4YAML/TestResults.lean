@@ -27,7 +27,7 @@ Actions workflow and published alongside this documentation
 in the `reports/` directory.
 
 The interactive coverage dashboard is available at
-[reports/index.html](../reports/index.html).
+[reports/index.html](reports/index.html).
 
 # yaml-test-suite Coverage
 %%%
@@ -42,21 +42,21 @@ breakdown.
 
 Interactive reports:
 
- * [Full Coverage Report](../reports/coverage-all.html) —
+ * [Full Coverage Report](reports/coverage-all.html) —
    all test cases with filtering and sorting
- * [Verified Tests Detail](../reports/verified-tests.html) —
+ * [Verified Tests Detail](reports/verified-tests.html) —
    all internal test suites with per-test results
- * [Production Coverage](../reports/production-coverage.html) —
+ * [Production Coverage](reports/production-coverage.html) —
    YAML 1.2.2 productions cross-referenced with `@[yaml_spec]` annotations
 
 Coverage by stage:
 
- * [Scalar Tests](../reports/coverage-scalar.html)
- * [Flow Tests](../reports/coverage-flow.html)
- * [Block Tests](../reports/coverage-block.html)
- * [Document Tests](../reports/coverage-document.html)
- * [Advanced Tests](../reports/coverage-advanced.html)
- * [Error Tests](../reports/coverage-error.html)
+ * [Scalar Tests](reports/coverage-scalar.html)
+ * [Flow Tests](reports/coverage-flow.html)
+ * [Block Tests](reports/coverage-block.html)
+ * [Document Tests](reports/coverage-document.html)
+ * [Advanced Tests](reports/coverage-advanced.html)
+ * [Error Tests](reports/coverage-error.html)
 
 # Lean Test Suites
 %%%
@@ -205,4 +205,4 @@ behavior — every backend must produce the same pass/fail/skip
 results for every test case under every preset configuration.
 
 Results are available at
-[Cross-Language Comparison Report](../reports/cross-lang-comparison.html).
+[Cross-Language Comparison Report](reports/cross-lang-comparison.html).
