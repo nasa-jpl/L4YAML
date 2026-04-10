@@ -92,13 +92,13 @@ The work is concentrated in `StreamAccum.lean` (3,332 lines), which is the only 
 ### Impact Analysis
 
 **Files that define the constructors (must change):**
-- `Lean4Yaml/Surface/Document.lean` — remove `directiveDrop` and `scannerDrop` from the `SLYamlStream` inductive
+- `L4YAML/Surface/Document.lean` — remove `directiveDrop` and `scannerDrop` from the `SLYamlStream` inductive
 
 **Files that USE the constructors (must fix):**
-- `Lean4Yaml/Proofs/StreamAccum.lean` — **all 13 usage sites** are here
+- `L4YAML/Proofs/StreamAccum.lean` — **all 13 usage sites** are here
 
 **Files that ONLY CONSUME `SLYamlStream` values (no change needed):**
-- `Lean4Yaml/Proofs/DocumentProduction.lean` — `scan_strict_proof` delegates to `StreamAccum`; no case analysis on constructors
+- `L4YAML/Proofs/DocumentProduction.lean` — `scan_strict_proof` delegates to `StreamAccum`; no case analysis on constructors
 - All other proof files — only thread `SLYamlStream` existentials, never pattern-match on constructors
 
 ---

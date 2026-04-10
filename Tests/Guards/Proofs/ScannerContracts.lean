@@ -1,8 +1,8 @@
-import Lean4Yaml.Proofs.ScannerContracts
+import L4YAML.Proofs.ScannerContracts
 
-namespace Lean4Yaml.Proofs.ScannerContracts
+namespace L4YAML.Proofs.ScannerContracts
 
-open Lean4Yaml.Scanner
+open L4YAML.Scanner
 
 -- Flow end: flowLevel decrements correctly from 1
 #guard (scanFlowSequenceEnd (scanFlowSequenceStart (ScannerState.mk' "[]"))).flowLevel == 0
@@ -171,4 +171,4 @@ private def scanNestedBlockScalar (input : String) : Option String :=
 #guard afterOneClose.simpleKeyStack.size == afterOneClose.flowStack.size
 #guard afterBothClose.simpleKeyStack.size == afterBothClose.flowStack.size
 
-end Lean4Yaml.Proofs.ScannerContracts
+end L4YAML.Proofs.ScannerContracts

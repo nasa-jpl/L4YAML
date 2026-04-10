@@ -82,7 +82,7 @@ The verified Lean parser compiles to C via Lean's code generator. A thin FFI lay
                     ▾         ▾         ▾
                 C API     Python      Rust
               (26 fns)   (ctypes)   (bindgen)
-              liblean4yaml.so ← shared verified core
+              libl4yaml.so ← shared verified core
 ```
 
 **This is not a toy demo.** It is a production YAML 1.2.2 parser:
@@ -232,9 +232,9 @@ Layer 3: Grammar-Level (Eliminates: Misinterpretation, silent corruption)
 
 | Language | Binding | Tests | Status |
 |----------|---------|-------|--------|
-| **C** | 26 exported functions, opaque handle ABI, `liblean4yaml.so` | Verified via `nm -D` | ✅ Production |
+| **C** | 26 exported functions, opaque handle ABI, `libl4yaml.so` | Verified via `nm -D` | ✅ Production |
 | **Python** | `ctypes` package, 5 modules, full `YamlValue` API | 78 tests, 0.14s | ✅ Production |
-| **Rust** | 2-crate workspace (`lean4yaml-sys` + `lean4yaml`), safe RAII wrapper | 21 tests, 0.06s | ✅ Production |
+| **Rust** | 2-crate workspace (`l4yaml-sys` + `l4yaml`), safe RAII wrapper | 21 tests, 0.06s | ✅ Production |
 
 ### Security Limits (Complete)
 
@@ -331,7 +331,7 @@ Four converging forces:
 1. Specify — Write the mathematical specification in Lean (Prop-level definitions)
 2. Implement — Write the executable code in Lean (def-level functions)
 3. Prove — Bridge spec ↔ impl with machine-checked theorems (1,769 of them)
-4. Compile — Lean IR → C → shared library (liblean4yaml.so)
+4. Compile — Lean IR → C → shared library (libl4yaml.so)
 5. Bind — C header + shim → Python ctypes / Rust bindgen
 6. Ship — Every consumer gets proven guarantees. Every build re-checks every proof.
 ```

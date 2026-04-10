@@ -1,4 +1,4 @@
-import Lean4Yaml.TokenParser
+import L4YAML.TokenParser
 import Tests.VerifiedResult
 -- Reuse cleanup helpers from SpecExamples
 import Tests.SpecExamples
@@ -25,7 +25,7 @@ lake build scannerspecexamples && ./.lake/build/bin/scannerspecexamples
 ```
 -/
 
-open Lean4Yaml
+open L4YAML
 open Tests
 
 namespace Tests.ScannerSpecExamples

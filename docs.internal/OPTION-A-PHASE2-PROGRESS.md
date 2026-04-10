@@ -205,7 +205,7 @@ Given that we've successfully demonstrated:
 
 ## Files Modified
 
-1. **Lean4Yaml/Proofs/ScannerCorrectness.lean**
+1. **L4YAML/Proofs/ScannerCorrectness.lean**
    - Added `scanLoop_success_emits_streamEnd` (mostly complete)
    - Added `scanLoop_increases_tokens` (needs one lemma)
    - Updated `scan_produces_at_least_two` (clear path forward)

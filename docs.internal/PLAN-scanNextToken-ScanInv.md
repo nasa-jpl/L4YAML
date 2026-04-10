@@ -667,7 +667,7 @@ leaf theorems require the most effort.
 
 ## Phase 4 Reflections
 
-Phase 4 extracted all 1917 `#guard` checks from the `Lean4Yaml/` library into
+Phase 4 extracted all 1917 `#guard` checks from the `L4YAML/` library into
 `Tests/Guards/`, separating proof artifacts from build-time regression tests.
 
 ### Motivation
@@ -682,7 +682,7 @@ them to a separate test directory:
 
 ### Structure
 
-- **32 files** under `Tests/Guards/` mirroring the `Lean4Yaml/` directory structure
+- **32 files** under `Tests/Guards/` mirroring the `L4YAML/` directory structure
 - **7 guard-only files** (SuiteGuards/\*, TestSuite.lean) moved wholesale
 - **25 mixed files** had guards and guard-only private defs extracted
 - **`Tests/Guards.lean`** hub file imports all 32 sub-modules
@@ -709,7 +709,7 @@ them to a separate test directory:
 
 4. **Missing `open` statements in guard files**: Guard-only private defs often referenced
    functions via scoped `open ... in` in the original source. The extraction script
-   captured the namespace but not all `open` statements. Fix: add `open Lean4Yaml.TokenParser`
+   captured the namespace but not all `open` statements. Fix: add `open L4YAML.TokenParser`
    to 4 guard files that use `parseYamlSingle`.
 
 5. **Lake lean\_lib module discovery**: Initially used `name = "Tests.GuardChecks"` for the
@@ -722,7 +722,7 @@ them to a separate test directory:
 | Metric | Before Phase 4 | After Phase 4 |
 |--------|---------------|---------------|
 | Build modules | 191/191 | 211/211 (+32 guard modules, −7 deleted) |
-| `#guard` in Lean4Yaml/ | 1917 | 0 |
+| `#guard` in L4YAML/ | 1917 | 0 |
 | `#guard` in Tests/Guards/ | 0 | 1917 |
 | Tests | 869/869 | 869/869 |
 | Sorry | 0 | 0 |

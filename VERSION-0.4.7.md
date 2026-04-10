@@ -278,7 +278,7 @@ Discharge the three independent, easy sorry stubs that have no dependencies on s
 
 3. **`emit_nonempty` proved by `cases v` + `simp_all`**: String length reasoning required concrete `native_decide` witnesses for `"\"".length = 1`, `"[".length = 1`, etc. — `omega` cannot evaluate `String.length` on opaque string literals in Lean 4.29.
 
-4. **Opened `Lean4Yaml.Proofs.RoundTrip` namespace** for access to `isEscapedChar` and `escapeChar_identity` — needed by `escapeChar_output_nbJson`'s non-ASCII passthrough case.
+4. **Opened `L4YAML.Proofs.RoundTrip` namespace** for access to `isEscapedChar` and `escapeChar_identity` — needed by `escapeChar_output_nbJson`'s non-ASCII passthrough case.
 
 #### Reflections
 
@@ -2404,13 +2404,13 @@ Tier 3: stubs 9c, 9d (content fidelity)                 [Step 8, TODO — needs 
 
 | File | Action | Step |
 |---|---|---|
-| `Lean4Yaml/Proofs/EmitterScannability.lean` | **Exists** — fill sorry stubs, add sub-lemmas | 4–7 |
-| `Lean4Yaml/Proofs/EmitterEscapeProps.lean` | **New** (if needed) — escape character property proofs if EmitterScannability grows too large | 4 |
-| `Lean4Yaml/Proofs/EmitterScannerAcceptance.lean` | **New** (if needed) — scanner loop invariant and flow-collection composition proofs | 5 |
-| `Lean4Yaml/Proofs/EmitterParserAcceptance.lean` | **New** (if needed) — parser error elimination and document count proofs | 6 |
-| `Lean4Yaml/Proofs/EmitterContentFidelity.lean` | **New** (if needed) — escape round-trip and per-constructor content equivalence proofs | 7 |
-| `Lean4Yaml/Proofs/ScannerEmitBridge.lean` | Minor updates — cross-reference new modules | — |
-| `Lean4Yaml/Proofs/Completeness.lean` | Update §4 to mark Phase E as resolved | — |
+| `L4YAML/Proofs/EmitterScannability.lean` | **Exists** — fill sorry stubs, add sub-lemmas | 4–7 |
+| `L4YAML/Proofs/EmitterEscapeProps.lean` | **New** (if needed) — escape character property proofs if EmitterScannability grows too large | 4 |
+| `L4YAML/Proofs/EmitterScannerAcceptance.lean` | **New** (if needed) — scanner loop invariant and flow-collection composition proofs | 5 |
+| `L4YAML/Proofs/EmitterParserAcceptance.lean` | **New** (if needed) — parser error elimination and document count proofs | 6 |
+| `L4YAML/Proofs/EmitterContentFidelity.lean` | **New** (if needed) — escape round-trip and per-constructor content equivalence proofs | 7 |
+| `L4YAML/Proofs/ScannerEmitBridge.lean` | Minor updates — cross-reference new modules | — |
+| `L4YAML/Proofs/Completeness.lean` | Update §4 to mark Phase E as resolved | — |
 
 ---
 

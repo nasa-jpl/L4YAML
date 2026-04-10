@@ -1,6 +1,6 @@
-name = "Lean4Yaml"
+name = "L4YAML"
 defaultTargets = [
-  "Lean4Yaml",
+  "L4YAML",
   "Tests.Guards",
   "tryparse",
   "tryscan",
@@ -46,7 +46,7 @@ git = "https://github.com/leanprover/doc-gen4"
 rev = "v4.29.0"
 
 [[lean_lib]]
-name = "Lean4Yaml"
+name = "L4YAML"
 
 [[lean_lib]]
 name = "Tests.Guards"

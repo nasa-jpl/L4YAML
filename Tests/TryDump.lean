@@ -1,4 +1,4 @@
-import Lean4Yaml
+import L4YAML
 
 /-!
 # TryDump — parse YAML then dump with configurable style
@@ -40,8 +40,8 @@ All fields are optional (defaults match `DumpConfig {}`):
 | 3    | Usage error                      |
 -/
 
-open Lean4Yaml
-open Lean4Yaml.Dump
+open L4YAML
+open L4YAML.Dump
 
 def main (args : List String) : IO UInt32 := do
   match args with

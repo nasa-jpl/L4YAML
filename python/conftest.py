@@ -1,4 +1,4 @@
-"""Pytest configuration for lean4yaml tests.
+"""Pytest configuration for l4yaml tests.
 
 Blocks ROS 2 launch_testing plugins that conflict with standalone pytest.
 """

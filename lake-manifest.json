@@ -101,5 +101,5 @@
    "inputRev": "main",
    "inherited": true,
    "configFile": "lakefile.lean"}],
- "name": "Lean4Yaml",
+ "name": "L4YAML",
  "lakeDir": ".lake"}

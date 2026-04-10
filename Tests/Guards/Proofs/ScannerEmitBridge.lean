@@ -1,11 +1,11 @@
-import Lean4Yaml.Proofs.ScannerEmitBridge
+import L4YAML.Proofs.ScannerEmitBridge
 
-namespace Lean4Yaml.Proofs.ScannerEmitBridge
+namespace L4YAML.Proofs.ScannerEmitBridge
 
-open Lean4Yaml
-open Lean4Yaml.Emit
-open Lean4Yaml.Grammar
-open Lean4Yaml.TokenParser
+open L4YAML
+open L4YAML.Emit
+open L4YAML.Grammar
+open L4YAML.TokenParser
 
 private def stripEqRoundTrips (n : ValidNode) : Bool :=
   let v := toYamlValue n
@@ -229,4 +229,4 @@ private def emitParseSucceeds (n : ValidNode) : Bool :=
 #guard emit (.sequence .block #[.scalar ⟨"x", .plain, none, none, none⟩] none)
     == emit (.sequence .flow #[.scalar ⟨"x", .doubleQuoted, some "!str", none, none⟩] (some "!seq"))
 
-end Lean4Yaml.Proofs.ScannerEmitBridge
+end L4YAML.Proofs.ScannerEmitBridge

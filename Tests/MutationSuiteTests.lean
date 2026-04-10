@@ -1,4 +1,4 @@
-import Lean4Yaml.TokenParser
+import L4YAML.TokenParser
 import Tests.VerifiedResult
 
 /-
@@ -67,8 +67,8 @@ See `tmp/mutate_suite.py` for the mutation generator and
 `tmp/mutation_report.json` for the full machine-readable report.
 -/
 
-open Lean4Yaml
-open Lean4Yaml.TokenParser
+open L4YAML
+open L4YAML.TokenParser
 open Tests
 
 namespace Tests.MutationSuite

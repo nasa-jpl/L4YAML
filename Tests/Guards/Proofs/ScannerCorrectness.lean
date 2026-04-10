@@ -1,13 +1,13 @@
-import Lean4Yaml.Proofs.ScannerCorrectness
+import L4YAML.Proofs.ScannerCorrectness
 
 namespace ScanHelpers
 
-open Lean4Yaml
-open Lean4Yaml.Scanner
-open Lean4Yaml.Grammar
-open Lean4Yaml.Proofs.ScannerProgress
-open Lean4Yaml.Proofs.ScannerProofs
-open Lean4Yaml.Proofs.ScannerCorrectness
+open L4YAML
+open L4YAML.Scanner
+open L4YAML.Grammar
+open L4YAML.Proofs.ScannerProgress
+open L4YAML.Proofs.ScannerProofs
+open L4YAML.Proofs.ScannerCorrectness
 
 -- Envelope property holds on diverse inputs
 #guard checkValidStream ""

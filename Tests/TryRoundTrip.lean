@@ -1,4 +1,4 @@
-import Lean4Yaml
+import L4YAML
 
 /-!
 # TryRoundTrip — YAML parse → emit → re-parse round-trip test
@@ -18,7 +18,7 @@ the canonical output and checks structural equivalence with `contentEq`.
 | 4    | Usage error                                  |
 -/
 
-open Lean4Yaml
+open L4YAML
 
 /--
 Emit an array of YAML documents as a multi-document canonical string.

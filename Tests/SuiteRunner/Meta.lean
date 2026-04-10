@@ -1,4 +1,4 @@
-import Lean4Yaml.Types
+import L4YAML.Types
 
 /-!
 # yaml-test-suite Metadata Parser

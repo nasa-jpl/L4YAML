@@ -1,4 +1,4 @@
-import Lean4Yaml.TokenParser
+import L4YAML.TokenParser
 import Tests.VerifiedResult
 
 /-
@@ -54,8 +54,8 @@ subset of the grammar. Other spec areas with adversarial boundary potential:
 These could form the basis for a v0.2.13.2 or later test expansion.
 -/
 
-open Lean4Yaml
-open Lean4Yaml.TokenParser
+open L4YAML
+open L4YAML.TokenParser
 open Tests
 
 namespace Tests.AdversarialGrammar

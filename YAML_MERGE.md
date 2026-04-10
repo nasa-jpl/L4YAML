@@ -241,46 +241,46 @@ alias-resolved value trees.
 /-- Merge two YAML values with default configuration (right-biased, reject
     on key equality using `defaultScalarEq`). -/
 def YamlValue.merge (left right : YamlValue) : YamlValue :=
-  Lean4Yaml.merge defaultScalarEq left right
+  L4YAML.merge defaultScalarEq left right
 
 /-- Merge two YAML values with custom key equality. -/
 def YamlValue.mergeWith (keyEq : YamlValue → YamlValue → Bool) [KeyEqPred keyEq]
     (left right : YamlValue) : YamlValue :=
-  Lean4Yaml.merge keyEq left right
+  L4YAML.merge keyEq left right
 
 /-- Merge a base document with a sequence of overlay documents. -/
 def YamlValue.mergeAll (keyEq : YamlValue → YamlValue → Bool) [KeyEqPred keyEq]
     (base : YamlValue) (overlays : Array YamlValue) : YamlValue :=
-  overlays.foldl (Lean4Yaml.merge keyEq) base
+  overlays.foldl (L4YAML.merge keyEq) base
 ```
 
 ### C API
 
 ```c
 // Merge two parsed YAML values
-void *lean4yaml_merge(void *left, void *right);
-void *lean4yaml_merge_with_config(void *left, void *right, void *merge_cfg);
+void *l4yaml_merge(void *left, void *right);
+void *l4yaml_merge_with_config(void *left, void *right, void *merge_cfg);
 
 // Merge multiple documents
-void *lean4yaml_merge_all(void **docs, int count, void *merge_cfg);
+void *l4yaml_merge_all(void **docs, int count, void *merge_cfg);
 ```
 
 ### Python API
 
 ```python
-import lean4yaml
+import l4yaml
 
-base = lean4yaml.load("base.yaml")
-overlay = lean4yaml.load("overlay.yaml")
+base = l4yaml.load("base.yaml")
+overlay = l4yaml.load("overlay.yaml")
 
 # Right-biased deep merge
-result = lean4yaml.merge(base, overlay)
+result = l4yaml.merge(base, overlay)
 
 # Merge multiple layers (left fold)
-result = lean4yaml.merge_all(base, [layer1, layer2, layer3])
+result = l4yaml.merge_all(base, [layer1, layer2, layer3])
 
 # With custom config
-result = lean4yaml.merge(base, overlay, key_equality="content_only")
+result = l4yaml.merge(base, overlay, key_equality="content_only")
 ```
 
 ## Examples
@@ -343,8 +343,8 @@ This guarantees that accidentally applying the same layer twice is harmless.
 
 ### Phase 1: Core Merge (depends on DuplicateKeys Phase 1)
 
-1. Define `merge` and `mergeMappingPairs` in `Lean4Yaml/Merge.lean`
-2. Reuse `KeyEqPred` from `Lean4Yaml/DuplicateKeys.lean`
+1. Define `merge` and `mergeMappingPairs` in `L4YAML/Merge.lean`
+2. Reuse `KeyEqPred` from `L4YAML/DuplicateKeys.lean`
 3. Define `MergeConfig` and `SequenceMergeStrategy`
 4. Add `#guard` tests in `Tests/Guards/MergeGuards.lean`
 
@@ -357,7 +357,7 @@ This guarantees that accidentally applying the same layer twice is harmless.
 
 ### Phase 3: FFI and Python
 
-9. C API in `ffi/lean4yaml_shim.c`
+9. C API in `ffi/l4yaml_shim.c`
 10. Python bindings: `merge()`, `merge_all()`
 11. Python tests
 
@@ -371,14 +371,14 @@ This guarantees that accidentally applying the same layer twice is harmless.
 
 | File | Change | Impact |
 |------|--------|--------|
-| `Lean4Yaml/Merge.lean` | **NEW** | Core merge algorithm + config types |
-| `Lean4Yaml/Proofs/MergeProofs.lean` | **NEW** | All merge theorems |
-| `Lean4Yaml/FFI.lean` | New `@[export]` functions | Additive |
+| `L4YAML/Merge.lean` | **NEW** | Core merge algorithm + config types |
+| `L4YAML/Proofs/MergeProofs.lean` | **NEW** | All merge theorems |
+| `L4YAML/FFI.lean` | New `@[export]` functions | Additive |
 | `Tests/Guards/MergeGuards.lean` | **NEW** | Compile-time `#guard` tests |
 | `Tests/test_python_ffi.py` | Add merge tests | Additive |
-| `ffi/lean4yaml.h` | New C API functions | Additive |
-| `ffi/lean4yaml_shim.c` | Shim implementations | Additive |
-| `python/lean4yaml/__init__.py` | `merge()`, `merge_all()` | Additive |
+| `ffi/l4yaml.h` | New C API functions | Additive |
+| `ffi/l4yaml_shim.c` | Shim implementations | Additive |
+| `python/l4yaml/__init__.py` | `merge()`, `merge_all()` | Additive |
 | Scanner, TokenParser, all Proofs/* | **UNCHANGED** | Zero impact |
 
 ## Design Decisions

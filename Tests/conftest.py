@@ -1,12 +1,12 @@
 """Pytest configuration for Python FFI tests.
 
-Adds the lean4yaml Python package to sys.path and handles
+Adds the l4yaml Python package to sys.path and handles
 ROS 2 launch_testing plugin conflicts.
 """
 import sys
 from pathlib import Path
 
-# Make lean4yaml importable from the project's python/ directory
+# Make l4yaml importable from the project's python/ directory
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _PYTHON_PKG = _PROJECT_ROOT / "python"
 if str(_PYTHON_PKG) not in sys.path:

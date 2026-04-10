@@ -1,10 +1,10 @@
-import Lean4Yaml
+import L4YAML
 import Lean
 
 /-!
 # Theorem Coverage Analyzer
 
-Analyzes the quality and coverage of theorems in `Lean4Yaml`:
+Analyzes the quality and coverage of theorems in `L4YAML`:
 
 1. **Leaf theorems** — defined but never cited in any other proof or definition
 2. **Short-name duplicates** — same local name appearing in 2+ modules
@@ -28,10 +28,10 @@ Writes four files to `<output-dir>/`:
 
 open Lean
 
-/-- Is the name in the `Lean4Yaml` namespace? -/
+/-- Is the name in the `L4YAML` namespace? -/
 private def isProjectName (n : Name) : Bool :=
   match n with
-  | .str p _ => p == `Lean4Yaml || isProjectName p
+  | .str p _ => p == `L4YAML || isProjectName p
   | .num p _ => isProjectName p
   | .anonymous => false
 
@@ -87,7 +87,7 @@ unsafe def main (args : List String) : IO Unit := do
 
   Lean.enableInitializersExecution
   Lean.initSearchPath (← Lean.findSysroot)
-  let env ← Lean.importModules #[{ module := `Lean4Yaml }] {} 0
+  let env ← Lean.importModules #[{ module := `L4YAML }] {} 0
 
   IO.FS.createDirAll outDir
 

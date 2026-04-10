@@ -1,4 +1,4 @@
-import Lean4Yaml
+import L4YAML
 import Tests.VerifiedResult
 
 /-
@@ -34,8 +34,8 @@ the composed output matches the legacy `parseYaml` / `parseYamlSingle`.
 8. Multi-document anchor scoping
 -/
 
-open Lean4Yaml
-open Lean4Yaml.TokenParser
+open L4YAML
+open L4YAML.TokenParser
 open Tests
 
 namespace Tests.RawParse

@@ -1,13 +1,13 @@
-import Lean4Yaml.Proofs.ScannerDispatch
+import L4YAML.Proofs.ScannerDispatch
 
-namespace Lean4Yaml.Proofs.ScannerDispatch
+namespace L4YAML.Proofs.ScannerDispatch
 
-open Lean4Yaml.Scanner
-open Lean4Yaml.Proofs.ScannerLoopInvariant
-open Lean4Yaml.Proofs.ScannerContracts
-open Lean4Yaml.Proofs.ScannerIndentStack
-open Lean4Yaml.Proofs.ScannerScalar
-open Lean4Yaml.Proofs.ScannerDocument
+open L4YAML.Scanner
+open L4YAML.Proofs.ScannerLoopInvariant
+open L4YAML.Proofs.ScannerContracts
+open L4YAML.Proofs.ScannerIndentStack
+open L4YAML.Proofs.ScannerScalar
+open L4YAML.Proofs.ScannerDocument
 
 -- Full WellFormed preservation for flow-open (concrete)
 private def checkFlowOpenWF (f : ScannerState → ScannerState) (input : String) : Bool :=
@@ -654,4 +654,4 @@ private def multiStepProgress : Bool :=
   .key, .scalar "c" .plain, .value, .scalar "3" .plain,
   .blockEnd, .blockEnd, .streamEnd]
 
-end Lean4Yaml.Proofs.ScannerDispatch
+end L4YAML.Proofs.ScannerDispatch

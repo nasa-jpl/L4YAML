@@ -2,7 +2,7 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Lean4Yaml.TokenParser
+import L4YAML.TokenParser
 
 /-!
 # yaml-test-suite Compile-Time Guards — Advanced Stage
@@ -15,9 +15,9 @@ Each `#guard` is evaluated by Lean's kernel during `lake build`.
 These are Phase 4 of the verification plan: yaml-test-suite as compile-time proofs.
 -/
 
-namespace Lean4Yaml.Proofs.SuiteGuards.Advanced
+namespace L4YAML.Proofs.SuiteGuards.Advanced
 
-open Lean4Yaml.TokenParser
+open L4YAML.TokenParser
 
 -- 26DV:0 Whitespace around colon in mappings
 #guard match parseYaml "\"top1\" : \n  \"key1\" : &alias1 scalar1\n'top2' : \n  'key2' : &alias2 scalar2\ntop3: &node3 \n  *alias1 : scalar3\ntop4: \n  *alias2 : scalar4\ntop5   :    \n  scalar5\ntop6: \n  &anchor6 'key6' : scalar6\n" with
@@ -339,4 +339,4 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
-end Lean4Yaml.Proofs.SuiteGuards.Advanced
+end L4YAML.Proofs.SuiteGuards.Advanced

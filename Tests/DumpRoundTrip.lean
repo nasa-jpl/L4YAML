@@ -1,7 +1,7 @@
-import Lean4Yaml.Dump
-import Lean4Yaml.Emitter
-import Lean4Yaml.TokenParser
-import Lean4Yaml.Proofs.DumpRoundTrip
+import L4YAML.Dump
+import L4YAML.Emitter
+import L4YAML.TokenParser
+import L4YAML.Proofs.DumpRoundTrip
 import Tests.VerifiedResult
 
 /-
@@ -26,10 +26,10 @@ in the HTML dashboard.
 5. **Document dump** — directives, markers, multi-document streams
 -/
 
-open Lean4Yaml
-open Lean4Yaml.Dump
-open Lean4Yaml.Emit
-open Lean4Yaml.TokenParser
+open L4YAML
+open L4YAML.Dump
+open L4YAML.Emit
+open L4YAML.TokenParser
 open Tests
 
 namespace Tests.DumpRoundTrip

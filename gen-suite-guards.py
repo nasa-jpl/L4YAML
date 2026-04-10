@@ -6,7 +6,7 @@ Reads every .yaml file in yaml-test-suite/src/, parses the test metadata,
 identifies passing tests, and generates Lean files with #guard statements
 that inline the YAML content as string literals.
 
-The generated files go to Lean4Yaml/Proofs/SuiteGuards/*.lean.
+The generated files go to L4YAML/Proofs/SuiteGuards/*.lean.
 Each stage is a separate file for parallel compilation.
 
 Usage:
@@ -300,7 +300,7 @@ def generate_lean_file(stage: str, guards: list[str], total: int) -> str:
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Lean4Yaml.TokenParser
+import L4YAML.TokenParser
 
 /-!
 # yaml-test-suite Compile-Time Guards \u2014 {stage_cap} Stage
@@ -313,12 +313,12 @@ Each `#guard` is evaluated by Lean's kernel during `lake build`.
 These are Phase 4 of the verification plan: yaml-test-suite as compile-time proofs.
 -/
 
-namespace Lean4Yaml.Proofs.SuiteGuards.{stage_cap}
+namespace L4YAML.Proofs.SuiteGuards.{stage_cap}
 
-open Lean4Yaml.TokenParser
+open L4YAML.TokenParser
 
 """
-    footer = f"\nend Lean4Yaml.Proofs.SuiteGuards.{stage_cap}\n"
+    footer = f"\nend L4YAML.Proofs.SuiteGuards.{stage_cap}\n"
     return header + '\n'.join(guards) + footer
 
 
@@ -330,7 +330,7 @@ def main():
         print(f"Error: {suite_dir} not found", file=sys.stderr)
         sys.exit(1)
 
-    output_dir = Path(__file__).parent / 'Lean4Yaml' / 'Proofs' / 'SuiteGuards'
+    output_dir = Path(__file__).parent / 'L4YAML' / 'Proofs' / 'SuiteGuards'
 
     # Read and parse all test files
     all_tests: list[TestCase] = []
@@ -447,7 +447,7 @@ def main():
         print(f"Wrote {path}")
 
     print(f"\nDone! {total_guards} guards in {len(generated_files)} files.")
-    print("Next: add imports to Lean4Yaml.lean and run `lake build`")
+    print("Next: add imports to L4YAML.lean and run `lake build`")
 
 
 if __name__ == '__main__':

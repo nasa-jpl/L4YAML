@@ -4,7 +4,7 @@
 
 `Grammar.lean` defines a formal YAML 1.2.2 specification with 19 definitions.
 The doc-verification-bridge analysis found **0 theorems** about 13 of them.
-The existing proof suite (33 files under `Lean4Yaml/Proofs/`) proves properties
+The existing proof suite (33 files under `L4YAML/Proofs/`) proves properties
 about `NodeToValue`, `toYamlValue`, `stripAnnotations`, and `Grammable`, but
 leaves the character-level predicates, indentation, token stream, and top-level
 structures entirely unconnected to the parser implementation.
@@ -783,7 +783,7 @@ Extract all character-level and string-level predicates into a shared module
 that both Scanner.lean and Grammar.lean import. Each predicate gets three
 parts: Bool (runtime), Prop (specification), iff theorem (drift alarm).
 
-**Module:** `Lean4Yaml/CharPredicates.lean` — imports nothing from the project.
+**Module:** `L4YAML/CharPredicates.lean` — imports nothing from the project.
 
 **Contents:**
 
@@ -893,8 +893,8 @@ relocate into `CharPredicates.lean`. All `Decidable` instances relocate too.
    `Decidable` instance automatically.
 
 2. **`export` re-exports eliminate `open` cascades**. Adding
-   `export Lean4Yaml.CharPredicates (isPrintableProp ...)` in Grammar.lean's
-   namespace means files that `open Lean4Yaml.Grammar` automatically see all
+   `export L4YAML.CharPredicates (isPrintableProp ...)` in Grammar.lean's
+   namespace means files that `open L4YAML.Grammar` automatically see all
    CharPredicates names. This avoided adding `import CharPredicates` /
    `open CharPredicates` to every proof file that imports Grammar.
 
@@ -1416,13 +1416,13 @@ def PlainContentInv (content : String) (spaces : String)
     --   boundary condition needed
 ```
 
-This goes in a new file `Lean4Yaml/Proofs/ScannerPlainContent.lean`.
+This goes in a new file `L4YAML/Proofs/ScannerPlainContent.lean`.
 
 ###### B3.2 Reflections
 
 **Delivered:**
 
-- **New file:** `Lean4Yaml/Proofs/ScannerPlainContent.lean` (~50 lines)
+- **New file:** `L4YAML/Proofs/ScannerPlainContent.lean` (~50 lines)
   - `PlainContentInv` structure with 5 fields:
     1. `content_noColonSpace` — no `: ` pattern in content
     2. `content_noSpaceHash` — no ` #` pattern in content
@@ -1520,7 +1520,7 @@ was a comment. **Investigation needed during implementation.**
 
 **Delivered:**
 
-- **File:** `Lean4Yaml/Proofs/ScannerPlainContent.lean` expanded from ~50 to ~510 lines
+- **File:** `L4YAML/Proofs/ScannerPlainContent.lean` expanded from ~50 to ~510 lines
   - 23 top-level theorems/definitions (including helpers)
   - Main theorem: `collectPlainScalarLoop_preserves_contentInv` — fully proven, 0 sorry
   - New definition: `BoundaryHash` — an invariant discovered during proof that was NOT anticipated in B3.2
@@ -1720,7 +1720,7 @@ fully eliminated. The fix involved three interconnected changes:
 
 **Delivered:**
 
-- **Updated file:** `Lean4Yaml/Proofs/ScannerPlainScalar.lean` (~440 lines, was ~160)
+- **Updated file:** `L4YAML/Proofs/ScannerPlainScalar.lean` (~440 lines, was ~160)
   - 8 new helper theorems: `canStart_isPlainSafe`, `canStart_not_whitespace`,
     `canStart_not_linebreak`, `canStart_exception_next`,
     `validPlainFirst_singleton_exception`, `canStart_nonException_next_irrel`,
@@ -1728,12 +1728,12 @@ fully eliminated. The fix involved three interconnected changes:
   - Updated: `collectPlainScalarLoop_validFirst_and_head` (full proof,
     was sorry), `trimTrailingWS_preserves_head` (new), main theorem
     (sorry-free)
-- **Updated:** `Lean4Yaml/Proofs/ScannerPlainScalarValid.lean`
+- **Updated:** `L4YAML/Proofs/ScannerPlainScalarValid.lean`
   - Added `preprocess_peek` helper theorem
   - Added `h_peek` to `dispatchContent_preserves_PlainScalarsValid`
   - Added `h_canStart` to `scanPlainScalar_preserves_PlainScalarsValid`
   - Fixed `validPlainFirstProp_true_implies_false` for new `if` structure
-- **Updated:** `Lean4Yaml/CharPredicates.lean`
+- **Updated:** `L4YAML/CharPredicates.lean`
   - `validPlainFirstBool` — `[c]` case accepts exception chars unconditionally
   - `validPlainFirstProp` — `[c]` case uses if-then-else for exception chars
   - `validPlainFirst_iff` — fixed proof with `unfold` + `split`
@@ -1809,7 +1809,7 @@ refactoring).
 
 ###### B3.5 Implementation Status
 
-**File:** `Lean4Yaml/Proofs/ScannerPlainScalarValid.lean` (~1000 lines)
+**File:** `L4YAML/Proofs/ScannerPlainScalarValid.lean` (~1000 lines)
 
 **Build:** 221/221 ✔, 0 sorry warnings in B3.5 scope (3 remain in Phase C's ParserGrammable.lean)
 
@@ -1884,7 +1884,7 @@ no token-level Bool/Prop coupling needed.
 (it's the specification, not a scanner-internal concept). No additional
 scanner-level predicate module is required.
 
-**New proof file: `Lean4Yaml/Proofs/ScannerPlainContent.lean`.**
+**New proof file: `L4YAML/Proofs/ScannerPlainContent.lean`.**
 Houses the `PlainContentInv` definition and the
 `collectPlainScalarLoop_preserves_contentInv` theorem. Follows the
 existing naming convention (`ScannerScalar.lean`, `ScannerContracts.lean`,
@@ -2464,7 +2464,7 @@ This discharges the `h_grammable` hypothesis in `ParserCorrectness.lean`.
 
 #### Phase C Reflections
 
-**File:** `Lean4Yaml/Proofs/ParserGrammable.lean` (~500 lines)
+**File:** `L4YAML/Proofs/ParserGrammable.lean` (~500 lines)
 
 **Build:** 221/221 → 226/226 ✔, 3 sorry warnings remaining (parser chain: C2)
 B3.4 sorry eliminated; see B3.4 Reflections.
@@ -2671,7 +2671,7 @@ With `h_grammable` discharged, `parseYaml_produces_valid_nodes` (Phase C)
 gives `∃ ValidNode` witnesses. Combined with `toYamlValue_nodeToValue`
 (Soundness.lean) to construct `Grammar.ValidYaml`.
 
-**File**: `Lean4Yaml/Proofs/EndToEndCorrectness.lean` §5
+**File**: `L4YAML/Proofs/EndToEndCorrectness.lean` §5
 
 ```lean
 theorem parse_produces_valid_yaml (input : String)
@@ -2922,7 +2922,7 @@ predicates operate on `YamlValue` and are automatically comment-agnostic.
   3-field to 4-field case analysis. `Comment` and `YamlPos` both derive
   `DecidableEq`, so `Array (YamlPos × Comment)` gets it automatically.
 - Anonymous constructor sites (`⟨val, dirs, anchors⟩`) in
-  `Lean4Yaml/Proofs/DumpRoundTrip.lean` and `Tests/DumpRoundTrip.lean` —
+  `L4YAML/Proofs/DumpRoundTrip.lean` and `Tests/DumpRoundTrip.lean` —
   updated to `⟨val, dirs, anchors, #[]⟩` (8 sites total). Named field
   construction sites (`{ value := ... }`) were unaffected.
 - All other proofs untouched — `YamlValue` is unchanged, and proofs
@@ -2979,9 +2979,9 @@ definitionally, so all cross-field independence lemmas hold by `rfl`.
 The one exception (`compose_value_eq_of_comments_eq`) relates two
 *different* documents, requiring hypothesis rewriting.
 
-**Proof impact:** Zero breakage. The new file only imports `Lean4Yaml.Types`
+**Proof impact:** Zero breakage. The new file only imports `L4YAML.Types`
 and adds no dependencies on existing proofs. Added to root import file
-`Lean4Yaml.lean` (alphabetical position after `CharClass`).
+`L4YAML.lean` (alphabetical position after `CharClass`).
 
 **Build:** 223/223 ✔ (up from 221: +1 CommentProperties, +1 root rebuild),
 4 pre-existing sorries unchanged.
@@ -3057,8 +3057,8 @@ The theorems exist for documentation and so downstream proofs can `rw` through
 **No predicate changes needed:** As predicted by the G2b design, zero
 modifications to `Scannable`, `Grammable`, `ValidNode`, or `ValidYaml`.
 
-**New import:** CommentProperties.lean now also imports `Lean4Yaml.Grammar`
-(previously only `Lean4Yaml.Types`) for `Grammar.Grammable`/`Grammar.Scannable`.
+**New import:** CommentProperties.lean now also imports `L4YAML.Grammar`
+(previously only `L4YAML.Types`) for `Grammar.Grammable`/`Grammar.Scannable`.
 
 **Build:** 223/223 ✔, 4 pre-existing sorries unchanged.
 
@@ -3411,7 +3411,7 @@ scan→parse→emit→re-scan→re-parse pipeline on concrete inputs.)
   - Empty, mapping, and sequence values
 
 **Proof impact:** Zero breakage to existing code.
-- New file `CommentRoundTrip.lean` added to Lean4Yaml.lean imports
+- New file `CommentRoundTrip.lean` added to L4YAML.lean imports
 - New Guards file added to Tests/Guards.lean imports
 - `CommentProperties.lean` gained Emitter import + §9 section
 
@@ -3490,7 +3490,7 @@ documents. The last two are bonus commutativity theorems not in the original
 G7 spec.
 
 **Import change:** CommentProperties.lean now also imports
-`Lean4Yaml.TokenParser` for the `TokenParser.parseYaml` reference in
+`L4YAML.TokenParser` for the `TokenParser.parseYaml` reference in
 the theorem statements.
 
 **Proof impact:** Zero breakage. All new theorems are additive.

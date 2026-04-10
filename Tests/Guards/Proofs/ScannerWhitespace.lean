@@ -1,9 +1,9 @@
-import Lean4Yaml.Proofs.ScannerWhitespace
+import L4YAML.Proofs.ScannerWhitespace
 
-namespace Lean4Yaml.Proofs.ScannerWhitespace
+namespace L4YAML.Proofs.ScannerWhitespace
 
-open Lean4Yaml.Scanner
-open Lean4Yaml.Proofs.ScannerLoopInvariant
+open L4YAML.Scanner
+open L4YAML.Proofs.ScannerLoopInvariant
 
 -- LF at start
 #guard (consumeNewline (ScannerState.mk' "\nabc")).indents.size ≥ 1
@@ -238,4 +238,4 @@ open Lean4Yaml.Proofs.ScannerLoopInvariant
 #guard ((ScannerState.mk' "abcdef").advanceN 3).offset == 3
 #guard ((ScannerState.mk' "ab").advanceN 10).offset == 2
 
-end Lean4Yaml.Proofs.ScannerWhitespace
+end L4YAML.Proofs.ScannerWhitespace

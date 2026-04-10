@@ -184,7 +184,7 @@ Two Python test suites validate the `ctypes`-based bindings:
  * _FFI Integration Tests_ (`Tests/test_python_ffi.py`) —
    tests the C shared library directly from Python
  * _Package Tests_ (`python/tests/`) —
-   tests the `lean4yaml` Python package API
+   tests the `l4yaml` Python package API
 
 Results are captured as both text logs and JUnit XML,
 with an HTML report generated from the JUnit data.

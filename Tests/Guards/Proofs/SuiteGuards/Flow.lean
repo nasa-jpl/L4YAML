@@ -2,7 +2,7 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Lean4Yaml.TokenParser
+import L4YAML.TokenParser
 
 /-!
 # yaml-test-suite Compile-Time Guards — Flow Stage
@@ -15,9 +15,9 @@ Each `#guard` is evaluated by Lean's kernel during `lake build`.
 These are Phase 4 of the verification plan: yaml-test-suite as compile-time proofs.
 -/
 
-namespace Lean4Yaml.Proofs.SuiteGuards.Flow
+namespace L4YAML.Proofs.SuiteGuards.Flow
 
-open Lean4Yaml.TokenParser
+open L4YAML.TokenParser
 
 -- parseFlowSequence/parseFlowMapping now error on missing closing bracket
 -- (Pattern 5 resolution), which increases kernel reduction depth.
@@ -239,4 +239,4 @@ set_option maxRecDepth 4096
   | .ok _ => true
   | .error _ => false
 
-end Lean4Yaml.Proofs.SuiteGuards.Flow
+end L4YAML.Proofs.SuiteGuards.Flow

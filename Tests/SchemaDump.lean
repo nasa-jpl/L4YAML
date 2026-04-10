@@ -1,10 +1,10 @@
-import Lean4Yaml.Types
-import Lean4Yaml.Schema
-import Lean4Yaml.Schema.FromToYaml
-import Lean4Yaml.Schema.Dump
-import Lean4Yaml.Dump
-import Lean4Yaml.Emitter
-import Lean4Yaml.TokenParser
+import L4YAML.Types
+import L4YAML.Schema
+import L4YAML.Schema.FromToYaml
+import L4YAML.Schema.Dump
+import L4YAML.Dump
+import L4YAML.Emitter
+import L4YAML.TokenParser
 import Tests.VerifiedResult
 
 /-
@@ -31,12 +31,12 @@ coverage tracking in the HTML dashboard.
 7. **Config variations** — quoting styles, indentation, flow mode
 -/
 
-open Lean4Yaml
-open Lean4Yaml.Schema
-open Lean4Yaml.Schema.Dump
-open Lean4Yaml.Dump
-open Lean4Yaml.Emit
-open Lean4Yaml.TokenParser
+open L4YAML
+open L4YAML.Schema
+open L4YAML.Schema.Dump
+open L4YAML.Dump
+open L4YAML.Emit
+open L4YAML.TokenParser
 open Tests
 
 namespace Tests.SchemaDump

@@ -1,10 +1,10 @@
-import Lean4Yaml.Scanner
+import L4YAML.Scanner
 
 /-!
 # TryScan — scanner token-stream diagnostic
 
 Reads YAML from a file or inline string and prints the token stream
-produced by `Lean4Yaml.Scanner.scan`.  Useful for diagnosing scanner
+produced by `L4YAML.Scanner.scan`.  Useful for diagnosing scanner
 behaviour on individual inputs without running the full test suite.
 
 ## Usage
@@ -24,8 +24,8 @@ lake build tryscan
 Exits 0 on successful scan, 1 on scan error.
 -/
 
-open Lean4Yaml
-open Lean4Yaml.Scanner
+open L4YAML
+open L4YAML.Scanner
 
 /-- Scan `input` and print every token (one per line). -/
 def showTokens (label : String) (input : String) : IO UInt32 := do

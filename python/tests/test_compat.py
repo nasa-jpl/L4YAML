@@ -8,14 +8,14 @@ from pathlib import Path
 import pytest
 
 try:
-    from lean4yaml.compat import (
+    from l4yaml.compat import (
         safe_dump,
         safe_dump_all,
         safe_load,
         safe_load_all,
         to_python,
     )
-    import lean4yaml
+    import l4yaml
 
     _LIB_AVAILABLE = True
 except OSError:
@@ -23,7 +23,7 @@ except OSError:
 
 needs_lib = pytest.mark.skipif(
     not _LIB_AVAILABLE,
-    reason="liblean4yaml.so not found",
+    reason="libl4yaml.so not found",
 )
 
 
@@ -302,30 +302,30 @@ class TestSafeDumpAll:
 @needs_lib
 class TestToPython:
     def test_scalar_to_python(self) -> None:
-        v = lean4yaml.load("42")
+        v = l4yaml.load("42")
         assert v.to_python() == 42
 
     def test_bool_to_python(self) -> None:
-        v = lean4yaml.load("true")
+        v = l4yaml.load("true")
         assert v.to_python() is True
 
     def test_null_to_python(self) -> None:
-        v = lean4yaml.load("null")
+        v = l4yaml.load("null")
         assert v.to_python() is None
 
     def test_mapping_to_python(self) -> None:
-        v = lean4yaml.load("x: 1\ny: 2")
+        v = l4yaml.load("x: 1\ny: 2")
         result = v.to_python()
         assert result == {"x": 1, "y": 2}
 
     def test_sequence_to_python(self) -> None:
-        v = lean4yaml.load("[a, b, c]")
+        v = l4yaml.load("[a, b, c]")
         result = v.to_python()
         assert result == ["a", "b", "c"]
 
     def test_nested_to_python(self) -> None:
         yaml = "items:\n  - name: a\n    val: 1"
-        v = lean4yaml.load(yaml)
+        v = l4yaml.load(yaml)
         result = v.to_python()
         assert result == {"items": [{"name": "a", "val": 1}]}
 

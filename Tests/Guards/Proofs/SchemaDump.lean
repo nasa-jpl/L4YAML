@@ -1,13 +1,13 @@
-import Lean4Yaml.Proofs.SchemaDump
+import L4YAML.Proofs.SchemaDump
 
-namespace Lean4Yaml.Proofs.SchemaDump
+namespace L4YAML.Proofs.SchemaDump
 
-open Lean4Yaml
-open Lean4Yaml.Schema
-open Lean4Yaml.Schema.Dump
-open Lean4Yaml.Dump
-open Lean4Yaml.Emit
-open Lean4Yaml.TokenParser
+open L4YAML
+open L4YAML.Schema
+open L4YAML.Schema.Dump
+open L4YAML.Dump
+open L4YAML.Emit
+open L4YAML.TokenParser
 
 #guard toYaml true == YamlValue.scalar { content := "true", style := .plain }
 #guard toYaml false == YamlValue.scalar { content := "false", style := .plain }
@@ -57,4 +57,4 @@ end SchemaDumpExtendedGuards
 #guard contentRoundTrips (some true : Option Bool)
 #guard contentRoundTrips (some false : Option Bool)
 
-end Lean4Yaml.Proofs.SchemaDump
+end L4YAML.Proofs.SchemaDump

@@ -1,9 +1,9 @@
-import Lean4Yaml.Proofs.FoldNewlines
+import L4YAML.Proofs.FoldNewlines
 
-namespace Lean4Yaml.Proofs.FoldNewlines
+namespace L4YAML.Proofs.FoldNewlines
 
-open Lean4Yaml.Grammar
-open Lean4Yaml.TokenParser
+open L4YAML.Grammar
+open L4YAML.TokenParser
 
 private def parseScalar (s : String) : Option String :=
   match parseYamlSingle s with
@@ -56,4 +56,4 @@ private def parseScalar (s : String) : Option String :=
 -- Fold in single-quoted scalar with blank lines
 #guard parseScalar "'hello\n\nworld'" == some "hello\nworld"
 
-end Lean4Yaml.Proofs.FoldNewlines
+end L4YAML.Proofs.FoldNewlines

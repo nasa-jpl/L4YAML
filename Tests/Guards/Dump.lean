@@ -1,9 +1,9 @@
-import Lean4Yaml.Dump
+import L4YAML.Dump
 
-namespace Lean4Yaml.Dump
+namespace L4YAML.Dump
 
-open Lean Lean4Yaml
-open Lean4Yaml Lean4Yaml.Dump
+open Lean L4YAML
+open L4YAML L4YAML.Dump
 
 #guard dump (.plainScalar "hello") == "hello"
 #guard dump (.plainScalar "simple") == "simple"
@@ -186,4 +186,4 @@ private def docADir : YamlDocument :=
 #guard dump (.sequence .block #[.plainScalar "a", .plainScalar "b"])
   { compactSequenceMap := true } == "- a\n- b"
 
-end Lean4Yaml.Dump
+end L4YAML.Dump

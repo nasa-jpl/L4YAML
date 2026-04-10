@@ -12,7 +12,7 @@ This document outlines a plan to refactor exception handling throughout the YAML
 
 ### Already Implemented: ScanError
 
-The codebase already has a well-designed `ScanError` inductive type ([Token.lean:237-311](Lean4Yaml/Token.lean#L237-L311)) that covers:
+The codebase already has a well-designed `ScanError` inductive type ([Token.lean:237-311](L4YAML/Token.lean#L237-L311)) that covers:
 
 - **Scanner errors** (13 categories): character-level tokenization violations
 - **Parser errors** (11 categories): token-level grammar violations
@@ -37,27 +37,27 @@ Key benefits already realized:
 The Schema API layer (FromYaml/ToYaml typeclasses) still uses `Except String` throughout:
 
 **API Functions** (5 sites):
-- `parseAs` [Schema/Api.lean:35](Lean4Yaml/Schema/Api.lean#L35)
-- `parseTyped` [Schema/Api.lean:44](Lean4Yaml/Schema/Api.lean#L44)
-- `roundTripTyped` [Schema/Dump.lean:128](Lean4Yaml/Schema/Dump.lean#L128)
+- `parseAs` [Schema/Api.lean:35](L4YAML/Schema/Api.lean#L35)
+- `parseTyped` [Schema/Api.lean:44](L4YAML/Schema/Api.lean#L44)
+- `roundTripTyped` [Schema/Dump.lean:128](L4YAML/Schema/Dump.lean#L128)
 
 **Typeclass Methods** (8 sites):
-- `FromYamlType.fromYamlType?` [Schema/FromToYaml.lean:43](Lean4Yaml/Schema/FromToYaml.lean#L43)
-- `FromYaml.fromYaml?` [Schema/FromToYaml.lean:51](Lean4Yaml/Schema/FromToYaml.lean#L51)
+- `FromYamlType.fromYamlType?` [Schema/FromToYaml.lean:43](L4YAML/Schema/FromToYaml.lean#L43)
+- `FromYaml.fromYaml?` [Schema/FromToYaml.lean:51](L4YAML/Schema/FromToYaml.lean#L51)
 - Instances for 11 primitive/collection types
 
 **Struct Helpers** (4 sites):
-- `getMapping` [Schema/Struct.lean:52](Lean4Yaml/Schema/Struct.lean#L52)
-- `getString` [Schema/Struct.lean:64](Lean4Yaml/Schema/Struct.lean#L64)
-- `getField` [Schema/Struct.lean:79](Lean4Yaml/Schema/Struct.lean#L79)
-- `getFieldOpt` [Schema/Struct.lean:90](Lean4Yaml/Schema/Struct.lean#L90)
+- `getMapping` [Schema/Struct.lean:52](L4YAML/Schema/Struct.lean#L52)
+- `getString` [Schema/Struct.lean:64](L4YAML/Schema/Struct.lean#L64)
+- `getField` [Schema/Struct.lean:79](L4YAML/Schema/Struct.lean#L79)
+- `getFieldOpt` [Schema/Struct.lean:90](L4YAML/Schema/Struct.lean#L90)
 
 **Parser Entry Points** (5 sites):
-- `parseYamlRaw` [TokenParser.lean:920](Lean4Yaml/TokenParser.lean#L920)
-- `parseYaml` [TokenParser.lean:938](Lean4Yaml/TokenParser.lean#L938)
-- `parseYamlSingleRaw` [TokenParser.lean:948](Lean4Yaml/TokenParser.lean#L948)
-- `parseYamlSingle` [TokenParser.lean:962](Lean4Yaml/TokenParser.lean#L962)
-- `parseYamlWithComments` [TokenParser.lean:984](Lean4Yaml/TokenParser.lean#L984)
+- `parseYamlRaw` [TokenParser.lean:920](L4YAML/TokenParser.lean#L920)
+- `parseYaml` [TokenParser.lean:938](L4YAML/TokenParser.lean#L938)
+- `parseYamlSingleRaw` [TokenParser.lean:948](L4YAML/TokenParser.lean#L948)
+- `parseYamlSingle` [TokenParser.lean:962](L4YAML/TokenParser.lean#L962)
+- `parseYamlWithComments` [TokenParser.lean:984](L4YAML/TokenParser.lean#L984)
 
 ## Proposed Exception Hierarchy
 
@@ -157,9 +157,9 @@ instance : Coe SchemaError YamlError where
 ### Phase 1: Create New Exception Types ✅ (2026-03-20)
 
 **Files modified:**
-- [Schema.lean](Lean4Yaml/Schema.lean) — Added `SchemaError` (15 constructors), `YamlError` (2 constructors), `ToString`/`Coe` instances
+- [Schema.lean](L4YAML/Schema.lean) — Added `SchemaError` (15 constructors), `YamlError` (2 constructors), `ToString`/`Coe` instances
 
-**Design note:** Types placed in `Schema.lean` (not `Token.lean` as originally planned) because `SchemaError` references `Schema.YamlType` and `YamlValue`, which are defined in `Schema.lean` and `Types.lean` respectively. `Schema.lean` already imports `Types.lean`; adding `import Lean4Yaml.Token` brings `ScanError` into scope for `YamlError`. This avoids pulling schema-layer dependencies into the scanner layer.
+**Design note:** Types placed in `Schema.lean` (not `Token.lean` as originally planned) because `SchemaError` references `Schema.YamlType` and `YamlValue`, which are defined in `Schema.lean` and `Types.lean` respectively. `Schema.lean` already imports `Types.lean`; adding `import L4YAML.Token` brings `ScanError` into scope for `YamlError`. This avoids pulling schema-layer dependencies into the scanner layer.
 
 **Result:**
 - Build: 334/334 jobs, 0 errors, 0 warnings, 0 sorry
@@ -170,31 +170,31 @@ instance : Coe SchemaError YamlError where
 
 **Files modified:**
 
-1. **[Schema.lean](Lean4Yaml/Schema.lean)** — Added 2 new `SchemaError` constructors:
+1. **[Schema.lean](L4YAML/Schema.lean)** — Added 2 new `SchemaError` constructors:
    - `notASequence (got : YamlValue)` — for `FromYaml` List/Array/Pair instances on raw `YamlValue`
    - `unknownVariant (got : String) (typeName : String)` — for derived enum deserialization
 
-2. **[Schema/FromToYaml.lean](Lean4Yaml/Schema/FromToYaml.lean)** — Typeclass signatures + all 11 instances:
+2. **[Schema/FromToYaml.lean](L4YAML/Schema/FromToYaml.lean)** — Typeclass signatures + all 11 instances:
    - `FromYamlType.fromYamlType?` : `Except String α` → `Except SchemaError α`
    - `FromYaml.fromYaml?` : `Except String α` → `Except SchemaError α`
    - All `.error s!"..."` → structured `SchemaError` constructors
    - `yamlTypeToString?` : `Except String` → `Except SchemaError`
 
-3. **[Schema/Struct.lean](Lean4Yaml/Schema/Struct.lean)** — All 4 helpers:
+3. **[Schema/Struct.lean](L4YAML/Schema/Struct.lean)** — All 4 helpers:
    - `getMapping`, `getString` : `Except String` → `Except SchemaError`
    - `getField`, `getFieldOpt` : `Except String` → `Except SchemaError`
    - `.error s!"{fieldName}: {msg}"` → `.error (.fieldConversionError fieldName e)`
    - `.error s!"missing required field..."` → `.error (.missingField fieldName)`
 
-4. **[Schema/Deriving.lean](Lean4Yaml/Schema/Deriving.lean)** — Enum error generation:
+4. **[Schema/Deriving.lean](L4YAML/Schema/Deriving.lean)** — Enum error generation:
    - String error → `SchemaError.unknownVariant other "{typeName}"`
 
-5. **[Schema/Api.lean](Lean4Yaml/Schema/Api.lean)** — Bridge with `.mapError toString`:
+5. **[Schema/Api.lean](L4YAML/Schema/Api.lean)** — Bridge with `.mapError toString`:
    - `parseAs` and `parseTyped` keep `Except String` return type (parser still returns `Except String`)
    - Internal `fromYaml?` now returns `Except SchemaError`, bridged via `.mapError toString`
    - Will switch to `Except YamlError` in Phase 3 when parser returns `Except ScanError`
 
-6. **[Schema/Dump.lean](Lean4Yaml/Schema/Dump.lean)** — Bridge with `.mapError toString`:
+6. **[Schema/Dump.lean](L4YAML/Schema/Dump.lean)** — Bridge with `.mapError toString`:
    - `roundTripTyped` and `roundTripDiagnostics` keep `Except String` return type
    - Internal `fromYaml?` bridged via `.mapError toString`
 
@@ -211,7 +211,7 @@ instance : Coe SchemaError YamlError where
 
 **Files modified:**
 
-1. **[TokenParser.lean](Lean4Yaml/TokenParser.lean)** — 5 public API functions:
+1. **[TokenParser.lean](L4YAML/TokenParser.lean)** — 5 public API functions:
    - `parseYamlRaw` : `Except String` → `Except ScanError` (removed `.toString` conversion)
    - `parseYaml` : `Except String` → `Except ScanError`
    - `parseYamlSingleRaw` : `Except String` → `Except ScanError`
@@ -219,25 +219,25 @@ instance : Coe SchemaError YamlError where
    - `parseYamlWithComments` : `Except String` → `Except ScanError`
    - Simplified implementations: `.error e.toString` → `.error e` (no more string conversion)
 
-2. **[Schema/Api.lean](Lean4Yaml/Schema/Api.lean)** — Now uses `YamlError`:
+2. **[Schema/Api.lean](L4YAML/Schema/Api.lean)** — Now uses `YamlError`:
    - `parseAs` : `Except String α` → `Except YamlError α`
      (lifts `ScanError` via `.mapError YamlError.scanError`,
       lifts `SchemaError` via `.mapError YamlError.schemaError`)
    - `parseTyped` : `Except String Schema.YamlType` → `Except ScanError Schema.YamlType`
      (pure schema resolution, no type conversion errors possible)
 
-3. **[Schema/Dump.lean](Lean4Yaml/Schema/Dump.lean)** — Now uses `YamlError`/`ScanError`/`SchemaError`:
+3. **[Schema/Dump.lean](L4YAML/Schema/Dump.lean)** — Now uses `YamlError`/`ScanError`/`SchemaError`:
    - `roundTripTyped` : `Except String α` → `Except YamlError α`
    - `roundTripDiagnostics` : `Except String (... × Except String α)` →
      `Except ScanError (... × Except SchemaError α)` (separate error types per layer)
    - `contentRoundTrips` : unchanged (returns `Bool`, error type is internal)
 
-4. **[Proofs/Composition.lean](Lean4Yaml/Proofs/Composition.lean)** — 3 theorem updates:
+4. **[Proofs/Composition.lean](L4YAML/Proofs/Composition.lean)** — 3 theorem updates:
    - `parseYamlRaw_scan_error` : conclusion `.error e.toString` → `.error e`
    - `parseYamlRaw_parse_error` : conclusion `.error e.toString` → `.error e`
    - `parseYaml_of_parseYamlRaw_error` : `e : String` → `e : ScanError`
 
-5. **[Proofs/EndToEndCorrectness.lean](Lean4Yaml/Proofs/EndToEndCorrectness.lean)** — 1 proof simplified:
+5. **[Proofs/EndToEndCorrectness.lean](L4YAML/Proofs/EndToEndCorrectness.lean)** — 1 proof simplified:
    - `parse_sound` : removed nested `split` (no more intermediate match on `parseStream`)
 
 6. **Test files** — `ScanError` where `String` was expected:
@@ -281,7 +281,7 @@ Completed as part of Phase 3 — proof updates were minimal:
 ### Before (Current)
 ```lean
 -- Current API usage
-match Lean4Yaml.parseAs AppConfig yamlString with
+match L4YAML.parseAs AppConfig yamlString with
 | .ok config => processConfig config
 | .error msg =>
     -- Can only check string contents
@@ -294,7 +294,7 @@ match Lean4Yaml.parseAs AppConfig yamlString with
 ### After (With Typed Exceptions)
 ```lean
 -- New API usage with pattern matching
-match Lean4Yaml.parseAs AppConfig yamlString with
+match L4YAML.parseAs AppConfig yamlString with
 | .ok config => processConfig config
 | .error (.schemaError (.missingField name)) =>
     -- Structured error handling
@@ -329,8 +329,8 @@ These represent the bulk of the verification effort (>80% of proof code) and **r
 
 Contrary to the pre-refactoring prediction of "⚠️ mechanical updates", these proofs required **no changes at all**:
 
-- **[Proofs/SchemaDump.lean](Lean4Yaml/Proofs/SchemaDump.lean)** — All error-matching uses wildcard `| .error _ =>`, so the error type change from `String` to `ScanError`/`SchemaError` was invisible to the proof.
-- **[Proofs/SchemaResolution.lean](Lean4Yaml/Proofs/SchemaResolution.lean)** — Only references the `Schema.resolve` function, which has no error-type dependency.
+- **[Proofs/SchemaDump.lean](L4YAML/Proofs/SchemaDump.lean)** — All error-matching uses wildcard `| .error _ =>`, so the error type change from `String` to `ScanError`/`SchemaError` was invisible to the proof.
+- **[Proofs/SchemaResolution.lean](L4YAML/Proofs/SchemaResolution.lean)** — Only references the `Schema.resolve` function, which has no error-type dependency.
 
 #### 3. Minimal Impact: Composition/End-to-End Proofs
 
@@ -338,7 +338,7 @@ Contrary to the pre-refactoring prediction of "⚠️ mechanical updates", these
 
 The pre-refactoring prediction of "⚠️⚠️ theorem restructuring" proved far too pessimistic. Actual changes were trivial:
 
-**[Proofs/Composition.lean](Lean4Yaml/Proofs/Composition.lean)** — 3 type annotation updates:
+**[Proofs/Composition.lean](L4YAML/Proofs/Composition.lean)** — 3 type annotation updates:
 ```lean
 -- parseYamlRaw_scan_error: conclusion `.error e.toString` → `.error e`
 -- parseYamlRaw_parse_error: same
@@ -346,7 +346,7 @@ The pre-refactoring prediction of "⚠️⚠️ theorem restructuring" proved fa
 ```
 All three proofs remained `by simp only [...]` — no restructuring needed.
 
-**[Proofs/EndToEndCorrectness.lean](Lean4Yaml/Proofs/EndToEndCorrectness.lean)** — 1 proof simplification:
+**[Proofs/EndToEndCorrectness.lean](L4YAML/Proofs/EndToEndCorrectness.lean)** — 1 proof simplification:
 ```lean
 -- parse_sound: removed nested `split` since `parseYamlRaw` no longer wraps
 -- `parseStream` in a redundant match (the `.mapError toString` wrapper was gone)
@@ -357,7 +357,7 @@ The proof became *simpler*, not more complex.
 
 #### 4. New Opportunities: Error-Specific Proofs
 
-**Status:** ✅ Implemented in [Proofs/ErrorProperties.lean](Lean4Yaml/Proofs/ErrorProperties.lean)
+**Status:** ✅ Implemented in [Proofs/ErrorProperties.lean](L4YAML/Proofs/ErrorProperties.lean)
 
 Structured errors enabled **new classes of proofs** previously impossible with `Except String`. These are now proven in the `ErrorProperties` module:
 
@@ -505,11 +505,11 @@ The exception refactoring **preserved this property**:
 
 ## References
 
-- [Token.lean:237-311](Lean4Yaml/Token.lean#L237-L311) — Existing `ScanError` design
-- [Schema/FromToYaml.lean](Lean4Yaml/Schema/FromToYaml.lean) — Schema typeclass layer
-- [Schema/Struct.lean](Lean4Yaml/Schema/Struct.lean) — Struct helper functions
-- [Proofs/SchemaDump.lean](Lean4Yaml/Proofs/SchemaDump.lean) — Round-trip proofs
-- [Proofs/EndToEndCorrectness.lean](Lean4Yaml/Proofs/EndToEndCorrectness.lean) — Integration proofs
+- [Token.lean:237-311](L4YAML/Token.lean#L237-L311) — Existing `ScanError` design
+- [Schema/FromToYaml.lean](L4YAML/Schema/FromToYaml.lean) — Schema typeclass layer
+- [Schema/Struct.lean](L4YAML/Schema/Struct.lean) — Struct helper functions
+- [Proofs/SchemaDump.lean](L4YAML/Proofs/SchemaDump.lean) — Round-trip proofs
+- [Proofs/EndToEndCorrectness.lean](L4YAML/Proofs/EndToEndCorrectness.lean) — Integration proofs
 
 ## Conclusion
 

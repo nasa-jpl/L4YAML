@@ -1,5 +1,5 @@
-import Lean4Yaml
-import Lean4Yaml.Grammar
+import L4YAML
+import L4YAML.Grammar
 import Tests.VerifiedResult
 
 /-
@@ -15,7 +15,7 @@ validation error semantics, indentation properties, decision type
 discrimination, and ValidNode structural invariants.
 
 These are the runtime counterparts of the formal proofs in
-`Lean4Yaml/Proofs/Validation.lean`.
+`L4YAML/Proofs/Validation.lean`.
 
 ## Categories
 
@@ -25,9 +25,9 @@ These are the runtime counterparts of the formal proofs in
 4. **Validation integration** — parser rejects invalid, accepts valid
 -/
 
-open Lean4Yaml
-open Lean4Yaml.Grammar
-open Lean4Yaml.TokenParser
+open L4YAML
+open L4YAML.Grammar
+open L4YAML.TokenParser
 open Tests
 
 namespace Tests.Validation
@@ -153,29 +153,29 @@ def testBlockScalarContracts (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Block Scalar Contracts"
 
   -- §1: Header character classification (Grammar.isBlockScalarHeaderChar)
-  check state "'-' is header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar '-' == true)
-  check state "'+' is header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar '+' == true)
-  check state "'1' is header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar '1' == true)
-  check state "'9' is header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar '9' == true)
-  check state "'5' is header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar '5' == true)
-  check state "'0' is NOT header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar '0' == false)
-  check state "'\\n' is NOT header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar '\n' == false)
-  check state "' ' is NOT header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar ' ' == false)
-  check state "'\\t' is NOT header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar '\t' == false)
-  check state "'a' is NOT header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar 'a' == false)
-  check state "'#' is NOT header char" (Lean4Yaml.Grammar.isBlockScalarHeaderChar '#' == false)
+  check state "'-' is header char" (L4YAML.Grammar.isBlockScalarHeaderChar '-' == true)
+  check state "'+' is header char" (L4YAML.Grammar.isBlockScalarHeaderChar '+' == true)
+  check state "'1' is header char" (L4YAML.Grammar.isBlockScalarHeaderChar '1' == true)
+  check state "'9' is header char" (L4YAML.Grammar.isBlockScalarHeaderChar '9' == true)
+  check state "'5' is header char" (L4YAML.Grammar.isBlockScalarHeaderChar '5' == true)
+  check state "'0' is NOT header char" (L4YAML.Grammar.isBlockScalarHeaderChar '0' == false)
+  check state "'\\n' is NOT header char" (L4YAML.Grammar.isBlockScalarHeaderChar '\n' == false)
+  check state "' ' is NOT header char" (L4YAML.Grammar.isBlockScalarHeaderChar ' ' == false)
+  check state "'\\t' is NOT header char" (L4YAML.Grammar.isBlockScalarHeaderChar '\t' == false)
+  check state "'a' is NOT header char" (L4YAML.Grammar.isBlockScalarHeaderChar 'a' == false)
+  check state "'#' is NOT header char" (L4YAML.Grammar.isBlockScalarHeaderChar '#' == false)
 
   -- §2: extractHeaderChars specification
-  check state "extract empty = ([], [])" (Lean4Yaml.Grammar.extractHeaderChars [] == ([], []))
-  check state "extract '-' = (['-'], [])" (Lean4Yaml.Grammar.extractHeaderChars ['-'] == (['-'], []))
+  check state "extract empty = ([], [])" (L4YAML.Grammar.extractHeaderChars [] == ([], []))
+  check state "extract '-' = (['-'], [])" (L4YAML.Grammar.extractHeaderChars ['-'] == (['-'], []))
   check state "extract '-2' = (['-','2'], [])" (
-    Lean4Yaml.Grammar.extractHeaderChars ['-', '2'] == (['-', '2'], []))
+    L4YAML.Grammar.extractHeaderChars ['-', '2'] == (['-', '2'], []))
   check state "extract '\\n' = ([], ['\\n'])" (
-    Lean4Yaml.Grammar.extractHeaderChars ['\n'] == ([], ['\n']))
+    L4YAML.Grammar.extractHeaderChars ['\n'] == ([], ['\n']))
   check state "extract '\\nxy' preserves tail" (
-    Lean4Yaml.Grammar.extractHeaderChars ['\n', 'x', 'y'] == ([], ['\n', 'x', 'y']))
+    L4YAML.Grammar.extractHeaderChars ['\n', 'x', 'y'] == ([], ['\n', 'x', 'y']))
   check state "extract '2-\\n' = (['2','-'], ['\\n'])" (
-    Lean4Yaml.Grammar.extractHeaderChars ['2', '-', '\n'] == (['2', '-'], ['\n']))
+    L4YAML.Grammar.extractHeaderChars ['2', '-', '\n'] == (['2', '-'], ['\n']))
 
   -- §3: Contract G2 — literal block scalar column invariant
   -- These tests exercise the runtime assertion in blockScalarHeader.

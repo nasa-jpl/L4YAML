@@ -1,6 +1,6 @@
-import Lean4Yaml.Emitter
-import Lean4Yaml.TokenParser
-import Lean4Yaml.Dump
+import L4YAML.Emitter
+import L4YAML.TokenParser
+import L4YAML.Dump
 
 /-!
 # Comment Round-Trip Guards (Phase G6)
@@ -9,15 +9,15 @@ Compile-time `#guard` checks for the comment-aware emitter,
 comment classification, comment-aware dump, and the
 `parseYamlWithComments` pipeline.
 
-Corresponds to `Lean4Yaml.Proofs.CommentProperties` (algebraic proofs).
+Corresponds to `L4YAML.Proofs.CommentProperties` (algebraic proofs).
 -/
 
-namespace Lean4Yaml.Tests.Guards.CommentRoundTrip
+namespace L4YAML.Tests.Guards.CommentRoundTrip
 
-open Lean4Yaml
-open Lean4Yaml.Emit
-open Lean4Yaml.Dump
-open Lean4Yaml.TokenParser
+open L4YAML
+open L4YAML.Emit
+open L4YAML.Dump
+open L4YAML.TokenParser
 
 /-- Helper: check that a document's comment texts survive the round-trip
     through emitWithComments → parseYamlWithComments. -/
@@ -198,33 +198,33 @@ def valueRoundTrips (doc : YamlDocument) : Bool :=
 -- §5: Comment-aware dump (v0.2.7)
 -- ═══════════════════════════════════════════════════════════════════
 
-open Lean4Yaml.Dump in
+open L4YAML.Dump in
 -- No comments → same as dumpDocument
 #guard dumpDocumentWithComments { value := .plainScalar "hello" } ==
        dumpDocument { value := .plainScalar "hello" }
 
-open Lean4Yaml.Dump in
+open L4YAML.Dump in
 -- Before comment → emitted before value
 #guard dumpDocumentWithComments
   { value := .plainScalar "hello",
     comments := #[(⟨0, 0, 0⟩, ⟨" header", .before⟩)] } ==
   "# header\nhello"
 
-open Lean4Yaml.Dump in
+open L4YAML.Dump in
 -- After comment → emitted after value
 #guard dumpDocumentWithComments
   { value := .plainScalar "hello",
     comments := #[(⟨20, 5, 0⟩, ⟨" footer", .after⟩)] } ==
   "hello\n# footer\n"
 
-open Lean4Yaml.Dump in
+open L4YAML.Dump in
 -- Inline comment → appended to first line
 #guard dumpDocumentWithComments
   { value := .plainScalar "hello",
     comments := #[(⟨5, 1, 5⟩, ⟨" note", .inline⟩)] } ==
   "hello # note"
 
-open Lean4Yaml.Dump in
+open L4YAML.Dump in
 -- Mixed: before + inline + after
 #guard dumpDocumentWithComments
   { value := .plainScalar "hello",
@@ -354,11 +354,11 @@ open Lean4Yaml.Dump in
 -- §9: Multi-document comment-aware dump (v0.2.7)
 -- ═══════════════════════════════════════════════════════════════════
 
-open Lean4Yaml.Dump in
+open L4YAML.Dump in
 -- dumpDocumentsWithComments multi-doc includes `---` separator and `...`
 #guard
   let doc1 : YamlDocument := { value := .plainScalar "first" }
   let doc2 : YamlDocument := { value := .plainScalar "second" }
   dumpDocumentsWithComments #[doc1, doc2] == "first\n---\nsecond\n..."
 
-end Lean4Yaml.Tests.Guards.CommentRoundTrip
+end L4YAML.Tests.Guards.CommentRoundTrip

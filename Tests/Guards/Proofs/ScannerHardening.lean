@@ -2,7 +2,7 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Lean4Yaml.TokenParser
+import L4YAML.TokenParser
 
 /-!
 # Scanner Hardening — Compile-Time Guards (v0.2.10)
@@ -26,7 +26,7 @@ Each guard is evaluated by Lean's kernel at `lake build` time.
 
 namespace Tests.Guards.ScannerHardening
 
-open Lean4Yaml.TokenParser
+open L4YAML.TokenParser
 
 -- §11: Double/nested explicit keys
 -- ? ? a: b — mapping-as-key (valid YAML, unhashable in Python/libyaml)

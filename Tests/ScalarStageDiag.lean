@@ -1,4 +1,4 @@
-import Lean4Yaml
+import L4YAML
 import Tests.SuiteRunner.Meta
 
 /-
@@ -37,7 +37,7 @@ The goal is to reproduce each failure in isolation and to track which ones
 get fixed as the parser improves.
 -/
 
-open Lean4Yaml
+open L4YAML
 open Tests.SuiteRunner
 
 namespace Tests.ScalarStageDiag

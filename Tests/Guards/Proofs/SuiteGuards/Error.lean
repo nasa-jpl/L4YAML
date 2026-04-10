@@ -2,7 +2,7 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Lean4Yaml.TokenParser
+import L4YAML.TokenParser
 
 /-!
 # yaml-test-suite Compile-Time Guards — Error Stage
@@ -15,9 +15,9 @@ Each `#guard` is evaluated by Lean's kernel during `lake build`.
 These are Phase 4 of the verification plan: yaml-test-suite as compile-time proofs.
 -/
 
-namespace Lean4Yaml.Proofs.SuiteGuards.Error
+namespace L4YAML.Proofs.SuiteGuards.Error
 
-open Lean4Yaml.TokenParser
+open L4YAML.TokenParser
 
 -- 236B:0 Invalid value after mapping (§9.2 bare document rejection)
 #guard match parseYaml "foo:\n  bar\ninvalid\n" with
@@ -494,4 +494,4 @@ open Lean4Yaml.TokenParser
   | .ok _ => false
   | .error _ => true
 
-end Lean4Yaml.Proofs.SuiteGuards.Error
+end L4YAML.Proofs.SuiteGuards.Error

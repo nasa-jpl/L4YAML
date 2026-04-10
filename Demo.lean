@@ -2,7 +2,7 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Lean4Yaml
+import L4YAML
 import Tests.VerifiedResult
 
 /-!
@@ -13,8 +13,8 @@ Each example becomes a pass/fail test: parse succeeds → pass.
 Produces a `VerifiedSuiteResult` for structured reporting.
 -/
 
-open Lean4Yaml
-open Lean4Yaml.TokenParser
+open L4YAML
+open L4YAML.TokenParser
 open Tests
 
 namespace Demo

@@ -1,5 +1,5 @@
-import Lean4Yaml.TokenParser
-import Lean4Yaml.Scanner
+import L4YAML.TokenParser
+import L4YAML.Scanner
 import Tests.VerifiedResult
 
 /-
@@ -24,9 +24,9 @@ End-to-end tests for the two-pass scanner/parser pipeline:
 7. **Escape sequences** — \\t, \\x, \\u
 -/
 
-open Lean4Yaml
-open Lean4Yaml.Scanner
-open Lean4Yaml.TokenParser
+open L4YAML
+open L4YAML.Scanner
+open L4YAML.TokenParser
 open Tests
 
 namespace Tests.ScannerTests

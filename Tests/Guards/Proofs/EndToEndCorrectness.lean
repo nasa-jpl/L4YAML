@@ -1,12 +1,12 @@
-import Lean4Yaml.Proofs.EndToEndCorrectness
+import L4YAML.Proofs.EndToEndCorrectness
 
-namespace Lean4Yaml.Proofs.EndToEndCorrectness
+namespace L4YAML.Proofs.EndToEndCorrectness
 
-open Lean4Yaml
-open Lean4Yaml.Grammar
-open Lean4Yaml.Proofs.ScannerCorrectness
-open Lean4Yaml.Proofs.ParserCorrectness
-open Lean4Yaml.Proofs.Soundness
+open L4YAML
+open L4YAML.Grammar
+open L4YAML.Proofs.ScannerCorrectness
+open L4YAML.Proofs.ParserCorrectness
+open L4YAML.Proofs.Soundness
 
 -- Helper to check if parse produces valid YAML
 private def checkValidYaml (input : String) : Bool :=
@@ -40,4 +40,4 @@ private def checkValidYaml (input : String) : Bool :=
 -- Complex structures
 #guard checkValidYaml "map:\n  key1: val1\n  key2: val2\nlist:\n  - item1\n  - item2"
 
-end Lean4Yaml.Proofs.EndToEndCorrectness
+end L4YAML.Proofs.EndToEndCorrectness

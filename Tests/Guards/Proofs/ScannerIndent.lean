@@ -1,8 +1,8 @@
-import Lean4Yaml.Proofs.ScannerIndent
+import L4YAML.Proofs.ScannerIndent
 
-namespace Lean4Yaml.Proofs.ScannerIndent
+namespace L4YAML.Proofs.ScannerIndent
 
-open Lean4Yaml.Scanner
+open L4YAML.Scanner
 
 private def skipSpacesCol (input : String) : Nat :=
   (skipSpaces (ScannerState.mk' input)).col
@@ -40,4 +40,4 @@ private def skipSpacesCol (input : String) : Nat :=
 #guard (ScannerState.mk' "a\nb").advance.advance.line == 1
 #guard (ScannerState.mk' "a\nb").advance.advance.advance.col == 1
 
-end Lean4Yaml.Proofs.ScannerIndent
+end L4YAML.Proofs.ScannerIndent

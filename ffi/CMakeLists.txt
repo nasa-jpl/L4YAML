@@ -1,4 +1,4 @@
-# ffi/CMakeLists.txt — Build liblean4yaml.so from Lean IR + C shim
+# ffi/CMakeLists.txt — Build libl4yaml.so from Lean IR + C shim
 #
 # Prerequisites:
 #   lake build Lean4Yaml    (generates .lake/build/ir/*.c)
@@ -11,7 +11,7 @@
 #   cmake -B ffi/out -S ffi -DLEAN_SYSROOT=/path/to/lean
 #
 cmake_minimum_required(VERSION 3.16)
-project(lean4yaml C)
+project(l4yaml C)
 
 # ── Locate Lean sysroot ─────────────────────────────────────────────
 if(NOT LEAN_SYSROOT)
@@ -78,34 +78,34 @@ endif()
 message(STATUS "Found ${IR_COUNT} Lean IR C files (including dependencies)")
 
 # ── Shared library target ───────────────────────────────────────────
-add_library(lean4yaml SHARED
-  lean4yaml_shim.c
+add_library(l4yaml SHARED
+  l4yaml_shim.c
   ${LEAN_IR_SOURCES}
   ${NATIVE_C_SOURCES})
 
-target_include_directories(lean4yaml PRIVATE "${LEAN_INCLUDE_DIR}")
+target_include_directories(l4yaml PRIVATE "${LEAN_INCLUDE_DIR}")
 
 # Suppress warnings from Lean-generated IR code and native deps; keep for shim
 set_source_files_properties(${LEAN_IR_SOURCES} ${NATIVE_C_SOURCES}
   PROPERTIES COMPILE_OPTIONS "-w")
 
-target_compile_options(lean4yaml PRIVATE -O2)
+target_compile_options(l4yaml PRIVATE -O2)
 
 # Link against libleanshared, native archives, and set RPATH
-target_link_directories(lean4yaml PRIVATE "${LEAN_LIB_DIR}")
-target_link_libraries(lean4yaml PRIVATE leanshared ${NATIVE_ARCHIVES})
-set_target_properties(lean4yaml PROPERTIES
+target_link_directories(l4yaml PRIVATE "${LEAN_LIB_DIR}")
+target_link_libraries(l4yaml PRIVATE leanshared ${NATIVE_ARCHIVES})
+set_target_properties(l4yaml PROPERTIES
   BUILD_RPATH   "${LEAN_LIB_DIR}"
   INSTALL_RPATH "${LEAN_LIB_DIR}")
 
 # ── Install (optional) ──────────────────────────────────────────────
-install(TARGETS lean4yaml LIBRARY DESTINATION lib)
-install(FILES lean4yaml.h DESTINATION include)
+install(TARGETS l4yaml LIBRARY DESTINATION lib)
+install(FILES l4yaml.h DESTINATION include)
 
 # ── tryparse_c executable (for cross-language yaml-test-suite) ──────
 add_executable(tryparse_c tryparse_c.c)
 target_include_directories(tryparse_c PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(tryparse_c PRIVATE lean4yaml)
+target_link_libraries(tryparse_c PRIVATE l4yaml)
 set_target_properties(tryparse_c PROPERTIES
   BUILD_RPATH   "$ORIGIN;${LEAN_LIB_DIR}"
   INSTALL_RPATH "$ORIGIN;${LEAN_LIB_DIR}")

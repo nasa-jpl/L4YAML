@@ -2,7 +2,7 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Lean4Yaml.TokenParser
+import L4YAML.TokenParser
 
 /-!
 # yaml-test-suite Compile-Time Guards — Document Stage
@@ -15,9 +15,9 @@ Each `#guard` is evaluated by Lean's kernel during `lake build`.
 These are Phase 4 of the verification plan: yaml-test-suite as compile-time proofs.
 -/
 
-namespace Lean4Yaml.Proofs.SuiteGuards.Document
+namespace L4YAML.Proofs.SuiteGuards.Document
 
-open Lean4Yaml.TokenParser
+open L4YAML.TokenParser
 
 -- 6XDY:0 Two document start markers
 #guard match parseYaml "---\n---\n" with
@@ -94,4 +94,4 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
-end Lean4Yaml.Proofs.SuiteGuards.Document
+end L4YAML.Proofs.SuiteGuards.Document

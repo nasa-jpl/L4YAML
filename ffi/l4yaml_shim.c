@@ -1,0 +1,367 @@
+/*
+ * l4yaml_shim.c — C bridge between l4yaml.h and Lean @[export] symbols
+ *
+ * This file implements the public C API declared in l4yaml.h by:
+ *   1. Converting const char * ↔ Lean String at the boundary
+ *   2. Unwrapping Option types to nullable pointers
+ *   3. Managing Lean runtime initialization / finalization
+ *   4. Implementing fixed-size memory pool via mimalloc arena API
+ *   5. Wrapping lean_dec behind l4yaml_free
+ *
+ * OWNERSHIP MODEL:
+ *   Lean's @[export] functions follow Lean's ownership convention: every
+ *   parameter is CONSUMED (lean_dec'd) by the callee.  The C API follows
+ *   standard C handle semantics: inspection functions do NOT consume the
+ *   handle.  This shim bridges the two: it lean_inc's handles before
+ *   passing them to Lean functions, so the caller's reference survives.
+ *
+ *   Lean @[export] names use an _impl suffix; this file provides the
+ *   public C API names declared in l4yaml.h.
+ *
+ * Compile with:
+ *   cc -fPIC -c -I$(lean --print-prefix)/include/lean \
+ *      ffi/l4yaml_shim.c -o ffi/l4yaml_shim.o
+ */
+
+#include <lean/lean.h>
+#include <string.h>
+
+/* lean_initialize_runtime_module is exported by libleanshared.so but not
+   declared in lean.h (Lean 4.28).  Forward-declare it here. */
+extern void lean_initialize_runtime_module(void);
+
+/* ── Forward-declare Lean module initializer ─────────────────────── */
+
+extern lean_obj_res initialize_L4YAML_L4YAML(uint8_t builtin);
+
+/* ── Forward-declare Lean @[export] functions (all take OWNED args) ─ */
+
+/* Parsing — consume input String */
+extern lean_obj_res l4yaml_parse_safe(lean_obj_arg input, uint8_t preset);
+extern lean_obj_res l4yaml_parse_single_safe(lean_obj_arg input,
+                                                uint8_t preset);
+
+/* Result inspection — consume result */
+extern uint8_t      l4yaml_result_is_ok_impl(lean_obj_arg result);
+extern uint8_t      l4yaml_result_single_is_ok_impl(lean_obj_arg result);
+extern lean_obj_res l4yaml_result_get_error(lean_obj_arg result);
+extern lean_obj_res l4yaml_result_single_get_error(lean_obj_arg result);
+extern lean_obj_res l4yaml_result_docs_impl(lean_obj_arg result);
+extern lean_obj_res l4yaml_result_value_impl(lean_obj_arg result);
+
+/* Document array — consume docs/doc */
+extern uint32_t     l4yaml_docs_count_impl(lean_obj_arg docs);
+extern lean_obj_res l4yaml_docs_get_impl(lean_obj_arg docs, uint32_t i);
+extern lean_obj_res l4yaml_doc_root_impl(lean_obj_arg doc);
+
+/* Value inspection — consume val */
+extern uint8_t      l4yaml_value_kind_impl(lean_obj_arg val);
+extern lean_obj_res l4yaml_value_as_string(lean_obj_arg val);
+extern uint32_t     l4yaml_value_seq_length_impl(lean_obj_arg val);
+extern lean_obj_res l4yaml_value_seq_get_impl(lean_obj_arg val, uint32_t i);
+extern uint32_t     l4yaml_value_map_length_impl(lean_obj_arg val);
+extern lean_obj_res l4yaml_value_map_key_impl(lean_obj_arg val, uint32_t i);
+extern lean_obj_res l4yaml_value_map_val_impl(lean_obj_arg val, uint32_t i);
+
+/* Value → Option (consume val/key) */
+extern lean_obj_res l4yaml_value_lookup_raw(lean_obj_arg val,
+                                               lean_obj_arg key);
+extern lean_obj_res l4yaml_value_tag_raw(lean_obj_arg val);
+extern lean_obj_res l4yaml_value_anchor_raw(lean_obj_arg val);
+
+/* Dumping — consume val/docs */
+extern lean_obj_res l4yaml_dump_raw(lean_obj_arg val);
+extern lean_obj_res l4yaml_dump_docs_raw(lean_obj_arg docs);
+extern lean_obj_res l4yaml_dump_with_yaml_config_impl(lean_obj_arg val,
+                                                          lean_obj_arg config_yaml);
+
+/* Config deserialization — consume yaml/result */
+extern lean_obj_res l4yaml_parse_limits_yaml_impl(lean_obj_arg yaml);
+extern lean_obj_res l4yaml_parse_dump_config_yaml_impl(lean_obj_arg yaml);
+extern uint8_t      l4yaml_config_result_is_ok_impl(lean_obj_arg result);
+extern lean_obj_res l4yaml_config_result_get_error_impl(lean_obj_arg result);
+extern lean_obj_res l4yaml_config_result_get_limits_impl(lean_obj_arg result);
+extern lean_obj_res l4yaml_parse_with_yaml_config_impl(lean_obj_arg input,
+                                                           lean_obj_arg config_yaml);
+
+/* ── Thread-local string holder ──────────────────────────────────── */
+
+/*
+ * Every function that returns const char * stores the backing Lean String
+ * here so the pointer remains valid until the next such call (or until
+ * l4yaml_free releases the parent handle).
+ */
+static _Thread_local lean_object *tls_last_string = NULL;
+
+static const char *capture_string(lean_object *s) {
+    if (tls_last_string)
+        lean_dec(tls_last_string);
+    tls_last_string = s;
+    return lean_string_cstr(s);
+}
+
+/*
+ * Extract a Lean Option String:
+ *   none (tag 0) → NULL
+ *   some s (tag 1) → capture_string(s)
+ */
+static const char *extract_option_string(lean_object *opt) {
+    if (lean_obj_tag(opt) == 0) {
+        lean_dec(opt);
+        return NULL;
+    }
+    lean_object *s = lean_ctor_get(opt, 0);
+    lean_inc(s);
+    lean_dec(opt);
+    return capture_string(s);
+}
+
+/* ── Lifecycle ───────────────────────────────────────────────────── */
+
+void l4yaml_initialize(void) {
+    lean_initialize_runtime_module();
+    lean_init_task_manager();
+    lean_object *r = initialize_L4YAML_L4YAML(1 /* builtin */);
+    if (lean_io_result_is_ok(r)) {
+        lean_dec(r);
+    } else {
+        lean_io_result_show_error(r);
+        lean_dec(r);
+        lean_internal_panic("l4yaml_initialize: module init failed");
+    }
+}
+
+void l4yaml_finalize(void) {
+    if (tls_last_string) {
+        lean_dec(tls_last_string);
+        tls_last_string = NULL;
+    }
+    lean_finalize_task_manager();
+}
+
+/* ── Fixed-size memory pool ──────────────────────────────────────── */
+
+int l4yaml_init_fixed_pool(size_t pool_bytes) {
+    mi_arena_id_t arena_id;
+    int err = mi_reserve_os_memory_ex(
+        pool_bytes,
+        /*commit=*/1,
+        /*allow_large=*/0,
+        /*exclusive=*/1,
+        &arena_id);
+    if (err != 0)
+        return err;
+    mi_option_set(mi_option_disallow_os_alloc, 1);
+    return 0;
+}
+
+int l4yaml_init_static_pool(void *buf, size_t buf_bytes) {
+    mi_arena_id_t arena_id;
+    bool ok = mi_manage_os_memory_ex(
+        buf, buf_bytes,
+        /*is_committed=*/1,
+        /*is_large=*/0,
+        /*is_zero=*/1,   /* static storage is zero-initialized */
+        /*numa_node=*/0,
+        /*exclusive=*/1,
+        &arena_id);
+    if (!ok)
+        return -1;
+    mi_option_set(mi_option_disallow_os_alloc, 1);
+    return 0;
+}
+
+/* ── Parsing ─────────────────────────────────────────────────────── */
+
+/* l4yaml_parse_safe consumes the Lean String (owned parameter).
+   lean_mk_string_from_bytes creates RC=1 → ownership transfers. */
+
+void *l4yaml_parse(const char *input, size_t len, uint8_t preset) {
+    lean_object *lean_input = lean_mk_string_from_bytes(input, len);
+    return l4yaml_parse_safe(lean_input, preset);
+}
+
+void *l4yaml_parse_single(const char *input, size_t len, uint8_t preset) {
+    lean_object *lean_input = lean_mk_string_from_bytes(input, len);
+    return l4yaml_parse_single_safe(lean_input, preset);
+}
+
+/* ── Result inspection ───────────────────────────────────────────── */
+
+/* Lean _impl functions consume the result handle.
+   lean_inc before calling preserves the caller's reference. */
+
+uint8_t l4yaml_result_is_ok(void *r) {
+    lean_inc((lean_object *)r);
+    return l4yaml_result_is_ok_impl((lean_object *)r);
+}
+
+void *l4yaml_result_docs(void *r) {
+    lean_inc((lean_object *)r);
+    return l4yaml_result_docs_impl((lean_object *)r);
+}
+
+void *l4yaml_result_value(void *r) {
+    lean_inc((lean_object *)r);
+    return l4yaml_result_value_impl((lean_object *)r);
+}
+
+const char *l4yaml_result_error_message(void *r) {
+    if (!r)
+        return NULL;
+    lean_inc((lean_object *)r);
+    lean_object *s = l4yaml_result_get_error((lean_object *)r);
+    /* result_get_error returns "" for ok results */
+    if (lean_string_size(s) <= 1) {
+        lean_dec(s);
+        return NULL;
+    }
+    return capture_string(s);
+}
+
+/* ── Document array access ───────────────────────────────────────── */
+
+uint32_t l4yaml_docs_count(void *docs) {
+    lean_inc((lean_object *)docs);
+    return l4yaml_docs_count_impl((lean_object *)docs);
+}
+
+void *l4yaml_docs_get(void *docs, uint32_t i) {
+    lean_inc((lean_object *)docs);
+    return l4yaml_docs_get_impl((lean_object *)docs, i);
+}
+
+void *l4yaml_doc_root(void *doc) {
+    lean_inc((lean_object *)doc);
+    return l4yaml_doc_root_impl((lean_object *)doc);
+}
+
+/* ── Value inspection ────────────────────────────────────────────── */
+
+uint8_t l4yaml_value_kind(void *v) {
+    lean_inc((lean_object *)v);
+    return l4yaml_value_kind_impl((lean_object *)v);
+}
+
+const char *l4yaml_value_string(void *v) {
+    lean_inc((lean_object *)v);
+    lean_object *s = l4yaml_value_as_string((lean_object *)v);
+    return capture_string(s);
+}
+
+uint32_t l4yaml_value_seq_length(void *v) {
+    lean_inc((lean_object *)v);
+    return l4yaml_value_seq_length_impl((lean_object *)v);
+}
+
+void *l4yaml_value_seq_get(void *v, uint32_t i) {
+    lean_inc((lean_object *)v);
+    return l4yaml_value_seq_get_impl((lean_object *)v, i);
+}
+
+uint32_t l4yaml_value_map_length(void *v) {
+    lean_inc((lean_object *)v);
+    return l4yaml_value_map_length_impl((lean_object *)v);
+}
+
+void *l4yaml_value_map_key(void *v, uint32_t i) {
+    lean_inc((lean_object *)v);
+    return l4yaml_value_map_key_impl((lean_object *)v, i);
+}
+
+void *l4yaml_value_map_val(void *v, uint32_t i) {
+    lean_inc((lean_object *)v);
+    return l4yaml_value_map_val_impl((lean_object *)v, i);
+}
+
+void *l4yaml_value_lookup(void *v, const char *key) {
+    lean_inc((lean_object *)v);
+    lean_object *lean_key = lean_mk_string(key);
+    lean_object *opt = l4yaml_value_lookup_raw((lean_object *)v, lean_key);
+    /* Option.none = tag 0, Option.some = tag 1 */
+    if (lean_obj_tag(opt) == 0) {
+        lean_dec(opt);
+        return NULL;
+    }
+    lean_object *val = lean_ctor_get(opt, 0);
+    lean_inc(val);
+    lean_dec(opt);
+    return val;
+}
+
+const char *l4yaml_value_tag(void *v) {
+    lean_inc((lean_object *)v);
+    lean_object *opt = l4yaml_value_tag_raw((lean_object *)v);
+    return extract_option_string(opt);
+}
+
+const char *l4yaml_value_anchor(void *v) {
+    lean_inc((lean_object *)v);
+    lean_object *opt = l4yaml_value_anchor_raw((lean_object *)v);
+    return extract_option_string(opt);
+}
+
+/* ── Dumping ─────────────────────────────────────────────────────── */
+
+const char *l4yaml_dump(void *v) {
+    lean_inc((lean_object *)v);
+    lean_object *s = l4yaml_dump_raw((lean_object *)v);
+    return capture_string(s);
+}
+
+const char *l4yaml_dump_docs(void *docs) {
+    lean_inc((lean_object *)docs);
+    lean_object *s = l4yaml_dump_docs_raw((lean_object *)docs);
+    return capture_string(s);
+}
+
+/* ── Config deserialization ──────────────────────────────────────── */
+
+void *l4yaml_parse_limits_yaml(const char *yaml, size_t len) {
+    lean_object *lean_yaml = lean_mk_string_from_bytes(yaml, len);
+    return l4yaml_parse_limits_yaml_impl(lean_yaml);
+}
+
+uint8_t l4yaml_config_is_ok(void *r) {
+    lean_inc((lean_object *)r);
+    return l4yaml_config_result_is_ok_impl((lean_object *)r);
+}
+
+const char *l4yaml_config_error_message(void *r) {
+    if (!r)
+        return NULL;
+    lean_inc((lean_object *)r);
+    lean_object *s = l4yaml_config_result_get_error_impl((lean_object *)r);
+    if (lean_string_size(s) <= 1) {
+        lean_dec(s);
+        return NULL;
+    }
+    return capture_string(s);
+}
+
+void *l4yaml_config_get_limits(void *r) {
+    lean_inc((lean_object *)r);
+    return l4yaml_config_result_get_limits_impl((lean_object *)r);
+}
+
+void *l4yaml_parse_configured(const char *input, size_t len,
+                                 const char *config_yaml, size_t config_len) {
+    lean_object *lean_input = lean_mk_string_from_bytes(input, len);
+    lean_object *lean_config = lean_mk_string_from_bytes(config_yaml, config_len);
+    return l4yaml_parse_with_yaml_config_impl(lean_input, lean_config);
+}
+
+const char *l4yaml_dump_configured(void *v, const char *config_yaml,
+                                      size_t config_len) {
+    lean_inc((lean_object *)v);
+    lean_object *lean_config = lean_mk_string_from_bytes(config_yaml, config_len);
+    lean_object *s = l4yaml_dump_with_yaml_config_impl((lean_object *)v, lean_config);
+    return capture_string(s);
+}
+
+/* ── Memory management ───────────────────────────────────────────── */
+
+void l4yaml_free(void *handle) {
+    if (handle)
+        lean_dec((lean_object *)handle);
+}

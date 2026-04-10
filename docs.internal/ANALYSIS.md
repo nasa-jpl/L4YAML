@@ -290,7 +290,7 @@ def satisfiesDocResultMonotonicity (hasValErr : Bool)
 
 Follow the `BlockScalarContracts.lean` pattern:
 
-1. Create `Lean4Yaml/Proofs/DocumentContracts.lean`
+1. Create `L4YAML/Proofs/DocumentContracts.lean`
 2. Define `satisfiesExplicitBoundary`, `satisfiesCommentPrecondition`, `satisfiesDocResultMonotonicity` as decidable `Bool` predicates
 3. Prove specification theorems and interplay theorems (all via `native_decide` / `simp` — zero axioms)
 4. Runtime assertions already exist in the code (the `if` checks in `document`), so no new runtime guards needed

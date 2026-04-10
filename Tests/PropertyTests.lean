@@ -1,7 +1,7 @@
-import Lean4Yaml.Grammar
-import Lean4Yaml.Dump
-import Lean4Yaml.Emitter
-import Lean4Yaml.TokenParser
+import L4YAML.Grammar
+import L4YAML.Dump
+import L4YAML.Emitter
+import L4YAML.TokenParser
 import Tests.VerifiedResult
 
 /-
@@ -41,11 +41,11 @@ The `ValidNode` generator builds structurally valid YAML values by:
 - Generating both block and flow style collections
 -/
 
-open Lean4Yaml
-open Lean4Yaml.Grammar
-open Lean4Yaml.Dump
-open Lean4Yaml.Emit
-open Lean4Yaml.TokenParser
+open L4YAML
+open L4YAML.Grammar
+open L4YAML.Dump
+open L4YAML.Emit
+open L4YAML.TokenParser
 open Tests
 
 namespace Tests.PropertyTests

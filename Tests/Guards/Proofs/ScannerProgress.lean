@@ -1,11 +1,11 @@
-import Lean4Yaml.Proofs.ScannerProgress
+import L4YAML.Proofs.ScannerProgress
 
-namespace Lean4Yaml.Proofs.ScannerProgress
+namespace L4YAML.Proofs.ScannerProgress
 
-open Lean4Yaml.Scanner
-open Lean4Yaml.Proofs.ScannerLoopInvariant
-open Lean4Yaml.Proofs.ScannerContracts
-open Lean4Yaml.Proofs.ScannerScalar
+open L4YAML.Scanner
+open L4YAML.Proofs.ScannerLoopInvariant
+open L4YAML.Proofs.ScannerContracts
+open L4YAML.Proofs.ScannerScalar
 
 -- scanFlowEntry: (s.emit .flowEntry).advance
 private def checkFlowEntryProgress (input : String) : Bool :=
@@ -336,4 +336,4 @@ private def tokenPositionsMonotone (input : String) : Bool :=
 -- Full multi-document lifecycle
 #guard tokenPositionsMonotone "%YAML 1.2\n---\n- &a value\n- *a\n...\n---\nkey: !!str tagged\n..."
 
-end Lean4Yaml.Proofs.ScannerProgress
+end L4YAML.Proofs.ScannerProgress

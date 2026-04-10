@@ -1,12 +1,12 @@
-import Lean4Yaml.Proofs.ScannerDoubleQuoted
+import L4YAML.Proofs.ScannerDoubleQuoted
 
-namespace Lean4Yaml.Proofs.ScannerDoubleQuoted
+namespace L4YAML.Proofs.ScannerDoubleQuoted
 
-open Lean4Yaml
-open Lean4Yaml.Scanner
-open Lean4Yaml.Emit
-open Lean4Yaml.Grammar
-open Lean4Yaml.Proofs.RoundTrip
+open L4YAML
+open L4YAML.Scanner
+open L4YAML.Emit
+open L4YAML.Grammar
+open L4YAML.Proofs.RoundTrip
 
 -- Concrete verification of all 15 named escapes
 #guard processEscapeChar '0'  == some '\x00'
@@ -141,4 +141,4 @@ private def scanDQContent (input : String) : Option String :=
 #guard escapeString "a\nb" == "a\\nb"
 #guard escapeString "a\"b" == "a\\\"b"
 
-end Lean4Yaml.Proofs.ScannerDoubleQuoted
+end L4YAML.Proofs.ScannerDoubleQuoted

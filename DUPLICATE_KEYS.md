@@ -34,7 +34,7 @@ implements the parser.
 |-------|--------------------------|-----------|
 | Scanner / TokenParser | Silently accepts all | All pairs preserved in `Array (YamlValue × YamlValue)` |
 | Lean `findField` / `lookup?` | `findSome?` | **First-wins** |
-| C `lean4yaml_value_lookup` | `findSome?` | **First-wins** |
+| C `l4yaml_value_lookup` | `findSome?` | **First-wins** |
 | Python `as_dict()` | Dict assignment | **Last-wins** |
 | `validateStructure` | Checks `maxMappingSize` only | No uniqueness check |
 
@@ -144,7 +144,7 @@ structure DuplicateKeyInfo where
 
 ```lean
 /-- Keep the first occurrence; discard later duplicates.
-    Matches the behavior of Lean `findField` / C `lean4yaml_value_lookup`. -/
+    Matches the behavior of Lean `findField` / C `l4yaml_value_lookup`. -/
 def firstKeyHandler (ctx : DuplicateKeyContext)
     : Except String (YamlValue × YamlValue) :=
   .ok (ctx.existingKey, ctx.existingVal)
@@ -253,7 +253,7 @@ def parseYamlSingleSafe (input : String) (limits : ParserLimits := {})
 
 ### Tier 1: New Self-Contained Proof Module
 
-A new `Lean4Yaml/Proofs/DuplicateKeyProofs.lean` with **zero dependency** on
+A new `L4YAML/Proofs/DuplicateKeyProofs.lean` with **zero dependency** on
 existing proof files.  These are proofs about `resolveDuplicateKeys` and its
 helpers:
 
@@ -336,42 +336,42 @@ call site.
 
 ```c
 // New configuration handle
-void *lean4yaml_dupkey_config_new(void);
-void  lean4yaml_dupkey_config_set_policy(void *cfg, int policy);
+void *l4yaml_dupkey_config_new(void);
+void  l4yaml_dupkey_config_set_policy(void *cfg, int policy);
   // 0 = reject (default), 1 = keep_first, 2 = keep_last, 3 = keep_all
 
 // Extended parse function
-void *lean4yaml_parse_single_safe_ex(const char *input, void *limits, void *dupkey_cfg);
+void *l4yaml_parse_single_safe_ex(const char *input, void *limits, void *dupkey_cfg);
 
 // Diagnostic access
-int   lean4yaml_dupkey_result_count(void *result);
-void *lean4yaml_dupkey_result_get(void *result, int index);
+int   l4yaml_dupkey_result_count(void *result);
+void *l4yaml_dupkey_result_get(void *result, int index);
 ```
 
 ### Python API (ruamel.yaml parity)
 
 ```python
-import lean4yaml
+import l4yaml
 
 # Default: reject duplicates (spec-compliant)
-doc = lean4yaml.load("{a: 1, b: 2}")
+doc = l4yaml.load("{a: 1, b: 2}")
 
 # Permissive: keep all pairs (ruamel allow_duplicate_keys=True)
-doc = lean4yaml.load("{a: 1, a: 2}", allow_duplicate_keys=True)
+doc = l4yaml.load("{a: 1, a: 2}", allow_duplicate_keys=True)
 
 # Last-wins normalization (ruamel allow_duplicate_keys=False behavior)
-result = lean4yaml.load("{a: 1, a: 2}", duplicate_key_policy="last")
+result = l4yaml.load("{a: 1, a: 2}", duplicate_key_policy="last")
 assert result.as_dict() == {"a": 2}
 
 # Access diagnostics
-result = lean4yaml.load("{a: 1, a: 2}", duplicate_key_policy="last")
+result = l4yaml.load("{a: 1, a: 2}", duplicate_key_policy="last")
 for dup in result.duplicate_keys:
     print(f"Duplicate at {dup.path}: {dup.key}")
 ```
 
 ### Mapping to ruamel.yaml
 
-| ruamel.yaml | lean4yaml | Handler |
+| ruamel.yaml | l4yaml | Handler |
 |-------------|-----------|---------|
 | `allow_duplicate_keys=False` (default) | `duplicate_key_policy="reject"` (default) | `rejectHandler` |
 | `allow_duplicate_keys=True` | `allow_duplicate_keys=True` | `keepAllHandler` (no dedup) |
@@ -382,7 +382,7 @@ for dup in result.duplicate_keys:
 
 ### Phase 1: Types and Config (no proof impact)
 
-1. Define `KeyEqPred` typeclass in `Lean4Yaml/DuplicateKeys.lean`
+1. Define `KeyEqPred` typeclass in `L4YAML/DuplicateKeys.lean`
 2. Define `DuplicateKeyContext`, `DuplicateKeyInfo`, `DuplicateKeyConfig`,
    `DuplicateKeyResult`
 3. Implement `defaultScalarEq`, `firstKeyHandler`, `lastKeyHandler`,
@@ -398,7 +398,7 @@ for dup in result.duplicate_keys:
 
 ### Phase 3: FFI and Python
 
-9. C API extensions in `ffi/lean4yaml.h` and `ffi/lean4yaml_shim.c`
+9. C API extensions in `ffi/l4yaml.h` and `ffi/l4yaml_shim.c`
 10. Python bindings: `allow_duplicate_keys` and `duplicate_key_policy` params
 11. Python tests in `Tests/test_python_ffi.py`
 
@@ -419,16 +419,16 @@ for dup in result.duplicate_keys:
 
 | File | Change | Impact |
 |------|--------|--------|
-| `Lean4Yaml/DuplicateKeys.lean` | **NEW** | Core types, algorithm, built-in handlers |
-| `Lean4Yaml/Config.lean` | Add `FromYaml`/`ToYaml` for new types | Additive |
-| `Lean4Yaml/Limits.lean` | Add `ParserConfig` wrapper | Additive |
-| `Lean4Yaml/FFI.lean` | New `@[export]` functions | Additive |
-| `Lean4Yaml/Proofs/DuplicateKeyProofs.lean` | **NEW** | Self-contained proof module |
+| `L4YAML/DuplicateKeys.lean` | **NEW** | Core types, algorithm, built-in handlers |
+| `L4YAML/Config.lean` | Add `FromYaml`/`ToYaml` for new types | Additive |
+| `L4YAML/Limits.lean` | Add `ParserConfig` wrapper | Additive |
+| `L4YAML/FFI.lean` | New `@[export]` functions | Additive |
+| `L4YAML/Proofs/DuplicateKeyProofs.lean` | **NEW** | Self-contained proof module |
 | `Tests/Guards/DuplicateKeyGuards.lean` | **NEW** | Compile-time `#guard` checks |
 | `Tests/test_python_ffi.py` | Add duplicate key test class | Additive |
-| `ffi/lean4yaml.h` | New C API functions | Additive |
-| `ffi/lean4yaml_shim.c` | Shim implementations | Additive |
-| `python/lean4yaml/__init__.py` | New params on `load()` | Additive |
+| `ffi/l4yaml.h` | New C API functions | Additive |
+| `ffi/l4yaml_shim.c` | Shim implementations | Additive |
+| `python/l4yaml/__init__.py` | New params on `load()` | Additive |
 | Scanner.lean, TokenParser.lean, all Proofs/* | **UNCHANGED** | Zero impact |
 
 ## Design Decisions

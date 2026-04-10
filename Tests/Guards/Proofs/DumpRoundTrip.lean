@@ -1,11 +1,11 @@
-import Lean4Yaml.Proofs.DumpRoundTrip
+import L4YAML.Proofs.DumpRoundTrip
 
-namespace Lean4Yaml.Proofs.DumpRoundTrip
+namespace L4YAML.Proofs.DumpRoundTrip
 
-open Lean4Yaml
-open Lean4Yaml.Dump
-open Lean4Yaml.Emit
-open Lean4Yaml.TokenParser
+open L4YAML
+open L4YAML.Dump
+open L4YAML.Emit
+open L4YAML.TokenParser
 
 private def dumpRoundTrips (v : YamlValue) (cfg : DumpConfig := {}) : Bool :=
   match parseYamlSingle (dump v cfg) with
@@ -134,4 +134,4 @@ private def dumpRoundTrips (v : YamlValue) (cfg : DumpConfig := {}) : Bool :=
 #guard dumpRoundTrips (.mapping .block #[
   (.plainScalar "key", .sequence .block #[.plainScalar "a"])]) { indent := 4 }
 
-end Lean4Yaml.Proofs.DumpRoundTrip
+end L4YAML.Proofs.DumpRoundTrip
