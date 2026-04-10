@@ -97,14 +97,71 @@ def merge_html(pages: list[Path], html_dir: Path) -> str:
 
     pdf_css = """
     <style>
-      @page { size: letter; margin: 2cm; }
-      body { font-family: system-ui, -apple-system, sans-serif; font-size: 11pt; }
-      h1 { page-break-before: always; }
+      @page {
+        size: letter;
+        margin: 2cm 1.8cm 2cm 1.8cm;
+        @bottom-center { content: counter(page); font-size: 9pt; color: #666; }
+      }
+
+      /* ── Hide web-only chrome ── */
+      header,
+      nav#toc,
+      .toc-backdrop,
+      .prev-next-buttons,
+      .permalink-widget,
+      label#toggle-toc-click,
+      #toggle-toc,
+      .search-box,
+      .search-wrapper,
+      script { display: none !important; }
+
+      /* ── Undo the sidebar-offset layout ── */
+      .with-toc { margin-top: 0 !important; }
+      .with-toc > main { padding-left: 0 !important; }
+      .content-wrapper { max-width: 100% !important; padding: 0 !important; }
+
+      /* ── Typography ── */
+      body {
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        font-size: 11pt;
+        line-height: 1.5;
+        color: #222;
+      }
+      h1 { font-size: 18pt; page-break-before: always; margin-top: 0; }
       h1:first-of-type { page-break-before: avoid; }
+      h2 { font-size: 14pt; margin-top: 1.2em; }
+      h3 { font-size: 12pt; }
+
+      /* ── Code blocks ── */
       pre, code { font-size: 9pt; }
-      table { page-break-inside: avoid; }
+      pre {
+        background: #f5f5f5;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 0.6em 0.8em;
+        overflow-x: hidden;
+        word-wrap: break-word;
+        white-space: pre-wrap;
+      }
+
+      /* ── Tables ── */
+      table { page-break-inside: avoid; border-collapse: collapse; width: 100%; }
+      td, th { padding: 0.3em 0.5em; border: 1px solid #ddd; }
+      th { background: #f0f0f0; font-weight: 600; }
+
+      /* ── Images ── */
       img { max-width: 100%; }
-      nav, .nav-sidebar, .breadcrumb { display: none; }
+
+      /* ── Page-break hints ── */
+      .chapter { page-break-before: always; }
+      .chapter:first-child { page-break-before: avoid; }
+      h2, h3 { page-break-after: avoid; }
+
+      /* ── Links: show URL in parentheses for external links ── */
+      a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 8pt; color: #666; }
+      a[href^="http"] { word-break: break-all; }
+      /* But not for anchors within the doc */
+      a[href^="#"]::after, a[href^="find/"]::after { content: none; }
     </style>
     """
 
