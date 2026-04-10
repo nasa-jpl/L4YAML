@@ -6440,6 +6440,26 @@ def checkFullMap : Bool :=
 theorem checkFullSeq_true : checkFullSeq = true := by native_decide
 theorem checkFullMap_true : checkFullMap = true := by native_decide
 
+-- Content fidelity Bool checks for empty flow collections.
+-- Verifies: parseYamlRaw "[]"/{}" succeeds AND the composed result is content-equivalent
+-- to the original empty collection.
+def checkContentSeq : Bool :=
+  match parseYamlRaw "[]" with
+  | .ok raw_docs =>
+    raw_docs.size == 1 &&
+    contentEq (.sequence .flow #[]) (raw_docs.map YamlDocument.compose)[0]!.value
+  | .error _ => false
+
+def checkContentMap : Bool :=
+  match parseYamlRaw "{}" with
+  | .ok raw_docs =>
+    raw_docs.size == 1 &&
+    contentEq (.mapping .flow #[]) (raw_docs.map YamlDocument.compose)[0]!.value
+  | .error _ => false
+
+theorem checkContentSeq_true : checkContentSeq = true := by native_decide
+theorem checkContentMap_true : checkContentMap = true := by native_decide
+
 /-- Combined scanner characterization and parser acceptance for flow sequences.
     Given that scanning the emitted sequence succeeds, the parser pipeline
     produces exactly one document.
@@ -6611,6 +6631,44 @@ theorem emit_parseYaml_succeeds (v : YamlValue) (hg : Grammable v false) :
 -- Helper Lemmas for Content Fidelity
 -- ==========================================
 
+-- contentEq on sequences ignores style/tag/anchor: only items matter.
+private theorem contentEq_sequence_items (style₁ style₂ : CollectionStyle)
+    (items₁ items₂ : Array YamlValue)
+    (tag₁ tag₂ anchor₁ anchor₂ : Option String) :
+    contentEq (.sequence style₁ items₁ tag₁ anchor₁)
+              (.sequence style₂ items₂ tag₂ anchor₂) =
+    (items₁.size == items₂.size && contentEq.contentEqList items₁.toList items₂.toList) := by
+  unfold contentEq; rfl
+
+-- contentEq on mappings ignores style/tag/anchor: only pairs matter.
+private theorem contentEq_mapping_pairs (style₁ style₂ : CollectionStyle)
+    (pairs₁ pairs₂ : Array (YamlValue × YamlValue))
+    (tag₁ tag₂ anchor₁ anchor₂ : Option String) :
+    contentEq (.mapping style₁ pairs₁ tag₁ anchor₁)
+              (.mapping style₂ pairs₂ tag₂ anchor₂) =
+    (pairs₁.size == pairs₂.size && contentEq.contentEqPairList pairs₁.toList pairs₂.toList) := by
+  unfold contentEq; rfl
+
+-- contentEq on sequences with any style/tag/anchor equals contentEq with canonical style/tag/anchor.
+private theorem contentEq_seq_style_irrel (style : CollectionStyle) (items : Array YamlValue)
+    (tag anchor : Option String) (v : YamlValue) :
+    contentEq (.sequence style items tag anchor) v =
+    contentEq (.sequence .flow items none none) v := by
+  cases v with
+  | sequence style₂ items₂ tag₂ anchor₂ =>
+    rw [contentEq_sequence_items, contentEq_sequence_items]
+  | _ => unfold contentEq; rfl
+
+-- contentEq on mappings with any style/tag/anchor equals contentEq with canonical style/tag/anchor.
+private theorem contentEq_map_style_irrel (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
+    (tag anchor : Option String) (v : YamlValue) :
+    contentEq (.mapping style pairs tag anchor) v =
+    contentEq (.mapping .flow pairs none none) v := by
+  cases v with
+  | mapping style₂ pairs₂ tag₂ anchor₂ =>
+    rw [contentEq_mapping_pairs, contentEq_mapping_pairs]
+  | _ => unfold contentEq; rfl
+
 /-- Proves that parsing the emitted tokens for a flow sequence recovers a content-equivalent sequence. -/
 theorem emit_roundtrip_sequence_content_eq {inFlow : Bool} (style : CollectionStyle) (items : Array YamlValue)
     (tag anchor : Option String) (raw_docs : Array YamlDocument)
@@ -6621,7 +6679,34 @@ theorem emit_roundtrip_sequence_content_eq {inFlow : Bool} (style : CollectionSt
             parseYamlRaw (emit items[i]) = .ok raw_docs' → raw_docs'.size = 1 →
             contentEq items[i] (raw_docs'.map YamlDocument.compose)[0]!.value = true) :
     contentEq (.sequence style items tag anchor) (raw_docs.map YamlDocument.compose)[0]!.value = true := by
-  exact sorry
+  -- Bridge to canonical style/tag/anchor for contentEq
+  rw [contentEq_seq_style_irrel]
+  -- Case split on items
+  have h_emit : emit (.sequence style items tag anchor) =
+      "[" ++ emit.emitList items.toList ++ "]" := rfl
+  match h_list : items.toList with
+  | [] =>
+    -- Empty sequence: emit produces "[]"
+    rw [h_list] at h_emit
+    have h_str : ("[" ++ emit.emitList ([] : List YamlValue) ++ "]") = "[]" := by native_decide
+    rw [h_str] at h_emit
+    rw [h_emit] at h_raw
+    -- h_raw : parseYamlRaw "[]" = .ok raw_docs
+    have h_check := checkContentSeq_true
+    unfold checkContentSeq at h_check
+    simp only [h_raw] at h_check
+    -- h_check : (1 == 1 && contentEq ...) = true   (after reducing docs.size == 1)
+    have h_items_empty : items = #[] := by
+      exact Array.toList_eq_nil_iff.mp h_list
+    rw [h_items_empty]
+    -- h_check : (raw_docs.size == 1 && contentEq ...) = true
+    -- Extract the contentEq part using h_size
+    have h_sz_beq : (raw_docs.size == 1) = true := by simp [h_size]
+    rw [h_sz_beq, Bool.true_and] at h_check
+    exact h_check
+  | _ :: _ =>
+    -- Non-empty: requires exact parsed value structure from parser trace.
+    exact sorry
 
 /-- Proves that parsing the emitted tokens for a flow mapping recovers a content-equivalent mapping. -/
 theorem emit_roundtrip_mapping_content_eq {inFlow : Bool} (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
@@ -6637,7 +6722,31 @@ theorem emit_roundtrip_mapping_content_eq {inFlow : Bool} (style : CollectionSty
             parseYamlRaw (emit pairs[i].snd) = .ok raw_docs' → raw_docs'.size = 1 →
             contentEq pairs[i].snd (raw_docs'.map YamlDocument.compose)[0]!.value = true) :
     contentEq (.mapping style pairs tag anchor) (raw_docs.map YamlDocument.compose)[0]!.value = true := by
-  exact sorry
+  -- Bridge to canonical style/tag/anchor for contentEq
+  rw [contentEq_map_style_irrel]
+  -- Case split on pairs
+  have h_emit : emit (.mapping style pairs tag anchor) =
+      "{" ++ emit.emitPairList pairs.toList ++ "}" := rfl
+  match h_list : pairs.toList with
+  | [] =>
+    -- Empty mapping: emit produces "{}"
+    rw [h_list] at h_emit
+    have h_str : ("{" ++ emit.emitPairList ([] : List (YamlValue × YamlValue)) ++ "}") = "{}" := by native_decide
+    rw [h_str] at h_emit
+    rw [h_emit] at h_raw
+    -- h_raw : parseYamlRaw "{}" = .ok raw_docs
+    have h_check := checkContentMap_true
+    unfold checkContentMap at h_check
+    simp only [h_raw] at h_check
+    have h_pairs_empty : pairs = #[] := by
+      exact Array.toList_eq_nil_iff.mp h_list
+    rw [h_pairs_empty]
+    have h_sz_beq : (raw_docs.size == 1) = true := by simp [h_size]
+    rw [h_sz_beq, Bool.true_and] at h_check
+    exact h_check
+  | _ :: _ =>
+    -- Non-empty: requires exact parsed value structure from parser trace.
+    exact sorry
 
 /-- **Content fidelity**: Parsing canonical emitter output recovers content
     equivalent to the original value.

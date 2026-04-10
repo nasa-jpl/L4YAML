@@ -1919,6 +1919,71 @@ monotonicity proof through `parseNode` dispatch.
 3. Show element-wise `contentEq` using the inductive hypothesis `ih` / `ihk` / `ihv`.
 4. Compose via `contentEq` definition: size match + `∀ i, contentEq items[i] items'[i] = true`.
 
+##### Layer 3: Accomplishments
+
+1. **Empty flow collection content fidelity fully proven via `native_decide`.** Introduced
+   `checkContentSeq` and `checkContentMap` — combined Bool pipeline checks that run
+   `parseYamlRaw "[]"` / `parseYamlRaw "{}"`, compose the result via `YamlDocument.compose`,
+   and verify `contentEq` against the canonical empty collection. Both verified by
+   `native_decide`.
+
+2. **`contentEq` style-irrelevance lemmas proven.** Four helper lemmas:
+   - `contentEq_sequence_items`: unfolds `contentEq` on two sequences to size+list comparison
+   - `contentEq_mapping_pairs`: same for mappings
+   - `contentEq_seq_style_irrel`: `contentEq (.sequence style items tag anchor) v = contentEq (.sequence .flow items none none) v`
+   - `contentEq_map_style_irrel`: same for mappings
+   These bridge from the goal (arbitrary `style`/`tag`/`anchor`) to the `native_decide`
+   check (canonical `.flow`/`none`/`none`), all proven by `unfold contentEq; rfl` or
+   `cases v` + rewrite.
+
+3. **Proof architecture mirrors Layer 2.** Both `emit_roundtrip_sequence_content_eq` and
+   `emit_roundtrip_mapping_content_eq` case-split on `items.toList` / `pairs.toList`:
+   - **Empty case** (`[]`): Fully proven. Uses `contentEq_seq_style_irrel` to canonicalize,
+     then rewrites emitter output to `"[]"`/`"{}"`, substitutes into `h_raw`, unfolds
+     `checkContentSeq`/`checkContentMap`, and extracts contentEq from the Bool conjunction.
+   - **Non-empty case** (`_ :: _`): `exact sorry` — requires parsed value structure extraction.
+
+4. **Key technique: non-private `def` for `native_decide` compatibility.** `private def`
+   in the same module as `sorry`-using declarations gets marked as tainted by Lean's
+   compilation, causing `native_decide` to fail with "uses sorry and/or contains errors".
+   Non-private `def` avoids this. Applied to both `checkContentSeq` and `checkContentMap`.
+
+5. **Build status:** 0 errors, 4 sorry-using declarations (2 Layer 2 non-empty, 2 Layer 3
+   non-empty). Sorry count unchanged — the empty cases were previously part of the same
+   `exact sorry` that covered both empty and non-empty.
+
+##### Layer 3: Reflections
+
+1. **Content fidelity for empty collections reduces to parser value verification.** The Lean
+   4 kernel verifies (via `native_decide`) that `parseYamlRaw "[]"` produces a single document
+   whose composed value is content-equivalent to `.sequence .flow #[]`. This is a ~100ms
+   computation that replaces what would be a ~200-line manual proof decomposing
+   `parseDocument → parseNode → parseFlowSequence → empty loop → construct value`.
+
+2. **`contentEq` style-irrelevance is trivially structural.** Since `contentEq` matches
+   `.sequence _ items₁ .., .sequence _ items₂ ..` (ignoring style/tag/anchor via `..`),
+   the style-irrelevance lemma is literally `unfold contentEq; rfl` when both arguments
+   are sequences (the pattern match discards style/tag/anchor). For cross-constructor
+   cases (`.sequence` vs `.scalar`), both sides reduce to `false` — also `rfl`.
+
+3. **`Array.toList_eq_nil_iff` bridges list pattern match to array equality.** After
+   `match h_list : items.toList with | [] =>`, we need `items = #[]` for `rw`. The Lean 4
+   stdlib provides `Array.toList_eq_nil_iff : xs.toList = [] ↔ xs = #[]`, so
+   `Array.toList_eq_nil_iff.mp h_list` gives the needed equality.
+
+4. **Non-empty content fidelity is the hardest remaining obligation.** Unlike the empty case
+   (which needs no structural information about the parsed value), the non-empty case requires:
+   (a) knowing that `parseFlowSequence` produces a `.sequence` with the correct number of items,
+   (b) knowing that each item's value comes from `parseNode` applied to the sub-token sequence
+   corresponding to `emit items[i]`, and (c) applying the inductive hypothesis `ih` to each
+   child. This requires a "parser value extraction" lemma that doesn't exist yet.
+
+5. **`private def` + sorry in same module = `native_decide` poison.** Lean 4's compilation
+   marks private definitions as potentially tainted when the same module contains `sorry`.
+   The fix (using non-private `def`) works but leaks names into the module's public API.
+   A cleaner solution would be to move the `native_decide` checks to a separate module, but
+   the added module management overhead isn't worth it for 4 definitions.
+
 #### Existing proven infrastructure to leverage
 
 - `scanLoop_step_eq`, `scanLoop_step`, `scanLoop_fuel_mono` (compositionality)
@@ -1939,7 +2004,53 @@ monotonicity proof through `parseNode` dispatch.
 
 #### Accomplishments (Step 8)
 
+1. **Layer 2 empty cases proven** (Layers 2 session). `parseStream_emitSequence` and
+   `parseStream_emitMapping` empty cases use combined `checkFullSeq`/`checkFullMap` Bool
+   pipeline checks verified by `native_decide`. Non-empty cases remain sorry.
+
+2. **Layer 3 empty cases proven** (Layer 3 session). `emit_roundtrip_sequence_content_eq` and
+   `emit_roundtrip_mapping_content_eq` empty cases use `checkContentSeq`/`checkContentMap`
+   checks with `contentEq` style-irrelevance lemmas. Non-empty cases remain sorry.
+
+3. **Helper infrastructure added**:
+   - 6 `native_decide` Bool checks (`checkFullSeq/Map`, `checkContentSeq/Map` + their `_true` theorems)
+   - 4 `contentEq` style-irrelevance lemmas (`_sequence_items`, `_mapping_pairs`, `_seq_style_irrel`, `_map_style_irrel`)
+
+4. **Build status**: 0 errors, 4 sorry-using declarations in EmitterScannability.lean:
+   - `parseStream_emitSequence` (non-empty sequence parser acceptance)
+   - `parseStream_emitMapping` (non-empty mapping parser acceptance)
+   - `emit_roundtrip_sequence_content_eq` (non-empty sequence content fidelity)
+   - `emit_roundtrip_mapping_content_eq` (non-empty mapping content fidelity)
+
 #### Reflections (Step 8)
+
+1. **`native_decide` is the right tool for empty-collection verification.** For both Layer 2
+   (parser acceptance) and Layer 3 (content fidelity), the empty case reduces to a concrete
+   computation on the 2-character inputs `"[]"` and `"{}"`. The kernel verifies the full
+   scan → parse → compose → contentEq pipeline in ~21s build time. This removes ~400 LOC
+   of manual proof that would trace through `parseStream → parseDocument → parseNode →
+   parseFlowSequence → empty loop → construct value → compose → contentEq`.
+
+2. **All 4 remaining sorrys share the same fundamental blocker: position monotonicity.**
+   The non-empty cases for both Layer 2 and Layer 3 require proving that `parseNode`
+   advances the parser position by ≥1 token on each loop iteration. Without this,
+   `parseFlowSequenceLoop` and `parseFlowMappingLoop` cannot be shown to terminate
+   within the fuel budget. This is a single infrastructure lemma (`parseNode_advances_position`)
+   that would unblock all 4 remaining sorrys simultaneously.
+
+3. **Content fidelity builds on parser acceptance.** Layer 3 proofs will need Layer 2 proofs
+   as a prerequisite (you need to know parsing succeeds before you can examine what it
+   produces). The structure is: Layer 2 proves `∃ docs, parseStream tokens = .ok docs`,
+   then Layer 3 uses the same `docs` to examine `docs[0].value` structure. The non-empty
+   proofs should be developed together.
+
+4. **The sorry elimination strategy is now clear:**
+   - Step A: Prove `parseNode_advances_position` (~100-200 LOC)
+   - Step B: Prove `parseFlowSequenceLoop_terminates` / `parseFlowMappingLoop_terminates` (~200 LOC)
+   - Step C: Use (B) to prove Layer 2 non-empty cases (~100 LOC each)
+   - Step D: Prove parser value extraction (what `parseFlowSequence` produces) (~200 LOC)
+   - Step E: Use (D) to prove Layer 3 non-empty cases (~100 LOC each)
+   Total: ~800-1200 LOC for full sorry elimination.
 
 ---
 
