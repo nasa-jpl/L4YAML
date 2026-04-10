@@ -38,17 +38,27 @@ jobs:
         id: weasyprint
         run: |
           # weasyprint requires system libraries: pango, cairo, gdk-pixbuf
-          if command -v apt-get &>/dev/null; then
-            sudo apt-get update -qq
-            sudo apt-get install -y -qq libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev libcairo2 2>/dev/null || true
-          elif command -v dnf &>/dev/null; then
-            sudo dnf install -y pango cairo gdk-pixbuf2 libffi-devel 2>/dev/null || true
-          elif command -v yum &>/dev/null; then
-            sudo yum install -y pango cairo gdk-pixbuf2 libffi-devel 2>/dev/null || true
+          # On RHEL/Fedora these are: pango, cairo, gdk-pixbuf2, libffi-devel
+          # On Debian/Ubuntu: libpango-1.0-0, libpangocairo-1.0-0, etc.
+          # The self-hosted runner may not have sudo; skip system install if unavailable.
+          if sudo -n true 2>/dev/null; then
+            if command -v apt-get &>/dev/null; then
+              sudo apt-get update -qq
+              sudo apt-get install -y -qq libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev libcairo2 2>/dev/null || true
+            elif command -v dnf &>/dev/null; then
+              sudo dnf install -y pango cairo gdk-pixbuf2 libffi-devel 2>/dev/null || true
+            fi
+          else
+            echo "No passwordless sudo — skipping system package install (must be pre-installed)"
           fi
-          # Use python3 -m pip to avoid python3/pip3 version mismatch on RHEL
-          python3 -m pip install --user weasyprint 2>&1 && echo "has_weasyprint=true" >> $GITHUB_OUTPUT || echo "has_weasyprint=false" >> $GITHUB_OUTPUT
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          # Use python3 -m pip to match the python3 that will run the script
+          if python3 -m pip install --user weasyprint; then
+            echo "has_weasyprint=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::weasyprint install failed — PDF generation will be skipped"
+            echo "has_weasyprint=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       # -------------------------------------------------------
       # Phase 1: Build everything
