@@ -21,7 +21,7 @@ set_option pp.rawOnError true
 #doc (Manual) "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4" =>
 
 %%%
-authors := ["the L4YAML contributors"]
+authors := ["Nicolas F. Rouquette"]
 shortTitle := "L4YAML"
 %%%
 
