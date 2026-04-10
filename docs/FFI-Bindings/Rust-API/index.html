@@ -192,12 +192,12 @@ The Rust workspace (<code>rust/</code>) provides two crates:</p>
             <ul>
               <li>
                 <p>
-                  <strong><code>lean4yaml-sys</code></strong> — raw FFI bindings generated from the C header.
+                  <strong><code>l4yaml-sys</code></strong> — raw FFI bindings generated from the C header.
    Unsafe, low-level, intended for direct interop.</p>
                 </li>
               <li>
                 <p>
-                  <strong><code>lean4yaml</code></strong> — safe RAII wrapper with 21 tests.
+                  <strong><code>l4yaml</code></strong> — safe RAII wrapper with 21 tests.
    Lean object lifetimes are managed via the <code>Drop</code> trait,
    ensuring proper cleanup without manual reference counting.</p>
                 </li>

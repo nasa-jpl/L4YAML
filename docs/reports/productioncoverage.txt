@@ -17,10 +17,10 @@
   ✓ indent-dependent with annotations: 49/49
 
 --- Per-module annotation counts ---
-  ✓ Lean4Yaml.Scanner: 188 annotations
-  ✓ Lean4Yaml.TokenParser: 56 annotations
-  ✓ Lean4Yaml.CharPredicates: 94 annotations
-  ✓ Lean4Yaml.Token: 21 annotations
+  ✓ L4YAML.Token: 21 annotations
+  ✓ L4YAML.Scanner: 188 annotations
+  ✓ L4YAML.CharPredicates: 94 annotations
+  ✓ L4YAML.TokenParser: 56 annotations
 
 --- Per-chapter coverage ---
   ✓ Ch 5 (Characters): 62/62

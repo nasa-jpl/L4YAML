@@ -1,5 +1,5 @@
 {
-  "date": "2026-04-09T21:50:18-0700",
+  "date": "2026-04-10T08:37:57-0700",
   "overall": {
     "applicable": 358,
     "correct": 358,
@@ -8502,12 +8502,12 @@
           },
           {
             "category": "Per-module annotation counts",
-            "name": "L4YAML.Scanner: 188 annotations",
+            "name": "L4YAML.Token: 21 annotations",
             "outcome": "pass"
           },
           {
             "category": "Per-module annotation counts",
-            "name": "L4YAML.TokenParser: 56 annotations",
+            "name": "L4YAML.Scanner: 188 annotations",
             "outcome": "pass"
           },
           {
@@ -8517,7 +8517,7 @@
           },
           {
             "category": "Per-module annotation counts",
-            "name": "L4YAML.Token: 21 annotations",
+            "name": "L4YAML.TokenParser: 56 annotations",
             "outcome": "pass"
           },
           {
