@@ -5,7 +5,7 @@ A **fully verified** YAML 1.2.2 parser in Lean 4 — 2,309 machine-checked theor
 ## Architecture
 
 ```
-Lean4Yaml/
+L4YAML/
 ├── YamlSpec.lean                       # YAML 1.2.2 spec cross-references
 ├── CharPredicates.lean                 # YAML 1.2.2 character rules
 ├── Types.lean                          # YamlValue AST, YamlPos position tracking
@@ -186,11 +186,11 @@ theorem parse_strict : parseYaml s = .ok docs → InYamlLanguage s
 
 In practice, fully formalizing 205 productions is a major undertaking. Version 0.2.11 introduces a **fourth layer** — systematic rejection testing — as the pragmatic complement: using the formal grammar structure to generate boundary-violation test cases that check rejection, even though rejection isn't proved. The generation is principled (grammar-directed, production-aware), the cross-validation is empirical (differential testing against libyaml), and the coverage is measured (production coverage analysis). This semi-formal bridge addresses the verification gap without requiring a full surface-syntax formalization.
 
-For more details, see [Proofs/README](./Lean4Yaml/Proofs/README.md).
+For more details, see [Proofs/README](./L4YAML/Proofs/README.md).
 
 ## Security: Parser Limits (v0.3.0)
 
-`Lean4Yaml/Limits.lean` provides configurable limits to protect against adversarial input:
+`L4YAML/Limits.lean` provides configurable limits to protect against adversarial input:
 
 | Threat | Limit | Default |
 |---|---|---|
@@ -208,7 +208,7 @@ For more details, see [Proofs/README](./Lean4Yaml/Proofs/README.md).
 ### Usage
 
 ```lean
-import Lean4Yaml
+import L4YAML
 
 -- Safe mode (recommended for untrusted input):
 let result := parseYamlSafe input                -- default limits
@@ -242,7 +242,7 @@ YAML1.2.2-compliant verified parser without resource limitations.
 
 Improved type safety with explicit exception types for all APIs. See [EXCEPTIONS.md](EXCEPTIONS.md) for the full design and migration retrospective.
 
-**Problem:** The 5 top-level parser APIs and 13 Schema-layer functions returned `Except String`, losing structured error information. Internally, scanner/parser already used the well-designed `ScanError` inductive (32 constructors in [Token.lean](Lean4Yaml/Token.lean)), but the `ScanError → String` boundary at the API surface discarded machine-inspectable error categories.
+**Problem:** The 5 top-level parser APIs and 13 Schema-layer functions returned `Except String`, losing structured error information. Internally, scanner/parser already used the well-designed `ScanError` inductive (32 constructors in [Token.lean](L4YAML/Token.lean)), but the `ScanError → String` boundary at the API surface discarded machine-inspectable error categories.
 
 **Solution — three error types:**
 
@@ -266,7 +266,7 @@ Improved type safety with explicit exception types for all APIs. See [EXCEPTIONS
 - Zero `Except String` remaining in public API
 - Scanner/parser APIs return `Except ScanError` directly; combined APIs return `Except YamlError`
 - Proof impact far less than predicted: 4 existing proof changes, 30 proof files untouched
-- 12 new error property theorems in [Proofs/ErrorProperties.lean](Lean4Yaml/Proofs/ErrorProperties.lean):
+- 12 new error property theorems in [Proofs/ErrorProperties.lean](L4YAML/Proofs/ErrorProperties.lean):
   - Error discriminability: `scan_error_ne_schema_error` (impossible with `String`)
   - Error coverage: `getMapping_error`, `getString_error`, 5 `fromYamlType_*_error` theorems
   - Error lifting: coercion preserves `toString` (`rfl`)
@@ -384,7 +384,7 @@ Prop twins for specification structures (doc-verification-bridge visibility). Th
 - `parseYaml_implies_validYaml`: places `ValidYaml` in the `proves` position (not just field projections)
 - `parseYaml_implies_valid_token_stream`: connects `parseYaml` → `scanFiltered` → `scan` → `ValidTokenStreamProp` via unfold
 - Dropped `scanFiltered_valid_token_stream` because `scanFiltered_produces_valid_tokens` is a `by`-proof `def` whose `.tokens` field is opaque (not definitionally equal to the input)
-- Also fixed 6 missing imports in `Lean4Yaml.lean`: `ParserAnchorProofs`, `ParserGrammableBase`, `ParserNodeProofs`, `ParserWellBehaved`, `ParserWfaProofs`, `ScannerCorrectness`
+- Also fixed 6 missing imports in `L4YAML.lean`: `ParserAnchorProofs`, `ParserGrammableBase`, `ParserNodeProofs`, `ParserWellBehaved`, `ParserWfaProofs`, `ScannerCorrectness`
 - Build: 341/341 jobs, 0 errors, 0 sorry, 0 warnings
 </details>
 
@@ -872,7 +872,7 @@ See [LIMITS](LIMITS.md) for detailed analysis and mitigation strategies.
 
 [Acceptance strictness](./STRICTNESS.md): formalize the YAML 1.2.2 surface syntax as parameterized inductive predicates and begin coupling the scanner implementation to the formal grammar.
 
-**Surface syntax grammar**: 6 new modules in `Lean4Yaml/Surface/` (~1,100 lines) encode the full YAML 1.2.2 production set [1]–[211] as Lean 4 inductive `Prop`s over positioned character streams (`SurfPos = {chars : List Char, col : Nat}`).
+**Surface syntax grammar**: 6 new modules in `L4YAML/Surface/` (~1,100 lines) encode the full YAML 1.2.2 production set [1]–[211] as Lean 4 inductive `Prop`s over positioned character streams (`SurfPos = {chars : List Char, col : Nat}`).
 
 Key design decisions:
 - **18 mutual inductives** for the node/collection layer (flow sequences, flow mappings, block sequences, block mappings, compact notation, implicit keys)
@@ -880,7 +880,7 @@ Key design decisions:
 - **Column-tracking position model**: column resets to 0 on line breaks, increments per character — sufficient for YAML's indentation-sensitive grammar
 - **Context parameterization**: `YamlContext` (blockOut/blockIn/blockKey/flowOut/flowIn/flowKey) threads through productions governing plain scalar and flow indicator interpretation
 
-**Coupling proof infrastructure**: 3 modules in `Lean4Yaml/Proofs/` (~570 lines, ~50 theorems, **0 sorry**) bridge the scanner implementation to the surface syntax:
+**Coupling proof infrastructure**: 3 modules in `L4YAML/Proofs/` (~570 lines, ~50 theorems, **0 sorry**) bridge the scanner implementation to the surface syntax:
 - **SurfaceCoupling**: 20+ pure `SurfPos`-level theorems (`SIndent` zero/succ/all_spaces, `SBBreak` lf/cr/crlf, `GChar` column tracking, `SSWhite` space/tab)
 - **CouplingBridge**: Scanner↔SurfPos bridge — `CharsFromOffset` inductive, `ScannerSurfCorr` correspondence struct, peek/eof/advance correspondence, and composition helpers for `SSeparateInLine`, `SSLComments`, `SSBComment`
 - **ScannerCoupling**: Fuel-based scanner loop proofs — `skipSpacesLoop` → `SIndent n`, `skipSpaces` coupling, `consumeNewline` lf/crlf/cr → `SBBreak` correspondence
@@ -1129,7 +1129,7 @@ Compose the 80+ leaf coupling theorems from CouplingBridge, ScannerCoupling, Sca
    **Fix:** Use `nofun` — it universally closes impossible pattern matches without universe issues. Applied 4 times in `scanNextToken_none_consumed` to close branches where dispatches return `some` but the hypothesis expects `none`.
 
 3. **One-liner `split` chains work in tmp/ files but fail in namespaced builds.**
-   `| succ n ih => unfold f; split; · exact ih _; · rfl` compiles in standalone tmp/ files but produces "No goals to be solved" in the real build under `namespace Lean4Yaml.Proofs.ScanStrictCoupling`. The semicolons in one-liner format interact differently with namespace resolution, causing `dsimp only []` to close goals that the trailing `rfl` then can't find.
+   `| succ n ih => unfold f; split; · exact ih _; · rfl` compiles in standalone tmp/ files but produces "No goals to be solved" in the real build under `namespace L4YAML.Proofs.ScanStrictCoupling`. The semicolons in one-liner format interact differently with namespace resolution, causing `dsimp only []` to close goals that the trailing `rfl` then can't find.
 
    **Fix:** Always use multiline tactic format in production files:
    ```lean
@@ -1383,7 +1383,7 @@ The 2 sorry's previously in `Surface.lean` are eliminated. The single remaining 
    **Fix (3-part refactoring):**
    - Moved `InYamlLanguage` from `Surface.lean` to `Surface/Document.lean` (where `SLYamlStream` lives)
    - Moved `indent_coupling` theorem from `Surface.lean` to `CouplingBridge.lean` (only depends on `SIndent`)
-   - Changed `CouplingBridge.lean` and `SurfaceCoupling.lean` imports from `Lean4Yaml.Surface` to `Lean4Yaml.Surface.Document`
+   - Changed `CouplingBridge.lean` and `SurfaceCoupling.lean` imports from `L4YAML.Surface` to `L4YAML.Surface.Document`
    - `Surface.lean` now imports `Proofs.DocumentProduction` without cycle
 
 2. **`GAlt`/`GSeq`/`GStar` constructors take explicit `SurfPos` arguments.**
@@ -1496,22 +1496,22 @@ See [VERSION-0.4.8.md](VERSION-0.4.8.md)
 ##### Phase 1: Lean `@[export]` Wrappers
 
 <details>
-<summary>Completed 2026-03-25: 26 exported C-callable functions in Lean4Yaml/FFI.lean, verified in generated C
+<summary>Completed 2026-03-25: 26 exported C-callable functions in L4YAML/FFI.lean, verified in generated C
 </summary>
 
-Created [Lean4Yaml/FFI.lean](Lean4Yaml/FFI.lean) with `@[export]` wrappers exposing the safe parsing and dumping API through opaque handles and flat C-compatible types (`UInt8`, `UInt32`, `String`).
+Created [L4YAML/FFI.lean](L4YAML/FFI.lean) with `@[export]` wrappers exposing the safe parsing and dumping API through opaque handles and flat C-compatible types (`UInt8`, `UInt32`, `String`).
 
 **Exported functions (26):**
 
 | Category | Functions |
 |----------|-----------|
-| Parsing | `lean4yaml_parse_safe`, `lean4yaml_parse_single_safe` |
-| Result inspection | `lean4yaml_result_is_ok`, `lean4yaml_result_single_is_ok`, `lean4yaml_result_get_error`, `lean4yaml_result_single_get_error`, `lean4yaml_result_get_docs`, `lean4yaml_result_get_value` |
-| Document access | `lean4yaml_docs_count`, `lean4yaml_docs_get`, `lean4yaml_doc_value` |
-| Value inspection | `lean4yaml_value_tag` (kind), `lean4yaml_value_as_string`, `lean4yaml_value_seq_length`, `lean4yaml_value_seq_get`, `lean4yaml_value_map_length`, `lean4yaml_value_map_key`, `lean4yaml_value_map_val`, `lean4yaml_value_lookup`, `lean4yaml_value_yaml_tag`, `lean4yaml_value_anchor` |
-| Option helpers | `lean4yaml_option_is_some`, `lean4yaml_option_get` |
-| Dumping | `lean4yaml_dump`, `lean4yaml_dump_docs` |
-| String utility | `lean4yaml_string_byte_length` |
+| Parsing | `l4yaml_parse_safe`, `l4yaml_parse_single_safe` |
+| Result inspection | `l4yaml_result_is_ok`, `l4yaml_result_single_is_ok`, `l4yaml_result_get_error`, `l4yaml_result_single_get_error`, `l4yaml_result_get_docs`, `l4yaml_result_get_value` |
+| Document access | `l4yaml_docs_count`, `l4yaml_docs_get`, `l4yaml_doc_value` |
+| Value inspection | `l4yaml_value_tag` (kind), `l4yaml_value_as_string`, `l4yaml_value_seq_length`, `l4yaml_value_seq_get`, `l4yaml_value_map_length`, `l4yaml_value_map_key`, `l4yaml_value_map_val`, `l4yaml_value_lookup`, `l4yaml_value_yaml_tag`, `l4yaml_value_anchor` |
+| Option helpers | `l4yaml_option_is_some`, `l4yaml_option_get` |
+| Dumping | `l4yaml_dump`, `l4yaml_dump_docs` |
+| String utility | `l4yaml_string_byte_length` |
 
 **Preset encoding:** `UInt8` code selects `ParserLimits` preset (0=default, 1=strict, 2=permissive, 3=unlimited, 4=safeTagsOnly).
 
@@ -1533,9 +1533,9 @@ Created the C ABI layer (`ffi/`) enabling any language with FFI to call the veri
 
 | File | Purpose |
 |------|---------|
-| `ffi/lean4yaml.h` | Public C header — 26 functions, opaque handle model, limit presets, flight-software pool init |
-| `ffi/lean4yaml_shim.c` | Thin C bridge: `const char *` ↔ Lean String, Option unwrapping, `lean_dec` wrapper, mimalloc arena pool init |
-| `ffi/CMakeLists.txt` | CMake build: compiles 76 Lean IR `.c` files + shim → `ffi/out/liblean4yaml.so` |
+| `ffi/l4yaml.h` | Public C header — 26 functions, opaque handle model, limit presets, flight-software pool init |
+| `ffi/l4yaml_shim.c` | Thin C bridge: `const char *` ↔ Lean String, Option unwrapping, `lean_dec` wrapper, mimalloc arena pool init |
+| `ffi/CMakeLists.txt` | CMake build: compiles 76 Lean IR `.c` files + shim → `ffi/out/libl4yaml.so` |
 
 **Architecture:**
 - 12 functions pass through directly from Lean `@[export]` (ABI-compatible opaque handles + uint types)
@@ -1543,17 +1543,17 @@ Created the C ABI layer (`ffi/`) enabling any language with FFI to call the veri
 - Thread-local string holder ensures `const char *` return values remain valid until the next string-returning call
 
 **Lean FFI renames (Phase 1 → Phase 2 alignment):**
-9 `@[export]` symbols renamed to avoid clashes with C API names (e.g., `lean4yaml_value_tag` → `lean4yaml_value_kind` for node-kind enum; `lean4yaml_dump` → `lean4yaml_dump_raw` for Lean String return)
+9 `@[export]` symbols renamed to avoid clashes with C API names (e.g., `l4yaml_value_tag` → `l4yaml_value_kind` for node-kind enum; `l4yaml_dump` → `l4yaml_dump_raw` for Lean String return)
 
 **Verification:**
-- `liblean4yaml.so` links cleanly against `libleanshared.so` (Lean 4.28 + mimalloc v2.23)
+- `libl4yaml.so` links cleanly against `libleanshared.so` (Lean 4.28 + mimalloc v2.23)
 - All 26 public API symbols confirmed via `nm -D`
 - 0 compiler warnings from shim (`Surface.lean` sorry's later discharged in v0.4.4 Phase D+E)
 - Lean library build: 173/173 jobs, 0 new warnings
 
 **Pool init functions:**
-- `lean4yaml_init_fixed_pool(size_t)` — OS-backed via `mi_reserve_os_memory_ex`
-- `lean4yaml_init_static_pool(void *, size_t)` — static buffer via `mi_manage_os_memory_ex`
+- `l4yaml_init_fixed_pool(size_t)` — OS-backed via `mi_reserve_os_memory_ex`
+- `l4yaml_init_static_pool(void *, size_t)` — static buffer via `mi_manage_os_memory_ex`
 - Both disable further OS allocation via `mi_option_set(mi_option_disallow_os_alloc, 1)`
 
 </details>
@@ -1563,7 +1563,7 @@ Created the C ABI layer (`ffi/`) enabling any language with FFI to call the veri
 <details>
 <summary>Completed 2026-03-25: Python ctypes package with 5 modules, 78 CI tests passing</summary>
 
-Created [`python/lean4yaml/`](python/lean4yaml/) package with ctypes bindings to `liblean4yaml.so`.
+Created [`python/l4yaml/`](python/l4yaml/) package with ctypes bindings to `libl4yaml.so`.
 
 **Package modules (5):**
 
@@ -1572,12 +1572,12 @@ Created [`python/lean4yaml/`](python/lean4yaml/) package with ctypes bindings to
 | `__init__.py` | Public API: `load()`, `load_all()`, `dump()`, `dump_configured()`, `parse_limits_yaml()` |
 | `_ffi.py` | ctypes bindings: library discovery, `libleanshared.so` pre-load, 30+ function signatures, lifecycle |
 | `types.py` | `YamlValue` (opaque handle wrapper with full dunder protocol) and `YamlDocument` |
-| `exceptions.py` | `Lean4YamlError`, `ParseError`, `LimitError`, `ConfigError` |
+| `exceptions.py` | `L4YAMLError`, `ParseError`, `LimitError`, `ConfigError` |
 | `conftest.py` | ROS 2 pytest plugin deconfliction |
 
 **Python API:** `load(yaml, limits="default")`, `load_all(yaml)`, `dump(value)`, `dump_configured(value, config_yaml=...)`, `parse_limits_yaml(config_yaml)`. Preset encoding: `"default"` / `"strict"` / `"permissive"` / `"unlimited"` / `"safe_tags"`.
 
-**`YamlValue` class:** `kind`, `as_str()`, `as_list()`, `as_dict()`, `keys()`, `items()`, `tag`, `anchor`, `__getitem__(str|int)`, `__contains__`, `__iter__`, `__len__`, `__repr__`, `__eq__`, `__hash__`, `__del__` (calls `lean4yaml_free`).
+**`YamlValue` class:** `kind`, `as_str()`, `as_list()`, `as_dict()`, `keys()`, `items()`, `tag`, `anchor`, `__getitem__(str|int)`, `__contains__`, `__iter__`, `__len__`, `__repr__`, `__eq__`, `__hash__`, `__del__` (calls `l4yaml_free`).
 
 **Critical FFI bugs fixed:**
 1. Lean `@[export]` ownership: all exports consume params via `lean_dec_ref` — shim wrappers now `lean_inc` before calling `_impl` functions
@@ -1592,15 +1592,15 @@ Created [`python/lean4yaml/`](python/lean4yaml/) package with ctypes bindings to
 <details>
 <summary>Completed 2026-03-25: safe Rust wrapper with 21 tests, verified Send/Sync safety, 0.06s test suite</summary>
 
-Two-crate Rust workspace (`rust/`): `lean4yaml-sys` (raw `bindgen` FFI from `lean4yaml.h`) + `lean4yaml` (safe RAII wrapper with `Drop`, `Result` error mapping, `Index`, `IntoIterator`).
+Two-crate Rust workspace (`rust/`): `l4yaml-sys` (raw `bindgen` FFI from `l4yaml.h`) + `l4yaml` (safe RAII wrapper with `Drop`, `Result` error mapping, `Index`, `IntoIterator`).
 
 **Rust API:** `load(input, preset)`, `load_all(input, preset)`, `dump(&value)`, `dump_configured(&value, config_yaml)`, `load_configured(input, config_yaml)`, `load_all_configured(input, config_yaml)`. Preset encoding: `LimitsPreset::Default` / `Strict` / `Permissive` / `Unlimited` / `SafeTags`.
 
-**`YamlValue` struct:** `kind()`, `as_str()`, `get(key)`, `keys()`, `items()`, `as_list()`, `seq_get(i)`, `map_key(i)`, `map_val(i)`, `len()`, `is_empty()`, `tag()`, `anchor()`, `Index<&str>`, `Index<usize>`, `IntoIterator`, `Display`, `Drop` (calls `lean4yaml_free`).
+**`YamlValue` struct:** `kind()`, `as_str()`, `get(key)`, `keys()`, `items()`, `as_list()`, `seq_get(i)`, `map_key(i)`, `map_val(i)`, `len()`, `is_empty()`, `tag()`, `anchor()`, `Index<&str>`, `Index<usize>`, `IntoIterator`, `Display`, `Drop` (calls `l4yaml_free`).
 
 **Thread safety:** All types are `!Send + !Sync` via `PhantomData<*mut ()>` — tests must run single-threaded (`cargo test -- --test-threads=1`).
 
-**Tests:** [`rust/lean4yaml/tests/integration.rs`](rust/lean4yaml/tests/integration.rs) — 21 tests: scalar/sequence/mapping parsing, nested structures, multi-document, dump, round-trip, limit presets, error handling, iterators, display, empty values, config-based parsing. All passing in 0.06s.
+**Tests:** [`rust/l4yaml/tests/integration.rs`](rust/l4yaml/tests/integration.rs) — 21 tests: scalar/sequence/mapping parsing, nested structures, multi-document, dump, round-trip, limit presets, error handling, iterators, display, empty values, config-based parsing. All passing in 0.06s.
 
 Aeneas/Charon verification bridge (task 8c) and crates.io publish (task 8e) remain as stretch goals.
 
@@ -1622,7 +1622,7 @@ Lean-orchestrated cross-language validation: the existing `suiterunner` spawns m
 | `tryparse` | Lean | [Tests/TryParse.lean](Tests/TryParse.lean) |
 | `tryparse_c` | C | [ffi/tryparse_c.c](ffi/tryparse_c.c) |
 | `tryparse_python.py` | Python | [Tests/tryparse_python.py](Tests/tryparse_python.py) |
-| `tryparse` (Rust) | Rust | [rust/lean4yaml/examples/tryparse.rs](rust/lean4yaml/examples/tryparse.rs) |
+| `tryparse` (Rust) | Rust | [rust/l4yaml/examples/tryparse.rs](rust/l4yaml/examples/tryparse.rs) |
 
 **Suiterunner flags:** `--backend <lean|c|python|rust>` selects the tryparse binary; `--limits <preset>` passes a limit preset (`unlimited`, `default`, `strict`, `permissive`, `safe_tags`) as an extra argument.
 
@@ -1781,7 +1781,7 @@ All 7 demo examples in `Demo.lean` pass, including deeply nested structures.
 - `Tests/SuiteRunner/Meta.lean` (~280 lines) — line-based meta-parser for the yaml-test-suite file format (bootstrapping: can't use our own YAML parser to parse the test suite's YAML metadata)
 - `Tests/SuiteRunner/Main.lean` (~200 lines) — test runner with staged execution, progress output, and result reporting
 - `Tests/TryParse.lean` — minimal binary for subprocess-based parse testing with `timeout(1)` for infinite loop protection
-- `Lean4Yaml/Parser/Combinators.lean` — validation helpers (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`) for three-valued error recovery ([ANALYSIS.md](ANALYSIS.md) §2.A), active in `Block.lean`
+- `L4YAML/Parser/Combinators.lean` — validation helpers (`validateNoWrongIndentSeq`, `validateNoWrongIndentMap`) for three-valued error recovery ([ANALYSIS.md](ANALYSIS.md) §2.A), active in `Block.lean`
 - Test classification by tags into stages: scalar → flow → block → document → advanced → error
 - Cumulative stage execution (e.g., `flow` stage runs both scalar and flow tests)
 
@@ -2345,11 +2345,11 @@ Effort: ~5+ sessions. **All 6 steps complete** (3.3.1–3.3.6).
     - **Dividend 3 (Step 3.3.4):** Totality enabled `#guard` kernel evaluation, giving 76 compile-time regression tests that catch parser behavior changes at build time — no test executable needed.
     - All three dividends flow from a single investment: converting 31 `partial def` to `def`. This is the compounding pattern at its clearest — one architectural change enables three independent verification capabilities.
 
-27. **Switch from `std-iterators` to `well-founded-streams` branch (2026-02-26)** — ✅ Switched lean4-parser dependency from the `std-iterators` branch (PR#97) to the new `well-founded-streams` branch, implementing François Dorais's suggestions: remove `Std.Data.Iterators` dependency, replace `LawfulParserStream` with standalone `Stream.WellFounded` typeclass, and provide a self-contained `WellFoundedStreams` module. The `well-founded-streams` branch is based on lean4-parser `main`, not `std-iterators`. Four files changed: `lakefile.toml` (rev update), `lake-manifest.json` (dependency lock), `Lean4Yaml/Stream.lean` (import + `Stream.WellFounded.ofMeasure` instance + standalone `Parser.Stream.remaining` shim), `Tests/IteratorTests.lean` (import + docstrings). **Zero proof changes.** The standalone `_root_.Parser.Stream.remaining` definition preserves API compatibility for all 20+ proof/test files. Build: 257/257 jobs, all 564 theorems and 670 `#guard` checks pass unchanged.
+27. **Switch from `std-iterators` to `well-founded-streams` branch (2026-02-26)** — ✅ Switched lean4-parser dependency from the `std-iterators` branch (PR#97) to the new `well-founded-streams` branch, implementing François Dorais's suggestions: remove `Std.Data.Iterators` dependency, replace `LawfulParserStream` with standalone `Stream.WellFounded` typeclass, and provide a self-contained `WellFoundedStreams` module. The `well-founded-streams` branch is based on lean4-parser `main`, not `std-iterators`. Four files changed: `lakefile.toml` (rev update), `lake-manifest.json` (dependency lock), `L4YAML/Stream.lean` (import + `Stream.WellFounded.ofMeasure` instance + standalone `Parser.Stream.remaining` shim), `Tests/IteratorTests.lean` (import + docstrings). **Zero proof changes.** The standalone `_root_.Parser.Stream.remaining` definition preserves API compatibility for all 20+ proof/test files. Build: 257/257 jobs, all 564 theorems and 670 `#guard` checks pass unchanged.
 
 28. **Make lean4-parser fold combinators total via `remaining`-based termination (2026-02-26)** — ✅ Added `remaining : σ → Nat` field to the `Parser.Stream` class in lean4-parser's `well-founded-streams` branch. Converted all 6 `partial def` fold combinators in `Parser/Parser.lean` and `Parser/Basic.lean` to total `def` with `termination_by Stream.remaining s`. Commit `deb6e2e`. Three files changed (+88, −31 lines): `Parser/Stream.lean` (new `remaining` field + implementations for all 6 stream instances), `Parser/Parser.lean` (`efoldlPAux` → total), `Parser/Basic.lean` (`foldr`, `takeUntil`, `dropUntil`, `count`, `countUntil` → total). Design: each fold iteration checks `if h : Stream.remaining s'' < Stream.remaining s` at runtime — the `true` branch provides evidence for Lean's termination checker, the `false` branch stops the fold (preventing non-termination even with parsers that succeed without consuming input). Stream `remaining` implementations: `String.Slice` → `utf8ByteSize`, `Substring.Raw` → `bsize`, `Subarray` → `stop - start`, `ByteSlice` → `size`, `OfList` → `next.length`, `mkDefault` → `0`. Six RegEx `partial def`s (separate concern) left as-is. Build: 208/208 jobs.
 
-29. **Update lean4-yaml-verified to use `remaining` field from `Parser.Stream` (2026-02-26)** — ✅ Updated lean4-parser dependency to commit `deb6e2e` (which adds `remaining` as a `Parser.Stream` class field). Removed the standalone `_root_.Parser.Stream.remaining` shim from `Lean4Yaml/Stream.lean` and replaced it with `remaining s := s.stopPos.byteIdx - s.startPos.byteIdx` in the `Parser.Stream YamlStream Char` instance. **Zero proof/test changes** — all downstream uses (`Stream.remaining (← getStream)` in `Block.lean`, `Combinators.lean`, `Document.lean`, `Flow.lean`) resolve to the class field with the identical expression. Two files changed: `lake-manifest.json` (rev update), `Lean4Yaml/Stream.lean` (instance field + shim removal). Build: 257/257 jobs, all 564 theorems and 670 `#guard` checks pass unchanged.
+29. **Update lean4-yaml-verified to use `remaining` field from `Parser.Stream` (2026-02-26)** — ✅ Updated lean4-parser dependency to commit `deb6e2e` (which adds `remaining` as a `Parser.Stream` class field). Removed the standalone `_root_.Parser.Stream.remaining` shim from `L4YAML/Stream.lean` and replaced it with `remaining s := s.stopPos.byteIdx - s.startPos.byteIdx` in the `Parser.Stream YamlStream Char` instance. **Zero proof/test changes** — all downstream uses (`Stream.remaining (← getStream)` in `Block.lean`, `Combinators.lean`, `Document.lean`, `Flow.lean`) resolve to the class field with the identical expression. Two files changed: `lake-manifest.json` (rev update), `L4YAML/Stream.lean` (instance field + shim removal). Build: 257/257 jobs, all 564 theorems and 670 `#guard` checks pass unchanged.
 
 
 </details>
@@ -2710,7 +2710,7 @@ Note: this table describes the trade-offs of converting the YAML parser's *own* 
 **Empirical verification of zero impact:**
 
 ```
-$ grep -n "foldr\|takeUntil\|dropUntil\|countUntil\|foldl\|efoldlP" Lean4Yaml/Proofs/*.lean
+$ grep -n "foldr\|takeUntil\|dropUntil\|countUntil\|foldl\|efoldlP" L4YAML/Proofs/*.lean
 (no output — exit code 1, zero matches across all 20 proof files)
 
 $ lake build 2>&1 | grep "jobs"
@@ -2731,9 +2731,9 @@ Build completed successfully. (255 jobs)
 
 **Changes made (2 files modified, 2 files created):**
 
-1. **`Lean4Yaml/Stream.lean`** — Added `import Parser.Iterators`; added sorry-free `LawfulParserStream YamlStream Char` instance after the `Parser.Stream` instance. Proof technique: `simp only [Parser.Stream.remaining, Stream.next?, Std.Stream.next?, YamlStream.next?]` to unfold definitions, then `String.Pos.Raw.next` + `Char.utf8Size_pos` + `omega` to establish `remaining` strictly decreases on `next?`.
+1. **`L4YAML/Stream.lean`** — Added `import Parser.Iterators`; added sorry-free `LawfulParserStream YamlStream Char` instance after the `Parser.Stream` instance. Proof technique: `simp only [Parser.Stream.remaining, Stream.next?, Std.Stream.next?, YamlStream.next?]` to unfold definitions, then `String.Pos.Raw.next` + `Char.utf8Size_pos` + `omega` to establish `remaining` strictly decreases on `next?`.
 
-2. **`Lean4Yaml/Proofs/Completeness.lean`** — Removed local `LawfulParserStream` class definition (was lines 104–117) and local `YamlStream` instance. These are now provided upstream by PR#97's `Parser.Iterators` module and our `Stream.lean` instance respectively.
+2. **`L4YAML/Proofs/Completeness.lean`** — Removed local `LawfulParserStream` class definition (was lines 104–117) and local `YamlStream` instance. These are now provided upstream by PR#97's `Parser.Iterators` module and our `Stream.lean` instance respectively.
 
 3. **`Tests/IteratorTests.lean`** (new) — Demonstrates `StreamIterator`-based `for` loops over `YamlStream`. Three functions (`collectChars`, `countChars`, `collectFiltered`) use `for tok in (StreamIterator.mk stream).iter do ...` — provably-terminating iteration without manual fuel. 18 compile-time `#guard` checks + 10 runtime tests covering empty strings, ASCII, UTF-8 multi-byte sequences, newlines, counting, and filtered collection.
 
@@ -2750,7 +2750,7 @@ Build completed successfully. (255 jobs)
 | **`Std.Data.Iterators` integration** | The `Finite` and `IteratorLoop` instances mean `YamlStream` (via `StreamIterator`) participates in Lean's standard iteration infrastructure. Future code can use `for`/`do` syntax for stream traversal with compiler-verified termination. |
 | **Zero proof churn** | The switch required zero changes to any of the 564 theorems or 652 `#guard` checks. The backwards-compatible API means all existing proofs compile identically. |
 
-**The 3 `sorry` warnings in context.** PR#97 includes `LawfulParserStream` instances for `String.Slice`, `Substring.Raw`, and `ByteSlice` that use `sorry` (pending stdlib lemmas for byte-index arithmetic). These warnings appear during `lake build`. They are in lean4-parser's own code for stream types we do not use — our `YamlStream` instance is sorry-free. The project's "0 sorry, 0 axiom" invariant applies to our codebase (`Lean4Yaml/` and `Tests/`), not to transitive library dependencies. This is analogous to how Mathlib users are not responsible for sorry in Lean's compiler.
+**The 3 `sorry` warnings in context.** PR#97 includes `LawfulParserStream` instances for `String.Slice`, `Substring.Raw`, and `ByteSlice` that use `sorry` (pending stdlib lemmas for byte-index arithmetic). These warnings appear during `lake build`. They are in lean4-parser's own code for stream types we do not use — our `YamlStream` instance is sorry-free. The project's "0 sorry, 0 axiom" invariant applies to our codebase (`L4YAML/` and `Tests/`), not to transitive library dependencies. This is analogous to how Mathlib users are not responsible for sorry in Lean's compiler.
 
 </details>
 
@@ -2881,15 +2881,15 @@ Compose per-parser specs + fuel sufficiency + `parseYaml_ok_iff` bridge into the
 
 2. **`lake-manifest.json`** — Updated by `lake update Parser` to point to the new commit.
 
-3. **`Lean4Yaml/Stream.lean`** — Three changes:
+3. **`L4YAML/Stream.lean`** — Three changes:
    - `import Parser.Iterators` → `import WellFoundedStreams`
    - Removed `remaining` from `Parser.Stream` instance (field no longer exists on `main`).
    - Replaced `instance : LawfulParserStream YamlStream Char where remaining_decreases ...` with `instance : Stream.WellFounded YamlStream Char := .ofMeasure (fun s => s.stopPos.byteIdx - s.startPos.byteIdx) <| by ...` using the same `omega` proof.
-   - Added standalone `def _root_.Parser.Stream.remaining (s : Lean4Yaml.YamlStream) : Nat` to preserve downstream API compatibility — all `Proofs/` and `Tests/` files referencing `Parser.Stream.remaining` compile without changes.
+   - Added standalone `def _root_.Parser.Stream.remaining (s : L4YAML.YamlStream) : Nat` to preserve downstream API compatibility — all `Proofs/` and `Tests/` files referencing `Parser.Stream.remaining` compile without changes.
 
 4. **`Tests/IteratorTests.lean`** — `import Parser.Iterators` → `import WellFoundedStreams`; updated docstrings from `LawfulParserStream` to `Stream.WellFounded` and from `std-iterators` to `well-founded-streams`.
 
-**Why zero proof changes were needed.** The standalone `_root_.Parser.Stream.remaining` definition preserves the exact same expression (`s.stopPos.byteIdx - s.startPos.byteIdx`) used by all 20+ proof files. The `Stream.WellFounded` instance provides the same termination guarantee as `LawfulParserStream`. No proof file imports `Parser.Iterators` directly — they all go through `Lean4Yaml.Stream` transitively.
+**Why zero proof changes were needed.** The standalone `_root_.Parser.Stream.remaining` definition preserves the exact same expression (`s.stopPos.byteIdx - s.startPos.byteIdx`) used by all 20+ proof files. The `Stream.WellFounded` instance provides the same termination guarantee as `LawfulParserStream`. No proof file imports `Parser.Iterators` directly — they all go through `L4YAML.Stream` transitively.
 
 **Build verification:** `lake build` — 257/257 jobs, 0 errors. All 564 theorems, 670 compile-time `#guard` checks, and 18 iterator tests pass unchanged.
 
@@ -2950,15 +2950,15 @@ Compose per-parser specs + fuel sufficiency + `parseYaml_ok_iff` bridge into the
 
 <details>
 
-**Context.** The previous step (commit `deb6e2e`) added `remaining : σ → Nat` as a field on `Parser.Stream` in lean4-parser. However, lean4-yaml-verified was still using a standalone `_root_.Parser.Stream.remaining` shim defined in `Lean4Yaml/Stream.lean`, because `remaining` didn't exist as a class field when the well-founded-streams branch was first adopted. Now that it does, the shim can be replaced by the class field.
+**Context.** The previous step (commit `deb6e2e`) added `remaining : σ → Nat` as a field on `Parser.Stream` in lean4-parser. However, lean4-yaml-verified was still using a standalone `_root_.Parser.Stream.remaining` shim defined in `L4YAML/Stream.lean`, because `remaining` didn't exist as a class field when the well-founded-streams branch was first adopted. Now that it does, the shim can be replaced by the class field.
 
 **Changes made (2 files):**
 
 1. **`lake-manifest.json`** — Updated by `lake update Parser` to point to lean4-parser commit `deb6e2e` (was `05b8063`).
 
-2. **`Lean4Yaml/Stream.lean`** — Two changes:
+2. **`L4YAML/Stream.lean`** — Two changes:
    - Added `remaining s := s.stopPos.byteIdx - s.startPos.byteIdx` to the `Parser.Stream YamlStream Char` instance definition.
-   - Removed the standalone `def _root_.Parser.Stream.remaining (s : Lean4Yaml.YamlStream) : Nat` shim and its docstring (11 lines).
+   - Removed the standalone `def _root_.Parser.Stream.remaining (s : L4YAML.YamlStream) : Nat` shim and its docstring (11 lines).
 
 **Why zero downstream changes were needed.** All parser files (`Block.lean`, `Combinators.lean`, `Document.lean`, `Flow.lean`) use `Stream.remaining (← getStream)` which resolves to `Parser.Stream.remaining`. Previously this resolved to the standalone shim; now it resolves to the class field. Both evaluate to the same expression (`s.stopPos.byteIdx - s.startPos.byteIdx`), so all proofs, `#guard` checks, and runtime behavior are identical.
 
@@ -3097,7 +3097,7 @@ The current emitter (`Emitter.lean`) produces canonical YAML — double-quoted s
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  Lean4Yaml/Dump.lean                                            │
+│  L4YAML/Dump.lean                                            │
 │                                                                 │
 │  dump : YamlValue → DumpConfig → String                         │
 │  dumpDocument : YamlDocument → DumpConfig → String              │
@@ -3155,7 +3155,7 @@ Presentation layer: style-aware dump per YAML 1.2.2 §3.1.1. 71 theorems, 94 <co
 
 Updated `Grammar.lean` (NodeToValue propagates `BlockScalarMeta`), `Emitter.lean` (`.alias` branch in `emit`/`contentEq`), `Parser/Flow.lean` (`.alias` exhaustiveness), and all proof + test files (Soundness, RoundTrip, Completeness, Verification, TagTests, CompletenessTests, ValidationTests). All 503 build jobs pass, all test suites green (232/232).
 
-**Core dump function (2026-02-22).** Implemented `Lean4Yaml/Dump.lean` — the style-aware dump: `dump : YamlValue → DumpConfig → String`. Registered in `Lean4Yaml.lean` barrel file.
+**Core dump function (2026-02-22).** Implemented `L4YAML/Dump.lean` — the style-aware dump: `dump : YamlValue → DumpConfig → String`. Registered in `L4YAML.lean` barrel file.
 
 | Component | Description |
 |-----------|-------------|
@@ -3167,7 +3167,7 @@ Updated `Grammar.lean` (NodeToValue propagates `BlockScalarMeta`), `Emitter.lean
 | Block scalars | Literal (`\|`) and folded (`>`) with chomp indicators (`-`/`+`). Content indented at `max(1, depth) × indentWidth` for spec compliance |
 | 42 `#guard` tests | Compile-time checks: plain/auto-quoted/reserved-word/block/folded/flow/nested/anchor/tag/alias/config-override scenarios |
 
-Pure function (no IO), kernel-reducible, `#guard`-testable. Registered in `Lean4Yaml.lean` barrel file. All 244 build jobs pass.
+Pure function (no IO), kernel-reducible, `#guard`-testable. Registered in `L4YAML.lean` barrel file. All 244 build jobs pass.
 
 **Document dump (2026-02-22).** Added `dumpDirective`, `dumpDocument`, `dumpDocuments` to `Dump.lean`:
 
@@ -3323,7 +3323,7 @@ The critical property: **the schema layer is pure functions on inductive types**
 
 Port `Schema.lean` with proof targets. The resolution functions are pure pattern-matching on strings — ideal for formal verification.
 
-**Module: `Lean4Yaml/Schema.lean`**
+**Module: `L4YAML/Schema.lean`**
 
 ```
 YamlType          — Inductive type (identical to lean4-yaml)
@@ -3361,7 +3361,7 @@ Estimated effort: 1 session for port, 1 session for proofs.
 
 Port `Schema/FromToYaml.lean`. The typeclass instances are small pattern-match functions — each is independently provable.
 
-**Module: `Lean4Yaml/Schema/FromToYaml.lean`**
+**Module: `L4YAML/Schema/FromToYaml.lean`**
 
 ```
 class FromYamlType α   — fromYamlType? : YamlType → Except String α
@@ -3394,7 +3394,7 @@ Estimated effort: 1 session.
 
 Port `Schema/Struct.lean` and `Deriving.lean`. The struct helpers are simple mapping operations; the deriving macro is metaprogramming.
 
-**Module: `Lean4Yaml/Schema/Struct.lean`**
+**Module: `L4YAML/Schema/Struct.lean`**
 
 ```
 getMapping       — YamlValue → Except String (Array (YamlValue × YamlValue))
@@ -3406,7 +3406,7 @@ addField         — [ToYaml α] → acc → name → value → acc'
 addFieldOpt      — [ToYaml α] → acc → name → Option value → acc'
 ```
 
-**Module: `Lean4Yaml/Schema/Deriving.lean`**
+**Module: `L4YAML/Schema/Deriving.lean`**
 
 Auto-generate `FromYaml`/`ToYaml` instances for structures via Lean metaprogramming (`deriving` handler).
 
@@ -3431,7 +3431,7 @@ Estimated effort: 1 session for struct helpers, 1 session for deriving port.
 
 Connected `ToYaml` to the Phase 6 dump function for the full pipeline: `α → YamlValue → String`. The canonical emitter (`Emitter.lean`) remains for internal use; the dump function provides the user-facing output.
 
-**Module: `Lean4Yaml/Schema/Dump.lean`** (290 lines)
+**Module: `L4YAML/Schema/Dump.lean`** (290 lines)
 
 Core serialization pipeline:
 ```
@@ -3444,7 +3444,7 @@ contentRoundTrips — [ToYaml α] → α → DumpConfig → Bool (proof-oriented
 ```
 Plus 49 compile-time `#guard` checks validating serialization output and content round-trips.
 
-**Module: `Lean4Yaml/Proofs/SchemaDump.lean`** (311 lines)
+**Module: `L4YAML/Proofs/SchemaDump.lean`** (311 lines)
 
 40 `native_decide` theorems + 22 `#guard` checks covering:
 - §1: Serialization output properties (`dumpTyped_true`, `dumpTyped_nat_42`, etc.)
@@ -3487,7 +3487,7 @@ theorem resolve_eq_of_contentEq_noTags :
 
 Both algebraic theorems are fully proved by structural induction. End-to-end pipeline verification (`dump → parseYamlSingle → resolve ==`) is achieved via 24 concrete + 15 typed `native_decide` proofs covering scalars, sequences, mappings, nested structures, and configuration variations.
 
-**Module: `Lean4Yaml/Proofs/RoundTripComposition.lean`** — 43 theorems, 4 definitions.
+**Module: `L4YAML/Proofs/RoundTripComposition.lean`** — 43 theorems, 4 definitions.
 **Guards: `Tests/Guards/Proofs/RoundTripComposition.lean`** — 55 compile-time checks.
 
 </details>
@@ -4214,7 +4214,7 @@ This follows the libyaml reference implementation, which already makes this spli
 
 **Upstream observation.** The YAML spec would benefit from explicitly differentiating token-level and grammar-level productions. libyaml already makes this distinction; formalizing it in the spec would help all implementations.
 
-Full analysis in [YAML_PRODUCTIONS.md](Lean4Yaml/YAML_PRODUCTIONS.md) §Token–Grammar Layer Analysis.
+Full analysis in [YAML_PRODUCTIONS.md](L4YAML/YAML_PRODUCTIONS.md) §Token–Grammar Layer Analysis.
 
 </details>
 
@@ -4370,7 +4370,7 @@ The `b: x: y` regression is fixed: the scanner produces `KEY "b" VALUE KEY "x" V
 
 <details>
 
-Phase 9 introduced a two-pass scanner/parser (`Token.lean`, `Scanner.lean`, `TokenParser.lean`) that is completely independent of the `lean4-parser` library. Both parsers currently coexist: the old parser is the default (`Lean4Yaml.Parse.parseYaml`), while the tokenized parser lives in `Lean4Yaml.TokenParser.parseYaml`. Maintaining two full YAML parsers doubles the surface area for bugs, increases build times, and causes confusion about which API to use. The tokenized parser is architecturally superior — it eliminates `detectMappingKeyImpl` false positives, removes the fuel parameter, and separates lexical from syntactic concerns.
+Phase 9 introduced a two-pass scanner/parser (`Token.lean`, `Scanner.lean`, `TokenParser.lean`) that is completely independent of the `lean4-parser` library. Both parsers currently coexist: the old parser is the default (`L4YAML.Parse.parseYaml`), while the tokenized parser lives in `L4YAML.TokenParser.parseYaml`. Maintaining two full YAML parsers doubles the surface area for bugs, increases build times, and causes confusion about which API to use. The tokenized parser is architecturally superior — it eliminates `detectMappingKeyImpl` false positives, removes the fuel parameter, and separates lexical from syntactic concerns.
 
 </details>
 
@@ -4378,7 +4378,7 @@ Phase 9 introduced a two-pass scanner/parser (`Token.lean`, `Scanner.lean`, `Tok
 
 <details>
 
-**Delete**: `Lean4Yaml/Parser/` directory (7 files, 4,403 lines):
+**Delete**: `L4YAML/Parser/` directory (7 files, 4,403 lines):
 - `Combinators.lean` (636 lines) — `YamlParser` monad, character classifiers, indent tracking
 - `Scalar.lean` (1,067 lines) — quoted/plain/block scalar parsers, `FoldResult`
 - `Anchor.lean` (209 lines) — anchor/alias handling
@@ -4389,7 +4389,7 @@ Phase 9 introduced a two-pass scanner/parser (`Token.lean`, `Scanner.lean`, `Tok
 
 **Remove dependency**: `lean4-parser` (`Parser` package from `lakefile.toml`). Only `Parser/Combinators.lean` imports it.
 
-**Promote**: `TokenParser.parseYaml` becomes the sole `parseYaml` implementation in the `Lean4Yaml.Parse` namespace.
+**Promote**: `TokenParser.parseYaml` becomes the sole `parseYaml` implementation in the `L4YAML.Parse` namespace.
 
 </details>
 
@@ -4411,7 +4411,7 @@ Phase 9 introduced a two-pass scanner/parser (`Token.lean`, `Scanner.lean`, `Tok
 | **DROP** (no analogue in new arch) | `FuelSufficiency` (545), `ParserSpecs` (424) | 969 | Delete — fuel model eliminated |
 
 #### Test layer (19 files)
-- All test suites (`Tests/*.lean`) call `Lean4Yaml.Parse.parseYaml[Single]`
+- All test suites (`Tests/*.lean`) call `L4YAML.Parse.parseYaml[Single]`
 - `SuiteRunner/Main.lean` — coverage runner
 - `SuiteGuards/*.lean` (6 files) — 358 auto-generated `#guard` checks
 - Only 2 files (`ScannerTests`, `ScannerSpecExamples`) already use the tokenized parser
@@ -4427,17 +4427,17 @@ Phase 9 introduced a two-pass scanner/parser (`Token.lean`, `Scanner.lean`, `Tok
 
 <details>
 
-**Goal**: Make `TokenParser.parseYaml` the implementation behind `Lean4Yaml.Parse.parseYaml` while keeping the old parser importable.
+**Goal**: Make `TokenParser.parseYaml` the implementation behind `L4YAML.Parse.parseYaml` while keeping the old parser importable.
 
-1. Add `Token.lean`, `Scanner.lean`, `TokenParser.lean` to `Lean4Yaml.lean` imports
-2. Create a compatibility shim: `Lean4Yaml.Parse.parseYaml` delegates to `TokenParser.parseYaml`
+1. Add `Token.lean`, `Scanner.lean`, `TokenParser.lean` to `L4YAML.lean` imports
+2. Create a compatibility shim: `L4YAML.Parse.parseYaml` delegates to `TokenParser.parseYaml`
 3. Add `parseYamlRaw` to `TokenParser` (scan + parseStream without alias composition) — parity with old API
 4. Run all 1,041 internal tests + 406 suite tests against the shim
 5. Fix any behavioral differences (the tokenized parser should produce identical `YamlValue` output)
 
 **Validation gate**: All existing `#guard` checks and `lake exe suiterunner` pass with the shim.
 
-**Status**: ✅ Complete (2026-02-27). Non-breaking facade: `*Tokenized` aliases in `Parse` namespace, tokenized parser imports added to `Lean4Yaml.lean`, comparison tool (`ParserCompare.lean`) validates 354 test cases. Final numbers: 134 match, 125 content diffs (old parser bugs), 8 both fail, 0 regressions, 87 improvements, 52 skipped. Suite runner baseline unchanged: 849 passed, 0 failed, 171 skipped. **P10.2 cleanup**: `*Tokenized` aliases removed — redundant after public API switch.
+**Status**: ✅ Complete (2026-02-27). Non-breaking facade: `*Tokenized` aliases in `Parse` namespace, tokenized parser imports added to `L4YAML.lean`, comparison tool (`ParserCompare.lean`) validates 354 test cases. Final numbers: 134 match, 125 content diffs (old parser bugs), 8 both fail, 0 regressions, 87 improvements, 52 skipped. Suite runner baseline unchanged: 849 passed, 0 failed, 171 skipped. **P10.2 cleanup**: `*Tokenized` aliases removed — redundant after public API switch.
 
 ##### Reflections — unexpected challenges, simplifications, and idioms
 
@@ -4554,8 +4554,8 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 
 **Goal**: All 19 test files use the tokenized parser directly.
 
-1. For each test file, replace `import Lean4Yaml.Parser.Document` / `import Lean4Yaml.Parser.*` with `import Lean4Yaml.TokenParser`
-2. Replace `open Lean4Yaml.Parse` with `open Lean4Yaml.TokenParser` (or keep `open Lean4Yaml.Parse` if the shim namespace is retained)
+1. For each test file, replace `import L4YAML.Parser.Document` / `import L4YAML.Parser.*` with `import L4YAML.TokenParser`
+2. Replace `open L4YAML.Parse` with `open L4YAML.TokenParser` (or keep `open L4YAML.Parse` if the shim namespace is retained)
 3. For `ValidationTests.lean` — the internal types `ContinuationCheck`, `DispatchResult`, `FoldResult`, `DocumentResult` are old-parser-specific. These tests verify old-parser dispatch logic and need rewriting or deletion
 4. For `Verification.lean`, `CompletenessExplore.lean`, `CompositionExplore.lean`, `CollectPlainExplore.lean` — exploratory files that probe old parser internals. Archive or delete
 5. Re-run `gen-suite-guards.py` to regenerate `SuiteGuards/*.lean` against the tokenized parser
@@ -4567,9 +4567,9 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 
 - Public API (`parseYaml`, `parseYamlRaw`, `parseYamlSingle`, `parseYamlSingleRaw`) switched from old char-level parser to tokenized pipeline in `Parser/Document.lean`. 
 - Four scanner/parser bugs fixed during migration. 
-- Import migration: 6 test files + 6 SuiteGuards + `TestSuite.lean` switched from `import Lean4Yaml.Parser.Document` / `open Lean4Yaml.Parse` to `import Lean4Yaml.TokenParser` / `open Lean4Yaml.TokenParser`. `ValidationTests.lean` cleaned — 4 old-parser dispatch type sections (§3–§6: `DispatchResult`, `FoldResult`, `DocumentResult`, `ContinuationCheck`) removed; remaining sections use tokenized parser. 
+- Import migration: 6 test files + 6 SuiteGuards + `TestSuite.lean` switched from `import L4YAML.Parser.Document` / `open L4YAML.Parse` to `import L4YAML.TokenParser` / `open L4YAML.TokenParser`. `ValidationTests.lean` cleaned — 4 old-parser dispatch type sections (§3–§6: `DispatchResult`, `FoldResult`, `DocumentResult`, `ContinuationCheck`) removed; remaining sections use tokenized parser. 
 - 5 exploratory files deleted (`Verification.lean`, `CompletenessExplore.lean`, `CompositionExplore.lean`, `CollectPlainExplore.lean`, `ContentEqExplore.lean`). 
-- `gen-suite-guards.py` template updated to emit `import Lean4Yaml.TokenParser` / `open Lean4Yaml.TokenParser`. 
+- `gen-suite-guards.py` template updated to emit `import L4YAML.TokenParser` / `open L4YAML.TokenParser`. 
 - `*Tokenized` aliases removed from `Document.lean`. 
 - Build: 
   - 260/260 jobs (2 expected `sorry` in `Composition.lean` for P10.5). 
@@ -4714,7 +4714,7 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 
 **Status**: ✅ Complete (2026-02-27).
 
-- `FoldResult` moved from `Parser/Scalar.lean` (`Lean4Yaml.Parse` namespace) to `Grammar.lean` (`Lean4Yaml.Grammar` namespace). Consumer files updated: `Scalar.lean` and `Proofs/StringProperties.lean` now use `open Lean4Yaml.Grammar (FoldResult)`.
+- `FoldResult` moved from `Parser/Scalar.lean` (`L4YAML.Parse` namespace) to `Grammar.lean` (`L4YAML.Grammar` namespace). Consumer files updated: `Scalar.lean` and `Proofs/StringProperties.lean` now use `open L4YAML.Grammar (FoldResult)`.
 - `ChompStyle`, `BlockScalarMeta` confirmed already in `Types.lean`; `isBlockScalarHeaderChar` already in `Grammar.lean` — no relocation needed.
 - `DispatchResult`, `ContinuationCheck`, `DocumentResult` definitions left in `Parser/Combinators.lean` and `Parser/Document.lean` (still used by old parser code until P10.6 deletion). Theorems about these types removed from `Proofs/Validation.lean` (~60 lines: 3 sections × 4 theorems each). Validation.lean now imports only `Grammar` and `Stream` — fully decoupled from old parser.
 - `Proofs/StringProperties.lean` import changed from `Parser.Scalar` to `Grammar` — fully decoupled from old parser.
@@ -4726,9 +4726,9 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 ###### Unexpected challenges
 
 1. **Namespace migration requires `open` at every consumer.** 
-- Moving `FoldResult` from the `Lean4Yaml.Parse` namespace (in `Parser/Scalar.lean`) to `Lean4Yaml.Grammar` (in `Grammar.lean`) is semantically trivial — the type is unchanged. 
-- But every file that referenced `FoldResult` without qualification relied on the ambient `namespace Lean4Yaml.Parse` or an `open Lean4Yaml.Parse (FoldResult)` statement. 
-- Each consumer needed an explicit `open Lean4Yaml.Grammar (FoldResult)` to restore unqualified access.
+- Moving `FoldResult` from the `L4YAML.Parse` namespace (in `Parser/Scalar.lean`) to `L4YAML.Grammar` (in `Grammar.lean`) is semantically trivial — the type is unchanged. 
+- But every file that referenced `FoldResult` without qualification relied on the ambient `namespace L4YAML.Parse` or an `open L4YAML.Parse (FoldResult)` statement. 
+- Each consumer needed an explicit `open L4YAML.Grammar (FoldResult)` to restore unqualified access.
 - In a language with re-export mechanisms (e.g., Haskell's `module X (module Y)` or Rust's `pub use`), a single re-export in the old namespace would suffice.
 - Lean 4 has no re-export — each consumer must independently open the new namespace. 
 - For a type used in only 2 consumer files this was manageable; for a widely-used type, namespace migration would require touching every import site.
@@ -4753,7 +4753,7 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 
 1. **Two of three planned relocations were already done.** 
 - The P10.3 plan listed three type groups to check: `FoldResult`, `BlockScalarHeader`/`ChompStyle`/`BlockScalarMeta`, and the old-parser dispatch types. 
-- Auditing the codebase revealed that `ChompStyle` and `BlockScalarMeta` were already in `Types.lean` (the root `Lean4Yaml` namespace), and `isBlockScalarHeaderChar` was already in `Grammar.lean`. 
+- Auditing the codebase revealed that `ChompStyle` and `BlockScalarMeta` were already in `Types.lean` (the root `L4YAML` namespace), and `isBlockScalarHeaderChar` was already in `Grammar.lean`. 
 - Only `FoldResult` actually needed moving.
 - This reduced the phase from "relocate three type groups" to "relocate one type, confirm two already placed, remove theorems about three others."
 
@@ -4771,7 +4771,7 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 ###### Idioms
 
 - **`open M (T)` for selective namespace access.** 
-- Rather than `open Lean4Yaml.Grammar` (which would bring all Grammar definitions into scope, risking name collisions), the targeted `open Lean4Yaml.Grammar (FoldResult)` imports only the relocated type. 
+- Rather than `open L4YAML.Grammar` (which would bring all Grammar definitions into scope, risking name collisions), the targeted `open L4YAML.Grammar (FoldResult)` imports only the relocated type. 
 - This is the Lean 4 analogue of Python's `from module import name` — it makes the migration explicit in each consumer file and avoids polluting the local namespace. 
 - The pattern is especially useful during phased migrations where only some types have moved to their final location.
 
@@ -4782,7 +4782,7 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 
 - **Phase-tagged `sorry` and removal comments.** 
 - Every structural change is tagged with its phase: `-- P10.3` on the relocation comment, `-- P10.2→P10.5` on the `sorry`'d theorems.
-- This creates a grep-able audit trail: `grep -r 'P10\.' Lean4Yaml/` shows exactly which changes belong to which phase. 
+- This creates a grep-able audit trail: `grep -r 'P10\.' L4YAML/` shows exactly which changes belong to which phase. 
 - When P10.6 deletes the old parser files, the `P10.3` tombstone comments go with them — no cleanup needed.
 
 </details>
@@ -4794,8 +4794,8 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 **Goal**: Migrate the 3 reusable + 7 adaptable proof files.
 
 **Reusable (import fix only)**:
-1. `StringProperties.lean` — change `open Lean4Yaml.Parse (FoldResult)` to new location
-2. `DocumentContracts.lean` — remove `import Lean4Yaml.Parser.Document` (predicates are self-contained)
+1. `StringProperties.lean` — change `open L4YAML.Parse (FoldResult)` to new location
+2. `DocumentContracts.lean` — remove `import L4YAML.Parser.Document` (predicates are self-contained)
 3. `Validation.lean` — update imports for relocated types
 
 **Adaptable (mechanical edits)**:
@@ -4812,13 +4812,13 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 **Status**: ✅ Complete (2026-02-27).
 
 - Items 1, 3, 8 already done in P10.2/P10.3 (`StringProperties.lean`, `Validation.lean`, `TestSuite.lean`).
-- `DocumentContracts.lean`: Removed `import Lean4Yaml.Parser.Document` and `open Lean4Yaml.Parse (DocumentResult)`. Removed `endOfStream_ne_stalled` theorem (uses `DocumentResult` — old-parser type). §1 (D1 boundary), §2 (D2 comment), §3 `madeProgress` predicates, §4 (tag handles), §5 (directive uniqueness) preserved — all self-contained.
+- `DocumentContracts.lean`: Removed `import L4YAML.Parser.Document` and `open L4YAML.Parse (DocumentResult)`. Removed `endOfStream_ne_stalled` theorem (uses `DocumentResult` — old-parser type). §1 (D1 boundary), §2 (D2 comment), §3 `madeProgress` predicates, §4 (tag handles), §5 (directive uniqueness) preserved — all self-contained.
 - `CharClass.lean`: Replaced `import Parser.Combinators` → `import Scanner`. All 6 correspondence theorems updated: `Parse.isLineBreak` → `Scanner.isLineBreak`, `Parse.isWhiteSpace` → `Scanner.isWhiteSpace`, `Parse.isFlowIndicator` → `Scanner.isFlowIndicator`, `Parse.isIndicator` → `Scanner.isIndicator`. `canStartPlainScalar` theorems rewritten against a local `canStartPlainScalarBool` predicate matching the scanner's inline logic (scanner doesn't expose a standalone function).
-- `RoundTrip.lean`: `import Parser.Document` → `import TokenParser`, `open Lean4Yaml.Parse` → `open Lean4Yaml.TokenParser`. All §4/§9 `#guard` checks pass unchanged.
+- `RoundTrip.lean`: `import Parser.Document` → `import TokenParser`, `open L4YAML.Parse` → `open L4YAML.TokenParser`. All §4/§9 `#guard` checks pass unchanged.
 - `EscapeResolution.lean`: Same import/open swap. All `#guard` checks pass.
 - `FoldNewlines.lean`: Same import/open swap. All `#guard` checks pass — no rewrite needed (tokenized parser handles §6.5 correctly after P10.2 scanner fixes).
 - `DumpRoundTrip.lean`: Same import/open swap. All `#guard` checks pass.
-- `SchemaDump.lean`: `import Parser.Document` → `import TokenParser`, `open Lean4Yaml.Parse` → `open Lean4Yaml.TokenParser`. All `native_decide` theorems and `#guard` checks pass.
+- `SchemaDump.lean`: `import Parser.Document` → `import TokenParser`, `open L4YAML.Parse` → `open L4YAML.TokenParser`. All `native_decide` theorems and `#guard` checks pass.
 - Library files also migrated: `Schema/Api.lean` (`Parse.parseYamlSingle` → `TokenParser.parseYamlSingle`), `Schema/Dump.lean` (import + open swap).
 - Build: 260/260 jobs (2 expected `sorry` in `Composition.lean`). Verified: 1107/1146. Spec examples: 132/132.
 
@@ -4847,7 +4847,7 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 
 ###### Simplifications
 
-1. **`open Lean4Yaml.TokenParser in` is a drop-in replacement for `open Lean4Yaml.Parse in`.**
+1. **`open L4YAML.TokenParser in` is a drop-in replacement for `open L4YAML.Parse in`.**
 - Five proof files (RoundTrip, EscapeResolution, FoldNewlines, DumpRoundTrip, SchemaDump) use a scoped `open ... in` pattern before a `private def` helper that calls `parseYamlSingle`.
 - Since `TokenParser.parseYamlSingle` has exactly the same signature as `Parse.parseYamlSingle` (both are `String → Except String YamlValue`), the swap was a one-line change in each file with zero changes to the helper function body or any `#guard` check.
 
@@ -4864,7 +4864,7 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 ###### Idioms
 
 - **Scoped `open ... in` for minimal namespace pollution.**
-- The proof files don't `open Lean4Yaml.TokenParser` at the top level — they scope it to individual `private def` helpers using `open Lean4Yaml.TokenParser in`.
+- The proof files don't `open L4YAML.TokenParser` at the top level — they scope it to individual `private def` helpers using `open L4YAML.TokenParser in`.
 - This means only the helper function (e.g., `roundTrips`, `parseScalar`, `dumpRoundTrips`) sees the unqualified `parseYamlSingle` name.
 - The rest of the file (theorems, `#guard` checks) accesses these helpers by their local names.
 - This pattern minimizes the migration surface: only the `open` line changes, not the 50+ `#guard` invocations.
@@ -4924,7 +4924,7 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
   - All proofs operate on explicit `ScannerState` `Nat` fields — no `Parser.Stream` typeclass indirection.
 - **Completeness.lean** (488 → 345 lines): in-place rewrite.
   - Removed §2 (LawfulParserStream — old lean4-parser typeclass), §3 (YamlStream.ofString lemmas), `parser_run_eq` simp lemma (lean4-parser internal), §6 (old per-parser specification framework roadmap).
-  - Changed import from `Parser.Document` to `TokenParser`. Removed `open Lean4Yaml.Parse` and `open Parser`.
+  - Changed import from `Parser.Document` to `TokenParser`. Removed `open L4YAML.Parse` and `open Parser`.
   - Preserved: §1 (`DecidableEq YamlValue/YamlDocument` — 215 lines of mutual structural recursion), §2 (now `parseYaml_ok_iff` — Load decomposition: raw + compose), §3 (11 `native_decide` concrete completeness theorems).
   - Removed bridge theorems `parseYamlRaw_eq` / `parseYaml_eq` — these asserted `Parse.f = TokenParser.f` which became trivial self-equalities after removing the old parser import.
 - **Composition.lean** (342 → 133 lines): complete rewrite.
@@ -4935,7 +4935,7 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 - **ParserSpecs.lean** (424 lines): **DELETED**. lean4-parser combinator specs (`pure_eq`, `bind_eq`, `anyToken_eq`, `tokenFilter_eq`, etc.) — exclusively for `Parser ε σ τ α` monad.
 - **PerParserSpecs.lean** (2,309 lines): **DELETED**. Per-combinator specs for old parser functions. These imported 5 old parser modules.
 - **IndentConsumption.lean** (250 lines): **DELETED** (replaced by ScannerIndent.lean).
-- Updated `Lean4Yaml.lean` root imports: removed `IndentConsumption`, `ParserSpecs`, `PerParserSpecs`, `FuelSufficiency`; added `ScannerIndent`.
+- Updated `L4YAML.lean` root imports: removed `IndentConsumption`, `ParserSpecs`, `PerParserSpecs`, `FuelSufficiency`; added `ScannerIndent`.
 - Build: **257/257 jobs**. Zero `sorry`. Zero warnings. Proof files: 7,696 lines total.
 - Net line change: −3,528 removed, +215 added (ScannerIndent.lean) = **−3,313 lines of proof code**.
 
@@ -4993,12 +4993,12 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 
 **Goal**: Remove the old parser and `lean4-parser` dependency.
 
-1. Delete `Lean4Yaml/Parser/` directory (7 files)
-2. Delete `Lean4Yaml/Stream.lean` (old parser's char-level stream + lean4-parser integration)
-3. Delete `Lean4Yaml/Proofs/Termination.lean` (old parser termination proofs via `Parser.Stream.remaining`)
-4. Delete `Lean4Yaml/Proofs/Validation.lean` (dead leaf — not imported by any file)
+1. Delete `L4YAML/Parser/` directory (7 files)
+2. Delete `L4YAML/Stream.lean` (old parser's char-level stream + lean4-parser integration)
+3. Delete `L4YAML/Proofs/Termination.lean` (old parser termination proofs via `Parser.Stream.remaining`)
+4. Delete `L4YAML/Proofs/Validation.lean` (dead leaf — not imported by any file)
 5. Relocate `YamlPos` struct from `Stream.lean` to `Types.lean` (pure struct, no lean4-parser dependency)
-6. Remove `import Lean4Yaml.Parser.*`, `import Lean4Yaml.Stream`, `import Lean4Yaml.Proofs.Termination`, `import Lean4Yaml.Proofs.Soundness` (unused) from `Lean4Yaml.lean`
+6. Remove `import L4YAML.Parser.*`, `import L4YAML.Stream`, `import L4YAML.Proofs.Termination`, `import L4YAML.Proofs.Soundness` (unused) from `L4YAML.lean`
 7. Update imports in `Token.lean`, `Soundness.lean`, `Completeness.lean`, `BlockScalarContracts.lean`, `DocumentContracts.lean`, `SuiteGuards/Error.lean`
 8. Remove `[[require]] name = "Parser"` from `lakefile.toml`
 9. Remove `lean4-parser` entry from `lake-manifest.json`
@@ -5008,33 +5008,33 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 13. Fix `String.containsSubstr` in `TestSuite.lean` (lost with lean4-parser's transitive Batteries import)
 14. `lake clean && lake build` — full rebuild from scratch
 
-**Validation gate**: Clean build with zero warnings. All tests pass. No references to `lean4-parser` or `Lean4Yaml.Parser.*` in any `.lean` file.
+**Validation gate**: Clean build with zero warnings. All tests pass. No references to `lean4-parser` or `L4YAML.Parser.*` in any `.lean` file.
 
 **Status**: ✅ Complete (2026-02-28).
 
 **Files deleted** (29 files):
-- `Lean4Yaml/Parser/` directory: `Anchor.lean`, `Block.lean`, `Combinators.lean`, `Document.lean`, `Flow.lean`, `Scalar.lean`, `Tag.lean` (7 files, ~4,400 lines)
-- `Lean4Yaml/Stream.lean` (429 lines — lean4-parser `Parser.Stream` instance, `YamlStream`, `YamlParser`, `YamlError`, monadic helpers)
-- `Lean4Yaml/Proofs/Termination.lean` (165 lines — old parser termination via `Parser.Stream.remaining`)
-- `Lean4Yaml/Proofs/Validation.lean` (232 lines — dead leaf, `YamlStream` struct orthogonality proofs)
+- `L4YAML/Parser/` directory: `Anchor.lean`, `Block.lean`, `Combinators.lean`, `Document.lean`, `Flow.lean`, `Scalar.lean`, `Tag.lean` (7 files, ~4,400 lines)
+- `L4YAML/Stream.lean` (429 lines — lean4-parser `Parser.Stream` instance, `YamlStream`, `YamlParser`, `YamlError`, monadic helpers)
+- `L4YAML/Proofs/Termination.lean` (165 lines — old parser termination via `Parser.Stream.remaining`)
+- `L4YAML/Proofs/Validation.lean` (232 lines — dead leaf, `YamlStream` struct orthogonality proofs)
 - Test files: `AnchorAlias.lean`, `CharClassTests.lean`, `CompletenessTests.lean`, `ParseTest.lean`, `QuotedFolding.lean`, `StringLemmas.lean`, `TagTests.lean`, `CheckStringPos.lean`, `IteratorTests.lean`, `ParserCompare.lean` + 8 runner directories (all old-parser tests)
 
 **Files modified** (10 files):
-- `Lean4Yaml/Types.lean`: added `YamlPos` struct + `Ord`/`LT`/`LE` instances (relocated from `Stream.lean`)
-- `Lean4Yaml/Token.lean`: removed `import Lean4Yaml.Stream` (only needed `YamlPos`, now in `Types.lean`)
-- `Lean4Yaml/Proofs/Completeness.lean`: removed unused imports `Stream`, `Soundness`, `Termination`
-- `Lean4Yaml/Proofs/Soundness.lean`: removed unused `import Lean4Yaml.Stream`
-- `Lean4Yaml/Proofs/BlockScalarContracts.lean`: changed `import Lean4Yaml.Stream` → `import Lean4Yaml.Types`
-- `Lean4Yaml/Proofs/DocumentContracts.lean`: changed `import Lean4Yaml.Stream` → `import Lean4Yaml.Types`
-- `Lean4Yaml/Proofs/SuiteGuards/Error.lean`: changed `import Lean4Yaml.Parser.Document` → `import Lean4Yaml.TokenParser`
-- `Lean4Yaml/Proofs/TestSuite.lean`: replaced `String.containsSubstr` with `String.splitOn` (lost transitive Batteries import)
-- `Tests/Main.lean`: removed `import Lean4Yaml.Stream`, deleted `testYamlStream` function
+- `L4YAML/Types.lean`: added `YamlPos` struct + `Ord`/`LT`/`LE` instances (relocated from `Stream.lean`)
+- `L4YAML/Token.lean`: removed `import L4YAML.Stream` (only needed `YamlPos`, now in `Types.lean`)
+- `L4YAML/Proofs/Completeness.lean`: removed unused imports `Stream`, `Soundness`, `Termination`
+- `L4YAML/Proofs/Soundness.lean`: removed unused `import L4YAML.Stream`
+- `L4YAML/Proofs/BlockScalarContracts.lean`: changed `import L4YAML.Stream` → `import L4YAML.Types`
+- `L4YAML/Proofs/DocumentContracts.lean`: changed `import L4YAML.Stream` → `import L4YAML.Types`
+- `L4YAML/Proofs/SuiteGuards/Error.lean`: changed `import L4YAML.Parser.Document` → `import L4YAML.TokenParser`
+- `L4YAML/Proofs/TestSuite.lean`: replaced `String.containsSubstr` with `String.splitOn` (lost transitive Batteries import)
+- `Tests/Main.lean`: removed `import L4YAML.Stream`, deleted `testYamlStream` function
 - `Tests/ValidationTests.lean`: deleted `testValidationErrorSemantics` function (used `YamlStream`)
 
 **Build configuration changes**:
 - `lakefile.toml`: removed `[[require]] name = "Parser"`, removed 14 obsolete `lean_lib`/`lean_exe` targets
 - `lake-manifest.json`: removed `Parser` package entry
-- `Lean4Yaml.lean` root: removed 9 imports (7 × `Parser.*`, `Stream`, `Termination`, `Soundness`); updated module docstring
+- `L4YAML.lean` root: removed 9 imports (7 × `Parser.*`, `Stream`, `Termination`, `Soundness`); updated module docstring
 
 **Build**: **37/37 jobs**. Zero `sorry`. Zero warnings.
 
@@ -5052,7 +5052,7 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
    - The original plan treated `Stream.lean` as a simple deletion target — "old parser's char-level stream."
    - In reality, `Stream.lean` was the sole module that connected `lean4-parser` to the rest of the codebase, and it also defined `YamlPos` — a pure struct with no lean4-parser dependency used by 14 source files (Token.lean, all proof files referencing positions, BlockScalarContracts.lean, DocumentContracts.lean, etc.).
    - Deleting `Stream.lean` without relocating `YamlPos` would break every file that tracks positions in the token/parse pipeline.
-   - The solution — adding `YamlPos` + its `Ord`/`LT`/`LE` instances to the bottom of `Types.lean` — was clean but required auditing every `import Lean4Yaml.Stream` to determine whether it needed `YamlPos` (→ `import Lean4Yaml.Types`) or was genuinely dead (→ delete import).
+   - The solution — adding `YamlPos` + its `Ord`/`LT`/`LE` instances to the bottom of `Types.lean` — was clean but required auditing every `import L4YAML.Stream` to determine whether it needed `YamlPos` (→ `import L4YAML.Types`) or was genuinely dead (→ delete import).
 
 2. **`String.containsSubstr` vanished with lean4-parser's transitive Batteries.**
    - `TestSuite.lean` used `s.content.containsSubstr "line1"` — a `Batteries` extension on `String`.
@@ -5067,8 +5067,8 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
    - Extracting to a `let` binding (`let c := s.content; (c.splitOn "line1").length > 1`) resolved the ambiguity.
    - This is a parser-level ambiguity in Lean 4 — `|>` and `|` are both valid at the same syntactic positions inside `match` expressions.
 
-4. **`SuiteGuards/Error.lean` had a stale `import Lean4Yaml.Parser.Document` hidden in plain sight.**
-   - This file was updated in P10.2 to use `open Lean4Yaml.TokenParser`, but its import line still referenced the old parser.
+4. **`SuiteGuards/Error.lean` had a stale `import L4YAML.Parser.Document` hidden in plain sight.**
+   - This file was updated in P10.2 to use `open L4YAML.TokenParser`, but its import line still referenced the old parser.
    - It compiled throughout P10.2–P10.5 because `Parser.Document` was still present — the import was dead weight but not an error.
    - Only the P10.6 deletion surfaced it: once `Parser/Document.lean` was gone, the import became a hard build failure.
    - Caught by the pre-build `grep -rn 'import.*Parser\.'` sweep — validating the practice of grepping for stale references before rebuilding.
@@ -5097,7 +5097,7 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 ###### Idioms
 
 - **Pre-deletion grep sweep as a safety net.**
-  - Before running `lake build`, a `grep -rn 'import.*Stream\|import.*Parser\.\|YamlStream\|YamlParser' Lean4Yaml/ Tests/` sweep identified 2 files that the deletion plan missed (`SuiteGuards/Error.lean`, `Tests/ValidationTests.lean`).
+  - Before running `lake build`, a `grep -rn 'import.*Stream\|import.*Parser\.\|YamlStream\|YamlParser' L4YAML/ Tests/` sweep identified 2 files that the deletion plan missed (`SuiteGuards/Error.lean`, `Tests/ValidationTests.lean`).
   - This 5-second check prevented a build failure that would have required re-diagnosing the same issues from compiler errors — which are less informative than grep results for "which file still references the deleted module."
 
 - **`lake clean` as a phase gate.**
@@ -5105,7 +5105,7 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
   - Running `lake clean && lake build` ensured a from-scratch rebuild with no cached artifacts. This is the same lesson from P10.3 (stale `Tests.Verification` linker symbol) applied proactively.
 
 - **Dead import detection requires deletion, not compilation.**
-  - `import Lean4Yaml.Parser.Document` in `SuiteGuards/Error.lean` compiled for 6 sub-phases because the imported module existed — even though **nothing** from that module was used.
+  - `import L4YAML.Parser.Document` in `SuiteGuards/Error.lean` compiled for 6 sub-phases because the imported module existed — even though **nothing** from that module was used.
   - Lean 4 does not warn on unused imports. The only reliable detector is removing the imported module and observing whether the build breaks.
   - In a codebase undergoing phased migration, dead imports accumulate silently. A grep sweep before the deletion phase is the practical mitigation.
 
@@ -5126,14 +5126,14 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
   - `rawparsetests`: 26/29 (3 failures — anchor/alias resolution differences)
 
 **Root causes**:
-1. **Stale `Lean4Yaml.Parse` namespace** — 10 files used `Parse.parseYaml` / `open Lean4Yaml.Parse` (old parser namespace deleted in P10.6). Fixed: → `TokenParser.parseYaml` / `open Lean4Yaml.TokenParser`.
+1. **Stale `L4YAML.Parse` namespace** — 10 files used `Parse.parseYaml` / `open L4YAML.Parse` (old parser namespace deleted in P10.6). Fixed: → `TokenParser.parseYaml` / `open L4YAML.TokenParser`.
 2. **Lost `Batteries` transitive dependency** — `import Batteries.Data.String.Matcher` and `import Batteries.Lean.Json` in `HtmlReport.lean` (via lean4-parser → Batteries chain); `String.containsSubstr` in `RawParseTests.lean` and `SuiteRunner/Main.lean`.
 3. **Stale test module imports** — `SuiteRunner/Main.lean` imported 7 deleted test files (`ParseTest`, `QuotedFolding`, `StringLemmas`, `AnchorAlias`, `TagTests`, `CharClassTests`, `CompletenessTests`) and referenced their `collectTests` functions.
 4. **Stale `#guard` expectations** — 50 SuiteGuard checks expect `.error` for inputs the tokenized parser now correctly accepts. These need `gen-suite-guards.py` regeneration.
 5. **Known tokenized parser gaps** — 36 runtime test failures from scanner/parser edge cases (explicit key resolution, flow explicit keys, validation strictness, anchor scoping) documented in P10.2's "Known gaps deferred to Phase 9 scanner hardening."
 
 **Steps**:
-1. ✅ Fix `Lean4Yaml.Parse` → `TokenParser` namespace in: `Demo.lean`, `TryParse.lean`, `TryDump.lean`, `TryRoundTrip.lean`, `FlowRegressionCheck.lean`, `ErrorStageDiag.lean`, `ScalarStageDiag.lean`, `SuiteRunner/Main.lean`, `Lean4Yaml.lean` (`#eval`)
+1. ✅ Fix `L4YAML.Parse` → `TokenParser` namespace in: `Demo.lean`, `TryParse.lean`, `TryDump.lean`, `TryRoundTrip.lean`, `FlowRegressionCheck.lean`, `ErrorStageDiag.lean`, `ScalarStageDiag.lean`, `SuiteRunner/Main.lean`, `L4YAML.lean` (`#eval`)
 2. ✅ Remove `import Batteries.*` from `HtmlReport.lean`; replace `String.containsSubstr` with `String.splitOn`-based helper in `RawParseTests.lean` and `SuiteRunner/Main.lean`
 3. ✅ Remove 7 stale imports from `SuiteRunner/Main.lean`; update `collectors` array to reference only surviving test suites + add `ScannerTests`, `ScannerSpecExamples`
 4. ✅ Regenerate `SuiteGuards/*.lean` via `gen-suite-guards.py` — updated script to probe error tests with `tryparse` at generation time. 87/95 error test variants are UPs (tokenized parser accepts; guard polarity flipped automatically). **352 guards** across 6 files (was 358 → 352: recount after probe-based generation). All compile.
@@ -5149,7 +5149,7 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 **Status**: ✅ Complete.
 
 **Files modified** (steps 1–3):
-- `Demo.lean`: `open Lean4Yaml.Parse` → `open Lean4Yaml.TokenParser`
+- `Demo.lean`: `open L4YAML.Parse` → `open L4YAML.TokenParser`
 - `Tests/TryParse.lean`: `Parse.parseYaml` → `TokenParser.parseYaml`
 - `Tests/TryDump.lean`: same
 - `Tests/TryRoundTrip.lean`: same (2 call sites)
@@ -5159,12 +5159,12 @@ The comparison tool's numbers tell a clear story: **0 regressions, 87 improvemen
 - `Tests/SuiteRunner/Main.lean`: removed 7 stale imports, added `ScannerTests`/`ScannerSpecExamples`, updated collectors array, `Parse.parseYaml` → `TokenParser.parseYaml`, `containsSubstr` → `splitOn`
 - `Tests/SuiteRunner/HtmlReport.lean`: removed `import Batteries.Data.String.Matcher` and `import Batteries.Lean.Json`
 - `Tests/RawParseTests.lean`: added local `String.containsSubstr` helper via `splitOn`
-- `Lean4Yaml.lean`: `#eval Parse.*` → `#eval TokenParser.*`
+- `L4YAML.lean`: `#eval Parse.*` → `#eval TokenParser.*`
 - `.github/workflows/test-coverage.yml`: removed 5 deleted targets, added 12 surviving targets
 
 **Files modified** (step 4):
 - `gen-suite-guards.py`: replaced hardcoded `KNOWN_UNEXPECTED_PASSES` set with `tryparse`-probed UP detection; added `--probe` via `tryparse` binary for error test polarity; `generate_guard()` gains `is_up` flag for flipped polarity; removed H7TQ special-case exclusion (now handled uniformly as UP)
-- `Lean4Yaml/Proofs/SuiteGuards/{Advanced,Block,Document,Error,Flow,Scalar}.lean`: regenerated (352 guards, 87 UP with flipped polarity)
+- `L4YAML/Proofs/SuiteGuards/{Advanced,Block,Document,Error,Flow,Scalar}.lean`: regenerated (352 guards, 87 UP with flipped polarity)
 
 **Build**: **155/155 jobs** (all library + executable targets). Zero `sorry`. Zero warnings.
 
@@ -6801,14 +6801,14 @@ below the grammar proof layer.  Closing it would require either:
 | Remaining failures | 25 | 0 | −25 |
 
 **Files changed:**
-- `Lean4Yaml/Scanner.lean`: `explicitKeyActive : Bool` → `explicitKeyLine : Option Nat`;
+- `L4YAML/Scanner.lean`: `explicitKeyActive : Bool` → `explicitKeyLine : Option Nat`;
   `saveSimpleKey` same-line gate; `scanValue` degenerate-key discard + explicit branch
-- `Lean4Yaml/TokenParser.lean`: `addAnchor` resolves aliases + strips anchors;
+- `L4YAML/TokenParser.lean`: `addAnchor` resolves aliases + strips anchors;
   `parseStream` resets anchors between documents
 - `Tests/ScannerTests.lean`: `b: x: y` test expectations corrected (error, not success)
-- `Lean4Yaml/Proofs/ScannerContracts.lean`: 4-conjunct `WellFormed`, `emit_simpleKeyStack`,
+- `L4YAML/Proofs/ScannerContracts.lean`: 4-conjunct `WellFormed`, `emit_simpleKeyStack`,
   `simpleKeyStack` sync theorems, expanded `#guard` checks
-- `Lean4Yaml/Proofs/ScannerLoopInvariant.lean`: `advance_simpleKeyStack`, 4-conjunct proof updates
+- `L4YAML/Proofs/ScannerLoopInvariant.lean`: `advance_simpleKeyStack`, 4-conjunct proof updates
 
 ### P10.10 — Scanner State Machine Verification (2026-03-02) ✅
 
@@ -6907,7 +6907,7 @@ preservation through every scanner function, culminating in a proof that the mai
 
 ### P10.11 — Grammar-to-Parser Bridge Gap Analysis (2026-03-03) — v0.2.3
 
-**Context.** The README claims extensive soundness and completeness proofs for the parser. However, doc-verification-bridge analysis reveals that key grammar specification definitions in [Grammar.lean](Lean4Yaml/Grammar.lean) have no theorems connecting them to the actual parser implementation.
+**Context.** The README claims extensive soundness and completeness proofs for the parser. However, doc-verification-bridge analysis reveals that key grammar specification definitions in [Grammar.lean](L4YAML/Grammar.lean) have no theorems connecting them to the actual parser implementation.
 
 #### The Missing Bridge
 
@@ -6935,9 +6935,9 @@ theorem parse_complete : ValidYaml s v → parse s = .ok v
 
 The proof files contain theorems about:
 
-1. **`ValidNode` ↔ `YamlValue` correspondence** ([Soundness.lean](Lean4Yaml/Proofs/Soundness.lean:1-150)) - Proves `toYamlValue` correctly implements `NodeToValue`
-2. **Scanner low-level properties** ([ScannerProofs.lean](Lean4Yaml/Proofs/ScannerProofs.lean:1-200)) - Character classification, escape sequences, token properties
-3. **Scanner state machine** ([ScannerIndentStack.lean](Lean4Yaml/Proofs/ScannerIndentStack.lean), [ScannerSimpleKey.lean](Lean4Yaml/Proofs/ScannerSimpleKey.lean), etc.) - `WellFormed` preservation through scanner operations
+1. **`ValidNode` ↔ `YamlValue` correspondence** ([Soundness.lean](L4YAML/Proofs/Soundness.lean:1-150)) - Proves `toYamlValue` correctly implements `NodeToValue`
+2. **Scanner low-level properties** ([ScannerProofs.lean](L4YAML/Proofs/ScannerProofs.lean:1-200)) - Character classification, escape sequences, token properties
+3. **Scanner state machine** ([ScannerIndentStack.lean](L4YAML/Proofs/ScannerIndentStack.lean), [ScannerSimpleKey.lean](L4YAML/Proofs/ScannerSimpleKey.lean), etc.) - `WellFormed` preservation through scanner operations
 4. **Helper function properties** - String operations, folding, schema resolution, etc.
 
 #### The Architectural Gap
@@ -7533,70 +7533,70 @@ Complete section-by-section coverage of YAML 1.2.2 Chapters 5–9.
 
 | Section | Title | Productions | Implementation | Proofs | Status |
 |---------|-------|-------------|----------------|--------|--------|
-| [§5.1](https://yaml.org/spec/1.2.2/#51-character-set) | Character Set | [[1] c-printable](https://yaml.org/spec/1.2.2/#rule-c-printable) | [`Grammar.isPrintable`](Lean4Yaml/Grammar.lean) | [`EscapeResolution.lean`](Lean4Yaml/Proofs/EscapeResolution.lean) | ✅ |
-| [§5.2](https://yaml.org/spec/1.2.2/#52-character-encodings) | Character Encodings | [2]–[3] [c-byte-order-mark](https://yaml.org/spec/1.2.2/#rule-c-byte-order-mark) | [`Scanner.scan`](Lean4Yaml/Scanner.lean) (BOM skip at scan start) | [`ScannerProofs.lean`](Lean4Yaml/Proofs/ScannerProofs.lean) | ✅ |
-| [§5.3](https://yaml.org/spec/1.2.2/#53-indicator-characters) | Indicator Characters | [22]–[24] [c-indicator](https://yaml.org/spec/1.2.2/#rule-c-indicator), [c-flow-indicator](https://yaml.org/spec/1.2.2/#rule-c-flow-indicator) | [`Grammar.isFlowIndicator`](Lean4Yaml/Grammar.lean), [`Scanner.isIndicator`](Lean4Yaml/Scanner.lean), [`Scanner.isFlowIndicator`](Lean4Yaml/Scanner.lean) | [`CharClass.isFlowIndicator_correspondence`](Lean4Yaml/Proofs/CharClass.lean), [`CharClass.isIndicator_equiv`](Lean4Yaml/Proofs/CharClass.lean) | ✅ |
-| [§5.4](https://yaml.org/spec/1.2.2/#54-line-break-characters) | Line Break Characters | [25]–[30] [b-line-feed](https://yaml.org/spec/1.2.2/#rule-b-line-feed), [b-char](https://yaml.org/spec/1.2.2/#rule-b-char), [b-break](https://yaml.org/spec/1.2.2/#rule-b-break) | [`Grammar.isLineBreak`](Lean4Yaml/Grammar.lean), [`Scanner.isLineBreak`](Lean4Yaml/Scanner.lean), [`Scanner.consumeNewline`](Lean4Yaml/Scanner.lean) | [`CharClass.isLineBreak_correspondence`](Lean4Yaml/Proofs/CharClass.lean), [`EscapeResolution.lean`](Lean4Yaml/Proofs/EscapeResolution.lean) | ✅ |
-| [§5.5](https://yaml.org/spec/1.2.2/#55-white-space-characters) | White Space Characters | [31]–[34] [s-space](https://yaml.org/spec/1.2.2/#rule-s-space), [s-tab](https://yaml.org/spec/1.2.2/#rule-s-tab), [s-white](https://yaml.org/spec/1.2.2/#rule-s-white), [ns-char](https://yaml.org/spec/1.2.2/#rule-ns-char) | [`Grammar.isWhiteSpace`](Lean4Yaml/Grammar.lean), [`Grammar.isIndentChar`](Lean4Yaml/Grammar.lean), [`Scanner.isWhiteSpace`](Lean4Yaml/Scanner.lean) | [`CharClass.isWhiteSpace_correspondence`](Lean4Yaml/Proofs/CharClass.lean), [`CharClass.isIndentChar_iff`](Lean4Yaml/Proofs/CharClass.lean) | ✅ |
-| [§5.6](https://yaml.org/spec/1.2.2/#56-miscellaneous-characters) | Miscellaneous Characters | [35]–[40] [ns-dec-digit](https://yaml.org/spec/1.2.2/#rule-ns-dec-digit), [ns-hex-digit](https://yaml.org/spec/1.2.2/#rule-ns-hex-digit), [ns-ascii-letter](https://yaml.org/spec/1.2.2/#rule-ns-ascii-letter), [ns-word-char](https://yaml.org/spec/1.2.2/#rule-ns-word-char), [ns-uri-char](https://yaml.org/spec/1.2.2/#rule-ns-uri-char), [ns-tag-char](https://yaml.org/spec/1.2.2/#rule-ns-tag-char) | [`Scanner.parseHexEscape`](Lean4Yaml/Scanner.lean) (hex), [`Scanner.scanAnchorOrAlias`](Lean4Yaml/Scanner.lean) ([38] superset), [`Scanner.scanTag`](Lean4Yaml/Scanner.lean) ([39]–[40]) | [`ScannerProofs.lean`](Lean4Yaml/Proofs/ScannerProofs.lean) | ✅ |
-| [§5.7](https://yaml.org/spec/1.2.2/#57-escaped-characters) | Escaped Characters | [41]–[61] [c-ns-esc-char](https://yaml.org/spec/1.2.2/#rule-c-ns-esc-char) and 20 specific escapes | [`Grammar.resolveNamedEscape`](Lean4Yaml/Grammar.lean), [`Scanner.processEscape`](Lean4Yaml/Scanner.lean), [`Emitter.escapeChar`](Lean4Yaml/Emitter.lean) | [`EscapeResolution.lean`](Lean4Yaml/Proofs/EscapeResolution.lean) (16 theorems), [`RoundTrip.lean`](Lean4Yaml/Proofs/RoundTrip.lean) §2 (13 theorems), [`RoundTrip.lean`](Lean4Yaml/Proofs/RoundTrip.lean) §8 (`escapeTag_roundtrip`) | ✅ |
+| [§5.1](https://yaml.org/spec/1.2.2/#51-character-set) | Character Set | [[1] c-printable](https://yaml.org/spec/1.2.2/#rule-c-printable) | [`Grammar.isPrintable`](L4YAML/Grammar.lean) | [`EscapeResolution.lean`](L4YAML/Proofs/EscapeResolution.lean) | ✅ |
+| [§5.2](https://yaml.org/spec/1.2.2/#52-character-encodings) | Character Encodings | [2]–[3] [c-byte-order-mark](https://yaml.org/spec/1.2.2/#rule-c-byte-order-mark) | [`Scanner.scan`](L4YAML/Scanner.lean) (BOM skip at scan start) | [`ScannerProofs.lean`](L4YAML/Proofs/ScannerProofs.lean) | ✅ |
+| [§5.3](https://yaml.org/spec/1.2.2/#53-indicator-characters) | Indicator Characters | [22]–[24] [c-indicator](https://yaml.org/spec/1.2.2/#rule-c-indicator), [c-flow-indicator](https://yaml.org/spec/1.2.2/#rule-c-flow-indicator) | [`Grammar.isFlowIndicator`](L4YAML/Grammar.lean), [`Scanner.isIndicator`](L4YAML/Scanner.lean), [`Scanner.isFlowIndicator`](L4YAML/Scanner.lean) | [`CharClass.isFlowIndicator_correspondence`](L4YAML/Proofs/CharClass.lean), [`CharClass.isIndicator_equiv`](L4YAML/Proofs/CharClass.lean) | ✅ |
+| [§5.4](https://yaml.org/spec/1.2.2/#54-line-break-characters) | Line Break Characters | [25]–[30] [b-line-feed](https://yaml.org/spec/1.2.2/#rule-b-line-feed), [b-char](https://yaml.org/spec/1.2.2/#rule-b-char), [b-break](https://yaml.org/spec/1.2.2/#rule-b-break) | [`Grammar.isLineBreak`](L4YAML/Grammar.lean), [`Scanner.isLineBreak`](L4YAML/Scanner.lean), [`Scanner.consumeNewline`](L4YAML/Scanner.lean) | [`CharClass.isLineBreak_correspondence`](L4YAML/Proofs/CharClass.lean), [`EscapeResolution.lean`](L4YAML/Proofs/EscapeResolution.lean) | ✅ |
+| [§5.5](https://yaml.org/spec/1.2.2/#55-white-space-characters) | White Space Characters | [31]–[34] [s-space](https://yaml.org/spec/1.2.2/#rule-s-space), [s-tab](https://yaml.org/spec/1.2.2/#rule-s-tab), [s-white](https://yaml.org/spec/1.2.2/#rule-s-white), [ns-char](https://yaml.org/spec/1.2.2/#rule-ns-char) | [`Grammar.isWhiteSpace`](L4YAML/Grammar.lean), [`Grammar.isIndentChar`](L4YAML/Grammar.lean), [`Scanner.isWhiteSpace`](L4YAML/Scanner.lean) | [`CharClass.isWhiteSpace_correspondence`](L4YAML/Proofs/CharClass.lean), [`CharClass.isIndentChar_iff`](L4YAML/Proofs/CharClass.lean) | ✅ |
+| [§5.6](https://yaml.org/spec/1.2.2/#56-miscellaneous-characters) | Miscellaneous Characters | [35]–[40] [ns-dec-digit](https://yaml.org/spec/1.2.2/#rule-ns-dec-digit), [ns-hex-digit](https://yaml.org/spec/1.2.2/#rule-ns-hex-digit), [ns-ascii-letter](https://yaml.org/spec/1.2.2/#rule-ns-ascii-letter), [ns-word-char](https://yaml.org/spec/1.2.2/#rule-ns-word-char), [ns-uri-char](https://yaml.org/spec/1.2.2/#rule-ns-uri-char), [ns-tag-char](https://yaml.org/spec/1.2.2/#rule-ns-tag-char) | [`Scanner.parseHexEscape`](L4YAML/Scanner.lean) (hex), [`Scanner.scanAnchorOrAlias`](L4YAML/Scanner.lean) ([38] superset), [`Scanner.scanTag`](L4YAML/Scanner.lean) ([39]–[40]) | [`ScannerProofs.lean`](L4YAML/Proofs/ScannerProofs.lean) | ✅ |
+| [§5.7](https://yaml.org/spec/1.2.2/#57-escaped-characters) | Escaped Characters | [41]–[61] [c-ns-esc-char](https://yaml.org/spec/1.2.2/#rule-c-ns-esc-char) and 20 specific escapes | [`Grammar.resolveNamedEscape`](L4YAML/Grammar.lean), [`Scanner.processEscape`](L4YAML/Scanner.lean), [`Emitter.escapeChar`](L4YAML/Emitter.lean) | [`EscapeResolution.lean`](L4YAML/Proofs/EscapeResolution.lean) (16 theorems), [`RoundTrip.lean`](L4YAML/Proofs/RoundTrip.lean) §2 (13 theorems), [`RoundTrip.lean`](L4YAML/Proofs/RoundTrip.lean) §8 (`escapeTag_roundtrip`) | ✅ |
 
 ### Chapter 6: Structural Productions
 
 | Section | Title | Productions | Implementation | Proofs | Status |
 |---------|-------|-------------|----------------|--------|--------|
-| [§6.1](https://yaml.org/spec/1.2.2/#61-indentation-spaces) | Indentation Spaces | [63]–[66] [s-indent(n)](https://yaml.org/spec/1.2.2/#rule-s-indent), [s-indent(<n)](https://yaml.org/spec/1.2.2/#rule-s-indent), [s-indent(≤n)](https://yaml.org/spec/1.2.2/#rule-s-indent) | [`Grammar.Indented`](Lean4Yaml/Grammar.lean), [`Scanner.unwindIndents`](Lean4Yaml/Scanner.lean), [`Scanner.pushSequenceIndent`](Lean4Yaml/Scanner.lean), [`Scanner.pushMappingIndent`](Lean4Yaml/Scanner.lean) | [`ScannerIndent.lean`](Lean4Yaml/Proofs/ScannerIndent.lean), [`CharClass.isIndentChar_iff`](Lean4Yaml/Proofs/CharClass.lean) | ✅ |
-| [§6.2](https://yaml.org/spec/1.2.2/#62-separation-spaces) | Separation Spaces | [66]–[67] [s-separate-in-line](https://yaml.org/spec/1.2.2/#rule-s-separate-in-line) | [`Scanner.skipSpaces`](Lean4Yaml/Scanner.lean), [`Scanner.skipWhitespace`](Lean4Yaml/Scanner.lean) | — | ✅ Impl |
-| [§6.3](https://yaml.org/spec/1.2.2/#63-line-prefixes) | Line Prefixes | [68]–[70] [s-line-prefix(n,c)](https://yaml.org/spec/1.2.2/#rule-s-line-prefix) | [`Scanner.skipToContent`](Lean4Yaml/Scanner.lean) (block), [`Scanner.foldQuotedNewlines`](Lean4Yaml/Scanner.lean) (flow) | — | ✅ Impl |
-| [§6.4](https://yaml.org/spec/1.2.2/#64-empty-lines) | Empty Lines | [71] [l-empty(n,c)](https://yaml.org/spec/1.2.2/#rule-l-empty) | [`Scanner.skipToContent`](Lean4Yaml/Scanner.lean), [`Scanner.skipWhitespace`](Lean4Yaml/Scanner.lean) | — | ✅ Impl |
-| [§6.5](https://yaml.org/spec/1.2.2/#65-line-folding) | Line Folding | [72]–[74] [b-l-trimmed](https://yaml.org/spec/1.2.2/#rule-b-l-trimmed), [b-as-space](https://yaml.org/spec/1.2.2/#rule-b-as-space), [b-l-folded(n,c)](https://yaml.org/spec/1.2.2/#rule-b-l-folded) | [`Scanner.foldQuotedNewlines`](Lean4Yaml/Scanner.lean), [`Scanner.foldBlockContent`](Lean4Yaml/Scanner.lean) | [`FoldNewlines.lean`](Lean4Yaml/Proofs/FoldNewlines.lean) (18 theorems) | ✅ |
-| [§6.6](https://yaml.org/spec/1.2.2/#66-comments) | Comments | [75]–[79] [c-nb-comment-text](https://yaml.org/spec/1.2.2/#rule-c-nb-comment-text), [b-comment](https://yaml.org/spec/1.2.2/#rule-b-comment), [s-b-comment](https://yaml.org/spec/1.2.2/#rule-s-b-comment), [l-comment](https://yaml.org/spec/1.2.2/#rule-l-comment), [s-l-comments](https://yaml.org/spec/1.2.2/#rule-s-l-comments) | [`Scanner.skipToContent`](Lean4Yaml/Scanner.lean) (comment skip during whitespace consumption) | — | ✅ Impl (text discarded — see [Phase 8](#phase-8-comment-preservation--planned)) |
-| [§6.7](https://yaml.org/spec/1.2.2/#67-separation-lines) | Separation Lines | [79]–[81] [s-separate-in-line](https://yaml.org/spec/1.2.2/#rule-s-separate-in-line), [s-l-comments](https://yaml.org/spec/1.2.2/#rule-s-l-comments), [s-separate(n,c)](https://yaml.org/spec/1.2.2/#rule-s-separate) | [`Scanner.skipToContent`](Lean4Yaml/Scanner.lean), [`Scanner.scanNextToken`](Lean4Yaml/Scanner.lean) | [`DocumentContracts.lean`](Lean4Yaml/Proofs/DocumentContracts.lean) | ✅ |
-| [§6.8](https://yaml.org/spec/1.2.2/#68-directives) | Directives | [82]–[88] [l-directive](https://yaml.org/spec/1.2.2/#rule-l-directive), [ns-yaml-directive](https://yaml.org/spec/1.2.2/#rule-ns-yaml-directive), [ns-tag-directive](https://yaml.org/spec/1.2.2/#rule-ns-tag-directive) | [`Scanner.scanDirective`](Lean4Yaml/Scanner.lean), [`TokenParser.parseDirectives`](Lean4Yaml/TokenParser.lean) | [`DocumentContracts.lean`](Lean4Yaml/Proofs/DocumentContracts.lean) | ✅ |
-| [§6.8.1](https://yaml.org/spec/1.2.2/#681-tag-directives) | Tag Directives | [85] [ns-tag-directive](https://yaml.org/spec/1.2.2/#rule-ns-tag-directive) | [`Scanner.scanDirective`](Lean4Yaml/Scanner.lean), [`TokenParser.parseDirectives`](Lean4Yaml/TokenParser.lean) | [`DocumentContracts.lean`](Lean4Yaml/Proofs/DocumentContracts.lean) | ✅ |
-| [§6.8.2](https://yaml.org/spec/1.2.2/#682-tag-handles) | Tag Handles | [86]–[88] [c-primary-tag-handle](https://yaml.org/spec/1.2.2/#rule-c-primary-tag-handle), [c-secondary-tag-handle](https://yaml.org/spec/1.2.2/#rule-c-secondary-tag-handle), [c-named-tag-handle](https://yaml.org/spec/1.2.2/#rule-c-named-tag-handle) | [`Scanner.scanTag`](Lean4Yaml/Scanner.lean), [`TokenParser.parseDirectives`](Lean4Yaml/TokenParser.lean) | [`DocumentContracts.lean`](Lean4Yaml/Proofs/DocumentContracts.lean) | ✅ |
-| [§6.9](https://yaml.org/spec/1.2.2/#69-node-properties) | Node Properties | [95]–[98] [c-ns-properties(n,c)](https://yaml.org/spec/1.2.2/#rule-c-ns-properties) | [`Scanner.scanTag`](Lean4Yaml/Scanner.lean), [`Scanner.scanAnchorOrAlias`](Lean4Yaml/Scanner.lean), [`TokenParser.parseNodeProperties`](Lean4Yaml/TokenParser.lean) | — | ✅ Impl |
-| [§6.9.1](https://yaml.org/spec/1.2.2/#691-node-tags) | Node Tags | [95]–[98] [c-ns-tag-property](https://yaml.org/spec/1.2.2/#rule-c-ns-tag-property), [c-verbatim-tag](https://yaml.org/spec/1.2.2/#rule-c-verbatim-tag), [c-ns-shorthand-tag](https://yaml.org/spec/1.2.2/#rule-c-ns-shorthand-tag), [c-non-specific-tag](https://yaml.org/spec/1.2.2/#rule-c-non-specific-tag) | [`Scanner.scanTag`](Lean4Yaml/Scanner.lean) (all 5 tag forms), [`TokenParser.parseNodeProperties`](Lean4Yaml/TokenParser.lean) | — | ✅ Impl |
-| [§6.9.2](https://yaml.org/spec/1.2.2/#692-node-anchors) | Node Anchors | [99]–[103] [c-ns-anchor-property](https://yaml.org/spec/1.2.2/#rule-c-ns-anchor-property), [ns-anchor-char](https://yaml.org/spec/1.2.2/#rule-ns-anchor-char), [ns-anchor-name](https://yaml.org/spec/1.2.2/#rule-ns-anchor-name) | [`Scanner.scanAnchorOrAlias`](Lean4Yaml/Scanner.lean), [`TokenParser.parseNodeProperties`](Lean4Yaml/TokenParser.lean) | [`ScannerProofs.lean`](Lean4Yaml/Proofs/ScannerProofs.lean) | ✅ |
+| [§6.1](https://yaml.org/spec/1.2.2/#61-indentation-spaces) | Indentation Spaces | [63]–[66] [s-indent(n)](https://yaml.org/spec/1.2.2/#rule-s-indent), [s-indent(<n)](https://yaml.org/spec/1.2.2/#rule-s-indent), [s-indent(≤n)](https://yaml.org/spec/1.2.2/#rule-s-indent) | [`Grammar.Indented`](L4YAML/Grammar.lean), [`Scanner.unwindIndents`](L4YAML/Scanner.lean), [`Scanner.pushSequenceIndent`](L4YAML/Scanner.lean), [`Scanner.pushMappingIndent`](L4YAML/Scanner.lean) | [`ScannerIndent.lean`](L4YAML/Proofs/ScannerIndent.lean), [`CharClass.isIndentChar_iff`](L4YAML/Proofs/CharClass.lean) | ✅ |
+| [§6.2](https://yaml.org/spec/1.2.2/#62-separation-spaces) | Separation Spaces | [66]–[67] [s-separate-in-line](https://yaml.org/spec/1.2.2/#rule-s-separate-in-line) | [`Scanner.skipSpaces`](L4YAML/Scanner.lean), [`Scanner.skipWhitespace`](L4YAML/Scanner.lean) | — | ✅ Impl |
+| [§6.3](https://yaml.org/spec/1.2.2/#63-line-prefixes) | Line Prefixes | [68]–[70] [s-line-prefix(n,c)](https://yaml.org/spec/1.2.2/#rule-s-line-prefix) | [`Scanner.skipToContent`](L4YAML/Scanner.lean) (block), [`Scanner.foldQuotedNewlines`](L4YAML/Scanner.lean) (flow) | — | ✅ Impl |
+| [§6.4](https://yaml.org/spec/1.2.2/#64-empty-lines) | Empty Lines | [71] [l-empty(n,c)](https://yaml.org/spec/1.2.2/#rule-l-empty) | [`Scanner.skipToContent`](L4YAML/Scanner.lean), [`Scanner.skipWhitespace`](L4YAML/Scanner.lean) | — | ✅ Impl |
+| [§6.5](https://yaml.org/spec/1.2.2/#65-line-folding) | Line Folding | [72]–[74] [b-l-trimmed](https://yaml.org/spec/1.2.2/#rule-b-l-trimmed), [b-as-space](https://yaml.org/spec/1.2.2/#rule-b-as-space), [b-l-folded(n,c)](https://yaml.org/spec/1.2.2/#rule-b-l-folded) | [`Scanner.foldQuotedNewlines`](L4YAML/Scanner.lean), [`Scanner.foldBlockContent`](L4YAML/Scanner.lean) | [`FoldNewlines.lean`](L4YAML/Proofs/FoldNewlines.lean) (18 theorems) | ✅ |
+| [§6.6](https://yaml.org/spec/1.2.2/#66-comments) | Comments | [75]–[79] [c-nb-comment-text](https://yaml.org/spec/1.2.2/#rule-c-nb-comment-text), [b-comment](https://yaml.org/spec/1.2.2/#rule-b-comment), [s-b-comment](https://yaml.org/spec/1.2.2/#rule-s-b-comment), [l-comment](https://yaml.org/spec/1.2.2/#rule-l-comment), [s-l-comments](https://yaml.org/spec/1.2.2/#rule-s-l-comments) | [`Scanner.skipToContent`](L4YAML/Scanner.lean) (comment skip during whitespace consumption) | — | ✅ Impl (text discarded — see [Phase 8](#phase-8-comment-preservation--planned)) |
+| [§6.7](https://yaml.org/spec/1.2.2/#67-separation-lines) | Separation Lines | [79]–[81] [s-separate-in-line](https://yaml.org/spec/1.2.2/#rule-s-separate-in-line), [s-l-comments](https://yaml.org/spec/1.2.2/#rule-s-l-comments), [s-separate(n,c)](https://yaml.org/spec/1.2.2/#rule-s-separate) | [`Scanner.skipToContent`](L4YAML/Scanner.lean), [`Scanner.scanNextToken`](L4YAML/Scanner.lean) | [`DocumentContracts.lean`](L4YAML/Proofs/DocumentContracts.lean) | ✅ |
+| [§6.8](https://yaml.org/spec/1.2.2/#68-directives) | Directives | [82]–[88] [l-directive](https://yaml.org/spec/1.2.2/#rule-l-directive), [ns-yaml-directive](https://yaml.org/spec/1.2.2/#rule-ns-yaml-directive), [ns-tag-directive](https://yaml.org/spec/1.2.2/#rule-ns-tag-directive) | [`Scanner.scanDirective`](L4YAML/Scanner.lean), [`TokenParser.parseDirectives`](L4YAML/TokenParser.lean) | [`DocumentContracts.lean`](L4YAML/Proofs/DocumentContracts.lean) | ✅ |
+| [§6.8.1](https://yaml.org/spec/1.2.2/#681-tag-directives) | Tag Directives | [85] [ns-tag-directive](https://yaml.org/spec/1.2.2/#rule-ns-tag-directive) | [`Scanner.scanDirective`](L4YAML/Scanner.lean), [`TokenParser.parseDirectives`](L4YAML/TokenParser.lean) | [`DocumentContracts.lean`](L4YAML/Proofs/DocumentContracts.lean) | ✅ |
+| [§6.8.2](https://yaml.org/spec/1.2.2/#682-tag-handles) | Tag Handles | [86]–[88] [c-primary-tag-handle](https://yaml.org/spec/1.2.2/#rule-c-primary-tag-handle), [c-secondary-tag-handle](https://yaml.org/spec/1.2.2/#rule-c-secondary-tag-handle), [c-named-tag-handle](https://yaml.org/spec/1.2.2/#rule-c-named-tag-handle) | [`Scanner.scanTag`](L4YAML/Scanner.lean), [`TokenParser.parseDirectives`](L4YAML/TokenParser.lean) | [`DocumentContracts.lean`](L4YAML/Proofs/DocumentContracts.lean) | ✅ |
+| [§6.9](https://yaml.org/spec/1.2.2/#69-node-properties) | Node Properties | [95]–[98] [c-ns-properties(n,c)](https://yaml.org/spec/1.2.2/#rule-c-ns-properties) | [`Scanner.scanTag`](L4YAML/Scanner.lean), [`Scanner.scanAnchorOrAlias`](L4YAML/Scanner.lean), [`TokenParser.parseNodeProperties`](L4YAML/TokenParser.lean) | — | ✅ Impl |
+| [§6.9.1](https://yaml.org/spec/1.2.2/#691-node-tags) | Node Tags | [95]–[98] [c-ns-tag-property](https://yaml.org/spec/1.2.2/#rule-c-ns-tag-property), [c-verbatim-tag](https://yaml.org/spec/1.2.2/#rule-c-verbatim-tag), [c-ns-shorthand-tag](https://yaml.org/spec/1.2.2/#rule-c-ns-shorthand-tag), [c-non-specific-tag](https://yaml.org/spec/1.2.2/#rule-c-non-specific-tag) | [`Scanner.scanTag`](L4YAML/Scanner.lean) (all 5 tag forms), [`TokenParser.parseNodeProperties`](L4YAML/TokenParser.lean) | — | ✅ Impl |
+| [§6.9.2](https://yaml.org/spec/1.2.2/#692-node-anchors) | Node Anchors | [99]–[103] [c-ns-anchor-property](https://yaml.org/spec/1.2.2/#rule-c-ns-anchor-property), [ns-anchor-char](https://yaml.org/spec/1.2.2/#rule-ns-anchor-char), [ns-anchor-name](https://yaml.org/spec/1.2.2/#rule-ns-anchor-name) | [`Scanner.scanAnchorOrAlias`](L4YAML/Scanner.lean), [`TokenParser.parseNodeProperties`](L4YAML/TokenParser.lean) | [`ScannerProofs.lean`](L4YAML/Proofs/ScannerProofs.lean) | ✅ |
 
 ### Chapter 7: Flow Style Productions
 
 | Section | Title | Productions | Implementation | Proofs | Status |
 |---------|-------|-------------|----------------|--------|--------|
-| [§7.1](https://yaml.org/spec/1.2.2/#71-alias-nodes) | Alias Nodes | [103] [c-ns-alias-node](https://yaml.org/spec/1.2.2/#rule-c-ns-alias-node) | [`Scanner.scanAnchorOrAlias`](Lean4Yaml/Scanner.lean), [`TokenParser.parseNode`](Lean4Yaml/TokenParser.lean) (alias branch) | [`ScannerProofs.lean`](Lean4Yaml/Proofs/ScannerProofs.lean) | ✅ |
-| [§7.2](https://yaml.org/spec/1.2.2/#72-empty-nodes) | Empty Nodes | [104]–[105] [e-node](https://yaml.org/spec/1.2.2/#rule-e-node), [e-scalar](https://yaml.org/spec/1.2.2/#rule-e-scalar) | Implicit: [`YamlValue.null`](Lean4Yaml/Types.lean) default in [`TokenParser.parseBlockMapping`](Lean4Yaml/TokenParser.lean), [`TokenParser.parseFlowMapping`](Lean4Yaml/TokenParser.lean) | — | ✅ Impl |
-| [§7.3](https://yaml.org/spec/1.2.2/#73-flow-scalar-styles) | Flow Scalar Styles | [106] [ns-flow-yaml-content(n,c)](https://yaml.org/spec/1.2.2/#rule-ns-flow-yaml-content) | [`Scanner.lean`](Lean4Yaml/Scanner.lean) (dispatch to double/single/plain scanning) | [`RoundTrip.lean`](Lean4Yaml/Proofs/RoundTrip.lean) | ✅ |
-| [§7.3.1](https://yaml.org/spec/1.2.2/#731-double-quoted-style) | Double-Quoted Style | [107]–[117] [c-double-quoted(n,c)](https://yaml.org/spec/1.2.2/#rule-c-double-quoted) | [`Grammar.DoubleQuotedScalar`](Lean4Yaml/Grammar.lean), [`Scanner.scanDoubleQuoted`](Lean4Yaml/Scanner.lean) | [`ScannerProofs.lean`](Lean4Yaml/Proofs/ScannerProofs.lean), [`ScannerContracts.lean`](Lean4Yaml/Proofs/ScannerContracts.lean) | ✅ |
-| [§7.3.2](https://yaml.org/spec/1.2.2/#732-single-quoted-style) | Single-Quoted Style | [118]–[125] [c-single-quoted(n,c)](https://yaml.org/spec/1.2.2/#rule-c-single-quoted) | [`Grammar.SingleQuotedScalar`](Lean4Yaml/Grammar.lean), [`Scanner.scanSingleQuoted`](Lean4Yaml/Scanner.lean) | [`ScannerProofs.lean`](Lean4Yaml/Proofs/ScannerProofs.lean), [`ScannerContracts.lean`](Lean4Yaml/Proofs/ScannerContracts.lean) | ✅ |
-| [§7.3.3](https://yaml.org/spec/1.2.2/#733-plain-style) | Plain Style | [123]–[133] [ns-plain-first(c)](https://yaml.org/spec/1.2.2/#rule-ns-plain-first), [ns-plain(n,c)](https://yaml.org/spec/1.2.2/#rule-ns-plain) | [`Grammar.canStartPlainScalar`](Lean4Yaml/Grammar.lean), [`Scanner.isPlainSafe`](Lean4Yaml/Scanner.lean), [`Scanner.canStartPlainScalar`](Lean4Yaml/Scanner.lean), [`Scanner.scanPlainScalar`](Lean4Yaml/Scanner.lean) | [`CharClass.canStartPlainScalar_*`](Lean4Yaml/Proofs/CharClass.lean), [`ScannerProofs.lean`](Lean4Yaml/Proofs/ScannerProofs.lean) | ✅ |
-| [§7.4](https://yaml.org/spec/1.2.2/#74-flow-collection-styles) | Flow Collection Styles | [134]–[157] | [`Scanner.scanFlowSequenceStart/End`](Lean4Yaml/Scanner.lean), [`Scanner.scanFlowMappingStart/End`](Lean4Yaml/Scanner.lean), [`TokenParser.parseFlowSequence`](Lean4Yaml/TokenParser.lean), [`TokenParser.parseFlowMapping`](Lean4Yaml/TokenParser.lean) | [`Completeness.lean`](Lean4Yaml/Proofs/Completeness.lean) (concrete `native_decide`) | ✅ |
-| [§7.4.1](https://yaml.org/spec/1.2.2/#741-flow-sequences) | Flow Sequences | [134]–[136] [c-flow-sequence(n,c)](https://yaml.org/spec/1.2.2/#rule-c-flow-sequence) | [`Scanner.scanFlowSequenceStart/End`](Lean4Yaml/Scanner.lean), [`TokenParser.parseFlowSequence`](Lean4Yaml/TokenParser.lean) | [`Completeness.lean`](Lean4Yaml/Proofs/Completeness.lean) (concrete `native_decide`) | ✅ |
-| [§7.4.2](https://yaml.org/spec/1.2.2/#742-flow-mappings) | Flow Mappings | [137]–[157] [c-flow-mapping(n,c)](https://yaml.org/spec/1.2.2/#rule-c-flow-mapping) | [`Scanner.scanFlowMappingStart/End`](Lean4Yaml/Scanner.lean), [`TokenParser.parseFlowMapping`](Lean4Yaml/TokenParser.lean) | [`Completeness.lean`](Lean4Yaml/Proofs/Completeness.lean) (concrete `native_decide`) | ✅ |
-| [§7.5](https://yaml.org/spec/1.2.2/#75-flow-nodes) | Flow Nodes | [157] [ns-flow-node(n,c)](https://yaml.org/spec/1.2.2/#rule-ns-flow-node) | [`TokenParser.parseNode`](Lean4Yaml/TokenParser.lean) (anchor/tag/alias dispatch + scalar/collection) | [`Composition.lean`](Lean4Yaml/Proofs/Composition.lean) | ✅ |
+| [§7.1](https://yaml.org/spec/1.2.2/#71-alias-nodes) | Alias Nodes | [103] [c-ns-alias-node](https://yaml.org/spec/1.2.2/#rule-c-ns-alias-node) | [`Scanner.scanAnchorOrAlias`](L4YAML/Scanner.lean), [`TokenParser.parseNode`](L4YAML/TokenParser.lean) (alias branch) | [`ScannerProofs.lean`](L4YAML/Proofs/ScannerProofs.lean) | ✅ |
+| [§7.2](https://yaml.org/spec/1.2.2/#72-empty-nodes) | Empty Nodes | [104]–[105] [e-node](https://yaml.org/spec/1.2.2/#rule-e-node), [e-scalar](https://yaml.org/spec/1.2.2/#rule-e-scalar) | Implicit: [`YamlValue.null`](L4YAML/Types.lean) default in [`TokenParser.parseBlockMapping`](L4YAML/TokenParser.lean), [`TokenParser.parseFlowMapping`](L4YAML/TokenParser.lean) | — | ✅ Impl |
+| [§7.3](https://yaml.org/spec/1.2.2/#73-flow-scalar-styles) | Flow Scalar Styles | [106] [ns-flow-yaml-content(n,c)](https://yaml.org/spec/1.2.2/#rule-ns-flow-yaml-content) | [`Scanner.lean`](L4YAML/Scanner.lean) (dispatch to double/single/plain scanning) | [`RoundTrip.lean`](L4YAML/Proofs/RoundTrip.lean) | ✅ |
+| [§7.3.1](https://yaml.org/spec/1.2.2/#731-double-quoted-style) | Double-Quoted Style | [107]–[117] [c-double-quoted(n,c)](https://yaml.org/spec/1.2.2/#rule-c-double-quoted) | [`Grammar.DoubleQuotedScalar`](L4YAML/Grammar.lean), [`Scanner.scanDoubleQuoted`](L4YAML/Scanner.lean) | [`ScannerProofs.lean`](L4YAML/Proofs/ScannerProofs.lean), [`ScannerContracts.lean`](L4YAML/Proofs/ScannerContracts.lean) | ✅ |
+| [§7.3.2](https://yaml.org/spec/1.2.2/#732-single-quoted-style) | Single-Quoted Style | [118]–[125] [c-single-quoted(n,c)](https://yaml.org/spec/1.2.2/#rule-c-single-quoted) | [`Grammar.SingleQuotedScalar`](L4YAML/Grammar.lean), [`Scanner.scanSingleQuoted`](L4YAML/Scanner.lean) | [`ScannerProofs.lean`](L4YAML/Proofs/ScannerProofs.lean), [`ScannerContracts.lean`](L4YAML/Proofs/ScannerContracts.lean) | ✅ |
+| [§7.3.3](https://yaml.org/spec/1.2.2/#733-plain-style) | Plain Style | [123]–[133] [ns-plain-first(c)](https://yaml.org/spec/1.2.2/#rule-ns-plain-first), [ns-plain(n,c)](https://yaml.org/spec/1.2.2/#rule-ns-plain) | [`Grammar.canStartPlainScalar`](L4YAML/Grammar.lean), [`Scanner.isPlainSafe`](L4YAML/Scanner.lean), [`Scanner.canStartPlainScalar`](L4YAML/Scanner.lean), [`Scanner.scanPlainScalar`](L4YAML/Scanner.lean) | [`CharClass.canStartPlainScalar_*`](L4YAML/Proofs/CharClass.lean), [`ScannerProofs.lean`](L4YAML/Proofs/ScannerProofs.lean) | ✅ |
+| [§7.4](https://yaml.org/spec/1.2.2/#74-flow-collection-styles) | Flow Collection Styles | [134]–[157] | [`Scanner.scanFlowSequenceStart/End`](L4YAML/Scanner.lean), [`Scanner.scanFlowMappingStart/End`](L4YAML/Scanner.lean), [`TokenParser.parseFlowSequence`](L4YAML/TokenParser.lean), [`TokenParser.parseFlowMapping`](L4YAML/TokenParser.lean) | [`Completeness.lean`](L4YAML/Proofs/Completeness.lean) (concrete `native_decide`) | ✅ |
+| [§7.4.1](https://yaml.org/spec/1.2.2/#741-flow-sequences) | Flow Sequences | [134]–[136] [c-flow-sequence(n,c)](https://yaml.org/spec/1.2.2/#rule-c-flow-sequence) | [`Scanner.scanFlowSequenceStart/End`](L4YAML/Scanner.lean), [`TokenParser.parseFlowSequence`](L4YAML/TokenParser.lean) | [`Completeness.lean`](L4YAML/Proofs/Completeness.lean) (concrete `native_decide`) | ✅ |
+| [§7.4.2](https://yaml.org/spec/1.2.2/#742-flow-mappings) | Flow Mappings | [137]–[157] [c-flow-mapping(n,c)](https://yaml.org/spec/1.2.2/#rule-c-flow-mapping) | [`Scanner.scanFlowMappingStart/End`](L4YAML/Scanner.lean), [`TokenParser.parseFlowMapping`](L4YAML/TokenParser.lean) | [`Completeness.lean`](L4YAML/Proofs/Completeness.lean) (concrete `native_decide`) | ✅ |
+| [§7.5](https://yaml.org/spec/1.2.2/#75-flow-nodes) | Flow Nodes | [157] [ns-flow-node(n,c)](https://yaml.org/spec/1.2.2/#rule-ns-flow-node) | [`TokenParser.parseNode`](L4YAML/TokenParser.lean) (anchor/tag/alias dispatch + scalar/collection) | [`Composition.lean`](L4YAML/Proofs/Composition.lean) | ✅ |
 
 ### Chapter 8: Block Style Productions
 
 | Section | Title | Productions | Implementation | Proofs | Status |
 |---------|-------|-------------|----------------|--------|--------|
-| [§8.1](https://yaml.org/spec/1.2.2/#81-block-scalar-styles) | Block Scalar Styles | [158]–[179] | [`Scanner.scanBlockScalar`](Lean4Yaml/Scanner.lean) (5-phase pipeline) | [`ScannerContracts.lean`](Lean4Yaml/Proofs/ScannerContracts.lean) | ✅ |
-| [§8.1.1](https://yaml.org/spec/1.2.2/#811-block-scalar-headers) | Block Scalar Headers | [158]–[169] [c-b-block-header(m,t)](https://yaml.org/spec/1.2.2/#rule-c-b-block-header) | [`Grammar.BlockScalarHeader`](Lean4Yaml/Grammar.lean), [`Scanner.scanBlockScalar`](Lean4Yaml/Scanner.lean) | [`BlockScalarContracts.lean`](Lean4Yaml/Proofs/BlockScalarContracts.lean), [`ScannerContracts.lean`](Lean4Yaml/Proofs/ScannerContracts.lean) | ✅ |
-| [§8.1.2](https://yaml.org/spec/1.2.2/#812-literal-style) | Literal Style | [170]–[174] [c-l+literal(n)](https://yaml.org/spec/1.2.2/#rule-c-l+literal) | [`Grammar.LiteralBlockScalar`](Lean4Yaml/Grammar.lean), [`Scanner.scanBlockScalar`](Lean4Yaml/Scanner.lean) (literal branch) | [`ScannerContracts.lean`](Lean4Yaml/Proofs/ScannerContracts.lean) | ✅ |
-| [§8.1.3](https://yaml.org/spec/1.2.2/#813-folded-style) | Folded Style | [175]–[179] [c-l+folded(n)](https://yaml.org/spec/1.2.2/#rule-c-l+folded) | [`Grammar.FoldedBlockScalar`](Lean4Yaml/Grammar.lean), [`Scanner.scanBlockScalar`](Lean4Yaml/Scanner.lean) (folded branch) | [`ScannerContracts.lean`](Lean4Yaml/Proofs/ScannerContracts.lean) | ✅ |
-| [§8.2](https://yaml.org/spec/1.2.2/#82-block-collection-styles) | Block Collection Styles | [180]–[196] | [`Scanner.scanBlockEntry`](Lean4Yaml/Scanner.lean), [`Scanner.scanKey`](Lean4Yaml/Scanner.lean), [`Scanner.scanValue`](Lean4Yaml/Scanner.lean), [`TokenParser.parseBlockSequence`](Lean4Yaml/TokenParser.lean), [`TokenParser.parseBlockMapping`](Lean4Yaml/TokenParser.lean) | [`Completeness.lean`](Lean4Yaml/Proofs/Completeness.lean) (concrete `native_decide`) | ✅ |
-| [§8.2.1](https://yaml.org/spec/1.2.2/#821-block-sequences) | Block Sequences | [183]–[185] [l+block-sequence(n)](https://yaml.org/spec/1.2.2/#rule-l+block-sequence) | [`Scanner.scanBlockEntry`](Lean4Yaml/Scanner.lean), [`TokenParser.parseBlockSequence`](Lean4Yaml/TokenParser.lean) | [`Completeness.lean`](Lean4Yaml/Proofs/Completeness.lean) (concrete `native_decide`) | ✅ |
-| [§8.2.2](https://yaml.org/spec/1.2.2/#822-block-mappings) | Block Mappings | [184]–[196] [l+block-mapping(n)](https://yaml.org/spec/1.2.2/#rule-l+block-mapping) | [`Scanner.scanKey`](Lean4Yaml/Scanner.lean), [`Scanner.scanValue`](Lean4Yaml/Scanner.lean), [`TokenParser.parseBlockMapping`](Lean4Yaml/TokenParser.lean) | [`Completeness.lean`](Lean4Yaml/Proofs/Completeness.lean) (concrete `native_decide`) | ✅ |
-| [§8.2.3](https://yaml.org/spec/1.2.2/#823-block-nodes) | Block Nodes | [196] [s-l+block-node(n,c)](https://yaml.org/spec/1.2.2/#rule-s-l+block-node) | [`TokenParser.parseNode`](Lean4Yaml/TokenParser.lean) (dispatch: scalar/sequence/mapping/flow) | [`Composition.lean`](Lean4Yaml/Proofs/Composition.lean) | ✅ |
+| [§8.1](https://yaml.org/spec/1.2.2/#81-block-scalar-styles) | Block Scalar Styles | [158]–[179] | [`Scanner.scanBlockScalar`](L4YAML/Scanner.lean) (5-phase pipeline) | [`ScannerContracts.lean`](L4YAML/Proofs/ScannerContracts.lean) | ✅ |
+| [§8.1.1](https://yaml.org/spec/1.2.2/#811-block-scalar-headers) | Block Scalar Headers | [158]–[169] [c-b-block-header(m,t)](https://yaml.org/spec/1.2.2/#rule-c-b-block-header) | [`Grammar.BlockScalarHeader`](L4YAML/Grammar.lean), [`Scanner.scanBlockScalar`](L4YAML/Scanner.lean) | [`BlockScalarContracts.lean`](L4YAML/Proofs/BlockScalarContracts.lean), [`ScannerContracts.lean`](L4YAML/Proofs/ScannerContracts.lean) | ✅ |
+| [§8.1.2](https://yaml.org/spec/1.2.2/#812-literal-style) | Literal Style | [170]–[174] [c-l+literal(n)](https://yaml.org/spec/1.2.2/#rule-c-l+literal) | [`Grammar.LiteralBlockScalar`](L4YAML/Grammar.lean), [`Scanner.scanBlockScalar`](L4YAML/Scanner.lean) (literal branch) | [`ScannerContracts.lean`](L4YAML/Proofs/ScannerContracts.lean) | ✅ |
+| [§8.1.3](https://yaml.org/spec/1.2.2/#813-folded-style) | Folded Style | [175]–[179] [c-l+folded(n)](https://yaml.org/spec/1.2.2/#rule-c-l+folded) | [`Grammar.FoldedBlockScalar`](L4YAML/Grammar.lean), [`Scanner.scanBlockScalar`](L4YAML/Scanner.lean) (folded branch) | [`ScannerContracts.lean`](L4YAML/Proofs/ScannerContracts.lean) | ✅ |
+| [§8.2](https://yaml.org/spec/1.2.2/#82-block-collection-styles) | Block Collection Styles | [180]–[196] | [`Scanner.scanBlockEntry`](L4YAML/Scanner.lean), [`Scanner.scanKey`](L4YAML/Scanner.lean), [`Scanner.scanValue`](L4YAML/Scanner.lean), [`TokenParser.parseBlockSequence`](L4YAML/TokenParser.lean), [`TokenParser.parseBlockMapping`](L4YAML/TokenParser.lean) | [`Completeness.lean`](L4YAML/Proofs/Completeness.lean) (concrete `native_decide`) | ✅ |
+| [§8.2.1](https://yaml.org/spec/1.2.2/#821-block-sequences) | Block Sequences | [183]–[185] [l+block-sequence(n)](https://yaml.org/spec/1.2.2/#rule-l+block-sequence) | [`Scanner.scanBlockEntry`](L4YAML/Scanner.lean), [`TokenParser.parseBlockSequence`](L4YAML/TokenParser.lean) | [`Completeness.lean`](L4YAML/Proofs/Completeness.lean) (concrete `native_decide`) | ✅ |
+| [§8.2.2](https://yaml.org/spec/1.2.2/#822-block-mappings) | Block Mappings | [184]–[196] [l+block-mapping(n)](https://yaml.org/spec/1.2.2/#rule-l+block-mapping) | [`Scanner.scanKey`](L4YAML/Scanner.lean), [`Scanner.scanValue`](L4YAML/Scanner.lean), [`TokenParser.parseBlockMapping`](L4YAML/TokenParser.lean) | [`Completeness.lean`](L4YAML/Proofs/Completeness.lean) (concrete `native_decide`) | ✅ |
+| [§8.2.3](https://yaml.org/spec/1.2.2/#823-block-nodes) | Block Nodes | [196] [s-l+block-node(n,c)](https://yaml.org/spec/1.2.2/#rule-s-l+block-node) | [`TokenParser.parseNode`](L4YAML/TokenParser.lean) (dispatch: scalar/sequence/mapping/flow) | [`Composition.lean`](L4YAML/Proofs/Composition.lean) | ✅ |
 
 ### Chapter 9: Document Stream Productions
 
 | Section | Title | Productions | Implementation | Proofs | Status |
 |---------|-------|-------------|----------------|--------|--------|
-| [§9.1.1](https://yaml.org/spec/1.2.2/#911-document-prefix) | Document Prefix | [200] [l-document-prefix](https://yaml.org/spec/1.2.2/#rule-l-document-prefix) | [`Scanner.scan`](Lean4Yaml/Scanner.lean) (BOM skip), [`Scanner.skipToContent`](Lean4Yaml/Scanner.lean) (comment handling) | [`ScannerProofs.lean`](Lean4Yaml/Proofs/ScannerProofs.lean) | ✅ Impl |
-| [§9.1.2](https://yaml.org/spec/1.2.2/#912-document-markers) | Document Markers | [197]–[199] [c-directives-end](https://yaml.org/spec/1.2.2/#rule-c-directives-end), [c-document-end](https://yaml.org/spec/1.2.2/#rule-c-document-end), [l-document-suffix](https://yaml.org/spec/1.2.2/#rule-l-document-suffix) | [`Grammar.isCForbiddenPrefix`](Lean4Yaml/Grammar.lean), [`Scanner.atDocumentBoundary`](Lean4Yaml/Scanner.lean), [`Scanner.scanDocumentStart`](Lean4Yaml/Scanner.lean), [`Scanner.scanDocumentEnd`](Lean4Yaml/Scanner.lean) | [`FoldNewlines.lean`](Lean4Yaml/Proofs/FoldNewlines.lean), [`DocumentContracts.lean`](Lean4Yaml/Proofs/DocumentContracts.lean) | ✅ |
-| [§9.1.3](https://yaml.org/spec/1.2.2/#913-bare-documents) | Bare Documents | [201] [l-bare-document](https://yaml.org/spec/1.2.2/#rule-l-bare-document) | [`TokenParser.parseDocument`](Lean4Yaml/TokenParser.lean) (bare document path) | — | ✅ Impl |
-| [§9.1.4](https://yaml.org/spec/1.2.2/#914-explicit-documents) | Explicit Documents | [202] [l-explicit-document](https://yaml.org/spec/1.2.2/#rule-l-explicit-document) | [`TokenParser.parseDocument`](Lean4Yaml/TokenParser.lean) (explicit `---` path) | — | ✅ Impl |
-| [§9.1.5](https://yaml.org/spec/1.2.2/#915-directives-documents) | Directives Documents | [203] [l-directive-document](https://yaml.org/spec/1.2.2/#rule-l-directive-document) | [`TokenParser.parseDocument`](Lean4Yaml/TokenParser.lean) (`%YAML`/`%TAG` + `---` path) | — | ✅ Impl |
-| [§9.2](https://yaml.org/spec/1.2.2/#92-streams) | Streams | [204]–[205] [l-any-document](https://yaml.org/spec/1.2.2/#rule-l-any-document), [l-yaml-stream](https://yaml.org/spec/1.2.2/#rule-l-yaml-stream) | [`Grammar.ValidYamlStream`](Lean4Yaml/Grammar.lean), [`TokenParser.parseStream`](Lean4Yaml/TokenParser.lean) | [`Completeness.parseYaml_ok_iff`](Lean4Yaml/Proofs/Completeness.lean), [`Composition.parseYaml_pipeline`](Lean4Yaml/Proofs/Composition.lean) | ✅ |
+| [§9.1.1](https://yaml.org/spec/1.2.2/#911-document-prefix) | Document Prefix | [200] [l-document-prefix](https://yaml.org/spec/1.2.2/#rule-l-document-prefix) | [`Scanner.scan`](L4YAML/Scanner.lean) (BOM skip), [`Scanner.skipToContent`](L4YAML/Scanner.lean) (comment handling) | [`ScannerProofs.lean`](L4YAML/Proofs/ScannerProofs.lean) | ✅ Impl |
+| [§9.1.2](https://yaml.org/spec/1.2.2/#912-document-markers) | Document Markers | [197]–[199] [c-directives-end](https://yaml.org/spec/1.2.2/#rule-c-directives-end), [c-document-end](https://yaml.org/spec/1.2.2/#rule-c-document-end), [l-document-suffix](https://yaml.org/spec/1.2.2/#rule-l-document-suffix) | [`Grammar.isCForbiddenPrefix`](L4YAML/Grammar.lean), [`Scanner.atDocumentBoundary`](L4YAML/Scanner.lean), [`Scanner.scanDocumentStart`](L4YAML/Scanner.lean), [`Scanner.scanDocumentEnd`](L4YAML/Scanner.lean) | [`FoldNewlines.lean`](L4YAML/Proofs/FoldNewlines.lean), [`DocumentContracts.lean`](L4YAML/Proofs/DocumentContracts.lean) | ✅ |
+| [§9.1.3](https://yaml.org/spec/1.2.2/#913-bare-documents) | Bare Documents | [201] [l-bare-document](https://yaml.org/spec/1.2.2/#rule-l-bare-document) | [`TokenParser.parseDocument`](L4YAML/TokenParser.lean) (bare document path) | — | ✅ Impl |
+| [§9.1.4](https://yaml.org/spec/1.2.2/#914-explicit-documents) | Explicit Documents | [202] [l-explicit-document](https://yaml.org/spec/1.2.2/#rule-l-explicit-document) | [`TokenParser.parseDocument`](L4YAML/TokenParser.lean) (explicit `---` path) | — | ✅ Impl |
+| [§9.1.5](https://yaml.org/spec/1.2.2/#915-directives-documents) | Directives Documents | [203] [l-directive-document](https://yaml.org/spec/1.2.2/#rule-l-directive-document) | [`TokenParser.parseDocument`](L4YAML/TokenParser.lean) (`%YAML`/`%TAG` + `---` path) | — | ✅ Impl |
+| [§9.2](https://yaml.org/spec/1.2.2/#92-streams) | Streams | [204]–[205] [l-any-document](https://yaml.org/spec/1.2.2/#rule-l-any-document), [l-yaml-stream](https://yaml.org/spec/1.2.2/#rule-l-yaml-stream) | [`Grammar.ValidYamlStream`](L4YAML/Grammar.lean), [`TokenParser.parseStream`](L4YAML/TokenParser.lean) | [`Completeness.parseYaml_ok_iff`](L4YAML/Proofs/Completeness.lean), [`Composition.parseYaml_pipeline`](L4YAML/Proofs/Composition.lean) | ✅ |
 
 ### Coverage Summary
 

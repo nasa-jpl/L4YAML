@@ -1,10 +1,10 @@
-import Lean4Yaml
+import L4YAML
 import Lean
 
 /-!
 # Declaration Dependency Graph Extractor
 
-Extracts three dependency graphs from the `Lean4Yaml` environment:
+Extracts three dependency graphs from the `L4YAML` environment:
 
 1. **Function call graph** — which definitions call which other definitions
 2. **Theorem dependency graph** — which theorems use which other theorems in their proofs
@@ -33,10 +33,10 @@ Pipe through `jq` or load in Python for visualization (e.g., Graphviz DOT, d3-fo
 
 open Lean
 
-/-- Is the name in the `Lean4Yaml` namespace (our project)? -/
+/-- Is the name in the `L4YAML` namespace (our project)? -/
 private def isProjectName (n : Name) : Bool :=
   match n with
-  | .str p _ => p == `Lean4Yaml || isProjectName p
+  | .str p _ => p == `L4YAML || isProjectName p
   | .num p _ => isProjectName p
   | .anonymous => false
 
@@ -73,7 +73,7 @@ private def jsonNameArray (ns : Array Name) : String :=
 
 /-- Source location: module (file) name + line range. -/
 structure SrcLoc where
-  module : String     -- e.g. "Lean4Yaml.Scanner"
+  module : String     -- e.g. "L4YAML.Scanner"
   line   : Nat        -- start line
   endLine : Nat       -- end line
   deriving Inhabited
@@ -104,9 +104,9 @@ private def toDot (title : String) (records : Array DepRecord) : String :=
 
 /-- Strip common prefixes for shorter labels in DOT output. -/
 private def shortName (n : Name) : String :=
-  -- Drop the `Lean4Yaml.` prefix for readability
+  -- Drop the `L4YAML.` prefix for readability
   let s := n.toString
-  if s.startsWith "Lean4Yaml." then (s.drop 9).toString else s
+  if s.startsWith "L4YAML." then (s.drop 9).toString else s
 
 /-- Emit a DOT graph with short labels. -/
 private def toDotShort (title : String) (records : Array DepRecord)
@@ -135,10 +135,10 @@ where
     | none => "unknown"
 
 unsafe def main (args : List String) : IO Unit := do
-  -- Initialize search path and import the full Lean4Yaml environment
+  -- Initialize search path and import the full L4YAML environment
   Lean.enableInitializersExecution
   Lean.initSearchPath (← Lean.findSysroot)
-  let env ← Lean.importModules #[{ module := `Lean4Yaml }] {} 0
+  let env ← Lean.importModules #[{ module := `L4YAML }] {} 0
 
   -- Build a lookup from Name → SrcLoc using declRangeExt and module index
   let getLocation (n : Name) : Option SrcLoc :=

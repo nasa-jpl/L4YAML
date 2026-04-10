@@ -1,4 +1,4 @@
-import Lean4Yaml
+import L4YAML
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -20,7 +20,7 @@ changes.  87E4 and 2EBW were pre-existing failures.  Error stage improved
 44→52/74 (+8) with zero flow-stage regressions.
 -/
 
-open Lean4Yaml
+open L4YAML
 
 namespace Tests.FlowRegressionCheck
 

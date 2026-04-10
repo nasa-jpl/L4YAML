@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 
 try:
-    import lean4yaml
+    import l4yaml
 
     _LIB_AVAILABLE = True
 except OSError:
@@ -12,16 +12,16 @@ except OSError:
 
 needs_lib = pytest.mark.skipif(
     not _LIB_AVAILABLE,
-    reason="liblean4yaml.so not found",
+    reason="libl4yaml.so not found",
 )
 
 
 @needs_lib
 class TestRoundTrip:
     def _roundtrip(self, yaml: str) -> None:
-        v1 = lean4yaml.load(yaml)
-        dumped = lean4yaml.dump(v1)
-        v2 = lean4yaml.load(dumped)
+        v1 = l4yaml.load(yaml)
+        dumped = l4yaml.dump(v1)
+        v2 = l4yaml.load(dumped)
         assert v1 == v2
 
     def test_scalar(self) -> None:
@@ -45,24 +45,24 @@ meta:
         self._roundtrip(yaml)
 
     def test_flow_sequence(self) -> None:
-        v1 = lean4yaml.load("[a, b, c]")
-        dumped = lean4yaml.dump(v1)
-        v2 = lean4yaml.load(dumped)
+        v1 = l4yaml.load("[a, b, c]")
+        dumped = l4yaml.dump(v1)
+        v2 = l4yaml.load(dumped)
         # Compare item-by-item since flow vs block may differ
         assert len(v1) == len(v2)
         for i in range(len(v1)):
             assert v1[i].as_str() == v2[i].as_str()
 
     def test_empty_mapping(self) -> None:
-        v1 = lean4yaml.load("{}")
-        dumped = lean4yaml.dump(v1)
-        v2 = lean4yaml.load(dumped)
+        v1 = l4yaml.load("{}")
+        dumped = l4yaml.dump(v1)
+        v2 = l4yaml.load(dumped)
         assert v2.kind == "mapping"
         assert len(v2) == 0
 
     def test_multiline_scalar(self) -> None:
         yaml = "|\n  line one\n  line two"
-        v1 = lean4yaml.load(yaml)
-        dumped = lean4yaml.dump(v1)
-        v2 = lean4yaml.load(dumped)
+        v1 = l4yaml.load(yaml)
+        dumped = l4yaml.dump(v1)
+        v2 = l4yaml.load(dumped)
         assert v1.as_str() == v2.as_str()

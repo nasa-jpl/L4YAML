@@ -1,4 +1,4 @@
-import Lean4Yaml
+import L4YAML
 import Tests.SuiteRunner.Meta
 import Tests.SuiteRunner.HtmlReport
 import Tests.VerifiedResult
@@ -48,7 +48,7 @@ pass/fail results staged by feature coverage.
 - <https://yaml.org/spec/1.2.2/>
 -/
 
-open Lean4Yaml
+open L4YAML
 open Tests.SuiteRunner
 
 /-! ## Debug Helpers -/
@@ -124,7 +124,7 @@ def runTestCore (tc : TestCase) : TestResult :=
     .skip "YAML 1.3 specific"
   else if tc.expectFail then .skip "error test (run with 'error' stage)"
   else
-    match Lean4Yaml.TokenParser.parseYaml yaml with
+    match L4YAML.TokenParser.parseYaml yaml with
     | Except.ok _docs => .pass
     | Except.error e => .fail s!"parse error: {e}"
 

@@ -2,7 +2,7 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Lean4Yaml.TokenParser
+import L4YAML.TokenParser
 
 /-!
 # yaml-test-suite Compile-Time Guards — Scalar Stage
@@ -15,9 +15,9 @@ Each `#guard` is evaluated by Lean's kernel during `lake build`.
 These are Phase 4 of the verification plan: yaml-test-suite as compile-time proofs.
 -/
 
-namespace Lean4Yaml.Proofs.SuiteGuards.Scalar
+namespace L4YAML.Proofs.SuiteGuards.Scalar
 
-open Lean4Yaml.TokenParser
+open L4YAML.TokenParser
 
 -- 2EBW:0 Allowed characters in keys
 #guard match parseYaml "a!\"#$%&'()*+,-./09:;<=>?@AZ[\\]^_`az{|}~: safe\n?foo: safe question mark\n:foo: safe colon\n-foo: safe dash\nthis is#not: a comment\n" with
@@ -304,4 +304,4 @@ open Lean4Yaml.TokenParser
   | .ok _ => true
   | .error _ => false
 
-end Lean4Yaml.Proofs.SuiteGuards.Scalar
+end L4YAML.Proofs.SuiteGuards.Scalar

@@ -1,4 +1,4 @@
-import Lean4Yaml.Types
+import L4YAML.Types
 import Tests.VerifiedResult
 
 /-
@@ -13,7 +13,7 @@ Basic unit tests for the verified YAML parser types and stream.
 Produces a `VerifiedSuiteResult` for structured reporting.
 -/
 
-open Lean4Yaml
+open L4YAML
 
 namespace Tests
 

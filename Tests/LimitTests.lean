@@ -1,10 +1,10 @@
-import Lean4Yaml
+import L4YAML
 import Tests.VerifiedResult
 
 /-!
 # Parser Security Limit Tests
 
-Exercises all limit categories from `Lean4Yaml/Limits.lean`:
+Exercises all limit categories from `L4YAML/Limits.lean`:
 
 1. **Alias limits** — depth, expansion count, node count, cycle detection
 2. **Structural limits** — nesting depth, collection size, scalar bytes, total nodes
@@ -14,7 +14,7 @@ Exercises all limit categories from `Lean4Yaml/Limits.lean`:
 6. **Normal YAML** — defaults must not reject well-formed input
 -/
 
-open Lean4Yaml
+open L4YAML
 open Tests
 
 namespace Tests.Limits

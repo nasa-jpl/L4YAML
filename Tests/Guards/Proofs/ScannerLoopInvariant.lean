@@ -1,8 +1,8 @@
-import Lean4Yaml.Proofs.ScannerLoopInvariant
+import L4YAML.Proofs.ScannerLoopInvariant
 
-namespace Lean4Yaml.Proofs.ScannerLoopInvariant
+namespace L4YAML.Proofs.ScannerLoopInvariant
 
-open Lean4Yaml.Scanner
+open L4YAML.Scanner
 
 -- Concrete validation that advance preserves offset bound for ASCII strings
 #guard (ScannerState.mk' "abc").advance.offset ≤ (ScannerState.mk' "abc").advance.inputEnd
@@ -42,4 +42,4 @@ open Lean4Yaml.Scanner
 #guard (ScannerState.mk' "ab").advance.simpleKeyStack.size == (ScannerState.mk' "ab").advance.flowStack.size
 #guard (ScannerState.mk' "ab").advance.offset ≤ (ScannerState.mk' "ab").advance.inputEnd
 
-end Lean4Yaml.Proofs.ScannerLoopInvariant
+end L4YAML.Proofs.ScannerLoopInvariant

@@ -196,12 +196,12 @@ This is provable by induction on fuel, examining the three cases.
 
 ## Files Modified
 
-1. **Lean4Yaml/Scanner.lean**
+1. **L4YAML/Scanner.lean**
    - Added `scanLoop` function (35 lines)
    - Refactored `scan` function (10 lines)
    - Total changes: ~45 lines
 
-2. **Lean4Yaml/Proofs/ScannerCorrectness.lean**
+2. **L4YAML/Proofs/ScannerCorrectness.lean**
    - Updated proof comments to reflect structural recursion
    - Removed references to "imperative loop challenges"
 

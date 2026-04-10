@@ -1,11 +1,11 @@
-import Lean4Yaml.Proofs.ScannerFlowCollection
+import L4YAML.Proofs.ScannerFlowCollection
 
-namespace Lean4Yaml.Proofs.ScannerFlowCollection
+namespace L4YAML.Proofs.ScannerFlowCollection
 
-open Lean4Yaml
-open Lean4Yaml.Scanner
-open Lean4Yaml.Emit
-open Lean4Yaml.Proofs.ScannerLoopInvariant
+open L4YAML
+open L4YAML.Scanner
+open L4YAML.Emit
+open L4YAML.Proofs.ScannerLoopInvariant
 
 #guard (scanFlowSequenceStart (ScannerState.mk' "[")).tokens.back!.val == .flowSequenceStart
 #guard (scanFlowMappingStart (ScannerState.mk' "{")).tokens.back!.val == .flowMappingStart
@@ -104,4 +104,4 @@ private def seqWithUtf8 : YamlValue := .sequence .flow #[mkScalar "αβ", mkScal
 private def mapWithEscapes : YamlValue := .mapping .flow #[(mkScalar "key\n1", mkScalar "val\t1")]
 #guard scanTokenTypes (emit mapWithEscapes) == some [.streamStart, .flowMappingStart, .key, .scalar "key\n1" .doubleQuoted, .value, .scalar "val\t1" .doubleQuoted, .flowMappingEnd, .streamEnd]
 
-end Lean4Yaml.Proofs.ScannerFlowCollection
+end L4YAML.Proofs.ScannerFlowCollection

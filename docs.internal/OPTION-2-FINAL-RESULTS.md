@@ -229,7 +229,7 @@ These techniques generalize to other proofs.
 ## Files Modified
 
 ### Proof Code
-- **Lean4Yaml/Proofs/ScannerCorrectness.lean**
+- **L4YAML/Proofs/ScannerCorrectness.lean**
   - ✅ `advance_preserves_tokens` — 6 lines, fully proven
   - ✅ `scan_last_is_streamEnd` — 8 lines, fully proven
   - 🔄 `scan_produces_at_least_two` — 12 lines, 1 gap

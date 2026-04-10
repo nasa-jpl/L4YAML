@@ -1,12 +1,12 @@
-import Lean4Yaml.Proofs.ParserCorrectness
+import L4YAML.Proofs.ParserCorrectness
 
-namespace Lean4Yaml.Proofs.ParserCorrectness
+namespace L4YAML.Proofs.ParserCorrectness
 
-open Lean4Yaml
-open Lean4Yaml.Grammar
-open Lean4Yaml.TokenParser
-open Lean4Yaml.Proofs.Soundness
-open Lean4Yaml.Proofs.ParserSoundness
+open L4YAML
+open L4YAML.Grammar
+open L4YAML.TokenParser
+open L4YAML.Proofs.Soundness
+open L4YAML.Proofs.ParserSoundness
 
 -- Helper to check if a parse result has grammar witnesses
 private def checkHasWitness (input : String) : Bool :=
@@ -42,4 +42,4 @@ private def checkHasWitness (input : String) : Bool :=
 #guard checkHasWitness "key1: value1\nkey2: value2"
 #guard checkHasWitness "- item1\n- item2\n- item3"
 
-end Lean4Yaml.Proofs.ParserCorrectness
+end L4YAML.Proofs.ParserCorrectness

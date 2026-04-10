@@ -71,7 +71,7 @@ jobs:
       # -------------------------------------------------------
       - name: Build parser and test tools
         run: |
-          lake build Lean4Yaml
+          lake build L4YAML
           lake build suiterunner tryparse tryroundtrip trydump
           lake build tests demo explicitkeytests flowtests
           lake build validationtests dumproundtrip rawparsetests
@@ -114,11 +114,11 @@ jobs:
           cmake -B ffi/build -S ffi
           cmake --build ffi/build
           mkdir -p ffi/out
-          cp ffi/build/liblean4yaml.so ffi/out/liblean4yaml.so 2>/dev/null || true
+          cp ffi/build/libl4yaml.so ffi/out/libl4yaml.so 2>/dev/null || true
 
       - name: Build Rust tryparse binary
         run: |
-          cd rust/lean4yaml
+          cd rust/l4yaml
           cargo build --release --example tryparse
 
       - name: Run Python FFI tests
@@ -126,7 +126,7 @@ jobs:
           RESULTS="docs/reports"
           echo "=== Python FFI Tests ===" | tee "$RESULTS/python-ffi-tests.txt"
           cd "$GITHUB_WORKSPACE"
-          LEAN4YAML_LIB="$GITHUB_WORKSPACE/ffi/out" \
+          L4YAML_LIB="$GITHUB_WORKSPACE/ffi/out" \
           LD_LIBRARY_PATH="$GITHUB_WORKSPACE/ffi/out:${LD_LIBRARY_PATH:-}" \
           python3 -m pytest Tests/test_python_ffi.py \
             -v --tb=short --no-header \
@@ -139,7 +139,7 @@ jobs:
           RESULTS="docs/reports"
           echo "=== Python Package Tests ===" | tee "$RESULTS/python-package-tests.txt"
           cd "$GITHUB_WORKSPACE"
-          LEAN4YAML_LIB="$GITHUB_WORKSPACE/ffi/out" \
+          L4YAML_LIB="$GITHUB_WORKSPACE/ffi/out" \
           LD_LIBRARY_PATH="$GITHUB_WORKSPACE/ffi/out:${LD_LIBRARY_PATH:-}" \
           python3 -m pytest python/tests/ \
             -v --tb=short --no-header \
@@ -151,7 +151,7 @@ jobs:
         run: |
           RESULTS="docs/reports"
           echo "=== Cross-Language yaml-test-suite Comparison ===" | tee "$RESULTS/cross-lang-comparison.txt"
-          LEAN4YAML_LIB="$GITHUB_WORKSPACE/ffi/out" \
+          L4YAML_LIB="$GITHUB_WORKSPACE/ffi/out" \
           LD_LIBRARY_PATH="$GITHUB_WORKSPACE/ffi/out:${LD_LIBRARY_PATH:-}" \
           python3 - "$RESULTS" <<'PYEOF' | tee -a "$RESULTS/cross-lang-comparison.txt"
           import subprocess, sys, json, pathlib

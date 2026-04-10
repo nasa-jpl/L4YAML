@@ -1,4 +1,4 @@
-import Lean4Yaml.TokenParser
+import L4YAML.TokenParser
 
 /-!
 # %TAG Directive Resolution Guards (§6.8.2)
@@ -19,7 +19,7 @@ are correctly wired to tag expansion during parsing.
 - §9: Default handles (no %TAG): `!!str`, `!local`
 -/
 
-open Lean4Yaml.TokenParser
+open L4YAML.TokenParser
 
 namespace Tests.Guards.Proofs.TagResolution
 

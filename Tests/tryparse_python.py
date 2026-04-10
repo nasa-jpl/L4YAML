@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """tryparse_python — Minimal Python tryparse for yaml-test-suite integration.
 
-Reads a YAML file, parses it via the Python API (lean4yaml.load_all), and
+Reads a YAML file, parses it via the Python API (l4yaml.load_all), and
 exits 0 on success, 1 on parse error.  Mirrors the Lean tryparse
 binary exactly so the suiterunner can swap backends.
 
@@ -17,7 +17,7 @@ _python_dir = os.path.join(_script_dir, "..", "python")
 if os.path.isdir(_python_dir):
     sys.path.insert(0, _python_dir)
 
-import lean4yaml  # noqa: E402
+import l4yaml  # noqa: E402
 
 _VALID_PRESETS = ("unlimited", "default", "strict", "permissive", "safe_tags")
 
@@ -45,9 +45,9 @@ def main() -> int:
         return 2
 
     try:
-        lean4yaml.load_all(content, limits=preset)
+        l4yaml.load_all(content, limits=preset)
         return 0
-    except lean4yaml.Lean4YamlError as e:
+    except l4yaml.L4YAMLError as e:
         print(str(e), file=sys.stderr)
         return 1
 

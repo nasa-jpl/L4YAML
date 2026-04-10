@@ -1,11 +1,11 @@
-import Lean4Yaml.Proofs.RoundTrip
+import L4YAML.Proofs.RoundTrip
 
-namespace Lean4Yaml.Proofs.RoundTrip
+namespace L4YAML.Proofs.RoundTrip
 
-open Lean4Yaml
-open Lean4Yaml.Emit
-open Lean4Yaml.Grammar
-open Lean4Yaml.TokenParser
+open L4YAML
+open L4YAML.Emit
+open L4YAML.Grammar
+open L4YAML.TokenParser
 
 private def roundTrips (v : YamlValue) : Bool :=
   match parseYamlSingle (emit v) with
@@ -229,4 +229,4 @@ private def roundTrips (v : YamlValue) : Bool :=
 #guard roundTrips (.scalar ⟨"  both  ", .plain, none, none, none⟩)
 #guard roundTrips (.scalar ⟨"multi  spaces", .plain, none, none, none⟩)
 
-end Lean4Yaml.Proofs.RoundTrip
+end L4YAML.Proofs.RoundTrip

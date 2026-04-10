@@ -1,0 +1,116 @@
+import LeanPrism
+
+import L4YAML.Config
+import L4YAML.Dump
+import L4YAML.Emitter
+import L4YAML.FFI
+import L4YAML.Grammar
+import L4YAML.Limits
+import L4YAML.Proofs.BlockScalarContracts
+import L4YAML.Proofs.CharClass
+import L4YAML.Proofs.CommentProperties
+import L4YAML.Proofs.CommentRoundTrip
+import L4YAML.Proofs.Completeness
+import L4YAML.Proofs.Composition
+import L4YAML.Proofs.CouplingBridge
+import L4YAML.Proofs.DocumentContracts
+import L4YAML.Proofs.DocumentProduction
+import L4YAML.Proofs.DumpRoundTrip
+import L4YAML.Proofs.EmitterScannability
+import L4YAML.Proofs.EndToEndCorrectness
+import L4YAML.Proofs.ErrorProperties
+import L4YAML.Proofs.EscapeResolution
+import L4YAML.Proofs.FoldNewlines
+import L4YAML.Proofs.LawfulBEq
+import L4YAML.Proofs.NodeProduction
+import L4YAML.Proofs.ParserAnchorProofs
+import L4YAML.Proofs.ParserCompleteness
+import L4YAML.Proofs.ParserCorrectness
+import L4YAML.Proofs.ParserGrammable
+import L4YAML.Proofs.ParserGrammableBase
+import L4YAML.Proofs.ParserNodeProofs
+import L4YAML.Proofs.ParserSoundness
+import L4YAML.Proofs.ParserWellBehaved
+import L4YAML.Proofs.ParserWfaProofs
+import L4YAML.Proofs.PreprocessProduction
+import L4YAML.Proofs.RoundTrip
+import L4YAML.Proofs.RoundTripComposition
+import L4YAML.Proofs.ScalarCoupling
+import L4YAML.Proofs.ScalarProduction
+import L4YAML.Proofs.ScannerContracts
+import L4YAML.Proofs.ScannerCorrectness
+import L4YAML.Proofs.ScannerCoupling
+import L4YAML.Proofs.ScannerDispatch
+import L4YAML.Proofs.ScannerDocument
+import L4YAML.Proofs.ScannerDoubleQuoted
+import L4YAML.Proofs.ScannerEmitBridge
+import L4YAML.Proofs.ScannerFlowCollection
+import L4YAML.Proofs.ScannerIndent
+import L4YAML.Proofs.ScannerIndentStack
+import L4YAML.Proofs.ScannerLoopInvariant
+import L4YAML.Proofs.ScannerPlainContent
+import L4YAML.Proofs.ScannerPlainScalar
+import L4YAML.Proofs.ScannerPlainScalarValid
+import L4YAML.Proofs.ScannerProgress
+import L4YAML.Proofs.ScannerProofs
+import L4YAML.Proofs.ScannerScalar
+import L4YAML.Proofs.ScannerSimpleKey
+import L4YAML.Proofs.ScannerWhitespace
+import L4YAML.Proofs.ScanStrictCoupling
+import L4YAML.Proofs.SchemaComposition
+import L4YAML.Proofs.SchemaDump
+import L4YAML.Proofs.SchemaResolution
+import L4YAML.Proofs.Soundness
+import L4YAML.Proofs.StreamAccum
+import L4YAML.Proofs.StringProperties
+import L4YAML.Proofs.StructureCoupling
+import L4YAML.Proofs.StructureProduction
+import L4YAML.Proofs.SurfaceCoupling
+import L4YAML.Proofs.TagResolution
+import L4YAML.Proofs.ValueAlgebra
+import L4YAML.Scanner
+import L4YAML.Schema
+import L4YAML.Schema.Api
+import L4YAML.Schema.Deriving
+import L4YAML.Schema.Dump
+import L4YAML.Schema.FromToYaml
+import L4YAML.Schema.Struct
+import L4YAML.Surface
+import L4YAML.Token
+import L4YAML.TokenParser
+import L4YAML.Types
+import L4YAML.YamlSpec
+
+/-
+Copyright (c) 2026. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+-/
+
+/-!
+# L4YAML — Verified YAML Parser
+
+A YAML 1.2.2 parser with the goal of verified correctness.
+
+## Quick Start
+
+```lean
+import L4YAML
+
+open L4YAML
+
+-- Parse a YAML string
+#eval TokenParser.parseYaml "key: value\nlist:\n  - a\n  - b"
+
+-- Parse expecting a single document
+#eval TokenParser.parseYamlSingle "hello: world"
+```
+
+## Architecture
+
+- **Types**: `YamlValue` AST, `YamlPos` position tracking
+- **Token**: Token types with position information
+- **Scanner**: Tokenizer producing `TokenStream`
+- **TokenParser**: Token-level parser producing `YamlValue`
+- **Grammar**: Formal specification as inductive `Prop`s
+- **Proofs**: Soundness, completeness, round-trip, composition
+-/

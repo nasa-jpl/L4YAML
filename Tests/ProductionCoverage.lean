@@ -1,4 +1,4 @@
-import Lean4Yaml.TokenParser
+import L4YAML.TokenParser
 import Tests.VerifiedResult
 
 /-
@@ -26,7 +26,7 @@ production to its corresponding Lean source code.
 
 namespace Tests.ProdCoverage
 
-open Lean Lean4Yaml
+open Lean L4YAML
 open Tests
 
 /-! ## YAML 1.2.2 Production Catalog
@@ -277,7 +277,7 @@ structure SpecImplEntry where
   specSection : String
   deriving Repr, Inhabited
 
-/-- Resolve a module name to a file path (Lean4Yaml.Scanner → Lean4Yaml/Scanner.lean). -/
+/-- Resolve a module name to a file path (L4YAML.Scanner → L4YAML/Scanner.lean). -/
 def moduleToPath (modName : String) : String :=
   modName.replace "." "/" ++ ".lean"
 

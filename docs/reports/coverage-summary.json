@@ -8502,22 +8502,22 @@
           },
           {
             "category": "Per-module annotation counts",
-            "name": "Lean4Yaml.Scanner: 188 annotations",
+            "name": "L4YAML.Scanner: 188 annotations",
             "outcome": "pass"
           },
           {
             "category": "Per-module annotation counts",
-            "name": "Lean4Yaml.TokenParser: 56 annotations",
+            "name": "L4YAML.TokenParser: 56 annotations",
             "outcome": "pass"
           },
           {
             "category": "Per-module annotation counts",
-            "name": "Lean4Yaml.CharPredicates: 94 annotations",
+            "name": "L4YAML.CharPredicates: 94 annotations",
             "outcome": "pass"
           },
           {
             "category": "Per-module annotation counts",
-            "name": "Lean4Yaml.Token: 21 annotations",
+            "name": "L4YAML.Token: 21 annotations",
             "outcome": "pass"
           },
           {

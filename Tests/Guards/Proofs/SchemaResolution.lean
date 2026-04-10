@@ -1,9 +1,9 @@
-import Lean4Yaml.Proofs.SchemaResolution
+import L4YAML.Proofs.SchemaResolution
 
-namespace Lean4Yaml.Schema.Proofs
+namespace L4YAML.Schema.Proofs
 
-open Lean4Yaml.Schema
-open Lean4Yaml
+open L4YAML.Schema
+open L4YAML
 
 -- Null resolution
 #guard resolveImplicit "" == .null
@@ -64,4 +64,4 @@ open Lean4Yaml
 #guard resolve (.scalar ⟨"42", .plain, some "tag:yaml.org,2002:str", none, none⟩) == .str "42"
 #guard resolve (.scalar ⟨"hello", .plain, some "tag:yaml.org,2002:null", none, none⟩) == .null
 
-end Lean4Yaml.Schema.Proofs
+end L4YAML.Schema.Proofs

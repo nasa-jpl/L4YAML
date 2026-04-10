@@ -1,0 +1,10 @@
+[package]
+name = "l4yaml-sys"
+version = "0.1.0"
+edition = "2021"
+description = "Raw FFI bindings to libl4yaml (verified YAML parser)"
+license = "Apache-2.0"
+links = "l4yaml"
+
+[build-dependencies]
+bindgen = "0.71"

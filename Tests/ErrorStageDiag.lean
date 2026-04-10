@@ -1,4 +1,4 @@
-import Lean4Yaml
+import L4YAML
 import Tests.SuiteRunner.Meta
 
 /-
@@ -28,7 +28,7 @@ The five test IDs below are the error tests fixed by Step 10a validation
 rules.  All five should be rejected by `Parse.parseYaml`.
 -/
 
-open Lean4Yaml
+open L4YAML
 open Tests.SuiteRunner
 
 namespace Tests.ErrorStageDiag

@@ -1,0 +1,10 @@
+[package]
+name = "l4yaml"
+version = "0.1.0"
+edition = "2021"
+description = "Safe Rust wrapper for the Lean 4 verified YAML parser"
+license = "Apache-2.0"
+
+[dependencies]
+l4yaml-sys = { path = "../l4yaml-sys" }
+thiserror = "2"

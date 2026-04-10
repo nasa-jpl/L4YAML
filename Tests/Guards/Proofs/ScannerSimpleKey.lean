@@ -1,11 +1,11 @@
-import Lean4Yaml.Proofs.ScannerSimpleKey
+import L4YAML.Proofs.ScannerSimpleKey
 
-namespace Lean4Yaml.Proofs.ScannerSimpleKey
+namespace L4YAML.Proofs.ScannerSimpleKey
 
-open Lean4Yaml.Scanner
-open Lean4Yaml.Proofs.ScannerLoopInvariant
-open Lean4Yaml.Proofs.ScannerContracts
-open Lean4Yaml.Proofs.ScannerIndentStack
+open L4YAML.Scanner
+open L4YAML.Proofs.ScannerLoopInvariant
+open L4YAML.Proofs.ScannerContracts
+open L4YAML.Proofs.ScannerIndentStack
 
 -- saveSimpleKey preserves WellFormed on mk' states (block context, simpleKeyAllowed)
 #guard (saveSimpleKey (ScannerState.mk' "key: value")).indents.size ≥ 1
@@ -299,4 +299,4 @@ private def scanTokenTypes (input : String) : Option (List YamlToken) :=
   .streamStart, .blockMappingStart, .key,
   .scalar "key" .plain, .value, .blockEnd, .streamEnd]
 
-end Lean4Yaml.Proofs.ScannerSimpleKey
+end L4YAML.Proofs.ScannerSimpleKey

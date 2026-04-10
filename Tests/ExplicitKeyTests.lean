@@ -1,4 +1,4 @@
-import Lean4Yaml.TokenParser
+import L4YAML.TokenParser
 import Tests.VerifiedResult
 
 /-
@@ -39,8 +39,8 @@ Runtime verification tests for YAML explicit key (`?`) support
 23. **Block→flow underindent** — `a:\n{b: c}` rejected per §8.1 [187] (v0.2.11)
 -/
 
-open Lean4Yaml
-open Lean4Yaml.TokenParser
+open L4YAML
+open L4YAML.TokenParser
 open Tests
 
 namespace Tests.ExplicitKey

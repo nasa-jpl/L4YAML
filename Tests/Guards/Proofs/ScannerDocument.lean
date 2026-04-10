@@ -1,12 +1,12 @@
-import Lean4Yaml.Proofs.ScannerDocument
+import L4YAML.Proofs.ScannerDocument
 
-namespace Lean4Yaml.Proofs.ScannerDocument
+namespace L4YAML.Proofs.ScannerDocument
 
-open Lean4Yaml.Scanner
-open Lean4Yaml.Proofs.ScannerLoopInvariant
-open Lean4Yaml.Proofs.ScannerContracts
-open Lean4Yaml.Proofs.ScannerIndentStack
-open Lean4Yaml.Proofs.ScannerScalar
+open L4YAML.Scanner
+open L4YAML.Proofs.ScannerLoopInvariant
+open L4YAML.Proofs.ScannerContracts
+open L4YAML.Proofs.ScannerIndentStack
+open L4YAML.Proofs.ScannerScalar
 
 -- WellFormed preservation (anchor)
 private def checkAnchorWF (input : String) : Bool :=
@@ -554,4 +554,4 @@ private def scanOk (input : String) : Bool :=
 #guard scanOk "...\n---\n..."
 #guard scanOk "%YAML 1.2\n%TAG !! tag:yaml.org,2002:\n---\nvalue"
 
-end Lean4Yaml.Proofs.ScannerDocument
+end L4YAML.Proofs.ScannerDocument

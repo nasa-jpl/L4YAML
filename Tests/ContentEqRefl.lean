@@ -1,4 +1,4 @@
-import Lean4Yaml.Emitter
+import L4YAML.Emitter
 
 /-!
 # contentEq_refl full proof
@@ -8,7 +8,7 @@ Uses `show` to bypass the equation-generation limitation, combined with
 well-founded recursion on `sizeOf`.
 -/
 
-open Lean4Yaml Lean4Yaml.Emit
+open L4YAML L4YAML.Emit
 
 /-- `contentEqList` is reflexive given an IH on elements. -/
 private theorem contentEqList_refl (vs : List YamlValue)

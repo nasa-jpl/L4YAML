@@ -1,10 +1,10 @@
-import Lean4Yaml.Proofs.ScannerScalar
+import L4YAML.Proofs.ScannerScalar
 
-namespace Lean4Yaml.Proofs.ScannerScalar
+namespace L4YAML.Proofs.ScannerScalar
 
-open Lean4Yaml.Scanner
-open Lean4Yaml.Proofs.ScannerLoopInvariant
-open Lean4Yaml.Proofs.ScannerContracts
+open L4YAML.Scanner
+open L4YAML.Proofs.ScannerLoopInvariant
+open L4YAML.Proofs.ScannerContracts
 
 -- emitAt preserves WellFormed fields (concrete)
 #guard ((ScannerState.mk' "test").emitAt default .key).indents.size ≥ 1
@@ -381,4 +381,4 @@ private def scanTokens (input : String) : Option (List YamlToken) :=
   .scalar "key" .plain, .value,
   .scalar "hello\nworld\n" .literal, .blockEnd, .streamEnd]
 
-end Lean4Yaml.Proofs.ScannerScalar
+end L4YAML.Proofs.ScannerScalar

@@ -1,10 +1,10 @@
-import Lean4Yaml.Proofs.RoundTripComposition
+import L4YAML.Proofs.RoundTripComposition
 
-namespace Lean4Yaml.Proofs.RoundTripComposition
+namespace L4YAML.Proofs.RoundTripComposition
 
-open Lean4Yaml
-open Lean4Yaml.Schema
-open Lean4Yaml.Dump
+open L4YAML
+open L4YAML.Schema
+open L4YAML.Dump
 
 -- §5: End-to-end resolve round-trip: dump → parse → resolve == resolve
 
@@ -92,4 +92,4 @@ open Lean4Yaml.Dump
 #guard resolveRoundTripsTyped (["x", "y"] : List String)
 #guard resolveRoundTripsTyped (#[#["a", "b"], #["c"]] : Array (Array String))
 
-end Lean4Yaml.Proofs.RoundTripComposition
+end L4YAML.Proofs.RoundTripComposition

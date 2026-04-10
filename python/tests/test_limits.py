@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 
 try:
-    import lean4yaml
+    import l4yaml
 
     _LIB_AVAILABLE = True
 except OSError:
@@ -12,30 +12,30 @@ except OSError:
 
 needs_lib = pytest.mark.skipif(
     not _LIB_AVAILABLE,
-    reason="liblean4yaml.so not found",
+    reason="libl4yaml.so not found",
 )
 
 
 @needs_lib
 class TestPresets:
     def test_default_preset(self) -> None:
-        v = lean4yaml.load("hello", limits="default")
+        v = l4yaml.load("hello", limits="default")
         assert v.as_str() == "hello"
 
     def test_strict_preset(self) -> None:
-        v = lean4yaml.load("hello", limits="strict")
+        v = l4yaml.load("hello", limits="strict")
         assert v.as_str() == "hello"
 
     def test_permissive_preset(self) -> None:
-        v = lean4yaml.load("hello", limits="permissive")
+        v = l4yaml.load("hello", limits="permissive")
         assert v.as_str() == "hello"
 
     def test_unlimited_preset(self) -> None:
-        v = lean4yaml.load("hello", limits="unlimited")
+        v = l4yaml.load("hello", limits="unlimited")
         assert v.as_str() == "hello"
 
     def test_safe_tags_preset(self) -> None:
-        v = lean4yaml.load("hello", limits="safe_tags")
+        v = l4yaml.load("hello", limits="safe_tags")
         assert v.as_str() == "hello"
 
 
@@ -48,8 +48,8 @@ class TestStrictLimits:
         for i in range(70):
             yaml += "  " * i + f"k{i}:\n"
         yaml += "  " * 70 + "leaf"
-        with pytest.raises((lean4yaml.LimitError, lean4yaml.ParseError)):
-            lean4yaml.load(yaml, limits="strict")
+        with pytest.raises((l4yaml.LimitError, l4yaml.ParseError)):
+            l4yaml.load(yaml, limits="strict")
 
 
 @needs_lib
@@ -61,9 +61,9 @@ structural:
   maxDepth: 10
   maxAliasExpansion: 50
 """
-        handle = lean4yaml.parse_limits_yaml(cfg)
+        handle = l4yaml.parse_limits_yaml(cfg)
         assert handle != 0
 
     def test_invalid_config(self) -> None:
-        with pytest.raises(lean4yaml.ConfigError):
-            lean4yaml.parse_limits_yaml("not: valid: limits: yaml: {{{{")
+        with pytest.raises(l4yaml.ConfigError):
+            l4yaml.parse_limits_yaml("not: valid: limits: yaml: {{{{")

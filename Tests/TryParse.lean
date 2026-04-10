@@ -1,4 +1,4 @@
-import Lean4Yaml
+import L4YAML
 
 /-!
 # TryParse — single-file YAML parse attempt
@@ -11,7 +11,7 @@ An optional second argument selects a limits preset:
   `unlimited` (default) | `default` | `strict` | `permissive` | `safe_tags`
 -/
 
-open Lean4Yaml
+open L4YAML
 
 /-- Map a CLI preset name to `ParserLimits`. -/
 def parsePreset (s : String) : Option ParserLimits :=

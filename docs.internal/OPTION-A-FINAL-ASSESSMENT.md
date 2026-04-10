@@ -252,13 +252,13 @@ To achieve zero `sorry` across all P10.11 theorems:
 ## Files Modified
 
 ### Source Code
-1. **Lean4Yaml/Scanner.lean**
+1. **L4YAML/Scanner.lean**
    - Added `scanLoop` function (~35 lines)
    - Refactored `scan` function (~10 lines)
    - **Total**: ~45 lines changed
 
 ### Proof Files
-2. **Lean4Yaml/Proofs/ScannerCorrectness.lean**
+2. **L4YAML/Proofs/ScannerCorrectness.lean**
    - Added 2 helper theorems (~60 lines)
    - Updated 1 main theorem (~20 lines)
    - **Total**: ~80 lines added

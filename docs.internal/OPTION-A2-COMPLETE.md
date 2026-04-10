@@ -224,7 +224,7 @@ theorem scan_last_is_streamEnd (input : String)
 ## Files Modified
 
 ### Proof Files
-- **Lean4Yaml/Proofs/ScannerCorrectness.lean**
+- **L4YAML/Proofs/ScannerCorrectness.lean**
   - ✅ `advance_preserves_tokens` — Fully proven
   - ✅ `unwindIndents_adds_tokens` — Structure complete
   - ✅ `scanLoop_success_emits_streamEnd` — Success path proven

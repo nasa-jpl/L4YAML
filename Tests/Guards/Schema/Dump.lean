@@ -1,13 +1,13 @@
-import Lean4Yaml.Schema.Dump
+import L4YAML.Schema.Dump
 
-namespace Lean4Yaml.Schema.Dump
+namespace L4YAML.Schema.Dump
 
-open Lean4Yaml
-open Lean4Yaml.Dump
-open Lean4Yaml.Emit
-open Lean4Yaml.TokenParser
-open Lean4Yaml.Schema
-open Lean4Yaml.Schema.Dump
+open L4YAML
+open L4YAML.Dump
+open L4YAML.Emit
+open L4YAML.TokenParser
+open L4YAML.Schema
+open L4YAML.Schema.Dump
 
 #guard dumpTyped true == "\"true\""
 #guard dumpTyped false == "\"false\""
@@ -74,4 +74,4 @@ open Lean4Yaml.Schema.Dump
 #guard dumpTypedDocuments [(1 : Nat)] == "1"
 #guard dumpTypedDocuments [(1 : Nat), 2] == "1\n---\n2\n..."
 
-end Lean4Yaml.Schema.Dump
+end L4YAML.Schema.Dump

@@ -18,7 +18,7 @@ Extend Phase B's `scanDoubleQuoted_prod` pattern to the remaining three content 
 | `scanPlainScalar_prod` | `collectPlainScalarLoop` → `scanPlainScalar` | `SNsPlain 0 .blockIn` (= `SNsPlainMultiLine`) | **Done** (minimal 1-char witness, 0 sorry) |
 | `scanBlockScalar_prod` | `collectBlockScalarLoop` → `scanBlockScalar` | `SCLLiteral 0` / `SCLFolded 0` | **Done** (0 sorry) |
 
-**File:** [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) — extends existing Phase B infrastructure, reuses `peek_some_sp`, `advance_corr`, `consumeNewline_sbreak_corr`, `foldQuotedNewlines_prod`.
+**File:** [ScalarProduction.lean](L4YAML/Proofs/ScalarProduction.lean) — extends existing Phase B infrastructure, reuses `peek_some_sp`, `advance_corr`, `consumeNewline_sbreak_corr`, `foldQuotedNewlines_prod`.
 
 **Sorry status:** Build: 415/415 jobs, 0 errors, **9 sorry warnings** (all in StreamAccum.lean). ScalarProduction.lean, StructureProduction.lean, NodeProduction.lean, PreprocessProduction.lean, ScannerCorrectness.lean — all sorry-free. **A17**: Closed S3 (multi-line plain scalar line break) — ScalarProduction.lean now sorry-free, sorry count 11→9. **A16**: Closed S10 (named/non-specific tag) via `scanNamedTag_prod` decomposition — sorry count 11→10, StructureProduction.lean now sorry-free. **A15**: Closed S6 (flow context plain scalar) by parameterizing `collectPlainScalarLoop_prod`, helpers, and `scanPlainScalar_to_flowNode` over `inFlow : Bool` — eliminated 3 sorry sites, warning count unchanged (11). **A14**: Closed S5 (doc boundary first-char termination) via `h_not_doc` precondition + `collectPlainScalarLoop_content_first_step` — sorry count 12→11. **A13**: Closed S4 (`#` at col=0) via `h_hash_col` precondition — sorry count unchanged since S3/S4 share the same theorem. **A12**: Closed S7/S8/S9/alias sorry sites by contradiction (14→12 warnings). **A11**: Removed `hm : m ≥ 1` from grammar constructors (compensating for Nat encoding offset), closing S1/S2. **A10**: Scanner Except conversion makes S7/S8/S9/alias sorry sites closable by contradiction.
 
@@ -77,7 +77,7 @@ SSeparate + props + SCLFolded       → SBlockNode.blockFolded
 SSLComments                         → SBlockNode.emptyNode
 ```
 
-**File:** [NodeProduction.lean](Lean4Yaml/Proofs/NodeProduction.lean) — imports `ScalarProduction` + `StructureProduction`.
+**File:** [NodeProduction.lean](L4YAML/Proofs/NodeProduction.lean) — imports `ScalarProduction` + `StructureProduction`.
 
 **Theorem inventory (18):**
 
@@ -141,7 +141,7 @@ The accumulator must track:
 
 At each `scanNextToken` step, the Layer 2 `_prod` theorem for that step advances the accumulator. At loop termination (EOF), the accumulator is finalized into a complete `SLYamlStream`, discharging the sorry in `scan_content_gives_stream`.
 
-**File:** [DocumentProduction.lean](Lean4Yaml/Proofs/DocumentProduction.lean) — contains stream extension lemmas (§6a) and the precisely scoped sorry (§6b); parallels `ScanStrictCoupling.scanLoop_full_consumption` but with grammar accumulation. Import chain: `ScalarProduction → NodeProduction → DocumentProduction`.
+**File:** [DocumentProduction.lean](L4YAML/Proofs/DocumentProduction.lean) — contains stream extension lemmas (§6a) and the precisely scoped sorry (§6b); parallels `ScanStrictCoupling.scanLoop_full_consumption` but with grammar accumulation. Import chain: `ScalarProduction → NodeProduction → DocumentProduction`.
 
 **New theorems (4):**
 
@@ -231,9 +231,9 @@ Complete the per-scanner-function production coupling for the 7 missing content 
 5. **`Bool.or` is left-associative.** After `Bool.or_eq_true` simplification, `a || b || c` becomes `(a || b) || c` which gives 2-level `Or`, not 3-level. Only one `Or.inr` is needed to reach the last disjunct, not two.
 
 **New files/sections:**
-- [NodeProduction.lean](Lean4Yaml/Proofs/NodeProduction.lean) §6: GStar/GPlus lifting + anchor/alias converters (6 theorems, 61 lines)
-- [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) §5: isPlainSafe bridge lemmas (6 theorems, 52 lines)
-- [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) §6: Block header production (3 theorems, 55 lines)
+- [NodeProduction.lean](L4YAML/Proofs/NodeProduction.lean) §6: GStar/GPlus lifting + anchor/alias converters (6 theorems, 61 lines)
+- [ScalarProduction.lean](L4YAML/Proofs/ScalarProduction.lean) §5: isPlainSafe bridge lemmas (6 theorems, 52 lines)
+- [ScalarProduction.lean](L4YAML/Proofs/ScalarProduction.lean) §6: Block header production (3 theorems, 55 lines)
 
 </details>
 
@@ -352,11 +352,11 @@ Remaining _prod theorems ───────────────┘       
 ```
 
 **Files:**
-- [ScalarProduction.lean](Lean4Yaml/Proofs/ScalarProduction.lean) — **0 sorry**. All `_prod` theorems fully proven (scanPlainScalar, scanBlockScalar, scanDoubleQuoted, scanSingleQuoted)
-- [NodeProduction.lean](Lean4Yaml/Proofs/NodeProduction.lean) — extend with flow collection composition
-- [DocumentProduction.lean](Lean4Yaml/Proofs/DocumentProduction.lean) — stream construction helpers, `scan_strict_proof` delegates to `scan_content_gives_stream_v2` (0 sorry)
-- [PreprocessProduction.lean](Lean4Yaml/Proofs/PreprocessProduction.lean) — preprocessing → grammar coupling (sub-layer 4b)
-- [StreamAccum.lean](Lean4Yaml/Proofs/StreamAccum.lean) — stream accumulator through scanLoop (sub-layers 4c→4d→4e: lagging quad with `BlockStack`)
+- [ScalarProduction.lean](L4YAML/Proofs/ScalarProduction.lean) — **0 sorry**. All `_prod` theorems fully proven (scanPlainScalar, scanBlockScalar, scanDoubleQuoted, scanSingleQuoted)
+- [NodeProduction.lean](L4YAML/Proofs/NodeProduction.lean) — extend with flow collection composition
+- [DocumentProduction.lean](L4YAML/Proofs/DocumentProduction.lean) — stream construction helpers, `scan_strict_proof` delegates to `scan_content_gives_stream_v2` (0 sorry)
+- [PreprocessProduction.lean](L4YAML/Proofs/PreprocessProduction.lean) — preprocessing → grammar coupling (sub-layer 4b)
+- [StreamAccum.lean](L4YAML/Proofs/StreamAccum.lean) — stream accumulator through scanLoop (sub-layers 4c→4d→4e: lagging quad with `BlockStack`)
 
 **Execution order:**
 1. ~~`scanAnchorOrAlias_nonempty` (lowest risk, ~30 lines)~~ ✅ Done
@@ -401,7 +401,7 @@ Remaining _prod theorems ───────────────┘       
 5. **Column-0 invariant propagation.** The `skipToContentLoop_col0_prod` theorem maintains `sp_mid.col = 0` across iterations. This works because every `SBBreak` resets column to 0, and the induction hypothesis requires `sp.col = 0` as a precondition. The invariant trivially holds at the base case (stop cases return `sp_mid = sp` where `sp.col = 0` was the input). This enables `SSeparateInLine.startOfLine` construction in every iteration.
 
 **New files:**
-- [PreprocessProduction.lean](Lean4Yaml/Proofs/PreprocessProduction.lean) — 280 lines, 8 theorems, 0 sorry
+- [PreprocessProduction.lean](L4YAML/Proofs/PreprocessProduction.lean) — 280 lines, 8 theorems, 0 sorry
 
 | Theorem | Surface type produced | Lines |
 |---|---|---|
@@ -429,7 +429,7 @@ Remaining _prod theorems ───────────────┘       
 6. **⚠️ Code/proof architecture mismatch: the 5 per-dispatch sorry are unprovable as stated.** The invariant `SLYamlStream sp_start sp' ∧ ScannerSurfCorr sc sp'` (grammar and scanner at the same position after each token) cannot hold. Grammar productions require prefix (`SSeparate`) + content + postfix (`SSLComments`), but the postfix is consumed during the *next* token's preprocessing. After scanning `[`, the consumed portion `sp_start → sp'` cannot form a valid `SLYamlStream` because `[` alone is incomplete — the grammar requires `[ ... ]` as a complete `SFlowSequence`. This is an instance of what Garlan, Allen, and Ockerbloom (1995) call "architecture mismatch" — except here the mismatch is between the code's structural decomposition (per-token steps) and the specification's structural decomposition (nested grammar productions). The escalation from 1 sorry / 3 layers to 1 sorry / 4 layers with sub-layers a–d was a diagnostic signal: each sub-layer was working around the same fundamental misalignment. See [MISMATCH.md](MISMATCH.md) for the full analysis and proposed resolution (lagging grammar accumulator).
 
 **New files:**
-- [StreamAccum.lean](Lean4Yaml/Proofs/StreamAccum.lean) — 571 lines, `PendingNode` + `BlockStack` inductives + 11 theorems (5 per-dispatch sorry **architecturally provable**, 6 proven). Restructured through 4c→4d→4e: lagging quad with block collection accumulator.
+- [StreamAccum.lean](L4YAML/Proofs/StreamAccum.lean) — 571 lines, `PendingNode` + `BlockStack` inductives + 11 theorems (5 per-dispatch sorry **architecturally provable**, 6 proven). Restructured through 4c→4d→4e: lagging quad with block collection accumulator.
 
 | Theorem | Purpose | Status |
 |---|---|---|
@@ -2562,7 +2562,7 @@ Approach diverged from plan: instead of modifying Scanner.lean to add TAG direct
 
 **Changes (4 files):**
 
-- **StreamAccum.lean** — Added `h_at_line_end` field to `PendingNode.pendingDirective`: `sp_scan.chars = [] ∨ ∃ ch rest', sp_scan.chars = ch :: rest' ∧ isLineBreakBool ch = true`. Added `open Lean4Yaml.CharPredicates` (L58). Updated `close_with_ssl` pattern (L528). Updated 2 construction sites to pass `h_at_break` evidence from `scanDirective_prod`. Updated 3 pattern-match sites to use `@pendingDirective` explicit pattern syntax for correct binding. Wrote `preprocess_some_not_break` theorem (L613–646). Proved 2 contradiction proofs replacing sorry:
+- **StreamAccum.lean** — Added `h_at_line_end` field to `PendingNode.pendingDirective`: `sp_scan.chars = [] ∨ ∃ ch rest', sp_scan.chars = ch :: rest' ∧ isLineBreakBool ch = true`. Added `open L4YAML.CharPredicates` (L58). Updated `close_with_ssl` pattern (L528). Updated 2 construction sites to pass `h_at_break` evidence from `scanDirective_prod`. Updated 3 pattern-match sites to use `@pendingDirective` explicit pattern syntax for correct binding. Wrote `preprocess_some_not_break` theorem (L613–646). Proved 2 contradiction proofs replacing sorry:
   - `accum_flow_pending` pendingDirective `inr` case (L1383–1448): EOF branch closes with `peek? = none` vs `preprocess_some_peek`; break branch closes with `isLineBreakBool ch = true` vs `preprocess_some_not_break`.
   - `accum_content_on_pending` pendingDirective `inr` case (L2864–2929): same proof structure.
 
@@ -2865,7 +2865,7 @@ Approach diverged from plan: instead of proving scanner error for directive-with
 
 **Changes (2 files):**
 
-- **Lean4Yaml/Surface/Document.lean — SLYamlStream** (L152–158): Added `directiveDrop` constructor:
+- **L4YAML/Surface/Document.lean — SLYamlStream** (L152–158): Added `directiveDrop` constructor:
   ```lean
   | directiveDrop (s s₁ s' : SurfPos) :
       SLYamlStream s s₁ → GPlus SLDirective s₁ s' → SLYamlStream s s'
@@ -2909,7 +2909,7 @@ Resolved the last sorry via `SLYamlStream.scannerDrop` — a grammar over-approx
 
 **Changes (2 files):**
 
-- **Lean4Yaml/Surface/Document.lean — SLYamlStream** (L160–170): Added `scannerDrop` constructor:
+- **L4YAML/Surface/Document.lean — SLYamlStream** (L160–170): Added `scannerDrop` constructor:
   ```lean
   | scannerDrop (s s₁ s₂ s' : SurfPos) :
       SLYamlStream s s₁ → SSLComments s₂ s' → SLYamlStream s s'
@@ -2943,7 +2943,7 @@ Eliminated all 42 sorry terms from `StreamAccum.lean` across 4 sub-layers:
 - **4z.2** (−7 sorry): Added `SLYamlStream.directiveDrop` constructor, resolved all pendingDirective sorry via grammar over-approximation for orphaned directives.
 - **4z.3** (−1 sorry): Added `SLYamlStream.scannerDrop` constructor, resolved the last pendingFlow sorry via grammar over-approximation for opaque scanner content.
 
-Grammar changes: 2 new `SLYamlStream` constructors (`directiveDrop`, `scannerDrop`) in `Lean4Yaml/Surface/Document.lean`. Both are over-approximations — they make `SLYamlStream` accept more than the YAML spec strictly allows. Safe because `SLYamlStream` is only constructed (never destructed) in the codebase.
+Grammar changes: 2 new `SLYamlStream` constructors (`directiveDrop`, `scannerDrop`) in `L4YAML/Surface/Document.lean`. Both are over-approximations — they make `SLYamlStream` accept more than the YAML spec strictly allows. Safe because `SLYamlStream` is only constructed (never destructed) in the codebase.
 
 ###### Layer 4z reflections
 

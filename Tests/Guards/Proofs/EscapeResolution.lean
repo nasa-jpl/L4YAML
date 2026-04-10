@@ -1,9 +1,9 @@
-import Lean4Yaml.Proofs.EscapeResolution
+import L4YAML.Proofs.EscapeResolution
 
-namespace Lean4Yaml.Proofs.EscapeResolution
+namespace L4YAML.Proofs.EscapeResolution
 
-open Lean4Yaml.Grammar
-open Lean4Yaml.TokenParser
+open L4YAML.Grammar
+open L4YAML.TokenParser
 
 private def parseScalar (s : String) : Option String :=
   match parseYamlSingle s with
@@ -34,4 +34,4 @@ private def parseScalar (s : String) : Option String :=
 #guard parseScalar "\"\\u03B1\"" == some "α"     -- \u03B1 → 'α' (Greek alpha)
 #guard parseScalar "\"\\uFFFD\"" == some "\uFFFD" -- \uFFFD → replacement char
 
-end Lean4Yaml.Proofs.EscapeResolution
+end L4YAML.Proofs.EscapeResolution

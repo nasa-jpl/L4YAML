@@ -1,24 +1,24 @@
 /*
  * tryparse_c — Minimal C tryparse for yaml-test-suite integration.
  *
- * Reads a YAML file, parses it via the C API (lean4yaml_parse), and
+ * Reads a YAML file, parses it via the C API (l4yaml_parse), and
  * exits 0 on success, 1 on parse error.  Mirrors the Lean tryparse
  * binary exactly so the suiterunner can swap backends.
  *
  * Usage: tryparse_c <file.yaml> [preset]
  *   preset: unlimited (default) | default | strict | permissive | safe_tags
  */
-#include "lean4yaml.h"
+#include "l4yaml.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 static uint8_t parse_preset(const char *name) {
-    if (strcmp(name, "default") == 0)    return LEAN4YAML_LIMITS_DEFAULT;
-    if (strcmp(name, "strict") == 0)     return LEAN4YAML_LIMITS_STRICT;
-    if (strcmp(name, "permissive") == 0) return LEAN4YAML_LIMITS_PERMISSIVE;
-    if (strcmp(name, "unlimited") == 0)  return LEAN4YAML_LIMITS_UNLIMITED;
-    if (strcmp(name, "safe_tags") == 0)  return LEAN4YAML_LIMITS_SAFE_TAGS;
+    if (strcmp(name, "default") == 0)    return L4YAML_LIMITS_DEFAULT;
+    if (strcmp(name, "strict") == 0)     return L4YAML_LIMITS_STRICT;
+    if (strcmp(name, "permissive") == 0) return L4YAML_LIMITS_PERMISSIVE;
+    if (strcmp(name, "unlimited") == 0)  return L4YAML_LIMITS_UNLIMITED;
+    if (strcmp(name, "safe_tags") == 0)  return L4YAML_LIMITS_SAFE_TAGS;
     return 255; /* invalid */
 }
 
@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
         return 2;
     }
 
-    uint8_t preset = LEAN4YAML_LIMITS_UNLIMITED;
+    uint8_t preset = L4YAML_LIMITS_UNLIMITED;
     if (argc == 3) {
         preset = parse_preset(argv[2]);
         if (preset == 255) {
@@ -57,18 +57,18 @@ int main(int argc, char *argv[]) {
     buf[nread] = '\0';
 
     /* Initialize and parse with the selected preset. */
-    lean4yaml_initialize();
-    lean4yaml_result_t result = lean4yaml_parse(buf, nread, preset);
-    int ok = lean4yaml_result_is_ok(result);
+    l4yaml_initialize();
+    l4yaml_result_t result = l4yaml_parse(buf, nread, preset);
+    int ok = l4yaml_result_is_ok(result);
 
     if (!ok) {
-        const char *msg = lean4yaml_result_error_message(result);
+        const char *msg = l4yaml_result_error_message(result);
         if (msg) fprintf(stderr, "%s\n", msg);
     }
 
-    lean4yaml_free(result);
+    l4yaml_free(result);
     free(buf);
-    lean4yaml_finalize();
+    l4yaml_finalize();
 
     return ok ? 0 : 1;
 }

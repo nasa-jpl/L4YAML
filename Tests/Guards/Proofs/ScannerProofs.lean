@@ -1,9 +1,9 @@
-import Lean4Yaml.Proofs.ScannerProofs
+import L4YAML.Proofs.ScannerProofs
 
-namespace Lean4Yaml.Proofs.ScannerProofs
+namespace L4YAML.Proofs.ScannerProofs
 
-open Lean4Yaml
-open Lean4Yaml.Scanner
+open L4YAML
+open L4YAML.Scanner
 
 -- YAML 1.2.2 §5.13 named escapes
 #guard scannerEscapeChar '0'  == some '\x00'      -- \0  → U+0000 (null)
@@ -96,4 +96,4 @@ private def scanSize (input : String) : Option Nat :=
 #guard match scanSize "key: value" with | some n => n > 2 | none => false
 #guard match scanSize "- a\n- b" with | some n => n > 4 | none => false
 
-end Lean4Yaml.Proofs.ScannerProofs
+end L4YAML.Proofs.ScannerProofs

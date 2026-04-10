@@ -1,4 +1,4 @@
-import Lean4Yaml.TokenParser
+import L4YAML.TokenParser
 import Tests.VerifiedResult
 
 /-
@@ -23,8 +23,8 @@ Runtime verification tests for YAML flow collection features
 7. **yaml-test-suite regressions** — specific IDs: 87E4, 8KB6, 8UDB, 9MMW, L9U5, LQZ7, QF4Y, NJ66, CFD4
 -/
 
-open Lean4Yaml
-open Lean4Yaml.TokenParser
+open L4YAML
+open L4YAML.TokenParser
 open Tests
 
 namespace Tests.Flow

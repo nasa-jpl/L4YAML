@@ -8,7 +8,7 @@ Three-phase plan (D → B → A) (see [SPEC-GAP-STRATEGIES.md](./SPEC-GAP-STRATE
 
 **Build:** 334/334 ✔, **0 sorry warnings**. 🎉 **Fully verified — zero sorry across the entire codebase.**
 **Theorems:** 1,577 machine-checked theorems/lemmas across 44 proof modules (~31,300 lines).
-**Guards:** 2,012 compile-time `#guard` checks (72 in `Lean4Yaml/` + 1,940 in `Tests/`).
+**Guards:** 2,012 compile-time `#guard` checks (72 in `L4YAML/` + 1,940 in `Tests/`).
 **Test suite:** 857 passed, 12 failed (same 3 tests × 4 stages), 151 skipped.
 
 ## Phase 4 Complete: All Sorrys Eliminated — Fully Verified Parser (2026-03-19)
@@ -29,12 +29,12 @@ Three-phase plan (D → B → A) (see [SPEC-GAP-STRATEGIES.md](./SPEC-GAP-STRATE
 
 ### Phase 2 Complete: Discharge parseNode_anchors_grow + parseNode_aliases_resolve (2026-03-18)
 
-- Created `Lean4Yaml/Proofs/ParserNodeProofs.lean` (~1781 lines) containing:
+- Created `L4YAML/Proofs/ParserNodeProofs.lean` (~1781 lines) containing:
   - **AnchorsGrow (AG)** proofs: relation type + helpers (refl, trans, advance, withField, tryConsume, addAnchor), `tryConsume_snd_anchors` simp lemma, `applyNodeFinalization_ag`, all 14 sub-parser AG proofs, `parseNode_ag_all` (strong induction on fuel), `parseNode_anchors_grow` extraction
   - **AllAliasesResolve (AAR)** proofs: `aar_mono` (lifts AAR via AG embedding), retag/push helpers, `applyNodeFinalization_aar`, all sub-parser AAR proofs (block seq/mapping, implicit seq, flow seq/mapping, SPM, nodeContent), `parseNode_aar_all` (strong induction on fuel), `parseNode_aliases_resolve'` extraction
   - Key helpers: `spm_close` (single-pair-mapping AAR close), `aar_of_parseNode` (undestrutured pair wrapper)
-- Updated `Lean4Yaml/Proofs/ParserAnchorProofs.lean`:
-  - Added `import Lean4Yaml.Proofs.ParserNodeProofs`
+- Updated `L4YAML/Proofs/ParserAnchorProofs.lean`:
+  - Added `import L4YAML.Proofs.ParserNodeProofs`
   - `parseNode_anchors_grow` sorry → `ParserNodeProofs.parseNode_anchors_grow`
   - `parseNode_aliases_resolve` sorry → `ParserNodeProofs.parseNode_aliases_resolve'`
 - Proof technique: blind split pattern (`split at h_ok <;> first | contradiction | skip` ×9) for control flow; strong induction on fuel with `Nat.le.refl` extraction

@@ -1,10 +1,10 @@
-import Lean4Yaml.Proofs.ScannerIndentStack
+import L4YAML.Proofs.ScannerIndentStack
 
-namespace Lean4Yaml.Proofs.ScannerIndentStack
+namespace L4YAML.Proofs.ScannerIndentStack
 
-open Lean4Yaml.Scanner
-open Lean4Yaml.Proofs.ScannerLoopInvariant
-open Lean4Yaml.Proofs.ScannerContracts
+open L4YAML.Scanner
+open L4YAML.Proofs.ScannerLoopInvariant
+open L4YAML.Proofs.ScannerContracts
 
 -- === Base case: empty input, sentinel only ===
 -- unwindIndents with col=-1 keeps sentinel
@@ -193,4 +193,4 @@ private def fullUnwind3 : ScannerState :=
 -- After unwinding threeLevels to 3, currentIndent = 2
 #guard (unwindIndents threeLevels 3).currentIndent == 2
 
-end Lean4Yaml.Proofs.ScannerIndentStack
+end L4YAML.Proofs.ScannerIndentStack

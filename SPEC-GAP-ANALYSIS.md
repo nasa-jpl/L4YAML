@@ -39,7 +39,7 @@ theorem parseStream_output_aliases_resolve
 **Proof chain:** `parseStream` → `parseStreamLoop_aliases_resolve` →
 `parseDocument_aliases_resolve` → `parseNode_aliases_resolve`.
 
-Both helper lemmas are now proved (in `Lean4Yaml/Proofs/ParserNodeProofs.lean`):
+Both helper lemmas are now proved (in `L4YAML/Proofs/ParserNodeProofs.lean`):
 1. `parseNode_aliases_resolve` — core strong induction on fuel over 14 sub-parsers,
    showing every alias in the output tree passed the `ps.anchors.any` check
 2. `parseNode_anchors_grow` — anchors only grow (monotonicity), proved via

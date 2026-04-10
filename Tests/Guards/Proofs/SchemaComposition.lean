@@ -1,9 +1,9 @@
-import Lean4Yaml.Proofs.SchemaComposition
+import L4YAML.Proofs.SchemaComposition
 
-namespace Lean4Yaml.Proofs.SchemaComposition
+namespace L4YAML.Proofs.SchemaComposition
 
-open Lean4Yaml
-open Lean4Yaml.Schema
+open L4YAML
+open L4YAML.Schema
 
 -- resolve ∘ toYaml primitive checks
 #guard resolvesTo true (.bool true)
@@ -46,4 +46,4 @@ open Lean4Yaml.Schema
 #guard schemaRoundTrips "foo bar"
 #guard schemaRoundTrips (some true : Option Bool)
 
-end Lean4Yaml.Proofs.SchemaComposition
+end L4YAML.Proofs.SchemaComposition

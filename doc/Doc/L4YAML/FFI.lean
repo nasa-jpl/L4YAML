@@ -50,11 +50,11 @@ tag := "c-api"
 %%%
 
 {index}[C API]
-The C API is defined in `ffi/lean4yaml.h` with a bridge layer in
-`ffi/lean4yaml_shim.c`.
+The C API is defined in `ffi/l4yaml.h` with a bridge layer in
+`ffi/l4yaml_shim.c`.
 It provides approximately 26 exported functions covering:
 
- * _Parsing_ — `lean4yaml_parse_safe` and related functions
+ * _Parsing_ — `l4yaml_parse_safe` and related functions
  * _Dumping_ — converting `YamlValue` back to YAML text
  * _Schema_ — tag handle registration and type resolution
  * _Limits_ — configuring `ParserLimits` via preset codes or
@@ -72,7 +72,7 @@ tag := "python-api"
 %%%
 
 {index}[Python API]
-The Python package (`python/lean4yaml/`) wraps the C API using
+The Python package (`python/l4yaml/`) wraps the C API using
 `ctypes`, providing a Pythonic interface with:
 
  * Full type annotations for IDE support
@@ -83,7 +83,7 @@ The Python package (`python/lean4yaml/`) wraps the C API using
 Usage follows the familiar pattern:
 
 ```
-from lean4yaml import parse
+from l4yaml import parse
 
 result = parse("key: value")
 ```
@@ -96,10 +96,10 @@ tag := "rust-api"
 {index}[Rust API]
 The Rust workspace (`rust/`) provides two crates:
 
- * *`lean4yaml-sys`* — raw FFI bindings generated from the C header.
+ * *`l4yaml-sys`* — raw FFI bindings generated from the C header.
    Unsafe, low-level, intended for direct interop.
 
- * *`lean4yaml`* — safe RAII wrapper with 21 tests.
+ * *`l4yaml`* — safe RAII wrapper with 21 tests.
    Lean object lifetimes are managed via the `Drop` trait,
    ensuring proper cleanup without manual reference counting.
 
@@ -114,9 +114,9 @@ tag := "adding-ffi"
 
 To expose a new Lean function via FFI:
 
- 1. Add `@[export lean4yaml_function_name]` to the Lean definition
- 2. Declare the corresponding C prototype in `ffi/lean4yaml.h`
- 3. Add any necessary shim code in `ffi/lean4yaml_shim.c`
+ 1. Add `@[export l4yaml_function_name]` to the Lean definition
+ 2. Declare the corresponding C prototype in `ffi/l4yaml.h`
+ 3. Add any necessary shim code in `ffi/l4yaml_shim.c`
  4. Update the Python/Rust wrappers as needed
  5. Add tests at each layer
 

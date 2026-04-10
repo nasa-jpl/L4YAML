@@ -2,8 +2,8 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Lean4Yaml.Types
-import Lean4Yaml.TokenParser
+import L4YAML.Types
+import L4YAML.TokenParser
 
 /-!
 # Compile-Time Parser Tests (`#guard`)
@@ -43,10 +43,10 @@ All guards are pure kernel evaluation — no `sorry`, no `native_decide`,
 no `axiom`, no IO.
 -/
 
-namespace Lean4Yaml.Tests.Suite
+namespace L4YAML.Tests.Suite
 
-open Lean4Yaml
-open Lean4Yaml.TokenParser
+open L4YAML
+open L4YAML.TokenParser
 
 /-! ## Helpers -/
 
@@ -388,4 +388,4 @@ def collStyle (input : String) : Option CollectionStyle :=
     let c := s.content; (c.splitOn "line1").length > 1 && (c.splitOn "line2").length > 1
   | _ => false
 
-end Lean4Yaml.Tests.Suite
+end L4YAML.Tests.Suite
