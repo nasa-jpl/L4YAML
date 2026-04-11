@@ -52,5 +52,5 @@ ffi/out
 rust/target/
 rust/Cargo.lock
 rust/.cargo/config.toml
-# Graphs
-graphs/
+# Graphs (generated theorem dependency graphs — source DOT/SVGs)
+doc/Doc/L4YAML/graphs/
