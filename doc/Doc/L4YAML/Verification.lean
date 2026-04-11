@@ -224,7 +224,7 @@ Properties of the token-to-AST parser:
 
 ### `parseNode_aliases_resolve'`
 
-![parseNode_aliases_resolve' dependency graph](graphs/parseNode_aliases_resolve'.svg)
+![parseNode_aliases_resolve' dependency graph](graphs/parseNode_aliases_resolve_27.svg)
 
 ### `parseStream_output_anchors_wellformed`
 

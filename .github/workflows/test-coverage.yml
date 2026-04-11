@@ -96,7 +96,10 @@ jobs:
           for f in doc/Doc/L4YAML/graphs/*.dot; do
             dot -Tsvg "$f" -o "${f%.dot}.svg"
           done
-          echo "Generated $(ls doc/Doc/L4YAML/graphs/*.svg | wc -l) SVG graphs"
+          # Remove DOT source files — only SVGs are needed for the doc
+          find doc/Doc/L4YAML/graphs -name '*.dot' -delete
+          rm -f doc/Doc/L4YAML/graphs/index.html
+          echo "Generated $(ls doc/Doc/L4YAML/graphs/*.svg 2>/dev/null | wc -l) SVG graphs"
 
       - name: Generate Verso documentation
         run: |
