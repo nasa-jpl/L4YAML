@@ -4324,14 +4324,197 @@ The `some .key` branch of `parseFlowMappingLoop` consumes:
 4. Recurses with `pairs.push (key, val)`
 
 Because each entry consumes ≥2 tokens (key + at least one value/content token),
-the loop terminates within `tokens.size / 2` iterations. The predicate below
-captures per-entry success for the `some .key` branch.
+the loop terminates within `tokens.size / 2` iterations.
 
-TODO: Define `ParseEntryFlowMapOk` and prove `parseFlowMappingLoop_emitter_ok`.
-This is analogous to `parseFlowSequenceLoop_emitter_ok` but each iteration
-involves TWO sub-parses (key + value) plus token consumption for key/value markers.
-The proof structure mirrors the sequence case: induction on fuel, generalize
-the parseNode struct, derive helper equalities to avoid struct projection issues
-with omega, and chain through the IH. -/
+The predicate `ParseEntryFlowMapOk` captures per-entry success: given that ps.peek?
+is `some .key` and ps.pos < endPos, the full chain parseExplicitKey + parseFlowMappingValue
+succeeds on ps.advance, advances position strictly, stays ≤ endPos, preserves tokens,
+and the result peeks at `flowEntry` or `flowMappingEnd`. -/
+
+-- Per-entry predicate for flow mapping loop: the full key+value chain succeeds.
+-- parseExplicitKey doesn't depend on savedPath/keyContent; the ∀ quantifier on those
+-- lets us instantiate parseFlowMappingValue with the exact keyContent the loop uses.
+def ParseEntryFlowMapOk (tokens : Array (Positioned YamlToken))
+    (endPos : Nat) (fuel : Nat) : Prop :=
+  ∀ (ps : ParseState) (m : Nat),
+    ps.tokens = tokens → m ≤ fuel →
+    ps.pos < endPos →
+    ps.peek? = some .key →
+    ∃ key_val key_ps,
+      parseExplicitKey ps.advance m = .ok (key_val, key_ps) ∧
+      key_ps.pos > ps.pos ∧ key_ps.pos ≤ endPos ∧
+      key_ps.tokens = tokens ∧
+      ∀ (savedPath : YamlPath) (keyContent : String),
+        ∃ val_val val_ps,
+          parseFlowMappingValue key_ps m savedPath keyContent = .ok (val_val, val_ps) ∧
+          val_ps.pos > ps.pos ∧ val_ps.pos ≤ endPos ∧
+          val_ps.tokens = tokens ∧
+          (val_ps.peek? = some .flowEntry ∨ val_ps.peek? = some .flowMappingEnd)
+
+theorem ParseEntryFlowMapOk.mono {tokens endPos fuel fuel'}
+    (h : ParseEntryFlowMapOk tokens endPos fuel)
+    (h_le : fuel' ≤ fuel) : ParseEntryFlowMapOk tokens endPos fuel' :=
+  fun ps m h_tok h_m h_pos h_key =>
+    h ps m h_tok (Nat.le_trans h_m h_le) h_pos h_key
+
+set_option maxHeartbeats 3200000 in
+theorem parseFlowMappingLoop_emitter_ok (fuel : Nat)
+    (ps : ParseState) (pairs_acc : Array (YamlValue × YamlValue)) (endPos : Nat)
+    (h_entry : ParseEntryFlowMapOk ps.tokens endPos fuel)
+    (h_fuel : fuel ≥ endPos - ps.pos)
+    (h_pos : ps.pos ≤ endPos)
+    (h_end_pos : endPos < ps.tokens.size)
+    (h_end_tok : ps.tokens[endPos]!.val = .flowMappingEnd)
+    (h_sep : pairs_acc.size > 0 →
+             ps.peek? = some .flowEntry ∨ ps.peek? = some .flowMappingEnd)
+    (h_start : pairs_acc.size = 0 →
+               ps.peek? = some .key ∨ ps.peek? = some .flowMappingEnd)
+    (h_after_fe : ∀ k : Nat, ps.pos ≤ k → k < endPos →
+                  ps.tokens[k]!.val = .flowEntry →
+                  k + 1 ≤ endPos ∧ ps.tokens[k + 1]!.val = .key)
+    : ∃ pairs ps', parseFlowMappingLoop ps fuel pairs_acc = .ok (pairs, ps') ∧
+                   ps'.peek? = some .flowMappingEnd ∧
+                   ps'.tokens = ps.tokens := by
+  induction fuel generalizing ps pairs_acc with
+  | zero =>
+    have h_eq : ps.pos = endPos := by omega
+    unfold parseFlowMappingLoop
+    refine ⟨pairs_acc, ps, rfl, ?_, rfl⟩
+    exact peek_of_pos_val h_eq (by omega) h_end_tok
+  | succ n ih =>
+    unfold parseFlowMappingLoop
+    simp only [bind, Except.bind, pure, Except.pure]
+    -- 1. Outer match on ps.peek?: flowMappingEnd vs wildcard
+    split
+    · -- flowMappingEnd → immediate return
+      exact ⟨pairs_acc, ps, rfl, ‹_›, rfl⟩
+    · -- wildcard → continue
+      rename_i h_outer_not_end
+      have h_lt : ps.pos < endPos := by
+        rcases Nat.eq_or_lt_of_le h_pos with h_eq | h_lt
+        · exfalso; exact h_outer_not_end (peek_of_pos_val h_eq (by omega) h_end_tok)
+        · exact h_lt
+      -- 2. if pairs_acc.size > 0
+      split
+      · -- pairs_acc.size > 0 → separator check
+        split
+        · -- flowEntry → advance, then inner dispatch
+          split
+          · -- flowMappingEnd after separator → return ok
+            rename_i h_adv_end
+            exact ⟨pairs_acc, ps.advance, rfl, h_adv_end, by simp [ParseState.advance]⟩
+          · -- key after separator → full entry parse + recurse
+            rename_i h_adv_not_end h_adv_key
+            have h_fe_val : ps.tokens[ps.pos]!.val = .flowEntry := by
+              have h_peek_fe : ps.peek? = some .flowEntry := by assumption
+              exact (peek_some_val h_peek_fe).2
+            have h_afe := h_after_fe ps.pos (Nat.le_refl _) h_lt h_fe_val
+            have h_adv_pos : ps.advance.pos = ps.pos + 1 := by
+              simp [ParseState.advance]
+            have h_adv_pos_lt : ps.pos + 1 < endPos := by
+              rcases Nat.eq_or_lt_of_le h_afe.1 with heq | hlt
+              · exfalso
+                have h_peek_end := peek_of_pos_val (ps := ps.advance) rfl
+                  (show ps.advance.pos < ps.advance.tokens.size by
+                    simp [ParseState.advance]; omega)
+                  (show ps.advance.tokens[ps.advance.pos]!.val = .flowMappingEnd by
+                    simp [ParseState.advance]; rw [heq]; exact h_end_tok)
+                rw [h_adv_key] at h_peek_end; cases h_peek_end
+              · exact hlt
+            -- Apply h_entry
+            obtain ⟨key_val, key_ps, h_ek_ok, h_ek_adv, h_ek_bound, h_ek_tok, h_fmv_univ⟩ :=
+              h_entry ps.advance n
+                (by simp [ParseState.advance])
+                (by omega)
+                h_adv_pos_lt
+                h_adv_key
+            rw [h_ek_ok]; dsimp only []
+            -- Split on the parseFlowMappingValue result match
+            split
+            · -- error case: contradicts h_fmv_univ (which says it always succeeds)
+              rename_i err heq_err
+              exfalso
+              obtain ⟨_, _, h_ok, _⟩ := h_fmv_univ _ _
+              exact absurd (heq_err.symm.trans h_ok) (by simp)
+            · -- ok case: equate with h_fmv_univ result via determinism
+              rename_i fmv_res heq_fmv
+              obtain ⟨val_val, val_ps, h_fmv_ok, h_fmv_adv, h_fmv_bound, h_fmv_tok, h_fmv_peek⟩ :=
+                h_fmv_univ _ _
+              have h_eq := Except.ok.inj (heq_fmv.symm.trans h_fmv_ok)
+              obtain ⟨fmv_v, fmv_ps⟩ := fmv_res
+              obtain ⟨rfl, rfl⟩ := Prod.mk.inj h_eq.symm
+              -- Apply IH
+              obtain ⟨pairs_res, ps_res, h_loop, h_peek_res, h_tok_res⟩ :=
+                ih val_ps (pairs_acc.push (key_val, val_val))
+                  (by rw [h_fmv_tok]; exact h_entry.mono (by omega))
+                  (by omega)
+                  h_fmv_bound
+                  (by rw [h_fmv_tok]; exact h_end_pos)
+                  (by rw [h_fmv_tok]; exact h_end_tok)
+                  (by intro _; exact h_fmv_peek)
+                  (by intro h; simp [Array.size_push] at h)
+                  (by intro k hk1 hk2 hval; rw [h_fmv_tok] at hval ⊢;
+                      exact h_after_fe k (by omega) hk2 hval)
+              exact ⟨pairs_res, ps_res, h_loop, h_peek_res, h_tok_res.trans h_fmv_tok⟩
+          · -- wildcard after separator (not flowMappingEnd, not key) → contradiction
+            rename_i h_adv_not_end h_adv_not_key
+            exfalso
+            have h_fe_val : ps.tokens[ps.pos]!.val = .flowEntry := by
+              have h_peek_fe : ps.peek? = some .flowEntry := by assumption
+              exact (peek_some_val h_peek_fe).2
+            have h_afe := h_after_fe ps.pos (Nat.le_refl _) h_lt h_fe_val
+            exact h_adv_not_key (peek_of_pos_val (ps := ps.advance) rfl
+              (show ps.advance.pos < ps.advance.tokens.size by
+                simp [ParseState.advance]; omega)
+              (show ps.advance.tokens[ps.advance.pos]!.val = .key by
+                simp [ParseState.advance]; exact h_afe.2))
+        · -- no separator → early return
+          have h_acc_pos : pairs_acc.size > 0 := by assumption
+          have h_not_fe : ps.peek? ≠ some .flowEntry := by assumption
+          rcases h_sep h_acc_pos with h_fe | h_end
+          · exfalso; exact h_not_fe h_fe
+          · exact ⟨pairs_acc, ps, rfl, h_end, rfl⟩
+      · -- pairs_acc.size = 0 → dispatch directly
+        split
+        · -- flowMappingEnd → return ok
+          rename_i h_peek_end
+          exact ⟨pairs_acc, ps, rfl, h_peek_end, rfl⟩
+        · -- key → full entry parse + recurse
+          rename_i h_not_end h_peek_key
+          obtain ⟨key_val, key_ps, h_ek_ok, h_ek_adv, h_ek_bound, h_ek_tok, h_fmv_univ⟩ :=
+            h_entry ps n rfl (by omega) h_lt h_peek_key
+          rw [h_ek_ok]; dsimp only []
+          split
+          · -- error case: contradicts h_fmv_univ
+            rename_i err heq_err
+            exfalso
+            obtain ⟨_, _, h_ok, _⟩ := h_fmv_univ _ _
+            exact absurd (heq_err.symm.trans h_ok) (by simp)
+          · -- ok case
+            rename_i fmv_res heq_fmv
+            obtain ⟨val_val, val_ps, h_fmv_ok, h_fmv_adv, h_fmv_bound, h_fmv_tok, h_fmv_peek⟩ :=
+              h_fmv_univ _ _
+            have h_eq := Except.ok.inj (heq_fmv.symm.trans h_fmv_ok)
+            obtain ⟨fmv_v, fmv_ps⟩ := fmv_res
+            obtain ⟨rfl, rfl⟩ := Prod.mk.inj h_eq.symm
+            -- Apply IH
+            obtain ⟨pairs_res, ps_res, h_loop, h_peek_res, h_tok_res⟩ :=
+              ih val_ps (pairs_acc.push (key_val, val_val))
+                (by rw [h_fmv_tok]; exact h_entry.mono (by omega))
+                (by omega)
+                h_fmv_bound
+                (by rw [h_fmv_tok]; exact h_end_pos)
+                (by rw [h_fmv_tok]; exact h_end_tok)
+                (by intro _; exact h_fmv_peek)
+                (by intro h; simp [Array.size_push] at h)
+                (by intro k hk1 hk2 hval; rw [h_fmv_tok] at hval ⊢;
+                    exact h_after_fe k (by omega) hk2 hval)
+            exact ⟨pairs_res, ps_res, h_loop, h_peek_res, h_tok_res.trans h_fmv_tok⟩
+        · -- wildcard (not flowMappingEnd, not key) → contradiction
+          rename_i h_not_end h_not_key
+          exfalso
+          rcases h_start (by omega) with hk | hm
+          · exact h_not_key hk
+          · exact h_not_end hm
 
 end L4YAML.Proofs.ParserGrammable
