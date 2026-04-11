@@ -6670,6 +6670,11 @@ theorem scanFiltered_emitSeq_nonempty_structure
         tokens[k]!.val = .flowEntry →
         k + 1 ≤ tokens.size - 2 ∧ tokens[k + 1]!.val ≠ .flowEntry ∧
         tokens[k + 1]!.val ≠ .key) ∧
+    -- Uniqueness: no flowSequenceEnd in body range [0, tokens.size-2).
+    -- Positions 0, 1 are streamStart, flowSequenceStart. Body positions [2, tokens.size-3]
+    -- contain item tokens, flowEntry separators, and nested bracket groups whose inner
+    -- flowSequenceEnd tokens are at known positions consumed by parseNode.
+    (∀ k, k < tokens.size - 2 → tokens[k]!.val ≠ .flowSequenceEnd) ∧
     L4YAML.Proofs.ParserGrammable.ParseNodeFlowSeqOk tokens (tokens.size - 2) (4 * tokens.size + 4) := by
   -- Step 1: Boundary tokens from scanFiltered_boundary_tokens
   obtain ⟨h_sz2, h_t0, h_tlast⟩ := scanFiltered_boundary_tokens _ _ h_scan
@@ -6701,9 +6706,13 @@ theorem scanFiltered_emitSeq_nonempty_structure
       tokens[k + 1]!.val ≠ .key := sorry
   -- ParseNodeFlowSeqOk: requires parser/scanner bridge — proving parseNode succeeds at
   -- each body position needs the inductive hypothesis from the roundtrip theorem.
+  -- Uniqueness: no flowSequenceEnd before position tokens.size - 2.
+  -- Body tokens are scalars/flowSeqStart/flowMapStart/flowEntry (position 2 through body).
+  -- Positions 0 = streamStart, 1 = flowSequenceStart — neither is flowSequenceEnd.
+  have h_unique : ∀ k, k < tokens.size - 2 → tokens[k]!.val ≠ .flowSequenceEnd := sorry
   have h_pnok : L4YAML.Proofs.ParserGrammable.ParseNodeFlowSeqOk
       tokens (tokens.size - 2) (4 * tokens.size + 4) := sorry
-  exact ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_no_fe0, h_no_key0, h_fe_pattern, h_pnok⟩
+  exact ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_no_fe0, h_no_key0, h_fe_pattern, h_unique, h_pnok⟩
 
 /-- Token structure of `scanFiltered ("{" ++ emitPairList pairs ++ "}")` for non-empty pairs.
     Establishes boundary tokens, body token patterns, and `parseExplicitKey`/`parseFlowMappingValue`
@@ -6723,6 +6732,8 @@ theorem scanFiltered_emitMap_nonempty_structure
     (∀ k, 2 ≤ k → k < tokens.size - 2 →
         tokens[k]!.val = .flowEntry →
         k + 1 ≤ tokens.size - 2 ∧ tokens[k + 1]!.val = .key) ∧
+    -- Uniqueness: no flowMappingEnd in range [0, tokens.size-2).
+    (∀ k, k < tokens.size - 2 → tokens[k]!.val ≠ .flowMappingEnd) ∧
     L4YAML.Proofs.ParserGrammable.ParseEntryFlowMapOk tokens (tokens.size - 2) (4 * tokens.size + 4) := by
   -- Step 1: Boundary tokens from scanFiltered_boundary_tokens
   obtain ⟨h_sz2, h_t0, h_tlast⟩ := scanFiltered_boundary_tokens _ _ h_scan
@@ -6734,9 +6745,10 @@ theorem scanFiltered_emitMap_nonempty_structure
   have h_fe_pattern : ∀ k, 2 ≤ k → k < tokens.size - 2 →
       tokens[k]!.val = .flowEntry →
       k + 1 ≤ tokens.size - 2 ∧ tokens[k + 1]!.val = .key := sorry
+  have h_unique : ∀ k, k < tokens.size - 2 → tokens[k]!.val ≠ .flowMappingEnd := sorry
   have h_pnok : L4YAML.Proofs.ParserGrammable.ParseEntryFlowMapOk
       tokens (tokens.size - 2) (4 * tokens.size + 4) := sorry
-  exact ⟨h_sz7, h_t0, h_tlast, h_t1, h_tpe, h_key_or_end, h_fe_pattern, h_pnok⟩
+  exact ⟨h_sz7, h_t0, h_tlast, h_t1, h_tpe, h_key_or_end, h_fe_pattern, h_unique, h_pnok⟩
 
 /-- Combined scanner characterization and parser acceptance for flow sequences.
     Given that scanning the emitted sequence succeeds, the parser pipeline
@@ -6783,7 +6795,8 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
       have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hw
       have h_sz : i < items.size := by rwa [Array.length_toList] at hi
       exact h_eq ▸ emit_scans_in_flow _ (h_items ⟨i, h_sz⟩)
-    obtain ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_no_fe0, h_no_key0, h_fe_pattern, h_pnok⟩ :=
+    obtain ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_no_fe0, h_no_key0, h_fe_pattern,
+            h_unique, h_pnok⟩ :=
       scanFiltered_emitSeq_nonempty_structure items tokens h_scan (by simp [h_list]) h_all_scan
     -- Step 1: Unfold parseStream, dispatch expect .streamStart
     unfold parseStream
@@ -6914,11 +6927,23 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
     have h_peek_end : ps_loop.advance.peek? = some .streamEnd := by
       have h_loop_tok_eq : ps_loop.tokens = tokens := h_loop_tok.trans h_ps_mid_tok
       have h_loop_pos_eq : ps_loop.pos = tokens.size - 2 := by
-        -- Position pinning: the loop ends at endPos because parseNode consumes
-        -- all nested structures. The outermost flowSequenceEnd at endPos is the
-        -- only one visible to the loop. Interior flowSequenceEnd tokens from
-        -- nested sequences are consumed by parseNode's dispatch to parseFlowSequence.
-        sorry
+        -- Position pinning via uniqueness: the only position with flowSequenceEnd
+        -- in the token array is tokens.size - 2.
+        have ⟨h_pos_lt, h_val_at_pos⟩ :=
+          L4YAML.Proofs.ParserGrammable.peek_some_val h_loop_peek
+        rw [h_loop_tok_eq] at h_pos_lt h_val_at_pos
+        -- ps_loop.pos < tokens.size, tokens[ps_loop.pos]!.val = flowSequenceEnd
+        rcases Nat.lt_or_ge ps_loop.pos (tokens.size - 2) with h_lt | h_ge
+        · -- pos < tokens.size - 2: violates uniqueness (no flowSequenceEnd in [0..N-3])
+          exact absurd h_val_at_pos (h_unique ps_loop.pos h_lt)
+        · -- pos ≥ tokens.size - 2
+          rcases Nat.eq_or_lt_of_le h_ge with h_eq | h_gt
+          · exact h_eq.symm  -- pos = tokens.size - 2 ✓
+          · -- pos > tokens.size - 2, combined with pos < tokens.size → pos = tokens.size - 1
+            have h_eq : ps_loop.pos = tokens.size - 1 := by omega
+            -- tokens[tokens.size-1] = streamEnd ≠ flowSequenceEnd
+            rw [h_eq] at h_val_at_pos
+            exact absurd (h_tlast.symm.trans h_val_at_pos) (by decide)
       simp only [ParseState.peek?, ParseState.advance, h_loop_tok_eq]
       simp only [h_loop_pos_eq, show tokens.size - 2 + 1 = tokens.size - 1 from by omega,
                  show tokens.size - 1 < tokens.size from by omega, ↓reduceIte, h_tlast]
@@ -6979,7 +7004,8 @@ theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlVa
       have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp
       have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
       exact h_eq ▸ by exact emit_scans_in_flow _ (hv ⟨i, h_sz⟩)
-    obtain ⟨h_sz7, h_t0, h_tlast, h_t1, h_tpe, h_t2_start, h_fe_key_pattern, h_entry_ok⟩ :=
+    obtain ⟨h_sz7, h_t0, h_tlast, h_t1, h_tpe, h_t2_start, h_fe_key_pattern,
+            h_unique, h_entry_ok⟩ :=
       scanFiltered_emitMap_nonempty_structure pairs tokens h_scan (by simp [h_list])
         h_all_scan_k h_all_scan_v
     -- Step 1: Unfold parseStream, dispatch expect .streamStart
@@ -7100,10 +7126,17 @@ theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlVa
     have h_peek_end : ps_loop.advance.peek? = some .streamEnd := by
       have h_loop_tok_eq : ps_loop.tokens = tokens := h_loop_tok.trans h_ps_mid_tok
       have h_loop_pos_eq : ps_loop.pos = tokens.size - 2 := by
-        -- Position pinning: the loop ends at endPos because parseNode/parseEntry
-        -- consume all nested structures. The outermost flowMappingEnd at endPos
-        -- is the only one visible to the loop.
-        sorry
+        -- Position pinning via uniqueness (same technique as sequence case)
+        have ⟨h_pos_lt, h_val_at_pos⟩ :=
+          L4YAML.Proofs.ParserGrammable.peek_some_val h_loop_peek
+        rw [h_loop_tok_eq] at h_pos_lt h_val_at_pos
+        rcases Nat.lt_or_ge ps_loop.pos (tokens.size - 2) with h_lt | h_ge
+        · exact absurd h_val_at_pos (h_unique ps_loop.pos h_lt)
+        · rcases Nat.eq_or_lt_of_le h_ge with h_eq | h_gt
+          · exact h_eq.symm
+          · have h_eq : ps_loop.pos = tokens.size - 1 := by omega
+            rw [h_eq] at h_val_at_pos
+            exact absurd (h_tlast.symm.trans h_val_at_pos) (by decide)
       simp only [ParseState.peek?, ParseState.advance, h_loop_tok_eq]
       simp only [h_loop_pos_eq, show tokens.size - 2 + 1 = tokens.size - 1 from by omega,
                  show tokens.size - 1 < tokens.size from by omega, ↓reduceIte, h_tlast]
