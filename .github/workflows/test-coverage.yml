@@ -89,6 +89,15 @@ jobs:
       # -------------------------------------------------------
       # Phase 2: Generate Verso HTML documentation
       # -------------------------------------------------------
+      - name: Generate theorem dependency graphs
+        run: |
+          lake build theoremgraph
+          lake exe theoremgraph doc/Doc/L4YAML/graphs
+          for f in doc/Doc/L4YAML/graphs/*.dot; do
+            dot -Tsvg "$f" -o "${f%.dot}.svg"
+          done
+          echo "Generated $(ls doc/Doc/L4YAML/graphs/*.svg | wc -l) SVG graphs"
+
       - name: Generate Verso documentation
         run: |
           cd doc
