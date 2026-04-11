@@ -2219,7 +2219,98 @@ via two `parseNode` calls plus `tryConsume .key` and `parseFlowMappingValue`).
 
 ---
 
-**Sub-phase 4.4.D — Layer 2 non-empty cases (~100-200 LOC)**
+**Sub-phase 4.4.D — Flow mapping loop fuel sufficiency (~150-250 LOC)**
+
+Prove that `parseFlowMappingLoop` terminates successfully on emitter-produced tokens.
+Analogous to `parseFlowSequenceLoop_emitter_ok` (Sub-phase 4.4.C) but more complex:
+each loop iteration processes a `key` entry with TWO sub-parses (key + value) instead
+of one.
+
+**Emitter token pattern per entry:**
+```
+key, <key_scalar_tokens>, value, <value_scalar_tokens>, flowEntry
+```
+The emitter always produces explicit `key` tokens (never implicit keys), so the loop
+always takes the `some .key` branch. Each entry consumes ≥3 tokens (key marker +
+at least one key content token + value marker), guaranteeing termination.
+
+**Approach:**
+
+1. Define `ParseEntryFlowMapOk` — a per-entry predicate bundling:
+   - `parseExplicitKey` succeeds on the post-advance state (key content parse)
+   - `parseFlowMappingValue` succeeds on the post-key state (value content parse)
+   - Combined position advancement: `ps_after.pos > ps.pos + 1` (key marker + content)
+   - Position stays ≤ `endPos`, tokens preserved
+   - Result state peeks at `flowEntry` or `flowMappingEnd`
+
+2. Prove `parseFlowMappingLoop_emitter_ok`:
+   ```lean
+   theorem parseFlowMappingLoop_emitter_ok (fuel : Nat)
+       (ps : ParseState) (pairs_acc : Array (YamlValue × YamlValue)) (endPos : Nat)
+       (h_entry : ParseEntryFlowMapOk ps.tokens endPos fuel)
+       (h_fuel : fuel ≥ endPos - ps.pos)
+       (h_pos : ps.pos ≤ endPos)
+       (h_end_pos : endPos < ps.tokens.size)
+       (h_end_tok : ps.tokens[endPos]!.val = .flowMappingEnd)
+       (h_all_key : ∀ k, ps.pos ≤ k → k < endPos →
+                    ps.tokens[k]!.val = .flowEntry ∨ ps.tokens[k]!.val = .key ∨ ...)
+       ...
+       : ∃ pairs ps', parseFlowMappingLoop ps fuel pairs_acc = .ok (pairs, ps') ∧
+                      ps'.peek? = some .flowMappingEnd ∧ ps'.tokens = ps.tokens
+   ```
+
+3. **Key differences from sequence proof:**
+   - The `some .key` branch calls `ps.advance` then `parseExplicitKey` then
+     `parseFlowMappingValue` — three sequential operations instead of one.
+   - `parseFlowMappingValue` internally does `tryConsume .key` + `tryConsume .value`
+     before calling `parseNode` — need to thread position facts through these.
+   - The `currentPath` management involves `savedPath.push (.key keyContent)` —
+     more complex struct-with generalization.
+   - May need `parseExplicitKey_emitter_ok` and `parseFlowMappingValue_emitter_ok`
+     helper lemmas to decompose the per-entry proof.
+
+4. **Proof structure:** Induction on fuel, generalizing ps pairs_acc. Use the same
+   `generalize hPsX` + `rw [← hPsX]; simp` pattern from Sub-phase 4.4.C to handle
+   struct-with projections. Thread `h_tok_eq` through IH via `.trans`.
+
+*** Sub-phase 4.4.D Accomplishments***
+
+- Defined `ParseEntryFlowMapOk` predicate with `∀ savedPath keyContent` universal
+  quantifier over parseFlowMappingValue arguments, enabling instantiation with
+  the loop's actual keyContent at each call site
+- Proved `ParseEntryFlowMapOk.mono` for fuel weakening
+- Proved `parseFlowMappingLoop_emitter_ok` (~160 LOC, 3.2M heartbeats)
+- Theorem uses revised hypotheses:
+  - `h_sep`: pairs_acc.size > 0 → peek ∈ {flowEntry, flowMappingEnd}
+  - `h_start`: pairs_acc.size = 0 → peek ∈ {key, flowMappingEnd} (replaced h_all_key + h_no_fe_start)
+  - `h_after_fe`: flowEntry at k implies key at k+1
+- Build passes cleanly with no sorry
+
+*** Sub-phase 4.4.D Reflections***
+
+- **Match compilation from `obtain` captures extra dependencies**: Variables from
+  `obtain ⟨key_val, ..., h_ek_ok, ...⟩` carry dependencies in the proof term.
+  `match key_val with ...` in tactics compiles to `match key_val, h_ek_ok with ...`
+  (including the proof as a match discriminant). This PREVENTS `rw`, `simp`, and
+  `generalize` from matching the same expression in the goal.
+- **Solution: split + unifier placeholders**: Instead of rewriting inside match
+  discriminants, use `split` on the outer `match parseFlowMappingValue ... with`
+  to case-split, then use `h_fmv_univ _ _` with metavariable placeholders.
+  Lean's unifier automatically matches the goal's internal match representation.
+  In the error case: `exact absurd (heq_err.symm.trans h_ok) (by simp)`.
+  In the ok case: `Except.ok.inj (heq_fmv.symm.trans h_fmv_ok)` + `Prod.mk.inj h_eq.symm`.
+- **h_all_key was over-constrained**: The original hypothesis said all tokens in
+  [pos, endPos) are flowEntry/flowMappingEnd/key, but emitter output has scalar/value
+  tokens too. Replaced with `h_start` (initial peek is key or end) which only
+  constrains the loop's peek positions, not all token positions.
+- **rw can't rewrite inside match discriminants**: Even with syntactically identical
+  terms, `rw` and `simp` fail to match inside `match <expr> with ...` discriminants.
+  The `kabstract` used by `rw` appears to skip match discriminants when the motive
+  could depend on the discriminant. Use `split` instead.
+
+---
+
+**Sub-phase 4.4.E — Layer 2 non-empty cases (~100-200 LOC)**
 
 With Subs A-C, close `parseStream_emitSequence` and `parseStream_emitMapping` non-empty:
 
@@ -2240,13 +2331,13 @@ With Subs A-C, close `parseStream_emitSequence` and `parseStream_emitMapping` no
 `parseNodeProperties_skip` (no properties), `parseNodeContent` dispatches to
 `parseFlowSequence`/`parseFlowMapping`. Then apply the loop fuel sufficiency from Sub-phase C.
 
-*** Sub-phase 4.4.D Accomplishments***
+*** Sub-phase 4.4.E Accomplishments***
 
-*** Sub-phase 4.4.D Reflections***
+*** Sub-phase 4.4.E Reflections***
 
 ---
 
-**Sub-phase 4.4.E — Layer 3 non-empty cases (~200-400 LOC)**
+**Sub-phase 4.4.F — Layer 3 non-empty cases (~200-400 LOC)**
 
 Close `emit_roundtrip_sequence_content_eq` and `emit_roundtrip_mapping_content_eq` non-empty:
 
@@ -2275,9 +2366,9 @@ Close `emit_roundtrip_sequence_content_eq` and `emit_roundtrip_mapping_content_e
    `emit items[i]` is itself valid emitter output, `emit_produces_valid_yaml` gives scanner
    success, and Sub-phase D gives parser success.
 
-*** Sub-phase 4.4.E Accomplishments***
+*** Sub-phase 4.4.F Accomplishments***
 
-*** Sub-phase 4.4.E Reflections***
+*** Sub-phase 4.4.F Reflections***
 
 ---
 
@@ -2288,14 +2379,16 @@ Close `emit_roundtrip_sequence_content_eq` and `emit_roundtrip_mapping_content_e
   ↓
 4.4.B (position advancement) ← uses A for token classification
   ↓
-4.4.C (loop fuel sufficiency) ← uses B for per-iteration progress
+4.4.C (seq loop fuel sufficiency) ← uses B for per-iteration progress
   ↓
-4.4.D (Layer 2 non-empty) ← uses C for loop success
+4.4.D (map loop fuel sufficiency) ← mirrors C for mapping entries
   ↓
-4.4.E (Layer 3 non-empty) ← uses D + IH for content equivalence
+4.4.E (Layer 2 non-empty) ← uses C+D for loop success
+  ↓
+4.4.F (Layer 3 non-empty) ← uses E + IH for content equivalence
 ```
 
-All sub-phases are sequential. A → B → C → D → E.
+All sub-phases are sequential: A → B → C → D → E → F.
 
 **Estimated total: ~850-1450 LOC** across Sub-phases A-E.
 
