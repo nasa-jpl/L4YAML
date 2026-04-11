@@ -80,6 +80,173 @@ tag := "runtime-tests"
  * _Adversarial tests_ — handcrafted inputs targeting parser limits
  * _Round-trip tests_ — parse → dump → parse cycle validation
 
+# Key Theorems
+%%%
+tag := "key-theorems"
+%%%
+
+{index}[key theorems]
+The following capstone theorems represent the main formal
+guarantees established by L4YAML.  Each is machine-checked
+by the Lean kernel with zero axioms beyond the built-in
+foundations.
+
+## Pipeline Composition
+%%%
+tag := "thm-pipeline"
+%%%
+
+These theorems establish that the scanner and parser compose
+correctly into a single end-to-end pipeline.
+
+:::table +header
+*
+  * Theorem
+  * Module
+  * Statement
+*
+  * `parseYaml_pipeline`
+  * `Composition`
+  * End-to-end: scan then parse composes correctly.  If `scanFiltered` produces tokens and `parseStream` accepts them, then `parseYaml` succeeds with the same result.
+*
+  * `parseYamlRaw_pipeline`
+  * `Composition`
+  * Raw pipeline variant without schema resolution.
+*
+  * `parseYamlRaw_ok_decompose`
+  * `Composition`
+  * Every successful `parseYamlRaw` result decomposes into a successful scan step followed by a successful parse step.
+*
+  * `parseYaml_ok_iff`
+  * `Completeness`
+  * `parseYaml` succeeds if and only if the input is valid YAML — the bridge between the implementation and the specification.
+:::
+
+## Scanner Correctness
+%%%
+tag := "thm-scanner"
+%%%
+
+{index}[scanner correctness]
+Properties of the character-to-token scanner:
+
+:::table +header
+*
+  * Theorem
+  * Module
+  * Statement
+*
+  * `scan_produces_valid_tokens`
+  * `ScannerCorrectness`
+  * The scanner output satisfies `ValidTokenStream`: every emitted token is well-formed, positions are monotonically increasing, and the stream is bracketed by `STREAM_START`/`STREAM_END`.
+*
+  * `advance_offset_lt`
+  * `ScannerProgress`
+  * Scanner advance _strictly_ increases the byte offset when the offset is within bounds — this is the core termination lemma.
+*
+  * `scanLoop_success_emits_streamEnd`
+  * `ScannerCorrectness`
+  * A successful scan loop always terminates with a `STREAM_END` token.
+:::
+
+## Parser Correctness
+%%%
+tag := "thm-parser"
+%%%
+
+{index}[parser correctness]
+Properties of the token-to-AST parser:
+
+:::table +header
+*
+  * Theorem
+  * Module
+  * Statement
+*
+  * `parseStream_sound`
+  * `ParserSoundness`
+  * If the parser produces an AST, it corresponds to a valid YAML grammar derivation.
+*
+  * `parseNode_anchors_grow`
+  * `ParserNodeProofs`
+  * The anchor set grows monotonically through `parseNode` — anchors are never lost during parsing.
+*
+  * `parseNode_aliases_resolve'`
+  * `ParserNodeProofs`
+  * Every alias (`*name`) in the output of `parseNode` resolves to a previously defined anchor (`&name`).
+*
+  * `parseStream_output_anchors_wellformed`
+  * `ParserWfaProofs`
+  * After `parseStream` completes, all output anchors are well-formed: every alias target exists and every anchor body is `Grammable`.
+:::
+
+## Soundness
+%%%
+tag := "thm-soundness"
+%%%
+
+{index}[soundness]
+Theorems establishing that the AST-to-value conversion
+faithfully implements the YAML specification:
+
+:::table +header
+*
+  * Theorem
+  * Module
+  * Statement
+*
+  * `toYamlValue_correct`
+  * `Soundness`
+  * The `toYamlValue` function correctly implements the specification's construction rules.
+*
+  * `nodeToValue_total`
+  * `Soundness`
+  * Every well-formed AST node can be converted to a `YamlValue` — the conversion is total.
+*
+  * `nodeToValue_deterministic`
+  * `Soundness`
+  * AST-to-value conversion is deterministic: the same input always produces the same output.
+*
+  * `scalar_content_preserved`
+  * `Soundness`
+  * Scalar string content is preserved through the parsing pipeline — no characters are added, dropped, or reordered.
+:::
+
+## Round-Trip Properties
+%%%
+tag := "thm-roundtrip"
+%%%
+
+{index}[round-trip]
+Theorems about the parse → emit → parse cycle:
+
+:::table +header
+*
+  * Theorem
+  * Module
+  * Statement
+*
+  * `contentEq_refl`
+  * `RoundTrip`
+  * Content equality is reflexive: every YAML value is content-equal to itself.
+*
+  * `contentEq_symm`
+  * `RoundTrip`
+  * Content equality is symmetric.
+*
+  * `contentEq_trans`
+  * `RoundTrip`
+  * Content equality is transitive — together with reflexivity and symmetry, this makes `contentEq` an equivalence relation.
+*
+  * `emit_content_invariant`
+  * `ScannerEmitBridge`
+  * The emitter preserves content equality: if two values are content-equal, their emitted canonical forms are identical.
+*
+  * `escapeTag_roundtrip`
+  * `RoundTrip`
+  * Tag URI escape and unescape are inverse operations.
+:::
+
 # Key Proof Modules
 %%%
 tag := "proof-modules"
@@ -119,8 +286,20 @@ tag := "proof-modules"
   * 12 theorems
   * Grammar-to-implementation correspondence
 *
+  * `ParserWfaProofs.lean`
+  * 50 theorems
+  * Well-formed anchors through entire parser pipeline
+*
+  * `ParserNodeProofs.lean`
+  * 57 theorems
+  * Anchor growth and alias resolution
+*
+  * `ParserWellBehaved.lean`
+  * 102 theorems
+  * Flow nesting, token preservation, scannable properties
+*
   * `ScannerProgress.lean`
-  * Multiple theorems
+  * 24 theorems
   * Offset strictly increases on every scanner step
 *
   * `ScannerSimpleKey.lean`
@@ -131,6 +310,82 @@ tag := "proof-modules"
   * Multiple theorems
   * Dispatch pipeline preserves all invariants
 :::
+
+# Theorem Dependency Visualization
+%%%
+tag := "theorem-graphs"
+%%%
+
+{index}[dependency graphs]
+L4YAML includes tooling for visualizing theorem dependencies as
+bipartite graphs.  Each graph shows a key theorem at the center,
+with:
+
+ * _Functions_ (left, blue) — the implementation functions the
+   theorem proves a property about
+ * _Proof dependencies_ (right, green) — the supporting theorems
+   used in the proof
+
+## Generating Graphs
+
+Generate DOT files for all key theorems:
+
+```
+lake build theoremgraph
+lake exe theoremgraph tmp/graphs
+```
+
+Render to SVG with Graphviz:
+
+```
+for f in tmp/graphs/*.dot; do
+  dot -Tsvg "$f" -o "${f%.dot}.svg"
+done
+```
+
+Then open `tmp/graphs/index.html` for an overview page.
+
+Generate a single theorem's graph:
+
+```
+lake exe theoremgraph --dot parseYaml_pipeline
+```
+
+List all available key theorems:
+
+```
+lake exe theoremgraph --list
+```
+
+## Dependency Extraction
+
+The lower-level `depgraph` tool extracts three complete dependency
+graphs from the L4YAML environment:
+
+ 1. *Function call graph* — definition → definition calls
+ 2. *Theorem dependency graph* — theorem → theorems used in proof
+ 3. *Function–theorem map* — which functions each theorem is about
+
+```
+lake build depgraph
+lake exe depgraph --dot calls   > calls.dot
+lake exe depgraph --dot thmdeps > thmdeps.dot
+lake exe depgraph --dot about   > about.dot
+lake exe depgraph --stats
+```
+
+## Theorem Coverage Analysis
+
+The `analyzethms` tool identifies leaf theorems (proved but never
+cited in other proofs) and `native_decide` usage patterns:
+
+```
+lake build analyzethms
+lake exe analyzethms tmp/analysis
+```
+
+This writes `leaf_thms.json`, `native_decide_leaves.json`,
+`duplicates.json`, and `stats.txt`.
 
 # Proof Engineering Patterns
 %%%
@@ -157,6 +412,14 @@ Several patterns emerged during the verification effort:
    scanner state is threaded through every operation, establishing
    that invariants are maintained from `scannerInit` through
    `scanNextToken` to stream completion.
+
+ * _Anchor monotonicity_ — the `AnchorsGrow` relation is proved
+   transitively across all 14 mutually recursive parser functions,
+   establishing that anchors accumulate but are never dropped.
+
+ * _Fuel-based termination_ — the parser's 14 mutual functions
+   use `fuel : Nat` as a decreasing argument.  Initial fuel is
+   set to `4 * tokens.size + 4`, large enough for any valid input.
 
 # Zero-Axiom Policy
 %%%
