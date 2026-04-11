@@ -2333,13 +2333,276 @@ With Subs A-C, close `parseStream_emitSequence` and `parseStream_emitMapping` no
 
 *** Sub-phase 4.4.E Accomplishments***
 
+1. **Parser trace for non-empty sequences** (`parseStream_emitSequence`, `| _ :: _` branch):
+   ~100 LOC tracing `parseStream` → `parseStreamLoop` → `parseDocument` → `parseNode` →
+   `parseNodeContent` → `parseFlowSequence` → `parseFlowSequenceLoop_emitter_ok`.
+   Decomposes into sorry'd structure theorem + 4 targeted sorrys.
+
+2. **Parser trace for non-empty mappings** (`parseStream_emitMapping`, `| _ :: _` branch):
+   ~100 LOC parallel construction for `parseFlowMapping` → `parseFlowMappingLoop_emitter_ok`.
+   Same decomposition pattern as sequences.
+
+3. **Extended loop theorems with `trackPositions` preservation** (ParserWellBehaved.lean):
+   - Added `ps'.trackPositions = ps.trackPositions` to `ParseNodeFlowSeqOk` definition
+   - Added same to `ParseEntryFlowMapOk` definition (both key_ps and val_ps)
+   - Extended `parseFlowSequenceLoop_emitter_ok` conclusion + updated all return tuples
+     (base case, flowSequenceEnd, flowEntry→flowSequenceEnd, separator+parseNode recursive,
+     no-separator, items_acc=0 branches)
+   - Extended `parseFlowMappingLoop_emitter_ok` conclusion + updated all return tuples
+     (same pattern with key/value entry obtains and trans chains)
+   - All changes build cleanly in ~3.2M heartbeats
+
+4. **Closed 4 sorrys** in EmitterScannability.lean:
+   - 2 `trackPositions` sorrys (seq + map): closed via `exact h_loop_tp` from extended
+     loop theorem — the trackPositions chain `ps_loop → ps_mid → ps1 → initial` is
+     definitionally `false`
+   - 2 position sorrys (seq + map): closed via case analysis — `peek_some_val` gives
+     `tokens[ps_loop.pos]!.val = .flowSequenceEnd/.flowMappingEnd`, then uniqueness
+     clause from structure theorem eliminates body positions [2, tokens.size-2), distinct
+     constructor discrimination eliminates positions 0, 1, tokens.size-1, `omega` closes
+
+5. **Added uniqueness clauses to structure theorems** (still sorry'd):
+   - `scanFiltered_emitSeq_nonempty_structure`: added
+     `(∀ k, 2 ≤ k → k < tokens.size - 2 → tokens[k]!.val ≠ .flowSequenceEnd)`
+   - `scanFiltered_emitMap_nonempty_structure`: added
+     `(∀ k, 2 ≤ k → k < tokens.size - 2 → tokens[k]!.val ≠ .flowMappingEnd)`
+
+6. **Current sorry inventory** (EmitterScannability.lean): 4 remain
+   - 2 structure theorems (`scanFiltered_emitSeq_nonempty_structure`,
+     `scanFiltered_emitMap_nonempty_structure`) — scanner token characterization,
+     to be proven in Sub-phase 4.4.A
+   - 2 roundtrip content equality (`emit_roundtrip_sequence_content_eq`,
+     `emit_roundtrip_mapping_content_eq` non-empty cases) — Sub-phase 4.4.F scope
+
 *** Sub-phase 4.4.E Reflections***
+
+1. **`trackPositions` was the hidden invariant**: The `applyNodeFinalization` function
+   conditionally modifies the parser state based on `trackPositions`. To prove it's identity,
+   we needed `ps_loop.advance.trackPositions = false`. This required threading a preservation
+   property through both flow loop theorems — a cross-module change (ParserWellBehaved →
+   EmitterScannability) that touched ~20 return tuples in each loop proof.
+
+2. **Definitional equality chains are powerful but fragile**: The trackPositions proof
+   boils down to `exact h_loop_tp` because `ps_loop.advance.trackPositions` is definitionally
+   `ps_loop.trackPositions`, and `ps_mid.trackPositions` is definitionally `false` through
+   the let-binding chain. But this only works because `ps_mid` is a `let` variable (transparent
+   to the kernel). If it were opaque, we'd need explicit rewriting.
+
+3. **Uniqueness clauses bridge loop invariants to position pinning**: The loop theorem
+   guarantees `ps_loop.peek? = some .flowSequenceEnd`, meaning `ps_loop` is *at* a
+   flowSequenceEnd token. But multiple positions could have that token value. The uniqueness
+   clause (no flowSequenceEnd in body range [2, N-2)) pins `ps_loop.pos` to exactly `N-2`.
+   This is a constraint strengthening of the sorry'd structure theorem — the sorry grows
+   slightly stronger, but the consumer proofs become closeable.
+
+4. **Mapping loop follows sequence pattern exactly**: Both loop proofs (ParseNodeFlowSeqOk
+   vs ParseEntryFlowMapOk) use the same trackPositions threading pattern: add field to
+   predicate definition → update all obtain destructuring → chain with `.trans` in recursive
+   cases. The mapping version has one extra level (key_ps + val_ps) but the same structure.
 
 ---
 
-**Sub-phase 4.4.F — Layer 3 non-empty cases (~200-400 LOC)**
+**Sub-phase 4.4.F — Filtered token array tracking infrastructure (~200-300 LOC)**
 
-Close `emit_roundtrip_sequence_content_eq` and `emit_roundtrip_mapping_content_eq` non-empty:
+The structure theorems (`scanFiltered_emitSeq_nonempty_structure`, `scanFiltered_emitMap_nonempty_structure`)
+require knowing exact `tokens[i]!.val` for specific indices. The key insight: `scanFiltered_of_chain_eq`
+gives `tokens = s_final.tokens.filter p`, and we can track what each `scanNextToken` step in the
+chain appends to the filtered token array. This sub-phase builds that tracking infrastructure.
+
+**Gap 1: Filtered token monotonicity through `ScanChain`**
+
+Each `scanNextToken` call either pushes real tokens (via `s.emit tok`) or placeholder+real pairs
+(via `saveSimpleKey` + `s.emit tok`). After filtering out placeholders, each step appends
+zero or more tokens. We need:
+
+```lean
+-- Each scanNextToken step preserves filtered prefix
+theorem scanNextToken_filtered_prefix (h : scanNextToken s = .ok (some s')) :
+    ∃ suffix, s'.tokens.filter p = s.tokens.filter p ++ suffix
+
+-- ScanChain preserves filtered prefix (by induction using above)
+theorem ScanChain.filtered_prefix (h : ScanChain s n s') :
+    ∃ suffix, s'.tokens.filter p = s.tokens.filter p ++ suffix
+```
+
+*Approach:* Each `scanNextToken` path goes through preprocessing (which only adds placeholders
+via `saveSimpleKey`, filtered-transparent by `saveSimpleKey_filter_placeholder`), then dispatches
+to a specific handler that pushes exactly one real token via `s.emit`. So:
+`s'.tokens.filter p = s.tokens.filter p ++ #[new_token]` (when handler emits) or
+`= s.tokens.filter p` (when handler only modifies state without emitting).
+
+The `Array.filter_push` lemma decomposes filter through pushed tokens. Combined with the
+`saveSimpleKey_filter_placeholder` (already proven), this gives filtered prefix preservation
+for each `scanNextToken` variant.
+
+**Gap 2: Per-step filtered token characterization**
+
+For each `scanNextToken_*` theorem used in the emitter chain, add a postcondition specifying
+what filtered tokens are appended:
+
+| Theorem | Filtered tokens appended |
+|---------|-------------------------|
+| `scanNextToken_flow_open_init` | `#[⟨_, .streamStart⟩, ⟨_, .flowSequenceStart⟩]` (already proven in 4.4.A) |
+| `scanNextToken_flow_open_nested` | `#[⟨_, .flowSequenceStart⟩]` or `#[⟨_, .flowMappingStart⟩]` |
+| `scanNextToken_flow_close_seq_outermost` | `#[⟨_, .flowSequenceEnd⟩]` |
+| `scanNextToken_flow_close_mapping_outermost` | `#[⟨_, .flowMappingEnd⟩]` |
+| `scanNextToken_flow_scanDoubleQuoted` | `#[⟨_, .scalar content .doubleQuoted⟩]` |
+| `scanNextToken_flow_comma` | `#[⟨_, .flowEntry⟩]` |
+| `scanNextToken_flow_value` | `#[⟨_, .value⟩]` |
+| `emitList_scans_nonempty` chain | body tokens (tracked compositionally) |
+| `emitPairList_scans_nonempty` chain | body tokens (tracked compositionally) |
+| `unwindIndents` | No real tokens (only placeholders, filtered out) |
+
+*Implementation:* Add `s'.tokens.filter p = s.tokens.filter p ++ #[positioned_tok]` as a
+postcondition to each `scanNextToken_*` theorem. Use `Array.filter_push` + `decide` for
+the placeholder check. Most proofs are 2-3 lines.
+
+**Gap 3: Composed filtered token array for full emitter output**
+
+Using `scanFiltered_of_chain_eq` + per-step tracking, derive:
+
+```lean
+-- For sequence: "[" ++ emitList items ++ "]"
+tokens = #[⟨_, .streamStart⟩, ⟨_, .flowSequenceStart⟩]
+      ++ body_tokens
+      ++ #[⟨_, .flowSequenceEnd⟩, ⟨_, .streamEnd⟩]
+```
+
+This gives: `tokens[0]!.val = .streamStart`, `tokens[1]!.val = .flowSequenceStart`,
+`tokens[tokens.size - 2]!.val = .flowSequenceEnd`, `tokens[tokens.size - 1]!.val = .streamEnd`.
+
+For the body tokens, we need to know that emitList's body doesn't produce flowSequenceEnd
+at the top level (they're inside nested brackets consumed by sub-chains). This follows from
+the `lastRealTokenVal?` postconditions already tracked by `EmitScansInFlow`.
+
+**Gap 4: `unwindIndents` filtered transparency and `streamEnd` append**
+
+`unwindIndents` in flow context (flowLevel = 0 after close bracket) adds only `blockEnd`
+and `documentEnd` tokens — both are non-placeholder and need to be accounted for. However,
+for emitter output (single-line, no block constructs), `unwindIndents` with `s.indents = #[-1]`
+(the initial stack) does nothing. Need:
+
+```lean
+theorem unwindIndents_noop_initial (s : ScannerState) (h_indents : s.indents = #[-1]) :
+    unwindIndents s (-1) = s
+```
+
+Then `(unwindIndents s_final (-1)).emit .streamEnd = s_final.emit .streamEnd`, and the
+filtered tokens are just `s_final.tokens.filter p ++ #[⟨_, .streamEnd⟩]`.
+
+*Alternative:* If `unwindIndents` is complex to analyze, use `scanFiltered_of_chain_eq`
+directly and prove `((unwindIndents s_final (-1)).emit .streamEnd).tokens.filter p`
+= `s_final.tokens.filter p ++ #[⟨_, .streamEnd⟩]` by showing `unwindIndents` only
+adds indent-related tokens (all non-placeholder) that end up before streamEnd.
+
+*** Sub-phase 4.4.F Accomplishments***
+
+*** Sub-phase 4.4.F Reflections***
+
+---
+
+**Sub-phase 4.4.G — Structure theorem proofs (~300-500 LOC)**
+
+With the filtered token tracking from 4.4.F, prove `scanFiltered_emitSeq_nonempty_structure`
+and `scanFiltered_emitMap_nonempty_structure`. This sub-phase has three tiers:
+
+**Tier 1: Boundary and bracket tokens (~50 LOC)**
+
+Using the composed filtered token array from 4.4.F:
+- `tokens[0]!.val = .streamStart` — from prefix tracking (position 0)
+- `tokens[tokens.size - 1]!.val = .streamEnd` — from suffix tracking (last position)
+- `tokens[1]!.val = .flowSequenceStart` — from prefix tracking (position 1)
+- `tokens[tokens.size - 2]!.val = .flowSequenceEnd` — from suffix tracking (penultimate)
+- `tokens.size ≥ 5` — from prefix (2) + body (≥1) + suffix (2)
+
+These follow directly from the composed array structure.
+
+**Tier 2: Body token classification (~100-150 LOC)**
+
+- `tokens[2]!.val ≠ .flowEntry` — the first body token comes from `emit items[0]`, which
+  is a scalar (producing `.scalar`) or nested collection (producing `.flowSequenceStart` or
+  `.flowMappingStart`). None of these are `.flowEntry`.
+
+- `tokens[2]!.val ≠ .key` — same reasoning; emitter never produces `.key` as its first token.
+
+- Flow entry pattern: `tokens[k]!.val = .flowEntry → tokens[k+1]!.val ≠ .flowEntry ∧ ≠ .key` —
+  each `.flowEntry` comes from `scanNextToken_flow_comma` (the `, ` separator in emitList).
+  The next token is the first token of the next item, which is a value token (same argument
+  as for position 2).
+
+*Approach:* The filtered token array from 4.4.F gives the exact sequence of token values.
+The body tokens alternate: `[item₁_tokens..., .flowEntry, item₂_tokens..., .flowEntry, ...]`.
+Each `item_i_tokens` starts with a value token (from `EmitScansInFlow` dispatch — scalar
+produces `.scalar`, sequence produces `.flowSequenceStart`, mapping produces `.flowMappingStart`).
+
+**Tier 3: `ParseNodeFlowSeqOk` / `ParseEntryFlowMapOk` from `Grammable` IH (~150-300 LOC)**
+
+This is the deepest part. We need: for each body position where the loop calls `parseNode`,
+the parse succeeds with position advancement and token preservation.
+
+The key insight: each `parseNode` call in the loop sees a sub-range of `tokens` corresponding
+to `emit items[i]`'s scanned output. By the `Grammable` induction hypothesis, we have
+`parseStream_emitSequence`/`parseStream_emitMapping` for sub-values, which gives parser
+success on standalone scanned output. We need to bridge this to parser success within
+the composite token array.
+
+*Bridge approach:* The parser operates on `ParseState.tokens` (the full array) starting at
+`ParseState.pos`. For emitter output, `parseNode` at position `pos` dispatches to:
+- **Scalar**: reads `tokens[pos]!` (a `.scalar` token), advances by 1. Succeeds unconditionally
+  if the token is a scalar.
+- **Nested flow sequence**: calls `parseFlowSequence`, which consumes from `pos` to the
+  matching `.flowSequenceEnd`. By bracket matching from the scanner chain, this succeeds.
+- **Nested flow mapping**: calls `parseFlowMapping`, similarly consuming bracket group.
+
+The `ParseNodeFlowSeqOk` predicate requires per-position success. Two strategies:
+
+*Strategy A (direct):* Prove `parseNode` succeeds directly on the composite token array
+by case-splitting on what the next token is (scalar/flowSeqStart/flowMapStart) and applying
+the appropriate parser lemma. For scalars, this is a 5-line proof. For nested collections,
+this requires recursive reasoning — the same `ParseNodeFlowSeqOk` for the inner collection.
+
+*Strategy B (token-array splitting):* Show that if `parseNode` succeeds on a standalone
+token array `tokens_i = scanFiltered (emit items[i])`, then it also succeeds when those
+same tokens are embedded in a larger array at the same relative positions. This requires
+a `parseNode_token_embedding` lemma showing parser behavior depends only on tokens from
+`pos` to the end of the consumed range.
+
+Strategy A is simpler for flat collections (no nesting). Strategy B handles nesting but
+needs a new theorem about parser locality.
+
+*Recommended:* Strategy A with `Grammable` structural induction. At the outermost
+level, `ParseNodeFlowSeqOk` for each item follows from:
+- Scalar items: direct proof that `parseNode` on a scalar token advances by 1
+- Collection items: recursive application — the `Grammable` IH gives `EmitScansInFlow`
+  for sub-values, and the filtered token tracking from 4.4.F characterizes the sub-range
+
+**Position pinning revival:**
+
+The consumers (lines 6921, 7106) need `ps_loop.pos = tokens.size - 2`. This requires
+knowing there are no top-level `.flowSequenceEnd`/`.flowMappingEnd` tokens in the body
+range [2, tokens.size-2). Two options:
+
+- **Option A:** Re-add the uniqueness clause to the structure theorems:
+  `(∀ k, 2 ≤ k → k < tokens.size - 2 → tokens[k]!.val ≠ .flowSequenceEnd)`
+  This follows from the body token classification — body tokens are value tokens and
+  flowEntry separators, never bracket-close tokens at the top level.
+
+- **Option B:** Strengthen the loop theorem to conclude `ps'.pos = endPos`
+  (not just `ps'.peek? = some .flowSequenceEnd`). This changes 4.4.C/D.
+
+Option A is cleaner — it's a natural property of the filtered token array.
+
+*** Sub-phase 4.4.G Accomplishments***
+
+*** Sub-phase 4.4.G Reflections***
+
+---
+
+**Sub-phase 4.4.H — Layer 3 non-empty cases (~200-400 LOC)**
+
+Close `emit_roundtrip_sequence_content_eq` and `emit_roundtrip_mapping_content_eq` non-empty.
+Uses structure theorems from 4.4.G for position pinning and loop theorems from 4.4.E for
+parser success.
 
 1. **Decompose the pipeline:** `parseYamlRaw` → `scanFiltered` + `parseStream` via
    `parseYamlRaw_ok_decompose`.
@@ -2366,9 +2629,9 @@ Close `emit_roundtrip_sequence_content_eq` and `emit_roundtrip_mapping_content_e
    `emit items[i]` is itself valid emitter output, `emit_produces_valid_yaml` gives scanner
    success, and Sub-phase D gives parser success.
 
-*** Sub-phase 4.4.F Accomplishments***
+*** Sub-phase 4.4.H Accomplishments***
 
-*** Sub-phase 4.4.F Reflections***
+*** Sub-phase 4.4.H Reflections***
 
 ---
 
@@ -2385,12 +2648,18 @@ Close `emit_roundtrip_sequence_content_eq` and `emit_roundtrip_mapping_content_e
   ↓
 4.4.E (Layer 2 non-empty) ← uses C+D for loop success
   ↓
-4.4.F (Layer 3 non-empty) ← uses E + IH for content equivalence
+4.4.F (filtered token tracking) ← extends A per-step postconditions
+  ↓
+4.4.G (structure theorem proofs) ← uses F for boundary tokens + body classification
+  ↓
+4.4.H (Layer 3 non-empty) ← uses G for position pinning + E for content equivalence
 ```
 
-All sub-phases are sequential: A → B → C → D → E → F.
+All sub-phases are sequential: A → B → C → D → E → F → G → H.
+Note: 4.4.F also depends on 4.4.A (extends its results), and 4.4.G
+depends on 4.4.E (uses loop theorems from C/D through E).
 
-**Estimated total: ~850-1450 LOC** across Sub-phases A-E.
+**Estimated total: ~1350-2350 LOC** across Sub-phases A-H.
 
 **Alternative fast-path (if position advancement is too difficult):**
 
