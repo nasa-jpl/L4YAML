@@ -2497,7 +2497,52 @@ adds indent-related tokens (all non-placeholder) that end up before streamEnd.
 
 *** Sub-phase 4.4.F Accomplishments***
 
+1. **Position pinning sorrys closed** (2 sorrys eliminated). Both `parseStream_emitSequence`
+   and `parseStream_emitMapping` had position pinning sorrys (`ps_loop.pos = tokens.size - 2`)
+   inside the `h_peek_end` proof. Closed via uniqueness argument:
+   - Added uniqueness clause `(∀ k, k < tokens.size - 2 → tokens[k]!.val ≠ .flowSequenceEnd)`
+     (resp. `.flowMappingEnd`) to structure theorem signatures (still sorry'd).
+   - Position pinning proof: from `peek_some_val h_loop_peek` get `tokens[ps_loop.pos]!.val
+     = .flowSequenceEnd`. Case split on `ps_loop.pos` vs `tokens.size - 2`:
+     (a) `pos < tokens.size - 2`: contradiction with uniqueness clause.
+     (b) `pos = tokens.size - 2`: goal.
+     (c) `pos > tokens.size - 2`: forces `pos = tokens.size - 1`, but
+         `tokens[tokens.size-1]!.val = .streamEnd ≠ .flowSequenceEnd` (by `decide`).
+   - Same proof structure for both sequence and mapping cases (~10 LOC each).
+
+2. **Uniqueness clauses added to structure theorems** (2 new sorry'd obligations).
+   `scanFiltered_emitSeq_nonempty_structure` now includes
+   `∀ k, k < tokens.size - 2 → tokens[k]!.val ≠ .flowSequenceEnd`. Similarly for mapping.
+   These state that the closing bracket token appears ONLY at position `tokens.size - 2`
+   (not at any earlier position). The proof obligation is that the emitter's output structure
+   (nested brackets consumed by inner sub-chains) ensures no stray closing brackets in the body.
+
+3. **Build status**: 0 errors, 4 sorry-using declarations in EmitterScannability.lean
+   (down from 6). The 2 eliminated declarations were position pinning inside
+   `parseStream_emitSequence` and `parseStream_emitMapping`. The 4 remaining:
+   - `scanFiltered_emitSeq_nonempty_structure` (8 sorry instances including uniqueness)
+   - `scanFiltered_emitMap_nonempty_structure` (7 sorry instances including uniqueness)
+   - `emit_roundtrip_sequence_content_eq` (non-empty case)
+   - `emit_roundtrip_mapping_content_eq` (non-empty case)
+
 *** Sub-phase 4.4.F Reflections***
+
+1. **Uniqueness-based position pinning avoids modifying loop theorems.** The initial analysis
+   considered strengthening `ParseNodeFlowSeqOk` with `peek? = .flowSequenceEnd → pos = endPos`
+   and adding `ps'.pos = endPos` to the loop theorem conclusions. This would have required
+   ~50-80 LOC of changes to proven code in ParserWellBehaved.lean (touching both loop proofs,
+   predicate definitions, and all caller destructuring patterns). The uniqueness approach
+   adds only ~10 LOC per position pinning proof, with the cost being one additional sorry
+   in each structure theorem.
+
+2. **The `by decide` discriminant check is robust.** The proof that `.streamEnd ≠ .flowSequenceEnd`
+   (resp. `.flowMappingEnd`) uses `exact absurd (h_tlast.symm.trans h_val_at_pos) (by decide)`.
+   This works because `YamlToken` constructors are syntactically distinct, and `decide`
+   handles the inequality automatically. No explicit pattern matching or `cases` needed.
+
+3. **`Nat.eq_or_lt_of_le` returns `lhs = rhs` (not `rhs = lhs`).** When `h_ge : N-2 ≤ pos`,
+   `Nat.eq_or_lt_of_le h_ge` gives `h_eq : N-2 = pos`, requiring `h_eq.symm` for the
+   direction needed by the goal. Initial version forgot `.symm`, causing a type mismatch.
 
 ---
 
@@ -2592,9 +2637,16 @@ range [2, tokens.size-2). Two options:
 
 Option A is cleaner — it's a natural property of the filtered token array.
 
+**Status:** Option A implemented. Uniqueness clauses added to both structure theorems
+(sorry'd). Position pinning sorrys closed in Sub-phase 4.4.F using these uniqueness clauses.
+
 *** Sub-phase 4.4.G Accomplishments***
 
+(Not yet started — structure theorem proofs remain sorry'd.)
+
 *** Sub-phase 4.4.G Reflections***
+
+(Pending.)
 
 ---
 
@@ -2774,8 +2826,8 @@ to carry token-level information.
 | 7 | `emit_produces_single_document` | 6 | 2 | **proven** (delegates to combined lemmas) | — |
 | 8 | `emit_parsed_grammable` | 5b/6 | 2 | **proven** | 60–120 |
 | 9 | `emit_roundtrip_content_eq` | 6 | 3 | **proven** (scalar; delegates to helpers for seq/map) | — |
-| 9a | `parseStream_emitSequence` | 8 | 1 | sorry (combined scanner+parser for sequences) | 200–400 |
-| 9b | `parseStream_emitMapping` | 8 | 1 | sorry (combined scanner+parser for mappings) | 200–400 |
+| 9a | `parseStream_emitSequence` | 8 | 1 | **partial** (position pinning proven; structure theorem sorry'd) | 200–400 |
+| 9b | `parseStream_emitMapping` | 8 | 1 | **partial** (position pinning proven; structure theorem sorry'd) | 200–400 |
 | 9c | `emit_roundtrip_sequence_content_eq` | 8 | 3 | sorry (content fidelity for sequences) | 150–300 |
 | 9d | `emit_roundtrip_mapping_content_eq` | 8 | 3 | sorry (content fidelity for mappings) | 150–300 |
 | — | `universal_roundtrip` | 3 | — | **proven** (depends on 1–9) | 5 |
