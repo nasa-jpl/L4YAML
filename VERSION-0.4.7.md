@@ -2171,7 +2171,51 @@ via two `parseNode` calls plus `tryConsume .key` and `parseFlowMappingValue`).
 
 *** Sub-phase 4.4.C Accomplishments***
 
+1. **`ParseNodeFlowSeqOk` predicate** (~15 LOC, line 4105): Bundles seven conditions
+   on `parseNode` calls within a flow sequence loop — success, position advancement,
+   position bound, token preservation, and peek at separator/end after return.
+
+2. **`ParseNodeFlowSeqOk.mono`** (~3 LOC, line 4125): Fuel monotonicity — if the
+   predicate holds at fuel `f`, it holds at any `f' ≤ f`.
+
+3. **`peek_some_val`** (~8 LOC, line 4131): Helper extracting `ps.tokens[ps.pos]!.val = tok`
+   from `ps.peek? = some tok` (panic-access form, matching emitter token hypotheses).
+
+4. **`peek_of_pos_val`** (~8 LOC, line 4139): Converse helper constructing
+   `ps.peek? = some tok` from position + token value facts.
+
+5. **`parseFlowSequenceLoop_emitter_ok`** (~170 LOC, line 4147): **FULLY PROVEN.**
+   Main theorem: under emitter-like token stream assumptions (no `key` tokens,
+   `flowEntry` separators between items, `flowSequenceEnd` at `endPos`), the
+   sequence loop succeeds, reaches `flowSequenceEnd`, and preserves tokens.
+
+   Key proof techniques: induction on fuel generalizing ps items_acc;
+   `generalize hPsX` to abstract struct-with expressions avoiding `let __src`;
+   helper equalities via `rw [← hPsX]; simp [ParseState.advance]` for items > 0;
+   `dsimp only [] at hk1` before omega for struct projection reduction;
+   `h_tok_res.trans h_tok_eq` for tokens equality chaining through IH.
+
+6. **Flow mapping loop outlined** (TODO, line 4315): Documented per-entry token
+   pattern and proof structure for `parseFlowMappingLoop_emitter_ok`. Deferred
+   due to higher complexity (TWO sub-parses per iteration: key + value).
+
 *** Sub-phase 4.4.C Reflections***
+
+1. **struct-with projections through non-variable bases**: `{ expr with f := v }.g`
+   introduces `let __src := expr; ...` when `expr` is not a local variable,
+   blocking `rfl`, `exact`, and `omega`. Fix: `generalize` to introduce the struct
+   as a variable, then derive equalities via `rw [← hPsX]; simp [DefName]`.
+
+2. **omega and struct projections**: `omega` treats `{ s with f := v }.g` as opaque
+   when not reduced. Fix: `dsimp only []` to do iota reduction before omega.
+
+3. **`simp` over-simplification**: `simp [ParseState.advance, ParseState.peek?]`
+   expands to raw conditionals, preventing `exact` with higher-level hypotheses.
+   Fix: derive helper equality separately, then `rw` before `exact`.
+
+4. **Mapping proof complexity**: Flow mapping loop needs a per-entry predicate
+   covering key token + parseExplicitKey + parseFlowMappingValue, rather than
+   the simpler single-parseNode predicate used for sequences.
 
 ---
 
