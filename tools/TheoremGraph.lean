@@ -87,6 +87,18 @@ def shortName (n : Name) : String :=
   else if s.startsWith "L4YAML." then (s.drop 7).toString
   else s
 
+/-- Percent-encode characters that are unsafe in file names.
+    Encodes `"`, `:`, `<`, `>`, `|`, `*`, `?`, `'`, `\r`, `\n`
+    using `_xx` where `xx` is the lowercase hex code of the character.
+    This matches the GitHub Actions artifact upload restrictions (NTFS-safe). -/
+def sanitizeFileName (s : String) : String :=
+  s.foldl (init := "") fun acc c =>
+    if "\":?*<>|'\r\n".any (· == c) then
+      let hex := (String.ofList (Nat.toDigits 16 c.toNat)).toLower
+      let hex := if hex.length == 1 then "0" ++ hex else hex
+      acc ++ "_" ++ hex
+    else acc.push c
+
 /-- Escape a string for DOT/JSON. -/
 def dotEscape (s : String) : String :=
   s.foldl (init := "") fun acc c =>
@@ -789,18 +801,19 @@ unsafe def main (args : List String) : IO Unit := do
     for (short, fqn, desc) in keyThms do
       match env.find? fqn with
       | some _ =>
+        let safeShort := sanitizeFileName short
         -- Bipartite graph
         let dot := generateBipartiteDot env projectDefs projectThms fqn desc
-        let path := s!"{outDir}/{short}.dot"
+        let path := s!"{outDir}/{safeShort}.dot"
         IO.FS.writeFile path dot
         IO.println s!"  ✓ {path}"
-        bipartiteEntries := bipartiteEntries.push (short, desc)
+        bipartiteEntries := bipartiteEntries.push (safeShort, desc)
         -- Functorial chain graph
         let chainDot := generateChainDot env projectDefs projectThms fqn desc
-        let chainPath := s!"{outDir}/chain_{short}.dot"
+        let chainPath := s!"{outDir}/chain_{safeShort}.dot"
         IO.FS.writeFile chainPath chainDot
         IO.println s!"  ✓ {chainPath}"
-        chainEntries := chainEntries.push (short, desc)
+        chainEntries := chainEntries.push (safeShort, desc)
         generated := generated + 1
       | none =>
         IO.eprintln s!"  ✗ {short} — not found in environment, skipping"
