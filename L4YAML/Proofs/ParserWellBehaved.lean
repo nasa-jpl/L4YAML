@@ -3234,6 +3234,7 @@ theorem parseNodeProperties_pos_mono (ps : ParseState)
             all_goals (try subst_vars)
             all_goals (simp [ParseState.advance]; try omega)
 
+
 /-! #### Block sequence position monotonicity -/
 
 theorem parseBlockSequenceLoop_pos_mono (fuel : Nat)
@@ -3242,14 +3243,55 @@ theorem parseBlockSequenceLoop_pos_mono (fuel : Nat)
     (result : Array YamlValue × ParseState)
     (h_ok : parseBlockSequenceLoop ps fuel items = .ok result) :
     result.2.pos ≥ ps.pos := by
-  sorry
+  induction fuel generalizing ps items with
+  | zero =>
+    unfold parseBlockSequenceLoop at h_ok
+    simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
+  | succ k ih_fuel =>
+    have h_ih_k : ParseNodePosMono k := fun ps' m v ps'' h_le h_pn =>
+      h_ih ps' m v ps'' (by omega) h_pn
+    unfold parseBlockSequenceLoop at h_ok
+    simp only [bind, Except.bind] at h_ok
+    split at h_ok
+    next => -- peek? = some .blockEntry
+      split at h_ok
+      -- All arms handled uniformly
+      all_goals {
+        first
+        | { -- OR-pattern arms: direct recurse with ps.advance
+            have h_rec := ih_fuel h_ih_k ps.advance _ h_ok
+            simp [ParseState.advance] at h_rec; omega }
+        | { -- Default arm: parseNode then recurse
+            split at h_ok
+            next => simp at h_ok
+            next pn_res heq_pn =>
+              obtain ⟨val, ps₃⟩ := pn_res; try dsimp only [] at h_ok
+              have h_pn := parseNodePosMono_apply h_ih heq_pn
+              have h_rec := ih_fuel h_ih_k
+                { ps₃ with currentPath := _ } _ h_ok
+              simp [ParseState.advance] at h_rec h_pn; omega } }
+    next => -- peek? ≠ blockEntry
+      simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
 
 theorem parseBlockSequence_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_ok : parseBlockSequence ps fuel = .ok result) :
     result.2.pos ≥ ps.pos := by
-  sorry
+  unfold parseBlockSequence at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · simp at h_ok  -- fuel = 0
+  · rename_i k
+    have h_ih_k : ParseNodePosMono k := fun ps' m v ps'' h_le h_pn =>
+      h_ih ps' m v ps'' (by omega) h_pn
+    split at h_ok
+    · simp at h_ok  -- loop error
+    · rename_i loop_res heq_loop
+      obtain ⟨items_arr, ps_loop⟩ := loop_res; try dsimp only [] at h_ok
+      have h_loop := parseBlockSequenceLoop_pos_mono k h_ih_k ps.advance #[] _ heq_loop
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      split <;> simp [ParseState.advance] at h_loop ⊢ <;> omega
 
 /-! #### Implicit block sequence position monotonicity -/
 
@@ -3259,14 +3301,54 @@ theorem parseImplicitBlockSequenceLoop_pos_mono (fuel : Nat)
     (result : Array YamlValue × ParseState)
     (h_ok : parseImplicitBlockSequenceLoop ps fuel items = .ok result) :
     result.2.pos ≥ ps.pos := by
-  sorry
+  induction fuel generalizing ps items with
+  | zero =>
+    unfold parseImplicitBlockSequenceLoop at h_ok
+    simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
+  | succ k ih_fuel =>
+    have h_ih_k : ParseNodePosMono k := fun ps' m v ps'' h_le h_pn =>
+      h_ih ps' m v ps'' (by omega) h_pn
+    unfold parseImplicitBlockSequenceLoop at h_ok
+    simp only [bind, Except.bind] at h_ok
+    split at h_ok
+    next => -- peek? = some .blockEntry
+      split at h_ok
+      -- All arms handled uniformly
+      all_goals {
+        first
+        | { -- OR-pattern arms: direct recurse with ps.advance
+            have h_rec := ih_fuel h_ih_k ps.advance _ h_ok
+            simp [ParseState.advance] at h_rec; omega }
+        | { -- Default arm: parseNode then recurse
+            split at h_ok
+            next => simp at h_ok
+            next pn_res heq_pn =>
+              obtain ⟨val, ps₃⟩ := pn_res; try dsimp only [] at h_ok
+              have h_pn := parseNodePosMono_apply h_ih heq_pn
+              have h_rec := ih_fuel h_ih_k
+                { ps₃ with currentPath := _ } _ h_ok
+              simp [ParseState.advance] at h_rec h_pn; omega } }
+    next => -- peek? ≠ blockEntry
+      simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
 
 theorem parseImplicitBlockSequence_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_ok : parseImplicitBlockSequence ps fuel = .ok result) :
     result.2.pos ≥ ps.pos := by
-  sorry
+  unfold parseImplicitBlockSequence at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · simp at h_ok  -- fuel = 0
+  · rename_i k
+    have h_ih_k : ParseNodePosMono k := fun ps' m v ps'' h_le h_pn =>
+      h_ih ps' m v ps'' (by omega) h_pn
+    split at h_ok
+    · simp at h_ok  -- loop error
+    · rename_i loop_res heq_loop
+      obtain ⟨items_arr, ps_loop⟩ := loop_res; try dsimp only [] at h_ok
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      exact parseImplicitBlockSequenceLoop_pos_mono k h_ih_k ps #[] _ heq_loop
 
 /-! #### Block mapping position monotonicity -/
 
@@ -3276,7 +3358,35 @@ theorem parseBlockMappingEntryValue_pos_mono (fuel : Nat)
     (result : YamlValue × ParseState)
     (h_ok : parseBlockMappingEntryValue ps fuel keyHasContent keyLine keyCol = .ok result) :
     result.2.pos ≥ ps.pos := by
-  sorry
+  have h_tc := tryConsume_pos_mono ps .value
+  unfold parseBlockMappingEntryValue at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  split at h_ok
+  · -- consumed = true: for-loop validation + content dispatch
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    -- emptyNode branches
+    all_goals (try {
+      simp only [Except.ok.injEq] at h_ok; subst h_ok; simp only []; omega })
+    -- throw-else-parseNode
+    all_goals (try {
+      split at h_ok
+      · contradiction
+      · have h_pn := parseNodePosMono_apply h_ih h_ok; simp only [] at h_pn; omega })
+    -- Direct parseNode branch
+    all_goals (try { have h_pn := parseNodePosMono_apply h_ih h_ok; simp only [] at h_pn; omega })
+  · -- consumed = false → emptyNode
+    simp only [Except.ok.injEq] at h_ok; subst h_ok; simp only []; omega
 
 theorem handleBlockMappingKeyEntry_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
@@ -3284,7 +3394,37 @@ theorem handleBlockMappingKeyEntry_pos_mono (fuel : Nat)
     (result : YamlValue × YamlValue × ParseState)
     (h_ok : handleBlockMappingKeyEntry ps fuel pairIdx = .ok result) :
     result.2.2.pos ≥ ps.pos := by
-  sorry
+  unfold handleBlockMappingKeyEntry at h_ok
+  simp only [bind, Except.bind] at h_ok
+  -- Peel through all match/if/bind structures
+  split at h_ok <;> first | contradiction | skip
+  all_goals (try (simp only [emptyNode] at h_ok))
+  all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+  all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+  all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+  all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+  all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+  all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+  all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+  all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+  all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+  -- After all peeling, h_ok is a final .ok equation
+  all_goals (simp only [Except.ok.injEq] at h_ok)
+  all_goals (subst h_ok; simp only [])
+  -- The result .pos is ps_bev.pos (struct update on currentPath preserves pos)
+  -- h_bev hypotheses from split give parseBlockMappingEntryValue ... = .ok _
+  -- h_key hypotheses from split give parseNode ... = .ok _ (when key is parsed)
+  -- emptyNode key + parseBlockMappingEntryValue
+  all_goals (try {
+    have h_bev := parseBlockMappingEntryValue_pos_mono fuel h_ih
+      _ _ _ _ _ (by assumption)
+    simp [ParseState.advance] at h_bev ⊢; omega })
+  -- parseNode key + parseBlockMappingEntryValue
+  all_goals {
+    have h_key := parseNodePosMono_apply h_ih (by assumption)
+    have h_bev := parseBlockMappingEntryValue_pos_mono fuel h_ih
+      _ _ _ _ _ (by assumption)
+    simp [ParseState.advance] at h_key h_bev ⊢; omega }
 
 theorem handleBlockMappingValueEntry_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
@@ -3292,7 +3432,23 @@ theorem handleBlockMappingValueEntry_pos_mono (fuel : Nat)
     (result : YamlValue × ParseState)
     (h_ok : handleBlockMappingValueEntry ps fuel pairIdx = .ok result) :
     result.2.pos ≥ ps.pos := by
-  sorry
+  unfold handleBlockMappingValueEntry at h_ok
+  simp only [bind, Except.bind] at h_ok
+  -- Match on peek after advance: 3 OR-pattern arms + default
+  split at h_ok
+  -- OR-pattern arms (key/blockEnd/none) → emptyNode
+  all_goals try {
+    simp only [Except.ok.injEq] at h_ok; subst h_ok
+    simp [ParseState.advance] }
+  -- Default arm → parseNode
+  next =>
+    split at h_ok
+    next => simp at h_ok
+    next pn_res heq_pn =>
+      obtain ⟨val, ps'⟩ := pn_res; try dsimp only [] at h_ok
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      have h_pn := parseNodePosMono_apply h_ih heq_pn
+      simp [ParseState.advance] at h_pn ⊢; omega
 
 theorem parseBlockMappingLoop_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
@@ -3300,15 +3456,233 @@ theorem parseBlockMappingLoop_pos_mono (fuel : Nat)
     (result : Array (YamlValue × YamlValue) × ParseState)
     (h_ok : parseBlockMappingLoop ps fuel pairs = .ok result) :
     result.2.pos ≥ ps.pos := by
-  sorry
+  induction fuel generalizing ps pairs with
+  | zero =>
+    unfold parseBlockMappingLoop at h_ok
+    simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
+  | succ k ih_fuel =>
+    have h_ih_k : ParseNodePosMono k := fun ps' m v ps'' h_le h_pn =>
+      h_ih ps' m v ps'' (by omega) h_pn
+    unfold parseBlockMappingLoop at h_ok
+    simp only [bind, Except.bind] at h_ok
+    split at h_ok
+    · -- peek = some .key → handleBlockMappingKeyEntry + recurse
+      split at h_ok
+      · simp at h_ok
+      · rename_i entry_res heq_entry
+        obtain ⟨key, val, ps_entry⟩ := entry_res; try dsimp only [] at h_ok
+        have h_entry := handleBlockMappingKeyEntry_pos_mono k h_ih_k ps _ _ heq_entry
+        have h_rec := ih_fuel h_ih_k ps_entry _ h_ok
+        simp only [] at h_entry; omega
+    · -- peek = some .value → handleBlockMappingValueEntry + recurse
+      split at h_ok
+      · simp at h_ok
+      · rename_i entry_res heq_entry
+        obtain ⟨val, ps_entry⟩ := entry_res; try dsimp only [] at h_ok
+        have h_entry := handleBlockMappingValueEntry_pos_mono k h_ih_k ps _ _ heq_entry
+        have h_rec := ih_fuel h_ih_k ps_entry _ h_ok
+        simp only [] at h_entry; omega
+    · -- other → identity
+      simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
 
 theorem parseBlockMapping_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_ok : parseBlockMapping ps fuel = .ok result) :
     result.2.pos ≥ ps.pos := by
-  sorry
+  unfold parseBlockMapping at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · simp at h_ok
+  · rename_i k
+    have h_ih_k : ParseNodePosMono k := fun ps' m v ps'' h_le h_pn =>
+      h_ih ps' m v ps'' (by omega) h_pn
+    split at h_ok
+    · simp at h_ok
+    · rename_i loop_res heq_loop
+      obtain ⟨pairs_arr, ps_loop⟩ := loop_res; try dsimp only [] at h_ok
+      have h_loop := parseBlockMappingLoop_pos_mono k h_ih_k ps.advance #[] _ heq_loop
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      split <;> simp [ParseState.advance] at h_loop ⊢ <;> omega
 
+/-! #### Flow mapping helpers (needed before flow sequence loop) -/
+
+theorem parseFlowMappingValue_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState) (savedPath : YamlPath) (keyContent : String)
+    (result : YamlValue × ParseState)
+    (h_ok : parseFlowMappingValue ps fuel savedPath keyContent = .ok result) :
+    result.2.pos ≥ ps.pos := by
+  unfold parseFlowMappingValue at h_ok
+  simp only [bind, Except.bind] at h_ok
+  -- Name the tryConsume intermediate states before peeling
+  generalize h_ps1_def : ({ ps with currentPath := savedPath.push (.key keyContent) } : ParseState) = ps1 at h_ok
+  have h_ps1_pos : ps1.pos = ps.pos := by rw [← h_ps1_def]
+  generalize h_tc1 : ps1.tryConsume .key = tc1 at h_ok
+  have h_tc1_pos := tryConsume_pos_mono ps1 .key
+  rw [h_tc1] at h_tc1_pos
+  generalize h_tc2 : tc1.2.tryConsume .value = tc2 at h_ok
+  have h_tc2_pos := tryConsume_pos_mono tc1.2 .value
+  rw [h_tc2] at h_tc2_pos
+  -- h_ok now has tc2.1 (consumed) and tc2.2 (state) instead of tryConsume chains
+  -- Peel the remaining bind (if/match)
+  split at h_ok <;> first | contradiction | skip
+  all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+  -- emptyNode branches
+  all_goals (try {
+    simp only [Except.ok.injEq] at h_ok; subst h_ok; simp only []; omega })
+  -- parseNode branches
+  all_goals (try {
+    have h_pn := parseNodePosMono_apply h_ih h_ok
+    simp only [] at h_pn; omega })
+  -- Remaining: consumed=false emptyNode branch
+  all_goals {
+    try dsimp only [] at h_ok
+    try simp only [Except.ok.injEq] at h_ok
+    try (split at h_ok <;> first | contradiction | skip)
+    try dsimp only [] at h_ok
+    try simp only [Except.ok.injEq] at h_ok
+    subst h_ok; try simp only []
+    first | omega | { simp only [ParseState.advance]; omega }
+          | { try simp only [] at h_tc1_pos h_tc2_pos h_ps1_pos
+              try simp only [ParseState.advance] at h_tc1_pos h_tc2_pos h_ps1_pos
+              omega }
+          | { have h_pn := parseNodePosMono_apply h_ih (by assumption)
+              try simp only [] at h_tc1_pos h_tc2_pos h_ps1_pos h_pn
+              omega } }
+
+theorem parseExplicitKey_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState)
+    (result : YamlValue × ParseState)
+    (h_ok : parseExplicitKey ps fuel = .ok result) :
+    result.2.pos ≥ ps.pos := by
+  unfold parseExplicitKey at h_ok
+  split at h_ok
+  all_goals try {
+    simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _ }
+  next => exact parseNodePosMono_apply h_ih h_ok
+
+set_option maxHeartbeats 1600000 in
+theorem parseSinglePairMapping_pos_mono (fuel : Nat)
+    (h_ih : ParseNodePosMono fuel)
+    (ps : ParseState) (result : YamlValue × ParseState)
+    (h_ok : parseSinglePairMapping ps fuel = .ok result) :
+    result.2.pos ≥ ps.pos := by
+  unfold parseSinglePairMapping at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · simp at h_ok  -- fuel = 0
+  · rename_i k
+    have h_ih_k : ParseNodePosMono k := fun ps' m v ps'' h_le h_pn =>
+      h_ih ps' m v ps'' (by omega) h_pn
+    simp only [emptyNode] at h_ok
+    -- Peel through key dispatch layers
+    split at h_ok <;> first | contradiction | skip
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    -- After round 3: test if generalize can find tryConsume
+    all_goals try {
+      generalize h_tc : ParseState.tryConsume _ YamlToken.value = tc at h_ok
+      obtain ⟨tc_consumed, tc_ps⟩ := tc
+      have h_tc_pos : tc_ps.pos ≥ ps.pos := by
+        show (tc_consumed, tc_ps).snd.pos ≥ ps.pos
+        rw [← h_tc]
+        apply Nat.le_trans _ (tryConsume_pos_mono _ .value)
+        try simp only []
+        first
+          | { simp only [ParseState.advance]; omega }
+          | omega
+          | { have := parseNodePosMono_apply h_ih_k (by assumption)
+              simp only [ParseState.advance] at this; omega }
+          | { try simp only [ParseState.advance]
+              try { have := parseNodePosMono_apply h_ih_k (by assumption)
+                    try simp only [ParseState.advance] at this }
+              omega }
+    }
+    all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+    -- After round 4: parseNode key paths have keyContent resolved, exposing one tryConsume.
+    all_goals try {
+      generalize h_tc : ParseState.tryConsume _ YamlToken.value = tc at h_ok
+      have h_tc_pos : tc.snd.pos ≥ ps.pos := by
+        rw [← h_tc]
+        apply Nat.le_trans _ (tryConsume_pos_mono _ .value)
+        try simp only []
+        first
+          | { simp only [ParseState.advance]; omega }
+          | omega
+          | { have := parseNodePosMono_apply h_ih_k (by assumption)
+              simp only [ParseState.advance] at this; omega }
+    }
+    -- Name the tryConsume result before further peeling (skipped for over-peeled goals)
+    all_goals {
+      -- Close or peel value dispatch
+      -- Reduce product destructure so split can see the if/match
+      try dsimp only [] at h_ok
+      first
+      | { -- Already resolved: close directly
+          simp only [Except.ok.injEq] at h_ok; rw [← h_ok]; simp only []
+          first
+            | omega
+            | { have := parseNodePosMono_apply h_ih_k (by assumption)
+                simp only [ParseState.advance] at *; omega }
+            | { -- tryConsume opaque in goal: unfold it
+                simp only [ParseState.tryConsume, ParseState.advance]
+                split <;> (try split)
+                all_goals { simp only []; first | omega | { have := parseNodePosMono_apply h_ih_k (by assumption); simp only [ParseState.advance] at this; omega } } }
+            | { -- Chain: result ≥ parseNode_input ≥ tryConsume_input ≥ ps
+                have h1 := parseNodePosMono_apply h_ih_k (by assumption)
+                apply Nat.le_trans _ h1
+                apply Nat.le_trans _ (tryConsume_pos_mono _ .value)
+                try simp only []
+                simp only [ParseState.advance]; omega } }
+      | { -- Needs more peeling for value dispatch
+          split at h_ok <;> first | contradiction | skip
+          all_goals try dsimp only [] at h_ok
+          all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+          all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+          all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+          all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+          all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+          all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
+          -- Close all goals
+          all_goals {
+            try simp only [] at h_tc_pos  -- reduce tc.snd to destructured variable
+            simp only [Except.ok.injEq] at h_ok; rw [← h_ok]; simp only []
+            first
+              | omega
+              | { exact h_tc_pos }
+              | { have := parseNodePosMono_apply h_ih_k (by assumption)
+                  try simp only [ParseState.advance] at this
+                  try simp only [] at h_tc_pos
+                  omega }
+              | { -- Normalize all pair projections, gather bounds
+                  -- Multi-hop: result ≥ parseNode2_input ≥ tryConsume_input ≥ parseNode1_input ≥ ps
+                  apply Nat.le_trans _ (parseNodePosMono_apply h_ih_k (by assumption))
+                  apply Nat.le_trans _ (tryConsume_pos_mono _ .value)
+                  simp only []
+                  apply Nat.le_trans _ (parseNodePosMono_apply h_ih_k (by assumption))
+                  simp only [ParseState.advance]; omega }
+              | { simp only [ParseState.tryConsume, ParseState.advance]
+                  split <;> (try split)
+                  all_goals (try simp only [])
+                  all_goals {
+                    first
+                      | omega
+                      | { have := parseNodePosMono_apply h_ih_k (by assumption)
+                          try simp only [ParseState.advance] at this
+                          omega } } }
+              | { have h1 := parseNodePosMono_apply h_ih_k (by assumption)
+                  apply Nat.le_trans _ h1
+                  apply Nat.le_trans _ (tryConsume_pos_mono _ .value)
+                  try simp only []
+                  try simp only [ParseState.advance]
+                  omega }
+              | { apply Nat.le_trans _ (tryConsume_pos_mono _ .value)
+                  try simp only []
+                  have h1 := parseNodePosMono_apply h_ih_k (by assumption)
+                  try simp only [ParseState.advance] at h1
+                  omega } } } }
 /-! #### Flow sequence position monotonicity -/
 
 theorem parseFlowSequenceLoop_pos_mono (fuel : Nat)
@@ -3317,39 +3691,93 @@ theorem parseFlowSequenceLoop_pos_mono (fuel : Nat)
     (result : Array YamlValue × ParseState)
     (h_ok : parseFlowSequenceLoop ps fuel items = .ok result) :
     result.2.pos ≥ ps.pos := by
-  sorry
+  induction fuel generalizing ps items with
+  | zero =>
+    unfold parseFlowSequenceLoop at h_ok
+    simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
+  | succ k ih_fuel =>
+    have h_ih_k : ParseNodePosMono k := fun ps' m v ps'' h_le h_pn =>
+      h_ih ps' m v ps'' (by omega) h_pn
+    unfold parseFlowSequenceLoop at h_ok
+    simp only [bind, Except.bind, pure, Except.pure] at h_ok
+    split at h_ok
+    · -- flowSequenceEnd → identity
+      simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
+    · -- other tokens
+      split at h_ok
+      · -- items.size > 0: match peek for flowEntry separator
+        split at h_ok
+        · -- flowEntry → advance, then dispatch
+          split at h_ok
+          · -- key → parseSinglePairMapping + recurse
+            split at h_ok
+            · simp at h_ok
+            · rename_i spm_res heq_spm
+              obtain ⟨mapVal, ps_spm⟩ := spm_res; try dsimp only [] at h_ok
+              have h_spm := parseSinglePairMapping_pos_mono k h_ih_k _ _ heq_spm
+              have h_rec := ih_fuel h_ih_k
+                { ps_spm with currentPath := _ } _ h_ok
+              simp [ParseState.advance] at h_rec h_spm; omega
+          · -- flowSequenceEnd → identity
+            simp only [Except.ok.injEq] at h_ok; subst h_ok
+            simp [ParseState.advance]
+          · -- other → parseNode + recurse
+            split at h_ok
+            · simp at h_ok
+            · rename_i pn_res heq_pn
+              obtain ⟨val, ps_pn⟩ := pn_res; try dsimp only [] at h_ok
+              have h_pn := parseNodePosMono_apply h_ih heq_pn
+              have h_rec := ih_fuel h_ih_k
+                { ps_pn with currentPath := _ } _ h_ok
+              simp [ParseState.advance] at h_rec h_pn; omega
+        · -- no separator → return
+          simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
+      · -- items.size = 0: dispatch directly
+        split at h_ok
+        · -- key → parseSinglePairMapping + recurse
+          split at h_ok
+          · simp at h_ok
+          · rename_i spm_res heq_spm
+            obtain ⟨mapVal, ps_spm⟩ := spm_res; try dsimp only [] at h_ok
+            have h_spm := parseSinglePairMapping_pos_mono k h_ih_k _ _ heq_spm
+            have h_rec := ih_fuel h_ih_k
+              { ps_spm with currentPath := _ } _ h_ok
+            simp at h_rec h_spm ⊢; omega
+        · -- flowSequenceEnd → identity
+          simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
+        · -- other → parseNode + recurse
+          split at h_ok
+          · simp at h_ok
+          · rename_i pn_res heq_pn
+            obtain ⟨val, ps_pn⟩ := pn_res; try dsimp only [] at h_ok
+            have h_pn := parseNodePosMono_apply h_ih heq_pn
+            have h_rec := ih_fuel h_ih_k
+              { ps_pn with currentPath := _ } _ h_ok
+            simp at h_rec h_pn ⊢; omega
 
 theorem parseFlowSequence_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_ok : parseFlowSequence ps fuel = .ok result) :
     result.2.pos ≥ ps.pos := by
-  sorry
+  unfold parseFlowSequence at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · simp at h_ok
+  · rename_i k
+    have h_ih_k : ParseNodePosMono k := fun ps' m v ps'' h_le h_pn =>
+      h_ih ps' m v ps'' (by omega) h_pn
+    split at h_ok
+    · simp at h_ok
+    · rename_i loop_res heq_loop
+      obtain ⟨items_arr, ps_loop⟩ := loop_res; try dsimp only [] at h_ok
+      have h_loop := parseFlowSequenceLoop_pos_mono k h_ih_k ps.advance #[] _ heq_loop
+      split at h_ok
+      · simp only [Except.ok.injEq] at h_ok; subst h_ok
+        simp [ParseState.advance] at h_loop ⊢; omega
+      · simp at h_ok
 
 /-! #### Flow mapping position monotonicity -/
-
-theorem parseFlowMappingValue_pos_mono (fuel : Nat)
-    (h_ih : ParseNodePosMono fuel)
-    (ps : ParseState) (savedPath : YamlPath) (keyContent : String)
-    (result : YamlValue × ParseState)
-    (h_ok : parseFlowMappingValue ps fuel savedPath keyContent = .ok result) :
-    result.2.pos ≥ ps.pos := by
-  sorry
-
-theorem parseExplicitKey_pos_mono (fuel : Nat)
-    (h_ih : ParseNodePosMono fuel)
-    (ps : ParseState)
-    (result : YamlValue × ParseState)
-    (h_ok : parseExplicitKey ps fuel = .ok result) :
-    result.2.pos ≥ ps.pos := by
-  sorry
-
-theorem parseSinglePairMapping_pos_mono (fuel : Nat)
-    (h_ih : ParseNodePosMono fuel)
-    (ps : ParseState) (result : YamlValue × ParseState)
-    (h_ok : parseSinglePairMapping ps fuel = .ok result) :
-    result.2.pos ≥ ps.pos := by
-  sorry
 
 theorem parseFlowMappingLoop_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
@@ -3357,37 +3785,176 @@ theorem parseFlowMappingLoop_pos_mono (fuel : Nat)
     (result : Array (YamlValue × YamlValue) × ParseState)
     (h_ok : parseFlowMappingLoop ps fuel pairs = .ok result) :
     result.2.pos ≥ ps.pos := by
-  sorry
+  induction fuel generalizing ps pairs with
+  | zero =>
+    unfold parseFlowMappingLoop at h_ok
+    simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
+  | succ k ih_fuel =>
+    have h_ih_k : ParseNodePosMono k := fun ps' m v ps'' h_le h_pn =>
+      h_ih ps' m v ps'' (by omega) h_pn
+    unfold parseFlowMappingLoop at h_ok
+    simp only [bind, Except.bind, pure, Except.pure] at h_ok
+    split at h_ok
+    · -- flowMappingEnd → identity
+      simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
+    · -- other
+      split at h_ok
+      · -- pairs.size > 0: match peek for flowEntry
+        split at h_ok
+        · -- flowEntry → advance, then dispatch
+          split at h_ok
+          · -- flowMappingEnd → identity
+            simp only [Except.ok.injEq] at h_ok; subst h_ok
+            simp [ParseState.advance]
+          · -- key → advance + parseExplicitKey + parseFlowMappingValue + recurse
+            split at h_ok
+            · simp at h_ok
+            · rename_i ek_res heq_ek
+              obtain ⟨key_val, ps_ek⟩ := ek_res; try dsimp only [] at h_ok
+              split at h_ok
+              · simp at h_ok
+              · rename_i fmv_res heq_fmv
+                obtain ⟨fmv_val, ps_fmv⟩ := fmv_res; try dsimp only [] at h_ok
+                have h_ek := parseExplicitKey_pos_mono k h_ih_k _ _ heq_ek
+                have h_fmv := parseFlowMappingValue_pos_mono k h_ih_k _ _ _ _ heq_fmv
+                have h_rec := ih_fuel h_ih_k ps_fmv _ h_ok
+                simp [ParseState.advance] at h_ek h_fmv ⊢; omega
+          · -- other → parseNode + parseFlowMappingValue + recurse
+            split at h_ok
+            · simp at h_ok
+            · rename_i pn_res heq_pn
+              obtain ⟨key_val, ps_pn⟩ := pn_res; try dsimp only [] at h_ok
+              split at h_ok
+              · simp at h_ok
+              · rename_i fmv_res heq_fmv
+                obtain ⟨fmv_val, ps_fmv⟩ := fmv_res; try dsimp only [] at h_ok
+                have h_pn := parseNodePosMono_apply h_ih heq_pn
+                have h_fmv := parseFlowMappingValue_pos_mono k h_ih_k _ _ _ _ heq_fmv
+                have h_rec := ih_fuel h_ih_k ps_fmv _ h_ok
+                simp [ParseState.advance] at h_pn h_fmv ⊢; omega
+        · -- no separator → return
+          simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
+      · -- pairs.size = 0: dispatch directly
+        split at h_ok
+        · -- flowMappingEnd → identity
+          simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
+        · -- key → advance + parseExplicitKey + parseFlowMappingValue + recurse
+          split at h_ok
+          · simp at h_ok
+          · rename_i ek_res heq_ek
+            obtain ⟨key_val, ps_ek⟩ := ek_res; try dsimp only [] at h_ok
+            split at h_ok
+            · simp at h_ok
+            · rename_i fmv_res heq_fmv
+              obtain ⟨fmv_val, ps_fmv⟩ := fmv_res; try dsimp only [] at h_ok
+              have h_ek := parseExplicitKey_pos_mono k h_ih_k _ _ heq_ek
+              have h_fmv := parseFlowMappingValue_pos_mono k h_ih_k _ _ _ _ heq_fmv
+              have h_rec := ih_fuel h_ih_k ps_fmv _ h_ok
+              simp [ParseState.advance] at h_ek h_fmv ⊢; omega
+        · -- other → parseNode + parseFlowMappingValue + recurse
+          split at h_ok
+          · simp at h_ok
+          · rename_i pn_res heq_pn
+            obtain ⟨key_val, ps_pn⟩ := pn_res; try dsimp only [] at h_ok
+            split at h_ok
+            · simp at h_ok
+            · rename_i fmv_res heq_fmv
+              obtain ⟨fmv_val, ps_fmv⟩ := fmv_res; try dsimp only [] at h_ok
+              have h_pn := parseNodePosMono_apply h_ih heq_pn
+              have h_fmv := parseFlowMappingValue_pos_mono k h_ih_k _ _ _ _ heq_fmv
+              have h_rec := ih_fuel h_ih_k ps_fmv _ h_ok
+              simp at h_pn h_fmv ⊢; omega
 
 theorem parseFlowMapping_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (result : YamlValue × ParseState)
     (h_ok : parseFlowMapping ps fuel = .ok result) :
     result.2.pos ≥ ps.pos := by
-  sorry
+  unfold parseFlowMapping at h_ok
+  simp only [bind, Except.bind] at h_ok
+  split at h_ok
+  · simp at h_ok
+  · rename_i k
+    have h_ih_k : ParseNodePosMono k := fun ps' m v ps'' h_le h_pn =>
+      h_ih ps' m v ps'' (by omega) h_pn
+    split at h_ok
+    · simp at h_ok
+    · rename_i loop_res heq_loop
+      obtain ⟨pairs_arr, ps_loop⟩ := loop_res; try dsimp only [] at h_ok
+      have h_loop := parseFlowMappingLoop_pos_mono k h_ih_k ps.advance #[] _ heq_loop
+      split at h_ok
+      · simp only [Except.ok.injEq] at h_ok; subst h_ok
+        simp [ParseState.advance] at h_loop ⊢; omega
+      · simp at h_ok
 
 /-! #### Content dispatch and main induction -/
 
-/-- `parseNodeContent` doesn't decrease position, given `ParseNodePosMono` IH. -/
 theorem parseNodeContent_pos_mono (fuel : Nat)
     (h_ih : ParseNodePosMono fuel)
     (ps : ParseState) (props : NodeProperties)
     (result : YamlValue × ParseState)
     (h_ok : parseNodeContent ps fuel props = .ok result) :
     result.2.pos ≥ ps.pos := by
-  sorry
+  unfold parseNodeContent at h_ok
+  split at h_ok
+  · simp only [Except.ok.injEq] at h_ok; subst h_ok; simp [ParseState.advance]
+  · exact parseBlockSequence_pos_mono fuel h_ih ps result h_ok
+  · exact parseBlockMapping_pos_mono fuel h_ih ps result h_ok
+  · exact parseImplicitBlockSequence_pos_mono fuel h_ih ps result h_ok
+  · exact parseFlowSequence_pos_mono fuel h_ih ps result h_ok
+  · exact parseFlowMapping_pos_mono fuel h_ih ps result h_ok
+  · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
+
 theorem parseNode_pos_mono_all : ∀ n, ParseNodePosMono n := by
-  sorry
+  intro n
+  induction n with
+  | zero =>
+    intro ps m val ps' h_le h_ok
+    have : m = 0 := by omega
+    subst this
+    unfold parseNode at h_ok
+    simp at h_ok
+  | succ k ih =>
+    intro ps m val ps' h_le h_ok
+    by_cases h_eq : m = k + 1
+    · subst h_eq
+      unfold parseNode at h_ok
+      simp only [bind, Except.bind, pure, Except.pure] at h_ok
+      -- alias check
+      split at h_ok
+      · -- alias: advance (or throw)
+        split at h_ok
+        · simp at h_ok
+        · simp only [Except.ok.injEq] at h_ok
+          obtain ⟨_, rfl⟩ := Prod.mk.inj h_ok
+          split <;> simp_all [ParseState.advance] <;> omega
+      · -- not alias
+        split at h_ok
+        · simp at h_ok
+        · rename_i props_res heq_props
+          obtain ⟨props, ps_props⟩ := props_res
+          try dsimp only [] at h_ok
+          split at h_ok
+          · simp at h_ok
+          · try dsimp only [] at h_ok
+            split at h_ok
+            · simp at h_ok
+            · rename_i content_res heq_content
+              obtain ⟨content_val, ps_content⟩ := content_res
+              try dsimp only [] at h_ok
+              simp only [Except.ok.injEq] at h_ok
+              have h_props := parseNodeProperties_pos_mono ps props ps_props heq_props
+              have h_content := parseNodeContent_pos_mono k ih ps_props props _ heq_content
+              -- Extract ps' = (applyNodeFinalization ...).2 without expanding
+              have h_ps := congrArg Prod.snd h_ok
+              simp only [] at h_ps  -- reduces (val', ps').2 to ps'
+              rw [show ps'.pos = ps_content.pos from by rw [← h_ps]; exact applyNodeFinalization_pos ..]
+              simp only [] at h_content h_props  -- reduce (x, y).snd to y
+              omega
+    · exact ih ps m val ps' (by omega) h_ok
 
 /-! #### Emitter-specific strict position advancement -/
 
-/-- For emitter-produced tokens (scalar, flowSequenceStart, flowMappingStart),
-    `parseNode` strictly advances position. These are exactly the content tokens
-    the canonical emitter produces — no aliases, anchors, tags, or block constructs.
-
-    - **Scalar**: `parseNodeContent` → `ps.advance`, giving `pos' = pos + 1`
-    - **Flow collection**: `parseFlowSequence`/`parseFlowMapping` starts with
-      `ps.advance`, so `pos' ≥ pos + 1` even before the loop -/
 theorem parseNode_emitter_advances (ps : ParseState) (fuel : Nat)
     (val : YamlValue) (ps' : ParseState)
     (h_ok : parseNode ps (fuel + 1) = .ok (val, ps'))
@@ -3395,6 +3962,124 @@ theorem parseNode_emitter_advances (ps : ParseState) (fuel : Nat)
                   ps.peek? = some .flowSequenceStart ∨
                   ps.peek? = some .flowMappingStart) :
     ps'.pos > ps.pos := by
-  sorry
+  unfold parseNode at h_ok
+  simp only [bind, Except.bind, pure, Except.pure] at h_ok
+  -- alias branch: contradicts h_emit_tok
+  split at h_ok
+  · rename_i h_peek_alias
+    rcases h_emit_tok with ⟨s, h_s⟩ | h_fs | h_fm
+    · simp [h_peek_alias] at h_s
+    · simp [h_peek_alias] at h_fs
+    · simp [h_peek_alias] at h_fm
+  · -- non-alias
+    split at h_ok
+    · simp at h_ok
+    · rename_i props_res heq_props
+      obtain ⟨props, ps_props⟩ := props_res
+      try dsimp only [] at h_ok
+      have h_props_pos := parseNodeProperties_pos_mono ps props ps_props heq_props
+      split at h_ok
+      · simp at h_ok
+      · try dsimp only [] at h_ok
+        split at h_ok
+        · simp at h_ok
+        · rename_i content_res heq_content
+          obtain ⟨content_val, ps_content⟩ := content_res
+          try dsimp only [] at h_ok
+          simp only [Except.ok.injEq] at h_ok
+          have h_val := congrArg Prod.fst h_ok
+          have h_ps := congrArg Prod.snd h_ok
+          simp only [] at h_val h_ps
+          rw [show ps'.pos = ps_content.pos from by rw [← h_ps]; exact applyNodeFinalization_pos ..]
+          -- Now show ps_content.pos > ps.pos via content dispatch
+          unfold parseNodeContent at heq_content
+          split at heq_content
+          · -- scalar → advance
+            simp only [Except.ok.injEq] at heq_content
+            obtain ⟨_, rfl⟩ := Prod.mk.inj heq_content
+            simp [ParseState.advance]; omega
+          · -- blockSequenceStart
+            unfold parseBlockSequence at heq_content
+            simp only [bind, Except.bind] at heq_content
+            split at heq_content
+            · simp at heq_content
+            · split at heq_content
+              · simp at heq_content
+              · rename_i loop_res heq_loop
+                obtain ⟨items, ps_loop⟩ := loop_res; try dsimp only [] at heq_content
+                have h_loop := parseBlockSequenceLoop_pos_mono _ (parseNode_pos_mono_all _) ps_props.advance #[] _ heq_loop
+                simp only [Except.ok.injEq] at heq_content
+                obtain ⟨_, rfl⟩ := Prod.mk.inj heq_content
+                split <;> simp [ParseState.advance] at h_loop ⊢ <;> omega
+          · -- blockMappingStart
+            unfold parseBlockMapping at heq_content
+            simp only [bind, Except.bind] at heq_content
+            split at heq_content
+            · simp at heq_content
+            · split at heq_content
+              · simp at heq_content
+              · rename_i loop_res heq_loop
+                obtain ⟨pairs, ps_loop⟩ := loop_res; try dsimp only [] at heq_content
+                have h_loop := parseBlockMappingLoop_pos_mono _ (parseNode_pos_mono_all _) ps_props.advance #[] _ heq_loop
+                simp only [Except.ok.injEq] at heq_content
+                obtain ⟨_, rfl⟩ := Prod.mk.inj heq_content
+                split <;> simp [ParseState.advance] at h_loop ⊢ <;> omega
+          · -- blockEntry (implicit block sequence): contradicts emitter tok
+            rcases Nat.lt_or_ge ps.pos ps_props.pos with h_strict | h_le
+            · have h_ibs := parseImplicitBlockSequence_pos_mono fuel (parseNode_pos_mono_all fuel) ps_props _ heq_content
+              simp only [] at h_ibs; omega
+            · have h_eq_pos : ps_props.pos = ps.pos := by omega
+              have h_tok := parseNodeProperties_tokens ps props ps_props heq_props
+              have h_peek_eq : ps_props.peek? = ps.peek? := by
+                simp only [ParseState.peek?]; rw [h_tok, h_eq_pos]
+              rename_i h_peek_be _
+              rcases h_emit_tok with ⟨s, h_s⟩ | h_fs | h_fm
+              · rw [← h_peek_eq] at h_s; simp_all
+              · rw [← h_peek_eq] at h_fs; simp_all
+              · rw [← h_peek_eq] at h_fm; simp_all
+          · -- flowSequenceStart
+            unfold parseFlowSequence at heq_content
+            simp only [bind, Except.bind] at heq_content
+            split at heq_content
+            · simp at heq_content
+            · split at heq_content
+              · simp at heq_content
+              · rename_i loop_res heq_loop
+                obtain ⟨items, ps_loop⟩ := loop_res; try dsimp only [] at heq_content
+                have h_loop := parseFlowSequenceLoop_pos_mono _ (parseNode_pos_mono_all _) ps_props.advance #[] _ heq_loop
+                split at heq_content
+                · simp only [Except.ok.injEq] at heq_content
+                  obtain ⟨_, rfl⟩ := Prod.mk.inj heq_content
+                  simp [ParseState.advance] at h_loop ⊢; omega
+                · simp at heq_content
+          · -- flowMappingStart
+            unfold parseFlowMapping at heq_content
+            simp only [bind, Except.bind] at heq_content
+            split at heq_content
+            · simp at heq_content
+            · split at heq_content
+              · simp at heq_content
+              · rename_i loop_res heq_loop
+                obtain ⟨pairs, ps_loop⟩ := loop_res; try dsimp only [] at heq_content
+                have h_loop := parseFlowMappingLoop_pos_mono _ (parseNode_pos_mono_all _) ps_props.advance #[] _ heq_loop
+                split at heq_content
+                · simp only [Except.ok.injEq] at heq_content
+                  obtain ⟨_, rfl⟩ := Prod.mk.inj heq_content
+                  simp [ParseState.advance] at h_loop ⊢; omega
+                · simp at heq_content
+          · -- empty node: contradicts emitter tok
+            simp only [Except.ok.injEq] at heq_content
+            obtain ⟨_, rfl⟩ := Prod.mk.inj heq_content
+            suffices h_gt : ps_props.pos > ps.pos by omega
+            rcases Nat.lt_or_ge ps.pos ps_props.pos with h_lt | h_le
+            · exact h_lt
+            · exfalso
+              have h_eq_pos : ps_props.pos = ps.pos := by omega
+              have h_tok := parseNodeProperties_tokens ps props ps_props heq_props
+              have h_peek_eq : ps_props.peek? = ps.peek? := by
+                simp only [ParseState.peek?]; rw [h_tok, h_eq_pos]
+              rename_i h_not_scalar h_not_bss h_not_bms h_not_be h_not_fss h_not_fms
+              rcases h_emit_tok with ⟨s, h_s⟩ | h_fs | h_fm
+              all_goals { rw [← h_peek_eq] at *; simp_all }
 
 end L4YAML.Proofs.ParserGrammable

@@ -2125,7 +2125,20 @@ to the content branch. This eliminates most of `parseNode`'s complexity.
 
 *** Sub-phase 4.4.B Accomplishments***
 
+- All 19 position monotonicity theorems proved sorry-free in ParserWellBehaved.lean:
+  - `parseNodeProperties_pos_mono`, `parseBlockScalar_pos_mono`, `parseFlowSequenceLoop_pos_mono`,
+    `parseFlowMappingLoop_pos_mono`, `parseFlowSequence_pos_mono`, `parseFlowMapping_pos_mono`,
+    `parseFlowMappingValue_pos_mono`, `parseExplicitKey_pos_mono`, `parseSinglePairMapping_pos_mono`,
+    `parseNodeContent_pos_mono`, `parseNode_pos_mono`, plus helper lemmas
+  - `parseNode_emitter_advances`: strict advancement (`ps'.pos > ps.pos`) for emitter tokens
+- Full build succeeds: 424 jobs, 0 errors, no sorry from ParserWellBehaved.lean
+
 *** Sub-phase 4.4.B Reflections***
+
+- **Early generalize pattern for Prod destructure**: `split at h_ok` on `match (f x) with | (a, b) => BODY` generalizes `f x` to a fresh variable, then destructures it. The equation `f x = (a, b)` is LOST for single-constructor types. Fix: insert `generalize h_eq : f x = v at h_ok` BEFORE the split round that destructures the Prod, then `obtain ⟨a, b⟩ := v` and `have h_bound : b.pos ≥ ps.pos := by rw [← h_eq]; apply lemma`.
+- **congrArg vs Prod.mk.inj for opacity**: `obtain ⟨_, h⟩ := Prod.mk.inj h_ok` expands transparent functions during injection elimination, breaking downstream `rw` patterns. Use `have h := congrArg Prod.snd h_ok` instead to preserve function opacity.
+- **Multi-hop chains for nested function calls**: When the result chains through 2+ parseNode calls + tryConsume + advance, use repeated `apply Nat.le_trans _ (lemma)` to build the transitivity chain, letting Lean's unification pick the correct hypothesis at each step.
+- **simp_all for rename_i fragility**: Auto-generated variable names from `rename_i` break when upstream proof changes alter hypothesis counts. Replace explicit `simp [named_hyp]` with `simp_all` for robustness.
 
 ---
 
