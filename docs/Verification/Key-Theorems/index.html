@@ -192,6 +192,12 @@ The following capstone theorems represent the main formal
 guarantees established by L4YAML.  Each is machine-checked
 by the Lean kernel with zero axioms beyond the built-in
 foundations.</p>
+            <p>
+              Each theorem is accompanied by a bipartite dependency graph
+showing the implementation functions it proves properties
+about (blue, left) and the supporting theorems used in
+its proof (green, right).  Stdlib lemmas surface in orange
+when they are domain-relevant.</p>
             <section>
               <h2 id="thm-pipeline">
                 3.2.1. Pipeline Composition<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=thm-pipeline" title="Permalink">🔗</a></span></h2>
@@ -232,7 +238,31 @@ correctly into a single end-to-end pipeline.</p>
                       <code>Completeness</code></p>
                     </td><td><p>
                       <code>parseYaml</code> succeeds if and only if the input is valid YAML — the bridge between the implementation and the specification.</p>
-                    </td></tr></table></section>
+                    </td></tr></table><section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Pipeline-Composition--parseYaml_pipeline">
+                  3.2.1.1. <code>parseYaml_pipeline</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Pipeline-Composition--parseYaml_pipeline" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/parseYaml_pipeline.svg" alt="parseYaml_pipeline dependency graph"></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Pipeline-Composition--parseYamlRaw_pipeline">
+                  3.2.1.2. <code>parseYamlRaw_pipeline</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Pipeline-Composition--parseYamlRaw_pipeline" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/parseYamlRaw_pipeline.svg" alt="parseYamlRaw_pipeline dependency graph"></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Pipeline-Composition--parseYamlRaw_ok_decompose">
+                  3.2.1.3. <code>parseYamlRaw_ok_decompose</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Pipeline-Composition--parseYamlRaw_ok_decompose" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/parseYamlRaw_ok_decompose.svg" alt="parseYamlRaw_ok_decompose dependency graph"></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Pipeline-Composition--parseYaml_ok_iff">
+                  3.2.1.4. <code>parseYaml_ok_iff</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Pipeline-Composition--parseYaml_ok_iff" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/parseYaml_ok_iff.svg" alt="parseYaml_ok_iff dependency graph"></p>
+                </section>
+              </section>
             <section>
               <h2 id="thm-scanner">
                 3.2.2. Scanner Correctness<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=thm-scanner" title="Permalink">🔗</a></span></h2>
@@ -266,7 +296,25 @@ Properties of the character-to-token scanner:</p>
                       <code>ScannerCorrectness</code></p>
                     </td><td><p>
                       A successful scan loop always terminates with a <code>STREAM_END</code> token.</p>
-                    </td></tr></table></section>
+                    </td></tr></table><section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Scanner-Correctness--scan_produces_valid_tokens">
+                  3.2.2.1. <code>scan_produces_valid_tokens</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Scanner-Correctness--scan_produces_valid_tokens" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/scan_produces_valid_tokens.svg" alt="scan_produces_valid_tokens dependency graph"></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Scanner-Correctness--advance_offset_lt">
+                  3.2.2.2. <code>advance_offset_lt</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Scanner-Correctness--advance_offset_lt" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/advance_offset_lt.svg" alt="advance_offset_lt dependency graph"></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Scanner-Correctness--scanLoop_success_emits_streamEnd">
+                  3.2.2.3. <code>scanLoop_success_emits_streamEnd</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Scanner-Correctness--scanLoop_success_emits_streamEnd" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/scanLoop_success_emits_streamEnd.svg" alt="scanLoop_success_emits_streamEnd dependency graph"></p>
+                </section>
+              </section>
             <section>
               <h2 id="thm-parser">
                 3.2.3. Parser Correctness<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=thm-parser" title="Permalink">🔗</a></span></h2>
@@ -307,7 +355,31 @@ Properties of the token-to-AST parser:</p>
                       <code>ParserWfaProofs</code></p>
                     </td><td><p>
                       After <code>parseStream</code> completes, all output anchors are well-formed: every alias target exists and every anchor body is <code>Grammable</code>.</p>
-                    </td></tr></table></section>
+                    </td></tr></table><section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Parser-Correctness--parseStream_sound">
+                  3.2.3.1. <code>parseStream_sound</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Parser-Correctness--parseStream_sound" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/parseStream_sound.svg" alt="parseStream_sound dependency graph"></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Parser-Correctness--parseNode_anchors_grow">
+                  3.2.3.2. <code>parseNode_anchors_grow</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Parser-Correctness--parseNode_anchors_grow" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/parseNode_anchors_grow.svg" alt="parseNode_anchors_grow dependency graph"></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Parser-Correctness--parseNode_aliases_resolve___">
+                  3.2.3.3. <code>parseNode_aliases_resolve'</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Parser-Correctness--parseNode_aliases_resolve___" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/parseNode_aliases_resolve_27.svg" alt="parseNode_aliases_resolve' dependency graph"></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Parser-Correctness--parseStream_output_anchors_wellformed">
+                  3.2.3.4. <code>parseStream_output_anchors_wellformed</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Parser-Correctness--parseStream_output_anchors_wellformed" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/parseStream_output_anchors_wellformed.svg" alt="parseStream_output_anchors_wellformed dependency graph"></p>
+                </section>
+              </section>
             <section>
               <h2 id="thm-soundness">
                 3.2.4. Soundness<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=thm-soundness" title="Permalink">🔗</a></span></h2>
@@ -349,7 +421,31 @@ faithfully implements the YAML specification:</p>
                       <code>Soundness</code></p>
                     </td><td><p>
                       Scalar string content is preserved through the parsing pipeline — no characters are added, dropped, or reordered.</p>
-                    </td></tr></table></section>
+                    </td></tr></table><section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Soundness--toYamlValue_correct">
+                  3.2.4.1. <code>toYamlValue_correct</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Soundness--toYamlValue_correct" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/toYamlValue_correct.svg" alt="toYamlValue_correct dependency graph"></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Soundness--nodeToValue_total">
+                  3.2.4.2. <code>nodeToValue_total</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Soundness--nodeToValue_total" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/nodeToValue_total.svg" alt="nodeToValue_total dependency graph"></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Soundness--nodeToValue_deterministic">
+                  3.2.4.3. <code>nodeToValue_deterministic</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Soundness--nodeToValue_deterministic" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/nodeToValue_deterministic.svg" alt="nodeToValue_deterministic dependency graph"></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Soundness--scalar_content_preserved">
+                  3.2.4.4. <code>scalar_content_preserved</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Soundness--scalar_content_preserved" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/scalar_content_preserved.svg" alt="scalar_content_preserved dependency graph"></p>
+                </section>
+              </section>
             <section>
               <h2 id="thm-roundtrip">
                 3.2.5. Round-Trip Properties<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=thm-roundtrip" title="Permalink">🔗</a></span></h2>
@@ -397,7 +493,37 @@ Theorems about the parse → emit → parse cycle:</p>
                       <code>RoundTrip</code></p>
                     </td><td><p>
                       Tag URI escape and unescape are inverse operations.</p>
-                    </td></tr></table></section>
+                    </td></tr></table><section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--contentEq_refl">
+                  3.2.5.1. <code>contentEq_refl</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--contentEq_refl" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/contentEq_refl.svg" alt="contentEq_refl dependency graph"></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--contentEq_symm">
+                  3.2.5.2. <code>contentEq_symm</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--contentEq_symm" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/contentEq_symm.svg" alt="contentEq_symm dependency graph"></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--contentEq_trans">
+                  3.2.5.3. <code>contentEq_trans</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--contentEq_trans" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/contentEq_trans.svg" alt="contentEq_trans dependency graph"></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--emit_content_invariant">
+                  3.2.5.4. <code>emit_content_invariant</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--emit_content_invariant" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/emit_content_invariant.svg" alt="emit_content_invariant dependency graph"></p>
+                </section>
+              <section>
+                <h3 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--escapeTag_roundtrip">
+                  3.2.5.5. <code>escapeTag_roundtrip</code><span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Key-Theorems--Round-Trip-Properties--escapeTag_roundtrip" title="Permalink">🔗</a></span></h3>
+                <p>
+                  <img src="graphs/escapeTag_roundtrip.svg" alt="escapeTag_roundtrip dependency graph"></p>
+                </section>
+              </section>
             </section>
           <nav class="prev-next-buttons">
             <a class="local-button active" href="Verification/Three-Layer-Strategy/#three-layer-strategy" rel="prev" title="3.1. Three-Layer Strategy"><span class="arrow">←</span><span class="where">3.1. Three-Layer Strategy</span></a><a class="local-button active" href="Verification/Key-Proof-Modules/#proof-modules" rel="next" title="3.3. Key Proof Modules"><span class="where">3.3. Key Proof Modules</span><span class="arrow">→</span></a></nav>
