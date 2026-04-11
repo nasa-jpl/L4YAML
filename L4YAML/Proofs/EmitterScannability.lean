@@ -6674,7 +6674,7 @@ theorem emit_parseYaml_succeeds (v : YamlValue) (hg : Grammable v false) :
 -- ==========================================
 
 -- contentEq on sequences ignores style/tag/anchor: only items matter.
-private theorem contentEq_sequence_items (style₁ style₂ : CollectionStyle)
+theorem contentEq_sequence_items (style₁ style₂ : CollectionStyle)
     (items₁ items₂ : Array YamlValue)
     (tag₁ tag₂ anchor₁ anchor₂ : Option String) :
     contentEq (.sequence style₁ items₁ tag₁ anchor₁)
@@ -6683,7 +6683,7 @@ private theorem contentEq_sequence_items (style₁ style₂ : CollectionStyle)
   unfold contentEq; rfl
 
 -- contentEq on mappings ignores style/tag/anchor: only pairs matter.
-private theorem contentEq_mapping_pairs (style₁ style₂ : CollectionStyle)
+theorem contentEq_mapping_pairs (style₁ style₂ : CollectionStyle)
     (pairs₁ pairs₂ : Array (YamlValue × YamlValue))
     (tag₁ tag₂ anchor₁ anchor₂ : Option String) :
     contentEq (.mapping style₁ pairs₁ tag₁ anchor₁)
@@ -6692,7 +6692,7 @@ private theorem contentEq_mapping_pairs (style₁ style₂ : CollectionStyle)
   unfold contentEq; rfl
 
 -- contentEq on sequences with any style/tag/anchor equals contentEq with canonical style/tag/anchor.
-private theorem contentEq_seq_style_irrel (style : CollectionStyle) (items : Array YamlValue)
+theorem contentEq_seq_style_irrel (style : CollectionStyle) (items : Array YamlValue)
     (tag anchor : Option String) (v : YamlValue) :
     contentEq (.sequence style items tag anchor) v =
     contentEq (.sequence .flow items none none) v := by
@@ -6702,7 +6702,7 @@ private theorem contentEq_seq_style_irrel (style : CollectionStyle) (items : Arr
   | _ => unfold contentEq; rfl
 
 -- contentEq on mappings with any style/tag/anchor equals contentEq with canonical style/tag/anchor.
-private theorem contentEq_map_style_irrel (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
+theorem contentEq_map_style_irrel (style : CollectionStyle) (pairs : Array (YamlValue × YamlValue))
     (tag anchor : Option String) (v : YamlValue) :
     contentEq (.mapping style pairs tag anchor) v =
     contentEq (.mapping .flow pairs none none) v := by
