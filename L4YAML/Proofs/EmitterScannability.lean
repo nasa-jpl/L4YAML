@@ -1161,6 +1161,18 @@ theorem scanLoop_eof {s : ScannerState}
   unfold scanLoop; rw [h_snt]
   simp [show ¬(s.flowLevel > 0) from by omega, h_dp]
 
+/-- **Terminal step (equality)**: If `scanNextToken` returns `.ok none` (EOF),
+    `scanLoop` produces exactly the unwind+streamEnd tokens. -/
+theorem scanLoop_eof_eq {s : ScannerState} {fuel : Nat}
+    (h_fuel : fuel ≥ 1)
+    (h_snt : scanNextToken s = .ok none)
+    (h_fl : s.flowLevel = 0)
+    (h_dp : s.directivesPresent = false) :
+    scanLoop s fuel = .ok ((unwindIndents s (-1)).emit .streamEnd).tokens := by
+  obtain ⟨f, rfl⟩ : ∃ n, fuel = n + 1 := ⟨fuel - 1, by omega⟩
+  unfold scanLoop; rw [h_snt]
+  simp [show ¬(s.flowLevel > 0) from by omega, h_dp]
+
 -- ═══ ScanChain: composition of N successful scanNextToken calls ═══
 
 /-- `ScanChain s n s'` means `n` successive `scanNextToken` calls starting
@@ -1319,6 +1331,33 @@ theorem scanFiltered_of_chain (input : String)
   -- Connect to scanFiltered
   simp only [scanFiltered, h_scan, h_loop_fuel]
   exact ⟨_, rfl⟩
+
+/-- **Equality version**: gives the exact filtered token array from a ScanChain.
+    The output is the filtered version of the chain's final state tokens
+    plus `streamEnd`, after unwinding indents. -/
+theorem scanFiltered_of_chain_eq (input : String)
+    (s₀ s_final : ScannerState) (n : Nat)
+    (h_s0 : s₀ = (ScannerState.mk' input).emit .streamStart)
+    (h_no_bom : (ScannerState.mk' input).peek? ≠ some '\uFEFF')
+    (h_chain : ScanChain s₀ n s_final)
+    (h_eof : scanNextToken s_final = .ok none)
+    (h_fl : s_final.flowLevel = 0)
+    (h_dp : s_final.directivesPresent = false)
+    (h_fuel : n + 1 ≤ (input.utf8ByteSize + 1) * 4) :
+    scanFiltered input = .ok (((unwindIndents s_final (-1)).emit .streamEnd).tokens.filter
+        (fun t => t.val != .placeholder)) := by
+  have h_loop := h_chain.to_scanLoop
+    (scanLoop_eof_eq (fuel := 1) (by omega) h_eof h_fl h_dp)
+  have h_loop_fuel := scanLoop_fuel_mono h_loop (by omega : 1 + n ≤ (input.utf8ByteSize + 1) * 4)
+  have h_scan : scan input = scanLoop s₀ ((input.utf8ByteSize + 1) * 4) := by
+    unfold scan; subst h_s0; dsimp only []
+    have h_pk := show ((ScannerState.mk' input).emit .streamStart).peek?
+        = (ScannerState.mk' input).peek? from rfl
+    rw [h_pk]
+    split
+    · exact absurd ‹_› h_no_bom
+    · rfl
+  simp only [scanFiltered, h_scan, h_loop_fuel]
 
 -- ═══ scanNextToken preprocessing equality ═══
 
@@ -6502,6 +6541,203 @@ def checkContentMap : Bool :=
 theorem checkContentSeq_true : checkContentSeq = true := by native_decide
 theorem checkContentMap_true : checkContentMap = true := by native_decide
 
+-- ═══ Scanner → Parser bridge: token structure for non-empty flow collections ═══
+
+-- Every `scanFiltered` result has streamStart first, streamEnd last, size ≥ 2.
+-- Mirrors the proof of `scanFiltered_produces_valid_tokens` but returns a
+-- plain conjunction (avoiding the `ValidTokenStream` struct indirection).
+private theorem scanFiltered_boundary_tokens (input : String)
+    (tokens : Array (Positioned YamlToken))
+    (h : Scanner.scanFiltered input = .ok tokens) :
+    tokens.size ≥ 2 ∧
+    tokens[0]!.val = .streamStart ∧
+    tokens[tokens.size - 1]!.val = .streamEnd := by
+  unfold Scanner.scanFiltered at h
+  -- Case split on the underlying scan result
+  generalize h_scan : Scanner.scan input = result at h
+  match result with
+  | .error _ => simp at h
+  | .ok raw =>
+  -- h : .ok (raw.filter (fun t => t.val != .placeholder)) = .ok tokens
+  injection h with h_eq
+  -- h_eq : raw.filter ... = tokens — keep tokens in goal, transport via ← h_eq
+  let p : Positioned YamlToken → Bool := fun t => t.val != .placeholder
+  let l := raw.toList
+  -- Raw scan properties
+  have h_raw_sz := ScannerCorrectness.scan_produces_at_least_two input raw h_scan
+  have h_raw_first := ScannerCorrectness.scan_first_is_streamStart input raw h_scan (by omega)
+  have h_raw_last := ScannerCorrectness.scan_last_is_streamEnd input raw h_scan (by omega)
+  -- List-level reasoning: head/last pass filter, preserved in filtered list
+  have h_l_ne : l ≠ [] := by
+    intro h0
+    have : raw.size = 0 := by show l.length = 0; simp [h0]
+    omega
+  have h_p_first : p (l.head h_l_ne) = true := by
+    show ((l.head h_l_ne).val != .placeholder) = true
+    have : (l.head h_l_ne).val = .streamStart := by
+      rw [List.head_eq_getElem]; exact h_raw_first
+    rw [this]; decide
+  have h_p_last : p (l.getLast h_l_ne) = true := by
+    show ((l.getLast h_l_ne).val != .placeholder) = true
+    have : (l.getLast h_l_ne).val = .streamEnd := by
+      rw [List.getLast_eq_getElem]; exact h_raw_last
+    rw [this]; decide
+  have h_flt_ne : l.filter p ≠ [] := by
+    rw [show l = l.head h_l_ne :: l.tail from (List.cons_head_tail h_l_ne).symm,
+        List.filter_cons_of_pos h_p_first]
+    exact List.cons_ne_nil _ _
+  have h_find : l.find? p = some (l.head h_l_ne) := by
+    conv => lhs; rw [show l = l.head h_l_ne :: l.tail from (List.cons_head_tail h_l_ne).symm]
+    exact List.find?_cons_of_pos h_p_first
+  have h_head_filt : (l.filter p).head h_flt_ne = l.head h_l_ne := by
+    rw [List.head_filter]; simp [h_find]
+  have h_rev_ne : l.reverse ≠ [] := by simp [h_l_ne]
+  have h_rfind : l.reverse.find? p = some (l.getLast h_l_ne) := by
+    conv => lhs; rw [show l.reverse = l.reverse.head h_rev_ne :: l.reverse.tail
+                        from (List.cons_head_tail h_rev_ne).symm,
+                      show l.reverse.head h_rev_ne = l.getLast h_l_ne
+                        from List.head_reverse ..]
+    exact List.find?_cons_of_pos h_p_last
+  have h_last_filt : (l.filter p).getLast h_flt_ne = l.getLast h_l_ne := by
+    rw [List.getLast_filter]; simp [h_rfind]
+  -- Filtered size ≥ 2
+  have h_filt_sz_list : (l.filter p).length ≥ 2 := by
+    have h_pos : (l.filter p).length > 0 := List.length_pos_iff.mpr h_flt_ne
+    have h_ne_1 : (l.filter p).length ≠ 1 := by
+      intro h1
+      obtain ⟨a, h_eq'⟩ := List.length_eq_one_iff.mp h1
+      have : l.head h_l_ne = l.getLast h_l_ne := by
+        rw [← h_head_filt, ← h_last_filt]; simp [h_eq']
+      have := congrArg Positioned.val this
+      rw [show (l.head h_l_ne).val = .streamStart
+            from by rw [List.head_eq_getElem]; exact h_raw_first,
+          show (l.getLast h_l_ne).val = .streamEnd
+            from by rw [List.getLast_eq_getElem]; exact h_raw_last] at this
+      cases this
+    omega
+  have h_filt_sz : (raw.filter p).size ≥ 2 := by
+    show (raw.filter p).toList.length ≥ 2
+    rw [Array.toList_filter]; exact h_filt_sz_list
+  -- Bridge Array.size ↔ List.length for omega
+  have h_filt_len : (raw.filter p).toList.length ≥ 2 := by
+    rw [Array.toList_filter]; exact h_filt_sz_list
+  -- Transport to tokens via ← h_eq
+  have h_tsz : tokens.size ≥ 2 := h_eq ▸ h_filt_sz
+  refine ⟨h_tsz, ?_, ?_⟩
+  · -- tokens[0]!.val = .streamStart
+    suffices h : (raw.filter p)[0]!.val = .streamStart by rwa [h_eq] at h
+    rw [getElem!_pos _ 0 (by omega)]
+    have h_first_val : ((l.filter p).head h_flt_ne).val = .streamStart := by
+      rw [h_head_filt, List.head_eq_getElem]; exact h_raw_first
+    rw [List.head_eq_getElem] at h_first_val
+    show ((raw.filter p).toList[0]'(show 0 < (raw.filter p).size from by omega)).val
+      = .streamStart
+    simp only [Array.toList_filter]; exact h_first_val
+  · -- tokens[N-1]!.val = .streamEnd
+    suffices h : (raw.filter p)[(raw.filter p).size - 1]!.val = .streamEnd by rwa [h_eq] at h
+    rw [getElem!_pos _ _ (by omega)]
+    have h_last_val : ((l.filter p).getLast h_flt_ne).val = .streamEnd := by
+      rw [h_last_filt, List.getLast_eq_getElem]; exact h_raw_last
+    rw [List.getLast_eq_getElem] at h_last_val
+    have h_sz_eq : (raw.filter p).size = (l.filter p).length := by
+      have : (raw.filter p).toList = l.filter p := Array.toList_filter
+      show (raw.filter p).toList.length = (l.filter p).length; rw [this]
+    show ((raw.filter p).toList[(raw.filter p).size - 1]'(show (raw.filter p).size - 1 < (raw.filter p).size from by omega)).val
+      = .streamEnd
+    simp only [Array.toList_filter, h_sz_eq]; exact h_last_val
+
+-- These characterize the filtered token array produced by scanning emitter output,
+-- providing the properties needed by the parser flow loop fuel sufficiency theorems.
+
+/-- Token structure of `scanFiltered ("[" ++ emitList items ++ "]")` for non-empty items.
+    Establishes boundary tokens, body token patterns, and `parseNode` success within
+    the flow sequence body.
+
+    Requires `EmitScansInFlow` for each item to construct the scanner chain. -/
+theorem scanFiltered_emitSeq_nonempty_structure
+    (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
+    (h_ne : items.toList ≠ [])
+    (h_all_scan : ∀ w, w ∈ items.toList → EmitScansInFlow w) :
+    tokens.size ≥ 5 ∧
+    tokens[0]!.val = .streamStart ∧
+    tokens[tokens.size - 1]!.val = .streamEnd ∧
+    tokens[1]!.val = .flowSequenceStart ∧
+    tokens[tokens.size - 2]!.val = .flowSequenceEnd ∧
+    tokens[2]!.val ≠ .flowEntry ∧
+    tokens[2]!.val ≠ .key ∧
+    (∀ k, 2 ≤ k → k < tokens.size - 2 →
+        tokens[k]!.val = .flowEntry →
+        k + 1 ≤ tokens.size - 2 ∧ tokens[k + 1]!.val ≠ .flowEntry ∧
+        tokens[k + 1]!.val ≠ .key) ∧
+    L4YAML.Proofs.ParserGrammable.ParseNodeFlowSeqOk tokens (tokens.size - 2) (4 * tokens.size + 4) := by
+  -- Step 1: Boundary tokens from scanFiltered_boundary_tokens
+  obtain ⟨h_sz2, h_t0, h_tlast⟩ := scanFiltered_boundary_tokens _ _ h_scan
+  -- Step 2: Flow-specific token positions (pending filtered token prefix tracking)
+  -- The scan chain from scanNextToken_flow_open_init establishes that the first 2
+  -- filtered tokens are [streamStart, flowSequenceStart]. Prefix preservation through
+  -- the remaining ScanChain steps (EmitListScansInFlow + close bracket) maintains this,
+  -- but formally proving it requires scanLoop_preserves_tokens with SimpleKeyAbove tracking
+  -- through the entire chain, plus filter monotonicity.
+  have h_t1 : tokens[1]!.val = .flowSequenceStart := sorry
+  -- The close bracket step adds flowSequenceEnd as the last non-placeholder token.
+  -- After appending streamEnd, the penultimate filtered token is flowSequenceEnd.
+  -- Requires scanFiltered_of_chain_eq + scanFlowSequenceEnd token characterization.
+  have h_tpe : tokens[tokens.size - 2]!.val = .flowSequenceEnd := sorry
+  -- Size ≥ 5: boundary gives 4 tokens (streamStart, flowSequenceStart, flowSequenceEnd,
+  -- streamEnd); non-empty body adds ≥1 more. Needs filtered token count through chain.
+  have h_sz5 : tokens.size ≥ 5 := sorry
+  -- Body token properties: the first body token (position 2) comes from emit items[0],
+  -- which starts with a value token (scalar, flowSequenceStart, flowMappingStart) — never
+  -- flowEntry or key. Needs first-body-token characterization from scanner dispatch.
+  have h_no_fe0 : tokens[2]!.val ≠ .flowEntry := sorry
+  have h_no_key0 : tokens[2]!.val ≠ .key := sorry
+  -- Flow entry pattern: emitList separates items with ", ", producing flowEntry tokens.
+  -- After each flowEntry, the next token is the first token of the next item (a value
+  -- token, not flowEntry or key). Needs comma-value alternation from emitList structure.
+  have h_fe_pattern : ∀ k, 2 ≤ k → k < tokens.size - 2 →
+      tokens[k]!.val = .flowEntry →
+      k + 1 ≤ tokens.size - 2 ∧ tokens[k + 1]!.val ≠ .flowEntry ∧
+      tokens[k + 1]!.val ≠ .key := sorry
+  -- ParseNodeFlowSeqOk: requires parser/scanner bridge — proving parseNode succeeds at
+  -- each body position needs the inductive hypothesis from the roundtrip theorem.
+  have h_pnok : L4YAML.Proofs.ParserGrammable.ParseNodeFlowSeqOk
+      tokens (tokens.size - 2) (4 * tokens.size + 4) := sorry
+  exact ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_no_fe0, h_no_key0, h_fe_pattern, h_pnok⟩
+
+/-- Token structure of `scanFiltered ("{" ++ emitPairList pairs ++ "}")` for non-empty pairs.
+    Establishes boundary tokens, body token patterns, and `parseExplicitKey`/`parseFlowMappingValue`
+    success within the flow mapping body. -/
+theorem scanFiltered_emitMap_nonempty_structure
+    (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken))
+    (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
+    (h_ne : pairs.toList ≠ [])
+    (h_all_scan_k : ∀ p, p ∈ pairs.toList → EmitScansInFlow p.1)
+    (h_all_scan_v : ∀ p, p ∈ pairs.toList → EmitScansInFlow p.2) :
+    tokens.size ≥ 7 ∧
+    tokens[0]!.val = .streamStart ∧
+    tokens[tokens.size - 1]!.val = .streamEnd ∧
+    tokens[1]!.val = .flowMappingStart ∧
+    tokens[tokens.size - 2]!.val = .flowMappingEnd ∧
+    (tokens[2]!.val = .key ∨ tokens[2]!.val = .flowMappingEnd) ∧
+    (∀ k, 2 ≤ k → k < tokens.size - 2 →
+        tokens[k]!.val = .flowEntry →
+        k + 1 ≤ tokens.size - 2 ∧ tokens[k + 1]!.val = .key) ∧
+    L4YAML.Proofs.ParserGrammable.ParseEntryFlowMapOk tokens (tokens.size - 2) (4 * tokens.size + 4) := by
+  -- Step 1: Boundary tokens from scanFiltered_boundary_tokens
+  obtain ⟨h_sz2, h_t0, h_tlast⟩ := scanFiltered_boundary_tokens _ _ h_scan
+  -- Remaining properties (same infrastructure gaps as seq case)
+  have h_t1 : tokens[1]!.val = .flowMappingStart := sorry
+  have h_tpe : tokens[tokens.size - 2]!.val = .flowMappingEnd := sorry
+  have h_sz7 : tokens.size ≥ 7 := sorry
+  have h_key_or_end : tokens[2]!.val = .key ∨ tokens[2]!.val = .flowMappingEnd := sorry
+  have h_fe_pattern : ∀ k, 2 ≤ k → k < tokens.size - 2 →
+      tokens[k]!.val = .flowEntry →
+      k + 1 ≤ tokens.size - 2 ∧ tokens[k + 1]!.val = .key := sorry
+  have h_pnok : L4YAML.Proofs.ParserGrammable.ParseEntryFlowMapOk
+      tokens (tokens.size - 2) (4 * tokens.size + 4) := sorry
+  exact ⟨h_sz7, h_t0, h_tlast, h_t1, h_tpe, h_key_or_end, h_fe_pattern, h_pnok⟩
+
 /-- Combined scanner characterization and parser acceptance for flow sequences.
     Given that scanning the emitted sequence succeeds, the parser pipeline
     produces exactly one document.
@@ -6538,12 +6774,163 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
       exact ⟨docs, rfl, by simpa using h_full⟩
     | .error _ => simp [h_ps] at h_full
   | _ :: _ =>
-    -- Non-empty: requires parseFlowSequenceLoop fuel sufficiency.
-    -- Each loop iteration advances parser position by ≥1 token (via parseNode on
-    -- the emitter's double-quoted scalars or nested flow collections), so the loop
-    -- terminates within tokens.size iterations. The fuel 4*tokens.size+4 from
-    -- parseDocument is sufficient. Pending position monotonicity proof.
-    exact sorry
+    -- Non-empty: trace through parseStream → parseStreamLoop → parseDocument →
+    -- parseNode → parseFlowSequence → parseFlowSequenceLoop using loop fuel
+    -- sufficiency from Sub-phase C.
+    -- Flow structure from scanner characterization
+    have h_all_scan : ∀ w, w ∈ items.toList → EmitScansInFlow w := by
+      intro w hw
+      have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hw
+      have h_sz : i < items.size := by rwa [Array.length_toList] at hi
+      exact h_eq ▸ emit_scans_in_flow _ (h_items ⟨i, h_sz⟩)
+    obtain ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_no_fe0, h_no_key0, h_fe_pattern, h_pnok⟩ :=
+      scanFiltered_emitSeq_nonempty_structure items tokens h_scan (by simp [h_list]) h_all_scan
+    -- Step 1: Unfold parseStream, dispatch expect .streamStart
+    unfold parseStream
+    simp only [bind, Except.bind]
+    unfold ParseState.expect
+    simp only [ParseState.peek?]
+    simp only [show (0 : Nat) < tokens.size from by omega, ↓reduceIte, h_t0]
+    simp only [show BEq.beq YamlToken.streamStart YamlToken.streamStart = true from by decide,
+               ↓reduceIte]
+    -- ps1 = advance of initial state (pos = 1)
+    let ps1 : ParseState := ({ tokens := tokens } : ParseState).advance
+    show ∃ docs, parseStreamLoop ps1 #[] StreamState.initial tokens.size = Except.ok docs ∧
+      docs.size = 1
+    -- peek? facts for ps1
+    have h_peek1 : ps1.peek? = some .flowSequenceStart := by
+      simp only [ps1, ParseState.peek?, ParseState.advance]
+      simp only [show (0 : Nat) + 1 = 1 from rfl,
+                 show 1 < tokens.size from by omega, ↓reduceIte, h_t1]
+    have h_peek_not_dir : match ps1.peek? with
+        | some (.versionDirective _ _) | some (.tagDirective _ _) => False
+        | _ => True := by rw [h_peek1]; trivial
+    have h_peek_not_anctag : match ps1.peek? with
+        | some (.anchor _) | some (.tag _ _) => False
+        | _ => True := by rw [h_peek1]; trivial
+    -- parseDirectives and prepareDocumentState
+    have h_pd : parseDirectives ps1 = (#[], ps1) := parseDirectives_skip ps1 h_peek_not_dir
+    have h_pds : prepareDocumentState ps1 = .ok (#[], ps1) := by
+      unfold prepareDocumentState
+      simp only [bind, Except.bind, pure, Except.pure, h_pd, Array.filterMap_empty]
+      have h_th : { ps1 with tagHandles := #[] } = ps1 := by
+        simp [ps1, ParseState.advance]
+      rw [h_th, h_peek1]
+      unfold ParseState.tryConsume
+      rw [h_peek1]; simp
+    -- parseNodeProperties skip
+    have h_np : parseNodeProperties ps1 = .ok ({}, ps1) :=
+      parseNodeProperties_skip ps1 h_peek_not_anctag
+    -- Fuel chain: parseDocument creates fuel 4*N+4 where N = tokens.size
+    --   parseNode(4*N+4) destructs → parseNodeContent(4*N+3)
+    --   parseNodeContent(4*N+3) dispatches → parseFlowSequence(4*N+3)
+    --   parseFlowSequence(4*N+3) destructs → parseFlowSequenceLoop(4*N+2)
+    have h_ps1_tok : ps1.tokens.size = tokens.size := by simp [ps1, ParseState.advance]
+    -- ps_mid = ps1.advance (pos = 2): start of flow sequence loop body
+    let ps_mid : ParseState := ps1.advance
+    have h_ps_mid_tok : ps_mid.tokens = tokens := by simp [ps_mid, ps1, ParseState.advance]
+    have h_ps_mid_pos : ps_mid.pos = 2 := by simp [ps_mid, ps1, ParseState.advance]
+    -- Apply parseFlowSequenceLoop_emitter_ok with loop fuel = 4*N+2
+    have h_endPos : tokens.size - 2 < tokens.size := by omega
+    have h_loop_fuel : 4 * tokens.size + 2 ≥ (tokens.size - 2) - ps_mid.pos := by
+      simp only [h_ps_mid_pos]; omega
+    have h_loop_pos : ps_mid.pos ≤ tokens.size - 2 := by
+      simp only [h_ps_mid_pos]; omega
+    have h_pnok_adj : L4YAML.Proofs.ParserGrammable.ParseNodeFlowSeqOk
+        ps_mid.tokens (tokens.size - 2) (4 * tokens.size + 2) := by
+      rw [h_ps_mid_tok]; exact h_pnok.mono (by omega)
+    have h_end_tok_adj : ps_mid.tokens[tokens.size - 2]!.val = .flowSequenceEnd := by
+      rw [h_ps_mid_tok]; exact h_tpe
+    have h_entry_vacuous : (#[] : Array YamlValue).size > 0 →
+        ps_mid.peek? = some .flowEntry ∨ ps_mid.peek? = some .flowSequenceEnd := by
+      intro h; simp [Array.size] at h
+    have h_no_fe_start_adj : (#[] : Array YamlValue).size = 0 →
+        ps_mid.peek? ≠ some .flowEntry := by
+      intro _
+      simp only [ps_mid, ps1, ParseState.peek?, ParseState.advance]
+      simp only [show (0 : Nat) + 1 + 1 = 2 from rfl, show 2 < tokens.size from by omega,
+                 ↓reduceIte]
+      exact mt Option.some.inj h_no_fe0
+    have h_start_not_key_adj : (#[] : Array YamlValue).size = 0 →
+        ps_mid.peek? ≠ some .key := by
+      intro _
+      simp only [ps_mid, ps1, ParseState.peek?, ParseState.advance]
+      simp only [show (0 : Nat) + 1 + 1 = 2 from rfl, show 2 < tokens.size from by omega,
+                 ↓reduceIte]
+      exact mt Option.some.inj h_no_key0
+    have h_after_fe_adj : ∀ k, ps_mid.pos ≤ k → k < tokens.size - 2 →
+        ps_mid.tokens[k]!.val = .flowEntry →
+        k + 1 ≤ tokens.size - 2 ∧ ps_mid.tokens[k + 1]!.val ≠ .flowEntry ∧
+        ps_mid.tokens[k + 1]!.val ≠ .key := by
+      rw [h_ps_mid_tok, h_ps_mid_pos]; exact h_fe_pattern
+    obtain ⟨items_res, ps_loop, h_loop_ok, h_loop_peek, h_loop_tok, h_loop_tp⟩ :=
+      L4YAML.Proofs.ParserGrammable.parseFlowSequenceLoop_emitter_ok
+        (4 * tokens.size + 2) ps_mid #[] (tokens.size - 2)
+        h_pnok_adj h_loop_fuel h_loop_pos h_endPos h_end_tok_adj
+        h_entry_vacuous h_no_fe_start_adj h_start_not_key_adj h_after_fe_adj
+    -- parseFlowSequence(4*N+3): destructs, passes 4*N+2 to loop
+    have h_parseFlowSeq : parseFlowSequence ps1 (4 * tokens.size + 3) =
+        Except.ok (.sequence .flow items_res, ps_loop.advance) := by
+      unfold parseFlowSequence
+      simp only [bind, Except.bind]
+      rw [h_loop_ok]; simp only [h_loop_peek]
+    -- parseNodeContent dispatches to parseFlowSequence
+    have h_parseNC : parseNodeContent ps1 (4 * tokens.size + 3) {} =
+        Except.ok (.sequence .flow items_res, ps_loop.advance) := by
+      unfold parseNodeContent; rw [h_peek1]; exact h_parseFlowSeq
+    -- applyNodeFinalization is identity for empty props and trackPositions=false
+    have h_finalize : applyNodeFinalization
+        (.sequence .flow items_res) ps_loop.advance {}
+        (ps1.peekPos?.getD { offset := 0, line := 0, col := 0 })
+        = (.sequence .flow items_res, ps_loop.advance) := by
+      unfold applyNodeFinalization
+      simp only []
+      show (YamlValue.sequence .flow items_res none none,
+            if ps_loop.advance.trackPositions then _ else ps_loop.advance) = _
+      have h_tp : ps_loop.advance.trackPositions = false := by
+        exact h_loop_tp
+      simp [h_tp]
+    -- parseNode(4*N+4): destructs, passes 4*N+3 to parseNodeContent
+    have h_parseNode : parseNode ps1 (4 * tokens.size + 4) =
+        Except.ok (.sequence .flow items_res, ps_loop.advance) := by
+      unfold parseNode
+      simp only [bind, Except.bind, pure, Except.pure]
+      rw [h_peek1]; simp only []
+      rw [h_np]; simp only []
+      unfold validateNodeProps
+      simp only [bind, Except.bind, pure, Except.pure]
+      rw [h_peek1]; simp only []
+      rw [h_parseNC]; simp [h_finalize]
+    -- parseDocument uses fuel 4 * ps1.tokens.size + 4 = 4*N+4
+    have h_parseDoc : parseDocument ps1 = Except.ok
+        ({ value := .sequence .flow items_res,
+           directives := #[], anchors := ps_loop.advance.anchors,
+           nodePositions := ps_loop.advance.nodePositions }, ps_loop.advance) := by
+      unfold parseDocument
+      simp only [bind, Except.bind, h_pds, h_peek1]
+      rw [show 4 * ps1.tokens.size + 4 = 4 * tokens.size + 4 from by omega]
+      rw [h_parseNode]
+    -- ps_loop.advance.peek? = some .streamEnd
+    have h_peek_end : ps_loop.advance.peek? = some .streamEnd := by
+      have h_loop_tok_eq : ps_loop.tokens = tokens := h_loop_tok.trans h_ps_mid_tok
+      have h_loop_pos_eq : ps_loop.pos = tokens.size - 2 := by
+        -- Position pinning: the loop ends at endPos because parseNode consumes
+        -- all nested structures. The outermost flowSequenceEnd at endPos is the
+        -- only one visible to the loop. Interior flowSequenceEnd tokens from
+        -- nested sequences are consumed by parseNode's dispatch to parseFlowSequence.
+        sorry
+      simp only [ParseState.peek?, ParseState.advance, h_loop_tok_eq]
+      simp only [h_loop_pos_eq, show tokens.size - 2 + 1 = tokens.size - 1 from by omega,
+                 show tokens.size - 1 < tokens.size from by omega, ↓reduceIte, h_tlast]
+    -- Apply parseStreamLoop_single_doc
+    have h_fuel_ge : tokens.size ≥ 2 := by omega
+    have h_loop_doc := parseStreamLoop_single_doc ps1 tokens.size h_fuel_ge
+      .flowSequenceStart h_peek1 (by intro h; cases h)
+      { value := .sequence .flow items_res,
+        directives := #[], anchors := ps_loop.advance.anchors,
+        nodePositions := ps_loop.advance.nodePositions }
+      ps_loop.advance h_parseDoc h_peek_end
+    exact ⟨_, h_loop_doc, rfl⟩
 
 /-- Combined scanner characterization and parser acceptance for flow mappings.
     Analogous to `parseStream_emitSequence` but for `emit (.mapping ...)`.
@@ -6578,11 +6965,157 @@ theorem parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlVa
       exact ⟨docs, rfl, by simpa using h_full⟩
     | .error _ => simp [h_ps] at h_full
   | _ :: _ =>
-    -- Non-empty: requires parseFlowMappingLoop fuel sufficiency.
-    -- Each loop iteration advances parser position by ≥2 tokens (key + value via
-    -- parseNode), so the loop terminates within tokens.size iterations.
-    -- Pending position monotonicity proof.
-    exact sorry
+    -- Non-empty: trace through parseStream → parseStreamLoop → parseDocument →
+    -- parseNode → parseFlowMapping → parseFlowMappingLoop using loop fuel
+    -- sufficiency from Sub-phase D.
+    -- Flow structure from scanner characterization
+    have h_all_scan_k : ∀ p, p ∈ pairs.toList → EmitScansInFlow p.1 := by
+      intro p hp
+      have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp
+      have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
+      exact h_eq ▸ by exact emit_scans_in_flow _ (hk ⟨i, h_sz⟩)
+    have h_all_scan_v : ∀ p, p ∈ pairs.toList → EmitScansInFlow p.2 := by
+      intro p hp
+      have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hp
+      have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
+      exact h_eq ▸ by exact emit_scans_in_flow _ (hv ⟨i, h_sz⟩)
+    obtain ⟨h_sz7, h_t0, h_tlast, h_t1, h_tpe, h_t2_start, h_fe_key_pattern, h_entry_ok⟩ :=
+      scanFiltered_emitMap_nonempty_structure pairs tokens h_scan (by simp [h_list])
+        h_all_scan_k h_all_scan_v
+    -- Step 1: Unfold parseStream, dispatch expect .streamStart
+    unfold parseStream
+    simp only [bind, Except.bind]
+    unfold ParseState.expect
+    simp only [ParseState.peek?]
+    simp only [show (0 : Nat) < tokens.size from by omega, ↓reduceIte, h_t0]
+    simp only [show BEq.beq YamlToken.streamStart YamlToken.streamStart = true from by decide,
+               ↓reduceIte]
+    -- ps1 = advance of initial state (pos = 1)
+    let ps1 : ParseState := ({ tokens := tokens } : ParseState).advance
+    show ∃ docs, parseStreamLoop ps1 #[] StreamState.initial tokens.size = Except.ok docs ∧
+      docs.size = 1
+    -- peek? facts for ps1
+    have h_peek1 : ps1.peek? = some .flowMappingStart := by
+      simp only [ps1, ParseState.peek?, ParseState.advance]
+      simp only [show (0 : Nat) + 1 = 1 from rfl,
+                 show 1 < tokens.size from by omega, ↓reduceIte, h_t1]
+    have h_peek_not_dir : match ps1.peek? with
+        | some (.versionDirective _ _) | some (.tagDirective _ _) => False
+        | _ => True := by rw [h_peek1]; trivial
+    have h_peek_not_anctag : match ps1.peek? with
+        | some (.anchor _) | some (.tag _ _) => False
+        | _ => True := by rw [h_peek1]; trivial
+    -- parseDirectives and prepareDocumentState
+    have h_pd : parseDirectives ps1 = (#[], ps1) := parseDirectives_skip ps1 h_peek_not_dir
+    have h_pds : prepareDocumentState ps1 = .ok (#[], ps1) := by
+      unfold prepareDocumentState
+      simp only [bind, Except.bind, pure, Except.pure, h_pd, Array.filterMap_empty]
+      have h_th : { ps1 with tagHandles := #[] } = ps1 := by
+        simp [ps1, ParseState.advance]
+      rw [h_th, h_peek1]
+      unfold ParseState.tryConsume
+      rw [h_peek1]; simp
+    -- parseNodeProperties skip
+    have h_np : parseNodeProperties ps1 = .ok ({}, ps1) :=
+      parseNodeProperties_skip ps1 h_peek_not_anctag
+    -- Fuel chain: parseDocument(4*N+4) → parseNode(4*N+4)
+    --   → parseNodeContent(4*N+3) → parseFlowMapping(4*N+3)
+    --   → parseFlowMappingLoop(4*N+2)
+    have h_ps1_tok : ps1.tokens.size = tokens.size := by simp [ps1, ParseState.advance]
+    -- ps_mid = ps1.advance (pos = 2): start of flow mapping loop body
+    let ps_mid : ParseState := ps1.advance
+    have h_ps_mid_tok : ps_mid.tokens = tokens := by simp [ps_mid, ps1, ParseState.advance]
+    have h_ps_mid_pos : ps_mid.pos = 2 := by simp [ps_mid, ps1, ParseState.advance]
+    -- Apply parseFlowMappingLoop_emitter_ok with loop fuel = 4*N+2
+    have h_endPos : tokens.size - 2 < tokens.size := by omega
+    have h_loop_fuel : 4 * tokens.size + 2 ≥ (tokens.size - 2) - ps_mid.pos := by
+      simp only [h_ps_mid_pos]; omega
+    have h_loop_pos : ps_mid.pos ≤ tokens.size - 2 := by
+      simp only [h_ps_mid_pos]; omega
+    have h_entry_adj : L4YAML.Proofs.ParserGrammable.ParseEntryFlowMapOk
+        ps_mid.tokens (tokens.size - 2) (4 * tokens.size + 2) := by
+      rw [h_ps_mid_tok]; exact h_entry_ok.mono (by omega)
+    have h_end_tok_adj : ps_mid.tokens[tokens.size - 2]!.val = .flowMappingEnd := by
+      rw [h_ps_mid_tok]; exact h_tpe
+    have h_sep_adj : (#[] : Array (YamlValue × YamlValue)).size > 0 →
+        ps_mid.peek? = some .flowEntry ∨ ps_mid.peek? = some .flowMappingEnd := by
+      intro h; simp [Array.size] at h
+    have h_start_adj : (#[] : Array (YamlValue × YamlValue)).size = 0 →
+        ps_mid.peek? = some .key ∨ ps_mid.peek? = some .flowMappingEnd := by
+      intro _
+      simp only [ps_mid, ps1, ParseState.peek?, ParseState.advance]
+      simp only [show (0 : Nat) + 1 + 1 = 2 from rfl, show 2 < tokens.size from by omega,
+                 ↓reduceIte, Option.some.injEq]
+      exact h_t2_start
+    have h_after_fe_adj : ∀ k, ps_mid.pos ≤ k → k < tokens.size - 2 →
+        ps_mid.tokens[k]!.val = .flowEntry →
+        k + 1 ≤ tokens.size - 2 ∧ ps_mid.tokens[k + 1]!.val = .key := by
+      rw [h_ps_mid_tok, h_ps_mid_pos]; exact h_fe_key_pattern
+    obtain ⟨pairs_res, ps_loop, h_loop_ok, h_loop_peek, h_loop_tok, h_loop_tp⟩ :=
+      L4YAML.Proofs.ParserGrammable.parseFlowMappingLoop_emitter_ok
+        (4 * tokens.size + 2) ps_mid #[] (tokens.size - 2)
+        h_entry_adj h_loop_fuel h_loop_pos h_endPos h_end_tok_adj
+        h_sep_adj h_start_adj h_after_fe_adj
+    -- parseFlowMapping(4*N+3): destructs, passes 4*N+2 to loop
+    have h_parseFlowMap : parseFlowMapping ps1 (4 * tokens.size + 3) =
+        Except.ok (.mapping .flow pairs_res, ps_loop.advance) := by
+      unfold parseFlowMapping
+      simp only [bind, Except.bind]
+      rw [h_loop_ok]; simp only [h_loop_peek]
+    -- parseNodeContent dispatches to parseFlowMapping
+    have h_parseNC : parseNodeContent ps1 (4 * tokens.size + 3) {} =
+        Except.ok (.mapping .flow pairs_res, ps_loop.advance) := by
+      unfold parseNodeContent; rw [h_peek1]; exact h_parseFlowMap
+    -- applyNodeFinalization is identity for empty props and trackPositions=false
+    have h_finalize : applyNodeFinalization
+        (.mapping .flow pairs_res) ps_loop.advance {}
+        (ps1.peekPos?.getD { offset := 0, line := 0, col := 0 })
+        = (.mapping .flow pairs_res, ps_loop.advance) := by
+      unfold applyNodeFinalization
+      simp only []
+      have h_tp : ps_loop.advance.trackPositions = false := by
+        exact h_loop_tp
+      simp [h_tp]
+    -- parseNode(4*N+4): destructs, passes 4*N+3 to parseNodeContent
+    have h_parseNode : parseNode ps1 (4 * tokens.size + 4) =
+        Except.ok (.mapping .flow pairs_res, ps_loop.advance) := by
+      unfold parseNode
+      simp only [bind, Except.bind, pure, Except.pure]
+      rw [h_peek1]; simp only []
+      rw [h_np]; simp only []
+      unfold validateNodeProps
+      simp only [bind, Except.bind, pure, Except.pure]
+      rw [h_peek1]; simp only []
+      rw [h_parseNC]; simp [h_finalize]
+    -- parseDocument uses fuel 4 * ps1.tokens.size + 4 = 4*N+4
+    have h_parseDoc : parseDocument ps1 = Except.ok
+        ({ value := .mapping .flow pairs_res,
+           directives := #[], anchors := ps_loop.advance.anchors,
+           nodePositions := ps_loop.advance.nodePositions }, ps_loop.advance) := by
+      unfold parseDocument
+      simp only [bind, Except.bind, h_pds, h_peek1]
+      rw [show 4 * ps1.tokens.size + 4 = 4 * tokens.size + 4 from by omega]
+      rw [h_parseNode]
+    -- ps_loop.advance.peek? = some .streamEnd
+    have h_peek_end : ps_loop.advance.peek? = some .streamEnd := by
+      have h_loop_tok_eq : ps_loop.tokens = tokens := h_loop_tok.trans h_ps_mid_tok
+      have h_loop_pos_eq : ps_loop.pos = tokens.size - 2 := by
+        -- Position pinning: the loop ends at endPos because parseNode/parseEntry
+        -- consume all nested structures. The outermost flowMappingEnd at endPos
+        -- is the only one visible to the loop.
+        sorry
+      simp only [ParseState.peek?, ParseState.advance, h_loop_tok_eq]
+      simp only [h_loop_pos_eq, show tokens.size - 2 + 1 = tokens.size - 1 from by omega,
+                 show tokens.size - 1 < tokens.size from by omega, ↓reduceIte, h_tlast]
+    -- Apply parseStreamLoop_single_doc
+    have h_fuel_ge : tokens.size ≥ 2 := by omega
+    have h_loop_doc := parseStreamLoop_single_doc ps1 tokens.size h_fuel_ge
+      .flowMappingStart h_peek1 (by intro h; cases h)
+      { value := .mapping .flow pairs_res,
+        directives := #[], anchors := ps_loop.advance.anchors,
+        nodePositions := ps_loop.advance.nodePositions }
+      ps_loop.advance h_parseDoc h_peek_end
+    exact ⟨_, h_loop_doc, rfl⟩
 
 /-- **Parse acceptance** (Step 2): The parser accepts the token sequence
     produced by scanning canonical emitter output.
