@@ -171,10 +171,10 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
             <div class="split-toc">
               <div class="title">
                 <label for="--verso-manual-toc-verification" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-verification" checked="checked"></label><span class="number">3.</span> <span class=""><a href="Verification/#verification">Verification</a></span></div>
-              <table><tr class="numbered"><td class="num">3.1.</td><td><a href="Verification/Three-Layer-Strategy/#three-layer-strategy">Three-Layer Strategy</a></td></tr><tr class="current numbered"><td class="num">3.2.</td><td><a href="Verification/Key-Proof-Modules/#proof-modules">Key Proof Modules</a></td></tr><tr class="numbered"><td class="num">3.3.</td><td><a href="Verification/Proof-Engineering-Patterns/#proof-patterns">Proof Engineering Patterns</a></td></tr><tr class="numbered"><td class="num">3.4.</td><td><a href="Verification/Zero-Axiom-Policy/#zero-axiom">Zero-Axiom Policy</a></td></tr></table></div>
+              <table><tr class="numbered"><td class="num">3.1.</td><td><a href="Verification/Three-Layer-Strategy/#three-layer-strategy">Three-Layer Strategy</a></td></tr><tr class="numbered"><td class="num">3.2.</td><td><a href="Verification/Key-Theorems/#key-theorems">Key Theorems</a></td></tr><tr class="current numbered"><td class="num">3.3.</td><td><a href="Verification/Key-Proof-Modules/#proof-modules">Key Proof Modules</a></td></tr><tr class="numbered"><td class="num">3.4.</td><td><a href="Verification/Theorem-Dependency-Visualization/#theorem-graphs">Theorem Dependency Visualization</a></td></tr><tr class="numbered"><td class="num">3.5.</td><td><a href="Verification/Proof-Engineering-Patterns/#proof-patterns">Proof Engineering Patterns</a></td></tr><tr class="numbered"><td class="num">3.6.</td><td><a href="Verification/Zero-Axiom-Policy/#zero-axiom">Zero-Axiom Policy</a></td></tr></table></div>
             <div class="split-toc">
               <div class="title">
-                <span class="no-toggle"></span><span class="number">3.2.</span> <span class="current"><a href="Verification/Key-Proof-Modules/#proof-modules">Key Proof Modules</a></span></div>
+                <span class="no-toggle"></span><span class="number">3.3.</span> <span class="current"><a href="Verification/Key-Proof-Modules/#proof-modules">Key Proof Modules</a></span></div>
               </div>
             </div>
           </div>
@@ -182,10 +182,10 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
         </nav>
       <main><div class="content-wrapper">
           <nav class="prev-next-buttons">
-            <a class="local-button active" href="Verification/Three-Layer-Strategy/#three-layer-strategy" rel="prev" title="3.1. Three-Layer Strategy"><span class="arrow">←</span><span class="where">3.1. Three-Layer Strategy</span></a><a class="local-button active" href="Verification/Proof-Engineering-Patterns/#proof-patterns" rel="next" title="3.3. Proof Engineering Patterns"><span class="where">3.3. Proof Engineering Patterns</span><span class="arrow">→</span></a></nav>
+            <a class="local-button active" href="Verification/Key-Theorems/#key-theorems" rel="prev" title="3.2. Key Theorems"><span class="arrow">←</span><span class="where">3.2. Key Theorems</span></a><a class="local-button active" href="Verification/Theorem-Dependency-Visualization/#theorem-graphs" rel="next" title="3.4. Theorem Dependency Visualization"><span class="where">3.4. Theorem Dependency Visualization</span><span class="arrow">→</span></a></nav>
           <section>
             <h1>
-              3.2. Key Proof Modules<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=proof-modules" title="Permalink">🔗</a></span></h1>
+              3.3. Key Proof Modules<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=proof-modules" title="Permalink">🔗</a></span></h1>
             <table class="tabular"><thead><tr><th><p>
                       Module</p>
                     </th><th><p>
@@ -243,9 +243,30 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
                     Grammar-to-implementation correspondence
 </p>
                   </td></tr><tr><td><p>
+                    <code>ParserWfaProofs.lean</code></p>
+                  </td><td><p>
+                    50 theorems</p>
+                  </td><td><p>
+                    Well-formed anchors through entire parser pipeline
+</p>
+                  </td></tr><tr><td><p>
+                    <code>ParserNodeProofs.lean</code></p>
+                  </td><td><p>
+                    57 theorems</p>
+                  </td><td><p>
+                    Anchor growth and alias resolution
+</p>
+                  </td></tr><tr><td><p>
+                    <code>ParserWellBehaved.lean</code></p>
+                  </td><td><p>
+                    102 theorems</p>
+                  </td><td><p>
+                    Flow nesting, token preservation, scannable properties
+</p>
+                  </td></tr><tr><td><p>
                     <code>ScannerProgress.lean</code></p>
                   </td><td><p>
-                    Multiple theorems</p>
+                    24 theorems</p>
                   </td><td><p>
                     Offset strictly increases on every scanner step
 </p>
@@ -264,7 +285,7 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
                     Dispatch pipeline preserves all invariants</p>
                   </td></tr></table></section>
           <nav class="prev-next-buttons">
-            <a class="local-button active" href="Verification/Three-Layer-Strategy/#three-layer-strategy" rel="prev" title="3.1. Three-Layer Strategy"><span class="arrow">←</span><span class="where">3.1. Three-Layer Strategy</span></a><a class="local-button active" href="Verification/Proof-Engineering-Patterns/#proof-patterns" rel="next" title="3.3. Proof Engineering Patterns"><span class="where">3.3. Proof Engineering Patterns</span><span class="arrow">→</span></a></nav>
+            <a class="local-button active" href="Verification/Key-Theorems/#key-theorems" rel="prev" title="3.2. Key Theorems"><span class="arrow">←</span><span class="where">3.2. Key Theorems</span></a><a class="local-button active" href="Verification/Theorem-Dependency-Visualization/#theorem-graphs" rel="next" title="3.4. Theorem Dependency Visualization"><span class="where">3.4. Theorem Dependency Visualization</span><span class="arrow">→</span></a></nav>
           </div>
         </main></div>
     </body>

@@ -7,13 +7,13 @@
      "data":
      {"title": "Zero-Axiom Policy",
       "shortTitle": null,
-      "sectionNum": "3.4.",
+      "sectionNum": "3.6.",
       "context":
       [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
         "shortTitle": "L4YAML",
         "number": null},
        {"title": "Verification", "shortTitle": null, "number": "3"},
-       {"title": "Zero-Axiom Policy", "shortTitle": null, "number": "4"}]},
+       {"title": "Zero-Axiom Policy", "shortTitle": null, "number": "6"}]},
      "address": "/Verification/Zero-Axiom-Policy/"}],
    "verification":
    [{"id": "verification",
@@ -95,6 +95,91 @@
        {"title": "Security", "shortTitle": null, "number": "4"},
        {"title": "Threat Model", "shortTitle": null, "number": "1"}]},
      "address": "/Security/Threat-Model/"}],
+   "thm-soundness":
+   [{"id": "thm-soundness",
+     "data":
+     {"title": "Soundness",
+      "shortTitle": null,
+      "sectionNum": "3.2.4.",
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Key Theorems", "shortTitle": null, "number": "2"},
+       {"title": "Soundness", "shortTitle": null, "number": "4"}]},
+     "address": "/Verification/Key-Theorems/"}],
+   "thm-scanner":
+   [{"id": "thm-scanner",
+     "data":
+     {"title": "Scanner Correctness",
+      "shortTitle": null,
+      "sectionNum": "3.2.2.",
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Key Theorems", "shortTitle": null, "number": "2"},
+       {"title": "Scanner Correctness", "shortTitle": null, "number": "2"}]},
+     "address": "/Verification/Key-Theorems/"}],
+   "thm-roundtrip":
+   [{"id": "thm-roundtrip",
+     "data":
+     {"title": "Round-Trip Properties",
+      "shortTitle": null,
+      "sectionNum": "3.2.5.",
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Key Theorems", "shortTitle": null, "number": "2"},
+       {"title": "Round-Trip Properties", "shortTitle": null, "number": "5"}]},
+     "address": "/Verification/Key-Theorems/"}],
+   "thm-pipeline":
+   [{"id": "thm-pipeline",
+     "data":
+     {"title": "Pipeline Composition",
+      "shortTitle": null,
+      "sectionNum": "3.2.1.",
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Key Theorems", "shortTitle": null, "number": "2"},
+       {"title": "Pipeline Composition", "shortTitle": null, "number": "1"}]},
+     "address": "/Verification/Key-Theorems/"}],
+   "thm-parser":
+   [{"id": "thm-parser",
+     "data":
+     {"title": "Parser Correctness",
+      "shortTitle": null,
+      "sectionNum": "3.2.3.",
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Key Theorems", "shortTitle": null, "number": "2"},
+       {"title": "Parser Correctness", "shortTitle": null, "number": "3"}]},
+     "address": "/Verification/Key-Theorems/"}],
+   "theorem-graphs":
+   [{"id": "theorem-graphs",
+     "data":
+     {"title": "Theorem Dependency Visualization",
+      "shortTitle": null,
+      "sectionNum": "3.4.",
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Theorem Dependency Visualization",
+        "shortTitle": null,
+        "number": "4"}]},
+     "address": "/Verification/Theorem-Dependency-Visualization/"}],
    "testing":
    [{"id": "testing",
      "data":
@@ -274,7 +359,7 @@
      "data":
      {"title": "Proof Engineering Patterns",
       "shortTitle": null,
-      "sectionNum": "3.3.",
+      "sectionNum": "3.5.",
       "context":
       [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
         "shortTitle": "L4YAML",
@@ -282,20 +367,20 @@
        {"title": "Verification", "shortTitle": null, "number": "3"},
        {"title": "Proof Engineering Patterns",
         "shortTitle": null,
-        "number": "3"}]},
+        "number": "5"}]},
      "address": "/Verification/Proof-Engineering-Patterns/"}],
    "proof-modules":
    [{"id": "proof-modules",
      "data":
      {"title": "Key Proof Modules",
       "shortTitle": null,
-      "sectionNum": "3.2.",
+      "sectionNum": "3.3.",
       "context":
       [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
         "shortTitle": "L4YAML",
         "number": null},
        {"title": "Verification", "shortTitle": null, "number": "3"},
-       {"title": "Key Proof Modules", "shortTitle": null, "number": "2"}]},
+       {"title": "Key Proof Modules", "shortTitle": null, "number": "3"}]},
      "address": "/Verification/Key-Proof-Modules/"}],
    "presets":
    [{"id": "presets",
@@ -361,6 +446,19 @@
        {"title": "Test Results", "shortTitle": null, "number": "7"},
        {"title": "Lean Test Suites", "shortTitle": null, "number": "2"}]},
      "address": "/Test-Results/Lean-Test-Suites/"}],
+   "key-theorems":
+   [{"id": "key-theorems",
+     "data":
+     {"title": "Key Theorems",
+      "shortTitle": null,
+      "sectionNum": "3.2.",
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Key Theorems", "shortTitle": null, "number": "2"}]},
+     "address": "/Verification/Key-Theorems/"}],
    "index":
    [{"id": "index",
      "data":
@@ -563,6 +661,59 @@
        {"title": "FFI Bindings", "shortTitle": null, "number": "5"},
        {"title": "Adding FFI Bindings", "shortTitle": null, "number": "5"}]},
      "address": "/FFI-Bindings/Adding-FFI-Bindings/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Theorem-Dependency-Visualization--Theorem-Coverage-Analysis":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Theorem-Dependency-Visualization--Theorem-Coverage-Analysis",
+     "data":
+     {"title": "Theorem Coverage Analysis",
+      "shortTitle": null,
+      "sectionNum": "3.4.3.",
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Theorem Dependency Visualization",
+        "shortTitle": null,
+        "number": "4"},
+       {"title": "Theorem Coverage Analysis",
+        "shortTitle": null,
+        "number": "3"}]},
+     "address": "/Verification/Theorem-Dependency-Visualization/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Theorem-Dependency-Visualization--Generating-Graphs":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Theorem-Dependency-Visualization--Generating-Graphs",
+     "data":
+     {"title": "Generating Graphs",
+      "shortTitle": null,
+      "sectionNum": "3.4.1.",
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Theorem Dependency Visualization",
+        "shortTitle": null,
+        "number": "4"},
+       {"title": "Generating Graphs", "shortTitle": null, "number": "1"}]},
+     "address": "/Verification/Theorem-Dependency-Visualization/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Theorem-Dependency-Visualization--Dependency-Extraction":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Theorem-Dependency-Visualization--Dependency-Extraction",
+     "data":
+     {"title": "Dependency Extraction",
+      "shortTitle": null,
+      "sectionNum": "3.4.2.",
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Theorem Dependency Visualization",
+        "shortTitle": null,
+        "number": "4"},
+       {"title": "Dependency Extraction", "shortTitle": null, "number": "2"}]},
+     "address": "/Verification/Theorem-Dependency-Visualization/"}],
    "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4":
    [{"id": "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4",
      "data":

@@ -10,7 +10,7 @@
 })()</script>
     <base href="./../../"><meta charset="utf-8">
     <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
-    <title>Three-Layer Strategy</title><link rel="stylesheet" href="book.css">
+    <title>Theorem Dependency Visualization</title><link rel="stylesheet" href="book.css">
     <link rel="stylesheet" href="verso-vars.css">
     <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js" integrity="sha384-zbcZAIxlvJtNE3Dp5nxLXdXtXyxwOdnILY1TDPVmKFhl4r4nSUG1r8bcFXGVa4Te" crossorigin="anonymous"></script>
     <script src="-verso-search/elasticlunr.min.js"></script>
@@ -171,127 +171,100 @@ table.tabular td > p:last-child, table.tabular th > p:first-child {
             <div class="split-toc">
               <div class="title">
                 <label for="--verso-manual-toc-verification" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-verification" checked="checked"></label><span class="number">3.</span> <span class=""><a href="Verification/#verification">Verification</a></span></div>
-              <table><tr class="current numbered"><td class="num">3.1.</td><td><a href="Verification/Three-Layer-Strategy/#three-layer-strategy">Three-Layer Strategy</a></td></tr><tr class="numbered"><td class="num">3.2.</td><td><a href="Verification/Key-Theorems/#key-theorems">Key Theorems</a></td></tr><tr class="numbered"><td class="num">3.3.</td><td><a href="Verification/Key-Proof-Modules/#proof-modules">Key Proof Modules</a></td></tr><tr class="numbered"><td class="num">3.4.</td><td><a href="Verification/Theorem-Dependency-Visualization/#theorem-graphs">Theorem Dependency Visualization</a></td></tr><tr class="numbered"><td class="num">3.5.</td><td><a href="Verification/Proof-Engineering-Patterns/#proof-patterns">Proof Engineering Patterns</a></td></tr><tr class="numbered"><td class="num">3.6.</td><td><a href="Verification/Zero-Axiom-Policy/#zero-axiom">Zero-Axiom Policy</a></td></tr></table></div>
+              <table><tr class="numbered"><td class="num">3.1.</td><td><a href="Verification/Three-Layer-Strategy/#three-layer-strategy">Three-Layer Strategy</a></td></tr><tr class="numbered"><td class="num">3.2.</td><td><a href="Verification/Key-Theorems/#key-theorems">Key Theorems</a></td></tr><tr class="numbered"><td class="num">3.3.</td><td><a href="Verification/Key-Proof-Modules/#proof-modules">Key Proof Modules</a></td></tr><tr class="current numbered"><td class="num">3.4.</td><td><a href="Verification/Theorem-Dependency-Visualization/#theorem-graphs">Theorem Dependency Visualization</a></td></tr><tr class="numbered"><td class="num">3.5.</td><td><a href="Verification/Proof-Engineering-Patterns/#proof-patterns">Proof Engineering Patterns</a></td></tr><tr class="numbered"><td class="num">3.6.</td><td><a href="Verification/Zero-Axiom-Policy/#zero-axiom">Zero-Axiom Policy</a></td></tr></table></div>
             <div class="split-toc">
               <div class="title">
-                <label for="--verso-manual-toc-three-layer-strategy" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-three-layer-strategy" checked="checked"></label><span class="number">3.1.</span> <span class="current"><a href="Verification/Three-Layer-Strategy/#three-layer-strategy">Three-Layer Strategy</a></span></div>
-              <table><tr class="numbered"><td class="num">3.1.1.</td><td><a href="Verification/Three-Layer-Strategy/#formal-proofs">Layer 1: Machine-Checked Proofs</a></td></tr><tr class="numbered"><td class="num">3.1.2.</td><td><a href="Verification/Three-Layer-Strategy/#compile-time-guards">Layer 2: Compile-Time Guards</a></td></tr><tr class="numbered"><td class="num">3.1.3.</td><td><a href="Verification/Three-Layer-Strategy/#runtime-tests">Layer 3: Runtime Tests</a></td></tr></table></div>
+                <label for="--verso-manual-toc-theorem-graphs" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-theorem-graphs" checked="checked"></label><span class="number">3.4.</span> <span class="current"><a href="Verification/Theorem-Dependency-Visualization/#theorem-graphs">Theorem Dependency Visualization</a></span></div>
+              <table><tr class="numbered"><td class="num">3.4.1.</td><td><a href="Verification/Theorem-Dependency-Visualization/#L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Theorem-Dependency-Visualization--Generating-Graphs">Generating Graphs</a></td></tr><tr class="numbered"><td class="num">3.4.2.</td><td><a href="Verification/Theorem-Dependency-Visualization/#L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Theorem-Dependency-Visualization--Dependency-Extraction">Dependency Extraction</a></td></tr><tr class="numbered"><td class="num">3.4.3.</td><td><a href="Verification/Theorem-Dependency-Visualization/#L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Theorem-Dependency-Visualization--Theorem-Coverage-Analysis">Theorem Coverage Analysis</a></td></tr></table></div>
             </div>
           </div>
         <div class="last"></div>
         </nav>
       <main><div class="content-wrapper">
           <nav class="prev-next-buttons">
-            <a class="local-button active" href="Verification/#verification" rel="prev" title="3. Verification"><span class="arrow">←</span><span class="where">3. Verification</span></a><a class="local-button active" href="Verification/Key-Theorems/#key-theorems" rel="next" title="3.2. Key Theorems"><span class="where">3.2. Key Theorems</span><span class="arrow">→</span></a></nav>
+            <a class="local-button active" href="Verification/Key-Proof-Modules/#proof-modules" rel="prev" title="3.3. Key Proof Modules"><span class="arrow">←</span><span class="where">3.3. Key Proof Modules</span></a><a class="local-button active" href="Verification/Proof-Engineering-Patterns/#proof-patterns" rel="next" title="3.5. Proof Engineering Patterns"><span class="where">3.5. Proof Engineering Patterns</span><span class="arrow">→</span></a></nav>
           <section>
             <h1>
-              3.1. Three-Layer Strategy<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=three-layer-strategy" title="Permalink">🔗</a></span></h1>
+              3.4. Theorem Dependency Visualization<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=theorem-graphs" title="Permalink">🔗</a></span></h1>
+            <p>
+              <span id="--index--next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next-next"></span>
+L4YAML includes tooling for visualizing theorem dependencies as
+bipartite graphs.  Each graph shows a key theorem at the center,
+with:</p>
+            <ul>
+              <li>
+                <p>
+                  <em>Functions</em> (left, blue) — the implementation functions the
+   theorem proves a property about</p>
+                </li>
+              <li>
+                <p>
+                  <em>Proof dependencies</em> (right, green) — the supporting theorems
+   used in the proof</p>
+                </li>
+              </ul>
             <section>
-              <h2 id="formal-proofs">
-                3.1.1. Layer 1: Machine-Checked Proofs<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=formal-proofs" title="Permalink">🔗</a></span></h2>
+              <h2 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Theorem-Dependency-Visualization--Generating-Graphs">
+                3.4.1. Generating Graphs<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Theorem-Dependency-Visualization--Generating-Graphs" title="Permalink">🔗</a></span></h2>
               <p>
-                <span id="--index--next-next-next-next-next-next-next-next-next-next"></span>
-The core layer consists of 2,309 Lean 4 theorems across 61 proof
-modules (~47,000 lines).
-These proofs are checked by the Lean kernel — the small trusted
-core of the system — and establish properties including:</p>
-              <ul>
-                <li>
-                  <p>
-                    <strong>Soundness</strong> — every token stream produced by the scanner
-   corresponds to a valid YAML grammar derivation</p>
-                  </li>
-                <li>
-                  <p>
-                    <strong>Completeness</strong> — every valid YAML input is accepted (not
-   rejected with an error)</p>
-                  </li>
-                <li>
-                  <p>
-                    <strong>Progress</strong> — the scanner's input offset strictly increases
-   on every step, guaranteeing termination</p>
-                  </li>
-                <li>
-                  <p>
-                    <strong>Well-formedness preservation</strong> — internal invariants
-   (indentation stack consistency, flow level balance, simple key
-   lifecycle) are maintained across all scanner operations</p>
-                  </li>
-                <li>
-                  <p>
-                    <strong>Pipeline composition</strong> — scanner and parser compose correctly
-   to deliver end-to-end guarantees</p>
-                  </li>
-                </ul>
-              </section>
+                Generate DOT files for all key theorems:</p>
+              <pre>lake build theoremgraph
+lake exe theoremgraph tmp/graphs
+</pre><p>
+                Render to SVG with Graphviz:</p>
+              <pre>for f in tmp/graphs/*.dot; do
+  dot -Tsvg "$f" -o "${f%.dot}.svg"
+done
+</pre><p>
+                Then open <code>tmp/graphs/index.html</code> for an overview page.</p>
+              <p>
+                Generate a single theorem's graph:</p>
+              <pre>lake exe theoremgraph --dot parseYaml_pipeline
+</pre><p>
+                List all available key theorems:</p>
+              <pre>lake exe theoremgraph --list
+</pre></section>
             <section>
-              <h2 id="compile-time-guards">
-                3.1.2. Layer 2: Compile-Time Guards<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=compile-time-guards" title="Permalink">🔗</a></span></h2>
+              <h2 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Theorem-Dependency-Visualization--Dependency-Extraction">
+                3.4.2. Dependency Extraction<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Theorem-Dependency-Visualization--Dependency-Extraction" title="Permalink">🔗</a></span></h2>
               <p>
-                <span id="--index--next-next-next-next-next-next-next-next-next-next-next"></span>
-2,124 <code>#guard</code> statements are evaluated by the Lean kernel at
-build time.
-These are not runtime tests — they are <em>kernel-evaluated assertions</em>
-that must hold for the project to compile.
-A failing <code>#guard</code> is a build error, not a test failure.</p>
-              <p>
-                Guards are used extensively for:</p>
-              <ul>
+                The lower-level <code>depgraph</code> tool extracts three complete dependency
+graphs from the L4YAML environment:</p>
+              <ol start="1">
                 <li>
                   <p>
-                    Concrete scanner behavior on specific inputs</p>
+                    <strong>Function call graph</strong> — definition → definition calls</p>
                   </li>
                 <li>
                   <p>
-                    Round-trip properties (parse → emit → parse = original)</p>
+                    <strong>Theorem dependency graph</strong> — theorem → theorems used in proof</p>
                   </li>
                 <li>
                   <p>
-                    Token stream structure for specification examples</p>
+                    <strong>Function–theorem map</strong> — which functions each theorem is about</p>
                   </li>
-                <li>
-                  <p>
-                    Character predicate boundary conditions</p>
-                  </li>
-                </ul>
-              </section>
+                </ol>
+              <pre>lake build depgraph
+lake exe depgraph --dot calls   &gt; calls.dot
+lake exe depgraph --dot thmdeps &gt; thmdeps.dot
+lake exe depgraph --dot about   &gt; about.dot
+lake exe depgraph --stats
+</pre></section>
             <section>
-              <h2 id="runtime-tests">
-                3.1.3. Layer 3: Runtime Tests<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=runtime-tests" title="Permalink">🔗</a></span></h2>
+              <h2 id="L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Theorem-Dependency-Visualization--Theorem-Coverage-Analysis">
+                3.4.3. Theorem Coverage Analysis<span class="permalink-widget inline"><a href="find/?domain=Verso.Genre.Manual.section&amp;name=L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--Theorem-Dependency-Visualization--Theorem-Coverage-Analysis" title="Permalink">🔗</a></span></h2>
               <p>
-                <span id="--index--next-next-next-next-next-next-next-next-next-next-next-next"></span>
-1,041 runtime tests across 19 suites provide additional coverage:</p>
-              <ul>
-                <li>
-                  <p>
-                    <em>Specification examples</em> — all 132/132 YAML 1.2.2 examples</p>
-                  </li>
-                <li>
-                  <p>
-                    <em>yaml-test-suite</em> — 225/225 applicable test IDs (354/406 total;
-   52 YAML 1.1/1.3 tests are correctly skipped)</p>
-                  </li>
-                <li>
-                  <p>
-                    <em>Property tests</em> — randomized input generation for edge cases</p>
-                  </li>
-                <li>
-                  <p>
-                    <em>Mutation tests</em> — systematic input perturbation</p>
-                  </li>
-                <li>
-                  <p>
-                    <em>Adversarial tests</em> — handcrafted inputs targeting parser limits</p>
-                  </li>
-                <li>
-                  <p>
-                    <em>Round-trip tests</em> — parse → dump → parse cycle validation</p>
-                  </li>
-                </ul>
+                The <code>analyzethms</code> tool identifies leaf theorems (proved but never
+cited in other proofs) and <code>native_decide</code> usage patterns:</p>
+              <pre>lake build analyzethms
+lake exe analyzethms tmp/analysis
+</pre><p>
+                This writes <code>leaf_thms.json</code>, <code>native_decide_leaves.json</code>,
+<code>duplicates.json</code>, and <code>stats.txt</code>.</p>
               </section>
             </section>
           <nav class="prev-next-buttons">
-            <a class="local-button active" href="Verification/#verification" rel="prev" title="3. Verification"><span class="arrow">←</span><span class="where">3. Verification</span></a><a class="local-button active" href="Verification/Key-Theorems/#key-theorems" rel="next" title="3.2. Key Theorems"><span class="where">3.2. Key Theorems</span><span class="arrow">→</span></a></nav>
+            <a class="local-button active" href="Verification/Key-Proof-Modules/#proof-modules" rel="prev" title="3.3. Key Proof Modules"><span class="arrow">←</span><span class="where">3.3. Key Proof Modules</span></a><a class="local-button active" href="Verification/Proof-Engineering-Patterns/#proof-patterns" rel="next" title="3.5. Proof Engineering Patterns"><span class="where">3.5. Proof Engineering Patterns</span><span class="arrow">→</span></a></nav>
           </div>
         </main></div>
     </body>
