@@ -92,7 +92,7 @@ jobs:
       - name: Generate theorem dependency graphs
         run: |
           lake build theoremgraph
-          lake exe theoremgraph doc/Doc/L4YAML/graphs
+          lake exe theoremgraph --doc-base ../../../api/ doc/Doc/L4YAML/graphs
           for f in doc/Doc/L4YAML/graphs/*.dot; do
             dot -Tsvg "$f" -o "${f%.dot}.svg"
           done
@@ -112,6 +112,12 @@ jobs:
           rm -rf docs
           cp -r doc/_out/html-multi docs
           echo "Verso HTML copied to docs/"
+
+      - name: Generate doc-gen4 API documentation
+        run: |
+          lake build :docs
+          cp -r .lake/build/doc docs/api
+          echo "doc-gen4 API docs copied to docs/api/"
 
       # -------------------------------------------------------
       # Phase 3: Run all test suites

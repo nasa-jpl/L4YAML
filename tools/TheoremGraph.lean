@@ -48,12 +48,13 @@ extracts and visualizes these parallel dependency structures.
 
 ```
 lake build theoremgraph
-lake exe theoremgraph [--list] [--dot <name>] [--chain <name>] [output-dir]
+lake exe theoremgraph [--list] [--dot <name>] [--chain <name>] [--doc-base <url>] [output-dir]
 ```
 
 - `--list`              — Print the catalogue of key theorems
 - `--dot <name>`        — Generate a single DOT file for one key theorem
 - `--chain <name>`      — Generate a functorial chain DOT for one key theorem
+- `--doc-base <url>`    — Base URL prefix for doc-gen4 links (e.g. `../../../api/`)
 - No args / `output-dir` — Generate all DOT files + chain files + index HTML
 
 ## Graphviz rendering
@@ -86,6 +87,19 @@ def shortName (n : Name) : String :=
   else if s.startsWith "L4YAML.Scanner." then (s.drop 15).toString
   else if s.startsWith "L4YAML." then (s.drop 7).toString
   else s
+
+/-- Compute the doc-gen4 URL for a declaration.
+    Module `A.B.C` maps to `{base}A/B/C.html`, declaration `A.B.C.foo` maps to
+    `{base}A/B/C.html#A.B.C.foo`. Returns `none` if the module is unknown. -/
+def declDocUrl (env : Environment) (n : Name) (docBase : String) : Option String :=
+  let idx := env.getModuleIdxFor? n <|> env.getModuleIdxFor? n.getPrefix
+  match idx with
+  | some i =>
+    let modName := env.header.moduleNames[i.toNat]!
+    let modPath := modName.toString.replace "." "/"
+    let fqn := n.toString
+    some s!"{docBase}{modPath}.html#{fqn}"
+  | none => none
 
 /-- Percent-encode characters that are unsafe in file names.
     Encodes `"`, `:`, `<`, `>`, `|`, `*`, `?`, `'`, `\r`, `\n`
@@ -370,7 +384,7 @@ def classifyConst (ci : ConstantInfo) : String :=
     Center: the key theorem itself.
     Now includes stdlib theorem deps (shown in orange). -/
 def generateBipartiteDot (env : Environment) (projectDefs projectThms : NameHashSet)
-    (thmName : Name) (description : String) : String := Id.run do
+    (thmName : Name) (description : String) (docBase : String := "") : String := Id.run do
   let about := collectAbout env projectDefs thmName
   let deps := collectThmDeps env projectThms thmName (maxDepth := 2)
   let stdlibDeps := getStdlibThmDeps env thmName
@@ -410,14 +424,18 @@ def generateBipartiteDot (env : Environment) (projectDefs projectThms : NameHash
       | none => "?"
     -- Highlight @[key_function]-tagged functions
     let extra := if L4YAML.isKeyFunction env f then ", penwidth=3" else ""
-    dot := dot ++ s!"    \"{dotEscape f.toString}\" [label=\"{dotEscape fShort}\\n({kind})\"{extra}];\n"
+    let urlAttr := if docBase.isEmpty then "" else
+      match declDocUrl env f docBase with
+      | some u => s!", URL=\"{dotEscape u}\", target=\"_blank\""
+      | none => ""
+    dot := dot ++ s!"    \"{dotEscape f.toString}\" [label=\"{dotEscape fShort}\\n({kind})\"{extra}{urlAttr}];\n"
   dot := dot ++ s!"  {rbr}\n\n"
 
   -- Subgraph: key theorem
   dot := dot ++ s!"  subgraph cluster_key {lbr}\n"
   dot := dot ++ "    label=\"Key Theorem\";\n"
   dot := dot ++ "    style=dashed; color=\"#d4a017\"; fontcolor=\"#d4a017\";\n"
-  dot := dot ++ s!"    \"{dotEscape thmName.toString}\" [shape=doubleoctagon, style=filled, fillcolor=\"#fff3cd\", color=\"#d4a017\", label=\"{dotEscape thmShort}\", fontsize=12];\n"
+  dot := dot ++ s!"    \"{dotEscape thmName.toString}\" [shape=doubleoctagon, style=filled, fillcolor=\"#fff3cd\", color=\"#d4a017\", label=\"{dotEscape thmShort}\", fontsize=12{if docBase.isEmpty then "" else match declDocUrl env thmName docBase with | some u => s!", URL=\"{dotEscape u}\", target=\"_blank\"" | none => ""}];\n"
   dot := dot ++ s!"  {rbr}\n\n"
 
   -- Subgraph: project theorem dependencies
@@ -432,7 +450,11 @@ def generateBipartiteDot (env : Environment) (projectDefs projectThms : NameHash
       let modLabel := if depMod.startsWith "L4YAML.Proofs." then (depMod.drop 14).toString
                       else if depMod.startsWith "L4YAML." then (depMod.drop 7).toString
                       else depMod
-      dot := dot ++ s!"    \"{dotEscape dep.toString}\" [label=\"{dotEscape depShort}\\n({dotEscape modLabel})\"];\n"
+      let urlAttr := if docBase.isEmpty then "" else
+        match declDocUrl env dep docBase with
+        | some u => s!", URL=\"{dotEscape u}\", target=\"_blank\""
+        | none => ""
+      dot := dot ++ s!"    \"{dotEscape dep.toString}\" [label=\"{dotEscape depShort}\\n({dotEscape modLabel})\"{urlAttr}];\n"
   dot := dot ++ s!"  {rbr}\n\n"
 
   -- Subgraph: stdlib theorem dependencies (orange)
@@ -443,7 +465,11 @@ def generateBipartiteDot (env : Environment) (projectDefs projectThms : NameHash
     dot := dot ++ "    node [shape=ellipse, style=filled, fillcolor=\"#fdebd0\", color=\"#e67e22\"];\n"
     for dep in stdlibDeps do
       let depShort := dep.toString
-      dot := dot ++ s!"    \"{dotEscape dep.toString}\" [label=\"{dotEscape depShort}\"];\n"
+      let urlAttr := if docBase.isEmpty then "" else
+        match declDocUrl env dep docBase with
+        | some u => s!", URL=\"{dotEscape u}\", target=\"_blank\""
+        | none => ""
+      dot := dot ++ s!"    \"{dotEscape dep.toString}\" [label=\"{dotEscape depShort}\"{urlAttr}];\n"
     dot := dot ++ s!"  {rbr}\n\n"
 
   -- Edges: key theorem -> functions
@@ -577,7 +603,7 @@ def findFunctorialChains (env : Environment) (projectDefs projectThms : NameHash
 /-- Generate a functorial chain DOT graph.
     Shows parallel function and theorem ladders with cross-links. -/
 def generateChainDot (env : Environment) (projectDefs projectThms : NameHashSet)
-    (thmName : Name) (description : String) : String := Id.run do
+    (thmName : Name) (description : String) (docBase : String := "") : String := Id.run do
   let chains := findFunctorialChains env projectDefs projectThms thmName
   let thmShort := shortName thmName
   let lbr := "{"
@@ -612,7 +638,11 @@ def generateChainDot (env : Environment) (projectDefs projectThms : NameHashSet)
   for f in allFns.toList do
     let fShort := shortName f
     let extra := if L4YAML.isKeyFunction env f then ", penwidth=3" else ""
-    dot := dot ++ s!"    \"{dotEscape f.toString}\" [label=\"{dotEscape fShort}\"{extra}];\n"
+    let urlAttr := if docBase.isEmpty then "" else
+      match declDocUrl env f docBase with
+      | some u => s!", URL=\"{dotEscape u}\", target=\"_blank\""
+      | none => ""
+    dot := dot ++ s!"    \"{dotEscape f.toString}\" [label=\"{dotEscape fShort}\"{extra}{urlAttr}];\n"
   dot := dot ++ s!"  {rbr}\n\n"
 
   -- Theorem column (right)
@@ -623,7 +653,11 @@ def generateChainDot (env : Environment) (projectDefs projectThms : NameHashSet)
   for t in allThms.toList do
     let tShort := shortName t
     let extra := if t == thmName then ", shape=doubleoctagon, fillcolor=\"#fff3cd\", color=\"#d4a017\"" else ""
-    dot := dot ++ s!"    \"{dotEscape t.toString}\" [label=\"{dotEscape tShort}\"{extra}];\n"
+    let urlAttr := if docBase.isEmpty then "" else
+      match declDocUrl env t docBase with
+      | some u => s!", URL=\"{dotEscape u}\", target=\"_blank\""
+      | none => ""
+    dot := dot ++ s!"    \"{dotEscape t.toString}\" [label=\"{dotEscape tShort}\"{extra}{urlAttr}];\n"
   dot := dot ++ s!"  {rbr}\n\n"
 
   -- Edges
@@ -663,7 +697,7 @@ def generateIndexHtml (bipartiteEntries chainEntries : Array (String × String))
   html := html ++ "<style>body{font-family:sans-serif;max-width:900px;margin:2em auto}"
   html := html ++ "h1{color:#333}h2{color:#555;border-bottom:1px solid #ddd}"
   html := html ++ ".thm{margin:1.5em 0;padding:1em;border:1px solid #ddd;border-radius:8px}"
-  html := html ++ ".thm h3{margin-top:0;color:#4a90d9} img{max-width:100%;border:1px solid #eee}</style>\n"
+  html := html ++ ".thm h3{margin-top:0;color:#4a90d9} object{max-width:100%;border:1px solid #eee}</style>\n"
   html := html ++ "</head><body>\n<h1>L4YAML &mdash; Key Theorem Dependency Graphs</h1>\n"
   html := html ++ "<p>Each bipartite graph shows: <span style='color:#4a90d9'>functions</span> (left) "
   html := html ++ "&larr; <span style='color:#d4a017'>key theorem</span> (center) &larr; "
@@ -673,7 +707,7 @@ def generateIndexHtml (bipartiteEntries chainEntries : Array (String × String))
   for (shortN, desc) in bipartiteEntries do
     html := html ++ s!"<div class='thm'><h3>{shortN}</h3>\n"
     html := html ++ s!"<p>{desc}</p>\n"
-    html := html ++ s!"<img src='{shortN}.svg' alt='{shortN} dependency graph'>\n</div>\n"
+    html := html ++ s!"<object data='{shortN}.svg' type='image/svg+xml' width='100%'>{shortN} dependency graph</object>\n</div>\n"
   if chainEntries.size > 0 then
     html := html ++ "<h2>Functorial Chain Graphs</h2>\n"
     html := html ++ "<p>Parallel function-call and theorem-proof chains where the <em>about</em> "
@@ -681,7 +715,7 @@ def generateIndexHtml (bipartiteEntries chainEntries : Array (String × String))
     for (shortN, desc) in chainEntries do
       html := html ++ s!"<div class='thm'><h3>{shortN} (chain)</h3>\n"
       html := html ++ s!"<p>{desc}</p>\n"
-      html := html ++ s!"<img src='chain_{shortN}.svg' alt='{shortN} chain graph'>\n</div>\n"
+      html := html ++ s!"<object data='chain_{shortN}.svg' type='image/svg+xml' width='100%'>{shortN} chain graph</object>\n</div>\n"
   html := html ++ "</body></html>\n"
   return html
 
@@ -720,6 +754,13 @@ unsafe def main (args : List String) : IO Unit := do
   Lean.enableInitializersExecution
   Lean.initSearchPath (← Lean.findSysroot)
   let env ← Lean.importModules #[{ module := `L4YAML }] {} 0
+
+  -- Extract --doc-base <url> from args (if present)
+  let rec extractDocBase : List String → String × List String
+    | "--doc-base" :: base :: rest => (base, rest)
+    | x :: xs => let (db, ys) := extractDocBase xs; (db, x :: ys)
+    | [] => ("", [])
+  let (docBase, args) := extractDocBase args
 
   -- Build project def/thm sets
   let allConsts : Array (Name × ConstantInfo) :=
@@ -772,7 +813,7 @@ unsafe def main (args : List String) : IO Unit := do
     match keyThms.find? (fun (s, _, _) => s == name) with
     | some (_, fqn, desc) =>
       match env.find? fqn with
-      | some _ => IO.println (generateBipartiteDot env projectDefs projectThms fqn desc)
+      | some _ => IO.println (generateBipartiteDot env projectDefs projectThms fqn desc docBase)
       | none => IO.eprintln s!"Error: theorem {fqn} not found in environment"
     | none =>
       IO.eprintln s!"Error: '{name}' is not a recognized key theorem. Use --list to see options."
@@ -781,7 +822,7 @@ unsafe def main (args : List String) : IO Unit := do
     match keyThms.find? (fun (s, _, _) => s == name) with
     | some (_, fqn, desc) =>
       match env.find? fqn with
-      | some _ => IO.println (generateChainDot env projectDefs projectThms fqn desc)
+      | some _ => IO.println (generateChainDot env projectDefs projectThms fqn desc docBase)
       | none => IO.eprintln s!"Error: theorem {fqn} not found in environment"
     | none =>
       IO.eprintln s!"Error: '{name}' is not a recognized key theorem. Use --list to see options."
@@ -803,13 +844,13 @@ unsafe def main (args : List String) : IO Unit := do
       | some _ =>
         let safeShort := sanitizeFileName short
         -- Bipartite graph
-        let dot := generateBipartiteDot env projectDefs projectThms fqn desc
+        let dot := generateBipartiteDot env projectDefs projectThms fqn desc docBase
         let path := s!"{outDir}/{safeShort}.dot"
         IO.FS.writeFile path dot
         IO.println s!"  ✓ {path}"
         bipartiteEntries := bipartiteEntries.push (safeShort, desc)
         -- Functorial chain graph
-        let chainDot := generateChainDot env projectDefs projectThms fqn desc
+        let chainDot := generateChainDot env projectDefs projectThms fqn desc docBase
         let chainPath := s!"{outDir}/chain_{safeShort}.dot"
         IO.FS.writeFile chainPath chainDot
         IO.println s!"  ✓ {chainPath}"
