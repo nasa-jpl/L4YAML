@@ -4102,17 +4102,20 @@ streams. The key assumptions:
 These are used by sub-phase 4.4.D to close the Layer 2 parser acceptance
 sorrys in `EmitterScannability.lean`. -/
 
--- parseNode succeeds on content tokens within a flow sequence:
+-- parseNode succeeds on content-start tokens within a flow sequence:
 -- returns ok, advances position, stays ≤ endPos, preserves tokens,
 -- and the result peeks at flowEntry or flowSequenceEnd.
+-- Content-start tokens are: scalar, flowSequenceStart, flowMappingStart.
+-- These are the ONLY token types at which parseNode advances position
+-- (all other token types in flow context produce an empty node without advancing).
 def ParseNodeFlowSeqOk (tokens : Array (Positioned YamlToken))
     (endPos : Nat) (fuel : Nat) : Prop :=
   ∀ (ps : ParseState) (m : Nat),
     ps.tokens = tokens → m ≤ fuel →
     ps.pos < endPos →
-    ps.peek? ≠ some .flowSequenceEnd →
-    ps.peek? ≠ some .flowEntry →
-    ps.peek? ≠ some .key →
+    ((∃ c s, ps.peek? = some (.scalar c s)) ∨
+     ps.peek? = some .flowSequenceStart ∨
+     ps.peek? = some .flowMappingStart) →
     ∃ val ps', parseNode ps m = .ok (val, ps') ∧
               ps'.pos > ps.pos ∧ ps'.pos ≤ endPos ∧
               ps'.tokens = tokens ∧
@@ -4124,7 +4127,7 @@ def ParseNodeFlowSeqOk (tokens : Array (Positioned YamlToken))
 -- (the fuel parameter only restricts m ≤ fuel, so larger fuel is weaker).
 theorem ParseNodeFlowSeqOk.mono {tokens endPos fuel fuel'} (h : ParseNodeFlowSeqOk tokens endPos fuel)
     (h_le : fuel' ≤ fuel) : ParseNodeFlowSeqOk tokens endPos fuel' :=
-  fun ps m h_tok h_m h_pos h1 h2 h3 => h ps m h_tok (Nat.le_trans h_m h_le) h_pos h1 h2 h3
+  fun ps m h_tok h_m h_pos h_cs => h ps m h_tok (Nat.le_trans h_m h_le) h_pos h_cs
 
 -- Helper: if ps.peek? = some tok and ps.pos < ps.tokens.size,
 -- then (ps.tokens[ps.pos]).val = tok
@@ -4156,13 +4159,16 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
     (h_at_end : ps.peek? = some .flowSequenceEnd → ps.pos = endPos)
     (h_entry : items_acc.size > 0 →
                ps.peek? = some .flowEntry ∨ ps.peek? = some .flowSequenceEnd)
-    (h_no_fe_start : items_acc.size = 0 → ps.peek? ≠ some .flowEntry)
-    (h_start_not_key : items_acc.size = 0 → ps.peek? ≠ some .key)
+    (h_content_start : items_acc.size = 0 →
+        (∃ c s, ps.peek? = some (.scalar c s)) ∨
+        ps.peek? = some .flowSequenceStart ∨
+        ps.peek? = some .flowMappingStart)
     (h_after_fe : ∀ k : Nat, ps.pos ≤ k → k < endPos →
                   ps.tokens[k]!.val = .flowEntry →
-                  k + 1 ≤ endPos ∧ ps.tokens[k + 1]!.val ≠ .flowEntry ∧
-                  ps.tokens[k + 1]!.val ≠ .key ∧
-                  ps.tokens[k + 1]!.val ≠ .flowSequenceEnd)
+                  k + 1 ≤ endPos ∧
+                  ((∃ c s, ps.tokens[k + 1]!.val = .scalar c s) ∨
+                   ps.tokens[k + 1]!.val = .flowSequenceStart ∨
+                   ps.tokens[k + 1]!.val = .flowMappingStart))
     : ∃ items ps', parseFlowSequenceLoop ps fuel items_acc = .ok (items, ps') ∧
                    ps'.peek? = some .flowSequenceEnd ∧
                    ps'.pos = endPos ∧
@@ -4195,18 +4201,17 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
         · -- flowEntry → advance, dispatch on advance.peek?
           -- 4. Inner dispatch: key / flowSequenceEnd / wildcard
           split
-          · -- key after separator → contradiction with h_after_fe (extended)
+          · -- key after separator → contradiction with h_after_fe (content start)
             rename_i h_adv_key
             exfalso
             have ⟨_, h_val⟩ := peek_some_val h_adv_key
             simp [ParseState.advance] at h_val
-            -- h_val : ps.tokens[ps.pos + 1]!.val = .key
             have h_fe_val : ps.tokens[ps.pos]!.val = .flowEntry := by
               have h_peek_fe : ps.peek? = some .flowEntry := by assumption
               exact (peek_some_val h_peek_fe).2
             have h_afe := h_after_fe ps.pos (Nat.le_refl _) (by omega) h_fe_val
-            exact h_afe.2.2.1 h_val
-          · -- flowSequenceEnd after separator → contradiction (h_after_fe extended)
+            rcases h_afe.2 with ⟨c, s, hcs⟩ | hcs | hcs <;> rw [h_val] at hcs <;> cases hcs
+          · -- flowSequenceEnd after separator → contradiction (h_after_fe content start)
             rename_i h_adv_end
             exfalso
             have h_fe_val : ps.tokens[ps.pos]!.val = .flowEntry := by
@@ -4215,7 +4220,7 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
             have h_afe := h_after_fe ps.pos (Nat.le_refl _) (by omega) h_fe_val
             have ⟨_, h_val⟩ := peek_some_val h_adv_end
             simp [ParseState.advance] at h_val
-            exact h_afe.2.2.2 h_val
+            rcases h_afe.2 with ⟨c, s, hcs⟩ | hcs | hcs <;> rw [h_val] at hcs <;> cases hcs
           · -- other → parseNode + recurse
             rename_i h_adv_not_key h_adv_not_end
             -- The separator split gave us: ps.peek? = some .flowEntry
@@ -4223,12 +4228,6 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
               have h_peek_fe : ps.peek? = some .flowEntry := by assumption
               exact (peek_some_val h_peek_fe).2
             have h_afe := h_after_fe ps.pos (Nat.le_refl _) (by omega) h_fe_val
-            have h_adv_not_fe : ps.advance.peek? ≠ some .flowEntry := by
-              intro h; have ⟨_, hv⟩ := peek_some_val h
-              simp [ParseState.advance] at hv; exact h_afe.2.1 hv
-            have h_adv_not_key : ps.advance.peek? ≠ some .key := by
-              intro h; have ⟨_, hv⟩ := peek_some_val h
-              simp [ParseState.advance] at hv; exact h_afe.2.2.1 hv
             have h_adv_pos_lt : ps.pos + 1 < endPos := by
               rcases Nat.eq_or_lt_of_le h_afe.1 with heq | hlt
               · exfalso; apply h_adv_not_end
@@ -4248,13 +4247,23 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
               rw [← hPsX]; simp [ParseState.advance, ParseState.peek?]
             have h_psX_tp : psX.trackPositions = ps.trackPositions := by
               rw [← hPsX]; simp [ParseState.advance]
+            -- Lift h_after_fe content classification to peek? level for h_pn
+            have h_cs : (∃ c s, psX.peek? = some (.scalar c s)) ∨
+                psX.peek? = some .flowSequenceStart ∨
+                psX.peek? = some .flowMappingStart := by
+              rw [h_psX_peek]
+              have h_bound : ps.pos + 1 < ps.tokens.size := by omega
+              have h_adv_peek : ps.advance.peek? = some ps.tokens[ps.pos + 1]!.val := by
+                simp only [ParseState.advance, ParseState.peek?, h_bound, ↓reduceIte]
+              rcases h_afe.2 with ⟨c, s, hcs⟩ | hcs | hcs
+              · exact .inl ⟨c, s, by rw [h_adv_peek, hcs]⟩
+              · exact .inr (.inl (by rw [h_adv_peek, hcs]))
+              · exact .inr (.inr (by rw [h_adv_peek, hcs]))
             -- Get parseNode success from h_pn
             obtain ⟨val, ps_after, h_ok, h_pos_adv, h_pos_bound, h_tok_eq, h_tp_eq, h_peek_after⟩ :=
               h_pn psX n h_psX_tok (by omega)
                 (by rw [h_psX_pos]; exact h_adv_pos_lt)
-                (by rw [h_psX_peek]; exact h_adv_not_end)
-                (by rw [h_psX_peek]; exact h_adv_not_fe)
-                (by rw [h_psX_peek]; exact h_adv_not_key)
+                h_cs
             -- Rewrite parseNode result in goal
             rw [h_ok]; dsimp only []
             -- Apply IH
@@ -4276,7 +4285,6 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
                     · exact h_pos_eq)
                 (by intro _; exact h_peek_after.imp id And.left)
                 (by intro h_sz; simp [Array.size_push] at h_sz)
-                (by intro h_sz; simp [Array.size_push] at h_sz)
                 (by intro k hk1 hk2 hval; dsimp only [] at hk1; rw [h_rec_tok] at hval ⊢;
                     exact h_after_fe k (by omega) hk2 hval)
             exact ⟨items_res, ps_res, h_loop, h_peek_res, h_pos_res, h_tok_res.trans h_tok_eq, h_tp_res.trans (h_tp_eq.trans h_psX_tp)⟩
@@ -4292,16 +4300,18 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
       · -- items_acc.size = 0 → dispatch directly (no separator check)
         -- 6. Inner dispatch: key / flowSequenceEnd / wildcard
         split
-        · -- key at start → contradiction with h_start_not_key
+        · -- key at start → contradiction with h_content_start
           rename_i h_peek_key
           exfalso
-          exact h_start_not_key (by omega) h_peek_key
+          have h_cs := h_content_start (by omega)
+          rw [h_peek_key] at h_cs
+          rcases h_cs with ⟨c, s, hcs⟩ | hcs | hcs <;> cases hcs
         · -- flowSequenceEnd → return ok
           rename_i h_peek_end
           exact ⟨items_acc, ps, rfl, h_peek_end, h_at_end h_peek_end, rfl, rfl⟩
         · -- other → parseNode + recurse
           rename_i h_not_key h_not_end
-          have h_not_fe := h_no_fe_start (by omega)
+          have h_cs := h_content_start (by omega)
           -- Generalize the parseNode struct to match goal and h_ok
           generalize hPsX : ({ ps with
             currentPath := ps.currentPath.push (.index items_acc.size) } : ParseState) = psX
@@ -4310,9 +4320,7 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
               (by subst hPsX; rfl)
               (by omega)
               (by subst hPsX; exact h_lt)
-              (by subst hPsX; exact h_not_end)
-              (by subst hPsX; exact h_not_fe)
-              (by subst hPsX; exact h_not_key)
+              (by subst hPsX; exact h_cs)
           -- Rewrite parseNode result in goal and reduce the match
           rw [h_ok]; dsimp only []
           -- Derive psX.pos and psX.trackPositions for omega and trans
@@ -4333,7 +4341,6 @@ theorem parseFlowSequenceLoop_emitter_ok (fuel : Nat)
                     rw [h_fe] at this; cases this
                   · exact h_pos_eq)
               (by intro _; exact h_peek_after.imp id And.left)
-              (by intro h_sz; simp [Array.size_push] at h_sz)
               (by intro h_sz; simp [Array.size_push] at h_sz)
               (by intro k hk1 hk2 hval; dsimp only [] at hk1; rw [h_rec_tok] at hval ⊢;
                   exact h_after_fe k (by omega) hk2 hval)

@@ -2903,8 +2903,9 @@ to carry token-level information.
    - 1× `String.push` rewrite (ScannerPlainScalar): `"".push c0 = String.singleton c0`
      no longer simplifies → `change` tactic
 
-3. **Build status**: All proof targets build cleanly (0 errors). Only FFI.lean fails with
-   pre-existing `@[export]` borrow annotation issues (Lean 4.30 ABI change, out of scope).
+3. **Build status**: All proof targets build cleanly (0 errors). FFI.lean fixed with
+   `set_option compiler.ignoreBorrowAnnotation true` (Lean 4.30 `@[export]` ABI change).
+   Full 426-job build succeeds.
 
 4. **Sorry accounting**: 8 sorry instances in EmitterScannability.lean (down from 10).
    5 pre-existing sorrys in ScannerBound.lean unchanged.
@@ -3061,6 +3062,71 @@ Tier 3: stubs 9c, 9d (content fidelity)                 [Step 8, TODO — needs 
 ```
 
 **Total estimated remaining proof: ~1,000–2,000 LOC** (8 sorry-using declarations in EmitterScannability)
+
+#### Accomplishments (Tier 3 — ParseNodeFlowSeqOk Predicate Redesign)
+
+1. **Discovered ParseNodeFlowSeqOk was UNPROVABLE as stated.** The predicate universally
+   quantified over ALL positions < endPos where peek ∉ {flowSequenceEnd, flowEntry, key}.
+   For nested collections like `[{"a": "b"}]`, interior tokens (`.value` at position 5,
+   `.flowMappingEnd` at position 7) are NOT excluded by these three conditions. At `.value`,
+   `parseNode` returns an empty node WITHOUT advancing position, violating `ps'.pos > ps.pos`.
+   Even adding `.value` and `.flowMappingEnd` exclusions is insufficient: for `[a, [b, c]]`,
+   parsing scalar "c" inside the inner bracket group advances to position 8 (inner flowSeqEnd),
+   but the postcondition requires `flowEntry` or `flowSequenceEnd-at-endPos(=9)` — neither holds.
+
+2. **Redesigned predicate with positive content classification.** Replaced three negative
+   exclusions (`≠ flowSeqEnd`, `≠ flowEntry`, `≠ key`) with a single positive precondition:
+   ```
+   (∃ c s, ps.peek? = some (.scalar c s)) ∨
+   ps.peek? = some .flowSequenceStart ∨
+   ps.peek? = some .flowMappingStart
+   ```
+   At these three token types, `parseNode` ALWAYS advances position:
+   - Scalar → reads + advances by 1
+   - flowSequenceStart → calls `parseFlowSequence`, consumes entire bracket group
+   - flowMappingStart → calls `parseFlowMapping`, consumes entire bracket group
+
+3. **Updated all downstream consumers:**
+   - `ParseNodeFlowSeqOk.mono` — simplified from 3 negative args to 1 positive arg
+   - `parseFlowSequenceLoop_emitter_ok` — replaced `h_no_fe_start`/`h_start_not_key` with
+     `h_content_start`; replaced `h_after_fe` conclusion from 3 negative conjuncts to
+     positive content classification; contradiction branches use `rcases h_cs ... <;> cases`
+   - `emitList_body_filtered_characterization` (sorry'd) — conclusion changed from "not
+     flowEntry/key/flowSeqEnd" to "is scalar/flowSeqStart/flowMapStart"
+   - `scanFiltered_emitSeq_nonempty_structure` — conclusion updated; proof simplified from
+     3 negative derivations to 1 positive classification
+   - `parseStream_emitSequence` — call site updated: `h_content_start_adj` replaces
+     `h_no_fe_start_adj`/`h_start_not_key_adj`; `h_at_end_adj` contradiction now uses
+     content classification; `h_after_fe_adj` provides positive content at each separator
+
+4. **Build verification:** Full 426-job build passes. 8 EmitterScannability sorrys + 5
+   ScannerBound sorrys — count unchanged. The redesign is a pure refactor that makes the
+   predicate PROVABLE without changing the sorry count.
+
+#### Reflections (Tier 3 — ParseNodeFlowSeqOk Predicate Redesign)
+
+1. **Positive preconditions are strictly better than negative exclusions.** With negative
+   exclusions, the predicate must enumerate every token type that parseNode doesn't handle
+   (value, flowMapEnd, blockSeqStart, blockMapStart, ...). With positive inclusion, the
+   predicate lists only the 3 types that DO work. Adding new token types never breaks the
+   predicate. This is the "open world" vs "closed world" design principle.
+
+2. **The unprovability was structural, not incidental.** The fundamental issue is that
+   `parseNode` only advances position on content-start tokens: in all other cases
+   (`parseNodeContent` default branch returns `(YamlValue.empty, ps, props)`), position is
+   unchanged. No amount of adding negative exclusions can fix this — the predicate must
+   be restricted to positions where parseNode IS guaranteed to advance.
+
+3. **Next step for h_pnok proof:** With the redesigned predicate, proving
+   `ParseNodeFlowSeqOk tokens endPos fuel` requires showing that for each content-start
+   token, parseNode succeeds and the result peeks at flowEntry or flowSeqEnd-at-endPos.
+   - Scalar: straightforward — parseNode reads scalar, advances by 1, next token is
+     flowEntry or flowSeqEnd (from emitter structure)
+   - flowSeqStart/flowMapStart: requires recursive argument — inner bracket group must
+     parse successfully. This requires either (a) strong induction on nesting depth via
+     `flowNesting`, or (b) structural induction on the Grammable value hierarchy. Approach
+     (b) would move h_pnok from the structure theorem to the outer `parseStream_emitSequence`
+     call site where Grammable IH is available.
 
 ---
 

@@ -7043,20 +7043,20 @@ theorem emitList_body_filtered_characterization
     (h_sk : s.simpleKey.possible = false) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     let old_sz := (s.tokens.filter p).size
-    -- (1) First new filtered token is not flowEntry/key/flowSequenceEnd
+    -- (1) First new filtered token is a content start (scalar, flowSeqStart, or flowMapStart)
     (old_sz < (s'.tokens.filter p).size ∧
      (∀ (h : old_sz < (s'.tokens.filter p).size),
-       ((s'.tokens.filter p)[old_sz]'h).val ≠ .flowEntry ∧
-       ((s'.tokens.filter p)[old_sz]'h).val ≠ .key ∧
-       ((s'.tokens.filter p)[old_sz]'h).val ≠ .flowSequenceEnd)) ∧
-    -- (2) After every flowEntry, next is not flowEntry/key/flowSequenceEnd
+       ((∃ c sc, ((s'.tokens.filter p)[old_sz]'h).val = .scalar c sc) ∨
+        ((s'.tokens.filter p)[old_sz]'h).val = .flowSequenceStart ∨
+        ((s'.tokens.filter p)[old_sz]'h).val = .flowMappingStart))) ∧
+    -- (2) After every flowEntry, next is a content start
     (∀ (k : Nat), old_sz ≤ k → (h_hi : k < (s'.tokens.filter p).size) →
       ((s'.tokens.filter p)[k]'h_hi).val = .flowEntry →
       k + 1 < (s'.tokens.filter p).size ∧
       (∀ (h' : k + 1 < (s'.tokens.filter p).size),
-        ((s'.tokens.filter p)[k + 1]'h').val ≠ .flowEntry ∧
-        ((s'.tokens.filter p)[k + 1]'h').val ≠ .key ∧
-        ((s'.tokens.filter p)[k + 1]'h').val ≠ .flowSequenceEnd)) := sorry
+        ((∃ c sc, ((s'.tokens.filter p)[k + 1]'h').val = .scalar c sc) ∨
+         ((s'.tokens.filter p)[k + 1]'h').val = .flowSequenceStart ∨
+         ((s'.tokens.filter p)[k + 1]'h').val = .flowMappingStart))) := sorry
 
 /-- Body token characterization for `emitPairList` in flow context:
     (1) The chain has ≥ 3 steps (key handling + value indicator + value content).
@@ -7112,14 +7112,15 @@ theorem scanFiltered_emitSeq_nonempty_structure
     tokens[tokens.size - 1]!.val = .streamEnd ∧
     tokens[1]!.val = .flowSequenceStart ∧
     tokens[tokens.size - 2]!.val = .flowSequenceEnd ∧
-    tokens[2]!.val ≠ .flowEntry ∧
-    tokens[2]!.val ≠ .key ∧
-    tokens[2]!.val ≠ .flowSequenceEnd ∧
+    ((∃ c s, tokens[2]!.val = .scalar c s) ∨
+     tokens[2]!.val = .flowSequenceStart ∨
+     tokens[2]!.val = .flowMappingStart) ∧
     (∀ k, 2 ≤ k → k < tokens.size - 2 →
         tokens[k]!.val = .flowEntry →
-        k + 1 ≤ tokens.size - 2 ∧ tokens[k + 1]!.val ≠ .flowEntry ∧
-        tokens[k + 1]!.val ≠ .key ∧
-        tokens[k + 1]!.val ≠ .flowSequenceEnd) ∧
+        k + 1 ≤ tokens.size - 2 ∧
+        ((∃ c s, tokens[k + 1]!.val = .scalar c s) ∨
+         tokens[k + 1]!.val = .flowSequenceStart ∨
+         tokens[k + 1]!.val = .flowMappingStart)) ∧
     L4YAML.Proofs.ParserGrammable.ParseNodeFlowSeqOk tokens (tokens.size - 2) (4 * tokens.size + 4) := by
   -- Step 1: Boundary tokens from scanFiltered_boundary_tokens
   obtain ⟨h_sz2, h_t0, h_tlast⟩ := scanFiltered_boundary_tokens _ _ h_scan
@@ -7269,13 +7270,13 @@ theorem scanFiltered_emitSeq_nonempty_structure
   have h_sz5 : tokens.size ≥ 5 := by
     rw [h_tokens_decomp]; simp [Array.size_push]; omega
   -- ═══ Body token characterization from infrastructure lemma ═══
-  obtain ⟨⟨h_body_sz, h_body_nfke⟩, h_body_fe_next⟩ :=
+  obtain ⟨⟨h_body_sz, h_body_cs⟩, h_body_fe_next⟩ :=
     emitList_body_filtered_characterization items.toList h_ne
       (fun w hw => h_all_scan w hw) s₁ s₂ n₂ [']']
       h_chain₂ h_corr₁ h_corr₂
       h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
       h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_sk₁
-  rw [h_filt₁_sz] at h_body_sz h_body_nfke h_body_fe_next
+  rw [h_filt₁_sz] at h_body_sz h_body_cs h_body_fe_next
   -- Helper: tokens[k]! for k < tokens.size - 2 equals (s₂.filter p)[k]
   have h_tokens_sz_eq : tokens.size - 2 = (s₂.tokens.filter p).size := by
     rw [h_tokens_decomp]; simp [Array.size_push]
@@ -7285,28 +7286,27 @@ theorem scanFiltered_emitSeq_nonempty_structure
     rw [Array.getElem_push_lt (show k < ((s₂.tokens.filter p).push tok_fse).size
         from by simp [Array.size_push]; omega)]
     rw [Array.getElem_push_lt h_lt]
-  have h_no_fe0 : tokens[2]!.val ≠ .flowEntry := by
-    rw [h_tok_body 2 (by omega)]; exact (h_body_nfke (by omega)).1
-  have h_no_key0 : tokens[2]!.val ≠ .key := by
-    rw [h_tok_body 2 (by omega)]; exact (h_body_nfke (by omega)).2.1
-  have h_no_fse0 : tokens[2]!.val ≠ .flowSequenceEnd := by
-    rw [h_tok_body 2 (by omega)]; exact (h_body_nfke (by omega)).2.2
+  have h_content0 : (∃ c s, tokens[2]!.val = .scalar c s) ∨
+      tokens[2]!.val = .flowSequenceStart ∨
+      tokens[2]!.val = .flowMappingStart := by
+    have h_body := h_body_cs (by omega)
+    rw [h_tok_body 2 (by omega)]
+    exact h_body
   have h_fe_pattern : ∀ k, 2 ≤ k → k < tokens.size - 2 →
       tokens[k]!.val = .flowEntry →
-      k + 1 ≤ tokens.size - 2 ∧ tokens[k + 1]!.val ≠ .flowEntry ∧
-      tokens[k + 1]!.val ≠ .key ∧
-      tokens[k + 1]!.val ≠ .flowSequenceEnd := by
+      k + 1 ≤ tokens.size - 2 ∧
+      ((∃ c s, tokens[k + 1]!.val = .scalar c s) ∨
+       tokens[k + 1]!.val = .flowSequenceStart ∨
+       tokens[k + 1]!.val = .flowMappingStart) := by
     intro k h_lo h_hi h_fe
     have h_k_lt : k < (s₂.tokens.filter p).size := by omega
     rw [h_tok_body k h_k_lt] at h_fe
-    obtain ⟨h_next_lt, h_next_nfke⟩ := h_body_fe_next k (by omega) h_k_lt h_fe
+    obtain ⟨h_next_lt, h_next_cs⟩ := h_body_fe_next k (by omega) h_k_lt h_fe
     exact ⟨by omega,
-           by rw [h_tok_body (k+1) (by omega)]; exact (h_next_nfke (by omega)).1,
-           by rw [h_tok_body (k+1) (by omega)]; exact (h_next_nfke (by omega)).2.1,
-           by rw [h_tok_body (k+1) (by omega)]; exact (h_next_nfke (by omega)).2.2⟩
+           by rw [h_tok_body (k+1) (by omega)]; exact h_next_cs (by omega)⟩
   have h_pnok : L4YAML.Proofs.ParserGrammable.ParseNodeFlowSeqOk
       tokens (tokens.size - 2) (4 * tokens.size + 4) := sorry
-  exact ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_no_fe0, h_no_key0, h_no_fse0, h_fe_pattern, h_pnok⟩
+  exact ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_content0, h_fe_pattern, h_pnok⟩
 
 /-- Token structure of `scanFiltered ("{" ++ emitPairList pairs ++ "}")` for non-empty pairs.
     Establishes boundary tokens, body token patterns, and `parseExplicitKey`/`parseFlowMappingValue`
@@ -7547,7 +7547,7 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
       have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hw
       have h_sz : i < items.size := by rwa [Array.length_toList] at hi
       exact h_eq ▸ emit_scans_in_flow _ (h_items ⟨i, h_sz⟩)
-    obtain ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_no_fe0, h_no_key0, h_no_fse0, h_fe_pattern,
+    obtain ⟨h_sz5, h_t0, h_tlast, h_t1, h_tpe, h_content0, h_fe_pattern,
             h_pnok⟩ :=
       scanFiltered_emitSeq_nonempty_structure items tokens h_scan (by simp [h_list]) h_all_scan
     -- Step 1: Unfold parseStream, dispatch expect .streamStart
@@ -7609,37 +7609,39 @@ theorem parseStream_emitSequence (style : CollectionStyle) (items : Array YamlVa
     have h_entry_vacuous : (#[] : Array YamlValue).size > 0 →
         ps_mid.peek? = some .flowEntry ∨ ps_mid.peek? = some .flowSequenceEnd := by
       intro h; simp [Array.size] at h
-    have h_no_fe_start_adj : (#[] : Array YamlValue).size = 0 →
-        ps_mid.peek? ≠ some .flowEntry := by
+    have h_content_start_adj : (#[] : Array YamlValue).size = 0 →
+        (∃ c s, ps_mid.peek? = some (.scalar c s)) ∨
+        ps_mid.peek? = some .flowSequenceStart ∨
+        ps_mid.peek? = some .flowMappingStart := by
       intro _
-      simp only [ps_mid, ps1, ParseState.peek?, ParseState.advance]
-      simp only [show (0 : Nat) + 1 + 1 = 2 from rfl, show 2 < tokens.size from by omega,
-                 ↓reduceIte]
-      exact mt Option.some.inj h_no_fe0
-    have h_start_not_key_adj : (#[] : Array YamlValue).size = 0 →
-        ps_mid.peek? ≠ some .key := by
-      intro _
-      simp only [ps_mid, ps1, ParseState.peek?, ParseState.advance]
-      simp only [show (0 : Nat) + 1 + 1 = 2 from rfl, show 2 < tokens.size from by omega,
-                 ↓reduceIte]
-      exact mt Option.some.inj h_no_key0
+      have h_mid_peek_val : ps_mid.peek? = some tokens[2]!.val := by
+        simp only [ps_mid, ps1, ParseState.peek?, ParseState.advance]
+        simp only [show (0 : Nat) + 1 + 1 = 2 from rfl, show 2 < tokens.size from by omega,
+                   ↓reduceIte]
+      rcases h_content0 with ⟨c, s, hcs⟩ | hcs | hcs
+      · exact .inl ⟨c, s, by rw [h_mid_peek_val, hcs]⟩
+      · exact .inr (.inl (by rw [h_mid_peek_val, hcs]))
+      · exact .inr (.inr (by rw [h_mid_peek_val, hcs]))
     have h_after_fe_adj : ∀ k, ps_mid.pos ≤ k → k < tokens.size - 2 →
         ps_mid.tokens[k]!.val = .flowEntry →
-        k + 1 ≤ tokens.size - 2 ∧ ps_mid.tokens[k + 1]!.val ≠ .flowEntry ∧
-        ps_mid.tokens[k + 1]!.val ≠ .key ∧
-        ps_mid.tokens[k + 1]!.val ≠ .flowSequenceEnd := by
+        k + 1 ≤ tokens.size - 2 ∧
+        ((∃ c s, ps_mid.tokens[k + 1]!.val = .scalar c s) ∨
+         ps_mid.tokens[k + 1]!.val = .flowSequenceStart ∨
+         ps_mid.tokens[k + 1]!.val = .flowMappingStart) := by
       rw [h_ps_mid_tok, h_ps_mid_pos]; exact h_fe_pattern
     have h_at_end_adj : ps_mid.peek? = some .flowSequenceEnd → ps_mid.pos = tokens.size - 2 := by
       intro h_peek; exfalso
       have ⟨_, h_val⟩ := L4YAML.Proofs.ParserGrammable.peek_some_val h_peek
       simp only [h_ps_mid_tok, h_ps_mid_pos] at h_val
-      exact h_no_fse0 h_val
+      -- h_content0 says tokens[2]!.val is scalar/flowSeqStart/flowMapStart
+      -- h_val says tokens[2]!.val = .flowSequenceEnd → contradiction
+      rcases h_content0 with ⟨c, s, hcs⟩ | hcs | hcs <;> rw [h_val] at hcs <;> cases hcs
     obtain ⟨items_res, ps_loop, h_loop_ok, h_loop_peek, h_loop_pos_eq, h_loop_tok, h_loop_tp⟩ :=
       L4YAML.Proofs.ParserGrammable.parseFlowSequenceLoop_emitter_ok
         (4 * tokens.size + 2) ps_mid #[] (tokens.size - 2)
         h_pnok_adj h_loop_fuel h_loop_pos h_endPos h_end_tok_adj
         h_at_end_adj
-        h_entry_vacuous h_no_fe_start_adj h_start_not_key_adj h_after_fe_adj
+        h_entry_vacuous h_content_start_adj h_after_fe_adj
     -- parseFlowSequence(4*N+3): destructs, passes 4*N+2 to loop
     have h_parseFlowSeq : parseFlowSequence ps1 (4 * tokens.size + 3) =
         Except.ok (.sequence .flow items_res, ps_loop.advance) := by
