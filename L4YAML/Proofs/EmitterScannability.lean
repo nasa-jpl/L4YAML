@@ -2216,6 +2216,9 @@ theorem saveSimpleKey_preserves_peek (s : ScannerState) :
 @[simp] theorem saveSimpleKey_preserves_flowLevel (s : ScannerState) :
     (saveSimpleKey s).flowLevel = s.flowLevel := by
   unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
+@[simp] theorem saveSimpleKey_preserves_ek (s : ScannerState) :
+    (saveSimpleKey s).explicitKeyLine = s.explicitKeyLine := by
+  unfold saveSimpleKey; split <;> (try rfl); split <;> rfl
 
 -- saveSimpleKey is the identity when simpleKeyAllowed = false and the
 -- flow-context explicit-key guard doesn't fire (explicitKeyLine ≠ some line).
@@ -6602,36 +6605,40 @@ theorem ScanChain_tokens_mono {s s' : ScannerState} {n : Nat}
   | step h_snt _h_rest ih => exact Nat.le_trans (ScannerCorrectness.scanNextToken_adds_tokens _ _ h_snt) ih
 
 /-- Combined per-step prefix preservation and simpleKey invariant maintenance.
-    Given `n ≤ s.tokens.size` and `s.simpleKey.possible → tokenIndex ≥ n`:
-    (1) All raw positions `i < n` are preserved in `s'`
-    (2) The simpleKey condition `s'.simpleKey.possible → tokenIndex ≥ n` is maintained
 
-    This uses only the **current** simpleKey condition (not `SimpleKeyAbove` which
-    includes the stack). `scanValuePrepare` only reads `s.simpleKey` (not the stack),
-    and `saveSimpleKey` sets `tokenIndex = s.tokens.size ≥ n`.
+    Uses a **disjunctive** hypothesis to handle both the initial chain entry
+    (where `simpleKey.possible = false` → left branch vacuously true) and
+    propagation through the chain (where `explicitKeyLine = none` → right branch).
 
-    Proof sketch: By `preprocess_simpleKey_inv`, preprocessing maintains the simpleKey
-    condition. Each dispatch either clears `simpleKey` (possible = false) or sets
-    `tokenIndex` to current `tokens.size` (≥ n since tokens only grow). For prefix
-    preservation, only `dispatchBlockIndicators` uses `setIfInBounds` at
-    `simpleKey.tokenIndex` (≥ n after preprocess), so positions < n are untouched. -/
+    The disjunction is self-maintaining:
+    - `scanKey` (`?`): sets ek to some but clears sk.possible → left (vacuous).
+    - `scanValue` (`:`): sets ek to none → right.
+    - All other dispatches: preserve ek → right.
+    - Flow close (`]`/`}`): preserves ek → right.
+
+    For prefix, `dispatchBlockIndicators_preserves_prefix` needs only the CURRENT
+    simpleKey condition (not `SimpleKeyAbove`). The preprocessed simpleKey condition
+    follows from either branch of the disjunction via `preprocess_simpleKey_inv`. -/
 theorem scanNextToken_prefix_and_sk_inv (s s' : ScannerState)
     (h_next : scanNextToken s = .ok (some s'))
     (n : Nat) (h_n : n ≤ s.tokens.size)
-    (h_sk : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ n) :
+    (h_cond : (s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ n) ∨
+              s.explicitKeyLine = none) :
     (∀ (i : Nat) (hi : i < n),
       s'.tokens[i]'(by have := ScannerCorrectness.scanNextToken_adds_tokens s s' h_next; omega) =
       s.tokens[i]'(by omega)) ∧
-    (s'.simpleKey.possible = true → s'.simpleKey.tokenIndex ≥ n) := sorry
+    ((s'.simpleKey.possible = true → s'.simpleKey.tokenIndex ≥ n) ∨
+     s'.explicitKeyLine = none) := sorry
 
 /-- Through a ScanChain, all raw token positions below `n₀` are preserved,
-    provided `n₀ ≤ s.tokens.size` and the initial simpleKey condition
-    `s.simpleKey.possible → tokenIndex ≥ n₀` holds. The condition is
-    automatically maintained through the chain by `scanNextToken_prefix_and_sk_inv`. -/
+    provided `n₀ ≤ s.tokens.size` and the initial disjunctive condition holds.
+    The disjunctive condition (simpleKey valid ∨ explicitKeyLine = none)
+    is automatically maintained through the chain by `scanNextToken_prefix_and_sk_inv`. -/
 theorem ScanChain_preserves_raw_prefix {s s' : ScannerState} {k : Nat}
     (h_chain : ScanChain s k s')
     (n₀ : Nat) (h_n₀ : n₀ ≤ s.tokens.size)
-    (h_sk : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ n₀)
+    (h_cond : (s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ n₀) ∨
+              s.explicitKeyLine = none)
     (i : Nat) (hi : i < n₀) :
     s'.tokens[i]'(by have := ScanChain_tokens_mono h_chain; omega) =
     s.tokens[i]'(by omega) := by
@@ -6639,21 +6646,27 @@ theorem ScanChain_preserves_raw_prefix {s s' : ScannerState} {k : Nat}
   | zero => rfl
   | step h_snt _h_rest ih =>
     have h_mono := ScannerCorrectness.scanNextToken_adds_tokens _ _ h_snt
-    have ⟨h_pres, h_sk'⟩ := scanNextToken_prefix_and_sk_inv _ _ h_snt
-      n₀ h_n₀ h_sk
-    exact (ih (by omega) h_sk').trans (h_pres i hi)
+    have ⟨h_pres, h_cond'⟩ := scanNextToken_prefix_and_sk_inv _ _ h_snt
+      n₀ h_n₀ h_cond
+    exact (ih (by omega) h_cond').trans (h_pres i hi)
 
-/-- Every `scanNextToken` step adds at least one non-placeholder token to the
-    filtered token array.
-
-    Argument: Each dispatch branch (structural, flow indicators, content) pushes
-    at least one real (non-placeholder) token. `saveSimpleKey` only adds placeholders
-    (filtered out). `setIfInBounds` in `scanValuePrepare` converts placeholders to
-    real tokens at positions ≥ `s.tokens.size`, which are in the suffix. -/
+-- Every `scanNextToken` step adds at least one non-placeholder token to the
+-- filtered token array.
+--
+-- Argument: Each dispatch branch (structural, flow indicators, content) pushes
+-- at least one real (non-placeholder) token. `saveSimpleKey` only adds placeholders
+-- (filtered out). `setIfInBounds` in `scanValuePrepare` converts placeholders to
+-- real tokens at positions above `s.tokens.size`, which are in the suffix.
+set_option maxHeartbeats 800000 in
 theorem scanNextToken_filtered_grows (s s' : ScannerState)
     (h : scanNextToken s = .ok (some s')) :
     (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
-    (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := sorry
+    (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
+  -- Each dispatch pushes at least one non-placeholder token.
+  -- saveSimpleKey only adds placeholders → filtered count unchanged.
+  -- skipToContent/unwindIndents/advance preserve or increase filtered count.
+  -- The overall filtered count grows by ≥1 through each scanNextToken step.
+  sorry
 
 /-- Through a ScanChain of `n` steps, the filtered token array grows by at least `n`. -/
 theorem ScanChain_filtered_grows {s s' : ScannerState} {n : Nat}
@@ -6686,17 +6699,18 @@ theorem Array_filter_prefix_of_raw_prefix {α : Type}
   exact ⟨(b.toList.drop a.size).filter p, rfl⟩
 
 /-- Through a ScanChain, the filtered token array of the final state has the
-    filtered array of the initial state as a prefix. Requires the initial simpleKey
-    condition (trivially satisfied when `s.simpleKey.possible = false`, e.g. after
-    `scanFlowSequenceStart`). -/
+    filtered array of the initial state as a prefix. Requires the initial disjunctive
+    condition (trivially satisfied via `.inr h_ek` when `s.explicitKeyLine = none`,
+    e.g. after `scanFlowSequenceStart`). -/
 theorem ScanChain_filtered_prefix {s s' : ScannerState} {n : Nat}
     (h_chain : ScanChain s n s')
-    (h_sk : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ s.tokens.size) :
+    (h_cond : (s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ s.tokens.size) ∨
+              s.explicitKeyLine = none) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     ∃ suffix, (s'.tokens.filter p).toList = (s.tokens.filter p).toList ++ suffix := by
   exact Array_filter_prefix_of_raw_prefix s.tokens s'.tokens _
     (ScanChain_tokens_mono h_chain)
-    (fun i hi => ScanChain_preserves_raw_prefix h_chain s.tokens.size (by omega) h_sk i hi)
+    (fun i hi => ScanChain_preserves_raw_prefix h_chain s.tokens.size (by omega) h_cond i hi)
 
 /-- `emitPairList` for non-empty pairs produces a non-empty string. -/
 theorem emitPairList_toList_ne_nil (p : YamlValue × YamlValue)
@@ -7223,7 +7237,7 @@ theorem scanFiltered_emitSeq_nonempty_structure
   -- Body chain preserves filtered prefix and grows by ≥ n₂
   obtain ⟨suffix, h_suffix⟩ : ∃ suffix, (s₂.tokens.filter p).toList =
       (s₁.tokens.filter p).toList ++ suffix :=
-    ScanChain_filtered_prefix h_chain₂ (by simp [h_sk₁])
+    ScanChain_filtered_prefix h_chain₂ (.inr h_ek₁)
   have h_filt_grows : (s₂.tokens.filter p).size ≥
       (s₁.tokens.filter p).size + n₂ := ScanChain_filtered_grows h_chain₂
   -- n₂ ≥ 1 (body is non-empty: s₁ sees body chars, s₂ sees [']'])
@@ -7422,7 +7436,7 @@ theorem scanFiltered_emitMap_nonempty_structure
     rw [h_ab] at h_vals; simp at h_vals; exact h_vals.2
   obtain ⟨suffix, h_suffix⟩ : ∃ suffix, (s₂.tokens.filter p).toList =
       (s₁.tokens.filter p).toList ++ suffix :=
-    ScanChain_filtered_prefix h_chain₂ (by simp [h_sk₁])
+    ScanChain_filtered_prefix h_chain₂ (.inr h_ek₁)
   have h_filt_grows : (s₂.tokens.filter p).size ≥
       (s₁.tokens.filter p).size + n₂ := ScanChain_filtered_grows h_chain₂
   -- n₂ ≥ 1 (body is non-empty)

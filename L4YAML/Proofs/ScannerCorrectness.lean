@@ -8823,15 +8823,6 @@ theorem ValidTokenStream_iff_Prop (vts : ValidTokenStream) :
     ValidTokenStreamProp vts.tokens :=
   ⟨vts.sizeGe2, fun _ => vts.firstIsStreamStart, fun _ => vts.lastIsStreamEnd, vts.positionsOrdered⟩
 
--- Helper to extract ValidTokenStream from scan result
-def checkValidStream (input : String) : Bool :=
-  match scanFiltered input with
-  | .ok tokens =>
-      tokens.size ≥ 2 &&
-      (if _h : tokens.size > 0 then tokens[0]!.val == .streamStart else false) &&
-      (if _h : tokens.size > 0 then tokens[tokens.size - 1]!.val == .streamEnd else false)
-  | .error _ => false
-
 /-! ### §5  Scanner Progress — `scanNextToken` Advances Offset
 
 **Goal**: Prove that every successful `scanNextToken` call that returns
