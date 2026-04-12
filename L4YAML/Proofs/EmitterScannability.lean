@@ -3332,6 +3332,7 @@ theorem scanNextToken_flow_open_init (input : String) (rest : List Char)
       ∧ s'.line = 0
       ∧ AllTokensOnLine s' 0
       ∧ EndLineOnLine s'
+      ∧ s'.simpleKey.possible = false
       ∧ (s'.tokens.filter (fun t => t.val != .placeholder)).map (·.val)
           = #[.streamStart, .flowSequenceStart] := by
   intro s₀
@@ -3430,6 +3431,7 @@ theorem scanNextToken_flow_open_init (input : String) (rest : List Char)
          by intro h_poss
             rw [scanFlowSequenceStart_simpleKey_not_possible] at h_poss
             exact absurd h_poss (by decide),
+         scanFlowSequenceStart_simpleKey_not_possible s_ad,
          by -- Filtered token characterization:
             have h_fss_tokens : (scanFlowSequenceStart s_ad).tokens
                 = s_ad.tokens.push ⟨s_ad.currentPos, .flowSequenceStart, s_ad.currentPos⟩ := by
@@ -4669,6 +4671,7 @@ theorem scanNextToken_flow_open_mapping_init (input : String) (rest : List Char)
       ∧ s'.line = 0
       ∧ AllTokensOnLine s' 0
       ∧ EndLineOnLine s'
+      ∧ s'.simpleKey.possible = false
       ∧ (s'.tokens.filter (fun t => t.val != .placeholder)).map (·.val)
           = #[.streamStart, .flowMappingStart] := by
   intro s₀
@@ -4765,6 +4768,7 @@ theorem scanNextToken_flow_open_mapping_init (input : String) (rest : List Char)
          by intro h_poss
             rw [scanFlowMappingStart_simpleKey_not_possible] at h_poss
             exact absurd h_poss (by decide),
+         scanFlowMappingStart_simpleKey_not_possible s_ad,
          by -- Filtered token characterization for mapping (mirrors sequence case)
             have h_fms_tokens : (scanFlowMappingStart s_ad).tokens
                 = s_ad.tokens.push ⟨s_ad.currentPos, .flowMappingStart, s_ad.currentPos⟩ := by
@@ -5954,7 +5958,7 @@ theorem emit_produces_valid_yaml (v : YamlValue) {inFlow : Bool} (hg : Grammable
         simp only [String.toList_append]; rfl
       -- Step 2: Scan '[' from initial state via flow_open_init
       obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
-              h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, _h_filt₁⟩ :=
+              h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, _h_sk₁, _h_filt₁⟩ :=
         scanNextToken_flow_open_init ("[" ++ emit.emitList items.toList ++ "]")
           ((emit.emitList items.toList).toList ++ [']']) h_toList
       -- Step 3: Build EmitListScansInFlow for non-empty items list
@@ -6007,7 +6011,7 @@ theorem emit_produces_valid_yaml (v : YamlValue) {inFlow : Bool} (hg : Grammable
         simp only [String.toList_append]; rfl
       -- Step 2: Scan '{' from initial state via flow_open_mapping_init
       obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
-              h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, _h_filt₁⟩ :=
+              h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, _h_sk₁, _h_filt₁⟩ :=
         scanNextToken_flow_open_mapping_init ("{" ++ emit.emitPairList pairs.toList ++ "}")
           ((emit.emitPairList pairs.toList).toList ++ ['}']) h_toList
       -- Step 3: Build EmitPairListScansInFlow for non-empty pair list
@@ -6543,10 +6547,368 @@ theorem checkContentMap_true : checkContentMap = true := by native_decide
 
 -- ═══ Scanner → Parser bridge: token structure for non-empty flow collections ═══
 
+/-! ### Infrastructure for filtered token tracking (Sub-phase 4.4.G) -/
+
+/-- `unwindIndents` is identity when the indent stack has at most 1 entry.
+    This covers emitter output where `indents = #[]` (the default from `ScannerState.mk'`).
+    `unwindIndentsLoop` checks `s.indents.size > 1` before unwinding; with size ≤ 1,
+    the condition fails immediately and the state is returned unchanged. -/
+theorem unwindIndents_noop_short_stack (s : ScannerState)
+    (h_stack : s.indents.size ≤ 1) :
+    unwindIndents s (-1) = s := by
+  unfold unwindIndents
+  unfold unwindIndentsLoop
+  split
+  · -- fuel = 0 case is impossible since fuel = s.indents.size ≤ 1
+    rfl
+  · -- fuel = fuel' + 1
+    split
+    · -- s.currentIndent > -1 && s.indents.size > 1
+      exfalso
+      rename_i h_cond
+      simp only [Bool.and_eq_true, decide_eq_true_iff] at h_cond
+      omega
+    · rfl
+
+/-- After `emit streamEnd`, the pushed token is the last element of the array.
+    Gives: `(s.emit tok).tokens = s.tokens.push ⟨s.currentPos, tok⟩`. -/
+theorem emit_tokens_push (s : ScannerState) (tok : YamlToken) :
+    (s.emit tok).tokens = s.tokens.push { pos := s.currentPos, val := tok } := by
+  unfold ScannerState.emit; rfl
+
+/-- When a ScanChain starts from s₀ via scanFiltered, the token array equation.
+    Combines `scanFiltered_of_chain_eq` with `unwindIndents` identity for emitter states. -/
+theorem scanFiltered_tokens_eq_of_chain_short_stack
+    (input : String) (s₀ s_final : ScannerState) (n : Nat)
+    (h_s0 : s₀ = (ScannerState.mk' input).emit .streamStart)
+    (h_no_bom : (ScannerState.mk' input).peek? ≠ some '\uFEFF')
+    (h_chain : ScanChain s₀ n s_final)
+    (h_eof : scanNextToken s_final = .ok none)
+    (h_fl : s_final.flowLevel = 0)
+    (h_dp : s_final.directivesPresent = false)
+    (h_fuel : n + 1 ≤ (input.utf8ByteSize + 1) * 4)
+    (h_stack : s_final.indents.size ≤ 1) :
+    Scanner.scanFiltered input =
+      .ok ((s_final.emit .streamEnd).tokens.filter (fun t => t.val != .placeholder)) := by
+  have h_eq := scanFiltered_of_chain_eq input s₀ s_final n h_s0 h_no_bom h_chain h_eof h_fl h_dp h_fuel
+  rwa [unwindIndents_noop_short_stack s_final h_stack] at h_eq
+
+/-- `ScanChain` token array monotonicity: tokens array size grows (non-strictly)
+    through any scan chain. -/
+theorem ScanChain_tokens_mono {s s' : ScannerState} {n : Nat}
+    (h_chain : ScanChain s n s') : s'.tokens.size ≥ s.tokens.size := by
+  induction h_chain with
+  | zero => exact Nat.le_refl _
+  | step h_snt _h_rest ih => exact Nat.le_trans (ScannerCorrectness.scanNextToken_adds_tokens _ _ h_snt) ih
+
+/-- Combined per-step prefix preservation and simpleKey invariant maintenance.
+    Given `n ≤ s.tokens.size` and `s.simpleKey.possible → tokenIndex ≥ n`:
+    (1) All raw positions `i < n` are preserved in `s'`
+    (2) The simpleKey condition `s'.simpleKey.possible → tokenIndex ≥ n` is maintained
+
+    This uses only the **current** simpleKey condition (not `SimpleKeyAbove` which
+    includes the stack). `scanValuePrepare` only reads `s.simpleKey` (not the stack),
+    and `saveSimpleKey` sets `tokenIndex = s.tokens.size ≥ n`.
+
+    Proof sketch: By `preprocess_simpleKey_inv`, preprocessing maintains the simpleKey
+    condition. Each dispatch either clears `simpleKey` (possible = false) or sets
+    `tokenIndex` to current `tokens.size` (≥ n since tokens only grow). For prefix
+    preservation, only `dispatchBlockIndicators` uses `setIfInBounds` at
+    `simpleKey.tokenIndex` (≥ n after preprocess), so positions < n are untouched. -/
+theorem scanNextToken_prefix_and_sk_inv (s s' : ScannerState)
+    (h_next : scanNextToken s = .ok (some s'))
+    (n : Nat) (h_n : n ≤ s.tokens.size)
+    (h_sk : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ n) :
+    (∀ (i : Nat) (hi : i < n),
+      s'.tokens[i]'(by have := ScannerCorrectness.scanNextToken_adds_tokens s s' h_next; omega) =
+      s.tokens[i]'(by omega)) ∧
+    (s'.simpleKey.possible = true → s'.simpleKey.tokenIndex ≥ n) := sorry
+
+/-- Through a ScanChain, all raw token positions below `n₀` are preserved,
+    provided `n₀ ≤ s.tokens.size` and the initial simpleKey condition
+    `s.simpleKey.possible → tokenIndex ≥ n₀` holds. The condition is
+    automatically maintained through the chain by `scanNextToken_prefix_and_sk_inv`. -/
+theorem ScanChain_preserves_raw_prefix {s s' : ScannerState} {k : Nat}
+    (h_chain : ScanChain s k s')
+    (n₀ : Nat) (h_n₀ : n₀ ≤ s.tokens.size)
+    (h_sk : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ n₀)
+    (i : Nat) (hi : i < n₀) :
+    s'.tokens[i]'(by have := ScanChain_tokens_mono h_chain; omega) =
+    s.tokens[i]'(by omega) := by
+  induction h_chain with
+  | zero => rfl
+  | step h_snt _h_rest ih =>
+    have h_mono := ScannerCorrectness.scanNextToken_adds_tokens _ _ h_snt
+    have ⟨h_pres, h_sk'⟩ := scanNextToken_prefix_and_sk_inv _ _ h_snt
+      n₀ h_n₀ h_sk
+    exact (ih (by omega) h_sk').trans (h_pres i hi)
+
+/-- Every `scanNextToken` step adds at least one non-placeholder token to the
+    filtered token array.
+
+    Argument: Each dispatch branch (structural, flow indicators, content) pushes
+    at least one real (non-placeholder) token. `saveSimpleKey` only adds placeholders
+    (filtered out). `setIfInBounds` in `scanValuePrepare` converts placeholders to
+    real tokens at positions ≥ `s.tokens.size`, which are in the suffix. -/
+theorem scanNextToken_filtered_grows (s s' : ScannerState)
+    (h : scanNextToken s = .ok (some s')) :
+    (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
+    (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := sorry
+
+/-- Through a ScanChain of `n` steps, the filtered token array grows by at least `n`. -/
+theorem ScanChain_filtered_grows {s s' : ScannerState} {n : Nat}
+    (h_chain : ScanChain s n s') :
+    (s'.tokens.filter (fun t => t.val != .placeholder)).size ≥
+    (s.tokens.filter (fun t => t.val != .placeholder)).size + n := by
+  induction h_chain with
+  | zero => omega
+  | step h_snt _h_rest ih =>
+    have h_step := scanNextToken_filtered_grows _ _ h_snt
+    omega
+
+/-- If `b` extends `a` (same elements at all positions `i < a.size`), then
+    `b.filter p` has `a.filter p` as a prefix. -/
+theorem Array_filter_prefix_of_raw_prefix {α : Type}
+    (a b : Array α) (p : α → Bool)
+    (h_sz : a.size ≤ b.size)
+    (h_eq : ∀ i (hi : i < a.size), b[i]'(by omega) = a[i]) :
+    ∃ suffix, (b.filter p).toList = (a.filter p).toList ++ suffix := by
+  have h_take : b.toList.take a.size = a.toList := by
+    apply List.ext_getElem
+    · simp only [List.length_take, Array.length_toList, Nat.min_eq_left h_sz]
+    · intro n hn₁ hn₂
+      simp only [List.getElem_take]
+      rw [Array.getElem_toList, Array.getElem_toList]
+      exact h_eq n (by simpa [Array.length_toList] using hn₂)
+  have h_split : b.toList = a.toList ++ b.toList.drop a.size := by
+    rw [← h_take, List.take_append_drop]
+  rw [Array.toList_filter, Array.toList_filter, h_split, List.filter_append]
+  exact ⟨(b.toList.drop a.size).filter p, rfl⟩
+
+/-- Through a ScanChain, the filtered token array of the final state has the
+    filtered array of the initial state as a prefix. Requires the initial simpleKey
+    condition (trivially satisfied when `s.simpleKey.possible = false`, e.g. after
+    `scanFlowSequenceStart`). -/
+theorem ScanChain_filtered_prefix {s s' : ScannerState} {n : Nat}
+    (h_chain : ScanChain s n s')
+    (h_sk : s.simpleKey.possible = true → s.simpleKey.tokenIndex ≥ s.tokens.size) :
+    let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+    ∃ suffix, (s'.tokens.filter p).toList = (s.tokens.filter p).toList ++ suffix := by
+  exact Array_filter_prefix_of_raw_prefix s.tokens s'.tokens _
+    (ScanChain_tokens_mono h_chain)
+    (fun i hi => ScanChain_preserves_raw_prefix h_chain s.tokens.size (by omega) h_sk i hi)
+
+/-- `emitPairList` for non-empty pairs produces a non-empty string. -/
+theorem emitPairList_toList_ne_nil (p : YamlValue × YamlValue)
+    (ps : List (YamlValue × YamlValue)) :
+    (emit.emitPairList (p :: ps)).toList ≠ [] := by
+  obtain ⟨c, rest', h_eq, _, _, _⟩ := emitPairList_first_char p ps
+  rw [h_eq]; exact List.cons_ne_nil _ _
+
+/-- `scanFlowSequenceEnd` token array equation: pushes exactly one `.flowSequenceEnd` token. -/
+theorem scanFlowSequenceEnd_tokens_eq (s : ScannerState) :
+    (scanFlowSequenceEnd s).tokens = s.tokens.push { pos := s.currentPos, val := .flowSequenceEnd } := by
+  unfold scanFlowSequenceEnd
+  dsimp only []
+  rw [ScannerCorrectness.advance_preserves_tokens (s.emit .flowSequenceEnd)]
+  unfold ScannerState.emit; rfl
+
+/-- `scanFlowMappingEnd` token array equation: pushes exactly one `.flowMappingEnd` token. -/
+theorem scanFlowMappingEnd_tokens_eq (s : ScannerState) :
+    (scanFlowMappingEnd s).tokens = s.tokens.push { pos := s.currentPos, val := .flowMappingEnd } := by
+  unfold scanFlowMappingEnd
+  dsimp only []
+  rw [ScannerCorrectness.advance_preserves_tokens (s.emit .flowMappingEnd)]
+  unfold ScannerState.emit; rfl
+
+/-- The close-bracket step for outermost `]`: filtered token array is the input
+    filtered array with `.flowSequenceEnd` appended.
+
+    Traces through `saveSimpleKey` (adds only placeholders, filtered out) →
+    `allowDirectives` (no token change) → `scanFlowSequenceEnd` (appends
+    `.flowSequenceEnd` which passes the placeholder filter). -/
+theorem scanNextToken_flow_close_seq_outermost_ext (s : ScannerState)
+    (hcorr : ScannerSurfCorr s ⟨[']'], s.col⟩)
+    (h_flow : s.inFlow = true)
+    (h_indent : s.currentIndent < 0)
+    (h_col_pos : s.col > 0)
+    (h_fl : s.flowLevel = 1)
+    (h_dp : s.directivesPresent = false) :
+    let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+    ∃ s', scanNextToken s = .ok (some s')
+      ∧ s'.flowLevel = 0
+      ∧ s'.directivesPresent = false
+      ∧ s'.peek? = none
+      ∧ s'.indents = s.indents
+      ∧ (∃ tok, tok.val = .flowSequenceEnd ∧
+          s'.tokens.filter p = (s.tokens.filter p).push tok) := by
+  -- Replay the close bracket proof to get the intermediate state s_ad
+  have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, ']')) :=
+    scanNextToken_preprocess_flow s ']' [] s.col hcorr h_flow
+      (by decide) (by decide) (by decide)
+  have h_sk_flow : (saveSimpleKey s).inFlow = s.inFlow := saveSimpleKey_preserves_inFlow s
+  have h_sk_col : (saveSimpleKey s).col = s.col := saveSimpleKey_preserves_col s
+  have h_sk_indent : (saveSimpleKey s).currentIndent = s.currentIndent := by
+    unfold ScannerState.currentIndent; rw [saveSimpleKey_preserves_indents]
+  have h_struct : scanNextToken_dispatchStructural (saveSimpleKey s) ']' = .ok none :=
+    dispatchStructural_none_flow _ _ (h_sk_flow ▸ h_flow) (h_sk_indent ▸ h_indent) (h_sk_col ▸ h_col_pos)
+  let s_ad := if (saveSimpleKey s).allowDirectives then
+    { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
+  else saveSimpleKey s
+  have h_check := checkBlockFlowIndent_ok_close_bracket s_ad
+  have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowLevel s
+  have h_ad_dp : s_ad.directivesPresent = s.directivesPresent := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_directivesPresent s
+  have h_ad_col : s_ad.col = s.col := by simp only [s_ad]; split <;> exact h_sk_col
+  have h_ad_corr : ScannerSurfCorr s_ad ⟨[']'], s_ad.col⟩ := by
+    rw [h_ad_col]; exact ScannerSurfCorr_transfer hcorr
+      (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_input s)
+      (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_offset s)
+      (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_inputEnd s)
+      h_ad_col
+      (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_indents s)
+  have h_flow_disp := dispatchFlowIndicators_close_bracket_outermost s_ad
+    (h_ad_fl ▸ h_fl) h_ad_corr
+  have h_snt := scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+  -- s' = scanFlowSequenceEnd s_ad
+  let s' := scanFlowSequenceEnd s_ad
+  have h_result_fl : s'.flowLevel = 0 := by
+    show (scanFlowSequenceEnd s_ad).flowLevel = 0
+    rw [scanFlowSequenceEnd_flowLevel, h_ad_fl, h_fl]
+    simp (config := { decide := true })
+  have h_result_dp : s'.directivesPresent = false := by
+    show (scanFlowSequenceEnd s_ad).directivesPresent = false
+    rw [scanFlowSequenceEnd_preserves_dp, h_ad_dp]; exact h_dp
+  have h_result_eof : s'.peek? = none := by
+    show (scanFlowSequenceEnd s_ad).peek? = none
+    rw [scanFlowSequenceEnd_peek]; exact peek_none_of_empty_surf _ _ (by
+      have ⟨_, h_lt⟩ := peek_of_chars_cons s_ad ']' [] s_ad.col h_ad_corr
+      exact advance_non_newline_corr (s_ad.emit .flowSequenceEnd) ']' []
+        ⟨h_ad_corr.chars_from, h_ad_corr.col_eq, h_ad_corr.end_eq,
+         h_ad_corr.input_prefix, h_ad_corr.indent_cols_nonneg⟩
+        (show (s_ad.emit .flowSequenceEnd).offset < (s_ad.emit .flowSequenceEnd).inputEnd from h_lt)
+        (by decide) (by decide))
+  -- Indents preservation: s'.indents = s.indents
+  have h_result_indents : s'.indents = s.indents := by
+    show (scanFlowSequenceEnd s_ad).indents = s.indents
+    rw [scanFlowSequenceEnd_preserves_indents]
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_indents s
+  -- Filtered tokens: s'.tokens.filter p = (s.tokens.filter p).push tok
+  have h_ad_tokens_filter : s_ad.tokens.filter (fun t => t.val != .placeholder) =
+      s.tokens.filter (fun t => t.val != .placeholder) := by
+    simp only [s_ad]
+    split <;> exact saveSimpleKey_filter_placeholder s
+  have h_result_tokens : ∃ tok, tok.val = .flowSequenceEnd ∧
+      s'.tokens.filter (fun t => t.val != .placeholder) =
+      (s.tokens.filter (fun t => t.val != .placeholder)).push tok := by
+    have h_fse_tokens : (scanFlowSequenceEnd s_ad).tokens =
+        s_ad.tokens.push { pos := s_ad.currentPos, val := .flowSequenceEnd } :=
+      scanFlowSequenceEnd_tokens_eq s_ad
+    have h_filter_push : (s_ad.tokens.push { pos := s_ad.currentPos, val := .flowSequenceEnd }).filter
+        (fun t => t.val != .placeholder) =
+        (s_ad.tokens.filter (fun t => t.val != .placeholder)).push
+          { pos := s_ad.currentPos, val := .flowSequenceEnd } := by
+      rw [Array.filter_push]; rfl
+    exact ⟨{ pos := s_ad.currentPos, val := .flowSequenceEnd }, rfl,
+      by rw [show s' = scanFlowSequenceEnd s_ad from rfl,
+             h_fse_tokens, h_filter_push, h_ad_tokens_filter]⟩
+  exact ⟨s', h_snt, h_result_fl, h_result_dp, h_result_eof, h_result_indents, h_result_tokens⟩
+
+/-- The close-brace step for outermost `}`: filtered token array is the input
+    filtered array with `.flowMappingEnd` appended. -/
+theorem scanNextToken_flow_close_mapping_outermost_ext (s : ScannerState)
+    (hcorr : ScannerSurfCorr s ⟨['}'], s.col⟩)
+    (h_flow : s.inFlow = true)
+    (h_indent : s.currentIndent < 0)
+    (h_col_pos : s.col > 0)
+    (h_fl : s.flowLevel = 1)
+    (h_dp : s.directivesPresent = false) :
+    let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+    ∃ s', scanNextToken s = .ok (some s')
+      ∧ s'.flowLevel = 0
+      ∧ s'.directivesPresent = false
+      ∧ s'.peek? = none
+      ∧ s'.indents = s.indents
+      ∧ (∃ tok, tok.val = .flowMappingEnd ∧
+          s'.tokens.filter p = (s.tokens.filter p).push tok) := by
+  -- Replay the close brace proof to get the intermediate state s_ad
+  have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, '}')) :=
+    scanNextToken_preprocess_flow s '}' [] s.col hcorr h_flow
+      (by decide) (by decide) (by decide)
+  have h_sk_flow : (saveSimpleKey s).inFlow = s.inFlow := saveSimpleKey_preserves_inFlow s
+  have h_sk_col : (saveSimpleKey s).col = s.col := saveSimpleKey_preserves_col s
+  have h_sk_indent : (saveSimpleKey s).currentIndent = s.currentIndent := by
+    unfold ScannerState.currentIndent; rw [saveSimpleKey_preserves_indents]
+  have h_struct : scanNextToken_dispatchStructural (saveSimpleKey s) '}' = .ok none :=
+    dispatchStructural_none_flow _ _ (h_sk_flow ▸ h_flow) (h_sk_indent ▸ h_indent) (h_sk_col ▸ h_col_pos)
+  let s_ad := if (saveSimpleKey s).allowDirectives then
+    { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
+  else saveSimpleKey s
+  have h_check := checkBlockFlowIndent_ok_close_brace s_ad
+  have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowLevel s
+  have h_ad_dp : s_ad.directivesPresent = s.directivesPresent := by
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_directivesPresent s
+  have h_ad_col : s_ad.col = s.col := by simp only [s_ad]; split <;> exact h_sk_col
+  have h_ad_corr : ScannerSurfCorr s_ad ⟨['}'], s_ad.col⟩ := by
+    rw [h_ad_col]; exact ScannerSurfCorr_transfer hcorr
+      (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_input s)
+      (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_offset s)
+      (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_inputEnd s)
+      h_ad_col
+      (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_indents s)
+  have h_flow_disp := dispatchFlowIndicators_close_brace_outermost s_ad
+    (h_ad_fl ▸ h_fl) h_ad_corr
+  have h_snt := scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+  -- s' = scanFlowMappingEnd s_ad
+  let s' := scanFlowMappingEnd s_ad
+  have h_result_fl : s'.flowLevel = 0 := by
+    show (scanFlowMappingEnd s_ad).flowLevel = 0
+    rw [scanFlowMappingEnd_flowLevel, h_ad_fl, h_fl]
+    simp (config := { decide := true })
+  have h_result_dp : s'.directivesPresent = false := by
+    show (scanFlowMappingEnd s_ad).directivesPresent = false
+    rw [scanFlowMappingEnd_preserves_dp, h_ad_dp]; exact h_dp
+  have h_result_eof : s'.peek? = none := by
+    show (scanFlowMappingEnd s_ad).peek? = none
+    rw [scanFlowMappingEnd_peek]; exact peek_none_of_empty_surf _ _ (by
+      have ⟨_, h_lt⟩ := peek_of_chars_cons s_ad '}' [] s_ad.col h_ad_corr
+      exact advance_non_newline_corr (s_ad.emit .flowMappingEnd) '}' []
+        ⟨h_ad_corr.chars_from, h_ad_corr.col_eq, h_ad_corr.end_eq,
+         h_ad_corr.input_prefix, h_ad_corr.indent_cols_nonneg⟩
+        (show (s_ad.emit .flowMappingEnd).offset < (s_ad.emit .flowMappingEnd).inputEnd from h_lt)
+        (by decide) (by decide))
+  -- Indents preservation: s'.indents = s.indents
+  have h_result_indents : s'.indents = s.indents := by
+    show (scanFlowMappingEnd s_ad).indents = s.indents
+    rw [scanFlowMappingEnd_preserves_indents]
+    simp only [s_ad]; split <;> exact saveSimpleKey_preserves_indents s
+  -- Filtered tokens: s'.tokens.filter p = (s.tokens.filter p).push tok
+  have h_ad_tokens_filter : s_ad.tokens.filter (fun t => t.val != .placeholder) =
+      s.tokens.filter (fun t => t.val != .placeholder) := by
+    simp only [s_ad]
+    split <;> exact saveSimpleKey_filter_placeholder s
+  have h_result_tokens : ∃ tok, tok.val = .flowMappingEnd ∧
+      s'.tokens.filter (fun t => t.val != .placeholder) =
+      (s.tokens.filter (fun t => t.val != .placeholder)).push tok := by
+    have h_fme_tokens : (scanFlowMappingEnd s_ad).tokens =
+        s_ad.tokens.push { pos := s_ad.currentPos, val := .flowMappingEnd } :=
+      scanFlowMappingEnd_tokens_eq s_ad
+    have h_filter_push : (s_ad.tokens.push { pos := s_ad.currentPos, val := .flowMappingEnd }).filter
+        (fun t => t.val != .placeholder) =
+        (s_ad.tokens.filter (fun t => t.val != .placeholder)).push
+          { pos := s_ad.currentPos, val := .flowMappingEnd } := by
+      rw [Array.filter_push]; rfl
+    exact ⟨{ pos := s_ad.currentPos, val := .flowMappingEnd }, rfl,
+      by rw [show s' = scanFlowMappingEnd s_ad from rfl,
+             h_fme_tokens, h_filter_push, h_ad_tokens_filter]⟩
+  exact ⟨s', h_snt, h_result_fl, h_result_dp, h_result_eof, h_result_indents, h_result_tokens⟩
+
 -- Every `scanFiltered` result has streamStart first, streamEnd last, size ≥ 2.
 -- Mirrors the proof of `scanFiltered_produces_valid_tokens` but returns a
 -- plain conjunction (avoiding the `ValidTokenStream` struct indirection).
-private theorem scanFiltered_boundary_tokens (input : String)
+theorem scanFiltered_boundary_tokens (input : String)
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered input = .ok tokens) :
     tokens.size ≥ 2 ∧
@@ -6678,20 +7040,149 @@ theorem scanFiltered_emitSeq_nonempty_structure
     L4YAML.Proofs.ParserGrammable.ParseNodeFlowSeqOk tokens (tokens.size - 2) (4 * tokens.size + 4) := by
   -- Step 1: Boundary tokens from scanFiltered_boundary_tokens
   obtain ⟨h_sz2, h_t0, h_tlast⟩ := scanFiltered_boundary_tokens _ _ h_scan
-  -- Step 2: Flow-specific token positions (pending filtered token prefix tracking)
-  -- The scan chain from scanNextToken_flow_open_init establishes that the first 2
-  -- filtered tokens are [streamStart, flowSequenceStart]. Prefix preservation through
-  -- the remaining ScanChain steps (EmitListScansInFlow + close bracket) maintains this,
-  -- but formally proving it requires scanLoop_preserves_tokens with SimpleKeyAbove tracking
-  -- through the entire chain, plus filter monotonicity.
-  have h_t1 : tokens[1]!.val = .flowSequenceStart := sorry
-  -- The close bracket step adds flowSequenceEnd as the last non-placeholder token.
-  -- After appending streamEnd, the penultimate filtered token is flowSequenceEnd.
-  -- Requires scanFiltered_of_chain_eq + scanFlowSequenceEnd token characterization.
-  have h_tpe : tokens[tokens.size - 2]!.val = .flowSequenceEnd := sorry
-  -- Size ≥ 5: boundary gives 4 tokens (streamStart, flowSequenceStart, flowSequenceEnd,
-  -- streamEnd); non-empty body adds ≥1 more. Needs filtered token count through chain.
-  have h_sz5 : tokens.size ≥ 5 := sorry
+  -- ═══ Chain replay: reconstruct s₁ (after '['), s₂ (after body), s₃ (after ']') ═══
+  let input := "[" ++ emit.emitList items.toList ++ "]"
+  have h_toList : input.toList = '[' :: (emit.emitList items.toList).toList ++ [']'] := by
+    simp only [input, String.toList_append]; rfl
+  -- Open bracket → s₁
+  obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
+          h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, h_sk₁, h_filt₁⟩ :=
+    scanNextToken_flow_open_init input
+      ((emit.emitList items.toList).toList ++ [']']) h_toList
+  -- Body scanning → s₂
+  have h_list_scan : EmitListScansInFlow items.toList :=
+    emitList_scans_nonempty items.toList h_ne (fun w hw => h_all_scan w hw)
+  obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
+          h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂⟩ :=
+    h_list_scan s₁ [']'] h_corr₁
+      h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega) h_ek₁
+      (h_line₁ ▸ h_atol₁) h_endline₁
+  -- Close bracket → s₃ (using _ext to get filtered token info + indents)
+  obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃, h_ids₃, ⟨tok_fse, h_tok_fse_val, h_filt₃⟩⟩ :=
+    scanNextToken_flow_close_seq_outermost_ext s₂ h_corr₂ h_inflow₂ h_indent₂ h_col₂
+      (by rw [h_fl₂, h_fl₁]) (by rw [h_dp₂, h_dp₁])
+  -- EOF + chain composition
+  have h_eof : scanNextToken s₃ = .ok none := scanNextToken_eof s₃ h_peek₃
+  have h_chain_all := (ScanChain.single h_snt₁).trans
+    (h_chain₂.trans (ScanChain.single h_snt₃))
+  -- BOM check
+  have h_no_bom : (ScannerState.mk' input).peek? ≠ some '\uFEFF' := by
+    have h_chars := chars_from_zero_toList input
+    rw [h_toList] at h_chars
+    have h_corr := initial_corr _ _ h_chars
+    have ⟨h_pk, _⟩ := peek_of_chars_cons _ '['
+      ((emit.emitList items.toList).toList ++ [']']) 0 h_corr
+    rw [h_pk]; decide
+  -- Indents chain: s₃.indents = s₀.indents = #[] (default from mk')
+  have h_indents_small : s₃.indents.size ≤ 1 := by
+    rw [h_ids₃, h_ids₂, h_ids₁]
+    unfold ScannerState.emit ScannerState.mk'
+    dsimp only []
+    decide
+  -- ═══ Token equation: tokens = (s₃.emit .streamEnd).tokens.filter p ═══
+  let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+  have h_tok_eq : Scanner.scanFiltered input =
+      .ok ((s₃.emit .streamEnd).tokens.filter p) :=
+    scanFiltered_tokens_eq_of_chain_short_stack input _ s₃ _ rfl h_no_bom
+      h_chain_all h_eof h_fl₃ h_dp₃
+      (ScanChain.fuel_bound _ _ _ _ rfl h_chain_all h_eof)
+      h_indents_small
+  -- Extract: tokens = (s₃.emit .streamEnd).tokens.filter p
+  have h_tokens_eq : tokens = (s₃.emit .streamEnd).tokens.filter p := by
+    have : Scanner.scanFiltered input = .ok tokens := h_scan
+    rw [h_tok_eq] at this; exact (Except.ok.inj this).symm
+  -- ═══ Decompose filtered token array as: s₂_filtered ++ [flowSeqEnd, streamEnd] ═══
+  -- s₃.tokens.filter p = (s₂.tokens.filter p).push tok_fse  (from _ext)
+  -- (s₃.emit .streamEnd).tokens.filter p = s₃.tokens.filter p ++ [streamEnd]
+  have h_emit_se_tokens : (s₃.emit .streamEnd).tokens =
+      s₃.tokens.push { pos := s₃.currentPos, val := .streamEnd } := by
+    unfold ScannerState.emit; rfl
+  have h_final_filter : (s₃.emit .streamEnd).tokens.filter p =
+      (s₃.tokens.filter p).push { pos := s₃.currentPos, val := .streamEnd } := by
+    rw [h_emit_se_tokens, Array.filter_push]; rfl
+  -- Combine: tokens = (s₂.filter p) ++ [tok_fse] ++ [streamEnd]
+  -- i.e. tokens = ((s₂.filter p).push tok_fse).push streamEnd
+  have h_tokens_decomp : tokens = ((s₂.tokens.filter p).push tok_fse).push
+      { pos := s₃.currentPos, val := .streamEnd } := by
+    rw [h_tokens_eq, h_final_filter, h_filt₃]
+  -- ═══ Tier 1 derivations ═══
+  -- h_tpe: tokens[tokens.size - 2] = tok_fse, which has val = .flowSequenceEnd
+  have h_tpe : tokens[tokens.size - 2]!.val = .flowSequenceEnd := by
+    rw [h_tokens_decomp]
+    have h_outer_sz : (((s₂.tokens.filter p).push tok_fse).push
+        { pos := s₃.currentPos, val := YamlToken.streamEnd }).size =
+        (s₂.tokens.filter p).size + 2 := by simp [Array.size_push]
+    rw [h_outer_sz, show (s₂.tokens.filter p).size + 2 - 2 = (s₂.tokens.filter p).size from by omega]
+    rw [getElem!_pos _ _ (by omega)]
+    rw [Array.getElem_push_lt (show (s₂.tokens.filter p).size <
+        ((s₂.tokens.filter p).push tok_fse).size from by simp [Array.size_push])]
+    rw [Array.getElem_push_eq]
+    exact h_tok_fse_val
+  -- ═══ Filtered prefix preservation (via ScanChain infrastructure) ═══
+  -- h_filt₁ : (s₁.tokens.filter p).map (·.val) = #[.streamStart, .flowSequenceStart]
+  -- Extract filtered prefix size and element values
+  have h_filt₁_sz : (s₁.tokens.filter p).size = 2 := by
+    have : ((s₁.tokens.filter p).map (·.val)).size = 2 := by rw [h_filt₁]; rfl
+    simpa [Array.size_map] using this
+  have h_filt₁_val1 : ((s₁.tokens.filter p)[1]'(by omega)).val = YamlToken.flowSequenceStart := by
+    have h_len : (s₁.tokens.filter p).toList.length = 2 := by
+      rw [Array.length_toList]; exact h_filt₁_sz
+    have h_vals : (s₁.tokens.filter p).toList.map (·.val) =
+        [YamlToken.streamStart, YamlToken.flowSequenceStart] := by
+      have := congrArg Array.toList h_filt₁; simpa [Array.toList_map] using this
+    obtain ⟨a, b, h_ab⟩ : ∃ a b, (s₁.tokens.filter p).toList = [a, b] := by
+      match (s₁.tokens.filter p).toList, h_len with
+      | [a, b], _ => exact ⟨a, b, rfl⟩
+    show (s₁.tokens.filter p).toList[1].val = YamlToken.flowSequenceStart
+    simp only [h_ab, List.getElem_cons_succ, List.getElem_cons_zero]
+    rw [h_ab] at h_vals; simp at h_vals; exact h_vals.2
+  -- Body chain preserves filtered prefix and grows by ≥ n₂
+  obtain ⟨suffix, h_suffix⟩ : ∃ suffix, (s₂.tokens.filter p).toList =
+      (s₁.tokens.filter p).toList ++ suffix :=
+    ScanChain_filtered_prefix h_chain₂ (by simp [h_sk₁])
+  have h_filt_grows : (s₂.tokens.filter p).size ≥
+      (s₁.tokens.filter p).size + n₂ := ScanChain_filtered_grows h_chain₂
+  -- n₂ ≥ 1 (body is non-empty: s₁ sees body chars, s₂ sees [']'])
+  have h_n₂_pos : n₂ ≥ 1 := by
+    match n₂, h_chain₂ with
+    | 0, .zero =>
+      exfalso
+      have h_chars_eq := CharsFromOffset_unique h_corr₁.chars_from h_corr₂.chars_from
+      have h_len := congrArg List.length h_chars_eq
+      simp only [List.length_append] at h_len
+      have h_nil : (emit.emitList items.toList).toList = [] := by
+        match h_list : (emit.emitList items.toList).toList with
+        | [] => rfl
+        | _ :: _ => simp [h_list] at h_len
+      match h_items : items.toList with
+      | [] => exact absurd h_items h_ne
+      | v :: vs =>
+          rw [h_items] at h_nil; exact absurd h_nil (emitList_toList_ne_nil v vs)
+    | _ + 1, _ => omega
+  -- (s₂.tokens.filter p).size ≥ 3
+  have h_s2_filt_sz : (s₂.tokens.filter p).size ≥ 3 := by
+    rw [h_filt₁_sz] at h_filt_grows; omega
+  -- h_t1: peel two pushes to reach (s₂.tokens.filter p)[1], then use prefix
+  have h_t1 : tokens[1]!.val = .flowSequenceStart := by
+    rw [h_tokens_decomp]
+    rw [getElem!_pos _ _ (by simp only [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt (show 1 < ((s₂.tokens.filter p).push tok_fse).size
+        from by simp only [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt (show 1 < (s₂.tokens.filter p).size from by omega)]
+    -- Goal: (s₂.tokens.filter p)[1]'_.val = .flowSequenceStart
+    -- Show filtered[1] is preserved from s₁ to s₂ via ScanChain prefix
+    have h1_lt_s1 : 1 < (s₁.tokens.filter p).size := by rw [h_filt₁_sz]; omega
+    have h_eq : (s₂.tokens.filter p)[1]'(by omega) = (s₁.tokens.filter p)[1]'h1_lt_s1 := by
+      show (s₂.tokens.filter p).toList[1]'(by rw [Array.length_toList]; omega) =
+          (s₁.tokens.filter p).toList[1]'(by rw [Array.length_toList]; omega)
+      simp only [h_suffix]
+      exact List.getElem_append_left (by rw [Array.length_toList]; omega)
+    calc ((s₂.tokens.filter p)[1]'(by omega)).val
+        = ((s₁.tokens.filter p)[1]'h1_lt_s1).val := congrArg Positioned.val h_eq
+      _ = .flowSequenceStart := h_filt₁_val1
+  -- h_sz5: tokens.size = (s₂.filter p).size + 2 ≥ 3 + 2 = 5
+  have h_sz5 : tokens.size ≥ 5 := by
+    rw [h_tokens_decomp]; simp [Array.size_push]; omega
   -- Body token properties: the first body token (position 2) comes from emit items[0],
   -- which starts with a value token (scalar, flowSequenceStart, flowMappingStart) — never
   -- flowEntry or key. Needs first-body-token characterization from scanner dispatch.
@@ -6737,10 +7228,148 @@ theorem scanFiltered_emitMap_nonempty_structure
     L4YAML.Proofs.ParserGrammable.ParseEntryFlowMapOk tokens (tokens.size - 2) (4 * tokens.size + 4) := by
   -- Step 1: Boundary tokens from scanFiltered_boundary_tokens
   obtain ⟨h_sz2, h_t0, h_tlast⟩ := scanFiltered_boundary_tokens _ _ h_scan
-  -- Remaining properties (same infrastructure gaps as seq case)
-  have h_t1 : tokens[1]!.val = .flowMappingStart := sorry
-  have h_tpe : tokens[tokens.size - 2]!.val = .flowMappingEnd := sorry
-  have h_sz7 : tokens.size ≥ 7 := sorry
+  -- ═══ Chain replay: reconstruct s₁ (after '{'), s₂ (after body), s₃ (after '}') ═══
+  let input := "{" ++ emit.emitPairList pairs.toList ++ "}"
+  have h_toList : input.toList = '{' :: (emit.emitPairList pairs.toList).toList ++ ['}'] := by
+    simp only [input, String.toList_append]; rfl
+  -- Open brace → s₁
+  obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
+          h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, h_sk₁, h_filt₁⟩ :=
+    scanNextToken_flow_open_mapping_init input
+      ((emit.emitPairList pairs.toList).toList ++ ['}']) h_toList
+  -- Body scanning → s₂
+  have h_pair_scan : EmitPairListScansInFlow pairs.toList :=
+    emitPairList_scans_nonempty pairs.toList h_ne
+      (fun p hp => h_all_scan_k p hp) (fun p hp => h_all_scan_v p hp)
+  obtain ⟨n₂, s₂, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂,
+          h_ek₂, h_col₂, h_inflow₂, h_indent₂, _, _, _, h_stack₂⟩ :=
+    h_pair_scan s₁ ['}'] h_corr₁
+      h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega) h_ek₁
+      (h_line₁ ▸ h_atol₁) h_endline₁
+  -- Close brace → s₃ (using _ext to get filtered token info + indents)
+  obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃, h_ids₃, ⟨tok_fme, h_tok_fme_val, h_filt₃⟩⟩ :=
+    scanNextToken_flow_close_mapping_outermost_ext s₂ h_corr₂ h_inflow₂ h_indent₂ h_col₂
+      (by rw [h_fl₂, h_fl₁]) (by rw [h_dp₂, h_dp₁])
+  -- EOF + chain composition
+  have h_eof : scanNextToken s₃ = .ok none := scanNextToken_eof s₃ h_peek₃
+  have h_chain_all := (ScanChain.single h_snt₁).trans
+    (h_chain₂.trans (ScanChain.single h_snt₃))
+  -- BOM check
+  have h_no_bom : (ScannerState.mk' input).peek? ≠ some '\uFEFF' := by
+    have h_chars := chars_from_zero_toList input
+    rw [h_toList] at h_chars
+    have h_corr := initial_corr _ _ h_chars
+    have ⟨h_pk, _⟩ := peek_of_chars_cons _ '{'
+      ((emit.emitPairList pairs.toList).toList ++ ['}']) 0 h_corr
+    rw [h_pk]; decide
+  -- Indents chain: s₃.indents = s₀.indents = #[] (default from mk')
+  have h_indents_small : s₃.indents.size ≤ 1 := by
+    rw [h_ids₃, h_ids₂, h_ids₁]
+    unfold ScannerState.emit ScannerState.mk'
+    dsimp only []
+    decide
+  -- ═══ Token equation: tokens = (s₃.emit .streamEnd).tokens.filter p ═══
+  let p := fun (t : Positioned YamlToken) => t.val != .placeholder
+  have h_tok_eq : Scanner.scanFiltered input =
+      .ok ((s₃.emit .streamEnd).tokens.filter p) :=
+    scanFiltered_tokens_eq_of_chain_short_stack input _ s₃ _ rfl h_no_bom
+      h_chain_all h_eof h_fl₃ h_dp₃
+      (ScanChain.fuel_bound _ _ _ _ rfl h_chain_all h_eof)
+      h_indents_small
+  -- Extract: tokens = (s₃.emit .streamEnd).tokens.filter p
+  have h_tokens_eq : tokens = (s₃.emit .streamEnd).tokens.filter p := by
+    have : Scanner.scanFiltered input = .ok tokens := h_scan
+    rw [h_tok_eq] at this; exact (Except.ok.inj this).symm
+  -- ═══ Decompose filtered token array as: s₂_filtered ++ [flowMapEnd, streamEnd] ═══
+  have h_emit_se_tokens : (s₃.emit .streamEnd).tokens =
+      s₃.tokens.push { pos := s₃.currentPos, val := .streamEnd } := by
+    unfold ScannerState.emit; rfl
+  have h_final_filter : (s₃.emit .streamEnd).tokens.filter p =
+      (s₃.tokens.filter p).push { pos := s₃.currentPos, val := .streamEnd } := by
+    rw [h_emit_se_tokens, Array.filter_push]; rfl
+  have h_tokens_decomp : tokens = ((s₂.tokens.filter p).push tok_fme).push
+      { pos := s₃.currentPos, val := .streamEnd } := by
+    rw [h_tokens_eq, h_final_filter, h_filt₃]
+  -- ═══ Tier 1 derivations ═══
+  -- h_tpe: tokens[tokens.size - 2] = tok_fme, which has val = .flowMappingEnd
+  have h_tpe : tokens[tokens.size - 2]!.val = .flowMappingEnd := by
+    rw [h_tokens_decomp]
+    have h_outer_sz : (((s₂.tokens.filter p).push tok_fme).push
+        { pos := s₃.currentPos, val := YamlToken.streamEnd }).size =
+        (s₂.tokens.filter p).size + 2 := by simp [Array.size_push]
+    rw [h_outer_sz, show (s₂.tokens.filter p).size + 2 - 2 = (s₂.tokens.filter p).size from by omega]
+    rw [getElem!_pos _ _ (by omega)]
+    rw [Array.getElem_push_lt (show (s₂.tokens.filter p).size <
+        ((s₂.tokens.filter p).push tok_fme).size from by simp [Array.size_push])]
+    rw [Array.getElem_push_eq]
+    exact h_tok_fme_val
+  -- ═══ Filtered prefix preservation (via ScanChain infrastructure) ═══
+  have h_filt₁_sz : (s₁.tokens.filter p).size = 2 := by
+    have : ((s₁.tokens.filter p).map (·.val)).size = 2 := by rw [h_filt₁]; rfl
+    simpa [Array.size_map] using this
+  have h_filt₁_val1 : ((s₁.tokens.filter p)[1]'(by omega)).val = YamlToken.flowMappingStart := by
+    have h_len : (s₁.tokens.filter p).toList.length = 2 := by
+      rw [Array.length_toList]; exact h_filt₁_sz
+    have h_vals : (s₁.tokens.filter p).toList.map (·.val) =
+        [YamlToken.streamStart, YamlToken.flowMappingStart] := by
+      have := congrArg Array.toList h_filt₁; simpa [Array.toList_map] using this
+    obtain ⟨a, b, h_ab⟩ : ∃ a b, (s₁.tokens.filter p).toList = [a, b] := by
+      match (s₁.tokens.filter p).toList, h_len with
+      | [a, b], _ => exact ⟨a, b, rfl⟩
+    show (s₁.tokens.filter p).toList[1].val = YamlToken.flowMappingStart
+    simp only [h_ab, List.getElem_cons_succ, List.getElem_cons_zero]
+    rw [h_ab] at h_vals; simp at h_vals; exact h_vals.2
+  obtain ⟨suffix, h_suffix⟩ : ∃ suffix, (s₂.tokens.filter p).toList =
+      (s₁.tokens.filter p).toList ++ suffix :=
+    ScanChain_filtered_prefix h_chain₂ (by simp [h_sk₁])
+  have h_filt_grows : (s₂.tokens.filter p).size ≥
+      (s₁.tokens.filter p).size + n₂ := ScanChain_filtered_grows h_chain₂
+  -- n₂ ≥ 1 (body is non-empty)
+  have h_n₂_pos : n₂ ≥ 1 := by
+    match n₂, h_chain₂ with
+    | 0, .zero =>
+      exfalso
+      have h_chars_eq := CharsFromOffset_unique h_corr₁.chars_from h_corr₂.chars_from
+      have h_len := congrArg List.length h_chars_eq
+      simp only [List.length_append] at h_len
+      have h_nil : (emit.emitPairList pairs.toList).toList = [] := by
+        match h_list : (emit.emitPairList pairs.toList).toList with
+        | [] => rfl
+        | _ :: _ => simp [h_list] at h_len
+      match h_items : pairs.toList with
+      | [] => exact absurd h_items h_ne
+      | p :: ps =>
+          rw [h_items] at h_nil; exact absurd h_nil (emitPairList_toList_ne_nil p ps)
+    | _ + 1, _ => omega
+  have h_s2_filt_sz : (s₂.tokens.filter p).size ≥ 3 := by
+    rw [h_filt₁_sz] at h_filt_grows; omega
+  have h_t1 : tokens[1]!.val = .flowMappingStart := by
+    rw [h_tokens_decomp]
+    rw [getElem!_pos _ _ (by simp only [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt (show 1 < ((s₂.tokens.filter p).push tok_fme).size
+        from by simp only [Array.size_push]; omega)]
+    rw [Array.getElem_push_lt (show 1 < (s₂.tokens.filter p).size from by omega)]
+    -- Show filtered[1] is preserved from s₁ to s₂ via ScanChain prefix
+    have h1_lt_s1 : 1 < (s₁.tokens.filter p).size := by rw [h_filt₁_sz]; omega
+    have h_eq : (s₂.tokens.filter p)[1]'(by omega) = (s₁.tokens.filter p)[1]'h1_lt_s1 := by
+      show (s₂.tokens.filter p).toList[1]'(by rw [Array.length_toList]; omega) =
+          (s₁.tokens.filter p).toList[1]'(by rw [Array.length_toList]; omega)
+      simp only [h_suffix]
+      exact List.getElem_append_left (by rw [Array.length_toList]; omega)
+    calc ((s₂.tokens.filter p)[1]'(by omega)).val
+        = ((s₁.tokens.filter p)[1]'h1_lt_s1).val := congrArg Positioned.val h_eq
+      _ = .flowMappingStart := h_filt₁_val1
+  -- h_sz7: for map, need n₂ ≥ 5 filtered tokens (prefix 2 + suffix ≥ 3)
+  -- Non-empty pair list has ≥ 1 pair. Each pair scanning produces ≥ 3 scanNextToken
+  -- steps (key, value indicator, value scalar). Combined with n₂ ≥ 1, this gives
+  -- filtered size ≥ 2 + n₂. For n₂ ≥ 5 we need the pair structure decomposition.
+  have h_sz7 : tokens.size ≥ 7 := by
+    rw [h_tokens_decomp]; simp [Array.size_push]
+    -- Need: (s₂.tokens.filter p).size ≥ 5
+    -- From filtered growth: (s₂.filter).size ≥ 2 + n₂ (from ScanChain_filtered_grows)
+    -- Sufficient if n₂ ≥ 3, which follows from pair body structure (key + ':' + value)
+    sorry
+  -- Tier 2 and Tier 3 (sorry'd)
   have h_key_or_end : tokens[2]!.val = .key ∨ tokens[2]!.val = .flowMappingEnd := sorry
   have h_fe_pattern : ∀ k, 2 ≤ k → k < tokens.size - 2 →
       tokens[k]!.val = .flowEntry →

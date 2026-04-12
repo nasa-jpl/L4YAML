@@ -75,7 +75,7 @@ instance : ToString KeyAnnotation := ⟨KeyAnnotation.toString⟩
 end KeyAnnotation
 
 /-- Parse the common syntax `(str)? (str)?` into a `KeyAnnotation`. -/
-private def parseKeyAnnotation (stx : Syntax) (argIdx1 argIdx2 : Nat) : KeyAnnotation :=
+def parseKeyAnnotation (stx : Syntax) (argIdx1 argIdx2 : Nat) : KeyAnnotation :=
   let arg1 := stx[argIdx1]
   let arg2 := stx[argIdx2]
   if arg1.isNone then

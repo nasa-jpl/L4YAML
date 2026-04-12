@@ -2562,6 +2562,10 @@ Using the composed filtered token array from 4.4.F:
 
 These follow directly from the composed array structure.
 
+***Tier 1: Accomplishments***
+
+***Tier 1: Reflections***
+
 **Tier 2: Body token classification (~100-150 LOC)**
 
 - `tokens[2]!.val ≠ .flowEntry` — the first body token comes from `emit items[0]`, which
@@ -2579,6 +2583,10 @@ These follow directly from the composed array structure.
 The body tokens alternate: `[item₁_tokens..., .flowEntry, item₂_tokens..., .flowEntry, ...]`.
 Each `item_i_tokens` starts with a value token (from `EmitScansInFlow` dispatch — scalar
 produces `.scalar`, sequence produces `.flowSequenceStart`, mapping produces `.flowMappingStart`).
+
+***Tier 2: Accomplishments***
+
+***Tier 2: Reflections***
 
 **Tier 3: `ParseNodeFlowSeqOk` / `ParseEntryFlowMapOk` from `Grammable` IH (~150-300 LOC)**
 
@@ -2639,6 +2647,10 @@ Option A is cleaner — it's a natural property of the filtered token array.
 
 **Status:** Option A implemented. Uniqueness clauses added to both structure theorems
 (sorry'd). Position pinning sorrys closed in Sub-phase 4.4.F using these uniqueness clauses.
+
+***Tier 3: Accomplishments***
+
+***Tier 3: Reflections***
 
 *** Sub-phase 4.4.G Accomplishments***
 
