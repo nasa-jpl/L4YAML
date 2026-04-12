@@ -42,8 +42,8 @@ rev = "v4.29.0"
 
 [[require]]
 name = "DocGen4"
-git = "https://github.com/leanprover/doc-gen4"
-rev = "v4.29.0"
+git = "https://github.com/NicolasRouquette/doc-gen4"
+rev = "fix/generalize-git-forge-urls"
 
 [[lean_lib]]
 name = "L4YAML"
